@@ -1,6 +1,24 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
@@ -29,10 +47,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __FUNCTION_LIST_H
-#define __FUNCTION_LIST_H
 
-/** 
+#pragma once
+
+/**
  * @file function_list.h
  * @brief Implementation of a list of procedures.
 
@@ -54,20 +72,19 @@ typedef void (*opj_procedure)(void);
 /**
  * A list of procedures.
 */
-typedef struct opj_procedure_list 
-{
-	/**
-	 * The number of validation procedures.
-	 */
-	OPJ_UINT32 m_nb_procedures;
-	/**
-	 * The number of the array of validation procedures.
-	 */
-	OPJ_UINT32 m_nb_max_procedures;
-	/**
-	 * The array of procedures.
-	 */
-	opj_procedure * m_procedures;
+typedef struct opj_procedure_list {
+    /**
+     * The number of validation procedures.
+     */
+    uint32_t m_nb_procedures;
+    /**
+     * The number of the array of validation procedures.
+     */
+    uint32_t m_nb_max_procedures;
+    /**
+     * The array of procedures.
+     */
+    opj_procedure * m_procedures;
 
 } opj_procedure_list_t;
 
@@ -93,9 +110,9 @@ void  opj_procedure_list_destroy(opj_procedure_list_t * p_list);
  * @param	p_validation_list the list of procedure to modify.
  * @param	p_procedure		the procedure to add.
  *
- * @return	OPJ_TRUE if the procedure could be added.
+ * @return	true if the procedure could be added.
  */
-OPJ_BOOL opj_procedure_list_add_procedure (opj_procedure_list_t * p_validation_list, opj_procedure p_procedure, opj_event_mgr_t* p_manager);
+bool opj_procedure_list_add_procedure (opj_procedure_list_t * p_validation_list, opj_procedure p_procedure, opj_event_mgr_t* p_manager);
 
 /**
  * Gets the number of validation procedures.
@@ -104,7 +121,7 @@ OPJ_BOOL opj_procedure_list_add_procedure (opj_procedure_list_t * p_validation_l
  *
  * @return the number of validation procedures.
  */
-OPJ_UINT32 opj_procedure_list_get_nb_procedures (opj_procedure_list_t * p_validation_list);
+uint32_t opj_procedure_list_get_nb_procedures (opj_procedure_list_t * p_validation_list);
 
 /**
  * Gets the pointer on the first validation procedure. This function is similar to the C++
@@ -126,6 +143,4 @@ opj_procedure* opj_procedure_list_get_first_procedure (opj_procedure_list_t * p_
  */
 void opj_procedure_list_clear (opj_procedure_list_t * p_validation_list);
 /*@}*/
-
-#endif /* __FUNCTION_LIST_H */
 

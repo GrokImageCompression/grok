@@ -1,6 +1,24 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
@@ -8,7 +26,7 @@
  * Copyright (c) 2002-2014, Professor Benoit Macq
  * Copyright (c) 2001-2003, David Janssens
  * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux 
+ * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
  * All rights reserved.
@@ -34,8 +52,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __T1_H
-#define __T1_H
+#pragma once
+
+#include <vector>
+
+
+struct decodeBlock {
+	decodeBlock() : tilec(NULL),
+		tiledp(NULL),
+		cblk(NULL),
+		resno(0),
+		bandno(0),
+		stepsize(0),
+		roishift(0),
+		cblksty(0),
+		qmfbid(0),
+		x(0),
+		y(0) {  }
+	opj_tcd_tilecomp_t* tilec;
+	int32_t* tiledp;
+	opj_tcd_cblk_dec_t* cblk;
+	uint32_t resno;
+	uint32_t bandno;
+	float stepsize;
+	int32_t roishift;
+	uint32_t cblksty;
+	uint32_t qmfbid;
+	int32_t x, y;		/* relative code block offset */
+};
+
+
 /**
 @file t1.h
 @brief Implementation of the tier-1 coding (coding of code-block coefficients) (T1)
@@ -91,28 +137,8 @@ in T1.C are used by some function in TCD.C.
 
 /* ----------------------------------------------------------------------- */
 
-typedef OPJ_INT16 opj_flag_t;
 
-/**
-Tier-1 coding (coding of code-block coefficients)
-*/
-typedef struct opj_t1 {
 
-	/** MQC component */
-	opj_mqc_t *mqc;
-	/** RAW component */
-	opj_raw_t *raw;
-
-	OPJ_INT32  *data;
-	opj_flag_t *flags;
-	OPJ_UINT32 w;
-	OPJ_UINT32 h;
-	OPJ_UINT32 datasize;
-	OPJ_UINT32 flagssize;
-	OPJ_UINT32 flags_stride;
-	OPJ_UINT32 data_stride;
-	OPJ_BOOL   encoder;
-} opj_t1_t;
 
 #define MACRO_t1_flags(x,y) t1->flags[((x)*(t1->flags_stride))+(y)]
 
@@ -128,40 +154,96 @@ Encode the code-blocks of a tile
 @param mct_norms  FIXME DOC
 @param mct_numcomps Number of components used for MCT
 */
-OPJ_BOOL opj_t1_encode_cblks(   opj_t1_t *t1,
-                                opj_tcd_tile_t *tile,
-                                opj_tcp_t *tcp,
-                                const OPJ_FLOAT64 * mct_norms,
-                                OPJ_UINT32 mct_numcomps);
+bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
+                            opj_tcp_t *tcp,
+                            const double * mct_norms,
+                            uint32_t mct_numcomps);
 
 /**
 Decode the code-blocks of a tile
-@param t1 T1 handle
 @param tilec The tile to decode
 @param tccp Tile coding parameters
 */
-OPJ_BOOL opj_t1_decode_cblks(   opj_t1_t* t1,
-                                opj_tcd_tilecomp_t* tilec,
-                                opj_tccp_t* tccp);
+bool opj_t1_decode_cblks(   opj_tcd_tilecomp_t* tilec,
+                            opj_tccp_t* tccp,
+							std::vector<decodeBlock*>* blocks,
+                            opj_event_mgr_t * p_manager);
 
+
+
+
+double opj_t1_getwmsedec(
+    int32_t nmsedec,
+    uint32_t compno,
+    uint32_t level,
+    uint32_t orient,
+    int32_t bpno,
+    uint32_t qmfbid,
+    double stepsize,
+    uint32_t numcomps,
+    const double * mct_norms,
+    uint32_t mct_numcomps);
+
+
+int16_t opj_t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
+int16_t opj_t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
+
+typedef int16_t opj_flag_t;
+
+typedef struct opj_t1 {
+	uint8_t* compressed_block;
+	size_t compressed_block_size;
+	/** MQC component */
+	opj_mqc_t *mqc;
+	/** RAW component */
+	opj_raw_t *raw;
+
+	int32_t  *data;
+	opj_flag_t *flags;
+	uint32_t w;
+	uint32_t h;
+	uint32_t datasize;
+	uint32_t flagssize;
+	uint32_t flags_stride;
+	uint32_t data_stride;
+	bool   encoder;
+} opj_t1_t;
 
 
 /**
- * Creates a new Tier 1 handle
- * and initializes the look-up tables of the Tier-1 coder/decoder
- * @return a new T1 handle if successful, returns NULL otherwise
+* Creates a new Tier 1 handle
+* and initializes the look-up tables of the Tier-1 coder/decoder
+* @return a new T1 handle if successful, returns NULL otherwise
 */
-opj_t1_t* opj_t1_create(OPJ_BOOL isEncoder);
+opj_t1_t* opj_t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
 
 /**
- * Destroys a previously created T1 handle
- *
- * @param p_t1 Tier 1 handle to destroy
+* Destroys a previously created T1 handle
+*
+* @param p_t1 Tier 1 handle to destroy
 */
 void opj_t1_destroy(opj_t1_t *p_t1);
+
+/**
+Decode 1 code-block
+@param t1 T1 handle
+@param cblk Code-block coding parameters
+@param orient
+@param roishift Region of interest shifting value
+@param cblksty Code-block style
+*/
+bool opj_t1_decode_cblk(opj_t1_t *t1,
+	opj_tcd_cblk_dec_t* cblk,
+	uint32_t orient,
+	uint32_t roishift,
+	uint32_t cblksty);
+
+
+
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
 
-#endif /* __T1_H */
+
+

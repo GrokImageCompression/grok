@@ -1,6 +1,24 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
@@ -8,10 +26,10 @@
  * Copyright (c) 2002-2014, Professor Benoit Macq
  * Copyright (c) 2001-2003, David Janssens
  * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux 
+ * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR 
+ * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
  * Copyright (c) 2012, CS Systemes d'Information, France
  * All rights reserved.
  *
@@ -36,8 +54,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __T2_H
-#define __T2_H
+#pragma once
+
 /**
 @file t2.h
 @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
@@ -52,10 +70,10 @@ Tier-2 coding
 */
 typedef struct opj_t2 {
 
-	/** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
-	opj_image_t *image;
-	/** pointer to the image coding parameters */
-	opj_cp_t *cp;
+    /** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
+    opj_image_t *image;
+    /** pointer to the image coding parameters */
+    opj_cp_t *cp;
 } opj_t2_t;
 
 /** @name Exported functions */
@@ -75,20 +93,37 @@ Encode the packets of a tile to a destination buffer
 @param tpnum            Tile part number of the current tile
 @param tppos            The position of the tile part flag in the progression order
 @param pino             FIXME DOC
-@param t2_mode          If == 0 In Threshold calculation ,If == 1 Final pass
 */
-OPJ_BOOL opj_t2_encode_packets(	opj_t2_t* t2,
-								OPJ_UINT32 tileno,
-								opj_tcd_tile_t *tile,
-								OPJ_UINT32 maxlayers,
-								OPJ_BYTE *dest,
-								OPJ_UINT32 * p_data_written,
-								OPJ_UINT32 len,
-								opj_codestream_info_t *cstr_info,
-								OPJ_UINT32 tpnum,
-								OPJ_INT32 tppos,
-								OPJ_UINT32 pino,
-								J2K_T2_MODE t2_mode);
+bool opj_t2_encode_packets(	opj_t2_t* t2,
+                            uint32_t tileno,
+                            opj_tcd_tile_t *tile,
+                            uint32_t maxlayers,
+                            uint8_t *dest,
+                            uint32_t * p_data_written,
+                            uint32_t len,
+                            opj_codestream_info_t *cstr_info,
+                            uint32_t tpnum,
+                            int32_t tppos,
+                            uint32_t pino);
+
+/**
+Encode the packets of a tile to a destination buffer
+@param t2               T2 handle
+@param tileno           number of the tile encoded
+@param tile             the tile for which to write the packets
+@param maxlayers        maximum number of layers
+@param p_data_written   FIXME DOC
+@param len              the length of the destination buffer
+@param tppos            The position of the tile part flag in the progression order
+*/
+bool opj_t2_encode_packets_thresh(opj_t2_t* t2,
+                                  uint32_t tileno,
+                                  opj_tcd_tile_t *tile,
+                                  uint32_t maxlayers,
+                                  uint32_t * p_data_written,
+                                  uint32_t len,
+                                  int32_t tppos);
+
 
 /**
 Decode the packets of a tile from a source buffer
@@ -102,14 +137,13 @@ Decode the packets of a tile from a source buffer
 
 @return FIXME DOC
  */
-OPJ_BOOL opj_t2_decode_packets(	opj_t2_t *t2,
-                                OPJ_UINT32 tileno,
-                                opj_tcd_tile_t *tile,
-                                OPJ_BYTE *src,
-                                OPJ_UINT32 * p_data_read,
-                                OPJ_UINT32 len,
-                                opj_codestream_index_t *cstr_info,
-                                opj_event_mgr_t *p_manager);
+bool opj_t2_decode_packets(	opj_t2_t *t2,
+                            uint32_t tileno,
+                            opj_tcd_tile_t *tile,
+                            opj_seg_buf_t* src_buf,
+                            uint32_t * p_data_read,
+                            opj_codestream_index_t *cstr_info,
+                            opj_event_mgr_t *p_manager);
 
 /**
  * Creates a Tier 2 handle
@@ -131,4 +165,4 @@ void opj_t2_destroy(opj_t2_t *t2);
 
 /*@}*/
 
-#endif /* __T2_H */
+

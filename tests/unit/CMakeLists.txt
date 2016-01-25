@@ -12,6 +12,6 @@ set(unit_test
 )
 foreach(ut ${unit_test})
   add_executable(${ut} ${ut}.c)
-  target_link_libraries(${ut} openjp2)
+  target_link_libraries(${ut} ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(NAME ${ut} COMMAND ${ut})
 endforeach()

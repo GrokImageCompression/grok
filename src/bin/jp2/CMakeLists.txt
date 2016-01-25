@@ -1,5 +1,15 @@
 # Build the demo app, small examples
 
+
+if (BUILD_WITH_OPENMP)
+find_package(OpenMP)
+if (OPENMP_FOUND)
+	add_definitions(-DOPJ_NUM_COMPRESS_DECOMPRESS_THREADS=4)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+endif()
+
 # First thing define the common source:
 set(common_SRCS
   convert.c
@@ -45,7 +55,7 @@ endif()
 foreach(exe opj_decompress opj_compress opj_dump)
   add_executable(${exe} ${exe}.c ${common_SRCS})
   target_link_libraries(${exe} ${OPENJPEG_LIBRARY_NAME}
-    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}
+    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
     )
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)

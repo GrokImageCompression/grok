@@ -1,6 +1,24 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
@@ -8,11 +26,11 @@
  * Copyright (c) 2002-2014, Professor Benoit Macq
  * Copyright (c) 2001-2003, David Janssens
  * Copyright (c) 2002-2003, Yannick Verschueren
- * Copyright (c) 2003-2007, Francois-Olivier Devaux 
+ * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
  * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
- * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France 
+ * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * Copyright (c) 2012, CS Systemes d'Information, France
  * All rights reserved.
  *
@@ -38,8 +56,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __TGT_H
-#define __TGT_H
+#pragma once
+
 /**
 @file tgt.h
 @brief Implementation of a tag-tree coder (TGT)
@@ -56,21 +74,20 @@ Tag node
 */
 typedef struct opj_tgt_node {
     struct opj_tgt_node *parent;
-    OPJ_INT32 value;
-    OPJ_INT32 low;
-    OPJ_UINT32 known;
+    int32_t value;
+    int32_t low;
+    uint32_t known;
 } opj_tgt_node_t;
 
 /**
 Tag tree
 */
-typedef struct opj_tgt_tree
-{
-	OPJ_UINT32  numleafsh;
-	OPJ_UINT32  numleafsv;
-	OPJ_UINT32 numnodes;
-	opj_tgt_node_t *nodes;
-	OPJ_UINT32  nodes_size;		/* maximum size taken by nodes */
+typedef struct opj_tgt_tree {
+    uint32_t  numleafsh;
+    uint32_t  numleafsv;
+    uint32_t numnodes;
+    opj_tgt_node_t *nodes;
+    uint32_t  nodes_size;		/* maximum size taken by nodes */
 } opj_tgt_tree_t;
 
 
@@ -83,7 +100,7 @@ Create a tag-tree
 @param numleafsv Height of the array of leafs of the tree
 @return Returns a new tag-tree if successful, returns NULL otherwise
 */
-opj_tgt_tree_t *opj_tgt_create(OPJ_UINT32 numleafsh, OPJ_UINT32 numleafsv, opj_event_mgr_t *manager);
+opj_tgt_tree_t *opj_tgt_create(uint32_t numleafsh, uint32_t numleafsv, opj_event_mgr_t *manager);
 
 /**
  * Reinitialises a tag-tree from an exixting one.
@@ -94,9 +111,9 @@ opj_tgt_tree_t *opj_tgt_create(OPJ_UINT32 numleafsh, OPJ_UINT32 numleafsv, opj_e
  * @param p_manager       the event manager
  * @return	a new tag-tree if successful, NULL otherwise
 */
-opj_tgt_tree_t *opj_tgt_init(opj_tgt_tree_t * p_tree, 
-                             OPJ_UINT32  p_num_leafs_h, 
-                             OPJ_UINT32  p_num_leafs_v, opj_event_mgr_t *p_manager);
+opj_tgt_tree_t *opj_tgt_init(opj_tgt_tree_t * p_tree,
+                             uint32_t  p_num_leafs_h,
+                             uint32_t  p_num_leafs_v, opj_event_mgr_t *p_manager);
 /**
 Destroy a tag-tree, liberating memory
 @param tree Tag-tree to destroy
@@ -113,9 +130,9 @@ Set the value of a leaf of a tag-tree
 @param leafno Number that identifies the leaf to modify
 @param value New value of the leaf
 */
-void opj_tgt_setvalue(opj_tgt_tree_t *tree, 
-                      OPJ_UINT32 leafno, 
-                      OPJ_INT32 value);
+void opj_tgt_setvalue(opj_tgt_tree_t *tree,
+                      uint32_t leafno,
+                      int32_t value);
 /**
 Encode the value of a leaf of the tag-tree up to a given threshold
 @param bio Pointer to a BIO handle
@@ -123,10 +140,10 @@ Encode the value of a leaf of the tag-tree up to a given threshold
 @param leafno Number that identifies the leaf to encode
 @param threshold Threshold to use when encoding value of the leaf
 */
-void opj_tgt_encode(opj_bio_t *bio, 
-                    opj_tgt_tree_t *tree, 
-                    OPJ_UINT32 leafno, 
-                    OPJ_INT32 threshold);
+void opj_tgt_encode(opj_bio_t *bio,
+                    opj_tgt_tree_t *tree,
+                    uint32_t leafno,
+                    int32_t threshold);
 /**
 Decode the value of a leaf of the tag-tree up to a given threshold
 @param bio Pointer to a BIO handle
@@ -135,13 +152,13 @@ Decode the value of a leaf of the tag-tree up to a given threshold
 @param threshold Threshold to use when decoding value of the leaf
 @return Returns 1 if the node's value < threshold, returns 0 otherwise
 */
-OPJ_UINT32 opj_tgt_decode(opj_bio_t *bio, 
-                          opj_tgt_tree_t *tree, 
-                          OPJ_UINT32 leafno, 
-                          OPJ_INT32 threshold);
+uint32_t opj_tgt_decode(opj_bio_t *bio,
+                        opj_tgt_tree_t *tree,
+                        uint32_t leafno,
+                        int32_t threshold);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
 
-#endif /* __TGT_H */
+

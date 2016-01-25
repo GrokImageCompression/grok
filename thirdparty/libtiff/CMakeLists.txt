@@ -150,7 +150,7 @@ CHECK_TYPE_SIZE("unsigned char*"     SIZEOF_UNSIGNED_CHAR_P)
 CHECK_TYPE_SIZE(ssize_t     SSIZE_T)
 
 if(HAVE_STDINT_H)
-  set(TIFF_INT8_T    int8_t)
+  set(TIFF_INT8_T    char)
   set(TIFF_INT16_T   int16_t)
   set(TIFF_INT32_T   int32_t)
   set(TIFF_INT64_T   int64_t)
@@ -232,7 +232,7 @@ FOREACH(KEYWORD "inline" "__inline__" "__inline")
        COMPILE_DEFINITIONS "-Dinline=${KEYWORD}")
     IF(C_HAS_${KEYWORD})
       SET(C_INLINE TRUE)
-      SET(INLINE "${KEYWORD}")
+      SET(inline "${KEYWORD}")
     ENDIF(C_HAS_${KEYWORD})
   ENDIF(NOT DEFINED C_INLINE)
 ENDFOREACH(KEYWORD)
@@ -243,6 +243,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/tif_config.h.cmake.in
   ${CMAKE_CURRENT_BINARY_DIR}/tif_config.h @ONLY)
 
 SET(LIBTARGET "tiff")
+set(CMAKE_POSITION_INDEPENDENT_CODE ON) 
 #
 ADD_LIBRARY(${LIBTARGET} STATIC ${TARGET_FILES})
 #

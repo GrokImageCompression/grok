@@ -1,11 +1,29 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR 
+ * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
  * Copyright (c) 2012, CS Systemes d'Information, France
  * All rights reserved.
  *
@@ -30,8 +48,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __EVENT_H
-#define __EVENT_H
+
+#pragma once
+
 /**
 @file event.h
 @brief Implementation of a event callback system
@@ -40,27 +59,26 @@ The functions in EVENT.C have for goal to send output messages (errors, warnings
 */
 /**
 Message handler object
-used for 
+used for
 <ul>
 <li>Error messages
 <li>Warning messages
 <li>Debugging messages
 </ul>
 */
-typedef struct opj_event_mgr 
-{
-	/** Data to call the event manager upon */
-	void *			m_error_data;
-	/** Data to call the event manager upon */
-	void *			m_warning_data;
-	/** Data to call the event manager upon */
-	void *			m_info_data;
-	/** Error message callback if available, NULL otherwise */
-	opj_msg_callback error_handler;
-	/** Warning message callback if available, NULL otherwise */
-	opj_msg_callback warning_handler;
-	/** Debug message callback if available, NULL otherwise */
-	opj_msg_callback info_handler;
+typedef struct opj_event_mgr {
+    /** Data to call the event manager upon */
+    void *			m_error_data;
+    /** Data to call the event manager upon */
+    void *			m_warning_data;
+    /** Data to call the event manager upon */
+    void *			m_info_data;
+    /** Error message callback if available, NULL otherwise */
+    opj_msg_callback error_handler;
+    /** Warning message callback if available, NULL otherwise */
+    opj_msg_callback warning_handler;
+    /** Debug message callback if available, NULL otherwise */
+    opj_msg_callback info_handler;
 } opj_event_mgr_t;
 
 
@@ -87,7 +105,7 @@ typedef struct opj_event_mgr
  *
  * @return Returns true if successful, returns false otherwise
  */
-OPJ_BOOL opj_event_msg(opj_event_mgr_t* event_mgr, OPJ_INT32 event_type, const char *fmt, ...);
+bool opj_event_msg(opj_event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...);
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -105,4 +123,5 @@ void opj_set_default_event_handler(opj_event_mgr_t * p_manager);
 
 /*@}*/
 
-#endif /* __EVENT_H */
+
+

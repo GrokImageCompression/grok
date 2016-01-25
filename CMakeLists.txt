@@ -7,7 +7,7 @@
 # For this purpose you can define a CMake var: OPENJPEG_NAMESPACE to whatever you like
 # e.g.:
 # set(OPENJPEG_NAMESPACE "GDCMOPENJPEG")
-cmake_minimum_required(VERSION 2.8.2)
+cmake_minimum_required(VERSION 3.1)
 
 if(COMMAND CMAKE_POLICY)
   cmake_policy(SET CMP0003 NEW)
@@ -24,7 +24,7 @@ endif()
 #string(TOLOWER ${OPENJPEG_NAMESPACE} OPENJPEG_LIBRARY_NAME)
 set(OPENJPEG_LIBRARY_NAME openjp2)
 
-project(${OPENJPEG_NAMESPACE} C)
+project(${OPENJPEG_NAMESPACE} )
 
 # Do full dependency headers.
 include_regular_expression("^.*$")
@@ -239,33 +239,16 @@ unset(CMAKE_REQUIRED_DEFINITIONS)
 check_symbol_exists(memalign malloc.h OPJ_HAVE_MEMALIGN)
 #-----------------------------------------------------------------------------
 # Build Library
-if(BUILD_JPIP_SERVER)
-  find_package(CURL REQUIRED)
-  find_package(FCGI REQUIRED)
-  find_package(Threads REQUIRED)
-  if(NOT CMAKE_USE_PTHREADS_INIT)
-    message(FATAL_ERROR "Only pthread are supported")
-  endif()
-endif()
 add_subdirectory(src/lib)
 
 #-----------------------------------------------------------------------------
 # Build Applications
 option(BUILD_CODEC "Build the CODEC executables" ON)
-option(BUILD_MJ2 "Build the MJ2 executables." OFF)
-option(BUILD_JPWL "Build the JPWL library and executables" OFF)
-option(BUILD_JPIP "Build the JPIP library and executables." OFF)
-if(BUILD_JPIP)
-  option(BUILD_JPIP_SERVER "Build the JPIP server." OFF)
-endif()
-option(BUILD_VIEWER "Build the OPJViewer executable (C++)" OFF)
+option(BUILD_WITH_OPENMP "Build the OpenMP support." OFF)
 option(BUILD_JAVA "Build the openjpeg jar (Java)" OFF)
-option(BUILD_JP3D "Build the JP3D comp" OFF)
-mark_as_advanced(BUILD_VIEWER)
 mark_as_advanced(BUILD_JAVA)
-mark_as_advanced(BUILD_JP3D)
 
-if(BUILD_CODEC OR BUILD_MJ2)
+if(BUILD_CODEC)
   # OFF: It will only build 3rd party libs if they are not found on the system
   # ON: 3rd party libs will ALWAYS be build, and used
   option(BUILD_THIRDPARTY "Build the thirdparty executables if it is needed" OFF)
@@ -356,29 +339,7 @@ if(BUILD_PKGCONFIG_FILES)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc DESTINATION
     ${OPENJPEG_INSTALL_LIB_DIR}/pkgconfig )
 #
-  if(BUILD_JPWL)
-  # install in lib and not share (see multi-arch note above)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjpwl/libopenjpwl.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libopenjpwl.pc @ONLY)
-  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjpwl.pc DESTINATION
-    ${OPENJPEG_INSTALL_LIB_DIR}/pkgconfig )
-  endif()
-#
-  if(BUILD_JPIP)
-  # install in lib and not share (see multi-arch note above)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjpip/libopenjpip.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libopenjpip.pc @ONLY)
-  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjpip.pc DESTINATION
-    ${OPENJPEG_INSTALL_LIB_DIR}/pkgconfig )
-  endif()
-#
-  if(BUILD_JP3D)
-  # install in lib and not share (see multi-arch note above)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp3d/libopenjp3d.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libopenjp3d.pc @ONLY)
-  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjp3d.pc DESTINATION
-    ${OPENJPEG_INSTALL_LIB_DIR}/pkgconfig )
-  endif()
+
 endif()
 
 #-----------------------------------------------------------------------------

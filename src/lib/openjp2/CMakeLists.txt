@@ -1,72 +1,100 @@
 include_regular_expression("^.*$")
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Threads REQUIRED)
+
+if (BUILD_WITH_OPENMP)
+find_package(OpenMP)
+if (OPENMP_FOUND)
+	add_definitions(-DOPJ_NUM_CORES=8)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+endif()
+
+
 #
 install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/opj_config.h
  DESTINATION ${OPENJPEG_INSTALL_INCLUDE_DIR} COMPONENT Headers)
 
 include_directories(
   ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h and opj_config_private.h
+  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2
 )
 # Defines the source code for the library
 set(OPENJPEG_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/bio.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/bio.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bio.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/cio.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/cio.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/cio.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/dwt.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/event.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/dwt_region.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/dwt_region.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/event.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/event.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/image.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/image.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/image.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/invert.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/invert.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/invert.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/j2k.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/j2k.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/j2k.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/jp2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mem_stream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mem_stream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mqc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/opj_clock.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/opj_clock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_clock.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/pi.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/raw.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/raw.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/raw.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t2.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tcd.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/tcd.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tcd.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/tgt.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/tgt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tgt.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/function_list.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/util.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/function_list.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/function_list.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_codec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_includes.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_intmath.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/opj_stdint.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/vector.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/hashmap.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/hashmap.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_common.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin_interface.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/BlockingQueue.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.cpp
 )
-if(BUILD_JPIP)
-  add_definitions(-DUSE_JPIP)
-  set(OPENJPEG_SRCS
-    ${OPENJPEG_SRCS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/cidx_manager.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/cidx_manager.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/phix_manager.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ppix_manager.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/thix_manager.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/tpix_manager.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/indexbox_manager.h
-  )
-endif()
 
 option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
 if(OPJ_DISABLE_TPSOT_FIX)
@@ -83,7 +111,7 @@ if(WIN32)
 endif()
 add_library(${OPENJPEG_LIBRARY_NAME} ${OPENJPEG_SRCS})
 if(UNIX)
-  target_link_libraries(${OPENJPEG_LIBRARY_NAME} m)
+  target_link_libraries(${OPENJPEG_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT}  m)
 endif()
 set_target_properties(${OPENJPEG_LIBRARY_NAME} PROPERTIES ${OPENJPEG_LIBRARY_PROPERTIES})
 if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
@@ -99,7 +127,7 @@ install(TARGETS ${OPENJPEG_LIBRARY_NAME}
 )
 
 # Install includes files
-install(FILES openjpeg.h opj_stdint.h
+install(FILES openjpeg.h 
   DESTINATION ${OPENJPEG_INSTALL_INCLUDE_DIR} COMPONENT Headers
 )
 
@@ -112,7 +140,7 @@ endif()
 
 # internal utilities to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
-add_executable(t1_generate_luts t1_generate_luts.c)
+add_executable(t1_generate_luts t1_generate_luts.cpp)
 if(UNIX)
   target_link_libraries(t1_generate_luts m)
 endif()

@@ -1,11 +1,29 @@
 /*
- * The copyright in this software is being made available under the 2-clauses 
- * BSD License, included below. This software may be subject to other third 
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR 
+ * Copyright (c) 2008, 2011-2012, Centre National d'Etudes Spatiales (CNES), FR
  * Copyright (c) 2012, CS Systemes d'Information, France
  * All rights reserved.
  *
@@ -30,8 +48,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef OPJ_INCLUDES_H
-#define OPJ_INCLUDES_H
+#pragma once
+
 
 /*
  * This must be included before any system headers,
@@ -46,7 +64,7 @@
 */
 #include <memory.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
 #include <math.h>
 #include <float.h>
 #include <time.h>
@@ -70,11 +88,11 @@
 #if defined(WIN32) && !defined(Windows95) && !defined(__BORLANDC__) && \
   !(defined(_MSC_VER) && _MSC_VER < 1400) && \
   !(defined(__MINGW32__) && __MSVCRT_VERSION__ < 0x800)
-  /*
-    Windows '95 and Borland C do not support _lseeki64
-    Visual Studio does not support _fseeki64 and _ftelli64 until the 2005 release.
-    Without these interfaces, files over 2GB in size are not supported for Windows.
-  */
+/*
+  Windows '95 and Borland C do not support _lseeki64
+  Visual Studio does not support _fseeki64 and _ftelli64 until the 2005 release.
+  Without these interfaces, files over 2GB in size are not supported for Windows.
+*/
 #  define OPJ_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
 #  define OPJ_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
 #  define OPJ_FTELL(stream) /* __int64 */ _ftelli64(stream)
@@ -94,6 +112,10 @@
    OpenJPEG interface
  ==========================================================
  */
+
+#include "minpf_plugin_manager.h"
+#include "plugin_interface.h"
+
 #include "openjpeg.h"
 
 /*
@@ -104,18 +126,18 @@
 
 /* Ignore GCC attributes if this is not GCC */
 #ifndef __GNUC__
-	#define __attribute__(x) /* __attribute__(x) */
+#define __attribute__(x) /* __attribute__(x) */
 #endif
 
 
 /* Are restricted pointers available? (C99) */
 #if (__STDC_VERSION__ != 199901L)
-	/* Not a C99 compiler */
-	#ifdef __GNUC__
-		#define restrict __restrict__
-	#else
-		#define restrict /* restrict */
-	#endif
+/* Not a C99 compiler */
+#ifdef __GNUC__
+#define restrict __restrict__
+#else
+#define restrict /* restrict */
+#endif
 #endif
 
 
@@ -123,47 +145,50 @@
 /* MSVC before 2013 and Borland C do not have lrintf */
 #if defined(_MSC_VER)
 #include <intrin.h>
-static INLINE long opj_lrintf(float f){
+static inline long opj_lrintf(float f)
+{
 #ifdef _M_X64
-	return _mm_cvt_ss2si(_mm_load_ss(&f));
+    return _mm_cvt_ss2si(_mm_load_ss(&f));
 
-	/* commented out line breaks many tests */
-  /* return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f)); */
+    /* commented out line breaks many tests */
+    /* return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f)); */
 #elif defined(_M_IX86)
     int i;
-     _asm{
+    _asm{
         fld f
         fistp i
     };
- 
+
     return i;
-#else 
-	return (long)((f>0.0f) ? (f + 0.5f) : (f - 0.5f));
+#else
+    return (long)((f>0.0f) ? (f + 0.5f) : (f - 0.5f));
 #endif
 }
 #elif defined(__BORLANDC__)
-static INLINE long opj_lrintf(float f) {
+static inline long opj_lrintf(float f)
+{
 #ifdef _M_X64
-     return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f));
+    return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f));
 #else
-	int i;
+    int i;
 
-	_asm {
-		fld f
-			fistp i
-	};
+    _asm {
+        fld f
+        fistp i
+    };
 
-	return i;
+    return i;
 #endif
 }
 #else
-static INLINE long opj_lrintf(float f) {
-	return lrintf(f);
+static inline long opj_lrintf(float f)
+{
+    return lrintf(f);
 }
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1400)
-	#define vsnprintf _vsnprintf
+#define vsnprintf _vsnprintf
 #endif
 
 /* MSVC x86 is really bad at doing int64 = int32 * int32 on its own. Use intrinsic. */
@@ -172,11 +197,15 @@ static INLINE long opj_lrintf(float f) {
 #	pragma intrinsic(__emul)
 #endif
 
+#include "mem_stream.h"
 #include "opj_inttypes.h"
 #include "opj_clock.h"
 #include "opj_malloc.h"
 #include "event.h"
 #include "function_list.h"
+#include "vector.h"
+#include "util.h"
+#include "segmented_stream.h"
 #include "bio.h"
 #include "cio.h"
 
@@ -188,29 +217,21 @@ static INLINE long opj_lrintf(float f) {
 #include "mqc.h"
 #include "raw.h"
 #include "bio.h"
-
+#include "tile_buf.h"
 #include "pi.h"
 #include "tgt.h"
 #include "tcd.h"
 #include "t1.h"
+#include "t1_opt.h"
 #include "dwt.h"
+#include "dwt_region.h"
 #include "t2.h"
 #include "mct.h"
 #include "opj_intmath.h"
-
-#ifdef USE_JPIP
-#include "cidx_manager.h"
-#include "indexbox_manager.h"
-#endif
-
-/* JPWL>> */
-#ifdef USE_JPWL
-#include "openjpwl/jpwl.h"
-#endif /* USE_JPWL */
-/* <<JPWL */
 
 /* V2 */
 #include "opj_codec.h"
 
 
-#endif /* OPJ_INCLUDES_H */
+
+
