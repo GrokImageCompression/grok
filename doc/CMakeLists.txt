@@ -14,19 +14,10 @@ if(DOXYGEN_FOUND)
   # from CMake and move it
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/mainpage.dox.in
     ${CMAKE_BINARY_DIR}/doc/mainpage.dox @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/openjpip.dox.in
-    ${CMAKE_BINARY_DIR}/doc/openjpip.dox @ONLY)
-  # copy png file to make local (binary tree) documentation valid:
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/jpip_architect.png
-    ${CMAKE_BINARY_DIR}/doc/html/jpip_architect.png COPYONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/jpip_protocol.png
-    ${CMAKE_BINARY_DIR}/doc/html/jpip_protocol.png COPYONLY)
 
   file(GLOB headers
     ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2/*.h
     ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2/*.c
-    ${OPENJPEG_SOURCE_DIR}/src/lib/openjpip/*.h
-    ${OPENJPEG_SOURCE_DIR}/src/lib/openjpip/*.c
   )
   # Generate new target to build the html documentation
   add_custom_command(
@@ -34,7 +25,6 @@ if(DOXYGEN_FOUND)
     COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/doc/Doxyfile-html.dox
     DEPENDS ${CMAKE_BINARY_DIR}/doc/Doxyfile-html.dox
             ${CMAKE_BINARY_DIR}/doc/mainpage.dox
-            ${CMAKE_BINARY_DIR}/doc/openjpip.dox
             ${headers}
   )
   add_custom_target(doc ALL
@@ -45,7 +35,6 @@ if(DOXYGEN_FOUND)
   # install HTML documentation (install png files too):
   install(DIRECTORY ${CMAKE_BINARY_DIR}/doc/html
     DESTINATION share/doc
-    PATTERN ".svn" EXCLUDE
   )
 else()
   message(STATUS "Doxygen not found, we cannot generate the documentation")
