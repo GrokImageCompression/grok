@@ -64,9 +64,6 @@
 /** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
 /*@{*/
 
-#define OPJ_WS(i) v->mem[(i)*2]
-#define OPJ_WD(i) v->mem[(1+(i)*2)]
-
 /** @name Local data structures */
 /*@{*/
 
