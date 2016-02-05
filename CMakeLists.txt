@@ -255,7 +255,6 @@ if(BUILD_CODEC)
   add_subdirectory(thirdparty)
   add_subdirectory(src/bin)
 endif ()
-add_subdirectory(wrapping)
 
 #-----------------------------------------------------------------------------
 # opj_config.h generation (2/2)
