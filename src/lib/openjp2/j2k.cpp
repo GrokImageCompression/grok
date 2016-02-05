@@ -2453,19 +2453,6 @@ static bool opj_j2k_read_cod (  opj_j2k_t *p_j2k,
     /* Apply the coding style to other components of the current tile or the m_default_tcp*/
     opj_j2k_copy_tile_component_parameters(p_j2k);
 
-    /* Index */
-#ifdef WIP_REMOVE_MSD
-    if (p_j2k->cstr_info) {
-        /*opj_codestream_info_t *l_cstr_info = p_j2k->cstr_info;*/
-        p_j2k->cstr_info->prog = l_tcp->prg;
-        p_j2k->cstr_info->numlayers = l_tcp->numlayers;
-        p_j2k->cstr_info->numdecompos = (int32_t*) opj_malloc(l_image->numcomps * sizeof(uint32_t));
-        for     (i = 0; i < l_image->numcomps; ++i) {
-            p_j2k->cstr_info->numdecompos[i] = l_tcp->tccps[i].numresolutions - 1;
-        }
-    }
-#endif
-
     return true;
 }
 
@@ -4033,34 +4020,6 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
         }
 
     }
-
-    /* FIXME move this onto a separate method to call before reading any SOT, remove part about main_end header, use a index struct inside p_j2k */
-    /* if (p_j2k->cstr_info) {
-       if (l_tcp->first) {
-       if (tileno == 0) {
-       p_j2k->cstr_info->main_head_end = p_stream_tell(p_stream) - 13;
-       }
-
-       p_j2k->cstr_info->tile[tileno].tileno = tileno;
-       p_j2k->cstr_info->tile[tileno].start_pos = p_stream_tell(p_stream) - 12;
-       p_j2k->cstr_info->tile[tileno].end_pos = p_j2k->cstr_info->tile[tileno].start_pos + totlen - 1;
-       p_j2k->cstr_info->tile[tileno].num_tps = numparts;
-
-       if (numparts) {
-       p_j2k->cstr_info->tile[tileno].tp = (opj_tp_info_t *) opj_malloc(numparts * sizeof(opj_tp_info_t));
-       }
-       else {
-       p_j2k->cstr_info->tile[tileno].tp = (opj_tp_info_t *) opj_malloc(10 * sizeof(opj_tp_info_t)); // Fixme (10)
-       }
-       }
-       else {
-       p_j2k->cstr_info->tile[tileno].end_pos += totlen;
-       }
-
-       p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos = p_stream_tell(p_stream) - 12;
-       p_j2k->cstr_info->tile[tileno].tp[partno].tp_end_pos =
-       p_j2k->cstr_info->tile[tileno].tp[partno].tp_start_pos + totlen - 1;
-       }*/
     return true;
 }
 
@@ -4090,26 +4049,6 @@ static bool opj_j2k_write_sod(     opj_j2k_t *p_j2k,
     /* update tile coder */
     p_tile_coder->tp_num = p_j2k->m_specific_param.m_encoder.m_current_poc_tile_part_number ;
     p_tile_coder->cur_tp_num = p_j2k->m_specific_param.m_encoder.m_current_tile_part_number;
-
-    /* INDEX >> */
-    /* TODO mergeV2: check this part which use cstr_info */
-    /*l_cstr_info = p_j2k->cstr_info;
-    if (l_cstr_info) {
-            if (!p_j2k->m_specific_param.m_encoder.m_current_tile_part_number ) {
-                    //TODO cstr_info->tile[p_j2k->m_current_tile_number].end_header = p_stream_tell(p_stream) + p_j2k->pos_correction - 1;
-                    l_cstr_info->tile[p_j2k->m_current_tile_number].tileno = p_j2k->m_current_tile_number;
-            }
-            else {*/
-    /*
-    TODO
-    if
-            (cstr_info->tile[p_j2k->m_current_tile_number].packet[cstr_info->packno - 1].end_pos < p_stream_tell(p_stream))
-    {
-            cstr_info->tile[p_j2k->m_current_tile_number].packet[cstr_info->packno].start_pos = p_stream_tell(p_stream);
-    }*/
-    /*}*/
-    /*}*/
-    /* << INDEX */
 
     if (p_j2k->m_specific_param.m_encoder.m_current_tile_part_number == 0) {
         p_tile_coder->current_tile->packno = 0;
@@ -8504,23 +8443,6 @@ static bool opj_j2k_read_SPCod_SPCoc(  opj_j2k_t *p_j2k,
         }
     }
 
-#ifdef WIP_REMOVE_MSD
-    /* INDEX >> */
-    if (p_j2k->cstr_info && compno == 0) {
-        uint32_t l_data_size = l_tccp->numresolutions * sizeof(uint32_t);
-
-        p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].tccp_info[compno].cblkh = l_tccp->cblkh;
-        p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].tccp_info[compno].cblkw = l_tccp->cblkw;
-        p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].tccp_info[compno].numresolutions = l_tccp->numresolutions;
-        p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].tccp_info[compno].cblksty = l_tccp->cblksty;
-        p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].tccp_info[compno].qmfbid = l_tccp->qmfbid;
-
-        memcpy(p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].pdx,l_tccp->prcw, l_data_size);
-        memcpy(p_j2k->cstr_info->tile[p_j2k->m_current_tile_number].pdy,l_tccp->prch, l_data_size);
-    }
-    /* << INDEX */
-#endif
-
     return true;
 }
 
@@ -10475,46 +10397,6 @@ static bool opj_j2k_init_info(     opj_j2k_t *p_j2k,
     assert(p_manager != 00);
     assert(p_stream != 00);
     (void)l_cstr_info;
-
-    /* TODO mergeV2: check this part which use cstr_info */
-    /*l_cstr_info = p_j2k->cstr_info;
-
-    if (l_cstr_info)  {
-            uint32_t compno;
-            l_cstr_info->tile = (opj_tile_info_t *) opj_malloc(p_j2k->m_cp.tw * p_j2k->m_cp.th * sizeof(opj_tile_info_t));
-
-            l_cstr_info->image_w = p_j2k->m_image->x1 - p_j2k->m_image->x0;
-            l_cstr_info->image_h = p_j2k->m_image->y1 - p_j2k->m_image->y0;
-
-            l_cstr_info->prog = (&p_j2k->m_cp.tcps[0])->prg;
-
-            l_cstr_info->tw = p_j2k->m_cp.tw;
-            l_cstr_info->th = p_j2k->m_cp.th;
-
-            l_cstr_info->tile_x = p_j2k->m_cp.tdx;*/        /* new version parser */
-    /*l_cstr_info->tile_y = p_j2k->m_cp.tdy;*/      /* new version parser */
-    /*l_cstr_info->tile_Ox = p_j2k->m_cp.tx0;*/     /* new version parser */
-    /*l_cstr_info->tile_Oy = p_j2k->m_cp.ty0;*/     /* new version parser */
-
-    /*l_cstr_info->numcomps = p_j2k->m_image->numcomps;
-
-    l_cstr_info->numlayers = (&p_j2k->m_cp.tcps[0])->numlayers;
-
-    l_cstr_info->numdecompos = (int32_t*) opj_malloc(p_j2k->m_image->numcomps * sizeof(int32_t));
-
-    for (compno=0; compno < p_j2k->m_image->numcomps; compno++) {
-            l_cstr_info->numdecompos[compno] = (&p_j2k->m_cp.tcps[0])->tccps->numresolutions - 1;
-    }
-
-    l_cstr_info->D_max = 0.0;       */      /* ADD Marcela */
-
-    /*l_cstr_info->main_head_start = opj_stream_tell(p_stream);*/ /* position of SOC */
-
-    /*l_cstr_info->maxmarknum = 100;
-    l_cstr_info->marker = (opj_marker_info_t *) opj_malloc(l_cstr_info->maxmarknum * sizeof(opj_marker_info_t));
-    l_cstr_info->marknum = 0;
-    }*/
-
     return opj_j2k_calculate_tp(p_j2k,&(p_j2k->m_cp),&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,p_j2k->m_private_image,p_manager);
 }
 
