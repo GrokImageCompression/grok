@@ -20,23 +20,26 @@
 #include <dlfcn.h>
 #endif
 
-#include <string.h>
+#include "opj_string.h"
 #include "minpf_dynamic_library.h"
 
-#pragma warning(disable: 4996) // strcpy may be unsafe
-
+#ifdef _WIN32
+typedef HMODULE dynamic_handle_t;
+#else
+typedef void* dynamic_handle_t;
+#endif
 
 
 minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error)
 {
 
     minpf_dynamic_library* lib = NULL;
-    void * handle = NULL;
+	dynamic_handle_t handle = NULL;
 
     if (!path)
         return NULL;
 
-#ifdef WIN32
+#ifdef _WIN32
     handle = LoadLibrary(path);
     if (handle == NULL) {
         return NULL;
@@ -52,9 +55,17 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 #endif
 
     lib = (minpf_dynamic_library*)calloc(1, sizeof(minpf_dynamic_library));
-    if (!lib)
-        return NULL;
-    strcpy(lib->path, path);
+	if (!lib) {
+#ifdef WIN32
+		FreeLibrary(handle);
+#else
+		dlclose(handle);
+#endif
+		
+		return NULL;
+
+	}
+	opj_strcpy_s(lib->path,sizeof(lib->path), path);
     lib->handle = handle;
     return lib;
 }

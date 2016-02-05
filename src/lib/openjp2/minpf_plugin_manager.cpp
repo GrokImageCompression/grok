@@ -18,9 +18,8 @@
 #include "minpf_plugin_manager.h"
 #include "minpf_plugin.h"
 #include <stdio.h>
-#include <string.h>
+#include "opj_string.h"
 
-#pragma warning(disable: 4996) // strcpy may be unsafe
 
 #ifdef _WIN32
 #include "windirent.h"
@@ -151,11 +150,11 @@ int32_t minpf_load_by_path(const char* path)
     }
     lib = minpf_load_dynamic_library(path, NULL);
     if (!lib) {
-
         return -1;
     }
     initFunc = (minpf_init_func)(minpf_get_symbol(lib, "minpf_init_plugin"));
     if (!initFunc) {
+		free(lib);
         return -1;
     }
     mgr->dynamic_libraries[mgr->num_libraries++] = lib;
@@ -190,15 +189,15 @@ int32_t minpf_load_all(const char* directory_path, minpf_invoke_service_func fun
         //ignore files with incorrect extensions
         if (  strcmp(get_filename_ext(content->d_name), dynamic_library_extension) != 0)
             continue;
-        strcpy(libraryPath, directory_path);
+        opj_strcpy_s(libraryPath,sizeof(libraryPath), directory_path);
         strcat(libraryPath, MINPF_FILE_SEPARATOR);
         strcat(libraryPath, content->d_name);
         if (minpf_load_by_path(libraryPath) != 0)
             continue;
         rc = 0;
     }
-    free(dir);
-    return rc;
+    auto dir_rc = closedir(dir);
+    return rc || dir_rc;
 }
 
 
