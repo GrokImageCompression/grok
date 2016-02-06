@@ -64,5 +64,5 @@ typedef minpf_exit_func (*minpf_init_func)(const minpf_platform_services *);
 #endif
 #endif
 
-extern PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_services * params);
+extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_services * params);
 

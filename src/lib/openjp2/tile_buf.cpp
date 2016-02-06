@@ -42,10 +42,11 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
         return false;
 
     /* create region component struct*/
-    comp =	(opj_tile_buf_component_t*)opj_calloc(1, sizeof(opj_tile_buf_component_t));
+	comp = new opj_tile_buf_component_t();
     if (!comp) {
         return false;
     }
+	comp->data = NULL;
 
     opj_rect_init(&comp->tile_dim,
                   tilec->x0,
@@ -220,7 +221,7 @@ void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp)
     comp->data = NULL;
     comp->data_size = 0;
     comp->data_size_needed = 0;
-    opj_free(comp);
+    delete comp;
 }
 
 bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, opj_rect_t* rect)
