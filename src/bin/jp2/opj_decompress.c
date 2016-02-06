@@ -1083,7 +1083,7 @@ int main(int argc, char **argv)
     omp_set_num_threads(num_images == 1 ? OPJ_NUM_COMPRESS_DECOMPRESS_THREADS : 1);
 #endif
 
-    opj_initialize();
+    opj_initialize(NULL);
 
     t_cumulative = opj_clock();
 #ifdef _OPENMP

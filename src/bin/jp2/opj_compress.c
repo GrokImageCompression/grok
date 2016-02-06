@@ -417,8 +417,14 @@ static void get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, char*
 
 /* ------------------------------------------------------------------------------------ */
 
-static int parse_cmdline_encoder(int argc, char **argv, opj_cparameters_t *parameters,
-                                 img_fol_t *img_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size)
+static int parse_cmdline_encoder(int argc, 
+								char **argv,
+								opj_cparameters_t *parameters,
+                                 img_fol_t *img_fol,
+								raw_cparameters_t *raw_cp,
+								char *indexfilename,
+								size_t indexfilename_size,
+								char* plugin_dir)
 {
     uint32_t i, j;
     int totlen, c;
@@ -433,11 +439,12 @@ static int parse_cmdline_encoder(int argc, char **argv, opj_cparameters_t *param
         {"POC",REQ_ARG, NULL ,'P'},
         {"ROI",REQ_ARG, NULL ,'R'},
         {"jpip",NO_ARG, NULL, 'J'},
-        {"mct",REQ_ARG, NULL, 'Y'}
+        {"mct",REQ_ARG, NULL, 'Y'},
+		{ "PluginDir", REQ_ARG, NULL, 'g' }
     };
 
     /* parse the command line */
-    const char optlist[] = "i:o:r:q:n:b:c:t:p:s:SEM:x:R:d:T:If:P:C:F:u:JY:"
+    const char optlist[] = "g:i:o:r:q:n:b:c:t:p:s:SEM:x:R:d:T:If:P:C:F:u:JY:"
                            "h";
 
     totlen=sizeof(long_option);
@@ -1034,6 +1041,11 @@ static int parse_cmdline_encoder(int argc, char **argv, opj_cparameters_t *param
             free(lMatrix);
         }
         break;
+		case 'g':
+			if (plugin_dir)
+				strcpy(plugin_dir, opj_optarg);
+		break;
+
         /* ------------------------------------------------------ */
 
 
@@ -1182,6 +1194,7 @@ int main(int argc, char **argv)
     size_t num_compressed_files = 0;
 
     char indexfilename[OPJ_PATH_LEN];	/* index file name */
+	char plugin_dir[OPJ_PATH_LEN];
 
     int32_t i,num_images;
     int32_t imageno;
@@ -1209,7 +1222,14 @@ int main(int argc, char **argv)
 
     /* parse input and get user encoding parameters */
     parameters.tcp_mct = (char) 255; /* This will be set later according to the input image or the provided option */
-    if(parse_cmdline_encoder(argc, argv, &parameters,&img_fol, &raw_cp, indexfilename, sizeof(indexfilename)) == 1) {
+    if(parse_cmdline_encoder(argc, 
+							argv,
+							&parameters,
+							&img_fol, 
+							&raw_cp,
+							indexfilename,
+							sizeof(indexfilename),
+							plugin_dir) == 1) {
         return 1;
     }
 
@@ -1243,7 +1263,7 @@ int main(int argc, char **argv)
     omp_set_num_threads(num_images == 1 ? OPJ_NUM_COMPRESS_DECOMPRESS_THREADS : 1);
 #endif
 
-    opj_initialize();
+    opj_initialize(plugin_dir);
 
 
 #ifdef _OPENMP

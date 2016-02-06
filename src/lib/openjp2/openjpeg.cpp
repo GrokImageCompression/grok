@@ -73,12 +73,16 @@
 #endif
 
 static bool is_initialized = false;
-bool OPJ_CALLCONV opj_initialize()
+bool OPJ_CALLCONV opj_initialize(const char* plugin_dir)
 {
     if (!is_initialized) {
 #ifdef _OPENMP
         omp_set_num_threads(OPJ_NUM_CORES);
 #endif
+		opj_plugin_init_info_t info;
+		info.pluginDir = plugin_dir;
+		opj_plugin_init(info);
+
         is_initialized = true;
     }
     return true;
@@ -448,9 +452,6 @@ bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_codec,
                                 opj_stream_t *p_stream,
                                 opj_image_t* p_image)
 {
-    if (!opj_initialize())
-        return false;
-
     if (p_codec && p_stream) {
         opj_codec_private_t * l_codec = (opj_codec_private_t *) p_codec;
         opj_stream_private_t * l_stream = (opj_stream_private_t *) p_stream;
@@ -745,9 +746,6 @@ bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
 
 bool OPJ_CALLCONV opj_encode(opj_codec_t *p_info, opj_stream_t *p_stream)
 {
-    if (!opj_initialize())
-        return false;
-
     if (p_info && p_stream) {
         opj_codec_private_t * l_codec = (opj_codec_private_t *) p_info;
         opj_stream_private_t * l_stream = (opj_stream_private_t *) p_stream;
