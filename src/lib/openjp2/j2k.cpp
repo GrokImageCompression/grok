@@ -63,6 +63,43 @@
 /** @defgroup J2K J2K - JPEG-2000 codestream reader/writer */
 /*@{*/
 
+opj_tcp_t::opj_tcp_t() : csty(0),
+						 prg(OPJ_PROG_UNKNOWN),
+						 numlayers(0),
+						num_layers_to_decode(0),
+						mct(0),
+						numpocs(0),
+						ppt_markers_count(0),
+						ppt_markers(NULL),
+						ppt_data(NULL),
+						ppt_buffer(NULL),
+						ppt_data_size(0),
+						ppt_len(0),
+						tccps(NULL),
+						m_nb_tile_parts(0),
+						mct_norms(NULL),
+						m_mct_decoding_matrix(NULL),
+						m_mct_coding_matrix(NULL),
+						m_mct_records(NULL),
+						m_nb_mct_records(0),
+						m_nb_max_mct_records(0),
+						m_mcc_records(NULL),
+						m_nb_mcc_records(0),
+						m_nb_max_mcc_records(0),
+						cod(0),
+						ppt(0),
+						POC(0)
+
+{
+
+	for (auto i = 0; i < 100; ++i)
+		rates[i]=0;
+
+	for (auto i = 0; i < 100; ++i)
+		distoratio[i] = 0;
+
+}
+
 /** @name Local static functions */
 /*@{*/
 

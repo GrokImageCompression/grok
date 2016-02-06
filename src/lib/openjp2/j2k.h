@@ -243,7 +243,9 @@ Tile coding parameters :
 this structure is used to store coding/decoding parameters common to all
 tiles (information like COD, COC in main header)
 */
-typedef struct opj_tcp {
+struct opj_tcp_t {
+	opj_tcp_t();
+
     /** coding style */
     uint32_t csty;
     /** progression order */
@@ -309,7 +311,7 @@ typedef struct opj_tcp {
     uint32_t ppt : 1;
     /** indicates if a POC marker has been used O:NO, 1:YES */
     uint32_t POC : 1;
-} opj_tcp_t;
+} ;
 
 
 

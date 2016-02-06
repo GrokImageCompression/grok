@@ -80,11 +80,12 @@ A segmented buffer stores a list of buffers, or segments, but can be treated as 
 contiguous buffer.
 
 */
-typedef struct opj_seg_buf {
+struct opj_seg_buf_t {
+	opj_seg_buf_t();
     size_t data_len;	/* total length of all segments*/
     int32_t cur_seg_id;	/* current index into segments vector */
 	std::vector<opj_buf_t*> segments;
-} opj_seg_buf_t;
+};
 
 /*
 Wrap existing array and add to the back of the segmented buffer.
