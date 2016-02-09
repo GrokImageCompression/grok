@@ -69,7 +69,6 @@
 #include "openjpeg.h"
 #include "opj_getopt.h"
 #include "convert.h"
-#include "index.h"
 
 #ifdef OPJ_HAVE_LIBLCMS2
 #include <lcms2.h>
