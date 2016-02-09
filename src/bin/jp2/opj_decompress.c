@@ -110,7 +110,11 @@ int get_file_format(const char *filename);
 void get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, char* infilename, char* outfilename);
 static int infile_format(const char *fname);
 
-int parse_cmdline_decoder(int argc, char **argv, opj_decompress_parameters *parameters,img_fol_t *img_fol);
+int parse_cmdline_decoder(int argc, 
+							char **argv,
+							opj_decompress_parameters *parameters,
+							img_fol_t *img_fol,
+							char* plugin_dir);
 int parse_DA_values( char* inArg, unsigned int *DA_x0, unsigned int *DA_y0, unsigned int *DA_x1, unsigned int *DA_y1);
 
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
@@ -445,7 +449,11 @@ static int infile_format(const char *fname)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-int parse_cmdline_decoder(int argc, char **argv, opj_decompress_parameters *parameters,img_fol_t *img_fol)
+int parse_cmdline_decoder(int argc, 
+							char **argv,
+							opj_decompress_parameters *parameters,
+							img_fol_t *img_fol,
+							char* plugin_dir)
 {
     /* parse the command line */
     int totlen, c;
@@ -454,10 +462,11 @@ int parse_cmdline_decoder(int argc, char **argv, opj_decompress_parameters *para
         {"OutFor",    REQ_ARG, NULL,'O'},
         {"force-rgb", NO_ARG,  NULL, 1},
         {"upsample",  NO_ARG,  NULL, 1},
-        {"split-pnm", NO_ARG,  NULL, 1}
+        {"split-pnm", NO_ARG,  NULL, 1},
+		{ "PluginDir", REQ_ARG, NULL, 'g' }
     };
 
-    const char optlist[] = "i:o:r:l:x:d:t:p:"
+    const char optlist[] = "g:i:o:r:l:x:d:t:p:"
                            "h"		;
 
     long_option[2].flag = &(parameters->force_rgb);
@@ -650,6 +659,10 @@ int parse_cmdline_decoder(int argc, char **argv, opj_decompress_parameters *para
             }
         }
         break;
+		case 'g':
+			if (plugin_dir)
+				strcpy(plugin_dir, opj_optarg);
+			break;
         /* ----------------------------------------------------- */
 
         default:
@@ -1034,6 +1047,9 @@ int main(int argc, char **argv)
     int failed = 0;
     double t_cumulative = 0;
     uint32_t num_decompressed_images = 0;
+	char plugin_dir[OPJ_PATH_LEN];
+
+	plugin_dir[0] = 0;
 
     /* set decoding parameters to default values */
     set_default_parameters(&parameters);
@@ -1042,7 +1058,7 @@ int main(int argc, char **argv)
     memset(&img_fol,0,sizeof(img_fol_t));
 
     /* parse input and get user encoding parameters */
-    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol) == 1) {
+    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol, plugin_dir) == 1) {
         destroy_parameters(&parameters);
         return EXIT_FAILURE;
     }
@@ -1082,7 +1098,7 @@ int main(int argc, char **argv)
     omp_set_num_threads(num_images == 1 ? OPJ_NUM_COMPRESS_DECOMPRESS_THREADS : 1);
 #endif
 
-    opj_initialize(NULL);
+    opj_initialize(plugin_dir);
 
     t_cumulative = opj_clock();
 #ifdef _OPENMP
