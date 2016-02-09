@@ -1,4 +1,18 @@
+/*
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*/
+
 #include "plugin_interface.h"
+#include "Plugin.h"
 
 static const char* PluginId = "SamplePlugin";
 
@@ -31,5 +45,56 @@ extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_ser
 		return 0;
 
 	// custom plugin initialization can happen here
+
+	printf("Plugin Loaded and Initialized! \n");
 	return exit_func;
 }
+
+
+extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
+	return XIU_PLUGIN_STATE_NO_DEBUG;
+}
+
+////////////////////////////////////
+// Encoder Interface Implementation
+////////////////////////////////////
+
+extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameters,
+											PLUGIN_ENCODE_USER_CALLBACK userCallback) {
+	return -1;
+}
+
+extern "C"  PLUGIN_API int32_t plugin_batch_encode(const char* input_dir,
+													const char* output_dir,
+													opj_cparameters_t* encode_parameters,
+													PLUGIN_ENCODE_USER_CALLBACK userCallback) {
+	return -1;
+}
+
+
+extern "C"  PLUGIN_API void plugin_stop_batch_encode(void) {
+	
+}
+
+////////////////////////////////////
+// Decoder Interface Implementation
+////////////////////////////////////
+
+extern "C"  PLUGIN_API int32_t plugin_decode(opj_decompress_parameters* decode_parameters,
+											PLUGIN_DECODE_USER_CALLBACK userCallback) {
+	return -1;
+}
+
+extern "C"  PLUGIN_API int32_t plugin_batch_decode(const char* input_dir,
+													const char* output_dir,
+													opj_decompress_parameters* decode_parameters,
+													PLUGIN_DECODE_USER_CALLBACK userCallback) {
+
+	return -1;
+}
+
+extern "C"  PLUGIN_API void plugin_stop_batch_decode(void) {
+}
+
+
+

@@ -16,6 +16,7 @@ include_directories(
 # Defines the source code for the library
 set(OPENJPEG_PLUGIN_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/Plugin.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Plugin.h
 )
 
 # Build the library
