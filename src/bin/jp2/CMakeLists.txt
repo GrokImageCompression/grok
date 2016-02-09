@@ -15,8 +15,6 @@ set(common_SRCS
   convert.c
   convert.h
   convertbmp.c
-  index.c
-  index.h
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.c
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.h
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c

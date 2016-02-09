@@ -66,8 +66,6 @@
 #include "openjpeg.h"
 #include "opj_getopt.h"
 #include "convert.h"
-#include "index.h"
-
 #include "format_defs.h"
 #include "opj_string.h"
 
