@@ -34,7 +34,7 @@ public:
 
 private:
 
-	uint16_t cblk_w, cblk_h;  //nominal dimensions of block
+	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 
 	std::vector<std::thread> decodeWorkers;
 	BlockingQueue<decodeBlock*> decodeQueue;
