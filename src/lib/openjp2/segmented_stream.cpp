@@ -189,10 +189,10 @@ static opj_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, 
 {
     opj_buf_t* new_seg = NULL;
     if (!seg_buf)
-        return false;
+        return NULL;
     new_seg = (opj_buf_t*)opj_malloc(sizeof(opj_buf_t));
     if (!new_seg)
-        return false;
+        return NULL;
 
     memset(new_seg, 0, sizeof(opj_buf_t));
     new_seg->buf = buf;
