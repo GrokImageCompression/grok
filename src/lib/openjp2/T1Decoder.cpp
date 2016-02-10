@@ -20,8 +20,8 @@
 
 
 T1Decoder::T1Decoder(uint16_t blockw, 
-					uint16_t blockh) :cblk_w(blockw), 
-					  				  cblk_h(blockh)
+					uint16_t blockh) :codeblock_width(blockw), 
+					  				  codeblock_height(blockh)
 {
 
 }
@@ -31,7 +31,7 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 	for (auto threadNum = 0; threadNum < numThreads; threadNum++) {
 		decodeWorkers.push_back(std::thread([this, threadNum]()
 		{
-			auto t1 = opj_t1_create(false, (uint16_t)cblk_w, (uint16_t)cblk_h);
+			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
 			if (!t1)
 				return;
 			while (!decodeQueue.empty()) {
@@ -39,8 +39,6 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 				decodeQueue.tryPop(block);
 				if (!block || !block->cblk)
 					break;
-
-				uint32_t tile_w = (uint32_t)(block->tilec->x1 - block->tilec->x0);
 
 				if (!opj_t1_decode_cblk(t1,
 										block->cblk,
@@ -52,42 +50,45 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 				}
 
 
-				auto datap = t1->data;
-				auto cblk_w = t1->w;
-				auto cblk_h = t1->h;
+				auto t1_data = t1->data;
 				if (block->roishift) {
-					int32_t thresh = 1 << block->roishift;
-					for (auto j = 0; j < cblk_h; ++j) {
-						for (auto i = 0; i < cblk_w; ++i) {
-							int32_t val = datap[(j * cblk_w) + i];
-							int32_t mag = abs(val);
-							if (mag >= thresh) {
-								mag >>= block->roishift;
-								datap[(j * cblk_w) + i] = val < 0 ? -mag : mag;
+					int32_t threshold = 1 << block->roishift;
+					for (auto j = 0; j < t1->h; ++j) {
+						for (auto i = 0; i < t1->w; ++i) {
+							auto value = *t1_data;
+							auto magnitude = abs(value);
+							if (magnitude >= threshold) {
+								magnitude >>= block->roishift;
+								*t1_data = value < 0 ? -magnitude : magnitude;
 							}
+							t1_data++;
 						}
 					}
+					//reset t1_data to start of buffer
+					t1_data = t1->data;
 				}
+
+				uint32_t tile_width = (uint32_t)(block->tilec->x1 - block->tilec->x0);
 				if (block->qmfbid == 1) {
-					int32_t* restrict tiledp = block->tiledp;
-					for (auto j = 0; j < cblk_h; ++j) {
-						for (auto i = 0; i < cblk_w; ++i) {
-							int32_t tmp = datap[(j * cblk_w) + i];
-							((int32_t*)tiledp)[(j * tile_w) + i] = tmp / 2;
+					int32_t* restrict tile_data = block->tiledp;
+					for (auto j = 0; j < t1->h; ++j) {
+						int32_t* restrict tile_row_data = tile_data;
+						for (auto i = 0; i < t1->w; ++i) {
+							tile_row_data[i] = *t1_data / 2;
+							t1_data++;
 						}
+						tile_data += tile_width;
 					}
 				}
-				else {		/* if (tccp->qmfbid == 0) */
-					float* restrict tiledp = (float*)block->tiledp;
-					for (auto j = 0; j < cblk_h; ++j) {
-						float* restrict tiledp2 = tiledp;
-						for (auto i = 0; i < cblk_w; ++i) {
-							float tmp = (float)*datap * block->stepsize;
-							*tiledp2 = tmp;
-							datap++;
-							tiledp2++;
+				else {		
+					float* restrict tile_data = (float*)block->tiledp;
+					for (auto j = 0; j < t1->h; ++j) {
+						float* restrict tile_row_data = tile_data;
+						for (auto i = 0; i < t1->w; ++i) {
+							tile_row_data[i] = (float)*t1_data * block->stepsize;
+							t1_data++;
 						}
-						tiledp += tile_w;
+						tile_data += tile_width;
 					}
 				}
 				delete block;
