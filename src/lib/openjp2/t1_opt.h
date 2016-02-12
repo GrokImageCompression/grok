@@ -169,23 +169,60 @@
 #define T1_DATA_SIGN_BIT (1U << T1_DATA_SIGN_BIT_INDEX)
 
 
+typedef uint32_t opj_flag_opt_t;
+
+/**
+Tier-1 coding (coding of code-block coefficients)
+*/
+typedef struct opj_t1_opt {
+	opj_mqc_t *mqc;
+	uint32_t  *data;
+	opj_flag_opt_t *flags;
+	uint32_t w;
+	uint32_t h;
+	uint32_t flags_stride;
+	bool   encoder;
+} opj_t1_opt_t;
+
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
 
 /**
-Encode the code-blocks of a tile using optimized algorithm
-@param t1 T1 handle
-@param tile The tile to encode
-@param tcp Tile coding parameters
-@param mct_norms  FIXME DOC
-@param mct_numcomps Number of components used for MCT
+* Creates a new Tier 1 handle
+* and initializes the look-up tables of the Tier-1 coder/decoder
+* @return a new T1 handle if successful, returns NULL otherwise
 */
-bool opj_t1_opt_encode_cblks(   opj_tcd_tile_t *tile,
-                                opj_tcp_t *tcp,
-                                const double * mct_norms,
-                                uint32_t mct_numcomps);
+opj_t1_opt_t* opj_t1_opt_create(bool isEncoder);
 
+/**
+* Destroys a previously created T1 handle
+*
+* @param p_t1 Tier 1 handle to destroy
+*/
+void opj_t1_opt_destroy(opj_t1_opt_t *p_t1);
+
+
+bool opj_t1_opt_allocate_buffers(opj_t1_opt_t *t1,
+	uint32_t cblkw,
+	uint32_t cblkh);
+
+void opj_t1_opt_init_buffers(opj_t1_opt_t *t1,
+	uint32_t w,
+	uint32_t h);
+
+
+double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
+	opj_tcd_cblk_enc_t* cblk,
+	uint32_t orient,
+	uint32_t compno,
+	uint32_t level,
+	uint32_t qmfbid,
+	double stepsize,
+	uint32_t numcomps,
+	const double * mct_norms,
+	uint32_t mct_numcomps,
+	uint32_t max);
 
 
 

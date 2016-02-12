@@ -87,22 +87,7 @@
 /*@{*/
 
 
-typedef uint32_t opj_flag_opt_t;
 
-/**
-Tier-1 coding (coding of code-block coefficients)
-*/
-typedef struct opj_t1_opt {
-    opj_mqc_t *mqc;
-    uint32_t  *data;
-    opj_flag_opt_t *flags;
-    uint32_t w;
-    uint32_t h;
-    uint32_t datasize;
-    uint32_t flagssize;
-    uint32_t flags_stride;
-    bool   encoder;
-} opj_t1_opt_t;
 
 
 
@@ -181,23 +166,10 @@ static void opj_t1_enc_clnpass(
     int32_t *nmsedec);
 
 
-static void opj_t1_encode_cblk(opj_t1_opt_t *t1,
-                               opj_tcd_cblk_enc_t* cblk,
-                               uint32_t orient,
-                               uint32_t compno,
-                               uint32_t level,
-                               uint32_t qmfbid,
-                               double stepsize,
-                               uint32_t numcomps,
-                               opj_tcd_tile_t * tile,
-                               const double * mct_norms,
-                               uint32_t mct_numcomps,
-                               uint32_t max);
 
 
-static bool opj_t1_allocate_buffers(   opj_t1_opt_t *t1,
-                                       uint32_t w,
-                                       uint32_t h);
+
+
 
 
 
@@ -206,23 +178,7 @@ static bool opj_t1_allocate_buffers(   opj_t1_opt_t *t1,
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-static opj_t1_opt_t* opj_t1_opt_create(bool isEncoder);
-
-/**
-* Destroys a previously created T1 handle
-*
-* @param p_t1 Tier 1 handle to destroy
-*/
-static void opj_t1_destroy(opj_t1_opt_t *p_t1);
-
-
-
-/**
-* Creates a new Tier 1 handle
-* and initializes the look-up tables of the Tier-1 coder/decoder
-* @return a new T1 handle if successful, returns NULL otherwise
-*/
-static opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
+opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
 {
     opj_t1_opt_t *l_t1 = 00;
 
@@ -234,7 +190,7 @@ static opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
     /* create MQC handles */
     l_t1->mqc = opj_mqc_create();
     if (!l_t1->mqc) {
-        opj_t1_destroy(l_t1);
+        opj_t1_opt_destroy(l_t1);
         return 00;
     }
 
@@ -249,7 +205,7 @@ static opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-static void opj_t1_destroy(opj_t1_opt_t *p_t1)
+void opj_t1_opt_destroy(opj_t1_opt_t *p_t1)
 {
     if (!p_t1) {
         return;
@@ -642,210 +598,87 @@ static void opj_t1_enc_clnpass(
 }
 
 
-static bool opj_t1_allocate_buffers(
+bool opj_t1_opt_allocate_buffers(
     opj_t1_opt_t *t1,
-    uint32_t w,
-    uint32_t h)
+	uint32_t cblkw,
+	uint32_t cblkh)
 {
-    uint32_t datasize = w * h;
-    uint32_t flagssize;
-    uint32_t x;
-    opj_flag_opt_t* p;
-    uint32_t flags_height;
-
-    if (datasize > t1->datasize) {
-        opj_aligned_free(t1->data);
-        t1->data = (uint32_t*)opj_aligned_malloc(datasize * sizeof(int32_t));
+    if (!t1->data) {
+        t1->data = (uint32_t*)opj_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
         if (!t1->data) {
             /* FIXME event manager error callback */
             return false;
         }
-        t1->datasize = datasize;
     }
-    memset(t1->data, 0, datasize * sizeof(int32_t));
-
-
-    t1->flags_stride = w + 2;
-    flags_height = (h + 3U) / 4U;
-    flagssize = t1->flags_stride * (flags_height + 2);
-    if (flagssize > t1->flagssize) {
-        opj_aligned_free(t1->flags);
+    if (!t1->flags) {
+		auto flags_stride = cblkw + 2;
+		auto flags_height = (cblkh + 3U) / 4U;
+		auto flagssize = flags_stride * (flags_height + 2);
         t1->flags = (opj_flag_opt_t*)opj_aligned_malloc(flagssize * sizeof(opj_flag_opt_t));
         if (!t1->flags) {
             /* FIXME event manager error callback */
             return false;
         }
-        t1->flagssize = flagssize;
     }
-    memset(t1->flags, 0, flagssize * sizeof(opj_flag_opt_t)); /* Shall we keep memset for encoder ? */
-
-
-    /* BIG FAT XXX */
-    p = &t1->flags[0];
-    for (x = 0; x < t1->flags_stride; ++x) {
-        /* magic value to hopefully stop any passes being interested in this entry */
-        *p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-    }
-
-    p = &t1->flags[((flags_height + 1) * t1->flags_stride)];
-    for (x = 0; x < t1->flags_stride; ++x) {
-        /* magic value to hopefully stop any passes being interested in this entry */
-        *p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-    }
-
-    if (h % 4) {
-        uint32_t v = 0;
-        p = &t1->flags[((flags_height)* t1->flags_stride)];
-        if (h % 4 == 1) {
-            v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
-        } else if (h % 4 == 2) {
-            v |= T1_PI_2 | T1_PI_3;
-        } else if (h % 4 == 3) {
-            v |= T1_PI_3;
-        }
-        for (x = 0; x < t1->flags_stride; ++x) {
-            *p++ = v;
-        }
-    }
-
-
-    t1->w = w;
-    t1->h = h;
-
-    return true;
+     return true;
 }
 
-/* ----------------------------------------------------------------------- */
 
-/* ----------------------------------------------------------------------- */
 
-bool opj_t1_opt_encode_cblks(   opj_tcd_tile_t *tile,
-                                opj_tcp_t *tcp,
-                                const double * mct_norms,
-                                uint32_t mct_numcomps )
+void opj_t1_opt_init_buffers(
+	opj_t1_opt_t *t1,
+	uint32_t w,
+	uint32_t h)
 {
-    uint32_t compno, resno, bandno, precno;
-    bool rc = true;
-    tile->distotile = 0;		/* fixed_quality */
-    for (compno = 0; compno < tile->numcomps; ++compno) {
-        opj_tcd_tilecomp_t* tilec = &tile->comps[compno];
-        opj_tccp_t* tccp = &tcp->tccps[compno];
-        uint32_t tile_w = (uint32_t)(tilec->x1 - tilec->x0);
+	uint32_t x;
+	opj_flag_opt_t* p;
+	memset(t1->data, 0, w*h * sizeof(int32_t));
 
-        for (resno = 0; resno < tilec->numresolutions; ++resno) {
-            opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+	t1->flags_stride = w + 2;
+	auto flags_height = (h + 3U) / 4U;
+	auto flagssize = t1->flags_stride * (flags_height + 2);
+	memset(t1->flags, 0, flagssize * sizeof(opj_flag_opt_t)); /* Shall we keep memset for encoder ? */
 
-            for (bandno = 0; bandno < res->numbands; ++bandno) {
-                opj_tcd_band_t* restrict band = &res->bands[bandno];
-                int32_t bandconst = 8192 * 8192 / ((int32_t) floor(band->stepsize * 8192));
+	/* BIG FAT XXX */
+	p = &t1->flags[0];
+	for (x = 0; x < t1->flags_stride; ++x) {
+		/* magic value to hopefully stop any passes being interested in this entry */
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
 
-                for (precno = 0; precno < res->pw * res->ph; ++precno) {
-                    opj_tcd_precinct_t *prc = &band->precincts[precno];
-                    int32_t cblkno;
-                    int32_t bandOdd = band->bandno & 1;
-                    int32_t bandModTwo = band->bandno & 2;
+	p = &t1->flags[((flags_height + 1) * t1->flags_stride)];
+	for (x = 0; x < t1->flags_stride; ++x) {
+		/* magic value to hopefully stop any passes being interested in this entry */
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
 
-#ifdef _OPENMP
-                    #pragma omp parallel default(none) private(cblkno) shared(band, bandOdd, bandModTwo, prc, tilec, tccp, mct_norms, mct_numcomps, bandconst,compno, tile, tile_w, resno, rc)
-                    {
+	if (h % 4) {
+		uint32_t v = 0;
+		p = &t1->flags[((flags_height)* t1->flags_stride)];
+		if (h % 4 == 1) {
+			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
+		}
+		else if (h % 4 == 2) {
+			v |= T1_PI_2 | T1_PI_3;
+		}
+		else if (h % 4 == 3) {
+			v |= T1_PI_3;
+		}
+		for (x = 0; x < t1->flags_stride; ++x) {
+			*p++ = v;
+		}
+	}
 
-                        #pragma omp for
-#endif
-                        for (cblkno = 0; cblkno < (int32_t)(prc->cw * prc->ch); ++cblkno) {
-                            int32_t* restrict tiledp;
-                            opj_tcd_cblk_enc_t* cblk = prc->cblks.enc + cblkno;
-                            uint32_t cblk_w;
-                            uint32_t cblk_h;
-                            uint32_t i, j, tileIndex=0, tileLineAdvance;
-                            uint32_t cblk_index = 0;
-                            opj_t1_opt_t * t1 = 00;
-                            int32_t x = cblk->x0 - band->x0;
-                            int32_t y = cblk->y0 - band->y0;
-                            uint32_t max=0;
-
-                            if (bandOdd) {
-                                opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-                                x += pres->x1 - pres->x0;
-                            }
-                            if (bandModTwo) {
-                                opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-                                y += pres->y1 - pres->y0;
-                            }
-                            t1 = opj_t1_opt_create(true);
-                            if (!t1) {
-                                rc = false;
-                                continue;
-                            }
-                            if(!opj_t1_allocate_buffers(
-                                        t1,
-                                        (uint32_t)(cblk->x1 - cblk->x0),
-                                        (uint32_t)(cblk->y1 - cblk->y0))) {
-                                opj_t1_destroy(t1);
-                                rc = false;
-                                continue;
-                            }
-                            cblk_w = t1->w;
-                            cblk_h = t1->h;
-                            tileLineAdvance = tile_w - cblk_w;
-
-                            tiledp=
-                                opj_tile_buf_get_ptr(tilec->buf, resno, band->bandno, (uint32_t)x, (uint32_t)y);
-
-                            if (tccp->qmfbid == 1) {
-                                for (j = 0; j < cblk_h; ++j) {
-                                    for (i = 0; i < cblk_w; ++i) {
-                                        int32_t tmp = tiledp[tileIndex] << T1_NMSEDEC_FRACBITS;
-                                        uint32_t mag = (uint32_t)opj_int_abs(tmp);
-                                        max = opj_uint_max(max, mag);
-                                        t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-                                        tileIndex++;
-                                        cblk_index++;
-                                    }
-                                    tileIndex += tileLineAdvance;
-                                }
-                            } else {		/* if (tccp->qmfbid == 0) */
-                                for (j = 0; j < cblk_h; ++j) {
-                                    for (i = 0; i < cblk_w; ++i) {
-                                        int32_t tmp = opj_int_fix_mul_t1(tiledp[tileIndex], bandconst);
-                                        uint32_t mag = (uint32_t)opj_int_abs(tmp);
-                                        uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-                                        max = opj_uint_max(max, mag);
-                                        t1->data[cblk_index] = sign_mag;
-                                        tileIndex++;
-                                        cblk_index++;
-                                    }
-                                    tileIndex += tileLineAdvance;
-                                }
-                            }
-
-                            opj_t1_encode_cblk(
-                                t1,
-                                cblk,
-                                band->bandno,
-                                compno,
-                                tilec->numresolutions - 1 - resno,
-                                tccp->qmfbid,
-                                band->stepsize,
-                                tile->numcomps,
-                                tile,
-                                mct_norms,
-                                mct_numcomps,
-                                max);
-                            opj_t1_destroy(t1);
-
-                        } /* cblkno */
-#ifdef _OPENMP
-                    }
-#endif
-                } /* precno */
-            } /* bandno */
-        } /* resno  */
-    } /* compno  */
-    return rc;
+	t1->w = w;
+	t1->h = h;
 }
+
+/* ----------------------------------------------------------------------- */
+
+/* ----------------------------------------------------------------------- */
 
 /** mod fixed_quality */
-static void opj_t1_encode_cblk(opj_t1_opt_t *t1,
+double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
                                opj_tcd_cblk_enc_t* cblk,
                                uint32_t orient,
                                uint32_t compno,
@@ -853,7 +686,6 @@ static void opj_t1_encode_cblk(opj_t1_opt_t *t1,
                                uint32_t qmfbid,
                                double stepsize,
                                uint32_t numcomps,
-                               opj_tcd_tile_t * tile,
                                const double * mct_norms,
                                uint32_t mct_numcomps,
                                uint32_t max)
@@ -897,7 +729,6 @@ static void opj_t1_encode_cblk(opj_t1_opt_t *t1,
         /* fixed_quality */
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
-        tile->distotile += tempwmsedec;
         pass->term = 0;
         if (++passtype == 3) {
             passtype = 0;
@@ -920,4 +751,5 @@ static void opj_t1_encode_cblk(opj_t1_opt_t *t1,
         }
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
     }
+	return cumwmsedec;
 }

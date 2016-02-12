@@ -56,6 +56,7 @@
 
 #include "opj_includes.h"
 #include "t1_luts.h"
+#include "T1Encoder.h"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -265,26 +266,6 @@ static void opj_t1_dec_clnpass(
     int32_t bpno,
     int32_t orient,
     int32_t cblksty);
-
-
-static void opj_t1_encode_cblk( opj_t1_t *t1,
-                                opj_tcd_cblk_enc_t* cblk,
-                                uint32_t orient,
-                                uint32_t compno,
-                                uint32_t level,
-                                uint32_t qmfbid,
-                                double stepsize,
-                                uint32_t cblksty,
-                                uint32_t numcomps,
-                                opj_tcd_tile_t * tile,
-                                const double * mct_norms,
-                                uint32_t mct_numcomps);
-
-
-
-static bool opj_t1_allocate_buffers(   opj_t1_t *t1,
-                                       uint32_t w,
-                                       uint32_t h);
 
 
 
@@ -1159,7 +1140,7 @@ double opj_t1_getwmsedec(
     return wmsedec;
 }
 
-static bool opj_t1_allocate_buffers(
+bool opj_t1_allocate_buffers(
     opj_t1_t *t1,
     uint32_t w,
     uint32_t h)
@@ -1281,11 +1262,10 @@ void opj_t1_destroy(opj_t1_t *p_t1)
 
 bool opj_t1_decode_cblks(  opj_tcd_tilecomp_t* tilec,
                            opj_tccp_t* tccp,
-						   std::vector<decodeBlock*>* blocks,
+						   std::vector<decodeBlockInfo*>* blocks,
                            opj_event_mgr_t * p_manager)
 {
     uint32_t resno, bandno, precno;
-    uint32_t tile_w = (uint32_t)(tilec->x1 - tilec->x0);
     bool rc = true;
     if (!opj_tile_buf_alloc_component_data_decode(tilec->buf)) {
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory for tile data\n");
@@ -1330,7 +1310,7 @@ bool opj_t1_decode_cblks(  opj_tcd_tilecomp_t* tilec,
                             y += pres->y1 - pres->y0;
                         }
 
-						decodeBlock* block = new decodeBlock();
+						auto block = new decodeBlockInfo();
 						block->bandno = band->bandno;
 						block->cblk = cblk;
 						block->cblksty = tccp->cblksty;
@@ -1476,9 +1456,7 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
 {
     bool do_opt = true;
     uint32_t compno, resno, bandno, precno;
-    bool rc = true;
     tile->distotile = 0;		/* fixed_quality */
-
     for (compno = 0; compno < tile->numcomps; ++compno) {
         opj_tccp_t* tccp = tcp->tccps + compno;
         if (tccp->cblksty != 0) {
@@ -1487,14 +1465,13 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
         }
     }
 
-    if (do_opt)
-        return opj_t1_opt_encode_cblks(tile, tcp, mct_norms, mct_numcomps);
+	std::vector<encodeBlockInfo*> blocks;
+	auto maxCblkW = 0;
+	auto maxCblkH = 0;
 
     for (compno = 0; compno < tile->numcomps; ++compno) {
         opj_tcd_tilecomp_t* tilec = &tile->comps[compno];
         opj_tccp_t* tccp = &tcp->tccps[compno];
-        uint32_t tile_w = (uint32_t)(tilec->x1 - tilec->x0);
-
         for (resno = 0; resno < tilec->numresolutions; ++resno) {
             opj_tcd_resolution_t *res = &tilec->resolutions[resno];
 
@@ -1508,111 +1485,60 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
                     int32_t bandOdd = band->bandno & 1;
                     int32_t bandModTwo = band->bandno & 2;
 
-#ifdef _OPENMP
-                    #pragma omp parallel default(none) private(cblkno) shared(band, bandOdd, bandModTwo, prc, tilec, tccp, mct_norms, mct_numcomps, bandconst,compno, tile, tile_w, resno, rc)
-                    {
+                    for (cblkno = 0; cblkno < (int32_t)(prc->cw * prc->ch); ++cblkno) {
+                        opj_tcd_cblk_enc_t* cblk = prc->cblks.enc + cblkno;
+                        int32_t x = cblk->x0 - band->x0;
+                        int32_t y = cblk->y0 - band->y0;
+                        if (bandOdd) {
+                            opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
+                            x += pres->x1 - pres->x0;
+                        }
+                        if (bandModTwo) {
+                            opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
+                            y += pres->y1 - pres->y0;
+                        }
 
-                        #pragma omp for
-#endif
-                        for (cblkno = 0; cblkno < (int32_t)(prc->cw * prc->ch); ++cblkno) {
-                            int32_t* restrict tiledp;
-                            opj_tcd_cblk_enc_t* cblk = prc->cblks.enc + cblkno;
-                            uint32_t cblk_w;
-                            uint32_t cblk_h;
-                            uint32_t i, j, tileIndex=0, tileLineAdvance;
-                            opj_t1_t * t1 = 00;
-                            int32_t x = cblk->x0 - band->x0;
-                            int32_t y = cblk->y0 - band->y0;
-                            if (bandOdd) {
-                                opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-                                x += pres->x1 - pres->x0;
-                            }
-                            if (bandModTwo) {
-                                opj_tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-                                y += pres->y1 - pres->y0;
-                            }
-                            t1 = opj_t1_create(true,0,0);
-                            if (!t1) {
-                                rc = false;
-                                continue;
-                            }
-                            if(!opj_t1_allocate_buffers(
-                                        t1,
-                                        (uint32_t)(cblk->x1 - cblk->x0),
-                                        (uint32_t)(cblk->y1 - cblk->y0))) {
-                                opj_t1_destroy(t1);
-                                rc = false;
-                                continue;
-                            }
-                            cblk_w = t1->w;
-                            cblk_h = t1->h;
-                            tileLineAdvance = tile_w - cblk_w;
-
-                            tiledp=
-                                opj_tile_buf_get_ptr(tilec->buf, resno, band->bandno, (uint32_t)x, (uint32_t)y);
-                            t1->data = tiledp;
-                            t1->data_stride = tile_w;
-                            if (tccp->qmfbid == 1) {
-                                for (j = 0; j < cblk_h; ++j) {
-                                    for (i = 0; i < cblk_w; ++i) {
-                                        tiledp[tileIndex] <<= T1_NMSEDEC_FRACBITS;
-                                        tileIndex++;
-                                    }
-                                    tileIndex += tileLineAdvance;
-                                }
-                            } else {		/* if (tccp->qmfbid == 0) */
-                                for (j = 0; j < cblk_h; ++j) {
-                                    for (i = 0; i < cblk_w; ++i) {
-                                        int32_t tmp = tiledp[tileIndex];
-                                        tiledp[tileIndex] =
-                                            opj_int_fix_mul_t1(
-                                                tmp,
-                                                bandconst);
-                                        tileIndex++;
-                                    }
-                                    tileIndex += tileLineAdvance;
-                                }
-                            }
-
-                            opj_t1_encode_cblk(
-                                t1,
-                                cblk,
-                                band->bandno,
-                                compno,
-                                tilec->numresolutions - 1 - resno,
-                                tccp->qmfbid,
-                                band->stepsize,
-                                tccp->cblksty,
-                                tile->numcomps,
-                                tile,
-                                mct_norms,
-                                mct_numcomps);
-                            opj_t1_destroy(t1);
-
-                        } /* cblkno */
-#ifdef _OPENMP
-                    }
-#endif
+						maxCblkW = opj_int_max(maxCblkW, 1 << tccp->cblkw);
+						maxCblkH = opj_int_max(maxCblkH, 1 << tccp->cblkh);
+						auto block = new encodeBlockInfo();
+						block->compno = compno;
+						block->bandno = band->bandno;
+						block->cblk = cblk;
+						block->cblksty = tccp->cblksty;
+						block->qmfbid = tccp->qmfbid;
+						block->resno = resno;
+						block->bandconst = bandconst;
+						block->stepsize = band->stepsize;
+						block->x = x;
+						block->y = y;
+						block->mct_norms = mct_norms;
+						block->mct_numcomps = mct_numcomps;
+						block->tiledp = opj_tile_buf_get_ptr(tilec->buf, resno, bandno, (uint32_t)x, (uint32_t)y);
+						blocks.push_back(block);
+					
+                    } /* cblkno */
                 } /* precno */
             } /* bandno */
         } /* resno  */
     } /* compno  */
-    return rc;
+
+	T1Encoder encoder;
+	return encoder.encode(do_opt,tile, &blocks,maxCblkW, maxCblkH, 8);
+	
 }
 
 /** mod fixed_quality */
-static void opj_t1_encode_cblk(opj_t1_t *t1,
-                               opj_tcd_cblk_enc_t* cblk,
-                               uint32_t orient,
-                               uint32_t compno,
-                               uint32_t level,
-                               uint32_t qmfbid,
-                               double stepsize,
-                               uint32_t cblksty,
-                               uint32_t numcomps,
-                               opj_tcd_tile_t * tile,
-                               const double * mct_norms,
-                               uint32_t mct_numcomps)
+double opj_t1_encode_cblk(opj_t1_t *t1,
+                            opj_tcd_cblk_enc_t* cblk,
+                            uint32_t orient,
+                            uint32_t compno,
+                            uint32_t level,
+                            uint32_t qmfbid,
+                            double stepsize,
+                            uint32_t cblksty,
+                            uint32_t numcomps,
+                            const double * mct_norms,
+                            uint32_t mct_numcomps)
 {
     double cumwmsedec = 0.0;
 
@@ -1669,7 +1595,6 @@ static void opj_t1_encode_cblk(opj_t1_t *t1,
         /* fixed_quality */
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
-        tile->distotile += tempwmsedec;
 
         /* Code switch "RESTART" (i.e. TERMALL) */
         if ((cblksty & J2K_CCP_CBLKSTY_TERMALL)	&& !((passtype == 2) && (bpno - 1 < 0))) {
@@ -1738,4 +1663,6 @@ static void opj_t1_encode_cblk(opj_t1_t *t1,
         }
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
     }
+
+	return cumwmsedec;
 }
