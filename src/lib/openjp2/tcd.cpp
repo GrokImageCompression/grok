@@ -1563,7 +1563,7 @@ static bool opj_tcd_t1_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t * p_manager)
     opj_tcd_tile_t * l_tile = p_tcd->current_tile;
     opj_tcd_tilecomp_t* l_tile_comp = l_tile->comps;
     opj_tccp_t * l_tccp = p_tcd->tcp->tccps;
-	std::vector<decodeBlock*> blocks;
+	std::vector<decodeBlockInfo*> blocks;
 	T1Decoder decoder(l_tccp->cblkw, l_tccp->cblkh);
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
 

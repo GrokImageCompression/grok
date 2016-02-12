@@ -26,20 +26,35 @@
 #include <atomic>
 
 
-class T1Decoder
+class T1Encoder
 {
 public:
-	T1Decoder(uint16_t blockw, uint16_t blockh);
-	void decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads);
+	T1Encoder();
+	bool encode(bool do_opt, opj_tcd_tile_t *tile,
+				std::vector<encodeBlockInfo*>* blocks,
+				int32_t maxCblkW, int32_t maxCblkH,
+				int32_t numThreads);
+
+	void encode(int32_t threadId );
+	void encodeOpt(int32_t threadId);
+
+	std::atomic_bool return_code;
 
 private:
+	int32_t numThreads;
+	opj_tcd_tile_t *tile;
+	int32_t maxCblkW;
+	int32_t maxCblkH;
 
-	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
+	std::vector<opj_t1_opt*> t1OptVec;
+	std::vector<opj_t1*> t1Vec;
 
-	std::vector<std::thread> decodeWorkers;
-	BlockingQueue<decodeBlockInfo*> decodeQueue;
+	std::vector<std::thread> encodeWorkers;
+	BlockingQueue<encodeBlockInfo*> encodeQueue;
 
 	mutable std::mutex _mutex;
 	std::condition_variable _condition;
+
+	mutable std::mutex distortion_mutex;
 
 };

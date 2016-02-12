@@ -1193,13 +1193,14 @@ int main(int argc, char **argv)
 
     char indexfilename[OPJ_PATH_LEN];	/* index file name */
 	char plugin_dir[OPJ_PATH_LEN];
+	
 
     int32_t i,num_images;
     int32_t imageno;
     img_fol_t img_fol;
     dircnt_t *dirptr = NULL;
 
-
+	plugin_dir[0] = 0;
     double t ;
     int32_t rc = 0;
 

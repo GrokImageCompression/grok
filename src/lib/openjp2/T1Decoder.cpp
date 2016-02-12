@@ -26,7 +26,7 @@ T1Decoder::T1Decoder(uint16_t blockw,
 
 }
 
-void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
+void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
 	decodeQueue.push_no_lock(blocks);
 	for (auto threadNum = 0; threadNum < numThreads; threadNum++) {
 		decodeWorkers.push_back(std::thread([this, threadNum]()
@@ -34,12 +34,8 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
 			if (!t1)
 				return;
-			while (!decodeQueue.empty()) {
-				decodeBlock* block = NULL;
-				decodeQueue.tryPop(block);
-				if (!block || !block->cblk)
-					break;
-
+			decodeBlockInfo* block = NULL;
+			while (decodeQueue.tryPop(block)) {
 				if (!opj_t1_decode_cblk(t1,
 										block->cblk,
 										block->bandno,
@@ -53,8 +49,8 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 				auto t1_data = t1->data;
 				if (block->roishift) {
 					int32_t threshold = 1 << block->roishift;
-					for (auto j = 0; j < t1->h; ++j) {
-						for (auto i = 0; i < t1->w; ++i) {
+					for (auto j = 0U; j < t1->h; ++j) {
+						for (auto i = 0U; i < t1->w; ++i) {
 							auto value = *t1_data;
 							auto magnitude = abs(value);
 							if (magnitude >= threshold) {
@@ -71,9 +67,9 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 				uint32_t tile_width = (uint32_t)(block->tilec->x1 - block->tilec->x0);
 				if (block->qmfbid == 1) {
 					int32_t* restrict tile_data = block->tiledp;
-					for (auto j = 0; j < t1->h; ++j) {
+					for (auto j = 0U; j < t1->h; ++j) {
 						int32_t* restrict tile_row_data = tile_data;
-						for (auto i = 0; i < t1->w; ++i) {
+						for (auto i = 0U; i < t1->w; ++i) {
 							tile_row_data[i] = *t1_data / 2;
 							t1_data++;
 						}
@@ -82,9 +78,9 @@ void T1Decoder::decode(std::vector<decodeBlock*>* blocks, int32_t numThreads) {
 				}
 				else {		
 					float* restrict tile_data = (float*)block->tiledp;
-					for (auto j = 0; j < t1->h; ++j) {
+					for (auto j = 0U; j < t1->h; ++j) {
 						float* restrict tile_row_data = tile_data;
-						for (auto i = 0; i < t1->w; ++i) {
+						for (auto i = 0U; i < t1->w; ++i) {
 							tile_row_data[i] = (float)*t1_data * block->stepsize;
 							t1_data++;
 						}

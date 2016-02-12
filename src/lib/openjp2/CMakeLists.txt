@@ -95,6 +95,9 @@ set(OPENJPEG_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/BlockingQueue.h
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.cpp
+
 )
 
 option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
