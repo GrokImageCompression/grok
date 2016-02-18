@@ -1400,27 +1400,27 @@ typedef struct opj_dec_memory_marker_handler {
 opj_dec_memory_marker_handler_t;
 
 static const opj_dec_memory_marker_handler_t j2k_memory_marker_handler_tab [] = {
-    {J2K_MS_SOT, J2K_STATE_MH | J2K_STATE_TPHSOT, opj_j2k_read_sot},
-    {J2K_MS_COD, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_cod},
-    {J2K_MS_COC, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_coc},
-    {J2K_MS_RGN, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_rgn},
-    {J2K_MS_QCD, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_qcd},
-    {J2K_MS_QCC, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_qcc},
-    {J2K_MS_POC, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_poc},
-    {J2K_MS_SIZ, J2K_STATE_MHSIZ, opj_j2k_read_siz},
-    {J2K_MS_TLM, J2K_STATE_MH, opj_j2k_read_tlm},
-    {J2K_MS_PLM, J2K_STATE_MH, opj_j2k_read_plm},
-    {J2K_MS_PLT, J2K_STATE_TPH, opj_j2k_read_plt},
-    {J2K_MS_PPM, J2K_STATE_MH, opj_j2k_read_ppm},
-    {J2K_MS_PPT, J2K_STATE_TPH, opj_j2k_read_ppt},
+    {J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPHSOT, opj_j2k_read_sot},
+    {J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_cod},
+    {J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_coc},
+    {J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_rgn},
+    {J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_qcd},
+    {J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_qcc},
+    {J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_poc},
+    {J2K_MS_SIZ, J2K_DEC_STATE_MHSIZ, opj_j2k_read_siz},
+    {J2K_MS_TLM, J2K_DEC_STATE_MH, opj_j2k_read_tlm},
+    {J2K_MS_PLM, J2K_DEC_STATE_MH, opj_j2k_read_plm},
+    {J2K_MS_PLT, J2K_DEC_STATE_TPH, opj_j2k_read_plt},
+    {J2K_MS_PPM, J2K_DEC_STATE_MH, opj_j2k_read_ppm},
+    {J2K_MS_PPT, J2K_DEC_STATE_TPH, opj_j2k_read_ppt},
     {J2K_MS_SOP, 0, 0},
-    {J2K_MS_CRG, J2K_STATE_MH, opj_j2k_read_crg},
-    {J2K_MS_COM, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_com},
-    {J2K_MS_MCT, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_mct},
-    {J2K_MS_CBD, J2K_STATE_MH , opj_j2k_read_cbd},
-    {J2K_MS_MCC, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_mcc},
-    {J2K_MS_MCO, J2K_STATE_MH | J2K_STATE_TPH, opj_j2k_read_mco},
-    {J2K_MS_UNK, J2K_STATE_MH | J2K_STATE_TPH, 0}/*opj_j2k_read_unk is directly used*/
+    {J2K_MS_CRG, J2K_DEC_STATE_MH, opj_j2k_read_crg},
+    {J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_com},
+    {J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_mct},
+    {J2K_MS_CBD, J2K_DEC_STATE_MH , opj_j2k_read_cbd},
+    {J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_mcc},
+    {J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, opj_j2k_read_mco},
+    {J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0}/*opj_j2k_read_unk is directly used*/
 };
 
 static void  opj_j2k_read_int16_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
@@ -1915,7 +1915,7 @@ static bool opj_j2k_read_soc(   opj_j2k_t *p_j2k,
     }
 
     /* Next marker should be a SIZ marker in the main header */
-    p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_MHSIZ;
+    p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSIZ;
 
     /* FIXME move it in a index structure included in p_j2k*/
     p_j2k->cstr_index->main_head_start = opj_stream_tell(p_stream) - 2;
@@ -2242,7 +2242,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
         ++l_current_tile_param;
     }
 
-    p_j2k->m_specific_param.m_decoder.m_state =  J2K_STATE_MH; /* FIXME J2K_DEC_STATE_MH; */
+    p_j2k->m_specific_param.m_decoder.m_state =  J2K_DEC_STATE_MH; /* FIXME J2K_DEC_STATE_MH; */
     opj_image_comp_header_update(l_image,l_cp);
 
     return true;
@@ -2422,7 +2422,7 @@ static bool opj_j2k_read_cod (  opj_j2k_t *p_j2k,
     l_cp = &(p_j2k->m_cp);
 
     /* If we are in the first tile-part header of the current tile */
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ?
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -2648,7 +2648,7 @@ static bool opj_j2k_read_coc (  opj_j2k_t *p_j2k,
     assert(p_manager != 00);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH ) ? /*FIXME J2K_DEC_STATE_TPH*/
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ) ? /*FIXME J2K_DEC_STATE_TPH*/
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
     l_image = p_j2k->m_private_image;
@@ -3163,7 +3163,7 @@ static bool opj_j2k_read_poc (  opj_j2k_t *p_j2k,
     }
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ?
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
     l_old_poc_nb = l_tcp->POC ? l_tcp->numpocs + 1 : 0;
@@ -3979,7 +3979,7 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_decoder.m_sot_length = 0;
     }
 
-    p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_TPH;
+    p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH;
 
     /* Check if the current tile is outside the area we want decode or not corresponding to the tile index*/
     if (p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec == -1) {
@@ -4088,7 +4088,7 @@ static bool opj_j2k_write_sod(     opj_j2k_t *p_j2k,
     p_tile_coder->cur_tp_num = p_j2k->m_specific_param.m_encoder.m_current_tile_part_number;
 
     if (p_j2k->m_specific_param.m_encoder.m_current_tile_part_number == 0) {
-        p_tile_coder->current_tile->packno = 0;
+        p_tile_coder->tile->packno = 0;
         if (l_cstr_info) {
             l_cstr_info->packno = 0;
         }
@@ -4198,9 +4198,9 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
     }
 
     if (l_current_read_size != p_j2k->m_specific_param.m_decoder.m_sot_length) {
-        p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_NEOC;
+        p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
     } else {
-        p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT;
+        p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
     }
     return true;
 }
@@ -4325,7 +4325,7 @@ static bool opj_j2k_read_rgn (opj_j2k_t *p_j2k,
     }
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ?
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -4554,11 +4554,11 @@ static bool opj_j2k_read_eoc (     opj_j2k_t *p_j2k,
                 return false;
             }
 
-            l_success = opj_tcd_decode_tile(l_tcd, l_tcp->m_data, l_tcp->m_data_size, i, p_j2k->cstr_index);
+            l_success = opj_tcd_decode_tile(l_tcd, l_tcp->m_data, l_tcp->m_data_size, i);
             /* cleanup */
 
             if (! l_success) {
-                p_j2k->m_specific_param.m_decoder.m_state |= J2K_STATE_ERR;
+                p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
                 break;
             }
         }
@@ -4874,7 +4874,7 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
     assert(p_header_data != 00);
     assert(p_j2k != 00);
 
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH ?
+    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -5084,7 +5084,7 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
     assert(p_j2k != 00);
     assert(p_manager != 00);
 
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH ?
+    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -5363,7 +5363,7 @@ static bool opj_j2k_read_mco (      opj_j2k_t *p_j2k,
     assert(p_manager != 00);
 
     l_image = p_j2k->m_private_image;
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH ?
+    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -6655,7 +6655,7 @@ static bool opj_j2k_encoding_validation (  opj_j2k_t * p_j2k,
 
     /* STATE checking */
     /* make sure the state is at 0 */
-    l_is_valid &= (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_NONE);
+    l_is_valid &= (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NONE);
 
     /* POINTER validation */
     /* make sure a p_j2k codec is present */
@@ -6732,7 +6732,7 @@ static bool opj_j2k_read_header_procedure( opj_j2k_t *p_j2k,
     assert(p_manager != 00);
 
     /*  We enter in the main header */
-    p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_MHSOC;
+    p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSOC;
 
     /* Try to read the SOC marker, the codestream must begin with SOC marker */
     if (! opj_j2k_read_soc(p_j2k,p_stream,p_manager)) {
@@ -6873,7 +6873,7 @@ static bool opj_j2k_read_header_procedure( opj_j2k_t *p_j2k,
     p_j2k->cstr_index->main_head_end = (uint32_t) opj_stream_tell(p_stream) - 2;
 
     /* Next step: read a tile-part header */
-    p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT;
+    p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
 
     return true;
 }
@@ -7400,11 +7400,11 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
     assert(p_manager != 00);
 
     /* Reach the End Of Codestream ?*/
-    if (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_EOC) {
+    if (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC) {
         l_current_marker = J2K_MS_EOC;
     }
     /* We need to encounter a SOT marker (a new tile-part header) */
-    else if (p_j2k->m_specific_param.m_decoder.m_state != J2K_STATE_TPHSOT) {
+    else if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) {
         return false;
     }
 
@@ -7415,7 +7415,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
         while (l_current_marker != J2K_MS_SOD) {
 
             if(opj_stream_get_number_byte_left(p_stream) == 0) {
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_NEOC;
+                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
                 break;
             }
 
@@ -7436,12 +7436,12 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
 
             /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
             if (l_current_marker == 0x8080 && opj_stream_get_number_byte_left(p_stream) == 0) {
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_NEOC;
+                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
                 break;
             }
 
             /* Why this condition? FIXME */
-            if (p_j2k->m_specific_param.m_decoder.m_state & J2K_STATE_TPH) {
+            if (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH) {
                 p_j2k->m_specific_param.m_decoder.m_sot_length -= (l_marker_size + 2);
             }
             l_marker_size -= 2; /* Subtract the size of the marker ID already read */
@@ -7530,7 +7530,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
             }
         }
         if(opj_stream_get_number_byte_left(p_stream) == 0
-                && p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_NEOC)
+                && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC)
             break;
 
         /* If we didn't skip data before, we need to read the SOD marker*/
@@ -7577,7 +7577,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
             /* Indicate we will try to read a new tile-part header*/
             p_j2k->m_specific_param.m_decoder.m_skip_data = 0;
             p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
-            p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT;
+            p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
 
             /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
             if (opj_stream_read_data(p_stream,p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
@@ -7592,9 +7592,9 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
 
     /* Current marker is the EOC marker ?*/
     if (l_current_marker == J2K_MS_EOC) {
-        if (p_j2k->m_specific_param.m_decoder.m_state != J2K_STATE_EOC ) {
+        if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC ) {
             p_j2k->m_current_tile_number = 0;
-            p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_EOC;
+            p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
         }
     }
 
@@ -7637,13 +7637,13 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
     *p_tile_index = p_j2k->m_current_tile_number;
     *p_go_on = true;
     *p_data_size = opj_tcd_get_decoded_tile_size(p_j2k->m_tcd);
-    *p_tile_x0 = p_j2k->m_tcd->current_tile->x0;
-    *p_tile_y0 = p_j2k->m_tcd->current_tile->y0;
-    *p_tile_x1 = p_j2k->m_tcd->current_tile->x1;
-    *p_tile_y1 = p_j2k->m_tcd->current_tile->y1;
-    *p_nb_comps = p_j2k->m_tcd->current_tile->numcomps;
+    *p_tile_x0 = p_j2k->m_tcd->tile->x0;
+    *p_tile_y0 = p_j2k->m_tcd->tile->y0;
+    *p_tile_x1 = p_j2k->m_tcd->tile->x1;
+    *p_tile_y1 = p_j2k->m_tcd->tile->y1;
+    *p_nb_comps = p_j2k->m_tcd->tile->numcomps;
 
-    p_j2k->m_specific_param.m_decoder.m_state |= 0x0080;/* FIXME J2K_DEC_STATE_DATA;*/
+    p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_DATA;
 
     return true;
 }
@@ -7664,12 +7664,12 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
     assert(p_j2k != 00);
     assert(p_manager != 00);
 
-    if ( !(p_j2k->m_specific_param.m_decoder.m_state & 0x0080/*FIXME J2K_DEC_STATE_DATA*/)
+    if ( !(p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_DATA)
             || (p_tile_index != p_j2k->m_current_tile_number) ) {
         return false;
     }
 
-    l_tcp = &(p_j2k->m_cp.tcps[p_tile_index]);
+    l_tcp = p_j2k->m_cp.tcps + p_tile_index;
     if (l_tcp->m_data.segments.empty()) {
         opj_j2k_tcp_destroy(l_tcp);
         return false;
@@ -7678,10 +7678,9 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
     if (! opj_tcd_decode_tile(  p_j2k->m_tcd,
                                 &l_tcp->m_data,
                                 p_tile_index,
-                                p_j2k->cstr_index,
                                 p_manager) ) {
         opj_j2k_tcp_destroy(l_tcp);
-        p_j2k->m_specific_param.m_decoder.m_state |= 0x8000;/*FIXME J2K_DEC_STATE_ERR;*/
+        p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
         opj_event_msg(p_manager, EVT_ERROR, "Failed to decode.\n");
         return false;
     }
@@ -7699,7 +7698,7 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
         for (compno = 0; compno < p_j2k->m_output_image->numcomps; compno++) {
             uint32_t l_size_comp = 0;
             uint32_t i, j;
-            opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->current_tile->comps + compno;
+            opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + compno;
             opj_image_comp_t* comp = p_j2k->m_output_image->comps + compno;
             comp->data = opj_tile_buf_get_ptr(tilec->buf,0,0,0,0);
             opj_tile_buf_set_ptr(tilec->buf, NULL);
@@ -7708,39 +7707,36 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
             /* now sanitize data (signed data is broken at the moment */
             l_size_comp = (comp->prec + 7) >> 3;
             if (l_size_comp <= 2) {
-                for (j = 0; j < comp->h; ++j)
-                    for (i = 0; i < comp->w; ++i) {
-                        if (l_size_comp == 1)
-                            comp->data[i + j*comp->w] =
-                                comp->sgnd ? comp->data[i + j*comp->w] :
-                                comp->data[i + j*comp->w] & 0xFF;
-                        else
-                            comp->data[i + j*comp->w] =
-                                comp->sgnd ? comp->data[i + j*comp->w] :
-                                comp->data[i + j*comp->w] & 0xFFFF;
+				for (j = 0; j < comp->h; ++j) {
+					for (i = 0; i < comp->w; ++i) {
+						if (l_size_comp == 1)
+							comp->data[i + j*comp->w] =
+							comp->sgnd ? comp->data[i + j*comp->w] :
+							comp->data[i + j*comp->w] & 0xFF;
+						else
+							comp->data[i + j*comp->w] =
+							comp->sgnd ? comp->data[i + j*comp->w] :
+							comp->data[i + j*comp->w] & 0xFFFF;
 
-                    }
+					}
+				}
             }
 
         }
     }
-
-
-    /* To avoid to destroy the tcp which can be useful when we try to decode a tile decoded before (cf j2k_random_tile_access)
-     * we destroy just the data which will be re-read in read_tile_header*/
-    /*opj_j2k_tcp_destroy(l_tcp);
-    p_j2k->m_tcd->tcp = 0;*/
+  
+     /* we only destroy the data, which will be re-read in read_tile_header*/
     opj_j2k_tcp_data_destroy(l_tcp);
 
     p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
-    p_j2k->m_specific_param.m_decoder.m_state &= (~ (0x0080u));/* FIXME J2K_DEC_STATE_DATA);*/
+    p_j2k->m_specific_param.m_decoder.m_state &= (~ (J2K_DEC_STATE_DATA));
 
     if(opj_stream_get_number_byte_left(p_stream) == 0
-            && p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_NEOC) {
+            && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC) {
         return true;
     }
 
-    if (p_j2k->m_specific_param.m_decoder.m_state != 0x0100) { /*FIXME J2K_DEC_STATE_EOC)*/
+    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
         if (opj_stream_read_data(p_stream,l_data,2,p_manager) != 2) {
             opj_event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
@@ -7750,10 +7746,10 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 
         if (l_current_marker == J2K_MS_EOC) {
             p_j2k->m_current_tile_number = 0;
-            p_j2k->m_specific_param.m_decoder.m_state =  0x0100;/*FIXME J2K_DEC_STATE_EOC;*/
+            p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
         } else if (l_current_marker != J2K_MS_SOT) {
             if(opj_stream_get_number_byte_left(p_stream) == 0) {
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_NEOC;
+                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
                 opj_event_msg(p_manager, EVT_WARNING, "Stream does not end with EOC\n");
                 return true;
             }
@@ -7791,7 +7787,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
     int32_t * l_dest_ptr;
     opj_tcd_resolution_t* l_res= 00;
 
-    l_tilec = p_tcd->current_tile->comps;
+    l_tilec = p_tcd->tile->comps;
     l_image_src = p_tcd->image;
     l_img_comp_src = l_image_src->comps;
 
@@ -8029,7 +8025,7 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
     opj_image_comp_t* l_img_comp = NULL;
 
     /* Check if we are read the main header */
-    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_STATE_TPHSOT) { /* FIXME J2K_DEC_STATE_TPHSOT)*/
+    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) { /* FIXME J2K_DEC_STATE_TPHSOT)*/
         opj_event_msg(p_manager, EVT_ERROR, "Need to decode the main header before begin to decode the remaining codestream");
         return false;
     }
@@ -8396,7 +8392,7 @@ static bool opj_j2k_read_SPCod_SPCoc(  opj_j2k_t *p_j2k,
     assert(p_header_data != 00);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ?
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -8496,7 +8492,7 @@ static void opj_j2k_copy_tile_component_parameters( opj_j2k_t *p_j2k )
     assert(p_j2k != 00);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ? /* FIXME J2K_DEC_STATE_TPH*/
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ? /* FIXME J2K_DEC_STATE_TPH*/
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -8687,7 +8683,7 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
 
     l_cp = &(p_j2k->m_cp);
     /* come from tile part header or main header ?*/
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH) ? /*FIXME J2K_DEC_STATE_TPH*/
+    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ? /*FIXME J2K_DEC_STATE_TPH*/
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -8771,7 +8767,7 @@ static void opj_j2k_copy_tile_quantization_parameters( opj_j2k_t *p_j2k )
     assert(p_j2k != 00);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_TPH ?
+    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &l_cp->tcps[p_j2k->m_current_tile_number] :
             p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
@@ -9216,7 +9212,7 @@ static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
     /* single tile, RGB images only*/
     bool copy_tile_data = (num_tiles> 1) ||
                           p_j2k->m_output_image->numcomps != 3 ||
-                          p_j2k->m_tcd->current_tile->numcomps != 3;
+                          p_j2k->m_tcd->tile->numcomps != 3;
 
     uint32_t i = 0;
 
@@ -9235,7 +9231,7 @@ static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
     if (!copy_tile_data) {
 
         for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
-            opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->current_tile->comps + i;
+            opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + i;
             opj_image_comp_t* dest_comp = p_j2k->m_output_image->comps + i;
             uint32_t l_x0_dest = opj_uint_ceildivpow2(dest_comp->x0, dest_comp->factor);
             uint32_t l_y0_dest = opj_uint_ceildivpow2(dest_comp->y0, dest_comp->factor);
@@ -9285,7 +9281,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         l_max_data_size = 1;
     }
 
-    for (;;) {
+    for (nr_tiles=0; nr_tiles < p_j2k->m_cp.th * p_j2k->m_cp.tw; nr_tiles++) {
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
                                         &l_data_size,
@@ -9334,9 +9330,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         }
 
         if(opj_stream_get_number_byte_left(p_stream) == 0
-                && p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_NEOC)
-            break;
-        if(++nr_tiles ==  p_j2k->m_cp.th * p_j2k->m_cp.tw)
+                && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC)
             break;
     }
 
@@ -9417,8 +9411,8 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
                 }
             }
             /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
-            if(p_j2k->m_specific_param.m_decoder.m_state == J2K_STATE_EOC)
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_STATE_TPHSOT;
+            if(p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC)
+                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
         }
 
     for (;;) {
@@ -9717,7 +9711,7 @@ bool opj_j2k_encode(opj_j2k_t * p_j2k,
         /* if we only have one tile, then simply set tile component data equal to image component data */
         /* otherwise, allocate the data */
         for (j=0; j<p_j2k->m_tcd->image->numcomps; ++j) {
-            opj_tcd_tilecomp_t* l_tilec = p_tcd->current_tile->comps + j;
+            opj_tcd_tilecomp_t* l_tilec = p_tcd->tile->comps + j;
             if (l_reuse_data) {
                 opj_image_comp_t * l_img_comp = p_tcd->image->comps + j;
                 opj_tile_buf_set_ptr(l_tilec->buf, l_img_comp->data);
@@ -9905,7 +9899,7 @@ static void opj_j2k_get_tile_data (opj_tcd_t * p_tcd, uint8_t * p_data)
     for (i=0; i<p_tcd->image->numcomps; ++i) {
         opj_image_t * l_image =  p_tcd->image;
         int32_t * l_src_ptr;
-        opj_tcd_tilecomp_t * l_tilec = p_tcd->current_tile->comps + i;
+        opj_tcd_tilecomp_t * l_tilec = p_tcd->tile->comps + i;
         opj_image_comp_t * l_img_comp = l_image->comps + i;
         uint32_t l_size_comp,l_width,l_height,l_offset_x,l_offset_y, l_image_width,l_stride,l_tile_offset;
 
@@ -10484,7 +10478,7 @@ bool opj_j2k_write_tile (opj_j2k_t * p_j2k,
         uint32_t j;
         /* Allocate data */
         for (j=0; j<p_j2k->m_tcd->image->numcomps; ++j) {
-            opj_tcd_tilecomp_t* l_tilec = p_j2k->m_tcd->current_tile->comps + j;
+            opj_tcd_tilecomp_t* l_tilec = p_j2k->m_tcd->tile->comps + j;
 
             if(!opj_tile_buf_alloc_component_data_encode(l_tilec->buf)) {
                 opj_event_msg(p_manager, EVT_ERROR, "Error allocating tile component data." );

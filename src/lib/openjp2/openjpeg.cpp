@@ -1091,7 +1091,7 @@ void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* inf
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.encoder_parameters = (opj_cparameters_t*)info->encoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;
-    opjInfo.tile = (plugin_tile_t*)info->tile;
+    opjInfo.tile = (opj_tile_t*)info->tile;
     if (userEncodeCallback)
         userEncodeCallback(&opjInfo);
 }
@@ -1174,7 +1174,7 @@ void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;
-    opjInfo.tile = (plugin_tile_t*)info->tile;
+    opjInfo.tile = (opj_tile_t*)info->tile;
     if (!opjInfo.image) {
         if (userPreDecodeCallback)
             userPreDecodeCallback(&opjInfo);

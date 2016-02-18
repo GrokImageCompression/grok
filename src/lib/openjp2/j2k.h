@@ -122,17 +122,17 @@ The functions in J2K.C have for goal to read/write the several parts of the code
  * These values may be combined with a | operator.
  * */
 typedef enum J2K_STATUS {
-    J2K_STATE_NONE  =  0x0000, /**< a SOC marker is expected */
-    J2K_STATE_MHSOC  = 0x0001, /**< a SOC marker is expected */
-    J2K_STATE_MHSIZ  = 0x0002, /**< a SIZ marker is expected */
-    J2K_STATE_MH     = 0x0004, /**< the decoding process is in the main header */
-    J2K_STATE_TPHSOT = 0x0008, /**< the decoding process is in a tile part header and expects a SOT marker */
-    J2K_STATE_TPH    = 0x0010, /**< the decoding process is in a tile part header */
-    J2K_STATE_MT     = 0x0020, /**< the EOC marker has just been read */
-    J2K_STATE_NEOC   = 0x0040, /**< the decoding process must not expect a EOC marker because the codestream is truncated */
-
-    J2K_STATE_EOC	 = 0x0100, /**< the decoding process has encountered the EOC marker */
-    J2K_STATE_ERR    = 0x8000  /**< the decoding process has encountered an error (FIXME warning V1 = 0x0080)*/
+    J2K_DEC_STATE_NONE  =  0x0000, /**< a SOC marker is expected */
+    J2K_DEC_STATE_MHSOC  = 0x0001, /**< a SOC marker is expected */
+    J2K_DEC_STATE_MHSIZ  = 0x0002, /**< a SIZ marker is expected */
+    J2K_DEC_STATE_MH     = 0x0004, /**< the decoding process is in the main header */
+    J2K_DEC_STATE_TPHSOT = 0x0008, /**< the decoding process is in a tile part header and expects a SOT marker */
+    J2K_DEC_STATE_TPH    = 0x0010, /**< the decoding process is in a tile part header */
+    J2K_DEC_STATE_MT     = 0x0020, /**< the EOC marker has just been read */
+    J2K_DEC_STATE_NEOC   = 0x0040, /**< the decoding process must not expect a EOC marker because the codestream is truncated */
+	J2K_DEC_STATE_DATA	 = 0x0080, /**< the decoding process is expecting to read tile data from the code stream */
+    J2K_DEC_STATE_EOC	 = 0x0100, /**< the decoding process has encountered the EOC marker */
+    J2K_DEC_STATE_ERR    = 0x8000  /**< the decoding process has encountered an error (FIXME warning V1 = 0x0080)*/
 } J2K_STATUS;
 
 /**
@@ -412,24 +412,22 @@ typedef struct opj_cp {
 
 
 typedef struct opj_j2k_dec {
-    /** locate in which part of the codestream the decoder is (main header, tile header, end) */
+    /** Decoder state: used to indicate in which part of the codestream the decoder is (main header, tile header, end) */
     uint32_t m_state;
-    /**
-     * store decoding parameters common to all tiles (information like COD, COC in main header)
-     */
-    opj_tcp_t *m_default_tcp;
+
+     //store decoding parameters common to all tiles (information like COD, COC in main header)
+     opj_tcp_t *m_default_tcp;
     uint8_t  *m_header_data;
     uint32_t m_header_data_size;
     /** to tell the tile part length */
     uint32_t m_sot_length;
-    /** Only tiles index in the correct range will be decoded.*/
+    /** Only tile indices in the correct range will be decoded.*/
     uint32_t m_start_tile_x;
     uint32_t m_start_tile_y;
     uint32_t m_end_tile_x;
     uint32_t m_end_tile_y;
-    /**
-     * Decoded area set by the user
-     */
+
+     // Decoded area set by the user
     uint32_t m_DA_x0;
     uint32_t m_DA_y0;
     uint32_t m_DA_x1;
@@ -441,8 +439,8 @@ typedef struct opj_j2k_dec {
     int64_t m_last_sot_read_pos;
 
     /**
-     * Indicate that the current tile-part is assume as the last tile part of the codestream.
-     * It is useful in the case of PSot is equal to zero. The sot length will be compute in the
+     * Indicate that the current tile-part is assumed to be the last tile part of the codestream.
+     * This is useful in the case when PSot is equal to zero. The sot length will be computed in the
      * SOD reader function. FIXME NOT USED for the moment
      */
     bool   m_last_tile_part;

@@ -17,23 +17,6 @@
 *    This source code incorporates work covered by the following copyright and
 *    permission notice:
 *
-*    Copyright (C) 2016 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
 *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
@@ -97,7 +80,7 @@
 
 static inline uint8_t		opj_t1_getctxno_zc_opt(uint32_t f, uint32_t orient);
 static inline uint8_t		opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
-static inline uint32_t	opj_t1_getctxno_mag_opt(uint32_t f);
+static inline uint32_t		opj_t1_getctxno_mag_opt(uint32_t f);
 static inline uint8_t		opj_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
 static inline void			opj_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t s, uint32_t stride);
 
