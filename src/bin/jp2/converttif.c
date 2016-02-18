@@ -414,7 +414,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     int subsampling_dx = parameters->subsampling_dx;
     int subsampling_dy = parameters->subsampling_dy;
     TIFF *tif;
-    tdata_t buf;
+    tdata_t buf = NULL;
     tstrip_t strip;
     tsize_t strip_size;
     int j, currentPlane, numcomps = 0, w, h;
@@ -430,6 +430,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     int32_t* buffer32s = NULL;
     int32_t* planes[4];
     size_t rowStride;
+	bool success = true;
 
     tif = TIFFOpen(filename, "r");
 
@@ -551,8 +552,8 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 
     image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
     if(!image) {
-        TIFFClose(tif);
-        return NULL;
+		success = false;
+		goto cleanup;
     }
     /* set image offset and reference grid */
     image->x0 = (uint32_t)parameters->image_offset_x0;
@@ -571,17 +572,14 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 
     buf = _TIFFmalloc(strip_size);
     if (buf == NULL) {
-        TIFFClose(tif);
-        opj_image_destroy(image);
-        return NULL;
+		success = false;
+		goto cleanup;
     }
     rowStride = ((size_t)w * tiSpp * tiBps + 7U) / 8U;
     buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
     if (buffer32s == NULL) {
-        _TIFFfree(buf);
-        TIFFClose(tif);
-        opj_image_destroy(image);
-        return NULL;
+		success = false;
+		goto cleanup;
     }
 
     strip = 0;
@@ -592,9 +590,13 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         /* Read the Image components */
         for(; (h > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
             const uint8_t *dat8;
-            size_t ssize;
+            size_t ssize=0;
 
             ssize = (size_t)TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize == (size_t)-1) {
+				success = false;
+				goto cleanup;
+			}
             dat8 = (const uint8_t*)buf;
 
             while (ssize >= rowStride) {
@@ -612,17 +614,26 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         currentPlane++;
     } while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
 
-    free(buffer32s);
-    _TIFFfree(buf);
-    TIFFClose(tif);
+cleanup:
+	if (buffer32s)
+		free(buffer32s);
+	if (buf)
+		_TIFFfree(buf);
+	if (tif)
+		TIFFClose(tif);
 
-    if (is_cinema) {
-        for (j=0; j < numcomps; ++j) {
-            scale_component(&(image->comps[j]), 12);
-        }
+	if (success) {
+		if (is_cinema) {
+			for (j = 0; j < numcomps; ++j) {
+				scale_component(&(image->comps[j]), 12);
+			}
+		}
+		return image;
+	}
 
-    }
-    return image;
+	if (image)
+		opj_image_destroy(image);
+	return NULL;
 
 }/* tiftoimage() */
 

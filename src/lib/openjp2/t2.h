@@ -142,7 +142,6 @@ bool opj_t2_decode_packets(	opj_t2_t *t2,
                             opj_tcd_tile_t *tile,
                             opj_seg_buf_t* src_buf,
                             uint32_t * p_data_read,
-                            opj_codestream_index_t *cstr_info,
                             opj_event_mgr_t *p_manager);
 
 /**

@@ -1485,69 +1485,6 @@ OPJ_API void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info);
 OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
 
-/*
-Plugin encoding
-*/
-
-
-/*
-* Plugin Structs
-*/
-
-
-typedef struct plugin_pass {
-    double distortionDecrease;  //distortion decrease up to and including this pass
-    size_t rate;    // rate up to and including this pass
-    size_t length;	//stream length for this pass
-} plugin_pass_t;
-
-typedef struct plugin_code_block {
-    //////////////////////////////////
-    // debug info
-    int32_t x0, y0, x1, y1;
-    unsigned int* contextStream;
-    /////////////////////////////////
-
-    size_t numPix;
-    unsigned char* compressedData;
-    size_t compressedDataLength;
-    size_t numBitPlanes;
-    size_t numPasses;
-    plugin_pass_t passes[67];
-    unsigned int sortedIndex;
-} plugin_code_block_t;
-
-typedef struct plugin_precinct {
-    size_t numBlocks;
-    plugin_code_block_t** blocks;
-} plugin_precinct_t;
-
-typedef struct plugin_band {
-    size_t orient;
-    size_t numPrecincts;
-    plugin_precinct_t** precincts;
-    float stepsize;
-} plugin_band_t;
-
-typedef struct plugin_resolution {
-    size_t level;
-    size_t numBands;
-    plugin_band_t** bands;
-
-} plugin_resolution_t;
-
-
-typedef struct plugin_tile_component {
-    size_t numResolutions;
-    plugin_resolution_t** resolutions;
-} plugin_tile_component_t;
-
-typedef struct plugin_tile {
-    size_t numComponents;
-    plugin_tile_component_t** tileComponents;
-} plugin_tile_t;
-
-
 #define OPJ_PLUGIN_STATE_NO_DEBUG			0x0
 #define OPJ_PLUGIN_STATE_DEBUG_ENCODE		0x1
 #define OPJ_PLUGIN_STATE_PRE_TR1			0x2
@@ -1555,19 +1492,83 @@ typedef struct plugin_tile {
 #define OPJ_PLUGIN_STATE_MCT_ONLY			0x8
 #define OPJ_PLUGIN_STATE_CPU_ONLY			0x10
 
+OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
+
+
+////////////////////////////////////////////////////
+// Structs to pass data between plugin and Ronin
+////////////////////////////////////////////////////
+
+typedef struct opj_pass {
+	double distortionDecrease;  //distortion decrease up to and including this pass
+	size_t rate;    // rate up to and including this pass
+	size_t length;	//stream length for this pass
+} opj_pass_t;
+
+typedef struct opj_code_block {
+
+	/////////////////////////
+	// debug info
+	int32_t x0, y0, x1, y1;
+	unsigned int* contextStream;
+	///////////////////////////
+
+
+	size_t numPix;
+	unsigned char* compressedData;
+	size_t compressedDataLength;
+	size_t numBitPlanes;
+	size_t numPasses;
+	opj_pass_t passes[67];
+	unsigned int sortedIndex;
+} opj_code_block_t;
+
+typedef struct opj_precinct {
+	size_t numBlocks;
+	opj_code_block_t** blocks;
+} opj_precinct_t;
+
+typedef struct opj_band {
+	size_t orient;
+	size_t numPrecincts;
+	opj_precinct_t** precincts;
+	float stepsize;
+} opj_band_t;
+
+typedef struct opj_resolution {
+	size_t level;
+	size_t numBands;
+	opj_band_t** bands;
+
+} opj_resolution_t;
+
+
+typedef struct opj_tile_component {
+	size_t numResolutions;
+	opj_resolution_t** resolutions;
+} opj_tile_component_t;
+
+typedef struct opj_tile {
+	size_t numComponents;
+	opj_tile_component_t** tileComponents;
+} opj_tile_t;
+
+
+/*
+Plugin encoding
+*/
 
 typedef struct opj_plugin_encode_user_callback_info {
-    const char*			input_file_name;
-    const char*			output_file_name;
-    opj_cparameters_t*	encoder_parameters;
-    opj_image_t*		image;
-    plugin_tile_t*      tile;
-    unsigned int		error_code;
+	const char*			input_file_name;
+	const char*			output_file_name;
+	opj_cparameters_t*	encoder_parameters;
+	opj_image_t*		image;
+	opj_tile_t*      tile;
+	unsigned int		error_code;
 } opj_plugin_encode_user_callback_info_t;
 
 typedef void(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(opj_plugin_encode_user_callback_info_t* info);
 
-OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
 
 OPJ_API int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 
@@ -1633,26 +1634,26 @@ typedef struct opj_decompress_params {
     int split_pnm;
 } opj_decompress_parameters;
 
-typedef plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
-        size_t compressed_tile_id,
-        opj_cparameters_t* encoder_parameters,
-        opj_image_t* image);
+typedef opj_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
+										size_t compressed_tile_id,
+										opj_cparameters_t* encoder_parameters,
+										opj_image_t* image);
 
 typedef bool(*OPJ_QUEUE_DECODE)(size_t deviceId,
                                 size_t compressed_tile_id,
-                                plugin_tile_t* tile);
+								opj_tile_t* tile);
 
 typedef struct opj_plugin_decode_callback_info {
-    size_t deviceId;
-    size_t compressed_tile_id;
-    OPJ_GENERATE_TILE generate_tile_func;
-    OPJ_QUEUE_DECODE queue_decoder_func;
-    const char*			input_file_name;
-    const char*			output_file_name;
+    size_t						deviceId;
+    size_t						compressed_tile_id;
+    OPJ_GENERATE_TILE			generate_tile_func;
+    OPJ_QUEUE_DECODE			queue_decoder_func;
+    const char*					input_file_name;
+    const char*					output_file_name;
     opj_decompress_parameters*	decoder_parameters;
-    opj_image_t*		image;
-    plugin_tile_t*      tile;
-    unsigned int		error_code;
+    opj_image_t*				image;
+	opj_tile_t*					tile;
+    unsigned int				error_code;
 } opj_plugin_decode_callback_info_t;
 
 typedef int(*opj_plugin_decode_callback)(opj_plugin_decode_callback_info_t* info);

@@ -201,18 +201,28 @@ void opj_mct_decode(
     int32_t* restrict c2,
     uint32_t n)
 {
-    uint32_t i;
-    for (i = 0; i < n; ++i) {
-        int32_t y = c0[i];
-        int32_t u = c1[i];
-        int32_t v = c2[i];
-        int32_t g = y - ((u + v) >> 2);
-        int32_t r = v + g;
-        int32_t b = u + g;
-        c0[i] = r;
-        c1[i] = g;
-        c2[i] = b;
-    }
+    int32_t i;
+#ifdef _OPENMP
+#pragma omp parallel default(none) private(i) shared(c0, c1,c2)
+	{
+#pragma omp for
+#endif
+
+		for (i = 0; i < n; ++i) {
+			int32_t y = c0[i];
+			int32_t u = c1[i];
+			int32_t v = c2[i];
+			int32_t g = y - ((u + v) >> 2);
+			int32_t r = v + g;
+			int32_t b = u + g;
+			c0[i] = r;
+			c1[i] = g;
+			c2[i] = b;
+		}
+#ifdef _OPENMP
+	}
+#endif
+
 }
 #endif
 
@@ -399,7 +409,7 @@ void opj_mct_decode_real(
     float* restrict c2,
     uint32_t n)
 {
-    uint32_t i;
+    int32_t i;
 #ifdef __SSE__
     __m128 vrv, vgu, vgv, vbu;
     vrv = _mm_set1_ps(1.402f);
@@ -438,17 +448,26 @@ void opj_mct_decode_real(
     }
     n &= 7;
 #endif
-    for(i = 0; i < n; ++i) {
-        float y = c0[i];
-        float u = c1[i];
-        float v = c2[i];
-        float r = y + (v * 1.402f);
-        float g = y - (u * 0.34413f) - (v * (0.71414f));
-        float b = y + (u * 1.772f);
-        c0[i] = r;
-        c1[i] = g;
-        c2[i] = b;
-    }
+#ifdef _OPENMP
+#pragma omp parallel default(none) private(i) shared(c0, c1,c2)
+	{
+#pragma omp for
+#endif
+
+		for (i = 0; i < n; ++i) {
+			float y = c0[i];
+			float u = c1[i];
+			float v = c2[i];
+			float r = y + (v * 1.402f);
+			float g = y - (u * 0.34413f) - (v * (0.71414f));
+			float b = y + (u * 1.772f);
+			c0[i] = r;
+			c1[i] = g;
+			c2[i] = b;
+		}
+#ifdef _OPENMP
+	}
+#endif
 }
 
 /* <summary> */

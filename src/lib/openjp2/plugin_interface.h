@@ -18,71 +18,8 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include "openjpeg.h"
-
 #include "minpf_plugin.h"
-
-
-////////////////////////////////////////////////////
-// Structs to pass data between plugin and Ronin
-////////////////////////////////////////////////////
-
-typedef struct opj_pass {
-    double distortionDecrease;  //distortion decrease up to and including this pass
-    size_t rate;    // rate up to and including this pass
-    size_t length;	//stream length for this pass
-} opj_pass_t;
-
-typedef struct opj_code_block {
-
-    /////////////////////////
-    // debug info
-    int32_t x0, y0, x1, y1;
-    unsigned int* contextStream;
-    ///////////////////////////
-
-
-    size_t numPix;
-    unsigned char* compressedData;
-    size_t compressedDataLength;
-    size_t numBitPlanes;
-    size_t numPasses;
-    opj_pass_t passes[67];
-    unsigned int sortedIndex;
-} opj_code_block_t;
-
-typedef struct opj_precinct {
-    size_t numBlocks;
-    opj_code_block_t** blocks;
-} opj_precinct_t;
-
-typedef struct opj_band {
-    size_t orient;
-    size_t numPrecincts;
-    opj_precinct_t** precincts;
-    float stepsize;
-} opj_band_t;
-
-typedef struct opj_resolution {
-    size_t level;
-    size_t numBands;
-    opj_band_t** bands;
-
-} opj_resolution_t;
-
-
-typedef struct opj_tile_component {
-    size_t numResolutions;
-    opj_resolution_t** resolutions;
-} opj_tile_component_t;
-
-typedef struct opj_tile {
-    size_t numComponents;
-    opj_tile_component_t** tileComponents;
-} opj_tile_t;
 
 
 
@@ -90,16 +27,9 @@ typedef struct opj_tile {
 // Debug Interface
 /////////////////////
 
-#define XIU_PLUGIN_STATE_NO_DEBUG			0x0
-#define XIU_PLUGIN_STATE_DEBUG_ENCODE		0x1
-#define XIU_PLUGIN_STATE_PRE_TR1			0x2
-#define XIU_PLUGIN_STATE_DWT_QUANTIZATION	0x4
-#define XIU_PLUGIN_STATE_MCT_ONLY			0x8
-#define XIU_PLUGIN_STATE_CPU_ONLY			0x10
 
 static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
 typedef uint32_t(*PLUGIN_GET_DEBUG_STATE)(void);
-
 
 
 /////////////////////

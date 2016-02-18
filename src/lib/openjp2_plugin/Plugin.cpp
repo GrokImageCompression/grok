@@ -52,7 +52,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_ser
 
 
 extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
-	return XIU_PLUGIN_STATE_NO_DEBUG;
+	return OPJ_PLUGIN_STATE_NO_DEBUG;
 }
 
 ////////////////////////////////////

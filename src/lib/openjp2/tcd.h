@@ -211,8 +211,8 @@ typedef struct opj_tcd {
     uint32_t cur_totnum_tp;
     /** Current Packet iterator number */
     uint32_t cur_pino;
-    /** info on each image tile */
-    opj_tcd_tile_t* current_tile;
+    /** info on image tile */
+    opj_tcd_tile_t* tile;
     /** image header */
     opj_image_t *image;
     /** coding parameters */
@@ -221,7 +221,7 @@ typedef struct opj_tcd {
     opj_tcp_t *tcp;
     /** current encoded/decoded tile */
     uint32_t tcd_tileno;
-    /** tell if the tcd is a decoder. */
+    /** indicate if the tcd is a decoder. */
     uint32_t m_is_decoder : 1;
     struct plugin_tile* current_plugin_tile;
 } opj_tcd_t;
@@ -326,7 +326,6 @@ Decode a tile from a buffer into a raw image
 bool opj_tcd_decode_tile(   opj_tcd_t *tcd,
                             opj_seg_buf_t* src_buf,
                             uint32_t tileno,
-                            opj_codestream_index_t *cstr_info,
                             opj_event_mgr_t *manager);
 
 
