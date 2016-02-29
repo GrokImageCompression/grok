@@ -115,6 +115,31 @@ defined with this macro as being exported.
 #include <stdio.h>
 
 
+// FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
+
+typedef int OPJ_BOOL;
+#define OPJ_TRUE 1
+#define OPJ_FALSE 0
+
+typedef char          OPJ_CHAR;
+typedef float         OPJ_FLOAT32;
+typedef double        OPJ_FLOAT64;
+typedef unsigned char OPJ_BYTE;
+
+typedef int8_t   OPJ_INT8;
+typedef uint8_t  OPJ_UINT8;
+typedef int16_t  OPJ_INT16;
+typedef uint16_t OPJ_UINT16;
+typedef int32_t  OPJ_INT32;
+typedef uint32_t OPJ_UINT32;
+typedef int64_t  OPJ_INT64;
+typedef uint64_t OPJ_UINT64;
+
+typedef int64_t  OPJ_OFF_T; 
+typedef size_t   OPJ_SIZE_T;
+ ///////////////////////////////////////////////////////////////////////////
+
+
 /* Avoid compile-time warning because parameter is not used */
 #define OPJ_ARG_NOT_USED(x) (void)(x)
 
