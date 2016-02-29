@@ -203,7 +203,7 @@ void opj_mct_decode(
 {
     int32_t i;
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i) shared(c0, c1,c2)
+#pragma omp parallel default(none) private(i) shared(c0, c1,c2,n)
 	{
 #pragma omp for
 #endif
@@ -449,7 +449,7 @@ void opj_mct_decode_real(
     n &= 7;
 #endif
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(i) shared(c0, c1,c2)
+#pragma omp parallel default(none) private(i) shared(c0, c1,c2,n)
 	{
 #pragma omp for
 #endif
