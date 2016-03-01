@@ -219,7 +219,7 @@ typedef struct opj_tcd {
     opj_cp_t *cp;
     /** coding/decoding parameters common to all tiles */
     opj_tcp_t *tcp;
-    /** current encoded/decoded tile */
+    /** current encoded tile (not used for decode) */
     uint32_t tcd_tileno;
     /** indicate if the tcd is a decoder. */
     uint32_t m_is_decoder : 1;
