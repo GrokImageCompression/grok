@@ -412,7 +412,7 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
     uint32_t pino;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
-    opj_tcp_t *l_tcp = &(p_t2->cp->tcps[p_tile_no]);
+    opj_tcp_t *l_tcp = p_t2->cp->tcps + p_tile_no;
     uint32_t l_nb_bytes_read;
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
     opj_pi_iterator_t *l_current_pi = 00;
@@ -460,7 +460,7 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
             bool skip_layer_or_res = l_current_pi->layno >= l_tcp->num_layers_to_decode ||
                                      l_current_pi->resno >= tilec->minimum_num_resolutions;
 
-            l_img_comp = &(l_image->comps[l_current_pi->compno]);
+            l_img_comp = l_image->comps + l_current_pi->compno;
 
             JAS_FPRINTF( stderr,
                          "packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n\n",

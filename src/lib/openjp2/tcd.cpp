@@ -173,6 +173,7 @@ static void opj_tcd_free_tile(opj_tcd_t *tcd);
 
 
 static bool opj_tcd_t2_decode ( opj_tcd_t *p_tcd,
+								uint32_t p_tile_no,
                                 opj_seg_buf_t* src_buf,
                                 uint32_t * p_data_read,
                                 opj_event_mgr_t *p_manager);
@@ -1256,11 +1257,10 @@ bool opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
                         )
 {
     uint32_t l_data_read;
-    p_tcd->tcd_tileno = p_tile_no;
     p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
 
     l_data_read = 0;
-    if (! opj_tcd_t2_decode(p_tcd, src_buf, &l_data_read,p_manager)) {
+    if (! opj_tcd_t2_decode(p_tcd, p_tile_no, src_buf, &l_data_read,p_manager)) {
         return false;
     }
 
@@ -1479,6 +1479,7 @@ static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
 
 
 static bool opj_tcd_t2_decode (opj_tcd_t *p_tcd,
+								uint32_t p_tile_no,
                                opj_seg_buf_t* src_buf,
                                uint32_t * p_data_read,
                                opj_event_mgr_t *p_manager
@@ -1493,7 +1494,7 @@ static bool opj_tcd_t2_decode (opj_tcd_t *p_tcd,
 
     if (! opj_t2_decode_packets(
                 l_t2,
-                p_tcd->tcd_tileno,
+				p_tile_no,
                 p_tcd->tile,
                 src_buf,
                 p_data_read,

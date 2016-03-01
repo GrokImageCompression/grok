@@ -290,9 +290,9 @@ void opj_write_float_BE(uint8_t * p_buffer, float p_value);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
  */
-size_t opj_stream_read_data (opj_stream_private_t * p_stream,uint8_t * p_buffer, size_t p_size, struct opj_event_mgr * p_event_mgr);
+size_t opj_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr);
 
-size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, struct opj_event_mgr * p_event_mgr);
+size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr);
 
 /**
 * Check if this stream supports zero copy reads
