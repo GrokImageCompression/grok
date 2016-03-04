@@ -693,7 +693,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
     l_image = p_tcd->image;
     l_image_comp = p_tcd->image->comps;
 
-    opj_seg_buf_rewind(&l_tcp->m_data);
+    opj_seg_buf_rewind(l_tcp->m_data);
 
     p = p_tile_no % l_cp->tw;       /* tile coordinates */
     q = p_tile_no / l_cp->tw;

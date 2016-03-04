@@ -282,7 +282,7 @@ struct opj_tcp_t {
     /** number of tile parts for the tile. */
     uint32_t m_nb_tile_parts;
 
-    opj_seg_buf_t m_data;
+    opj_seg_buf_t* m_data;
 
     /** encoding norms */
     double *	mct_norms;

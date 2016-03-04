@@ -86,6 +86,16 @@ uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
 opj_seg_buf_t::opj_seg_buf_t() : data_len(0), cur_seg_id(0) {
 }
 
+opj_seg_buf_t::~opj_seg_buf_t()  {
+	for (auto& seg : segments) {
+		if (seg) {
+			opj_buf_free(seg);
+		}
+	}
+}
+
+
+
 static void opj_seg_buf_increment(opj_seg_buf_t * seg_buf)
 {
     opj_buf_t* cur_seg = NULL;
