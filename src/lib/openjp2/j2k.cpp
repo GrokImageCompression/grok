@@ -4182,13 +4182,15 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
                                   &ptr,
                                   p_j2k->m_specific_param.m_decoder.m_sot_length,
                                   p_manager);
-            opj_seg_buf_push_back(&l_tcp->m_data, ptr, p_j2k->m_specific_param.m_decoder.m_sot_length);
+            opj_seg_buf_push_back(l_tcp->m_data, ptr, p_j2k->m_specific_param.m_decoder.m_sot_length);
 
         } else {
-            opj_seg_buf_alloc_and_push_back(&l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length);
+			if (!l_tcp->m_data)
+				l_tcp->m_data = new opj_seg_buf_t();
+            opj_seg_buf_alloc_and_push_back(l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length);
             l_current_read_size = opj_stream_read_data(
                                       p_stream,
-                                      opj_seg_buf_get_global_ptr(&l_tcp->m_data),
+                                      opj_seg_buf_get_global_ptr(l_tcp->m_data),
                                       p_j2k->m_specific_param.m_decoder.m_sot_length,
                                       p_manager);
 
@@ -7231,7 +7233,10 @@ static void opj_j2k_tcp_destroy (opj_tcp_t *p_tcp)
 
 static void opj_j2k_tcp_data_destroy (opj_tcp_t *p_tcp)
 {
-    opj_seg_buf_cleanup(&p_tcp->m_data);
+	if (p_tcp->m_data) {
+		delete p_tcp->m_data;
+		p_tcp->m_data = NULL;
+	}
 }
 
 static void opj_j2k_cp_destroy (opj_cp_t *p_cp)
@@ -7603,7 +7608,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
         uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
         l_tcp = p_j2k->m_cp.tcps + p_j2k->m_current_tile_number;
 
-        while( (p_j2k->m_current_tile_number < l_nb_tiles) && (l_tcp->m_data.segments.empty()) ) {
+        while( (p_j2k->m_current_tile_number < l_nb_tiles) && (!l_tcp->m_data) ) {
             ++p_j2k->m_current_tile_number;
             ++l_tcp;
         }
@@ -7670,13 +7675,13 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
     }
 
     l_tcp = p_j2k->m_cp.tcps + p_tile_index;
-    if (l_tcp->m_data.segments.empty()) {
+    if (!l_tcp->m_data) {
         opj_j2k_tcp_destroy(l_tcp);
         return false;
     }
 
     if (! opj_tcd_decode_tile(  p_j2k->m_tcd,
-                                &l_tcp->m_data,
+                                l_tcp->m_data,
                                 p_tile_index,
                                 p_manager) ) {
         opj_j2k_tcp_destroy(l_tcp);
