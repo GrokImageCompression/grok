@@ -1546,6 +1546,7 @@ cleanup:
         free(parameters.cp_matrice);
     if(raw_cp.rawComps)
         free(raw_cp.rawComps);
+	opj_cleanup();
 
     t = opj_clock() - t;
     if (num_compressed_files) {

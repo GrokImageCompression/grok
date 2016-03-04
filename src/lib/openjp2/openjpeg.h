@@ -970,6 +970,8 @@ OPJ_API const char * OPJ_CALLCONV opj_version(void);
 /* Initialize OpenJPEG library */
 OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_dir);
 
+OPJ_API void OPJ_CALLCONV opj_cleanup();
+
 /*
 ==========================================================
    image functions definitions
