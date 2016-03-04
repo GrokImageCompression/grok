@@ -32,7 +32,7 @@ Main available cmake flags:
   Note: when using this option, static libraries are not built and executables are dynamically linked.
 * To build the CODEC executables: '-DBUILD_CODEC:bool=on' (default: 'ON')
 * To build the documentation: '-DBUILD_DOC:bool=on' (default: 'OFF')
-* To enable testing (and automatic result upload to http://my.cdash.org/index.php?project=OPENJPEG):
+* To enable testing (and automatic result upload to http://my.cdash.org/index.php?project=ronin):
     cmake . -DBUILD_TESTING:BOOL=ON -DOPJ_DATA_ROOT:PATH='path/to/the/data/directory'
     make
     make Experimental
