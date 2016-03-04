@@ -1638,19 +1638,18 @@ static bool opj_tcd_mct_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t *p_manager)
 
 static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 {
-    int32_t compno;
-    opj_tcd_tile_t *l_tile = p_tcd->tile;
+    int32_t compno=0;
 
 #ifdef _OPENMP
-#pragma omp parallel default(none) private(compno) shared(p_tcd, l_tile)
+#pragma omp parallel default(none) private(compno) shared(p_tcd)
 	{
 #pragma omp for
 #endif
 
-		for (compno = 0; compno < l_tile->numcomps; compno++) {
+		for (compno = 0; compno < p_tcd->tile->numcomps; compno++) {
 			int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
-			opj_tcd_tilecomp_t *l_tile_comp = l_tile->comps + compno;
+			opj_tcd_tilecomp_t *l_tile_comp = p_tcd->tile->comps + compno;
 			opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
 			opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
 
