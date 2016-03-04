@@ -1473,6 +1473,7 @@ cleanup:
 
     t_cumulative = opj_clock() - t_cumulative;
     destroy_parameters(&parameters);
+	opj_cleanup();
 
     if (num_decompressed_images) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));

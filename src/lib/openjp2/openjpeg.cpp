@@ -88,6 +88,10 @@ bool OPJ_CALLCONV opj_initialize(const char* plugin_dir)
     return true;
 }
 
+OPJ_API void OPJ_CALLCONV opj_cleanup() {
+	opj_plugin_cleanup();
+}
+
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
 
