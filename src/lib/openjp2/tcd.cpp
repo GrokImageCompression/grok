@@ -1648,21 +1648,16 @@ static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 #endif
 
 		for (compno = 0; compno < l_tile->numcomps; compno++) {
-    opj_tcd_resolution_t* l_res = 00;
-    uint32_t l_width,l_height,i,j;
-    int32_t * l_current_ptr;
-    int32_t l_min, l_max;
-    uint32_t l_stride;
-
+			int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
 			opj_tcd_tilecomp_t *l_tile_comp = l_tile->comps + compno;
 			opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
 			opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
 
-			l_res = l_tile_comp->resolutions + l_img_comp->resno_decoded;
-			l_width = (uint32_t)(l_res->x1 - l_res->x0);
-			l_height = (uint32_t)(l_res->y1 - l_res->y0);
-			l_stride = (uint32_t)(l_tile_comp->x1 - l_tile_comp->x0) - l_width;
+			opj_tcd_resolution_t* l_res = l_tile_comp->resolutions + l_img_comp->resno_decoded;
+			uint32_t l_width = (uint32_t)(l_res->x1 - l_res->x0);
+			uint32_t l_height = (uint32_t)(l_res->y1 - l_res->y0);
+			uint32_t l_stride = (uint32_t)(l_tile_comp->x1 - l_tile_comp->x0) - l_width;
 
 		//	assert(l_height == 0 || l_width + l_stride <= l_tile_comp->buf->data_size / l_height); 
 
@@ -1675,11 +1670,11 @@ static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 				l_max = (1 << l_img_comp->prec) - 1;
 			}
 
-			l_current_ptr = opj_tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0, 0);
+			int32_t* l_current_ptr = opj_tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0, 0);
 
 			if (l_tccp->qmfbid == 1) {
-				for (j = 0; j < l_height; ++j) {
-					for (i = 0; i < l_width; ++i) {
+				for (uint32_t j = 0; j < l_height; ++j) {
+					for (uint32_t i = 0; i < l_width; ++i) {
 						*l_current_ptr = opj_int_clamp(*l_current_ptr + l_tccp->m_dc_level_shift, l_min, l_max);
 						++l_current_ptr;
 					}
@@ -1687,8 +1682,8 @@ static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 				}
 			}
 			else {
-				for (j = 0; j < l_height; ++j) {
-					for (i = 0; i < l_width; ++i) {
+				for (uint32_t j = 0; j < l_height; ++j) {
+					for (uint32_t i = 0; i < l_width; ++i) {
 						float l_value = *((float *)l_current_ptr);
 						*l_current_ptr = opj_int_clamp((int32_t)opj_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
 						++l_current_ptr;
