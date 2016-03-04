@@ -221,6 +221,10 @@ void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp)
     comp->data = NULL;
     comp->data_size = 0;
     comp->data_size_needed = 0;
+	for (auto& res : comp->resolutions) {
+		opj_free(res);
+	}
+	comp->resolutions.clear();
     delete comp;
 }
 
