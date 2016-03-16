@@ -222,7 +222,7 @@ static opj_mqc_state_t mqc_states[47 * 2] = {
 
 static void opj_mqc_byteout(opj_mqc_t *mqc)
 {
-    if (mqc->bp == mqc->start - 1) {
+    if (mqc->bp < mqc->start) {
         mqc->bp++;
         *mqc->bp = (uint8_t)(mqc->c >> 19);
         mqc->c &= 0x7ffff;
