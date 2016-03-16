@@ -1572,6 +1572,9 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(mqc, cblk->data);
 
+	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL);
+	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
+
     for (passno = 0; bpno >= 0; ++passno) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
         uint32_t correction = 3;
@@ -1592,36 +1595,25 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             break;
         }
 
+
         /* fixed_quality */
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 
-        /* Code switch "RESTART" (i.e. TERMALL) */
-        if ((cblksty & J2K_CCP_CBLKSTY_TERMALL)	&& !((passtype == 2) && (bpno - 1 < 0))) {
+        if ( TERMALL ||
+				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0))
+							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))
+			) {
             if (type == T1_TYPE_RAW) {
                 opj_mqc_flush(mqc);
                 correction = 1;
-                /* correction = mqc_bypass_flush_enc(); */
-            } else {			/* correction = mqc_restart_enc(); */
+            } else {			
                 opj_mqc_flush(mqc);
                 correction = 1;
             }
             pass->term = 1;
         } else {
-            if (((bpno < ((int32_t) (cblk->numbps) - 4) && (passtype > 0))
-                    || ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) {
-                if (type == T1_TYPE_RAW) {
-                    opj_mqc_flush(mqc);
-                    correction = 1;
-                    /* correction = mqc_bypass_flush_enc(); */
-                } else {		/* correction = mqc_restart_enc(); */
-                    opj_mqc_flush(mqc);
-                    correction = 1;
-                }
-                pass->term = 1;
-            } else {
-                pass->term = 0;
-            }
+           pass->term = 0;
         }
 
         if (++passtype == 3) {
@@ -1629,8 +1621,8 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             bpno--;
         }
 
-        if (pass->term && bpno > 0) {
-            type = ((bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+        if (pass->term) {
+            type = ((bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2) && LAZY) ? T1_TYPE_RAW : T1_TYPE_MQ;
             if (type == T1_TYPE_RAW)
                 opj_mqc_bypass_init_enc(mqc);
             else
@@ -1638,7 +1630,9 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         }
 
         pass->distortiondec = cumwmsedec;
-        pass->rate = opj_mqc_numbytes(mqc) + correction;	/* FIXME */
+		pass->rate = opj_mqc_numbytes(mqc);
+		if (pass->rate > 0)
+			pass->rate += correction;
 
         /* Code-switch "RESET" */
         if (cblksty & J2K_CCP_CBLKSTY_RESET)
@@ -1648,7 +1642,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     /* Code switch "ERTERM" (i.e. PTERM) */
     if (cblksty & J2K_CCP_CBLKSTY_PTERM)
         opj_mqc_erterm_enc(mqc);
-    else /* Default coding */ if (!(cblksty & J2K_CCP_CBLKSTY_LAZY))
+    else if (!LAZY && !TERMALL)
         opj_mqc_flush(mqc);
 
     cblk->totalpasses = passno;
