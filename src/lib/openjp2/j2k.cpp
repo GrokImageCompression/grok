@@ -9214,6 +9214,8 @@ static bool opj_j2k_allocate_tile_element_cstr_index(opj_j2k_t *p_j2k)
 
 static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
 {
+	return true;
+
     /* single tile, RGB images only*/
     bool copy_tile_data = (num_tiles> 1) ||
                           p_j2k->m_output_image->numcomps != 3 ||
