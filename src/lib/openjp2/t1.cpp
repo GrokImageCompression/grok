@@ -1293,8 +1293,8 @@ bool opj_t1_decode_cblks(  opj_tcd_tilecomp_t* tilec,
                         opj_rect_init(&cblk_rect, x, y, x + (1<< tccp->cblkw), y + (1<<tccp->cblkh));
 
 
-                        if (!opj_tile_buf_hit_test(tilec->buf, &cblk_rect))
-                            continue;
+                       // if (!opj_tile_buf_hit_test(tilec->buf, &cblk_rect))
+                       //     continue;
 
 
                         x -= band->x0;

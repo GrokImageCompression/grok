@@ -498,8 +498,8 @@ bool opj_dwt_encode(opj_tcd_tilecomp_t * tilec)
 /* </summary>                           */
 bool opj_dwt_decode(opj_tcd_tilecomp_t* tilec, uint32_t numres)
 {
-    if (opj_tile_buf_is_decode_region(tilec->buf))
-        return opj_dwt_region_decode53(tilec, numres);
+  //  if (opj_tile_buf_is_decode_region(tilec->buf))
+ //       return opj_dwt_region_decode53(tilec, numres);
     return opj_dwt_decode_tile(tilec, numres, &opj_dwt_decode_1);
 }
 
@@ -885,8 +885,8 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
 
     uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
 
-    if (opj_tile_buf_is_decode_region(tilec->buf))
-        return opj_dwt_region_decode97(tilec, numres);
+  //  if (opj_tile_buf_is_decode_region(tilec->buf))
+  //      return opj_dwt_region_decode97(tilec, numres);
 
     h.wavelet = (opj_v4_t*) opj_aligned_malloc((opj_dwt_max_resolution(res, numres)+5) * sizeof(opj_v4_t));
     if (!h.wavelet) {
