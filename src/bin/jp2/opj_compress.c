@@ -1196,7 +1196,7 @@ int main(int argc, char **argv)
 	
 
     int32_t i,num_images;
-    int32_t imageno;
+    int32_t imageno=0;
     img_fol_t img_fol;
     dircnt_t *dirptr = NULL;
 

@@ -1041,7 +1041,7 @@ bool store_file_to_disk = true;
 int main(int argc, char **argv)
 {
     opj_decompress_parameters parameters;			/* decompression parameters */
-    int32_t num_images, imageno;
+    int32_t num_images, imageno=0;
     img_fol_t img_fol;
     dircnt_t *dirptr = NULL;
     int failed = 0;

@@ -201,14 +201,14 @@ void opj_mct_decode(
     int32_t* restrict c2,
     uint32_t n)
 {
-    int32_t i;
+    int32_t i=0;
 #ifdef _OPENMP
 #pragma omp parallel default(none) private(i) shared(c0, c1,c2,n)
 	{
 #pragma omp for
 #endif
 
-		for (i = 0; i < n; ++i) {
+		for (i = 0; i < (int32_t)n; ++i) {
 			int32_t y = c0[i];
 			int32_t u = c1[i];
 			int32_t v = c2[i];
@@ -409,7 +409,7 @@ void opj_mct_decode_real(
     float* restrict c2,
     uint32_t n)
 {
-    int32_t i;
+    int32_t i=0;
 #ifdef __SSE__
     __m128 vrv, vgu, vgv, vbu;
     vrv = _mm_set1_ps(1.402f);
@@ -454,7 +454,7 @@ void opj_mct_decode_real(
 #pragma omp for
 #endif
 
-		for (i = 0; i < n; ++i) {
+		for (i = 0; i < (int32_t)n; ++i) {
 			float y = c0[i];
 			float u = c1[i];
 			float v = c2[i];
