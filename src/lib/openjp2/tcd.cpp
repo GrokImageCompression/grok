@@ -716,7 +716,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
 
     /*tile->numcomps = image->numcomps; */
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
-        uint32_t l_tile_data_size=0;
+        uint64_t l_tile_data_size=0;
         uint32_t l_res_data_size=0;
         /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
         l_image_comp->resno_decoded = 0;
@@ -728,18 +728,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
         /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
 
         /* compute l_data_size with overflow check */
-        l_tile_data_size = (uint32_t)(l_tilec->x1 - l_tilec->x0);
-        if ((((uint32_t)-1) / l_tile_data_size) < (uint32_t)(l_tilec->y1 - l_tilec->y0)) {
-            opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile data\n");
-            return false;
-        }
-        l_tile_data_size *= (uint32_t)(l_tilec->y1 - l_tilec->y0);
-
-        if ((((uint32_t)-1) / (uint32_t)sizeof(uint32_t)) < l_tile_data_size) {
-            opj_event_msg(manager, EVT_ERROR, "Not enough memory for tile data\n");
-            return false;
-        }
-        l_tile_data_size *= (uint32_t)sizeof(uint32_t);
+        l_tile_data_size = (uint64_t)(l_tilec->x1 - l_tilec->x0) * (uint64_t)(l_tilec->y1 - l_tilec->y0) * sizeof(uint32_t);
         l_tilec->numresolutions = l_tccp->numresolutions;
         if (l_tccp->numresolutions < l_cp->m_specific_param.m_dec.m_reduce) {
             l_tilec->minimum_num_resolutions = 1;
@@ -1533,7 +1522,7 @@ static bool opj_tcd_t1_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t * p_manager)
 static bool opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
 {
     opj_tcd_tile_t * l_tile = p_tcd->tile;
-    int64_t compno;
+    int64_t compno=0;
     bool rc = true;
 #ifdef _OPENMP
     #pragma omp parallel default(none) private(compno) shared(p_tcd, l_tile, rc)
@@ -1646,7 +1635,7 @@ static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 #pragma omp for
 #endif
 
-		for (compno = 0; compno < p_tcd->tile->numcomps; compno++) {
+		for (compno = 0; compno < (int32_t)p_tcd->tile->numcomps; compno++) {
 			int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
 			opj_tcd_tilecomp_t *l_tile_comp = p_tcd->tile->comps + compno;
@@ -1899,7 +1888,7 @@ static bool opj_tcd_mct_encode ( opj_tcd_t *p_tcd )
 bool opj_tcd_dwt_encode ( opj_tcd_t *p_tcd )
 {
     opj_tcd_tile_t * l_tile = p_tcd->tile;
-    int64_t compno;
+    int64_t compno=0;
     bool rc = true;
 #ifdef _OPENMP
     #pragma omp parallel default(none) private(compno) shared(p_tcd, l_tile, rc)

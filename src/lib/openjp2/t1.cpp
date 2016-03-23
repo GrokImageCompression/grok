@@ -1572,7 +1572,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(mqc, cblk->data);
 
-	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL);
+	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
 	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
 
     for (passno = 0; bpno >= 0; ++passno) {

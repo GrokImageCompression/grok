@@ -45,9 +45,9 @@ typedef struct opj_tile_buf_resolution {
 typedef struct opj_tile_buf_component {
 	std::vector<opj_tile_buf_resolution_t*> resolutions;
     int32_t *data;
-    uint32_t data_size_needed;	/* we may either need to allocate this amount of data,
+    uint64_t data_size_needed;	/* we may either need to allocate this amount of data,
 									   or re-use image data and ignore this value */
-    uint32_t data_size;			/* size of the data of the component */
+    uint64_t data_size;			/* size of the data of the component */
     bool owns_data;				/* true if tile buffer manages its data array, false otherwise */
 
     opj_rect_t dim;		  /* canvas coordinates of region */
