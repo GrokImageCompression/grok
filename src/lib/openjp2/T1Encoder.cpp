@@ -17,12 +17,13 @@
 
 #include "opj_includes.h"
 #include "T1Encoder.h"
+#include "Barrier.h"
 
+Barrier encode_t1_barrier(numEncodeThreads);
 
 T1Encoder::T1Encoder() : tile(NULL), 
 						maxCblkW(0),
-						maxCblkH(0), 
-						numThreads(0)
+						maxCblkH(0)
 {
 
 }
@@ -88,7 +89,6 @@ void T1Encoder::encode(int32_t threadId) {
 		tile->distotile += dist;
 	}
 	opj_t1_destroy(t1);
-	_condition.notify_one();
 }
 void T1Encoder::encodeOpt(int32_t threadId) {
 
@@ -153,21 +153,18 @@ void T1Encoder::encodeOpt(int32_t threadId) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);
 		tile->distotile += dist;
 	}
-	_condition.notify_one();
 }
 
 bool T1Encoder::encode(bool do_opt, opj_tcd_tile_t *tile,
 						std::vector<encodeBlockInfo*>* blocks, 
-						int32_t maxCblkW, int32_t maxCblkH,
-						int32_t numThreads) {
+						int32_t maxCblkW, int32_t maxCblkH) {
 	if (!blocks || blocks->size() == 0)
 		return true;
 	this->tile = tile;
 	this->maxCblkW = maxCblkW;
 	this->maxCblkH = maxCblkH;
-	this->numThreads = numThreads;
 
-	for (auto i = 0; i < numThreads; ++i) {
+	for (auto i = 0; i < numEncodeThreads; ++i) {
 		if (do_opt) {
 			auto t1 = opj_t1_opt_create(true);
 			if (!t1) {
@@ -189,18 +186,16 @@ bool T1Encoder::encode(bool do_opt, opj_tcd_tile_t *tile,
 	}
 	encodeQueue.push_no_lock(blocks);
 	return_code = true;
-	for (auto threadNum = 0; threadNum < numThreads; threadNum++) {
+	for (auto threadNum = 0; threadNum < numEncodeThreads; threadNum++) {
 		encodeWorkers.push_back(std::thread([this,do_opt,tile, threadNum]()
 		{
 			if (do_opt)
 				encodeOpt(threadNum);
 			else
 				 encode(threadNum);
+			encode_t1_barrier.arrive_and_wait();
 		}));
 	}
-
-	std::unique_lock<std::mutex> lk(_mutex);
-	_condition.wait(lk, [this] { return encodeQueue.empty(); });
 
 	// join threads
 	for (auto& t : encodeWorkers) {

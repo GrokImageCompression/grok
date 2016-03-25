@@ -17,14 +17,12 @@
 
 #pragma once
 
-#include <string>
-#include <thread>
-#include <mutex>
-#include <vector>
-#include <condition_variable>
 #include "BlockingQueue.h"
 #include <atomic>
+#include <thread>
 
+
+const int numEncodeThreads = 8;
 
 class T1Encoder
 {
@@ -32,8 +30,7 @@ public:
 	T1Encoder();
 	bool encode(bool do_opt, opj_tcd_tile_t *tile,
 				std::vector<encodeBlockInfo*>* blocks,
-				int32_t maxCblkW, int32_t maxCblkH,
-				int32_t numThreads);
+				int32_t maxCblkW, int32_t maxCblkH);
 
 	void encode(int32_t threadId );
 	void encodeOpt(int32_t threadId);
@@ -41,7 +38,6 @@ public:
 	std::atomic_bool return_code;
 
 private:
-	int32_t numThreads;
 	opj_tcd_tile_t *tile;
 	int32_t maxCblkW;
 	int32_t maxCblkH;
@@ -51,10 +47,6 @@ private:
 
 	std::vector<std::thread> encodeWorkers;
 	BlockingQueue<encodeBlockInfo*> encodeQueue;
-
-	mutable std::mutex _mutex;
-	std::condition_variable _condition;
-
 	mutable std::mutex distortion_mutex;
 
 };
