@@ -1523,7 +1523,7 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
     } /* compno  */
 
 	T1Encoder encoder;
-	return encoder.encode(do_opt,tile, &blocks,maxCblkW, maxCblkH, 8);
+	return encoder.encode(do_opt,tile, &blocks,maxCblkW, maxCblkH);
 	
 }
 

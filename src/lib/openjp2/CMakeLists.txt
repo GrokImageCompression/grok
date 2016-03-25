@@ -26,6 +26,7 @@ include_directories(
 )
 # Defines the source code for the library
 set(OPENJPEG_SRCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/Barrier.h
   ${CMAKE_CURRENT_SOURCE_DIR}/bio.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bio.h
   ${CMAKE_CURRENT_SOURCE_DIR}/cio.cpp

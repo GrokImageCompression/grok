@@ -1514,7 +1514,7 @@ static bool opj_tcd_t1_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t * p_manager)
         ++l_tile_comp;
         ++l_tccp;
     }
-	decoder.decode(&blocks, 8);
+	decoder.decode(&blocks, numDecodeThreads);
     return true;
 }
 

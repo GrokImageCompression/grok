@@ -18,13 +18,11 @@
 #pragma once
 
 #include <string>
-#include <thread>
-#include <mutex>
 #include <vector>
-#include <condition_variable>
+#include <thread>
 #include "BlockingQueue.h"
-#include <atomic>
 
+const int numDecodeThreads = 8;
 
 class T1Decoder
 {
@@ -38,8 +36,4 @@ private:
 
 	std::vector<std::thread> decodeWorkers;
 	BlockingQueue<decodeBlockInfo*> decodeQueue;
-
-	mutable std::mutex _mutex;
-	std::condition_variable _condition;
-
 };

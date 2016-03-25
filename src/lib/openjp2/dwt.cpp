@@ -60,6 +60,11 @@
 #endif
 
 #include "opj_includes.h"
+#include "Barrier.h"
+#include "T1Decoder.h"
+std::vector<std::thread> dwtWorkers;
+
+Barrier decode_dwt_barrier(numDecodeThreads);
 
 /** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
 /*@{*/
@@ -410,7 +415,7 @@ static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 /* </summary>                           */
 static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_function)(int32_t *, int32_t,int32_t,int32_t) )
 {
-    int32_t i, j, k;
+    int32_t i,k;
     int32_t *a = 00;
     int32_t *aj = 00;
     int32_t *bj = 00;
@@ -439,7 +444,7 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
     }
     i = l;
 
-    while (i--) {
+	while (i--) {
         int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
         int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
         int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
@@ -456,7 +461,9 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
 
         sn = rh1;
         dn = rh - rh1;
-        for (j = 0; j < rw; ++j) {
+		
+		// j = threadId, j+= numThreads
+        for (int32_t j = 0; j < rw; ++j) {
             aj = a + j;
             for (k = 0; k < rh; ++k) {
                 bj[k] = aj[k*w];
@@ -467,18 +474,21 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
             opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
         }
 
+		// barrier
+
         sn = rw1;
         dn = rw - rw1;
 
-        for (j = 0; j < rh; j++) {
+        for (int32_t j = 0; j < rh; j++) {
             aj = a + j * w;
             for (k = 0; k < rw; k++)  bj[k] = aj[k];
             (*p_function) (bj, dn, sn, cas_row);
             opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
         }
 
-        l_cur_res = l_last_res;
+		// barrier
 
+        l_cur_res = l_last_res;
         --l_last_res;
     }
 
@@ -895,10 +905,10 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
     }
     v.wavelet = h.wavelet;
 
+
     while( --numres) {
         float * restrict aj = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-        uint32_t bufsize = (uint32_t)((tilec->x1 - tilec->x0) * (tilec->y1 - tilec->y0));
-        int32_t j;
+        uint64_t bufsize = (uint64_t)(tilec->x1 - tilec->x0) * (tilec->y1 - tilec->y0);
 
         h.sn = (int32_t)rw;
         v.sn = (int32_t)rh;
@@ -909,33 +919,31 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
         rh = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
 
         h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = res->x0 % 2;
+        h.cas = res->x0 &1;
 
-        for(j = (int32_t)rh; j > 3; j -= 4) {
-            int32_t k;
+        for(int32_t j = (int32_t)rh; j > 3; j -= 4) {
             opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
             opj_v4dwt_decode(&h);
 
-            for(k = (int32_t)rw; --k >= 0;) {
+            for(int32_t k = (int32_t)rw; --k >= 0;) {
                 aj[k               ] = h.wavelet[k].f[0];
                 aj[k+(int32_t)w  ] = h.wavelet[k].f[1];
-                aj[k+(int32_t)w*2] = h.wavelet[k].f[2];
+                aj[k+(int32_t)(w<<1)] = h.wavelet[k].f[2];
                 aj[k+(int32_t)w*3] = h.wavelet[k].f[3];
             }
 
-            aj += w*4;
-            bufsize -= w*4;
+            aj += w<<2;
+            bufsize -= w<<2;
         }
 
         if (rh & 0x03) {
-            int32_t k;
-            j = rh & 0x03;
+            int32_t j = rh & 0x03;
             opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
             opj_v4dwt_decode(&h);
-            for(k = (int32_t)rw; --k >= 0;) {
+            for(int32_t k = (int32_t)rw; --k >= 0;) {
                 switch(j) {
                 case 3:
-                    aj[k+(int32_t)w*2] = h.wavelet[k].f[2];
+                    aj[k+(int32_t)(w<<1)] = h.wavelet[k].f[2];
                 case 2:
                     aj[k+(int32_t)w  ] = h.wavelet[k].f[1];
                 case 1:
@@ -945,30 +953,26 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
         }
 
         v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = res->y0 % 2;
+        v.cas = res->y0 &1;
 
         aj = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-        for(j = (int32_t)rw; j > 3; j -= 4) {
-            uint32_t k;
-
+        for(int32_t j = (int32_t)rw; j > 3; j -= 4) {
             opj_v4dwt_interleave_v(&v, aj, (int32_t)w, 4);
             opj_v4dwt_decode(&v);
 
-            for(k = 0; k < rh; ++k) {
+            for(uint32_t k = 0; k < rh; ++k) {
                 memcpy(&aj[k*w], &v.wavelet[k], 4 * sizeof(float));
             }
             aj += 4;
         }
 
         if (rw & 0x03) {
-            uint32_t k;
-
-            j = rw & 0x03;
+            int32_t j = rw & 0x03;
 
             opj_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
             opj_v4dwt_decode(&v);
 
-            for(k = 0; k < rh; ++k) {
+            for(uint32_t k = 0; k < rh; ++k) {
                 memcpy(&aj[k*w], &v.wavelet[k], (size_t)j * sizeof(float));
             }
         }
