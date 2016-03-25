@@ -104,11 +104,11 @@ void opj_rect_ceildivpow2(opj_rect_t* r, int32_t power)
 }
 
 
-int32_t opj_rect_get_area(opj_rect_t* r)
+int64_t opj_rect_get_area(opj_rect_t* r)
 {
     if (!r)
         return 0;
-    return (r->x1 - r->x0) * (r->y1 - r->y0);
+    return (int64_t)(r->x1 - r->x0) * (r->y1 - r->y0);
 }
 
 void opj_rect_pan(opj_rect_t* r, opj_pt_t* shift)
