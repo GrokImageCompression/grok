@@ -702,7 +702,7 @@ typedef struct opj_tile_info {
     /** information concerning packets inside tile */
     opj_packet_info_t *packet;
     /** add fixed_quality */
-    int32_t numpix;
+    int64_t numpix;
     /** add fixed_quality */
     double distotile;
     /** number of markers */

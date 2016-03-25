@@ -179,7 +179,7 @@ typedef struct opj_tcd_tilecomp {
     uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
     opj_tcd_resolution_t *resolutions;  /* resolutions information */
     uint32_t resolutions_size;        /* size of data for resolutions (in bytes) */
-    int32_t numpix;                   /* add fixed_quality */
+    int64_t numpix;                   /* add fixed_quality */
     opj_tile_buf_component_t* buf;
 } opj_tcd_tilecomp_t;
 
@@ -191,7 +191,7 @@ typedef struct opj_tcd_tile {
     int32_t x0, y0, x1, y1;		/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numcomps;			/* number of components in tile */
     opj_tcd_tilecomp_t *comps;	/* Components information */
-    int32_t numpix;				/* add fixed_quality */
+    int64_t numpix;				/* add fixed_quality */
     double distotile;			/* add fixed_quality */
     double distolayer[100];	/* add fixed_quality */
     uint32_t packno;              /* packet number */
