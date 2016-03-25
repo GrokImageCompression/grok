@@ -196,7 +196,7 @@ bool opj_tile_buf_alloc_component_data_decode(opj_tile_buf_component_t* buf)
         return false;
 
     if (!buf->data ) {
-        int32_t area = opj_rect_get_area(&buf->tile_dim);
+        int64_t area = opj_rect_get_area(&buf->tile_dim);
         if (!area)
             return false;
         buf->data = (int32_t *)opj_aligned_malloc( area * sizeof(int32_t));
