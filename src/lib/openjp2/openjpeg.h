@@ -1523,7 +1523,7 @@ OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
 
 
 ////////////////////////////////////////////////////
-// Structs to pass data between plugin and Ronin
+// Structs to pass data between plugin and grok
 ////////////////////////////////////////////////////
 
 typedef struct opj_pass {
