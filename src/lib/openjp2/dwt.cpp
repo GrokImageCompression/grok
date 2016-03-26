@@ -62,9 +62,13 @@
 #include "opj_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
+#include <atomic>
+
 std::vector<std::thread> dwtWorkers;
 
 Barrier decode_dwt_barrier(numDecodeThreads);
+Barrier decode_dwt_calling_barrier(numDecodeThreads + 1);
+
 
 /** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
 /*@{*/
@@ -603,63 +607,80 @@ uint32_t opj_dwt_max_resolution(opj_tcd_resolution_t* restrict r, uint32_t i)
 /* </summary>                           */
 static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec, uint32_t numres, DWT1DFN dwt_1D)
 {
-    opj_dwt_t h;
-    opj_dwt_t v;
+	if (numres == 1U) {
+		return true;
+	}
+	int rc = 0;
+	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	for (auto threadId = 0; threadId < numDecodeThreads; threadId++) {
+		dwtWorkers.push_back(std::thread([tilec,numres, &rc, dwt_1D, tileBuf, threadId]()
+		{
+			auto numResolutions = numres;
+			opj_dwt_t h;
+			opj_dwt_t v;
 
-    opj_tcd_resolution_t* tr = tilec->resolutions;
+			opj_tcd_resolution_t* tr = tilec->resolutions;
 
-    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);	/* width of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);	/* height of the resolution level computed */
+			uint32_t rw = (uint32_t)(tr->x1 - tr->x0);	/* width of the resolution level computed */
+			uint32_t rh = (uint32_t)(tr->y1 - tr->y0);	/* height of the resolution level computed */
 
-    uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+			uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+			h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
+			if (!h.mem) {
+				rc++;
+				goto cleanup;
+			}
 
-    if (numres == 1U) {
-        return true;
-    }
-    h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numres) * sizeof(int32_t));
-    if (! h.mem) {
-        /* FIXME event manager error callback */
-        return false;
-    }
+			v.mem = h.mem;
 
-    v.mem = h.mem;
+			while (--numResolutions) {
+				int32_t * restrict tiledp = tileBuf;
 
-    while( --numres) {
-        int32_t * restrict tiledp =
-            opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+				++tr;
+				h.sn = (int32_t)rw;
+				v.sn = (int32_t)rh;
 
-        uint32_t j;
+				rw = (uint32_t)(tr->x1 - tr->x0);
+				rh = (uint32_t)(tr->y1 - tr->y0);
 
-        ++tr;
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+				h.dn = (int32_t)(rw - (uint32_t)h.sn);
+				h.cas = tr->x0 % 2;
 
-        rw = (uint32_t)(tr->x1 - tr->x0);
-        rh = (uint32_t)(tr->y1 - tr->y0);
+				for (uint32_t j = threadId; j < rh; j+=numDecodeThreads) {
+					opj_dwt_interleave_h(&h, &tiledp[j*w]);
+					(dwt_1D)(&h);
+					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
+				}
 
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = tr->x0 % 2;
+				v.dn = (int32_t)(rh - (uint32_t)v.sn);
+				v.cas = tr->y0 % 2;
 
-        for(j = 0; j < rh; ++j) {
-            opj_dwt_interleave_h(&h, &tiledp[j*w]);
-            (dwt_1D)(&h);
-            memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
-        }
+				decode_dwt_barrier.arrive_and_wait();
 
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = tr->y0 % 2;
+				for (uint32_t j = threadId; j < rw; j+=numDecodeThreads) {
+							opj_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
+					(dwt_1D)(&v);
+					for (uint32_t k = 0; k < rh; ++k) {
+						tiledp[k * w + j] = v.mem[k];
+					}
+				}
+				decode_dwt_barrier.arrive_and_wait();
+			}
+cleanup:
+			if (h.mem)
+				opj_aligned_free(h.mem);
+			decode_dwt_calling_barrier.arrive_and_wait();
 
-        for(j = 0; j < rw; ++j) {
-            uint32_t k;
-            opj_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
-            (dwt_1D)(&v);
-            for(k = 0; k < rh; ++k) {
-                tiledp[k * w + j] = v.mem[k];
-            }
-        }
-    }
-    opj_aligned_free(h.mem);
-    return true;
+		}));
+	}
+	decode_dwt_calling_barrier.arrive_and_wait();
+
+	for (auto& t : dwtWorkers) {
+		t.join();
+	}
+	dwtWorkers.clear();
+
+    return rc == 0 ? true : false;
 }
 
 
@@ -885,99 +906,127 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 /* </summary>                            */
 bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
 {
-    opj_v4dwt_t h;
-    opj_v4dwt_t v;
+	int rc = 0;
+	auto tileBuf = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	for (auto threadId = 0; threadId < numDecodeThreads; threadId++) {
+		dwtWorkers.push_back(std::thread([ tilec,numres,&rc,tileBuf, threadId]()
+		{
+			auto numResolutions = numres;
+			opj_v4dwt_t h;
+			opj_v4dwt_t v;
 
-    opj_tcd_resolution_t* res = tilec->resolutions;
+			opj_tcd_resolution_t* res = tilec->resolutions;
 
-    uint32_t rw = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
-    uint32_t rh = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
+			uint32_t rw = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
+			uint32_t rh = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
 
-    uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+			uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
 
-  //  if (opj_tile_buf_is_decode_region(tilec->buf))
-  //      return opj_dwt_region_decode97(tilec, numres);
+			//  if (opj_tile_buf_is_decode_region(tilec->buf))
+			//      return opj_dwt_region_decode97(tilec, numres);
 
-    h.wavelet = (opj_v4_t*) opj_aligned_malloc((opj_dwt_max_resolution(res, numres)+5) * sizeof(opj_v4_t));
-    if (!h.wavelet) {
-        /* FIXME event manager error callback */
-        return false;
-    }
-    v.wavelet = h.wavelet;
+			h.wavelet = (opj_v4_t*)opj_aligned_malloc((opj_dwt_max_resolution(res, numResolutions) + 5) * sizeof(opj_v4_t));
+			if (!h.wavelet) {
+				/* FIXME event manager error callback */
+				rc++;
+				goto cleanup;
+			}
+			v.wavelet = h.wavelet;
 
+			
+			while (--numResolutions) {
+				float * restrict aj = tileBuf + ((w << 2) * threadId);
+				uint64_t bufsize = (uint64_t)(tilec->x1 - tilec->x0) * (tilec->y1 - tilec->y0) - (threadId * (w << 2));
 
-    while( --numres) {
-        float * restrict aj = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-        uint64_t bufsize = (uint64_t)(tilec->x1 - tilec->x0) * (tilec->y1 - tilec->y0);
+				h.sn = (int32_t)rw;
+				v.sn = (int32_t)rh;
 
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+				++res;
 
-        ++res;
+				rw = (uint32_t)(res->x1 - res->x0);	// width of the resolution level computed 
+				rh = (uint32_t)(res->y1 - res->y0);	// height of the resolution level computed 
 
-        rw = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
-        rh = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
+				h.dn = (int32_t)(rw - (uint32_t)h.sn);
+				h.cas = res->x0 & 1;
+				int32_t j;
+				for (j = (int32_t)rh - (threadId<<2); j > 3; j -= (numDecodeThreads<<2)) {
+					opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
+					opj_v4dwt_decode(&h);
+					
+					for (int32_t k = (int32_t)rw; k-- > 0;) {
+						aj[k] = h.wavelet[k].f[0];
+						aj[k + (int32_t)w] = h.wavelet[k].f[1];
+						aj[k + (int32_t)(w << 1)] = h.wavelet[k].f[2];
+						aj[k + (int32_t)w * 3] = h.wavelet[k].f[3];
+					}
+					
+					aj += (w << 2) * numDecodeThreads;
+					bufsize -= (w << 2) * numDecodeThreads;
+				}
+				decode_dwt_barrier.arrive_and_wait();
+				
+				if (j > 0 && (rh & 0x03)) {
+					int32_t j = rh & 0x03;
+					opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
+					opj_v4dwt_decode(&h);
+					for (int32_t k = (int32_t)rw; k-- > 0;) {
+						switch (j) {
+						case 3:
+							aj[k + (int32_t)(w << 1)] = h.wavelet[k].f[2];
+						case 2:
+							aj[k + (int32_t)w] = h.wavelet[k].f[1];
+						case 1:
+							aj[k] = h.wavelet[k].f[0];
+						}
+					}
+				}
+				
+				decode_dwt_barrier.arrive_and_wait();
+				
+				v.dn = (int32_t)(rh - (uint32_t)v.sn);
+				v.cas = res->y0 & 1;
+				
+				decode_dwt_barrier.arrive_and_wait();
+				
+				aj = tileBuf + (threadId << 2);
+				for (j = (int32_t)rw - (threadId<<2); j > 3; j -= (numDecodeThreads<<2)) {
+					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, 4);
+					opj_v4dwt_decode(&v);
 
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = res->x0 &1;
+					for (uint32_t k = 0; k < rh; ++k) {
+						memcpy(&aj[k*w], &v.wavelet[k], 4 * sizeof(float));
+					}
+					aj += (numDecodeThreads<<2);
+				}
+				
+				if (j > 0 && (rw & 0x03)) {
+					int32_t j = rw & 0x03;
 
-        for(int32_t j = (int32_t)rh; j > 3; j -= 4) {
-            opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
-            opj_v4dwt_decode(&h);
+					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
+					opj_v4dwt_decode(&v);
 
-            for(int32_t k = (int32_t)rw; --k >= 0;) {
-                aj[k               ] = h.wavelet[k].f[0];
-                aj[k+(int32_t)w  ] = h.wavelet[k].f[1];
-                aj[k+(int32_t)(w<<1)] = h.wavelet[k].f[2];
-                aj[k+(int32_t)w*3] = h.wavelet[k].f[3];
-            }
+					for (uint32_t k = 0; k < rh; ++k) {
+						memcpy(&aj[k*w], &v.wavelet[k], (size_t)j * sizeof(float));
+					}
+				}
+				
+				decode_dwt_barrier.arrive_and_wait();
+			}
 
-            aj += w<<2;
-            bufsize -= w<<2;
-        }
+		cleanup:
+			if (h.wavelet)
+				opj_aligned_free(h.wavelet);
+			decode_dwt_calling_barrier.arrive_and_wait();
 
-        if (rh & 0x03) {
-            int32_t j = rh & 0x03;
-            opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
-            opj_v4dwt_decode(&h);
-            for(int32_t k = (int32_t)rw; --k >= 0;) {
-                switch(j) {
-                case 3:
-                    aj[k+(int32_t)(w<<1)] = h.wavelet[k].f[2];
-                case 2:
-                    aj[k+(int32_t)w  ] = h.wavelet[k].f[1];
-                case 1:
-                    aj[k               ] = h.wavelet[k].f[0];
-                }
-            }
-        }
+		}));
+	}
 
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = res->y0 &1;
+	decode_dwt_calling_barrier.arrive_and_wait();
 
-        aj = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-        for(int32_t j = (int32_t)rw; j > 3; j -= 4) {
-            opj_v4dwt_interleave_v(&v, aj, (int32_t)w, 4);
-            opj_v4dwt_decode(&v);
+	for (auto& t : dwtWorkers) {
+		t.join();
+	}
+	dwtWorkers.clear();
 
-            for(uint32_t k = 0; k < rh; ++k) {
-                memcpy(&aj[k*w], &v.wavelet[k], 4 * sizeof(float));
-            }
-            aj += 4;
-        }
-
-        if (rw & 0x03) {
-            int32_t j = rw & 0x03;
-
-            opj_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
-            opj_v4dwt_decode(&v);
-
-            for(uint32_t k = 0; k < rh; ++k) {
-                memcpy(&aj[k*w], &v.wavelet[k], (size_t)j * sizeof(float));
-            }
-        }
-    }
-
-    opj_aligned_free(h.wavelet);
-    return true;
+    return rc == 0 ? true : false;
 }

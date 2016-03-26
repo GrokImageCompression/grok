@@ -186,13 +186,13 @@ bool T1Encoder::encode(bool do_opt, opj_tcd_tile_t *tile,
 	}
 	encodeQueue.push_no_lock(blocks);
 	return_code = true;
-	for (auto threadNum = 0; threadNum < numEncodeThreads; threadNum++) {
-		encodeWorkers.push_back(std::thread([this,do_opt,tile, threadNum]()
+	for (auto threadId = 0; threadId < numEncodeThreads; threadId++) {
+		encodeWorkers.push_back(std::thread([this,do_opt,tile, threadId]()
 		{
 			if (do_opt)
-				encodeOpt(threadNum);
+				encodeOpt(threadId);
 			else
-				 encode(threadNum);
+				 encode(threadId);
 			encode_t1_barrier.arrive_and_wait();
 		}));
 	}

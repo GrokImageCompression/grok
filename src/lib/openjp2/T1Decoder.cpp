@@ -31,8 +31,8 @@ T1Decoder::T1Decoder(uint16_t blockw,
 
 void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
 	decodeQueue.push_no_lock(blocks);
-	for (auto threadNum = 0; threadNum < numThreads; threadNum++) {
-		decodeWorkers.push_back(std::thread([this, threadNum]()
+	for (auto threadId = 0; threadId < numThreads; threadId++) {
+		decodeWorkers.push_back(std::thread([this, threadId]()
 		{
 			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
 			if (!t1)
