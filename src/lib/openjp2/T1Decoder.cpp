@@ -19,7 +19,6 @@
 #include "T1Decoder.h"
 #include "Barrier.h"
 
-Barrier decode_t1_barrier(numDecodeThreads);
 
 T1Decoder::T1Decoder(uint16_t blockw, 
 					uint16_t blockh) :codeblock_width(blockw), 
@@ -31,8 +30,14 @@ T1Decoder::T1Decoder(uint16_t blockw,
 
 void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
 	decodeQueue.push_no_lock(blocks);
+	Barrier decode_t1_barrier(numDecodeThreads);
+	Barrier decode_t1_calling_barrier(numDecodeThreads + 1);
+
 	for (auto threadId = 0; threadId < numThreads; threadId++) {
-		decodeWorkers.push_back(std::thread([this, threadId]()
+		decodeWorkers.push_back(std::thread([this, 
+											&decode_t1_barrier,
+											&decode_t1_calling_barrier,
+											threadId]()
 		{
 			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
 			if (!t1)
@@ -94,9 +99,11 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 			}
 			opj_t1_destroy(t1);
 			decode_t1_barrier.arrive_and_wait();
+			decode_t1_calling_barrier.arrive_and_wait();
 		}));
 	}
 
+	decode_t1_calling_barrier.arrive_and_wait();
 	for (auto& t : decodeWorkers) {
 		t.join();
 	}
