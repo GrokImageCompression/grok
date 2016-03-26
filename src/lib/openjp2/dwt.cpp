@@ -66,9 +66,6 @@
 
 std::vector<std::thread> dwtWorkers;
 
-Barrier decode_dwt_barrier(numDecodeThreads);
-Barrier decode_dwt_calling_barrier(numDecodeThreads + 1);
-
 
 /** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
 /*@{*/
@@ -612,8 +609,18 @@ static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec, uint32_t numres, DWT1
 	}
 	int rc = 0;
 	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	Barrier decode_dwt_barrier(numDecodeThreads);
+	Barrier decode_dwt_calling_barrier(numDecodeThreads + 1);
+
 	for (auto threadId = 0; threadId < numDecodeThreads; threadId++) {
-		dwtWorkers.push_back(std::thread([tilec,numres, &rc, dwt_1D, tileBuf, threadId]()
+		dwtWorkers.push_back(std::thread([tilec,
+											numres,
+											&rc, 
+											dwt_1D,
+											tileBuf,
+											&decode_dwt_barrier,
+											&decode_dwt_calling_barrier,
+											threadId]()
 		{
 			auto numResolutions = numres;
 			opj_dwt_t h;
@@ -908,8 +915,17 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
 {
 	int rc = 0;
 	auto tileBuf = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	Barrier decode_dwt_barrier(numDecodeThreads);
+	Barrier decode_dwt_calling_barrier(numDecodeThreads + 1);
+
 	for (auto threadId = 0; threadId < numDecodeThreads; threadId++) {
-		dwtWorkers.push_back(std::thread([ tilec,numres,&rc,tileBuf, threadId]()
+		dwtWorkers.push_back(std::thread([ tilec,
+											numres,
+											&rc,
+											tileBuf,
+											&decode_dwt_barrier,
+											&decode_dwt_calling_barrier,
+											threadId]()
 		{
 			auto numResolutions = numres;
 			opj_v4dwt_t h;

@@ -19,7 +19,6 @@
 #include "T1Encoder.h"
 #include "Barrier.h"
 
-Barrier encode_t1_barrier(numEncodeThreads);
 
 T1Encoder::T1Encoder() : tile(NULL), 
 						maxCblkW(0),
@@ -186,16 +185,26 @@ bool T1Encoder::encode(bool do_opt, opj_tcd_tile_t *tile,
 	}
 	encodeQueue.push_no_lock(blocks);
 	return_code = true;
+	Barrier encode_t1_barrier(numEncodeThreads);
+	Barrier encode_t1_calling_barrier(numEncodeThreads + 1);
+
 	for (auto threadId = 0; threadId < numEncodeThreads; threadId++) {
-		encodeWorkers.push_back(std::thread([this,do_opt,tile, threadId]()
+		encodeWorkers.push_back(std::thread([this,
+											do_opt,
+											tile,
+											&encode_t1_barrier,
+											&encode_t1_calling_barrier,
+											threadId]()
 		{
 			if (do_opt)
 				encodeOpt(threadId);
 			else
 				 encode(threadId);
 			encode_t1_barrier.arrive_and_wait();
+			encode_t1_calling_barrier.arrive_and_wait();
 		}));
 	}
+	encode_t1_calling_barrier.arrive_and_wait();
 
 	// join threads
 	for (auto& t : encodeWorkers) {
