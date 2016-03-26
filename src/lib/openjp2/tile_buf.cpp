@@ -150,7 +150,7 @@ int32_t* opj_tile_buf_get_ptr(opj_tile_buf_component_t* buf,
                               uint32_t offsetx,
                               uint32_t offsety)
 {
-    return buf->data + (uint32_t)offsetx + (uint32_t)offsety* (buf->tile_dim.x1 - buf->tile_dim.x0);
+    return buf->data + (uint64_t)offsetx + (uint64_t)offsety* (buf->tile_dim.x1 - buf->tile_dim.x0);
 
 }
 
