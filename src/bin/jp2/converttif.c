@@ -178,9 +178,13 @@ int imagetotif(opj_image_t * image, const char *outfile)
     convert_32s_PXCX cvtPxToCx = NULL;
     convert_32sXXx_C1R cvt32sToTif = NULL;
 
+	// actual bits per sample
     bps = (int)image->comps[0].prec;
-    planes[0] = image->comps[0].data;
 
+	// even bits per sample
+	auto tif_bps = bps;
+
+    planes[0] = image->comps[0].data;
     numcomps = image->numcomps;
 
     if (image->color_space == OPJ_CLRSPC_CMYK) {
@@ -222,9 +226,12 @@ int imagetotif(opj_image_t * image, const char *outfile)
         return 1;
     }
 
-    if((bps > 16) || ((bps != 1) && (bps & 1))) bps = 0;
-    if(bps == 0) {
-        fprintf(stderr,"imagetotif: Bits=%d, Only 1, 2, 4, 6, 8, 10, 12, 14 and 16 bits implemented\n",bps);
+	// odd bit depths greater than one are rounded up to nearest even
+	if ((tif_bps > 1) && (tif_bps &1))
+		tif_bps++;
+	
+    if(!tif_bps || (tif_bps > 16)) {
+        fprintf(stderr,"imagetotif: Bits Per Sample = %d, not supported" ,bps);
         fprintf(stderr,"\tAborting\n");
         return 1;
     }
@@ -237,13 +244,13 @@ int imagetotif(opj_image_t * image, const char *outfile)
         clip_component(&(image->comps[i]), image->comps[0].prec);
     }
     cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
-    switch (bps) {
+    switch (tif_bps) {
     case 1:
     case 2:
     case 4:
     case 6:
     case 8:
-        cvt32sToTif = convert_32sXXu_C1R_LUT[bps];
+        cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
         break;
     case 10:
         cvt32sToTif = tif_32sto10u;
@@ -269,14 +276,14 @@ int imagetotif(opj_image_t * image, const char *outfile)
     TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
     TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
     TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
-    TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bps);
+    TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
     TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
     TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
     TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
 
     strip_size = TIFFStripSize(tif);
-    rowStride = ((size_t)width * numcomps * (size_t)bps + 7U) / 8U;
+    rowStride = ((size_t)width * numcomps * (size_t)tif_bps + 7U) / 8U;
     if (rowStride != (size_t)strip_size) {
         fprintf(stderr, "Invalid TIFF strip size\n");
         TIFFClose(tif);
