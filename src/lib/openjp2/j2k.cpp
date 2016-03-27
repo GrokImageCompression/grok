@@ -77,6 +77,7 @@ opj_tcp_t::opj_tcp_t() : csty(0),
 						ppt_len(0),
 						tccps(NULL),
 						m_nb_tile_parts(0),
+						m_data(NULL),
 						mct_norms(NULL),
 						m_mct_decoding_matrix(NULL),
 						m_mct_coding_matrix(NULL),
@@ -97,6 +98,9 @@ opj_tcp_t::opj_tcp_t() : csty(0),
 
 	for (auto i = 0; i < 100; ++i)
 		distoratio[i] = 0;
+
+	for (auto i = 0; i < 32; ++i)
+		memset(pocs + i, 0, sizeof(opj_poc_t));
 
 }
 
