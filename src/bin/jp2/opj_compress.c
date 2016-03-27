@@ -1238,19 +1238,32 @@ int main(int argc, char **argv)
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr) {
             dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
-            dirptr->filename = (char**) malloc(num_images*sizeof(char*));
-            if(!dirptr->filename_buf) {
-                return 0;
-            }
+			if (!dirptr->filename_buf) {
+				free(dirptr);
+				return 0;
+			}
+			dirptr->filename = (char**) malloc(num_images*sizeof(char*));
+			if (!dirptr->filename) {
+				free(dirptr->filename_buf);
+				free(dirptr);
+				return 0;
+			}
+
             for(i=0; i<num_images; i++) {
                 dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
             }
         }
         if(load_images(dirptr,img_fol.imgdirpath)==1) {
+			free(dirptr->filename);
+			free(dirptr->filename_buf);
+			free(dirptr);
             return 0;
         }
         if (num_images==0) {
             fprintf(stdout,"Folder is empty\n");
+			free(dirptr->filename);
+			free(dirptr->filename_buf);
+			free(dirptr);
             return 0;
         }
     } else {
@@ -1532,6 +1545,12 @@ cleanup:
             /* free image data */
             if (image)
                 opj_image_destroy(image);
+
+			if (dirptr) {
+				free(dirptr->filename_buf);
+				free(dirptr->filename);
+				free(dirptr);
+			}
 
         }
 
