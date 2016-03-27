@@ -72,6 +72,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 #include <assert.h>
+#include <inttypes.h>
 
 /*
   Use fseeko() and ftello() if they are available since they use
@@ -198,7 +199,6 @@ static inline long opj_lrintf(float f)
 #endif
 
 #include "mem_stream.h"
-#include "opj_inttypes.h"
 #include "opj_clock.h"
 #include "opj_malloc.h"
 #include "event.h"

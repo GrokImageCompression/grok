@@ -211,10 +211,6 @@ ensure_file_include("stdarg.h"   HAVE_STDARG_H YES)
 ensure_file_include("ctype.h"    HAVE_CTYPE_H  YES)
 ensure_file_include("assert.h"   HAVE_ASSERT_H YES)
 
-# For the following files, we provide an alternative, they are not mandatory
-ensure_file_include("stdint.h"   OPJ_HAVE_STDINT_H   NO)
-ensure_file_include("inttypes.h" OPJ_HAVE_INTTYPES_H NO)
-
 # why check this one ? for openjpip ?
 include (${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
 CHECK_INCLUDE_FILE("strings.h"      HAVE_STRINGS_H)
