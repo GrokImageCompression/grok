@@ -241,7 +241,6 @@ add_subdirectory(src/lib)
 #-----------------------------------------------------------------------------
 # Build Applications
 option(BUILD_CODEC "Build the CODEC executables" ON)
-option(BUILD_WITH_OPENMP "Build the OpenMP support." OFF)
 option(BUILD_JAVA "Build the openjpeg jar (Java)" OFF)
 mark_as_advanced(BUILD_JAVA)
 

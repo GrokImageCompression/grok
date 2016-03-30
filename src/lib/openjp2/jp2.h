@@ -260,6 +260,7 @@ void opj_jp2_setup_decoder(opj_jp2_t *jp2, opj_dparameters_t *parameters);
  * @return Returns a decoded image if successful, returns NULL otherwise
 */
 bool opj_jp2_decode(opj_jp2_t *jp2,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t *p_stream,
                     opj_image_t* p_image,
                     opj_event_mgr_t * p_manager);
@@ -287,6 +288,7 @@ Encode an image into a JPEG-2000 file stream
 @return Returns true if successful, returns false otherwise
 */
 bool opj_jp2_encode(  opj_jp2_t *jp2,
+						opj_plugin_tile_t* tile,
                       opj_stream_private_t *stream,
                       opj_event_mgr_t * p_manager);
 
@@ -337,6 +339,7 @@ bool opj_jp2_end_decompress(opj_jp2_t *jp2,
  */
 bool opj_jp2_read_header(  opj_stream_private_t *p_stream,
                            opj_jp2_t *jp2,
+							opj_cparameters_t* encoding_parameters,
                            opj_image_t ** p_image,
                            opj_event_mgr_t * p_manager );
 

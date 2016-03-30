@@ -242,7 +242,8 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->opj_get_codec_index = (opj_codestream_index_t* (*) (void*) ) j2k_get_cstr_index;
 
         l_codec->m_codec_data.m_decompression.opj_decode =
-            (bool (*) (	void *,
+            (bool (*) (	void *, 
+						opj_plugin_tile_t*,
                         struct opj_stream_private *,
                         opj_image_t*, struct opj_event_mgr * )) opj_j2k_decode;
 
@@ -254,6 +255,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) (	struct opj_stream_private *,
                         void *,
+						opj_cparameters_t*,
                         opj_image_t **,
                         struct opj_event_mgr * )) opj_j2k_read_header;
 
@@ -318,7 +320,8 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->opj_get_codec_index = (opj_codestream_index_t* (*) (void*) ) jp2_get_cstr_index;
 
         l_codec->m_codec_data.m_decompression.opj_decode =
-            (bool (*) (	void *,
+            (bool (*) (	void *, 
+						opj_plugin_tile_t*,
                         struct opj_stream_private *,
                         opj_image_t*,
                         struct opj_event_mgr * )) opj_jp2_decode;
@@ -331,6 +334,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) ( struct opj_stream_private *,
                         void *,
+						opj_cparameters_t*,
                         opj_image_t **,
                         struct opj_event_mgr * )) opj_jp2_read_header;
 
@@ -431,6 +435,7 @@ bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
 
 bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
                                     opj_codec_t *p_codec,
+									opj_cparameters_t* encoding_parameters,
                                     opj_image_t **p_image )
 {
     if (p_codec && p_stream) {
@@ -445,6 +450,7 @@ bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
 
         return l_codec->m_codec_data.m_decompression.opj_read_header(	l_stream,
                 l_codec->m_codec,
+				encoding_parameters,
                 p_image,
                 &(l_codec->m_event_mgr) );
     }
@@ -453,6 +459,7 @@ bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
 }
 
 bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_codec,
+								opj_plugin_tile_t* tile,
                                 opj_stream_t *p_stream,
                                 opj_image_t* p_image)
 {
@@ -465,6 +472,7 @@ bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_codec,
         }
 
         return l_codec->m_codec_data.m_decompression.opj_decode(l_codec->m_codec,
+				tile,
                 l_stream,
                 p_image,
                 &(l_codec->m_event_mgr) );
@@ -604,6 +612,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     switch(p_format) {
     case OPJ_CODEC_J2K:
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
+				opj_plugin_tile_t*,
                 struct opj_stream_private *,
                 struct opj_event_mgr * )) opj_j2k_encode;
 
@@ -641,6 +650,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_JP2:
         /* get a JP2 decoder handle */
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
+				opj_plugin_tile_t*,
                 struct opj_stream_private *,
                 struct opj_event_mgr * )) opj_jp2_encode;
 
@@ -748,7 +758,7 @@ bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
     return false;
 }
 
-bool OPJ_CALLCONV opj_encode(opj_codec_t *p_info, opj_stream_t *p_stream)
+bool OPJ_CALLCONV opj_encode(opj_codec_t *p_info, opj_plugin_tile_t* tile, opj_stream_t *p_stream)
 {
     if (p_info && p_stream) {
         opj_codec_private_t * l_codec = (opj_codec_private_t *) p_info;
@@ -756,6 +766,7 @@ bool OPJ_CALLCONV opj_encode(opj_codec_t *p_info, opj_stream_t *p_stream)
 
         if (! l_codec->is_decompressor) {
             return l_codec->m_codec_data.m_compression.opj_encode(	l_codec->m_codec,
+					tile,
                     l_stream,
                     &(l_codec->m_event_mgr));
         }
@@ -1095,7 +1106,7 @@ void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* inf
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.encoder_parameters = (opj_cparameters_t*)info->encoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;
-    opjInfo.tile = (opj_tile_t*)info->tile;
+    opjInfo.tile = (opj_plugin_tile_t*)info->tile;
     if (userEncodeCallback)
         userEncodeCallback(&opjInfo);
 }
@@ -1178,7 +1189,7 @@ void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;
-    opjInfo.tile = (opj_tile_t*)info->tile;
+    opjInfo.tile = (opj_plugin_tile_t*)info->tile;
     if (!opjInfo.image) {
         if (userPreDecodeCallback)
             userPreDecodeCallback(&opjInfo);

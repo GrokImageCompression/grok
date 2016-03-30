@@ -27,9 +27,36 @@
 // Debug Interface
 /////////////////////
 
+#define CONTEXT_CACHE_SIZE 3
+
+struct plugin_debug_mqc_t {
+
+	///////////////////////////////////////////////////////////
+	// debugging variables
+	uint8_t context_number;			// actual context value
+
+	uint32_t* contextStream;			// stream of contexts, stored as quads of uints
+	uint32_t contextStreamByteCount;	// byte count of context stream (each byte in stream can
+										// contain up to 3 actual contexts)
+
+										// cache of contexts read from stream
+	uint8_t contextCache[CONTEXT_CACHE_SIZE];
+	uint32_t contextCacheCount;
+	//////////////////////////////////////////////////////////
+
+};
+
 
 static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
 typedef uint32_t(*PLUGIN_GET_DEBUG_STATE)(void);
+
+
+static const char* plugin_debug_mqc_next_cxd_method_name = "plugin_debug_mqc_next_cxd";
+typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(plugin_debug_mqc_t *mqc, uint32_t d);
+
+
+static const char* plugin_debug_mqc_next_plane_method_name = "plugin_debug_mqc_next_plane";
+typedef void  (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(plugin_debug_mqc_t *mqc);
 
 
 /////////////////////
@@ -41,7 +68,7 @@ typedef struct plugin_encode_user_callback_info {
     const char* output_file_name;
     opj_cparameters_t* encoder_parameters;
     opj_image_t* image;
-    opj_tile_t* tile;
+    opj_plugin_tile_t* tile;
     int32_t	error_code;
 } plugin_encode_user_callback_info_t;
 
@@ -67,14 +94,14 @@ typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 // decoder interface
 ////////////////////
 
-typedef opj_tile_t*(*GENERATE_TILE)(size_t deviceId,
+typedef opj_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
                                     size_t compressed_tile_id,
                                     opj_cparameters_t* encoder_parameters,
                                     opj_image_t* image);
 
 typedef bool(*QUEUE_DECODE)(size_t deviceId,
                             size_t compressed_tile_id,
-                            opj_tile_t* tile);
+                            opj_plugin_tile_t* tile);
 
 typedef struct plugin_decode_callback_info {
     size_t deviceId;
@@ -85,7 +112,7 @@ typedef struct plugin_decode_callback_info {
     const char* output_file_name;
     opj_decompress_parameters* decoder_parameters;
     opj_image_t* image;
-    opj_tile_t* tile;
+    opj_plugin_tile_t* tile;
     int32_t	error_code;
 } plugin_decode_callback_info_t;
 

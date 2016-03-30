@@ -1571,6 +1571,10 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(mqc, cblk->data);
+	uint32_t state = opj_plugin_get_debug_state();
+	if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+		mqc->debug_mqc.contextStream = cblk->contextStream;
+	}
 
 	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
 	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
@@ -1592,6 +1596,9 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             /* code switch SEGMARK (i.e. SEGSYM) */
             if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
                 opj_mqc_segmark_enc(mqc);
+			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+				mqc_next_plane(&mqc->debug_mqc);
+			}
             break;
         }
 

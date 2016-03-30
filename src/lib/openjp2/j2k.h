@@ -595,8 +595,9 @@ bool opj_j2k_end_decompress(opj_j2k_t *j2k,
  */
 bool opj_j2k_read_header(	opj_stream_private_t *p_stream,
                             opj_j2k_t* p_j2k,
-                            opj_image_t** p_image,
-                            opj_event_mgr_t* p_manager );
+							opj_cparameters_t* encoding_parameters,
+							opj_image_t** p_image,
+							opj_event_mgr_t* p_manager );
 
 
 /**
@@ -740,6 +741,7 @@ opj_codestream_index_t* j2k_get_cstr_index(opj_j2k_t* p_j2k);
  * @return FIXME DOC
 */
 bool opj_j2k_decode(opj_j2k_t *j2k,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t *p_stream,
                     opj_image_t *p_image,
                     opj_event_mgr_t *p_manager);
@@ -776,6 +778,7 @@ bool opj_j2k_write_tile (	opj_j2k_t * p_j2k,
  * Encodes an image into a JPEG-2000 codestream
  */
 bool opj_j2k_encode(	opj_j2k_t * p_j2k,
+						opj_plugin_tile_t* tile,
                         opj_stream_private_t *cio,
                         opj_event_mgr_t * p_manager );
 

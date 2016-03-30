@@ -1444,6 +1444,7 @@ static bool opj_jp2_read_colr( opj_jp2_t *jp2,
 }
 
 bool opj_jp2_decode(opj_jp2_t *jp2,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t *p_stream,
                     opj_image_t* p_image,
                     opj_event_mgr_t * p_manager)
@@ -1452,7 +1453,7 @@ bool opj_jp2_decode(opj_jp2_t *jp2,
         return false;
 
     /* J2K decoding */
-    if( ! opj_j2k_decode(jp2->j2k, p_stream, p_image, p_manager) ) {
+    if( ! opj_j2k_decode(jp2->j2k, tile, p_stream, p_image, p_manager) ) {
         opj_event_msg(p_manager, EVT_ERROR, "Failed to decode the codestream in the JP2 file\n");
         return false;
     }
@@ -1898,10 +1899,11 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
 }
 
 bool opj_jp2_encode(opj_jp2_t *jp2,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t *stream,
                     opj_event_mgr_t * p_manager)
 {
-    return opj_j2k_encode(jp2->j2k, stream, p_manager);
+    return opj_j2k_encode(jp2->j2k, tile,stream, p_manager);
 }
 
 bool opj_jp2_end_decompress(opj_jp2_t *jp2,
@@ -2558,6 +2560,7 @@ static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
 
 bool opj_jp2_read_header(	opj_stream_private_t *p_stream,
                             opj_jp2_t *jp2,
+							opj_cparameters_t* encoding_parameters,
                             opj_image_t ** p_image,
                             opj_event_mgr_t * p_manager
                         )
@@ -2589,6 +2592,7 @@ bool opj_jp2_read_header(	opj_stream_private_t *p_stream,
 
     return opj_j2k_read_header(	p_stream,
                                 jp2->j2k,
+								encoding_parameters,
                                 p_image,
                                 p_manager);
 }

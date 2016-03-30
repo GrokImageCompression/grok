@@ -693,6 +693,10 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
     opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
     opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(mqc, cblk->data);
+	uint32_t state = opj_plugin_get_debug_state();
+	if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+		mqc->debug_mqc.contextStream = cblk->contextStream;
+	}
 
     for (passno = 0; bpno >= 0; ++passno) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -706,6 +710,9 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
             break;
         case 2:
             opj_t1_enc_clnpass(t1, bpno, orient, &nmsedec);
+			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+				mqc_next_plane(&mqc->debug_mqc);
+			}
             break;
         }
 
