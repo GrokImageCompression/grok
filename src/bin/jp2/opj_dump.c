@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
-        if(! opj_read_header(l_stream, l_codec, &image)) {
+        if(! opj_read_header(l_stream, l_codec,NULL, &image)) {
             fprintf(stderr, "ERROR -> opj_dump: failed to read the header\n");
             opj_stream_destroy(l_stream);
             opj_destroy_codec(l_codec);

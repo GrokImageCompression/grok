@@ -68,11 +68,13 @@ typedef struct opj_codec_private {
             /** Main header reading function handler */
             bool (*opj_read_header) ( struct opj_stream_private * cio,
                                       void * p_codec,
+									opj_cparameters_t*,
                                       opj_image_t **p_image,
                                       struct opj_event_mgr * p_manager);
 
             /** Decoding function */
             bool (*opj_decode) ( void * p_codec,
+								  opj_plugin_tile_t* tile,
                                  struct opj_stream_private * p_cio,
                                  opj_image_t * p_image,
                                  struct opj_event_mgr * p_manager);
@@ -141,6 +143,7 @@ typedef struct opj_codec_private {
                                           struct opj_event_mgr * p_manager);
 
             bool (* opj_encode) ( void * p_codec,
+									opj_plugin_tile_t*,
                                   struct opj_stream_private *p_cio,
                                   struct opj_event_mgr * p_manager);
 

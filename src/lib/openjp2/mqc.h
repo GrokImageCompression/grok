@@ -87,7 +87,7 @@ typedef struct opj_mqc_state {
 /**
 MQ coder
 */
-#define CONTEXT_CACHE_SIZE 3
+
 typedef struct opj_mqc {
     uint32_t c;
     uint32_t a;
@@ -98,19 +98,7 @@ typedef struct opj_mqc {
     opj_mqc_state_t *ctxs[MQC_NUMCTXS];
     opj_mqc_state_t **curctx;
 
-    ///////////////////////////////////////////////////////////
-    // debugging variables
-    uint8_t context_number;			// actual context value
-
-    uint32_t* contextStream;			// stream of contexts, stored as quads of uints
-    uint32_t contextStreamByteCount;	// byte count of context stream (each byte in stream can
-    // contain up to 3 actual contexts)
-
-    // cache of contexts read from stream
-    uint8_t contextCache[CONTEXT_CACHE_SIZE];
-    uint32_t contextCacheCount;
-    //////////////////////////////////////////////////////////
-
+	plugin_debug_mqc_t debug_mqc;
 
 } opj_mqc_t;
 
@@ -158,7 +146,7 @@ Set the current context used for coding/decoding
 @param mqc MQC handle
 @param ctxno Number that identifies the context
 */
-#define opj_mqc_setcurctx(mqc, ctxno)	(mqc)->curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
+void opj_mqc_setcurctx(opj_mqc_t *mqc, uint8_t ctxno);
 /**
 Encode a symbol using the MQ-coder
 @param mqc MQC handle

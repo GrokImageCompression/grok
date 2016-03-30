@@ -51,9 +51,24 @@ extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_ser
 }
 
 
+//////////////////////////////////
+// Debug Interface
+/////////////////////////////////
+
 extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
 	return OPJ_PLUGIN_STATE_NO_DEBUG;
 }
+
+
+extern "C"  PLUGIN_API void plugin_debug_next_cxd(void) {
+	
+}
+
+extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(void) {
+
+}
+
+
 
 ////////////////////////////////////
 // Encoder Interface Implementation

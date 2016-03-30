@@ -28,6 +28,7 @@ T1Encoder::T1Encoder() : tile(NULL),
 }
 
 void T1Encoder::encode(int32_t threadId) {
+	auto state = opj_plugin_get_debug_state();
 	auto t1 = opj_t1_create(true, 0,0);
 	if (!t1) {
 		return_code = false;
@@ -53,7 +54,10 @@ void T1Encoder::encode(int32_t threadId) {
 		if (block->qmfbid == 1) {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {
-					block->tiledp[tileIndex] <<= T1_NMSEDEC_FRACBITS;
+					// pass through otherwise
+					if ( !(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
+						block->tiledp[tileIndex] <<= T1_NMSEDEC_FRACBITS;
+					}
 					tileIndex++;
 				}
 				tileIndex += tileLineAdvance;
@@ -62,8 +66,14 @@ void T1Encoder::encode(int32_t threadId) {
 		else {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {
-					block->tiledp[tileIndex] =
-						opj_int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
+					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
+					// 1. plugin is being used for full T1 encoding, so no need to quantize in OPJ
+					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
+					//    in the plugin DWT step
+					if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) ||
+						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
+						block->tiledp[tileIndex] = opj_int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
+					}
 					tileIndex++;
 				}
 				tileIndex += tileLineAdvance;
@@ -90,7 +100,7 @@ void T1Encoder::encode(int32_t threadId) {
 	opj_t1_destroy(t1);
 }
 void T1Encoder::encodeOpt(int32_t threadId) {
-
+	auto state = opj_plugin_get_debug_state();
 	auto t1 = t1OptVec[threadId];
 	encodeBlockInfo* block = NULL;
 	while (return_code && encodeQueue.tryPop(block)) {
@@ -111,7 +121,15 @@ void T1Encoder::encodeOpt(int32_t threadId) {
 		if (block->qmfbid == 1) {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {
-					int32_t tmp = block->tiledp[tileIndex] << T1_NMSEDEC_FRACBITS;
+					int32_t tmp=0;
+					// pass through otherwise
+					if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
+						tmp = block->tiledp[tileIndex] << T1_NMSEDEC_FRACBITS;
+					}
+					else
+					{
+						tmp = block->tiledp[tileIndex];
+					}
 					uint32_t mag = (uint32_t)opj_int_abs(tmp);
 					max = opj_uint_max(max, mag);
 					t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
@@ -124,11 +142,24 @@ void T1Encoder::encodeOpt(int32_t threadId) {
 		else {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {
-					int32_t tmp = opj_int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
+					// 1. plugin is being used for full T1 encoding, so no need to quantize in OPJ
+					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
+					//    in the plugin DWT step
+					int32_t tmp = 0;
+					if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) ||
+						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
+						tmp = opj_int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+					}
+					else{
+						tmp = tiledp[tileIndex];
+					}
+
 					uint32_t mag = (uint32_t)opj_int_abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					max = opj_uint_max(max, mag);
 					t1->data[cblk_index] = sign_mag;
+					
 					tileIndex++;
 					cblk_index++;
 				}

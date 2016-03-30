@@ -437,6 +437,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     max = 0;
 
     tcd_tile->numpix = 0;           /* fixed_quality */
+	uint32_t state = opj_plugin_get_debug_state();
 
     for (compno = 0; compno < tcd_tile->numcomps; compno++) {
         opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
@@ -453,6 +454,19 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
 
                     for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
                         opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+
+						OPJ_INT32 numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
+							encode_synch_with_plugin(tcd,
+								compno,
+								resno,
+								bandno,
+								precno,
+								cblkno,
+								band,
+								cblk,
+								&numPix);
+						}
 
                         for (passno = 0; passno < cblk->totalpasses; passno++) {
                             opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -482,8 +496,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                         } /* passno */
 
                         /* fixed_quality */
-                        tcd_tile->numpix += ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
-                        tilec->numpix += ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+						tcd_tile->numpix += numPix;
+						tilec->numpix += numPix;
                     } /* cbklno */
                 } /* precno */
             } /* bandno */
@@ -683,7 +697,8 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
     uint32_t l_nb_code_blocks;
     /* room needed to store l_nb_code_blocks code blocks for a precinct*/
     uint32_t l_nb_code_blocks_size;
-    /* size of data for a tile */
+
+	uint32_t state = opj_plugin_get_debug_state();
 
     l_cp = p_tcd->cp;
     l_tcp = &(l_cp->tcps[p_tile_no]);
@@ -978,9 +993,11 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                             l_code_block->x1 = opj_int_min(cblkxend, l_current_precinct->x1);
                             l_code_block->y1 = opj_int_min(cblkyend, l_current_precinct->y1);
 
-                            if (! opj_tcd_code_block_enc_allocate_data(l_code_block)) {
-                                return false;
-                            }
+							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE)) {
+								if (!opj_tcd_code_block_enc_allocate_data(l_code_block)) {
+									return false;
+								}
+							}
                         } else {
                             opj_tcd_cblk_dec_t* l_code_block = l_current_precinct->cblks.dec + cblkno;
 
@@ -1017,6 +1034,19 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
         ++l_tilec;
         ++l_image_comp;
     } /* compno */
+
+
+	  // decoder sanity check for tile struct
+	if (!isEncoder) {
+		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+			if (!tile_equals(p_tcd->current_plugin_tile, l_tile)) {
+				manager->warning_handler("plugin tile differs from opj tile", NULL);
+			}
+		}
+	}
+
+
+
     return true;
 }
 
@@ -1084,6 +1114,7 @@ static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_bl
 
         p_code_block->data[0] = 0;
         p_code_block->data+=1;   /*why +1 ?*/
+		p_code_block->owns_data = true;
     }
     return true;
 }
@@ -1158,7 +1189,7 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint32_t p_max_length,
                             opj_codestream_info_t *p_cstr_info)
 {
-
+	uint32_t state = opj_plugin_get_debug_state();
     if (p_tcd->cur_tp_num == 0) {
 
         p_tcd->tcd_tileno = p_tile_no;
@@ -1187,38 +1218,56 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                 return false;
             }
         }
-        /* << INDEX */
+		/* << INDEX */
+		if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) &&
+			!(state & OPJ_PLUGIN_STATE_CPU_ONLY)) {
+			set_context_stream(p_tcd);
+		}
 
-        /* FIXME _ProfStart(PGROUP_DC_SHIFT); */
-        /*---------------TILE-------------------*/
-        if (! opj_tcd_dc_level_shift_encode(p_tcd)) {
-            return false;
-        }
-        /* FIXME _ProfStop(PGROUP_DC_SHIFT); */
+		// When debugging the encoder, we do all of T1 up to and including DWT in the plugin, and pass this in as image data.
+		// This way, both OPJ and plugin start with same inputs for context formation and MQ coding.
+		bool debugEncode = state & OPJ_PLUGIN_STATE_DEBUG_ENCODE;
+		bool debugMCT = (state & OPJ_PLUGIN_STATE_MCT_ONLY) ? true : false ;
 
-        /* FIXME _ProfStart(PGROUP_MCT); */
-        if (! opj_tcd_mct_encode(p_tcd)) {
-            return false;
-        }
-        /* FIXME _ProfStop(PGROUP_MCT); */
+		if (!p_tcd->current_plugin_tile || debugEncode) {
 
-        /* FIXME _ProfStart(PGROUP_DWT); */
-        if (! opj_tcd_dwt_encode(p_tcd)) {
-            return false;
-        }
-        /* FIXME  _ProfStop(PGROUP_DWT); */
+			if (!debugEncode) {
+				/* FIXME _ProfStart(PGROUP_DC_SHIFT); */
+				/*---------------TILE-------------------*/
+				if (!opj_tcd_dc_level_shift_encode(p_tcd)) {
+					return false;
+				}
+				/* FIXME _ProfStop(PGROUP_DC_SHIFT); */
 
-        /* FIXME  _ProfStart(PGROUP_T1); */
-        if (! opj_tcd_t1_encode(p_tcd)) {
-            return false;
-        }
-        /* FIXME _ProfStop(PGROUP_T1); */
+				/* FIXME _ProfStart(PGROUP_MCT); */
+				if (!opj_tcd_mct_encode(p_tcd)) {
+					return false;
+				}
+				/* FIXME _ProfStop(PGROUP_MCT); */
+			}
 
-        /* FIXME _ProfStart(PGROUP_RATE); */
-        if (! opj_tcd_rate_allocate_encode(p_tcd,p_max_length,p_cstr_info)) {
-            return false;
-        }
-        /* FIXME _ProfStop(PGROUP_RATE); */
+			if (!debugEncode || debugMCT) {
+				/* FIXME _ProfStart(PGROUP_DWT); */
+				if (!opj_tcd_dwt_encode(p_tcd)) {
+					return false;
+				}
+				/* FIXME  _ProfStop(PGROUP_DWT); */
+			}
+
+
+			/* FIXME  _ProfStart(PGROUP_T1); */
+			if (!opj_tcd_t1_encode(p_tcd)) {
+				return false;
+			}
+			/* FIXME _ProfStop(PGROUP_T1); */
+
+		}
+
+		/* FIXME _ProfStart(PGROUP_RATE); */
+		if (!opj_tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info)) {
+			return false;
+		}
+		/* FIXME _ProfStop(PGROUP_RATE); */
 
     }
     /*--------------TIER2------------------*/
@@ -1735,9 +1784,10 @@ static void opj_tcd_code_block_enc_deallocate (opj_tcd_precinct_t * p_precinct)
         l_nb_code_blocks = p_precinct->block_size / sizeof(opj_tcd_cblk_enc_t);
 
         for     (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno)  {
-            if (l_code_block->data) {
+            if (l_code_block->owns_data && l_code_block->data) {
                 opj_free(l_code_block->data - 1);
                 l_code_block->data = 00;
+				l_code_block->owns_data = false;
             }
 
             if (l_code_block->layers) {

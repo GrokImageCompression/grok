@@ -228,6 +228,7 @@ static inline long opj_lrintf(float f)
 #include "t2.h"
 #include "mct.h"
 #include "opj_intmath.h"
+#include "plugin_bridge.h"
 
 /* V2 */
 #include "opj_codec.h"

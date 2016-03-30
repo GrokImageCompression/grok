@@ -1,15 +1,5 @@
 # Tests
 
-if (BUILD_WITH_OPENMP)
-find_package(OpenMP)
-if (OPENMP_FOUND)
-	add_definitions(-DOPJ_NUM_COMPRESS_DECOMPRESS_THREADS=4)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-endif()
-endif()
-
-
 include_directories(
   ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h
   ${OPENJPEG_BINARY_DIR}/src/bin/common # opj_apps_config.h

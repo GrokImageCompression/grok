@@ -6345,6 +6345,7 @@ bool opj_j2k_end_decompress(opj_j2k_t *p_j2k,
 
 bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
                             opj_j2k_t* p_j2k,
+							opj_cparameters_t* encoding_parameters,
                             opj_image_t** p_image,
                             opj_event_mgr_t* p_manager )
 {
@@ -6386,6 +6387,29 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
         p_j2k->m_private_image = NULL;
         return false;
     }
+
+	if (encoding_parameters) {
+		opj_cp_t *l_cp = NULL;
+		opj_tcp_t *l_tcp = NULL;
+		opj_tccp_t *l_tccp = NULL;
+		OPJ_BYTE * l_current_ptr = NULL;
+
+		l_cp = &(p_j2k->m_cp);
+		l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
+		l_tccp = &l_tcp->tccps[0];
+
+		encoding_parameters->cblockw_init = 1 << l_tccp->cblkw;
+		encoding_parameters->cblockh_init = 1 << l_tccp->cblkh;
+		encoding_parameters->irreversible = l_tccp->qmfbid == 0;
+		encoding_parameters->rsiz = l_cp->rsiz;
+		encoding_parameters->numresolution = l_tccp->numresolutions;
+		for (int i = 0; i < encoding_parameters->numresolution; ++i) {
+			encoding_parameters->prcw_init[i] = 1 << l_tccp->prcw[i];
+			encoding_parameters->prch_init[i] = 1 << l_tccp->prch[i];
+		}
+
+	}
+
 
     *p_image = opj_image_create0();
     if (! (*p_image)) {
@@ -9508,6 +9532,7 @@ static bool opj_j2k_setup_decoding_tile (opj_j2k_t *p_j2k, opj_event_mgr_t * p_m
 }
 
 bool opj_j2k_decode(opj_j2k_t * p_j2k,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t * p_stream,
                     opj_image_t * p_image,
                     opj_event_mgr_t * p_manager)
@@ -9523,6 +9548,7 @@ bool opj_j2k_decode(opj_j2k_t * p_j2k,
 
     /* customization of the decoding */
     opj_j2k_setup_decoding(p_j2k, p_manager);
+	p_j2k->m_tcd->current_plugin_tile = tile;
 
     /* Decode the codestream */
     if (! opj_j2k_exec (p_j2k,p_j2k->m_procedure_list,p_stream,p_manager)) {
@@ -9679,6 +9705,7 @@ bool opj_j2k_set_decoded_resolution_factor(opj_j2k_t *p_j2k,
 }
 
 bool opj_j2k_encode(opj_j2k_t * p_j2k,
+					opj_plugin_tile_t* tile,
                     opj_stream_private_t *p_stream,
                     opj_event_mgr_t * p_manager )
 {
@@ -9695,6 +9722,7 @@ bool opj_j2k_encode(opj_j2k_t * p_j2k,
     assert(p_manager != 00);
 
     p_tcd = p_j2k->m_tcd;
+	p_tcd->current_plugin_tile = tile;
 
     l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
     if (l_nb_tiles == 1) {

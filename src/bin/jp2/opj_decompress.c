@@ -1189,7 +1189,7 @@ int main(int argc, char **argv)
 
 
             /* Read the main header of the codestream and if necessary the JP2 boxes*/
-            if (!opj_read_header(l_stream, l_codec, &image)) {
+            if (!opj_read_header(l_stream, l_codec,NULL, &image)) {
                 fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
                 failed = 1;
                 goto cleanup;
@@ -1218,7 +1218,7 @@ int main(int argc, char **argv)
 
 
                 /* Get the decoded image */
-                if (!(opj_decode(l_codec, l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
+                if (!(opj_decode(l_codec, NULL,l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
                     fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
                     failed = 1;
                     goto cleanup;

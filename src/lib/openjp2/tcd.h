@@ -105,6 +105,7 @@ FIXME DOC
 */
 typedef struct opj_tcd_cblk_enc {
     uint8_t* data;               /* Data */
+	bool owns_data;
     opj_tcd_layer_t* layers;      /* layer information */
     opj_tcd_pass_t* passes;       /* information about the passes */
     int32_t x0, y0, x1, y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
@@ -223,7 +224,7 @@ typedef struct opj_tcd {
     uint32_t tcd_tileno;
     /** indicate if the tcd is a decoder. */
     uint32_t m_is_decoder : 1;
-    struct plugin_tile* current_plugin_tile;
+    opj_plugin_tile_t* current_plugin_tile;
 } opj_tcd_t;
 
 /** @name Exported functions */
