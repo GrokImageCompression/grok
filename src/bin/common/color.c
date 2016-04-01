@@ -774,7 +774,7 @@ bool all_components_equal_subsampling(opj_image_t *image) {
 	if (image->numcomps == 0)
 		return true;
 
-	int i;
+	uint32_t i;
 	for (i = 1U; i < image->numcomps; ++i) {
 		if (image->comps[0].dx != image->comps[i].dx) {
 			break;
