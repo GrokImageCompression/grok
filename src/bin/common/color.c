@@ -770,7 +770,27 @@ void color_cielab_to_rgb(opj_image_t *image)
 
 #endif /* OPJ_HAVE_LIBLCMS2 || OPJ_HAVE_LIBLCMS1 */
 
-void color_cmyk_to_rgb(opj_image_t *image)
+bool all_components_equal_subsampling(opj_image_t *image) {
+	if (image->numcomps == 0)
+		return true;
+
+	int i;
+	for (i = 1U; i < image->numcomps; ++i) {
+		if (image->comps[0].dx != image->comps[i].dx) {
+			break;
+		}
+		if (image->comps[0].dy != image->comps[i].dy) {
+			break;
+		}
+	}
+	if (i != image->numcomps) {
+		fprintf(stderr, "color transform: All components must have the same subsampling.\n");
+		return false;
+	}
+	return true;
+}
+
+int color_cmyk_to_rgb(opj_image_t *image)
 {
     float C, M, Y, K;
     float sC, sM, sY, sK;
@@ -779,7 +799,9 @@ void color_cmyk_to_rgb(opj_image_t *image)
     w = image->comps[0].w;
     h = image->comps[0].h;
 
-    if(image->numcomps < 4) return;
+    if( (image->numcomps < 4)  || !all_components_equal_subsampling(image))
+		return 1;
+
 
     max = w * h;
 
@@ -818,21 +840,24 @@ void color_cmyk_to_rgb(opj_image_t *image)
         memcpy(&(image->comps[i]), &(image->comps[i+1]), sizeof(image->comps[i]));
     }
 
+	return 0;
+
 }/* color_cmyk_to_rgb() */
 
 /*
  * This code has been adopted from sjpx_openjpeg.c of ghostscript
  */
-void color_esycc_to_rgb(opj_image_t *image)
+int color_esycc_to_rgb(opj_image_t *image)
 {
     int y, cb, cr, sign1, sign2, val;
     unsigned int w, h, max, i;
     int flip_value = (1 << (image->comps[0].prec-1));
     int max_value = (1 << image->comps[0].prec) - 1;
 
-    if(image->numcomps < 3) return;
-
-    w = image->comps[0].w;
+    if( (image->numcomps < 3)  || !all_components_equal_subsampling(image))
+		return 1;
+	
+	w = image->comps[0].w;
     h = image->comps[0].h;
 
     sign1 = (int)image->comps[1].sgnd;
@@ -874,5 +899,6 @@ void color_esycc_to_rgb(opj_image_t *image)
         image->comps[2].data[i] = val;
     }
     image->color_space = OPJ_CLRSPC_SRGB;
+	return 0;
 
 }/* color_esycc_to_rgb() */

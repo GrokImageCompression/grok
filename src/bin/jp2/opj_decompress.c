@@ -1285,9 +1285,15 @@ int main(int argc, char **argv)
             if (image->color_space == OPJ_CLRSPC_SYCC) {
                 color_sycc_to_rgb(image);
             } else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters.cod_format != TIF_DFMT)) {
-                color_cmyk_to_rgb(image);
+				if (color_cmyk_to_rgb(image)) {
+					failed = 1;
+					goto cleanup;
+				}
             } else if (image->color_space == OPJ_CLRSPC_EYCC) {
-                color_esycc_to_rgb(image);
+				if (color_esycc_to_rgb(image)) {
+					failed = 1;
+					goto cleanup;
+				}
             }
 
             if (image->icc_profile_buf) {

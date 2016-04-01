@@ -42,6 +42,6 @@ extern void color_sycc_to_rgb(opj_image_t *img);
 extern void color_apply_icc_profile(opj_image_t *image);
 extern void color_cielab_to_rgb(opj_image_t *image);
 
-extern void color_cmyk_to_rgb(opj_image_t *image);
-extern void color_esycc_to_rgb(opj_image_t *image);
+extern int color_cmyk_to_rgb(opj_image_t *image);
+extern int color_esycc_to_rgb(opj_image_t *image);
 #endif /* _OPJ_COLOR_H_ */
