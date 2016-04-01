@@ -6407,6 +6407,13 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 			encoding_parameters->prcw_init[i] = 1 << l_tccp->prcw[i];
 			encoding_parameters->prch_init[i] = 1 << l_tccp->prch[i];
 		}
+		encoding_parameters->cp_tx0 = p_j2k->m_cp.tx0;
+		encoding_parameters->cp_ty0 = p_j2k->m_cp.ty0;
+
+		encoding_parameters->cp_tdx = p_j2k->m_cp.tdx;
+		encoding_parameters->cp_tdy = p_j2k->m_cp.tdy;
+
+		encoding_parameters->tcp_numlayers = l_tcp->numlayers;
 
 	}
 
