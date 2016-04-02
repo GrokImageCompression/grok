@@ -216,7 +216,8 @@ Encode the code-blocks of a tile
 bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
                             opj_tcp_t *tcp,
                             const double * mct_norms,
-                            uint32_t mct_numcomps);
+                            uint32_t mct_numcomps,
+							uint32_t numThreads);
 
 
 double opj_t1_encode_cblk(opj_t1_t *t1,

@@ -22,7 +22,6 @@
 #include <thread>
 #include "BlockingQueue.h"
 
-const int numDecodeThreads = 8;
 
 class T1Decoder
 {

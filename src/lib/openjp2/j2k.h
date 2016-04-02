@@ -534,6 +534,9 @@ typedef struct opj_j2k {
 
     /** the current tile coder/decoder **/
     struct opj_tcd *	m_tcd;
+
+	uint32_t numThreads;
+
 }
 opj_j2k_t;
 

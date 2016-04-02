@@ -1451,8 +1451,8 @@ bool opj_t1_decode_cblk(opj_t1_t *t1,
 bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
                             opj_tcp_t *tcp,
                             const double * mct_norms,
-                            uint32_t mct_numcomps
-                        )
+                            uint32_t mct_numcomps,
+							uint32_t numThreads )
 {
     bool do_opt = true;
     uint32_t compno, resno, bandno, precno;
@@ -1523,7 +1523,12 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
     } /* compno  */
 
 	T1Encoder encoder;
-	return encoder.encode(do_opt,tile, &blocks,maxCblkW, maxCblkH);
+	return encoder.encode(do_opt,
+							tile,
+							&blocks,
+							maxCblkW,
+							maxCblkH,
+							numThreads);
 	
 }
 
