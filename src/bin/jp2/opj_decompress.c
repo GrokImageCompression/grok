@@ -463,11 +463,12 @@ int parse_cmdline_decoder(int argc,
         {"force-rgb", NO_ARG,  NULL, 1},
         {"upsample",  NO_ARG,  NULL, 1},
         {"split-pnm", NO_ARG,  NULL, 1},
-		{ "PluginDir", REQ_ARG, NULL, 'g' }
+		{ "PluginDir", REQ_ARG, NULL, 'g' },
+		{ "NumThreads", REQ_ARG, NULL, 'H' },
     };
 
-    const char optlist[] = "g:i:o:r:l:x:d:t:p:"
-                           "h"		;
+	const char optlist[] = "g:i:o:r:l:x:d:t:p:h:H";
+                       
 
     long_option[2].flag = &(parameters->force_rgb);
     long_option[3].flag = &(parameters->upsample);
@@ -663,6 +664,11 @@ int parse_cmdline_decoder(int argc,
 			if (plugin_dir)
 				strcpy(plugin_dir, opj_optarg);
 			break;
+
+		case 'H': 
+			sscanf(opj_optarg, "%u", &(parameters->core.numThreads));
+		    break;
+
         /* ----------------------------------------------------- */
 
         default:

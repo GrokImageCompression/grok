@@ -30,8 +30,8 @@ T1Decoder::T1Decoder(uint16_t blockw,
 
 void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
 	decodeQueue.push_no_lock(blocks);
-	Barrier decode_t1_barrier(numDecodeThreads);
-	Barrier decode_t1_calling_barrier(numDecodeThreads + 1);
+	Barrier decode_t1_barrier(numThreads);
+	Barrier decode_t1_calling_barrier(numThreads + 1);
 
 	for (auto threadId = 0; threadId < numThreads; threadId++) {
 		decodeWorkers.push_back(std::thread([this, 

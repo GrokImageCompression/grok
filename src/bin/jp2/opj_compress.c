@@ -453,15 +453,14 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         {"OutFor",REQ_ARG, NULL ,'O'},
         {"POC",REQ_ARG, NULL ,'P'},
         {"ROI",REQ_ARG, NULL ,'R'},
-        {"jpip",NO_ARG, NULL, 'J'},
         {"mct",REQ_ARG, NULL, 'Y'},
-		{ "PluginDir", REQ_ARG, NULL, 'g' }
+		{ "PluginDir", REQ_ARG, NULL, 'g' },
+		{ "NumThreads", REQ_ARG, NULL, 'H' },
     };
 
     /* parse the command line */
 
-	const char optlist[] = "a:g:i:o:r:q:n:b:c:t:p:s:SEM:x:R:d:T:If:P:C:F:u:JY:"
-							"h";
+	const char optlist[] = "a:g:i:o:r:q:n:b:c:t:p:s:SEM:x:R:d:T:If:P:C:F:u:H:h";
     totlen=sizeof(long_option);
     img_fol->set_out_format=0;
     raw_cp->rawWidth = 0;
@@ -1069,6 +1068,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			if (plugin_dir)
 				strcpy(plugin_dir, opj_optarg);
 		break;
+
+		case 'H':
+			sscanf(opj_optarg, "%u", &(parameters->numThreads));
+			break;
 
         /* ------------------------------------------------------ */
 

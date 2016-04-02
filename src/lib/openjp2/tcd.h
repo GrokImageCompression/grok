@@ -225,6 +225,7 @@ typedef struct opj_tcd {
     /** indicate if the tcd is a decoder. */
     uint32_t m_is_decoder : 1;
     opj_plugin_tile_t* current_plugin_tile;
+	uint32_t numThreads;
 } opj_tcd_t;
 
 /** @name Exported functions */
@@ -259,7 +260,8 @@ void opj_tcd_destroy(opj_tcd_t *tcd);
 */
 bool opj_tcd_init(	opj_tcd_t *p_tcd,
                     opj_image_t * p_image,
-                    opj_cp_t * p_cp );
+                    opj_cp_t * p_cp ,
+					uint32_t numThreads);
 
 /**
  * Allocates memory for decoding a specific tile.

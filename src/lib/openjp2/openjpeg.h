@@ -454,6 +454,8 @@ typedef struct opj_cparameters {
     /** RSIZ value
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
+
+	uint32_t numThreads;
 } opj_cparameters_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
@@ -505,6 +507,7 @@ typedef struct opj_dparameters {
     /** Nb of tile to decode */
     uint32_t nb_tile_to_decode;
     uint32_t flags;
+	uint32_t numThreads;
 
 } opj_dparameters_t;
 

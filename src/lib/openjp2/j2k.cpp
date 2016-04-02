@@ -5614,6 +5614,7 @@ void opj_j2k_setup_decoder(opj_j2k_t *j2k, opj_dparameters_t *parameters)
     if(j2k && parameters) {
         j2k->m_cp.m_specific_param.m_dec.m_layer = parameters->cp_layer;
         j2k->m_cp.m_specific_param.m_dec.m_reduce = parameters->cp_reduce;
+		j2k->numThreads = parameters->numThreads;
     }
 }
 
@@ -6256,6 +6257,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         opj_free(parameters->mct_data);
         parameters->mct_data = 00;
     }
+	p_j2k->numThreads = parameters->numThreads;
     return true;
 }
 
@@ -7073,7 +7075,7 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
         return false;
     }
 
-    if ( !opj_tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp)) ) {
+    if ( !opj_tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp), p_j2k->numThreads) ) {
         opj_tcd_destroy(p_j2k->m_tcd);
         p_j2k->m_tcd = 00;
         opj_event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
@@ -10497,7 +10499,7 @@ static bool opj_j2k_create_tcd(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    if (!opj_tcd_init(p_j2k->m_tcd,p_j2k->m_private_image,&p_j2k->m_cp)) {
+    if (!opj_tcd_init(p_j2k->m_tcd,p_j2k->m_private_image,&p_j2k->m_cp, p_j2k->numThreads)) {
         opj_tcd_destroy(p_j2k->m_tcd);
         p_j2k->m_tcd = 00;
         return false;

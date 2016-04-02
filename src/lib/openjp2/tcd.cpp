@@ -626,7 +626,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
 
 bool opj_tcd_init( opj_tcd_t *p_tcd,
                    opj_image_t * p_image,
-                   opj_cp_t * p_cp )
+                   opj_cp_t * p_cp,
+				   uint32_t numThreads)
 {
     p_tcd->image = p_image;
     p_tcd->cp = p_cp;
@@ -643,6 +644,7 @@ bool opj_tcd_init( opj_tcd_t *p_tcd,
 
     p_tcd->tile->numcomps = p_image->numcomps;
     p_tcd->tp_pos = p_cp->m_specific_param.m_enc.m_tp_pos;
+	p_tcd->numThreads = numThreads;
 
     return true;
 }
@@ -1563,7 +1565,7 @@ static bool opj_tcd_t1_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t * p_manager)
         ++l_tile_comp;
         ++l_tccp;
     }
-	decoder.decode(&blocks, numDecodeThreads);
+	decoder.decode(&blocks, p_tcd->numThreads);
     return true;
 }
 
@@ -1583,12 +1585,16 @@ static bool opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
             opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
             opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
             if (l_tccp->qmfbid == 1) {
-                if (! opj_dwt_decode(l_tile_comp, l_img_comp->resno_decoded+1)) {
+                if (! opj_dwt_decode(l_tile_comp,
+									l_img_comp->resno_decoded+1,
+									p_tcd->numThreads)) {
                     rc = false;
                     continue;
                 }
             } else {
-                if (! opj_dwt_decode_real(l_tile_comp, l_img_comp->resno_decoded+1)) {
+                if (! opj_dwt_decode_real(l_tile_comp, 
+											l_img_comp->resno_decoded+1,
+											p_tcd->numThreads)) {
                     rc = false;
                     continue;
                 }
@@ -1986,7 +1992,11 @@ static bool opj_tcd_t1_encode ( opj_tcd_t *p_tcd )
         l_mct_norms = (const double *) (l_tcp->mct_norms);
     }
 
-    return opj_t1_encode_cblks(p_tcd->tile, l_tcp, l_mct_norms, l_mct_numcomps);
+    return opj_t1_encode_cblks(p_tcd->tile,
+								l_tcp,
+								l_mct_norms,
+								l_mct_numcomps,
+								p_tcd->numThreads);
 }
 
 static bool opj_tcd_t2_encode (opj_tcd_t *p_tcd,

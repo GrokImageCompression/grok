@@ -22,15 +22,15 @@
 #include <thread>
 
 
-const int numEncodeThreads = 8;
-
 class T1Encoder
 {
 public:
 	T1Encoder();
 	bool encode(bool do_opt, opj_tcd_tile_t *tile,
 				std::vector<encodeBlockInfo*>* blocks,
-				int32_t maxCblkW, int32_t maxCblkH);
+				int32_t maxCblkW, 
+				int32_t maxCblkH,
+				uint32_t numThreads);
 
 	void encode(int32_t threadId );
 	void encodeOpt(int32_t threadId);

@@ -410,6 +410,7 @@ void OPJ_CALLCONV opj_set_default_decoder_parameters(opj_dparameters_t *paramete
         parameters->decod_format = -1;
         parameters->cod_format = -1;
         parameters->flags = 0;
+		parameters->numThreads = 8;
     }
 }
 
@@ -718,6 +719,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         parameters->cp_disto_alloc = 0;
         parameters->cp_fixed_alloc = 0;
         parameters->cp_fixed_quality = 0;
+		parameters->numThreads = 8;
     }
 }
 
