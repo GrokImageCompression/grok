@@ -439,7 +439,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
 /* ------------------------------------------------------------------------------------ */
 
 static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *parameters,
-                                 img_fol_t *img_fol, img_fol_t *out_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size, char* plugin_dir) {
+                                 img_fol_t *img_fol, img_fol_t *out_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size, char* plugin_path) {
     uint32_t i, j;
     int totlen, c;
     opj_option_t long_option[]= {
@@ -454,7 +454,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         {"POC",REQ_ARG, NULL ,'P'},
         {"ROI",REQ_ARG, NULL ,'R'},
         {"mct",REQ_ARG, NULL, 'Y'},
-		{ "PluginDir", REQ_ARG, NULL, 'g' },
+		{ "PluginPath", REQ_ARG, NULL, 'g' },
 		{ "NumThreads", REQ_ARG, NULL, 'H' },
     };
 
@@ -1065,8 +1065,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         }
         break;
 		case 'g':
-			if (plugin_dir)
-				strcpy(plugin_dir, opj_optarg);
+			if (plugin_path)
+				strcpy(plugin_path, opj_optarg);
 		break;
 
 		case 'H':
@@ -1656,11 +1656,11 @@ static int plugin_main(int argc, char **argv) {
 	size_t num_compressed_files = 0;
 
 	char indexfilename[OPJ_PATH_LEN];	/* index file name */
-	char plugin_dir[OPJ_PATH_LEN];
+	char plugin_path[OPJ_PATH_LEN];
 
 	uint32_t i, num_images, imageno;
 	dircnt_t *dirptr = NULL;
-	plugin_dir[0] = 0;
+	plugin_path[0] = 0;
 
 
 	/* set encoding parameters to default values */
@@ -1681,11 +1681,11 @@ static int plugin_main(int argc, char **argv) {
 
 	/* parse input and get user encoding parameters */
 	parameters.tcp_mct = (char)255; /* This will be set later according to the input image or the provided option */
-	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol_plugin, &out_fol_plugin, &raw_cp, indexfilename, sizeof(indexfilename), plugin_dir) == 1) {
+	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol_plugin, &out_fol_plugin, &raw_cp, indexfilename, sizeof(indexfilename), plugin_path) == 1) {
 		return 1;
 	}
 	
-	opj_initialize(plugin_dir);
+	opj_initialize(plugin_path);
 	
 	isBatch =  img_fol_plugin.imgdirpath &&  out_fol_plugin.imgdirpath;
 	uint32_t state = opj_plugin_get_debug_state();

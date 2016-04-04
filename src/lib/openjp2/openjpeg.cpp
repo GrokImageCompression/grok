@@ -73,14 +73,14 @@
 #endif
 
 static bool is_initialized = false;
-bool OPJ_CALLCONV opj_initialize(const char* plugin_dir)
+bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
 {
     if (!is_initialized) {
 #ifdef _OPENMP
         omp_set_num_threads(OPJ_NUM_CORES);
 #endif
 		opj_plugin_init_info_t info;
-		info.pluginDir = plugin_dir;
+		info.plugin_path = plugin_path;
 		opj_plugin_init(info);
 
         is_initialized = true;
@@ -1062,14 +1062,7 @@ Plugin interface implementation
 bool pluginInitialized = false;
 void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 {
-
-    // first attempt to load plugin from current directory
-    int32_t rc = minpf_load_from_dir(".", NULL);
-
-    if (rc) {
-        // now try to load plugin from command line specified directory
-        rc = minpf_load_from_dir(info.pluginDir, NULL);
-    }
+	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
     pluginInitialized = (!rc);
 }
 

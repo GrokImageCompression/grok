@@ -997,7 +997,7 @@ typedef struct opj_jp2_index {
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
 
 /* Initialize OpenJPEG library */
-OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_dir);
+OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path);
 
 OPJ_API void OPJ_CALLCONV opj_cleanup();
 
@@ -1609,7 +1609,7 @@ Plugin management
 */
 
 typedef struct opj_plugin_init_info {
-    const char* pluginDir;
+    const char* plugin_path;
 } opj_plugin_init_info_t;
 
 OPJ_API void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info);

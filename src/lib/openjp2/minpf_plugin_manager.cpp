@@ -152,13 +152,19 @@ static int32_t minpf_load(const char* path)
     if (!lib) {
         return -1;
     }
+	printf("Plugin %s successfully loaded\n", path);
     initFunc = (minpf_init_func)(minpf_get_symbol(lib, "minpf_init_plugin"));
     if (!initFunc) {
 		free(lib);
         return -1;
     }
     mgr->dynamic_libraries[mgr->num_libraries++] = lib;
-    return minpf_initialize_plugin(initFunc);
+    auto rc =  minpf_initialize_plugin(initFunc);
+	if (rc)
+		fprintf(stderr, "Plugin %s failed to initialize \n", path);
+	else
+		fprintf(stdout, "Plugin %s successfully initialized \n", path);
+	return rc;
 
 }
 
@@ -224,8 +230,8 @@ static int32_t minpf_initialize_plugin(minpf_init_func initFunc)
     minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
     minpf_exit_func exitFunc = initFunc(&mgr->platformServices);
-    if (!exitFunc)
-        return -1;
+	if (!exitFunc)
+		return -1;
 
     mgr->exit_functions[mgr->num_exit_functions++] = exitFunc;
     return 0;
