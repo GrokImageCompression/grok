@@ -591,7 +591,9 @@ typedef struct opj_image_comp {
     uint32_t y0;
     /** precision */
     uint32_t prec;
-    /** signed (1) / unsigned (0) */
+	/** bpp (DO NOT USE; EXISTS ONLY FOR COMPATIBILITY WITH OPENJPEG) */
+	uint32_t bpp;
+	/** signed (1) / unsigned (0) */
     uint32_t sgnd;
     /** number of decoded resolution */
     uint32_t resno_decoded;
