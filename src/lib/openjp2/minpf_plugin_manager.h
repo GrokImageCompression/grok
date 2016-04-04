@@ -44,7 +44,8 @@ typedef struct minpf_plugin_manager {
 minpf_plugin_manager*  minpf_get_plugin_manager(void);
 void                   minpf_cleanup_plugin_manager(void);
 
-int32_t minpf_load_by_path(const char* path);
-int32_t minpf_load_all(const char* path, minpf_invoke_service_func func);
+
+int32_t minpf_load_from_dir(const char* dir, minpf_invoke_service_func func);
+int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func);
 
 

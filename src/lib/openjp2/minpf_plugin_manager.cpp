@@ -38,7 +38,7 @@ minpf_plugin_manager* manager;
 
 static int32_t minpf_initialize_plugin(minpf_init_func initFunc);
 static const char *get_filename_ext(const char *filename);
-
+static int32_t minpf_load(const char* path);
 
 static uint32_t minpf_is_valid_plugin(const char * id, const minpf_register_params * params)
 {
@@ -138,7 +138,7 @@ void   minpf_cleanup_plugin_manager(void)
     manager = NULL;
 }
 
-int32_t minpf_load_by_path(const char* path)
+static int32_t minpf_load(const char* path)
 {
     minpf_init_func initFunc = NULL;
     minpf_dynamic_library* lib = NULL;
@@ -162,7 +162,25 @@ int32_t minpf_load_by_path(const char* path)
 
 }
 
-int32_t minpf_load_all(const char* directory_path, minpf_invoke_service_func func)
+
+int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func)
+{
+	minpf_plugin_manager* mgr = minpf_get_plugin_manager();
+
+	if (!path || path[0] == '\0') // Check that the path is non-empty.
+		return -1;
+
+	mgr->platformServices.invokeService = func;
+
+	int32_t rc = minpf_load(path);
+	if (rc) {
+		fprintf(stderr, "Unable to open library %s\n", path);
+	}
+	return rc;
+}
+
+
+int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_func func)
 {
     DIR *dir;
     struct dirent* content;
@@ -192,7 +210,7 @@ int32_t minpf_load_all(const char* directory_path, minpf_invoke_service_func fun
         opj_strcpy_s(libraryPath,sizeof(libraryPath), directory_path);
         strcat(libraryPath, MINPF_FILE_SEPARATOR);
         strcat(libraryPath, content->d_name);
-        if (minpf_load_by_path(libraryPath) != 0)
+        if (minpf_load(libraryPath) != 0)
             continue;
         rc = 0;
     }

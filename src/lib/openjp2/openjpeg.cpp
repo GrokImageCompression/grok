@@ -1064,11 +1064,11 @@ void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 {
 
     // first attempt to load plugin from current directory
-    int32_t rc = minpf_load_all(".", NULL);
+    int32_t rc = minpf_load_from_dir(".", NULL);
 
     if (rc) {
         // now try to load plugin from command line specified directory
-        rc = minpf_load_all(info.pluginDir, NULL);
+        rc = minpf_load_from_dir(info.pluginDir, NULL);
     }
     pluginInitialized = (!rc);
 }
