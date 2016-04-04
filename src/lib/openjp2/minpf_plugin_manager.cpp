@@ -158,6 +158,13 @@ static int32_t minpf_load(const char* path)
 		free(lib);
         return -1;
     }
+
+	char fullPath[4096];
+	if (minpf_get_full_path(path, (void*)initFunc, lib->handle, fullPath, 4096)) {
+		printf("Full library path: %s\n", fullPath);
+	}
+
+
     mgr->dynamic_libraries[mgr->num_libraries++] = lib;
     auto rc =  minpf_initialize_plugin(initFunc);
 	if (rc)
