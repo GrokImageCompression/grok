@@ -1494,7 +1494,7 @@ int main(int argc, char **argv) {
             free(l_data);
         }
         else {
-            bSuccess = bSuccess && opj_encode(l_codec,NULL, l_stream);
+            bSuccess = bSuccess && opj_encode(l_codec,l_stream);
             if (!bSuccess)  {
                 fprintf(stderr, "failed to encode image: opj_encode\n");
             }
@@ -1630,7 +1630,7 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_start_compress\n");
 	}
-	bSuccess = bSuccess && opj_encode(l_codec, info->tile, l_stream);
+	bSuccess = bSuccess && opj_encode_with_plugin (l_codec, info->tile, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_encode\n");
 	}

@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     }
 
     assert( bSuccess );
-    bSuccess = opj_encode(l_codec,NULL, l_stream);
+    bSuccess = opj_encode(l_codec,l_stream);
     assert( bSuccess );
     bSuccess = opj_end_compress(l_codec, l_stream);
     assert( bSuccess );
