@@ -114,7 +114,7 @@ int parse_cmdline_decoder(int argc,
 							char **argv,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
-							char* plugin_dir);
+							char* plugin_path);
 int parse_DA_values( char* inArg, unsigned int *DA_x0, unsigned int *DA_y0, unsigned int *DA_x1, unsigned int *DA_y1);
 
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
@@ -453,7 +453,7 @@ int parse_cmdline_decoder(int argc,
 							char **argv,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
-							char* plugin_dir)
+							char* plugin_path)
 {
     /* parse the command line */
     int totlen, c;
@@ -463,7 +463,7 @@ int parse_cmdline_decoder(int argc,
         {"force-rgb", NO_ARG,  NULL, 1},
         {"upsample",  NO_ARG,  NULL, 1},
         {"split-pnm", NO_ARG,  NULL, 1},
-		{ "PluginDir", REQ_ARG, NULL, 'g' },
+		{ "PluginPath", REQ_ARG, NULL, 'g' },
 		{ "NumThreads", REQ_ARG, NULL, 'H' },
     };
 
@@ -661,8 +661,8 @@ int parse_cmdline_decoder(int argc,
         }
         break;
 		case 'g':
-			if (plugin_dir)
-				strcpy(plugin_dir, opj_optarg);
+			if (plugin_path)
+				strcpy(plugin_path, opj_optarg);
 			break;
 
 		case 'H': 
@@ -1053,9 +1053,9 @@ int main(int argc, char **argv)
     int failed = 0;
     double t_cumulative = 0;
     uint32_t num_decompressed_images = 0;
-	char plugin_dir[OPJ_PATH_LEN];
+	char plugin_path[OPJ_PATH_LEN];
 
-	plugin_dir[0] = 0;
+	plugin_path[0] = 0;
 
     /* set decoding parameters to default values */
     set_default_parameters(&parameters);
@@ -1064,7 +1064,7 @@ int main(int argc, char **argv)
     memset(&img_fol,0,sizeof(img_fol_t));
 
     /* parse input and get user encoding parameters */
-    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol, plugin_dir) == 1) {
+    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol, plugin_path) == 1) {
         destroy_parameters(&parameters);
         return EXIT_FAILURE;
     }
@@ -1104,7 +1104,7 @@ int main(int argc, char **argv)
     omp_set_num_threads(num_images == 1 ? OPJ_NUM_COMPRESS_DECOMPRESS_THREADS : 1);
 #endif
 
-    opj_initialize(plugin_dir);
+    opj_initialize(plugin_path);
 
     t_cumulative = opj_clock();
 #ifdef _OPENMP
