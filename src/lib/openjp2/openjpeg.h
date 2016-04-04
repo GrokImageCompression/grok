@@ -648,6 +648,8 @@ typedef struct opj_image_comptparm {
     uint32_t y0;
     /** precision */
     uint32_t prec;
+	/** bpp (DO NOT USE; EXISTS ONLY FOR COMPATIBILITY WITH OPENJPEG) */
+	uint32_t bpp;
     /** signed (1) / unsigned (0) */
     uint32_t sgnd;
 } opj_image_cmptparm_t;
@@ -1484,8 +1486,20 @@ OPJ_API bool OPJ_CALLCONV opj_end_compress (opj_codec_t *p_codec,
  * @return 				Returns true if successful, returns false otherwise
  */
 OPJ_API bool OPJ_CALLCONV opj_encode(opj_codec_t *p_codec,
-									opj_plugin_tile_t* tile,
                                      opj_stream_t *p_stream);
+
+/**
+* Encode an image into a JPEG-2000 codestream
+* @param p_codec 		compressor handle
+* @param p_stream 		Output buffer stream
+*
+* @return 				Returns true if successful, returns false otherwise
+*/
+OPJ_API bool OPJ_CALLCONV opj_encode_with_plugin(opj_codec_t *p_codec,
+	opj_plugin_tile_t* tile,
+	opj_stream_t *p_stream);
+
+
 /*
 ==========================================================
    codec output functions definitions
