@@ -784,7 +784,7 @@ bool all_components_equal_subsampling(opj_image_t *image) {
 		}
 	}
 	if (i != image->numcomps) {
-		fprintf(stderr, "color transform: All components must have the same subsampling.\n");
+		fprintf(stderr, "Color conversion: all components must have the same subsampling.\n");
 		return false;
 	}
 	return true;
