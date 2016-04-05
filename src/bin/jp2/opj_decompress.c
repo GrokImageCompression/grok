@@ -1292,11 +1292,13 @@ int main(int argc, char **argv)
                 color_sycc_to_rgb(image);
             } else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters.cod_format != TIF_DFMT)) {
 				if (color_cmyk_to_rgb(image)) {
+					fprintf(stderr, "ERROR -> opj_decompress: CMYK to RGB colour conversion failed !\n");
 					failed = 1;
 					goto cleanup;
 				}
             } else if (image->color_space == OPJ_CLRSPC_EYCC) {
 				if (color_esycc_to_rgb(image)) {
+					fprintf(stderr, "ERROR -> opj_decompress: eSYCC to RGB colour conversion failed !\n");
 					failed = 1;
 					goto cleanup;
 				}
@@ -1489,7 +1491,7 @@ cleanup:
     destroy_parameters(&parameters);
 	opj_cleanup();
 
-    if (num_decompressed_images) {
+    if (num_decompressed_images && !failed) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
     }
     //getchar();
