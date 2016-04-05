@@ -54,7 +54,7 @@ typedef struct minpf_platform_services {
 
 typedef int32_t (*minpf_exit_func)();
 
-typedef minpf_exit_func (*minpf_init_func)(const minpf_platform_services *);
+typedef minpf_exit_func (*minpf_init_func)(const char* pluginPath, const minpf_platform_services *);
 
 #ifndef PLUGIN_API
 #ifdef WIN32
@@ -64,5 +64,5 @@ typedef minpf_exit_func (*minpf_init_func)(const minpf_platform_services *);
 #endif
 #endif
 
-extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_services * params);
+extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const char* pluginPath, const minpf_platform_services * params);
 
