@@ -7820,22 +7820,18 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
     uint32_t x0_dest, y0_dest, x1_dest, y1_dest;
     size_t start_offset_dest, line_offset_dest;
 
-    opj_image_comp_t * img_comp_src = 00;
-    opj_image_comp_t * img_comp_dest = 00;
-
-    opj_tcd_tilecomp_t * tilec = 00;
-    opj_image_t * image_src = 00;
     uint32_t size_comp;
-    int32_t * dest_ptr;
     opj_tcd_resolution_t* res= 00;
-
-    tilec = p_tcd->tile->comps;
-    image_src = p_tcd->image;
-    img_comp_src = image_src->comps;
-
-    img_comp_dest = p_output_image->comps;
+	opj_image_t * image_src = p_tcd->image;
 
     for (i=0; i<image_src->numcomps; i++) {
+
+		opj_tcd_tilecomp_t* tilec = p_tcd->tile->comps+i;
+		opj_image_comp_t* img_comp_src = image_src->comps+i;
+		opj_image_comp_t* img_comp_dest = p_output_image->comps+i;
+
+		auto srcBufferLen = img_comp_src->w * img_comp_src->h;
+		auto destBufferLen = img_comp_dest->w * img_comp_dest->h;
 
         /* Allocate output component buffer if necessary */
         if (!img_comp_dest->data) {
@@ -7952,8 +7948,11 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
         start_offset_dest = (size_t)start_x_dest + (size_t)start_y_dest * (size_t)img_comp_dest->w;
         line_offset_dest  = (size_t)img_comp_dest->w - (size_t)width_dest;
 
-        /* Move the output buffer to the first place where we will write*/
-        dest_ptr = img_comp_dest->data + start_offset_dest;
+        /* Move the output buffer index to the first place where we will write*/
+		auto dest_ind = start_offset_dest;
+
+		/* Move to the first place where we will read*/
+		auto src_ind = start_offset_src;
 
         /*if (i == 0) {
                 fprintf(stdout, "COMPO[%d]:\n",i);
@@ -7969,85 +7968,84 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
                                 start_x_dest, start_y_dest, width_dest, height_dest, start_offset_dest, line_offset_dest);
         }*/
 
-        switch (size_comp) {
-        case 1: {
-            char * src_ptr = (char*) p_data;
-            src_ptr += start_offset_src; /* Move to the first place where we will read*/
+		switch (size_comp) {
+		case 1: {
+			char * src_ptr = (char*)p_data;
+			if (img_comp_src->sgnd) {
+				for (j = 0; j < height_dest; ++j) {
+					for (k = 0; k < width_dest; ++k) {
+						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
+							img_comp_dest->data[dest_ind++] = (int32_t)src_ptr[src_ind++]; /* Copy only the data needed for the output image */
+					}
 
-            if (img_comp_src->sgnd) {
-                for (j = 0 ; j < height_dest ; ++j) {
-                    for ( k = 0 ; k < width_dest ; ++k) {
-                        *(dest_ptr++) = (int32_t) (*(src_ptr++)); /* Copy only the data needed for the output image */
-                    }
+					dest_ind += line_offset_dest; /* Move to the next place where we will write */
+					src_ind += line_offset_src; /* Move to the next place where we will read */
+				}
+			}
+			else {
+				for (j = 0; j < height_dest; ++j) {
+					for (k = 0; k < width_dest; ++k) {
+						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
+							img_comp_dest->data[dest_ind++] = (int32_t)(src_ptr[src_ind++] & 0xff);
+					}
 
-                    dest_ptr+= line_offset_dest; /* Move to the next place where we will write */
-                    src_ptr += line_offset_src ; /* Move to the next place where we will read */
-                }
-            } else {
-                for ( j = 0 ; j < height_dest ; ++j ) {
-                    for ( k = 0 ; k < width_dest ; ++k) {
-                        *(dest_ptr++) = (int32_t) ((*(src_ptr++))&0xff);
-                    }
+					dest_ind += line_offset_dest;
+					src_ind += line_offset_src;
+				}
+			}
 
-                    dest_ptr+= line_offset_dest;
-                    src_ptr += line_offset_src;
-                }
-            }
+			src_ind += end_offset_src; /* Move to the end of this component-part of the input buffer */
+			p_data = (uint8_t*)(src_ptr + src_ind); /* Keep the current position for the next component-part */
+			}
+			break;
+		case 2: {
+			int16_t * src_ptr = (int16_t *)p_data;
 
-            src_ptr += end_offset_src; /* Move to the end of this component-part of the input buffer */
-            p_data = (uint8_t*) src_ptr; /* Keep the current position for the next component-part */
-        }
-        break;
-        case 2: {
-            int16_t * src_ptr = (int16_t *) p_data;
-            src_ptr += start_offset_src;
+			if (img_comp_src->sgnd) {
+				for (j = 0; j < height_dest; ++j) {
+					for (k = 0; k < width_dest; ++k) {
+						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
+							img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
+					}
 
-            if (img_comp_src->sgnd) {
-                for (j=0; j<height_dest; ++j) {
-                    for (k=0; k<width_dest; ++k) {
-                        *(dest_ptr++) = *(src_ptr++);
-                    }
+					dest_ind += line_offset_dest;
+					src_ind += line_offset_src;
+				}
+			}
+			else {
+				for (j = 0; j < height_dest; ++j) {
+					for (k = 0; k < width_dest; ++k) {
+						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
+							img_comp_dest->data[dest_ind++] = src_ptr[src_ind++] & 0xffff;
+					}
 
-                    dest_ptr+= line_offset_dest;
-                    src_ptr += line_offset_src ;
-                }
-            } else {
-                for (j=0; j<height_dest; ++j) {
-                    for (k=0; k<width_dest; ++k) {
-                        *(dest_ptr++) = (*(src_ptr++))&0xffff;
-                    }
+					dest_ind += line_offset_dest;
+					src_ind += line_offset_src;
+				}
+			}
 
-                    dest_ptr+= line_offset_dest;
-                    src_ptr += line_offset_src ;
-                }
-            }
+			src_ind += end_offset_src;
+			p_data = (uint8_t*)(src_ptr + src_ind);
+			}
+			break;
+		case 4: {
+			int32_t * src_ptr = (int32_t *)p_data;
 
-            src_ptr += end_offset_src;
-            p_data = (uint8_t*) src_ptr;
-        }
-        break;
-        case 4: {
-            int32_t * src_ptr = (int32_t *) p_data;
-            src_ptr += start_offset_src;
+			for (j = 0; j < height_dest; ++j) {
+				for (k = 0; k < width_dest; ++k) {
+					if (dest_ind < destBufferLen && src_ind < srcBufferLen)
+						img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
+				}
 
-            for (j=0; j<height_dest; ++j) {
-                for (k=0; k<width_dest; ++k) {
-                    *(dest_ptr++) = (*(src_ptr++));
-                }
+				dest_ind += line_offset_dest;
+				src_ind += line_offset_src;
+			}
 
-                dest_ptr+= line_offset_dest;
-                src_ptr += line_offset_src ;
-            }
-
-            src_ptr += end_offset_src;
-            p_data = (uint8_t*) src_ptr;
-        }
-        break;
-        }
-
-        ++img_comp_dest;
-        ++img_comp_src;
-        ++tilec;
+			src_ind += end_offset_src;
+			p_data = (uint8_t*)(src_ptr + src_ind);
+			}
+			break;
+		}
     }
 
     return true;
