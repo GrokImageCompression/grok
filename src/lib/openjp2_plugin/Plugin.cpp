@@ -29,7 +29,7 @@ extern "C"  PLUGIN_API  int32_t destroy(void * object) {
 	return 0;
 }
 
-extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const minpf_platform_services * params)
+extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const char* pluginPath, const minpf_platform_services * params)
 {
 	int res = 0;
 
