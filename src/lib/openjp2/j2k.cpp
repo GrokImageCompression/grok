@@ -7811,17 +7811,7 @@ This method copies a sub-region of this region into p_output_image (which stores
 */
 static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_image_t* p_output_image)
 {
-    uint32_t i,j,k = 0;
-    uint32_t width_src,height_src;
-    uint32_t width_dest,height_dest;
-    int32_t offset_x0_src, offset_y0_src, offset_x1_src, offset_y1_src;
-    size_t start_offset_src, line_offset_src, end_offset_src ;
-    uint32_t start_x_dest , start_y_dest;
-    uint32_t x0_dest, y0_dest, x1_dest, y1_dest;
-    size_t start_offset_dest, line_offset_dest;
-
-    uint32_t size_comp;
-    opj_tcd_resolution_t* res= 00;
+    uint32_t i=0,j=0,k = 0;
 	opj_image_t * image_src = p_tcd->image;
 
     for (i=0; i<image_src->numcomps; i++) {
@@ -7845,8 +7835,8 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 
         /*-----*/
         /* Compute the precision of the output buffer */
-        size_comp = (img_comp_src->prec + 7) >> 3;
-        res = tilec->resolutions + img_comp_src->resno_decoded;
+		uint32_t size_comp = (img_comp_src->prec + 7) >> 3;
+		opj_tcd_resolution_t* res = tilec->resolutions + img_comp_src->resno_decoded;
 
         if (size_comp == 3) {
             size_comp = 4;
@@ -7859,14 +7849,15 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
                         res->x0, res->x1, res->y0, res->y1);
         }*/
 
-        width_src = (uint32_t)(res->x1 - res->x0);
-        height_src = (uint32_t)(res->y1 - res->y0);
+		uint32_t width_src = (uint32_t)(res->x1 - res->x0);
+		uint32_t height_src = (uint32_t)(res->y1 - res->y0);
 
-        /* Border of the current output component*/
-        x0_dest = opj_uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->factor);
-        y0_dest = opj_uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->factor);
-        x1_dest = x0_dest + img_comp_dest->w; /* can't overflow given that image->x1 is uint32 */
-        y1_dest = y0_dest + img_comp_dest->h;
+
+        /* Border of the current output component. (x0_dest,y0_dest) corresponds to origin of dest buffer */
+		uint32_t x0_dest = opj_uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->factor);
+		uint32_t y0_dest = opj_uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->factor);
+		uint32_t x1_dest = x0_dest + img_comp_dest->w; /* can't overflow given that image->x1 is uint32 */
+		uint32_t y1_dest = y0_dest + img_comp_dest->h;
 
         /*if (i == 0) {
         fprintf(stdout, "DEST: x0_dest=%d, x1_dest=%d, y0_dest=%d, y1_dest=%d (%d)\n",
@@ -7875,15 +7866,19 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 
         /*-----*/
         /* Compute the area (offset_x0_src, offset_y0_src, offset_x1_src, offset_y1_src)
-         * of the input buffer (decoded tile component) which will be move
-         * in the output buffer. Compute the area of the output buffer (start_x_dest,
-         * start_y_dest, width_dest, height_dest)  which will be modified
+         * of the input buffer (decoded tile component) which will be moved
+         * to the output buffer. Compute the area of the output buffer (offset_x0_dest,
+         * offset_y0_dest, width_dest, height_dest)  which will be modified
          * by this input area.
          * */
         assert( res->x0 >= 0);
         assert( res->x1 >= 0);
+
+		uint32_t offset_x0_dest=0, offset_y0_dest=0;
+		int32_t offset_x0_src=0, offset_y0_src=0, offset_x1_src=0, offset_y1_src=0;
+		uint32_t width_dest=0, height_dest=0;
         if ( x0_dest < (uint32_t)res->x0 ) {
-            start_x_dest = (uint32_t)res->x0 - x0_dest;
+            offset_x0_dest = (uint32_t)res->x0 - x0_dest;
             offset_x0_src = 0;
 
             if ( x1_dest >= (uint32_t)res->x1 ) {
@@ -7894,7 +7889,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
                 offset_x1_src = (int32_t)(width_src - width_dest);
             }
         } else {
-            start_x_dest = 0U;
+            offset_x0_dest = 0U;
             offset_x0_src = (int32_t)x0_dest - res->x0;
 
             if ( x1_dest >= (uint32_t)res->x1 ) {
@@ -7907,7 +7902,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
         }
 
         if ( y0_dest < (uint32_t)res->y0 ) {
-            start_y_dest = (uint32_t)res->y0 - y0_dest;
+            offset_y0_dest = (uint32_t)res->y0 - y0_dest;
             offset_y0_src = 0;
 
             if ( y1_dest >= (uint32_t)res->y1 ) {
@@ -7918,7 +7913,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
                 offset_y1_src =  (int32_t)(height_src - height_dest);
             }
         } else {
-            start_y_dest = 0U;
+            offset_y0_dest = 0U;
             offset_y0_src = (int32_t)y0_dest - res->y0;
 
             if ( y1_dest >= (uint32_t)res->y1 ) {
@@ -7933,20 +7928,36 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
         if( (offset_x0_src < 0 ) || (offset_y0_src < 0 ) || (offset_x1_src < 0 ) || (offset_y1_src < 0 ) ) {
             return false;
         }
+		if ((offset_x0_src >(int32_t)width_src) || (offset_y0_src >(int32_t)height_src) || (offset_x1_src >(int32_t)width_src) || (offset_y1_src >(int32_t)height_src)) {
+			return false;
+		}
+
         /* testcase 2977.pdf.asan.67.2198 */
         if ((int32_t)width_dest < 0 || (int32_t)height_dest < 0) {
             return false;
         }
+
+		if (width_dest > img_comp_dest->w || height_dest > img_comp_dest->h)
+			return false;
+
+		if ((int32_t)width_src < 0 || (int32_t)height_src < 0) {
+			return false;
+		}
+
+		if (width_src > img_comp_src->w || height_src > img_comp_src->h)
+			return false;
+
+
         /*-----*/
 
         /* Compute the input buffer offset */
-        start_offset_src = (size_t)offset_x0_src + (size_t)offset_y0_src * (size_t)width_src;
-        line_offset_src  = (size_t)offset_x1_src + (size_t)offset_x0_src;
-        end_offset_src   = (size_t)offset_y1_src * (size_t)width_src - (size_t)offset_x0_src;
+		size_t start_offset_src = (size_t)offset_x0_src + (size_t)offset_y0_src * (size_t)width_src;
+		size_t line_offset_src  = (size_t)offset_x1_src + (size_t)offset_x0_src;
+		size_t end_offset_src   = (size_t)offset_y1_src * (size_t)width_src - (size_t)offset_x0_src;
 
         /* Compute the output buffer offset */
-        start_offset_dest = (size_t)start_x_dest + (size_t)start_y_dest * (size_t)img_comp_dest->w;
-        line_offset_dest  = (size_t)img_comp_dest->w - (size_t)width_dest;
+		size_t start_offset_dest = (size_t)offset_x0_dest + (size_t)offset_y0_dest * (size_t)img_comp_dest->w;
+		size_t line_offset_dest  = (size_t)img_comp_dest->w - (size_t)width_dest;
 
         /* Move the output buffer index to the first place where we will write*/
 		auto dest_ind = start_offset_dest;
@@ -7963,9 +7974,9 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
                                 offset_x0_src, offset_y0_src, offset_x1_src, offset_y1_src,
                                 start_offset_src, line_offset_src, end_offset_src);
 
-                fprintf(stdout, "DEST: start_x_dest=%d, start_y_dest=%d, width_dest=%d, height_dest=%d\n"
+                fprintf(stdout, "DEST: offset_x0_dest=%d, offset_y0_dest=%d, width_dest=%d, height_dest=%d\n"
                                 "\t start offset: %d, line offset= %d\n",
-                                start_x_dest, start_y_dest, width_dest, height_dest, start_offset_dest, line_offset_dest);
+                                offset_x0_dest, offset_y0_dest, width_dest, height_dest, start_offset_dest, line_offset_dest);
         }*/
 
 		switch (size_comp) {
@@ -7974,8 +7985,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 			if (img_comp_src->sgnd) {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k) {
-						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
-							img_comp_dest->data[dest_ind++] = (int32_t)src_ptr[src_ind++]; /* Copy only the data needed for the output image */
+						img_comp_dest->data[dest_ind++] = (int32_t)src_ptr[src_ind++]; /* Copy only the data needed for the output image */
 					}
 
 					dest_ind += line_offset_dest; /* Move to the next place where we will write */
@@ -7985,8 +7995,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 			else {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k) {
-						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
-							img_comp_dest->data[dest_ind++] = (int32_t)(src_ptr[src_ind++] & 0xff);
+						img_comp_dest->data[dest_ind++] = (int32_t)(src_ptr[src_ind++] & 0xff);
 					}
 
 					dest_ind += line_offset_dest;
@@ -8004,8 +8013,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 			if (img_comp_src->sgnd) {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k) {
-						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
-							img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
+						img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
 					}
 
 					dest_ind += line_offset_dest;
@@ -8015,8 +8023,7 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 			else {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k) {
-						if (dest_ind < destBufferLen && src_ind < srcBufferLen)
-							img_comp_dest->data[dest_ind++] = src_ptr[src_ind++] & 0xffff;
+						img_comp_dest->data[dest_ind++] = src_ptr[src_ind++] & 0xffff;
 					}
 
 					dest_ind += line_offset_dest;
@@ -8033,8 +8040,8 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 
 			for (j = 0; j < height_dest; ++j) {
 				for (k = 0; k < width_dest; ++k) {
-					if (dest_ind < destBufferLen && src_ind < srcBufferLen)
-						img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
+					img_comp_dest->data[dest_ind++] = src_ptr[src_ind++];
+					//memcpy(img_comp_dest->data+dest_ind, src_ptr+src_ind, sizeof(int32_t)*width_dest);
 				}
 
 				dest_ind += line_offset_dest;
