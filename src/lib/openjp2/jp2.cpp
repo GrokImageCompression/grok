@@ -1275,7 +1275,7 @@ static bool opj_jp2_read_cdef(	opj_jp2_t * jp2,
     if(jp2->color.jp2_cdef) return false;
 
     if (p_cdef_header_size < 2) {
-        opj_event_msg(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n");
+        opj_event_msg(p_manager, EVT_ERROR, "CDEF box: Insufficient data.\n");
         return false;
     }
 
@@ -1283,12 +1283,12 @@ static bool opj_jp2_read_cdef(	opj_jp2_t * jp2,
     p_cdef_header_data+= 2;
 
     if ( (uint16_t)l_value == 0) { /* szukw000: FIXME */
-        opj_event_msg(p_manager, EVT_ERROR, "Number of channel description is equal to zero in CDEF box.\n");
+        opj_event_msg(p_manager, EVT_ERROR, "CDEF box: Number of channel description is equal to zero.\n");
         return false;
     }
 
     if (p_cdef_header_size < 2 + (uint32_t)(uint16_t)l_value * 6) {
-        opj_event_msg(p_manager, EVT_ERROR, "Insufficient data for CDEF box.\n");
+        opj_event_msg(p_manager, EVT_ERROR, "CDEF box: Insufficient data.\n");
         return false;
     }
 
@@ -1317,6 +1317,34 @@ static bool opj_jp2_read_cdef(	opj_jp2_t * jp2,
         p_cdef_header_data +=2;
         cdef_info[i].asoc = (uint16_t) l_value;
     }
+
+	// cdef sanity check
+	// 1. check for multiple descriptions of the same component with different types
+	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
+		auto infoi = cdef_info[i];
+		for (uint16_t j = 0; j < jp2->color.jp2_cdef->n; ++j) {
+			auto infoj = cdef_info[j];
+			if (i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ) {
+				opj_event_msg(p_manager, EVT_ERROR, "CDEF box : multiple descriptions of component, %d, with differing types : %d and %d.\n", infoi.cn, infoi.typ, infoj.typ);
+				return false;
+			}
+		}
+	}
+
+	// 2. check that type/association pairs are unique
+	for (i = 0; i < jp2->color.jp2_cdef->n; ++i) {
+		auto infoi = cdef_info[i];
+		for (uint16_t j = 0; j < jp2->color.jp2_cdef->n; ++j) {
+			auto infoj = cdef_info[j];
+			if (i != j && 
+				infoi.cn != infoj.cn &&
+					infoi.typ == infoj.typ &&
+						infoi.asoc == infoj.asoc) {
+				opj_event_msg(p_manager, EVT_ERROR, "CDEF box : components %d and %d share same type/association pair (%d,%d).\n", infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
+				return false;
+			}
+		}
+	}
 
     return true;
 }
