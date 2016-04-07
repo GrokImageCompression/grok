@@ -1038,6 +1038,10 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 
 bool store_file_to_disk = true;
 
+void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
+	fprintf(stdout, "[WARNING] LCMS2 error: %s\n", Text);
+}
+
 /* -------------------------------------------------------------------------- */
 /**
  * OPJ_DECOMPRESS MAIN
@@ -1056,6 +1060,10 @@ int main(int argc, char **argv)
 	char plugin_path[OPJ_PATH_LEN];
 
 	plugin_path[0] = 0;
+
+#ifdef OPJ_HAVE_LIBLCMS2
+	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
+#endif
 
     /* set decoding parameters to default values */
     set_default_parameters(&parameters);
