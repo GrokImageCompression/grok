@@ -218,7 +218,7 @@ static opj_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, 
 
 void opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf)
 {
-    int32_t i;
+    size_t i;
     if (!seg_buf)
         return;
     for (i = 0; i < seg_buf->segments.size(); ++i) {
@@ -232,7 +232,7 @@ void opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf)
 
 void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf)
 {
-    int32_t i;
+	size_t i;
     if (!seg_buf)
         return;
     for (i = 0; i < seg_buf->segments.size(); ++i) {
@@ -317,7 +317,7 @@ bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
 
 bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buffer)
 {
-    int32_t i = 0;
+	size_t i = 0;
     size_t offset = 0;
 
     if (!buffer || !seg_buf)
