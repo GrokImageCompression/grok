@@ -32,8 +32,8 @@ public:
 				int32_t maxCblkH,
 				uint32_t numThreads);
 
-	void encode(int32_t threadId );
-	void encodeOpt(int32_t threadId);
+	void encode();
+	void encodeOpt(size_t threadId);
 
 	std::atomic_bool return_code;
 

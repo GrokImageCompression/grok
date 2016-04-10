@@ -181,7 +181,6 @@ static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer_v ,
 
 static void opj_region_decode97_scale(opj_coeff97_t* w,
                                       opj_pt_t range,
-                                      int32_t count,
                                       const float scale);
 
 static void opj_region_decode97_lift(opj_coeff97_t* l,
@@ -499,7 +498,6 @@ static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer ,
 
 static void opj_region_decode97_scale(opj_coeff97_t* buffer,
                                       opj_pt_t range,
-                                      int32_t count,
                                       const float scale)
 {
     float* restrict fw = ((float*) buffer);
@@ -578,13 +576,11 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
     /* inverse low-pass scale */
     opj_region_decode97_scale(dwt->data - dwt->interleaved_offset+ odd_top_left_bit,
                               dwt->range_even,
-                              dwt->s_n,
                               opj_K);
 
     /* inverse high-pass scale */
     opj_region_decode97_scale(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                               dwt->range_odd,
-                              dwt->d_n,
                               opj_c13318);
 
     /* inverse update */

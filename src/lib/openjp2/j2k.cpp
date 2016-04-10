@@ -6394,7 +6394,6 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 		opj_cp_t *l_cp = NULL;
 		opj_tcp_t *l_tcp = NULL;
 		opj_tccp_t *l_tccp = NULL;
-		OPJ_BYTE * l_current_ptr = NULL;
 
 		l_cp = &(p_j2k->m_cp);
 		l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -7665,7 +7664,6 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
     l_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
     if (! opj_tcd_init_decode_tile(p_j2k->m_tcd,
-                                   l_tcp->tccps->qmfbid,
                                    p_j2k->m_output_image,
                                    p_j2k->m_current_tile_number,
                                    p_manager)) {
@@ -7819,9 +7817,6 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 		opj_tcd_tilecomp_t* tilec = p_tcd->tile->comps+i;
 		opj_image_comp_t* img_comp_src = image_src->comps+i;
 		opj_image_comp_t* img_comp_dest = p_output_image->comps+i;
-
-		auto srcBufferLen = img_comp_src->w * img_comp_src->h;
-		auto destBufferLen = img_comp_dest->w * img_comp_dest->h;
 
         /* Allocate output component buffer if necessary */
         if (!img_comp_dest->data) {

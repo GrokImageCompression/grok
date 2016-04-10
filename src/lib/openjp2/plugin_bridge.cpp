@@ -44,10 +44,10 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
 				opj_tcd_band_t* band = resolution->bands + bandno;
 				opj_plugin_band_t* plugin_band = plugin_resolution->bands[bandno];
-				int num_precincts = band->precincts_data_size / sizeof(opj_tcd_precinct_t);
+				size_t num_precincts = band->precincts_data_size / sizeof(opj_tcd_precinct_t);
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
-				for (int precno = 0; precno < num_precincts; ++precno) {
+				for (size_t precno = 0; precno < num_precincts; ++precno) {
 					opj_tcd_precinct_t* precinct = band->precincts + precno;
 					opj_plugin_precinct_t* plugin_precinct = plugin_band->precincts[precno];
 					if (precinct->ch * precinct->cw != plugin_precinct->numBlocks) {

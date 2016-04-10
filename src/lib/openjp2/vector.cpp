@@ -45,7 +45,7 @@ bool opj_vec_push_back(opj_vec_t *vec, void* value)
     return true;
 }
 
-void* opj_vec_get(opj_vec_t *vec, int32_t index)
+void* opj_vec_get(opj_vec_t *vec, size_t index)
 {
     if (!vec || !vec->data)
         return NULL;

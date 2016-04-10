@@ -43,7 +43,7 @@ bool opj_vec_push_back(opj_vec_t *vec, void* value);
 /*
 Get value at specified index
 */
-void* opj_vec_get(opj_vec_t *vec, int32_t index);
+void* opj_vec_get(opj_vec_t *vec, size_t index);
 
 int32_t opj_vec_size(opj_vec_t *vec);
 

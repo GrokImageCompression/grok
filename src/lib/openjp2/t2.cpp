@@ -474,7 +474,6 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
 
             if (!skip_layer_or_res) {
                 opj_tcd_resolution_t* res = tilec->resolutions + l_current_pi->resno;
-                opj_tcd_resolution_t* pres = res - 1;
                 uint32_t bandno;
                 skip_precinct = true;
                 for (bandno = 0; bandno < res->numbands && skip_precinct; ++bandno) {

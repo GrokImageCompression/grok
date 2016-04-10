@@ -179,7 +179,7 @@ in T1.C are used by some function in TCD.C.
 /* ----------------------------------------------------------------------- */
 
 
-typedef int16_t opj_flag_t;
+typedef uint16_t opj_flag_t;
 
 typedef struct opj_t1 {
 	uint8_t* compressed_block;

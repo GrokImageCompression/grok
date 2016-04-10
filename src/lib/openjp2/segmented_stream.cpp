@@ -64,7 +64,7 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 
 uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
 {
-    int32_t i = 0;
+    size_t i = 0;
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
