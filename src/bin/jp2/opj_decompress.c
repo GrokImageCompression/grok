@@ -115,7 +115,7 @@ int parse_cmdline_decoder(int argc,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
 							char* plugin_path);
-int parse_DA_values( char* inArg, unsigned int *DA_x0, unsigned int *DA_y0, unsigned int *DA_x1, unsigned int *DA_y1);
+int parse_DA_values( char* inArg, int32_t *DA_x0, int32_t *DA_y0, int32_t *DA_x1, int32_t *DA_y1);
 
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
 
@@ -629,8 +629,9 @@ int parse_cmdline_decoder(int argc,
             ROI_values[0] = '\0';
             memcpy(ROI_values, opj_optarg, size_optarg);
             /*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
-            parse_DA_values( ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1);
-
+			if (parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1) != EXIT_SUCCESS) {
+				fprintf(stdout, "[WARNING] Specified image decode region not valid: ignoring \n");
+			}
             free(ROI_values);
         }
         break;
@@ -711,7 +712,7 @@ int parse_cmdline_decoder(int argc,
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parse_DA_values( char* inArg, unsigned int *DA_x0, unsigned int *DA_y0, unsigned int *DA_x1, unsigned int *DA_y1)
+int parse_DA_values( char* inArg, int32_t *DA_x0, int32_t *DA_y0, int32_t *DA_x1, int32_t *DA_y1)
 {
     int it = 0;
     int values[4];
@@ -725,13 +726,18 @@ int parse_DA_values( char* inArg, unsigned int *DA_x0, unsigned int *DA_y0, unsi
         it++;
     }
 
-    if (it != 4) {
-        return EXIT_FAILURE;
-    } else {
-        *DA_x0 = (uint32_t)values[0];
-        *DA_y0 = (uint32_t)values[1];
-        *DA_x1 = (uint32_t)values[2];
-        *DA_y1 = (uint32_t)values[3];
+	// don't allow negative values
+    if (it != 4 || (values[0] < 0 ||
+					values[1] < 0 ||
+					values[2] < 0 ||
+					values[3] < 0)) {
+			return EXIT_FAILURE;
+	}
+	else {
+        *DA_x0 = values[0];
+        *DA_y0 = values[1];
+        *DA_x1 = values[2];
+        *DA_y1 = values[3];
         return EXIT_SUCCESS;
     }
 }
@@ -1213,8 +1219,10 @@ int main(int argc, char **argv)
 
             if (!parameters.nb_tile_to_decode) {
                 /* Optional if you want decode the entire image */
-                if (!opj_set_decode_area(l_codec, image, (int32_t)parameters.DA_x0,
-                                         (int32_t)parameters.DA_y0, (int32_t)parameters.DA_x1, (int32_t)parameters.DA_y1)) {
+                if (!opj_set_decode_area(l_codec, image, parameters.DA_x0,
+														parameters.DA_y0,
+														parameters.DA_x1,
+														parameters.DA_y1)) {
                     fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
                     failed = 1;
                     goto cleanup;
@@ -1255,10 +1263,10 @@ int main(int argc, char **argv)
                 /* Optional if you want decode the entire image */
                 if (!opj_set_decode_area(l_codec,
                                          image,
-                                         (int32_t)parameters.DA_x0,
-                                         (int32_t)parameters.DA_y0,
-                                         (int32_t)parameters.DA_x1,
-                                         (int32_t)parameters.DA_y1)) {
+                                         parameters.DA_x0,
+                                         parameters.DA_y0,
+                                         parameters.DA_x1,
+                                         parameters.DA_y1)) {
                     fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
                     destroy_parameters(&parameters);
                     opj_stream_destroy(l_stream);

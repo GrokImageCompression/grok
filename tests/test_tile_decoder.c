@@ -176,18 +176,49 @@ int main (int argc, char *argv[])
     uint32_t l_nb_comps=0 ;
     int32_t l_current_tile_x0,l_current_tile_y0,l_current_tile_x1,l_current_tile_y1;
 
-    int da_x0=0;
-    int da_y0=0;
-    int da_x1=1000;
-    int da_y1=1000;
+    uint32_t da_x0=0;
+	uint32_t da_y0=0;
+	uint32_t da_x1=1000;
+	uint32_t da_y1=1000;
     char input_file[64];
 
     /* should be test_tile_decoder 0 0 1000 1000 tte1.j2k */
     if( argc == 6 ) {
-        da_x0=atoi(argv[1]);
-        da_y0=atoi(argv[2]);
-        da_x1=atoi(argv[3]);
-        da_y1=atoi(argv[4]);
+		auto temp = atoi(argv[1]);
+		if (temp < 0) {
+			fprintf(stderr, "Error -> invalid decode region\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			da_x0 = (uint32_t)temp;
+		}
+
+		temp = atoi(argv[2]);
+		if (temp < 0) {
+			fprintf(stderr, "Error -> invalid decode region\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			da_y0 = (uint32_t)temp;
+		}
+
+		temp = atoi(argv[3]);
+		if (temp < 0) {
+			fprintf(stderr, "Error -> invalid decode region\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			da_x1 = (uint32_t)temp;
+		}
+
+		temp = atoi(argv[4]);
+		if (temp < 0) {
+			fprintf(stderr, "Error -> invalid decode region\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			da_y1 = (uint32_t)temp;
+		}
         strcpy(input_file,argv[5]);
 
     } else {

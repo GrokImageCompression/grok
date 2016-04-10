@@ -114,10 +114,10 @@ typedef struct opj_codec_private {
             /** Set decode area function handler */
             bool (*opj_set_decode_area) ( void * p_codec,
                                           opj_image_t * p_image,
-                                          int32_t p_start_x,
-                                          int32_t p_end_x,
-                                          int32_t p_start_y,
-                                          int32_t p_end_y,
+                                          uint32_t p_start_x,
+                                          uint32_t p_end_x,
+                                          uint32_t p_start_y,
+                                          uint32_t p_end_y,
                                           struct opj_event_mgr * p_manager);
 
             /** Get tile function */
