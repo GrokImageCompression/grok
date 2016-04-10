@@ -33,7 +33,7 @@ static const char* dynamic_library_extension = "so";
 #endif
 #endif /* _WIN32 */
 
-minpf_plugin_manager* manager;
+minpf_plugin_manager* managerInstance;
 
 
 static int32_t minpf_initialize_plugin(const char* pluginPath, minpf_init_func initFunc);
@@ -56,7 +56,7 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
     int error;
     minpf_plugin_api_version v;
     minpf_register_params* existing_plugin_params;
-    minpf_plugin_manager* manager = minpf_get_plugin_manager();
+    minpf_plugin_manager* pluginManager = minpf_get_plugin_manager();
     minpf_register_params* registered_params = NULL;
 
     if (!id || id[0] == '\0' || !params)
@@ -66,13 +66,13 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
         return -1;
 
 
-    v = manager->platformServices.version;
+    v = pluginManager->platformServices.version;
     if (v.major != params->version.major)
         return -1;
 
     // check if plugin is already registered
     existing_plugin_params = (minpf_register_params*)malloc(sizeof(minpf_register_params));
-    error = hashmap_get(manager->plugins, id, (void**)(&existing_plugin_params));
+    error = hashmap_get(pluginManager->plugins, id, (void**)(&existing_plugin_params));
     free(existing_plugin_params);
     existing_plugin_params = NULL;
     if (error != MAP_MISSING)
@@ -80,7 +80,7 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
 
     registered_params = (minpf_register_params*)malloc(sizeof(minpf_register_params));
     *registered_params = *params;
-    error = hashmap_put(manager->plugins, id, registered_params);
+    error = hashmap_put(pluginManager->plugins, id, registered_params);
 
     return (error==MAP_OK) ? 0 : -1;
 
@@ -101,13 +101,13 @@ void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
 
 minpf_plugin_manager*  minpf_get_plugin_manager(void)
 {
-    if (!manager) {
-        manager = (minpf_plugin_manager*)calloc(1, sizeof(minpf_plugin_manager));
-        if (!manager)
+    if (!managerInstance) {
+		managerInstance = (minpf_plugin_manager*)calloc(1, sizeof(minpf_plugin_manager));
+        if (!managerInstance)
             return NULL;
-        minpf_initialize_plugin_manager(manager);
+        minpf_initialize_plugin_manager(managerInstance);
     }
-    return manager;
+    return managerInstance;
 
 }
 
@@ -120,22 +120,22 @@ static int minpf_free_hash_value(any_t item, any_t data)
 }
 void   minpf_cleanup_plugin_manager(void)
 {
-    if (manager) {
+    if (managerInstance) {
         size_t i = 0;
 
-        for (i = 0; i < manager->num_exit_functions; ++i)
-            manager->exit_functions[i]();
+        for (i = 0; i < managerInstance->num_exit_functions; ++i)
+			managerInstance->exit_functions[i]();
 
-        for (i = 0; i < manager->num_libraries; ++i) {
-            if (manager->dynamic_libraries[i])
-                free(manager->dynamic_libraries[i]);
+        for (i = 0; i < managerInstance->num_libraries; ++i) {
+            if (managerInstance->dynamic_libraries[i])
+                free(managerInstance->dynamic_libraries[i]);
         }
 
-        hashmap_iterate(manager->plugins, minpf_free_hash_value, NULL);
-        hashmap_free(manager->plugins);
-        free(manager);
+        hashmap_iterate(managerInstance->plugins, minpf_free_hash_value, NULL);
+        hashmap_free(managerInstance->plugins);
+        free(managerInstance);
     }
-    manager = NULL;
+	managerInstance = NULL;
 }
 
 static int32_t minpf_load(const char* path)

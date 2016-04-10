@@ -2422,24 +2422,6 @@ static bool opj_jp2_skip_jp2c(	opj_jp2_t *jp2,
     return true;
 }
 
-static bool opj_jpip_skip_iptr(	opj_jp2_t *jp2,
-                                opj_stream_private_t *stream,
-                                opj_event_mgr_t * p_manager )
-{
-    /* preconditions */
-    assert(jp2 != 00);
-    assert(stream != 00);
-    assert(p_manager != 00);
-
-    jp2->jpip_iptr_offset = opj_stream_tell(stream);
-
-    if (opj_stream_skip(stream,24,p_manager) != 24) {
-        return false;
-    }
-
-    return true;
-}
-
 /**
  * Reads the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
  *

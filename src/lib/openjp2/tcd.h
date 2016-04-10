@@ -275,7 +275,6 @@ bool opj_tcd_init(	opj_tcd_t *p_tcd,
  * @return	true if the remaining data is sufficient.
  */
 bool opj_tcd_init_decode_tile(opj_tcd_t *p_tcd,
-                              uint32_t qmfbid,
                               opj_image_t* output_image,
                               uint32_t p_tile_no,
                               opj_event_mgr_t* p_manager);

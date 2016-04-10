@@ -165,8 +165,8 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
 
 int imagetotif(opj_image_t * image, const char *outfile)
 {
-    int width, height;
-    int bps,adjust, sgnd;
+    uint32_t width, height;
+	uint32_t bps,adjust, sgnd;
     int tiPhoto;
     TIFF *tif;
     tdata_t buf;
@@ -179,10 +179,10 @@ int imagetotif(opj_image_t * image, const char *outfile)
     convert_32sXXx_C1R cvt32sToTif = NULL;
 
 	// actual bits per sample
-    bps = (int)image->comps[0].prec;
+    bps = image->comps[0].prec;
 
 	// even bits per sample
-	auto tif_bps = bps;
+	uint32_t tif_bps = bps;
 
     planes[0] = image->comps[0].data;
     numcomps = image->numcomps;

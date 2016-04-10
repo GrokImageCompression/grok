@@ -204,6 +204,7 @@ static uint64_t  opj_size_proc(opj_handle_t fd)
 
 static void* opj_map(opj_handle_t fd, size_t len)
 {
+	(void)len;
     void* ptr = NULL;
     HANDLE hMapFile = NULL;
 
@@ -297,6 +298,7 @@ static uint64_t opj_size_proc(opj_handle_t fd)
 
 static void* opj_map(opj_handle_t fd, size_t len)
 {
+	(void)len;
     void* ptr = NULL;
     uint64_t		size64 = 0;
 

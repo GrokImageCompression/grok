@@ -27,7 +27,7 @@ T1Encoder::T1Encoder() : tile(NULL),
 
 }
 
-void T1Encoder::encode(int32_t threadId) {
+void T1Encoder::encode(void) {
 	auto state = opj_plugin_get_debug_state();
 	auto t1 = opj_t1_create(true, 0,0);
 	if (!t1) {
@@ -99,7 +99,7 @@ void T1Encoder::encode(int32_t threadId) {
 	}
 	opj_t1_destroy(t1);
 }
-void T1Encoder::encodeOpt(int32_t threadId) {
+void T1Encoder::encodeOpt(size_t threadId) {
 	auto state = opj_plugin_get_debug_state();
 	auto t1 = t1OptVec[threadId];
 	encodeBlockInfo* block = NULL;
@@ -186,16 +186,16 @@ void T1Encoder::encodeOpt(int32_t threadId) {
 }
 
 bool T1Encoder::encode(bool do_opt, 
-						opj_tcd_tile_t *tile,
+						opj_tcd_tile_t *encodeTile,
 						std::vector<encodeBlockInfo*>* blocks, 
-						int32_t maxCblkW,
-						int32_t maxCblkH,
+						int32_t encodeMaxCblkW,
+						int32_t encodeMaxCblkH,
 						uint32_t numThreads) {
 	if (!blocks || blocks->size() == 0)
 		return true;
-	this->tile = tile;
-	this->maxCblkW = maxCblkW;
-	this->maxCblkH = maxCblkH;
+	tile = encodeTile;
+	maxCblkW = encodeMaxCblkW;
+	maxCblkH = encodeMaxCblkH;
 
 	for (auto i = 0U; i < numThreads; ++i) {
 		if (do_opt) {
@@ -225,7 +225,6 @@ bool T1Encoder::encode(bool do_opt,
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		encodeWorkers.push_back(std::thread([this,
 											do_opt,
-											tile,
 											&encode_t1_barrier,
 											&encode_t1_calling_barrier,
 											threadId]()
@@ -233,7 +232,7 @@ bool T1Encoder::encode(bool do_opt,
 			if (do_opt)
 				encodeOpt(threadId);
 			else
-				 encode(threadId);
+				 encode();
 			encode_t1_barrier.arrive_and_wait();
 			encode_t1_calling_barrier.arrive_and_wait();
 		}));
