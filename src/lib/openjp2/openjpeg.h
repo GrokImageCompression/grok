@@ -1251,8 +1251,8 @@ OPJ_API bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
  */
 OPJ_API bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
         opj_image_t* p_image,
-        int32_t p_start_x, int32_t p_start_y,
-        int32_t p_end_x, int32_t p_end_y );
+        uint32_t p_start_x, uint32_t p_start_y,
+        uint32_t p_end_x, uint32_t p_end_y );
 
 ////////////////////////////////////////////////////
 // Structs to pass data between plugin and grok
@@ -1680,13 +1680,13 @@ typedef struct opj_decompress_params {
     char indexfilename[OPJ_PATH_LEN];
 
     /** Decoding area left boundary */
-    uint32_t DA_x0;
+	int32_t DA_x0;
     /** Decoding area right boundary */
-    uint32_t DA_x1;
+	int32_t DA_x1;
     /** Decoding area up boundary */
-    uint32_t DA_y0;
+	int32_t DA_y0;
     /** Decoding area bottom boundary */
-    uint32_t DA_y1;
+	int32_t DA_y1;
     /** Verbose mode */
     bool m_verbose;
 

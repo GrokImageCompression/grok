@@ -8055,8 +8055,8 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 
 bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
                                     opj_image_t* p_image,
-                                    int32_t p_start_x, int32_t p_start_y,
-                                    int32_t p_end_x, int32_t p_end_y,
+                                    uint32_t p_start_x, uint32_t p_start_y,
+                                    uint32_t p_end_x, uint32_t p_end_y,
                                     opj_event_mgr_t * p_manager )
 {
     opj_cp_t * l_cp = &(p_j2k->m_cp);
@@ -8087,23 +8087,20 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
     /* Check if the positions provided by the user are correct */
 
     /* Left */
-    assert(p_start_x >= 0 );
-    assert(p_start_y >= 0 );
-
-    if ((uint32_t)p_start_x > l_image->x1 ) {
+    if (p_start_x > l_image->x1 ) {
         opj_event_msg(p_manager, EVT_ERROR,
                       "Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
                       p_start_x, l_image->x1);
         return false;
-    } else if ((uint32_t)p_start_x < l_image->x0) {
+    } else if (p_start_x < l_image->x0) {
         opj_event_msg(p_manager, EVT_WARNING,
                       "Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
                       p_start_x, l_image->x0);
         p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
         p_image->x0 = l_image->x0;
     } else {
-        p_j2k->m_specific_param.m_decoder.m_start_tile_x = ((uint32_t)p_start_x - l_cp->tx0) / l_cp->tdx;
-        p_image->x0 = (uint32_t)p_start_x;
+        p_j2k->m_specific_param.m_decoder.m_start_tile_x = (p_start_x - l_cp->tx0) / l_cp->tdx;
+        p_image->x0 = p_start_x;
     }
 
     /* Up */

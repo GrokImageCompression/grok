@@ -287,7 +287,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_set_decode_area =
             (bool (*) ( void *,
                         opj_image_t*,
-                        int32_t, int32_t, int32_t, int32_t,
+                        uint32_t, uint32_t, uint32_t, uint32_t,
                         struct opj_event_mgr *)) opj_j2k_set_decode_area;
 
         l_codec->m_codec_data.m_decompression.opj_get_decoded_tile =
@@ -365,7 +365,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_set_decode_area =
             (bool (*) ( void *,
                         opj_image_t*,
-                        int32_t,int32_t,int32_t,int32_t,
+                        uint32_t,uint32_t,uint32_t,uint32_t,
                         struct opj_event_mgr * )) opj_jp2_set_decode_area;
 
         l_codec->m_codec_data.m_decompression.opj_get_decoded_tile =
@@ -484,8 +484,8 @@ bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_codec,
 
 bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
                                         opj_image_t* p_image,
-                                        int32_t p_start_x, int32_t p_start_y,
-                                        int32_t p_end_x, int32_t p_end_y
+                                        uint32_t p_start_x, uint32_t p_start_y,
+                                        uint32_t p_end_x, uint32_t p_end_y
                                      )
 {
     if (p_codec) {

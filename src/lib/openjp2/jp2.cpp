@@ -2788,8 +2788,8 @@ void opj_jp2_destroy(opj_jp2_t *jp2)
 
 bool opj_jp2_set_decode_area(	opj_jp2_t *p_jp2,
                                 opj_image_t* p_image,
-                                int32_t p_start_x, int32_t p_start_y,
-                                int32_t p_end_x, int32_t p_end_y,
+                                uint32_t p_start_x, uint32_t p_start_y,
+                                uint32_t p_end_x, uint32_t p_end_y,
                                 opj_event_mgr_t * p_manager
                             )
 {

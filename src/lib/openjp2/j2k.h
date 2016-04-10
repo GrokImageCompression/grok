@@ -675,8 +675,8 @@ bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
  */
 bool opj_j2k_set_decode_area(	opj_j2k_t *p_j2k,
                                 opj_image_t* p_image,
-                                int32_t p_start_x, int32_t p_start_y,
-                                int32_t p_end_x, int32_t p_end_y,
+                                uint32_t p_start_x, uint32_t p_start_y,
+                                uint32_t p_end_x, uint32_t p_end_y,
                                 opj_event_mgr_t * p_manager );
 
 /**
