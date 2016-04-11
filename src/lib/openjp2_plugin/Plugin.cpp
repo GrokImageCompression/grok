@@ -59,12 +59,11 @@ extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
 	return OPJ_PLUGIN_STATE_NO_DEBUG;
 }
 
-
-extern "C"  PLUGIN_API void plugin_debug_next_cxd(void) {
+extern "C"  PLUGIN_API void plugin_debug_next_cxd(plugin_debug_mqc_t *mqc, uint32_t d){
 	
 }
 
-extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(void) {
+extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(plugin_debug_mqc_t *mqc){
 
 }
 
@@ -76,6 +75,8 @@ extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(void) {
 
 extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameters,
 											PLUGIN_ENCODE_USER_CALLBACK userCallback) {
+	plugin_encode_user_callback_info_t dummy;
+	dummy.error_code = 0;
 	return -1;
 }
 
