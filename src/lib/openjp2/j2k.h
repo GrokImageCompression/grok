@@ -169,9 +169,9 @@ typedef enum T2_MODE {
  */
 typedef struct opj_stepsize {
     /** exponent */
-    int32_t expn;
+    uint32_t expn;
     /** mantissa */
-    int32_t mant;
+    uint32_t mant;
 } opj_stepsize_t;
 
 /**

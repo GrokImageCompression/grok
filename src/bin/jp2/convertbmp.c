@@ -697,8 +697,8 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
     for(i = 0; i < 4U; i++) {
         cmptparm[i].prec = 8;
         cmptparm[i].sgnd = 0;
-        cmptparm[i].dx   = (uint32_t)parameters->subsampling_dx;
-        cmptparm[i].dy   = (uint32_t)parameters->subsampling_dy;
+        cmptparm[i].dx   = parameters->subsampling_dx;
+        cmptparm[i].dy   = parameters->subsampling_dy;
         cmptparm[i].w    = Info_h.biWidth;
         cmptparm[i].h    = Info_h.biHeight;
     }
@@ -714,10 +714,10 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
     /* set image offset and reference grid */
-    image->x0 = (uint32_t)parameters->image_offset_x0;
-    image->y0 = (uint32_t)parameters->image_offset_y0;
-    image->x1 =	image->x0 + (Info_h.biWidth  - 1U) * (uint32_t)parameters->subsampling_dx + 1U;
-    image->y1 = image->y0 + (Info_h.biHeight - 1U) * (uint32_t)parameters->subsampling_dy + 1U;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
+    image->x1 =	image->x0 + (Info_h.biWidth  - 1U) * parameters->subsampling_dx + 1U;
+    image->y1 = image->y0 + (Info_h.biHeight - 1U) * parameters->subsampling_dy + 1U;
 
     /* Read the data */
     if (Info_h.biBitCount == 24 && Info_h.biCompression == 0) { /*RGB */

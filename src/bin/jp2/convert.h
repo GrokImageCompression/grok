@@ -41,9 +41,9 @@
 /*@{*/
 typedef struct raw_comp_cparameters {
     /** subsampling in X direction */
-    int dx;
+	uint32_t dx;
     /** subsampling in Y direction */
-    int dy;
+	uint32_t dy;
     /*@}*/
 } raw_comp_cparameters_t;
 
@@ -51,13 +51,13 @@ typedef struct raw_comp_cparameters {
 /*@{*/
 typedef struct raw_cparameters {
     /** width of the raw image */
-    int rawWidth;
+	uint32_t rawWidth;
     /** height of the raw image */
-    int rawHeight;
+	uint32_t rawHeight;
     /** number of components of the raw image */
-    int rawComp;
+	uint32_t rawComp;
     /** bit depth of the raw image */
-    int rawBitDepth;
+	uint32_t rawBitDepth;
     /** signed/unsigned raw image */
     bool rawSigned;
     /** raw components parameters */

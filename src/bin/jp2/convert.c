@@ -715,12 +715,12 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
     unsigned int x, y;
     int flip_image=0;
     opj_image_cmptparm_t cmptparm[4];	/* maximum 4 components */
-    int numcomps;
+	uint32_t numcomps;
     OPJ_COLOR_SPACE color_space;
     bool mono ;
     bool save_alpha;
-    int subsampling_dx, subsampling_dy;
-    int i;
+    uint32_t subsampling_dx, subsampling_dy;
+	uint32_t i;
 
     f = fopen(filename, "rb");
     if (!f) {
@@ -775,8 +775,8 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
 
 
     /* set image offset and reference grid */
-    image->x0 = (uint32_t)parameters->image_offset_x0;
-    image->y0 = (uint32_t)parameters->image_offset_y0;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
     image->x1 =	!image->x0 ? (uint32_t)(image_width - 1)  * (uint32_t)subsampling_dx + 1 : image->x0 + (uint32_t)(image_width - 1)  * (uint32_t)subsampling_dx + 1;
     image->y1 =	!image->y0 ? (uint32_t)(image_height - 1) * (uint32_t)subsampling_dy + 1 : image->y0 + (uint32_t)(image_height - 1) * (uint32_t)subsampling_dy + 1;
 
@@ -1036,8 +1036,8 @@ static unsigned int readuint(FILE * f, int bigendian)
 opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 {
     FILE *f = NULL;
-    int w, h, prec;
-    int i, numcomps, max;
+    uint32_t w, h, prec;
+	uint32_t i, numcomps, max;
     OPJ_COLOR_SPACE color_space;
     opj_image_cmptparm_t cmptparm;	/* maximum of 1 component  */
     opj_image_t * image = NULL;
@@ -1047,7 +1047,7 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     char signtmp[32];
 
     char temp[32];
-    int bigendian;
+	uint32_t bigendian;
     opj_image_comp_t *comp = NULL;
 
     numcomps = 1;
@@ -1090,8 +1090,8 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 
     /* initialize image component */
 
-    cmptparm.x0 = (uint32_t)parameters->image_offset_x0;
-    cmptparm.y0 = (uint32_t)parameters->image_offset_y0;
+    cmptparm.x0 = parameters->image_offset_x0;
+    cmptparm.y0 = parameters->image_offset_y0;
     cmptparm.w = !cmptparm.x0 ? (uint32_t)((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * (uint32_t)parameters->subsampling_dx + 1;
     cmptparm.h = !cmptparm.y0 ? (uint32_t)((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * (uint32_t)parameters->subsampling_dy + 1;
 
@@ -1110,9 +1110,9 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
         prec = 8;
     } else ushift = dshift = force8 = adjustS = 0;
 
-    cmptparm.prec = (uint32_t)prec;
-    cmptparm.dx = (uint32_t)parameters->subsampling_dx;
-    cmptparm.dy = (uint32_t)parameters->subsampling_dy;
+    cmptparm.prec = prec;
+    cmptparm.dx = parameters->subsampling_dx;
+    cmptparm.dy = parameters->subsampling_dy;
 
     /* create the image */
     image = opj_image_create((uint32_t)numcomps, &cmptparm, color_space);
@@ -1131,13 +1131,14 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     comp = &image->comps[0];
 
     for (i = 0; i < w * h; i++) {
-        int v;
+        uint32_t v;
         if(force8) {
             v = readuchar(f) + adjustS;
             v = (v<<ushift) + (v>>dshift);
             comp->data[i] = (unsigned char)v;
 
-            if(v > max) max = v;
+            if(v > max) 
+				max = v;
 
             continue;
         }
@@ -1511,7 +1512,7 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     int subsampling_dy = parameters->subsampling_dy;
 
     FILE *fp = NULL;
-    int i, compno, numcomps, w, h, prec, format;
+    uint32_t i, compno, numcomps, w, h, prec, format;
     OPJ_COLOR_SPACE color_space;
     opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
     opj_image_t * image = NULL;
@@ -1573,12 +1574,12 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     memset(&cmptparm[0], 0, (size_t)numcomps * sizeof(opj_image_cmptparm_t));
 
     for(i = 0; i < numcomps; i++) {
-        cmptparm[i].prec = (uint32_t)prec;
+        cmptparm[i].prec = prec;
         cmptparm[i].sgnd = 0;
-        cmptparm[i].dx = (uint32_t)subsampling_dx;
-        cmptparm[i].dy = (uint32_t)subsampling_dy;
-        cmptparm[i].w = (uint32_t)w;
-        cmptparm[i].h = (uint32_t)h;
+        cmptparm[i].dx = subsampling_dx;
+        cmptparm[i].dy = subsampling_dy;
+        cmptparm[i].w = w;
+        cmptparm[i].h = h;
     }
     image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
 
@@ -1588,8 +1589,8 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
     /* set image offset and reference grid */
-    image->x0 = (uint32_t)parameters->image_offset_x0;
-    image->y0 = (uint32_t)parameters->image_offset_y0;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
     image->x1 = (uint32_t)(parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
     image->y1 = (uint32_t)(parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
@@ -1642,7 +1643,7 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
             image->comps[0].data[i] = (index?0:255);
         }
     } else if(format == 4) {
-        int x, y, bit;
+        uint32_t x, y, bit;
         unsigned char uc;
 
         i = 0;
@@ -1909,17 +1910,17 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
  <<-- <<-- <<-- <<-- */
 static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp, bool big_endian)
 {
-    int subsampling_dx = parameters->subsampling_dx;
-    int subsampling_dy = parameters->subsampling_dy;
+    uint32_t subsampling_dx = parameters->subsampling_dx;
+	uint32_t subsampling_dy = parameters->subsampling_dy;
 
     FILE *f = NULL;
-    int i, compno, numcomps, w, h;
+	uint32_t i, compno, numcomps, w, h;
     OPJ_COLOR_SPACE color_space;
     opj_image_cmptparm_t *cmptparm;
     opj_image_t * image = NULL;
     unsigned short ch;
 
-    if((! (raw_cp->rawWidth & raw_cp->rawHeight & raw_cp->rawComp & raw_cp->rawBitDepth)) == 0) {
+    if(! (raw_cp->rawWidth && raw_cp->rawHeight && raw_cp->rawComp && raw_cp->rawBitDepth) ) {
         fprintf(stderr,"\nError: invalid raw image parameters\n");
         fprintf(stderr,"Please use the Format option -F:\n");
         fprintf(stderr,"-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
@@ -1959,30 +1960,30 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     }
     /* initialize image components */
     for(i = 0; i < numcomps; i++) {
-        cmptparm[i].prec = (uint32_t)raw_cp->rawBitDepth;
-        cmptparm[i].sgnd = (uint32_t)raw_cp->rawSigned;
-        cmptparm[i].dx = (uint32_t)(subsampling_dx * raw_cp->rawComps[i].dx);
-        cmptparm[i].dy = (uint32_t)(subsampling_dy * raw_cp->rawComps[i].dy);
-        cmptparm[i].w = (uint32_t)w;
-        cmptparm[i].h = (uint32_t)h;
+        cmptparm[i].prec = raw_cp->rawBitDepth;
+        cmptparm[i].sgnd = raw_cp->rawSigned;
+        cmptparm[i].dx = subsampling_dx * raw_cp->rawComps[i].dx;
+        cmptparm[i].dy = subsampling_dy * raw_cp->rawComps[i].dy;
+        cmptparm[i].w = w;
+        cmptparm[i].h = h;
     }
     /* create the image */
-    image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
+    image = opj_image_create(numcomps, &cmptparm[0], color_space);
     free(cmptparm);
     if(!image) {
         fclose(f);
         return NULL;
     }
     /* set image offset and reference grid */
-    image->x0 = (uint32_t)parameters->image_offset_x0;
-    image->y0 = (uint32_t)parameters->image_offset_y0;
-    image->x1 = (uint32_t)parameters->image_offset_x0 + (uint32_t)(w - 1) *	(uint32_t)subsampling_dx + 1;
-    image->y1 = (uint32_t)parameters->image_offset_y0 + (uint32_t)(h - 1) * (uint32_t)subsampling_dy + 1;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
+    image->x1 = parameters->image_offset_x0 + (uint32_t)(w - 1) *	subsampling_dx + 1;
+    image->y1 = parameters->image_offset_y0 + (uint32_t)(h - 1) * subsampling_dy + 1;
 
     if(raw_cp->rawBitDepth <= 8) {
         unsigned char value = 0;
         for(compno = 0; compno < numcomps; compno++) {
-            int nloop = (w*h)/(raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			uint32_t nloop = (w*h)/(raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
             for (i = 0; i < nloop; i++) {
                 if (!fread(&value, 1, 1, f)) {
                     fprintf(stderr,"Error reading raw file. End of file probably reached.\n");
@@ -1996,7 +1997,7 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     } else if(raw_cp->rawBitDepth <= 16) {
         unsigned short value;
         for(compno = 0; compno < numcomps; compno++) {
-            int nloop = (w*h)/(raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			uint32_t nloop = (w*h)/(raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
             for (i = 0; i < nloop; i++) {
                 unsigned char temp1;
                 unsigned char temp2;
