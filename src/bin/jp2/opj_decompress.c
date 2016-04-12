@@ -1044,9 +1044,11 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 
 bool store_file_to_disk = true;
 
+#ifdef OPJ_HAVE_LIBLCMS2
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
 	fprintf(stdout, "[WARNING] LCMS2 error: %s\n", Text);
 }
+#endif
 
 /* -------------------------------------------------------------------------- */
 /**
