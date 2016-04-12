@@ -673,7 +673,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
                 s++;
 
             parameters->tcp_numlayers = (int)numlayers;
-            numresolution = (uint32_t)parameters->numresolution;
+            numresolution = parameters->numresolution;
             matrix_width = numresolution * 3;
             parameters->cp_matrice = (int *) malloc(numlayers * matrix_width * sizeof(int));
             s = s + 2;
@@ -981,7 +981,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
                 fprintf(stderr,"MCT incorrect value!! Current accepted values are 0, 1 or 2.\n");
                 return 1;
             }
-            parameters->tcp_mct = (char) mct_mode;
+            parameters->tcp_mct = (uint8_t)mct_mode;
         }
         break;
 
@@ -1129,7 +1129,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         parameters->cp_disto_alloc = 1;
     }
 
-    if((parameters->cp_tx0 > parameters->image_offset_x0) || (parameters->cp_ty0 > parameters->image_offset_y0)) {
+    if((parameters->cp_tx0 > 0 && (uint32_t)parameters->cp_tx0 > parameters->image_offset_x0) ||
+		(parameters->cp_ty0 > 0 && (uint32_t)parameters->cp_ty0 > parameters->image_offset_y0)) {
         fprintf(stderr,
                 "[ERROR] Tile offset dimension is unnappropriate --> TX0(%d)<=IMG_X0(%d) TYO(%d)<=IMG_Y0(%d) \n",
                 parameters->cp_tx0, parameters->image_offset_x0, parameters->cp_ty0, parameters->image_offset_y0);
@@ -1265,7 +1266,7 @@ int main(int argc, char **argv) {
     raw_cp.rawWidth = 0;
 
     /* parse input and get user encoding parameters */
-    parameters.tcp_mct = (char) 255; /* This will be set later according to the input image or the provided option */
+    parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	opj_reset_options_reading();
 	if(parse_cmdline_encoder(argc, argv, &parameters,&img_fol,&raw_cp, indexfilename, sizeof(indexfilename)) == 1) {
         return 1;
@@ -1410,7 +1411,7 @@ int main(int argc, char **argv) {
         }
 
         /* Decide if MCT should be used */
-        if (parameters.tcp_mct == (char) 255) { /* mct mode has not been set in commandline */
+        if (parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
             parameters.tcp_mct = (image->numcomps >= 3) ? 1 : 0;
         } else {            /* mct mode has been set in commandline */
             if ((parameters.tcp_mct == 1) && (image->numcomps < 3)){
@@ -1569,7 +1570,7 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 
 
 	/* Decide if MCT should be used */
-	if (parameters->tcp_mct == (char)255) { /* mct mode has not been set in commandline */
+	if (parameters->tcp_mct == 255) { /* mct mode has not been set in commandline */
 		parameters->tcp_mct = (image->numcomps >= 3) ? 1 : 0;
 	}
 	else {            /* mct mode has been set in commandline */
@@ -1680,7 +1681,7 @@ static int plugin_main(int argc, char **argv) {
 	raw_cp.rawWidth = 0;
 
 	/* parse input and get user encoding parameters */
-	parameters.tcp_mct = (char)255; /* This will be set later according to the input image or the provided option */
+	parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
 	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol_plugin, &out_fol_plugin, &raw_cp, indexfilename, sizeof(indexfilename), plugin_path) == 1) {
 		return 1;
 	}

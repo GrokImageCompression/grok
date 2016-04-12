@@ -91,12 +91,12 @@ int main (int argc, char *argv[])
     uint8_t *l_data;
 
     uint32_t num_comps;
-    int image_width;
-    int image_height;
-    int tile_width;
-    int tile_height;
-    int comp_prec;
-    int irreversible;
+	uint32_t image_width;
+	uint32_t image_height;
+	uint32_t tile_width;
+	uint32_t tile_height;
+	uint32_t comp_prec;
+	uint32_t irreversible;
     char output_file[64];
 
     /* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
@@ -210,8 +210,8 @@ int main (int argc, char *argv[])
         l_current_param_ptr->dx = 1;
         l_current_param_ptr->dy = 1;
 
-        l_current_param_ptr->h = (uint32_t)image_height;
-        l_current_param_ptr->w = (uint32_t)image_width;
+        l_current_param_ptr->h = image_height;
+        l_current_param_ptr->w = image_width;
 
         l_current_param_ptr->sgnd = 0;
         l_current_param_ptr->prec = (uint32_t)comp_prec;
@@ -246,8 +246,8 @@ int main (int argc, char *argv[])
 
     l_image->x0 = 0;
     l_image->y0 = 0;
-    l_image->x1 = (uint32_t)image_width;
-    l_image->y1 = (uint32_t)image_height;
+    l_image->x1 = image_width;
+    l_image->y1 = image_height;
     l_image->color_space = OPJ_CLRSPC_SRGB;
 
     if (! opj_setup_encoder(l_codec,&l_param,l_image)) {

@@ -418,13 +418,13 @@ static void tif_16uto32s(const uint16_t* pSrc, int32_t* pDst, size_t length)
  */
 opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 {
-    int subsampling_dx = parameters->subsampling_dx;
-    int subsampling_dy = parameters->subsampling_dy;
+    uint32_t subsampling_dx = parameters->subsampling_dx;
+	uint32_t subsampling_dy = parameters->subsampling_dy;
     TIFF *tif;
     tdata_t buf = NULL;
     tstrip_t strip;
     tsize_t strip_size;
-    int j, currentPlane, numcomps = 0, w, h;
+	uint32_t j, currentPlane, numcomps = 0, w, h;
     OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
     opj_image_cmptparm_t cmptparm[4]; /* RGBA */
     opj_image_t *image = NULL;
@@ -551,10 +551,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 
     for(j = 0; j < numcomps; j++) {
         cmptparm[j].prec = tiBps;
-        cmptparm[j].dx = (uint32_t)subsampling_dx;
-        cmptparm[j].dy = (uint32_t)subsampling_dy;
-        cmptparm[j].w = (uint32_t)w;
-        cmptparm[j].h = (uint32_t)h;
+        cmptparm[j].dx = subsampling_dx;
+        cmptparm[j].dy = subsampling_dy;
+        cmptparm[j].w = w;
+        cmptparm[j].h = h;
     }
 
     image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
@@ -563,12 +563,12 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		goto cleanup;
     }
     /* set image offset and reference grid */
-    image->x0 = (uint32_t)parameters->image_offset_x0;
-    image->y0 = (uint32_t)parameters->image_offset_y0;
-    image->x1 =	!image->x0 ? (uint32_t)(w - 1) * (uint32_t)subsampling_dx + 1 :
-                image->x0 + (uint32_t)(w - 1) * (uint32_t)subsampling_dx + 1;
-    image->y1 =	!image->y0 ? (uint32_t)(h - 1) * (uint32_t)subsampling_dy + 1 :
-                image->y0 + (uint32_t)(h - 1) * (uint32_t)subsampling_dy + 1;
+    image->x0 = parameters->image_offset_x0;
+    image->y0 = parameters->image_offset_y0;
+    image->x1 =	!image->x0 ? (uint32_t)(w - 1) * subsampling_dx + 1 :
+                image->x0 + (uint32_t)(w - 1) * subsampling_dx + 1;
+    image->y1 =	!image->y0 ? (uint32_t)(h - 1) * subsampling_dy + 1 :
+                image->y0 + (uint32_t)(h - 1) * subsampling_dy + 1;
 
     for(j = 0; j < numcomps; j++) {
         planes[j] = image->comps[j].data;

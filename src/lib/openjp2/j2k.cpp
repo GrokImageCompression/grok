@@ -1320,7 +1320,7 @@ static float opj_j2k_get_tp_stride (opj_tcp_t * p_tcp);
 
 static float opj_j2k_get_default_stride (opj_tcp_t * p_tcp);
 
-static int opj_j2k_initialise_4K_poc(opj_poc_t *POC, int numres);
+static uint32_t opj_j2k_initialise_4K_poc(opj_poc_t *POC, uint32_t numres);
 
 static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_image_t *image, opj_event_mgr_t *p_manager);
 
@@ -1563,7 +1563,7 @@ static void  opj_j2k_write_float_to_int16 (const void * p_src_data, void * p_des
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        l_temp = (uint32_t) *(l_src_data++);
+        l_temp = (uint32_t)*(l_src_data++);
 
         opj_write_bytes(l_dest_data,l_temp,sizeof(int16_t));
 
@@ -1579,7 +1579,7 @@ static void opj_j2k_write_float_to_int32 (const void * p_src_data, void * p_dest
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        l_temp = (uint32_t) *(l_src_data++);
+        l_temp =  (uint32_t)*(l_src_data++);
 
         opj_write_bytes(l_dest_data,l_temp,sizeof(int32_t));
 
@@ -2153,10 +2153,10 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
         l_img_comp->sgnd = tmp >> 7;
         opj_read_bytes(p_header_data,&tmp,1);   /* XRsiz_i */
         ++p_header_data;
-        l_img_comp->dx = (uint32_t)tmp; /* should be between 1 and 255 */
+        l_img_comp->dx = tmp; /* should be between 1 and 255 */
         opj_read_bytes(p_header_data,&tmp,1);   /* YRsiz_i */
         ++p_header_data;
-        l_img_comp->dy = (uint32_t)tmp; /* should be between 1 and 255 */
+        l_img_comp->dy = tmp; /* should be between 1 and 255 */
         if( l_img_comp->dx < 1 || l_img_comp->dx > 255 ||
                 l_img_comp->dy < 1 || l_img_comp->dy > 255 ) {
             opj_event_msg(p_manager, EVT_ERROR,
@@ -5658,8 +5658,9 @@ opj_j2k_t* opj_j2k_create_compress(void)
     return l_j2k;
 }
 
-static int opj_j2k_initialise_4K_poc(opj_poc_t *POC, int numres)
+static uint32_t opj_j2k_initialise_4K_poc(opj_poc_t *POC, uint32_t numres)
 {
+	assert(numres > 0);
     POC[0].tile  = 1;
     POC[0].resno0  = 0;
     POC[0].compno0 = 0;
@@ -5671,7 +5672,7 @@ static int opj_j2k_initialise_4K_poc(opj_poc_t *POC, int numres)
     POC[1].resno0  = (uint32_t)(numres-1);
     POC[1].compno0 = 0;
     POC[1].layno1  = 1;
-    POC[1].resno1  = (uint32_t)numres;
+    POC[1].resno1  = numres;
     POC[1].compno1 = 3;
     POC[1].prg1 = OPJ_CPRL;
     return 2;
@@ -5680,7 +5681,7 @@ static int opj_j2k_initialise_4K_poc(opj_poc_t *POC, int numres)
 static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_image_t *image, opj_event_mgr_t *p_manager)
 {
     /* Configure cinema parameters */
-    int i;
+    uint32_t i;
 
     /* No tiling */
     parameters->tile_size_on = false;
@@ -5772,7 +5773,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Progression order changes for 4K, disallowed for 2K */
     if (parameters->rsiz == OPJ_PROFILE_CINEMA_4K) {
-        parameters->numpocs = (uint32_t)opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolution);
+        parameters->numpocs = opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolution);
     } else {
         parameters->numpocs = 0;
     }
@@ -5794,7 +5795,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
         parameters->max_cs_size = OPJ_CINEMA_24_CS;
     }
 
-    if (parameters->max_comp_size <= 0) {
+    if (parameters->max_comp_size == 0) {
         /* No rate has been introduced, 24 fps is assumed */
         parameters->max_comp_size = OPJ_CINEMA_24_COMP;
         opj_event_msg(p_manager, EVT_WARNING,
@@ -5902,7 +5903,8 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
     /* see if max_codestream_size does limit input rate */
     if (parameters->max_cs_size <= 0) {
-        if (parameters->tcp_rates[parameters->tcp_numlayers-1] > 0) {
+        if (parameters->tcp_numlayers > 0 &&
+				parameters->tcp_rates[parameters->tcp_numlayers-1] > 0) {
             float temp_size;
             temp_size =(float)(image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
                        (parameters->tcp_rates[parameters->tcp_numlayers-1] * 8 * (float)image->comps[0].dx * (float)image->comps[0].dy);
@@ -5972,11 +5974,11 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     /*
     copy user encoding parameters
     */
-    cp->m_specific_param.m_enc.m_max_comp_size = (uint32_t)parameters->max_comp_size;
+    cp->m_specific_param.m_enc.m_max_comp_size = parameters->max_comp_size;
     cp->rsiz = parameters->rsiz;
-    cp->m_specific_param.m_enc.m_disto_alloc = (uint32_t)parameters->cp_disto_alloc & 1u;
-    cp->m_specific_param.m_enc.m_fixed_alloc = (uint32_t)parameters->cp_fixed_alloc & 1u;
-    cp->m_specific_param.m_enc.m_fixed_quality = (uint32_t)parameters->cp_fixed_quality & 1u;
+    cp->m_specific_param.m_enc.m_disto_alloc = parameters->cp_disto_alloc & 1u;
+    cp->m_specific_param.m_enc.m_fixed_alloc = parameters->cp_fixed_alloc & 1u;
+    cp->m_specific_param.m_enc.m_fixed_quality = parameters->cp_fixed_quality & 1u;
 
     /* mod fixed_quality */
     if (parameters->cp_fixed_alloc && parameters->cp_matrice) {
@@ -5990,12 +5992,12 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     }
 
     /* tiles */
-    cp->tdx = (uint32_t)parameters->cp_tdx;
-    cp->tdy = (uint32_t)parameters->cp_tdy;
+    cp->tdx = parameters->cp_tdx;
+    cp->tdy = parameters->cp_tdy;
 
     /* tile offset */
-    cp->tx0 = (uint32_t)parameters->cp_tx0;
-    cp->ty0 = (uint32_t)parameters->cp_ty0;
+    cp->tx0 = parameters->cp_tx0;
+    cp->ty0 = parameters->cp_ty0;
 
     /* comment string */
     if(parameters->cp_comment) {
@@ -6045,7 +6047,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     }
     if (parameters->numpocs) {
         /* initialisation of POC */
-        opj_j2k_check_poc_val(parameters->POC,parameters->numpocs, (uint32_t)parameters->numresolution, image->numcomps, (uint32_t)parameters->tcp_numlayers, p_manager);
+        opj_j2k_check_poc_val(parameters->POC,parameters->numpocs, parameters->numresolution, image->numcomps, (uint32_t)parameters->tcp_numlayers, p_manager);
         /* TODO MSD use the return value*/
     }
 
@@ -6070,7 +6072,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
         tcp->csty = (uint32_t)parameters->csty;
         tcp->prg = parameters->prog_order;
-        tcp->mct = (uint32_t)parameters->tcp_mct;
+        tcp->mct = parameters->tcp_mct;
 
         numpocs_tile = 0;
         tcp->POC = 0;
@@ -6185,10 +6187,10 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
             opj_tccp_t *tccp = &tcp->tccps[i];
 
             tccp->csty = parameters->csty & 0x01;   /* 0 => one precinct || 1 => custom precinct  */
-            tccp->numresolutions = (uint32_t)parameters->numresolution;
-            tccp->cblkw = (uint32_t)opj_int_floorlog2(parameters->cblockw_init);
-            tccp->cblkh = (uint32_t)opj_int_floorlog2(parameters->cblockh_init);
-            tccp->cblksty = (uint32_t)parameters->mode;
+            tccp->numresolutions = parameters->numresolution;
+            tccp->cblkw = opj_int_floorlog2(parameters->cblockw_init);
+            tccp->cblkh = opj_int_floorlog2(parameters->cblockh_init);
+            tccp->cblksty = parameters->mode;
             tccp->qmfbid = parameters->irreversible ? 0 : 1;
             tccp->qntsty = parameters->irreversible ? J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
             tccp->numgbits = 2;
@@ -6200,7 +6202,8 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
             }
 
             if (parameters->csty & J2K_CCP_CSTY_PRT) {
-                int32_t p = 0, it_res;
+				uint32_t p = 0;
+				int32_t it_res;
                 assert( tccp->numresolutions > 0 );
                 for (it_res = (int32_t)tccp->numresolutions - 1; it_res >= 0; it_res--) {
                     if (p < parameters->res_spec) {
@@ -6404,7 +6407,7 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 		encoding_parameters->irreversible = l_tccp->qmfbid == 0;
 		encoding_parameters->rsiz = l_cp->rsiz;
 		encoding_parameters->numresolution = l_tccp->numresolutions;
-		for (int i = 0; i < encoding_parameters->numresolution; ++i) {
+		for (uint32_t i = 0; i < encoding_parameters->numresolution; ++i) {
 			encoding_parameters->prcw_init[i] = 1 << l_tccp->prcw[i];
 			encoding_parameters->prch_init[i] = 1 << l_tccp->prch[i];
 		}
@@ -8671,7 +8674,7 @@ static bool opj_j2k_write_SQcd_SQcc(       opj_j2k_t *p_j2k,
         ++p_data;
 
         for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-            l_expn = (uint32_t)l_tccp->stepsizes[l_band_no].expn;
+            l_expn = l_tccp->stepsizes[l_band_no].expn;
             opj_write_bytes(p_data, l_expn << 3, 1);        /* SPqcx_i */
             ++p_data;
         }

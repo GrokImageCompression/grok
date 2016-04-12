@@ -352,25 +352,25 @@ typedef struct opj_cparameters {
     /** size of tile: tile_size_on = false (not in argument) or = true (in argument) */
     bool tile_size_on;
     /** XTOsiz */
-    int32_t cp_tx0;
+    uint32_t cp_tx0;
     /** YTOsiz */
-    int32_t cp_ty0;
+    uint32_t cp_ty0;
     /** XTsiz */
-    int32_t cp_tdx;
+    uint32_t cp_tdx;
     /** YTsiz */
-    int32_t cp_tdy;
+    uint32_t cp_tdy;
     /** allocation by rate/distortion */
-    int32_t cp_disto_alloc;
+    uint32_t cp_disto_alloc;
     /** allocation by fixed layer */
-    int32_t cp_fixed_alloc;
+    uint32_t cp_fixed_alloc;
     /** add fixed_quality */
-    int32_t cp_fixed_quality;
+    uint32_t cp_fixed_quality;
     /** fixed layer */
     int32_t *cp_matrice;
     /** comment for coding */
     char *cp_comment;
     /** csty : coding style */
-    int32_t csty;
+    uint32_t csty;
     /** progression order (default OPJ_LRCP) */
     OPJ_PROG_ORDER prog_order;
     /** progression order changes */
@@ -378,31 +378,31 @@ typedef struct opj_cparameters {
     /** number of progression order changes (POC), default to 0 */
     uint32_t numpocs;
     /** number of layers */
-    int32_t tcp_numlayers;
+    uint32_t tcp_numlayers;
     /** rates of layers - might be subsequently limited by the max_cs_size field */
     float tcp_rates[100];
     /** different psnr for successive layers */
     float tcp_distoratio[100];
     /** number of resolutions */
-    int32_t numresolution;
+    uint32_t numresolution;
     /** initial code block width, default to 64 */
-    int32_t cblockw_init;
+    uint32_t cblockw_init;
     /** initial code block height, default to 64 */
-    int32_t cblockh_init;
+    uint32_t cblockh_init;
     /** mode switch (cblk_style) */
-    int32_t mode;
+    uint32_t mode;
     /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
-    int32_t irreversible;
-    /** region of interest: affected component in [0..3], -1 means no ROI */
+    uint32_t irreversible;
+    /** region of interest: affected component in [0..3]; -1 means no ROI */
     int32_t roi_compno;
     /** region of interest: upshift value */
-    int32_t roi_shift;
+    uint32_t roi_shift;
     /* number of precinct size specifications */
-    int32_t res_spec;
+    uint32_t res_spec;
     /** initial precinct width */
-    int32_t prcw_init[OPJ_J2K_MAXRLVLS];
+    uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
     /** initial precinct height */
-    int32_t prch_init[OPJ_J2K_MAXRLVLS];
+    uint32_t prch_init[OPJ_J2K_MAXRLVLS];
 
     /**@name command line encoder parameters (not used inside the library) */
     /*@{*/
@@ -415,16 +415,16 @@ typedef struct opj_cparameters {
     /** DEPRECATED. Index generation is now handeld with the opj_encode_with_info() function. Set to NULL */
     char index[OPJ_PATH_LEN];
     /** subimage encoding: origin image offset in x direction */
-    int32_t image_offset_x0;
+    uint32_t image_offset_x0;
     /** subimage encoding: origin image offset in y direction */
-    int32_t image_offset_y0;
+    uint32_t image_offset_y0;
     /** subsampling value for dx */
-    int32_t subsampling_dx;
+    uint32_t subsampling_dx;
     /** subsampling value for dy */
-    int32_t subsampling_dy;
-    /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF*/
+    uint32_t subsampling_dy;
+    /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF; -1 means no input file format*/
     int32_t decod_format;
-    /** output file format 0: J2K, 1: JP2, 2: JPT */
+    /** output file format 0: J2K, 1: JP2, 2: JPT; -1 means no output file format */
     int32_t cod_format;
     /*@}*/
 
@@ -432,14 +432,14 @@ typedef struct opj_cparameters {
      * Maximum size (in bytes) for each component.
      * If == 0, component size limitation is not considered
      * */
-    int32_t max_comp_size;
+    uint32_t max_comp_size;
 
     /** Tile part generation*/
-    char tp_on;
+    uint8_t tp_on;
     /** Flag for Tile part generation*/
-    char tp_flag;
+	uint8_t tp_flag;
     /** MCT (multiple component transform) */
-    char tcp_mct;
+	uint8_t tcp_mct;
 
     /** Naive implementation of MCT restricted to a single reversible array based
         encoding without offset concerning all the components. */
