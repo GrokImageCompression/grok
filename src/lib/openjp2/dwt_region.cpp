@@ -317,10 +317,10 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec, uint32_t numres)
 
     opj_tcd_resolution_t* tr = tilec->resolutions;
 
-    uint32_t res_width = (uint32_t)(tr->x1 - tr->x0);	/* width of the resolution level computed */
-    uint32_t res_height = (uint32_t)(tr->y1 - tr->y0);	/* height of the resolution level computed */
+    uint32_t res_width = (tr->x1 - tr->x0);	/* width of the resolution level computed */
+    uint32_t res_height = (tr->y1 - tr->y0);	/* height of the resolution level computed */
 
-    uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+    uint32_t w = (tilec->x1 - tilec->x0);
 
     int32_t resno = 1;
 
@@ -356,10 +356,10 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec, uint32_t numres)
         buffer_v.interleaved_offset = opj_int_max(0,interleaved_v.x-2);
 
         ++tr;
-        res_width = (uint32_t)(tr->x1 - tr->x0);
-        res_height = (uint32_t)(tr->y1 - tr->y0);
+        res_width = (tr->x1 - tr->x0);
+        res_height = (tr->y1 - tr->y0);
 
-        buffer_h.d_n = (int32_t)(res_width - (uint32_t)buffer_h.s_n);
+        buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
         buffer_h.odd_top_left_bit = tr->x0 &1;
         buffer_h.interleaved_offset = opj_int_max(0, interleaved_h.x - 2);
 
@@ -380,7 +380,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec, uint32_t numres)
             tiledp += w;
         }
 
-        buffer_v.d_n = (int32_t)(res_height - (uint32_t)buffer_v.s_n);
+        buffer_v.d_n = (int32_t)(res_height - buffer_v.s_n);
         buffer_v.odd_top_left_bit = tr->y0 &1;
 
         /* next do vertical interleave */
@@ -630,10 +630,10 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres
     int32_t resno = 1;
 
     /* start with lowest resolution */
-    uint32_t res_width = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
-    uint32_t res_height = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
+    uint32_t res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
+    uint32_t res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
 
-    uint32_t tile_width = (uint32_t)(tilec->x1 - tilec->x0);
+    uint32_t tile_width = (tilec->x1 - tilec->x0);
 
     buffer_h.data =
         (opj_coeff97_t*)opj_aligned_malloc((opj_tile_buf_get_max_interleaved_range(tilec->buf) + 4) * sizeof(opj_coeff97_t));
@@ -647,7 +647,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres
 
     while( --numres) {
         float * restrict tile_data = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-        uint32_t bufsize = (uint32_t)(tile_width * (tilec->y1 - tilec->y0));
+        uint32_t bufsize = (tile_width * (tilec->y1 - tilec->y0));
         int32_t j;
         opj_pt_t interleaved_h, interleaved_v;
 
@@ -667,10 +667,10 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres
         ++res;
 
         /* dimensions of next higher resolution */
-        res_width = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
-        res_height = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
+        res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
+        res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
 
-        buffer_h.d_n = (int32_t)(res_width - (uint32_t)buffer_h.s_n);
+        buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
         buffer_h.odd_top_left_bit = res->x0 &1;
         buffer_h.interleaved_offset = opj_int_max(0, interleaved_h.x - 4);
 
@@ -771,7 +771,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres
 
         /* interleave and lift in vertical direction */
 
-        buffer_v.d_n = (int32_t)(res_height - (uint32_t)buffer_v.s_n);
+        buffer_v.d_n = (int32_t)(res_height - buffer_v.s_n);
         buffer_v.odd_top_left_bit = res->y0 &1;
         buffer_v.interleaved_offset = opj_int_max(0, interleaved_v.x - 4);
 

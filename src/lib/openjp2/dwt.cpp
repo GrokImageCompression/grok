@@ -596,9 +596,9 @@ uint32_t opj_dwt_max_resolution(opj_tcd_resolution_t* restrict r, uint32_t i)
     uint32_t w;
     while( --i ) {
         ++r;
-        if( mr < ( w = (uint32_t)(r->x1 - r->x0) ) )
+        if( mr < ( w = r->x1 - r->x0 ) )
             mr = w ;
-        if( mr < ( w = (uint32_t)(r->y1 - r->y0) ) )
+        if( mr < ( w = r->y1 - r->y0 ) )
             mr = w ;
     }
     return mr ;
@@ -637,10 +637,10 @@ static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec,
 
 			opj_tcd_resolution_t* tr = tilec->resolutions;
 
-			uint32_t rw = (uint32_t)(tr->x1 - tr->x0);	/* width of the resolution level computed */
-			uint32_t rh = (uint32_t)(tr->y1 - tr->y0);	/* height of the resolution level computed */
+			uint32_t rw = (tr->x1 - tr->x0);	/* width of the resolution level computed */
+			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
 
-			uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+			uint32_t w = (tilec->x1 - tilec->x0);
 			h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
 			if (!h.mem) {
 				rc++;
@@ -656,8 +656,8 @@ static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec,
 				h.sn = (int32_t)rw;
 				v.sn = (int32_t)rh;
 
-				rw = (uint32_t)(tr->x1 - tr->x0);
-				rh = (uint32_t)(tr->y1 - tr->y0);
+				rw = (tr->x1 - tr->x0);
+				rh = (tr->y1 - tr->y0);
 
 				h.dn = (int32_t)(rw - (uint32_t)h.sn);
 				h.cas = tr->x0 % 2;
@@ -945,10 +945,10 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 
 			opj_tcd_resolution_t* res = tilec->resolutions;
 
-			uint32_t rw = (uint32_t)(res->x1 - res->x0);	/* width of the resolution level computed */
-			uint32_t rh = (uint32_t)(res->y1 - res->y0);	/* height of the resolution level computed */
+			uint32_t rw = (res->x1 - res->x0);	/* width of the resolution level computed */
+			uint32_t rh = (res->y1 - res->y0);	/* height of the resolution level computed */
 
-			uint32_t w = (uint32_t)(tilec->x1 - tilec->x0);
+			uint32_t w = (tilec->x1 - tilec->x0);
 
 			//  if (opj_tile_buf_is_decode_region(tilec->buf))
 			//      return opj_dwt_region_decode97(tilec, numres);
@@ -971,8 +971,8 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 
 				++res;
 
-				rw = (uint32_t)(res->x1 - res->x0);	// width of the resolution level computed 
-				rh = (uint32_t)(res->y1 - res->y0);	// height of the resolution level computed 
+				rw = (res->x1 - res->x0);	// width of the resolution level computed 
+				rh = (res->y1 - res->y0);	// height of the resolution level computed 
 
 				h.dn = (int32_t)(rw - (uint32_t)h.sn);
 				h.cas = res->x0 & 1;
@@ -982,10 +982,10 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 					opj_v4dwt_decode(&h);
 					
 					for (int32_t k = (int32_t)rw; k-- > 0;) {
-						aj[k] = h.wavelet[k].f[0];
-						aj[k + (int32_t)w] = h.wavelet[k].f[1];
-						aj[k + (int32_t)(w << 1)] = h.wavelet[k].f[2];
-						aj[k + (int32_t)w * 3] = h.wavelet[k].f[3];
+						aj[(uint32_t)k] = h.wavelet[k].f[0];
+						aj[(uint32_t)k + w] = h.wavelet[k].f[1];
+						aj[(uint32_t)k + (w << 1)] = h.wavelet[k].f[2];
+						aj[(uint32_t)k + w * 3] = h.wavelet[k].f[3];
 					}
 					
 					aj += (w << 2) * numThreads;

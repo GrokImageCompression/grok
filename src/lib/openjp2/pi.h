@@ -119,9 +119,9 @@ typedef struct opj_pi_iterator {
     /** Components*/
     opj_pi_comp_t *comps;
     /** FIXME DOC*/
-    int32_t tx0, ty0, tx1, ty1;
+    uint32_t tx0, ty0, tx1, ty1;
     /** FIXME DOC*/
-    int32_t x, y;
+    uint32_t x, y;
     /** FIXME DOC*/
     uint32_t dx, dy;
 } opj_pi_iterator_t;
@@ -170,7 +170,7 @@ void opj_pi_create_encode(  opj_pi_iterator_t *pi,
                             uint32_t tileno,
                             uint32_t pino,
                             uint32_t tpnum,
-                            int32_t tppos,
+                            uint32_t tppos,
                             J2K_T2_MODE t2_mode);
 
 /**

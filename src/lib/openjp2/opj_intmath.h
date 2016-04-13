@@ -177,6 +177,16 @@ static inline int32_t opj_int64_ceildivpow2(int64_t a, int32_t b)
 }
 
 /**
+Divide a 64bits integer by a power of 2 and round upwards
+@return Returns a divided by 2^b
+*/
+static inline uint32_t opj_uint64_ceildivpow2(uint64_t a, uint32_t b)
+{
+	return (uint32_t)((a + ((uint64_t)1 << b) - 1) >> b);
+}
+
+
+/**
  Divide an integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
@@ -193,6 +203,16 @@ static inline int32_t opj_int_floordivpow2(int32_t a, int32_t b)
 {
     return a >> b;
 }
+
+/**
+Divide an unsigned integer by a power of 2 and round downwards
+@return Returns a divided by 2^b
+*/
+static inline int32_t opj_uint_floordivpow2(uint32_t a, uint32_t b)
+{
+	return a >> b;
+}
+
 /**
 Get logarithm of an integer and round downwards
 @return Returns log2(a)

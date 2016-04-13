@@ -108,7 +108,7 @@ typedef struct opj_tcd_cblk_enc {
 	bool owns_data;
     opj_tcd_layer_t* layers;      /* layer information */
     opj_tcd_pass_t* passes;       /* information about the passes */
-    int32_t x0, y0, x1, y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
     uint32_t numlenbits;
     uint32_t data_size;         /* Size of allocated data buffer */
@@ -153,11 +153,11 @@ typedef struct opj_tcd_precinct {
 FIXME DOC
 */
 typedef struct opj_tcd_band {
-    int32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
     opj_tcd_precinct_t *precincts;	/* precinct information */
     uint32_t precincts_data_size;	/* size of data taken by precincts */
-    int32_t numbps;
+    uint32_t numbps;
     float stepsize;
 } opj_tcd_band_t;
 
@@ -165,7 +165,7 @@ typedef struct opj_tcd_band {
 FIXME DOC
 */
 typedef struct opj_tcd_resolution {
-    int32_t x0, y0, x1, y1;		/* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;		/* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t pw, ph;
     uint32_t numbands;			/* number sub-band for the resolution level */
     opj_tcd_band_t bands[3];		/* subband information */
@@ -175,7 +175,7 @@ typedef struct opj_tcd_resolution {
 FIXME DOC
 */
 typedef struct opj_tcd_tilecomp {
-    int32_t x0, y0, x1, y1;           /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;           /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numresolutions;          /* number of resolutions level */
     uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
     opj_tcd_resolution_t *resolutions;  /* resolutions information */
@@ -189,10 +189,10 @@ typedef struct opj_tcd_tilecomp {
 FIXME DOC
 */
 typedef struct opj_tcd_tile {
-    int32_t x0, y0, x1, y1;		/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;		/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numcomps;			/* number of components in tile */
     opj_tcd_tilecomp_t *comps;	/* Components information */
-    int64_t numpix;				/* add fixed_quality */
+    uint64_t numpix;				/* add fixed_quality */
     double distotile;			/* add fixed_quality */
     double distolayer[100];	/* add fixed_quality */
     uint32_t packno;              /* packet number */
@@ -203,7 +203,7 @@ Tile coder/decoder
 */
 typedef struct opj_tcd {
     /** Position of the tilepart flag in Progression order*/
-    int32_t tp_pos;
+    uint32_t tp_pos;
     /** Tile part number*/
     uint32_t tp_num;
     /** Current tile part number*/

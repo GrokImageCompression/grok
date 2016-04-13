@@ -103,7 +103,7 @@ bool opj_t2_encode_packets(	opj_t2_t* t2,
                             uint32_t len,
                             opj_codestream_info_t *cstr_info,
                             uint32_t tpnum,
-                            int32_t tppos,
+                            uint32_t tppos,
                             uint32_t pino);
 
 /**
@@ -122,7 +122,7 @@ bool opj_t2_encode_packets_thresh(opj_t2_t* t2,
                                   uint32_t maxlayers,
                                   uint32_t * p_data_written,
                                   uint32_t len,
-                                  int32_t tppos);
+                                  uint32_t tppos);
 
 
 /**

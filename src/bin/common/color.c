@@ -226,10 +226,10 @@ static void sycc422_to_rgb(opj_image_t *img)
     img->comps[0].data = d0;
     img->comps[1].data = d1;
     img->comps[2].data = d2;
-    img->comps[1].w = (uint32_t)maxw;
-    img->comps[1].h = (uint32_t)maxh;
-    img->comps[2].w = (uint32_t)maxw;
-    img->comps[2].h = (uint32_t)maxh;
+    img->comps[1].w = maxw;
+    img->comps[1].h = maxh;
+    img->comps[2].w = maxw;
+    img->comps[2].h = maxh;
     img->comps[1].dx = img->comps[0].dx;
     img->comps[2].dx = img->comps[0].dx;
     img->comps[1].dy = img->comps[0].dy;

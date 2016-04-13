@@ -151,8 +151,10 @@ typedef size_t   OPJ_SIZE_T;
 
 #define OPJ_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 
-#define OPJ_J2K_MAXRLVLS 33					/**< Number of maximum resolution level authorized */
-#define OPJ_J2K_MAXBANDS (3*OPJ_J2K_MAXRLVLS-2)	/**< Number of maximum sub-band linked to number of resolution level */
+// note: range for number of decomposition levels is 0-32
+// So, accordingly, range for number of resolutions is 1-33
+#define OPJ_J2K_MAXRLVLS 33					/**< Maximum number of resolution levels authorized */
+#define OPJ_J2K_MAXBANDS (3*OPJ_J2K_MAXRLVLS-2)	/**< Maximum number of sub-bands */
 
 #define OPJ_J2K_DEFAULT_NB_SEGS				10
 #define OPJ_J2K_STREAM_CHUNK_SIZE			0x100000 /** 1 mega by default */
@@ -334,7 +336,7 @@ typedef struct opj_poc {
     /** Tile number */
     uint32_t tile;
     /** Start and end values for Tile width and height*/
-    int32_t tx0,tx1,ty0,ty1;
+    uint32_t tx0,tx1,ty0,ty1;
     /** Start value, initialised in pi_initialise_encode*/
     uint32_t layS, resS, compS, prcS;
     /** End value, initialised in pi_initialise_encode */

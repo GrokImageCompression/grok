@@ -136,10 +136,10 @@ static void opj_pi_update_encode_poc_and_final ( opj_cp_t *p_cp,
 static void opj_pi_update_encode_not_poc (  opj_cp_t *p_cp,
         uint32_t p_num_comps,
         uint32_t p_tileno,
-        int32_t p_tx0,
-        int32_t p_tx1,
-        int32_t p_ty0,
-        int32_t p_ty1,
+        uint32_t p_tx0,
+        uint32_t p_tx1,
+        uint32_t p_ty0,
+        uint32_t p_ty1,
         uint32_t p_max_prec,
         uint32_t p_max_res,
         uint32_t p_dx_min,
@@ -363,30 +363,30 @@ static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
         pi->poc.tx1 = pi->tx1;
     }
     for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1; pi->resno++) {
-        for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += (int32_t)(pi->dy - (uint32_t)(pi->y % (int32_t)pi->dy))) {
-            for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += (int32_t)(pi->dx - (uint32_t)(pi->x % (int32_t)pi->dx))) {
+        for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += pi->dy - (pi->y % pi->dy)) {
+            for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
                 for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
                     uint32_t levelno;
-                    int32_t trx0, try0;
-                    int32_t  trx1, try1;
+                    uint32_t trx0, try0;
+                    uint32_t  trx1, try1;
                     uint32_t  rpx, rpy;
-                    int32_t  prci, prcj;
+                    uint32_t  prci, prcj;
                     comp = &pi->comps[pi->compno];
                     if (pi->resno >= comp->numresolutions) {
                         continue;
                     }
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
-                    trx0 = opj_int_ceildiv(pi->tx0, (int32_t)(comp->dx << levelno));
-                    try0 = opj_int_ceildiv(pi->ty0, (int32_t)(comp->dy << levelno));
-                    trx1 = opj_int_ceildiv(pi->tx1, (int32_t)(comp->dx << levelno));
-                    try1 = opj_int_ceildiv(pi->ty1, (int32_t)(comp->dy << levelno));
+                    trx0 = opj_uint_ceildiv(pi->tx0, (comp->dx << levelno));
+                    try0 = opj_uint_ceildiv(pi->ty0, (comp->dy << levelno));
+                    trx1 = opj_uint_ceildiv(pi->tx1, (comp->dx << levelno));
+                    try1 = opj_uint_ceildiv(pi->ty1, (comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (int32_t)(comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
+                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
                         continue;
                     }
-                    if (!((pi->x % (int32_t)(comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
+                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
                         continue;
                     }
 
@@ -394,11 +394,11 @@ static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_int_floordivpow2(opj_int_ceildiv(pi->x, (int32_t)(comp->dx << levelno)), (int32_t)res->pdx)
-                           - opj_int_floordivpow2(trx0, (int32_t)res->pdx);
-                    prcj = opj_int_floordivpow2(opj_int_ceildiv(pi->y, (int32_t)(comp->dy << levelno)), (int32_t)res->pdy)
-                           - opj_int_floordivpow2(try0, (int32_t)res->pdy);
-                    pi->precno = (uint32_t)(prci + prcj * (int32_t)res->pw);
+                    prci = opj_uint_floordivpow2(opj_uint_ceildiv(pi->x, (comp->dx << levelno)), res->pdx)
+                           - opj_uint_floordivpow2(trx0, res->pdx);
+                    prcj = opj_uint_floordivpow2(opj_uint_ceildiv(pi->y, (comp->dy << levelno)), res->pdy)
+                           - opj_uint_floordivpow2(try0, res->pdy);
+                    pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
@@ -448,28 +448,28 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
         pi->poc.ty1 = pi->ty1;
         pi->poc.tx1 = pi->tx1;
     }
-    for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += (int32_t)(pi->dy - (uint32_t)(pi->y % (int32_t)pi->dy))) {
-        for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += (int32_t)(pi->dx - (uint32_t)(pi->x % (int32_t)pi->dx))) {
+    for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += pi->dy - (pi->y % pi->dy)) {
+        for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
             for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
                 comp = &pi->comps[pi->compno];
                 for (pi->resno = pi->poc.resno0; pi->resno < opj_uint_min(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
-                    int32_t trx0, try0;
-                    int32_t trx1, try1;
+                    uint32_t trx0, try0;
+                    uint32_t trx1, try1;
                     uint32_t rpx, rpy;
-                    int32_t prci, prcj;
+                    uint32_t prci, prcj;
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
-                    trx0 = opj_int_ceildiv(pi->tx0, (int32_t)(comp->dx << levelno));
-                    try0 = opj_int_ceildiv(pi->ty0, (int32_t)(comp->dy << levelno));
-                    trx1 = opj_int_ceildiv(pi->tx1, (int32_t)(comp->dx << levelno));
-                    try1 = opj_int_ceildiv(pi->ty1, (int32_t)(comp->dy << levelno));
+                    trx0 = opj_int_ceildiv(pi->tx0, (comp->dx << levelno));
+                    try0 = opj_int_ceildiv(pi->ty0, (comp->dy << levelno));
+                    trx1 = opj_int_ceildiv(pi->tx1, (comp->dx << levelno));
+                    try1 = opj_int_ceildiv(pi->ty1, (comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (int32_t)(comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
+                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
                         continue;
                     }
-                    if (!((pi->x % (int32_t)(comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
+                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
                         continue;
                     }
 
@@ -477,11 +477,11 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_int_floordivpow2(opj_int_ceildiv(pi->x, (int32_t)(comp->dx << levelno)), (int32_t)res->pdx)
-                           - opj_int_floordivpow2(trx0, (int32_t)res->pdx);
-                    prcj = opj_int_floordivpow2(opj_int_ceildiv(pi->y, (int32_t)(comp->dy << levelno)), (int32_t)res->pdy)
-                           - opj_int_floordivpow2(try0, (int32_t)res->pdy);
-                    pi->precno = (uint32_t)(prci + prcj * (int32_t)res->pw);
+                    prci = opj_uint_floordivpow2(opj_uint_ceildiv(pi->x, (comp->dx << levelno)),res->pdx)
+                           - opj_uint_floordivpow2(trx0, res->pdx);
+                    prcj = opj_uint_floordivpow2(opj_uint_ceildiv(pi->y, (comp->dy << levelno)), res->pdy)
+                           - opj_uint_floordivpow2(try0, res->pdy);
+                    pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
@@ -531,26 +531,26 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi)
             pi->poc.ty1 = pi->ty1;
             pi->poc.tx1 = pi->tx1;
         }
-        for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += (int32_t)(pi->dy - (uint32_t)(pi->y % (int32_t)pi->dy))) {
-            for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += (int32_t)(pi->dx - (uint32_t)(pi->x % (int32_t)pi->dx))) {
+        for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += pi->dy - (pi->y % pi->dy)) {
+            for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
                 for (pi->resno = pi->poc.resno0; pi->resno < opj_uint_min(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
-                    int32_t trx0, try0;
-                    int32_t trx1, try1;
+                    uint32_t trx0, try0;
+                    uint32_t trx1, try1;
                     uint32_t rpx, rpy;
                     int32_t prci, prcj;
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
-                    trx0 = opj_int_ceildiv(pi->tx0, (int32_t)(comp->dx << levelno));
-                    try0 = opj_int_ceildiv(pi->ty0, (int32_t)(comp->dy << levelno));
-                    trx1 = opj_int_ceildiv(pi->tx1, (int32_t)(comp->dx << levelno));
-                    try1 = opj_int_ceildiv(pi->ty1, (int32_t)(comp->dy << levelno));
+                    trx0 = opj_uint_ceildiv(pi->tx0, (comp->dx << levelno));
+                    try0 = opj_uint_ceildiv(pi->ty0, (comp->dy << levelno));
+                    trx1 = opj_uint_ceildiv(pi->tx1, (comp->dx << levelno));
+                    try1 = opj_uint_ceildiv(pi->ty1, (comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (int32_t)(comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
+                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && ((try0 << levelno) % (1 << rpy))))) {
                         continue;
                     }
-                    if (!((pi->x % (int32_t)(comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
+                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && ((trx0 << levelno) % (1 << rpx))))) {
                         continue;
                     }
 
@@ -558,11 +558,11 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_int_floordivpow2(opj_int_ceildiv(pi->x, (int32_t)(comp->dx << levelno)), (int32_t)res->pdx)
-                           - opj_int_floordivpow2(trx0, (int32_t)res->pdx);
-                    prcj = opj_int_floordivpow2(opj_int_ceildiv(pi->y, (int32_t)(comp->dy << levelno)), (int32_t)res->pdy)
-                           - opj_int_floordivpow2(try0, (int32_t)res->pdy);
-                    pi->precno = (uint32_t)(prci + prcj * (int32_t)res->pw);
+                    prci = opj_uint_floordivpow2(opj_uint_ceildiv(pi->x, (comp->dx << levelno)), res->pdx)
+                           - opj_uint_floordivpow2(trx0, res->pdx);
+                    prcj = opj_uint_floordivpow2(opj_uint_ceildiv(pi->y, (comp->dy << levelno)), res->pdy)
+                           - opj_uint_floordivpow2(try0, res->pdy);
+                    pi->precno = prci + prcj * res->pw;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
@@ -583,10 +583,10 @@ LABEL_SKIP:
 static void opj_get_encoding_parameters(	const opj_image_t *p_image,
         const opj_cp_t *p_cp,
         uint32_t p_tileno,
-        int32_t * p_tx0,
-        int32_t  * p_tx1,
-        int32_t  * p_ty0,
-        int32_t  * p_ty1,
+        uint32_t * p_tx0,
+        uint32_t  * p_tx1,
+        uint32_t  * p_ty0,
+        uint32_t  * p_ty1,
         uint32_t * p_dx_min,
         uint32_t * p_dy_min,
         uint32_t * p_max_prec,
@@ -617,10 +617,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     q = p_tileno / p_cp->tw;
 
     /* find extent of tile */
-    *p_tx0 = opj_int_max((int32_t)(p_cp->tx0 + p * p_cp->tdx), (int32_t)p_image->x0);
-    *p_tx1 = opj_int_min((int32_t)(p_cp->tx0 + (p + 1) * p_cp->tdx), (int32_t)p_image->x1);
-    *p_ty0 = opj_int_max((int32_t)(p_cp->ty0 + q * p_cp->tdy), (int32_t)p_image->y0);
-    *p_ty1 = opj_int_min((int32_t)(p_cp->ty0 + (q + 1) * p_cp->tdy), (int32_t)p_image->y1);
+    *p_tx0 = opj_uint_max(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
+    *p_tx1 = opj_uint_min(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
+    *p_ty0 = opj_uint_max(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
+    *p_ty1 = opj_uint_min(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
 
     /* max precision is 0 (can only grow) */
     *p_max_prec = 0;
@@ -633,17 +633,17 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     for (compno = 0; compno < p_image->numcomps; ++compno) {
         /* arithmetic variables to calculate */
         uint32_t l_level_no;
-        int32_t l_rx0, l_ry0, l_rx1, l_ry1;
-        int32_t l_px0, l_py0, l_px1, py1;
+        uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
+        uint32_t l_px0, l_py0, l_px1, py1;
         uint32_t l_pdx, l_pdy;
         uint32_t l_pw, l_ph;
         uint32_t l_product;
-        int32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
+        uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
 
-        l_tcx0 = opj_int_ceildiv(*p_tx0, (int32_t)l_img_comp->dx);
-        l_tcy0 = opj_int_ceildiv(*p_ty0, (int32_t)l_img_comp->dy);
-        l_tcx1 = opj_int_ceildiv(*p_tx1, (int32_t)l_img_comp->dx);
-        l_tcy1 = opj_int_ceildiv(*p_ty1, (int32_t)l_img_comp->dy);
+        l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp->dx);
+        l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp->dy);
+        l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp->dx);
+        l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;
@@ -667,19 +667,19 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
             /* various calculations of extents */
             l_level_no = l_tccp->numresolutions - 1 - resno;
 
-            l_rx0 = opj_int_ceildivpow2(l_tcx0, (int32_t)l_level_no);
-            l_ry0 = opj_int_ceildivpow2(l_tcy0, (int32_t)l_level_no);
-            l_rx1 = opj_int_ceildivpow2(l_tcx1, (int32_t)l_level_no);
-            l_ry1 = opj_int_ceildivpow2(l_tcy1, (int32_t)l_level_no);
+            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
 
-            l_px0 = opj_int_floordivpow2(l_rx0, (int32_t)l_pdx) << l_pdx;
-            l_py0 = opj_int_floordivpow2(l_ry0, (int32_t)l_pdy) << l_pdy;
-            l_px1 = opj_int_ceildivpow2(l_rx1, (int32_t)l_pdx) << l_pdx;
+            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
 
-            py1 = opj_int_ceildivpow2(l_ry1, (int32_t)l_pdy) << l_pdy;
+            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
 
-            l_pw = (l_rx0==l_rx1)?0:(uint32_t)((l_px1 - l_px0) >> l_pdx);
-            l_ph = (l_ry0==l_ry1)?0:(uint32_t)((py1 - l_py0) >> l_pdy);
+            l_pw = (l_rx0==l_rx1)?0:((l_px1 - l_px0) >> l_pdx);
+            l_ph = (l_ry0==l_ry1)?0:((py1 - l_py0) >> l_pdy);
 
             l_product = l_pw * l_ph;
 
@@ -697,10 +697,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
 static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
         const opj_cp_t *p_cp,
         uint32_t tileno,
-        int32_t * p_tx0,
-        int32_t * p_tx1,
-        int32_t * p_ty0,
-        int32_t * p_ty1,
+        uint32_t * p_tx0,
+        uint32_t * p_tx1,
+        uint32_t * p_ty0,
+        uint32_t * p_ty1,
         uint32_t * p_dx_min,
         uint32_t * p_dy_min,
         uint32_t * p_max_prec,
@@ -740,11 +740,11 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 
     /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
     l_tx0 = p_cp->tx0 + p * p_cp->tdx; /* can't be greater than p_image->x1 so won't overflow */
-    *p_tx0 = (int32_t)opj_uint_max(l_tx0, p_image->x0);
-    *p_tx1 = (int32_t)opj_uint_min(opj_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
+    *p_tx0 = opj_uint_max(l_tx0, p_image->x0);
+    *p_tx1 = opj_uint_min(opj_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
     l_ty0 = p_cp->ty0 + q * p_cp->tdy; /* can't be greater than p_image->y1 so won't overflow */
-    *p_ty0 = (int32_t)opj_uint_max(l_ty0, p_image->y0);
-    *p_ty1 = (int32_t)opj_uint_min(opj_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
+    *p_ty0 = opj_uint_max(l_ty0, p_image->y0);
+    *p_ty1 = opj_uint_min(opj_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
 
     /* max precision and resolution is 0 (can only grow)*/
     *p_max_prec = 0;
@@ -757,18 +757,18 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
     for (compno = 0; compno < p_image->numcomps; ++compno) {
         /* aritmetic variables to calculate*/
         uint32_t l_level_no;
-        int32_t l_rx0, l_ry0, l_rx1, l_ry1;
-        int32_t l_px0, l_py0, l_px1, py1;
+        uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
+        uint32_t l_px0, l_py0, l_px1, py1;
         uint32_t l_product;
         int32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
         uint32_t l_pdx, l_pdy , l_pw , l_ph;
 
         lResolutionPtr = p_resolutions[compno];
 
-        l_tcx0 = opj_int_ceildiv(*p_tx0, (int32_t)l_img_comp->dx);
-        l_tcy0 = opj_int_ceildiv(*p_ty0, (int32_t)l_img_comp->dy);
-        l_tcx1 = opj_int_ceildiv(*p_tx1, (int32_t)l_img_comp->dx);
-        l_tcy1 = opj_int_ceildiv(*p_ty1, (int32_t)l_img_comp->dy);
+        l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp->dx);
+        l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp->dy);
+        l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp->dx);
+        l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;
@@ -787,20 +787,20 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
             l_dx = l_img_comp->dx * (1u << (l_pdx + l_level_no));
             l_dy = l_img_comp->dy * (1u << (l_pdy + l_level_no));
             /* take the minimum size for l_dx for each comp and resolution*/
-            *p_dx_min = (uint32_t)opj_int_min((int32_t)*p_dx_min, (int32_t)l_dx);
-            *p_dy_min = (uint32_t)opj_int_min((int32_t)*p_dy_min, (int32_t)l_dy);
+            *p_dx_min = opj_int_min(*p_dx_min, l_dx);
+            *p_dy_min = opj_int_min(*p_dy_min, l_dy);
 
             /* various calculations of extents*/
-            l_rx0 = opj_int_ceildivpow2(l_tcx0, (int32_t)l_level_no);
-            l_ry0 = opj_int_ceildivpow2(l_tcy0, (int32_t)l_level_no);
-            l_rx1 = opj_int_ceildivpow2(l_tcx1, (int32_t)l_level_no);
-            l_ry1 = opj_int_ceildivpow2(l_tcy1, (int32_t)l_level_no);
-            l_px0 = opj_int_floordivpow2(l_rx0, (int32_t)l_pdx) << l_pdx;
-            l_py0 = opj_int_floordivpow2(l_ry0, (int32_t)l_pdy) << l_pdy;
-            l_px1 = opj_int_ceildivpow2(l_rx1, (int32_t)l_pdx) << l_pdx;
-            py1 = opj_int_ceildivpow2(l_ry1, (int32_t)l_pdy) << l_pdy;
-            l_pw = (l_rx0==l_rx1)?0:(uint32_t)((l_px1 - l_px0) >> l_pdx);
-            l_ph = (l_ry0==l_ry1)?0:(uint32_t)((py1 - l_py0) >> l_pdy);
+            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
+            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
+            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
+            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+            l_pw = (l_rx0==l_rx1)?0:((l_px1 - l_px0) >> l_pdx);
+            l_ph = (l_ry0==l_ry1)?0:((py1 - l_py0) >> l_pdy);
             *lResolutionPtr++ = l_pw;
             *lResolutionPtr++ = l_ph;
             l_product = l_pw * l_ph;
@@ -880,10 +880,10 @@ static opj_pi_iterator_t * opj_pi_create(	const opj_image_t *image,
 
 static void opj_pi_update_encode_poc_and_final (   opj_cp_t *p_cp,
         uint32_t p_tileno,
-        int32_t p_tx0,
-        int32_t p_tx1,
-        int32_t p_ty0,
-        int32_t p_ty1,
+        uint32_t p_tx0,
+        uint32_t p_tx1,
+        uint32_t p_ty0,
+        uint32_t p_ty1,
         uint32_t p_max_prec,
         uint32_t p_max_res,
         uint32_t p_dx_min,
@@ -926,10 +926,10 @@ static void opj_pi_update_encode_poc_and_final (   opj_cp_t *p_cp,
     l_current_poc->prcS = 0;
 
     l_current_poc->prcE = p_max_prec;
-    l_current_poc->txS = (uint32_t)p_tx0;
-    l_current_poc->txE = (uint32_t)p_tx1;
-    l_current_poc->tyS = (uint32_t)p_ty0;
-    l_current_poc->tyE = (uint32_t)p_ty1;
+    l_current_poc->txS = p_tx0;
+    l_current_poc->txE = p_tx1;
+    l_current_poc->tyS = p_ty0;
+    l_current_poc->tyE = p_ty1;
     l_current_poc->dx = p_dx_min;
     l_current_poc->dy = p_dy_min;
 
@@ -946,10 +946,10 @@ static void opj_pi_update_encode_poc_and_final (   opj_cp_t *p_cp,
         l_current_poc->layS = (l_current_poc->layE > (l_current_poc-1)->layE) ? l_current_poc->layE : 0;
 
         l_current_poc->prcE = p_max_prec;
-        l_current_poc->txS = (uint32_t)p_tx0;
-        l_current_poc->txE = (uint32_t)p_tx1;
-        l_current_poc->tyS = (uint32_t)p_ty0;
-        l_current_poc->tyE = (uint32_t)p_ty1;
+        l_current_poc->txS = p_tx0;
+        l_current_poc->txE = p_tx1;
+        l_current_poc->tyS = p_ty0;
+        l_current_poc->tyE = p_ty1;
         l_current_poc->dx = p_dx_min;
         l_current_poc->dy = p_dy_min;
         ++ l_current_poc;
@@ -959,10 +959,10 @@ static void opj_pi_update_encode_poc_and_final (   opj_cp_t *p_cp,
 static void opj_pi_update_encode_not_poc (	opj_cp_t *p_cp,
         uint32_t p_num_comps,
         uint32_t p_tileno,
-        int32_t p_tx0,
-        int32_t p_tx1,
-        int32_t p_ty0,
-        int32_t p_ty1,
+        uint32_t p_tx0,
+        uint32_t p_tx1,
+        uint32_t p_ty0,
+        uint32_t p_ty1,
         uint32_t p_max_prec,
         uint32_t p_max_res,
         uint32_t p_dx_min,
@@ -1001,10 +1001,10 @@ static void opj_pi_update_encode_not_poc (	opj_cp_t *p_cp,
         l_current_poc->prg  = l_tcp->prg;
         l_current_poc->prcS = 0;
         l_current_poc->prcE = p_max_prec;
-        l_current_poc->txS = (uint32_t)p_tx0;
-        l_current_poc->txE = (uint32_t)p_tx1;
-        l_current_poc->tyS = (uint32_t)p_ty0;
-        l_current_poc->tyE = (uint32_t)p_ty1;
+        l_current_poc->txS = p_tx0;
+        l_current_poc->txE = p_tx1;
+        l_current_poc->tyS = p_ty0;
+        l_current_poc->tyE = p_ty1;
         l_current_poc->dx = p_dx_min;
         l_current_poc->dy = p_dy_min;
         ++ l_current_poc;
@@ -1096,7 +1096,7 @@ static bool opj_pi_check_next_level(	int32_t pos,
                                         uint32_t pino,
                                         const char *prog)
 {
-    int32_t i;
+    uint32_t i;
     opj_tcp_t *tcps =&cp->tcps[tileno];
     opj_poc_t *tcp = &tcps->pocs[pino];
 
@@ -1194,7 +1194,7 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
     /* encoding prameters to set */
     uint32_t l_max_res;
     uint32_t l_max_prec;
-    int32_t l_tx0,l_tx1,l_ty0,l_ty1;
+    uint32_t l_tx0,l_tx1,l_ty0,l_ty1;
     uint32_t l_dx_min,l_dy_min;
     uint32_t l_bound;
     uint32_t l_step_p , l_step_c , l_step_r , l_step_l ;
@@ -1383,7 +1383,7 @@ opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
     /* encoding prameters to set*/
     uint32_t l_max_res;
     uint32_t l_max_prec;
-    int32_t l_tx0,l_tx1,l_ty0,l_ty1;
+    uint32_t l_tx0,l_tx1,l_ty0,l_ty1;
     uint32_t l_dx_min,l_dy_min;
     uint32_t l_bound;
     uint32_t l_step_p , l_step_c , l_step_r , l_step_l ;
@@ -1556,7 +1556,7 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                             uint32_t tileno,
                             uint32_t pino,
                             uint32_t tpnum,
-                            int32_t tppos,
+                            uint32_t tppos,
                             J2K_T2_MODE t2_mode)
 {
     const char *prog;
@@ -1579,10 +1579,10 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
         pi[pino].poc.layno1 = tcp->layE;
         pi[pino].poc.precno0 = tcp->prcS;
         pi[pino].poc.precno1 = tcp->prcE;
-        pi[pino].poc.tx0 = (int32_t)tcp->txS;
-        pi[pino].poc.ty0 = (int32_t)tcp->tyS;
-        pi[pino].poc.tx1 = (int32_t)tcp->txE;
-        pi[pino].poc.ty1 = (int32_t)tcp->tyE;
+        pi[pino].poc.tx0 = tcp->txS;
+        pi[pino].poc.ty0 = tcp->tyS;
+        pi[pino].poc.tx1 = tcp->txE;
+        pi[pino].poc.ty1 = tcp->tyE;
     } else {
         for(i=tppos+1; i<4; i++) {
             switch(prog[i]) {
@@ -1606,10 +1606,10 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                     pi[pino].poc.precno1 = tcp->prcE;
                     break;
                 default:
-                    pi[pino].poc.tx0 = (int32_t)tcp->txS;
-                    pi[pino].poc.ty0 = (int32_t)tcp->tyS;
-                    pi[pino].poc.tx1 = (int32_t)tcp->txE;
-                    pi[pino].poc.ty1 = (int32_t)tcp->tyE;
+                    pi[pino].poc.tx0 = tcp->txS;
+                    pi[pino].poc.ty0 = tcp->tyS;
+                    pi[pino].poc.tx1 = tcp->txE;
+                    pi[pino].poc.ty1 = tcp->tyE;
                     break;
                 }
                 break;
@@ -1649,12 +1649,12 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                     default:
                         tcp->tx0_t = tcp->txS;
                         tcp->ty0_t = tcp->tyS;
-                        pi[pino].poc.tx0 = (int32_t)tcp->tx0_t;
-                        pi[pino].poc.tx1 = (int32_t)(tcp->tx0_t + tcp->dx - (tcp->tx0_t % tcp->dx));
-                        pi[pino].poc.ty0 = (int32_t)tcp->ty0_t;
-                        pi[pino].poc.ty1 = (int32_t)(tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
-                        tcp->tx0_t = (uint32_t)pi[pino].poc.tx1;
-                        tcp->ty0_t = (uint32_t)pi[pino].poc.ty1;
+                        pi[pino].poc.tx0 = tcp->tx0_t;
+                        pi[pino].poc.tx1 = (tcp->tx0_t + tcp->dx - (tcp->tx0_t % tcp->dx));
+                        pi[pino].poc.ty0 = tcp->ty0_t;
+                        pi[pino].poc.ty1 = (tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
+                        tcp->tx0_t = pi[pino].poc.tx1;
+                        tcp->ty0_t = pi[pino].poc.ty1;
                         break;
                     }
                     break;
@@ -1684,10 +1684,10 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                         pi[pino].poc.precno1 = tcp->prc_t;
                         break;
                     default:
-                        pi[pino].poc.tx0 = (int32_t)(tcp->tx0_t - tcp->dx - (tcp->tx0_t % tcp->dx));
-                        pi[pino].poc.tx1 = (int32_t)tcp->tx0_t ;
-                        pi[pino].poc.ty0 = (int32_t)(tcp->ty0_t - tcp->dy - (tcp->ty0_t % tcp->dy));
-                        pi[pino].poc.ty1 = (int32_t)tcp->ty0_t ;
+                        pi[pino].poc.tx0 = (tcp->tx0_t - tcp->dx - (tcp->tx0_t % tcp->dx));
+                        pi[pino].poc.tx1 = tcp->tx0_t ;
+                        pi[pino].poc.ty0 = (tcp->ty0_t - tcp->dy - (tcp->ty0_t % tcp->dy));
+                        pi[pino].poc.ty1 = tcp->ty0_t ;
                         break;
                     }
                     break;
@@ -1774,9 +1774,9 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                                 if(tcp->ty0_t >= tcp->tyE) {
                                     if(opj_pi_check_next_level(i-1,cp,tileno,pino,prog)) {
                                         tcp->ty0_t = tcp->tyS;
-                                        pi[pino].poc.ty0 = (int32_t)tcp->ty0_t;
+                                        pi[pino].poc.ty0 = tcp->ty0_t;
                                         pi[pino].poc.ty1 = (int32_t)(tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
-                                        tcp->ty0_t = (uint32_t)pi[pino].poc.ty1;
+                                        tcp->ty0_t = pi[pino].poc.ty1;
                                         incr_top=1;
                                         resetX=1;
                                     } else {
@@ -1784,22 +1784,22 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                                         resetX=0;
                                     }
                                 } else {
-                                    pi[pino].poc.ty0 = (int32_t)tcp->ty0_t;
-                                    pi[pino].poc.ty1 = (int32_t)(tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
-                                    tcp->ty0_t = (uint32_t)pi[pino].poc.ty1;
+                                    pi[pino].poc.ty0 = tcp->ty0_t;
+                                    pi[pino].poc.ty1 = (tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
+                                    tcp->ty0_t = pi[pino].poc.ty1;
                                     incr_top=0;
                                     resetX=1;
                                 }
                                 if(resetX==1) {
                                     tcp->tx0_t = tcp->txS;
-                                    pi[pino].poc.tx0 = (int32_t)tcp->tx0_t;
+                                    pi[pino].poc.tx0 = tcp->tx0_t;
                                     pi[pino].poc.tx1 = (int32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
-                                    tcp->tx0_t = (uint32_t)pi[pino].poc.tx1;
+                                    tcp->tx0_t = pi[pino].poc.tx1;
                                 }
                             } else {
-                                pi[pino].poc.tx0 = (int32_t)tcp->tx0_t;
+                                pi[pino].poc.tx0 = tcp->tx0_t;
                                 pi[pino].poc.tx1 = (int32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
-                                tcp->tx0_t = (uint32_t)pi[pino].poc.tx1;
+                                tcp->tx0_t = pi[pino].poc.tx1;
                                 incr_top=0;
                             }
                             break;
@@ -1851,7 +1851,7 @@ void opj_pi_update_encoding_parameters(	const opj_image_t *p_image,
     /* encoding parameters to set */
     uint32_t l_max_res;
     uint32_t l_max_prec;
-    int32_t l_tx0,l_tx1,l_ty0,l_ty1;
+    uint32_t l_tx0,l_tx1,l_ty0,l_ty1;
     uint32_t l_dx_min,l_dy_min;
 
     /* pointers */
