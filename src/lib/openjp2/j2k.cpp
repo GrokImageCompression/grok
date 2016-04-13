@@ -7070,7 +7070,7 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
     }
 
     /* Create the current tile decoder*/
-    p_j2k->m_tcd = (opj_tcd_t*)opj_tcd_create(true); /* FIXME why a cast ? */
+    p_j2k->m_tcd = opj_tcd_create(true); 
     if (! p_j2k->m_tcd ) {
         return false;
     }
