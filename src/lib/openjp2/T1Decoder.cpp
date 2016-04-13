@@ -72,7 +72,7 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 					t1_data = t1->data;
 				}
 
-				uint32_t tile_width = (uint32_t)(block->tilec->x1 - block->tilec->x0);
+				uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
 				if (block->qmfbid == 1) {
 					int32_t* restrict tile_data = block->tiledp;
 					for (auto j = 0U; j < t1->h; ++j) {

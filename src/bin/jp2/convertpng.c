@@ -191,20 +191,20 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     /* Create image */
     memset(cmptparm, 0, sizeof(cmptparm));
     for(i = 0; i < nr_comp; ++i) {
-        cmptparm[i].prec = (uint32_t)bit_depth;
+        cmptparm[i].prec = bit_depth;
         cmptparm[i].sgnd = 0;
-        cmptparm[i].dx = (uint32_t)params->subsampling_dx;
-        cmptparm[i].dy = (uint32_t)params->subsampling_dy;
-        cmptparm[i].w = (uint32_t)width;
-        cmptparm[i].h = (uint32_t)height;
+        cmptparm[i].dx = params->subsampling_dx;
+        cmptparm[i].dy = params->subsampling_dy;
+        cmptparm[i].w = width;
+        cmptparm[i].h = height;
     }
 
     image = opj_image_create(nr_comp, &cmptparm[0], (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY);
     if(image == NULL) goto fin;
-    image->x0 = (uint32_t)params->image_offset_x0;
-    image->y0 = (uint32_t)params->image_offset_y0;
-    image->x1 = (uint32_t)(image->x0 + (width  - 1) * (uint32_t)params->subsampling_dx + 1 + image->x0);
-    image->y1 = (uint32_t)(image->y0 + (height - 1) * (uint32_t)params->subsampling_dy + 1 + image->y0);
+    image->x0 = params->image_offset_x0;
+    image->y0 = params->image_offset_y0;
+    image->x1 = (image->x0 + (width  - 1) * params->subsampling_dx + 1 + image->x0);
+    image->y1 = (image->y0 + (height - 1) * params->subsampling_dy + 1 + image->y0);
 
     row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
     if(row32s == NULL) goto fin;

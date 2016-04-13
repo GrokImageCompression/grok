@@ -247,7 +247,7 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
                             uint32_t p_max_len,
                             opj_codestream_info_t *cstr_info,
                             uint32_t p_tp_num,
-                            int32_t p_tp_pos,
+                            uint32_t p_tp_pos,
                             uint32_t p_pino)
 {
     uint8_t *l_current_data = p_dest;
@@ -322,7 +322,7 @@ bool opj_t2_encode_packets_thresh(opj_t2_t* p_t2,
                                   uint32_t p_maxlayers,
                                   uint32_t * p_data_written,
                                   uint32_t p_max_len,
-                                  int32_t p_tp_pos)
+                                  uint32_t p_tp_pos)
 {
     uint32_t l_nb_bytes = 0;
     uint32_t compno;

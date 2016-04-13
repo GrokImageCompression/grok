@@ -1350,8 +1350,8 @@ bool opj_t1_decode_cblk(opj_t1_t *t1,
 
     if(!opj_t1_allocate_buffers(
                 t1,
-                (uint32_t)(cblk->x1 - cblk->x0),
-                (uint32_t)(cblk->y1 - cblk->y0))) {
+                cblk->x1 - cblk->x0,
+                cblk->y1 - cblk->y0)) {
         return false;
     }
 

@@ -777,8 +777,8 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
     image->y0 = parameters->image_offset_y0;
-    image->x1 =	!image->x0 ? (uint32_t)(image_width - 1)  * (uint32_t)subsampling_dx + 1 : image->x0 + (uint32_t)(image_width - 1)  * (uint32_t)subsampling_dx + 1;
-    image->y1 =	!image->y0 ? (uint32_t)(image_height - 1) * (uint32_t)subsampling_dy + 1 : image->y0 + (uint32_t)(image_height - 1) * (uint32_t)subsampling_dy + 1;
+    image->x1 =	!image->x0 ? (image_width - 1)  * subsampling_dx + 1 : image->x0 + (image_width - 1)  * subsampling_dx + 1;
+    image->y1 =	!image->y0 ? (image_height - 1) * subsampling_dy + 1 : image->y0 + (image_height - 1) * subsampling_dy + 1;
 
     /* set image data */
     for (y=0; y < image_height; y++) {
@@ -1092,8 +1092,8 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 
     cmptparm.x0 = parameters->image_offset_x0;
     cmptparm.y0 = parameters->image_offset_y0;
-    cmptparm.w = !cmptparm.x0 ? (uint32_t)((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * (uint32_t)parameters->subsampling_dx + 1;
-    cmptparm.h = !cmptparm.y0 ? (uint32_t)((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * (uint32_t)parameters->subsampling_dy + 1;
+    cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * (uint32_t)parameters->subsampling_dx + 1;
+    cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * (uint32_t)parameters->subsampling_dy + 1;
 
     if (sign == '-') {
         cmptparm.sgnd = 1;
@@ -1581,7 +1581,7 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
         cmptparm[i].w = w;
         cmptparm[i].h = h;
     }
-    image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
+    image = opj_image_create(numcomps, &cmptparm[0], color_space);
 
     if(!image) {
         fclose(fp);
@@ -1591,8 +1591,8 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
     image->y0 = parameters->image_offset_y0;
-    image->x1 = (uint32_t)(parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
-    image->y1 = (uint32_t)(parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
+    image->x1 = (parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1);
+    image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
     if((format == 2) || (format == 3)) { /* ascii pixmap */
         unsigned int index;
@@ -1977,8 +1977,8 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
     image->y0 = parameters->image_offset_y0;
-    image->x1 = parameters->image_offset_x0 + (uint32_t)(w - 1) *	subsampling_dx + 1;
-    image->y1 = parameters->image_offset_y0 + (uint32_t)(h - 1) * subsampling_dy + 1;
+    image->x1 = parameters->image_offset_x0 + (w - 1) *	subsampling_dx + 1;
+    image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
 
     if(raw_cp->rawBitDepth <= 8) {
         unsigned char value = 0;

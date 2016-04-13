@@ -38,14 +38,14 @@ void T1Encoder::encode(void) {
 		uint32_t tileIndex = 0, tileLineAdvance;
 		if (!opj_t1_allocate_buffers(
 			t1,
-			(uint32_t)(block->cblk->x1 - block->cblk->x0),
-			(uint32_t)(block->cblk->y1 - block->cblk->y0))) {
+			block->cblk->x1 - block->cblk->x0,
+			block->cblk->y1 - block->cblk->y0)) {
 			delete block;
 			return_code = false;
 			break;
 		}
 		auto tilec = tile->comps + block->compno;
-		uint32_t tile_width = (uint32_t)(tilec->x1 - tilec->x0);
+		uint32_t tile_width = tilec->x1 - tilec->x0;
 		tileLineAdvance = tile_width - t1->w;
 		block->tiledp =
 			opj_tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, (uint32_t)block->x, (uint32_t)block->y);
@@ -107,10 +107,10 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 		auto tilec = tile->comps + block->compno;
 		opj_t1_opt_init_buffers(t1,
-			(uint32_t)(block->cblk->x1 - block->cblk->x0),
-			(uint32_t)(block->cblk->y1 - block->cblk->y0));
+								(block->cblk->x1 - block->cblk->x0),
+								(block->cblk->y1 - block->cblk->y0));
 
-		uint32_t tile_width = (uint32_t)(tilec->x1 - tilec->x0);
+		uint32_t tile_width = (tilec->x1 - tilec->x0);
 		auto tileLineAdvance = tile_width - t1->w;
 
 		auto tiledp = block->tiledp;

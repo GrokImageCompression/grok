@@ -433,7 +433,7 @@ typedef struct opj_j2k_dec {
     uint32_t m_DA_x1;
     uint32_t m_DA_y1;
 
-    /** Index of the tile to decode (used in get_tile) */
+    /** Index of the tile to decode (used in get_tile); initialized to -1 */
     int32_t m_tile_ind_to_dec;
     /** Position of the last SOT marker read */
     int64_t m_last_sot_read_pos;

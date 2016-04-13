@@ -565,15 +565,15 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
     image->y0 = parameters->image_offset_y0;
-    image->x1 =	!image->x0 ? (uint32_t)(w - 1) * subsampling_dx + 1 :
-                image->x0 + (uint32_t)(w - 1) * subsampling_dx + 1;
-    image->y1 =	!image->y0 ? (uint32_t)(h - 1) * subsampling_dy + 1 :
-                image->y0 + (uint32_t)(h - 1) * subsampling_dy + 1;
+    image->x1 =	!image->x0 ? (w - 1) * subsampling_dx + 1 :
+                image->x0 + (w - 1) * subsampling_dx + 1;
+    image->y1 =	!image->y0 ? (h - 1) * subsampling_dy + 1 :
+                image->y0 + (h - 1) * subsampling_dy + 1;
 
     for(j = 0; j < numcomps; j++) {
         planes[j] = image->comps[j].data;
     }
-    image->comps[numcomps - 1].alpha = (uint16_t)(1 - (numcomps & 1));
+    image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
 
     strip_size = TIFFStripSize(tif);
 
