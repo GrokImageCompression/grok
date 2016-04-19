@@ -188,8 +188,8 @@ void T1Encoder::encodeOpt(size_t threadId) {
 bool T1Encoder::encode(bool do_opt, 
 						opj_tcd_tile_t *encodeTile,
 						std::vector<encodeBlockInfo*>* blocks, 
-						int32_t encodeMaxCblkW,
-						int32_t encodeMaxCblkH,
+						uint32_t encodeMaxCblkW,
+						uint32_t encodeMaxCblkH,
 						uint32_t numThreads) {
 	if (!blocks || blocks->size() == 0)
 		return true;

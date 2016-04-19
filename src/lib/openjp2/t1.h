@@ -79,7 +79,7 @@ struct decodeBlockInfo {
 	int32_t roishift;
 	uint32_t cblksty;
 	uint32_t qmfbid;
-	int32_t x, y;		/* relative code block offset */
+	uint32_t x, y;		/* relative code block offset */
 };
 
 
@@ -108,7 +108,7 @@ struct encodeBlockInfo {
 	float stepsize;
 	uint32_t cblksty;
 	uint32_t qmfbid;
-	int32_t x, y;		/* relative code block offset */
+	uint32_t x, y;		/* relative code block offset */
 	const double * mct_norms;
 	uint32_t mct_numcomps;
 };

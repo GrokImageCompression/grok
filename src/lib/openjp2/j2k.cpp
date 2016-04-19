@@ -6286,8 +6286,8 @@ static bool opj_j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t ty
 
     /* add the marker */
     cstr_index->marker[cstr_index->marknum].type = (uint16_t)type;
-    cstr_index->marker[cstr_index->marknum].pos = (int32_t)pos;
-    cstr_index->marker[cstr_index->marknum].len = (int32_t)len;
+    cstr_index->marker[cstr_index->marknum].pos = (uint64_t)pos;
+    cstr_index->marker[cstr_index->marknum].len = (uint32_t)len;
     cstr_index->marknum++;
     return true;
 }
@@ -6317,8 +6317,8 @@ static bool opj_j2k_add_tlmarker(uint32_t tileno, opj_codestream_index_t *cstr_i
 
     /* add the marker */
     cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].type = (uint16_t)type;
-    cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].pos = (int32_t)pos;
-    cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].len = (int32_t)len;
+    cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].pos = (uint64_t)pos;
+    cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].len = (uint32_t)len;
     cstr_index->tile_index[tileno].marknum++;
 
     if (type == J2K_MS_SOT) {
@@ -7424,8 +7424,8 @@ static bool opj_j2k_need_nb_tile_parts_correction(opj_stream_private_t *p_stream
 bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
                                     uint32_t * p_tile_index,
                                     uint32_t * p_data_size,
-                                    int32_t * p_tile_x0, int32_t * p_tile_y0,
-                                    int32_t * p_tile_x1, int32_t * p_tile_y1,
+                                    uint32_t * p_tile_x0, uint32_t * p_tile_y0,
+                                    uint32_t * p_tile_x1, uint32_t * p_tile_y1,
                                     uint32_t * p_nb_comps,
                                     bool * p_go_on,
                                     opj_stream_private_t *p_stream,
@@ -8813,10 +8813,10 @@ static void opj_j2k_copy_tile_quantization_parameters( opj_j2k_t *p_j2k )
     }
 }
 
-static void opj_j2k_dump_tile_info( opj_tcp_t * l_default_tile,int32_t numcomps,FILE* out_stream)
+static void opj_j2k_dump_tile_info( opj_tcp_t * l_default_tile,uint32_t numcomps,FILE* out_stream)
 {
     if (l_default_tile) {
-        int32_t compno;
+        uint32_t compno;
 
         fprintf(out_stream, "\t default tile {\n");
         fprintf(out_stream, "\t\t csty=%#x\n", l_default_tile->csty);
@@ -8827,7 +8827,7 @@ static void opj_j2k_dump_tile_info( opj_tcp_t * l_default_tile,int32_t numcomps,
         for (compno = 0; compno < numcomps; compno++) {
             opj_tccp_t *l_tccp = &(l_default_tile->tccps[compno]);
             uint32_t resno;
-            int32_t bandno, numbands;
+            uint32_t bandno, numbands;
 
             /* coding style*/
             fprintf(out_stream, "\t\t comp %d {\n", compno);
@@ -8888,7 +8888,7 @@ void j2k_dump (opj_j2k_t* p_j2k, int32_t flag, FILE* out_stream)
         uint32_t i;
         opj_tcp_t * l_tcp = p_j2k->m_cp.tcps;
         for (i=0; i<l_nb_tiles; ++i) {
-            opj_j2k_dump_tile_info( l_tcp,(int32_t)p_j2k->m_private_image->numcomps, out_stream);
+            opj_j2k_dump_tile_info( l_tcp,p_j2k->m_private_image->numcomps, out_stream);
             ++l_tcp;
         }
     }
@@ -8986,7 +8986,7 @@ static void opj_j2k_dump_MH_info(opj_j2k_t* p_j2k, FILE* out_stream)
     fprintf(out_stream, "\t tx0=%d, ty0=%d\n", p_j2k->m_cp.tx0, p_j2k->m_cp.ty0);
     fprintf(out_stream, "\t tdx=%d, tdy=%d\n", p_j2k->m_cp.tdx, p_j2k->m_cp.tdy);
     fprintf(out_stream, "\t tw=%d, th=%d\n", p_j2k->m_cp.tw, p_j2k->m_cp.th);
-    opj_j2k_dump_tile_info(p_j2k->m_specific_param.m_decoder.m_default_tcp,(int32_t)p_j2k->m_private_image->numcomps, out_stream);
+    opj_j2k_dump_tile_info(p_j2k->m_specific_param.m_decoder.m_default_tcp,p_j2k->m_private_image->numcomps, out_stream);
     fprintf(out_stream, "}\n");
 }
 
@@ -9295,7 +9295,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
     bool l_go_on = true;
     uint32_t l_current_tile_no;
     uint32_t l_data_size=0,l_max_data_size=0;
-    int32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
+    uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
     uint32_t l_nb_comps;
     uint8_t * l_current_data=NULL;
     uint32_t nr_tiles = 0;
@@ -9396,7 +9396,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
     uint32_t l_current_tile_no;
     uint32_t l_tile_no_to_dec;
     uint32_t l_data_size=0,l_max_data_size=0;
-    int32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
+    uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
     uint32_t l_nb_comps;
     uint8_t * l_current_data=NULL;
 
@@ -9628,7 +9628,7 @@ bool opj_j2k_get_tile(  opj_j2k_t *p_j2k,
 
     l_img_comp = p_image->comps;
     for (compno=0; compno < p_image->numcomps; ++compno) {
-        int32_t l_comp_x1, l_comp_y1;
+        uint32_t l_comp_x1, l_comp_y1;
 
         l_img_comp->factor = p_j2k->m_private_image->comps[compno].factor;
 

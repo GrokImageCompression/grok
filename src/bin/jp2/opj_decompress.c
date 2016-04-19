@@ -115,7 +115,7 @@ int parse_cmdline_decoder(int argc,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
 							char* plugin_path);
-int parse_DA_values( char* inArg, int32_t *DA_x0, int32_t *DA_y0, int32_t *DA_x1, int32_t *DA_y1);
+int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA_x1, uint32_t *DA_y1);
 
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
 
@@ -712,7 +712,7 @@ int parse_cmdline_decoder(int argc,
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parse_DA_values( char* inArg, int32_t *DA_x0, int32_t *DA_y0, int32_t *DA_x1, int32_t *DA_y1)
+int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA_x1, uint32_t *DA_y1)
 {
     int it = 0;
     int values[4];

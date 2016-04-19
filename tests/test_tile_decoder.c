@@ -174,7 +174,7 @@ int main (int argc, char *argv[])
     uint8_t * l_data = (uint8_t *) malloc(1000);
     bool l_go_on = true;
     uint32_t l_nb_comps=0 ;
-    int32_t l_current_tile_x0,l_current_tile_y0,l_current_tile_x1,l_current_tile_y1;
+    uint32_t l_current_tile_x0,l_current_tile_y0,l_current_tile_x1,l_current_tile_y1;
 
     uint32_t da_x0=0;
 	uint32_t da_y0=0;

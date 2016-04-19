@@ -455,7 +455,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                     for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
                         opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
 
-						OPJ_INT32 numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(tcd,
 								compno,
@@ -1676,7 +1676,7 @@ static bool opj_tcd_mct_decode ( opj_tcd_t *p_tcd, opj_event_mgr_t *p_manager)
 
 static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 {
-    int32_t compno=0;
+    uint32_t compno=0;
 
 #ifdef _OPENMP
 #pragma omp parallel default(none) private(compno) shared(p_tcd)
@@ -1684,7 +1684,7 @@ static bool opj_tcd_dc_level_shift_decode ( opj_tcd_t *p_tcd )
 #pragma omp for
 #endif
 
-		for (compno = 0; compno < (int32_t)p_tcd->tile->numcomps; compno++) {
+		for (compno = 0; compno < p_tcd->tile->numcomps; compno++) {
 			int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
 			opj_tcd_tilecomp_t *l_tile_comp = p_tcd->tile->comps + compno;

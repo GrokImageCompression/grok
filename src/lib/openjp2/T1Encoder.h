@@ -28,8 +28,8 @@ public:
 	T1Encoder();
 	bool encode(bool do_opt, opj_tcd_tile_t *tile,
 				std::vector<encodeBlockInfo*>* blocks,
-				int32_t maxCblkW, 
-				int32_t maxCblkH,
+				uint32_t maxCblkW, 
+				uint32_t maxCblkH,
 				uint32_t numThreads);
 
 	void encode();
@@ -39,8 +39,8 @@ public:
 
 private:
 	opj_tcd_tile_t *tile;
-	int32_t maxCblkW;
-	int32_t maxCblkH;
+	uint32_t maxCblkW;
+	uint32_t maxCblkH;
 
 	std::vector<opj_t1_opt*> t1OptVec;
 	std::vector<opj_t1*> t1Vec;

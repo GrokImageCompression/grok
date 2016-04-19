@@ -122,7 +122,7 @@ typedef struct opj_tcd_cblk_enc {
 typedef struct opj_tcd_cblk_dec {
     opj_vec_t seg_buffers;
     opj_tcd_seg_t* segs;			/* segments information */
-    int32_t x0, y0, x1, y1;		/* position of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
+    uint32_t x0, y0, x1, y1;		/* position of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
     uint32_t numlenbits;
     uint32_t data_max_size;		/* Size of allocated data buffer */

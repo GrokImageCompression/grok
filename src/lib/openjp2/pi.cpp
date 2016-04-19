@@ -109,10 +109,10 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi);
  */
 static void opj_pi_update_encode_poc_and_final ( opj_cp_t *p_cp,
         uint32_t p_tileno,
-        int32_t p_tx0,
-        int32_t p_tx1,
-        int32_t p_ty0,
-        int32_t p_ty1,
+        uint32_t p_tx0,
+        uint32_t p_tx1,
+        uint32_t p_ty0,
+        uint32_t p_ty1,
         uint32_t p_max_prec,
         uint32_t p_max_res,
         uint32_t p_dx_min,
@@ -162,10 +162,10 @@ static void opj_pi_update_encode_not_poc (  opj_cp_t *p_cp,
 static void opj_get_encoding_parameters(const opj_image_t *p_image,
                                         const opj_cp_t *p_cp,
                                         uint32_t  tileno,
-                                        int32_t  * p_tx0,
-                                        int32_t * p_tx1,
-                                        int32_t * p_ty0,
-                                        int32_t * p_ty1,
+                                        uint32_t  * p_tx0,
+                                        uint32_t * p_tx1,
+                                        uint32_t * p_ty0,
+                                        uint32_t * p_ty1,
                                         uint32_t * p_dx_min,
                                         uint32_t * p_dy_min,
                                         uint32_t * p_max_prec,
@@ -194,10 +194,10 @@ static void opj_get_encoding_parameters(const opj_image_t *p_image,
 static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
         const opj_cp_t *p_cp,
         uint32_t tileno,
-        int32_t * p_tx0,
-        int32_t * p_tx1,
-        int32_t * p_ty0,
-        int32_t * p_ty1,
+        uint32_t * p_tx0,
+        uint32_t * p_tx1,
+        uint32_t * p_ty0,
+        uint32_t * p_ty1,
         uint32_t * p_dx_min,
         uint32_t * p_dy_min,
         uint32_t * p_max_prec,
@@ -760,7 +760,7 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
         uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
         uint32_t l_px0, l_py0, l_px1, py1;
         uint32_t l_product;
-        int32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
+        uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
         uint32_t l_pdx, l_pdy , l_pw , l_ph;
 
         lResolutionPtr = p_resolutions[compno];
@@ -1775,7 +1775,7 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                                     if(opj_pi_check_next_level(i-1,cp,tileno,pino,prog)) {
                                         tcp->ty0_t = tcp->tyS;
                                         pi[pino].poc.ty0 = tcp->ty0_t;
-                                        pi[pino].poc.ty1 = (int32_t)(tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
+                                        pi[pino].poc.ty1 = (uint32_t)(tcp->ty0_t + tcp->dy - (tcp->ty0_t % tcp->dy));
                                         tcp->ty0_t = pi[pino].poc.ty1;
                                         incr_top=1;
                                         resetX=1;
@@ -1793,12 +1793,12 @@ void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
                                 if(resetX==1) {
                                     tcp->tx0_t = tcp->txS;
                                     pi[pino].poc.tx0 = tcp->tx0_t;
-                                    pi[pino].poc.tx1 = (int32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
+                                    pi[pino].poc.tx1 = (uint32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
                                     tcp->tx0_t = pi[pino].poc.tx1;
                                 }
                             } else {
                                 pi[pino].poc.tx0 = tcp->tx0_t;
-                                pi[pino].poc.tx1 = (int32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
+                                pi[pino].poc.tx1 = (uint32_t)(tcp->tx0_t + tcp->dx- (tcp->tx0_t % tcp->dx));
                                 tcp->tx0_t = pi[pino].poc.tx1;
                                 incr_top=0;
                             }
