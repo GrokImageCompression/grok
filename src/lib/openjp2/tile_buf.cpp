@@ -56,10 +56,10 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
 
     if (output_image) {
         opj_rect_init(&comp->dim,
-                      opj_int_ceildiv(output_image->x0,dx),
-                      opj_int_ceildiv(output_image->y0,dy),
-                      opj_int_ceildiv(output_image->x1,dx),
-                      opj_int_ceildiv(output_image->y1,dy));
+                      opj_uint_ceildiv(output_image->x0,dx),
+                      opj_uint_ceildiv(output_image->y0,dy),
+                      opj_uint_ceildiv(output_image->x1,dx),
+                      opj_uint_ceildiv(output_image->y1,dy));
 
         /* clip output image to tile */
         opj_rect_clip(&comp->tile_dim, &comp->dim, &comp->dim);

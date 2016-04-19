@@ -142,7 +142,7 @@ static inline int32_t opj_int_abs(int32_t a)
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline int32_t opj_int_ceildiv(int32_t a, int32_t b)
+static inline uint32_t  opj_uint_ceildiv(uint32_t  a, uint32_t  b)
 {
     assert(b);
     return (a + b - 1) / b;
@@ -152,10 +152,10 @@ static inline int32_t opj_int_ceildiv(int32_t a, int32_t b)
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline uint32_t  opj_uint_ceildiv(uint32_t  a, uint32_t  b)
+static inline uint32_t  opj_uint64_ceildiv(uint64_t  a, uint64_t  b)
 {
-    assert(b);
-    return (a + b - 1) / b;
+	assert(b);
+	return (uint32_t)((a + b - 1) / b);
 }
 
 /**

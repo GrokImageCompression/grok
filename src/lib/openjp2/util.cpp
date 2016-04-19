@@ -21,6 +21,17 @@
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
+/**
+Divide an integer and round upwards
+@return Returns a divided by b
+*/
+static inline int32_t opj_int_ceildiv(int32_t a, int32_t b)
+{
+	assert(b);
+	return (a + b - 1) / b;
+}
+
+
 void opj_rect_print(opj_rect_t* r)
 {
     if (!r)
