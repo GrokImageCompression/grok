@@ -320,7 +320,7 @@ typedef struct opj_encoding_param {
     /** Maximum rate for each component. If == 0, component size limitation is not considered */
     uint32_t m_max_comp_size;
     /** Position of tile part flag in progression order*/
-    int32_t m_tp_pos;
+    uint32_t m_tp_pos;
     /** fixed layer */
     int32_t *m_matrice;
     /** Flag determining tile part generation*/
@@ -650,10 +650,10 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
                                 uint32_t * p_tile_index,
                                 uint32_t * p_data_size,
-                                int32_t * p_tile_x0,
-                                int32_t * p_tile_y0,
-                                int32_t * p_tile_x1,
-                                int32_t * p_tile_y1,
+                                uint32_t * p_tile_x0,
+                                uint32_t * p_tile_y0,
+                                uint32_t * p_tile_x1,
+                                uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
                                 opj_stream_private_t *p_stream,

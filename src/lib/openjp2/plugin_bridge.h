@@ -26,7 +26,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 	uint32_t cblkno,
 	opj_tcd_band_t *band,
 	opj_tcd_cblk_enc_t *cblk,
-	int32_t* numPix);
+	uint32_t* numPix);
 
 
 bool tile_equals(opj_plugin_tile_t* plugin_tile,

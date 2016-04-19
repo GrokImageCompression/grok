@@ -79,14 +79,14 @@ bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, opj_rect_t* rect);
 
 /* sub-band coordinates */
 opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
-        int32_t resno,
+        uint32_t resno,
         bool is_even,
         bool is_horizontal);
 
 
 /* resolution coordinates */
 opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
-        int32_t resno,
+        uint32_t resno,
         bool is_horizontal);
 
 int32_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp);

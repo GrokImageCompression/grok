@@ -77,7 +77,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 						uint32_t cblkno,
 						opj_tcd_band_t *band,
 						opj_tcd_cblk_enc_t *cblk,
-						int32_t* numPix) {
+						uint32_t* numPix) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		opj_plugin_band_t* plugin_band = tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
 		opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
@@ -91,7 +91,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 				printf("Warning: total number of passes differ: component=%d, res=%d, band=%d, block=%d\n", compno, resno, bandno, cblkno);
 		}
 		cblk->totalpasses = (uint32_t)plugin_cblk->numPasses;
-		*numPix = (int32_t)plugin_cblk->numPix;
+		*numPix = (uint32_t)plugin_cblk->numPix;
 		bool goodData = true;
 		uint32_t totalRatePlugin = (uint32_t)plugin_cblk->compressedDataLength;
 		//check data

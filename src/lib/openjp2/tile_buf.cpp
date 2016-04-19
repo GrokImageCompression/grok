@@ -246,7 +246,7 @@ bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, opj_rect_t* rect)
 }
 
 opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
-        int32_t resno,
+        uint32_t resno,
         bool is_even,
         bool is_horizontal)
 {
@@ -302,7 +302,7 @@ opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
 }
 
 opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
-        int32_t resno,
+        uint32_t resno,
         bool is_horizontal)
 {
     opj_pt_t rc;
@@ -334,8 +334,8 @@ int32_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp)
     opj_pt_t even, odd;
     if (!comp || comp->resolutions.empty())
         return 0;
-    even = opj_tile_buf_get_interleaved_range(comp, (int32_t)comp->resolutions.size() - 1, true);
-    odd = opj_tile_buf_get_interleaved_range(comp, (int32_t)comp->resolutions.size() - 1, false);
+    even = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
+    odd = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
     return opj_int_max(even.y - even.x, odd.y - odd.x);
 }

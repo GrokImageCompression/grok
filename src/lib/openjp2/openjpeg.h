@@ -452,7 +452,7 @@ typedef struct opj_cparameters {
      * If it does not comply with tcp_rates, max_cs_size prevails
      * and a warning is issued.
      * */
-    int32_t max_cs_size;
+    uint64_t max_cs_size;
     /** RSIZ value
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
@@ -686,9 +686,9 @@ typedef struct opj_marker_info {
     /** marker type */
     uint16_t type;
     /** position in codestream */
-    int64_t pos;
+    uint64_t pos;
     /** length, marker val included */
-    int32_t len;
+    uint32_t len;
 } opj_marker_info_t;
 
 
@@ -697,15 +697,15 @@ typedef struct opj_marker_info {
 */
 typedef struct opj_tp_info {
     /** start position of tile part */
-    int32_t tp_start_pos;
+    uint32_t tp_start_pos;
     /** end position of tile part header */
-    int32_t tp_end_header;
+    uint32_t tp_end_header;
     /** end position of tile part */
-    int32_t tp_end_pos;
+    uint32_t tp_end_pos;
     /** start packet of tile part */
-    int32_t tp_start_pack;
+    uint32_t tp_start_pack;
     /** number of packets of tile part */
-    int32_t tp_numpacks;
+    uint32_t tp_numpacks;
 } opj_tp_info_t;
 
 /**
@@ -715,21 +715,21 @@ typedef struct opj_tile_info {
     /** value of thresh for each layer by tile cfr. Marcela   */
     double *thresh;
     /** number of tile */
-    int32_t tileno;
+    uint32_t tileno;
     /** start position */
-    int32_t start_pos;
+    uint32_t start_pos;
     /** end position of the header */
-    int32_t end_header;
+    uint32_t end_header;
     /** end position */
-    int32_t end_pos;
+    uint32_t end_pos;
     /** precinct number for each resolution level (width) */
-    int32_t pw[33];
+    uint32_t pw[33];
     /** precinct number for each resolution level (height) */
-    int32_t ph[33];
+    uint32_t ph[33];
     /** precinct size (in power of 2), in X for each resolution level */
-    int32_t pdx[33];
+    uint32_t pdx[33];
     /** precinct size (in power of 2), in Y for each resolution level */
-    int32_t pdy[33];
+    uint32_t pdy[33];
     /** information concerning packets inside tile */
     opj_packet_info_t *packet;
     /** add fixed_quality */
@@ -737,13 +737,13 @@ typedef struct opj_tile_info {
     /** add fixed_quality */
     double distotile;
     /** number of markers */
-    int32_t marknum;
+    uint32_t marknum;
     /** list of markers */
     opj_marker_info_t *marker;
     /** actual size of markers array */
-    int32_t maxmarknum;
+    uint32_t maxmarknum;
     /** number of tile parts */
-    int32_t num_tps;
+    uint32_t num_tps;
     /** information concerning tile parts */
     opj_tp_info_t *tp;
 } opj_tile_info_t;
@@ -755,47 +755,47 @@ typedef struct opj_codestream_info {
     /** maximum distortion reduction on the whole image (add for Marcela) */
     double D_max;
     /** packet number */
-    int32_t packno;
+    uint32_t packno;
     /** writing the packet in the index with t2_encode_packets */
-    int32_t index_write;
+    uint32_t index_write;
     /** image width */
-    int32_t image_w;
+    uint32_t image_w;
     /** image height */
-    int32_t image_h;
+    uint32_t image_h;
     /** progression order */
     OPJ_PROG_ORDER prog;
     /** tile size in x */
-    int32_t tile_x;
+    uint32_t tile_x;
     /** tile size in y */
-    int32_t tile_y;
+    uint32_t tile_y;
     /** */
-    int32_t tile_Ox;
+    uint32_t tile_Ox;
     /** */
-    int32_t tile_Oy;
+    uint32_t tile_Oy;
     /** number of tiles in X */
-    int32_t tw;
+    uint32_t tw;
     /** number of tiles in Y */
-    int32_t th;
+    uint32_t th;
     /** component numbers */
-    int32_t numcomps;
+    uint32_t numcomps;
     /** number of layer */
-    int32_t numlayers;
+    uint32_t numlayers;
     /** number of decomposition for each component */
-    int32_t *numdecompos;
+    uint32_t *numdecompos;
     /* UniPG>> */
     /** number of markers */
-    int32_t marknum;
+    uint32_t marknum;
     /** list of markers */
     opj_marker_info_t *marker;
     /** actual size of markers array */
-    int32_t maxmarknum;
+    uint32_t maxmarknum;
 
     /** main header position */
-    int32_t main_head_start;
+    uint64_t main_head_start;
     /** main header position */
-    int32_t main_head_end;
+    uint64_t main_head_end;
     /** codestream's size */
-    int32_t codestream_size;
+    uint64_t codestream_size;
     /** information regarding tiles inside image */
     opj_tile_info_t *tile;
 } opj_codestream_info_t;
@@ -844,7 +844,7 @@ opj_tccp_info_t;
 typedef struct opj_tile_v2_info {
 
     /** number (index) of tile */
-    int32_t tileno;
+    uint32_t tileno;
     /** coding style */
     uint32_t csty;
     /** progression order */
@@ -938,9 +938,9 @@ typedef struct opj_tile_index {
  */
 typedef struct opj_codestream_index {
     /** main header start position (SOC position) */
-    int64_t main_head_start;
+    uint64_t main_head_start;
     /** main header end position (first SOT position) */
-    int64_t main_head_end;
+    uint64_t main_head_end;
 
     /** codestream's size */
     uint64_t codestream_size;
@@ -1270,7 +1270,7 @@ typedef struct opj_plugin_code_block {
 
 	/////////////////////////
 	// debug info
-	int32_t x0, y0, x1, y1;
+	uint32_t x0, y0, x1, y1;
 	unsigned int* contextStream;
 	///////////////////////////
 
@@ -1395,8 +1395,8 @@ OPJ_API bool OPJ_CALLCONV opj_read_tile_header(	opj_codec_t *p_codec,
         opj_stream_t * p_stream,
         uint32_t * p_tile_index,
         uint32_t * p_data_size,
-        int32_t * p_tile_x0, int32_t * p_tile_y0,
-        int32_t * p_tile_x1, int32_t * p_tile_y1,
+        uint32_t * p_tile_x0, uint32_t * p_tile_y0,
+        uint32_t * p_tile_x1, uint32_t * p_tile_y1,
         uint32_t * p_nb_comps,
         bool * p_should_go_on );
 
@@ -1682,13 +1682,13 @@ typedef struct opj_decompress_params {
     char indexfilename[OPJ_PATH_LEN];
 
     /** Decoding area left boundary */
-	int32_t DA_x0;
+	uint32_t DA_x0;
     /** Decoding area right boundary */
-	int32_t DA_x1;
+	uint32_t DA_x1;
     /** Decoding area up boundary */
-	int32_t DA_y0;
+	uint32_t DA_y0;
     /** Decoding area bottom boundary */
-	int32_t DA_y1;
+	uint32_t DA_y1;
     /** Verbose mode */
     bool m_verbose;
 

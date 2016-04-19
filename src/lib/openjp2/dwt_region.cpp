@@ -627,7 +627,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres
 
     opj_tcd_resolution_t* res = tilec->resolutions;
 
-    int32_t resno = 1;
+    uint32_t resno = 1;
 
     /* start with lowest resolution */
     uint32_t res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
