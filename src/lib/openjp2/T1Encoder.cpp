@@ -56,7 +56,7 @@ void T1Encoder::encode(void) {
 				for (auto i = 0U; i < t1->w; ++i) {
 					// pass through otherwise
 					if ( !(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
-						block->tiledp[tileIndex] <<= T1_NMSEDEC_FRACBITS;
+						block->tiledp[tileIndex] *= (1<<T1_NMSEDEC_FRACBITS);
 					}
 					tileIndex++;
 				}
@@ -124,7 +124,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 					int32_t tmp=0;
 					// pass through otherwise
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
-						tmp = block->tiledp[tileIndex] << T1_NMSEDEC_FRACBITS;
+						tmp = block->tiledp[tileIndex] *= (1<<T1_NMSEDEC_FRACBITS);
 					}
 					else
 					{
