@@ -777,18 +777,19 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
         /* use custom size for precincts*/
         l_level_no = l_tccp->numresolutions - 1;
         for (resno = 0; resno < l_tccp->numresolutions; ++resno) {
-            uint32_t l_dx, l_dy;
 
             /* precinct width and height*/
             l_pdx = l_tccp->prcw[resno];
             l_pdy = l_tccp->prch[resno];
             *lResolutionPtr++ = l_pdx;
             *lResolutionPtr++ = l_pdy;
-            l_dx = l_img_comp->dx * (1u << (l_pdx + l_level_no));
-            l_dy = l_img_comp->dy * (1u << (l_pdy + l_level_no));
+            uint64_t l_dx = l_img_comp->dx * ((uint64_t)1u << (l_pdx + l_level_no));
+			uint64_t l_dy = l_img_comp->dy * ((uint64_t)1u << (l_pdy + l_level_no));
             /* take the minimum size for l_dx for each comp and resolution*/
-            *p_dx_min = opj_int_min(*p_dx_min, l_dx);
-            *p_dy_min = opj_int_min(*p_dy_min, l_dy);
+			if (l_dx < UINT_MAX)
+	            *p_dx_min = opj_uint_min(*p_dx_min, (uint32_t)l_dx);
+			if (l_dy < UINT_MAX)
+				*p_dy_min = opj_uint_min(*p_dy_min, (uint32_t)l_dy);
 
             /* various calculations of extents*/
             l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
