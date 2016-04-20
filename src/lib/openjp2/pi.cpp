@@ -433,12 +433,16 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
         for (compno = 0; compno < pi->numcomps; compno++) {
             comp = &pi->comps[compno];
             for (resno = 0; resno < comp->numresolutions; resno++) {
-                uint32_t dx, dy;
                 res = &comp->resolutions[resno];
-                dx = comp->dx * (1u << (res->pdx + comp->numresolutions - 1 - resno));
-                dy = comp->dy * (1u << (res->pdy + comp->numresolutions - 1 - resno));
-                pi->dx = !pi->dx ? dx : opj_uint_min(pi->dx, dx);
-                pi->dy = !pi->dy ? dy : opj_uint_min(pi->dy, dy);
+                uint64_t dx = comp->dx * ((uint64_t)1u << (res->pdx + comp->numresolutions - 1 - resno));
+                uint64_t dy = comp->dy * ((uint64_t)1u << (res->pdy + comp->numresolutions - 1 - resno));
+				if (dx < UINT_MAX) {
+					pi->dx = !pi->dx ? (uint32_t)dx : opj_uint_min(pi->dx, (uint32_t)dx);
+				}
+				if (dy < UINT_MAX) {
+					pi->dy = !pi->dy ? (uint32_t)dy : opj_uint_min(pi->dy, (uint32_t)dy);
+				}
+
             }
         }
     }
