@@ -109,7 +109,7 @@ typedef struct opj_codec_private {
             void (*opj_destroy) (void * p_codec);
 
             /** Setup decoder function handler */
-            void (*opj_setup_decoder) ( void * p_codec, opj_dparameters_t * p_param);
+            bool (*opj_setup_decoder) ( void * p_codec, opj_dparameters_t * p_param);
 
             /** Set decode area function handler */
             bool (*opj_set_decode_area) ( void * p_codec,
