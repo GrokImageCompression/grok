@@ -1140,10 +1140,9 @@ double opj_t1_getwmsedec(
     return wmsedec;
 }
 
-bool opj_t1_allocate_buffers(
-    opj_t1_t *t1,
-    uint32_t w,
-    uint32_t h)
+bool opj_t1_allocate_buffers(opj_t1_t *t1,
+							uint32_t w,
+							uint32_t h)
 {
     uint32_t datasize=w * h;
     uint32_t flagssize;
@@ -1159,6 +1158,10 @@ bool opj_t1_allocate_buffers(
             }
             t1->datasize=datasize;
         }
+		//UBSAN was reporting code was getting here
+		// with NULL t1->data
+		if (!t1->data)
+			return false;
 		memset(t1->data, 0, datasize * sizeof(int32_t));
     }
 
