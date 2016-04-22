@@ -87,6 +87,7 @@ set(OPENJPEG_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ThreadPool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.cpp
 
