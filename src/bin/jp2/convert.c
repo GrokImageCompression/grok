@@ -608,6 +608,10 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
     /* Ignore tga identifier, if present ... */
     if (id_len) {
         unsigned char *id = (unsigned char *) malloc(id_len);
+		if (!id) {
+			fprintf(stderr, "tga_readheader: out of memory out\n");
+			return 0;
+		}
         if ( !fread(id, id_len, 1, fp) ) {
             fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
             free(id);

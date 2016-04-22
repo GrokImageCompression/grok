@@ -183,8 +183,17 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 
 
     rows = (uint8_t**)calloc(height+1, sizeof(uint8_t*));
-    for(i = 0; i < height; ++i)
-        rows[i] = (uint8_t*)malloc(png_get_rowbytes(png,info));
+	if (rows == NULL) {
+		fprintf(stderr, "pngtoimage: out of memory\n");
+		goto fin;
+	}
+	for (i = 0; i < height; ++i) {
+		rows[i] = (uint8_t*)malloc(png_get_rowbytes(png, info));
+		if (!rows[i]) {
+			fprintf(stderr, "pngtoimage: out of memory\n");
+			goto fin;
+		}
+	}
 
     png_read_image(png, rows);
 
@@ -207,7 +216,8 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     image->y1 = (image->y0 + (height - 1) * params->subsampling_dy + 1 + image->y0);
 
     row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
-    if(row32s == NULL) goto fin;
+    if(row32s == NULL)
+		goto fin;
 
     /* Set alpha channel */
     image->comps[nr_comp-1U].alpha = 1U - (nr_comp & 1U);
@@ -226,8 +236,10 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
 fin:
     if(rows) {
-        for(i = 0; i < height; ++i)
-            free(rows[i]);
+		for (i = 0; i < height; ++i) {
+			if (rows[i])
+				free(rows[i]);
+		}
         free(rows);
     }
     if (row32s) {

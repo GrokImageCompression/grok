@@ -1404,6 +1404,10 @@ static bool opj_jp2_read_colr( opj_jp2_t *jp2,
             uint32_t rl, ol, ra, oa, rb, ob, il;
 
             cielab = (uint32_t*)opj_malloc(9 * sizeof(uint32_t));
+			if (cielab == NULL) {
+				opj_event_msg(p_manager, EVT_ERROR, "Not enough memory for cielab\n");
+				return false;
+			}
             cielab[0] = 14; /* enumcs */
 
             /* default values */
