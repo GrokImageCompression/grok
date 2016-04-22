@@ -18,6 +18,7 @@
 #include "opj_includes.h"
 #include "T1Encoder.h"
 #include "Barrier.h"
+#include "ThreadPool.h"
 
 
 T1Encoder::T1Encoder() : tile(NULL), 
@@ -219,31 +220,30 @@ bool T1Encoder::encode(bool do_opt,
 	}
 	encodeQueue.push_no_lock(blocks);
 	return_code = true;
+
 	Barrier encode_t1_barrier(numThreads);
 	Barrier encode_t1_calling_barrier(numThreads + 1);
 
+	auto pool = new ThreadPool(numThreads);
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
-		encodeWorkers.push_back(std::thread([this,
-											do_opt,
-											&encode_t1_barrier,
-											&encode_t1_calling_barrier,
-											threadId]()
-		{
+		pool->enqueue([this,
+						do_opt,
+						&encode_t1_barrier,
+						&encode_t1_calling_barrier,
+						threadId] {
+
 			if (do_opt)
 				encodeOpt(threadId);
 			else
-				 encode();
+				encode();
 			encode_t1_barrier.arrive_and_wait();
 			encode_t1_calling_barrier.arrive_and_wait();
-		}));
+		});
 	}
+
 	encode_t1_calling_barrier.arrive_and_wait();
-
-	// join threads
-	for (auto& t : encodeWorkers) {
-		t.join();
-	}
-
+	delete pool;
+	
 	// clean up blocks
 	encodeBlockInfo* block = NULL;
 	while (encodeQueue.tryPop(block)) {
