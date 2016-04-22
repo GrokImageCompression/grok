@@ -600,6 +600,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
                 raw_cp->rawBitDepth = bitdepth;
                 raw_cp->rawSigned  = raw_signed;
                 raw_cp->rawComps = (raw_comp_cparameters_t*) malloc(((uint32_t)(ncomp))*sizeof(raw_comp_cparameters_t));
+				if (raw_cp->rawComps == NULL) {
+					free(substr1);
+					return 1;
+				}
                 for (compno = 0; compno < ncomp && !wrong; compno++) {
                     if (substr2 == NULL) {
                         raw_cp->rawComps[compno].dx = lastdx;
@@ -676,6 +680,9 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
             numresolution = parameters->numresolution;
             matrix_width = numresolution * 3;
             parameters->cp_matrice = (int *) malloc(numlayers * matrix_width * sizeof(int));
+			if (!parameters->cp_matrice) {
+				return 1;
+			}
             s = s + 2;
 
             for (i = 0; i < numlayers; i++) {
