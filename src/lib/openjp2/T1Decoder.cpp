@@ -18,6 +18,7 @@
 #include "opj_includes.h"
 #include "T1Decoder.h"
 #include "Barrier.h"
+#include "ThreadPool.h"
 
 
 T1Decoder::T1Decoder(uint16_t blockw, 
@@ -33,8 +34,9 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 	Barrier decode_t1_barrier(numThreads);
 	Barrier decode_t1_calling_barrier(numThreads + 1);
 
+	auto pool = new ThreadPool(numThreads);
 	for (auto threadId = 0; threadId < numThreads; threadId++) {
-		decodeWorkers.push_back(std::thread([this, 
+		pool->enqueue([this,
 											&decode_t1_barrier,
 											&decode_t1_calling_barrier,
 											threadId]()
@@ -100,12 +102,9 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 			opj_t1_destroy(t1);
 			decode_t1_barrier.arrive_and_wait();
 			decode_t1_calling_barrier.arrive_and_wait();
-		}));
+		});
 	}
 
 	decode_t1_calling_barrier.arrive_and_wait();
-	for (auto& t : decodeWorkers) {
-		t.join();
-	}
-
+	delete pool;
 }

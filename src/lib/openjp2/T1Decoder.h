@@ -32,7 +32,5 @@ public:
 private:
 
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-
-	std::vector<std::thread> decodeWorkers;
 	BlockingQueue<decodeBlockInfo*> decodeQueue;
 };

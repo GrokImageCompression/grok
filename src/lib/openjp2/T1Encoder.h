@@ -45,7 +45,6 @@ private:
 	std::vector<opj_t1_opt*> t1OptVec;
 	std::vector<opj_t1*> t1Vec;
 
-	std::vector<std::thread> encodeWorkers;
 	BlockingQueue<encodeBlockInfo*> encodeQueue;
 	mutable std::mutex distortion_mutex;
 
