@@ -4180,26 +4180,17 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
 
     /* Patch to support new PHR data */
     if (!l_sot_length_pb_detected) {
-        if (opj_stream_supports_zero_copy_read(p_stream)) {
-            uint8_t* ptr = NULL;
-            l_current_read_size = opj_stream_read_data_zero_copy(p_stream,
-                                  &ptr,
-                                  p_j2k->m_specific_param.m_decoder.m_sot_length,
-                                  p_manager);
-            opj_seg_buf_push_back(l_tcp->m_data, ptr, p_j2k->m_specific_param.m_decoder.m_sot_length);
+		if (!l_tcp->m_data)
+			l_tcp->m_data = new opj_seg_buf_t();
 
-        } else {
-			if (!l_tcp->m_data)
-				l_tcp->m_data = new opj_seg_buf_t();
-            opj_seg_buf_alloc_and_push_back(l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length);
-            l_current_read_size = opj_stream_read_data(
-                                      p_stream,
-                                      opj_seg_buf_get_global_ptr(l_tcp->m_data),
-                                      p_j2k->m_specific_param.m_decoder.m_sot_length,
-                                      p_manager);
+        opj_seg_buf_alloc_and_push_back(l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length);
+        l_current_read_size = opj_stream_read_data(
+                                    p_stream,
+                                    opj_seg_buf_get_global_ptr(l_tcp->m_data),
+                                    p_j2k->m_specific_param.m_decoder.m_sot_length,
+                                    p_manager);
 
-        }
-    } else {
+     } else {
         l_current_read_size = 0;
     }
 

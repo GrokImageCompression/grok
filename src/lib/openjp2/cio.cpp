@@ -296,11 +296,6 @@ void OPJ_CALLCONV opj_stream_set_user_data_length(opj_stream_t* p_stream, uint64
 
 
 
-bool opj_stream_supports_zero_copy_read(opj_stream_private_t * p_stream)
-{
-    return p_stream->m_zero_copy_read_fn ? true : false;
-}
-
 size_t opj_stream_read_data (opj_stream_private_t * p_stream,uint8_t * p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr)
 {
     size_t l_read_nb_bytes = 0;

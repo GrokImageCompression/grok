@@ -295,11 +295,6 @@ size_t opj_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer
 size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr);
 
 /**
-* Check if this stream supports zero copy reads
-*/
-bool opj_stream_supports_zero_copy_read(opj_stream_private_t * p_stream);
-
-/**
  * Writes some bytes to the stream.
  * @param		p_stream	the stream to write data to.
  * @param		p_buffer	pointer to the data buffer holds the data to be writtent.

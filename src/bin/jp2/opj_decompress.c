@@ -1162,7 +1162,11 @@ int main(int argc, char **argv)
             /* read the input file and put it in memory */
             /* ---------------------------------------- */
             if (!l_stream) {
-                l_stream = opj_stream_create_default_file_stream(infile,true);
+				// memory mapped stream
+                l_stream = opj_stream_create_mapped_file_read_stream(infile);
+
+				// other option is to use file stream 
+				//l_stream = opj_stream_create_default_file_stream(infile, true);
             }
 
 
@@ -1509,10 +1513,9 @@ cleanup:
     destroy_parameters(&parameters);
 	opj_cleanup();
 
-    if (num_decompressed_images && !failed) {
+    if (num_decompressed_images) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
     }
-    //getchar();
     return failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 /*end main*/
