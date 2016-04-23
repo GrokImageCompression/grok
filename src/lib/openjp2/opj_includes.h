@@ -73,6 +73,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <climits>
 
 /*
   Use fseeko() and ftello() if they are available since they use
