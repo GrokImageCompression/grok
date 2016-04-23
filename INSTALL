@@ -20,6 +20,12 @@ else if you have sudo power:
 else
   DESTDIR=$HOME/local make install
 
+Note: on Linux, for a shared library build, you must run
+  sudo ldconfig
+
+to update the shared library cache.
+
+
 To build the Doxygen documentation (Doxygen needs to be found on the system):
 (A 'html' directory is generated in the 'doc' directory)
   make doc
