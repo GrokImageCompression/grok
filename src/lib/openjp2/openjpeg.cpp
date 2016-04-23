@@ -637,8 +637,8 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec_data.m_compression.opj_setup_encoder = (bool (*) (	void *,
                 opj_cparameters_t *,
-                struct opj_image *,
-                struct opj_event_mgr * )) opj_j2k_setup_encoder;
+                opj_image_t *,
+                opj_event_mgr_t * )) opj_j2k_setup_encoder;
 
         l_codec->m_codec = opj_j2k_create_compress();
         if (! l_codec->m_codec) {
@@ -675,8 +675,8 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec_data.m_compression.opj_setup_encoder = (bool (*) (	void *,
                 opj_cparameters_t *,
-                struct opj_image *,
-                struct opj_event_mgr * )) opj_jp2_setup_encoder;
+                opj_image_t *,
+                opj_event_mgr_t * )) opj_jp2_setup_encoder;
 
         l_codec->m_codec = opj_jp2_create(false);
         if (! l_codec->m_codec) {
