@@ -5600,8 +5600,9 @@ static bool opj_j2k_read_cbd (      opj_j2k_t *p_j2k,
 /* J2K / JPT decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void opj_j2k_setup_decoder(opj_j2k_t *j2k, opj_dparameters_t *parameters)
+void opj_j2k_setup_decoder(void *j2k_void, opj_dparameters_t *parameters)
 {
+	opj_j2k_t *j2k = (opj_j2k_t *)j2k_void;
     if(j2k && parameters) {
         j2k->m_cp.m_specific_param.m_dec.m_layer = parameters->cp_layer;
         j2k->m_cp.m_specific_param.m_dec.m_reduce = parameters->cp_reduce;
