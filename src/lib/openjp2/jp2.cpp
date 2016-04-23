@@ -1750,8 +1750,9 @@ static bool opj_jp2_write_jp(	opj_jp2_t *jp2,
 /* JP2 decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void opj_jp2_setup_decoder(opj_jp2_t *jp2, opj_dparameters_t *parameters)
+void opj_jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters)
 {
+	opj_jp2_t *jp2 = (opj_jp2_t*)jp2_void;
     /* setup the J2K codec */
     opj_j2k_setup_decoder(jp2->j2k, parameters);
 
