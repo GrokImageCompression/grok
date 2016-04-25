@@ -107,13 +107,14 @@ typedef struct img_folder {
 int get_num_images(char *imgdirpath);
 int load_images(dircnt_t *dirptr, char *imgdirpath);
 int get_file_format(const char *filename);
-void get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, char* infilename, char* outfilename);
+char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decompress_parameters *parameters);
 static int infile_format(const char *fname);
 
 int parse_cmdline_decoder(int argc, 
 							char **argv,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
+							img_fol_t *out_fol,
 							char* plugin_path);
 int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA_x1, uint32_t *DA_y1);
 
@@ -370,24 +371,33 @@ const char* path_separator = "/";
 #endif
 
 /* -------------------------------------------------------------------------- */
-void get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, char* infilename, char* outfilename)
-{
-    char image_filename[OPJ_PATH_LEN], temp_ofname[OPJ_PATH_LEN];
-    char *temp_p, temp1[OPJ_PATH_LEN]="";
+char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decompress_parameters *parameters) {
+	char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN], outfilename[OPJ_PATH_LEN], temp_ofname[OPJ_PATH_LEN];
+	char *temp_p, temp1[OPJ_PATH_LEN] = "";
 
-    strcpy(image_filename,dirptr->filename[imageno]);
-    fprintf(stderr,"File Number %d \"%s\"\n",imageno,image_filename);
-    sprintf(infilename, "%s%s%s", img_fol->imgdirpath, path_separator, image_filename);
+	strcpy(image_filename, dirptr->filename[imageno]);
+	fprintf(stderr, "File Number %d \"%s\"\n", imageno, image_filename);
+	sprintf(infilename, "%s%s%s", img_fol->imgdirpath, path_separator, image_filename);
+	parameters->decod_format = infile_format(infilename);
+	if (parameters->decod_format == -1)
+		return 1;
+	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+		return 1;
+	}
 
-    /*Set output file*/
-    strcpy(temp_ofname,strtok(image_filename,"."));
-    while((temp_p = strtok(NULL,".")) != NULL) {
-        strcat(temp_ofname,temp1);
-        sprintf(temp1,".%s",temp_p);
-    }
-    if(img_fol->set_out_format==1) {
-        sprintf(outfilename,"%s/%s.%s",img_fol->imgdirpath,temp_ofname,img_fol->out_format);
-    }
+	/*Set output file*/
+	strcpy(temp_ofname, strtok(image_filename, "."));
+	while ((temp_p = strtok(NULL, ".")) != NULL) {
+		strcat(temp_ofname, temp1);
+		sprintf(temp1, ".%s", temp_p);
+	}
+	if (img_fol->set_out_format == 1) {
+		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname, img_fol->out_format);
+		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -453,21 +463,23 @@ int parse_cmdline_decoder(int argc,
 							char **argv,
 							opj_decompress_parameters *parameters,
 							img_fol_t *img_fol,
+							img_fol_t *out_fol,
 							char* plugin_path)
 {
     /* parse the command line */
     int totlen, c;
     opj_option_t long_option[]= {
         {"ImgDir",    REQ_ARG, NULL,'y'},
-        {"OutFor",    REQ_ARG, NULL,'O'},
+		{"OutDir", REQ_ARG, NULL, 'a' },
         {"force-rgb", NO_ARG,  NULL, 1},
         {"upsample",  NO_ARG,  NULL, 1},
         {"split-pnm", NO_ARG,  NULL, 1},
 		{ "PluginPath", REQ_ARG, NULL, 'g' },
 		{ "NumThreads", REQ_ARG, NULL, 'H' },
+		{ "OutFor",    REQ_ARG, NULL,'O' }
     };
 
-	const char optlist[] = "g:i:o:r:l:x:d:t:p:h:H";
+	const char optlist[] = "y:a:g:i:o:O:r:l:x:d:t:p:h:H";
                        
 
     long_option[2].flag = &(parameters->force_rgb);
@@ -661,6 +673,15 @@ int parse_cmdline_decoder(int argc,
             }
         }
         break;
+		case 'a':			/* Output Directory path */
+		{
+			if (out_fol) {
+				out_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
+				strcpy(out_fol->imgdirpath, opj_optarg);
+				out_fol->set_imgdir = 1;
+			}
+		}
+		break;
 		case 'g':
 			if (plugin_path)
 				strcpy(plugin_path, opj_optarg);
@@ -1056,6 +1077,453 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCod
  */
 /* -------------------------------------------------------------------------- */
 
+
+img_fol_t img_fol;
+img_fol_t out_fol;
+
+
+
+int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
+	opj_stream_t *l_stream = NULL;
+	opj_codec_t* l_codec = NULL;
+
+	opj_decompress_parameters* parameters = info->decoder_parameters;
+	opj_image_t* image = NULL;
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// pre decode callback
+
+	/* read the input file and put it in memory */
+	/* ---------------------------------------- */
+
+	l_stream = opj_stream_create_default_file_stream(parameters->infile, 1);
+	if (!l_stream) {
+		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", parameters->infile);
+		destroy_parameters(parameters);
+		return EXIT_FAILURE;
+	}
+
+	/* decode the JPEG2000 stream */
+	/* ---------------------- */
+
+	switch (parameters->decod_format) {
+	case J2K_CFMT:	/* JPEG-2000 codestream */
+	{
+		/* Get a decoder handle */
+		l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+		break;
+	}
+	case JP2_CFMT:	/* JPEG 2000 compressed image data */
+	{
+		/* Get a decoder handle */
+		l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+		break;
+	}
+	case JPT_CFMT:	/* JPEG 2000, JPIP */
+	{
+		/* Get a decoder handle */
+		l_codec = opj_create_decompress(OPJ_CODEC_JPT);
+		break;
+	}
+	default:
+		fprintf(stderr, "skipping file..\n");
+		destroy_parameters(parameters);
+		opj_stream_destroy(l_stream);
+		return -1;
+	}
+
+	/* catch events using our callbacks and give a local context */
+	opj_set_info_handler(l_codec, info_callback, 00);
+	opj_set_warning_handler(l_codec, warning_callback, 00);
+	opj_set_error_handler(l_codec, error_callback, 00);
+
+
+	/* Setup the decoder decoding parameters using user parameters */
+	if (!opj_setup_decoder(l_codec, &(parameters->core))) {
+		fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
+		destroy_parameters(parameters);
+		opj_stream_destroy(l_stream);
+		opj_destroy_codec(l_codec);
+		return EXIT_FAILURE;
+	}
+
+	opj_cparameters_t encoding_parameters;
+	memset(&encoding_parameters, 0, sizeof(opj_cparameters_t));
+
+	/* Read the main header of the codestream and if necessary the JP2 boxes*/
+	if (!opj_read_header_ex(l_stream, l_codec, &encoding_parameters, &image)) {
+		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
+		destroy_parameters(parameters);
+		opj_stream_destroy(l_stream);
+		opj_destroy_codec(l_codec);
+		opj_image_destroy(image);
+		return EXIT_FAILURE;
+	}
+
+	info->image = image;
+	opj_plugin_tile_t* tile = info->generate_tile_func(info->deviceId,
+		info->compressed_tile_id,
+		&encoding_parameters,
+		image);
+
+	if (!parameters->nb_tile_to_decode) {
+		/* Optional if you want decode the entire image */
+		if (!opj_set_decode_area(l_codec, image, (int32_t)parameters->DA_x0,
+			(int32_t)parameters->DA_y0, (int32_t)parameters->DA_x1, (int32_t)parameters->DA_y1)) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
+			destroy_parameters(parameters);
+			opj_stream_destroy(l_stream);
+			opj_destroy_codec(l_codec);
+			opj_image_destroy(image);
+			return EXIT_FAILURE;
+		}
+
+		/* Get the decoded image */
+		if (!(opj_decode_plugin(l_codec, tile, l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
+			destroy_parameters(parameters);
+			opj_destroy_codec(l_codec);
+			opj_stream_destroy(l_stream);
+			opj_image_destroy(image);
+			return EXIT_FAILURE;
+		}
+	}
+	else {
+		if (!opj_get_decoded_tile(l_codec, l_stream, image, parameters->tile_index)) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
+			destroy_parameters(parameters);
+			opj_destroy_codec(l_codec);
+			opj_stream_destroy(l_stream);
+			opj_image_destroy(image);
+			return EXIT_FAILURE;
+		}
+		fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
+	}
+
+	info->queue_decoder_func(info->deviceId, info->compressed_tile_id, tile);
+
+	/* free remaining structures */
+	if (l_codec) {
+		opj_destroy_codec(l_codec);
+		l_codec = NULL;
+	}
+
+	/* Close the byte stream */
+	opj_stream_destroy(l_stream);
+
+	return 0;
+
+}
+
+int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
+	int failed = 0;
+
+	opj_decompress_parameters* parameters = info->decoder_parameters;
+	opj_image_t* image = info->image;
+
+	if (image->color_space != OPJ_CLRSPC_SYCC
+		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
+		&& image->comps[1].dx != 1)
+		image->color_space = OPJ_CLRSPC_SYCC;
+	else if (image->numcomps <= 2)
+		image->color_space = OPJ_CLRSPC_GRAY;
+
+	if (image->color_space == OPJ_CLRSPC_SYCC) {
+		color_sycc_to_rgb(image);
+	}
+	else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters->cod_format != TIF_DFMT)) {
+		color_cmyk_to_rgb(image);
+	}
+	else if (image->color_space == OPJ_CLRSPC_EYCC) {
+		color_esycc_to_rgb(image);
+	}
+
+	if (image->icc_profile_buf) {
+#if defined(OPJ_HAVE_LIBLCMS1) || defined(OPJ_HAVE_LIBLCMS2)
+		if (image->icc_profile_len)
+			color_apply_icc_profile(image);
+		else
+			color_cielab_to_rgb(image);
+#endif
+		free(image->icc_profile_buf);
+		image->icc_profile_buf = NULL; image->icc_profile_len = 0;
+	}
+
+	/* Force output precision */
+	/* ---------------------- */
+	if (parameters->precision != NULL)
+	{
+		uint32_t compno;
+		for (compno = 0; compno < image->numcomps; ++compno)
+		{
+			uint32_t precno = compno;
+			uint32_t prec;
+
+			if (precno >= parameters->nb_precision) {
+				precno = parameters->nb_precision - 1U;
+			}
+
+			prec = parameters->precision[precno].prec;
+			if (prec == 0) {
+				prec = image->comps[compno].prec;
+			}
+
+			switch (parameters->precision[precno].mode) {
+			case OPJ_PREC_MODE_CLIP:
+				clip_component(&(image->comps[compno]), prec);
+				break;
+			case OPJ_PREC_MODE_SCALE:
+				scale_component(&(image->comps[compno]), prec);
+				break;
+			default:
+				break;
+			}
+
+		}
+	}
+
+	/* Upsample components */
+	/* ------------------- */
+	if (parameters->upsample)
+	{
+		image = upsample_image_components(image);
+		if (image == NULL) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to upsample image components!\n");
+			destroy_parameters(parameters);
+			return EXIT_FAILURE;
+		}
+	}
+
+	/* Force RGB output */
+	/* ---------------- */
+	if (parameters->force_rgb)
+	{
+		switch (image->color_space) {
+		case OPJ_CLRSPC_SRGB:
+			break;
+		case OPJ_CLRSPC_GRAY:
+			image = convert_gray_to_rgb(image);
+			break;
+		default:
+			fprintf(stderr, "ERROR -> opj_decompress: don't know how to convert image to RGB colorspace!\n");
+			opj_image_destroy(image);
+			image = NULL;
+			break;
+		}
+		if (image == NULL) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to convert to RGB image!\n");
+			destroy_parameters(parameters);
+			return EXIT_FAILURE;
+		}
+	}
+
+	/* create output image */
+	/* ------------------- */
+	switch (parameters->cod_format) {
+	case PXM_DFMT:			/* PNM PGM PPM */
+		if (imagetopnm(image, parameters->outfile, parameters->split_pnm)) {
+			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+
+	case PGX_DFMT:			/* PGX */
+		if (imagetopgx(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+
+	case BMP_DFMT:			/* BMP */
+		if (imagetobmp(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+#ifdef OPJ_HAVE_LIBTIFF
+	case TIF_DFMT:			/* TIFF */
+		if (imagetotif(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+#endif /* OPJ_HAVE_LIBTIFF */
+	case RAW_DFMT:			/* RAW */
+		if (imagetoraw(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+
+	case RAWL_DFMT:			/* RAWL */
+		if (imagetorawl(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+
+	case TGA_DFMT:			/* TGA */
+		if (imagetotga(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+#ifdef OPJ_HAVE_LIBPNG
+	case PNG_DFMT:			/* PNG */
+		if (imagetopng(image, parameters->outfile)) {
+			fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
+			failed = 1;
+		}
+		else {
+			fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+		}
+		break;
+#endif /* OPJ_HAVE_LIBPNG */
+		/* Can happen if output file is TIFF or PNG
+		* and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
+		*/
+	default:
+		fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+		failed = 1;
+	}
+
+	/* free image data structure */
+	opj_image_destroy(image);
+
+	if (failed)
+		(void)remove(parameters->outfile); /* ignore return value */
+
+	return 0;
+
+
+}
+
+int plugin_main(int argc, char **argv)
+{
+	opj_decompress_parameters parameters;
+	opj_image_t* image = NULL;
+	opj_stream_t *l_stream = NULL;
+	opj_codec_t* l_codec = NULL;
+	opj_codestream_index_t* cstr_index = NULL;
+
+	int32_t num_images, imageno;
+	dircnt_t *dirptr = NULL;
+	int failed = 0;
+	double t, tCumulative = 0;
+	uint32_t numDecompressedImages = 0;
+	char plugin_dir[OPJ_PATH_LEN];
+	plugin_dir[0] = 0;
+
+	/* set decoding parameters to default values */
+	set_default_parameters(&parameters);
+
+	/* Initialize img_fol */
+	memset(&img_fol, 0, sizeof(img_fol_t));
+	memset(&out_fol, 0, sizeof(img_fol_t));
+
+	/* parse input and get user encoding parameters */
+	if (parse_cmdline_decoder(argc, argv, &parameters, &img_fol, &out_fol, plugin_dir) == 1) {
+		destroy_parameters(&parameters);
+		return EXIT_FAILURE;
+	}
+
+	opj_initialize(plugin_dir);
+
+	/* Initialize reading of directory */
+	if (img_fol.set_imgdir == 1) {
+		int it_image;
+		num_images = get_num_images(img_fol.imgdirpath);
+
+		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+		if (dirptr) {
+			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN * sizeof(char));	/* Stores at max 10 image file names*/
+			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
+
+			if (!dirptr->filename_buf) {
+				destroy_parameters(&parameters);
+				return EXIT_FAILURE;
+			}
+			for (it_image = 0; it_image<num_images; it_image++) {
+				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+			}
+		}
+		if (load_images(dirptr, img_fol.imgdirpath) == 1) {
+			destroy_parameters(&parameters);
+			return EXIT_FAILURE;
+		}
+		if (num_images == 0) {
+			fprintf(stdout, "Folder is empty\n");
+			destroy_parameters(&parameters);
+			return EXIT_FAILURE;
+		}
+	}
+	else {
+		num_images = 1;
+	}
+	t = opj_clock();
+
+	/*Decoding image one by one*/
+	for (imageno = 0; imageno < num_images; imageno++) {
+
+		fprintf(stderr, "\n");
+
+		if (img_fol.set_imgdir == 1) {
+			if (get_next_file(imageno, dirptr, &img_fol, &parameters)) {
+				fprintf(stderr, "skipping file...\n");
+				destroy_parameters(&parameters);
+				continue;
+			}
+		}
+
+
+		int rc = opj_plugin_decode(&parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+		switch (rc) {
+
+		case EXIT_FAILURE:
+			return EXIT_FAILURE;
+		case -1:
+			return EXIT_FAILURE;
+			break;
+		default:
+			break;
+		}
+		numDecompressedImages++;
+
+
+	}
+
+	tCumulative = opj_clock() - t;
+
+	destroy_parameters(&parameters);
+	if (numDecompressedImages) {
+		fprintf(stdout, "decode time: %d ms\n", (int)((tCumulative * 1000.0) / (double)numDecompressedImages));
+	}
+	return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+
 int main(int argc, char **argv)
 {
     opj_decompress_parameters parameters;			/* decompression parameters */
@@ -1065,9 +1533,13 @@ int main(int argc, char **argv)
     int failed = 0;
     double t_cumulative = 0;
     uint32_t num_decompressed_images = 0;
-	char plugin_path[OPJ_PATH_LEN];
+	
+	int rc = plugin_main(argc, argv);
+	if (!rc)
+		return 0;
 
-	plugin_path[0] = 0;
+	opj_plugin_cleanup();
+
 
 #ifdef OPJ_HAVE_LIBLCMS2
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
@@ -1080,7 +1552,8 @@ int main(int argc, char **argv)
     memset(&img_fol,0,sizeof(img_fol_t));
 
     /* parse input and get user encoding parameters */
-    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol, plugin_path) == 1) {
+	opj_reset_options_reading();
+    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol,&out_fol, NULL) == 1) {
         destroy_parameters(&parameters);
         return EXIT_FAILURE;
     }
@@ -1120,8 +1593,6 @@ int main(int argc, char **argv)
     omp_set_num_threads(num_images == 1 ? OPJ_NUM_COMPRESS_DECOMPRESS_THREADS : 1);
 #endif
 
-    opj_initialize(plugin_path);
-
     t_cumulative = opj_clock();
 #ifdef _OPENMP
 #ifdef _WIN32
@@ -1140,38 +1611,30 @@ int main(int argc, char **argv)
             opj_stream_t *l_stream = NULL;				/* Stream */
             opj_codec_t* l_codec = NULL;				/* Handle to a decompressor */
             opj_codestream_index_t* cstr_index = NULL;
-            char infile[OPJ_PATH_LEN], outfile[OPJ_PATH_LEN];
-            int decod_format = -1;
 
             fprintf(stderr, "\n");
 
             if (img_fol.set_imgdir == 1) {
-                get_next_file(imageno, dirptr, &img_fol, infile, outfile);
-            } else {
-                strncpy(infile, parameters.infile, sizeof(parameters.infile));
-                strncpy(outfile, parameters.outfile, sizeof(parameters.outfile));
-            }
-
-            decod_format = infile_format(infile);
-            if (decod_format == -1) {
-                fprintf(stderr, "skipping file...\n");
-                goto cleanup;
-
+				if (get_next_file(imageno, dirptr, &img_fol, &parameters)) {
+					fprintf(stderr, "skipping file...\n");
+					destroy_parameters(&parameters);
+					continue;
+				}
             }
 
             /* read the input file and put it in memory */
             /* ---------------------------------------- */
             if (!l_stream) {
 				// memory mapped stream
-                l_stream = opj_stream_create_mapped_file_read_stream(infile);
+                l_stream = opj_stream_create_mapped_file_read_stream(parameters.infile);
 
 				// other option is to use file stream 
-				//l_stream = opj_stream_create_default_file_stream(infile, true);
+				//l_stream = opj_stream_create_default_file_stream(parameters.infile, true);
             }
 
 
             if (!l_stream) {
-                fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", infile);
+                fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", parameters.infile);
                 failed = 1;
                 goto cleanup;
 
@@ -1180,7 +1643,7 @@ int main(int argc, char **argv)
             /* decode the JPEG2000 stream */
             /* ---------------------- */
 
-            switch (decod_format) {
+            switch (parameters.decod_format) {
             case J2K_CFMT: {	/* JPEG-2000 codestream */
                 /* Get a decoder handle */
                 l_codec = opj_create_decompress(OPJ_CODEC_J2K);
@@ -1407,74 +1870,74 @@ int main(int argc, char **argv)
                 /* ------------------- */
                 switch (parameters.cod_format) {
                 case PXM_DFMT:			/* PNM PGM PPM */
-                    if (imagetopnm(image, outfile, parameters.split_pnm)) {
-                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+                    if (imagetopnm(image, parameters.outfile, parameters.split_pnm)) {
+                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 
                 case PGX_DFMT:			/* PGX */
-                    if (imagetopgx(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+                    if (imagetopgx(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 
                 case BMP_DFMT:			/* BMP */
-                    if (imagetobmp(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+                    if (imagetobmp(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 #ifdef OPJ_HAVE_LIBTIFF
                 case TIF_DFMT:			/* TIFF */
-                    if (imagetotif(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+                    if (imagetotif(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 #endif /* OPJ_HAVE_LIBTIFF */
                 case RAW_DFMT:			/* RAW */
-                    if (imagetoraw(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", outfile);
+                    if (imagetoraw(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 
                 case RAWL_DFMT:			/* RAWL */
-                    if (imagetorawl(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", outfile);
+                    if (imagetorawl(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 
                 case TGA_DFMT:			/* TGA */
-                    if (imagetotga(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", outfile);
+                    if (imagetotga(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 #ifdef OPJ_HAVE_LIBPNG
                 case PNG_DFMT:			/* PNG */
-                    if (imagetopng(image, outfile)) {
-                        fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
+                    if (imagetopng(image, parameters.outfile)) {
+                        fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters.outfile);
                         failed = 1;
                     } else {
-                        fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
+                        fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters.outfile);
                     }
                     break;
 #endif /* OPJ_HAVE_LIBPNG */
@@ -1482,7 +1945,7 @@ int main(int argc, char **argv)
                  * and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
                 */
                 default:
-                    fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+                    fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters.outfile);
                     failed = 1;
                     break;
                 }
@@ -1502,7 +1965,7 @@ cleanup:
             opj_destroy_cstr_index(&cstr_index);
 
             if (failed)
-                (void)remove(outfile); /* ignore return value */
+                (void)remove(parameters.outfile); /* ignore return value */
         }
 
 #ifdef _OPENMP
