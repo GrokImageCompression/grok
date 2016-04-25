@@ -1224,6 +1224,19 @@ OPJ_API void OPJ_CALLCONV opj_set_default_decoder_parameters(opj_dparameters_t *
  */
 OPJ_API bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
         opj_dparameters_t *parameters );
+/**
+* Decodes an image header.
+*
+* @param	p_stream		the jpeg2000 stream.
+* @param	p_codec			the jpeg2000 codec to read.
+* @param	p_image			the image structure initialized with the characteristics of encoded image.
+*
+* @return true				if the main header of the codestream and the JP2 header is correctly read.
+*/
+OPJ_API bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
+	opj_codec_t *p_codec,
+	opj_image_t **p_image);
+
 
 /**
  * Decodes an image header.
@@ -1234,7 +1247,7 @@ OPJ_API bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
  *
  * @return true				if the main header of the codestream and the JP2 header is correctly read.
  */
-OPJ_API bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
+OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
         opj_codec_t *p_codec,
 		opj_cparameters_t* encoding_parameters,
         opj_image_t **p_image);
@@ -1314,6 +1327,17 @@ typedef struct opj_plugin_tile {
 	opj_plugin_tile_component_t** tileComponents;
 } opj_plugin_tile_t;
 
+/**
+* Decode an image from a JPEG-2000 codestream
+*
+* @param p_decompressor 	decompressor handle
+* @param p_stream			Input buffer stream
+* @param p_image 			the decoded image
+* @return 					true if success, otherwise false
+* */
+OPJ_API bool OPJ_CALLCONV opj_decode(opj_codec_t *p_decompressor,
+	opj_stream_t *p_stream,
+	opj_image_t *p_image);
 
 /**
  * Decode an image from a JPEG-2000 codestream
@@ -1323,7 +1347,7 @@ typedef struct opj_plugin_tile {
  * @param p_image 			the decoded image
  * @return 					true if success, otherwise false
  * */
-OPJ_API bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_decompressor,
+OPJ_API bool OPJ_CALLCONV opj_decode_plugin(   opj_codec_t *p_decompressor,
 										opj_plugin_tile_t* tile,
                                         opj_stream_t *p_stream,
                                         opj_image_t *p_image);

@@ -291,7 +291,7 @@ int main (int argc, char *argv[])
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if (! opj_read_header(l_stream, l_codec,NULL, &l_image)) {
+    if (! opj_read_header(l_stream, l_codec,&l_image)) {
         fprintf(stderr, "ERROR -> j2k_to_image: failed to read the header\n");
         free(l_data);
         opj_stream_destroy(l_stream);

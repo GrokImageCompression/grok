@@ -160,10 +160,10 @@ int main(int argc, char *argv[])
         l_stream = opj_stream_create_default_file_stream(outputfile,1);
         assert( l_stream );
 
-        bSuccess = opj_read_header(l_stream, d_codec,NULL, &image);
+        bSuccess = opj_read_header(l_stream, d_codec,&image);
         assert( bSuccess );
 
-        bSuccess = opj_decode(l_codec, NULL, l_stream, image);
+        bSuccess = opj_decode(l_codec, l_stream, image);
         assert( bSuccess );
 
         bSuccess = opj_end_decompress(l_codec, l_stream);
