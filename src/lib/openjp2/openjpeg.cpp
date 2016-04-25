@@ -434,7 +434,14 @@ bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
     return false;
 }
 
-bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
+bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
+	opj_codec_t *p_codec,
+	opj_image_t **p_image) {
+
+	return opj_read_header_ex(p_stream, p_codec, NULL, p_image);
+}
+
+bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
                                     opj_codec_t *p_codec,
 									opj_cparameters_t* encoding_parameters,
                                     opj_image_t **p_image )
@@ -459,7 +466,13 @@ bool OPJ_CALLCONV opj_read_header (	opj_stream_t *p_stream,
     return false;
 }
 
-bool OPJ_CALLCONV opj_decode(   opj_codec_t *p_codec,
+bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec,
+	opj_stream_t *p_stream,
+	opj_image_t* p_image) {
+	return opj_decode_plugin(p_codec, NULL, p_stream, p_image);
+}
+
+bool OPJ_CALLCONV opj_decode_plugin(   opj_codec_t *p_codec,
 								opj_plugin_tile_t* tile,
                                 opj_stream_t *p_stream,
                                 opj_image_t* p_image)
