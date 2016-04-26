@@ -524,7 +524,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
         double lo = min;
         double hi = max;
         bool success = false;
-        uint32_t maxlen = tcd_tcp->rates[layno] ? opj_uint_min(((uint32_t) ceil(tcd_tcp->rates[layno])), len) : len;
+        uint32_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint_min(((uint32_t) ceil(tcd_tcp->rates[layno])), len) : len;
         double goodthresh = 0;
         double stable_thresh = 0;
         double old_thresh = -1;
@@ -532,13 +532,13 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
         double distotarget;                /* fixed_quality */
 
         /* fixed_quality */
-        distotarget = tcd_tile->distotile - ((K * maxSE) / pow((float)10, tcd_tcp->distoratio[layno] / 10));
+        distotarget = tcd_tile->distotile - ((K * maxSE) / pow(10.0f, tcd_tcp->distoratio[layno] / 10.0f));
 
         /* Don't try to find an optimal threshold but rather take everything not included yet, if
           -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
           -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
           ==> possible to have some lossy layers and the last layer for sure lossless */
-        if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno]>0)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno]>0))) {
+        if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno] > 0.0f)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno] > 0.0f))) {
             opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
             double thresh = 0;
 
