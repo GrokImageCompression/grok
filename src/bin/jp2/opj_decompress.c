@@ -1077,11 +1077,8 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCod
  */
 /* -------------------------------------------------------------------------- */
 
-
 img_fol_t img_fol;
 img_fol_t out_fol;
-
-
 
 int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	opj_stream_t *l_stream = NULL;
@@ -1429,125 +1426,15 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			failed = 1;
 			break;
 		}
-
 	}
-	/* free remaining structures */
-
 cleanup:
 	if (image)
 		opj_image_destroy(image);
-
 	info->image = NULL;
-
-
 	if (failed)
 		(void)remove(parameters->outfile); /* ignore return value */
-
 	return failed;
 }
-
-int plugin_main(int argc, char **argv)
-{
-	opj_decompress_parameters parameters;
-	opj_image_t* image = NULL;
-	opj_stream_t *l_stream = NULL;
-	opj_codec_t* l_codec = NULL;
-
-	int32_t num_images, imageno;
-	dircnt_t *dirptr = NULL;
-	int failed = 0;
-	double t, tCumulative = 0;
-	uint32_t numDecompressedImages = 0;
-	char plugin_dir[OPJ_PATH_LEN];
-	plugin_dir[0] = 0;
-
-	/* set decoding parameters to default values */
-	set_default_parameters(&parameters);
-
-	/* Initialize img_fol */
-	memset(&img_fol, 0, sizeof(img_fol_t));
-	memset(&out_fol, 0, sizeof(img_fol_t));
-
-	/* parse input and get user encoding parameters */
-	if (parse_cmdline_decoder(argc, argv, &parameters, &img_fol, &out_fol, plugin_dir) == 1) {
-		destroy_parameters(&parameters);
-		return EXIT_FAILURE;
-	}
-
-	opj_initialize(plugin_dir);
-
-	/* Initialize reading of directory */
-	if (img_fol.set_imgdir == 1) {
-		int it_image;
-		num_images = get_num_images(img_fol.imgdirpath);
-
-		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
-		if (dirptr) {
-			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN * sizeof(char));	/* Stores at max 10 image file names*/
-			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
-
-			if (!dirptr->filename_buf) {
-				destroy_parameters(&parameters);
-				return EXIT_FAILURE;
-			}
-			for (it_image = 0; it_image<num_images; it_image++) {
-				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
-			}
-		}
-		if (load_images(dirptr, img_fol.imgdirpath) == 1) {
-			destroy_parameters(&parameters);
-			return EXIT_FAILURE;
-		}
-		if (num_images == 0) {
-			fprintf(stdout, "Folder is empty\n");
-			destroy_parameters(&parameters);
-			return EXIT_FAILURE;
-		}
-	}
-	else {
-		num_images = 1;
-	}
-	t = opj_clock();
-
-	/*Decoding image one by one*/
-	for (imageno = 0; imageno < num_images; imageno++) {
-
-		fprintf(stderr, "\n");
-
-		if (img_fol.set_imgdir == 1) {
-			if (get_next_file(imageno, dirptr, &img_fol, &parameters)) {
-				fprintf(stderr, "skipping file...\n");
-				destroy_parameters(&parameters);
-				continue;
-			}
-		}
-
-
-		int rc = opj_plugin_decode(&parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
-		switch (rc) {
-
-		case EXIT_FAILURE:
-			return EXIT_FAILURE;
-		case -1:
-			return EXIT_FAILURE;
-			break;
-		default:
-			break;
-		}
-		numDecompressedImages++;
-
-
-	}
-
-	tCumulative = opj_clock() - t;
-
-	destroy_parameters(&parameters);
-	if (numDecompressedImages) {
-		fprintf(stdout, "decode time: %d ms\n", (int)((tCumulative * 1000.0) / (double)numDecompressedImages));
-	}
-	return failed ? EXIT_FAILURE : EXIT_SUCCESS;
-}
-
 
 int main(int argc, char **argv)
 {
@@ -1558,14 +1445,8 @@ int main(int argc, char **argv)
     int failed = 0;
     double t_cumulative = 0;
     uint32_t num_decompressed_images = 0;
-
-/*
-	int rc = plugin_main(argc, argv);
-	if (!rc)
-		return 0;
-
-	opj_plugin_cleanup();
-*/
+	char plugin_dir[OPJ_PATH_LEN];
+	plugin_dir[0] = 0;
 
 #ifdef OPJ_HAVE_LIBLCMS2
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
@@ -1575,14 +1456,16 @@ int main(int argc, char **argv)
     set_default_parameters(&parameters);
 
     /* Initialize img_fol */
-    memset(&img_fol,0,sizeof(img_fol_t));
+	memset(&img_fol, 0, sizeof(img_fol_t));
+	memset(&out_fol, 0, sizeof(img_fol_t));
 
     /* parse input and get user encoding parameters */
-	opj_reset_options_reading();
-    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol,&out_fol, NULL) == 1) {
+    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol,&out_fol, plugin_dir) == 1) {
         destroy_parameters(&parameters);
         return EXIT_FAILURE;
     }
+
+	bool pluginInitialized = opj_initialize(plugin_dir);
 
     /* Initialize reading of directory */
     if(img_fol.set_imgdir==1) {
@@ -1630,16 +1513,23 @@ int main(int argc, char **argv)
 				continue;
 			}
         }
-		opj_plugin_decode_callback_info_t info;
-		info.decoder_parameters = &parameters;
 
-		if (plugin_pre_decode_callback(&info)) {
-			failed = 1;
-			continue;
-		}
-		if (plugin_post_decode_callback(&info)) {
-			failed = 1;
-			continue;
+		//1. try to decode using plugin
+		int rc = opj_plugin_decode(&parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+
+		//2. fallback
+		if (rc == -1 || rc == EXIT_FAILURE) {
+			opj_plugin_decode_callback_info_t info;
+			info.decoder_parameters = &parameters;
+
+			if (plugin_pre_decode_callback(&info)) {
+				failed = 1;
+				continue;
+			}
+			if (plugin_post_decode_callback(&info)) {
+				failed = 1;
+				continue;
+			}
 		}
 		num_decompressed_images++;
 

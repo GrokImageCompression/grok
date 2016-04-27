@@ -384,7 +384,7 @@ static inline void opj_mqc_renormd(opj_mqc_t *const mqc)
 */
 
 void opj_mqc_setcurctx(opj_mqc_t *mqc, uint8_t ctxno) {
-	if (opj_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
 	mqc->curctx = &mqc->ctxs[(OPJ_UINT32)ctxno];
@@ -392,7 +392,7 @@ void opj_mqc_setcurctx(opj_mqc_t *mqc, uint8_t ctxno) {
 
 opj_mqc_t* opj_mqc_create(void)
 {
-    opj_mqc_t *mqc = (opj_mqc_t*)opj_malloc(sizeof(opj_mqc_t));
+    opj_mqc_t *mqc = (opj_mqc_t*)opj_calloc(1,sizeof(opj_mqc_t));
     return mqc;
 }
 
@@ -422,14 +422,14 @@ void opj_mqc_init_enc(opj_mqc_t *mqc, uint8_t *bp)
 		mqc->debug_mqc.contextStream = NULL;
 		mqc->debug_mqc.contextCacheCount = 0;
 		mqc->debug_mqc.contextStreamByteCount = 0;
+		mqc->debug_mqc.debug_state = opj_plugin_get_debug_state();
 	}
 }
 
 void opj_mqc_encode(opj_mqc_t *mqc, uint32_t d)
 {
-	uint32_t state = opj_plugin_get_debug_state();
-	if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) &&
-		!(state & OPJ_PLUGIN_STATE_PRE_TR1)) {
+	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG_ENCODE) &&
+		!(mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
     if ((*mqc->curctx)->mps == d) {

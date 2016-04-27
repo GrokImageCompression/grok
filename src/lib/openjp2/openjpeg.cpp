@@ -76,16 +76,11 @@ static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
 {
     if (!is_initialized) {
-#ifdef _OPENMP
-        omp_set_num_threads(OPJ_NUM_CORES);
-#endif
 		opj_plugin_init_info_t info;
 		info.plugin_path = plugin_path;
-		opj_plugin_init(info);
-
-        is_initialized = true;
+        is_initialized = opj_plugin_init(info);
     }
-    return true;
+    return is_initialized;
 }
 
 OPJ_API void OPJ_CALLCONV opj_cleanup() {
@@ -1073,10 +1068,11 @@ Plugin interface implementation
 ***********************************************************************/
 
 bool pluginInitialized = false;
-void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
+bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 {
 	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
     pluginInitialized = (!rc);
+	return pluginInitialized;
 }
 
 
