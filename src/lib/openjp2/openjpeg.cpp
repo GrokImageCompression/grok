@@ -1080,10 +1080,10 @@ uint32_t OPJ_CALLCONV opj_plugin_get_debug_state()
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_GET_DEBUG_STATE func = NULL;
-    uint32_t rc = 0;
+    uint32_t rc = OPJ_PLUGIN_STATE_NO_DEBUG;
 
     if (!pluginInitialized)
-        return 0;
+        return rc;
     mgr = minpf_get_plugin_manager();
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_GET_DEBUG_STATE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_get_debug_state_method_name);
