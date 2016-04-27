@@ -33,6 +33,7 @@ struct plugin_debug_mqc_t {
 
 	///////////////////////////////////////////////////////////
 	// debugging variables
+	uint32_t	debug_state;
 	uint8_t context_number;			// actual context value
 
 	uint32_t* contextStream;			// stream of contexts, stored as quads of uints

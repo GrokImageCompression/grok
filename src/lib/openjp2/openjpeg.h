@@ -1638,7 +1638,7 @@ typedef struct opj_plugin_init_info {
     const char* plugin_path;
 } opj_plugin_init_info_t;
 
-OPJ_API void OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info);
+OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info);
 
 OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
