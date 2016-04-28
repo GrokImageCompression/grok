@@ -401,6 +401,12 @@ static char * get_file_name(char *name)
     return fname;
 }
 
+#ifdef _WIN32
+const char* path_separator = "\\";
+#else
+const char* path_separator = "/";
+#endif
+
 static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_fol_t *out_folder, opj_cparameters_t *parameters){
     char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN],outfilename[OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
     char *temp_p, temp1[OPJ_PATH_LEN]="";
@@ -410,7 +416,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
     parameters->decod_format = get_file_format(image_filename);
     if (parameters->decod_format == -1)
         return 1;
-    sprintf(infilename,"%s%s%s",img_fol->imgdirpath, opj_separator(),image_filename);
+    sprintf(infilename,"%s%s%s",img_fol->imgdirpath, path_separator,image_filename);
     if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
         return 1;
     }
@@ -422,7 +428,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
         sprintf(temp1,".%s",temp_p);
     }
     if(img_fol->set_out_format==1){
-        sprintf(outfilename,"%s%s%s.%s", out_folder->imgdirpath, opj_separator(),temp_ofname,img_fol->out_format);
+        sprintf(outfilename,"%s%s%s.%s", out_folder->imgdirpath, path_separator,temp_ofname,img_fol->out_format);
         if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
             return 1;
         }
@@ -1563,7 +1569,7 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 		if (img_fol_plugin.set_out_format == 1) {
 			sprintf(outfile, "%s%s%s.%s", 
 					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath, 
-				opj_separator(),
+					path_separator, 
 					temp_ofname,
 					img_fol_plugin.out_format);
 		}
