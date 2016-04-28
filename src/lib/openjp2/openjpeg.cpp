@@ -66,6 +66,7 @@
 #include <fcntl.h>
 
 #include "opj_includes.h"
+#include "opj_config.h"
 
 
 #ifdef _OPENMP
@@ -1067,10 +1068,28 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
 Plugin interface implementation
 ***********************************************************************/
 
+
+#ifdef _WIN32
+const char* path_separator = "\\";
+#else
+const char* path_separator = "/";
+#endif
+
 bool pluginInitialized = false;
 bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 {
 	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
+	if (rc) {
+
+		std::string localPlugin = (std::string(".") + path_separator);
+#ifdef _WIN32
+		localPlugin += std::string(OPENJPEG_PLUGIN_NAME) + ".dll";
+#else
+		localPlugin += "lib + std::string(OPENJPEG_PLUGIN_NAME) + ".so";
+#endif
+		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
+
+	}
     pluginInitialized = (!rc);
 	return pluginInitialized;
 }
