@@ -778,7 +778,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
             l_tilec->resolutions_size = l_res_data_size;
         }
 
-        l_level_no = l_tilec->numresolutions - 1;
+        l_level_no = l_tilec->numresolutions;
         l_res = l_tilec->resolutions;
         l_step_size = l_tccp->stepsizes;
         if (l_tccp->qmfbid == 0) {
@@ -793,6 +793,8 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
             uint32_t tlcbgxstart, tlcbgystart /*, brcbgxend, brcbgyend*/;
             uint32_t cbgwidthexpn, cbgheightexpn;
             uint32_t cblkwidthexpn, cblkheightexpn;
+
+			--l_level_no;
 
             /* border for each resolution level (global) */
             l_res->x0 = opj_uint_ceildivpow2(l_tilec->x0, l_level_no);
@@ -1017,7 +1019,6 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                 ++l_step_size;
             } /* bandno */
             ++l_res;
-            --l_level_no;
         } /* resno */
         if (!opj_tile_buf_create_component(l_tilec,
                                            l_tccp->qmfbid ? false : true,
