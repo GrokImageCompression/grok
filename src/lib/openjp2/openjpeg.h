@@ -114,6 +114,16 @@ defined with this macro as being exported.
 #include <stdint.h>
 #include <stdio.h>
 
+inline const char* opj_separator()
+	{
+#ifdef _WIN32
+		return "\\";
+#else
+		return "/";
+#endif
+}
+
+
 
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
 
