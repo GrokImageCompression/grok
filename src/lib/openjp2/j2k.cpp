@@ -2160,10 +2160,17 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
         if( l_img_comp->dx < 1 || l_img_comp->dx > 255 ||
                 l_img_comp->dy < 1 || l_img_comp->dy > 255 ) {
             opj_event_msg(p_manager, EVT_ERROR,
-                          "Invalid values for comp = %d : dx=%u dy=%u\n (should be between 1 and 255 according the JPEG2000 norm)",
+                          "Invalid values for comp = %d : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
                           i, l_img_comp->dx, l_img_comp->dy);
             return false;
         }
+
+		if (l_img_comp->prec > OPJ_MAX_PRECISION) {
+			opj_event_msg(p_manager, EVT_ERROR,
+				"Invalid precision for comp = %d : prec=%u (should be between 1 and %d according to the JPEG2000 standard)\n",
+				i, l_img_comp->prec, OPJ_MAX_PRECISION);
+			return false;
+		}
         l_img_comp->resno_decoded = 0;                                                          /* number of resolution decoded */
         l_img_comp->factor = l_cp->m_specific_param.m_dec.m_reduce; /* reducing factor per component */
         ++l_img_comp;

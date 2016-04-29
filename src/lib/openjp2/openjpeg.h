@@ -151,6 +151,8 @@ typedef size_t   OPJ_SIZE_T;
 
 #define OPJ_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 
+#define OPJ_MAX_PRECISION 38  // maximum number of magnitude bits
+
 // note: range for number of decomposition levels is 0-32
 // So, accordingly, range for number of resolutions is 1-33
 #define OPJ_J2K_MAXRLVLS 33					/**< Maximum number of resolution levels authorized */
