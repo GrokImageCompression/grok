@@ -435,12 +435,6 @@ int main(int argc, char *argv[])
     img_fol_t img_fol;
     dircnt_t *dirptr = NULL;
 
-#ifdef MSD
-    bool l_go_on = true;
-    uint32_t l_max_data_size = 1000;
-    uint8_t * l_data = (uint8_t *) malloc(1000);
-#endif
-
     /* Set decoding parameters to default values */
     opj_set_default_decoder_parameters(&parameters);
 
