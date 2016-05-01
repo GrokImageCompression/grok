@@ -387,7 +387,7 @@ void opj_mqc_setcurctx(opj_mqc_t *mqc, uint8_t ctxno) {
 	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
-	mqc->curctx = &mqc->ctxs[(OPJ_UINT32)ctxno];
+	mqc->curctx = &mqc->ctxs[(uint32_t)ctxno];
 }
 
 opj_mqc_t* opj_mqc_create(void)

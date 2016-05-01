@@ -182,8 +182,8 @@ void opj_bio_init_dec(opj_bio_t *bio, uint8_t *bp, uint32_t len)
 
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-void opj_bio_write(opj_bio_t *bio, OPJ_UINT32 v, OPJ_UINT32 n) {
-	OPJ_UINT32 i;
+void opj_bio_write(opj_bio_t *bio, uint32_t v, uint32_t n) {
+	uint32_t i;
 
 	assert((n > 0U) && (n <= 32U));
 	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
@@ -192,9 +192,9 @@ void opj_bio_write(opj_bio_t *bio, OPJ_UINT32 v, OPJ_UINT32 n) {
 }
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-OPJ_UINT32 opj_bio_read(opj_bio_t *bio, OPJ_UINT32 n) {
-	OPJ_UINT32 i;
-	OPJ_UINT32 v;
+uint32_t opj_bio_read(opj_bio_t *bio, uint32_t n) {
+	uint32_t i;
+	uint32_t v;
 
 	assert((n > 0U) /* && (n <= 32U)*/);
 #ifdef OPJ_UBSAN_BUILD
