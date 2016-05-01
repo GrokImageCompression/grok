@@ -1085,7 +1085,7 @@ bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 #ifdef _WIN32
 		localPlugin += std::string(OPENJPEG_PLUGIN_NAME) + ".dll";
 #else
-		localPlugin += "lib + std::string(OPENJPEG_PLUGIN_NAME) + ".so";
+		localPlugin += "lib" + std::string(OPENJPEG_PLUGIN_NAME) + ".so";
 #endif
 		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
 
