@@ -2120,12 +2120,6 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
         return false;
     }
 
-    /* testcase 1610.pdf.SIGSEGV.59c.681 */
-    if (((uint64_t)l_image->x1) * ((uint64_t)l_image->y1) != (l_image->x1 * l_image->y1)) {
-        opj_event_msg(p_manager, EVT_ERROR, "Prevent buffer overflow (x1: %d, y1: %d)\n", l_image->x1, l_image->y1);
-        return false;
-    }
-
     /* testcase issue427-illegal-tile-offset.jp2 */
     l_tx1 = opj_uint_adds(l_cp->tx0, l_cp->tdx); /* manage overflow */
     l_ty1 = opj_uint_adds(l_cp->ty0, l_cp->tdy); /* manage overflow */
