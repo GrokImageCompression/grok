@@ -523,7 +523,6 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lo = min;
         double hi = max;
-        bool success = false;
         uint32_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint_min(((uint32_t) ceil(tcd_tcp->rates[layno])), len) : len;
         double goodthresh = 0;
         double stable_thresh = 0;
@@ -597,18 +596,11 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                     stable_thresh = thresh;
                 }
             }
-
-            success = true;
             goodthresh = stable_thresh == 0? thresh : stable_thresh;
 
             opj_t2_destroy(t2);
         } else {
-            success = true;
             goodthresh = min;
-        }
-
-        if (!success) {
-            return false;
         }
 
         if(cstr_info) { /* Threshold for Marcela Index */
