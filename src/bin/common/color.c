@@ -121,239 +121,243 @@ static void sycc_to_rgb(int offset, int upb, int y, int cb, int cr,
 
 static void sycc444_to_rgb(opj_image_t *img)
 {
-    int *d0, *d1, *d2, *r, *g, *b;
-    const int *y, *cb, *cr;
-    unsigned int maxw, maxh, max, i;
-    int offset, upb;
-    opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	int *d0, *d1, *d2, *r, *g, *b;
+	const int *y, *cb, *cr;
+	size_t maxw, maxh, max, i;
+	int offset, upb;
+	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	if (!new_image)
+		return;
 
-    upb = (int)img->comps[0].prec;
-    offset = 1<<(upb - 1);
-    upb = (1<<upb)-1;
+	upb = (int)img->comps[0].prec;
+	offset = 1 << (upb - 1); upb = (1 << upb) - 1;
 
-    maxw = (unsigned int)img->comps[0].w;
-    maxh = (unsigned int)img->comps[0].h;
-    max = maxw * maxh;
+	maxw = (size_t)img->comps[0].w;
+	maxh = (size_t)img->comps[0].h;
+	max = maxw * maxh;
 
-    y = img->comps[0].data;
-    cb = img->comps[1].data;
-    cr = img->comps[2].data;
+	y = img->comps[0].data;
+	cb = img->comps[1].data;
+	cr = img->comps[2].data;
 
-    d0 = r = new_image->comps[0].data;
-    d1 = g = new_image->comps[1].data;
-    d2 = b = new_image->comps[2].data;
+	d0 = r = new_image->comps[0].data;
+	d1 = g = new_image->comps[1].data;
+	d2 = b = new_image->comps[2].data;
 
-    new_image->comps[0].data = NULL;
-    new_image->comps[1].data = NULL;
-    new_image->comps[2].data = NULL;
+	new_image->comps[0].data = NULL;
+	new_image->comps[1].data = NULL;
+	new_image->comps[2].data = NULL;
 
-    opj_image_destroy(new_image);
-    new_image = NULL;
-
-    for(i = 0U; i < max; ++i) {
-        sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-        ++y;
-        ++cb;
-        ++cr;
-        ++r;
-        ++g;
-        ++b;
-    }
-    opj_image_all_components_data_free(img);
-    img->comps[0].data = d0;
-    img->comps[1].data = d1;
-    img->comps[2].data = d2;
-
+	opj_image_destroy(new_image);
+	new_image = NULL;
+	
+	for (i = 0U; i < max; ++i)
+	{
+		sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+		++y; ++cb; ++cr; ++r; ++g; ++b;
+	}
+	opj_image_all_components_data_free(img);
+	img->comps[0].data = d0;
+	img->comps[1].data = d1;
+	img->comps[2].data = d2;
+	img->color_space = OPJ_CLRSPC_SRGB;
+	return;
 }/* sycc444_to_rgb() */
+
 
 static void sycc422_to_rgb(opj_image_t *img)
 {
-    int *d0, *d1, *d2, *r, *g, *b;
-    const int *y, *cb, *cr;
-    unsigned int maxw, maxh;
-    int offset, upb;
-    unsigned int i, j;
-    opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	int *d0, *d1, *d2, *r, *g, *b;
+	const int *y, *cb, *cr;
+	size_t maxw, maxh, max, offx, loopmaxw;
+	int offset, upb;
+	size_t i;
 
-    upb = (int)img->comps[0].prec;
-    offset = 1<<(upb - 1);
-    upb = (1<<upb)-1;
+	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	if (!new_image)
+		return;
 
-    maxw = (unsigned int)img->comps[0].w;
-    maxh = (unsigned int)img->comps[0].h;
 
-    y = img->comps[0].data;
-    cb = img->comps[1].data;
-    cr = img->comps[2].data;
+	upb = (int)img->comps[0].prec;
+	offset = 1 << (upb - 1); upb = (1 << upb) - 1;
 
-    d0 = r = new_image->comps[0].data;
-    d1 = g = new_image->comps[1].data;
-    d2 = b = new_image->comps[2].data;
+	maxw = (size_t)img->comps[0].w; maxh = (size_t)img->comps[0].h;
+	max = maxw * maxh;
 
-    new_image->comps[0].data = NULL;
-    new_image->comps[1].data = NULL;
-    new_image->comps[2].data = NULL;
+	y = img->comps[0].data;
+	cb = img->comps[1].data;
+	cr = img->comps[2].data;
 
-    opj_image_destroy(new_image);
-    new_image = NULL;
+	d0 = r = new_image->comps[0].data;
+	d1 = g = new_image->comps[1].data;
+	d2 = b = new_image->comps[2].data;
 
-    for (i = 0U; i < maxh; ++i) {
-        for(j=0U; j < (maxw & ~(unsigned int)1U); j += 2U) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
-            ++cb;
-            ++cr;
-        }
-        if (j < maxw) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
-            ++cb;
-            ++cr;
-        }
-    }
-    opj_image_all_components_data_free(img);
-    img->comps[0].data = d0;
-    img->comps[1].data = d1;
-    img->comps[2].data = d2;
-    img->comps[1].w = maxw;
-    img->comps[1].h = maxh;
-    img->comps[2].w = maxw;
-    img->comps[2].h = maxh;
-    img->comps[1].dx = img->comps[0].dx;
-    img->comps[2].dx = img->comps[0].dx;
-    img->comps[1].dy = img->comps[0].dy;
-    img->comps[2].dy = img->comps[0].dy;
+	new_image->comps[0].data = NULL;
+	new_image->comps[1].data = NULL;
+	new_image->comps[2].data = NULL;
+
+	opj_image_destroy(new_image);
+	new_image = NULL;
+
+
+	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
+	offx = img->x0 & 1U;
+	loopmaxw = maxw - offx;
+
+	for (i = 0U; i < maxh; ++i)
+	{
+		size_t j;
+
+		if (offx > 0U) {
+			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
+			++y; ++r; ++g; ++b;
+		}
+
+		for (j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b;
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b; ++cb; ++cr;
+		}
+		if (j < loopmaxw) {
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b; ++cb; ++cr;
+		}
+	}
+	opj_image_all_components_data_free(img);
+
+	img->comps[0].data = d0;
+	img->comps[1].data = d1;
+	img->comps[2].data = d2;
+
+	img->comps[1].w = img->comps[2].w = img->comps[0].w;
+	img->comps[1].h = img->comps[2].h = img->comps[0].h;
+	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
+	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
+	img->color_space = OPJ_CLRSPC_SRGB;
+	return;
 
 }/* sycc422_to_rgb() */
 
+
 static void sycc420_to_rgb(opj_image_t *img)
 {
-    int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
-    const int *y, *cb, *cr, *ny;
-    unsigned int maxw, maxh;
-    int offset, upb;
-    unsigned int i, j;
-    opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
+	const int *y, *cb, *cr, *ny;
+	size_t maxw, maxh, max, offx, loopmaxw, offy, loopmaxh;
+	int offset, upb;
+	size_t i;
+	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	if (!new_image)
+		return;
 
-    upb = (int)img->comps[0].prec;
-    offset = 1<<(upb - 1);
-    upb = (1<<upb)-1;
+	upb = (int)img->comps[0].prec;
+	offset = 1 << (upb - 1); upb = (1 << upb) - 1;
 
-    maxw = (unsigned int)img->comps[0].w;
-    maxh = (unsigned int)img->comps[0].h;
+	maxw = (size_t)img->comps[0].w;
+	maxh = (size_t)img->comps[0].h;
+	max = maxw * maxh;
 
-    y = img->comps[0].data;
-    cb = img->comps[1].data;
-    cr = img->comps[2].data;
+	y = img->comps[0].data;
+	cb = img->comps[1].data;
+	cr = img->comps[2].data;
 
-    d0 = r = new_image->comps[0].data;
-    d1 = g = new_image->comps[1].data;
-    d2 = b = new_image->comps[2].data;
+	d0 = r = new_image->comps[0].data;
+	d1 = g = new_image->comps[1].data;
+	d2 = b = new_image->comps[2].data;
 
-    new_image->comps[0].data = NULL;
-    new_image->comps[1].data = NULL;
-    new_image->comps[2].data = NULL;
+	new_image->comps[0].data = NULL;
+	new_image->comps[1].data = NULL;
+	new_image->comps[2].data = NULL;
 
-    opj_image_destroy(new_image);
-    new_image = NULL;
+	opj_image_destroy(new_image);
+	new_image = NULL;
 
-    for (i = 0U; i < (maxh & ~(unsigned int)1U); i += 2U) {
-        ny = y + maxw;
-        nr = r + maxw;
-        ng = g + maxw;
-        nb = b + maxw;
+	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
+	offx = img->x0 & 1U;
+	loopmaxw = maxw - offx;
+	/* if img->y0 is odd, then first line shall use Cb/Cr = 0 */
+	offy = img->y0 & 1U;
+	loopmaxh = maxh - offy;
 
-        for(j=0; j < (maxw & ~(unsigned int)1U); j += 2U) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
+	if (offy > 0U) {
+		size_t j;
 
-            sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-            ++ny;
-            ++nr;
-            ++ng;
-            ++nb;
-            sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-            ++ny;
-            ++nr;
-            ++ng;
-            ++nb;
-            ++cb;
-            ++cr;
-        }
-        if(j < maxw) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-            ++y;
-            ++r;
-            ++g;
-            ++b;
+		for (j = 0; j < maxw; ++j)
+		{
+			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
+			++y; ++r; ++g; ++b;
+		}
+	}
 
-            sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-            ++ny;
-            ++nr;
-            ++ng;
-            ++nb;
-            ++cb;
-            ++cr;
-        }
-        y += maxw;
-        r += maxw;
-        g += maxw;
-        b += maxw;
-    }
-    if(i < maxh) {
-        for(j=0U; j < (maxw & ~(unsigned int)1U); j += 2U) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+	for (i = 0U; i < (loopmaxh & ~(size_t)1U); i += 2U)
+	{
+		size_t j;
 
-            ++y;
-            ++r;
-            ++g;
-            ++b;
+		ny = y + maxw;
+		nr = r + maxw; ng = g + maxw; nb = b + maxw;
 
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+		if (offx > 0U) {
+			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
+			++y; ++r; ++g; ++b;
+			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
+			++ny; ++nr; ++ng; ++nb;
+		}
 
-            ++y;
-            ++r;
-            ++g;
-            ++b;
-            ++cb;
-            ++cr;
-        }
-        if(j < maxw) {
-            sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-        }
-    }
-    opj_image_all_components_data_free(img);
-    img->comps[0].data = d0;
-    img->comps[1].data = d1;
-    img->comps[2].data = d2;
+		for (j = 0; j < (loopmaxw & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b;
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b;
 
-    img->comps[1].w = (uint32_t)maxw;
-    img->comps[1].h = (uint32_t)maxh;
-    img->comps[2].w = (uint32_t)maxw;
-    img->comps[2].h = (uint32_t)maxh;
-    img->comps[1].dx = img->comps[0].dx;
-    img->comps[2].dx = img->comps[0].dx;
-    img->comps[1].dy = img->comps[0].dy;
-    img->comps[2].dy = img->comps[0].dy;
+			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
+			++ny; ++nr; ++ng; ++nb;
+			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
+			++ny; ++nr; ++ng; ++nb; ++cb; ++cr;
+		}
+		if (j < loopmaxw)
+		{
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+			++y; ++r; ++g; ++b;
+
+			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
+			++ny; ++nr; ++ng; ++nb; ++cb; ++cr;
+		}
+		y += maxw; r += maxw; g += maxw; b += maxw;
+	}
+	if (i < loopmaxh)
+	{
+		size_t j;
+
+		for (j = 0U; j < (maxw & ~(size_t)1U); j += 2U)
+		{
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+
+			++y; ++r; ++g; ++b;
+
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+
+			++y; ++r; ++g; ++b; ++cb; ++cr;
+		}
+		if (j < maxw)
+		{
+			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
+		}
+	}
+
+	opj_image_all_components_data_free(img);
+	img->comps[0].data = d0;
+	img->comps[1].data = d1;
+	img->comps[2].data = d2;
+
+	img->comps[1].w = img->comps[2].w = img->comps[0].w;
+	img->comps[1].h = img->comps[2].h = img->comps[0].h;
+	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
+	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
+	img->color_space = OPJ_CLRSPC_SRGB;
+	return;
 
 }/* sycc420_to_rgb() */
 
