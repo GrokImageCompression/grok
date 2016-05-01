@@ -548,6 +548,12 @@ static bool opj_jp2_read_ihdr( opj_jp2_t *jp2,
     opj_read_bytes(p_image_header_data,&(jp2->numcomps),2);		/* NC */
     p_image_header_data += 2;
 
+	if ((jp2->numcomps == 0) ||
+		(jp2->numcomps > OPJ_MAX_NUM_COMPONENTS)) {
+		opj_event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: num components=%d does not conform to standard\n", jp2->numcomps);
+		return false;
+	}
+
     /* allocate memory for components */
     jp2->comps = (opj_jp2_comps_t*) opj_calloc(jp2->numcomps, sizeof(opj_jp2_comps_t));
     if (jp2->comps == 0) {
@@ -557,6 +563,20 @@ static bool opj_jp2_read_ihdr( opj_jp2_t *jp2,
 
     opj_read_bytes(p_image_header_data,&(jp2->bpc),1);			/* BPC */
     ++ p_image_header_data;
+
+	///////////////////////////////////////////////////
+	// (bits per component == precision -1)
+	// Value of 0xFF indicates that bits per component
+	// varies by component
+
+	// Otherwise, low 7 bits of bpc determine bits per component,
+	// and high bit set indicates signed data,
+	// unset indicates unsigned data
+	if (((jp2->bpc != 0xFF) &&
+		((jp2->bpc & 0x7F) > (OPJ_MAX_PRECISION - 1)))) {
+		opj_event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: bpc=%d does not conform to standard\n", jp2->bpc);
+		return false;
+	}
 
     opj_read_bytes(p_image_header_data,&(jp2->C),1);			/* C */
     ++ p_image_header_data;
@@ -568,8 +588,21 @@ static bool opj_jp2_read_ihdr( opj_jp2_t *jp2,
 
     opj_read_bytes(p_image_header_data,&(jp2->UnkC),1);			/* UnkC */
     ++ p_image_header_data;
+
+	// UnkC must be binary : {0,1}
+	if ((jp2->UnkC > 1)) {
+		opj_event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: UnkC=%d does not conform to standard\n", jp2->UnkC);
+		return false;
+	}
+
     opj_read_bytes(p_image_header_data,&(jp2->IPR),1);			/* IPR */
     ++ p_image_header_data;
+
+	// IPR must be binary : {0,1}
+	if ((jp2->IPR > 1) ) {
+		opj_event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: IPR=%d does not conform to standard\n",jp2->IPR);
+		return false;
+	}
 
     return true;
 }
@@ -1785,7 +1818,7 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     /* ------------------- */
 
     /* Check if number of components respects standard */
-    if (image->numcomps < 1 || image->numcomps > 16384) {
+    if (image->numcomps < 1 || image->numcomps > OPJ_MAX_NUM_COMPONENTS) {
         opj_event_msg(p_manager, EVT_ERROR, "Invalid number of components specified while setting up JP2 encoder\n");
         return false;
     }
