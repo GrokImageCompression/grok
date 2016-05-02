@@ -149,6 +149,9 @@ typedef size_t   OPJ_SIZE_T;
 ==========================================================
 */
 
+// 64 Giga Pixels
+#define OPJ_MAX_TILE_AREA  67108864000
+
 #define OPJ_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 
 #define OPJ_MAX_PRECISION 38			// maximum number of magnitude bits

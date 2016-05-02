@@ -2096,7 +2096,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
     p_header_data+=4;
     opj_read_bytes(p_header_data, (uint32_t*) &l_tmp, 2);                 /* Csiz */
     p_header_data+=2;
-    if (l_tmp < 16385)
+    if (l_tmp <= OPJ_MAX_NUM_COMPONENTS)
         l_image->numcomps = (uint16_t) l_tmp;
     else {
         opj_event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: number of component is illegal -> %d\n", l_tmp);
@@ -2127,6 +2127,13 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
         opj_event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: illegal tile offset\n");
         return false;
     }
+
+	uint64_t tileArea = (uint64_t)(l_tx1 - l_cp->tx0) *(l_ty1 - l_cp->ty0);
+	if (tileArea > OPJ_MAX_TILE_AREA) {
+		opj_event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: tile area = %llu greater than max tile area = %llu\n",tileArea, OPJ_MAX_TILE_AREA);
+		return false;
+
+	}
 
     /* Allocate the resulting image components */
     l_image->comps = (opj_image_comp_t*) opj_calloc(l_image->numcomps, sizeof(opj_image_comp_t));
