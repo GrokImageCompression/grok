@@ -63,17 +63,17 @@ static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uin
 {
     opj_image_cmptparm_t* cmptparms = (opj_image_cmptparm_t*)calloc(numcmpts, sizeof(opj_image_cmptparm_t));
     opj_image_t* img = NULL;
-    uint32_t compno=0;
-    for (compno = 0; compno < numcmpts; ++compno) {
+    uint32_t compno=0U;
+    for (compno = 0U; compno < numcmpts; ++compno) {
         memset(cmptparms + compno, 0, sizeof(opj_image_cmptparm_t));
         cmptparms[compno].dx = 1;
         cmptparms[compno].dy = 1;
         cmptparms[compno].w = w;
         cmptparms[compno].h = h;
-        cmptparms[compno].x0 = 0;
-        cmptparms[compno].y0 = 0;
+        cmptparms[compno].x0 = 0U;
+        cmptparms[compno].y0 = 0U;
         cmptparms[compno].prec = prec;
-        cmptparms[compno].sgnd = 0;
+        cmptparms[compno].sgnd = 0U;
     }
     img = opj_image_create(numcmpts, (opj_image_cmptparm_t *)cmptparms, OPJ_CLRSPC_SRGB);
     free(cmptparms);
@@ -284,7 +284,7 @@ static void sycc420_to_rgb(opj_image_t *img)
 	if (offy > 0U) {
 		size_t j;
 
-		for (j = 0; j < maxw; ++j)
+		for (j = 0U; j < maxw; ++j)
 		{
 			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
 			++y; ++r; ++g; ++b;
@@ -305,7 +305,7 @@ static void sycc420_to_rgb(opj_image_t *img)
 			++ny; ++nr; ++ng; ++nb;
 		}
 
-		for (j = 0; j < (loopmaxw & ~(size_t)1U); j += 2U)
+		for (j = 0U; j < (loopmaxw & ~(size_t)1U); j += 2U)
 		{
 			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
 			++y; ++r; ++g; ++b;

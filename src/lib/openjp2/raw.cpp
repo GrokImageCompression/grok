@@ -111,7 +111,7 @@ uint32_t opj_raw_decode(opj_raw_t *raw)
         }
     }
     raw->ct--;
-    d = (raw->c >> raw->ct) & 0x01;
+    d = ((uint32_t)raw->c >> raw->ct) & 0x01;
 
     return d;
 }
