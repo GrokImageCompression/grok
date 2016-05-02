@@ -5042,7 +5042,7 @@ static bool opj_j2k_write_mcc_record(      opj_j2k_t *p_j2k,
         l_current_data+=l_nb_bytes_for_comp;
     }
 
-    l_tmcc = ((uint32_t)((!p_mcc_record->m_is_irreversible)&1))<<16;
+    l_tmcc = ((uint32_t)((!p_mcc_record->m_is_irreversible)& 1U))<<16;
 
     if (p_mcc_record->m_decorrelation_array) {
         l_tmcc |= p_mcc_record->m_decorrelation_array->m_index;
