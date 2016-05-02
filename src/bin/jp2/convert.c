@@ -1841,6 +1841,11 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
         fprintf(stderr,"           is written to the file\n");
     }
     destname = (char*)malloc(strlen(outfile) + 8);
+	if (destname == NULL) {
+		fprintf(stderr, "imagetopnm: out of memory\n");
+		fclose(fdest);
+		return 1;
+	}
 
     for (compno = 0; compno < ncomp; compno++) {
         if (ncomp > 1) {
