@@ -1213,6 +1213,7 @@ int imagetopgx(opj_image_t * image, const char *outfile)
         if( total > 256 ) {
             name = (char*)malloc(total+1);
             if (name == NULL) {
+				fprintf(stderr, "imagetopgx: memory out\n");
                 goto fin;
             }
         }
