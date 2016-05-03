@@ -1158,11 +1158,8 @@ bool opj_t1_allocate_buffers(opj_t1_t *t1,
             }
             t1->datasize=datasize;
         }
-		//UBSAN was reporting code was getting here
-		// with NULL t1->data
-		if (!t1->data)
-			return false;
-		memset(t1->data, 0, datasize * sizeof(int32_t));
+		if (t1->data)
+			memset(t1->data, 0, datasize * sizeof(int32_t));
     }
 
 
