@@ -615,7 +615,8 @@ void opj_t1_opt_init_buffers(
 {
 	uint32_t x;
 	opj_flag_opt_t* p;
-	memset(t1->data, 0, w*h * sizeof(int32_t));
+	if (t1->data)
+		memset(t1->data, 0, w*h * sizeof(int32_t));
 
 	t1->flags_stride = w + 2;
 	auto flags_height = (h + 3U) / 4U;
