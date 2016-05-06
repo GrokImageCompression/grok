@@ -383,10 +383,10 @@ static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
                     try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))  ))) {
+                    if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))  ))) {
                         continue;
                     }
-                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
+                    if (!(((uint64_t)pi->x % ((uint64_t)comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
                         continue;
                     }
 
@@ -470,10 +470,10 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
                     try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
+                    if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
                         continue;
                     }
-                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
+                    if (!(((uint64_t)pi->x % ((uint64_t)comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
                         continue;
                     }
 
@@ -551,10 +551,10 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi)
                     try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
-                    if (!((pi->y % (comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
+                    if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
                         continue;
                     }
-                    if (!((pi->x % (comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
+                    if (!(((uint64_t)pi->x % ((uint64_t)comp->dx << rpx) == 0) || ((pi->x == pi->tx0) && (((uint64_t)trx0 << levelno) % ((uint64_t)1 << rpx))))) {
                         continue;
                     }
 
