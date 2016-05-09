@@ -1654,7 +1654,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     /* Code switch "ERTERM" (i.e. PTERM) */
     if (cblksty & J2K_CCP_CBLKSTY_PTERM)
         opj_mqc_erterm_enc(mqc);
-    else if (!LAZY && !TERMALL)
+    else if (!LAZY)
         opj_mqc_flush(mqc);
 
     cblk->totalpasses = passno;
@@ -1664,7 +1664,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         if (pass->rate > opj_mqc_numbytes(mqc))
             pass->rate = opj_mqc_numbytes(mqc);
         /*Preventing generation of FF as last data byte of a pass*/
-        if((pass->rate>1) && (cblk->data[pass->rate - 1] == 0xFF)) {
+        if(!LAZY && (pass->rate>1) && (cblk->data[pass->rate - 1] == 0xFF)) {
             pass->rate--;
         }
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
