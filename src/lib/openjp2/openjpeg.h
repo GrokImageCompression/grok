@@ -117,9 +117,9 @@ defined with this macro as being exported.
 
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
 
-typedef int OPJ_BOOL;
-#define OPJ_TRUE 1
-#define OPJ_FALSE 0
+typedef bool OPJ_BOOL;
+#define OPJ_TRUE true
+#define OPJ_FALSE false
 
 typedef char          OPJ_CHAR;
 typedef float         OPJ_FLOAT32;
