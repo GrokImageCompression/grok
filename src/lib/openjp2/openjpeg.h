@@ -516,6 +516,10 @@ typedef struct opj_dparameters {
     uint32_t flags;
 	uint32_t numThreads;
 
+	// This field is present for compatibility
+	// with OpenJPEG. It will be ignored!
+	int 	jpwl_exp_comps;
+
 } opj_dparameters_t;
 
 
