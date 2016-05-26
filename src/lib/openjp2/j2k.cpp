@@ -9315,7 +9315,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         }
         l_max_data_size = 1;
     }
-
+	uint32_t num_tiles_decoded = 0;
     for (nr_tiles=0; nr_tiles < p_j2k->m_cp.th * p_j2k->m_cp.tw; nr_tiles++) {
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
@@ -9364,6 +9364,8 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
             opj_event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
         }
 
+		num_tiles_decoded++;
+
         if(opj_stream_get_number_byte_left(p_stream) == 0
                 && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC)
             break;
@@ -9372,7 +9374,11 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
     if (l_current_data)
         opj_free(l_current_data);
 
-    return true;
+	if (num_tiles_decoded == 0) {
+		opj_event_msg(p_manager, EVT_ERROR, "No tiles were decoded. Exiting\n");
+		return false;
+	}
+	return true;
 }
 
 /**
