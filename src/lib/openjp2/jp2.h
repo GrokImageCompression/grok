@@ -191,7 +191,7 @@ typedef struct opj_jp2 {
     uint32_t *cl;
     opj_jp2_comps_t *comps;
     /* FIXME: The following two variables are used to save offset
-      as we write out a JP2 file to disk. This mecanism is not flexible
+      as we write out a JP2 file to disk. This mechanism is not flexible
       as codec writers will need to extand those fields as new part
       of the standard are implemented.
     */

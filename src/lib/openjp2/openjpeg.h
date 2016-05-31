@@ -1265,7 +1265,7 @@ OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
  * Sets the given area to be decoded. This function should be called right after opj_read_header and before any tile header reading.
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_image         the decoded image previously setted by opj_read_header
+ * @param	p_image			the decoded image previously set by opj_read_header
  * @param	p_start_x		the left position of the rectangle to decode (in image coordinates).
  * @param	p_end_x			the right position of the rectangle to decode (in image coordinates).
  * @param	p_start_y		the up position of the rectangle to decode (in image coordinates).
