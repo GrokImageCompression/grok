@@ -441,6 +441,12 @@ typedef struct opj_cparameters {
 	* */
 	OPJ_CINEMA_MODE cp_cinema;
 
+	/**
+	* DEPRECATED: use RSIZ, OPJ_PROFILE_* and OPJ_EXTENSION_* instead
+	* Profile name
+	* */
+	OPJ_RSIZ_CAPABILITIES cp_rsiz;
+
     /**
      * Maximum size (in bytes) for each component.
      * If == 0, component size limitation is not considered
