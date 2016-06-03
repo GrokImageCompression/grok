@@ -435,6 +435,12 @@ typedef struct opj_cparameters {
     int32_t cod_format;
     /*@}*/
 
+	/**
+	* DEPRECATED: use RSIZ, OPJ_PROFILE_* and MAX_COMP_SIZE instead
+	* Digital Cinema compliance 0-not compliant, 1-compliant
+	* */
+	OPJ_CINEMA_MODE cp_cinema;
+
     /**
      * Maximum size (in bytes) for each component.
      * If == 0, component size limitation is not considered
