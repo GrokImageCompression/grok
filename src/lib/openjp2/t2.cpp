@@ -1201,8 +1201,8 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
     l_present = opj_bio_read(l_bio, 1);
     JAS_FPRINTF(stderr, "present=%d \n", l_present );
     if (!l_present) {
-        /* TODO MSD: no test to control the output of this function*/
-        opj_bio_inalign(l_bio);
+		if (!opj_bio_inalign(l_bio))
+			return false;
         l_header_data += opj_bio_numbytes(l_bio);
         opj_bio_destroy(l_bio);
 
