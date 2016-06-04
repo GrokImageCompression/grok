@@ -993,12 +993,11 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 				}
 				decode_dwt_barrier.arrive_and_wait();
 				
-				if (j > 0 && (rh & 0x03)) {
-					int32_t jCleanup = rh & 0x03;
+				if (j > 0 ) {
 					opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
 					opj_v4dwt_decode(&h);
 					for (int32_t k = (int32_t)rw; k-- > 0;) {
-						switch (jCleanup) {
+						switch (j) {
 						case 3:
 							aj[k + (int32_t)(w << 1)] = h.wavelet[k].f[2];
 						case 2:
@@ -1027,14 +1026,12 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 					aj += (numThreads <<2);
 				}
 				
-				if (j > 0 && (rw & 0x03)) {
-					int32_t jCleanup = rw & 0x03;
-
-					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, jCleanup);
+				if (j > 0) {
+					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
 					opj_v4dwt_decode(&v);
 
 					for (uint32_t k = 0; k < rh; ++k) {
-						memcpy(&aj[k*w], &v.wavelet[k], (size_t)jCleanup * sizeof(float));
+						memcpy(&aj[k*w], &v.wavelet[k], (size_t)j * sizeof(float));
 					}
 				}
 				
