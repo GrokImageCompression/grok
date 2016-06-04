@@ -515,7 +515,7 @@ bool opj_dwt_decode(opj_tcd_tilecomp_t* tilec,
 					uint32_t numThreads)
 {
     if (opj_tile_buf_is_decode_region(tilec->buf))
-        return opj_dwt_region_decode53(tilec, numres);
+        return opj_dwt_region_decode53(tilec, numres, numThreads);
     return opj_dwt_decode_tile(tilec, numres, &opj_dwt_decode_1,numThreads);
 }
 
@@ -924,6 +924,9 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 						uint32_t numres,
 						uint32_t numThreads)
 {
+	if (numres == 1U) {
+		return true;
+	}
 	if (opj_tile_buf_is_decode_region(tilec->buf))
 		return opj_dwt_region_decode97(tilec, numres, numThreads);
 
