@@ -56,6 +56,11 @@
 
 
 #include "opj_includes.h"
+#include "Barrier.h"
+#include "T1Decoder.h"
+#include <atomic>
+
+extern std::vector<std::thread> dwtWorkers;
 
 /*
 
@@ -620,7 +625,9 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
 /* <summary>                             */
 /* Inverse 9-7 data transform in 2-D. */
 /* </summary>                            */
-bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, uint32_t numres)
+bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec, 
+							uint32_t numres,
+							uint32_t numThreads)
 {
     opj_dwt97_t buffer_h;
     opj_dwt97_t buffer_v;

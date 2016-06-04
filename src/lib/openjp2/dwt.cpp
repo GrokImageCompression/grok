@@ -514,8 +514,8 @@ bool opj_dwt_decode(opj_tcd_tilecomp_t* tilec,
 					uint32_t numres,
 					uint32_t numThreads)
 {
-  //  if (opj_tile_buf_is_decode_region(tilec->buf))
- //       return opj_dwt_region_decode53(tilec, numres);
+    if (opj_tile_buf_is_decode_region(tilec->buf))
+        return opj_dwt_region_decode53(tilec, numres);
     return opj_dwt_decode_tile(tilec, numres, &opj_dwt_decode_1,numThreads);
 }
 
@@ -924,6 +924,9 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 						uint32_t numres,
 						uint32_t numThreads)
 {
+	if (opj_tile_buf_is_decode_region(tilec->buf))
+		return opj_dwt_region_decode97(tilec, numres, numThreads);
+
 	int rc = 0;
 	auto tileBuf = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
@@ -949,9 +952,6 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 			uint32_t rh = (res->y1 - res->y0);	/* height of the resolution level computed */
 
 			uint32_t w = (tilec->x1 - tilec->x0);
-
-			//  if (opj_tile_buf_is_decode_region(tilec->buf))
-			//      return opj_dwt_region_decode97(tilec, numres);
 
 			h.wavelet = (opj_v4_t*)opj_aligned_malloc((opj_dwt_max_resolution(res, numResolutions) + 5) * sizeof(opj_v4_t));
 			if (!h.wavelet) {
