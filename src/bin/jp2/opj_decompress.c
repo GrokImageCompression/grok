@@ -38,12 +38,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "opj_apps_config.h"
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -72,9 +66,6 @@
 
 #ifdef OPJ_HAVE_LIBLCMS2
 #include <lcms2.h>
-#endif
-#ifdef OPJ_HAVE_LIBLCMS1
-#include <lcms.h>
 #endif
 #include "color.h"
 
@@ -1259,7 +1250,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 	if (image->icc_profile_buf) {
-#if defined(OPJ_HAVE_LIBLCMS1) || defined(OPJ_HAVE_LIBLCMS2)
+#if defined(OPJ_HAVE_LIBLCMS2)
 		if (image->icc_profile_len)
 			color_apply_icc_profile(image);
 		else

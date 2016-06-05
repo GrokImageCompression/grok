@@ -48,16 +48,6 @@
 #ifdef OPJ_HAVE_LIBLCMS2
 #include <lcms2.h>
 #endif
-#ifdef OPJ_HAVE_LIBLCMS1
-#include <lcms.h>
-#endif
-
-#ifdef OPJ_USE_LEGACY
-#define OPJ_CLRSPC_GRAY CLRSPC_GRAY
-#define OPJ_CLRSPC_SRGB CLRSPC_SRGB
-#endif
-
-
 
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
@@ -397,23 +387,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 
 }/* color_sycc_to_rgb() */
 
-#if defined(OPJ_HAVE_LIBLCMS2) || defined(OPJ_HAVE_LIBLCMS1)
-
-#ifdef OPJ_HAVE_LIBLCMS1
-/* Bob Friesenhahn proposed:*/
-#define cmsSigXYZData   icSigXYZData
-#define cmsSigLabData   icSigLabData
-#define cmsSigCmykData  icSigCmykData
-#define cmsSigYCbCrData icSigYCbCrData
-#define cmsSigLuvData   icSigLuvData
-#define cmsSigGrayData  icSigGrayData
-#define cmsSigRgbData   icSigRgbData
-#define cmsUInt32Number DWORD
-
-#define cmsColorSpaceSignature icColorSpaceSignature
-#define cmsGetHeaderRenderingIntent cmsTakeRenderingIntent
-
-#endif /* OPJ_HAVE_LIBLCMS1 */
+#if defined(OPJ_HAVE_LIBLCMS2)
 
 /*#define DEBUG_PROFILE*/
 void color_apply_icc_profile(opj_image_t *image)
@@ -517,10 +491,6 @@ void color_apply_icc_profile(opj_image_t *image)
                 "ICC Profile ignored.\n",__FILE__,__LINE__);
 #endif
         image->color_space = oldspace;
-#ifdef OPJ_HAVE_LIBLCMS1
-        cmsCloseProfile(in_prof);
-        cmsCloseProfile(out_prof);
-#endif
         return;
     }
 
@@ -635,11 +605,6 @@ void color_apply_icc_profile(opj_image_t *image)
     }/* if(image->numcomps */
 
     cmsDeleteTransform(transform);
-
-#ifdef OPJ_HAVE_LIBLCMS1
-    cmsCloseProfile(in_prof);
-    cmsCloseProfile(out_prof);
-#endif
 }/* color_apply_icc_profile() */
 
 void color_cielab_to_rgb(opj_image_t *image)
@@ -683,10 +648,6 @@ void color_cielab_to_rgb(opj_image_t *image)
         cmsCloseProfile(out);
 #endif
         if(transform == NULL) {
-#ifdef OPJ_HAVE_LIBLCMS1
-            cmsCloseProfile(in);
-            cmsCloseProfile(out);
-#endif
             return;
         }
         prec0 = (double)image->comps[0].prec;
@@ -752,10 +713,6 @@ void color_cielab_to_rgb(opj_image_t *image)
             *blue++ = RGB[2];
         }
         cmsDeleteTransform(transform);
-#ifdef OPJ_HAVE_LIBLCMS1
-        cmsCloseProfile(in);
-        cmsCloseProfile(out);
-#endif
         opj_image_all_components_data_free(image);
         image->comps[0].data = dst0;
         image->comps[1].data = dst1;
@@ -772,7 +729,7 @@ void color_cielab_to_rgb(opj_image_t *image)
     fprintf(stderr,"%s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__,__LINE__, enumcs);
 }/* color_apply_conversion() */
 
-#endif /* OPJ_HAVE_LIBLCMS2 || OPJ_HAVE_LIBLCMS1 */
+#endif /* OPJ_HAVE_LIBLCMS2 */
 
 bool all_components_equal_subsampling(opj_image_t *image) {
 	if (image->numcomps == 0)
