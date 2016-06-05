@@ -41,7 +41,7 @@ endif()
 
 # Loop over all executables:
 foreach(exe opj_decompress opj_compress opj_dump)
-  add_executable(${exe} ${exe}.c ${common_SRCS})
+  add_executable(${exe} ${exe}.cpp ${common_SRCS})
   target_link_libraries(${exe} ${OPENJPEG_LIBRARY_NAME}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
     )
