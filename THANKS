@@ -1,8 +1,22 @@
-OpenJPEG THANKS file
+GROK
+
+Many people have helped get this project off the ground. A warm thank you to:
+
+Stefan Weil
+Bob Friesenhahn
+Carl Hetherington
+
+for their help and encouragement.
+
+Special thanks to Thomas Richter for patiently answering so many questions about the JPEG 2000 standard. 
+
+
+
+
+OpenJPEG 
 
 Many people have contributed to OpenJPEG by reporting problems, suggesting various improvements,
-or submitting actual code. Here is a list of these people. Help me keep
-it complete and exempt of errors.
+or submitting actual code. Here is a list of these people.
 
 Giuseppe Baruffa
 Ben Boeckel
