@@ -61,6 +61,7 @@
 /*@{*/
 
 #define OPJ_BOX_SIZE	1024
+#define OPJ_RESOLUTION_BOX_SIZE (4+4+10)
 
 /** @name Local static functions */
 /*@{*/
@@ -92,6 +93,35 @@ static bool opj_jp2_read_ihdr(  opj_jp2_t *jp2,
 */
 static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
                                     uint32_t * p_nb_bytes_written );
+
+
+/**
+* Reads a Resolution box
+*
+* @param	p_resolution_data			pointer to actual data (already read from file)
+* @param	jp2							the jpeg2000 file codec.
+* @param	p_resolution_size			the size of the image header
+* @param	p_manager					the user event manager.
+*
+* @return	true if the image header is valid, false else.
+*/
+static bool opj_jp2_read_res(opj_jp2_t *jp2,
+	uint8_t *p_resolution_data,
+	uint32_t p_resolution_size,
+	opj_event_mgr_t * p_manager);
+
+/**
+* Writes the Resolution box 
+*
+* @param jp2					jpeg2000 file codec.
+* @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
+*
+* @return	the data being copied.
+*/
+static uint8_t * opj_jp2_write_res(opj_jp2_t *jp2,
+	uint32_t * p_nb_bytes_written);
+
+
 
 /**
  * Writes the Bit per Component box.
@@ -408,7 +438,8 @@ static const opj_jp2_header_handler_t jp2_img_header [] = {
     {JP2_BPCC,opj_jp2_read_bpcc},
     {JP2_PCLR,opj_jp2_read_pclr},
     {JP2_CMAP,opj_jp2_read_cmap},
-    {JP2_CDEF,opj_jp2_read_cdef}
+    {JP2_CDEF,opj_jp2_read_cdef},
+	{JP2_RES, opj_jp2_read_res}
 
 };
 
@@ -655,6 +686,219 @@ static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
     *p_nb_bytes_written = 22;
 
     return l_ihdr_data;
+}
+
+
+double calc_res(uint16_t num, uint16_t den, int8_t exponent) {
+	if (den == 0)
+		return 0;
+	return ((double)num / den) * pow(10, exponent);
+}
+
+static bool opj_jp2_read_res_box(uint32_t *id,
+								 uint32_t *num,
+								 uint32_t *den,
+								 uint32_t *exponent,
+								uint8_t **p_resolution_data,
+								opj_event_mgr_t * p_manager) {
+
+	uint32_t box_size = 4 + 4 + 10;
+
+	uint32_t size = 0;
+	opj_read_bytes(*p_resolution_data, &size, 4);
+	*p_resolution_data += 4;
+	if (size != box_size)
+		return false;
+
+	opj_read_bytes(*p_resolution_data, id, 4);
+	*p_resolution_data += 4;
+
+	opj_read_bytes(*p_resolution_data, num+1, 2);
+	*p_resolution_data += 2;
+
+	opj_read_bytes(*p_resolution_data, den+1, 2);
+	*p_resolution_data += 2;
+
+	opj_read_bytes(*p_resolution_data, num, 2);
+	*p_resolution_data += 2;
+
+	opj_read_bytes(*p_resolution_data, den, 2);
+	*p_resolution_data += 2;
+
+	opj_read_bytes(*p_resolution_data, exponent+1, 1);
+	*p_resolution_data += 1;
+
+	opj_read_bytes(*p_resolution_data, exponent, 1);
+	*p_resolution_data += 1;
+
+	return true;
+
+}
+
+static bool opj_jp2_read_res(opj_jp2_t *jp2,
+							uint8_t *p_resolution_data,
+							uint32_t p_resolution_size,
+							opj_event_mgr_t * p_manager){
+	assert(p_resolution_data != 00);
+	assert(jp2 != 00);
+	assert(p_manager != 00);
+
+	uint32_t num_boxes = p_resolution_size / OPJ_RESOLUTION_BOX_SIZE;
+	if (num_boxes == 0 || 
+		num_boxes > 2 || 
+		(p_resolution_size % OPJ_RESOLUTION_BOX_SIZE) ) {
+			opj_event_msg(p_manager, EVT_ERROR, "Bad resolution box (bad size)\n");
+			return false;
+	}
+
+	while (p_resolution_size > 0) {
+
+		uint32_t id;
+		uint32_t num[2];
+		uint32_t den[2];
+		uint32_t exponent[2];
+
+		if (!opj_jp2_read_res_box(&id,
+			num,
+			den,
+			exponent,
+			&p_resolution_data,
+			p_manager)) {
+				return false;
+		}
+
+		double* res;
+		switch (id) {
+		case JP2_CAPTURE_RES:
+			res = jp2->capture_resolution;
+			break;
+		case JP2_DISPLAY_RES:
+			res = jp2->display_resolution;
+			break;
+		default:
+			return false;
+		}
+		for (int i = 0; i < 2; ++i)
+			res[i] = calc_res(num[i], den[i], exponent[i]);
+
+		p_resolution_size -= OPJ_RESOLUTION_BOX_SIZE;
+	}
+	return true;
+}
+
+void find_cf(double x, uint32_t* num, uint32_t* den) {
+	// number of terms in continued fraction.
+	// 15 is the max without precision errors for M_PI
+	#define MAX 15
+	const double eps = 1.0 / USHRT_MAX;
+	long p[MAX], q[MAX], a[MAX];
+
+	int i;
+	//The first two convergents are 0/1 and 1/0
+	p[0] = 0; 
+	q[0] = 1;
+
+	p[1] = 1;
+	q[1] = 0;
+	//The rest of the convergents (and continued fraction)
+	for (i = 2; i<MAX; ++i) {
+		a[i] = lrint(floor(x));
+		p[i] = a[i] * p[i - 1] + p[i - 2];
+		q[i] = a[i] * q[i - 1] + q[i - 2];
+		//printf("%ld:  %ld/%ld\n", a[i], p[i], q[i]);
+		if (fabs(x - a[i])<eps || (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX))
+			break;
+		x = 1.0 / (x - a[i]);
+	}
+	*num = (uint32_t)p[i - 1];
+	*den = (uint32_t)q[i - 1];
+}
+
+static void opj_jp2_write_res_box( double resx, double resy,
+									uint32_t box_id,
+									uint8_t **l_current_res_ptr) {
+
+	opj_write_bytes(*l_current_res_ptr, OPJ_RESOLUTION_BOX_SIZE, 4);		/* write box size */
+	*l_current_res_ptr += 4;
+
+	opj_write_bytes(*l_current_res_ptr, JP2_CAPTURE_RES, 4);		/* Box ID */
+	*l_current_res_ptr += 4;
+
+	double res[2];
+	// y is written first, then x
+	res[0] = resy;
+	res[1] = resx;
+
+	uint32_t num[2];
+	uint32_t den[2];
+	int32_t exponent[2];
+
+	for (size_t i = 0; i < 2; ++i) {
+		exponent[i] = (int32_t)log(res[i]);
+		if (exponent[i] < 1)
+			exponent[i] = 0;
+		if (exponent[i] >= 1) {
+			res[i] /= pow(10, exponent[i]);
+		}
+		find_cf(res[i], num + i, den + i);
+	}
+	for (size_t i = 0; i < 2; ++i) {
+		opj_write_bytes(*l_current_res_ptr, num[i], 2);
+		*l_current_res_ptr += 2;
+		opj_write_bytes(*l_current_res_ptr, den[i], 2);
+		*l_current_res_ptr += 2;
+	}
+	for (size_t i = 0; i < 2; ++i) {
+		opj_write_bytes(*l_current_res_ptr, exponent[i], 1);
+		*l_current_res_ptr += 1;
+	}
+}
+
+static uint8_t * opj_jp2_write_res(opj_jp2_t *jp2,
+									uint32_t * p_nb_bytes_written)
+{
+	uint8_t * l_res_data, *l_current_res_ptr;
+	assert(jp2);
+	assert(p_nb_bytes_written);
+
+	bool storeCapture = jp2->capture_resolution[0] > 0 &&
+							jp2->capture_resolution[1] > 0;
+
+	bool storeDisplay = jp2->display_resolution[0] > 0 &&
+							jp2->display_resolution[1] > 0;
+
+	uint32_t size = (4 + 4) + OPJ_RESOLUTION_BOX_SIZE;
+	if (storeCapture && storeDisplay ) {
+		size += OPJ_RESOLUTION_BOX_SIZE;
+	}
+
+	l_res_data = (uint8_t *)opj_calloc(1, size);
+	if (l_res_data == 00) {
+		return 00;
+	}
+
+	l_current_res_ptr = l_res_data;
+
+	opj_write_bytes(l_current_res_ptr, size, 4);		/* write super-box size */
+	l_current_res_ptr += 4;
+
+	opj_write_bytes(l_current_res_ptr, JP2_RES, 4);		/* Super-box ID */
+	l_current_res_ptr += 4;
+
+	if (storeCapture) {
+		opj_jp2_write_res_box(jp2->capture_resolution[0],
+								jp2->capture_resolution[1],
+								JP2_CAPTURE_RES,
+								&l_current_res_ptr);
+	}
+	if (storeDisplay) {
+		opj_jp2_write_res_box(jp2->display_resolution[0],
+								jp2->display_resolution[1],
+								JP2_DISPLAY_RES,
+								&l_current_res_ptr);
+	}
+	*p_nb_bytes_written = size;
+	return l_res_data;
 }
 
 static uint8_t * opj_jp2_write_bpcc(	opj_jp2_t *jp2,
@@ -1573,7 +1817,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
     opj_jp2_img_header_writer_handler_t l_writers [4];
     opj_jp2_img_header_writer_handler_t * l_current_writer;
 
-    int32_t i, l_nb_pass;
+    int32_t i, l_nb_pass=0;
     /* size of data for super box*/
     uint32_t l_jp2h_size = 8;
     bool l_result = true;
@@ -1589,20 +1833,27 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
     memset(l_writers,0,sizeof(l_writers));
 
     if (jp2->bpc == 255) {
-        l_nb_pass = 3;
-        l_writers[0].handler = opj_jp2_write_ihdr;
-        l_writers[1].handler = opj_jp2_write_bpcc;
-        l_writers[2].handler = opj_jp2_write_colr;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_ihdr;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_bpcc;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_colr;
     } else {
-        l_nb_pass = 2;
-        l_writers[0].handler = opj_jp2_write_ihdr;
-        l_writers[1].handler = opj_jp2_write_colr;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_ihdr;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_colr;
     }
 
     if (jp2->color.jp2_cdef != NULL) {
-        l_writers[l_nb_pass].handler = opj_jp2_write_cdef;
-        l_nb_pass++;
+        l_writers[l_nb_pass++].handler = opj_jp2_write_cdef;
     }
+
+	bool storeCapture = jp2->capture_resolution[0] > 0 &&
+							jp2->capture_resolution[1] > 0;
+
+	bool storeDisplay = jp2->display_resolution[0] > 0 &&
+							jp2->display_resolution[1] > 0;
+
+	if (storeCapture || storeDisplay) {
+		l_writers[l_nb_pass++].handler = opj_jp2_write_res;
+	}
 
     /* write box header */
     /* write JP2H type */
@@ -1960,6 +2211,11 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
 
     jp2->precedence = 0;	/* PRECEDENCE */
     jp2->approx = 0;		/* APPROX */
+
+	for (int i = 0; i < 2; ++i) {
+		jp2->capture_resolution[i] = parameters->capture_resolution[i];
+		jp2->display_resolution[i] = parameters->display_resolution[i];
+	}
 
     return true;
 }
@@ -2638,11 +2894,21 @@ bool opj_jp2_read_header(	opj_stream_private_t *p_stream,
         return false;
     }
 
-    return opj_j2k_read_header(	p_stream,
+
+
+    bool rc =  opj_j2k_read_header(	p_stream,
                                 jp2->j2k,
 								encoding_parameters,
                                 p_image,
                                 p_manager);
+
+	if (*p_image) {
+		for (int i = 0; i < 2; ++i) {
+			(*p_image)->capture_resolution[i] = jp2->capture_resolution[i];
+			(*p_image)->display_resolution[i] = jp2->display_resolution[i];
+		}
+	}
+	return rc;
 }
 
 static bool opj_jp2_setup_encoding_validation (opj_jp2_t *jp2, opj_event_mgr_t * p_manager)

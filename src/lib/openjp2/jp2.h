@@ -77,13 +77,16 @@
 #define     JP2_BPCC 0x62706363    /**< Bits per component box */
 #define     JP2_JP2  0x6a703220    /**< File type fields */
 
-/* For the future */
-/* #define JP2_RES 0x72657320 */  /**< Resolution box (super-box) */
-/* #define JP2_JP2I 0x6a703269 */  /**< Intellectual property box */
-/* #define JP2_XML  0x786d6c20 */  /**< XML box */
-/* #define JP2_UUID 0x75756994 */  /**< UUID box */
-/* #define JP2_UINF 0x75696e66 */  /**< UUID info box (super-box) */
-/* #define JP2_ULST 0x756c7374 */  /**< UUID list box */
+
+#define JP2_RES			0x72657320   /**< Resolution box (super-box) */
+#define JP2_CAPTURE_RES 0x72657363   /**< Capture resolution box */
+#define JP2_DISPLAY_RES 0x72657364   /**< Display resolution box */
+
+#define JP2_JP2I 0x6a703269   /**< Intellectual property box */
+#define JP2_XML  0x786d6c20   /**< XML box */
+#define JP2_UUID 0x75756994   /**< UUID box */
+#define JP2_UINF 0x75696e66   /**< UUID info box (super-box) */
+#define JP2_ULST 0x756c7374   /**< UUID list box */
 
 /* ----------------------------------------------------------------------- */
 
@@ -191,19 +194,19 @@ typedef struct opj_jp2 {
     uint32_t *cl;
     opj_jp2_comps_t *comps;
     /* FIXME: The following two variables are used to save offset
-      as we write out a JP2 file to disk. This mecanism is not flexible
+      as we write out a JP2 file to disk. This mechanism is not flexible
       as codec writers will need to extand those fields as new part
       of the standard are implemented.
     */
     int64_t j2k_codestream_offset;
     int64_t jpip_iptr_offset;
-    bool jpip_on;
     uint32_t jp2_state;
     uint32_t jp2_img_state;
-
     opj_jp2_color_t color;
 
     bool ignore_pclr_cmap_cdef;
+	double capture_resolution[2];
+	double display_resolution[2];
 }
 opj_jp2_t;
 
