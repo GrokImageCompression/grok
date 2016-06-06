@@ -715,6 +715,14 @@ int imagetotif(opj_image_t * image, const char *outfile)
     TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
     TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
 
+	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
+		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, 3); // cm
+		for (int i = 0; i < 2; ++i) {
+			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0]/100);
+			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1]/100);
+		}
+	}
+
     strip_size = TIFFStripSize(tif);
     rowStride = ((size_t)width * numcomps * (size_t)tif_bps + 7U) / 8U;
     if (rowStride != (size_t)strip_size) {
@@ -1253,7 +1261,9 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     opj_image_cmptparm_t cmptparm[4]; /* RGBA */
     opj_image_t *image = NULL;
     int has_alpha = 0;
-    unsigned short tiBps, tiPhoto, tiSf, tiSpp, tiPC;
+	unsigned short tiBps, tiPhoto, tiSf, tiSpp, tiPC;
+	short tiResUnit;
+	float tiXRes, tiYRes;
     unsigned int tiWidth, tiHeight;
     bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
     convert_XXx32s_C1R cvtTifTo32s = NULL;
@@ -1279,6 +1289,36 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
     TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
     TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
+	TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
+	TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
+
+	// capture resolution is in pels / metre
+	parameters->capture_resolution[0] = tiXRes;
+	parameters->capture_resolution[1] = tiYRes;
+
+	switch (tiResUnit) {
+	// no known units. Used for images with non-square pixels
+	case 1:
+		break;
+	// inches  
+	case 2:
+		//2.54 cm / inch
+		parameters->capture_resolution[0] *= 100/2.54;
+		parameters->capture_resolution[1] *= 100/2.54;
+		break;
+	// cm
+	case 3:
+		parameters->capture_resolution[0] *= 100;
+		parameters->capture_resolution[1] *= 100;
+		break;
+	default:
+		parameters->capture_resolution[0] = 0;
+		parameters->capture_resolution[1] = 0;
+		break;
+	}
+
     w= (int)tiWidth;
     h= (int)tiHeight;
 

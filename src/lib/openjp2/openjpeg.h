@@ -474,6 +474,9 @@ typedef struct opj_cparameters {
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
 
+	double capture_resolution[2];
+	double display_resolution[2];
+
 	uint32_t numThreads;
 } opj_cparameters_t;
 
@@ -557,18 +560,24 @@ typedef void * opj_codec_t;
 /*
  * Callback function prototype for read function
  */
-typedef size_t (* opj_stream_read_fn) (void * p_buffer, size_t p_nb_bytes, void * p_user_data) ;
+typedef size_t (* opj_stream_read_fn) (void * p_buffer, 
+										size_t p_nb_bytes,
+										void * p_user_data) ;
 
 /*
 * Callback function prototype for zero copy read function
 */
-typedef size_t(*opj_stream_zero_copy_read_fn) (void ** p_buffer, size_t p_nb_bytes, void * p_user_data);
+typedef size_t(*opj_stream_zero_copy_read_fn) (void ** p_buffer, 
+												size_t p_nb_bytes,
+												void * p_user_data);
 
 
 /*
  * Callback function prototype for write function
  */
-typedef size_t (* opj_stream_write_fn) (void * p_buffer, size_t p_nb_bytes, void * p_user_data) ;
+typedef size_t (* opj_stream_write_fn) (void * p_buffer, 
+										size_t p_nb_bytes,
+										void * p_user_data) ;
 
 /*
  * Callback function prototype for skip function
@@ -650,6 +659,10 @@ typedef struct opj_image {
     uint8_t *icc_profile_buf;
     /** size of ICC profile */
     uint32_t icc_profile_len;
+
+	double capture_resolution[2];
+	double display_resolution[2];
+
 } opj_image_t;
 
 
