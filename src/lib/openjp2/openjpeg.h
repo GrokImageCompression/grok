@@ -110,6 +110,7 @@ defined with this macro as being exported.
 #	endif /* OPJ_EXPORTS */
 #endif /* !OPJ_STATIC || !_WIN32 */
 
+#include "opj_config.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

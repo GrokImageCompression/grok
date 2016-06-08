@@ -66,8 +66,6 @@
 #include <fcntl.h>
 
 #include "opj_includes.h"
-#include "opj_config.h"
-
 
 #ifdef _OPENMP
 #include <omp.h>
