@@ -68,6 +68,7 @@ set(OPENJPEG_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/function_list.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_codec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_includes.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/opj_stdint.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_intmath.h
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.h
@@ -124,7 +125,7 @@ install(TARGETS ${OPENJPEG_LIBRARY_NAME}
 )
 
 # Install includes files
-install(FILES openjpeg.h 
+install(FILES openjpeg.h opj_stdint.h
   DESTINATION ${OPENJPEG_INSTALL_INCLUDE_DIR} COMPONENT Headers
 )
 
