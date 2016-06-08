@@ -1845,14 +1845,15 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
         l_writers[l_nb_pass++].handler = opj_jp2_write_cdef;
     }
 
-	bool storeCapture = jp2->capture_resolution[0] > 0 &&
-							jp2->capture_resolution[1] > 0;
+	if (jp2->write_resolution) {
+		bool storeCapture = jp2->capture_resolution[0] > 0 &&
+			jp2->capture_resolution[1] > 0;
 
-	bool storeDisplay = jp2->display_resolution[0] > 0 &&
-							jp2->display_resolution[1] > 0;
+		bool storeDisplay = jp2->display_resolution[0] > 0 &&
+			jp2->display_resolution[1] > 0;
 
-	if (storeCapture || storeDisplay) {
-		l_writers[l_nb_pass++].handler = opj_jp2_write_res;
+		if (storeCapture || storeDisplay)
+			l_writers[l_nb_pass++].handler = opj_jp2_write_res;
 	}
 
     /* write box header */
@@ -2212,9 +2213,12 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     jp2->precedence = 0;	/* PRECEDENCE */
     jp2->approx = 0;		/* APPROX */
 
-	for (int i = 0; i < 2; ++i) {
-		jp2->capture_resolution[i] = parameters->capture_resolution[i];
-		jp2->display_resolution[i] = parameters->display_resolution[i];
+	if (parameters->write_resolution) {
+		jp2->write_resolution = true;
+		for (int i = 0; i < 2; ++i) {
+			jp2->capture_resolution[i] = parameters->capture_resolution[i];
+			jp2->display_resolution[i] = parameters->display_resolution[i];
+		}
 	}
 
     return true;

@@ -475,6 +475,7 @@ typedef struct opj_cparameters {
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
 
+	bool write_resolution;
 	double capture_resolution[2];
 	double display_resolution[2];
 

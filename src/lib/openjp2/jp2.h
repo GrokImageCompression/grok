@@ -205,6 +205,7 @@ typedef struct opj_jp2 {
     opj_jp2_color_t color;
 
     bool ignore_pclr_cmap_cdef;
+	bool  write_resolution;
 	double capture_resolution[2];
 	double display_resolution[2];
 }
