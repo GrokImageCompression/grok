@@ -249,10 +249,6 @@ static void encode_help_display(void)
     fprintf(stdout,"    Divide packets of every tile into tile-parts.\n");
     fprintf(stdout,"    Division is made by grouping Resolutions (R), Layers (L)\n");
     fprintf(stdout,"    or Components (C).\n");
-#ifdef FIXME_INDEX
-    fprintf(stdout,"-x  <index file>\n");
-    fprintf(stdout,"    Create an index file.\n");
-#endif /*FIXME_INDEX*/
     fprintf(stdout,"-ROI c=<component index>,U=<upshifting value>\n");
     fprintf(stdout,"    Quantization indices upshifted for a component. \n");
     fprintf(stdout,"    Warning: This option does not implement the usual ROI (Region of Interest).\n");
@@ -285,6 +281,13 @@ static void encode_help_display(void)
     fprintf(stdout,"	Frames per second not required. Default value is 24fps.\n");
     fprintf(stdout,"-C <comment>\n");
     fprintf(stdout,"    Add <comment> in the comment marker segment.\n");
+	fprintf(stdout, "-Q <capture resolution X,capture resolution Y>\n");
+	fprintf(stdout, "    Capture resolution in double precision.\n");
+	fprintf(stdout, "    These values will override the resolution stored in the input image,\n");
+	fprintf(stdout, "    unless the special values <0,0> are passed in, in which case \n");
+	fprintf(stdout, "    the image resolution will be used.\n");
+	fprintf(stdout, "-Q <display resolution X,display resolution Y>\n");
+	fprintf(stdout, "    Display resolution in double precision.\n");
     fprintf(stdout,"\n");
 }
 
@@ -442,8 +445,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         {"mct",REQ_ARG, NULL, 'Y'},
 		{ "PluginPath", REQ_ARG, NULL, 'g' },
 		{ "NumThreads", REQ_ARG, NULL, 'H' },
-		{ "CaptureRes", REQ_ARG, NULL, 'x' }
-
+		{ "CaptureRes", REQ_ARG, NULL, 'Q' },
+		{ "DispayRes", REQ_ARG, NULL,  'D' },
     };
 
     /* parse the command line */
@@ -1051,12 +1054,21 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			sscanf(opj_optarg, "%u", &(parameters->numThreads));
 			break;
 
-		case 'x':
+		case 'Q':
 			if (sscanf(opj_optarg, "%lf,%lf", parameters->capture_resolution,
 											parameters->capture_resolution+1) != 2) {
-				fprintf(stderr, "-x 'capture resolution' argument error !! [-x X0,Y0]");
+				fprintf(stderr, "-Q 'capture resolution' argument error !! [-Q X0,Y0]");
 				return 1;
 			}
+			parameters->write_resolution = true;
+			break;
+		case 'D':
+			if (sscanf(opj_optarg, "%lf,%lf", parameters->display_resolution,
+				parameters->display_resolution + 1) != 2) {
+				fprintf(stderr, "-D 'display resolution' argument error !! [-D X0,Y0]");
+				return 1;
+			}
+			parameters->write_resolution = true;
 			break;
 
         /* ------------------------------------------------------ */
