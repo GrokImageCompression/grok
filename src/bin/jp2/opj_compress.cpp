@@ -1060,7 +1060,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 				fprintf(stderr, "-Q 'capture resolution' argument error !! [-Q X0,Y0]");
 				return 1;
 			}
-			parameters->write_resolution = true;
+			parameters->write_capture_resolution = true;
 			break;
 		case 'D':
 			if (sscanf(opj_optarg, "%lf,%lf", parameters->display_resolution,
@@ -1068,7 +1068,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 				fprintf(stderr, "-D 'display resolution' argument error !! [-D X0,Y0]");
 				return 1;
 			}
-			parameters->write_resolution = true;
+			parameters->write_display_resolution = true;
 			break;
 
         /* ------------------------------------------------------ */

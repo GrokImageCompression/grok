@@ -1845,7 +1845,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
         l_writers[l_nb_pass++].handler = opj_jp2_write_cdef;
     }
 
-	if (jp2->write_resolution) {
+	if (jp2->write_display_resolution || jp2->write_capture_resolution) {
 		bool storeCapture = jp2->capture_resolution[0] > 0 &&
 			jp2->capture_resolution[1] > 0;
 
@@ -2213,10 +2213,16 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     jp2->precedence = 0;	/* PRECEDENCE */
     jp2->approx = 0;		/* APPROX */
 
-	if (parameters->write_resolution) {
-		jp2->write_resolution = true;
+	if (parameters->write_capture_resolution) {
+		jp2->write_capture_resolution = true;
 		for (int i = 0; i < 2; ++i) {
 			jp2->capture_resolution[i] = parameters->capture_resolution[i];
+		}
+	}
+
+	if (parameters->write_display_resolution) {
+		jp2->write_display_resolution = true;
+		for (int i = 0; i < 2; ++i) {
 			jp2->display_resolution[i] = parameters->display_resolution[i];
 		}
 	}

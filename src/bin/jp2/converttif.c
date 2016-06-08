@@ -1244,6 +1244,33 @@ static void tif_16uto32s(const uint16_t* pSrc, int32_t* pDst, size_t length)
     }
 }
 
+static void set_resolution(double* res, float resx, float resy, short resUnit) {
+	// resolution is in pels / metre
+	res[0] = resx;
+	res[1] = resy;
+
+	switch (resUnit) {
+		// no known units. Used for images with non-square pixels
+	case 1:
+		break;
+		// inches  
+	case 2:
+		//2.54 cm / inch
+		res[0] *= 100 / 2.54;
+		res[1] *= 100 / 2.54;
+		break;
+		// cm
+	case 3:
+		res[0] *= 100;
+		res[1] *= 100;
+		break;
+	default:
+		res[0] = 0;
+		res[1] = 0;
+		break;
+	}
+}
+
 /*
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
  * CINEMA                 : 12 bit precision
@@ -1261,10 +1288,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     opj_image_cmptparm_t cmptparm[4]; /* RGBA */
     opj_image_t *image = NULL;
     int has_alpha = 0;
-	unsigned short tiBps, tiPhoto, tiSf, tiSpp, tiPC;
-	short tiResUnit;
-	float tiXRes, tiYRes;
-    unsigned int tiWidth, tiHeight;
+	unsigned short tiBps=0, tiPhoto=0, tiSf=0, tiSpp=0, tiPC=0;
+	short tiResUnit=0;
+	float tiXRes=0, tiYRes=0;
+    unsigned int tiWidth=0, tiHeight=0;
     bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
     convert_XXx32s_C1R cvtTifTo32s = NULL;
     convert_32s_CXPX cvtCxToPx = NULL;
@@ -1290,33 +1317,29 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
     TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
-	TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
-	TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
 
-	// capture resolution is in pels / metre
-	parameters->capture_resolution[0] = tiXRes;
-	parameters->capture_resolution[1] = tiYRes;
+	// if write_capture_resolution is enabled but capture_resolution equals 0,0, then
+	// use image resolution if present
+	if (parameters->write_capture_resolution &&
+		parameters->capture_resolution[0] == 0 &&
+			parameters->capture_resolution[1] == 0) {
 
-	switch (tiResUnit) {
-	// no known units. Used for images with non-square pixels
-	case 1:
-		break;
-	// inches  
-	case 2:
-		//2.54 cm / inch
-		parameters->capture_resolution[0] *= 100/2.54;
-		parameters->capture_resolution[1] *= 100/2.54;
-		break;
-	// cm
-	case 3:
-		parameters->capture_resolution[0] *= 100;
-		parameters->capture_resolution[1] *= 100;
-		break;
-	default:
-		parameters->capture_resolution[0] = 0;
-		parameters->capture_resolution[1] = 0;
-		break;
+		TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
+		TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
+		TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
+		set_resolution(parameters->capture_resolution, tiXRes, tiYRes, tiResUnit);
+	}
+
+	// if write_display_resolution is enabled but display_resolution equals 0,0, then
+	// use image resolution if present
+	if (parameters->write_display_resolution &&
+		parameters->display_resolution[0] == 0 &&
+		parameters->display_resolution[1] == 0) {
+
+		TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
+		TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
+		TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
+		set_resolution(parameters->display_resolution, tiXRes, tiYRes, tiResUnit);
 	}
 
     w= (int)tiWidth;
