@@ -282,12 +282,12 @@ static void encode_help_display(void)
     fprintf(stdout,"-C <comment>\n");
     fprintf(stdout,"    Add <comment> in the comment marker segment.\n");
 	fprintf(stdout, "-Q <capture resolution X,capture resolution Y>\n");
-	fprintf(stdout, "    Capture resolution in double precision.\n");
+	fprintf(stdout, "    Capture resolution in pixels/metre, in double precision.\n");
 	fprintf(stdout, "    These values will override the resolution stored in the input image, if present \n");
 	fprintf(stdout, "    unless the special values <0,0> are passed in, in which case \n");
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "-D <display resolution X,display resolution Y>\n");
-	fprintf(stdout, "    Display resolution in double precision.\n");
+	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
     fprintf(stdout,"\n");
 }
 
