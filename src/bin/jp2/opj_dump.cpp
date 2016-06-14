@@ -247,7 +247,6 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
 
 /* -------------------------------------------------------------------------- */
 #define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-#define JP2_MAGIC "\x0d\x0a\x87\x0a"
 /* position 45: "\xff\x52" */
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 
@@ -277,7 +276,7 @@ static int infile_format(const char *fname)
     if (ext_format == JPT_CFMT)
         return JPT_CFMT;
 
-    if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 || memcmp(buf, JP2_MAGIC, 4) == 0) {
+    if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
         magic_format = JP2_CFMT;
         magic_s = ".jp2";
     } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
