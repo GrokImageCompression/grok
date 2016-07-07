@@ -218,7 +218,7 @@ Decode a symbol
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
-int32_t opj_mqc_decode(opj_mqc_t * const mqc);
+uint8_t opj_mqc_decode(opj_mqc_t * const mqc);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

@@ -413,7 +413,8 @@ static inline void opj_t1_dec_sigpass_step_mqc(
     int32_t orient,
     int32_t oneplushalf)
 {
-    int32_t v, flag;
+    int32_t flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;       
 
@@ -438,7 +439,8 @@ static inline void opj_t1_dec_sigpass_step_mqc_vsc(
     int32_t oneplushalf,
     int32_t vsc)
 {
-    int32_t v, flag;
+    int32_t flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;     
 
@@ -643,7 +645,8 @@ static inline void opj_t1_dec_refpass_step_mqc(
     int32_t poshalf,
     int32_t neghalf)
 {
-    int32_t v, t, flag;
+    int32_t t, flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;       
 
@@ -665,7 +668,8 @@ static inline void opj_t1_dec_refpass_step_mqc_vsc(
     int32_t neghalf,
     int32_t vsc)
 {
-    int32_t v, t, flag;
+    int32_t t, flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;       
 
@@ -849,7 +853,8 @@ static void opj_t1_dec_clnpass_step_partial(
     int32_t orient,
     int32_t oneplushalf)
 {
-    int32_t v, flag;
+    int32_t flag;
+	uint8_t v;
     opj_mqc_t *mqc = t1->mqc;	
 
     OPJ_ARG_NOT_USED(orient);
@@ -869,7 +874,8 @@ static void opj_t1_dec_clnpass_step(
     int32_t orient,
     int32_t oneplushalf)
 {
-    int32_t v, flag;
+    int32_t flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;	
 
@@ -895,7 +901,8 @@ static void opj_t1_dec_clnpass_step_vsc(
     int32_t partial,
     int32_t vsc)
 {
-    int32_t v, flag;
+    int32_t flag;
+	uint8_t v;
 
     opj_mqc_t *mqc = t1->mqc;	
 
@@ -988,7 +995,8 @@ static void opj_t1_dec_clnpass(
     int32_t orient,
     int32_t cblksty)
 {
-    int32_t one, half, oneplushalf, agg, runlen, vsc;
+    int32_t one, half, oneplushalf, agg, vsc;
+	uint8_t runlen;
     uint32_t i, j, k;
     int32_t segsym = cblksty & J2K_CCP_CBLKSTY_SEGSYM;
 
@@ -1093,7 +1101,7 @@ static void opj_t1_dec_clnpass(
     }
 
     if (segsym) {
-        int32_t v = 0;
+        uint8_t v = 0;
         opj_mqc_setcurctx(mqc, T1_CTXNO_UNI);
         v = opj_mqc_decode(mqc);
         v = (v << 1) | opj_mqc_decode(mqc);
