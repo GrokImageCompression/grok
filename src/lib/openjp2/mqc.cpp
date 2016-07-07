@@ -93,13 +93,13 @@ FIXME DOC
 @param mqc MQC handle
 @return
 */
-static inline int32_t opj_mqc_mpsexchange(opj_mqc_t *const mqc);
+static inline uint8_t opj_mqc_mpsexchange(opj_mqc_t *const mqc);
 /**
 FIXME DOC
 @param mqc MQC handle
 @return
 */
-static inline int32_t opj_mqc_lpsexchange(opj_mqc_t *const mqc);
+static inline uint8_t opj_mqc_lpsexchange(opj_mqc_t *const mqc);
 /**
 Input a byte
 @param mqc MQC handle
@@ -305,33 +305,31 @@ static void opj_mqc_setbits(opj_mqc_t *mqc)
     }
 }
 
-static inline int32_t opj_mqc_mpsexchange(opj_mqc_t *const mqc)
+static inline uint8_t opj_mqc_mpsexchange(opj_mqc_t *const mqc)
 {
-    int32_t d;
+	uint8_t d;
     if (mqc->a < (*mqc->curctx)->qeval) {
-        d = (int32_t)(1 - (*mqc->curctx)->mps);
+        d = (uint8_t)(1 - (*mqc->curctx)->mps);
         *mqc->curctx = (*mqc->curctx)->nlps;
     } else {
-        d = (int32_t)(*mqc->curctx)->mps;
+        d = (*mqc->curctx)->mps;
         *mqc->curctx = (*mqc->curctx)->nmps;
     }
-
     return d;
 }
 
-static inline int32_t opj_mqc_lpsexchange(opj_mqc_t *const mqc)
+static inline uint8_t opj_mqc_lpsexchange(opj_mqc_t *const mqc)
 {
-    int32_t d;
+	uint8_t d;
     if (mqc->a < (*mqc->curctx)->qeval) {
         mqc->a = (*mqc->curctx)->qeval;
-        d = (int32_t)(*mqc->curctx)->mps;
+        d = (*mqc->curctx)->mps;
         *mqc->curctx = (*mqc->curctx)->nmps;
     } else {
         mqc->a = (*mqc->curctx)->qeval;
-        d = (int32_t)(1 - (*mqc->curctx)->mps);
+        d = (uint8_t)(1 - (*mqc->curctx)->mps);
         *mqc->curctx = (*mqc->curctx)->nlps;
     }
-
     return d;
 }
 
@@ -575,9 +573,9 @@ bool opj_mqc_init_dec(opj_mqc_t *mqc, uint8_t *bp, uint32_t len)
     return true;
 }
 
-int32_t opj_mqc_decode(opj_mqc_t *const mqc)
+uint8_t opj_mqc_decode(opj_mqc_t *const mqc)
 {
-    int32_t d;
+	uint8_t d;
     mqc->a -= (*mqc->curctx)->qeval;
     if ((mqc->c >> 16) < (*mqc->curctx)->qeval) {
         d = opj_mqc_lpsexchange(mqc);
@@ -588,7 +586,7 @@ int32_t opj_mqc_decode(opj_mqc_t *const mqc)
             d = opj_mqc_mpsexchange(mqc);
             opj_mqc_renormd(mqc);
         } else {
-            d = (int32_t)(*mqc->curctx)->mps;
+            d = (*mqc->curctx)->mps;
         }
     }
 
