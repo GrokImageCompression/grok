@@ -47,5 +47,6 @@ void                   minpf_cleanup_plugin_manager(void);
 
 int32_t minpf_load_from_dir(const char* dir, minpf_invoke_service_func func);
 int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func);
+const char* minpf_get_dynamic_library_extension(void);
 
 

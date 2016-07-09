@@ -165,9 +165,8 @@
 #define T1_LUT_SGN_S (1U << 6)
 #define T1_LUT_SIG_S (1U << 7)
 
+// sign bit is stored at this location in 32 bit coefficient
 #define T1_DATA_SIGN_BIT_INDEX 31
-#define T1_DATA_SIGN_BIT (1U << T1_DATA_SIGN_BIT_INDEX)
-
 
 typedef uint32_t opj_flag_opt_t;
 

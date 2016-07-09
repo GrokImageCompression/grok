@@ -23,14 +23,8 @@
 
 #ifdef _WIN32
 #include "windirent.h"
-static const char* dynamic_library_extension = "dll";
 #else
 #include <dirent.h>
-#if defined(__APPLE__)
-static const char* dynamic_library_extension = "dylib";
-#elif defined(__linux)
-static const char* dynamic_library_extension = "so";
-#endif
 #endif /* _WIN32 */
 
 minpf_plugin_manager* managerInstance;
@@ -84,6 +78,18 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
 
     return (error==MAP_OK) ? 0 : -1;
 
+}
+
+const char* minpf_get_dynamic_library_extension(void) {
+#ifdef _WIN32
+	return "dll";
+#else
+#if defined(__APPLE__)
+	return "dylib";
+#elif defined(__linux)
+	return so";
+#endif
+#endif /* _WIN32 */
 }
 
 void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
@@ -221,7 +227,7 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
             continue;
 
         //ignore files with incorrect extensions
-        if (  strcmp(get_filename_ext(content->d_name), dynamic_library_extension) != 0)
+        if (  strcmp(get_filename_ext(content->d_name), minpf_get_dynamic_library_extension()) != 0)
             continue;
         opj_strcpy_s(libraryPath,sizeof(libraryPath), directory_path);
         strcat(libraryPath, MINPF_FILE_SEPARATOR);
