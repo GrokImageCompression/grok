@@ -1066,25 +1066,25 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
 Plugin interface implementation
 ***********************************************************************/
 
-
+static const char* get_path_separator() {
 #ifdef _WIN32
-const char* path_separator = "\\";
+	return "\\";
 #else
-const char* path_separator = "/";
+	return "/";
 #endif
+}
+
 
 bool pluginInitialized = false;
 bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 {
 	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
 	if (rc) {
-
-		std::string localPlugin = (std::string(".") + path_separator);
-#ifdef _WIN32
-		localPlugin += std::string(OPENJPEG_PLUGIN_NAME) + ".dll";
-#else
-		localPlugin += "lib" + std::string(OPENJPEG_PLUGIN_NAME) + ".so";
+		std::string localPlugin = (std::string(".") + get_path_separator());
+#if !defined(_WIN32)
+		localPlugin += "lib";
 #endif
+		localPlugin += std::string(OPENJPEG_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
 		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
 
 	}
