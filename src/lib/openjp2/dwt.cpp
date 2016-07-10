@@ -64,7 +64,7 @@
 #include "T1Decoder.h"
 #include <atomic>
 
-std::vector<std::thread> dwtWorkers;
+
 
 
 /** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
@@ -615,6 +615,7 @@ static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec,
 	if (numres == 1U) {
 		return true;
 	}
+	std::vector<std::thread> dwtWorkers;
 	int rc = 0;
 	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
@@ -694,8 +695,6 @@ cleanup:
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-	dwtWorkers.clear();
-
     return rc == 0 ? true : false;
 }
 
@@ -934,7 +933,7 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 	auto tileBuf = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
-
+	std::vector<std::thread> dwtWorkers;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		dwtWorkers.push_back(std::thread([ tilec,
 											numres,
@@ -1054,7 +1053,5 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-	dwtWorkers.clear();
-
     return rc == 0 ? true : false;
 }

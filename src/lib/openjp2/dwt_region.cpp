@@ -60,8 +60,6 @@
 #include "T1Decoder.h"
 #include <atomic>
 
-extern std::vector<std::thread> dwtWorkers;
-
 /*
 
 =================================================================================
@@ -327,7 +325,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
-
+	std::vector<std::thread> dwtWorkers;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		dwtWorkers.push_back(std::thread([tilec,
 			numres,
@@ -436,7 +434,6 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-	dwtWorkers.clear();
     return true;
 }
 
@@ -670,7 +667,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
-
+	std::vector<std::thread> dwtWorkers;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		dwtWorkers.push_back(std::thread([tilec,
 			numres,
@@ -689,9 +686,6 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-	dwtWorkers.clear();
-
-
 	opj_dwt97_t buffer_h;
 	opj_dwt97_t buffer_v;
 
