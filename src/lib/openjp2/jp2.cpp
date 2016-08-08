@@ -457,7 +457,7 @@ static const opj_jp2_header_handler_t jp2_img_header [] = {
 static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
                                         uint8_t * p_data,
                                         uint32_t * p_number_bytes_read,
-                                        uint32_t p_box_max_size,
+                                        int64_t p_box_max_size,
                                         opj_event_mgr_t * p_manager );
 
 /**
@@ -2760,15 +2760,16 @@ static bool opj_jp2_read_jp2h(  opj_jp2_t *jp2,
 
     jp2->jp2_img_state = JP2_IMG_STATE_NONE;
 
+	int64_t header_size = p_header_size;
     /* iterate while remaining data */
-    while (p_header_size > 0) {
+    while (header_size > 0) {
 
-        if (! opj_jp2_read_boxhdr_char(&box,p_header_data,&l_box_size,p_header_size, p_manager)) {
+        if (! opj_jp2_read_boxhdr_char(&box,p_header_data,&l_box_size,header_size, p_manager)) {
             opj_event_msg(p_manager, EVT_ERROR, "Stream error while reading JP2 Header box\n");
             return false;
         }
 
-        if (box.length > p_header_size) {
+        if (box.length > header_size) {
             opj_event_msg(p_manager, EVT_ERROR, "Stream error while reading JP2 Header box: box length is inconsistent.\n");
             return false;
         }
@@ -2790,7 +2791,11 @@ static bool opj_jp2_read_jp2h(  opj_jp2_t *jp2,
         }
 
         p_header_data += l_current_data_size;
-        p_header_size -= box.length;
+        header_size -= box.length;
+		if (header_size < 0) {
+			opj_event_msg(p_manager, EVT_ERROR, "Error reading JP2 header box\n");
+			return false;
+		}
     }
 
     if (l_has_ihdr == 0) {
@@ -2806,7 +2811,7 @@ static bool opj_jp2_read_jp2h(  opj_jp2_t *jp2,
 static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
                                         uint8_t * p_data,
                                         uint32_t * p_number_bytes_read,
-                                        uint32_t p_box_max_size,
+                                        int64_t p_box_max_size,
                                         opj_event_mgr_t * p_manager
                                     )
 {

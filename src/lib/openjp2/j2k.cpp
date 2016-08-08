@@ -3331,21 +3331,21 @@ static bool opj_j2k_read_plm (  opj_j2k_t *p_j2k,
     assert(p_j2k != 00);
     assert(p_manager != 00);
 	uint32_t l_Zplm, l_Nplm, l_tmp, l_packet_len = 0, i;
-
-    if (p_header_size < 1) {
+	int64_t header_size = p_header_size;
+    if (header_size < 1) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
         return false;
     }
 
     opj_read_bytes(p_header_data,&l_Zplm,1);                                        // Zplm
     ++p_header_data;
-    --p_header_size;
+    --header_size;
 
-    while  (p_header_size > 0)   {
+    while  (header_size > 0)   {
         opj_read_bytes(p_header_data,&l_Nplm,1);                                // Nplm
         ++p_header_data;
-        p_header_size -= (1+l_Nplm);
-        if (p_header_size < 0)     {
+		header_size -= (1+l_Nplm);
+        if (header_size < 0)     {
              opj_event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
              return false;
         }
@@ -3357,8 +3357,8 @@ static bool opj_j2k_read_plm (  opj_j2k_t *p_j2k,
             if  (l_tmp & 0x80)        {
                 l_packet_len <<= 7;
             }  else   {
-					// store packet length and proceed to next packet
-                    l_packet_len = 0;
+				// store packet length and proceed to next packet
+                l_packet_len = 0;
             }
         }
         if (l_packet_len != 0)      {
