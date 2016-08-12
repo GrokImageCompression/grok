@@ -147,7 +147,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void)
 {
-    fprintf(stdout,"\nThis is the opj_decompress utility from the OpenJPEG project.\n"
+    fprintf(stdout,"\nThis is the opj_decompress utility from the Grok project.\n"
             "It decompresses JPEG 2000 codestreams to various image formats.\n"
             "It has been compiled against openjp2 library v%s.\n\n",opj_version());
 

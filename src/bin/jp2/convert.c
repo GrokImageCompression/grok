@@ -2050,7 +2050,7 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
             }
         }
     } else {
-        fprintf(stderr,"OpenJPEG cannot encode raw components with bit depth higher than 16 bits.\n");
+        fprintf(stderr,"Grok cannot encode raw components with bit depth higher than 16 bits.\n");
         opj_image_destroy(image);
         fclose(f);
         return NULL;
