@@ -117,7 +117,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void)
 {
-    fprintf(stdout,"\nThis is the opj_dump utility from the OpenJPEG project.\n"
+    fprintf(stdout,"\nThis is the opj_dump utility from the Grok project.\n"
             "It dumps JPEG 2000 codestream info to stdout or a given file.\n"
             "It has been compiled against openjp2 library v%s.\n\n",opj_version());
 

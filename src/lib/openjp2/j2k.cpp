@@ -6000,7 +6000,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         strcpy(cp->comment, parameters->cp_comment);
     } else {
         /* Create default comment for codestream */
-        const char comment[] = "Created by OpenJPEG version ";
+        const char comment[] = "Created by Grok     version ";
         const size_t clen = strlen(comment);
         const char *version = opj_version();
 

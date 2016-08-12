@@ -1,4 +1,4 @@
-# Main CMakeLists.txt to build the OpenJPEG project using CMake (www.cmake.org)
+# Main CMakeLists.txt to build the Grok project using CMake (www.cmake.org)
 # Written by Mathieu Malaterre
 
 # This CMake project will by default create a library called openjpeg
@@ -170,8 +170,8 @@ configure_file(
   )
 
 #-----------------------------------------------------------------------------
-# OpenJPEG build configuration options.
-option(BUILD_SHARED_LIBS "Build OpenJPEG shared library and link executables against it." ON)
+# Grok build configuration options.
+option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
 set (EXECUTABLE_OUTPUT_PATH ${OPENJPEG_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
 set (LIBRARY_OUTPUT_PATH ${OPENJPEG_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
@@ -282,8 +282,7 @@ if(BUILD_TESTING)
     include(CTest)
 
     # Search openjpeg data needed for the tests
-    # They could be found via git on the OpenJPEG GitHub code project
-    # git clone https://github.com/uclouvain/openjpeg-data.git
+    # They could be found via git on the Grok GitHub code project
     find_path(OPJ_DATA_ROOT README-OPJ-Data
       PATHS $ENV{OPJ_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../data
       NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH

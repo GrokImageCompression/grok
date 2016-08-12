@@ -1036,7 +1036,7 @@ typedef struct opj_jp2_index {
 /* Get the version of the openjpeg library*/
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
 
-/* Initialize OpenJPEG library */
+/* Initialize Grok library */
 OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path);
 
 OPJ_API void OPJ_CALLCONV opj_cleanup();
