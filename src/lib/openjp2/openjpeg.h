@@ -1763,11 +1763,11 @@ typedef struct opj_decompress_params {
     uint32_t     nb_precision;
 
     /* force output colorspace to RGB */
-    int force_rgb;
+    bool force_rgb;
     /* upsample components according to their dx/dy values */
-    int upsample;
+    bool upsample;
     /* split output components to different files */
-    int split_pnm;
+    bool split_pnm;
 } opj_decompress_parameters;
 
 typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,

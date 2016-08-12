@@ -96,6 +96,14 @@ extern "C" {
 
 }
 
+#define TCLAP_NAMESTARTSTRING "-"
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include "tclap/CmdLine.h"
+
+using namespace TCLAP;
+using namespace std;
 
 typedef struct dircnt {
     /** Buffer for holding images read from Directory*/
@@ -443,8 +451,6 @@ static int infile_format(const char *fname)
     if (l_nb_read != 12)
         return -1;
 
-
-
     ext_format = get_file_format(fname);
 
     if (ext_format == JPT_CFMT)
@@ -484,238 +490,203 @@ int parse_cmdline_decoder(int argc,
 							img_fol_t *out_fol,
 							char* plugin_path)
 {
-    /* parse the command line */
-    int totlen, c;
-    opj_option_t long_option[]= {
-        {"ImgDir",    REQ_ARG, NULL,'y'},
-		{"OutDir", REQ_ARG, NULL, 'a' },
-        {"force-rgb", NO_ARG,  NULL, 1},
-        {"upsample",  NO_ARG,  NULL, 1},
-        {"split-pnm", NO_ARG,  NULL, 1},
-		{ "PluginPath", REQ_ARG, NULL, 'g' },
-		{ "NumThreads", REQ_ARG, NULL, 'H' },
-		{ "OutFor",    REQ_ARG, NULL,'O' }
-    };
+	try {
 
-	const char optlist[] = "y:a:g:i:o:O:r:l:x:d:t:p:h:H";
-                       
+		// Define the command line object.
+		CmdLine cmd("Command description message", ' ', "0.9");
 
-    long_option[2].flag = &(parameters->force_rgb);
-    long_option[3].flag = &(parameters->upsample);
-    long_option[4].flag = &(parameters->split_pnm);
-    totlen=sizeof(long_option);
-    opj_reset_options_reading();
-    img_fol->set_out_format = 0;
-    do {
-        c = opj_getopt_long(argc, argv,optlist,long_option,totlen);
-        if (c == -1)
-            break;
-        switch (c) {
-        case 0: /* long opt with flag */
-            break;
-        case 'i': {		/* input file */
-            char *infile = opj_optarg;
-            parameters->decod_format = infile_format(infile);
-            switch(parameters->decod_format) {
-            case J2K_CFMT:
-                break;
-            case JP2_CFMT:
-                break;
-            case JPT_CFMT:
-                break;
-            case -2:
-                fprintf(stderr,
-                        "!! infile cannot be read: %s !!\n\n",
-                        infile);
-                return 1;
-            default:
-                fprintf(stderr,
-                        "[ERROR] Unknown input file format: %s \n"
-                        "        Known file formats are *.j2k, *.jp2, *.jpc or *.jpt\n",
-                        infile);
-                return 1;
-            }
-            if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
-                fprintf(stderr, "[ERROR] Path is too long\n");
-                return 1;
-            }
-        }
-        break;
+		ValueArg<string> imgDirArg("y", "ImgDir", "Image Directory", false, "", "string",cmd);
+		ValueArg<string> outDirArg("a", "OutDir", "Output Directory", false, "", "string",cmd);
+		ValueArg<string> outForArg("O", "OutFor", "Output Format", false, "", "string",cmd);
 
-        /* ----------------------------------------------------- */
+		SwitchArg forceRgbArg("", "force-rgb", "Force RGB", false);
+		cmd.add(forceRgbArg);
 
-        case 'o': {		/* output file */
-            char *outfile = opj_optarg;
-            parameters->cod_format = get_file_format(outfile);
-            switch(parameters->cod_format) {
-            case PGX_DFMT:
-                break;
-            case PXM_DFMT:
-                break;
-            case BMP_DFMT:
-                break;
-            case TIF_DFMT:
-                break;
-            case RAW_DFMT:
-                break;
-            case RAWL_DFMT:
-                break;
-            case TGA_DFMT:
-                break;
-            case PNG_DFMT:
-                break;
-            default:
-                fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
-                return 1;
-            }
-            if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
-                fprintf(stderr, "[ERROR] Path is too long\n");
-                return 1;
-            }
-        }
-        break;
+		SwitchArg upsampleArg("", "upsample", "Upsample", false);
+		cmd.add(upsampleArg);
 
-        /* ----------------------------------------------------- */
+		SwitchArg splitPnmArg("", "split-pnm", "Split PNM", false);
+		cmd.add(splitPnmArg);
 
-        case 'O': {		/* output format */
-            char outformat[50];
-            char *of = opj_optarg;
-            sprintf(outformat,".%s",of);
-            img_fol->set_out_format = 1;
-            parameters->cod_format = get_file_format(outformat);
-            switch(parameters->cod_format) {
-            case PGX_DFMT:
-                img_fol->out_format = "pgx";
-                break;
-            case PXM_DFMT:
-                img_fol->out_format = "ppm";
-                break;
-            case BMP_DFMT:
-                img_fol->out_format = "bmp";
-                break;
-            case TIF_DFMT:
-                img_fol->out_format = "tif";
-                break;
-            case RAW_DFMT:
-                img_fol->out_format = "raw";
-                break;
-            case RAWL_DFMT:
-                img_fol->out_format = "rawl";
-                break;
-            case TGA_DFMT:
-                img_fol->out_format = "raw";
-                break;
-            case PNG_DFMT:
-                img_fol->out_format = "png";
-                break;
-            default:
-                fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outformat);
-                return 1;
-                break;
-            }
-        }
-        break;
+		ValueArg<string> pluginPathArg("g", "PluginPath", "Plugin Path", false, "", "string",cmd);
+		ValueArg<uint32_t> numThreadsArg("H", "NumThreads", "Number of Threads", false, 8, "unsigned integer",cmd);
+		ValueArg<string> inputFileArg("i", "InputFile", "Input File", false, "", "string",cmd);
+		ValueArg<string> outputFileArg("o", "OutputFile", "Output File", false, "", "string",cmd);
+		ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce", false, 0, "unsigned integer",cmd);
+		ValueArg<uint32_t> layerArg("l", "Layer", "Layer", false, 0, "unsigned integer",cmd);
+		ValueArg<uint32_t> tileArg("t", "TileIndex", "Input Tile Index", false, 0, "unsigned integer", cmd);
+		ValueArg<string> precisionArg("p", "Precision", "Force Precision", false, "", "string", cmd);
+		ValueArg<string> decodeROIArg("d", "DecodeROI", "Decode ROI", false, "", "string", cmd);
 
-        /* ----------------------------------------------------- */
+		cmd.parse(argc, argv);
 
-
-        case 'r': {	/* reduce option */
-            sscanf(opj_optarg, "%u", &(parameters->core.cp_reduce));
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-
-
-        case 'l': {	/* layering option */
-            sscanf(opj_optarg, "%u", &(parameters->core.cp_layer));
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-
-        case 'h': 			/* display an help description */
-            decode_help_display();
-            return 1;
-
-        /* ----------------------------------------------------- */
-
-        case 'y': {		/* Image Directory path */
-            img_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
-            strcpy(img_fol->imgdirpath,opj_optarg);
-            img_fol->set_imgdir=1;
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-
-        case 'd': {   		/* Input decode ROI */
-            size_t size_optarg = (size_t)strlen(opj_optarg) + 1U;
-            char *ROI_values = (char*) malloc(size_optarg);
-            if (ROI_values == NULL) {
-                fprintf(stderr, "[ERROR] Couldn't allocate memory\n");
-                return 1;
-            }
-            ROI_values[0] = '\0';
-            memcpy(ROI_values, opj_optarg, size_optarg);
-            /*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
-			if (parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1) != EXIT_SUCCESS) {
-				fprintf(stdout, "[WARNING] Specified image decode region not valid: ignoring \n");
+		if (forceRgbArg.isSet()) {
+			parameters->force_rgb = true;
+		}
+		if (upsampleArg.isSet()) {
+			parameters->upsample = true;
+		}
+		if (splitPnmArg.isSet()) {
+			parameters->split_pnm = false;
+		}
+		// process
+		if (inputFileArg.isSet()) {
+			const char *infile = inputFileArg.getValue().c_str();
+			parameters->decod_format = infile_format(infile);
+			switch (parameters->decod_format) {
+			case J2K_CFMT:
+				break;
+			case JP2_CFMT:
+				break;
+			case JPT_CFMT:
+				break;
+			case -2:
+				fprintf(stderr,
+					"!! infile cannot be read: %s !!\n\n",
+					infile);
+				return 1;
+			default:
+				fprintf(stderr,
+					"[ERROR] Unknown input file format: %s \n"
+					"        Known file formats are *.j2k, *.jp2, *.jpc or *.jpt\n",
+					infile);
+				return 1;
 			}
-            free(ROI_values);
-        }
-        break;
+			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+				fprintf(stderr, "[ERROR] Path is too long\n");
+				return 1;
+			}
+		}
 
-        /* ----------------------------------------------------- */
+		if (outputFileArg.isSet()) {
+			const char *outfile = outputFileArg.getValue().c_str();
+			parameters->cod_format = get_file_format(outfile);
+			switch (parameters->cod_format) {
+			case PGX_DFMT:
+				break;
+			case PXM_DFMT:
+				break;
+			case BMP_DFMT:
+				break;
+			case TIF_DFMT:
+				break;
+			case RAW_DFMT:
+				break;
+			case RAWL_DFMT:
+				break;
+			case TGA_DFMT:
+				break;
+			case PNG_DFMT:
+				break;
+			default:
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
+				return 1;
+			}
+			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+				fprintf(stderr, "[ERROR] Path is too long\n");
+				return 1;
+			}
+		}
 
-        case 't': {   		/* Input tile index */
-            sscanf(opj_optarg, "%u", &parameters->tile_index);
-            parameters->nb_tile_to_decode = 1;
-        }
-        break;
+		if (outForArg.isSet()) {
+			char outformat[50];
+			const char *of = outForArg.getValue().c_str();
+			sprintf(outformat, ".%s", of);
+			img_fol->set_out_format = 1;
+			parameters->cod_format = get_file_format(outformat);
+			switch (parameters->cod_format) {
+			case PGX_DFMT:
+				img_fol->out_format = "pgx";
+				break;
+			case PXM_DFMT:
+				img_fol->out_format = "ppm";
+				break;
+			case BMP_DFMT:
+				img_fol->out_format = "bmp";
+				break;
+			case TIF_DFMT:
+				img_fol->out_format = "tif";
+				break;
+			case RAW_DFMT:
+				img_fol->out_format = "raw";
+				break;
+			case RAWL_DFMT:
+				img_fol->out_format = "rawl";
+				break;
+			case TGA_DFMT:
+				img_fol->out_format = "raw";
+				break;
+			case PNG_DFMT:
+				img_fol->out_format = "png";
+				break;
+			default:
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outformat);
+				return 1;
+			}
+		}
 
-        /* ----------------------------------------------------- */
+		if (imgDirArg.isSet()) {
+			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
+			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
+			img_fol->set_imgdir = 1;
+		}
 
-        case 'x': {		/* Creation of index file */
-            if (opj_strcpy_s(parameters->indexfilename, sizeof(parameters->indexfilename), opj_optarg) != 0) {
-                fprintf(stderr, "[ERROR] Path is too long\n");
-                return 1;
-            }
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-        case 'p': { /* Force precision */
-            if (!parse_precision(opj_optarg, parameters)) {
-                return 1;
-            }
-        }
-        break;
-		case 'a':			/* Output Directory path */
-		{
+		if (outDirArg.isSet()) {
 			if (out_fol) {
-				out_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
-				strcpy(out_fol->imgdirpath, opj_optarg);
+				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
+				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
 				out_fol->set_imgdir = 1;
 			}
 		}
-		break;
-		case 'g':
+
+		if (reduceArg.isSet()) {
+			parameters->core.cp_reduce = reduceArg.getValue();
+		}
+		if (layerArg.isSet()) {
+			parameters->core.cp_layer = layerArg.getValue();
+		}
+		if (tileArg.isSet()) {
+			parameters->tile_index = tileArg.getValue();
+			parameters->nb_tile_to_decode = 1;
+		}
+		if (precisionArg.isSet()) {
+			if (!parse_precision(precisionArg.getValue().c_str(), parameters))
+				return 1;
+		}
+		if (numThreadsArg.isSet()) {
+			parameters->core.numThreads = numThreadsArg.getValue();
+		}
+
+		if (decodeROIArg.isSet()) {
+			size_t size_optarg = (size_t)strlen(decodeROIArg.getValue().c_str()) + 1U;
+			char *ROI_values = (char*)malloc(size_optarg);
+			if (ROI_values == NULL) {
+				fprintf(stderr, "[ERROR] Couldn't allocate memory\n");
+				return 1;
+			}
+			ROI_values[0] = '\0';
+			memcpy(ROI_values, decodeROIArg.getValue().c_str(), size_optarg);
+			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
+			if (parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1) != EXIT_SUCCESS) {
+				fprintf(stdout, "[WARNING] Specified image decode region not valid: ignoring \n");
+			}
+			free(ROI_values);
+		}
+
+		if (pluginPathArg.isSet()) {
 			if (plugin_path)
-				strcpy(plugin_path, opj_optarg);
-			break;
-
-		case 'H': 
-			sscanf(opj_optarg, "%u", &(parameters->core.numThreads));
-		    break;
-
-        /* ----------------------------------------------------- */
-
-        default:
-            fprintf(stderr, "[WARNING] An invalid option has been ignored.\n");
-            break;
-        }
-    } while(c != -1);
+				strcpy(plugin_path, pluginPathArg.getValue().c_str());
+		}
+	}
+	catch (ArgException &e)  // catch any exceptions
+	{
+		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+	}
+#if 0
+    case 'h': 			/* display an help description */
+        decode_help_display();
+        return 1;
+#endif
 
     /* check for possible errors */
     if(img_fol->set_imgdir==1) {
@@ -741,7 +712,6 @@ int parse_cmdline_decoder(int argc,
             return 1;
         }
     }
-
     return 0;
 }
 
@@ -1089,12 +1059,6 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCod
 }
 #endif
 
-/* -------------------------------------------------------------------------- */
-/**
- * OPJ_DECOMPRESS MAIN
- */
-/* -------------------------------------------------------------------------- */
-
 img_fol_t img_fol;
 img_fol_t out_fol;
 
@@ -1181,7 +1145,6 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			goto cleanup;
 		}
 
-
 		/* It is just here to illustrate how to use the resolution after set parameters */
 		/*
 		if (!opj_set_decoded_resolution_factor(l_codec, 5)) {
@@ -1190,7 +1153,6 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 		}
 		*/
-
 
 		/* Get the decoded image */
 		if (!(opj_decode(l_codec, l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
@@ -1315,7 +1277,6 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			default:
 				break;
 			}
-
 		}
 	}
 
@@ -1516,13 +1477,10 @@ int main(int argc, char **argv)
         num_images=1;
     }
 
-
     t_cumulative = opj_clock();
 
     /*Decoding image one by one*/
     for (imageno = 0; imageno < num_images; imageno++) {
-
-
         fprintf(stderr, "\n");
 
         if (img_fol.set_imgdir == 1) {
@@ -1561,4 +1519,3 @@ int main(int argc, char **argv)
     }
     return failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
