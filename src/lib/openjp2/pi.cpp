@@ -1267,9 +1267,12 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
     l_current_pi = l_pi;
 
     /* memory allocation for include */
-    l_current_pi->include = (int16_t*) opj_calloc((l_tcp->numlayers +1) * l_step_l, sizeof(int16_t));
-    if
-    (!l_current_pi->include) {
+	l_current_pi->include = 00;
+	if (l_step_l && (l_tcp->numlayers < (UINT_MAX / l_step_l) - 1))		 {
+		l_current_pi->include = (int16_t*)opj_calloc((l_tcp->numlayers + 1) * l_step_l, sizeof(int16_t));
+	}
+
+    if (!l_current_pi->include) {
         opj_free(l_tmp_data);
         opj_free(l_tmp_ptr);
         opj_pi_destroy(l_pi, l_bound);
