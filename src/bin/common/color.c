@@ -90,6 +90,25 @@ static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uin
 }
 
 
+static bool all_components_equal_subsampling(opj_image_t *image) {
+	if (image->numcomps == 0)
+		return true;
+
+	uint32_t i;
+	for (i = 1U; i < image->numcomps; ++i) {
+		if (image->comps[0].dx != image->comps[i].dx) {
+			break;
+		}
+		if (image->comps[0].dy != image->comps[i].dy) {
+			break;
+		}
+	}
+	if (i != image->numcomps) {
+		fprintf(stderr, "Color conversion: all components must have the same subsampling.\n");
+		return false;
+	}
+	return true;
+}
 /*--------------------------------------------------------
 Matrix for sYCC, Amendment 1 to IEC 61966-2-1
 
@@ -418,6 +437,9 @@ void color_apply_icc_profile(opj_image_t *image)
     int prec, i, max, max_w, max_h;
     OPJ_COLOR_SPACE oldspace;
     opj_image_t* new_image = NULL;
+
+	if (!all_components_equal_subsampling(image))
+		return;
 
     in_prof =
         cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
@@ -749,25 +771,6 @@ void color_cielab_to_rgb(opj_image_t *image)
 
 #endif /* OPJ_HAVE_LIBLCMS2 */
 
-bool all_components_equal_subsampling(opj_image_t *image) {
-	if (image->numcomps == 0)
-		return true;
-
-	uint32_t i;
-	for (i = 1U; i < image->numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
-			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
-			break;
-		}
-	}
-	if (i != image->numcomps) {
-		fprintf(stderr, "Color conversion: all components must have the same subsampling.\n");
-		return false;
-	}
-	return true;
-}
 
 int color_cmyk_to_rgb(opj_image_t *image)
 {
