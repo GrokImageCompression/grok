@@ -90,6 +90,7 @@ extern "C" {
 #include "convert.h"
 #include "format_defs.h"
 #include "opj_string.h"
+#include "color.h"
 
 
 }
@@ -1410,6 +1411,16 @@ int main(int argc, char **argv) {
             fprintf(stderr, "Unable to load file: got no image\n");
             return 1;
         }
+
+		// apply ICC profile
+#if defined(OPJ_HAVE_LIBLCMS2)
+		if (image->icc_profile_buf) {
+			color_apply_icc_profile(image);
+			free(image->icc_profile_buf);
+			image->icc_profile_buf = NULL;
+			image->icc_profile_len = 0;
+		}
+#endif
 
         /* Decide if MCT should be used */
         if (parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
