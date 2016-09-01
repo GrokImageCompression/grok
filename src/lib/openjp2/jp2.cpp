@@ -2131,6 +2131,19 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     if(image->icc_profile_len) {
         jp2->meth = 2;
         jp2->enumcs = 0;
+		if (image->icc_profile_buf) {
+			// clean up existing icc profile in jp2 struct
+			if (jp2->color.icc_profile_buf) {
+				opj_free(jp2->color.icc_profile_buf);
+				jp2->color.icc_profile_buf = NULL;
+			}
+			// copy icc profile from image to jp2 struct
+			jp2->color.icc_profile_len = image->icc_profile_len;
+			jp2->color.icc_profile_buf = (uint8_t*)opj_malloc(jp2->color.icc_profile_len);
+			if (!jp2->color.icc_profile_buf)
+				return false;
+			memcpy(jp2->color.icc_profile_buf, image->icc_profile_buf, jp2->color.icc_profile_len);
+		}
     } else {
         jp2->meth = 1;
         if (image->color_space == 1)
@@ -2226,7 +2239,6 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
 			jp2->display_resolution[i] = parameters->display_resolution[i];
 		}
 	}
-
     return true;
 }
 

@@ -90,8 +90,6 @@ extern "C" {
 #include "convert.h"
 #include "format_defs.h"
 #include "opj_string.h"
-
-
 }
 
 
@@ -1411,7 +1409,7 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-        /* Decide if MCT should be used */
+		/* Decide if MCT should be used */
         if (parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
             parameters.tcp_mct = (image->numcomps >= 3) ? 1 : 0;
         } else {            /* mct mode has been set in commandline */

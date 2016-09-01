@@ -1484,8 +1484,23 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     }
     image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
 
-    strip_size = TIFFStripSize(tif);
+	// handle embedded ICC profile
+	uint32_t icclen = 0;
+	uint8_t* iccbuf = NULL;
+	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
+		icclen > 0 &&
+		icclen < 1000000000) {
+		image->icc_profile_len = icclen;
+		image->icc_profile_buf = malloc(icclen);
+		if (!image->icc_profile_buf) {
+			success = false;
+			goto cleanup;
+		}
+		memcpy(image->icc_profile_buf, iccbuf, icclen);
+	}
 
+
+    strip_size = TIFFStripSize(tif);
     buf = _TIFFmalloc(strip_size);
     if (buf == NULL) {
 		success = false;
