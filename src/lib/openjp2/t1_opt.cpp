@@ -363,7 +363,7 @@ static void  opj_t1_enc_sigpass_step(   opj_t1_opt_t *t1,
                 opj_mqc_encode(mqc, v ^ opj_t1_getspb_opt(*flagsp, flagsp[-1], flagsp[1], ci));
                 opj_t1_updateflags_opt(flagsp, ci, v, t1->flags_stride);
             }
-            /* set propogation pass bit for this location */
+            /* set propagation pass bit for this location */
             *flagsp |= T1_PI_THIS << (ci * 3U);
         }
         datap += t1->w;
