@@ -330,7 +330,6 @@ int main (int argc, char *argv[])
             if (l_data_size > l_max_data_size) {
                 uint8_t *l_new_data = (uint8_t *) realloc(l_data, l_data_size);
                 if (! l_new_data) {
-                    free(l_new_data);
                     opj_stream_destroy(l_stream);
                     opj_destroy_codec(l_codec);
                     opj_image_destroy(l_image);

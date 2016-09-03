@@ -118,15 +118,15 @@ static void scale_component_up(opj_image_comp_t* component, uint32_t precision)
 
     len = (size_t)component->w * (size_t)component->h;
     if (component->sgnd) {
-        int64_t  newMax = (int64_t)(1U << (precision - 1));
-        int64_t  oldMax = (int64_t)(1U << (component->prec - 1));
+        int64_t  newMax =(int64_t)1U << (precision - 1);
+        int64_t  oldMax = (int64_t)1U << (component->prec - 1);
         int32_t* l_data = component->data;
         for (i = 0; i < len; ++i) {
             l_data[i] = (int32_t)(((int64_t)l_data[i] * newMax) / oldMax);
         }
     } else {
-        uint64_t  newMax = (uint64_t)((1U << precision) - 1U);
-        uint64_t  oldMax = (uint64_t)((1U << component->prec) - 1U);
+        uint64_t  newMax = ((uint64_t)1U << precision) - 1U;
+        uint64_t  oldMax = ((uint64_t)1U << component->prec) - 1U;
         uint32_t* l_data = (uint32_t*)component->data;
         for (i = 0; i < len; ++i) {
             l_data[i] = (uint32_t)(((uint64_t)l_data[i] * newMax) / oldMax);
@@ -1178,7 +1178,7 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
             }
         } else {
             if (!comp->sgnd) {
-                v = (int)readuint(f, bigendian);
+                v = readuint(f, bigendian);
             } else {
                 v = (int) readuint(f, bigendian);
             }
@@ -1725,9 +1725,9 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
     while (*tmp) ++tmp;
     tmp -= 2;
     want_gray = (*tmp == 'g' || *tmp == 'G');
-    ncomp = image->numcomps;
 
-    if(want_gray) ncomp = 1;
+    if(want_gray)
+		ncomp = 1;
 
     if ((force_split == 0) &&
             (ncomp == 2 /* GRAYA */

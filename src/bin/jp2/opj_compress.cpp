@@ -1502,13 +1502,9 @@ int main(int argc, char **argv) {
         bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
         if (!bSuccess)  {
             fprintf(stderr, "failed to encode image: opj_end_compress\n");
-        }
-
-        if (!bSuccess)  {
             opj_stream_destroy(l_stream);
             opj_destroy_codec(l_codec);
             opj_image_destroy(image);
-            fprintf(stderr, "failed to encode image\n");
 			remove(parameters.outfile);
             return 1;
         }

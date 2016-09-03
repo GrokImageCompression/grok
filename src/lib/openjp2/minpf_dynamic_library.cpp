@@ -61,7 +61,7 @@ bool minpf_get_full_path(const char* path,
 	if (dwLength == 0) {
 		auto error = GetLastErrorAsString();
 		error = "GetModuleFileName failed: " + error + "\n";
-		fprintf(stderr, error.c_str());
+		fprintf(stderr, "%s",error.c_str());
 		return false;
 	}
 	return true;

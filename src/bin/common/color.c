@@ -430,7 +430,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 void color_apply_icc_profile(opj_image_t *image)
 {
     cmsHPROFILE in_prof, out_prof;
-    cmsHTRANSFORM transform;
+    cmsHTRANSFORM transform = NULL;
     cmsColorSpaceSignature in_space, out_space;
     cmsUInt32Number intent, in_type, out_type, nr_samples;
     int *r, *g, *b;
@@ -449,7 +449,8 @@ void color_apply_icc_profile(opj_image_t *image)
     fclose(icm);
 #endif
 
-    if(in_prof == NULL) return;
+    if(in_prof == NULL)
+		return;
 
     in_space = cmsGetPCS(in_prof);
     out_space = cmsGetColorSpace(in_prof);
@@ -600,11 +601,21 @@ void color_apply_icc_profile(opj_image_t *image)
         unsigned char *in, *inbuf, *out, *outbuf;
         max = max_w * max_h;
         nr_samples = (cmsUInt32Number)max * 3 * sizeof(unsigned char);
+		opj_image_comp_t *comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(opj_image_comp_t));
+		if (!comps)
+			goto cleanup;
+		image->comps = comps;
+
         in = inbuf = (unsigned char*)malloc(nr_samples);
+		if (!in)
+			goto cleanup;
         out = outbuf = (unsigned char*)malloc(nr_samples);
+		if (!out)
+			goto cleanup;
 
         new_image = image_create(2, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
-        image->comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2)*sizeof(opj_image_comp_t));
+		if (!new_image)
+			goto cleanup;
 
         if(image->numcomps == 2)
             image->comps[3] = image->comps[1];
@@ -643,8 +654,9 @@ void color_apply_icc_profile(opj_image_t *image)
         free(outbuf);
 
     }/* if(image->numcomps */
-
-    cmsDeleteTransform(transform);
+cleanup:
+	if (transform)
+		cmsDeleteTransform(transform);
 }/* color_apply_icc_profile() */
 
 void color_cielab_to_rgb(opj_image_t *image)
