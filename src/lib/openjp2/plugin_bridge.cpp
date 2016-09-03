@@ -113,8 +113,8 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 									cblkno,
 									totalRate,
 									totalRatePlugin);
+								break;
 							}
-							break;
 						}
 						goodData = false;
 						break;
