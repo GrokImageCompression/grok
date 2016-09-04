@@ -483,13 +483,13 @@ typedef struct opj_j2k_enc {
     uint8_t * m_encoded_tile_data;
 
     /* size of the encoded_data */
-    uint32_t m_encoded_tile_size;
+    uint64_t m_encoded_tile_size;
 
     /* encoded data for a tile */
     uint8_t * m_header_tile_data;
 
     /* size of the encoded_data */
-    uint32_t m_header_tile_data_size;
+    uint64_t m_header_tile_data_size;
 
 
 } opj_j2k_enc_t;

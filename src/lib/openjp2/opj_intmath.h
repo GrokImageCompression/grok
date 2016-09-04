@@ -87,6 +87,14 @@ static inline uint32_t opj_uint_min(uint32_t a, uint32_t b)
 }
 
 /**
+Get the minimum of two integers
+@return Returns a if a < b else b
+*/
+static inline uint64_t opj_uint64_min(uint64_t a, uint64_t b)
+{
+	return a < b ? a : b;
+}
+/**
 Get the maximum of two integers
 @return Returns a if a > b else b
 */

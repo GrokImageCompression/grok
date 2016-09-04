@@ -175,7 +175,7 @@ static void opj_tcd_free_tile(opj_tcd_t *tcd);
 static bool opj_tcd_t2_decode ( opj_tcd_t *p_tcd,
 								uint32_t p_tile_no,
                                 opj_seg_buf_t* src_buf,
-                                uint32_t * p_data_read,
+                                uint64_t * p_data_read,
                                 opj_event_mgr_t *p_manager);
 
 static bool opj_tcd_t1_decode (opj_tcd_t *p_tcd, opj_event_mgr_t *p_manager);
@@ -197,13 +197,13 @@ static bool opj_tcd_t1_encode ( opj_tcd_t *p_tcd );
 
 static bool opj_tcd_t2_encode (     opj_tcd_t *p_tcd,
                                     uint8_t * p_dest_data,
-                                    uint32_t * p_data_written,
-                                    uint32_t p_max_dest_size,
+                                    uint64_t * p_data_written,
+                                    uint64_t p_max_dest_size,
                                     opj_codestream_info_t *p_cstr_info );
 
 static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
-        uint32_t p_max_dest_size,
-        opj_codestream_info_t *p_cstr_info );
+											uint64_t p_max_dest_size,
+											opj_codestream_info_t *p_cstr_info );
 
 /* ----------------------------------------------------------------------- */
 
@@ -268,12 +268,12 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
                         uint32_t n;
 
                         if (layno == 0) {
-                            cblk->numpassesinlayers = 0;
+                            cblk->num_passes_already_included_in_other_layers = 0;
                         }
 
-                        n = cblk->numpassesinlayers;
+                        n = cblk->num_passes_already_included_in_other_layers;
 
-                        for (passno = cblk->numpassesinlayers; passno < cblk->totalpasses; passno++) {
+                        for (passno = cblk->num_passes_already_included_in_other_layers; passno < cblk->totalpasses; passno++) {
                             uint32_t dr;
                             double dd;
                             opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -295,27 +295,27 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
                                 n = passno + 1;
                         }
 
-                        layer->numpasses = n - cblk->numpassesinlayers;
+                        layer->numpasses = n - cblk->num_passes_already_included_in_other_layers;
 
                         if (!layer->numpasses) {
                             layer->disto = 0;
                             continue;
                         }
 
-                        if (cblk->numpassesinlayers == 0) {
+                        if (cblk->num_passes_already_included_in_other_layers == 0) {
                             layer->len = cblk->passes[n - 1].rate;
                             layer->data = cblk->data;
                             layer->disto = cblk->passes[n - 1].distortiondec;
                         } else {
-                            layer->len = cblk->passes[n - 1].rate - cblk->passes[cblk->numpassesinlayers - 1].rate;
-                            layer->data = cblk->data + cblk->passes[cblk->numpassesinlayers - 1].rate;
-                            layer->disto = cblk->passes[n - 1].distortiondec - cblk->passes[cblk->numpassesinlayers - 1].distortiondec;
+                            layer->len = cblk->passes[n - 1].rate - cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
+                            layer->data = cblk->data + cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
+                            layer->disto = cblk->passes[n - 1].distortiondec - cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].distortiondec;
                         }
 
                         tcd_tile->distolayer[layno] += layer->disto;    /* fixed_quality */
 
                         if (final)
-                            cblk->numpassesinlayers = n;
+                            cblk->num_passes_already_included_in_other_layers = n;
                     }
                 }
             }
@@ -381,35 +381,35 @@ void opj_tcd_makelayer_fixed(opj_tcd_t *tcd, uint32_t layno, uint32_t final)
                         }
 
                         if (layno == 0) {
-                            cblk->numpassesinlayers = 0;
+                            cblk->num_passes_already_included_in_other_layers = 0;
                         }
 
-                        n = cblk->numpassesinlayers;
-                        if (cblk->numpassesinlayers == 0) {
+                        n = cblk->num_passes_already_included_in_other_layers;
+                        if (cblk->num_passes_already_included_in_other_layers == 0) {
                             if (value != 0) {
-                                n = 3 * (uint32_t)value - 2 + cblk->numpassesinlayers;
+                                n = 3 * (uint32_t)value - 2 + cblk->num_passes_already_included_in_other_layers;
                             } else {
-                                n = cblk->numpassesinlayers;
+                                n = cblk->num_passes_already_included_in_other_layers;
                             }
                         } else {
-                            n = 3 * (uint32_t)value + cblk->numpassesinlayers;
+                            n = 3 * (uint32_t)value + cblk->num_passes_already_included_in_other_layers;
                         }
 
-                        layer->numpasses = n - cblk->numpassesinlayers;
+                        layer->numpasses = n - cblk->num_passes_already_included_in_other_layers;
 
                         if (!layer->numpasses)
                             continue;
 
-                        if (cblk->numpassesinlayers == 0) {
+                        if (cblk->num_passes_already_included_in_other_layers == 0) {
                             layer->len = cblk->passes[n - 1].rate;
                             layer->data = cblk->data;
                         } else {
-                            layer->len = cblk->passes[n - 1].rate - cblk->passes[cblk->numpassesinlayers - 1].rate;
-                            layer->data = cblk->data + cblk->passes[cblk->numpassesinlayers - 1].rate;
+                            layer->len = cblk->passes[n - 1].rate - cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
+                            layer->data = cblk->data + cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
                         }
 
                         if (final)
-                            cblk->numpassesinlayers = n;
+                            cblk->num_passes_already_included_in_other_layers = n;
                     }
                 }
             }
@@ -418,8 +418,8 @@ void opj_tcd_makelayer_fixed(opj_tcd_t *tcd, uint32_t layno, uint32_t final)
 }
 
 bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
-                            uint32_t * p_data_written,
-                            uint32_t len,
+                            uint64_t * p_data_written,
+                            uint64_t len,
                             opj_codestream_info_t *cstr_info)
 {
     uint32_t compno, resno, bandno, precno, cblkno, layno;
@@ -523,7 +523,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lo = min;
         double hi = max;
-        uint32_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint_min(((uint32_t) ceil(tcd_tcp->rates[layno])), len) : len;
+        uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
         double goodthresh = 0;
         double stable_thresh = 0;
         double old_thresh = -1;
@@ -1174,8 +1174,8 @@ uint32_t opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
 bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint32_t p_tile_no,
                             uint8_t *p_dest,
-                            uint32_t * p_data_written,
-                            uint32_t p_max_length,
+                            uint64_t * p_data_written,
+                            uint64_t p_max_length,
                             opj_codestream_info_t *p_cstr_info)
 {
 	uint32_t state = opj_plugin_get_debug_state();
@@ -1283,7 +1283,7 @@ bool opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
                             opj_event_mgr_t *p_manager
                         )
 {
-    uint32_t l_data_read;
+    uint64_t l_data_read;
     p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
 
     l_data_read = 0;
@@ -1508,7 +1508,7 @@ static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
 static bool opj_tcd_t2_decode (opj_tcd_t *p_tcd,
 								uint32_t p_tile_no,
                                opj_seg_buf_t* src_buf,
-                               uint32_t * p_data_read,
+                               uint64_t * p_data_read,
                                opj_event_mgr_t *p_manager
                               )
 {
@@ -1988,8 +1988,8 @@ static bool opj_tcd_t1_encode ( opj_tcd_t *p_tcd )
 
 static bool opj_tcd_t2_encode (opj_tcd_t *p_tcd,
                                uint8_t * p_dest_data,
-                               uint32_t * p_data_written,
-                               uint32_t p_max_dest_size,
+                               uint64_t * p_data_written,
+                               uint64_t p_max_dest_size,
                                opj_codestream_info_t *p_cstr_info )
 {
     opj_t2_t * l_t2;
@@ -2023,11 +2023,11 @@ static bool opj_tcd_t2_encode (opj_tcd_t *p_tcd,
 
 
 static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
-        uint32_t p_max_dest_size,
-        opj_codestream_info_t *p_cstr_info )
+											uint64_t p_max_dest_size,
+											opj_codestream_info_t *p_cstr_info )
 {
     opj_cp_t * l_cp = p_tcd->cp;
-    uint32_t l_nb_written = 0;
+    uint64_t l_nb_written = 0;
 
     if (p_cstr_info)  {
         p_cstr_info->index_write = 0;

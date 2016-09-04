@@ -113,7 +113,7 @@ typedef struct opj_tcd_cblk_enc {
     uint32_t numlenbits;
     uint32_t data_size;         /* Size of allocated data buffer */
     uint32_t numpasses;         /* number of pass already done for the code-blocks */
-    uint32_t numpassesinlayers; /* number of passes in the layer */
+    uint32_t num_passes_already_included_in_other_layers; /* number of passes in the layer */
     uint32_t totalpasses;	      /* total number of passes */
     uint32_t* contextStream;
 } opj_tcd_cblk_enc_t;
@@ -289,8 +289,8 @@ void opj_tcd_makelayer(	opj_tcd_t *tcd,
                         uint32_t final);
 
 bool opj_tcd_rateallocate(	opj_tcd_t *tcd,
-                            uint32_t * p_data_written,
-                            uint32_t len,
+                            uint64_t * p_data_written,
+                            uint64_t len,
                             opj_codestream_info_t *cstr_info);
 
 /**
@@ -311,8 +311,8 @@ uint32_t opj_tcd_get_decoded_tile_size (opj_tcd_t *p_tcd );
 bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint32_t p_tile_no,
                             uint8_t *p_dest,
-                            uint32_t * p_data_written,
-                            uint32_t p_len,
+                            uint64_t * p_data_written,
+                            uint64_t p_len,
                             struct opj_codestream_info *p_cstr_info);
 
 

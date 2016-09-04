@@ -99,8 +99,8 @@ bool opj_t2_encode_packets(	opj_t2_t* t2,
                             opj_tcd_tile_t *tile,
                             uint32_t maxlayers,
                             uint8_t *dest,
-                            uint32_t * p_data_written,
-                            uint32_t len,
+                            uint64_t * p_data_written,
+                            uint64_t len,
                             opj_codestream_info_t *cstr_info,
                             uint32_t tpnum,
                             uint32_t tppos,
@@ -120,8 +120,8 @@ bool opj_t2_encode_packets_thresh(opj_t2_t* t2,
                                   uint32_t tileno,
                                   opj_tcd_tile_t *tile,
                                   uint32_t maxlayers,
-                                  uint32_t * p_data_written,
-                                  uint32_t len,
+                                  uint64_t * p_data_written,
+                                  uint64_t len,
                                   uint32_t tppos);
 
 
@@ -141,7 +141,7 @@ bool opj_t2_decode_packets(	opj_t2_t *t2,
                             uint32_t tileno,
                             opj_tcd_tile_t *tile,
                             opj_seg_buf_t* src_buf,
-                            uint32_t * p_data_read,
+                            uint64_t * p_data_read,
                             opj_event_mgr_t *p_manager);
 
 /**
