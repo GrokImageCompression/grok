@@ -396,7 +396,7 @@ static bool opj_j2k_write_SQcd_SQcc(opj_j2k_t *p_j2k,
 /**
  * Updates the Tile Length Marker.
  */
-static void opj_j2k_update_tlm ( opj_j2k_t * p_j2k, uint32_t p_tile_part_size);
+static void opj_j2k_update_tlm ( opj_j2k_t * p_j2k, uint64_t p_tile_part_size);
 
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -468,15 +468,15 @@ static bool opj_j2k_setup_header_writing (opj_j2k_t *p_j2k, opj_event_mgr_t * p_
 
 static bool opj_j2k_write_first_tile_part(  opj_j2k_t *p_j2k,
         uint8_t * p_data,
-        uint32_t * p_data_written,
-        uint32_t p_total_data_size,
+        uint64_t * p_data_written,
+        uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
         struct opj_event_mgr * p_manager );
 
 static bool opj_j2k_write_all_tile_parts(   opj_j2k_t *p_j2k,
         uint8_t * p_data,
-        uint32_t * p_data_written,
-        uint32_t p_total_data_size,
+        uint64_t * p_data_written,
+        uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
         struct opj_event_mgr * p_manager );
 
@@ -744,7 +744,7 @@ static bool opj_j2k_write_poc(      opj_j2k_t *p_j2k,
  */
 static void opj_j2k_write_poc_in_memory(opj_j2k_t *p_j2k,
                                         uint8_t * p_data,
-                                        uint32_t * p_data_written,
+                                        uint64_t * p_data_written,
                                         opj_event_mgr_t * p_manager );
 /**
  * Gets the maximum size taken by the writing of a POC.
@@ -774,7 +774,7 @@ static uint32_t opj_j2k_get_max_toc_size (opj_j2k_t *p_j2k);
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-static uint32_t opj_j2k_get_specific_header_sizes(opj_j2k_t *p_j2k);
+static uint64_t opj_j2k_get_specific_header_sizes(opj_j2k_t *p_j2k);
 
 /**
  * Reads a CRG marker (Component registration)
@@ -905,7 +905,7 @@ static bool opj_j2k_write_tlm(      opj_j2k_t *p_j2k,
 */
 static bool opj_j2k_write_sot(      opj_j2k_t *p_j2k,
                                     uint8_t * p_data,
-                                    uint32_t * p_data_written,
+                                    uint64_t * p_data_written,
                                     const opj_stream_private_t *p_stream,
                                     opj_event_mgr_t * p_manager );
 
@@ -955,8 +955,8 @@ static bool opj_j2k_read_sot (  opj_j2k_t *p_j2k,
 static bool opj_j2k_write_sod(      opj_j2k_t *p_j2k,
                                     opj_tcd_t * p_tile_coder,
                                     uint8_t * p_data,
-                                    uint32_t * p_data_written,
-                                    uint32_t p_total_data_size,
+                                    uint64_t * p_data_written,
+                                    uint64_t p_total_data_size,
                                     const opj_stream_private_t *p_stream,
                                     opj_event_mgr_t * p_manager );
 
@@ -971,7 +971,7 @@ static bool opj_j2k_read_sod(   opj_j2k_t *p_j2k,
                                 opj_stream_private_t *p_stream,
                                 opj_event_mgr_t * p_manager );
 
-static void opj_j2k_update_tlm (opj_j2k_t * p_j2k, uint32_t p_tile_part_size )
+static void opj_j2k_update_tlm (opj_j2k_t * p_j2k, uint64_t p_tile_part_size )
 {
     opj_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_j2k->m_current_tile_number,1);            /* PSOT */
     ++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
@@ -2951,7 +2951,7 @@ static bool opj_j2k_write_poc(     opj_j2k_t *p_j2k,
     uint32_t l_nb_comp;
     uint32_t l_nb_poc;
     uint32_t l_poc_size;
-    uint32_t l_written_size = 0;
+    uint64_t l_written_size = 0;
     opj_tcp_t *l_tcp = 00;
     uint32_t l_poc_room;
 
@@ -2995,7 +2995,7 @@ static bool opj_j2k_write_poc(     opj_j2k_t *p_j2k,
 
 static void opj_j2k_write_poc_in_memory(   opj_j2k_t *p_j2k,
         uint8_t * p_data,
-        uint32_t * p_data_written,
+        uint64_t * p_data_written,
         opj_event_mgr_t * p_manager
                                        )
 {
@@ -3106,9 +3106,9 @@ static uint32_t opj_j2k_get_max_toc_size (opj_j2k_t *p_j2k)
     return 12 * l_max;
 }
 
-static uint32_t opj_j2k_get_specific_header_sizes(opj_j2k_t *p_j2k)
+static uint64_t opj_j2k_get_specific_header_sizes(opj_j2k_t *p_j2k)
 {
-    uint32_t l_nb_bytes = 0;
+    uint64_t l_nb_bytes = 0;
     uint32_t l_nb_comps;
     uint32_t l_coc_bytes,l_qcc_bytes;
 
@@ -3824,7 +3824,7 @@ static bool opj_j2k_write_tlm(     opj_j2k_t *p_j2k,
 
 static bool opj_j2k_write_sot(     opj_j2k_t *p_j2k,
                                    uint8_t * p_data,
-                                   uint32_t * p_data_written,
+                                   uint64_t * p_data_written,
                                    const opj_stream_private_t *p_stream,
                                    opj_event_mgr_t * p_manager
                              )
@@ -4062,14 +4062,14 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
 static bool opj_j2k_write_sod(     opj_j2k_t *p_j2k,
                                    opj_tcd_t * p_tile_coder,
                                    uint8_t * p_data,
-                                   uint32_t * p_data_written,
-                                   uint32_t p_total_data_size,
+                                   uint64_t * p_data_written,
+                                   uint64_t p_total_data_size,
                                    const opj_stream_private_t *p_stream,
                                    opj_event_mgr_t * p_manager
                              )
 {
     opj_codestream_info_t *l_cstr_info = 00;
-    uint32_t l_remaining_data;
+    uint64_t l_remaining_data;
 
     /* preconditions */
     assert(p_j2k != 00);
@@ -4370,7 +4370,7 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     float * l_rates = 0;
     float l_sot_remove;
     uint32_t l_bits_empty, l_size_pixel;
-    uint32_t l_tile_size = 0;
+    uint64_t l_tile_size = 0;
     uint32_t l_last_res;
     float (* l_tp_stride_func)(opj_tcp_t *) = 00;
 
@@ -4482,17 +4482,13 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     l_tile_size = 0;
 
     for (i=0; i<l_image->numcomps; ++i) {
-        l_tile_size += (        opj_uint_ceildiv(l_cp->tdx,l_img_comp->dx)
-                                *
-                                opj_uint_ceildiv(l_cp->tdy,l_img_comp->dy)
-                                *
-                                l_img_comp->prec
-                       );
-
+        l_tile_size += (uint64_t)(opj_uint_ceildiv(l_cp->tdx,l_img_comp->dx) *
+                                opj_uint_ceildiv(l_cp->tdy,l_img_comp->dy) *
+									 l_img_comp->prec );
         ++l_img_comp;
     }
 
-    l_tile_size = (uint32_t) (l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
+    l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
 
     l_tile_size += opj_j2k_get_specific_header_sizes(p_j2k);
 
@@ -10016,14 +10012,14 @@ static void opj_j2k_get_tile_data (opj_tcd_t * p_tcd, uint8_t * p_data)
     }
 }
 
-static bool opj_j2k_post_write_tile (      opj_j2k_t * p_j2k,
-        opj_stream_private_t *p_stream,
-        opj_event_mgr_t * p_manager )
+static bool opj_j2k_post_write_tile (   opj_j2k_t * p_j2k,
+										opj_stream_private_t *p_stream,
+										opj_event_mgr_t * p_manager )
 {
-    uint32_t l_nb_bytes_written;
+    uint64_t l_nb_bytes_written;
     uint8_t * l_current_data = 00;
-    uint32_t l_tile_size = 0;
-    uint32_t l_available_data;
+    uint64_t l_tile_size = 0;
+    uint64_t l_available_data;
 
     /* preconditions */
     assert(p_j2k->m_specific_param.m_encoder.m_encoded_tile_data);
@@ -10184,13 +10180,13 @@ static bool opj_j2k_setup_header_writing (opj_j2k_t *p_j2k, opj_event_mgr_t * p_
 
 static bool opj_j2k_write_first_tile_part (opj_j2k_t *p_j2k,
         uint8_t * p_data,
-        uint32_t * p_data_written,
-        uint32_t p_total_data_size,
+        uint64_t * p_data_written,
+        uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
         struct opj_event_mgr * p_manager )
 {
-    uint32_t l_nb_bytes_written = 0;
-    uint32_t l_current_nb_bytes_written;
+    uint64_t l_nb_bytes_written = 0;
+    uint64_t l_current_nb_bytes_written;
     uint8_t * l_begin_data = 00;
 
     opj_tcd_t * l_tcd = 00;
@@ -10262,16 +10258,16 @@ static bool opj_j2k_write_first_tile_part (opj_j2k_t *p_j2k,
 
 static bool opj_j2k_write_all_tile_parts(  opj_j2k_t *p_j2k,
         uint8_t * p_data,
-        uint32_t * p_data_written,
-        uint32_t p_total_data_size,
+        uint64_t * p_data_written,
+        uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
         struct opj_event_mgr * p_manager
                                         )
 {
     uint32_t tilepartno=0;
-    uint32_t l_nb_bytes_written = 0;
-    uint32_t l_current_nb_bytes_written;
-    uint32_t l_part_tile_size;
+    uint64_t l_nb_bytes_written = 0;
+    uint64_t l_current_nb_bytes_written;
+    uint64_t l_part_tile_size;
     uint32_t tot_num_tp;
     uint32_t pino;
 
