@@ -123,6 +123,9 @@ void T1Encoder::encodeOpt(size_t threadId) {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {
 					int32_t tmp=0;
+					// the next few lines were messing up post-encode comparison
+					// between plugin and grok open source
+					/*
 					// pass through otherwise
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 						tmp = block->tiledp[tileIndex] *= (1<<T1_NMSEDEC_FRACBITS);
@@ -131,6 +134,8 @@ void T1Encoder::encodeOpt(size_t threadId) {
 					{
 						tmp = block->tiledp[tileIndex];
 					}
+					*/
+					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)opj_int_abs(tmp);
 					max = opj_uint_max(max, mag);
 					t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
