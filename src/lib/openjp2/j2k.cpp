@@ -2111,7 +2111,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
     /* testcase 4035.pdf.SIGSEGV.d8b.3375 */
     /* testcase issue427-null-image-size.jp2 */
     if ((l_image->x0 >= l_image->x1) || (l_image->y0 >= l_image->y1)) {
-		opj_event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: negative or zero image size (%" PRId64 " x %" PRId64 ")\n", (int64_t)l_image->x1 - l_image->x0, (int64_t)l_image->y1 - l_image->y0);
+		opj_event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: negative or zero image size (%lld x %lld)\n", (int64_t)l_image->x1 - l_image->x0, (int64_t)l_image->y1 - l_image->y0);
         return false;
     }
     /* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
@@ -8911,15 +8911,15 @@ static void opj_j2k_dump_MH_index(opj_j2k_t* p_j2k, FILE* out_stream)
 
     fprintf(out_stream, "Codestream index from main header: {\n");
 
-    fprintf(out_stream, "\t Main header start position=%" PRIi64 "\n"
-            "\t Main header end position=%" PRIi64 "\n",
+    fprintf(out_stream, "\t Main header start position=%lli\n"
+            "\t Main header end position=%lli\n",
             cstr_index->main_head_start, cstr_index->main_head_end);
 
     fprintf(out_stream, "\t Marker list: {\n");
 
     if (cstr_index->marker) {
         for (it_marker=0; it_marker < cstr_index->marknum ; it_marker++) {
-            fprintf(out_stream, "\t\t type=%#x, pos=%" PRIi64 ", len=%d\n",
+            fprintf(out_stream, "\t\t type=%#x, pos=%lli, len=%d\n",
                     cstr_index->marker[it_marker].type,
                     cstr_index->marker[it_marker].pos,
                     cstr_index->marker[it_marker].len );
@@ -8946,7 +8946,7 @@ static void opj_j2k_dump_MH_index(opj_j2k_t* p_j2k, FILE* out_stream)
 
                 if (cstr_index->tile_index[it_tile].tp_index) {
                     for (it_tile_part =0; it_tile_part < nb_of_tile_part; it_tile_part++) {
-                        fprintf(out_stream, "\t\t\t tile-part[%d]: star_pos=%" PRIi64 ", end_header=%" PRIi64 ", end_pos=%" PRIi64 ".\n",
+                        fprintf(out_stream, "\t\t\t tile-part[%d]: star_pos=%lli, end_header=%lli, end_pos=%lli.\n",
                                 it_tile_part,
                                 cstr_index->tile_index[it_tile].tp_index[it_tile_part].start_pos,
                                 cstr_index->tile_index[it_tile].tp_index[it_tile_part].end_header,
@@ -8956,7 +8956,7 @@ static void opj_j2k_dump_MH_index(opj_j2k_t* p_j2k, FILE* out_stream)
 
                 if (cstr_index->tile_index[it_tile].marker) {
                     for (it_marker=0; it_marker < cstr_index->tile_index[it_tile].marknum ; it_marker++) {
-                        fprintf(out_stream, "\t\t type=%#x, pos=%" PRIi64 ", len=%d\n",
+                        fprintf(out_stream, "\t\t type=%#x, pos=%lli, len=%d\n",
                                 cstr_index->tile_index[it_tile].marker[it_marker].type,
                                 cstr_index->tile_index[it_tile].marker[it_marker].pos,
                                 cstr_index->tile_index[it_tile].marker[it_marker].len );
