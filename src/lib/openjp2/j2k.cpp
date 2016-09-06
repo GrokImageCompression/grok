@@ -471,14 +471,14 @@ static bool opj_j2k_write_first_tile_part(  opj_j2k_t *p_j2k,
         uint64_t * p_data_written,
         uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
-        struct opj_event_mgr * p_manager );
+        opj_event_mgr_t * p_manager );
 
 static bool opj_j2k_write_all_tile_parts(   opj_j2k_t *p_j2k,
         uint8_t * p_data,
         uint64_t * p_data_written,
         uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
-        struct opj_event_mgr * p_manager );
+        opj_event_mgr_t * p_manager );
 
 /**
  * Gets the offset of the header.
@@ -4566,7 +4566,7 @@ static bool opj_j2k_read_eoc (     opj_j2k_t *p_j2k,
 
 static bool opj_j2k_get_end_header(opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager )
+                                   opj_event_mgr_t * p_manager )
 {
     /* preconditions */
     assert(p_j2k != 00);
@@ -4629,7 +4629,7 @@ static bool opj_j2k_write_mct_data_group(  opj_j2k_t *p_j2k,
 static bool opj_j2k_write_all_coc(
     opj_j2k_t *p_j2k,
     struct opj_stream_private *p_stream,
-    struct opj_event_mgr * p_manager )
+    opj_event_mgr_t * p_manager )
 {
     uint32_t compno;
 
@@ -4653,7 +4653,7 @@ static bool opj_j2k_write_all_coc(
 static bool opj_j2k_write_all_qcc(
     opj_j2k_t *p_j2k,
     struct opj_stream_private *p_stream,
-    struct opj_event_mgr * p_manager )
+    opj_event_mgr_t * p_manager )
 {
     uint32_t compno;
 
@@ -4675,7 +4675,7 @@ static bool opj_j2k_write_all_qcc(
 
 static bool opj_j2k_write_regions( opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager )
+                                   opj_event_mgr_t * p_manager )
 {
     uint32_t compno;
     const opj_tccp_t *l_tccp = 00;
@@ -4703,7 +4703,7 @@ static bool opj_j2k_write_regions( opj_j2k_t *p_j2k,
 
 static bool opj_j2k_write_epc(     opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager )
+                                   opj_event_mgr_t * p_manager )
 {
     opj_codestream_index_t * l_cstr_index = 00;
 
@@ -4787,7 +4787,7 @@ static bool opj_j2k_read_unk (     opj_j2k_t *p_j2k,
 static bool opj_j2k_write_mct_record(      opj_j2k_t *p_j2k,
         opj_mct_data_t * p_mct_record,
         struct opj_stream_private *p_stream,
-        struct opj_event_mgr * p_manager )
+        opj_event_mgr_t * p_manager )
 {
     uint32_t l_mct_size;
     uint8_t * l_current_data = 00;
@@ -4959,7 +4959,7 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
 static bool opj_j2k_write_mcc_record(      opj_j2k_t *p_j2k,
         struct opj_simple_mcc_decorrelation_data * p_mcc_record,
         struct opj_stream_private *p_stream,
-        struct opj_event_mgr * p_manager )
+        opj_event_mgr_t * p_manager )
 {
     uint32_t i;
     uint32_t l_mcc_size;
@@ -5273,7 +5273,7 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
 
 static bool opj_j2k_write_mco(     opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager
+                                   opj_event_mgr_t * p_manager
                              )
 {
     uint8_t * l_current_data = 00;
@@ -5485,7 +5485,7 @@ static bool opj_j2k_add_mct(opj_tcp_t * p_tcp, opj_image_t * p_image, uint32_t p
 
 static bool opj_j2k_write_cbd( opj_j2k_t *p_j2k,
                                struct opj_stream_private *p_stream,
-                               struct opj_event_mgr * p_manager )
+                               opj_event_mgr_t * p_manager )
 {
     uint32_t i;
     uint32_t l_cbd_size;
@@ -8329,7 +8329,7 @@ static bool opj_j2k_write_SPCod_SPCoc(     opj_j2k_t *p_j2k,
         uint32_t p_comp_no,
         uint8_t * p_data,
         uint32_t * p_header_size,
-        struct opj_event_mgr * p_manager )
+        opj_event_mgr_t * p_manager )
 {
     uint32_t i;
     opj_cp_t *l_cp = 00;
@@ -8614,7 +8614,7 @@ static bool opj_j2k_write_SQcd_SQcc(       opj_j2k_t *p_j2k,
         uint32_t p_comp_no,
         uint8_t * p_data,
         uint32_t * p_header_size,
-        struct opj_event_mgr * p_manager )
+        opj_event_mgr_t * p_manager )
 {
     uint32_t l_header_size;
     uint32_t l_band_no, l_num_bands;
@@ -10183,7 +10183,7 @@ static bool opj_j2k_write_first_tile_part (opj_j2k_t *p_j2k,
         uint64_t * p_data_written,
         uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
-        struct opj_event_mgr * p_manager )
+        opj_event_mgr_t * p_manager )
 {
     uint64_t l_nb_bytes_written = 0;
     uint64_t l_current_nb_bytes_written;
@@ -10261,7 +10261,7 @@ static bool opj_j2k_write_all_tile_parts(  opj_j2k_t *p_j2k,
         uint64_t * p_data_written,
         uint64_t p_total_data_size,
         opj_stream_private_t *p_stream,
-        struct opj_event_mgr * p_manager
+        opj_event_mgr_t * p_manager
                                         )
 {
     uint32_t tilepartno=0;
@@ -10369,7 +10369,7 @@ static bool opj_j2k_write_all_tile_parts(  opj_j2k_t *p_j2k,
 
 static bool opj_j2k_write_updated_tlm( opj_j2k_t *p_j2k,
                                        struct opj_stream_private *p_stream,
-                                       struct opj_event_mgr * p_manager )
+                                       opj_event_mgr_t * p_manager )
 {
     uint32_t l_tlm_size;
     int64_t l_tlm_position, l_current_position;
@@ -10400,7 +10400,7 @@ static bool opj_j2k_write_updated_tlm( opj_j2k_t *p_j2k,
 
 static bool opj_j2k_end_encoding(  opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager )
+                                   opj_event_mgr_t * p_manager )
 {
     /* preconditions */
     assert(p_j2k != 00);
@@ -10451,7 +10451,7 @@ static bool opj_j2k_destroy_header_memory ( opj_j2k_t * p_j2k,
 
 static bool opj_j2k_init_info(     opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
-                                   struct opj_event_mgr * p_manager )
+                                   opj_event_mgr_t * p_manager )
 {
     opj_codestream_info_t * l_cstr_info = 00;
 

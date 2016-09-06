@@ -671,7 +671,7 @@ bool opj_stream_write_seek (opj_stream_private_t * p_stream,
 
 bool opj_stream_seek (opj_stream_private_t * p_stream, 
 						int64_t p_size,
-						struct opj_event_mgr * p_event_mgr)
+						opj_event_mgr_t * p_event_mgr)
 {
     assert(p_size >= 0);
     return p_stream->m_opj_seek(p_stream,p_size,p_event_mgr);

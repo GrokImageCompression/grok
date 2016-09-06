@@ -239,19 +239,19 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
             (bool (*) (	void *, 
 						opj_plugin_tile_t*,
                         struct opj_stream_private *,
-                        opj_image_t*, struct opj_event_mgr * )) opj_j2k_decode;
+                        opj_image_t*, opj_event_mgr_t * )) opj_j2k_decode;
 
         l_codec->m_codec_data.m_decompression.opj_end_decompress =
             (bool (*) (	void *,
                         struct opj_stream_private *,
-                        struct opj_event_mgr *)) opj_j2k_end_decompress;
+                        opj_event_mgr_t *)) opj_j2k_end_decompress;
 
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) (	struct opj_stream_private *,
                         void *,
 						opj_cparameters_t*,
                         opj_image_t **,
-                        struct opj_event_mgr * )) opj_j2k_read_header;
+                        opj_event_mgr_t * )) opj_j2k_read_header;
 
         l_codec->m_codec_data.m_decompression.opj_destroy =
             (void (*) (void *))opj_j2k_destroy;
@@ -268,7 +268,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
                         uint32_t*,
                         bool*,
                         struct opj_stream_private *,
-                        struct opj_event_mgr * )) opj_j2k_read_tile_header;
+                        opj_event_mgr_t * )) opj_j2k_read_tile_header;
 
         l_codec->m_codec_data.m_decompression.opj_decode_tile_data =
             (bool (*) ( void *,
@@ -276,25 +276,25 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
                         uint8_t*,
                         uint32_t,
                         struct opj_stream_private *,
-                        struct opj_event_mgr *)) opj_j2k_decode_tile;
+                        opj_event_mgr_t *)) opj_j2k_decode_tile;
 
         l_codec->m_codec_data.m_decompression.opj_set_decode_area =
             (bool (*) ( void *,
                         opj_image_t*,
                         uint32_t, uint32_t, uint32_t, uint32_t,
-                        struct opj_event_mgr *)) opj_j2k_set_decode_area;
+                        opj_event_mgr_t *)) opj_j2k_set_decode_area;
 
         l_codec->m_codec_data.m_decompression.opj_get_decoded_tile =
             (bool (*) ( void *p_codec,
                         opj_stream_private_t *p_cio,
                         opj_image_t *p_image,
-                        struct opj_event_mgr * p_manager,
+                        opj_event_mgr_t * p_manager,
                         uint32_t tile_index)) opj_j2k_get_tile;
 
         l_codec->m_codec_data.m_decompression.opj_set_decoded_resolution_factor =
             (bool (*) ( void * p_codec,
                         uint32_t res_factor,
-                        struct opj_event_mgr * p_manager)) opj_j2k_set_decoded_resolution_factor;
+                        opj_event_mgr_t * p_manager)) opj_j2k_set_decoded_resolution_factor;
 
         l_codec->m_codec = opj_j2k_create_decompress();
 
@@ -318,19 +318,19 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 						opj_plugin_tile_t*,
                         struct opj_stream_private *,
                         opj_image_t*,
-                        struct opj_event_mgr * )) opj_jp2_decode;
+                        opj_event_mgr_t * )) opj_jp2_decode;
 
         l_codec->m_codec_data.m_decompression.opj_end_decompress =
             (bool (*) ( void *,
                         struct opj_stream_private *,
-                        struct opj_event_mgr *)) opj_jp2_end_decompress;
+                        opj_event_mgr_t *)) opj_jp2_end_decompress;
 
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) ( struct opj_stream_private *,
                         void *,
 						opj_cparameters_t*,
                         opj_image_t **,
-                        struct opj_event_mgr * )) opj_jp2_read_header;
+                        opj_event_mgr_t * )) opj_jp2_read_header;
 
         l_codec->m_codec_data.m_decompression.opj_read_tile_header =
             (bool (*) ( void *,
@@ -343,13 +343,13 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
                         uint32_t * ,
                         bool *,
                         struct opj_stream_private *,
-                        struct opj_event_mgr * )) opj_jp2_read_tile_header;
+                        opj_event_mgr_t * )) opj_jp2_read_tile_header;
 
         l_codec->m_codec_data.m_decompression.opj_decode_tile_data =
             (bool (*) ( void *,
                         uint32_t,uint8_t*,uint32_t,
                         struct opj_stream_private *,
-                        struct opj_event_mgr * )) opj_jp2_decode_tile;
+                        opj_event_mgr_t * )) opj_jp2_decode_tile;
 
         l_codec->m_codec_data.m_decompression.opj_destroy = (void (*) (void *))opj_jp2_destroy;
 
@@ -360,13 +360,13 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
             (bool (*) ( void *,
                         opj_image_t*,
                         uint32_t,uint32_t,uint32_t,uint32_t,
-                        struct opj_event_mgr * )) opj_jp2_set_decode_area;
+                        opj_event_mgr_t * )) opj_jp2_set_decode_area;
 
         l_codec->m_codec_data.m_decompression.opj_get_decoded_tile =
             (bool (*) ( void *p_codec,
                         opj_stream_private_t *p_cio,
                         opj_image_t *p_image,
-                        struct opj_event_mgr * p_manager,
+                        opj_event_mgr_t * p_manager,
                         uint32_t tile_index)) opj_jp2_get_tile;
 
         l_codec->m_codec_data.m_decompression.opj_set_decoded_resolution_factor =
@@ -622,23 +622,23 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
 				opj_plugin_tile_t*,
                 struct opj_stream_private *,
-                struct opj_event_mgr * )) opj_j2k_encode;
+                opj_event_mgr_t * )) opj_j2k_encode;
 
         l_codec->m_codec_data.m_compression.opj_end_compress = (bool (*) (	void *,
                 struct opj_stream_private *,
-                struct opj_event_mgr *)) opj_j2k_end_compress;
+                opj_event_mgr_t *)) opj_j2k_end_compress;
 
         l_codec->m_codec_data.m_compression.opj_start_compress = (bool (*) (void *,
                 struct opj_stream_private *,
                 struct opj_image * ,
-                struct opj_event_mgr *)) opj_j2k_start_compress;
+                opj_event_mgr_t *)) opj_j2k_start_compress;
 
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,
                 uint32_t,
                 uint8_t*,
                 uint32_t,
                 struct opj_stream_private *,
-                struct opj_event_mgr *) ) opj_j2k_write_tile;
+                opj_event_mgr_t *) ) opj_j2k_write_tile;
 
         l_codec->m_codec_data.m_compression.opj_destroy = (void (*) (void *)) opj_j2k_destroy;
 
@@ -660,23 +660,23 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
 				opj_plugin_tile_t*,
                 struct opj_stream_private *,
-                struct opj_event_mgr * )) opj_jp2_encode;
+                opj_event_mgr_t * )) opj_jp2_encode;
 
         l_codec->m_codec_data.m_compression.opj_end_compress = (bool (*) (	void *,
                 struct opj_stream_private *,
-                struct opj_event_mgr *)) opj_jp2_end_compress;
+                opj_event_mgr_t *)) opj_jp2_end_compress;
 
         l_codec->m_codec_data.m_compression.opj_start_compress = (bool (*) (void *,
                 struct opj_stream_private *,
                 struct opj_image * ,
-                struct opj_event_mgr *))  opj_jp2_start_compress;
+                opj_event_mgr_t *))  opj_jp2_start_compress;
 
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,
                 uint32_t,
                 uint8_t*,
                 uint32_t,
                 struct opj_stream_private *,
-                struct opj_event_mgr *)) opj_jp2_write_tile;
+                opj_event_mgr_t *)) opj_jp2_write_tile;
 
         l_codec->m_codec_data.m_compression.opj_destroy = (void (*) (void *)) opj_jp2_destroy;
 

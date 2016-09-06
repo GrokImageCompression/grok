@@ -567,7 +567,12 @@ static bool opj_jp2_read_ihdr( opj_jp2_t *jp2,
     assert(jp2 != 00);
     assert(p_manager != 00);
 
-    if (p_image_header_size != 14) {
+	if (jp2->comps != NULL) {
+		opj_event_msg(p_manager, EVT_WARNING, "Ignoring ihdr box. First ihdr box already read\n");
+		return OPJ_TRUE;
+	}
+	
+	if (p_image_header_size != 14) {
         opj_event_msg(p_manager, EVT_ERROR, "Bad image header box (bad size)\n");
         return false;
     }
@@ -2089,7 +2094,6 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     jp2->numcl = 1;
     jp2->cl = (uint32_t*) opj_malloc(jp2->numcl * sizeof(uint32_t));
     if (!jp2->cl) {
-        jp2->cl = NULL;
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory when setup the JP2 encoder\n");
         return false;
     }
@@ -2100,7 +2104,6 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
     jp2->numcomps = image->numcomps;	/* NC */
     jp2->comps = (opj_jp2_comps_t*) opj_malloc(jp2->numcomps * sizeof(opj_jp2_comps_t));
     if (!jp2->comps) {
-        jp2->comps = NULL;
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory when setup the JP2 encoder\n");
         /* Memory of jp2->cl will be freed by opj_jp2_destroy */
         return false;
