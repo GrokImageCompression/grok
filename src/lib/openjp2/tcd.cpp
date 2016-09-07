@@ -863,6 +863,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                 if (!l_band->precincts && (l_nb_precincts > 0U)) {
                     l_band->precincts = (opj_tcd_precinct_t *) opj_malloc( /*3 * */ l_nb_precinct_size);
                     if (! l_band->precincts) {
+						opj_event_msg(manager, EVT_ERROR, "Not enough memory for band precints\n");
                         return false;
                     }
                     /*fprintf(stderr, "\t\t\t\tAllocate precincts of a band (opj_tcd_precinct_t): %d\n",l_nb_precinct_size);     */
