@@ -5111,7 +5111,9 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
     }
 
     /** NOT FOUND */
+	bool newmcc = false;
     if (i == l_tcp->m_nb_mcc_records) {
+		// resize l_tcp->m_nb_mcc_records if necessary
         if (l_tcp->m_nb_mcc_records == l_tcp->m_nb_max_mcc_records) {
             opj_simple_mcc_decorrelation_data_t *new_mcc_records;
             l_tcp->m_nb_max_mcc_records += OPJ_J2K_MCC_DEFAULT_NB_RECORDS;
@@ -5130,7 +5132,9 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
             l_mcc_record = l_tcp->m_mcc_records + l_tcp->m_nb_mcc_records;
             memset(l_mcc_record,0,(l_tcp->m_nb_max_mcc_records-l_tcp->m_nb_mcc_records) * sizeof(opj_simple_mcc_decorrelation_data_t));
         }
+		// set pointer to prospective new mcc record
         l_mcc_record = l_tcp->m_mcc_records + l_tcp->m_nb_mcc_records;
+		newmcc = true;
     }
     l_mcc_record->m_index = l_indix;
 
@@ -5266,7 +5270,10 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
         return false;
     }
 
-    ++l_tcp->m_nb_mcc_records;
+	// only increment mcc record count if we are working on a new mcc
+	// and everything succeeded
+	if (newmcc)
+	 ++l_tcp->m_nb_mcc_records;
 
     return true;
 }
