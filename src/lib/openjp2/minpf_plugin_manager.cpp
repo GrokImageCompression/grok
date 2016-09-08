@@ -87,7 +87,7 @@ const char* minpf_get_dynamic_library_extension(void) {
 #if defined(__APPLE__)
 	return "dylib";
 #elif defined(__linux)
-	return so";
+	return "so";
 #endif
 #endif /* _WIN32 */
 }
