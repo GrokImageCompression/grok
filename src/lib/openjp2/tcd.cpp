@@ -712,14 +712,14 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
     l_tx0 = l_cp->tx0 + p * l_cp->tdx; /* can't be greater than l_image->x1 so won't overflow */
     l_tile->x0 = opj_uint_max(l_tx0, l_image->x0);
     l_tile->x1 = opj_uint_min(opj_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
-	if ((l_tile->x0 < 0) || (l_tile->x1 <= l_tile->x0)) {
+	if (l_tile->x1 <= l_tile->x0) {
 		opj_event_msg(manager, EVT_ERROR, "Tile x coordinates are not valid\n");
 		return false;
 	}
     l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
     l_tile->y0 = opj_uint_max(l_ty0, l_image->y0);
     l_tile->y1 = opj_uint_min(opj_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
-	if ((l_tile->y0 < 0) || (l_tile->y1 <= l_tile->y0)) {
+	if (l_tile->y1 <= l_tile->y0) {
 		opj_event_msg(manager, EVT_ERROR, "Tile y coordinates are not valid\n");
 		return false;
 	}
