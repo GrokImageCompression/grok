@@ -51,7 +51,7 @@ void* opj_vec_get(opj_vec_t *vec, size_t index)
         return NULL;
     auto impl = vec_impl(vec->data);
     assert(index < impl->size() && index >= 0);
-    if (index >= impl->size() || index < 0) {
+    if (index >= impl->size()) {
         return NULL;
     }
     return impl->operator[](index);
