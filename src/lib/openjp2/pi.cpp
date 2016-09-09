@@ -238,6 +238,10 @@ static bool opj_pi_check_next_level(	int32_t pos,
                                         uint32_t pino,
                                         const char *prog);
 
+static void update_pi_dxy(opj_pi_iterator_t * pi);
+static void update_pi_dxy_for_comp(opj_pi_iterator_t * pi, opj_pi_comp_t *comp);
+
+
 /*@}*/
 
 /*@}*/
@@ -247,6 +251,27 @@ static bool opj_pi_check_next_level(	int32_t pos,
    local functions
 ==========================================================
 */
+static void update_pi_dxy_for_comp(opj_pi_iterator_t * pi, opj_pi_comp_t *comp) {
+	for (uint32_t resno = 0; resno < comp->numresolutions; resno++) {
+		opj_pi_resolution_t* res = &comp->resolutions[resno];
+		uint64_t dx = comp->dx * ((uint64_t)1u << (res->pdx + comp->numresolutions - 1 - resno));
+		uint64_t dy = comp->dy * ((uint64_t)1u << (res->pdy + comp->numresolutions - 1 - resno));
+		if (dx < UINT_MAX) {
+			pi->dx = !pi->dx ? (uint32_t)dx : opj_uint_min(pi->dx, (uint32_t)dx);
+		}
+		if (dy < UINT_MAX) {
+			pi->dy = !pi->dy ? (uint32_t)dy : opj_uint_min(pi->dy, (uint32_t)dy);
+		}
+	}
+}
+static void update_pi_dxy(opj_pi_iterator_t * pi) {
+	pi->first = 0;
+	pi->dx = 0;
+	pi->dy = 0;
+	for (uint32_t compno = 0; compno < pi->numcomps; compno++) {
+		update_pi_dxy_for_comp(pi, pi->comps+compno);
+	}
+}
 
 static bool opj_pi_next_lrcp(opj_pi_iterator_t * pi)
 {
@@ -258,10 +283,9 @@ static bool opj_pi_next_lrcp(opj_pi_iterator_t * pi)
         comp = &pi->comps[pi->compno];
         res = &comp->resolutions[pi->resno];
         goto LABEL_SKIP;
-    } else {
-        pi->first = 0;
-    }
+    } 
 
+    pi->first = 0;
     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
         for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1;
                 pi->resno++) {
@@ -300,10 +324,9 @@ static bool opj_pi_next_rlcp(opj_pi_iterator_t * pi)
         comp = &pi->comps[pi->compno];
         res = &comp->resolutions[pi->resno];
         goto LABEL_SKIP;
-    } else {
-        pi->first = 0;
-    }
+    } 
 
+    pi->first = 0;
     for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1; pi->resno++) {
         for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
             for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
@@ -327,9 +350,9 @@ LABEL_SKIP:
             }
         }
     }
-
     return false;
 }
+
 
 static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
 {
@@ -340,21 +363,7 @@ static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
     if (!pi->first) {
         goto LABEL_SKIP;
     } else {
-        uint32_t compno, resno;
-        pi->first = 0;
-        pi->dx = 0;
-        pi->dy = 0;
-        for (compno = 0; compno < pi->numcomps; compno++) {
-            comp = &pi->comps[compno];
-            for (resno = 0; resno < comp->numresolutions; resno++) {
-                uint32_t dx, dy;
-                res = &comp->resolutions[resno];
-                dx = comp->dx * (1u << (res->pdx + comp->numresolutions - 1 - resno));
-                dy = comp->dy * (1u << (res->pdy + comp->numresolutions - 1 - resno));
-                pi->dx = !pi->dx ? dx : opj_uint_min(pi->dx, dx);
-                pi->dy = !pi->dy ? dy : opj_uint_min(pi->dy, dy);
-            }
-        }
+		update_pi_dxy(pi);
     }
     if (!pi->tp_on) {
         pi->poc.ty0 = pi->ty0;
@@ -425,27 +434,9 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
         goto LABEL_SKIP;
-    } else {
-        uint32_t compno, resno;
-        pi->first = 0;
-        pi->dx = 0;
-        pi->dy = 0;
-        for (compno = 0; compno < pi->numcomps; compno++) {
-            comp = &pi->comps[compno];
-            for (resno = 0; resno < comp->numresolutions; resno++) {
-                res = &comp->resolutions[resno];
-                uint64_t dx = comp->dx * ((uint64_t)1u << (res->pdx + comp->numresolutions - 1 - resno));
-                uint64_t dy = comp->dy * ((uint64_t)1u << (res->pdy + comp->numresolutions - 1 - resno));
-				if (dx < UINT_MAX) {
-					pi->dx = !pi->dx ? (uint32_t)dx : opj_uint_min(pi->dx, (uint32_t)dx);
-				}
-				if (dy < UINT_MAX) {
-					pi->dy = !pi->dy ? (uint32_t)dy : opj_uint_min(pi->dy, (uint32_t)dy);
-				}
+    } 
 
-            }
-        }
-    }
+	update_pi_dxy(pi);
     if (!pi->tp_on) {
         pi->poc.ty0 = pi->ty0;
         pi->poc.tx0 = pi->tx0;
@@ -512,23 +503,14 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi)
     if (!pi->first) {
         comp = &pi->comps[pi->compno];
         goto LABEL_SKIP;
-    } else {
-        pi->first = 0;
-    }
+    } 
 
+	pi->first = 0;
     for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
-        uint32_t resno;
         comp = &pi->comps[pi->compno];
         pi->dx = 0;
         pi->dy = 0;
-        for (resno = 0; resno < comp->numresolutions; resno++) {
-            uint32_t dx, dy;
-            res = &comp->resolutions[resno];
-            dx = comp->dx * (1u << (res->pdx + comp->numresolutions - 1 - resno));
-            dy = comp->dy * (1u << (res->pdy + comp->numresolutions - 1 - resno));
-            pi->dx = !pi->dx ? dx : opj_uint_min(pi->dx, dx);
-            pi->dy = !pi->dy ? dy : opj_uint_min(pi->dy, dy);
-        }
+		update_pi_dxy_for_comp(pi, comp);
         if (!pi->tp_on) {
             pi->poc.ty0 = pi->ty0;
             pi->poc.tx0 = pi->tx0;
