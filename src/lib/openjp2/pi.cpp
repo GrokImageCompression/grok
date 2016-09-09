@@ -1459,7 +1459,7 @@ opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
     l_current_pi = l_pi;
 
     /* memory allocation for include*/
-    l_current_pi->include = (int16_t*) opj_calloc(l_tcp->numlayers * l_step_l, sizeof(int16_t));
+    l_current_pi->include = (int16_t*) opj_calloc((size_t)l_tcp->numlayers * l_step_l, sizeof(int16_t));
     if (!l_current_pi->include) {
         opj_free(l_tmp_data);
         opj_free(l_tmp_ptr);
