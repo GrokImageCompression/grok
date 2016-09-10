@@ -326,6 +326,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
+	bool success = true;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		dwtWorkers.push_back(std::thread([tilec,
 			numres,
@@ -334,7 +335,8 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 			&decode_dwt_barrier,
 			&decode_dwt_calling_barrier,
 			threadId,
-			numThreads]()
+			numThreads,
+			&success]()
 		{
 			auto numResolutions = numres;
 
@@ -353,8 +355,8 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 			buffer_h.data =
 				(int32_t*)opj_aligned_malloc((opj_tile_buf_get_max_interleaved_range(tilec->buf) + 2) * sizeof(int32_t));
 			if (!buffer_h.data) {
-				/* FIXME event manager error callback */
-				return false;
+				success = false;
+				return;
 			}
 
 			buffer_v.data = buffer_h.data;
