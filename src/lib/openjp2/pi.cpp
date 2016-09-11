@@ -1542,7 +1542,7 @@ opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
     return l_pi;
 }
 
-void opj_pi_create_encode( 	opj_pi_iterator_t *pi,
+void opj_pi_init_encode( 	opj_pi_iterator_t *pi,
                             opj_cp_t *cp,
                             uint32_t tileno,
                             uint32_t pino,

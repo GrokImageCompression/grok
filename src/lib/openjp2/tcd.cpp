@@ -58,75 +58,9 @@
 
 #include "opj_includes.h"
 #include "T1Decoder.h"
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
 
 /* ----------------------------------------------------------------------- */
 
-/* TODO MSD: */
-#ifdef TODO_MSD
-void tcd_dump(FILE *fd, opj_tcd_t *tcd, opj_tcd_image_t * img)
-{
-    int tileno, compno, resno, bandno, precno;/*, cblkno;*/
-
-    fprintf(fd, "image {\n");
-    fprintf(fd, "  tw=%d, th=%d x0=%d x1=%d y0=%d y1=%d\n",
-            img->tw, img->th, tcd->image->x0, tcd->image->x1, tcd->image->y0, tcd->image->y1);
-
-    for (tileno = 0; tileno < img->th * img->tw; tileno++) {
-        opj_tcd_tile_t *tile = &tcd->tile[tileno];
-        fprintf(fd, "  tile {\n");
-        fprintf(fd, "    x0=%d, y0=%d, x1=%d, y1=%d, numcomps=%d\n",
-                tile->x0, tile->y0, tile->x1, tile->y1, tile->numcomps);
-        for (compno = 0; compno < tile->numcomps; compno++) {
-            opj_tcd_tilecomp_t *tilec = &tile->comps[compno];
-            fprintf(fd, "    tilec {\n");
-            fprintf(fd,
-                    "      x0=%d, y0=%d, x1=%d, y1=%d, numresolutions=%d\n",
-                    tilec->x0, tilec->y0, tilec->x1, tilec->y1, tilec->numresolutions);
-            for (resno = 0; resno < tilec->numresolutions; resno++) {
-                opj_tcd_resolution_t *res = &tilec->resolutions[resno];
-                fprintf(fd, "\n   res {\n");
-                fprintf(fd,
-                        "          x0=%d, y0=%d, x1=%d, y1=%d, pw=%d, ph=%d, numbands=%d\n",
-                        res->x0, res->y0, res->x1, res->y1, res->pw, res->ph, res->numbands);
-                for (bandno = 0; bandno < res->numbands; bandno++) {
-                    opj_tcd_band_t *band = &res->bands[bandno];
-                    fprintf(fd, "        band {\n");
-                    fprintf(fd,
-                            "          x0=%d, y0=%d, x1=%d, y1=%d, stepsize=%f, numbps=%d\n",
-                            band->x0, band->y0, band->x1, band->y1, band->stepsize, band->numbps);
-                    for (precno = 0; precno < res->pw * res->ph; precno++) {
-                        opj_tcd_precinct_t *prec = &band->precincts[precno];
-                        fprintf(fd, "          prec {\n");
-                        fprintf(fd,
-                                "            x0=%d, y0=%d, x1=%d, y1=%d, cw=%d, ch=%d\n",
-                                prec->x0, prec->y0, prec->x1, prec->y1, prec->cw, prec->ch);
-                        /*
-                        for (cblkno = 0; cblkno < prec->cw * prec->ch; cblkno++) {
-                                opj_tcd_cblk_t *cblk = &prec->cblks[cblkno];
-                                fprintf(fd, "            cblk {\n");
-                                fprintf(fd,
-                                        "              x0=%d, y0=%d, x1=%d, y1=%d\n",
-                                        cblk->x0, cblk->y0, cblk->x1, cblk->y1);
-                                fprintf(fd, "            }\n");
-                        }
-                        */
-                        fprintf(fd, "          }\n");
-                    }
-                    fprintf(fd, "        }\n");
-                }
-                fprintf(fd, "      }\n");
-            }
-            fprintf(fd, "    }\n");
-        }
-        fprintf(fd, "  }\n");
-    }
-    fprintf(fd, "}\n");
-}
-#endif
 
 /**
  * Initializes tile coding/decoding
@@ -259,7 +193,7 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
 
                         n = cblk->num_passes_already_included_in_other_layers;
 
-                        for (passno = cblk->num_passes_already_included_in_other_layers; passno < cblk->totalpasses; passno++) {
+                        for (passno = n; passno < cblk->totalpasses; passno++) {
                             uint32_t dr;
                             double dd;
                             opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -315,7 +249,6 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
 {
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
-    double min, max;
     double cumdisto[100];     
     const double K = 1;              
     double maxSE = 0;
@@ -324,8 +257,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     opj_tcd_tile_t *tcd_tile = tcd->tile;
     opj_tcp_t *tcd_tcp = tcd->tcp;
 
-    min = DBL_MAX;
-    max = 0;
+	double min_slope = DBL_MAX;
+	double max_slope = 0;
 
     tcd_tile->numpix = 0;         
 	uint32_t state = opj_plugin_get_debug_state();
@@ -377,12 +310,12 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                             }
 
                             rdslope = dd / dr;
-                            if (rdslope < min) {
-                                min = rdslope;
+                            if (rdslope < min_slope) {
+                                min_slope = rdslope;
                             }
 
-                            if (rdslope > max) {
-                                max = rdslope;
+                            if (rdslope > max_slope) {
+                                max_slope = rdslope;
                             }
                         } /* passno */
 						tcd_tile->numpix += numPix;
@@ -410,8 +343,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     }
 
     for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
-        double lo = min;
-        double hi = max;
+        double lo = min_slope;
+        double hi = max_slope;
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
         double goodthresh = 0;
         double stable_thresh = 0;
@@ -445,7 +378,6 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                 if (cp->m_specific_param.m_enc.m_fixed_quality) {     
                     if(OPJ_IS_CINEMA(cp->rsiz)) {
                         if (! opj_t2_encode_packets_thresh(t2,tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
-
                             lo = thresh;
                             continue;
                         } else {
@@ -487,7 +419,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
 
             opj_t2_destroy(t2);
         } else {
-            goodthresh = min;
+            goodthresh = min_slope;
         }
 
         if(cstr_info) { /* Threshold for Marcela Index */

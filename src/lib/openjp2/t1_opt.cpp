@@ -58,11 +58,6 @@
 #include "opj_includes.h"
 #include "t1_luts.h"
 
-#ifdef _OPENMP
-#include <omp.h>
-#endif
-
-
 /** @defgroup T1 T1 - Implementation of the tier-1 coding */
 /*@{*/
 

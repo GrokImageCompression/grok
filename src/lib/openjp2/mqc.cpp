@@ -409,7 +409,6 @@ uint32_t opj_mqc_numbytes(opj_mqc_t *mqc)
 
 void opj_mqc_init_enc(opj_mqc_t *mqc, uint8_t *bp)
 {
-    /* TODO MSD: need to take a look to the v2 version */
     opj_mqc_setcurctx(mqc, 0);
     mqc->a = 0x8000;
     mqc->c = 0;
