@@ -462,7 +462,6 @@ bool opj_jp2_set_decoded_resolution_factor(opj_jp2_t *p_jp2,
         opj_event_mgr_t * p_manager);
 
 
-/* TODO MSD: clean these 3 functions */
 /**
  * Dump some elements from the JP2 decompression structure .
  *

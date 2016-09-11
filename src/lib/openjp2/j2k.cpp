@@ -3925,7 +3925,7 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
 
     /* PSot should be equal to zero or >=14 or <= 2^32-1 */
     if ((l_tot_len !=0 ) && (l_tot_len < 14) ) {
-        if (l_tot_len == 12 ) { /* MSD: Special case for the PHR data which are read by kakadu*/
+        if (l_tot_len == 12 ) { /* special case for the PHR data which are read by kakadu*/
             opj_event_msg(p_manager, EVT_WARNING, "Empty SOT marker detected: Psot=%d.\n", l_tot_len);
         } else {
             opj_event_msg(p_manager, EVT_ERROR, "Psot value is not correct regards to the JPEG2000 norm: %d.\n", l_tot_len);
@@ -4132,13 +4132,8 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
         /* Check to avoid pass the limit of uint32_t */
         if (p_j2k->m_specific_param.m_decoder.m_sot_length >= 2 )
             p_j2k->m_specific_param.m_decoder.m_sot_length -= 2;
-        else {
-            /* MSD: case commented to support empty SOT marker (PHR data) */
-        }
     }
 
-
-    /* Patch to support new PHR data */
     if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
         /* If we are here, we'll try to read the data after allocation */
         /* Check enough bytes left in stream before allocation */
@@ -6029,8 +6024,10 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     }
     if (parameters->numpocs) {
         /* initialisation of POC */
-        opj_j2k_check_poc_val(parameters->POC,parameters->numpocs, parameters->numresolution, image->numcomps, (uint32_t)parameters->tcp_numlayers, p_manager);
-        /* TODO MSD use the return value*/
+		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, (uint32_t)parameters->tcp_numlayers, p_manager)) {
+			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
+			return false;
+		}
     }
 
     for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {

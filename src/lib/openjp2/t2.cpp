@@ -266,7 +266,7 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
 
     * p_data_written = 0;
 
-    opj_pi_create_encode(l_pi, l_cp,p_tile_no,p_pino,p_tp_num,p_tp_pos, FINAL_PASS);
+    opj_pi_init_encode(l_pi, l_cp,p_tile_no,p_pino,p_tp_num,p_tp_pos, FINAL_PASS);
 
     l_current_pi = &l_pi[p_pino];
     if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
@@ -349,9 +349,7 @@ bool opj_t2_encode_packets_thresh(opj_t2_t* p_t2,
 
         for (poc = 0; poc < pocno; ++poc) {
             uint32_t l_tp_num = compno;
-
-            /* TODO MSD : check why this function cannot fail (cf. v1) */
-            opj_pi_create_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, THRESH_CALC);
+            opj_pi_init_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, THRESH_CALC);
 
             if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
                 /* TODO ADE : add an error */

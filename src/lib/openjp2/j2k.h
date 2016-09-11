@@ -350,9 +350,9 @@ typedef struct opj_cp {
     /** Rsiz*/
     uint16_t rsiz;
     /** XTOsiz */
-    uint32_t tx0; /* MSD see norm */
+    uint32_t tx0; 
     /** YTOsiz */
-    uint32_t ty0; /* MSD see norm */
+    uint32_t ty0; 
     /** XTsiz */
     uint32_t tdx;
     /** YTsiz */

@@ -64,12 +64,7 @@
 #endif
 
 #include <fcntl.h>
-
 #include "opj_includes.h"
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)

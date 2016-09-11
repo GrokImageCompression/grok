@@ -165,7 +165,7 @@ Modify the packet iterator for enabling tile part generation
 @param tppos The position of the tile part flag in the progression order
 @param t2_mode FIXME DOC
 */
-void opj_pi_create_encode(  opj_pi_iterator_t *pi,
+void opj_pi_init_encode(  opj_pi_iterator_t *pi,
                             opj_cp_t *cp,
                             uint32_t tileno,
                             uint32_t pino,
