@@ -275,7 +275,7 @@ struct opj_tcp_t {
     uint32_t ppt_data_size;
     /** size of ppt_data*/
     uint32_t ppt_len;
-    /** add fixed_quality */
+    /** fixed_quality */
     float distoratio[100];
     /** tile-component coding parameters */
     opj_tccp_t *tccps;
@@ -321,15 +321,11 @@ typedef struct opj_encoding_param {
     uint32_t m_max_comp_size;
     /** Position of tile part flag in progression order*/
     uint32_t m_tp_pos;
-    /** fixed layer */
-    int32_t *m_matrice;
     /** Flag determining tile part generation*/
     uint8_t m_tp_flag;
     /** allocation by rate/distortion */
     uint32_t m_disto_alloc : 1;
-    /** allocation by fixed layer */
-    uint32_t m_fixed_alloc : 1;
-    /** add fixed_quality */
+    /** allocation by fixed_quality */
     uint32_t m_fixed_quality : 1;
     /** Enabling Tile part generation*/
     uint32_t m_tp_on : 1;

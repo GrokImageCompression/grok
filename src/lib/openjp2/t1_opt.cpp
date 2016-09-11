@@ -661,7 +661,6 @@ void opj_t1_opt_init_buffers(
 
 /* ----------------------------------------------------------------------- */
 
-/** mod fixed_quality */
 double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
                                opj_tcd_cblk_enc_t* cblk,
                                uint32_t orient,
@@ -717,7 +716,6 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
             break;
         }
 
-        /* fixed_quality */
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
         pass->term = 0;

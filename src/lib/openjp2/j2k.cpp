@@ -5971,19 +5971,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     cp->m_specific_param.m_enc.m_max_comp_size = parameters->max_comp_size;
     cp->rsiz = parameters->rsiz;
     cp->m_specific_param.m_enc.m_disto_alloc = parameters->cp_disto_alloc & 1u;
-    cp->m_specific_param.m_enc.m_fixed_alloc = parameters->cp_fixed_alloc & 1u;
     cp->m_specific_param.m_enc.m_fixed_quality = parameters->cp_fixed_quality & 1u;
-
-    /* mod fixed_quality */
-    if (parameters->cp_fixed_alloc && parameters->cp_matrice) {
-        size_t array_size = (size_t)parameters->tcp_numlayers * (size_t)parameters->numresolution * 3 * sizeof(int32_t);
-        cp->m_specific_param.m_enc.m_matrice = (int32_t *) opj_malloc(array_size);
-        if (!cp->m_specific_param.m_enc.m_matrice) {
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of user encoding parameters matrix \n");
-            return false;
-        }
-        memcpy(cp->m_specific_param.m_enc.m_matrice, parameters->cp_matrice, array_size);
-    }
 
     /* tiles */
     cp->tdx = parameters->cp_tdx;
@@ -7306,10 +7294,6 @@ static void opj_j2k_cp_destroy (opj_cp_t *p_cp)
     p_cp->ppm_data = NULL; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
     opj_free(p_cp->comment);
     p_cp->comment = 00;
-    if (! p_cp->m_is_decoder) {
-        opj_free(p_cp->m_specific_param.m_enc.m_matrice);
-        p_cp->m_specific_param.m_enc.m_matrice = 00;
-    }
 }
 
 static bool opj_j2k_need_nb_tile_parts_correction(opj_stream_private_t *p_stream, uint32_t tile_no, bool* p_correction_needed, opj_event_mgr_t * p_manager )
@@ -8768,7 +8752,7 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
         *p_header_size = *p_header_size - 2*l_num_band;
     }
 
-    /* Add Antonin : if scalar_derived -> compute other stepsizes */
+    /* if scalar derived, then compute other stepsizes */
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
         for (l_band_no = 1; l_band_no < OPJ_J2K_MAXBANDS; l_band_no++) {
 			uint32_t bandDividedBy3 = (l_band_no - 1) / 3;
