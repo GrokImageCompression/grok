@@ -430,7 +430,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
 
 static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *parameters,
                                  img_fol_t *img_fol, img_fol_t *out_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size, char* plugin_path) {
-    uint32_t i, j;
+    uint32_t i;
     int totlen, c;
     opj_option_t long_option[]= {
         {"cinema2K",REQ_ARG, NULL ,'w'},
@@ -638,7 +638,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 
         /* ----------------------------------------------------- */
 
-        case 'q': {		/* add fixed_quality */
+        case 'q': {		
             char *s = opj_optarg;
             while (sscanf(s, "%f", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1) {
                 parameters->tcp_numlayers++;
@@ -650,55 +650,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
                 s++;
             }
             parameters->cp_fixed_quality = 1;
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-
-        case 'f': {		/* mod fixed_quality (before : -q) */
-            int *row = NULL, *col = NULL;
-            uint32_t numlayers = 0, numresolution = 0, matrix_width = 0;
-
-            char *s = opj_optarg;
-            sscanf(s, "%u", &numlayers);
-            s++;
-            if (numlayers > 9)
-                s++;
-
-            parameters->tcp_numlayers = (int)numlayers;
-            numresolution = parameters->numresolution;
-            matrix_width = numresolution * 3;
-            parameters->cp_matrice = (int *) malloc(numlayers * matrix_width * sizeof(int));
-			if (!parameters->cp_matrice) {
-				return 1;
-			}
-            s = s + 2;
-
-            for (i = 0; i < numlayers; i++) {
-                row = &parameters->cp_matrice[i * matrix_width];
-                col = row;
-                parameters->tcp_rates[i] = 1;
-                sscanf(s, "%d,", &col[0]);
-                s += 2;
-                if (col[0] > 9)
-                    s++;
-                col[1] = 0;
-                col[2] = 0;
-                for (j = 1; j < numresolution; j++) {
-                    col += 3;
-                    sscanf(s, "%d,%d,%d", &col[0], &col[1], &col[2]);
-                    s += 6;
-                    if (col[0] > 9)
-                        s++;
-                    if (col[1] > 9)
-                        s++;
-                    if (col[2] > 9)
-                        s++;
-                }
-                if (i < numlayers - 1)
-                    s++;
-            }
-            parameters->cp_fixed_alloc = 1;
         }
         break;
 
@@ -1115,15 +1066,15 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         return 1;
     }
 
-    if ((parameters->cp_disto_alloc || parameters->cp_fixed_alloc || parameters->cp_fixed_quality)
-            && (!(parameters->cp_disto_alloc ^ parameters->cp_fixed_alloc ^ parameters->cp_fixed_quality))) {
-        fprintf(stderr, "[ERROR] options -r -q and -f cannot be used together !!\n");
+    if ((parameters->cp_disto_alloc ||  parameters->cp_fixed_quality)
+            && (!(parameters->cp_disto_alloc ^  parameters->cp_fixed_quality))) {
+        fprintf(stderr, "[ERROR] options -r and -q cannot be used together !!\n");
         return 1;
-    }				/* mod fixed_quality */
+    }				
 
     /* if no rate entered, lossless by default */
     if (parameters->tcp_numlayers == 0) {
-        parameters->tcp_rates[0] = 0;	/* MOD antonin : losslessbug */
+        parameters->tcp_rates[0] = 0;	
         parameters->tcp_numlayers++;
         parameters->cp_disto_alloc = 1;
     }
@@ -1523,8 +1474,8 @@ int main(int argc, char **argv) {
     }
 
     /* free user parameters structure */
-    if(parameters.cp_comment)   free(parameters.cp_comment);
-    if(parameters.cp_matrice)   free(parameters.cp_matrice);
+    if(parameters.cp_comment)
+		free(parameters.cp_comment);
     if(raw_cp.rawComps) free(raw_cp.rawComps);
 	
     t = opj_clock() - t;
@@ -1742,8 +1693,6 @@ static int plugin_main(int argc, char **argv) {
 	// cleanup
 	if (parameters.cp_comment)
 		free(parameters.cp_comment);
-	if (parameters.cp_matrice)
-		free(parameters.cp_matrice);
 	if (raw_cp.rawComps)
 		free(raw_cp.rawComps);
 

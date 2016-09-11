@@ -225,30 +225,16 @@ opj_tcd_t* opj_tcd_create(bool p_is_decoder)
     return l_tcd;
 }
 
-
-/* ----------------------------------------------------------------------- */
-
-void opj_tcd_rateallocate_fixed(opj_tcd_t *tcd)
-{
-    uint32_t layno;
-
-    for (layno = 0; layno < tcd->tcp->numlayers; layno++) {
-        opj_tcd_makelayer_fixed(tcd, layno, 1);
-    }
-}
-
-
 void opj_tcd_makelayer( opj_tcd_t *tcd,
                         uint32_t layno,
                         double thresh,
-                        uint32_t final)
+                        bool final)
 {
     uint32_t compno, resno, bandno, precno, cblkno;
     uint32_t passno;
-
     opj_tcd_tile_t *tcd_tile = tcd->tile;
 
-    tcd_tile->distolayer[layno] = 0;        /* fixed_quality */
+    tcd_tile->distolayer[layno] = 0;   
 
     for (compno = 0; compno < tcd_tile->numcomps; compno++) {
         opj_tcd_tilecomp_t *tilec = tcd_tile->comps+compno;
@@ -312,7 +298,7 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
                             layer->disto = cblk->passes[n - 1].distortiondec - cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].distortiondec;
                         }
 
-                        tcd_tile->distolayer[layno] += layer->disto;    /* fixed_quality */
+                        tcd_tile->distolayer[layno] += layer->disto;   
 
                         if (final)
                             cblk->num_passes_already_included_in_other_layers = n;
@@ -322,101 +308,6 @@ void opj_tcd_makelayer( opj_tcd_t *tcd,
         }
     }
 }
-
-void opj_tcd_makelayer_fixed(opj_tcd_t *tcd, uint32_t layno, uint32_t final)
-{
-    uint32_t compno, resno, bandno, precno, cblkno;
-    int32_t value;                        /*, matrice[tcd_tcp->numlayers][tcd_tile->comps[0].numresolutions][3]; */
-    int32_t matrice[10][10][3];
-    uint32_t i, j, k;
-
-    opj_cp_t *cp = tcd->cp;
-    opj_tcd_tile_t *tcd_tile = tcd->tile;
-    opj_tcp_t *tcd_tcp = tcd->tcp;
-
-    for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-        opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
-
-        for (i = 0; i < tcd_tcp->numlayers; i++) {
-            for (j = 0; j < tilec->numresolutions; j++) {
-                for (k = 0; k < 3; k++) {
-                    matrice[i][j][k] =
-                        (int32_t) ((float)cp->m_specific_param.m_enc.m_matrice[i * tilec->numresolutions * 3 + j * 3 + k]
-                                   * (float) (tcd->image->comps[compno].prec / 16.0));
-                }
-            }
-        }
-
-        for (resno = 0; resno < tilec->numresolutions; resno++) {
-            opj_tcd_resolution_t *res = &tilec->resolutions[resno];
-
-            for (bandno = 0; bandno < res->numbands; bandno++) {
-                opj_tcd_band_t *band = &res->bands[bandno];
-
-                for (precno = 0; precno < res->pw * res->ph; precno++) {
-                    opj_tcd_precinct_t *prc = &band->precincts[precno];
-
-                    for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-                        opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
-                        opj_tcd_layer_t *layer = &cblk->layers[layno];
-                        uint32_t n;
-                        int32_t imsb = (int32_t)(tcd->image->comps[compno].prec - cblk->numbps); /* number of bit-plan equal to zero */
-
-                        /* Correction of the matrix of coefficient to include the IMSB information */
-                        if (layno == 0) {
-                            value = matrice[layno][resno][bandno];
-                            if (imsb >= value) {
-                                value = 0;
-                            } else {
-                                value -= imsb;
-                            }
-                        } else {
-                            value = matrice[layno][resno][bandno] - matrice[layno - 1][resno][bandno];
-                            if (imsb >= matrice[layno - 1][resno][bandno]) {
-                                value -= (imsb - matrice[layno - 1][resno][bandno]);
-                                if (value < 0) {
-                                    value = 0;
-                                }
-                            }
-                        }
-
-                        if (layno == 0) {
-                            cblk->num_passes_already_included_in_other_layers = 0;
-                        }
-
-                        n = cblk->num_passes_already_included_in_other_layers;
-                        if (cblk->num_passes_already_included_in_other_layers == 0) {
-                            if (value != 0) {
-                                n = 3 * (uint32_t)value - 2 + cblk->num_passes_already_included_in_other_layers;
-                            } else {
-                                n = cblk->num_passes_already_included_in_other_layers;
-                            }
-                        } else {
-                            n = 3 * (uint32_t)value + cblk->num_passes_already_included_in_other_layers;
-                        }
-
-                        layer->numpasses = n - cblk->num_passes_already_included_in_other_layers;
-
-                        if (!layer->numpasses)
-                            continue;
-
-                        if (cblk->num_passes_already_included_in_other_layers == 0) {
-                            layer->len = cblk->passes[n - 1].rate;
-                            layer->data = cblk->data;
-                        } else {
-                            layer->len = cblk->passes[n - 1].rate - cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
-                            layer->data = cblk->data + cblk->passes[cblk->num_passes_already_included_in_other_layers - 1].rate;
-                        }
-
-                        if (final)
-                            cblk->num_passes_already_included_in_other_layers = n;
-                    }
-                }
-            }
-        }
-    }
-}
-
 bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len,
@@ -425,8 +316,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
     double min, max;
-    double cumdisto[100];      /* fixed_quality */
-    const double K = 1;                /* 1.1; fixed_quality */
+    double cumdisto[100];     
+    const double K = 1;              
     double maxSE = 0;
 
     opj_cp_t *cp = tcd->cp;
@@ -436,7 +327,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
     min = DBL_MAX;
     max = 0;
 
-    tcd_tile->numpix = 0;           /* fixed_quality */
+    tcd_tile->numpix = 0;         
 	uint32_t state = opj_plugin_get_debug_state();
 
     for (compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -494,8 +385,6 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                                 max = rdslope;
                             }
                         } /* passno */
-
-                        /* fixed_quality */
 						tcd_tile->numpix += numPix;
 						tilec->numpix += numPix;
                     } /* cbklno */
@@ -528,9 +417,8 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
         double stable_thresh = 0;
         double old_thresh = -1;
         uint32_t i;
-        double distotarget;                /* fixed_quality */
+        double distotarget;             
 
-        /* fixed_quality */
         distotarget = tcd_tile->distotile - ((K * maxSE) / pow(10.0f, tcd_tcp->distoratio[layno] / 10.0f));
 
         /* Don't try to find an optimal threshold but rather take everything not included yet, if
@@ -546,16 +434,15 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
             }
 
             for     (i = 0; i < 128; ++i) {
-                double distoachieved = 0;  /* fixed_quality */
-
+                double distoachieved = 0;  
                 thresh = (lo + hi) / 2;
 
-                opj_tcd_makelayer(tcd, layno, thresh, 0);
+                opj_tcd_makelayer(tcd, layno, thresh, false);
                 if ((fabs(old_thresh - thresh)) < 0.001)
                     break;
                 old_thresh = thresh;
 
-                if (cp->m_specific_param.m_enc.m_fixed_quality) {       /* fixed_quality */
+                if (cp->m_specific_param.m_enc.m_fixed_quality) {     
                     if(OPJ_IS_CINEMA(cp->rsiz)) {
                         if (! opj_t2_encode_packets_thresh(t2,tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
 
@@ -607,9 +494,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
             cstr_info->tile[tcd->tcd_tileno].thresh[layno] = goodthresh;
         }
 
-        opj_tcd_makelayer(tcd, layno, goodthresh, 1);
-
-        /* fixed_quality */
+        opj_tcd_makelayer(tcd, layno, goodthresh, true);
         cumdisto[layno] = (layno == 0) ? tcd_tile->distolayer[0] : (cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
     }
 
@@ -2048,10 +1933,7 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
         if (! opj_tcd_rateallocate(p_tcd, &l_nb_written, p_max_dest_size, p_cstr_info)) {
             return false;
         }
-    } else {
-        /* Fixed layer allocation */
-        opj_tcd_rateallocate_fixed(p_tcd);
-    }
+    } 
 
     return true;
 }

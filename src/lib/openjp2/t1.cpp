@@ -1115,8 +1115,6 @@ static void opj_t1_dec_clnpass(
     }
 }				
 
-
-/** mod fixed_quality */
 double opj_t1_getwmsedec(
     int32_t nmsedec,
     uint32_t compno,
@@ -1464,7 +1462,7 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
 {
     bool do_opt = true;
     uint32_t compno, resno, bandno, precno;
-    tile->distotile = 0;		/* fixed_quality */
+    tile->distotile = 0;		
     for (compno = 0; compno < tile->numcomps; ++compno) {
         opj_tccp_t* tccp = tcp->tccps + compno;
         if (tccp->cblksty != 0) {
@@ -1540,7 +1538,6 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
 	
 }
 
-/** mod fixed_quality */
 double opj_t1_encode_cblk(opj_t1_t *t1,
                             opj_tcd_cblk_enc_t* cblk,
                             uint32_t orient,
@@ -1615,8 +1612,6 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             break;
         }
 
-
-        /* fixed_quality */
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 

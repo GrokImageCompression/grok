@@ -180,7 +180,7 @@ typedef struct opj_tcd_tilecomp {
     uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
     opj_tcd_resolution_t *resolutions;  /* resolutions information */
     uint32_t resolutions_size;        /* size of data for resolutions (in bytes) */
-    int64_t numpix;                   /* add fixed_quality */
+    int64_t numpix;                  
     opj_tile_buf_component_t* buf;
 } opj_tcd_tilecomp_t;
 
@@ -192,9 +192,9 @@ typedef struct opj_tcd_tile {
     uint32_t x0, y0, x1, y1;		/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numcomps;			/* number of components in tile */
     opj_tcd_tilecomp_t *comps;	/* Components information */
-    uint64_t numpix;				/* add fixed_quality */
-    double distotile;			/* add fixed_quality */
-    double distolayer[100];	/* add fixed_quality */
+    uint64_t numpix;				
+    double distotile;			
+    double distolayer[100];	
     uint32_t packno;              /* packet number */
 } opj_tcd_tile_t;
 
@@ -279,14 +279,10 @@ bool opj_tcd_init_decode_tile(opj_tcd_t *p_tcd,
                               uint32_t p_tile_no,
                               opj_event_mgr_t* p_manager);
 
-void opj_tcd_makelayer_fixed(opj_tcd_t *tcd, uint32_t layno, uint32_t final);
-
-void opj_tcd_rateallocate_fixed(opj_tcd_t *tcd);
-
 void opj_tcd_makelayer(	opj_tcd_t *tcd,
                         uint32_t layno,
                         double thresh,
-                        uint32_t final);
+                        bool final);
 
 bool opj_tcd_rateallocate(	opj_tcd_t *tcd,
                             uint64_t * p_data_written,

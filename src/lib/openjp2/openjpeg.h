@@ -369,12 +369,8 @@ typedef struct opj_cparameters {
     uint32_t cp_tdy;
     /** allocation by rate/distortion */
     uint32_t cp_disto_alloc;
-    /** allocation by fixed layer */
-    uint32_t cp_fixed_alloc;
-    /** add fixed_quality */
+    /** allocation by fixed_quality */
     uint32_t cp_fixed_quality;
-    /** fixed layer */
-    int32_t *cp_matrice;
     /** comment for coding */
     char *cp_comment;
     /** csty : coding style */
@@ -770,9 +766,7 @@ typedef struct opj_tile_info {
     uint32_t pdy[33];
     /** information concerning packets inside tile */
     opj_packet_info_t *packet;
-    /** add fixed_quality */
     int64_t numpix;
-    /** add fixed_quality */
     double distotile;
     /** number of markers */
     uint32_t marknum;
