@@ -159,101 +159,10 @@ opj_tcd_t* opj_tcd_create(bool p_is_decoder)
     return l_tcd;
 }
 
-void opj_tcd_makelayer( opj_tcd_t *tcd,
-                        uint32_t layno,
-                        double thresh,
-                        bool final)
-{
-    uint32_t compno, resno, bandno, precno, cblkno;
-    uint32_t passno;
-    opj_tcd_tile_t *tcd_tile = tcd->tile;
-
-    tcd_tile->distolayer[layno] = 0;   
-
-    for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-        opj_tcd_tilecomp_t *tilec = tcd_tile->comps+compno;
-
-        for (resno = 0; resno < tilec->numresolutions; resno++) {
-            opj_tcd_resolution_t *res = tilec->resolutions+resno;
-
-            for (bandno = 0; bandno < res->numbands; bandno++) {
-                opj_tcd_band_t *band = res->bands+bandno;
-
-                for (precno = 0; precno < res->pw * res->ph; precno++) {
-                    opj_tcd_precinct_t *prc = band->precincts+precno;
-
-                    for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-                        opj_tcd_cblk_enc_t *cblk = prc->cblks.enc+cblkno;
-                        opj_tcd_layer_t *layer = cblk->layers+layno;
-                        uint32_t num_included_passes_in_block;
-
-                        if (layno == 0) {
-                            cblk->num_passes_included_in_other_layers = 0;
-                        }
-
-						num_included_passes_in_block = 
-							cblk->num_passes_included_in_other_layers;
-
-                        for (passno = cblk->num_passes_included_in_other_layers; 
-													passno < cblk->totalpasses; passno++) {
-                            uint32_t dr;
-                            double dd;
-                            opj_tcd_pass_t *pass = &cblk->passes[passno];
-
-                            if (num_included_passes_in_block == 0) {
-                                dr = pass->rate;
-                                dd = pass->distortiondec;
-                            } else {
-                                dr = 
-									pass->rate - cblk->passes[num_included_passes_in_block - 1].rate;
-                                dd = 
-									pass->distortiondec - cblk->passes[num_included_passes_in_block - 1].distortiondec;
-                            }
-
-                            if (!dr) {
-                                if (dd != 0)
-									num_included_passes_in_block = passno + 1;
-                                continue;
-                            }
-							/* do not rely on float equality, check with DBL_EPSILON margin */
-                            if (thresh - (dd / dr) < DBL_EPSILON)
-								num_included_passes_in_block = passno + 1;
-                        }
-
-                        layer->numpasses = 
-							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
-
-                        if (!layer->numpasses) {
-                            layer->disto = 0;
-                            continue;
-                        }
-
-						// update layer
-                        if (cblk->num_passes_included_in_other_layers == 0) {
-                            layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
-                            layer->data = cblk->data;
-                            layer->disto = 
-								cblk->passes[num_included_passes_in_block - 1].distortiondec;
-                        } else {
-                            layer->len = 
-								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
-                            layer->data = 
-								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
-                            layer->disto = 
-								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
-                        }
-
-                        tcd_tile->distolayer[layno] += layer->disto;   
-
-                        if (final)
-                            cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
-                    }
-                }
-            }
-        }
-    }
-}
-bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
+/*
+Simple bisect algorithm to calculate optimal layer truncation points
+*/
+bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len,
                             opj_codestream_info_t *cstr_info)
@@ -341,19 +250,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                  * ((double)(tilec->numpix));
     } /* compno */
 
-    /* index file */
-    if(cstr_info) {
-        opj_tile_info_t *tile_info = &cstr_info->tile[tcd->tcd_tileno];
-        tile_info->numpix = tcd_tile->numpix;
-        tile_info->distotile = tcd_tile->distotile;
-        tile_info->thresh = (double *) opj_malloc(tcd_tcp->numlayers * sizeof(double));
-        if (!tile_info->thresh) {
-            /* FIXME event manager error callback */
-            return false;
-        }
-    }
-
-    for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
+	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lo = min_slope;
         double hi = max_slope;
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
@@ -377,7 +274,7 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                 return false;
             }
 
-            for     (i = 0; i < 128; ++i) {
+            for  (i = 0; i < 128; ++i) {
                 double distoachieved = 0;  
                 thresh = (lo + hi) / 2;
 
@@ -425,9 +322,107 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
         opj_tcd_makelayer(tcd, layno, goodthresh, true);
         cumdisto[layno] = (layno == 0) ? tcd_tile->distolayer[0] : (cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
     }
-
     return true;
 }
+
+void opj_tcd_makelayer(opj_tcd_t *tcd,
+	uint32_t layno,
+	double thresh,
+	bool final)
+{
+	uint32_t compno, resno, bandno, precno, cblkno;
+	uint32_t passno;
+	opj_tcd_tile_t *tcd_tile = tcd->tile;
+
+	tcd_tile->distolayer[layno] = 0;
+
+	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
+		opj_tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
+
+		for (resno = 0; resno < tilec->numresolutions; resno++) {
+			opj_tcd_resolution_t *res = tilec->resolutions + resno;
+
+			for (bandno = 0; bandno < res->numbands; bandno++) {
+				opj_tcd_band_t *band = res->bands + bandno;
+
+				for (precno = 0; precno < res->pw * res->ph; precno++) {
+					opj_tcd_precinct_t *prc = band->precincts + precno;
+
+					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+						opj_tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
+						opj_tcd_layer_t *layer = cblk->layers + layno;
+						uint32_t num_included_passes_in_block;
+
+						if (layno == 0) {
+							cblk->num_passes_included_in_other_layers = 0;
+						}
+
+						num_included_passes_in_block =
+							cblk->num_passes_included_in_other_layers;
+
+						for (passno = cblk->num_passes_included_in_other_layers;
+							passno < cblk->totalpasses; passno++) {
+							uint32_t dr;
+							double dd;
+							opj_tcd_pass_t *pass = &cblk->passes[passno];
+
+							if (num_included_passes_in_block == 0) {
+								dr = pass->rate;
+								dd = pass->distortiondec;
+							}
+							else {
+								dr =
+									pass->rate - cblk->passes[num_included_passes_in_block - 1].rate;
+								dd =
+									pass->distortiondec - cblk->passes[num_included_passes_in_block - 1].distortiondec;
+							}
+
+							if (!dr) {
+								if (dd != 0)
+									num_included_passes_in_block = passno + 1;
+								continue;
+							}
+							auto slope = dd / dr;
+							/* do not rely on float equality, check with DBL_EPSILON margin */
+							if (thresh - slope < DBL_EPSILON)
+								num_included_passes_in_block = passno + 1;
+						}
+
+						layer->numpasses =
+							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+
+						if (!layer->numpasses) {
+							layer->disto = 0;
+							continue;
+						}
+
+						// update layer
+						if (cblk->num_passes_included_in_other_layers == 0) {
+							layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
+							layer->data = cblk->data;
+							layer->disto =
+								cblk->passes[num_included_passes_in_block - 1].distortiondec;
+						}
+						else {
+							layer->len =
+								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+							layer->data =
+								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+							layer->disto =
+								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+						}
+
+						tcd_tile->distolayer[layno] += layer->disto;
+
+						if (final)
+							cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+					}
+				}
+			}
+		}
+	}
+}
+
 
 bool opj_tcd_init( opj_tcd_t *p_tcd,
                    opj_image_t * p_image,
@@ -1858,7 +1853,7 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
     if (l_cp->m_specific_param.m_enc.m_disto_alloc|| l_cp->m_specific_param.m_enc.m_fixed_quality)  {
         /* fixed_quality */
         /* Normal Rate/distortion allocation */
-        if (! opj_tcd_rateallocate(p_tcd, &l_nb_written, p_max_dest_size, p_cstr_info)) {
+        if (! opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size, p_cstr_info)) {
             return false;
         }
     } 
