@@ -386,42 +386,27 @@ bool opj_tcd_rateallocate(  opj_tcd_t *tcd,
                     break;
                 old_thresh = thresh;
 
-                if (cp->m_specific_param.m_enc.m_fixed_quality) {     
-                    if(OPJ_IS_CINEMA(cp->rsiz)) {
-                        if (! opj_t2_encode_packets_thresh(t2,tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
-                            lo = thresh;
-                            continue;
-                        } else {
-                            distoachieved = layno == 0 ?
-                                            tcd_tile->distolayer[0] : cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+                if (cp->m_specific_param.m_enc.m_fixed_quality) { 
+					if (OPJ_IS_CINEMA(cp->rsiz) && !opj_t2_encode_packets_thresh(t2, tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
+						lo = thresh;
+						continue;
+					}
+                    distoachieved = layno == 0 ?
+                                    tcd_tile->distolayer[0] : cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
-                            if (distoachieved < distotarget) {
-                                hi=thresh;
-                                stable_thresh = thresh;
-                                continue;
-                            } else {
-                                lo=thresh;
-                            }
-                        }
-                    } else {
-                        distoachieved = (layno == 0) ?
-                                        tcd_tile->distolayer[0] : (cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
-
-                        if (distoachieved < distotarget) {
-                            hi = thresh;
-                            stable_thresh = thresh;
-                            continue;
-                        }
-                        lo = thresh;
-                    }
+                    if (distoachieved < distotarget) {
+                        hi=thresh;
+                        stable_thresh = thresh;
+                        continue;
+                    } 
+					lo=thresh;
+                  
                 } else {
                     if (! opj_t2_encode_packets_thresh(t2, tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
-                        /* TODO: what to do with l ??? seek / tell ??? */
                         /* opj_event_msg(tcd->cinfo, EVT_INFO, "rate alloc: len=%d, max=%d\n", l, maxlen); */
                         lo = thresh;
                         continue;
                     }
-
                     hi = thresh;
                     stable_thresh = thresh;
                 }
