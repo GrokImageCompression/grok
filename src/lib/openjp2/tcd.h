@@ -113,7 +113,7 @@ typedef struct opj_tcd_cblk_enc {
     uint32_t numlenbits;
     uint32_t data_size;         /* Size of allocated data buffer */
     uint32_t numpasses;         /* number of pass already done for the code-blocks */
-    uint32_t num_passes_already_included_in_other_layers; /* number of passes in the layer */
+    uint32_t num_passes_included_in_other_layers; /* number of passes in the layer */
     uint32_t totalpasses;	      /* total number of passes */
     uint32_t* contextStream;
 } opj_tcd_cblk_enc_t;
