@@ -279,7 +279,7 @@ void opj_tcd_makelayer(	opj_tcd_t *tcd,
                         double thresh,
                         bool final);
 
-bool opj_tcd_rateallocate(	opj_tcd_t *tcd,
+bool opj_tcd_pcrd_bisect(	opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len,
                             opj_codestream_info_t *cstr_info);
