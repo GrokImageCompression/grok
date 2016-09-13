@@ -256,7 +256,7 @@ struct opj_tcp_t {
     /** multi-component transform identifier */
     uint32_t mct;
     /** rates of layers */
-    float rates[100];
+    double rates[100];
     /** number of progression order changes */
     uint32_t numpocs;
     /** progression order changes */
@@ -276,7 +276,7 @@ struct opj_tcp_t {
     /** size of ppt_data*/
     uint32_t ppt_len;
     /** fixed_quality */
-    float distoratio[100];
+    double distoratio[100];
     /** tile-component coding parameters */
     opj_tccp_t *tccps;
     /** number of tile parts for the tile. */

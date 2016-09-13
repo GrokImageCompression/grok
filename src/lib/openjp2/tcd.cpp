@@ -260,13 +260,13 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
         uint32_t i;
         double distotarget;             
 
-        distotarget = tcd_tile->distotile - ((K * maxSE) / pow(10.0f, tcd_tcp->distoratio[layno] / 10.0f));
+        distotarget = tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
         /* Don't try to find an optimal threshold but rather take everything not included yet, if
           -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
           -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
           ==> possible to have some lossy layers and the last layer for sure lossless */
-        if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno] > 0.0f)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno] > 0.0f))) {
+        if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno] > 0.0)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno] > 0.0f))) {
             opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
             double thresh = 0;
 
