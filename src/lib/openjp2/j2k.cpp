@@ -238,8 +238,8 @@ static bool opj_j2k_exec (  opj_j2k_t * p_j2k,
 /**
  * Updates the rates of the tcp.
  *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
+ * @param       p_stream                the stream to write data to.
+ * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
 static bool opj_j2k_update_rates(   opj_j2k_t *p_j2k,
@@ -976,6 +976,7 @@ static void opj_j2k_update_tlm (opj_j2k_t * p_j2k, uint64_t p_tile_part_size )
     opj_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_j2k->m_current_tile_number,1);            /* PSOT */
     ++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
 
+	//todo: handle tile part size greater than (2^32-1)
     opj_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_tile_part_size,4);                                        /* PSOT */
     p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current += 4;
 }
@@ -4362,8 +4363,8 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
 
     uint32_t i,j,k;
     uint32_t l_x0,l_y0,l_x1,l_y1;
-    float * l_rates = 0;
-    float l_sot_remove;
+    double * l_rates = 0;
+    double l_sot_remove;
     uint32_t l_bits_empty, l_size_pixel;
     uint64_t l_tile_size = 0;
     uint32_t l_last_res;
@@ -4380,7 +4381,7 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
 
     l_bits_empty = 8 * l_image->comps->dx * l_image->comps->dy;
     l_size_pixel = l_image->numcomps * l_image->comps->prec;
-    l_sot_remove = (float) opj_stream_tell(p_stream) / (float)(l_cp->th * l_cp->tw);
+    l_sot_remove = (double) opj_stream_tell(p_stream) / (l_cp->th * l_cp->tw);
 
     if (l_cp->m_specific_param.m_enc.m_tp_on) {
         l_tp_stride_func = opj_j2k_get_tp_stride;
@@ -4390,7 +4391,7 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
 
     for (i=0; i<l_cp->th; ++i) {
         for (j=0; j<l_cp->tw; ++j) {
-            float l_offset = (float)(*l_tp_stride_func)(l_tcp) / (float)l_tcp->numlayers;
+            double l_offset = (*l_tp_stride_func)(l_tcp) / l_tcp->numlayers;
 
             /* 4 borders of the tile rescale on the image if necessary */
             l_x0 = opj_uint_max((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
@@ -4399,76 +4400,50 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
             l_y1 = opj_uint_min((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
 
             l_rates = l_tcp->rates;
-
-            /* Modification of the RATE >> */
-            if (*l_rates > 0.0f) {
-                *l_rates =              (( (float) (l_size_pixel * (uint32_t)(l_x1 - l_x0) * (uint32_t)(l_y1 - l_y0)))
-                                         /
-                                         ((*l_rates) * (float)l_bits_empty)
-                                        )
-                                        -
-                                        l_offset;
-            }
-
-            ++l_rates;
-
-            for (k = 1; k < l_tcp->numlayers; ++k) {
+            for (k = 0; k < l_tcp->numlayers; ++k) {
                 if (*l_rates > 0.0f) {
-                    *l_rates =              (( (float) (l_size_pixel * (uint32_t)(l_x1 - l_x0) * (uint32_t)(l_y1 - l_y0)))
-                                             /
-                                             ((*l_rates) * (float)l_bits_empty)
-                                            )
-                                            -
-                                            l_offset;
+                    *l_rates =  ((((double)l_size_pixel * (l_x1 - l_x0) * (l_y1 - l_y0)))
+                                / ((*l_rates) * l_bits_empty)) - l_offset;
                 }
-
                 ++l_rates;
             }
-
             ++l_tcp;
-
         }
     }
-
     l_tcp = l_cp->tcps;
 
     for (i=0; i<l_cp->th; ++i) {
-        for     (j=0; j<l_cp->tw; ++j) {
+        for (j=0; j<l_cp->tw; ++j) {
             l_rates = l_tcp->rates;
 
-            if (*l_rates > 0.0f) {
+            if (*l_rates > 0.0) {
                 *l_rates -= l_sot_remove;
 
                 if (*l_rates < 30.0f) {
                     *l_rates = 30.0f;
                 }
             }
-
             ++l_rates;
-
-            l_last_res = l_tcp->numlayers - 1;
+			l_last_res = l_tcp->numlayers - 1;
 
             for (k = 1; k < l_last_res; ++k) {
 
-                if (*l_rates > 0.0f) {
+                if (*l_rates > 0.0) {
                     *l_rates -= l_sot_remove;
 
-                    if (*l_rates < *(l_rates - 1) + 10.0f) {
-                        *l_rates  = (*(l_rates - 1)) + 20.0f;
+                    if (*l_rates < *(l_rates - 1) + 10.0) {
+                        *l_rates  = (*(l_rates - 1)) + 20.0;
                     }
                 }
-
                 ++l_rates;
             }
 
-            if (*l_rates > 0.0f) {
-                *l_rates -= (l_sot_remove + 2.f);
-
-                if (*l_rates < *(l_rates - 1) + 10.0f) {
-                    *l_rates  = (*(l_rates - 1)) + 20.0f;
+            if (*l_rates > 0.0) {
+                *l_rates -= (l_sot_remove + 2.0);
+                if (*l_rates < *(l_rates - 1) + 10.0) {
+                    *l_rates  = (*(l_rates - 1)) + 20.0;
                 }
             }
-
             ++l_tcp;
         }
     }
@@ -4477,14 +4452,13 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     l_tile_size = 0;
 
     for (i=0; i<l_image->numcomps; ++i) {
-        l_tile_size += (uint64_t)(opj_uint_ceildiv(l_cp->tdx,l_img_comp->dx) *
-                                opj_uint_ceildiv(l_cp->tdy,l_img_comp->dy) *
-									 l_img_comp->prec );
+		l_tile_size += (uint64_t)opj_uint_ceildiv(l_cp->tdx, l_img_comp->dx) *
+									opj_uint_ceildiv(l_cp->tdy, l_img_comp->dy) *
+									l_img_comp->prec;
         ++l_img_comp;
     }
 
     l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
-
     l_tile_size += opj_j2k_get_specific_header_sizes(p_j2k);
 
     p_j2k->m_specific_param.m_encoder.m_encoded_tile_size = l_tile_size;
@@ -4504,7 +4478,6 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current =
             p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer;
     }
-
     return true;
 }
 
@@ -5799,8 +5772,8 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
         parameters->max_comp_size = OPJ_CINEMA_24_COMP;
     }
 
-    parameters->tcp_rates[0] = (float) (image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
-                               (float)(((uint32_t)parameters->max_cs_size) * 8 * image->comps[0].dx * image->comps[0].dy);
+    parameters->tcp_rates[0] =  ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
+                               ((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
 
 }
 
@@ -5894,18 +5867,17 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     if (parameters->max_cs_size <= 0) {
         if (parameters->tcp_numlayers > 0 &&
 				parameters->tcp_rates[parameters->tcp_numlayers-1] > 0) {
-            float temp_size;
-            temp_size =(float)(image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
-                       (parameters->tcp_rates[parameters->tcp_numlayers-1] * 8 * (float)image->comps[0].dx * (float)image->comps[0].dy);
-            parameters->max_cs_size = (int) floor(temp_size);
+			double temp_size =((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
+                       ((double)parameters->tcp_rates[parameters->tcp_numlayers-1] * 8.0 * image->comps[0].dx * image->comps[0].dy);
+            parameters->max_cs_size = (uint64_t) floor(temp_size);
         } else {
             parameters->max_cs_size = 0;
         }
     } else {
-        float temp_rate;
+        double temp_rate;
         bool cap = false;
-        temp_rate = (float) (image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
-                    (float)(((uint32_t)parameters->max_cs_size) * 8 * image->comps[0].dx * image->comps[0].dy);
+        temp_rate = ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
+                    ((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
         for (i = 0; i <  parameters->tcp_numlayers; i++) {
             if (parameters->tcp_rates[i] < temp_rate) {
                 parameters->tcp_rates[i] = temp_rate;

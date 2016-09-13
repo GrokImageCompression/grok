@@ -384,9 +384,9 @@ typedef struct opj_cparameters {
     /** number of layers */
     uint32_t tcp_numlayers;
     /** rates of layers - might be subsequently limited by the max_cs_size field */
-    float tcp_rates[100];
+    double tcp_rates[100];
     /** different psnr for successive layers */
-    float tcp_distoratio[100];
+    double tcp_distoratio[100];
     /** number of resolutions */
     uint32_t numresolution;
     /** initial code block width, default to 64 */

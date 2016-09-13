@@ -533,7 +533,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         case 'r': {		/* rates rates/distorsion */
             char *s = opj_optarg;
             parameters->tcp_numlayers = 0;
-            while (sscanf(s, "%f", &parameters->tcp_rates[parameters->tcp_numlayers]) == 1) {
+            while (sscanf(s, "%lf", &parameters->tcp_rates[parameters->tcp_numlayers]) == 1) {
                 parameters->tcp_numlayers++;
                 while (*s && *s != ',') {
                     s++;
@@ -640,7 +640,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 
         case 'q': {		
             char *s = opj_optarg;
-            while (sscanf(s, "%f", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1) {
+            while (sscanf(s, "%lf", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1) {
                 parameters->tcp_numlayers++;
                 while (*s && *s != ',') {
                     s++;
