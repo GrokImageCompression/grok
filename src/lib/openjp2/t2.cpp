@@ -107,7 +107,7 @@ Encode a packet of a tile to a destination buffer
 @param cstr_info Codestream information structure
 @return
 */
-static bool opj_t2_encode_packet_thresh(opj_tcd_tile_t *tile,
+static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t *tile,
                                         opj_tcp_t *tcp,
                                         opj_pi_iterator_t *pi,
                                         uint64_t * p_data_written,
@@ -316,7 +316,7 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
 }
 
 
-bool opj_t2_encode_packets_thresh(opj_t2_t* p_t2,
+bool opj_t2_encode_packets_simulate(opj_t2_t* p_t2,
                                   uint32_t p_tile_no,
                                   opj_tcd_tile_t *p_tile,
                                   uint32_t p_maxlayers,
@@ -360,7 +360,7 @@ bool opj_t2_encode_packets_thresh(opj_t2_t* p_t2,
                 if (l_current_pi->layno < p_maxlayers) {
                     l_nb_bytes = 0;
 
-                    if (!opj_t2_encode_packet_thresh(p_tile, l_tcp, l_current_pi, &l_nb_bytes, p_max_len)) {
+                    if (!opj_t2_encode_packet_simulate(p_tile, l_tcp, l_current_pi, &l_nb_bytes, p_max_len)) {
                         opj_pi_destroy(l_pi, l_nb_pocs);
                         return false;
                     }
@@ -832,7 +832,7 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
 }
 
 
-static bool opj_t2_encode_packet_thresh(opj_tcd_tile_t * tile,
+static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
                                         opj_tcp_t * tcp,
                                         opj_pi_iterator_t *pi,
                                         uint64_t * p_data_written,

@@ -254,13 +254,14 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
         double lo = min_slope;
         double hi = max_slope;
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
+		/* Threshold for Marcela Index */
         double goodthresh = 0;
+
         double stable_thresh = 0;
         double old_thresh = -1;
         uint32_t i;
-        double distotarget;             
-
-        distotarget = tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
+        double distotarget = 
+			tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
         /* Don't try to find an optimal threshold but rather take everything not included yet, if
           -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
@@ -275,21 +276,30 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
             }
 
             for  (i = 0; i < 128; ++i) {
-                double distoachieved = 0;  
-                thresh = (lo + hi) / 2;
+               thresh = (lo + hi) / 2;
 
                 opj_tcd_makelayer(tcd, layno, thresh, false);
                 if ((fabs(old_thresh - thresh)) < 0.001)
                     break;
                 old_thresh = thresh;
 
-                if (cp->m_specific_param.m_enc.m_fixed_quality) { 
-					if (OPJ_IS_CINEMA(cp->rsiz) && !opj_t2_encode_packets_thresh(t2, tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
+				if (!cp->m_specific_param.m_enc.m_fixed_quality ||OPJ_IS_CINEMA(cp->rsiz)) {
+					if ( !opj_t2_encode_packets_simulate(t2,
+														tcd->tcd_tileno,
+														tcd_tile,
+														layno + 1,
+														p_data_written,
+														maxlen,
+														tcd->tp_pos)) {
 						lo = thresh;
 						continue;
 					}
-                    distoachieved = layno == 0 ?
-                                    tcd_tile->distolayer[0] : cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+				}
+                if (cp->m_specific_param.m_enc.m_fixed_quality) { 
+                    double distoachieved = 
+								layno == 0 ? 
+								  tcd_tile->distolayer[0] :
+									cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
                     if (distoachieved < distotarget) {
                         hi=thresh;
@@ -297,30 +307,22 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
                         continue;
                     } 
 					lo=thresh;
-                  
                 } else {
-                    if (! opj_t2_encode_packets_thresh(t2, tcd->tcd_tileno, tcd_tile, layno + 1, p_data_written, maxlen, tcd->tp_pos)) {
-                        /* opj_event_msg(tcd->cinfo, EVT_INFO, "rate alloc: len=%d, max=%d\n", l, maxlen); */
-                        lo = thresh;
-                        continue;
-                    }
                     hi = thresh;
                     stable_thresh = thresh;
                 }
             }
             goodthresh = stable_thresh == 0? thresh : stable_thresh;
-
             opj_t2_destroy(t2);
         } else {
             goodthresh = min_slope;
         }
 
-        if(cstr_info) { /* Threshold for Marcela Index */
-            cstr_info->tile[tcd->tcd_tileno].thresh[layno] = goodthresh;
-        }
-
         opj_tcd_makelayer(tcd, layno, goodthresh, true);
-        cumdisto[layno] = (layno == 0) ? tcd_tile->distolayer[0] : (cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+        cumdisto[layno] = 
+			(layno == 0) ? 
+				tcd_tile->distolayer[0] : 
+					(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
     }
     return true;
 }

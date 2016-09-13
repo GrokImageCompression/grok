@@ -116,7 +116,7 @@ Encode the packets of a tile to a destination buffer
 @param len              the length of the destination buffer
 @param tppos            The position of the tile part flag in the progression order
 */
-bool opj_t2_encode_packets_thresh(opj_t2_t* t2,
+bool opj_t2_encode_packets_simulate(opj_t2_t* t2,
                                   uint32_t tileno,
                                   opj_tcd_tile_t *tile,
                                   uint32_t maxlayers,
