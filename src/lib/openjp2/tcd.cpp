@@ -245,9 +245,9 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
             } /* bandno */
         } /* resno */
 
-        maxSE += (((double)(1 << tcd->image->comps[compno].prec) - 1.0)
-                  * ((double)(1 << tcd->image->comps[compno].prec) -1.0))
-                 * ((double)(tilec->numpix));
+        maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+							* (((uint64_t)1 << tcd->image->comps[compno].prec) -1.0)
+							 * tilec->numpix;
     } /* compno */
 
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
@@ -269,32 +269,18 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
           ==> possible to have some lossy layers and the last layer for sure lossless */
         if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno] > 0.0)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno] > 0.0f))) {
             opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
-            double thresh = 0;
-
             if (t2 == 00) {
                 return false;
             }
 
+			double thresh = 0;
             for  (i = 0; i < 128; ++i) {
                thresh = (lo + hi) / 2;
-
                 opj_tcd_makelayer(tcd, layno, thresh, false);
                 if ((fabs(old_thresh - thresh)) < 0.001)
                     break;
                 old_thresh = thresh;
 
-				if (!cp->m_specific_param.m_enc.m_fixed_quality ||OPJ_IS_CINEMA(cp->rsiz)) {
-					if ( !opj_t2_encode_packets_simulate(t2,
-														tcd->tcd_tileno,
-														tcd_tile,
-														layno + 1,
-														p_data_written,
-														maxlen,
-														tcd->tp_pos)) {
-						lo = thresh;
-						continue;
-					}
-				}
                 if (cp->m_specific_param.m_enc.m_fixed_quality) { 
                     double distoachieved = 
 								layno == 0 ? 
@@ -308,6 +294,16 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
                     } 
 					lo=thresh;
                 } else {
+					if (!opj_t2_encode_packets_simulate(t2,
+						tcd->tcd_tileno,
+						tcd_tile,
+						layno + 1,
+						p_data_written,
+						maxlen,
+						tcd->tp_pos)) {
+							lo = thresh;
+							continue;
+					}
                     hi = thresh;
                     stable_thresh = thresh;
                 }
