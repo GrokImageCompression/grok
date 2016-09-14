@@ -324,7 +324,6 @@ bool opj_t2_encode_packets_simulate(opj_t2_t* p_t2,
                                   uint64_t p_max_len,
                                   uint32_t p_tp_pos)
 {
-    uint64_t l_nb_bytes = 0;
     uint32_t compno;
     uint32_t poc;
     opj_pi_iterator_t *l_pi = 00;
@@ -358,17 +357,15 @@ bool opj_t2_encode_packets_simulate(opj_t2_t* p_t2,
             }
             while (opj_pi_next(l_current_pi)) {
                 if (l_current_pi->layno < p_maxlayers) {
-                    l_nb_bytes = 0;
-
-                    if (!opj_t2_encode_packet_simulate(p_tile, l_tcp, l_current_pi, &l_nb_bytes, p_max_len)) {
+					uint64_t bytesInPacket = 0;
+                    if (!opj_t2_encode_packet_simulate(p_tile, l_tcp, l_current_pi, &bytesInPacket, p_max_len)) {
                         opj_pi_destroy(l_pi, l_nb_pocs);
                         return false;
                     }
 
-                    l_comp_len += l_nb_bytes;
-                    p_max_len -= l_nb_bytes;
-
-                    *p_data_written += l_nb_bytes;
+                    l_comp_len += bytesInPacket;
+                    p_max_len -= bytesInPacket;
+                    *p_data_written += bytesInPacket;
                 }
             }
 
