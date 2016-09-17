@@ -256,8 +256,6 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
 		/* Threshold for Marcela Index */
         double goodthresh = 0;
-
-        double stable_thresh = 0;
         double old_thresh = -1;
         uint32_t i;
         double distotarget = 
@@ -272,7 +270,6 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
             if (t2 == 00) {
                 return false;
             }
-
 			double thresh = 0;
             for  (i = 0; i < 128; ++i) {
                thresh = (lo + hi) / 2;
@@ -289,7 +286,6 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 
                     if (distoachieved < distotarget) {
                         hi=thresh;
-                        stable_thresh = thresh;
                         continue;
                     } 
 					lo=thresh;
@@ -305,10 +301,9 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 							continue;
 					}
                     hi = thresh;
-                    stable_thresh = thresh;
                 }
             }
-            goodthresh = stable_thresh == 0? thresh : stable_thresh;
+            goodthresh = (hi == 0)? thresh : hi;
             opj_t2_destroy(t2);
         } else {
             goodthresh = min_slope;
