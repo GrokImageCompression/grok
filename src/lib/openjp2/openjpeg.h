@@ -1423,7 +1423,7 @@ OPJ_API bool OPJ_CALLCONV opj_set_decoded_resolution_factor(opj_codec_t *p_codec
 OPJ_API bool OPJ_CALLCONV opj_write_tile (	opj_codec_t *p_codec,
         uint32_t p_tile_index,
         uint8_t * p_data,
-        uint32_t p_data_size,
+        uint64_t p_data_size,
         opj_stream_t *p_stream );
 
 /**
@@ -1450,9 +1450,11 @@ OPJ_API bool OPJ_CALLCONV opj_write_tile (	opj_codec_t *p_codec,
 OPJ_API bool OPJ_CALLCONV opj_read_tile_header(	opj_codec_t *p_codec,
         opj_stream_t * p_stream,
         uint32_t * p_tile_index,
-        uint32_t * p_data_size,
-        uint32_t * p_tile_x0, uint32_t * p_tile_y0,
-        uint32_t * p_tile_x1, uint32_t * p_tile_y1,
+        uint64_t * p_data_size,
+        uint32_t * p_tile_x0,
+		uint32_t * p_tile_y0,
+        uint32_t * p_tile_x1,
+		uint32_t * p_tile_y1,
         uint32_t * p_nb_comps,
         bool * p_should_go_on );
 
@@ -1471,7 +1473,7 @@ OPJ_API bool OPJ_CALLCONV opj_read_tile_header(	opj_codec_t *p_codec,
 OPJ_API bool OPJ_CALLCONV opj_decode_tile_data(	opj_codec_t *p_codec,
         uint32_t p_tile_index,
         uint8_t * p_data,
-        uint32_t p_data_size,
+        uint64_t p_data_size,
         opj_stream_t *p_stream );
 
 /* COMPRESSION FUNCTIONS*/

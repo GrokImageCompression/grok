@@ -1430,7 +1430,7 @@ int main(int argc, char **argv) {
         }
         if( bSuccess && bUseTiles ) {
             uint8_t *l_data;
-            uint32_t l_data_size = 512*512*3;
+            uint64_t l_data_size = 512*512*3;
             l_data = (uint8_t*) calloc( 1,l_data_size);
             assert( l_data );
             for (i=0;i<l_nb_tiles;++i) {

@@ -953,10 +953,10 @@ static bool opj_tcd_code_block_dec_allocate (opj_tcd_cblk_dec_t * p_code_block)
 Get size of tile data, summed over all components, reflecting actual precision of data.
 opj_image_t always stores data in 32 bit format.
 */
-uint32_t opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
+uint64_t opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
 {
     uint32_t i;
-    uint32_t l_data_size = 0;
+    uint64_t l_data_size = 0;
     opj_image_comp_t * l_img_comp = 00;
     opj_tcd_tilecomp_t * l_tile_comp = 00;
     opj_tcd_resolution_t * l_res = 00;
@@ -973,7 +973,7 @@ uint32_t opj_tcd_get_decoded_tile_size ( opj_tcd_t *p_tcd )
         }
 
         l_res = l_tile_comp->resolutions + l_tile_comp->minimum_num_resolutions - 1;
-        l_data_size += l_size_comp * (uint32_t)((l_res->x1 - l_res->x0) * (l_res->y1 - l_res->y0));
+        l_data_size += l_size_comp * (uint64_t)(l_res->x1 - l_res->x0) * (l_res->y1 - l_res->y0);
         ++l_img_comp;
         ++l_tile_comp;
     }
@@ -1136,17 +1136,16 @@ If we are decoding all resolutions, then this step is not necessary ??
 */
 bool opj_tcd_update_tile_data ( opj_tcd_t *p_tcd,
                                 uint8_t * p_dest,
-                                uint32_t p_dest_length
+                                uint64_t p_dest_length
                               )
 {
-    uint32_t i,j,k,l_data_size = 0;
+    uint32_t i,j,k;
     opj_image_comp_t * l_img_comp = 00;
     opj_tcd_tilecomp_t * l_tilec = 00;
     opj_tcd_resolution_t * l_res;
     uint32_t l_size_comp;
     uint32_t l_stride, l_width,l_height;
-
-    l_data_size = opj_tcd_get_decoded_tile_size(p_tcd);
+	uint64_t l_data_size = opj_tcd_get_decoded_tile_size(p_tcd);
     if (l_data_size > p_dest_length) {
         return false;
     }
@@ -1611,12 +1610,13 @@ static void opj_tcd_code_block_enc_deallocate (opj_tcd_precinct_t * p_precinct)
     }
 }
 
-uint32_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd )
+uint64_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd )
 {
-    uint32_t i,l_data_size = 0;
+    uint32_t i = 0;
     opj_image_comp_t * l_img_comp = 00;
     opj_tcd_tilecomp_t * l_tilec = 00;
-    uint32_t l_size_comp, l_remaining;
+	uint32_t l_size_comp, l_remaining;
+	uint64_t l_data_size = 0;
 
     l_tilec = p_tcd->tile->comps;
     l_img_comp = p_tcd->image->comps;
@@ -1632,7 +1632,7 @@ uint32_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd )
             l_size_comp = 4;
         }
 
-        l_data_size += l_size_comp * (uint32_t)((l_tilec->x1 - l_tilec->x0) * (l_tilec->y1 - l_tilec->y0));
+        l_data_size += l_size_comp * (uint64_t)(l_tilec->x1 - l_tilec->x0) * (l_tilec->y1 - l_tilec->y0);
         ++l_img_comp;
         ++l_tilec;
     }
@@ -1857,15 +1857,14 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
 
 bool opj_tcd_copy_tile_data (       opj_tcd_t *p_tcd,
                                     uint8_t * p_src,
-                                    uint32_t p_src_length )
+                                    uint64_t p_src_length )
 {
-    uint32_t i,j,l_data_size = 0;
+    uint32_t i,j;
     opj_image_comp_t * l_img_comp = 00;
     opj_tcd_tilecomp_t * l_tilec = 00;
     uint32_t l_size_comp, l_remaining;
     uint32_t l_nb_elem;
-
-    l_data_size = opj_tcd_get_encoded_tile_size(p_tcd);
+	uint64_t l_data_size = opj_tcd_get_encoded_tile_size(p_tcd);
     if (l_data_size != p_src_length) {
         return false;
     }

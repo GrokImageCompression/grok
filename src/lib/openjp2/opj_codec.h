@@ -82,7 +82,7 @@ typedef struct opj_codec_private {
             /** FIXME DOC */
             bool (*opj_read_tile_header)( void * p_codec,
                                           uint32_t * p_tile_index,
-                                          uint32_t * p_data_size,
+                                          uint64_t * p_data_size,
                                           uint32_t * p_tile_x0,
                                           uint32_t * p_tile_y0,
                                           uint32_t * p_tile_x1,
@@ -96,7 +96,7 @@ typedef struct opj_codec_private {
             bool (*opj_decode_tile_data)( void * p_codec,
                                           uint32_t p_tile_index,
                                           uint8_t * p_data,
-                                          uint32_t p_data_size,
+                                          uint64_t p_data_size,
                                           struct opj_stream_private * p_cio,
                                           opj_event_mgr_t * p_manager);
 
@@ -150,7 +150,7 @@ typedef struct opj_codec_private {
             bool (* opj_write_tile) ( void * p_codec,
                                       uint32_t p_tile_index,
                                       uint8_t * p_data,
-                                      uint32_t p_data_size,
+                                      uint64_t p_data_size,
                                       struct opj_stream_private * p_cio,
                                       opj_event_mgr_t * p_manager);
 

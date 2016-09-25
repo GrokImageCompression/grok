@@ -7370,9 +7370,11 @@ static bool opj_j2k_need_nb_tile_parts_correction(opj_stream_private_t *p_stream
 
 bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
                                     uint32_t * p_tile_index,
-                                    uint32_t * p_data_size,
-                                    uint32_t * p_tile_x0, uint32_t * p_tile_y0,
-                                    uint32_t * p_tile_x1, uint32_t * p_tile_y1,
+                                    uint64_t * p_data_size,
+                                    uint32_t * p_tile_x0,
+									uint32_t * p_tile_y0,
+                                    uint32_t * p_tile_x1,
+									uint32_t * p_tile_y1,
                                     uint32_t * p_nb_comps,
                                     bool * p_go_on,
                                     opj_stream_private_t *p_stream,
@@ -7639,7 +7641,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
 bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
-                            uint32_t p_data_size,
+                            uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
                             opj_event_mgr_t * p_manager )
 {
@@ -9248,7 +9250,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 {
     bool l_go_on = true;
     uint32_t l_current_tile_no;
-    uint32_t l_data_size=0,l_max_data_size=0;
+    uint64_t l_data_size=0,l_max_data_size=0;
     uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
     uint32_t l_nb_comps;
     uint8_t * l_current_data=NULL;
@@ -9267,8 +9269,10 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
                                         &l_data_size,
-                                        &l_tile_x0, &l_tile_y0,
-                                        &l_tile_x1, &l_tile_y1,
+                                        &l_tile_x0,
+										&l_tile_y0,
+                                        &l_tile_x1,
+										&l_tile_y1,
                                         &l_nb_comps,
                                         &l_go_on,
                                         p_stream,
@@ -9355,7 +9359,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
     bool l_go_on = true;
     uint32_t l_current_tile_no;
     uint32_t l_tile_no_to_dec;
-    uint32_t l_data_size=0,l_max_data_size=0;
+    uint64_t l_data_size=0,l_max_data_size=0;
     uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
     uint32_t l_nb_comps;
     uint8_t * l_current_data=NULL;
@@ -9407,8 +9411,10 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
                                         &l_data_size,
-                                        &l_tile_x0, &l_tile_y0,
-                                        &l_tile_x1, &l_tile_y1,
+                                        &l_tile_x0,
+										&l_tile_y0,
+                                        &l_tile_x1,
+										&l_tile_y1,
                                         &l_nb_comps,
                                         &l_go_on,
                                         p_stream,
@@ -9668,7 +9674,8 @@ bool opj_j2k_encode(opj_j2k_t * p_j2k,
 {
     uint32_t i, j;
     uint32_t l_nb_tiles;
-    uint32_t l_max_tile_size = 0, l_current_tile_size;
+	uint64_t l_max_tile_size = 0;
+	uint64_t l_current_tile_size;
     uint8_t * l_current_data = 00;
     bool l_reuse_data = false;
     opj_tcd_t* p_tcd = 00;
@@ -10459,7 +10466,7 @@ static bool opj_j2k_create_tcd(     opj_j2k_t *p_j2k,
 bool opj_j2k_write_tile (opj_j2k_t * p_j2k,
                          uint32_t p_tile_index,
                          uint8_t * p_data,
-                         uint32_t p_data_size,
+                         uint64_t p_data_size,
                          opj_stream_private_t *p_stream,
                          opj_event_mgr_t * p_manager )
 {
