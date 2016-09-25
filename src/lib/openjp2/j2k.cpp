@@ -452,7 +452,7 @@ static void opj_get_tile_dimensions(opj_image_t * l_image,
                                     uint32_t* l_offset_y,
                                     uint32_t* l_image_width,
                                     uint32_t* l_stride,
-                                    uint32_t* l_tile_offset);
+                                    uint64_t* l_tile_offset);
 
 static void opj_j2k_get_tile_data (opj_tcd_t * p_tcd, uint8_t * p_data);
 
@@ -9869,7 +9869,7 @@ static void opj_get_tile_dimensions(opj_image_t * l_image,
                                     uint32_t* l_offset_y,
                                     uint32_t* l_image_width,
                                     uint32_t* l_stride,
-                                    uint32_t* l_tile_offset)
+                                    uint64_t* l_tile_offset)
 {
     uint32_t l_remaining;
     *l_size_comp = l_img_comp->prec >> 3; /* (/8) */
@@ -9888,7 +9888,7 @@ static void opj_get_tile_dimensions(opj_image_t * l_image,
     *l_offset_y = opj_uint_ceildiv(l_image->y0, l_img_comp->dy);
     *l_image_width = opj_uint_ceildiv(l_image->x1 - l_image->x0, l_img_comp->dx);
     *l_stride = *l_image_width - *l_width;
-    *l_tile_offset = (l_tilec->x0 - *l_offset_x) + (l_tilec->y0 - *l_offset_y) * *l_image_width;
+    *l_tile_offset = (l_tilec->x0 - *l_offset_x) + (uint64_t)(l_tilec->y0 - *l_offset_y) * *l_image_width;
 }
 
 static void opj_j2k_get_tile_data (opj_tcd_t * p_tcd, uint8_t * p_data)
@@ -9900,7 +9900,8 @@ static void opj_j2k_get_tile_data (opj_tcd_t * p_tcd, uint8_t * p_data)
         int32_t * l_src_ptr;
         opj_tcd_tilecomp_t * l_tilec = p_tcd->tile->comps + i;
         opj_image_comp_t * l_img_comp = l_image->comps + i;
-        uint32_t l_size_comp,l_width,l_height,l_offset_x,l_offset_y, l_image_width,l_stride,l_tile_offset;
+		uint32_t l_size_comp, l_width, l_height, l_offset_x, l_offset_y, l_image_width, l_stride;
+		uint64_t l_tile_offset;
 
         opj_get_tile_dimensions(l_image,
                                 l_tilec,
