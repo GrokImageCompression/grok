@@ -223,7 +223,7 @@ CHECK_INCLUDE_FILE("unistd.h"       HAVE_UNISTD_H)
 include(TestLargeFiles)
 OPJ_TEST_LARGE_FILES(OPJ_HAVE_LARGEFILES)
 
-# Allocating Aligned Memory Blocks
+# Allocating Aligned Memory Blocks
 include(CheckIncludeFiles)
 check_include_files(malloc.h OPJ_HAVE_MALLOC_H)
 include(CheckSymbolExists)
@@ -238,6 +238,7 @@ check_symbol_exists(memalign malloc.h OPJ_HAVE_MEMALIGN)
 #-----------------------------------------------------------------------------
 # Build Library
 add_subdirectory(src/lib)
+option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 
 #-----------------------------------------------------------------------------
 # Build Applications
