@@ -2846,11 +2846,11 @@ static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
     /* process read data */
     opj_read_bytes(p_data, &l_value, 4);
     p_data += 4;
-    box->length = (uint32_t)(l_value);
+    box->length = l_value;
 
     opj_read_bytes(p_data, &l_value, 4);
     p_data += 4;
-    box->type = (uint32_t)(l_value);
+    box->type = l_value;
 
     *p_number_bytes_read = 8;
 

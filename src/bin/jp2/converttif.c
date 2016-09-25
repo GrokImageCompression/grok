@@ -1466,7 +1466,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         cmptparm[j].h = h;
     }
 
-    image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
+    image = opj_image_create(numcomps, &cmptparm[0], color_space);
     if(!image) {
 		success = false;
 		goto cleanup;

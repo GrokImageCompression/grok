@@ -95,7 +95,7 @@ void opj_mct_encode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
     size_t i;
     const size_t len = n;
@@ -137,7 +137,7 @@ void opj_mct_encode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
     size_t i;
     const size_t len = n;
@@ -164,7 +164,7 @@ void opj_mct_decode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
     size_t i;
     const size_t len = n;
@@ -199,16 +199,16 @@ void opj_mct_decode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
-    int32_t i=0;
+    uint64_t i=0;
 #ifdef _OPENMP
 #pragma omp parallel default(none) private(i) shared(c0, c1,c2,n)
 	{
 #pragma omp for
 #endif
 
-		for (i = 0; i < (int32_t)n; ++i) {
+		for (i = 0; i < n; ++i) {
 			int32_t y = c0[i];
 			int32_t u = c1[i];
 			int32_t v = c2[i];
@@ -242,7 +242,7 @@ void opj_mct_encode_real(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
     size_t i;
     const size_t len = n;
@@ -383,9 +383,9 @@ void opj_mct_encode_real(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
-    uint32_t i;
+    uint64_t i;
     for(i = 0; i < n; ++i) {
         int32_t r = c0[i];
         int32_t g = c1[i];
@@ -407,9 +407,9 @@ void opj_mct_decode_real(
     float* restrict c0,
     float* restrict c1,
     float* restrict c2,
-    uint32_t n)
+    uint64_t n)
 {
-    int32_t i=0;
+    uint64_t i=0;
 #ifdef __SSE__
     __m128 vrv, vgu, vgv, vbu;
     vrv = _mm_set1_ps(1.402f);
@@ -454,7 +454,7 @@ void opj_mct_decode_real(
 #pragma omp for
 #endif
 
-		for (i = 0; i < (int32_t)n; ++i) {
+		for (i = 0; i < n; ++i) {
 			float y = c0[i];
 			float u = c1[i];
 			float v = c2[i];
@@ -481,13 +481,13 @@ double opj_mct_getnorm_real(uint32_t compno)
 
 bool opj_mct_encode_custom(
     uint8_t * pCodingdata,
-    uint32_t n,
+    uint64_t n,
     uint8_t ** pData,
     uint32_t pNbComp,
     uint32_t isSigned)
 {
     float * lMct = (float *) pCodingdata;
-    uint32_t i;
+    uint64_t i;
     uint32_t j;
     uint32_t k;
     uint32_t lNbMatCoeff = pNbComp * pNbComp;
@@ -534,13 +534,13 @@ bool opj_mct_encode_custom(
 
 bool opj_mct_decode_custom(
     uint8_t * pDecodingData,
-    uint32_t n,
+    uint64_t n,
     uint8_t ** pData,
     uint32_t pNbComp,
     uint32_t isSigned)
 {
     float * lMct;
-    uint32_t i;
+    uint64_t i;
     uint32_t j;
     uint32_t k;
 

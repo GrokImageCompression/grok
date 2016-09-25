@@ -79,7 +79,7 @@ Apply a reversible multi-component transform to an image
 @param c2 Samples blue component
 @param n Number of samples for each component
 */
-void opj_mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint32_t n);
+void opj_mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Apply a reversible multi-component inverse transform to an image
 @param c0 Samples for luminance component
@@ -87,7 +87,7 @@ Apply a reversible multi-component inverse transform to an image
 @param c2 Samples for blue chrominance component
 @param n Number of samples for each component
 */
-void opj_mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint32_t n);
+void opj_mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Get norm of the basis function used for the reversible multi-component transform
 @param compno Number of the component (0->Y, 1->U, 2->V)
@@ -102,7 +102,7 @@ Apply an irreversible multi-component transform to an image
 @param c2 Samples blue component
 @param n Number of samples for each component
 */
-void opj_mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint32_t n);
+void opj_mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Apply an irreversible multi-component inverse transform to an image
 @param c0 Samples for luminance component
@@ -110,7 +110,7 @@ Apply an irreversible multi-component inverse transform to an image
 @param c2 Samples for blue chrominance component
 @param n Number of samples for each component
 */
-void opj_mct_decode_real(float* c0, float* c1, float* c2, uint32_t n);
+void opj_mct_decode_real(float* c0, float* c1, float* c2, uint64_t n);
 /**
 Get norm of the basis function used for the irreversible multi-component transform
 @param compno Number of the component (0->Y, 1->U, 2->V)
@@ -129,7 +129,7 @@ FIXME DOC
 */
 bool opj_mct_encode_custom(
     uint8_t * p_coding_data,
-    uint32_t n,
+    uint64_t n,
     uint8_t ** p_data,
     uint32_t p_nb_comp,
     uint32_t is_signed);
@@ -144,7 +144,7 @@ FIXME DOC
 */
 bool opj_mct_decode_custom(
     uint8_t * pDecodingData,
-    uint32_t n,
+    uint64_t n,
     uint8_t ** pData,
     uint32_t pNbComp,
     uint32_t isSigned);
