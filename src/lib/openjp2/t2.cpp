@@ -1250,7 +1250,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                     ++i;
                 }
 
-                l_cblk->numbps = (uint32_t)l_band->numbps + 1 - i;
+                l_cblk->numbps = l_band->numbps + 1 - i;
                 l_cblk->numlenbits = 3;
             }
 
