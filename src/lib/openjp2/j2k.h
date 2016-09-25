@@ -625,7 +625,7 @@ void j2k_destroy_cstr_index (opj_codestream_index_t *p_cstr_ind);
 bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
-                            uint32_t p_data_size,
+                            uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
                             opj_event_mgr_t * p_manager );
 
@@ -645,7 +645,7 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
  */
 bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
                                 uint32_t * p_tile_index,
-                                uint32_t * p_data_size,
+                                uint64_t * p_data_size,
                                 uint32_t * p_tile_x0,
                                 uint32_t * p_tile_y0,
                                 uint32_t * p_tile_x1,
@@ -769,7 +769,7 @@ bool opj_j2k_set_decoded_resolution_factor(opj_j2k_t *p_j2k,
 bool opj_j2k_write_tile (	opj_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
-                            uint32_t p_data_size,
+                            uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
                             opj_event_mgr_t * p_manager );
 

@@ -427,7 +427,7 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
 
     int32_t rw;			/* width of the resolution level computed   */
     int32_t rh;			/* height of the resolution level computed  */
-    uint32_t l_data_size;
+    size_t l_data_size;
 
     opj_tcd_resolution_t * l_cur_res = 0;
     opj_tcd_resolution_t * l_last_res = 0;
@@ -439,8 +439,13 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
     l_cur_res = tilec->resolutions + l;
     l_last_res = l_cur_res - 1;
 
-    l_data_size = opj_dwt_max_resolution( tilec->resolutions,tilec->numresolutions) * (uint32_t)sizeof(int32_t);
-    bj = (int32_t*)opj_malloc((size_t)l_data_size);
+    l_data_size = opj_dwt_max_resolution( tilec->resolutions,tilec->numresolutions) * sizeof(int32_t);
+	/* overflow check */
+	if (l_data_size > SIZE_MAX) {
+		/* FIXME event manager error callback */
+		return OPJ_FALSE;
+	}
+    bj = (int32_t*)opj_malloc(l_data_size);
     /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
     /* in that case, so do not error out */
     if (l_data_size != 0 && ! bj) {

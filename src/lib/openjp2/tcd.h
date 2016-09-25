@@ -287,7 +287,7 @@ bool opj_tcd_pcrd_bisect(	opj_tcd_t *tcd,
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
  */
-uint32_t opj_tcd_get_decoded_tile_size (opj_tcd_t *p_tcd );
+uint64_t opj_tcd_get_decoded_tile_size (opj_tcd_t *p_tcd );
 
 /**
  * Encodes a tile from the raw image into the given buffer.
@@ -327,12 +327,12 @@ bool opj_tcd_decode_tile(   opj_tcd_t *tcd,
  */
 bool opj_tcd_update_tile_data (	opj_tcd_t *p_tcd,
                                 uint8_t * p_dest,
-                                uint32_t p_dest_length );
+                                uint64_t p_dest_length );
 
 /**
  *
  */
-uint32_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd );
+uint64_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd );
 
 /**
  * Initialize the tile coder and may reuse some meory.
@@ -351,7 +351,7 @@ bool opj_tcd_init_encode_tile (	opj_tcd_t *p_tcd,
  */
 bool opj_tcd_copy_tile_data (opj_tcd_t *p_tcd,
                              uint8_t * p_src,
-                             uint32_t p_src_length );
+                             uint64_t p_src_length );
 
 /**
  * Allocates tile component data

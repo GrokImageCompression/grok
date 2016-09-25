@@ -32,6 +32,7 @@
 #include "opj_config.h"
 #include "openjpeg.h"
 #include "stdlib.h"
+#include <stdbool.h>
 
 /* -------------------------------------------------------------------------- */
 
@@ -71,7 +72,7 @@ int main (int argc, char *argv[])
     opj_image_cmptparm_t l_params [NUM_COMPS_MAX];
     opj_stream_t * l_stream;
     uint32_t l_nb_tiles;
-    uint32_t l_data_size;
+    uint64_t l_data_size;
     size_t len;
 
 #ifdef USING_MCT
@@ -123,8 +124,7 @@ int main (int argc, char *argv[])
         return 1;
     }
     l_nb_tiles = (uint32_t)(image_width/tile_width) * (uint32_t)(image_height/tile_height);
-    l_data_size = (uint32_t)tile_width * (uint32_t)tile_height * (uint32_t)num_comps * (uint32_t)(comp_prec/8);
-
+    l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
     l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
 
     fprintf(stdout, "Encoding random values -> keep in mind that this is very hard to compress\n");

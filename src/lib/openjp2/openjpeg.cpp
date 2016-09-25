@@ -257,7 +257,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_tile_header =
             (bool (*) (	void *,
                         uint32_t*,
-                        uint32_t*,
+                        uint64_t*,
                         uint32_t*, uint32_t*,
                         uint32_t*, uint32_t*,
                         uint32_t*,
@@ -269,7 +269,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
             (bool (*) ( void *,
                         uint32_t,
                         uint8_t*,
-                        uint32_t,
+                        uint64_t,
                         struct opj_stream_private *,
                         opj_event_mgr_t *)) opj_j2k_decode_tile;
 
@@ -330,7 +330,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_tile_header =
             (bool (*) ( void *,
                         uint32_t*,
-                        uint32_t*,
+                        uint64_t*,
                         uint32_t*,
                         uint32_t*,
                         uint32_t * ,
@@ -342,7 +342,9 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec_data.m_decompression.opj_decode_tile_data =
             (bool (*) ( void *,
-                        uint32_t,uint8_t*,uint32_t,
+                        uint32_t,
+						uint8_t*,
+						uint64_t,
                         struct opj_stream_private *,
                         opj_event_mgr_t * )) opj_jp2_decode_tile;
 
@@ -509,9 +511,11 @@ bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
 bool OPJ_CALLCONV opj_read_tile_header(	opj_codec_t *p_codec,
                                         opj_stream_t * p_stream,
                                         uint32_t * p_tile_index,
-                                        uint32_t * p_data_size,
-                                        uint32_t * p_tile_x0, uint32_t * p_tile_y0,
-                                        uint32_t * p_tile_x1, uint32_t * p_tile_y1,
+                                        uint64_t * p_data_size,
+                                        uint32_t * p_tile_x0,
+										uint32_t * p_tile_y0,
+                                        uint32_t * p_tile_x1,
+										uint32_t * p_tile_y1,
                                         uint32_t * p_nb_comps,
                                         bool * p_should_go_on)
 {
@@ -539,7 +543,7 @@ bool OPJ_CALLCONV opj_read_tile_header(	opj_codec_t *p_codec,
 bool OPJ_CALLCONV opj_decode_tile_data(	opj_codec_t *p_codec,
                                         uint32_t p_tile_index,
                                         uint8_t * p_data,
-                                        uint32_t p_data_size,
+                                        uint64_t p_data_size,
                                         opj_stream_t *p_stream
                                       )
 {
@@ -631,7 +635,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,
                 uint32_t,
                 uint8_t*,
-                uint32_t,
+                uint64_t,
                 struct opj_stream_private *,
                 opj_event_mgr_t *) ) opj_j2k_write_tile;
 
@@ -669,7 +673,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,
                 uint32_t,
                 uint8_t*,
-                uint32_t,
+                uint64_t,
                 struct opj_stream_private *,
                 opj_event_mgr_t *)) opj_jp2_write_tile;
 
@@ -853,7 +857,7 @@ bool OPJ_CALLCONV opj_set_MCT(opj_cparameters_t *parameters,
 bool OPJ_CALLCONV opj_write_tile (	opj_codec_t *p_codec,
                                     uint32_t p_tile_index,
                                     uint8_t * p_data,
-                                    uint32_t p_data_size,
+                                    uint64_t p_data_size,
                                     opj_stream_t *p_stream )
 {
     if (p_codec && p_stream && p_data) {

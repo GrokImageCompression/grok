@@ -3007,7 +3007,7 @@ static bool opj_jp2_setup_header_reading (opj_jp2_t *jp2, opj_event_mgr_t * p_ma
 
 bool opj_jp2_read_tile_header ( opj_jp2_t * p_jp2,
                                 uint32_t * p_tile_index,
-                                uint32_t * p_data_size,
+                                uint64_t * p_data_size,
                                 uint32_t * p_tile_x0,
                                 uint32_t * p_tile_y0,
                                 uint32_t * p_tile_x1,
@@ -3032,7 +3032,7 @@ bool opj_jp2_read_tile_header ( opj_jp2_t * p_jp2,
 bool opj_jp2_write_tile (	opj_jp2_t *p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
-                            uint32_t p_data_size,
+                            uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
                             opj_event_mgr_t * p_manager
                         )
@@ -3044,7 +3044,7 @@ bool opj_jp2_write_tile (	opj_jp2_t *p_jp2,
 bool opj_jp2_decode_tile (  opj_jp2_t * p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
-                            uint32_t p_data_size,
+                            uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
                             opj_event_mgr_t * p_manager
                          )
