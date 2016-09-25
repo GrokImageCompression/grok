@@ -135,16 +135,18 @@ install(
   DESTINATION ${OPENJPEG_INSTALL_MAN_DIR}/man3)
 endif()
 
-# internal utilities to generate t1_luts.h (part of the jp2 lib)
+if(BUILD_LUTS_GENERATOR)
+# internal utility to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
 add_executable(t1_generate_luts t1_generate_luts.cpp)
-if(UNIX)
-  target_link_libraries(t1_generate_luts m)
+  if(UNIX)
+    target_link_libraries(t1_generate_luts m)
+  endif()
 endif()
 
 # Experimental option; let's how cppcheck performs
 # Implementation details:
-# I could not figure out how to easily upload a file to CDash. Instead simply
+# I could not figure out how to easily upload a file to CDash. Instead simply
 # pretend cppcheck is part of the Build step. Technically cppcheck can even
 # output gcc formatted error/warning report
 # Another implementation detail: I could not redirect error to the error
