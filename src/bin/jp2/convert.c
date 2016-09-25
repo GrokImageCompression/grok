@@ -1302,6 +1302,8 @@ struct pnm_header {
 
 static char *skip_white(char *s)
 {
+	if (!s)
+		return NULL;
     while(*s) {
         if(*s == '\n' || *s == '\r') return NULL;
         if(isspace(*s)) {
@@ -1360,7 +1362,7 @@ static char *skip_idf(char *start, char out_idf[256])
 
 static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 {
-    int format, have_wh, end, ttype;
+    int format, end, ttype;
     char idf[256], type[256];
     char line[256];
 
@@ -1379,10 +1381,11 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
         return;
     }
     ph->format = format;
-    ttype = end = have_wh = 0;
+    ttype = end = 0;
 
     while(fgets(line, 250, reader)) {
         char *s;
+		int allow_null = 0;
 
         if(*line == '#') continue;
 
@@ -1457,56 +1460,52 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
             return;
         } /* if(format == 7) */
 
-        if( !have_wh) {
-            s = skip_int(s, &ph->width);
+		  /* Here format is in range [1,6] */
+		if (ph->width == 0) {
+			s = skip_int(s, &ph->width);
+			if ((s == NULL) || (*s == 0) || (ph->width < 1)) return;
+			allow_null = 1;
+		}
+		if (ph->height == 0) {
+			s = skip_int(s, &ph->height);
+			if ((s == NULL) && allow_null) continue;
+			if ((s == NULL) || (*s == 0) || (ph->height < 1)) return;
+			if (format == 1 || format == 4) {
+				break;
+			}
+			allow_null = 1;
+		}
+		/* here, format is in P2, P3, P5, P6 */
+		s = skip_int(s, &ph->maxval);
+		if ((s == NULL) && allow_null) continue;
+		if ((s == NULL) || (*s == 0)) return;
+		break;
+	}/* while(fgets( ) */
+	if (format == 2 || format == 3 || format > 4)
+	{
+		if (ph->maxval < 1 || ph->maxval > 65535) return;
+	}
+	if (ph->width < 1 || ph->height < 1) return;
 
-            s = skip_int(s, &ph->height);
+	if (format == 7)
+	{
+		if (!end)
+		{
+			fprintf(stderr, "read_pnm_header:P7 without ENDHDR\n"); return;
+		}
+		if (ph->depth < 1 || ph->depth > 4) return;
 
-            have_wh = 1;
-
-            if(format == 1 || format == 4) break;
-
-            if(format == 2 || format == 3 || format == 5 || format == 6) {
-                if (skip_int(s, &ph->maxval) != NULL) {
-                    if(ph->maxval > 65535) {
-                        return;
-                    } else {
-                        break;
-                    }
-                }
-            }
-            continue;
-        }
-        if(format == 2 || format == 3 || format == 5 || format == 6) {
-            /* P2, P3, P5, P6: */
-            s = skip_int(s, &ph->maxval);
-
-            if(ph->maxval > 65535) return;
-        }
-        break;
-    }/* while(fgets( ) */
-    if(format == 2 || format == 3 || format > 4) {
-        if(ph->maxval < 1 || ph->maxval > 65535) return;
-    }
-    if(ph->width < 1 || ph->height < 1) return;
-
-    if(format == 7) {
-        if(!end) {
-            fprintf(stderr,"read_pnm_header:P7 without ENDHDR\n");
-            return;
-        }
-        if(ph->depth < 1 || ph->depth > 4) return;
-
-        if(ph->width && ph->height && ph->depth && ph->maxval && ttype)
-            ph->ok = 1;
-    } else {
-        if(format != 1 && format != 4) {
-            if(ph->width && ph->height && ph->maxval) ph->ok = 1;
-        } else {
-            if(ph->width && ph->height) ph->ok = 1;
-            ph->maxval = 255;
-        }
-    }
+		if (ttype)
+			ph->ok = 1;
+	}
+	else
+	{
+		ph->ok = 1;
+		if (format == 1 || format == 4)
+		{
+			ph->maxval = 255;
+		}
+	}
 }
 
 static int has_prec(int val)
