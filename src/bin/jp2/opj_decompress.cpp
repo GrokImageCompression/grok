@@ -499,14 +499,9 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<string> outDirArg("a", "OutDir", "Output Directory", false, "", "string",cmd);
 		ValueArg<string> outForArg("O", "OutFor", "Output Format", false, "", "string",cmd);
 
-		SwitchArg forceRgbArg("", "force-rgb", "Force RGB", false);
-		cmd.add(forceRgbArg);
-
-		SwitchArg upsampleArg("", "upsample", "Upsample", false);
-		cmd.add(upsampleArg);
-
-		SwitchArg splitPnmArg("", "split-pnm", "Split PNM", false);
-		cmd.add(splitPnmArg);
+		SwitchArg forceRgbArg("", "force-rgb", "Force RGB", cmd);
+		SwitchArg upsampleArg("", "upsample", "Upsample", cmd);
+		SwitchArg splitPnmArg("", "split-pnm", "Split PNM", cmd);
 
 		ValueArg<string> pluginPathArg("g", "PluginPath", "Plugin Path", false, "", "string",cmd);
 		ValueArg<uint32_t> numThreadsArg("H", "NumThreads", "Number of Threads", false, 8, "unsigned integer",cmd);
