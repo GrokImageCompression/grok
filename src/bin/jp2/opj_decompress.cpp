@@ -96,10 +96,10 @@ extern "C" {
 
 }
 
-#define TCLAP_NAMESTARTSTRING "-"
 #include <string>
 #include <iostream>
 #include <algorithm>
+#define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
 using namespace TCLAP;
@@ -495,23 +495,50 @@ int parse_cmdline_decoder(int argc,
 		// Define the command line object.
 		CmdLine cmd("Command description message", ' ', "0.9");
 
-		ValueArg<string> imgDirArg("y", "ImgDir", "Image Directory", false, "", "string",cmd);
-		ValueArg<string> outDirArg("a", "OutDir", "Output Directory", false, "", "string",cmd);
-		ValueArg<string> outForArg("O", "OutFor", "Output Format", false, "", "string",cmd);
+		ValueArg<string> imgDirArg("y", "ImgDir", 
+									"Image Directory",
+									false, "", "string",cmd);
+		ValueArg<string> outDirArg("a", "OutDir", 
+									"Output Directory",
+									false, "", "string",cmd);
+		ValueArg<string> outForArg("O", "OutFor",
+									"Output Format",
+									false, "", "string",cmd);
 
-		SwitchArg forceRgbArg("", "force-rgb", "Force RGB", cmd);
-		SwitchArg upsampleArg("", "upsample", "Upsample", cmd);
-		SwitchArg splitPnmArg("", "split-pnm", "Split PNM", cmd);
+		SwitchArg forceRgbArg("f", "force-rgb",
+								"Force RGB", cmd);
+		SwitchArg upsampleArg("u", "upsample", 
+								"Upsample", cmd);
+		SwitchArg splitPnmArg("s", "split-pnm",
+								"Split PNM", cmd);
 
-		ValueArg<string> pluginPathArg("g", "PluginPath", "Plugin Path", false, "", "string",cmd);
-		ValueArg<uint32_t> numThreadsArg("H", "NumThreads", "Number of Threads", false, 8, "unsigned integer",cmd);
-		ValueArg<string> inputFileArg("i", "InputFile", "Input File", false, "", "string",cmd);
-		ValueArg<string> outputFileArg("o", "OutputFile", "Output File", false, "", "string",cmd);
-		ValueArg<uint32_t> reduceArg("r", "Reduce", "Reduce", false, 0, "unsigned integer",cmd);
-		ValueArg<uint32_t> layerArg("l", "Layer", "Layer", false, 0, "unsigned integer",cmd);
-		ValueArg<uint32_t> tileArg("t", "TileIndex", "Input Tile Index", false, 0, "unsigned integer", cmd);
-		ValueArg<string> precisionArg("p", "Precision", "Force Precision", false, "", "string", cmd);
-		ValueArg<string> decodeROIArg("d", "DecodeROI", "Decode ROI", false, "", "string", cmd);
+		ValueArg<string> pluginPathArg("g", "PluginPath",
+										"Plugin path", 
+										false, "", "string",cmd);
+		ValueArg<uint32_t> numThreadsArg("H", "NumThreads", 
+										"Number of threads",
+										false, 8, "unsigned integer",cmd);
+		ValueArg<string> inputFileArg("i", "InputFile", 
+										"Input file", 
+										false, "", "string",cmd);
+		ValueArg<string> outputFileArg("o", "OutputFile",
+										"Output file",
+										false, "", "string",cmd);
+		ValueArg<uint32_t> reduceArg("r", "Reduce",
+									"Reduce resolutions", 
+									false, 0, "unsigned integer",cmd);
+		ValueArg<uint32_t> layerArg("l", "Layer",
+									"Layer", 
+									false, 0, "unsigned integer",cmd);
+		ValueArg<uint32_t> tileArg("t", "TileIndex",
+									"Input tile index",
+									false, 0, "unsigned integer", cmd);
+		ValueArg<string> precisionArg("p", "Precision",
+										"Force precision",
+										false, "", "string", cmd);
+		ValueArg<string> decodeROIArg("d", "DecodeROI",
+										"Decode ROI",
+										false, "", "string", cmd);
 
 		cmd.parse(argc, argv);
 

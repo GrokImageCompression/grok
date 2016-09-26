@@ -92,6 +92,13 @@ extern "C" {
 #include "opj_string.h"
 }
 
+#include <cstdlib>
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
+
+using namespace TCLAP;
+using namespace std;
+
 
 #ifdef _WIN32
 int batch_sleep(int val) {
@@ -430,607 +437,635 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
 
 static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *parameters,
                                  img_fol_t *img_fol, img_fol_t *out_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size, char* plugin_path) {
-    uint32_t i;
-    int totlen, c;
-    opj_option_t long_option[]= {
-        {"cinema2K",REQ_ARG, NULL ,'w'},
-        {"cinema4K",NO_ARG, NULL ,'y'},
-        {"ImgDir",REQ_ARG, NULL ,'z'},
-		{ "OutDir", REQ_ARG, NULL, 'a' },
-        {"TP",REQ_ARG, NULL ,'u'},
-        {"SOP",NO_ARG, NULL ,'S'},
-        {"EPH",NO_ARG, NULL ,'E'},
-        {"OutFor",REQ_ARG, NULL ,'O'},
-        {"POC",REQ_ARG, NULL ,'P'},
-        {"ROI",REQ_ARG, NULL ,'R'},
-        {"mct",REQ_ARG, NULL, 'Y'},
-		{ "PluginPath", REQ_ARG, NULL, 'g' },
-		{ "NumThreads", REQ_ARG, NULL, 'H' },
-		{ "CaptureRes", REQ_ARG, NULL, 'Q' },
-		{ "DispayRes", REQ_ARG, NULL,  'D' },
-    };
-
-    /* parse the command line */
-
-	const char optlist[] = "a:g:i:o:r:q:n:b:c:t:p:s:SEM:R:d:T:If:P:C:F:u:H:h";
-    totlen=sizeof(long_option);
-    img_fol->set_out_format=0;
-    raw_cp->rawWidth = 0;
-
-    do {
-        c = opj_getopt_long(argc, argv, optlist,long_option,totlen);
-        if (c == -1)
-            break;
-        switch (c) {
-        case 'i': {		/* input file */
-            char *infile = opj_optarg;
-            parameters->decod_format = get_file_format(infile);
-            switch(parameters->decod_format) {
-            case PGX_DFMT:
-            case PXM_DFMT:
-            case BMP_DFMT:
-            case TIF_DFMT:
-            case RAW_DFMT:
-            case RAWL_DFMT:
-            case TGA_DFMT:
-            case PNG_DFMT:
-                break;
-            default:
-                fprintf(stderr,
-                        "[ERROR] Unknown input file format: %s \n"
-                        "        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.raw or *.tga\n",
-                        infile);
-                return 1;
-            }
-            if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
-                return 1;
-            }
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-
-        case 'o': {		/* output file */
-            char *outfile = opj_optarg;
-            parameters->cod_format = get_file_format(outfile);
-            switch(parameters->cod_format) {
-            case J2K_CFMT:
-            case JP2_CFMT:
-                break;
-            default:
-                fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
-                return 1;
-            }
-            if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
-                return 1;
-            }
-        }
-        break;
-
-        /* ----------------------------------------------------- */
-        case 'O': {		/* output format */
-            char outformat[50];
-            char *of = opj_optarg;
-            sprintf(outformat,".%s",of);
-            img_fol->set_out_format = 1;
-            parameters->cod_format = get_file_format(outformat);
-            switch(parameters->cod_format) {
-            case J2K_CFMT:
-            case JP2_CFMT:
-                img_fol->out_format = opj_optarg;
-                break;
-            default:
-                fprintf(stderr, "Unknown output format image [only j2k, j2c, jp2]!! \n");
-                return 1;
-            }
-        }
-        break;
 
 
-        /* ----------------------------------------------------- */
+	try {
+
+		// Define the command line object.
+		CmdLine cmd("Command description message", ' ', "0.9");
+		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
+										"Digital cinema 2K profile",
+										false,24, "unsigned integer", cmd);
+		SwitchArg cinema4KArg("x", "cinema4K",
+										"Digital cinema 4K profile", cmd);
+		ValueArg<string> imgDirArg("y", "ImgDir",
+									"Image directory",
+									false, "", "string", cmd);
+		ValueArg<string> outDirArg("a", "OutDir",
+									"Output directory",
+									false, "", "string", cmd);
+
+		ValueArg<string> pluginPathArg("g", "PluginPath",
+									"Plugin path",
+									false, "", "string", cmd);
+		ValueArg<uint32_t> numThreadsArg("H", "NumThreads",
+									"Number of threads",
+									false, 8, "unsigned integer", cmd);
+		ValueArg<string> inputFileArg("i", "InputFile",
+									"Input file",
+									false, "", "string", cmd);
+		ValueArg<string> outputFileArg("o", "OutputFile",
+									"Output file",
+									false, "", "string", cmd);
+
+		ValueArg<string> outForArg("O", "OutFor",
+								"Output format",
+								false, "", "string", cmd);
+
+		SwitchArg sopArg("S", "SOP",
+						"Add SOP markers", cmd);
+
+		SwitchArg ephArg("E", "EPH",
+						"Add EPH markers", cmd);
+
+		ValueArg<char> tpArg("u", "TP",
+									"Tile part generation",
+									false, 0, "char", cmd);
+
+		ValueArg<string> tileOffsetArg("T", "TileOffset",
+								"Tile offset",
+								false, "", "string", cmd);
 
 
-        case 'r': {		/* rates rates/distorsion */
-            char *s = opj_optarg;
-            parameters->tcp_numlayers = 0;
-            while (sscanf(s, "%lf", &parameters->tcp_rates[parameters->tcp_numlayers]) == 1) {
-                parameters->tcp_numlayers++;
-                while (*s && *s != ',') {
-                    s++;
-                }
-                if (!*s)
-                    break;
-                s++;
-            }
-            parameters->cp_disto_alloc = 1;
-        }
-        break;
+		ValueArg<string> pocArg("P", "POC",
+								"Progression order changes",
+								false, "", "string", cmd);
 
-        /* ----------------------------------------------------- */
-        case 'F': {		/* Raw image format parameters */
-            bool wrong = false;
-            char *substr1;
-            char *substr2;
-            char *sep;
-            char signo;
-            int width,height,bitdepth,ncomp;
-            uint32_t len;
-            bool raw_signed = false;
-            substr2 = strchr(opj_optarg,'@');
-            if (substr2 == NULL) {
-                len = (uint32_t) strlen(opj_optarg);
-            } else {
-                len = (uint32_t) (substr2 - opj_optarg);
-                substr2++; /* skip '@' character */
-            }
-            substr1 = (char*) malloc((len+1)*sizeof(char));
-            if (substr1 == NULL) {
-                return 1;
-            }
-            memcpy(substr1,opj_optarg,len);
-            substr1[len] = '\0';
-            if (sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5) {
-                if (signo == 's') {
-                    raw_signed = true;
-                } else if (signo == 'u') {
-                    raw_signed = false;
-                } else {
-                    wrong = true;
-                }
-            } else {
-                wrong = true;
-            }
-            if (!wrong) {
-                int compno;
-                int lastdx = 1;
-                int lastdy = 1;
-                raw_cp->rawWidth = width;
-                raw_cp->rawHeight = height;
-                raw_cp->rawComp = ncomp;
-                raw_cp->rawBitDepth = bitdepth;
-                raw_cp->rawSigned  = raw_signed;
-                raw_cp->rawComps = (raw_comp_cparameters_t*) malloc(((uint32_t)(ncomp))*sizeof(raw_comp_cparameters_t));
+		ValueArg<string> roiArg("R", "ROI",
+								"Region of interest",
+								false, "", "string", cmd);
+
+		ValueArg<uint32_t> mctArg("Y", "mct",
+							"Multi component transform",
+							false, 0, "unsigned integer", cmd);
+
+		ValueArg<string> captureResArg("Q", "CaptureRes",
+							"Capture resolution",
+							false, "", "string", cmd);
+
+		ValueArg<string> displayResArg("D", "DisplayRes",
+							"Display resolution",
+							false, "", "string", cmd);
+
+		ValueArg<string> compressionRatiosArg("r", "CompressionRatios",
+			"Layer rates expressed as compression ratios",
+			false, "", "string", cmd);
+
+		ValueArg<string> qualityArg("q", "Quality",
+			"Layer rates expressed as quality",
+			false, "", "string", cmd);
+
+		ValueArg<string> rawFormatArg("F", "RawFormat",
+									"Raw image format parameters",
+									false, "", "string", cmd);
+
+		ValueArg<string> tilesArg("t", "Tiles",
+			"Tile parameters",
+			false, "", "string", cmd);
+
+		ValueArg<uint32_t> resolutionArg("n", "Resolution",
+			"Resolution",
+			false, 0, "unsigned integer", cmd);
+
+		ValueArg<string> precinctDimArg("c", "PrecinctDim",
+			"Precinct dimension",
+			false, "", "string", cmd);
+
+		ValueArg<string> codeBlockDimArg("b", "CodeBlockDim",
+			"Code block dimension",
+			false, "", "string", cmd);
+
+
+		ValueArg<string> progressionOrderArg("p", "ProgressionOrder",
+			"Progression order",
+			false, "", "string", cmd);
+
+		ValueArg<string> subsamplingFactorArg("s", "SubsamplingFactor",
+			"Subsampling factor",
+			false, "", "string", cmd);
+
+		ValueArg<string> refGridCoordsArg("d", "RefGridCoords",
+			"Reference grid coordinates",
+			false, "", "string", cmd);
+
+		ValueArg<uint32_t> modeArg("M", "Mode",
+			"Mode",
+			false, 0, "unsigned integer", cmd);
+
+		ValueArg<string> commentArg("C", "Comment",
+			"Add a comment",
+			false, "", "string", cmd);
+
+		SwitchArg irreversibleArg("I", "Irreversible",
+			"Irreversible", cmd);
+
+		ValueArg<string> mctInputArg("m", "mctInput",
+			"MCT input file",
+			false, "", "string", cmd);
+
+		cmd.parse(argc, argv);
+
+
+		img_fol->set_out_format = 0;
+		raw_cp->rawWidth = 0;
+
+		if (numThreadsArg.isSet()) {
+			parameters->numThreads = numThreadsArg.getValue();
+		}
+
+		if (inputFileArg.isSet()) {
+			char *infile = (char*)inputFileArg.getValue().c_str();
+			parameters->decod_format = get_file_format(infile);
+			switch (parameters->decod_format) {
+				case PGX_DFMT:
+				case PXM_DFMT:
+				case BMP_DFMT:
+				case TIF_DFMT:
+				case RAW_DFMT:
+				case RAWL_DFMT:
+				case TGA_DFMT:
+				case PNG_DFMT:
+					break;
+				default:
+					fprintf(stderr,
+						"[ERROR] Unknown input file format: %s \n"
+						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.raw or *.tga\n",
+						infile);
+					return 1;
+			}
+			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+				return 1;
+			}
+		}
+
+		if (outputFileArg.isSet()) {
+			char *outfile = (char*)outputFileArg.getValue().c_str();
+			parameters->cod_format = get_file_format(outfile);
+			switch (parameters->cod_format) {
+				case J2K_CFMT:
+				case JP2_CFMT:
+					break;
+				default:
+					fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
+					return 1;
+			}
+			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+				return 1;
+			}
+		}
+
+		if (outForArg.isSet()) {
+			char outformat[50];
+			char *of = (char*)outForArg.getValue().c_str();
+			sprintf(outformat, ".%s", of);
+			img_fol->set_out_format = 1;
+			parameters->cod_format = get_file_format(outformat);
+			switch (parameters->cod_format) {
+				case J2K_CFMT:
+					img_fol->out_format = "j2k";
+					break;
+				case JP2_CFMT:
+					img_fol->out_format = "jp2";
+					break;
+				default:
+					fprintf(stderr, "Unknown output format image [only j2k, j2c, jp2]!! \n");
+					return 1;
+			}
+		}
+
+		if (compressionRatiosArg.isSet()) {
+			char *s = (char*)compressionRatiosArg.getValue().c_str();
+			parameters->tcp_numlayers = 0;
+			while (sscanf(s, "%lf", &parameters->tcp_rates[parameters->tcp_numlayers]) == 1) {
+				parameters->tcp_numlayers++;
+				while (*s && *s != ',') {
+					s++;
+				}
+				if (!*s)
+					break;
+				s++;
+			}
+			parameters->cp_disto_alloc = 1;
+		}
+
+		if (qualityArg.isSet()) {
+			char *s = (char*)qualityArg.getValue().c_str();;
+			while (sscanf(s, "%lf", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1) {
+				parameters->tcp_numlayers++;
+				while (*s && *s != ',') {
+					s++;
+				}
+				if (!*s)
+					break;
+				s++;
+			}
+			parameters->cp_fixed_quality = 1;
+
+		}
+
+		if (rawFormatArg.isSet()) {
+			bool wrong = false;
+			char *substr1;
+			char *substr2;
+			char *sep;
+			char signo;
+			int width, height, bitdepth, ncomp;
+			uint32_t len;
+			bool raw_signed = false;
+			substr2 = (char*)strchr(rawFormatArg.getValue().c_str(), '@');
+			if (substr2 == NULL) {
+				len = (uint32_t)rawFormatArg.getValue().length();
+			}
+			else {
+				len = (uint32_t)(substr2 - rawFormatArg.getValue().c_str());
+				substr2++; /* skip '@' character */
+			}
+			substr1 = (char*)malloc((len + 1) * sizeof(char));
+			if (substr1 == NULL) {
+				return 1;
+			}
+			memcpy(substr1, rawFormatArg.getValue().c_str(), len);
+			substr1[len] = '\0';
+			if (sscanf(substr1, "%d,%d,%d,%d,%c", &width, &height, &ncomp, &bitdepth, &signo) == 5) {
+				if (signo == 's') {
+					raw_signed = true;
+				}
+				else if (signo == 'u') {
+					raw_signed = false;
+				}
+				else {
+					wrong = true;
+				}
+			}
+			else {
+				wrong = true;
+			}
+			if (!wrong) {
+				int compno;
+				int lastdx = 1;
+				int lastdy = 1;
+				raw_cp->rawWidth = width;
+				raw_cp->rawHeight = height;
+				raw_cp->rawComp = ncomp;
+				raw_cp->rawBitDepth = bitdepth;
+				raw_cp->rawSigned = raw_signed;
+				raw_cp->rawComps = (raw_comp_cparameters_t*)malloc(((uint32_t)(ncomp)) * sizeof(raw_comp_cparameters_t));
 				if (raw_cp->rawComps == NULL) {
 					free(substr1);
 					return 1;
 				}
-                for (compno = 0; compno < ncomp && !wrong; compno++) {
-                    if (substr2 == NULL) {
-                        raw_cp->rawComps[compno].dx = lastdx;
-                        raw_cp->rawComps[compno].dy = lastdy;
-                    } else {
-                        int dx,dy;
-                        sep = strchr(substr2,':');
-                        if (sep == NULL) {
-                            if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
-                                lastdx = dx;
-                                lastdy = dy;
-                                raw_cp->rawComps[compno].dx = dx;
-                                raw_cp->rawComps[compno].dy = dy;
-                                substr2 = NULL;
-                            } else {
-                                wrong = true;
-                            }
-                        } else {
-                            if (sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2) == 3) {
-                                raw_cp->rawComps[compno].dx = dx;
-                                raw_cp->rawComps[compno].dy = dy;
-                            } else {
-                                wrong = true;
-                            }
-                        }
-                    }
-                }
-            }
-            free(substr1);
-            if (wrong) {
-                fprintf(stderr,"\nError: invalid raw image parameters\n");
-                fprintf(stderr,"Please use the Format option -F:\n");
-                fprintf(stderr,"-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
-                fprintf(stderr,"If subsampling is omitted, 1x1 is assumed for all components\n");
-                fprintf(stderr,"Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2\n");
-                fprintf(stderr,"         for raw 512x512 image with 4:2:0 subsampling\n");
-                fprintf(stderr,"Aborting.\n");
-                return 1;
-            }
-        }
-        break;
+				for (compno = 0; compno < ncomp && !wrong; compno++) {
+					if (substr2 == NULL) {
+						raw_cp->rawComps[compno].dx = lastdx;
+						raw_cp->rawComps[compno].dy = lastdy;
+					}
+					else {
+						int dx, dy;
+						sep = strchr(substr2, ':');
+						if (sep == NULL) {
+							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
+								lastdx = dx;
+								lastdy = dy;
+								raw_cp->rawComps[compno].dx = dx;
+								raw_cp->rawComps[compno].dy = dy;
+								substr2 = NULL;
+							}
+							else {
+								wrong = true;
+							}
+						}
+						else {
+							if (sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2) == 3) {
+								raw_cp->rawComps[compno].dx = dx;
+								raw_cp->rawComps[compno].dy = dy;
+							}
+							else {
+								wrong = true;
+							}
+						}
+					}
+				}
+			}
+			free(substr1);
+			if (wrong) {
+				fprintf(stderr, "\nError: invalid raw image parameters\n");
+				fprintf(stderr, "Please use the Format option -F:\n");
+				fprintf(stderr, "-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
+				fprintf(stderr, "If subsampling is omitted, 1x1 is assumed for all components\n");
+				fprintf(stderr, "Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2\n");
+				fprintf(stderr, "         for raw 512x512 image with 4:2:0 subsampling\n");
+				fprintf(stderr, "Aborting.\n");
+				return 1;
+			}
+		}
 
-        /* ----------------------------------------------------- */
+		if (tilesArg.isSet()) {
+			sscanf(tilesArg.getValue().c_str(), "%d,%d", &parameters->cp_tdx, &parameters->cp_tdy);
+			parameters->tile_size_on = true;
 
-        case 'q': {		
-            char *s = opj_optarg;
-            while (sscanf(s, "%lf", &parameters->tcp_distoratio[parameters->tcp_numlayers]) == 1) {
-                parameters->tcp_numlayers++;
-                while (*s && *s != ',') {
-                    s++;
-                }
-                if (!*s)
-                    break;
-                s++;
-            }
-            parameters->cp_fixed_quality = 1;
-        }
-        break;
+		}
 
-        /* ----------------------------------------------------- */
+		if (resolutionArg.isSet()) {
+			parameters->numresolution = resolutionArg.getValue();
+		}
 
-        case 't': {		/* tiles */
-            sscanf(opj_optarg, "%d,%d", &parameters->cp_tdx, &parameters->cp_tdy);
-            parameters->tile_size_on = true;
-        }
-        break;
+		if (precinctDimArg.isSet()){
+			char sep;
+			int res_spec = 0;
 
-        /* ----------------------------------------------------- */
+			char *s = (char*)precinctDimArg.getValue().c_str();
+			int ret;
+			do {
+				sep = 0;
+				ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
+					&parameters->prch_init[res_spec], &sep);
+				if (!(ret == 2 && sep == 0) && !(ret == 3 && sep == ',')) {
+					fprintf(stderr, "\nError: could not parse precinct dimension: '%s' %x\n", s, sep);
+					fprintf(stderr, "Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]\n");
+					return 1;
+				}
+				parameters->csty |= 0x01;
+				res_spec++;
+				s = strpbrk(s, "]") + 2;
+			} while (sep == ',');
+			parameters->res_spec = res_spec;
+		}
 
-        case 'n': {		/* resolution */
-            sscanf(opj_optarg, "%d", &parameters->numresolution);
-        }
-        break;
+		if (codeBlockDimArg.isSet()) {
+			int cblockw_init = 0, cblockh_init = 0;
+			sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init);
+			if (cblockw_init * cblockh_init > 4096 || cblockw_init > 1024
+				|| cblockw_init < 4 || cblockh_init > 1024 || cblockh_init < 4) {
+				fprintf(stderr,
+					"!! Size of code_block error (option -b) !!\n\nRestriction :\n"
+					"    * width*height<=4096\n    * 4<=width,height<= 1024\n\n");
+				return 1;
+			}
+			parameters->cblockw_init = cblockw_init;
+			parameters->cblockh_init = cblockh_init;
+		}
 
-        /* ----------------------------------------------------- */
-        case 'c': {		/* precinct dimension */
-            char sep;
-            int res_spec = 0;
+		if (progressionOrderArg.isSet()) {
+			char progression[4];
 
-            char *s = opj_optarg;
-            int ret;
-            do {
-                sep = 0;
-                ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
-                             &parameters->prch_init[res_spec], &sep);
-                if( !(ret == 2 && sep == 0) && !(ret == 3 && sep == ',') ) {
-                    fprintf(stderr,"\nError: could not parse precinct dimension: '%s' %x\n", s, sep);
-                    fprintf(stderr,"Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]\n");
-                    return 1;
-                }
-                parameters->csty |= 0x01;
-                res_spec++;
-                s = strpbrk(s, "]") + 2;
-            } while (sep == ',');
-            parameters->res_spec = res_spec;
-        }
-        break;
+			strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
+			parameters->prog_order = give_progression(progression);
+			if (parameters->prog_order == -1) {
+				fprintf(stderr, "Unrecognized progression order "
+					"[LRCP, RLCP, RPCL, PCRL, CPRL] !!\n");
+				return 1;
+			}
+		}
 
-        /* ----------------------------------------------------- */
+		if (subsamplingFactorArg.isSet()) {
+			if (sscanf(subsamplingFactorArg.getValue().c_str(), "%d,%d", &parameters->subsampling_dx,
+				&parameters->subsampling_dy) != 2) {
+				fprintf(stderr, "'-s' sub-sampling argument error !  [-s dx,dy]\n");
+				return 1;
+			}
+		}
 
-        case 'b': {		/* code-block dimension */
-            int cblockw_init = 0, cblockh_init = 0;
-            sscanf(opj_optarg, "%d,%d", &cblockw_init, &cblockh_init);
-            if (cblockw_init * cblockh_init > 4096 || cblockw_init > 1024
-                    || cblockw_init < 4 || cblockh_init > 1024 || cblockh_init < 4) {
-                fprintf(stderr,
-                        "!! Size of code_block error (option -b) !!\n\nRestriction :\n"
-                        "    * width*height<=4096\n    * 4<=width,height<= 1024\n\n");
-                return 1;
-            }
-            parameters->cblockw_init = cblockw_init;
-            parameters->cblockh_init = cblockh_init;
-        }
-        break;
+		if (refGridCoordsArg.isSet()) {
+			if (sscanf(refGridCoordsArg.getValue().c_str(), "%d,%d", &parameters->image_offset_x0,
+				&parameters->image_offset_y0) != 2) {
+				fprintf(stderr, "-d 'coordonnate of the reference grid' argument "
+					"error !! [-d x0,y0]\n");
+				return 1;
+			}
+		}
 
-        /* ----------------------------------------------------- */
+		if (pocArg.isSet()) {
+			int numpocs = 0;		/* number of progression order change (POC) default 0 */
+			opj_poc_t *POC = NULL;	/* POC : used in case of Progression order change */
 
-        case 'p': {		/* progression order */
-            char progression[4];
+			char *s = (char*)pocArg.getValue().c_str();
+			POC = parameters->POC;
 
-            strncpy(progression, opj_optarg, 4);
-            parameters->prog_order = give_progression(progression);
-            if (parameters->prog_order == -1) {
-                fprintf(stderr, "Unrecognized progression order "
-                        "[LRCP, RLCP, RPCL, PCRL, CPRL] !!\n");
-                return 1;
-            }
-        }
-        break;
+			while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tile,
+				&POC[numpocs].resno0, &POC[numpocs].compno0,
+				&POC[numpocs].layno1, &POC[numpocs].resno1,
+				&POC[numpocs].compno1, POC[numpocs].progorder) == 7) {
+				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
+				numpocs++;
+				while (*s && *s != '/') {
+					s++;
+				}
+				if (!*s) {
+					break;
+				}
+				s++;
+			}
+			parameters->numpocs = (uint32_t)numpocs;
+		}
 
-        /* ----------------------------------------------------- */
+		if (sopArg.isSet()) {
+			parameters->csty |= 0x02;
+		}
 
-        case 's': {		/* subsampling factor */
-            if (sscanf(opj_optarg, "%d,%d", &parameters->subsampling_dx,
-                       &parameters->subsampling_dy) != 2) {
-                fprintf(stderr,	"'-s' sub-sampling argument error !  [-s dx,dy]\n");
-                return 1;
-            }
-        }
-        break;
+		if (ephArg.isSet()) {
+			parameters->csty |= 0x04;
+		}
 
-        /* ----------------------------------------------------- */
+		if (irreversibleArg.isSet()) {
+			parameters->irreversible = 1;
+		}
 
-        case 'd': {		/* coordonnate of the reference grid */
-            if (sscanf(opj_optarg, "%d,%d", &parameters->image_offset_x0,
-                       &parameters->image_offset_y0) != 2) {
-                fprintf(stderr,	"-d 'coordonnate of the reference grid' argument "
-                        "error !! [-d x0,y0]\n");
-                return 1;
-            }
-        }
-        break;
+		if (pluginPathArg.isSet()) {
+			if (plugin_path)
+				strcpy(plugin_path, pluginPathArg.getValue().c_str());
+		}
 
-        /* ----------------------------------------------------- */
+		if (imgDirArg.isSet()) {
+			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
+			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
+			img_fol->set_imgdir = 1;
+		}
 
-        case 'h':			/* display an help description */
-            encode_help_display();
-            return 1;
-
-        /* ----------------------------------------------------- */
-
-        case 'P': {		/* POC */
-            int numpocs = 0;		/* number of progression order change (POC) default 0 */
-            opj_poc_t *POC = NULL;	/* POC : used in case of Progression order change */
-
-            char *s = opj_optarg;
-            POC = parameters->POC;
-
-            while (sscanf(s, "T%u=%u,%u,%u,%u,%u,%4s", &POC[numpocs].tile,
-                          &POC[numpocs].resno0, &POC[numpocs].compno0,
-                          &POC[numpocs].layno1, &POC[numpocs].resno1,
-                          &POC[numpocs].compno1, POC[numpocs].progorder) == 7) {
-                POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
-                numpocs++;
-                while (*s && *s != '/') {
-                    s++;
-                }
-                if (!*s) {
-                    break;
-                }
-                s++;
-            }
-            parameters->numpocs = (uint32_t)numpocs;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'S': {		/* SOP marker */
-            parameters->csty |= 0x02;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'E': {		/* EPH marker */
-            parameters->csty |= 0x04;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'M': {		/* Mode switch pas tous au point !! */
-            int value = 0;
-            if (sscanf(opj_optarg, "%d", &value) == 1) {
-                for (i = 0; i <= 5; i++) {
-                    int cache = value & (1 << i);
-                    if (cache)
-                        parameters->mode |= (1 << i);
-                }
-            }
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'R': {		/* ROI */
-            if (sscanf(opj_optarg, "c=%d,U=%d", &parameters->roi_compno,
-                       &parameters->roi_shift) != 2) {
-                fprintf(stderr, "ROI error !! [-ROI c='compno',U='shift']\n");
-                return 1;
-            }
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'T': {		/* Tile offset */
-            if (sscanf(opj_optarg, "%d,%d", &parameters->cp_tx0, &parameters->cp_ty0) != 2) {
-                fprintf(stderr, "-T 'tile offset' argument error !! [-T X0,Y0]");
-                return 1;
-            }
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'C': {		/* add a comment */
-            parameters->cp_comment = (char*)malloc(strlen(opj_optarg) + 1);
-            if(parameters->cp_comment) {
-                strcpy(parameters->cp_comment, opj_optarg);
-            }
-        }
-        break;
-
-
-        /* ------------------------------------------------------ */
-
-        case 'I': {		/* reversible or not */
-            parameters->irreversible = 1;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'u': {		/* Tile part generation*/
-            parameters->tp_flag = opj_optarg[0];
-            parameters->tp_on = 1;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'z': {		/* Image Directory path */
-            img_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
-            strcpy(img_fol->imgdirpath,opj_optarg);
-            img_fol->set_imgdir=1;
-        }
-        break;
-		case 'a':			/* Output Directory path */
-		{
+		if (outDirArg.isSet()) {
 			if (out_fol) {
-				out_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
-				strcpy(out_fol->imgdirpath, opj_optarg);
+				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
+				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
 				out_fol->set_imgdir = 1;
 			}
 		}
-		break;
 
-        /* ------------------------------------------------------ */
+		if (cinema2KArg.isSet()) {
+			int fps = cinema2KArg.getValue();
+			if (fps == 24) {
+				parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
+				parameters->max_comp_size = OPJ_CINEMA_24_COMP;
+				parameters->max_cs_size = OPJ_CINEMA_24_CS;
+			}
+			else if (fps == 48) {
+				parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
+				parameters->max_comp_size = OPJ_CINEMA_48_COMP;
+				parameters->max_cs_size = OPJ_CINEMA_48_CS;
+			}
+			else {
+				fprintf(stderr, "Incorrect value!! must be 24 or 48\n");
+				return 1;
+			}
+			fprintf(stdout, "CINEMA 2K profile activated\n"
+				"Other options specified could be overriden\n");
+		
+		}
 
-        case 'w': {		/* Digital Cinema 2K profile compliance*/
-            int fps=0;
-            sscanf(opj_optarg,"%d",&fps);
-            if(fps == 24) {
-                parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
-                parameters->max_comp_size = OPJ_CINEMA_24_COMP;
-                parameters->max_cs_size = OPJ_CINEMA_24_CS;
-            } else if(fps == 48 ) {
-                parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
-                parameters->max_comp_size = OPJ_CINEMA_48_COMP;
-                parameters->max_cs_size = OPJ_CINEMA_48_CS;
-            } else {
-                fprintf(stderr,"Incorrect value!! must be 24 or 48\n");
-                return 1;
-            }
-            fprintf(stdout,"CINEMA 2K profile activated\n"
-                    "Other options specified could be overriden\n");
+		if (cinema4KArg.isSet()) {
+			parameters->rsiz = OPJ_PROFILE_CINEMA_4K;
+			fprintf(stdout, "CINEMA 4K profile activated\n"
+				"Other options specified could be overriden\n");
+		}
 
-        }
-        break;
+		if (modeArg.isSet()) {
+			int value = modeArg.getValue();
+			for (uint32_t i = 0; i <= 5; i++) {
+				int cache = value & (1 << i);
+				if (cache)
+					parameters->mode |= (1 << i);
+			}
+		}
 
-        /* ------------------------------------------------------ */
-
-        case 'y': {		/* Digital Cinema 4K profile compliance*/
-            parameters->rsiz = OPJ_PROFILE_CINEMA_4K;
-            fprintf(stdout,"CINEMA 4K profile activated\n"
-                    "Other options specified could be overriden\n");
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-        case 'Y': {		/* Shall we do an MCT ? 0:no_mct;1:rgb->ycc;2:custom mct (-m option required)*/
-            int mct_mode=0;
-            sscanf(opj_optarg,"%d",&mct_mode);
-            if(mct_mode < 0 || mct_mode > 2) {
-                fprintf(stderr,"MCT incorrect value!! Current accepted values are 0, 1 or 2.\n");
-                return 1;
-            }
-            parameters->tcp_mct = (uint8_t)mct_mode;
-        }
-        break;
-
-        /* ------------------------------------------------------ */
-
-
-        case 'm': {		/* mct input file */
-            char *lFilename = opj_optarg;
-            char *lMatrix;
-            char *lCurrentPtr ;
-            float *lCurrentDoublePtr;
-            float *lSpace;
-            int *l_int_ptr;
-            int lNbComp = 0, lTotalComp, lMctComp, i2;
-            size_t lStrLen, lStrFread;
-
-            /* Open file */
-            FILE * lFile = fopen(lFilename,"r");
-            if (lFile == NULL) {
-                return 1;
-            }
-
-            /* Set size of file and read its content*/
-            fseek(lFile,0,SEEK_END);
-            lStrLen = (size_t)ftell(lFile);
-            fseek(lFile,0,SEEK_SET);
-            lMatrix = (char *) malloc(lStrLen + 1);
-            if (lMatrix == NULL) {
-                fclose(lFile);
-                return 1;
-            }
-            lStrFread = fread(lMatrix, 1, lStrLen, lFile);
-            fclose(lFile);
-            if( lStrLen != lStrFread ) {
-                free(lMatrix);
-                return 1;
-            }
-
-            lMatrix[lStrLen] = 0;
-            lCurrentPtr = lMatrix;
-
-            /* replace ',' by 0 */
-            while (*lCurrentPtr != 0 ) {
-                if (*lCurrentPtr == ' ') {
-                    *lCurrentPtr = 0;
-                    ++lNbComp;
-                }
-                ++lCurrentPtr;
-            }
-            ++lNbComp;
-            lCurrentPtr = lMatrix;
-
-            lNbComp = (int) (sqrt(4*lNbComp + 1)/2. - 0.5);
-            lMctComp = lNbComp * lNbComp;
-            lTotalComp = lMctComp + lNbComp;
-            lSpace = (float *) malloc((size_t)lTotalComp * sizeof(float));
-            if(lSpace == NULL) {
-                free(lMatrix);
-                return 1;
-            }
-            lCurrentDoublePtr = lSpace;
-            for (i2=0; i2<lMctComp; ++i2) {
-                lStrLen = strlen(lCurrentPtr) + 1;
-                *lCurrentDoublePtr++ = (float) atof(lCurrentPtr);
-                lCurrentPtr += lStrLen;
-            }
-
-            l_int_ptr = (int*) lCurrentDoublePtr;
-            for (i2=0; i2<lNbComp; ++i2) {
-                lStrLen = strlen(lCurrentPtr) + 1;
-                *l_int_ptr++ = atoi(lCurrentPtr);
-                lCurrentPtr += lStrLen;
-            }
-
-            /* TODO should not be here ! */
-            opj_set_MCT(parameters, lSpace, (int *)(lSpace + lMctComp), (uint32_t)lNbComp);
-
-            /* Free memory*/
-            free(lSpace);
-            free(lMatrix);
-        }
-        break;
-		case 'g':
-			if (plugin_path)
-				strcpy(plugin_path, opj_optarg);
-		break;
-
-		case 'H':
-			sscanf(opj_optarg, "%u", &(parameters->numThreads));
-			break;
-
-		case 'Q':
-			if (sscanf(opj_optarg, "%lf,%lf", parameters->capture_resolution,
-											parameters->capture_resolution+1) != 2) {
+		if (captureResArg.isSet()) {
+			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,
+				parameters->capture_resolution + 1) != 2) {
 				fprintf(stderr, "-Q 'capture resolution' argument error !! [-Q X0,Y0]");
 				return 1;
 			}
 			parameters->write_capture_resolution = true;
-			break;
-		case 'D':
-			if (sscanf(opj_optarg, "%lf,%lf", parameters->display_resolution,
+		}
+		if (displayResArg.isSet()) {
+			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->display_resolution,
 				parameters->display_resolution + 1) != 2) {
 				fprintf(stderr, "-D 'display resolution' argument error !! [-D X0,Y0]");
 				return 1;
 			}
 			parameters->write_display_resolution = true;
-			break;
+		}
 
-        /* ------------------------------------------------------ */
+		if (mctArg.isSet()) {
+			int mct_mode = mctArg.getValue();
+			if (mct_mode < 0 || mct_mode > 2) {
+				fprintf(stderr, "MCT incorrect value!! Current accepted values are 0, 1 or 2.\n");
+				return 1;
+			}
+			parameters->tcp_mct = (uint8_t)mct_mode;
+		}
 
+		if (mctInputArg.isSet()) {
+			char *lFilename = (char*)mctInputArg.getValue().c_str();
+			char *lMatrix;
+			char *lCurrentPtr;
+			float *lCurrentDoublePtr;
+			float *lSpace;
+			int *l_int_ptr;
+			int lNbComp = 0, lTotalComp, lMctComp, i2;
+			size_t lStrLen, lStrFread;
 
-        default:
-            fprintf(stderr, "[WARNING] An invalid option has been ignored\n");
-            break;
-        }
-    } while(c != -1);
+			/* Open file */
+			FILE * lFile = fopen(lFilename, "r");
+			if (lFile == NULL) {
+				return 1;
+			}
+
+			/* Set size of file and read its content*/
+			fseek(lFile, 0, SEEK_END);
+			lStrLen = (size_t)ftell(lFile);
+			fseek(lFile, 0, SEEK_SET);
+			lMatrix = (char *)malloc(lStrLen + 1);
+			if (lMatrix == NULL) {
+				fclose(lFile);
+				return 1;
+			}
+			lStrFread = fread(lMatrix, 1, lStrLen, lFile);
+			fclose(lFile);
+			if (lStrLen != lStrFread) {
+				free(lMatrix);
+				return 1;
+			}
+
+			lMatrix[lStrLen] = 0;
+			lCurrentPtr = lMatrix;
+
+			/* replace ',' by 0 */
+			while (*lCurrentPtr != 0) {
+				if (*lCurrentPtr == ' ') {
+					*lCurrentPtr = 0;
+					++lNbComp;
+				}
+				++lCurrentPtr;
+			}
+			++lNbComp;
+			lCurrentPtr = lMatrix;
+
+			lNbComp = (int)(sqrt(4 * lNbComp + 1) / 2. - 0.5);
+			lMctComp = lNbComp * lNbComp;
+			lTotalComp = lMctComp + lNbComp;
+			lSpace = (float *)malloc((size_t)lTotalComp * sizeof(float));
+			if (lSpace == NULL) {
+				free(lMatrix);
+				return 1;
+			}
+			lCurrentDoublePtr = lSpace;
+			for (i2 = 0; i2<lMctComp; ++i2) {
+				lStrLen = strlen(lCurrentPtr) + 1;
+				*lCurrentDoublePtr++ = (float)atof(lCurrentPtr);
+				lCurrentPtr += lStrLen;
+			}
+
+			l_int_ptr = (int*)lCurrentDoublePtr;
+			for (i2 = 0; i2<lNbComp; ++i2) {
+				lStrLen = strlen(lCurrentPtr) + 1;
+				*l_int_ptr++ = atoi(lCurrentPtr);
+				lCurrentPtr += lStrLen;
+			}
+
+			/* TODO should not be here ! */
+			opj_set_MCT(parameters, lSpace, (int *)(lSpace + lMctComp), (uint32_t)lNbComp);
+
+			/* Free memory*/
+			free(lSpace);
+			free(lMatrix);
+
+		}
+
+		if (roiArg.isSet()) {
+			if (sscanf(roiArg.getValue().c_str(), "c=%d,U=%d", &parameters->roi_compno,
+				&parameters->roi_shift) != 2) {
+				fprintf(stderr, "ROI error !! [-ROI c='compno',U='shift']\n");
+				return 1;
+			}
+		}
+
+		if (tileOffsetArg.isSet()) {
+			if (sscanf(tileOffsetArg.getValue().c_str(), "%d,%d", &parameters->cp_tx0, &parameters->cp_ty0) != 2) {
+				fprintf(stderr, "-T 'tile offset' argument error !! [-T X0,Y0]");
+				return 1;
+			}
+		}
+
+		if (commentArg.isSet()) {
+			parameters->cp_comment = (char*)malloc(commentArg.getValue().length() + 1);
+			if (parameters->cp_comment) {
+				strcpy(parameters->cp_comment, commentArg.getValue().c_str());
+			}
+		}
+
+		if (tpArg.isSet()) {
+			parameters->tp_flag = tpArg.getValue();
+			parameters->tp_on = 1;
+
+		}
+	}
+	catch (ArgException &e)  // catch any exceptions
+	{
+		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+	}
+#if 0
+        case 'h':			/* display an help description */
+            encode_help_display();
+            return 1;
+#endif
+
 
     if(img_fol->set_imgdir == 1) {
         if(!(parameters->infile[0] == 0)) {
@@ -1087,7 +1122,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         return 1;
     }
 
-    for (i = 0; i < parameters->numpocs; i++) {
+    for (uint32_t i = 0; i < parameters->numpocs; i++) {
         if (parameters->POC[i].prg == -1) {
             fprintf(stderr,
                     "Unrecognized progression order in option -P (POC n %d) [LRCP, RLCP, RPCL, PCRL, CPRL] !!\n",
