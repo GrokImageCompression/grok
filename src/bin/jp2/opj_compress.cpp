@@ -171,19 +171,19 @@ static void encode_help_display(void)
     fprintf(stdout,"Required Parameters (except with -h):\n");
     fprintf(stdout,"One of the two options -ImgDir or -i must be used\n");
     fprintf(stdout,"\n");
-    fprintf(stdout,"-i <file>\n");
+    fprintf(stdout,"[-i | -InputFile] <file>\n");
     fprintf(stdout,"    Input file\n");
     fprintf(stdout,"    Known extensions are <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL|TGA>\n");
     fprintf(stdout,"    If used, '-o <file>' must be provided\n");
-    fprintf(stdout,"-o <compressed file>\n");
+    fprintf(stdout,"[-o | -OutputFile] <compressed file>\n");
     fprintf(stdout,"    Output file (accepted extensions are j2k or jp2).\n");
-    fprintf(stdout,"-ImgDir <dir>\n");
+    fprintf(stdout,"[-y | -ImgDir] <dir>\n");
     fprintf(stdout,"    Image file Directory path (example ../Images) \n");
     fprintf(stdout,"    When using this option -OutFor must be used\n");
-    fprintf(stdout,"-OutFor <J2K|J2C|JP2>\n");
+    fprintf(stdout,"[-O | -OutFor] <J2K|J2C|JP2>\n");
     fprintf(stdout,"    Output format for compressed files.\n");
     fprintf(stdout,"    Required only if -ImgDir is used\n");
-    fprintf(stdout,"-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
+    fprintf(stdout,"[-F | -RawFormat] <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
     fprintf(stdout,"    Characteristics of the raw input image\n");
     fprintf(stdout,"    If subsampling is omitted, 1x1 is assumed for all components\n");
     fprintf(stdout,"      Example: -F 512,512,3,8,u@1x1:2x2:2x2\n");
@@ -192,9 +192,15 @@ static void encode_help_display(void)
     fprintf(stdout,"\n");
     fprintf(stdout,"Optional Parameters:\n");
     fprintf(stdout,"\n");
-    fprintf(stdout,"-h\n");
+    fprintf(stdout,"[-h | -help]\n");
     fprintf(stdout,"    Display the help information.\n");
-    fprintf(stdout,"-r <compression ratio>,<compression ratio>,...\n");
+	fprintf(stdout, "[-g | -PluginPath]\n");
+	fprintf(stdout, "    Path to T1 plugin.\n");
+	fprintf(stdout, "[-H | -NumThreads]\n");
+	fprintf(stdout, "    Number of threads to use for T1.\n");
+	fprintf(stdout, "[-a | -OutDir]\n");
+	fprintf(stdout, "    Output directory.\n");
+    fprintf(stdout,"[-r | -CompressionRatios] <compression ratio>,<compression ratio>,...\n");
     fprintf(stdout,"    Different compression ratios for successive layers.\n");
     fprintf(stdout,"    The rate specified for each quality level is the desired\n");
     fprintf(stdout,"    compression factor.\n");
@@ -204,94 +210,94 @@ static void encode_help_display(void)
     fprintf(stdout,"            quality layer 2: compress 10x \n");
     fprintf(stdout,"            quality layer 3: compress lossless\n");
     fprintf(stdout,"    Options -r and -q cannot be used together.\n");
-    fprintf(stdout,"-q <psnr value>,<psnr value>,<psnr value>,...\n");
+    fprintf(stdout,"[-q | -Quality] <psnr value>,<psnr value>,<psnr value>,...\n");
     fprintf(stdout,"    Different psnr for successive layers (-q 30,40,50).\n");
     fprintf(stdout,"    Increasing PSNR values required.\n");
     fprintf(stdout,"    Options -r and -q cannot be used together.\n");
-    fprintf(stdout,"-n <number of resolutions>\n");
+    fprintf(stdout,"[-n | -Resolutions] <number of resolutions>\n");
     fprintf(stdout,"    Number of resolutions.\n");
     fprintf(stdout,"    It corresponds to the number of DWT decompositions +1. \n");
     fprintf(stdout,"    Default: 6.\n");
-    fprintf(stdout,"-b <cblk width>,<cblk height>\n");
-    fprintf(stdout,"    Code-block size. The dimension must respect the constraint \n");
+    fprintf(stdout,"[-b | -CodeBlockDim] <cblk width>,<cblk height>\n");
+    fprintf(stdout,"    Code-block dimensions. The dimensions must respect the constraint \n");
     fprintf(stdout,"    defined in the JPEG-2000 standard (no dimension smaller than 4 \n");
     fprintf(stdout,"    or greater than 1024, no code-block with more than 4096 coefficients).\n");
-    fprintf(stdout,"    The maximum value authorized is 64x64. \n");
+    fprintf(stdout,"    The maximum value permitted is 64x64. \n");
     fprintf(stdout,"    Default: 64x64.\n");
-    fprintf(stdout,"-c [<prec width>,<prec height>],[<prec width>,<prec height>],...\n");
+    fprintf(stdout,"[-c | -PrecinctDim] [<prec width>,<prec height>],[<prec width>,<prec height>],...\n");
     fprintf(stdout,"    Precinct size. Values specified must be power of 2. \n");
     fprintf(stdout,"    Multiple records may be supplied, in which case the first record refers\n");
     fprintf(stdout,"    to the highest resolution level and subsequent records to lower \n");
     fprintf(stdout,"    resolution levels. The last specified record is right-shifted for each \n");
     fprintf(stdout,"    remaining lower resolution levels.\n");
     fprintf(stdout,"    Default: 215x215 at each resolution.\n");
-    fprintf(stdout,"-t <tile width>,<tile height>\n");
-    fprintf(stdout,"    Tile size.\n");
+    fprintf(stdout,"[-t | -TileDim] <tile width>,<tile height>\n");
+    fprintf(stdout,"    Tile dimensions.\n");
     fprintf(stdout,"    Default: the dimension of the whole image, thus only one tile.\n");
-    fprintf(stdout,"-p <LRCP|RLCP|RPCL|PCRL|CPRL>\n");
+    fprintf(stdout,"[-p | -ProgressionOrder] <LRCP|RLCP|RPCL|PCRL|CPRL>\n");
     fprintf(stdout,"    Progression order.\n");
     fprintf(stdout,"    Default: LRCP.\n");
-    fprintf(stdout,"-s  <subX,subY>\n");
+    fprintf(stdout,"[-s | -SubsamplingFactor]  <subX,subY>\n");
     fprintf(stdout,"    Subsampling factor.\n");
     fprintf(stdout,"    Subsampling bigger than 2 can produce error\n");
     fprintf(stdout,"    Default: no subsampling.\n");
-    fprintf(stdout,"-POC <progression order change>/<progression order change>/...\n");
+    fprintf(stdout,"[-P | -POC] <progression order change>/<progression order change>/...\n");
     fprintf(stdout,"    Progression order change.\n");
     fprintf(stdout,"    The syntax of a progression order change is the following:\n");
     fprintf(stdout,"    T<tile>=<resStart>,<compStart>,<layerEnd>,<resEnd>,<compEnd>,<progOrder>\n");
     fprintf(stdout,"      Example: -POC T1=0,0,1,5,3,CPRL/T1=5,0,1,6,3,CPRL\n");
-    fprintf(stdout,"-SOP\n");
+    fprintf(stdout,"[-S | -SOP]\n");
     fprintf(stdout,"    Write SOP marker before each packet.\n");
-    fprintf(stdout,"-EPH\n");
+    fprintf(stdout,"[-E | -EPH]\n");
     fprintf(stdout,"    Write EPH marker after each header packet.\n");
-    fprintf(stdout,"-M <key value>\n");
+    fprintf(stdout,"[-M | -Mode] <key value>\n");
     fprintf(stdout,"    Mode switch.\n");
     fprintf(stdout,"    [1=BYPASS(LAZY) 2=RESET 4=RESTART(TERMALL)\n");
     fprintf(stdout,"    8=VSC 16=ERTERM(SEGTERM) 32=SEGMARK(SEGSYM)]\n");
     fprintf(stdout,"    Indicate multiple modes by adding their values.\n");
     fprintf(stdout,"      Example: RESTART(4) + RESET(2) + SEGMARK(32) => -M 38\n");
-    fprintf(stdout,"-TP <R|L|C>\n");
+    fprintf(stdout,"[-u | -TP] <R|L|C>\n");
     fprintf(stdout,"    Divide packets of every tile into tile-parts.\n");
     fprintf(stdout,"    Division is made by grouping Resolutions (R), Layers (L)\n");
     fprintf(stdout,"    or Components (C).\n");
-    fprintf(stdout,"-ROI c=<component index>,U=<upshifting value>\n");
+    fprintf(stdout,"[-R | -ROI] c=<component index>,U=<upshifting value>\n");
     fprintf(stdout,"    Quantization indices upshifted for a component. \n");
     fprintf(stdout,"    Warning: This option does not implement the usual ROI (Region of Interest).\n");
     fprintf(stdout,"    It should be understood as a 'Component of Interest'. It offers the \n");
     fprintf(stdout,"    possibility to upshift the value of a component during quantization step.\n");
     fprintf(stdout,"    The value after c= is the component number [0, 1, 2, ...] and the value \n");
     fprintf(stdout,"    after U= is the value of upshifting. U must be in the range [0, 37].\n");
-    fprintf(stdout,"-d <image offset X,image offset Y>\n");
+    fprintf(stdout,"[-d | -ImageOffset] <image offset X,image offset Y>\n");
     fprintf(stdout,"    Offset of the origin of the image.\n");
-    fprintf(stdout,"-T <tile offset X,tile offset Y>\n");
+    fprintf(stdout,"[-T | -TileOffset] <tile offset X,tile offset Y>\n");
     fprintf(stdout,"    Offset of the origin of the tiles.\n");
-    fprintf(stdout,"-I\n");
+    fprintf(stdout,"[-I | -Irreversible\n");
     fprintf(stdout,"    Use the irreversible DWT 9-7.\n");
-    fprintf(stdout,"-mct <0|1|2>\n");
+    fprintf(stdout,"[-Y | -mct] <0|1|2>\n");
     fprintf(stdout,"    Explicitly specifies if a Multiple Component Transform has to be used.\n");
     fprintf(stdout,"    0: no MCT ; 1: RGB->YCC conversion ; 2: custom MCT.\n");
     fprintf(stdout,"    If custom MCT, \"-m\" option has to be used (see hereunder).\n");
     fprintf(stdout,"    By default, RGB->YCC conversion is used if there are 3 components or more,\n");
     fprintf(stdout,"    no conversion otherwise.\n");
-    fprintf(stdout,"-m <file>\n");
+    fprintf(stdout,"[-m | -MCTInput <file>\n");
     fprintf(stdout,"    Use array-based MCT, values are coma separated, line by line\n");
     fprintf(stdout,"    No specific separators between lines, no space allowed between values.\n");
     fprintf(stdout,"    If this option is used, it automatically sets \"-mct\" option to 2.\n");
-    fprintf(stdout,"-cinema2K <24|48>\n");
+    fprintf(stdout,"[-w | -cinema2K] <24|48>\n");
     fprintf(stdout,"    Digital Cinema 2K profile compliant codestream.\n");
     fprintf(stdout,"	Need to specify the frames per second for a 2K resolution.\n");
     fprintf(stdout,"    Only 24 or 48 fps are currently allowed.\n");
-    fprintf(stdout,"-cinema4K\n");
+    fprintf(stdout,"[-x | -cinema4K]\n");
     fprintf(stdout,"    Digital Cinema 4K profile compliant codestream.\n");
     fprintf(stdout,"	Frames per second not required. Default value is 24fps.\n");
-    fprintf(stdout,"-C <comment>\n");
+    fprintf(stdout,"[-C | -Comment] <comment>\n");
     fprintf(stdout,"    Add <comment> in the comment marker segment.\n");
-	fprintf(stdout, "-Q <capture resolution X,capture resolution Y>\n");
+	fprintf(stdout, "[-Q | -CaptureRes] <capture resolution X,capture resolution Y>\n");
 	fprintf(stdout, "    Capture resolution in pixels/metre, in double precision.\n");
 	fprintf(stdout, "    These values will override the resolution stored in the input image, if present \n");
 	fprintf(stdout, "    unless the special values <0,0> are passed in, in which case \n");
 	fprintf(stdout, "    the image resolution will be used.\n");
-	fprintf(stdout, "-D <display resolution X,display resolution Y>\n");
+	fprintf(stdout, "[-D | -DisplayRes] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
     fprintf(stdout,"\n");
 }
@@ -433,6 +439,16 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
     return 0;
 }
 
+
+class GrokOutput : public StdOutput
+{
+public:
+	virtual void usage(CmdLineInterface& c)
+	{
+		encode_help_display();
+	}
+};
+
 /* ------------------------------------------------------------------------------------ */
 
 static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *parameters,
@@ -443,6 +459,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 
 		// Define the command line object.
 		CmdLine cmd("Command description message", ' ', "0.9");
+
+		// set the output
+		GrokOutput output;
+		cmd.setOutput(&output);
+
 		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
 										"Digital cinema 2K profile",
 										false,24, "unsigned integer", cmd);
@@ -519,11 +540,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 									"Raw image format parameters",
 									false, "", "string", cmd);
 
-		ValueArg<string> tilesArg("t", "Tiles",
+		ValueArg<string> tilesArg("t", "TileDim",
 			"Tile parameters",
 			false, "", "string", cmd);
 
-		ValueArg<uint32_t> resolutionArg("n", "Resolution",
+		ValueArg<uint32_t> resolutionArg("n", "Resolutions",
 			"Resolution",
 			false, 0, "unsigned integer", cmd);
 
@@ -544,8 +565,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			"Subsampling factor",
 			false, "", "string", cmd);
 
-		ValueArg<string> refGridCoordsArg("d", "RefGridCoords",
-			"Reference grid coordinates",
+		ValueArg<string> imageOffsetArg("d", "ImageOffset",
+			"Image offset in reference grid coordinates",
 			false, "", "string", cmd);
 
 		ValueArg<uint32_t> modeArg("M", "Mode",
@@ -559,12 +580,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 		SwitchArg irreversibleArg("I", "Irreversible",
 			"Irreversible", cmd);
 
-		ValueArg<string> mctInputArg("m", "mctInput",
+		ValueArg<string> mctInputArg("m", "MCTInput",
 			"MCT input file",
 			false, "", "string", cmd);
 
 		cmd.parse(argc, argv);
-
 
 		img_fol->set_out_format = 0;
 		raw_cp->rawWidth = 0;
@@ -825,10 +845,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			}
 		}
 
-		if (refGridCoordsArg.isSet()) {
-			if (sscanf(refGridCoordsArg.getValue().c_str(), "%d,%d", &parameters->image_offset_x0,
+		if (imageOffsetArg.isSet()) {
+			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d", &parameters->image_offset_x0,
 				&parameters->image_offset_y0) != 2) {
-				fprintf(stderr, "-d 'coordonnate of the reference grid' argument "
+				fprintf(stderr, "-d 'image offset' argument "
 					"error !! [-d x0,y0]\n");
 				return 1;
 			}
@@ -1060,12 +1080,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 	{
 		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
 	}
-#if 0
-        case 'h':			/* display an help description */
-            encode_help_display();
-            return 1;
-#endif
-
 
     if(img_fol->set_imgdir == 1) {
         if(!(parameters->infile[0] == 0)) {
