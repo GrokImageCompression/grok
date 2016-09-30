@@ -16,7 +16,6 @@
 */
 
 
-#include "opj_string.h"
 #include "minpf_dynamic_library.h"
 
 #include <string>
@@ -114,7 +113,7 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 		return NULL;
 
 	}
-	opj_strcpy_s(lib->path,sizeof(lib->path), path);
+	strcpy_s(lib->path,sizeof(lib->path), path);
     lib->handle = handle;
     return lib;
 }

@@ -77,9 +77,6 @@ extern "C" {
 #include "convert.h"
 
 #include "format_defs.h"
-#include "opj_string.h"
-
-
 }
 
 
@@ -226,7 +223,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     if (parameters->decod_format == -1)
         return 1;
     sprintf(infilename,"%s/%s",img_fol->imgdirpath,image_filename);
-    if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+    if (strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
         return 1;
     }
 
@@ -238,7 +235,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     }
     if(img_fol->set_out_format==1) {
         sprintf(outfilename,"%s/%s.%s",img_fol->imgdirpath,temp_ofname,img_fol->out_format);
-        if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+        if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
             return 1;
         }
     }
@@ -334,7 +331,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
                         infile);
                 return 1;
             }
-            if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+            if (strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
                 fprintf(stderr, "[ERROR] Path is too long\n");
                 return 1;
             }
@@ -344,7 +341,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
         /* ------------------------------------------------------ */
 
         case 'o': {   /* output file */
-            if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), opj_optarg) != 0) {
+            if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), opj_optarg) != 0) {
                 fprintf(stderr, "[ERROR] Path is too long\n");
                 return 1;
             }

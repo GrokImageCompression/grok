@@ -59,13 +59,6 @@
 
 
 extern "C" {
-
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
-#include <assert.h>
-
 #ifdef _WIN32
 #include "windirent.h"
 #else
@@ -73,7 +66,6 @@ extern "C" {
 #endif /* _WIN32 */
 
 #ifdef _WIN32
-#include <windows.h>
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
@@ -86,10 +78,8 @@ extern "C" {
 
 #include "opj_apps_config.h"
 #include "openjpeg.h"
-#include "opj_getopt.h"
 #include "convert.h"
 #include "format_defs.h"
-#include "opj_string.h"
 }
 
 #include <cstdlib>
@@ -149,9 +139,6 @@ static void encode_help_display(void)
     fprintf(stdout," * No sub-sampling in x or y direction\n");
     fprintf(stdout," * No mode switch activated\n");
     fprintf(stdout," * Progression order: LRCP\n");
-#ifdef FIXME_INDEX
-    fprintf(stdout," * No index file\n");
-#endif /* FIXME_INDEX */
     fprintf(stdout," * No ROI upshifted\n");
     fprintf(stdout," * No offset of the origin of the image\n");
     fprintf(stdout," * No offset of the origin of the tiles\n");
@@ -420,7 +407,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
     if (parameters->decod_format == -1)
         return 1;
     sprintf(infilename,"%s%s%s",img_fol->imgdirpath, get_path_separator(),image_filename);
-    if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+    if (strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
         return 1;
     }
 	
@@ -432,7 +419,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
     }
     if(img_fol->set_out_format==1){
         sprintf(outfilename,"%s%s%s.%s", out_folder->imgdirpath, get_path_separator(),temp_ofname,img_fol->out_format);
-        if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+        if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
             return 1;
         }
     }
@@ -613,7 +600,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 						infile);
 					return 1;
 			}
-			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+			if (strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				return 1;
 			}
 		}
@@ -629,7 +616,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 					fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
 					return 1;
 			}
-			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+			if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
 				return 1;
 			}
 		}
@@ -1266,7 +1253,6 @@ int main(int argc, char **argv) {
 
     /* parse input and get user encoding parameters */
     parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
-	opj_reset_options_reading();
 	if(parse_cmdline_encoder(argc, argv, &parameters,&img_fol,&raw_cp, indexfilename, sizeof(indexfilename)) == 1) {
         return 1;
     }
