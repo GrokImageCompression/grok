@@ -60,10 +60,6 @@
 extern "C" {
 
 #include "opj_apps_config.h"
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <math.h>
 
 #ifdef _WIN32
 #include "windirent.h"
@@ -72,7 +68,6 @@ extern "C" {
 #endif /* _WIN32 */
 
 #ifdef _WIN32
-#include <windows.h>
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
@@ -83,7 +78,6 @@ extern "C" {
 #endif /* _WIN32 */
 
 #include "openjpeg.h"
-#include "opj_getopt.h"
 #include "convert.h"
 
 #ifdef OPJ_HAVE_LIBLCMS2
@@ -92,13 +86,9 @@ extern "C" {
 #include "color.h"
 
 #include "format_defs.h"
-#include "opj_string.h"
 
 }
 
-#include <string>
-#include <iostream>
-#include <algorithm>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
@@ -408,7 +398,7 @@ char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decomp
 	parameters->decod_format = infile_format(infilename);
 	if (parameters->decod_format == -1)
 		return 1;
-	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+	if (strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
 		return 1;
 	}
 
@@ -420,7 +410,7 @@ char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decomp
 	}
 	if (img_fol->set_out_format == 1) {
 		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname, img_fol->out_format);
-		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+		if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
 			return 1;
 		}
 	}
@@ -589,7 +579,7 @@ int parse_cmdline_decoder(int argc,
 					infile);
 				return 1;
 			}
-			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+			if (strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}
@@ -619,7 +609,7 @@ int parse_cmdline_decoder(int argc,
 				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
 				return 1;
 			}
-			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+			if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}

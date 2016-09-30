@@ -18,7 +18,6 @@
 #include "minpf_plugin_manager.h"
 #include "minpf_plugin.h"
 #include <stdio.h>
-#include "opj_string.h"
 
 
 #ifdef _WIN32
@@ -229,7 +228,7 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
         //ignore files with incorrect extensions
         if (  strcmp(get_filename_ext(content->d_name), minpf_get_dynamic_library_extension()) != 0)
             continue;
-        opj_strcpy_s(libraryPath,sizeof(libraryPath), directory_path);
+        strcpy_s(libraryPath,sizeof(libraryPath), directory_path);
         strcat(libraryPath, MINPF_FILE_SEPARATOR);
         strcat(libraryPath, content->d_name);
         if (minpf_load(libraryPath) != 0)
