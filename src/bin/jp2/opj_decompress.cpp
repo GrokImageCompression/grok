@@ -154,16 +154,16 @@ static void decode_help_display(void)
     fprintf(stdout,"Parameters:\n"
             "-----------\n"
             "\n"
-            "  -ImgDir <directory> \n"
-            "	Image file Directory path \n"
-            "  -OutFor <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL|TGA>\n"
+			"  [-y | -ImgDir] <directory> \n"
+            "	Image file directory path \n"
+			"  [-O | -OutFor] <PBM|PGM|PPM|PNM|PAM|PGX|PNG|BMP|TIF|RAW|RAWL|TGA>\n"
             "    REQUIRED only if -ImgDir is used\n"
             "	Output format for decompressed images.\n");
-    fprintf(stdout,"  -i <compressed file>\n"
+    fprintf(stdout,"  [-i | -InputFile] <compressed file>\n"
             "    REQUIRED only if an Input image directory is not specified\n"
             "    Currently accepts J2K-files, JP2-files and JPT-files. The file type\n"
             "    is identified based on its suffix.\n");
-    fprintf(stdout,"  -o <decompressed file>\n"
+    fprintf(stdout,"  [-o | -OutputFile] <decompressed file>\n"
             "    REQUIRED\n"
             "    Currently accepts formats specified above (see OutFor option)\n"
             "    Binary data is written to the file (not ascii). If a PGX\n"
@@ -172,26 +172,26 @@ static void decode_help_display(void)
             "    output filename, just before the \"pgx\" extension. If a PGM filename\n"
             "    is given and there are more than one component, only the first component\n"
             "    will be written to the file.\n");
-    fprintf(stdout,"  -r <reduce factor>\n"
+	fprintf(stdout, "  [-a | -OutDir] <output directory>\n"
+		"    Output directory where decompressed files are stored.\n");
+	fprintf(stdout, "  [-g | -PluginPath] <plugin path>\n"
+		"    Path to T1 plugin.\n");
+	fprintf(stdout, "  [-H | -NumThreads] <number of threads>\n"
+		"    Number of threads used by T1 decode.\n");
+	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
+		"    Index of tile to be decoded\n");
+	fprintf(stdout, "  [-d | -DecodeRegion] <x0,y0,x1,y1>\n"
+		"    Top left-hand corner and bottom right-hand corner of region to be decoded.\n");
+    fprintf(stdout,"  [-r | -Reduce] <reduce factor>\n"
             "    Set the number of highest resolution levels to be discarded. The\n"
             "    image resolution is effectively divided by 2 to the power of the\n"
             "    number of discarded levels. The reduce factor is limited by the\n"
             "    smallest total number of decomposition levels among tiles.\n"
-            "  -l <number of quality layers to decode>\n"
+			"  [-l | -Layer] <number of quality layers to decode>\n"
             "    Set the maximum number of quality layers to decode. If there are\n"
-            "    less quality layers than the specified number, all the quality layers\n"
+            "    fewer quality layers than the specified number, all the quality layers\n"
             "    are decoded.\n");
-    fprintf(stdout,"  -x  \n"
-            "    Create an index file *.Idx (-x index_name.Idx) \n"
-            "  -d <x0,y0,x1,y1>\n"
-            "    OPTIONAL\n"
-            "    Decoding area\n"
-            "    By default all the image is decoded.\n"
-            "  -t <tile_number>\n"
-            "    OPTIONAL\n"
-            "    Set the tile number of the decoded tile. Follow the JPEG2000 convention from left-up to bottom-up\n"
-            "    By default all tiles are decoded.\n");
-    fprintf(stdout,"  -p <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
+    fprintf(stdout,"  [-p | -Precision] <comp 0 precision>[C|S][,<comp 1 precision>[C|S][,...]]\n"
             "    OPTIONAL\n"
             "    Force the precision (bit depth) of components.\n");
     fprintf(stdout,"    There shall be at least 1 value. Theres no limit on the number of values (comma separated, last values ignored if too much values).\n"
@@ -199,11 +199,11 @@ static void decode_help_display(void)
             "    If 'C' is specified (default), values are clipped.\n"
             "    If 'S' is specified, values are scaled.\n"
             "    A 0 value can be specified (meaning original bit depth).\n");
-    fprintf(stdout,"  -force-rgb\n"
+    fprintf(stdout,"  [-f | -force-rg]b\n"
             "    Force output image colorspace to RGB\n"
-            "  -upsample\n"
-            "    Downsampled components will be upsampled to image size\n"
-            "  -split-pnm\n"
+			"  [-u | -upsample]\n"
+            "    components will be upsampled to image size\n"
+			"  [-s | -split-pnm]\n"
             "    Split output components to different files when writing to PNM\n"
             "\n");
 
@@ -478,6 +478,17 @@ static int infile_format(const char *fname)
     return magic_format;
 }
 
+
+class GrokOutput : public StdOutput
+{
+public:
+	virtual void usage(CmdLineInterface& c)
+	{
+		decode_help_display();
+	}
+};
+
+
 /* -------------------------------------------------------------------------- */
 /**
  * Parse the command line
@@ -494,6 +505,10 @@ int parse_cmdline_decoder(int argc,
 
 		// Define the command line object.
 		CmdLine cmd("Command description message", ' ', "0.9");
+		
+		// set the output
+		GrokOutput output;
+		cmd.setOutput(&output);
 
 		ValueArg<string> imgDirArg("y", "ImgDir", 
 									"Image Directory",
@@ -536,8 +551,8 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<string> precisionArg("p", "Precision",
 										"Force precision",
 										false, "", "string", cmd);
-		ValueArg<string> decodeROIArg("d", "DecodeROI",
-										"Decode ROI",
+		ValueArg<string> decodeRegionArg("d", "DecodeRegion",
+										"Decode Region",
 										false, "", "string", cmd);
 
 		cmd.parse(argc, argv);
@@ -679,15 +694,15 @@ int parse_cmdline_decoder(int argc,
 			parameters->core.numThreads = numThreadsArg.getValue();
 		}
 
-		if (decodeROIArg.isSet()) {
-			size_t size_optarg = (size_t)strlen(decodeROIArg.getValue().c_str()) + 1U;
+		if (decodeRegionArg.isSet()) {
+			size_t size_optarg = (size_t)strlen(decodeRegionArg.getValue().c_str()) + 1U;
 			char *ROI_values = (char*)malloc(size_optarg);
 			if (ROI_values == NULL) {
 				fprintf(stderr, "[ERROR] Couldn't allocate memory\n");
 				return 1;
 			}
 			ROI_values[0] = '\0';
-			memcpy(ROI_values, decodeROIArg.getValue().c_str(), size_optarg);
+			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
 			if (parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1) != EXIT_SUCCESS) {
 				fprintf(stdout, "[WARNING] Specified image decode region not valid: ignoring \n");

@@ -194,12 +194,12 @@ static void encode_help_display(void)
     fprintf(stdout,"\n");
     fprintf(stdout,"[-h | -help]\n");
     fprintf(stdout,"    Display the help information.\n");
-	fprintf(stdout, "[-g | -PluginPath]\n");
+	fprintf(stdout, "[-g | -PluginPath] <plugin path>\n");
 	fprintf(stdout, "    Path to T1 plugin.\n");
-	fprintf(stdout, "[-H | -NumThreads]\n");
+	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
 	fprintf(stdout, "    Number of threads to use for T1.\n");
-	fprintf(stdout, "[-a | -OutDir]\n");
-	fprintf(stdout, "    Output directory.\n");
+	fprintf(stdout, "[-a | -OutDir] <output directory>\n");
+	fprintf(stdout, "    Output directory where compressed files are stored.\n");
     fprintf(stdout,"[-r | -CompressionRatios] <compression ratio>,<compression ratio>,...\n");
     fprintf(stdout,"    Different compression ratios for successive layers.\n");
     fprintf(stdout,"    The rate specified for each quality level is the desired\n");
