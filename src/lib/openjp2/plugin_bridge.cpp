@@ -21,7 +21,7 @@
 #include "plugin_bridge.h"
 
 bool tile_equals(opj_plugin_tile_t* plugin_tile,
-						opj_tcd_tile_t *p_tile) {
+	opj_tcd_tile_t *p_tile) {
 	uint32_t state = opj_plugin_get_debug_state();
 	if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE))
 		return true;
@@ -37,7 +37,7 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
 			return false;
 		for (uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno) {
-			opj_tcd_resolution_t* resolution =  tilecomp->resolutions + resno;
+			opj_tcd_resolution_t* resolution = tilecomp->resolutions + resno;
 			opj_plugin_resolution_t* plugin_resolution = plugin_tilecomp->resolutions[resno];
 			if (resolution->numbands != plugin_resolution->numBands)
 				return false;
@@ -70,14 +70,14 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 }
 
 void encode_synch_with_plugin(opj_tcd_t *tcd,
-						uint32_t compno,
-						uint32_t resno,
-						uint32_t bandno,
-						uint32_t precno,
-						uint32_t cblkno,
-						opj_tcd_band_t *band,
-						opj_tcd_cblk_enc_t *cblk,
-						uint32_t* numPix) {
+	uint32_t compno,
+	uint32_t resno,
+	uint32_t bandno,
+	uint32_t precno,
+	uint32_t cblkno,
+	opj_tcd_band_t *band,
+	opj_tcd_cblk_enc_t *cblk,
+	uint32_t* numPix) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		opj_plugin_band_t* plugin_band = tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
 		opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
@@ -88,10 +88,15 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 				printf("Warning: ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
 			}
 			if (cblk->totalpasses != plugin_cblk->numPasses)
-				printf("Warning: total number of passes differ: component=%d, res=%d, band=%d, block=%d\n", compno, resno, bandno, cblkno);
+				printf("Warning: OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->totalpasses, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
 		}
 		cblk->totalpasses = (uint32_t)plugin_cblk->numPasses;
 		*numPix = (uint32_t)plugin_cblk->numPix;
+		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+			if (plugin_cblk->numPix != opjNumPix)
+				printf("Warning: ojp numPix %f differs from plugin numPix %f\n", opjNumPix, plugin_cblk->numPix);
+		}
 		bool goodData = true;
 		uint32_t totalRatePlugin = (uint32_t)plugin_cblk->compressedDataLength;
 		//check data
@@ -103,19 +108,15 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 			if (cblk->data && plugin_cblk->compressedData) {
 				for (uint32_t p = 0; p < totalRate; ++p) {
 					if (cblk->data[p] != plugin_cblk->compressedData[p]) {
-						for (uint32_t k = 0; k < totalRate; ++k) {
-							if (plugin_cblk->compressedData[k] == 0xFF) {
-								printf("Warning: data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
-									k,
-									compno,
-									resno,
-									bandno,
-									cblkno,
-									totalRate,
-									totalRatePlugin);
-								break;
-							}
-						}
+						printf("Warning: data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
+							p,
+							compno,
+							resno,
+							bandno,
+							cblkno,
+							totalRate,
+							totalRatePlugin);
+
 						goodData = false;
 						break;
 					}
@@ -135,20 +136,22 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 				printf("Error: plugin code block bounding box differs from OPJ code block");
 			}
 		}
-		uint32_t lastRate = 0;
 
+		bool isLossy = tcd->tcp->tccps->qmfbid == 0;
+		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->totalpasses; passno++) {
 			opj_tcd_pass_t *pass = cblk->passes + passno;
 			opj_plugin_pass_t* pluginPass = plugin_cblk->passes + passno;
 
 			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
 				// only worry about distortion for lossy encoding
-				if (tcd->tcp->tccps->qmfbid == 0 && fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec)  > 0.01) {
+				if (isLossy && fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec)  > 0.01) {
 					printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
 				}
 			}
-			pass->distortiondec			= pluginPass->distortionDecrease;
-			uint32_t pluginRate		= (uint32_t)(pluginPass->rate + 3);
+			if (isLossy)
+				pass->distortiondec = pluginPass->distortionDecrease;
+			uint32_t pluginRate = (uint32_t)(pluginPass->rate + 3);
 			if (pluginRate > totalRatePlugin)
 				pluginRate = totalRatePlugin;
 
@@ -225,7 +228,7 @@ void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d) {
 	if (mgr && mgr->num_libraries > 0) {
 		func = (PLUGIN_DEBUG_MQC_NEXT_CXD)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_debug_mqc_next_cxd_method_name);
 		if (func) {
-			func(mqc,d);
+			func(mqc, d);
 		}
 	}
 }
