@@ -964,7 +964,7 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
                 len += pass->len;
 
                 if (pass->term || passno == (cblk->numpasses + layer->numpasses) - 1) {
-                    opj_bio_write(bio, (uint32_t)len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
+                    opj_bio_write(bio, len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
                     len = 0;
                     nump = 0;
                 }

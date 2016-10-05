@@ -5996,7 +5996,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     }
     if (parameters->numpocs) {
         /* initialisation of POC */
-		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, (uint32_t)parameters->tcp_numlayers, p_manager)) {
+		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, parameters->tcp_numlayers, p_manager)) {
 			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
 			return false;
 		}
@@ -8044,7 +8044,7 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
     }
 
     /* Up */
-    if ((uint32_t)p_start_y > l_image->y1) {
+    if (p_start_y > l_image->y1) {
         opj_event_msg(p_manager, EVT_ERROR,
                       "Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
                       p_start_y, l_image->y1);

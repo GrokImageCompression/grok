@@ -82,7 +82,7 @@ void clip_component(opj_image_comp_t* component, uint32_t precision)
 {
     size_t i;
     size_t len;
-    uint32_t umax = (uint32_t)((int32_t)-1);
+	uint32_t umax = UINT_MAX;
 
     len = (size_t)component->w * (size_t)component->h;
     if (precision < 32) {
@@ -1114,8 +1114,8 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 
     cmptparm.x0 = parameters->image_offset_x0;
     cmptparm.y0 = parameters->image_offset_y0;
-    cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * (uint32_t)parameters->subsampling_dx + 1;
-    cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * (uint32_t)parameters->subsampling_dy + 1;
+    cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * parameters->subsampling_dx + 1;
+    cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
 
     if (sign == '-') {
         cmptparm.sgnd = 1;

@@ -49,7 +49,7 @@ void T1Encoder::encode(void) {
 		uint32_t tile_width = tilec->x1 - tilec->x0;
 		tileLineAdvance = tile_width - t1->w;
 		block->tiledp =
-			opj_tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, (uint32_t)block->x, (uint32_t)block->y);
+			opj_tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, block->x, block->y);
 		t1->data = block->tiledp;
 		t1->data_stride = tile_width;
 		if (block->qmfbid == 1) {
