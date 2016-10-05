@@ -618,7 +618,16 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
             l_res->ph = (l_res->y0 == l_res->y1) ? 0 : ((l_br_prc_y_end - l_tl_prc_y_start) >> l_pdy);
             /*fprintf(stderr, "\t\t\tres_pw=%d, res_ph=%d\n", l_res->pw, l_res->ph );*/
 
+			if (grk_mult_will_overflow(l_res->pw, l_res->ph)) {
+				opj_event_msg(manager, EVT_ERROR, "l_nb_precincts calculation would overflow \n");
+				return false;
+			}
             l_nb_precincts = l_res->pw * l_res->ph;
+
+			if (grk_mult_will_overflow(l_nb_precincts, (uint32_t)sizeof(opj_tcd_precinct_t))) {
+				opj_event_msg(manager, EVT_ERROR, "l_nb_precinct_size calculation would overflow \n");
+				return false;
+			}
             l_nb_precinct_size = l_nb_precincts * (uint32_t)sizeof(opj_tcd_precinct_t);
             if (resno == 0) {
                 tlcbgxstart = l_tl_prc_x_start;
@@ -724,8 +733,17 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                     l_current_precinct->cw = ((brcblkxend - tlcblkxstart) >> cblkwidthexpn);
                     l_current_precinct->ch = ((brcblkyend - tlcblkystart) >> cblkheightexpn);
 
+					if (grk_mult_will_overflow(l_current_precinct->cw, l_current_precinct->ch)) {
+						opj_event_msg(manager, EVT_ERROR, "l_nb_code_blocks calculation would overflow \n");
+						return false;
+					}
                     l_nb_code_blocks = l_current_precinct->cw * l_current_precinct->ch;
                     /*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
+
+					if (grk_mult_will_overflow(l_nb_code_blocks, (uint32_t)sizeof_block)) {
+						opj_event_msg(manager, EVT_ERROR, "l_nb_code_blocks_size calculation would overflow \n");
+						return false;
+					}
                     l_nb_code_blocks_size = l_nb_code_blocks * (uint32_t)sizeof_block;
 
                     if (!l_current_precinct->cblks.blocks && (l_nb_code_blocks > 0U)) {
