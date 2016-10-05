@@ -1115,8 +1115,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
         parameters->cp_disto_alloc = 1;
     }
 
-    if((parameters->cp_tx0 > 0 && (uint32_t)parameters->cp_tx0 > parameters->image_offset_x0) ||
-		(parameters->cp_ty0 > 0 && (uint32_t)parameters->cp_ty0 > parameters->image_offset_y0)) {
+    if((parameters->cp_tx0 > 0 && parameters->cp_tx0 > parameters->image_offset_x0) ||
+		(parameters->cp_ty0 > 0 && parameters->cp_ty0 > parameters->image_offset_y0)) {
         fprintf(stderr,
                 "[ERROR] Tile offset dimension is unnappropriate --> TX0(%d)<=IMG_X0(%d) TYO(%d)<=IMG_Y0(%d) \n",
                 parameters->cp_tx0, parameters->image_offset_x0, parameters->cp_ty0, parameters->image_offset_y0);
