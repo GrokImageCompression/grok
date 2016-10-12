@@ -88,6 +88,7 @@ typedef struct opj_tcd_pass {
     double distortiondec;
     uint32_t len;
     uint32_t term : 1;
+	uint16_t slope;  //ln(slope) in 8.8 fixed point
 } opj_tcd_pass_t;
 
 /**
@@ -281,8 +282,7 @@ void opj_tcd_makelayer(	opj_tcd_t *tcd,
 
 bool opj_tcd_pcrd_bisect(	opj_tcd_t *tcd,
                             uint64_t * p_data_written,
-                            uint64_t len,
-                            opj_codestream_info_t *cstr_info);
+                            uint64_t len);
 
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
