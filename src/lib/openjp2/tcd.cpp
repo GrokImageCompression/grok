@@ -164,8 +164,7 @@ Simple bisect algorithm to calculate optimal layer truncation points
 */
 bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
-                            uint64_t len,
-                            opj_codestream_info_t *cstr_info)
+                            uint64_t len)
 {
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
@@ -1860,9 +1859,8 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
     }
 
     if (l_cp->m_specific_param.m_enc.m_disto_alloc|| l_cp->m_specific_param.m_enc.m_fixed_quality)  {
-        /* fixed_quality */
-        /* Normal Rate/distortion allocation */
-        if (! opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size, p_cstr_info)) {
+        // rate control by rate/distortion or fixed quality 
+        if (! opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
             return false;
         }
     } 
