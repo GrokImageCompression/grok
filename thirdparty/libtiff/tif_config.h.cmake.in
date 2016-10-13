@@ -1,6 +1,9 @@
 /* libtiff/tif_config.h.cmake.in.  Not generated, but originated from autoheader.  */
 /* This file must be kept up-to-date with needed substitutions from libtiff/tif_config.h.in. */
 
+/* uncomment for zlib support  */
+//#cmakedefine ZIP_SUPPORT
+
 /* Support CCITT Group 3 & 4 algorithms */
 #cmakedefine CCITT_SUPPORT 1
 

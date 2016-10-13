@@ -82,10 +82,13 @@ CHECK_INCLUDE_FILES("jpeglib.h" HAVE_JPEGLIB_H)
 if(HAVE_JPEGLIB_H)
   set(JPEG_SUPPORT 1)
 endif()
-if(HAVE_ZLIB_H)
-  include_directories(
-    ${ZLIB_INCLUDE_DIR}
-    )
+
+if (BUILD_THIRDPARTY OR HAVE_ZLIB_H)
+  if (BUILD_THIRDPARTY)
+	include_directories( ${OPENJPEG_SOURCE_DIR}/thirdparty/include )
+  elseif (HAVE_ZLIB_H)
+	include_directories( ${ZLIB_INCLUDE_DIR} )
+  endif()
   set(ZIP_SUPPORT 1)
   set(PIXARLOG_SUPPORT 1) # require zlib
 endif()
