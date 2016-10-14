@@ -59,6 +59,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 
 #include "openjpeg.h"
 #include "convert.h"

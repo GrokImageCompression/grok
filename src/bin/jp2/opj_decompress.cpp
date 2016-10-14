@@ -86,6 +86,7 @@ extern "C" {
 #include "color.h"
 
 #include "format_defs.h"
+#include "opj_string.h"
 
 }
 
@@ -398,7 +399,7 @@ char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decomp
 	parameters->decod_format = infile_format(infilename);
 	if (parameters->decod_format == -1)
 		return 1;
-	if (strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
 		return 1;
 	}
 
@@ -410,7 +411,7 @@ char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decomp
 	}
 	if (img_fol->set_out_format == 1) {
 		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname, img_fol->out_format);
-		if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
 			return 1;
 		}
 	}
@@ -579,7 +580,7 @@ int parse_cmdline_decoder(int argc,
 					infile);
 				return 1;
 			}
-			if (strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}
@@ -609,7 +610,7 @@ int parse_cmdline_decoder(int argc,
 				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
 				return 1;
 			}
-			if (strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}

@@ -16,14 +16,15 @@
 */
 
 #pragma once
-#include <climits>
-#include <stdint.h>
 
+class RateControl
+{
+public:
+	static void convexHull(opj_tcd_pass_t *pass, uint32_t numPasses);
+	static uint16_t slopeToLog(double slope);
+	static double slopeFromLog(uint16_t logSlope);
+private:
 
-inline bool grk_mult_will_overflow(uint32_t a, uint32_t b) {
-	return (b && (a > UINT_MAX / b));
-}
+		
 
-inline bool grk_add_will_overflow(uint32_t a, uint32_t b) {
-	return  (a > UINT_MAX - b);
-}
+};

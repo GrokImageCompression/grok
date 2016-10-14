@@ -211,6 +211,8 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 								&numPix);
 						}
 
+						RateControl::convexHull(cblk->passes, cblk->totalpasses);
+
                         for (passno = 0; passno < cblk->totalpasses; passno++) {
                             opj_tcd_pass_t *pass = &cblk->passes[passno];
                             int32_t dr;
