@@ -17,11 +17,12 @@
 
 
 #include "minpf_dynamic_library.h"
+#include <stdio.h>
+#include <cstring>
 
-#include <string>
 
 #ifdef _WIN32
-
+#include <string>
 //Returns the last Win32 error, in string format. Returns an empty string if there is no error.
 static std::string GetLastErrorAsString()
 {
@@ -113,7 +114,7 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 		return NULL;
 
 	}
-	strcpy_s(lib->path,sizeof(lib->path), path);
+	strcpy(lib->path, path);
     lib->handle = handle;
     return lib;
 }
