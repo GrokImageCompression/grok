@@ -190,6 +190,9 @@ static void encode_help_display(void)
 	fprintf(stdout, "    Path to T1 plugin.\n");
 	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
 	fprintf(stdout, "    Number of threads to use for T1.\n");
+	fprintf(stdout, "[-G | -DeviceId] <device ID>\n");
+	fprintf(stdout, "    (GPU) Specify which device to run codec on.\n");
+	fprintf(stdout, "    A value of -1 will specify all devices.\n");
 	fprintf(stdout, "[-a | -OutDir] <output directory>\n");
 	fprintf(stdout, "    Output directory where compressed files are stored.\n");
     fprintf(stdout,"[-r | -CompressionRatios] <compression ratio>,<compression ratio>,...\n");
@@ -474,6 +477,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 		ValueArg<uint32_t> numThreadsArg("H", "NumThreads",
 									"Number of threads",
 									false, 8, "unsigned integer", cmd);
+
+		ValueArg<int32_t> deviceIdArg("G", "DeviceId",
+			"Device ID",
+			false, -1, "integer", cmd);
+
 		ValueArg<string> inputFileArg("i", "InputFile",
 									"Input file",
 									false, "", "string", cmd);
@@ -583,6 +591,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 
 		if (numThreadsArg.isSet()) {
 			parameters->numThreads = numThreadsArg.getValue();
+		}
+
+		if (deviceIdArg.isSet()) {
+			parameters->deviceId = deviceIdArg.getValue();
 		}
 
 		if (inputFileArg.isSet()) {

@@ -478,6 +478,7 @@ typedef struct opj_cparameters {
 	double display_resolution[2];
 
 	uint32_t numThreads;
+	int32_t deviceId;
 } opj_cparameters_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
