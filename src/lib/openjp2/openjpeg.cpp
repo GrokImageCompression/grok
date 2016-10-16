@@ -70,7 +70,7 @@ static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
 {
     if (!is_initialized) {
-		opj_plugin_init_info_t info;
+		opj_plugin_load_info_t info;
 		info.plugin_path = plugin_path;
         is_initialized = opj_plugin_load(info);
     }
@@ -1075,7 +1075,7 @@ static const char* get_path_separator() {
 
 
 bool pluginLoaded = false;
-bool OPJ_CALLCONV opj_plugin_load(opj_plugin_init_info_t info)
+bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 {
 	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
 	if (rc) {
@@ -1115,6 +1115,23 @@ void OPJ_CALLCONV opj_plugin_cleanup(void)
     minpf_cleanup_plugin_manager();
     pluginLoaded = false;
 }
+
+OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo) {
+	minpf_plugin_manager* mgr = NULL;
+	PLUGIN_INIT func = NULL;
+	if (!pluginLoaded)
+		return false;
+
+	mgr = minpf_get_plugin_manager();
+	if (mgr && mgr->num_libraries > 0) {
+		func = (PLUGIN_INIT)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_init_method_name);
+		if (func) {
+			return func(initInfo);
+		}
+	}
+	return -1;
+}
+
 
 /*******************
 Encode Implmentation

@@ -1684,7 +1684,13 @@ static int plugin_main(int argc, char **argv) {
 		return 1;
 	}
 	
+	// loads plugin but does not actually create codec
 	opj_initialize(plugin_path);
+
+	// create codec
+	opj_plugin_init_info_t initInfo;
+	initInfo.deviceId = parameters.deviceId;
+	opj_plugin_init(initInfo);
 	
 	isBatch =  img_fol_plugin.imgdirpath &&  out_fol_plugin.imgdirpath;
 	uint32_t state = opj_plugin_get_debug_state();
