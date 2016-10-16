@@ -1669,11 +1669,11 @@ Plugin Interface
 Plugin management
 */
 
-typedef struct opj_plugin_init_info {
+typedef struct opj_plugin_load_info {
     const char* plugin_path;
-} opj_plugin_init_info_t;
+} opj_plugin_load_info_t;
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_load(opj_plugin_init_info_t info);
+OPJ_API bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info);
 
 OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
@@ -1690,6 +1690,13 @@ OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
 /*
 Plugin encoding
 */
+
+typedef struct opj_plugin_init_info {
+	int32_t deviceId;
+} opj_plugin_init_info_t;
+
+OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo);
+
 
 typedef struct opj_plugin_encode_user_callback_info {
 	const char*			input_file_name;

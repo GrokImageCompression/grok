@@ -46,7 +46,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginP
 
 	// custom plugin initialization can happen here
 
-	printf("Plugin Loaded and Initialized! \n");
+	printf("Plugin Loaded! \n");
 	return exit_func;
 }
 
@@ -54,7 +54,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginP
 // Initialization
 //////////////////////////////////
 
-extern "C"  PLUGIN_API bool plugin_init(int32_t deviceId) {
+extern "C"  PLUGIN_API bool plugin_init(opj_plugin_init_info_t initInfo) {
 	return true;
 }
 
