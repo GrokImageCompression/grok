@@ -75,6 +75,10 @@ typedef struct plugin_encode_user_callback_info {
 
 typedef void(*PLUGIN_ENCODE_USER_CALLBACK)(plugin_encode_user_callback_info_t* info);
 
+static const char* plugin_init_method_name = "plugin_init";
+typedef bool(*PLUGIN_INIT)(int32_t deviceId);
+
+
 static const char* plugin_encode_method_name = "plugin_encode";
 typedef int32_t (*PLUGIN_ENCODE)( opj_cparameters_t* encoding_parameters, PLUGIN_ENCODE_USER_CALLBACK callback);
 

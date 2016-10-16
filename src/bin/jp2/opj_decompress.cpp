@@ -1472,7 +1472,7 @@ int main(int argc, char **argv)
         return EXIT_FAILURE;
     }
 
-	bool pluginInitialized = opj_initialize(plugin_dir);
+	bool pluginLoaded = opj_initialize(plugin_dir);
 
     /* Initialize reading of directory */
     if(img_fol.set_imgdir==1) {

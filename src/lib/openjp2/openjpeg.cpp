@@ -72,7 +72,7 @@ bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
     if (!is_initialized) {
 		opj_plugin_init_info_t info;
 		info.plugin_path = plugin_path;
-        is_initialized = opj_plugin_init(info);
+        is_initialized = opj_plugin_load(info);
     }
     return is_initialized;
 }
@@ -1074,8 +1074,8 @@ static const char* get_path_separator() {
 }
 
 
-bool pluginInitialized = false;
-bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
+bool pluginLoaded = false;
+bool OPJ_CALLCONV opj_plugin_load(opj_plugin_init_info_t info)
 {
 	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
 	if (rc) {
@@ -1087,8 +1087,8 @@ bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info)
 		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
 
 	}
-    pluginInitialized = (!rc);
-	return pluginInitialized;
+    pluginLoaded = (!rc);
+	return pluginLoaded;
 }
 
 
@@ -1098,7 +1098,7 @@ uint32_t OPJ_CALLCONV opj_plugin_get_debug_state()
     PLUGIN_GET_DEBUG_STATE func = NULL;
     uint32_t rc = OPJ_PLUGIN_STATE_NO_DEBUG;
 
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return rc;
     mgr = minpf_get_plugin_manager();
     if (mgr && mgr->num_libraries > 0) {
@@ -1113,7 +1113,7 @@ uint32_t OPJ_CALLCONV opj_plugin_get_debug_state()
 void OPJ_CALLCONV opj_plugin_cleanup(void)
 {
     minpf_cleanup_plugin_manager();
-    pluginInitialized = false;
+    pluginLoaded = false;
 }
 
 /*******************
@@ -1142,7 +1142,7 @@ int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters,
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_ENCODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return -1;
 
     userEncodeCallback = callback;
@@ -1164,7 +1164,7 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_BATCH_ENCODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return -1;
 
     userEncodeCallback = callback;
@@ -1182,7 +1182,7 @@ void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_STOP_BATCH_DECODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return;
 
     mgr = minpf_get_plugin_manager();
@@ -1232,7 +1232,7 @@ int32_t OPJ_CALLCONV opj_plugin_decode(opj_decompress_parameters* decode_paramet
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_DECODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return -1;
 
     userPreDecodeCallback = preDecode;
@@ -1257,7 +1257,7 @@ int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_BATCH_DECODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return -1;
 
     userPreDecodeCallback = preDecode;
@@ -1276,7 +1276,7 @@ void OPJ_CALLCONV opj_plugin_stop_batch_decode(void)
 {
     minpf_plugin_manager* mgr = NULL;
     PLUGIN_STOP_BATCH_DECODE func = NULL;
-    if (!pluginInitialized)
+    if (!pluginLoaded)
         return;
 
     mgr = minpf_get_plugin_manager();
