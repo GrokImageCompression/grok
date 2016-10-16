@@ -1673,7 +1673,7 @@ typedef struct opj_plugin_init_info {
     const char* plugin_path;
 } opj_plugin_init_info_t;
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t info);
+OPJ_API bool OPJ_CALLCONV opj_plugin_load(opj_plugin_init_info_t info);
 
 OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
@@ -1701,7 +1701,6 @@ typedef struct opj_plugin_encode_user_callback_info {
 } opj_plugin_encode_user_callback_info_t;
 
 typedef void(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(opj_plugin_encode_user_callback_info_t* info);
-
 
 OPJ_API int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 

@@ -30,7 +30,7 @@
 minpf_plugin_manager* managerInstance;
 
 
-static int32_t minpf_initialize_plugin(const char* pluginPath, minpf_init_func initFunc);
+static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_func initFunc);
 static const char *get_filename_ext(const char *filename);
 static int32_t minpf_load(const char* path);
 
@@ -146,7 +146,7 @@ void   minpf_cleanup_plugin_manager(void)
 
 static int32_t minpf_load(const char* path)
 {
-    minpf_init_func initFunc = NULL;
+    minpf_post_load_func postLoadFunc = NULL;
     minpf_dynamic_library* lib = NULL;
     int32_t res = 0;
 
@@ -159,14 +159,14 @@ static int32_t minpf_load(const char* path)
         return -1;
     }
 	printf("Plugin %s successfully loaded\n", path);
-    initFunc = (minpf_init_func)(minpf_get_symbol(lib, "minpf_init_plugin"));
-    if (!initFunc) {
+	postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
+    if (!postLoadFunc) {
 		free(lib);
         return -1;
     }
 
 	char fullPath[4096];
-	if (minpf_get_full_path(path, (void*)initFunc, lib->handle, fullPath, 4096)) {
+	if (minpf_get_full_path(path, (void*)postLoadFunc, lib->handle, fullPath, 4096)) {
 		printf("Full library path: %s\n", fullPath);
 	}
 	else {
@@ -175,7 +175,7 @@ static int32_t minpf_load(const char* path)
 
 
     mgr->dynamic_libraries[mgr->num_libraries++] = lib;
-    auto rc =  minpf_initialize_plugin(fullPath, initFunc);
+    auto rc =  minpf_post_load_plugin(fullPath, postLoadFunc);
 	if (rc)
 		fprintf(stderr, "Plugin %s failed to initialize \n", path);
 	else
@@ -241,11 +241,11 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
 }
 
 
-static int32_t minpf_initialize_plugin(const char* pluginPath, minpf_init_func initFunc)
+static int32_t minpf_post_load_plugin(const char* pluginPath, minpf_post_load_func postLoadFunc)
 {
     minpf_plugin_manager* mgr = minpf_get_plugin_manager();
 
-    minpf_exit_func exitFunc = initFunc(pluginPath, &mgr->platformServices);
+    minpf_exit_func exitFunc = postLoadFunc(pluginPath, &mgr->platformServices);
 	if (!exitFunc)
 		return -1;
 
