@@ -196,6 +196,8 @@ static void decode_help_display(void)
             "    components will be upsampled to image size\n"
 			"  [-s | -split-pnm]\n"
             "    Split output components to different files when writing to PNM\n"
+			"  [-c | -compression]\n"
+			"    Compression format for output file. Currently, only zip is supported for TIFF output (set parameter to 8)\n"
             "\n");
 
     fprintf(stdout,"\n");
@@ -545,7 +547,9 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<string> decodeRegionArg("d", "DecodeRegion",
 										"Decode Region",
 										false, "", "string", cmd);
-
+		ValueArg<uint32_t> compressionArg("c", "Compression",
+			"Compression Type",
+			false, 0, "unsigned int", cmd);
 		cmd.parse(argc, argv);
 
 		if (forceRgbArg.isSet()) {
@@ -556,6 +560,10 @@ int parse_cmdline_decoder(int argc,
 		}
 		if (splitPnmArg.isSet()) {
 			parameters->split_pnm = false;
+		}
+
+		if (compressionArg.isSet()) {
+			parameters->compression = compressionArg.getValue();
 		}
 		// process
 		if (inputFileArg.isSet()) {
@@ -1376,7 +1384,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			break;
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
-			if (imagetotif(image, parameters->outfile)) {
+			if (imagetotif(image, parameters->outfile,parameters->compression)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}

@@ -1771,6 +1771,8 @@ typedef struct opj_decompress_params {
     bool upsample;
     /* split output components to different files */
     bool split_pnm;
+
+	uint32_t compression;
 } opj_decompress_parameters;
 
 typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
