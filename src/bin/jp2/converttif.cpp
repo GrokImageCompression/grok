@@ -1472,7 +1472,8 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         cmptparm[j].w = w;
         cmptparm[j].h = h;
     }
-
+	uint32_t icclen = 0;
+	uint8_t* iccbuf = NULL;
     image = opj_image_create(numcomps, &cmptparm[0], color_space);
     if(!image) {
 		success = false;
@@ -1492,8 +1493,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
 
 	// handle embedded ICC profile
-	uint32_t icclen = 0;
-	uint8_t* iccbuf = NULL;
 	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
 		icclen > 0 &&
 		icclen < 1000000000) {
