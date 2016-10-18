@@ -1,4 +1,4 @@
-/* $Id: tif_win32.c,v 1.41 2015-08-23 20:12:44 bfriesen Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler
