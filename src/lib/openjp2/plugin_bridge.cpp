@@ -95,7 +95,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
 			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 			if (plugin_cblk->numPix != opjNumPix)
-				printf("Warning: ojp numPix %f differs from plugin numPix %f\n", opjNumPix, plugin_cblk->numPix);
+				printf("Warning: ojp numPix %d differs from plugin numPix %d\n", opjNumPix, (uint32_t)plugin_cblk->numPix);
 		}
 		bool goodData = true;
 		uint32_t totalRatePlugin = (uint32_t)plugin_cblk->compressedDataLength;

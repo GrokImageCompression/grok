@@ -1129,7 +1129,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo) {
 			return func(initInfo);
 		}
 	}
-	return -1;
+	return false;
 }
 
 

@@ -576,7 +576,7 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
     }
 }
 
-int imagetotif(opj_image_t * image, const char *outfile)
+int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 {
     uint32_t width, height;
 	uint32_t bps,adjust, sgnd;
@@ -714,6 +714,11 @@ int imagetotif(opj_image_t * image, const char *outfile)
     TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
     TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
     TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+	if (compression == COMPRESSION_ADOBE_DEFLATE) {
+#ifdef ZIP_SUPPORT
+		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE);  // zip compression
+#endif
+	}
 
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, 3); // cm
