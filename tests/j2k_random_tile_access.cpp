@@ -1,4 +1,22 @@
 /*
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
  * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * Copyright (c) 2012, CS Systemes d'Information, France
  * All rights reserved.
@@ -24,6 +42,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+extern "C" {
+
 #include "opj_config.h"
 
 #include <stdio.h>
@@ -41,6 +62,7 @@
 
 #include "openjpeg.h"
 #include "format_defs.h"
+}
 
 /* -------------------------------------------------------------------------- */
 static int get_file_format(const char *filename)
@@ -48,7 +70,7 @@ static int get_file_format(const char *filename)
     unsigned int i;
     static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "raw", "tga", "png", "j2k", "jp2", "jpt", "j2c", "jpc" };
     static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, JPT_CFMT, J2K_CFMT, J2K_CFMT };
-    char * ext = strrchr(filename, '.');
+    char * ext = (char*)strrchr(filename, '.');
     if (ext == NULL)
         return -1;
     ext++;

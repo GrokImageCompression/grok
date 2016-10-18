@@ -1,4 +1,23 @@
 /*
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+*
  * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * All rights reserved.
  *
@@ -24,13 +43,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * compare_images.c
- *
- *  Created on: 8 juil. 2011
- *      Author: mickael
- */
 
+extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -49,13 +63,15 @@
 #include <tiffio.h> /* TIFFSetWarningHandler */
 #endif /* OPJ_HAVE_LIBTIFF */
 
+}
+
 /*******************************************************************************
  * Parse MSE and PEAK input values (
  * separator = ":"
  *******************************************************************************/
 static double* parseToleranceValues( char* inArg, const int nbcomp)
 {
-    double* outArgs= malloc((size_t)nbcomp * sizeof(double));
+    double* outArgs= (double*)malloc((size_t)nbcomp * sizeof(double));
     int it_comp = 0;
     const char delims[] = ":";
     char *result = strtok( inArg, delims );
@@ -96,7 +112,7 @@ static void compare_images_help_display(void)
 static int get_decod_format_from_string(const char *filename)
 {
     const int dot = '.';
-    char * ext = strrchr(filename, dot);
+    char * ext = (char*)strrchr(filename, dot);
     if( strcmp(ext,".pgx") == 0 ) return PGX_DFMT;
     if( strcmp(ext,".tif") == 0 ) return TIF_DFMT;
     if( strcmp(ext,".ppm") == 0 ) return PXM_DFMT;
@@ -117,7 +133,7 @@ static char* createMultiComponentsFilename(const char* inFilename, const int ind
     int decod_format;
 
     /*printf("inFilename = %s\n", inFilename);*/
-    if ((ptr = strrchr(inFilename, token)) != NULL) {
+    if ((ptr = (char*)strrchr(inFilename, token)) != NULL) {
         posToken = strlen(inFilename) - strlen(ptr);
         /*printf("Position of %c character inside inFilename = %d\n", token, posToken);*/
     } else {
@@ -168,14 +184,14 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
-    param_image_read = malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
-    data = malloc((size_t)nbFilenamePGX * sizeof(*data));
+    param_image_read = (opj_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
+    data = (int**)malloc((size_t)nbFilenamePGX * sizeof(*data));
 
     for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
         /* Create the right filename*/
         char *filenameComponentPGX;
         if (strlen(separator) == 0) {
-            filenameComponentPGX = malloc((strlen(filename) + 1) * sizeof(*filenameComponentPGX));
+            filenameComponentPGX = (char*)malloc((strlen(filename) + 1) * sizeof(*filenameComponentPGX));
             strcpy(filenameComponentPGX, filename);
         } else
             filenameComponentPGX = createMultiComponentsFilename(filename, it_file, separator);
@@ -209,7 +225,7 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
         param_image_read[it_file].sgnd = image_read->comps->sgnd;
 
         /* Copy data*/
-        data[it_file] = malloc(param_image_read[it_file].h * param_image_read[it_file].w * sizeof(int));
+        data[it_file] = (int*)malloc(param_image_read[it_file].h * param_image_read[it_file].w * sizeof(int));
         memcpy(data[it_file], image_read->comps->data, image_read->comps->h * image_read->comps->w * sizeof(int));
 
         /* Free memory*/
@@ -286,14 +302,14 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
-    param_image_read = malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
-    data = malloc((size_t)nbFilenamePGX * sizeof(*data));
+    param_image_read = (opj_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
+    data = (int**)malloc((size_t)nbFilenamePGX * sizeof(*data));
 
     for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
         /* Create the right filename*/
         char *filenameComponentPGX;
         if (strlen(separator) == 0) {
-            filenameComponentPGX = malloc((strlen(filename) + 1) * sizeof(*filenameComponentPGX));
+            filenameComponentPGX = (char*)malloc((strlen(filename) + 1) * sizeof(*filenameComponentPGX));
             strcpy(filenameComponentPGX, filename);
         } else
             filenameComponentPGX = createMultiComponentsFilename(filename, it_file, separator);
@@ -327,7 +343,7 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
         param_image_read[it_file].sgnd = image_read->comps->sgnd;
 
         /* Copy data*/
-        data[it_file] = malloc(param_image_read[it_file].h * param_image_read[it_file].w * sizeof(int));
+        data[it_file] = (int*)malloc(param_image_read[it_file].h * param_image_read[it_file].w * sizeof(int));
         memcpy(data[it_file], image_read->comps->data, image_read->comps->h * image_read->comps->w * sizeof(int));
 
         /* Free memory*/
@@ -695,7 +711,7 @@ int main(int argc, char **argv)
     /*----------DIFF IMAGE--------*/
 
     /* Allocate memory*/
-    param_image_diff = malloc( imageBase->numcomps * sizeof(opj_image_cmptparm_t));
+    param_image_diff = (opj_image_cmptparm_t*)malloc( imageBase->numcomps * sizeof(opj_image_cmptparm_t));
 
     /* Comparison of header parameters*/
     printf("Step 1 -> Header comparison\n");

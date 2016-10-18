@@ -12,16 +12,16 @@ include_directories(
   )
 
 # First thing define the common source:
-set(compare_images_SRCS compare_images.c
+set(compare_images_SRCS compare_images.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convert.c
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/converttif.c
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c
   )
 
-set(compare_dump_files_SRCS compare_dump_files.c
+set(compare_dump_files_SRCS compare_dump_files.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c)
 
-set(compare_raw_files_SRCS compare_raw_files.c
+set(compare_raw_files_SRCS compare_raw_files.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c)
 
 add_executable(compare_images ${compare_images_SRCS})
@@ -38,12 +38,12 @@ endif()
 
 add_executable(compare_dump_files ${compare_dump_files_SRCS})
 
-add_executable(j2k_random_tile_access j2k_random_tile_access.c)
+add_executable(j2k_random_tile_access j2k_random_tile_access.cpp)
 target_link_libraries(j2k_random_tile_access ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 
 add_executable(compare_raw_files ${compare_raw_files_SRCS})
 
-add_executable(test_tile_encoder test_tile_encoder.c)
+add_executable(test_tile_encoder test_tile_encoder.cpp)
 target_link_libraries(test_tile_encoder ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 # Let's try a couple of possibilities:
