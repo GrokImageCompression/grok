@@ -14,7 +14,7 @@ set(common_SRCS
   )
 
 if(OPJ_HAVE_LIBTIFF)
-	list(APPEND common_SRCS converttif.c)
+	list(APPEND common_SRCS converttif.cpp)
 endif()
 if(OPJ_HAVE_LIBPNG)
 	list(APPEND common_SRCS convertpng.c)

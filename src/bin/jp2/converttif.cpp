@@ -54,6 +54,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+extern "C" {
 #include "opj_apps_config.h"
 
 #include <stdio.h>
@@ -68,7 +70,7 @@
 #include <tiffio.h>
 #include "openjpeg.h"
 #include "convert.h"
-
+}
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -1496,7 +1498,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		icclen > 0 &&
 		icclen < 1000000000) {
 		image->icc_profile_len = icclen;
-		image->icc_profile_buf = malloc(icclen);
+		image->icc_profile_buf = (uint8_t*)malloc(icclen);
 		if (!image->icc_profile_buf) {
 			success = false;
 			goto cleanup;
