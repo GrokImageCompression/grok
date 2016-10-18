@@ -11,7 +11,7 @@ set(unit_test
   testempty2
 )
 foreach(ut ${unit_test})
-  add_executable(${ut} ${ut}.c)
+  add_executable(${ut} ${ut}.cpp)
   target_link_libraries(${ut} ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(NAME ${ut} COMMAND ${ut})
 endforeach()

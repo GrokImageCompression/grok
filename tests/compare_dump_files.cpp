@@ -1,4 +1,23 @@
 /*
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+*
  * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * All rights reserved.
  *
@@ -24,12 +43,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * compare_dump_files.c
- *
- *  Created on: 25 juil. 2011
- *      Author: mickael
- */
+
+
+extern "C" {
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,6 +54,7 @@
 #include <assert.h>
 
 #include "opj_getopt.h"
+}
 
 typedef struct test_cmp_parameters {
     /**  */

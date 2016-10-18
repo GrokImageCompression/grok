@@ -1,4 +1,22 @@
 /*
+*    Copyright (C) 2016 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
  * Copyright (c) 2012, Mathieu Malaterre
  * All rights reserved.
  *
@@ -23,12 +41,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+extern "C" {
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "opj_config.h"
 #include "openjpeg.h"
+}
 
 #define J2K_CFMT 0
 
@@ -67,8 +88,9 @@ int main(int argc, char *argv[])
 
     opj_cparameters_t parameters;
 
-    unsigned int subsampling_dx = 0;
-    unsigned int subsampling_dy = 0;
+    unsigned int subsampling_dx;
+    unsigned int subsampling_dy;
+    const char outputfile[] = "testempty2.j2k";
 
     opj_image_cmptparm_t cmptparm;
     opj_image_t *image;
@@ -81,12 +103,15 @@ int main(int argc, char *argv[])
     opj_set_default_encoder_parameters(&parameters);
     parameters.cod_format = J2K_CFMT;
     puts(v);
+    subsampling_dx = (unsigned int)parameters.subsampling_dx;
+    subsampling_dy = (unsigned int)parameters.subsampling_dy;
     cmptparm.prec = 8;
     cmptparm.sgnd = 0;
     cmptparm.dx = subsampling_dx;
     cmptparm.dy = subsampling_dy;
     cmptparm.w = image_width;
     cmptparm.h = image_height;
+    strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile)-1);
 
     image = opj_image_create(numcomps, &cmptparm, color_space);
     assert( image );
@@ -110,7 +135,14 @@ int main(int argc, char *argv[])
 
     opj_setup_encoder(l_codec, &parameters, image);
 
-    l_stream = opj_stream_create_default_file_stream("testempty1.j2k",false);
+    l_stream = opj_stream_create_default_file_stream(parameters.outfile,false);
+    if( !l_stream ) {
+        fprintf( stderr, "Something went wrong during creation of stream\n" );
+        opj_destroy_codec(l_codec);
+        opj_image_destroy(image);
+        opj_stream_destroy(l_stream);
+        return 1;
+    }
     assert(l_stream);
     bSuccess = opj_start_compress(l_codec,image,l_stream);
     if( !bSuccess ) {
@@ -121,7 +153,7 @@ int main(int argc, char *argv[])
     }
 
     assert( bSuccess );
-    bSuccess = opj_encode(l_codec,l_stream);
+    bSuccess = opj_encode(l_codec, l_stream);
     assert( bSuccess );
     bSuccess = opj_end_compress(l_codec, l_stream);
     assert( bSuccess );
@@ -130,6 +162,39 @@ int main(int argc, char *argv[])
 
     opj_destroy_codec(l_codec);
     opj_image_destroy(image);
+
+
+    /* read back the generated file */
+    {
+        opj_codec_t* d_codec = 00;
+        opj_dparameters_t dparameters;
+
+        d_codec = opj_create_decompress(OPJ_CODEC_J2K);
+        opj_set_info_handler(d_codec, info_callback,00);
+        opj_set_warning_handler(d_codec, warning_callback,00);
+        opj_set_error_handler(d_codec, error_callback,00);
+
+        bSuccess = opj_setup_decoder(d_codec, &dparameters);
+        assert( bSuccess );
+
+        l_stream = opj_stream_create_default_file_stream(outputfile,1);
+        assert( l_stream );
+
+        bSuccess = opj_read_header(l_stream, d_codec,&image);
+        assert( bSuccess );
+
+        bSuccess = opj_decode(l_codec, l_stream, image);
+        assert( bSuccess );
+
+        bSuccess = opj_end_decompress(l_codec, l_stream);
+        assert( bSuccess );
+
+        opj_stream_destroy(l_stream);
+
+        opj_destroy_codec(d_codec);
+
+        opj_image_destroy(image);
+    }
 
     puts( "end" );
     return 0;
