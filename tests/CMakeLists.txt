@@ -11,6 +11,14 @@ include_directories(
   ${TIFF_INCLUDE_DIRNAME}
   )
 
+ if(WIN32)
+  if(BUILD_SHARED_LIBS)
+    add_definitions(-DOPJ_EXPORTS)
+  else()
+    add_definitions(-DOPJ_STATIC)
+  endif()
+endif()
+
 # First thing define the common source:
 set(compare_images_SRCS compare_images.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convert.c
