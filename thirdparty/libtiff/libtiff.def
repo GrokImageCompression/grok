@@ -162,3 +162,5 @@ EXPORTS	TIFFAccessTagMethods
 	_TIFFmemcpy
 	_TIFFmemset
 	_TIFFrealloc
+        _TIFFMultiply32
+        _TIFFMultiply64

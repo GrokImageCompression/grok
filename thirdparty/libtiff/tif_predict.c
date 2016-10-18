@@ -1,4 +1,4 @@
-/* $Id: tif_predict.c,v 1.35 2015-08-31 15:05:57 erouault Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 1988-1997 Sam Leffler
@@ -80,6 +80,15 @@ PredictorSetup(TIFF* tif)
 				    td->td_sampleformat);
 				return 0;
 			}
+                        if (td->td_bitspersample != 16
+                            && td->td_bitspersample != 24
+                            && td->td_bitspersample != 32
+                            && td->td_bitspersample != 64) { /* Should 64 be allowed? */
+                                TIFFErrorExt(tif->tif_clientdata, module,
+                                             "Floating point \"Predictor\" not supported with %d-bit samples",
+                                             td->td_bitspersample);
+				return 0;
+                            }
 			break;
 		default:
 			TIFFErrorExt(tif->tif_clientdata, module,
@@ -174,7 +183,7 @@ PredictorSetupDecode(TIFF* tif)
 		}
 		/*
 		 * Allocate buffer to keep the decoded bytes before
-		 * rearranging in the ight order
+		 * rearranging in the right order
 		 */
 	}
 
@@ -213,7 +222,7 @@ PredictorSetupEncode(TIFF* tif)
                 /*
                  * If the data is horizontally differenced 16-bit data that
                  * requires byte-swapping, then it must be byte swapped after
-                 * the differenciation step.  We do this with a special-purpose
+                 * the differentiation step.  We do this with a special-purpose
                  * routine and override the normal post decoding logic that
                  * the library setup when the directory was read.
                  */
@@ -700,7 +709,7 @@ PredictorVGetField(TIFF* tif, uint32 tag, va_list ap)
 
 	switch (tag) {
 	case TIFFTAG_PREDICTOR:
-		*va_arg(ap, uint16*) = sp->predictor;
+		*va_arg(ap, uint16*) = (uint16)sp->predictor;
 		break;
 	default:
 		return (*sp->vgetparent)(tif, tag, ap);
