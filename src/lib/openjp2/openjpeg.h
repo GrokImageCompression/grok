@@ -1272,11 +1272,13 @@ OPJ_API bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
 
 
 /**
- * Decodes an image header.
+ * Decodes an image header (extended version).
  *
- * @param	p_stream		the jpeg2000 stream.
- * @param	p_codec			the jpeg2000 codec to read.
- * @param	p_image			the image structure initialized with the characteristics of encoded image.
+ * @param	p_stream			the jpeg2000 stream.
+ * @param	p_codec				the jpeg2000 codec to read.
+ * @param	encoding_parameters	struct to store various pieces of information from jpeg2000 header 
+ * @param	p_image				the image structure initialized with the characteristics
+ *								of encoded image.
  *
  * @return true				if the main header of the codestream and the JP2 header is correctly read.
  */
