@@ -68,7 +68,7 @@ typedef struct opj_codec_private {
             /** Main header reading function handler */
             bool (*opj_read_header) ( struct opj_stream_private * cio,
                                       void * p_codec,
-									opj_cparameters_t*,
+									  opj_header_info_t* header_info,
                                       opj_image_t **p_image,
                                       opj_event_mgr_t * p_manager);
 

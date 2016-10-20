@@ -107,52 +107,6 @@ typedef enum {
 }
 JP2_IMG_STATE;
 
-/**
-Channel description: channel index, type, association
-*/
-typedef struct opj_jp2_cdef_info {
-    uint16_t cn, typ, asoc;
-} opj_jp2_cdef_info_t;
-
-/**
-Channel descriptions and number of descriptions
-*/
-typedef struct opj_jp2_cdef {
-    opj_jp2_cdef_info_t *info;
-    uint16_t n;
-} opj_jp2_cdef_t;
-
-/**
-Component mappings: channel index, mapping type, palette index
-*/
-typedef struct opj_jp2_cmap_comp {
-    uint16_t cmp;
-    uint8_t mtyp, pcol;
-} opj_jp2_cmap_comp_t;
-
-/**
-Palette data: table entries, palette columns
-*/
-typedef struct opj_jp2_pclr {
-    uint32_t *entries;
-    uint8_t *channel_sign;
-    uint8_t *channel_size;
-    opj_jp2_cmap_comp_t *cmap;
-    uint16_t nr_entries;
-    uint8_t nr_channels;
-} opj_jp2_pclr_t;
-
-/**
-Collector for ICC profile, palette, component mapping, channel description
-*/
-typedef struct opj_jp2_color {
-    uint8_t *icc_profile_buf;
-    uint32_t icc_profile_len;
-
-    opj_jp2_cdef_t *jp2_cdef;
-    opj_jp2_pclr_t *jp2_pclr;
-    uint8_t jp2_has_colr;
-} opj_jp2_color_t;
 
 /**
 JP2 component
@@ -346,7 +300,7 @@ bool opj_jp2_end_decompress(opj_jp2_t *jp2,
  */
 bool opj_jp2_read_header(  opj_stream_private_t *p_stream,
                            opj_jp2_t *jp2,
-							opj_cparameters_t* encoding_parameters,
+							opj_header_info_t* header_info,
                            opj_image_t ** p_image,
                            opj_event_mgr_t * p_manager );
 
