@@ -594,7 +594,7 @@ bool opj_j2k_end_decompress(opj_j2k_t *j2k,
  */
 bool opj_j2k_read_header(	opj_stream_private_t *p_stream,
                             opj_j2k_t* p_j2k,
-							opj_cparameters_t* encoding_parameters,
+							opj_header_info_t* header_info,
 							opj_image_t** p_image,
 							opj_event_mgr_t* p_manager );
 

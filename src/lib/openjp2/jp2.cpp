@@ -2894,7 +2894,7 @@ static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
 
 bool opj_jp2_read_header(	opj_stream_private_t *p_stream,
                             opj_jp2_t *jp2,
-							opj_cparameters_t* encoding_parameters,
+							opj_header_info_t* header_info,
                             opj_image_t ** p_image,
                             opj_event_mgr_t * p_manager
                         )
@@ -2924,11 +2924,14 @@ bool opj_jp2_read_header(	opj_stream_private_t *p_stream,
         return false;
     }
 
-
+	if (header_info) {
+		header_info->enumcs = jp2->enumcs;
+		header_info->color = jp2->color;
+	}
 
     bool rc =  opj_j2k_read_header(	p_stream,
                                 jp2->j2k,
-								encoding_parameters,
+								header_info,
                                 p_image,
                                 p_manager);
 

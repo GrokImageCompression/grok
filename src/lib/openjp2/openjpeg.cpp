@@ -244,7 +244,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) (	struct opj_stream_private *,
                         void *,
-						opj_cparameters_t*,
+						opj_header_info_t* header_info,
                         opj_image_t **,
                         opj_event_mgr_t * )) opj_j2k_read_header;
 
@@ -323,7 +323,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec_data.m_decompression.opj_read_header =
             (bool (*) ( struct opj_stream_private *,
                         void *,
-						opj_cparameters_t*,
+						opj_header_info_t* header_info,
                         opj_image_t **,
                         opj_event_mgr_t * )) opj_jp2_read_header;
 
@@ -434,7 +434,7 @@ bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
 
 bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
                                     opj_codec_t *p_codec,
-									opj_cparameters_t* encoding_parameters,
+									opj_header_info_t* header_info,
                                     opj_image_t **p_image )
 {
     if (p_codec && p_stream) {
@@ -449,7 +449,7 @@ bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
 
         return l_codec->m_codec_data.m_decompression.opj_read_header(	l_stream,
                 l_codec->m_codec,
-				encoding_parameters,
+				header_info,
                 p_image,
                 &(l_codec->m_event_mgr) );
     }

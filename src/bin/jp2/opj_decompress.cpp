@@ -1160,11 +1160,11 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
-	opj_cparameters_t encoding_parameters;
-	memset(&encoding_parameters, 0, sizeof(opj_cparameters_t));
+	opj_header_info_t header_info;
+	memset(&header_info, 0, sizeof(opj_header_info_t));
 
 	/* Read the main header of the codestream and if necessary the JP2 boxes*/
-	if (!opj_read_header_ex(l_stream, l_codec, &encoding_parameters, &image)) {
+	if (!opj_read_header_ex(l_stream, l_codec, &header_info, &image)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
 		failed = 1;
 		goto cleanup;

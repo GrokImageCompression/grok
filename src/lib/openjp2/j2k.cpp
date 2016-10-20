@@ -6301,7 +6301,7 @@ bool opj_j2k_end_decompress(opj_j2k_t *p_j2k,
 
 bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
                             opj_j2k_t* p_j2k,
-							opj_cparameters_t* encoding_parameters,
+							opj_header_info_t* header_info,
                             opj_image_t** p_image,
                             opj_event_mgr_t* p_manager )
 {
@@ -6344,7 +6344,7 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
         return false;
     }
 
-	if (encoding_parameters) {
+	if (header_info) {
 		opj_cp_t *l_cp = NULL;
 		opj_tcp_t *l_tcp = NULL;
 		opj_tccp_t *l_tccp = NULL;
@@ -6353,23 +6353,22 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 		l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
 		l_tccp = &l_tcp->tccps[0];
 
-		encoding_parameters->cblockw_init = 1 << l_tccp->cblkw;
-		encoding_parameters->cblockh_init = 1 << l_tccp->cblkh;
-		encoding_parameters->irreversible = l_tccp->qmfbid == 0;
-		encoding_parameters->rsiz = l_cp->rsiz;
-		encoding_parameters->numresolution = l_tccp->numresolutions;
-		for (uint32_t i = 0; i < encoding_parameters->numresolution; ++i) {
-			encoding_parameters->prcw_init[i] = 1 << l_tccp->prcw[i];
-			encoding_parameters->prch_init[i] = 1 << l_tccp->prch[i];
+		header_info->cblockw_init = 1 << l_tccp->cblkw;
+		header_info->cblockh_init = 1 << l_tccp->cblkh;
+		header_info->irreversible = l_tccp->qmfbid == 0;
+		header_info->rsiz = l_cp->rsiz;
+		header_info->numresolution = l_tccp->numresolutions;
+		for (uint32_t i = 0; i < header_info->numresolution; ++i) {
+			header_info->prcw_init[i] = 1 << l_tccp->prcw[i];
+			header_info->prch_init[i] = 1 << l_tccp->prch[i];
 		}
-		encoding_parameters->cp_tx0 = p_j2k->m_cp.tx0;
-		encoding_parameters->cp_ty0 = p_j2k->m_cp.ty0;
+		header_info->cp_tx0 = p_j2k->m_cp.tx0;
+		header_info->cp_ty0 = p_j2k->m_cp.ty0;
 
-		encoding_parameters->cp_tdx = p_j2k->m_cp.tdx;
-		encoding_parameters->cp_tdy = p_j2k->m_cp.tdy;
+		header_info->cp_tdx = p_j2k->m_cp.tdx;
+		header_info->cp_tdy = p_j2k->m_cp.tdy;
 
-		encoding_parameters->tcp_numlayers = l_tcp->numlayers;
-
+		header_info->tcp_numlayers = l_tcp->numlayers;
 	}
 
 

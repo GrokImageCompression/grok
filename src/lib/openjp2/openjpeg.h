@@ -443,6 +443,104 @@ typedef struct opj_cparameters {
 	int32_t deviceId;
 } opj_cparameters_t;
 
+
+/**
+Channel description: channel index, type, association
+*/
+typedef struct opj_jp2_cdef_info {
+	uint16_t cn, typ, asoc;
+} opj_jp2_cdef_info_t;
+
+/**
+Channel descriptions and number of descriptions
+*/
+typedef struct opj_jp2_cdef {
+	opj_jp2_cdef_info_t *info;
+	uint16_t n;
+} opj_jp2_cdef_t;
+
+/**
+Component mappings: channel index, mapping type, palette index
+*/
+typedef struct opj_jp2_cmap_comp {
+	uint16_t cmp;
+	uint8_t mtyp, pcol;
+} opj_jp2_cmap_comp_t;
+
+/**
+Palette data: table entries, palette columns
+*/
+typedef struct opj_jp2_pclr {
+	uint32_t *entries;
+	uint8_t *channel_sign;
+	uint8_t *channel_size;
+	opj_jp2_cmap_comp_t *cmap;
+	uint16_t nr_entries;
+	uint8_t nr_channels;
+} opj_jp2_pclr_t;
+
+/**
+Collector for ICC profile, palette, component mapping, channel description
+*/
+typedef struct opj_jp2_color {
+	uint8_t *icc_profile_buf;
+	uint32_t icc_profile_len;
+
+	opj_jp2_cdef_t *jp2_cdef;
+	opj_jp2_pclr_t *jp2_pclr;
+	uint8_t jp2_has_colr;
+} opj_jp2_color_t;
+
+typedef struct opj_header_info {
+	/** initial code block width, default to 64 */
+	uint32_t cblockw_init;
+	/** initial code block height, default to 64 */
+	uint32_t cblockh_init;
+
+	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
+	uint32_t irreversible;
+
+	/** RSIZ value
+	To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
+	uint16_t rsiz;
+
+	/** number of resolutions */
+	uint32_t numresolution;
+
+	/** initial precinct width */
+	uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
+	/** initial precinct height */
+	uint32_t prch_init[OPJ_J2K_MAXRLVLS];
+
+	/** XTOsiz */
+	uint32_t cp_tx0;
+	/** YTOsiz */
+	uint32_t cp_ty0;
+	/** XTsiz */
+	uint32_t cp_tdx;
+	/** YTsiz */
+	uint32_t cp_tdy;
+
+	/** number of layers */
+	uint32_t tcp_numlayers;
+
+	/*
+	Colour space enumeration:
+	12	CMYK
+	16	sRGB
+	17	Grayscale
+	18	SYCC
+	19	EYCC
+	*/
+	uint32_t enumcs;
+
+	// icc profile information etc
+	// note: the contents of this struct will remain valid
+	// until stream is destroyed
+	opj_jp2_color_t color;
+
+} opj_header_info_t;
+
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
 
 /**
@@ -1241,7 +1339,7 @@ OPJ_API bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
  */
 OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
         opj_codec_t *p_codec,
-		opj_cparameters_t* encoding_parameters,
+		opj_header_info_t* header_info,
         opj_image_t **p_image);
 
 /**
