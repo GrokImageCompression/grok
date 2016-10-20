@@ -4140,11 +4140,10 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
         /* Check enough bytes left in stream before allocation */
         if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > opj_stream_get_number_byte_left(p_stream)) {
             opj_event_msg(p_manager, 
-						EVT_ERROR, 
+						EVT_WARNING, 
 						"Tile part length size %d inconsistent with stream length %lld\n", 
 						p_j2k->m_specific_param.m_decoder.m_sot_length, 
 						opj_stream_get_number_byte_left(p_stream));
-            return false;
         }
     } else {
         l_sot_length_pb_detected = true;
