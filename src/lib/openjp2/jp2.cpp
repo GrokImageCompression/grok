@@ -1799,7 +1799,7 @@ bool opj_jp2_decode(opj_jp2_t *jp2,
                 opj_jp2_apply_pclr(p_image, &(jp2->color));
         }
 
-        /* Apply the color space if needed */
+        /* Apply channel definitions if needed */
         if(jp2->color.jp2_cdef) {
             opj_jp2_apply_cdef(p_image, &(jp2->color), p_manager);
         }
@@ -3176,7 +3176,7 @@ bool opj_jp2_get_tile(	opj_jp2_t *p_jp2,
             opj_jp2_apply_pclr(p_image, &(p_jp2->color));
     }
 
-    /* Apply the color space if needed */
+	/* Apply channel definitions if needed */
     if(p_jp2->color.jp2_cdef) {
         opj_jp2_apply_cdef(p_image, &(p_jp2->color), p_manager);
     }
