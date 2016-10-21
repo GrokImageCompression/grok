@@ -480,7 +480,7 @@ typedef struct opj_jp2_pclr {
 } opj_jp2_pclr_t;
 
 /**
-Collector for ICC profile, palette, component mapping, channel description
+Struct for ICC profile, palette, component mapping, channel description
 */
 typedef struct opj_jp2_color {
 	uint8_t *icc_profile_buf;
