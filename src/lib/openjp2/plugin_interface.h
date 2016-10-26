@@ -93,6 +93,9 @@ static const char* plugin_stop_batch_encode_method_name = "plugin_stop_batch_enc
 typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 
 
+static const char* plugin_is_batch_encode_complete_method_name = "plugin_is_batch_encode_complete";
+typedef bool (*PLUGIN_IS_BATCH_ENCODE_COMPLETE)(void);
+
 
 
 ////////////////////

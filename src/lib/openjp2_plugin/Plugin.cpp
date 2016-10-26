@@ -76,6 +76,11 @@ extern "C"  PLUGIN_API int32_t plugin_batch_encode(const char* input_dir,
 	return -1;
 }
 
+extern "C"  PLUGIN_API bool plugin_is_batch_encode_complete(void) {
+	return true;
+}
+
+
 
 extern "C"  PLUGIN_API void plugin_stop_batch_encode(void) {
 	
