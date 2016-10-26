@@ -1203,7 +1203,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
 
 	mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
-		func = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_encode_method_name);
+		func = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_is_batch_encode_complete_method_name);
 		if (func) {
 			return  func();
 		}
