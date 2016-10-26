@@ -1199,7 +1199,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
 	minpf_plugin_manager* mgr = NULL;
 	PLUGIN_IS_BATCH_ENCODE_COMPLETE func = NULL;
 	if (!pluginLoaded)
-		return -1;
+		return true;
 
 	mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
@@ -1208,7 +1208,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
 			return  func();
 		}
 	}
-	return false;
+	return true;
 }
 
 void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
