@@ -1195,6 +1195,22 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
     return -1;
 }
 
+OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
+	minpf_plugin_manager* mgr = NULL;
+	PLUGIN_IS_BATCH_ENCODE_COMPLETE func = NULL;
+	if (!pluginLoaded)
+		return -1;
+
+	mgr = minpf_get_plugin_manager();
+	if (mgr && mgr->num_libraries > 0) {
+		func = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_encode_method_name);
+		if (func) {
+			return  func();
+		}
+	}
+	return false;
+}
+
 void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
 {
     minpf_plugin_manager* mgr = NULL;

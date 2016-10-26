@@ -1701,6 +1701,19 @@ static int plugin_main(int argc, char **argv) {
 	int32_t success = 0;
 	if (isBatch) {
 		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &parameters, plugin_compress_callback);
+		if (!success) {
+			bool complete = false;
+			for (int i = 0; i < 50; ++i) {
+				batch_sleep(100);
+				if (opj_plugin_is_batch_encode_complete()) {
+					complete = true;
+					break;
+				}
+			}
+			if (!complete)
+				opj_plugin_stop_batch_encode();
+			getchar();
+		}
 	}
 	else 	{
 		// loop through all files
@@ -1742,11 +1755,6 @@ static int plugin_main(int argc, char **argv) {
 		}
 	}
 
-	if (!success && isBatch) {
-		batch_sleep(5000);
-		opj_plugin_stop_batch_encode();
-		getchar();
-	}
 
 	// cleanup
 	if (parameters.cp_comment)
