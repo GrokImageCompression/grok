@@ -796,6 +796,14 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
         return NULL;
     }
 
+	//check for null image components
+	for (int i = 0; i < numcomps; ++i) {
+		if (!image->comps[i].data) {
+			fclose(f);
+			return NULL;
+		}
+	}
+
 
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
@@ -901,6 +909,13 @@ int imagetotga(opj_image_t * image, const char *outfile)
         fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
         return 1;
     }
+
+	//check for null image components
+	for (int i = 0; i < image->numcomps; ++i) {
+		if (!image->comps[i].data) {
+			return -1;
+		}
+	}
 
     for (i = 0; i < image->numcomps-1; i++)	{
         if ((image->comps[0].dx != image->comps[i+1].dx)
@@ -1580,6 +1595,8 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
         fclose(fp);
         return NULL;
     }
+
+
     if(numcomps < 3)
         color_space = OPJ_CLRSPC_GRAY;/* GRAY, GRAYA */
     else
@@ -1610,6 +1627,15 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
         fclose(fp);
         return NULL;
     }
+
+
+	//check for null image components
+	for (int i = 0; i < numcomps; ++i) {
+		if (!image->comps[i].data) {
+			fclose(fp);
+			return NULL;
+		}
+	}
 
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
@@ -1721,6 +1747,14 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
     two = has_alpha = 0;
     fails = 1;
     ncomp = image->numcomps;
+
+	//check for null image components
+	for (int i = 0; i < ncomp; ++i) {
+		if (!image->comps[i].data) {
+			return fails;
+		}
+	}
+
 
     while (*tmp) ++tmp;
     tmp -= 2;

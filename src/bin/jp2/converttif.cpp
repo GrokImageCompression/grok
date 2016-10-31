@@ -620,6 +620,15 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
     } else {
         tiPhoto = PHOTOMETRIC_MINISBLACK;
     }
+
+
+	//check for null image components
+	for (int i = 0; i < numcomps; ++i) {
+		if (!image->comps[i].data) {
+			return 1;
+		}
+	}
+
     for (i = 1U; i < numcomps; ++i) {
         if (image->comps[0].dx != image->comps[i].dx) {
             break;
