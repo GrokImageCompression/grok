@@ -5855,13 +5855,6 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    /* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
-    cp = &(p_j2k->m_cp);
-
-    /* set default values for cp */
-    cp->tw = 1;
-    cp->th = 1;
-
     /* see if max_codestream_size does limit input rate */
     if (parameters->max_cs_size <= 0) {
         if (parameters->tcp_numlayers > 0 &&
@@ -5931,9 +5924,26 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         }
     }
 
+	if (parameters->numpocs) {
+		/* initialisation of POC */
+		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, parameters->tcp_numlayers, p_manager)) {
+			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
+			return false;
+		}
+	}
+
     /*
     copy user encoding parameters
     */
+
+	/* keep a link to cp so that we can destroy it later in j2k_destroy_compress */
+	cp = &(p_j2k->m_cp);
+
+	/* set default values for cp */
+	cp->tw = 1;
+	cp->th = 1;
+
+
     cp->m_specific_param.m_enc.m_max_comp_size = parameters->max_comp_size;
     cp->rsiz = parameters->rsiz;
     cp->m_specific_param.m_enc.m_disto_alloc = parameters->cp_disto_alloc & 1u;
@@ -5993,13 +6003,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate tile coding parameters\n");
         return false;
     }
-    if (parameters->numpocs) {
-        /* initialisation of POC */
-		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, parameters->tcp_numlayers, p_manager)) {
-			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
-			return false;
-		}
-    }
+
 
     for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
         opj_tcp_t *tcp = &cp->tcps[tileno];
