@@ -64,7 +64,7 @@ add_test(NAME tte5 COMMAND test_tile_encoder 1  512  512  256  256 8 0 tte5.j2k)
 #add_test(NAME tte6 COMMAND test_tile_encoder 1 8192 8192  512  512 8 0 tte6.j2k)
 #add_test(NAME tte7 COMMAND test_tile_encoder 1 32768 32768 512  512 8 0 tte7.jp2)
 
-add_executable(test_tile_decoder test_tile_decoder.c)
+add_executable(test_tile_decoder test_tile_decoder.cpp)
 target_link_libraries(test_tile_decoder ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_test(NAME ttd0 COMMAND test_tile_decoder)
