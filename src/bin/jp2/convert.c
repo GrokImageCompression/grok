@@ -797,7 +797,7 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
 	//check for null image components
-	for (int i = 0; i < numcomps; ++i) {
+	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
 			fclose(f);
 			return NULL;
@@ -911,7 +911,7 @@ int imagetotga(opj_image_t * image, const char *outfile)
     }
 
 	//check for null image components
-	for (int i = 0; i < image->numcomps; ++i) {
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (!image->comps[i].data) {
 			return -1;
 		}
@@ -1630,7 +1630,7 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
 
 
 	//check for null image components
-	for (int i = 0; i < numcomps; ++i) {
+	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
 			fclose(fp);
 			return NULL;
@@ -1749,7 +1749,7 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
     ncomp = image->numcomps;
 
 	//check for null image components
-	for (int i = 0; i < ncomp; ++i) {
+	for (uint32_t i = 0; i < ncomp; ++i) {
 		if (!image->comps[i].data) {
 			return fails;
 		}
