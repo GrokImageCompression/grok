@@ -584,6 +584,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			"MCT input file",
 			false, "", "string", cmd);
 
+		ValueArg<uint32_t> timeArg("e", "Time",
+			"Time",
+			false, 0, "unsigned integer", cmd);
+
 		cmd.parse(argc, argv);
 
 		img_fol->set_out_format = 0;
@@ -596,6 +600,12 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 		if (deviceIdArg.isSet()) {
 			parameters->deviceId = deviceIdArg.getValue();
 		}
+
+
+		if (timeArg.isSet()) {
+			parameters->duration = timeArg.getValue();
+		}
+
 
 		if (inputFileArg.isSet()) {
 			char *infile = (char*)inputFileArg.getValue().c_str();
@@ -1703,7 +1713,12 @@ static int plugin_main(int argc, char **argv) {
 		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &parameters, plugin_compress_callback);
 		if (!success) {
 			bool complete = false;
-			for (int i = 0; i < 50; ++i) {
+			auto slice = 100;	//ms
+			auto slicesPerSecond = 1000 / slice;
+			auto seconds = parameters.duration;
+			if (!seconds)
+				seconds = UINT_MAX;
+			for (auto i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
 				if (opj_plugin_is_batch_encode_complete()) {
 					complete = true;
