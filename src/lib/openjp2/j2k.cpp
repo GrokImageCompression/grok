@@ -5741,7 +5741,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Limited bit-rate */
     parameters->cp_disto_alloc = 1;
-    if (parameters->max_cs_size <= 0) {
+    if (parameters->max_cs_size == 0) {
         /* No rate has been introduced, 24 fps is assumed */
         parameters->max_cs_size = OPJ_CINEMA_24_CS;
         opj_event_msg(p_manager, EVT_WARNING,
@@ -5856,23 +5856,18 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     }
 
     /* see if max_codestream_size does limit input rate */
-    if (parameters->max_cs_size <= 0) {
-        if (parameters->tcp_numlayers > 0 &&
-				parameters->tcp_rates[parameters->tcp_numlayers-1] > 0) {
-			double temp_size =((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
-                       ((double)parameters->tcp_rates[parameters->tcp_numlayers-1] * 8.0 * image->comps[0].dx * image->comps[0].dy);
-            parameters->max_cs_size = (uint64_t) floor(temp_size);
-        } else {
-            parameters->max_cs_size = 0;
-        }
+	double image_bytes = ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec) /
+																			(8 * image->comps[0].dx * image->comps[0].dy);
+    if (parameters->max_cs_size == 0) {
+        if (parameters->tcp_numlayers > 0 && parameters->tcp_rates[parameters->tcp_numlayers-1] > 0) {
+            parameters->max_cs_size = (uint64_t) floor(image_bytes/ parameters->tcp_rates[parameters->tcp_numlayers - 1]);
+        } 
     } else {
-        double temp_rate;
         bool cap = false;
-        temp_rate = ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec)/
-                    ((double)parameters->max_cs_size * 8 * image->comps[0].dx * image->comps[0].dy);
+		auto min_rate = image_bytes / parameters->max_cs_size;
         for (i = 0; i <  parameters->tcp_numlayers; i++) {
-            if (parameters->tcp_rates[i] < temp_rate) {
-                parameters->tcp_rates[i] = temp_rate;
+            if (parameters->tcp_rates[i] < min_rate) {
+                parameters->tcp_rates[i] = min_rate;
                 cap = true;
             }
         }

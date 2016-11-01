@@ -361,7 +361,7 @@ typedef struct opj_cparameters {
     uint32_t numpocs;
     /** number of layers */
     uint32_t tcp_numlayers;
-    /** rates of layers - might be subsequently limited by the max_cs_size field */
+    /** rates of layers, expressed as compression ratios. They might be subsequently limited by the max_cs_size field */
     double tcp_rates[100];
     /** different psnr for successive layers */
     double tcp_distoratio[100];
