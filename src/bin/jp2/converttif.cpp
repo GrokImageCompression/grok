@@ -623,7 +623,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 
 
 	//check for null image components
-	for (int i = 0; i < numcomps; ++i) {
+	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
 			return 1;
 		}
