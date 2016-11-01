@@ -1713,12 +1713,12 @@ static int plugin_main(int argc, char **argv) {
 		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &parameters, plugin_compress_callback);
 		if (!success) {
 			bool complete = false;
-			auto slice = 100;	//ms
-			auto slicesPerSecond = 1000 / slice;
-			auto seconds = parameters.duration;
+			uint32_t slice = 100;	//ms
+			uint32_t slicesPerSecond = 1000 / slice;
+			uint32_t seconds = parameters.duration;
 			if (!seconds)
 				seconds = UINT_MAX;
-			for (auto i = 0U; i < seconds*slicesPerSecond; ++i) {
+			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
 				if (opj_plugin_is_batch_encode_complete()) {
 					complete = true;
