@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
 
     /* should be test_tile_decoder 0 0 1000 1000 tte1.j2k */
     if( argc == 6 ) {
-		auto temp = atoi(argv[1]);
+		int temp = atoi(argv[1]);
 		if (temp < 0) {
 			fprintf(stderr, "Error -> invalid decode region\n");
 			return EXIT_FAILURE;
