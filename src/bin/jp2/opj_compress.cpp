@@ -584,8 +584,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			"MCT input file",
 			false, "", "string", cmd);
 
-		ValueArg<uint32_t> timeArg("e", "Time",
-			"Time",
+		ValueArg<uint32_t> durationArg("z", "Duration",
+			"Duration in seconds",
 			false, 0, "unsigned integer", cmd);
 
 		cmd.parse(argc, argv);
@@ -602,8 +602,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 		}
 
 
-		if (timeArg.isSet()) {
-			parameters->duration = timeArg.getValue();
+		if (durationArg.isSet()) {
+			parameters->duration = durationArg.getValue();
 		}
 
 
