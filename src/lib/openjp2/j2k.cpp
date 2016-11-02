@@ -5889,7 +5889,8 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         } else {
             opj_j2k_set_cinema_parameters(parameters,image,p_manager);
             if (!opj_j2k_is_cinema_compliant(image,parameters->rsiz,p_manager)) {
-                parameters->rsiz = OPJ_PROFILE_NONE;
+				// don't touch rsiz
+                //parameters->rsiz = OPJ_PROFILE_NONE;
             }
         }
     } else if (OPJ_IS_STORAGE(parameters->rsiz)) {
