@@ -545,6 +545,30 @@ const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9] = {
     convert_32s8u_C1R
 };
 
+
+static bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
+	if (numcomps == 0)
+		return false;
+
+	//check for null image components
+	for (uint32_t i = 0; i < numcomps; ++i) {
+		if (!image->comps[i].data) {
+			printf("[Error]: null data for component %d",i);
+			return false;
+		}
+	}
+
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].w != image->comps[0].w ||
+					image->comps[i].h != image->comps[0].h) {
+			printf("[Error]: dimensions of component %d differ from component 0", i);
+			return false;
+		}
+	}
+	return true;
+
+}
+
 /* -->> -->> -->> -->>
 
   TGA IMAGE FORMAT
@@ -796,14 +820,10 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
         return NULL;
     }
 
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		if (!image->comps[i].data) {
-			fclose(f);
-			return NULL;
-		}
+	if (!sanityCheckOnImage(image, numcomps)) {
+		fclose(f);
+		return NULL;
 	}
-
 
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
@@ -910,11 +930,8 @@ int imagetotga(opj_image_t * image, const char *outfile)
         return 1;
     }
 
-	//check for null image components
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		if (!image->comps[i].data) {
-			return -1;
-		}
+	if (!sanityCheckOnImage(image, image->numcomps)) {
+		return -1;
 	}
 
     for (i = 0; i < image->numcomps-1; i++)	{
@@ -1629,14 +1646,10 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
 
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		if (!image->comps[i].data) {
-			fclose(fp);
-			return NULL;
-		}
+	if (!sanityCheckOnImage(image, numcomps)) {
+		fclose(fp);
+		return NULL;
 	}
-
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
     image->y0 = parameters->image_offset_y0;
@@ -1726,7 +1739,10 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
 
 int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
 {
-    int *red, *green, *blue, *alpha;
+	int *red = NULL;
+	int* green = NULL;
+	int* blue = NULL;
+	int* alpha = NULL;
     int wr, hr, max;
     int i;
     unsigned int compno, ncomp;
@@ -1748,13 +1764,9 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
     fails = 1;
     ncomp = image->numcomps;
 
-	//check for null image components
-	for (uint32_t i = 0; i < ncomp; ++i) {
-		if (!image->comps[i].data) {
-			return fails;
-		}
+	if (!sanityCheckOnImage(image, ncomp)) {
+		return fails;
 	}
-
 
     while (*tmp) ++tmp;
     tmp -= 2;
