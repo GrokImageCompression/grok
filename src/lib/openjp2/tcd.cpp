@@ -139,6 +139,8 @@ static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
 											uint64_t p_max_dest_size,
 											opj_codestream_info_t *p_cstr_info );
 
+static bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
+
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -159,6 +161,301 @@ opj_tcd_t* opj_tcd_create(bool p_is_decoder)
     return l_tcd;
 }
 
+/* Don't try to find an optimal threshold but rather take everything not included yet, if
+-r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
+-q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
+==> possible to have some lossy layers and the last layer for sure lossless */
+bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params) {
+
+	return ((enc_params->m_disto_alloc == 1) && (tcd_tcp->rates[layno] > 0.0)) ||
+		((enc_params->m_fixed_quality == 1) && (tcd_tcp->distoratio[layno] > 0.0f));
+}
+
+
+bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
+						uint64_t * p_data_written,
+						uint64_t len)
+{
+	uint32_t compno, resno, bandno, precno, cblkno;
+
+	opj_cp_t *cp = tcd->cp;
+	opj_tcd_tile_t *tcd_tile = tcd->tile;
+	opj_tcp_t *tcd_tcp = tcd->tcp;
+
+	tcd_tile->numpix = 0;
+	uint32_t state = opj_plugin_get_debug_state();
+
+	RateInfo rateInfo;
+
+	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
+		opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+		tilec->numpix = 0;
+
+		for (resno = 0; resno < tilec->numresolutions; resno++) {
+			opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+
+			for (bandno = 0; bandno < res->numbands; bandno++) {
+				opj_tcd_band_t *band = &res->bands[bandno];
+
+				for (precno = 0; precno < res->pw * res->ph; precno++) {
+					opj_tcd_precinct_t *prc = &band->precincts[precno];
+
+					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+						opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+
+						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
+							encode_synch_with_plugin(tcd,
+								compno,
+								resno,
+								bandno,
+								precno,
+								cblkno,
+								band,
+								cblk,
+								&numPix);
+						}
+
+						RateControl::convexHull(cblk->passes, cblk->totalpasses);
+						rateInfo.synch(cblk);
+						tcd_tile->numpix += numPix;
+						tilec->numpix += numPix;
+					} /* cbklno */
+				} /* precno */
+			} /* bandno */
+		} /* resno */
+	} /* compno */
+
+	return true;
+}
+
+
+void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
+								uint32_t layno,
+								double thresh,
+								bool final)
+{
+	uint32_t compno, resno, bandno, precno, cblkno;
+	uint32_t passno;
+	opj_tcd_tile_t *tcd_tile = tcd->tile;
+
+	tcd_tile->distolayer[layno] = 0;
+
+	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
+		opj_tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
+
+		for (resno = 0; resno < tilec->numresolutions; resno++) {
+			opj_tcd_resolution_t *res = tilec->resolutions + resno;
+
+			for (bandno = 0; bandno < res->numbands; bandno++) {
+				opj_tcd_band_t *band = res->bands + bandno;
+
+				for (precno = 0; precno < res->pw * res->ph; precno++) {
+					opj_tcd_precinct_t *prc = band->precincts + precno;
+
+					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+						opj_tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
+						opj_tcd_layer_t *layer = cblk->layers + layno;
+						uint32_t num_included_passes_in_block;
+
+						if (layno == 0) {
+							cblk->num_passes_included_in_other_layers = 0;
+						}
+
+						num_included_passes_in_block =
+							cblk->num_passes_included_in_other_layers;
+
+						for (passno = cblk->num_passes_included_in_other_layers;
+							passno < cblk->totalpasses; passno++) {
+							opj_tcd_pass_t *pass = &cblk->passes[passno];
+
+							//truncate
+							if (pass->slope) {
+								num_included_passes_in_block = passno + 1;
+								if (pass->slope <= thresh)
+									break;
+
+							}
+						}
+
+						layer->numpasses =
+							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+
+						if (!layer->numpasses) {
+							layer->disto = 0;
+							continue;
+						}
+
+						// update layer
+						if (cblk->num_passes_included_in_other_layers == 0) {
+							layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
+							layer->data = cblk->data;
+							layer->disto =	cblk->passes[num_included_passes_in_block - 1].distortiondec;
+						}
+						else {
+							layer->len =
+								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+							layer->data =	cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+							layer->disto =	
+								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+						}
+
+						tcd_tile->distolayer[layno] += layer->disto;
+
+						if (final)
+							cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+					}
+				}
+			}
+		}
+	}
+}
+
+
+
+
+/*
+Hybrid rate control using bisect algorithm with optimal truncation points
+*/
+bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len)
+{
+	uint32_t compno, resno, bandno, precno, cblkno, layno;
+	double cumdisto[100];
+	const double K = 1;
+	double maxSE = 0;
+
+	opj_cp_t *cp = tcd->cp;
+	opj_tcd_tile_t *tcd_tile = tcd->tile;
+	opj_tcp_t *tcd_tcp = tcd->tcp;
+
+	tcd_tile->numpix = 0;
+	uint32_t state = opj_plugin_get_debug_state();
+
+	RateInfo rateInfo;
+
+	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
+		opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+		tilec->numpix = 0;
+
+		for (resno = 0; resno < tilec->numresolutions; resno++) {
+			opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+
+			for (bandno = 0; bandno < res->numbands; bandno++) {
+				opj_tcd_band_t *band = &res->bands[bandno];
+
+				for (precno = 0; precno < res->pw * res->ph; precno++) {
+					opj_tcd_precinct_t *prc = &band->precincts[precno];
+
+					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+						opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+
+						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
+							encode_synch_with_plugin(tcd,
+								compno,
+								resno,
+								bandno,
+								precno,
+								cblkno,
+								band,
+								cblk,
+								&numPix);
+						}
+
+						RateControl::convexHull(cblk->passes, cblk->totalpasses);
+						rateInfo.synch(cblk);
+
+						tcd_tile->numpix += numPix;
+						tilec->numpix += numPix;
+					} /* cbklno */
+				} /* precno */
+			} /* bandno */
+		} /* resno */
+
+		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+			* tilec->numpix;
+	} /* compno */
+
+	uint32_t min_slope = rateInfo.getMinimumThresh();
+	uint32_t max_slope = USHRT_MAX;
+
+	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
+		uint32_t lowerBound = min_slope;
+		uint32_t upperBound = max_slope;
+		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+
+		/* Threshold for Marcela Index */
+		// start by including everything in this layer
+		uint32_t goodthresh = 0;
+		// thresh from previous iteration - starts off uninitialized
+		// used to bail out if difference with current thresh is small enough
+		uint32_t prevthresh = 0;
+
+		double distotarget =
+			tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
+
+		uint32_t i;
+		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
+			opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
+			if (t2 == 00) {
+				return false;
+			}
+			uint32_t thresh;
+			for (i = 0; i < 128; ++i) {
+				thresh = (lowerBound + upperBound) / 2;
+				opj_tcd_makelayer_opt(tcd, layno, thresh, false);
+				if (prevthresh != 0 && prevthresh ==thresh)
+					break;
+				prevthresh = thresh;
+				if (cp->m_specific_param.m_enc.m_fixed_quality) {
+					double distoachieved =
+						layno == 0 ?
+						tcd_tile->distolayer[0] :
+						cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+
+					if (distoachieved < distotarget) {
+						upperBound = thresh;
+						continue;
+					}
+					lowerBound = thresh;
+				}
+				else {
+					if (!opj_t2_encode_packets_simulate(t2,
+						tcd->tcd_tileno,
+						tcd_tile,
+						layno + 1,
+						p_data_written,
+						maxlen,
+						tcd->tp_pos)) {
+						lowerBound = thresh;
+						continue;
+					}
+					upperBound = thresh;
+				}
+			}
+			// choose conservative value for goodthresh
+			goodthresh = (upperBound == 0) ? thresh : upperBound;
+			opj_t2_destroy(t2);
+		}
+		else {
+			goodthresh = min_slope;
+		}
+
+		opj_tcd_makelayer_opt(tcd, layno, goodthresh, true);
+		cumdisto[layno] =
+			(layno == 0) ?
+			tcd_tile->distolayer[0] :
+			(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+	}
+	return true;
+}
+
+
+
+
 /*
 Simple bisect algorithm to calculate optimal layer truncation points
 */
@@ -177,7 +474,7 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
     opj_tcp_t *tcd_tcp = tcd->tcp;
 
 	double min_slope = DBL_MAX;
-	double max_slope = 0;
+	double max_slope = -1;
 
     tcd_tile->numpix = 0;         
 	uint32_t state = opj_plugin_get_debug_state();
@@ -210,8 +507,6 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 								cblk,
 								&numPix);
 						}
-
-						RateControl::convexHull(cblk->passes, cblk->totalpasses);
 
                         for (passno = 0; passno < cblk->totalpasses; passno++) {
                             opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -252,33 +547,35 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
     } /* compno */
 
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
-        double lo = min_slope;
-        double hi = max_slope;
+        double lowerBound = min_slope;
+        double upperBound = max_slope;
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
+
 		/* Threshold for Marcela Index */
+		// start by including everything in this layer
         double goodthresh = 0;
-        double old_thresh = -1;
-        uint32_t i;
+		// thresh from previous iteration - starts off uninitialized
+		// used to bail out if difference with current thresh is small enough
+        double prevthresh = -1;
+
         double distotarget = 
 			tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
-        /* Don't try to find an optimal threshold but rather take everything not included yet, if
-          -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
-          -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
-          ==> possible to have some lossy layers and the last layer for sure lossless */
-        if ( ((cp->m_specific_param.m_enc.m_disto_alloc==1) && (tcd_tcp->rates[layno] > 0.0)) || ((cp->m_specific_param.m_enc.m_fixed_quality==1) && (tcd_tcp->distoratio[layno] > 0.0f))) {
+		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
             opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
             if (t2 == 00) {
                 return false;
             }
-			double thresh = 0;
-            for  (i = 0; i < 128; ++i) {
-               thresh = (lo + hi) / 2;
-                opj_tcd_makelayer(tcd, layno, thresh, false);
-                if ((fabs(old_thresh - thresh)) < 0.001)
+			double thresh;
+            for  (uint32_t i = 0; i < 128; ++i) {
+				if (upperBound == -1)
+					thresh = lowerBound;
+				else
+					thresh = (lowerBound + upperBound) / 2;
+                opj_tcd_makelayer_bisect(tcd, layno, thresh, false);
+                if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
                     break;
-                old_thresh = thresh;
-
+                prevthresh = thresh;
                 if (cp->m_specific_param.m_enc.m_fixed_quality) { 
                     double distoachieved = 
 								layno == 0 ? 
@@ -286,31 +583,32 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 									cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
                     if (distoachieved < distotarget) {
-                        hi=thresh;
+                        upperBound=thresh;
                         continue;
                     } 
-					lo=thresh;
+					lowerBound=thresh;
                 } else {
 					if (!opj_t2_encode_packets_simulate(t2,
-						tcd->tcd_tileno,
-						tcd_tile,
-						layno + 1,
-						p_data_written,
-						maxlen,
-						tcd->tp_pos)) {
-							lo = thresh;
+														tcd->tcd_tileno,
+														tcd_tile,
+														layno + 1,
+														p_data_written,
+														maxlen,
+														tcd->tp_pos)) {
+							lowerBound = thresh;
 							continue;
 					}
-                    hi = thresh;
+                    upperBound = thresh;
                 }
             }
-            goodthresh = (hi == 0)? thresh : hi;
+			// choose conservative value for goodthresh
+            goodthresh = (upperBound == -1)? thresh : upperBound;
             opj_t2_destroy(t2);
         } else {
             goodthresh = min_slope;
         }
 
-        opj_tcd_makelayer(tcd, layno, goodthresh, true);
+        opj_tcd_makelayer_bisect(tcd, layno, goodthresh, true);
         cumdisto[layno] = 
 			(layno == 0) ? 
 				tcd_tile->distolayer[0] : 
@@ -319,7 +617,10 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
     return true;
 }
 
-void opj_tcd_makelayer(opj_tcd_t *tcd,
+/*
+Simple bisection algorithm where all passes are considered as potential truncation points.
+*/
+void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
 	uint32_t layno,
 	double thresh,
 	bool final)
@@ -1862,9 +2163,25 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
 
     if (l_cp->m_specific_param.m_enc.m_disto_alloc|| l_cp->m_specific_param.m_enc.m_fixed_quality)  {
         // rate control by rate/distortion or fixed quality 
-        if (! opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
-            return false;
-        }
+		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
+		case 0:
+			if (!opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
+				return false;
+			}
+			break;
+		case 1:
+			if (!opj_tcd_pcrd_hybrid(p_tcd, &l_nb_written, p_max_dest_size)) {
+				return false;
+			}
+			break;
+		default:
+			if (!opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
+				return false;
+			}
+			break;
+
+		}
+
     } 
 
     return true;

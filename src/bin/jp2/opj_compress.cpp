@@ -588,10 +588,18 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 			"Duration in seconds",
 			false, 0, "unsigned integer", cmd);
 
+		ValueArg<uint32_t> rateControlAlgoArg("A", "RateControlAlgorithm",
+			"Rate control algorithm",
+			false, 0, "unsigned integer", cmd);
+
 		cmd.parse(argc, argv);
 
 		img_fol->set_out_format = 0;
 		raw_cp->rawWidth = 0;
+
+		if (rateControlAlgoArg.isSet()) {
+			parameters->rateControlAlgorithm = rateControlAlgoArg.getValue();
+		}
 
 		if (numThreadsArg.isSet()) {
 			parameters->numThreads = numThreadsArg.getValue();

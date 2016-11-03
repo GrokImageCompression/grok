@@ -5944,6 +5944,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     cp->rsiz = parameters->rsiz;
     cp->m_specific_param.m_enc.m_disto_alloc = parameters->cp_disto_alloc & 1u;
     cp->m_specific_param.m_enc.m_fixed_quality = parameters->cp_fixed_quality & 1u;
+	cp->m_specific_param.m_enc.rateControlAlgorithm = parameters->rateControlAlgorithm;
 
     /* tiles */
     cp->tdx = parameters->cp_tdx;

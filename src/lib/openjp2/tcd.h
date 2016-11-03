@@ -275,14 +275,29 @@ bool opj_tcd_init_decode_tile(opj_tcd_t *p_tcd,
                               uint32_t p_tile_no,
                               opj_event_mgr_t* p_manager);
 
-void opj_tcd_makelayer(	opj_tcd_t *tcd,
-                        uint32_t layno,
-                        double thresh,
-                        bool final);
-
 bool opj_tcd_pcrd_bisect(	opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len);
+
+void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
+	uint32_t layno,
+	double thresh,
+	bool final);
+
+
+bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len);
+
+bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len);
+
+
+void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
+								uint32_t layno,
+								double thresh,
+								bool final);
 
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
