@@ -329,6 +329,8 @@ typedef struct opj_encoding_param {
     uint32_t m_fixed_quality : 1;
     /** Enabling Tile part generation*/
     uint32_t m_tp_on : 1;
+	/* rate control algorithm */
+	uint32_t rateControlAlgorithm;
 }
 opj_encoding_param_t;
 

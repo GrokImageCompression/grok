@@ -32,7 +32,7 @@ void RateControl::convexHull(opj_tcd_pass_t *pass, uint32_t numPasses) {
 	double* slope_cache = new double[numPasses];
 
 	// search for feasible truncation points
-	for (int p = 0; p < (int)numPasses; p++) {
+	for (auto p = 0U; p < numPasses; p++) {
 		auto current_pass = pass + p;
 		double dd = 0;
 		double dr = 0;

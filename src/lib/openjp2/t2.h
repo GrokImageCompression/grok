@@ -121,7 +121,7 @@ bool opj_t2_encode_packets_simulate(opj_t2_t* t2,
                                   opj_tcd_tile_t *tile,
                                   uint32_t maxlayers,
                                   uint64_t * p_data_written,
-                                  uint64_t len,
+                                  uint64_t max_len,
                                   uint32_t tppos);
 
 

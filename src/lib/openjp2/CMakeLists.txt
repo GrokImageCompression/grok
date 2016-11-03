@@ -93,6 +93,8 @@ set(OPENJPEG_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.cpp
 )
 
 option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)

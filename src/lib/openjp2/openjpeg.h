@@ -439,6 +439,8 @@ typedef struct opj_cparameters {
 	bool  write_display_resolution;
 	double display_resolution[2];
 
+	uint32_t rateControlAlgorithm; // 0: bisect,  1: hybrid
+
 	uint32_t numThreads;
 	int32_t deviceId;
 	uint32_t duration; //seconds

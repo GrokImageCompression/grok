@@ -324,10 +324,6 @@ bool opj_t2_encode_packets_simulate(opj_t2_t* p_t2,
                                   uint64_t p_max_len,
                                   uint32_t p_tp_pos)
 {
-    uint32_t compno;
-    uint32_t poc;
-    opj_pi_iterator_t *l_pi = 00;
-    opj_pi_iterator_t *l_current_pi = 00;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
     opj_tcp_t *l_tcp = l_cp->tcps + p_tile_no;
@@ -335,18 +331,21 @@ bool opj_t2_encode_packets_simulate(opj_t2_t* p_t2,
     uint32_t l_max_comp = l_cp->m_specific_param.m_enc.m_max_comp_size > 0 ? l_image->numcomps : 1;
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 
-    l_pi = opj_pi_initialise_encode(l_image, l_cp, p_tile_no, THRESH_CALC);
+	if (!p_data_written)
+		return false;
+
+	opj_pi_iterator_t* l_pi = opj_pi_initialise_encode(l_image, l_cp, p_tile_no, THRESH_CALC);
     if (!l_pi) {
         return false;
     }
     *p_data_written = 0;
-    l_current_pi = l_pi;
+	opj_pi_iterator_t * l_current_pi = l_pi;
 
-    for (compno = 0; compno < l_max_comp; ++compno) {
+    for (uint32_t compno = 0; compno < l_max_comp; ++compno) {
         uint64_t l_comp_len = 0;
         l_current_pi = l_pi;
 
-        for (poc = 0; poc < pocno; ++poc) {
+        for (uint32_t poc = 0; poc < pocno; ++poc) {
             uint32_t l_tp_num = compno;
             opj_pi_init_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, THRESH_CALC);
 
