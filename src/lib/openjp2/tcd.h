@@ -284,6 +284,10 @@ void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
 	double thresh,
 	bool final);
 
+void opj_tcd_makelayer_final(opj_tcd_t *tcd,
+	uint32_t layno);
+
+
 
 bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
@@ -296,7 +300,7 @@ bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
 
 void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
 								uint32_t layno,
-								double thresh,
+								uint16_t thresh,
 								bool final);
 
 /**
