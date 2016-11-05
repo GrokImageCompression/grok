@@ -209,6 +209,10 @@ static void encode_help_display(void)
     fprintf(stdout,"    Different psnr for successive layers (-q 30,40,50).\n");
     fprintf(stdout,"    Increasing PSNR values required.\n");
     fprintf(stdout,"    Options -r and -q cannot be used together.\n");
+	fprintf(stdout, "[-A | -RateControlAlgorithm] <algorithm enumeration>\n");
+	fprintf(stdout, "    Select algorithm used for rate control\n");
+	fprintf(stdout, "    0: Bisection search for optimal threshold using all code passes in code blocks\n");
+	fprintf(stdout, "    1: Bisection search for optimal threshold using only feasible truncation points (on convex hull).\n");
     fprintf(stdout,"[-n | -Resolutions] <number of resolutions>\n");
     fprintf(stdout,"    Number of resolutions.\n");
     fprintf(stdout,"    It corresponds to the number of DWT decompositions +1. \n");
@@ -446,8 +450,15 @@ public:
 
 /* ------------------------------------------------------------------------------------ */
 
-static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *parameters,
-                                 img_fol_t *img_fol, img_fol_t *out_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size, char* plugin_path) {
+static int parse_cmdline_encoder_ex(int argc, 
+									char **argv,
+									opj_cparameters_t *parameters,
+									img_fol_t *img_fol,
+									img_fol_t *out_fol,
+									raw_cparameters_t *raw_cp,
+									char *indexfilename,
+									size_t indexfilename_size,
+									char* plugin_path) {
 
 
 	try {
@@ -1238,7 +1249,38 @@ double opj_clock(void) {
 
 #define PLUGIN
 
-static int plugin_main(int argc, char **argv);
+struct CompressInitParams {
+	CompressInitParams() {
+		
+		initialized = false;
+		plugin_path[0] = 0;
+
+		/* Initialize indexfilename and img_fol */
+		*indexfilename = 0;
+
+		/* raw_cp initialization */
+		raw_cp.rawBitDepth = 0;
+		raw_cp.rawComp = 0;
+		raw_cp.rawComps = 0;
+		raw_cp.rawHeight = 0;
+		raw_cp.rawSigned = 0;
+		raw_cp.rawWidth = 0;
+
+	}
+	bool initialized;
+
+	opj_cparameters_t parameters;	/* compression parameters */
+	raw_cparameters_t raw_cp;
+
+	char indexfilename[OPJ_PATH_LEN];	/* index file name */
+	char plugin_path[OPJ_PATH_LEN];
+
+	img_fol_t img_fol;
+	img_fol_t out_fol;
+
+};
+
+static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 
 
 /* -------------------------------------------------------------------------- */
@@ -1247,56 +1289,24 @@ static int plugin_main(int argc, char **argv);
  */
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
-    opj_cparameters_t parameters;	/* compression parameters */
-
-    opj_stream_t *l_stream = 00;
-    opj_codec_t* l_codec = 00;
-    opj_image_t *image = NULL;
-    raw_cparameters_t raw_cp;
-    size_t num_compressed_files = 0;
-
-    char indexfilename[OPJ_PATH_LEN];	/* index file name */
-
-	uint32_t i, num_images, imageno;
-    img_fol_t img_fol;
-	img_fol_t out_fol;
-    dircnt_t *dirptr = NULL;
-
-    bool bSuccess;
-    bool bUseTiles = false; /* true */
-    uint32_t l_nb_tiles = 4;
-    double t = opj_clock();
-
-	int rc =  plugin_main(argc, argv);
-	if (!rc)
+	CompressInitParams initParams;
+	int rc =  plugin_main(argc, argv, &initParams);
+	if (!initParams.initialized || !rc)
 		return 0;
 
 	opj_plugin_cleanup();
+	size_t num_compressed_files = 0;
+	uint32_t l_nb_tiles = 4;
+	uint32_t i, num_images, imageno;
 
-    /* set encoding parameters to default values */
-    opj_set_default_encoder_parameters(&parameters);
+	bool bSuccess;
+	bool bUseTiles = false; /* true */
+	double t = opj_clock();
 
-    /* Initialize indexfilename and img_fol */
-    *indexfilename = 0;
-    memset(&img_fol,0,sizeof(img_fol_t));
-
-    /* raw_cp initialization */
-    raw_cp.rawBitDepth = 0;
-    raw_cp.rawComp = 0;
-    raw_cp.rawComps = 0;
-    raw_cp.rawHeight = 0;
-    raw_cp.rawSigned = 0;
-    raw_cp.rawWidth = 0;
-
-    /* parse input and get user encoding parameters */
-    parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
-	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol, &out_fol, &raw_cp, indexfilename, sizeof(indexfilename), nullptr) == 1) {
-		return 1;
-	}
-
-    /* Read directory if necessary */
-    if(img_fol.set_imgdir==1){
-        num_images=get_num_images(img_fol.imgdirpath);
+	dircnt_t *dirptr = NULL;
+	/* Read directory if necessary */
+    if(initParams.img_fol.set_imgdir==1){
+        num_images=get_num_images(initParams.img_fol.imgdirpath);
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr){
             dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
@@ -1308,7 +1318,7 @@ int main(int argc, char **argv) {
                 dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
             }
         }
-        if(load_images(dirptr,img_fol.imgdirpath)==1){
+        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
             return 0;
         }
         if (num_images==0){
@@ -1318,19 +1328,24 @@ int main(int argc, char **argv) {
     }else{
         num_images=1;
     }
+
+	opj_stream_t *l_stream = 00;
+	opj_codec_t* l_codec = 00;
+	opj_image_t *image = NULL;
+
     /*Encoding image one by one*/
     for(imageno=0;imageno<num_images;imageno++)	{
         image = NULL;
         fprintf(stderr,"\n");
 
-        if(img_fol.set_imgdir==1){
-            if (get_next_file((int)imageno, dirptr,&img_fol, out_fol.set_imgdir ? &out_fol : &img_fol, &parameters)) {
+        if(initParams.img_fol.set_imgdir==1){
+            if (get_next_file((int)imageno, dirptr,&initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
                 fprintf(stderr,"skipping file...\n");
                 continue;
             }
         }
 
-        switch(parameters.decod_format) {
+        switch(initParams.parameters.decod_format) {
         case PGX_DFMT:
             break;
         case PXM_DFMT:
@@ -1354,9 +1369,9 @@ int main(int argc, char **argv) {
         /* decode the source image */
         /* ----------------------- */
 
-        switch (parameters.decod_format) {
+        switch (initParams.parameters.decod_format) {
         case PGX_DFMT:
-            image = pgxtoimage(parameters.infile, &parameters);
+            image = pgxtoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load pgx file\n");
                 return 1;
@@ -1364,7 +1379,7 @@ int main(int argc, char **argv) {
             break;
 
         case PXM_DFMT:
-            image = pnmtoimage(parameters.infile, &parameters);
+            image = pnmtoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load pnm file\n");
                 return 1;
@@ -1372,7 +1387,7 @@ int main(int argc, char **argv) {
             break;
 
         case BMP_DFMT:
-            image = bmptoimage(parameters.infile, &parameters);
+            image = bmptoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load bmp file\n");
                 return 1;
@@ -1381,7 +1396,7 @@ int main(int argc, char **argv) {
 
 #ifdef OPJ_HAVE_LIBTIFF
         case TIF_DFMT:
-            image = tiftoimage(parameters.infile, &parameters);
+            image = tiftoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load tiff file\n");
                 return 1;
@@ -1390,7 +1405,7 @@ int main(int argc, char **argv) {
 #endif /* OPJ_HAVE_LIBTIFF */
 
         case RAW_DFMT:
-            image = rawtoimage(parameters.infile, &parameters, &raw_cp);
+            image = rawtoimage(initParams.parameters.infile, &initParams.parameters, &initParams.raw_cp);
             if (!image) {
                 fprintf(stderr, "Unable to load raw file\n");
                 return 1;
@@ -1398,7 +1413,7 @@ int main(int argc, char **argv) {
             break;
 
         case RAWL_DFMT:
-            image = rawltoimage(parameters.infile, &parameters, &raw_cp);
+            image = rawltoimage(initParams.parameters.infile, &initParams.parameters, &initParams.raw_cp);
             if (!image) {
                 fprintf(stderr, "Unable to load raw file\n");
                 return 1;
@@ -1406,7 +1421,7 @@ int main(int argc, char **argv) {
             break;
 
         case TGA_DFMT:
-            image = tgatoimage(parameters.infile, &parameters);
+            image = tgatoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load tga file\n");
                 return 1;
@@ -1415,7 +1430,7 @@ int main(int argc, char **argv) {
 
 #ifdef OPJ_HAVE_LIBPNG
         case PNG_DFMT:
-            image = pngtoimage(parameters.infile, &parameters);
+            image = pngtoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load png file\n");
                 return 1;
@@ -1433,15 +1448,15 @@ int main(int argc, char **argv) {
         }
 
 		/* Decide if MCT should be used */
-        if (parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
-            parameters.tcp_mct = (image->numcomps >= 3) ? 1 : 0;
+        if (initParams.parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
+			initParams.parameters.tcp_mct = (image->numcomps >= 3) ? 1 : 0;
         } else {            /* mct mode has been set in commandline */
-            if ((parameters.tcp_mct == 1) && (image->numcomps < 3)){
+            if ((initParams.parameters.tcp_mct == 1) && (image->numcomps < 3)){
                 fprintf(stderr, "RGB->YCC conversion cannot be used:\n");
                 fprintf(stderr, "Input image has less than 3 components\n");
                 return 1;
             }
-            if ((parameters.tcp_mct == 2) && (!parameters.mct_data)){
+            if ((initParams.parameters.tcp_mct == 2) && (!initParams.parameters.mct_data)){
                 fprintf(stderr, "Custom MCT has been set but no array-based MCT\n");
                 fprintf(stderr, "has been provided. Aborting.\n");
                 return 1;
@@ -1451,7 +1466,7 @@ int main(int argc, char **argv) {
         /* encode the destination image */
         /* ---------------------------- */
 
-        switch(parameters.cod_format) {
+        switch(initParams.parameters.cod_format) {
         case J2K_CFMT:	/* JPEG-2000 codestream */
         {
             /* Get a decoder handle */
@@ -1476,13 +1491,13 @@ int main(int argc, char **argv) {
         opj_set_error_handler(l_codec, error_callback,00);
 
         if( bUseTiles ) {
-            parameters.cp_tx0 = 0;
-            parameters.cp_ty0 = 0;
-            parameters.tile_size_on = true;
-            parameters.cp_tdx = 512;
-            parameters.cp_tdy = 512;
+			initParams.parameters.cp_tx0 = 0;
+			initParams.parameters.cp_ty0 = 0;
+			initParams.parameters.tile_size_on = true;
+			initParams.parameters.cp_tdx = 512;
+			initParams.parameters.cp_tdy = 512;
         }
-        if (! opj_setup_encoder(l_codec, &parameters, image)) {
+        if (! opj_setup_encoder(l_codec, &initParams.parameters, image)) {
             fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
             opj_destroy_codec(l_codec);
             opj_image_destroy(image);
@@ -1490,7 +1505,7 @@ int main(int argc, char **argv) {
         }
 
         /* open a byte stream for writing and allocate memory for all tiles */
-        l_stream = opj_stream_create_default_file_stream(parameters.outfile,false);
+        l_stream = opj_stream_create_default_file_stream(initParams.parameters.outfile,false);
         if (! l_stream){
             return 1;
         }
@@ -1528,12 +1543,12 @@ int main(int argc, char **argv) {
             opj_stream_destroy(l_stream);
             opj_destroy_codec(l_codec);
             opj_image_destroy(image);
-			remove(parameters.outfile);
+			remove(initParams.parameters.outfile);
             return 1;
         }
 
 		num_compressed_files++;
-        fprintf(stdout,"[INFO] Generated outfile %s\n",parameters.outfile);
+        fprintf(stdout,"[INFO] Generated outfile %s\n", initParams.parameters.outfile);
         /* close and free the byte stream */
         opj_stream_destroy(l_stream);
 
@@ -1546,9 +1561,9 @@ int main(int argc, char **argv) {
     }
 
     /* free user parameters structure */
-    if(parameters.cp_comment)
-		free(parameters.cp_comment);
-    if(raw_cp.rawComps) free(raw_cp.rawComps);
+    if(initParams.parameters.cp_comment)
+		free(initParams.parameters.cp_comment);
+    if(initParams.raw_cp.rawComps) free(initParams.raw_cp.rawComps);
 	
     t = opj_clock() - t;
     if (num_compressed_files) {
@@ -1667,65 +1682,48 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	}
 }
 
-static int plugin_main(int argc, char **argv) {
 
-	bool isBatch = true;
-	opj_cparameters_t parameters;	/* compression parameters */
-	raw_cparameters_t raw_cp;
-	size_t num_compressed_files = 0;
-
-	char indexfilename[OPJ_PATH_LEN];	/* index file name */
-	char plugin_path[OPJ_PATH_LEN];
-
-	uint32_t i, num_images, imageno;
-	dircnt_t *dirptr = NULL;
-	plugin_path[0] = 0;
-
+static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 
 	/* set encoding parameters to default values */
-	opj_set_default_encoder_parameters(&parameters);
+	opj_set_default_encoder_parameters(&initParams->parameters);
 
-	/* Initialize indexfilename and img_fol */
-	*indexfilename = 0;
 	memset(&img_fol_plugin, 0, sizeof(img_fol_t));
 	memset(&out_fol_plugin, 0, sizeof(img_fol_t));
 
-	/* raw_cp initialization */
-	raw_cp.rawBitDepth = 0;
-	raw_cp.rawComp = 0;
-	raw_cp.rawComps = 0;
-	raw_cp.rawHeight = 0;
-	raw_cp.rawSigned = 0;
-	raw_cp.rawWidth = 0;
-
 	/* parse input and get user encoding parameters */
-	parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
-	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol_plugin, &out_fol_plugin, &raw_cp, indexfilename, sizeof(indexfilename), plugin_path) == 1) {
+	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
+	if (parse_cmdline_encoder_ex(argc, argv, &initParams->parameters, &img_fol_plugin, &out_fol_plugin, &initParams->raw_cp, initParams->indexfilename, sizeof(initParams->indexfilename), initParams->plugin_path) == 1) {
 		return 1;
 	}
 	
+	initParams->initialized = true;
+
 	// loads plugin but does not actually create codec
-	opj_initialize(plugin_path);
+	if (!opj_initialize(initParams->plugin_path))
+		return 1;
 
 	// create codec
 	opj_plugin_init_info_t initInfo;
-	initInfo.deviceId = parameters.deviceId;
-	opj_plugin_init(initInfo);
+	initInfo.deviceId = initParams->parameters.deviceId;
+	if (!opj_plugin_init(initInfo))
+		return 1;
 	
-	isBatch =  img_fol_plugin.imgdirpath &&  out_fol_plugin.imgdirpath;
+	bool isBatch =  img_fol_plugin.imgdirpath &&  out_fol_plugin.imgdirpath;
 	uint32_t state = opj_plugin_get_debug_state();
 	if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
 
 	int32_t success = 0;
+	uint32_t num_images, imageno;
 	if (isBatch) {
-		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &parameters, plugin_compress_callback);
+		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &initParams->parameters, plugin_compress_callback);
 		if (!success) {
 			bool complete = false;
 			uint32_t slice = 100;	//ms
 			uint32_t slicesPerSecond = 1000 / slice;
-			uint32_t seconds = parameters.duration;
+			uint32_t seconds = initParams->parameters.duration;
 			if (!seconds)
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
@@ -1741,6 +1739,7 @@ static int plugin_main(int argc, char **argv) {
 		}
 	}
 	else 	{
+		dircnt_t *dirptr = NULL;
 		// loop through all files
 		/* Read directory if necessary */
 		if (img_fol_plugin.set_imgdir == 1) {
@@ -1752,7 +1751,7 @@ static int plugin_main(int argc, char **argv) {
 				if (!dirptr->filename_buf) {
 					return 0;
 				}
-				for (i = 0; i<num_images; i++) {
+				for (uint32_t i = 0; i<num_images; i++) {
 					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 				}
 			}
@@ -1771,24 +1770,23 @@ static int plugin_main(int argc, char **argv) {
 		for (imageno = 0; imageno < num_images; imageno++) {
 			if (img_fol_plugin.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr,
-								&img_fol_plugin,out_fol_plugin.imgdirpath ? &out_fol_plugin : &img_fol_plugin, &parameters)) {
+								&img_fol_plugin,out_fol_plugin.imgdirpath ? &out_fol_plugin : &img_fol_plugin, &initParams->parameters)) {
 					fprintf(stderr, "skipping file...\n");
 					continue;
 				}
 			}
-			success = opj_plugin_encode(&parameters, plugin_compress_callback);
+			success = opj_plugin_encode(&initParams->parameters, plugin_compress_callback);
 		}
 	}
 
 
 	// cleanup
-	if (parameters.cp_comment)
-		free(parameters.cp_comment);
-	if (raw_cp.rawComps)
-		free(raw_cp.rawComps);
+	if (initParams->parameters.cp_comment)
+		free(initParams->parameters.cp_comment);
+	if (initParams->raw_cp.rawComps)
+		free(initParams->raw_cp.rawComps);
 
 	opj_cleanup();
-
 	return success;
 }
 
