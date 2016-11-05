@@ -141,6 +141,39 @@ static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
 
 static bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
 
+static bool opj_makelayer_single_lossless(opj_tcd_t *tcd);
+
+static bool opj_tcd_pcrd_bisect(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len);
+
+static void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
+	uint32_t layno,
+	double thresh,
+	bool final);
+
+static void opj_tcd_makelayer_final(opj_tcd_t *tcd,
+	uint32_t layno);
+
+
+
+static bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len);
+
+static bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
+	uint64_t * p_data_written,
+	uint64_t len);
+
+
+static void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
+	uint32_t layno,
+	uint16_t thresh,
+	bool final);
+
+
+
+
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -172,10 +205,25 @@ bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_par
 }
 
 
+
+bool opj_makelayer_single_lossless(opj_tcd_t *tcd) {
+	if (tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
+
+		opj_tcd_makelayer_final(tcd, 0);
+		return true;
+	}
+	return false;
+}
+
 bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
 						uint64_t * p_data_written,
 						uint64_t len)
 {
+	if (opj_makelayer_single_lossless(tcd)) {
+		return true;
+	}
+
+
 	uint32_t compno, resno, bandno, precno, cblkno;
 
 	opj_cp_t *cp = tcd->cp;
@@ -320,6 +368,11 @@ bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
 	uint64_t len)
 {
+
+	if (opj_makelayer_single_lossless(tcd)) {
+		return true;
+	}
+
 	uint32_t compno, resno, bandno, precno, cblkno, layno;
 	double cumdisto[100];
 	const double K = 1;
@@ -460,6 +513,10 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len)
 {
+	if (opj_makelayer_single_lossless(tcd)) {
+		return true;
+	}
+
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
     double cumdisto[100];     
