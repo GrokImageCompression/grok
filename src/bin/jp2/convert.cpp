@@ -1174,7 +1174,7 @@ opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
     cmptparm.dy = parameters->subsampling_dy;
 
     /* create the image */
-    image = opj_image_create((uint32_t)numcomps, &cmptparm, color_space);
+    image = opj_image_create(numcomps, &cmptparm, color_space);
     if(!image) {
         fclose(f);
         return NULL;
@@ -2029,7 +2029,7 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     }
     w = raw_cp->rawWidth;
     h = raw_cp->rawHeight;
-    cmptparm = (opj_image_cmptparm_t*) calloc((uint32_t)numcomps,sizeof(opj_image_cmptparm_t));
+    cmptparm = (opj_image_cmptparm_t*) calloc(numcomps,sizeof(opj_image_cmptparm_t));
     if (!cmptparm) {
         fprintf(stderr, "Failed to allocate image components parameters !!\n");
         fprintf(stderr,"Aborting\n");
