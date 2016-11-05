@@ -917,14 +917,15 @@ static int parse_cmdline_encoder_ex(int argc, char **argv, opj_cparameters_t *pa
 				strcpy(plugin_path, pluginPathArg.getValue().c_str());
 		}
 
+		img_fol->set_imgdir = 0;
 		if (imgDirArg.isSet()) {
 			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
 			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
 			img_fol->set_imgdir = 1;
 		}
-
-		if (outDirArg.isSet()) {
-			if (out_fol) {
+		if (out_fol) {
+			out_fol->set_imgdir = 0;
+			if (outDirArg.isSet()) {
 				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
 				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
 				out_fol->set_imgdir = 1;
@@ -1258,6 +1259,7 @@ int main(int argc, char **argv) {
 
 	uint32_t i, num_images, imageno;
     img_fol_t img_fol;
+	img_fol_t out_fol;
     dircnt_t *dirptr = NULL;
 
     bool bSuccess;
@@ -1288,9 +1290,9 @@ int main(int argc, char **argv) {
 
     /* parse input and get user encoding parameters */
     parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
-	if(parse_cmdline_encoder(argc, argv, &parameters,&img_fol,&raw_cp, indexfilename, sizeof(indexfilename)) == 1) {
-        return 1;
-    }
+	if (parse_cmdline_encoder_ex(argc, argv, &parameters, &img_fol, &out_fol, &raw_cp, indexfilename, sizeof(indexfilename), nullptr) == 1) {
+		return 1;
+	}
 
     /* Read directory if necessary */
     if(img_fol.set_imgdir==1){
@@ -1322,7 +1324,7 @@ int main(int argc, char **argv) {
         fprintf(stderr,"\n");
 
         if(img_fol.set_imgdir==1){
-            if (get_next_file((int)imageno, dirptr,&img_fol, &img_fol, &parameters)) {
+            if (get_next_file((int)imageno, dirptr,&img_fol, out_fol.set_imgdir ? &out_fol : &img_fol, &parameters)) {
                 fprintf(stderr,"skipping file...\n");
                 continue;
             }
