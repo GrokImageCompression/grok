@@ -52,8 +52,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef __J2K_CONVERT_H
-#define __J2K_CONVERT_H
+
+#pragma once
 
 /**@name RAW component encoding parameters */
 /*@{*/
@@ -83,55 +83,59 @@ typedef struct raw_cparameters {
     /*@}*/
 } raw_cparameters_t;
 
-/* Component precision clipping */
-void clip_component(opj_image_comp_t* component, uint32_t precision);
-/* Component precision scaling */
-void scale_component(opj_image_comp_t* component, uint32_t precision);
+extern "C" {
 
-/* planar / interleaved conversions */
-typedef void (* convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
-extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
-typedef void (* convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
-extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
-/* bit depth conversions */
-typedef void (* convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length);
-extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
-typedef void (* convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
-extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
+	/* Component precision clipping */
+	void clip_component(opj_image_comp_t* component, uint32_t precision);
+	/* Component precision scaling */
+	void scale_component(opj_image_comp_t* component, uint32_t precision);
+
+	/* planar / interleaved conversions */
+	typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
+	extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
+	typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
+	extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
+	/* bit depth conversions */
+	typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length);
+	extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
+	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
+	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
 
 
-/* TGA conversion */
-opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters);
-int imagetotga(opj_image_t * image, const char *outfile);
+	/* TGA conversion */
+	opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters);
+	int imagetotga(opj_image_t * image, const char *outfile);
 
-/* BMP conversion */
-opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters);
-int imagetobmp(opj_image_t *image, const char *outfile);
+	/* BMP conversion */
+	opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters);
+	int imagetobmp(opj_image_t *image, const char *outfile);
 
-/* TIFF conversion*/
-opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters);
-int imagetotif(opj_image_t *image, const char *outfile, uint32_t compression);
-/**
-Load a single image component encoded in PGX file format
-@param filename Name of the PGX file to load
-@param parameters *List ?*
-@return Returns a greyscale image if successful, returns NULL otherwise
-*/
-opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters);
-int imagetopgx(opj_image_t *image, const char *outfile);
+	/* TIFF conversion*/
+	opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters);
+	int imagetotif(opj_image_t *image, const char *outfile, uint32_t compression);
+	/**
+	Load a single image component encoded in PGX file format
+	@param filename Name of the PGX file to load
+	@param parameters *List ?*
+	@return Returns a greyscale image if successful, returns NULL otherwise
+	*/
+	opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters);
+	int imagetopgx(opj_image_t *image, const char *outfile);
 
-opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters);
-int imagetopnm(opj_image_t *image, const char *outfile, int force_split);
+	opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters);
+	int imagetopnm(opj_image_t *image, const char *outfile, int force_split);
 
-/* RAW conversion */
-int imagetoraw(opj_image_t * image, const char *outfile);
-int imagetorawl(opj_image_t * image, const char *outfile);
-opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
-opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
+	/* RAW conversion */
+	int imagetoraw(opj_image_t * image, const char *outfile);
+	int imagetorawl(opj_image_t * image, const char *outfile);
+	opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
+	opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
 
-/* PNG conversion*/
-extern int imagetopng(opj_image_t *image, const char *write_idf);
-extern opj_image_t* pngtoimage(const char *filename, opj_cparameters_t *parameters);
+	/* PNG conversion*/
+	extern int imagetopng(opj_image_t *image, const char *write_idf);
+	extern opj_image_t* pngtoimage(const char *filename, opj_cparameters_t *parameters);
 
-#endif /* __J2K_CONVERT_H */
+}
+
+
 
