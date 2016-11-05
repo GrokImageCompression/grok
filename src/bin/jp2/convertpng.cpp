@@ -64,8 +64,10 @@
 #include <zlib.h>
 #include <png.h>
 
+extern "C" {
 #include "openjpeg.h"
 #include "convert.h"
+}
 
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
 #define MAGIC_SIZE 8

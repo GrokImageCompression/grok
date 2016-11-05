@@ -2,10 +2,10 @@
 
 # First thing define the common source:
 set(common_SRCS
-  convert.c
+  convert.cpp
   convert.h
-  convertbmp.c
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.c
+  convertbmp.cpp
+  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.h
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.h
@@ -17,7 +17,7 @@ if(OPJ_HAVE_LIBTIFF)
 	list(APPEND common_SRCS converttif.cpp)
 endif()
 if(OPJ_HAVE_LIBPNG)
-	list(APPEND common_SRCS convertpng.c)
+	list(APPEND common_SRCS convertpng.cpp)
 endif()
 
 # Headers file are located here:

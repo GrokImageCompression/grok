@@ -61,8 +61,12 @@
 #include <ctype.h>
 #include <limits.h>
 
+extern "C" {
+
 #include "openjpeg.h"
 #include "convert.h"
+
+}
 
 /*
  * Get logarithm of an integer and round downwards.
