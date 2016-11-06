@@ -2315,17 +2315,17 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
         // rate control by rate/distortion or fixed quality 
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
-				return false;
-			}
-			break;
-		case 1:
 			if (!opj_tcd_pcrd_hybrid(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
-		default:
+		case 1:
 			if (!opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
+				return false;
+			}
+			break;
+		default:
+			if (!opj_tcd_pcrd_hybrid(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;

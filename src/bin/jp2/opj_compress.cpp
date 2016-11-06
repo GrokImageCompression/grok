@@ -135,8 +135,8 @@ static void encode_help_display(void)
     fprintf(stdout,"\n");
     fprintf(stdout," * Lossless\n");
     fprintf(stdout," * 1 tile\n");
-    fprintf(stdout," * RGB->YCC conversion if at least 3 components\n");
-    fprintf(stdout," * Size of precinct : 2^15 x 2^15 (means 1 precinct)\n");
+    fprintf(stdout," * RGB->YCC conversion if there are 3 colour components\n");
+    fprintf(stdout," * Size of precinct : 2^15 x 2^15 (i.e. 1 precinct)\n");
     fprintf(stdout," * Size of code-block : 64 x 64\n");
     fprintf(stdout," * Number of resolutions: 6\n");
     fprintf(stdout," * No SOP marker in the codestream\n");
@@ -191,7 +191,7 @@ static void encode_help_display(void)
 	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
 	fprintf(stdout, "    Number of threads to use for T1.\n");
 	fprintf(stdout, "[-G | -DeviceId] <device ID>\n");
-	fprintf(stdout, "    (GPU) Specify which device to run codec on.\n");
+	fprintf(stdout, "    (GPU) Specify which GPU accelerator to run codec on.\n");
 	fprintf(stdout, "    A value of -1 will specify all devices.\n");
 	fprintf(stdout, "[-a | -OutDir] <output directory>\n");
 	fprintf(stdout, "    Output directory where compressed files are stored.\n");
@@ -209,10 +209,10 @@ static void encode_help_display(void)
     fprintf(stdout,"    Different psnr for successive layers (-q 30,40,50).\n");
     fprintf(stdout,"    Increasing PSNR values required.\n");
     fprintf(stdout,"    Options -r and -q cannot be used together.\n");
-	fprintf(stdout, "[-A | -RateControlAlgorithm] <algorithm enumeration>\n");
+	fprintf(stdout, "[-A | -RateControlAlgorithm] <0|1>\n");
 	fprintf(stdout, "    Select algorithm used for rate control\n");
-	fprintf(stdout, "    0: Bisection search for optimal threshold using all code passes in code blocks\n");
-	fprintf(stdout, "    1: Bisection search for optimal threshold using only feasible truncation points (on convex hull).\n");
+	fprintf(stdout, "    0: Bisection search for optimal threshold using only feasible truncation points, on convex hull. (default)\n");
+	fprintf(stdout, "    1: Bisection search for optimal threshold using all code passes in code blocks. (slightly higher PSRN than algorithm 0)\n");
     fprintf(stdout,"[-n | -Resolutions] <number of resolutions>\n");
     fprintf(stdout,"    Number of resolutions.\n");
     fprintf(stdout,"    It corresponds to the number of DWT decompositions +1. \n");
@@ -1266,6 +1266,17 @@ struct CompressInitParams {
 		raw_cp.rawSigned = 0;
 		raw_cp.rawWidth = 0;
 
+		memset(&img_fol, 0, sizeof(img_fol));
+		memset(&out_fol, 0, sizeof(out_fol));
+
+	}
+
+	~CompressInitParams() {
+		if (img_fol.imgdirpath)
+			free(img_fol.imgdirpath);
+		if (out_fol.imgdirpath)
+			free(out_fol.imgdirpath);
+
 	}
 	bool initialized;
 
@@ -1573,8 +1584,8 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-
 img_fol_t img_fol_plugin, out_fol_plugin;
+
 void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	opj_cparameters_t* parameters = info->encoder_parameters;
 	bool bSuccess;
@@ -1688,12 +1699,18 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	/* set encoding parameters to default values */
 	opj_set_default_encoder_parameters(&initParams->parameters);
 
-	memset(&img_fol_plugin, 0, sizeof(img_fol_t));
-	memset(&out_fol_plugin, 0, sizeof(img_fol_t));
 
 	/* parse input and get user encoding parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
-	if (parse_cmdline_encoder_ex(argc, argv, &initParams->parameters, &img_fol_plugin, &out_fol_plugin, &initParams->raw_cp, initParams->indexfilename, sizeof(initParams->indexfilename), initParams->plugin_path) == 1) {
+	if (parse_cmdline_encoder_ex(argc, 
+								argv,
+								&initParams->parameters,
+								&initParams->img_fol,
+								&initParams->out_fol,
+								&initParams->raw_cp,
+								initParams->indexfilename,
+								sizeof(initParams->indexfilename),
+								initParams->plugin_path) == 1) {
 		return 1;
 	}
 	
@@ -1703,13 +1720,16 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if (!opj_initialize(initParams->plugin_path))
 		return 1;
 
+	img_fol_plugin = initParams->img_fol;
+	out_fol_plugin = initParams->out_fol;
+
 	// create codec
 	opj_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	if (!opj_plugin_init(initInfo))
 		return 1;
 	
-	bool isBatch =  img_fol_plugin.imgdirpath &&  out_fol_plugin.imgdirpath;
+	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	uint32_t state = opj_plugin_get_debug_state();
 	if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
@@ -1718,7 +1738,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 	if (isBatch) {
-		success = opj_plugin_batch_encode(img_fol_plugin.imgdirpath, out_fol_plugin.imgdirpath, &initParams->parameters, plugin_compress_callback);
+		success = opj_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
 		if (!success) {
 			bool complete = false;
 			uint32_t slice = 100;	//ms
@@ -1742,8 +1762,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		dircnt_t *dirptr = NULL;
 		// loop through all files
 		/* Read directory if necessary */
-		if (img_fol_plugin.set_imgdir == 1) {
-			num_images = get_num_images(img_fol_plugin.imgdirpath);
+		if (initParams->img_fol.set_imgdir == 1) {
+			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 			if (dirptr) {
 				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
@@ -1755,7 +1775,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 				}
 			}
-			if (load_images(dirptr, img_fol_plugin.imgdirpath) == 1) {
+			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
 				return 0;
 			}
 			if (num_images == 0) {
@@ -1768,9 +1788,9 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		}
 		/*Encoding image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
-			if (img_fol_plugin.set_imgdir == 1) {
+			if (initParams->img_fol.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr,
-								&img_fol_plugin,out_fol_plugin.imgdirpath ? &out_fol_plugin : &img_fol_plugin, &initParams->parameters)) {
+								&initParams->img_fol, initParams->out_fol.imgdirpath ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
 					fprintf(stderr, "skipping file...\n");
 					continue;
 				}
