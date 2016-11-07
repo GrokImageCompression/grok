@@ -186,13 +186,6 @@ static void encode_help_display(void)
     fprintf(stdout,"\n");
     fprintf(stdout,"[-h | -help]\n");
     fprintf(stdout,"    Display the help information.\n");
-	fprintf(stdout, "[-g | -PluginPath] <plugin path>\n");
-	fprintf(stdout, "    Path to T1 plugin.\n");
-	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
-	fprintf(stdout, "    Number of threads to use for T1.\n");
-	fprintf(stdout, "[-G | -DeviceId] <device ID>\n");
-	fprintf(stdout, "    (GPU) Specify which GPU accelerator to run codec on.\n");
-	fprintf(stdout, "    A value of -1 will specify all devices.\n");
 	fprintf(stdout, "[-a | -OutDir] <output directory>\n");
 	fprintf(stdout, "    Output directory where compressed files are stored.\n");
     fprintf(stdout,"[-r | -CompressionRatios] <compression ratio>,<compression ratio>,...\n");
@@ -298,6 +291,15 @@ static void encode_help_display(void)
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "[-D | -DisplayRes] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
+	fprintf(stdout, "[-H | -Repetitions]\n");
+	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images.\n");
+	fprintf(stdout, "[-g | -PluginPath] <plugin path>\n");
+	fprintf(stdout, "    Path to T1 plugin.\n");
+	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
+	fprintf(stdout, "    Number of threads to use for T1.\n");
+	fprintf(stdout, "[-G | -DeviceId] <device ID>\n");
+	fprintf(stdout, "    (GPU) Specify which GPU accelerator to run codec on.\n");
+	fprintf(stdout, "    A value of -1 will specify all devices.\n");
     fprintf(stdout,"\n");
 }
 
@@ -477,6 +479,10 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Kernel build options",
 			false, 0, "unsigned integer", cmd);
 
+		ValueArg<uint32_t> repetitionsArg("H", "Repetitions",
+			"Number of encode repetitions, for either a folder or a single file",
+			false, 0, "unsigned integer", cmd);
+
 		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
 										"Digital cinema 2K profile",
 										false,24, "unsigned integer", cmd);
@@ -614,6 +620,10 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		img_fol->set_out_format = 0;
 		raw_cp->rawWidth = 0;
+
+		if (repetitionsArg.isSet()) {
+			parameters->repeats = repetitionsArg.getValue();
+		}
 
 		if (kernelBuildOptionsArg.isSet()) {
 			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
@@ -1777,7 +1787,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 			if (dirptr) {
-				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
+				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	
 				dirptr->filename = (char**)malloc(num_images*sizeof(char*));
 				if (!dirptr->filename_buf) {
 					return 0;

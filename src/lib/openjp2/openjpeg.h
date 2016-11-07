@@ -445,6 +445,7 @@ typedef struct opj_cparameters {
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
+	uint32_t repeats;
 } opj_cparameters_t;
 
 
