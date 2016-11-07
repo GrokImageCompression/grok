@@ -470,6 +470,13 @@ static int parse_cmdline_encoder_ex(int argc,
 		GrokOutput output;
 		cmd.setOutput(&output);
 
+		// Kernel build flags:
+		// 1 indicates build binary, otherwise load binary
+		// 2 indicates generate binaries
+		ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild",
+			"Kernel build options",
+			false, 0, "unsigned integer", cmd);
+
 		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
 										"Digital cinema 2K profile",
 										false,24, "unsigned integer", cmd);
@@ -607,6 +614,10 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		img_fol->set_out_format = 0;
 		raw_cp->rawWidth = 0;
+
+		if (kernelBuildOptionsArg.isSet()) {
+			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
+		}
 
 		if (rateControlAlgoArg.isSet()) {
 			parameters->rateControlAlgorithm = rateControlAlgoArg.getValue();
