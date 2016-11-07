@@ -278,7 +278,7 @@ static void encode_help_display(void)
     fprintf(stdout,"    If custom MCT, \"-m\" option has to be used (see hereunder).\n");
     fprintf(stdout,"    By default, RGB->YCC conversion is used if there are 3 components or more,\n");
     fprintf(stdout,"    no conversion otherwise.\n");
-    fprintf(stdout,"[-m | -MCTInput <file>\n");
+    fprintf(stdout,"[-m | -CustomMCT <file>\n");
     fprintf(stdout,"    Use array-based MCT, values are coma separated, line by line\n");
     fprintf(stdout,"    No specific separators between lines, no space allowed between values.\n");
     fprintf(stdout,"    If this option is used, it automatically sets \"-mct\" option to 2.\n");
@@ -591,7 +591,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		SwitchArg irreversibleArg("I", "Irreversible",
 			"Irreversible", cmd);
 
-		ValueArg<string> mctInputArg("m", "MCTInput",
+		ValueArg<string> customMCTArg("m", "CustomMCT",
 			"MCT input file",
 			false, "", "string", cmd);
 
@@ -1005,8 +1005,8 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->tcp_mct = (uint8_t)mct_mode;
 		}
 
-		if (mctInputArg.isSet()) {
-			char *lFilename = (char*)mctInputArg.getValue().c_str();
+		if (customMCTArg.isSet()) {
+			char *lFilename = (char*)customMCTArg.getValue().c_str();
 			char *lMatrix;
 			char *lCurrentPtr;
 			float *lCurrentDoublePtr;
