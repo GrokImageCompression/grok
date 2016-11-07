@@ -291,7 +291,7 @@ static void encode_help_display(void)
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "[-D | -DisplayRes] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
-	fprintf(stdout, "[-H | -Repetitions]\n");
+	fprintf(stdout, "[-e | -Repetitions]\n");
 	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images.\n");
 	fprintf(stdout, "[-g | -PluginPath] <plugin path>\n");
 	fprintf(stdout, "    Path to T1 plugin.\n");
@@ -479,7 +479,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Kernel build options",
 			false, 0, "unsigned integer", cmd);
 
-		ValueArg<uint32_t> repetitionsArg("H", "Repetitions",
+		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
 			"Number of encode repetitions, for either a folder or a single file",
 			false, 0, "unsigned integer", cmd);
 
