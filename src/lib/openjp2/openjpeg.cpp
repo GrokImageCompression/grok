@@ -726,6 +726,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         parameters->cp_fixed_quality = 0;
 		parameters->numThreads = 8;
 		parameters->deviceId = -1;
+		parameters->repeats = 1;
     }
 }
 
