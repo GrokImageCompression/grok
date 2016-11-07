@@ -211,8 +211,8 @@ static void encode_help_display(void)
     fprintf(stdout,"    Options -r and -q cannot be used together.\n");
 	fprintf(stdout, "[-A | -RateControlAlgorithm] <0|1>\n");
 	fprintf(stdout, "    Select algorithm used for rate control\n");
-	fprintf(stdout, "    0: Bisection search for optimal threshold using only feasible truncation points, on convex hull. (default)\n");
-	fprintf(stdout, "    1: Bisection search for optimal threshold using all code passes in code blocks. (slightly higher PSRN than algorithm 0)\n");
+	fprintf(stdout, "    0: Bisection search for optimal threshold using all code passes in code blocks. (default) (slightly higher PSRN than algorithm 1)\n");
+	fprintf(stdout, "    1: Bisection search for optimal threshold using only feasible truncation points, on convex hull.\n");
     fprintf(stdout,"[-n | -Resolutions] <number of resolutions>\n");
     fprintf(stdout,"    Number of resolutions.\n");
     fprintf(stdout,"    It corresponds to the number of DWT decompositions +1. \n");

@@ -439,7 +439,7 @@ typedef struct opj_cparameters {
 	bool  write_display_resolution;
 	double display_resolution[2];
 
-	uint32_t rateControlAlgorithm; // 0: bisect,  1: hybrid
+	uint32_t rateControlAlgorithm; // 0: bisect with feasible truncation points,  1: bisect with all truncation points
 
 	uint32_t numThreads;
 	int32_t deviceId;

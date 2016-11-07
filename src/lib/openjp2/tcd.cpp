@@ -143,30 +143,25 @@ static bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encod
 
 static bool opj_makelayer_single_lossless(opj_tcd_t *tcd);
 
-static bool opj_tcd_pcrd_bisect(opj_tcd_t *tcd,
-	uint64_t * p_data_written,
-	uint64_t len);
-
-static void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
-	uint32_t layno,
-	double thresh,
-	bool final);
-
 static void opj_tcd_makelayer_final(opj_tcd_t *tcd,
 	uint32_t layno);
 
 
-
-static bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
+static bool opj_tcd_pcrd_bisect_all_passes(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
 	uint64_t len);
 
-static bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
+static void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
+	uint32_t layno,
+	double thresh,
+	bool final);
+
+static bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
 	uint64_t len);
 
 
-static void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
+static void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 	uint32_t layno,
 	uint16_t thresh,
 	bool final);
@@ -215,70 +210,8 @@ bool opj_makelayer_single_lossless(opj_tcd_t *tcd) {
 	return false;
 }
 
-bool opj_tcd_pcrd_opt(opj_tcd_t *tcd,
-						uint64_t * p_data_written,
-						uint64_t len)
-{
-	if (opj_makelayer_single_lossless(tcd)) {
-		return true;
-	}
 
-
-	uint32_t compno, resno, bandno, precno, cblkno;
-
-	opj_cp_t *cp = tcd->cp;
-	opj_tcd_tile_t *tcd_tile = tcd->tile;
-	opj_tcp_t *tcd_tcp = tcd->tcp;
-
-	tcd_tile->numpix = 0;
-	uint32_t state = opj_plugin_get_debug_state();
-
-	RateInfo rateInfo;
-
-	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-		opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
-		tilec->numpix = 0;
-
-		for (resno = 0; resno < tilec->numresolutions; resno++) {
-			opj_tcd_resolution_t *res = &tilec->resolutions[resno];
-
-			for (bandno = 0; bandno < res->numbands; bandno++) {
-				opj_tcd_band_t *band = &res->bands[bandno];
-
-				for (precno = 0; precno < res->pw * res->ph; precno++) {
-					opj_tcd_precinct_t *prc = &band->precincts[precno];
-
-					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
-
-						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
-						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
-							encode_synch_with_plugin(tcd,
-								compno,
-								resno,
-								bandno,
-								precno,
-								cblkno,
-								band,
-								cblk,
-								&numPix);
-						}
-
-						RateControl::convexHull(cblk->passes, cblk->totalpasses);
-						rateInfo.synch(cblk);
-						tcd_tile->numpix += numPix;
-						tilec->numpix += numPix;
-					} /* cbklno */
-				} /* precno */
-			} /* bandno */
-		} /* resno */
-	} /* compno */
-
-	return true;
-}
-
-
-void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
+void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 								uint32_t layno,
 								uint16_t thresh,
 								bool final)
@@ -364,7 +297,7 @@ void opj_tcd_makelayer_opt(opj_tcd_t *tcd,
 /*
 Hybrid rate control using bisect algorithm with optimal truncation points
 */
-bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
+bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
 	uint64_t len)
 {
@@ -458,7 +391,7 @@ bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
 				thresh = (lowerBound + upperBound) >> 1;
 				if (prevthresh != 0 && prevthresh ==thresh)
 					break;
-				opj_tcd_makelayer_opt(tcd, layno, thresh, false);
+				opj_tcd_makelayer_feasible(tcd, layno, thresh, false);
 				prevthresh = thresh;
 				if (cp->m_specific_param.m_enc.m_fixed_quality) {
 					double distoachieved =
@@ -490,7 +423,7 @@ bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
 			goodthresh = upperBound;
 			opj_t2_destroy(t2);
 
-			opj_tcd_makelayer_opt(tcd, layno, goodthresh, true);
+			opj_tcd_makelayer_feasible(tcd, layno, goodthresh, true);
 			cumdisto[layno] =
 				(layno == 0) ?
 				tcd_tile->distolayer[0] :
@@ -509,7 +442,7 @@ bool opj_tcd_pcrd_hybrid(opj_tcd_t *tcd,
 /*
 Simple bisect algorithm to calculate optimal layer truncation points
 */
-bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
+bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len)
 {
@@ -626,7 +559,7 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 					thresh = lowerBound;
 				else
 					thresh = (lowerBound + upperBound) / 2;
-                opj_tcd_makelayer_bisect(tcd, layno, thresh, false);
+                opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
                 if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
                     break;
                 prevthresh = thresh;
@@ -659,7 +592,7 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
             goodthresh = (upperBound == -1)? thresh : upperBound;
             opj_t2_destroy(t2);
 
-			opj_tcd_makelayer_bisect(tcd, layno, goodthresh, true);
+			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
 			cumdisto[layno] =
 				(layno == 0) ?
 				tcd_tile->distolayer[0] :
@@ -674,7 +607,7 @@ bool opj_tcd_pcrd_bisect(  opj_tcd_t *tcd,
 /*
 Form layer for bisect rate control algorithm
 */
-void opj_tcd_makelayer_bisect(opj_tcd_t *tcd,
+void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
 								uint32_t layno,
 								double thresh,
 								bool final)
@@ -2310,22 +2243,22 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
     if (p_cstr_info)  {
         p_cstr_info->index_write = 0;
     }
-
+	
     if (l_cp->m_specific_param.m_enc.m_disto_alloc|| l_cp->m_specific_param.m_enc.m_fixed_quality)  {
         // rate control by rate/distortion or fixed quality 
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!opj_tcd_pcrd_hybrid(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!opj_tcd_pcrd_bisect_all_passes(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
 		case 1:
-			if (!opj_tcd_pcrd_bisect(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!opj_tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
 		default:
-			if (!opj_tcd_pcrd_hybrid(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!opj_tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
