@@ -302,9 +302,8 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 	uint64_t len)
 {
 
-	if (opj_makelayer_single_lossless(tcd)) {
-		return true;
-	}
+	bool single_lossless = tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
+
 
 	uint32_t compno, resno, bandno, precno, cblkno, layno;
 	double cumdisto[100];
@@ -349,20 +348,28 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 								&numPix);
 						}
 
-						RateControl::convexHull(cblk->passes, cblk->totalpasses);
-						rateInfo.synch(cblk);
+						if (!single_lossless) {
+							RateControl::convexHull(cblk->passes, cblk->totalpasses);
+							rateInfo.synch(cblk);
 
-						tcd_tile->numpix += numPix;
-						tilec->numpix += numPix;
+							tcd_tile->numpix += numPix;
+							tilec->numpix += numPix;
+						}
 					} /* cbklno */
 				} /* precno */
 			} /* bandno */
 		} /* resno */
 
-		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-			* tilec->numpix;
+		if (!single_lossless) {
+			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+				* tilec->numpix;
+		}
 	} /* compno */
+
+	if (opj_makelayer_single_lossless(tcd)) {
+		return true;
+	}
 
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
@@ -446,9 +453,7 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len)
 {
-	if (opj_makelayer_single_lossless(tcd)) {
-		return true;
-	}
+	bool single_lossless = tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
 
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
@@ -495,43 +500,52 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 								&numPix);
 						}
 
-                        for (passno = 0; passno < cblk->totalpasses; passno++) {
-                            opj_tcd_pass_t *pass = &cblk->passes[passno];
-                            int32_t dr;
-                            double dd, rdslope;
+						if (!single_lossless) {
+							for (passno = 0; passno < cblk->totalpasses; passno++) {
+								opj_tcd_pass_t *pass = &cblk->passes[passno];
+								int32_t dr;
+								double dd, rdslope;
 
-                            if (passno == 0) {
-                                dr = (int32_t)pass->rate;
-                                dd = pass->distortiondec;
-                            } else {
-                                dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
-                                dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
-                            }
+								if (passno == 0) {
+									dr = (int32_t)pass->rate;
+									dd = pass->distortiondec;
+								}
+								else {
+									dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
+									dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
+								}
 
-                            if (dr == 0) {
-                                continue;
-                            }
+								if (dr == 0) {
+									continue;
+								}
 
-                            rdslope = dd / dr;
-                            if (rdslope < min_slope) {
-                                min_slope = rdslope;
-                            }
+								rdslope = dd / dr;
+								if (rdslope < min_slope) {
+									min_slope = rdslope;
+								}
 
-                            if (rdslope > max_slope) {
-                                max_slope = rdslope;
-                            }
-                        } /* passno */
-						tcd_tile->numpix += numPix;
-						tilec->numpix += numPix;
+								if (rdslope > max_slope) {
+									max_slope = rdslope;
+								}
+							} /* passno */
+							tcd_tile->numpix += numPix;
+							tilec->numpix += numPix;
+						}
                     } /* cbklno */
                 } /* precno */
             } /* bandno */
         } /* resno */
 
-        maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-							* (((uint64_t)1 << tcd->image->comps[compno].prec) -1.0)
-							 * tilec->numpix;
+		if (!single_lossless) {
+			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+				* tilec->numpix;
+		}
     } /* compno */
+
+	if (opj_makelayer_single_lossless(tcd)) {
+		return true;
+	}
 
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lowerBound = min_slope;
