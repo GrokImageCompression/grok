@@ -70,14 +70,15 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 }
 
 void encode_synch_with_plugin(opj_tcd_t *tcd,
-	uint32_t compno,
-	uint32_t resno,
-	uint32_t bandno,
-	uint32_t precno,
-	uint32_t cblkno,
-	opj_tcd_band_t *band,
-	opj_tcd_cblk_enc_t *cblk,
-	uint32_t* numPix) {
+							uint32_t compno,
+							uint32_t resno,
+							uint32_t bandno,
+							uint32_t precno,
+							uint32_t cblkno,
+							opj_tcd_band_t *band,
+							opj_tcd_cblk_enc_t *cblk,
+							uint32_t* numPix) {
+
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		opj_plugin_band_t* plugin_band = tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
 		opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
@@ -104,24 +105,27 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 			uint32_t totalRate = 0;
 			if (cblk->totalpasses > 0) {
 				totalRate = (cblk->passes + cblk->totalpasses - 1)->rate;
-			}
-			if (cblk->data && plugin_cblk->compressedData) {
-				for (uint32_t p = 0; p < totalRate; ++p) {
-					if (cblk->data[p] != plugin_cblk->compressedData[p]) {
-						printf("Warning: data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
-							p,
-							compno,
-							resno,
-							bandno,
-							cblkno,
-							totalRate,
-							totalRatePlugin);
-
-						goodData = false;
-						break;
-					}
+				if (totalRatePlugin != totalRate) {
+					printf("Warning: opj rate %d differs from plugin rate %d\n", totalRate, totalRatePlugin);
 				}
 			}
+
+			for (uint32_t p = 0; p < totalRate; ++p) {
+				if (cblk->data[p] != plugin_cblk->compressedData[p]) {
+					printf("Warning: data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
+						p,
+						compno,
+						resno,
+						bandno,
+						cblkno,
+						totalRate,
+						totalRatePlugin);
+
+					goodData = false;
+					break;
+				}
+			}
+
 		}
 		if (goodData)
 			cblk->data = plugin_cblk->compressedData;
