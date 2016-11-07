@@ -1761,7 +1761,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if (isBatch) {
 		success = opj_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
 		if (!success) {
-			bool complete = false;
 			uint32_t slice = 100;	//ms
 			uint32_t slicesPerSecond = 1000 / slice;
 			uint32_t seconds = initParams->parameters.duration;
@@ -1770,12 +1769,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
 				if (opj_plugin_is_batch_encode_complete()) {
-					complete = true;
 					break;
 				}
 			}
-			if (!complete)
-				opj_plugin_stop_batch_encode();
+			opj_plugin_stop_batch_encode();
 			getchar();
 		}
 	}
