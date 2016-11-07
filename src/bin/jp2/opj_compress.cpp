@@ -291,8 +291,8 @@ static void encode_help_display(void)
 	fprintf(stdout, "    the image resolution will be used.\n");
 	fprintf(stdout, "[-D | -DisplayRes] <display resolution X,display resolution Y>\n");
 	fprintf(stdout, "    Display resolution in pixels/metre, in double precision.\n");
-	fprintf(stdout, "[-e | -Repetitions]\n");
-	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images.\n");
+	fprintf(stdout, "[-e | -Repetitions] <number of repetitions>\n");
+	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images. Default is 1. 0 signifies unlimited repetitions. \n");
 	fprintf(stdout, "[-g | -PluginPath] <plugin path>\n");
 	fprintf(stdout, "    Path to T1 plugin.\n");
 	fprintf(stdout, "[-H | -NumThreads] <number of threads>\n");
