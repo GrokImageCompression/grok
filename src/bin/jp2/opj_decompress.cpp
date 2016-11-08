@@ -122,7 +122,7 @@ typedef struct img_folder {
 int get_num_images(char *imgdirpath);
 int load_images(dircnt_t *dirptr, char *imgdirpath);
 int get_file_format(const char *filename);
-char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decompress_parameters *parameters);
+char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
 static int infile_format(const char *fname);
 
 int parse_cmdline_decoder(int argc, 
@@ -391,7 +391,7 @@ static const char* get_path_separator() {
 
 
 /* -------------------------------------------------------------------------- */
-char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decompress_parameters *parameters) {
+char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters) {
 	char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN], outfilename[OPJ_PATH_LEN], temp_ofname[OPJ_PATH_LEN];
 	char *temp_p, temp1[OPJ_PATH_LEN] = "";
 
@@ -412,7 +412,7 @@ char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, opj_decomp
 		sprintf(temp1, ".%s", temp_p);
 	}
 	if (img_fol->set_out_format == 1) {
-		sprintf(outfilename, "%s/%s.%s", img_fol->imgdirpath, temp_ofname, img_fol->out_format);
+		sprintf(outfilename, "%s/%s.%s", out_fol->imgdirpath, temp_ofname, img_fol->out_format);
 		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
 			return 1;
 		}
@@ -1520,7 +1520,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "\n");
 
         if (img_fol.set_imgdir == 1) {
-			if (get_next_file(imageno, dirptr, &img_fol, &parameters)) {
+			if (get_next_file(imageno, dirptr, &img_fol, &out_fol, &parameters)) {
 				fprintf(stderr, "skipping file...\n");
 				continue;
 			}
