@@ -548,62 +548,70 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 		/* Threshold for Marcela Index */
 		// start by including everything in this layer
         double goodthresh = 0;
-		// thresh from previous iteration - starts off uninitialized
-		// used to bail out if difference with current thresh is small enough
-        double prevthresh = -1;
 
-        double distotarget = 
-			tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
+		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
+
+			// thresh from previous iteration - starts off uninitialized
+			// used to bail out if difference with current thresh is small enough
+			double prevthresh = -1;
+
+			double distotarget =
+				tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
 
-        opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
-        if (t2 == 00) {
-            return false;
-        }
-		double thresh;
-        for  (uint32_t i = 0; i < 128; ++i) {
-			if (upperBound == -1)
-				thresh = lowerBound;
-			else
-				thresh = (lowerBound + upperBound) / 2;
-            opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
-            if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
-                break;
-            prevthresh = thresh;
-            if (cp->m_specific_param.m_enc.m_fixed_quality) { 
-                double distoachieved = 
-							layno == 0 ? 
-								tcd_tile->distolayer[0] :
-								cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+			opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
+			if (t2 == 00) {
+				return false;
+			}
+			double thresh;
+			for (uint32_t i = 0; i < 128; ++i) {
+				if (upperBound == -1)
+					thresh = lowerBound;
+				else
+					thresh = (lowerBound + upperBound) / 2;
+				opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
+				if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
+					break;
+				prevthresh = thresh;
+				if (cp->m_specific_param.m_enc.m_fixed_quality) {
+					double distoachieved =
+						layno == 0 ?
+						tcd_tile->distolayer[0] :
+						cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
-                if (distoachieved < distotarget) {
-                    upperBound=thresh;
-                    continue;
-                } 
-				lowerBound=thresh;
-            } else {
-				if (!opj_t2_encode_packets_simulate(t2,
-													tcd->tcd_tileno,
-													tcd_tile,
-													layno + 1,
-													p_data_written,
-													maxlen,
-													tcd->tp_pos)) {
+					if (distoachieved < distotarget) {
+						upperBound = thresh;
+						continue;
+					}
+					lowerBound = thresh;
+				}
+				else {
+					if (!opj_t2_encode_packets_simulate(t2,
+						tcd->tcd_tileno,
+						tcd_tile,
+						layno + 1,
+						p_data_written,
+						maxlen,
+						tcd->tp_pos)) {
 						lowerBound = thresh;
 						continue;
+					}
+					upperBound = thresh;
 				}
-                upperBound = thresh;
-            }
-        }
-		// choose conservative value for goodthresh
-        goodthresh = (upperBound == -1)? thresh : upperBound;
-        opj_t2_destroy(t2);
+			}
+			// choose conservative value for goodthresh
+			goodthresh = (upperBound == -1) ? thresh : upperBound;
+			opj_t2_destroy(t2);
 
-		opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
-		cumdisto[layno] =
-			(layno == 0) ?
-			tcd_tile->distolayer[0] :
-			(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
+			cumdisto[layno] =
+				(layno == 0) ?
+				tcd_tile->distolayer[0] :
+				(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+		}
+		else {
+			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
+		}
     }
     return true;
 }
@@ -747,8 +755,6 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 
 						for (passno = cblk->num_passes_included_in_other_layers;
 							passno < cblk->totalpasses; passno++) {
-							uint32_t dr;
-							double dd;
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
 							num_included_passes_in_block = passno + 1;
 						}
