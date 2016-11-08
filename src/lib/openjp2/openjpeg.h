@@ -1739,13 +1739,30 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info);
 
 OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
-
+// No debug is done on plugin. Production setting.
 #define OPJ_PLUGIN_STATE_NO_DEBUG			0x0
+
+//For encode debugging, the plugin first performs a T1 encode.
+// Then:
+// 1. perform host DWT on plugin MCT data, and write to host image
+// This way, both plugin and host start from same point (assume MCT is equivalent for both host and plugin)
+//2. map plugin DWT data, compare with host DWT, and then write to plugin image
+// At this point in the code, the plugin image holds plugin DWT data. And if no warnings are triggered,
+// then we can safely say that host and plugin DWT data are identical.
+//3. Perform host encode, skipping MCT and DWT (they have already been performed)
+//4. during host encode, each context that is formed is compared against context stream from plugin
+//5. rate control - synch with plugin code stream, and compare
+//6. T2 and store to disk
 #define OPJ_PLUGIN_STATE_DEBUG_ENCODE		0x1
+
 #define OPJ_PLUGIN_STATE_PRE_TR1			0x2
+
 #define OPJ_PLUGIN_STATE_DWT_QUANTIZATION	0x4
+
 #define OPJ_PLUGIN_STATE_MCT_ONLY			0x8
+
 #define OPJ_PLUGIN_STATE_CPU_ONLY			0x10
+
 
 OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
 
