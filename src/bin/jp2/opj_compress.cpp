@@ -175,7 +175,7 @@ static void encode_help_display(void)
     fprintf(stdout,"[-O | -OutFor] <J2K|J2C|JP2>\n");
     fprintf(stdout,"    Output format for compressed files.\n");
     fprintf(stdout,"    Required only if -ImgDir is used\n");
-    fprintf(stdout,"[-F | -RawFormat] <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
+    fprintf(stdout,"[-F | -Raw] <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
     fprintf(stdout,"    Characteristics of the raw input image\n");
     fprintf(stdout,"    If subsampling is omitted, 1x1 is assumed for all components\n");
     fprintf(stdout,"      Example: -F 512,512,3,8,u@1x1:2x2:2x2\n");
@@ -216,7 +216,7 @@ static void encode_help_display(void)
     fprintf(stdout,"    or greater than 1024, no code-block with more than 4096 coefficients).\n");
     fprintf(stdout,"    The maximum value permitted is 64x64. \n");
     fprintf(stdout,"    Default: 64x64.\n");
-    fprintf(stdout,"[-c | -PrecinctDim] [<prec width>,<prec height>],[<prec width>,<prec height>],...\n");
+    fprintf(stdout,"[-c | -PrecinctDims] [<prec width>,<prec height>],[<prec width>,<prec height>],...\n");
     fprintf(stdout,"    Precinct size. Values specified must be power of 2. \n");
     fprintf(stdout,"    Multiple records may be supplied, in which case the first record refers\n");
     fprintf(stdout,"    to the highest resolution level and subsequent records to lower \n");
@@ -229,7 +229,7 @@ static void encode_help_display(void)
     fprintf(stdout,"[-p | -ProgressionOrder] <LRCP|RLCP|RPCL|PCRL|CPRL>\n");
     fprintf(stdout,"    Progression order.\n");
     fprintf(stdout,"    Default: LRCP.\n");
-    fprintf(stdout,"[-s | -SubsamplingFactor]  <subX,subY>\n");
+    fprintf(stdout,"[-s | -Subsampling]  <subX,subY>\n");
     fprintf(stdout,"    Subsampling factor.\n");
     fprintf(stdout,"    Subsampling bigger than 2 can produce error\n");
     fprintf(stdout,"    Default: no subsampling.\n");
@@ -560,7 +560,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Layer rates expressed as quality",
 			false, "", "string", cmd);
 
-		ValueArg<string> rawFormatArg("F", "RawFormat",
+		ValueArg<string> rawFormatArg("F", "Raw",
 									"Raw image format parameters",
 									false, "", "string", cmd);
 
@@ -573,7 +573,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			false, 0, "unsigned integer", cmd);
 
 		ValueArg<string> precinctDimArg("c", "PrecinctDim",
-			"Precinct dimension",
+			"Precinct dimensions",
 			false, "", "string", cmd);
 
 		ValueArg<string> codeBlockDimArg("b", "CodeBlockDim",
