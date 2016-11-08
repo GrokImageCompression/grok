@@ -453,8 +453,6 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len)
 {
-	bool single_lossless = tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
-
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
     double cumdisto[100];     
@@ -500,52 +498,47 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 								&numPix);
 						}
 
-						if (!single_lossless) {
-							for (passno = 0; passno < cblk->totalpasses; passno++) {
-								opj_tcd_pass_t *pass = &cblk->passes[passno];
-								int32_t dr;
-								double dd, rdslope;
+						for (passno = 0; passno < cblk->totalpasses; passno++) {
+							opj_tcd_pass_t *pass = &cblk->passes[passno];
+							int32_t dr;
+							double dd, rdslope;
 
-								if (passno == 0) {
-									dr = (int32_t)pass->rate;
-									dd = pass->distortiondec;
-								}
-								else {
-									dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
-									dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
-								}
+							if (passno == 0) {
+								dr = (int32_t)pass->rate;
+								dd = pass->distortiondec;
+							}
+							else {
+								dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
+								dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
+							}
 
-								if (dr == 0) {
-									continue;
-								}
+							if (dr == 0) {
+								continue;
+							}
 
-								rdslope = dd / dr;
-								if (rdslope < min_slope) {
-									min_slope = rdslope;
-								}
+							rdslope = dd / dr;
+							if (rdslope < min_slope) {
+								min_slope = rdslope;
+							}
 
-								if (rdslope > max_slope) {
-									max_slope = rdslope;
-								}
-							} /* passno */
-							tcd_tile->numpix += numPix;
-							tilec->numpix += numPix;
-						}
+							if (rdslope > max_slope) {
+								max_slope = rdslope;
+							}
+						} /* passno */
+						tcd_tile->numpix += numPix;
+						tilec->numpix += numPix;
+	
                     } /* cbklno */
                 } /* precno */
             } /* bandno */
         } /* resno */
 
-		if (!single_lossless) {
-			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-				* tilec->numpix;
-		}
+		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+			* tilec->numpix;
+
     } /* compno */
 
-	if (opj_makelayer_single_lossless(tcd)) {
-		return true;
-	}
 
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lowerBound = min_slope;
@@ -562,58 +555,55 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
         double distotarget = 
 			tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
-		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
-            opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
-            if (t2 == 00) {
-                return false;
-            }
-			double thresh;
-            for  (uint32_t i = 0; i < 128; ++i) {
-				if (upperBound == -1)
-					thresh = lowerBound;
-				else
-					thresh = (lowerBound + upperBound) / 2;
-                opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
-                if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
-                    break;
-                prevthresh = thresh;
-                if (cp->m_specific_param.m_enc.m_fixed_quality) { 
-                    double distoachieved = 
-								layno == 0 ? 
-								  tcd_tile->distolayer[0] :
-									cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
-                    if (distoachieved < distotarget) {
-                        upperBound=thresh;
-                        continue;
-                    } 
-					lowerBound=thresh;
-                } else {
-					if (!opj_t2_encode_packets_simulate(t2,
-														tcd->tcd_tileno,
-														tcd_tile,
-														layno + 1,
-														p_data_written,
-														maxlen,
-														tcd->tp_pos)) {
-							lowerBound = thresh;
-							continue;
-					}
-                    upperBound = thresh;
-                }
-            }
-			// choose conservative value for goodthresh
-            goodthresh = (upperBound == -1)? thresh : upperBound;
-            opj_t2_destroy(t2);
-
-			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
-			cumdisto[layno] =
-				(layno == 0) ?
-				tcd_tile->distolayer[0] :
-				(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
-        } else {
-			opj_tcd_makelayer_final(tcd, layno);
+        opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
+        if (t2 == 00) {
+            return false;
         }
+		double thresh;
+        for  (uint32_t i = 0; i < 128; ++i) {
+			if (upperBound == -1)
+				thresh = lowerBound;
+			else
+				thresh = (lowerBound + upperBound) / 2;
+            opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
+            if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
+                break;
+            prevthresh = thresh;
+            if (cp->m_specific_param.m_enc.m_fixed_quality) { 
+                double distoachieved = 
+							layno == 0 ? 
+								tcd_tile->distolayer[0] :
+								cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+
+                if (distoachieved < distotarget) {
+                    upperBound=thresh;
+                    continue;
+                } 
+				lowerBound=thresh;
+            } else {
+				if (!opj_t2_encode_packets_simulate(t2,
+													tcd->tcd_tileno,
+													tcd_tile,
+													layno + 1,
+													p_data_written,
+													maxlen,
+													tcd->tp_pos)) {
+						lowerBound = thresh;
+						continue;
+				}
+                upperBound = thresh;
+            }
+        }
+		// choose conservative value for goodthresh
+        goodthresh = (upperBound == -1)? thresh : upperBound;
+        opj_t2_destroy(t2);
+
+		opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
+		cumdisto[layno] =
+			(layno == 0) ?
+			tcd_tile->distolayer[0] :
+			(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
     }
     return true;
 }
@@ -760,23 +750,6 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 							uint32_t dr;
 							double dd;
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
-
-							if (num_included_passes_in_block == 0) {
-								dr = pass->rate;
-								dd = pass->distortiondec;
-							}
-							else {
-								dr =
-									pass->rate - cblk->passes[num_included_passes_in_block - 1].rate;
-								dd =
-									pass->distortiondec - cblk->passes[num_included_passes_in_block - 1].distortiondec;
-							}
-
-							if (!dr) {
-								if (dd != 0)
-									num_included_passes_in_block = passno + 1;
-								continue;
-							}
 							num_included_passes_in_block = passno + 1;
 						}
 

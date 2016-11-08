@@ -1520,7 +1520,7 @@ int main(int argc, char **argv)
         fprintf(stderr, "\n");
 
         if (img_fol.set_imgdir == 1) {
-			if (get_next_file(imageno, dirptr, &img_fol, &out_fol, &parameters)) {
+			if (get_next_file(imageno, dirptr, &img_fol, out_fol.set_imgdir ? &out_fol : &img_fol, &parameters)) {
 				fprintf(stderr, "skipping file...\n");
 				continue;
 			}
