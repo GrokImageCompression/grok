@@ -2,7 +2,6 @@ include_regular_expression("^.*$")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-find_package(Threads REQUIRED)
 
 
 include_directories(
@@ -25,10 +24,11 @@ if(WIN32)
 endif()
 add_library(${OPENJPEG_PLUGIN_NAME} ${OPENJPEG_PLUGIN_SRCS})
 if(UNIX)
-  target_link_libraries(${OPENJPEG_PLUGIN_NAME}  ${CMAKE_THREAD_LIBS_INIT} m)
+  target_link_libraries(${OPENJPEG_PLUGIN_NAME}  m)
 endif()
 
 set_target_properties(${OPENJPEG_PLUGIN_NAME} PROPERTIES ${OPENJPEG_LIBRARY_PROPERTIES})
+target_link_libraries(${OPENJPEG_PLUGIN_NAME} ${CMAKE_DL_LIBS} )
 
 if(OPJ_USE_DSYMUTIL)
     add_custom_command(TARGET ${OPENJPEG_PLUGIN_NAME} POST_BUILD 
