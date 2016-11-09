@@ -1488,11 +1488,13 @@ int main(int argc, char **argv) {
 		opjInfo.input_file_name = initParams.parameters.infile;
 
 		if (!plugin_compress_callback(&opjInfo)) {
+			opj_image_destroy(image);
 			return 1;
 		}
 
 		num_compressed_files++;
 		fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
+		opj_image_destroy(image);
     }
 
 
@@ -1512,7 +1514,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	opj_stream_t *l_stream = 00;
 	opj_codec_t* l_codec = 00;
 	opj_image_t *image = info->image;
-	info->image = NULL;
 	char  outfile[OPJ_PATH_LEN];
 	char  temp_ofname[OPJ_PATH_LEN];
 	char temp1[OPJ_PATH_LEN] = "";
@@ -1633,7 +1634,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	opj_stream_destroy(l_stream);
 	opj_destroy_codec(l_codec);
-	opj_image_destroy(image);
 
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image\n");
