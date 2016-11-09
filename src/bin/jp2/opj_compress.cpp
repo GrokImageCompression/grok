@@ -1592,11 +1592,7 @@ int main(int argc, char **argv) {
 
     }
 
-    /* free user parameters structure */
-    if(initParams.parameters.cp_comment)
-		free(initParams.parameters.cp_comment);
-    if(initParams.raw_cp.rawComps) free(initParams.raw_cp.rawComps);
-	
+
     t = opj_clock() - t;
     if (num_compressed_files) {
 		    fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0)/(double)num_compressed_files));
@@ -1760,7 +1756,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	uint32_t num_images, imageno;
 	if (isBatch) {
 		success = opj_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
-		if (!success) {
+		// if plugin successfully begins batch encode, then wait for batch to complete
+		if (success==0) {
 			uint32_t slice = 100;	//ms
 			uint32_t slicesPerSecond = 1000 / slice;
 			uint32_t seconds = initParams->parameters.duration;
@@ -1773,6 +1770,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				}
 			}
 			opj_plugin_stop_batch_encode();
+
+			//todo: remove for prod
 			getchar();
 		}
 	}
@@ -1814,15 +1813,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				}
 			}
 			success = opj_plugin_encode(&initParams->parameters, plugin_compress_callback);
+			if (success != 0)
+				break;
 		}
 	}
-
-
-	// cleanup
-	if (initParams->parameters.cp_comment)
-		free(initParams->parameters.cp_comment);
-	if (initParams->raw_cp.rawComps)
-		free(initParams->raw_cp.rawComps);
 
 	opj_cleanup();
 	return success;
