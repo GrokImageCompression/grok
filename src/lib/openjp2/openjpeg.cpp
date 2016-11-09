@@ -1078,17 +1078,24 @@ static const char* get_path_separator() {
 bool pluginLoaded = false;
 bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 {
-	int32_t rc = minpf_load_from_path(info.plugin_path, NULL);
-	if (rc) {
-		std::string localPlugin = (std::string(".") + get_path_separator());
+	// form plugin name
+	std::string pluginName = "";
 #if !defined(_WIN32)
-		localPlugin += "lib";
+	pluginName += "lib";
 #endif
-		localPlugin += std::string(OPENJPEG_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
+	pluginName += std::string(OPENJPEG_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
+
+	// form absolute plugin path
+	auto pluginPath = std::string(info.plugin_path) + get_path_separator() + pluginName;
+	int32_t rc = minpf_load_from_path(pluginPath.c_str(), NULL);
+
+	// if fails, try local path
+	if (rc) {
+		std::string localPlugin = std::string(".") + get_path_separator() + pluginName;
 		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
 
 	}
-    pluginLoaded = (!rc);
+	pluginLoaded = !rc;
 	return pluginLoaded;
 }
 
