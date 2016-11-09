@@ -1389,104 +1389,6 @@ int main(int argc, char **argv) {
             }
         }
 
-		// check that format is supported
-        switch(initParams.parameters.decod_format) {
-        case PGX_DFMT:
-        case PXM_DFMT:
-        case BMP_DFMT:
-        case TIF_DFMT:
-        case RAW_DFMT:
-        case RAWL_DFMT:
-        case TGA_DFMT:
-        case PNG_DFMT:
-            break;
-        default:
-            fprintf(stderr,"skipping file...\n");
-            continue;
-        }
-
-        /* decode the source image */
-        /* ----------------------- */
-
-        switch (initParams.parameters.decod_format) {
-        case PGX_DFMT:
-            image = pgxtoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load pgx file\n");
-                return 1;
-            }
-            break;
-
-        case PXM_DFMT:
-            image = pnmtoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load pnm file\n");
-                return 1;
-            }
-            break;
-
-        case BMP_DFMT:
-            image = bmptoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load bmp file\n");
-                return 1;
-            }
-            break;
-
-#ifdef OPJ_HAVE_LIBTIFF
-        case TIF_DFMT:
-            image = tiftoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load tiff file\n");
-                return 1;
-            }
-            break;
-#endif /* OPJ_HAVE_LIBTIFF */
-
-        case RAW_DFMT:
-            image = rawtoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load raw file\n");
-                return 1;
-            }
-            break;
-
-        case RAWL_DFMT:
-            image = rawltoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load raw file\n");
-                return 1;
-            }
-            break;
-
-        case TGA_DFMT:
-            image = tgatoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load tga file\n");
-                return 1;
-            }
-            break;
-
-#ifdef OPJ_HAVE_LIBPNG
-        case PNG_DFMT:
-            image = pngtoimage(initParams.parameters.infile, &initParams.parameters);
-            if (!image) {
-                fprintf(stderr, "Unable to load png file\n");
-                return 1;
-            }
-            break;
-#endif /* OPJ_HAVE_LIBPNG */
-        }
-
-        /* Can happen if input file is TIFF or PNG
- * and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
-*/
-        if( !image) {
-            fprintf(stderr, "Unable to load file: no image generated.\n");
-            return 1;
-        }
-
-
 		opj_plugin_encode_user_callback_info_t opjInfo;
 		memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
 		opjInfo.encoder_parameters = &initParams.parameters;
@@ -1544,6 +1446,108 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		}
 	}
 
+	bool createdImage = false;
+	if (!image) {
+
+		// check that format is supported
+		switch (info->encoder_parameters->decod_format) {
+		case PGX_DFMT:
+		case PXM_DFMT:
+		case BMP_DFMT:
+		case TIF_DFMT:
+		case RAW_DFMT:
+		case RAWL_DFMT:
+		case TGA_DFMT:
+		case PNG_DFMT:
+			break;
+		default:
+			fprintf(stderr, "skipping file...\n");
+			return false;
+		}
+
+		/* decode the source image */
+		/* ----------------------- */
+
+		switch (info->encoder_parameters->decod_format) {
+		case PGX_DFMT:
+			image = pgxtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load pgx file\n");
+				return false;
+			}
+			break;
+
+		case PXM_DFMT:
+			image = pnmtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load pnm file\n");
+				return false;
+			}
+			break;
+
+		case BMP_DFMT:
+			image = bmptoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load bmp file\n");
+				return false;
+			}
+			break;
+
+#ifdef OPJ_HAVE_LIBTIFF
+		case TIF_DFMT:
+			image = tiftoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load tiff file\n");
+				return false;
+			}
+			break;
+#endif /* OPJ_HAVE_LIBTIFF */
+
+		case RAW_DFMT:
+			image = rawtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load raw file\n");
+				return false;
+			}
+			break;
+
+		case RAWL_DFMT:
+			image = rawltoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load raw file\n");
+				return false;
+			}
+			break;
+
+		case TGA_DFMT:
+			image = tgatoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load tga file\n");
+				return false;
+			}
+			break;
+
+#ifdef OPJ_HAVE_LIBPNG
+		case PNG_DFMT:
+			image = pngtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load png file\n");
+				return false;
+			}
+			break;
+#endif /* OPJ_HAVE_LIBPNG */
+		}
+
+		/* Can happen if input file is TIFF or PNG
+		* and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
+		*/
+		if (!image) {
+			fprintf(stderr, "Unable to load file: no image generated.\n");
+			return false;
+		}
+		createdImage = true;
+	}
+
 
 	/* Decide if MCT should be used */
 	if (parameters->tcp_mct == 255) { /* mct mode has not been set in commandline */
@@ -1561,6 +1565,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			return false;
 		}
 	}
+
 
 	/* encode the destination image */
 	/* ---------------------------- */
@@ -1580,7 +1585,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 	default:
 		fprintf(stderr, "skipping file..\n");
-		opj_stream_destroy(l_stream);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
 
@@ -1591,7 +1597,10 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
 		fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
-		opj_destroy_codec(l_codec);
+		if (l_codec)
+			opj_destroy_codec(l_codec);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
 
@@ -1599,6 +1608,10 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	l_stream = opj_stream_create_default_file_stream(outfile, false);
 	if (!l_stream) {
 		fprintf(stderr, "failed to create stream\n");
+		if (l_codec)
+			opj_destroy_codec(l_codec);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
 
@@ -1606,6 +1619,12 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bSuccess = opj_start_compress(l_codec, image, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_start_compress\n");
+		if (l_stream)
+			opj_stream_destroy(l_stream);
+		if (l_codec)
+			opj_destroy_codec(l_codec);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
 	if (bSuccess && bUseTiles) {
@@ -1616,9 +1635,12 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
 			if (!opj_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
 				fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n", i);
-				opj_stream_destroy(l_stream);
-				opj_destroy_codec(l_codec);
-				opj_image_destroy(image);
+				if (l_stream)
+					opj_stream_destroy(l_stream);
+				if (l_codec)
+					opj_destroy_codec(l_codec);
+				if (createdImage)
+					opj_image_destroy(image);
 				return false;
 			}
 		}
@@ -1628,6 +1650,12 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		bSuccess = bSuccess && opj_encode_with_plugin(l_codec, info->tile, l_stream);
 		if (!bSuccess) {
 			fprintf(stderr, "failed to encode image: opj_encode\n");
+			if (l_stream)
+				opj_stream_destroy(l_stream);
+			if (l_codec)
+				opj_destroy_codec(l_codec);
+			if (createdImage)
+				opj_image_destroy(image);
 			return false;
 		}
 	}
@@ -1636,6 +1664,12 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_end_compress\n");
+		if (l_stream)
+			opj_stream_destroy(l_stream);
+		if (l_codec)
+			opj_destroy_codec(l_codec);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
 
@@ -1645,8 +1679,13 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image\n");
 		remove(parameters->outfile);
+		if (createdImage)
+			opj_image_destroy(image);
 		return false;
 	}
+
+	if (createdImage)
+		opj_image_destroy(image);
 	return true;
 }
 
