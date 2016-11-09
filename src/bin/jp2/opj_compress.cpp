@@ -124,6 +124,8 @@ typedef struct img_folder {
     char set_out_format;
 } img_fol_t;
 
+static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info);
+
 static void encode_help_display(void)
 {
     fprintf(stdout,"\nThis is the opj_compress utility from the Grok project.\n"
@@ -1322,16 +1324,21 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
 	CompressInitParams initParams;
+
+	// try to encode with plugin
 	int rc =  plugin_main(argc, argv, &initParams);
+
+	// return immediately if either 
+	// initParams was not initialized (something was wrong with command line params)
+	// or
+	// plugin was successful
 	if (!initParams.initialized || !rc)
 		return 0;
 
-	opj_plugin_cleanup();
 	size_t num_compressed_files = 0;
 	uint32_t l_nb_tiles = 4;
 	uint32_t i, num_images, imageno;
 
-	bool bSuccess;
 	bool bUseTiles = false; /* true */
 	double t = opj_clock();
 
@@ -1341,7 +1348,7 @@ int main(int argc, char **argv) {
         num_images=get_num_images(initParams.img_fol.imgdirpath);
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr){
-            dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
+            dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));
             dirptr->filename = (char**) malloc(num_images*sizeof(char*));
             if(!dirptr->filename_buf){
                 return 0;
@@ -1479,117 +1486,19 @@ int main(int argc, char **argv) {
             return 1;
         }
 
-		/* Decide if MCT should be used */
-        if (initParams.parameters.tcp_mct == 255) { /* mct mode has not been set in commandline */
-			initParams.parameters.tcp_mct = (image->numcomps >= 3) ? 1 : 0;
-        } else {            /* mct mode has been set in commandline */
-            if ((initParams.parameters.tcp_mct == 1) && (image->numcomps < 3)){
-                fprintf(stderr, "RGB->YCC conversion cannot be used:\n");
-                fprintf(stderr, "Input image has less than 3 components\n");
-                return 1;
-            }
-            if ((initParams.parameters.tcp_mct == 2) && (!initParams.parameters.mct_data)){
-                fprintf(stderr, "Custom MCT has been set but no array-based MCT\n");
-                fprintf(stderr, "has been provided. Aborting.\n");
-                return 1;
-            }
-        }
 
-        /* encode the destination image */
-        /* ---------------------------- */
+		opj_plugin_encode_user_callback_info_t opjInfo;
+		memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
+		opjInfo.encoder_parameters = &initParams.parameters;
+		opjInfo.image = image;
+		opjInfo.output_file_name = initParams.parameters.outfile;
+		opjInfo.input_file_name = initParams.parameters.infile;
 
-        switch(initParams.parameters.cod_format) {
-        case J2K_CFMT:	/* JPEG-2000 codestream */
-        {
-            /* Get a decoder handle */
-            l_codec = opj_create_compress(OPJ_CODEC_J2K);
-            break;
-        }
-        case JP2_CFMT:	/* JPEG 2000 compressed image data */
-        {
-            /* Get a decoder handle */
-            l_codec = opj_create_compress(OPJ_CODEC_JP2);
-            break;
-        }
-        default:
-            fprintf(stderr, "skipping file..\n");
-            opj_stream_destroy(l_stream);
-            continue;
-        }
-
-        /* catch events using our callbacks and give a local context */
-        opj_set_info_handler(l_codec, info_callback,00);
-        opj_set_warning_handler(l_codec, warning_callback,00);
-        opj_set_error_handler(l_codec, error_callback,00);
-
-        if( bUseTiles ) {
-			initParams.parameters.cp_tx0 = 0;
-			initParams.parameters.cp_ty0 = 0;
-			initParams.parameters.tile_size_on = true;
-			initParams.parameters.cp_tdx = 512;
-			initParams.parameters.cp_tdy = 512;
-        }
-        if (! opj_setup_encoder(l_codec, &initParams.parameters, image)) {
-            fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
-            opj_destroy_codec(l_codec);
-            opj_image_destroy(image);
-            return 1;
-        }
-
-        /* open a byte stream for writing and allocate memory for all tiles */
-        l_stream = opj_stream_create_default_file_stream(initParams.parameters.outfile,false);
-        if (! l_stream){
-            return 1;
-        }
-
-        /* encode the image */
-        bSuccess = opj_start_compress(l_codec,image,l_stream);
-        if (!bSuccess)  {
-            fprintf(stderr, "failed to encode image: opj_start_compress\n");
-        }
-        if( bSuccess && bUseTiles ) {
-            uint8_t *l_data;
-            uint64_t l_data_size = 512*512*3;
-            l_data = (uint8_t*) calloc( 1,l_data_size);
-            assert( l_data );
-            for (i=0;i<l_nb_tiles;++i) {
-                if (! opj_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
-                    fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n",i);
-                    opj_stream_destroy(l_stream);
-                    opj_destroy_codec(l_codec);
-                    opj_image_destroy(image);
-                    return 1;
-                }
-            }
-            free(l_data);
-        }
-        else {
-            bSuccess = bSuccess && opj_encode(l_codec,l_stream);
-            if (!bSuccess)  {
-                fprintf(stderr, "failed to encode image: opj_encode\n");
-            }
-        }
-        bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
-        if (!bSuccess)  {
-            fprintf(stderr, "failed to encode image: opj_end_compress\n");
-            opj_stream_destroy(l_stream);
-            opj_destroy_codec(l_codec);
-            opj_image_destroy(image);
-			remove(initParams.parameters.outfile);
-            return 1;
-        }
+		if (!plugin_compress_callback(&opjInfo))
+			return 1;
 
 		num_compressed_files++;
-        fprintf(stdout,"[INFO] Generated outfile %s\n", initParams.parameters.outfile);
-        /* close and free the byte stream */
-        opj_stream_destroy(l_stream);
-
-        /* free remaining compression structures */
-        opj_destroy_codec(l_codec);
-
-        /* free image data */
-        opj_image_destroy(image);
-
+		fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
     }
 
 
@@ -1603,15 +1512,19 @@ int main(int argc, char **argv) {
 
 img_fol_t img_fol_plugin, out_fol_plugin;
 
-void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
+static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	opj_cparameters_t* parameters = info->encoder_parameters;
 	bool bSuccess;
 	opj_stream_t *l_stream = 00;
 	opj_codec_t* l_codec = 00;
 	opj_image_t *image = info->image;
+	info->image = NULL;
 	char  outfile[OPJ_PATH_LEN];
 	char  temp_ofname[OPJ_PATH_LEN];
 	char temp1[OPJ_PATH_LEN] = "";
+
+	uint32_t l_nb_tiles = 4;
+	bool bUseTiles = false; /* true */
 	
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
 		strcpy(outfile, info->output_file_name);
@@ -1638,12 +1551,12 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 		if ((parameters->tcp_mct == 1) && (image->numcomps < 3)) {
 			fprintf(stderr, "RGB->YCC conversion cannot be used:\n");
 			fprintf(stderr, "Input image has less than 3 components\n");
-			return;
+			return false;
 		}
 		if ((parameters->tcp_mct == 2) && (!parameters->mct_data)) {
 			fprintf(stderr, "Custom MCT has been set but no array-based MCT\n");
 			fprintf(stderr, "has been provided. Aborting.\n");
-			return;
+			return false;
 		}
 	}
 
@@ -1666,7 +1579,7 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	default:
 		fprintf(stderr, "skipping file..\n");
 		opj_stream_destroy(l_stream);
-		return;
+		return false;
 	}
 
 	/* catch events using our callbacks and give a local context */
@@ -1677,37 +1590,63 @@ void plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
 		fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
 		opj_destroy_codec(l_codec);
-		return;
+		return false;
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
 	l_stream = opj_stream_create_default_file_stream(outfile, false);
 	if (!l_stream) {
 		fprintf(stderr, "failed to create stream\n");
-		return;
+		return false;
 	}
 
 	/* encode the image */
 	bSuccess = opj_start_compress(l_codec, image, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_start_compress\n");
+		return false;
 	}
-	bSuccess = bSuccess && opj_encode_with_plugin (l_codec, info->tile, l_stream);
-	if (!bSuccess) {
-		fprintf(stderr, "failed to encode image: opj_encode\n");
+	if (bSuccess && bUseTiles) {
+		uint8_t *l_data;
+		uint64_t l_data_size = 512 * 512 * 3;
+		l_data = (uint8_t*)calloc(1, l_data_size);
+		assert(l_data);
+		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
+			if (!opj_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
+				fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n", i);
+				opj_stream_destroy(l_stream);
+				opj_destroy_codec(l_codec);
+				opj_image_destroy(image);
+				return false;
+			}
+		}
+		free(l_data);
 	}
+	else {
+		bSuccess = bSuccess && opj_encode_with_plugin(l_codec, info->tile, l_stream);
+		if (!bSuccess) {
+			fprintf(stderr, "failed to encode image: opj_encode\n");
+			return false;
+		}
+	}
+
+
 	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_end_compress\n");
+		return false;
 	}
 
 	opj_stream_destroy(l_stream);
 	opj_destroy_codec(l_codec);
+	opj_image_destroy(image);
 
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image\n");
 		remove(parameters->outfile);
+		return false;
 	}
+	return true;
 }
 
 
@@ -1743,8 +1682,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	// create codec
 	opj_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
-	if (!opj_plugin_init(initInfo))
+	if (!opj_plugin_init(initInfo)) {
+		opj_cleanup();
 		return 1;
+
+	}
 	
 	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	uint32_t state = opj_plugin_get_debug_state();
@@ -1786,6 +1728,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	
 				dirptr->filename = (char**)malloc(num_images*sizeof(char*));
 				if (!dirptr->filename_buf) {
+					opj_cleanup();
 					return 0;
 				}
 				for (uint32_t i = 0; i<num_images; i++) {
@@ -1793,10 +1736,12 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				}
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+				opj_cleanup();
 				return 0;
 			}
 			if (num_images == 0) {
 				fprintf(stdout, "Folder is empty\n");
+				opj_cleanup();
 				return 0;
 			}
 		}
