@@ -1786,7 +1786,7 @@ typedef struct opj_plugin_encode_user_callback_info {
 	unsigned int		error_code;
 } opj_plugin_encode_user_callback_info_t;
 
-typedef void(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(opj_plugin_encode_user_callback_info_t* info);
+typedef bool(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(opj_plugin_encode_user_callback_info_t* info);
 
 OPJ_API int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 
