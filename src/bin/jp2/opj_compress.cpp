@@ -459,7 +459,6 @@ static int parse_cmdline_encoder_ex(int argc,
 									opj_cparameters_t *parameters,
 									img_fol_t *img_fol,
 									img_fol_t *out_fol,
-									raw_cparameters_t *raw_cp,
 									char *indexfilename,
 									size_t indexfilename_size,
 									char* plugin_path) {
@@ -621,7 +620,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		cmd.parse(argc, argv);
 
 		img_fol->set_out_format = 0;
-		raw_cp->rawWidth = 0;
+		parameters->raw_cp.rawWidth = 0;
 
 		if (repetitionsArg.isSet()) {
 			parameters->repeats = repetitionsArg.getValue();
@@ -777,6 +776,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				wrong = true;
 			}
 			if (!wrong) {
+				raw_cparameters_t* raw_cp = &parameters->raw_cp;
 				int compno;
 				int lastdx = 1;
 				int lastdy = 1;
@@ -1162,8 +1162,8 @@ static int parse_cmdline_encoder_ex(int argc,
         }
     }
 
-    if ( (parameters->decod_format == RAW_DFMT && raw_cp->rawWidth == 0)
-            || (parameters->decod_format == RAWL_DFMT && raw_cp->rawWidth == 0)) {
+    if ( (parameters->decod_format == RAW_DFMT && parameters->raw_cp.rawWidth == 0)
+            || (parameters->decod_format == RAWL_DFMT && parameters->raw_cp.rawWidth == 0)) {
         fprintf(stderr,"[ERROR] invalid raw image parameters\n");
         fprintf(stderr,"Please use the Format option -F:\n");
         fprintf(stderr,"-F rawWidth,rawHeight,rawComp,rawBitDepth,s/u (Signed/Unsigned)\n");
@@ -1203,19 +1203,13 @@ static int parse_cmdline_encoder_ex(int argc,
 
     /* If subsampled image is provided, automatically disable MCT */
     if ( ((parameters->decod_format == RAW_DFMT) || (parameters->decod_format == RAWL_DFMT))
-            && (   ((raw_cp->rawComp > 1 ) && ((raw_cp->rawComps[1].dx > 1) || (raw_cp->rawComps[1].dy > 1)))
-                   || ((raw_cp->rawComp > 2 ) && ((raw_cp->rawComps[2].dx > 1) || (raw_cp->rawComps[2].dy > 1)))
+            && (   ((parameters->raw_cp.rawComp > 1 ) && ((parameters->raw_cp.rawComps[1].dx > 1) || (parameters->raw_cp.rawComps[1].dy > 1)))
+                   || ((parameters->raw_cp.rawComp > 2 ) && ((parameters->raw_cp.rawComps[2].dx > 1) || (parameters->raw_cp.rawComps[2].dy > 1)))
                )) {
         parameters->tcp_mct = 0;
     }
 
     return 0;
-}
-
-static int parse_cmdline_encoder(int argc, char **argv, opj_cparameters_t *parameters,
-	img_fol_t *img_fol, raw_cparameters_t *raw_cp, char *indexfilename, size_t indexfilename_size) {
-
-	return parse_cmdline_encoder_ex(argc, argv, parameters, img_fol, NULL, raw_cp, indexfilename, indexfilename_size,NULL);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1281,20 +1275,22 @@ struct CompressInitParams {
 		/* Initialize indexfilename and img_fol */
 		*indexfilename = 0;
 
-		/* raw_cp initialization */
-		raw_cp.rawBitDepth = 0;
-		raw_cp.rawComp = 0;
-		raw_cp.rawComps = 0;
-		raw_cp.rawHeight = 0;
-		raw_cp.rawSigned = 0;
-		raw_cp.rawWidth = 0;
-
 		memset(&img_fol, 0, sizeof(img_fol));
 		memset(&out_fol, 0, sizeof(out_fol));
 
 	}
 
 	~CompressInitParams() {
+
+		// clean up encode parameters
+		if (parameters.cp_comment)
+			free(parameters.cp_comment);
+		parameters.cp_comment = nullptr;
+		if (parameters.raw_cp.rawComps)
+			free(parameters.raw_cp.rawComps);
+		parameters.raw_cp.rawComps = nullptr;
+
+
 		if (img_fol.imgdirpath)
 			free(img_fol.imgdirpath);
 		if (out_fol.imgdirpath)
@@ -1304,7 +1300,6 @@ struct CompressInitParams {
 	bool initialized;
 
 	opj_cparameters_t parameters;	/* compression parameters */
-	raw_cparameters_t raw_cp;
 
 	char indexfilename[OPJ_PATH_LEN];	/* index file name */
 	char plugin_path[OPJ_PATH_LEN];
@@ -1347,21 +1342,33 @@ int main(int argc, char **argv) {
     if(initParams.img_fol.set_imgdir==1){
         num_images=get_num_images(initParams.img_fol.imgdirpath);
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
-        if(dirptr){
-            dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));
-            dirptr->filename = (char**) malloc(num_images*sizeof(char*));
-            if(!dirptr->filename_buf){
-                return 0;
-            }
-            for(i=0;i<num_images;i++){
-                dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
-            }
+		if (!dirptr)
+			return 0;
+        dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));
+		if (!dirptr->filename_buf) {
+			return 0;
+		}
+		dirptr->filename = (char**) malloc(num_images*sizeof(char*));
+		if (!dirptr->filename) {
+			free(dirptr->filename_buf);
+			free(dirptr);
+			return 0;
+		}
+
+        for(i=0;i<num_images;i++){
+            dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
         }
         if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
+			free(dirptr->filename);
+			free(dirptr->filename_buf);
+			free(dirptr);
             return 0;
         }
         if (num_images==0){
             fprintf(stdout,"Folder is empty\n");
+			free(dirptr->filename_buf);
+			free(dirptr->filename);
+			free(dirptr);
             return 0;
         }
     }else{
@@ -1437,7 +1444,7 @@ int main(int argc, char **argv) {
 #endif /* OPJ_HAVE_LIBTIFF */
 
         case RAW_DFMT:
-            image = rawtoimage(initParams.parameters.infile, &initParams.parameters, &initParams.raw_cp);
+            image = rawtoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load raw file\n");
                 return 1;
@@ -1445,7 +1452,7 @@ int main(int argc, char **argv) {
             break;
 
         case RAWL_DFMT:
-            image = rawltoimage(initParams.parameters.infile, &initParams.parameters, &initParams.raw_cp);
+            image = rawltoimage(initParams.parameters.infile, &initParams.parameters);
             if (!image) {
                 fprintf(stderr, "Unable to load raw file\n");
                 return 1;
@@ -1657,7 +1664,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 								&initParams->parameters,
 								&initParams->img_fol,
 								&initParams->out_fol,
-								&initParams->raw_cp,
 								initParams->indexfilename,
 								sizeof(initParams->indexfilename),
 								initParams->plugin_path) == 1) {

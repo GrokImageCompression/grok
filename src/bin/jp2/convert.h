@@ -55,33 +55,7 @@
 
 #pragma once
 
-/**@name RAW component encoding parameters */
-/*@{*/
-typedef struct raw_comp_cparameters {
-    /** subsampling in X direction */
-	uint32_t dx;
-    /** subsampling in Y direction */
-	uint32_t dy;
-    /*@}*/
-} raw_comp_cparameters_t;
 
-/**@name RAW image encoding parameters */
-/*@{*/
-typedef struct raw_cparameters {
-    /** width of the raw image */
-	uint32_t rawWidth;
-    /** height of the raw image */
-	uint32_t rawHeight;
-    /** number of components of the raw image */
-	uint32_t rawComp;
-    /** bit depth of the raw image */
-	uint32_t rawBitDepth;
-    /** signed/unsigned raw image */
-    bool rawSigned;
-    /** raw components parameters */
-    raw_comp_cparameters_t *rawComps;
-    /*@}*/
-} raw_cparameters_t;
 
 extern "C" {
 
@@ -128,8 +102,8 @@ extern "C" {
 	/* RAW conversion */
 	int imagetoraw(opj_image_t * image, const char *outfile);
 	int imagetorawl(opj_image_t * image, const char *outfile);
-	opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
-	opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp);
+	opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters);
+	opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters);
 
 	/* PNG conversion*/
 	extern int imagetopng(opj_image_t *image, const char *write_idf);
