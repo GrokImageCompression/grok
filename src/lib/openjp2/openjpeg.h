@@ -331,6 +331,35 @@ typedef struct opj_poc {
     uint32_t lay_t, res_t, comp_t, prc_t,tx0_t,ty0_t;
 } opj_poc_t;
 
+
+/**@name RAW component encoding parameters */
+/*@{*/
+typedef struct raw_comp_cparameters {
+	/** subsampling in X direction */
+	uint32_t dx;
+	/** subsampling in Y direction */
+	uint32_t dy;
+	/*@}*/
+} raw_comp_cparameters_t;
+
+/**@name RAW image encoding parameters */
+/*@{*/
+typedef struct raw_cparameters {
+	/** width of the raw image */
+	uint32_t rawWidth;
+	/** height of the raw image */
+	uint32_t rawHeight;
+	/** number of components of the raw image */
+	uint32_t rawComp;
+	/** bit depth of the raw image */
+	uint32_t rawBitDepth;
+	/** signed/unsigned raw image */
+	bool rawSigned;
+	/** raw components parameters */
+	raw_comp_cparameters_t *rawComps;
+	/*@}*/
+} raw_cparameters_t;
+
 /**
  * Compression parameters
  * */
@@ -405,6 +434,8 @@ typedef struct opj_cparameters {
     /** output file format 0: J2K, 1: JP2, 2: JPT; -1 means no output file format */
     int32_t cod_format;
     /*@}*/
+
+	raw_cparameters_t raw_cp;
 
     /**
      * Maximum size (in bytes) for each component.

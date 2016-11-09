@@ -1986,8 +1986,9 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
     RAW IMAGE FORMAT
 
  <<-- <<-- <<-- <<-- */
-static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp, bool big_endian)
+static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *parameters, bool big_endian)
 {
+	raw_cparameters_t *raw_cp = &parameters->raw_cp;
     uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 
@@ -2114,14 +2115,14 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     return image;
 }
 
-opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp)
+opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters)
 {
-    return rawtoimage_common(filename, parameters, raw_cp, false);
+    return rawtoimage_common(filename, parameters, false);
 }
 
-opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters, raw_cparameters_t *raw_cp)
+opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters)
 {
-    return rawtoimage_common(filename, parameters, raw_cp, true);
+    return rawtoimage_common(filename, parameters, true);
 }
 
 static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_endian)
