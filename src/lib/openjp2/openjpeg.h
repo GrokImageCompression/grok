@@ -141,6 +141,7 @@ typedef size_t   OPJ_SIZE_T;
  ///////////////////////////////////////////////////////////////////////////
 
 
+
 /* Avoid compile-time warning because parameter is not used */
 #define OPJ_ARG_NOT_USED(x) (void)(x)
 
@@ -1076,7 +1077,6 @@ typedef struct opj_codestream_index {
     /** actual size of markers array */
     uint32_t maxmarknum;
 
-
     /** */
     uint32_t nb_of_tiles;
     /** */
@@ -1084,32 +1084,6 @@ typedef struct opj_codestream_index {
 
 } opj_codestream_index_t;
 /* -----------------------------------------------------------> */
-
-/*
-==========================================================
-   Metadata from the JP2file
-==========================================================
-*/
-
-/**
- * Info structure of the JP2 file
- * EXPERIMENTAL FOR THE MOMENT
- */
-typedef struct opj_jp2_metadata {
-    /** */
-    int32_t	not_used;
-
-} opj_jp2_metadata_t;
-
-/**
- * Index structure of the JP2 file
- * EXPERIMENTAL FOR THE MOMENT
- */
-typedef struct opj_jp2_index {
-    /** */
-    int32_t	not_used;
-
-} opj_jp2_index_t;
 
 
 
@@ -1701,27 +1675,6 @@ OPJ_API opj_codestream_info_v2_t* OPJ_CALLCONV opj_get_cstr_info(opj_codec_t *p_
 OPJ_API opj_codestream_index_t * OPJ_CALLCONV opj_get_cstr_index(opj_codec_t *p_codec);
 
 OPJ_API void OPJ_CALLCONV opj_destroy_cstr_index(opj_codestream_index_t **p_cstr_index);
-
-
-/**
- * Get the JP2 file information from the codec FIXME
- *
- * @param	p_codec			the jpeg2000 codec.
- *
- * @return					a pointer to a JP2 metadata structure.
- *
- */
-OPJ_API opj_jp2_metadata_t* OPJ_CALLCONV opj_get_jp2_metadata(opj_codec_t *p_codec);
-
-/**
- * Get the JP2 file index from the codec FIXME
- *
- * @param	p_codec			the jpeg2000 codec.
- *
- * @return					a pointer to a JP2 index structure.
- *
- */
-OPJ_API opj_jp2_index_t* OPJ_CALLCONV opj_get_jp2_index(opj_codec_t *p_codec);
 
 
 /*
