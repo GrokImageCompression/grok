@@ -1368,8 +1368,6 @@ int main(int argc, char **argv) {
         num_images=1;
     }
 
-	opj_stream_t *l_stream = 00;
-	opj_codec_t* l_codec = 00;
 	opj_image_t *image = NULL;
 
     /*Encoding image one by one*/
@@ -1384,20 +1382,15 @@ int main(int argc, char **argv) {
             }
         }
 
+		// check that format is supported
         switch(initParams.parameters.decod_format) {
         case PGX_DFMT:
-            break;
         case PXM_DFMT:
-            break;
         case BMP_DFMT:
-            break;
         case TIF_DFMT:
-            break;
         case RAW_DFMT:
         case RAWL_DFMT:
-            break;
         case TGA_DFMT:
-            break;
         case PNG_DFMT:
             break;
         default:
@@ -1482,7 +1475,7 @@ int main(int argc, char **argv) {
  * and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
 */
         if( !image) {
-            fprintf(stderr, "Unable to load file: got no image\n");
+            fprintf(stderr, "Unable to load file: no image generated.\n");
             return 1;
         }
 
@@ -1494,8 +1487,9 @@ int main(int argc, char **argv) {
 		opjInfo.output_file_name = initParams.parameters.outfile;
 		opjInfo.input_file_name = initParams.parameters.infile;
 
-		if (!plugin_compress_callback(&opjInfo))
+		if (!plugin_compress_callback(&opjInfo)) {
 			return 1;
+		}
 
 		num_compressed_files++;
 		fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
