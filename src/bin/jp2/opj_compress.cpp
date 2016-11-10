@@ -1431,19 +1431,22 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bool bUseTiles = false; /* true */
 	
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
-		strcpy(outfile, info->output_file_name);
-	}
-	else {
-		// batch encoding: infile is a relative path
-		strcpy(temp_ofname, get_file_name((char*)info->input_file_name));
-
-		if (img_fol_plugin.set_out_format == 1) {
-			sprintf(outfile, "%s%s%s.%s", 
-					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath, 
+		if (info->outputFileNameIsRelative) {
+			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
+			if (img_fol_plugin.set_out_format == 1) {
+				sprintf(outfile, "%s%s%s.%s",
+					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
 					get_path_separator(),
 					temp_ofname,
 					img_fol_plugin.out_format);
+			}
 		}
+		else {
+			strcpy(outfile, info->output_file_name);
+		}
+	}
+	else {
+		return false;
 	}
 
 	bool createdImage = false;
