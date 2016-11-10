@@ -1476,7 +1476,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 		switch (info->encoder_parameters->decod_format) {
 		case PGX_DFMT:
-			image = pgxtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = pgxtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pgx file\n");
 				return false;
@@ -1484,7 +1484,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			break;
 
 		case PXM_DFMT:
-			image = pnmtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = pnmtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pnm file\n");
 				return false;
@@ -1492,7 +1492,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			break;
 
 		case BMP_DFMT:
-			image = bmptoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = bmptoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load bmp file\n");
 				return false;
@@ -1501,7 +1501,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:
-			image = tiftoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = tiftoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load tiff file\n");
 				return false;
@@ -1510,7 +1510,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 #endif /* OPJ_HAVE_LIBTIFF */
 
 		case RAW_DFMT:
-			image = rawtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = rawtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
 				return false;
@@ -1518,7 +1518,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			break;
 
 		case RAWL_DFMT:
-			image = rawltoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = rawltoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
 				return false;
@@ -1526,7 +1526,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			break;
 
 		case TGA_DFMT:
-			image = tgatoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = tgatoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load tga file\n");
 				return false;
@@ -1535,7 +1535,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 #ifdef OPJ_HAVE_LIBPNG
 		case PNG_DFMT:
-			image = pngtoimage(info->encoder_parameters->infile, info->encoder_parameters);
+			image = pngtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load png file\n");
 				return false;
