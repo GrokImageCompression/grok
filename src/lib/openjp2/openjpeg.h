@@ -1763,6 +1763,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo);
 
 typedef struct opj_plugin_encode_user_callback_info {
 	const char*			input_file_name;
+	bool				outputFileNameIsRelative;
 	const char*			output_file_name;
 	opj_cparameters_t*	encoder_parameters;
 	opj_image_t*		image;
