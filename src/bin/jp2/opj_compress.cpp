@@ -1429,6 +1429,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false; /* true */
+
 	
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
 		if (info->outputFileNameIsRelative) {
@@ -1451,6 +1452,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	bool createdImage = false;
 	if (!image) {
+
+		parameters->decod_format = get_file_format((char*)info->input_file_name);
 
 		// check that format is supported
 		switch (info->encoder_parameters->decod_format) {
