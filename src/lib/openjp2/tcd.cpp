@@ -139,9 +139,9 @@ static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
 											uint64_t p_max_dest_size,
 											opj_codestream_info_t *p_cstr_info );
 
-static bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
+static bool opj_tcd_layer_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
 
-static bool opj_makelayer_single_lossless(opj_tcd_t *tcd);
+static bool opj_tcd_makelayer_single_lossless(opj_tcd_t *tcd);
 
 static void opj_tcd_makelayer_final(opj_tcd_t *tcd,
 	uint32_t layno);
@@ -193,16 +193,23 @@ opj_tcd_t* opj_tcd_create(bool p_is_decoder)
 -r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
 -q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
 ==> possible to have some lossy layers and the last layer for sure lossless */
-bool opj_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params) {
+bool opj_tcd_layer_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params) {
 
 	return ((enc_params->m_disto_alloc == 1) && (tcd_tcp->rates[layno] > 0.0)) ||
 		((enc_params->m_fixed_quality == 1) && (tcd_tcp->distoratio[layno] > 0.0f));
 }
 
+bool opj_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params) {
+	for (uint32_t i = 0; i < tcd_tcp->numlayers; ++i) {
+		if (opj_tcd_layer_needs_rate_control(i, tcd_tcp, enc_params))
+			return true;
+	}
+	return false;
+}
 
 
-bool opj_makelayer_single_lossless(opj_tcd_t *tcd) {
-	if (tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
+bool opj_tcd_makelayer_single_lossless(opj_tcd_t *tcd) {
+	if (tcd->tcp->numlayers == 1 && !opj_tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
 
 		opj_tcd_makelayer_final(tcd, 0);
 		return true;
@@ -302,7 +309,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 	uint64_t len)
 {
 
-	bool single_lossless = tcd->tcp->numlayers == 1 && !opj_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
+	bool single_lossless = tcd->tcp->numlayers == 1 && !opj_tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
 
 
 	uint32_t compno, resno, bandno, precno, cblkno, layno;
@@ -367,7 +374,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 		}
 	} /* compno */
 
-	if (opj_makelayer_single_lossless(tcd)) {
+	if (opj_tcd_makelayer_single_lossless(tcd)) {
 		return true;
 	}
 
@@ -385,7 +392,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 		// thresh from previous iteration - starts off uninitialized
 		// used to bail out if difference with current thresh is small enough
 		uint32_t prevthresh = 0;
-		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
+		if (opj_tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
 			opj_t2_t*t2 = opj_t2_create(tcd->image, cp);
 			if (t2 == 00) {
 				return false;
@@ -549,7 +556,7 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 		// start by including everything in this layer
         double goodthresh = 0;
 
-		if (opj_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
+		if (opj_tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
 
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough

@@ -141,20 +141,20 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 			}
 		}
 
-		bool isLossy = tcd->tcp->tccps->qmfbid == 0;
 		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->totalpasses; passno++) {
 			opj_tcd_pass_t *pass = cblk->passes + passno;
 			opj_plugin_pass_t* pluginPass = plugin_cblk->passes + passno;
 
-			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
-				// only worry about distortion for lossy encoding
-				if (isLossy && fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec)  > 0.01) {
-					printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
+			// synch distortion, if applicable
+			if (opj_tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
+				if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+					if (fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec) > 0.01) {
+						printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
+					}
 				}
-			}
-			if (isLossy)
 				pass->distortiondec = pluginPass->distortionDecrease;
+			}
 			uint32_t pluginRate = (uint32_t)(pluginPass->rate + 3);
 			if (pluginRate > totalRatePlugin)
 				pluginRate = totalRatePlugin;
