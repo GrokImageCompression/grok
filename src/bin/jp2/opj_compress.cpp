@@ -721,6 +721,10 @@ static int parse_cmdline_encoder_ex(int argc,
 				s++;
 			}
 			parameters->cp_disto_alloc = 1;
+			// single layer with rate == 1 translates to lossless tile encode
+			if (parameters->tcp_numlayers == 1 && parameters->tcp_rates[0] == 1) {
+				parameters->tcp_rates[0] = 0;
+			}
 		}
 
 		if (qualityArg.isSet()) {
