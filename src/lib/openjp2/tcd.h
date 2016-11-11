@@ -357,6 +357,9 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t * tilec,
                                    uint32_t dx,
                                    uint32_t dy);
 
+
+bool opj_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
+
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
