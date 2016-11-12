@@ -381,9 +381,9 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 	uint32_t min_slope = rateInfo.getMinimumThresh();
 	uint32_t max_slope = USHRT_MAX;
 
+	uint32_t upperBound = max_slope;
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
-		uint32_t upperBound = max_slope;
 		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
 		/* Threshold for Marcela Index */
@@ -442,6 +442,8 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 				(layno == 0) ?
 				tcd_tile->distolayer[0] :
 				(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+			// upper bound for next layer is initialized to lowerBound for current layer, minus one
+			upperBound = lowerBound - 1;;
 		}
 		else {
 			opj_tcd_makelayer_final(tcd, layno);
@@ -546,10 +548,9 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 
     } /* compno */
 
-
+	double upperBound = max_slope;
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
         double lowerBound = min_slope;
-        double upperBound = max_slope;
         uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
 
 		/* Threshold for Marcela Index */
@@ -615,6 +616,9 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 				(layno == 0) ?
 				tcd_tile->distolayer[0] :
 				(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+
+			// upper bound for next layer will equal lowerBound for previous layer, minus one
+			upperBound = lowerBound - 1;;
 		}
 		else {
 			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
