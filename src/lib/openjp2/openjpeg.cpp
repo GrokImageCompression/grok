@@ -1154,6 +1154,7 @@ void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* inf
     opj_plugin_encode_user_callback_info_t opjInfo;
     memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
     opjInfo.input_file_name = info->input_file_name;
+	opjInfo.outputFileNameIsRelative = info->outputFileNameIsRelative;
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.encoder_parameters = (opj_cparameters_t*)info->encoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;

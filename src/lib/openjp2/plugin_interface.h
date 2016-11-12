@@ -66,6 +66,7 @@ typedef void  (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(plugin_debug_mqc_t *mqc);
 
 typedef struct plugin_encode_user_callback_info {
     const char* input_file_name;
+	bool	outputFileNameIsRelative;
     const char* output_file_name;
     opj_cparameters_t* encoder_parameters;
     opj_image_t* image;
