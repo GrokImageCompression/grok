@@ -720,10 +720,26 @@ static int parse_cmdline_encoder_ex(int argc,
 					break;
 				s++;
 			}
+
+			// sanity check on rates
+			double lastRate = DBL_MAX;
+			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
+				if (parameters->tcp_rates[i] > lastRate) {
+					printf("[ERROR]: rates must be listed in descending order\n");
+					return 1;
+				}
+				if (parameters->tcp_rates[i] < 1.0) {
+					printf("[ERROR]: rates must be greater than or equal to one\n");
+					return 1;
+				}
+				lastRate = parameters->tcp_rates[i];
+			}
+
 			parameters->cp_disto_alloc = 1;
-			// single layer with rate == 1 translates to lossless tile encode
-			if (parameters->tcp_numlayers == 1 && parameters->tcp_rates[0] == 1) {
-				parameters->tcp_rates[0] = 0;
+			// set compression ratio of 1 equal to 0, to signal lossless layer
+			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
+				if (parameters->tcp_rates[i] == 1)
+					parameters->tcp_rates[i] = 0;
 			}
 		}
 
@@ -739,6 +755,21 @@ static int parse_cmdline_encoder_ex(int argc,
 				s++;
 			}
 			parameters->cp_fixed_quality = 1;
+
+			// sanity check on quality values
+			double lastDistortion = -1;
+			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
+				if (parameters->tcp_distoratio[i] < lastDistortion) {
+					printf("[ERROR]: PSNR values must be listed in ascending order\n");
+					return 1;
+				}
+				if (parameters->tcp_distoratio[i] < 0) {
+					printf("[ERROR]: PSNR values must be greater than or equal to zero\n");
+					return 1;
+				}
+				lastDistortion = parameters->tcp_distoratio[i];
+			}
+
 
 		}
 

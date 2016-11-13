@@ -797,6 +797,8 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 						tcd_tile->distolayer[layno] += layer->disto;
 
 						cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+
+						assert(cblk->num_passes_included_in_other_layers == cblk->totalpasses);
 					}
 				}
 			}
