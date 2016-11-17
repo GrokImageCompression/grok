@@ -1136,7 +1136,7 @@ double opj_t1_getwmsedec(
         w2 = opj_dwt_getnorm_real(level, orient);
     }
 
-    wmsedec = w1 * w2 * stepsize * (1 << bpno);
+    wmsedec = w1 * w2 * stepsize * ((size_t)1 << bpno);
     wmsedec *= wmsedec * nmsedec / 8192.0;
 
     return wmsedec;
