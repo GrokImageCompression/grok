@@ -73,7 +73,12 @@ extern "C" {
 
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
+	if (!numcmpts)
+		return nullptr;
+
     opj_image_cmptparm_t* cmptparms = (opj_image_cmptparm_t*)calloc(numcmpts, sizeof(opj_image_cmptparm_t));
+	if (!cmptparms)
+		return nullptr;
     opj_image_t* img = NULL;
     uint32_t compno=0U;
     for (compno = 0U; compno < numcmpts; ++compno) {
@@ -442,11 +447,10 @@ void color_apply_icc_profile(opj_image_t *image)
     OPJ_COLOR_SPACE oldspace;
     opj_image_t* new_image = NULL;
 
-	if (!all_components_equal_subsampling(image))
+	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
 
-    in_prof =
-        cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
+    in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 #ifdef DEBUG_PROFILE
     FILE *icm = fopen("debug.icm","wb");
     fwrite( image->icc_profile_buf,1, image->icc_profile_len,icm);
@@ -463,6 +467,10 @@ void color_apply_icc_profile(opj_image_t *image)
 
     max_w = (int)image->comps[0].w;
     max_h = (int)image->comps[0].h;
+
+	if (!max_w || !max_h)
+		goto cleanup;
+
     prec = (int)image->comps[0].prec;
     oldspace = image->color_space;
 
@@ -545,7 +553,11 @@ void color_apply_icc_profile(opj_image_t *image)
             max = max_w * max_h;
             nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned char);
             in = inbuf = (unsigned char*)malloc(nr_samples);
+			if (!in)
+				goto cleanup;
             out = outbuf = (unsigned char*)malloc(nr_samples);
+			if (!out)
+				goto cleanup;
 
             r = image->comps[0].data;
             g = image->comps[1].data;
@@ -575,7 +587,11 @@ void color_apply_icc_profile(opj_image_t *image)
             max = max_w * max_h;
             nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned short);
             in = inbuf = (unsigned short*)malloc(nr_samples);
+			if (!in)
+				goto cleanup;
             out = outbuf = (unsigned short*)malloc(nr_samples);
+			if (!out)
+				goto cleanup;
 
             r = image->comps[0].data;
             g = image->comps[1].data;

@@ -1253,6 +1253,7 @@ int imagetopgx(opj_image_t * image, const char *outfile)
     for (compno = 0; compno < image->numcomps; compno++) {
         opj_image_comp_t *comp = &image->comps[compno];
         char bname[256]; /* buffer for name */
+		bname[255] = '\0';
         char *name = bname; /* pointer */
         int nbytes = 0;
         size_t res;

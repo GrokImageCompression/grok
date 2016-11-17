@@ -1371,40 +1371,37 @@ int main(int argc, char **argv) {
 
 	bool bUseTiles = false; /* true */
 	double t = opj_clock();
+	int success = 0;
 
 	dircnt_t *dirptr = NULL;
 	/* Read directory if necessary */
     if(initParams.img_fol.set_imgdir==1){
         num_images=get_num_images(initParams.img_fol.imgdirpath);
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
-		if (!dirptr)
-			return 0;
+		if (!dirptr) {
+			success = 1;
+			goto cleanup;
+		}
         dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));
 		if (!dirptr->filename_buf) {
-			return 0;
+			success = 1;
+			goto cleanup;
 		}
 		dirptr->filename = (char**) malloc(num_images*sizeof(char*));
 		if (!dirptr->filename) {
-			free(dirptr->filename_buf);
-			free(dirptr);
-			return 0;
+			success = 1;
+			goto cleanup;
 		}
 
         for(i=0;i<num_images;i++){
             dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
         }
         if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
-			free(dirptr->filename);
-			free(dirptr->filename_buf);
-			free(dirptr);
-            return 0;
+			goto cleanup;
         }
         if (num_images==0){
             fprintf(stdout,"Folder is empty\n");
-			free(dirptr->filename_buf);
-			free(dirptr->filename);
-			free(dirptr);
-            return 0;
+			goto cleanup;
         }
     }else{
         num_images=1;
@@ -1447,7 +1444,15 @@ int main(int argc, char **argv) {
 		    fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0)/(double)num_compressed_files));
     }
 
-    return 0;
+cleanup:
+	if (dirptr) {
+		if (dirptr->filename_buf)
+			free(dirptr->filename_buf);
+		if (dirptr->filename)
+			free(dirptr->filename);
+		free(dirptr);
+	}
+    return success;
 }
 
 img_fol_t img_fol_plugin, out_fol_plugin;
@@ -1773,7 +1778,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
-
+	dircnt_t *dirptr = NULL;
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 	if (isBatch) {
@@ -1798,31 +1803,36 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		}
 	}
 	else 	{
-		dircnt_t *dirptr = NULL;
 		// loop through all files
 		/* Read directory if necessary */
 		if (initParams->img_fol.set_imgdir == 1) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			if (!dirptr) {
+				success = 1;
+				goto cleanup;
+			}
 			if (dirptr) {
 				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	
-				dirptr->filename = (char**)malloc(num_images*sizeof(char*));
 				if (!dirptr->filename_buf) {
-					opj_cleanup();
-					return 0;
+					success = 1;
+					goto cleanup;
+				}
+				dirptr->filename = (char**)malloc(num_images*sizeof(char*));
+				if (!dirptr->filename) {
+					success = 1;
+					goto cleanup;
 				}
 				for (uint32_t i = 0; i<num_images; i++) {
 					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 				}
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
-				opj_cleanup();
-				return 0;
+				goto cleanup;
 			}
 			if (num_images == 0) {
 				fprintf(stdout, "Folder is empty\n");
-				opj_cleanup();
-				return 0;
+				goto cleanup;
 			}
 		}
 		else {
@@ -1843,6 +1853,14 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		}
 	}
 
+cleanup:
+	if (dirptr) {
+		if (dirptr->filename_buf)
+			free(dirptr->filename_buf);
+		if (dirptr->filename)
+			free(dirptr->filename);
+		free(dirptr);
+	}
 	opj_cleanup();
 	return success;
 }

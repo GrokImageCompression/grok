@@ -586,7 +586,7 @@ void opj_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec)
             stepsize = 1.0;
         } else {
             double norm = opj_dwt_norms_real[orient][level];
-            stepsize = (1 << (gain)) / norm;
+            stepsize = ((uint64_t)1 << (gain)) / norm;
         }
         opj_dwt_encode_stepsize((int32_t) floor(stepsize * 8192.0), (int32_t)(prec + gain), &tccp->stepsizes[bandno]);
     }
