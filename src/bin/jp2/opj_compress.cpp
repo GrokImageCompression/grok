@@ -85,8 +85,8 @@ extern "C" {
 
 #include <math.h>
 #include <assert.h>
-#include <limits.h>
-
+#include <limits>
+#include <cstddef>
 #include <cstdlib>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
