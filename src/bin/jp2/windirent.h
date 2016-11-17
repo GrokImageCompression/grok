@@ -513,13 +513,14 @@ closedir (DIR *dirp)
 
     /* make sure that dirp points to legal structure */
     assert (dirp != NULL);
-    if (dirp == NULL) {
+    if (!dirp) {
         errno = EBADF;
         return -1;
     }
 
     /* free directory name and search handles */
-    if (dirp->dirname != NULL) free (dirp->dirname);
+    if (dirp->dirname != NULL) 
+		free (dirp->dirname);
 
 #if defined(DIRENT_WIN32_INTERFACE)
     if (dirp->search_handle != INVALID_HANDLE_VALUE) {

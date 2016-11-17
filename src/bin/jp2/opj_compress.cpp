@@ -871,7 +871,11 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (tilesArg.isSet()) {
-			sscanf(tilesArg.getValue().c_str(), "%d,%d", &parameters->cp_tdx, &parameters->cp_tdy);
+			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &parameters->cp_tdx, &parameters->cp_tdy) == EOF) {
+				fprintf(stderr, "sscanf failed for tiles argument\n");
+				return 1;
+			}
+
 			parameters->tile_size_on = true;
 
 		}
@@ -904,7 +908,10 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (codeBlockDimArg.isSet()) {
 			int cblockw_init = 0, cblockh_init = 0;
-			sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init);
+			if (sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init) == EOF) {
+				fprintf(stderr, "sscanf failed for code block dimension argument\n");
+				return 1;
+			}
 			if (cblockw_init * cblockh_init > 4096 || cblockw_init > 1024
 				|| cblockw_init < 4 || cblockh_init > 1024 || cblockh_init < 4) {
 				fprintf(stderr,
@@ -1807,6 +1814,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		/* Read directory if necessary */
 		if (initParams->img_fol.set_imgdir == 1) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
+			if (!num_images)
+				goto cleanup;
 			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 			if (!dirptr) {
 				success = 1;
