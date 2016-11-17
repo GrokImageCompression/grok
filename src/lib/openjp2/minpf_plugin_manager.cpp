@@ -73,6 +73,8 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
         return 0;
 
     registered_params = (minpf_register_params*)malloc(sizeof(minpf_register_params));
+	if (!registered_params)
+		return -1;
     *registered_params = *params;
     error = hashmap_put(pluginManager->plugins, id, registered_params);
 

@@ -76,6 +76,8 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
     };
     char *image_line = NULL;
     int ok = 0;
+	if (!X)
+		goto cleanup;
 
     /* write single comp as PGM: P5 */
     for( i = 0; i < 3; ++i ) {
@@ -93,7 +95,8 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
 
     /* write pixel data */
     image_line = (char*)malloc( (size_t)X * 3 * sizeof(char) );
-    if( !image_line ) goto cleanup;
+    if( !image_line ) 
+		goto cleanup;
     while( fread(image_line, sizeof(char), (size_t)X * 3, ppm) == (size_t)X * 3 ) {
         for( x = 0; x < X; ++x )
             for( i = 0; i < 3; ++i )
