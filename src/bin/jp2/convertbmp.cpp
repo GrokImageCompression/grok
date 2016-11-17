@@ -543,7 +543,8 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
                     *pix = c1;
                 }
                 if ((uint32_t)c & 1U) { /* skip padding byte */
-                    getc(IN);
+					if (getc(IN) == EOF)
+					return false;
                 }
             }
         }
@@ -598,7 +599,8 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
                     *pix =  (uint8_t)((j&1) ? (c1 & 0x0fU) : ((c1>>4)&0x0fU));
                 }
                 if(((c&3) == 1) || ((c&3) == 2)) { /* skip padding byte */
-                    getc(IN);
+					if (getc(IN) == EOF)
+						return false;
                 }
             }
         }

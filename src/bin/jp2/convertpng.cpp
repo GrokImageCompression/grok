@@ -471,6 +471,7 @@ int imagetopng(opj_image_t * image, const char *write_idf)
             break;
         default:
             /* never here */
+			return 1;
             break;
         }
 
