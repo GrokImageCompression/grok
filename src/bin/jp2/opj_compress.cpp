@@ -82,10 +82,10 @@ extern "C" {
 #include "format_defs.h"
 #include "opj_string.h"
 }
-
+#include <float.h>
 #include <math.h>
 #include <assert.h>
-#include <limits>
+#include <limits.h>
 #include <cstddef>
 #include <cstdlib>
 #define TCLAP_NAMESTARTSTRING "-"
@@ -1327,10 +1327,10 @@ struct CompressInitParams {
 		// clean up encode parameters
 		if (parameters.cp_comment)
 			free(parameters.cp_comment);
-		parameters.cp_comment = nullptr;
+		parameters.cp_comment = NULL ;
 		if (parameters.raw_cp.rawComps)
 			free(parameters.raw_cp.rawComps);
-		parameters.raw_cp.rawComps = nullptr;
+		parameters.raw_cp.rawComps = NULL;
 
 
 		if (img_fol.imgdirpath)
@@ -1379,7 +1379,7 @@ int main(int argc, char **argv) {
 	bool bUseTiles = false; /* true */
 	double t = opj_clock();
 	int success = 0;
-
+	opj_image_t *image = NULL;
 	dircnt_t *dirptr = NULL;
 	/* Read directory if necessary */
     if(initParams.img_fol.set_imgdir==1){
@@ -1414,7 +1414,6 @@ int main(int argc, char **argv) {
         num_images=1;
     }
 
-	opj_image_t *image = NULL;
 
     /*Encoding image one by one*/
     for(imageno=0;imageno<num_images;imageno++)	{
