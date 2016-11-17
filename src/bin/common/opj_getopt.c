@@ -116,6 +116,9 @@ int opj_getopt(int nargc, char *const *nargv, const char *ostr)
             return (BADCH);
         }
     }
+	//strchr could return null pointer
+	if (!oli)
+		return (BADCH);
     if (*++oli != ':') {		/* don't need argument */
         opj_optarg = NULL;
         if (!*place)

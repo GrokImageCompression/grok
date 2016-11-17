@@ -1384,6 +1384,10 @@ int main(int argc, char **argv) {
 	/* Read directory if necessary */
     if(initParams.img_fol.set_imgdir==1){
         num_images=get_num_images(initParams.img_fol.imgdirpath);
+		if (num_images == 0) {
+			fprintf(stdout, "Folder is empty\n");
+			goto cleanup;
+		}
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
 		if (!dirptr) {
 			success = 1;
@@ -1404,10 +1408,6 @@ int main(int argc, char **argv) {
             dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
         }
         if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
-			goto cleanup;
-        }
-        if (num_images==0){
-            fprintf(stdout,"Folder is empty\n");
 			goto cleanup;
         }
     }else{
