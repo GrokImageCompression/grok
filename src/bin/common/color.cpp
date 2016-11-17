@@ -74,11 +74,11 @@ extern "C" {
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
-		return nullptr;
+		return NULL;
 
     opj_image_cmptparm_t* cmptparms = (opj_image_cmptparm_t*)calloc(numcmpts, sizeof(opj_image_cmptparm_t));
 	if (!cmptparms)
-		return nullptr;
+		return NULL;
     opj_image_t* img = NULL;
     uint32_t compno=0U;
     for (compno = 0U; compno < numcmpts; ++compno) {
