@@ -1249,17 +1249,22 @@ int imagetopgx(opj_image_t * image, const char *outfile)
     int i, j, fails = 1;
     unsigned int compno;
     FILE *fdest = NULL;
-
+	size_t total = 0;
+	char *name = nullptr;
     for (compno = 0; compno < image->numcomps; compno++) {
         opj_image_comp_t *comp = &image->comps[compno];
         char bname[256]; /* buffer for name */
 		bname[255] = '\0';
-        char *name = bname; /* pointer */
+        name = bname; /* pointer */
         int nbytes = 0;
         size_t res;
         const size_t olen = strlen(outfile);
+		if (olen > 4096) {
+			fprintf(stderr, "ERROR: imagetopgx: output file name larger than 4096.");
+			goto fin;
+		}
         const size_t dotpos = olen - 4;
-        const size_t total = dotpos + 1 + 1 + 4; /* '-' + '[1-3]' + '.pgx' */
+        total = dotpos + 1 + 1 + 4; /* '-' + '[1-3]' + '.pgx' */
 
         if( outfile[dotpos] != '.' ) {
             /* `pgx` was recognized but there is no dot at expected position */
@@ -1269,19 +1274,20 @@ int imagetopgx(opj_image_t * image, const char *outfile)
         if( total > 256 ) {
             name = (char*)malloc(total+1);
             if (name == NULL) {
-				fprintf(stderr, "imagetopgx: memory out\n");
+				fprintf(stderr, "imagetopgx: out of memory\n");
                 goto fin;
             }
         }
-        strncpy(name, outfile, dotpos);
+		//copy root outfile name to "name"
+		memcpy(name, outfile, dotpos);
+		//add new tag
         sprintf(name+dotpos, "_%u.pgx", compno);
+
         fdest = fopen(name, "wb");
-        /* don't need name anymore */
 
         if (!fdest) {
 
             fprintf(stderr, "ERROR -> failed to open %s for writing\n", name);
-            if( total > 256 ) free(name);
             goto fin;
         }
 
@@ -1310,18 +1316,21 @@ int imagetopgx(opj_image_t * image, const char *outfile)
 
                 if( res < 1 ) {
                     fprintf(stderr, "failed to write 1 byte for %s\n", name);
-                    if( total > 256 ) free(name);
                     goto fin;
                 }
             }
         }
-        if( total > 256 ) free(name);
+        if( total > 256 ) 
+			free(name);
         fclose(fdest);
         fdest = NULL;
     }
     fails = 0;
 fin:
-    if(fdest) fclose(fdest);
+	if (name && total > 256) 
+		free(name);
+    if(fdest)
+		fclose(fdest);
 
     return fails;
 }
