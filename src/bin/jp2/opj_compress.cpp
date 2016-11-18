@@ -1618,6 +1618,11 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		}
 	}
 
+	// set default algorithm 
+	if (parameters->rateControlAlgorithm == 255) {
+		parameters->rateControlAlgorithm = 0;
+	}
+
 
 	/* encode the destination image */
 	/* ---------------------------- */
@@ -1750,6 +1755,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 
 	/* parse input and get user encoding parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
+	initParams->parameters.rateControlAlgorithm = 255;
 	if (parse_cmdline_encoder_ex(argc, 
 								argv,
 								&initParams->parameters,
