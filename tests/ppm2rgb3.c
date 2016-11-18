@@ -58,6 +58,7 @@ static int readheader( FILE *ppm, int *X, int *Y, int *bpp )
 {
     char buffer[256];
     char strbuffer[256];
+	strbuffer[255] = '\0';
     char *line;
     int n;
 
@@ -87,7 +88,8 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
 {
     FILE *outf[] = {NULL, NULL, NULL};
     int i, x, y = 0;
-    char outfn[256];
+    char outfn[4096];
+	outfn[4095] = '\0';
     static const char *exts[3] = {
         "red",
         "grn",
@@ -95,7 +97,7 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
     };
     char *image_line = NULL;
     int ok = 0;
-	if (!X)
+	if (!X || !fn || !ppm)
 		goto cleanup;
 
     /* write single comp as PGM: P5 */
@@ -103,6 +105,8 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
 #ifdef _MSC_VER
 #define snprintf _snprintf /* Visual Studio */
 #endif
+		if (strlen(fn) + strlen(exts[i]) + 5 >= 4096)
+			goto cleanup;
         snprintf( outfn, sizeof(outfn), "%s.%s.pgm", fn, exts[i] );
         outf[i] = fopen( outfn, "wb" );
         if( !outf[i] ) goto cleanup;
@@ -125,9 +129,11 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
     if( y == Y )
         ok = 1;
 cleanup:
-    free(image_line);
+	if (image_line)
+		free(image_line);
     for( i = 0; i < 3; ++i )
-        if( outf[i] ) fclose( outf[i] );
+        if( outf[i] )
+			fclose( outf[i] );
 
     return ok;
 }
