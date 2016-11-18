@@ -95,6 +95,10 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizemembasefile = strlen(opj_optarg)+1;
             free(param->base_filename); /* handle dup option */
             param->base_filename = (char*) malloc(sizemembasefile);
+			if (!param->base_filename) {
+				fprintf(stderr, "Out of memory\n");
+				return 1;
+			}
             strcpy(param->base_filename, opj_optarg);
             /*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
             break;
@@ -102,6 +106,10 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizememtestfile = strlen(opj_optarg) + 1;
             free(param->test_filename); /* handle dup option */
             param->test_filename = (char*) malloc(sizememtestfile);
+			if (!param->test_filename) {
+				fprintf(stderr, "Out of memory\n");
+				return 1;
+			}
             strcpy(param->test_filename, opj_optarg);
             /*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
             break;

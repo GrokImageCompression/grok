@@ -212,11 +212,18 @@ TIFFVGetFieldDefaulted(TIFF* tif, uint32 tag, va_list ap)
 		*va_arg(ap, uint16 *) = td->td_resolutionunit;
 		return (1);
 	case TIFFTAG_PREDICTOR:
-                {
-			TIFFPredictorState* sp = (TIFFPredictorState*) tif->tif_data;
-			*va_arg(ap, uint16*) = (uint16) sp->predictor;
-			return 1;
-                }
+    {
+        TIFFPredictorState* sp = (TIFFPredictorState*) tif->tif_data;
+        if( sp == NULL )
+        {
+            TIFFErrorExt(tif->tif_clientdata, tif->tif_name,
+                         "Cannot get \"Predictor\" tag as plugin is not configured");
+            *va_arg(ap, uint16*) = 0;
+            return 0;
+        }
+        *va_arg(ap, uint16*) = (uint16) sp->predictor;
+        return 1;
+    }
 	case TIFFTAG_DOTRANGE:
 		*va_arg(ap, uint16 *) = 0;
 		*va_arg(ap, uint16 *) = (1<<td->td_bitspersample)-1;
