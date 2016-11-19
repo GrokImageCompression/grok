@@ -1,5 +1,8 @@
 # Build the demo app, small examples
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # First thing define the common source:
 set(common_SRCS
   convert.cpp
