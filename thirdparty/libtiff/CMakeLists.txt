@@ -151,11 +151,53 @@ int main(void) {
   char buf[10];
   snprintf(buf, 10, \"Test %d\", 1);
   return 0;
-}" HAVE_SNPRINTF)
+}"
+  HAVE_SNPRINTF)
 
 if(NOT HAVE_SNPRINTF)
-  set(TARGET_FILES ${TARGET_FILES} snprintf.c)
+  add_definitions(-DNEED_LIBPORT)
 endif()
+
+# CPU bit order
+set(fillorder FILLORDER_MSB2LSB)
+if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "i.*86.*" OR
+   CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "amd64.*" OR
+   CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "x86_64.*")
+  set(fillorder FILLORDER_LSB2MSB)
+endif()
+set(HOST_FILLORDER ${fillorder} CACHE STRING "Native CPU bit order")
+mark_as_advanced(HOST_FILLORDER)
+
+# CPU endianness
+include(TestBigEndian)
+test_big_endian(bigendian)
+if (bigendian)
+  set(bigendian ON)
+else()
+  set(bigendian OFF)
+endif()
+set(HOST_BIG_ENDIAN ${bigendian} CACHE STRING "Native CPU bit order")
+mark_as_advanced(HOST_BIG_ENDIAN)
+if (HOST_BIG_ENDIAN)
+  set(HOST_BIG_ENDIAN 1)
+else()
+  set(HOST_BIG_ENDIAN 0)
+endif()
+
+# IEEE floating point
+set(HAVE_IEEEFP 1 CACHE STRING "IEEE floating point is available")
+mark_as_advanced(HAVE_IEEEFP)
+
+
+# Large file support
+if (UNIX)
+  # This might not catch every possibility catered for by
+  # AC_SYS_LARGEFILE.
+  add_definitions(-D_FILE_OFFSET_BITS=64)
+  set(FILE_OFFSET_BITS 64)
+endif()
+
+
 
 include(CheckTypeSize)
 
