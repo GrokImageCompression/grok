@@ -1,9 +1,6 @@
 /* libtiff/tif_config.h.cmake.in.  Not generated, but originated from autoheader.  */
 /* This file must be kept up-to-date with needed substitutions from libtiff/tif_config.h.in. */
 
-/* Support zlib  */
-#cmakedefine ZIP_SUPPORT  
-
 /* Support CCITT Group 3 & 4 algorithms */
 #cmakedefine CCITT_SUPPORT 1
 
@@ -249,7 +246,7 @@
 #endif
 
 /* Number of bits in a file offset, on hosts where this is settable. */
-#cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
+#define _FILE_OFFSET_BITS @FILE_OFFSET_BITS@
 
 /* Define to `__inline__' or `__inline' if that's what the C compiler
    calls it, or to nothing if 'inline' is not supported under any name.  */
