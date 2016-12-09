@@ -580,27 +580,18 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
 
 int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 {
-    uint32_t width, height;
-	uint32_t bps,adjust, sgnd;
     int tiPhoto;
     TIFF *tif;
     tdata_t buf;
-    tsize_t strip_size;
-    uint32_t i, numcomps;
-    size_t rowStride;
+    tsize_t strip_size, rowStride;
     int32_t* buffer32s = NULL;
     int32_t const* planes[4];
     convert_32s_PXCX cvtPxToCx = NULL;
     convert_32sXXx_C1R cvt32sToTif = NULL;
-
-	// actual bits per sample
-    bps = image->comps[0].prec;
-
-	// even bits per sample
-	uint32_t tif_bps = bps;
+	bool success = true;
 
     planes[0] = image->comps[0].data;
-    numcomps = image->numcomps;
+    uint32_t numcomps = image->numcomps;
 
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
@@ -625,10 +616,11 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			return 1;
+			success = false;
+			goto cleanup;
 		}
 	}
-
+	uint32_t i;
     for (i = 1U; i < numcomps; ++i) {
         if (image->comps[0].dx != image->comps[i].dx) {
             break;
@@ -647,8 +639,20 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
     if (i != numcomps) {
         fprintf(stderr,"imagetotif: All components shall have the same subsampling, same bit depth.\n");
         fprintf(stderr,"\tAborting\n");
-        return 1;
+		success = false;
+		goto cleanup;
     }
+
+	// actual bits per sample
+	uint32_t bps = image->comps[0].prec;
+	if (bps == 0) {
+		fprintf(stderr, "imagetotif: image precision is zero.\n");
+		success = false;
+		goto cleanup;
+	}
+
+	// even bits per sample
+	uint32_t tif_bps = bps;
 
 	if (bps > 16) 
 		bps = 0;
@@ -656,12 +660,14 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	{
 		fprintf(stderr, "imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
 		fprintf(stderr, "\tAborting\n");
-		return 1;
+		success = false;
+		goto cleanup;
 	}
     tif = TIFFOpen(outfile, "wb");
     if (!tif) {
         fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
-        return 1;
+		success = false;
+		goto cleanup;
     }
     for (i = 0U; i < numcomps; ++i) {
         clip_component(&(image->comps[i]), image->comps[0].prec);
@@ -712,10 +718,10 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         /* never here */
         break;
     }
-    sgnd = (int)image->comps[0].sgnd;
-    adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
-    width   = (int)image->comps[0].w;
-    height  = (int)image->comps[0].h;
+    uint32_t sgnd = image->comps[0].sgnd;
+	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
+	uint32_t width   = image->comps[0].w;
+	uint32_t height  = image->comps[0].h;
 
     TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
     TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -740,22 +746,21 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	}
 
     strip_size = TIFFStripSize(tif);
-    rowStride = ((size_t)width * numcomps * (size_t)tif_bps + 7U) / 8U;
-    if (rowStride != (size_t)strip_size) {
+    rowStride = (width * numcomps * tif_bps + 7U) / 8U;
+    if (rowStride != strip_size) {
         fprintf(stderr, "Invalid TIFF strip size\n");
-        TIFFClose(tif);
-        return 1;
+		success = false;
+		goto cleanup;
     }
     buf = _TIFFmalloc(strip_size);
     if (buf == NULL) {
-        TIFFClose(tif);
-        return 1;
+		success = false;
+		goto cleanup;
     }
     buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
     if (buffer32s == NULL) {
-        _TIFFfree(buf);
-        TIFFClose(tif);
-        return 1;
+		success = false;
+		goto cleanup;
     }
 
     for (i = 0; i < image->comps[0].h; ++i) {
@@ -767,11 +772,16 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         planes[2] += width;
         planes[3] += width;
     }
-    _TIFFfree((void*)buf);
-    TIFFClose(tif);
-    free(buffer32s);
 
-    return 0;
+cleanup:
+	if (buf)
+		_TIFFfree((void*)buf);
+	if (tif)
+		TIFFClose(tif);
+	if (buffer32s)
+		free(buffer32s);
+
+    return success ? 0 : 1;
 }/* imagetotif() */
 
 
@@ -1299,7 +1309,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     tdata_t buf = NULL;
     tstrip_t strip;
     tsize_t strip_size;
-	uint32_t j, currentPlane, numcomps = 0, w, h;
     OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
     opj_image_cmptparm_t cmptparm[4]; /* RGBA */
     opj_image_t *image = NULL;
@@ -1307,13 +1316,13 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 	unsigned short tiBps=0, tiPhoto=0, tiSf=0, tiSpp=0, tiPC=0;
 	short tiResUnit=0;
 	float tiXRes=0, tiYRes=0;
-    unsigned int tiWidth=0, tiHeight=0;
+    uint32_t tiWidth=0, tiHeight=0;
     bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
     convert_XXx32s_C1R cvtTifTo32s = NULL;
     convert_32s_CXPX cvtCxToPx = NULL;
     int32_t* buffer32s = NULL;
     int32_t* planes[4];
-    size_t rowStride;
+	tsize_t rowStride;
 	bool success = true;
 
     tif = TIFFOpen(filename, "r");
@@ -1358,22 +1367,38 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		set_resolution(parameters->display_resolution, tiXRes, tiYRes, tiResUnit);
 	}
 
-    w= (int)tiWidth;
-    h= (int)tiHeight;
 
-	if (tiBps > 16U) {
-		fprintf(stderr, "tiftoimage: Bits=%d, Only 1 to 16 bits implemented\n", tiBps);
+	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
+		fprintf(stderr, "tiftoimage: Bad value for samples per pixel == %hu.\n"
+			 "\tAborting.\n", tiSpp);
+		success = false;
+		goto cleanup;
+		
+	}
+	if (tiBps > 16U || tiBps == 0) {
+		fprintf(stderr, "tiftoimage: Bad values for Bits == %d.\n"
+			 "\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
+		success = false;
+		goto cleanup;
+	}
+	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_RGB) {
+		fprintf(stderr, "tiftoimage: Bad color format %d.\n"
+			 "\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
 		fprintf(stderr, "\tAborting\n");
-		TIFFClose(tif);
-		return NULL;
+		success = false;
+		goto cleanup;
+	}
+	
+	if (tiWidth == 0 || tiHeight == 0) {
+		fprintf(stderr, "tiftoimage: Bad values for width(%u) "
+			 "and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
+		success = false;
+		goto cleanup;
+
 	}
 
-    if(tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_RGB) {
-        fprintf(stderr,"tiftoimage: Bad color format %d.\n\tOnly RGB(A) and GRAY(A) has been implemented\n",(int) tiPhoto);
-        fprintf(stderr,"\tAborting\n");
-        TIFFClose(tif);
-        return NULL;
-    }
+	uint32_t w = tiWidth;
+	uint32_t h = tiHeight;
 
     switch (tiBps) {
     case 1:
@@ -1460,6 +1485,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         is_cinema = 0U;
     }
 
+	uint32_t numcomps=0;
     if(tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
         numcomps = 3 + has_alpha;
         color_space = OPJ_CLRSPC_SRGB;
@@ -1474,7 +1500,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         tiSpp = 1U; /* consider only one sample per plane */
     }
 
-    for(j = 0; j < numcomps; j++) {
+    for(uint32_t j = 0; j < numcomps; j++) {
         cmptparm[j].prec = tiBps;
         cmptparm[j].dx = subsampling_dx;
         cmptparm[j].dy = subsampling_dy;
@@ -1490,13 +1516,27 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     }
     /* set image offset and reference grid */
     image->x0 = parameters->image_offset_x0;
-    image->y0 = parameters->image_offset_y0;
-    image->x1 =	!image->x0 ? (w - 1) * subsampling_dx + 1 :
-                image->x0 + (w - 1) * subsampling_dx + 1;
+	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
+		image->x0 + (w - 1) * subsampling_dx + 1;
+	if (image->x1 <= image->x0) {
+		fprintf(stderr, "tiftoimage: Bad value for image->x1(%d) vs. "
+			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
+		success = false;
+		goto cleanup;
+	}
+
+	image->y0 = parameters->image_offset_y0;
     image->y1 =	!image->y0 ? (h - 1) * subsampling_dy + 1 :
                 image->y0 + (h - 1) * subsampling_dy + 1;
 
-    for(j = 0; j < numcomps; j++) {
+	if (image->y1 <= image->y0) {
+		fprintf(stderr, "tiftoimage: Bad value for image->y1(%d) vs. "
+			 "image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
+		success = false;
+		goto cleanup;
+	}
+
+    for(uint32_t j = 0; j < numcomps; j++) {
         planes[j] = image->comps[j].data;
     }
     image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
@@ -1521,7 +1561,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		success = false;
 		goto cleanup;
     }
-    rowStride = ((size_t)w * tiSpp * tiBps + 7U) / 8U;
+    rowStride = (w * tiSpp * tiBps + 7U) / 8U;
     buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
     if (buffer32s == NULL) {
 		success = false;
@@ -1529,17 +1569,19 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
     strip = 0;
-    currentPlane = 0;
+    uint32_t currentPlane = 0;
     do {
         planes[0] = image->comps[currentPlane].data; /* to manage planar data */
         h= (int)tiHeight;
         /* Read the Image components */
         for(; (h > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
             const uint8_t *dat8;
-            size_t ssize=0;
+			tsize_t ssize=0;
 
-            ssize = (size_t)TIFFReadEncodedStrip(tif, strip, buf, strip_size);
-			if (ssize == (size_t)-1) {
+            ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize < 1 || ssize > strip_size) {
+				fprintf(stderr, "tiftoimage: Bad value for ssize(%lld) "
+					 "vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
 				success = false;
 				goto cleanup;
 			}
@@ -1570,7 +1612,7 @@ cleanup:
 
 	if (success) {
 		if (is_cinema) {
-			for (j = 0; j < numcomps; ++j) {
+			for (uint32_t j = 0; j < numcomps; ++j) {
 				scale_component(&(image->comps[j]), 12);
 			}
 		}
