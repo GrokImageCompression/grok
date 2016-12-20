@@ -1105,15 +1105,53 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = NULL;
 	int failed = 0;
+	uint8_t* buffer = nullptr;
 
 	/* read the input file and put it in memory */
 	/* ---------------------------------------- */
 	if (!l_stream) {
-		// memory mapped stream
-		l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+		// use file stream 
+		l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
 
-		// other option is to use file stream 
-		//l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
+		// other option is to use memory mapped stream
+		//l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+
+		// third option is to read from buffer
+		/*
+		auto fp = fopen(parameters->infile, "rb");
+		if (!fp) {
+			printf("unable to open file %s for reading", parameters->infile);
+			failed = -1;
+			goto cleanup;
+		}
+
+		auto rc = fseek(fp, 0, SEEK_END);
+		if (rc == -1) {
+			printf("unable to seek on file %s", parameters->infile);
+			failed = -1;
+			goto cleanup;
+		}
+		auto lengthOfFile = ftell(fp);
+		if (lengthOfFile <= 0) {
+			printf("Zero or negative length for file %s", parameters->infile);
+			failed = -1;
+			goto cleanup;
+		}
+		rewind(fp);
+		buffer = new uint8_t[lengthOfFile];
+		size_t bytesRead = 0;
+		size_t totalBytes = 0;
+		while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
+			totalBytes += bytesRead;
+		}
+		fclose(fp);
+		if (totalBytes != lengthOfFile) {
+			printf("Unable to read full length of file %s", parameters->infile);
+			failed = -1;
+			goto cleanup;
+		}
+		l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
+		*/
 	}
 
 
@@ -1230,6 +1268,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 
 	/* Close the byte stream */
 cleanup:
+	if (buffer)
+		delete[] buffer;
 	if (l_stream)
 		opj_stream_destroy(l_stream);
 	l_stream = NULL;
