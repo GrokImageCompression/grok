@@ -1009,7 +1009,16 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     return l_stream;
 }
 
+
 /* ---------------------------------------------------------------------- */
+OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream_t* stream) {
+	if (!stream)
+		return 0;
+	return opj_get_buffer_stream_offset(stream);
+
+}
+
+
 opj_stream_t* OPJ_CALLCONV opj_stream_create_buffer_stream(uint8_t *buf,
         size_t len,
         bool p_is_read_stream)

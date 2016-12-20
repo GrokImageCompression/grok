@@ -433,6 +433,17 @@ size_t opj_stream_write_data (opj_stream_private_t * p_stream,
                               size_t p_size,
                               opj_event_mgr_t * p_event_mgr)
 {
+	// handle case where there is non internal buffer (buffer stream)
+	if (!p_stream->m_stored_data) {
+		/* we should do an actual write on the media */
+		auto l_current_write_nb_bytes = p_stream->m_write_fn((uint8_t*)p_buffer,
+																p_size,
+																p_stream->m_user_data);
+		p_stream->m_byte_offset += l_current_write_nb_bytes;
+		return p_size;
+	}
+
+
     size_t l_remaining_bytes = 0;
     size_t l_write_nb_bytes = 0;
 

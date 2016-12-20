@@ -88,14 +88,12 @@ static size_t opj_read_from_buffer(void * p_buffer,
     return l_nb_read ? l_nb_read : ((size_t)-1);
 }
 
-static size_t opj_write_from_buffer(void * p_buffer,
+static size_t opj_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
                                     opj_buf_info_t* p_source_buffer)
 {
     memcpy(p_source_buffer->buf + (size_t)p_source_buffer->off, p_buffer, p_nb_bytes);
     p_source_buffer->off += (int64_t)p_nb_bytes;
-    p_source_buffer->len += p_nb_bytes;
-
     return p_nb_bytes;
 }
 
@@ -130,9 +128,19 @@ static void opj_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_
         opj_stream_set_read_function(l_stream, (opj_stream_read_fn)opj_read_from_buffer);
         opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)opj_zero_copy_read_from_buffer);
     } else
-        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)opj_write_from_buffer);
+        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)opj_write_to_buffer);
     opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)opj_skip_from_buffer);
     opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)opj_seek_from_buffer);
+}
+
+size_t opj_get_buffer_stream_offset(opj_stream_t* stream) {
+	if (!stream)
+		return 0;
+	opj_stream_private_t * private_stream = (opj_stream_private_t*)stream;
+	if (!private_stream->m_user_data)
+		return 0;
+	opj_buf_info_t* buf = (opj_buf_info_t*)private_stream->m_user_data;
+	return buf->off;
 }
 
 opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,

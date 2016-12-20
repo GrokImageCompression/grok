@@ -1662,7 +1662,13 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
+	uint8_t* buff = nullptr;
 	l_stream = opj_stream_create_default_file_stream(outfile, false);
+	//  option to write to buffer, assuming one knows how large uncompressed 
+	//auto len = (image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8);
+	//buff = new uint8_t[len];
+	//l_stream = opj_stream_create_buffer_stream(buff, len, false);
+	
 	if (!l_stream) {
 		fprintf(stderr, "failed to create stream\n");
 		if (l_codec)
@@ -1730,6 +1736,13 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		return false;
 	}
 
+	if (buff) {
+		auto fp = fopen(outfile, "wb");
+		auto len = opj_stream_get_write_buffer_stream_length(l_stream);
+		fwrite(buff, len, 1,fp);
+		fclose(fp);
+
+	}
 	opj_stream_destroy(l_stream);
 	opj_destroy_codec(l_codec);
 
