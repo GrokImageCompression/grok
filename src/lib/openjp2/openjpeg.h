@@ -1237,8 +1237,10 @@ OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (const char *fn
         size_t p_buffer_size,
         bool p_is_read_stream);
 OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_buffer_stream(uint8_t *buf,
-        size_t len,
+        size_t buffer_len,
         bool p_is_read_stream);
+
+OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream_t*);
 
 OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_mapped_file_read_stream(const char *fname);
 

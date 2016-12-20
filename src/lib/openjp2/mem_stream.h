@@ -38,6 +38,7 @@
 opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream);
+size_t opj_get_buffer_stream_offset(opj_stream_t* stream);
 
 opj_stream_t* opj_create_mapped_file_read_stream(const char *fname);
 
