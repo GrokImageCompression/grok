@@ -649,6 +649,11 @@ cmsBool OptimizeByResampling(cmsPipeline** Lut, cmsUInt32Number Intent, cmsUInt3
 
     ColorSpace       = _cmsICCcolorSpace(T_COLORSPACE(*InputFormat));
     OutputColorSpace = _cmsICCcolorSpace(T_COLORSPACE(*OutputFormat));
+
+    // Color space must be specified
+    if (ColorSpace == (cmsColorSpaceSignature)-1 ||
+        OutputColorSpace == (cmsColorSpaceSignature)-1) return FALSE;
+
     nGridPoints      = _cmsReasonableGridpointsByColorspace(ColorSpace, *dwFlags);
 
     // For empty LUTs, 2 points are enough
@@ -1454,6 +1459,7 @@ cmsBool OptimizeByJoiningCurves(cmsPipeline** Lut, cmsUInt32Number Intent, cmsUI
 
         // LUT optimizes to nothing. Set the identity LUT
         cmsStageFree(ObtainedCurves);
+        ObtainedCurves = NULL;
 
         if (!cmsPipelineInsertStage(Dest, cmsAT_BEGIN, cmsStageAllocIdentity(Dest ->ContextID, Src ->InputChannels)))
             goto Error;
