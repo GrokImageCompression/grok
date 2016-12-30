@@ -14,6 +14,10 @@ CHECK_INCLUDE_FILE(sys/types.h HAVE_SYS_TYPES_H)
 CHECK_INCLUDE_FILE(stdint.h    HAVE_STDINT_H)
 CHECK_INCLUDE_FILE(stddef.h    HAVE_STDDEF_H)
 
+check_include_file(sys/types.h HAVE_SYS_TYPES_H)
+check_include_file(stdint.h    HAVE_STDINT_H)
+check_include_file(stddef.h    HAVE_STDDEF_H)
+
 #
 # Check to see if we have large file support
 #
@@ -30,22 +34,37 @@ endif()
 if(HAVE_STDDEF_H)
     list(APPEND CMAKE_REQUIRED_DEFINITIONS -DHAVE_STDDEF_H)
 endif()
-CHECK_TYPE_SIZE(off64_t OFF64_T)
+check_type_size(off64_t OFF64_T)
 if(HAVE_OFF64_T)
    add_definitions(-D_LARGEFILE64_SOURCE=1)
 endif()
 set(CMAKE_REQUIRED_DEFINITIONS) # clear variable
+
 #
 # Check for fseeko
 #
-CHECK_FUNCTION_EXISTS(fseeko HAVE_FSEEKO)
+check_function_exists(fseeko HAVE_FSEEKO)
 if(NOT HAVE_FSEEKO)
     add_definitions(-DNO_FSEEKO)
 endif()
+
 #
 # Check for unistd.h
 #
-CHECK_INCLUDE_FILE(unistd.h Z_HAVE_UNISTD_H)
+check_include_file(unistd.h Z_HAVE_UNISTD_H)
+
+if(MSVC)
+    set(CMAKE_DEBUG_POSTFIX "d")
+    add_definitions(-D_CRT_SECURE_NO_DEPRECATE)
+    add_definitions(-D_CRT_NONSTDC_NO_DEPRECATE)
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/zlib.pc.cmakein
+		${ZLIB_PC} @ONLY)
+configure_file(	${CMAKE_CURRENT_SOURCE_DIR}/zconf.h.cmakein
+		${CMAKE_CURRENT_BINARY_DIR}/zconf.h @ONLY)
+
 
 include_directories(
  ${CMAKE_CURRENT_SOURCE_DIR}
