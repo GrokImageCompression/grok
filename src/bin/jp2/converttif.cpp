@@ -581,8 +581,8 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
 int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 {
     int tiPhoto;
-    TIFF *tif;
-    tdata_t buf;
+    TIFF *tif=nullptr;
+    tdata_t buf=nullptr;
     tsize_t strip_size, rowStride;
     int32_t* buffer32s = NULL;
     int32_t const* planes[4];
