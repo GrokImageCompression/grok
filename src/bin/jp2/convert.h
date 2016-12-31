@@ -56,6 +56,26 @@
 #pragma once
 
 
+#define INV_MASK_16 0xFFFF
+#define INV_MASK_15 ((1<<15)-1)
+#define INV_MASK_14 ((1<<14)-1)
+#define INV_MASK_13 ((1<<13)-1)
+#define INV_MASK_12 ((1<<12)-1)
+#define INV_MASK_11 ((1<<11)-1)
+#define INV_MASK_10 ((1<<10)-1)
+#define INV_MASK_9 ((1<<9)-1)
+#define INV_MASK_8 0xFF
+#define INV_MASK_7 ((1<<7)-1)
+#define INV_MASK_6 ((1<<6)-1)
+#define INV_MASK_5 ((1<<5)-1)
+#define INV_MASK_4 ((1<<4)-1)
+#define INV_MASK_3 ((1<<3)-1)
+#define INV_MASK_2 ((1<<2)-1)
+
+
+#define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
+
+
 
 extern "C" {
 
@@ -70,7 +90,7 @@ extern "C" {
 	typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
 	extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
 	/* bit depth conversions */
-	typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length);
+	typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
 	extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
 	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
 	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
