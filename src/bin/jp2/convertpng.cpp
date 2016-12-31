@@ -74,13 +74,13 @@ extern "C" {
 /* PNG allows bits per sample: 1, 2, 4, 8, 16 */
 
 
-static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < length; i++) {
         int32_t val0 = *pSrc++;
         int32_t val1 = *pSrc++;
-        pDst[i] = val0 << 8 | val1;
+        pDst[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
     }
 }
 
@@ -247,7 +247,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
 
     for(i = 0; i < height; ++i) {
-        cvtXXTo32s(rows[i], row32s, (size_t)width * nr_comp);
+        cvtXXTo32s(rows[i], row32s, (size_t)width * nr_comp,false);
         cvtCxToPx(row32s, planes, width);
         planes[0] += width;
         planes[1] += width;

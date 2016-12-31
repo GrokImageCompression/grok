@@ -279,37 +279,37 @@ const convert_32s_PXCX convert_32s_PXCX_LUT[5] = {
 
 /* bit depth conversions */
 /* used by PNG/TIFF up to 8bpp */
-static void convert_1u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_1u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < (length & ~(size_t)7U); i+=8U) {
         uint32_t val = *pSrc++;
-        pDst[i+0] = (int32_t)( val >> 7);
-        pDst[i+1] = (int32_t)((val >> 6) & 0x1U);
-        pDst[i+2] = (int32_t)((val >> 5) & 0x1U);
-        pDst[i+3] = (int32_t)((val >> 4) & 0x1U);
-        pDst[i+4] = (int32_t)((val >> 3) & 0x1U);
-        pDst[i+5] = (int32_t)((val >> 2) & 0x1U);
-        pDst[i+6] = (int32_t)((val >> 1) & 0x1U);
-        pDst[i+7] = (int32_t)(val & 0x1U);
+        pDst[i+0] = INV((int32_t)( val >> 7),1,invert);
+        pDst[i+1] = INV((int32_t)((val >> 6) & 0x1U), 1,invert);
+        pDst[i+2] = INV((int32_t)((val >> 5) & 0x1U), 1,invert);
+        pDst[i+3] = INV((int32_t)((val >> 4) & 0x1U), 1,invert);
+        pDst[i+4] = INV((int32_t)((val >> 3) & 0x1U), 1,invert);
+        pDst[i+5] = INV((int32_t)((val >> 2) & 0x1U), 1,invert);
+        pDst[i+6] = INV((int32_t)((val >> 1) & 0x1U), 1,invert);
+        pDst[i+7] = INV((int32_t)(val & 0x1U), 1,invert);
     }
     if (length & 7U) {
         uint32_t val = *pSrc++;
         length = length & 7U;
-        pDst[i+0] = (int32_t)(val >> 7);
+        pDst[i+0] = INV((int32_t)(val >> 7),1,invert);
 
         if (length > 1U) {
-            pDst[i+1] = (int32_t)((val >> 6) & 0x1U);
+            pDst[i+1] = INV((int32_t)((val >> 6) & 0x1U), 1,invert);
             if (length > 2U) {
-                pDst[i+2] = (int32_t)((val >> 5) & 0x1U);
+                pDst[i+2] = INV((int32_t)((val >> 5) & 0x1U), 1,invert);
                 if (length > 3U) {
-                    pDst[i+3] = (int32_t)((val >> 4) & 0x1U);
+                    pDst[i+3] = INV((int32_t)((val >> 4) & 0x1U), 1,invert);
                     if (length > 4U) {
-                        pDst[i+4] = (int32_t)((val >> 3) & 0x1U);
+                        pDst[i+4] = INV((int32_t)((val >> 3) & 0x1U), 1,invert);
                         if (length > 5U) {
-                            pDst[i+5] = (int32_t)((val >> 2) & 0x1U);
+                            pDst[i+5] = INV((int32_t)((val >> 2) & 0x1U), 1,invert);
                             if (length > 6U) {
-                                pDst[i+6] = (int32_t)((val >> 1) & 0x1U);
+                                pDst[i+6] = INV((int32_t)((val >> 1) & 0x1U), 1,invert);
                             }
                         }
                     }
@@ -318,76 +318,76 @@ static void convert_1u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
         }
     }
 }
-static void convert_2u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_2u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
         uint32_t val = *pSrc++;
-        pDst[i+0] = (int32_t)( val >> 6);
-        pDst[i+1] = (int32_t)((val >> 4) & 0x3U);
-        pDst[i+2] = (int32_t)((val >> 2) & 0x3U);
-        pDst[i+3] = (int32_t)(val & 0x3U);
+        pDst[i+0] = INV((int32_t)( val >> 6),3,invert);
+        pDst[i+1] = INV((int32_t)((val >> 4) & 0x3U),3,invert);
+        pDst[i+2] = INV((int32_t)((val >> 2) & 0x3U),3,invert);
+        pDst[i+3] = INV((int32_t)(val & 0x3U),3,invert);
     }
     if (length & 3U) {
         uint32_t val = *pSrc++;
         length = length & 3U;
-        pDst[i+0] =  (int32_t)(val >> 6);
+        pDst[i+0] = INV((int32_t)(val >> 6), 3, invert);
 
         if (length > 1U) {
-            pDst[i+1] = (int32_t)((val >> 4) & 0x3U);
+            pDst[i+1] = INV((int32_t)((val >> 4) & 0x3U),3,invert);
             if (length > 2U) {
-                pDst[i+2] = (int32_t)((val >> 2) & 0x3U);
+                pDst[i+2] = INV((int32_t)((val >> 2) & 0x3U),3,invert);
 
             }
         }
     }
 }
-static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_4u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < (length & ~(size_t)1U); i+=2U) {
         uint32_t val = *pSrc++;
-        pDst[i+0] = (int32_t)(val >> 4);
-        pDst[i+1] = (int32_t)(val & 0xFU);
+        pDst[i+0] = INV((int32_t)(val >> 4),15,invert);
+        pDst[i+1] = INV((int32_t)(val & 0xFU),15,invert);
     }
     if (length & 1U) {
         uint8_t val = *pSrc++;
-        pDst[i+0] = (int32_t)(val >> 4);
+        pDst[i+0] = INV((int32_t)(val >> 4), 15, invert);
     }
 }
-static void convert_6u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_6u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
         uint32_t val0 = *pSrc++;
         uint32_t val1 = *pSrc++;
         uint32_t val2 = *pSrc++;
-        pDst[i+0] = (int32_t)(val0 >> 2);
-        pDst[i+1] = (int32_t)(((val0 & 0x3U) << 4) | (val1 >> 4));
-        pDst[i+2] = (int32_t)(((val1 & 0xFU) << 2) | (val2 >> 6));
-        pDst[i+3] = (int32_t)(val2 & 0x3FU);
+        pDst[i+0] = INV((int32_t)(val0 >> 2),63,invert);
+        pDst[i+1] = INV((int32_t)(((val0 & 0x3U) << 4) | (val1 >> 4)), 63, invert);
+        pDst[i+2] = INV((int32_t)(((val1 & 0xFU) << 2) | (val2 >> 6)), 63, invert);
+        pDst[i+3] = INV((int32_t)(val2 & 0x3FU), 63, invert);
 
     }
     if (length & 3U) {
         uint32_t val0 = *pSrc++;
         length = length & 3U;
-        pDst[i+0] = (int32_t)(val0 >> 2);
+        pDst[i+0] = INV((int32_t)(val0 >> 2), 63, invert);
 
         if (length > 1U) {
             uint32_t val1 = *pSrc++;
-            pDst[i+1] = (int32_t)(((val0 & 0x3U) << 4) | (val1 >> 4));
+            pDst[i+1] = INV((int32_t)(((val0 & 0x3U) << 4) | (val1 >> 4)), 63, invert);
             if (length > 2U) {
                 uint32_t val2 = *pSrc++;
-                pDst[i+2] = (int32_t)(((val1 & 0xFU) << 2) | (val2 >> 6));
+                pDst[i+2] = INV((int32_t)(((val1 & 0xFU) << 2) | (val2 >> 6)), 63, invert);
             }
         }
     }
 }
-static void convert_8u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length)
+static void convert_8u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
     size_t i;
     for (i = 0; i < length; i++) {
-        pDst[i] = pSrc[i];
+        pDst[i] = INV(pSrc[i],0xFF,invert);
     }
 }
 const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9] = {
