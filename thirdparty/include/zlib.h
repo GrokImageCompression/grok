@@ -1,7 +1,7 @@
 /* zlib.h -- interface of the 'zlib' general purpose compression library
-  version 1.2.8.1, May xxth, 2013
+  version 1.2.9, December 31st, 2016
 
-  Copyright (C) 1995-2013 Jean-loup Gailly and Mark Adler
+  Copyright (C) 1995-2016 Jean-loup Gailly and Mark Adler
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -37,12 +37,12 @@
 extern "C" {
 #endif
 
-#define ZLIB_VERSION "1.2.8.1-motley"
-#define ZLIB_VERNUM 0x1281
+#define ZLIB_VERSION "1.2.9"
+#define ZLIB_VERNUM 0x1290
 #define ZLIB_VER_MAJOR 1
 #define ZLIB_VER_MINOR 2
-#define ZLIB_VER_REVISION 8
-#define ZLIB_VER_SUBREVISION 1
+#define ZLIB_VER_REVISION 9
+#define ZLIB_VER_SUBREVISION 0
 
 /*
     The 'zlib' compression library provides in-memory compression and
@@ -649,6 +649,28 @@ ZEXTERN int ZEXPORT deflateSetDictionary OF((z_streamp strm,
    inconsistent (for example if deflate has already been called for this stream
    or if not at a block boundary for raw deflate).  deflateSetDictionary does
    not perform any compression: this will be done by deflate().
+*/
+
+ZEXTERN int ZEXPORT deflateGetDictionary OF((z_streamp strm,
+                                             Bytef *dictionary,
+                                             uInt  *dictLength));
+/*
+     Returns the sliding dictionary being maintained by deflate.  dictLength is
+   set to the number of bytes in the dictionary, and that many bytes are copied
+   to dictionary.  dictionary must have enough space, where 32768 bytes is
+   always enough.  If deflateGetDictionary() is called with dictionary equal to
+   Z_NULL, then only the dictionary length is returned, and nothing is copied.
+   Similary, if dictLength is Z_NULL, then it is not set.
+
+     deflateGetDictionary() may return a length less than the window size, even
+   when more than the window size in input has been provided. It may return up
+   to 258 bytes less in that case, due to how zlib's implementation of deflate
+   manages the sliding window and lookahead for matches, where matches can be
+   up to 258 bytes long. If the application needs the last window-size bytes of
+   input, then that would need to be saved by the application outside of zlib.
+
+     deflateGetDictionary returns Z_OK on success, or Z_STREAM_ERROR if the
+   stream state is inconsistent.
 */
 
 ZEXTERN int ZEXPORT deflateCopy OF((z_streamp dest,
@@ -1680,6 +1702,12 @@ ZEXTERN uLong ZEXPORT adler32 OF((uLong adler, const Bytef *buf, uInt len));
      if (adler != original_adler) error();
 */
 
+ZEXTERN uLong ZEXPORT adler32_z OF((uLong adler, const Bytef *buf,
+                                    z_size_t len));
+/*
+     Same as adler32(), but with a size_t length.
+*/
+
 /*
 ZEXTERN uLong ZEXPORT adler32_combine OF((uLong adler1, uLong adler2,
                                           z_off_t len2));
@@ -1707,6 +1735,12 @@ ZEXTERN uLong ZEXPORT crc32   OF((uLong crc, const Bytef *buf, uInt len));
        crc = crc32(crc, buffer, length);
      }
      if (crc != original_crc) error();
+*/
+
+ZEXTERN uLong ZEXPORT crc32_z OF((uLong adler, const Bytef *buf,
+                                  z_size_t len));
+/*
+     Same as crc32(), but with a size_t length.
 */
 
 /*
@@ -1739,19 +1773,35 @@ ZEXTERN int ZEXPORT inflateBackInit_ OF((z_streamp strm, int windowBits,
                                          unsigned char FAR *window,
                                          const char *version,
                                          int stream_size));
-#define deflateInit(strm, level) \
-        deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream))
-#define inflateInit(strm) \
-        inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream))
-#define deflateInit2(strm, level, method, windowBits, memLevel, strategy) \
-        deflateInit2_((strm),(level),(method),(windowBits),(memLevel),\
-                      (strategy), ZLIB_VERSION, (int)sizeof(z_stream))
-#define inflateInit2(strm, windowBits) \
-        inflateInit2_((strm), (windowBits), ZLIB_VERSION, \
-                      (int)sizeof(z_stream))
-#define inflateBackInit(strm, windowBits, window) \
-        inflateBackInit_((strm), (windowBits), (window), \
-                      ZLIB_VERSION, (int)sizeof(z_stream))
+#ifdef Z_PREFIX_SET
+#  define z_deflateInit(strm, level) \
+          deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define z_inflateInit(strm) \
+          inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define z_deflateInit2(strm, level, method, windowBits, memLevel, strategy) \
+          deflateInit2_((strm),(level),(method),(windowBits),(memLevel),\
+                        (strategy), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define z_inflateInit2(strm, windowBits) \
+          inflateInit2_((strm), (windowBits), ZLIB_VERSION, \
+                        (int)sizeof(z_stream))
+#  define z_inflateBackInit(strm, windowBits, window) \
+          inflateBackInit_((strm), (windowBits), (window), \
+                           ZLIB_VERSION, (int)sizeof(z_stream))
+#else
+#  define deflateInit(strm, level) \
+          deflateInit_((strm), (level), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define inflateInit(strm) \
+          inflateInit_((strm), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define deflateInit2(strm, level, method, windowBits, memLevel, strategy) \
+          deflateInit2_((strm),(level),(method),(windowBits),(memLevel),\
+                        (strategy), ZLIB_VERSION, (int)sizeof(z_stream))
+#  define inflateInit2(strm, windowBits) \
+          inflateInit2_((strm), (windowBits), ZLIB_VERSION, \
+                        (int)sizeof(z_stream))
+#  define inflateBackInit(strm, windowBits, window) \
+          inflateBackInit_((strm), (windowBits), (window), \
+                           ZLIB_VERSION, (int)sizeof(z_stream))
+#endif
 
 #ifndef Z_SOLO
 
