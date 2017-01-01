@@ -1,5 +1,5 @@
 /* compress.c -- compress a memory buffer
- * Copyright (C) 1995-2005, 2014 Jean-loup Gailly, Mark Adler
+ * Copyright (C) 1995-2005, 2014, 2016 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -28,7 +28,7 @@ int ZEXPORT compress2 (dest, destLen, source, sourceLen, level)
 {
     z_stream stream;
     int err;
-    const uInt max = (uInt)0 - 1;
+    const uInt max = (uInt)-1;
     uLong left;
 
     left = *destLen;

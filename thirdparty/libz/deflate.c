@@ -52,7 +52,7 @@
 #include "deflate.h"
 
 const char deflate_copyright[] =
-   " deflate 1.2.8.1 Copyright 1995-2016 Jean-loup Gailly and Mark Adler ";
+   " deflate 1.2.9 Copyright 1995-2016 Jean-loup Gailly and Mark Adler ";
 /*
   If you use the zlib library in a product, an acknowledgment is welcome
   in the documentation of your product. If for some reason you cannot
@@ -437,6 +437,28 @@ int ZEXPORT deflateSetDictionary (strm, dictionary, dictLength)
     strm->next_in = next;
     strm->avail_in = avail;
     s->wrap = wrap;
+    return Z_OK;
+}
+
+/* ========================================================================= */
+int ZEXPORT deflateGetDictionary (strm, dictionary, dictLength)
+    z_streamp strm;
+    Bytef *dictionary;
+    uInt  *dictLength;
+{
+    deflate_state *s;
+    uInt len;
+
+    if (deflateStateCheck(strm))
+        return Z_STREAM_ERROR;
+    s = strm->state;
+    len = s->strstart + s->lookahead;
+    if (len > s->w_size)
+        len = s->w_size;
+    if (dictionary != Z_NULL && len)
+        zmemcpy(dictionary, s->window + s->strstart + s->lookahead - len, len);
+    if (dictLength != Z_NULL)
+        *dictLength = len;
     return Z_OK;
 }
 
@@ -1737,12 +1759,12 @@ local block_state deflate_stored(s, flush)
      * code following this won't be able to either.
      */
     if (flush != Z_NO_FLUSH && s->strm->avail_in == 0 &&
-        s->strstart == s->block_start)
+        (long)s->strstart == s->block_start)
         return flush == Z_FINISH ? finish_done : block_done;
 
     /* Fill the window with any remaining input. */
     have = s->window_size - s->strstart - 1;
-    if (s->strm->avail_in > have && s->block_start >= s->w_size) {
+    if (s->strm->avail_in > have && s->block_start >= (long)s->w_size) {
         /* Slide the window down. */
         s->block_start -= s->w_size;
         s->strstart -= s->w_size;
