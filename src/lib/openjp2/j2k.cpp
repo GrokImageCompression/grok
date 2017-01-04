@@ -5887,11 +5887,12 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
                           "JPEG 2000 Scalable Digital Cinema profiles not yet supported\n");
             parameters->rsiz = OPJ_PROFILE_NONE;
         } else {
-            opj_j2k_set_cinema_parameters(parameters,image,p_manager);
-            if (!opj_j2k_is_cinema_compliant(image,parameters->rsiz,p_manager)) {
-				// don't touch rsiz
-                //parameters->rsiz = OPJ_PROFILE_NONE;
-            }
+			if (opj_j2k_is_cinema_compliant(image, parameters->rsiz, p_manager)) {
+				opj_j2k_set_cinema_parameters(parameters, image, p_manager);
+			}
+			else {
+				parameters->rsiz = OPJ_PROFILE_NONE;
+			}
         }
     } else if (OPJ_IS_STORAGE(parameters->rsiz)) {
         opj_event_msg(p_manager, EVT_WARNING,
