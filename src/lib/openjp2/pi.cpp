@@ -386,6 +386,8 @@ static bool opj_pi_next_rpcl(opj_pi_iterator_t * pi)
                     }
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
+					if (levelno >= OPJ_J2K_MAXRLVLS)
+						continue;
                     trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
                     try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
                     trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
@@ -455,6 +457,8 @@ static bool opj_pi_next_pcrl(opj_pi_iterator_t * pi)
                     uint32_t prci, prcj;
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
+					if (levelno >= OPJ_J2K_MAXRLVLS)
+						continue;
                     trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
                     try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
                     trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
@@ -527,6 +531,8 @@ static bool opj_pi_next_cprl(opj_pi_iterator_t * pi)
                     int32_t prci, prcj;
                     res = &comp->resolutions[pi->resno];
                     levelno = comp->numresolutions - 1 - pi->resno;
+					if (levelno >= OPJ_J2K_MAXRLVLS)
+						continue;
                     trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
                     try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
                     trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));

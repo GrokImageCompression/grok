@@ -871,11 +871,18 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (tilesArg.isSet()) {
-			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &parameters->cp_tdx, &parameters->cp_tdy) == EOF) {
+			int32_t cp_tdx = 0, cp_tdy = 0;
+			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &cp_tdx, &cp_tdy) == EOF) {
 				fprintf(stderr, "sscanf failed for tiles argument\n");
 				return 1;
 			}
-
+			// sanity check on tile dimensions
+			if (cp_tdx <= 0 || cp_tdy <= 0) {
+				fprintf(stderr, "Tile dimensions must be strictly positive\n");
+				return 1;
+			}
+			parameters->cp_tdx = cp_tdx;
+			parameters->cp_tdy = cp_tdy;
 			parameters->tile_size_on = true;
 
 		}

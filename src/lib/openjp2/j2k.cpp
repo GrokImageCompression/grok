@@ -2167,7 +2167,8 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
             return false;
         }
 
-		if (l_img_comp->prec > OPJ_MAX_PRECISION) {
+		if (l_img_comp->prec == 0 || 
+				l_img_comp->prec > OPJ_MAX_PRECISION) {
 			opj_event_msg(p_manager, EVT_ERROR,
 				"Invalid precision for comp = %d : prec=%u (should be between 1 and %d according to the JPEG2000 standard)\n",
 				i, l_img_comp->prec, OPJ_MAX_PRECISION);
@@ -5982,6 +5983,10 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
     */
 
     if (parameters->tile_size_on) {
+		// avoid divide by zero
+		if (cp->tdx == 0 || cp->tdy == 0) {
+			return false;
+		}
         cp->tw = opj_uint_ceildiv((image->x1 - cp->tx0), cp->tdx);
         cp->th = opj_uint_ceildiv((image->y1 - cp->ty0), cp->tdy);
     } else {
@@ -7617,7 +7622,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
                                    p_j2k->m_output_image,
                                    p_j2k->m_current_tile_number,
                                    p_manager)) {
-        opj_event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
+		opj_event_msg(p_manager, EVT_ERROR, "Cannot decode tile %d\n", p_j2k->m_current_tile_number);
         return false;
     }
 
@@ -8075,6 +8080,10 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_decoder.m_end_tile_x = l_cp->tw;
         p_image->x1 = l_image->x1;
     } else {
+		// avoid divide by zero
+		if (l_cp->tdx == 0) {
+			return false;
+		}
         p_j2k->m_specific_param.m_decoder.m_end_tile_x = opj_uint_ceildiv(p_end_x - l_cp->tx0, l_cp->tdx);
         p_image->x1 = p_end_x;
     }
@@ -8093,6 +8102,10 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_decoder.m_end_tile_y = l_cp->th;
         p_image->y1 = l_image->y1;
     } else {
+		// avoid divide by zero
+		if (l_cp->tdy == 0) { 
+			return false;
+		}
         p_j2k->m_specific_param.m_decoder.m_end_tile_y = opj_uint_ceildiv(p_end_y - l_cp->ty0, l_cp->tdy);
         p_image->y1 = p_end_y;
     }
@@ -8102,6 +8115,10 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
 
     l_img_comp = p_image->comps;
     for (it_comp=0; it_comp < p_image->numcomps; ++it_comp) {
+		// avoid divide by zero
+		if (l_img_comp->dx == 0 || l_img_comp->dy == 0) {
+			return false;
+		}
 
         l_img_comp->x0 = opj_uint_ceildiv(p_image->x0, l_img_comp->dx);
         l_img_comp->y0 = opj_uint_ceildiv(p_image->y0, l_img_comp->dy);
@@ -9249,10 +9266,10 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager)
 {
     bool l_go_on = true;
-    uint32_t l_current_tile_no;
+    uint32_t l_current_tile_no=0;
     uint64_t l_data_size=0,l_max_data_size=0;
     uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
-    uint32_t l_nb_comps;
+    uint32_t l_nb_comps=0;
     uint8_t * l_current_data=NULL;
     uint32_t nr_tiles = 0;
 
@@ -9266,6 +9283,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
     }
 	uint32_t num_tiles_decoded = 0;
     for (nr_tiles=0; nr_tiles < p_j2k->m_cp.th * p_j2k->m_cp.tw; nr_tiles++) {
+		l_tile_x0 = l_tile_y0 = l_tile_x1 = l_tile_y1 = 0;
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
                                         &l_data_size,
