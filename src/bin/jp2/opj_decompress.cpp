@@ -80,7 +80,7 @@ extern "C" {
 #include "openjpeg.h"
 #include "convert.h"
 
-#ifdef OPJ_HAVE_LIBLCMS2
+#ifdef OPJ_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
 #include "color.h"
@@ -1089,9 +1089,9 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 
 bool store_file_to_disk = true;
 
-#ifdef OPJ_HAVE_LIBLCMS2
+#ifdef OPJ_HAVE_LIBLCMS
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
-	fprintf(stdout, "[WARNING] LCMS2 error: %s\n", Text);
+	fprintf(stdout, "[WARNING] LCMS error: %s\n", Text);
 }
 #endif
 
@@ -1315,7 +1315,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 	if (image->icc_profile_buf) {
-#if defined(OPJ_HAVE_LIBLCMS2)
+#if defined(OPJ_HAVE_LIBLCMS)
 		if (image->icc_profile_len)
 			color_apply_icc_profile(image);
 		else
@@ -1503,7 +1503,7 @@ int main(int argc, char **argv)
 	char plugin_dir[OPJ_PATH_LEN];
 	plugin_dir[0] = 0;
 
-#ifdef OPJ_HAVE_LIBLCMS2
+#ifdef OPJ_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 #endif
 

@@ -7,7 +7,6 @@
 #cmakedefine OPJ_HAVE_LIBTIFF @HAVE_LIBTIFF@
 #cmakedefine OPJ_HAVE_TIFF_H @HAVE_TIFF_H@
 
-#cmakedefine OPJ_HAVE_LIBLCMS2
-#cmakedefine OPJ_HAVE_LCMS2_H
+#cmakedefine OPJ_HAVE_LIBLCMS
 
 
