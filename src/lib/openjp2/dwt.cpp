@@ -443,7 +443,7 @@ static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
 		/* FIXME event manager error callback */
-		return OPJ_FALSE;
+		return false;
 	}
     bj = (int32_t*)opj_malloc(l_data_size);
     /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
