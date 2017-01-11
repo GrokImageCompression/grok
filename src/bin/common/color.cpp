@@ -65,7 +65,7 @@ extern "C" {
 #include "openjpeg.h"
 #include "color.h"
 
-#ifdef OPJ_HAVE_LIBLCMS2
+#ifdef OPJ_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
 
@@ -433,16 +433,15 @@ void color_sycc_to_rgb(opj_image_t *img)
 
 }/* color_sycc_to_rgb() */
 
-#if defined(OPJ_HAVE_LIBLCMS2)
+#if defined(OPJ_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
 void color_apply_icc_profile(opj_image_t *image)
 {
-    cmsHPROFILE in_prof, out_prof;
+	cmsHPROFILE in_prof = nullptr , out_prof=nullptr;
     cmsHTRANSFORM transform = NULL;
     cmsColorSpaceSignature in_space, out_space;
     cmsUInt32Number intent, in_type, out_type, nr_samples;
-    int *r, *g, *b;
     int prec, i, max, max_w, max_h;
     OPJ_COLOR_SPACE oldspace;
     opj_image_t* new_image = NULL;
@@ -475,7 +474,25 @@ void color_apply_icc_profile(opj_image_t *image)
     oldspace = image->color_space;
 
     if(out_space == cmsSigRgbData) { /* enumCS 16 */
-        if( prec <= 8 ) {
+		unsigned int i, nr_comp = image->numcomps;
+
+		if (nr_comp > 4) {
+			nr_comp = 4;
+		}
+		for (i = 1; i < nr_comp; ++i) { 
+			if (image->comps[0].dx != image->comps[i].dx) 
+				break;
+			if (image->comps[0].dy != image->comps[i].dy) 
+				break;
+			if (image->comps[0].prec != image->comps[i].prec)
+				break;
+			if (image->comps[0].sgnd != image->comps[i].sgnd)
+				break;
+		}
+		if (i != nr_comp)
+			goto cleanup;
+
+		if( prec <= 8 ) {
             in_type = TYPE_RGB_8;
             out_type = TYPE_RGB_8;
         } else {
@@ -532,11 +549,11 @@ void color_apply_icc_profile(opj_image_t *image)
     transform = cmsCreateTransform(in_prof, in_type,
                                    out_prof, out_type, intent, 0);
 
-#ifdef OPJ_HAVE_LIBLCMS2
-    /* Possible for: LCMS_VERSION >= 2000 :*/
     cmsCloseProfile(in_prof);
+	in_prof = nullptr;
     cmsCloseProfile(out_prof);
-#endif
+	out_prof = nullptr;
+
 
     if(transform == NULL) {
 #ifdef DEBUG_PROFILE
@@ -549,15 +566,19 @@ void color_apply_icc_profile(opj_image_t *image)
 
     if(image->numcomps > 2) { /* RGB, RGBA */
         if( prec <= 8 ) {
-            unsigned char *inbuf, *outbuf, *in, *out;
+			int *r=nullptr, *g=nullptr, *b=nullptr;
+            unsigned char *inbuf=nullptr, *outbuf=nullptr, *in=nullptr, *out=nullptr;
             max = max_w * max_h;
             nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned char);
             in = inbuf = (unsigned char*)malloc(nr_samples);
-			if (!in)
+			if (!in) {
 				goto cleanup;
+			}
             out = outbuf = (unsigned char*)malloc(nr_samples);
-			if (!out)
+			if (!out) {
+				free(inbuf);
 				goto cleanup;
+			}
 
             r = image->comps[0].data;
             g = image->comps[1].data;
@@ -580,18 +601,21 @@ void color_apply_icc_profile(opj_image_t *image)
                 *g++ = (int)*out++;
                 *b++ = (int)*out++;
             }
-            free(inbuf);
-            free(outbuf);
+			free(inbuf);
+			free(outbuf);
         } else {
-            unsigned short *inbuf, *outbuf, *in, *out;
+			int *r = nullptr, *g = nullptr, *b = nullptr;
+            unsigned short *inbuf=nullptr, *outbuf=nullptr, *in=nullptr, *out=nullptr;
             max = max_w * max_h;
             nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned short);
             in = inbuf = (unsigned short*)malloc(nr_samples);
 			if (!in)
 				goto cleanup;
             out = outbuf = (unsigned short*)malloc(nr_samples);
-			if (!out)
+			if (!out) {
+				free(inbuf);
 				goto cleanup;
+			}
 
             r = image->comps[0].data;
             g = image->comps[1].data;
@@ -618,7 +642,8 @@ void color_apply_icc_profile(opj_image_t *image)
             free(outbuf);
         }
     } else { /* GRAY, GRAYA */
-        unsigned char *in, *inbuf, *out, *outbuf;
+		int *r = nullptr, *g = nullptr, *b = nullptr;
+        unsigned char *in=nullptr, *inbuf=nullptr, *out=nullptr, *outbuf=nullptr;
         max = max_w * max_h;
         nr_samples = (cmsUInt32Number)max * 3 * sizeof(unsigned char);
 		opj_image_comp_t *comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(opj_image_comp_t));
@@ -630,12 +655,17 @@ void color_apply_icc_profile(opj_image_t *image)
 		if (!in)
 			goto cleanup;
         out = outbuf = (unsigned char*)malloc(nr_samples);
-		if (!out)
+		if (!out) {
+			free(inbuf);
 			goto cleanup;
+		}
 
         new_image = image_create(2, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
-		if (!new_image)
+		if (!new_image) {
+			free(inbuf);
+			free(outbuf);
 			goto cleanup;
+		}
 
         if(image->numcomps == 2)
             image->comps[3] = image->comps[1];
@@ -675,6 +705,10 @@ void color_apply_icc_profile(opj_image_t *image)
 
     }/* if(image->numcomps */
 cleanup:
+	if (in_prof)
+		cmsCloseProfile(in_prof);
+	if (out_prof)
+		cmsCloseProfile(out_prof);
 	if (transform)
 		cmsDeleteTransform(transform);
 }/* color_apply_icc_profile() */
@@ -715,10 +749,9 @@ void color_cielab_to_rgb(opj_image_t *image)
 
         transform = cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
 
-#ifdef OPJ_HAVE_LIBLCMS2
         cmsCloseProfile(in);
         cmsCloseProfile(out);
-#endif
+
         if(transform == NULL) {
             return;
         }
@@ -801,7 +834,7 @@ void color_cielab_to_rgb(opj_image_t *image)
     fprintf(stderr,"%s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__,__LINE__, enumcs);
 }/* color_apply_conversion() */
 
-#endif /* OPJ_HAVE_LIBLCMS2 */
+#endif /* OPJ_HAVE_LIBLCMS */
 
 
 int color_cmyk_to_rgb(opj_image_t *image)

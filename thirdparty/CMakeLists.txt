@@ -99,9 +99,7 @@ else(BUILD_THIRDPARTY)
 endif(BUILD_THIRDPARTY)
 
 #------------
-# Try to find lib LCMS2 (or by default LCMS)
-set(OPJ_HAVE_LCMS_H 0 PARENT_SCOPE)
-set(OPJ_HAVE_LIBLCMS 0 PARENT_SCOPE)
+# Try to find lib LCMS2
 
 if( BUILD_THIRDPARTY)
   # Try to build lcms2
@@ -109,29 +107,16 @@ if( BUILD_THIRDPARTY)
   add_subdirectory(liblcms2)
   set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
   set(LCMS_INCLUDE_DIRNAME ${OPENJPEG_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE) #
-  set(OPJ_HAVE_LCMS2_H 1 PARENT_SCOPE)
-  set(OPJ_HAVE_LIBLCMS2 1 PARENT_SCOPE)
+  set(OPJ_HAVE_LIBLCMS 1 PARENT_SCOPE)
 else(BUILD_THIRDPARTY)
   find_package(LCMS2)
   if(LCMS2_FOUND)
     message(STATUS "Your system seems to have a LCMS2 lib available, we will use it")
-    set(OPJ_HAVE_LCMS2_H 1 PARENT_SCOPE)
-    set(OPJ_HAVE_LIBLCMS2 1 PARENT_SCOPE)
+    set(OPJ_HAVE_LIBLCMS 1 PARENT_SCOPE)
     set(LCMS_LIBNAME ${LCMS2_LIBRARIES} PARENT_SCOPE)
     set(LCMS_INCLUDE_DIRNAME ${LCMS2_INCLUDE_DIRS} PARENT_SCOPE)
   else(LCMS2_FOUND) # not found lcms2
-    # try to find LCMS
-    find_package(LCMS)
-    if(LCMS_FOUND)
-      message(STATUS "Your system seems to have a LCMS lib available, we will use it")
-      set(OPJ_HAVE_LCMS_H 1 PARENT_SCOPE)
-      set(OPJ_HAVE_LIBLCMS 1 PARENT_SCOPE)
-      set(LCMS_LIBNAME ${LCMS_LIBRARIES} PARENT_SCOPE)
-      set(LCMS_INCLUDE_DIRNAME ${LCMS_INCLUDE_DIRS} PARENT_SCOPE)
-    else(LCMS_FOUND) # not found lcms
-      set(OPJ_HAVE_LCMS2_H 0 PARENT_SCOPE)
-      set(OPJ_HAVE_LIBLCMS2 0 PARENT_SCOPE)
-      message(STATUS "LCMS2 or LCMS lib not found, activate BUILD_THIRDPARTY if you want build it")
-    endif(LCMS_FOUND)
-endif(LCMS2_FOUND)
+      set(OPJ_HAVE_LIBLCMS 0 PARENT_SCOPE)
+      message(STATUS "LCMS2 lib not found, activate BUILD_THIRDPARTY if you want build it")
+  endif(LCMS2_FOUND)
 endif(BUILD_THIRDPARTY)
