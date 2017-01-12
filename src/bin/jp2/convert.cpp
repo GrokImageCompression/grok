@@ -810,8 +810,8 @@ opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
     for (i = 0; i < numcomps; i++) {
         cmptparm[i].prec = 8;
         cmptparm[i].sgnd = 0;
-        cmptparm[i].dx = (uint32_t)subsampling_dx;
-        cmptparm[i].dy = (uint32_t)subsampling_dy;
+        cmptparm[i].dx = subsampling_dx;
+        cmptparm[i].dy = subsampling_dy;
         cmptparm[i].w = image_width;
         cmptparm[i].h = image_height;
     }
