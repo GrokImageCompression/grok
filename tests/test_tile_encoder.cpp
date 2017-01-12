@@ -121,7 +121,7 @@ int main (int argc, char *argv[])
 
     /* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
     if( argc == 9 ) {
-        num_comps = (uint32_t)atoi( argv[1] );
+        num_comps = atoi( argv[1] );
         image_width = atoi( argv[2] );
         image_height = atoi( argv[3] );
         tile_width = atoi( argv[4] );
@@ -142,7 +142,7 @@ int main (int argc, char *argv[])
     if( num_comps > NUM_COMPS_MAX ) {
         return 1;
     }
-    l_nb_tiles = (uint32_t)(image_width/tile_width) * (uint32_t)(image_height/tile_height);
+    l_nb_tiles = (image_width/tile_width) * (image_height/tile_height);
     l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
     l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
 
@@ -233,7 +233,7 @@ int main (int argc, char *argv[])
         l_current_param_ptr->w = image_width;
 
         l_current_param_ptr->sgnd = 0;
-        l_current_param_ptr->prec = (uint32_t)comp_prec;
+        l_current_param_ptr->prec = comp_prec;
 
         l_current_param_ptr->x0 = 0;
         l_current_param_ptr->y0 = 0;
