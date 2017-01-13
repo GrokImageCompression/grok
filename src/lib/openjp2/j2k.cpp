@@ -4683,7 +4683,6 @@ static bool opj_j2k_write_epc(     opj_j2k_t *p_j2k,
     l_cstr_index = p_j2k->cstr_index;
     if (l_cstr_index) {
         l_cstr_index->codestream_size = (uint64_t)opj_stream_tell(p_stream);
-        /* UniPG>> */
         /* The following adjustment is done to adjust the codestream size */
         /* if SOD is not at 0 in the buffer. Useful in case of JP2, where */
         /* the first bunch of bytes is not in the codestream              */

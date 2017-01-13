@@ -631,9 +631,61 @@ typedef struct opj_dparameters {
 } opj_dparameters_t;
 
 
-/**
- * JPEG2000 codec V2.
- * */
+
+typedef enum opj_prec_mode {
+	OPJ_PREC_MODE_CLIP,
+	OPJ_PREC_MODE_SCALE
+} opj_precision_mode;
+
+typedef struct opj_prec {
+	uint32_t         prec;
+	opj_precision_mode mode;
+} opj_precision;
+
+typedef struct opj_decompress_params {
+	/** core library parameters */
+	opj_dparameters_t core;
+
+	/** input file name */
+	char infile[OPJ_PATH_LEN];
+	/** output file name */
+	char outfile[OPJ_PATH_LEN];
+	/** input file format 0: J2K, 1: JP2, 2: JPT */
+	int decod_format;
+	/** output file format 0: PGX, 1: PxM, 2: BMP */
+	int cod_format;
+	/** index file name */
+	char indexfilename[OPJ_PATH_LEN];
+
+	/** Decoding area left boundary */
+	uint32_t DA_x0;
+	/** Decoding area right boundary */
+	uint32_t DA_x1;
+	/** Decoding area up boundary */
+	uint32_t DA_y0;
+	/** Decoding area bottom boundary */
+	uint32_t DA_y1;
+	/** Verbose mode */
+	bool m_verbose;
+
+	/** tile number ot the decoded tile*/
+	uint32_t tile_index;
+	/** Nb of tile to decode */
+	uint32_t nb_tile_to_decode;
+
+	opj_precision* precision;
+	uint32_t     nb_precision;
+
+	/* force output colorspace to RGB */
+	bool force_rgb;
+	/* upsample components according to their dx/dy values */
+	bool upsample;
+	/* split output components to different files */
+	bool split_pnm;
+
+	uint32_t compression;
+} opj_decompress_parameters;
+
 typedef void * opj_codec_t;
 
 /*
@@ -805,7 +857,6 @@ typedef struct opj_packet_info {
 } opj_packet_info_t;
 
 
-/* UniPG>> */
 /**
  * Marker structure
  * */
@@ -907,7 +958,6 @@ typedef struct opj_codestream_info {
     uint32_t numlayers;
     /** number of decomposition for each component */
     uint32_t *numdecompos;
-    /* UniPG>> */
     /** number of markers */
     uint32_t marknum;
     /** list of markers */
@@ -1787,61 +1837,6 @@ OPJ_API void OPJ_CALLCONV opj_plugin_stop_batch_encode(void);
 /*
 Plugin decoding
 */
-
-
-typedef enum opj_prec_mode {
-    OPJ_PREC_MODE_CLIP,
-    OPJ_PREC_MODE_SCALE
-} opj_precision_mode;
-
-typedef struct opj_prec {
-    uint32_t         prec;
-    opj_precision_mode mode;
-} opj_precision;
-
-typedef struct opj_decompress_params {
-    /** core library parameters */
-    opj_dparameters_t core;
-
-    /** input file name */
-    char infile[OPJ_PATH_LEN];
-    /** output file name */
-    char outfile[OPJ_PATH_LEN];
-    /** input file format 0: J2K, 1: JP2, 2: JPT */
-    int decod_format;
-    /** output file format 0: PGX, 1: PxM, 2: BMP */
-    int cod_format;
-    /** index file name */
-    char indexfilename[OPJ_PATH_LEN];
-
-    /** Decoding area left boundary */
-	uint32_t DA_x0;
-    /** Decoding area right boundary */
-	uint32_t DA_x1;
-    /** Decoding area up boundary */
-	uint32_t DA_y0;
-    /** Decoding area bottom boundary */
-	uint32_t DA_y1;
-    /** Verbose mode */
-    bool m_verbose;
-
-    /** tile number ot the decoded tile*/
-    uint32_t tile_index;
-    /** Nb of tile to decode */
-    uint32_t nb_tile_to_decode;
-
-    opj_precision* precision;
-    uint32_t     nb_precision;
-
-    /* force output colorspace to RGB */
-    bool force_rgb;
-    /* upsample components according to their dx/dy values */
-    bool upsample;
-    /* split output components to different files */
-    bool split_pnm;
-
-	uint32_t compression;
-} opj_decompress_parameters;
 
 typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 										size_t compressed_tile_id,
