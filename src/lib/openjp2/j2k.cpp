@@ -4869,7 +4869,8 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
         ++l_mct_data;
     }
 
-    /* NOT FOUND */
+	bool newmct = false;
+	// NOT FOUND
     if (i == l_tcp->m_nb_mct_records) {
         if (l_tcp->m_nb_mct_records == l_tcp->m_nb_max_mct_records) {
             opj_mct_data_t *new_mct_records;
@@ -4890,8 +4891,8 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
         }
 
         l_mct_data = l_tcp->m_mct_records + l_tcp->m_nb_mct_records;
-        ++l_tcp->m_nb_mct_records;
-    }
+		newmct = true;
+     }
 
     if (l_mct_data->m_data) {
         opj_free(l_mct_data->m_data);
@@ -4917,8 +4918,9 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
         return false;
     }
     memcpy(l_mct_data->m_data,p_header_data,p_header_size);
-
     l_mct_data->m_data_size = p_header_size;
+	if (newmct)
+		++l_tcp->m_nb_mct_records;
 
     return true;
 }
