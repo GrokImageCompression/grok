@@ -1800,7 +1800,7 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
                  && image->comps[1].dy == image->comps[2].dy
                  && image->comps[0].prec == image->comps[1].prec
                  && image->comps[1].prec == image->comps[2].prec
-				 && image->comps[1].sgnd == image->comps[2].sgnd
+				 && image->comps[0].sgnd == image->comps[1].sgnd
 				 && image->comps[1].sgnd == image->comps[2].sgnd
 
                 ))) {
