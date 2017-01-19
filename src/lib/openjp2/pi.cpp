@@ -1213,16 +1213,12 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
     l_bound = l_tcp->numpocs+1;
 
     l_data_stride = 4 * OPJ_J2K_MAXRLVLS;
-    l_tmp_data = (uint32_t*)opj_malloc(
-                     l_data_stride * p_image->numcomps * sizeof(uint32_t));
-    if
-    (! l_tmp_data) {
+    l_tmp_data = (uint32_t*)opj_malloc(l_data_stride * p_image->numcomps * sizeof(uint32_t));
+    if (! l_tmp_data) {
         return 00;
     }
-    l_tmp_ptr = (uint32_t**)opj_malloc(
-                    p_image->numcomps * sizeof(uint32_t *));
-    if
-    (! l_tmp_ptr) {
+    l_tmp_ptr = (uint32_t**)opj_malloc(p_image->numcomps * sizeof(uint32_t *));
+    if  (! l_tmp_ptr) {
         opj_free(l_tmp_data);
         return 00;
     }
