@@ -198,9 +198,9 @@ typedef struct opj_tccp {
     uint32_t numgbits;
     /** Region Of Interest shift */
     int32_t roishift;
-    /** precinct width */
+    /** precinct width (power of 2 exponent) */
     uint32_t prcw[OPJ_J2K_MAXRLVLS];
-    /** precinct height */
+    /** precinct height (power of 2 exponent) */
     uint32_t prch[OPJ_J2K_MAXRLVLS];
     /** the dc_level_shift **/
     int32_t m_dc_level_shift;

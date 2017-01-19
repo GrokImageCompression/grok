@@ -928,7 +928,10 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
         uint64_t l_tile_data_size=0;
         uint32_t l_res_data_size=0;
         /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
-        l_image_comp->resno_decoded = 0;
+		if (l_image_comp->dx == 0 || l_image_comp->dy == 0) {
+			return false;
+		}
+		l_image_comp->resno_decoded = 0;
         /* border of each l_tile component (global) */
         l_tilec->x0 = opj_uint_ceildiv(l_tile->x0, l_image_comp->dx);
         l_tilec->y0 = opj_uint_ceildiv(l_tile->y0, l_image_comp->dy);
@@ -1528,6 +1531,13 @@ bool opj_tcd_decode_tile(   opj_tcd_t *p_tcd,
 }
 
 /*
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ToDo: does the code below assume consistent resolution dimensions across components? Because of subsampling, I don't think
+we can assume that this is the code, but need to check that code is aware of this.
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 For each component, copy decoded resolutions from the tile data buffer
 into p_dest buffer.
