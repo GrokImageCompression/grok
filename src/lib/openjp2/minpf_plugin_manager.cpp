@@ -160,7 +160,7 @@ static int32_t minpf_load(const char* path)
     if (!lib) {
         return -1;
     }
-	printf("Plugin %s successfully loaded\n", path);
+	printf("Plugin %s loaded\n", path);
 	postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
     if (!postLoadFunc) {
 		free(lib);
@@ -181,7 +181,7 @@ static int32_t minpf_load(const char* path)
 	if (rc)
 		fprintf(stderr, "Plugin %s failed to initialize \n", fullPath);
 	else
-		fprintf(stdout, "Plugin %s successfully initialized \n", fullPath);
+		fprintf(stdout, "Plugin %s initialized \n", fullPath);
 	return rc;
 
 }
@@ -196,11 +196,7 @@ int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func)
 
 	mgr->platformServices.invokeService = func;
 
-	int32_t rc = minpf_load(path);
-	if (rc) {
-		fprintf(stderr, "Unable to open library %s\n", path);
-	}
-	return rc;
+	return minpf_load(path);
 }
 
 
