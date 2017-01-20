@@ -684,6 +684,13 @@ typedef struct opj_decompress_params {
 	bool split_pnm;
 
 	uint32_t compression;
+
+	uint32_t numThreads;
+	int32_t deviceId;
+	uint32_t duration; //seconds
+	uint32_t kernelBuildOptions;
+	uint32_t repeats;
+
 } opj_decompress_parameters;
 
 typedef void * opj_codec_t;
@@ -1856,7 +1863,7 @@ typedef struct opj_plugin_decode_callback_info {
     const char*					output_file_name;
     opj_decompress_parameters*	decoder_parameters;
     opj_image_t*				image;
-	opj_plugin_tile_t*					tile;
+	opj_plugin_tile_t*			tile;
     unsigned int				error_code;
 } opj_plugin_decode_callback_info_t;
 
