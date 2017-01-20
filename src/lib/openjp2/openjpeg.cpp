@@ -725,7 +725,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         parameters->cp_disto_alloc = 0;
         parameters->cp_fixed_quality = 0;
 		parameters->numThreads = 8;
-		parameters->deviceId = -1;
+		parameters->deviceId = 0;
 		parameters->repeats = 1;
     }
 }
@@ -1213,17 +1213,18 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
     return -1;
 }
 
+PLUGIN_IS_BATCH_ENCODE_COMPLETE funcPluginIsBatchEncodeComplete = NULL;
 OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
 	minpf_plugin_manager* mgr = NULL;
-	PLUGIN_IS_BATCH_ENCODE_COMPLETE func = NULL;
 	if (!pluginLoaded)
 		return true;
 
 	mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
-		func = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_is_batch_encode_complete_method_name);
-		if (func) {
-			return  func();
+		if (!funcPluginIsBatchEncodeComplete)
+			funcPluginIsBatchEncodeComplete = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_is_batch_encode_complete_method_name);
+		if (funcPluginIsBatchEncodeComplete) {
+			return  funcPluginIsBatchEncodeComplete();
 		}
 	}
 	return true;

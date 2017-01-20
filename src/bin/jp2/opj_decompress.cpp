@@ -1417,6 +1417,9 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
+	opj_cparameters_t encoding_parameters;
+	memset(&encoding_parameters, 0, sizeof(opj_cparameters_t));
+
 	opj_header_info_t header_info;
 	memset(&header_info, 0, sizeof(opj_header_info_t));
 
@@ -1427,26 +1430,35 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
-	if (!parameters->nb_tile_to_decode) {
-		/* Optional if you want decode the entire image */
-		if (!opj_set_decode_area(l_codec, image, parameters->DA_x0,
-			parameters->DA_y0,
-			parameters->DA_x1,
-			parameters->DA_y1)) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
-			failed = 1;
-			goto cleanup;
-		}
+	info->image = image;
+	opj_plugin_tile_t* tile = nullptr;
+	if (info->generate_tile_func)
+		tile = info->generate_tile_func(info->deviceId,
+										info->compressed_tile_id,
+										&encoding_parameters,
+										image);
 
-		/* It is just here to illustrate how to use the resolution after set parameters */
-		/*
-		if (!opj_set_decoded_resolution_factor(l_codec, 5)) {
+	/* It is just here to illustrate how to use the resolution after set parameters */
+	/*
+	if (!opj_set_decoded_resolution_factor(l_codec, 0)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to set the resolution factor tile!\n");
 		failed = 1;
 		goto cleanup;
-		}
-		*/
+	}
+	*/
 
+	/* Optional if you want decode the entire image */
+	if (!opj_set_decode_area(l_codec, image, parameters->DA_x0,
+		parameters->DA_y0,
+		parameters->DA_x1,
+		parameters->DA_y1)) {
+		fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
+		failed = 1;
+		goto cleanup;
+	}
+
+	if (!parameters->nb_tile_to_decode) {
+		/* Code to illustrate how to use the resolution after set parameters */
 		/* Get the decoded image */
 		if (!(opj_decode(l_codec, l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
@@ -1455,28 +1467,6 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		}
 	}
 	else {
-
-		/* It is just here to illustrate how to use the resolution after set parameters */
-		/*
-		if (!opj_set_decoded_resolution_factor(l_codec, 0)) {
-		fprintf(stderr, "ERROR -> opj_decompress: failed to set the resolution factor tile!\n");
-		failed = 1;
-		goto cleanup;
-		}
-		*/
-
-		/* Optional if you want decode the entire image */
-		if (!opj_set_decode_area(l_codec,
-			image,
-			parameters->DA_x0,
-			parameters->DA_y0,
-			parameters->DA_x1,
-			parameters->DA_y1)) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
-			failed = 1;
-			goto cleanup;
-		}
-
 		if (!opj_get_decoded_tile(l_codec, l_stream, image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
 			failed = 1;
@@ -1484,6 +1474,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		}
 		fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
 	}
+	if (info->queue_decoder_func)
+		info->queue_decoder_func(info->deviceId, info->compressed_tile_id, tile);
 
 	/* Close the byte stream */
 cleanup:
@@ -1495,12 +1487,12 @@ cleanup:
 	if (l_codec)
 		opj_destroy_codec(l_codec);
 	l_codec = NULL;
-
-	info->image = image;
 	return failed;
-
 }
 
+/*
+Post-process decompressed image and store in selected image format
+*/
 int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	int failed = 0;
 
@@ -1709,3 +1701,4 @@ cleanup:
 		(void)remove(parameters->outfile); /* ignore return value */
 	return failed;
 }
+

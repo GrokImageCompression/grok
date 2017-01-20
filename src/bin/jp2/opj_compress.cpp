@@ -400,8 +400,7 @@ static int get_file_format(char *filename)
 
 static char * get_file_name(char *name)
 {
-    char *fname = strtok(name,".");
-    return fname;
+    return strtok(name,".");
 }
 
 static const char* get_path_separator() {
@@ -428,7 +427,10 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_f
     }
 	
     /*Set output file*/
-    strcpy(temp_ofname,get_file_name(image_filename));
+	auto fname = get_file_name(image_filename);
+	if (!fname)
+		return 1;
+    strcpy(temp_ofname,fname);
     while((temp_p = strtok(NULL,".")) != NULL) {
         strcat(temp_ofname,temp1);
         sprintf(temp1,".%s",temp_p);
@@ -505,7 +507,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		ValueArg<int32_t> deviceIdArg("G", "DeviceId",
 			"Device ID",
-			false, -1, "integer", cmd);
+			false, 0, "integer", cmd);
 
 		ValueArg<string> inputFileArg("i", "InputFile",
 									"Input file",
@@ -1258,6 +1260,11 @@ static int parse_cmdline_encoder_ex(int argc,
         parameters->tcp_mct = 0;
     }
 
+	if (parameters->tcp_mct == 2 && !parameters->mct_data) {
+		fprintf(stderr, "Custom MCT has been set but no array-based MCT has been provided.\n");
+		return false;
+	}
+
     return 0;
 }
 
@@ -1481,7 +1488,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false; /* true */
 
-	
+								
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
 		if (info->outputFileNameIsRelative) {
 			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
@@ -1604,7 +1611,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		}
 		createdImage = true;
 	}
-
 
 	/* Decide if MCT should be used */
 	if (parameters->tcp_mct == 255) { /* mct mode has not been set in commandline */
@@ -1766,7 +1772,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 
 static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
-
 	/* set encoding parameters to default values */
 	opj_set_default_encoder_parameters(&initParams->parameters);
 
@@ -1896,5 +1901,3 @@ cleanup:
 	opj_cleanup();
 	return success;
 }
-
-
