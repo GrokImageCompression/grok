@@ -1370,6 +1370,16 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
  */
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
+
+#ifndef NDEBUG
+	std::string out;
+	for (int i = 0; i < argc; ++i) {
+		out += std::string(" ") + argv[i];
+	}
+	out += "\n";
+	printf(out.c_str());
+#endif
+
 	CompressInitParams initParams;
 
 	// try to encode with plugin
