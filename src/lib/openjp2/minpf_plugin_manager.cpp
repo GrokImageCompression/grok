@@ -179,9 +179,9 @@ static int32_t minpf_load(const char* path)
     mgr->dynamic_libraries[mgr->num_libraries++] = lib;
     auto rc =  minpf_post_load_plugin(fullPath, postLoadFunc);
 	if (rc)
-		fprintf(stderr, "Plugin %s failed to initialize \n", path);
+		fprintf(stderr, "Plugin %s failed to initialize \n", fullPath);
 	else
-		fprintf(stdout, "Plugin %s successfully initialized \n", path);
+		fprintf(stdout, "Plugin %s successfully initialized \n", fullPath);
 	return rc;
 
 }
