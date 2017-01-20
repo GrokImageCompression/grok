@@ -45,8 +45,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginP
 		return 0;
 
 	// custom plugin initialization can happen here
-
-	printf("Plugin Loaded! \n");
+	printf("Loaded plugin has been registered\n");
 	return exit_func;
 }
 
