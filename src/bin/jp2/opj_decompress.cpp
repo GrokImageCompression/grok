@@ -550,6 +550,28 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<uint32_t> compressionArg("c", "Compression",
 			"Compression Type",
 			false, 0, "unsigned int", cmd);
+
+		ValueArg<uint32_t> durationArg("z", "Duration",
+			"Duration in seconds",
+			false, 0, "unsigned integer", cmd);
+
+		ValueArg<int32_t> deviceIdArg("G", "DeviceId",
+			"Device ID",
+			false, 0, "integer", cmd);
+
+
+		// Kernel build flags:
+		// 1 indicates build binary, otherwise load binary
+		// 2 indicates generate binaries
+		ValueArg<uint32_t> kernelBuildOptionsArg("k", "KernelBuild",
+			"Kernel build options",
+			false, 0, "unsigned integer", cmd);
+
+		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
+			"Number of encode repetitions, for either a folder or a single file",
+			false, 0, "unsigned integer", cmd);
+
+
 		cmd.parse(argc, argv);
 
 		if (forceRgbArg.isSet()) {
@@ -713,6 +735,23 @@ int parse_cmdline_decoder(int argc,
 			if (plugin_path)
 				strcpy(plugin_path, pluginPathArg.getValue().c_str());
 		}
+
+		if (repetitionsArg.isSet()) {
+			parameters->repeats = repetitionsArg.getValue();
+		}
+
+		if (kernelBuildOptionsArg.isSet()) {
+			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
+		}
+
+		if (deviceIdArg.isSet()) {
+			parameters->deviceId = deviceIdArg.getValue();
+		}
+
+		if (durationArg.isSet()) {
+			parameters->duration = durationArg.getValue();
+		}
+
 	}
 	catch (ArgException &e)  // catch any exceptions
 	{
