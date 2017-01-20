@@ -1417,9 +1417,6 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
-	opj_cparameters_t encoding_parameters;
-	memset(&encoding_parameters, 0, sizeof(opj_cparameters_t));
-
 	opj_header_info_t header_info;
 	memset(&header_info, 0, sizeof(opj_header_info_t));
 
@@ -1435,7 +1432,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	if (info->generate_tile_func)
 		tile = info->generate_tile_func(info->deviceId,
 										info->compressed_tile_id,
-										&encoding_parameters,
+										&header_info,
 										image);
 
 	/* It is just here to illustrate how to use the resolution after set parameters */
