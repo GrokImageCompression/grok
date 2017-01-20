@@ -1847,7 +1847,7 @@ Plugin decoding
 
 typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 										size_t compressed_tile_id,
-										opj_cparameters_t* encoder_parameters,
+										opj_header_info_t* header_info,
 										opj_image_t* image);
 
 typedef bool(*OPJ_QUEUE_DECODE)(size_t deviceId,
