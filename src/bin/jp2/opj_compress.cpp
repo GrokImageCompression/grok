@@ -1312,13 +1312,9 @@ double opj_clock(void) {
 #endif
 }
 
-
-#define PLUGIN
-
 struct CompressInitParams {
-	CompressInitParams() {
+	CompressInitParams() : initialized(false) {
 		
-		initialized = false;
 		plugin_path[0] = 0;
 
 		/* Initialize indexfilename and img_fol */
@@ -1376,7 +1372,9 @@ int main(int argc, char **argv) {
 	// initParams was not initialized (something was wrong with command line params)
 	// or
 	// plugin was successful
-	if (!initParams.initialized || !rc)
+	if (!initParams.initialized)
+		return 1;
+	if (!rc)
 		return 0;
 
 	size_t num_compressed_files = 0;

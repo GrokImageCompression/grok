@@ -851,6 +851,9 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
         /* default decoding parameters (core) */
         opj_set_default_decoder_parameters(&(parameters->core));
     }
+	parameters->numThreads = 8;
+	parameters->deviceId = -1;
+	parameters->repeats = 1;
 }
 
 static void destroy_parameters(opj_decompress_parameters* parameters)
@@ -1095,8 +1098,224 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCod
 }
 #endif
 
-img_fol_t img_fol;
-img_fol_t out_fol;
+
+struct DecompressInitParams {
+	DecompressInitParams() : initialized(false) {
+		plugin_path[0] = 0;
+		memset(&img_fol, 0, sizeof(img_fol));
+		memset(&out_fol, 0, sizeof(out_fol));
+	}
+
+	~DecompressInitParams() {
+		if (img_fol.imgdirpath)
+			free(img_fol.imgdirpath);
+		if (out_fol.imgdirpath)
+			free(out_fol.imgdirpath);
+	}
+	bool initialized;
+
+	opj_decompress_parameters parameters;	/* compression parameters */
+	char plugin_path[OPJ_PATH_LEN];
+
+	img_fol_t img_fol;
+	img_fol_t out_fol;
+
+};
+
+static int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info);
+static int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info);
+static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
+
+
+int main(int argc, char **argv)
+{
+	DecompressInitParams initParams;
+	// try to encode with plugin
+	int rc = plugin_main(argc, argv, &initParams);
+
+	// return immediately if either 
+	// initParams was not initialized (something was wrong with command line params)
+	// or
+	// plugin was successful
+	if (!initParams.initialized) {
+		destroy_parameters(&initParams.parameters);
+		return EXIT_FAILURE;
+	}
+	if (!rc) {
+		destroy_parameters(&initParams.parameters);
+		return 0;
+	}
+
+    int32_t num_images, imageno=0;
+    dircnt_t *dirptr = NULL;
+    int failed = 0;
+    double t_cumulative = 0;
+    uint32_t num_decompressed_images = 0;
+
+    /* Initialize reading of directory */
+    if(initParams.img_fol.set_imgdir==1) {
+        int it_image;
+        num_images=get_num_images(initParams.img_fol.imgdirpath);
+
+        dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
+        if(dirptr) {
+            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
+            dirptr->filename = (char**) malloc((size_t)num_images*sizeof(char*));
+
+            if(!dirptr->filename_buf) {
+                destroy_parameters(&initParams.parameters);
+                return EXIT_FAILURE;
+            }
+            for(it_image=0; it_image<num_images; it_image++) {
+                dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+            }
+        }
+        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1) {
+            destroy_parameters(&initParams.parameters);
+            return EXIT_FAILURE;
+        }
+        if (num_images==0) {
+            fprintf(stdout,"Folder is empty\n");
+            destroy_parameters(&initParams.parameters);
+            return EXIT_FAILURE;
+        }
+    } else {
+        num_images=1;
+    }
+
+    t_cumulative = opj_clock();
+
+    /*Decoding image one by one*/
+    for (imageno = 0; imageno < num_images; imageno++) {
+        fprintf(stderr, "\n");
+
+        if (initParams.img_fol.set_imgdir == 1) {
+			if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
+				fprintf(stderr, "skipping file...\n");
+				continue;
+			}
+        }
+
+		opj_plugin_decode_callback_info_t info;
+		info.decoder_parameters = &initParams.parameters;
+
+		if (plugin_pre_decode_callback(&info)) {
+			failed = 1;
+			continue;
+		}
+		if (plugin_post_decode_callback(&info)) {
+			failed = 1;
+			continue;
+		}
+		num_decompressed_images++;
+    }
+    t_cumulative = opj_clock() - t_cumulative;
+    destroy_parameters(&initParams.parameters);
+	opj_cleanup();
+
+    if (num_decompressed_images && !failed) {
+        fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
+    }
+    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
+
+int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
+{
+	int32_t num_images, imageno = 0;
+	dircnt_t *dirptr = NULL;
+	int failed = 0;
+	double t_cumulative = 0;
+	uint32_t num_decompressed_images = 0;
+
+#ifdef OPJ_HAVE_LIBLCMS
+	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
+#endif
+
+	/* set decoding parameters to default values */
+	set_default_parameters(&initParams->parameters);
+
+	/* parse input and get user encoding parameters */
+	if (parse_cmdline_decoder(argc, argv, &initParams->parameters, &initParams->img_fol, &initParams->out_fol, initParams->plugin_path) == 1) {
+		return EXIT_FAILURE;
+	}
+
+	initParams->initialized = true;
+
+	// loads plugin but does not actually create codec
+	if (!opj_initialize(initParams->plugin_path))
+		return 1;
+
+
+	// create codec
+	opj_plugin_init_info_t initInfo;
+	initInfo.deviceId = initParams->parameters.deviceId;
+	if (!opj_plugin_init(initInfo)) {
+		opj_cleanup();
+		return 1;
+	}
+
+	/* Initialize reading of directory */
+	if (initParams->img_fol.set_imgdir == 1) {
+		int it_image;
+		num_images = get_num_images(initParams->img_fol.imgdirpath);
+
+		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+		if (dirptr) {
+			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN * sizeof(char));	/* Stores at max 10 image file names*/
+			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
+
+			if (!dirptr->filename_buf) {
+				return EXIT_FAILURE;
+			}
+			for (it_image = 0; it_image<num_images; it_image++) {
+				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+			}
+		}
+		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+			return EXIT_FAILURE;
+		}
+		if (num_images == 0) {
+			fprintf(stdout, "Folder is empty\n");
+			return EXIT_FAILURE;
+		}
+	}
+	else {
+		num_images = 1;
+	}
+
+	t_cumulative = opj_clock();
+
+	/*Decoding image one by one*/
+	for (imageno = 0; imageno < num_images; imageno++) {
+		fprintf(stderr, "\n");
+
+		if (initParams->img_fol.set_imgdir == 1) {
+			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
+				fprintf(stderr, "skipping file...\n");
+				continue;
+			}
+		}
+
+		//1. try to decode using plugin
+		int rc = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+
+		//2. fallback
+		if (rc == -1 || rc == EXIT_FAILURE) {
+			return rc;
+		}
+		num_decompressed_images++;
+
+	}
+	t_cumulative = opj_clock() - t_cumulative;
+	opj_cleanup();
+
+	if (num_decompressed_images && !failed) {
+		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
+	}
+	return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+}
+
 
 int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	opj_stream_t *l_stream = NULL;
@@ -1120,35 +1339,35 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		/*
 		auto fp = fopen(parameters->infile, "rb");
 		if (!fp) {
-			printf("unable to open file %s for reading", parameters->infile);
-			failed = -1;
-			goto cleanup;
+		printf("unable to open file %s for reading", parameters->infile);
+		failed = -1;
+		goto cleanup;
 		}
 
 		auto rc = fseek(fp, 0, SEEK_END);
 		if (rc == -1) {
-			printf("unable to seek on file %s", parameters->infile);
-			failed = -1;
-			goto cleanup;
+		printf("unable to seek on file %s", parameters->infile);
+		failed = -1;
+		goto cleanup;
 		}
 		auto lengthOfFile = ftell(fp);
 		if (lengthOfFile <= 0) {
-			printf("Zero or negative length for file %s", parameters->infile);
-			failed = -1;
-			goto cleanup;
+		printf("Zero or negative length for file %s", parameters->infile);
+		failed = -1;
+		goto cleanup;
 		}
 		rewind(fp);
 		buffer = new uint8_t[lengthOfFile];
 		size_t bytesRead = 0;
 		size_t totalBytes = 0;
 		while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
-			totalBytes += bytesRead;
+		totalBytes += bytesRead;
 		}
 		fclose(fp);
 		if (totalBytes != lengthOfFile) {
-			printf("Unable to read full length of file %s", parameters->infile);
-			failed = -1;
-			goto cleanup;
+		printf("Unable to read full length of file %s", parameters->infile);
+		failed = -1;
+		goto cleanup;
 		}
 		l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
 		*/
@@ -1424,7 +1643,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			break;
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
-			if (imagetotif(image, parameters->outfile,parameters->compression)) {
+			if (imagetotif(image, parameters->outfile, parameters->compression)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1489,109 +1708,4 @@ cleanup:
 	if (failed)
 		(void)remove(parameters->outfile); /* ignore return value */
 	return failed;
-}
-
-int main(int argc, char **argv)
-{
-    opj_decompress_parameters parameters;			/* decompression parameters */
-    int32_t num_images, imageno=0;
-    img_fol_t img_fol;
-    dircnt_t *dirptr = NULL;
-    int failed = 0;
-    double t_cumulative = 0;
-    uint32_t num_decompressed_images = 0;
-	char plugin_dir[OPJ_PATH_LEN];
-	plugin_dir[0] = 0;
-
-#ifdef OPJ_HAVE_LIBLCMS
-	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
-#endif
-
-    /* set decoding parameters to default values */
-    set_default_parameters(&parameters);
-
-    /* Initialize img_fol */
-	memset(&img_fol, 0, sizeof(img_fol_t));
-	memset(&out_fol, 0, sizeof(img_fol_t));
-
-    /* parse input and get user encoding parameters */
-    if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol,&out_fol, plugin_dir) == 1) {
-        destroy_parameters(&parameters);
-        return EXIT_FAILURE;
-    }
-
-	bool pluginLoaded = opj_initialize(plugin_dir);
-
-    /* Initialize reading of directory */
-    if(img_fol.set_imgdir==1) {
-        int it_image;
-        num_images=get_num_images(img_fol.imgdirpath);
-
-        dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
-        if(dirptr) {
-            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
-            dirptr->filename = (char**) malloc((size_t)num_images*sizeof(char*));
-
-            if(!dirptr->filename_buf) {
-                destroy_parameters(&parameters);
-                return EXIT_FAILURE;
-            }
-            for(it_image=0; it_image<num_images; it_image++) {
-                dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
-            }
-        }
-        if(load_images(dirptr,img_fol.imgdirpath)==1) {
-            destroy_parameters(&parameters);
-            return EXIT_FAILURE;
-        }
-        if (num_images==0) {
-            fprintf(stdout,"Folder is empty\n");
-            destroy_parameters(&parameters);
-            return EXIT_FAILURE;
-        }
-    } else {
-        num_images=1;
-    }
-
-    t_cumulative = opj_clock();
-
-    /*Decoding image one by one*/
-    for (imageno = 0; imageno < num_images; imageno++) {
-        fprintf(stderr, "\n");
-
-        if (img_fol.set_imgdir == 1) {
-			if (get_next_file(imageno, dirptr, &img_fol, out_fol.set_imgdir ? &out_fol : &img_fol, &parameters)) {
-				fprintf(stderr, "skipping file...\n");
-				continue;
-			}
-        }
-
-		//1. try to decode using plugin
-		int rc = opj_plugin_decode(&parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
-
-		//2. fallback
-		if (rc == -1 || rc == EXIT_FAILURE) {
-			opj_plugin_decode_callback_info_t info;
-			info.decoder_parameters = &parameters;
-
-			if (plugin_pre_decode_callback(&info)) {
-				failed = 1;
-				continue;
-			}
-			if (plugin_post_decode_callback(&info)) {
-				failed = 1;
-				continue;
-			}
-		}
-		num_decompressed_images++;
-
-    }
-    t_cumulative = opj_clock() - t_cumulative;
-    destroy_parameters(&parameters);
-	opj_cleanup();
-
-    if (num_decompressed_images) {
-        fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
-    }
-    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }

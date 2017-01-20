@@ -55,7 +55,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginP
 //////////////////////////////////
 
 extern "C"  PLUGIN_API bool plugin_init(opj_plugin_init_info_t initInfo) {
-	return true;
+	return false;
 }
 
 ////////////////////////////////////
