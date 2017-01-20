@@ -1236,6 +1236,7 @@ int main(int argc, char **argv)
         }
 
 		opj_plugin_decode_callback_info_t info;
+		memset(&info, 0, sizeof(opj_plugin_decode_callback_info_t));
 		info.decoder_parameters = &initParams.parameters;
 
 		if (plugin_pre_decode_callback(&info)) {
