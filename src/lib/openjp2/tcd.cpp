@@ -1428,8 +1428,7 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
             }
         }
 		/* << INDEX */
-		if ((state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) &&
-			!(state & OPJ_PLUGIN_STATE_CPU_ONLY)) {
+		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
 			set_context_stream(p_tcd);
 		}
 
