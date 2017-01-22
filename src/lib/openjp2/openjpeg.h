@@ -1804,9 +1804,6 @@ OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
 #define OPJ_PLUGIN_STATE_MCT_ONLY			0x8
 
-#define OPJ_PLUGIN_STATE_CPU_ONLY			0x10
-
-
 OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
 
 /*
