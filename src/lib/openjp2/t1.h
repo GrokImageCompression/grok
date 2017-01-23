@@ -239,7 +239,7 @@ Decode the code-blocks of a tile
 @param tilec The tile to decode
 @param tccp Tile coding parameters
 */
-bool opj_t1_decode_cblks(   opj_tcd_tilecomp_t* tilec,
+bool opj_t1_prepare_decode_cblks(   opj_tcd_tilecomp_t* tilec,
                             opj_tccp_t* tccp,
 							std::vector<decodeBlockInfo*>* blocks,
                             opj_event_mgr_t * p_manager);

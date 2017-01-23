@@ -1368,67 +1368,63 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 
 int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
-	opj_stream_t *l_stream = NULL;
-	opj_codec_t* l_codec = NULL;
+	if (!info)
+		return -1;
 
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = NULL;
-	int failed = 0;
-	uint8_t* buffer = nullptr;
 
 	/* read the input file and put it in memory */
 	/* ---------------------------------------- */
-	if (!l_stream) {
-		// use file stream 
-		l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
+	// use file stream 
+	info->l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
 
-		// other option is to use memory mapped stream
-		//l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+	// other option is to use memory mapped stream
+	//info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
 
-		// third option is to read from buffer
-		/*
-		auto fp = fopen(parameters->infile, "rb");
-		if (!fp) {
+
+	// third option is to read from buffer
+	/*
+	auto fp = fopen(parameters->infile, "rb");
+	if (!fp) {
 		printf("unable to open file %s for reading", parameters->infile);
 		failed = -1;
 		goto cleanup;
-		}
+	}
 
-		auto rc = fseek(fp, 0, SEEK_END);
-		if (rc == -1) {
+	auto rc = fseek(fp, 0, SEEK_END);
+	if (rc == -1) {
 		printf("unable to seek on file %s", parameters->infile);
 		failed = -1;
 		goto cleanup;
-		}
-		auto lengthOfFile = ftell(fp);
-		if (lengthOfFile <= 0) {
+	}
+	auto lengthOfFile = ftell(fp);
+	if (lengthOfFile <= 0) {
 		printf("Zero or negative length for file %s", parameters->infile);
 		failed = -1;
 		goto cleanup;
-		}
-		rewind(fp);
-		buffer = new uint8_t[lengthOfFile];
-		size_t bytesRead = 0;
-		size_t totalBytes = 0;
-		while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
+	}
+	rewind(fp);
+	buffer = new uint8_t[lengthOfFile];
+	size_t bytesRead = 0;
+	size_t totalBytes = 0;
+	while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
 		totalBytes += bytesRead;
-		}
-		fclose(fp);
-		if (totalBytes != lengthOfFile) {
+	}
+	fclose(fp);
+	if (totalBytes != lengthOfFile) {
 		printf("Unable to read full length of file %s", parameters->infile);
 		failed = -1;
 		goto cleanup;
-		}
-		l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
-		*/
 	}
+	info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
+	*/
 
 
-	if (!l_stream) {
+
+	if (!info->l_stream) {
 		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", parameters->infile);
-		failed = 1;
-		goto cleanup;
-
+		return -1;
 	}
 
 	/* decode the JPEG2000 stream */
@@ -1437,115 +1433,118 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	switch (parameters->decod_format) {
 	case J2K_CFMT: {	/* JPEG-2000 codestream */
 						/* Get a decoder handle */
-		l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+		info->l_codec = opj_create_decompress(OPJ_CODEC_J2K);
 		break;
 	}
 	case JP2_CFMT: {	/* JPEG 2000 compressed image data */
 						/* Get a decoder handle */
-		l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+		info->l_codec = opj_create_decompress(OPJ_CODEC_JP2);
 		break;
 	}
 	case JPT_CFMT: {	/* JPEG 2000, JPIP */
 						/* Get a decoder handle */
-		l_codec = opj_create_decompress(OPJ_CODEC_JPT);
+		info->l_codec = opj_create_decompress(OPJ_CODEC_JPT);
 		break;
 	}
 	default:
 		fprintf(stderr, "skipping file..\n");
-		goto cleanup;
+		return -1;
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(l_codec, info_callback, 00);
-	opj_set_warning_handler(l_codec, warning_callback, 00);
-	opj_set_error_handler(l_codec, error_callback, 00);
+	opj_set_info_handler(info->l_codec, info_callback, 00);
+	opj_set_warning_handler(info->l_codec, warning_callback, 00);
+	opj_set_error_handler(info->l_codec, error_callback, 00);
 
 	/* Setup the decoder decoding parameters using user parameters */
-	if (!opj_setup_decoder(l_codec, &(parameters->core))) {
+	if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
-		failed = 1;
-		goto cleanup;
+		return -1;
 	}
 
 	opj_header_info_t header_info;
 	memset(&header_info, 0, sizeof(opj_header_info_t));
 
 	/* Read the main header of the codestream and if necessary the JP2 boxes*/
-	if (!opj_read_header_ex(l_stream, l_codec, &header_info, &image)) {
+	if (!opj_read_header_ex(info->l_stream, info->l_codec, &header_info, &image)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
-		failed = 1;
-		goto cleanup;
+		return -1;
 	}
 
 	info->image = image;
-	opj_plugin_tile_t* tile = nullptr;
-	if (info->generate_tile_func)
-		tile = info->generate_tile_func(info->deviceId,
-										info->compressed_tile_id,
-										&header_info,
-										image);
+	if (info->generate_tile_func) {
+		info->tile = info->generate_tile_func(info->deviceId,
+												info->compressed_tile_id,
+												&header_info,
+												image);
+		info->tile->decode_flag = OPJ_PLUGIN_DECODE_T2;
+	}
 
 	/* It is just here to illustrate how to use the resolution after set parameters */
 	/*
-	if (!opj_set_decoded_resolution_factor(l_codec, 0)) {
+	if (!opj_set_decoded_resolution_factor(info->l_codec, 0)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to set the resolution factor tile!\n");
-		failed = 1;
-		goto cleanup;
+		return -1;
 	}
 	*/
 
 	/* Optional if you want decode the entire image */
-	if (!opj_set_decode_area(l_codec, image, parameters->DA_x0,
+	if (!opj_set_decode_area(info->l_codec, image, parameters->DA_x0,
 		parameters->DA_y0,
 		parameters->DA_x1,
 		parameters->DA_y1)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
-		failed = 1;
-		goto cleanup;
+		return -1;
 	}
 
 	if (!parameters->nb_tile_to_decode) {
-		/* Code to illustrate how to use the resolution after set parameters */
 		/* Get the decoded image */
-		if (!(opj_decode(l_codec, l_stream, image) && opj_end_decompress(l_codec, l_stream))) {
+		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
-			failed = 1;
-			goto cleanup;
+			return -1;
 		}
 	}
 	else {
-		if (!opj_get_decoded_tile(l_codec, l_stream, image, parameters->tile_index)) {
+		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
-			failed = 1;
-			goto cleanup;
+			return -1;
 		}
 		fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
 	}
-	if (info->queue_decoder_func)
-		info->queue_decoder_func(info->deviceId, info->compressed_tile_id, tile);
-
-	/* Close the byte stream */
-cleanup:
-	if (buffer)
-		delete[] buffer;
-	if (l_stream)
-		opj_stream_destroy(l_stream);
-	l_stream = NULL;
-	if (l_codec)
-		opj_destroy_codec(l_codec);
-	l_codec = NULL;
-	return failed;
+	return 0;
 }
 
 /*
 Post-process decompressed image and store in selected image format
 */
 int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
-	int failed = 0;
+	if (!info)
+		return -1;
 
+	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
 
+	
+	if (info->tile) {
+		info->tile->decode_flag = OPJ_PLUGIN_DECODE_POST_T1 ;
+		/* Get the decoded image */
+		if (!(opj_decode_ex(info->l_codec, info->tile, info->l_stream, image) && opj_end_decompress(info->l_codec, info->l_stream))) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
+			failed = 1;
+			goto cleanup;
+		}
+	}
+
+	/* Close the byte stream */
+	if (info->l_stream)
+		opj_stream_destroy(info->l_stream);
+	info->l_stream = NULL;
+	if (info->l_codec)
+		opj_destroy_codec(info->l_codec);
+	info->l_codec = NULL;
+
+	// todo: destroy plugin tile
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy

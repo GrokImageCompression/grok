@@ -1119,8 +1119,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
 
                 l_nb_code_blocks = l_prc->cw * l_prc->ch;
                 for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-                    l_cblk->numsegs = 0;
-                    l_cblk->real_num_segs = 0;
+                    l_cblk->numSegments = 0;
                     ++l_cblk;
                 }
             }
@@ -1145,7 +1144,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
 
     /*
     When the marker PPT/PPM is used the packet header are store in PPT/PPM marker
-    This part deal with this caracteristic
+    This part deal with this characteristic
     step 1: Read packet header in the saved structure
     step 2: Return to codestream for decoding
     */
@@ -1226,7 +1225,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
             int32_t n;
 
             /* if cblk not yet included before --> inclusion tagtree */
-            if (!l_cblk->numsegs) {
+            if (!l_cblk->numSegments) {
                 l_included = opj_tgt_decode(l_bio, l_prc->incltree, cblkno, (int32_t)(p_pi->layno + 1));
                 /* else one bit */
             } else {
@@ -1235,14 +1234,14 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
 
             /* if cblk not included */
             if (!l_included) {
-                l_cblk->numnewpasses = 0;
+                l_cblk->numNewPassesInPacket = 0;
                 ++l_cblk;
                 JAS_FPRINTF(stderr, "included=%d \n", l_included);
                 continue;
             }
 
             /* if cblk not yet included --> zero-bitplane tagtree */
-            if (!l_cblk->numsegs) {
+            if (!l_cblk->numSegments) {
                 uint32_t i = 0;
 
                 while (!opj_tgt_decode(l_bio, l_prc->imsbtree, cblkno, (int32_t)i)) {
@@ -1254,20 +1253,20 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
             }
 
             /* number of coding passes */
-            l_cblk->numnewpasses = opj_t2_getnumpasses(l_bio);
+            l_cblk->numNewPassesInPacket = opj_t2_getnumpasses(l_bio);
             l_increment = opj_t2_getcommacode(l_bio);
 
             /* length indicator increment */
             l_cblk->numlenbits += l_increment;
             l_segno = 0;
 
-            if (!l_cblk->numsegs) {
+            if (!l_cblk->numSegments) {
                 if (! opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 1)) {
                     opj_bio_destroy(l_bio);
                     return false;
                 }
             } else {
-                l_segno = l_cblk->numsegs - 1;
+                l_segno = l_cblk->numSegments - 1;
                 if (l_cblk->segs[l_segno].numpasses == l_cblk->segs[l_segno].maxpasses) {
                     ++l_segno;
                     if (! opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 0)) {
@@ -1276,14 +1275,14 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                     }
                 }
             }
-            n = (int32_t)l_cblk->numnewpasses;
+            n = (int32_t)l_cblk->numNewPassesInPacket;
 
             do {
-                l_cblk->segs[l_segno].numnewpasses = (uint32_t)opj_int_min((int32_t)(l_cblk->segs[l_segno].maxpasses - l_cblk->segs[l_segno].numpasses), n);
-                l_cblk->segs[l_segno].newlen = opj_bio_read(l_bio, l_cblk->numlenbits + opj_uint_floorlog2(l_cblk->segs[l_segno].numnewpasses));
-                JAS_FPRINTF(stderr, "included=%d numnewpasses=%d increment=%d len=%d \n", l_included, l_cblk->segs[l_segno].numnewpasses, l_increment, l_cblk->segs[l_segno].newlen );
+                l_cblk->segs[l_segno].numNewPassesInPacket = (uint32_t)opj_int_min((int32_t)(l_cblk->segs[l_segno].maxpasses - l_cblk->segs[l_segno].numpasses), n);
+                l_cblk->segs[l_segno].newlen = opj_bio_read(l_bio, l_cblk->numlenbits + opj_uint_floorlog2(l_cblk->segs[l_segno].numNewPassesInPacket));
+                JAS_FPRINTF(stderr, "included=%d numNewPassesInPacket=%d increment=%d len=%d \n", l_included, l_cblk->segs[l_segno].numNewPassesInPacket, l_increment, l_cblk->segs[l_segno].newlen );
 
-                n -= (int32_t)l_cblk->segs[l_segno].numnewpasses;
+                n -= (int32_t)l_cblk->segs[l_segno].numNewPassesInPacket;
                 if (n > 0) {
                     ++l_segno;
 
@@ -1372,22 +1371,22 @@ static bool opj_t2_read_packet_data(   opj_t2_t* p_t2,
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
             opj_tcd_seg_t *l_seg = 00;
 
-            if (!l_cblk->numnewpasses) {
+            if (!l_cblk->numNewPassesInPacket) {
                 /* nothing to do */
                 ++l_cblk;
                 continue;
             }
 
-            if (!l_cblk->numsegs) {
+            if (!l_cblk->numSegments) {
                 l_seg = l_cblk->segs;
-                ++l_cblk->numsegs;
-                l_cblk->data_current_size = 0;
+                ++l_cblk->numSegments;
+                l_cblk->dataSize = 0;
             } else {
-                l_seg = &l_cblk->segs[l_cblk->numsegs - 1];
+                l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
 
                 if (l_seg->numpasses == l_seg->maxpasses) {
                     ++l_seg;
-                    ++l_cblk->numsegs;
+                    ++l_cblk->numSegments;
                 }
             }
 
@@ -1402,13 +1401,13 @@ static bool opj_t2_read_packet_data(   opj_t2_t* p_t2,
                 }
 
                 /* Check possible overflow on size */
-                if ((l_cblk->data_current_size + l_seg->newlen) < l_cblk->data_current_size) {
+                if ((l_cblk->dataSize + l_seg->newlen) < l_cblk->dataSize) {
                     opj_event_msg(p_manager, EVT_ERROR, "read: segment too long (%d) with current size (%d > %d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
-                                  l_seg->newlen, l_cblk->data_current_size, 0xFFFFFFFF - l_seg->newlen, cblkno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
+                                  l_seg->newlen, l_cblk->dataSize, 0xFFFFFFFF - l_seg->newlen, cblkno, p_pi->precno, bandno, p_pi->resno, p_pi->compno);
                     return false;
                 }
                 if (l_seg->numpasses == 0) {
-                    l_seg->dataindex = l_cblk->data_current_size;
+                    l_seg->dataindex = l_cblk->dataSize;
                 }
 
                 opj_min_buf_vec_push_back(&l_cblk->seg_buffers, opj_seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
@@ -1417,20 +1416,17 @@ static bool opj_t2_read_packet_data(   opj_t2_t* p_t2,
 
                 *(p_data_read) += l_seg->newlen;
                 opj_seg_buf_incr_cur_seg_offset(src_buf, l_seg->newlen);
-                l_seg->numpasses += l_seg->numnewpasses;
-                l_cblk->numnewpasses -= l_seg->numnewpasses;
+                l_seg->numpasses += l_seg->numNewPassesInPacket;
+                l_cblk->numNewPassesInPacket -= l_seg->numNewPassesInPacket;
 
-                l_seg->real_num_passes = l_seg->numpasses;
-                l_cblk->data_current_size += l_seg->newlen;
+				l_cblk->dataSize += l_seg->newlen;
                 l_seg->len += l_seg->newlen;
 
-                if (l_cblk->numnewpasses > 0) {
+                if (l_cblk->numNewPassesInPacket > 0) {
                     ++l_seg;
-                    ++l_cblk->numsegs;
+                    ++l_cblk->numSegments;
                 }
-            } while (l_cblk->numnewpasses > 0);
-
-            l_cblk->real_num_segs = l_cblk->numsegs;
+            } while (l_cblk->numNewPassesInPacket > 0);
             ++l_cblk;
         } /* next code_block */
 
@@ -1473,22 +1469,22 @@ static bool opj_t2_skip_packet_data(   opj_t2_t* p_t2,
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
             opj_tcd_seg_t *l_seg = 00;
 
-            if (!l_cblk->numnewpasses) {
+            if (!l_cblk->numNewPassesInPacket) {
                 /* nothing to do */
                 ++l_cblk;
                 continue;
             }
 
-            if (!l_cblk->numsegs) {
+            if (!l_cblk->numSegments) {
                 l_seg = l_cblk->segs;
-                ++l_cblk->numsegs;
-                l_cblk->data_current_size = 0;
+                ++l_cblk->numSegments;
+                l_cblk->dataSize = 0;
             } else {
-                l_seg = &l_cblk->segs[l_cblk->numsegs - 1];
+                l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
 
                 if (l_seg->numpasses == l_seg->maxpasses) {
                     ++l_seg;
-                    ++l_cblk->numsegs;
+                    ++l_cblk->numSegments;
                 }
             }
 
@@ -1503,13 +1499,13 @@ static bool opj_t2_skip_packet_data(   opj_t2_t* p_t2,
                 JAS_FPRINTF(stderr, "p_data_read (%d) newlen (%d) \n", *p_data_read, l_seg->newlen );
                 *(p_data_read) += l_seg->newlen;
 
-                l_seg->numpasses += l_seg->numnewpasses;
-                l_cblk->numnewpasses -= l_seg->numnewpasses;
-                if (l_cblk->numnewpasses > 0) {
+                l_seg->numpasses += l_seg->numNewPassesInPacket;
+                l_cblk->numNewPassesInPacket -= l_seg->numNewPassesInPacket;
+                if (l_cblk->numNewPassesInPacket > 0) {
                     ++l_seg;
-                    ++l_cblk->numsegs;
+                    ++l_cblk->numSegments;
                 }
-            } while (l_cblk->numnewpasses > 0);
+            } while (l_cblk->numNewPassesInPacket > 0);
 
             ++l_cblk;
         }
@@ -1529,15 +1525,15 @@ static bool opj_t2_init_seg(   opj_tcd_cblk_dec_t* cblk,
     opj_tcd_seg_t* seg = 00;
     uint32_t l_nb_segs = index + 1;
 
-    if (l_nb_segs > cblk->m_current_max_segs) {
+    if (l_nb_segs > cblk->numSegmentsAllocated) {
         opj_tcd_seg_t* new_segs;
-        cblk->m_current_max_segs += OPJ_J2K_DEFAULT_NB_SEGS;
+        cblk->numSegmentsAllocated += OPJ_J2K_DEFAULT_NB_SEGS;
 
-        new_segs = (opj_tcd_seg_t*) opj_realloc(cblk->segs, cblk->m_current_max_segs * sizeof(opj_tcd_seg_t));
+        new_segs = (opj_tcd_seg_t*) opj_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(opj_tcd_seg_t));
         if(! new_segs) {
             opj_free(cblk->segs);
             cblk->segs = NULL;
-            cblk->m_current_max_segs = 0;
+            cblk->numSegmentsAllocated = 0;
             /* opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
             return false;
         }

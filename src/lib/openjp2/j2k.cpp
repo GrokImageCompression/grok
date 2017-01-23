@@ -5693,30 +5693,30 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
     /* Resolution levels */
     switch (parameters->rsiz) {
     case OPJ_PROFILE_CINEMA_2K:
-        if(parameters->numresolution > 6) {
+        if(parameters->numresolutions > 6) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-3 (2k dc profile) requires:\n"
                           "Number of decomposition levels <= 5\n"
                           "-> Number of decomposition levels forced to 5 (rather than %d)\n",
-                          parameters->numresolution+1);
-            parameters->numresolution = 6;
+                          parameters->numresolutions+1);
+            parameters->numresolutions = 6;
         }
         break;
     case OPJ_PROFILE_CINEMA_4K:
-        if(parameters->numresolution < 2) {
+        if(parameters->numresolutions < 2) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-4 (4k dc profile) requires:\n"
                           "Number of decomposition levels >= 1 && <= 6\n"
                           "-> Number of decomposition levels forced to 1 (rather than %d)\n",
-                          parameters->numresolution+1);
-            parameters->numresolution = 1;
-        } else if(parameters->numresolution > 7) {
+                          parameters->numresolutions+1);
+            parameters->numresolutions = 1;
+        } else if(parameters->numresolutions > 7) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-4 (4k dc profile) requires:\n"
                           "Number of decomposition levels >= 1 && <= 6\n"
                           "-> Number of decomposition levels forced to 6 (rather than %d)\n",
-                          parameters->numresolution+1);
-            parameters->numresolution = 7;
+                          parameters->numresolutions+1);
+            parameters->numresolutions = 7;
         }
         break;
     default :
@@ -5725,7 +5725,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Precincts */
     parameters->csty |= 0x01;
-    parameters->res_spec = parameters->numresolution-1;
+    parameters->res_spec = parameters->numresolutions-1;
     for (i = 0; i<parameters->res_spec; i++) {
         parameters->prcw_init[i] = 256;
         parameters->prch_init[i] = 256;
@@ -5736,7 +5736,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Progression order changes for 4K, disallowed for 2K */
     if (parameters->rsiz == OPJ_PROFILE_CINEMA_4K) {
-        parameters->numpocs = opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolution);
+        parameters->numpocs = opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolutions);
     } else {
         parameters->numpocs = 0;
     }
@@ -5852,8 +5852,8 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    if ((parameters->numresolution == 0) || (parameters->numresolution > OPJ_J2K_MAXRLVLS)) {
-        opj_event_msg(p_manager, EVT_ERROR, "Invalid number of resolutions : %d not in range [1,%d]\n", parameters->numresolution, OPJ_J2K_MAXRLVLS);
+    if ((parameters->numresolutions == 0) || (parameters->numresolutions > OPJ_J2K_MAXRLVLS)) {
+        opj_event_msg(p_manager, EVT_ERROR, "Invalid number of resolutions : %d not in range [1,%d]\n", parameters->numresolutions, OPJ_J2K_MAXRLVLS);
         return false;
     }
 
@@ -5925,7 +5925,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
 	if (parameters->numpocs) {
 		/* initialisation of POC */
-		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, parameters->tcp_numlayers, p_manager)) {
+		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolutions, image->numcomps, parameters->tcp_numlayers, p_manager)) {
 			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
 			return false;
 		}
@@ -6145,7 +6145,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
             opj_tccp_t *tccp = &tcp->tccps[i];
 
             tccp->csty = parameters->csty & 0x01;   /* 0 => one precinct || 1 => custom precinct  */
-            tccp->numresolutions = parameters->numresolution;
+            tccp->numresolutions = parameters->numresolutions;
             tccp->cblkw = opj_int_floorlog2(parameters->cblockw_init);
             tccp->cblkh = opj_int_floorlog2(parameters->cblockh_init);
             tccp->cblksty = parameters->mode;
@@ -6363,9 +6363,11 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 		header_info->cblockw_init = 1 << l_tccp->cblkw;
 		header_info->cblockh_init = 1 << l_tccp->cblkh;
 		header_info->irreversible = l_tccp->qmfbid == 0;
+		header_info->mct = l_tcp->mct;
 		header_info->rsiz = l_cp->rsiz;
-		header_info->numresolution = l_tccp->numresolutions;
-		for (uint32_t i = 0; i < header_info->numresolution; ++i) {
+		header_info->numresolutions = l_tccp->numresolutions;
+		header_info->csty = l_tcp->csty;
+		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
 			header_info->prcw_init[i] = 1 << l_tccp->prcw[i];
 			header_info->prch_init[i] = 1 << l_tccp->prch[i];
 		}
@@ -7681,79 +7683,83 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
         return false;
     }
 
-    /* if p_data is not null, then copy decoded resolutions from tile data into p_data.
-    Otherwise, simply copy tile data pointer to output image
-    */
-    if (p_data) {
-        if (!opj_tcd_update_tile_data(p_j2k->m_tcd, p_data, p_data_size)) {
-            return false;
-        }
-    } else {
-        /* transfer data from tile component to output image */
-        uint32_t compno = 0;
-        for (compno = 0; compno < p_j2k->m_output_image->numcomps; compno++) {
-            uint32_t l_size_comp = 0;
-            uint32_t i, j;
-            opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + compno;
-            opj_image_comp_t* comp = p_j2k->m_output_image->comps + compno;
-            comp->data = opj_tile_buf_get_ptr(tilec->buf,0,0,0,0);
-            opj_tile_buf_set_ptr(tilec->buf, NULL);
-            comp->resno_decoded = p_j2k->m_tcd->image->comps[compno].resno_decoded;
+	if (!p_j2k->m_tcd->current_plugin_tile || (p_j2k->m_tcd->current_plugin_tile->decode_flag & OPJ_PLUGIN_DECODE_POST_T1)) {
 
-            /* now sanitize data (signed data is broken at the moment */
-            l_size_comp = (comp->prec + 7) >> 3;
-            if (l_size_comp <= 2) {
-				for (j = 0; j < comp->h; ++j) {
-					for (i = 0; i < comp->w; ++i) {
-						if (l_size_comp == 1)
-							comp->data[i + j*comp->w] =
-							comp->sgnd ? comp->data[i + j*comp->w] :
-							comp->data[i + j*comp->w] & 0xFF;
-						else
-							comp->data[i + j*comp->w] =
-							comp->sgnd ? comp->data[i + j*comp->w] :
-							comp->data[i + j*comp->w] & 0xFFFF;
+		/* if p_data is not null, then copy decoded resolutions from tile data into p_data.
+		Otherwise, simply copy tile data pointer to output image
+		*/
+		if (p_data) {
+			if (!opj_tcd_update_tile_data(p_j2k->m_tcd, p_data, p_data_size)) {
+				return false;
+			}
+		}
+		else {
+			/* transfer data from tile component to output image */
+			uint32_t compno = 0;
+			for (compno = 0; compno < p_j2k->m_output_image->numcomps; compno++) {
+				uint32_t l_size_comp = 0;
+				uint32_t i, j;
+				opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + compno;
+				opj_image_comp_t* comp = p_j2k->m_output_image->comps + compno;
+				comp->data = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+				opj_tile_buf_set_ptr(tilec->buf, NULL);
+				comp->resno_decoded = p_j2k->m_tcd->image->comps[compno].resno_decoded;
 
+				/* now sanitize data (signed data is broken at the moment */
+				l_size_comp = (comp->prec + 7) >> 3;
+				if (l_size_comp <= 2) {
+					for (j = 0; j < comp->h; ++j) {
+						for (i = 0; i < comp->w; ++i) {
+							if (l_size_comp == 1)
+								comp->data[i + j*comp->w] =
+								comp->sgnd ? comp->data[i + j*comp->w] :
+								comp->data[i + j*comp->w] & 0xFF;
+							else
+								comp->data[i + j*comp->w] =
+								comp->sgnd ? comp->data[i + j*comp->w] :
+								comp->data[i + j*comp->w] & 0xFFFF;
+
+						}
 					}
 				}
-            }
 
-        }
-    }
-  
-     /* we only destroy the data, which will be re-read in read_tile_header*/
-    opj_j2k_tcp_data_destroy(l_tcp);
+			}
+		}
 
-    p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
-    p_j2k->m_specific_param.m_decoder.m_state &= (~ (J2K_DEC_STATE_DATA));
+		/* we only destroy the data, which will be re-read in read_tile_header*/
+		opj_j2k_tcp_data_destroy(l_tcp);
 
-    if(opj_stream_get_number_byte_left(p_stream) == 0
-            && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC) {
-        return true;
-    }
+		p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
+		p_j2k->m_specific_param.m_decoder.m_state &= (~(J2K_DEC_STATE_DATA));
 
-    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
-        if (opj_stream_read_data(p_stream,l_data,2,p_manager) != 2) {
-            opj_event_msg(p_manager, EVT_ERROR, "Stream too short\n");
-            return false;
-        }
+		if (opj_stream_get_number_byte_left(p_stream) == 0
+			&& p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC) {
+			return true;
+		}
 
-        opj_read_bytes(l_data,&l_current_marker,2);
+		if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
+			if (opj_stream_read_data(p_stream, l_data, 2, p_manager) != 2) {
+				opj_event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+				return false;
+			}
 
-        if (l_current_marker == J2K_MS_EOC) {
-            p_j2k->m_current_tile_number = 0;
-            p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
-        } else if (l_current_marker != J2K_MS_SOT) {
-            if(opj_stream_get_number_byte_left(p_stream) == 0) {
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
-                opj_event_msg(p_manager, EVT_WARNING, "Stream does not end with EOC\n");
-                return true;
-            }
-            opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
-            return false;
-        }
-    }
+			opj_read_bytes(l_data, &l_current_marker, 2);
 
+			if (l_current_marker == J2K_MS_EOC) {
+				p_j2k->m_current_tile_number = 0;
+				p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
+			}
+			else if (l_current_marker != J2K_MS_SOT) {
+				if (opj_stream_get_number_byte_left(p_stream) == 0) {
+					p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
+					opj_event_msg(p_manager, EVT_WARNING, "Stream does not end with EOC\n");
+					return true;
+				}
+				opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
+				return false;
+			}
+		}
+	}
     return true;
 }
 

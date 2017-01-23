@@ -27,7 +27,7 @@ class T1Decoder
 {
 public:
 	T1Decoder(uint16_t blockw, uint16_t blockh);
-	void decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads);
+	bool decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads);
 
 private:
 

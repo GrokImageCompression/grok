@@ -396,7 +396,7 @@ typedef struct opj_cparameters {
     /** different psnr for successive layers */
     double tcp_distoratio[100];
     /** number of resolutions */
-    uint32_t numresolution;
+    uint32_t numresolutions;
     /** initial code block width, default to 64 */
     uint32_t cblockw_init;
     /** initial code block height, default to 64 */
@@ -537,12 +537,18 @@ typedef struct opj_header_info {
 	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
 	uint32_t irreversible;
 
+	/** multi-component transform identifier */
+	uint32_t mct;
+
 	/** RSIZ value
 	To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
 	uint16_t rsiz;
 
 	/** number of resolutions */
-	uint32_t numresolution;
+	uint32_t numresolutions;
+
+	/** csty : coding style */
+	uint32_t csty;
 
 	/** initial precinct width */
 	uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
@@ -1481,7 +1487,14 @@ typedef struct opj_plugin_tile_component {
 	opj_plugin_resolution_t** resolutions;
 } opj_plugin_tile_component_t;
 
+#define OPJ_PLUGIN_DECODE_T2		1
+#define OPJ_PLUGIN_DECODE_T1		2
+#define OPJ_PLUGIN_DECODE_POST_T1	4
+
+
+
 typedef struct opj_plugin_tile {
+	uint32_t decode_flag;
 	size_t numComponents;
 	opj_plugin_tile_component_t** tileComponents;
 } opj_plugin_tile_t;
@@ -1502,11 +1515,12 @@ OPJ_API bool OPJ_CALLCONV opj_decode(opj_codec_t *p_decompressor,
  * Decode an image from a JPEG-2000 codestream
  *
  * @param p_decompressor 	decompressor handle
+ * @param tile			 	tile struct from plugin
  * @param p_stream			Input buffer stream
  * @param p_image 			the decoded image
  * @return 					true if success, otherwise false
  * */
-OPJ_API bool OPJ_CALLCONV opj_decode_plugin(   opj_codec_t *p_decompressor,
+OPJ_API bool OPJ_CALLCONV opj_decode_ex(   opj_codec_t *p_decompressor,
 										opj_plugin_tile_t* tile,
                                         opj_stream_t *p_stream,
                                         opj_image_t *p_image);
@@ -1796,7 +1810,7 @@ OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 //4. during host encode, each context that is formed is compared against context stream from plugin
 //5. rate control - synch with plugin code stream, and compare
 //6. T2 and store to disk
-#define OPJ_PLUGIN_STATE_DEBUG_ENCODE		0x1
+#define OPJ_PLUGIN_STATE_DEBUG		0x1
 
 #define OPJ_PLUGIN_STATE_PRE_TR1			0x2
 
@@ -1823,7 +1837,7 @@ typedef struct opj_plugin_encode_user_callback_info {
 	const char*			output_file_name;
 	opj_cparameters_t*	encoder_parameters;
 	opj_image_t*		image;
-	opj_plugin_tile_t*      tile;
+	opj_plugin_tile_t*  tile;
 	unsigned int		error_code;
 } opj_plugin_encode_user_callback_info_t;
 
@@ -1847,17 +1861,14 @@ typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 										opj_header_info_t* header_info,
 										opj_image_t* image);
 
-typedef bool(*OPJ_QUEUE_DECODE)(size_t deviceId,
-                                size_t compressed_tile_id,
-								opj_plugin_tile_t* tile);
-
 typedef struct opj_plugin_decode_callback_info {
     size_t						deviceId;
     size_t						compressed_tile_id;
     OPJ_GENERATE_TILE			generate_tile_func;
-    OPJ_QUEUE_DECODE			queue_decoder_func;
     const char*					input_file_name;
     const char*					output_file_name;
+	opj_stream_t*				l_stream;
+	opj_codec_t*				l_codec;
     opj_decompress_parameters*	decoder_parameters;
     opj_image_t*				image;
 	opj_plugin_tile_t*			tile;

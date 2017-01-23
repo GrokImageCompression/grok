@@ -201,7 +201,7 @@ int main (int argc, char *argv[])
     /* l_param.mode = 0;*/
 
     /** number of resolutions */
-    l_param.numresolution = 6;
+    l_param.numresolutions = 6;
 
     /** progression order to use*/
     /** OPJ_LRCP, OPJ_RLCP, OPJ_RPCL, PCRL, CPRL */

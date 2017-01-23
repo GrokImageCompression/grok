@@ -18,6 +18,9 @@
 
 #pragma once
 
+bool decode_synch_plugin_with_host(opj_tcd_t *tcd);
+bool decode_synch_host_with_plugin(opj_tcd_t *tcd);
+
 void encode_synch_with_plugin(opj_tcd_t *tcd,
 	uint32_t compno,
 	uint32_t resno,
