@@ -14,16 +14,107 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-
-
-
 #include "opj_includes.h"
 #include "plugin_bridge.h"
+
+// Performed after T2, just before plugin decode is triggered
+// note: only support single segment at the moment
+bool decode_synch_plugin_with_host(opj_tcd_t *tcd) {
+	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
+		auto tcd_tile = tcd->tile;
+		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
+			auto tilec = &tcd_tile->comps[compno];
+			auto plugin_tilec = tcd->current_plugin_tile->tileComponents[compno];
+			assert(tilec->numresolutions == plugin_tilec->numResolutions);
+			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
+				auto res = &tilec->resolutions[resno];
+				auto plugin_res = plugin_tilec->resolutions[resno];
+				assert(plugin_res->numBands == res->numbands);
+				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
+					auto band = &res->bands[bandno];
+					auto plugin_band = plugin_res->bands[bandno];
+					assert(plugin_band->numPrecincts == res->pw * res->ph);
+					for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
+						auto prc = &band->precincts[precno];
+						auto plugin_prc = plugin_band->precincts[precno];
+						assert(plugin_prc->numBlocks == prc->cw * prc->ch);
+						for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+							auto cblk = &prc->cblks.dec[cblkno];
+							if (!cblk->numSegments)
+								continue;
+							if (cblk->numSegments != 1)
+								return false;
+							opj_plugin_code_block_t* plugin_cblk = plugin_prc->blocks[cblkno];
+
+							// copy segments into plugin codeblock buffer, and point host code block data
+							// to plugin data buffer
+							plugin_cblk->compressedDataLength = opj_min_buf_vec_get_len(&cblk->seg_buffers);
+							opj_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							cblk->data = plugin_cblk->compressedData;
+							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
+
+							plugin_cblk->numBitPlanes = cblk->numbps;
+							plugin_cblk->numPasses = cblk->segs[0].numpasses;
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
+// Performed after plugin decode
+bool decode_synch_host_with_plugin(opj_tcd_t *tcd) {
+	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
+		opj_tcd_tile_t *tcd_tile = tcd->tile;
+		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
+			opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
+				opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+
+				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
+					opj_tcd_band_t *band = &res->bands[bandno];
+
+					for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
+						opj_tcd_precinct_t *prc = &band->precincts[precno];
+
+						for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
+
+							opj_plugin_band_t* plugin_band = tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
+							opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
+							opj_plugin_code_block_t* plugin_cblk = precinct->blocks[cblkno];
+
+							opj_tcd_cblk_dec_t *cblk = &prc->cblks.dec[cblkno];
+							if (!cblk->numSegments)
+								continue;
+							if (cblk->numSegments != 1)
+								return false;
+
+							// copy segments into plugin codeblock buffer, and point host code block data
+							// to plugin data buffer
+							plugin_cblk->compressedDataLength = opj_min_buf_vec_get_len(&cblk->seg_buffers);
+							opj_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							cblk->data = plugin_cblk->compressedData;
+							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
+
+							plugin_cblk->numBitPlanes = cblk->numbps;
+							plugin_cblk->numPasses = cblk->segs[0].numpasses;
+						}
+					}
+				}
+			}
+		}
+	}
+	return true;
+}
+
+
 
 bool tile_equals(opj_plugin_tile_t* plugin_tile,
 	opj_tcd_tile_t *p_tile) {
 	uint32_t state = opj_plugin_get_debug_state();
-	if (!(state & OPJ_PLUGIN_STATE_DEBUG_ENCODE))
+	if (!(state & OPJ_PLUGIN_STATE_DEBUG))
 		return true;
 	if ((!plugin_tile && p_tile) || (plugin_tile && !p_tile))
 		return false;
@@ -84,24 +175,29 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 		opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
 		opj_plugin_code_block_t* plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = opj_plugin_get_debug_state();
-		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+
+		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
 				printf("Warning: ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
 			}
 			if (cblk->totalpasses != plugin_cblk->numPasses)
 				printf("Warning: OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->totalpasses, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
 		}
+
 		cblk->totalpasses = (uint32_t)plugin_cblk->numPasses;
 		*numPix = (uint32_t)plugin_cblk->numPix;
-		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+
+		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 			if (plugin_cblk->numPix != opjNumPix)
 				printf("Warning: ojp numPix %d differs from plugin numPix %d\n", opjNumPix, (uint32_t)plugin_cblk->numPix);
 		}
+
 		bool goodData = true;
 		uint32_t totalRatePlugin = (uint32_t)plugin_cblk->compressedDataLength;
+
 		//check data
-		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			uint32_t totalRate = 0;
 			if (cblk->totalpasses > 0) {
 				totalRate = (cblk->passes + cblk->totalpasses - 1)->rate;
@@ -120,19 +216,18 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 						cblkno,
 						totalRate,
 						totalRatePlugin);
-
 					goodData = false;
 					break;
 				}
 			}
-
 		}
+
 		if (goodData)
 			cblk->data = plugin_cblk->compressedData;
 		cblk->data_size = (uint32_t)(plugin_cblk->compressedDataLength);
 		cblk->owns_data = false;
 		cblk->numbps = (uint32_t)plugin_cblk->numBitPlanes;
-		if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			if (cblk->x0 != plugin_cblk->x0 ||
 				cblk->y0 != plugin_cblk->y0 ||
 				cblk->x1 != plugin_cblk->x1 ||
@@ -148,7 +243,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 
 			// synch distortion, if applicable
 			if (opj_tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
-				if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+				if (state & OPJ_PLUGIN_STATE_DEBUG) {
 					if (fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec) > 0.01) {
 						printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
 					}
@@ -164,7 +259,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 				pluginRate--;
 			}
 
-			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+			if (state & OPJ_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
 					printf("Warning: plugin rate %d differs from OPJ rate %d\n", pluginRate, pass->rate);
 				}

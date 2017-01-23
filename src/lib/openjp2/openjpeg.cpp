@@ -460,10 +460,10 @@ bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
 bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec,
 	opj_stream_t *p_stream,
 	opj_image_t* p_image) {
-	return opj_decode_plugin(p_codec, NULL, p_stream, p_image);
+	return opj_decode_ex(p_codec, NULL, p_stream, p_image);
 }
 
-bool OPJ_CALLCONV opj_decode_plugin(   opj_codec_t *p_codec,
+bool OPJ_CALLCONV opj_decode_ex(   opj_codec_t *p_codec,
 								opj_plugin_tile_t* tile,
                                 opj_stream_t *p_stream,
                                 opj_image_t* p_image)
@@ -710,7 +710,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         /* default coding parameters */
         parameters->rsiz = OPJ_PROFILE_NONE;
         parameters->max_comp_size = 0;
-        parameters->numresolution = 6;
+        parameters->numresolutions = 6;
         parameters->cblockw_init = 64;
         parameters->cblockh_init = 64;
         parameters->prog_order = OPJ_LRCP;
@@ -1262,16 +1262,19 @@ void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
     opj_plugin_decode_callback_info_t opjInfo;
     memset(&opjInfo, 0, sizeof(opj_plugin_decode_callback_info_t));
     opjInfo.generate_tile_func = (OPJ_GENERATE_TILE)info->generate_tile_func;
-    opjInfo.queue_decoder_func = (OPJ_QUEUE_DECODE)info->queue_decoder_func;
     opjInfo.input_file_name = info->input_file_name;
     opjInfo.output_file_name = info->output_file_name;
     opjInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
     opjInfo.image = (opj_image_t*)info->image;
     opjInfo.tile = (opj_plugin_tile_t*)info->tile;
     if (!opjInfo.image) {
-        if (userPreDecodeCallback)
-            userPreDecodeCallback(&opjInfo);
-        info->image = (opj_image_t*)opjInfo.image;
+		if (userPreDecodeCallback) {
+			userPreDecodeCallback(&opjInfo);
+			info->image = opjInfo.image;
+			info->tile = opjInfo.tile;
+			info->l_stream = opjInfo.l_stream;
+			info->l_codec = opjInfo.l_codec;
+		}
     } else {
         if (userPostDecodeCallback)
             userPostDecodeCallback(&opjInfo);

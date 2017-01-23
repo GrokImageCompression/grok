@@ -24,26 +24,30 @@
 T1Decoder::T1Decoder(uint16_t blockw, 
 					uint16_t blockh) :codeblock_width(blockw), 
 					  				  codeblock_height(blockh)
-{
-
-}
+{}
 
 
-void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
+bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
+	if (!blocks)
+		return false;
 	decodeQueue.push_no_lock(blocks);
+	blocks->clear();
 	Barrier decode_t1_barrier(numThreads);
 	Barrier decode_t1_calling_barrier(numThreads + 1);
 
 	auto pool = new ThreadPool(numThreads);
+	volatile bool success = true;
 	for (auto threadId = 0; threadId < numThreads; threadId++) {
 		pool->enqueue([this,
-											&decode_t1_barrier,
-											&decode_t1_calling_barrier,
-											threadId]()
-		{
+						&decode_t1_barrier,
+						&decode_t1_calling_barrier,
+						threadId,
+						&success]()		{
 			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
-			if (!t1)
+			if (!t1) {
+				success = false;
 				return;
+			}
 			decodeBlockInfo* block = NULL;
 			while (decodeQueue.tryPop(block)) {
 				if (!opj_t1_decode_cblk(t1,
@@ -57,6 +61,8 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 
 
 				auto t1_data = t1->data;
+
+				// ROI shift
 				if (block->roishift) {
 					int32_t threshold = 1 << block->roishift;
 					for (auto j = 0U; j < t1->h; ++j) {
@@ -65,7 +71,8 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 							auto magnitude = abs(value);
 							if (magnitude >= threshold) {
 								magnitude >>= block->roishift;
-								*t1_data = value < 0 ? -magnitude : magnitude;
+								// ((value > 0) - (value < 0)) == signum(value)
+								*t1_data = ((value > 0) - (value < 0))* magnitude;
 							}
 							t1_data++;
 						}
@@ -74,6 +81,7 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 					t1_data = t1->data;
 				}
 
+				//dequantization
 				uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
 				if (block->qmfbid == 1) {
 					int32_t* restrict tile_data = block->tiledp;
@@ -106,5 +114,12 @@ void T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 	}
 
 	decode_t1_calling_barrier.arrive_and_wait();
+	// cleanup
 	delete pool;
+	decodeBlockInfo* block = NULL;
+	while (decodeQueue.tryPop(block)) {
+		delete block;
+	}
+	return success;
+
 }

@@ -64,12 +64,6 @@
 /** @name Local static functions */
 /*@{*/
 
-
-
-
-
-
-
 #define ENC_FLAGS(x, y) (t1->flags[(x) + 1 + (((y) >> 2) + 1) * t1->flags_stride])
 #define ENC_FLAGS_ADDRESS(x, y) (t1->flags + ((x) + 1 + (((y) >> 2) + 1) * t1->flags_stride))
 
@@ -117,8 +111,6 @@ static void opj_t1_enc_refpass( opj_t1_opt_t *t1,
                                 int32_t bpno,
                                 int32_t *nmsedec);
 
-
-
 /**
 Encode clean-up pass
 */
@@ -143,21 +135,12 @@ static void opj_t1_enc_clnpass(
     uint32_t orient,
     int32_t *nmsedec);
 
-
-
-
-
-
-
-
-
 /**
 * Creates a new Tier 1 handle
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
-{
+opj_t1_opt_t* opj_t1_opt_create(bool isEncoder){
     opj_t1_opt_t *l_t1 = 00;
 
     l_t1 = (opj_t1_opt_t*)opj_calloc(1, sizeof(opj_t1_opt_t));
@@ -183,8 +166,7 @@ opj_t1_opt_t* opj_t1_opt_create(bool isEncoder)
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-void opj_t1_opt_destroy(opj_t1_opt_t *p_t1)
-{
+void opj_t1_opt_destroy(opj_t1_opt_t *p_t1){
     if (!p_t1) {
         return;
     }
@@ -207,14 +189,12 @@ void opj_t1_opt_destroy(opj_t1_opt_t *p_t1)
     opj_free(p_t1);
 }
 
-static inline uint8_t opj_t1_getctxno_zc_opt(uint32_t f, uint32_t orient)
-{
+static inline uint8_t opj_t1_getctxno_zc_opt(uint32_t f, uint32_t orient){
     return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
 }
 
 
-static uint8_t opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci)
-{
+static uint8_t opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci){
     /*
     0 pfX T1_CHI_THIS           T1_LUT_CTXNO_SGN_W
     1 tfX T1_SIGMA_1            T1_LUT_CTXNO_SIG_N
@@ -241,8 +221,7 @@ static uint8_t opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, u
 }
 
 
-static inline uint32_t opj_t1_getctxno_mag_opt(uint32_t f)
-{
+static inline uint32_t opj_t1_getctxno_mag_opt(uint32_t f){
     return (f & T1_MU_THIS) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 }
 
@@ -466,17 +445,16 @@ static void opj_t1_enc_refpass(
     }
 }
 
-static void opj_t1_enc_clnpass_step(
-    opj_t1_opt_t *t1,
-    opj_flag_opt_t *flagsp,
-    uint32_t *datap,
-    uint32_t orient,
-    int32_t bpno,
-    int32_t one,
-    int32_t *nmsedec,
-    uint32_t agg,
-    uint32_t runlen,
-    uint32_t y)
+static void opj_t1_enc_clnpass_step(   opj_t1_opt_t *t1,
+										opj_flag_opt_t *flagsp,
+										uint32_t *datap,
+										uint32_t orient,
+										int32_t bpno,
+										int32_t one,
+										int32_t *nmsedec,
+										uint32_t agg,
+										uint32_t runlen,
+										uint32_t y)
 {
     uint32_t v;
     uint32_t ci;
@@ -527,11 +505,10 @@ LABEL_PARTIAL:
 }
 
 
-static void opj_t1_enc_clnpass(
-    opj_t1_opt_t *t1,
-    int32_t bpno,
-    uint32_t orient,
-    int32_t *nmsedec)
+static void opj_t1_enc_clnpass( opj_t1_opt_t *t1,
+								int32_t bpno,
+								uint32_t orient,
+								int32_t *nmsedec)
 {
     uint32_t i, k;
     const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
@@ -576,10 +553,9 @@ static void opj_t1_enc_clnpass(
 }
 
 
-bool opj_t1_opt_allocate_buffers(
-    opj_t1_opt_t *t1,
-	uint32_t cblkw,
-	uint32_t cblkh)
+bool opj_t1_opt_allocate_buffers(   opj_t1_opt_t *t1,
+									uint32_t cblkw,
+									uint32_t cblkh)
 {
     if (!t1->data) {
         t1->data = (uint32_t*)opj_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
@@ -601,13 +577,9 @@ bool opj_t1_opt_allocate_buffers(
      return true;
 }
 
-
-
-void opj_t1_opt_init_buffers(
-	opj_t1_opt_t *t1,
-	uint32_t w,
-	uint32_t h)
-{
+void opj_t1_opt_init_buffers(opj_t1_opt_t *t1,
+							uint32_t w,
+							uint32_t h){
 	uint32_t x;
 	opj_flag_opt_t* p;
 	if (t1->data)
@@ -652,10 +624,6 @@ void opj_t1_opt_init_buffers(
 	t1->h = h;
 }
 
-/* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
-
 double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
                                opj_tcd_cblk_enc_t* cblk,
                                uint32_t orient,
@@ -666,8 +634,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
                                uint32_t numcomps,
                                const double * mct_norms,
                                uint32_t mct_numcomps,
-                               uint32_t max)
-{
+                               uint32_t max){
     double cumwmsedec = 0.0;
 
     opj_mqc_t *mqc = t1->mqc;
@@ -682,14 +649,9 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 
     bpno = (int32_t)(cblk->numbps - 1);
     passtype = 2;
-
-    opj_mqc_resetstates(mqc);
-    opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-    opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-    opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
     opj_mqc_init_enc(mqc, cblk->data);
 	uint32_t state = opj_plugin_get_debug_state();
-	if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+	if (state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = cblk->contextStream;
 	}
 
@@ -705,7 +667,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
             break;
         case 2:
             opj_t1_enc_clnpass(t1, bpno, orient, &nmsedec);
-			if (state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+			if (state & OPJ_PLUGIN_STATE_DEBUG) {
 				mqc_next_plane(&mqc->debug_mqc);
 			}
             break;

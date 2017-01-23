@@ -21,30 +21,20 @@
 #include "openjpeg.h"
 #include "minpf_plugin.h"
 
-
-
 /////////////////////
 // Debug Interface
 /////////////////////
 
 #define CONTEXT_CACHE_SIZE 3
 
+// debugging variables
 struct plugin_debug_mqc_t {
-
-	///////////////////////////////////////////////////////////
-	// debugging variables
 	uint32_t	debug_state;
-	uint8_t context_number;			// actual context value
-
-	uint32_t* contextStream;			// stream of contexts, stored as quads of uints
-	uint32_t contextStreamByteCount;	// byte count of context stream (each byte in stream can
-										// contain up to 3 actual contexts)
-
-										// cache of contexts read from stream
-	uint8_t contextCache[CONTEXT_CACHE_SIZE];
-	uint32_t contextCacheCount;
-	//////////////////////////////////////////////////////////
-
+	uint8_t		context_number;			
+	uint32_t*	contextStream;			
+	uint32_t	contextStreamByteCount;	
+	uint8_t		contextCache[CONTEXT_CACHE_SIZE];
+	uint32_t	contextCacheCount;
 };
 
 
@@ -108,17 +98,14 @@ typedef opj_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
                                     opj_cparameters_t* encoder_parameters,
                                     opj_image_t* image);
 
-typedef bool(*QUEUE_DECODE)(size_t deviceId,
-                            size_t compressed_tile_id,
-                            opj_plugin_tile_t* tile);
-
 typedef struct plugin_decode_callback_info {
     size_t deviceId;
     size_t compressed_tile_id;
     GENERATE_TILE generate_tile_func;
-    QUEUE_DECODE queue_decoder_func;
     const char* input_file_name;
     const char* output_file_name;
+	opj_stream_t*				l_stream;
+	opj_codec_t*				l_codec;
     opj_decompress_parameters* decoder_parameters;
     opj_image_t* image;
     opj_plugin_tile_t* tile;

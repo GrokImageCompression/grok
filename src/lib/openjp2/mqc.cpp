@@ -89,6 +89,15 @@ Fill mqc->c with 1's for flushing
 */
 static void opj_mqc_setbits(opj_mqc_t *mqc);
 /**
+Set the state of a particular context
+@param mqc MQC handle
+@param ctxno Number that identifies the context
+@param msb The MSB of the new state of the context
+@param prob Number that identifies the probability of the symbols for the new state of the context
+*/
+static void opj_mqc_setstate(opj_mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob);
+
+/**
 FIXME DOC
 @param mqc MQC handle
 @return
@@ -382,7 +391,7 @@ static inline void opj_mqc_renormd(opj_mqc_t *const mqc)
 */
 
 void opj_mqc_setcurctx(opj_mqc_t *mqc, uint8_t ctxno) {
-	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
 	mqc->curctx = &mqc->ctxs[(uint32_t)ctxno];
@@ -411,13 +420,14 @@ uint32_t opj_mqc_numbytes(opj_mqc_t *mqc)
 
 void opj_mqc_init_enc(opj_mqc_t *mqc, uint8_t *bp)
 {
+	opj_mqc_resetstates(mqc);
     opj_mqc_setcurctx(mqc, 0);
     mqc->a = 0x8000;
     mqc->c = 0;
     mqc->bp = bp - 1;
     mqc->ct = 12;
     mqc->start = bp;
-	if (opj_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG_ENCODE) {
+	if (opj_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = NULL;
 		mqc->debug_mqc.contextCacheCount = 0;
 		mqc->debug_mqc.contextStreamByteCount = 0;
@@ -427,7 +437,7 @@ void opj_mqc_init_enc(opj_mqc_t *mqc, uint8_t *bp)
 
 void opj_mqc_encode(opj_mqc_t *mqc, uint32_t d)
 {
-	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG_ENCODE) &&
+	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG) &&
 		!(mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
@@ -491,14 +501,6 @@ uint32_t opj_mqc_bypass_flush_enc(opj_mqc_t *mqc)
     }
 
     return 1;
-}
-
-void opj_mqc_reset_enc(opj_mqc_t *mqc)
-{
-    opj_mqc_resetstates(mqc);
-    opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-    opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-    opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
 uint32_t opj_mqc_restart_enc(opj_mqc_t *mqc)
@@ -600,6 +602,9 @@ void opj_mqc_resetstates(opj_mqc_t *mqc)
     for (i = 0; i < MQC_NUMCTXS; i++) {
         mqc->ctxs[i] = mqc_states;
     }
+	opj_mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+	opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+	opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
 void opj_mqc_setstate(opj_mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob)

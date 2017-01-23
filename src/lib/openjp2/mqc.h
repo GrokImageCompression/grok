@@ -127,14 +127,7 @@ Reset the states of all the context of the coder/decoder
 @param mqc MQC handle
 */
 void opj_mqc_resetstates(opj_mqc_t *mqc);
-/**
-Set the state of a particular context
-@param mqc MQC handle
-@param ctxno Number that identifies the context
-@param msb The MSB of the new state of the context
-@param prob Number that identifies the probability of the symbols for the new state of the context
-*/
-void opj_mqc_setstate(opj_mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob);
+
 /**
 Initialize the encoder
 @param mqc MQC handle
@@ -180,11 +173,6 @@ BYPASS mode switch, flush operation
 @return Returns 1 (always)
 */
 uint32_t opj_mqc_bypass_flush_enc(opj_mqc_t *mqc);
-/**
-RESET mode switch
-@param mqc MQC handle
-*/
-void opj_mqc_reset_enc(opj_mqc_t *mqc);
 /**
 RESTART mode switch (TERMALL)
 @param mqc MQC handle
