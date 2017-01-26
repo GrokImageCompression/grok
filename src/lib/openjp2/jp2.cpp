@@ -96,6 +96,32 @@ static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
 
 
 /**
+* Reads an XML box
+*
+* @param	jp2					the jpeg2000 file codec.
+* @param	p_xml_data			pointer to actual data (already read from file)
+* @param	p_xml_size			the size of the image header
+* @param	p_manager			the user event manager.
+*
+* @return	true if the image header is valid, false else.
+*/
+static bool opj_jp2_read_xml(opj_jp2_t *jp2,
+	uint8_t *p_xml_data,
+	uint32_t p_xml_size,
+	opj_event_mgr_t * p_manager);
+
+/**
+* Writes the XML box
+*
+* @param jp2					jpeg2000 file codec.
+* @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
+*
+* @return	the data being copied.
+*/
+static uint8_t * opj_jp2_write_xml(opj_jp2_t *jp2,
+									uint32_t * p_nb_bytes_written);
+
+/**
 * Reads a Resolution box
 *
 * @param	p_resolution_data			pointer to actual data (already read from file)
@@ -429,7 +455,8 @@ static const opj_jp2_header_handler_t * opj_jp2_find_handler (uint32_t p_id );
 static const opj_jp2_header_handler_t jp2_header [] = {
     {JP2_JP,opj_jp2_read_jp},
     {JP2_FTYP,opj_jp2_read_ftyp},
-    {JP2_JP2H,opj_jp2_read_jp2h}
+    {JP2_JP2H,opj_jp2_read_jp2h},
+	{ JP2_XML, opj_jp2_read_xml}
 };
 
 static const opj_jp2_header_handler_t jp2_img_header [] = {
@@ -691,6 +718,56 @@ static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
     *p_nb_bytes_written = 22;
 
     return l_ihdr_data;
+}
+
+
+static bool opj_jp2_read_xml(opj_jp2_t *jp2,
+							uint8_t *p_xml_data,
+							uint32_t p_xml_size,
+							opj_event_mgr_t * p_manager) {
+
+	if (!p_xml_data || !p_xml_size) {
+		return false;
+	}
+	jp2->xmlSize = p_xml_size;
+	if (jp2->xml)
+		opj_free(jp2->xml);
+	jp2->xml = (uint8_t*)opj_malloc(p_xml_size);
+	if (!jp2->xml)
+		return false;
+	memcpy(jp2->xml, p_xml_data, p_xml_size);
+	return true;
+}
+
+static uint8_t * opj_jp2_write_xml(opj_jp2_t *jp2,
+	uint32_t * p_nb_bytes_written) {
+
+	/* room for 8 bytes for box and jp2->xmlSize bytes */
+	uint32_t total_xml_size = 8 + (uint32_t)jp2->xmlSize;
+	uint8_t * l_xml_data=nullptr, *l_current_xml_ptr=nullptr;
+
+	/* preconditions */
+	assert(jp2 != 00);
+	assert(p_nb_bytes_written != 00);
+
+	l_xml_data = (uint8_t *)opj_calloc(1, total_xml_size);
+	if (l_xml_data == 00) {
+		return 00;
+	}
+
+	l_current_xml_ptr = l_xml_data;
+
+	opj_write_bytes(l_current_xml_ptr, total_xml_size, 4);			/* write box size */
+	l_current_xml_ptr += 4;
+
+	opj_write_bytes(l_current_xml_ptr, JP2_XML, 4);					/* JP2_XML */
+	l_current_xml_ptr += 4;
+
+	memcpy(l_current_xml_ptr, jp2->xml, jp2->xmlSize);				/* xml data */
+
+	*p_nb_bytes_written = total_xml_size;
+	return l_xml_data;
+
 }
 
 
@@ -1860,6 +1937,10 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
 		if (storeCapture || storeDisplay)
 			l_writers[l_nb_pass++].handler = opj_jp2_write_res;
 	}
+	if (jp2->xml && jp2->xmlSize) {
+		l_writers[l_nb_pass++].handler = opj_jp2_write_xml;
+	}
+
 
     /* write box header */
     /* write JP2H type */
@@ -3118,6 +3199,11 @@ void opj_jp2_destroy(opj_jp2_t *jp2)
             opj_procedure_list_destroy(jp2->m_procedure_list);
             jp2->m_procedure_list = 00;
         }
+
+		if (jp2->xml) {
+			opj_free(jp2->xml);
+			jp2->xml = nullptr;
+		}
 
         opj_free(jp2);
     }

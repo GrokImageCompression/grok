@@ -165,6 +165,9 @@ typedef struct opj_jp2 {
 
 	bool  write_display_resolution;
 	double display_resolution[2];
+
+	uint8_t* xml;
+	size_t xmlSize;
 }
 opj_jp2_t;
 
