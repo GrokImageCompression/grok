@@ -5,6 +5,6 @@ Please see the LICENSE file for license details.
 
 Please see the project WIKI for library usage 
 
-If you have questions about the toolkit, please visit our discussion group
+Free versions of the final draft of the JPEG 2000 standard can be found here: http://old.jpeg.org/jpeg2000/CDs15444.html
 
-https://groups.google.com/forum/#!forum/grok-jpeg-2000
+A monograph overview of the standard can be found here:  http://www.cs.cmu.edu/afs/cs/project/pscico-guyb/realworld/www/paper_ieee_ce_jpeg2000_Nov2000.pdf
