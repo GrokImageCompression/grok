@@ -180,11 +180,11 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 			if (band->stepsize != plugin_band->stepsize) {
 				printf("Warning: ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
 			}
-			if (cblk->totalpasses != plugin_cblk->numPasses)
-				printf("Warning: OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->totalpasses, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
+			if (cblk->num_passes_encoded != plugin_cblk->numPasses)
+				printf("Warning: OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->num_passes_encoded, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
 		}
 
-		cblk->totalpasses = (uint32_t)plugin_cblk->numPasses;
+		cblk->num_passes_encoded = (uint32_t)plugin_cblk->numPasses;
 		*numPix = (uint32_t)plugin_cblk->numPix;
 
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
@@ -199,8 +199,8 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 		//check data
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			uint32_t totalRate = 0;
-			if (cblk->totalpasses > 0) {
-				totalRate = (cblk->passes + cblk->totalpasses - 1)->rate;
+			if (cblk->num_passes_encoded > 0) {
+				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
 				if (totalRatePlugin != totalRate) {
 					printf("Warning: opj rate %d differs from plugin rate %d\n", totalRate, totalRatePlugin);
 				}
@@ -237,7 +237,7 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 		}
 
 		uint32_t lastRate = 0;
-		for (uint32_t passno = 0; passno < cblk->totalpasses; passno++) {
+		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
 			opj_tcd_pass_t *pass = cblk->passes + passno;
 			opj_plugin_pass_t* pluginPass = plugin_cblk->passes + passno;
 

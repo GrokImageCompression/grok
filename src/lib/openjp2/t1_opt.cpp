@@ -685,9 +685,9 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
     }
 
     opj_mqc_flush(mqc);
-    cblk->totalpasses = passno;
+    cblk->num_passes_encoded = passno;
 
-    for (passno = 0; passno<cblk->totalpasses; passno++) {
+    for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
         if (pass->rate > opj_mqc_numbytes(mqc))
             pass->rate = opj_mqc_numbytes(mqc);

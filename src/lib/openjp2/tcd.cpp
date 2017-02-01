@@ -254,7 +254,7 @@ void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 							cblk->num_passes_included_in_other_layers;
 
 						for (passno = cblk->num_passes_included_in_other_layers;
-							passno < cblk->totalpasses; passno++) {
+							passno < cblk->num_passes_encoded; passno++) {
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
 
 							//truncate or include feasible, otherwise ignore
@@ -351,7 +351,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 						}
 
 						if (!single_lossless) {
-							RateControl::convexHull(cblk->passes, cblk->totalpasses);
+							RateControl::convexHull(cblk->passes, cblk->num_passes_encoded);
 							rateInfo.synch(cblk);
 
 							tcd_tile->numpix += numPix;
@@ -502,7 +502,7 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 								&numPix);
 						}
 
-						for (passno = 0; passno < cblk->totalpasses; passno++) {
+						for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
 							int32_t dr;
 							double dd, rdslope;
@@ -622,6 +622,13 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
     return true;
 }
 
+static void prepareBlockForFirstLayer(opj_tcd_cblk_enc_t* cblk) {
+	cblk->num_passes_included_in_other_layers = 0;
+	cblk->num_passes_included_in_current_layer = 0;
+	cblk->numlenbits = 0;
+
+}
+
 /*
 Form layer for bisect rate control algorithm
 */
@@ -654,14 +661,14 @@ void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
 						uint32_t num_included_passes_in_block;
 
 						if (layno == 0) {
-							cblk->num_passes_included_in_other_layers = 0;
+							prepareBlockForFirstLayer(cblk);
 						}
 
 						num_included_passes_in_block =
 							cblk->num_passes_included_in_other_layers;
 
 						for (passno = cblk->num_passes_included_in_other_layers;
-							passno < cblk->totalpasses; passno++) {
+							passno < cblk->num_passes_encoded; passno++) {
 							uint32_t dr;
 							double dd;
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
@@ -753,14 +760,13 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 						uint32_t num_included_passes_in_block;
 
 						if (layno == 0) {
-							cblk->num_passes_included_in_other_layers = 0;
+							prepareBlockForFirstLayer(cblk);
 						}
 
 						num_included_passes_in_block =
 							cblk->num_passes_included_in_other_layers;
 
-						for (passno = cblk->num_passes_included_in_other_layers;
-							passno < cblk->totalpasses; passno++) {
+						for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
 							num_included_passes_in_block = passno + 1;
 						}
@@ -793,7 +799,7 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 
 						cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
 
-						assert(cblk->num_passes_included_in_other_layers == cblk->totalpasses);
+						assert(cblk->num_passes_included_in_other_layers == cblk->num_passes_encoded);
 					}
 				}
 			}
@@ -1981,8 +1987,8 @@ static void opj_tcd_code_block_dec_deallocate (opj_tcd_precinct_t * p_precinct)
     if (l_code_block) {
         /*fprintf(stderr,"deallocate codeblock:{\n");*/
         /*fprintf(stderr,"\t x0=%d, y0=%d, x1=%d, y1=%d\n",l_code_block->x0, l_code_block->y0, l_code_block->x1, l_code_block->y1);*/
-        /*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numNewPassesInPacket=%d, real_num_segs=%d, numSegmentsAllocated=%d\n ",
-                        l_code_block->numbps, l_code_block->numlenbits, l_code_block->len, l_code_block->numNewPassesInPacket, l_code_block->numSegments, l_code_block->numSegmentsAllocated );*/
+        /*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numPassesInPacket=%d, real_num_segs=%d, numSegmentsAllocated=%d\n ",
+                        l_code_block->numbps, l_code_block->numlenbits, l_code_block->len, l_code_block->numPassesInPacket, l_code_block->numSegments, l_code_block->numSegmentsAllocated );*/
 
 
         l_nb_code_blocks = p_precinct->block_size / sizeof(opj_tcd_cblk_dec_t);
