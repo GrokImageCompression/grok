@@ -26,7 +26,7 @@ RateInfo::RateInfo() : 	minimumSlope(USHRT_MAX),
 Synchronize with code block
 */
 void RateInfo::synch(opj_tcd_cblk_enc_t *cblk) {
-	for (auto passno = 0U; passno < cblk->totalpasses; passno++) {
+	for (auto passno = 0U; passno < cblk->num_passes_encoded; passno++) {
 		opj_tcd_pass_t *pass = &cblk->passes[passno];
 
 		//2. only process feasible truncation points
