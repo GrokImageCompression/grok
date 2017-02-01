@@ -960,7 +960,7 @@ bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
 
 			uint32_t w = (tilec->x1 - tilec->x0);
 
-			h.wavelet = (opj_v4_t*)opj_aligned_malloc((opj_dwt_max_resolution(res, numResolutions) + 5) * sizeof(opj_v4_t));
+			h.wavelet = (opj_v4_t*)opj_aligned_malloc((opj_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
 			if (!h.wavelet) {
 				/* FIXME event manager error callback */
 				rc++;
