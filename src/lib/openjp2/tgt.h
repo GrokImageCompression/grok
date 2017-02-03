@@ -140,7 +140,7 @@ Encode the value of a leaf of the tag-tree up to a given threshold
 @param leafno Number that identifies the leaf to encode
 @param threshold Threshold to use when encoding value of the leaf
 */
-void opj_tgt_encode(opj_bio_t *bio,
+void opj_tgt_encode(BitIO *bio,
                     opj_tgt_tree_t *tree,
                     uint32_t leafno,
                     int32_t threshold);
@@ -152,7 +152,7 @@ Decode the value of a leaf of the tag-tree up to a given threshold
 @param threshold Threshold to use when decoding value of the leaf
 @return Returns 1 if the node's value < threshold, returns 0 otherwise
 */
-uint32_t opj_tgt_decode(opj_bio_t *bio,
+uint32_t opj_tgt_decode(BitIO *bio,
                         opj_tgt_tree_t *tree,
                         uint32_t leafno,
                         int32_t threshold);

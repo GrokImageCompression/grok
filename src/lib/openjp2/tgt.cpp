@@ -272,7 +272,7 @@ void opj_tgt_setvalue(opj_tgt_tree_t *tree, uint32_t leafno, int32_t value)
     }
 }
 
-void opj_tgt_encode(opj_bio_t *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
+void opj_tgt_encode(BitIO *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
 {
     opj_tgt_node_t *stk[31];
     opj_tgt_node_t **stkptr;
@@ -297,12 +297,12 @@ void opj_tgt_encode(opj_bio_t *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32
         while (low < threshold) {
             if (low >= node->value) {
                 if (!node->known) {
-                    opj_bio_write(bio, 1, 1);
+                    bio->write(1, 1);
                     node->known = 1;
                 }
                 break;
             }
-            opj_bio_write(bio, 0, 1);
+            bio->write(0, 1);
             ++low;
         }
 
@@ -313,7 +313,7 @@ void opj_tgt_encode(opj_bio_t *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32
     }
 }
 
-uint32_t opj_tgt_decode(opj_bio_t *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
+uint32_t opj_tgt_decode(BitIO *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
 {
     opj_tgt_node_t *stk[31];
     opj_tgt_node_t **stkptr;
@@ -335,7 +335,7 @@ uint32_t opj_tgt_decode(opj_bio_t *bio, opj_tgt_tree_t *tree, uint32_t leafno, i
             low = node->low;
         }
         while (low < threshold && low < node->value) {
-            if (opj_bio_read(bio, 1)) {
+            if (bio->read( 1)) {
                 node->value = low;
             } else {
                 ++low;
