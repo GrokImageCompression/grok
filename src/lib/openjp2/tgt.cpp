@@ -56,64 +56,49 @@
  */
 
 #include "opj_includes.h"
+#include  <exception>
 
-/*
-==========================================================
-   Tag-tree coder interface
-==========================================================
-*/
 
-opj_tgt_tree_t *opj_tgt_create(uint32_t numleafsh, uint32_t numleafsv, opj_event_mgr_t *manager)
+TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, opj_event_mgr_t *manager) :
+	numleafsh(mynumleafsh),
+	numleafsv(mynumleafsv), 
+	numnodes(0), 
+	nodes(nullptr),
+	nodes_size(0)
 {
     int32_t nplh[32];
     int32_t nplv[32];
-    opj_tgt_node_t *node = 00;
-    opj_tgt_node_t *l_parent_node = 00;
-    opj_tgt_node_t *l_parent_node0 = 00;
-    opj_tgt_tree_t *tree = 00;
+    TagTreeNode *node = 00;
+    TagTreeNode *l_parent_node = 00;
+    TagTreeNode *l_parent_node0 = 00;
+    TagTree *tree = 00;
     uint32_t i;
     int32_t  j,k;
     uint32_t numlvls;
     uint32_t n;
 
-    tree = (opj_tgt_tree_t *) opj_calloc(1,sizeof(opj_tgt_tree_t));
-    if(!tree) {
-        opj_event_msg(manager, EVT_ERROR, "Not enough memory to create Tag-tree\n");
-        return 00;
-    }
-
-    tree->numleafsh = numleafsh;
-    tree->numleafsv = numleafsv;
-
     numlvls = 0;
     nplh[0] = (int32_t)numleafsh;
     nplv[0] = (int32_t)numleafsv;
-    tree->numnodes = 0;
+    numnodes = 0;
     do {
         n = (uint32_t)(nplh[numlvls] * nplv[numlvls]);
         nplh[numlvls + 1] = (nplh[numlvls] + 1) / 2;
         nplv[numlvls + 1] = (nplv[numlvls] + 1) / 2;
-        tree->numnodes += n;
+        numnodes += n;
         ++numlvls;
     } while (n > 1);
 
-    /* ADD */
-    if (tree->numnodes == 0) {
-        opj_free(tree);
-        opj_event_msg(manager, EVT_WARNING, "tgt_create tree->numnodes == 0, no tree created.\n");
-        return 00;
+    if (numnodes == 0) {
+        opj_event_msg(manager, EVT_WARNING, "tgt_create numnodes == 0, no tree created.\n");
+		throw std::exception("");
     }
 
-    tree->nodes = (opj_tgt_node_t*) opj_calloc(tree->numnodes, sizeof(opj_tgt_node_t));
-    if(!tree->nodes) {
-        opj_event_msg(manager, EVT_ERROR, "Not enough memory to create Tag-tree nodes\n");
-        opj_free(tree);
-        return 00;
-    }
-    tree->nodes_size = tree->numnodes * (uint32_t)sizeof(opj_tgt_node_t);
+	nodes = new TagTreeNode[numnodes];
+    nodes_size = numnodes * (uint32_t)sizeof(TagTreeNode);
 
-    node = tree->nodes;
-    l_parent_node = &tree->nodes[tree->numleafsh * tree->numleafsv];
+    node = nodes;
+    l_parent_node = &nodes[numleafsh * numleafsv];
     l_parent_node0 = l_parent_node;
 
     for (i = 0; i < numlvls - 1; ++i) {
@@ -137,71 +122,69 @@ opj_tgt_tree_t *opj_tgt_create(uint32_t numleafsh, uint32_t numleafsv, opj_event
         }
     }
     node->parent = 0;
-    opj_tgt_reset(tree);
-    return tree;
+    reset();
 }
 
+
+TagTree::~TagTree() {
+	if (nodes) {
+		delete[] nodes;
+	}
+}
+
+
 /**
- * Reinitialises a tag-tree from an existing one.
+ * Reinitialises a tag tree from an existing one.
  *
- * @param       p_tree                          the tree to reinitialize.
  * @param       p_num_leafs_h           the width of the array of leafs of the tree
  * @param       p_num_leafs_v           the height of the array of leafs of the tree
- * @return      a new tag-tree if successful, NULL otherwise
+ * @return      a new tag tree if successful, NULL otherwise
 */
-opj_tgt_tree_t *opj_tgt_init(opj_tgt_tree_t * p_tree,uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, opj_event_mgr_t *p_manager)
+bool TagTree::init(uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, opj_event_mgr_t *p_manager)
 {
     int32_t l_nplh[32];
     int32_t l_nplv[32];
-    opj_tgt_node_t *l_node = 00;
-    opj_tgt_node_t *l_parent_node = 00;
-    opj_tgt_node_t *l_parent_node0 = 00;
+    TagTreeNode *l_node = 00;
+    TagTreeNode *l_parent_node = 00;
+    TagTreeNode *l_parent_node0 = 00;
     uint32_t i;
     int32_t j,k;
     uint32_t l_num_levels;
     uint32_t n;
     uint32_t l_node_size;
 
-    if (! p_tree) {
-        return 00;
-    }
 
-    if ((p_tree->numleafsh != p_num_leafs_h) || (p_tree->numleafsv != p_num_leafs_v)) {
-        p_tree->numleafsh = p_num_leafs_h;
-        p_tree->numleafsv = p_num_leafs_v;
+    if ((numleafsh != p_num_leafs_h) || (numleafsv != p_num_leafs_v)) {
+        numleafsh = p_num_leafs_h;
+        numleafsv = p_num_leafs_v;
 
         l_num_levels = 0;
         l_nplh[0] = (int32_t)p_num_leafs_h;
         l_nplv[0] = (int32_t)p_num_leafs_v;
-        p_tree->numnodes = 0;
+        numnodes = 0;
         do {
             n = (uint32_t)(l_nplh[l_num_levels] * l_nplv[l_num_levels]);
             l_nplh[l_num_levels + 1] = (l_nplh[l_num_levels] + 1) / 2;
             l_nplv[l_num_levels + 1] = (l_nplv[l_num_levels] + 1) / 2;
-            p_tree->numnodes += n;
+            numnodes += n;
             ++l_num_levels;
         } while (n > 1);
 
-        /* ADD */
-        if (p_tree->numnodes == 0) {
-            opj_tgt_destroy(p_tree);
-            return 00;
+        if (numnodes == 0) {
+            return false;
         }
-        l_node_size = p_tree->numnodes * (uint32_t)sizeof(opj_tgt_node_t);
+        l_node_size = numnodes * (uint32_t)sizeof(TagTreeNode);
 
-        if (l_node_size > p_tree->nodes_size) {
-            opj_tgt_node_t* new_nodes = (opj_tgt_node_t*) opj_realloc(p_tree->nodes, l_node_size);
-            if (! new_nodes) {
-                opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to reinitialize the tag tree\n");
-                opj_tgt_destroy(p_tree);
-                return 00;
-            }
-            p_tree->nodes = new_nodes;
-            memset(((char *) p_tree->nodes) + p_tree->nodes_size, 0 , l_node_size - p_tree->nodes_size);
-            p_tree->nodes_size = l_node_size;
+        if (l_node_size > nodes_size) {
+            TagTreeNode* new_nodes = new TagTreeNode[numnodes];
+			for (i = 0; i < nodes_size/sizeof(TagTreeNode); ++i)
+				new_nodes[i] = nodes[i];
+			delete[] nodes;
+			nodes = new_nodes;
+            nodes_size = l_node_size;
         }
-        l_node = p_tree->nodes;
-        l_parent_node = &p_tree->nodes[p_tree->numleafsh * p_tree->numleafsv];
+        l_node = nodes;
+        l_parent_node = &nodes[numleafsh * numleafsv];
         l_parent_node0 = l_parent_node;
 
         for (i = 0; i < l_num_levels - 1; ++i) {
@@ -226,35 +209,18 @@ opj_tgt_tree_t *opj_tgt_init(opj_tgt_tree_t * p_tree,uint32_t p_num_leafs_h, uin
         }
         l_node->parent = 0;
     }
-    opj_tgt_reset(p_tree);
-
-    return p_tree;
+    reset();
+    return true;
 }
 
-void opj_tgt_destroy(opj_tgt_tree_t *p_tree)
-{
-    if (! p_tree) {
-        return;
-    }
 
-    if (p_tree->nodes) {
-        opj_free(p_tree->nodes);
-        p_tree->nodes = 00;
-    }
-    opj_free(p_tree);
-}
-
-void opj_tgt_reset(opj_tgt_tree_t *p_tree)
+void TagTree::reset()
 {
     uint32_t i;
-    opj_tgt_node_t * l_current_node = 00;;
+    TagTreeNode * l_current_node = 00;;
 
-    if (! p_tree) {
-        return;
-    }
-
-    l_current_node = p_tree->nodes;
-    for     (i = 0; i < p_tree->numnodes; ++i) {
+    l_current_node = nodes;
+    for     (i = 0; i < numnodes; ++i) {
         l_current_node->value = 999;
         l_current_node->low = 0;
         l_current_node->known = 0;
@@ -262,25 +228,25 @@ void opj_tgt_reset(opj_tgt_tree_t *p_tree)
     }
 }
 
-void opj_tgt_setvalue(opj_tgt_tree_t *tree, uint32_t leafno, int32_t value)
+void TagTree::setvalue(uint32_t leafno, int32_t value)
 {
-    opj_tgt_node_t *node;
-    node = &tree->nodes[leafno];
+    TagTreeNode *node;
+    node = &nodes[leafno];
     while (node && node->value > value) {
         node->value = value;
         node = node->parent;
     }
 }
 
-void opj_tgt_encode(BitIO *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
+void TagTree::encode(BitIO *bio, uint32_t leafno, int32_t threshold)
 {
-    opj_tgt_node_t *stk[31];
-    opj_tgt_node_t **stkptr;
-    opj_tgt_node_t *node;
+    TagTreeNode *stk[31];
+    TagTreeNode **stkptr;
+    TagTreeNode *node;
     int32_t low;
 
     stkptr = stk;
-    node = &tree->nodes[leafno];
+    node = &nodes[leafno];
     while (node->parent) {
         *stkptr++ = node;
         node = node->parent;
@@ -313,15 +279,15 @@ void opj_tgt_encode(BitIO *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t t
     }
 }
 
-uint32_t opj_tgt_decode(BitIO *bio, opj_tgt_tree_t *tree, uint32_t leafno, int32_t threshold)
+uint32_t TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold)
 {
-    opj_tgt_node_t *stk[31];
-    opj_tgt_node_t **stkptr;
-    opj_tgt_node_t *node;
+    TagTreeNode *stk[31];
+    TagTreeNode **stkptr;
+    TagTreeNode *node;
     int32_t low;
 
     stkptr = stk;
-    node = &tree->nodes[leafno];
+    node = &nodes[leafno];
     while (node->parent) {
         *stkptr++ = node;
         node = node->parent;

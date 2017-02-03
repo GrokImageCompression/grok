@@ -2184,9 +2184,15 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
     l_cp->th = opj_uint_ceildiv(l_image->y1 - l_cp->ty0, l_cp->tdy);
 
     /* Check that the number of tiles is valid */
-    if (l_cp->tw == 0 || l_cp->th == 0 || l_cp->tw > 65535 / l_cp->th) {
+	if (l_cp->tw == 0 || l_cp->th == 0) {
+		opj_event_msg(p_manager, EVT_ERROR,
+			"Invalid grid of tiles: %u x %u. Standard requires at least one tile in grid. \n",
+			l_cp->tw, l_cp->th);
+		return false;
+	}
+    if (l_cp->tw > 65535 / l_cp->th) {
         opj_event_msg(  p_manager, EVT_ERROR,
-                        "Invalid number of tiles : %u x %u (maximum fixed by jpeg2000 norm is 65535 tiles)\n",
+                        "Invalid grid of tiles : %u x %u.  Maximum fixed by JPEG 2000 standard is 65535 tiles\n",
                         l_cp->tw, l_cp->th);
         return false;
     }

@@ -58,107 +58,84 @@
 
 #pragma once
 
-/**
-@file tgt.h
-@brief Implementation of a tag-tree coder (TGT)
-
-The functions in TGT.C have for goal to realize a tag-tree coder. The functions in TGT.C
-are used by some function in T2.C.
-*/
-
-/** @defgroup TGT TGT - Implementation of a tag-tree coder */
-/*@{*/
 
 /**
 Tag node
 */
-typedef struct opj_tgt_node {
-    struct opj_tgt_node *parent;
+struct TagTreeNode {
+
+	TagTreeNode() : parent(nullptr), value(0), low(0), known(0) {}
+
+    TagTreeNode *parent;
     int32_t value;
     int32_t low;
     uint32_t known;
-} opj_tgt_node_t;
+} ;
 
 /**
 Tag tree
 */
-typedef struct opj_tgt_tree {
+class TagTree {
+
+public:
+
+	/**
+	Create a tag tree
+	@param numleafsh Width of the array of leafs of the tree
+	@param numleafsv Height of the array of leafs of the tree
+	@return Returns a new tag tree if successful, returns NULL otherwise
+	*/
+	TagTree(uint32_t numleafsh, uint32_t numleafsv, opj_event_mgr_t *manager);
+	~TagTree();
+
+
+	/**
+	* Reinitialises a tag tree
+	*
+	* @param	p_num_leafs_h		the width of the array of leafs of the tree
+	* @param	p_num_leafs_v		the height of the array of leafs of the tree
+	* @param p_manager       the event manager
+	* @return	true if successful, false otherwise
+	*/
+	bool init(uint32_t  p_num_leafs_h,	uint32_t  p_num_leafs_v, opj_event_mgr_t *p_manager);
+
+	/**
+	Reset a tag tree (set all leaves to 0)
+	*/
+	void reset();
+	/**
+	Set the value of a leaf of a tag tree
+	@param leafno Number that identifies the leaf to modify
+	@param value New value of the leaf
+	*/
+	void setvalue(	uint32_t leafno,	int32_t value);
+	/**
+	Encode the value of a leaf of the tag tree up to a given threshold
+	@param bio Pointer to a BIO handle
+	@param leafno Number that identifies the leaf to encode
+	@param threshold Threshold to use when encoding value of the leaf
+	*/
+	void encode(BitIO *bio,	uint32_t leafno,	int32_t threshold);
+	/**
+	Decode the value of a leaf of the tag tree up to a given threshold
+	@param bio Pointer to a BIO handle
+	@param leafno Number that identifies the leaf to decode
+	@param threshold Threshold to use when decoding value of the leaf
+	@return Returns 1 if the node's value < threshold, returns 0 otherwise
+	*/
+	uint32_t decode(BitIO *bio,	uint32_t leafno,	int32_t threshold);
+	
+private:
     uint32_t  numleafsh;
     uint32_t  numleafsv;
     uint32_t numnodes;
-    opj_tgt_node_t *nodes;
+    TagTreeNode *nodes;
     uint32_t  nodes_size;		/* maximum size taken by nodes */
-} opj_tgt_tree_t;
 
 
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-/**
-Create a tag-tree
-@param numleafsh Width of the array of leafs of the tree
-@param numleafsv Height of the array of leafs of the tree
-@return Returns a new tag-tree if successful, returns NULL otherwise
-*/
-opj_tgt_tree_t *opj_tgt_create(uint32_t numleafsh, uint32_t numleafsv, opj_event_mgr_t *manager);
+};
 
-/**
- * Reinitialises a tag-tree from an exixting one.
- *
- * @param	p_tree				the tree to reinitialize.
- * @param	p_num_leafs_h		the width of the array of leafs of the tree
- * @param	p_num_leafs_v		the height of the array of leafs of the tree
- * @param p_manager       the event manager
- * @return	a new tag-tree if successful, NULL otherwise
-*/
-opj_tgt_tree_t *opj_tgt_init(opj_tgt_tree_t * p_tree,
-                             uint32_t  p_num_leafs_h,
-                             uint32_t  p_num_leafs_v, opj_event_mgr_t *p_manager);
-/**
-Destroy a tag-tree, liberating memory
-@param tree Tag-tree to destroy
-*/
-void opj_tgt_destroy(opj_tgt_tree_t *tree);
-/**
-Reset a tag-tree (set all leaves to 0)
-@param tree Tag-tree to reset
-*/
-void opj_tgt_reset(opj_tgt_tree_t *tree);
-/**
-Set the value of a leaf of a tag-tree
-@param tree Tag-tree to modify
-@param leafno Number that identifies the leaf to modify
-@param value New value of the leaf
-*/
-void opj_tgt_setvalue(opj_tgt_tree_t *tree,
-                      uint32_t leafno,
-                      int32_t value);
-/**
-Encode the value of a leaf of the tag-tree up to a given threshold
-@param bio Pointer to a BIO handle
-@param tree Tag-tree to modify
-@param leafno Number that identifies the leaf to encode
-@param threshold Threshold to use when encoding value of the leaf
-*/
-void opj_tgt_encode(BitIO *bio,
-                    opj_tgt_tree_t *tree,
-                    uint32_t leafno,
-                    int32_t threshold);
-/**
-Decode the value of a leaf of the tag-tree up to a given threshold
-@param bio Pointer to a BIO handle
-@param tree Tag-tree to decode
-@param leafno Number that identifies the leaf to decode
-@param threshold Threshold to use when decoding value of the leaf
-@return Returns 1 if the node's value < threshold, returns 0 otherwise
-*/
-uint32_t opj_tgt_decode(BitIO *bio,
-                        opj_tgt_tree_t *tree,
-                        uint32_t leafno,
-                        int32_t threshold);
-/* ----------------------------------------------------------------------- */
-/*@}*/
 
-/*@}*/
+
 
 
