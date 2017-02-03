@@ -63,16 +63,16 @@
 /** @name Local static functions */
 /*@{*/
 
-static void opj_t2_putcommacode(opj_bio_t *bio, int32_t n);
+static void opj_t2_putcommacode(BitIO *bio, int32_t n);
 
-static uint32_t opj_t2_getcommacode(opj_bio_t *bio);
+static uint32_t opj_t2_getcommacode(BitIO *bio);
 /**
 Variable length code for signalling delta Zil (truncation point)
 @param bio  Bit Input/Output component
 @param n    delta Zil
 */
-static void opj_t2_putnumpasses(opj_bio_t *bio, uint32_t n);
-static uint32_t opj_t2_getnumpasses(opj_bio_t *bio);
+static void opj_t2_putnumpasses(BitIO *bio, uint32_t n);
+static uint32_t opj_t2_getnumpasses(BitIO *bio);
 
 /**
 Encode a packet of a tile to a destination buffer
@@ -183,50 +183,50 @@ static bool opj_t2_init_seg(    opj_tcd_cblk_dec_t* cblk,
 /* ----------------------------------------------------------------------- */
 
 /* #define RESTART 0x04 */
-static void opj_t2_putcommacode(opj_bio_t *bio, int32_t n)
+static void opj_t2_putcommacode(BitIO *bio, int32_t n)
 {
     while (--n >= 0) {
-        opj_bio_write(bio, 1, 1);
+        bio->write( 1, 1);
     }
-    opj_bio_write(bio, 0, 1);
+    bio->write( 0, 1);
 }
 
-static uint32_t opj_t2_getcommacode(opj_bio_t *bio)
+static uint32_t opj_t2_getcommacode(BitIO *bio)
 {
     uint32_t n = 0;
-    while (opj_bio_read(bio, 1)) {
+    while (bio->read( 1)) {
         ++n;
     }
     return n;
 }
 
-static void opj_t2_putnumpasses(opj_bio_t *bio, uint32_t n)
+static void opj_t2_putnumpasses(BitIO *bio, uint32_t n)
 {
     if (n == 1) {
-        opj_bio_write(bio, 0, 1);
+        bio->write( 0, 1);
     } else if (n == 2) {
-        opj_bio_write(bio, 2, 2);
+        bio->write( 2, 2);
     } else if (n <= 5) {
-        opj_bio_write(bio, 0xc | (n - 3), 4);
+        bio->write( 0xc | (n - 3), 4);
     } else if (n <= 36) {
-        opj_bio_write(bio, 0x1e0 | (n - 6), 9);
+        bio->write( 0x1e0 | (n - 6), 9);
     } else if (n <= 164) {
-        opj_bio_write(bio, 0xff80 | (n - 37), 16);
+        bio->write( 0xff80 | (n - 37), 16);
     }
 }
 
-static uint32_t opj_t2_getnumpasses(opj_bio_t *bio)
+static uint32_t opj_t2_getnumpasses(BitIO *bio)
 {
     uint32_t n;
-    if (!opj_bio_read(bio, 1))
+    if (!bio->read( 1))
         return 1;
-    if (!opj_bio_read(bio, 1))
+    if (!bio->read( 1))
         return 2;
-    if ((n = opj_bio_read(bio, 2)) != 3)
+    if ((n = bio->read( 2)) != 3)
         return (3 + n);
-    if ((n = opj_bio_read(bio, 5)) != 31)
+    if ((n = bio->read( 5)) != 31)
         return (6 + n);
-    return (37 + opj_bio_read(bio, 7));
+    return (37 + bio->read( 7));
 }
 
 /* ----------------------------------------------------------------------- */
@@ -622,7 +622,7 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
     opj_tcd_tilecomp_t *tilec = &tile->comps[compno];
     opj_tcd_resolution_t *res = &tilec->resolutions[resno];
 
-    opj_bio_t *bio = 00;    /* BIO component */
+    BitIO *bio = 00;    /* BIO component */
 
     /* <SOP 0xff91> */
     if (tcp->csty & J2K_CP_CSTY_SOP) {
@@ -655,13 +655,13 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
         }
     }
 
-    bio = opj_bio_create();
+	bio = new BitIO();
     if (!bio) {
         /* FIXME event manager error callback */
         return false;
     }
-    opj_bio_init_enc(bio, c, length);
-    opj_bio_write(bio, 1, 1);           /* Empty header bit */
+    bio->init_enc(c, length);
+    bio->write( 1, 1);           /* Empty header bit */
 
     /* Writing Packet header */
     band = res->bands;
@@ -690,7 +690,7 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
             if (!cblk->num_passes_included_in_current_layer) {
                 opj_tgt_encode(bio, prc->incltree, cblkno, (int32_t)(layno + 1));
             } else {
-                opj_bio_write(bio, layer->numpasses != 0, 1);
+                bio->write(layer->numpasses != 0, 1);
             }
 
             /* if cblk not included, go to the next cblk  */
@@ -735,7 +735,7 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
                 len += pass->len;
 
                 if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-                    opj_bio_write(bio, len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
+                    bio->write( len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
                     len = 0;
                     nump = 0;
                 }
@@ -746,16 +746,16 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
         ++band;
     }
 
-    if (!opj_bio_flush(bio)) {
-        opj_bio_destroy(bio);
+    if (!bio->flush()) {
+        delete bio;
         return false;            
     }
 
-    l_nb_bytes = (uint64_t)opj_bio_numbytes(bio);
+    l_nb_bytes = (uint64_t)bio->numbytes();
     c += l_nb_bytes;
     length -= l_nb_bytes;
 
-    opj_bio_destroy(bio);
+    delete bio;
 
     /* <EPH 0xff92> */
     if (tcp->csty & J2K_CP_CSTY_EPH) {
@@ -835,7 +835,7 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
     opj_tcd_tilecomp_t *tilec = tile->comps + compno;
     opj_tcd_resolution_t *res = tilec->resolutions + resno;
 
-    opj_bio_t *bio = 00;    /* BIO component */
+    BitIO *bio = 00;    /* BIO component */
     uint64_t packet_bytes_written = 0;
 
     /* <SOP 0xff91> */
@@ -865,14 +865,14 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
         }
     }
 
-    bio = opj_bio_create();
+	bio = new BitIO();
     if (!bio) {
         /* FIXME event manager error callback */
         return false;
     }
-    opj_bio_init_enc(bio, 0, length);
-    opj_bio_write(bio, 1, 1);           /* Empty header bit */
-    bio->sim_out = true;
+    bio->init_enc(0, length);
+    bio->write( 1, 1);           /* Empty header bit */
+    bio->simulateOutput(true);
 
     /* Writing Packet header */
     band = res->bands;
@@ -904,7 +904,7 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
             if (!cblk->num_passes_included_in_current_layer) {
                 opj_tgt_encode(bio, prc->incltree, cblkno, (int32_t)(layno + 1));
             } else {
-                opj_bio_write(bio, layer->numpasses != 0, 1);
+                bio->write( layer->numpasses != 0, 1);
             }
 
             /* if cblk not included, go to the next cblk  */
@@ -950,7 +950,7 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
                 len += pass->len;
 
                 if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-                    opj_bio_write(bio, len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
+                    bio->write( len, cblk->numlenbits + (uint32_t)opj_int_floorlog2((int32_t)nump));
                     len = 0;
                     nump = 0;
                 }
@@ -963,16 +963,16 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
         ++band;
     }
 
-    if (!opj_bio_flush(bio)) {
-        opj_bio_destroy(bio);
+    if (!bio->flush()) {
+        delete bio;
         return false;
     }
 
-    l_nb_bytes = (uint64_t)opj_bio_numbytes(bio);
+    l_nb_bytes = (uint64_t)bio->numbytes();
     packet_bytes_written += l_nb_bytes;
     length -= l_nb_bytes;
 
-    opj_bio_destroy(bio);
+    delete bio;
 
     /* <EPH 0xff92> */
     if (tcp->csty & J2K_CP_CSTY_EPH) {
@@ -1078,7 +1078,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
     uint32_t * l_modified_length_ptr = 00;
     uint8_t *l_current_data = p_src_data;
     opj_cp_t *l_cp = p_t2->cp;
-    opj_bio_t *l_bio = 00;  /* BIO component */
+    BitIO *l_bio = 00;  /* BIO component */
     opj_tcd_band_t *l_band = 00;
     opj_tcd_cblk_dec_t* l_cblk = 00;
     opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -1135,7 +1135,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
     step 2: Return to codestream for decoding
     */
 
-    l_bio = opj_bio_create();
+	l_bio = new BitIO();
     if (! l_bio) {
         return false;
     }
@@ -1156,15 +1156,15 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
         l_modified_length_ptr = &(l_remaining_length);
     }
 
-    opj_bio_init_dec(l_bio, l_header_data,*l_modified_length_ptr);
+    l_bio->init_dec(l_header_data,*l_modified_length_ptr);
 
-    l_present = opj_bio_read(l_bio, 1);
+    l_present = l_bio->read(1);
     JAS_FPRINTF(stderr, "present=%d \n", l_present );
     if (!l_present) {
-		if (!opj_bio_inalign(l_bio))
+		if (!l_bio->inalign())
 			return false;
-        l_header_data += opj_bio_numbytes(l_bio);
-        opj_bio_destroy(l_bio);
+        l_header_data += l_bio->numbytes();
+        delete l_bio;
 
         /* EPH markers */
         if (p_tcp->csty & J2K_CP_CSTY_EPH) {
@@ -1207,7 +1207,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                 l_included = opj_tgt_decode(l_bio, l_prc->incltree, cblkno, (int32_t)(p_pi->layno + 1));
                 /* else one bit */
             } else {
-                l_included = opj_bio_read(l_bio, 1);
+                l_included = l_bio->read(1);
             }
 
             /* if cblk not included */
@@ -1240,7 +1240,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
 
             if (!l_cblk->numSegments) {
                 if (! opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 1)) {
-                    opj_bio_destroy(l_bio);
+                    delete l_bio;
                     return false;
                 }
             } else {
@@ -1248,7 +1248,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                 if (l_cblk->segs[l_segno].numpasses == l_cblk->segs[l_segno].maxpasses) {
                     ++l_segno;
                     if (! opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 0)) {
-                        opj_bio_destroy(l_bio);
+                        delete l_bio;
                         return false;
                     }
                 }
@@ -1258,7 +1258,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
             do {
 				auto l_seg = l_cblk->segs + l_segno;
                 l_seg->numPassesInPacket = (uint32_t)opj_int_min((int32_t)(l_seg->maxpasses - l_seg->numpasses), n);
-				l_seg->newlen = opj_bio_read(l_bio, l_cblk->numlenbits + opj_uint_floorlog2(l_seg->numPassesInPacket));
+				l_seg->newlen = l_bio->read(l_cblk->numlenbits + opj_uint_floorlog2(l_seg->numPassesInPacket));
                 JAS_FPRINTF(stderr, "included=%d numPassesInPacket=%d increment=%d len=%d \n", l_included, l_seg->numPassesInPacket, l_increment, l_seg->newlen );
 
 				size_t offset = (size_t)opj_seg_buf_get_global_offset(src_buf);
@@ -1275,7 +1275,7 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                     ++l_segno;
 
                     if (! opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 0)) {
-                        opj_bio_destroy(l_bio);
+                        delete l_bio;
                         return false;
                     }
                 }
@@ -1287,13 +1287,13 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
         ++l_band;
     }
 
-    if (!opj_bio_inalign(l_bio)) {
-        opj_bio_destroy(l_bio);
+    if (!l_bio->inalign()) {
+        delete l_bio;
         return false;
     }
 
-    l_header_data += opj_bio_numbytes(l_bio);
-    opj_bio_destroy(l_bio);
+    l_header_data += l_bio->numbytes();
+	delete l_bio;
 
     /* EPH markers */
     if (p_tcp->csty & J2K_CP_CSTY_EPH) {

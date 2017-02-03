@@ -55,98 +55,108 @@
 
 #pragma once
 
-#include <stddef.h> /* ptrdiff_t */
 
-	/**
-	@file bio.h
-	@brief Implementation of an individual bit input-output (BIO)
+/**
+Bit input/output
+*/
+class BitIO {
 
-	The functions in BIO.C have for goal to realize an individual bit input - output.
-	*/
+public:
 
-	/** @defgroup BIO BIO - Individual bit input-output stream */
-	/*@{*/
+	BitIO();
 
-	/**
-	Individual bit input-output stream (BIO)
-	*/
-	typedef struct opj_bio {
-		/** pointer to the start of the buffer */
-		uint8_t *start;
-		/** pointer to the end of the buffer */
-		uint8_t *end;
-		/** pointer to the present position in the buffer */
-		uint8_t *bp;
-		/** temporary place where each byte is read or written */
-		uint8_t buf;
-		/** coder : number of bits free to write. decoder : number of bits read */
-		uint8_t ct;
-
-		bool sim_out;
-	} opj_bio_t;
-
-	/** @name Exported functions */
-	/*@{*/
-	/* ----------------------------------------------------------------------- */
-	/**
-	Create a new BIO handle
-	@return Returns a new BIO handle if successful, returns NULL otherwise
-	*/
-	opj_bio_t* opj_bio_create(void);
-	/**
-	Destroy a previously created BIO handle
-	@param bio BIO handle to destroy
-	*/
-	void opj_bio_destroy(opj_bio_t *bio);
 	/**
 	Number of bytes written.
 	@param bio BIO handle
 	@return Returns the number of bytes written
 	*/
-	ptrdiff_t opj_bio_numbytes(opj_bio_t *bio);
+	ptrdiff_t numbytes();
 	/**
 	Init encoder
 	@param bio BIO handle
 	@param bp Output buffer
 	@param len Output buffer length
 	*/
-	void opj_bio_init_enc(opj_bio_t *bio, uint8_t *bp, uint32_t len);
+	void init_enc( uint8_t *bp, uint32_t len);
 	/**
 	Init decoder
 	@param bio BIO handle
 	@param bp Input buffer
 	@param len Input buffer length
 	*/
-	void opj_bio_init_dec(opj_bio_t *bio, uint8_t *bp, uint32_t len);
+	void init_dec( uint8_t *bp, uint32_t len);
 	/**
 	Write bits
 	@param bio BIO handle
 	@param v Value of bits
 	@param n Number of bits to write
 	*/
-	void opj_bio_write(opj_bio_t *bio, uint32_t v, uint32_t n);
+	void write( uint32_t v, uint32_t n);
 	/**
 	Read bits
 	@param bio BIO handle
 	@param n Number of bits to read
 	@return Returns the corresponding read number
 	*/
-	uint32_t opj_bio_read(opj_bio_t *bio, uint32_t n);
+	uint32_t read( uint32_t n);
 	/**
 	Flush bits
 	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
-	bool opj_bio_flush(opj_bio_t *bio);
+	bool flush();
 	/**
 	Passes the ending bits (coming from flushing)
 	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
-	bool opj_bio_inalign(opj_bio_t *bio);
-	/* ----------------------------------------------------------------------- */
-	/*@}*/
+	bool inalign();
 
-	/*@}*/
+	void simulateOutput(bool doSimulate) { sim_out = doSimulate; }
+
+private:
+
+	/** pointer to the start of the buffer */
+	uint8_t *start;
+	/** pointer to the end of the buffer */
+	uint8_t *end;
+	/** pointer to the present position in the buffer */
+	uint8_t *bp;
+	/** temporary place where each byte is read or written */
+	uint8_t buf;
+	/** coder : number of bits free to write. decoder : number of bits read */
+	uint8_t ct;
+
+	bool sim_out;
 
 
+
+	/**
+	Write a bit
+	@param bio BIO handle
+	@param b Bit to write (0 or 1)
+	*/
+	void putbit( uint8_t b);
+	/**
+	Read a bit
+	@param bio BIO handle
+	@return Returns the read bit
+	*/
+	uint8_t getbit();
+	/**
+	Write a byte
+	@param bio BIO handle
+	@return Returns true if successful, returns false otherwise
+	*/
+	bool byteout();
+	/**
+	Read a byte
+	@param bio BIO handle
+	@return Returns true if successful, returns false otherwise
+	*/
+	bool bytein();
+
+
+};
+
+	

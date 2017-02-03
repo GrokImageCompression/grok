@@ -55,144 +55,90 @@
 
 #include "opj_includes.h"
 
-/** @defgroup BIO BIO - Individual bit input-output stream */
-/*@{*/
 
-/** @name Local static functions */
-/*@{*/
+BitIO::BitIO() : start(nullptr), end(nullptr), bp(nullptr),buf(0),ct(0),sim_out(false) {
 
-/**
-Write a bit
-@param bio BIO handle
-@param b Bit to write (0 or 1)
-*/
-static void opj_bio_putbit(opj_bio_t *bio, uint8_t b);
-/**
-Read a bit
-@param bio BIO handle
-@return Returns the read bit
-*/
-static uint32_t opj_bio_getbit(opj_bio_t *bio);
-/**
-Write a byte
-@param bio BIO handle
-@return Returns true if successful, returns false otherwise
-*/
-static bool opj_bio_byteout(opj_bio_t *bio);
-/**
-Read a byte
-@param bio BIO handle
-@return Returns true if successful, returns false otherwise
-*/
-static bool opj_bio_bytein(opj_bio_t *bio);
+}
 
-/*@}*/
-
-/*@}*/
-
-/*
-==========================================================
-   local functions
-==========================================================
-*/
-
-static bool opj_bio_byteout(opj_bio_t *bio)
+bool BitIO::byteout()
 {
-    bio->ct = bio->buf == 0xff ? 7 : 8;
-    if ((size_t)bio->bp >= (size_t)bio->end) {
+    ct = buf == 0xff ? 7 : 8;
+    if ((size_t)bp >= (size_t)end) {
         return false;
     }
-    if (!bio->sim_out)
-        *bio->bp = bio->buf;
-    bio->bp++;
-    bio->buf = 0;
+    if (!sim_out)
+        *bp = buf;
+    bp++;
+    buf = 0;
     return true;
 }
 
-static bool opj_bio_bytein(opj_bio_t *bio)
+bool BitIO::bytein()
 {
-    bio->ct = bio->buf == 0xff ? 7 : 8;
-    if ((size_t)bio->bp >= (size_t)bio->end) {
+    ct = buf == 0xff ? 7 : 8;
+    if ((size_t)bp >= (size_t)end) {
         return false;
     }
-    bio->buf = *bio->bp++;
+    buf = *bp++;
     return true;
 }
 
-static void opj_bio_putbit(opj_bio_t *bio, uint8_t b)
+void BitIO::putbit( uint8_t b)
 {
-    if (bio->ct == 0) {
-        opj_bio_byteout(bio); /* MSD: why not check the return value of this function ? */
+    if (ct == 0) {
+        byteout(); /* MSD: why not check the return value of this function ? */
     }
-    bio->ct--;
-    bio->buf |= (uint8_t)(b << bio->ct);
+    ct--;
+    buf |= (uint8_t)(b << ct);
 }
 
-static uint32_t opj_bio_getbit(opj_bio_t *bio)
+uint8_t BitIO::getbit()
 {
-    if (bio->ct == 0) {
-        opj_bio_bytein(bio); /* MSD: why not check the return value of this function ? */
+    if (ct == 0) {
+        bytein(); /* MSD: why not check the return value of this function ? */
     }
-    bio->ct--;
-    return (bio->buf >> bio->ct) & 1;
+    ct--;
+    return (buf >> ct) & 1;
 }
 
-/*
-==========================================================
-   Bit Input/Output interface
-==========================================================
-*/
 
-opj_bio_t* opj_bio_create(void)
+ptrdiff_t BitIO::numbytes()
 {
-    opj_bio_t *bio = (opj_bio_t*)opj_malloc(sizeof(opj_bio_t));
-    return bio;
+    return (bp - start);
 }
 
-void opj_bio_destroy(opj_bio_t *bio)
+void BitIO::init_enc( uint8_t *bptr, uint32_t length)
 {
-    if(bio) {
-        opj_free(bio);
-    }
+    start = bptr;
+    end = bptr + length;
+    bp = bptr;
+    buf = 0;
+    ct = 8;
+    sim_out = false;
 }
 
-ptrdiff_t opj_bio_numbytes(opj_bio_t *bio)
+void BitIO::init_dec( uint8_t *bptr, uint32_t length)
 {
-    return (bio->bp - bio->start);
-}
-
-void opj_bio_init_enc(opj_bio_t *bio, uint8_t *bp, uint32_t len)
-{
-    bio->start = bp;
-    bio->end = bp + len;
-    bio->bp = bp;
-    bio->buf = 0;
-    bio->ct = 8;
-    bio->sim_out = false;
-}
-
-void opj_bio_init_dec(opj_bio_t *bio, uint8_t *bp, uint32_t len)
-{
-    bio->start = bp;
-    bio->end = bp + len;
-    bio->bp = bp;
-    bio->buf = 0;
-    bio->ct = 0;
+    start = bptr;
+    end = bptr + length;
+    bp = bptr;
+    buf = 0;
+    ct = 0;
 }
 
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-void opj_bio_write(opj_bio_t *bio, uint32_t v, uint32_t n) {
+void BitIO::write( uint32_t v, uint32_t n) {
 	uint32_t i;
 
 	assert((n > 0U) && (n <= 32U));
 	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		opj_bio_putbit(bio, (v >> i) & 1);
+		putbit((v >> i) & 1);
 	}
 }
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-uint32_t opj_bio_read(opj_bio_t *bio, uint32_t n) {
+uint32_t BitIO::read( uint32_t n) {
 	uint32_t i;
 	uint32_t v;
 
@@ -205,31 +151,31 @@ uint32_t opj_bio_read(opj_bio_t *bio, uint32_t n) {
 #endif
 	v = 0U;
 	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		v |= opj_bio_getbit(bio) << i; /* can't overflow, opj_bio_getbit returns 0 or 1 */
+		v |= getbit() << i; /* can't overflow, getbit returns 0 or 1 */
 	}
 	return v;
 }
 
-bool opj_bio_flush(opj_bio_t *bio)
+bool BitIO::flush()
 {
-    if (! opj_bio_byteout(bio)) {
+    if (! byteout()) {
         return false;
     }
-    if (bio->ct == 7) {
-        if (! opj_bio_byteout(bio)) {
+    if (ct == 7) {
+        if (! byteout()) {
             return false;
         }
     }
     return true;
 }
 
-bool opj_bio_inalign(opj_bio_t *bio)
+bool BitIO::inalign()
 {
-    if ((bio->buf & 0xff) == 0xff) {
-        if (! opj_bio_bytein(bio)) {
+    if ((buf & 0xff) == 0xff) {
+        if (! bytein()) {
             return false;
         }
     }
-    bio->ct = 0;
+    ct = 0;
     return true;
 }
