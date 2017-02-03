@@ -1170,27 +1170,41 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                         l_current_precinct->block_size = l_nb_code_blocks_size;
                     }
 
-                    if (! l_current_precinct->incltree) {
-                        l_current_precinct->incltree = opj_tgt_create(l_current_precinct->cw, l_current_precinct->ch, manager);
-                    } else {
-                        l_current_precinct->incltree = opj_tgt_init(l_current_precinct->incltree, l_current_precinct->cw, l_current_precinct->ch, manager);
-                    }
+					// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
+					// no need for inclusion and msb tag trees
+					if (l_current_precinct->cw > 0 && l_current_precinct->ch > 0) {
+						if (!l_current_precinct->incltree) {
+							try {
+								l_current_precinct->incltree = new TagTree(l_current_precinct->cw, l_current_precinct->ch, manager);
+							}
+							catch (std::exception e) {
+								opj_event_msg(manager, EVT_WARNING, "No incltree created.\n");
+							}
+						}
+						else {
+							if (!l_current_precinct->incltree->init(l_current_precinct->cw, l_current_precinct->ch, manager)) {
+								opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize incltree.\n");
+								delete l_current_precinct->incltree;
+								l_current_precinct->incltree = nullptr;
+							}
+						}
 
-                    if (! l_current_precinct->incltree)     {
-                        opj_event_msg(manager, EVT_WARNING, "No incltree created.\n");
-                        /*return false;*/
-                    }
-
-                    if (! l_current_precinct->imsbtree) {
-                        l_current_precinct->imsbtree = opj_tgt_create(l_current_precinct->cw, l_current_precinct->ch, manager);
-                    } else {
-                        l_current_precinct->imsbtree = opj_tgt_init(l_current_precinct->imsbtree, l_current_precinct->cw, l_current_precinct->ch, manager);
-                    }
-
-                    if (! l_current_precinct->imsbtree) {
-                        opj_event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
-                        /*return false;*/
-                    }
+						if (!l_current_precinct->imsbtree) {
+							try {
+								l_current_precinct->imsbtree = new TagTree(l_current_precinct->cw, l_current_precinct->ch, manager);
+							}
+							catch (std::exception e) {
+								opj_event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
+							}
+						}
+						else {
+							if (!l_current_precinct->imsbtree->init(l_current_precinct->cw, l_current_precinct->ch, manager)) {
+								opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize imsbtree.\n");
+								delete l_current_precinct->imsbtree;
+								l_current_precinct->imsbtree = nullptr;
+							}
+						}
+					}
 
                     for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
                         uint32_t cblkxstart = tlcblkxstart + (cblkno % l_current_precinct->cw) * (1 << cblkwidthexpn);
@@ -1719,9 +1733,11 @@ static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
 
                         l_nb_precincts = l_band->precincts_data_size / sizeof(opj_tcd_precinct_t);
                         for (precno = 0; precno < l_nb_precincts; ++precno) {
-                            opj_tgt_destroy(l_precinct->incltree);
+							if (l_precinct->incltree)
+								delete l_precinct->incltree;
                             l_precinct->incltree = 00;
-                            opj_tgt_destroy(l_precinct->imsbtree);
+							if (l_precinct->imsbtree)
+								delete l_precinct->imsbtree;
                             l_precinct->imsbtree = 00;
                             (*l_tcd_code_block_deallocate) (l_precinct);
                             ++l_precinct;

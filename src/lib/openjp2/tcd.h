@@ -144,8 +144,8 @@ typedef struct opj_tcd_precinct {
         void*               blocks;
     } cblks;
     uint32_t block_size;			/* size taken by cblks (in bytes) */
-    opj_tgt_tree_t *incltree;	    /* inclusion tree */
-    opj_tgt_tree_t *imsbtree;	    /* IMSB tree */
+    TagTree *incltree;	    /* inclusion tree */
+    TagTree *imsbtree;	    /* IMSB tree */
 } opj_tcd_precinct_t;
 
 /**
