@@ -1,5 +1,9 @@
 # Tests
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
 include_directories(
   ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h
   ${OPENJPEG_BINARY_DIR}/src/bin/common # opj_apps_config.h
