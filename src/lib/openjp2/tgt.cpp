@@ -56,7 +56,7 @@
  */
 
 #include "opj_includes.h"
-#include  <exception>
+#include  <stdexcept>
 
 
 TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, opj_event_mgr_t *manager) :
@@ -91,7 +91,7 @@ TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, opj_event_mgr_t *ma
 
     if (numnodes == 0) {
         opj_event_msg(manager, EVT_WARNING, "tgt_create numnodes == 0, no tree created.\n");
-		throw std::exception("");
+		throw std::runtime_error("tgt_create numnodes == 0, no tree created");
     }
 
 	nodes = new TagTreeNode[numnodes];
