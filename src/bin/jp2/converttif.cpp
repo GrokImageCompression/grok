@@ -612,6 +612,21 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         tiPhoto = PHOTOMETRIC_MINISBLACK;
     }
 
+	uint32_t sgnd = image->comps[0].sgnd;
+	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+
+	// actual bits per sample
+	uint32_t bps = image->comps[0].prec;
+	uint32_t tif_bps = bps;
+	if (bps == 0) {
+		fprintf(stderr, "imagetotif: image precision is zero.\n");
+		success = false;
+		goto cleanup;
+	}
+
+
 
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
@@ -643,17 +658,8 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 		goto cleanup;
     }
 
-	// actual bits per sample
-	uint32_t bps = image->comps[0].prec;
-	if (bps == 0) {
-		fprintf(stderr, "imagetotif: image precision is zero.\n");
-		success = false;
-		goto cleanup;
-	}
 
 	// even bits per sample
-	uint32_t tif_bps = bps;
-
 	if (bps > 16) 
 		bps = 0;
 	if (bps == 0)
@@ -718,10 +724,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         /* never here */
         break;
     }
-    uint32_t sgnd = image->comps[0].sgnd;
-	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
-	uint32_t width   = image->comps[0].w;
-	uint32_t height  = image->comps[0].h;
+
 
     TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
     TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -1343,6 +1346,15 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 
+	uint32_t w = tiWidth;
+	uint32_t h = tiHeight;
+	bool invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
+	uint32_t numcomps = 0;
+	uint32_t currentPlane = 0;
+	uint32_t icclen = 0;
+	uint8_t* iccbuf = NULL;
+
+
 	// if write_capture_resolution is enabled but capture_resolution equals 0,0, then
 	// use image resolution if present
 	if (parameters->write_capture_resolution &&
@@ -1390,7 +1402,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		goto cleanup;
 	}
 
-	bool invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
 	
 	if (tiWidth == 0 || tiHeight == 0) {
 		fprintf(stderr, "tiftoimage: Bad values for width(%u) "
@@ -1400,8 +1411,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 
 	}
 
-	uint32_t w = tiWidth;
-	uint32_t h = tiHeight;
 
     switch (tiBps) {
     case 1:
@@ -1488,7 +1497,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         is_cinema = 0U;
     }
 
-	uint32_t numcomps=0;
+
     if(tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
         numcomps = 3 + has_alpha;
         color_space = OPJ_CLRSPC_SRGB;
@@ -1510,8 +1519,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
         cmptparm[j].w = w;
         cmptparm[j].h = h;
     }
-	uint32_t icclen = 0;
-	uint8_t* iccbuf = NULL;
+
     image = opj_image_create(numcomps, &cmptparm[0], color_space);
     if(!image) {
 		success = false;
@@ -1572,7 +1580,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     }
 
     strip = 0;
-    uint32_t currentPlane = 0;
     do {
         planes[0] = image->comps[currentPlane].data; /* to manage planar data */
         h= (int)tiHeight;
