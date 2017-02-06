@@ -715,7 +715,7 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
             /* if first instance of cblk --> zero bit-planes information */
             if (!cblk->num_passes_included_in_current_layer) {
                 cblk->numlenbits = 3;
-				prc->imsbtree->encode(bio, cblkno, 999);
+				prc->imsbtree->encode(bio, cblkno, tag_tree_uninitialized_node_value);
             }
 
             /* number of coding passes included */
@@ -935,7 +935,7 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
             /* if first instance of cblk --> zero bit-planes information */
             if (!cblk->num_passes_included_in_current_layer) {
                 cblk->numlenbits = 3;
-				prc->imsbtree->encode(bio, cblkno, 999);
+				prc->imsbtree->encode(bio, cblkno, tag_tree_uninitialized_node_value);
             }
 
             /* number of coding passes included */
@@ -1218,7 +1218,12 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
 
             /* if cblk not yet included before --> inclusion tagtree */
             if (!l_cblk->numSegments) {
-                l_included = l_prc->incltree->decode(l_bio,  cblkno, (int32_t)(p_pi->layno + 1));
+				
+				auto value = l_prc->incltree->decodeValue(l_bio, cblkno, (int32_t)(p_pi->layno + 1));
+				if (value != tag_tree_uninitialized_node_value && value != p_pi->layno) {
+					opj_event_msg(p_manager, EVT_WARNING, "Illegal inclusion tag tree found when decoding packet header\n");
+				}
+				l_included = (value <= (int32_t)p_pi->layno) ? 1 : 0;
                 /* else one bit */
             } else {
                 l_included = l_bio->read(1);
@@ -1240,6 +1245,10 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
                 }
 
                 l_cblk->numbps = l_band->numbps + 1 - i;
+				// BIBO analysis gives upper limit on number of bit planes
+				if (l_cblk->numbps > OPJ_MAX_PRECISION  + OPJ_J2K_MAXRLVLS * 5) {
+					opj_event_msg(p_manager, EVT_WARNING, "Number of bit planes %u is impossibly large.\n", l_cblk->numbps);
+				}
                 l_cblk->numlenbits = 3;
             }
 

@@ -107,7 +107,7 @@ ptrdiff_t BitIO::numbytes()
     return (bp - start);
 }
 
-void BitIO::init_enc( uint8_t *bptr, uint32_t length)
+void BitIO::init_enc( uint8_t *bptr, size_t length)
 {
     start = bptr;
     end = bptr + length;
@@ -117,7 +117,7 @@ void BitIO::init_enc( uint8_t *bptr, uint32_t length)
     sim_out = false;
 }
 
-void BitIO::init_dec( uint8_t *bptr, uint32_t length)
+void BitIO::init_dec( uint8_t *bptr, size_t length)
 {
     start = bptr;
     end = bptr + length;

@@ -58,6 +58,7 @@
 
 #pragma once
 
+const uint32_t tag_tree_uninitialized_node_value = 999;
 
 /**
 Tag node
@@ -123,9 +124,20 @@ public:
 	@param threshold Threshold to use when decoding value of the leaf
 	@return Returns 1 if the node's value < threshold, returns 0 otherwise
 	*/
-	uint32_t decode(BitIO *bio,	uint32_t leafno,	int32_t threshold);
-	
+	uint8_t decode(BitIO *bio,	uint32_t leafno,	int32_t threshold);
+
+
+	/**
+	Decode the value of a leaf of the tag tree up to a given threshold
+	@param bio Pointer to a BIO handle
+	@param leafno Number that identifies the leaf to decode
+	@param threshold Threshold to use when decoding value of the leaf
+	@return Returns the node's value
+	*/
+	int32_t decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold);
+
 private:
+
     uint32_t  numleafsh;
     uint32_t  numleafsv;
     uint32_t numnodes;
