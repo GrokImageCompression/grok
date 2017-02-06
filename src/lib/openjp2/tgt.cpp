@@ -221,7 +221,7 @@ void TagTree::reset()
 
     l_current_node = nodes;
     for     (i = 0; i < numnodes; ++i) {
-        l_current_node->value = 999;
+        l_current_node->value = tag_tree_uninitialized_node_value;
         l_current_node->low = 0;
         l_current_node->known = 0;
         ++l_current_node;
@@ -279,40 +279,47 @@ void TagTree::encode(BitIO *bio, uint32_t leafno, int32_t threshold)
     }
 }
 
-uint32_t TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold)
+uint8_t TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold)
 {
-    TagTreeNode *stk[31];
-    TagTreeNode **stkptr;
-    TagTreeNode *node;
-    int32_t low;
+	auto value = decodeValue(bio, leafno, threshold);
+    return (value < threshold) ? 1 : 0;
+}
 
-    stkptr = stk;
-    node = &nodes[leafno];
-    while (node->parent) {
-        *stkptr++ = node;
-        node = node->parent;
-    }
 
-    low = 0;
-    for (;;) {
-        if (low > node->low) {
-            node->low = low;
-        } else {
-            low = node->low;
-        }
-        while (low < threshold && low < node->value) {
-            if (bio->read( 1)) {
-                node->value = low;
-            } else {
-                ++low;
-            }
-        }
-        node->low = low;
-        if (stkptr == stk) {
-            break;
-        }
-        node = *--stkptr;
-    }
+int32_t TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold)
+{
+	TagTreeNode *stk[31];
+	TagTreeNode **stkptr;
+	TagTreeNode *node;
+	int32_t low;
 
-    return (node->value < threshold) ? 1 : 0;
+	stkptr = stk;
+	node = &nodes[leafno];
+	while (node->parent) {
+		*stkptr++ = node;
+		node = node->parent;
+	}
+	low = 0;
+	for (;;) {
+		if (low > node->low) {
+			node->low = low;
+		}
+		else {
+			low = node->low;
+		}
+		while (low < threshold && low < node->value) {
+			if (bio->read(1)) {
+				node->value = low;
+			}
+			else {
+				++low;
+			}
+		}
+		node->low = low;
+		if (stkptr == stk) {
+			break;
+		}
+		node = *--stkptr;
+	}
+	return node->value;
 }

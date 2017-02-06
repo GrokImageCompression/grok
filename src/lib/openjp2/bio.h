@@ -77,14 +77,14 @@ public:
 	@param bp Output buffer
 	@param len Output buffer length
 	*/
-	void init_enc( uint8_t *bp, uint32_t len);
+	void init_enc( uint8_t *bp, size_t len);
 	/**
 	Init decoder
 	@param bio BIO handle
 	@param bp Input buffer
 	@param len Input buffer length
 	*/
-	void init_dec( uint8_t *bp, uint32_t len);
+	void init_dec( uint8_t *bp, size_t len);
 	/**
 	Write bits
 	@param bio BIO handle
