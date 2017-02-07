@@ -60,7 +60,7 @@
 @file dwt.h
 @brief Implementation of a discrete wavelet transform (DWT)
 
-The functions in DWT.C have for goal to realize forward and inverse discret wavelet
+The functions in DWT.C have for goal to realize forward and inverse discrete wavelet
 transform with filter 5-3 (reversible) and filter 9-7 (irreversible). The functions in
 DWT.C are used by some function in TCD.C.
 */

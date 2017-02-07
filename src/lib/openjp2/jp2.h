@@ -149,7 +149,7 @@ typedef struct opj_jp2 {
     opj_jp2_comps_t *comps;
     /* FIXME: The following two variables are used to save offset
       as we write out a JP2 file to disk. This mechanism is not flexible
-      as codec writers will need to extand those fields as new part
+      as codec writers will need to extend those fields as new part
       of the standard are implemented.
     */
     int64_t j2k_codestream_offset;
@@ -274,7 +274,7 @@ bool opj_jp2_start_compress(opj_jp2_t *jp2,
 
 
 /**
- * Ends the compression procedures and possibiliy add data to be read after the
+ * Ends the compression procedures and possibly add data to be read after the
  * codestream.
  */
 bool opj_jp2_end_compress(  opj_jp2_t *jp2,
@@ -284,7 +284,7 @@ bool opj_jp2_end_compress(  opj_jp2_t *jp2,
 /* ----------------------------------------------------------------------- */
 
 /**
- * Ends the decompression procedures and possibiliy add data to be read after the
+ * Ends the decompression procedures and possibly add data to be read after the
  * codestream.
  */
 bool opj_jp2_end_decompress(opj_jp2_t *jp2,
@@ -423,7 +423,7 @@ bool opj_jp2_set_decoded_resolution_factor(opj_jp2_t *p_jp2,
  * Dump some elements from the JP2 decompression structure .
  *
  *@param p_jp2        the jp2 codec.
- *@param flag        flag to describe what elments are dump.
+ *@param flag        flag to describe what elements are dump.
  *@param out_stream      output stream where dump the elements.
  *
 */

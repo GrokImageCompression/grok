@@ -781,8 +781,6 @@ typedef struct opj_image_comp {
     uint32_t y0;
     /** precision */
     uint32_t prec;
-	/** bpp (DO NOT USE; EXISTS ONLY FOR COMPATIBILITY WITH OPENJPEG) */
-	uint32_t bpp;
 	/** signed (1) / unsigned (0) */
     uint32_t sgnd;
     /** number of decoded resolution */
@@ -842,8 +840,6 @@ typedef struct opj_image_comptparm {
     uint32_t y0;
     /** precision */
     uint32_t prec;
-	/** bpp (DO NOT USE; EXISTS ONLY FOR COMPATIBILITY WITH OPENJPEG) */
-	uint32_t bpp;
     /** signed (1) / unsigned (0) */
     uint32_t sgnd;
 } opj_image_cmptparm_t;
@@ -865,7 +861,7 @@ typedef struct opj_packet_info {
     int64_t end_ph_pos;
     /** packet end position */
     int64_t end_pos;
-    /** packet distorsion */
+    /** packet distortion */
     double disto;
 } opj_packet_info_t;
 
@@ -1421,7 +1417,7 @@ OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
  * Sets the given area to be decoded. This function should be called right after opj_read_header and before any tile header reading.
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_image         the decoded image previously setted by opj_read_header
+ * @param	p_image         the decoded image previously set by opj_read_header
  * @param	p_start_x		the left position of the rectangle to decode (in image coordinates).
  * @param	p_end_x			the right position of the rectangle to decode (in image coordinates).
  * @param	p_start_y		the up position of the rectangle to decode (in image coordinates).
@@ -1529,7 +1525,7 @@ OPJ_API bool OPJ_CALLCONV opj_decode_ex(   opj_codec_t *p_decompressor,
  * Get the decoded tile from the codec
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_stream		input streamm
+ * @param	p_stream		input stream
  * @param	p_image			output image
  * @param	tile_index		index of the tile which will be decode
  *

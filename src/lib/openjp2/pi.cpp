@@ -748,7 +748,7 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
     *p_dy_min = 0x7fffffff;
 
     for (compno = 0; compno < p_image->numcomps; ++compno) {
-        /* aritmetic variables to calculate*/
+        /* arithmetic variables to calculate*/
         uint32_t l_level_no;
         uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
         uint32_t l_px0, l_py0, l_px1, py1;
@@ -1055,7 +1055,7 @@ static void opj_pi_update_decode_not_poc (opj_pi_iterator_t * p_pi,
     /* loop*/
     uint32_t pino;
 
-    /* encoding prameters to set*/
+    /* encoding parameters to set*/
     uint32_t l_bound;
 
     opj_pi_iterator_t * l_current_pi = 00;
@@ -1181,7 +1181,7 @@ opj_pi_iterator_t *opj_pi_create_decode(opj_image_t *p_image,
     uint32_t pino;
     uint32_t compno, resno;
 
-    /* to store w, h, dx and dy fro all components and resolutions */
+    /* to store w, h, dx and dy for all components and resolutions */
     uint32_t * l_tmp_data;
     uint32_t ** l_tmp_ptr;
 
@@ -1369,7 +1369,7 @@ opj_pi_iterator_t *opj_pi_initialise_encode(const opj_image_t *p_image,
     uint32_t pino;
     uint32_t compno, resno;
 
-    /* to store w, h, dx and dy fro all components and resolutions*/
+    /* to store w, h, dx and dy for all components and resolutions*/
     uint32_t * l_tmp_data;
     uint32_t ** l_tmp_ptr;
 

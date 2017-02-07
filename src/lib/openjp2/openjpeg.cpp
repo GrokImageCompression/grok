@@ -1151,7 +1151,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo) {
 
 
 /*******************
-Encode Implmentation
+Encode Implementation
 ********************/
 
 OPJ_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
@@ -1249,7 +1249,7 @@ void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
 
 
 /*******************
-Decode Implmentation
+Decode Implementation
 ********************/
 
 opj_plugin_decode_callback userPreDecodeCallback = 0;

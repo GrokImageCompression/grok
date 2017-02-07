@@ -366,13 +366,13 @@ static bool opj_jp2_read_colr(  opj_jp2_t *jp2,
 
 /**
  * Sets up the procedures to do on writing header after the codestream.
- * Developpers wanting to extend the library can add their own writing procedures.
+ * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool opj_jp2_setup_end_header_writing (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
 /**
  * Sets up the procedures to do on reading header after the codestream.
- * Developpers wanting to extend the library can add their own writing procedures.
+ * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool opj_jp2_setup_end_header_reading (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
@@ -390,7 +390,7 @@ static bool opj_jp2_read_header_procedure(  opj_jp2_t *jp2,
         opj_event_mgr_t * p_manager );
 
 /**
- * Excutes the given procedures on the given codec.
+ * Executes the given procedures on the given codec.
  *
  * @param	p_procedure_list	the list of procedures to execute
  * @param	jp2					the jpeg2000 file codec to execute the procedures on.
@@ -409,7 +409,7 @@ static bool opj_jp2_exec (  opj_jp2_t * jp2,
  *
  * @param	cio						the input stream to read data from.
  * @param	box						the box structure to fill.
- * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (shoul usually be 2).
+ * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
  * @param	p_manager				user event manager.
  *
  * @return	true if the box is recognized, false otherwise
@@ -420,13 +420,13 @@ static bool opj_jp2_read_boxhdr(opj_jp2_box_t *box,
                                 opj_event_mgr_t * p_manager);
 
 /**
- * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
- * are valid. Developpers wanting to extend the library can add their own validation procedures.
+ * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
+ * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool opj_jp2_setup_encoding_validation (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
 /**
- * Sets up the procedures to do on writing header. Developpers wanting to extend the library can add their own writing procedures.
+ * Sets up the procedures to do on writing header. Developers wanting to extend the library can add their own writing procedures.
  */
 static bool opj_jp2_setup_header_writing (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
@@ -475,7 +475,7 @@ static const opj_jp2_header_handler_t jp2_img_header [] = {
  *
  * @param	box						the box structure to fill.
  * @param	p_data					the character string to read data from.
- * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (shoul usually be 2).
+ * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
  * @param	p_box_max_size			the maximum number of bytes in the box.
  * @param	p_manager         FIXME DOC
  *
@@ -488,14 +488,14 @@ static bool opj_jp2_read_boxhdr_char(   opj_jp2_box_t *box,
                                         opj_event_mgr_t * p_manager );
 
 /**
- * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
- * are valid. Developpers wanting to extend the library can add their own validation procedures.
+ * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
+ * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool opj_jp2_setup_decoding_validation (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
 /**
  * Sets up the procedures to do on reading header.
- * Developpers wanting to extend the library can add their own writing procedures.
+ * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool opj_jp2_setup_header_reading (opj_jp2_t *jp2, opj_event_mgr_t * p_manager);
 
