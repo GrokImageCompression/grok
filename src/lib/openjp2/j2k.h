@@ -363,7 +363,7 @@ typedef struct opj_cp {
     char *comment;
     /** number of tiles in width */
     uint32_t tw;
-    /** number of tiles in heigth */
+    /** number of tiles in height */
     uint32_t th;
 
     /** number of ppm markers (reserved size) */
@@ -527,7 +527,7 @@ typedef struct opj_j2k {
     /** helper used to write the index file */
     opj_codestream_index_t *cstr_index;
 
-    /** number of the tile curently concern by coding/decoding */
+    /** number of the tile currently concern by coding/decoding */
     uint32_t m_current_tile_number;
 
     /** the current tile coder/decoder **/
@@ -689,7 +689,7 @@ opj_j2k_t* opj_j2k_create_decompress(void);
  * Dump some elements from the J2K decompression structure .
  *
  *@param p_j2k				the jpeg2000 codec.
- *@param flag				flag to describe what elments are dump.
+ *@param flag				flag to describe what elements are dumped.
  *@param out_stream			output stream where dump the elements.
  *
 */
@@ -799,7 +799,7 @@ bool opj_j2k_start_compress(opj_j2k_t *p_j2k,
                             opj_event_mgr_t * p_manager);
 
 /**
- * Ends the compression procedures and possibiliy add data to be read after the
+ * Ends the compression procedures and possibility add data to be read after the
  * codestream.
  */
 bool opj_j2k_end_compress( 	opj_j2k_t *p_j2k,

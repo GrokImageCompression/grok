@@ -128,7 +128,7 @@ static void opj_j2k_transfer_image_data(opj_image_t* src, opj_image_t* dest)
 }
 
 /**
- * Sets up the procedures to do on reading header. Developpers wanting to extend the library can add their own reading procedures.
+ * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
 static bool opj_j2k_setup_header_reading (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager);
 
@@ -167,19 +167,19 @@ static bool opj_j2k_decoding_validation (   opj_j2k_t * p_j2k,
 
 /**
  * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
- * are valid. Developpers wanting to extend the library can add their own validation procedures.
+ * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool opj_j2k_setup_encoding_validation (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
- * are valid. Developpers wanting to extend the library can add their own validation procedures.
+ * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool opj_j2k_setup_decoding_validation (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager);
 
 /**
- * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
- * are valid. Developpers wanting to extend the library can add their own validation procedures.
+ * Sets up the validation ,i.e. adds the procedures to make sure the codec parameters
+ * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool opj_j2k_setup_end_compress (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager);
 
@@ -6765,7 +6765,7 @@ static bool opj_j2k_read_header_procedure( opj_j2k_t *p_j2k,
         /* Manage case where marker is unknown */
         if (l_marker_handler->id == J2K_MS_UNK) {
             if (! opj_j2k_read_unk(p_j2k, p_stream, &l_current_marker, p_manager)) {
-                opj_event_msg(p_manager, EVT_ERROR, "Unknow marker have been detected and generated error.\n");
+                opj_event_msg(p_manager, EVT_ERROR, "Unknown marker have been detected and generated error.\n");
                 return false;
             }
 
@@ -9361,7 +9361,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 }
 
 /**
- * Sets up the procedures to do on decoding data. Developpers wanting to extend the library can add their own reading procedures.
+ * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
  */
 static bool opj_j2k_setup_decoding (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
@@ -9401,7 +9401,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
         l_max_data_size = 1;
     }
 
-    /*Allocate and initialize some elements of codestrem index if not already done*/
+    /*Allocate and initialize some elements of codestream index if not already done*/
     if( !p_j2k->cstr_index->tile_index) {
         if (!opj_j2k_allocate_tile_element_cstr_index(p_j2k)) {
             if (l_current_data)
@@ -9430,7 +9430,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
                     return false;
                 }
             }
-            /* Special case if we have previously read the EOC marker (if the previous tile getted is the last ) */
+            /* Special case if we have previously read the EOC marker (if the previous tile decoded is the last ) */
             if(p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC)
                 p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
         }
@@ -9506,7 +9506,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
 }
 
 /**
- * Sets up the procedures to do on decoding one tile. Developpers wanting to extend the library can add their own reading procedures.
+ * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
 static bool opj_j2k_setup_decoding_tile (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {

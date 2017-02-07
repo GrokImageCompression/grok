@@ -181,7 +181,7 @@ int main (int argc, char *argv[])
     /* no cinema */
     /*l_param.cp_cinema = 0;*/
 
-    /* no not bother using SOP or EPH markers, do not use custom size precinct */
+    /* do not bother using SOP or EPH markers, do not use custom size precinct */
     /* number of precincts to specify */
     /* l_param.csty = 0;*/
     /* l_param.res_spec = ... */

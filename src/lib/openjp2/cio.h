@@ -143,7 +143,7 @@ typedef struct opj_stream_private {
     opj_stream_seek_fn		m_seek_fn;
 
     /**
-     * Actual data stored into the stream if readed from. Data is read by chunk of fixed size.
+     * Actual data stored into the stream if read from. Data is read by chunk of fixed size.
      * you should never access this data directly.
      */
     uint8_t *					m_stored_data;
@@ -301,10 +301,10 @@ size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t *
 /**
  * Writes some bytes to the stream.
  * @param		p_stream	the stream to write data to.
- * @param		p_buffer	pointer to the data buffer holds the data to be writtent.
+ * @param		p_buffer	pointer to the data buffer holds the data to be written.
  * @param		p_size		number of bytes to write.
  * @param		p_event_mgr	the user event manager to be notified of special events.
- * @return		the number of bytes writtent, or -1 if an error occurred.
+ * @return		the number of bytes written, or -1 if an error occurred.
  */
 size_t opj_stream_write_data (opj_stream_private_t * p_stream,
 								const uint8_t * p_buffer,
