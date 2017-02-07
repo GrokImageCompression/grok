@@ -6675,15 +6675,15 @@ static bool opj_j2k_encoding_validation (  opj_j2k_t * p_j2k,
         return false;
     }
 
-    if ((p_j2k->m_cp.tdx) < ((uint64_t)1 << (p_j2k->m_cp.tcps->tccps->numresolutions - 1U))) {
-        opj_event_msg(p_manager, EVT_ERROR, "Number of resolutions is too high in comparison to the size of tiles\n");
-        return false;
-    }
+	if (p_j2k->m_cp.tdx == 0) {
+		opj_event_msg(p_manager, EVT_ERROR, "Tile x dimension must be greater than zero \n");
+		return false;
+	}
 
-    if ((p_j2k->m_cp.tdy) < ((uint64_t)1 << (p_j2k->m_cp.tcps->tccps->numresolutions - 1U))) {
-        opj_event_msg(p_manager, EVT_ERROR, "Number of resolutions is too high in comparison to the size of tiles\n");
-        return false;
-    }
+	if (p_j2k->m_cp.tdy == 0) {
+		opj_event_msg(p_manager, EVT_ERROR, "Tile y dimension must be greater than zero \n");
+		return false;
+	}
 
     /* PARAMETER VALIDATION */
     return l_is_valid;
