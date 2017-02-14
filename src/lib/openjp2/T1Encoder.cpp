@@ -19,6 +19,7 @@
 #include "T1Encoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
+#include "testing.h"
 
 
 T1Encoder::T1Encoder() : tile(NULL), 
@@ -113,9 +114,11 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 		uint32_t tile_width = (tilec->x1 - tilec->x0);
 		auto tileLineAdvance = tile_width - t1->w;
-
 		auto tiledp = block->tiledp;
-			
+
+#ifdef DEBUG_LOSSLESS
+		int32_t* before = new int32_t[t1->w * t1->h];
+#endif
 		uint32_t tileIndex = 0;
 		uint32_t max = 0;
 		uint32_t cblk_index = 0;
@@ -135,6 +138,9 @@ void T1Encoder::encodeOpt(size_t threadId) {
 						tmp = block->tiledp[tileIndex];
 					}
 					*/
+#ifdef DEBUG_LOSSLESS
+					before[cblk_index] = block->tiledp[tileIndex];
+#endif
 					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)opj_int_abs(tmp);
 					max = opj_uint_max(max, mag);
@@ -185,6 +191,50 @@ void T1Encoder::encodeOpt(size_t threadId) {
 											block->mct_numcomps,
 											max);
 
+
+#ifdef DEBUG_LOSSLESS
+		opj_t1_t* t1Decode = opj_t1_create(false, t1->w, t1->h);
+
+		opj_tcd_cblk_dec_t* cblkDecode = new opj_tcd_cblk_dec_t();
+		cblkDecode->data = nullptr;
+		cblkDecode->segs = nullptr;
+		if (!opj_tcd_code_block_dec_allocate(cblkDecode)) {
+			continue;
+		}
+		cblkDecode->x0 = block->cblk->x0;
+		cblkDecode->x1 = block->cblk->x1;
+		cblkDecode->y0 = block->cblk->y0;
+		cblkDecode->y1 = block->cblk->y1;
+		cblkDecode->numbps = block->cblk->numbps;
+		cblkDecode->numSegments = 1;
+		memset(cblkDecode->segs, 0, sizeof(opj_tcd_seg_t));
+		auto seg = cblkDecode->segs;
+		seg->numpasses = block->cblk->num_passes_encoded;
+		auto rate = seg->numpasses  ? block->cblk->passes[seg->numpasses - 1].rate : 0;
+		seg->len = rate;
+		seg->dataindex = 0;
+		opj_min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
+		//decode
+		opj_t1_decode_cblk(t1Decode, cblkDecode, block->bandno, 0, 0);
+
+		//compare
+		auto index = 0;
+		for (uint32_t j = 0; j < t1->h; ++j) {
+			for (uint32_t i = 0; i < t1->w; ++i) {
+				auto valBefore = before[index];
+				auto valAfter = t1Decode->data[index]/2;
+				if (valAfter != valBefore) {
+					printf("(%d,%d); expected=%x, actual=%x\n", i, j, valBefore, valAfter);
+				}
+				index++;
+			}
+		}
+
+		opj_t1_destroy(t1Decode);
+		opj_free(cblkDecode->segs);
+		delete cblkDecode;
+		delete[] before;
+#endif
 		delete block;
 		std::unique_lock<std::mutex> lk(distortion_mutex);
 		tile->distotile += dist;
@@ -202,6 +252,9 @@ bool T1Encoder::encode(bool do_opt,
 	tile = encodeTile;
 	maxCblkW = encodeMaxCblkW;
 	maxCblkH = encodeMaxCblkH;
+#ifdef DEBUG_LOSSLESS
+	numThreads = 1;
+#endif
 
 	for (auto i = 0U; i < numThreads; ++i) {
 		if (do_opt) {

@@ -73,10 +73,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                                      size_t sizeof_block,
                                      opj_event_mgr_t* manager);
 
-/**
-* Allocates memory for a decoding code block (but not data)
-*/
-static bool opj_tcd_code_block_dec_allocate (opj_tcd_cblk_dec_t * p_code_block);
+
 
 /**
  * Deallocates the decoding data of the given precinct.
@@ -1349,7 +1346,7 @@ static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_bl
 /**
  * Allocates memory for a decoding code block (but not data)
  */
-static bool opj_tcd_code_block_dec_allocate (opj_tcd_cblk_dec_t * p_code_block)
+bool opj_tcd_code_block_dec_allocate (opj_tcd_cblk_dec_t * p_code_block)
 {
     if (!p_code_block->segs) {
         p_code_block->segs = (opj_tcd_seg_t *)opj_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(opj_tcd_seg_t));
