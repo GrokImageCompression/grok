@@ -77,7 +77,7 @@ Forward 5-3 wavelet transform in 2-D.
 Apply a reversible DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 */
-bool opj_dwt_encode(opj_tcd_tilecomp_t * tilec);
+bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec);
 
 /**
 Inverse 5-3 wavelet transform in 2-D.
@@ -85,7 +85,7 @@ Apply a reversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode(opj_tcd_tilecomp_t* tilec,
+bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
 					uint32_t numres,
 					uint32_t numThreads);
 
@@ -107,14 +107,14 @@ Forward 9-7 wavelet transform in 2-D.
 Apply an irreversible DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 */
-bool opj_dwt_encode_real(opj_tcd_tilecomp_t * tilec);
+bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec);
 /**
 Inverse 9-7 wavelet transform in 2-D.
 Apply an irreversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec,
+bool opj_dwt_decode_97(opj_tcd_tilecomp_t* restrict tilec,
 						uint32_t numres,
 						uint32_t numThreads);
 
