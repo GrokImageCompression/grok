@@ -1832,14 +1832,14 @@ static bool opj_tcd_dwt_decode ( opj_tcd_t *p_tcd )
             opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
             opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
             if (l_tccp->qmfbid == 1) {
-                if (! opj_dwt_decode(l_tile_comp,
+                if (! opj_dwt_decode_53(l_tile_comp,
 									l_img_comp->resno_decoded+1,
 									p_tcd->numThreads)) {
                     rc = false;
                     continue;
                 }
             } else {
-                if (! opj_dwt_decode_real(l_tile_comp, 
+                if (! opj_dwt_decode_97(l_tile_comp, 
 											l_img_comp->resno_decoded+1,
 											p_tcd->numThreads)) {
                     rc = false;
@@ -2203,12 +2203,12 @@ bool opj_tcd_dwt_encode ( opj_tcd_t *p_tcd )
             opj_tcd_tilecomp_t * tile_comp = p_tcd->tile->comps + compno;
             opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
             if (l_tccp->qmfbid == 1) {
-                if (! opj_dwt_encode(tile_comp)) {
+                if (! opj_dwt_encode_53(tile_comp)) {
                     rc = false;
                     continue;
                 }
             } else if (l_tccp->qmfbid == 0) {
-                if (! opj_dwt_encode_real(tile_comp)) {
+                if (! opj_dwt_encode_97(tile_comp)) {
                     rc = false;
                     continue;
                 }

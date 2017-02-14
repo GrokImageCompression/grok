@@ -101,11 +101,6 @@ static const float opj_c13318 = 1.625732422f;
 
 /*@}*/
 
-/**
-Virtual function type for wavelet transform in 1-D
-*/
-typedef void (*DWT1DFN)(opj_dwt_t* v);
-
 /** @name Local static functions */
 /*@{*/
 
@@ -128,31 +123,19 @@ static void opj_dwt_interleave_v(opj_dwt_t* v, int32_t *a, int32_t x);
 /**
 Forward 5-3 wavelet transform in 1-D
 */
-static void opj_dwt_encode_1(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
+static void opj_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
 /**
 Inverse 5-3 wavelet transform in 1-D
 */
-static void opj_dwt_decode_1(opj_dwt_t *v);
-static void opj_dwt_decode_1_(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
+static void opj_dwt_decode_line_53(opj_dwt_t *v);
 /**
 Forward 9-7 wavelet transform in 1-D
 */
-static void opj_dwt_encode_1_real(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
+static void opj_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
 /**
 Explicit calculation of the Quantization Stepsizes
 */
 static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsize_t *bandno_stepsize);
-/**
-Inverse wavelet transform in 2-D.
-*/
-static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec,
-								uint32_t i, 
-								DWT1DFN fn,
-								uint32_t numThreads);
-
-static bool opj_dwt_encode_procedure(	opj_tcd_tilecomp_t * tilec,
-                                        void (*p_function)(int32_t *, int32_t,int32_t,int32_t) );
-
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
@@ -310,7 +293,7 @@ static void opj_dwt_interleave_v(opj_dwt_t* v, int32_t *a, int32_t x)
 /* <summary>                            */
 /* Forward 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-static void opj_dwt_encode_1(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
+static void opj_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 {
     int32_t i;
 
@@ -329,40 +312,39 @@ static void opj_dwt_encode_1(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
     }
 }
 
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 1-D. */
-/* </summary>                           */
-static void opj_dwt_decode_1_(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
-{
-    int32_t i;
-
-    if (!cas) {
-        if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-            for (i = 0; i < sn; i++) OPJ_S(i) -= (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
-            for (i = 0; i < dn; i++) OPJ_D(i) += (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
-        }
-    } else {
-        if (!sn  && dn == 1)          /* NEW :  CASE ONE ELEMENT */
-            OPJ_S(0) /= 2;
-        else {
-            for (i = 0; i < sn; i++) OPJ_D(i) -= (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
-            for (i = 0; i < dn; i++) OPJ_S(i) += (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
-        }
-    }
-}
 
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-static void opj_dwt_decode_1(opj_dwt_t *v)
+static void opj_dwt_decode_line_53(opj_dwt_t *v)
 {
-    opj_dwt_decode_1_(v->mem, v->dn, v->sn, v->cas);
+	int32_t *a = v->mem;
+	int32_t dn = v->dn;
+	int32_t sn = v->sn;
+	int32_t cas = v->cas;
+	int32_t i;
+
+	if (!cas) {
+		if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
+			for (i = 0; i < sn; i++) OPJ_S(i) -= (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
+			for (i = 0; i < dn; i++) OPJ_D(i) += (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
+		}
+	}
+	else {
+		if (!sn  && dn == 1)          /* NEW :  CASE ONE ELEMENT */
+			OPJ_S(0) /= 2;
+		else {
+			for (i = 0; i < sn; i++) OPJ_D(i) -= (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
+			for (i = 0; i < dn; i++) OPJ_S(i) += (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
+		}
+	}
+
 }
 
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_dwt_encode_1_real(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
+static void opj_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 {
     int32_t i;
     if (!cas) {
@@ -413,115 +395,262 @@ static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 ==========================================================
 */
 
-
-/* <summary>                            */
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-static inline bool opj_dwt_encode_procedure(opj_tcd_tilecomp_t * tilec,void (*p_function)(int32_t *, int32_t,int32_t,int32_t) )
+bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 {
-    int32_t i,k;
-    int32_t *a = 00;
-    int32_t *aj = 00;
-    int32_t *bj = 00;
-    int32_t w, l;
+	int32_t i, k;
+	int32_t *a = 00;
+	int32_t *aj = 00;
+	int32_t *bj = 00;
+	int32_t w, l;
 
-    int32_t rw;			/* width of the resolution level computed   */
-    int32_t rh;			/* height of the resolution level computed  */
-    size_t l_data_size;
+	int32_t rw;			/* width of the resolution level computed   */
+	int32_t rh;			/* height of the resolution level computed  */
+	size_t l_data_size;
 
-    opj_tcd_resolution_t * l_cur_res = 0;
-    opj_tcd_resolution_t * l_last_res = 0;
+	opj_tcd_resolution_t * l_cur_res = 0;
+	opj_tcd_resolution_t * l_last_res = 0;
 
-    w = tilec->x1-tilec->x0;
-    l = (int32_t)tilec->numresolutions-1;
-    a = opj_tile_buf_get_ptr(tilec->buf, 0,0,0,0);
+	w = tilec->x1 - tilec->x0;
+	l = (int32_t)tilec->numresolutions - 1;
+	a = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
-    l_cur_res = tilec->resolutions + l;
-    l_last_res = l_cur_res - 1;
+	l_cur_res = tilec->resolutions + l;
+	l_last_res = l_cur_res - 1;
 
-    l_data_size = opj_dwt_max_resolution( tilec->resolutions,tilec->numresolutions) * sizeof(int32_t);
+	l_data_size = opj_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
 		/* FIXME event manager error callback */
 		return false;
 	}
-    bj = (int32_t*)opj_malloc(l_data_size);
-    /* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
-    /* in that case, so do not error out */
-    if (l_data_size != 0 && ! bj) {
-        return false;
-    }
-    i = l;
+	bj = (int32_t*)opj_malloc(l_data_size);
+	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
+	/* in that case, so do not error out */
+	if (l_data_size != 0 && !bj) {
+		return false;
+	}
+	i = l;
 
 	while (i--) {
-        int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
-        int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
-        int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-        int32_t cas_row;	/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-        int32_t dn, sn;
+		int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
+		int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
+		int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
+		int32_t cas_row;	/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
+		int32_t dn, sn;
 
-        rw  = l_cur_res->x1 - l_cur_res->x0;
-        rh  = l_cur_res->y1 - l_cur_res->y0;
-        rw1 = l_last_res->x1 - l_last_res->x0;
-        rh1 = l_last_res->y1 - l_last_res->y0;
+		rw = l_cur_res->x1 - l_cur_res->x0;
+		rh = l_cur_res->y1 - l_cur_res->y0;
+		rw1 = l_last_res->x1 - l_last_res->x0;
+		rh1 = l_last_res->y1 - l_last_res->y0;
 
-        cas_row = l_cur_res->x0 & 1;
-        cas_col = l_cur_res->y0 & 1;
+		cas_row = l_cur_res->x0 & 1;
+		cas_col = l_cur_res->y0 & 1;
 
-        sn = rh1;
-        dn = rh - rh1;
-		
-		// j = threadId, j+= numThreads
-        for (int32_t j = 0; j < rw; ++j) {
-            aj = a + j;
-            for (k = 0; k < rh; ++k) {
-                bj[k] = aj[k*w];
-            }
+		sn = rh1;
+		dn = rh - rh1;
 
-            (*p_function) (bj, dn, sn, cas_col);
+		for (int32_t j = 0; j < rw; ++j) {
+			aj = a + j;
+			for (k = 0; k < rh; ++k) {
+				bj[k] = aj[k*w];
+			}
+			opj_dwt_encode_line_53(bj, dn, sn, cas_col);
+			opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
+		}
+		sn = rw1;
+		dn = rw - rw1;
 
-            opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
-        }
+		for (int32_t j = 0; j < rh; j++) {
+			aj = a + j * w;
+			for (k = 0; k < rw; k++)  bj[k] = aj[k];
+			opj_dwt_encode_line_53(bj, dn, sn, cas_row);
+			opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
+		}
+		l_cur_res = l_last_res;
+		--l_last_res;
+	}
 
-		// barrier
-
-        sn = rw1;
-        dn = rw - rw1;
-
-        for (int32_t j = 0; j < rh; j++) {
-            aj = a + j * w;
-            for (k = 0; k < rw; k++)  bj[k] = aj[k];
-            (*p_function) (bj, dn, sn, cas_row);
-            opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
-        }
-
-		// barrier
-
-        l_cur_res = l_last_res;
-        --l_last_res;
-    }
-
-    opj_free(bj);
-    return true;
+	opj_free(bj);
+	return true;
 }
 
-/* Forward 5-3 wavelet transform in 2-D. */
-/* </summary>                           */
-bool opj_dwt_encode(opj_tcd_tilecomp_t * tilec)
+/* <summary>                             */
+/* Forward 9-7 wavelet transform in 2-D. */
+/* </summary>                            */
+bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 {
-    return opj_dwt_encode_procedure(tilec,opj_dwt_encode_1);
+	int32_t i, k;
+	int32_t *a = 00;
+	int32_t *aj = 00;
+	int32_t *bj = 00;
+	int32_t w, l;
+
+	int32_t rw;			/* width of the resolution level computed   */
+	int32_t rh;			/* height of the resolution level computed  */
+	size_t l_data_size;
+
+	opj_tcd_resolution_t * l_cur_res = 0;
+	opj_tcd_resolution_t * l_last_res = 0;
+
+	w = tilec->x1 - tilec->x0;
+	l = (int32_t)tilec->numresolutions - 1;
+	a = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+
+	l_cur_res = tilec->resolutions + l;
+	l_last_res = l_cur_res - 1;
+
+	l_data_size = opj_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
+	/* overflow check */
+	if (l_data_size > SIZE_MAX) {
+		/* FIXME event manager error callback */
+		return false;
+	}
+	bj = (int32_t*)opj_malloc(l_data_size);
+	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
+	/* in that case, so do not error out */
+	if (l_data_size != 0 && !bj) {
+		return false;
+	}
+	i = l;
+
+	while (i--) {
+		int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
+		int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
+		int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
+		int32_t cas_row;	/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
+		int32_t dn, sn;
+
+		rw = l_cur_res->x1 - l_cur_res->x0;
+		rh = l_cur_res->y1 - l_cur_res->y0;
+		rw1 = l_last_res->x1 - l_last_res->x0;
+		rh1 = l_last_res->y1 - l_last_res->y0;
+
+		cas_row = l_cur_res->x0 & 1;
+		cas_col = l_cur_res->y0 & 1;
+
+		sn = rh1;
+		dn = rh - rh1;
+		for (int32_t j = 0; j < rw; ++j) {
+			aj = a + j;
+			for (k = 0; k < rh; ++k) {
+				bj[k] = aj[k*w];
+			}
+			opj_dwt_encode_line_97(bj, dn, sn, cas_col);
+			opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
+		}
+		sn = rw1;
+		dn = rw - rw1;
+
+		for (int32_t j = 0; j < rh; j++) {
+			aj = a + j * w;
+			for (k = 0; k < rw; k++)  bj[k] = aj[k];
+			opj_dwt_encode_line_97(bj, dn, sn, cas_row);
+			opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
+		}
+		l_cur_res = l_last_res;
+		--l_last_res;
+	}
+
+	opj_free(bj);
+	return true;
 }
 
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool opj_dwt_decode(opj_tcd_tilecomp_t* tilec, 
+bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec, 
 					uint32_t numres,
 					uint32_t numThreads)
 {
+	if (numres == 1U) {
+		return true;
+	}
     if (opj_tile_buf_is_decode_region(tilec->buf))
         return opj_dwt_region_decode53(tilec, numres, numThreads);
-    return opj_dwt_decode_tile(tilec, numres, &opj_dwt_decode_1,numThreads);
+
+	std::vector<std::thread> dwtWorkers;
+	int rc = 0;
+	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	Barrier decode_dwt_barrier(numThreads);
+	Barrier decode_dwt_calling_barrier(numThreads + 1);
+
+	for (auto threadId = 0U; threadId < numThreads; threadId++) {
+		dwtWorkers.push_back(std::thread([tilec,
+			numres,
+			&rc,
+			tileBuf,
+			&decode_dwt_barrier,
+			&decode_dwt_calling_barrier,
+			threadId,
+			numThreads]()
+		{
+			auto numResolutions = numres;
+			opj_dwt_t h;
+			opj_dwt_t v;
+
+			opj_tcd_resolution_t* tr = tilec->resolutions;
+
+			uint32_t rw = (tr->x1 - tr->x0);	/* width of the resolution level computed */
+			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
+
+			uint32_t w = (tilec->x1 - tilec->x0);
+			h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
+			if (!h.mem) {
+				rc++;
+				goto cleanup;
+			}
+
+			v.mem = h.mem;
+
+			while (--numResolutions) {
+				int32_t * restrict tiledp = tileBuf;
+
+				++tr;
+				h.sn = (int32_t)rw;
+				v.sn = (int32_t)rh;
+
+				rw = (tr->x1 - tr->x0);
+				rh = (tr->y1 - tr->y0);
+
+				h.dn = (int32_t)(rw - (uint32_t)h.sn);
+				h.cas = tr->x0 % 2;
+
+				for (uint32_t j = threadId; j < rh; j += numThreads) {
+					opj_dwt_interleave_h(&h, &tiledp[j*w]);
+					opj_dwt_decode_line_53(&h);
+					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
+				}
+
+				v.dn = (int32_t)(rh - (uint32_t)v.sn);
+				v.cas = tr->y0 % 2;
+
+				decode_dwt_barrier.arrive_and_wait();
+
+				for (uint32_t j = threadId; j < rw; j += numThreads) {
+					opj_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
+					opj_dwt_decode_line_53(&v);
+					for (uint32_t k = 0; k < rh; ++k) {
+						tiledp[k * w + j] = v.mem[k];
+					}
+				}
+				decode_dwt_barrier.arrive_and_wait();
+			}
+		cleanup:
+			if (h.mem)
+				opj_aligned_free(h.mem);
+			decode_dwt_calling_barrier.arrive_and_wait();
+
+		}));
+	}
+	decode_dwt_calling_barrier.arrive_and_wait();
+
+	for (auto& t : dwtWorkers) {
+		t.join();
+	}
+	return rc == 0 ? true : false;
+
 }
 
 
@@ -545,13 +674,6 @@ double opj_dwt_getnorm(uint32_t level, uint32_t orient)
     return opj_dwt_norms[orient][level];
 }
 
-/* <summary>                             */
-/* Forward 9-7 wavelet transform in 2-D. */
-/* </summary>                            */
-bool opj_dwt_encode_real(opj_tcd_tilecomp_t * tilec)
-{
-    return opj_dwt_encode_procedure(tilec,opj_dwt_encode_1_real);
-}
 
 /* <summary>                          */
 /* Get gain of 9-7 wavelet transform. */
@@ -608,101 +730,6 @@ uint32_t opj_dwt_max_resolution(opj_tcd_resolution_t* restrict r, uint32_t i)
     }
     return mr ;
 }
-
-/* <summary>                            */
-/* Inverse wavelet transform in 2-D.     */
-/* </summary>                           */
-static bool opj_dwt_decode_tile(opj_tcd_tilecomp_t* tilec,
-								uint32_t numres,
-								DWT1DFN dwt_1D,
-								uint32_t numThreads)
-{
-	if (numres == 1U) {
-		return true;
-	}
-	std::vector<std::thread> dwtWorkers;
-	int rc = 0;
-	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-	Barrier decode_dwt_barrier(numThreads);
-	Barrier decode_dwt_calling_barrier(numThreads + 1);
-
-	for (auto threadId = 0U; threadId < numThreads; threadId++) {
-		dwtWorkers.push_back(std::thread([tilec,
-											numres,
-											&rc, 
-											dwt_1D,
-											tileBuf,
-											&decode_dwt_barrier,
-											&decode_dwt_calling_barrier,
-											threadId,
-											numThreads]()
-		{
-			auto numResolutions = numres;
-			opj_dwt_t h;
-			opj_dwt_t v;
-
-			opj_tcd_resolution_t* tr = tilec->resolutions;
-
-			uint32_t rw = (tr->x1 - tr->x0);	/* width of the resolution level computed */
-			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
-
-			uint32_t w = (tilec->x1 - tilec->x0);
-			h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
-			if (!h.mem) {
-				rc++;
-				goto cleanup;
-			}
-
-			v.mem = h.mem;
-
-			while (--numResolutions) {
-				int32_t * restrict tiledp = tileBuf;
-
-				++tr;
-				h.sn = (int32_t)rw;
-				v.sn = (int32_t)rh;
-
-				rw = (tr->x1 - tr->x0);
-				rh = (tr->y1 - tr->y0);
-
-				h.dn = (int32_t)(rw - (uint32_t)h.sn);
-				h.cas = tr->x0 % 2;
-
-				for (uint32_t j = threadId; j < rh; j+= numThreads) {
-					opj_dwt_interleave_h(&h, &tiledp[j*w]);
-					(dwt_1D)(&h);
-					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
-				}
-
-				v.dn = (int32_t)(rh - (uint32_t)v.sn);
-				v.cas = tr->y0 % 2;
-
-				decode_dwt_barrier.arrive_and_wait();
-
-				for (uint32_t j = threadId; j < rw; j+= numThreads) {
-							opj_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
-					(dwt_1D)(&v);
-					for (uint32_t k = 0; k < rh; ++k) {
-						tiledp[k * w + j] = v.mem[k];
-					}
-				}
-				decode_dwt_barrier.arrive_and_wait();
-			}
-cleanup:
-			if (h.mem)
-				opj_aligned_free(h.mem);
-			decode_dwt_calling_barrier.arrive_and_wait();
-
-		}));
-	}
-	decode_dwt_calling_barrier.arrive_and_wait();
-
-	for (auto& t : dwtWorkers) {
-		t.join();
-	}
-    return rc == 0 ? true : false;
-}
-
 
 static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict w, float* restrict a, int32_t x, int32_t size)
 {
@@ -924,7 +951,7 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-bool opj_dwt_decode_real(opj_tcd_tilecomp_t* restrict tilec, 
+bool opj_dwt_decode_97(opj_tcd_tilecomp_t* restrict tilec, 
 						uint32_t numres,
 						uint32_t numThreads)
 {
