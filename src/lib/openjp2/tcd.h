@@ -293,8 +293,13 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint8_t *p_dest,
                             uint64_t * p_data_written,
                             uint64_t p_len,
-                            struct opj_codestream_info *p_cstr_info);
+                            opj_codestream_info_t *p_cstr_info);
 
+
+/**
+* Allocates memory for a decoding code block (but not data)
+*/
+bool opj_tcd_code_block_dec_allocate(opj_tcd_cblk_dec_t * p_code_block);
 
 /**
 Decode a tile from a buffer into a raw image

@@ -19,6 +19,7 @@
 #include "T1Decoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
+#include "testing.h"
 
 
 T1Decoder::T1Decoder(uint16_t blockw, 
@@ -32,6 +33,11 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 		return false;
 	decodeQueue.push_no_lock(blocks);
 	blocks->clear();
+#ifdef DEBUG_LOSSLESS
+	numThreads = 1;
+#endif
+
+
 	Barrier decode_t1_barrier(numThreads);
 	Barrier decode_t1_calling_barrier(numThreads + 1);
 

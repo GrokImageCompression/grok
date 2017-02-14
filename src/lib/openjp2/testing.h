@@ -17,4 +17,5 @@
 
 #pragma once
 
+// uncomment to enable testing of round trip lossless encode
 //#define DEBUG_LOSSLESS
