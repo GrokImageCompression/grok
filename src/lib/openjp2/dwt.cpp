@@ -63,6 +63,7 @@
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
+#include "testing.h"
 
 
 
@@ -395,15 +396,16 @@ static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 ==========================================================
 */
 
+
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
 bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 {
-	int32_t i, k;
+	int32_t k;
 	int32_t *a = 00;
 	int32_t *aj = 00;
 	int32_t *bj = 00;
-	int32_t w, l;
+	int32_t w;
 
 	int32_t rw;			/* width of the resolution level computed   */
 	int32_t rh;			/* height of the resolution level computed  */
@@ -413,11 +415,22 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 	opj_tcd_resolution_t * l_last_res = 0;
 
 	w = tilec->x1 - tilec->x0;
-	l = (int32_t)tilec->numresolutions - 1;
+	int32_t num_decomps = (int32_t)tilec->numresolutions - 1;
 	a = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
-	l_cur_res = tilec->resolutions + l;
+	l_cur_res = tilec->resolutions + num_decomps;
 	l_last_res = l_cur_res - 1;
+
+
+
+#ifdef DEBUG_LOSSLESS
+	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
+	int32_t rh_full = l_cur_res->y1 - l_cur_res->y0;
+	int32_t* before = new int32_t[rw_full * rh_full];
+	memcpy(before, a, rw_full * rh_full * sizeof(int32_t));
+	int32_t* after = new int32_t[rw_full * rh_full];
+
+#endif
 
 	l_data_size = opj_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
@@ -431,9 +444,8 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 	if (l_data_size != 0 && !bj) {
 		return false;
 	}
-	i = l;
 
-	while (i--) {
+	while (num_decomps--) {
 		int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
 		int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
 		int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
@@ -471,8 +483,23 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 		l_cur_res = l_last_res;
 		--l_last_res;
 	}
-
 	opj_free(bj);
+#ifdef DEBUG_LOSSLESS
+	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
+	opj_dwt_decode_53(tilec, tilec->numresolutions, 8);
+	for (int m = 0; m < rw_full; ++m) {
+		for (int p = 0; p < rh_full; ++p) {
+			auto expected = a[m + p * rw_full];
+			auto actual = before[m + p * rw_full];
+			if (expected != actual) {
+				printf("(%d, %d); expected %d, got %d\n", m, p, expected, actual);
+			}
+		}
+	}
+	memcpy(a, after, rw_full * rh_full * sizeof(int32_t));
+	delete[] before;
+	delete[] after;
+#endif
 	return true;
 }
 
