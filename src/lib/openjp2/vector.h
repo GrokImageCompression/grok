@@ -23,10 +23,11 @@ Vector - a dynamic array.
 
 */
 
-typedef struct opj_vec {
+struct opj_vec_t {
+	opj_vec_t() : data(nullptr), owns_data(false) {}
     void* data;		/* array of void* pointers */
     bool owns_data;
-} opj_vec_t;
+};
 
 /*
 Initialize vector

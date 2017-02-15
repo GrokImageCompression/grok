@@ -56,54 +56,66 @@
  */
 #pragma once
 
-/**
-@file tcd.h
-@brief Implementation of a tile coder/decoder (TCD)
-
-The functions in TCD.C encode or decode each tile independently from
-each other. The functions in TCD.C are used by other functions in J2K.C.
-*/
-
-/** @defgroup TCD TCD - Implementation of a tile coder/decoder */
-/*@{*/
-
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_seg {
+// code segment (code block can be encoded into multiple segments)
+struct opj_tcd_seg_t {
+	opj_tcd_seg_t() : dataindex(0), 
+					numpasses(0),
+					len(0), 
+					maxpasses(0),
+					numPassesInPacket(0),
+					newlen(0) {}
     uint32_t dataindex;				// segment data offset in contiguous memory block 
     uint32_t numpasses;				// number of passes in segment
     uint32_t len;
     uint32_t maxpasses;				// maximum number of passes in segment
     uint32_t numPassesInPacket;	// number of passes in segment from current packet
     uint32_t newlen;
-} opj_tcd_seg_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_pass {
+// encoding/decoding pass
+struct opj_tcd_pass_t {
+	opj_tcd_pass_t() : rate(0), 
+						distortiondec(0),
+						len(0),
+						term(0),
+						slope(0) {}
     uint32_t rate;
     double distortiondec;
     uint32_t len;
     uint32_t term : 1;
 	uint16_t slope;  //ln(slope) in 8.8 fixed point
-} opj_tcd_pass_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_layer {
+//quality layer
+struct opj_tcd_layer_t {
+	opj_tcd_layer_t() : numpasses(0),
+						len(0),
+						disto(0),
+						data(nullptr) {}
     uint32_t numpasses;		/* Number of passes in the layer */
     uint32_t len;			/* len of information */
     double disto;			/* add for index (Cfr. Marcela) */
     uint8_t *data;			/* data buffer*/
-} opj_tcd_layer_t;
+} ;
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_cblk_enc {
+// encoder code block
+struct opj_tcd_cblk_enc_t {
+	opj_tcd_cblk_enc_t() : data(nullptr),
+							data_size(0),
+							owns_data(false),
+							layers(nullptr),
+							passes(nullptr),
+							x0(0),
+							y0(0),
+							x1(0),
+							y1(0),
+							numbps(0),
+							numlenbits(0),
+							num_passes_included_in_current_layer(0),
+							num_passes_included_in_other_layers(0),
+							num_passes_encoded(0),
+							contextStream(nullptr) 
+	{}
     uint8_t* data;              /* data buffer*/
 	uint32_t data_size;         /* size of allocated data buffer */
 	bool owns_data;				// true if code block manages data buffer, otherwise false
@@ -116,10 +128,23 @@ typedef struct opj_tcd_cblk_enc {
     uint32_t num_passes_included_in_other_layers;	/* number of passes in other layers */
     uint32_t num_passes_encoded;					/* number of passes encoded */
     uint32_t* contextStream;
-} opj_tcd_cblk_enc_t;
+} ;
 
-
-typedef struct opj_tcd_cblk_dec {
+//decoder code block
+struct opj_tcd_cblk_dec_t {
+	opj_tcd_cblk_dec_t() : data(nullptr),
+							dataSize(0),
+							segs(nullptr),
+							x0(0),
+							y0(0),
+							x1(0),
+							y1(0),
+							numbps(0),
+							numlenbits(0),
+							numPassesInPacket(0),
+							numSegments(0),
+							numSegmentsAllocated(0)
+	{}
 	uint8_t* data;					// pointer to plugin data. 
 	uint32_t dataSize;				/* size of data buffer */
     opj_vec_t seg_buffers;
@@ -130,12 +155,23 @@ typedef struct opj_tcd_cblk_dec {
     uint32_t numPassesInPacket;		/* number of passes added by current packet */
     uint32_t numSegments;			/* number of segment*/
     uint32_t numSegmentsAllocated;  // number of segments allocated for segs array
-} opj_tcd_cblk_dec_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_precinct {
+// precinct
+struct opj_tcd_precinct_t {
+	opj_tcd_precinct_t() : x0(0),
+							y0(0),
+							x1(0),
+							y1(0), 
+							cw(0),
+							ch(0), 
+							block_size(0), 
+							incltree(nullptr), 
+							imsbtree(nullptr) 
+	{
+		cblks.blocks = nullptr;
+	}
+
     uint32_t x0, y0, x1, y1;		/* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t cw, ch;				/* number of precinct in width and height */
     union {							/* code-blocks information */
@@ -146,34 +182,46 @@ typedef struct opj_tcd_precinct {
     uint32_t block_size;			/* size taken by cblks (in bytes) */
     TagTree *incltree;	    /* inclusion tree */
     TagTree *imsbtree;	    /* IMSB tree */
-} opj_tcd_precinct_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_band {
+// band
+struct opj_tcd_band_t {
+	opj_tcd_band_t() : x0(0),
+						y0(0),
+						x1(0),
+						y1(0), 
+						bandno(0),
+						precincts(nullptr),
+						precincts_data_size(0),
+						numbps(0),
+						stepsize(0) {}
+	size_t numPrecincts() {
+		return precincts_data_size / sizeof(opj_tcd_precinct_t);
+	}
     uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
     opj_tcd_precinct_t *precincts;	/* precinct information */
     uint32_t precincts_data_size;	/* size of data taken by precincts */
     uint32_t numbps;
     float stepsize;
-} opj_tcd_band_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_resolution {
+// resolution
+struct opj_tcd_resolution_t {
+	opj_tcd_resolution_t() : x0(0),
+							y0(0),
+							x1(0),
+							y1(0),
+							numbands(0) {}
+
     uint32_t x0, y0, x1, y1;	/* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t pw, ph;
     uint32_t numbands;			/* number sub-band for the resolution level */
     opj_tcd_band_t bands[3];	/* subband information */
-} opj_tcd_resolution_t;
+};
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_tilecomp {
+// tile component
+struct opj_tcd_tilecomp_t {
     uint32_t x0, y0, x1, y1;			/* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numresolutions;			/* number of resolutions level */
     uint32_t minimum_num_resolutions;	/* number of resolutions level to decode (at max)*/
@@ -181,13 +229,11 @@ typedef struct opj_tcd_tilecomp {
     uint32_t resolutions_size;			/* size of data for resolutions (in bytes) */
     uint64_t numpix;                  
     opj_tile_buf_component_t* buf;
-} opj_tcd_tilecomp_t;
+};
 
 
-/**
-FIXME DOC
-*/
-typedef struct opj_tcd_tile {
+// tile
+struct opj_tcd_tile_t {
     uint32_t x0, y0, x1, y1;	/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numcomps;			/* number of components in tile */
     opj_tcd_tilecomp_t *comps;	/* Components information */
@@ -195,21 +241,21 @@ typedef struct opj_tcd_tile {
     double distotile;			
     double distolayer[100];	
     uint32_t packno;            /* packet number */
-} opj_tcd_tile_t;
+};
 
 /**
 Tile coder/decoder
 */
-typedef struct opj_tcd {
-    /** Position of the tilepart flag in Progression order*/
+struct opj_tcd_t {
+    /** Position of the tile part flag in progression order*/
     uint32_t tp_pos;
     /** Tile part number*/
     uint32_t tp_num;
     /** Current tile part number*/
     uint32_t cur_tp_num;
-    /** Total number of tileparts of the current tile*/
+    /** Total number of tile parts of the current tile*/
     uint32_t cur_totnum_tp;
-    /** Current Packet iterator number */
+    /** Current packet iterator number */
     uint32_t cur_pino;
     /** info on image tile */
     opj_tcd_tile_t* tile;
@@ -225,7 +271,7 @@ typedef struct opj_tcd {
     uint32_t m_is_decoder : 1;
     opj_plugin_tile_t* current_plugin_tile;
 	uint32_t numThreads;
-} opj_tcd_t;
+};
 
 /** @name Exported functions */
 /*@{*/

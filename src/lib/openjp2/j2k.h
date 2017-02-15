@@ -494,7 +494,7 @@ typedef struct opj_j2k_enc {
 
 
 
-struct opj_tcd;
+struct opj_tcd_t;
 /**
 JPEG-2000 codestream reader/writer
 */
@@ -531,7 +531,7 @@ typedef struct opj_j2k {
     uint32_t m_current_tile_number;
 
     /** the current tile coder/decoder **/
-    struct opj_tcd *	m_tcd;
+    opj_tcd_t *	m_tcd;
 
 	uint32_t numThreads;
 
