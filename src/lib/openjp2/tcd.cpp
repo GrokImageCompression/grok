@@ -1362,7 +1362,7 @@ bool opj_tcd_code_block_dec_allocate (opj_tcd_cblk_dec_t * p_code_block)
 
         /* Note: since seg_buffers simply holds references to another data buffer,
         we do not need to copy it  to the sanitized block  */
-        opj_vec_cleanup(&p_code_block->seg_buffers);
+		p_code_block->seg_buffers.cleanup();
 
         memset(p_code_block, 0, sizeof(opj_tcd_cblk_dec_t));
         p_code_block->segs = l_segs;
@@ -2004,7 +2004,7 @@ static void opj_tcd_code_block_dec_deallocate (opj_tcd_precinct_t * p_precinct)
         /*fprintf(stderr,"nb_code_blocks =%d\t}\n", l_nb_code_blocks);*/
 
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-            opj_vec_cleanup(&l_code_block->seg_buffers);
+			l_code_block->seg_buffers.cleanup();
             if (l_code_block->segs) {
                 opj_free(l_code_block->segs );
                 l_code_block->segs = nullptr;

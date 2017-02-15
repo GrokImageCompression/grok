@@ -1307,8 +1307,8 @@ bool opj_t1_decode_cblk(opj_t1_t *t1,
     total_seg_len = opj_min_buf_vec_get_len(&cblk->seg_buffers);
     if (cblk->numSegments && total_seg_len) {
         /* if there is only one segment, then it is already contiguous, so no need to make a copy*/
-        if (total_seg_len == 1 && opj_vec_get(&cblk->seg_buffers, 0)) {
-            block_buffer = ((opj_buf_t*)(opj_vec_get(&cblk->seg_buffers, 0)))->buf;
+        if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
+            block_buffer = ((opj_buf_t*)(cblk->seg_buffers.get(0)))->buf;
         } else {
             /* block should have been allocated on creation of t1*/
             if (!t1->compressed_block)
