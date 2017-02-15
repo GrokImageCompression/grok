@@ -28,8 +28,8 @@ bool opj_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* 
     if (!buffer || !min_buf_vec)
         return false;
 
-    for (i = 0; i < opj_vec_size(min_buf_vec); ++i) {
-        opj_min_buf_t* seg = (opj_min_buf_t*)opj_vec_get(min_buf_vec, i);
+    for (i = 0; i < min_buf_vec->size(); ++i) {
+        opj_min_buf_t* seg = (opj_min_buf_t*)min_buf_vec->get(i);
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
         offset += seg->len;
@@ -45,7 +45,7 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         return false;
 
     if (!buf_vec->data) {
-        opj_vec_init(buf_vec,true);
+        buf_vec->init(true);
     }
 
     seg = (opj_min_buf_t*)opj_malloc(sizeof(opj_buf_t));
@@ -54,7 +54,7 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 
     seg->buf = buf;
     seg->len = len;
-    if (!opj_vec_push_back(buf_vec, seg)) {
+    if (!buf_vec->push_back(seg)) {
         opj_free(seg);
         return false;
     }
@@ -68,8 +68,8 @@ uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
-    for (i = 0; i < opj_vec_size(min_buf_vec); ++i) {
-        opj_min_buf_t* seg = (opj_min_buf_t*)opj_vec_get(min_buf_vec, i);
+    for (i = 0; i < min_buf_vec->size(); ++i) {
+        opj_min_buf_t* seg = (opj_min_buf_t*)min_buf_vec->get(i);
         if (seg)
             len += seg->len;
     }

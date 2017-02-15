@@ -23,40 +23,73 @@ Vector - a dynamic array.
 
 */
 
+#include <vector>
+
 struct opj_vec_t {
 	opj_vec_t() : data(nullptr), owns_data(false) {}
+
+	bool init(bool owns_data)
+	{
+		if (data)
+			return true;
+
+		data = (void*)(new std::vector<void*>());
+		owns_data = owns_data;
+		return data ? true : false;
+	}
+
+	bool push_back(void* value)
+	{
+		auto impl = (std::vector<void*>*)data;
+		impl->push_back(value);
+		return true;
+	}
+
+	void* get( size_t index)
+	{
+		if (!data)
+			return NULL;
+		auto impl = (std::vector<void*>*)data;
+		assert(index < impl->size() && index >= 0);
+		if (index >= impl->size()) {
+			return NULL;
+		}
+		return impl->operator[](index);
+	}
+
+	int32_t size()
+	{
+		if (!data)
+			return 0;
+		auto impl = (std::vector<void*>*)data;
+		return (int32_t)impl->size();
+	}
+
+	void* back()
+	{
+		if (!data)
+			return NULL;
+		auto impl = (std::vector<void*>*)data;
+		return impl->back();
+	}
+
+	void cleanup()
+	{
+		if (!data)
+			return;
+		auto impl = (std::vector<void*>*)data;
+		if (owns_data) {
+			for (auto it = impl->begin(); it != impl->end(); ++it) {
+				if (*it)
+					opj_free(*it);
+			}
+		}
+		delete impl;
+		data = NULL;
+	}
     void* data;		/* array of void* pointers */
     bool owns_data;
 };
-
-/*
-Initialize vector
-*/
-
-bool opj_vec_init(opj_vec_t *vec, bool owns_data);
-
-
-/*
-Add a value to the end of the vector
-*/
-bool opj_vec_push_back(opj_vec_t *vec, void* value);
-
-/*
-Get value at specified index
-*/
-void* opj_vec_get(opj_vec_t *vec, size_t index);
-
-int32_t opj_vec_size(opj_vec_t *vec);
-
-/*
-Get value at end of vector
-*/
-void* opj_vec_back(opj_vec_t *vec);
-
-/*
-Clean up vector resources. Does NOT free vector itself
-*/
-void opj_vec_cleanup(opj_vec_t *vec);
 
 /*
 Clean up vector resources and free vector itself

@@ -73,7 +73,6 @@ set(OPENJPEG_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/opj_malloc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/vector.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.cpp
