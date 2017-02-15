@@ -95,17 +95,17 @@ static double* parseToleranceValues( char* inArg, const int nbcomp)
  *******************************************************************************/
 static void compare_images_help_display(void)
 {
-    fprintf(stdout,"\nList of parameters for the compare_images function  \n");
+    fprintf(stdout,"\nList of parameters for the compare_images utility  \n");
     fprintf(stdout,"\n");
-    fprintf(stdout,"  -b \t REQUIRED \t filename to the reference/baseline PGX/TIF/PNM image \n");
-    fprintf(stdout,"  -t \t REQUIRED \t filename to the test PGX/TIF/PNM image\n");
-    fprintf(stdout,"  -n \t REQUIRED \t number of component of the image (used to generate correct filename, not used when both input files are TIF)\n");
+    fprintf(stdout,"  -b \t REQUIRED \t file to be used as reference/baseline PGX/TIF/PNM image \n");
+    fprintf(stdout,"  -t \t REQUIRED \t file to test PGX/TIF/PNM image\n");
+	fprintf(stdout, "  -n \t REQUIRED \t number of components in the image (used to generate correct filename; not used when both input files are TIF)\n");
+	fprintf(stdout, " -d \t OPTIONAL \t indicates that utility will run as non-regression test (otherwise it will run as conformance test)\n");
     fprintf(stdout,"  -m \t OPTIONAL \t list of MSE tolerances, separated by : (size must correspond to the number of component) of \n");
     fprintf(stdout,"  -p \t OPTIONAL \t list of PEAK tolerances, separated by : (size must correspond to the number of component) \n");
     fprintf(stdout,"  -s \t OPTIONAL \t 1 or 2 filename separator to take into account PGX/PNM image with different components, "
             "please indicate b or t before separator to indicate respectively the separator "
             "for ref/base file and for test file.  \n");
-    fprintf(stdout,"  -d \t OPTIONAL \t indicate if you want to run this function as conformance test or as non regression test\n");
     fprintf(stdout,"\n");
 }
 
@@ -365,7 +365,7 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
     return image;
 }
 
-#if defined(OPJ_HAVE_LIBPNG) && 0 /* remove for now */
+#if defined(OPJ_HAVE_LIBPNG)
 /*******************************************************************************
  *
  *******************************************************************************/
@@ -380,7 +380,6 @@ static int imageToPNG(const opj_image_t* image, const char* filename, int num_co
     param_image_write.dy = 0;
     param_image_write.h = image->comps[num_comp_select].h;
     param_image_write.w = image->comps[num_comp_select].w;
-    param_image_write.bpp = image->comps[num_comp_select].bpp;
     param_image_write.prec = image->comps[num_comp_select].prec;
     param_image_write.sgnd = image->comps[num_comp_select].sgnd;
 
@@ -580,21 +579,18 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             assert( param->separator_base[0] == 0 );
             assert( param->separator_test[0] == 0 );
         } else {
-            fprintf(stderr,"If number of component is > 1, we need separator\n");
+            fprintf(stderr,"If number of components is > 1, we need separator\n");
             return 1;
         }
     }
-
-
     if ( (param->nr_flag) && (flagP || flagM) ) {
-        fprintf(stderr,"Wrong input parameters list: it is non-regression test or tolerance comparison\n");
+        fprintf(stderr,"Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
         return 1;
     }
     if ( (!param->nr_flag) && (!flagP || !flagM) ) {
-        fprintf(stderr,"Wrong input parameters list: it is non-regression test or tolerance comparison\n");
-        return 1;
+        fprintf(stdout,"Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.\n");
+		param->nr_flag = 1;
     }
-
     return 0;
 }
 
@@ -625,12 +621,12 @@ int main(int argc, char **argv)
 
     /* Display Parameters*/
     printf("******Parameters********* \n");
-    printf(" base_filename = %s\n"
-           " test_filename = %s\n"
-           " nb of Components = %d\n"
-           " Non regression test = %d\n"
-           " separator Base = %s\n"
-           " separator Test = %s\n",
+    printf("Base_filename = %s\n"
+           "Test_filename = %s\n"
+           "Number of components = %d\n"
+           "Non-regression test = %d\n"
+           "Separator Base = %s\n"
+           "Separator Test = %s\n",
            inParam.base_filename, inParam.test_filename, inParam.nbcomp,
            inParam.nr_flag, inParam.separator_base, inParam.separator_test);
 
@@ -653,8 +649,8 @@ int main(int argc, char **argv)
     if (strlen(inParam.separator_test) != 0)
         nbFilenamePGXtest = inParam.nbcomp;
 
-    printf(" NbFilename to generate from base filename = %d\n", nbFilenamePGXbase);
-    printf(" NbFilename to generate from test filename = %d\n", nbFilenamePGXtest);
+    printf("NbFilename to generate from base filename = %d\n", nbFilenamePGXbase);
+    printf("NbFilename to generate from test filename = %d\n", nbFilenamePGXtest);
     printf("************************* \n");
 
     /*----------BASELINE IMAGE--------*/
@@ -718,7 +714,7 @@ int main(int argc, char **argv)
 
     /* check dimensions (issue 286)*/
     if(imageBase->numcomps != imageTest->numcomps ) {
-        printf("ERROR: dim mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
+        printf("ERROR: dimension mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
         goto cleanup;
     }
 
@@ -738,7 +734,7 @@ int main(int argc, char **argv)
         }
 
         if (((imageBase->comps)[it_comp]).prec != ((imageTest->comps)[it_comp]).prec) {
-            printf("ERROR: prec mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).prec, ((imageTest->comps)[it_comp]).prec);
+            printf("ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).prec, ((imageTest->comps)[it_comp]).prec);
             goto cleanup;
         }
 
@@ -774,7 +770,7 @@ int main(int argc, char **argv)
         for (itpxl = 0; itpxl < ((imageDiff->comps)[it_comp]).w * ((imageDiff->comps)[it_comp]).h; itpxl++) {
             if (abs( ((imageBase->comps)[it_comp]).data[itpxl] - ((imageTest->comps)[it_comp]).data[itpxl] ) > 0) {
                 valueDiff = ((imageBase->comps)[it_comp]).data[itpxl] - ((imageTest->comps)[it_comp]).data[itpxl];
-                ((imageDiff->comps)[it_comp]).data[itpxl] = abs(valueDiff);
+				((imageDiff->comps)[it_comp]).data[itpxl] = abs(valueDiff);
                 sumDiff += valueDiff;
                 nbPixelDiff++;
 
@@ -829,7 +825,7 @@ int main(int argc, char **argv)
                     strcat(filenamePNGdiff_it_comp, it_compc);
                     /*printf("filenamePNGdiff_it = %s [%d / %d octets]\n",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
 
-                    /*
+                    
                     if ( imageToPNG(imageBase, filenamePNGbase_it_comp, it_comp) == EXIT_SUCCESS )
                     {
                     printf("<DartMeasurementFile name=\"BaselineImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n", it_comp, filenamePNGbase_it_comp);
@@ -844,8 +840,6 @@ int main(int argc, char **argv)
                     {
                     printf("<DartMeasurementFile name=\"DiffferenceImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n", it_comp, filenamePNGdiff_it_comp);
                     }
-                     */
-
                     free(filenamePNGbase_it_comp);
                     free(filenamePNGtest_it_comp);
                     free(filenamePNGdiff_it_comp);
