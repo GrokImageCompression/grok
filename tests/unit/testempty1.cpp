@@ -92,9 +92,9 @@ int main(int argc, char *argv[])
 
     opj_image_cmptparm_t cmptparm;
     opj_image_t *image;
-    opj_codec_t* l_codec = 00;
+    opj_codec_t* l_codec = nullptr;
     bool bSuccess;
-    opj_stream_t *l_stream = 00;
+    opj_stream_t *l_stream = nullptr;
     (void)argc;
     (void)argv;
 
@@ -119,14 +119,14 @@ int main(int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback,00);
-    opj_set_warning_handler(l_codec, warning_callback,00);
-    opj_set_error_handler(l_codec, error_callback,00);
+    opj_set_info_handler(l_codec, info_callback,nullptr);
+    opj_set_warning_handler(l_codec, warning_callback,nullptr);
+    opj_set_error_handler(l_codec, error_callback,nullptr);
 
     l_codec = opj_create_compress(OPJ_CODEC_J2K);
-    opj_set_info_handler(l_codec, info_callback,00);
-    opj_set_warning_handler(l_codec, warning_callback,00);
-    opj_set_error_handler(l_codec, error_callback,00);
+    opj_set_info_handler(l_codec, info_callback,nullptr);
+    opj_set_warning_handler(l_codec, warning_callback,nullptr);
+    opj_set_error_handler(l_codec, error_callback,nullptr);
 
     opj_setup_encoder(l_codec, &parameters, image);
 

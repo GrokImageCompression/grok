@@ -249,8 +249,8 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
 {
     uint8_t *l_current_data = p_dest;
     uint64_t l_nb_bytes = 0;
-    opj_pi_iterator_t *l_pi = 00;
-    opj_pi_iterator_t *l_current_pi = 00;
+    opj_pi_iterator_t *l_pi = nullptr;
+    opj_pi_iterator_t *l_current_pi = nullptr;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
     opj_tcp_t *l_tcp = &l_cp->tcps[p_tile_no];
@@ -399,15 +399,15 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
                             uint64_t * p_data_read,
                             opj_event_mgr_t *p_manager)
 {
-    opj_pi_iterator_t *l_pi = 00;
+    opj_pi_iterator_t *l_pi = nullptr;
     uint32_t pino;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
     opj_tcp_t *l_tcp = p_t2->cp->tcps + p_tile_no;
     uint64_t l_nb_bytes_read;
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
-    opj_pi_iterator_t *l_current_pi = 00;
-    opj_image_comp_t* l_img_comp = 00;
+    opj_pi_iterator_t *l_current_pi = nullptr;
+    opj_image_comp_t* l_img_comp = nullptr;
 
     /* create a packet iterator */
     l_pi = opj_pi_create_decode(l_image, l_cp, p_tile_no);
@@ -619,14 +619,14 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
     uint32_t precno = pi->precno;     /* precinct value */
     uint32_t layno  = pi->layno;      /* quality layer value */
     uint32_t l_nb_blocks;
-    opj_tcd_band_t *band = 00;
-    opj_tcd_cblk_enc_t* cblk = 00;
-    opj_tcd_pass_t *pass = 00;
+    opj_tcd_band_t *band = nullptr;
+    opj_tcd_cblk_enc_t* cblk = nullptr;
+    opj_tcd_pass_t *pass = nullptr;
 
     opj_tcd_tilecomp_t *tilec = &tile->comps[compno];
     opj_tcd_resolution_t *res = &tilec->resolutions[resno];
 
-    BitIO *bio = 00;    /* BIO component */
+    BitIO *bio = nullptr;    /* BIO component */
 
     /* <SOP 0xff91> */
     if (tcp->csty & J2K_CP_CSTY_SOP) {
@@ -845,14 +845,14 @@ static bool opj_t2_encode_packet_simulate(opj_tcd_tile_t * tile,
     uint32_t precno = pi->precno;     /* precinct value */
     uint32_t layno = pi->layno;      /* quality layer value */
     uint32_t l_nb_blocks;
-    opj_tcd_band_t *band = 00;
-    opj_tcd_cblk_enc_t* cblk = 00;
-    opj_tcd_pass_t *pass = 00;
+    opj_tcd_band_t *band = nullptr;
+    opj_tcd_cblk_enc_t* cblk = nullptr;
+    opj_tcd_pass_t *pass = nullptr;
 
     opj_tcd_tilecomp_t *tilec = tile->comps + compno;
     opj_tcd_resolution_t *res = tilec->resolutions + resno;
 
-    BitIO *bio = 00;    /* BIO component */
+    BitIO *bio = nullptr;    /* BIO component */
     uint64_t packet_bytes_written = 0;
 
     /* <SOP 0xff91> */
@@ -1094,16 +1094,16 @@ static bool opj_t2_read_packet_header( opj_t2_t* p_t2,
     uint32_t l_nb_code_blocks;
     uint32_t l_remaining_length;
     uint32_t l_header_length;
-    uint32_t * l_modified_length_ptr = 00;
+    uint32_t * l_modified_length_ptr = nullptr;
     uint8_t *l_current_data = p_src_data;
     opj_cp_t *l_cp = p_t2->cp;
-    BitIO *l_bio = 00;  /* BIO component */
-    opj_tcd_band_t *l_band = 00;
-    opj_tcd_cblk_dec_t* l_cblk = 00;
+    BitIO *l_bio = nullptr;  /* BIO component */
+    opj_tcd_band_t *l_band = nullptr;
+    opj_tcd_cblk_dec_t* l_cblk = nullptr;
     opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 
-    uint8_t *l_header_data = 00;
-    uint8_t **l_header_data_start = 00;
+    uint8_t *l_header_data = nullptr;
+    uint8_t **l_header_data_start = nullptr;
 
     uint32_t l_present;
 
@@ -1345,8 +1345,8 @@ static bool opj_t2_read_packet_data(    opj_tcd_tile_t *p_tile,
 {
     uint32_t bandno, cblkno;
     uint32_t l_nb_code_blocks;
-    opj_tcd_band_t *l_band = 00;
-    opj_tcd_cblk_dec_t* l_cblk = 00;
+    opj_tcd_band_t *l_band = nullptr;
+    opj_tcd_cblk_dec_t* l_cblk = nullptr;
     opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 
     l_band = l_res->bands;
@@ -1356,7 +1356,7 @@ static bool opj_t2_read_packet_data(    opj_tcd_tile_t *p_tile,
         l_cblk = l_prc->cblks.dec;
 
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-            opj_tcd_seg_t *l_seg = 00;
+            opj_tcd_seg_t *l_seg = nullptr;
 
             if (!l_cblk->numPassesInPacket) {
                 /* nothing to do */
@@ -1422,8 +1422,8 @@ static bool opj_t2_skip_packet_data(    opj_tcd_tile_t *p_tile,
 {
     uint32_t bandno, cblkno;
     uint32_t l_nb_code_blocks;
-    opj_tcd_band_t *l_band = 00;
-    opj_tcd_cblk_dec_t* l_cblk = 00;
+    opj_tcd_band_t *l_band = nullptr;
+    opj_tcd_cblk_dec_t* l_cblk = nullptr;
     opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 
     *p_data_read = 0;
@@ -1441,7 +1441,7 @@ static bool opj_t2_skip_packet_data(    opj_tcd_tile_t *p_tile,
         l_cblk = l_prc->cblks.dec;
 
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-            opj_tcd_seg_t *l_seg = 00;
+            opj_tcd_seg_t *l_seg = nullptr;
 
             if (!l_cblk->numPassesInPacket) {
                 /* nothing to do */
@@ -1496,7 +1496,7 @@ static bool opj_t2_init_seg(   opj_tcd_cblk_dec_t* cblk,
                                uint32_t cblksty,
                                uint32_t first)
 {
-    opj_tcd_seg_t* seg = 00;
+    opj_tcd_seg_t* seg = nullptr;
     uint32_t l_nb_segs = index + 1;
 
     if (l_nb_segs > cblk->numSegmentsAllocated) {

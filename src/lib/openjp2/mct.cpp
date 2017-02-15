@@ -491,8 +491,8 @@ bool opj_mct_encode_custom(
     uint32_t j;
     uint32_t k;
     uint32_t lNbMatCoeff = pNbComp * pNbComp;
-    int32_t * lCurrentData = 00;
-    int32_t * lCurrentMatrix = 00;
+    int32_t * lCurrentData = nullptr;
+    int32_t * lCurrentMatrix = nullptr;
     int32_t ** lData = (int32_t **) pData;
     uint32_t lMultiplicator = 1 << 13;
     int32_t * lMctPtr;
@@ -544,8 +544,8 @@ bool opj_mct_decode_custom(
     uint32_t j;
     uint32_t k;
 
-    float * lCurrentData = 00;
-    float * lCurrentResult = 00;
+    float * lCurrentData = nullptr;
+    float * lCurrentResult = nullptr;
     float ** lData = (float **) pData;
 
     OPJ_ARG_NOT_USED(isSigned);

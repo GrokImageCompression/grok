@@ -1452,9 +1452,9 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(info->l_codec, info_callback, 00);
-	opj_set_warning_handler(info->l_codec, warning_callback, 00);
-	opj_set_error_handler(info->l_codec, error_callback, 00);
+	opj_set_info_handler(info->l_codec, info_callback, nullptr);
+	opj_set_warning_handler(info->l_codec, warning_callback, nullptr);
+	opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
 	/* Setup the decoder decoding parameters using user parameters */
 	if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {

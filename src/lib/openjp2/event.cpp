@@ -72,10 +72,10 @@ static void opj_default_callback (const char *msg, void *client_data)
 bool opj_event_msg(opj_event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
 {
 #define OPJ_MSG_SIZE 512 /* 512 bytes should be more than enough for a short message */
-    opj_msg_callback msg_handler = 00;
-    void * l_data = 00;
+    opj_msg_callback msg_handler = nullptr;
+    void * l_data = nullptr;
 
-    if(p_event_mgr != 00) {
+    if(p_event_mgr != nullptr) {
         switch(event_type) {
         case EVT_ERROR:
             msg_handler = p_event_mgr->error_handler;
@@ -92,14 +92,14 @@ bool opj_event_msg(opj_event_mgr_t* p_event_mgr, int32_t event_type, const char 
         default:
             break;
         }
-        if(msg_handler == 00) {
+        if(msg_handler == nullptr) {
             return false;
         }
     } else {
         return false;
     }
 
-    if ((fmt != 00) && (p_event_mgr != 00)) {
+    if ((fmt != nullptr) && (p_event_mgr != nullptr)) {
         va_list arg;
         size_t str_length/*, i, j*/; 
         char message[OPJ_MSG_SIZE];
@@ -123,9 +123,9 @@ bool opj_event_msg(opj_event_mgr_t* p_event_mgr, int32_t event_type, const char 
 
 void opj_set_default_event_handler(opj_event_mgr_t * p_manager)
 {
-    p_manager->m_error_data = 00;
-    p_manager->m_warning_data = 00;
-    p_manager->m_info_data = 00;
+    p_manager->m_error_data = nullptr;
+    p_manager->m_warning_data = nullptr;
+    p_manager->m_info_data = nullptr;
     p_manager->error_handler = opj_default_callback;
     p_manager->info_handler = opj_default_callback;
     p_manager->warning_handler = opj_default_callback;

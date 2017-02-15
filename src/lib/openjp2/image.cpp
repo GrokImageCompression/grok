@@ -161,8 +161,8 @@ void opj_copy_image_header(const opj_image_t* p_image_src, opj_image_t* p_image_
     uint32_t compno;
 
     /* preconditions */
-    assert(p_image_src != 00);
-    assert(p_image_dest != 00);
+    assert(p_image_src != nullptr);
+    assert(p_image_dest != nullptr);
 
     p_image_dest->x0 = p_image_src->x0;
     p_image_dest->y0 = p_image_src->y0;
@@ -213,7 +213,7 @@ void opj_copy_image_header(const opj_image_t* p_image_src, opj_image_t* p_image_
 opj_image_t* OPJ_CALLCONV opj_image_tile_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc)
 {
     uint32_t compno;
-    opj_image_t *image = 00;
+    opj_image_t *image = nullptr;
 
     image = (opj_image_t*) opj_calloc(1,sizeof(opj_image_t));
     if (image) {
@@ -225,7 +225,7 @@ opj_image_t* OPJ_CALLCONV opj_image_tile_create(uint32_t numcmpts, opj_image_cmp
         image->comps = (opj_image_comp_t*)opj_calloc(image->numcomps, sizeof(opj_image_comp_t));
         if (!image->comps) {
             opj_image_destroy(image);
-            return 00;
+            return nullptr;
         }
 
         /* create the individual image components */

@@ -167,7 +167,7 @@ bool opj_tile_buf_alloc_component_data_encode(opj_tile_buf_component_t* buf)
     if (!buf)
         return false;
 
-    if ((buf->data == 00) || ((buf->data_size_needed > buf->data_size) && (buf->owns_data == false))) {
+    if ((buf->data == nullptr) || ((buf->data_size_needed > buf->data_size) && (buf->owns_data == false))) {
         buf->data = (int32_t *)opj_aligned_malloc(buf->data_size_needed);
         if (!buf->data) {
             return false;
