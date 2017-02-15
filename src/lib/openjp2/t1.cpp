@@ -1143,31 +1143,31 @@ bool opj_t1_allocate_buffers(opj_t1_t *t1,
  * @return a new T1 handle if successful, returns NULL otherwise
 */
 opj_t1_t* opj_t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height){
-    opj_t1_t *l_t1 = 00;
+    opj_t1_t *l_t1 = nullptr;
 
     l_t1 = (opj_t1_t*) opj_calloc(1,sizeof(opj_t1_t));
     if (!l_t1) {
-        return 00;
+        return nullptr;
     }
 
     /* create MQC and RAW handles */
     l_t1->mqc = opj_mqc_create();
     if (! l_t1->mqc) {
         opj_t1_destroy(l_t1);
-        return 00;
+        return nullptr;
     }
 
     l_t1->raw = opj_raw_create();
     if (! l_t1->raw) {
         opj_t1_destroy(l_t1);
-        return 00;
+        return nullptr;
     }
 
     if (!isEncoder && code_block_width > 0 && code_block_height > 0) {
         l_t1->compressed_block = (uint8_t*)opj_malloc((size_t)code_block_width * (size_t)code_block_height);
         if (!l_t1->compressed_block) {
             opj_t1_destroy(l_t1);
-            return 00;
+            return nullptr;
         }
         l_t1->compressed_block_size = (size_t)(code_block_width * code_block_height);
 
@@ -1190,19 +1190,19 @@ void opj_t1_destroy(opj_t1_t *p_t1){
 
     /* destroy MQC and RAW handles */
     opj_mqc_destroy(p_t1->mqc);
-    p_t1->mqc = 00;
+    p_t1->mqc = nullptr;
     opj_raw_destroy(p_t1->raw);
-    p_t1->raw = 00;
+    p_t1->raw = nullptr;
 
     /* encoder uses tile buffer, so no need to free */
     if (!p_t1->encoder && p_t1->data) {
         opj_aligned_free(p_t1->data);
-        p_t1->data = 00;
+        p_t1->data = nullptr;
     }
 
     if (p_t1->flags) {
         opj_aligned_free(p_t1->flags);
-        p_t1->flags = 00;
+        p_t1->flags = nullptr;
     }
     if (p_t1->compressed_block)
         opj_free(p_t1->compressed_block);

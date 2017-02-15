@@ -556,9 +556,9 @@ int main(int argc, char *argv[])
         }
 
         /* catch events using our callbacks and give a local context */
-        opj_set_info_handler(l_codec, info_callback,00);
-        opj_set_warning_handler(l_codec, warning_callback,00);
-        opj_set_error_handler(l_codec, error_callback,00);
+        opj_set_info_handler(l_codec, info_callback,nullptr);
+        opj_set_warning_handler(l_codec, warning_callback,nullptr);
+        opj_set_error_handler(l_codec, error_callback,nullptr);
 
         /* Setup the decoder decoding parameters using user parameters */
         if ( !opj_setup_decoder(l_codec, &parameters) ) {

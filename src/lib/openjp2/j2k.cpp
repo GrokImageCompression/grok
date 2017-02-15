@@ -1648,7 +1648,7 @@ static bool opj_j2k_check_poc_val( const opj_poc_t *p_pocs,
     uint32_t layno0 = 0;
 
     packet_array = (uint32_t*) opj_calloc(step_l * p_num_layers, sizeof(uint32_t));
-    if (packet_array == 00) {
+    if (packet_array == nullptr) {
         opj_event_msg(p_manager , EVT_ERROR, "Not enough memory for checking the poc values.\n");
         return false;
     }
@@ -1736,11 +1736,11 @@ static bool opj_j2k_check_poc_val( const opj_poc_t *p_pocs,
 
 static uint32_t opj_j2k_get_num_tp(opj_cp_t *cp, uint32_t pino, uint32_t tileno)
 {
-    const char *prog = 00;
+    const char *prog = nullptr;
     int32_t i;
     uint32_t tpnum = 1;
-    opj_tcp_t *tcp = 00;
-    opj_poc_t * l_current_poc = 00;
+    opj_tcp_t *tcp = nullptr;
+    opj_poc_t * l_current_poc = nullptr;
 
     /*  preconditions */
     assert(tileno < (cp->tw * cp->th));
@@ -1748,7 +1748,7 @@ static uint32_t opj_j2k_get_num_tp(opj_cp_t *cp, uint32_t pino, uint32_t tileno)
 
     /* get the given tile coding parameter */
     tcp = &cp->tcps[tileno];
-    assert(tcp != 00);
+    assert(tcp != nullptr);
 
     l_current_poc = &(tcp->pocs[pino]);
     assert(l_current_poc != 0);
@@ -1802,11 +1802,11 @@ static bool opj_j2k_calculate_tp(  opj_j2k_t *p_j2k,
     opj_tcp_t *tcp;
 
     /* preconditions */
-    assert(p_nb_tiles != 00);
-    assert(cp != 00);
-    assert(image != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_nb_tiles != nullptr);
+    assert(cp != nullptr);
+    assert(image != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_nb_tiles = cp->tw * cp->th;
     * p_nb_tiles = 0;
@@ -1834,7 +1834,7 @@ static bool opj_j2k_calculate_tp(  opj_j2k_t *p_j2k,
                     tcp->m_nb_tile_parts = cur_totnum_tp;
 
                     l_info_tile_ptr->tp = (opj_tp_info_t *) opj_malloc(cur_totnum_tp * sizeof(opj_tp_info_t));
-                    if (l_info_tile_ptr->tp == 00) {
+                    if (l_info_tile_ptr->tp == nullptr) {
                             return false;
                     }
 
@@ -1873,12 +1873,12 @@ static bool opj_j2k_write_soc(     opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager )
 {
     /* 2 bytes will be written */
-    uint8_t * l_start_stream = 00;
+    uint8_t * l_start_stream = nullptr;
 
     /* preconditions */
-    assert(p_stream != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_stream != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_start_stream = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
 
@@ -1906,9 +1906,9 @@ static bool opj_j2k_read_soc(   opj_j2k_t *p_j2k,
     uint32_t l_marker;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     if (opj_stream_read_data(p_stream,l_data,2,p_manager) != 2) {
         return false;
@@ -1942,14 +1942,14 @@ static bool opj_j2k_write_siz(     opj_j2k_t *p_j2k,
     uint32_t i;
     uint32_t l_size_len;
     uint8_t * l_current_ptr;
-    opj_image_t * l_image = 00;
-    opj_cp_t *cp = 00;
-    opj_image_comp_t * l_img_comp = 00;
+    opj_image_t * l_image = nullptr;
+    opj_cp_t *cp = nullptr;
+    opj_image_comp_t * l_img_comp = nullptr;
 
     /* preconditions */
-    assert(p_stream != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_stream != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     cp = &(p_j2k->m_cp);
@@ -2049,15 +2049,15 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
     uint32_t l_remaining_size;
     uint32_t l_nb_tiles;
     uint32_t l_tmp, l_tx1, l_ty1;
-    opj_image_t *l_image = 00;
-    opj_cp_t *l_cp = 00;
-    opj_image_comp_t * l_img_comp = 00;
-    opj_tcp_t * l_current_tile_param = 00;
+    opj_image_t *l_image = nullptr;
+    opj_cp_t *l_cp = nullptr;
+    opj_image_comp_t * l_img_comp = nullptr;
+    opj_tcp_t * l_current_tile_param = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_header_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_header_data != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_cp = &(p_j2k->m_cp);
@@ -2138,7 +2138,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
 
     /* Allocate the resulting image components */
     l_image->comps = (opj_image_comp_t*) opj_calloc(l_image->numcomps, sizeof(opj_image_comp_t));
-    if (l_image->comps == 00) {
+    if (l_image->comps == nullptr) {
         l_image->numcomps = 0;
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
         return false;
@@ -2213,14 +2213,14 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
 
     /* memory allocations */
     l_cp->tcps = (opj_tcp_t*) opj_calloc(l_nb_tiles, sizeof(opj_tcp_t));
-    if (l_cp->tcps == 00) {
+    if (l_cp->tcps == nullptr) {
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
         return false;
     }
 
     p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps =
         (opj_tccp_t*) opj_calloc(l_image->numcomps, sizeof(opj_tccp_t));
-    if(p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps  == 00) {
+    if(p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps  == nullptr) {
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
         return false;
     }
@@ -2254,7 +2254,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
     l_current_tile_param = l_cp->tcps;
     for     (i = 0; i < l_nb_tiles; ++i) {
         l_current_tile_param->tccps = (opj_tccp_t*) opj_calloc(l_image->numcomps, sizeof(opj_tccp_t));
-        if (l_current_tile_param->tccps == 00) {
+        if (l_current_tile_param->tccps == nullptr) {
             opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
             return false;
         }
@@ -2276,12 +2276,12 @@ static bool opj_j2k_write_com(     opj_j2k_t *p_j2k,
     uint32_t l_comment_size;
     uint32_t l_total_com_size;
     const char *l_comment;
-    uint8_t * l_current_ptr = 00;
+    uint8_t * l_current_ptr = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     l_comment = p_j2k->m_cp.comment;
     l_comment_size = (uint32_t)strlen(l_comment);
@@ -2334,9 +2334,9 @@ static bool opj_j2k_read_com (  opj_j2k_t *p_j2k,
                              )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_header_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_header_data != nullptr);
     (void)p_header_size;
 
     return true;
@@ -2346,15 +2346,15 @@ static bool opj_j2k_write_cod(     opj_j2k_t *p_j2k,
                                    opj_stream_private_t *p_stream,
                                    opj_event_mgr_t * p_manager )
 {
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_code_size,l_remaining_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -2429,14 +2429,14 @@ static bool opj_j2k_read_cod (  opj_j2k_t *p_j2k,
     /* loop */
     uint32_t i;
     uint32_t l_tmp;
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_image_t *l_image = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_image_t *l_image = nullptr;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_cp = &(p_j2k->m_cp);
@@ -2522,9 +2522,9 @@ static bool opj_j2k_write_coc( opj_j2k_t *p_j2k,
     uint32_t l_comp_room;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_comp_room = (p_j2k->m_private_image->numcomps <= 256) ? 1 : 2;
 
@@ -2564,7 +2564,7 @@ static bool opj_j2k_compare_coc(opj_j2k_t *p_j2k, uint32_t p_first_comp_no, uint
     opj_tcp_t *l_tcp = NULL;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -2584,16 +2584,16 @@ static void opj_j2k_write_coc_in_memory(   opj_j2k_t *p_j2k,
         opj_event_mgr_t * p_manager
                                        )
 {
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_coc_size,l_remaining_size;
-    uint8_t * l_current_data = 00;
-    opj_image_t *l_image = 00;
+    uint8_t * l_current_data = nullptr;
+    opj_image_t *l_image = nullptr;
     uint32_t l_comp_room;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -2663,9 +2663,9 @@ static bool opj_j2k_read_coc (  opj_j2k_t *p_j2k,
     uint32_t l_comp_no;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ) ? /*FIXME J2K_DEC_STATE_TPH*/
@@ -2710,12 +2710,12 @@ static bool opj_j2k_write_qcd(     opj_j2k_t *p_j2k,
                              )
 {
     uint32_t l_qcd_size,l_remaining_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_qcd_size = 4 + opj_j2k_get_SQcd_SQcc_size(p_j2k,p_j2k->m_current_tile_number,0);
     l_remaining_size = l_qcd_size;
@@ -2774,9 +2774,9 @@ static bool opj_j2k_read_qcd (  opj_j2k_t *p_j2k,
                              )
 {
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_j2k_read_SQcd_SQcc(p_j2k,0,p_header_data,&p_header_size,p_manager)) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
@@ -2803,9 +2803,9 @@ static bool opj_j2k_write_qcc(     opj_j2k_t *p_j2k,
     uint32_t l_qcc_size,l_remaining_size;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_qcc_size = 5 + opj_j2k_get_SQcd_SQcc_size(p_j2k,p_j2k->m_current_tile_number,p_comp_no);
     l_qcc_size += p_j2k->m_private_image->numcomps <= 256 ? 0:1;
@@ -2846,11 +2846,11 @@ static void opj_j2k_write_qcc_in_memory(   opj_j2k_t *p_j2k,
                                        )
 {
     uint32_t l_qcc_size,l_remaining_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_qcc_size = 6 + opj_j2k_get_SQcd_SQcc_size(p_j2k,p_j2k->m_current_tile_number,p_comp_no);
     l_remaining_size = l_qcc_size;
@@ -2907,9 +2907,9 @@ static bool opj_j2k_read_qcc(   opj_j2k_t *p_j2k,
     uint32_t l_num_comp,l_comp_no;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_num_comp = p_j2k->m_private_image->numcomps;
 
@@ -2960,13 +2960,13 @@ static bool opj_j2k_write_poc(     opj_j2k_t *p_j2k,
     uint32_t l_nb_poc;
     uint32_t l_poc_size;
     uint64_t l_written_size = 0;
-    opj_tcp_t *l_tcp = 00;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_poc_room;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tcp = &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number];
     l_nb_comp = p_j2k->m_private_image->numcomps;
@@ -3008,19 +3008,19 @@ static void opj_j2k_write_poc_in_memory(   opj_j2k_t *p_j2k,
                                        )
 {
     uint32_t i;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_nb_comp;
     uint32_t l_nb_poc;
     uint32_t l_poc_size;
-    opj_image_t *l_image = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
-    opj_poc_t *l_current_poc = 00;
+    opj_image_t *l_image = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
+    opj_poc_t *l_current_poc = nullptr;
     uint32_t l_poc_room;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_tcp = &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number];
     l_tccp = &l_tcp->tccps[0];
@@ -3077,7 +3077,7 @@ static void opj_j2k_write_poc_in_memory(   opj_j2k_t *p_j2k,
 
 static uint32_t opj_j2k_get_max_poc_size(opj_j2k_t *p_j2k)
 {
-    opj_tcp_t * l_tcp = 00;
+    opj_tcp_t * l_tcp = nullptr;
     uint32_t l_nb_tiles = 0;
     uint32_t l_max_poc = 0;
     uint32_t i;
@@ -3100,7 +3100,7 @@ static uint32_t opj_j2k_get_max_toc_size (opj_j2k_t *p_j2k)
     uint32_t i;
     uint32_t l_nb_tiles;
     uint32_t l_max = 0;
-    opj_tcp_t * l_tcp = 00;
+    opj_tcp_t * l_tcp = nullptr;
 
     l_tcp = p_j2k->m_cp.tcps;
     l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th ;
@@ -3153,18 +3153,18 @@ static bool opj_j2k_read_poc (  opj_j2k_t *p_j2k,
                              )
 {
     uint32_t i, l_nb_comp, l_tmp;
-    opj_image_t * l_image = 00;
+    opj_image_t * l_image = nullptr;
     uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
     uint32_t l_chunk_size, l_comp_room;
 
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_poc_t *l_current_poc = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_poc_t *l_current_poc = nullptr;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_nb_comp = l_image->numcomps;
@@ -3240,9 +3240,9 @@ static bool opj_j2k_read_crg (  opj_j2k_t *p_j2k,
 {
     uint32_t l_nb_comp;
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_nb_comp = p_j2k->m_private_image->numcomps;
 
@@ -3280,9 +3280,9 @@ static bool opj_j2k_read_tlm (  opj_j2k_t *p_j2k,
 {
     uint32_t l_Ztlm, l_Stlm, l_ST, l_SP, l_tot_num_tp_remaining, l_quotient, l_Ptlm_size;
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (p_header_size < 2) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
@@ -3335,9 +3335,9 @@ static bool opj_j2k_read_plm (  opj_j2k_t *p_j2k,
                              )
 {
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 	uint32_t l_Zplm, l_Nplm, l_tmp, l_packet_len = 0, i;
 	int64_t header_size = p_header_size;
     if (header_size < 1) {
@@ -3394,9 +3394,9 @@ static bool opj_j2k_read_plt (  opj_j2k_t *p_j2k,
     uint32_t l_Zplt, l_tmp, l_packet_len = 0, i;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (p_header_size < 1) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading PLT marker\n");
@@ -3443,13 +3443,13 @@ static bool opj_j2k_read_ppm (
     uint32_t p_header_size,
     opj_event_mgr_t * p_manager )
 {
-    opj_cp_t *l_cp = 00;
+    opj_cp_t *l_cp = nullptr;
     uint32_t l_Z_ppm;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     /* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
     if (p_header_size < 2) {
@@ -3518,8 +3518,8 @@ static bool opj_j2k_merge_ppm ( opj_cp_t *p_cp, opj_event_mgr_t * p_manager )
     uint32_t i, l_ppm_data_size, l_N_ppm_remaining;
 
     /* preconditions */
-    assert(p_cp != 00);
-    assert(p_manager != 00);
+    assert(p_cp != nullptr);
+    assert(p_manager != nullptr);
     assert(p_cp->ppm_buffer == NULL);
 
     if (p_cp->ppm == 0U) {
@@ -3575,7 +3575,7 @@ static bool opj_j2k_merge_ppm ( opj_cp_t *p_cp, opj_event_mgr_t * p_manager )
     }
 
     p_cp->ppm_buffer = (uint8_t *) opj_malloc(l_ppm_data_size);
-    if (p_cp->ppm_buffer == 00) {
+    if (p_cp->ppm_buffer == nullptr) {
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to read PPM marker\n");
         return false;
     }
@@ -3656,14 +3656,14 @@ static bool opj_j2k_read_ppt (  opj_j2k_t *p_j2k,
                                 opj_event_mgr_t * p_manager
                              )
 {
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_Z_ppt;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     /* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
     if (p_header_size < 2) {
@@ -3736,8 +3736,8 @@ static bool opj_j2k_merge_ppt(opj_tcp_t *p_tcp, opj_event_mgr_t * p_manager)
 {
     uint32_t i, l_ppt_data_size;
     /* preconditions */
-    assert(p_tcp != 00);
-    assert(p_manager != 00);
+    assert(p_tcp != nullptr);
+    assert(p_manager != nullptr);
     assert(p_tcp->ppt_buffer == NULL);
 
     if (p_tcp->ppt == 0U) {
@@ -3750,7 +3750,7 @@ static bool opj_j2k_merge_ppt(opj_tcp_t *p_tcp, opj_event_mgr_t * p_manager)
     }
 
     p_tcp->ppt_buffer = (uint8_t *) opj_malloc(l_ppt_data_size);
-    if (p_tcp->ppt_buffer == 00) {
+    if (p_tcp->ppt_buffer == nullptr) {
         opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to read PPT marker\n");
         return false;
     }
@@ -3781,13 +3781,13 @@ static bool opj_j2k_write_tlm(     opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager
                              )
 {
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_tlm_size;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tlm_size = 6 + (5*p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
 
@@ -3838,9 +3838,9 @@ static bool opj_j2k_write_sot(     opj_j2k_t *p_j2k,
                              )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     opj_write_bytes(p_data,J2K_MS_SOT,2);                                   /* SOT */
     p_data += 2;
@@ -3874,8 +3874,8 @@ static bool opj_j2k_get_sot_values(uint8_t *  p_header_data,
                                    opj_event_mgr_t * p_manager )
 {
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_manager != nullptr);
 
     /* Size of this marker is fixed = 12 (we have already read marker and its size)*/
     if (p_header_size != 8) {
@@ -3899,16 +3899,16 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
                                uint32_t p_header_size,
                                opj_event_mgr_t * p_manager )
 {
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_tot_len, l_num_parts = 0;
     uint32_t l_current_part;
     uint32_t l_tile_x,l_tile_y;
 
     /* preconditions */
 
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_j2k_get_sot_values(p_header_data, p_header_size, &(p_j2k->m_current_tile_number), &l_tot_len, &l_current_part, &l_num_parts, p_manager)) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading SOT marker\n");
@@ -4003,7 +4003,7 @@ static bool opj_j2k_read_sot ( opj_j2k_t *p_j2k,
 
     /* Index */
     if (p_j2k->cstr_index) {
-        assert(p_j2k->cstr_index->tile_index != 00);
+        assert(p_j2k->cstr_index->tile_index != nullptr);
         p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tileno = p_j2k->m_current_tile_number;
         p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_tpsno = l_current_part;
 
@@ -4076,13 +4076,13 @@ static bool opj_j2k_write_sod(     opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager
                              )
 {
-    opj_codestream_info_t *l_cstr_info = 00;
+    opj_codestream_info_t *l_cstr_info = nullptr;
     uint64_t l_remaining_data;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     opj_write_bytes(p_data,J2K_MS_SOD,2);                                   /* SOD */
     p_data += 2;
@@ -4119,14 +4119,14 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
                              )
 {
     size_t l_current_read_size;
-    opj_codestream_index_t * l_cstr_index = 00;
-    opj_tcp_t * l_tcp = 00;
+    opj_codestream_index_t * l_cstr_index = nullptr;
+    opj_tcp_t * l_tcp = nullptr;
     bool l_sot_length_pb_detected = false;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 
@@ -4211,17 +4211,17 @@ static bool opj_j2k_write_rgn(opj_j2k_t *p_j2k,
                               opj_event_mgr_t * p_manager
                              )
 {
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_rgn_size;
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
     uint32_t l_comp_room;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -4265,9 +4265,9 @@ static bool opj_j2k_write_eoc(     opj_j2k_t *p_j2k,
                              )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     opj_write_bytes(p_j2k->m_specific_param.m_encoder.m_header_tile_data,J2K_MS_EOC,2);                                     /* EOC */
 
@@ -4297,16 +4297,16 @@ static bool opj_j2k_read_rgn (opj_j2k_t *p_j2k,
                              )
 {
     uint32_t l_nb_comp;
-    opj_image_t * l_image = 00;
+    opj_image_t * l_image = nullptr;
 
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_comp_room, l_comp_no, l_roi_sty;
 
     /* preconditions*/
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_nb_comp = l_image->numcomps;
@@ -4362,10 +4362,10 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
                                    opj_stream_private_t *p_stream,
                                    opj_event_mgr_t * p_manager )
 {
-    opj_cp_t * l_cp = 00;
-    opj_image_t * l_image = 00;
-    opj_tcp_t * l_tcp = 00;
-    opj_image_comp_t * l_img_comp = 00;
+    opj_cp_t * l_cp = nullptr;
+    opj_image_t * l_image = nullptr;
+    opj_tcp_t * l_tcp = nullptr;
+    opj_image_comp_t * l_img_comp = nullptr;
 
     uint32_t i,j,k;
     uint32_t l_x0,l_y0,l_x1,l_y1;
@@ -4374,12 +4374,12 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     uint32_t l_bits_empty, l_size_pixel;
     uint64_t l_tile_size = 0;
     uint32_t l_last_res;
-    float (* l_tp_stride_func)(opj_tcp_t *) = 00;
+    float (* l_tp_stride_func)(opj_tcp_t *) = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_image = p_j2k->m_private_image;
@@ -4470,7 +4470,7 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     p_j2k->m_specific_param.m_encoder.m_encoded_tile_size = l_tile_size;
     p_j2k->m_specific_param.m_encoder.m_encoded_tile_data =
         (uint8_t *) opj_malloc(p_j2k->m_specific_param.m_encoder.m_encoded_tile_size);
-    if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data == 00) {
+    if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data == nullptr) {
         return false;
     }
 
@@ -4493,21 +4493,21 @@ static bool opj_j2k_read_eoc (     opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager )
 {
     uint32_t i;
-    opj_tcd_t * l_tcd = 00;
+    opj_tcd_t * l_tcd = nullptr;
     uint32_t l_nb_tiles;
-    opj_tcp_t * l_tcp = 00;
+    opj_tcp_t * l_tcp = nullptr;
     bool l_success;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
     l_tcp = p_j2k->m_cp.tcps;
 
     l_tcd = opj_tcd_create(true);
-    if (l_tcd == 00) {
+    if (l_tcd == nullptr) {
         opj_event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
         return false;
     }
@@ -4543,9 +4543,9 @@ static bool opj_j2k_get_end_header(opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     p_j2k->cstr_index->main_head_end = opj_stream_tell(p_stream);
 
@@ -4562,9 +4562,9 @@ static bool opj_j2k_write_mct_data_group(  opj_j2k_t *p_j2k,
     opj_tcp_t * l_tcp;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_j2k_write_cbd(p_j2k,p_stream,p_manager)) {
         return false;
@@ -4608,9 +4608,9 @@ static bool opj_j2k_write_all_coc(
     uint32_t compno;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     for (compno = 1; compno < p_j2k->m_private_image->numcomps; ++compno) {
         /* cod is first component of first tile */
@@ -4632,9 +4632,9 @@ static bool opj_j2k_write_all_qcc(
     uint32_t compno;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     for (compno = 1; compno < p_j2k->m_private_image->numcomps; ++compno) {
         /* qcd is first component of first tile */
@@ -4652,12 +4652,12 @@ static bool opj_j2k_write_regions( opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager )
 {
     uint32_t compno;
-    const opj_tccp_t *l_tccp = 00;
+    const opj_tccp_t *l_tccp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tccp = p_j2k->m_cp.tcps->tccps;
 
@@ -4679,12 +4679,12 @@ static bool opj_j2k_write_epc(     opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
                                    opj_event_mgr_t * p_manager )
 {
-    opj_codestream_index_t * l_cstr_index = 00;
+    opj_codestream_index_t * l_cstr_index = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_cstr_index = p_j2k->cstr_index;
     if (l_cstr_index) {
@@ -4709,9 +4709,9 @@ static bool opj_j2k_read_unk (     opj_j2k_t *p_j2k,
     uint32_t l_size_unk = 2;
 
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     opj_event_msg(p_manager, EVT_WARNING, "Unknown marker\n");
 
@@ -4763,13 +4763,13 @@ static bool opj_j2k_write_mct_record(      opj_j2k_t *p_j2k,
         opj_event_mgr_t * p_manager )
 {
     uint32_t l_mct_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_tmp;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_mct_size = 10 + p_mct_record->m_data_size;
 
@@ -4830,14 +4830,14 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
                              )
 {
     uint32_t i;
-    opj_tcp_t *l_tcp = 00;
+    opj_tcp_t *l_tcp = nullptr;
     uint32_t l_tmp;
     uint32_t l_indix;
     opj_mct_data_t * l_mct_data;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
 
     l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
@@ -4902,7 +4902,7 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
 
     if (l_mct_data->m_data) {
         opj_free(l_mct_data->m_data);
-        l_mct_data->m_data = 00;
+        l_mct_data->m_data = nullptr;
     }
 
     l_mct_data->m_index = l_indix;
@@ -4938,15 +4938,15 @@ static bool opj_j2k_write_mcc_record(      opj_j2k_t *p_j2k,
 {
     uint32_t i;
     uint32_t l_mcc_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_nb_bytes_for_comp;
     uint32_t l_mask;
     uint32_t l_tmcc;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     if (p_mcc_record->m_nb_comps > 255 ) {
         l_nb_bytes_for_comp = 2;
@@ -5047,9 +5047,9 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
     uint32_t l_nb_bytes_by_comp;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
             &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
@@ -5202,8 +5202,8 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
         p_header_data += 3;
 
         l_mcc_record->m_is_irreversible = ! ((l_tmp>>16) & 1);
-        l_mcc_record->m_decorrelation_array = 00;
-        l_mcc_record->m_offset_array = 00;
+        l_mcc_record->m_decorrelation_array = nullptr;
+        l_mcc_record->m_offset_array = nullptr;
 
         l_indix = l_tmp & 0xff;
         if (l_indix != 0) {
@@ -5216,7 +5216,7 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
                 ++l_mct_data;
             }
 
-            if (l_mcc_record->m_decorrelation_array == 00) {
+            if (l_mcc_record->m_decorrelation_array == nullptr) {
                 opj_event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
                 return false;
             }
@@ -5233,7 +5233,7 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
                 ++l_mct_data;
             }
 
-            if (l_mcc_record->m_offset_array == 00) {
+            if (l_mcc_record->m_offset_array == nullptr) {
                 opj_event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
                 return false;
             }
@@ -5258,16 +5258,16 @@ static bool opj_j2k_write_mco(     opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager
                              )
 {
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint32_t l_mco_size;
-    opj_tcp_t * l_tcp = 00;
+    opj_tcp_t * l_tcp = nullptr;
     opj_simple_mcc_decorrelation_data_t * l_mcc_record;
     uint32_t i;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tcp =&(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 
@@ -5332,9 +5332,9 @@ static bool opj_j2k_read_mco (      opj_j2k_t *p_j2k,
     opj_image_t * l_image;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
@@ -5368,7 +5368,7 @@ static bool opj_j2k_read_mco (      opj_j2k_t *p_j2k,
 
     if (l_tcp->m_mct_decoding_matrix) {
         opj_free(l_tcp->m_mct_decoding_matrix);
-        l_tcp->m_mct_decoding_matrix = 00;
+        l_tcp->m_mct_decoding_matrix = nullptr;
     }
 
     for (i=0; i<l_nb_stages; ++i) {
@@ -5394,7 +5394,7 @@ static bool opj_j2k_add_mct(opj_tcp_t * p_tcp, opj_image_t * p_image, uint32_t p
     opj_tccp_t * l_tccp;
 
     /* preconditions */
-    assert(p_tcp != 00);
+    assert(p_tcp != nullptr);
 
     l_mcc_record = p_tcp->m_mcc_records;
 
@@ -5471,14 +5471,14 @@ static bool opj_j2k_write_cbd( opj_j2k_t *p_j2k,
 {
     uint32_t i;
     uint32_t l_cbd_size;
-    uint8_t * l_current_data = 00;
-    opj_image_t *l_image = 00;
-    opj_image_comp_t * l_comp = 00;
+    uint8_t * l_current_data = nullptr;
+    opj_image_t *l_image = nullptr;
+    opj_image_comp_t * l_comp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_cbd_size = 6 + p_j2k->m_private_image->numcomps;
@@ -5539,12 +5539,12 @@ static bool opj_j2k_read_cbd (      opj_j2k_t *p_j2k,
     uint32_t l_nb_comp,l_num_comp;
     uint32_t l_comp_def;
     uint32_t i;
-    opj_image_comp_t * l_comp = 00;
+    opj_image_comp_t * l_comp = nullptr;
 
     /* preconditions */
-    assert(p_header_data != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_header_data != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     l_num_comp = p_j2k->m_private_image->numcomps;
 
@@ -5852,7 +5852,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
                                 opj_event_mgr_t * p_manager)
 {
     uint32_t i, j, tileno, numpocs_tile;
-    opj_cp_t *cp = 00;
+    opj_cp_t *cp = nullptr;
 
     if(!p_j2k || !parameters || ! image) {
         return false;
@@ -6222,7 +6222,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
     if (parameters->mct_data) {
         opj_free(parameters->mct_data);
-        parameters->mct_data = 00;
+        parameters->mct_data = nullptr;
     }
 	p_j2k->numThreads = parameters->numThreads;
     return true;
@@ -6230,7 +6230,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
 static bool opj_j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t type, int64_t pos, uint32_t len)
 {
-    assert(cstr_index != 00);
+    assert(cstr_index != nullptr);
 
     /* expand the list? */
     if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
@@ -6258,8 +6258,8 @@ static bool opj_j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t ty
 
 static bool opj_j2k_add_tlmarker(uint32_t tileno, opj_codestream_index_t *cstr_index, uint32_t type, int64_t pos, uint32_t len)
 {
-    assert(cstr_index != 00);
-    assert(cstr_index->tile_index != 00);
+    assert(cstr_index != nullptr);
+    assert(cstr_index->tile_index != nullptr);
 
     /* expand the list? */
     if ((cstr_index->tile_index[tileno].marknum + 1) > cstr_index->tile_index[tileno].maxmarknum) {
@@ -6319,9 +6319,9 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
                             opj_event_mgr_t* p_manager )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     /* create an empty image header */
     p_j2k->m_private_image = opj_image_create0();
@@ -6406,8 +6406,8 @@ bool opj_j2k_read_header(   opj_stream_private_t *p_stream,
 static bool opj_j2k_setup_header_reading (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_read_header_procedure, p_manager)) {
         return false;
@@ -6424,8 +6424,8 @@ static bool opj_j2k_setup_header_reading (opj_j2k_t *p_j2k, opj_event_mgr_t * p_
 static bool opj_j2k_setup_decoding_validation (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_validation_list,(opj_procedure)opj_j2k_build_decoder, p_manager)) {
         return false;
@@ -6446,9 +6446,9 @@ static bool opj_j2k_mct_validation (       opj_j2k_t * p_j2k,
     uint32_t i,j;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     if ((p_j2k->m_cp.rsiz & 0x8200) == 0x8200) {
         uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
@@ -6457,7 +6457,7 @@ static bool opj_j2k_mct_validation (       opj_j2k_t * p_j2k,
         for (i=0; i<l_nb_tiles; ++i) {
             if (l_tcp->mct == 2) {
                 opj_tccp_t * l_tccp = l_tcp->tccps;
-                l_is_valid &= (l_tcp->m_mct_coding_matrix != 00);
+                l_is_valid &= (l_tcp->m_mct_coding_matrix != nullptr);
 
                 for (j=0; j<p_j2k->m_private_image->numcomps; ++j) {
                     l_is_valid &= ! (l_tccp->qmfbid & 1);
@@ -6475,14 +6475,14 @@ bool opj_j2k_setup_mct_encoding(opj_tcp_t * p_tcp, opj_image_t * p_image)
 {
     uint32_t i;
     uint32_t l_indix = 1;
-    opj_mct_data_t * l_mct_deco_data = 00,* l_mct_offset_data = 00;
+    opj_mct_data_t * l_mct_deco_data = nullptr,* l_mct_offset_data = nullptr;
     opj_simple_mcc_decorrelation_data_t * l_mcc_data;
     uint32_t l_mct_size,l_nb_elem;
     float * l_data, * l_current_data;
     opj_tccp_t * l_tccp;
 
     /* preconditions */
-    assert(p_tcp != 00);
+    assert(p_tcp != nullptr);
 
     if (p_tcp->mct != 2) {
         return true;
@@ -6511,7 +6511,7 @@ bool opj_j2k_setup_mct_encoding(opj_tcp_t * p_tcp, opj_image_t * p_image)
 
         if (l_mct_deco_data->m_data) {
             opj_free(l_mct_deco_data->m_data);
-            l_mct_deco_data->m_data = 00;
+            l_mct_deco_data->m_data = nullptr;
         }
 
         l_mct_deco_data->m_index = l_indix++;
@@ -6557,7 +6557,7 @@ bool opj_j2k_setup_mct_encoding(opj_tcp_t * p_tcp, opj_image_t * p_image)
 
     if (l_mct_offset_data->m_data) {
         opj_free(l_mct_offset_data->m_data);
-        l_mct_offset_data->m_data = 00;
+        l_mct_offset_data->m_data = nullptr;
     }
 
     l_mct_offset_data->m_index = l_indix++;
@@ -6574,7 +6574,7 @@ bool opj_j2k_setup_mct_encoding(opj_tcp_t * p_tcp, opj_image_t * p_image)
     l_data = (float*)opj_malloc(l_nb_elem * sizeof(float));
     if (! l_data) {
         opj_free(l_mct_offset_data->m_data);
-        l_mct_offset_data->m_data = 00;
+        l_mct_offset_data->m_data = nullptr;
         return false;
     }
 
@@ -6655,9 +6655,9 @@ static bool opj_j2k_encoding_validation (  opj_j2k_t * p_j2k,
     bool l_is_valid = true;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     /* STATE checking */
     /* make sure the state is at 0 */
@@ -6665,9 +6665,9 @@ static bool opj_j2k_encoding_validation (  opj_j2k_t * p_j2k,
 
     /* POINTER validation */
     /* make sure a p_j2k codec is present */
-    l_is_valid &= (p_j2k->m_procedure_list != 00);
+    l_is_valid &= (p_j2k->m_procedure_list != nullptr);
     /* make sure a validation list is present */
-    l_is_valid &= (p_j2k->m_validation_list != 00);
+    l_is_valid &= (p_j2k->m_validation_list != nullptr);
 
     /* ISO 15444-1:2004 states between 1 & 33 (decomposition levels between 0 -> 32) */
     if ((p_j2k->m_cp.tcps->tccps->numresolutions == 0) || (p_j2k->m_cp.tcps->tccps->numresolutions > OPJ_J2K_MAXRLVLS)) {
@@ -6697,9 +6697,9 @@ static bool opj_j2k_decoding_validation (  opj_j2k_t *p_j2k,
     bool l_is_valid = true;
 
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     /* STATE checking */
     /* make sure the state is at 0 */
@@ -6708,9 +6708,9 @@ static bool opj_j2k_decoding_validation (  opj_j2k_t *p_j2k,
     /* POINTER validation */
     /* make sure a p_j2k codec is present */
     /* make sure a procedure list is present */
-    l_is_valid &= (p_j2k->m_procedure_list != 00);
+    l_is_valid &= (p_j2k->m_procedure_list != nullptr);
     /* make sure a validation list is present */
-    l_is_valid &= (p_j2k->m_validation_list != 00);
+    l_is_valid &= (p_j2k->m_validation_list != nullptr);
 
     /* PARAMETER VALIDATION */
     return l_is_valid;
@@ -6722,15 +6722,15 @@ static bool opj_j2k_read_header_procedure( opj_j2k_t *p_j2k,
 {
     uint32_t l_current_marker;
     uint32_t l_marker_size;
-    const opj_dec_memory_marker_handler_t * l_marker_handler = 00;
+    const opj_dec_memory_marker_handler_t * l_marker_handler = nullptr;
     bool l_has_siz = 0;
     bool l_has_cod = 0;
     bool l_has_qcd = 0;
 
     /* preconditions */
-    assert(p_stream != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_stream != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     /*  We enter in the main header */
     p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSOC;
@@ -6884,15 +6884,15 @@ static bool opj_j2k_exec ( opj_j2k_t * p_j2k,
                            opj_stream_private_t *p_stream,
                            opj_event_mgr_t * p_manager )
 {
-    bool (** l_procedure) (opj_j2k_t * ,opj_stream_private_t *,opj_event_mgr_t *) = 00;
+    bool (** l_procedure) (opj_j2k_t * ,opj_stream_private_t *,opj_event_mgr_t *) = nullptr;
     bool l_result = true;
     uint32_t l_nb_proc, i;
 
     /* preconditions*/
-    assert(p_procedure_list != 00);
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_procedure_list != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     l_nb_proc = opj_procedure_list_get_nb_procedures(p_procedure_list);
     l_procedure = (bool (**) (opj_j2k_t * ,opj_stream_private_t *,opj_event_mgr_t *)) opj_procedure_list_get_first_procedure(p_procedure_list);
@@ -6913,11 +6913,11 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
         opj_event_mgr_t * p_manager
                                                     )
 {
-    opj_tcp_t * l_tcp = 00;
-    opj_tcp_t * l_default_tcp = 00;
+    opj_tcp_t * l_tcp = nullptr;
+    opj_tcp_t * l_default_tcp = nullptr;
     uint32_t l_nb_tiles;
     uint32_t i,j;
-    opj_tccp_t *l_current_tccp = 00;
+    opj_tccp_t *l_current_tccp = nullptr;
     uint32_t l_tccp_size;
     uint32_t l_mct_size;
     opj_image_t * l_image;
@@ -6927,9 +6927,9 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
     uint32_t l_offset;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
     l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
@@ -6947,13 +6947,13 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
         /* Initialize some values of the current tile coding parameters*/
         l_tcp->cod = 0;
         l_tcp->ppt = 0;
-        l_tcp->ppt_data = 00;
+        l_tcp->ppt_data = nullptr;
         /* Remove memory not owned by this tile in case of early error return. */
-        l_tcp->m_mct_decoding_matrix = 00;
+        l_tcp->m_mct_decoding_matrix = nullptr;
         l_tcp->m_nb_max_mct_records = 0;
-        l_tcp->m_mct_records = 00;
+        l_tcp->m_mct_records = nullptr;
         l_tcp->m_nb_max_mcc_records = 0;
-        l_tcp->m_mcc_records = 00;
+        l_tcp->m_mcc_records = nullptr;
         /* Reconnect the tile-compo coding parameters pointer to the current tile coding parameters*/
         l_tcp->tccps = l_current_tccp;
 
@@ -7039,7 +7039,7 @@ static bool opj_j2k_copy_default_tcp_and_create_tcd (       opj_j2k_t * p_j2k,
 
     if ( !opj_tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp), p_j2k->numThreads) ) {
         opj_tcd_destroy(p_j2k->m_tcd);
-        p_j2k->m_tcd = 00;
+        p_j2k->m_tcd = nullptr;
         opj_event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
         return false;
     }
@@ -7060,39 +7060,39 @@ static const opj_dec_memory_marker_handler_t * opj_j2k_get_marker_handler (uint3
 
 void opj_j2k_destroy (opj_j2k_t *p_j2k)
 {
-    if (p_j2k == 00) {
+    if (p_j2k == nullptr) {
         return;
     }
 
     if (p_j2k->m_is_decoder) {
 
-        if (p_j2k->m_specific_param.m_decoder.m_default_tcp != 00) {
+        if (p_j2k->m_specific_param.m_decoder.m_default_tcp != nullptr) {
             opj_j2k_tcp_destroy(p_j2k->m_specific_param.m_decoder.m_default_tcp);
             opj_free(p_j2k->m_specific_param.m_decoder.m_default_tcp);
-            p_j2k->m_specific_param.m_decoder.m_default_tcp = 00;
+            p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
         }
 
-        if (p_j2k->m_specific_param.m_decoder.m_header_data != 00) {
+        if (p_j2k->m_specific_param.m_decoder.m_header_data != nullptr) {
             opj_free(p_j2k->m_specific_param.m_decoder.m_header_data);
-            p_j2k->m_specific_param.m_decoder.m_header_data = 00;
+            p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
             p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
         }
     } else {
 
         if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data) {
             opj_free(p_j2k->m_specific_param.m_encoder.m_encoded_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_encoded_tile_data = 00;
+            p_j2k->m_specific_param.m_encoder.m_encoded_tile_data = nullptr;
         }
 
         if (p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer) {
             opj_free(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer);
-            p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 00;
-            p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = 00;
+            p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = nullptr;
+            p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = nullptr;
         }
 
         if (p_j2k->m_specific_param.m_encoder.m_header_tile_data) {
             opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = 00;
+            p_j2k->m_specific_param.m_encoder.m_header_tile_data = nullptr;
             p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
         }
     }
@@ -7103,10 +7103,10 @@ void opj_j2k_destroy (opj_j2k_t *p_j2k)
     memset(&(p_j2k->m_cp),0,sizeof(opj_cp_t));
 
     opj_procedure_list_destroy(p_j2k->m_procedure_list);
-    p_j2k->m_procedure_list = 00;
+    p_j2k->m_procedure_list = nullptr;
 
     opj_procedure_list_destroy(p_j2k->m_validation_list);
-    p_j2k->m_procedure_list = 00;
+    p_j2k->m_procedure_list = nullptr;
 
     j2k_destroy_cstr_index(p_j2k->cstr_index);
     p_j2k->cstr_index = NULL;
@@ -7161,11 +7161,11 @@ void j2k_destroy_cstr_index (opj_codestream_index_t *p_cstr_ind)
 
 static void opj_j2k_tcp_destroy (opj_tcp_t *p_tcp)
 {
-    if (p_tcp == 00) {
+    if (p_tcp == nullptr) {
         return;
     }
 
-    if (p_tcp->ppt_markers != 00) {
+    if (p_tcp->ppt_markers != nullptr) {
         uint32_t i;
         for (i = 0U; i < p_tcp->ppt_markers_count; ++i) {
             if (p_tcp->ppt_markers[i].m_data != NULL) {
@@ -7177,29 +7177,29 @@ static void opj_j2k_tcp_destroy (opj_tcp_t *p_tcp)
         p_tcp->ppt_markers = NULL;
     }
 
-    if (p_tcp->ppt_buffer != 00) {
+    if (p_tcp->ppt_buffer != nullptr) {
         opj_free(p_tcp->ppt_buffer);
-        p_tcp->ppt_buffer = 00;
+        p_tcp->ppt_buffer = nullptr;
     }
 
-    if (p_tcp->tccps != 00) {
+    if (p_tcp->tccps != nullptr) {
         opj_free(p_tcp->tccps);
-        p_tcp->tccps = 00;
+        p_tcp->tccps = nullptr;
     }
 
-    if (p_tcp->m_mct_coding_matrix != 00) {
+    if (p_tcp->m_mct_coding_matrix != nullptr) {
         opj_free(p_tcp->m_mct_coding_matrix);
-        p_tcp->m_mct_coding_matrix = 00;
+        p_tcp->m_mct_coding_matrix = nullptr;
     }
 
-    if (p_tcp->m_mct_decoding_matrix != 00) {
+    if (p_tcp->m_mct_decoding_matrix != nullptr) {
         opj_free(p_tcp->m_mct_decoding_matrix);
-        p_tcp->m_mct_decoding_matrix = 00;
+        p_tcp->m_mct_decoding_matrix = nullptr;
     }
 
     if (p_tcp->m_mcc_records) {
         opj_free(p_tcp->m_mcc_records);
-        p_tcp->m_mcc_records = 00;
+        p_tcp->m_mcc_records = nullptr;
         p_tcp->m_nb_max_mcc_records = 0;
         p_tcp->m_nb_mcc_records = 0;
     }
@@ -7211,19 +7211,19 @@ static void opj_j2k_tcp_destroy (opj_tcp_t *p_tcp)
         for (i=0; i<p_tcp->m_nb_mct_records; ++i) {
             if (l_mct_data->m_data) {
                 opj_free(l_mct_data->m_data);
-                l_mct_data->m_data = 00;
+                l_mct_data->m_data = nullptr;
             }
 
             ++l_mct_data;
         }
 
         opj_free(p_tcp->m_mct_records);
-        p_tcp->m_mct_records = 00;
+        p_tcp->m_mct_records = nullptr;
     }
 
-    if (p_tcp->mct_norms != 00) {
+    if (p_tcp->mct_norms != nullptr) {
         opj_free(p_tcp->mct_norms);
-        p_tcp->mct_norms = 00;
+        p_tcp->mct_norms = nullptr;
     }
 
     opj_j2k_tcp_data_destroy(p_tcp);
@@ -7241,12 +7241,12 @@ static void opj_j2k_tcp_data_destroy (opj_tcp_t *p_tcp)
 static void opj_j2k_cp_destroy (opj_cp_t *p_cp)
 {
     uint32_t l_nb_tiles;
-    opj_tcp_t * l_current_tile = 00;
+    opj_tcp_t * l_current_tile = nullptr;
 
-    if (p_cp == 00) {
+    if (p_cp == nullptr) {
         return;
     }
-    if (p_cp->tcps != 00) {
+    if (p_cp->tcps != nullptr) {
         uint32_t i;
         l_current_tile = p_cp->tcps;
         l_nb_tiles = p_cp->th * p_cp->tw;
@@ -7256,9 +7256,9 @@ static void opj_j2k_cp_destroy (opj_cp_t *p_cp)
             ++l_current_tile;
         }
         opj_free(p_cp->tcps);
-        p_cp->tcps = 00;
+        p_cp->tcps = nullptr;
     }
-    if (p_cp->ppm_markers != 00) {
+    if (p_cp->ppm_markers != nullptr) {
         uint32_t i;
         for (i = 0U; i < p_cp->ppm_markers_count; ++i) {
             if (p_cp->ppm_markers[i].m_data != NULL) {
@@ -7270,10 +7270,10 @@ static void opj_j2k_cp_destroy (opj_cp_t *p_cp)
         p_cp->ppm_markers = NULL;
     }
     opj_free(p_cp->ppm_buffer);
-    p_cp->ppm_buffer = 00;
+    p_cp->ppm_buffer = nullptr;
     p_cp->ppm_data = NULL; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
     opj_free(p_cp->comment);
-    p_cp->comment = 00;
+    p_cp->comment = nullptr;
 }
 
 static bool opj_j2k_need_nb_tile_parts_correction(opj_stream_private_t *p_stream, uint32_t tile_no, bool* p_correction_needed, opj_event_mgr_t * p_manager )
@@ -7393,13 +7393,13 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
 {
     uint32_t l_current_marker = J2K_MS_SOT;
     uint32_t l_marker_size;
-    const opj_dec_memory_marker_handler_t * l_marker_handler = 00;
+    const opj_dec_memory_marker_handler_t * l_marker_handler = nullptr;
     opj_tcp_t * l_tcp = NULL;
 
     /* preconditions */
-    assert(p_stream != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_stream != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     /* Reach the End Of Codestream ?*/
     if (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC) {
@@ -7661,9 +7661,9 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
     opj_tcp_t * l_tcp;
 
     /* preconditions */
-    assert(p_stream != 00);
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_stream != nullptr);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if ( !(p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_DATA)
             || (p_tile_index != p_j2k->m_current_tile_number) ) {
@@ -8168,7 +8168,7 @@ opj_j2k_t* opj_j2k_create_decompress(void)
 {
     opj_j2k_t *l_j2k = (opj_j2k_t*) opj_calloc(1,sizeof(opj_j2k_t));
     if (!l_j2k) {
-        return 00;
+        return nullptr;
     }
 
     l_j2k->m_is_decoder = 1;
@@ -8181,13 +8181,13 @@ opj_j2k_t* opj_j2k_create_decompress(void)
     l_j2k->m_specific_param.m_decoder.m_default_tcp = (opj_tcp_t*) opj_calloc(1,sizeof(opj_tcp_t));
     if (!l_j2k->m_specific_param.m_decoder.m_default_tcp) {
         opj_j2k_destroy(l_j2k);
-        return 00;
+        return nullptr;
     }
 
     l_j2k->m_specific_param.m_decoder.m_header_data = (uint8_t *) opj_calloc(1,OPJ_J2K_DEFAULT_HEADER_SIZE);
     if (! l_j2k->m_specific_param.m_decoder.m_header_data) {
         opj_j2k_destroy(l_j2k);
-        return 00;
+        return nullptr;
     }
 
     l_j2k->m_specific_param.m_decoder.m_header_data_size = OPJ_J2K_DEFAULT_HEADER_SIZE;
@@ -8200,21 +8200,21 @@ opj_j2k_t* opj_j2k_create_decompress(void)
     l_j2k->cstr_index = opj_j2k_create_cstr_index();
     if (!l_j2k->cstr_index) {
         opj_j2k_destroy(l_j2k);
-        return 00;
+        return nullptr;
     }
 
     /* validation list creation */
     l_j2k->m_validation_list = opj_procedure_list_create();
     if (! l_j2k->m_validation_list) {
         opj_j2k_destroy(l_j2k);
-        return 00;
+        return nullptr;
     }
 
     /* execution list creation */
     l_j2k->m_procedure_list = opj_procedure_list_create();
     if (! l_j2k->m_procedure_list) {
         opj_j2k_destroy(l_j2k);
-        return 00;
+        return nullptr;
     }
 
     return l_j2k;
@@ -8245,12 +8245,12 @@ static uint32_t opj_j2k_get_SPCod_SPCoc_size (       opj_j2k_t *p_j2k,
         uint32_t p_tile_no,
         uint32_t p_comp_no )
 {
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8276,7 +8276,7 @@ static bool opj_j2k_compare_SPCod_SPCoc(opj_j2k_t *p_j2k, uint32_t p_tile_no, ui
     opj_tccp_t *l_tccp1 = NULL;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8321,15 +8321,15 @@ static bool opj_j2k_write_SPCod_SPCoc(     opj_j2k_t *p_j2k,
         opj_event_mgr_t * p_manager )
 {
     uint32_t i;
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_header_size != 00);
-    assert(p_manager != 00);
-    assert(p_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_header_size != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8392,9 +8392,9 @@ static bool opj_j2k_read_SPCod_SPCoc(  opj_j2k_t *p_j2k,
     uint8_t * l_current_ptr = NULL;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_header_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_header_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
@@ -8498,7 +8498,7 @@ static void opj_j2k_copy_tile_component_parameters( opj_j2k_t *p_j2k )
     uint32_t l_prc_size;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ? /* FIXME J2K_DEC_STATE_TPH*/
@@ -8527,12 +8527,12 @@ static uint32_t opj_j2k_get_SQcd_SQcc_size ( opj_j2k_t *p_j2k,
 {
     uint32_t l_num_bands;
 
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8560,7 +8560,7 @@ static bool opj_j2k_compare_SQcd_SQcc(opj_j2k_t *p_j2k, uint32_t p_tile_no, uint
     uint32_t l_band_no, l_num_bands;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8609,15 +8609,15 @@ static bool opj_j2k_write_SQcd_SQcc(       opj_j2k_t *p_j2k,
     uint32_t l_band_no, l_num_bands;
     uint32_t l_expn,l_mant;
 
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_header_size != 00);
-    assert(p_manager != 00);
-    assert(p_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_header_size != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = &l_cp->tcps[p_tile_no];
@@ -8679,16 +8679,16 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
 {
     /* loop*/
     uint32_t l_band_no;
-    opj_cp_t *l_cp = 00;
-    opj_tcp_t *l_tcp = 00;
-    opj_tccp_t *l_tccp = 00;
-    uint8_t * l_current_ptr = 00;
+    opj_cp_t *l_cp = nullptr;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tccp_t *l_tccp = nullptr;
+    uint8_t * l_current_ptr = nullptr;
     uint32_t l_tmp, l_num_band;
 
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_header_data != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_header_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     /* come from tile part header or main header ?*/
@@ -8774,7 +8774,7 @@ static void opj_j2k_copy_tile_quantization_parameters( opj_j2k_t *p_j2k )
     uint32_t l_size;
 
     /* preconditions */
-    assert(p_j2k != 00);
+    assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
     l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
@@ -9366,8 +9366,8 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 static bool opj_j2k_setup_decoding (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_decode_tiles, p_manager)) {
         return false;
@@ -9511,8 +9511,8 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
 static bool opj_j2k_setup_decoding_tile (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions*/
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_decode_one_tile, p_manager)) {
         return false;
@@ -9704,14 +9704,14 @@ bool opj_j2k_encode(opj_j2k_t * p_j2k,
     uint32_t l_nb_tiles;
 	uint64_t l_max_tile_size = 0;
 	uint64_t l_current_tile_size;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     bool l_reuse_data = false;
-    opj_tcd_t* p_tcd = 00;
+    opj_tcd_t* p_tcd = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     p_tcd = p_j2k->m_tcd;
 	p_tcd->current_plugin_tile = tile;
@@ -9816,9 +9816,9 @@ bool opj_j2k_start_compress(opj_j2k_t *p_j2k,
                             opj_event_mgr_t * p_manager)
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     p_j2k->m_private_image = opj_image_create0();
     if (! p_j2k->m_private_image) {
@@ -10013,7 +10013,7 @@ static bool opj_j2k_post_write_tile (   opj_j2k_t * p_j2k,
 										opj_event_mgr_t * p_manager )
 {
     uint64_t l_nb_bytes_written;
-    uint8_t * l_current_data = 00;
+    uint8_t * l_current_data = nullptr;
     uint64_t l_tile_size = 0;
     uint64_t l_available_data;
 
@@ -10053,8 +10053,8 @@ static bool opj_j2k_post_write_tile (   opj_j2k_t * p_j2k,
 static bool opj_j2k_setup_end_compress (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     /* DEVELOPER CORNER, insert your custom procedures */
     if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_write_eoc, p_manager)) {
@@ -10082,8 +10082,8 @@ static bool opj_j2k_setup_end_compress (opj_j2k_t *p_j2k, opj_event_mgr_t * p_ma
 static bool opj_j2k_setup_encoding_validation (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_validation_list, (opj_procedure)opj_j2k_build_encoder, p_manager)) {
         return false;
@@ -10103,8 +10103,8 @@ static bool opj_j2k_setup_encoding_validation (opj_j2k_t *p_j2k, opj_event_mgr_t
 static bool opj_j2k_setup_header_writing (opj_j2k_t *p_j2k, opj_event_mgr_t * p_manager)
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
 
     if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_init_info, p_manager)) {
         return false;
@@ -10144,7 +10144,7 @@ static bool opj_j2k_setup_header_writing (opj_j2k_t *p_j2k, opj_event_mgr_t * p_
         return false;
     }
 
-    if (p_j2k->m_cp.comment != 00)  {
+    if (p_j2k->m_cp.comment != nullptr)  {
         if (! opj_procedure_list_add_procedure(p_j2k->m_procedure_list,(opj_procedure)opj_j2k_write_com, p_manager)) {
             return false;
         }
@@ -10183,10 +10183,10 @@ static bool opj_j2k_write_first_tile_part (opj_j2k_t *p_j2k,
 {
     uint64_t l_nb_bytes_written = 0;
     uint64_t l_current_nb_bytes_written;
-    uint8_t * l_begin_data = 00;
+    uint8_t * l_begin_data = nullptr;
 
-    opj_tcd_t * l_tcd = 00;
-    opj_cp_t * l_cp = 00;
+    opj_tcd_t * l_tcd = nullptr;
+    opj_cp_t * l_cp = nullptr;
 
     l_tcd = p_j2k->m_tcd;
     l_cp = &(p_j2k->m_cp);
@@ -10268,9 +10268,9 @@ static bool opj_j2k_write_all_tile_parts(  opj_j2k_t *p_j2k,
     uint32_t pino;
 
     uint8_t * l_begin_data;
-    opj_tcp_t *l_tcp = 00;
-    opj_tcd_t * l_tcd = 00;
-    opj_cp_t * l_cp = 00;
+    opj_tcp_t *l_tcp = nullptr;
+    opj_tcd_t * l_tcd = nullptr;
+    opj_cp_t * l_cp = nullptr;
 
     l_tcd = p_j2k->m_tcd;
     l_cp = &(p_j2k->m_cp);
@@ -10371,9 +10371,9 @@ static bool opj_j2k_write_updated_tlm( opj_j2k_t *p_j2k,
     int64_t l_tlm_position, l_current_position;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     l_tlm_size = 5 * p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
     l_tlm_position = 6 + p_j2k->m_specific_param.m_encoder.m_tlm_start;
@@ -10399,12 +10399,12 @@ static bool opj_j2k_end_encoding(  opj_j2k_t *p_j2k,
                                    opj_event_mgr_t * p_manager )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     opj_tcd_destroy(p_j2k->m_tcd);
-    p_j2k->m_tcd = 00;
+    p_j2k->m_tcd = nullptr;
 
     if (p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer) {
         opj_free(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer);
@@ -10431,9 +10431,9 @@ static bool opj_j2k_destroy_header_memory ( opj_j2k_t * p_j2k,
                                           )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_stream != 00);
-    assert(p_manager != 00);
+    assert(p_j2k != nullptr);
+    assert(p_stream != nullptr);
+    assert(p_manager != nullptr);
 
     if (p_j2k->m_specific_param.m_encoder.m_header_tile_data) {
         opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
@@ -10449,12 +10449,12 @@ static bool opj_j2k_init_info(     opj_j2k_t *p_j2k,
                                    struct opj_stream_private *p_stream,
                                    opj_event_mgr_t * p_manager )
 {
-    opj_codestream_info_t * l_cstr_info = 00;
+    opj_codestream_info_t * l_cstr_info = nullptr;
 
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
     (void)l_cstr_info;
     return opj_j2k_calculate_tp(p_j2k,&(p_j2k->m_cp),&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,p_j2k->m_private_image,p_manager);
 }
@@ -10472,9 +10472,9 @@ static bool opj_j2k_create_tcd(     opj_j2k_t *p_j2k,
                               )
 {
     /* preconditions */
-    assert(p_j2k != 00);
-    assert(p_manager != 00);
-    assert(p_stream != 00);
+    assert(p_j2k != nullptr);
+    assert(p_manager != nullptr);
+    assert(p_stream != nullptr);
 
     p_j2k->m_tcd = opj_tcd_create(false);
 
@@ -10485,7 +10485,7 @@ static bool opj_j2k_create_tcd(     opj_j2k_t *p_j2k,
 
     if (!opj_tcd_init(p_j2k->m_tcd,p_j2k->m_private_image,&p_j2k->m_cp, p_j2k->numThreads)) {
         opj_tcd_destroy(p_j2k->m_tcd);
-        p_j2k->m_tcd = 00;
+        p_j2k->m_tcd = nullptr;
         return false;
     }
 

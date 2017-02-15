@@ -402,9 +402,9 @@ static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 {
 	int32_t k;
-	int32_t *a = 00;
-	int32_t *aj = 00;
-	int32_t *bj = 00;
+	int32_t *a = nullptr;
+	int32_t *aj = nullptr;
+	int32_t *bj = nullptr;
 	int32_t w;
 
 	int32_t rw;			/* width of the resolution level computed   */
@@ -509,9 +509,9 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 {
 	int32_t i, k;
-	int32_t *a = 00;
-	int32_t *aj = 00;
-	int32_t *bj = 00;
+	int32_t *a = nullptr;
+	int32_t *aj = nullptr;
+	int32_t *bj = nullptr;
 	int32_t w, l;
 
 	int32_t rw;			/* width of the resolution level computed   */

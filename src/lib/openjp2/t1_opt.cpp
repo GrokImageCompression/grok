@@ -141,18 +141,18 @@ static void opj_t1_enc_clnpass(
 * @return a new T1 handle if successful, returns NULL otherwise
 */
 opj_t1_opt_t* opj_t1_opt_create(bool isEncoder){
-    opj_t1_opt_t *l_t1 = 00;
+    opj_t1_opt_t *l_t1 = nullptr;
 
     l_t1 = (opj_t1_opt_t*)opj_calloc(1, sizeof(opj_t1_opt_t));
     if (!l_t1) {
-        return 00;
+        return nullptr;
     }
 
     /* create MQC handles */
     l_t1->mqc = opj_mqc_create();
     if (!l_t1->mqc) {
         opj_t1_opt_destroy(l_t1);
-        return 00;
+        return nullptr;
     }
 
     l_t1->encoder = isEncoder;
@@ -173,17 +173,17 @@ void opj_t1_opt_destroy(opj_t1_opt_t *p_t1){
 
     /* destroy MQC handles */
     opj_mqc_destroy(p_t1->mqc);
-    p_t1->mqc = 00;
+    p_t1->mqc = nullptr;
 
     /* encoder uses tile buffer, so no need to free */
     if (p_t1->data) {
         opj_aligned_free(p_t1->data);
-        p_t1->data = 00;
+        p_t1->data = nullptr;
     }
 
     if (p_t1->flags) {
         opj_aligned_free(p_t1->flags);
-        p_t1->flags = 00;
+        p_t1->flags = nullptr;
     }
 
     opj_free(p_t1);

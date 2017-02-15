@@ -89,12 +89,12 @@ bool opj_matrix_inversion_f(float * pSrcMatrix,
                             float * pDestMatrix,
                             uint32_t nb_compo)
 {
-    uint8_t * l_data = 00;
+    uint8_t * l_data = nullptr;
     uint32_t l_permutation_size = nb_compo * (uint32_t)sizeof(uint32_t);
     uint32_t l_swap_size = nb_compo * (uint32_t)sizeof(float);
     uint32_t l_total_size = l_permutation_size + 3 * l_swap_size;
-    uint32_t * lPermutations = 00;
-    float * l_double_data = 00;
+    uint32_t * lPermutations = nullptr;
+    float * l_double_data = nullptr;
 
     l_data = (uint8_t *) opj_malloc(l_total_size);
     if (l_data == 0) {

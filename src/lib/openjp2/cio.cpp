@@ -168,10 +168,10 @@ void opj_read_float_LE(const uint8_t * p_buffer, float * p_value)
 
 opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_input)
 {
-    opj_stream_private_t * l_stream = 00;
+    opj_stream_private_t * l_stream = nullptr;
     l_stream = (opj_stream_private_t*) opj_calloc(1,sizeof(opj_stream_private_t));
     if (! l_stream) {
-        return 00;
+        return nullptr;
     }
 
     if (p_buffer_size) {
@@ -179,7 +179,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_inpu
         l_stream->m_stored_data = (uint8_t *)opj_malloc(p_buffer_size);
         if (!l_stream->m_stored_data) {
             opj_free(l_stream);
-            return 00;
+            return nullptr;
         }
         l_stream->m_current_data = l_stream->m_stored_data;
     }
@@ -217,7 +217,7 @@ void OPJ_CALLCONV opj_stream_destroy(opj_stream_t* p_stream)
         }
         if (l_stream->m_stored_data) {
             opj_free(l_stream->m_stored_data);
-            l_stream->m_stored_data = 00;
+            l_stream->m_stored_data = nullptr;
         }
         opj_free(l_stream);
     }

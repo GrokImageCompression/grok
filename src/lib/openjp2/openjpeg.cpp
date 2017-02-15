@@ -213,11 +213,11 @@ const char* OPJ_CALLCONV opj_version(void)
 
 opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 {
-    opj_codec_private_t *l_codec = 00;
+    opj_codec_private_t *l_codec = nullptr;
 
     l_codec = (opj_codec_private_t*) opj_calloc(1, sizeof(opj_codec_private_t));
     if (!l_codec) {
-        return 00;
+        return nullptr;
     }
 
     l_codec->is_decompressor = 1;
@@ -375,7 +375,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 
         if (! l_codec->m_codec) {
             opj_free(l_codec);
-            return 00;
+            return nullptr;
         }
 
         break;
@@ -383,7 +383,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_JPT:
     default:
         opj_free(l_codec);
-        return 00;
+        return nullptr;
     }
 
     opj_set_default_event_handler(&(l_codec->m_event_mgr));
@@ -607,11 +607,11 @@ bool OPJ_CALLCONV opj_set_decoded_resolution_factor(opj_codec_t *p_codec,
 
 opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 {
-    opj_codec_private_t *l_codec = 00;
+    opj_codec_private_t *l_codec = nullptr;
 
     l_codec = (opj_codec_private_t*)opj_calloc(1, sizeof(opj_codec_private_t));
     if (!l_codec) {
-        return 00;
+        return nullptr;
     }
 
     l_codec->is_decompressor = 0;
@@ -649,7 +649,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = opj_j2k_create_compress();
         if (! l_codec->m_codec) {
             opj_free(l_codec);
-            return 00;
+            return nullptr;
         }
 
         break;
@@ -687,7 +687,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = opj_jp2_create(false);
         if (! l_codec->m_codec) {
             opj_free(l_codec);
-            return 00;
+            return nullptr;
         }
 
         break;
@@ -696,7 +696,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_JPT:
     default:
         opj_free(l_codec);
-        return 00;
+        return nullptr;
     }
 
     opj_set_default_event_handler(&(l_codec->m_event_mgr));
@@ -894,7 +894,7 @@ void OPJ_CALLCONV opj_destroy_codec(opj_codec_t *p_codec)
             l_codec->m_codec_data.m_compression.opj_destroy(l_codec->m_codec);
         }
 
-        l_codec->m_codec = 00;
+        l_codec->m_codec = nullptr;
         opj_free(l_codec);
     }
 }
@@ -976,7 +976,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     size_t p_size,
     bool p_is_read_stream)
 {
-    opj_stream_t* l_stream = 00;
+    opj_stream_t* l_stream = nullptr;
     FILE *p_file;
     const char *mode;
 

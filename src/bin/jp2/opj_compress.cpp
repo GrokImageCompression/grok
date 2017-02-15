@@ -1488,8 +1488,8 @@ img_fol_t img_fol_plugin, out_fol_plugin;
 static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	opj_cparameters_t* parameters = info->encoder_parameters;
 	bool bSuccess;
-	opj_stream_t *l_stream = 00;
-	opj_codec_t* l_codec = 00;
+	opj_stream_t *l_stream = nullptr;
+	opj_codec_t* l_codec = nullptr;
 	opj_image_t *image = info->image;
 	char  outfile[OPJ_PATH_LEN];
 	char  temp_ofname[OPJ_PATH_LEN];
@@ -1669,9 +1669,9 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(l_codec, info_callback, 00);
-	opj_set_warning_handler(l_codec, warning_callback, 00);
-	opj_set_error_handler(l_codec, error_callback, 00);
+	opj_set_info_handler(l_codec, info_callback, nullptr);
+	opj_set_warning_handler(l_codec, warning_callback, nullptr);
+	opj_set_error_handler(l_codec, error_callback, nullptr);
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
 		fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
