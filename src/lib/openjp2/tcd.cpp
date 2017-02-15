@@ -1144,7 +1144,6 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                             return false;
                         }
                         /*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (opj_tcd_cblk_dec_t): %d\n",l_nb_code_blocks_size);*/
-
                         memset(l_current_precinct->cblks.blocks,0,l_nb_code_blocks_size);
 
                         l_current_precinct->block_size = l_nb_code_blocks_size;
@@ -1160,10 +1159,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                         l_current_precinct->cblks.blocks = new_blocks;
                         /*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (opj_tcd_cblk_dec_t): from %d to %d\n",l_current_precinct->block_size, l_nb_code_blocks_size);     */
 
-                        memset(((uint8_t *) l_current_precinct->cblks.blocks) + l_current_precinct->block_size
-                               ,0
-                               ,l_nb_code_blocks_size - l_current_precinct->block_size);
-
+                        memset(((uint8_t *) l_current_precinct->cblks.blocks) + l_current_precinct->block_size,0,l_nb_code_blocks_size - l_current_precinct->block_size);
                         l_current_precinct->block_size = l_nb_code_blocks_size;
                     }
 
