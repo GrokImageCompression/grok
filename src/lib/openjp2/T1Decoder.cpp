@@ -33,7 +33,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 		return false;
 	decodeQueue.push_no_lock(blocks);
 	blocks->clear();
-#ifdef DEBUG_LOSSLESS
+#ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
 #endif
 

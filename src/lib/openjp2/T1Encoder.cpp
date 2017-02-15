@@ -116,8 +116,8 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		auto tileLineAdvance = tile_width - t1->w;
 		auto tiledp = block->tiledp;
 
-#ifdef DEBUG_LOSSLESS
-		int32_t* before = new int32_t[t1->w * t1->h];
+#ifdef DEBUG_LOSSLESS_T1
+		block->unencodedData =  new int32_t[t1->w * t1->h];
 #endif
 		uint32_t tileIndex = 0;
 		uint32_t max = 0;
@@ -138,8 +138,8 @@ void T1Encoder::encodeOpt(size_t threadId) {
 						tmp = block->tiledp[tileIndex];
 					}
 					*/
-#ifdef DEBUG_LOSSLESS
-					before[cblk_index] = block->tiledp[tileIndex];
+#ifdef DEBUG_LOSSLESS_T1
+					block->unencodedData[cblk_index] = block->tiledp[tileIndex];
 #endif
 					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)opj_int_abs(tmp);
@@ -192,13 +192,13 @@ void T1Encoder::encodeOpt(size_t threadId) {
 											max);
 
 
-#ifdef DEBUG_LOSSLESS
+#ifdef DEBUG_LOSSLESS_T1
 		opj_t1_t* t1Decode = opj_t1_create(false, t1->w, t1->h);
 
 		opj_tcd_cblk_dec_t* cblkDecode = new opj_tcd_cblk_dec_t();
 		cblkDecode->data = nullptr;
 		cblkDecode->segs = nullptr;
-		if (!opj_tcd_code_block_dec_allocate(cblkDecode)) {
+		if (!cblkDecode->alloc()) {
 			continue;
 		}
 		cblkDecode->x0 = block->cblk->x0;
@@ -210,6 +210,13 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		memset(cblkDecode->segs, 0, sizeof(opj_tcd_seg_t));
 		auto seg = cblkDecode->segs;
 		seg->numpasses = block->cblk->num_passes_encoded;
+		if (block->resno == 1 &&
+			block->bandno ==2 &&
+			block->precno == 0 &&
+			block->cblkno == 0) {
+
+			seg->numpasses = 15;
+		}
 		auto rate = seg->numpasses  ? block->cblk->passes[seg->numpasses - 1].rate : 0;
 		seg->len = rate;
 		seg->dataindex = 0;
@@ -221,7 +228,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		auto index = 0;
 		for (uint32_t j = 0; j < t1->h; ++j) {
 			for (uint32_t i = 0; i < t1->w; ++i) {
-				auto valBefore = before[index];
+				auto valBefore = block->unencodedData[index];
 				auto valAfter = t1Decode->data[index]/2;
 				if (valAfter != valBefore) {
 					printf("(%d,%d); expected=%x, actual=%x\n", i, j, valBefore, valAfter);
@@ -233,7 +240,8 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		opj_t1_destroy(t1Decode);
 		opj_free(cblkDecode->segs);
 		delete cblkDecode;
-		delete[] before;
+		delete[] block->unencodedData;
+		block->unencodedData = nullptr;
 #endif
 		delete block;
 		std::unique_lock<std::mutex> lk(distortion_mutex);
@@ -252,7 +260,7 @@ bool T1Encoder::encode(bool do_opt,
 	tile = encodeTile;
 	maxCblkW = encodeMaxCblkW;
 	maxCblkH = encodeMaxCblkH;
-#ifdef DEBUG_LOSSLESS
+#ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
 #endif
 
@@ -302,7 +310,7 @@ bool T1Encoder::encode(bool do_opt,
 	encode_t1_calling_barrier.arrive_and_wait();
 	delete pool;
 	
-	// clean up blocks
+	// clean up remaining blocks
 	encodeBlockInfo* block = NULL;
 	while (encodeQueue.tryPop(block)) {
 		delete block;

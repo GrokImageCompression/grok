@@ -95,7 +95,7 @@ struct opj_tcd_layer_t {
     uint32_t numpasses;		/* Number of passes in the layer */
     uint32_t len;			/* len of information */
     double disto;			/* add for index (Cfr. Marcela) */
-    uint8_t *data;			/* data buffer*/
+    uint8_t *data;			/* data buffer (points to code block data) */
 } ;
 
 // encoder code block
@@ -116,6 +116,8 @@ struct opj_tcd_cblk_enc_t {
 							num_passes_encoded(0),
 							contextStream(nullptr) 
 	{}
+	~opj_tcd_cblk_enc_t();
+	void cleanup();
     uint8_t* data;              /* data buffer*/
 	uint32_t data_size;         /* size of allocated data buffer */
 	bool owns_data;				// true if code block manages data buffer, otherwise false
@@ -145,6 +147,27 @@ struct opj_tcd_cblk_dec_t {
 							numSegments(0),
 							numSegmentsAllocated(0)
 	{}
+
+	opj_tcd_cblk_dec_t(const opj_tcd_cblk_enc_t& rhs) : data(nullptr),
+														dataSize(0),
+														segs(nullptr),
+														x0(rhs.x0),
+														y0(rhs.y0),
+														x1(rhs.x1),
+														y1(rhs.y1),
+														numbps(rhs.numbps),
+														numlenbits(rhs.numlenbits),
+														numPassesInPacket(0),
+														numSegments(0),
+														numSegmentsAllocated(0)
+	{}
+
+	/**
+	* Allocates memory for a decoding code block (but not data)
+	*/
+	bool alloc();
+
+	void cleanup();
 	uint8_t* data;					// pointer to plugin data. 
 	uint32_t dataSize;				/* size of data buffer */
     opj_vec_t seg_buffers;
@@ -172,6 +195,34 @@ struct opj_tcd_precinct_t {
 		cblks.blocks = nullptr;
 	}
 
+	opj_tcd_precinct_t(const opj_tcd_precinct_t& rhs) :x0(rhs.x0),
+														y0(rhs.y0),
+														x1(rhs.x1),
+														y1(rhs.y1),
+														cw(0),
+														ch(0),
+														block_size(0),
+														incltree( nullptr),
+														imsbtree(nullptr) {
+		cblks.blocks = nullptr;
+	}
+	~opj_tcd_precinct_t();
+	
+	void initTagTrees(opj_event_mgr_t* manager);
+
+	void cleanupEncodeBlocks() {
+		if (!cblks.enc)
+			return;
+		for (uint32_t i = 0; i < cw*ch; ++i)
+			(cblks.enc + i)->cleanup();
+		delete[] cblks.enc;
+	}
+	void cleanupDecodeBlocks() {
+		if (!cblks.dec)
+			return;
+		delete[] cblks.dec;
+	}
+
     uint32_t x0, y0, x1, y1;		/* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t cw, ch;				/* number of precinct in width and height */
     union {							/* code-blocks information */
@@ -195,12 +246,25 @@ struct opj_tcd_band_t {
 						precincts_data_size(0),
 						numbps(0),
 						stepsize(0) {}
+
+	opj_tcd_band_t(const opj_tcd_band_t& rhs) : x0(rhs.x0), 
+												  y0(rhs.y0),
+												  x1(rhs.x1),
+												  y1(rhs.y1),
+												bandno(rhs.bandno),
+												precincts(nullptr),
+												precincts_data_size(0),
+												numbps(rhs.numbps),
+												stepsize(rhs.stepsize)
+	 {}
+	~opj_tcd_band_t();
+
 	size_t numPrecincts() {
 		return precincts_data_size / sizeof(opj_tcd_precinct_t);
 	}
     uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
-    opj_tcd_precinct_t *precincts;	/* precinct information */
+    opj_tcd_precinct_t* precincts;	/* precinct information */
     uint32_t precincts_data_size;	/* size of data taken by precincts */
     uint32_t numbps;
     float stepsize;
@@ -213,7 +277,18 @@ struct opj_tcd_resolution_t {
 							x1(0),
 							y1(0),
 							numbands(0) {}
+	opj_tcd_resolution_t(const opj_tcd_resolution_t& rhs) : x0(rhs.x0),
+															y0(rhs.y0),
+															x1(rhs.x1),
+															y1(rhs.y1),
+															pw(rhs.pw),
+															ph(rhs.ph),
+															numbands(rhs.numbands)
 
+	 {
+		for (int i = 0; i < 3; ++i)
+			bands[i] = rhs.bands[i];
+	}
     uint32_t x0, y0, x1, y1;	/* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t pw, ph;
     uint32_t numbands;			/* number sub-band for the resolution level */
@@ -339,13 +414,9 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint8_t *p_dest,
                             uint64_t * p_data_written,
                             uint64_t p_len,
-                            opj_codestream_info_t *p_cstr_info);
+                            opj_codestream_info_t *p_cstr_info,
+							opj_event_mgr_t * p_manager);
 
-
-/**
-* Allocates memory for a decoding code block (but not data)
-*/
-bool opj_tcd_code_block_dec_allocate(opj_tcd_cblk_dec_t * p_code_block);
 
 /**
 Decode a tile from a buffer into a raw image
