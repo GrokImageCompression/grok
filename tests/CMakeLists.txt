@@ -26,6 +26,7 @@ endif()
 # First thing define the common source:
 set(compare_images_SRCS compare_images.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convert.cpp
+  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/converttif.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c
   )
