@@ -17,5 +17,7 @@
 
 #pragma once
 
-// uncomment to enable testing of round trip lossless encode
-//#define DEBUG_LOSSLESS
+// uncomment to enable testing of different stages of round-trip lossless encode
+//#define DEBUG_LOSSLESS_DWT
+//#define DEBUG_LOSSLESS_T1
+//#define DEBUG_LOSSLESS_T2

@@ -56,6 +56,7 @@
  */
 
 #include "opj_includes.h"
+#include "testing.h"
 
 /** @defgroup T2 T2 - Implementation of a tier-2 coding */
 /*@{*/
@@ -67,7 +68,7 @@ static void opj_t2_putcommacode(BitIO *bio, int32_t n);
 
 static uint32_t opj_t2_getcommacode(BitIO *bio);
 /**
-Variable length code for signalling delta Zil (truncation point)
+Variable length code for signaling delta Zil (truncation point)
 @param bio  Bit Input/Output component
 @param n    delta Zil
 */
@@ -86,14 +87,16 @@ Encode a packet of a tile to a destination buffer
 @param cstr_info Codestream information structure
 @return
 */
-static bool opj_t2_encode_packet(   uint32_t tileno,
+static bool opj_t2_encode_packet(opj_t2_t* p_t2,
+									uint32_t tileno,
                                     opj_tcd_tile_t *tile,
                                     opj_tcp_t *tcp,
                                     opj_pi_iterator_t *pi,
                                     uint8_t *dest,
                                     uint64_t * p_data_written,
                                     uint64_t len,
-                                    opj_codestream_info_t *cstr_info);
+                                    opj_codestream_info_t *cstr_info,
+									opj_event_mgr_t * p_manager);
 
 /**
 Encode a packet of a tile to a destination buffer
@@ -129,7 +132,7 @@ Decode a packet of a tile from a source buffer
 @return  FIXME DOC
 */
 static bool opj_t2_decode_packet(   opj_t2_t* t2,
-                                    opj_tcd_tile_t *tile,
+									opj_tcd_resolution_t* l_res,
                                     opj_tcp_t *tcp,
                                     opj_pi_iterator_t *pi,
                                     opj_seg_buf_t* src_buf,
@@ -145,7 +148,7 @@ static bool opj_t2_skip_packet( opj_t2_t* p_t2,
                                 opj_event_mgr_t *p_manager);
 
 static bool opj_t2_read_packet_header(  opj_t2_t* p_t2,
-                                        opj_tcd_tile_t *p_tile,
+										opj_tcd_resolution_t* l_res,
                                         opj_tcp_t *p_tcp,
                                         opj_pi_iterator_t *p_pi,
                                         bool * p_is_data_present,
@@ -153,13 +156,13 @@ static bool opj_t2_read_packet_header(  opj_t2_t* p_t2,
                                         uint64_t * p_data_read,
                                         opj_event_mgr_t *p_manager);
 
-static bool opj_t2_read_packet_data(opj_tcd_tile_t *p_tile,
+static bool opj_t2_read_packet_data(opj_tcd_resolution_t* l_res,
                                     opj_pi_iterator_t *p_pi,
                                     opj_seg_buf_t* src_buf,
                                     uint64_t * p_data_read,
                                     opj_event_mgr_t *p_manager);
 
-static bool opj_t2_skip_packet_data(opj_tcd_tile_t *p_tile,
+static bool opj_t2_skip_packet_data(opj_tcd_resolution_t* l_res,
                                     opj_pi_iterator_t *p_pi,
                                     uint64_t * p_data_read,
                                     uint64_t p_max_length,
@@ -245,7 +248,8 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
                             opj_codestream_info_t *cstr_info,
                             uint32_t p_tp_num,
                             uint32_t p_tp_pos,
-                            uint32_t p_pino)
+                            uint32_t p_pino,
+							opj_event_mgr_t * p_manager)
 {
     uint8_t *l_current_data = p_dest;
     uint64_t l_nb_bytes = 0;
@@ -275,7 +279,16 @@ bool opj_t2_encode_packets( opj_t2_t* p_t2,
         if (l_current_pi->layno < p_maxlayers) {
             l_nb_bytes=0;
 
-            if (! opj_t2_encode_packet(p_tile_no,p_tile, l_tcp, l_current_pi, l_current_data, &l_nb_bytes, p_max_len, cstr_info)) {
+            if (! opj_t2_encode_packet(p_t2,
+										p_tile_no,
+										p_tile, 
+										l_tcp,
+										l_current_pi,
+										l_current_data, 
+										&l_nb_bytes, 
+										p_max_len,
+										cstr_info, 
+										p_manager)) {
                 opj_pi_destroy(l_pi, l_nb_pocs);
                 return false;
             }
@@ -425,21 +438,12 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
          * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
          * and no l_img_comp->resno_decoded are computed
          */
-        bool* first_pass_failed = NULL;
 
         if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
             /* TODO ADE : add an error */
             opj_pi_destroy(l_pi, l_nb_pocs);
             return false;
         }
-
-        first_pass_failed = (bool*)opj_malloc(l_image->numcomps * sizeof(bool));
-        if (!first_pass_failed) {
-            opj_pi_destroy(l_pi,l_nb_pocs);
-            return false;
-        }
-        memset(first_pass_failed, true, l_image->numcomps * sizeof(bool));
-
         while (opj_pi_next(l_current_pi)) {
             bool skip_precinct = false;
             opj_tcd_tilecomp_t* tilec = p_tile->comps + l_current_pi->compno;
@@ -464,8 +468,7 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
                 skip_precinct = true;
                 for (bandno = 0; bandno < res->numbands && skip_precinct; ++bandno) {
                     opj_tcd_band_t* band = res->bands + bandno;
-                    uint32_t num_precincts =
-                        band->precincts_data_size / sizeof(opj_tcd_precinct_t);
+					auto num_precincts = band->numPrecincts();
                     uint32_t precno;
                     for (precno = 0; precno < num_precincts && skip_precinct; ++precno) {
                         opj_rect_t prec_rect;
@@ -481,18 +484,14 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
 
             if (!skip_layer_or_res && !skip_precinct) {
                 l_nb_bytes_read = 0;
-
-                first_pass_failed[l_current_pi->compno] = false;
-
                 if (! opj_t2_decode_packet(p_t2,
-                                           p_tile,
+											&p_tile->comps[l_current_pi->compno].resolutions[l_current_pi->resno],
                                            l_tcp,
                                            l_current_pi,
                                            src_buf,
                                            &l_nb_bytes_read,
                                            p_manager)) {
                     opj_pi_destroy(l_pi,l_nb_pocs);
-                    opj_free(first_pass_failed);
                     return false;
                 }
             } else {
@@ -504,24 +503,15 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
                                          &l_nb_bytes_read,
 										p_manager)) {
                     opj_pi_destroy(l_pi,l_nb_pocs);
-                    opj_free(first_pass_failed);
                     return false;
                 }
             }
 
             if (!skip_layer_or_res)
                 l_img_comp->resno_decoded = opj_uint_max(l_current_pi->resno, l_img_comp->resno_decoded);
-
-            if (first_pass_failed[l_current_pi->compno]) {
-                if (l_img_comp->resno_decoded == 0)
-                    l_img_comp->resno_decoded =
-                        p_tile->comps[l_current_pi->compno].minimum_num_resolutions - 1;
-            }
-
             *p_data_read += l_nb_bytes_read;
         }
         ++l_current_pi;
-        opj_free(first_pass_failed);
     }
     opj_pi_destroy(l_pi,l_nb_pocs);
     return true;
@@ -556,7 +546,7 @@ void opj_t2_destroy(opj_t2_t *t2)
 }
 
 static bool opj_t2_decode_packet(  opj_t2_t* p_t2,
-                                   opj_tcd_tile_t *p_tile,
+									opj_tcd_resolution_t* l_res,
                                    opj_tcp_t *p_tcp,
                                    opj_pi_iterator_t *p_pi,
                                    opj_seg_buf_t* src_buf,
@@ -569,7 +559,7 @@ static bool opj_t2_decode_packet(  opj_t2_t* p_t2,
     *p_data_read = 0;
 
     if (! opj_t2_read_packet_header(p_t2,
-									p_tile,
+									l_res,
 									p_tcp,
 									p_pi,
 									&l_read_data,
@@ -583,7 +573,7 @@ static bool opj_t2_decode_packet(  opj_t2_t* p_t2,
     /* we should read data for the packet */
     if (l_read_data) {
         l_nb_bytes_read = 0;
-        if (! opj_t2_read_packet_data(p_tile,
+        if (! opj_t2_read_packet_data(l_res,
 										p_pi,
 										src_buf,
 										&l_nb_bytes_read,
@@ -597,7 +587,7 @@ static bool opj_t2_decode_packet(  opj_t2_t* p_t2,
 }
 
 static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
-									opj_tcd_tile_t *p_tile,
+									opj_tcd_resolution_t* l_res,
 									opj_tcp_t *p_tcp,
 									opj_pi_iterator_t *p_pi,
 									bool * p_is_data_present,
@@ -619,7 +609,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 	BitIO *l_bio = nullptr; 
 	opj_tcd_band_t *l_band = nullptr;
 	opj_tcd_cblk_dec_t* l_cblk = nullptr;
-	opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 
 	uint8_t *l_header_data = nullptr;
 	uint8_t **l_header_data_start = nullptr;
@@ -633,7 +622,7 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 			if (t2_empty_of_code_blocks(l_band))
 				continue;
 			opj_tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
-			if (!(p_pi->precno < (l_band->precincts_data_size / sizeof(opj_tcd_precinct_t)))) {
+			if (!(p_pi->precno < (l_band->numPrecincts()))) {
 				opj_event_msg(p_manager, EVT_ERROR, "Invalid precinct\n");
 				return false;
 			}
@@ -862,7 +851,7 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 	return true;
 }
 
-static bool opj_t2_read_packet_data(opj_tcd_tile_t *p_tile,
+static bool opj_t2_read_packet_data(opj_tcd_resolution_t* l_res,
 									opj_pi_iterator_t *p_pi,
 									opj_seg_buf_t* src_buf,
 									uint64_t * p_data_read,
@@ -872,7 +861,7 @@ static bool opj_t2_read_packet_data(opj_tcd_tile_t *p_tile,
 	uint32_t l_nb_code_blocks;
 	opj_tcd_band_t *l_band = nullptr;
 	opj_tcd_cblk_dec_t* l_cblk = nullptr;
-	opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	//opj_tcd_resolution_t* l_res = 
 
 	l_band = l_res->bands;
 	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
@@ -941,14 +930,16 @@ static bool opj_t2_read_packet_data(opj_tcd_tile_t *p_tile,
 }
 //--------------------------------------------------------------------------------------------------
 
-static bool opj_t2_encode_packet(  uint32_t tileno,
+static bool opj_t2_encode_packet(opj_t2_t* p_t2,
+									uint32_t tileno,
                                    opj_tcd_tile_t * tile,
                                    opj_tcp_t * tcp,
                                    opj_pi_iterator_t *pi,
                                    uint8_t *dest,
                                    uint64_t * p_data_written,
                                    uint64_t length,
-                                   opj_codestream_info_t *cstr_info)
+                                   opj_codestream_info_t *cstr_info,
+									opj_event_mgr_t * p_manager)
 {
     uint32_t bandno, cblkno;
     uint8_t* c = dest;
@@ -1055,6 +1046,11 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
 				prc->imsbtree->encode(bio, cblkno, tag_tree_uninitialized_node_value);
             }
 
+#ifdef DEBUG_LOSSLESS_T2
+			if (resno == 1 && precno == 0 && band->bandno == 2 && cblkno == 0) {
+				int k = 0;
+			}
+#endif
             /* number of coding passes included */
             opj_t2_putnumpasses(bio, layer->numpasses);
             l_nb_passes = cblk->num_passes_included_in_current_layer + layer->numpasses;
@@ -1164,6 +1160,103 @@ static bool opj_t2_encode_packet(  uint32_t tileno,
         ++band;
     }
     * p_data_written += (uint32_t)(c - dest);
+
+#ifdef DEBUG_LOSSLESS_T2
+	opj_tcd_resolution_t decodeRes = *res;
+
+	// allocate
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+		auto band = res->bands+bandno;
+		auto decodeBand = decodeRes.bands + bandno;
+		if (!band->precincts)
+			continue;
+		decodeBand->precincts = new opj_tcd_precinct_t[band->numPrecincts()];
+		decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts() * sizeof(opj_tcd_precinct_t));
+		for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+			auto prec = band->precincts + precno;
+			auto decodePrec = decodeBand->precincts + precno;
+			*decodePrec = opj_tcd_precinct_t(*prec);
+			if (prec->cblks.enc && prec->cw && prec->ch) {
+				decodePrec->cw = prec->cw;
+				decodePrec->ch = prec->ch;
+				decodePrec->initTagTrees(p_manager);
+				decodePrec->cblks.dec = new opj_tcd_cblk_dec_t[prec->cw * prec->ch];
+				for (uint32_t cblkno = 0; cblkno < prec->cw * prec->ch; ++cblkno) {
+					auto cblk = prec->cblks.enc + cblkno;
+					auto decodeCblk = decodePrec->cblks.dec + cblkno;
+					*decodeCblk = opj_tcd_cblk_dec_t(*cblk);
+					decodeCblk->numbps = 0;
+					decodeCblk->numlenbits = 0;
+					decodeCblk->alloc();
+				}
+			}
+		}
+	}
+
+	size_t l_nb_bytes_read = 0;
+	opj_seg_buf_t* src_buf= new opj_seg_buf_t();
+	opj_seg_buf_push_back(src_buf, dest, *p_data_written);
+	
+	if (opj_t2_decode_packet(p_t2,
+							&decodeRes,
+							tcp,
+							pi,
+							src_buf,
+							&l_nb_bytes_read,
+							p_manager)) {
+
+
+		//do comparison
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+			auto decodeBand = decodeRes.bands + bandno;
+			if (!band->precincts)
+				continue;
+			for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+				auto prec = band->precincts + precno;
+				auto decodePrec = decodeBand->precincts + precno;
+				for (uint32_t cblkno = 0; cblkno < prec->cw * prec->ch; ++cblkno) {
+					auto cblk = prec->cblks.enc + cblkno;
+					auto decodeCblk = decodePrec->cblks.dec + cblkno;
+					auto encodeRate = cblk->passes[cblk->num_passes_encoded - 1].rate;
+					assert(decodeCblk->numSegments == 1);
+					assert(decodeCblk->segs[0].len == encodeRate);
+					assert(decodeCblk->numbps == cblk->numbps);
+					assert(decodeCblk->numlenbits == cblk->numlenbits);
+					opj_min_buf_t* seg = (opj_min_buf_t*)decodeCblk->seg_buffers.get(0);
+					for (uint32_t i = 0; i < decodeCblk->segs[0].len; ++i) {
+						assert(seg->buf[i] == cblk->data[i]);
+					}
+					auto diff = abs((int)decodeCblk->segs[0].numpasses - (int)cblk->num_passes_encoded);
+					if (diff > 1) {
+						if (resno == 1 &&
+							band->bandno == 2 &&
+							precno == 0 &&
+							cblkno == 0) {
+
+							int k = 0;
+						}
+						assert(decodeCblk->segs[0].numpasses < cblk->num_passes_encoded);
+						assert(cblk->passes[decodeCblk->segs[0].numpasses-1].rate == encodeRate);
+						printf("diff %d at resolution %d\n", diff, pi->resno);
+					}
+				}
+			}
+		}
+	}
+	else {
+		assert(0);
+	}
+	
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+		auto decodeBand = decodeRes.bands + bandno;
+		for (size_t precno = 0; precno < decodeBand->numPrecincts(); ++precno) {
+			auto decodePrec = decodeBand->precincts + precno;
+			decodePrec->cleanupDecodeBlocks();
+		}
+	}
+
+#endif
     return true;
 }
 
@@ -1383,7 +1476,11 @@ static bool opj_t2_skip_packet( opj_t2_t* p_t2,
 
     *p_data_read = 0;
 
-    if (! opj_t2_read_packet_header(p_t2,p_tile,p_tcp,p_pi,&l_read_data,
+    if (! opj_t2_read_packet_header(p_t2,
+									&p_tile->comps[p_pi->compno].resolutions[p_pi->resno],
+									p_tcp,
+									p_pi,
+									&l_read_data,
                                     src_buf,
                                     &l_nb_bytes_read,
                                     p_manager)) {
@@ -1397,10 +1494,11 @@ static bool opj_t2_skip_packet( opj_t2_t* p_t2,
     if (l_read_data) {
         l_nb_bytes_read = 0;
 
-        if (! opj_t2_skip_packet_data(p_tile,p_pi,
-                                      &l_nb_bytes_read,
-                                      p_max_length,
-									p_manager)) {
+        if (! opj_t2_skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno],
+										p_pi,
+										&l_nb_bytes_read,
+										p_max_length,
+										p_manager)) {
             return false;
         }
         opj_seg_buf_incr_cur_seg_offset(src_buf, l_nb_bytes_read);
@@ -1413,7 +1511,7 @@ static bool opj_t2_skip_packet( opj_t2_t* p_t2,
 }
 
 
-static bool opj_t2_skip_packet_data(    opj_tcd_tile_t *p_tile,
+static bool opj_t2_skip_packet_data(opj_tcd_resolution_t* l_res,
                                        opj_pi_iterator_t *p_pi,
                                        uint64_t * p_data_read,
                                        uint64_t p_max_length,
@@ -1423,7 +1521,6 @@ static bool opj_t2_skip_packet_data(    opj_tcd_tile_t *p_tile,
     uint32_t l_nb_code_blocks;
     opj_tcd_band_t *l_band = nullptr;
     opj_tcd_cblk_dec_t* l_cblk = nullptr;
-    opj_tcd_resolution_t* l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 
     *p_data_read = 0;
     l_band = l_res->bands;

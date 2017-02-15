@@ -423,7 +423,7 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 
 
 
-#ifdef DEBUG_LOSSLESS
+#ifdef DEBUG_LOSSLESS_DWT
 	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
 	int32_t rh_full = l_cur_res->y1 - l_cur_res->y0;
 	int32_t* before = new int32_t[rw_full * rh_full];
@@ -484,7 +484,7 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 		--l_last_res;
 	}
 	opj_free(bj);
-#ifdef DEBUG_LOSSLESS
+#ifdef DEBUG_LOSSLESS_DWT
 	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
 	opj_dwt_decode_53(tilec, tilec->numresolutions, 8);
 	for (int m = 0; m < rw_full; ++m) {

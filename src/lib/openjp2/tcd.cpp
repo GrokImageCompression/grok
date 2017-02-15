@@ -130,7 +130,8 @@ static bool opj_tcd_t2_encode (     opj_tcd_t *p_tcd,
                                     uint8_t * p_dest_data,
                                     uint64_t * p_data_written,
                                     uint64_t p_max_dest_size,
-                                    opj_codestream_info_t *p_cstr_info );
+                                    opj_codestream_info_t *p_cstr_info,
+									opj_event_mgr_t * p_manager);
 
 static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
 											uint64_t p_max_dest_size,
@@ -138,17 +139,17 @@ static bool opj_tcd_rate_allocate_encode(   opj_tcd_t *p_tcd,
 
 static bool opj_tcd_layer_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
 
-static bool opj_tcd_makelayer_single_lossless(opj_tcd_t *tcd);
+static bool opj_tcd_make_single_lossless_layer(opj_tcd_t *tcd);
 
 static void opj_tcd_makelayer_final(opj_tcd_t *tcd,
 	uint32_t layno);
 
 
-static bool opj_tcd_pcrd_bisect_all_passes(opj_tcd_t *tcd,
+static bool opj_tcd_pcrd_bisect_simple(opj_tcd_t *tcd,
 	uint64_t * p_data_written,
 	uint64_t len);
 
-static void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
+static void opj_tcd_make_layer_simple(opj_tcd_t *tcd,
 	uint32_t layno,
 	double thresh,
 	bool final);
@@ -186,10 +187,17 @@ opj_tcd_t* opj_tcd_create(bool p_is_decoder)
     return l_tcd;
 }
 
-/* Don't try to find an optimal threshold but rather take everything not included yet, if
--r xx,yy,zz,0   (disto_alloc == 1 and rates == 0)
--q xx,yy,zz,0   (fixed_quality == 1 and distoratio == 0)
-==> possible to have some lossy layers and the last layer for sure lossless */
+/*
+if
+- r xx, yy, zz, 0   (disto_alloc == 1 and rates == 0)
+or
+- q xx, yy, zz, 0   (fixed_quality == 1 and distoratio == 0)
+
+then don't try to find an optimal threshold but rather take everything not included yet.
+
+It is possible to have some lossy layers and the last layer for sure lossless
+
+*/
 bool opj_tcd_layer_needs_rate_control(uint32_t layno, opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params) {
 
 	return ((enc_params->m_disto_alloc == 1) && (tcd_tcp->rates[layno] > 0.0)) ||
@@ -205,7 +213,7 @@ bool opj_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_pa
 }
 
 
-bool opj_tcd_makelayer_single_lossless(opj_tcd_t *tcd) {
+bool opj_tcd_make_single_lossless_layer(opj_tcd_t *tcd) {
 	if (tcd->tcp->numlayers == 1 && !opj_tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
 
 		opj_tcd_makelayer_final(tcd, 0);
@@ -241,13 +249,13 @@ void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						opj_tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
 						opj_tcd_layer_t *layer = cblk->layers + layno;
-						uint32_t num_included_passes_in_block;
+						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0) {
 							cblk->num_passes_included_in_other_layers = 0;
 						}
 
-						num_included_passes_in_block =
+						cumulative_included_passes_in_block =
 							cblk->num_passes_included_in_other_layers;
 
 						for (passno = cblk->num_passes_included_in_other_layers;
@@ -258,12 +266,12 @@ void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 							if (pass->slope) {
 								if (pass->slope <= thresh)
 									break;
-								num_included_passes_in_block = passno + 1;
+								cumulative_included_passes_in_block = passno + 1;
 							}
 						}
 
 						layer->numpasses =
-							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+							cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -272,22 +280,22 @@ void opj_tcd_makelayer_feasible(opj_tcd_t *tcd,
 
 						// update layer
 						if (cblk->num_passes_included_in_other_layers == 0) {
-							layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
+							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
-							layer->disto =	cblk->passes[num_included_passes_in_block - 1].distortiondec;
+							layer->disto =	cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 						}
 						else {
 							layer->len =
-								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->data =	cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->disto =	
-								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
 						}
 
 						tcd_tile->distolayer[layno] += layer->disto;
 
 						if (final)
-							cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+							cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
 					}
 				}
 			}
@@ -366,7 +374,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 		}
 	} /* compno */
 
-	if (opj_tcd_makelayer_single_lossless(tcd)) {
+	if (opj_tcd_make_single_lossless_layer(tcd)) {
 		return true;
 	}
 
@@ -450,7 +458,7 @@ bool opj_tcd_pcrd_bisect_feasible(opj_tcd_t *tcd,
 /*
 Simple bisect algorithm to calculate optimal layer truncation points
 */
-bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
+bool opj_tcd_pcrd_bisect_simple(  opj_tcd_t *tcd,
                             uint64_t * p_data_written,
                             uint64_t len)
 {
@@ -540,16 +548,21 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 
     } /* compno */
 
+	if (opj_tcd_make_single_lossless_layer(tcd)) {
+		return true;
+	}
+
 	double upperBound = max_slope;
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
-        double lowerBound = min_slope;
-        uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t) ceil(tcd_tcp->rates[layno])), len) : len;
-
-		/* Threshold for Marcela Index */
-		// start by including everything in this layer
-        double goodthresh = 0;
-
 		if (opj_tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
+
+			double lowerBound = min_slope;
+			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? opj_uint64_min(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+
+			/* Threshold for Marcela Index */
+			// start by including everything in this layer
+			double goodthresh = 0;
+
 
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
@@ -565,19 +578,15 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 			}
 			double thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
-				if (upperBound == -1)
-					thresh = lowerBound;
-				else
-					thresh = (lowerBound + upperBound) / 2;
-				opj_tcd_makelayer_all_passes(tcd, layno, thresh, false);
+				thresh = (upperBound == -1) ? lowerBound : (lowerBound + upperBound) / 2;
+				opj_tcd_make_layer_simple(tcd, layno, thresh, false);
 				if (prevthresh != -1 && (fabs(prevthresh - thresh)) < 0.001)
 					break;
 				prevthresh = thresh;
 				if (cp->m_specific_param.m_enc.m_fixed_quality) {
-					double distoachieved =
-						layno == 0 ?
-						tcd_tile->distolayer[0] :
-						cumdisto[layno - 1] + tcd_tile->distolayer[layno];
+					double distoachieved =	layno == 0 ?
+												tcd_tile->distolayer[0] :
+													cumdisto[layno - 1] + tcd_tile->distolayer[layno];
 
 					if (distoachieved < distotarget) {
 						upperBound = thresh;
@@ -587,12 +596,12 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 				}
 				else {
 					if (!opj_t2_encode_packets_simulate(t2,
-						tcd->tcd_tileno,
-						tcd_tile,
-						layno + 1,
-						p_data_written,
-						maxlen,
-						tcd->tp_pos)) {
+														tcd->tcd_tileno,
+														tcd_tile,
+														layno + 1,
+														p_data_written,
+														maxlen,
+														tcd->tp_pos)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -603,17 +612,20 @@ bool opj_tcd_pcrd_bisect_all_passes(  opj_tcd_t *tcd,
 			goodthresh = (upperBound == -1) ? thresh : upperBound;
 			opj_t2_destroy(t2);
 
-			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
-			cumdisto[layno] =
-				(layno == 0) ?
-				tcd_tile->distolayer[0] :
-				(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
+			opj_tcd_make_layer_simple(tcd, layno, goodthresh, true);
+			cumdisto[layno] =	(layno == 0) ?
+									tcd_tile->distolayer[0] :
+										(cumdisto[layno - 1] + tcd_tile->distolayer[layno]);
 
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
-			upperBound = lowerBound - 1;;
+			upperBound = lowerBound - 1;
 		}
 		else {
-			opj_tcd_makelayer_all_passes(tcd, layno, goodthresh, true);
+			//todo: shouldn't need rate-distortion slope calculations to make this last layer
+			opj_tcd_make_layer_simple(tcd, layno, 0, true);
+			assert(layno == tcd_tcp->numlayers - 1);
+			// this has to be the last layer, so return 
+			return true;
 		}
     }
     return true;
@@ -629,7 +641,7 @@ static void prepareBlockForFirstLayer(opj_tcd_cblk_enc_t* cblk) {
 /*
 Form layer for bisect rate control algorithm
 */
-void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
+void opj_tcd_make_layer_simple(opj_tcd_t *tcd,
 								uint32_t layno,
 								double thresh,
 								bool final)
@@ -655,45 +667,48 @@ void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						opj_tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
 						opj_tcd_layer_t *layer = cblk->layers + layno;
-						uint32_t num_included_passes_in_block;
+						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
 						}
 
-						num_included_passes_in_block =
-							cblk->num_passes_included_in_other_layers;
+						if (thresh == 0) {
+							cumulative_included_passes_in_block = cblk->num_passes_encoded;
+						}
+						else {
 
-						for (passno = cblk->num_passes_included_in_other_layers;
-							passno < cblk->num_passes_encoded; passno++) {
-							uint32_t dr;
-							double dd;
-							opj_tcd_pass_t *pass = &cblk->passes[passno];
+							cumulative_included_passes_in_block =	cblk->num_passes_included_in_other_layers;
 
-							if (num_included_passes_in_block == 0) {
-								dr = pass->rate;
-								dd = pass->distortiondec;
-							}
-							else {
-								dr =
-									pass->rate - cblk->passes[num_included_passes_in_block - 1].rate;
-								dd =
-									pass->distortiondec - cblk->passes[num_included_passes_in_block - 1].distortiondec;
-							}
+							for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
+								uint32_t dr;
+								double dd;
+								opj_tcd_pass_t *pass = &cblk->passes[passno];
 
-							if (!dr) {
-								if (dd != 0)
-									num_included_passes_in_block = passno + 1;
-								continue;
+								if (cumulative_included_passes_in_block == 0) {
+									dr = pass->rate;
+									dd = pass->distortiondec;
+								}
+								else {
+									dr =
+										pass->rate - cblk->passes[cumulative_included_passes_in_block - 1].rate;
+									dd =
+										pass->distortiondec - cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
+								}
+
+								if (!dr) {
+									if (dd != 0)
+										cumulative_included_passes_in_block = passno + 1;
+									continue;
+								}
+								auto slope = dd / dr;
+								/* do not rely on float equality, check with DBL_EPSILON margin */
+								if (thresh - slope < DBL_EPSILON)
+									cumulative_included_passes_in_block = passno + 1;
 							}
-							auto slope = dd / dr;
-							/* do not rely on float equality, check with DBL_EPSILON margin */
-							if (thresh - slope < DBL_EPSILON)
-								num_included_passes_in_block = passno + 1;
 						}
 
-						layer->numpasses =
-							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+						layer->numpasses = 	cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -702,24 +717,24 @@ void opj_tcd_makelayer_all_passes(opj_tcd_t *tcd,
 
 						// update layer
 						if (cblk->num_passes_included_in_other_layers == 0) {
-							layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
+							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
 							layer->disto =
-								cblk->passes[num_included_passes_in_block - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 						}
 						else {
 							layer->len =
-								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->data =
 								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->disto =
-								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
 						}
 
 						tcd_tile->distolayer[layno] += layer->disto;
 
 						if (final)
-							cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+							cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
 					}
 				}
 			}
@@ -754,22 +769,22 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						opj_tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
 						opj_tcd_layer_t *layer = cblk->layers + layno;
-						uint32_t num_included_passes_in_block;
+						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
 						}
 
-						num_included_passes_in_block =
+						cumulative_included_passes_in_block =
 							cblk->num_passes_included_in_other_layers;
 
 						for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
 							opj_tcd_pass_t *pass = &cblk->passes[passno];
-							num_included_passes_in_block = passno + 1;
+							cumulative_included_passes_in_block = passno + 1;
 						}
 
 						layer->numpasses =
-							num_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+							cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -778,23 +793,23 @@ void opj_tcd_makelayer_final(opj_tcd_t *tcd, uint32_t layno)
 
 						// update layer
 						if (cblk->num_passes_included_in_other_layers == 0) {
-							layer->len = cblk->passes[num_included_passes_in_block - 1].rate;
+							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
 							layer->disto =
-								cblk->passes[num_included_passes_in_block - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 						}
 						else {
 							layer->len =
-								cblk->passes[num_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->data =
 								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
 							layer->disto =
-								cblk->passes[num_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
 						}
 
 						tcd_tile->distolayer[layno] += layer->disto;
 
-						cblk->num_passes_included_in_other_layers = num_included_passes_in_block;
+						cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
 
 						assert(cblk->num_passes_included_in_other_layers == cblk->num_passes_encoded);
 					}
@@ -1163,42 +1178,8 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                         l_current_precinct->block_size = l_nb_code_blocks_size;
                     }
 
-					// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
-					// no need for inclusion and msb tag trees
-					if (l_current_precinct->cw > 0 && l_current_precinct->ch > 0) {
-						if (!l_current_precinct->incltree) {
-							try {
-								l_current_precinct->incltree = new TagTree(l_current_precinct->cw, l_current_precinct->ch, manager);
-							}
-							catch (std::exception e) {
-								opj_event_msg(manager, EVT_WARNING, "No incltree created.\n");
-							}
-						}
-						else {
-							if (!l_current_precinct->incltree->init(l_current_precinct->cw, l_current_precinct->ch, manager)) {
-								opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize incltree.\n");
-								delete l_current_precinct->incltree;
-								l_current_precinct->incltree = nullptr;
-							}
-						}
-
-						if (!l_current_precinct->imsbtree) {
-							try {
-								l_current_precinct->imsbtree = new TagTree(l_current_precinct->cw, l_current_precinct->ch, manager);
-							}
-							catch (std::exception e) {
-								opj_event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
-							}
-						}
-						else {
-							if (!l_current_precinct->imsbtree->init(l_current_precinct->cw, l_current_precinct->ch, manager)) {
-								opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize imsbtree.\n");
-								delete l_current_precinct->imsbtree;
-								l_current_precinct->imsbtree = nullptr;
-							}
-						}
-					}
-
+					l_current_precinct->initTagTrees(manager);
+					
                     for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
                         uint32_t cblkxstart = tlcblkxstart + (cblkno % l_current_precinct->cw) * (1 << cblkwidthexpn);
                         uint32_t cblkystart = tlcblkystart + (cblkno / l_current_precinct->cw) * (1 << cblkheightexpn);
@@ -1226,7 +1207,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                             opj_tcd_cblk_dec_t* l_code_block = l_current_precinct->cblks.dec + cblkno;
 
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
-								if (!opj_tcd_code_block_dec_allocate(l_code_block)) {
+								if (!l_code_block->alloc()) {
 									return false;
 								}
 							}
@@ -1407,7 +1388,8 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
                             uint8_t *p_dest,
                             uint64_t * p_data_written,
                             uint64_t p_max_length,
-                            opj_codestream_info_t *p_cstr_info)
+                            opj_codestream_info_t *p_cstr_info,
+							opj_event_mgr_t * p_manager)
 {
 	uint32_t state = opj_plugin_get_debug_state();
     if (p_tcd->cur_tp_num == 0) {
@@ -1497,7 +1479,12 @@ bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
     }
     /* FIXME _ProfStart(PGROUP_T2); */
 
-    if (! opj_tcd_t2_encode(p_tcd,p_dest,p_data_written,p_max_length,p_cstr_info)) {
+    if (! opj_tcd_t2_encode(p_tcd,
+							p_dest,
+							p_data_written,
+							p_max_length,
+							p_cstr_info,
+							p_manager)) {
         return false;
     }
     /* FIXME _ProfStop(PGROUP_T2); */
@@ -1689,7 +1676,7 @@ static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
     opj_tcd_resolution_t *l_res = nullptr;
     opj_tcd_band_t *l_band = nullptr;
     opj_tcd_precinct_t *l_precinct = nullptr;
-    uint32_t l_nb_resolutions, l_nb_precincts;
+    size_t l_nb_resolutions, l_nb_precincts;
     void (* l_tcd_code_block_deallocate) (opj_tcd_precinct_t *) = nullptr;
 
     if (! p_tcd) {
@@ -1724,7 +1711,7 @@ static void opj_tcd_free_tile(opj_tcd_t *p_tcd)
                     l_precinct = l_band->precincts;
                     if (l_precinct) {
 
-                        l_nb_precincts = l_band->precincts_data_size / sizeof(opj_tcd_precinct_t);
+						l_nb_precincts = l_band->numPrecincts();
                         for (precno = 0; precno < l_nb_precincts; ++precno) {
 							if (l_precinct->incltree)
 								delete l_precinct->incltree;
@@ -2244,7 +2231,8 @@ static bool opj_tcd_t2_encode (opj_tcd_t *p_tcd,
                                uint8_t * p_dest_data,
                                uint64_t * p_data_written,
                                uint64_t p_max_dest_size,
-                               opj_codestream_info_t *p_cstr_info )
+                               opj_codestream_info_t *p_cstr_info,
+								opj_event_mgr_t * p_manager)
 {
     opj_t2_t * l_t2;
 
@@ -2264,7 +2252,8 @@ static bool opj_tcd_t2_encode (opj_tcd_t *p_tcd,
                 p_cstr_info,
                 p_tcd->tp_num,
                 p_tcd->tp_pos,
-                p_tcd->cur_pino)) {
+                p_tcd->cur_pino,
+				p_manager)) {
         opj_t2_destroy(l_t2);
         return false;
     }
@@ -2291,7 +2280,7 @@ static bool opj_tcd_rate_allocate_encode(  opj_tcd_t *p_tcd,
         // rate control by rate/distortion or fixed quality 
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!opj_tcd_pcrd_bisect_all_passes(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!opj_tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
@@ -2397,3 +2386,99 @@ bool opj_tcd_copy_tile_data (       opj_tcd_t *p_tcd,
 
     return true;
 }
+
+
+opj_tcd_cblk_enc_t::~opj_tcd_cblk_enc_t() {
+	cleanup();
+}
+
+void opj_tcd_cblk_enc_t::cleanup() {
+	if (data && owns_data)
+		opj_free(data);
+	if (layers)
+		delete[] layers;
+	if (passes)
+		delete[] passes;
+}
+
+bool opj_tcd_cblk_dec_t::alloc() {
+	if (!segs) {
+		segs = (opj_tcd_seg_t *)opj_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(opj_tcd_seg_t));
+		if (!segs) {
+			return false;
+		}
+		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", OPJ_J2K_DEFAULT_NB_SEGS * sizeof(opj_tcd_seg_t));*/
+
+		numSegmentsAllocated = OPJ_J2K_DEFAULT_NB_SEGS;
+
+		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
+		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
+	}
+	else {
+		/* sanitize */
+		opj_tcd_seg_t * l_segs = segs;
+		uint32_t l_current_max_segs = numSegmentsAllocated;
+
+		/* Note: since seg_buffers simply holds references to another data buffer,
+		we do not need to copy it  to the sanitized block  */
+		seg_buffers.cleanup();
+
+		memset(this, 0, sizeof(opj_tcd_cblk_dec_t));
+		segs = l_segs;
+		numSegmentsAllocated = l_current_max_segs;
+	}
+	return true;
+}
+
+
+opj_tcd_precinct_t::~opj_tcd_precinct_t() {
+	if (incltree)
+		delete incltree;
+	if (imsbtree)
+		delete imsbtree;
+}
+
+void opj_tcd_precinct_t::initTagTrees(opj_event_mgr_t* manager) {
+	
+	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
+	// no need for inclusion and msb tag trees
+	if (cw > 0 && ch > 0) {
+		if (!incltree) {
+			try {
+				incltree = new TagTree(cw, ch, manager);
+			}
+			catch (std::exception e) {
+				opj_event_msg(manager, EVT_WARNING, "No incltree created.\n");
+			}
+		}
+		else {
+			if (!incltree->init(cw, ch, manager)) {
+				opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize incltree.\n");
+				delete incltree;
+				incltree = nullptr;
+			}
+		}
+
+		if (!imsbtree) {
+			try {
+				imsbtree = new TagTree(cw, ch, manager);
+			}
+			catch (std::exception e) {
+				opj_event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
+			}
+		}
+		else {
+			if (!imsbtree->init(cw, ch, manager)) {
+				opj_event_msg(manager, EVT_WARNING, "Failed to re-initialize imsbtree.\n");
+				delete imsbtree;
+				imsbtree = nullptr;
+			}
+		}
+	}
+}
+opj_tcd_band_t::~opj_tcd_band_t() {
+	if (precincts) {
+		delete[] precincts;
+	}
+}
+

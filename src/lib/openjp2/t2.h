@@ -68,13 +68,13 @@
 /**
 Tier-2 coding
 */
-typedef struct opj_t2 {
+struct opj_t2_t {
 
     /** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
     opj_image_t *image;
     /** pointer to the image coding parameters */
     opj_cp_t *cp;
-} opj_t2_t;
+};
 
 /** @name Exported functions */
 /*@{*/
@@ -104,7 +104,8 @@ bool opj_t2_encode_packets(	opj_t2_t* t2,
                             opj_codestream_info_t *cstr_info,
                             uint32_t tpnum,
                             uint32_t tppos,
-                            uint32_t pino);
+                            uint32_t pino, 
+							opj_event_mgr_t * p_manager);
 
 /**
 Encode the packets of a tile to a destination buffer

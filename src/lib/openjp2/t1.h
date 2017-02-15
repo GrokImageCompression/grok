@@ -55,6 +55,7 @@
 #pragma once
 
 #include <vector>
+#include "testing.h"
 
 
 struct decodeBlockInfo {
@@ -90,6 +91,8 @@ struct encodeBlockInfo {
 						compno(0),
 						resno(0),
 						bandno(0),
+						precno(0),
+						cblkno(0),
 						bandconst(0),
 						stepsize(0),
 						cblksty(0),
@@ -97,6 +100,9 @@ struct encodeBlockInfo {
 						x(0),
 						y(0),
 						mct_norms(NULL),
+#ifdef DEBUG_LOSSLESS_T1
+						unencodedData(nullptr),
+#endif
 						mct_numcomps(0)
 	{  }
 	int32_t* tiledp;
@@ -104,6 +110,8 @@ struct encodeBlockInfo {
 	uint32_t compno;
 	uint32_t resno;
 	uint32_t bandno;
+	uint32_t precno;
+	uint32_t cblkno;
 	int32_t bandconst;
 	float stepsize;
 	uint32_t cblksty;
@@ -111,6 +119,9 @@ struct encodeBlockInfo {
 	uint32_t x, y;		/* relative code block offset */
 	const double * mct_norms;
 	uint32_t mct_numcomps;
+#ifdef DEBUG_LOSSLESS_T1
+	int32_t* unencodedData;
+#endif
 };
 
 
