@@ -761,15 +761,16 @@ static int parse_cmdline_encoder_ex(int argc,
 			// sanity check on quality values
 			double lastDistortion = -1;
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
-				if (parameters->tcp_distoratio[i] < lastDistortion) {
-					printf("[ERROR]: PSNR values must be listed in ascending order\n");
-					return 1;
-				}
-				if (parameters->tcp_distoratio[i] < 0) {
+				auto distortion = parameters->tcp_distoratio[i];
+				if (distortion < 0) {
 					printf("[ERROR]: PSNR values must be greater than or equal to zero\n");
 					return 1;
 				}
-				lastDistortion = parameters->tcp_distoratio[i];
+				if (distortion < lastDistortion && !(i == parameters->tcp_numlayers-1 && distortion == 0)) {
+					printf("[ERROR]: PSNR values must be listed in ascending order\n");
+					return 1;
+				}
+				lastDistortion = distortion;
 			}
 
 
