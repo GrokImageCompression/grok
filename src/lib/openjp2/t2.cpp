@@ -631,7 +631,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 			if (l_prc->imsbtree)
 				l_prc->imsbtree->reset();
 			l_nb_code_blocks = l_prc->cw * l_prc->ch;
-			assert(l_nb_code_blocks);
 			for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
 				l_cblk = l_prc->cblks.dec + cblkno;
 				l_cblk->numSegments = 0;
