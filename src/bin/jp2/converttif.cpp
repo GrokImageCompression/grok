@@ -70,6 +70,7 @@ extern "C" {
 #include <tiffio.h>
 #include "openjpeg.h"
 #include "convert.h"
+#include "color.h"
 }
 /* -->> -->> -->> -->>
 
@@ -1568,8 +1569,18 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 			goto cleanup;
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
+#if defined(OPJ_HAVE_LIBLCMS)
+		if (image->icc_profile_len) {
+			color_apply_icc_profile(image, false);
+		}
+		else {
+			color_cielab_to_rgb(image);
+		}
+#endif
+		free(image->icc_profile_buf);
+		image->icc_profile_buf = NULL;
+		image->icc_profile_len = 0;
 	}
-
 
     strip_size = TIFFStripSize(tif);
     buf = _TIFFmalloc(strip_size);

@@ -1625,20 +1625,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		createdImage = true;
 	}
 
-	if (image->icc_profile_buf) {
-#if defined(OPJ_HAVE_LIBLCMS)
-		if (image->icc_profile_len) {
-			color_apply_icc_profile(image, false);
-		}
-		else {
-			color_cielab_to_rgb(image);
-		}
-#endif
-		free(image->icc_profile_buf);
-		image->icc_profile_buf = NULL;
-		image->icc_profile_len = 0;
-	}
-
 	/* Decide if MCT should be used */
 	if (parameters->tcp_mct == 255) { /* mct mode has not been set in commandline */
 		parameters->tcp_mct = (image->numcomps >= 3) ? 1 : 0;
