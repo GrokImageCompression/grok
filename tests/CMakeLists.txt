@@ -10,6 +10,7 @@ include_directories(
   ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2
   ${OPENJPEG_SOURCE_DIR}/src/bin/common
+  ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
@@ -25,6 +26,8 @@ endif()
 
 # First thing define the common source:
 set(compare_images_SRCS compare_images.cpp
+  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.cpp
+  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.h
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convert.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
   ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/converttif.cpp
@@ -40,7 +43,7 @@ set(compare_raw_files_SRCS compare_raw_files.cpp
 add_executable(compare_images ${compare_images_SRCS})
 target_link_libraries(compare_images
   ${OPENJPEG_LIBRARY_NAME}
-  ${PNG_LIBNAME} ${TIFF_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
+  ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 # To support universal exe:
 if(ZLIB_FOUND AND APPLE)

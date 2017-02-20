@@ -1573,7 +1573,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 
 	if (image->icc_profile_buf ) {
 #if defined(OPJ_HAVE_LIBLCMS)
-		if (image->icc_profile_len) {
+		if (image->icc_profile_len && info->decoder_parameters->decod_format != TIF_DFMT) {
 			color_apply_icc_profile(image, info->decoder_parameters->force_rgb);
 		}
 		else {
