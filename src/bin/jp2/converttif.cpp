@@ -740,6 +740,11 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 #endif
 	}
 
+	if (image->icc_profile_buf && image->icc_profile_len) {
+		TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
+	}
+
+
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, 3); // cm
 		for (int i = 0; i < 2; ++i) {

@@ -81,6 +81,7 @@ extern "C" {
 #include "convert.h"
 #include "format_defs.h"
 #include "opj_string.h"
+#include "color.h"
 }
 #include <float.h>
 #include <math.h>
@@ -90,6 +91,7 @@ extern "C" {
 #include <cstdlib>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
+
 
 using namespace TCLAP;
 using namespace std;
@@ -1621,6 +1623,20 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			return false;
 		}
 		createdImage = true;
+	}
+
+	if (image->icc_profile_buf) {
+#if defined(OPJ_HAVE_LIBLCMS)
+		if (image->icc_profile_len) {
+			color_apply_icc_profile(image, false);
+		}
+		else {
+			color_cielab_to_rgb(image);
+		}
+#endif
+		free(image->icc_profile_buf);
+		image->icc_profile_buf = NULL;
+		image->icc_profile_len = 0;
 	}
 
 	/* Decide if MCT should be used */
