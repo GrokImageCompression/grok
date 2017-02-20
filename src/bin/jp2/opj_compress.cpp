@@ -1572,7 +1572,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:
-			image = tiftoimage(info->input_file_name, info->encoder_parameters);
+			image = tiftoimage(info->input_file_name, info->encoder_parameters,false);
 			if (!image) {
 				fprintf(stderr, "Unable to load tiff file\n");
 				return false;

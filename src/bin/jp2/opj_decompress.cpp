@@ -1571,18 +1571,20 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		}
 	}
 
-	if (image->icc_profile_buf ) {
+	// A TIFF image can store the ICC profile, so no need to apply it in this case.
+	// Otherwise, we apply the profile
+	if (image->icc_profile_buf && info->decoder_parameters->decod_format != TIF_DFMT) {
 #if defined(OPJ_HAVE_LIBLCMS)
-		if (image->icc_profile_len && info->decoder_parameters->decod_format != TIF_DFMT) {
+		if (image->icc_profile_len) {
 			color_apply_icc_profile(image, info->decoder_parameters->force_rgb);
 		}
 		else {
 			color_cielab_to_rgb(image);
 		}
-#endif
 		free(image->icc_profile_buf);
 		image->icc_profile_buf = NULL;
 		image->icc_profile_len = 0;
+#endif
 	}
 
 	/* Force output precision */

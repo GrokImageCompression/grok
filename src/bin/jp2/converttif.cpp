@@ -1310,7 +1310,7 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
  * CINEMA                 : 12 bit precision
  */
-opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
+opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, bool applyICC)
 {
     uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
@@ -1558,10 +1558,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
     }
     image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
 
-	// handle embedded ICC profile
+	// handle embedded ICC profile (with sanity check on binary size of profile)
 	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
-		icclen > 0 &&
-		icclen < 1000000000) {
+														icclen > 0 &&
+															icclen < 1000000000) {
 		image->icc_profile_len = icclen;
 		image->icc_profile_buf = (uint8_t*)malloc(icclen);
 		if (!image->icc_profile_buf) {
@@ -1570,16 +1570,18 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
 #if defined(OPJ_HAVE_LIBLCMS)
-		if (image->icc_profile_len) {
-			color_apply_icc_profile(image, false);
-		}
-		else {
-			color_cielab_to_rgb(image);
+		if (applyICC) {
+			if (image->icc_profile_len) {
+				color_apply_icc_profile(image, false);
+			}
+			else {
+				color_cielab_to_rgb(image);
+			}
+			free(image->icc_profile_buf);
+			image->icc_profile_buf = NULL;
+			image->icc_profile_len = 0;
 		}
 #endif
-		free(image->icc_profile_buf);
-		image->icc_profile_buf = NULL;
-		image->icc_profile_len = 0;
 	}
 
     strip_size = TIFFStripSize(tif);
