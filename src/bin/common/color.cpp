@@ -436,7 +436,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 #if defined(OPJ_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_icc_profile(opj_image_t *image)
+void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 {
 	cmsHPROFILE in_prof = nullptr , out_prof=nullptr;
     cmsHTRANSFORM transform = NULL;
@@ -505,7 +505,10 @@ void color_apply_icc_profile(opj_image_t *image)
         in_type = TYPE_GRAY_8;
         out_type = TYPE_RGB_8;
         out_prof = cmsCreate_sRGBProfile();
-        image->color_space = OPJ_CLRSPC_SRGB;
+		if (forceRGB)
+			image->color_space = OPJ_CLRSPC_SRGB;
+		else 
+			image->color_space = OPJ_CLRSPC_GRAY;
     } else if(out_space == cmsSigYCbCrData) { /* enumCS 18 */
         in_type = TYPE_YCbCr_16;
         out_type = TYPE_RGB_16;
@@ -642,8 +645,14 @@ void color_apply_icc_profile(opj_image_t *image)
             free(outbuf);
         }
     } else { /* GRAY, GRAYA */
-		int *r = nullptr, *g = nullptr, *b = nullptr;
-        unsigned char *in=nullptr, *inbuf=nullptr, *out=nullptr, *outbuf=nullptr;
+		int *r = nullptr;
+		int *g = nullptr;
+		int *b = nullptr;
+		unsigned char *in = nullptr;
+		unsigned char * inbuf = nullptr;
+		unsigned char *out = nullptr;
+		unsigned char *outbuf = nullptr;
+
         max = max_w * max_h;
         nr_samples = (cmsUInt32Number)max * 3 * sizeof(unsigned char);
 		opj_image_comp_t *comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(opj_image_comp_t));
@@ -682,10 +691,10 @@ void color_apply_icc_profile(opj_image_t *image)
         opj_image_destroy(new_image);
         new_image = NULL;
 
-        image->numcomps += 2;
+		if (forceRGB)
+			image->numcomps += 2;
 
         r = image->comps[0].data;
-
         for(i = 0; i < max; ++i) {
             *in++ = (unsigned char)*r++;
         }
@@ -697,8 +706,13 @@ void color_apply_icc_profile(opj_image_t *image)
 
         for(i = 0; i < max; ++i) {
             *r++ = (int)*out++;
-            *g++ = (int)*out++;
-            *b++ = (int)*out++;
+			if (forceRGB) {
+				*g++ = (int)*out++;
+				*b++ = (int)*out++;
+			}
+			else { //just skip green and blue channels
+				out += 2;
+			}
         }
         free(inbuf);
         free(outbuf);
