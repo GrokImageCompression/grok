@@ -273,7 +273,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
 
     /* Read the tif file corresponding to the component */
 #ifdef OPJ_HAVE_LIBTIFF
-    image_read = tiftoimage(filename, &parameters);
+    image_read = tiftoimage(filename, &parameters, true);
 #endif
     if (!image_read) {
         fprintf(stderr, "Unable to load TIF file\n");
