@@ -67,6 +67,12 @@
 extern "C" {
 #include "openjpeg.h"
 #include "convert.h"
+#include "color.h"
+
+#ifdef OPJ_HAVE_LIBLCMS
+#include <lcms2.h>
+#endif
+
 }
 
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
@@ -147,7 +153,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     if(png_get_valid(png, info, PNG_INFO_tRNS)) {
         png_set_expand(png);
     }
-    /* We might wan't to expand background */
+    /* We might want to expand background */
     /*
     if(png_get_valid(png, info, PNG_INFO_bKGD)) {
     	png_color_16p bgnd;
@@ -155,6 +161,28 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     	png_set_background(png, bgnd, PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
     }
     */
+
+	
+	// See if iCCP chunk is present
+	if (png_get_valid(png, info, PNG_INFO_iCCP))
+	{
+		uint32_t ProfileLen;
+		png_bytep ProfileData;
+		int  Compression;
+		png_charp ProfileName;
+
+		png_get_iCCP(png, 
+					info,
+					&ProfileName,
+					&Compression,
+					&ProfileData,
+					&ProfileLen);
+		image->icc_profile_len = ProfileLen;
+		image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
+		if (!image->icc_profile_buf)
+			return NULL;
+		memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+	}
 
     if( !png_get_gAMA(png, info, &gamma))
         gamma = 1.0;
@@ -424,6 +452,20 @@ int imagetopng(opj_image_t * image, const char *write_idf)
     png_set_sBIT(png, info, &sig_bit);
     /* png_set_gamma(png, 2.2, 1./2.2); */
     /* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
+
+	// Set iCCP chunk
+	if (image->icc_profile_buf && image->icc_profile_len)
+	{
+		png_set_iCCP(png,
+					info,
+					"",
+					0,
+					image->icc_profile_buf,
+					image->icc_profile_len);
+	}
+
+
+
     png_write_info(png, info);
 
     /* setup conversion */
