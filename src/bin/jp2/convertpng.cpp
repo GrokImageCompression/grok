@@ -94,7 +94,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 {
     png_structp  png = NULL;
     png_infop    info = NULL;
-    double gamma;
+    double fileGamma;
     int bit_depth, interlace_type,compression_type, filter_type;
     uint32_t i;
     png_uint_32  width, height = 0U;
@@ -130,6 +130,10 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 
     if(setjmp(png_jmpbuf(png)))
         goto fin;
+
+	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
+	// because it deems it broken. (a controversial decision)
+	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);  
 
     png_init_io(png, reader);
     png_set_sig_bytes(png, MAGIC_SIZE);
@@ -183,15 +187,13 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 			return NULL;
 		memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
 	}
+	else {
+		if (!png_get_gAMA(png, info, &fileGamma))
+			fileGamma = 1.0;
+		png_set_gamma(png, 1.0, fileGamma);
 
-    if( !png_get_gAMA(png, info, &gamma))
-        gamma = 1.0;
-
-    /* we're not displaying but converting, screen gamma == 1.0 */
-    png_set_gamma(png, 1.0, gamma);
-
+	}
     png_read_update_info(png, info);
-
     color_type = png_get_color_type(png, info);
 
     switch (color_type) {
@@ -459,7 +461,7 @@ int imagetopng(opj_image_t * image, const char *write_idf)
 		png_set_iCCP(png,
 					info,
 					"",
-					0,
+					PNG_COMPRESSION_TYPE_BASE,
 					image->icc_profile_buf,
 					image->icc_profile_len);
 	}
