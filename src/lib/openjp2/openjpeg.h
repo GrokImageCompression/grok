@@ -785,8 +785,8 @@ typedef struct opj_image_comp {
     uint32_t sgnd;
     /** number of decoded resolution */
     uint32_t resno_decoded;
-    /** number of division by 2 of the out image compared to the original size of image */
-    uint32_t factor;
+    /** number of division by 2 of the output image compared to the original size of image */
+    uint32_t decodeScaleFactor;
     /** image component data */
     int32_t *data;
     /** alpha channel */

@@ -137,8 +137,8 @@ void opj_image_comp_header_update(opj_image_t * p_image_header, const struct opj
         l_comp_y0 = opj_uint_ceildiv(l_y0, l_img_comp->dy);
         l_comp_x1 = opj_uint_ceildiv(l_x1, l_img_comp->dx);
         l_comp_y1 = opj_uint_ceildiv(l_y1, l_img_comp->dy);
-        l_width   = opj_uint_ceildivpow2(l_comp_x1 - l_comp_x0, l_img_comp->factor);
-        l_height  = opj_uint_ceildivpow2(l_comp_y1 - l_comp_y0, l_img_comp->factor);
+        l_width   = opj_uint_ceildivpow2(l_comp_x1 - l_comp_x0, l_img_comp->decodeScaleFactor);
+        l_height  = opj_uint_ceildivpow2(l_comp_y1 - l_comp_y0, l_img_comp->decodeScaleFactor);
         l_img_comp->w = l_width;
         l_img_comp->h = l_height;
         l_img_comp->x0 = l_comp_x0;

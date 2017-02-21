@@ -1205,7 +1205,6 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
 							}
                         } else {
                             opj_tcd_cblk_dec_t* l_code_block = l_current_precinct->cblks.dec + cblkno;
-
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
 								if (!l_code_block->alloc()) {
 									return false;
@@ -1243,7 +1242,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
     } /* compno */
 
 
-	  // decoder sanity check for tile struct
+	// decoder plugin debug sanity check on tile struct
 	if (!isEncoder) {
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(p_tcd->current_plugin_tile, l_tile)) {
@@ -1251,9 +1250,6 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
 			}
 		}
 	}
-
-
-
     return true;
 }
 
