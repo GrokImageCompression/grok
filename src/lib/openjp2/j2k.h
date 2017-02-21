@@ -418,7 +418,7 @@ typedef struct opj_j2k_dec {
     uint8_t  *m_header_data;
     uint32_t m_header_data_size;
     /** to tell the tile part length */
-    uint32_t m_sot_length;
+    uint64_t m_sot_length;
     /** Only tile indices in the correct range will be decoded.*/
     uint32_t m_start_tile_x;
     uint32_t m_start_tile_y;

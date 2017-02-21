@@ -4141,7 +4141,7 @@ static bool opj_j2k_read_sod (opj_j2k_t *p_j2k,
         // but we are in the last tile part,
         // so its result will fit on uint32_t unless we find
         // a file with a single tile part of more than 4 GB...*/
-        p_j2k->m_specific_param.m_decoder.m_sot_length = (uint32_t)(opj_stream_get_number_byte_left(p_stream) - 2);
+        p_j2k->m_specific_param.m_decoder.m_sot_length = (uint64_t)(opj_stream_get_number_byte_left(p_stream) - 2);
     } else {
         /* Check to avoid pass the limit of uint32_t */
         if (p_j2k->m_specific_param.m_decoder.m_sot_length >= 2 )
