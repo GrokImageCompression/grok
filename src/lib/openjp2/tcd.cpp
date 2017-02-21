@@ -1629,6 +1629,7 @@ bool opj_tcd_update_tile_data ( opj_tcd_t *p_tcd,
             } else {
                 for (j=0; j<l_height; ++j) {
                     for (k=0; k<l_width; ++k) {
+						//cast and mask to avoid sign extension
                         *(l_dest_ptr++) = (int16_t) ((*(l_src_ptr++))&0xffff);
                     }
                     l_src_ptr += l_stride;
