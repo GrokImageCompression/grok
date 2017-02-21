@@ -434,7 +434,7 @@ int imagetopng(opj_image_t * image, const char *write_idf)
      * color_type == PNG_COLOR_TYPE_RGB_ALPHA) && bit_depth < 8
      *
      */
-    png_set_compression_level(png, Z_BEST_COMPRESSION);
+    png_set_compression_level(png, 3);
 
     if(nr_comp >= 3) { /* RGB(A) */
         color_type = PNG_COLOR_TYPE_RGB;
