@@ -7714,19 +7714,20 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 				opj_tile_buf_set_ptr(tilec->buf, NULL);
 				comp->resno_decoded = p_j2k->m_tcd->image->comps[compno].resno_decoded;
 
-				/* now sanitize data (signed data is broken at the moment */
+				/* now sanitize data */
+				//cast and mask in unsigned case, to avoid sign extension
 				l_size_comp = (comp->prec + 7) >> 3;
 				if (l_size_comp <= 2) {
 					for (j = 0; j < comp->h; ++j) {
 						for (i = 0; i < comp->w; ++i) {
 							if (l_size_comp == 1)
 								comp->data[i + j*comp->w] =
-								comp->sgnd ? comp->data[i + j*comp->w] :
-								comp->data[i + j*comp->w] & 0xFF;
+												comp->sgnd ? comp->data[i + j*comp->w] :
+															(char)comp->data[i + j*comp->w] & 0xFF;
 							else
 								comp->data[i + j*comp->w] =
-								comp->sgnd ? comp->data[i + j*comp->w] :
-								comp->data[i + j*comp->w] & 0xFFFF;
+											comp->sgnd ? comp->data[i + j*comp->w] :
+														(int16_t)comp->data[i + j*comp->w] & 0xFFFF;	
 
 						}
 					}
@@ -9258,10 +9259,7 @@ static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
 
             opj_image_comp_t* src_comp = p_j2k->m_tcd->image->comps + i;
 
-            if (src_comp->sgnd) {
-                copy_tile_data = true;
-                break;
-            }
+
             if (src_comp->x0 != l_x0_dest ||
                     src_comp->y0 != l_y0_dest ||
                     src_comp->w != (l_x1_dest - l_x0_dest) ||
