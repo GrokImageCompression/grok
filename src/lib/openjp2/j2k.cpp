@@ -2175,7 +2175,7 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
 			return false;
 		}
         l_img_comp->resno_decoded = 0;                                                          /* number of resolution decoded */
-        l_img_comp->factor = l_cp->m_specific_param.m_dec.m_reduce; /* reducing factor per component */
+        l_img_comp->decodeScaleFactor = l_cp->m_specific_param.m_dec.m_reduce; /* reducing factor per component */
         ++l_img_comp;
     }
 
@@ -7820,14 +7820,14 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 
 
         /* Border of the current output component. (x0_dest,y0_dest) corresponds to origin of dest buffer */
-		uint32_t x0_dest = opj_uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->factor);
-		uint32_t y0_dest = opj_uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->factor);
+		uint32_t x0_dest = opj_uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->decodeScaleFactor);
+		uint32_t y0_dest = opj_uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->decodeScaleFactor);
 		uint32_t x1_dest = x0_dest + img_comp_dest->w; /* can't overflow given that image->x1 is uint32 */
 		uint32_t y1_dest = y0_dest + img_comp_dest->h;
 
         /*if (i == 0) {
         fprintf(stdout, "DEST: x0_dest=%d, x1_dest=%d, y0_dest=%d, y1_dest=%d (%d)\n",
-                        x0_dest, x1_dest, y0_dest, y1_dest, img_comp_dest->factor );
+                        x0_dest, x1_dest, y0_dest, y1_dest, img_comp_dest->decodeScaleFactor );
         }*/
 
         /*-----*/
@@ -8141,8 +8141,8 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
         l_comp_x1 = opj_uint_ceildiv(p_image->x1, l_img_comp->dx);
         l_comp_y1 = opj_uint_ceildiv(p_image->y1, l_img_comp->dy);
 
-		uint32_t l_x1 = opj_uint_ceildivpow2(l_comp_x1, l_img_comp->factor);
-		uint32_t l_x0 = opj_uint_ceildivpow2(l_img_comp->x0, l_img_comp->factor);
+		uint32_t l_x1 = opj_uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor);
+		uint32_t l_x0 = opj_uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor);
         if (l_x1 < l_x0) {
             opj_event_msg(p_manager, EVT_ERROR,
                           "Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
@@ -8151,8 +8151,8 @@ bool opj_j2k_set_decode_area(       opj_j2k_t *p_j2k,
         }
 		l_img_comp->w = l_x1 - l_x0;
 
-		uint32_t l_y1 = opj_uint_ceildivpow2(l_comp_y1, l_img_comp->factor);
-		uint32_t l_y0 = opj_uint_ceildivpow2(l_img_comp->y0, l_img_comp->factor);
+		uint32_t l_y1 = opj_uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor);
+		uint32_t l_y0 = opj_uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor);
         if (l_y1 < l_y0) {
             opj_event_msg(p_manager, EVT_ERROR,
                           "Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
@@ -9250,8 +9250,8 @@ static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
         for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
             opj_tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + i;
             opj_image_comp_t* dest_comp = p_j2k->m_output_image->comps + i;
-            uint32_t l_x0_dest = opj_uint_ceildivpow2(dest_comp->x0, dest_comp->factor);
-            uint32_t l_y0_dest = opj_uint_ceildivpow2(dest_comp->y0, dest_comp->factor);
+            uint32_t l_x0_dest = opj_uint_ceildivpow2(dest_comp->x0, dest_comp->decodeScaleFactor);
+            uint32_t l_y0_dest = opj_uint_ceildivpow2(dest_comp->y0, dest_comp->decodeScaleFactor);
             uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
             uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
 
@@ -9630,15 +9630,15 @@ bool opj_j2k_get_tile(  opj_j2k_t *p_j2k,
     for (compno=0; compno < p_image->numcomps; ++compno) {
         uint32_t l_comp_x1, l_comp_y1;
 
-        l_img_comp->factor = p_j2k->m_private_image->comps[compno].factor;
+        l_img_comp->decodeScaleFactor = p_j2k->m_private_image->comps[compno].decodeScaleFactor;
 
         l_img_comp->x0 = opj_uint_ceildiv(p_image->x0, l_img_comp->dx);
         l_img_comp->y0 = opj_uint_ceildiv(p_image->y0, l_img_comp->dy);
         l_comp_x1 = opj_uint_ceildiv(p_image->x1, l_img_comp->dx);
         l_comp_y1 = opj_uint_ceildiv(p_image->y1, l_img_comp->dy);
 
-        l_img_comp->w = (opj_uint_ceildivpow2(l_comp_x1, l_img_comp->factor) - opj_uint_ceildivpow2(l_img_comp->x0, l_img_comp->factor));
-        l_img_comp->h = (opj_uint_ceildivpow2(l_comp_y1, l_img_comp->factor) - opj_uint_ceildivpow2(l_img_comp->y0, l_img_comp->factor));
+        l_img_comp->w = (opj_uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor) - opj_uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor));
+        l_img_comp->h = (opj_uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor) - opj_uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor));
 
         l_img_comp++;
     }
@@ -9690,7 +9690,7 @@ bool opj_j2k_set_decoded_resolution_factor(opj_j2k_t *p_j2k,
                             opj_event_msg(p_manager, EVT_ERROR, "Resolution factor is greater than the maximum resolution in the component.\n");
                             return false;
                         }
-                        p_j2k->m_private_image->comps[it_comp].factor = res_factor;
+                        p_j2k->m_private_image->comps[it_comp].decodeScaleFactor = res_factor;
                     }
                     return true;
                 }

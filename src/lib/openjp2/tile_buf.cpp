@@ -18,14 +18,6 @@
 
 #include "opj_includes.h"
 
-/*
-Create region manager.
-
-Note: because this method uses a tcd struct, and we can't forward declare the struct
-in region_mgr.h header file, this method's declaration can be found in the tcd.h
-header file.
-
-*/
 bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
                                    bool irreversible,
                                    uint32_t cblkw,

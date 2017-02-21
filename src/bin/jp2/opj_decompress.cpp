@@ -953,7 +953,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
     l_new_image->y0 = original->y0;
     l_new_image->y1 = original->y1;
 
-    l_new_image->comps[0].factor        = l_new_image->comps[1].factor        = l_new_image->comps[2].factor        = original->comps[0].factor;
+    l_new_image->comps[0].decodeScaleFactor        = l_new_image->comps[1].decodeScaleFactor        = l_new_image->comps[2].decodeScaleFactor        = original->comps[0].decodeScaleFactor;
     l_new_image->comps[0].alpha         = l_new_image->comps[1].alpha         = l_new_image->comps[2].alpha         = original->comps[0].alpha;
     l_new_image->comps[0].resno_decoded = l_new_image->comps[1].resno_decoded = l_new_image->comps[2].resno_decoded = original->comps[0].resno_decoded;
 
@@ -962,7 +962,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
     memcpy(l_new_image->comps[2].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
 
     for(compno = 1U; compno < original->numcomps; ++compno) {
-        l_new_image->comps[compno+2U].factor        = original->comps[compno].factor;
+        l_new_image->comps[compno+2U].decodeScaleFactor        = original->comps[compno].decodeScaleFactor;
         l_new_image->comps[compno+2U].alpha         = original->comps[compno].alpha;
         l_new_image->comps[compno+2U].resno_decoded = original->comps[compno].resno_decoded;
         memcpy(l_new_image->comps[compno+2U].data, original->comps[compno].data, original->comps[compno].w * original->comps[compno].h * sizeof(int32_t));
@@ -981,7 +981,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     uint32_t compno;
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-        if (original->comps[compno].factor > 0U) {
+        if (original->comps[compno].decodeScaleFactor > 0U) {
             fprintf(stderr, "ERROR -> opj_decompress: -upsample not supported with reduction\n");
             opj_image_destroy(original);
             return NULL;
@@ -1041,7 +1041,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
         opj_image_comp_t* l_new_cmp = &(l_new_image->comps[compno]);
         opj_image_comp_t* l_org_cmp = &(original->comps[compno]);
 
-        l_new_cmp->factor        = l_org_cmp->factor;
+        l_new_cmp->decodeScaleFactor        = l_org_cmp->decodeScaleFactor;
         l_new_cmp->alpha         = l_org_cmp->alpha;
         l_new_cmp->resno_decoded = l_org_cmp->resno_decoded;
 
