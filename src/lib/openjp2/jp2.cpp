@@ -1168,14 +1168,25 @@ static uint8_t * opj_jp2_write_colr(  opj_jp2_t *jp2,
 
 static void opj_jp2_free_pclr(opj_jp2_color_t *color)
 {
-    opj_free(color->jp2_pclr->channel_sign);
-    opj_free(color->jp2_pclr->channel_size);
-    opj_free(color->jp2_pclr->entries);
+	if (color) {
+		if (color->jp2_pclr) {
+			if (color->jp2_pclr->channel_sign) {
+				opj_free(color->jp2_pclr->channel_sign);
+			}
+			if (color->jp2_pclr->channel_size) {
+				opj_free(color->jp2_pclr->channel_size);
+			}
+			if (color->jp2_pclr->entries) {
+				opj_free(color->jp2_pclr->entries);
+			}
 
-    if(color->jp2_pclr->cmap) opj_free(color->jp2_pclr->cmap);
-
-    opj_free(color->jp2_pclr);
-    color->jp2_pclr = NULL;
+			if (color->jp2_pclr->cmap) {
+				opj_free(color->jp2_pclr->cmap);
+			}
+			opj_free(color->jp2_pclr);
+			color->jp2_pclr = nullptr;
+		}
+	}
 }
 
 static bool opj_jp2_check_color(opj_image_t *image, opj_jp2_color_t *color, opj_event_mgr_t *p_manager)
@@ -1386,8 +1397,6 @@ static void opj_jp2_apply_pclr(opj_image_t *image, opj_jp2_color_t *color)
     opj_free(old_comps);
     image->comps = new_comps;
     image->numcomps = nr_channels;
-
-    opj_jp2_free_pclr(color);
 
 }/* apply_pclr() */
 
@@ -3168,27 +3177,7 @@ void opj_jp2_destroy(opj_jp2_t *jp2)
             jp2->color.jp2_cdef = nullptr;
         }
 
-        if (jp2->color.jp2_pclr) {
-            if (jp2->color.jp2_pclr->cmap) {
-                opj_free(jp2->color.jp2_pclr->cmap);
-                jp2->color.jp2_pclr->cmap = NULL;
-            }
-            if (jp2->color.jp2_pclr->channel_sign) {
-                opj_free(jp2->color.jp2_pclr->channel_sign);
-                jp2->color.jp2_pclr->channel_sign = NULL;
-            }
-            if (jp2->color.jp2_pclr->channel_size) {
-                opj_free(jp2->color.jp2_pclr->channel_size);
-                jp2->color.jp2_pclr->channel_size = NULL;
-            }
-            if (jp2->color.jp2_pclr->entries) {
-                opj_free(jp2->color.jp2_pclr->entries);
-                jp2->color.jp2_pclr->entries = NULL;
-            }
-
-            opj_free(jp2->color.jp2_pclr);
-            jp2->color.jp2_pclr = nullptr;
-        }
+		opj_jp2_free_pclr(&jp2->color);
 
         if (jp2->m_validation_list) {
             opj_procedure_list_destroy(jp2->m_validation_list);
