@@ -153,7 +153,7 @@ Divide an integer and round upwards
 static inline uint32_t  opj_uint_ceildiv(uint32_t  a, uint32_t  b)
 {
     assert(b);
-    return (a + b - 1) / b;
+    return (uint32_t)((a + (uint64_t)b - 1) / b);
 }
 
 /**
