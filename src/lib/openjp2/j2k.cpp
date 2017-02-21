@@ -9228,23 +9228,24 @@ static bool opj_j2k_allocate_tile_element_cstr_index(opj_j2k_t *p_j2k)
 
 static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
 {
+
+	/* If we only have one tile, check the following:
+
+	1) Check if each output image component's dimensions match
+	destination image component dimensions. It they don't, then set copy_tile_data to true
+	and break.
+
+	2) Check if we are not decoding all resolutions. If we are not, set copy_tile_data to true
+	and break;
+
+	*/
+
+	if (p_j2k->m_cp.m_specific_param.m_dec.m_reduce != 0)
+		return true;
     /* single tile, RGB images only*/
     bool copy_tile_data = (num_tiles> 1) ;
-
     uint32_t i = 0;
 
-
-
-    /* If we only have one tile, check the following:
-
-    1) Check if each output image component's dimensions match
-    destination image component dimensions. It they don't, then set copy_tile_data to true
-    and break.
-
-    2) Check if we are not decoding all resolutions. If we are not, set copy_tile_data to true
-    and break;
-
-    */
     if (!copy_tile_data) {
 
         for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
@@ -9265,10 +9266,6 @@ static bool opj_j2k_needs_copy_tile_data(opj_j2k_t *p_j2k, uint32_t num_tiles)
                     src_comp->y0 != l_y0_dest ||
                     src_comp->w != (l_x1_dest - l_x0_dest) ||
                     src_comp->h != (l_y1_dest - l_y0_dest)) {
-                copy_tile_data = true;
-                break;
-            }
-            if (src_comp->resno_decoded < tilec->numresolutions) {
                 copy_tile_data = true;
                 break;
             }
