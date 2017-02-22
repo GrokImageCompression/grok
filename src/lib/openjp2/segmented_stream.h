@@ -66,7 +66,7 @@ uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
 /*
 Increment buffer offset
 */
-void opj_buf_incr_offset(opj_buf_t* buf, int64_t off);
+void opj_buf_incr_offset(opj_buf_t* buf, uint64_t off);
 
 /*
 Free buffer and also its internal array if owns_data is true
@@ -101,7 +101,7 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len);
 /*
 Increment offset of current segment
 */
-void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, int64_t offset);
+void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset);
 
 /*
 Get length of current segment

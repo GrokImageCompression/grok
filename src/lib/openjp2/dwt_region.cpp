@@ -352,8 +352,8 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 			int32_t resno = 1;
 
-			buffer_h.data =
-				(int32_t*)opj_aligned_malloc((opj_tile_buf_get_max_interleaved_range(tilec->buf) + 2) * sizeof(int32_t));
+			auto bufferDataSize = opj_tile_buf_get_max_interleaved_range(tilec->buf) + 2;
+			buffer_h.data =	(int32_t*)opj_aligned_malloc(2*bufferDataSize * sizeof(int32_t));
 			if (!buffer_h.data) {
 				success = false;
 				return;
@@ -362,18 +362,14 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 			buffer_v.data = buffer_h.data;
 
 			while (--numResolutions) {
-				int32_t * restrict tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-				int32_t j;
-				opj_pt_t interleaved_h, interleaved_v;
-
 				/* start with the first resolution, and work upwards*/
 				buffer_h.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, true);
 				buffer_h.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, true);
 				buffer_v.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, false);
 				buffer_v.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, false);
 
-				interleaved_h = opj_tile_buf_get_interleaved_range(tilec->buf, resno, true);
-				interleaved_v = opj_tile_buf_get_interleaved_range(tilec->buf, resno, false);
+				opj_pt_t interleaved_h = opj_tile_buf_get_interleaved_range(tilec->buf, resno, true);
+				opj_pt_t interleaved_v = opj_tile_buf_get_interleaved_range(tilec->buf, resno, false);
 
 
 				buffer_h.s_n = (int32_t)res_width;
@@ -389,8 +385,9 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 				buffer_h.interleaved_offset = opj_int_max(0, interleaved_h.x - 2);
 
 				/* first do horizontal interleave */
-				tiledp += (buffer_v.range_even.x + threadId) * w;
-				for (j = buffer_v.range_even.x + threadId; j < buffer_v.range_even.y; j+=numThreads) {
+
+				int32_t * restrict tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + (buffer_v.range_even.x + threadId) * w;
+				for (int32_t j = buffer_v.range_even.x + threadId; j < buffer_v.range_even.y; j+=numThreads) {
 					opj_dwt_region_interleave53_h(&buffer_h, tiledp);
 					opj_dwt_region_decode53_1d(&buffer_h);
 					memcpy(tiledp + interleaved_h.x, buffer_h.data + interleaved_h.x - buffer_h.interleaved_offset, (interleaved_h.y - interleaved_h.x) * sizeof(int32_t));
@@ -398,8 +395,8 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 				}
 				decode_dwt_barrier.arrive_and_wait();
 
-				tiledp += (buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x)*w;
-				for (j = buffer_v.range_odd.x+threadId; j < buffer_v.range_odd.y; j+=numThreads) {
+				tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + (buffer_v.s_n +  buffer_v.range_odd.x + threadId) * w;
+				for (int32_t j = buffer_v.range_odd.x+threadId; j < buffer_v.range_odd.y; j+=numThreads) {
 					opj_dwt_region_interleave53_h(&buffer_h, tiledp);
 					opj_dwt_region_decode53_1d(&buffer_h);
 					memcpy(tiledp + interleaved_h.x, buffer_h.data + interleaved_h.x - buffer_h.interleaved_offset, (interleaved_h.y - interleaved_h.x) * sizeof(int32_t));
@@ -412,7 +409,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				/* next do vertical interleave */
 				tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + interleaved_h.x + threadId;
-				for (j = interleaved_h.x+threadId; j < interleaved_h.y; j+=numThreads) {
+				for (int32_t j = interleaved_h.x+threadId; j < interleaved_h.y; j+=numThreads) {
 					int32_t k;
 					int32_t * restrict tiledp_v = tiledp + (interleaved_v.x)*w;
 					opj_dwt_region_interleave53_v(&buffer_v, tiledp, (int32_t)w);

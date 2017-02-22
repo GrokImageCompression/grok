@@ -62,7 +62,7 @@ void opj_rect_print(opj_rect_t* r);
 
 typedef struct opj_buf {
     uint8_t *buf;		/* internal array*/
-    int64_t offset;	/* current offset into array */
+    uint64_t offset;	/* current offset into array */
     size_t len;		/* length of array */
     bool owns_data;	/* true if buffer manages the buf array */
 } opj_buf_t;
