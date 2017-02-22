@@ -7365,7 +7365,7 @@ static bool opj_j2k_need_nb_tile_parts_correction(opj_stream_private_t *p_stream
         }
         l_tot_len -= 12U;
         /* look for next SOT marker */
-        if (opj_stream_skip(p_stream, (int64_t)(l_tot_len), p_manager) != (int64_t)(l_tot_len)) {
+        if (!opj_stream_skip(p_stream, (int64_t)(l_tot_len), p_manager)) {
             /* assume all is OK */
             if (! opj_stream_seek(p_stream, l_stream_pos_backup, p_manager)) {
                 return false;
@@ -7522,7 +7522,7 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
 
             if (p_j2k->m_specific_param.m_decoder.m_skip_data) {
                 /* Skip the rest of the tile part header*/
-                if (opj_stream_skip(p_stream,p_j2k->m_specific_param.m_decoder.m_sot_length,p_manager) != p_j2k->m_specific_param.m_decoder.m_sot_length) {
+                if (!opj_stream_skip(p_stream,p_j2k->m_specific_param.m_decoder.m_sot_length,p_manager)) {
                     opj_event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                     return false;
                 }

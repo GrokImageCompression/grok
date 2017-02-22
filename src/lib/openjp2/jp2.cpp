@@ -2532,7 +2532,7 @@ static bool opj_jp2_read_header_procedure(  opj_jp2_t *jp2,
                 } else {
                     opj_event_msg(p_manager, EVT_WARNING, "JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored\n", (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0));
                     jp2->jp2_state |= JP2_STATE_UNKNOWN;
-                    if (opj_stream_skip(stream,l_current_data_size,p_manager) != l_current_data_size) {
+                    if (!opj_stream_skip(stream,l_current_data_size,p_manager)) {
                         opj_event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
                         opj_free(l_current_data);
                         return false;
@@ -2580,7 +2580,7 @@ static bool opj_jp2_read_header_procedure(  opj_jp2_t *jp2,
                 return false;
             }
             jp2->jp2_state |= JP2_STATE_UNKNOWN;
-            if (opj_stream_skip(stream,l_current_data_size,p_manager) != l_current_data_size) {
+            if (!opj_stream_skip(stream,l_current_data_size,p_manager)) {
                 opj_event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
                 opj_free(l_current_data);
                 return false;
@@ -2824,7 +2824,7 @@ static bool opj_jp2_skip_jp2c(	opj_jp2_t *jp2,
 
     jp2->j2k_codestream_offset = opj_stream_tell(stream);
 
-    if (opj_stream_skip(stream,8,p_manager) != 8) {
+    if (!opj_stream_skip(stream,8,p_manager)) {
         return false;
     }
 
