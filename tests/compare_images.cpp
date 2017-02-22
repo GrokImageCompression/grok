@@ -386,7 +386,7 @@ static int imageToPNG(const opj_image_t* image, const char* filename, int num_co
     image_write = opj_image_create(1u, &param_image_write, OPJ_CLRSPC_GRAY);
     memcpy(image_write->comps->data, image->comps[num_comp_select].data, param_image_write.h * param_image_write.w * sizeof(int));
 
-    imagetopng(image_write, filename);
+    imagetopng(image_write, filename, DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
 
     opj_image_destroy(image_write);
 

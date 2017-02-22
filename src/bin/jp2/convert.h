@@ -126,7 +126,7 @@ extern "C" {
 	opj_image_t* rawltoimage(const char *filename, opj_cparameters_t *parameters);
 
 	/* PNG conversion*/
-	extern int imagetopng(opj_image_t *image, const char *write_idf);
+	extern int imagetopng(opj_image_t *image, const char *write_idf, int32_t compressionLevel);
 	extern opj_image_t* pngtoimage(const char *filename, opj_cparameters_t *parameters);
 
 }
