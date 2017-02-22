@@ -353,7 +353,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 			int32_t resno = 1;
 
 			auto bufferDataSize = opj_tile_buf_get_max_interleaved_range(tilec->buf) + 2;
-			buffer_h.data =	(int32_t*)opj_aligned_malloc(2*bufferDataSize * sizeof(int32_t));
+			buffer_h.data =	(int32_t*)opj_aligned_malloc(bufferDataSize * sizeof(int32_t));
 			if (!buffer_h.data) {
 				success = false;
 				return;
@@ -433,7 +433,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-    return true;
+    return success;
 }
 
 /***************************************************************************************
