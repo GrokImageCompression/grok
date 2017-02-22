@@ -156,7 +156,7 @@ typedef struct opj_stream_private {
     /**
     * FIXME DOC.
     */
-    int64_t (* m_opj_skip)(struct opj_stream_private * ,
+    bool (* m_opj_skip)(struct opj_stream_private * ,
 							int64_t ,
 							opj_event_mgr_t *);
 
@@ -327,7 +327,7 @@ bool opj_stream_flush (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-int64_t opj_stream_skip (opj_stream_private_t * p_stream,
+bool opj_stream_skip (opj_stream_private_t * p_stream,
 						int64_t p_size, 
 						opj_event_mgr_t * p_event_mgr);
 
@@ -357,7 +357,7 @@ int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-int64_t opj_stream_write_skip (opj_stream_private_t * p_stream,
+bool opj_stream_write_skip (opj_stream_private_t * p_stream,
 								int64_t p_size, 
 								opj_event_mgr_t * p_event_mgr);
 
@@ -368,7 +368,7 @@ int64_t opj_stream_write_skip (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-int64_t opj_stream_read_skip (opj_stream_private_t * p_stream,
+bool opj_stream_read_skip (opj_stream_private_t * p_stream,
 								int64_t p_size,
 								opj_event_mgr_t * p_event_mgr);
 
