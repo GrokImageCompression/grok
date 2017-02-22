@@ -648,6 +648,8 @@ typedef struct opj_prec {
 	opj_precision_mode mode;
 } opj_precision;
 
+#define DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-65535)
+
 typedef struct opj_decompress_params {
 	/** core library parameters */
 	opj_dparameters_t core;
@@ -690,6 +692,7 @@ typedef struct opj_decompress_params {
 	bool split_pnm;
 
 	uint32_t compression;
+	int32_t  compressionLevel;   // compression "quality", depending on file format we are writing to
 
 	uint32_t numThreads;
 	int32_t deviceId;

@@ -169,6 +169,12 @@ static void decode_help_display(void)
 		"    Path to T1 plugin.\n");
 	fprintf(stdout, "  [-H | -NumThreads] <number of threads>\n"
 		"    Number of threads used by T1 decode.\n");
+	fprintf(stdout, "  [-c|-Compression] <compression>\n"
+		"    Compress output image data.Currently, this flag is only applicable when output format is set to `TIF`,\n"
+		"    and the only currently supported value is 8, corresponding to COMPRESSION_ADOBE_DEFLATE i.e.zip compression.\n"
+		"    The `zlib` library must be available for this compression setting.Default: 0 - no compression.\n");
+	fprintf(stdout, "   [L|-CompressionLevel] <compression level>\n"
+		"    \"Quality\" of compression. Currently only implemented for PNG format. Default - Z_BEST_COMPRESSION\n");
 	fprintf(stdout, "  [-t | -TileIndex] <tile index>\n"
 		"    Index of tile to be decoded\n");
 	fprintf(stdout, "  [-d | -DecodeRegion] <x0,y0,x1,y1>\n"
@@ -550,7 +556,9 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<uint32_t> compressionArg("c", "Compression",
 			"Compression Type",
 			false, 0, "unsigned int", cmd);
-
+		ValueArg<int32_t> compressionLevelArg("L", "CompressionLevel",
+											"Compression Level",
+											false, -65535, "int", cmd);
 		ValueArg<uint32_t> durationArg("z", "Duration",
 			"Duration in seconds",
 			false, 0, "unsigned integer", cmd);
@@ -586,6 +594,9 @@ int parse_cmdline_decoder(int argc,
 
 		if (compressionArg.isSet()) {
 			parameters->compression = compressionArg.getValue();
+		}
+		if (compressionLevelArg.isSet()) {
+			parameters->compressionLevel = compressionLevelArg.getValue();
 		}
 		// process
 		if (inputFileArg.isSet()) {
@@ -893,6 +904,7 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
 	parameters->numThreads = 8;
 	parameters->deviceId = -1;
 	parameters->repeats = 1;
+	parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
 }
 
 static void destroy_parameters(opj_decompress_parameters* parameters)
@@ -1727,7 +1739,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			break;
 #ifdef OPJ_HAVE_LIBPNG
 		case PNG_DFMT:			/* PNG */
-			if (imagetopng(image, parameters->outfile)) {
+			if (imagetopng(image, parameters->outfile, parameters->compressionLevel)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}

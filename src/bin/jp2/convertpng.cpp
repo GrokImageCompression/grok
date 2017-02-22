@@ -314,7 +314,7 @@ static void convert_32s16u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length
         *pDst++ = (uint8_t)val;
     }
 }
-int imagetopng(opj_image_t * image, const char *write_idf)
+int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLevel)
 {
     FILE * volatile writer = NULL;
     png_structp png = NULL;
@@ -434,7 +434,7 @@ int imagetopng(opj_image_t * image, const char *write_idf)
      * color_type == PNG_COLOR_TYPE_RGB_ALPHA) && bit_depth < 8
      *
      */
-    png_set_compression_level(png, Z_BEST_COMPRESSION);
+    png_set_compression_level(png, (compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? Z_BEST_COMPRESSION : compressionLevel);
 
     if(nr_comp >= 3) { /* RGB(A) */
         color_type = PNG_COLOR_TYPE_RGB;
