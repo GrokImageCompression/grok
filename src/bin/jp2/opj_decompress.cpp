@@ -736,9 +736,7 @@ int parse_cmdline_decoder(int argc,
 			ROI_values[0] = '\0';
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
-			if (parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1) != EXIT_SUCCESS) {
-				fprintf(stdout, "[WARNING] Specified image decode region not valid: ignoring \n");
-			}
+			parse_DA_values(ROI_values, &parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1, &parameters->DA_y1);
 			free(ROI_values);
 		}
 
@@ -826,6 +824,8 @@ int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA
 					values[1] < 0 ||
 					values[2] < 0 ||
 					values[3] < 0)) {
+		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
+																						values[0],values[1],values[2],values[3]);
 			return EXIT_FAILURE;
 	}
 	else {

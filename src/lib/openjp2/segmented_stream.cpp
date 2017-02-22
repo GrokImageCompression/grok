@@ -278,7 +278,7 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
     return true;
 }
 
-void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, int64_t offset)
+void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset)
 {
     opj_buf_t* cur_seg = NULL;
     if (!seg_buf)
@@ -377,16 +377,16 @@ int64_t opj_seg_buf_get_global_offset(opj_seg_buf_t* seg_buf)
 }
 
 
-void opj_buf_incr_offset(opj_buf_t* buf, int64_t off)
+void opj_buf_incr_offset(opj_buf_t* buf, uint64_t off)
 {
     if (!buf)
         return;
     /*  we allow the offset to move to one location beyond end of buffer segment*/
-    if (buf->offset + off > (int64_t)buf->len) {
+    if (buf->offset + off > (uint64_t)buf->len) {
 #ifdef DEBUG_SEG_BUF
         printf("Warning: attempt to increment buffer offset out of bounds\n");
 #endif
-        buf->offset = (int64_t)buf->len;
+        buf->offset = (uint64_t)buf->len;
     }
     buf->offset += off;
 }
