@@ -17,7 +17,6 @@
 
 
 #include "opj_includes.h"
-#include <algorithm>
 
 bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
                                    bool irreversible,
@@ -276,16 +275,16 @@ opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
     }
 
     /* clip */
-    rc.x = std::max<int64_t>(0, rc.x);
+    rc.x = opj_max<int64_t>(0, rc.x);
 
     /* if resno == 0, then prev_res is null */
     if (resno == 0) {
-        rc.y = std::min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+        rc.y = opj_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     } else {
         if (is_even)
-            rc.y = std::min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
+            rc.y = opj_min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
         else
-            rc.y = std::min<int64_t>(rc.y,
+            rc.y = opj_min<int64_t>(rc.y,
                                is_horizontal ? res->bounds.x - prev_res->bounds.x : res->bounds.y - prev_res->bounds.y);
 
     }
@@ -313,12 +312,12 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
     even = opj_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
     odd = opj_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
 
-    rc.x = std::min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
-    rc.y = std::max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
+    rc.x = opj_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
+    rc.y = opj_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
 
     /* clip to resolution bounds */
-    rc.x = std::max<int64_t>(0, rc.x);
-    rc.y = std::min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+    rc.x = opj_max<int64_t>(0, rc.x);
+    rc.y = opj_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     return rc;
 }
 
@@ -329,6 +328,6 @@ int64_t opj_tile_buf_get_interleaved_upper_bound(opj_tile_buf_component_t* comp)
 	opj_pt_t horizontal = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
 	opj_pt_t vertical   = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
-    return std::max<int64_t>(horizontal.y, vertical.y);
+    return opj_max<int64_t>(horizontal.y, vertical.y);
 }
 

@@ -54,7 +54,6 @@
  */
 
 #pragma once
-#include <algorithm>
 
 /**
 @file opj_intmath.h
@@ -69,7 +68,14 @@ The functions in OPJ_INTMATH.H have for goal to realize operations on integers.
 /** @name Exported functions (see also openjpeg.h) */
 /*@{*/
 /* ----------------------------------------------------------------------- */
-/**
+
+
+template<typename T> T opj_min(T a, T b) {
+	return ((a < b) ? a : b);
+}
+template<typename T> T opj_max(T a, T b) {
+	return ((a > b) ? a : b);
+}
 
 
 /**

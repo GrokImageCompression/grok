@@ -1440,8 +1440,8 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
                             y += pres->y1 - pres->y0;
                         }
 
-						maxCblkW = std::max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-						maxCblkH = std::max<int32_t>(maxCblkH, 1 << tccp->cblkh);
+						maxCblkW = opj_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
+						maxCblkH = opj_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
 						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;
@@ -1503,7 +1503,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     for (i = 0; i < t1->w; ++i) {
         for (j = 0; j < t1->h; ++j) {
             int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-            max = std::max<int32_t>(max, tmp);
+            max = opj_max<int32_t>(max, tmp);
         }
     }
 
