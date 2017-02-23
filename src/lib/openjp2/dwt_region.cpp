@@ -127,15 +127,26 @@ typedef union {
     float	f[4];
 } opj_coeff97_t;
 
-typedef struct opj_dwt97 {
+struct opj_dwt97_t {
+	int64_t bufferShiftEven();
+	int64_t bufferShiftOdd();
     opj_coeff97_t*	data ;
+	size_t		dataSize; // number of floats (four per opj_coeff97_t struct)
     int64_t		d_n ;
     int64_t		s_n ;
-    opj_pt_t		range_even;
-    opj_pt_t		range_odd;
+    opj_pt_t	range_even;
+    opj_pt_t	range_odd;
     int64_t		interleaved_offset;
-    int64_t		odd_top_left_bit ;
-} opj_dwt97_t ;
+    int64_t		odd_top_left_bit;
+} ;
+
+
+int64_t opj_dwt97_t::bufferShiftEven() {
+	return -interleaved_offset + odd_top_left_bit;
+}
+int64_t opj_dwt97_t::bufferShiftOdd() {
+	return  -interleaved_offset + (odd_top_left_bit ^ 1);
+}
 
 static const float opj_dwt_alpha =  1.586134342f; /*  12994 */
 static const float opj_dwt_beta  =  0.052980118f; /*    434 */
@@ -348,7 +359,8 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 			int32_t resno = 1;
 
-			auto bufferDataSize = opj_tile_buf_get_max_interleaved_range(tilec->buf) + 2;
+			// add 2 for boundary, plus one for parity
+			auto bufferDataSize = opj_tile_buf_get_interleaved_upper_bound(tilec->buf)+3;
 			buffer_h.data =	(int32_t*)opj_aligned_malloc(bufferDataSize * sizeof(int32_t));
 			if (!buffer_h.data) {
 				success = false;
@@ -442,51 +454,63 @@ static void opj_region_interleave97_h(opj_dwt97_t* restrict buffer,
 									  size_t size)
 {
 
-    float* restrict buffer_data_ptr = (float*) (buffer->data - buffer->interleaved_offset + buffer->odd_top_left_bit);
+	int64_t bufferShift = buffer->bufferShiftEven();
+    float* restrict buffer_data_ptr = (float*) (buffer->data + bufferShift);
+	int64_t bufferUpperLimit = buffer->dataSize - bufferShift;
     auto count_low = buffer->range_even.x;
     auto count_high = buffer->range_even.y;
 
     for (auto k = 0; k < 2; ++k) {
-        if (count_low + 3 * stride < size) {
+        if ( ((count_high - 1) + 3 * stride < size) ) {
             /* Fast code path */
             for (auto i = count_low; i < count_high; ++i) {
                 auto j = i;
-                buffer_data_ptr[i << 3]			= tile_data[j];
+				auto bufferIndex = i << 3;
+                buffer_data_ptr[bufferIndex]			= tile_data[j];
                 j += stride;
+				bufferIndex++;
 
-                buffer_data_ptr[(i << 3) + 1]	= tile_data[j];
-                j += stride;
+				buffer_data_ptr[bufferIndex] = tile_data[j];
+				j += stride;
+				bufferIndex++;
 
-                buffer_data_ptr[(i << 3) + 2]	= tile_data[j];
-                j += stride;
+				buffer_data_ptr[bufferIndex] = tile_data[j];
+				j += stride;
+				bufferIndex++;
 
-                buffer_data_ptr[(i << 3) + 3]	= tile_data[j];
+				buffer_data_ptr[bufferIndex] = tile_data[j];
             }
         } else {
             /* Slow code path */
             for (auto i = count_low; i < count_high; ++i) {
                 size_t j = i;
+				auto bufferIndex = i << 3;
 
-                buffer_data_ptr[i << 3]			= tile_data[j];
+				buffer_data_ptr[bufferIndex]			= tile_data[j];
+				bufferIndex++;
                 j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 1]	= tile_data[j];
-                j += stride;
+				buffer_data_ptr[bufferIndex] = tile_data[j];
+				bufferIndex++;
+				j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 2]	= tile_data[j];
-                j += stride;
+				buffer_data_ptr[bufferIndex] = tile_data[j];
+				bufferIndex++;
+				j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 3]	= tile_data[j];
+				buffer_data_ptr[bufferIndex] = tile_data[j];
             }
         }
 
-        buffer_data_ptr = (float*)(buffer->data - buffer->interleaved_offset + (buffer->odd_top_left_bit^1) );
+		bufferShift = buffer->bufferShiftOdd();
+        buffer_data_ptr = (float*)(buffer->data + bufferShift);
+		bufferUpperLimit = buffer->dataSize - bufferShift;
         tile_data		+= buffer->s_n;
         size			-= buffer->s_n;
         count_low		= buffer->range_odd.x;
@@ -549,7 +573,7 @@ static void opj_region_decode97_lift(opj_coeff97_t* l,
     auto count_max = std::min<int64_t>(count_high, maximum);
 
     assert(count_low <= count_high);
-    assert(maximum <= count);
+    assert(maximum <= (int64_t)count);
 
     if (count_low > 0) {
         fw += count_low << 3;
@@ -686,8 +710,9 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 
-	auto maxInterleavedRange = opj_tile_buf_get_max_interleaved_range(tilec->buf);
-	buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc((maxInterleavedRange + 4) * sizeof(opj_coeff97_t));
+	// add 4 for boundary, plus one for parity
+	buffer_h.dataSize = (opj_tile_buf_get_interleaved_upper_bound(tilec->buf) + 5) * 4;
+	buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc(buffer_h.dataSize*sizeof(float));
 
 	if (!buffer_h.data) {
 		/* FIXME event manager error callback */

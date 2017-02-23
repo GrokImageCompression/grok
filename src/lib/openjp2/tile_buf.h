@@ -89,5 +89,5 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal);
 
-int64_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp);
+int64_t opj_tile_buf_get_interleaved_upper_bound(opj_tile_buf_component_t* comp);
 
