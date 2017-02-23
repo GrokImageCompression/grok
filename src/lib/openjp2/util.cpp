@@ -25,7 +25,7 @@
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline int32_t opj_int_ceildiv(int32_t a, int32_t b)
+static inline int64_t opj_int64_ceildiv(int64_t a, int64_t b)
 {
 	assert(b);
 	return (a + b - 1) / b;
@@ -37,10 +37,10 @@ void opj_rect_print(opj_rect_t* r)
     if (!r)
         printf("Null rect\n");
     else
-        printf("Rectangle:  [%d,%d,%d,%d] \n", r->x0, r->y0, r->x1, r->y1);
+        printf("Rectangle:  [%I64d,%I64d,%I64d,%I64d] \n", r->x0, r->y0, r->x1, r->y1);
 }
 
-void opj_rect_init(opj_rect_t* r, int32_t x0, int32_t y0, int32_t x1, int32_t y1)
+void opj_rect_init(opj_rect_t* r, int64_t x0, int64_t y0, int64_t x1, int64_t y1)
 {
     if (!r)
         return;
@@ -107,10 +107,10 @@ void opj_rect_ceildivpow2(opj_rect_t* r, int32_t power)
     if (!r)
         return;
 
-    r->x0 = opj_int_ceildivpow2(r->x0,power);
-    r->y0 = opj_int_ceildivpow2(r->y0,power);
-    r->x1 = opj_int_ceildivpow2(r->x1,power);
-    r->y1 = opj_int_ceildivpow2(r->y1,power);
+    r->x0 = opj_int64_ceildivpow2(r->x0,power);
+    r->y0 = opj_int64_ceildivpow2(r->y0,power);
+    r->x1 = opj_int64_ceildivpow2(r->x1,power);
+    r->y1 = opj_int64_ceildivpow2(r->y1,power);
 
 }
 
@@ -119,7 +119,7 @@ int64_t opj_rect_get_area(opj_rect_t* r)
 {
     if (!r)
         return 0;
-    return (int64_t)(r->x1 - r->x0) * (r->y1 - r->y0);
+    return (r->x1 - r->x0) * (r->y1 - r->y0);
 }
 
 void opj_rect_pan(opj_rect_t* r, opj_pt_t* shift)
@@ -138,13 +138,13 @@ void opj_rect_subsample(opj_rect_t* r, uint32_t dx, uint32_t dy)
     if (!r)
         return;
 
-    r->x0 = opj_int_ceildiv(r->x0, (int32_t)dx);
-    r->y0 = opj_int_ceildiv(r->y0, (int32_t)dy);
-    r->x1 = opj_int_ceildiv(r->x1, (int32_t)dx);
-    r->y1 = opj_int_ceildiv(r->y1, (int32_t)dy);
+    r->x0 = opj_int64_ceildiv(r->x0, (int64_t)dx);
+    r->y0 = opj_int64_ceildiv(r->y0, (int64_t)dy);
+    r->x1 = opj_int64_ceildiv(r->x1, (int64_t)dx);
+    r->y1 = opj_int64_ceildiv(r->y1, (int64_t)dy);
 }
 
-void opj_rect_grow(opj_rect_t* r, int32_t boundary)
+void opj_rect_grow(opj_rect_t* r, int64_t boundary)
 {
     if (!r)
         return;
@@ -152,7 +152,7 @@ void opj_rect_grow(opj_rect_t* r, int32_t boundary)
     opj_rect_grow2(r, boundary, boundary);
 }
 
-void opj_rect_grow2(opj_rect_t* r, int32_t boundaryx, int32_t boundaryy)
+void opj_rect_grow2(opj_rect_t* r, int64_t boundaryx, int64_t boundaryy)
 {
     if (!r)
         return;

@@ -17,6 +17,7 @@
 
 
 #include "opj_includes.h"
+#include <algorithm>
 
 bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
                                    bool irreversible,
@@ -275,16 +276,16 @@ opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
     }
 
     /* clip */
-    rc.x = opj_int_max(0, rc.x);
+    rc.x = std::max<int64_t>(0, rc.x);
 
     /* if resno == 0, then prev_res is null */
     if (resno == 0) {
-        rc.y = opj_int_min(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+        rc.y = std::min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     } else {
         if (is_even)
-            rc.y = opj_int_min(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
+            rc.y = std::min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
         else
-            rc.y = opj_int_min(rc.y,
+            rc.y = std::min<int64_t>(rc.y,
                                is_horizontal ? res->bounds.x - prev_res->bounds.x : res->bounds.y - prev_res->bounds.y);
 
     }
@@ -312,23 +313,22 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
     even = opj_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
     odd = opj_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
 
-    rc.x = opj_int_min( (even.x <<1), (odd.x << 1) + 1 );
-    rc.y = opj_int_max( (even.y<< 1),  (odd.y << 1) + 1);
+    rc.x = std::min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
+    rc.y = std::max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
 
     /* clip to resolution bounds */
-    rc.x = opj_int_max(0, rc.x);
-    rc.y = opj_int_min(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+    rc.x = std::max<int64_t>(0, rc.x);
+    rc.y = std::min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     return rc;
 }
 
-int32_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp)
+int64_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp)
 {
-    opj_pt_t even, odd;
     if (!comp || comp->resolutions.empty())
         return 0;
-    even = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
-    odd = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
+	opj_pt_t horizontal = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
+	opj_pt_t vertical   = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
-    return opj_int_max(even.y - even.x, odd.y - odd.x);
+    return std::max<int64_t>(horizontal.y - horizontal.x, vertical.y - vertical.x);
 }
 
