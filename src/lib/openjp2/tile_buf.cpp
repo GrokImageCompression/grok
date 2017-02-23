@@ -322,13 +322,13 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
     return rc;
 }
 
-int64_t opj_tile_buf_get_max_interleaved_range(opj_tile_buf_component_t* comp)
+int64_t opj_tile_buf_get_interleaved_upper_bound(opj_tile_buf_component_t* comp)
 {
     if (!comp || comp->resolutions.empty())
         return 0;
 	opj_pt_t horizontal = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
 	opj_pt_t vertical   = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
-    return std::max<int64_t>(horizontal.y - horizontal.x, vertical.y - vertical.x);
+    return std::max<int64_t>(horizontal.y, vertical.y);
 }
 
