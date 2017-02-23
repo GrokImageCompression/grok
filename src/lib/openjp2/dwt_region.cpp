@@ -59,6 +59,7 @@
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
+#include <algorithm>
 
 /*
 
@@ -113,12 +114,12 @@ in the sub-bands. (if even locations are low pass, then odd locations are high p
 
 typedef struct opj_dwt53 {
     int32_t* data;
-    int32_t d_n;
-    int32_t s_n;
+    int64_t d_n;
+    int64_t s_n;
     opj_pt_t	range_even;
     opj_pt_t	range_odd;
-    int32_t  interleaved_offset;
-    int32_t odd_top_left_bit;
+    int64_t  interleaved_offset;
+    int64_t odd_top_left_bit;
 } opj_dwt53_t;
 
 /* process four coefficients at a time*/
@@ -128,12 +129,12 @@ typedef union {
 
 typedef struct opj_dwt97 {
     opj_coeff97_t*	data ;
-    int32_t		d_n ;
-    int32_t		s_n ;
+    int64_t		d_n ;
+    int64_t		s_n ;
     opj_pt_t		range_even;
     opj_pt_t		range_odd;
-    int32_t		interleaved_offset;
-    int32_t		odd_top_left_bit ;
+    int64_t		interleaved_offset;
+    int64_t		odd_top_left_bit ;
 } opj_dwt97_t ;
 
 static const float opj_dwt_alpha =  1.586134342f; /*  12994 */
@@ -158,8 +159,8 @@ static void opj_dwt_region_interleave53_h(opj_dwt53_t* buffer_h,
 Inverse lazy transform (vertical)
 */
 static void opj_dwt_region_interleave53_v(opj_dwt53_t* buffer_v,
-        int32_t *tile_data,
-        uint32_t stride);
+										int32_t *tile_data,
+										size_t stride);
 /**
 Inverse 5-3 data transform in 1-D
 */
@@ -174,13 +175,13 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt);
 
 static void opj_region_interleave97_h(opj_dwt97_t* restrict w,
                                       float* restrict tile_data,
-                                      int32_t stride,
-                                      int32_t size);
+                                      size_t stride,
+                                      size_t size);
 
 static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer_v ,
                                       float* restrict tile_data ,
-                                      int32_t stride,
-                                      int32_t nb_elts_read);
+										size_t stride,
+										size_t nb_elts_read);
 
 static void opj_region_decode97_scale(opj_coeff97_t* w,
                                       opj_pt_t range,
@@ -189,8 +190,8 @@ static void opj_region_decode97_scale(opj_coeff97_t* w,
 static void opj_region_decode97_lift(opj_coeff97_t* l,
                                      opj_coeff97_t* w,
                                      opj_pt_t range,
-                                     int32_t count,
-                                     int32_t max,
+                                     size_t count,
+                                     int64_t max,
                                      float scale);
 
 
@@ -222,14 +223,13 @@ static void opj_dwt_region_interleave53_h(opj_dwt53_t* buffer_h, int32_t *tile_d
 {
     int32_t *tile_data_ptr = tile_data;
     int32_t *buffer_data_ptr = buffer_h->data - buffer_h->interleaved_offset + buffer_h->odd_top_left_bit;
-    int32_t i;
-    for (i = buffer_h->range_even.x; i < buffer_h->range_even.y; ++i) {
+    for (auto i = buffer_h->range_even.x; i < buffer_h->range_even.y; ++i) {
         buffer_data_ptr[i << 1] = tile_data_ptr[i];
     }
     tile_data_ptr	= tile_data + buffer_h->s_n;
     buffer_data_ptr = buffer_h->data - buffer_h->interleaved_offset + (buffer_h->odd_top_left_bit^1);
 
-    for (i = buffer_h->range_odd.x; i < buffer_h->range_odd.y; ++i) {
+    for (auto i = buffer_h->range_odd.x; i < buffer_h->range_odd.y; ++i) {
         buffer_data_ptr[i << 1] = tile_data_ptr[i];
     }
 }
@@ -239,20 +239,18 @@ static void opj_dwt_region_interleave53_h(opj_dwt53_t* buffer_h, int32_t *tile_d
 /* </summary>                            */
 static void opj_dwt_region_interleave53_v(opj_dwt53_t* buffer_v,
 											int32_t *tile_data,
-											uint32_t stride)
+											size_t stride)
 {
     int32_t *tile_data_ptr = tile_data;
     int32_t *buffer_data_ptr = buffer_v->data - buffer_v->interleaved_offset + buffer_v->odd_top_left_bit;
-    int32_t  i;
-
-    for (i = buffer_v->range_even.x; i < buffer_v->range_even.y; ++i) {
+    for (auto i = buffer_v->range_even.x; i < buffer_v->range_even.y; ++i) {
         buffer_data_ptr[i << 1] = tile_data_ptr[i*stride];
     }
 
     tile_data_ptr	= tile_data + (buffer_v->s_n * stride);
     buffer_data_ptr = buffer_v->data - buffer_v->interleaved_offset + (buffer_v->odd_top_left_bit^1);
 
-    for (i = buffer_v->range_odd.x; i < buffer_v->range_odd.y; ++i) {
+    for (auto i = buffer_v->range_odd.x; i < buffer_v->range_odd.y; ++i) {
         buffer_data_ptr[i << 1] = tile_data_ptr[i*stride];
     }
 }
@@ -275,17 +273,15 @@ static void opj_dwt_region_interleave53_v(opj_dwt53_t* buffer_v,
 static void opj_dwt_region_decode53_1d(opj_dwt53_t *buffer)
 {
     int32_t *a = buffer->data - buffer->interleaved_offset;
-    int32_t d_n = buffer->d_n;
-    int32_t s_n = buffer->s_n;
-    int32_t i;
-
+    auto d_n = buffer->d_n;
+    auto s_n = buffer->s_n;
     if (!buffer->odd_top_left_bit) {
         if ((d_n > 0) || (s_n > 1)) {
             /* inverse update */
-            for (i = buffer->range_even.x; i < buffer->range_even.y; ++i)
+            for (auto i = buffer->range_even.x; i < buffer->range_even.y; ++i)
                 OPJ_S(i) -= (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
             /* inverse predict */
-            for (i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
+            for (auto i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
                 OPJ_D(i) += (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
         }
     } else {
@@ -293,11 +289,11 @@ static void opj_dwt_region_decode53_1d(opj_dwt53_t *buffer)
             OPJ_S(0) >>=1;
         else {
             /* inverse update */
-            for (i = buffer->range_even.x; i < buffer->range_even.y; ++i)
+            for (auto i = buffer->range_even.x; i < buffer->range_even.y; ++i)
                 OPJ_D(i) -= (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
 
             /* inverse predict */
-            for (i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
+            for (auto i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
                 OPJ_S(i) += (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
         }
     }
@@ -374,7 +370,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				buffer_h.s_n = (int32_t)res_width;
 				buffer_v.s_n = (int32_t)res_height;
-				buffer_v.interleaved_offset = opj_int_max(0, interleaved_v.x - 2);
+				buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 2);
 
 				++tr;
 				res_width = (tr->x1 - tr->x0);
@@ -382,12 +378,12 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
 				buffer_h.odd_top_left_bit = tr->x0 & 1;
-				buffer_h.interleaved_offset = opj_int_max(0, interleaved_h.x - 2);
+				buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 2);
 
 				/* first do horizontal interleave */
 
 				int32_t * restrict tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + (buffer_v.range_even.x + threadId) * w;
-				for (int32_t j = buffer_v.range_even.x; j < buffer_v.range_even.y; j+=numThreads) {
+				for (auto j = buffer_v.range_even.x; j < buffer_v.range_even.y; j+=numThreads) {
 					opj_dwt_region_interleave53_h(&buffer_h, tiledp);
 					opj_dwt_region_decode53_1d(&buffer_h);
 					memcpy(tiledp + interleaved_h.x, buffer_h.data + interleaved_h.x - buffer_h.interleaved_offset, (interleaved_h.y - interleaved_h.x) * sizeof(int32_t));
@@ -396,7 +392,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 				decode_dwt_barrier.arrive_and_wait();
 
 				tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + (buffer_v.s_n +  buffer_v.range_odd.x + threadId) * w;
-				for (int32_t j = buffer_v.range_odd.x; j < buffer_v.range_odd.y; j+=numThreads) {
+				for (auto j = buffer_v.range_odd.x; j < buffer_v.range_odd.y; j+=numThreads) {
 					opj_dwt_region_interleave53_h(&buffer_h, tiledp);
 					opj_dwt_region_decode53_1d(&buffer_h);
 					memcpy(tiledp + interleaved_h.x, buffer_h.data + interleaved_h.x - buffer_h.interleaved_offset, (interleaved_h.y - interleaved_h.x) * sizeof(int32_t));
@@ -409,12 +405,11 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				// next do vertical interleave 
 				tiledp = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + interleaved_h.x + threadId;
-				for (int32_t j = interleaved_h.x; j < interleaved_h.y; j+=numThreads) {
-					int32_t k;
+				for (auto j = interleaved_h.x; j < interleaved_h.y; j+=numThreads) {
 					int32_t * restrict tiledp_v = tiledp + (interleaved_v.x)*w;
 					opj_dwt_region_interleave53_v(&buffer_v, tiledp, w);
 					opj_dwt_region_decode53_1d(&buffer_v);
-					for (k = interleaved_v.x; k < interleaved_v.y; k++) {
+					for (auto k = interleaved_v.x; k < interleaved_v.y; k++) {
 						*tiledp_v = buffer_v.data[k - buffer_v.interleaved_offset];
 						tiledp_v += w;
 					}
@@ -443,78 +438,73 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 *****************************************************************************************/
 static void opj_region_interleave97_h(opj_dwt97_t* restrict buffer,
                                       float* restrict tile_data,
-                                      int32_t stride,
-                                      int32_t size)
+                                      size_t stride,
+									  size_t size)
 {
 
     float* restrict buffer_data_ptr = (float*) (buffer->data - buffer->interleaved_offset + buffer->odd_top_left_bit);
-    int32_t count_low = buffer->range_even.x;
-    int32_t count_high = buffer->range_even.y;
-    int32_t i, k;
+    auto count_low = buffer->range_even.x;
+    auto count_high = buffer->range_even.y;
 
-    for (k = 0; k < 2; ++k) {
+    for (auto k = 0; k < 2; ++k) {
         if (count_low + 3 * stride < size) {
             /* Fast code path */
-            for (i = count_low; i < count_high; ++i) {
-                int32_t j = i;
-                buffer_data_ptr[i << 3] = tile_data[j];
+            for (auto i = count_low; i < count_high; ++i) {
+                auto j = i;
+                buffer_data_ptr[i << 3]			= tile_data[j];
                 j += stride;
 
-                buffer_data_ptr[(i << 3) + 1] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 1]	= tile_data[j];
                 j += stride;
 
-                buffer_data_ptr[(i << 3) + 2] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 2]	= tile_data[j];
                 j += stride;
 
-                buffer_data_ptr[(i << 3) + 3] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 3]	= tile_data[j];
             }
         } else {
             /* Slow code path */
-            for (i = count_low; i < count_high; ++i) {
-                int32_t j = i;
+            for (auto i = count_low; i < count_high; ++i) {
+                size_t j = i;
 
-                buffer_data_ptr[i << 3] = tile_data[j];
+                buffer_data_ptr[i << 3]			= tile_data[j];
                 j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 1] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 1]	= tile_data[j];
                 j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 2] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 2]	= tile_data[j];
                 j += stride;
                 if (j >= size)
                     continue;
 
-                buffer_data_ptr[(i << 3) + 3] = tile_data[j];
+                buffer_data_ptr[(i << 3) + 3]	= tile_data[j];
             }
         }
 
         buffer_data_ptr = (float*)(buffer->data - buffer->interleaved_offset + (buffer->odd_top_left_bit^1) );
-        tile_data += buffer->s_n;
-        size -= buffer->s_n;
-        count_low = buffer->range_odd.x;
-        count_high = buffer->range_odd.y;
+        tile_data		+= buffer->s_n;
+        size			-= buffer->s_n;
+        count_low		= buffer->range_odd.x;
+        count_high		= buffer->range_odd.y;
     }
 }
 
-static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer ,
-                                      float* restrict tile_data ,
-                                      int32_t stride,
-                                      int32_t nb_elts_read)
+static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer,
+                                      float* restrict tile_data,
+                                      size_t stride,
+                                      size_t nb_elts_read)
 {
     opj_coeff97_t* restrict buffer_data_ptr = buffer->data - buffer->interleaved_offset + buffer->odd_top_left_bit;
-    int32_t i;
+    auto count_low = buffer->range_even.x;
+    auto count_high = buffer->range_even.y;
 
-    int32_t count_low = buffer->range_even.x;
-    int32_t count_high = buffer->range_even.y;
-
-    for(i = count_low; i < count_high; ++i) {
-        memcpy(buffer_data_ptr + (i<<1),
-               tile_data + i*stride,
-               (size_t)nb_elts_read * sizeof(float));
+    for(auto i = count_low; i < count_high; ++i) {
+        memcpy(buffer_data_ptr + (i<<1), tile_data + i*stride, nb_elts_read * sizeof(float));
     }
 
     tile_data += buffer->s_n * stride;
@@ -523,10 +513,8 @@ static void opj_region_interleave97_v(opj_dwt97_t* restrict buffer ,
     count_low = buffer->range_odd.x;
     count_high = buffer->range_odd.y;
 
-    for(i = count_low; i < count_high; ++i) {
-        memcpy(buffer_data_ptr + (i<<1),
-               tile_data + i*stride,
-               (size_t)nb_elts_read * sizeof(float));
+    for(auto i = count_low; i < count_high; ++i) {
+        memcpy(buffer_data_ptr + (i<<1),  tile_data + i*stride, nb_elts_read * sizeof(float));
     }
 }
 
@@ -535,11 +523,10 @@ static void opj_region_decode97_scale(opj_coeff97_t* buffer,
                                       const float scale)
 {
     float* restrict fw = ((float*) buffer);
-    int32_t i;
-    int32_t count_low = range.x;
-    int32_t count_high = range.y;
+    auto count_low = range.x;
+    auto count_high = range.y;
 
-    for(i = count_low; i < count_high; ++i) {
+    for(auto i = count_low; i < count_high; ++i) {
         fw[(i<<3)    ] *= scale;
         fw[(i<<3) + 1] *= scale;
         fw[(i<<3) + 2] *= scale;
@@ -550,17 +537,16 @@ static void opj_region_decode97_scale(opj_coeff97_t* buffer,
 static void opj_region_decode97_lift(opj_coeff97_t* l,
                                      opj_coeff97_t* w,
                                      opj_pt_t range,
-                                     int32_t count,
-                                     int32_t maximum,
+                                     size_t count,
+									int64_t maximum,
                                      float scale)
 {
     float* fl = (float*) l;
     float* fw = (float*) w;
-    int32_t i;
 
-    int32_t count_low = range.x;
-    int32_t count_high = range.y;
-    int32_t count_max = opj_int_min(count_high, maximum);
+    auto count_low = range.x;
+    auto count_high = range.y;
+    auto count_max = std::min<int64_t>(count_high, maximum);
 
     assert(count_low <= count_high);
     assert(maximum <= count);
@@ -570,7 +556,7 @@ static void opj_region_decode97_lift(opj_coeff97_t* l,
         fl = fw - 8;
     }
 
-    for(i = count_low; i < count_max; ++i) {
+    for(auto i = count_low; i < count_max; ++i) {
         fw[-4] += ((fl[0] + fw[0]) * scale);
         fw[-3] += ((fl[1] + fw[1]) * scale);
         fw[-2] += ((fl[2] + fw[2]) * scale);
@@ -599,8 +585,8 @@ static void opj_region_decode97_lift(opj_coeff97_t* l,
 static void opj_region_decode97(opj_dwt97_t* restrict dwt)
 {
     /* either 0 or 1 */
-    int32_t odd_top_left_bit = dwt->odd_top_left_bit;
-    int32_t even_top_left_bit = odd_top_left_bit ^ 1;
+    auto odd_top_left_bit = dwt->odd_top_left_bit;
+    auto even_top_left_bit = odd_top_left_bit ^ 1;
 
 
     if (!((dwt->d_n > odd_top_left_bit) || (dwt->s_n > even_top_left_bit))) {
@@ -622,7 +608,7 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
-                             opj_int_min(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              opj_dwt_delta);
 
     /* inverse predict */
@@ -630,14 +616,14 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
-                             opj_int_min(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              opj_dwt_gamma);
     /* inverse update */
     opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
-                             opj_int_min(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              opj_dwt_beta);
 
     /* inverse predict */
@@ -645,7 +631,7 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
-                             opj_int_min(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              opj_dwt_alpha);
 
 }
@@ -663,7 +649,8 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	}
 
 	int rc = 0;
-	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+/*
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
@@ -685,6 +672,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
+*/
 	opj_dwt97_t buffer_h;
 	opj_dwt97_t buffer_v;
 
@@ -698,8 +686,8 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 
-	buffer_h.data =
-		(opj_coeff97_t*)opj_aligned_malloc((opj_tile_buf_get_max_interleaved_range(tilec->buf) + 4) * sizeof(opj_coeff97_t));
+	auto maxInterleavedRange = opj_tile_buf_get_max_interleaved_range(tilec->buf);
+	buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc((maxInterleavedRange + 4) * sizeof(opj_coeff97_t));
 
 	if (!buffer_h.data) {
 		/* FIXME event manager error callback */
@@ -710,13 +698,13 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 
 	while (--numres) {
 			
-		int32_t j;
+		int64_t j=0;
 		opj_pt_t interleaved_h, interleaved_v;
 
 		/* start with the first resolution, and work upwards*/
 
-		buffer_h.s_n = (int32_t)res_width;
-		buffer_v.s_n = (int32_t)res_height;
+		buffer_h.s_n = res_width;
+		buffer_v.s_n = res_height;
 
 		buffer_h.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, true);
 		buffer_h.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, true);
@@ -732,33 +720,26 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 		res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
 		res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
 
-		buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
+		buffer_h.d_n = (res_width - buffer_h.s_n);
 		buffer_h.odd_top_left_bit = res->x0 & 1;
-		buffer_h.interleaved_offset = opj_int_max(0, interleaved_h.x - 4);
+		buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 4);
 
 		/*  Step 1.  interleave and lift in horizontal direction */
-		float * restrict tile_data = 
-			(float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + 
-									tile_width * buffer_v.range_even.x;
+		float * restrict tile_data = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + tile_width * buffer_v.range_even.x;
 
-		uint32_t bufsize = 
-			tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x);
+		auto bufsize = 	tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x);
 
 		for (j = buffer_v.range_even.y - buffer_v.range_even.x; j > 3; j -= 4) {
-			int32_t k;
-			opj_region_interleave97_h(&buffer_h,
-				tile_data,
-				(int32_t)tile_width,
-				(int32_t)bufsize);
+			opj_region_interleave97_h(&buffer_h,tile_data,	tile_width, bufsize);
 
 			opj_region_decode97(&buffer_h);
 
-			for (k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				int32_t buffer_index = k - buffer_h.interleaved_offset;
-				tile_data[k] = buffer_h.data[buffer_index].f[0];
-				tile_data[k + (int32_t)tile_width] = buffer_h.data[buffer_index].f[1];
-				tile_data[k + ((int32_t)tile_width << 1)] = buffer_h.data[buffer_index].f[2];
-				tile_data[k + (int32_t)tile_width * 3] = buffer_h.data[buffer_index].f[3];
+			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+				auto buffer_index = k - buffer_h.interleaved_offset;
+				tile_data[k]								= buffer_h.data[buffer_index].f[0];
+				tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
+				tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
+				tile_data[k + tile_width * 3]		= buffer_h.data[buffer_index].f[3];
 			}
 
 			tile_data += tile_width << 2;
@@ -766,120 +747,82 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 		}
 
 		if (j > 0) {
-			int32_t k;
-			opj_region_interleave97_h(&buffer_h,
-				tile_data,
-				(int32_t)tile_width,
-				(int32_t)bufsize);
+			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
 
 			opj_region_decode97(&buffer_h);
-			for (k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				int32_t buffer_index = k - buffer_h.interleaved_offset;
+			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+				auto buffer_index = k - buffer_h.interleaved_offset;
 				switch (j) {
 				case 3:
-					tile_data[k + ((int32_t)tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+					tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
 				case 2:
-					tile_data[k + (int32_t)tile_width] = buffer_h.data[buffer_index].f[1];
+					tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
 				case 1:
-					tile_data[k] = buffer_h.data[buffer_index].f[0];
+					tile_data[k]						= buffer_h.data[buffer_index].f[0];
 				}
 			}
-
 			tile_data += tile_width * j;
 			bufsize -= tile_width *j;
 		}
 
-		tile_data += 
-			tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
-		bufsize -= 
-			tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
+		tile_data += tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
+		bufsize -= 	tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
 
 		for (j = buffer_v.range_odd.y - buffer_v.range_odd.x; j > 3; j -= 4) {
-			int32_t k;
-			opj_region_interleave97_h(&buffer_h,
-				tile_data,
-				(int32_t)tile_width,
-				(int32_t)bufsize);
-
+			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
 			opj_region_decode97(&buffer_h);
 
-			for (k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				int32_t buffer_index = k - buffer_h.interleaved_offset;
-				tile_data[k] = buffer_h.data[buffer_index].f[0];
-				tile_data[k + (int32_t)tile_width] = buffer_h.data[buffer_index].f[1];
-				tile_data[k + ((int32_t)tile_width << 1)] = buffer_h.data[buffer_index].f[2];
-				tile_data[k + (int32_t)tile_width * 3] = buffer_h.data[buffer_index].f[3];
+			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+				auto buffer_index					= k - buffer_h.interleaved_offset;
+				tile_data[k]						= buffer_h.data[buffer_index].f[0];
+				tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
+				tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
+				tile_data[k + tile_width * 3]		= buffer_h.data[buffer_index].f[3];
 			}
 
-			tile_data += (tile_width << 2);
-			bufsize -= (tile_width << 2);
+			tile_data	+= (tile_width << 2);
+			bufsize		-= (tile_width << 2);
 		}
 
 		if (j > 0) {
-			int32_t k;
-			opj_region_interleave97_h(&buffer_h,
-				tile_data,
-				(int32_t)tile_width,
-				(int32_t)bufsize);
-
+			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
 			opj_region_decode97(&buffer_h);
-			for (k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				int32_t buffer_index = k - buffer_h.interleaved_offset;
+			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+				auto buffer_index							= k - buffer_h.interleaved_offset;
 				switch (j) {
 				case 3:
-					tile_data[k + ((int32_t)tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+					tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
 				case 2:
-					tile_data[k + (int32_t)tile_width] = buffer_h.data[buffer_index].f[1];
+					tile_data[k +  tile_width]			= buffer_h.data[buffer_index].f[1];
 				case 1:
-					tile_data[k] = buffer_h.data[buffer_index].f[0];
+					tile_data[k]						= buffer_h.data[buffer_index].f[0];
 				}
 			}
 		}
-		/* interleave and lift in vertical direction */
 
-		buffer_v.d_n = (int32_t)(res_height - buffer_v.s_n);
-		buffer_v.odd_top_left_bit = res->y0 & 1;
-		buffer_v.interleaved_offset = opj_int_max(0, interleaved_v.x - 4);
+		/* Step 2: interleave and lift in vertical direction */
+		buffer_v.d_n				= (res_height - buffer_v.s_n);
+		buffer_v.odd_top_left_bit	= res->y0 & 1;
+		buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 4);
 
-		tile_data = ((float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0)) + 
-																interleaved_h.x;
+		tile_data = ((float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0)) + interleaved_h.x;
 		for (j = interleaved_h.y - interleaved_h.x; j > 3; j -= 4) {
-			int32_t k;
-
-			opj_region_interleave97_v(&buffer_v,
-				tile_data,
-				(int32_t)tile_width,
-				4);
-
+			opj_region_interleave97_v(&buffer_v,tile_data,	tile_width,4);
 			opj_region_decode97(&buffer_v);
-
-			for (k = interleaved_v.x; k < interleaved_v.y; ++k) {
-				memcpy(tile_data + k*tile_width,
-					buffer_v.data + k - buffer_v.interleaved_offset,
-					4 * sizeof(float));
+			for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
+				memcpy(tile_data + k*tile_width,buffer_v.data + k - buffer_v.interleaved_offset, 4 * sizeof(float));
 			}
 			tile_data += 4;
 		}
-
-
 		if (j > 0) {
-			int32_t k;
-			opj_region_interleave97_v(&buffer_v,
-				tile_data,
-				(int32_t)tile_width,
-				j);
-
+			opj_region_interleave97_v(&buffer_v,tile_data,tile_width,j);
 			opj_region_decode97(&buffer_v);
-
-			for (k = interleaved_v.x; k < interleaved_v.y; ++k) {
-				memcpy(tile_data + k*tile_width,
-					buffer_v.data + k - buffer_v.interleaved_offset,
-					(size_t)j * sizeof(float));
+			for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
+				memcpy(tile_data + k*tile_width,buffer_v.data + k - buffer_v.interleaved_offset,(size_t)j * sizeof(float));
 			}
 		}
 		resno++;
 	}
-
 	opj_aligned_free(buffer_h.data);
     return true;
 }

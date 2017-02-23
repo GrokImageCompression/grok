@@ -338,7 +338,7 @@ static void opj_t1_enc_sigpass_step(   opj_t1_t *t1,
 
     flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
     if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG | T1_VISIT))) {
-        v = (opj_int_abs(*datap) & one) ? 1 : 0;
+        v = (abs(*datap) & one) ? 1 : 0;
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc(flag, orient));	
         if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
             opj_mqc_bypass_enc(mqc, (uint32_t)v);
@@ -347,7 +347,7 @@ static void opj_t1_enc_sigpass_step(   opj_t1_t *t1,
         }
         if (v) {
             v = *datap < 0 ? 1 : 0;
-            *nmsedec +=	opj_t1_getnmsedec_sig((uint32_t)opj_int_abs(*datap), (uint32_t)(bpno));
+            *nmsedec +=	opj_t1_getnmsedec_sig((uint32_t)abs(*datap), (uint32_t)(bpno));
             opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc(flag));	
             if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
                 opj_mqc_bypass_enc(mqc, (uint32_t)v);
@@ -577,8 +577,8 @@ static void opj_t1_enc_refpass_step(   opj_t1_t *t1,
 
     flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
     if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-        *nmsedec += opj_t1_getnmsedec_ref((uint32_t)opj_int_abs(*datap), (uint32_t)(bpno));
-        v = (opj_int_abs(*datap) & one) ? 1 : 0;
+        *nmsedec += opj_t1_getnmsedec_ref((uint32_t)abs(*datap), (uint32_t)(bpno));
+        v = (abs(*datap) & one) ? 1 : 0;
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_mag(flag));	
         if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
             opj_mqc_bypass_enc(mqc, (uint32_t)v);
@@ -793,11 +793,11 @@ static void opj_t1_enc_clnpass_step(opj_t1_t *t1,
     }
     if (!(*flagsp & (T1_SIG | T1_VISIT))) {
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc(flag, orient));
-        v = (opj_int_abs(*datap) & one) ? 1 : 0;
+        v = (abs(*datap) & one) ? 1 : 0;
         opj_mqc_encode(mqc, (uint32_t)v);
         if (v) {
 LABEL_PARTIAL:
-            *nmsedec += opj_t1_getnmsedec_sig((uint32_t)opj_int_abs(*datap), (uint32_t)(bpno));
+            *nmsedec += opj_t1_getnmsedec_sig((uint32_t)abs(*datap), (uint32_t)(bpno));
             opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc(flag));
             v = *datap < 0 ? 1 : 0;
             opj_mqc_encode(mqc, (uint32_t)(v ^ opj_t1_getspb((uint32_t)flag)));
@@ -911,7 +911,7 @@ static void opj_t1_enc_clnpass( opj_t1_t *t1,
             }
             if (agg) {
                 for (runlen = 0; runlen < 4; ++runlen) {
-                    if (opj_int_abs(t1->data[((k + runlen)*t1->data_stride) + i]) & one)
+                    if (abs(t1->data[((k + runlen)*t1->data_stride) + i]) & one)
                         break;
                 }
                 opj_mqc_setcurctx(mqc, T1_CTXNO_AGG);
@@ -1440,8 +1440,8 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
                             y += pres->y1 - pres->y0;
                         }
 
-						maxCblkW = opj_int_max(maxCblkW, 1 << tccp->cblkw);
-						maxCblkH = opj_int_max(maxCblkH, 1 << tccp->cblkh);
+						maxCblkW = std::max<int32_t>(maxCblkW, 1 << tccp->cblkw);
+						maxCblkH = std::max<int32_t>(maxCblkH, 1 << tccp->cblkh);
 						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;
@@ -1503,7 +1503,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     for (i = 0; i < t1->w; ++i) {
         for (j = 0; j < t1->h; ++j) {
             int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-            max = opj_int_max(max, tmp);
+            max = std::max<int32_t>(max, tmp);
         }
     }
 

@@ -54,6 +54,7 @@
  */
 
 #pragma once
+#include <algorithm>
 
 /**
 @file opj_intmath.h
@@ -69,48 +70,7 @@ The functions in OPJ_INTMATH.H have for goal to realize operations on integers.
 /*@{*/
 /* ----------------------------------------------------------------------- */
 /**
-Get the minimum of two integers
-@return Returns a if a < b else b
-*/
-static inline int32_t opj_int_min(int32_t a, int32_t b)
-{
-    return a < b ? a : b;
-}
 
-/**
-Get the minimum of two integers
-@return Returns a if a < b else b
-*/
-static inline uint32_t opj_uint_min(uint32_t a, uint32_t b)
-{
-    return a < b ? a : b;
-}
-
-/**
-Get the minimum of two integers
-@return Returns a if a < b else b
-*/
-static inline uint64_t opj_uint64_min(uint64_t a, uint64_t b)
-{
-	return a < b ? a : b;
-}
-/**
-Get the maximum of two integers
-@return Returns a if a > b else b
-*/
-static inline int32_t opj_int_max(int32_t a, int32_t b)
-{
-    return (a > b) ? a : b;
-}
-
-/**
-Get the maximum of two integers
-@return Returns a if a > b else b
-*/
-static inline uint32_t opj_uint_max(uint32_t  a, uint32_t  b)
-{
-    return (a > b) ? a : b;
-}
 
 /**
  Get the saturated sum of two unsigned integers
@@ -139,13 +99,7 @@ static inline int32_t opj_int_clamp(int32_t a, int32_t min, int32_t max)
         return max;
     return a;
 }
-/**
-@return Get absolute value of integer
-*/
-static inline int32_t opj_int_abs(int32_t a)
-{
-    return a < 0 ? -a : a;
-}
+
 /**
 Divide an integer and round upwards
 @return Returns a divided by b
