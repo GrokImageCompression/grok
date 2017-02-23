@@ -2636,7 +2636,7 @@ static uint32_t opj_j2k_get_max_coc_size(opj_j2k_t *p_j2k)
 
     for (i=0; i<l_nb_tiles; ++i) {
         for (j=0; j<l_nb_comp; ++j) {
-            l_max = std::max<uint32_t>(l_max,opj_j2k_get_SPCod_SPCoc_size(p_j2k,i,j));
+            l_max = opj_max<uint32_t>(l_max,opj_j2k_get_SPCod_SPCoc_size(p_j2k,i,j));
         }
     }
 
@@ -3065,9 +3065,9 @@ static void opj_j2k_write_poc_in_memory(   opj_j2k_t *p_j2k,
         ++l_current_data;
 
         /* change the value of the max layer according to the actual number of layers in the file, components and resolutions*/
-        l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
-        l_current_poc->resno1 = std::min<uint32_t>(l_current_poc->resno1, l_tccp->numresolutions);
-        l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
+        l_current_poc->layno1 = opj_min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
+        l_current_poc->resno1 = opj_min<uint32_t>(l_current_poc->resno1, l_tccp->numresolutions);
+        l_current_poc->compno1 = opj_min<uint32_t>(l_current_poc->compno1, l_nb_comp);
 
         ++l_current_poc;
     }
@@ -3086,7 +3086,7 @@ static uint32_t opj_j2k_get_max_poc_size(opj_j2k_t *p_j2k)
     l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 
     for (i=0; i<l_nb_tiles; ++i) {
-        l_max_poc = std::max<uint32_t>(l_max_poc,l_tcp->numpocs);
+        l_max_poc = opj_max<uint32_t>(l_max_poc,l_tcp->numpocs);
         ++l_tcp;
     }
 
@@ -3106,7 +3106,7 @@ static uint32_t opj_j2k_get_max_toc_size (opj_j2k_t *p_j2k)
     l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th ;
 
     for (i=0; i<l_nb_tiles; ++i) {
-        l_max = std::max<uint32_t>(l_max,l_tcp->m_nb_tile_parts);
+        l_max = opj_max<uint32_t>(l_max,l_tcp->m_nb_tile_parts);
 
         ++l_tcp;
     }
@@ -3206,7 +3206,7 @@ static bool opj_j2k_read_poc (  opj_j2k_t *p_j2k,
         p_header_data+=l_comp_room;
         opj_read_bytes(p_header_data,&(l_current_poc->layno1),2);                               /* LYEpoc_i */
         /* make sure layer end is in acceptable bounds */
-        l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
+        l_current_poc->layno1 = opj_min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
         p_header_data+=2;
         opj_read_bytes(p_header_data,&(l_current_poc->resno1),1);                               /* REpoc_i */
         ++p_header_data;
@@ -3216,7 +3216,7 @@ static bool opj_j2k_read_poc (  opj_j2k_t *p_j2k,
         ++p_header_data;
         l_current_poc->prg = (OPJ_PROG_ORDER) l_tmp;
         /* make sure comp is in acceptable bounds */
-        l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
+        l_current_poc->compno1 = opj_min<uint32_t>(l_current_poc->compno1, l_nb_comp);
         ++l_current_poc;
     }
 
@@ -4406,10 +4406,10 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
             double l_offset = (*l_tp_stride_func)(l_tcp) / l_tcp->numlayers;
 
             /* 4 borders of the tile rescale on the image if necessary */
-            l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
-            l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy), l_image->y0);
-            l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx), l_image->x1);
-            l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
+            l_x0 = opj_max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
+            l_y0 = opj_max<uint32_t>((l_cp->ty0 + i * l_cp->tdy), l_image->y0);
+            l_x1 = opj_min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx), l_image->x1);
+            l_y1 = opj_min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
 
             l_rates = l_tcp->rates;
             for (k = 0; k < l_tcp->numlayers; ++k) {

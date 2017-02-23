@@ -59,7 +59,6 @@
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
-#include <algorithm>
 
 /*
 
@@ -382,7 +381,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				buffer_h.s_n = (int32_t)res_width;
 				buffer_v.s_n = (int32_t)res_height;
-				buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 2);
+				buffer_v.interleaved_offset = opj_max<int64_t>(0, interleaved_v.x - 2);
 
 				++tr;
 				res_width = (tr->x1 - tr->x0);
@@ -390,7 +389,7 @@ bool opj_dwt_region_decode53(opj_tcd_tilecomp_t* tilec,
 
 				buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
 				buffer_h.odd_top_left_bit = tr->x0 & 1;
-				buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 2);
+				buffer_h.interleaved_offset = opj_max<int64_t>(0, interleaved_h.x - 2);
 
 				/* first do horizontal interleave */
 
@@ -570,7 +569,7 @@ static void opj_region_decode97_lift(opj_coeff97_t* l,
 
     auto count_low = range.x;
     auto count_high = range.y;
-    auto count_max = std::min<int64_t>(count_high, maximum);
+    auto count_max = opj_min<int64_t>(count_high, maximum);
 
     assert(count_low <= count_high);
     assert(maximum <= (int64_t)count);
@@ -632,7 +631,7 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
-                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             opj_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              opj_dwt_delta);
 
     /* inverse predict */
@@ -640,14 +639,14 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
-                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             opj_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              opj_dwt_gamma);
     /* inverse update */
     opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
-                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             opj_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              opj_dwt_beta);
 
     /* inverse predict */
@@ -655,7 +654,7 @@ static void opj_region_decode97(opj_dwt97_t* restrict dwt)
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
-                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             opj_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              opj_dwt_alpha);
 
 }
@@ -747,7 +746,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 
 		buffer_h.d_n = (res_width - buffer_h.s_n);
 		buffer_h.odd_top_left_bit = res->x0 & 1;
-		buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 4);
+		buffer_h.interleaved_offset = opj_max<int64_t>(0, interleaved_h.x - 4);
 
 		/*  Step 1.  interleave and lift in horizontal direction */
 		float * restrict tile_data = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + tile_width * buffer_v.range_even.x;
@@ -828,7 +827,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 		/* Step 2: interleave and lift in vertical direction */
 		buffer_v.d_n				= (res_height - buffer_v.s_n);
 		buffer_v.odd_top_left_bit	= res->y0 & 1;
-		buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 4);
+		buffer_v.interleaved_offset = opj_max<int64_t>(0, interleaved_v.x - 4);
 
 		tile_data = ((float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0)) + interleaved_h.x;
 		for (j = interleaved_h.y - interleaved_h.x; j > 3; j -= 4) {
