@@ -670,13 +670,14 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	if (numres == 1U) {
 		return true;
 	}
-
+	numThreads = 1;
 	int rc = 0;
 	auto tileBuf = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-/*
+
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
+	bool success = true;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		dwtWorkers.push_back(std::thread([tilec,
 			numres,
@@ -685,8 +686,173 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 			&decode_dwt_barrier,
 			&decode_dwt_calling_barrier,
 			threadId,
-			numThreads]()
+			numThreads,
+			&success]()
 		{
+
+			auto numResolutions = numres;
+
+			opj_dwt97_t buffer_h;
+			opj_dwt97_t buffer_v;
+
+			opj_tcd_resolution_t* res = tilec->resolutions;
+
+			uint32_t resno = 1;
+
+			/* start with lowest resolution */
+			uint32_t res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
+			uint32_t res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
+
+			uint32_t tile_width = (tilec->x1 - tilec->x0);
+
+			// add 4 for boundary, plus one for parity
+			buffer_h.dataSize = (opj_tile_buf_get_interleaved_upper_bound(tilec->buf) + 5) * 4;
+			buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc(buffer_h.dataSize * sizeof(float));
+
+			if (!buffer_h.data) {
+				/* FIXME event manager error callback */
+				success = false;
+				return;
+
+			}
+			/* share data buffer between vertical and horizontal lifting steps*/
+			buffer_v.data = buffer_h.data;
+
+			while (--numResolutions) {
+
+				int64_t j = 0;
+				opj_pt_t interleaved_h, interleaved_v;
+
+				/* start with the first resolution, and work upwards*/
+
+				buffer_h.s_n = res_width;
+				buffer_v.s_n = res_height;
+
+				buffer_h.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, true);
+				buffer_h.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, true);
+				buffer_v.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, false);
+				buffer_v.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, false);
+
+				interleaved_h = opj_tile_buf_get_interleaved_range(tilec->buf, resno, true);
+				interleaved_v = opj_tile_buf_get_interleaved_range(tilec->buf, resno, false);
+
+				++res;
+
+				/* dimensions of next higher resolution */
+				res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
+				res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
+
+				buffer_h.d_n = (res_width - buffer_h.s_n);
+				buffer_h.odd_top_left_bit = res->x0 & 1;
+				buffer_h.interleaved_offset = opj_max<int64_t>(0, interleaved_h.x - 4);
+
+				//  Step 1.  interleave and lift in horizontal direction 
+				float * restrict tile_data = (float*)tileBuf + tile_width * (buffer_v.range_even.x + (threadId<<2));
+				auto bufsize = tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x - (threadId<<2));
+
+				for (j = buffer_v.range_even.y - buffer_v.range_even.x; j > 3; j -= 4*numThreads) {
+					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					opj_region_decode97(&buffer_h);
+
+					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+						auto buffer_index				= k - buffer_h.interleaved_offset;
+						tile_data[k]					= buffer_h.data[buffer_index].f[0];
+						tile_data[k + tile_width]		= buffer_h.data[buffer_index].f[1];
+						tile_data[k + (tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+						tile_data[k + tile_width * 3]	= buffer_h.data[buffer_index].f[3];
+					}
+
+					tile_data += (tile_width << 2) * numThreads;
+					bufsize -= (tile_width << 2)*numThreads;
+				}
+				
+				if (j > 0) {
+					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					opj_region_decode97(&buffer_h);
+					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+						auto buffer_index = k - buffer_h.interleaved_offset;
+						switch (j) {
+						case 3:
+							tile_data[k + (tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+						case 2:
+							tile_data[k + tile_width] = buffer_h.data[buffer_index].f[1];
+						case 1:
+							tile_data[k] = buffer_h.data[buffer_index].f[0];
+						}
+					}
+					tile_data += tile_width * j;
+					bufsize -= tile_width *j;
+				}
+				
+				decode_dwt_barrier.arrive_and_wait();
+
+				
+				tile_data = (float*)tileBuf + tile_width *(buffer_v.s_n + buffer_v.range_odd.x + (threadId<<2));
+				bufsize = tile_width *(tilec->y1 - tilec->y0 - buffer_v.range_even.y  + buffer_v.s_n + buffer_v.range_odd.x - (threadId<<2));
+
+				for (j = buffer_v.range_odd.y - buffer_v.range_odd.x; j > 3; j -= 4*numThreads) {
+					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					opj_region_decode97(&buffer_h);
+
+					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+						auto buffer_index					= k - buffer_h.interleaved_offset;
+						tile_data[k]						= buffer_h.data[buffer_index].f[0];
+						tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
+						tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
+						tile_data[k + tile_width * 3]		= buffer_h.data[buffer_index].f[3];
+					}
+
+					tile_data	+= (tile_width << 2)*numThreads;
+					bufsize		-= (tile_width << 2)*numThreads;
+				}
+
+				
+				if (j > 0) {
+					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					opj_region_decode97(&buffer_h);
+					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
+						auto buffer_index = k - buffer_h.interleaved_offset;
+						switch (j) {
+						case 3:
+							tile_data[k + (tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+						case 2:
+							tile_data[k + tile_width] = buffer_h.data[buffer_index].f[1];
+						case 1:
+							tile_data[k] = buffer_h.data[buffer_index].f[0];
+						}
+					}
+				}
+				
+				decode_dwt_barrier.arrive_and_wait();
+				
+				// Step 2: interleave and lift in vertical direction 
+				
+				buffer_v.d_n = (res_height - buffer_v.s_n);
+				buffer_v.odd_top_left_bit = res->y0 & 1;
+				buffer_v.interleaved_offset = opj_max<int64_t>(0, interleaved_v.x - 4);
+
+				tile_data = (float*)tileBuf + interleaved_h.x + (threadId<<2);
+				for (j = interleaved_h.y - interleaved_h.x; j > 3; j -= 4*numThreads) {
+					opj_region_interleave97_v(&buffer_v, tile_data, tile_width, 4);
+					opj_region_decode97(&buffer_v);
+					for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
+						memcpy(tile_data + k*tile_width, buffer_v.data + k - buffer_v.interleaved_offset, 4 * sizeof(float));
+					}
+					tile_data += (4*numThreads);
+				}
+				
+				if (j > 0) {
+					opj_region_interleave97_v(&buffer_v, tile_data, tile_width, j);
+					opj_region_decode97(&buffer_v);
+					for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
+						memcpy(tile_data + k*tile_width, buffer_v.data + k - buffer_v.interleaved_offset, (size_t)j * sizeof(float));
+					}
+				}
+				
+				resno++;
+				decode_dwt_barrier.arrive_and_wait();
+			}
+			opj_aligned_free(buffer_h.data);
 			decode_dwt_calling_barrier.arrive_and_wait();
 		}));
 	}
@@ -695,158 +861,5 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	for (auto& t : dwtWorkers) {
 		t.join();
 	}
-*/
-	opj_dwt97_t buffer_h;
-	opj_dwt97_t buffer_v;
-
-	opj_tcd_resolution_t* res = tilec->resolutions;
-
-	uint32_t resno = 1;
-
-	/* start with lowest resolution */
-	uint32_t res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
-	uint32_t res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
-
-	uint32_t tile_width = (tilec->x1 - tilec->x0);
-
-	// add 4 for boundary, plus one for parity
-	buffer_h.dataSize = (opj_tile_buf_get_interleaved_upper_bound(tilec->buf) + 5) * 4;
-	buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc(buffer_h.dataSize*sizeof(float));
-
-	if (!buffer_h.data) {
-		/* FIXME event manager error callback */
-		return false;
-	}
-	/* share data buffer between vertical and horizontal lifting steps*/
-	buffer_v.data = buffer_h.data;
-
-	while (--numres) {
-			
-		int64_t j=0;
-		opj_pt_t interleaved_h, interleaved_v;
-
-		/* start with the first resolution, and work upwards*/
-
-		buffer_h.s_n = res_width;
-		buffer_v.s_n = res_height;
-
-		buffer_h.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, true);
-		buffer_h.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, true);
-		buffer_v.range_even = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, true, false);
-		buffer_v.range_odd = opj_tile_buf_get_uninterleaved_range(tilec->buf, resno, false, false);
-
-		interleaved_h = opj_tile_buf_get_interleaved_range(tilec->buf, resno, true);
-		interleaved_v = opj_tile_buf_get_interleaved_range(tilec->buf, resno, false);
-
-		++res;
-
-		/* dimensions of next higher resolution */
-		res_width = (res->x1 - res->x0);	/* width of the resolution level computed */
-		res_height = (res->y1 - res->y0);	/* height of the resolution level computed */
-
-		buffer_h.d_n = (res_width - buffer_h.s_n);
-		buffer_h.odd_top_left_bit = res->x0 & 1;
-		buffer_h.interleaved_offset = opj_max<int64_t>(0, interleaved_h.x - 4);
-
-		/*  Step 1.  interleave and lift in horizontal direction */
-		float * restrict tile_data = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + tile_width * buffer_v.range_even.x;
-
-		auto bufsize = 	tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x);
-
-		for (j = buffer_v.range_even.y - buffer_v.range_even.x; j > 3; j -= 4) {
-			opj_region_interleave97_h(&buffer_h,tile_data,	tile_width, bufsize);
-
-			opj_region_decode97(&buffer_h);
-
-			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				auto buffer_index = k - buffer_h.interleaved_offset;
-				tile_data[k]								= buffer_h.data[buffer_index].f[0];
-				tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
-				tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
-				tile_data[k + tile_width * 3]		= buffer_h.data[buffer_index].f[3];
-			}
-
-			tile_data += tile_width << 2;
-			bufsize -= tile_width << 2;
-		}
-
-		if (j > 0) {
-			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
-
-			opj_region_decode97(&buffer_h);
-			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				auto buffer_index = k - buffer_h.interleaved_offset;
-				switch (j) {
-				case 3:
-					tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
-				case 2:
-					tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
-				case 1:
-					tile_data[k]						= buffer_h.data[buffer_index].f[0];
-				}
-			}
-			tile_data += tile_width * j;
-			bufsize -= tile_width *j;
-		}
-
-		tile_data += tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
-		bufsize -= 	tile_width *(buffer_v.s_n - buffer_v.range_even.y + buffer_v.range_odd.x);
-
-		for (j = buffer_v.range_odd.y - buffer_v.range_odd.x; j > 3; j -= 4) {
-			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
-			opj_region_decode97(&buffer_h);
-
-			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				auto buffer_index					= k - buffer_h.interleaved_offset;
-				tile_data[k]						= buffer_h.data[buffer_index].f[0];
-				tile_data[k + tile_width]			= buffer_h.data[buffer_index].f[1];
-				tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
-				tile_data[k + tile_width * 3]		= buffer_h.data[buffer_index].f[3];
-			}
-
-			tile_data	+= (tile_width << 2);
-			bufsize		-= (tile_width << 2);
-		}
-
-		if (j > 0) {
-			opj_region_interleave97_h(&buffer_h,tile_data,tile_width,bufsize);
-			opj_region_decode97(&buffer_h);
-			for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
-				auto buffer_index							= k - buffer_h.interleaved_offset;
-				switch (j) {
-				case 3:
-					tile_data[k + (tile_width << 1)]	= buffer_h.data[buffer_index].f[2];
-				case 2:
-					tile_data[k +  tile_width]			= buffer_h.data[buffer_index].f[1];
-				case 1:
-					tile_data[k]						= buffer_h.data[buffer_index].f[0];
-				}
-			}
-		}
-
-		/* Step 2: interleave and lift in vertical direction */
-		buffer_v.d_n				= (res_height - buffer_v.s_n);
-		buffer_v.odd_top_left_bit	= res->y0 & 1;
-		buffer_v.interleaved_offset = opj_max<int64_t>(0, interleaved_v.x - 4);
-
-		tile_data = ((float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0)) + interleaved_h.x;
-		for (j = interleaved_h.y - interleaved_h.x; j > 3; j -= 4) {
-			opj_region_interleave97_v(&buffer_v,tile_data,	tile_width,4);
-			opj_region_decode97(&buffer_v);
-			for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
-				memcpy(tile_data + k*tile_width,buffer_v.data + k - buffer_v.interleaved_offset, 4 * sizeof(float));
-			}
-			tile_data += 4;
-		}
-		if (j > 0) {
-			opj_region_interleave97_v(&buffer_v,tile_data,tile_width,j);
-			opj_region_decode97(&buffer_v);
-			for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
-				memcpy(tile_data + k*tile_width,buffer_v.data + k - buffer_v.interleaved_offset,(size_t)j * sizeof(float));
-			}
-		}
-		resno++;
-	}
-	opj_aligned_free(buffer_h.data);
-    return true;
+	 return success;
 }
