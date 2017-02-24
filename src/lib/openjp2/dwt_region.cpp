@@ -669,7 +669,6 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 	if (numres == 1U) {
 		return true;
 	}
-	numThreads = 1;
 	int rc = 0;
 	auto tileBuf = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
@@ -749,7 +748,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 				float * restrict tile_data = (float*)tileBuf + tile_width * (buffer_v.range_even.x + (threadId<<2));
 				auto bufsize = tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x - (threadId<<2));
 
-				for (j = buffer_v.range_even.y - buffer_v.range_even.x; j > 3; j -= 4*numThreads) {
+				for (j = buffer_v.range_even.y - buffer_v.range_even.x - (threadId<<2); j > 3; j -= 4*numThreads) {
 					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
 					opj_region_decode97(&buffer_h);
 
@@ -789,7 +788,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 				tile_data = (float*)tileBuf + tile_width *(buffer_v.s_n + buffer_v.range_odd.x + (threadId<<2));
 				bufsize = tile_width *(tilec->y1 - tilec->y0 - buffer_v.range_even.y  + buffer_v.s_n + buffer_v.range_odd.x - (threadId<<2));
 
-				for (j = buffer_v.range_odd.y - buffer_v.range_odd.x; j > 3; j -= 4*numThreads) {
+				for (j = buffer_v.range_odd.y - buffer_v.range_odd.x - (threadId<<2); j > 3; j -= 4*numThreads) {
 					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
 					opj_region_decode97(&buffer_h);
 
@@ -831,7 +830,7 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 				buffer_v.interleaved_offset = opj_max<int64_t>(0, interleaved_v.x - 4);
 
 				tile_data = (float*)tileBuf + interleaved_h.x + (threadId<<2);
-				for (j = interleaved_h.y - interleaved_h.x; j > 3; j -= 4*numThreads) {
+				for (j = interleaved_h.y - interleaved_h.x - (threadId<<2); j > 3; j -= 4*numThreads) {
 					opj_region_interleave97_v(&buffer_v, tile_data, tile_width, 4);
 					opj_region_decode97(&buffer_v);
 					for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
