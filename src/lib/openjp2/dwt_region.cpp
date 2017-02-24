@@ -778,15 +778,12 @@ bool opj_dwt_region_decode97(opj_tcd_tilecomp_t* restrict tilec,
 							tile_data[k] = buffer_h.data[buffer_index].f[0];
 						}
 					}
-					tile_data += tile_width * j;
-					bufsize -= tile_width *j;
 				}
 				
 				decode_dwt_barrier.arrive_and_wait();
-
 				
 				tile_data = (float*)tileBuf + tile_width *(buffer_v.s_n + buffer_v.range_odd.x + (threadId<<2));
-				bufsize = tile_width *(tilec->y1 - tilec->y0 - buffer_v.range_even.y  + buffer_v.s_n + buffer_v.range_odd.x - (threadId<<2));
+				bufsize = tile_width *(tilec->y1 - tilec->y0 -  buffer_v.s_n - buffer_v.range_odd.x - (threadId<<2));
 
 				for (j = buffer_v.range_odd.y - buffer_v.range_odd.x - (threadId<<2); j > 3; j -= 4*numThreads) {
 					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);

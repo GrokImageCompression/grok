@@ -19,6 +19,7 @@
 #include "opj_includes.h"
 
 bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
+									bool isEncoder,
                                    bool irreversible,
                                    uint32_t cblkw,
                                    uint32_t cblkh,
@@ -62,7 +63,7 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
 
 
     /* for encode, we don't need to allocate resolutions */
-    if (!output_image) {
+    if (isEncoder) {
         opj_tile_buf_destroy_component(tilec->buf);
         tilec->buf = comp;
         return true;

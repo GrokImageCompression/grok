@@ -469,7 +469,7 @@ bool opj_tcd_copy_tile_data (opj_tcd_t *p_tcd,
  *
  *
  */
-bool opj_tile_buf_create_component(opj_tcd_tilecomp_t * tilec,
+bool opj_tile_buf_create_component(opj_tcd_tilecomp_t * tilec, bool isEncoder,
                                    bool irreversible,
                                    uint32_t cblkw,
                                    uint32_t cblkh,

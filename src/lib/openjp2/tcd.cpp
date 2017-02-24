@@ -1225,7 +1225,8 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
             } /* bandno */
             ++l_res;
         } /* resno */
-        if (!opj_tile_buf_create_component(l_tilec,
+        if (!opj_tile_buf_create_component(l_tilec, 
+											isEncoder,
                                            l_tccp->qmfbid ? false : true,
                                            1 << l_tccp->cblkw,
                                            1 << l_tccp->cblkh,
