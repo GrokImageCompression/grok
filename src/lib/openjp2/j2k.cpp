@@ -408,7 +408,8 @@ static void opj_j2k_update_tlm ( opj_j2k_t * p_j2k, uint64_t p_tile_part_size);
  * @param       p_manager       the user event manager.
  *
 */
-static bool opj_j2k_read_SQcd_SQcc( opj_j2k_t *p_j2k,
+static bool opj_j2k_read_SQcd_SQcc( bool isQCD,
+									opj_j2k_t *p_j2k,
                                     uint32_t compno,
                                     uint8_t * p_header_data,
                                     uint32_t * p_header_size,
@@ -970,6 +971,16 @@ static bool opj_j2k_write_sod(      opj_j2k_t *p_j2k,
 static bool opj_j2k_read_sod(   opj_j2k_t *p_j2k,
                                 opj_stream_private_t *p_stream,
                                 opj_event_mgr_t * p_manager );
+
+
+static opj_tcp_t* opj_j2k_get_tcp(opj_j2k_t *p_j2k) {
+	auto l_cp = &(p_j2k->m_cp);
+	return (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
+		&l_cp->tcps[p_j2k->m_current_tile_number] :
+		p_j2k->m_specific_param.m_decoder.m_default_tcp;
+}
+
+
 
 static void opj_j2k_update_tlm (opj_j2k_t * p_j2k, uint64_t p_tile_part_size )
 {
@@ -2442,9 +2453,7 @@ static bool opj_j2k_read_cod (  opj_j2k_t *p_j2k,
     l_cp = &(p_j2k->m_cp);
 
     /* If we are in the first tile-part header of the current tile */
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     /* Only one COD per tile */
     if (l_tcp->cod) {
@@ -2668,9 +2677,7 @@ static bool opj_j2k_read_coc (  opj_j2k_t *p_j2k,
     assert(p_manager != nullptr);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ) ? /*FIXME J2K_DEC_STATE_TPH*/
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
     l_image = p_j2k->m_private_image;
 
     l_comp_room = l_image->numcomps <= 256 ? 1 : 2;
@@ -2778,7 +2785,7 @@ static bool opj_j2k_read_qcd (  opj_j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
-    if (! opj_j2k_read_SQcd_SQcc(p_j2k,0,p_header_data,&p_header_size,p_manager)) {
+    if (! opj_j2k_read_SQcd_SQcc(true,p_j2k,0,p_header_data,&p_header_size,p_manager)) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
         return false;
     }
@@ -2938,7 +2945,7 @@ static bool opj_j2k_read_qcc(   opj_j2k_t *p_j2k,
         return false;
     }
 
-    if (! opj_j2k_read_SQcd_SQcc(p_j2k,l_comp_no,p_header_data,&p_header_size,p_manager)) {
+    if (! opj_j2k_read_SQcd_SQcc(false,p_j2k,l_comp_no,p_header_data,&p_header_size,p_manager)) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
         return false;
     }
@@ -3183,9 +3190,7 @@ static bool opj_j2k_read_poc (  opj_j2k_t *p_j2k,
     }
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
     l_old_poc_nb = l_tcp->POC ? l_tcp->numpocs + 1 : 0;
     l_current_poc_nb += l_old_poc_nb;
 
@@ -4329,9 +4334,7 @@ static bool opj_j2k_read_rgn (opj_j2k_t *p_j2k,
     }
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     opj_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
     p_header_data+=l_comp_room;
@@ -4545,7 +4548,7 @@ static bool opj_j2k_read_eoc (     opj_j2k_t *p_j2k,
 #endif
 
 static bool opj_j2k_get_end_header(opj_j2k_t *p_j2k,
-                                   struct opj_stream_private *p_stream,
+                                   opj_stream_private *p_stream,
                                    opj_event_mgr_t * p_manager )
 {
     /* preconditions */
@@ -4845,9 +4848,7 @@ static bool opj_j2k_read_mct (      opj_j2k_t *p_j2k,
     assert(p_header_data != nullptr);
     assert(p_j2k != nullptr);
 
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
-            &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     if (p_header_size < 2) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading MCT marker\n");
@@ -5057,9 +5058,7 @@ static bool opj_j2k_read_mcc (     opj_j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
-            &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     if (p_header_size < 2) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
@@ -5343,9 +5342,7 @@ static bool opj_j2k_read_mco (      opj_j2k_t *p_j2k,
     assert(p_manager != nullptr);
 
     l_image = p_j2k->m_private_image;
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
-            &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     if (p_header_size < 1) {
         opj_event_msg(p_manager, EVT_ERROR, "Error reading MCO marker\n");
@@ -6856,6 +6853,30 @@ static bool opj_j2k_read_header_procedure( opj_j2k_t *p_j2k,
         opj_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
     }
 
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//do QCD marker quantization step size sanity check
+	auto l_cp = &(p_j2k->m_cp);
+	auto l_tcp = opj_j2k_get_tcp(p_j2k);
+	if (l_tcp->qntsty != J2K_CCP_QNTSTY_SIQNT) {
+		uint32_t maxDecompositions = 0;
+		for (uint32_t k = 0; k < p_j2k->m_private_image->numcomps; ++k) {
+			auto l_tccp = l_tcp->tccps + k;
+			if (l_tccp->numresolutions == 0 || l_tccp->hasQCC)
+				continue;
+			auto decomps = l_tccp->numresolutions - 1;
+			if (maxDecompositions < decomps)
+				maxDecompositions = decomps;
+		}
+
+		// see page 553 of Taubman and Marcellin for more details on this check
+		if ((l_tcp->numStepSizes < 3 * maxDecompositions + 1)) {
+			opj_event_msg(p_manager, EVT_ERROR, "From QCD marker, "
+				"number of step sizes (%d) is less than 3* (max decompositions) + 1, where max decompositions = %d \n", l_tcp->numStepSizes, maxDecompositions);
+			return false;
+		}
+	}
+	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	
     if (l_has_siz == 0) {
         opj_event_msg(p_manager, EVT_ERROR, "required SIZ marker not found in main header\n");
         return false;
@@ -8404,9 +8425,7 @@ static bool opj_j2k_read_SPCod_SPCoc(  opj_j2k_t *p_j2k,
     assert(p_header_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     /* precondition again */
     assert(compno < p_j2k->m_private_image->numcomps);
@@ -8508,9 +8527,7 @@ static void opj_j2k_copy_tile_component_parameters( opj_j2k_t *p_j2k )
     assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ? /* FIXME J2K_DEC_STATE_TPH*/
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     l_ref_tccp = &l_tcp->tccps[0];
     l_copied_tccp = l_ref_tccp + 1;
@@ -8677,7 +8694,8 @@ static bool opj_j2k_write_SQcd_SQcc(       opj_j2k_t *p_j2k,
     return true;
 }
 
-static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
+static bool opj_j2k_read_SQcd_SQcc(bool isQCD,
+									opj_j2k_t *p_j2k,
                                    uint32_t p_comp_no,
                                    uint8_t* p_header_data,
                                    uint32_t * p_header_size,
@@ -8690,7 +8708,7 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
     opj_tcp_t *l_tcp = nullptr;
     opj_tccp_t *l_tccp = nullptr;
     uint8_t * l_current_ptr = nullptr;
-    uint32_t l_tmp, l_num_band;
+    uint32_t l_tmp;
 
     /* preconditions*/
     assert(p_j2k != nullptr);
@@ -8698,10 +8716,7 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
     assert(p_header_data != nullptr);
 
     l_cp = &(p_j2k->m_cp);
-    /* come from tile part header or main header ?*/
-    l_tcp = (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ? /*FIXME J2K_DEC_STATE_TPH*/
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     /* precondition again*/
     assert(p_comp_no <  p_j2k->m_private_image->numcomps);
@@ -8713,30 +8728,49 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
         opj_event_msg(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n");
         return false;
     }
-    *p_header_size -= 1;
 
+	if (!isQCD)
+		l_tccp->hasQCC = true;
+
+    *p_header_size -= 1;
     opj_read_bytes(l_current_ptr, &l_tmp ,1);                       /* Sqcx */
     ++l_current_ptr;
 
     l_tccp->qntsty = l_tmp & 0x1f;
+	if (isQCD)
+		l_tcp->qntsty = l_tccp->qntsty;
     l_tccp->numgbits = l_tmp >> 5;
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-        l_num_band = 1;
+		l_tccp->numStepSizes = 1;
     } else {
-        l_num_band = (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
+		l_tccp->numStepSizes = (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
                      (*p_header_size) :
                      (*p_header_size) / 2;
 
-        if( l_num_band > OPJ_J2K_MAXBANDS ) {
-            opj_event_msg(p_manager, EVT_WARNING, "While reading CCP_QNTSTY element inside QCD or QCC marker segment, "
-                          "number of subbands (%d) is greater to OPJ_J2K_MAXBANDS (%d). So we limit the number of elements stored to "
-                          "OPJ_J2K_MAXBANDS (%d) and skip the rest. \n", l_num_band, OPJ_J2K_MAXBANDS, OPJ_J2K_MAXBANDS);
-            /*return false;*/
+		if (!isQCD) {
+			uint32_t maxDecompositions = 0;
+			if (l_tccp->numresolutions > 0)
+				maxDecompositions = l_tccp->numresolutions - 1;
+			// see page 553 of Taubman and Marcellin for more details on this check
+			if ((l_tccp->numStepSizes < 3 * maxDecompositions + 1)) {
+				opj_event_msg(p_manager, EVT_ERROR, "While reading QCC marker, "
+					"number of step sizes (%d) is less than 3* (max decompositions) + 1, where max decompositions = %d \n", l_tccp->numStepSizes, maxDecompositions);
+				return false;
+			}
+		}
+
+        if(l_tccp->numStepSizes > OPJ_J2K_MAXBANDS ) {
+            opj_event_msg(p_manager, EVT_WARNING, "While reading QCD or QCC marker segment, "
+                          "number of step sizes (%d) is greater than OPJ_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
+                          "OPJ_J2K_MAXBANDS (%d) and skip the rest.\n", l_tccp->numStepSizes, OPJ_J2K_MAXBANDS, OPJ_J2K_MAXBANDS);
         }
     }
 
+	if (isQCD)
+		l_tcp->numStepSizes = l_tccp->numStepSizes;
+
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-        for     (l_band_no = 0; l_band_no < l_num_band; l_band_no++) {
+        for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
             opj_read_bytes(l_current_ptr, &l_tmp ,1);                       /* SPqcx_i */
             ++l_current_ptr;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
@@ -8744,9 +8778,9 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
                 l_tccp->stepsizes[l_band_no].mant = 0;
             }
         }
-        *p_header_size = *p_header_size - l_num_band;
+        *p_header_size = *p_header_size - l_tccp->numStepSizes;
     } else {
-        for     (l_band_no = 0; l_band_no < l_num_band; l_band_no++) {
+        for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
             opj_read_bytes(l_current_ptr, &l_tmp ,2);                       /* SPqcx_i */
             l_current_ptr+=2;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
@@ -8754,7 +8788,7 @@ static bool opj_j2k_read_SQcd_SQcc(opj_j2k_t *p_j2k,
                 l_tccp->stepsizes[l_band_no].mant = l_tmp & 0x7ff;
             }
         }
-        *p_header_size = *p_header_size - 2*l_num_band;
+        *p_header_size = *p_header_size - 2* l_tccp->numStepSizes;
     }
 
     /* if scalar derived, then compute other stepsizes */
@@ -8784,9 +8818,7 @@ static void opj_j2k_copy_tile_quantization_parameters( opj_j2k_t *p_j2k )
     assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH ?
-            &l_cp->tcps[p_j2k->m_current_tile_number] :
-            p_j2k->m_specific_param.m_decoder.m_default_tcp;
+	l_tcp = opj_j2k_get_tcp(p_j2k);
 
     l_ref_tccp = &l_tcp->tccps[0];
     l_copied_tccp = l_ref_tccp + 1;
@@ -10365,7 +10397,7 @@ static bool opj_j2k_write_all_tile_parts(  opj_j2k_t *p_j2k,
 }
 
 static bool opj_j2k_write_updated_tlm( opj_j2k_t *p_j2k,
-                                       struct opj_stream_private *p_stream,
+                                       opj_stream_private *p_stream,
                                        opj_event_mgr_t * p_manager )
 {
     uint32_t l_tlm_size;

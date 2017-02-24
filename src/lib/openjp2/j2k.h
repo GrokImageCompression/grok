@@ -190,10 +190,14 @@ typedef struct opj_tccp {
     uint32_t cblksty;
     /** discrete wavelet transform identifier */
     uint32_t qmfbid;
+	// true if there is a QCC marker, otherwise false
+	bool hasQCC;
     /** quantisation style */
     uint32_t qntsty;
     /** stepsizes used for quantization */
     opj_stepsize_t stepsizes[OPJ_J2K_MAXBANDS];
+	// number of step sizes read from QCC marker
+	uint32_t numStepSizes;
     /** number of guard bits */
     uint32_t numgbits;
     /** Region Of Interest shift */
@@ -277,6 +281,10 @@ struct opj_tcp_t {
     uint32_t ppt_len;
     /** fixed_quality */
     double distoratio[100];
+	// quantization style as read from QCD marker
+	uint32_t qntsty;
+	// number of step sizes as read from QCD marker
+	uint32_t numStepSizes;
     /** tile-component coding parameters */
     opj_tccp_t *tccps;
     /** number of tile parts for the tile. */
