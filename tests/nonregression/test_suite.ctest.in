@@ -391,7 +391,9 @@ opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_3.j2k.png -
 opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10.j2k.png -t 0 -r 2
 opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_1.j2k.png -t 5 -r 2
 opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_2.j2k.png -t 9 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -t 15 -r 2
+
+# see Grok issue #59 for details on why this opj_decompress should error out in the test below
+!opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -t 15 -r 2
 
 opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_11.j2k.png -r 4
 
