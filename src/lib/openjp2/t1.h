@@ -77,7 +77,7 @@ struct decodeBlockInfo {
 	uint32_t resno;
 	uint32_t bandno;
 	float stepsize;
-	int32_t roishift;
+	uint32_t roishift;
 	uint32_t cblksty;
 	uint32_t qmfbid;
 	uint32_t x, y;		/* relative code block offset */
