@@ -201,7 +201,7 @@ typedef struct opj_tccp {
     /** number of guard bits */
     uint32_t numgbits;
     /** Region Of Interest shift */
-    int32_t roishift;
+    uint32_t roishift;
     /** precinct width (power of 2 exponent) */
     uint32_t prcw[OPJ_J2K_MAXRLVLS];
     /** precinct height (power of 2 exponent) */
