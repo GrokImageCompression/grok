@@ -441,7 +441,10 @@ static bool opj_j2k_pre_write_tile ( opj_j2k_t * p_j2k,
                                      opj_stream_private_t *p_stream,
                                      opj_event_mgr_t * p_manager );
 
-static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_image_t* p_output_image);
+static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd,
+										uint8_t * p_data,
+										opj_image_t* p_output_image,
+										opj_event_mgr_t * p_manager);
 
 static void opj_get_tile_dimensions(opj_image_t * l_image,
                                     opj_tcd_tilecomp_t * l_tilec,
@@ -7800,7 +7803,10 @@ p_data stores the number of resolutions decoded, in the actual precision of the 
 This method copies a sub-region of this region into p_output_image (which stores data in 32 bit precision)
 
 */
-static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_image_t* p_output_image)
+static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, 
+										uint8_t * p_data, 
+										opj_image_t* p_output_image,
+										opj_event_mgr_t * p_manager)
 {
     uint32_t i=0,j=0,k = 0;
 	opj_image_t * image_src = p_tcd->image;
@@ -7810,6 +7816,11 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, uint8_t * p_data, opj_
 		opj_tcd_tilecomp_t* tilec = p_tcd->tile->comps+i;
 		opj_image_comp_t* img_comp_src = image_src->comps+i;
 		opj_image_comp_t* img_comp_dest = p_output_image->comps+i;
+
+		if (img_comp_dest->w * img_comp_dest->h == 0) {
+			opj_event_msg(p_manager, EVT_ERROR, "Output image has invalid dimensions %d x %d\n", img_comp_dest->w, img_comp_dest->h);
+			return false;
+		}
 
         /* Allocate output component buffer if necessary */
         if (!img_comp_dest->data) {
@@ -9369,7 +9380,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 
         /* copy from current data to output image, if necessary */
         if (l_current_data) {
-            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image)) {
+            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image, p_manager)) {
                 opj_free(l_current_data);
                 return false;
             }
@@ -9509,7 +9520,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
         opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
         if (l_current_data) {
-            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image)) {
+            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image, p_manager)) {
                 opj_free(l_current_data);
                 return false;
             }
