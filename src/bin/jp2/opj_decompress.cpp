@@ -589,7 +589,7 @@ int parse_cmdline_decoder(int argc,
 			parameters->upsample = true;
 		}
 		if (splitPnmArg.isSet()) {
-			parameters->split_pnm = false;
+			parameters->split_pnm = true;
 		}
 
 		if (compressionArg.isSet()) {
