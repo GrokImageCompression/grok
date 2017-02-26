@@ -74,6 +74,8 @@ extern "C" {
 static double* parseToleranceValues( char* inArg, const int nbcomp)
 {
     double* outArgs= (double*)malloc((size_t)nbcomp * sizeof(double));
+	if (!outArgs)
+		return nullptr;
     int it_comp = 0;
     const char delims[] = ":";
     char *result = strtok( inArg, delims );

@@ -819,14 +819,21 @@ int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA
         it++;
     }
 
+	// region must be specified by 4 values exactly
+	if (it != 4) {
+		fprintf(stdout, "[WARNING] Decode region must be specified by exactly four coordinates. Ignoring specified region\n");
+		return EXIT_FAILURE;
+
+	}
+
 	// don't allow negative values
-    if (it != 4 || (values[0] < 0 ||
-					values[1] < 0 ||
-					values[2] < 0 ||
+    if ((values[0] < 0 ||
+			values[1] < 0 ||
+				values[2] < 0 ||
 					values[3] < 0)) {
 		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
 																						values[0],values[1],values[2],values[3]);
-			return EXIT_FAILURE;
+		return EXIT_FAILURE;
 	}
 	else {
         *DA_x0 = values[0];
@@ -900,11 +907,13 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
 
         /* default decoding parameters (core) */
         opj_set_default_decoder_parameters(&(parameters->core));
+
+		parameters->numThreads = 8;
+		parameters->deviceId = -1;
+		parameters->repeats = 1;
+		parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     }
-	parameters->numThreads = 8;
-	parameters->deviceId = -1;
-	parameters->repeats = 1;
-	parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+
 }
 
 static void destroy_parameters(opj_decompress_parameters* parameters)
@@ -921,6 +930,8 @@ static void destroy_parameters(opj_decompress_parameters* parameters)
 
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
 {
+	if (original->numcomps == 0)
+		return nullptr;
     uint32_t compno;
     opj_image_t* l_new_image = NULL;
     opj_image_cmptparm_t* l_new_components = NULL;

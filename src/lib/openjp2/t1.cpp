@@ -520,8 +520,8 @@ static void opj_t1_dec_sigpass_mqc(  opj_t1_t *t1,
             opj_t1_dec_sigpass_step_mqc(t1, flags2, data2, orient, oneplushalf);
             data2 += t1->w;
         }
-        data1 += t1->w << 2;
-        flags1 += t1->flags_stride << 2;
+        data1 += (size_t)t1->w << 2;
+        flags1 += (size_t)t1->flags_stride << 2;
     }
     for (i = 0; i < t1->w; ++i) {
         int32_t *data2 = data1 + i;
@@ -734,8 +734,8 @@ static void opj_t1_dec_refpass_mqc( opj_t1_t *t1,
             opj_t1_dec_refpass_step_mqc(t1, flags2, data2, poshalf, neghalf);
             data2 += t1->w;
         }
-        data1 += t1->w << 2;
-        flags1 += t1->flags_stride << 2;
+        data1 += (size_t)t1->w << 2;
+        flags1 += (size_t)t1->flags_stride << 2;
     }
     for (i = 0; i < t1->w; ++i) {
         int32_t *data2 = data1 + i;
@@ -1037,8 +1037,8 @@ static void opj_t1_dec_clnpass( opj_t1_t *t1,
                     data2 += t1->w;
                 }
             }
-            data1 += t1->w << 2;
-            flags1 += t1->flags_stride << 2;
+            data1 += (size_t)t1->w << 2;
+            flags1 += (size_t)t1->flags_stride << 2;
         }
         for (i = 0; i < t1->w; ++i) {
             int32_t *data2 = data1 + i;

@@ -363,6 +363,8 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 
         case 'y': {		/* Image Directory path */
             img_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
+			if (!img_fol->imgdirpath)
+				return 1;
             strcpy(img_fol->imgdirpath,opj_optarg);
             img_fol->set_imgdir=1;
         }
