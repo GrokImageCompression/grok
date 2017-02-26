@@ -80,6 +80,8 @@ extern "C" {
 #include "opj_string.h"
 }
 
+#include <string>
+
 
 typedef struct dircnt {
     /** Buffer for holding images read from Directory*/

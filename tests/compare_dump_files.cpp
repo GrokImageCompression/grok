@@ -56,6 +56,8 @@ extern "C" {
 #include "opj_getopt.h"
 }
 
+#include <string>
+
 typedef struct test_cmp_parameters {
     /**  */
     char* base_filename;
@@ -137,6 +139,17 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
  *******************************************************************************/
 int main(int argc, char **argv)
 {
+
+#ifndef NDEBUG
+	std::string out;
+	for (int i = 0; i < argc; ++i) {
+		out += std::string(" ") + argv[i];
+	}
+	out += "\n";
+	printf(out.c_str());
+#endif
+
+
     test_cmp_parameters inParam;
     FILE *fbase=NULL, *ftest=NULL;
     int same = 0;
