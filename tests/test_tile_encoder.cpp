@@ -145,6 +145,8 @@ int main (int argc, char *argv[])
     l_nb_tiles = (image_width/tile_width) * (image_height/tile_height);
     l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
     l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
+	if (!l_data)
+		return 1;
 
     fprintf(stdout, "Encoding random values -> keep in mind that this is very hard to compress\n");
     for (i=0; i<l_data_size; ++i)	{
