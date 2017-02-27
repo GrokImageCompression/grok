@@ -45,7 +45,7 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         return false;
 
     if (!buf_vec->data) {
-        buf_vec->init(true);
+        buf_vec->init();
     }
 
     seg = (opj_min_buf_t*)opj_malloc(sizeof(opj_buf_t));

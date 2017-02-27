@@ -18,30 +18,23 @@
 #pragma once
 
 
-/*
-Vector - a dynamic array.
-
-*/
-
 #include <vector>
+struct opj_min_buf_t;
 
 struct opj_vec_t {
-	opj_vec_t() : data(nullptr), owns_data(false) {}
+	opj_vec_t() : data(nullptr) {}
 
-	bool init(bool owns_data)
+	bool init()
 	{
 		if (data)
 			return true;
-
-		data = (void*)(new std::vector<void*>());
-		owns_data = owns_data;
+		data = new std::vector<opj_min_buf_t*>();
 		return data ? true : false;
 	}
 
-	bool push_back(void* value)
+	bool push_back(opj_min_buf_t* value)
 	{
-		auto impl = (std::vector<void*>*)data;
-		impl->push_back(value);
+		data->push_back(value);
 		return true;
 	}
 
@@ -49,51 +42,40 @@ struct opj_vec_t {
 	{
 		if (!data)
 			return NULL;
-		auto impl = (std::vector<void*>*)data;
-		assert(index < impl->size() && index >= 0);
-		if (index >= impl->size()) {
+		assert(index < data->size() && index >= 0);
+		if (index >= data->size()) {
 			return NULL;
 		}
-		return impl->operator[](index);
+		return data->operator[](index);
 	}
 
 	int32_t size()
 	{
 		if (!data)
 			return 0;
-		auto impl = (std::vector<void*>*)data;
-		return (int32_t)impl->size();
+		return (int32_t)data->size();
 	}
 
 	void* back()
 	{
 		if (!data)
 			return NULL;
-		auto impl = (std::vector<void*>*)data;
-		return impl->back();
+		return data->back();
 	}
 
 	void cleanup()
 	{
 		if (!data)
 			return;
-		auto impl = (std::vector<void*>*)data;
-		if (owns_data) {
-			for (auto it = impl->begin(); it != impl->end(); ++it) {
-				if (*it)
-					opj_free(*it);
-			}
+		for (auto it = data->begin(); it != data->end(); ++it) {
+			if (*it)
+				opj_free(*it);
 		}
-		delete impl;
+		delete data;
 		data = NULL;
 	}
-    void* data;		/* array of void* pointers */
-    bool owns_data;
+    std::vector<opj_min_buf_t*>* data;		/* array of void* pointers */
 };
 
-/*
-Clean up vector resources and free vector itself
-*/
-void opj_vec_destroy(opj_vec_t *vec);
 
 
