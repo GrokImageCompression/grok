@@ -1735,11 +1735,11 @@ static bool opj_jp2_read_colr( opj_jp2_t *jp2,
         return false;
     }
 
-    /* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all Colour
-     * Specification boxes after the first.'
+    /* Part 1, I.5.3.3 : 'A conforming JP2 reader shall ignore all colour
+     * specification boxes after the first.'
     */
-    if(jp2->color.jp2_has_colr) {
-        opj_event_msg(p_manager, EVT_INFO, "A conforming JP2 reader shall ignore all Colour Specification boxes after the first, so we ignore this one.\n");
+    if(jp2->color.jp2_has_colour_specification_box) {
+        opj_event_msg(p_manager, EVT_INFO, "A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.\n");
         p_colr_header_data += p_colr_header_size;
         return true;
     }
@@ -1814,7 +1814,7 @@ static bool opj_jp2_read_colr( opj_jp2_t *jp2,
             jp2->color.icc_profile_buf = (uint8_t*)cielab;
             jp2->color.icc_profile_len = 0;
         }
-        jp2->color.jp2_has_colr = 1;
+        jp2->color.jp2_has_colour_specification_box = 1;
     } else if (jp2->meth == 2) {
         /* ICC profile */
         int32_t it_icc_value = 0;
@@ -1833,7 +1833,7 @@ static bool opj_jp2_read_colr( opj_jp2_t *jp2,
             jp2->color.icc_profile_buf[it_icc_value] = (uint8_t) l_value;
         }
 
-        jp2->color.jp2_has_colr = 1;
+        jp2->color.jp2_has_colour_specification_box = 1;
     } else if (jp2->meth > 2) {
         /*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
         conforming JP2 reader shall ignore the entire Colour Specification box.*/
@@ -2137,7 +2137,7 @@ void opj_jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters)
     opj_j2k_setup_decoder(jp2->j2k, parameters);
 
     /* further JP2 initializations go here */
-    jp2->color.jp2_has_colr = 0;
+    jp2->color.jp2_has_colour_specification_box = 0;
     jp2->ignore_pclr_cmap_cdef = parameters->flags & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
 }
 
@@ -3291,7 +3291,7 @@ opj_jp2_t* opj_jp2_create(bool p_is_decoder)
         jp2->color.icc_profile_len = 0;
         jp2->color.jp2_cdef = NULL;
         jp2->color.jp2_pclr = NULL;
-        jp2->color.jp2_has_colr = 0;
+        jp2->color.jp2_has_colour_specification_box = 0;
 
         /* validation list creation */
         jp2->m_validation_list = opj_procedure_list_create();

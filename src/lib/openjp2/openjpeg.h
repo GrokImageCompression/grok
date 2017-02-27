@@ -525,7 +525,7 @@ typedef struct opj_jp2_color {
 
 	opj_jp2_cdef_t *jp2_cdef;
 	opj_jp2_pclr_t *jp2_pclr;
-	uint8_t jp2_has_colr;
+	uint8_t jp2_has_colour_specification_box;
 } opj_jp2_color_t;
 
 typedef struct opj_header_info {
