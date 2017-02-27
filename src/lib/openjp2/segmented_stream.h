@@ -41,10 +41,10 @@
 Smart wrapper to low level C array
 */
 
-typedef struct opj_min_buf {
+struct opj_min_buf_t {
     uint8_t *buf;		/* internal array*/
     uint16_t len;		/* length of array */
-} opj_min_buf_t;
+};
 
 /*
 Copy all segments, in sequence, into contiguous array
