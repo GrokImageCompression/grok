@@ -1392,8 +1392,8 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	if (!info)
-		return -1;
-
+		return 1;
+	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = NULL;
 
@@ -1411,20 +1411,20 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	auto fp = fopen(parameters->infile, "rb");
 	if (!fp) {
 		printf("unable to open file %s for reading", parameters->infile);
-		failed = -1;
+		failed = 1;
 		goto cleanup;
 	}
 
 	auto rc = fseek(fp, 0, SEEK_END);
 	if (rc == -1) {
 		printf("unable to seek on file %s", parameters->infile);
-		failed = -1;
+		failed = 1;
 		goto cleanup;
 	}
 	auto lengthOfFile = ftell(fp);
 	if (lengthOfFile <= 0) {
 		printf("Zero or negative length for file %s", parameters->infile);
-		failed = -1;
+		failed = 1;
 		goto cleanup;
 	}
 	rewind(fp);
@@ -1437,7 +1437,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	fclose(fp);
 	if (totalBytes != lengthOfFile) {
 		printf("Unable to read full length of file %s", parameters->infile);
-		failed = -1;
+		failed = 1;
 		goto cleanup;
 	}
 	info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
@@ -1447,7 +1447,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 
 	if (!info->l_stream) {
 		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", parameters->infile);
-		return -1;
+		failed = 1;
+		goto cleanup;
 	}
 
 	/* decode the JPEG2000 stream */
@@ -1471,7 +1472,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 	default:
 		fprintf(stderr, "skipping file..\n");
-		return -1;
+		failed = 1;
+		goto cleanup;
 	}
 
 	/* catch events using our callbacks and give a local context */
@@ -1482,7 +1484,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	/* Setup the decoder decoding parameters using user parameters */
 	if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
-		return -1;
+		failed = 1;
+		goto cleanup;
 	}
 
 	opj_header_info_t header_info;
@@ -1490,8 +1493,10 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 
 	/* Read the main header of the codestream and if necessary the JP2 boxes*/
 	if (!opj_read_header_ex(info->l_stream, info->l_codec, &header_info, &image)) {
+		info->image = image;
 		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
-		return -1;
+		failed = 1;
+		goto cleanup;
 	}
 
 	info->image = image;
@@ -1517,24 +1522,40 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		parameters->DA_x1,
 		parameters->DA_y1)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
-		return -1;
+		failed = 1;
+		goto cleanup;
 	}
 
 	if (!parameters->nb_tile_to_decode) {
 		/* Get the decoded image */
 		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
-			return -1;
+			failed = 1;
+			goto cleanup;
 		}
 	}
 	else {
 		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
-			return -1;
+			failed = 1;
+			goto cleanup;
 		}
 		fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
 	}
-	return 0;
+
+cleanup:
+	if (info->l_stream)
+		opj_stream_destroy(info->l_stream);
+	info->l_stream = NULL;
+	if (info->l_codec)
+		opj_destroy_codec(info->l_codec);
+	info->l_codec = NULL;
+	if (failed) {
+		if (image)
+			opj_image_destroy(image);
+		info->image = NULL;
+	}
+	return failed;
 }
 
 /*
@@ -1768,6 +1789,12 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		}
 	}
 cleanup:
+	if (info->l_stream)
+		opj_stream_destroy(info->l_stream);
+	info->l_stream = NULL;
+	if (info->l_codec)
+		opj_destroy_codec(info->l_codec);
+	info->l_codec = NULL;
 	if (image)
 		opj_image_destroy(image);
 	info->image = NULL;
