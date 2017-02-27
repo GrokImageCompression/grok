@@ -72,6 +72,9 @@ extern "C" {
 #include "convert.h"
 #include "color.h"
 }
+
+#include <assert.h>
+
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -593,7 +596,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
-
+	bool hasAlpha = false;
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
             fprintf(stderr,"imagetotif: CMYK images shall be composed of at least 4 planes.\n");
@@ -609,8 +612,11 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         if (numcomps > 4U) {
             numcomps = 4U;
         }
+		hasAlpha = (numcomps == 4);
     } else {
         tiPhoto = PHOTOMETRIC_MINISBLACK;
+		hasAlpha = (numcomps == 2);
+			
     }
 
 	uint32_t sgnd = image->comps[0].sgnd;
@@ -631,7 +637,8 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
-		if (!image->comps[i].data) {
+		auto comp = image->comps[i];
+		if (!comp.data) {
 			success = false;
 			goto cleanup;
 		}
@@ -753,6 +760,14 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1]/100);
 		}
 	}
+
+	// only support one unassociated i.e. not pre-multiplied alpha channel
+	if (hasAlpha) {
+		uint16 out[1];
+		out[0] = EXTRASAMPLE_UNASSALPHA;
+		assert(TIFFSetField( tif, TIFFTAG_EXTRASAMPLES, 1, &out )==1);
+	}
+
 
     strip_size = TIFFStripSize(tif);
     rowStride = (width * numcomps * tif_bps + 7U) / 8U;
@@ -1358,7 +1373,9 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 	uint32_t numcomps = 0;
 	uint32_t currentPlane = 0;
 	uint32_t icclen = 0;
-	uint8_t* iccbuf = NULL;
+	uint8_t* iccbuf = nullptr;
+	uint16* sampleinfo=nullptr;
+	uint16 extrasamples = 0;
 
 
 	// if write_capture_resolution is enabled but capture_resolution equals 0,0, then
@@ -1465,30 +1482,26 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
         break;
     }
 
-    {/* From: tiff-4.0.x/libtiff/tif_getimage.c : */
-        uint16* sampleinfo;
-        uint16 extrasamples;
 
-        TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,
-                              &extrasamples, &sampleinfo);
+    TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,
+                            &extrasamples, &sampleinfo);
 
-        if(extrasamples >= 1) {
-            switch(sampleinfo[0]) {
-            case EXTRASAMPLE_UNSPECIFIED:
-                /* Workaround for some images without correct info about alpha channel
-                 */
-                if(tiSpp > 3)
-                    has_alpha = 1;
-                break;
-
-            case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
-            case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
+    if(extrasamples >= 1) {
+        switch(sampleinfo[0]) {
+        case EXTRASAMPLE_UNSPECIFIED:
+            // Workaround for some images without correct info about alpha channel
+            if(tiSpp > 3)
                 has_alpha = 1;
-                break;
-            }
-        } else /* extrasamples == 0 */
-            if(tiSpp == 4 || tiSpp == 2) has_alpha = 1;
-    }
+            break;
+
+        case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
+        case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
+            has_alpha = 1;
+            break;
+        }
+    } else /* extrasamples == 0 */
+        if(tiSpp == 4 || tiSpp == 2) has_alpha = 1;
+
 
     /* initialize image components */
     memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
