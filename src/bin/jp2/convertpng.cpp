@@ -465,6 +465,7 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 	// Set iCCP chunk
 	if (image->icc_profile_buf && image->icc_profile_len)
 	{
+		bool iccWasStored = false;
 		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 		if (in_prof) {
 			cmsUInt32Number bufferSize = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
@@ -481,9 +482,12 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 						PNG_COMPRESSION_TYPE_BASE,
 						image->icc_profile_buf,
 						image->icc_profile_len);
+					iccWasStored = true;
 				}
 			}
 		}
+		if (!iccWasStored)
+			fprintf(stdout, "imagetopng: Failed to store ICC profile.\n");
 
 	}
 
