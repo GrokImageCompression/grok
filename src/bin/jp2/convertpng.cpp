@@ -75,6 +75,12 @@ extern "C" {
 
 }
 
+#include <memory>
+#include <iostream>
+#include <string>
+#include <codecvt>
+#include <cassert>
+
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
 #define MAGIC_SIZE 8
 /* PNG allows bits per sample: 1, 2, 4, 8, 16 */
@@ -458,15 +464,32 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 	// Set iCCP chunk
 	if (image->icc_profile_buf && image->icc_profile_len)
 	{
-		png_set_iCCP(png,
-					info,
-					"",
-					PNG_COMPRESSION_TYPE_BASE,
-					image->icc_profile_buf,
-					image->icc_profile_len);
+		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
+		if (in_prof) {
+			cmsUInt32Number bufferSize = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
+			if (bufferSize) {
+				size_t numWideChars = (bufferSize + 1) / 2;
+				std::unique_ptr<wchar_t[]> description(new wchar_t[numWideChars]);
+				cmsUInt32Number result = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, description.get(), bufferSize);
+				cmsCloseProfile(in_prof);
+				if (result) {
+					std::string u8_conv = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.to_bytes(description.get());
+					png_set_iCCP(png,
+						info,
+						(png_const_charp)(description.get()),
+						PNG_COMPRESSION_TYPE_BASE,
+						image->icc_profile_buf,
+						image->icc_profile_len);
+				}
+			}
+		}
+
 	}
 
-
+	// handle libpng errors
+	if (setjmp(png_jmpbuf(png))) {
+		goto fin;
+	}
 
     png_write_info(png, info);
 
