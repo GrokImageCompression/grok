@@ -39,6 +39,7 @@ struct minpf_dynamic_library {
 };
 
 minpf_dynamic_library* minpf_load_dynamic_library(const char* path, char* error);
+bool minpf_unload_dynamic_library(minpf_dynamic_library* library);
 void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol);
 bool minpf_get_full_path(const char* path,
 							void *addr,

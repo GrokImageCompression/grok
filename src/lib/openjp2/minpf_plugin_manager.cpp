@@ -135,6 +135,7 @@ void   minpf_cleanup_plugin_manager(void)
 			managerInstance->exit_functions[i]();
 
         for (i = 0; i < managerInstance->num_libraries; ++i) {
+			minpf_unload_dynamic_library(managerInstance->dynamic_libraries[i]);
             if (managerInstance->dynamic_libraries[i])
                 free(managerInstance->dynamic_libraries[i]);
         }
