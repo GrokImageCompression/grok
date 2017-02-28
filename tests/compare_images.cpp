@@ -277,7 +277,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
 
     /* Read the tif file corresponding to the component */
 #ifdef OPJ_HAVE_LIBTIFF
-    image_read = tiftoimage(filename, &parameters, true);
+    image_read = tiftoimage(filename, &parameters, false);
 #endif
     if (!image_read) {
         fprintf(stderr, "Unable to load TIF file\n");
@@ -620,7 +620,7 @@ int main(int argc, char **argv)
     char *filenamePNGtest= NULL, *filenamePNGbase = NULL, *filenamePNGdiff = NULL;
     size_t memsizebasefilename, memsizetestfilename;
     size_t memsizedifffilename;
-    int valueDiff = 0, nbPixelDiff = 0;
+    int32_t nbPixelDiff = 0;
     double sumDiff = 0.0;
     /* Structures to store image parameters and data*/
     opj_image_t *imageBase = NULL, *imageTest = NULL, *imageDiff = NULL;
@@ -782,14 +782,16 @@ int main(int argc, char **argv)
         double SE=0,PEAK=0;
         double MSE=0;
         for (itpxl = 0; itpxl < ((imageDiff->comps)[it_comp]).w * ((imageDiff->comps)[it_comp]).h; itpxl++) {
-            if (abs( ((imageBase->comps)[it_comp]).data[itpxl] - ((imageTest->comps)[it_comp]).data[itpxl] ) > 0) {
-                valueDiff = ((imageBase->comps)[it_comp]).data[itpxl] - ((imageTest->comps)[it_comp]).data[itpxl];
-				((imageDiff->comps)[it_comp]).data[itpxl] = abs(valueDiff);
-                sumDiff += valueDiff;
+			auto basePixel = (imageBase->comps)[it_comp].data[itpxl];
+			auto testPixel = (imageTest->comps)[it_comp].data[itpxl];
+			int64_t diff = basePixel - testPixel;
+            if (abs(diff) > 0) {
+				((imageDiff->comps)[it_comp]).data[itpxl] = (uint32_t)abs(diff);
+                sumDiff += diff;
                 nbPixelDiff++;
 
-                SE += (double)valueDiff * valueDiff;
-                PEAK = (PEAK > abs(valueDiff)) ? PEAK : abs(valueDiff);
+                SE += (double)diff * diff;
+                PEAK = (PEAK > abs(diff)) ? PEAK : abs(diff);
             } else
                 ((imageDiff->comps)[it_comp]).data[itpxl] = 0;
         }/* h*w loop */
