@@ -78,10 +78,21 @@ bool minpf_get_full_path(const char* path,
 #endif
 }
 
+bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
+	if (!library)
+		return true;
+	bool rc = false;
+#ifdef _WIN32
+	rc =  FreeLibrary(library->handle) ? true : false;
+#else
+	dlclose(library->handle);
+	rc = true;
+#endif
+	library->handle = nullptr;
+	return rc;
+}
 
-minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error)
-{
-
+minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error){
     minpf_dynamic_library* lib = NULL;
 	dynamic_handle_t handle = NULL;
 
@@ -91,13 +102,13 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 #ifdef _WIN32
     handle = LoadLibrary(path);
     if (handle == NULL) {
+		//ToDo report error
         return NULL;
     }
 #else
     handle = dlopen(path, RTLD_NOW);
     if (!handle) {
-
-        //report error
+        //ToDo report error
         return NULL;
     }
 
@@ -110,7 +121,6 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 #else
 		dlclose(handle);
 #endif
-		
 		return NULL;
 
 	}
