@@ -3260,6 +3260,7 @@ bool opj_jp2_get_tile(	opj_jp2_t *p_jp2,
         p_image->icc_profile_buf = p_jp2->color.icc_profile_buf;
         p_image->icc_profile_len = p_jp2->color.icc_profile_len;
         p_jp2->color.icc_profile_buf = NULL;
+		p_jp2->color.icc_profile_len = 0;
     }
 
     return true;
