@@ -73,7 +73,8 @@ extern "C" {
 #include "color.h"
 }
 
-#include <assert.h>
+#include <cassert>
+#include <memory>
 
 /* -->> -->> -->> -->>
 
@@ -596,7 +597,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
-	bool hasAlpha = false;
+	bool inferred_alpha = false;
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
             fprintf(stderr,"imagetotif: CMYK images shall be composed of at least 4 planes.\n");
@@ -612,11 +613,10 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
         if (numcomps > 4U) {
             numcomps = 4U;
         }
-		hasAlpha = (numcomps == 4);
+		inferred_alpha = (numcomps == 4);
     } else {
         tiPhoto = PHOTOMETRIC_MINISBLACK;
-		hasAlpha = (numcomps == 2);
-			
+		inferred_alpha = (numcomps == 2);
     }
 
 	uint32_t sgnd = image->comps[0].sgnd;
@@ -762,11 +762,20 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	}
 
 	
-	// only support one unassociated i.e. not pre-multiplied alpha channel
-	if (hasAlpha) {
-		uint16 out[1];
-		out[0] = EXTRASAMPLE_UNASSALPHA;
-		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, 1, &out);
+	// only support unassociated (i.e. not pre-multiplied) alpha channels
+	// note: we assume that alpha channels occur as last channels in image
+	size_t numAlphaChannels = 0;;
+	for (i = 0U; i < numcomps; ++i) {
+		if (image->comps[i].alpha)
+			numAlphaChannels++;
+	}
+	if (!numAlphaChannels && inferred_alpha)
+		numAlphaChannels = 1;
+	if (numAlphaChannels) {
+		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
+		for (int k = 0; k < numAlphaChannels; ++k)
+			out[k] = EXTRASAMPLE_UNASSALPHA;
+		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
 	
 
