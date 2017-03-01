@@ -761,12 +761,14 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 		}
 	}
 
+	
 	// only support one unassociated i.e. not pre-multiplied alpha channel
 	if (hasAlpha) {
 		uint16 out[1];
 		out[0] = EXTRASAMPLE_UNASSALPHA;
-		assert(TIFFSetField( tif, TIFFTAG_EXTRASAMPLES, 1, &out )==1);
+		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, 1, &out);
 	}
+	
 
 
     strip_size = TIFFStripSize(tif);
@@ -1365,7 +1367,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
     TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
     TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
     TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
