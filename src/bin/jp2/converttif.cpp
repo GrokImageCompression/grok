@@ -598,6 +598,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
 	bool inferred_alpha = false;
+	size_t numAlphaChannels = 0;;
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
             fprintf(stderr,"imagetotif: CMYK images shall be composed of at least 4 planes.\n");
@@ -764,7 +765,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 	
 	// only support unassociated (i.e. not pre-multiplied) alpha channels
 	// note: we assume that alpha channels occur as last channels in image
-	size_t numAlphaChannels = 0;;
 	for (i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].alpha)
 			numAlphaChannels++;
