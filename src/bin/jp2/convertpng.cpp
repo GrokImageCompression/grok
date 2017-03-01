@@ -132,15 +132,19 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     if((png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
                                      NULL, NULL, NULL)) == NULL)
         goto fin;
+
+	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
+	// because it deems it broken. (a controversial decision)
+	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+
+
     if((info = png_create_info_struct(png)) == NULL)
         goto fin;
 
     if(setjmp(png_jmpbuf(png)))
         goto fin;
 
-	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
-	// because it deems it broken. (a controversial decision)
-	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);  
+
 
     png_init_io(png, reader);
     png_set_sig_bytes(png, MAGIC_SIZE);
@@ -405,7 +409,10 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
      */
     png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
                                   NULL, NULL, NULL);
-    /*png_voidp user_error_ptr, user_error_fn, user_warning_fn); */
+
+	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
+	// because it deems it broken. (a controversial decision)
+	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
     if(png == NULL) goto fin;
 
