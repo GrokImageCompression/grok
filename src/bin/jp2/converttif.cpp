@@ -583,7 +583,7 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
     }
 }
 
-int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
+int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool enableInferredAlpha)
 {
     int tiPhoto;
     TIFF *tif=nullptr;
@@ -769,7 +769,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 		if (image->comps[i].alpha)
 			numAlphaChannels++;
 	}
-	if (!numAlphaChannels && inferred_alpha)
+	if (!numAlphaChannels && enableInferredAlpha && inferred_alpha)
 		numAlphaChannels = 1;
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
