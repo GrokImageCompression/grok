@@ -2303,9 +2303,9 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             jp2->color.jp2_cdef->info[i].asoc = (uint16_t)(i+1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
         }
         for (; i < image->numcomps; i++) {
-            if (image->comps[i].alpha != 0) { /* we'll be here exactly once */
+            if (image->comps[i].alpha) { 
                 jp2->color.jp2_cdef->info[i].cn = (uint16_t)i; /* cast is valid : image->numcomps [1,16384] */
-                jp2->color.jp2_cdef->info[i].typ = 1U; /* Opacity channel */
+                jp2->color.jp2_cdef->info[i].typ = image->comps[i].alpha; /* Opacity channel */
                 jp2->color.jp2_cdef->info[i].asoc = 0U; /* Apply alpha channel to the whole image */
             } else {
                 /* Unknown channel */

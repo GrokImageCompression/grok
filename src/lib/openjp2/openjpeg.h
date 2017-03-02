@@ -485,7 +485,9 @@ typedef struct opj_cparameters {
 Channel description: channel index, type, association
 */
 typedef struct opj_jp2_cdef_info {
-	uint16_t cn, typ, asoc;
+	uint16_t cn;
+	uint16_t typ;	
+	uint16_t asoc;
 } opj_jp2_cdef_info_t;
 
 /**
@@ -766,6 +768,10 @@ typedef void * opj_stream_t;
 ==========================================================
 */
 
+#define OPJ_COMPONENT_TYPE_COLOUR 0
+#define OPJ_COMPONENT_TYPE_OPACITY 1
+#define OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 2
+
 /**
  * Defines a single image component
  * */
@@ -792,8 +798,8 @@ typedef struct opj_image_comp {
     uint32_t decodeScaleFactor;
     /** image component data */
     int32_t *data;
-    /** alpha channel */
-    uint16_t alpha;
+    /** alpha channel: can be one of three values: {OPJ_COMPONENT_TYPE_COLOUR, OPJ_COMPONENT_TYPE_OPACITY, OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY} */
+    uint16_t alpha;  
 } opj_image_comp_t;
 
 /**

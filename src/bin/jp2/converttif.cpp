@@ -755,16 +755,15 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 
 
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
-		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, 3); // cm
+		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
 		for (int i = 0; i < 2; ++i) {
 			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0]/100);
 			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1]/100);
 		}
 	}
 
-	
-	// only support unassociated (i.e. not pre-multiplied) alpha channels
-	// note: we assume that alpha channels occur as last channels in image
+	// Alpha channels
+	// note: we assume that alpha channels occur as last channels in image.
 	for (i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].alpha)
 			numAlphaChannels++;
@@ -773,8 +772,11 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		numAlphaChannels = 1;
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
-		for (int k = 0; k < numAlphaChannels; ++k)
-			out[k] = EXTRASAMPLE_UNASSALPHA;
+		auto alphaCount = 0;
+		for (i = 0U; i < numcomps; ++i) {
+			if (image->comps[i].alpha)
+				out[alphaCount++] = (image->comps[i].alpha == OPJ_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
 	
@@ -1311,16 +1313,16 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 	res[1] = resy;
 
 	switch (resUnit) {
-		// no known units. Used for images with non-square pixels
+	// no known units. Used for images with non-square pixels
 	case 1:
 		break;
-		// inches  
+	// inches  
 	case 2:
 		//2.54 cm / inch
 		res[0] *= 100 / 2.54;
 		res[1] *= 100 / 2.54;
 		break;
-		// cm
+	// cm
 	case 3:
 		res[0] *= 100;
 		res[1] *= 100;
@@ -1347,7 +1349,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
     OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
     opj_image_cmptparm_t cmptparm[4]; /* RGBA */
     opj_image_t *image = NULL;
-    int has_alpha = 0;
+	uint32_t numAlphaChannels = 0;
 	unsigned short tiBps=0, tiPhoto=0, tiSf=0, tiSpp=0, tiPC=0;
 	short tiResUnit=0;
 	float tiXRes=0, tiYRes=0;
@@ -1501,16 +1503,16 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
         case EXTRASAMPLE_UNSPECIFIED:
             // Workaround for some images without correct info about alpha channel
             if(tiSpp > 3)
-                has_alpha = 1;
+                numAlphaChannels = 1;
             break;
 
         case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
         case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
-            has_alpha = 1;
+			numAlphaChannels = 1;
             break;
         }
-    } else /* extrasamples == 0 */
-        if(tiSpp == 4 || tiSpp == 2) has_alpha = 1;
+    } else if(tiSpp == 4 || tiSpp == 2)  /* extrasamples == 0 */
+		numAlphaChannels = 1;
 
 
     /* initialize image components */
@@ -1528,10 +1530,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 
 
     if(tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
-        numcomps = 3 + has_alpha;
+        numcomps = 3 + numAlphaChannels;
         color_space = OPJ_CLRSPC_SRGB;
     } else if (tiPhoto == PHOTOMETRIC_MINISBLACK || tiPhoto == PHOTOMETRIC_MINISWHITE) { /* GRAY(A) */
-        numcomps = 1 + has_alpha;
+        numcomps = 1 + numAlphaChannels;
         color_space = OPJ_CLRSPC_GRAY;
     }
 
@@ -1578,8 +1580,14 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 
     for(uint32_t j = 0; j < numcomps; j++) {
         planes[j] = image->comps[j].data;
+		if ( (j == numcomps - 1) && (numAlphaChannels > 0)) {
+			if (sampleinfo && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA)
+				image->comps[j].alpha = OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+			else
+				image->comps[j].alpha = OPJ_COMPONENT_TYPE_OPACITY;
+		}
     }
-    image->comps[numcomps - 1].alpha = (1 - (numcomps & 1));
+
 
 	// handle embedded ICC profile (with sanity check on binary size of profile)
 	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
