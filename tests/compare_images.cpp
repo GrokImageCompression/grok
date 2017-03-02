@@ -117,9 +117,14 @@ static int get_decod_format_from_string(const char *filename)
 {
     const int dot = '.';
     char * ext = (char*)strrchr(filename, dot);
-    if( strcmp(ext,".pgx") == 0 ) return PGX_DFMT;
-    if( strcmp(ext,".tif") == 0 ) return TIF_DFMT;
-    if( strcmp(ext,".ppm") == 0 ) return PXM_DFMT;
+    if( strcmp(ext,".pgx") == 0 )
+		return PGX_DFMT;
+    if( strcmp(ext,".tif") == 0 )
+		return TIF_DFMT;
+    if( strcmp(ext,".ppm") == 0 )
+		return PXM_DFMT;
+	if (strcmp(ext, ".png") == 0)
+		return PNG_DFMT;
     return -1;
 }
 
@@ -251,6 +256,31 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
     return image;
 }
 
+static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX, const char *separator)
+{
+	opj_image_t* image_read = NULL;
+	opj_cparameters_t parameters;
+	(void)nbFilenamePGX;
+	(void)separator;
+
+	if (strlen(separator) != 0) return NULL;
+
+	/* set encoding parameters to default values */
+	opj_set_default_encoder_parameters(&parameters);
+	parameters.decod_format = TIF_DFMT;
+	strcpy(parameters.infile, filename);
+
+#ifdef OPJ_HAVE_LIBPNG
+	image_read = pngtoimage(filename, &parameters);
+#endif
+	if (!image_read) {
+		fprintf(stderr, "Unable to load PNG file\n");
+		return NULL;
+	}
+
+	return image_read;
+}
+
 static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX, const char *separator)
 {
     opj_image_t* image_read = NULL;
@@ -275,7 +305,6 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     parameters.decod_format = TIF_DFMT;
     strcpy(parameters.infile, filename);
 
-    /* Read the tif file corresponding to the component */
 #ifdef OPJ_HAVE_LIBTIFF
     image_read = tiftoimage(filename, &parameters, false);
 #endif
@@ -676,7 +705,7 @@ int main(int argc, char **argv)
         fprintf( stderr, "Unhandled file format\n" );
         goto cleanup;
     }
-    assert( decod_format == PGX_DFMT || decod_format == TIF_DFMT || decod_format == PXM_DFMT );
+    assert( decod_format == PGX_DFMT || decod_format == TIF_DFMT || decod_format == PXM_DFMT || decod_format == PNG_DFMT );
 
     if( decod_format == PGX_DFMT ) {
         imageBase = readImageFromFilePGX( inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
@@ -691,6 +720,11 @@ int main(int argc, char **argv)
         if ( imageBase == NULL )
             goto cleanup;
     }
+	else if (decod_format == PNG_DFMT) {
+		imageBase = readImageFromFilePNG(inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
+		if (imageBase == NULL)
+			goto cleanup;
+	}
 
     filenamePNGbase = (char*) malloc(memsizebasefilename);
     strcpy(filenamePNGbase, inParam.test_filename);
@@ -712,6 +746,11 @@ int main(int argc, char **argv)
         if ( imageTest == NULL )
             goto cleanup;
     }
+	else if (decod_format == PNG_DFMT) {
+		imageTest = readImageFromFilePNG(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
+		if (imageTest == NULL)
+			goto cleanup;
+	}
 
     filenamePNGtest = (char*) malloc(memsizetestfilename);
     strcpy(filenamePNGtest, inParam.test_filename);
