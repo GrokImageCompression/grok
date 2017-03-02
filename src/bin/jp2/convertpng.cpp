@@ -186,17 +186,18 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 		int  Compression;
 		png_charp ProfileName;
 
-		png_get_iCCP(png, 
-					info,
-					&ProfileName,
-					&Compression,
-					&ProfileData,
-					&ProfileLen);
-		image->icc_profile_len = ProfileLen;
-		image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
-		if (!image->icc_profile_buf)
-			return NULL;
-		memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+		if (png_get_iCCP(png,
+			info,
+			&ProfileName,
+			&Compression,
+			&ProfileData,
+			&ProfileLen) == PNG_INFO_iCCP) {
+				image->icc_profile_len = ProfileLen;
+				image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
+				if (!image->icc_profile_buf)
+					return NULL;
+				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+		}
 	}
 	else {
 		if (!png_get_gAMA(png, info, &fileGamma))
@@ -280,7 +281,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     if(row32s == NULL)
 		goto fin;
 
-    /* Set alpha channel */
+    /* Set alpha channel. Only non-premultiplied alpha is supported */
     image->comps[nr_comp-1U].alpha = 1U - (nr_comp & 1U);
 
     for(i = 0; i < nr_comp; i++) {
