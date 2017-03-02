@@ -1505,8 +1505,8 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
         switch(sampleinfo[0]) {
         case EXTRASAMPLE_UNSPECIFIED:
             // Workaround for some images without correct info about alpha channel
-            if(tiSpp > 3)
-                numAlphaChannels = 1;
+			if (tiSpp == 4 || tiSpp == 2) 
+				numAlphaChannels = 1;
             break;
 
         case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
@@ -1514,8 +1514,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 			numAlphaChannels = 1;
             break;
         }
-    } else if(tiSpp == 4 || tiSpp == 2)  /* extrasamples == 0 */
-		numAlphaChannels = 1;
+    } 
 
 
     /* initialize image components */
@@ -1583,6 +1582,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 
     for(uint32_t j = 0; j < numcomps; j++) {
         planes[j] = image->comps[j].data;
+		//only support single alpha channel when reading in from TIFF
 		if ( (j == numcomps - 1) && (numAlphaChannels > 0)) {
 			if (sampleinfo && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA)
 				image->comps[j].alpha = OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
