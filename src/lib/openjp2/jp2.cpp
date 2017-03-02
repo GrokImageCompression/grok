@@ -2247,7 +2247,7 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             jp2->enumcs = 18;	/* YUV */
     }
 
-    /* Channel Definition box */
+    /* Component Definition box */
     /* FIXME not provided by parameters */
     /* We try to do what we can... */
     alpha_count = 0U;
@@ -2257,7 +2257,10 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             alpha_channel = i;
         }
     }
-    if (alpha_count == 1U) { /* no way to deal with more than 1 alpha channel */
+	// We can handle a single alpha channel - in this case we assume that alpha applies to the entire image
+	// If there are multiple alpha channels, then we don't know how to apply them, so no cdef box
+	// gets created in this case
+    if (alpha_count == 1U) {
         switch (jp2->enumcs) {
         case 16:
         case 18:
@@ -2267,7 +2270,11 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             color_channels = 1;
             break;
         default:
-            alpha_count = 0U;
+			// assume that last channel is alpha
+			if (image->numcomps > 1)
+				color_channels = image->numcomps-1;
+			else
+				alpha_count = 0U;
             break;
         }
         if (alpha_count == 0U) {
