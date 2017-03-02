@@ -9326,8 +9326,9 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
     uint32_t l_nb_comps=0;
     uint8_t * l_current_data=NULL;
     uint32_t nr_tiles = 0;
+	uint32_t num_tiles_to_decode = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 
-    if (opj_j2k_needs_copy_tile_data(p_j2k, p_j2k->m_cp.th * p_j2k->m_cp.tw)) {
+    if (opj_j2k_needs_copy_tile_data(p_j2k, num_tiles_to_decode)) {
         l_current_data = (uint8_t*)opj_malloc(1);
         if (!l_current_data) {
             opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to decode tiles\n");
@@ -9336,7 +9337,8 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         l_max_data_size = 1;
     }
 	uint32_t num_tiles_decoded = 0;
-    for (nr_tiles=0; nr_tiles < p_j2k->m_cp.th * p_j2k->m_cp.tw; nr_tiles++) {
+
+    for (nr_tiles=0; nr_tiles < num_tiles_to_decode; nr_tiles++) {
 		l_tile_x0 = l_tile_y0 = l_tile_x1 = l_tile_y1 = 0;
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
@@ -9362,7 +9364,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
             uint8_t *l_new_current_data = (uint8_t *) opj_realloc(l_current_data, l_data_size);
             if (! l_new_current_data) {
                 opj_free(l_current_data);
-                opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to decode tile %d/%d\n", l_current_tile_no +1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+                opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to decode tile %d/%d\n", l_current_tile_no +1, num_tiles_to_decode);
                 return false;
             }
             l_current_data = l_new_current_data;
@@ -9373,10 +9375,10 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
         if (! opj_j2k_decode_tile(p_j2k,l_current_tile_no,l_current_data,l_data_size,p_stream,p_manager)) {
             if (l_current_data)
                 opj_free(l_current_data);
-            opj_event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no +1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+            opj_event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no +1, num_tiles_to_decode);
             return false;
         }
-        opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+        opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
 
         /* copy from current data to output image, if necessary */
         if (l_current_data) {
@@ -9400,6 +9402,9 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 	if (num_tiles_decoded == 0) {
 		opj_event_msg(p_manager, EVT_ERROR, "No tiles were decoded. Exiting\n");
 		return false;
+	}
+	else if (num_tiles_decoded < num_tiles_to_decode) {
+		opj_event_msg(p_manager, EVT_WARNING, "Only %d out of %d tiles were decoded\n", num_tiles_decoded, num_tiles_to_decode);
 	}
 	return true;
 }
