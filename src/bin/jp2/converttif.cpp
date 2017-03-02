@@ -760,10 +760,18 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	}
 
 	// Alpha channels
-	// note: we assume that alpha channels occur as last channels in image.
+	int32_t firstAlpha = -1;
 	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].alpha)
+		if (image->comps[i].alpha) {
+			if (firstAlpha == -1)
+				firstAlpha = 0;
 			numAlphaChannels++;
+		}
+	}
+	// TIFF assumes that alpha channels occur as last channels in image.
+	if (numAlphaChannels && (firstAlpha+numAlphaChannels >= numcomps)) {
+		fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
+		numAlphaChannels = 0;
 	}
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
