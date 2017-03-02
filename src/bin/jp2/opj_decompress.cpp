@@ -1730,7 +1730,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			break;
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
-			if (imagetotif(image, parameters->outfile, parameters->compression,false)) {
+			if (imagetotif(image, parameters->outfile, parameters->compression)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}

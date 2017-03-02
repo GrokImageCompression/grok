@@ -583,7 +583,7 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
     }
 }
 
-int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool enableInferredAlpha)
+int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 {
     int tiPhoto;
     TIFF *tif=nullptr;
@@ -597,7 +597,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
-	bool inferred_alpha = false;
 	size_t numAlphaChannels = 0;;
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
@@ -614,10 +613,8 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
         if (numcomps > 4U) {
             numcomps = 4U;
         }
-		inferred_alpha = (numcomps == 4);
     } else {
         tiPhoto = PHOTOMETRIC_MINISBLACK;
-		inferred_alpha = (numcomps == 2);
     }
 
 	uint32_t sgnd = image->comps[0].sgnd;
@@ -768,8 +765,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		if (image->comps[i].alpha)
 			numAlphaChannels++;
 	}
-	if (!numAlphaChannels && enableInferredAlpha && inferred_alpha)
-		numAlphaChannels = 1;
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
 		auto alphaCount = 0;
