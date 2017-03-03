@@ -98,12 +98,6 @@ Destroy a previously created RAW handle
 */
 void opj_raw_destroy(opj_raw_t *raw);
 /**
-Return the number of bytes written/read since initialisation
-@param raw RAW handle to destroy
-@return Returns the number of bytes already encoded
-*/
-uint32_t opj_raw_numbytes(opj_raw_t *raw);
-/**
 Initialize the decoder
 @param raw RAW handle
 @param bp Pointer to the start of the buffer from which the bytes will be read

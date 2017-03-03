@@ -522,15 +522,16 @@ uint32_t opj_mqc_restart_enc(opj_mqc_t *mqc)
 
 void opj_mqc_restart_init_enc(opj_mqc_t *mqc)
 {
-    /* <Re-init part> */
-    opj_mqc_setcurctx(mqc, 0);
-    mqc->a = 0x8000;
-    mqc->c = 0;
-    mqc->ct = 12;
-    mqc->bp--;
-    if (*mqc->bp == 0xff) {
-        mqc->ct = 13;
-    }
+	opj_mqc_setcurctx(mqc, 0);
+	mqc->a = 0x8000;
+	mqc->c = 0;
+	mqc->ct = 12;
+	if (mqc->bp >= mqc->start) {
+		mqc->bp--;
+		if (*mqc->bp == 0xff) {
+			mqc->ct = 13;
+		}
+	}
 }
 
 void opj_mqc_erterm_enc(opj_mqc_t *mqc)

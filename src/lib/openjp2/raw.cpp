@@ -79,13 +79,6 @@ void opj_raw_destroy(opj_raw_t *raw)
     }
 }
 
-uint32_t opj_raw_numbytes(opj_raw_t *raw)
-{
-    const ptrdiff_t diff = raw->bp - raw->start;
-    assert( diff <= (ptrdiff_t)0xffffffff && diff >= 0 ); /* UINT32_MAX */
-    return (uint32_t)diff;
-}
-
 void opj_raw_init_dec(opj_raw_t *raw, uint8_t *bp, uint32_t len)
 {
     raw->start = bp;
