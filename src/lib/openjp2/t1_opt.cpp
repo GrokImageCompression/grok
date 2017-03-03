@@ -648,6 +648,8 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 
     cblk->numbps = max ? (uint32_t)((opj_int_floorlog2((int32_t)max) + 1) - T1_NMSEDEC_FRACBITS) : 0;
 
+	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
+
     bpno = (int32_t)(cblk->numbps - 1);
     passtype = 2;
     opj_mqc_init_enc(mqc, cblk->data);
@@ -677,11 +679,24 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 			opj_mqc_resetstates(mqc);
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
-        pass->term = 0;
+
+		if (TERMALL){
+			opj_mqc_flush(mqc);
+			correction = 1;
+			pass->term = 1;
+		}
+		else {
+			pass->term = 0;
+		}
         if (++passtype == 3) {
             passtype = 0;
             bpno--;
         }
+		if (pass->term) {
+			opj_mqc_restart_init_enc(mqc);
+		}
+
+
         pass->distortiondec = cumwmsedec;
         pass->rate = opj_mqc_numbytes(mqc) + correction;
     }
