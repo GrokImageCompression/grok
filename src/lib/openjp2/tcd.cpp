@@ -88,7 +88,7 @@ static bool opj_tcd_code_block_enc_allocate (opj_tcd_cblk_enc_t * p_code_block);
 /**
  * Allocates data for an encoding code block
  */
-static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_block);
+static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_block, size_t nominalBlockSize);
 
 /**
  * Deallocates the encoding data of the given precinct.
@@ -1054,6 +1054,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
 
             cblkwidthexpn = opj_min<uint32_t>(l_tccp->cblkw, cbgwidthexpn);
             cblkheightexpn = opj_min<uint32_t>(l_tccp->cblkh, cbgheightexpn);
+			size_t nominalBlockSize = (1 << cblkwidthexpn)*(1 << cblkheightexpn);
             l_band = l_res->bands;
 
             for (bandno = 0; bandno < l_res->numbands; ++bandno) {
@@ -1199,7 +1200,7 @@ static inline bool opj_tcd_init_tile(opj_tcd_t *p_tcd,
                             l_code_block->y1 = opj_min<uint32_t>(cblkyend, l_current_precinct->y1);
 
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
-								if (!opj_tcd_code_block_enc_allocate_data(l_code_block)) {
+								if (!opj_tcd_code_block_enc_allocate_data(l_code_block, nominalBlockSize)) {
 									return false;
 								}
 							}
@@ -1298,9 +1299,9 @@ static bool opj_tcd_code_block_enc_allocate (opj_tcd_cblk_enc_t * p_code_block)
 /**
  * Allocates data memory for an encoding code block.
  */
-static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_block)
+static bool opj_tcd_code_block_enc_allocate_data (opj_tcd_cblk_enc_t * p_code_block, size_t nominalBlockSize)
 {
-    uint32_t l_data_size = (uint32_t)((p_code_block->x1 - p_code_block->x0) * (p_code_block->y1 - p_code_block->y0) * (int32_t)sizeof(uint32_t));
+    uint32_t l_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
 
     if (l_data_size > p_code_block->data_size) {
         if (p_code_block->data) {
