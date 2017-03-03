@@ -1401,7 +1401,7 @@ bool opj_t1_encode_cblks(   opj_tcd_tile_t *tile,
     tile->distotile = 0;		
     for (compno = 0; compno < tile->numcomps; ++compno) {
         opj_tccp_t* tccp = tcp->tccps + compno;
-        if (tccp->cblksty != 0) {
+        if (tccp->cblksty != 0 && tccp->cblksty != J2K_CCP_CBLKSTY_RESET) {
             do_opt = false;
             break;
         }

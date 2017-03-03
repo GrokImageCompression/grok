@@ -631,6 +631,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
                                uint32_t level,
                                uint32_t qmfbid,
                                double stepsize,
+							   uint32_t cblksty,
                                uint32_t numcomps,
                                const double * mct_norms,
                                uint32_t mct_numcomps,
@@ -672,7 +673,8 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 			}
             break;
         }
-
+		if (cblksty == J2K_CCP_CBLKSTY_RESET)
+			opj_mqc_resetstates(mqc);
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
         pass->term = 0;
