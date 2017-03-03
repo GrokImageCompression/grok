@@ -12,7 +12,7 @@
 # Line begin with ! should failed (should be used for bad jpeg2000 file which should be 
 # gracefully rejected). Please add a short resume about why this file should be rejected.
 #
-# You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to OPJ_DATA_ROOT 
+# You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to GROK_DATA_ROOT 
 # repository. However you can use relative path or absolute path.
 
 # ENCODER TEST SUITE
