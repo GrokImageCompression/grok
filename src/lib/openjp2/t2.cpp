@@ -1092,6 +1092,7 @@ static bool opj_t2_encode_packet(opj_t2_t* p_t2,
     }
 
     if (!bio->flush()) {
+		opj_event_msg(p_manager, EVT_ERROR, "Bit IO flush failed while encoding packet\n");
         delete bio;
         return false;            
     }

@@ -8,8 +8,8 @@ set(BASELINE_NR ${OPJ_DATA_ROOT}/baseline/nonregression)
 set(INPUT_CONF ${OPJ_DATA_ROOT}/input/conformance)
 
 
-# List of components by file (normaly p0_13.j2k have 257 components but for this
-#set of test we consider only 4)
+# List of components by file (normally p0_13.j2k have 257 components but for this
+# set of test we consider only 4)
 set( CP0_nbC_list "not_used;1;1;1;3;4;4;3;3;1;3;1;1;4;3;1;1")
 set( CP1_nbC_list "not_used;1;3;4;1;3;3;2")
 
