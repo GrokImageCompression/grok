@@ -594,6 +594,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
     convert_32s_PXCX cvtPxToCx = NULL;
     convert_32sXXx_C1R cvt32sToTif = NULL;
 	bool success = true;
+	int32_t firstAlpha = -1;
 
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
@@ -760,7 +761,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	}
 
 	// Alpha channels
-	int32_t firstAlpha = -1;
 	for (i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].alpha) {
 			if (firstAlpha == -1)
