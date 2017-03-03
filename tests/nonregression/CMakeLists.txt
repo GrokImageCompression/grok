@@ -1,17 +1,17 @@
-# NON-REGRESSION TESTS ON THIS DATASET LOCATED ${OPJ_DATA_ROOT}/input/nonregression
+# NON-REGRESSION TESTS ON THIS DATASET LOCATED ${GROK_DATA_ROOT}/input/nonregression
 
 cmake_minimum_required(VERSION 2.8.7)
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Temporary)
 
 set(TEMP ${CMAKE_CURRENT_BINARY_DIR}/Temporary)
-set(BASELINE_NR ${OPJ_DATA_ROOT}/baseline/nonregression)
-set(INPUT_NR ${OPJ_DATA_ROOT}/input/nonregression)
+set(BASELINE_NR ${GROK_DATA_ROOT}/baseline/nonregression)
+set(INPUT_NR ${GROK_DATA_ROOT}/input/nonregression)
 
 
 set(INPUT_NR_PATH ${INPUT_NR})
 set(TEMP_PATH ${TEMP})
-set(INPUT_CONF_PATH ${OPJ_DATA_ROOT}/input/conformance)
+set(INPUT_CONF_PATH ${GROK_DATA_ROOT}/input/conformance)
 
 # need kdu_expand if possible
 find_package(KAKADU)
@@ -143,7 +143,7 @@ endforeach()
 
 #########################################################################
 # GENERATION OF THE TEST SUITE (DECODE AND ENCODE)
-# Read one and more input file(s) (located in ${OPJ_DATA_ROOT}/input/nonregression)
+# Read one and more input file(s) (located in ${GROK_DATA_ROOT}/input/nonregression)
 # to know which files processed and with which options.
 
 # Configure the test suite file:

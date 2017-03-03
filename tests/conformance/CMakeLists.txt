@@ -3,9 +3,9 @@
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/Temporary)
 
 set(TEMP ${CMAKE_CURRENT_BINARY_DIR}/Temporary)
-set(BASELINE_CONF ${OPJ_DATA_ROOT}/baseline/conformance)
-set(BASELINE_NR ${OPJ_DATA_ROOT}/baseline/nonregression)
-set(INPUT_CONF ${OPJ_DATA_ROOT}/input/conformance)
+set(BASELINE_CONF ${GROK_DATA_ROOT}/baseline/conformance)
+set(BASELINE_NR ${GROK_DATA_ROOT}/baseline/nonregression)
+set(INPUT_CONF ${GROK_DATA_ROOT}/input/conformance)
 
 
 # List of components by file (normally p0_13.j2k have 257 components but for this
