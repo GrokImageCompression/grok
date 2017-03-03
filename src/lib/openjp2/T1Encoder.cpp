@@ -186,6 +186,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 											tilec->numresolutions - 1 - block->resno,
 											block->qmfbid,
 											block->stepsize,
+											block->cblksty,
 											tile->numcomps,
 											block->mct_norms,
 											block->mct_numcomps,
