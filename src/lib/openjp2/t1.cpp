@@ -1550,15 +1550,10 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 
         if ( TERMALL ||
 				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0))
-							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))
-			) {
-            if (type == T1_TYPE_RAW) {
-                opj_mqc_flush(mqc);
-                correction = 1;
-            } else {			
-                opj_mqc_flush(mqc);
-                correction = 1;
-            }
+							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
+
+            opj_mqc_flush(mqc);
+            correction = 1;
             pass->term = 1;
         } else {
            pass->term = 0;
