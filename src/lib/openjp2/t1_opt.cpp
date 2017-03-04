@@ -709,7 +709,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
         if (pass->rate > opj_mqc_numbytes(mqc))
             pass->rate = opj_mqc_numbytes(mqc);
         /*Preventing generation of FF as last data byte of a pass*/
-        if((pass->rate>1) && (cblk->data[pass->rate - 1] == 0xFF)) {
+        if((pass->rate>0) && (cblk->data[pass->rate - 1] == 0xFF)) {
             pass->rate--;
         }
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
