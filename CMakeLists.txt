@@ -243,8 +243,8 @@ option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
 #-----------------------------------------------------------------------------
 # Build Applications
 option(BUILD_CODEC "Build the CODEC executables" ON)
-option(BUILD_JAVA "Build the openjpeg jar (Java)" OFF)
-mark_as_advanced(BUILD_JAVA)
+option(BUILD_PLUGIN_LOADER "Enable loading of T1 plugin" OFF)
+mark_as_advanced(BUILD_PLUGIN_LOADER)
 
 if(BUILD_CODEC)
   # OFF: It will only build 3rd party libs if they are not found on the system

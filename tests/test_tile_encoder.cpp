@@ -203,13 +203,13 @@ int main (int argc, char *argv[])
     /* l_param.mode = 0;*/
 
     /** number of resolutions */
-    l_param.numresolutions = 6;
+    l_param.numresolution = 6;
 
     /** progression order to use*/
     /** OPJ_LRCP, OPJ_RLCP, OPJ_RPCL, PCRL, CPRL */
     l_param.prog_order = OPJ_LRCP;
 
-    /** no "region" of interest, more precisally component */
+    /** no "region" of interest, more precisely component */
     /* l_param.roi_compno = -1; */
     /* l_param.roi_shift = 0; */
 
