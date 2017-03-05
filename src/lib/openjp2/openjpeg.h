@@ -401,6 +401,8 @@ typedef struct opj_cparameters {
     uint32_t cp_disto_alloc;
     /** allocation by fixed_quality */
     uint32_t cp_fixed_quality;
+	// Legacy: DO NOT USE !!!!!
+	uint32_t cp_fixed_alloc;
     /** comment for coding */
     char *cp_comment;
     /** csty : coding style */
