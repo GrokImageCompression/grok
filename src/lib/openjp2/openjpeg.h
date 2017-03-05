@@ -184,6 +184,28 @@ typedef size_t   OPJ_SIZE_T;
 #define OPJ_JP2_IND			256	/**< JP2 file index */
 
 /**
+* DEPRECATED: use RSIZ, OPJ_PROFILE_* and OPJ_EXTENSION_* instead
+* Rsiz Capabilities
+* */
+typedef enum RSIZ_CAPABILITIES {
+	OPJ_STD_RSIZ = 0,		/** Standard JPEG2000 profile*/
+	OPJ_CINEMA2K = 3,		/** Profile name for a 2K image*/
+	OPJ_CINEMA4K = 4,		/** Profile name for a 4K image*/
+	OPJ_MCT = 0x8100
+} OPJ_RSIZ_CAPABILITIES;
+
+/**
+* DEPRECATED: use RSIZ, OPJ_PROFILE_* and OPJ_EXTENSION_* instead
+* Digital cinema operation mode
+* */
+typedef enum CINEMA_MODE {
+	OPJ_OFF = 0,			/** Not Digital Cinema*/
+	OPJ_CINEMA2K_24 = 1,	/** 2K Digital Cinema at 24 fps*/
+	OPJ_CINEMA2K_48 = 2,	/** 2K Digital Cinema at 48 fps*/
+	OPJ_CINEMA4K_24 = 3		/** 4K Digital Cinema at 24 fps*/
+}OPJ_CINEMA_MODE;
+
+/**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMD)
  * These values help chosing the RSIZ value for the J2K codestream.
  * The RSIZ value triggers various encoding options, as detailed in Table A.10.
