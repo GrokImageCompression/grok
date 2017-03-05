@@ -88,7 +88,7 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
 	dlclose(library->handle);
 	rc = true;
 #endif
-	library->handle = nullptr;
+	free(library);
 	return rc;
 }
 

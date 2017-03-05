@@ -57,6 +57,7 @@
 
 #include "opj_includes.h"
 #include "testing.h"
+#include <memory>
 
 /** @defgroup T2 T2 - Implementation of a tier-2 coding */
 /*@{*/
@@ -606,7 +607,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 	uint32_t * l_modified_length_ptr = nullptr;
 	uint8_t *l_current_data = p_src_data;
 	opj_cp_t *l_cp = p_t2->cp;
-	BitIO *l_bio = nullptr; 
 	opj_tcd_band_t *l_band = nullptr;
 	opj_tcd_cblk_dec_t* l_cblk = nullptr;
 
@@ -658,11 +658,7 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 	step 1: Read packet header in the saved structure
 	step 2: Return to codestream for decoding
 	*/
-
-	l_bio = new BitIO();
-	if (!l_bio) {
-		return false;
-	}
+	std::unique_ptr<BitIO> l_bio(new BitIO());
 
 	if (l_cp->ppm == 1) { /* PPM */
 		l_header_data_start = &l_cp->ppm_data;
@@ -690,7 +686,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 		if (!l_bio->inalign())
 			return false;
 		l_header_data += l_bio->numbytes();
-		delete l_bio;
 
 		/* EPH markers */
 		if (p_tcp->csty & J2K_CP_CSTY_EPH) {
@@ -730,7 +725,7 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 
 			/* if cblk not yet included before --> inclusion tagtree */
 			if (!l_cblk->numSegments) {
-				auto value = l_prc->incltree->decodeValue(l_bio, cblkno, (int32_t)(p_pi->layno + 1));
+				auto value = l_prc->incltree->decodeValue(l_bio.get(), cblkno, (int32_t)(p_pi->layno + 1));
 				if (value != tag_tree_uninitialized_node_value && value != p_pi->layno) {
 					opj_event_msg(p_manager, EVT_WARNING, "Illegal inclusion tag tree found when decoding packet header\n");
 				}
@@ -751,7 +746,7 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 			/* if cblk not yet included --> zero-bitplane tagtree */
 			if (!l_cblk->numSegments) {
 				uint32_t i = 0;
-				while (!l_prc->imsbtree->decode(l_bio, cblkno, (int32_t)i)) {
+				while (!l_prc->imsbtree->decode(l_bio.get(), cblkno, (int32_t)i)) {
 					++i;
 				}
 
@@ -764,8 +759,8 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 			}
 
 			/* number of coding passes */
-			l_cblk->numPassesInPacket = opj_t2_getnumpasses(l_bio);
-			l_increment = opj_t2_getcommacode(l_bio);
+			l_cblk->numPassesInPacket = opj_t2_getnumpasses(l_bio.get());
+			l_increment = opj_t2_getcommacode(l_bio.get());
 
 			/* length indicator increment */
 			l_cblk->numlenbits += l_increment;
@@ -773,7 +768,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 
 			if (!l_cblk->numSegments) {
 				if (!opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 1)) {
-					delete l_bio;
 					return false;
 				}
 			}
@@ -782,7 +776,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 				if (l_cblk->segs[l_segno].numpasses == l_cblk->segs[l_segno].maxpasses) {
 					++l_segno;
 					if (!opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 0)) {
-						delete l_bio;
 						return false;
 					}
 				}
@@ -808,7 +801,6 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 					++l_segno;
 
 					if (!opj_t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, 0)) {
-						delete l_bio;
 						return false;
 					}
 				}
@@ -817,12 +809,10 @@ static bool opj_t2_read_packet_header(opj_t2_t* p_t2,
 	}
 
 	if (!l_bio->inalign()) {
-		delete l_bio;
 		return false;
 	}
 
 	l_header_data += l_bio->numbytes();
-	delete l_bio;
 
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {

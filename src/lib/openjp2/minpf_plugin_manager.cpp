@@ -135,9 +135,9 @@ void   minpf_cleanup_plugin_manager(void)
 			managerInstance->exit_functions[i]();
 
         for (i = 0; i < managerInstance->num_libraries; ++i) {
-			minpf_unload_dynamic_library(managerInstance->dynamic_libraries[i]);
-            if (managerInstance->dynamic_libraries[i])
-                free(managerInstance->dynamic_libraries[i]);
+			if (managerInstance->dynamic_libraries[i]) {
+				minpf_unload_dynamic_library(managerInstance->dynamic_libraries[i]);
+			}
         }
 
         hashmap_iterate(managerInstance->plugins, minpf_free_hash_value, NULL);
@@ -164,7 +164,7 @@ static int32_t minpf_load(const char* path)
 	printf("Plugin %s loaded\n", path);
 	postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
     if (!postLoadFunc) {
-		free(lib);
+		minpf_unload_dynamic_library(lib);
         return -1;
     }
 
@@ -173,6 +173,7 @@ static int32_t minpf_load(const char* path)
 		printf("Full library path: %s\n", fullPath);
 	}
 	else {
+		minpf_unload_dynamic_library(lib);
 		return -1;
 	}
 
