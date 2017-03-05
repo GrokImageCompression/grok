@@ -103,6 +103,9 @@ if(OPJ_DISABLE_TPSOT_FIX)
 endif()
 
 # Build the library
+if (BUILD_PLUGIN_LOADER)
+    add_definitions(-DOPJ_BUILD_PLUGIN_LOADER)
+endif()
 if(WIN32)
   if(BUILD_SHARED_LIBS)
     add_definitions(-DOPJ_EXPORTS)

@@ -5705,30 +5705,30 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
     /* Resolution levels */
     switch (parameters->rsiz) {
     case OPJ_PROFILE_CINEMA_2K:
-        if(parameters->numresolutions > 6) {
+        if(parameters->numresolution > 6) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-3 (2k dc profile) requires:\n"
                           "Number of decomposition levels <= 5\n"
                           "-> Number of decomposition levels forced to 5 (rather than %d)\n",
-                          parameters->numresolutions+1);
-            parameters->numresolutions = 6;
+                          parameters->numresolution+1);
+            parameters->numresolution = 6;
         }
         break;
     case OPJ_PROFILE_CINEMA_4K:
-        if(parameters->numresolutions < 2) {
+        if(parameters->numresolution < 2) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-4 (4k dc profile) requires:\n"
                           "Number of decomposition levels >= 1 && <= 6\n"
                           "-> Number of decomposition levels forced to 1 (rather than %d)\n",
-                          parameters->numresolutions+1);
-            parameters->numresolutions = 1;
-        } else if(parameters->numresolutions > 7) {
+                          parameters->numresolution+1);
+            parameters->numresolution = 1;
+        } else if(parameters->numresolution > 7) {
             opj_event_msg(p_manager, EVT_WARNING,
                           "JPEG 2000 Profile-4 (4k dc profile) requires:\n"
                           "Number of decomposition levels >= 1 && <= 6\n"
                           "-> Number of decomposition levels forced to 6 (rather than %d)\n",
-                          parameters->numresolutions+1);
-            parameters->numresolutions = 7;
+                          parameters->numresolution+1);
+            parameters->numresolution = 7;
         }
         break;
     default :
@@ -5737,7 +5737,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Precincts */
     parameters->csty |= 0x01;
-    parameters->res_spec = parameters->numresolutions-1;
+    parameters->res_spec = parameters->numresolution-1;
     for (i = 0; i<parameters->res_spec; i++) {
         parameters->prcw_init[i] = 256;
         parameters->prch_init[i] = 256;
@@ -5748,7 +5748,7 @@ static void opj_j2k_set_cinema_parameters(opj_cparameters_t *parameters, opj_ima
 
     /* Progression order changes for 4K, disallowed for 2K */
     if (parameters->rsiz == OPJ_PROFILE_CINEMA_4K) {
-        parameters->numpocs = opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolutions);
+        parameters->numpocs = opj_j2k_initialise_4K_poc(parameters->POC,parameters->numresolution);
     } else {
         parameters->numpocs = 0;
     }
@@ -5864,8 +5864,8 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    if ((parameters->numresolutions == 0) || (parameters->numresolutions > OPJ_J2K_MAXRLVLS)) {
-        opj_event_msg(p_manager, EVT_ERROR, "Invalid number of resolutions : %d not in range [1,%d]\n", parameters->numresolutions, OPJ_J2K_MAXRLVLS);
+    if ((parameters->numresolution == 0) || (parameters->numresolution > OPJ_J2K_MAXRLVLS)) {
+        opj_event_msg(p_manager, EVT_ERROR, "Invalid number of resolutions : %d not in range [1,%d]\n", parameters->numresolution, OPJ_J2K_MAXRLVLS);
         return false;
     }
 
@@ -5937,7 +5937,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
 
 	if (parameters->numpocs) {
 		/* initialisation of POC */
-		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolutions, image->numcomps, parameters->tcp_numlayers, p_manager)) {
+		if (!opj_j2k_check_poc_val(parameters->POC, parameters->numpocs, parameters->numresolution, image->numcomps, parameters->tcp_numlayers, p_manager)) {
 			opj_event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
 			return false;
 		}
@@ -6157,7 +6157,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
             opj_tccp_t *tccp = &tcp->tccps[i];
 
             tccp->csty = parameters->csty & 0x01;   /* 0 => one precinct || 1 => custom precinct  */
-            tccp->numresolutions = parameters->numresolutions;
+            tccp->numresolutions = parameters->numresolution;
             tccp->cblkw = opj_int_floorlog2(parameters->cblockw_init);
             tccp->cblkh = opj_int_floorlog2(parameters->cblockh_init);
             tccp->cblksty = parameters->mode;

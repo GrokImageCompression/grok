@@ -710,7 +710,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         /* default coding parameters */
         parameters->rsiz = OPJ_PROFILE_NONE;
         parameters->max_comp_size = 0;
-        parameters->numresolutions = 6;
+        parameters->numresolution = 6;
         parameters->cblockw_init = 64;
         parameters->cblockh_init = 64;
         parameters->prog_order = OPJ_LRCP;

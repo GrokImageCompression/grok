@@ -51,7 +51,7 @@ bool minpf_get_full_path(const char* path,
 							dynamic_handle_t handle,
 							char* fullPath,
 							size_t fullPathLen) {
-
+#ifdef OPJ_BUILD_PLUGIN_LOADER
 	if (!path || !addr || !fullPath || !fullPathLen) {
 		return false;
 	}
@@ -76,9 +76,14 @@ bool minpf_get_full_path(const char* path,
 	return false;
 
 #endif
+
+#else
+	return false;
+#endif
 }
 
 bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
+#ifdef OPJ_BUILD_PLUGIN_LOADER
 	if (!library)
 		return true;
 	bool rc = false;
@@ -90,14 +95,18 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
 #endif
 	free(library);
 	return rc;
+#else
+	return false;
+#endif
 }
 
 minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error){
+#ifdef OPJ_BUILD_PLUGIN_LOADER
     minpf_dynamic_library* lib = NULL;
 	dynamic_handle_t handle = NULL;
 
     if (!path)
-        return NULL;
+        return nullptr;
 
 #ifdef _WIN32
     handle = LoadLibrary(path);
@@ -109,7 +118,7 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
     handle = dlopen(path, RTLD_NOW);
     if (!handle) {
         //ToDo report error
-        return NULL;
+        return nullptr;
     }
 
 #endif
@@ -121,21 +130,24 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 #else
 		dlclose(handle);
 #endif
-		return NULL;
+		return nullptr;
 
 	}
 	strcpy(lib->path, path);
     lib->handle = handle;
     return lib;
+#else
+	return nullptr;
+#endif
 }
 
 void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 {
-
+#ifdef OPJ_BUILD_PLUGIN_LOADER
     if (!library || !library->handle)
-        return NULL;
+        return nullptr;
 
-    void* rc = NULL;
+    void* rc = nullptr;
 
 #ifdef WIN32
     rc =  GetProcAddress((HMODULE)library->handle, symbol);
@@ -148,5 +160,8 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 #endif
 
     return rc;
+#else
+	return nullptr;
+#endif
 
 }

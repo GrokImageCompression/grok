@@ -418,7 +418,7 @@ typedef struct opj_cparameters {
     /** different psnr for successive layers */
     double tcp_distoratio[100];
     /** number of resolutions */
-    uint32_t numresolutions;
+    uint32_t numresolution;
     /** initial code block width, default to 64 */
     uint32_t cblockw_init;
     /** initial code block height, default to 64 */
@@ -869,6 +869,8 @@ typedef struct opj_image_comptparm {
     uint32_t x0;
     /** y component offset compared to the whole image */
     uint32_t y0;
+	// LEGACY - DO NOT USE
+	uint32_t bpp;
     /** precision */
     uint32_t prec;
     /** signed (1) / unsigned (0) */

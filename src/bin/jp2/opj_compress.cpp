@@ -893,7 +893,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (resolutionArg.isSet()) {
-			parameters->numresolutions = resolutionArg.getValue();
+			parameters->numresolution = resolutionArg.getValue();
 		}
 
 		if (precinctDimArg.isSet()){
