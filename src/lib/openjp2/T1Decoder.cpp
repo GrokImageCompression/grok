@@ -23,8 +23,8 @@
 
 
 T1Decoder::T1Decoder(uint16_t blockw, 
-					uint16_t blockh) :codeblock_width(blockw), 
-					  				  codeblock_height(blockh)
+					uint16_t blockh) :codeblock_width(blockw ? (1<<blockw) : 0), 
+					  				  codeblock_height(blockh ? (1<<blockh) : 0)
 {}
 
 

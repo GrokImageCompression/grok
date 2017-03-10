@@ -182,9 +182,9 @@ typedef struct opj_tccp {
     uint32_t csty;
     /** number of resolutions */
     uint32_t numresolutions;
-    /** code-blocks width */
+    /** log2(code-blocks width) */
     uint32_t cblkw;
-    /** code-blocks height */
+    /** log2(code-blocks height) */
     uint32_t cblkh;
     /** code-block coding style */
     uint32_t cblksty;
