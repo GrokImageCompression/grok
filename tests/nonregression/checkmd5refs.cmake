@@ -1,3 +1,21 @@
+#    Copyright (C) 2016-2017 Grok Image Compression Inc.
+#
+#    This source code is free software: you can redistribute it and/or  modify
+#    it under the terms of the GNU Affero General Public License, version 3,
+#    as published by the Free Software Foundation.
+#
+#    This source code is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#    This source code incorporates work covered by the following copyright and
+#    permission notice:
+#
 #  Copyright (c) 2014 Mathieu Malaterre <mathieu.malaterre@voxxl.com>
 #
 #  Redistribution and use is allowed according to the terms of the New
@@ -12,16 +30,14 @@
 # The approach is relatively simple, we compute a md5sum for each of the decode
 # file. Anytime the md5sum is different from the reference one, we assume
 # something went wrong and simply fails.  of course if could happen during the
-# course of openjpeg development that the internals are changed that impact the
+# course of Grok development that the internals are changed that impact the
 # decoding process that the output would be bitwise different (while PSNR would
 # be kept identical).
 
 # Another more conventional approach is to store the generated output from
-# openjpeg however storing the full generated output is generally useless since
+# Grok however storing the full generated output is generally useless since
 # we do not really care about the exact pixel value, we simply need to known
-# when a code change impact output generation.  furthermore storing the
-# complete generated output file, tends to make the svn:/openjpeg-data really
-# big.
+# when a code change impact output generation. 
 
 # This script expect two inputs
 # REFFILE: Path to the md5sum.txt file

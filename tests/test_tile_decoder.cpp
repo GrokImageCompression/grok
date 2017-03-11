@@ -44,7 +44,7 @@
  */
 #define USE_OPJ_DEPRECATED
 /* set this macro to enable profiling for the given test */
-/* warning : in order to be effective, openjpeg must have been built with profiling enabled !! */
+/* warning : in order to be effective, Grok must have been built with profiling enabled !! */
 /*#define _PROFILE*/
 
 extern "C" {

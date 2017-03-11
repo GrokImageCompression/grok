@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
-# Travis-ci ctest script for OpenJPEG project
-# This will compile/run tests/upload to cdash OpenJPEG
+# Travis-ci ctest script for Grok project
+# This will compile/run tests/upload to cdash Grok
 # Results will be available at: http://my.cdash.org/index.php?project=GROK
 # -----------------------------------------------------------------------------
 
