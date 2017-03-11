@@ -68,12 +68,12 @@ configure_file(	${CMAKE_CURRENT_SOURCE_DIR}/zconf.h.cmakein
 
 include_directories(
  ${CMAKE_CURRENT_SOURCE_DIR}
- ${OPENJPEG_SOURCE_DIR}/thirdparty/include
+ ${GROK_SOURCE_DIR}/thirdparty/include
 )
 #
 set(EXT_HDRS
- ${OPENJPEG_SOURCE_DIR}/thirdparty/include/zlib.h
- ${OPENJPEG_SOURCE_DIR}/thirdparty/include/zconf.h
+ ${GROK_SOURCE_DIR}/thirdparty/include/zlib.h
+ ${GROK_SOURCE_DIR}/thirdparty/include/zconf.h
 )
 
 set(HDRS

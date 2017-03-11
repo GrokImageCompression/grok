@@ -1,8 +1,8 @@
 # UNIT TESTS
 
 include_directories(
-  ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h
-  ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_BINARY_DIR}/src/lib/openjp2 # opj_config.h
+  ${GROK_SOURCE_DIR}/src/lib/openjp2
 )
 
 set(unit_test
@@ -12,6 +12,6 @@ set(unit_test
 )
 foreach(ut ${unit_test})
   add_executable(${ut} ${ut}.cpp)
-  target_link_libraries(${ut} ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+  target_link_libraries(${ut} ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
   add_test(NAME ${ut} COMMAND ${ut})
 endforeach()

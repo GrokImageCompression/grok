@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*! \mainpage OpenJPEG v@OPENJPEG_VERSION@ Documentation
+/*! \mainpage OpenJPEG v@GROK_VERSION@ Documentation
 *
 * \section intro Introduction
 * This manual documents the low-level OpenJPEG C API.\n

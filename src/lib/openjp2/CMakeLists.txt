@@ -6,15 +6,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Threads REQUIRED)
 
 install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/opj_config.h
- DESTINATION ${OPENJPEG_INSTALL_INCLUDE_DIR} COMPONENT Headers)
+ DESTINATION ${GROK_INSTALL_INCLUDE_DIR} COMPONENT Headers)
 
 include_directories(
-  ${${OPENJPEG_NAMESPACE}_BINARY_DIR}/src/lib/openjp2 # opj_config.h and opj_config_private.h
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common
-  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2
+  ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/openjp2 # opj_config.h and opj_config_private.h
+  ${GROK_SOURCE_DIR}/src/bin/common
+  ${GROK_SOURCE_DIR}/src/bin/jp2
 )
 # Defines the source code for the library
-set(OPENJPEG_SRCS
+set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/Barrier.h
   ${CMAKE_CURRENT_SOURCE_DIR}/bio.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/bio.h
@@ -113,33 +113,33 @@ if(WIN32)
     add_definitions(-DOPJ_STATIC)
   endif()
 endif()
-add_library(${OPENJPEG_LIBRARY_NAME} ${OPENJPEG_SRCS})
+add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
 if(UNIX)
-  target_link_libraries(${OPENJPEG_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT}  m)
+  target_link_libraries(${GROK_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT}  m)
 endif()
-set_target_properties(${OPENJPEG_LIBRARY_NAME} PROPERTIES ${OPENJPEG_LIBRARY_PROPERTIES})
+set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
-  target_compile_options(${OPENJPEG_LIBRARY_NAME} PRIVATE ${OPENJPEG_LIBRARY_COMPILE_OPTIONS})
+  target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_LIBRARY_COMPILE_OPTIONS})
 endif()
 
 # Install library
-install(TARGETS ${OPENJPEG_LIBRARY_NAME}
+install(TARGETS ${GROK_LIBRARY_NAME}
   EXPORT OpenJPEGTargets
-  RUNTIME DESTINATION ${OPENJPEG_INSTALL_BIN_DIR} COMPONENT Applications
-  LIBRARY DESTINATION ${OPENJPEG_INSTALL_LIB_DIR} COMPONENT Libraries
-  ARCHIVE DESTINATION ${OPENJPEG_INSTALL_LIB_DIR} COMPONENT Libraries
+  RUNTIME DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
+  LIBRARY DESTINATION ${GROK_INSTALL_LIB_DIR} COMPONENT Libraries
+  ARCHIVE DESTINATION ${GROK_INSTALL_LIB_DIR} COMPONENT Libraries
 )
 
 # Install includes files
 install(FILES openjpeg.h 
-  DESTINATION ${OPENJPEG_INSTALL_INCLUDE_DIR} COMPONENT Headers
+  DESTINATION ${GROK_INSTALL_INCLUDE_DIR} COMPONENT Headers
 )
 
 if(BUILD_DOC)
 # install man page of the library
 install(
-  FILES       ${OPENJPEG_SOURCE_DIR}/doc/man/man3/libopenjp2.3
-  DESTINATION ${OPENJPEG_INSTALL_MAN_DIR}/man3)
+  FILES       ${GROK_SOURCE_DIR}/doc/man/man3/libopenjp2.3
+  DESTINATION ${GROK_INSTALL_MAN_DIR}/man3)
 endif()
 
 if(BUILD_LUTS_GENERATOR)
@@ -159,20 +159,20 @@ endif()
 # Another implementation detail: I could not redirect error to the error
 # catching mechanism something is busted in cmake 2.8.5, I had to use the
 # warning regex to catch them.
-if(OPENJPEG_CPPCHECK)
+if(GROK_CPPCHECK)
   find_package(CPPCHECK REQUIRED)
-  foreach(f ${OPENJPEG_SRCS})
+  foreach(f ${GROK_SRCS})
     # cppcheck complains about too many configuration, pretend to be WIN32:
-    add_custom_command(TARGET ${OPENJPEG_LIBRARY_NAME}
+    add_custom_command(TARGET ${GROK_LIBRARY_NAME}
       COMMAND ${CPPCHECK_EXECUTABLE} -DWIN32 ${f})
   endforeach()
 endif()
 
 if(OPJ_USE_DSYMUTIL)
   if(BUILD_SHARED_LIBS)
-    add_custom_command(TARGET ${OPENJPEG_LIBRARY_NAME} POST_BUILD
-    COMMAND "dsymutil" "$<TARGET_SONAME_FILE:${OPENJPEG_LIBRARY_NAME}>"
-    COMMENT "dsymutil $<TARGET_SONAME_FILE:${OPENJPEG_LIBRARY_NAME}>"
-    DEPENDS ${OPENJPEG_LIBRARY_NAME})
+    add_custom_command(TARGET ${GROK_LIBRARY_NAME} POST_BUILD
+    COMMAND "dsymutil" "$<TARGET_SONAME_FILE:${GROK_LIBRARY_NAME}>"
+    COMMENT "dsymutil $<TARGET_SONAME_FILE:${GROK_LIBRARY_NAME}>"
+    DEPENDS ${GROK_LIBRARY_NAME})
   endif()
 endif()

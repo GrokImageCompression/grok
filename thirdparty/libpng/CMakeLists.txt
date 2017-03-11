@@ -2,14 +2,14 @@ project(libpng C)
 
 include_directories(
   "${CMAKE_CURRENT_SOURCE_DIR}"
-  ${OPENJPEG_SOURCE_DIR}/thirdparty/include
+  ${GROK_SOURCE_DIR}/thirdparty/include
 )
 
 file(GLOB SRCS *.c)
 file(GLOB HDRS *.h)
 set(EXT_HDRS
- ${OPENJPEG_SOURCE_DIR}/thirdparty/include/zlib.h
- ${OPENJPEG_SOURCE_DIR}/thirdparty/include/zconf.h
+ ${GROK_SOURCE_DIR}/thirdparty/include/zlib.h
+ ${GROK_SOURCE_DIR}/thirdparty/include/zconf.h
 )
 #
 set(LIBTARGET "png")

@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------
 # Travis-ci ctest script for OpenJPEG project
 # This will compile/run tests/upload to cdash OpenJPEG
-# Results will be available at: http://my.cdash.org/index.php?project=OPENJPEG
+# Results will be available at: http://my.cdash.org/index.php?project=GROK
 # -----------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 2.8)
@@ -116,7 +116,7 @@ JPYLYZER_EXECUTABLE=$ENV{PWD}/jpylyzer/jpylyzer.${JPYLYZER_EXT}
 
 #---------------------
 #1. openjpeg specific:
-set( CTEST_PROJECT_NAME	"OPENJPEG" )
+set( CTEST_PROJECT_NAME	"GROK" )
 if(NOT EXISTS $ENV{OPJ_SOURCE_DIR})
 	message(FATAL_ERROR "OPJ_SOURCE_DIR not defined or does not exist:$ENV{OPJ_SOURCE_DIR}")
 endif()

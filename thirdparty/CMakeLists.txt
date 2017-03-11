@@ -11,7 +11,7 @@ if(BUILD_THIRDPARTY)
   message(STATUS "We will build Z lib from thirdparty")
   add_subdirectory(libz)
   set(Z_LIBNAME z PARENT_SCOPE)
-  set(Z_INCLUDE_DIRNAME ${OPENJPEG_SOURCE_DIR}/thirdparty/include PARENT_SCOPE)
+  set(Z_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/include PARENT_SCOPE)
   set(ZLIB_FOUND 1)
 else(BUILD_THIRDPARTY)
   # Try to find lib Z
@@ -36,7 +36,7 @@ if(BUILD_THIRDPARTY)
   set(OPJ_HAVE_PNG_H 1 PARENT_SCOPE)
   set(OPJ_HAVE_LIBPNG 1 PARENT_SCOPE)
   set(PNG_LIBNAME png PARENT_SCOPE)
-  set(PNG_INCLUDE_DIRNAME ${OPENJPEG_SOURCE_DIR}/thirdparty/libpng PARENT_SCOPE)
+  set(PNG_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/libpng PARENT_SCOPE)
 else(BUILD_THIRDPARTY)
   if(ZLIB_FOUND)
     find_package(PNG)
@@ -66,8 +66,8 @@ if(BUILD_THIRDPARTY)
   add_subdirectory(libtiff)
   set(TIFF_LIBNAME tiff PARENT_SCOPE)
   set(TIFF_INCLUDE_DIRNAME
-    ${OPENJPEG_SOURCE_DIR}/thirdparty/libtiff
-    ${OPENJPEG_BINARY_DIR}/thirdparty/libtiff
+    ${GROK_SOURCE_DIR}/thirdparty/libtiff
+    ${GROK_BINARY_DIR}/thirdparty/libtiff
     PARENT_SCOPE)
   set(OPJ_HAVE_TIFF_H 1 PARENT_SCOPE)
   set(OPJ_HAVE_LIBTIFF 1 PARENT_SCOPE)
@@ -106,7 +106,7 @@ if( BUILD_THIRDPARTY)
   message(STATUS "We will build LCMS2 lib from thirdparty")
   add_subdirectory(liblcms2)
   set(LCMS_LIBNAME lcms2 PARENT_SCOPE)
-  set(LCMS_INCLUDE_DIRNAME ${OPENJPEG_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE) #
+  set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE) #
   set(OPJ_HAVE_LIBLCMS 1 PARENT_SCOPE)
 else(BUILD_THIRDPARTY)
   find_package(LCMS2)
