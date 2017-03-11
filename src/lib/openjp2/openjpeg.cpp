@@ -1092,7 +1092,7 @@ bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 #if !defined(_WIN32)
 	pluginName += "lib";
 #endif
-	pluginName += std::string(OPENJPEG_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
+	pluginName += std::string(GROK_PLUGIN_NAME) + "." + minpf_get_dynamic_library_extension();
 
 	// form absolute plugin path
 	auto pluginPath = std::string(info.plugin_path) + get_path_separator() + pluginName;

@@ -16,8 +16,8 @@ if(DOXYGEN_FOUND)
     ${CMAKE_BINARY_DIR}/doc/mainpage.dox @ONLY)
 
   file(GLOB headers
-    ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2/*.h
-    ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2/*.c
+    ${GROK_SOURCE_DIR}/src/lib/openjp2/*.h
+    ${GROK_SOURCE_DIR}/src/lib/openjp2/*.c
   )
   # Generate new target to build the html documentation
   add_custom_command(

@@ -4,9 +4,9 @@
 # This CMake project will by default create a library called openjpeg
 # But if you want to use this project within your own (CMake) project
 # you will eventually like to prefix the library to avoid linking confusion
-# For this purpose you can define a CMake var: OPENJPEG_NAMESPACE to whatever you like
+# For this purpose you can define a CMake var: GROK_NAMESPACE to whatever you like
 # e.g.:
-# set(OPENJPEG_NAMESPACE "GDCMOPENJPEG")
+# set(GROK_NAMESPACE "FOO")
 cmake_minimum_required(VERSION 3.1)
 
 if(COMMAND CMAKE_POLICY)
@@ -16,29 +16,29 @@ if(COMMAND CMAKE_POLICY)
   endif()
 endif()
 
-if(NOT OPENJPEG_NAMESPACE)
-  set(OPENJPEG_NAMESPACE "OPENJPEG")
-  set(OPENJPEG_STANDALONE 1)
+if(NOT GROK_NAMESPACE)
+  set(GROK_NAMESPACE "GROK")
+  set(GROK_STANDALONE 1)
 endif()
 # In all cases:
-#string(TOLOWER ${OPENJPEG_NAMESPACE} OPENJPEG_LIBRARY_NAME)
-set(OPENJPEG_LIBRARY_NAME openjp2)
-set(OPENJPEG_PLUGIN_NAME openjp2_plugin)
+#string(TOLOWER ${GROK_NAMESPACE} GROK_LIBRARY_NAME)
+set(GROK_LIBRARY_NAME openjp2)
+set(GROK_PLUGIN_NAME openjp2_plugin)
 
-project(${OPENJPEG_NAMESPACE} )
+project(${GROK_NAMESPACE} )
 
 # Do full dependency headers.
 include_regular_expression("^.*$")
 
 #-----------------------------------------------------------------------------
-# OPENJPEG version number, useful for packaging and doxygen doc:
-set(OPENJPEG_VERSION_MAJOR 2)
-set(OPENJPEG_VERSION_MINOR 1)
-set(OPENJPEG_VERSION_BUILD 1)
-set(OPENJPEG_VERSION
-  "${OPENJPEG_VERSION_MAJOR}.${OPENJPEG_VERSION_MINOR}.${OPENJPEG_VERSION_BUILD}")
+# GROK version number, useful for packaging and doxygen doc:
+set(GROK_VERSION_MAJOR 2)
+set(GROK_VERSION_MINOR 1)
+set(GROK_VERSION_BUILD 1)
+set(GROK_VERSION
+  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
 set(PACKAGE_VERSION
-  "${OPENJPEG_VERSION_MAJOR}.${OPENJPEG_VERSION_MINOR}.${OPENJPEG_VERSION_BUILD}")
+  "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
 
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
 # two numbering, one for the openjpeg version and one for openjpeg soversion
@@ -55,20 +55,20 @@ set(PACKAGE_VERSION
 #   2.1   |  7
 #   2.1.1 |  7
 # above is the recommendation by the OPJ team. If you really need to override this default,
-# you can specify your own OPENJPEG_SOVERSION at cmake configuration time:
-# cmake -DOPENJPEG_SOVERSION:STRING=42 /path/to/openjpeg
-if(NOT OPENJPEG_SOVERSION)
-  set(OPENJPEG_SOVERSION 7)
-endif(NOT OPENJPEG_SOVERSION)
-set(OPENJPEG_LIBRARY_PROPERTIES
-  VERSION   "${OPENJPEG_VERSION_MAJOR}.${OPENJPEG_VERSION_MINOR}.${OPENJPEG_VERSION_BUILD}"
-  SOVERSION "${OPENJPEG_SOVERSION}"
+# you can specify your own GROK_SOVERSION at cmake configuration time:
+# cmake -DGROK_SOVERSION:STRING=42 /path/to/openjpeg
+if(NOT GROK_SOVERSION)
+  set(GROK_SOVERSION 7)
+endif(NOT GROK_SOVERSION)
+set(GROK_LIBRARY_PROPERTIES
+  VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
+  SOVERSION "${GROK_SOVERSION}"
 )
 
 # --------------------------------------------------------------------------
 # Path to additional CMake modules
 set(CMAKE_MODULE_PATH
-    ${${OPENJPEG_NAMESPACE}_SOURCE_DIR}/cmake
+    ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
 # --------------------------------------------------------------------------
@@ -104,55 +104,47 @@ endif()
 option(BUILD_DOC "Build the HTML documentation (with doxygen if available)." OFF)
 
 string(TOLOWER ${PROJECT_NAME} projectname)
-set(OPENJPEG_INSTALL_SUBDIR "${projectname}-${OPENJPEG_VERSION_MAJOR}.${OPENJPEG_VERSION_MINOR}")
+set(GROK_INSTALL_SUBDIR "${projectname}-${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}")
 
-if(NOT OPENJPEG_INSTALL_BIN_DIR)
-  set(OPENJPEG_INSTALL_BIN_DIR "bin")
+if(NOT GROK_INSTALL_BIN_DIR)
+  set(GROK_INSTALL_BIN_DIR "bin")
 endif()
 
-if(NOT OPENJPEG_INSTALL_LIB_DIR)
-  set(OPENJPEG_INSTALL_LIB_DIR "lib")
+if(NOT GROK_INSTALL_LIB_DIR)
+  set(GROK_INSTALL_LIB_DIR "lib")
 endif()
 
-if(NOT OPENJPEG_INSTALL_SHARE_DIR)
-  set(OPENJPEG_INSTALL_SHARE_DIR "share")
+if(NOT GROK_INSTALL_SHARE_DIR)
+  set(GROK_INSTALL_SHARE_DIR "share")
 endif()
 
-if(NOT OPENJPEG_INSTALL_DATA_DIR)
-  set(OPENJPEG_INSTALL_DATA_DIR "${OPENJPEG_INSTALL_SHARE_DIR}/${OPENJPEG_INSTALL_SUBDIR}")
+if(NOT GROK_INSTALL_DATA_DIR)
+  set(GROK_INSTALL_DATA_DIR "${GROK_INSTALL_SHARE_DIR}/${GROK_INSTALL_SUBDIR}")
 endif()
 
-if(NOT OPENJPEG_INSTALL_INCLUDE_DIR)
-  set(OPENJPEG_INSTALL_INCLUDE_DIR "include/${OPENJPEG_INSTALL_SUBDIR}")
+if(NOT GROK_INSTALL_INCLUDE_DIR)
+  set(GROK_INSTALL_INCLUDE_DIR "include/${GROK_INSTALL_SUBDIR}")
 endif()
 
 if(BUILD_DOC)
-if(NOT OPENJPEG_INSTALL_MAN_DIR)
-  set(OPENJPEG_INSTALL_MAN_DIR "share/man/")
+if(NOT GROK_INSTALL_MAN_DIR)
+  set(GROK_INSTALL_MAN_DIR "share/man/")
 endif()
 
-if(NOT OPENJPEG_INSTALL_DOC_DIR)
-  set(OPENJPEG_INSTALL_DOC_DIR "share/doc/${OPENJPEG_INSTALL_SUBDIR}")
+if(NOT GROK_INSTALL_DOC_DIR)
+  set(GROK_INSTALL_DOC_DIR "share/doc/${GROK_INSTALL_SUBDIR}")
 endif()
 endif()
 
-if(NOT OPENJPEG_INSTALL_JNI_DIR)
-  if(WIN32)
-    set(OPENJPEG_INSTALL_JNI_DIR ${OPENJPEG_INSTALL_BIN_DIR})
-  else()
-    set(OPENJPEG_INSTALL_JNI_DIR ${OPENJPEG_INSTALL_LIB_DIR})
-  endif()
-endif()
-
-if(NOT OPENJPEG_INSTALL_PACKAGE_DIR)
+if(NOT GROK_INSTALL_PACKAGE_DIR)
   # We could install *.cmake files in share/ however those files contains
   # hardcoded path to libraries on a multi-arch system (fedora/debian) those
   # path will be different (lib/i386-linux-gnu vs lib/x86_64-linux-gnu)
-  set(OPENJPEG_INSTALL_PACKAGE_DIR "${OPENJPEG_INSTALL_LIB_DIR}/${OPENJPEG_INSTALL_SUBDIR}")
+  set(GROK_INSTALL_PACKAGE_DIR "${GROK_INSTALL_LIB_DIR}/${GROK_INSTALL_SUBDIR}")
 endif()
 
 if (APPLE)
-	list(APPEND OPENJPEG_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${OPENJPEG_INSTALL_LIB_DIR}")
+	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${GROK_INSTALL_LIB_DIR}")
 	option(OPJ_USE_DSYMUTIL "Call dsymutil on binaries after build." OFF)
 endif()
 
@@ -164,23 +156,23 @@ TEST_BIG_ENDIAN(OPJ_BIG_ENDIAN)
 #-----------------------------------------------------------------------------
 # Setup file for setting custom ctest vars
 configure_file(
-  ${${OPENJPEG_NAMESPACE}_SOURCE_DIR}/cmake/CTestCustom.cmake.in
-  ${${OPENJPEG_NAMESPACE}_BINARY_DIR}/CTestCustom.cmake
+  ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/CTestCustom.cmake.in
+  ${${GROK_NAMESPACE}_BINARY_DIR}/CTestCustom.cmake
   @ONLY
   )
 
 #-----------------------------------------------------------------------------
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
-set (EXECUTABLE_OUTPUT_PATH ${OPENJPEG_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
-set (LIBRARY_OUTPUT_PATH ${OPENJPEG_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
+set (EXECUTABLE_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
+set (LIBRARY_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 #-----------------------------------------------------------------------------
 # configure name mangling to allow multiple libraries to coexist
 # peacefully
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg_mangle.h.in)
-set(MANGLE_PREFIX ${OPENJPEG_LIBRARY_NAME})
+set(MANGLE_PREFIX ${GROK_LIBRARY_NAME})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/openjpeg_mangle.h.in
                ${CMAKE_CURRENT_BINARY_DIR}/openjpeg_mangle.h
                @ONLY)
@@ -192,7 +184,7 @@ if(CMAKE_COMPILER_IS_GNUCC)
   # For all builds, make sure openjpeg is std99 compliant:
   # set(CMAKE_C_FLAGS "-Wall -std=c99 ${CMAKE_C_FLAGS}") # FIXME: this setting prevented us from setting a coverage build.
   # Do not use ffast-math for all build, it would produce incorrect results, only set for release:
-  set(OPENJPEG_LIBRARY_COMPILE_OPTIONS ${OPENJPEG_LIBRARY_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>")
+  set(GROK_LIBRARY_COMPILE_OPTIONS ${GROK_LIBRARY_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>")
 endif()
 
 #-----------------------------------------------------------------------------
@@ -298,24 +290,24 @@ if(BUILD_TESTING)
 endif()
 
 #-----------------------------------------------------------------------------
-# install all targets referenced as OPENJPEGTargets
-install(EXPORT OpenJPEGTargets DESTINATION ${OPENJPEG_INSTALL_PACKAGE_DIR})
-configure_file( ${${OPENJPEG_NAMESPACE}_SOURCE_DIR}/cmake/OpenJPEGConfig.cmake.in
-  ${${OPENJPEG_NAMESPACE}_BINARY_DIR}/OpenJPEGConfig.cmake
+# install all targets referenced as GROKTargets
+install(EXPORT OpenJPEGTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
+configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/OpenJPEGConfig.cmake.in
+  ${${GROK_NAMESPACE}_BINARY_DIR}/OpenJPEGConfig.cmake
   @ONLY
 )
-install( FILES ${OPENJPEG_BINARY_DIR}/OpenJPEGConfig.cmake
-  DESTINATION ${OPENJPEG_INSTALL_PACKAGE_DIR}
+install( FILES ${GROK_BINARY_DIR}/OpenJPEGConfig.cmake
+  DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
 )
 
 #-----------------------------------------------------------------------------
 # install CHANGES and LICENSE
 if(BUILD_DOC)
-if(EXISTS ${OPENJPEG_SOURCE_DIR}/CHANGES)
-  install(FILES CHANGES DESTINATION ${OPENJPEG_INSTALL_DOC_DIR})
+if(EXISTS ${GROK_SOURCE_DIR}/CHANGES)
+  install(FILES CHANGES DESTINATION ${GROK_INSTALL_DOC_DIR})
 endif()
 
-install(FILES LICENSE DESTINATION ${OPENJPEG_INSTALL_DOC_DIR})
+install(FILES LICENSE DESTINATION ${GROK_INSTALL_DOC_DIR})
 endif()
 
 include (cmake/OpenJPEGCPack.cmake)
@@ -333,7 +325,7 @@ if(BUILD_PKGCONFIG_FILES)
   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libopenjp2.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc DESTINATION
-    ${OPENJPEG_INSTALL_LIB_DIR}/pkgconfig )
+    ${GROK_INSTALL_LIB_DIR}/pkgconfig )
 #
 
 endif()

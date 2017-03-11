@@ -5,11 +5,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 include_directories(
-  ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h
-  ${OPENJPEG_BINARY_DIR}/src/bin/common # opj_apps_config.h
-  ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2
-  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common
+  ${GROK_BINARY_DIR}/src/lib/openjp2 # opj_config.h
+  ${GROK_BINARY_DIR}/src/bin/common # opj_apps_config.h
+  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/bin/jp2
+  ${GROK_SOURCE_DIR}/src/bin/common
   ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
@@ -26,23 +26,23 @@ endif()
 
 # First thing define the common source:
 set(compare_images_SRCS compare_images.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.h
-  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convert.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/jp2/converttif.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c
+  ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/color.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/convert.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/converttif.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c
   )
 
 set(compare_dump_files_SRCS compare_dump_files.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c)
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c)
 
 set(compare_raw_files_SRCS compare_raw_files.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c)
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c)
 
 add_executable(compare_images ${compare_images_SRCS})
 target_link_libraries(compare_images
-  ${OPENJPEG_LIBRARY_NAME}
+  ${GROK_LIBRARY_NAME}
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
 # To support universal exe:
@@ -55,12 +55,12 @@ endif()
 add_executable(compare_dump_files ${compare_dump_files_SRCS})
 
 add_executable(j2k_random_tile_access j2k_random_tile_access.cpp)
-target_link_libraries(j2k_random_tile_access ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
+target_link_libraries(j2k_random_tile_access ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
 
 add_executable(compare_raw_files ${compare_raw_files_SRCS})
 
 add_executable(test_tile_encoder test_tile_encoder.cpp)
-target_link_libraries(test_tile_encoder ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_tile_encoder ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 # Let's try a couple of possibilities:
 add_test(NAME tte0 COMMAND test_tile_encoder)
@@ -73,7 +73,7 @@ add_test(NAME tte5 COMMAND test_tile_encoder 1  512  512  256  256 8 0 tte5.j2k)
 #add_test(NAME tte7 COMMAND test_tile_encoder 1 32768 32768 512  512 8 0 tte7.jp2)
 
 add_executable(test_tile_decoder test_tile_decoder.cpp)
-target_link_libraries(test_tile_decoder ${OPENJPEG_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(test_tile_decoder ${GROK_LIBRARY_NAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT})
 
 add_test(NAME ttd0 COMMAND test_tile_decoder)
 set_property(TEST ttd0 APPEND PROPERTY DEPENDS tte0)

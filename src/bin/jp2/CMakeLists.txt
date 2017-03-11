@@ -8,11 +8,11 @@ set(common_SRCS
   convert.cpp
   convert.h
   convertbmp.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.cpp
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/color.h
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.c
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_getopt.h
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common/opj_string.h
+  ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/color.h
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.h
+  ${GROK_SOURCE_DIR}/src/bin/common/opj_string.h
 
   )
 
@@ -25,10 +25,10 @@ endif()
 
 # Headers file are located here:
 include_directories(
-  ${OPENJPEG_BINARY_DIR}/src/lib/openjp2 # opj_config.h
-  ${OPENJPEG_BINARY_DIR}/src/bin/common # opj_apps_config.h
-  ${OPENJPEG_SOURCE_DIR}/src/lib/openjp2
-  ${OPENJPEG_SOURCE_DIR}/src/bin/common
+  ${GROK_BINARY_DIR}/src/lib/openjp2 # opj_config.h
+  ${GROK_BINARY_DIR}/src/bin/common # opj_apps_config.h
+  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/bin/common
   ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
@@ -46,7 +46,7 @@ endif()
 # Loop over all executables:
 foreach(exe opj_decompress opj_compress opj_dump)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
-  target_link_libraries(${exe} ${OPENJPEG_LIBRARY_NAME}
+  target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
     )
   # To support universal exe:
@@ -63,7 +63,7 @@ foreach(exe opj_decompress opj_compress opj_dump)
   # Install exe
   install(TARGETS ${exe}
     EXPORT OpenJPEGTargets
-    DESTINATION ${OPENJPEG_INSTALL_BIN_DIR} COMPONENT Applications
+    DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
   )
   if(OPJ_USE_DSYMUTIL)
     add_custom_command(TARGET ${exe} POST_BUILD
@@ -76,9 +76,9 @@ endforeach()
 if(BUILD_DOC)
 # Install man pages
 install(
-  FILES       ${OPENJPEG_SOURCE_DIR}/doc/man/man1/opj_compress.1
-              ${OPENJPEG_SOURCE_DIR}/doc/man/man1/opj_decompress.1
-              ${OPENJPEG_SOURCE_DIR}/doc/man/man1/opj_dump.1
-  DESTINATION ${OPENJPEG_INSTALL_MAN_DIR}/man1)
+  FILES       ${GROK_SOURCE_DIR}/doc/man/man1/opj_compress.1
+              ${GROK_SOURCE_DIR}/doc/man/man1/opj_decompress.1
+              ${GROK_SOURCE_DIR}/doc/man/man1/opj_dump.1
+  DESTINATION ${GROK_INSTALL_MAN_DIR}/man1)
 #
 endif()

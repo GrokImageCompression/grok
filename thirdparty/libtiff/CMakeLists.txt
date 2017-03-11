@@ -85,7 +85,7 @@ endif()
 
 if (BUILD_THIRDPARTY OR HAVE_ZLIB_H)
   if (BUILD_THIRDPARTY)
-	include_directories( ${OPENJPEG_SOURCE_DIR}/thirdparty/include )
+	include_directories( ${GROK_SOURCE_DIR}/thirdparty/include )
   elseif (HAVE_ZLIB_H)
 	include_directories( ${ZLIB_INCLUDE_DIR} )
   endif()
