@@ -1,5 +1,5 @@
 
-How to build and install grok binaries
+How to build and install Grok binaries
 ==========================================
 
 UNIX/LINUX/MacOSX/Windows systems
@@ -39,11 +39,11 @@ Main available cmake flags:
 * To build the CODEC executables: '-DBUILD_CODEC:bool=on' (default: 'ON')
 * To build the documentation: '-DBUILD_DOC:bool=on' (default: 'OFF')
 * To enable testing (and automatic result upload to http://my.cdash.org/index.php?project=grok):
-    cmake . -DBUILD_TESTING:BOOL=ON -DOPJ_DATA_ROOT:PATH='path/to/the/data/directory'
+    cmake . -DBUILD_TESTING:BOOL=ON -DGROK_DATA_ROOT:PATH='path/to/the/data/directory'
     make
     make Experimental
-  Note : JPEG2000 test files are available with 'git clone https://github.com/uclouvain/openjpeg-data.git'.
-  If '-DOPJ_DATA_ROOT:PATH' option is omitted, test files will be automatically searched in '${CMAKE_SOURCE_DIR}/../data',
+  Note : JPEG2000 test files are available with 'git clone https://github.com/GrokImageCompression/grok-test-data.git'.
+  If '-DGROK_DATA_ROOT:PATH' option is omitted, test files will be automatically searched in '${CMAKE_SOURCE_DIR}/../data',
   corresponding to the location of the data directory when compiling from the trunk (and assuming the data directory has
   been checked out of course).
 
