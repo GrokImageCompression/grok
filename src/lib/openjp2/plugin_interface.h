@@ -25,7 +25,7 @@
 // Debug Interface
 /////////////////////
 
-#define CONTEXT_CACHE_SIZE 3
+#define DEBUG_CONTEXT_CACHE_SIZE 3
 
 // debugging variables
 struct plugin_debug_mqc_t {
@@ -33,7 +33,7 @@ struct plugin_debug_mqc_t {
 	uint8_t		context_number;			
 	uint32_t*	contextStream;			
 	uint32_t	contextStreamByteCount;	
-	uint8_t		contextCache[CONTEXT_CACHE_SIZE];
+	uint8_t		contextCache[DEBUG_CONTEXT_CACHE_SIZE];
 	uint32_t	contextCacheCount;
 };
 
