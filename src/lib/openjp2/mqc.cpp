@@ -410,12 +410,11 @@ void opj_mqc_destroy(opj_mqc_t *mqc)
     }
 }
 
-uint32_t opj_mqc_numbytes(opj_mqc_t *mqc)
+// beware: always outputs ONE LESS than actual number of encoded bytes until flush is called
+int32_t opj_mqc_numbytes(opj_mqc_t *mqc)
 {
     ptrdiff_t diff = mqc->bp - mqc->start;
-	if (diff < 0)
-		diff = 0;
-    return (uint32_t)diff;
+    return (int32_t)diff;
 }
 
 void opj_mqc_init_enc(opj_mqc_t *mqc, uint8_t *bp)

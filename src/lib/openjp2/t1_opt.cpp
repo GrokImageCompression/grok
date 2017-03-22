@@ -686,6 +686,8 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 			pass->term = 1;
 		}
 		else {
+			if (mqc->ct < 5)
+				correction++;
 			pass->term = 0;
 		}
         if (++passtype == 3) {
@@ -706,10 +708,17 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
-        if (pass->rate > opj_mqc_numbytes(mqc))
-            pass->rate = opj_mqc_numbytes(mqc);
+		auto bytes = opj_mqc_numbytes(mqc);
+		if (bytes < 0)
+			bytes = 0;
+		// termination results in opj_mqc_numbytes returning correct number of bytes encoded,
+		// so no need to increment rates
+		if (!TERMALL)
+			pass->rate++;
+		if (pass->rate >(uint32_t)bytes)
+			pass->rate = (uint32_t)bytes;
         /*Preventing generation of FF as last data byte of a pass*/
-        if((pass->rate>0) && (cblk->data[pass->rate - 1] == 0xFF)) {
+        if(cblk->data[pass->rate - 1] == 0xFF) {
             pass->rate--;
         }
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);

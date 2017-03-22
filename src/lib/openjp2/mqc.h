@@ -120,7 +120,7 @@ Return the number of bytes written/read since initialisation
 @param mqc MQC handle
 @return Returns the number of bytes already encoded
 */
-uint32_t opj_mqc_numbytes(opj_mqc_t *mqc);
+int32_t opj_mqc_numbytes(opj_mqc_t *mqc);
 /**
 Reset the states of all the context of the coder/decoder
 (each context is set to a state where 0 and 1 are more or less equiprobable)
