@@ -1556,6 +1556,8 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             correction = 1;
             pass->term = 1;
         } else {
+			if (mqc->ct < 5)
+				correction++;
            pass->term = 0;
         }
 
@@ -1573,9 +1575,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         }
 
         pass->distortiondec = cumwmsedec;
-		pass->rate = opj_mqc_numbytes(mqc);
-		if (pass->rate > 0)
-			pass->rate += correction;
+		pass->rate = opj_mqc_numbytes(mqc) + correction;
 
         /* Code-switch "RESET" */
         if (cblksty & J2K_CCP_CBLKSTY_RESET)
@@ -1592,8 +1592,15 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
-        if (pass->rate > opj_mqc_numbytes(mqc))
-            pass->rate = opj_mqc_numbytes(mqc);
+		auto bytes = opj_mqc_numbytes(mqc);
+		if (bytes < 0)
+			bytes = 0;
+		// termination results in opj_mqc_numbytes returning correct number of bytes encoded,
+		// so no need to increment rates
+		if (!TERMALL)
+			pass->rate++;
+        if (pass->rate > (uint32_t)bytes)
+            pass->rate = (uint32_t)bytes;
         /*Preventing generation of FF as last data byte of a pass*/
         if(!LAZY && (pass->rate>0) && (cblk->data[pass->rate - 1] == 0xFF)) {
             pass->rate--;
