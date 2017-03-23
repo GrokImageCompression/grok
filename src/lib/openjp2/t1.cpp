@@ -1553,7 +1553,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
 
             opj_mqc_flush(mqc);
-            correction = 1;
+            correction = 0;
             pass->term = 1;
         } else {
 			if (mqc->ct < 5)
@@ -1593,12 +1593,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
 		auto bytes = opj_mqc_numbytes(mqc);
-		if (bytes < 0)
-			bytes = 0;
-		// termination results in opj_mqc_numbytes returning correct number of bytes encoded,
-		// so no need to increment rates
-		if (!TERMALL)
-			pass->rate++;
+		pass->rate++;
         if (pass->rate > (uint32_t)bytes)
             pass->rate = (uint32_t)bytes;
         /*Preventing generation of FF as last data byte of a pass*/
