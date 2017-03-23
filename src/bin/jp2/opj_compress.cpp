@@ -1441,10 +1441,15 @@ int main(int argc, char **argv) {
 
 
     /*Encoding image one by one*/
+	//cache certain settings
+	auto tcp_mct = initParams.parameters.tcp_mct;
+	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
     for(imageno=0;imageno<num_images;imageno++)	{
         image = NULL;
         fprintf(stderr,"\n");
-
+		//restore cached settings
+		initParams.parameters.tcp_mct = tcp_mct;
+		initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
         if(initParams.img_fol.set_imgdir==1){
             if (get_next_file((int)imageno, dirptr,&initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
                 fprintf(stderr,"skipping file...\n");
@@ -1785,6 +1790,9 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 
 static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
+	if (!initParams)
+		return 1;
+
 	/* set encoding parameters to default values */
 	opj_set_default_encoder_parameters(&initParams->parameters);
 
@@ -1888,6 +1896,9 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		else {
 			num_images = 1;
 		}
+		//cache certain settings
+		auto tcp_mct = initParams->parameters.tcp_mct;
+		auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
 		/*Encoding image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
 			if (initParams->img_fol.set_imgdir == 1) {
@@ -1897,6 +1908,9 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 					continue;
 				}
 			}
+			//restore cached settings
+			initParams->parameters.tcp_mct =  tcp_mct;
+			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
 			success = opj_plugin_encode(&initParams->parameters, plugin_compress_callback);
 			if (success != 0)
 				break;
