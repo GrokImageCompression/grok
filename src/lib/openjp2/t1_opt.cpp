@@ -705,20 +705,23 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 		}
     }
 
-    opj_mqc_flush(mqc);
+	opj_tcd_pass_t *finalPass = &cblk->passes[passno-1];
+	if (!finalPass->term)
+		opj_mqc_flush(mqc);
     cblk->num_passes_encoded = passno;
 
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
-		auto bytes = opj_mqc_numbytes(mqc);
-		if (!pass->term)
+		if (!pass->term) {
 			pass->rate++;
-		if (pass->rate >(uint32_t)bytes)
-			pass->rate = (uint32_t)bytes;
-        /*Preventing generation of FF as last data byte of a pass*/
-        if(pass->rate > 0 && cblk->data[pass->rate - 1] == 0xFF) {
-            pass->rate--;
-        }
+			auto bytes = opj_mqc_numbytes(mqc);
+			if (pass->rate > (uint32_t)bytes)
+				pass->rate = (uint32_t)bytes;
+			/*Preventing generation of FF as last data byte of a pass*/
+			if (pass->rate > 0 && cblk->data[pass->rate - 1] == 0xFF) {
+				pass->rate--;
+			}
+		}
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
     }
 	return cumwmsedec;

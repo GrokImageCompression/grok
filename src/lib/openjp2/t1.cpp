@@ -1586,24 +1586,26 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     }
 
     /* Code switch "ERTERM" (i.e. PTERM) */
+	opj_tcd_pass_t *finalPass = &cblk->passes[passno - 1];
     if (cblksty & J2K_CCP_CBLKSTY_PTERM)
         opj_mqc_erterm_enc(mqc);
-    else if (!LAZY)
+    else if (!LAZY && !finalPass->term)
         opj_mqc_flush(mqc);
 
     cblk->num_passes_encoded = passno;
 
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
-		auto bytes = opj_mqc_numbytes(mqc);
-		if (!pass->term)
+		if (!pass->term) {
 			pass->rate++;
-        if (pass->rate > (uint32_t)bytes)
-            pass->rate = (uint32_t)bytes;
-        /*Preventing generation of FF as last data byte of a pass*/
-        if(!LAZY && (pass->rate>0) && (cblk->data[pass->rate - 1] == 0xFF)) {
-            pass->rate--;
-        }
+			auto bytes = opj_mqc_numbytes(mqc);
+			if (pass->rate > (uint32_t)bytes)
+				pass->rate = (uint32_t)bytes;
+			/*Preventing generation of FF as last data byte of a pass*/
+			if (!LAZY && (pass->rate > 0) && (cblk->data[pass->rate - 1] == 0xFF)) {
+				pass->rate--;
+			}
+		}
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
     }
 
