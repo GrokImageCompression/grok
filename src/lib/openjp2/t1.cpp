@@ -1509,7 +1509,10 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         }
     }
 
-    cblk->numbps = max ? (uint32_t)((opj_int_floorlog2(max) + 1) - T1_NMSEDEC_FRACBITS) : 0;
+	auto logMax = opj_int_floorlog2((int32_t)max) + 1;
+	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
+	if (!cblk->numbps)
+		return 0;
 
     bpno = (int32_t)(cblk->numbps - 1);
     passtype = 2;

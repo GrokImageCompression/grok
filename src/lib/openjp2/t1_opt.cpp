@@ -646,7 +646,10 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
     int32_t nmsedec = 0;
     double tempwmsedec;
 
-    cblk->numbps = max ? (uint32_t)((opj_int_floorlog2((int32_t)max) + 1) - T1_NMSEDEC_FRACBITS) : 0;
+	auto logMax = opj_int_floorlog2((int32_t)max) + 1;
+    cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
+	if (!cblk->numbps)
+		return 0;
 
 	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
 
