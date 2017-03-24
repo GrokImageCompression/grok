@@ -170,9 +170,8 @@ void opj_mqc_bypass_enc(opj_mqc_t *mqc, uint32_t d);
 BYPASS mode switch, flush operation
 <h2>Not fully implemented and tested !!</h2>
 @param mqc MQC handle
-@return Returns 1 (always)
 */
-uint32_t opj_mqc_bypass_flush_enc(opj_mqc_t *mqc);
+void opj_mqc_bypass_flush_enc(opj_mqc_t *mqc);
 /**
 RESTART mode switch (TERMALL)
 @param mqc MQC handle

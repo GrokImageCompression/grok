@@ -1528,7 +1528,9 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     for (passno = 0; bpno >= 0; ++passno) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
         uint32_t correction = 3;
-        type = ((bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+		type = T1_TYPE_MQ;
+		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+			type = T1_TYPE_RAW;
 
         switch (passtype) {
         case 0:
@@ -1551,12 +1553,19 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 
+		// In lazy mode, we need to terminate pass 2 from fourth pass, 
+		// and passes 1 and 2 from subsequent passes. Pass 0 in lazy region
+		// does not get terminated.
         if ( TERMALL ||
 				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0))
 							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
 
-            opj_mqc_flush(mqc);
-            correction = 0;
+			correction = 0;
+			if (passtype == 1) {
+				opj_mqc_bypass_flush_enc(mqc);
+			}
+			else
+				opj_mqc_flush(mqc);
             pass->term = 1;
         } else {
 			if (mqc->ct < 5)
@@ -1572,17 +1581,23 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 		pass->distortiondec = cumwmsedec;
 		pass->rate = opj_mqc_numbytes(mqc) + correction;
 
-        if (pass->term) {
-            type = ((bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2) && LAZY) ? T1_TYPE_RAW : T1_TYPE_MQ;
-            if (type == T1_TYPE_RAW)
-                opj_mqc_bypass_init_enc(mqc);
-            else
-                opj_mqc_restart_init_enc(mqc);
-        }
+		//note: passtype and bpno have already been updated to next pass,
+		// while pass pointer still points to current pass
+		if (bpno >= 0) {
+			if (pass->term) {
+				type = T1_TYPE_MQ;
+				if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+					type = T1_TYPE_RAW;
+				if (type == T1_TYPE_RAW) 
+					opj_mqc_bypass_init_enc(mqc);
+				else
+					opj_mqc_restart_init_enc(mqc);
+			}
 
-        /* Code-switch "RESET" */
-        if (cblksty & J2K_CCP_CBLKSTY_RESET)
-            opj_mqc_resetstates(mqc);
+			/* Code-switch "RESET" */
+			if (cblksty & J2K_CCP_CBLKSTY_RESET)
+				opj_mqc_resetstates(mqc);
+		}
     }
 
     /* Code switch "ERTERM" (i.e. PTERM) */
