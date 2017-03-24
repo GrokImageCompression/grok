@@ -697,13 +697,12 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
             passtype = 0;
             bpno--;
         }
+		pass->distortiondec = cumwmsedec;
+		pass->rate = opj_mqc_numbytes(mqc) + correction;
+
 		if (pass->term) {
 			opj_mqc_restart_init_enc(mqc);
 		}
-
-
-        pass->distortiondec = cumwmsedec;
-        pass->rate = opj_mqc_numbytes(mqc) + correction;
     }
 
     opj_mqc_flush(mqc);
@@ -712,7 +711,8 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
 		auto bytes = opj_mqc_numbytes(mqc);
-		pass->rate++;
+		if (!pass->term)
+			pass->rate++;
 		if (pass->rate >(uint32_t)bytes)
 			pass->rate = (uint32_t)bytes;
         /*Preventing generation of FF as last data byte of a pass*/

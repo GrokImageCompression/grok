@@ -1569,6 +1569,9 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             bpno--;
         }
 
+		pass->distortiondec = cumwmsedec;
+		pass->rate = opj_mqc_numbytes(mqc) + correction;
+
         if (pass->term) {
             type = ((bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2) && LAZY) ? T1_TYPE_RAW : T1_TYPE_MQ;
             if (type == T1_TYPE_RAW)
@@ -1576,9 +1579,6 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
             else
                 opj_mqc_restart_init_enc(mqc);
         }
-
-        pass->distortiondec = cumwmsedec;
-		pass->rate = opj_mqc_numbytes(mqc) + correction;
 
         /* Code-switch "RESET" */
         if (cblksty & J2K_CCP_CBLKSTY_RESET)
@@ -1596,7 +1596,8 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
         opj_tcd_pass_t *pass = &cblk->passes[passno];
 		auto bytes = opj_mqc_numbytes(mqc);
-		pass->rate++;
+		if (!pass->term)
+			pass->rate++;
         if (pass->rate > (uint32_t)bytes)
             pass->rate = (uint32_t)bytes;
         /*Preventing generation of FF as last data byte of a pass*/
