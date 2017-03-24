@@ -465,6 +465,13 @@ void opj_mqc_bypass_init_enc(opj_mqc_t *mqc)
 {
     mqc->c = 0;
     mqc->ct = 8;
+	//note: mqc->bp is guaranteed to be greater than mqc->start, since we have already performed
+	// at least one flush
+	mqc->bp--;
+	if (*mqc->bp == 0xff) {
+		mqc->ct = 7;
+	}
+
 }
 
 void opj_mqc_bypass_enc(opj_mqc_t *mqc, uint32_t d)
@@ -475,20 +482,20 @@ void opj_mqc_bypass_enc(opj_mqc_t *mqc, uint32_t d)
         mqc->bp++;
         *mqc->bp = (uint8_t)mqc->c;
         mqc->ct = 8;
+		mqc->c = 0;
+		// bit stuffing ensures that most significant bit equals zero
+		// for byte following 0xFF
         if (*mqc->bp == 0xff) {
             mqc->ct = 7;
         }
-        mqc->c = 0;
     }
 }
 
-uint32_t opj_mqc_bypass_flush_enc(opj_mqc_t *mqc)
+// should correction be set to one if bp is not incremented ??
+void opj_mqc_bypass_flush_enc(opj_mqc_t *mqc)
 {
-    uint8_t bit_padding;
-
-    bit_padding = 0;
-
-    if (mqc->ct != 0) {
+    uint8_t bit_padding = 0;
+    if (mqc->ct != 8) {
         while (mqc->ct > 0) {
             mqc->ct--;
             mqc->c += (uint32_t)(bit_padding << mqc->ct);
@@ -496,11 +503,10 @@ uint32_t opj_mqc_bypass_flush_enc(opj_mqc_t *mqc)
         }
         mqc->bp++;
         *mqc->bp = (uint8_t)mqc->c;
-        mqc->ct = 8;
-        mqc->c = 0;
-    }
-
-    return 1;
+	}
+	if (*mqc->bp != 0xff) {
+		mqc->bp++;
+	}
 }
 
 uint32_t opj_mqc_restart_enc(opj_mqc_t *mqc)
