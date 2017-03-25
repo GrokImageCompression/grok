@@ -1604,7 +1604,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 	opj_tcd_pass_t *finalPass = &cblk->passes[passno - 1];
     if (cblksty & J2K_CCP_CBLKSTY_PTERM)
         opj_mqc_erterm_enc(mqc);
-    else if (!LAZY && !finalPass->term)
+    else if (!finalPass->term)
         opj_mqc_flush(mqc);
 
     cblk->num_passes_encoded = passno;
@@ -1617,7 +1617,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 			if (pass->rate > (uint32_t)bytes)
 				pass->rate = (uint32_t)bytes;
 			/*Preventing generation of FF as last data byte of a pass*/
-			if (!LAZY && (pass->rate > 0) && (cblk->data[pass->rate - 1] == 0xFF)) {
+			if (pass->rate > 0 && (cblk->data[pass->rate - 1] == 0xFF)) {
 				pass->rate--;
 			}
 		}
