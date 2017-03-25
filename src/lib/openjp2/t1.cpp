@@ -1561,7 +1561,16 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 							 ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
 
 			correction = 0;
-			if (LAZY && !TERMALL && (passtype == 1)) {
+			auto bypassFlush = false;
+			if (LAZY) {
+				if (TERMALL) {
+					bypassFlush = (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2);
+				}
+				else {
+					bypassFlush = passtype == 1;
+				}
+			}
+			if (bypassFlush) {
 				opj_mqc_bypass_flush_enc(mqc);
 			}
 			else
