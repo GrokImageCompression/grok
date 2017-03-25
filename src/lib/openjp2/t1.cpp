@@ -1561,7 +1561,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
 
 			correction = 0;
-			if (passtype == 1) {
+			if (LAZY && passtype == 1) {
 				opj_mqc_bypass_flush_enc(mqc);
 			}
 			else
