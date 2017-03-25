@@ -1553,8 +1553,8 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 
-		// In LAZY mode, we need to terminate pass 2 from fourth pass, 
-		// and passes 1 and 2 from subsequent passes. Pass 0 in lazy region
+		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
+		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
 		// does not get terminated unless TERMALL is also set
         if ( TERMALL ||
 				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0)) ||
