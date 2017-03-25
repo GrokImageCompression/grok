@@ -700,8 +700,10 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 		pass->distortiondec = cumwmsedec;
 		pass->rate = opj_mqc_numbytes(mqc) + correction;
 
-		if (pass->term) {
-			opj_mqc_restart_init_enc(mqc);
+		if (bpno >= 0) {
+			if (pass->term) {
+				opj_mqc_restart_init_enc(mqc);
+			}
 		}
     }
 
