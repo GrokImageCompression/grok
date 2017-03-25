@@ -491,7 +491,6 @@ void opj_mqc_bypass_enc(opj_mqc_t *mqc, uint32_t d)
     }
 }
 
-// should correction be set to one if bp is not incremented ??
 void opj_mqc_bypass_flush_enc(opj_mqc_t *mqc)
 {
     uint8_t bit_padding = 0;
