@@ -1553,15 +1553,15 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
         tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 
-		// In lazy mode, we need to terminate pass 2 from fourth pass, 
+		// In LAZY mode, we need to terminate pass 2 from fourth pass, 
 		// and passes 1 and 2 from subsequent passes. Pass 0 in lazy region
-		// does not get terminated.
+		// does not get terminated unless TERMALL is also set
         if ( TERMALL ||
-				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0))
-							|| ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
+				(LAZY && ((bpno < ((int32_t)(cblk->numbps) - 4) && (passtype > 0)) ||
+							 ((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
 
 			correction = 0;
-			if (LAZY && passtype == 1) {
+			if (LAZY && !TERMALL && (passtype == 1)) {
 				opj_mqc_bypass_flush_enc(mqc);
 			}
 			else
