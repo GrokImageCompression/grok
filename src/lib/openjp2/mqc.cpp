@@ -345,24 +345,25 @@ static inline uint8_t opj_mqc_lpsexchange(opj_mqc_t *const mqc)
 static void opj_mqc_bytein(opj_mqc_t *const mqc)
 {
     if (mqc->bp != mqc->end) {
-        uint32_t c;
+        uint8_t nextByte;
         if (mqc->bp + 1 != mqc->end) {
-            c = *(mqc->bp + 1);
+			nextByte = *(mqc->bp + 1);
         } else {
-            c = 0xff;
+			nextByte = 0xff;
         }
         if (*mqc->bp == 0xff) {
-            if (c > 0x8f) {
+			// found termination marker - do not increment bp
+            if (nextByte > 0x8f) {
                 mqc->c += 0xff00;
                 mqc->ct = 8;
             } else {
                 mqc->bp++;
-                mqc->c += c << 9;
+                mqc->c += nextByte << 9;
                 mqc->ct = 7;
             }
         } else {
             mqc->bp++;
-            mqc->c += c << 8;
+            mqc->c += nextByte << 8;
             mqc->ct = 8;
         }
     } else {
