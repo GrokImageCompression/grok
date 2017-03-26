@@ -249,6 +249,8 @@ opj_decompress -i @INPUT_NR_PATH@/issue171.jp2                  -o @TEMP_PATH@/i
 # issue 171
 !opj_decompress -i @INPUT_NR_PATH@/issue165.jp2                  -o @TEMP_PATH@/issue165.jp2.pgx
 # this test passes, but is commented out because it takes a very long time to complete
+# File broken.jpc has been removed from Grok branch of test data repo; still exists
+# in master branch though
 #opj_decompress -i @INPUT_NR_PATH@/broken.jpc                    -o @TEMP_PATH@/broken.jpc.pgx
 # issue 226
 opj_decompress -i @INPUT_NR_PATH@/issue226.j2k                   -o @TEMP_PATH@/issue226.j2k.pgx
