@@ -58,7 +58,6 @@ set(BLACKLIST_JPEG2000_TMP
 	issue775-2.j2k
 	issue823.jp2
 	issue826.jp2
-	issue226.j2k
 	dwt_interleave_h.gsr105.jp2
 	v4dwt_interleave_h.gsr105.j2k
 	4241ac039aba57e6a9c948d519d94216_asan_heap-oob_14650f2_7469_602.jp2

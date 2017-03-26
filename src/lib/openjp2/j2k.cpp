@@ -7466,12 +7466,6 @@ bool opj_j2k_read_tile_header(      opj_j2k_t * p_j2k,
                 return false;
             }
 
-            /* cf. https://code.google.com/p/openjpeg/issues/detail?id=226 */
-            if (l_current_marker == 0x8080 && opj_stream_get_number_byte_left(p_stream) == 0) {
-                p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
-                break;
-            }
-
             /* Why this condition? FIXME */
             if (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH) {
                 p_j2k->m_specific_param.m_decoder.m_sot_length -= (l_marker_size + 2);
@@ -7766,31 +7760,50 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 		p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
 		p_j2k->m_specific_param.m_decoder.m_state &= (~(J2K_DEC_STATE_DATA));
 
+		// if there is no EOC marker and there is also no data left, then simply return true
 		if (opj_stream_get_number_byte_left(p_stream) == 0
 			&& p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC) {
 			return true;
 		}
 
+		// if EOC marker has not been read yet, then try to read the next marker (should be EOC or SOT)
 		if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
+
+			// not enough data for another marker : fail decode
 			if (opj_stream_read_data(p_stream, l_data, 2, p_manager) != 2) {
 				opj_event_msg(p_manager, EVT_ERROR, "Stream too short\n");
 				return false;
 			}
 
+			// read marker
 			opj_read_bytes(l_data, &l_current_marker, 2);
 
+			// we found the EOC marker - set state accordingly and return true - can ignore all data after EOC
 			if (l_current_marker == J2K_MS_EOC) {
 				p_j2k->m_current_tile_number = 0;
 				p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
+				return true;
 			}
-			else if (l_current_marker != J2K_MS_SOT) {
-				if (opj_stream_get_number_byte_left(p_stream) == 0) {
+
+			// if we get here, we expect an SOT marker......
+			if (l_current_marker != J2K_MS_SOT) {
+				auto bytesLeft = opj_stream_get_number_byte_left(p_stream);
+				// no bytes left - file ends without EOC marker
+				if (bytesLeft == 0) {
 					p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
 					opj_event_msg(p_manager, EVT_WARNING, "Stream does not end with EOC\n");
 					return true;
 				}
+				opj_event_msg(p_manager, EVT_WARNING, "Decode tile: expected EOC or SOT but found unknown \"marker\" %x. \n", l_current_marker);
+				throw std::runtime_error("Decode tile: expected EOC or SOT but found unknown \"marker\" ");
+				/*
+				if (bytesLeft <= 2) {
+					opj_event_msg(p_manager, EVT_WARNING, "Expected SOT but found unknown \"marker\" %x. \n", l_current_marker);
+					return true;
+				}
 				opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
 				return false;
+				*/
 			}
 		}
 	}
@@ -9371,13 +9384,24 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
             l_max_data_size = l_data_size;
         }
 
-
-        if (! opj_j2k_decode_tile(p_j2k,l_current_tile_no,l_current_data,l_data_size,p_stream,p_manager)) {
-            if (l_current_data)
-                opj_free(l_current_data);
-            opj_event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no +1, num_tiles_to_decode);
-            return false;
-        }
+		try {
+			if (!opj_j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data, l_data_size, p_stream, p_manager)) {
+				if (l_current_data)
+					opj_free(l_current_data);
+				opj_event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no + 1, num_tiles_to_decode);
+				return false;
+			}
+		}
+		catch (std::runtime_error e) {
+			// only worry about exception if we have more tiles to decode
+			if (nr_tiles < num_tiles_to_decode - 1) {
+				opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
+				if (l_current_data)
+					opj_free(l_current_data);
+				opj_event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no + 1, num_tiles_to_decode);
+				return false;
+			}
+		}
         opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
 
         /* copy from current data to output image, if necessary */
@@ -9517,11 +9541,16 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
             l_max_data_size = l_data_size;
         }
 
-        if (! opj_j2k_decode_tile(p_j2k,l_current_tile_no,l_current_data,l_data_size,p_stream,p_manager)) {
-            if (l_current_data)
-                opj_free(l_current_data);
-            return false;
-        }
+		try {
+			if (!opj_j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data, l_data_size, p_stream, p_manager)) {
+				if (l_current_data)
+					opj_free(l_current_data);
+				return false;
+			}
+		}
+		catch (std::runtime_error e) {
+			// suppress exception
+		}
         opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
         if (l_current_data) {

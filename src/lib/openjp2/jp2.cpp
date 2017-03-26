@@ -3149,7 +3149,14 @@ bool opj_jp2_decode_tile (  opj_jp2_t * p_jp2,
                             opj_event_mgr_t * p_manager
                          )
 {
-    return opj_j2k_decode_tile (p_jp2->j2k,p_tile_index,p_data,p_data_size,p_stream,p_manager);
+	bool rc = false;
+	try {
+		rc = opj_j2k_decode_tile(p_jp2->j2k, p_tile_index, p_data, p_data_size, p_stream, p_manager);
+	}
+	catch (std::runtime_error e) {
+		//suppress exception
+	}
+	return rc;
 }
 
 void opj_jp2_destroy(opj_jp2_t *jp2)
