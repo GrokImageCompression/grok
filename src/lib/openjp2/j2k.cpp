@@ -441,9 +441,10 @@ static bool opj_j2k_pre_write_tile ( opj_j2k_t * p_j2k,
                                      opj_stream_private_t *p_stream,
                                      opj_event_mgr_t * p_manager );
 
-static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd,
+static bool opj_j2k_copy_decoded_tile_to_output_image (opj_tcd_t * p_tcd,
 										uint8_t * p_data,
 										opj_image_t* p_output_image,
+										bool clearOutputOnInit,
 										opj_event_mgr_t * p_manager);
 
 static void opj_get_tile_dimensions(opj_image_t * l_image,
@@ -7796,14 +7797,6 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 				}
 				opj_event_msg(p_manager, EVT_WARNING, "Decode tile: expected EOC or SOT but found unknown \"marker\" %x. \n", l_current_marker);
 				throw std::runtime_error("Decode tile: expected EOC or SOT but found unknown \"marker\" ");
-				/*
-				if (bytesLeft <= 2) {
-					opj_event_msg(p_manager, EVT_WARNING, "Expected SOT but found unknown \"marker\" %x. \n", l_current_marker);
-					return true;
-				}
-				opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
-				return false;
-				*/
 			}
 		}
 	}
@@ -7816,9 +7809,10 @@ p_data stores the number of resolutions decoded, in the actual precision of the 
 This method copies a sub-region of this region into p_output_image (which stores data in 32 bit precision)
 
 */
-static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd, 
+static bool opj_j2k_copy_decoded_tile_to_output_image (opj_tcd_t * p_tcd, 
 										uint8_t * p_data, 
 										opj_image_t* p_output_image,
+										bool clearOutputOnInit,
 										opj_event_mgr_t * p_manager)
 {
     uint32_t i=0,j=0,k = 0;
@@ -7840,6 +7834,9 @@ static bool opj_j2k_update_image_data (opj_tcd_t * p_tcd,
             if (!opj_image_single_component_data_alloc(img_comp_dest)) {
                 return false;
             }
+			if (clearOutputOnInit) {
+				memset(img_comp_dest->data, 0, img_comp_dest->w * img_comp_dest->h * sizeof(int32_t));
+			}
         }
 
         /* Copy info from decoded comp image to output image */
@@ -9335,12 +9332,11 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
     bool l_go_on = true;
     uint32_t l_current_tile_no=0;
     uint64_t l_data_size=0,l_max_data_size=0;
-    uint32_t l_tile_x0,l_tile_y0,l_tile_x1,l_tile_y1;
     uint32_t l_nb_comps=0;
     uint8_t * l_current_data=NULL;
     uint32_t nr_tiles = 0;
 	uint32_t num_tiles_to_decode = p_j2k->m_cp.th * p_j2k->m_cp.tw;
-
+	bool clearOutputOnInit = false;
     if (opj_j2k_needs_copy_tile_data(p_j2k, num_tiles_to_decode)) {
         l_current_data = (uint8_t*)opj_malloc(1);
         if (!l_current_data) {
@@ -9348,10 +9344,12 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
             return false;
         }
         l_max_data_size = 1;
+		clearOutputOnInit = num_tiles_to_decode > 1;
     }
 	uint32_t num_tiles_decoded = 0;
 
     for (nr_tiles=0; nr_tiles < num_tiles_to_decode; nr_tiles++) {
+		uint32_t l_tile_x0, l_tile_y0, l_tile_x1, l_tile_y1;
 		l_tile_x0 = l_tile_y0 = l_tile_x1 = l_tile_y1 = 0;
         if (! opj_j2k_read_tile_header( p_j2k,
                                         &l_current_tile_no,
@@ -9406,7 +9404,11 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 
         /* copy from current data to output image, if necessary */
         if (l_current_data) {
-            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image, p_manager)) {
+            if (!opj_j2k_copy_decoded_tile_to_output_image(p_j2k->m_tcd, 
+															l_current_data,
+															p_j2k->m_output_image,
+															clearOutputOnInit,
+															p_manager)) {
                 opj_free(l_current_data);
                 return false;
             }
@@ -9429,6 +9431,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 	}
 	else if (num_tiles_decoded < num_tiles_to_decode) {
 		opj_event_msg(p_manager, EVT_WARNING, "Only %d out of %d tiles were decoded\n", num_tiles_decoded, num_tiles_to_decode);
+		return true;
 	}
 	return true;
 }
@@ -9554,7 +9557,11 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
         opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
         if (l_current_data) {
-            if (!opj_j2k_update_image_data(p_j2k->m_tcd, l_current_data, p_j2k->m_output_image, p_manager)) {
+            if (!opj_j2k_copy_decoded_tile_to_output_image(p_j2k->m_tcd, 
+															l_current_data,
+															p_j2k->m_output_image,
+															false,
+															p_manager)) {
                 opj_free(l_current_data);
                 return false;
             }

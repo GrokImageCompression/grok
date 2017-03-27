@@ -51,8 +51,7 @@
 
 opj_image_t* opj_image_create0(void)
 {
-    opj_image_t *image = (opj_image_t*)opj_calloc(1, sizeof(opj_image_t));
-    return image;
+    return (opj_image_t*)opj_calloc(1, sizeof(opj_image_t));
 }
 
 opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc)
