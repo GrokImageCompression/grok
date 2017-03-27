@@ -31,8 +31,8 @@ Note: various coordinate systems are used to describe regions in the tile buffer
 */
 
 typedef struct opj_tile_buf_band {
-    opj_rect_t dim;			/* coordinates of sub-band region (canvas coordinates)  */
-    opj_rect_t data_dim;	/* coordinates of sub-band data region, (tile coordinates ) */
+    rect_t dim;			/* coordinates of sub-band region (canvas coordinates)  */
+    rect_t data_dim;	/* coordinates of sub-band data region, (tile coordinates ) */
 } opj_tile_buf_band_t;
 
 typedef struct opj_tile_buf_resolution {
@@ -50,8 +50,8 @@ typedef struct opj_tile_buf_component {
     uint64_t data_size;			/* size of the data of the component */
     bool owns_data;				/* true if tile buffer manages its data array, false otherwise */
 
-    opj_rect_t dim;		  /* canvas coordinates of region */
-    opj_rect_t tile_dim;  /* canvas coordinates of tile */
+    rect_t dim;		  /* canvas coordinates of region */
+    rect_t tile_dim;  /* canvas coordinates of tile */
 
 } opj_tile_buf_component_t;
 
@@ -75,7 +75,7 @@ void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp);
 /* Check if rect overlaps with region.
    rect coordinates must be stored in canvas coordinates
 */
-bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, opj_rect_t* rect);
+bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, rect_t* rect);
 
 /* sub-band coordinates */
 opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,

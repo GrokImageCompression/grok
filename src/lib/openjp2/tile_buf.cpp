@@ -28,7 +28,7 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
                                    uint32_t dy)
 {
     int32_t resno = 0;
-    opj_rect_t	component_output_rect;
+    rect_t	component_output_rect;
     opj_tile_buf_component_t* comp = NULL;
 
     if (!tilec)
@@ -41,21 +41,21 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
     }
 	comp->data = NULL;
 
-    opj_rect_init(&comp->tile_dim,
+	comp->tile_dim= rect_t(
                   tilec->x0,
                   tilec->y0,
                   tilec->x1,
                   tilec->y1);
 
     if (output_image) {
-        opj_rect_init(&comp->dim,
+		comp->dim= rect_t(
                       opj_uint_ceildiv(output_image->x0,dx),
                       opj_uint_ceildiv(output_image->y0,dy),
                       opj_uint_ceildiv(output_image->x1,dx),
                       opj_uint_ceildiv(output_image->y1,dy));
 
         /* clip output image to tile */
-        opj_rect_clip(&comp->tile_dim, &comp->dim, &comp->dim);
+		comp->tile_dim.clip(&comp->dim, &comp->dim);
 
     } else {
         comp->dim = comp->tile_dim;
@@ -90,8 +90,8 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
 
         for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
             opj_tcd_band_t* band = tcd_res->bands + bandno;
-            opj_rect_t  band_rect;
-            opj_rect_init(&band_rect,
+            rect_t  band_rect;
+			band_rect= rect_t(
                           band->x0,
                           band->y0,
                           band->x1,
@@ -106,17 +106,17 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
                 shift.x = band->bandno & 1;
                 shift.y = band->bandno & 2;
 
-                opj_rect_pan(&res->band_region[bandno].dim, &shift);
-                opj_rect_ceildivpow2(&res->band_region[bandno].dim, 1);
+				res->band_region[bandno].dim.pan(&shift);
+				res->band_region[bandno].dim.ceildivpow2(1);
 
                 /* boundary padding */
-                opj_rect_grow(&res->band_region[bandno].dim, irreversible ? 3 : 2);
+				res->band_region[bandno].dim.grow(irreversible ? 3 : 2);
 
             }
 
             /* add code block padding around region */
             (res->band_region + bandno)->data_dim = (res->band_region + bandno)->dim;
-            opj_rect_grow2(&(res->band_region + bandno)->data_dim, cblkw, cblkh);
+			(res->band_region + bandno)->data_dim.grow2(cblkw, cblkh);
 
         }
         component_output_rect = res->band_region[0].dim;
@@ -134,7 +134,7 @@ bool opj_tile_buf_is_decode_region(opj_tile_buf_component_t* buf)
 {
     if (!buf)
         return false;
-    return !opj_rect_are_equal(&buf->dim, &buf->tile_dim);
+    return !buf->dim.are_equal(&buf->tile_dim);
 }
 
 int32_t* opj_tile_buf_get_ptr(opj_tile_buf_component_t* buf,
@@ -191,7 +191,7 @@ bool opj_tile_buf_alloc_component_data_decode(opj_tile_buf_component_t* buf)
         return false;
 
     if (!buf->data ) {
-        int64_t area = opj_rect_get_area(&buf->tile_dim);
+        int64_t area = buf->tile_dim.get_area();
 		if (area) {
 			buf->data = (int32_t *)opj_aligned_malloc(area * sizeof(int32_t));
 			if (!buf->data) {
@@ -223,15 +223,15 @@ void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp)
     delete comp;
 }
 
-bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, opj_rect_t* rect)
+bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, rect_t* rect)
 {
     if (!comp || !rect)
         return false;
     for (auto& res : comp->resolutions) {
-        opj_rect_t dummy;
+        rect_t dummy;
         uint32_t j;
         for (j = 0; j < res->num_bands; ++j) {
-            if (opj_rect_clip(&(res->band_region + j)->dim, rect, &dummy))
+            if ((res->band_region + j)->dim.clip(rect, &dummy))
                 return true;
         }
     }

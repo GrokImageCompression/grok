@@ -18,47 +18,48 @@
 
 #pragma once
 
-typedef struct opj_pt {
+struct opj_pt_t {
     int64_t x;
     int64_t y;
 
-} opj_pt_t;
+};
 
-typedef struct opj_rect {
-
-    int64_t x0;
+struct rect_t {
+	int64_t x0;
     int64_t y0;
     int64_t x1;
     int64_t y1;
 
-} opj_rect_t;
+	rect_t();
+	rect_t(int64_t x0, int64_t y0, int64_t x1, int64_t y1);
 
-void opj_rect_init(opj_rect_t* r, int64_t x0, int64_t y0, int64_t x1, int64_t y1);
 
-/* valid if x0 <= x1 && y0 <= y1. Can include degenerate rectangles: line and point*/
-bool opj_rect_is_valid(opj_rect_t* rect);
+	/* valid if x0 <= x1 && y0 <= y1. Can include degenerate rectangles: line and point*/
+	bool is_valid(void);
 
-int64_t opj_rect_get_area(opj_rect_t* r);
+	int64_t get_area(void);
 
-bool opj_rect_is_non_degenerate(opj_rect_t* rect);
+	bool is_non_degenerate(void);
 
-bool opj_rect_is_valid(opj_rect_t* rect);
+	bool are_equal(rect_t* r2);
 
-bool opj_rect_are_equal(opj_rect_t* r1, opj_rect_t* r2);
+	bool clip( rect_t* r2, rect_t* result);
 
-bool opj_rect_clip(opj_rect_t* r1, opj_rect_t* r2, opj_rect_t* result);
+	void ceildivpow2( int32_t power);
 
-void opj_rect_ceildivpow2(opj_rect_t* r, int32_t power);
+	void grow(int64_t boundary);
 
-void opj_rect_grow(opj_rect_t* r, int64_t boundary);
+	void grow2(int64_t boundaryx, int64_t boundaryy);
 
-void opj_rect_grow2(opj_rect_t* r, int64_t boundaryx, int64_t boundaryy);
+	void subsample(uint32_t dx, uint32_t dy);
 
-void opj_rect_subsample(opj_rect_t* r, uint32_t dx, uint32_t dy);
+	void pan(opj_pt_t* shift);
 
-void opj_rect_pan(opj_rect_t* r, opj_pt_t* shift);
+	void print(void);
 
-void opj_rect_print(opj_rect_t* r);
+
+};
+
 
 typedef struct opj_buf {
     uint8_t *buf;		/* internal array*/
