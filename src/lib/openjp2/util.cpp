@@ -32,69 +32,56 @@ static inline int64_t opj_int64_ceildiv(int64_t a, int64_t b)
 }
 
 
-void opj_rect_print(opj_rect_t* r)
+void rect_t::print(void)
 {
-    if (!r)
-        printf("Null rect\n");
-    else
-        printf("Rectangle:  [%I64d,%I64d,%I64d,%I64d] \n", r->x0, r->y0, r->x1, r->y1);
+       printf("Rectangle:  [%I64d,%I64d,%I64d,%I64d] \n", x0, y0, x1, y1);
 }
 
-void opj_rect_init(opj_rect_t* r, int64_t x0, int64_t y0, int64_t x1, int64_t y1)
+rect_t::rect_t(void) : x0(0), y0(0), x1(0), y1(0)
 {
-    if (!r)
-        return;
-    r->x0 = x0;
-    r->y0 = y0;
-    r->x1 = x1;
-    r->y1 = y1;
 }
 
-bool opj_rect_is_valid(opj_rect_t* rect)
+rect_t::rect_t(int64_t x0, int64_t y0, int64_t x1, int64_t y1) : x0(x0), y0(y0), x1(x1), y1(y1)
 {
-    if (!rect)
+}
+
+bool rect_t::is_valid(void)
+{
+    return x0 <= x1 && y0 <= y1;
+}
+
+bool rect_t::is_non_degenerate(void)
+{
+    return x0 < x1 && y0 < y1;
+}
+
+bool rect_t::are_equal(rect_t* r2)
+{
+
+    if (!r2)
         return false;
 
-    return rect->x0 <= rect->x1 && rect->y0 <= rect->y1;
+    return x0 == r2->x0 &&
+           y0 == r2->y0 &&
+           x1 == r2->x1 &&
+           y1 == r2->y1;
 }
 
-bool opj_rect_is_non_degenerate(opj_rect_t* rect)
-{
-    if (!rect)
-        return false;
-
-    return rect->x0 < rect->x1 && rect->y0 < rect->y1;
-}
-
-bool opj_rect_are_equal(opj_rect_t* r1, opj_rect_t* r2)
-{
-    if (!r1 && !r2)
-        return true;
-
-    if (!r1 || !r2)
-        return false;
-
-    return r1->x0 == r2->x0 &&
-           r1->y0 == r2->y0 &&
-           r1->x1 == r2->x1 &&
-           r1->y1 == r2->y1;
-}
-
-bool opj_rect_clip(opj_rect_t* r1, opj_rect_t* r2, opj_rect_t* result)
+bool rect_t::clip(rect_t* r2, rect_t* result)
 {
     bool rc;
-    opj_rect_t temp;
+    rect_t temp;
 
-    if (!r1 || !r2 || !result)
+    if (!r2 || !result)
         return false;
 
-    temp.x0 = MAX(r1->x0, r2->x0);
-    temp.y0 = MAX(r1->y0, r2->y0);
+    temp.x0 = MAX(x0, r2->x0);
+    temp.y0 = MAX(y0, r2->y0);
 
-    temp.x1 = MIN(r1->x1, r2->x1);
-    temp.y1 = MIN(r1->y1, r2->y1);
+    temp.x1 = MIN(x1, r2->x1);
+    temp.y1 = MIN(y1, r2->y1);
 
-    rc = opj_rect_is_valid(&temp);
+    rc = temp.is_valid();
 
     if (rc)
         *result = temp;
@@ -102,63 +89,47 @@ bool opj_rect_clip(opj_rect_t* r1, opj_rect_t* r2, opj_rect_t* result)
 }
 
 
-void opj_rect_ceildivpow2(opj_rect_t* r, int32_t power)
+void rect_t::ceildivpow2( int32_t power)
 {
-    if (!r)
-        return;
-
-    r->x0 = opj_int64_ceildivpow2(r->x0,power);
-    r->y0 = opj_int64_ceildivpow2(r->y0,power);
-    r->x1 = opj_int64_ceildivpow2(r->x1,power);
-    r->y1 = opj_int64_ceildivpow2(r->y1,power);
+    x0 = opj_int64_ceildivpow2(x0,power);
+    y0 = opj_int64_ceildivpow2(y0,power);
+    x1 = opj_int64_ceildivpow2(x1,power);
+    y1 = opj_int64_ceildivpow2(y1,power);
 
 }
 
 
-int64_t opj_rect_get_area(opj_rect_t* r)
+int64_t rect_t::get_area(void)
 {
-    if (!r)
-        return 0;
-    return (r->x1 - r->x0) * (r->y1 - r->y0);
+    return (x1 - x0) * (y1 - y0);
 }
 
-void opj_rect_pan(opj_rect_t* r, opj_pt_t* shift)
+void rect_t::pan(opj_pt_t* shift)
 {
-    if (!r)
-        return;
-
-    r->x0 += shift->x;
-    r->y0 += shift->y;
-    r->x1 += shift->x;
-    r->y1 += shift->y;
+    x0 += shift->x;
+    y0 += shift->y;
+    x1 += shift->x;
+    y1 += shift->y;
 }
 
-void opj_rect_subsample(opj_rect_t* r, uint32_t dx, uint32_t dy)
+void rect_t::subsample( uint32_t dx, uint32_t dy)
 {
-    if (!r)
-        return;
-
-    r->x0 = opj_int64_ceildiv(r->x0, (int64_t)dx);
-    r->y0 = opj_int64_ceildiv(r->y0, (int64_t)dy);
-    r->x1 = opj_int64_ceildiv(r->x1, (int64_t)dx);
-    r->y1 = opj_int64_ceildiv(r->y1, (int64_t)dy);
+    x0 = opj_int64_ceildiv(x0, (int64_t)dx);
+    y0 = opj_int64_ceildiv(y0, (int64_t)dy);
+    x1 = opj_int64_ceildiv(x1, (int64_t)dx);
+    y1 = opj_int64_ceildiv(y1, (int64_t)dy);
 }
 
-void opj_rect_grow(opj_rect_t* r, int64_t boundary)
+void rect_t::grow(int64_t boundary)
 {
-    if (!r)
-        return;
-
-    opj_rect_grow2(r, boundary, boundary);
+    grow2(boundary, boundary);
 }
 
-void opj_rect_grow2(opj_rect_t* r, int64_t boundaryx, int64_t boundaryy)
+void rect_t::grow2(int64_t boundaryx, int64_t boundaryy)
 {
-    if (!r)
-        return;
 
-    r->x0 -= boundaryx;
-    r->y0 -= boundaryy;
-    r->x1 += boundaryx;
-    r->y1 += boundaryy;
+    x0 -= boundaryx;
+    y0 -= boundaryy;
+    x1 += boundaryx;
+    y1 += boundaryy;
 }

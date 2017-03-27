@@ -9640,7 +9640,7 @@ bool opj_j2k_get_tile(  opj_j2k_t *p_j2k,
     uint32_t compno;
     uint32_t l_tile_x, l_tile_y;
     opj_image_comp_t* l_img_comp;
-    opj_rect_t original_image_rect, tile_rect, overlap_rect;
+    rect_t original_image_rect, tile_rect, overlap_rect;
 
     if (!p_image) {
         opj_event_msg(p_manager, EVT_ERROR, "We need an image previously created.\n");
@@ -9656,7 +9656,7 @@ bool opj_j2k_get_tile(  opj_j2k_t *p_j2k,
     l_tile_x = tile_index % p_j2k->m_cp.tw;
     l_tile_y = tile_index / p_j2k->m_cp.tw;
 
-    opj_rect_init(&original_image_rect,
+	original_image_rect= rect_t(
                   (int32_t)p_image->x0,
                   (int32_t)p_image->y0,
                   (int32_t)p_image->x1,
@@ -9681,10 +9681,10 @@ bool opj_j2k_get_tile(  opj_j2k_t *p_j2k,
     tile_rect.x1 = p_image->x1;
     tile_rect.y1 = p_image->y1;
 
-    if (opj_rect_is_non_degenerate(&original_image_rect) &&
-            opj_rect_is_non_degenerate(&tile_rect) &&
-            opj_rect_clip(&original_image_rect, &tile_rect, &overlap_rect) &&
-            opj_rect_is_non_degenerate(&overlap_rect)) {
+    if (original_image_rect.is_non_degenerate() &&
+		tile_rect.is_non_degenerate() &&
+		original_image_rect.clip(&tile_rect, &overlap_rect) &&
+		overlap_rect.is_non_degenerate()) {
         p_image->x0 = (uint32_t)overlap_rect.x0;
         p_image->y0 = (uint32_t)overlap_rect.y0;
         p_image->x1 = (uint32_t)overlap_rect.x1;

@@ -1231,7 +1231,7 @@ bool opj_t1_prepare_decode_cblks(  opj_tcd_tilecomp_t* tilec,
                 opj_tcd_precinct_t* precinct = &band->precincts[precno];
                 int32_t cblkno;
                     for (cblkno = 0; cblkno < (int32_t)(precinct->cw * precinct->ch); ++cblkno) {
-                        opj_rect_t cblk_rect;
+                        rect_t cblk_rect;
                         opj_tcd_cblk_dec_t* cblk = &precinct->cblks.dec[cblkno];
                         int32_t x, y;		/* relative code block offset */
                         /* get code block offset relative to band*/
@@ -1239,7 +1239,7 @@ bool opj_t1_prepare_decode_cblks(  opj_tcd_tilecomp_t* tilec,
                         y = cblk->y0;
 
                         /* check if block overlaps with decode region */
-                        opj_rect_init(&cblk_rect, x, y, x + (1<< tccp->cblkw), y + (1<<tccp->cblkh));
+						cblk_rect= rect_t(x, y, x + (1<< tccp->cblkw), y + (1<<tccp->cblkh));
 
 
                         if (!opj_tile_buf_hit_test(tilec->buf, &cblk_rect))

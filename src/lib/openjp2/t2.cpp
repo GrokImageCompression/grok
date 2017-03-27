@@ -472,9 +472,9 @@ bool opj_t2_decode_packets( opj_t2_t *p_t2,
 					auto num_precincts = band->numPrecincts();
                     uint32_t precno;
                     for (precno = 0; precno < num_precincts && skip_precinct; ++precno) {
-                        opj_rect_t prec_rect;
+                        rect_t prec_rect;
                         opj_tcd_precinct_t* prec = band->precincts + precno;
-                        opj_rect_init(&prec_rect,prec->x0, prec->y0, prec->x1, prec->y1);
+						prec_rect= rect_t(prec->x0, prec->y0, prec->x1, prec->y1);
                         if (opj_tile_buf_hit_test(tilec->buf,&prec_rect)) {
                             skip_precinct = false;
                             break;
