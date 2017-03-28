@@ -1187,7 +1187,7 @@ typedef struct opj_codestream_index {
 ==========================================================
 */
 
-/* Get the version of the openjpeg library*/
+/* Get the version of the Grok library*/
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
 
 /* Initialize Grok library */
@@ -1344,7 +1344,7 @@ OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_mapped_file_read_stream(con
 ==========================================================
 */
 /**
- * Set the info handler use by openjpeg.
+ * Set the info handler used by Grok.
  * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message
@@ -1353,7 +1353,7 @@ OPJ_API bool OPJ_CALLCONV opj_set_info_handler(opj_codec_t * p_codec,
         opj_msg_callback p_callback,
         void * p_user_data);
 /**
- * Set the warning handler use by openjpeg.
+ * Set the warning handler used by Grok.
  * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message
@@ -1362,7 +1362,7 @@ OPJ_API bool OPJ_CALLCONV opj_set_warning_handler(opj_codec_t * p_codec,
         opj_msg_callback p_callback,
         void * p_user_data);
 /**
- * Set the error handler use by openjpeg.
+ * Set the error handler used by Grok.
  * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message

@@ -106,7 +106,7 @@ BUILD_TESTING:BOOL=${BUILD_TESTING}
 # Build Thirdparty, useful but not required for test suite
 BUILD_THIRDPARTY:BOOL=TRUE
 
-# JPEG2000 test files are available with git clone https://github.com/uclouvain/openjpeg-data.git
+# JPEG2000 test files are available with git clone https://github.com/GrokImageCompression/grok-test-data
 GROK_DATA_ROOT:PATH=$ENV{PWD}/data
 
 # jpylyzer is available with on GitHub: https://github.com/openpreserve/jpylyzer
@@ -115,7 +115,7 @@ JPYLYZER_EXECUTABLE=$ENV{PWD}/jpylyzer/jpylyzer.${JPYLYZER_EXT}
 " )
 
 #---------------------
-#1. openjpeg specific:
+#1. Grok specific:
 set( CTEST_PROJECT_NAME	"GROK" )
 if(NOT EXISTS $ENV{OPJ_SOURCE_DIR})
 	message(FATAL_ERROR "OPJ_SOURCE_DIR not defined or does not exist:$ENV{OPJ_SOURCE_DIR}")
