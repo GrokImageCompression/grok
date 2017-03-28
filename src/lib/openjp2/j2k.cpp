@@ -1895,7 +1895,7 @@ static bool opj_j2k_write_soc(     opj_j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
-    l_start_stream = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+    l_start_stream = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     /* write SOC identifier */
     opj_write_bytes(l_start_stream,J2K_MS_SOC,2);
@@ -1971,21 +1971,8 @@ static bool opj_j2k_write_siz(     opj_j2k_t *p_j2k,
     l_size_len = 40 + 3 * l_image->numcomps;
     l_img_comp = l_image->comps;
 
-    if (l_size_len > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_size_len);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory for the SIZ marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_size_len;
-    }
-
-    l_current_ptr = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_size_len);
+    l_current_ptr = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     /* write SOC identifier */
     opj_write_bytes(l_current_ptr,J2K_MS_SIZ,2);    /* SIZ */
@@ -2038,7 +2025,7 @@ static bool opj_j2k_write_siz(     opj_j2k_t *p_j2k,
         ++l_img_comp;
     }
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_size_len,p_manager) != l_size_len) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_size_len,p_manager) != l_size_len) {
         return false;
     }
 
@@ -2302,20 +2289,8 @@ static bool opj_j2k_write_com(     opj_j2k_t *p_j2k,
     l_comment_size = (uint32_t)strlen(l_comment);
     l_total_com_size = l_comment_size + 6;
 
-    if (l_total_com_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_total_com_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write the COM marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_total_com_size;
-    }
-
-    l_current_ptr = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_total_com_size);
+	l_current_ptr = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_ptr,J2K_MS_COM , 2);  /* COM */
     l_current_ptr+=2;
@@ -2328,7 +2303,7 @@ static bool opj_j2k_write_com(     opj_j2k_t *p_j2k,
 
     memcpy( l_current_ptr,l_comment,l_comment_size);
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_total_com_size,p_manager) != l_total_com_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_total_com_size,p_manager) != l_total_com_size) {
         return false;
     }
 
@@ -2376,20 +2351,8 @@ static bool opj_j2k_write_cod(     opj_j2k_t *p_j2k,
     l_code_size = 9 + opj_j2k_get_SPCod_SPCoc_size(p_j2k,p_j2k->m_current_tile_number,0);
     l_remaining_size = l_code_size;
 
-    if (l_code_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_code_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write COD marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_code_size;
-    }
-
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_code_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_COD,2);           /* COD */
     l_current_data += 2;
@@ -2421,7 +2384,7 @@ static bool opj_j2k_write_cod(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_code_size,p_manager) != l_code_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_code_size,p_manager) != l_code_size) {
         return false;
     }
 
@@ -2543,28 +2506,10 @@ static bool opj_j2k_write_coc( opj_j2k_t *p_j2k,
 
     l_coc_size = 5 + l_comp_room + opj_j2k_get_SPCod_SPCoc_size(p_j2k,p_j2k->m_current_tile_number,p_comp_no);
 
-    if (l_coc_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data;
-        /*p_j2k->m_specific_param.m_encoder.m_header_tile_data
-                = (uint8_t*)opj_realloc(
-                        p_j2k->m_specific_param.m_encoder.m_header_tile_data,
-                        l_coc_size);*/
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_coc_size);
+    opj_j2k_write_coc_in_memory(p_j2k,p_comp_no, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),&l_remaining_size,p_manager);
 
-        new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_coc_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write COC marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_coc_size;
-    }
-
-    opj_j2k_write_coc_in_memory(p_j2k,p_comp_no,p_j2k->m_specific_param.m_encoder.m_header_tile_data,&l_remaining_size,p_manager);
-
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_coc_size,p_manager) != l_coc_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_coc_size,p_manager) != l_coc_size) {
         return false;
     }
 
@@ -2731,20 +2676,8 @@ static bool opj_j2k_write_qcd(     opj_j2k_t *p_j2k,
     l_qcd_size = 4 + opj_j2k_get_SQcd_SQcc_size(p_j2k,p_j2k->m_current_tile_number,0);
     l_remaining_size = l_qcd_size;
 
-    if (l_qcd_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_qcd_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write QCD marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_qcd_size;
-    }
-
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_qcd_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_QCD,2);           /* QCD */
     l_current_data += 2;
@@ -2764,7 +2697,7 @@ static bool opj_j2k_write_qcd(     opj_j2k_t *p_j2k,
         return false;
     }
 
-    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_qcd_size,p_manager) != l_qcd_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_qcd_size,p_manager) != l_qcd_size) {
         return false;
     }
 
@@ -2822,22 +2755,10 @@ static bool opj_j2k_write_qcc(     opj_j2k_t *p_j2k,
     l_qcc_size += p_j2k->m_private_image->numcomps <= 256 ? 0:1;
     l_remaining_size = l_qcc_size;
 
-    if (l_qcc_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_qcc_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write QCC marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_qcc_size;
-    }
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_qcc_size);
 
-    opj_j2k_write_qcc_in_memory(p_j2k,p_comp_no,p_j2k->m_specific_param.m_encoder.m_header_tile_data,&l_remaining_size,p_manager);
-
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_qcc_size,p_manager) != l_qcc_size) {
+    opj_j2k_write_qcc_in_memory(p_j2k,p_comp_no, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),&l_remaining_size,p_manager);
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_qcc_size,p_manager) != l_qcc_size) {
         return false;
     }
 
@@ -2990,22 +2911,10 @@ static bool opj_j2k_write_poc(     opj_j2k_t *p_j2k,
     }
     l_poc_size = 4 + (5 + 2 * l_poc_room) * l_nb_poc;
 
-    if (l_poc_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_poc_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write POC marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_poc_size;
-    }
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_poc_size);
+    opj_j2k_write_poc_in_memory(p_j2k, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),&l_written_size,p_manager);
 
-    opj_j2k_write_poc_in_memory(p_j2k,p_j2k->m_specific_param.m_encoder.m_header_tile_data,&l_written_size,p_manager);
-
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_poc_size,p_manager) != l_poc_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_poc_size,p_manager) != l_poc_size) {
         return false;
     }
 
@@ -3800,22 +3709,10 @@ static bool opj_j2k_write_tlm(     opj_j2k_t *p_j2k,
 
     l_tlm_size = 6 + (5*p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
 
-    if (l_tlm_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_tlm_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write TLM marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_tlm_size;
-    }
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_tlm_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
-
-    /* change the way data is written to avoid seeking if possible */
+	/* change the way data is written to avoid seeking if possible */
     /* TODO */
     p_j2k->m_specific_param.m_encoder.m_tlm_start = opj_stream_tell(p_stream);
 
@@ -3832,7 +3729,7 @@ static bool opj_j2k_write_tlm(     opj_j2k_t *p_j2k,
     ++l_current_data;
 
     /* do nothing on the 5 * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_tlm_size,p_manager) != l_tlm_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_tlm_size,p_manager) != l_tlm_size) {
         return false;
     }
 
@@ -4250,7 +4147,7 @@ static bool opj_j2k_write_rgn(opj_j2k_t *p_j2k,
 
     l_rgn_size = 6 + l_comp_room;
 
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+    l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_RGN,2);                                   /* RGN  */
     l_current_data += 2;
@@ -4267,7 +4164,7 @@ static bool opj_j2k_write_rgn(opj_j2k_t *p_j2k,
     opj_write_bytes(l_current_data, (uint32_t)l_tccp->roishift,1);                            /* SPrgn */
     ++l_current_data;
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_rgn_size,p_manager) != l_rgn_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_rgn_size,p_manager) != l_rgn_size) {
         return false;
     }
 
@@ -4284,9 +4181,9 @@ static bool opj_j2k_write_eoc(     opj_j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
-    opj_write_bytes(p_j2k->m_specific_param.m_encoder.m_header_tile_data,J2K_MS_EOC,2);                                     /* EOC */
+    opj_write_bytes(p_j2k->m_specific_param.m_encoder.tileHeader->getData(),J2K_MS_EOC,2);                                     /* EOC */
 
-    if ( opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,2,p_manager) != 2) {
+    if ( opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),2,p_manager) != 2) {
         return false;
     }
 
@@ -4480,12 +4377,14 @@ static bool opj_j2k_update_rates(  opj_j2k_t *p_j2k,
     l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
     l_tile_size += opj_j2k_get_specific_header_sizes(p_j2k);
 
-    p_j2k->m_specific_param.m_encoder.m_encoded_tile_size = l_tile_size;
-    p_j2k->m_specific_param.m_encoder.m_encoded_tile_data =
-        (uint8_t *) opj_malloc(p_j2k->m_specific_param.m_encoder.m_encoded_tile_size);
-    if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data == nullptr) {
-        return false;
-    }
+	// ToDo: use better estimate of signalling overhead for packets, 
+	// to avoid hard-coding this lower bound on tile buffer size
+
+	// allocate at least 256 bytes per component
+	if (l_tile_size < 256 * l_image->numcomps)
+		l_tile_size = 256 * l_image->numcomps;
+
+	p_j2k->m_specific_param.m_encoder.tile->alloc(l_tile_size);
 
     if (OPJ_IS_CINEMA(l_cp->rsiz)) {
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer =
@@ -4786,20 +4685,9 @@ static bool opj_j2k_write_mct_record(      opj_j2k_t *p_j2k,
 
     l_mct_size = 10 + p_mct_record->m_data_size;
 
-    if (l_mct_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_mct_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write MCT marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_mct_size;
-    }
 
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_mct_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_MCT,2);                                   /* MCT */
     l_current_data += 2;
@@ -4821,7 +4709,7 @@ static bool opj_j2k_write_mct_record(      opj_j2k_t *p_j2k,
 
     memcpy(l_current_data,p_mct_record->m_data,p_mct_record->m_data_size);
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_mct_size,p_manager) != l_mct_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_mct_size,p_manager) != l_mct_size) {
         return false;
     }
 
@@ -4968,20 +4856,9 @@ static bool opj_j2k_write_mcc_record(      opj_j2k_t *p_j2k,
     }
 
     l_mcc_size = p_mcc_record->m_nb_comps * 2 * l_nb_bytes_for_comp + 19;
-    if (l_mcc_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_mcc_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write MCC marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_mcc_size;
-    }
 
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_mcc_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_MCC,2);                                   /* MCC */
     l_current_data += 2;
@@ -5035,7 +4912,7 @@ static bool opj_j2k_write_mcc_record(      opj_j2k_t *p_j2k,
     opj_write_bytes(l_current_data,l_tmcc,3);       /* Tmcci : use MCT defined as number 1 and irreversible array based. */
     l_current_data+=3;
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_mcc_size,p_manager) != l_mcc_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_mcc_size,p_manager) != l_mcc_size) {
         return false;
     }
 
@@ -5281,21 +5158,9 @@ static bool opj_j2k_write_mco(     opj_j2k_t *p_j2k,
     l_tcp =&(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 
     l_mco_size = 5 + l_tcp->m_nb_mcc_records;
-    if (l_mco_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
 
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_mco_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write MCO marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_mco_size;
-    }
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
-
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_mco_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_MCO,2);                   /* MCO */
     l_current_data += 2;
@@ -5313,7 +5178,7 @@ static bool opj_j2k_write_mco(     opj_j2k_t *p_j2k,
         ++l_mcc_record;
     }
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_mco_size,p_manager) != l_mco_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_mco_size,p_manager) != l_mco_size) {
         return false;
     }
 
@@ -5490,20 +5355,8 @@ static bool opj_j2k_write_cbd( opj_j2k_t *p_j2k,
     l_image = p_j2k->m_private_image;
     l_cbd_size = 6 + p_j2k->m_private_image->numcomps;
 
-    if (l_cbd_size > p_j2k->m_specific_param.m_encoder.m_header_tile_data_size) {
-        uint8_t *new_header_tile_data = (uint8_t *) opj_realloc(p_j2k->m_specific_param.m_encoder.m_header_tile_data, l_cbd_size);
-        if (! new_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = NULL;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-            opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to write CBD marker\n");
-            return false;
-        }
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = new_header_tile_data;
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = l_cbd_size;
-    }
-
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_header_tile_data;
+	p_j2k->m_specific_param.m_encoder.tileHeader->alloc(l_cbd_size);
+	l_current_data = p_j2k->m_specific_param.m_encoder.tileHeader->getData();
 
     opj_write_bytes(l_current_data,J2K_MS_CBD,2);                   /* CBD */
     l_current_data += 2;
@@ -5523,7 +5376,7 @@ static bool opj_j2k_write_cbd( opj_j2k_t *p_j2k,
         ++l_comp;
     }
 
-    if (opj_stream_write_data(p_stream,p_j2k->m_specific_param.m_encoder.m_header_tile_data,l_cbd_size,p_manager) != l_cbd_size) {
+    if (opj_stream_write_data(p_stream, p_j2k->m_specific_param.m_encoder.tileHeader->getData(),l_cbd_size,p_manager) != l_cbd_size) {
         return false;
     }
 
@@ -5608,14 +5461,10 @@ opj_j2k_t* opj_j2k_create_compress(void)
 
     l_j2k->m_is_decoder = 0;
     l_j2k->m_cp.m_is_decoder = 0;
-
-    l_j2k->m_specific_param.m_encoder.m_header_tile_data = (uint8_t *) opj_malloc(OPJ_J2K_DEFAULT_HEADER_SIZE);
-    if (! l_j2k->m_specific_param.m_encoder.m_header_tile_data) {
-        opj_j2k_destroy(l_j2k);
-        return NULL;
-    }
-
-    l_j2k->m_specific_param.m_encoder.m_header_tile_data_size = OPJ_J2K_DEFAULT_HEADER_SIZE;
+	
+	l_j2k->m_specific_param.m_encoder.tile = new EncodedTileData();
+	l_j2k->m_specific_param.m_encoder.tileHeader = new EncodedTileData();
+	l_j2k->m_specific_param.m_encoder.tileHeader->alloc(OPJ_J2K_DEFAULT_HEADER_SIZE);
 
     /* validation list creation*/
     l_j2k->m_validation_list = opj_procedure_list_create();
@@ -7110,21 +6959,18 @@ void opj_j2k_destroy (opj_j2k_t *p_j2k)
         }
     } else {
 
-        if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_encoded_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_encoded_tile_data = nullptr;
-        }
+		if (p_j2k->m_specific_param.m_encoder.tile)
+			delete p_j2k->m_specific_param.m_encoder.tile;
+		p_j2k->m_specific_param.m_encoder.tile = nullptr;
+
+		if (p_j2k->m_specific_param.m_encoder.tileHeader)
+			delete p_j2k->m_specific_param.m_encoder.tileHeader;
+		p_j2k->m_specific_param.m_encoder.tileHeader = nullptr;
 
         if (p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer) {
             opj_free(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer);
             p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = nullptr;
             p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = nullptr;
-        }
-
-        if (p_j2k->m_specific_param.m_encoder.m_header_tile_data) {
-            opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data = nullptr;
-            p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
         }
     }
 
@@ -7796,7 +7642,7 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
 					return true;
 				}
 				opj_event_msg(p_manager, EVT_WARNING, "Decode tile: expected EOC or SOT but found unknown \"marker\" %x. \n", l_current_marker);
-				throw std::runtime_error("Decode tile: expected EOC or SOT but found unknown \"marker\" ");
+				throw DecodeUnknownMarkerAtEndOfTileException();
 			}
 		}
 	}
@@ -9390,7 +9236,7 @@ static bool opj_j2k_decode_tiles ( opj_j2k_t *p_j2k,
 				return false;
 			}
 		}
-		catch (std::runtime_error e) {
+		catch (DecodeUnknownMarkerAtEndOfTileException e) {
 			// only worry about exception if we have more tiles to decode
 			if (nr_tiles < num_tiles_to_decode - 1) {
 				opj_event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
@@ -9551,7 +9397,7 @@ static bool opj_j2k_decode_one_tile ( opj_j2k_t *p_j2k,
 				return false;
 			}
 		}
-		catch (std::runtime_error e) {
+		catch (DecodeUnknownMarkerAtEndOfTileException e) {
 			// suppress exception
 		}
         opj_event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
@@ -9865,12 +9711,14 @@ bool opj_j2k_encode(opj_j2k_t * p_j2k,
             }
         }
 
-        if (! opj_j2k_post_write_tile (p_j2k,p_stream,p_manager)) {
-            if (l_current_data) {
-                opj_free(l_current_data);
-            }
-            return false;
-        }
+
+		if (!opj_j2k_post_write_tile(p_j2k, p_stream, p_manager)) {
+			if (l_current_data) {
+				opj_free(l_current_data);
+			}
+			return false;
+		}
+		
     }
 
     if (l_current_data) {
@@ -10103,11 +9951,11 @@ static bool opj_j2k_post_write_tile (   opj_j2k_t * p_j2k,
     uint64_t l_available_data;
 
     /* preconditions */
-    assert(p_j2k->m_specific_param.m_encoder.m_encoded_tile_data);
+    assert(p_j2k->m_specific_param.m_encoder.tile->getData());
 
-    l_tile_size = p_j2k->m_specific_param.m_encoder.m_encoded_tile_size;
+    l_tile_size = p_j2k->m_specific_param.m_encoder.tile->getSize();
     l_available_data = l_tile_size;
-    l_current_data = p_j2k->m_specific_param.m_encoder.m_encoded_tile_data;
+    l_current_data = p_j2k->m_specific_param.m_encoder.tile->getData();
 
     l_nb_bytes_written = 0;
     if (! opj_j2k_write_first_tile_part(p_j2k,l_current_data,&l_nb_bytes_written,l_available_data,p_stream,p_manager)) {
@@ -10125,7 +9973,7 @@ static bool opj_j2k_post_write_tile (   opj_j2k_t * p_j2k,
     l_nb_bytes_written = l_tile_size - l_available_data;
 
     if ( opj_stream_write_data(     p_stream,
-                                    p_j2k->m_specific_param.m_encoder.m_encoded_tile_data,
+                                    p_j2k->m_specific_param.m_encoder.tile->getData(),
                                     l_nb_bytes_written,p_manager) != l_nb_bytes_written) {
         return false;
     }
@@ -10496,14 +10344,7 @@ static bool opj_j2k_end_encoding(  opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0;
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
     }
-
-    if (p_j2k->m_specific_param.m_encoder.m_encoded_tile_data) {
-        opj_free(p_j2k->m_specific_param.m_encoder.m_encoded_tile_data);
-        p_j2k->m_specific_param.m_encoder.m_encoded_tile_data = 0;
-    }
-
-    p_j2k->m_specific_param.m_encoder.m_encoded_tile_size = 0;
-
+	p_j2k->m_specific_param.m_encoder.tile->free();
     return true;
 }
 
@@ -10520,13 +10361,7 @@ static bool opj_j2k_destroy_header_memory ( opj_j2k_t * p_j2k,
     assert(p_stream != nullptr);
     assert(p_manager != nullptr);
 
-    if (p_j2k->m_specific_param.m_encoder.m_header_tile_data) {
-        opj_free(p_j2k->m_specific_param.m_encoder.m_header_tile_data);
-        p_j2k->m_specific_param.m_encoder.m_header_tile_data = 0;
-    }
-
-    p_j2k->m_specific_param.m_encoder.m_header_tile_data_size = 0;
-
+	p_j2k->m_specific_param.m_encoder.tileHeader->free();
     return true;
 }
 

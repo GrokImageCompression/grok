@@ -53,135 +53,38 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#pragma once
 
 
-BitIO::BitIO() : start(nullptr), 
-				offset(0),
-				length(0),
-				buf(0),
-				ct(0),
-				sim_out(false) {
 
-}
+class EncodedTileData {
 
-bool BitIO::byteout()
-{
-    ct = buf == 0xff ? 7 : 8;
-    if (offset >= length) {
-        return false;
-    }
-    if (!sim_out)
-        start[offset] = buf;
-    offset++;
-    buf = 0;
-    return true;
-}
+public:
 
-bool BitIO::bytein()
-{
-    ct = buf == 0xff ? 7 : 8;
-    if (offset >= length) {
-        return false;
-    }
-    buf = start[offset];
-	offset++;
-    return true;
-}
+	EncodedTileData() : data(nullptr),
+						size(0),
+						offset(0){}
+	~EncodedTileData();
+	void alloc(uint64_t len);
+	void grow();
+	void free();
 
-void BitIO::putbit( uint8_t b)
-{
-    if (ct == 0) {
-        byteout(); /* MSD: why not check the return value of this function ? */
-    }
-    ct--;
-    buf |= (uint8_t)(b << ct);
-}
+	uint8_t* getData() {return data;	}
+	uint64_t getSize() { return size;	}
+	uint8_t* getCurrentData() { return (offset < size) ? data + offset : nullptr; }
+	uint64_t getCurrentDataOffset() { return offset; }
+	void	advanceCurrentData(int64_t advance) { offset += advance; }
 
-uint8_t BitIO::getbit()
-{
-    if (ct == 0) {
-        bytein(); /* MSD: why not check the return value of this function ? */
-    }
-    ct--;
-    return (buf >> ct) & 1;
-}
+private:
 
+	/* encoded data for a tile */
+	uint8_t * data;
 
-uint64_t BitIO::numbytes()
-{
-    return offset;
-}
+	/* size of the encoded_data */
+	uint64_t size;
 
-void BitIO::init_enc( uint8_t *bptr, uint64_t len)
-{
-    start = bptr;
-	length = len;
-    offset = 0;
-    buf = 0;
-    ct = 8;
-    sim_out = false;
-}
+	uint64_t offset;
 
-void BitIO::init_dec( uint8_t *bptr, uint64_t len)
-{
-    start = bptr;
-	length = len;
-	offset = 0;
-    buf = 0;
-    ct = 0;
-}
+};
 
-
-OPJ_NOSANITIZE("unsigned-integer-overflow")
-void BitIO::write( uint32_t v, uint32_t n) {
-	uint32_t i;
-
-	assert((n > 0U) && (n <= 32U));
-	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		putbit((v >> i) & 1);
-	}
-}
-
-OPJ_NOSANITIZE("unsigned-integer-overflow")
-uint32_t BitIO::read( uint32_t n) {
-	uint32_t i;
-	uint32_t v;
-
-	assert((n > 0U) /* && (n <= 32U)*/);
-#ifdef OPJ_UBSAN_BUILD
-	/* This assert fails for some corrupted images which are gracefully rejected */
-	/* Add this assert only for ubsan build. */
-	/* This is the condition for overflow not to occur below which is needed because of OPJ_NOSANITIZE */
-	assert(n <= 32U);
-#endif
-	v = 0U;
-	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		v |= getbit() << i; /* can't overflow, getbit returns 0 or 1 */
-	}
-	return v;
-}
-
-bool BitIO::flush()
-{
-    if (! byteout()) {
-        return false;
-    }
-    if (ct == 7) {
-        if (! byteout()) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool BitIO::inalign()
-{
-    if ((buf & 0xff) == 0xff) {
-        if (! bytein()) {
-            return false;
-        }
-    }
-    ct = 0;
-    return true;
-}
+	

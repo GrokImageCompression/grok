@@ -95,6 +95,9 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testing.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
 )
 
 option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)

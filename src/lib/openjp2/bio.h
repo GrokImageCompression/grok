@@ -70,21 +70,21 @@ public:
 	@param bio BIO handle
 	@return Returns the number of bytes written
 	*/
-	ptrdiff_t numbytes();
+	uint64_t numbytes();
 	/**
 	Init encoder
 	@param bio BIO handle
 	@param bp Output buffer
 	@param len Output buffer length
 	*/
-	void init_enc( uint8_t *bp, size_t len);
+	void init_enc( uint8_t *bp, uint64_t len);
 	/**
 	Init decoder
 	@param bio BIO handle
 	@param bp Input buffer
 	@param len Input buffer length
 	*/
-	void init_dec( uint8_t *bp, size_t len);
+	void init_dec( uint8_t *bp, uint64_t len);
 	/**
 	Write bits
 	@param bio BIO handle
@@ -118,10 +118,10 @@ private:
 
 	/** pointer to the start of the buffer */
 	uint8_t *start;
-	/** pointer to the end of the buffer */
-	uint8_t *end;
-	/** pointer to the present position in the buffer */
-	uint8_t *bp;
+
+	uint64_t offset;
+	uint64_t length;
+
 	/** temporary place where each byte is read or written */
 	uint8_t buf;
 	/** coder : number of bits free to write. decoder : number of bits read */

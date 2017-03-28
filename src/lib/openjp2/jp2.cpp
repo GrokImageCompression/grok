@@ -3153,7 +3153,7 @@ bool opj_jp2_decode_tile (  opj_jp2_t * p_jp2,
 	try {
 		rc = opj_j2k_decode_tile(p_jp2->j2k, p_tile_index, p_data, p_data_size, p_stream, p_manager);
 	}
-	catch (std::runtime_error e) {
+	catch (DecodeUnknownMarkerAtEndOfTileException e) {
 		//suppress exception
 	}
 	return rc;
