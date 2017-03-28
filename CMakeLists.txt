@@ -1,7 +1,7 @@
 # Main CMakeLists.txt to build the Grok project using CMake (www.cmake.org)
 # Written by Mathieu Malaterre
 
-# This CMake project will by default create a library called openjpeg
+# This CMake project will by default create a library called Grok.
 # But if you want to use this project within your own (CMake) project
 # you will eventually like to prefix the library to avoid linking confusion
 # For this purpose you can define a CMake var: GROK_NAMESPACE to whatever you like
@@ -41,7 +41,7 @@ set(PACKAGE_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
 
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
-# two numbering, one for the openjpeg version and one for openjpeg soversion
+# two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
 #   1.0   |  0
 #   1.1   |  1
@@ -54,9 +54,9 @@ set(PACKAGE_VERSION
 #   2.0.1 |  6
 #   2.1   |  7
 #   2.1.1 |  7
-# above is the recommendation by the OPJ team. If you really need to override this default,
+# above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
-# cmake -DGROK_SOVERSION:STRING=42 /path/to/openjpeg
+# cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 7)
 endif(NOT GROK_SOVERSION)
@@ -181,8 +181,6 @@ endif()
 #-----------------------------------------------------------------------------
 # Compiler specific flags:
 if(CMAKE_COMPILER_IS_GNUCC)
-  # For all builds, make sure openjpeg is std99 compliant:
-  # set(CMAKE_C_FLAGS "-Wall -std=c99 ${CMAKE_C_FLAGS}") # FIXME: this setting prevented us from setting a coverage build.
   # Do not use ffast-math for all build, it would produce incorrect results, only set for release:
   set(GROK_LIBRARY_COMPILE_OPTIONS ${GROK_LIBRARY_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>")
 endif()
@@ -274,7 +272,7 @@ if(BUILD_TESTING)
     enable_testing()
     include(CTest)
 
-    # Search openjpeg data needed for the tests
+    # Search Grok data needed for the tests
     # They could be found via git on the Grok GitHub code project
     find_path(GROK_DATA_ROOT README-OPJ-Data
       PATHS $ENV{GROK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../data

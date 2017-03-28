@@ -1827,14 +1827,14 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
         if(has_alpha) {
             const char *tt = (triple?"RGB_ALPHA":"GRAYSCALE_ALPHA");
 
-            fprintf(fdest, "P7\n# OpenJPEG-%s\nWIDTH %d\nHEIGHT %d\nDEPTH %u\n"
+            fprintf(fdest, "P7\n# Grok-%s\nWIDTH %d\nHEIGHT %d\nDEPTH %u\n"
                     "MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", opj_version(),
                     wr, hr, ncomp, max, tt);
             alpha = image->comps[ncomp - 1].data;
             adjustA = (image->comps[ncomp - 1].sgnd ?
                        1 << (image->comps[ncomp - 1].prec - 1) : 0);
         } else {
-            fprintf(fdest, "P6\n# OpenJPEG-%s\n%d %d\n%d\n",
+            fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n",
                     opj_version(), wr, hr, max);
             adjustA = 0;
         }
@@ -1953,7 +1953,7 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
         prec = (int)image->comps[compno].prec;
         max = (1<<prec) - 1;
 
-        fprintf(fdest, "P5\n#OpenJPEG-%s\n%d %d\n%d\n",
+        fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n",
                 opj_version(), wr, hr, max);
 
         red = image->comps[compno].data;

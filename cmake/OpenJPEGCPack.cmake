@@ -10,7 +10,7 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
   endif()
 
   set(OPJ_PACKAGE_DESCRIPTION_SUMMARY "Grok - Grok a JPEG 2000 implementation.")
-  set(OPJ_PACKAGE_CONTACT "openjpeg users <openjpeg@googlegroups.com>")
+  set(OPJ_PACKAGE_CONTACT "boxerab@gmail.com")
 
   set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${OPJ_PACKAGE_DESCRIPTION_SUMMARY})
   set(CPACK_PACKAGE_VENDOR           "Grok Image Compression Inc.")
