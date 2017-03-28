@@ -460,7 +460,7 @@ typedef struct opj_j2k_dec {
 
 } opj_j2k_dec_t;
 
-typedef struct opj_j2k_enc {
+struct opj_j2k_enc_t {
     /** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
     uint32_t m_current_poc_tile_part_number; /* tp_num */
 
@@ -485,20 +485,9 @@ typedef struct opj_j2k_enc {
     /** used in TLMmarker*/
     uint32_t m_total_tile_parts;	 /* totnum_tp */
 
-    /* encoded data for a tile */
-    uint8_t * m_encoded_tile_data;
-
-    /* size of the encoded_data */
-    uint64_t m_encoded_tile_size;
-
-    /* encoded data for a tile */
-    uint8_t * m_header_tile_data;
-
-    /* size of the encoded_data */
-    uint64_t m_header_tile_data_size;
-
-
-} opj_j2k_enc_t;
+	EncodedTileData* tile;
+	EncodedTileData* tileHeader;
+} ;
 
 
 

@@ -209,9 +209,11 @@ static inline long opj_lrintf(float f)
 #include "function_list.h"
 #include "vector.h"
 #include "util.h"
+#include "grok_exceptions.h"
 #include "segmented_stream.h"
 #include "bio.h"
 #include "cio.h"
+#include "EncodedTileData.h"
 
 #include "image.h"
 #include "invert.h"

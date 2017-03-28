@@ -1131,7 +1131,8 @@ static bool opj_t2_encode_packet(opj_t2_t* p_t2,
             }
 
             if (cblk_layer->len > length) {
-                return false;
+				opj_event_msg(p_manager, EVT_ERROR, "Code block layer size exceeds size of tile buffer\n");
+				return false;
             }
 
             memcpy(c, cblk_layer->data, cblk_layer->len);
