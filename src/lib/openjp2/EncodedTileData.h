@@ -67,7 +67,7 @@ public:
 	~EncodedTileData();
 	void alloc(uint64_t len);
 	void grow();
-	void free();
+	void dealloc();
 
 	uint8_t* getData() {return data;	}
 	uint64_t getSize() { return size;	}

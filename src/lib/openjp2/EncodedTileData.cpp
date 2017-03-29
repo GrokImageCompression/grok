@@ -18,10 +18,10 @@
 #include "opj_includes.h"
 
 EncodedTileData::~EncodedTileData() {
-	free();
+	dealloc();
 }
 
-void EncodedTileData::free() {
+void EncodedTileData::dealloc() {
 	if (data)
 		delete[] data;
 	data = nullptr;
