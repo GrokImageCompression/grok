@@ -222,7 +222,6 @@ typedef enum CINEMA_MODE {
 #define OPJ_PROFILE_NONE        0x0000 /** no profile, conform to 15444-1 */
 #define OPJ_PROFILE_0           0x0001 /** Profile 0 as described in 15444-1,Table A.45 */
 #define OPJ_PROFILE_1           0x0002 /** Profile 1 as described in 15444-1,Table A.45 */
-#define OPJ_PROFILE_PART2       0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
 #define OPJ_PROFILE_CINEMA_2K   0x0003 /** 2K cinema profile defined in 15444-1 AMD1 */
 #define OPJ_PROFILE_CINEMA_4K   0x0004 /** 4K cinema profile defined in 15444-1 AMD1 */
 #define OPJ_PROFILE_CINEMA_S2K  0x0005 /** Scalable 2K cinema profile defined in 15444-1 AMD2 */
@@ -231,26 +230,31 @@ typedef enum CINEMA_MODE {
 #define OPJ_PROFILE_BC_SINGLE   0x0100 /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
 #define OPJ_PROFILE_BC_MULTI    0x0200 /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
 #define OPJ_PROFILE_BC_MULTI_R  0x0300 /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
+#define OPJ_PROFILE_BC_MASK		0x0F0F /** Mask for broadcast profile including main level */
 #define OPJ_PROFILE_IMF_2K      0x0400 /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
 #define OPJ_PROFILE_IMF_4K      0x0401 /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
 #define OPJ_PROFILE_IMF_8K      0x0402 /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD 8 */
 #define OPJ_PROFILE_IMF_2K_R    0x0403 /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
 #define OPJ_PROFILE_IMF_4K_R    0x0800 /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
 #define OPJ_PROFILE_IMF_8K_R    0x0801  /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD 8 */
+#define OPJ_PROFILE_MASK		0xBFFF  /** Mask for profile bits */
 
+#define OPJ_PROFILE_PART2       0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
+#define OPJ_PROFILE_PART2_EXTENSIONS_MASK       0x3FFF // Mask for Part-2 extension bits
 /**
  * JPEG 2000 Part-2 extensions
  * */
+
 #define OPJ_EXTENSION_NONE      0x0000 /** No Part-2 extension */
 #define OPJ_EXTENSION_MCT       0x0100  /** Custom MCT support */
 
 /**
  * JPEG 2000 profile macros
  * */
-#define OPJ_IS_CINEMA(v)     (((v) >= OPJ_PROFILE_CINEMA_2K)&&((v) <= OPJ_PROFILE_CINEMA_S4K))
+#define OPJ_IS_CINEMA(v)     (((v) >= OPJ_PROFILE_CINEMA_2K) && ((v) <= OPJ_PROFILE_CINEMA_S4K))
 #define OPJ_IS_STORAGE(v)    ((v) == OPJ_PROFILE_CINEMA_LTS)
-#define OPJ_IS_BROADCAST(v)  (((v) >= OPJ_PROFILE_BC_SINGLE)&&((v) <= ((OPJ_PROFILE_BC_MULTI_R) | (0x000b))))
-#define OPJ_IS_IMF(v)        (((v) >= OPJ_PROFILE_IMF_2K)&&((v) <= ((OPJ_PROFILE_IMF_8K_R) | (0x009b))))
+#define OPJ_IS_BROADCAST(v)  (((v) >= OPJ_PROFILE_BC_SINGLE) && ((v) <= ((OPJ_PROFILE_BC_MULTI_R) | (0x000b))) && (((v) & (~OPJ_PROFILE_BC_MASK)) == 0))
+#define OPJ_IS_IMF(v)        (((v) >= OPJ_PROFILE_IMF_2K) && ((v) <= ((OPJ_PROFILE_IMF_8K_R) | (0x009b))))
 #define OPJ_IS_PART2(v)      ((v) & OPJ_PROFILE_PART2)
 
 /**
