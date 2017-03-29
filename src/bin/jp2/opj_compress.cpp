@@ -1401,6 +1401,10 @@ int main(int argc, char **argv) {
 	uint32_t l_nb_tiles = 4;
 	uint32_t i, num_images, imageno;
 
+	//cache certain settings
+	auto tcp_mct = initParams.parameters.tcp_mct;
+	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
+
 	bool bUseTiles = false; /* true */
 	double t = opj_clock();
 	int success = 0;
@@ -1441,9 +1445,6 @@ int main(int argc, char **argv) {
 
 
     /*Encoding image one by one*/
-	//cache certain settings
-	auto tcp_mct = initParams.parameters.tcp_mct;
-	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
     for(imageno=0;imageno<num_images;imageno++)	{
         image = NULL;
         fprintf(stderr,"\n");
