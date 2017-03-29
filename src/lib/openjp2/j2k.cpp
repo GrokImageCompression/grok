@@ -2080,7 +2080,25 @@ static bool opj_j2k_read_siz(opj_j2k_t *p_j2k,
 
     opj_read_bytes(p_header_data,&l_tmp ,2);                                                /* Rsiz (capabilities) */
     p_header_data+=2;
-    l_cp->rsiz = (uint16_t) l_tmp;
+
+	// sanity check on RSIZ
+	uint16_t profile = 0;
+	uint16_t part2_extensions = 0;
+	// check for Part 2
+	if (l_tmp & OPJ_PROFILE_PART2) {
+		profile = OPJ_PROFILE_PART2;
+		part2_extensions = l_tmp & OPJ_PROFILE_PART2_EXTENSIONS_MASK;
+	}
+	else {
+		profile = l_tmp & OPJ_PROFILE_MASK;
+		if ((profile > OPJ_PROFILE_CINEMA_LTS) && !OPJ_IS_BROADCAST(profile) && !OPJ_IS_IMF(profile) ){
+			opj_event_msg(p_manager, EVT_ERROR, "Non-compliant Rsiz value 0x%x in SIZ marker\n", l_tmp);
+			return false;
+		}
+	}
+
+
+	l_cp->rsiz = (uint16_t)l_tmp;
     opj_read_bytes(p_header_data, (uint32_t*) &l_image->x1, 4);   /* Xsiz */
     p_header_data+=4;
     opj_read_bytes(p_header_data, (uint32_t*) &l_image->y1, 4);   /* Ysiz */
