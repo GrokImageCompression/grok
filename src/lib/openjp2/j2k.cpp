@@ -10344,7 +10344,7 @@ static bool opj_j2k_end_encoding(  opj_j2k_t *p_j2k,
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0;
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
     }
-	p_j2k->m_specific_param.m_encoder.tile->free();
+	p_j2k->m_specific_param.m_encoder.tile->dealloc();
     return true;
 }
 
@@ -10361,7 +10361,7 @@ static bool opj_j2k_destroy_header_memory ( opj_j2k_t * p_j2k,
     assert(p_stream != nullptr);
     assert(p_manager != nullptr);
 
-	p_j2k->m_specific_param.m_encoder.tileHeader->free();
+	p_j2k->m_specific_param.m_encoder.tileHeader->dealloc();
     return true;
 }
 
