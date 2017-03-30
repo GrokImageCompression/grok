@@ -55,23 +55,14 @@
 
 /**
 @file raw.h
-@brief Implementation of operations for raw encoding (RAW)
-
-The functions in RAW.C have for goal to realize the operation of raw encoding linked
-with the corresponding mode switch.
+@brief Implementation of raw encoding (RAW) for BYPASS mode
 */
 
-/** @defgroup RAW RAW - Implementation of operations for raw encoding */
-/*@{*/
-
-/**
-RAW encoding operations
-*/
 typedef struct opj_raw {
     /** temporary buffer where bits are coded or decoded */
-    uint8_t c;
+    uint8_t C;
     /** number of bits already read or free to write */
-    uint32_t ct;
+    uint32_t COUNT;
     /** maximum length to decode */
     uint32_t lenmax;
     /** length decoded */
@@ -84,8 +75,7 @@ typedef struct opj_raw {
     uint8_t *end;
 } opj_raw_t;
 
-/** @name Exported functions */
-/*@{*/
+
 /* ----------------------------------------------------------------------- */
 /**
 Create a new RAW handle
@@ -111,9 +101,6 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 */
 uint32_t opj_raw_decode(opj_raw_t *raw);
 /* ----------------------------------------------------------------------- */
-/*@}*/
-
-/*@}*/
 
 
 

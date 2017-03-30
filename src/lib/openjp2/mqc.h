@@ -89,10 +89,11 @@ MQ coder
 */
 
 typedef struct opj_mqc {
-    uint32_t c;
-    uint32_t a;
-    uint32_t ct;
+    uint32_t C;
+    uint32_t A;
+    uint32_t COUNT;
     uint8_t *bp;
+	bool currentByteIs0xFF;
     uint8_t *start;
     uint8_t *end;
     opj_mqc_state_t *ctxs[MQC_NUMCTXS];
@@ -199,7 +200,7 @@ Initialize the decoder
 @param bp Pointer to the start of the buffer from which the bytes will be read
 @param len Length of the input buffer
 */
-bool opj_mqc_init_dec(opj_mqc_t *mqc, uint8_t *bp, uint32_t len);
+void opj_mqc_init_dec(opj_mqc_t *mqc, uint8_t *bp, uint32_t len);
 /**
 Decode a symbol
 @param mqc MQC handle

@@ -689,7 +689,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 			pass->term = 1;
 		}
 		else {
-			if (mqc->ct < 5)
+			if (mqc->COUNT < 5)
 				correction++;
 			pass->term = 0;
 		}
