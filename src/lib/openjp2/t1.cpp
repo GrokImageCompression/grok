@@ -1340,11 +1340,10 @@ bool opj_t1_decode_cblk(opj_t1_t *t1,
         type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
         if (type == T1_TYPE_RAW) {
             opj_raw_init_dec(raw, block_buffer + seg->dataindex, seg->len);
-        } else {
-            if (false == opj_mqc_init_dec(mqc, block_buffer + seg->dataindex, seg->len)) {
-                return false;
-            }
-        }
+		}
+		else {
+			opj_mqc_init_dec(mqc, block_buffer + seg->dataindex, seg->len);
+		}
 
         for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
             switch (passtype) {
@@ -1577,7 +1576,7 @@ double opj_t1_encode_cblk(opj_t1_t *t1,
 				opj_mqc_flush(mqc);
             pass->term = 1;
         } else {
-			if (mqc->ct < 5)
+			if (mqc->COUNT < 5)
 				correction++;
            pass->term = 0;
         }

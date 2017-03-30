@@ -84,27 +84,27 @@ void opj_raw_init_dec(opj_raw_t *raw, uint8_t *bp, uint32_t len)
     raw->start = bp;
     raw->lenmax = len;
     raw->len = 0;
-    raw->c = 0;
-    raw->ct = 0;
+    raw->C = 0;
+    raw->COUNT = 0;
 }
 
 uint32_t opj_raw_decode(opj_raw_t *raw)
 {
     uint32_t d;
-    if (raw->ct == 0) {
-        raw->ct = 8;
+    if (raw->COUNT == 0) {
+        raw->COUNT = 8;
         if (raw->len == raw->lenmax) {
-            raw->c = 0xff;
+            raw->C = 0xff;
         } else {
-            if (raw->c == 0xff) {
-                raw->ct = 7;
+            if (raw->C == 0xff) {
+                raw->COUNT = 7;
             }
-            raw->c = *(raw->start + raw->len);
+            raw->C = *(raw->start + raw->len);
             raw->len++;
         }
     }
-    raw->ct--;
-    d = ((uint32_t)raw->c >> raw->ct) & 0x01;
+    raw->COUNT--;
+    d = ((uint32_t)raw->C >> raw->COUNT) & 0x01;
 
     return d;
 }
