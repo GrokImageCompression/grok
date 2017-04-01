@@ -233,10 +233,12 @@ static void encode_help_display(void)
     fprintf(stdout,"[-p|-ProgressionOrder] <LRCP|RLCP|RPCL|PCRL|CPRL>\n");
     fprintf(stdout,"    Progression order.\n");
     fprintf(stdout,"    Default: LRCP.\n");
+/*
     fprintf(stdout,"[-s|-Subsampling]  <subX,subY>\n");
     fprintf(stdout,"    Subsampling factor.\n");
     fprintf(stdout,"    Subsampling bigger than 2 can produce error\n");
     fprintf(stdout,"    Default: no subsampling.\n");
+*/
     fprintf(stdout,"[-P|-POC] <progression order change>/<progression order change>/...\n");
     fprintf(stdout,"    Progression order change.\n");
     fprintf(stdout,"    The syntax of a progression order change is the following:\n");
@@ -590,9 +592,10 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Progression order",
 			false, "", "string", cmd);
 
+		// this flag is currently disabled 
 		ValueArg<string> subsamplingFactorArg("s", "SubsamplingFactor",
 			"Subsampling factor",
-			false, "", "string", cmd);
+			false, "", "string"/*, cmd*/);
 
 		ValueArg<string> imageOffsetArg("d", "ImageOffset",
 			"Image offset in reference grid coordinates",
