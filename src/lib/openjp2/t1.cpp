@@ -337,7 +337,7 @@ static void opj_t1_enc_sigpass_step(   opj_t1_t *t1,
     opj_mqc_t *mqc = t1->mqc;	
 
     flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
-    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG | T1_VISIT))) {
+    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
         v = (abs(*datap) & one) ? 1 : 0;
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc(flag, orient));	
         if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
@@ -373,7 +373,7 @@ static inline void opj_t1_dec_sigpass_step_raw( opj_t1_t *t1,
     OPJ_ARG_NOT_USED(orient);
 
     flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG | T1_VISIT))) {
+    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
         if (opj_raw_decode(raw)) {
             v = (int32_t)opj_raw_decode(raw);    
             *datap = v ? -oneplushalf : oneplushalf;
@@ -395,7 +395,7 @@ static inline void opj_t1_dec_sigpass_step_mqc( opj_t1_t *t1,
     opj_mqc_t *mqc = t1->mqc;       
 
     flag = *flagsp;
-    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG | T1_VISIT))) {
+    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
         if (opj_mqc_decode(mqc)) {
             opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc((uint32_t)flag));
@@ -420,7 +420,7 @@ static inline void opj_t1_dec_sigpass_step_mqc_vsc( opj_t1_t *t1,
     opj_mqc_t *mqc = t1->mqc;     
 
     flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG | T1_VISIT))) {
+    if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
         opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
         if (opj_mqc_decode(mqc)) {
             opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc((uint32_t)flag));
