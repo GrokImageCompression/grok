@@ -742,6 +742,9 @@ void color_cielab_to_rgb(opj_image_t *image)
         return;
     }
 
+	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
+		return;
+
     row = (int*)image->icc_profile_buf;
     enumcs = row[0];
 
