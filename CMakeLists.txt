@@ -188,6 +188,15 @@ endif()
 #-----------------------------------------------------------------------------
 # opj_config.h generation (1/2)
 
+# Option Choose whether to use static runtime
+include(ucm)
+option(USE_STATIC_RUNTIME "Use static runtime" ON)
+if(USE_STATIC_RUNTIME)
+    ucm_set_runtime(STATIC)
+else()
+    ucm_set_runtime(DYNAMIC)
+endif()
+
 # Check if some include files are provided by the system
 include(EnsureFileInclude)
 # These files are mandatory
