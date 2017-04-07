@@ -1,8 +1,8 @@
 
 /* pngrutil.c - utilities to read a PNG file
  *
- * Last changed in libpng 1.6.27 [December 29, 2016]
- * Copyright (c) 1998-2002,2004,2006-2016 Glenn Randers-Pehrson
+ * Last changed in libpng 1.6.30 [(PENDING RELEASE)]
+ * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
  *
@@ -418,7 +418,7 @@ png_inflate_claim(png_structrp png_ptr, png_uint_32 owner)
             png_ptr->flags |= PNG_FLAG_ZSTREAM_INITIALIZED;
       }
 
-#if ZLIB_VERNUM >= 0x1281 && \
+#if ZLIB_VERNUM >= 0x1290 && \
    defined(PNG_SET_OPTION_SUPPORTED) && defined(PNG_IGNORE_ADLER32)
       if (((png_ptr->options >> PNG_IGNORE_ADLER32) & 3) == PNG_OPTION_ON)
          /* Turn off validation of the ADLER32 checksum in IDAT chunks */
@@ -3377,7 +3377,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
                 */
                do
                {
-                  dp[0] = sp[0], dp[1] = sp[1];
+                  dp[0] = sp[0]; dp[1] = sp[1];
 
                   if (row_width <= bytes_to_jump)
                      return;
@@ -3398,7 +3398,7 @@ png_combine_row(png_const_structrp png_ptr, png_bytep dp, int display)
                 */
                for (;;)
                {
-                  dp[0] = sp[0], dp[1] = sp[1], dp[2] = sp[2];
+                  dp[0] = sp[0]; dp[1] = sp[1]; dp[2] = sp[2];
 
                   if (row_width <= bytes_to_jump)
                      return;
@@ -3887,7 +3887,10 @@ png_read_filter_row_paeth_1byte_pixel(png_row_infop row_info, png_bytep row,
       /* Find the best predictor, the least of pa, pb, pc favoring the earlier
        * ones in the case of a tie.
        */
-      if (pb < pa) pa = pb, a = b;
+      if (pb < pa)
+      {
+         pa = pb; a = b;
+      }
       if (pc < pa) a = c;
 
       /* Calculate the current pixel in a, and move the previous row pixel to c
@@ -3939,7 +3942,10 @@ png_read_filter_row_paeth_multibyte_pixel(png_row_infop row_info, png_bytep row,
       pc = (p + pc) < 0 ? -(p + pc) : p + pc;
 #endif
 
-      if (pb < pa) pa = pb, a = b;
+      if (pb < pa)
+      {
+         pa = pb; a = b;
+      }
       if (pc < pa) a = c;
 
       a += *row;
