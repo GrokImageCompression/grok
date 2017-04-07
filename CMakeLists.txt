@@ -190,7 +190,7 @@ endif()
 
 # Option Choose whether to use static runtime
 include(ucm)
-option(USE_STATIC_RUNTIME "Use static runtime" ON)
+option(USE_STATIC_RUNTIME "Use static runtime" OFF)
 if(USE_STATIC_RUNTIME)
     ucm_set_runtime(STATIC)
 else()
