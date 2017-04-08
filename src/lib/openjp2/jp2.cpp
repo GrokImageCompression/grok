@@ -1238,13 +1238,15 @@ static bool opj_jp2_check_color(opj_image_t *image, opj_jp2_color_t *color, opj_
     if (color->jp2_pclr && color->jp2_pclr->cmap) {
         uint16_t nr_channels = color->jp2_pclr->nr_channels;
         opj_jp2_cmap_comp_t *cmap = color->jp2_pclr->cmap;
-        bool *pcol_usage, is_sane = true;
+		bool *pcol_usage = nullptr;
+		bool is_sane = true;
 
         /* verify that all original components match an existing one */
         for (i = 0; i < nr_channels; i++) {
             if (cmap[i].cmp >= image->numcomps) {
                 opj_event_msg(p_manager, EVT_ERROR, "Invalid component index %d (>= %d).\n", cmap[i].cmp, image->numcomps);
                 is_sane = false;
+				goto cleanup;
             }
         }
 
@@ -1256,18 +1258,25 @@ static bool opj_jp2_check_color(opj_image_t *image, opj_jp2_color_t *color, opj_
         /* verify that no component is targeted more than once */
         for (i = 0; i < nr_channels; i++) {
             uint16_t pcol = cmap[i].pcol;
-            assert(cmap[i].mtyp == 0 || cmap[i].mtyp == 1);
+			if (cmap[i].mtyp != 0 && cmap[i].mtyp != 1) {
+				opj_event_msg(p_manager, EVT_ERROR, "Unexpected MTYP value.\n");
+				is_sane = false;
+				goto cleanup;
+			}
             if (pcol >= nr_channels) {
                 opj_event_msg(p_manager, EVT_ERROR, "Invalid component/palette index for direct mapping %d.\n", pcol);
                 is_sane = false;
+				goto cleanup;
             } else if (pcol_usage[pcol] && cmap[i].mtyp == 1) {
                 opj_event_msg(p_manager, EVT_ERROR, "Component %d is mapped twice.\n", pcol);
                 is_sane = false;
+				goto cleanup;
             } else if (cmap[i].mtyp == 0 && cmap[i].pcol != 0) {
                 /* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
                  * the value of this field shall be 0. */
                 opj_event_msg(p_manager, EVT_ERROR, "Direct use at #%d however pcol=%d.\n", i, pcol);
                 is_sane = false;
+				goto cleanup;
             } else
                 pcol_usage[pcol] = true;
         }
@@ -1276,6 +1285,7 @@ static bool opj_jp2_check_color(opj_image_t *image, opj_jp2_color_t *color, opj_
             if (!pcol_usage[i] && cmap[i].mtyp != 0) {
                 opj_event_msg(p_manager, EVT_ERROR, "Component %d doesn't have a mapping.\n", i);
                 is_sane = false;
+				goto cleanup;
             }
         }
         /* Issue 235/447 weird cmap */
@@ -1295,7 +1305,9 @@ static bool opj_jp2_check_color(opj_image_t *image, opj_jp2_color_t *color, opj_
                 }
             }
         }
-        opj_free(pcol_usage);
+	cleanup:
+		if (pcol_usage)
+			opj_free(pcol_usage);
         if (!is_sane) {
             return false;
         }
