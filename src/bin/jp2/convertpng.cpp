@@ -101,7 +101,6 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 {
     png_structp  png = NULL;
     png_infop    info = NULL;
-    double fileGamma;
     int bit_depth, interlace_type,compression_type, filter_type;
     uint32_t i;
     png_uint_32  width, height = 0U;
@@ -199,12 +198,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
 		}
 	}
-	else {
-		if (!png_get_gAMA(png, info, &fileGamma))
-			fileGamma = 1.0;
-		png_set_gamma(png, 1.0, fileGamma);
 
-	}
     png_read_update_info(png, info);
     color_type = png_get_color_type(png, info);
 
