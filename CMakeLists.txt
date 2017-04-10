@@ -104,7 +104,7 @@ endif()
 option(BUILD_DOC "Build the HTML documentation (with doxygen if available)." OFF)
 
 string(TOLOWER ${PROJECT_NAME} projectname)
-set(GROK_INSTALL_SUBDIR "${projectname}-${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}")
+set(GROK_INSTALL_SUBDIR "openjpeg-${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}")
 
 if(NOT GROK_INSTALL_BIN_DIR)
   set(GROK_INSTALL_BIN_DIR "bin")
