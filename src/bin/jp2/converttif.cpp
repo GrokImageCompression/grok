@@ -76,6 +76,24 @@ extern "C" {
 #include <cassert>
 #include <memory>
 
+
+void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+}
+
+void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
+	vfprintf(stdout, fmt, ap);
+	fprintf(stdout, "\n");
+}
+
+void tiffSetErrorAndWarningHandlers() {
+	TIFFSetErrorHandler(MyTiffErrorHandler);
+	TIFFSetWarningHandler(MyTiffWarningHandler);
+}
+
+
+
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -1364,7 +1382,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
     int32_t* planes[4];
 	tsize_t rowStride;
 	bool success = true;
-
     tif = TIFFOpen(filename, "r");
 
     if(!tif) {

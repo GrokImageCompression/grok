@@ -1201,6 +1201,10 @@ int main(int argc, char **argv)
 	printf(out.c_str());
 #endif
 
+#ifdef OPJ_HAVE_LIBTIFF
+	tiffSetErrorAndWarningHandlers();
+#endif
+
 	DecompressInitParams initParams;
 	// try to encode with plugin
 	int rc = plugin_main(argc, argv, &initParams);
