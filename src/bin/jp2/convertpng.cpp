@@ -198,6 +198,12 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
 		}
 	}
+	else {
+		double fileGamma=0.0;
+		if (png_get_gAMA(png, info, &fileGamma)) {
+			fprintf(stdout, "Warning: input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
+		}
+	}
 
     png_read_update_info(png, info);
     color_type = png_get_color_type(png, info);
