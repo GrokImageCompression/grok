@@ -190,11 +190,10 @@ endif()
 
 # Option Choose whether to use static runtime
 include(ucm)
-option(USE_STATIC_RUNTIME "Use static runtime" OFF)
-if(USE_STATIC_RUNTIME)
-    ucm_set_runtime(STATIC)
-else()
+if(BUILD_SHARED_LIBS)
     ucm_set_runtime(DYNAMIC)
+else()
+    ucm_set_runtime(STATIC)
 endif()
 
 # Check if some include files are provided by the system
