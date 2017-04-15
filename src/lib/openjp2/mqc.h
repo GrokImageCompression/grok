@@ -73,13 +73,13 @@ This struct defines the state of a context.
 */
 typedef struct opj_mqc_state {
     /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
-    uint32_t qeval;
+    uint16_t qeval;
     /** the Most Probable Symbol (0 or 1) */
-    uint32_t mps;
+    uint8_t mps;
     /** next state if the next encoded symbol is the MPS */
-    struct opj_mqc_state *nmps;
+    opj_mqc_state *nmps;
     /** next state if the next encoded symbol is the LPS */
-    struct opj_mqc_state *nlps;
+    opj_mqc_state *nlps;
 } opj_mqc_state_t;
 
 #define MQC_NUMCTXS 19
