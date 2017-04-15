@@ -349,25 +349,25 @@ static void opj_mqc_bytein(opj_mqc_t *const mqc)
         if (mqc->currentByteIs0xFF) {
             if (nextByte > 0x8F) {
 				// found termination marker - synthesize 1's in C register and do not increment bp
-                mqc->C += 0xFF00;
+                mqc->C += 0xFF;
                 mqc->COUNT = 8;
             } 
 			else {
 				// bit stuff next byte and add to C register
                 mqc->bp++;
-                mqc->C += nextByte << 9;
+                mqc->C += nextByte << 1;
                 mqc->COUNT = 7;
             }
         } else {
 			// add next byte to C register
             mqc->bp++;
-            mqc->C += nextByte << 8;
+            mqc->C += nextByte;
             mqc->COUNT = 8;
         }
 		mqc->currentByteIs0xFF = nextByte == 0xFF;
     } else {
 		// end of code stream has been reached - synthesize 1's in C register and do not increment bp
-        mqc->C += 0xFF00;
+        mqc->C += 0xFF;
         mqc->COUNT = 8;
     }
 }
@@ -574,7 +574,7 @@ void opj_mqc_init_dec(opj_mqc_t *mqc, uint8_t *bp, uint32_t len)
     mqc->bp = bp;
 	uint8_t currentByte = (len > 0) ? *mqc->bp : 0xFF;
 	mqc->currentByteIs0xFF = currentByte == 0xFF;
-	mqc->C = (uint32_t)(currentByte << 16);
+	mqc->C = (uint32_t)(currentByte << 8);
     opj_mqc_bytein(mqc);
     mqc->C <<= 7;
     mqc->COUNT -= 7;
@@ -585,11 +585,11 @@ uint8_t opj_mqc_decode(opj_mqc_t *const mqc)
 {
 	uint8_t d;
     mqc->A -= (*mqc->curctx)->qeval;
-    if ((mqc->C >> 16) < (*mqc->curctx)->qeval) {
+    if ((mqc->C >> 8) < (*mqc->curctx)->qeval) {
         d = opj_mqc_lpsexchange(mqc);
         opj_mqc_renormd(mqc);
     } else {
-        mqc->C -= (*mqc->curctx)->qeval << 16;
+        mqc->C -= (*mqc->curctx)->qeval << 8;
         if ((mqc->A & 0x8000) == 0) {
             d = opj_mqc_mpsexchange(mqc);
             opj_mqc_renormd(mqc);
