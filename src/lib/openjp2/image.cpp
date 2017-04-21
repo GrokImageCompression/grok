@@ -104,14 +104,17 @@ void OPJ_CALLCONV opj_image_destroy(opj_image_t *image)
 
         if(image->icc_profile_buf) {
             opj_free(image->icc_profile_buf);
+			image->icc_profile_buf = nullptr;
         }
 
 		if (image->iptc_buf) {
 			opj_free(image->iptc_buf);
+			image->iptc_buf = nullptr;
 		}
 
 		if (image->xmp_buf) {
 			opj_free(image->xmp_buf);
+			image->xmp_buf = nullptr;
 		}
 
         opj_free(image);

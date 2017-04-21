@@ -92,6 +92,9 @@
 
 #define JP2_MAX_NUM_UUIDS	128
 
+const uint8_t IPTC_UUID[16] = { 0x33,0xC7,0xA4,0xD2,0xB8,0x1D,0x47,0x23,0xA0,0xBA,0xF1,0xA3,0xE0,0x97,0xAD,0x38 };
+const uint8_t XMP_UUID[16] = { 0xBE,0x7A,0xCF,0xCB,0x97,0xA9,0x42,0xE8,0x9C,0x71,0x99,0x94,0x91,0xE3,0xAF,0xAC };
+
 enum JP2_STATE {
     JP2_STATE_NONE            = 0x0,
     JP2_STATE_SIGNATURE       = 0x1,
@@ -138,7 +141,7 @@ struct opj_jp2_buffer_t {
 
 
 struct opj_jp2_uuid_t : public opj_jp2_buffer_t {
-	opj_jp2_uuid_t(uint8_t myuuid[16], uint8_t* buf, size_t size) :opj_jp2_buffer_t(buf,size) {
+	opj_jp2_uuid_t(const uint8_t myuuid[16], uint8_t* buf, size_t size) :opj_jp2_buffer_t(buf,size) {
 		for (int i = 0; i < 16; ++i) {
 			uuid[i] = myuuid[i];
 		}

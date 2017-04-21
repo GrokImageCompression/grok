@@ -769,6 +769,33 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 		TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
 	}
 
+	if (image->xmp_buf && image->xmp_len) {
+		TIFFSetField(tif, TIFFTAG_XMLPACKET, image->xmp_len, image->xmp_buf);
+	}
+
+	if (image->iptc_buf && image->iptc_len) {
+		auto iptc_buf = image->iptc_buf;
+		auto iptc_len = image->iptc_len;
+
+		// length must be multiple of 4
+		uint8_t* buf = nullptr;
+		iptc_len += (4 - (iptc_len & 0x03));
+		if (iptc_len != image->iptc_len) {
+			buf = (uint8_t*)calloc(iptc_len, 1);
+			if (!buf)
+				return false;
+			memcpy(buf, image->iptc_buf, image->iptc_len);
+			iptc_buf = buf;
+		} 
+
+		// Tag is of type TIFF_LONG, so byte length is divided by four 
+		if (TIFFIsByteSwapped(tif))
+			TIFFSwabArrayOfLong((uint32_t *)iptc_buf, iptc_len / 4);
+		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)iptc_len / 4, (void *)iptc_buf);
+
+		if (buf)
+			free(buf);
+	}
 
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
