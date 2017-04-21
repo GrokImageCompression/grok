@@ -96,12 +96,12 @@ static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
 
 
 /**
-* Reads an XML box
+* Read the XML box
 *
-* @param	jp2					the jpeg2000 file codec.
+* @param	jp2					jpeg2000 file codec.
 * @param	p_xml_data			pointer to actual data (already read from file)
-* @param	p_xml_size			the size of the image header
-* @param	p_manager			the user event manager.
+* @param	p_xml_size			size of the xml data
+* @param	p_manager			user event manager.
 *
 * @return	true if the image header is valid, false else.
 */
@@ -114,12 +114,55 @@ static bool opj_jp2_read_xml(opj_jp2_t *jp2,
 * Writes the XML box
 *
 * @param jp2					jpeg2000 file codec.
-* @param p_nb_bytes_written	pointer to store the nb of bytes written by the function.
+* @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
 *
 * @return	the data being copied.
 */
 static uint8_t * opj_jp2_write_xml(opj_jp2_t *jp2,
 									uint32_t * p_nb_bytes_written);
+
+
+/**
+* Writes buffer box
+*
+* @param boxId					box id.
+* @param buffer					buffer with data
+* @param jp2					jpeg2000 file codec.
+* @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
+*
+* @return	the data being copied.
+*/
+static uint8_t * opj_jp2_write_buffer(uint32_t boxId, 
+									opj_jp2_buffer_t* buffer,
+									 uint32_t * p_nb_bytes_written);
+
+/**
+* Read a UUID box
+*
+* @param	jp2					jpeg2000 file codec.
+* @param	p_header_data		pointer to actual data (already read from file)
+* @param	p_header_data_size	size of data
+* @param	p_manager			user event manager.
+*
+* @return	true if the image header is valid, false else.
+*/
+static bool opj_jp2_read_uuid(opj_jp2_t *jp2,
+	uint8_t *p_header_data,
+	uint32_t p_header_data_size,
+	opj_event_mgr_t * p_manager);
+
+/**
+* Writes a UUID box
+*
+* @param jp2					jpeg2000 file codec.
+* @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
+*
+* @return	the data being copied.
+*/
+static uint8_t * opj_jp2_write_uuids(opj_jp2_t *jp2,
+	uint32_t * p_nb_bytes_written);
+
+
 
 /**
 * Reads a Resolution box
@@ -721,6 +764,36 @@ static uint8_t * opj_jp2_write_ihdr(opj_jp2_t *jp2,
 }
 
 
+static uint8_t * opj_jp2_write_buffer(uint32_t boxId,
+									opj_jp2_buffer_t* buffer,
+									uint32_t * p_nb_bytes_written){
+
+	/* preconditions */
+	assert(p_nb_bytes_written != nullptr);
+
+	/* room for 8 bytes for box and jp2->xmlSize bytes */
+	uint32_t total_size = 8 + (uint32_t)buffer->len;
+	auto l_data = (uint8_t *)opj_calloc(1, total_size);
+	if (l_data == nullptr) {
+		return nullptr;
+	}
+
+	uint8_t * l_current_ptr = l_data;
+
+	opj_write_bytes(l_current_ptr, total_size, 4);			/* write box size */
+	l_current_ptr += 4;
+
+	opj_write_bytes(l_current_ptr, boxId, 4);					/* JP2_XML */
+	l_current_ptr += 4;
+
+	memcpy(l_current_ptr, buffer->buffer, buffer->len);				/* xml data */
+
+	*p_nb_bytes_written = total_size;
+	return l_data;
+
+}
+
+
 static bool opj_jp2_read_xml(opj_jp2_t *jp2,
 							uint8_t *p_xml_data,
 							uint32_t p_xml_size,
@@ -729,45 +802,92 @@ static bool opj_jp2_read_xml(opj_jp2_t *jp2,
 	if (!p_xml_data || !p_xml_size) {
 		return false;
 	}
-	jp2->xmlSize = p_xml_size;
-	if (jp2->xml)
-		opj_free(jp2->xml);
-	jp2->xml = (uint8_t*)opj_malloc(p_xml_size);
-	if (!jp2->xml)
+	jp2->xml.len = p_xml_size;
+	if (jp2->xml.buffer)
+		opj_free(jp2->xml.buffer);
+	jp2->xml.buffer = (uint8_t*)opj_malloc(p_xml_size);
+	if (!jp2->xml.buffer) {
+		jp2->xml.len = 0;
 		return false;
-	memcpy(jp2->xml, p_xml_data, p_xml_size);
+	}
+	memcpy(jp2->xml.buffer, p_xml_data, p_xml_size);
 	return true;
 }
 
 static uint8_t * opj_jp2_write_xml(opj_jp2_t *jp2,
-	uint32_t * p_nb_bytes_written) {
+									uint32_t * p_nb_bytes_written) {
 
-	/* room for 8 bytes for box and jp2->xmlSize bytes */
-	uint32_t total_xml_size = 8 + (uint32_t)jp2->xmlSize;
-	uint8_t * l_xml_data=nullptr, *l_current_xml_ptr=nullptr;
+	/* preconditions */
+	assert(jp2 != nullptr);
+	return opj_jp2_write_buffer(JP2_XML, &jp2->xml, p_nb_bytes_written);
+}
+
+
+static bool opj_jp2_read_uuid(opj_jp2_t *jp2,
+								uint8_t *p_header_data,
+								uint32_t p_header_size,
+								opj_event_mgr_t * p_manager) {
+
+	if (!p_header_data || !p_header_size || p_header_size < 16) {
+		return false;
+	}
+
+	if (jp2->numUuids == JP2_MAX_NUM_UUIDS) {
+		opj_event_msg(p_manager, EVT_WARNING, "Reached maximum (%d) number of UUID boxes read - ignoring UUID box\n", JP2_MAX_NUM_UUIDS);
+		return false;
+	}
+	auto uuid = jp2->uuids + jp2->numUuids;
+	memcpy(uuid->uuid, p_header_data, 16);
+	p_header_data += 16;
+	if (uuid->alloc(p_header_size - 16)) {
+		memcpy(uuid->buffer, p_header_data, uuid->len);
+		jp2->numUuids++;
+		return true;
+	}
+	return false;
+
+}
+
+static uint8_t * opj_jp2_write_uuids(opj_jp2_t *jp2,
+									uint32_t * p_nb_bytes_written) {
 
 	/* preconditions */
 	assert(jp2 != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
-	l_xml_data = (uint8_t *)opj_calloc(1, total_xml_size);
-	if (l_xml_data == nullptr) {
+	// calculate total size needed for all uuids
+	size_t total_uuid_size = 0;
+	for (size_t i = 0; i < jp2->numUuids; ++i) {
+		auto uuid = jp2->uuids + i;
+		if (uuid->buffer && uuid->len) {
+			total_uuid_size += 8 + 16 + uuid->len;
+		}
+	}
+	auto l_uuid_data = (uint8_t *)opj_calloc(1, total_uuid_size);
+	if (l_uuid_data == nullptr) {
 		return nullptr;
 	}
+	uint8_t *l_current_uuid_ptr = l_uuid_data;
 
-	l_current_xml_ptr = l_xml_data;
+	// write the uuids
+	for (size_t i = 0; i < jp2->numUuids; ++i) {
+		auto uuid = jp2->uuids + i;
+		if (uuid->buffer && uuid->len) {
+			opj_write_bytes(l_current_uuid_ptr, (uint32_t)(8 + 16 + uuid->len), 4);	/* write box size */
+			l_current_uuid_ptr += 4;
 
-	opj_write_bytes(l_current_xml_ptr, total_xml_size, 4);			/* write box size */
-	l_current_xml_ptr += 4;
+			opj_write_bytes(l_current_uuid_ptr, JP2_UUID, 4);					/* JP2_UUID */
+			l_current_uuid_ptr += 4;
 
-	opj_write_bytes(l_current_xml_ptr, JP2_XML, 4);					/* JP2_XML */
-	l_current_xml_ptr += 4;
+			memcpy(l_current_uuid_ptr, uuid->uuid, 16);							/* uuid  */
+			l_current_uuid_ptr += 16;
 
-	memcpy(l_current_xml_ptr, jp2->xml, jp2->xmlSize);				/* xml data */
-
-	*p_nb_bytes_written = total_xml_size;
-	return l_xml_data;
-
+			memcpy(l_current_uuid_ptr, uuid->buffer, (uint32_t)uuid->len);	/* uuid data */
+			l_current_uuid_ptr += uuid->len;
+		}
+	}
+	*p_nb_bytes_written = (uint32_t)total_uuid_size;
+	return l_uuid_data;
 }
 
 
@@ -1958,8 +2078,11 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
 		if (storeCapture || storeDisplay)
 			l_writers[l_nb_pass++].handler = opj_jp2_write_res;
 	}
-	if (jp2->xml && jp2->xmlSize) {
+	if (jp2->xml.buffer && jp2->xml.len) {
 		l_writers[l_nb_pass++].handler = opj_jp2_write_xml;
+	}
+	if (jp2->numUuids) {
+		l_writers[l_nb_pass++].handler = opj_jp2_write_uuids;
 	}
 
 
@@ -2259,6 +2382,17 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             jp2->enumcs = 18;	/* YUV */
     }
 
+	if (image->iptc_len && image->iptc_buf ) {
+		uint8_t iptcUuid[16] = {0x33,0xC7,0xA4,0xD2,0xB8,0x1D,0x47,0x23,0xA0,0xBA,0xF1,0xA3,0xE0,0x97,0xAD,0x38};
+		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(iptcUuid, image->iptc_buf, image->iptc_len);
+	}
+
+	if (image->xmp_len && image->xmp_buf) {
+		uint8_t xmpUuid[16] = {0xBE,0x7A,0xCF,0xCB,0x97,0xA9,0x42,0xE8,0x9C,0x71,0x99,0x94,0x91,0xE3,0xAF,0xAC};
+		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(xmpUuid, image->xmp_buf, image->xmp_len);
+	}
+
+	
     /* Component Definition box */
     /* FIXME not provided by parameters */
     /* We try to do what we can... */
@@ -3215,10 +3349,12 @@ void opj_jp2_destroy(opj_jp2_t *jp2)
             jp2->m_procedure_list = nullptr;
         }
 
-		if (jp2->xml) {
-			opj_free(jp2->xml);
-			jp2->xml = nullptr;
+		jp2->xml.dealloc();
+
+		for (uint32_t i = 0; i < jp2->numUuids; ++i) {
+			(jp2->uuids + i)->dealloc();
 		}
+		jp2->numUuids = 0;
 
         opj_free(jp2);
     }

@@ -90,7 +90,9 @@
 
 /* ----------------------------------------------------------------------- */
 
-typedef enum {
+#define JP2_MAX_NUM_UUIDS	128
+
+enum JP2_STATE {
     JP2_STATE_NONE            = 0x0,
     JP2_STATE_SIGNATURE       = 0x1,
     JP2_STATE_FILE_TYPE       = 0x2,
@@ -98,35 +100,64 @@ typedef enum {
     JP2_STATE_CODESTREAM      = 0x8,
     JP2_STATE_END_CODESTREAM  = 0x10,
     JP2_STATE_UNKNOWN         = 0x7fffffff /* ISO C restricts enumerator values to range of 'int' */
-}
-JP2_STATE;
+};
 
-typedef enum {
+enum JP2_IMG_STATE {
     JP2_IMG_STATE_NONE        = 0x0,
     JP2_IMG_STATE_UNKNOWN     = 0x7fffffff
-}
-JP2_IMG_STATE;
+};
 
 
 /**
 JP2 component
 */
-typedef struct opj_jp2_comps {
+struct opj_jp2_comps_t {
     uint32_t depth;
     uint32_t sgnd;
     uint32_t bpcc;
-} opj_jp2_comps_t;
+} ;
+
+
+struct opj_jp2_buffer_t {
+	opj_jp2_buffer_t(uint8_t* buf, size_t size) : buffer(buf), len(size) 
+	{
+	}
+	bool alloc(size_t len) {
+		dealloc();
+		buffer = (uint8_t*)opj_malloc(len);
+		return buffer ? true : false;
+	}
+	void dealloc() {
+		if (buffer)
+			opj_free(buffer);
+		buffer = nullptr;
+	}
+	uint8_t* buffer;
+	size_t len;
+};
+
+
+struct opj_jp2_uuid_t : public opj_jp2_buffer_t {
+	opj_jp2_uuid_t(uint8_t myuuid[16], uint8_t* buf, size_t size) :opj_jp2_buffer_t(buf,size) {
+		for (int i = 0; i < 16; ++i) {
+			uuid[i] = myuuid[i];
+		}
+	}
+	uint8_t uuid[16];
+};
+
+
 
 /**
 JPEG-2000 file format reader/writer
 */
-typedef struct opj_jp2 {
+struct opj_jp2_t {
     /** handle to the J2K codec  */
     opj_j2k_t *j2k;
     /** list of validation procedures */
-    struct opj_procedure_list * m_validation_list;
+    opj_procedure_list * m_validation_list;
     /** list of execution procedures */
-    struct opj_procedure_list * m_procedure_list;
+    opj_procedure_list * m_procedure_list;
 
     /* width of image */
     uint32_t w;
@@ -153,7 +184,6 @@ typedef struct opj_jp2 {
       of the standard are implemented.
     */
     int64_t j2k_codestream_offset;
-    int64_t jpip_iptr_offset;
     uint32_t jp2_state;
     uint32_t jp2_img_state;
     opj_jp2_color_t color;
@@ -166,21 +196,21 @@ typedef struct opj_jp2 {
 	bool  write_display_resolution;
 	double display_resolution[2];
 
-	uint8_t* xml;
-	size_t xmlSize;
-}
-opj_jp2_t;
+	opj_jp2_buffer_t xml;
+	opj_jp2_uuid_t uuids[JP2_MAX_NUM_UUIDS];
+	uint32_t numUuids;
+};
 
 /**
 JP2 Box
 */
-typedef struct opj_jp2_box {
+struct opj_jp2_box_t {
     uint32_t length;
     uint32_t type;
     int32_t init_pos;
-} opj_jp2_box_t;
+} ;
 
-typedef struct opj_jp2_header_handler {
+struct opj_jp2_header_handler_t {
     /* marker value */
     uint32_t id;
     /* action linked to the marker */
@@ -188,19 +218,17 @@ typedef struct opj_jp2_header_handler {
                           uint8_t *p_header_data,
                           uint32_t p_header_size,
                           opj_event_mgr_t * p_manager);
-}
-opj_jp2_header_handler_t;
+};
 
 
-typedef struct opj_jp2_img_header_writer_handler {
+struct opj_jp2_img_header_writer_handler_t {
     /* action to perform */
     uint8_t*   (*handler) (opj_jp2_t *jp2, uint32_t * p_data_size);
     /* result of the action : data */
     uint8_t*   m_data;
     /* size of data */
     uint32_t  m_size;
-}
-opj_jp2_img_header_writer_handler_t;
+};
 
 /** @name Exported functions */
 /*@{*/
