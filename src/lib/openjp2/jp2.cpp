@@ -499,7 +499,8 @@ static const opj_jp2_header_handler_t jp2_header [] = {
     {JP2_JP,opj_jp2_read_jp},
     {JP2_FTYP,opj_jp2_read_ftyp},
     {JP2_JP2H,opj_jp2_read_jp2h},
-	{ JP2_XML, opj_jp2_read_xml}
+	{JP2_XML, opj_jp2_read_xml},
+	{ JP2_UUID, opj_jp2_read_uuid}
 };
 
 static const opj_jp2_header_handler_t jp2_img_header [] = {
@@ -2022,11 +2023,29 @@ bool opj_jp2_decode(opj_jp2_t *jp2,
             opj_jp2_apply_cdef(p_image, &(jp2->color), p_manager);
         }
 
+		// retrieve icc profile
         if(jp2->color.icc_profile_buf) {
             p_image->icc_profile_buf = jp2->color.icc_profile_buf;
             p_image->icc_profile_len = jp2->color.icc_profile_len;
-            jp2->color.icc_profile_buf = NULL;
+            jp2->color.icc_profile_buf = nullptr;
         }
+
+		// retrieve special uuids
+		for (uint32_t i = 0; i < jp2->numUuids; ++i) {
+			auto uuid = jp2->uuids + i;
+			if (memcmp(uuid->uuid, IPTC_UUID, 16)==0) {
+				p_image->iptc_buf = uuid->buffer;
+				p_image->iptc_len = uuid->len;
+				uuid->buffer = nullptr;
+				uuid->len = 0;
+			}
+			else if (memcmp(uuid->uuid, XMP_UUID, 16)==0) {
+				p_image->xmp_buf = uuid->buffer;
+				p_image->xmp_len = uuid->len;
+				uuid->buffer = nullptr;
+				uuid->len = 0;
+			}
+		}
     }
 
     return true;
@@ -2382,14 +2401,18 @@ bool opj_jp2_setup_encoder(	opj_jp2_t *jp2,
             jp2->enumcs = 18;	/* YUV */
     }
 
+	//transfer buffer to uuid
 	if (image->iptc_len && image->iptc_buf ) {
-		uint8_t iptcUuid[16] = {0x33,0xC7,0xA4,0xD2,0xB8,0x1D,0x47,0x23,0xA0,0xBA,0xF1,0xA3,0xE0,0x97,0xAD,0x38};
-		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(iptcUuid, image->iptc_buf, image->iptc_len);
+		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(IPTC_UUID, image->iptc_buf, image->iptc_len);
+		image->iptc_buf = nullptr;
+		image->iptc_len = 0;
 	}
 
+	//transfer buffer to uuid
 	if (image->xmp_len && image->xmp_buf) {
-		uint8_t xmpUuid[16] = {0xBE,0x7A,0xCF,0xCB,0x97,0xA9,0x42,0xE8,0x9C,0x71,0x99,0x94,0x91,0xE3,0xAF,0xAC};
-		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(xmpUuid, image->xmp_buf, image->xmp_len);
+		jp2->uuids[jp2->numUuids++] = opj_jp2_uuid_t(XMP_UUID, image->xmp_buf, image->xmp_len);
+		image->xmp_buf = nullptr;
+		image->xmp_len = 0;
 	}
 
 	
