@@ -1205,6 +1205,12 @@ int main(int argc, char **argv)
 	tiffSetErrorAndWarningHandlers();
 #endif
 
+	int32_t num_images, imageno = 0;
+	dircnt_t *dirptr = nullptr;
+	int rc = EXIT_SUCCESS;
+	double t_cumulative = 0;
+	uint32_t num_decompressed_images = 0;
+
 	DecompressInitParams initParams;
 	// try to encode with plugin
 	int plugin_rc = plugin_main(argc, argv, &initParams);
@@ -1214,28 +1220,26 @@ int main(int argc, char **argv)
 	// or
 	// plugin was successful
 	if (!initParams.initialized) {
-		destroy_parameters(&initParams.parameters);
-		return EXIT_FAILURE;
+		rc = EXIT_FAILURE;
+		goto cleanup;
 	}
 	if (plugin_rc == EXIT_SUCCESS) {
-		destroy_parameters(&initParams.parameters);
-		return EXIT_SUCCESS;
+		rc = EXIT_SUCCESS;
+		goto cleanup;
 	}
-
-    int32_t num_images, imageno=0;
-    dircnt_t *dirptr = nullptr;
-    int rc = EXIT_SUCCESS;
-    double t_cumulative = 0;
-    uint32_t num_decompressed_images = 0;
-
     /* Initialize reading of directory */
     if(initParams.img_fol.set_imgdir==1) {
         int it_image;
         num_images=get_num_images(initParams.img_fol.imgdirpath);
+		if (num_images <= 0) {
+			fprintf(stdout, "Folder is empty\n");
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
 
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr) {
-            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
+            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
 			if (!dirptr->filename_buf) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
@@ -1251,13 +1255,8 @@ int main(int argc, char **argv)
             }
         }
         if(load_images(dirptr, initParams.img_fol.imgdirpath)==1) {
-            destroy_parameters(&initParams.parameters);
-            return EXIT_FAILURE;
-        }
-        if (num_images==0) {
-            fprintf(stdout,"Folder is empty\n");
-            destroy_parameters(&initParams.parameters);
-            return EXIT_FAILURE;
+			rc = EXIT_FAILURE;
+			goto cleanup;
         }
     } else {
         num_images=1;
@@ -1345,32 +1344,30 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	/* Initialize reading of directory */
 	if (initParams->img_fol.set_imgdir == 1) {
-		int it_image;
 		num_images = get_num_images(initParams->img_fol.imgdirpath);
-
+		if (num_images <= 0) {
+			fprintf(stdout, "Folder is empty\n");
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
 		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 		if (dirptr) {
-			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN * sizeof(char));	/* Stores at max 10 image file names*/
+			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
 			if (!dirptr->filename_buf) {
 				rc =  EXIT_FAILURE;
 				goto cleanup;
 			}
-			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
+			dirptr->filename = (char**)malloc(num_images * sizeof(char*));
 			if (!dirptr->filename) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
 
-			for (it_image = 0; it_image<num_images; it_image++) {
+			for (int it_image = 0; it_image<num_images; it_image++) {
 				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
 			}
 		}
 		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
-			rc = EXIT_FAILURE;
-			goto cleanup;
-		}
-		if (num_images == 0) {
-			fprintf(stdout, "Folder is empty\n");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}

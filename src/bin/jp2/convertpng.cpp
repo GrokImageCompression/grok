@@ -99,17 +99,17 @@ static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length
 
 opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 {
-    png_structp  png = NULL;
-    png_infop    info = NULL;
+    png_structp  png = nullptr;
+    png_infop    info = nullptr;
     int bit_depth, interlace_type,compression_type, filter_type;
     uint32_t i;
-    png_uint_32  width, height = 0U;
+    png_uint_32  width=0U, height = 0U;
     int color_type;
-    FILE *reader = NULL;
-    uint8_t** rows = NULL;
-    int32_t* row32s = NULL;
+    FILE *reader = nullptr;
+    uint8_t** rows = nullptr;
+    int32_t* row32s = nullptr;
     /* j2k: */
-    opj_image_t *image = NULL;
+    opj_image_t *image = nullptr;
     opj_image_cmptparm_t cmptparm[4];
     uint32_t nr_comp;
     uint8_t sigbuf[8];
@@ -154,6 +154,9 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
                     &bit_depth, &color_type, &interlace_type,
                     &compression_type, &filter_type) == 0)
         goto fin;
+
+	if (!width || !height)
+		goto fin;
 
     /* png_set_expand():
      * expand paletted images to RGB, expand grayscale images of
@@ -244,13 +247,10 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
 
 
-    rows = (uint8_t**)calloc(height+1, sizeof(uint8_t*));
+    rows = (uint8_t**)calloc(height, sizeof(uint8_t*));
 	if (rows == NULL) {
 		fprintf(stderr, "pngtoimage: out of memory\n");
 		goto fin;
-	}
-	for (i = 0; i < height; ++i) {
-		rows[i] = nullptr;
 	}
 	for (i = 0; i < height; ++i) {
 		rows[i] = (uint8_t*)malloc(png_get_rowbytes(png, info));
