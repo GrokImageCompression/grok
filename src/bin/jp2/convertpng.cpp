@@ -250,6 +250,9 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 		goto fin;
 	}
 	for (i = 0; i < height; ++i) {
+		rows[i] = nullptr;
+	}
+	for (i = 0; i < height; ++i) {
 		rows[i] = (uint8_t*)malloc(png_get_rowbytes(png, info));
 		if (!rows[i]) {
 			fprintf(stderr, "pngtoimage: out of memory\n");

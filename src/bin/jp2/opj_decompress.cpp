@@ -1207,7 +1207,7 @@ int main(int argc, char **argv)
 
 	DecompressInitParams initParams;
 	// try to encode with plugin
-	int rc = plugin_main(argc, argv, &initParams);
+	int plugin_rc = plugin_main(argc, argv, &initParams);
 
 	// return immediately if either 
 	// initParams was not initialized (something was wrong with command line params)
@@ -1217,14 +1217,14 @@ int main(int argc, char **argv)
 		destroy_parameters(&initParams.parameters);
 		return EXIT_FAILURE;
 	}
-	if (!rc) {
+	if (plugin_rc == EXIT_SUCCESS) {
 		destroy_parameters(&initParams.parameters);
-		return 0;
+		return EXIT_SUCCESS;
 	}
 
     int32_t num_images, imageno=0;
-    dircnt_t *dirptr = NULL;
-    int failed = 0;
+    dircnt_t *dirptr = nullptr;
+    int rc = EXIT_SUCCESS;
     double t_cumulative = 0;
     uint32_t num_decompressed_images = 0;
 
@@ -1236,12 +1236,16 @@ int main(int argc, char **argv)
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr) {
             dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
-            dirptr->filename = (char**) malloc((size_t)num_images*sizeof(char*));
+			if (!dirptr->filename_buf) {
+				rc = EXIT_FAILURE;
+				goto cleanup;
+			}
 
-            if(!dirptr->filename_buf) {
-                destroy_parameters(&initParams.parameters);
-                return EXIT_FAILURE;
-            }
+            dirptr->filename = (char**) malloc((size_t)num_images*sizeof(char*));
+			if (!dirptr->filename) {
+				rc = EXIT_FAILURE;
+				goto cleanup;
+			}
             for(it_image=0; it_image<num_images; it_image++) {
                 dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
             }
@@ -1277,31 +1281,38 @@ int main(int argc, char **argv)
 		info.decoder_parameters = &initParams.parameters;
 
 		if (plugin_pre_decode_callback(&info)) {
-			failed = 1;
+			rc = EXIT_FAILURE;
 			continue;
 		}
 		if (plugin_post_decode_callback(&info)) {
-			failed = 1;
+			rc = EXIT_FAILURE;
 			continue;
 		}
 		num_decompressed_images++;
     }
     t_cumulative = opj_clock() - t_cumulative;
-    destroy_parameters(&initParams.parameters);
-	opj_cleanup();
-
-    if (num_decompressed_images && !failed) {
+    if (num_decompressed_images && rc != EXIT_FAILURE) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
     }
-    return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+cleanup:
+	if (dirptr) {
+		if (dirptr->filename_buf)
+			free(dirptr->filename_buf);
+		if (dirptr->filename)
+			free(dirptr->filename);
+		free(dirptr);
+	}
+	destroy_parameters(&initParams.parameters);
+	opj_cleanup();
+	return rc;
 }
 
 
 int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 {
 	int32_t num_images, imageno = 0;
-	dircnt_t *dirptr = NULL;
-	int failed = 0;
+	dircnt_t *dirptr = nullptr;
+	int rc = EXIT_SUCCESS;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 
@@ -1321,15 +1332,15 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	// loads plugin but does not actually create codec
 	if (!opj_initialize(initParams->plugin_path))
-		return 1;
+		return EXIT_FAILURE;
 
 
 	// create codec
 	opj_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	if (!opj_plugin_init(initInfo)) {
-		opj_cleanup();
-		return 1;
+		rc = EXIT_FAILURE;
+		goto cleanup;
 	}
 
 	/* Initialize reading of directory */
@@ -1340,21 +1351,28 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 		if (dirptr) {
 			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN * sizeof(char));	/* Stores at max 10 image file names*/
-			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
-
 			if (!dirptr->filename_buf) {
-				return EXIT_FAILURE;
+				rc =  EXIT_FAILURE;
+				goto cleanup;
 			}
+			dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
+			if (!dirptr->filename) {
+				rc = EXIT_FAILURE;
+				goto cleanup;
+			}
+
 			for (it_image = 0; it_image<num_images; it_image++) {
 				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
 			}
 		}
 		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
-			return EXIT_FAILURE;
+			rc = EXIT_FAILURE;
+			goto cleanup;
 		}
 		if (num_images == 0) {
 			fprintf(stdout, "Folder is empty\n");
-			return EXIT_FAILURE;
+			rc = EXIT_FAILURE;
+			goto cleanup;
 		}
 	}
 	else {
@@ -1379,18 +1397,26 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 		//2. fallback
 		if (rc == -1 || rc == EXIT_FAILURE) {
-			return rc;
+			rc = EXIT_FAILURE;
+			goto cleanup;
 		}
 		num_decompressed_images++;
 
 	}
 	t_cumulative = opj_clock() - t_cumulative;
-	opj_cleanup();
-
-	if (num_decompressed_images && !failed) {
+	if (num_decompressed_images && rc == EXIT_SUCCESS) {
 		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}
-	return failed ? EXIT_FAILURE : EXIT_SUCCESS;
+cleanup:
+	opj_cleanup();
+	if (dirptr) {
+		if (dirptr->filename_buf) 
+			free(dirptr->filename_buf);
+		if (dirptr->filename) 
+			free(dirptr->filename);
+		free(dirptr);
+	}
+	return rc;
 }
 
 

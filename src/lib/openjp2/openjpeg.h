@@ -857,10 +857,10 @@ typedef struct opj_image {
 	double display_resolution[2];
 
 	uint8_t *iptc_buf;
-	uint32_t iptc_len;
+	size_t iptc_len;
 
 	uint8_t *xmp_buf;
-	uint32_t xmp_len;
+	size_t xmp_len;
 
 
 } opj_image_t;
