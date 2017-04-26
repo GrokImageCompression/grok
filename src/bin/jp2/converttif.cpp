@@ -1674,8 +1674,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 			free(image->iptc_buf);
 		image->iptc_len = iptc_len;
 		image->iptc_buf = (uint8_t*)malloc(iptc_len);
-		if (!image->iptc_buf)
-			return false;
+		if (!image->iptc_buf) {
+			success = false;
+			goto cleanup;
+		}
 		memcpy(image->iptc_buf, iptc_buf, iptc_len);
 	}
 
@@ -1684,8 +1686,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 			free(image->xmp_buf);
 		image->xmp_len = xmp_len;
 		image->xmp_buf = (uint8_t*)malloc(xmp_len);
-		if (!image->xmp_buf)
-			return false;
+		if (!image->xmp_buf) {
+			success = false;
+			goto cleanup;
+		}
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
 
