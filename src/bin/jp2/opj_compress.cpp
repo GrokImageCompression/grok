@@ -1861,9 +1861,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				}
 			}
 			opj_plugin_stop_batch_encode();
-
-			//todo: remove for prod
-			getchar();
 		}
 	}
 	else 	{
