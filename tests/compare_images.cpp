@@ -709,22 +709,17 @@ int main(int argc, char **argv)
 
     if( decod_format == PGX_DFMT ) {
         imageBase = readImageFromFilePGX( inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
-        if ( imageBase == NULL )
-            goto cleanup;
     } else if( decod_format == TIF_DFMT ) {
         imageBase = readImageFromFileTIF( inParam.base_filename, nbFilenamePGXbase, "");
-        if ( imageBase == NULL )
-            goto cleanup;
     } else if( decod_format == PXM_DFMT ) {
         imageBase = readImageFromFilePPM( inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
-        if ( imageBase == NULL )
-            goto cleanup;
     }
 	else if (decod_format == PNG_DFMT) {
 		imageBase = readImageFromFilePNG(inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
-		if (imageBase == NULL)
-			goto cleanup;
 	}
+
+	if (!imageBase)
+		goto cleanup;
 
     filenamePNGbase = (char*) malloc(memsizebasefilename);
     strcpy(filenamePNGbase, inParam.test_filename);
@@ -735,22 +730,17 @@ int main(int argc, char **argv)
 
     if( decod_format == PGX_DFMT ) {
         imageTest = readImageFromFilePGX(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
-        if ( imageTest == NULL )
-            goto cleanup;
     } else if( decod_format == TIF_DFMT ) {
         imageTest = readImageFromFileTIF(inParam.test_filename, nbFilenamePGXtest, "");
-        if ( imageTest == NULL )
-            goto cleanup;
     } else if( decod_format == PXM_DFMT ) {
         imageTest = readImageFromFilePPM(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
-        if ( imageTest == NULL )
-            goto cleanup;
     }
 	else if (decod_format == PNG_DFMT) {
 		imageTest = readImageFromFilePNG(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
-		if (imageTest == NULL)
-			goto cleanup;
 	}
+
+	if (!imageTest)
+		goto cleanup;
 
     filenamePNGtest = (char*) malloc(memsizetestfilename);
     strcpy(filenamePNGtest, inParam.test_filename);
