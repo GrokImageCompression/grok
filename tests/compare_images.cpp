@@ -824,13 +824,13 @@ int main(int argc, char **argv)
 			auto basePixel = (imageBase->comps)[it_comp].data[itpxl];
 			auto testPixel = (imageTest->comps)[it_comp].data[itpxl];
 			int64_t diff = basePixel - testPixel;
-            if (abs(diff) > 0) {
-				((imageDiff->comps)[it_comp]).data[itpxl] = (uint32_t)abs(diff);
+            if (llabs(diff) > 0) {
+				((imageDiff->comps)[it_comp]).data[itpxl] = (uint32_t)llabs(diff);
                 sumDiff += diff;
                 nbPixelDiff++;
 
                 SE += (double)diff * diff;
-                PEAK = (PEAK > abs(diff)) ? PEAK : abs(diff);
+                PEAK = (PEAK > llabs(diff)) ? PEAK : llabs(diff);
             } else
                 ((imageDiff->comps)[it_comp]).data[itpxl] = 0;
         }/* h*w loop */
