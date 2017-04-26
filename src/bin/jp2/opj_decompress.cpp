@@ -1003,7 +1003,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     bool l_upsample_need = false;
     uint32_t compno;
 
-	if (!original)
+	if (!original || !original->comps)
 		return nullptr;
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
