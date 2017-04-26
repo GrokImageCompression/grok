@@ -146,6 +146,10 @@ int main (int argc, char *argv[])
     }
     l_nb_tiles = (image_width/tile_width) * (image_height/tile_height);
     l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
+	if (!l_data_size) {
+		rc = 1;
+		goto cleanup;
+	}
     l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
 	if (!l_data) {
 		rc = 1;
