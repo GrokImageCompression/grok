@@ -2056,10 +2056,10 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
                                opj_event_mgr_t * p_manager
                               )
 {
-    opj_jp2_img_header_writer_handler_t l_writers [4];
+    opj_jp2_img_header_writer_handler_t l_writers [32];
     opj_jp2_img_header_writer_handler_t * l_current_writer;
 
-    int32_t i, l_nb_pass=0;
+    int32_t i, l_nb_writers=0;
     /* size of data for super box*/
     uint32_t l_jp2h_size = 8;
     bool l_result = true;
@@ -2075,16 +2075,16 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
     memset(l_writers,0,sizeof(l_writers));
 
     if (jp2->bpc == 255) {
-        l_writers[l_nb_pass++].handler = opj_jp2_write_ihdr;
-        l_writers[l_nb_pass++].handler = opj_jp2_write_bpcc;
-        l_writers[l_nb_pass++].handler = opj_jp2_write_colr;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_ihdr;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_bpcc;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_colr;
     } else {
-        l_writers[l_nb_pass++].handler = opj_jp2_write_ihdr;
-        l_writers[l_nb_pass++].handler = opj_jp2_write_colr;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_ihdr;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_colr;
     }
 
     if (jp2->color.jp2_cdef != NULL) {
-        l_writers[l_nb_pass++].handler = opj_jp2_write_cdef;
+        l_writers[l_nb_writers++].handler = opj_jp2_write_cdef;
     }
 
 	if (jp2->write_display_resolution || jp2->write_capture_resolution) {
@@ -2095,13 +2095,13 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
 			jp2->display_resolution[1] > 0;
 
 		if (storeCapture || storeDisplay)
-			l_writers[l_nb_pass++].handler = opj_jp2_write_res;
+			l_writers[l_nb_writers++].handler = opj_jp2_write_res;
 	}
 	if (jp2->xml.buffer && jp2->xml.len) {
-		l_writers[l_nb_pass++].handler = opj_jp2_write_xml;
+		l_writers[l_nb_writers++].handler = opj_jp2_write_xml;
 	}
 	if (jp2->numUuids) {
-		l_writers[l_nb_pass++].handler = opj_jp2_write_uuids;
+		l_writers[l_nb_writers++].handler = opj_jp2_write_uuids;
 	}
 
 
@@ -2110,7 +2110,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
     opj_write_bytes(l_jp2h_data+4,JP2_JP2H,4);
 
     l_current_writer = l_writers;
-    for (i=0; i<l_nb_pass; ++i) {
+    for (i=0; i<l_nb_writers; ++i) {
         l_current_writer->m_data = l_current_writer->handler(jp2,&(l_current_writer->m_size));
         if (l_current_writer->m_data == nullptr) {
             opj_event_msg(p_manager, EVT_ERROR, "Not enough memory to hold JP2 Header data\n");
@@ -2124,7 +2124,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
 
     if (! l_result) {
         l_current_writer = l_writers;
-        for (i=0; i<l_nb_pass; ++i) {
+        for (i=0; i<l_nb_writers; ++i) {
             if (l_current_writer->m_data != nullptr) {
                 opj_free(l_current_writer->m_data );
             }
@@ -2145,7 +2145,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
 
     if (l_result) {
         l_current_writer = l_writers;
-        for (i=0; i<l_nb_pass; ++i) {
+        for (i=0; i<l_nb_writers; ++i) {
             if (opj_stream_write_data(stream,l_current_writer->m_data,l_current_writer->m_size,p_manager) != l_current_writer->m_size) {
                 opj_event_msg(p_manager, EVT_ERROR, "Stream error while writing JP2 Header box\n");
                 l_result = false;
@@ -2158,7 +2158,7 @@ static bool opj_jp2_write_jp2h(opj_jp2_t *jp2,
     l_current_writer = l_writers;
 
     /* cleanup */
-    for (i=0; i<l_nb_pass; ++i) {
+    for (i=0; i<l_nb_writers; ++i) {
         if (l_current_writer->m_data != nullptr) {
             opj_free(l_current_writer->m_data );
         }
