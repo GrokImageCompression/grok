@@ -6039,7 +6039,7 @@ bool opj_j2k_setup_encoder(     opj_j2k_t *p_j2k,
                 tccp->roishift = 0;
             }
 
-            if (parameters->csty & J2K_CCP_CSTY_PRT) {
+            if ((parameters->csty & J2K_CCP_CSTY_PRT) && parameters->res_spec){
 				uint32_t p = 0;
 				int32_t it_res;
                 assert( tccp->numresolutions > 0 );
