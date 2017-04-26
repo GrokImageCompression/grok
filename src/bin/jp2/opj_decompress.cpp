@@ -1003,7 +1003,12 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     bool l_upsample_need = false;
     uint32_t compno;
 
+	if (!original)
+		return nullptr;
+
     for (compno = 0U; compno < original->numcomps; ++compno) {
+		if (!(original->comps+compno))
+			return nullptr;
         if (original->comps[compno].decodeScaleFactor > 0U) {
             fprintf(stderr, "ERROR -> opj_decompress: -upsample not supported with reduction\n");
             opj_image_destroy(original);
