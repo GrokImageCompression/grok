@@ -86,13 +86,14 @@ static void info_callback(const char *msg, void *client_data)
 int main (int argc, char *argv[])
 {
     opj_cparameters_t l_param;
-    opj_codec_t * l_codec;
-    opj_image_t * l_image;
+    opj_codec_t * l_codec=nullptr;
+    opj_image_t * l_image = nullptr;
     opj_image_cmptparm_t l_params [NUM_COMPS_MAX];
-    opj_stream_t * l_stream;
-    uint32_t l_nb_tiles;
-    uint64_t l_data_size;
-    size_t len;
+    opj_stream_t * l_stream = nullptr;
+    uint32_t l_nb_tiles=0;
+    uint64_t l_data_size=0;
+    size_t len=0;
+	int rc = 0;
 
 #ifdef USING_MCT
     const float l_mct [] = {
@@ -106,9 +107,9 @@ int main (int argc, char *argv[])
     };
 #endif
 
-    opj_image_cmptparm_t * l_current_param_ptr;
+    opj_image_cmptparm_t * l_current_param_ptr=nullptr;
     uint32_t i;
-    uint8_t *l_data;
+    uint8_t *l_data=nullptr;
 
     uint32_t num_comps;
 	uint32_t image_width;
@@ -140,13 +141,16 @@ int main (int argc, char *argv[])
         output_file = "test.j2k";
     }
     if( num_comps > NUM_COMPS_MAX ) {
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
     l_nb_tiles = (image_width/tile_width) * (image_height/tile_height);
     l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
     l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
-	if (!l_data)
-		return 1;
+	if (!l_data) {
+		rc = 1;
+		goto cleanup;
+	}
 
     fprintf(stdout, "Encoding random values -> keep in mind that this is very hard to compress\n");
     for (i=0; i<l_data_size; ++i)	{
@@ -251,7 +255,8 @@ int main (int argc, char *argv[])
         l_codec = opj_create_compress(OPJ_CODEC_J2K);
     }
     if (!l_codec) {
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
     /* catch events using our callbacks and give a local context */
@@ -261,8 +266,8 @@ int main (int argc, char *argv[])
 
     l_image = opj_image_tile_create(num_comps,l_params,OPJ_CLRSPC_SRGB);
     if (! l_image) {
-        opj_destroy_codec(l_codec);
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
     l_image->x0 = 0;
@@ -273,55 +278,52 @@ int main (int argc, char *argv[])
 
     if (! opj_setup_encoder(l_codec,&l_param,l_image)) {
         fprintf(stderr, "ERROR -> test_tile_encoder: failed to setup the codec!\n");
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(l_image);
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
     l_stream = opj_stream_create_default_file_stream(output_file, false);
     if (! l_stream) {
         fprintf(stderr, "ERROR -> test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(l_image);
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
     if (! opj_start_compress(l_codec,l_image,l_stream)) {
         fprintf(stderr, "ERROR -> test_tile_encoder: failed to start compress!\n");
-        opj_stream_destroy(l_stream);
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(l_image);
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
     for (i=0; i<l_nb_tiles; ++i) {
         if (! opj_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
             fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n",i);
-            opj_stream_destroy(l_stream);
-            opj_destroy_codec(l_codec);
-            opj_image_destroy(l_image);
-            return 1;
+			rc = 1;
+			goto cleanup;
         }
     }
 
     if (! opj_end_compress(l_codec,l_stream)) {
         fprintf(stderr, "ERROR -> test_tile_encoder: failed to end compress!\n");
-        opj_stream_destroy(l_stream);
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(l_image);
-        return 1;
+		rc = 1;
+		goto cleanup;
     }
 
-    opj_stream_destroy(l_stream);
-    opj_destroy_codec(l_codec);
-    opj_image_destroy(l_image);
+cleanup:
+	if (l_stream)
+		opj_stream_destroy(l_stream);
+	if (l_codec)
+		opj_destroy_codec(l_codec);
+	if (l_image)
+		opj_image_destroy(l_image);
 
-    free(l_data);
+	if (l_data)
+		free(l_data);
 
     /* Print profiling*/
     /*PROFPRINT();*/
 
-    return 0;
+    return rc;
 }
 
 
