@@ -91,7 +91,7 @@ Encode a packet of a tile to a destination buffer
 static bool grk_t2_encode_packet(grk_t2_t* p_t2,
 									uint32_t tileno,
                                     grk_tcd_tile_t *tile,
-                                    opj_tcp_t *tcp,
+                                    grk_tcp_t *tcp,
                                     grk_pi_iterator_t *pi,
                                     uint8_t *dest,
                                     uint64_t * p_data_written,
@@ -112,7 +112,7 @@ Encode a packet of a tile to a destination buffer
 @return
 */
 static bool grk_t2_encode_packet_simulate(grk_tcd_tile_t *tile,
-                                        opj_tcp_t *tcp,
+                                        grk_tcp_t *tcp,
                                         grk_pi_iterator_t *pi,
                                         uint64_t * p_data_written,
                                         uint64_t len);
@@ -134,7 +134,7 @@ Decode a packet of a tile from a source buffer
 */
 static bool grk_t2_decode_packet(   grk_t2_t* t2,
 									grk_tcd_resolution_t* l_res,
-                                    opj_tcp_t *tcp,
+                                    grk_tcp_t *tcp,
                                     grk_pi_iterator_t *pi,
                                     opj_seg_buf_t* src_buf,
                                     uint64_t * data_read,
@@ -142,7 +142,7 @@ static bool grk_t2_decode_packet(   grk_t2_t* t2,
 
 static bool grk_t2_skip_packet( grk_t2_t* p_t2,
                                 grk_tcd_tile_t *p_tile,
-                                opj_tcp_t *p_tcp,
+                                grk_tcp_t *p_tcp,
                                 grk_pi_iterator_t *p_pi,
                                 opj_seg_buf_t* src_buf,
                                 uint64_t * p_data_read,
@@ -150,7 +150,7 @@ static bool grk_t2_skip_packet( grk_t2_t* p_t2,
 
 static bool grk_t2_read_packet_header(  grk_t2_t* p_t2,
 										grk_tcd_resolution_t* l_res,
-                                        opj_tcp_t *p_tcp,
+                                        grk_tcp_t *p_tcp,
                                         grk_pi_iterator_t *p_pi,
                                         bool * p_is_data_present,
                                         opj_seg_buf_t* src_buf,
@@ -258,7 +258,7 @@ bool grk_t2_encode_packets( grk_t2_t* p_t2,
     grk_pi_iterator_t *l_current_pi = nullptr;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
-    opj_tcp_t *l_tcp = &l_cp->tcps[p_tile_no];
+    grk_tcp_t *l_tcp = &l_cp->tcps[p_tile_no];
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 
     l_pi = grk_pi_initialise_encode(l_image, l_cp, p_tile_no, FINAL_PASS);
@@ -337,7 +337,7 @@ bool grk_t2_encode_packets_simulate(grk_t2_t* p_t2,
 {
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
-    opj_tcp_t *l_tcp = l_cp->tcps + p_tile_no;
+    grk_tcp_t *l_tcp = l_cp->tcps + p_tile_no;
     uint32_t pocno = (l_cp->rsiz == OPJ_PROFILE_CINEMA_4K) ? 2 : 1;
     uint32_t l_max_comp = l_cp->m_specific_param.m_enc.m_max_comp_size > 0 ? l_image->numcomps : 1;
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
@@ -417,7 +417,7 @@ bool grk_t2_decode_packets( grk_t2_t *p_t2,
     uint32_t pino;
     opj_image_t *l_image = p_t2->image;
     opj_cp_t *l_cp = p_t2->cp;
-    opj_tcp_t *l_tcp = p_t2->cp->tcps + p_tile_no;
+    grk_tcp_t *l_tcp = p_t2->cp->tcps + p_tile_no;
     uint64_t l_nb_bytes_read;
     uint32_t l_nb_pocs = l_tcp->numpocs + 1;
     grk_pi_iterator_t *l_current_pi = nullptr;
@@ -530,7 +530,7 @@ bool grk_t2_decode_packets( grk_t2_t *p_t2,
 grk_t2_t* grk_t2_create(opj_image_t *p_image, opj_cp_t *p_cp)
 {
     /* create the t2 structure */
-    grk_t2_t *l_t2 = (grk_t2_t*)opj_calloc(1,sizeof(grk_t2_t));
+    grk_t2_t *l_t2 = (grk_t2_t*)grk_calloc(1,sizeof(grk_t2_t));
     if (!l_t2) {
         return NULL;
     }
@@ -542,13 +542,13 @@ grk_t2_t* grk_t2_create(opj_image_t *p_image, opj_cp_t *p_cp)
 void grk_t2_destroy(grk_t2_t *t2)
 {
     if(t2) {
-        opj_free(t2);
+        grk_free(t2);
     }
 }
 
 static bool grk_t2_decode_packet(  grk_t2_t* p_t2,
 									grk_tcd_resolution_t* l_res,
-                                   opj_tcp_t *p_tcp,
+                                   grk_tcp_t *p_tcp,
                                    grk_pi_iterator_t *p_pi,
                                    opj_seg_buf_t* src_buf,
                                    uint64_t * p_data_read,
@@ -589,7 +589,7 @@ static bool grk_t2_decode_packet(  grk_t2_t* p_t2,
 
 static bool grk_t2_read_packet_header(grk_t2_t* p_t2,
 									grk_tcd_resolution_t* l_res,
-									opj_tcp_t *p_tcp,
+									grk_tcp_t *p_tcp,
 									grk_pi_iterator_t *p_pi,
 									bool * p_is_data_present,
 									opj_seg_buf_t* src_buf,
@@ -922,7 +922,7 @@ static bool grk_t2_read_packet_data(grk_tcd_resolution_t* l_res,
 static bool grk_t2_encode_packet(grk_t2_t* p_t2,
 									uint32_t tileno,
                                    grk_tcd_tile_t * tile,
-                                   opj_tcp_t * tcp,
+                                   grk_tcp_t * tcp,
                                    grk_pi_iterator_t *pi,
                                    uint8_t *dest,
                                    uint64_t * p_data_written,
@@ -1253,7 +1253,7 @@ static bool grk_t2_encode_packet(grk_t2_t* p_t2,
 
 
 static bool grk_t2_encode_packet_simulate(grk_tcd_tile_t * tile,
-                                        opj_tcp_t * tcp,
+                                        grk_tcp_t * tcp,
                                         grk_pi_iterator_t *pi,
                                         uint64_t * p_data_written,
                                         uint64_t length)
@@ -1454,7 +1454,7 @@ static bool grk_t2_encode_packet_simulate(grk_tcd_tile_t * tile,
 }
 static bool grk_t2_skip_packet( grk_t2_t* p_t2,
                                 grk_tcd_tile_t *p_tile,
-                                opj_tcp_t *p_tcp,
+                                grk_tcp_t *p_tcp,
                                 grk_pi_iterator_t *p_pi,
                                 opj_seg_buf_t* src_buf,
                                 uint64_t * p_data_read,
@@ -1590,9 +1590,9 @@ static bool grk_t2_init_seg(   grk_tcd_cblk_dec_t* cblk,
         grk_tcd_seg_t* new_segs;
         cblk->numSegmentsAllocated += OPJ_J2K_DEFAULT_NB_SEGS;
 
-        new_segs = (grk_tcd_seg_t*) opj_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(grk_tcd_seg_t));
+        new_segs = (grk_tcd_seg_t*) grk_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(grk_tcd_seg_t));
         if(! new_segs) {
-            opj_free(cblk->segs);
+            grk_free(cblk->segs);
             cblk->segs = NULL;
             cblk->numSegmentsAllocated = 0;
             /* grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */

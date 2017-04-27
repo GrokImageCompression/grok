@@ -62,7 +62,7 @@
 
 /* ----------------------------------------------------------------------- */
 
-void opj_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
+void grk_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value)+sizeof(uint32_t)-p_nb_bytes;
 
@@ -71,7 +71,7 @@ void opj_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
     memcpy(p_buffer,l_data_ptr,p_nb_bytes);
 }
 
-void opj_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
+void grk_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value) + p_nb_bytes - 1;
     uint32_t i;
@@ -83,7 +83,7 @@ void opj_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
     }
 }
 
-void opj_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
+void grk_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value);
 
@@ -93,7 +93,7 @@ void opj_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_
     memcpy(l_data_ptr+sizeof(uint32_t)-p_nb_bytes,p_buffer,p_nb_bytes);
 }
 
-void opj_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
+void grk_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value) + p_nb_bytes-1;
     uint32_t i;
@@ -106,13 +106,13 @@ void opj_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_
     }
 }
 
-void opj_write_double_BE(uint8_t * p_buffer, double p_value)
+void grk_write_double_BE(uint8_t * p_buffer, double p_value)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value);
     memcpy(p_buffer,l_data_ptr,sizeof(double));
 }
 
-void opj_write_double_LE(uint8_t * p_buffer, double p_value)
+void grk_write_double_LE(uint8_t * p_buffer, double p_value)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value) + sizeof(double) - 1;
     uint32_t i;
@@ -121,13 +121,13 @@ void opj_write_double_LE(uint8_t * p_buffer, double p_value)
     }
 }
 
-void opj_read_double_BE(const uint8_t * p_buffer, double * p_value)
+void grk_read_double_BE(const uint8_t * p_buffer, double * p_value)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value);
     memcpy(l_data_ptr,p_buffer,sizeof(double));
 }
 
-void opj_read_double_LE(const uint8_t * p_buffer, double * p_value)
+void grk_read_double_LE(const uint8_t * p_buffer, double * p_value)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value) + sizeof(double)-1;
     uint32_t i;
@@ -136,13 +136,13 @@ void opj_read_double_LE(const uint8_t * p_buffer, double * p_value)
     }
 }
 
-void opj_write_float_BE(uint8_t * p_buffer, float p_value)
+void grk_write_float_BE(uint8_t * p_buffer, float p_value)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value);
     memcpy(p_buffer,l_data_ptr,sizeof(float));
 }
 
-void opj_write_float_LE(uint8_t * p_buffer, float p_value)
+void grk_write_float_LE(uint8_t * p_buffer, float p_value)
 {
     const uint8_t * l_data_ptr = ((const uint8_t *) &p_value) + sizeof(float) - 1;
     uint32_t i;
@@ -151,13 +151,13 @@ void opj_write_float_LE(uint8_t * p_buffer, float p_value)
     }
 }
 
-void opj_read_float_BE(const uint8_t * p_buffer, float * p_value)
+void grk_read_float_BE(const uint8_t * p_buffer, float * p_value)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value);
     memcpy(l_data_ptr,p_buffer,sizeof(float));
 }
 
-void opj_read_float_LE(const uint8_t * p_buffer, float * p_value)
+void grk_read_float_LE(const uint8_t * p_buffer, float * p_value)
 {
     uint8_t * l_data_ptr = ((uint8_t *) p_value) + sizeof(float)-1;
     uint32_t i;
@@ -169,16 +169,16 @@ void opj_read_float_LE(const uint8_t * p_buffer, float * p_value)
 opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_input)
 {
     opj_stream_private_t * l_stream = nullptr;
-    l_stream = (opj_stream_private_t*) opj_calloc(1,sizeof(opj_stream_private_t));
+    l_stream = (opj_stream_private_t*) grk_calloc(1,sizeof(opj_stream_private_t));
     if (! l_stream) {
         return nullptr;
     }
 
     if (p_buffer_size) {
         l_stream->m_buffer_size = p_buffer_size;
-        l_stream->m_stored_data = (uint8_t *)opj_malloc(p_buffer_size);
+        l_stream->m_stored_data = (uint8_t *)grk_malloc(p_buffer_size);
         if (!l_stream->m_stored_data) {
-            opj_free(l_stream);
+            grk_free(l_stream);
             return nullptr;
         }
         l_stream->m_current_data = l_stream->m_stored_data;
@@ -186,18 +186,18 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_inpu
 
     if (l_is_input) {
         l_stream->m_status |= OPJ_STREAM_STATUS_INPUT;
-        l_stream->m_opj_skip = opj_stream_read_skip;
-        l_stream->m_opj_seek = opj_stream_read_seek;
+        l_stream->m_opj_skip = grk_stream_read_skip;
+        l_stream->m_opj_seek = grk_stream_read_seek;
     } else {
         l_stream->m_status |= OPJ_STREAM_STATUS_OUTPUT;
-        l_stream->m_opj_skip = opj_stream_write_skip;
-        l_stream->m_opj_seek = opj_stream_write_seek;
+        l_stream->m_opj_skip = grk_stream_write_skip;
+        l_stream->m_opj_seek = grk_stream_write_seek;
     }
 
-    l_stream->m_read_fn = opj_stream_default_read;
-    l_stream->m_write_fn = opj_stream_default_write;
-    l_stream->m_skip_fn = opj_stream_default_skip;
-    l_stream->m_seek_fn = opj_stream_default_seek;
+    l_stream->m_read_fn = grk_stream_default_read;
+    l_stream->m_write_fn = grk_stream_default_write;
+    l_stream->m_skip_fn = grk_stream_default_skip;
+    l_stream->m_seek_fn = grk_stream_default_seek;
 
     return (opj_stream_t *) l_stream;
 }
@@ -216,10 +216,10 @@ void OPJ_CALLCONV opj_stream_destroy(opj_stream_t* p_stream)
             l_stream->m_free_user_data_fn(l_stream->m_user_data);
         }
         if (l_stream->m_stored_data) {
-            opj_free(l_stream->m_stored_data);
+            grk_free(l_stream->m_stored_data);
             l_stream->m_stored_data = nullptr;
         }
-        opj_free(l_stream);
+        grk_free(l_stream);
     }
 }
 
@@ -302,7 +302,7 @@ void OPJ_CALLCONV opj_stream_set_user_data_length(opj_stream_t* p_stream,
 
 
 
-size_t opj_stream_read_data (opj_stream_private_t * p_stream,
+size_t grk_stream_read_data (opj_stream_private_t * p_stream,
 							uint8_t * p_buffer,
 							size_t p_size,
 							grk_event_mgr_t * p_event_mgr)
@@ -408,7 +408,7 @@ size_t opj_stream_read_data (opj_stream_private_t * p_stream,
 
 
 
-size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, 
+size_t grk_stream_read_data_zero_copy(opj_stream_private_t * p_stream, 
 										uint8_t ** p_buffer,
 										size_t p_size,
 										grk_event_mgr_t * p_event_mgr)
@@ -428,7 +428,7 @@ size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream,
 }
 
 
-size_t opj_stream_write_data (opj_stream_private_t * p_stream,
+size_t grk_stream_write_data (opj_stream_private_t * p_stream,
                               const uint8_t * p_buffer,
                               size_t p_size,
                               grk_event_mgr_t * p_event_mgr)
@@ -480,14 +480,14 @@ size_t opj_stream_write_data (opj_stream_private_t * p_stream,
             p_stream->m_byte_offset += (int64_t)l_remaining_bytes;
         }
 
-        if (! opj_stream_flush(p_stream, p_event_mgr)) {
+        if (! grk_stream_flush(p_stream, p_event_mgr)) {
             return (size_t)-1;
         }
     }
 
 }
 
-bool opj_stream_flush (opj_stream_private_t * p_stream, 
+bool grk_stream_flush (opj_stream_private_t * p_stream, 
 						grk_event_mgr_t * p_event_mgr)
 {
     /* the number of bytes written on the media. */
@@ -517,7 +517,7 @@ bool opj_stream_flush (opj_stream_private_t * p_stream,
     return true;
 }
 
-bool opj_stream_read_skip (opj_stream_private_t * p_stream, 
+bool grk_stream_read_skip (opj_stream_private_t * p_stream, 
 								int64_t p_size,
 								grk_event_mgr_t * p_event_mgr)
 {
@@ -573,7 +573,7 @@ bool opj_stream_read_skip (opj_stream_private_t * p_stream,
     return l_skip_nb_bytes ? true : false;
 }
 
-bool opj_stream_write_skip (opj_stream_private_t * p_stream, 
+bool grk_stream_write_skip (opj_stream_private_t * p_stream, 
 								int64_t p_size,
 								grk_event_mgr_t * p_event_mgr)
 {
@@ -586,7 +586,7 @@ bool opj_stream_write_skip (opj_stream_private_t * p_stream,
     }
 
     /* we should flush data */
-    l_is_written = opj_stream_flush (p_stream, p_event_mgr);
+    l_is_written = grk_stream_flush (p_stream, p_event_mgr);
     if (! l_is_written) {
         p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
         p_stream->m_bytes_in_buffer = 0;
@@ -615,12 +615,12 @@ bool opj_stream_write_skip (opj_stream_private_t * p_stream,
     return l_skip_nb_bytes ? true : false;
 }
 
-int64_t opj_stream_tell (const opj_stream_private_t * p_stream)
+int64_t grk_stream_tell (const opj_stream_private_t * p_stream)
 {
     return p_stream->m_byte_offset;
 }
 
-int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream)
+int64_t grk_stream_get_number_byte_left (const opj_stream_private_t * p_stream)
 {
     assert( p_stream->m_byte_offset >= 0 );
     assert( p_stream->m_user_data_length >= (uint64_t)p_stream->m_byte_offset);
@@ -629,7 +629,7 @@ int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream)
            0;
 }
 
-bool opj_stream_skip (opj_stream_private_t * p_stream, 
+bool grk_stream_skip (opj_stream_private_t * p_stream, 
 							int64_t p_size,
 							grk_event_mgr_t * p_event_mgr)
 {
@@ -637,7 +637,7 @@ bool opj_stream_skip (opj_stream_private_t * p_stream,
     return p_stream->m_opj_skip(p_stream,p_size,p_event_mgr);
 }
 
-bool opj_stream_read_seek (opj_stream_private_t * p_stream, 
+bool grk_stream_read_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size,
 							grk_event_mgr_t * p_event_mgr)
 {
@@ -658,11 +658,11 @@ bool opj_stream_read_seek (opj_stream_private_t * p_stream,
     return true;
 }
 
-bool opj_stream_write_seek (opj_stream_private_t * p_stream, 
+bool grk_stream_write_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size,
 							grk_event_mgr_t * p_event_mgr)
 {
-    if (! opj_stream_flush(p_stream,p_event_mgr)) {
+    if (! grk_stream_flush(p_stream,p_event_mgr)) {
         p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
         return false;
     }
@@ -680,7 +680,7 @@ bool opj_stream_write_seek (opj_stream_private_t * p_stream,
     return true;
 }
 
-bool opj_stream_seek (opj_stream_private_t * p_stream, 
+bool grk_stream_seek (opj_stream_private_t * p_stream, 
 						int64_t p_size,
 						grk_event_mgr_t * p_event_mgr)
 {
@@ -688,12 +688,12 @@ bool opj_stream_seek (opj_stream_private_t * p_stream,
     return p_stream->m_opj_seek(p_stream,p_size,p_event_mgr);
 }
 
-bool opj_stream_has_seek (const opj_stream_private_t * p_stream)
+bool grk_stream_has_seek (const opj_stream_private_t * p_stream)
 {
-    return p_stream->m_seek_fn != opj_stream_default_seek;
+    return p_stream->m_seek_fn != grk_stream_default_seek;
 }
 
-size_t opj_stream_default_read (void * p_buffer, 
+size_t grk_stream_default_read (void * p_buffer, 
 								size_t p_nb_bytes,
 								void * p_user_data)
 {
@@ -703,7 +703,7 @@ size_t opj_stream_default_read (void * p_buffer,
     return (size_t) -1;
 }
 
-size_t opj_stream_default_write (void * p_buffer, 
+size_t grk_stream_default_write (void * p_buffer, 
 								size_t p_nb_bytes,
 								void * p_user_data)
 {
@@ -713,14 +713,14 @@ size_t opj_stream_default_write (void * p_buffer,
     return (size_t) -1;
 }
 
-int64_t opj_stream_default_skip (int64_t p_nb_bytes, void * p_user_data)
+int64_t grk_stream_default_skip (int64_t p_nb_bytes, void * p_user_data)
 {
     OPJ_ARG_NOT_USED(p_nb_bytes);
     OPJ_ARG_NOT_USED(p_user_data);
     return (int64_t) -1;
 }
 
-bool opj_stream_default_seek (int64_t p_nb_bytes, void * p_user_data)
+bool grk_stream_default_seek (int64_t p_nb_bytes, void * p_user_data)
 {
     OPJ_ARG_NOT_USED(p_nb_bytes);
     OPJ_ARG_NOT_USED(p_user_data);

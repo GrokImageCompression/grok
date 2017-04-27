@@ -58,7 +58,7 @@
 # define SIZE_MAX ((size_t) -1)
 #endif
 
-static inline void *opj_aligned_alloc_n(size_t alignment, size_t size)
+static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
 {
     void* ptr;
 
@@ -121,7 +121,7 @@ static inline void *opj_aligned_alloc_n(size_t alignment, size_t size)
 #endif
     return ptr;
 }
-static inline void *opj_aligned_realloc_n(void *ptr, size_t alignment, size_t new_size)
+static inline void *grk_aligned_realloc_n(void *ptr, size_t alignment, size_t new_size)
 {
     void *r_ptr;
 
@@ -145,7 +145,7 @@ static inline void *opj_aligned_realloc_n(void *ptr, size_t alignment, size_t ne
          * simple approach where we do not need a function that return the size of an
          * allocated array (eg. _msize on Windows, malloc_size on MacOS,
          * malloc_usable_size on systems with glibc) */
-        void *a_ptr = opj_aligned_alloc_n(alignment, new_size);
+        void *a_ptr = grk_aligned_alloc_n(alignment, new_size);
         if (a_ptr != NULL) {
             memcpy(a_ptr, r_ptr, new_size);
         }
@@ -157,7 +157,7 @@ static inline void *opj_aligned_realloc_n(void *ptr, size_t alignment, size_t ne
     r_ptr = _aligned_realloc( ptr, new_size, alignment );
 #else
     if (ptr == NULL) {
-        return opj_aligned_alloc_n(alignment, new_size);
+        return grk_aligned_alloc_n(alignment, new_size);
     }
     alignment--;
     {
@@ -203,14 +203,14 @@ static inline void *opj_aligned_realloc_n(void *ptr, size_t alignment, size_t ne
 #endif
     return r_ptr;
 }
-void * opj_malloc(size_t size)
+void * grk_malloc(size_t size)
 {
     if (size == 0U) { /* prevent implementation defined behavior of realloc */
         return NULL;
     }
     return malloc(size);
 }
-void * opj_calloc(size_t num, size_t size)
+void * grk_calloc(size_t num, size_t size)
 {
 	if (num == 0 || size == 0) {
 		/* prevent implementation defined behavior of realloc */
@@ -219,16 +219,16 @@ void * opj_calloc(size_t num, size_t size)
 	return calloc(num, size);
 }
 
-void *opj_aligned_malloc(size_t size)
+void *grk_aligned_malloc(size_t size)
 {
-    return opj_aligned_alloc_n(16U, size);
+    return grk_aligned_alloc_n(16U, size);
 }
-void * opj_aligned_realloc(void *ptr, size_t size)
+void * grk_aligned_realloc(void *ptr, size_t size)
 {
-    return opj_aligned_realloc_n(ptr, 16U, size);
+    return grk_aligned_realloc_n(ptr, 16U, size);
 }
 
-void opj_aligned_free(void* ptr)
+void grk_aligned_free(void* ptr)
 {
 #if defined(OPJ_HAVE_POSIX_MEMALIGN) || defined(OPJ_HAVE_MEMALIGN)
     free( ptr );
@@ -242,14 +242,14 @@ void opj_aligned_free(void* ptr)
 #endif
 }
 
-void * opj_realloc(void *ptr, size_t new_size)
+void * grk_realloc(void *ptr, size_t new_size)
 {
     if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
         return NULL;
     }
     return realloc(ptr, new_size);
 }
-void opj_free(void *ptr)
+void grk_free(void *ptr)
 {
 	if (ptr)
 		free(ptr);

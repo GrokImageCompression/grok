@@ -59,7 +59,7 @@
  * Default callback function.
  * Do nothing.
  */
-static void opj_default_callback (const char *msg, void *client_data)
+static void grk_default_callback (const char *msg, void *client_data)
 {
     OPJ_ARG_NOT_USED(msg);
     OPJ_ARG_NOT_USED(client_data);
@@ -121,13 +121,13 @@ bool grk_event_msg(grk_event_mgr_t* p_event_mgr, int32_t event_type, const char 
     return true;
 }
 
-void opj_set_default_event_handler(grk_event_mgr_t * p_manager)
+void grk_set_default_event_handler(grk_event_mgr_t * p_manager)
 {
     p_manager->m_error_data = nullptr;
     p_manager->m_warning_data = nullptr;
     p_manager->m_info_data = nullptr;
-    p_manager->error_handler = opj_default_callback;
-    p_manager->info_handler = opj_default_callback;
-    p_manager->warning_handler = opj_default_callback;
+    p_manager->error_handler = grk_default_callback;
+    p_manager->info_handler = grk_default_callback;
+    p_manager->warning_handler = grk_default_callback;
 }
 

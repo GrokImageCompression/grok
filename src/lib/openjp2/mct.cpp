@@ -499,7 +499,7 @@ bool grk_mct_encode_custom(
 
     OPJ_ARG_NOT_USED(isSigned);
 
-    lCurrentData = (int32_t *) opj_malloc((pNbComp + lNbMatCoeff) * sizeof(int32_t));
+    lCurrentData = (int32_t *) grk_malloc((pNbComp + lNbMatCoeff) * sizeof(int32_t));
     if (! lCurrentData) {
         return false;
     }
@@ -527,7 +527,7 @@ bool grk_mct_encode_custom(
         }
     }
 
-    opj_free(lCurrentData);
+    grk_free(lCurrentData);
 
     return true;
 }
@@ -550,7 +550,7 @@ bool grk_mct_decode_custom(
 
     OPJ_ARG_NOT_USED(isSigned);
 
-    lCurrentData = (float *) opj_malloc (2 * pNbComp * sizeof(float));
+    lCurrentData = (float *) grk_malloc (2 * pNbComp * sizeof(float));
     if (! lCurrentData) {
         return false;
     }
@@ -569,7 +569,7 @@ bool grk_mct_decode_custom(
             *(lData[j]++) = (float) (lCurrentResult[j]);
         }
     }
-    opj_free(lCurrentData);
+    grk_free(lCurrentData);
     return true;
 }
 

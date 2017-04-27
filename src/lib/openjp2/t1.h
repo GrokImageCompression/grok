@@ -196,7 +196,7 @@ typedef struct grk_t1 {
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
 	/** MQC component */
-	opj_mqc_t *mqc;
+	grk_mqc_t *mqc;
 	/** RAW component */
 	grk_raw_t *raw;
 
@@ -225,7 +225,7 @@ Encode the code-blocks of a tile
 @param mct_numcomps Number of components used for MCT
 */
 bool grk_t1_encode_cblks(   grk_tcd_tile_t *tile,
-                            opj_tcp_t *tcp,
+                            grk_tcp_t *tcp,
                             const double * mct_norms,
                             uint32_t mct_numcomps,
 							uint32_t numThreads);

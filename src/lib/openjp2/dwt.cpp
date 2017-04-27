@@ -90,7 +90,7 @@ typedef struct v4dwt_local {
     int32_t		dn ;
     int32_t		sn ;
     int32_t		cas ;
-} opj_v4dwt_t ;
+} grk_v4dwt_t ;
 
 static const float grk_dwt_alpha =  1.586134342f; /*  12994 */
 static const float grk_dwt_beta  =  0.052980118f; /*    434 */
@@ -141,21 +141,21 @@ static void grk_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt);
+static void grk_v4dwt_decode(grk_v4dwt_t* restrict dwt);
 
-static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict w, float* restrict a, int32_t x, int32_t size);
+static void grk_v4dwt_interleave_h(grk_v4dwt_t* restrict w, float* restrict a, int32_t x, int32_t size);
 
-static void opj_v4dwt_interleave_v(opj_v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read);
+static void grk_v4dwt_interleave_v(grk_v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read);
 
 #ifdef __SSE__
-static void opj_v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c);
+static void grk_v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c);
 
-static void opj_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c);
+static void grk_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c);
 
 #else
-static void opj_v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c);
+static void grk_v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c);
 
-static void opj_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c);
+static void grk_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c);
 
 #endif
 
@@ -438,7 +438,7 @@ bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec)
 		/* FIXME event manager error callback */
 		return false;
 	}
-	bj = (int32_t*)opj_malloc(l_data_size);
+	bj = (int32_t*)grk_malloc(l_data_size);
 	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if (l_data_size != 0 && !bj) {
@@ -483,7 +483,7 @@ bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec)
 		l_cur_res = l_last_res;
 		--l_last_res;
 	}
-	opj_free(bj);
+	grk_free(bj);
 #ifdef DEBUG_LOSSLESS_DWT
 	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
 	grk_dwt_decode_53(tilec, tilec->numresolutions, 8);
@@ -534,7 +534,7 @@ bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec)
 		/* FIXME event manager error callback */
 		return false;
 	}
-	bj = (int32_t*)opj_malloc(l_data_size);
+	bj = (int32_t*)grk_malloc(l_data_size);
 	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if (l_data_size != 0 && !bj) {
@@ -580,7 +580,7 @@ bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec)
 		--l_last_res;
 	}
 
-	opj_free(bj);
+	grk_free(bj);
 	return true;
 }
 
@@ -623,7 +623,7 @@ bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec,
 			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
 
 			uint32_t w = (tilec->x1 - tilec->x0);
-			h.mem = (int32_t*)opj_aligned_malloc(grk_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
+			h.mem = (int32_t*)grk_aligned_malloc(grk_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
 			if (!h.mem) {
 				rc++;
 				goto cleanup;
@@ -666,7 +666,7 @@ bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec,
 			}
 		cleanup:
 			if (h.mem)
-				opj_aligned_free(h.mem);
+				grk_aligned_free(h.mem);
 			decode_dwt_calling_barrier.arrive_and_wait();
 
 		}));
@@ -758,7 +758,7 @@ uint32_t grk_dwt_max_resolution(grk_tcd_resolution_t* restrict r, uint32_t i)
     return mr ;
 }
 
-static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict w, float* restrict a, int32_t x, int32_t size)
+static void grk_v4dwt_interleave_h(grk_v4dwt_t* restrict w, float* restrict a, int32_t x, int32_t size)
 {
     float* restrict bi = (float*) (w->wavelet + w->cas);
     int32_t count = w->sn;
@@ -801,7 +801,7 @@ static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict w, float* restrict a, i
     }
 }
 
-static void opj_v4dwt_interleave_v(opj_v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read)
+static void grk_v4dwt_interleave_v(grk_v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read)
 {
     opj_v4_t* restrict bi = v->wavelet + v->cas;
     int32_t i;
@@ -820,7 +820,7 @@ static void opj_v4dwt_interleave_v(opj_v4dwt_t* restrict v , float* restrict a ,
 
 #ifdef __SSE__
 
-static void opj_v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c)
+static void grk_v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c)
 {
     __m128* restrict vw = (__m128*) w;
     int32_t i;
@@ -842,7 +842,7 @@ static void opj_v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 
     }
 }
 
-void opj_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c)
+void grk_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c)
 {
     __m128* restrict vl = (__m128*) l;
     __m128* restrict vw = (__m128*) w;
@@ -871,7 +871,7 @@ void opj_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, 
 
 #else
 
-static void opj_v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c)
+static void grk_v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c)
 {
     float* restrict fw = (float*) w;
     int32_t i;
@@ -887,7 +887,7 @@ static void opj_v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c)
     }
 }
 
-static void opj_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c)
+static void grk_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c)
 {
     float* fl = (float*) l;
     float* fw = (float*) w;
@@ -941,7 +941,7 @@ static void opj_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
+static void grk_v4dwt_decode(grk_v4dwt_t* restrict dwt)
 {
     int32_t a, b;
     if(dwt->cas == 0) {
@@ -958,19 +958,19 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
         b = 0;
     }
 #ifdef __SSE__
-    opj_v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
-    opj_v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_delta));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_gamma));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_beta));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_alpha));
+    grk_v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
+    grk_v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_delta));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_gamma));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_beta));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_alpha));
 #else
-    opj_v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
-    opj_v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
-    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_delta);
-    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_gamma);
-    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_beta);
-    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_alpha);
+    grk_v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
+    grk_v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
+    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_delta);
+    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_gamma);
+    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_beta);
+    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_alpha);
 #endif
 }
 
@@ -1004,8 +1004,8 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 											numThreads]()
 		{
 			auto numResolutions = numres;
-			opj_v4dwt_t h;
-			opj_v4dwt_t v;
+			grk_v4dwt_t h;
+			grk_v4dwt_t v;
 
 			grk_tcd_resolution_t* res = tilec->resolutions;
 
@@ -1014,7 +1014,7 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 
 			uint32_t w = (tilec->x1 - tilec->x0);
 
-			h.wavelet = (opj_v4_t*)opj_aligned_malloc((grk_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
+			h.wavelet = (opj_v4_t*)grk_aligned_malloc((grk_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
 			if (!h.wavelet) {
 				/* FIXME event manager error callback */
 				rc++;
@@ -1039,8 +1039,8 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 				h.cas = res->x0 & 1;
 				int32_t j;
 				for (j = (int32_t)rh - (threadId<<2); j > 3; j -= (numThreads <<2)) {
-					opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
-					opj_v4dwt_decode(&h);
+					grk_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
+					grk_v4dwt_decode(&h);
 					
 					for (int32_t k = (int32_t)rw; k-- > 0;) {
 						aj[(uint32_t)k] = h.wavelet[k].f[0];
@@ -1055,8 +1055,8 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 				decode_dwt_barrier.arrive_and_wait();
 				
 				if (j > 0 ) {
-					opj_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
-					opj_v4dwt_decode(&h);
+					grk_v4dwt_interleave_h(&h, aj, (int32_t)w, (int32_t)bufsize);
+					grk_v4dwt_decode(&h);
 					for (int32_t k = (int32_t)rw; k-- > 0;) {
 						switch (j) {
 						case 3:
@@ -1078,8 +1078,8 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 				
 				aj = tileBuf + (threadId << 2);
 				for (j = (int32_t)rw - (threadId<<2); j > 3; j -= (numThreads <<2)) {
-					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, 4);
-					opj_v4dwt_decode(&v);
+					grk_v4dwt_interleave_v(&v, aj, (int32_t)w, 4);
+					grk_v4dwt_decode(&v);
 
 					for (uint32_t k = 0; k < rh; ++k) {
 						memcpy(&aj[k*w], &v.wavelet[k], 4 * sizeof(float));
@@ -1088,8 +1088,8 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 				}
 				
 				if (j > 0) {
-					opj_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
-					opj_v4dwt_decode(&v);
+					grk_v4dwt_interleave_v(&v, aj, (int32_t)w, j);
+					grk_v4dwt_decode(&v);
 
 					for (uint32_t k = 0; k < rh; ++k) {
 						memcpy(&aj[k*w], &v.wavelet[k], (size_t)j * sizeof(float));
@@ -1101,7 +1101,7 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 
 		cleanup:
 			if (h.wavelet)
-				opj_aligned_free(h.wavelet);
+				grk_aligned_free(h.wavelet);
 			decode_dwt_calling_barrier.arrive_and_wait();
 
 		}));

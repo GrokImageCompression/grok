@@ -247,8 +247,8 @@ Tile coding parameters :
 this structure is used to store coding/decoding parameters common to all
 tiles (information like COD, COC in main header)
 */
-struct opj_tcp_t {
-	opj_tcp_t();
+struct grk_tcp_t {
+	grk_tcp_t();
 
     /** coding style */
     uint32_t csty;
@@ -400,7 +400,7 @@ typedef struct opj_cp {
     int32_t ppm_previous;
 
     /** tile coding parameters */
-    opj_tcp_t *tcps;
+    grk_tcp_t *tcps;
 
     union {
         opj_decoding_param_t m_dec;
@@ -422,7 +422,7 @@ typedef struct grk_j2k_dec {
     uint32_t m_state;
 
      //store decoding parameters common to all tiles (information like COD, COC in main header)
-     opj_tcp_t *m_default_tcp;
+     grk_tcp_t *m_default_tcp;
     uint8_t  *m_header_data;
     uint32_t m_header_data_size;
     /** to tell the tile part length */
@@ -803,4 +803,4 @@ bool grk_j2k_end_compress( 	grk_j2k_t *p_j2k,
                             opj_stream_private_t *cio,
                             grk_event_mgr_t * p_manager);
 
-bool grk_j2k_setup_mct_encoding (opj_tcp_t * p_tcp, opj_image_t * p_image);
+bool grk_j2k_setup_mct_encoding (grk_tcp_t * p_tcp, opj_image_t * p_image);

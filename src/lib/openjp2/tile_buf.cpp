@@ -77,7 +77,7 @@ bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
     for (resno = (int32_t)(tilec->numresolutions-1); resno >= 0; --resno) {
         uint32_t bandno;
         grk_tcd_resolution_t*  tcd_res = tilec->resolutions + resno;
-        grk_tile_buf_resolution_t* res = (grk_tile_buf_resolution_t*)opj_calloc(1, sizeof(grk_tile_buf_resolution_t));
+        grk_tile_buf_resolution_t* res = (grk_tile_buf_resolution_t*)grk_calloc(1, sizeof(grk_tile_buf_resolution_t));
         if (!res) {
             grk_tile_buf_destroy_component(comp);
             return false;
@@ -161,7 +161,7 @@ bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf)
         return false;
 
     if ((buf->data == nullptr) || ((buf->data_size_needed > buf->data_size) && (buf->owns_data == false))) {
-        buf->data = (int32_t *)opj_aligned_malloc(buf->data_size_needed);
+        buf->data = (int32_t *)grk_aligned_malloc(buf->data_size_needed);
         if (!buf->data) {
             return false;
         }
@@ -169,8 +169,8 @@ bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf)
         buf->owns_data = true;
     } else if (buf->data_size_needed > buf->data_size) {
         /* We don't need to keep old data */
-        opj_aligned_free(buf->data);
-        buf->data = (int32_t *)opj_aligned_malloc(buf->data_size_needed);
+        grk_aligned_free(buf->data);
+        buf->data = (int32_t *)grk_aligned_malloc(buf->data_size_needed);
         if (!buf->data) {
             buf->data_size = 0;
             buf->data_size_needed = 0;
@@ -193,7 +193,7 @@ bool grk_tile_buf_alloc_component_data_decode(grk_tile_buf_component_t* buf)
     if (!buf->data ) {
         int64_t area = buf->tile_dim.get_area();
 		if (area) {
-			buf->data = (int32_t *)opj_aligned_malloc(area * sizeof(int32_t));
+			buf->data = (int32_t *)grk_aligned_malloc(area * sizeof(int32_t));
 			if (!buf->data) {
 				return false;
 			}
@@ -212,12 +212,12 @@ void grk_tile_buf_destroy_component(grk_tile_buf_component_t* comp)
     if (!comp)
         return;
     if (comp->data && comp->owns_data)
-        opj_aligned_free(comp->data);
+        grk_aligned_free(comp->data);
     comp->data = NULL;
     comp->data_size = 0;
     comp->data_size_needed = 0;
 	for (auto& res : comp->resolutions) {
-		opj_free(res);
+		grk_free(res);
 	}
 	comp->resolutions.clear();
     delete comp;
