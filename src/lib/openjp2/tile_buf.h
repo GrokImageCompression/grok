@@ -38,8 +38,8 @@ typedef struct grk_tile_buf_band {
 typedef struct grk_tile_buf_resolution {
     grk_tile_buf_band_t band_region[3];
     uint32_t num_bands;
-    opj_pt_t origin;		/* resolution origin, in canvas coordinates */
-    opj_pt_t bounds;		/* full width and height of resolution */
+    grk_pt_t origin;		/* resolution origin, in canvas coordinates */
+    grk_pt_t bounds;		/* full width and height of resolution */
 } grk_tile_buf_resolution_t;
 
 typedef struct grk_tile_buf_component {
@@ -78,14 +78,14 @@ void grk_tile_buf_destroy_component(grk_tile_buf_component_t* comp);
 bool grk_tile_buf_hit_test(grk_tile_buf_component_t* comp, rect_t* rect);
 
 /* sub-band coordinates */
-opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
+grk_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal);
 
 
 /* resolution coordinates */
-opj_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
+grk_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal);
 

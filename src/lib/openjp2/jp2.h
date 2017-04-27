@@ -256,7 +256,7 @@ void grk_jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
 */
 bool grk_jp2_decode(grk_jp2_t *jp2,
 					opj_plugin_tile_t* tile,
-                    opj_stream_private_t *p_stream,
+                    grk_stream_private_t *p_stream,
                     opj_image_t* p_image,
                     grk_event_mgr_t * p_manager);
 
@@ -284,7 +284,7 @@ Encode an image into a JPEG-2000 file stream
 */
 bool grk_jp2_encode(  grk_jp2_t *jp2,
 						opj_plugin_tile_t* tile,
-                      opj_stream_private_t *stream,
+                      grk_stream_private_t *stream,
                       grk_event_mgr_t * p_manager);
 
 
@@ -299,7 +299,7 @@ bool grk_jp2_encode(  grk_jp2_t *jp2,
  * @return true if the codec is valid.
  */
 bool grk_jp2_start_compress(grk_jp2_t *jp2,
-                            opj_stream_private_t *stream,
+                            grk_stream_private_t *stream,
                             opj_image_t * p_image,
                             grk_event_mgr_t * p_manager);
 
@@ -309,7 +309,7 @@ bool grk_jp2_start_compress(grk_jp2_t *jp2,
  * codestream.
  */
 bool grk_jp2_end_compress(  grk_jp2_t *jp2,
-                            opj_stream_private_t *cio,
+                            grk_stream_private_t *cio,
                             grk_event_mgr_t * p_manager);
 
 /* ----------------------------------------------------------------------- */
@@ -319,7 +319,7 @@ bool grk_jp2_end_compress(  grk_jp2_t *jp2,
  * codestream.
  */
 bool grk_jp2_end_decompress(grk_jp2_t *jp2,
-                            opj_stream_private_t *cio,
+                            grk_stream_private_t *cio,
                             grk_event_mgr_t * p_manager);
 
 /**
@@ -332,7 +332,7 @@ bool grk_jp2_end_decompress(grk_jp2_t *jp2,
  *
  * @return true if the box is valid.
  */
-bool grk_jp2_read_header(  opj_stream_private_t *p_stream,
+bool grk_jp2_read_header(  grk_stream_private_t *p_stream,
                            grk_jp2_t *jp2,
 							opj_header_info_t* header_info,
                            opj_image_t ** p_image,
@@ -361,7 +361,7 @@ bool grk_jp2_read_tile_header ( grk_jp2_t * p_jp2,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                opj_stream_private_t *p_stream,
+                                grk_stream_private_t *p_stream,
                                 grk_event_mgr_t * p_manager );
 
 /**
@@ -378,7 +378,7 @@ bool grk_jp2_write_tile (  grk_jp2_t *p_jp2,
                            uint32_t p_tile_index,
                            uint8_t * p_data,
                            uint64_t p_data_size,
-                           opj_stream_private_t *p_stream,
+                           grk_stream_private_t *p_stream,
                            grk_event_mgr_t * p_manager );
 
 /**
@@ -396,7 +396,7 @@ bool grk_jp2_decode_tile (  grk_jp2_t * p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            opj_stream_private_t *p_stream,
+                            grk_stream_private_t *p_stream,
                             grk_event_mgr_t * p_manager );
 
 /**
@@ -414,7 +414,7 @@ void grk_jp2_destroy(grk_jp2_t *jp2);
 
 
 /**
- * Sets the given area to be decoded. This function should be called right after opj_read_header and before any tile header reading.
+ * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
  *
  * @param  p_jp2      the jpeg2000 codec.
  * @param  p_image     FIXME DOC
@@ -436,7 +436,7 @@ bool grk_jp2_set_decode_area(  grk_jp2_t *p_jp2,
 *
 */
 bool grk_jp2_get_tile(  grk_jp2_t *p_jp2,
-                        opj_stream_private_t *p_stream,
+                        grk_stream_private_t *p_stream,
                         opj_image_t* p_image,
                         grk_event_mgr_t * p_manager,
                         uint32_t tile_index );

@@ -61,7 +61,7 @@ typedef struct grk_codec_private {
          */
         struct opj_decompression {
             /** Main header reading function handler */
-            bool (*opj_read_header) ( struct opj_stream_private * cio,
+            bool (*opj_read_header) ( grk_stream_private_t * cio,
                                       void * p_codec,
 									  opj_header_info_t* header_info,
                                       opj_image_t **p_image,
@@ -70,7 +70,7 @@ typedef struct grk_codec_private {
             /** Decoding function */
             bool (*opj_decode) ( void * p_codec,
 								  opj_plugin_tile_t* tile,
-                                 struct opj_stream_private * p_cio,
+                                 grk_stream_private_t * p_cio,
                                  opj_image_t * p_image,
                                  grk_event_mgr_t * p_manager);
 
@@ -84,7 +84,7 @@ typedef struct grk_codec_private {
                                           uint32_t * p_tile_y1,
                                           uint32_t * p_nb_comps,
                                           bool * p_should_go_on,
-                                          struct opj_stream_private * p_cio,
+                                          grk_stream_private_t * p_cio,
                                           grk_event_mgr_t * p_manager);
 
             /** FIXME DOC */
@@ -92,12 +92,12 @@ typedef struct grk_codec_private {
                                           uint32_t p_tile_index,
                                           uint8_t * p_data,
                                           uint64_t p_data_size,
-                                          struct opj_stream_private * p_cio,
+                                          grk_stream_private_t * p_cio,
                                           grk_event_mgr_t * p_manager);
 
             /** Reading function used after codestream if necessary */
             bool (* opj_end_decompress) ( void *p_codec,
-                                          struct opj_stream_private * cio,
+                                          grk_stream_private_t * cio,
                                           grk_event_mgr_t * p_manager);
 
             /** Codec destroy function handler */
@@ -117,7 +117,7 @@ typedef struct grk_codec_private {
 
             /** Get tile function */
             bool (*opj_get_decoded_tile) ( void *p_codec,
-                                           opj_stream_private_t * p_cio,
+                                           grk_stream_private_t * p_cio,
                                            opj_image_t *p_image,
                                            grk_event_mgr_t * p_manager,
                                            uint32_t tile_index);
@@ -133,24 +133,24 @@ typedef struct grk_codec_private {
          */
         struct opj_compression {
             bool (* opj_start_compress) ( void *p_codec,
-                                          struct opj_stream_private * cio,
+                                          grk_stream_private_t * cio,
                                           struct opj_image * p_image,
                                           grk_event_mgr_t * p_manager);
 
             bool (* opj_encode) ( void * p_codec,
 									opj_plugin_tile_t*,
-                                  struct opj_stream_private *p_cio,
+                                  grk_stream_private_t *p_cio,
                                   grk_event_mgr_t * p_manager);
 
             bool (* opj_write_tile) ( void * p_codec,
                                       uint32_t p_tile_index,
                                       uint8_t * p_data,
                                       uint64_t p_data_size,
-                                      struct opj_stream_private * p_cio,
+                                      grk_stream_private_t * p_cio,
                                       grk_event_mgr_t * p_manager);
 
             bool (* opj_end_compress) (	void * p_codec,
-                                        struct opj_stream_private * p_cio,
+                                        grk_stream_private_t * p_cio,
                                         grk_event_mgr_t * p_manager);
 
             void (* opj_destroy) (void * p_codec);

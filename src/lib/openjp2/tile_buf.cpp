@@ -49,10 +49,10 @@ bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
 
     if (output_image) {
 		comp->dim= rect_t(
-                      opj_uint_ceildiv(output_image->x0,dx),
-                      opj_uint_ceildiv(output_image->y0,dy),
-                      opj_uint_ceildiv(output_image->x1,dx),
-                      opj_uint_ceildiv(output_image->y1,dy));
+                      grk_uint_ceildiv(output_image->x0,dx),
+                      grk_uint_ceildiv(output_image->y0,dy),
+                      grk_uint_ceildiv(output_image->x1,dx),
+                      grk_uint_ceildiv(output_image->y1,dy));
 
         /* clip output image to tile */
 		comp->tile_dim.clip(&comp->dim, &comp->dim);
@@ -102,7 +102,7 @@ bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
             if (resno > 0) {
 
                 /*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band  */
-                opj_pt_t shift;
+                grk_pt_t shift;
                 shift.x = band->bandno & 1;
                 shift.y = band->bandno & 2;
 
@@ -238,16 +238,16 @@ bool grk_tile_buf_hit_test(grk_tile_buf_component_t* comp, rect_t* rect)
     return false;
 }
 
-opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
+grk_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal)
 {
-    opj_pt_t rc;
+    grk_pt_t rc;
     grk_tile_buf_resolution_t* res= NULL;
     grk_tile_buf_resolution_t* prev_res = NULL;
     grk_tile_buf_band_t *band= NULL;
-    memset(&rc, 0, sizeof(opj_pt_t));
+    memset(&rc, 0, sizeof(grk_pt_t));
     if (!comp)
         return rc;
 
@@ -276,16 +276,16 @@ opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
     }
 
     /* clip */
-    rc.x = opj_max<int64_t>(0, rc.x);
+    rc.x = grk_max<int64_t>(0, rc.x);
 
     /* if resno == 0, then prev_res is null */
     if (resno == 0) {
-        rc.y = opj_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+        rc.y = grk_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     } else {
         if (is_even)
-            rc.y = opj_min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
+            rc.y = grk_min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
         else
-            rc.y = opj_min<int64_t>(rc.y,
+            rc.y = grk_min<int64_t>(rc.y,
                                is_horizontal ? res->bounds.x - prev_res->bounds.x : res->bounds.y - prev_res->bounds.y);
 
     }
@@ -294,15 +294,15 @@ opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
 
 }
 
-opj_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
+grk_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal)
 {
-    opj_pt_t rc;
-    opj_pt_t even;
-    opj_pt_t odd;
+    grk_pt_t rc;
+    grk_pt_t even;
+    grk_pt_t odd;
     grk_tile_buf_resolution_t* res = NULL;
-    memset(&rc, 0, sizeof(opj_pt_t));
+    memset(&rc, 0, sizeof(grk_pt_t));
     if (!comp)
         return rc;
 
@@ -313,12 +313,12 @@ opj_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
     even = grk_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
     odd = grk_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
 
-    rc.x = opj_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
-    rc.y = opj_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
+    rc.x = grk_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
+    rc.y = grk_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
 
     /* clip to resolution bounds */
-    rc.x = opj_max<int64_t>(0, rc.x);
-    rc.y = opj_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+    rc.x = grk_max<int64_t>(0, rc.x);
+    rc.y = grk_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     return rc;
 }
 
@@ -326,9 +326,9 @@ int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp)
 {
     if (!comp || comp->resolutions.empty())
         return 0;
-	opj_pt_t horizontal = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
-	opj_pt_t vertical   = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
+	grk_pt_t horizontal = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
+	grk_pt_t vertical   = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
-    return opj_max<int64_t>(horizontal.y, vertical.y);
+    return grk_max<int64_t>(horizontal.y, vertical.y);
 }
 

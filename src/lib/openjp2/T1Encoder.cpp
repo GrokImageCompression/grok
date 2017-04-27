@@ -74,7 +74,7 @@ void T1Encoder::encode(void) {
 					//    in the plugin DWT step
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
 						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						block->tiledp[tileIndex] = opj_int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
+						block->tiledp[tileIndex] = grk_int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
 					}
 					tileIndex++;
 				}
@@ -143,7 +143,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 #endif
 					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)abs(tmp);
-					max = opj_max<uint32_t>(max, mag);
+					max = grk_max<uint32_t>(max, mag);
 					t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					tileIndex++;
 					cblk_index++;
@@ -161,7 +161,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 					int32_t tmp = 0;
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
 						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						tmp = opj_int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+						tmp = grk_int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
 					}
 					else{
 						tmp = tiledp[tileIndex];
@@ -169,7 +169,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 					uint32_t mag = (uint32_t)abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-					max = opj_max<uint32_t>(max, mag);
+					max = grk_max<uint32_t>(max, mag);
 					t1->data[cblk_index] = sign_mag;
 					
 					tileIndex++;
