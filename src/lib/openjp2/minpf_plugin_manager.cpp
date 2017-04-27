@@ -47,7 +47,6 @@ static uint32_t minpf_is_valid_plugin(const char * id, const minpf_register_para
 
 int32_t minpf_register_object(const char * id, const minpf_register_params * params)
 {
-    int error;
     minpf_plugin_api_version v;
     minpf_register_params* existing_plugin_params;
     minpf_plugin_manager* pluginManager = minpf_get_plugin_manager();
@@ -65,20 +64,15 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
         return -1;
 
     // check if plugin is already registered
-    existing_plugin_params = (minpf_register_params*)malloc(sizeof(minpf_register_params));
-    error = hashmap_get(pluginManager->plugins, id, (void**)(&existing_plugin_params));
-    free(existing_plugin_params);
+    existing_plugin_params = new minpf_register_params();
+	if (pluginManager->plugins->find(id) != pluginManager->plugins->end()) {
+		delete pluginManager->plugins->operator[](id);
+	}
     existing_plugin_params = NULL;
-    if (error != MAP_MISSING)
-        return 0;
-
-    registered_params = (minpf_register_params*)malloc(sizeof(minpf_register_params));
-	if (!registered_params)
-		return -1;
+    registered_params = new minpf_register_params();
     *registered_params = *params;
-    error = hashmap_put(pluginManager->plugins, id, registered_params);
-
-    return (error==MAP_OK) ? 0 : -1;
+	pluginManager->plugins->operator[](id) = registered_params;
+	return 0;
 
 }
 
@@ -103,7 +97,7 @@ void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
     manager->platformServices.invokeService = NULL;
     manager->platformServices.registerObject = minpf_register_object;
 
-    manager->plugins  = hashmap_new();
+    manager->plugins  = new std::map<const char*, minpf_register_params*>();
 
 }
 
@@ -119,13 +113,6 @@ minpf_plugin_manager*  minpf_get_plugin_manager(void)
 
 }
 
-static int minpf_free_hash_value(any_t item, any_t data)
-{
-    if (data)
-        free(data);
-    return 0;
-
-}
 void   minpf_cleanup_plugin_manager(void)
 {
     if (managerInstance) {
@@ -140,8 +127,11 @@ void   minpf_cleanup_plugin_manager(void)
 			}
         }
 
-        hashmap_iterate(managerInstance->plugins, minpf_free_hash_value, NULL);
-        hashmap_free(managerInstance->plugins);
+		for (auto plug = managerInstance->plugins->begin(); plug != managerInstance->plugins->end(); ++plug) {
+			if (plug->second)
+				delete plug->second;
+		}
+		delete managerInstance->plugins;
         free(managerInstance);
     }
 	managerInstance = NULL;

@@ -77,8 +77,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/hashmap.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/hashmap.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_common.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_interface.h
