@@ -51,14 +51,9 @@
 #pragma once
 
 /**
-@file opj_codec.h
-*/
-
-
-/**
  * Main codec handler used for compression or decompression.
  */
-typedef struct opj_codec_private {
+typedef struct grk_codec_private {
     /** FIXME DOC */
     union {
         /**
@@ -70,14 +65,14 @@ typedef struct opj_codec_private {
                                       void * p_codec,
 									  opj_header_info_t* header_info,
                                       opj_image_t **p_image,
-                                      opj_event_mgr_t * p_manager);
+                                      grk_event_mgr_t * p_manager);
 
             /** Decoding function */
             bool (*opj_decode) ( void * p_codec,
 								  opj_plugin_tile_t* tile,
                                  struct opj_stream_private * p_cio,
                                  opj_image_t * p_image,
-                                 opj_event_mgr_t * p_manager);
+                                 grk_event_mgr_t * p_manager);
 
             /** FIXME DOC */
             bool (*opj_read_tile_header)( void * p_codec,
@@ -90,7 +85,7 @@ typedef struct opj_codec_private {
                                           uint32_t * p_nb_comps,
                                           bool * p_should_go_on,
                                           struct opj_stream_private * p_cio,
-                                          opj_event_mgr_t * p_manager);
+                                          grk_event_mgr_t * p_manager);
 
             /** FIXME DOC */
             bool (*opj_decode_tile_data)( void * p_codec,
@@ -98,12 +93,12 @@ typedef struct opj_codec_private {
                                           uint8_t * p_data,
                                           uint64_t p_data_size,
                                           struct opj_stream_private * p_cio,
-                                          opj_event_mgr_t * p_manager);
+                                          grk_event_mgr_t * p_manager);
 
             /** Reading function used after codestream if necessary */
             bool (* opj_end_decompress) ( void *p_codec,
                                           struct opj_stream_private * cio,
-                                          opj_event_mgr_t * p_manager);
+                                          grk_event_mgr_t * p_manager);
 
             /** Codec destroy function handler */
             void (*opj_destroy) (void * p_codec);
@@ -118,19 +113,19 @@ typedef struct opj_codec_private {
                                           uint32_t p_end_x,
                                           uint32_t p_start_y,
                                           uint32_t p_end_y,
-                                          opj_event_mgr_t * p_manager);
+                                          grk_event_mgr_t * p_manager);
 
             /** Get tile function */
             bool (*opj_get_decoded_tile) ( void *p_codec,
                                            opj_stream_private_t * p_cio,
                                            opj_image_t *p_image,
-                                           opj_event_mgr_t * p_manager,
+                                           grk_event_mgr_t * p_manager,
                                            uint32_t tile_index);
 
             /** Set the decoded resolution factor */
             bool (*opj_set_decoded_resolution_factor) ( void * p_codec,
                     uint32_t res_factor,
-                    opj_event_mgr_t * p_manager);
+                    grk_event_mgr_t * p_manager);
         } m_decompression;
 
         /**
@@ -140,43 +135,43 @@ typedef struct opj_codec_private {
             bool (* opj_start_compress) ( void *p_codec,
                                           struct opj_stream_private * cio,
                                           struct opj_image * p_image,
-                                          opj_event_mgr_t * p_manager);
+                                          grk_event_mgr_t * p_manager);
 
             bool (* opj_encode) ( void * p_codec,
 									opj_plugin_tile_t*,
                                   struct opj_stream_private *p_cio,
-                                  opj_event_mgr_t * p_manager);
+                                  grk_event_mgr_t * p_manager);
 
             bool (* opj_write_tile) ( void * p_codec,
                                       uint32_t p_tile_index,
                                       uint8_t * p_data,
                                       uint64_t p_data_size,
                                       struct opj_stream_private * p_cio,
-                                      opj_event_mgr_t * p_manager);
+                                      grk_event_mgr_t * p_manager);
 
             bool (* opj_end_compress) (	void * p_codec,
                                         struct opj_stream_private * p_cio,
-                                        opj_event_mgr_t * p_manager);
+                                        grk_event_mgr_t * p_manager);
 
             void (* opj_destroy) (void * p_codec);
 
             bool (* opj_setup_encoder) ( void * p_codec,
                                          opj_cparameters_t * p_param,
                                          struct opj_image * p_image,
-                                         opj_event_mgr_t * p_manager);
+                                         grk_event_mgr_t * p_manager);
         } m_compression;
     } m_codec_data;
     /** FIXME DOC*/
     void * m_codec;
     /** Event handler */
-    opj_event_mgr_t m_event_mgr;
+    grk_event_mgr_t m_event_mgr;
     /** Flag to indicate if the codec is used to decode or encode*/
     bool is_decompressor;
     void (*opj_dump_codec) (void * p_codec, int32_t info_flag, FILE* output_stream);
-    opj_codestream_info_v2_t* (*opj_get_codec_info)(void* p_codec);
+    opj_codestream_info_v2_t* (*grk_get_codec_info)(void* p_codec);
     opj_codestream_index_t* (*opj_get_codec_index)(void* p_codec);
 }
-opj_codec_private_t;
+grk_codec_private_t;
 
 
 

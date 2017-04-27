@@ -1301,7 +1301,7 @@ static void info_callback(const char *msg, void *client_data)
     fprintf(stdout, "[INFO] %s", msg);
 }
 
-double opj_clock(void) {
+double grk_clock(void) {
 #ifdef _WIN32
 	/* _WIN32: use QueryPerformance (very accurate) */
     LARGE_INTEGER freq , t ;
@@ -1413,7 +1413,7 @@ int main(int argc, char **argv) {
 	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
 
 	bool bUseTiles = false; /* true */
-	double t = opj_clock();
+	double t = grk_clock();
 	int success = 0;
 	opj_image_t *image = NULL;
 	dircnt_t *dirptr = NULL;
@@ -1483,7 +1483,7 @@ int main(int argc, char **argv) {
     }
 
 
-    t = opj_clock() - t;
+    t = grk_clock() - t;
     if (num_compressed_files) {
 		    fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0)/(double)num_compressed_files));
     }

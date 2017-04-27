@@ -216,14 +216,14 @@ opj_tccp_t;
 /**
  * FIXME DOC
  */
-typedef struct opj_mct_data {
+typedef struct grk_mct_data {
     J2K_MCT_ELEMENT_TYPE m_element_type;
     J2K_MCT_ARRAY_TYPE	 m_array_type;
     uint32_t			 m_index;
     uint8_t *			 m_data;
     uint32_t			 m_data_size;
 }
-opj_mct_data_t;
+grk_mct_data_t;
 
 /**
  * FIXME DOC
@@ -231,8 +231,8 @@ opj_mct_data_t;
 typedef struct opj_simple_mcc_decorrelation_data {
     uint32_t			 m_index;
     uint32_t			 m_nb_comps;
-    opj_mct_data_t *	 m_decorrelation_array;
-    opj_mct_data_t *	 m_offset_array;
+    grk_mct_data_t *	 m_decorrelation_array;
+    grk_mct_data_t *	 m_offset_array;
     uint32_t			 m_is_irreversible : 1;
 }
 opj_simple_mcc_decorrelation_data_t;
@@ -299,7 +299,7 @@ struct opj_tcp_t {
     /** the mct coding matrix */
     float *	m_mct_coding_matrix;
     /** mct records */
-    opj_mct_data_t * m_mct_records;
+    grk_mct_data_t * m_mct_records;
     /** the number of mct records. */
     uint32_t m_nb_mct_records;
     /** the max number of mct records. */
@@ -417,7 +417,7 @@ typedef struct opj_cp {
 } opj_cp_t;
 
 
-typedef struct opj_j2k_dec {
+typedef struct grk_j2k_dec {
     /** Decoder state: used to indicate in which part of the codestream the decoder is (main header, tile header, end) */
     uint32_t m_state;
 
@@ -458,9 +458,9 @@ typedef struct opj_j2k_dec {
     uint32_t m_nb_tile_parts_correction_checked : 1;
     uint32_t m_nb_tile_parts_correction : 1;
 
-} opj_j2k_dec_t;
+} grk_j2k_dec_t;
 
-struct opj_j2k_enc_t {
+struct grk_j2k_enc_t {
     /** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
     uint32_t m_current_poc_tile_part_number; /* tp_num */
 
@@ -491,18 +491,18 @@ struct opj_j2k_enc_t {
 
 
 
-struct opj_tcd_t;
+struct grk_tcd_t;
 /**
 JPEG-2000 codestream reader/writer
 */
-typedef struct opj_j2k {
+typedef struct grk_j2k {
     /* J2K codestream is decoded*/
     bool m_is_decoder;
 
     /* FIXME DOC*/
     union {
-        opj_j2k_dec_t m_decoder;
-        opj_j2k_enc_t m_encoder;
+        grk_j2k_dec_t m_decoder;
+        grk_j2k_enc_t m_encoder;
     }
     m_specific_param;
 
@@ -516,10 +516,10 @@ typedef struct opj_j2k {
     opj_cp_t m_cp;
 
     /** the list of procedures to exec **/
-    opj_procedure_list_t *	m_procedure_list;
+    grk_procedure_list_t *	m_procedure_list;
 
     /** the list of validation procedures to follow to make sure the code is valid **/
-    opj_procedure_list_t *	m_validation_list;
+    grk_procedure_list_t *	m_validation_list;
 
     /** helper used to write the index file */
     opj_codestream_index_t *cstr_index;
@@ -528,12 +528,12 @@ typedef struct opj_j2k {
     uint32_t m_current_tile_number;
 
     /** the current tile coder/decoder **/
-    opj_tcd_t *	m_tcd;
+    grk_tcd_t *	m_tcd;
 
 	uint32_t numThreads;
 
 }
-opj_j2k_t;
+grk_j2k_t;
 
 
 
@@ -548,25 +548,25 @@ Decoding parameters are returned in j2k->cp.
 @param j2k J2K decompressor handle
 @param parameters decompression parameters
 */
-void opj_j2k_setup_decoder(void* j2k_void, opj_dparameters_t *parameters);
+void grk_j2k_setup_decoder(void* j2k_void, opj_dparameters_t *parameters);
 
 /**
  * Creates a J2K compression structure
  *
  * @return Returns a handle to a J2K compressor if successful, returns NULL otherwise
 */
-opj_j2k_t* opj_j2k_create_compress(void);
+grk_j2k_t* grk_j2k_create_compress(void);
 
 
-bool opj_j2k_setup_encoder(	opj_j2k_t *p_j2k,
+bool grk_j2k_setup_encoder(	grk_j2k_t *p_j2k,
                             opj_cparameters_t *parameters,
                             opj_image_t *image,
-                            opj_event_mgr_t * p_manager);
+                            grk_event_mgr_t * p_manager);
 
 /**
 Converts an enum type progression order to string type
 */
-char *opj_j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
+char *grk_j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
@@ -577,9 +577,9 @@ char *opj_j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
  * Ends the decompression procedures and possibiliy add data to be read after the
  * codestream.
  */
-bool opj_j2k_end_decompress(opj_j2k_t *j2k,
+bool grk_j2k_end_decompress(grk_j2k_t *j2k,
                             opj_stream_private_t *p_stream,
-                            opj_event_mgr_t * p_manager);
+                            grk_event_mgr_t * p_manager);
 
 /**
  * Reads a jpeg2000 codestream header structure.
@@ -591,11 +591,11 @@ bool opj_j2k_end_decompress(opj_j2k_t *j2k,
  *
  * @return true if the box is valid.
  */
-bool opj_j2k_read_header(	opj_stream_private_t *p_stream,
-                            opj_j2k_t* p_j2k,
+bool grk_j2k_read_header(	opj_stream_private_t *p_stream,
+                            grk_j2k_t* p_j2k,
 							opj_header_info_t* header_info,
 							opj_image_t** p_image,
-							opj_event_mgr_t* p_manager );
+							grk_event_mgr_t* p_manager );
 
 
 /**
@@ -603,7 +603,7 @@ bool opj_j2k_read_header(	opj_stream_private_t *p_stream,
  *
  * @param	p_j2k	the jpeg20000 structure to destroy.
  */
-void opj_j2k_destroy (opj_j2k_t *p_j2k);
+void grk_j2k_destroy (grk_j2k_t *p_j2k);
 
 /**
  * Destroys a codestream index structure.
@@ -621,12 +621,12 @@ void j2k_destroy_cstr_index (opj_codestream_index_t *p_cstr_ind);
  * @param	p_stream			the stream to write data to.
  * @param	p_manager	the user event manager.
  */
-bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
+bool grk_j2k_decode_tile (  grk_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
-                            opj_event_mgr_t * p_manager );
+                            grk_event_mgr_t * p_manager );
 
 /**
  * Reads a tile header.
@@ -642,7 +642,7 @@ bool opj_j2k_decode_tile (  opj_j2k_t * p_j2k,
  * @param	p_stream			the stream to write data to.
  * @param	p_manager	the user event manager.
  */
-bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
+bool grk_j2k_read_tile_header ( grk_j2k_t * p_j2k,
                                 uint32_t * p_tile_index,
                                 uint64_t * p_data_size,
                                 uint32_t * p_tile_x0,
@@ -652,7 +652,7 @@ bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
                                 opj_stream_private_t *p_stream,
-                                opj_event_mgr_t * p_manager );
+                                grk_event_mgr_t * p_manager );
 
 
 /**
@@ -668,18 +668,18 @@ bool opj_j2k_read_tile_header ( opj_j2k_t * p_j2k,
  *
  * @return	true			if the area could be set.
  */
-bool opj_j2k_set_decode_area(	opj_j2k_t *p_j2k,
+bool grk_j2k_set_decode_area(	grk_j2k_t *p_j2k,
                                 opj_image_t* p_image,
                                 uint32_t p_start_x, uint32_t p_start_y,
                                 uint32_t p_end_x, uint32_t p_end_y,
-                                opj_event_mgr_t * p_manager );
+                                grk_event_mgr_t * p_manager );
 
 /**
  * Creates a J2K decompression structure.
  *
  * @return a handle to a J2K decompressor if successful, NULL otherwise.
  */
-opj_j2k_t* opj_j2k_create_decompress(void);
+grk_j2k_t* grk_j2k_create_decompress(void);
 
 
 /**
@@ -690,7 +690,7 @@ opj_j2k_t* opj_j2k_create_decompress(void);
  *@param out_stream			output stream where dump the elements.
  *
 */
-void j2k_dump (opj_j2k_t* p_j2k, int32_t flag, FILE* out_stream);
+void j2k_dump (grk_j2k_t* p_j2k, int32_t flag, FILE* out_stream);
 
 
 
@@ -719,7 +719,7 @@ void j2k_dump_image_comp_header(opj_image_comp_t* comp, bool dev_dump_flag, FILE
  *
  *@return	the codestream information extract from the jpg2000 codec
  */
-opj_codestream_info_v2_t* j2k_get_cstr_info(opj_j2k_t* p_j2k);
+opj_codestream_info_v2_t* j2k_get_cstr_info(grk_j2k_t* p_j2k);
 
 /**
  * Get the codestream index from a JPEG2000 codec.
@@ -728,7 +728,7 @@ opj_codestream_info_v2_t* j2k_get_cstr_info(opj_j2k_t* p_j2k);
  *
  *@return	the codestream index extract from the jpg2000 codec
  */
-opj_codestream_index_t* j2k_get_cstr_index(opj_j2k_t* p_j2k);
+opj_codestream_index_t* j2k_get_cstr_index(grk_j2k_t* p_j2k);
 
 /**
  * Decode an image from a JPEG-2000 codestream
@@ -738,22 +738,22 @@ opj_codestream_index_t* j2k_get_cstr_index(opj_j2k_t* p_j2k);
  * @param p_manager FIXME DOC
  * @return FIXME DOC
 */
-bool opj_j2k_decode(opj_j2k_t *j2k,
+bool grk_j2k_decode(grk_j2k_t *j2k,
 					opj_plugin_tile_t* tile,
                     opj_stream_private_t *p_stream,
                     opj_image_t *p_image,
-                    opj_event_mgr_t *p_manager);
+                    grk_event_mgr_t *p_manager);
 
 
-bool opj_j2k_get_tile(	opj_j2k_t *p_j2k,
+bool grk_j2k_get_tile(	grk_j2k_t *p_j2k,
                         opj_stream_private_t *p_stream,
                         opj_image_t* p_image,
-                        opj_event_mgr_t * p_manager,
+                        grk_event_mgr_t * p_manager,
                         uint32_t tile_index );
 
-bool opj_j2k_set_decoded_resolution_factor(opj_j2k_t *p_j2k,
+bool grk_j2k_set_decoded_resolution_factor(grk_j2k_t *p_j2k,
         uint32_t res_factor,
-        opj_event_mgr_t * p_manager);
+        grk_event_mgr_t * p_manager);
 
 
 /**
@@ -765,20 +765,20 @@ bool opj_j2k_set_decoded_resolution_factor(opj_j2k_t *p_j2k,
  * @param	p_stream			the stream to write data to.
  * @param	p_manager	the user event manager.
  */
-bool opj_j2k_write_tile (	opj_j2k_t * p_j2k,
+bool grk_j2k_write_tile (	grk_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
                             opj_stream_private_t *p_stream,
-                            opj_event_mgr_t * p_manager );
+                            grk_event_mgr_t * p_manager );
 
 /**
  * Encodes an image into a JPEG-2000 codestream
  */
-bool opj_j2k_encode(	opj_j2k_t * p_j2k,
+bool grk_j2k_encode(	grk_j2k_t * p_j2k,
 						opj_plugin_tile_t* tile,
                         opj_stream_private_t *cio,
-                        opj_event_mgr_t * p_manager );
+                        grk_event_mgr_t * p_manager );
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
@@ -790,17 +790,17 @@ bool opj_j2k_encode(	opj_j2k_t * p_j2k,
  *
  * @return true if the codec is valid.
  */
-bool opj_j2k_start_compress(opj_j2k_t *p_j2k,
+bool grk_j2k_start_compress(grk_j2k_t *p_j2k,
                             opj_stream_private_t *p_stream,
                             opj_image_t * p_image,
-                            opj_event_mgr_t * p_manager);
+                            grk_event_mgr_t * p_manager);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
  * codestream.
  */
-bool opj_j2k_end_compress( 	opj_j2k_t *p_j2k,
+bool grk_j2k_end_compress( 	grk_j2k_t *p_j2k,
                             opj_stream_private_t *cio,
-                            opj_event_mgr_t * p_manager);
+                            grk_event_mgr_t * p_manager);
 
-bool opj_j2k_setup_mct_encoding (opj_tcp_t * p_tcp, opj_image_t * p_image);
+bool grk_j2k_setup_mct_encoding (opj_tcp_t * p_tcp, opj_image_t * p_image);

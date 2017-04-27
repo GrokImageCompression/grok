@@ -49,7 +49,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 /* ==========================================================
      Utility functions
@@ -69,7 +69,7 @@ static void opj_default_callback (const char *msg, void *client_data)
 
 
 /* ----------------------------------------------------------------------- */
-bool opj_event_msg(opj_event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
+bool grk_event_msg(grk_event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
 {
 #define OPJ_MSG_SIZE 512 /* 512 bytes should be more than enough for a short message */
     opj_msg_callback msg_handler = nullptr;
@@ -121,7 +121,7 @@ bool opj_event_msg(opj_event_mgr_t* p_event_mgr, int32_t event_type, const char 
     return true;
 }
 
-void opj_set_default_event_handler(opj_event_mgr_t * p_manager)
+void opj_set_default_event_handler(grk_event_mgr_t * p_manager)
 {
     p_manager->m_error_data = nullptr;
     p_manager->m_warning_data = nullptr;

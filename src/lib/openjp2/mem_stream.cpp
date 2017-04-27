@@ -15,7 +15,7 @@
 *
 */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 
 #ifdef _WIN32
@@ -42,12 +42,12 @@ typedef int32_t opj_handle_t;
 #endif
 
 
-typedef struct opj_buf_info {
+typedef struct grk_buf_info {
     uint8_t *buf;
     int64_t off;
     size_t len;
     opj_handle_t fd;		// for file mapping
-} opj_buf_info_t;
+} grk_buf_info_t;
 
 static void opj_free_buffer_info(void* user_data)
 {
@@ -57,7 +57,7 @@ static void opj_free_buffer_info(void* user_data)
 
 static size_t opj_zero_copy_read_from_buffer(void ** p_buffer,
         size_t p_nb_bytes,
-        opj_buf_info_t* p_source_buffer)
+        grk_buf_info_t* p_source_buffer)
 {
     size_t l_nb_read = 0;
 
@@ -73,7 +73,7 @@ static size_t opj_zero_copy_read_from_buffer(void ** p_buffer,
 
 static size_t opj_read_from_buffer(void * p_buffer,
                                    size_t p_nb_bytes,
-                                   opj_buf_info_t* p_source_buffer)
+                                   grk_buf_info_t* p_source_buffer)
 {
     size_t l_nb_read;
 
@@ -90,7 +90,7 @@ static size_t opj_read_from_buffer(void * p_buffer,
 
 static size_t opj_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
-                                    opj_buf_info_t* p_source_buffer)
+                                    grk_buf_info_t* p_source_buffer)
 {
     memcpy(p_source_buffer->buf + (size_t)p_source_buffer->off, p_buffer, p_nb_bytes);
     p_source_buffer->off += (int64_t)p_nb_bytes;
@@ -98,7 +98,7 @@ static size_t opj_write_to_buffer(void * p_buffer,
 }
 
 static int64_t opj_skip_from_buffer(int64_t p_nb_bytes,
-                                    opj_buf_info_t * p_source_buffer)
+                                    grk_buf_info_t * p_source_buffer)
 {
     if (p_source_buffer->off + p_nb_bytes <  (int64_t)p_source_buffer->len) {
         p_source_buffer->off += p_nb_bytes;
@@ -109,7 +109,7 @@ static int64_t opj_skip_from_buffer(int64_t p_nb_bytes,
 }
 
 static bool opj_seek_from_buffer(int64_t p_nb_bytes,
-                                 opj_buf_info_t * p_source_buffer)
+                                 grk_buf_info_t * p_source_buffer)
 {
     if (p_nb_bytes <  (int64_t)p_source_buffer->len) {
         p_source_buffer->off = p_nb_bytes;
@@ -139,7 +139,7 @@ size_t opj_get_buffer_stream_offset(opj_stream_t* stream) {
 	opj_stream_private_t * private_stream = (opj_stream_private_t*)stream;
 	if (!private_stream->m_user_data)
 		return 0;
-	opj_buf_info_t* buf = (opj_buf_info_t*)private_stream->m_user_data;
+	grk_buf_info_t* buf = (grk_buf_info_t*)private_stream->m_user_data;
 	return buf->off;
 }
 
@@ -148,12 +148,12 @@ opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
                                         bool p_is_read_stream)
 {
     opj_stream_t* l_stream;
-    opj_buf_info_t* p_source_buffer = NULL;
+    grk_buf_info_t* p_source_buffer = NULL;
 
     if (!buf || !len)
         return NULL;
 
-    p_source_buffer = (opj_buf_info_t*)opj_malloc(sizeof(opj_buf_info_t));
+    p_source_buffer = (grk_buf_info_t*)opj_malloc(sizeof(grk_buf_info_t));
     if (!p_source_buffer)
         return NULL;
 
@@ -164,7 +164,7 @@ opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
 
     }
 
-    memset(p_source_buffer, 0, sizeof(opj_buf_info_t));
+    memset(p_source_buffer, 0, sizeof(grk_buf_info_t));
     p_source_buffer->buf = buf;
     p_source_buffer->off = 0;
     p_source_buffer->len = len;
@@ -361,7 +361,7 @@ static int32_t opj_close_fd(opj_handle_t fd)
 static void opj_mem_map_free(void* user_data)
 {
     if (user_data) {
-        opj_buf_info_t* buffer_info = (opj_buf_info_t*)user_data;
+        grk_buf_info_t* buffer_info = (grk_buf_info_t*)user_data;
         opj_unmap(buffer_info->buf, buffer_info->len);
         opj_close_fd(buffer_info->fd);
         opj_free(buffer_info);
@@ -374,7 +374,7 @@ Currently, only read streams are supported for memory mapped files.
 opj_stream_t* opj_create_mapped_file_read_stream(const char *fname)
 {
     opj_stream_t*	l_stream = NULL;
-    opj_buf_info_t* buffer_info = NULL;
+    grk_buf_info_t* buffer_info = NULL;
     void*			mapped_view = NULL;
     bool p_is_read_stream = true;
 
@@ -382,8 +382,8 @@ opj_stream_t* opj_create_mapped_file_read_stream(const char *fname)
     if (fd == (opj_handle_t)-1)
         return NULL;
 
-    buffer_info = (opj_buf_info_t*)opj_malloc(sizeof(opj_buf_info_t));
-    memset(buffer_info, 0, sizeof(opj_buf_info_t));
+    buffer_info = (grk_buf_info_t*)opj_malloc(sizeof(grk_buf_info_t));
+    memset(buffer_info, 0, sizeof(grk_buf_info_t));
     buffer_info->fd = fd;
     buffer_info->len = (size_t)opj_size_proc(fd);
 

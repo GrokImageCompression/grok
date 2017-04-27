@@ -158,14 +158,14 @@ typedef struct opj_stream_private {
     */
     bool (* m_opj_skip)(struct opj_stream_private * ,
 							int64_t ,
-							opj_event_mgr_t *);
+							grk_event_mgr_t *);
 
     /**
     * FIXME DOC.
     */
     bool (* m_opj_seek) (struct opj_stream_private * , 
 						int64_t ,
-						opj_event_mgr_t *);
+						grk_event_mgr_t *);
 
     /**
      * number of bytes containing in the buffer.
@@ -294,9 +294,9 @@ void opj_write_float_BE(uint8_t * p_buffer, float p_value);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
  */
-size_t opj_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr);
+size_t opj_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
 
-size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, opj_event_mgr_t * p_event_mgr);
+size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
 
 /**
  * Writes some bytes to the stream.
@@ -309,7 +309,7 @@ size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t *
 size_t opj_stream_write_data (opj_stream_private_t * p_stream,
 								const uint8_t * p_buffer,
 								size_t p_size, 
-								opj_event_mgr_t * p_event_mgr);
+								grk_event_mgr_t * p_event_mgr);
 
 /**
  * Writes the content of the stream buffer to the stream.
@@ -318,7 +318,7 @@ size_t opj_stream_write_data (opj_stream_private_t * p_stream,
  * @return		true if the data could be flushed, false else.
  */
 bool opj_stream_flush (opj_stream_private_t * p_stream, 
-						 opj_event_mgr_t * p_event_mgr);
+						 grk_event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -329,7 +329,7 @@ bool opj_stream_flush (opj_stream_private_t * p_stream,
  */
 bool opj_stream_skip (opj_stream_private_t * p_stream,
 						int64_t p_size, 
-						opj_event_mgr_t * p_event_mgr);
+						grk_event_mgr_t * p_event_mgr);
 
 /**
  * Tells the byte offset on the stream (similar to ftell).
@@ -359,7 +359,7 @@ int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream);
  */
 bool opj_stream_write_skip (opj_stream_private_t * p_stream,
 								int64_t p_size, 
-								opj_event_mgr_t * p_event_mgr);
+								grk_event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -370,7 +370,7 @@ bool opj_stream_write_skip (opj_stream_private_t * p_stream,
  */
 bool opj_stream_read_skip (opj_stream_private_t * p_stream,
 								int64_t p_size,
-								opj_event_mgr_t * p_event_mgr);
+								grk_event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -381,7 +381,7 @@ bool opj_stream_read_skip (opj_stream_private_t * p_stream,
  */
 bool opj_stream_read_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size, 
-							opj_event_mgr_t * p_event_mgr);
+							grk_event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -392,7 +392,7 @@ bool opj_stream_read_seek (opj_stream_private_t * p_stream,
  */
 bool opj_stream_write_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size,
-							opj_event_mgr_t * p_event_mgr);
+							grk_event_mgr_t * p_event_mgr);
 
 /**
  * Seeks a number of bytes from the stream.
@@ -403,7 +403,7 @@ bool opj_stream_write_seek (opj_stream_private_t * p_stream,
  */
 bool opj_stream_seek (opj_stream_private_t * p_stream,
 						int64_t p_size,
-						opj_event_mgr_t * p_event_mgr);
+						grk_event_mgr_t * p_event_mgr);
 
 /**
  * Tells if the given stream is seekable.

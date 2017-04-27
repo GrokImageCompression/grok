@@ -68,7 +68,7 @@
 /**
 Tier-2 coding
 */
-struct opj_t2_t {
+struct grk_t2_t {
 
     /** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
     opj_image_t *image;
@@ -94,9 +94,9 @@ Encode the packets of a tile to a destination buffer
 @param tppos            The position of the tile part flag in the progression order
 @param pino             FIXME DOC
 */
-bool opj_t2_encode_packets(	opj_t2_t* t2,
+bool grk_t2_encode_packets(	grk_t2_t* t2,
                             uint32_t tileno,
-                            opj_tcd_tile_t *tile,
+                            grk_tcd_tile_t *tile,
                             uint32_t maxlayers,
                             uint8_t *dest,
                             uint64_t * p_data_written,
@@ -105,7 +105,7 @@ bool opj_t2_encode_packets(	opj_t2_t* t2,
                             uint32_t tpnum,
                             uint32_t tppos,
                             uint32_t pino, 
-							opj_event_mgr_t * p_manager);
+							grk_event_mgr_t * p_manager);
 
 /**
 Encode the packets of a tile to a destination buffer
@@ -117,9 +117,9 @@ Encode the packets of a tile to a destination buffer
 @param len              the length of the destination buffer
 @param tppos            The position of the tile part flag in the progression order
 */
-bool opj_t2_encode_packets_simulate(opj_t2_t* t2,
+bool grk_t2_encode_packets_simulate(grk_t2_t* t2,
                                   uint32_t tileno,
-                                  opj_tcd_tile_t *tile,
+                                  grk_tcd_tile_t *tile,
                                   uint32_t maxlayers,
                                   uint64_t * p_data_written,
                                   uint64_t max_len,
@@ -138,12 +138,12 @@ Decode the packets of a tile from a source buffer
 
 @return FIXME DOC
  */
-bool opj_t2_decode_packets(	opj_t2_t *t2,
+bool grk_t2_decode_packets(	grk_t2_t *t2,
                             uint32_t tileno,
-                            opj_tcd_tile_t *tile,
+                            grk_tcd_tile_t *tile,
                             opj_seg_buf_t* src_buf,
                             uint64_t * p_data_read,
-                            opj_event_mgr_t *p_manager);
+                            grk_event_mgr_t *p_manager);
 
 /**
  * Creates a Tier 2 handle
@@ -152,13 +152,13 @@ bool opj_t2_decode_packets(	opj_t2_t *t2,
  * @param	p_cp		Image coding parameters.
  * @return		a new T2 handle if successful, NULL otherwise.
 */
-opj_t2_t* opj_t2_create(opj_image_t *p_image, opj_cp_t *p_cp);
+grk_t2_t* grk_t2_create(opj_image_t *p_image, opj_cp_t *p_cp);
 
 /**
 Destroy a T2 handle
 @param t2 T2 handle to destroy
 */
-void opj_t2_destroy(opj_t2_t *t2);
+void grk_t2_destroy(grk_t2_t *t2);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

@@ -22,7 +22,7 @@ class RateInfo
 {
 public:
 	RateInfo();
-	void synch(opj_tcd_cblk_enc_t *cblk);
+	void synch(grk_tcd_cblk_enc_t *cblk);
 
 	uint16_t getMinimumThresh();
 

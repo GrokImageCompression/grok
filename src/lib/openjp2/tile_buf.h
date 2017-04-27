@@ -30,20 +30,20 @@ Note: various coordinate systems are used to describe regions in the tile buffer
 
 */
 
-typedef struct opj_tile_buf_band {
+typedef struct grk_tile_buf_band {
     rect_t dim;			/* coordinates of sub-band region (canvas coordinates)  */
     rect_t data_dim;	/* coordinates of sub-band data region, (tile coordinates ) */
-} opj_tile_buf_band_t;
+} grk_tile_buf_band_t;
 
-typedef struct opj_tile_buf_resolution {
-    opj_tile_buf_band_t band_region[3];
+typedef struct grk_tile_buf_resolution {
+    grk_tile_buf_band_t band_region[3];
     uint32_t num_bands;
     opj_pt_t origin;		/* resolution origin, in canvas coordinates */
     opj_pt_t bounds;		/* full width and height of resolution */
-} opj_tile_buf_resolution_t;
+} grk_tile_buf_resolution_t;
 
-typedef struct opj_tile_buf_component {
-	std::vector<opj_tile_buf_resolution_t*> resolutions;
+typedef struct grk_tile_buf_component {
+	std::vector<grk_tile_buf_resolution_t*> resolutions;
     int32_t *data;
     uint64_t data_size_needed;	/* we may either need to allocate this amount of data,
 									   or re-use image data and ignore this value */
@@ -53,41 +53,41 @@ typedef struct opj_tile_buf_component {
     rect_t dim;		  /* canvas coordinates of region */
     rect_t tile_dim;  /* canvas coordinates of tile */
 
-} opj_tile_buf_component_t;
+} grk_tile_buf_component_t;
 
 /* offsets are in canvas coordinate system*/
-int32_t* opj_tile_buf_get_ptr(opj_tile_buf_component_t* buf,
+int32_t* grk_tile_buf_get_ptr(grk_tile_buf_component_t* buf,
                               uint32_t resno,
                               uint32_t bandno,
                               uint32_t offsetx,
                               uint32_t offsety);
 
-void opj_tile_buf_set_ptr(opj_tile_buf_component_t* buf, int32_t* ptr);
+void grk_tile_buf_set_ptr(grk_tile_buf_component_t* buf, int32_t* ptr);
 
-bool opj_tile_buf_alloc_component_data_decode(opj_tile_buf_component_t* buf);
+bool grk_tile_buf_alloc_component_data_decode(grk_tile_buf_component_t* buf);
 
-bool opj_tile_buf_alloc_component_data_encode(opj_tile_buf_component_t* buf);
+bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf);
 
-bool opj_tile_buf_is_decode_region(opj_tile_buf_component_t* buf);
+bool grk_tile_buf_is_decode_region(grk_tile_buf_component_t* buf);
 
-void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp);
+void grk_tile_buf_destroy_component(grk_tile_buf_component_t* comp);
 
 /* Check if rect overlaps with region.
    rect coordinates must be stored in canvas coordinates
 */
-bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, rect_t* rect);
+bool grk_tile_buf_hit_test(grk_tile_buf_component_t* comp, rect_t* rect);
 
 /* sub-band coordinates */
-opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
+opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal);
 
 
 /* resolution coordinates */
-opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
+opj_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal);
 
-int64_t opj_tile_buf_get_interleaved_upper_bound(opj_tile_buf_component_t* comp);
+int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp);
 

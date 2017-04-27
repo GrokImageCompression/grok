@@ -57,8 +57,8 @@
 #pragma once
 
 // code segment (code block can be encoded into multiple segments)
-struct opj_tcd_seg_t {
-	opj_tcd_seg_t() : dataindex(0), 
+struct grk_tcd_seg_t {
+	grk_tcd_seg_t() : dataindex(0), 
 					numpasses(0),
 					len(0), 
 					maxpasses(0),
@@ -73,8 +73,8 @@ struct opj_tcd_seg_t {
 };
 
 // encoding/decoding pass
-struct opj_tcd_pass_t {
-	opj_tcd_pass_t() : rate(0), 
+struct grk_tcd_pass_t {
+	grk_tcd_pass_t() : rate(0), 
 						distortiondec(0),
 						len(0),
 						term(0),
@@ -87,8 +87,8 @@ struct opj_tcd_pass_t {
 };
 
 //quality layer
-struct opj_tcd_layer_t {
-	opj_tcd_layer_t() : numpasses(0),
+struct grk_tcd_layer_t {
+	grk_tcd_layer_t() : numpasses(0),
 						len(0),
 						disto(0),
 						data(nullptr) {}
@@ -99,8 +99,8 @@ struct opj_tcd_layer_t {
 } ;
 
 // encoder code block
-struct opj_tcd_cblk_enc_t {
-	opj_tcd_cblk_enc_t() : data(nullptr),
+struct grk_tcd_cblk_enc_t {
+	grk_tcd_cblk_enc_t() : data(nullptr),
 							data_size(0),
 							owns_data(false),
 							layers(nullptr),
@@ -116,13 +116,13 @@ struct opj_tcd_cblk_enc_t {
 							num_passes_encoded(0),
 							contextStream(nullptr) 
 	{}
-	~opj_tcd_cblk_enc_t();
+	~grk_tcd_cblk_enc_t();
 	void cleanup();
     uint8_t* data;              /* data buffer*/
 	uint32_t data_size;         /* size of allocated data buffer */
 	bool owns_data;				// true if code block manages data buffer, otherwise false
-    opj_tcd_layer_t* layers;     
-    opj_tcd_pass_t* passes;      
+    grk_tcd_layer_t* layers;     
+    grk_tcd_pass_t* passes;      
     uint32_t x0, y0, x1, y1;     /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
     uint32_t numlenbits;
@@ -133,8 +133,8 @@ struct opj_tcd_cblk_enc_t {
 } ;
 
 //decoder code block
-struct opj_tcd_cblk_dec_t {
-	opj_tcd_cblk_dec_t() : data(nullptr),
+struct grk_tcd_cblk_dec_t {
+	grk_tcd_cblk_dec_t() : data(nullptr),
 							dataSize(0),
 							segs(nullptr),
 							x0(0),
@@ -148,7 +148,7 @@ struct opj_tcd_cblk_dec_t {
 							numSegmentsAllocated(0)
 	{}
 
-	opj_tcd_cblk_dec_t(const opj_tcd_cblk_enc_t& rhs) : data(nullptr),
+	grk_tcd_cblk_dec_t(const grk_tcd_cblk_enc_t& rhs) : data(nullptr),
 														dataSize(0),
 														segs(nullptr),
 														x0(rhs.x0),
@@ -171,7 +171,7 @@ struct opj_tcd_cblk_dec_t {
 	uint8_t* data;					// pointer to plugin data. 
 	uint32_t dataSize;				/* size of data buffer */
     opj_vec_t seg_buffers;
-    opj_tcd_seg_t* segs;			/* information on segments */
+    grk_tcd_seg_t* segs;			/* information on segments */
     uint32_t x0, y0, x1, y1;		/* position: left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
     uint32_t numlenbits;
@@ -181,8 +181,8 @@ struct opj_tcd_cblk_dec_t {
 };
 
 // precinct
-struct opj_tcd_precinct_t {
-	opj_tcd_precinct_t() : x0(0),
+struct grk_tcd_precinct_t {
+	grk_tcd_precinct_t() : x0(0),
 							y0(0),
 							x1(0),
 							y1(0), 
@@ -195,7 +195,7 @@ struct opj_tcd_precinct_t {
 		cblks.blocks = nullptr;
 	}
 
-	opj_tcd_precinct_t(const opj_tcd_precinct_t& rhs) :x0(rhs.x0),
+	grk_tcd_precinct_t(const grk_tcd_precinct_t& rhs) :x0(rhs.x0),
 														y0(rhs.y0),
 														x1(rhs.x1),
 														y1(rhs.y1),
@@ -206,9 +206,9 @@ struct opj_tcd_precinct_t {
 														imsbtree(nullptr) {
 		cblks.blocks = nullptr;
 	}
-	~opj_tcd_precinct_t();
+	~grk_tcd_precinct_t();
 	
-	void initTagTrees(opj_event_mgr_t* manager);
+	void initTagTrees(grk_event_mgr_t* manager);
 
 	void cleanupEncodeBlocks() {
 		if (!cblks.enc)
@@ -226,8 +226,8 @@ struct opj_tcd_precinct_t {
     uint32_t x0, y0, x1, y1;		/* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t cw, ch;				/* number of precinct in width and height */
     union {							/* code-blocks information */
-        opj_tcd_cblk_enc_t* enc;
-        opj_tcd_cblk_dec_t* dec;
+        grk_tcd_cblk_enc_t* enc;
+        grk_tcd_cblk_dec_t* dec;
         void*               blocks;
     } cblks;
     uint32_t block_size;			/* size taken by cblks (in bytes) */
@@ -236,8 +236,8 @@ struct opj_tcd_precinct_t {
 };
 
 // band
-struct opj_tcd_band_t {
-	opj_tcd_band_t() : x0(0),
+struct grk_tcd_band_t {
+	grk_tcd_band_t() : x0(0),
 						y0(0),
 						x1(0),
 						y1(0), 
@@ -247,7 +247,7 @@ struct opj_tcd_band_t {
 						numbps(0),
 						stepsize(0) {}
 
-	opj_tcd_band_t(const opj_tcd_band_t& rhs) : x0(rhs.x0), 
+	grk_tcd_band_t(const grk_tcd_band_t& rhs) : x0(rhs.x0), 
 												  y0(rhs.y0),
 												  x1(rhs.x1),
 												  y1(rhs.y1),
@@ -257,27 +257,27 @@ struct opj_tcd_band_t {
 												numbps(rhs.numbps),
 												stepsize(rhs.stepsize)
 	 {}
-	~opj_tcd_band_t();
+	~grk_tcd_band_t();
 
 	size_t numPrecincts() {
-		return precincts_data_size / sizeof(opj_tcd_precinct_t);
+		return precincts_data_size / sizeof(grk_tcd_precinct_t);
 	}
     uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
-    opj_tcd_precinct_t* precincts;	/* precinct information */
+    grk_tcd_precinct_t* precincts;	/* precinct information */
     uint32_t precincts_data_size;	/* size of data taken by precincts */
     uint32_t numbps;
     float stepsize;
 };
 
 // resolution
-struct opj_tcd_resolution_t {
-	opj_tcd_resolution_t() : x0(0),
+struct grk_tcd_resolution_t {
+	grk_tcd_resolution_t() : x0(0),
 							y0(0),
 							x1(0),
 							y1(0),
 							numbands(0) {}
-	opj_tcd_resolution_t(const opj_tcd_resolution_t& rhs) : x0(rhs.x0),
+	grk_tcd_resolution_t(const grk_tcd_resolution_t& rhs) : x0(rhs.x0),
 															y0(rhs.y0),
 															x1(rhs.x1),
 															y1(rhs.y1),
@@ -292,26 +292,26 @@ struct opj_tcd_resolution_t {
     uint32_t x0, y0, x1, y1;	/* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t pw, ph;
     uint32_t numbands;			/* number sub-band for the resolution level */
-    opj_tcd_band_t bands[3];	/* subband information */
+    grk_tcd_band_t bands[3];	/* subband information */
 };
 
 // tile component
-struct opj_tcd_tilecomp_t {
+struct grk_tcd_tilecomp_t {
     uint32_t x0, y0, x1, y1;			/* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numresolutions;			/* number of resolutions level */
     uint32_t minimum_num_resolutions;	/* number of resolutions level to decode (at max)*/
-    opj_tcd_resolution_t *resolutions;  /* resolutions information */
+    grk_tcd_resolution_t *resolutions;  /* resolutions information */
     uint32_t resolutions_size;			/* size of data for resolutions (in bytes) */
     uint64_t numpix;                  
-    opj_tile_buf_component_t* buf;
+    grk_tile_buf_component_t* buf;
 };
 
 
 // tile
-struct opj_tcd_tile_t {
+struct grk_tcd_tile_t {
     uint32_t x0, y0, x1, y1;	/* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numcomps;			/* number of components in tile */
-    opj_tcd_tilecomp_t *comps;	/* Components information */
+    grk_tcd_tilecomp_t *comps;	/* Components information */
     uint64_t numpix;				
     double distotile;			
     double distolayer[100];	
@@ -321,7 +321,7 @@ struct opj_tcd_tile_t {
 /**
 Tile coder/decoder
 */
-struct opj_tcd_t {
+struct grk_tcd_t {
     /** Position of the tile part flag in progression order*/
     uint32_t tp_pos;
     /** Tile part number*/
@@ -333,7 +333,7 @@ struct opj_tcd_t {
     /** Current packet iterator number */
     uint32_t cur_pino;
     /** info on image tile */
-    opj_tcd_tile_t* tile;
+    grk_tcd_tile_t* tile;
     /** image header */
     opj_image_t *image;
     /** coding parameters */
@@ -357,13 +357,13 @@ Create a new TCD handle
 @param p_is_decoder FIXME DOC
 @return Returns a new TCD handle if successful returns NULL otherwise
 */
-opj_tcd_t* opj_tcd_create(bool p_is_decoder);
+grk_tcd_t* grk_tcd_create(bool p_is_decoder);
 
 /**
 Destroy a previously created TCD handle
 @param tcd TCD handle to destroy
 */
-void opj_tcd_destroy(opj_tcd_t *tcd);
+void grk_tcd_destroy(grk_tcd_t *tcd);
 
 /**
  * Initialize the tile coder and may reuse some memory.
@@ -373,7 +373,7 @@ void opj_tcd_destroy(opj_tcd_t *tcd);
  *
  * @return true if the encoding values could be set (false otherwise).
 */
-bool opj_tcd_init(	opj_tcd_t *p_tcd,
+bool grk_tcd_init(	grk_tcd_t *p_tcd,
                     opj_image_t * p_image,
                     opj_cp_t * p_cp ,
 					uint32_t numThreads);
@@ -389,15 +389,15 @@ bool opj_tcd_init(	opj_tcd_t *p_tcd,
  *
  * @return	true if the remaining data is sufficient.
  */
-bool opj_tcd_init_decode_tile(opj_tcd_t *p_tcd,
+bool grk_tcd_init_decode_tile(grk_tcd_t *p_tcd,
                               opj_image_t* output_image,
                               uint32_t p_tile_no,
-                              opj_event_mgr_t* p_manager);
+                              grk_event_mgr_t* p_manager);
 
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
  */
-uint64_t opj_tcd_get_decoded_tile_size (opj_tcd_t *p_tcd );
+uint64_t grk_tcd_get_decoded_tile_size (grk_tcd_t *p_tcd );
 
 /**
  * Encodes a tile from the raw image into the given buffer.
@@ -409,13 +409,13 @@ uint64_t opj_tcd_get_decoded_tile_size (opj_tcd_t *p_tcd );
  * @param	p_cstr_info		Codestream information structure
  * @return  true if the coding is successful.
 */
-bool opj_tcd_encode_tile(   opj_tcd_t *p_tcd,
+bool grk_tcd_encode_tile(   grk_tcd_t *p_tcd,
                             uint32_t p_tile_no,
                             uint8_t *p_dest,
                             uint64_t * p_data_written,
                             uint64_t p_len,
                             opj_codestream_info_t *p_cstr_info,
-							opj_event_mgr_t * p_manager);
+							grk_event_mgr_t * p_manager);
 
 
 /**
@@ -427,23 +427,23 @@ Decode a tile from a buffer into a raw image
 @param cstr_info  FIXME DOC
 @param manager the event manager.
 */
-bool opj_tcd_decode_tile(   opj_tcd_t *tcd,
+bool grk_tcd_decode_tile(   grk_tcd_t *tcd,
                             opj_seg_buf_t* src_buf,
                             uint32_t tileno,
-                            opj_event_mgr_t *manager);
+                            grk_event_mgr_t *manager);
 
 
 /**
  * Copies tile data from the system onto the given memory block.
  */
-bool opj_tcd_update_tile_data (	opj_tcd_t *p_tcd,
+bool grk_tcd_update_tile_data (	grk_tcd_t *p_tcd,
                                 uint8_t * p_dest,
                                 uint64_t p_dest_length );
 
 /**
  *
  */
-uint64_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd );
+uint64_t grk_tcd_get_encoded_tile_size ( grk_tcd_t *p_tcd );
 
 /**
  * Initialize the tile coder and may reuse some meory.
@@ -454,13 +454,13 @@ uint64_t opj_tcd_get_encoded_tile_size ( opj_tcd_t *p_tcd );
  *
  * @return true if the encoding values could be set (false otherwise).
 */
-bool opj_tcd_init_encode_tile (	opj_tcd_t *p_tcd,
-                                uint32_t p_tile_no, opj_event_mgr_t* p_manager );
+bool grk_tcd_init_encode_tile (	grk_tcd_t *p_tcd,
+                                uint32_t p_tile_no, grk_event_mgr_t* p_manager );
 
 /**
  * Copies tile data from the given memory block onto the system.
  */
-bool opj_tcd_copy_tile_data (opj_tcd_t *p_tcd,
+bool grk_tcd_copy_tile_data (grk_tcd_t *p_tcd,
                              uint8_t * p_src,
                              uint64_t p_src_length );
 
@@ -469,7 +469,7 @@ bool opj_tcd_copy_tile_data (opj_tcd_t *p_tcd,
  *
  *
  */
-bool opj_tile_buf_create_component(opj_tcd_tilecomp_t * tilec, bool isEncoder,
+bool grk_tile_buf_create_component(grk_tcd_tilecomp_t * tilec, bool isEncoder,
                                    bool irreversible,
                                    uint32_t cblkw,
                                    uint32_t cblkh,
@@ -478,7 +478,7 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t * tilec, bool isEncoder,
                                    uint32_t dy);
 
 
-bool opj_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
+bool grk_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

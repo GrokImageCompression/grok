@@ -47,7 +47,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 opj_image_t* opj_image_create0(void)
 {
@@ -136,7 +136,7 @@ void opj_image_comp_header_update(opj_image_t * p_image_header, const struct opj
 
     l_x0 = opj_max<uint32_t>(p_cp->tx0 , p_image_header->x0);
     l_y0 = opj_max<uint32_t>(p_cp->ty0 , p_image_header->y0);
-    l_x1 = p_cp->tx0 + (p_cp->tw - 1U) * p_cp->tdx; /* validity of p_cp members used here checked in opj_j2k_read_siz. Can't overflow. */
+    l_x1 = p_cp->tx0 + (p_cp->tw - 1U) * p_cp->tdx; /* validity of p_cp members used here checked in grk_j2k_read_siz. Can't overflow. */
     l_y1 = p_cp->ty0 + (p_cp->th - 1U) * p_cp->tdy; /* can't overflow */
     l_x1 = opj_min<uint32_t>(opj_uint_adds(l_x1, p_cp->tdx), p_image_header->x1); /* use add saturated to prevent overflow */
     l_y1 = opj_min<uint32_t>(opj_uint_adds(l_y1, p_cp->tdy), p_image_header->y1); /* use add saturated to prevent overflow */

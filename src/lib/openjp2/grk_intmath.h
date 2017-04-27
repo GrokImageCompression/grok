@@ -139,7 +139,7 @@ static inline int32_t opj_int_ceildivpow2(int32_t a, int32_t b)
  Divide a 64bits integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static inline int32_t opj_int64_ceildivpow2(int64_t a, int32_t b)
+static inline int32_t grk_int64_ceildivpow2(int64_t a, int32_t b)
 {
     return (int32_t)((a + ((int64_t)1 << b) - 1) >> b);
 }
