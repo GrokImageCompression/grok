@@ -108,5 +108,5 @@ add_subdirectory(conformance)
 add_subdirectory(nonregression)
 add_subdirectory(unit)
 
-add_executable(ppm2rgb3 ppm2rgb3.c)
+add_executable(ppm2rgb3 ppm2rgb3.cpp)
 #add_executable(pdf2jp2 pdf2jp2.c)
