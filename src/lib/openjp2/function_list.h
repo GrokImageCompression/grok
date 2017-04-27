@@ -67,12 +67,12 @@
 /**
  * declare a function pointer
  */
-typedef void (*opj_procedure)(void);
+typedef void (*grk_procedure)(void);
 
 /**
  * A list of procedures.
 */
-typedef struct opj_procedure_list {
+typedef struct grk_procedure_list {
     /**
      * The number of validation procedures.
      */
@@ -84,9 +84,9 @@ typedef struct opj_procedure_list {
     /**
      * The array of procedures.
      */
-    opj_procedure * m_procedures;
+    grk_procedure * m_procedures;
 
-} opj_procedure_list_t;
+} grk_procedure_list_t;
 
 /* ----------------------------------------------------------------------- */
 
@@ -95,14 +95,14 @@ typedef struct opj_procedure_list {
  *
  * @return	the newly created validation list.
  */
-opj_procedure_list_t *  opj_procedure_list_create(void);
+grk_procedure_list_t *  grk_procedure_list_create(void);
 
 /**
  * Destroys a validation list.
  *
  * @param p_list the list to destroy.
  */
-void  opj_procedure_list_destroy(opj_procedure_list_t * p_list);
+void  grk_procedure_list_destroy(grk_procedure_list_t * p_list);
 
 /**
  * Adds a new validation procedure.
@@ -112,7 +112,7 @@ void  opj_procedure_list_destroy(opj_procedure_list_t * p_list);
  *
  * @return	true if the procedure could be added.
  */
-bool opj_procedure_list_add_procedure (opj_procedure_list_t * p_validation_list, opj_procedure p_procedure, opj_event_mgr_t* p_manager);
+bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list, grk_procedure p_procedure, grk_event_mgr_t* p_manager);
 
 /**
  * Gets the number of validation procedures.
@@ -121,7 +121,7 @@ bool opj_procedure_list_add_procedure (opj_procedure_list_t * p_validation_list,
  *
  * @return the number of validation procedures.
  */
-uint32_t opj_procedure_list_get_nb_procedures (opj_procedure_list_t * p_validation_list);
+uint32_t grk_procedure_list_get_nb_procedures (grk_procedure_list_t * p_validation_list);
 
 /**
  * Gets the pointer on the first validation procedure. This function is similar to the C++
@@ -132,7 +132,7 @@ uint32_t opj_procedure_list_get_nb_procedures (opj_procedure_list_t * p_validati
  *
  * @return	a pointer to the first procedure.
  */
-opj_procedure* opj_procedure_list_get_first_procedure (opj_procedure_list_t * p_validation_list);
+grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_validation_list);
 
 
 /**
@@ -141,6 +141,6 @@ opj_procedure* opj_procedure_list_get_first_procedure (opj_procedure_list_t * p_
  * @param	p_validation_list the list of procedure to clear.
  *
  */
-void opj_procedure_list_clear (opj_procedure_list_t * p_validation_list);
+void grk_procedure_list_clear (grk_procedure_list_t * p_validation_list);
 /*@}*/
 

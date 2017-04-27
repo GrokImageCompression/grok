@@ -15,7 +15,7 @@
 *
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 #include "T1Decoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
@@ -49,14 +49,14 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 						&decode_t1_calling_barrier,
 						threadId,
 						&success]()		{
-			auto t1 = opj_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
+			auto t1 = grk_t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
 			if (!t1) {
 				success = false;
 				return;
 			}
 			decodeBlockInfo* block = NULL;
 			while (decodeQueue.tryPop(block)) {
-				if (!opj_t1_decode_cblk(t1,
+				if (!grk_t1_decode_cblk(t1,
 										block->cblk,
 										block->bandno,
 										(uint32_t)block->roishift,
@@ -113,7 +113,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 				}
 				delete block;
 			}
-			opj_t1_destroy(t1);
+			grk_t1_destroy(t1);
 			decode_t1_barrier.arrive_and_wait();
 			decode_t1_calling_barrier.arrive_and_wait();
 		});

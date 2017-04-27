@@ -48,7 +48,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #define OPJ_SKIP_POISON
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 #if defined(OPJ_HAVE_MALLOC_H) && defined(OPJ_HAVE_MEMALIGN)
 # include <malloc.h>

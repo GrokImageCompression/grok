@@ -15,7 +15,7 @@
 *
 */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 EncodedTileData::~EncodedTileData() {
 	dealloc();

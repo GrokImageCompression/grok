@@ -65,33 +65,33 @@
 #include <smmintrin.h>
 #endif
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */
-static const double opj_mct_norms[3] = { 1.732, .8292, .8292 };
+static const double grk_mct_norms[3] = { 1.732, .8292, .8292 };
 
 /* <summary> */
 /* This table contains the norms of the basis function of the irreversible MCT. */
 /* </summary> */
-static const double opj_mct_norms_real[3] = { 1.732, 1.805, 1.573 };
+static const double grk_mct_norms_real[3] = { 1.732, 1.805, 1.573 };
 
-const double * opj_mct_get_mct_norms ()
+const double * grk_mct_get_mct_norms ()
 {
-    return opj_mct_norms;
+    return grk_mct_norms;
 }
 
-const double * opj_mct_get_mct_norms_real ()
+const double * grk_mct_get_mct_norms_real ()
 {
-    return opj_mct_norms_real;
+    return grk_mct_norms_real;
 }
 
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
 #ifdef __SSE2__
-void opj_mct_encode(
+void grk_mct_encode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -133,7 +133,7 @@ void opj_mct_encode(
     }
 }
 #else
-void opj_mct_encode(
+void grk_mct_encode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -160,7 +160,7 @@ void opj_mct_encode(
 /* Inverse reversible MCT. */
 /* </summary> */
 #ifdef __SSE2__
-void opj_mct_decode(
+void grk_mct_decode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -195,7 +195,7 @@ void opj_mct_decode(
     }
 }
 #else
-void opj_mct_decode(
+void grk_mct_decode(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -229,16 +229,16 @@ void opj_mct_decode(
 /* <summary> */
 /* Get norm of basis function of reversible MCT. */
 /* </summary> */
-double opj_mct_getnorm(uint32_t compno)
+double grk_mct_getnorm(uint32_t compno)
 {
-    return opj_mct_norms[compno];
+    return grk_mct_norms[compno];
 }
 
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
 #ifdef __SSE4_1__
-void opj_mct_encode_real(
+void grk_mct_encode_real(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -379,7 +379,7 @@ void opj_mct_encode_real(
     }
 }
 #else
-void opj_mct_encode_real(
+void grk_mct_encode_real(
     int32_t* restrict c0,
     int32_t* restrict c1,
     int32_t* restrict c2,
@@ -403,7 +403,7 @@ void opj_mct_encode_real(
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void opj_mct_decode_real(
+void grk_mct_decode_real(
     float* restrict c0,
     float* restrict c1,
     float* restrict c2,
@@ -473,13 +473,13 @@ void opj_mct_decode_real(
 /* <summary> */
 /* Get norm of basis function of irreversible MCT. */
 /* </summary> */
-double opj_mct_getnorm_real(uint32_t compno)
+double grk_mct_getnorm_real(uint32_t compno)
 {
-    return opj_mct_norms_real[compno];
+    return grk_mct_norms_real[compno];
 }
 
 
-bool opj_mct_encode_custom(
+bool grk_mct_encode_custom(
     uint8_t * pCodingdata,
     uint64_t n,
     uint8_t ** pData,
@@ -532,7 +532,7 @@ bool opj_mct_encode_custom(
     return true;
 }
 
-bool opj_mct_decode_custom(
+bool grk_mct_decode_custom(
     uint8_t * pDecodingData,
     uint64_t n,
     uint8_t ** pData,

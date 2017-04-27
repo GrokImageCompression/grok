@@ -51,7 +51,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 /*
 ==========================================================
@@ -66,20 +66,20 @@
 ==========================================================
 */
 
-opj_raw_t* opj_raw_create(void)
+grk_raw_t* grk_raw_create(void)
 {
-    opj_raw_t *raw = (opj_raw_t*)opj_malloc(sizeof(opj_raw_t));
+    grk_raw_t *raw = (grk_raw_t*)opj_malloc(sizeof(grk_raw_t));
     return raw;
 }
 
-void opj_raw_destroy(opj_raw_t *raw)
+void grk_raw_destroy(grk_raw_t *raw)
 {
     if(raw) {
         opj_free(raw);
     }
 }
 
-void opj_raw_init_dec(opj_raw_t *raw, uint8_t *bp, uint32_t len)
+void grk_raw_init_dec(grk_raw_t *raw, uint8_t *bp, uint32_t len)
 {
     raw->start = bp;
     raw->lenmax = len;
@@ -88,7 +88,7 @@ void opj_raw_init_dec(opj_raw_t *raw, uint8_t *bp, uint32_t len)
     raw->COUNT = 0;
 }
 
-uint32_t opj_raw_decode(opj_raw_t *raw)
+uint32_t grk_raw_decode(grk_raw_t *raw)
 {
     uint32_t d;
     if (raw->COUNT == 0) {

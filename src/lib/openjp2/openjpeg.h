@@ -512,51 +512,51 @@ typedef struct opj_cparameters {
 /**
 Channel description: channel index, type, association
 */
-typedef struct opj_jp2_cdef_info {
+typedef struct grk_jp2_cdef_info {
 	uint16_t cn;
 	uint16_t typ;	
 	uint16_t asoc;
-} opj_jp2_cdef_info_t;
+} grk_jp2_cdef_info_t;
 
 /**
 Channel descriptions and number of descriptions
 */
-typedef struct opj_jp2_cdef {
-	opj_jp2_cdef_info_t *info;
+typedef struct grk_jp2_cdef {
+	grk_jp2_cdef_info_t *info;
 	uint16_t n;
-} opj_jp2_cdef_t;
+} grk_jp2_cdef_t;
 
 /**
 Component mappings: channel index, mapping type, palette index
 */
-typedef struct opj_jp2_cmap_comp {
+typedef struct grk_jp2_cmap_comp {
 	uint16_t cmp;
 	uint8_t mtyp, pcol;
-} opj_jp2_cmap_comp_t;
+} grk_jp2_cmap_comp_t;
 
 /**
 Palette data: table entries, palette columns
 */
-typedef struct opj_jp2_pclr {
+typedef struct grk_jp2_pclr {
 	uint32_t *entries;
 	uint8_t *channel_sign;
 	uint8_t *channel_size;
-	opj_jp2_cmap_comp_t *cmap;
+	grk_jp2_cmap_comp_t *cmap;
 	uint16_t nr_entries;
 	uint8_t nr_channels;
-} opj_jp2_pclr_t;
+} grk_jp2_pclr_t;
 
 /**
 Struct for ICC profile, palette, component mapping, channel description
 */
-typedef struct opj_jp2_color {
+typedef struct grk_jp2_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
 
-	opj_jp2_cdef_t *jp2_cdef;
-	opj_jp2_pclr_t *jp2_pclr;
+	grk_jp2_cdef_t *jp2_cdef;
+	grk_jp2_pclr_t *jp2_pclr;
 	uint8_t jp2_has_colour_specification_box;
-} opj_jp2_color_t;
+} grk_jp2_color_t;
 
 typedef struct opj_header_info {
 	/** initial code block width, default to 64 */
@@ -610,7 +610,7 @@ typedef struct opj_header_info {
 	// icc profile information etc
 	// note: the contents of this struct will remain valid
 	// until stream is destroyed
-	opj_jp2_color_t color;
+	grk_jp2_color_t color;
 
 } opj_header_info_t;
 

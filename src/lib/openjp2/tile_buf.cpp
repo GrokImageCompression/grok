@@ -16,9 +16,9 @@
 */
 
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
-bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
+bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
 									bool isEncoder,
                                    bool irreversible,
                                    uint32_t cblkw,
@@ -29,13 +29,13 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
 {
     int32_t resno = 0;
     rect_t	component_output_rect;
-    opj_tile_buf_component_t* comp = NULL;
+    grk_tile_buf_component_t* comp = NULL;
 
     if (!tilec)
         return false;
 
     /* create region component struct*/
-	comp = new opj_tile_buf_component_t();
+	comp = new grk_tile_buf_component_t();
     if (!comp) {
         return false;
     }
@@ -64,7 +64,7 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
 
     /* for encode, we don't need to allocate resolutions */
     if (isEncoder) {
-        opj_tile_buf_destroy_component(tilec->buf);
+        grk_tile_buf_destroy_component(tilec->buf);
         tilec->buf = comp;
         return true;
     }
@@ -76,10 +76,10 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
     /* fill resolutions vector */
     for (resno = (int32_t)(tilec->numresolutions-1); resno >= 0; --resno) {
         uint32_t bandno;
-        opj_tcd_resolution_t*  tcd_res = tilec->resolutions + resno;
-        opj_tile_buf_resolution_t* res = (opj_tile_buf_resolution_t*)opj_calloc(1, sizeof(opj_tile_buf_resolution_t));
+        grk_tcd_resolution_t*  tcd_res = tilec->resolutions + resno;
+        grk_tile_buf_resolution_t* res = (grk_tile_buf_resolution_t*)opj_calloc(1, sizeof(grk_tile_buf_resolution_t));
         if (!res) {
-            opj_tile_buf_destroy_component(comp);
+            grk_tile_buf_destroy_component(comp);
             return false;
         }
 
@@ -89,7 +89,7 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
         res->origin.y = tcd_res->y0;
 
         for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
-            opj_tcd_band_t* band = tcd_res->bands + bandno;
+            grk_tcd_band_t* band = tcd_res->bands + bandno;
             rect_t  band_rect;
 			band_rect= rect_t(
                           band->x0,
@@ -124,20 +124,20 @@ bool opj_tile_buf_create_component(opj_tcd_tilecomp_t* tilec,
         comp->resolutions.push_back(res);
     }
 
-    opj_tile_buf_destroy_component(tilec->buf);
+    grk_tile_buf_destroy_component(tilec->buf);
     tilec->buf = comp;
 
     return true;
 }
 
-bool opj_tile_buf_is_decode_region(opj_tile_buf_component_t* buf)
+bool grk_tile_buf_is_decode_region(grk_tile_buf_component_t* buf)
 {
     if (!buf)
         return false;
     return !buf->dim.are_equal(&buf->tile_dim);
 }
 
-int32_t* opj_tile_buf_get_ptr(opj_tile_buf_component_t* buf,
+int32_t* grk_tile_buf_get_ptr(grk_tile_buf_component_t* buf,
                               uint32_t resno,
                               uint32_t bandno,
                               uint32_t offsetx,
@@ -149,13 +149,13 @@ int32_t* opj_tile_buf_get_ptr(opj_tile_buf_component_t* buf,
 
 }
 
-void opj_tile_buf_set_ptr(opj_tile_buf_component_t* buf, int32_t* ptr)
+void grk_tile_buf_set_ptr(grk_tile_buf_component_t* buf, int32_t* ptr)
 {
     buf->data = ptr;
     buf->owns_data = false;
 }
 
-bool opj_tile_buf_alloc_component_data_encode(opj_tile_buf_component_t* buf)
+bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf)
 {
     if (!buf)
         return false;
@@ -185,7 +185,7 @@ bool opj_tile_buf_alloc_component_data_encode(opj_tile_buf_component_t* buf)
 }
 
 
-bool opj_tile_buf_alloc_component_data_decode(opj_tile_buf_component_t* buf)
+bool grk_tile_buf_alloc_component_data_decode(grk_tile_buf_component_t* buf)
 {
     if (!buf)
         return false;
@@ -207,7 +207,7 @@ bool opj_tile_buf_alloc_component_data_decode(opj_tile_buf_component_t* buf)
 }
 
 
-void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp)
+void grk_tile_buf_destroy_component(grk_tile_buf_component_t* comp)
 {
     if (!comp)
         return;
@@ -223,7 +223,7 @@ void opj_tile_buf_destroy_component(opj_tile_buf_component_t* comp)
     delete comp;
 }
 
-bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, rect_t* rect)
+bool grk_tile_buf_hit_test(grk_tile_buf_component_t* comp, rect_t* rect)
 {
     if (!comp || !rect)
         return false;
@@ -238,15 +238,15 @@ bool opj_tile_buf_hit_test(opj_tile_buf_component_t* comp, rect_t* rect)
     return false;
 }
 
-opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
+opj_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal)
 {
     opj_pt_t rc;
-    opj_tile_buf_resolution_t* res= NULL;
-    opj_tile_buf_resolution_t* prev_res = NULL;
-    opj_tile_buf_band_t *band= NULL;
+    grk_tile_buf_resolution_t* res= NULL;
+    grk_tile_buf_resolution_t* prev_res = NULL;
+    grk_tile_buf_band_t *band= NULL;
     memset(&rc, 0, sizeof(opj_pt_t));
     if (!comp)
         return rc;
@@ -294,14 +294,14 @@ opj_pt_t opj_tile_buf_get_uninterleaved_range(opj_tile_buf_component_t* comp,
 
 }
 
-opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
+opj_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal)
 {
     opj_pt_t rc;
     opj_pt_t even;
     opj_pt_t odd;
-    opj_tile_buf_resolution_t* res = NULL;
+    grk_tile_buf_resolution_t* res = NULL;
     memset(&rc, 0, sizeof(opj_pt_t));
     if (!comp)
         return rc;
@@ -310,8 +310,8 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
     if (!res)
         return rc;
 
-    even = opj_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
-    odd = opj_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
+    even = grk_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
+    odd = grk_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
 
     rc.x = opj_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
     rc.y = opj_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
@@ -322,12 +322,12 @@ opj_pt_t opj_tile_buf_get_interleaved_range(opj_tile_buf_component_t* comp,
     return rc;
 }
 
-int64_t opj_tile_buf_get_interleaved_upper_bound(opj_tile_buf_component_t* comp)
+int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp)
 {
     if (!comp || comp->resolutions.empty())
         return 0;
-	opj_pt_t horizontal = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
-	opj_pt_t vertical   = opj_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
+	opj_pt_t horizontal = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
+	opj_pt_t vertical   = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
     return opj_max<int64_t>(horizontal.y, vertical.y);
 }

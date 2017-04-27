@@ -26,7 +26,7 @@ class T1Encoder
 {
 public:
 	T1Encoder();
-	bool encode(bool do_opt, opj_tcd_tile_t *tile,
+	bool encode(bool do_opt, grk_tcd_tile_t *tile,
 				std::vector<encodeBlockInfo*>* blocks,
 				uint32_t maxCblkW, 
 				uint32_t maxCblkH,
@@ -38,12 +38,12 @@ public:
 	std::atomic_bool return_code;
 
 private:
-	opj_tcd_tile_t *tile;
+	grk_tcd_tile_t *tile;
 	uint32_t maxCblkW;
 	uint32_t maxCblkH;
 
-	std::vector<opj_t1_opt*> t1OptVec;
-	std::vector<opj_t1*> t1Vec;
+	std::vector<grk_t1_opt*> t1OptVec;
+	std::vector<grk_t1*> t1Vec;
 
 	BlockingQueue<encodeBlockInfo*> encodeQueue;
 	mutable std::mutex distortion_mutex;

@@ -15,12 +15,12 @@
 *
 */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 /* #define DEBUG_SEG_BUF */
 
 
-bool opj_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer)
+bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer)
 {
     int32_t i = 0;
     size_t offset = 0;
@@ -29,7 +29,7 @@ bool opj_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* 
         return false;
 
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        opj_min_buf_t* seg = (opj_min_buf_t*)min_buf_vec->get(i);
+        grk_min_buf_t* seg = (grk_min_buf_t*)min_buf_vec->get(i);
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
         offset += seg->len;
@@ -38,9 +38,9 @@ bool opj_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* 
 
 }
 
-bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
+bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 {
-    opj_min_buf_t* seg = NULL;
+    grk_min_buf_t* seg = NULL;
     if (!buf_vec || !buf || !len)
         return false;
 
@@ -48,7 +48,7 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         buf_vec->init();
     }
 
-    seg = (opj_min_buf_t*)opj_malloc(sizeof(opj_buf_t));
+    seg = (grk_min_buf_t*)opj_malloc(sizeof(grk_buf_t));
     if (!seg)
         return false;
 
@@ -62,14 +62,14 @@ bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
     return true;
 }
 
-uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
+uint16_t grk_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
 {
     size_t i = 0;
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        opj_min_buf_t* seg = (opj_min_buf_t*)min_buf_vec->get(i);
+        grk_min_buf_t* seg = (grk_min_buf_t*)min_buf_vec->get(i);
         if (seg)
             len += seg->len;
     }
@@ -89,7 +89,7 @@ opj_seg_buf_t::opj_seg_buf_t() : data_len(0), cur_seg_id(0) {
 opj_seg_buf_t::~opj_seg_buf_t()  {
 	for (auto& seg : segments) {
 		if (seg) {
-			opj_buf_free(seg);
+			grk_buf_free(seg);
 		}
 	}
 }
@@ -98,7 +98,7 @@ opj_seg_buf_t::~opj_seg_buf_t()  {
 
 static void opj_seg_buf_increment(opj_seg_buf_t * seg_buf)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (seg_buf == NULL ||	seg_buf->cur_seg_id == seg_buf->segments.size()-1) {
         return;
     }
@@ -135,7 +135,7 @@ static size_t opj_seg_buf_read(opj_seg_buf_t * seg_buf,
     total_bytes_read = 0;
     bytes_left_to_read = p_nb_bytes;
     while (bytes_left_to_read > 0 && seg_buf->cur_seg_id < seg_buf->segments.size()) {
-        opj_buf_t* cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
+        grk_buf_t* cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
         bytes_in_current_segment = (cur_seg->len - (size_t)cur_seg->offset);
 
         bytes_to_read = (bytes_left_to_read < bytes_in_current_segment) ?
@@ -177,7 +177,7 @@ static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
     bytes_remaining = (size_t)p_nb_bytes;
     while (seg_buf->cur_seg_id < seg_buf->segments.size && bytes_remaining > 0) {
 
-        opj_buf_t* cur_seg = (opj_buf_t*)opj_vec_get(&seg_buf->segments, seg_buf->cur_seg_id);
+        grk_buf_t* cur_seg = (grk_buf_t*)opj_vec_get(&seg_buf->segments, seg_buf->cur_seg_id);
         bytes_in_current_segment = 	(size_t)(cur_seg->len -cur_seg->offset);
 
         /* hoover up all the bytes in this segment, and move to the next one */
@@ -186,7 +186,7 @@ static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
             opj_seg_buf_incr_cur_seg_offset(seg_buf, bytes_in_current_segment);
 
             bytes_remaining	-= bytes_in_current_segment;
-            cur_seg = (opj_buf_t*)opj_vec_get(&seg_buf->segments, seg_buf->cur_seg_id);
+            cur_seg = (grk_buf_t*)opj_vec_get(&seg_buf->segments, seg_buf->cur_seg_id);
         } else { /* bingo! we found the segment */
             opj_seg_buf_incr_cur_seg_offset(seg_buf, bytes_remaining);
             return p_nb_bytes;
@@ -195,16 +195,16 @@ static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
     return p_nb_bytes;
 }
 #endif
-static opj_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
+static grk_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
-    opj_buf_t* new_seg = NULL;
+    grk_buf_t* new_seg = NULL;
     if (!seg_buf)
         return NULL;
-    new_seg = (opj_buf_t*)opj_malloc(sizeof(opj_buf_t));
+    new_seg = (grk_buf_t*)opj_malloc(sizeof(grk_buf_t));
     if (!new_seg)
         return NULL;
 
-    memset(new_seg, 0, sizeof(opj_buf_t));
+    memset(new_seg, 0, sizeof(grk_buf_t));
     new_seg->buf = buf;
     new_seg->len = len;
 	seg_buf->segments.push_back(new_seg);
@@ -222,9 +222,9 @@ void opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf)
     if (!seg_buf)
         return;
     for (i = 0; i < seg_buf->segments.size(); ++i) {
-        opj_buf_t* seg = seg_buf->segments[i];
+        grk_buf_t* seg = seg_buf->segments[i];
         if (seg) {
-            opj_buf_free(seg);
+            grk_buf_free(seg);
         }
     }
     seg_buf->segments.clear();
@@ -236,7 +236,7 @@ void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf)
     if (!seg_buf)
         return;
     for (i = 0; i < seg_buf->segments.size(); ++i) {
-        opj_buf_t* seg = seg_buf->segments[i];
+        grk_buf_t* seg = seg_buf->segments[i];
         if (seg) {
             seg->offset = 0;
         }
@@ -247,7 +247,7 @@ void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf)
 
 bool opj_seg_buf_push_back(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
-    opj_buf_t* seg = NULL;
+    grk_buf_t* seg = NULL;
     if (!seg_buf || !buf || !len)
         return false;
 
@@ -260,7 +260,7 @@ bool opj_seg_buf_push_back(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 
 bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
 {
-    opj_buf_t* seg = NULL;
+    grk_buf_t* seg = NULL;
     uint8_t* buf = NULL;
     if (!seg_buf || !len)
         return false;
@@ -280,11 +280,11 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
 
 void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
         return;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
-    opj_buf_incr_offset(cur_seg, offset);
+    grk_buf_incr_offset(cur_seg, offset);
     if ((size_t)cur_seg->offset == cur_seg->len) {
         opj_seg_buf_increment(seg_buf);
     }
@@ -300,7 +300,7 @@ bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
                                 uint8_t** ptr,
                                 size_t chunk_len)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
         return false;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -324,7 +324,7 @@ bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buff
         return false;
 
     for (i = 0; i < seg_buf->segments.size(); ++i) {
-        opj_buf_t* seg = seg_buf->segments[i];
+        grk_buf_t* seg = seg_buf->segments[i];
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
         offset += seg->len;
@@ -335,7 +335,7 @@ bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buff
 
 uint8_t* opj_seg_buf_get_global_ptr(opj_seg_buf_t* seg_buf)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
         return NULL;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -344,7 +344,7 @@ uint8_t* opj_seg_buf_get_global_ptr(opj_seg_buf_t* seg_buf)
 
 size_t opj_seg_buf_get_cur_seg_len(opj_seg_buf_t* seg_buf)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
         return 0;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -353,7 +353,7 @@ size_t opj_seg_buf_get_cur_seg_len(opj_seg_buf_t* seg_buf)
 
 int64_t opj_seg_buf_get_cur_seg_offset(opj_seg_buf_t* seg_buf)
 {
-    opj_buf_t* cur_seg = NULL;
+    grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
         return 0;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -370,14 +370,14 @@ int64_t opj_seg_buf_get_global_offset(opj_seg_buf_t* seg_buf)
         return 0;
 
     for (i = 0; i < seg_buf->cur_seg_id; ++i) {
-        opj_buf_t* seg = seg_buf->segments[i];
+        grk_buf_t* seg = seg_buf->segments[i];
         offset += (int64_t)seg->len;
     }
     return offset + opj_seg_buf_get_cur_seg_offset(seg_buf);
 }
 
 
-void opj_buf_incr_offset(opj_buf_t* buf, uint64_t off)
+void grk_buf_incr_offset(grk_buf_t* buf, uint64_t off)
 {
     if (!buf)
         return;
@@ -391,7 +391,7 @@ void opj_buf_incr_offset(opj_buf_t* buf, uint64_t off)
     buf->offset += off;
 }
 
-void opj_buf_free(opj_buf_t* buffer)
+void grk_buf_free(grk_buf_t* buffer)
 {
     if (!buffer)
         return;

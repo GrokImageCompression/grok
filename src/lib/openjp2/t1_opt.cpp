@@ -55,7 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 #include "t1_luts.h"
 
 /** @defgroup T1 T1 - Implementation of the tier-1 coding */
@@ -67,16 +67,16 @@
 #define ENC_FLAGS(x, y) (t1->flags[(x) + 1 + (((y) >> 2) + 1) * t1->flags_stride])
 #define ENC_FLAGS_ADDRESS(x, y) (t1->flags + ((x) + 1 + (((y) >> 2) + 1) * t1->flags_stride))
 
-static inline uint8_t		opj_t1_getctxno_zc_opt(uint32_t f, uint32_t orient);
-static inline uint8_t		opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
-static inline uint32_t		opj_t1_getctxno_mag_opt(uint32_t f);
-static inline uint8_t		opj_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
-static inline void			opj_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t s, uint32_t stride);
+static inline uint8_t		grk_t1_getctxno_zc_opt(uint32_t f, uint32_t orient);
+static inline uint8_t		grk_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
+static inline uint32_t		grk_t1_getctxno_mag_opt(uint32_t f);
+static inline uint8_t		grk_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci);
+static inline void			grk_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t s, uint32_t stride);
 
 /**
 Encode significant pass
 */
-static void opj_t1_enc_sigpass_step(opj_t1_opt_t *t1,
+static void grk_t1_enc_sigpass_step(grk_t1_opt_t *t1,
                                     opj_flag_opt_t *flagsp,
                                     uint32_t *datap,
                                     uint32_t orient,
@@ -87,7 +87,7 @@ static void opj_t1_enc_sigpass_step(opj_t1_opt_t *t1,
 /**
 Encode significant pass
 */
-static void opj_t1_enc_sigpass( opj_t1_opt_t *t1,
+static void grk_t1_enc_sigpass( grk_t1_opt_t *t1,
                                 int32_t bpno,
                                 uint32_t orient,
                                 int32_t *nmsedec);
@@ -96,7 +96,7 @@ static void opj_t1_enc_sigpass( opj_t1_opt_t *t1,
 /**
 Encode refinement pass
 */
-static void opj_t1_enc_refpass_step(opj_t1_opt_t *t1,
+static void grk_t1_enc_refpass_step(grk_t1_opt_t *t1,
                                     opj_flag_opt_t *flagsp,
                                     uint32_t *datap,
                                     int32_t bpno,
@@ -107,15 +107,15 @@ static void opj_t1_enc_refpass_step(opj_t1_opt_t *t1,
 /**
 Encode refinement pass
 */
-static void opj_t1_enc_refpass( opj_t1_opt_t *t1,
+static void grk_t1_enc_refpass( grk_t1_opt_t *t1,
                                 int32_t bpno,
                                 int32_t *nmsedec);
 
 /**
 Encode clean-up pass
 */
-static void opj_t1_enc_clnpass_step(
-    opj_t1_opt_t *t1,
+static void grk_t1_enc_clnpass_step(
+    grk_t1_opt_t *t1,
     opj_flag_opt_t *flagsp,
     uint32_t *datap,
     uint32_t orient,
@@ -129,8 +129,8 @@ static void opj_t1_enc_clnpass_step(
 /**
 Encode clean-up pass
 */
-static void opj_t1_enc_clnpass(
-    opj_t1_opt_t *t1,
+static void grk_t1_enc_clnpass(
+    grk_t1_opt_t *t1,
     int32_t bpno,
     uint32_t orient,
     int32_t *nmsedec);
@@ -140,10 +140,10 @@ static void opj_t1_enc_clnpass(
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-opj_t1_opt_t* opj_t1_opt_create(bool isEncoder){
-    opj_t1_opt_t *l_t1 = nullptr;
+grk_t1_opt_t* grk_t1_opt_create(bool isEncoder){
+    grk_t1_opt_t *l_t1 = nullptr;
 
-    l_t1 = (opj_t1_opt_t*)opj_calloc(1, sizeof(opj_t1_opt_t));
+    l_t1 = (grk_t1_opt_t*)opj_calloc(1, sizeof(grk_t1_opt_t));
     if (!l_t1) {
         return nullptr;
     }
@@ -151,7 +151,7 @@ opj_t1_opt_t* opj_t1_opt_create(bool isEncoder){
     /* create MQC handles */
     l_t1->mqc = opj_mqc_create();
     if (!l_t1->mqc) {
-        opj_t1_opt_destroy(l_t1);
+        grk_t1_opt_destroy(l_t1);
         return nullptr;
     }
 
@@ -166,7 +166,7 @@ opj_t1_opt_t* opj_t1_opt_create(bool isEncoder){
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-void opj_t1_opt_destroy(opj_t1_opt_t *p_t1){
+void grk_t1_opt_destroy(grk_t1_opt_t *p_t1){
     if (!p_t1) {
         return;
     }
@@ -189,12 +189,12 @@ void opj_t1_opt_destroy(opj_t1_opt_t *p_t1){
     opj_free(p_t1);
 }
 
-static inline uint8_t opj_t1_getctxno_zc_opt(uint32_t f, uint32_t orient){
+static inline uint8_t grk_t1_getctxno_zc_opt(uint32_t f, uint32_t orient){
     return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
 }
 
 
-static uint8_t opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci){
+static uint8_t grk_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci){
     /*
     0 pfX T1_CHI_THIS           T1_LUT_CTXNO_SGN_W
     1 tfX T1_SIGMA_1            T1_LUT_CTXNO_SIG_N
@@ -221,11 +221,11 @@ static uint8_t opj_t1_getctxno_sc_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, u
 }
 
 
-static inline uint32_t opj_t1_getctxno_mag_opt(uint32_t f){
+static inline uint32_t grk_t1_getctxno_mag_opt(uint32_t f){
     return (f & T1_MU_THIS) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 }
 
-static uint8_t opj_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci)
+static uint8_t grk_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci)
 {
     /*
     0 pfX T1_CHI_THIS           T1_LUT_SGN_W
@@ -252,7 +252,7 @@ static uint8_t opj_t1_getspb_opt(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32
     return lut_spb_opt[lu];
 }
 
-static void opj_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t s, uint32_t stride)
+static void grk_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t s, uint32_t stride)
 {
     /* set up to point to the north and south data points' flags words, if required */
     opj_flag_opt_t* north = NULL;
@@ -306,7 +306,7 @@ static void opj_t1_updateflags_opt(opj_flag_opt_t *flagsp, uint32_t ci, uint32_t
     }
 }
 
-static void  opj_t1_enc_sigpass_step(   opj_t1_opt_t *t1,
+static void  grk_t1_enc_sigpass_step(   grk_t1_opt_t *t1,
                                         opj_flag_opt_t *flagsp,
                                         uint32_t *datap,
                                         uint32_t orient,
@@ -327,15 +327,15 @@ static void  opj_t1_enc_sigpass_step(   opj_t1_opt_t *t1,
         then code in this pass: */
         if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
             v = (*datap >> one) & 1;
-            opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc_opt(shift_flags, orient));
+            opj_mqc_setcurctx(mqc, grk_t1_getctxno_zc_opt(shift_flags, orient));
             opj_mqc_encode(mqc, v);
             if (v) {
                 /* sign bit */
                 v = *datap >> T1_DATA_SIGN_BIT_INDEX;
-                *nmsedec += opj_t1_getnmsedec_sig(*datap, (uint32_t)bpno);
-                opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc_opt(*flagsp, flagsp[-1], flagsp[1], ci));
-                opj_mqc_encode(mqc, v ^ opj_t1_getspb_opt(*flagsp, flagsp[-1], flagsp[1], ci));
-                opj_t1_updateflags_opt(flagsp, ci, v, t1->flags_stride);
+                *nmsedec += grk_t1_getnmsedec_sig(*datap, (uint32_t)bpno);
+                opj_mqc_setcurctx(mqc, grk_t1_getctxno_sc_opt(*flagsp, flagsp[-1], flagsp[1], ci));
+                opj_mqc_encode(mqc, v ^ grk_t1_getspb_opt(*flagsp, flagsp[-1], flagsp[1], ci));
+                grk_t1_updateflags_opt(flagsp, ci, v, t1->flags_stride);
             }
             /* set propagation pass bit for this location */
             *flagsp |= T1_PI_THIS << (ci * 3U);
@@ -346,7 +346,7 @@ static void  opj_t1_enc_sigpass_step(   opj_t1_opt_t *t1,
 
 
 
-static void opj_t1_enc_sigpass(opj_t1_opt_t *t1,
+static void grk_t1_enc_sigpass(grk_t1_opt_t *t1,
                                int32_t bpno,
                                uint32_t orient,
                                int32_t *nmsedec  )
@@ -362,7 +362,7 @@ static void opj_t1_enc_sigpass(opj_t1_opt_t *t1,
     *nmsedec = 0;
     for (k = 0; k < t1->h; k += 4) {
         for (i = 0; i < t1->w; ++i) {
-            opj_t1_enc_sigpass_step(
+            grk_t1_enc_sigpass_step(
                 t1,
                 f,
                 d,
@@ -379,7 +379,7 @@ static void opj_t1_enc_sigpass(opj_t1_opt_t *t1,
     }
 }
 
-static void opj_t1_enc_refpass_step(   opj_t1_opt_t *t1,
+static void grk_t1_enc_refpass_step(   grk_t1_opt_t *t1,
                                        opj_flag_opt_t *flagsp,
                                        uint32_t *datap,
                                        int32_t bpno,
@@ -404,9 +404,9 @@ static void opj_t1_enc_refpass_step(   opj_t1_opt_t *t1,
         uint32_t shift_flags = *flagsp >> (ci * 3U);
         /* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
         if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS) {
-            *nmsedec += opj_t1_getnmsedec_ref(*datap, (uint32_t)bpno);
+            *nmsedec += grk_t1_getnmsedec_ref(*datap, (uint32_t)bpno);
             v = (*datap >> one) & 1;
-            opj_mqc_setcurctx(mqc, opj_t1_getctxno_mag_opt(shift_flags));
+            opj_mqc_setcurctx(mqc, grk_t1_getctxno_mag_opt(shift_flags));
             opj_mqc_encode(mqc, v);
             /* flip magnitude refinement bit*/
             *flagsp |= T1_MU_THIS << (ci * 3U);
@@ -415,8 +415,8 @@ static void opj_t1_enc_refpass_step(   opj_t1_opt_t *t1,
     }
 }
 
-static void opj_t1_enc_refpass(
-    opj_t1_opt_t *t1,
+static void grk_t1_enc_refpass(
+    grk_t1_opt_t *t1,
     int32_t bpno,
     int32_t *nmsedec)
 {
@@ -430,7 +430,7 @@ static void opj_t1_enc_refpass(
     *nmsedec = 0;
     for (k = 0U; k < t1->h; k += 4U) {
         for (i = 0U; i < t1->w; ++i) {
-            opj_t1_enc_refpass_step(
+            grk_t1_enc_refpass_step(
                 t1,
                 f,
                 d,
@@ -445,7 +445,7 @@ static void opj_t1_enc_refpass(
     }
 }
 
-static void opj_t1_enc_clnpass_step(   opj_t1_opt_t *t1,
+static void grk_t1_enc_clnpass_step(   grk_t1_opt_t *t1,
 										opj_flag_opt_t *flagsp,
 										uint32_t *datap,
 										uint32_t orient,
@@ -486,17 +486,17 @@ static void opj_t1_enc_clnpass_step(   opj_t1_opt_t *t1,
         shift_flags = *flagsp >> (ci * 3U);
 
         if (!(shift_flags & (T1_SIGMA_THIS | T1_PI_THIS))) {
-            opj_mqc_setcurctx(mqc, opj_t1_getctxno_zc_opt(shift_flags, orient));
+            opj_mqc_setcurctx(mqc, grk_t1_getctxno_zc_opt(shift_flags, orient));
             v = (*datap >> one) & 1;
             opj_mqc_encode(mqc, v);
             if (v) {
 LABEL_PARTIAL:
-                *nmsedec += opj_t1_getnmsedec_sig(*datap, (uint32_t)bpno);
-                opj_mqc_setcurctx(mqc, opj_t1_getctxno_sc_opt(*flagsp, flagsp[-1], flagsp[1], ci));
+                *nmsedec += grk_t1_getnmsedec_sig(*datap, (uint32_t)bpno);
+                opj_mqc_setcurctx(mqc, grk_t1_getctxno_sc_opt(*flagsp, flagsp[-1], flagsp[1], ci));
                 /* sign bit */
                 v = *datap >> T1_DATA_SIGN_BIT_INDEX;
-                opj_mqc_encode(mqc, v ^ opj_t1_getspb_opt(*flagsp, flagsp[-1], flagsp[1], ci));
-                opj_t1_updateflags_opt(flagsp, ci, v, t1->flags_stride);
+                opj_mqc_encode(mqc, v ^ grk_t1_getspb_opt(*flagsp, flagsp[-1], flagsp[1], ci));
+                grk_t1_updateflags_opt(flagsp, ci, v, t1->flags_stride);
             }
         }
         *flagsp &= ~(T1_PI_0 << (3U * ci));
@@ -505,7 +505,7 @@ LABEL_PARTIAL:
 }
 
 
-static void opj_t1_enc_clnpass( opj_t1_opt_t *t1,
+static void grk_t1_enc_clnpass( grk_t1_opt_t *t1,
 								int32_t bpno,
 								uint32_t orient,
 								int32_t *nmsedec)
@@ -537,7 +537,7 @@ static void opj_t1_enc_clnpass( opj_t1_opt_t *t1,
             } else {
                 runlen = 0;
             }
-            opj_t1_enc_clnpass_step(
+            grk_t1_enc_clnpass_step(
                 t1,
                 ENC_FLAGS_ADDRESS(i, k),
                 t1->data + ((k + runlen) * t1->w) + i,
@@ -553,7 +553,7 @@ static void opj_t1_enc_clnpass( opj_t1_opt_t *t1,
 }
 
 
-bool opj_t1_opt_allocate_buffers(   opj_t1_opt_t *t1,
+bool grk_t1_opt_allocate_buffers(   grk_t1_opt_t *t1,
 									uint32_t cblkw,
 									uint32_t cblkh)
 {
@@ -577,7 +577,7 @@ bool opj_t1_opt_allocate_buffers(   opj_t1_opt_t *t1,
      return true;
 }
 
-void opj_t1_opt_init_buffers(opj_t1_opt_t *t1,
+void grk_t1_opt_init_buffers(grk_t1_opt_t *t1,
 							uint32_t w,
 							uint32_t h){
 	uint32_t x;
@@ -624,8 +624,8 @@ void opj_t1_opt_init_buffers(opj_t1_opt_t *t1,
 	t1->h = h;
 }
 
-double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
-                               opj_tcd_cblk_enc_t* cblk,
+double grk_t1_opt_encode_cblk(grk_t1_opt_t *t1,
+                               grk_tcd_cblk_enc_t* cblk,
                                uint32_t orient,
                                uint32_t compno,
                                uint32_t level,
@@ -662,17 +662,17 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 	}
 
     for (passno = 0; bpno >= 0; ++passno) {
-        opj_tcd_pass_t *pass = &cblk->passes[passno];
+        grk_tcd_pass_t *pass = &cblk->passes[passno];
         uint32_t correction = 3;
         switch (passtype) {
         case 0:
-            opj_t1_enc_sigpass(t1, bpno, orient, &nmsedec);
+            grk_t1_enc_sigpass(t1, bpno, orient, &nmsedec);
             break;
         case 1:
-            opj_t1_enc_refpass(t1, bpno, &nmsedec);
+            grk_t1_enc_refpass(t1, bpno, &nmsedec);
             break;
         case 2:
-            opj_t1_enc_clnpass(t1, bpno, orient, &nmsedec);
+            grk_t1_enc_clnpass(t1, bpno, orient, &nmsedec);
 			if (state & OPJ_PLUGIN_STATE_DEBUG) {
 				mqc_next_plane(&mqc->debug_mqc);
 			}
@@ -680,7 +680,7 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
         }
 		if (cblksty == J2K_CCP_CBLKSTY_RESET)
 			opj_mqc_resetstates(mqc);
-        tempwmsedec = opj_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
+        tempwmsedec = grk_t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps,mct_norms, mct_numcomps) ;
         cumwmsedec += tempwmsedec;
 
 		if (TERMALL){
@@ -707,13 +707,13 @@ double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
 		}
     }
 
-	opj_tcd_pass_t *finalPass = &cblk->passes[passno-1];
+	grk_tcd_pass_t *finalPass = &cblk->passes[passno-1];
 	if (!finalPass->term)
 		opj_mqc_flush(mqc);
     cblk->num_passes_encoded = passno;
 
     for (passno = 0; passno<cblk->num_passes_encoded; passno++) {
-        opj_tcd_pass_t *pass = &cblk->passes[passno];
+        grk_tcd_pass_t *pass = &cblk->passes[passno];
 		if (!pass->term) {
 			pass->rate++;
 			auto bytes = opj_mqc_numbytes(mqc);

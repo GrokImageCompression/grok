@@ -77,7 +77,7 @@ Forward 5-3 wavelet transform in 2-D.
 Apply a reversible DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 */
-bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec);
+bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec);
 
 /**
 Inverse 5-3 wavelet transform in 2-D.
@@ -85,7 +85,7 @@ Apply a reversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
+bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec,
 					uint32_t numres,
 					uint32_t numThreads);
 
@@ -94,27 +94,27 @@ Get the gain of a subband for the reversible 5-3 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
 @return Returns 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
 */
-uint32_t opj_dwt_getgain(uint32_t orient) ;
+uint32_t grk_dwt_getgain(uint32_t orient) ;
 /**
 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
 @param level Level of the wavelet function
 @param orient Band of the wavelet function
 @return Returns the norm of the wavelet function
 */
-double opj_dwt_getnorm(uint32_t level, uint32_t orient);
+double grk_dwt_getnorm(uint32_t level, uint32_t orient);
 /**
 Forward 9-7 wavelet transform in 2-D.
 Apply an irreversible DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 */
-bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec);
+bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec);
 /**
 Inverse 9-7 wavelet transform in 2-D.
 Apply an irreversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode_97(opj_tcd_tilecomp_t* restrict tilec,
+bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 						uint32_t numres,
 						uint32_t numThreads);
 
@@ -123,26 +123,26 @@ Get the gain of a subband for the irreversible 9-7 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
 @return Returns the gain of the 9-7 wavelet transform
 */
-uint32_t opj_dwt_getgain_real(uint32_t orient);
+uint32_t grk_dwt_getgain_real(uint32_t orient);
 /**
 Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
 @param level Level of the wavelet function
 @param orient Band of the wavelet function
 @return Returns the norm of the 9-7 wavelet
 */
-double opj_dwt_getnorm_real(uint32_t level, uint32_t orient);
+double grk_dwt_getnorm_real(uint32_t level, uint32_t orient);
 /**
 Explicit calculation of the Quantization Stepsizes
 @param tccp Tile-component coding parameters
 @param prec Precint analyzed
 */
-void opj_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec);
+void grk_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec);
 
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>
 */
-uint32_t opj_dwt_max_resolution(opj_tcd_resolution_t* restrict r, uint32_t i);
+uint32_t grk_dwt_max_resolution(grk_tcd_resolution_t* restrict r, uint32_t i);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

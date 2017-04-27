@@ -14,12 +14,12 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-#include "opj_includes.h"
+#include "grk_includes.h"
 #include "plugin_bridge.h"
 
 // Performed after T2, just before plugin decode is triggered
 // note: only support single segment at the moment
-bool decode_synch_plugin_with_host(opj_tcd_t *tcd) {
+bool decode_synch_plugin_with_host(grk_tcd_t *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto tcd_tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -48,8 +48,8 @@ bool decode_synch_plugin_with_host(opj_tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = opj_min_buf_vec_get_len(&cblk->seg_buffers);
-							opj_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = grk_min_buf_vec_get_len(&cblk->seg_buffers);
+							grk_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 
@@ -65,19 +65,19 @@ bool decode_synch_plugin_with_host(opj_tcd_t *tcd) {
 }
 
 // Performed after plugin decode
-bool decode_synch_host_with_plugin(opj_tcd_t *tcd) {
+bool decode_synch_host_with_plugin(grk_tcd_t *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
-		opj_tcd_tile_t *tcd_tile = tcd->tile;
+		grk_tcd_tile_t *tcd_tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
-			opj_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+			grk_tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
 			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-				opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+				grk_tcd_resolution_t *res = &tilec->resolutions[resno];
 
 				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-					opj_tcd_band_t *band = &res->bands[bandno];
+					grk_tcd_band_t *band = &res->bands[bandno];
 
 					for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
-						opj_tcd_precinct_t *prc = &band->precincts[precno];
+						grk_tcd_precinct_t *prc = &band->precincts[precno];
 
 						for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 
@@ -85,7 +85,7 @@ bool decode_synch_host_with_plugin(opj_tcd_t *tcd) {
 							opj_plugin_precinct_t* precinct = plugin_band->precincts[precno];
 							opj_plugin_code_block_t* plugin_cblk = precinct->blocks[cblkno];
 
-							opj_tcd_cblk_dec_t *cblk = &prc->cblks.dec[cblkno];
+							grk_tcd_cblk_dec_t *cblk = &prc->cblks.dec[cblkno];
 							if (!cblk->numSegments)
 								continue;
 							if (cblk->numSegments != 1)
@@ -93,8 +93,8 @@ bool decode_synch_host_with_plugin(opj_tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = opj_min_buf_vec_get_len(&cblk->seg_buffers);
-							opj_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = grk_min_buf_vec_get_len(&cblk->seg_buffers);
+							grk_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 
@@ -112,7 +112,7 @@ bool decode_synch_host_with_plugin(opj_tcd_t *tcd) {
 
 
 bool tile_equals(opj_plugin_tile_t* plugin_tile,
-	opj_tcd_tile_t *p_tile) {
+	grk_tcd_tile_t *p_tile) {
 	uint32_t state = opj_plugin_get_debug_state();
 	if (!(state & OPJ_PLUGIN_STATE_DEBUG))
 		return true;
@@ -123,29 +123,29 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 	if (plugin_tile->numComponents != p_tile->numcomps)
 		return false;
 	for (uint32_t compno = 0; compno < p_tile->numcomps; ++compno) {
-		opj_tcd_tilecomp_t* tilecomp = p_tile->comps + compno;
+		grk_tcd_tilecomp_t* tilecomp = p_tile->comps + compno;
 		opj_plugin_tile_component_t* plugin_tilecomp = plugin_tile->tileComponents[compno];
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
 			return false;
 		for (uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno) {
-			opj_tcd_resolution_t* resolution = tilecomp->resolutions + resno;
+			grk_tcd_resolution_t* resolution = tilecomp->resolutions + resno;
 			opj_plugin_resolution_t* plugin_resolution = plugin_tilecomp->resolutions[resno];
 			if (resolution->numbands != plugin_resolution->numBands)
 				return false;
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
-				opj_tcd_band_t* band = resolution->bands + bandno;
+				grk_tcd_band_t* band = resolution->bands + bandno;
 				opj_plugin_band_t* plugin_band = plugin_resolution->bands[bandno];
 				size_t num_precincts = band->numPrecincts();
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
 				for (size_t precno = 0; precno < num_precincts; ++precno) {
-					opj_tcd_precinct_t* precinct = band->precincts + precno;
+					grk_tcd_precinct_t* precinct = band->precincts + precno;
 					opj_plugin_precinct_t* plugin_precinct = plugin_band->precincts[precno];
 					if (precinct->ch * precinct->cw != plugin_precinct->numBlocks) {
 						return false;
 					}
 					for (uint32_t cblkno = 0; cblkno < precinct->ch * precinct->cw; ++cblkno) {
-						opj_tcd_cblk_dec_t* cblk = precinct->cblks.dec + cblkno;
+						grk_tcd_cblk_dec_t* cblk = precinct->cblks.dec + cblkno;
 						opj_plugin_code_block_t* plugin_cblk = plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0 ||
 							cblk->x1 != plugin_cblk->x1 ||
@@ -160,14 +160,14 @@ bool tile_equals(opj_plugin_tile_t* plugin_tile,
 	return true;
 }
 
-void encode_synch_with_plugin(opj_tcd_t *tcd,
+void encode_synch_with_plugin(grk_tcd_t *tcd,
 							uint32_t compno,
 							uint32_t resno,
 							uint32_t bandno,
 							uint32_t precno,
 							uint32_t cblkno,
-							opj_tcd_band_t *band,
-							opj_tcd_cblk_enc_t *cblk,
+							grk_tcd_band_t *band,
+							grk_tcd_cblk_enc_t *cblk,
 							uint32_t* numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
@@ -238,11 +238,11 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 
 		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
-			opj_tcd_pass_t *pass = cblk->passes + passno;
+			grk_tcd_pass_t *pass = cblk->passes + passno;
 			opj_plugin_pass_t* pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
-			if (opj_tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
+			if (grk_tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
 				if (state & OPJ_PLUGIN_STATE_DEBUG) {
 					if (fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec) > 0.01) {
 						printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
@@ -274,22 +274,22 @@ void encode_synch_with_plugin(opj_tcd_t *tcd,
 
 
 // set context stream for debugging purposes
-void set_context_stream(opj_tcd_t *p_tcd) {
+void set_context_stream(grk_tcd_t *p_tcd) {
 	for (uint32_t compno = 0; compno < p_tcd->tile->numcomps; compno++) {
-		opj_tcd_tilecomp_t *tilec = p_tcd->tile->comps + compno;
+		grk_tcd_tilecomp_t *tilec = p_tcd->tile->comps + compno;
 		tilec->numpix = 0;
 
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-			opj_tcd_resolution_t *res = &tilec->resolutions[resno];
+			grk_tcd_resolution_t *res = &tilec->resolutions[resno];
 
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-				opj_tcd_band_t *band = &res->bands[bandno];
+				grk_tcd_band_t *band = &res->bands[bandno];
 
 				for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
-					opj_tcd_precinct_t *prc = &band->precincts[precno];
+					grk_tcd_precinct_t *prc = &band->precincts[precno];
 
 					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						opj_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+						grk_tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
 
 						if (p_tcd->current_plugin_tile && p_tcd->current_plugin_tile->tileComponents) {
 							opj_plugin_tile_component_t* comp = p_tcd->current_plugin_tile->tileComponents[compno];

@@ -59,7 +59,7 @@
 #include <xmmintrin.h>
 #endif
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
@@ -79,7 +79,7 @@ typedef struct dwt_local {
     int32_t dn;
     int32_t sn;
     int32_t cas;
-} opj_dwt_t;
+} grk_dwt_t;
 
 typedef union {
     float	f[4];
@@ -92,10 +92,10 @@ typedef struct v4dwt_local {
     int32_t		cas ;
 } opj_v4dwt_t ;
 
-static const float opj_dwt_alpha =  1.586134342f; /*  12994 */
-static const float opj_dwt_beta  =  0.052980118f; /*    434 */
-static const float opj_dwt_gamma = -0.882911075f; /*  -7233 */
-static const float opj_dwt_delta = -0.443506852f; /*  -3633 */
+static const float grk_dwt_alpha =  1.586134342f; /*  12994 */
+static const float grk_dwt_beta  =  0.052980118f; /*    434 */
+static const float grk_dwt_gamma = -0.882911075f; /*  -7233 */
+static const float grk_dwt_delta = -0.443506852f; /*  -3633 */
 
 static const float opj_K      = 1.230174105f; /*  10078 */
 static const float opj_c13318 = 1.625732422f;
@@ -108,35 +108,35 @@ static const float opj_c13318 = 1.625732422f;
 /**
 Forward lazy transform (horizontal)
 */
-static void opj_dwt_deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas);
+static void grk_dwt_deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas);
 /**
 Forward lazy transform (vertical)
 */
-static void opj_dwt_deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas);
+static void grk_dwt_deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas);
 /**
 Inverse lazy transform (horizontal)
 */
-static void opj_dwt_interleave_h(opj_dwt_t* h, int32_t *a);
+static void grk_dwt_interleave_h(grk_dwt_t* h, int32_t *a);
 /**
 Inverse lazy transform (vertical)
 */
-static void opj_dwt_interleave_v(opj_dwt_t* v, int32_t *a, int32_t x);
+static void grk_dwt_interleave_v(grk_dwt_t* v, int32_t *a, int32_t x);
 /**
 Forward 5-3 wavelet transform in 1-D
 */
-static void opj_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
+static void grk_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
 /**
 Inverse 5-3 wavelet transform in 1-D
 */
-static void opj_dwt_decode_line_53(opj_dwt_t *v);
+static void grk_dwt_decode_line_53(grk_dwt_t *v);
 /**
 Forward 9-7 wavelet transform in 1-D
 */
-static void opj_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
+static void grk_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas);
 /**
 Explicit calculation of the Quantization Stepsizes
 */
-static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsize_t *bandno_stepsize);
+static void grk_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsize_t *bandno_stepsize);
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
@@ -174,7 +174,7 @@ static void opj_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
 /* </summary>                                                             */
-static const double opj_dwt_norms[4][10] = {
+static const double grk_dwt_norms[4][10] = {
     {1.000, 1.500, 2.750, 5.375, 10.68, 21.34, 42.67, 85.33, 170.7, 341.3},
     {1.038, 1.592, 2.919, 5.703, 11.33, 22.64, 45.25, 90.48, 180.9},
     {1.038, 1.592, 2.919, 5.703, 11.33, 22.64, 45.25, 90.48, 180.9},
@@ -184,7 +184,7 @@ static const double opj_dwt_norms[4][10] = {
 /* <summary>                                                              */
 /* This table contains the norms of the 9-7 wavelets for different bands. */
 /* </summary>                                                             */
-static const double opj_dwt_norms_real[4][10] = {
+static const double grk_dwt_norms_real[4][10] = {
     {1.000, 1.965, 4.177, 8.403, 16.90, 33.84, 67.69, 135.3, 270.6, 540.9},
     {2.022, 3.989, 8.355, 17.04, 34.27, 68.63, 137.3, 274.6, 549.0},
     {2.022, 3.989, 8.355, 17.04, 34.27, 68.63, 137.3, 274.6, 549.0},
@@ -200,7 +200,7 @@ static const double opj_dwt_norms_real[4][10] = {
 /* <summary>			                 */
 /* Forward lazy transform (horizontal).  */
 /* </summary>                            */
-static void opj_dwt_deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas)
+static void grk_dwt_deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas)
 {
     int32_t i;
     int32_t * l_dest = b;
@@ -223,7 +223,7 @@ static void opj_dwt_deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t s
 /* <summary>                             */
 /* Forward lazy transform (vertical).    */
 /* </summary>                            */
-static void opj_dwt_deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas)
+static void grk_dwt_deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas)
 {
     int32_t i = sn;
     int32_t * l_dest = b;
@@ -249,7 +249,7 @@ static void opj_dwt_deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t s
 /* <summary>                             */
 /* Inverse lazy transform (horizontal).  */
 /* </summary>                            */
-static void opj_dwt_interleave_h(opj_dwt_t* h, int32_t *a)
+static void grk_dwt_interleave_h(grk_dwt_t* h, int32_t *a)
 {
     int32_t *ai = a;
     int32_t *bi = h->mem + h->cas;
@@ -270,7 +270,7 @@ static void opj_dwt_interleave_h(opj_dwt_t* h, int32_t *a)
 /* <summary>                             */
 /* Inverse lazy transform (vertical).    */
 /* </summary>                            */
-static void opj_dwt_interleave_v(opj_dwt_t* v, int32_t *a, int32_t x)
+static void grk_dwt_interleave_v(grk_dwt_t* v, int32_t *a, int32_t x)
 {
     int32_t *ai = a;
     int32_t *bi = v->mem + v->cas;
@@ -294,7 +294,7 @@ static void opj_dwt_interleave_v(opj_dwt_t* v, int32_t *a, int32_t x)
 /* <summary>                            */
 /* Forward 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-static void opj_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
+static void grk_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 {
     int32_t i;
 
@@ -317,7 +317,7 @@ static void opj_dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t c
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-static void opj_dwt_decode_line_53(opj_dwt_t *v)
+static void grk_dwt_decode_line_53(grk_dwt_t *v)
 {
 	int32_t *a = v->mem;
 	int32_t dn = v->dn;
@@ -345,7 +345,7 @@ static void opj_dwt_decode_line_53(opj_dwt_t *v)
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
+static void grk_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 {
     int32_t i;
     if (!cas) {
@@ -381,7 +381,7 @@ static void opj_dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t c
     }
 }
 
-static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsize_t *bandno_stepsize)
+static void grk_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsize_t *bandno_stepsize)
 {
     int32_t p, n;
     p = opj_int_floorlog2(stepsize) - 13;
@@ -399,7 +399,7 @@ static void opj_dwt_encode_stepsize(int32_t stepsize, int32_t numbps, opj_stepsi
 
 /* Forward 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
+bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec)
 {
 	int32_t k;
 	int32_t *a = nullptr;
@@ -411,12 +411,12 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 	int32_t rh;			/* height of the resolution level computed  */
 	size_t l_data_size;
 
-	opj_tcd_resolution_t * l_cur_res = 0;
-	opj_tcd_resolution_t * l_last_res = 0;
+	grk_tcd_resolution_t * l_cur_res = 0;
+	grk_tcd_resolution_t * l_last_res = 0;
 
 	w = tilec->x1 - tilec->x0;
 	int32_t num_decomps = (int32_t)tilec->numresolutions - 1;
-	a = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	a = grk_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
 	l_cur_res = tilec->resolutions + num_decomps;
 	l_last_res = l_cur_res - 1;
@@ -432,7 +432,7 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 
 #endif
 
-	l_data_size = opj_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
+	l_data_size = grk_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
 		/* FIXME event manager error callback */
@@ -468,8 +468,8 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 			for (k = 0; k < rh; ++k) {
 				bj[k] = aj[k*w];
 			}
-			opj_dwt_encode_line_53(bj, dn, sn, cas_col);
-			opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
+			grk_dwt_encode_line_53(bj, dn, sn, cas_col);
+			grk_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
 		}
 		sn = rw1;
 		dn = rw - rw1;
@@ -477,8 +477,8 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 		for (int32_t j = 0; j < rh; j++) {
 			aj = a + j * w;
 			for (k = 0; k < rw; k++)  bj[k] = aj[k];
-			opj_dwt_encode_line_53(bj, dn, sn, cas_row);
-			opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
+			grk_dwt_encode_line_53(bj, dn, sn, cas_row);
+			grk_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
 		}
 		l_cur_res = l_last_res;
 		--l_last_res;
@@ -486,7 +486,7 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 	opj_free(bj);
 #ifdef DEBUG_LOSSLESS_DWT
 	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
-	opj_dwt_decode_53(tilec, tilec->numresolutions, 8);
+	grk_dwt_decode_53(tilec, tilec->numresolutions, 8);
 	for (int m = 0; m < rw_full; ++m) {
 		for (int p = 0; p < rh_full; ++p) {
 			auto expected = a[m + p * rw_full];
@@ -506,7 +506,7 @@ bool opj_dwt_encode_53(opj_tcd_tilecomp_t * tilec)
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
+bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec)
 {
 	int32_t i, k;
 	int32_t *a = nullptr;
@@ -518,17 +518,17 @@ bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 	int32_t rh;			/* height of the resolution level computed  */
 	size_t l_data_size;
 
-	opj_tcd_resolution_t * l_cur_res = 0;
-	opj_tcd_resolution_t * l_last_res = 0;
+	grk_tcd_resolution_t * l_cur_res = 0;
+	grk_tcd_resolution_t * l_last_res = 0;
 
 	w = tilec->x1 - tilec->x0;
 	l = (int32_t)tilec->numresolutions - 1;
-	a = opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	a = grk_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
 	l_cur_res = tilec->resolutions + l;
 	l_last_res = l_cur_res - 1;
 
-	l_data_size = opj_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
+	l_data_size = grk_dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
 		/* FIXME event manager error callback */
@@ -564,8 +564,8 @@ bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 			for (k = 0; k < rh; ++k) {
 				bj[k] = aj[k*w];
 			}
-			opj_dwt_encode_line_97(bj, dn, sn, cas_col);
-			opj_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
+			grk_dwt_encode_line_97(bj, dn, sn, cas_col);
+			grk_dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
 		}
 		sn = rw1;
 		dn = rw - rw1;
@@ -573,8 +573,8 @@ bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 		for (int32_t j = 0; j < rh; j++) {
 			aj = a + j * w;
 			for (k = 0; k < rw; k++)  bj[k] = aj[k];
-			opj_dwt_encode_line_97(bj, dn, sn, cas_row);
-			opj_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
+			grk_dwt_encode_line_97(bj, dn, sn, cas_row);
+			grk_dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
 		}
 		l_cur_res = l_last_res;
 		--l_last_res;
@@ -587,19 +587,19 @@ bool opj_dwt_encode_97(opj_tcd_tilecomp_t * tilec)
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec, 
+bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec, 
 					uint32_t numres,
 					uint32_t numThreads)
 {
 	if (numres == 1U) {
 		return true;
 	}
-    if (opj_tile_buf_is_decode_region(tilec->buf))
-        return opj_dwt_region_decode53(tilec, numres, numThreads);
+    if (grk_tile_buf_is_decode_region(tilec->buf))
+        return grk_dwt_region_decode53(tilec, numres, numThreads);
 
 	std::vector<std::thread> dwtWorkers;
 	int rc = 0;
-	auto tileBuf = (int32_t*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = (int32_t*)grk_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 
@@ -614,16 +614,16 @@ bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
 			numThreads]()
 		{
 			auto numResolutions = numres;
-			opj_dwt_t h;
-			opj_dwt_t v;
+			grk_dwt_t h;
+			grk_dwt_t v;
 
-			opj_tcd_resolution_t* tr = tilec->resolutions;
+			grk_tcd_resolution_t* tr = tilec->resolutions;
 
 			uint32_t rw = (tr->x1 - tr->x0);	/* width of the resolution level computed */
 			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
 
 			uint32_t w = (tilec->x1 - tilec->x0);
-			h.mem = (int32_t*)opj_aligned_malloc(opj_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
+			h.mem = (int32_t*)opj_aligned_malloc(grk_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
 			if (!h.mem) {
 				rc++;
 				goto cleanup;
@@ -645,8 +645,8 @@ bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
 				h.cas = tr->x0 % 2;
 
 				for (uint32_t j = threadId; j < rh; j += numThreads) {
-					opj_dwt_interleave_h(&h, &tiledp[j*w]);
-					opj_dwt_decode_line_53(&h);
+					grk_dwt_interleave_h(&h, &tiledp[j*w]);
+					grk_dwt_decode_line_53(&h);
 					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
 				}
 
@@ -656,8 +656,8 @@ bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
 				decode_dwt_barrier.arrive_and_wait();
 
 				for (uint32_t j = threadId; j < rw; j += numThreads) {
-					opj_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
-					opj_dwt_decode_line_53(&v);
+					grk_dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
+					grk_dwt_decode_line_53(&v);
 					for (uint32_t k = 0; k < rh; ++k) {
 						tiledp[k * w + j] = v.mem[k];
 					}
@@ -684,7 +684,7 @@ bool opj_dwt_decode_53(opj_tcd_tilecomp_t* tilec,
 /* <summary>                          */
 /* Get gain of 5-3 wavelet transform. */
 /* </summary>                         */
-uint32_t opj_dwt_getgain(uint32_t orient)
+uint32_t grk_dwt_getgain(uint32_t orient)
 {
     if (orient == 0)
         return 0;
@@ -696,16 +696,16 @@ uint32_t opj_dwt_getgain(uint32_t orient)
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
-double opj_dwt_getnorm(uint32_t level, uint32_t orient)
+double grk_dwt_getnorm(uint32_t level, uint32_t orient)
 {
-    return opj_dwt_norms[orient][level];
+    return grk_dwt_norms[orient][level];
 }
 
 
 /* <summary>                          */
 /* Get gain of 9-7 wavelet transform. */
 /* </summary>                         */
-uint32_t opj_dwt_getgain_real(uint32_t orient)
+uint32_t grk_dwt_getgain_real(uint32_t orient)
 {
     (void)orient;
     return 0;
@@ -714,12 +714,12 @@ uint32_t opj_dwt_getgain_real(uint32_t orient)
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
-double opj_dwt_getnorm_real(uint32_t level, uint32_t orient)
+double grk_dwt_getnorm_real(uint32_t level, uint32_t orient)
 {
-    return opj_dwt_norms_real[orient][level];
+    return grk_dwt_norms_real[orient][level];
 }
 
-void opj_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec)
+void grk_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec)
 {
     uint32_t numbands, bandno;
     numbands = 3 * tccp->numresolutions - 2;
@@ -734,17 +734,17 @@ void opj_dwt_calc_explicit_stepsizes(opj_tccp_t * tccp, uint32_t prec)
         if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
             stepsize = 1.0;
         } else {
-            double norm = opj_dwt_norms_real[orient][level];
+            double norm = grk_dwt_norms_real[orient][level];
             stepsize = ((uint64_t)1 << (gain)) / norm;
         }
-        opj_dwt_encode_stepsize((int32_t) floor(stepsize * 8192.0), (int32_t)(prec + gain), &tccp->stepsizes[bandno]);
+        grk_dwt_encode_stepsize((int32_t) floor(stepsize * 8192.0), (int32_t)(prec + gain), &tccp->stepsizes[bandno]);
     }
 }
 
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-uint32_t opj_dwt_max_resolution(opj_tcd_resolution_t* restrict r, uint32_t i)
+uint32_t grk_dwt_max_resolution(grk_tcd_resolution_t* restrict r, uint32_t i)
 {
     uint32_t mr	= 0;
     uint32_t w;
@@ -960,17 +960,17 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 #ifdef __SSE__
     opj_v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
     opj_v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(opj_dwt_delta));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(opj_dwt_gamma));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(opj_dwt_beta));
-    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(opj_dwt_alpha));
+    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_delta));
+    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_gamma));
+    opj_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_beta));
+    opj_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_alpha));
 #else
     opj_v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
     opj_v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
-    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), opj_dwt_delta);
-    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), opj_dwt_gamma);
-    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), opj_dwt_beta);
-    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), opj_dwt_alpha);
+    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_delta);
+    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_gamma);
+    opj_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, opj_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_beta);
+    opj_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, opj_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_alpha);
 #endif
 }
 
@@ -978,18 +978,18 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-bool opj_dwt_decode_97(opj_tcd_tilecomp_t* restrict tilec, 
+bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec, 
 						uint32_t numres,
 						uint32_t numThreads)
 {
 	if (numres == 1U) {
 		return true;
 	}
-	if (opj_tile_buf_is_decode_region(tilec->buf))
-		return opj_dwt_region_decode97(tilec, numres, numThreads);
+	if (grk_tile_buf_is_decode_region(tilec->buf))
+		return grk_dwt_region_decode97(tilec, numres, numThreads);
 
 	int rc = 0;
-	auto tileBuf = (float*)opj_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = (float*)grk_tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
@@ -1007,14 +1007,14 @@ bool opj_dwt_decode_97(opj_tcd_tilecomp_t* restrict tilec,
 			opj_v4dwt_t h;
 			opj_v4dwt_t v;
 
-			opj_tcd_resolution_t* res = tilec->resolutions;
+			grk_tcd_resolution_t* res = tilec->resolutions;
 
 			uint32_t rw = (res->x1 - res->x0);	/* width of the resolution level computed */
 			uint32_t rh = (res->y1 - res->y0);	/* height of the resolution level computed */
 
 			uint32_t w = (tilec->x1 - tilec->x0);
 
-			h.wavelet = (opj_v4_t*)opj_aligned_malloc((opj_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
+			h.wavelet = (opj_v4_t*)opj_aligned_malloc((grk_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
 			if (!h.wavelet) {
 				/* FIXME event manager error callback */
 				rc++;

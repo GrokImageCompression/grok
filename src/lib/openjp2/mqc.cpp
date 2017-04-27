@@ -54,7 +54,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 /** @defgroup MQC MQC - Implementation of an MQ-Coder */
 /*@{*/

@@ -173,7 +173,7 @@ typedef uint32_t opj_flag_opt_t;
 /**
 Tier-1 coding (coding of code-block coefficients)
 */
-typedef struct opj_t1_opt {
+typedef struct grk_t1_opt {
 	opj_mqc_t *mqc;
 	uint32_t  *data;
 	opj_flag_opt_t *flags;
@@ -181,7 +181,7 @@ typedef struct opj_t1_opt {
 	uint32_t h;
 	uint32_t flags_stride;
 	bool   encoder;
-} opj_t1_opt_t;
+} grk_t1_opt_t;
 
 /** @name Exported functions */
 /*@{*/
@@ -192,27 +192,27 @@ typedef struct opj_t1_opt {
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-opj_t1_opt_t* opj_t1_opt_create(bool isEncoder);
+grk_t1_opt_t* grk_t1_opt_create(bool isEncoder);
 
 /**
 * Destroys a previously created T1 handle
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-void opj_t1_opt_destroy(opj_t1_opt_t *p_t1);
+void grk_t1_opt_destroy(grk_t1_opt_t *p_t1);
 
 
-bool opj_t1_opt_allocate_buffers(opj_t1_opt_t *t1,
+bool grk_t1_opt_allocate_buffers(grk_t1_opt_t *t1,
 	uint32_t cblkw,
 	uint32_t cblkh);
 
-void opj_t1_opt_init_buffers(opj_t1_opt_t *t1,
+void grk_t1_opt_init_buffers(grk_t1_opt_t *t1,
 	uint32_t w,
 	uint32_t h);
 
 
-double opj_t1_opt_encode_cblk(opj_t1_opt_t *t1,
-	opj_tcd_cblk_enc_t* cblk,
+double grk_t1_opt_encode_cblk(grk_t1_opt_t *t1,
+	grk_tcd_cblk_enc_t* cblk,
 	uint32_t orient,
 	uint32_t compno,
 	uint32_t level,

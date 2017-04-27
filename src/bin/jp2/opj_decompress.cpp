@@ -844,7 +844,7 @@ int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA
     }
 }
 
-double opj_clock(void)
+double grk_clock(void)
 {
 #ifdef _WIN32
     /* _WIN32: use QueryPerformance (very accurate) */
@@ -1267,7 +1267,7 @@ int main(int argc, char **argv)
         num_images=1;
     }
 
-    t_cumulative = opj_clock();
+    t_cumulative = grk_clock();
 
     /*Decoding image one by one*/
     for (imageno = 0; imageno < num_images; imageno++) {
@@ -1294,7 +1294,7 @@ int main(int argc, char **argv)
 		}
 		num_decompressed_images++;
     }
-    t_cumulative = opj_clock() - t_cumulative;
+    t_cumulative = grk_clock() - t_cumulative;
     if (num_decompressed_images && rc != EXIT_FAILURE) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
     }
@@ -1381,7 +1381,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		num_images = 1;
 	}
 
-	t_cumulative = opj_clock();
+	t_cumulative = grk_clock();
 
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
@@ -1405,7 +1405,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		num_decompressed_images++;
 
 	}
-	t_cumulative = opj_clock() - t_cumulative;
+	t_cumulative = grk_clock() - t_cumulative;
 	if (num_decompressed_images && rc == EXIT_SUCCESS) {
 		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}

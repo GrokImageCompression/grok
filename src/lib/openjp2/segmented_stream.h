@@ -41,7 +41,7 @@
 Smart wrapper to low level C array
 */
 
-struct opj_min_buf_t {
+struct grk_min_buf_t {
     uint8_t *buf;		/* internal array*/
     uint16_t len;		/* length of array */
 };
@@ -49,29 +49,29 @@ struct opj_min_buf_t {
 /*
 Copy all segments, in sequence, into contiguous array
 */
-bool opj_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer);
+bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer);
 
 /*
 Push buffer to back of min buf vector
 */
-bool opj_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len);
+bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len);
 
 /*
 Sum lengths of all buffers
 */
 
-uint16_t opj_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
+uint16_t grk_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
 
 
 /*
 Increment buffer offset
 */
-void opj_buf_incr_offset(opj_buf_t* buf, uint64_t off);
+void grk_buf_incr_offset(grk_buf_t* buf, uint64_t off);
 
 /*
 Free buffer and also its internal array if owns_data is true
 */
-void opj_buf_free(opj_buf_t* buf);
+void grk_buf_free(grk_buf_t* buf);
 
 
 /*  Segmented Buffer Interface
@@ -85,7 +85,7 @@ struct opj_seg_buf_t {
 	~opj_seg_buf_t();
     size_t data_len;	/* total length of all segments*/
     size_t cur_seg_id;	/* current index into segments vector */
-	std::vector<opj_buf_t*> segments;
+	std::vector<grk_buf_t*> segments;
 };
 
 /*

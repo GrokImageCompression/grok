@@ -15,7 +15,7 @@
 *
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 
 
  /*
@@ -27,7 +27,7 @@
  of convex hull algorithm.
 
  */
-void RateControl::convexHull(opj_tcd_pass_t *pass, uint32_t numPasses) {
+void RateControl::convexHull(grk_tcd_pass_t *pass, uint32_t numPasses) {
 
 	double* slope_cache = new double[numPasses];
 

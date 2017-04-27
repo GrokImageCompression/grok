@@ -18,25 +18,25 @@
 
 #pragma once
 
-bool decode_synch_plugin_with_host(opj_tcd_t *tcd);
-bool decode_synch_host_with_plugin(opj_tcd_t *tcd);
+bool decode_synch_plugin_with_host(grk_tcd_t *tcd);
+bool decode_synch_host_with_plugin(grk_tcd_t *tcd);
 
-void encode_synch_with_plugin(opj_tcd_t *tcd,
+void encode_synch_with_plugin(grk_tcd_t *tcd,
 	uint32_t compno,
 	uint32_t resno,
 	uint32_t bandno,
 	uint32_t precno,
 	uint32_t cblkno,
-	opj_tcd_band_t *band,
-	opj_tcd_cblk_enc_t *cblk,
+	grk_tcd_band_t *band,
+	grk_tcd_cblk_enc_t *cblk,
 	uint32_t* numPix);
 
 
 bool tile_equals(opj_plugin_tile_t* plugin_tile,
-				opj_tcd_tile_t *p_tile);
+				grk_tcd_tile_t *p_tile);
 
 // set context stream for debugging purposes
-void set_context_stream(opj_tcd_t *p_tcd);
+void set_context_stream(grk_tcd_t *p_tcd);
 
 void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d);
 

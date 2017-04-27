@@ -15,7 +15,7 @@
 *
  */
 
-#include "opj_includes.h"
+#include "grk_includes.h"
 #include "T1Encoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
@@ -31,14 +31,14 @@ T1Encoder::T1Encoder() : tile(NULL),
 
 void T1Encoder::encode(void) {
 	auto state = opj_plugin_get_debug_state();
-	auto t1 = opj_t1_create(true, 0,0);
+	auto t1 = grk_t1_create(true, 0,0);
 	if (!t1) {
 		return_code = false;
 	}
 	encodeBlockInfo* block = NULL;
 	while (return_code && encodeQueue.tryPop(block)) {
 		uint32_t tileIndex = 0, tileLineAdvance;
-		if (!opj_t1_allocate_buffers(
+		if (!grk_t1_allocate_buffers(
 			t1,
 			block->cblk->x1 - block->cblk->x0,
 			block->cblk->y1 - block->cblk->y0)) {
@@ -50,7 +50,7 @@ void T1Encoder::encode(void) {
 		uint32_t tile_width = tilec->x1 - tilec->x0;
 		tileLineAdvance = tile_width - t1->w;
 		block->tiledp =
-			opj_tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, block->x, block->y);
+			grk_tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, block->x, block->y);
 		t1->data = block->tiledp;
 		t1->data_stride = tile_width;
 		if (block->qmfbid == 1) {
@@ -82,7 +82,7 @@ void T1Encoder::encode(void) {
 			}
 		}
 
-		auto dist =  opj_t1_encode_cblk(t1,
+		auto dist =  grk_t1_encode_cblk(t1,
 										block->cblk,
 										block->bandno,
 										block->compno,
@@ -99,7 +99,7 @@ void T1Encoder::encode(void) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);
 		tile->distotile += dist;
 	}
-	opj_t1_destroy(t1);
+	grk_t1_destroy(t1);
 }
 void T1Encoder::encodeOpt(size_t threadId) {
 	auto state = opj_plugin_get_debug_state();
@@ -108,7 +108,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 	while (return_code && encodeQueue.tryPop(block)) {
 
 		auto tilec = tile->comps + block->compno;
-		opj_t1_opt_init_buffers(t1,
+		grk_t1_opt_init_buffers(t1,
 								(block->cblk->x1 - block->cblk->x0),
 								(block->cblk->y1 - block->cblk->y0));
 
@@ -179,7 +179,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 			}
 		}
 
-		auto dist = opj_t1_opt_encode_cblk(	t1,
+		auto dist = grk_t1_opt_encode_cblk(	t1,
 											block->cblk,
 											block->bandno,
 											block->compno,
@@ -194,9 +194,9 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 
 #ifdef DEBUG_LOSSLESS_T1
-		opj_t1_t* t1Decode = opj_t1_create(false, t1->w, t1->h);
+		grk_t1_t* t1Decode = grk_t1_create(false, t1->w, t1->h);
 
-		opj_tcd_cblk_dec_t* cblkDecode = new opj_tcd_cblk_dec_t();
+		grk_tcd_cblk_dec_t* cblkDecode = new grk_tcd_cblk_dec_t();
 		cblkDecode->data = nullptr;
 		cblkDecode->segs = nullptr;
 		if (!cblkDecode->alloc()) {
@@ -208,7 +208,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		cblkDecode->y1 = block->cblk->y1;
 		cblkDecode->numbps = block->cblk->numbps;
 		cblkDecode->numSegments = 1;
-		memset(cblkDecode->segs, 0, sizeof(opj_tcd_seg_t));
+		memset(cblkDecode->segs, 0, sizeof(grk_tcd_seg_t));
 		auto seg = cblkDecode->segs;
 		seg->numpasses = block->cblk->num_passes_encoded;
 		if (block->resno == 1 &&
@@ -221,9 +221,9 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		auto rate = seg->numpasses  ? block->cblk->passes[seg->numpasses - 1].rate : 0;
 		seg->len = rate;
 		seg->dataindex = 0;
-		opj_min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
+		grk_min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
 		//decode
-		opj_t1_decode_cblk(t1Decode, cblkDecode, block->bandno, 0, 0);
+		grk_t1_decode_cblk(t1Decode, cblkDecode, block->bandno, 0, 0);
 
 		//compare
 		auto index = 0;
@@ -238,7 +238,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 			}
 		}
 
-		opj_t1_destroy(t1Decode);
+		grk_t1_destroy(t1Decode);
 		opj_free(cblkDecode->segs);
 		delete cblkDecode;
 		delete[] block->unencodedData;
@@ -251,7 +251,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 }
 
 bool T1Encoder::encode(bool do_opt, 
-						opj_tcd_tile_t *encodeTile,
+						grk_tcd_tile_t *encodeTile,
 						std::vector<encodeBlockInfo*>* blocks, 
 						uint32_t encodeMaxCblkW,
 						uint32_t encodeMaxCblkH,
@@ -267,18 +267,18 @@ bool T1Encoder::encode(bool do_opt,
 
 	for (auto i = 0U; i < numThreads; ++i) {
 		if (do_opt) {
-			auto t1 = opj_t1_opt_create(true);
+			auto t1 = grk_t1_opt_create(true);
 			if (!t1) {
 				for (auto t : t1OptVec) {
-					opj_t1_opt_destroy(t);
+					grk_t1_opt_destroy(t);
 				}
 				return false;
 			}
-			if (!opj_t1_opt_allocate_buffers(t1,
+			if (!grk_t1_opt_allocate_buffers(t1,
 											maxCblkW,
 											maxCblkH)) {
 				for (auto t : t1OptVec) {
-					opj_t1_opt_destroy(t);
+					grk_t1_opt_destroy(t);
 				}
 				return false;
 			}
@@ -319,11 +319,11 @@ bool T1Encoder::encode(bool do_opt,
 
 	// clean up t1 structs
 	for (auto t : t1OptVec) {
-		opj_t1_opt_destroy(t);
+		grk_t1_opt_destroy(t);
 	}
 
 	for (auto t : t1Vec) {
-		opj_t1_destroy(t);
+		grk_t1_destroy(t);
 	}
 	return return_code;
 
