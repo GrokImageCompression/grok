@@ -215,7 +215,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 {
     grk_codec_private_t *l_codec = nullptr;
 
-    l_codec = (grk_codec_private_t*) opj_calloc(1, sizeof(grk_codec_private_t));
+    l_codec = (grk_codec_private_t*) grk_calloc(1, sizeof(grk_codec_private_t));
     if (!l_codec) {
         return nullptr;
     }
@@ -294,7 +294,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = grk_j2k_create_decompress();
 
         if (! l_codec->m_codec) {
-            opj_free(l_codec);
+            grk_free(l_codec);
             return NULL;
         }
 
@@ -374,7 +374,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = grk_jp2_create(true);
 
         if (! l_codec->m_codec) {
-            opj_free(l_codec);
+            grk_free(l_codec);
             return nullptr;
         }
 
@@ -382,11 +382,11 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_UNKNOWN:
     case OPJ_CODEC_JPT:
     default:
-        opj_free(l_codec);
+        grk_free(l_codec);
         return nullptr;
     }
 
-    opj_set_default_event_handler(&(l_codec->m_event_mgr));
+    grk_set_default_event_handler(&(l_codec->m_event_mgr));
     return (opj_codec_t*) l_codec;
 }
 
@@ -609,7 +609,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 {
     grk_codec_private_t *l_codec = nullptr;
 
-    l_codec = (grk_codec_private_t*)opj_calloc(1, sizeof(grk_codec_private_t));
+    l_codec = (grk_codec_private_t*)grk_calloc(1, sizeof(grk_codec_private_t));
     if (!l_codec) {
         return nullptr;
     }
@@ -648,7 +648,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec = grk_j2k_create_compress();
         if (! l_codec->m_codec) {
-            opj_free(l_codec);
+            grk_free(l_codec);
             return nullptr;
         }
 
@@ -686,7 +686,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec = grk_jp2_create(false);
         if (! l_codec->m_codec) {
-            opj_free(l_codec);
+            grk_free(l_codec);
             return nullptr;
         }
 
@@ -695,11 +695,11 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_UNKNOWN:
     case OPJ_CODEC_JPT:
     default:
-        opj_free(l_codec);
+        grk_free(l_codec);
         return nullptr;
     }
 
-    opj_set_default_event_handler(&(l_codec->m_event_mgr));
+    grk_set_default_event_handler(&(l_codec->m_event_mgr));
     return (opj_codec_t*) l_codec;
 }
 
@@ -845,7 +845,7 @@ bool OPJ_CALLCONV opj_set_MCT(opj_cparameters_t *parameters,
 
     /* use array based MCT */
     parameters->tcp_mct = 2;
-    parameters->mct_data = opj_malloc(l_mct_total_size);
+    parameters->mct_data = grk_malloc(l_mct_total_size);
     if (! parameters->mct_data) {
         return false;
     }
@@ -895,7 +895,7 @@ void OPJ_CALLCONV opj_destroy_codec(opj_codec_t *p_codec)
         }
 
         l_codec->m_codec = nullptr;
-        opj_free(l_codec);
+        grk_free(l_codec);
     }
 }
 
@@ -933,14 +933,14 @@ void OPJ_CALLCONV opj_destroy_cstr_info(opj_codestream_info_v2_t **cstr_info)
     if (cstr_info) {
 
         if ((*cstr_info)->m_default_tile_info.tccp_info) {
-            opj_free((*cstr_info)->m_default_tile_info.tccp_info);
+            grk_free((*cstr_info)->m_default_tile_info.tccp_info);
         }
 
         if ((*cstr_info)->tile_info) {
             /* FIXME not used for the moment*/
         }
 
-        opj_free((*cstr_info));
+        grk_free((*cstr_info));
         (*cstr_info) = NULL;
     }
 }
@@ -1014,7 +1014,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
 OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream_t* stream) {
 	if (!stream)
 		return 0;
-	return opj_get_buffer_stream_offset(stream);
+	return grk_get_buffer_stream_offset(stream);
 
 }
 
@@ -1023,13 +1023,13 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_buffer_stream(uint8_t *buf,
         size_t len,
         bool p_is_read_stream)
 {
-    return opj_create_buffer_stream(buf, len, p_is_read_stream);
+    return grk_create_buffer_stream(buf, len, p_is_read_stream);
 
 }
 
 opj_stream_t* OPJ_CALLCONV opj_stream_create_mapped_file_read_stream(const char *fname)
 {
-    return opj_create_mapped_file_read_stream(fname);
+    return grk_create_mapped_file_read_stream(fname);
 }
 
 
@@ -1052,7 +1052,7 @@ bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* comp)
     if (!comp)
         return false;
 
-    data = (int32_t*)opj_aligned_malloc(comp->w * comp->h * sizeof(uint32_t));
+    data = (int32_t*)grk_aligned_malloc(comp->w * comp->h * sizeof(uint32_t));
     if (!data)
         return false;
     opj_image_single_component_data_free(comp);
@@ -1065,7 +1065,7 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
     if (!comp)
         return;
     if (comp->data) {
-        opj_aligned_free(comp->data);
+        grk_aligned_free(comp->data);
         comp->data = NULL;
     }
 }

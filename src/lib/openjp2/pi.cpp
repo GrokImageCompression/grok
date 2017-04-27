@@ -218,14 +218,14 @@ static grk_pi_iterator_t * grk_pi_create(	const opj_image_t *p_image,
  * FIXME DOC
  */
 static void grk_pi_update_decode_not_poc (grk_pi_iterator_t * p_pi,
-        opj_tcp_t * p_tcp,
+        grk_tcp_t * p_tcp,
         uint32_t p_max_precision,
         uint32_t p_max_res);
 /**
  * FIXME DOC
  */
 static void grk_pi_update_decode_poc (  grk_pi_iterator_t * p_pi,
-                                        opj_tcp_t * p_tcp,
+                                        grk_tcp_t * p_tcp,
                                         uint32_t p_max_precision,
                                         uint32_t p_max_res);
 
@@ -587,7 +587,7 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     /* loop */
     uint32_t  compno, resno;
     /* pointers */
-    const opj_tcp_t *l_tcp = nullptr;
+    const grk_tcp_t *l_tcp = nullptr;
     const opj_tccp_t * l_tccp = nullptr;
     const opj_image_comp_t * l_img_comp = nullptr;
 
@@ -704,7 +704,7 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
     uint32_t compno, resno;
 
     /* pointers*/
-    const opj_tcp_t *tcp = nullptr;
+    const grk_tcp_t *tcp = nullptr;
     const opj_tccp_t * l_tccp = nullptr;
     const opj_image_comp_t * l_img_comp = nullptr;
 
@@ -822,7 +822,7 @@ static grk_pi_iterator_t * grk_pi_create(	const opj_image_t *image,
 
     /* pointers to tile coding parameters and components.*/
     grk_pi_iterator_t *l_pi = nullptr;
-    opj_tcp_t *tcp = nullptr;
+    grk_tcp_t *tcp = nullptr;
     const opj_tccp_t *tccp = nullptr;
 
     /* current packet iterator being allocated*/
@@ -838,7 +838,7 @@ static grk_pi_iterator_t * grk_pi_create(	const opj_image_t *image,
     l_poc_bound = tcp->numpocs+1;
 
     /* memory allocations*/
-    l_pi = (grk_pi_iterator_t*) opj_calloc((l_poc_bound), sizeof(grk_pi_iterator_t));
+    l_pi = (grk_pi_iterator_t*) grk_calloc((l_poc_bound), sizeof(grk_pi_iterator_t));
     if (!l_pi) {
         return NULL;
     }
@@ -846,7 +846,7 @@ static grk_pi_iterator_t * grk_pi_create(	const opj_image_t *image,
     l_current_pi = l_pi;
     for (pino = 0; pino < l_poc_bound ; ++pino) {
 
-        l_current_pi->comps = (grk_pi_comp_t*) opj_calloc(image->numcomps, sizeof(grk_pi_comp_t));
+        l_current_pi->comps = (grk_pi_comp_t*) grk_calloc(image->numcomps, sizeof(grk_pi_comp_t));
         if (! l_current_pi->comps) {
             grk_pi_destroy(l_pi, l_poc_bound);
             return NULL;
@@ -859,7 +859,7 @@ static grk_pi_iterator_t * grk_pi_create(	const opj_image_t *image,
 
             tccp = &tcp->tccps[compno];
 
-            comp->resolutions = (grk_pi_resolution_t*) opj_calloc(tccp->numresolutions, sizeof(grk_pi_resolution_t));
+            comp->resolutions = (grk_pi_resolution_t*) grk_calloc(tccp->numresolutions, sizeof(grk_pi_resolution_t));
             if (!comp->resolutions) {
                 grk_pi_destroy(l_pi, l_poc_bound);
                 return nullptr;
@@ -886,7 +886,7 @@ static void grk_pi_update_encode_poc_and_final (   opj_cp_t *p_cp,
     /* loop*/
     uint32_t pino;
     /* tile coding parameter*/
-    opj_tcp_t *l_tcp = nullptr;
+    grk_tcp_t *l_tcp = nullptr;
     /* current poc being updated*/
     opj_poc_t * l_current_poc = nullptr;
 
@@ -965,7 +965,7 @@ static void grk_pi_update_encode_not_poc (	opj_cp_t *p_cp,
     /* loop*/
     uint32_t pino;
     /* tile coding parameter*/
-    opj_tcp_t *l_tcp = nullptr;
+    grk_tcp_t *l_tcp = nullptr;
     /* current poc being updated*/
     opj_poc_t * l_current_poc = nullptr;
     /* number of pocs*/
@@ -1006,7 +1006,7 @@ static void grk_pi_update_encode_not_poc (	opj_cp_t *p_cp,
 }
 
 static void grk_pi_update_decode_poc (grk_pi_iterator_t * p_pi,
-                                      opj_tcp_t * p_tcp,
+                                      grk_tcp_t * p_tcp,
                                       uint32_t p_max_precision,
                                       uint32_t p_max_res)
 {
@@ -1048,7 +1048,7 @@ static void grk_pi_update_decode_poc (grk_pi_iterator_t * p_pi,
 }
 
 static void grk_pi_update_decode_not_poc (grk_pi_iterator_t * p_pi,
-        opj_tcp_t * p_tcp,
+        grk_tcp_t * p_tcp,
         uint32_t p_max_precision,
         uint32_t p_max_res)
 {
@@ -1091,7 +1091,7 @@ static bool grk_pi_check_next_level(	int32_t pos,
                                         const char *prog)
 {
     uint32_t i;
-    opj_tcp_t *tcps =&cp->tcps[tileno];
+    grk_tcp_t *tcps =&cp->tcps[tileno];
     opj_poc_t *tcp = &tcps->pocs[pino];
 
     if(pos>=0) {
@@ -1196,7 +1196,7 @@ grk_pi_iterator_t *grk_pi_create_decode(opj_image_t *p_image,
 
     /* pointers */
     grk_pi_iterator_t *l_pi = nullptr;
-    opj_tcp_t *l_tcp = nullptr;
+    grk_tcp_t *l_tcp = nullptr;
     const opj_tccp_t *l_tccp = nullptr;
     grk_pi_comp_t *l_current_comp = nullptr;
     opj_image_comp_t * l_img_comp = nullptr;
@@ -1213,21 +1213,21 @@ grk_pi_iterator_t *grk_pi_create_decode(opj_image_t *p_image,
     l_bound = l_tcp->numpocs+1;
 
     l_data_stride = 4 * OPJ_J2K_MAXRLVLS;
-    l_tmp_data = (uint32_t*)opj_malloc(l_data_stride * p_image->numcomps * sizeof(uint32_t));
+    l_tmp_data = (uint32_t*)grk_malloc(l_data_stride * p_image->numcomps * sizeof(uint32_t));
     if (! l_tmp_data) {
         return nullptr;
     }
-    l_tmp_ptr = (uint32_t**)opj_malloc(p_image->numcomps * sizeof(uint32_t *));
+    l_tmp_ptr = (uint32_t**)grk_malloc(p_image->numcomps * sizeof(uint32_t *));
     if  (! l_tmp_ptr) {
-        opj_free(l_tmp_data);
+        grk_free(l_tmp_data);
         return nullptr;
     }
 
     /* memory allocation for pi */
     l_pi = grk_pi_create(p_image, p_cp, p_tile_no);
     if (!l_pi) {
-        opj_free(l_tmp_data);
-        opj_free(l_tmp_ptr);
+        grk_free(l_tmp_data);
+        grk_free(l_tmp_ptr);
         return nullptr;
     }
 
@@ -1253,12 +1253,12 @@ grk_pi_iterator_t *grk_pi_create_decode(opj_image_t *p_image,
     /* memory allocation for include */
 	l_current_pi->include = nullptr;
 	if (l_step_l && (l_tcp->numlayers < (SIZE_MAX / l_step_l) - 1))		 {
-		l_current_pi->include = (int16_t*)opj_calloc(((size_t)l_tcp->numlayers + 1) * l_step_l, sizeof(int16_t));
+		l_current_pi->include = (int16_t*)grk_calloc(((size_t)l_tcp->numlayers + 1) * l_step_l, sizeof(int16_t));
 	}
 
     if (!l_current_pi->include) {
-        opj_free(l_tmp_data);
-        opj_free(l_tmp_ptr);
+        grk_free(l_tmp_data);
+        grk_free(l_tmp_ptr);
         grk_pi_destroy(l_pi, l_bound);
         return nullptr;
     }
@@ -1345,9 +1345,9 @@ grk_pi_iterator_t *grk_pi_create_decode(opj_image_t *p_image,
         l_current_pi->include = (l_current_pi-1)->include;
         ++l_current_pi;
     }
-    opj_free(l_tmp_data);
+    grk_free(l_tmp_data);
     l_tmp_data = nullptr;
-    opj_free(l_tmp_ptr);
+    grk_free(l_tmp_ptr);
     l_tmp_ptr = nullptr;
     if
     (l_tcp->POC) {
@@ -1384,7 +1384,7 @@ grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *p_image,
 
     /* pointers*/
     grk_pi_iterator_t *l_pi = nullptr;
-    opj_tcp_t *l_tcp = nullptr;
+    grk_tcp_t *l_tcp = nullptr;
     const opj_tccp_t *l_tccp = nullptr;
     grk_pi_comp_t *l_current_comp = nullptr;
     opj_image_comp_t * l_img_comp = nullptr;
@@ -1401,24 +1401,24 @@ grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *p_image,
     l_bound = l_tcp->numpocs+1;
 
     l_data_stride = 4 * OPJ_J2K_MAXRLVLS;
-    l_tmp_data = (uint32_t*)opj_malloc(
+    l_tmp_data = (uint32_t*)grk_malloc(
                      l_data_stride * p_image->numcomps * sizeof(uint32_t));
     if (! l_tmp_data) {
         return nullptr;
     }
 
-    l_tmp_ptr = (uint32_t**)opj_malloc(
+    l_tmp_ptr = (uint32_t**)grk_malloc(
                     p_image->numcomps * sizeof(uint32_t *));
     if (! l_tmp_ptr) {
-        opj_free(l_tmp_data);
+        grk_free(l_tmp_data);
         return nullptr;
     }
 
     /* memory allocation for pi*/
     l_pi = grk_pi_create(p_image,p_cp,p_tile_no);
     if (!l_pi) {
-        opj_free(l_tmp_data);
-        opj_free(l_tmp_ptr);
+        grk_free(l_tmp_data);
+        grk_free(l_tmp_ptr);
         return nullptr;
     }
 
@@ -1443,10 +1443,10 @@ grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *p_image,
     l_current_pi = l_pi;
 
     /* memory allocation for include*/
-    l_current_pi->include = (int16_t*) opj_calloc((size_t)l_tcp->numlayers * l_step_l, sizeof(int16_t));
+    l_current_pi->include = (int16_t*) grk_calloc((size_t)l_tcp->numlayers * l_step_l, sizeof(int16_t));
     if (!l_current_pi->include) {
-        opj_free(l_tmp_data);
-        opj_free(l_tmp_ptr);
+        grk_free(l_tmp_data);
+        grk_free(l_tmp_ptr);
         grk_pi_destroy(l_pi, l_bound);
         return nullptr;
     }
@@ -1530,9 +1530,9 @@ grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *p_image,
         ++l_current_pi;
     }
 
-    opj_free(l_tmp_data);
+    grk_free(l_tmp_data);
     l_tmp_data = nullptr;
-    opj_free(l_tmp_ptr);
+    grk_free(l_tmp_ptr);
     l_tmp_ptr = nullptr;
 
     if (l_tcp->POC && (OPJ_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS)) {
@@ -1555,7 +1555,7 @@ void grk_pi_init_encode( 	grk_pi_iterator_t *pi,
     const char *prog;
     int32_t i;
     uint32_t incr_top=1,resetX=0;
-    opj_tcp_t *tcps =&cp->tcps[tileno];
+    grk_tcp_t *tcps =&cp->tcps[tileno];
     opj_poc_t *tcp= &tcps->pocs[pino];
 
     prog =  grk_j2k_convert_progression_order(tcp->prg);
@@ -1812,7 +1812,7 @@ void grk_pi_destroy(grk_pi_iterator_t *p_pi,
     grk_pi_iterator_t *l_current_pi = p_pi;
     if (p_pi) {
         if (p_pi->include) {
-            opj_free(p_pi->include);
+            grk_free(p_pi->include);
             p_pi->include = nullptr;
         }
         for (pino = 0; pino < p_nb_elements; ++pino) {
@@ -1820,18 +1820,18 @@ void grk_pi_destroy(grk_pi_iterator_t *p_pi,
                 grk_pi_comp_t *l_current_component = l_current_pi->comps;
                 for (compno = 0; compno < l_current_pi->numcomps; compno++) {
                     if(l_current_component->resolutions) {
-                        opj_free(l_current_component->resolutions);
+                        grk_free(l_current_component->resolutions);
                         l_current_component->resolutions = nullptr;
                     }
 
                     ++l_current_component;
                 }
-                opj_free(l_current_pi->comps);
+                grk_free(l_current_pi->comps);
                 l_current_pi->comps = 0;
             }
             ++l_current_pi;
         }
-        opj_free(p_pi);
+        grk_free(p_pi);
     }
 }
 
@@ -1848,7 +1848,7 @@ void grk_pi_update_encoding_parameters(	const opj_image_t *p_image,
     uint32_t l_dx_min,l_dy_min;
 
     /* pointers */
-    opj_tcp_t *l_tcp = nullptr;
+    grk_tcp_t *l_tcp = nullptr;
 
     /* preconditions */
     assert(p_cp != nullptr);

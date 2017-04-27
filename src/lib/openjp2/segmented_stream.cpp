@@ -48,14 +48,14 @@ bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         buf_vec->init();
     }
 
-    seg = (grk_min_buf_t*)opj_malloc(sizeof(grk_buf_t));
+    seg = (grk_min_buf_t*)grk_malloc(sizeof(grk_buf_t));
     if (!seg)
         return false;
 
     seg->buf = buf;
     seg->len = len;
     if (!buf_vec->push_back(seg)) {
-        opj_free(seg);
+        grk_free(seg);
         return false;
     }
 
@@ -200,7 +200,7 @@ static grk_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, 
     grk_buf_t* new_seg = NULL;
     if (!seg_buf)
         return NULL;
-    new_seg = (grk_buf_t*)opj_malloc(sizeof(grk_buf_t));
+    new_seg = (grk_buf_t*)grk_malloc(sizeof(grk_buf_t));
     if (!new_seg)
         return NULL;
 
@@ -265,13 +265,13 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
     if (!seg_buf || !len)
         return false;
 
-    buf = (uint8_t*)opj_malloc(len);
+    buf = (uint8_t*)grk_malloc(len);
     if (!buf)
         return false;
 
 	seg = opj_seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg) {
-	    opj_free(buf);
+	    grk_free(buf);
         return false;
     }
     seg->owns_data = true;
@@ -396,7 +396,7 @@ void grk_buf_free(grk_buf_t* buffer)
     if (!buffer)
         return;
     if (buffer->buf && buffer->owns_data)
-        opj_free(buffer->buf);
-    opj_free(buffer);
+        grk_free(buffer->buf);
+    grk_free(buffer);
 }
 

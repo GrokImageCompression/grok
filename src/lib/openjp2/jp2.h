@@ -127,12 +127,12 @@ struct grk_jp2_buffer_t {
 	}
 	bool alloc(size_t len) {
 		dealloc();
-		buffer = (uint8_t*)opj_malloc(len);
+		buffer = (uint8_t*)grk_malloc(len);
 		return buffer ? true : false;
 	}
 	void dealloc() {
 		if (buffer)
-			opj_free(buffer);
+			grk_free(buffer);
 		buffer = nullptr;
 	}
 	uint8_t* buffer;

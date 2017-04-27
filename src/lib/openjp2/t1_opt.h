@@ -174,7 +174,7 @@ typedef uint32_t opj_flag_opt_t;
 Tier-1 coding (coding of code-block coefficients)
 */
 typedef struct grk_t1_opt {
-	opj_mqc_t *mqc;
+	grk_mqc_t *mqc;
 	uint32_t  *data;
 	opj_flag_opt_t *flags;
 	uint32_t w;

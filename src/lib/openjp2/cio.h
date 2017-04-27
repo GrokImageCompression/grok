@@ -73,19 +73,19 @@ The functions in CIO.C have for goal to realize a byte input / output process.
 /* ----------------------------------------------------------------------- */
 
 #if defined(OPJ_BIG_ENDIAN)
-#define opj_write_bytes		opj_write_bytes_BE
-#define opj_read_bytes		opj_read_bytes_BE
-#define opj_write_double	opj_write_double_BE
-#define opj_read_double		opj_read_double_BE
-#define opj_write_float		opj_write_float_BE
-#define opj_read_float		opj_read_float_BE
+#define opj_write_bytes		grk_write_bytes_BE
+#define opj_read_bytes		grk_read_bytes_BE
+#define opj_write_double	grk_write_double_BE
+#define opj_read_double		grk_read_double_BE
+#define opj_write_float		grk_write_float_BE
+#define opj_read_float		grk_read_float_BE
 #else
-#define opj_write_bytes		opj_write_bytes_LE
-#define opj_read_bytes		opj_read_bytes_LE
-#define opj_write_double	opj_write_double_LE
-#define opj_read_double		opj_read_double_LE
-#define opj_write_float		opj_write_float_LE
-#define opj_read_float		opj_read_float_LE
+#define opj_write_bytes		grk_write_bytes_LE
+#define opj_read_bytes		grk_read_bytes_LE
+#define opj_write_double	grk_write_double_LE
+#define opj_read_double		grk_read_double_LE
+#define opj_write_float		grk_write_float_LE
+#define opj_read_float		grk_read_float_LE
 #endif
 
 
@@ -200,7 +200,7 @@ opj_stream_private_t;
  * @param p_value		the value to write
  * @param p_nb_bytes	the number of bytes to write
 */
-void opj_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
+void grk_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
@@ -209,7 +209,7 @@ void opj_write_bytes_BE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
  * @param p_nb_bytes	the nb bytes to read.
  * @return				the number of bytes read or -1 if an error occurred.
  */
-void opj_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
+void grk_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
 
 /**
  * Write some bytes to the given data buffer, this function is used in Little Endian cpus.
@@ -218,7 +218,7 @@ void opj_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_
  * @param p_nb_bytes	the number of bytes to write
  * @return				the number of bytes written or -1 if an error occurred
 */
-void opj_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
+void grk_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
@@ -227,7 +227,7 @@ void opj_write_bytes_LE (uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
  * @param p_nb_bytes	the nb bytes to read.
  * @return				the number of bytes read or -1 if an error occurred.
  */
-void opj_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
+void grk_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
 
 
 /**
@@ -235,56 +235,56 @@ void opj_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_
  * @param p_buffer		pointer the data buffer to write data to.
  * @param p_value		the value to write
  */
-void opj_write_double_LE(uint8_t * p_buffer, double p_value);
+void grk_write_double_LE(uint8_t * p_buffer, double p_value);
 
 /***
  * Write some bytes to the given data buffer, this function is used in Big Endian cpus.
  * @param p_buffer		pointer the data buffer to write data to.
  * @param p_value		the value to write
  */
-void opj_write_double_BE(uint8_t * p_buffer, double p_value);
+void grk_write_double_BE(uint8_t * p_buffer, double p_value);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
  * @param p_buffer		pointer the data buffer to read data from.
  * @param p_value		pointer to the value that will store the data.
  */
-void opj_read_double_LE(const uint8_t * p_buffer, double * p_value);
+void grk_read_double_LE(const uint8_t * p_buffer, double * p_value);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
  * @param p_buffer		pointer the data buffer to read data from.
  * @param p_value		pointer to the value that will store the data.
  */
-void opj_read_double_BE(const uint8_t * p_buffer, double * p_value);
+void grk_read_double_BE(const uint8_t * p_buffer, double * p_value);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
  * @param p_buffer		pointer the data buffer to read data from.
  * @param p_value		pointer to the value that will store the data.
  */
-void opj_read_float_LE(const uint8_t * p_buffer, float * p_value);
+void grk_read_float_LE(const uint8_t * p_buffer, float * p_value);
 
 /**
  * Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
  * @param p_buffer		pointer the data buffer to read data from.
  * @param p_value		pointer to the value that will store the data.
  */
-void opj_read_float_BE(const uint8_t * p_buffer, float * p_value);
+void grk_read_float_BE(const uint8_t * p_buffer, float * p_value);
 
 /**
  * Write some bytes to the given data buffer, this function is used in Little Endian cpus.
  * @param p_buffer		pointer the data buffer to write data to.
  * @param p_value		the value to write
  */
-void opj_write_float_LE(uint8_t * p_buffer, float p_value);
+void grk_write_float_LE(uint8_t * p_buffer, float p_value);
 
 /***
  * Write some bytes to the given data buffer, this function is used in Big Endian cpus.
  * @param p_buffer		pointer the data buffer to write data to.
  * @param p_value		the value to write
  */
-void opj_write_float_BE(uint8_t * p_buffer, float p_value);
+void grk_write_float_BE(uint8_t * p_buffer, float p_value);
 
 /**
  * Reads some bytes from the stream.
@@ -294,9 +294,9 @@ void opj_write_float_BE(uint8_t * p_buffer, float p_value);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
  */
-size_t opj_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
+size_t grk_stream_read_data (opj_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
 
-size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
+size_t grk_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
 
 /**
  * Writes some bytes to the stream.
@@ -306,7 +306,7 @@ size_t opj_stream_read_data_zero_copy(opj_stream_private_t * p_stream, uint8_t *
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes written, or -1 if an error occurred.
  */
-size_t opj_stream_write_data (opj_stream_private_t * p_stream,
+size_t grk_stream_write_data (opj_stream_private_t * p_stream,
 								const uint8_t * p_buffer,
 								size_t p_size, 
 								grk_event_mgr_t * p_event_mgr);
@@ -317,7 +317,7 @@ size_t opj_stream_write_data (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if the data could be flushed, false else.
  */
-bool opj_stream_flush (opj_stream_private_t * p_stream, 
+bool grk_stream_flush (opj_stream_private_t * p_stream, 
 						 grk_event_mgr_t * p_event_mgr);
 
 /**
@@ -327,7 +327,7 @@ bool opj_stream_flush (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool opj_stream_skip (opj_stream_private_t * p_stream,
+bool grk_stream_skip (opj_stream_private_t * p_stream,
 						int64_t p_size, 
 						grk_event_mgr_t * p_event_mgr);
 
@@ -338,7 +338,7 @@ bool opj_stream_skip (opj_stream_private_t * p_stream,
  *
  * @return		the current position o fthe stream.
  */
-int64_t opj_stream_tell (const opj_stream_private_t * p_stream);
+int64_t grk_stream_tell (const opj_stream_private_t * p_stream);
 
 
 /**
@@ -348,7 +348,7 @@ int64_t opj_stream_tell (const opj_stream_private_t * p_stream);
  *
  * @return		Number of bytes left before the end of the stream.
  */
-int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream);
+int64_t grk_stream_get_number_byte_left (const opj_stream_private_t * p_stream);
 
 /**
  * Skips a number of bytes from the stream.
@@ -357,7 +357,7 @@ int64_t opj_stream_get_number_byte_left (const opj_stream_private_t * p_stream);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool opj_stream_write_skip (opj_stream_private_t * p_stream,
+bool grk_stream_write_skip (opj_stream_private_t * p_stream,
 								int64_t p_size, 
 								grk_event_mgr_t * p_event_mgr);
 
@@ -368,7 +368,7 @@ bool opj_stream_write_skip (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool opj_stream_read_skip (opj_stream_private_t * p_stream,
+bool grk_stream_read_skip (opj_stream_private_t * p_stream,
 								int64_t p_size,
 								grk_event_mgr_t * p_event_mgr);
 
@@ -379,7 +379,7 @@ bool opj_stream_read_skip (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if success, or false if an error occurred.
  */
-bool opj_stream_read_seek (opj_stream_private_t * p_stream, 
+bool grk_stream_read_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size, 
 							grk_event_mgr_t * p_event_mgr);
 
@@ -390,7 +390,7 @@ bool opj_stream_read_seek (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool opj_stream_write_seek (opj_stream_private_t * p_stream, 
+bool grk_stream_write_seek (opj_stream_private_t * p_stream, 
 							int64_t p_size,
 							grk_event_mgr_t * p_event_mgr);
 
@@ -401,38 +401,38 @@ bool opj_stream_write_seek (opj_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if the stream is seekable.
  */
-bool opj_stream_seek (opj_stream_private_t * p_stream,
+bool grk_stream_seek (opj_stream_private_t * p_stream,
 						int64_t p_size,
 						grk_event_mgr_t * p_event_mgr);
 
 /**
  * Tells if the given stream is seekable.
  */
-bool opj_stream_has_seek (const opj_stream_private_t * p_stream);
+bool grk_stream_has_seek (const opj_stream_private_t * p_stream);
 
 /**
  * FIXME DOC.
  */
-size_t opj_stream_default_read (void * p_buffer, 
+size_t grk_stream_default_read (void * p_buffer, 
 								size_t p_nb_bytes,
 								void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-size_t opj_stream_default_write (void * p_buffer,
+size_t grk_stream_default_write (void * p_buffer,
 								size_t p_nb_bytes,
 								void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-int64_t opj_stream_default_skip (int64_t p_nb_bytes, void * p_user_data);
+int64_t grk_stream_default_skip (int64_t p_nb_bytes, void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-bool opj_stream_default_seek (int64_t p_nb_bytes, void * p_user_data);
+bool grk_stream_default_seek (int64_t p_nb_bytes, void * p_user_data);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

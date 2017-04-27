@@ -111,7 +111,7 @@ bool grk_event_msg(grk_event_mgr_t* event_mgr, int32_t event_type, const char *f
 /**
  * Set the event manager with the default callback function for the 3 levels.
  */
-void opj_set_default_event_handler(grk_event_mgr_t * p_manager);
+void grk_set_default_event_handler(grk_event_mgr_t * p_manager);
 
 /*
 #ifdef __GNUC__

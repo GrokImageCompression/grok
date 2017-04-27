@@ -69,7 +69,7 @@ struct opj_vec_t {
 			return;
 		for (auto it = data->begin(); it != data->end(); ++it) {
 			if (*it)
-				opj_free(*it);
+				grk_free(*it);
 		}
 		delete data;
 		data = NULL;

@@ -96,7 +96,7 @@ bool grk_matrix_inversion_f(float * pSrcMatrix,
     uint32_t * lPermutations = nullptr;
     float * l_double_data = nullptr;
 
-    l_data = (uint8_t *) opj_malloc(l_total_size);
+    l_data = (uint8_t *) grk_malloc(l_total_size);
     if (l_data == 0) {
         return false;
     }
@@ -105,12 +105,12 @@ bool grk_matrix_inversion_f(float * pSrcMatrix,
     memset(lPermutations,0,l_permutation_size);
 
     if(! grk_lupDecompose(pSrcMatrix,lPermutations,l_double_data,nb_compo)) {
-        opj_free(l_data);
+        grk_free(l_data);
         return false;
     }
 
     grk_lupInvert(pSrcMatrix,pDestMatrix,nb_compo,lPermutations,l_double_data,l_double_data + nb_compo,l_double_data + 2*nb_compo);
-    opj_free(l_data);
+    grk_free(l_data);
 
     return true;
 }

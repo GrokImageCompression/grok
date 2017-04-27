@@ -239,7 +239,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		}
 
 		grk_t1_destroy(t1Decode);
-		opj_free(cblkDecode->segs);
+		grk_free(cblkDecode->segs);
 		delete cblkDecode;
 		delete[] block->unencodedData;
 		block->unencodedData = nullptr;

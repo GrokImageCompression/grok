@@ -339,7 +339,7 @@ struct grk_tcd_t {
     /** coding parameters */
     opj_cp_t *cp;
     /** coding/decoding parameters common to all tiles */
-    opj_tcp_t *tcp;
+    grk_tcp_t *tcp;
     /** current encoded tile (not used for decode) */
     uint32_t tcd_tileno;
     /** indicate if the tcd is a decoder. */
@@ -478,7 +478,7 @@ bool grk_tile_buf_create_component(grk_tcd_tilecomp_t * tilec, bool isEncoder,
                                    uint32_t dy);
 
 
-bool grk_tcd_needs_rate_control(opj_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
+bool grk_tcd_needs_rate_control(grk_tcp_t *tcd_tcp, opj_encoding_param_t* enc_params);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

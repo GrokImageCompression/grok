@@ -181,23 +181,23 @@ static void grk_dwt_region_decode53_1d(grk_dwt53_t *buffer_v);
 /* <summary>                             */
 /* Inverse 9-7 data transform in 1-D. */
 /* </summary>                            */
-static void opj_region_decode97(grk_dwt97_t* restrict dwt);
+static void grk_region_decode97(grk_dwt97_t* restrict dwt);
 
-static void opj_region_interleave97_h(grk_dwt97_t* restrict w,
+static void grk_region_interleave97_h(grk_dwt97_t* restrict w,
                                       float* restrict tile_data,
                                       size_t stride,
                                       size_t size);
 
-static void opj_region_interleave97_v(grk_dwt97_t* restrict buffer_v ,
+static void grk_region_interleave97_v(grk_dwt97_t* restrict buffer_v ,
                                       float* restrict tile_data ,
 										size_t stride,
 										size_t nb_elts_read);
 
-static void opj_region_decode97_scale(opj_coeff97_t* w,
+static void grk_region_decode97_scale(opj_coeff97_t* w,
                                       opj_pt_t range,
                                       const float scale);
 
-static void opj_region_decode97_lift(opj_coeff97_t* l,
+static void grk_region_decode97_lift(opj_coeff97_t* l,
                                      opj_coeff97_t* w,
                                      opj_pt_t range,
                                      size_t count,
@@ -360,7 +360,7 @@ bool grk_dwt_region_decode53(grk_tcd_tilecomp_t* tilec,
 
 			// add 2 for boundary, plus one for parity
 			auto bufferDataSize = grk_tile_buf_get_interleaved_upper_bound(tilec->buf)+3;
-			buffer_h.data =	(int32_t*)opj_aligned_malloc(bufferDataSize * sizeof(int32_t));
+			buffer_h.data =	(int32_t*)grk_aligned_malloc(bufferDataSize * sizeof(int32_t));
 			if (!buffer_h.data) {
 				success = false;
 				return;
@@ -429,7 +429,7 @@ bool grk_dwt_region_decode53(grk_tcd_tilecomp_t* tilec,
 				resno++;
 				decode_dwt_barrier.arrive_and_wait();
 			}
-			opj_aligned_free(buffer_h.data);
+			grk_aligned_free(buffer_h.data);
 			decode_dwt_calling_barrier.arrive_and_wait();
 		}));
 	}
@@ -446,7 +446,7 @@ bool grk_dwt_region_decode53(grk_tcd_tilecomp_t* tilec,
 9/7 Synthesis Wavelet Transform
 
 *****************************************************************************************/
-static void opj_region_interleave97_h(grk_dwt97_t* restrict buffer,
+static void grk_region_interleave97_h(grk_dwt97_t* restrict buffer,
                                       float* restrict tile_data,
                                       size_t stride,
 									  size_t size)
@@ -516,7 +516,7 @@ static void opj_region_interleave97_h(grk_dwt97_t* restrict buffer,
     }
 }
 
-static void opj_region_interleave97_v(grk_dwt97_t* restrict buffer,
+static void grk_region_interleave97_v(grk_dwt97_t* restrict buffer,
                                       float* restrict tile_data,
                                       size_t stride,
                                       size_t nb_elts_read)
@@ -540,7 +540,7 @@ static void opj_region_interleave97_v(grk_dwt97_t* restrict buffer,
     }
 }
 
-static void opj_region_decode97_scale(opj_coeff97_t* buffer,
+static void grk_region_decode97_scale(opj_coeff97_t* buffer,
                                       opj_pt_t range,
                                       const float scale)
 {
@@ -556,7 +556,7 @@ static void opj_region_decode97_scale(opj_coeff97_t* buffer,
     }
 }
 
-static void opj_region_decode97_lift(opj_coeff97_t* l,
+static void grk_region_decode97_lift(opj_coeff97_t* l,
                                      opj_coeff97_t* w,
                                      opj_pt_t range,
                                      size_t count,
@@ -604,7 +604,7 @@ static void opj_region_decode97_lift(opj_coeff97_t* l,
 /* <summary>                             */
 /* Inverse 9-7 data transform in 1-D. */
 /* </summary>                            */
-static void opj_region_decode97(grk_dwt97_t* restrict dwt)
+static void grk_region_decode97(grk_dwt97_t* restrict dwt)
 {
     /* either 0 or 1 */
     auto odd_top_left_bit = dwt->odd_top_left_bit;
@@ -616,17 +616,17 @@ static void opj_region_decode97(grk_dwt97_t* restrict dwt)
     }
 
     /* inverse low-pass scale */
-    opj_region_decode97_scale(dwt->data - dwt->interleaved_offset+ odd_top_left_bit,
+    grk_region_decode97_scale(dwt->data - dwt->interleaved_offset+ odd_top_left_bit,
                               dwt->range_even,
                               opj_K);
 
     /* inverse high-pass scale */
-    opj_region_decode97_scale(dwt->data - dwt->interleaved_offset + even_top_left_bit,
+    grk_region_decode97_scale(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                               dwt->range_odd,
                               opj_c13318);
 
     /* inverse update */
-    opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
+    grk_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
@@ -634,14 +634,14 @@ static void opj_region_decode97(grk_dwt97_t* restrict dwt)
                              grk_dwt_delta);
 
     /* inverse predict */
-    opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
+    grk_region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
                              opj_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              grk_dwt_gamma);
     /* inverse update */
-    opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
+    grk_region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
                              dwt->s_n,
@@ -649,7 +649,7 @@ static void opj_region_decode97(grk_dwt97_t* restrict dwt)
                              grk_dwt_beta);
 
     /* inverse predict */
-    opj_region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
+    grk_region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
                              dwt->d_n,
@@ -705,7 +705,7 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 
 			// add 4 for boundary, plus one for parity
 			buffer_h.dataSize = (grk_tile_buf_get_interleaved_upper_bound(tilec->buf) + 5) * 4;
-			buffer_h.data = (opj_coeff97_t*)opj_aligned_malloc(buffer_h.dataSize * sizeof(float));
+			buffer_h.data = (opj_coeff97_t*)grk_aligned_malloc(buffer_h.dataSize * sizeof(float));
 
 			if (!buffer_h.data) {
 				/* FIXME event manager error callback */
@@ -749,8 +749,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 				auto bufsize = tile_width * (tilec->y1 - tilec->y0 - buffer_v.range_even.x - (threadId<<2));
 
 				for (j = buffer_v.range_even.y - buffer_v.range_even.x - (threadId<<2); j > 3; j -= 4*numThreads) {
-					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
-					opj_region_decode97(&buffer_h);
+					grk_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					grk_region_decode97(&buffer_h);
 
 					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
 						auto buffer_index				= k - buffer_h.interleaved_offset;
@@ -765,8 +765,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 				}
 				
 				if (j > 0) {
-					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
-					opj_region_decode97(&buffer_h);
+					grk_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					grk_region_decode97(&buffer_h);
 					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
 						auto buffer_index = k - buffer_h.interleaved_offset;
 						switch (j) {
@@ -786,8 +786,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 				bufsize = tile_width *(tilec->y1 - tilec->y0 -  buffer_v.s_n - buffer_v.range_odd.x - (threadId<<2));
 
 				for (j = buffer_v.range_odd.y - buffer_v.range_odd.x - (threadId<<2); j > 3; j -= 4*numThreads) {
-					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
-					opj_region_decode97(&buffer_h);
+					grk_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					grk_region_decode97(&buffer_h);
 
 					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
 						auto buffer_index					= k - buffer_h.interleaved_offset;
@@ -803,8 +803,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 
 				
 				if (j > 0) {
-					opj_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
-					opj_region_decode97(&buffer_h);
+					grk_region_interleave97_h(&buffer_h, tile_data, tile_width, bufsize);
+					grk_region_decode97(&buffer_h);
 					for (auto k = interleaved_h.x; k < interleaved_h.y; ++k) {
 						auto buffer_index = k - buffer_h.interleaved_offset;
 						switch (j) {
@@ -828,8 +828,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 
 				tile_data = (float*)tileBuf + interleaved_h.x + (threadId<<2);
 				for (j = interleaved_h.y - interleaved_h.x - (threadId<<2); j > 3; j -= 4*numThreads) {
-					opj_region_interleave97_v(&buffer_v, tile_data, tile_width, 4);
-					opj_region_decode97(&buffer_v);
+					grk_region_interleave97_v(&buffer_v, tile_data, tile_width, 4);
+					grk_region_decode97(&buffer_v);
 					for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
 						memcpy(tile_data + k*tile_width, buffer_v.data + k - buffer_v.interleaved_offset, 4 * sizeof(float));
 					}
@@ -837,8 +837,8 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 				}
 				
 				if (j > 0) {
-					opj_region_interleave97_v(&buffer_v, tile_data, tile_width, j);
-					opj_region_decode97(&buffer_v);
+					grk_region_interleave97_v(&buffer_v, tile_data, tile_width, j);
+					grk_region_decode97(&buffer_v);
 					for (auto k = interleaved_v.x; k < interleaved_v.y; ++k) {
 						memcpy(tile_data + k*tile_width, buffer_v.data + k - buffer_v.interleaved_offset, (size_t)j * sizeof(float));
 					}
@@ -847,7 +847,7 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 				resno++;
 				decode_dwt_barrier.arrive_and_wait();
 			}
-			opj_aligned_free(buffer_h.data);
+			grk_aligned_free(buffer_h.data);
 			decode_dwt_calling_barrier.arrive_and_wait();
 		}));
 	}

@@ -36,9 +36,9 @@
 
 
 #ifdef _WIN32
-typedef void* opj_handle_t;
+typedef void* grk_handle_t;
 #else
-typedef int32_t opj_handle_t;
+typedef int32_t grk_handle_t;
 #endif
 
 
@@ -46,16 +46,16 @@ typedef struct grk_buf_info {
     uint8_t *buf;
     int64_t off;
     size_t len;
-    opj_handle_t fd;		// for file mapping
+    grk_handle_t fd;		// for file mapping
 } grk_buf_info_t;
 
-static void opj_free_buffer_info(void* user_data)
+static void grk_free_buffer_info(void* user_data)
 {
     if (user_data)
-        opj_free(user_data);
+        grk_free(user_data);
 }
 
-static size_t opj_zero_copy_read_from_buffer(void ** p_buffer,
+static size_t grk_zero_copy_read_from_buffer(void ** p_buffer,
         size_t p_nb_bytes,
         grk_buf_info_t* p_source_buffer)
 {
@@ -71,7 +71,7 @@ static size_t opj_zero_copy_read_from_buffer(void ** p_buffer,
     return l_nb_read ? l_nb_read : ((size_t)-1);
 }
 
-static size_t opj_read_from_buffer(void * p_buffer,
+static size_t grk_read_from_buffer(void * p_buffer,
                                    size_t p_nb_bytes,
                                    grk_buf_info_t* p_source_buffer)
 {
@@ -88,7 +88,7 @@ static size_t opj_read_from_buffer(void * p_buffer,
     return l_nb_read ? l_nb_read : ((size_t)-1);
 }
 
-static size_t opj_write_to_buffer(void * p_buffer,
+static size_t grk_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
                                     grk_buf_info_t* p_source_buffer)
 {
@@ -97,7 +97,7 @@ static size_t opj_write_to_buffer(void * p_buffer,
     return p_nb_bytes;
 }
 
-static int64_t opj_skip_from_buffer(int64_t p_nb_bytes,
+static int64_t grk_skip_from_buffer(int64_t p_nb_bytes,
                                     grk_buf_info_t * p_source_buffer)
 {
     if (p_source_buffer->off + p_nb_bytes <  (int64_t)p_source_buffer->len) {
@@ -108,7 +108,7 @@ static int64_t opj_skip_from_buffer(int64_t p_nb_bytes,
     return p_nb_bytes;
 }
 
-static bool opj_seek_from_buffer(int64_t p_nb_bytes,
+static bool grk_seek_from_buffer(int64_t p_nb_bytes,
                                  grk_buf_info_t * p_source_buffer)
 {
     if (p_nb_bytes <  (int64_t)p_source_buffer->len) {
@@ -120,20 +120,20 @@ static bool opj_seek_from_buffer(int64_t p_nb_bytes,
 }
 
 
-static void opj_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_is_read_stream)
+static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_is_read_stream)
 {
     opj_stream_set_user_data_length(l_stream, len);
 
     if (p_is_read_stream) {
-        opj_stream_set_read_function(l_stream, (opj_stream_read_fn)opj_read_from_buffer);
-        opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)opj_zero_copy_read_from_buffer);
+        opj_stream_set_read_function(l_stream, (opj_stream_read_fn)grk_read_from_buffer);
+        opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)grk_zero_copy_read_from_buffer);
     } else
-        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)opj_write_to_buffer);
-    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)opj_skip_from_buffer);
-    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)opj_seek_from_buffer);
+        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)grk_write_to_buffer);
+    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)grk_skip_from_buffer);
+    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)grk_seek_from_buffer);
 }
 
-size_t opj_get_buffer_stream_offset(opj_stream_t* stream) {
+size_t grk_get_buffer_stream_offset(opj_stream_t* stream) {
 	if (!stream)
 		return 0;
 	opj_stream_private_t * private_stream = (opj_stream_private_t*)stream;
@@ -143,7 +143,7 @@ size_t opj_get_buffer_stream_offset(opj_stream_t* stream) {
 	return buf->off;
 }
 
-opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
+opj_stream_t*  grk_create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream)
 {
@@ -153,13 +153,13 @@ opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
     if (!buf || !len)
         return NULL;
 
-    p_source_buffer = (grk_buf_info_t*)opj_malloc(sizeof(grk_buf_info_t));
+    p_source_buffer = (grk_buf_info_t*)grk_malloc(sizeof(grk_buf_info_t));
     if (!p_source_buffer)
         return NULL;
 
     l_stream = opj_stream_create(0, p_is_read_stream);
     if (!l_stream) {
-        opj_free(p_source_buffer);
+        grk_free(p_source_buffer);
         return NULL;
 
     }
@@ -169,8 +169,8 @@ opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
     p_source_buffer->off = 0;
     p_source_buffer->len = len;
 
-    opj_stream_set_user_data(l_stream, p_source_buffer, opj_free_buffer_info);
-    opj_set_up_buffer_stream(l_stream, p_source_buffer->len, p_is_read_stream);
+    opj_stream_set_user_data(l_stream, p_source_buffer, grk_free_buffer_info);
+    grk_set_up_buffer_stream(l_stream, p_source_buffer->len, p_is_read_stream);
     return l_stream;
 }
 
@@ -178,7 +178,7 @@ opj_stream_t*  opj_create_buffer_stream(uint8_t *buf,
 
 
 
-int32_t opj_get_file_open_mode(const char* mode)
+int32_t grk_get_file_open_mode(const char* mode)
 {
     int32_t m = -1;
     switch (mode[0]) {
@@ -202,7 +202,7 @@ int32_t opj_get_file_open_mode(const char* mode)
 
 #ifdef _WIN32
 
-static uint64_t  opj_size_proc(opj_handle_t fd)
+static uint64_t  grk_size_proc(grk_handle_t fd)
 {
     ULARGE_INTEGER m;
     m.LowPart = GetFileSize(fd, &m.HighPart);
@@ -210,7 +210,7 @@ static uint64_t  opj_size_proc(opj_handle_t fd)
 }
 
 
-static void* opj_map(opj_handle_t fd, size_t len)
+static void* grk_map(grk_handle_t fd, size_t len)
 {
 	(void)len;
     void* ptr = NULL;
@@ -230,7 +230,7 @@ static void* opj_map(opj_handle_t fd, size_t len)
     return ptr;
 }
 
-static int32_t opj_unmap(void* ptr, size_t len)
+static int32_t grk_unmap(void* ptr, size_t len)
 {
     int32_t rc = -1;
     (void)len;
@@ -239,17 +239,17 @@ static int32_t opj_unmap(void* ptr, size_t len)
     return rc;
 }
 
-static opj_handle_t opj_open_fd(const char* fname, const char* mode)
+static grk_handle_t grk_open_fd(const char* fname, const char* mode)
 {
     void*	fd = NULL;
     int32_t m = -1;
     DWORD			dwMode = 0;
 
     if (!fname)
-        return (opj_handle_t)-1;
+        return (grk_handle_t)-1;
 
 
-    m = opj_get_file_open_mode(mode);
+    m = grk_get_file_open_mode(mode);
     switch (m) {
     case O_RDONLY:
         dwMode = OPEN_EXISTING;
@@ -270,18 +270,18 @@ static opj_handle_t opj_open_fd(const char* fname, const char* mode)
         return NULL;
     }
 
-    fd = (opj_handle_t)CreateFileA(fname,
+    fd = (grk_handle_t)CreateFileA(fname,
                                    (m == O_RDONLY) ? GENERIC_READ : (GENERIC_READ | GENERIC_WRITE),
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, dwMode,
                                    (m == O_RDONLY) ? FILE_ATTRIBUTE_READONLY : FILE_ATTRIBUTE_NORMAL,
                                    NULL);
     if (fd == INVALID_HANDLE_VALUE) {
-        return (opj_handle_t)-1;
+        return (grk_handle_t)-1;
     }
     return fd;
 }
 
-static int32_t opj_close_fd(opj_handle_t fd)
+static int32_t grk_close_fd(grk_handle_t fd)
 {
     int32_t rc = -1;
     if (fd) {
@@ -292,7 +292,7 @@ static int32_t opj_close_fd(opj_handle_t fd)
 
 #else
 
-static uint64_t opj_size_proc(opj_handle_t fd)
+static uint64_t grk_size_proc(grk_handle_t fd)
 {
     struct stat sb;
     if (!fd)
@@ -304,7 +304,7 @@ static uint64_t opj_size_proc(opj_handle_t fd)
         return((uint64_t)sb.st_size);
 }
 
-static void* opj_map(opj_handle_t fd, size_t len)
+static void* grk_map(grk_handle_t fd, size_t len)
 {
 	(void)len;
     void* ptr = NULL;
@@ -313,26 +313,26 @@ static void* opj_map(opj_handle_t fd, size_t len)
     if (!fd)
         return NULL;
 
-    size64 = opj_size_proc(fd);
+    size64 = grk_size_proc(fd);
     ptr = (void*)mmap(0, (size_t)size64, PROT_READ, MAP_SHARED, fd, 0);
     return ptr == (void*)-1 ? NULL : ptr;
 }
 
-static int32_t opj_unmap(void* ptr, size_t len)
+static int32_t grk_unmap(void* ptr, size_t len)
 {
     if (ptr)
         munmap(ptr, len);
     return 0;
 }
 
-static opj_handle_t opj_open_fd(const char* fname, const char* mode)
+static grk_handle_t grk_open_fd(const char* fname, const char* mode)
 {
-    opj_handle_t	fd = 0;
+    grk_handle_t	fd = 0;
     int32_t m = -1;
     if (!fname) {
-        return (opj_handle_t)-1;
+        return (grk_handle_t)-1;
     }
-    m = opj_get_file_open_mode(mode);
+    m = grk_get_file_open_mode(mode);
     fd = open(fname, m, 0666);
     if (fd < 0) {
 #ifdef DEBUG_ERRNO
@@ -342,12 +342,12 @@ static opj_handle_t opj_open_fd(const char* fname, const char* mode)
             printf("%s: Cannot open", fname);
         }
 #endif
-        return (opj_handle_t)-1;
+        return (grk_handle_t)-1;
     }
     return fd;
 }
 
-static int32_t opj_close_fd(opj_handle_t fd)
+static int32_t grk_close_fd(grk_handle_t fd)
 {
     if (!fd)
         return 0;
@@ -358,53 +358,53 @@ static int32_t opj_close_fd(opj_handle_t fd)
 
 
 
-static void opj_mem_map_free(void* user_data)
+static void grk_mem_map_free(void* user_data)
 {
     if (user_data) {
         grk_buf_info_t* buffer_info = (grk_buf_info_t*)user_data;
-        opj_unmap(buffer_info->buf, buffer_info->len);
-        opj_close_fd(buffer_info->fd);
-        opj_free(buffer_info);
+        grk_unmap(buffer_info->buf, buffer_info->len);
+        grk_close_fd(buffer_info->fd);
+        grk_free(buffer_info);
     }
 }
 
 /*
 Currently, only read streams are supported for memory mapped files.
 */
-opj_stream_t* opj_create_mapped_file_read_stream(const char *fname)
+opj_stream_t* grk_create_mapped_file_read_stream(const char *fname)
 {
     opj_stream_t*	l_stream = NULL;
     grk_buf_info_t* buffer_info = NULL;
     void*			mapped_view = NULL;
     bool p_is_read_stream = true;
 
-    opj_handle_t	fd = opj_open_fd(fname, p_is_read_stream ? "r" : "w");
-    if (fd == (opj_handle_t)-1)
+    grk_handle_t	fd = grk_open_fd(fname, p_is_read_stream ? "r" : "w");
+    if (fd == (grk_handle_t)-1)
         return NULL;
 
-    buffer_info = (grk_buf_info_t*)opj_malloc(sizeof(grk_buf_info_t));
+    buffer_info = (grk_buf_info_t*)grk_malloc(sizeof(grk_buf_info_t));
     memset(buffer_info, 0, sizeof(grk_buf_info_t));
     buffer_info->fd = fd;
-    buffer_info->len = (size_t)opj_size_proc(fd);
+    buffer_info->len = (size_t)grk_size_proc(fd);
 
     l_stream = opj_stream_create(0, p_is_read_stream);
     if (!l_stream) {
-        opj_mem_map_free(buffer_info);
+        grk_mem_map_free(buffer_info);
         return NULL;
     }
 
-    mapped_view = opj_map(fd, buffer_info->len);
+    mapped_view = grk_map(fd, buffer_info->len);
     if (!mapped_view) {
         opj_stream_destroy(l_stream);
-        opj_mem_map_free(buffer_info);
+        grk_mem_map_free(buffer_info);
         return NULL;
     }
 
     buffer_info->buf = (uint8_t*)mapped_view;
     buffer_info->off = 0;
 
-    opj_stream_set_user_data(l_stream, buffer_info, (opj_stream_free_user_data_fn)opj_mem_map_free);
-    opj_set_up_buffer_stream(l_stream, buffer_info->len, p_is_read_stream);
+    opj_stream_set_user_data(l_stream, buffer_info, (opj_stream_free_user_data_fn)grk_mem_map_free);
+    grk_set_up_buffer_stream(l_stream, buffer_info->len, p_is_read_stream);
 
 
     return l_stream;

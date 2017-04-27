@@ -57,15 +57,15 @@
 grk_procedure_list_t *  grk_procedure_list_create()
 {
     /* memory allocation */
-    grk_procedure_list_t * l_validation = (grk_procedure_list_t *) opj_calloc(1,sizeof(grk_procedure_list_t));
+    grk_procedure_list_t * l_validation = (grk_procedure_list_t *) grk_calloc(1,sizeof(grk_procedure_list_t));
     if (! l_validation) {
         return nullptr;
     }
     /* initialization */
     l_validation->m_nb_max_procedures = OPJ_VALIDATION_SIZE;
-    l_validation->m_procedures = (grk_procedure*)opj_calloc(OPJ_VALIDATION_SIZE, sizeof(grk_procedure));
+    l_validation->m_procedures = (grk_procedure*)grk_calloc(OPJ_VALIDATION_SIZE, sizeof(grk_procedure));
     if (! l_validation->m_procedures) {
-        opj_free(l_validation);
+        grk_free(l_validation);
         return nullptr;
     }
     return l_validation;
@@ -78,9 +78,9 @@ void  grk_procedure_list_destroy(grk_procedure_list_t * p_list)
     }
     /* initialization */
     if (p_list->m_procedures) {
-        opj_free(p_list->m_procedures);
+        grk_free(p_list->m_procedures);
     }
-    opj_free(p_list);
+    grk_free(p_list);
 }
 
 bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list, grk_procedure p_procedure, grk_event_mgr_t* p_manager )
@@ -92,11 +92,11 @@ bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list,
         grk_procedure * new_procedures;
 
         p_validation_list->m_nb_max_procedures += OPJ_VALIDATION_SIZE;
-        new_procedures = (grk_procedure*)opj_realloc(
+        new_procedures = (grk_procedure*)grk_realloc(
                              p_validation_list->m_procedures,
                              p_validation_list->m_nb_max_procedures * sizeof(grk_procedure));
         if (! new_procedures) {
-            opj_free(p_validation_list->m_procedures);
+            grk_free(p_validation_list->m_procedures);
             p_validation_list->m_nb_max_procedures = 0;
             p_validation_list->m_nb_procedures = 0;
             grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to add a new validation procedure\n");

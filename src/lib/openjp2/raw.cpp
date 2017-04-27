@@ -68,14 +68,14 @@
 
 grk_raw_t* grk_raw_create(void)
 {
-    grk_raw_t *raw = (grk_raw_t*)opj_malloc(sizeof(grk_raw_t));
+    grk_raw_t *raw = (grk_raw_t*)grk_malloc(sizeof(grk_raw_t));
     return raw;
 }
 
 void grk_raw_destroy(grk_raw_t *raw)
 {
     if(raw) {
-        opj_free(raw);
+        grk_free(raw);
     }
 }
 
