@@ -257,10 +257,10 @@ static void update_pi_dxy_for_comp(grk_pi_iterator_t * pi, grk_pi_comp_t *comp) 
 		uint64_t dx = comp->dx * ((uint64_t)1u << (res->pdx + comp->numresolutions - 1 - resno));
 		uint64_t dy = comp->dy * ((uint64_t)1u << (res->pdy + comp->numresolutions - 1 - resno));
 		if (dx < UINT_MAX) {
-			pi->dx = !pi->dx ? (uint32_t)dx : opj_min<uint32_t>(pi->dx, (uint32_t)dx);
+			pi->dx = !pi->dx ? (uint32_t)dx : grk_min<uint32_t>(pi->dx, (uint32_t)dx);
 		}
 		if (dy < UINT_MAX) {
-			pi->dy = !pi->dy ? (uint32_t)dy : opj_min<uint32_t>(pi->dy, (uint32_t)dy);
+			pi->dy = !pi->dy ? (uint32_t)dy : grk_min<uint32_t>(pi->dy, (uint32_t)dy);
 		}
 	}
 }
@@ -388,10 +388,10 @@ static bool grk_pi_next_rpcl(grk_pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = grk_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = grk_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = grk_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = grk_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))  ))) {
@@ -405,10 +405,10 @@ static bool grk_pi_next_rpcl(grk_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
-                           - opj_uint_floordivpow2(trx0, res->pdx);
-                    prcj = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
-                           - opj_uint_floordivpow2(try0, res->pdy);
+                    prci = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
+                           - grk_uint_floordivpow2(trx0, res->pdx);
+                    prcj = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                           - grk_uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
@@ -449,7 +449,7 @@ static bool grk_pi_next_pcrl(grk_pi_iterator_t * pi)
         for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
             for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
                 comp = &pi->comps[pi->compno];
-                for (pi->resno = pi->poc.resno0; pi->resno < opj_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
+                for (pi->resno = pi->poc.resno0; pi->resno < grk_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
                     uint32_t trx0, try0;
                     uint32_t trx1, try1;
@@ -459,10 +459,10 @@ static bool grk_pi_next_pcrl(grk_pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = grk_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = grk_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = grk_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = grk_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
@@ -476,10 +476,10 @@ static bool grk_pi_next_pcrl(grk_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)),res->pdx)
-                           - opj_uint_floordivpow2(trx0, res->pdx);
-                    prcj = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
-                           - opj_uint_floordivpow2(try0, res->pdy);
+                    prci = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)),res->pdx)
+                           - grk_uint_floordivpow2(trx0, res->pdx);
+                    prcj = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                           - grk_uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
@@ -523,7 +523,7 @@ static bool grk_pi_next_cprl(grk_pi_iterator_t * pi)
         }
         for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += pi->dy - (pi->y % pi->dy)) {
             for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
-                for (pi->resno = pi->poc.resno0; pi->resno < opj_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
+                for (pi->resno = pi->poc.resno0; pi->resno < grk_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
                     uint32_t trx0, try0;
                     uint32_t trx1, try1;
@@ -533,10 +533,10 @@ static bool grk_pi_next_cprl(grk_pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = opj_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = opj_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = opj_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = opj_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = grk_uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = grk_uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = grk_uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = grk_uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
@@ -550,10 +550,10 @@ static bool grk_pi_next_cprl(grk_pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
-                           - opj_uint_floordivpow2(trx0, res->pdx);
-                    prcj = opj_uint_floordivpow2(opj_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
-                           - opj_uint_floordivpow2(try0, res->pdy);
+                    prci = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
+                           - grk_uint_floordivpow2(trx0, res->pdx);
+                    prcj = grk_uint_floordivpow2(grk_uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                           - grk_uint_floordivpow2(try0, res->pdy);
                     pi->precno = prci + prcj * res->pw;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
@@ -609,10 +609,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     q = p_tileno / p_cp->tw;
 
     /* find extent of tile */
-    *p_tx0 = opj_max<uint32_t>(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
-    *p_tx1 = opj_min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
-    *p_ty0 = opj_max<uint32_t>(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
-    *p_ty1 = opj_min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
+    *p_tx0 = grk_max<uint32_t>(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
+    *p_tx1 = grk_min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
+    *p_ty0 = grk_max<uint32_t>(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
+    *p_ty1 = grk_min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
 
     /* max precision is 0 (can only grow) */
     *p_max_prec = 0;
@@ -632,10 +632,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
         uint32_t l_product;
         uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
 
-        l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp->dx);
-        l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp->dy);
-        l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp->dx);
-        l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp->dy);
+        l_tcx0 = grk_uint_ceildiv(*p_tx0, l_img_comp->dx);
+        l_tcy0 = grk_uint_ceildiv(*p_ty0, l_img_comp->dy);
+        l_tcx1 = grk_uint_ceildiv(*p_tx1, l_img_comp->dx);
+        l_tcy1 = grk_uint_ceildiv(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;
@@ -653,23 +653,23 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
 
             /* take the minimum size for dx for each comp and resolution */
 			if (l_dx < UINT_MAX)
-				*p_dx_min = opj_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
+				*p_dx_min = grk_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
 			if (l_dy < UINT_MAX)
-				*p_dy_min = opj_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
+				*p_dy_min = grk_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
 
             /* various calculations of extents */
             l_level_no = l_tccp->numresolutions - 1 - resno;
 
-            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
+            l_rx0 = grk_uint_ceildivpow2(l_tcx0, l_level_no);
+            l_ry0 = grk_uint_ceildivpow2(l_tcy0, l_level_no);
+            l_rx1 = grk_uint_ceildivpow2(l_tcx1, l_level_no);
+            l_ry1 = grk_uint_ceildivpow2(l_tcy1, l_level_no);
 
-            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+            l_px0 = grk_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+            l_py0 = grk_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+            l_px1 = grk_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
 
-            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+            py1 = grk_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
 
             l_pw = (l_rx0==l_rx1)?0:((l_px1 - l_px0) >> l_pdx);
             l_ph = (l_ry0==l_ry1)?0:((py1 - l_py0) >> l_pdy);
@@ -733,11 +733,11 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 
     /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
     l_tx0 = p_cp->tx0 + p * p_cp->tdx; /* can't be greater than p_image->x1 so won't overflow */
-    *p_tx0 = opj_max<uint32_t>(l_tx0, p_image->x0);
-    *p_tx1 = opj_min<uint32_t>(opj_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
+    *p_tx0 = grk_max<uint32_t>(l_tx0, p_image->x0);
+    *p_tx1 = grk_min<uint32_t>(grk_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
     l_ty0 = p_cp->ty0 + q * p_cp->tdy; /* can't be greater than p_image->y1 so won't overflow */
-    *p_ty0 = opj_max<uint32_t>(l_ty0, p_image->y0);
-    *p_ty1 = opj_min<uint32_t>(opj_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
+    *p_ty0 = grk_max<uint32_t>(l_ty0, p_image->y0);
+    *p_ty1 = grk_min<uint32_t>(grk_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
 
     /* max precision and resolution is 0 (can only grow)*/
     *p_max_prec = 0;
@@ -758,10 +758,10 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 
         lResolutionPtr = p_resolutions[compno];
 
-        l_tcx0 = opj_uint_ceildiv(*p_tx0, l_img_comp->dx);
-        l_tcy0 = opj_uint_ceildiv(*p_ty0, l_img_comp->dy);
-        l_tcx1 = opj_uint_ceildiv(*p_tx1, l_img_comp->dx);
-        l_tcy1 = opj_uint_ceildiv(*p_ty1, l_img_comp->dy);
+        l_tcx0 = grk_uint_ceildiv(*p_tx0, l_img_comp->dx);
+        l_tcy0 = grk_uint_ceildiv(*p_ty0, l_img_comp->dy);
+        l_tcx1 = grk_uint_ceildiv(*p_tx1, l_img_comp->dx);
+        l_tcy1 = grk_uint_ceildiv(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;
@@ -780,19 +780,19 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 			uint64_t l_dy = l_img_comp->dy * ((uint64_t)1u << (l_pdy + l_level_no));
             /* take the minimum size for l_dx for each comp and resolution*/
 			if (l_dx < UINT_MAX)
-	            *p_dx_min = opj_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
+	            *p_dx_min = grk_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
 			if (l_dy < UINT_MAX)
-				*p_dy_min = opj_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
+				*p_dy_min = grk_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
 
             /* various calculations of extents*/
-            l_rx0 = opj_uint_ceildivpow2(l_tcx0, l_level_no);
-            l_ry0 = opj_uint_ceildivpow2(l_tcy0, l_level_no);
-            l_rx1 = opj_uint_ceildivpow2(l_tcx1, l_level_no);
-            l_ry1 = opj_uint_ceildivpow2(l_tcy1, l_level_no);
-            l_px0 = opj_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-            l_py0 = opj_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-            l_px1 = opj_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-            py1 = opj_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+            l_rx0 = grk_uint_ceildivpow2(l_tcx0, l_level_no);
+            l_ry0 = grk_uint_ceildivpow2(l_tcy0, l_level_no);
+            l_rx1 = grk_uint_ceildivpow2(l_tcx1, l_level_no);
+            l_ry1 = grk_uint_ceildivpow2(l_tcy1, l_level_no);
+            l_px0 = grk_uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
+            l_py0 = grk_uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
+            l_px1 = grk_uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+            py1 = grk_uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
             l_pw = (l_rx0==l_rx1)?0:((l_px1 - l_px0) >> l_pdx);
             l_ph = (l_ry0==l_ry1)?0:((py1 - l_py0) >> l_pdy);
             *lResolutionPtr++ = l_pw;
@@ -1040,7 +1040,7 @@ static void grk_pi_update_decode_poc (grk_pi_iterator_t * p_pi,
         l_current_pi->poc.precno0 = 0;
         l_current_pi->poc.resno1 = l_current_poc->resno1; /* Resolution Level Index #0 (End) */
         l_current_pi->poc.compno1 = l_current_poc->compno1; /* Component Index #0 (End) */
-		l_current_pi->poc.layno1 = opj_min<uint32_t>(l_current_poc->layno1, p_tcp->numlayers); /* Layer Index #0 (End) */
+		l_current_pi->poc.layno1 = grk_min<uint32_t>(l_current_poc->layno1, p_tcp->numlayers); /* Layer Index #0 (End) */
         l_current_pi->poc.precno1 = p_max_precision;
         ++l_current_pi;
         ++l_current_poc;

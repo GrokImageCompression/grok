@@ -104,7 +104,7 @@ int64_t rect_t::get_area(void)
     return (x1 - x0) * (y1 - y0);
 }
 
-void rect_t::pan(opj_pt_t* shift)
+void rect_t::pan(grk_pt_t* shift)
 {
     x0 += shift->x;
     y0 += shift->y;

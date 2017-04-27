@@ -136,7 +136,7 @@ static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_
 size_t grk_get_buffer_stream_offset(opj_stream_t* stream) {
 	if (!stream)
 		return 0;
-	opj_stream_private_t * private_stream = (opj_stream_private_t*)stream;
+	grk_stream_private_t * private_stream = (grk_stream_private_t*)stream;
 	if (!private_stream->m_user_data)
 		return 0;
 	grk_buf_info_t* buf = (grk_buf_info_t*)private_stream->m_user_data;

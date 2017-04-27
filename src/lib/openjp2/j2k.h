@@ -578,7 +578,7 @@ char *grk_j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
  * codestream.
  */
 bool grk_j2k_end_decompress(grk_j2k_t *j2k,
-                            opj_stream_private_t *p_stream,
+                            grk_stream_private_t *p_stream,
                             grk_event_mgr_t * p_manager);
 
 /**
@@ -591,7 +591,7 @@ bool grk_j2k_end_decompress(grk_j2k_t *j2k,
  *
  * @return true if the box is valid.
  */
-bool grk_j2k_read_header(	opj_stream_private_t *p_stream,
+bool grk_j2k_read_header(	grk_stream_private_t *p_stream,
                             grk_j2k_t* p_j2k,
 							opj_header_info_t* header_info,
 							opj_image_t** p_image,
@@ -625,7 +625,7 @@ bool grk_j2k_decode_tile (  grk_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            opj_stream_private_t *p_stream,
+                            grk_stream_private_t *p_stream,
                             grk_event_mgr_t * p_manager );
 
 /**
@@ -651,12 +651,12 @@ bool grk_j2k_read_tile_header ( grk_j2k_t * p_j2k,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                opj_stream_private_t *p_stream,
+                                grk_stream_private_t *p_stream,
                                 grk_event_mgr_t * p_manager );
 
 
 /**
- * Sets the given area to be decoded. This function should be called right after opj_read_header and before any tile header reading.
+ * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
  *
  * @param	p_j2k			the jpeg2000 codec.
  * @param	p_image     FIXME DOC
@@ -740,13 +740,13 @@ opj_codestream_index_t* j2k_get_cstr_index(grk_j2k_t* p_j2k);
 */
 bool grk_j2k_decode(grk_j2k_t *j2k,
 					opj_plugin_tile_t* tile,
-                    opj_stream_private_t *p_stream,
+                    grk_stream_private_t *p_stream,
                     opj_image_t *p_image,
                     grk_event_mgr_t *p_manager);
 
 
 bool grk_j2k_get_tile(	grk_j2k_t *p_j2k,
-                        opj_stream_private_t *p_stream,
+                        grk_stream_private_t *p_stream,
                         opj_image_t* p_image,
                         grk_event_mgr_t * p_manager,
                         uint32_t tile_index );
@@ -769,7 +769,7 @@ bool grk_j2k_write_tile (	grk_j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            opj_stream_private_t *p_stream,
+                            grk_stream_private_t *p_stream,
                             grk_event_mgr_t * p_manager );
 
 /**
@@ -777,7 +777,7 @@ bool grk_j2k_write_tile (	grk_j2k_t * p_j2k,
  */
 bool grk_j2k_encode(	grk_j2k_t * p_j2k,
 						opj_plugin_tile_t* tile,
-                        opj_stream_private_t *cio,
+                        grk_stream_private_t *cio,
                         grk_event_mgr_t * p_manager );
 
 /**
@@ -791,7 +791,7 @@ bool grk_j2k_encode(	grk_j2k_t * p_j2k,
  * @return true if the codec is valid.
  */
 bool grk_j2k_start_compress(grk_j2k_t *p_j2k,
-                            opj_stream_private_t *p_stream,
+                            grk_stream_private_t *p_stream,
                             opj_image_t * p_image,
                             grk_event_mgr_t * p_manager);
 
@@ -800,7 +800,7 @@ bool grk_j2k_start_compress(grk_j2k_t *p_j2k,
  * codestream.
  */
 bool grk_j2k_end_compress( 	grk_j2k_t *p_j2k,
-                            opj_stream_private_t *cio,
+                            grk_stream_private_t *cio,
                             grk_event_mgr_t * p_manager);
 
 bool grk_j2k_setup_mct_encoding (grk_tcp_t * p_tcp, opj_image_t * p_image);

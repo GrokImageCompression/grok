@@ -1441,8 +1441,8 @@ bool grk_t1_encode_cblks(   grk_tcd_tile_t *tile,
                             y += pres->y1 - pres->y0;
                         }
 
-						maxCblkW = opj_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-						maxCblkH = opj_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
+						maxCblkW = grk_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
+						maxCblkH = grk_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
 						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;
@@ -1504,11 +1504,11 @@ double grk_t1_encode_cblk(grk_t1_t *t1,
     for (i = 0; i < t1->w; ++i) {
         for (j = 0; j < t1->h; ++j) {
             int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-            max = opj_max<int32_t>(max, tmp);
+            max = grk_max<int32_t>(max, tmp);
         }
     }
 
-	auto logMax = opj_int_floorlog2((int32_t)max) + 1;
+	auto logMax = grk_int_floorlog2((int32_t)max) + 1;
 	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
 	if (!cblk->numbps)
 		return 0;

@@ -18,7 +18,7 @@
 
 #pragma once
 
-struct opj_pt_t {
+struct grk_pt_t {
     int64_t x;
     int64_t y;
 
@@ -53,7 +53,7 @@ struct rect_t {
 
 	void subsample(uint32_t dx, uint32_t dy);
 
-	void pan(opj_pt_t* shift);
+	void pan(grk_pt_t* shift);
 
 	void print(void);
 
