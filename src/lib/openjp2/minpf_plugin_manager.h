@@ -19,7 +19,7 @@
 
 
 #include "minpf_dynamic_library.h"
-#include "hashmap.h"
+#include <map>
 
 #include <stdint.h>
 
@@ -35,7 +35,7 @@ typedef struct minpf_plugin_manager {
 
     minpf_platform_services platformServices;
 
-    map_t plugins;
+    std::map<const char*, minpf_register_params*>* plugins;
 
 
 } minpf_plugin_manager;
