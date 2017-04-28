@@ -150,7 +150,7 @@
 /* MSVC before 2013 and Borland C do not have lrintf */
 #if defined(_MSC_VER)
 #include <intrin.h>
-static inline long opj_lrintf(float f)
+static inline long grk_lrintf(float f)
 {
 #ifdef _M_X64
     return _mm_cvt_ss2si(_mm_load_ss(&f));
@@ -170,7 +170,7 @@ static inline long opj_lrintf(float f)
 #endif
 }
 #elif defined(__BORLANDC__)
-static inline long opj_lrintf(float f)
+static inline long grk_lrintf(float f)
 {
 #ifdef _M_X64
     return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f));
@@ -186,7 +186,7 @@ static inline long opj_lrintf(float f)
 #endif
 }
 #else
-static inline long opj_lrintf(float f)
+static inline long grk_lrintf(float f)
 {
     return lrintf(f);
 }

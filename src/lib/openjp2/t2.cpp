@@ -1310,8 +1310,8 @@ static bool grk_t2_encode_packet_simulate(grk_tcd_tile_t * tile,
         return false;
     }
     bio->init_enc(0, length);
-    bio->write( 1, 1);           /* Empty header bit */
-    bio->simulateOutput(true);
+	bio->simulateOutput(true);
+	bio->write( 1, 1);           /* Empty header bit */
 
     /* Writing Packet header */
     band = res->bands;
