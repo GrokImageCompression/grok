@@ -1919,14 +1919,14 @@ static bool grk_tcd_dc_level_shift_decode ( grk_tcd_t *p_tcd )
 		for (compno = 0; compno < p_tcd->tile->numcomps; compno++) {
 			int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
-			grk_tcd_tilecomp_t *l_tile_comp = p_tcd->tile->comps + compno;
-			opj_tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
-			opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
+			grk_tcd_tilecomp_t *l_tile_comp		= p_tcd->tile->comps + compno;
+			opj_tccp_t * l_tccp					= p_tcd->tcp->tccps + compno;
+			opj_image_comp_t * l_img_comp		= p_tcd->image->comps + compno;
 
-			grk_tcd_resolution_t* l_res = l_tile_comp->resolutions + l_img_comp->resno_decoded;
-			uint32_t l_width = (l_res->x1 - l_res->x0);
-			uint32_t l_height = (l_res->y1 - l_res->y0);
-			uint32_t l_stride = (l_tile_comp->x1 - l_tile_comp->x0) - l_width;
+			grk_tcd_resolution_t* l_res			= l_tile_comp->resolutions + l_img_comp->resno_decoded;
+			uint32_t l_width					= (l_res->x1 - l_res->x0);
+			uint32_t l_height					= (l_res->y1 - l_res->y0);
+			uint32_t l_stride					= (l_tile_comp->x1 - l_tile_comp->x0) - l_width;
 
 		//	assert(l_height == 0 || l_width + l_stride <= l_tile_comp->buf->data_size / l_height); 
 
@@ -1953,8 +1953,8 @@ static bool grk_tcd_dc_level_shift_decode ( grk_tcd_t *p_tcd )
 			else {
 				for (uint32_t j = 0; j < l_height; ++j) {
 					for (uint32_t i = 0; i < l_width; ++i) {
-						float l_value = *((float *)l_current_ptr);
-						*l_current_ptr = grk_int_clamp((int32_t)opj_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
+						float l_value	= *((float *)l_current_ptr);
+						*l_current_ptr	= grk_int_clamp((int32_t)grk_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
 						++l_current_ptr;
 					}
 					l_current_ptr += l_stride;
