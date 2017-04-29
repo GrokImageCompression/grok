@@ -1926,7 +1926,16 @@ static bool grk_tcd_dc_level_shift_decode ( grk_tcd_t *p_tcd )
 			grk_tcd_resolution_t* l_res			= l_tile_comp->resolutions + l_img_comp->resno_decoded;
 			uint32_t l_width					= (l_res->x1 - l_res->x0);
 			uint32_t l_height					= (l_res->y1 - l_res->y0);
-			uint32_t l_stride					= (l_tile_comp->x1 - l_tile_comp->x0) - l_width;
+
+			uint32_t scaledTileX0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.x0, l_img_comp->decodeScaleFactor);
+			uint32_t scaledTileY0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.y0, l_img_comp->decodeScaleFactor);
+
+			uint32_t x0 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x0, l_img_comp->decodeScaleFactor) - scaledTileX0);
+			uint32_t y0 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y0, l_img_comp->decodeScaleFactor) - scaledTileY0);
+			uint32_t x1 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x1, l_img_comp->decodeScaleFactor) - scaledTileX0);
+			uint32_t y1 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y1, l_img_comp->decodeScaleFactor) - scaledTileY0);
+
+			uint32_t l_stride					= (l_tile_comp->x1 - l_tile_comp->x0) - (x1-x0);
 
 		//	assert(l_height == 0 || l_width + l_stride <= l_tile_comp->buf->data_size / l_height); 
 
@@ -1940,22 +1949,23 @@ static bool grk_tcd_dc_level_shift_decode ( grk_tcd_t *p_tcd )
 			}
 
 			int32_t* l_current_ptr = grk_tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0, 0);
+			l_current_ptr += x0 + y0 * (l_tile_comp->x1 - l_tile_comp->x0);
 
 			if (l_tccp->qmfbid == 1) {
-				for (uint32_t j = 0; j < l_height; ++j) {
-					for (uint32_t i = 0; i < l_width; ++i) {
+				for (uint32_t j = y0; j < y1; ++j) {
+					for (uint32_t i = x0; i < x1; ++i) {
 						*l_current_ptr = grk_int_clamp(*l_current_ptr + l_tccp->m_dc_level_shift, l_min, l_max);
-						++l_current_ptr;
+						l_current_ptr++;
 					}
 					l_current_ptr += l_stride;
 				}
 			}
 			else {
-				for (uint32_t j = 0; j < l_height; ++j) {
-					for (uint32_t i = 0; i < l_width; ++i) {
+				for (uint32_t j = y0; j < y1; ++j) {
+					for (uint32_t i = x0; i < x1; ++i) {
 						float l_value	= *((float *)l_current_ptr);
-						*l_current_ptr	= grk_int_clamp((int32_t)grk_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); ;
-						++l_current_ptr;
+						*l_current_ptr	= grk_int_clamp((int32_t)grk_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); 
+						l_current_ptr++;
 					}
 					l_current_ptr += l_stride;
 				}
