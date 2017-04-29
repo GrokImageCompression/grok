@@ -7934,9 +7934,9 @@ bool grk_j2k_set_decode_area(       grk_j2k_t *p_j2k,
     uint32_t l_comp_x1, l_comp_y1;
     opj_image_comp_t* l_img_comp = NULL;
 
-    /* Check if we are read the main header */
+    /* Check if we have read the main header */
     if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) { /* FIXME J2K_DEC_STATE_TPHSOT)*/
-        grk_event_msg(p_manager, EVT_ERROR, "Need to decode the main header before begin to decode the remaining codestream");
+        grk_event_msg(p_manager, EVT_ERROR, "Need to decode the main header before setting decode area");
         return false;
     }
 

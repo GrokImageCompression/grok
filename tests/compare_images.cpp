@@ -65,7 +65,11 @@ extern "C" {
 
 }
 #include <string>
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
 
+using namespace TCLAP;
+using namespace std;
 
 /*******************************************************************************
  * Parse MSE and PEAK input values (
@@ -112,6 +116,8 @@ static void compare_images_help_display(void)
     fprintf(stdout,"  -s \t OPTIONAL \t 1 or 2 filename separator to take into account PGX/PNM image with different components, "
             "please indicate b or t before separator to indicate respectively the separator "
             "for ref/base file and for test file.  \n");
+	fprintf(stdout, "  -R \t OPTIONAL \t Sub-region of base image to compare with test image; comma separated list of four integers: x0,y0,x1,y1 \n");
+	fprintf(stdout, "  If sub-region is set, then test images dimensions must match sub-region exactly\n");
     fprintf(stdout,"\n");
 }
 
@@ -470,7 +476,7 @@ static int imageToPNG(const opj_image_t* image, const char* filename, int num_co
 }
 #endif
 
-typedef struct test_cmp_parameters {
+struct test_cmp_parameters {
     /**  */
     char* base_filename;
     /**  */
@@ -488,7 +494,10 @@ typedef struct test_cmp_parameters {
     /**  */
     char separator_test[2];
 
-} test_cmp_parameters;
+	uint32_t region[4];
+	bool	regionSet;
+
+} ;
 
 /* return decode format PGX / TIF / PPM , return -1 on error */
 static int get_decod_format(test_cmp_parameters* param)
@@ -503,15 +512,64 @@ static int get_decod_format(test_cmp_parameters* param)
 /*******************************************************************************
  * Parse command line
  *******************************************************************************/
+
+static int parse_DA_values(char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA_x1, uint32_t *DA_y1)
+{
+	int it = 0;
+	int values[4];
+	char delims[] = ",";
+	char *result = NULL;
+	result = strtok(inArg, delims);
+
+	while ((result != NULL) && (it < 4)) {
+		values[it] = atoi(result);
+		result = strtok(NULL, delims);
+		it++;
+	}
+
+	// region must be specified by 4 values exactly
+	if (it != 4) {
+		fprintf(stdout, "[WARNING] Decode region must be specified by exactly four coordinates. Ignoring specified region\n");
+		return EXIT_FAILURE;
+
+	}
+
+	// don't allow negative values
+	if ((values[0] < 0 ||
+		values[1] < 0 ||
+		values[2] < 0 ||
+		values[3] < 0)) {
+		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
+			values[0], values[1], values[2], values[3]);
+		return EXIT_FAILURE;
+	}
+	else {
+		*DA_x0 = values[0];
+		*DA_y0 = values[1];
+		*DA_x1 = values[2];
+		*DA_y1 = values[3];
+		return EXIT_SUCCESS;
+	}
+}
+
+
+class GrokOutput : public StdOutput
+{
+public:
+	virtual void usage(CmdLineInterface& c)
+	{
+		compare_images_help_display();
+	}
+};
+
+
 static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 {
     char *MSElistvalues = nullptr;
     char *PEAKlistvalues= nullptr;
     char *separatorList = nullptr;
-    size_t sizemembasefile, sizememtestfile;
-    int index, flagM=0, flagP=0;
-    const char optlist[] = "b:t:n:m:p:s:d";
-    int c;
+    int flagM=0, flagP=0;
+
 
     /* Init parameters*/
     param->base_filename = nullptr;
@@ -522,158 +580,199 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
     param->nr_flag = 0;
     param->separator_base[0] = 0;
     param->separator_test[0] = 0;
+	param->regionSet = false;
 
-    opj_opterr = 0;
+	try {
 
-    while ((c = opj_getopt(argc, argv, optlist)) != -1)
-        switch (c) {
-        case 'b':
-            sizemembasefile = strlen(opj_optarg) + 1;
-            param->base_filename = (char*) malloc(sizemembasefile);
+		// Define the command line object.
+		CmdLine cmd("Command description message", ' ', "0.9");
+
+		// set the output
+		GrokOutput output;
+		cmd.setOutput(&output);
+
+		ValueArg<string> baseImageArg("b", "Base",
+			"Base Image",
+			true, "", "string", cmd);
+		ValueArg<string> testImageArg("t", "Test",
+			"Test Image",
+			true, "", "string", cmd);
+		ValueArg<uint32_t> numComponentsArg("n", "NumComponents",
+			"Number of components",
+			true, 1, "uint32_t", cmd);
+
+		ValueArg<string> mseArg("m", "MSE",
+			"Mean Square Energy",
+			false, "", "string", cmd);
+		ValueArg<string> psnrArg("p", "PSNR",
+			"Peak Signal To Noise Ratio",
+			false, "", "string", cmd);
+		
+		SwitchArg nonRegressionArg("d", "NonRegression",
+			"Non regression",
+			cmd);
+		ValueArg<string> separatorArg("s", "Separator",
+			"Separator",
+			false, "", "string", cmd);
+
+		ValueArg<string> regionArg("R", "SubRegion",
+			"Sub region to compare",
+			false, "", "string", cmd);
+
+		cmd.parse(argc, argv);
+
+		if (baseImageArg.isSet()) {
+			param->base_filename = (char*)malloc(baseImageArg.getValue().size() + 1);
 			if (!param->base_filename)
 				return 1;
-            strcpy(param->base_filename, opj_optarg);
-            /*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
-            break;
-        case 't':
-            sizememtestfile = strlen(opj_optarg) + 1;
-            param->test_filename = (char*) malloc(sizememtestfile);
+			strcpy(param->base_filename, baseImageArg.getValue().c_str());
+			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+		}
+		if (testImageArg.isSet()) {
+			param->test_filename = (char*)malloc(testImageArg.getValue().size() + 1);
 			if (!param->test_filename)
 				return 1;
-            strcpy(param->test_filename, opj_optarg);
-            /*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
-            break;
-        case 'n':
-            param->nbcomp = atoi(opj_optarg);
-            break;
-        case 'm':
-            MSElistvalues = opj_optarg;
-            flagM = 1;
-            break;
-        case 'p':
-            PEAKlistvalues = opj_optarg;
-            flagP = 1;
-            break;
-        case 'd':
-            param->nr_flag = 1;
-            break;
-        case 's':
-            separatorList = opj_optarg;
-            break;
-        case '?':
-            if ((opj_optopt == 'b') || (opj_optopt == 't') || (opj_optopt == 'n') || (opj_optopt == 'p') || (opj_optopt == 'm') || (opj_optopt
-                    == 's'))
-                fprintf(stderr, "Option -%c requires an argument.\n", opj_optopt);
-            else if (isprint(opj_optopt)) 
-				fprintf(stderr, "Unknown option `-%c'.\n", opj_optopt);
-            else 
-				fprintf(stderr, "Unknown option character `\\x%x'.\n", opj_optopt);
-            return 1;
-        default:
-            fprintf(stderr, "WARNING -> this option is not valid \"-%c %s\"\n", c, opj_optarg);
-            break;
-        }
+			strcpy(param->test_filename, testImageArg.getValue().c_str());
+			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+		}
+		if (numComponentsArg.isSet()) {
+			param->nbcomp = numComponentsArg.getValue();
+		}
+		if (mseArg.isSet()) {
+			MSElistvalues = (char*)mseArg.getValue().c_str();
+			flagM = 1;
+		}
+		if (psnrArg.isSet()) {
+			PEAKlistvalues = (char*)psnrArg.getValue().c_str();
+			flagP = 1;
+		}
+		if (nonRegressionArg.isSet()) {
+			param->nr_flag = 1;
+		}
+		if (separatorArg.isSet()) {
+			separatorList = (char*)separatorArg.getValue().c_str();
+		}
+		if (regionArg.isSet()) {
+			uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+			if (parse_DA_values((char*)regionArg.getValue().c_str(), &x0, &y0, &x1, &y1) == EXIT_SUCCESS) {
+				param->region[0] = x0;
+				param->region[1] = y0;
+				param->region[2] = x1;
+				param->region[3] = y1;
+				param->regionSet = true;
+			}
 
-    if (opj_optind != argc) {
-        for (index = opj_optind; index < argc; index++)
-            fprintf(stderr,"Non-option argument %s\n", argv[index]);
-        return 1;
-    }
+		}
 
-    if (param->nbcomp == 0) {
-        fprintf(stderr,"Need to indicate the number of components !\n");
-        return 1;
-    }
-    /* else */
-    if ( flagM && flagP ) {
-        param->tabMSEvalues = parseToleranceValues( MSElistvalues, param->nbcomp);
-        param->tabPEAKvalues = parseToleranceValues( PEAKlistvalues, param->nbcomp);
-        if ( (param->tabMSEvalues == nullptr) || (param->tabPEAKvalues == nullptr)) {
-            fprintf(stderr,"MSE and PEAK values are not correct (respectively need %d values)\n",param->nbcomp);
-            return 1;
-        }
-    }
+		if (param->nbcomp == 0) {
+			fprintf(stderr, "Need to indicate the number of components !\n");
+			return 1;
+		}
+		/* else */
+		if (flagM && flagP) {
+			param->tabMSEvalues = parseToleranceValues(MSElistvalues, param->nbcomp);
+			param->tabPEAKvalues = parseToleranceValues(PEAKlistvalues, param->nbcomp);
+			if ((param->tabMSEvalues == nullptr) || (param->tabPEAKvalues == nullptr)) {
+				fprintf(stderr, "MSE and PEAK values are not correct (respectively need %d values)\n", param->nbcomp);
+				return 1;
+			}
+		}
 
-    /* Get separators after corresponding letter (b or t)*/
-    if (separatorList != nullptr) {
-        if( (strlen(separatorList) ==2) || (strlen(separatorList) ==4) ) {
-            /* keep original string*/
-            size_t sizeseplist = strlen(separatorList)+1;
-            char* separatorList2 = (char*)malloc( sizeseplist );
-            strcpy(separatorList2, separatorList);
-            /*printf("separatorList2 = %s [%d / %d]\n", separatorList2, strlen(separatorList2), sizeseplist);*/
+		/* Get separators after corresponding letter (b or t)*/
+		if (separatorList != nullptr) {
+			if ((strlen(separatorList) == 2) || (strlen(separatorList) == 4)) {
+				/* keep original string*/
+				size_t sizeseplist = strlen(separatorList) + 1;
+				char* separatorList2 = (char*)malloc(sizeseplist);
+				strcpy(separatorList2, separatorList);
+				/*printf("separatorList2 = %s [%d / %d]\n", separatorList2, strlen(separatorList2), sizeseplist);*/
 
-            if (strlen(separatorList) == 2) { /* one separator behind b or t*/
-                char *resultT = nullptr;
-                resultT = strtok(separatorList2, "t");
-                if (strlen(resultT) == strlen(separatorList)) { /* didn't find t character, try to find b*/
-                    char *resultB = nullptr;
-                    resultB = strtok(resultT, "b");
-                    if (strlen(resultB) == 1) {
-                        param->separator_base[0] = separatorList[1];
-                        param->separator_base[1] = 0;
-                        param->separator_test[0] = 0;
-                    } else { /* not found b*/
-                        free(separatorList2);
-                        return 1;
-                    }
-                } else { /* found t*/
-                    param->separator_base[0] = 0;
-                    param->separator_test[0] = separatorList[1];
-                    param->separator_test[1] = 0;
-                }
-                /*printf("sep b = %s [%d] and sep t = %s [%d]\n",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
-            } else { /* == 4 characters we must found t and b*/
-                char *resultT = nullptr;
-                resultT = strtok(separatorList2, "t");
-                if (strlen(resultT) == 3) { /* found t in first place*/
-                    char *resultB = nullptr;
-                    resultB = strtok(resultT, "b");
-                    if (strlen(resultB) == 1) { /* found b after t*/
-                        param->separator_test[0] = separatorList[1];
-                        param->separator_test[1] = 0;
-                        param->separator_base[0] = separatorList[3];
-                        param->separator_base[1] = 0;
-                    } else { /* didn't find b after t*/
-                        free(separatorList2);
-                        return 1;
-                    }
-                } else { /* == 2, didn't find t in first place*/
-                    char *resultB = nullptr;
-                    resultB = strtok(resultT, "b");
-                    if (strlen(resultB) == 1) { /* found b in first place*/
-                        param->separator_base[0] = separatorList[1];
-                        param->separator_base[1] = 0;
-                        param->separator_test[0] = separatorList[3];
-                        param->separator_test[1] = 0;
-                    } else { /* didn't found b in first place => problem*/
-                        free(separatorList2);
-                        return 1;
-                    }
-                }
-            }
-            free(separatorList2);
-        } else { /* wrong number of argument after -s*/
-            return 1;
-        }
-    } else {
-        if (param->nbcomp == 1) {
-            assert( param->separator_base[0] == 0 );
-            assert( param->separator_test[0] == 0 );
-        } else {
-            fprintf(stderr,"If number of components is > 1, we need separator\n");
-            return 1;
-        }
-    }
-    if ( (param->nr_flag) && (flagP || flagM) ) {
-        fprintf(stderr,"Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
-        return 1;
-    }
-    if ( (!param->nr_flag) && (!flagP || !flagM) ) {
-        fprintf(stdout,"Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.\n");
-		param->nr_flag = 1;
-    }
-    return 0;
+				if (strlen(separatorList) == 2) { /* one separator behind b or t*/
+					char *resultT = nullptr;
+					resultT = strtok(separatorList2, "t");
+					if (strlen(resultT) == strlen(separatorList)) { /* didn't find t character, try to find b*/
+						char *resultB = nullptr;
+						resultB = strtok(resultT, "b");
+						if (strlen(resultB) == 1) {
+							param->separator_base[0] = separatorList[1];
+							param->separator_base[1] = 0;
+							param->separator_test[0] = 0;
+						}
+						else { /* not found b*/
+							free(separatorList2);
+							return 1;
+						}
+					}
+					else { /* found t*/
+						param->separator_base[0] = 0;
+						param->separator_test[0] = separatorList[1];
+						param->separator_test[1] = 0;
+					}
+					/*printf("sep b = %s [%d] and sep t = %s [%d]\n",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
+				}
+				else { /* == 4 characters we must found t and b*/
+					char *resultT = nullptr;
+					resultT = strtok(separatorList2, "t");
+					if (strlen(resultT) == 3) { /* found t in first place*/
+						char *resultB = nullptr;
+						resultB = strtok(resultT, "b");
+						if (strlen(resultB) == 1) { /* found b after t*/
+							param->separator_test[0] = separatorList[1];
+							param->separator_test[1] = 0;
+							param->separator_base[0] = separatorList[3];
+							param->separator_base[1] = 0;
+						}
+						else { /* didn't find b after t*/
+							free(separatorList2);
+							return 1;
+						}
+					}
+					else { /* == 2, didn't find t in first place*/
+						char *resultB = nullptr;
+						resultB = strtok(resultT, "b");
+						if (strlen(resultB) == 1) { /* found b in first place*/
+							param->separator_base[0] = separatorList[1];
+							param->separator_base[1] = 0;
+							param->separator_test[0] = separatorList[3];
+							param->separator_test[1] = 0;
+						}
+						else { /* didn't found b in first place => problem*/
+							free(separatorList2);
+							return 1;
+						}
+					}
+				}
+				free(separatorList2);
+			}
+			else { /* wrong number of argument after -s*/
+				return 1;
+			}
+		}
+		else {
+			if (param->nbcomp == 1) {
+				assert(param->separator_base[0] == 0);
+				assert(param->separator_test[0] == 0);
+			}
+			else {
+				fprintf(stderr, "If number of components is > 1, we need separator\n");
+				return 1;
+			}
+		}
+		if ((param->nr_flag) && (flagP || flagM)) {
+			fprintf(stderr, "Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
+			return 1;
+		}
+		if ((!param->nr_flag) && (!flagP || !flagM)) {
+			fprintf(stdout, "Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.\n");
+			param->nr_flag = 1;
+		}
+	}
+	catch (ArgException &e)  // catch any exceptions
+	{
+		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+	}
+
+	 return 0;
 }
 
 /*******************************************************************************
@@ -692,7 +791,7 @@ int main(int argc, char **argv)
 #endif
 
     test_cmp_parameters inParam;
-    uint32_t it_comp, itpxl;
+    uint32_t it_comp;
     int failed = 1;
     int nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
     char *filenamePNGtest= nullptr, *filenamePNGbase = nullptr, *filenamePNGdiff = nullptr;
@@ -811,34 +910,52 @@ int main(int argc, char **argv)
     }
 
     for (it_comp = 0; it_comp < imageBase->numcomps; it_comp++) {
+
+		auto baseComp = imageBase->comps + it_comp;
+		auto testComp = imageTest->comps + it_comp;
+		if (baseComp->sgnd != testComp->sgnd) {
+			printf("ERROR: sign mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->sgnd, testComp->sgnd);
+			goto cleanup;
+		}
+
+		if (inParam.regionSet) {
+			if (testComp->w != inParam.region[2] - inParam.region[0]) {
+				printf("ERROR: test image component %d width doesn't match region width %d\n", testComp->w, inParam.region[2] - inParam.region[0]);
+				goto cleanup;
+			}
+			if (testComp->h != inParam.region[3] - inParam.region[1]) {
+				printf("ERROR: test image component %d height doesn't match region height %d\n", testComp->h, inParam.region[3] - inParam.region[1]);
+				goto cleanup;
+			}
+		}
+		else {
+
+			if (baseComp->h != testComp->h) {
+				printf("ERROR: height mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->h, testComp->h);
+				goto cleanup;
+			}
+
+			if (baseComp->w != testComp->w) {
+				printf("ERROR: width mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->w, testComp->w);
+				goto cleanup;
+			}
+		}
+
+		if (baseComp->prec != testComp->prec) {
+			printf("ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->prec, testComp->prec);
+			goto cleanup;
+		}
+
+
         param_image_diff[it_comp].x0 = 0;
         param_image_diff[it_comp].y0 = 0;
         param_image_diff[it_comp].dx = 0;
         param_image_diff[it_comp].dy = 0;
-        param_image_diff[it_comp].sgnd = 0;
-        param_image_diff[it_comp].prec = 8;
-        param_image_diff[it_comp].h = imageBase->comps[it_comp].h;
-        param_image_diff[it_comp].w = imageBase->comps[it_comp].w;
+        param_image_diff[it_comp].sgnd = testComp->sgnd;
+        param_image_diff[it_comp].prec = testComp->prec;
+        param_image_diff[it_comp].h = testComp->h;
+        param_image_diff[it_comp].w = testComp->w;
 
-        if (imageBase->comps[it_comp].sgnd != imageTest->comps[it_comp].sgnd) {
-            printf("ERROR: sign mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).sgnd, ((imageTest->comps)[it_comp]).sgnd);
-            goto cleanup;
-        }
-
-        if (((imageBase->comps)[it_comp]).prec != ((imageTest->comps)[it_comp]).prec) {
-            printf("ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).prec, ((imageTest->comps)[it_comp]).prec);
-            goto cleanup;
-        }
-
-        if (((imageBase->comps)[it_comp]).h != ((imageTest->comps)[it_comp]).h) {
-            printf("ERROR: height mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).h, ((imageTest->comps)[it_comp]).h);
-            goto cleanup;
-        }
-
-        if (((imageBase->comps)[it_comp]).w != ((imageTest->comps)[it_comp]).w) {
-            printf("ERROR: width mismatch [comp %d] (%d><%d)\n", it_comp, ((imageBase->comps)[it_comp]).w, ((imageTest->comps)[it_comp]).w);
-            goto cleanup;
-        }
     }
 
     imageDiff = opj_image_create(imageBase->numcomps, param_image_diff, OPJ_CLRSPC_UNSPECIFIED);
@@ -859,22 +976,39 @@ int main(int argc, char **argv)
     for (it_comp = 0; it_comp < imageDiff->numcomps; it_comp++) {
         double SE=0,PEAK=0;
         double MSE=0;
-        for (itpxl = 0; itpxl < ((imageDiff->comps)[it_comp]).w * ((imageDiff->comps)[it_comp]).h; itpxl++) {
-			auto basePixel = (imageBase->comps)[it_comp].data[itpxl];
-			auto testPixel = (imageTest->comps)[it_comp].data[itpxl];
-			int64_t diff = basePixel - testPixel;
-            if (llabs(diff) > 0) {
-				((imageDiff->comps)[it_comp]).data[itpxl] = (uint32_t)llabs(diff);
-                sumDiff += diff;
-                nbPixelDiff++;
+		auto diffComp = imageDiff->comps + it_comp;
+		auto baseComp = imageBase->comps + it_comp;
+		auto testComp = imageTest->comps + it_comp;
+		uint32_t x0 = 0, y0 = 0, x1 = diffComp->w, y1 = diffComp->h;
+		// one region for all components
+		if (inParam.regionSet) {
+			x0 = inParam.region[0];
+			y0 = inParam.region[1];
+			x1 = inParam.region[2];
+			y1 = inParam.region[3];
+		}
+		for (uint32_t j = y0; j < y1; ++j) {
+			for (uint32_t i = x0; i < x1; ++i) {
+				auto baseIndex = i + j * baseComp->w;
+				auto testIndex = (i - x0) + (j - y0) * testComp->w;
+				auto basePixel = baseComp->data[baseIndex];
+				auto testPixel = testComp->data[testIndex];
+				int64_t diff = basePixel - testPixel;
+				auto absDiff = llabs(diff);
+				if (absDiff > 0) {
+					diffComp->data[testIndex] = (int32_t)absDiff;
+					sumDiff += diff;
+					nbPixelDiff++;
 
-                SE += (double)diff * diff;
-                PEAK = (PEAK > llabs(diff)) ? PEAK : llabs(diff);
-            } else
-                ((imageDiff->comps)[it_comp]).data[itpxl] = 0;
-        }/* h*w loop */
+					SE += (double)diff * diff;
+					PEAK = (PEAK > absDiff) ? PEAK : absDiff;
+				}
+				else
+					diffComp->data[testIndex] = 0;
 
-        MSE = SE / ( ((imageDiff->comps)[it_comp]).w * ((imageDiff->comps)[it_comp]).h );
+			}
+		}
+        MSE = SE / (diffComp->w * diffComp->h );
 
         if (!inParam.nr_flag && (inParam.tabMSEvalues != nullptr) && (inParam.tabPEAKvalues != nullptr)) {
             /* Conformance test*/
@@ -965,7 +1099,7 @@ int main(int argc, char **argv)
         }
     } /* it_comp loop */
 
-    printf("---- TEST SUCCEED ----\n");
+    printf("---- TEST SUCCEEDED ----\n");
     failed = 0;
 cleanup:
     if (param_image_diff)
