@@ -48,7 +48,6 @@ static uint32_t minpf_is_valid_plugin(const char * id, const minpf_register_para
 int32_t minpf_register_object(const char * id, const minpf_register_params * params)
 {
     minpf_plugin_api_version v;
-    minpf_register_params* existing_plugin_params;
     minpf_plugin_manager* pluginManager = minpf_get_plugin_manager();
     minpf_register_params* registered_params = NULL;
 
@@ -64,11 +63,9 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
         return -1;
 
     // check if plugin is already registered
-    existing_plugin_params = new minpf_register_params();
 	if (pluginManager->plugins->find(id) != pluginManager->plugins->end()) {
 		delete pluginManager->plugins->operator[](id);
 	}
-    existing_plugin_params = NULL;
     registered_params = new minpf_register_params();
     *registered_params = *params;
 	pluginManager->plugins->operator[](id) = registered_params;
