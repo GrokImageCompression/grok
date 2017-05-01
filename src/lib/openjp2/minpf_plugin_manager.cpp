@@ -148,7 +148,7 @@ static int32_t minpf_load(const char* path)
     if (!lib) {
         return -1;
     }
-	printf("Plugin %s loaded\n", path);
+	//printf("Plugin %s loaded\n", path);
 	postLoadFunc = (minpf_post_load_func)(minpf_get_symbol(lib, "minpf_post_load_plugin"));
     if (!postLoadFunc) {
 		minpf_unload_dynamic_library(lib);
@@ -157,7 +157,7 @@ static int32_t minpf_load(const char* path)
 
 	char fullPath[4096];
 	if (minpf_get_full_path(path, (void*)postLoadFunc, lib->handle, fullPath, 4096)) {
-		printf("Full library path: %s\n", fullPath);
+		//printf("Full library path: %s\n", fullPath);
 	}
 	else {
 		minpf_unload_dynamic_library(lib);
@@ -169,8 +169,8 @@ static int32_t minpf_load(const char* path)
     auto rc =  minpf_post_load_plugin(fullPath, postLoadFunc);
 	if (rc)
 		fprintf(stderr, "Plugin %s failed to initialize \n", fullPath);
-	else
-		fprintf(stdout, "Plugin %s initialized \n", fullPath);
+	//else
+	//	fprintf(stdout, "Plugin %s initialized \n", fullPath);
 	return rc;
 
 }

@@ -506,6 +506,9 @@ typedef struct opj_cparameters {
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
+
+	bool verbose;
+
 } opj_cparameters_t;
 
 
@@ -729,6 +732,8 @@ typedef struct opj_decompress_params {
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
+
+	bool verbose;
 
 } opj_decompress_parameters;
 
