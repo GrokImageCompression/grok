@@ -121,7 +121,7 @@ typedef struct img_folder {
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
 int get_num_images(char *imgdirpath);
-int load_images(dircnt_t *dirptr, char *imgdirpath);
+int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose);
 int get_file_format(const char *filename);
 char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
 static int infile_format(const char *fname);
@@ -137,6 +137,40 @@ int parse_DA_values( char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
 
 /* -------------------------------------------------------------------------- */
+
+
+/**
+sample error callback expecting a FILE* client object
+*/
+static void error_callback(const char *msg, void *client_data)
+{
+	(void)client_data;
+	fprintf(stderr, "[ERROR] %s", msg);
+}
+/**
+sample warning callback expecting a FILE* client object
+*/
+static void warning_callback(const char *msg, void *client_data)
+{
+	bool verbose = true;
+	if (client_data)
+		verbose = *((bool*)client_data);
+	if (verbose)
+		fprintf(stdout, "[WARNING] %s", msg);
+}
+/**
+sample debug callback expecting no client object
+*/
+static void info_callback(const char *msg, void *client_data)
+{
+	bool verbose = true;
+	if (client_data)
+		verbose = *((bool*)client_data);
+	if (verbose)
+		fprintf(stdout, "[INFO] %s", msg);
+}
+
+
 static void decode_help_display(void)
 {
     fprintf(stdout,"\nThis is the opj_decompress utility from the Grok project.\n"
@@ -340,7 +374,7 @@ int get_num_images(char *imgdirpath)
 }
 
 /* -------------------------------------------------------------------------- */
-int load_images(dircnt_t *dirptr, char *imgdirpath)
+int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose)
 {
     DIR *dir;
     struct dirent* content;
@@ -352,8 +386,6 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
     if(!dir) {
         fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
         return 1;
-    } else	{
-        fprintf(stderr,"Folder opened successfully\n");
     }
 
     while((content=readdir(dir))!=NULL) {
@@ -398,9 +430,14 @@ static const char* get_path_separator() {
 
 
 /* -------------------------------------------------------------------------- */
-char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters) {
+char get_next_file(int imageno, 
+					dircnt_t *dirptr,
+					img_fol_t *img_fol,
+					img_fol_t* out_fol,
+					opj_decompress_parameters *parameters) {
 	std::string image_filename = dirptr->filename[imageno];
-	fprintf(stderr, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
+	if (parameters->verbose)
+		fprintf(stdout, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
 	parameters->decod_format = infile_format(infilename.c_str());
 	if (parameters->decod_format == -1)
@@ -574,7 +611,9 @@ int parse_cmdline_decoder(int argc,
 			"Number of encode repetitions, for either a folder or a single file",
 			false, 0, "unsigned integer", cmd);
 
-
+		SwitchArg verboseArg("v", "verbose",
+			"Verbose", cmd);
+		
 		cmd.parse(argc, argv);
 
 		if (forceRgbArg.isSet()) {
@@ -756,6 +795,11 @@ int parse_cmdline_decoder(int argc,
 			parameters->duration = durationArg.getValue();
 		}
 
+
+		if (verboseArg.isSet()) {
+			parameters->verbose = verboseArg.getValue();
+		}
+
 	}
 	catch (ArgException &e)  // catch any exceptions
 	{
@@ -866,30 +910,6 @@ double grk_clock(void)
 
 /* -------------------------------------------------------------------------- */
 
-/**
-sample error callback expecting a FILE* client object
-*/
-static void error_callback(const char *msg, void *client_data)
-{
-    (void)client_data;
-    fprintf(stdout, "[ERROR] %s", msg);
-}
-/**
-sample warning callback expecting a FILE* client object
-*/
-static void warning_callback(const char *msg, void *client_data)
-{
-    (void)client_data;
-    fprintf(stdout, "[WARNING] %s", msg);
-}
-/**
-sample debug callback expecting no client object
-*/
-static void info_callback(const char *msg, void *client_data)
-{
-    (void)client_data;
-    fprintf(stdout, "[INFO] %s", msg);
-}
 
 static void set_default_parameters(opj_decompress_parameters* parameters)
 {
@@ -1192,7 +1212,7 @@ static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 int main(int argc, char **argv)
 {
 
-#ifndef NDEBUG
+#ifdef DEBUG_UNIT_TESTS
 	std::string out;
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];
@@ -1201,9 +1221,7 @@ int main(int argc, char **argv)
 	printf(out.c_str());
 #endif
 
-#ifdef OPJ_HAVE_LIBTIFF
-	tiffSetErrorAndWarningHandlers();
-#endif
+
 
 	int32_t num_images, imageno = 0;
 	dircnt_t *dirptr = nullptr;
@@ -1232,7 +1250,7 @@ int main(int argc, char **argv)
         int it_image;
         num_images=get_num_images(initParams.img_fol.imgdirpath);
 		if (num_images <= 0) {
-			fprintf(stdout, "Folder is empty\n");
+			fprintf(stderr, "Folder is empty\n");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1254,7 +1272,7 @@ int main(int argc, char **argv)
                 dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
             }
         }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1) {
+        if(load_images(dirptr, initParams.img_fol.imgdirpath, initParams.parameters.verbose)==1) {
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -1266,11 +1284,12 @@ int main(int argc, char **argv)
 
     /*Decoding image one by one*/
     for (imageno = 0; imageno < num_images; imageno++) {
-        fprintf(stderr, "\n");
-
+		if (initParams.parameters.verbose)
+			fprintf(stdout, "\n");
         if (initParams.img_fol.set_imgdir == 1) {
 			if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-				fprintf(stderr, "skipping file...\n");
+				if (initParams.parameters.verbose)
+					fprintf(stdout, "skipping file...\n");
 				continue;
 			}
         }
@@ -1290,7 +1309,7 @@ int main(int argc, char **argv)
 		num_decompressed_images++;
     }
     t_cumulative = grk_clock() - t_cumulative;
-    if (num_decompressed_images && rc != EXIT_FAILURE) {
+    if (initParams.parameters.verbose && num_decompressed_images && rc != EXIT_FAILURE) {
         fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
     }
 cleanup:
@@ -1327,6 +1346,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		return EXIT_FAILURE;
 	}
 
+#ifdef OPJ_HAVE_LIBTIFF
+	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
+#endif
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
@@ -1346,7 +1368,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	if (initParams->img_fol.set_imgdir == 1) {
 		num_images = get_num_images(initParams->img_fol.imgdirpath);
 		if (num_images <= 0) {
-			fprintf(stdout, "Folder is empty\n");
+			fprintf(stderr, "Folder is empty\n");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1367,7 +1389,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
 			}
 		}
-		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+		if (load_images(dirptr, initParams->img_fol.imgdirpath, initParams->parameters.verbose) == 1) {
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -1384,7 +1406,8 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 		if (initParams->img_fol.set_imgdir == 1) {
 			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
-				fprintf(stderr, "skipping file...\n");
+				if (initParams->parameters.verbose)
+					fprintf(stdout, "skipping file...\n");
 				continue;
 			}
 		}
@@ -1401,7 +1424,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	}
 	t_cumulative = grk_clock() - t_cumulative;
-	if (num_decompressed_images && rc == EXIT_SUCCESS) {
+	if (initParams->parameters.verbose && num_decompressed_images && rc == EXIT_SUCCESS) {
 		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}
 cleanup:
@@ -1498,14 +1521,15 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		break;
 	}
 	default:
-		fprintf(stderr, "skipping file..\n");
+		if (parameters->verbose)
+			fprintf(stdout, "skipping file..\n");
 		failed = 1;
 		goto cleanup;
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(info->l_codec, info_callback, nullptr);
-	opj_set_warning_handler(info->l_codec, warning_callback, nullptr);
+	opj_set_info_handler(info->l_codec, info_callback, &parameters->verbose);
+	opj_set_warning_handler(info->l_codec, warning_callback, &parameters->verbose);
 	opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
 	/* Setup the decoder decoding parameters using user parameters */
@@ -1567,7 +1591,8 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			failed = 1;
 			goto cleanup;
 		}
-		fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
+		if (parameters->verbose)
+			fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
 	}
 
 cleanup:
@@ -1732,7 +1757,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 
@@ -1742,7 +1768,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 
@@ -1752,17 +1779,19 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 #ifdef OPJ_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
-			if (imagetotif(image, parameters->outfile, parameters->compression)) {
+			if (imagetotif(image, parameters->outfile, parameters->compression, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 #endif /* OPJ_HAVE_LIBTIFF */
@@ -1772,7 +1801,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 
@@ -1782,7 +1812,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 
@@ -1792,7 +1823,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 #ifdef OPJ_HAVE_LIBPNG
@@ -1802,7 +1834,8 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				failed = 1;
 			}
 			else {
-				fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
 #endif /* OPJ_HAVE_LIBPNG */

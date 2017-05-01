@@ -178,10 +178,8 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
     if(!dir) {
         fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
         return 1;
-    } else	{
-        fprintf(stderr,"Folder opened successfully\n");
-    }
-
+    } 
+	
     while((content=readdir(dir))!=nullptr) {
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
             continue;
@@ -449,7 +447,7 @@ static void info_callback(const char *msg, void *client_data)
 int main(int argc, char *argv[])
 {
 
-#ifndef NDEBUG
+#ifdef DEBUG_UNIT_TESTS
 	std::string out;
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];

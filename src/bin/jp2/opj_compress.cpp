@@ -354,7 +354,7 @@ static unsigned int get_num_images(char *imgdirpath)
     return num_images;
 }
 
-static int load_images(dircnt_t *dirptr, char *imgdirpath)
+static int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose)
 {
     DIR *dir;
     struct dirent* content;
@@ -366,9 +366,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
     if(!dir) {
         fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
         return 1;
-    } else	{
-        fprintf(stderr,"Folder opened successfully\n");
-    }
+    } 
 
     while((content=readdir(dir))!=NULL) {
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
@@ -416,12 +414,18 @@ static const char* get_path_separator() {
 }
 
 
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, img_fol_t *out_folder, opj_cparameters_t *parameters){
+static char get_next_file(int imageno,
+							dircnt_t *dirptr,
+							img_fol_t *img_fol,
+							img_fol_t *out_folder,
+							opj_cparameters_t *parameters){
+
     char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN],outfilename[OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
     char *temp_p, temp1[OPJ_PATH_LEN]="";
 
     strcpy(image_filename,dirptr->filename[imageno]);
-    fprintf(stderr,"File Number %d \"%s\"\n",imageno,image_filename);
+	if (parameters->verbose)
+		fprintf(stdout,"File Number %d \"%s\"\n",imageno,image_filename);
     parameters->decod_format = get_file_format(image_filename);
     if (parameters->decod_format == -1)
         return 1;
@@ -623,6 +627,10 @@ static int parse_cmdline_encoder_ex(int argc,
 		ValueArg<uint32_t> rateControlAlgoArg("A", "RateControlAlgorithm",
 			"Rate control algorithm",
 			false, 0, "unsigned integer", cmd);
+
+
+		SwitchArg verboseArg("v", "verbose",
+			"Verbose", cmd);
 
 		cmd.parse(argc, argv);
 
@@ -1039,6 +1047,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				fprintf(stderr, "Incorrect value!! must be 24 or 48\n");
 				return 1;
 			}
+			if (parameters->verbose)
 			fprintf(stdout, "CINEMA 2K profile activated\n"
 				"Other options specified could be overridden\n");
 		
@@ -1046,8 +1055,9 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (cinema4KArg.isSet()) {
 			parameters->rsiz = OPJ_PROFILE_CINEMA_4K;
-			fprintf(stdout, "CINEMA 4K profile activated\n"
-				"Other options specified could be overridden\n");
+			if (parameters->verbose)
+				fprintf(stdout, "CINEMA 4K profile activated\n"
+					"Other options specified could be overridden\n");
 		}
 
 		if (modeArg.isSet()) {
@@ -1189,6 +1199,11 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->tp_on = 1;
 
 		}
+
+		if (verboseArg.isSet()) {
+			parameters->verbose = verboseArg.getValue();
+		}
+
 	}
 	catch (ArgException &e)  // catch any exceptions
 	{
@@ -1289,7 +1304,10 @@ sample warning debug callback expecting no client object
 */
 static void warning_callback(const char *msg, void *client_data)
 {
-    (void)client_data;
+	bool verbose = true;
+	if (client_data)
+		verbose = *((bool*)client_data);
+	if (verbose)
     fprintf(stdout, "[WARNING] %s", msg);
 }
 /**
@@ -1297,7 +1315,10 @@ sample debug callback expecting no client object
 */
 static void info_callback(const char *msg, void *client_data)
 {
-    (void)client_data;
+	bool verbose = true;
+	if (client_data)
+		verbose = *((bool*)client_data);
+	if (verbose)
     fprintf(stdout, "[INFO] %s", msg);
 }
 
@@ -1377,17 +1398,13 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
 
-#ifndef NDEBUG
+#ifdef DEBUG_UNIT_TESTS
 	std::string out;
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];
 	}
 	out += "\n";
 	printf(out.c_str());
-#endif
-
-#ifdef OPJ_HAVE_LIBTIFF
-	tiffSetErrorAndWarningHandlers();
 #endif
 
 	CompressInitParams initParams;
@@ -1421,7 +1438,7 @@ int main(int argc, char **argv) {
     if(initParams.img_fol.set_imgdir==1){
         num_images=get_num_images(initParams.img_fol.imgdirpath);
 		if (num_images == 0) {
-			fprintf(stdout, "Folder is empty\n");
+			fprintf(stderr, "Folder is empty\n");
 			goto cleanup;
 		}
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
@@ -1443,7 +1460,7 @@ int main(int argc, char **argv) {
         for(i=0;i<num_images;i++){
             dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
         }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
+        if(load_images(dirptr, initParams.img_fol.imgdirpath, initParams.parameters.verbose)==1){
 			goto cleanup;
         }
     }else{
@@ -1454,13 +1471,15 @@ int main(int argc, char **argv) {
     /*Encoding image one by one*/
     for(imageno=0;imageno<num_images;imageno++)	{
         image = NULL;
-        fprintf(stderr,"\n");
+		if (initParams.parameters.verbose)
+			fprintf(stdout,"\n");
 		//restore cached settings
 		initParams.parameters.tcp_mct = tcp_mct;
 		initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
         if(initParams.img_fol.set_imgdir==1){
             if (get_next_file((int)imageno, dirptr,&initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-                fprintf(stderr,"skipping file...\n");
+				if (initParams.parameters.verbose)
+					fprintf(stdout,"skipping file...\n");
                 continue;
             }
         }
@@ -1478,13 +1497,14 @@ int main(int argc, char **argv) {
 		}
 
 		num_compressed_files++;
-		fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
+		if (initParams.parameters.verbose)
+			fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
 		opj_image_destroy(image);
     }
 
 
     t = grk_clock() - t;
-    if (num_compressed_files) {
+    if (initParams.parameters.verbose && num_compressed_files) {
 		    fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0)/(double)num_compressed_files));
     }
 
@@ -1685,8 +1705,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(l_codec, info_callback, nullptr);
-	opj_set_warning_handler(l_codec, warning_callback, nullptr);
+	opj_set_info_handler(l_codec, info_callback, &parameters->verbose);
+	opj_set_warning_handler(l_codec, warning_callback, &parameters->verbose);
 	opj_set_error_handler(l_codec, error_callback, nullptr);
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
@@ -1818,6 +1838,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 								initParams->plugin_path) == 1) {
 		return 1;
 	}
+
+#ifdef OPJ_HAVE_LIBTIFF
+	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
+#endif
 	
 	initParams->initialized = true;
 
@@ -1890,11 +1914,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 				}
 			}
-			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+			if (load_images(dirptr, initParams->img_fol.imgdirpath, initParams->parameters.verbose) == 1) {
 				goto cleanup;
 			}
 			if (num_images == 0) {
-				fprintf(stdout, "Folder is empty\n");
+				fprintf(stderr, "Folder is empty\n");
 				goto cleanup;
 			}
 		}

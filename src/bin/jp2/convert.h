@@ -106,8 +106,8 @@ extern "C" {
 
 	/* TIFF conversion*/
 	opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, bool applyICC);
-	int imagetotif(opj_image_t *image, const char *outfile, uint32_t compression);
-	void tiffSetErrorAndWarningHandlers();
+	int imagetotif(opj_image_t *image, const char *outfile, uint32_t compression, bool verbose);
+	void tiffSetErrorAndWarningHandlers(bool verbose);
 	/**
 	Load a single image component encoded in PGX file format
 	@param filename Name of the PGX file to load

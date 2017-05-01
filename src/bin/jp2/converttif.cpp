@@ -76,18 +76,21 @@ extern "C" {
 #include <cassert>
 #include <memory>
 
-
+static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\n");
 }
 
 void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
-	vfprintf(stdout, fmt, ap);
-	fprintf(stdout, "\n");
+	if (tiffWarningHandlerVerbose) {
+		vfprintf(stdout, fmt, ap);
+		fprintf(stdout, "\n");
+	}
 }
 
-void tiffSetErrorAndWarningHandlers() {
+void tiffSetErrorAndWarningHandlers(bool verbose) {
+	tiffWarningHandlerVerbose = verbose;
 	TIFFSetErrorHandler(MyTiffErrorHandler);
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
@@ -601,7 +604,7 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
     }
 }
 
-int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
+int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
 {
     int tiPhoto;
     TIFF *tif=nullptr;
@@ -815,7 +818,8 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression)
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
 	if (numAlphaChannels && (firstAlpha+numAlphaChannels >= numcomps)) {
-		fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
+		if (verbose)
+			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
 		numAlphaChannels = 0;
 	}
 	if (numAlphaChannels) {
@@ -1569,7 +1573,8 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
     memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
 
     if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
-        fprintf(stdout,"WARNING:\n"
+		if (parameters->verbose)
+			fprintf(stdout,"WARNING:\n"
                 "Input image bitdepth is %d bits\n"
                 "TIF conversion has automatically rescaled to 12-bits\n"
                 "to comply with cinema profiles.\n",
