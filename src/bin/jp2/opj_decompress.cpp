@@ -1551,6 +1551,15 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 	info->image = image;
+
+	// limit to 16 bit precision
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		if (image->comps[i].prec > 16) {
+			fprintf(stderr, "Precision = %d not supported:\n", image->comps[i].prec);
+			failed = 1;
+			goto cleanup;
+		}
+	}
 	if (info->generate_tile_func) {
 		info->tile = info->generate_tile_func(info->deviceId,
 												info->compressed_tile_id,
