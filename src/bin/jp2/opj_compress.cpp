@@ -417,39 +417,30 @@ static const char* get_path_separator() {
 static char get_next_file(int imageno,
 							dircnt_t *dirptr,
 							img_fol_t *img_fol,
-							img_fol_t *out_folder,
+							img_fol_t *out_fol,
 							opj_cparameters_t *parameters){
 
-    char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN],outfilename[OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
-    char *temp_p, temp1[OPJ_PATH_LEN]="";
-
-    strcpy(image_filename,dirptr->filename[imageno]);
+	std::string image_filename = dirptr->filename[imageno];
 	if (parameters->verbose)
-		fprintf(stdout,"File Number %d \"%s\"\n",imageno,image_filename);
-    parameters->decod_format = get_file_format(image_filename);
-    if (parameters->decod_format == -1)
-        return 1;
-    sprintf(infilename,"%s%s%s",img_fol->imgdirpath, get_path_separator(),image_filename);
-    if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
-        return 1;
-    }
-	
-    /*Set output file*/
-	auto fname = get_file_name(image_filename);
-	if (!fname)
+		fprintf(stdout, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
+	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
+	parameters->decod_format = get_file_format((char*)infilename.c_str());
+	if (parameters->decod_format == -1)
 		return 1;
-    strcpy(temp_ofname,fname);
-    while((temp_p = strtok(NULL,".")) != NULL) {
-        strcat(temp_ofname,temp1);
-        sprintf(temp1,".%s",temp_p);
-    }
-    if(img_fol->set_out_format==1){
-        sprintf(outfilename,"%s%s%s.%s", out_folder->imgdirpath, get_path_separator(),temp_ofname,img_fol->out_format);
-        if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
-            return 1;
-        }
-    }
-    return 0;
+	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
+		return 1;
+	}
+	auto pos = image_filename.find(".");
+	if (pos == std::string::npos)
+		return 1;
+	std::string temp_ofname = image_filename.substr(0, pos);
+	if (img_fol->set_out_format == 1) {
+		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + temp_ofname + "." + img_fol->out_format;
+		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
+			return 1;
+		}
+	}
+	return 0;
 }
 
 
