@@ -283,6 +283,13 @@ TIFFRGBAImageBegin(TIFFRGBAImage* img, TIFF* tif, int stop, char emsg[1024])
 	img->redcmap = NULL;
 	img->greencmap = NULL;
 	img->bluecmap = NULL;
+	img->Map = NULL;
+	img->BWmap = NULL;
+	img->PALmap = NULL;
+	img->ycbcr = NULL;
+	img->cielab = NULL;
+	img->UaToAa = NULL;
+	img->Bitdepth16To8 = NULL;
 	img->req_orientation = ORIENTATION_BOTLEFT;     /* It is the default */
 
 	img->tif = tif;
@@ -468,13 +475,6 @@ TIFFRGBAImageBegin(TIFFRGBAImage* img, TIFF* tif, int stop, char emsg[1024])
 			    photoTag, img->photometric);
                         goto fail_return;
 	}
-	img->Map = NULL;
-	img->BWmap = NULL;
-	img->PALmap = NULL;
-	img->ycbcr = NULL;
-	img->cielab = NULL;
-	img->UaToAa = NULL;
-	img->Bitdepth16To8 = NULL;
 	TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &img->width);
 	TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &img->height);
 	TIFFGetFieldDefaulted(tif, TIFFTAG_ORIENTATION, &img->orientation);
@@ -494,10 +494,7 @@ TIFFRGBAImageBegin(TIFFRGBAImage* img, TIFF* tif, int stop, char emsg[1024])
 	return 1;
 
   fail_return:
-        _TIFFfree( img->redcmap );
-        _TIFFfree( img->greencmap );
-        _TIFFfree( img->bluecmap );
-        img->redcmap = img->greencmap = img->bluecmap = NULL;
+        TIFFRGBAImageEnd( img );
         return 0;
 }
 
@@ -1136,11 +1133,15 @@ gtStripSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 #define	REPEAT2(op)	op; op
 #define	CASE8(x,op)			\
     switch (x) {			\
-    case 7: op; case 6: op; case 5: op;	\
-    case 4: op; case 3: op; case 2: op;	\
+    case 7: op; /*-fallthrough*/ \
+    case 6: op; /*-fallthrough*/ \
+    case 5: op; /*-fallthrough*/ \
+    case 4: op; /*-fallthrough*/ \
+    case 3: op; /*-fallthrough*/ \
+    case 2: op; /*-fallthrough*/ \
     case 1: op;				\
     }
-#define	CASE4(x,op)	switch (x) { case 3: op; case 2: op; case 1: op; }
+#define	CASE4(x,op)	switch (x) { case 3: op; /*-fallthrough*/ case 2: op; /*-fallthrough*/ case 1: op; }
 #define	NOP
 
 #define	UNROLL8(w, op1, op2) {		\
@@ -1305,7 +1306,7 @@ DECLAREContigPutFunc(putagreytile)
     while (h-- > 0) {
 	for (x = w; x-- > 0;)
         {
-            *cp++ = BWmap[*pp][0] & (*(pp+1) << 24 | ~A1);
+            *cp++ = BWmap[*pp][0] & ((uint32)*(pp+1) << 24 | ~A1);
             pp += samplesperpixel;
         }
 	cp += toskew;
@@ -2046,9 +2047,9 @@ DECLAREContigPutFunc(putcontig8bitYCbCr41tile)
 	    int32 Cr = pp[5];
 
             switch( (w&3) ) {
-              case 3: YCbCrtoRGB(cp [2], pp[2]);
-              case 2: YCbCrtoRGB(cp [1], pp[1]);
-              case 1: YCbCrtoRGB(cp [0], pp[0]);
+              case 3: YCbCrtoRGB(cp [2], pp[2]); /*-fallthrough*/
+              case 2: YCbCrtoRGB(cp [1], pp[1]); /*-fallthrough*/
+              case 1: YCbCrtoRGB(cp [0], pp[0]); /*-fallthrough*/
               case 0: break;
             }
 
@@ -2816,6 +2817,13 @@ int
 TIFFReadRGBAStrip(TIFF* tif, uint32 row, uint32 * raster )
 
 {
+    return TIFFReadRGBAStripExt(tif, row, raster, 0 );
+}
+
+int
+TIFFReadRGBAStripExt(TIFF* tif, uint32 row, uint32 * raster, int stop_on_error)
+
+{
     char 	emsg[1024] = "";
     TIFFRGBAImage img;
     int 	ok;
@@ -2836,7 +2844,7 @@ TIFFReadRGBAStrip(TIFF* tif, uint32 row, uint32 * raster )
 		return (0);
     }
 
-    if (TIFFRGBAImageOK(tif, emsg) && TIFFRGBAImageBegin(&img, tif, 0, emsg)) {
+    if (TIFFRGBAImageOK(tif, emsg) && TIFFRGBAImageBegin(&img, tif, stop_on_error, emsg)) {
 
         img.row_offset = row;
         img.col_offset = 0;
@@ -2866,6 +2874,13 @@ TIFFReadRGBAStrip(TIFF* tif, uint32 row, uint32 * raster )
 int
 TIFFReadRGBATile(TIFF* tif, uint32 col, uint32 row, uint32 * raster)
 
+{
+    return TIFFReadRGBATileExt(tif, col, row, raster, 0 );
+}
+
+
+int
+TIFFReadRGBATileExt(TIFF* tif, uint32 col, uint32 row, uint32 * raster, int stop_on_error )
 {
     char 	emsg[1024] = "";
     TIFFRGBAImage img;
@@ -2901,7 +2916,7 @@ TIFFReadRGBATile(TIFF* tif, uint32 col, uint32 row, uint32 * raster)
      */
     
     if (!TIFFRGBAImageOK(tif, emsg) 
-	|| !TIFFRGBAImageBegin(&img, tif, 0, emsg)) {
+	|| !TIFFRGBAImageBegin(&img, tif, stop_on_error, emsg)) {
 	    TIFFErrorExt(tif->tif_clientdata, TIFFFileName(tif), "%s", emsg);
 	    return( 0 );
     }

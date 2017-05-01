@@ -259,11 +259,12 @@ PredictorSetupEncode(TIFF* tif)
 
 #define REPEAT4(n, op)		\
     switch (n) {		\
-    default: { tmsize_t i; for (i = n-4; i > 0; i--) { op; } } \
-    case 4:  op;		\
-    case 3:  op;		\
-    case 2:  op;		\
-    case 1:  op;		\
+    default: { \
+        tmsize_t i; for (i = n-4; i > 0; i--) { op; } }  /*-fallthrough*/  \
+    case 4:  op; /*-fallthrough*/ \
+    case 3:  op; /*-fallthrough*/ \
+    case 2:  op; /*-fallthrough*/ \
+    case 1:  op; /*-fallthrough*/ \
     case 0:  ;			\
     }
 
