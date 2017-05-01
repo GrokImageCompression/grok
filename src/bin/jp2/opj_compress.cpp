@@ -1523,7 +1523,7 @@ img_fol_t img_fol_plugin, out_fol_plugin;
 
 static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
 	opj_cparameters_t* parameters = info->encoder_parameters;
-	bool bSuccess;
+	bool bSuccess = true;
 	opj_stream_t *l_stream = nullptr;
 	opj_codec_t* l_codec = nullptr;
 	opj_image_t *image = info->image;
@@ -1532,8 +1532,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	char temp1[OPJ_PATH_LEN] = "";
 
 	uint32_t l_nb_tiles = 4;
-	bool bUseTiles = false; /* true */
-
+	bool bUseTiles = false;
+	bool createdImage = false;
 								
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
 		if (info->outputFileNameIsRelative) {
@@ -1551,12 +1551,12 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		}
 	}
 	else {
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 
-	bool createdImage = false;
-	if (!image) {
 
+	if (!image) {
 		parameters->decod_format = get_file_format((char*)info->input_file_name);
 
 		// check that format is supported
@@ -1571,8 +1571,10 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		case PNG_DFMT:
 			break;
 		default:
-			fprintf(stderr, "skipping file...\n");
-			return false;
+			if (info->encoder_parameters->verbose)
+				fprintf(stdout, "skipping file...\n");
+			bSuccess = false;
+			goto cleanup;
 		}
 
 		/* decode the source image */
@@ -1583,7 +1585,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = pgxtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pgx file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1591,7 +1594,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = pnmtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pnm file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1599,7 +1603,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = bmptoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load bmp file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1608,7 +1613,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = tiftoimage(info->input_file_name, info->encoder_parameters,false);
 			if (!image) {
 				fprintf(stderr, "Unable to load tiff file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 #endif /* OPJ_HAVE_LIBTIFF */
@@ -1617,7 +1623,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = rawtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1625,7 +1632,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = rawltoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1633,7 +1641,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = tgatoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load tga file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 
@@ -1642,7 +1651,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			image = pngtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load png file\n");
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 			break;
 #endif /* OPJ_HAVE_LIBPNG */
@@ -1653,9 +1663,19 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		*/
 		if (!image) {
 			fprintf(stderr, "Unable to load file: no image generated.\n");
-			return false;
+			bSuccess = false;
+			goto cleanup;
 		}
 		createdImage = true;
+	}
+
+	// limit to 16 bit precision
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		if (image->comps[i].prec > 16) {
+			fprintf(stderr, "Precision = %d not supported:\n", image->comps[i].prec);
+			bSuccess = false;
+			goto cleanup;
+		}
 	}
 
 	/* Decide if MCT should be used */
@@ -1666,12 +1686,14 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		if ((parameters->tcp_mct == 1) && (image->numcomps < 3)) {
 			fprintf(stderr, "RGB->YCC conversion cannot be used:\n");
 			fprintf(stderr, "Input image has less than 3 components\n");
-			return false;
+			bSuccess = false;
+			goto cleanup;
 		}
 		if ((parameters->tcp_mct == 2) && (!parameters->mct_data)) {
 			fprintf(stderr, "Custom MCT has been set but no array-based MCT\n");
 			fprintf(stderr, "has been provided. Aborting.\n");
-			return false;
+			bSuccess = false;
+			goto cleanup;
 		}
 	}
 
@@ -1698,10 +1720,10 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		break;
 	}
 	default:
-		fprintf(stderr, "skipping file..\n");
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		if (parameters->verbose)
+			fprintf(stdout, "skipping file..\n");
+		bSuccess = false;
+		goto cleanup;
 	}
 
 	/* catch events using our callbacks and give a local context */
@@ -1711,11 +1733,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
 		fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
-		if (l_codec)
-			opj_destroy_codec(l_codec);
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
@@ -1728,24 +1747,16 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	
 	if (!l_stream) {
 		fprintf(stderr, "failed to create stream\n");
-		if (l_codec)
-			opj_destroy_codec(l_codec);
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 
 	/* encode the image */
 	bSuccess = opj_start_compress(l_codec, image, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_start_compress\n");
-		if (l_stream)
-			opj_stream_destroy(l_stream);
-		if (l_codec)
-			opj_destroy_codec(l_codec);
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 	if (bSuccess && bUseTiles) {
 		uint8_t *l_data;
@@ -1755,13 +1766,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
 			if (!opj_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
 				fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n", i);
-				if (l_stream)
-					opj_stream_destroy(l_stream);
-				if (l_codec)
-					opj_destroy_codec(l_codec);
-				if (createdImage)
-					opj_image_destroy(image);
-				return false;
+				bSuccess = false;
+				goto cleanup;
 			}
 		}
 		free(l_data);
@@ -1770,13 +1776,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		bSuccess = bSuccess && opj_encode_with_plugin(l_codec, info->tile, l_stream);
 		if (!bSuccess) {
 			fprintf(stderr, "failed to encode image: opj_encode\n");
-			if (l_stream)
-				opj_stream_destroy(l_stream);
-			if (l_codec)
-				opj_destroy_codec(l_codec);
-			if (createdImage)
-				opj_image_destroy(image);
-			return false;
+			bSuccess = false;
+			goto cleanup;
 		}
 	}
 
@@ -1784,13 +1785,8 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image: opj_end_compress\n");
-		if (l_stream)
-			opj_stream_destroy(l_stream);
-		if (l_codec)
-			opj_destroy_codec(l_codec);
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 
 	if (buff) {
@@ -1800,20 +1796,31 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		fclose(fp);
 
 	}
-	opj_stream_destroy(l_stream);
-	opj_destroy_codec(l_codec);
+	if (l_stream) {
+		opj_stream_destroy(l_stream);
+		l_stream = nullptr;
+	}
+
+	if (l_codec) {
+		opj_destroy_codec(l_codec);
+		l_codec = nullptr;
+	}
 
 	if (!bSuccess) {
 		fprintf(stderr, "failed to encode image\n");
 		remove(parameters->outfile);
-		if (createdImage)
-			opj_image_destroy(image);
-		return false;
+		bSuccess = false;
+		goto cleanup;
 	}
 
+cleanup:
+	if (l_stream)
+		opj_stream_destroy(l_stream);
+	if (l_codec)
+		opj_destroy_codec(l_codec);
 	if (createdImage)
 		opj_image_destroy(image);
-	return true;
+	return bSuccess;
 }
 
 
