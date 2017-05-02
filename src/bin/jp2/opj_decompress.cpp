@@ -1212,7 +1212,7 @@ static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 int main(int argc, char **argv)
 {
 
-#ifdef DEBUG_UNIT_TESTS
+#ifndef NDEBUG
 	std::string out;
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];
