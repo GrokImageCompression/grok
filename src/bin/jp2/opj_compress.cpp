@@ -1525,6 +1525,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false;
 	bool createdImage = false;
+	uint8_t* buff = nullptr;
 								
 	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
 		if (info->outputFileNameIsRelative) {
@@ -1729,7 +1730,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
-	uint8_t* buff = nullptr;
 	l_stream = opj_stream_create_default_file_stream(outfile, false);
 	//  option to write to buffer, assuming one knows how large uncompressed 
 	//auto len = (image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8);
