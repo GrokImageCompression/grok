@@ -1105,6 +1105,8 @@ bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 
 	}
 	pluginLoaded = !rc;
+	if (!pluginLoaded)
+		minpf_cleanup_plugin_manager();
 	return pluginLoaded;
 }
 

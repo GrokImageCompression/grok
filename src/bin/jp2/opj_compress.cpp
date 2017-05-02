@@ -1844,8 +1844,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!opj_initialize(initParams->plugin_path))
+	if (!opj_initialize(initParams->plugin_path)) {
+		opj_cleanup();
 		return 1;
+	}
 
 	img_fol_plugin = initParams->img_fol;
 	out_fol_plugin = initParams->out_fol;
