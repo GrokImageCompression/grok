@@ -139,7 +139,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
  *******************************************************************************/
 int main(int argc, char **argv)
 {
-#ifdef DEBUG_UNIT_TESTS
+#ifndef NDEBUG
 	std::string out;
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];
