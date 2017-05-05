@@ -1,9 +1,10 @@
-
+=======================================
 How to build and install Grok binaries
-==========================================
+=======================================
 
+---------------------------------
 UNIX/LINUX/MacOSX/Windows systems
---------------------------
+---------------------------------
 
 Using cmake (see www.cmake.org)
 
@@ -43,7 +44,7 @@ Main available cmake flags:
     make
     make Experimental
   Note : JPEG2000 test files are available with 'git clone https://github.com/GrokImageCompression/grok-test-data.git'.
-  If '-DGROK_DATA_ROOT:PATH' option is omitted, test files will be automatically searched in '${CMAKE_SOURCE_DIR}/../data',
+  If '-DGROK_DATA_ROOT:PATH' option is omitted, test files will be automatically searched in '${CMAKE_SOURCE_DIR}/../grok-test-data',
   corresponding to the location of the data directory when compiling from the trunk (and assuming the data directory has
   been checked out of course).
 
