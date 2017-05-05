@@ -667,6 +667,9 @@ typedef struct opj_dparameters {
     uint32_t nb_tile_to_decode;
     uint32_t flags;
 	uint32_t numThreads;
+
+	// do not use : solely for backwards-compatibility
+	uint32_t jpwl_exp_comps;
 } opj_dparameters_t;
 
 
