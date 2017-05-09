@@ -1413,7 +1413,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		}
 
 		//1. try to decode using plugin
-		int rc = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+		rc = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
 
 		//2. fallback
 		if (rc == -1 || rc == EXIT_FAILURE) {
