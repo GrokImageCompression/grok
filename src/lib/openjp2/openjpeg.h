@@ -615,6 +615,9 @@ typedef struct opj_header_info {
 	// until stream is destroyed
 	grk_jp2_color_t color;
 
+	uint8_t* xml_data;
+	size_t xml_data_len;
+
 } opj_header_info_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
@@ -726,6 +729,9 @@ typedef struct opj_decompress_params {
 	bool upsample;
 	/* split output components to different files */
 	bool split_pnm;
+
+	/* serialize xml metadata to disk */
+	bool serialize_xml;
 
 	uint32_t compression;
 	int32_t  compressionLevel;   // compression "quality", depending on file format we are writing to
