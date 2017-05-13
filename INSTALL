@@ -15,9 +15,9 @@ UNIX/LINUX/OSX
 
 DEBUG/RELEASE
 
-Default build type is debug. For a release build, run:
+Default build type is Release. For a debug build, run:
 
-$ cmake -DCMAKE_BUILD_TYPE=Release /PATH/TO/SOURCE
+$ cmake -DCMAKE_BUILD_TYPE=Debug /PATH/TO/SOURCE
 
 INSTALL
 
