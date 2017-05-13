@@ -64,7 +64,7 @@
 #endif
 
 #include <fcntl.h>
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
@@ -215,7 +215,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 {
     grk_codec_private_t *l_codec = nullptr;
 
-    l_codec = (grk_codec_private_t*) grk_calloc(1, sizeof(grk_codec_private_t));
+    l_codec = (grk_codec_private_t*) grok_calloc(1, sizeof(grk_codec_private_t));
     if (!l_codec) {
         return nullptr;
     }
@@ -294,7 +294,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = grk_j2k_create_decompress();
 
         if (! l_codec->m_codec) {
-            grk_free(l_codec);
+            grok_free(l_codec);
             return NULL;
         }
 
@@ -374,7 +374,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         l_codec->m_codec = grk_jp2_create(true);
 
         if (! l_codec->m_codec) {
-            grk_free(l_codec);
+            grok_free(l_codec);
             return nullptr;
         }
 
@@ -382,7 +382,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_UNKNOWN:
     case OPJ_CODEC_JPT:
     default:
-        grk_free(l_codec);
+        grok_free(l_codec);
         return nullptr;
     }
 
@@ -609,7 +609,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 {
     grk_codec_private_t *l_codec = nullptr;
 
-    l_codec = (grk_codec_private_t*)grk_calloc(1, sizeof(grk_codec_private_t));
+    l_codec = (grk_codec_private_t*)grok_calloc(1, sizeof(grk_codec_private_t));
     if (!l_codec) {
         return nullptr;
     }
@@ -648,7 +648,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec = grk_j2k_create_compress();
         if (! l_codec->m_codec) {
-            grk_free(l_codec);
+            grok_free(l_codec);
             return nullptr;
         }
 
@@ -686,7 +686,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec = grk_jp2_create(false);
         if (! l_codec->m_codec) {
-            grk_free(l_codec);
+            grok_free(l_codec);
             return nullptr;
         }
 
@@ -695,7 +695,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_UNKNOWN:
     case OPJ_CODEC_JPT:
     default:
-        grk_free(l_codec);
+        grok_free(l_codec);
         return nullptr;
     }
 
@@ -845,7 +845,7 @@ bool OPJ_CALLCONV opj_set_MCT(opj_cparameters_t *parameters,
 
     /* use array based MCT */
     parameters->tcp_mct = 2;
-    parameters->mct_data = grk_malloc(l_mct_total_size);
+    parameters->mct_data = grok_malloc(l_mct_total_size);
     if (! parameters->mct_data) {
         return false;
     }
@@ -895,7 +895,7 @@ void OPJ_CALLCONV opj_destroy_codec(opj_codec_t *p_codec)
         }
 
         l_codec->m_codec = nullptr;
-        grk_free(l_codec);
+        grok_free(l_codec);
     }
 }
 
@@ -933,14 +933,14 @@ void OPJ_CALLCONV opj_destroy_cstr_info(opj_codestream_info_v2_t **cstr_info)
     if (cstr_info) {
 
         if ((*cstr_info)->m_default_tile_info.tccp_info) {
-            grk_free((*cstr_info)->m_default_tile_info.tccp_info);
+            grok_free((*cstr_info)->m_default_tile_info.tccp_info);
         }
 
         if ((*cstr_info)->tile_info) {
             /* FIXME not used for the moment*/
         }
 
-        grk_free((*cstr_info));
+        grok_free((*cstr_info));
         (*cstr_info) = NULL;
     }
 }
@@ -1052,7 +1052,7 @@ bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* comp)
     if (!comp)
         return false;
 
-    data = (int32_t*)grk_aligned_malloc(comp->w * comp->h * sizeof(uint32_t));
+    data = (int32_t*)grok_aligned_malloc(comp->w * comp->h * sizeof(uint32_t));
     if (!data)
         return false;
     opj_image_single_component_data_free(comp);
@@ -1065,7 +1065,7 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
     if (!comp)
         return;
     if (comp->data) {
-        grk_aligned_free(comp->data);
+        grok_aligned_free(comp->data);
         comp->data = NULL;
     }
 }

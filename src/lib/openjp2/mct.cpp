@@ -65,7 +65,7 @@
 #include <smmintrin.h>
 #endif
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
@@ -499,7 +499,7 @@ bool grk_mct_encode_custom(
 
     OPJ_ARG_NOT_USED(isSigned);
 
-    lCurrentData = (int32_t *) grk_malloc((pNbComp + lNbMatCoeff) * sizeof(int32_t));
+    lCurrentData = (int32_t *) grok_malloc((pNbComp + lNbMatCoeff) * sizeof(int32_t));
     if (! lCurrentData) {
         return false;
     }
@@ -527,7 +527,7 @@ bool grk_mct_encode_custom(
         }
     }
 
-    grk_free(lCurrentData);
+    grok_free(lCurrentData);
 
     return true;
 }
@@ -550,7 +550,7 @@ bool grk_mct_decode_custom(
 
     OPJ_ARG_NOT_USED(isSigned);
 
-    lCurrentData = (float *) grk_malloc (2 * pNbComp * sizeof(float));
+    lCurrentData = (float *) grok_malloc (2 * pNbComp * sizeof(float));
     if (! lCurrentData) {
         return false;
     }
@@ -569,7 +569,7 @@ bool grk_mct_decode_custom(
             *(lData[j]++) = (float) (lCurrentResult[j]);
         }
     }
-    grk_free(lCurrentData);
+    grok_free(lCurrentData);
     return true;
 }
 

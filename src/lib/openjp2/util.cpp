@@ -15,7 +15,7 @@
 *
 */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))

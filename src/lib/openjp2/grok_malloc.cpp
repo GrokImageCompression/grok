@@ -48,7 +48,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #define OPJ_SKIP_POISON
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 #if defined(OPJ_HAVE_MALLOC_H) && defined(OPJ_HAVE_MEMALIGN)
 # include <malloc.h>
@@ -121,7 +121,7 @@ static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
 #endif
     return ptr;
 }
-static inline void *grk_aligned_realloc_n(void *ptr, size_t alignment, size_t new_size)
+static inline void *grok_aligned_realloc_n(void *ptr, size_t alignment, size_t new_size)
 {
     void *r_ptr;
 
@@ -203,14 +203,14 @@ static inline void *grk_aligned_realloc_n(void *ptr, size_t alignment, size_t ne
 #endif
     return r_ptr;
 }
-void * grk_malloc(size_t size)
+void * grok_malloc(size_t size)
 {
     if (size == 0U) { /* prevent implementation defined behavior of realloc */
         return NULL;
     }
     return malloc(size);
 }
-void * grk_calloc(size_t num, size_t size)
+void * grok_calloc(size_t num, size_t size)
 {
 	if (num == 0 || size == 0) {
 		/* prevent implementation defined behavior of realloc */
@@ -219,16 +219,16 @@ void * grk_calloc(size_t num, size_t size)
 	return calloc(num, size);
 }
 
-void *grk_aligned_malloc(size_t size)
+void *grok_aligned_malloc(size_t size)
 {
     return grk_aligned_alloc_n(16U, size);
 }
-void * grk_aligned_realloc(void *ptr, size_t size)
+void * grok_aligned_realloc(void *ptr, size_t size)
 {
-    return grk_aligned_realloc_n(ptr, 16U, size);
+    return grok_aligned_realloc_n(ptr, 16U, size);
 }
 
-void grk_aligned_free(void* ptr)
+void grok_aligned_free(void* ptr)
 {
 #if defined(OPJ_HAVE_POSIX_MEMALIGN) || defined(OPJ_HAVE_MEMALIGN)
     free( ptr );
@@ -242,14 +242,14 @@ void grk_aligned_free(void* ptr)
 #endif
 }
 
-void * grk_realloc(void *ptr, size_t new_size)
+void * grok_realloc(void *ptr, size_t new_size)
 {
     if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
         return NULL;
     }
     return realloc(ptr, new_size);
 }
-void grk_free(void *ptr)
+void grok_free(void *ptr)
 {
 	if (ptr)
 		free(ptr);

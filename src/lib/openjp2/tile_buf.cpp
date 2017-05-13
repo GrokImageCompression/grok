@@ -16,7 +16,7 @@
 */
 
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
 									bool isEncoder,
@@ -77,7 +77,7 @@ bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
     for (resno = (int32_t)(tilec->numresolutions-1); resno >= 0; --resno) {
         uint32_t bandno;
         grk_tcd_resolution_t*  tcd_res = tilec->resolutions + resno;
-        grk_tile_buf_resolution_t* res = (grk_tile_buf_resolution_t*)grk_calloc(1, sizeof(grk_tile_buf_resolution_t));
+        grk_tile_buf_resolution_t* res = (grk_tile_buf_resolution_t*)grok_calloc(1, sizeof(grk_tile_buf_resolution_t));
         if (!res) {
             grk_tile_buf_destroy_component(comp);
             return false;
@@ -161,7 +161,7 @@ bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf)
         return false;
 
     if ((buf->data == nullptr) || ((buf->data_size_needed > buf->data_size) && (buf->owns_data == false))) {
-        buf->data = (int32_t *)grk_aligned_malloc(buf->data_size_needed);
+        buf->data = (int32_t *)grok_aligned_malloc(buf->data_size_needed);
         if (!buf->data) {
             return false;
         }
@@ -169,8 +169,8 @@ bool grk_tile_buf_alloc_component_data_encode(grk_tile_buf_component_t* buf)
         buf->owns_data = true;
     } else if (buf->data_size_needed > buf->data_size) {
         /* We don't need to keep old data */
-        grk_aligned_free(buf->data);
-        buf->data = (int32_t *)grk_aligned_malloc(buf->data_size_needed);
+        grok_aligned_free(buf->data);
+        buf->data = (int32_t *)grok_aligned_malloc(buf->data_size_needed);
         if (!buf->data) {
             buf->data_size = 0;
             buf->data_size_needed = 0;
@@ -193,7 +193,7 @@ bool grk_tile_buf_alloc_component_data_decode(grk_tile_buf_component_t* buf)
     if (!buf->data ) {
         int64_t area = buf->tile_dim.get_area();
 		if (area) {
-			buf->data = (int32_t *)grk_aligned_malloc(area * sizeof(int32_t));
+			buf->data = (int32_t *)grok_aligned_malloc(area * sizeof(int32_t));
 			if (!buf->data) {
 				return false;
 			}
@@ -212,12 +212,12 @@ void grk_tile_buf_destroy_component(grk_tile_buf_component_t* comp)
     if (!comp)
         return;
     if (comp->data && comp->owns_data)
-        grk_aligned_free(comp->data);
+        grok_aligned_free(comp->data);
     comp->data = NULL;
     comp->data_size = 0;
     comp->data_size_needed = 0;
 	for (auto& res : comp->resolutions) {
-		grk_free(res);
+		grok_free(res);
 	}
 	comp->resolutions.clear();
     delete comp;
@@ -276,16 +276,16 @@ grk_pt_t grk_tile_buf_get_uninterleaved_range(grk_tile_buf_component_t* comp,
     }
 
     /* clip */
-    rc.x = grk_max<int64_t>(0, rc.x);
+    rc.x = grok_max<int64_t>(0, rc.x);
 
     /* if resno == 0, then prev_res is null */
     if (resno == 0) {
-        rc.y = grk_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+        rc.y = grok_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     } else {
         if (is_even)
-            rc.y = grk_min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
+            rc.y = grok_min<int64_t>(rc.y, is_horizontal ? prev_res->bounds.x : prev_res->bounds.y);
         else
-            rc.y = grk_min<int64_t>(rc.y,
+            rc.y = grok_min<int64_t>(rc.y,
                                is_horizontal ? res->bounds.x - prev_res->bounds.x : res->bounds.y - prev_res->bounds.y);
 
     }
@@ -313,12 +313,12 @@ grk_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
     even = grk_tile_buf_get_uninterleaved_range(comp, resno, true, is_horizontal);
     odd = grk_tile_buf_get_uninterleaved_range(comp, resno, false, is_horizontal);
 
-    rc.x = grk_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
-    rc.y = grk_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
+    rc.x = grok_min<int64_t>( (even.x <<1), (odd.x << 1) + 1 );
+    rc.y = grok_max<int64_t>( (even.y<< 1),  (odd.y << 1) + 1);
 
     /* clip to resolution bounds */
-    rc.x = grk_max<int64_t>(0, rc.x);
-    rc.y = grk_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
+    rc.x = grok_max<int64_t>(0, rc.x);
+    rc.y = grok_min<int64_t>(rc.y, is_horizontal ? res->bounds.x : res->bounds.y);
     return rc;
 }
 
@@ -329,6 +329,6 @@ int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp)
 	grk_pt_t horizontal = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
 	grk_pt_t vertical   = grk_tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
-    return grk_max<int64_t>(horizontal.y, vertical.y);
+    return grok_max<int64_t>(horizontal.y, vertical.y);
 }
 

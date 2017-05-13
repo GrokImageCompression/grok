@@ -15,7 +15,7 @@
 *
 */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 
 #ifdef _WIN32
@@ -49,10 +49,10 @@ typedef struct grk_buf_info {
     grk_handle_t fd;		// for file mapping
 } grk_buf_info_t;
 
-static void grk_free_buffer_info(void* user_data)
+static void grok_free_buffer_info(void* user_data)
 {
     if (user_data)
-        grk_free(user_data);
+        grok_free(user_data);
 }
 
 static size_t grk_zero_copy_read_from_buffer(void ** p_buffer,
@@ -153,13 +153,13 @@ opj_stream_t*  grk_create_buffer_stream(uint8_t *buf,
     if (!buf || !len)
         return NULL;
 
-    p_source_buffer = (grk_buf_info_t*)grk_malloc(sizeof(grk_buf_info_t));
+    p_source_buffer = (grk_buf_info_t*)grok_malloc(sizeof(grk_buf_info_t));
     if (!p_source_buffer)
         return NULL;
 
     l_stream = opj_stream_create(0, p_is_read_stream);
     if (!l_stream) {
-        grk_free(p_source_buffer);
+        grok_free(p_source_buffer);
         return NULL;
 
     }
@@ -169,7 +169,7 @@ opj_stream_t*  grk_create_buffer_stream(uint8_t *buf,
     p_source_buffer->off = 0;
     p_source_buffer->len = len;
 
-    opj_stream_set_user_data(l_stream, p_source_buffer, grk_free_buffer_info);
+    opj_stream_set_user_data(l_stream, p_source_buffer, grok_free_buffer_info);
     grk_set_up_buffer_stream(l_stream, p_source_buffer->len, p_is_read_stream);
     return l_stream;
 }
@@ -364,7 +364,7 @@ static void grk_mem_map_free(void* user_data)
         grk_buf_info_t* buffer_info = (grk_buf_info_t*)user_data;
         grk_unmap(buffer_info->buf, buffer_info->len);
         grk_close_fd(buffer_info->fd);
-        grk_free(buffer_info);
+        grok_free(buffer_info);
     }
 }
 
@@ -382,7 +382,7 @@ opj_stream_t* grk_create_mapped_file_read_stream(const char *fname)
     if (fd == (grk_handle_t)-1)
         return NULL;
 
-    buffer_info = (grk_buf_info_t*)grk_malloc(sizeof(grk_buf_info_t));
+    buffer_info = (grk_buf_info_t*)grok_malloc(sizeof(grk_buf_info_t));
     memset(buffer_info, 0, sizeof(grk_buf_info_t));
     buffer_info->fd = fd;
     buffer_info->len = (size_t)grk_size_proc(fd);

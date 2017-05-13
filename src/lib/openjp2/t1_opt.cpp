@@ -55,7 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "t1_luts.h"
 
 /** @defgroup T1 T1 - Implementation of the tier-1 coding */
@@ -143,7 +143,7 @@ static void grk_t1_enc_clnpass(
 grk_t1_opt_t* grk_t1_opt_create(bool isEncoder){
     grk_t1_opt_t *l_t1 = nullptr;
 
-    l_t1 = (grk_t1_opt_t*)grk_calloc(1, sizeof(grk_t1_opt_t));
+    l_t1 = (grk_t1_opt_t*)grok_calloc(1, sizeof(grk_t1_opt_t));
     if (!l_t1) {
         return nullptr;
     }
@@ -177,16 +177,16 @@ void grk_t1_opt_destroy(grk_t1_opt_t *p_t1){
 
     /* encoder uses tile buffer, so no need to free */
     if (p_t1->data) {
-        grk_aligned_free(p_t1->data);
+        grok_aligned_free(p_t1->data);
         p_t1->data = nullptr;
     }
 
     if (p_t1->flags) {
-        grk_aligned_free(p_t1->flags);
+        grok_aligned_free(p_t1->flags);
         p_t1->flags = nullptr;
     }
 
-    grk_free(p_t1);
+    grok_free(p_t1);
 }
 
 static inline uint8_t grk_t1_getctxno_zc(uint32_t f, uint32_t orient){
@@ -553,7 +553,7 @@ bool grk_t1_opt_allocate_buffers(   grk_t1_opt_t *t1,
 									uint32_t cblkh)
 {
     if (!t1->data) {
-        t1->data = (uint32_t*)grk_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
+        t1->data = (uint32_t*)grok_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
         if (!t1->data) {
             /* FIXME event manager error callback */
             return false;
@@ -563,7 +563,7 @@ bool grk_t1_opt_allocate_buffers(   grk_t1_opt_t *t1,
 		auto flags_stride = cblkw + 2;
 		auto flags_height = (cblkh + 3U) >> 2;
 		auto flagssize = flags_stride * (flags_height + 2);
-        t1->flags = (opj_flag_opt_t*)grk_aligned_malloc(flagssize * sizeof(opj_flag_opt_t));
+        t1->flags = (opj_flag_opt_t*)grok_aligned_malloc(flagssize * sizeof(opj_flag_opt_t));
         if (!t1->flags) {
             /* FIXME event manager error callback */
             return false;

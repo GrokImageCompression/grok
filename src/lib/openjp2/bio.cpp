@@ -53,7 +53,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 
 BitIO::BitIO() : start(nullptr), 

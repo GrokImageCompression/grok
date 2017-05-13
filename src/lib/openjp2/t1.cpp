@@ -54,7 +54,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "t1_luts.h"
 #include "T1Encoder.h"
 
@@ -1104,8 +1104,8 @@ bool grk_t1_allocate_buffers(grk_t1_t *t1,
     /* encoder uses tile buffer, so no need to allocate */
     if (!t1->encoder) {
         if(datasize > t1->datasize) {
-            grk_aligned_free(t1->data);
-            t1->data = (int32_t*) grk_aligned_malloc(datasize * sizeof(int32_t));
+            grok_aligned_free(t1->data);
+            t1->data = (int32_t*) grok_aligned_malloc(datasize * sizeof(int32_t));
             if(!t1->data) {
                 /* FIXME event manager error callback */
                 return false;
@@ -1121,8 +1121,8 @@ bool grk_t1_allocate_buffers(grk_t1_t *t1,
     flagssize=t1->flags_stride * (h+2);
 
     if(flagssize > t1->flagssize) {
-        grk_aligned_free(t1->flags);
-        t1->flags = (opj_flag_t*) grk_aligned_malloc(flagssize * sizeof(opj_flag_t));
+        grok_aligned_free(t1->flags);
+        t1->flags = (opj_flag_t*) grok_aligned_malloc(flagssize * sizeof(opj_flag_t));
         if(!t1->flags) {
             /* FIXME event manager error callback */
             return false;
@@ -1145,7 +1145,7 @@ bool grk_t1_allocate_buffers(grk_t1_t *t1,
 grk_t1_t* grk_t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height){
     grk_t1_t *l_t1 = nullptr;
 
-    l_t1 = (grk_t1_t*) grk_calloc(1,sizeof(grk_t1_t));
+    l_t1 = (grk_t1_t*) grok_calloc(1,sizeof(grk_t1_t));
     if (!l_t1) {
         return nullptr;
     }
@@ -1164,7 +1164,7 @@ grk_t1_t* grk_t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code
     }
 
     if (!isEncoder && code_block_width > 0 && code_block_height > 0) {
-        l_t1->compressed_block = (uint8_t*)grk_malloc((size_t)code_block_width * (size_t)code_block_height);
+        l_t1->compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
         if (!l_t1->compressed_block) {
             grk_t1_destroy(l_t1);
             return nullptr;
@@ -1196,17 +1196,17 @@ void grk_t1_destroy(grk_t1_t *p_t1){
 
     /* encoder uses tile buffer, so no need to free */
     if (!p_t1->encoder && p_t1->data) {
-        grk_aligned_free(p_t1->data);
+        grok_aligned_free(p_t1->data);
         p_t1->data = nullptr;
     }
 
     if (p_t1->flags) {
-        grk_aligned_free(p_t1->flags);
+        grok_aligned_free(p_t1->flags);
         p_t1->flags = nullptr;
     }
     if (p_t1->compressed_block)
-        grk_free(p_t1->compressed_block);
-    grk_free(p_t1);
+        grok_free(p_t1->compressed_block);
+    grok_free(p_t1);
 }
 
 bool grk_t1_prepare_decode_cblks(  grk_tcd_tilecomp_t* tilec,
@@ -1304,7 +1304,7 @@ bool grk_t1_decode_cblk(grk_t1_t *t1,
         return false;
     }
 
-    total_seg_len = grk_min_buf_vec_get_len(&cblk->seg_buffers);
+    total_seg_len = grok_min_buf_vec_get_len(&cblk->seg_buffers);
     if (cblk->numSegments && total_seg_len) {
         /* if there is only one segment, then it is already contiguous, so no need to make a copy*/
         if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
@@ -1314,13 +1314,13 @@ bool grk_t1_decode_cblk(grk_t1_t *t1,
             if (!t1->compressed_block)
                 return false;
             if (t1->compressed_block_size < total_seg_len) {
-                uint8_t* new_block = (uint8_t*)grk_realloc(t1->compressed_block, total_seg_len);
+                uint8_t* new_block = (uint8_t*)grok_realloc(t1->compressed_block, total_seg_len);
                 if (!new_block)
                     return false;
                 t1->compressed_block = new_block;
                 t1->compressed_block_size = total_seg_len;
             }
-            grk_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, t1->compressed_block);
+            grok_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, t1->compressed_block);
             block_buffer = t1->compressed_block;
         }
     } else {
@@ -1441,8 +1441,8 @@ bool grk_t1_encode_cblks(   grk_tcd_tile_t *tile,
                             y += pres->y1 - pres->y0;
                         }
 
-						maxCblkW = grk_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-						maxCblkH = grk_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
+						maxCblkW = grok_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
+						maxCblkH = grok_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
 						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;
@@ -1504,7 +1504,7 @@ double grk_t1_encode_cblk(grk_t1_t *t1,
     for (i = 0; i < t1->w; ++i) {
         for (j = 0; j < t1->h; ++j) {
             int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-            max = grk_max<int32_t>(max, tmp);
+            max = grok_max<int32_t>(max, tmp);
         }
     }
 

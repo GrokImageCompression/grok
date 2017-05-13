@@ -15,7 +15,7 @@
 *
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "T1Decoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"

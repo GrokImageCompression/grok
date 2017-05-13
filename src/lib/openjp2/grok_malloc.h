@@ -23,6 +23,7 @@
  * are granted under this license.
  *
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
+ * Copyright (c) 2007, Callum Lerwick <seg@haxxed.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -47,38 +48,68 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#pragma once
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/times.h>
-#endif /* _WIN32 */
+#include <stddef.h>
+/**
+@file grok_malloc.h
+@brief Internal functions
 
-double grk_clock(void)
-{
-#ifdef _WIN32
-    /* _WIN32: use QueryPerformance (very accurate) */
-    LARGE_INTEGER freq , t ;
-    /* freq is the clock speed of the CPU */
-    QueryPerformanceFrequency(&freq) ;
-    /* cout << "freq = " << ((double) freq.QuadPart) << endl; */
-    /* t is the high resolution performance counter (see MSDN) */
-    QueryPerformanceCounter ( & t ) ;
-    return (double)t.QuadPart /(double) freq.QuadPart ;
-#else
-    /* Unix or Linux: use resource usage */
-    struct rusage t;
-    double procTime;
-    /* (1) Get the rusage data structure at this moment (man getrusage) */
-    getrusage(0,&t);
-    /* (2) What is the elapsed time ? - CPU time = User time + System time */
-    /* (2a) Get the seconds */
-    procTime = (double)(t.ru_utime.tv_sec + t.ru_stime.tv_sec);
-    /* (2b) More precisely! Get the microseconds part ! */
-    return ( procTime + (double)(t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6 ) ;
+The functions in grok_malloc.h are internal utilities used for memory management.
+*/
+
+/** @defgroup MISC MISC - Miscellaneous internal functions */
+/*@{*/
+
+/** @name Exported functions */
+/*@{*/
+/* ----------------------------------------------------------------------- */
+
+/**
+Allocate an uninitialized memory block
+@param size Bytes to allocate
+@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
+*/
+void * grok_malloc(size_t size);
+
+/**
+Allocate a memory block with elements initialized to 0
+@param num Blocks to allocate
+@param size Bytes per block to allocate
+@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
+*/
+void * grok_calloc(size_t numOfElements, size_t sizeOfElements);
+
+/**
+Allocate memory aligned to a 16 byte boundary
+@param size Bytes to allocate
+@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
+*/
+void * grok_aligned_malloc(size_t size);
+void * grok_aligned_realloc(void *ptr, size_t size);
+void grok_aligned_free(void* ptr);
+
+/**
+Reallocate memory blocks.
+@param m Pointer to previously allocated memory block
+@param s New size in bytes
+@return Returns a void pointer to the reallocated (and possibly moved) memory block
+*/
+void * grok_realloc(void * m, size_t s);
+
+/**
+Deallocates or frees a memory block.
+@param m Previously allocated memory block to be freed
+*/
+void grok_free(void * m);
+
+#if defined(__GNUC__) && !defined(OPJ_SKIP_POISON)
+#pragma GCC poison malloc calloc realloc free
 #endif
-}
+
+/* ----------------------------------------------------------------------- */
+/*@}*/
+
+/*@}*/
+
 

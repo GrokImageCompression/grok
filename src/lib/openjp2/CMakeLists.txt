@@ -42,8 +42,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/mqc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_clock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_clock.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_clock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_clock.h
   ${CMAKE_CURRENT_SOURCE_DIR}/overflow_utils.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
@@ -67,11 +67,11 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util.h
   ${CMAKE_CURRENT_SOURCE_DIR}/function_list.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/function_list.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_codec.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_includes.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_intmath.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_malloc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_malloc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_codec.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_intmath.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_malloc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_malloc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/vector.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.h
@@ -95,7 +95,7 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/testing.h
   ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.h
   ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/grk_exceptions.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
 )
 
 option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)

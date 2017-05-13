@@ -55,7 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -169,16 +169,16 @@ void grk_read_float_LE(const uint8_t * p_buffer, float * p_value)
 opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_input)
 {
     grk_stream_private_t * l_stream = nullptr;
-    l_stream = (grk_stream_private_t*) grk_calloc(1,sizeof(grk_stream_private_t));
+    l_stream = (grk_stream_private_t*) grok_calloc(1,sizeof(grk_stream_private_t));
     if (! l_stream) {
         return nullptr;
     }
 
     if (p_buffer_size) {
         l_stream->m_buffer_size = p_buffer_size;
-        l_stream->m_stored_data = (uint8_t *)grk_malloc(p_buffer_size);
+        l_stream->m_stored_data = (uint8_t *)grok_malloc(p_buffer_size);
         if (!l_stream->m_stored_data) {
-            grk_free(l_stream);
+            grok_free(l_stream);
             return nullptr;
         }
         l_stream->m_current_data = l_stream->m_stored_data;
@@ -216,10 +216,10 @@ void OPJ_CALLCONV opj_stream_destroy(opj_stream_t* p_stream)
             l_stream->m_free_user_data_fn(l_stream->m_user_data);
         }
         if (l_stream->m_stored_data) {
-            grk_free(l_stream->m_stored_data);
+            grok_free(l_stream->m_stored_data);
             l_stream->m_stored_data = nullptr;
         }
-        grk_free(l_stream);
+        grok_free(l_stream);
     }
 }
 

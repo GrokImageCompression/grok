@@ -55,7 +55,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /** @defgroup JP2 JP2 - JPEG-2000 file format reader/writer */
 /*@{*/
@@ -662,7 +662,7 @@ static bool grk_jp2_read_ihdr( grk_jp2_t *jp2,
 	}
 
     /* allocate memory for components */
-    jp2->comps = (grk_jp2_comps_t*) grk_calloc(jp2->numcomps, sizeof(grk_jp2_comps_t));
+    jp2->comps = (grk_jp2_comps_t*) grok_calloc(jp2->numcomps, sizeof(grk_jp2_comps_t));
     if (jp2->comps == 0) {
         grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to handle image header (ihdr)\n");
         return false;
@@ -725,7 +725,7 @@ static uint8_t * grk_jp2_write_ihdr(grk_jp2_t *jp2,
     assert(p_nb_bytes_written != nullptr);
 
     /* default image header is 22 bytes wide */
-    l_ihdr_data = (uint8_t *) grk_calloc(1,22);
+    l_ihdr_data = (uint8_t *) grok_calloc(1,22);
     if (l_ihdr_data == nullptr) {
         return nullptr;
     }
@@ -774,7 +774,7 @@ static uint8_t * grk_jp2_write_buffer(uint32_t boxId,
 
 	/* room for 8 bytes for box and jp2->xmlSize bytes */
 	uint32_t total_size = 8 + (uint32_t)buffer->len;
-	auto l_data = (uint8_t *)grk_calloc(1, total_size);
+	auto l_data = (uint8_t *)grok_calloc(1, total_size);
 	if (l_data == nullptr) {
 		return nullptr;
 	}
@@ -805,8 +805,8 @@ static bool grk_jp2_read_xml(grk_jp2_t *jp2,
 	}
 	jp2->xml.len = p_xml_size;
 	if (jp2->xml.buffer)
-		grk_free(jp2->xml.buffer);
-	jp2->xml.buffer = (uint8_t*)grk_malloc(p_xml_size);
+		grok_free(jp2->xml.buffer);
+	jp2->xml.buffer = (uint8_t*)grok_malloc(p_xml_size);
 	if (!jp2->xml.buffer) {
 		jp2->xml.len = 0;
 		return false;
@@ -864,7 +864,7 @@ static uint8_t * grk_jp2_write_uuids(grk_jp2_t *jp2,
 			total_uuid_size += 8 + 16 + uuid->len;
 		}
 	}
-	auto l_uuid_data = (uint8_t *)grk_calloc(1, total_uuid_size);
+	auto l_uuid_data = (uint8_t *)grok_calloc(1, total_uuid_size);
 	if (l_uuid_data == nullptr) {
 		return nullptr;
 	}
@@ -1075,7 +1075,7 @@ static uint8_t * grk_jp2_write_res(grk_jp2_t *jp2,
 		size += OPJ_RESOLUTION_BOX_SIZE;
 	}
 
-	l_res_data = (uint8_t *)grk_calloc(1, size);
+	l_res_data = (uint8_t *)grok_calloc(1, size);
 	if (l_res_data == nullptr) {
 		return nullptr;
 	}
@@ -1117,7 +1117,7 @@ static uint8_t * grk_jp2_write_bpcc(	grk_jp2_t *jp2,
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
 
-    l_bpcc_data = (uint8_t *) grk_calloc(1,l_bpcc_size);
+    l_bpcc_data = (uint8_t *) grok_calloc(1,l_bpcc_size);
     if (l_bpcc_data == nullptr) {
         return nullptr;
     }
@@ -1189,7 +1189,7 @@ static uint8_t * grk_jp2_write_cdef(grk_jp2_t *jp2, uint32_t * p_nb_bytes_writte
 
     l_cdef_size += 6U * jp2->color.jp2_cdef->n;
 
-    l_cdef_data = (uint8_t *) grk_malloc(l_cdef_size);
+    l_cdef_data = (uint8_t *) grok_malloc(l_cdef_size);
     if (l_cdef_data == nullptr) {
         return nullptr;
     }
@@ -1247,7 +1247,7 @@ static uint8_t * grk_jp2_write_colr(  grk_jp2_t *jp2,
         return nullptr;
     }
 
-    l_colr_data = (uint8_t *) grk_calloc(1,l_colr_size);
+    l_colr_data = (uint8_t *) grok_calloc(1,l_colr_size);
     if (l_colr_data == nullptr) {
         return nullptr;
     }
@@ -1292,19 +1292,19 @@ static void grk_jp2_free_pclr(grk_jp2_color_t *color)
 	if (color) {
 		if (color->jp2_pclr) {
 			if (color->jp2_pclr->channel_sign) {
-				grk_free(color->jp2_pclr->channel_sign);
+				grok_free(color->jp2_pclr->channel_sign);
 			}
 			if (color->jp2_pclr->channel_size) {
-				grk_free(color->jp2_pclr->channel_size);
+				grok_free(color->jp2_pclr->channel_size);
 			}
 			if (color->jp2_pclr->entries) {
-				grk_free(color->jp2_pclr->entries);
+				grok_free(color->jp2_pclr->entries);
 			}
 
 			if (color->jp2_pclr->cmap) {
-				grk_free(color->jp2_pclr->cmap);
+				grok_free(color->jp2_pclr->cmap);
 			}
-			grk_free(color->jp2_pclr);
+			grok_free(color->jp2_pclr);
 			color->jp2_pclr = nullptr;
 		}
 	}
@@ -1371,7 +1371,7 @@ static bool grk_jp2_check_color(opj_image_t *image, grk_jp2_color_t *color, grk_
             }
         }
 
-        pcol_usage = (bool *) grk_calloc(nr_channels, sizeof(bool));
+        pcol_usage = (bool *) grok_calloc(nr_channels, sizeof(bool));
         if (!pcol_usage) {
             grk_event_msg(p_manager, EVT_ERROR, "Unexpected OOM.\n");
             return false;
@@ -1428,7 +1428,7 @@ static bool grk_jp2_check_color(opj_image_t *image, grk_jp2_color_t *color, grk_
         }
 	cleanup:
 		if (pcol_usage)
-			grk_free(pcol_usage);
+			grok_free(pcol_usage);
         if (!is_sane) {
             return false;
         }
@@ -1457,7 +1457,7 @@ static void grk_jp2_apply_pclr(opj_image_t *image, grk_jp2_color_t *color)
 
     old_comps = image->comps;
     new_comps = (opj_image_comp_t*)
-                grk_malloc(nr_channels * sizeof(opj_image_comp_t));
+                grok_malloc(nr_channels * sizeof(opj_image_comp_t));
     if (!new_comps) {
         /* FIXME no error code for grk_jp2_apply_pclr */
         /* FIXME event manager error callback */
@@ -1480,7 +1480,7 @@ static void grk_jp2_apply_pclr(opj_image_t *image, grk_jp2_color_t *color)
 
         /* Palette mapping: */
         if (!opj_image_single_component_data_alloc(new_comps + i)) {
-            grk_free(new_comps);
+            grok_free(new_comps);
             new_comps = NULL;
             /* FIXME no error code for grk_jp2_apply_pclr */
             /* FIXME event manager error callback */
@@ -1527,7 +1527,7 @@ static void grk_jp2_apply_pclr(opj_image_t *image, grk_jp2_color_t *color)
     for (i = 0; i < max; ++i) {
         opj_image_single_component_data_free(old_comps + i);
     }
-    grk_free(old_comps);
+    grok_free(old_comps);
     image->comps = new_comps;
     image->numcomps = nr_channels;
 
@@ -1578,26 +1578,26 @@ static bool grk_jp2_read_pclr(	grk_jp2_t *jp2,
     if (p_pclr_header_size < 3 + (uint32_t)nr_channels)
         return false;
 
-    entries = (uint32_t*) grk_malloc((size_t)nr_channels * nr_entries * sizeof(uint32_t));
+    entries = (uint32_t*) grok_malloc((size_t)nr_channels * nr_entries * sizeof(uint32_t));
     if (!entries)
         return false;
-    channel_size = (uint8_t*) grk_malloc(nr_channels);
+    channel_size = (uint8_t*) grok_malloc(nr_channels);
     if (!channel_size) {
-        grk_free(entries);
+        grok_free(entries);
         return false;
     }
-    channel_sign = (uint8_t*) grk_malloc(nr_channels);
+    channel_sign = (uint8_t*) grok_malloc(nr_channels);
     if (!channel_sign) {
-        grk_free(entries);
-        grk_free(channel_size);
+        grok_free(entries);
+        grok_free(channel_size);
         return false;
     }
 
-    jp2_pclr = (grk_jp2_pclr_t*)grk_malloc(sizeof(grk_jp2_pclr_t));
+    jp2_pclr = (grk_jp2_pclr_t*)grok_malloc(sizeof(grk_jp2_pclr_t));
     if (!jp2_pclr) {
-        grk_free(entries);
-        grk_free(channel_size);
-        grk_free(channel_sign);
+        grok_free(entries);
+        grok_free(channel_size);
+        grok_free(channel_sign);
         return false;
     }
 
@@ -1673,7 +1673,7 @@ static bool grk_jp2_read_cmap(	grk_jp2_t * jp2,
         return false;
     }
 
-    cmap = (grk_jp2_cmap_comp_t*) grk_malloc(nr_channels * sizeof(grk_jp2_cmap_comp_t));
+    cmap = (grk_jp2_cmap_comp_t*) grok_malloc(nr_channels * sizeof(grk_jp2_cmap_comp_t));
     if (!cmap)
         return false;
 
@@ -1748,9 +1748,9 @@ static void grk_jp2_apply_cdef(opj_image_t *image, grk_jp2_color_t *color, grk_e
         image->comps[cn].alpha = info[i].typ;
     }
 
-    if(color->jp2_cdef->info) grk_free(color->jp2_cdef->info);
+    if(color->jp2_cdef->info) grok_free(color->jp2_cdef->info);
 
-    grk_free(color->jp2_cdef);
+    grok_free(color->jp2_cdef);
     color->jp2_cdef = NULL;
 
 }/* jp2_apply_cdef() */
@@ -1793,13 +1793,13 @@ static bool grk_jp2_read_cdef(	grk_jp2_t * jp2,
         return false;
     }
 
-    cdef_info = (grk_jp2_cdef_info_t*) grk_malloc(l_value * sizeof(grk_jp2_cdef_info_t));
+    cdef_info = (grk_jp2_cdef_info_t*) grok_malloc(l_value * sizeof(grk_jp2_cdef_info_t));
     if (!cdef_info)
         return false;
 
-    jp2->color.jp2_cdef = (grk_jp2_cdef_t*)grk_malloc(sizeof(grk_jp2_cdef_t));
+    jp2->color.jp2_cdef = (grk_jp2_cdef_t*)grok_malloc(sizeof(grk_jp2_cdef_t));
     if(!jp2->color.jp2_cdef) {
-        grk_free(cdef_info);
+        grok_free(cdef_info);
         return false;
     }
     jp2->color.jp2_cdef->info = cdef_info;
@@ -1904,7 +1904,7 @@ static bool grk_jp2_read_colr( grk_jp2_t *jp2,
             uint32_t *cielab;
             uint32_t rl, ol, ra, oa, rb, ob, il;
 
-            cielab = (uint32_t*)grk_malloc(9 * sizeof(uint32_t));
+            cielab = (uint32_t*)grok_malloc(9 * sizeof(uint32_t));
 			if (cielab == NULL) {
 				grk_event_msg(p_manager, EVT_ERROR, "Not enough memory for cielab\n");
 				return false;
@@ -1954,7 +1954,7 @@ static bool grk_jp2_read_colr( grk_jp2_t *jp2,
         int32_t icc_len = (int32_t)p_colr_header_size - 3;
 
         jp2->color.icc_profile_len = (uint32_t)icc_len;
-        jp2->color.icc_profile_buf = (uint8_t*) grk_calloc(1,(size_t)icc_len);
+        jp2->color.icc_profile_buf = (uint8_t*) grok_calloc(1,(size_t)icc_len);
         if (!jp2->color.icc_profile_buf) {
             jp2->color.icc_profile_len = 0;
             return false;
@@ -2126,7 +2126,7 @@ static bool grk_jp2_write_jp2h(grk_jp2_t *jp2,
         l_current_writer = l_writers;
         for (i=0; i<l_nb_writers; ++i) {
             if (l_current_writer->m_data != nullptr) {
-                grk_free(l_current_writer->m_data );
+                grok_free(l_current_writer->m_data );
             }
             ++l_current_writer;
         }
@@ -2160,7 +2160,7 @@ static bool grk_jp2_write_jp2h(grk_jp2_t *jp2,
     /* cleanup */
     for (i=0; i<l_nb_writers; ++i) {
         if (l_current_writer->m_data != nullptr) {
-            grk_free(l_current_writer->m_data );
+            grok_free(l_current_writer->m_data );
         }
         ++l_current_writer;
     }
@@ -2182,7 +2182,7 @@ static bool grk_jp2_write_ftyp(grk_jp2_t *jp2,
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
-    l_ftyp_data = (uint8_t *) grk_calloc(1,l_ftyp_size);
+    l_ftyp_data = (uint8_t *) grok_calloc(1,l_ftyp_size);
 
     if (l_ftyp_data == nullptr) {
         grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to handle ftyp data\n");
@@ -2212,7 +2212,7 @@ static bool grk_jp2_write_ftyp(grk_jp2_t *jp2,
         grk_event_msg(p_manager, EVT_ERROR, "Error while writing ftyp data to stream\n");
     }
 
-    grk_free(l_ftyp_data);
+    grok_free(l_ftyp_data);
 
     return l_result;
 }
@@ -2336,7 +2336,7 @@ bool grk_jp2_setup_encoder(	grk_jp2_t *jp2,
     jp2->brand = JP2_JP2;	/* BR */
     jp2->minversion = 0;	/* MinV */
     jp2->numcl = 1;
-    jp2->cl = (uint32_t*) grk_malloc(jp2->numcl * sizeof(uint32_t));
+    jp2->cl = (uint32_t*) grok_malloc(jp2->numcl * sizeof(uint32_t));
     if (!jp2->cl) {
         grk_event_msg(p_manager, EVT_ERROR, "Not enough memory when setup the JP2 encoder\n");
         return false;
@@ -2346,7 +2346,7 @@ bool grk_jp2_setup_encoder(	grk_jp2_t *jp2,
     /* Image Header box */
 
     jp2->numcomps = image->numcomps;	/* NC */
-    jp2->comps = (grk_jp2_comps_t*) grk_malloc(jp2->numcomps * sizeof(grk_jp2_comps_t));
+    jp2->comps = (grk_jp2_comps_t*) grok_malloc(jp2->numcomps * sizeof(grk_jp2_comps_t));
     if (!jp2->comps) {
         grk_event_msg(p_manager, EVT_ERROR, "Not enough memory when setup the JP2 encoder\n");
         /* Memory of jp2->cl will be freed by grk_jp2_destroy */
@@ -2381,12 +2381,12 @@ bool grk_jp2_setup_encoder(	grk_jp2_t *jp2,
 		if (image->icc_profile_buf) {
 			// clean up existing icc profile in jp2 struct
 			if (jp2->color.icc_profile_buf) {
-				grk_free(jp2->color.icc_profile_buf);
+				grok_free(jp2->color.icc_profile_buf);
 				jp2->color.icc_profile_buf = NULL;
 			}
 			// copy icc profile from image to jp2 struct
 			jp2->color.icc_profile_len = image->icc_profile_len;
-			jp2->color.icc_profile_buf = (uint8_t*)grk_malloc(jp2->color.icc_profile_len);
+			jp2->color.icc_profile_buf = (uint8_t*)grok_malloc(jp2->color.icc_profile_len);
 			if (!jp2->color.icc_profile_buf)
 				return false;
 			memcpy(jp2->color.icc_profile_buf, image->icc_profile_buf, jp2->color.icc_profile_len);
@@ -2459,14 +2459,14 @@ bool grk_jp2_setup_encoder(	grk_jp2_t *jp2,
         grk_event_msg(p_manager, EVT_WARNING, "Multiple alpha channels specified. No cdef box will be created.\n");
     }
     if (alpha_count == 1U) { /* if here, we know what we can do */
-        jp2->color.jp2_cdef = (grk_jp2_cdef_t*)grk_malloc(sizeof(grk_jp2_cdef_t));
+        jp2->color.jp2_cdef = (grk_jp2_cdef_t*)grok_malloc(sizeof(grk_jp2_cdef_t));
         if(!jp2->color.jp2_cdef) {
             grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to setup the JP2 encoder\n");
             return false;
         }
         /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
         /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
-        jp2->color.jp2_cdef->info = (grk_jp2_cdef_info_t*) grk_malloc(image->numcomps * sizeof(grk_jp2_cdef_info_t));
+        jp2->color.jp2_cdef->info = (grk_jp2_cdef_info_t*) grok_malloc(image->numcomps * sizeof(grk_jp2_cdef_info_t));
         if (!jp2->color.jp2_cdef->info) {
             /* memory will be freed by grk_jp2_destroy */
             grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to setup the JP2 encoder\n");
@@ -2664,7 +2664,7 @@ static bool grk_jp2_read_header_procedure(  grk_jp2_t *jp2,
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
-    l_current_data = (uint8_t*)grk_calloc(1,l_last_data_size);
+    l_current_data = (uint8_t*)grok_calloc(1,l_last_data_size);
 
     if (l_current_data == nullptr) {
         grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to handle jpeg2000 file header\n");
@@ -2676,22 +2676,22 @@ static bool grk_jp2_read_header_procedure(  grk_jp2_t *jp2,
         if (box.type == JP2_JP2C) {
             if (jp2->jp2_state & JP2_STATE_HEADER) {
                 jp2->jp2_state |= JP2_STATE_CODESTREAM;
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return true;
             } else {
                 grk_event_msg(p_manager, EVT_ERROR, "bad placed jpeg codestream\n");
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
         } else if	(box.length == 0) {
             grk_event_msg(p_manager, EVT_ERROR, "Cannot handle box of undefined sizes\n");
-            grk_free(l_current_data);
+            grok_free(l_current_data);
             return false;
         }
         /* testcase 1851.pdf.SIGSEGV.ce9.948 */
         else if (box.length < l_nb_bytes_read) {
             grk_event_msg(p_manager, EVT_ERROR, "invalid box size %d (%x)\n", box.length, box.type);
-            grk_free(l_current_data);
+            grok_free(l_current_data);
             return false;
         }
 
@@ -2710,7 +2710,7 @@ static bool grk_jp2_read_header_procedure(  grk_jp2_t *jp2,
                     jp2->jp2_state |= JP2_STATE_UNKNOWN;
                     if (!grk_stream_skip(stream,l_current_data_size,p_manager)) {
                         grk_event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
-                        grk_free(l_current_data);
+                        grok_free(l_current_data);
                         return false;
                     }
                     continue;
@@ -2719,13 +2719,13 @@ static bool grk_jp2_read_header_procedure(  grk_jp2_t *jp2,
             if ((int64_t)l_current_data_size > grk_stream_get_number_byte_left(stream)) {
                 /* do not even try to malloc if we can't read */
                 grk_event_msg(p_manager, EVT_ERROR, "Invalid box size %d for box '%c%c%c%c'. Need %d bytes, %d bytes remaining \n", box.length, (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0), l_current_data_size, (uint32_t)grk_stream_get_number_byte_left(stream));
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
             if (l_current_data_size > l_last_data_size) {
-                uint8_t* new_current_data = (uint8_t*)grk_realloc(l_current_data,l_current_data_size);
+                uint8_t* new_current_data = (uint8_t*)grok_realloc(l_current_data,l_current_data_size);
                 if (!new_current_data) {
-                    grk_free(l_current_data);
+                    grok_free(l_current_data);
                     grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to handle jpeg2000 box\n");
                     return false;
                 }
@@ -2736,35 +2736,35 @@ static bool grk_jp2_read_header_procedure(  grk_jp2_t *jp2,
             l_nb_bytes_read = (uint32_t)grk_stream_read_data(stream,l_current_data,l_current_data_size,p_manager);
             if (l_nb_bytes_read != l_current_data_size) {
                 grk_event_msg(p_manager, EVT_ERROR, "Problem with reading JPEG2000 box, stream error\n");
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
 
             if (! l_current_handler->handler(jp2,l_current_data,l_current_data_size,p_manager)) {
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
         } else {
             if (!(jp2->jp2_state & JP2_STATE_SIGNATURE)) {
                 grk_event_msg(p_manager, EVT_ERROR, "Malformed JP2 file format: first box must be JPEG 2000 signature box\n");
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
             if (!(jp2->jp2_state & JP2_STATE_FILE_TYPE)) {
                 grk_event_msg(p_manager, EVT_ERROR, "Malformed JP2 file format: second box must be file type box\n");
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
             jp2->jp2_state |= JP2_STATE_UNKNOWN;
             if (!grk_stream_skip(stream,l_current_data_size,p_manager)) {
                 grk_event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
-                grk_free(l_current_data);
+                grok_free(l_current_data);
                 return false;
             }
         }
     }
 
-    grk_free(l_current_data);
+    grok_free(l_current_data);
 
     return true;
 }
@@ -2972,7 +2972,7 @@ static bool grk_jp2_read_ftyp(	grk_jp2_t *jp2,
     /* div by 4 */
     jp2->numcl = l_remaining_bytes >> 2;
     if (jp2->numcl) {
-        jp2->cl = (uint32_t *) grk_calloc(jp2->numcl, sizeof(uint32_t));
+        jp2->cl = (uint32_t *) grok_calloc(jp2->numcl, sizeof(uint32_t));
         if (jp2->cl == nullptr) {
             grk_event_msg(p_manager, EVT_ERROR, "Not enough memory with FTYP Box\n");
             return false;
@@ -3339,27 +3339,27 @@ void grk_jp2_destroy(grk_jp2_t *jp2)
         jp2->j2k = nullptr;
 
         if (jp2->comps) {
-            grk_free(jp2->comps);
+            grok_free(jp2->comps);
             jp2->comps = nullptr;
         }
 
         if (jp2->cl) {
-            grk_free(jp2->cl);
+            grok_free(jp2->cl);
             jp2->cl = nullptr;
         }
 
         if (jp2->color.icc_profile_buf) {
-            grk_free(jp2->color.icc_profile_buf);
+            grok_free(jp2->color.icc_profile_buf);
             jp2->color.icc_profile_buf = nullptr;
         }
 
         if (jp2->color.jp2_cdef) {
             if (jp2->color.jp2_cdef->info) {
-                grk_free(jp2->color.jp2_cdef->info);
+                grok_free(jp2->color.jp2_cdef->info);
                 jp2->color.jp2_cdef->info = NULL;
             }
 
-            grk_free(jp2->color.jp2_cdef);
+            grok_free(jp2->color.jp2_cdef);
             jp2->color.jp2_cdef = nullptr;
         }
 
@@ -3382,7 +3382,7 @@ void grk_jp2_destroy(grk_jp2_t *jp2)
 		}
 		jp2->numUuids = 0;
 
-        grk_free(jp2);
+        grok_free(jp2);
     }
 }
 
@@ -3460,7 +3460,7 @@ bool grk_jp2_get_tile(	grk_jp2_t *p_jp2,
 
 grk_jp2_t* grk_jp2_create(bool p_is_decoder)
 {
-    grk_jp2_t *jp2 = (grk_jp2_t*)grk_calloc(1,sizeof(grk_jp2_t));
+    grk_jp2_t *jp2 = (grk_jp2_t*)grok_calloc(1,sizeof(grk_jp2_t));
     if (jp2) {
 
         /* create the J2K codec */

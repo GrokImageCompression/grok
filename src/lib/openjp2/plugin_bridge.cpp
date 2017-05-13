@@ -14,7 +14,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "plugin_bridge.h"
 
 // Performed after T2, just before plugin decode is triggered
@@ -48,8 +48,8 @@ bool decode_synch_plugin_with_host(grk_tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = grk_min_buf_vec_get_len(&cblk->seg_buffers);
-							grk_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = grok_min_buf_vec_get_len(&cblk->seg_buffers);
+							grok_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 
@@ -93,8 +93,8 @@ bool decode_synch_host_with_plugin(grk_tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = grk_min_buf_vec_get_len(&cblk->seg_buffers);
-							grk_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = grok_min_buf_vec_get_len(&cblk->seg_buffers);
+							grok_min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 

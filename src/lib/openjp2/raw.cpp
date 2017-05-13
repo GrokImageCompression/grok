@@ -51,7 +51,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /*
 ==========================================================
@@ -68,14 +68,14 @@
 
 grk_raw_t* grk_raw_create(void)
 {
-    grk_raw_t *raw = (grk_raw_t*)grk_malloc(sizeof(grk_raw_t));
+    grk_raw_t *raw = (grk_raw_t*)grok_malloc(sizeof(grk_raw_t));
     return raw;
 }
 
 void grk_raw_destroy(grk_raw_t *raw)
 {
     if(raw) {
-        grk_free(raw);
+        grok_free(raw);
     }
 }
 
