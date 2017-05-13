@@ -280,11 +280,11 @@ if(BUILD_TESTING)
     enable_testing()
     include(CTest)
 
-    # Search Grok data needed for the tests
-    # They could be found via git on the Grok GitHub code project
-    find_path(GROK_DATA_ROOT README-OPJ-DATA
+    # Search for Grok test data
+    # The test data can be cloned from https://github.com/GrokImageCompression/grok-test-data
+    find_path(GROK_DATA_ROOT README-GROK-TEST-DATA
       PATHS $ENV{GROK_DATA_ROOT} ${CMAKE_SOURCE_DIR}/../grok-test-data
-      NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH
+      NO_CMAKE_FIND_ROOT_PATH
       )
 
     # Add repository where to find tests
