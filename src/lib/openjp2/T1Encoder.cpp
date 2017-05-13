@@ -15,7 +15,7 @@
 *
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "T1Encoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
@@ -143,7 +143,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 #endif
 					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)abs(tmp);
-					max = grk_max<uint32_t>(max, mag);
+					max = grok_max<uint32_t>(max, mag);
 					t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					tileIndex++;
 					cblk_index++;
@@ -169,7 +169,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 					uint32_t mag = (uint32_t)abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-					max = grk_max<uint32_t>(max, mag);
+					max = grok_max<uint32_t>(max, mag);
 					t1->data[cblk_index] = sign_mag;
 					
 					tileIndex++;
@@ -221,7 +221,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		auto rate = seg->numpasses  ? block->cblk->passes[seg->numpasses - 1].rate : 0;
 		seg->len = rate;
 		seg->dataindex = 0;
-		grk_min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
+		grok_min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
 		//decode
 		grk_t1_decode_cblk(t1Decode, cblkDecode, block->bandno, 0, 0);
 
@@ -239,7 +239,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		}
 
 		grk_t1_destroy(t1Decode);
-		grk_free(cblkDecode->segs);
+		grok_free(cblkDecode->segs);
 		delete cblkDecode;
 		delete[] block->unencodedData;
 		block->unencodedData = nullptr;

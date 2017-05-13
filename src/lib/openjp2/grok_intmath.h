@@ -70,10 +70,10 @@ The functions in OPJ_INTMATH.H have for goal to realize operations on integers.
 /* ----------------------------------------------------------------------- */
 
 
-template<typename T> T grk_min(T a, T b) {
+template<typename T> T grok_min(T a, T b) {
 	return ((a < b) ? a : b);
 }
-template<typename T> T grk_max(T a, T b) {
+template<typename T> T grok_max(T a, T b) {
 	return ((a > b) ? a : b);
 }
 

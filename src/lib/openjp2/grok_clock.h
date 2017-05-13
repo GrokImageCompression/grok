@@ -23,7 +23,6 @@
  * are granted under this license.
  *
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2007, Callum Lerwick <seg@haxxed.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -50,66 +49,17 @@
 
 #pragma once
 
-#include <stddef.h>
 /**
-@file grk_malloc.h
-@brief Internal functions
-
-The functions in grk_malloc.h are internal utilities used for memory management.
+Difference in successive grok_clock() calls tells you the elapsed time
+@return Returns time in seconds
 */
-
-/** @defgroup MISC MISC - Miscellaneous internal functions */
-/*@{*/
-
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-
-/**
-Allocate an uninitialized memory block
-@param size Bytes to allocate
-@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
-*/
-void * grk_malloc(size_t size);
-
-/**
-Allocate a memory block with elements initialized to 0
-@param num Blocks to allocate
-@param size Bytes per block to allocate
-@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
-*/
-void * grk_calloc(size_t numOfElements, size_t sizeOfElements);
-
-/**
-Allocate memory aligned to a 16 byte boundary
-@param size Bytes to allocate
-@return Returns a void pointer to the allocated space, or NULL if there is insufficient memory available
-*/
-void * grk_aligned_malloc(size_t size);
-void * grk_aligned_realloc(void *ptr, size_t size);
-void grk_aligned_free(void* ptr);
-
-/**
-Reallocate memory blocks.
-@param m Pointer to previously allocated memory block
-@param s New size in bytes
-@return Returns a void pointer to the reallocated (and possibly moved) memory block
-*/
-void * grk_realloc(void * m, size_t s);
-
-/**
-Deallocates or frees a memory block.
-@param m Previously allocated memory block to be freed
-*/
-void grk_free(void * m);
-
-#if defined(__GNUC__) && !defined(OPJ_SKIP_POISON)
-#pragma GCC poison malloc calloc realloc free
-#endif
+double grok_clock(void);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
+
+
 
 

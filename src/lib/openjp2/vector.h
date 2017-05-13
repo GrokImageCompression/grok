@@ -19,7 +19,7 @@
 
 
 #include <vector>
-struct grk_min_buf_t;
+struct grok_min_buf_t;
 
 struct opj_vec_t {
 	opj_vec_t() : data(nullptr) {}
@@ -28,11 +28,11 @@ struct opj_vec_t {
 	{
 		if (data)
 			return true;
-		data = new std::vector<grk_min_buf_t*>();
+		data = new std::vector<grok_min_buf_t*>();
 		return data ? true : false;
 	}
 
-	bool push_back(grk_min_buf_t* value)
+	bool push_back(grok_min_buf_t* value)
 	{
 		data->push_back(value);
 		return true;
@@ -69,12 +69,12 @@ struct opj_vec_t {
 			return;
 		for (auto it = data->begin(); it != data->end(); ++it) {
 			if (*it)
-				grk_free(*it);
+				grok_free(*it);
 		}
 		delete data;
 		data = NULL;
 	}
-    std::vector<grk_min_buf_t*>* data;		/* array of void* pointers */
+    std::vector<grok_min_buf_t*>* data;		/* array of void* pointers */
 };
 
 

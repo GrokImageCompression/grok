@@ -15,7 +15,7 @@
 *
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 RateInfo::RateInfo() : 	minimumSlope(USHRT_MAX), 
 						maximumSlope(0) {

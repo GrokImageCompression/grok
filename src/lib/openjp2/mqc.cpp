@@ -54,7 +54,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /** @defgroup MQC MQC - Implementation of an MQ-Coder */
 /*@{*/
@@ -400,14 +400,14 @@ void grk_mqc_setcurctx(grk_mqc_t *mqc, uint8_t ctxno) {
 
 grk_mqc_t* grk_mqc_create(void)
 {
-    grk_mqc_t *mqc = (grk_mqc_t*)grk_calloc(1,sizeof(grk_mqc_t));
+    grk_mqc_t *mqc = (grk_mqc_t*)grok_calloc(1,sizeof(grk_mqc_t));
     return mqc;
 }
 
 void grk_mqc_destroy(grk_mqc_t *mqc)
 {
     if(mqc) {
-        grk_free(mqc);
+        grok_free(mqc);
     }
 }
 

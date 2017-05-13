@@ -41,7 +41,7 @@
 Smart wrapper to low level C array
 */
 
-struct grk_min_buf_t {
+struct grok_min_buf_t {
     uint8_t *buf;		/* internal array*/
     uint16_t len;		/* length of array */
 };
@@ -49,18 +49,18 @@ struct grk_min_buf_t {
 /*
 Copy all segments, in sequence, into contiguous array
 */
-bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer);
+bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer);
 
 /*
 Push buffer to back of min buf vector
 */
-bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len);
+bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len);
 
 /*
 Sum lengths of all buffers
 */
 
-uint16_t grk_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
+uint16_t grok_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
 
 
 /*

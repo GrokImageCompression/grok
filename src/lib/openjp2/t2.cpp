@@ -55,7 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "testing.h"
 #include <memory>
 
@@ -509,7 +509,7 @@ bool grk_t2_decode_packets( grk_t2_t *p_t2,
             }
 
             if (!skip_layer_or_res)
-                l_img_comp->resno_decoded = grk_max<uint32_t>(l_current_pi->resno, l_img_comp->resno_decoded);
+                l_img_comp->resno_decoded = grok_max<uint32_t>(l_current_pi->resno, l_img_comp->resno_decoded);
             *p_data_read += l_nb_bytes_read;
         }
         ++l_current_pi;
@@ -530,7 +530,7 @@ bool grk_t2_decode_packets( grk_t2_t *p_t2,
 grk_t2_t* grk_t2_create(opj_image_t *p_image, opj_cp_t *p_cp)
 {
     /* create the t2 structure */
-    grk_t2_t *l_t2 = (grk_t2_t*)grk_calloc(1,sizeof(grk_t2_t));
+    grk_t2_t *l_t2 = (grk_t2_t*)grok_calloc(1,sizeof(grk_t2_t));
     if (!l_t2) {
         return NULL;
     }
@@ -542,7 +542,7 @@ grk_t2_t* grk_t2_create(opj_image_t *p_image, opj_cp_t *p_cp)
 void grk_t2_destroy(grk_t2_t *t2)
 {
     if(t2) {
-        grk_free(t2);
+        grok_free(t2);
     }
 }
 
@@ -783,7 +783,7 @@ static bool grk_t2_read_packet_header(grk_t2_t* p_t2,
 			n = (int32_t)l_cblk->numPassesInPacket;
 			do {
 				auto l_seg = l_cblk->segs + l_segno;
-				l_seg->numPassesInPacket = (uint32_t)grk_min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), n);
+				l_seg->numPassesInPacket = (uint32_t)grok_min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), n);
 				l_seg->newlen = l_bio->read(l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket));
 				JAS_FPRINTF(stderr, "included=%d numPassesInPacket=%d increment=%d len=%d \n", l_included, l_seg->numPassesInPacket, l_increment, l_seg->newlen);
 
@@ -895,7 +895,7 @@ static bool grk_t2_read_packet_data(grk_tcd_resolution_t* l_res,
 					l_seg->dataindex = l_cblk->dataSize;
 				}
 
-				grk_min_buf_vec_push_back(&l_cblk->seg_buffers, opj_seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
+				grok_min_buf_vec_push_back(&l_cblk->seg_buffers, opj_seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
 
 				*(p_data_read)				+= l_seg->newlen;
 				opj_seg_buf_incr_cur_seg_offset(src_buf, l_seg->newlen);
@@ -1051,7 +1051,7 @@ static bool grk_t2_encode_packet(grk_t2_t* p_t2,
                 len += pass->len;
 
                 if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-                    increment = (uint32_t)grk_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
+                    increment = (uint32_t)grok_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
                                                       - ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
                     len = 0;
                     nump = 0;
@@ -1214,7 +1214,7 @@ static bool grk_t2_encode_packet(grk_t2_t* p_t2,
 					assert(decodeCblk->segs[0].len == encodeRate);
 					assert(decodeCblk->numbps == cblk->numbps);
 					assert(decodeCblk->numlenbits == cblk->numlenbits);
-					grk_min_buf_t* seg = (grk_min_buf_t*)decodeCblk->seg_buffers.get(0);
+					grok_min_buf_t* seg = (grok_min_buf_t*)decodeCblk->seg_buffers.get(0);
 					for (uint32_t i = 0; i < decodeCblk->segs[0].len; ++i) {
 						assert(seg->buf[i] == cblk->data[i]);
 					}
@@ -1369,7 +1369,7 @@ static bool grk_t2_encode_packet_simulate(grk_tcd_tile_t * tile,
                 len += pass->len;
 
                 if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-                    increment = (uint32_t)grk_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
+                    increment = (uint32_t)grok_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
                                                       - ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
                     len = 0;
                     nump = 0;
@@ -1590,9 +1590,9 @@ static bool grk_t2_init_seg(   grk_tcd_cblk_dec_t* cblk,
         grk_tcd_seg_t* new_segs;
         cblk->numSegmentsAllocated += OPJ_J2K_DEFAULT_NB_SEGS;
 
-        new_segs = (grk_tcd_seg_t*) grk_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(grk_tcd_seg_t));
+        new_segs = (grk_tcd_seg_t*) grok_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(grk_tcd_seg_t));
         if(! new_segs) {
-            grk_free(cblk->segs);
+            grok_free(cblk->segs);
             cblk->segs = NULL;
             cblk->numSegmentsAllocated = 0;
             /* grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */

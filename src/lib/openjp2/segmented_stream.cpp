@@ -15,12 +15,12 @@
 *
 */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 
 /* #define DEBUG_SEG_BUF */
 
 
-bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer)
+bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer)
 {
     int32_t i = 0;
     size_t offset = 0;
@@ -29,7 +29,7 @@ bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* 
         return false;
 
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        grk_min_buf_t* seg = (grk_min_buf_t*)min_buf_vec->get(i);
+        grok_min_buf_t* seg = (grok_min_buf_t*)min_buf_vec->get(i);
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
         offset += seg->len;
@@ -38,9 +38,9 @@ bool grk_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* 
 
 }
 
-bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
+bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 {
-    grk_min_buf_t* seg = NULL;
+    grok_min_buf_t* seg = NULL;
     if (!buf_vec || !buf || !len)
         return false;
 
@@ -48,28 +48,28 @@ bool grk_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         buf_vec->init();
     }
 
-    seg = (grk_min_buf_t*)grk_malloc(sizeof(grk_buf_t));
+    seg = (grok_min_buf_t*)grok_malloc(sizeof(grk_buf_t));
     if (!seg)
         return false;
 
     seg->buf = buf;
     seg->len = len;
     if (!buf_vec->push_back(seg)) {
-        grk_free(seg);
+        grok_free(seg);
         return false;
     }
 
     return true;
 }
 
-uint16_t grk_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
+uint16_t grok_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
 {
     size_t i = 0;
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        grk_min_buf_t* seg = (grk_min_buf_t*)min_buf_vec->get(i);
+        grok_min_buf_t* seg = (grok_min_buf_t*)min_buf_vec->get(i);
         if (seg)
             len += seg->len;
     }
@@ -200,7 +200,7 @@ static grk_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, 
     grk_buf_t* new_seg = NULL;
     if (!seg_buf)
         return NULL;
-    new_seg = (grk_buf_t*)grk_malloc(sizeof(grk_buf_t));
+    new_seg = (grk_buf_t*)grok_malloc(sizeof(grk_buf_t));
     if (!new_seg)
         return NULL;
 
@@ -265,13 +265,13 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
     if (!seg_buf || !len)
         return false;
 
-    buf = (uint8_t*)grk_malloc(len);
+    buf = (uint8_t*)grok_malloc(len);
     if (!buf)
         return false;
 
 	seg = opj_seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg) {
-	    grk_free(buf);
+	    grok_free(buf);
         return false;
     }
     seg->owns_data = true;
@@ -396,7 +396,7 @@ void grk_buf_free(grk_buf_t* buffer)
     if (!buffer)
         return;
     if (buffer->buf && buffer->owns_data)
-        grk_free(buffer->buf);
-    grk_free(buffer);
+        grok_free(buffer->buf);
+    grok_free(buffer);
 }
 

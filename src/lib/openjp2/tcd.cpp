@@ -56,7 +56,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "T1Decoder.h"
 
 /* ----------------------------------------------------------------------- */
@@ -177,7 +177,7 @@ grk_tcd_t* grk_tcd_create(bool p_is_decoder)
     grk_tcd_t *l_tcd = nullptr;
 
     /* create the tcd structure */
-    l_tcd = (grk_tcd_t*) grk_calloc(1,sizeof(grk_tcd_t));
+    l_tcd = (grk_tcd_t*) grok_calloc(1,sizeof(grk_tcd_t));
     if (!l_tcd) {
         return nullptr;
     }
@@ -384,7 +384,7 @@ bool grk_tcd_pcrd_bisect_feasible(grk_tcd_t *tcd,
 	uint32_t upperBound = max_slope;
 	for (uint32_t layno = 0; layno < tcd_tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
-		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grk_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grok_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
 		/* Threshold for Marcela Index */
 		// start by including everything in this layer
@@ -557,7 +557,7 @@ bool grk_tcd_pcrd_bisect_simple(  grk_tcd_t *tcd,
 		if (grk_tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
 
 			double lowerBound = min_slope;
-			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grk_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grok_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
 			/* Threshold for Marcela Index */
 			// start by including everything in this layer
@@ -829,12 +829,12 @@ bool grk_tcd_init( grk_tcd_t *p_tcd,
     p_tcd->image = p_image;
     p_tcd->cp = p_cp;
 
-    p_tcd->tile = (grk_tcd_tile_t *) grk_calloc(1,sizeof(grk_tcd_tile_t));
+    p_tcd->tile = (grk_tcd_tile_t *) grok_calloc(1,sizeof(grk_tcd_tile_t));
     if (! p_tcd->tile) {
         return false;
     }
 
-    p_tcd->tile->comps = (grk_tcd_tilecomp_t *) grk_calloc(p_image->numcomps,sizeof(grk_tcd_tilecomp_t));
+    p_tcd->tile->comps = (grk_tcd_tilecomp_t *) grok_calloc(p_image->numcomps,sizeof(grk_tcd_tilecomp_t));
     if (! p_tcd->tile->comps ) {
         return false;
     }
@@ -853,7 +853,7 @@ void grk_tcd_destroy(grk_tcd_t *tcd)
 {
     if (tcd) {
         grk_tcd_free_tile(tcd);
-        grk_free(tcd);
+        grok_free(tcd);
     }
 }
 
@@ -915,15 +915,15 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
 
     /* 4 borders of the tile rescale on the image if necessary */
     l_tx0 = l_cp->tx0 + p * l_cp->tdx; /* can't be greater than l_image->x1 so won't overflow */
-    l_tile->x0 = grk_max<uint32_t>(l_tx0, l_image->x0);
-    l_tile->x1 = grk_min<uint32_t>(grk_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
+    l_tile->x0 = grok_max<uint32_t>(l_tx0, l_image->x0);
+    l_tile->x1 = grok_min<uint32_t>(grk_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
 	if (l_tile->x1 <= l_tile->x0) {
 		grk_event_msg(manager, EVT_ERROR, "Tile x coordinates are not valid\n");
 		return false;
 	}
     l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
-    l_tile->y0 = grk_max<uint32_t>(l_ty0, l_image->y0);
-    l_tile->y1 = grk_min<uint32_t>(grk_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
+    l_tile->y0 = grok_max<uint32_t>(l_ty0, l_image->y0);
+    l_tile->y1 = grok_min<uint32_t>(grk_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
 	if (l_tile->y1 <= l_tile->y0) {
 		grk_event_msg(manager, EVT_ERROR, "Tile y coordinates are not valid\n");
 		return false;
@@ -964,7 +964,7 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
         l_res_data_size = l_tilec->numresolutions * (uint32_t)sizeof(grk_tcd_resolution_t);
 
         if (l_tilec->resolutions == nullptr) {
-            l_tilec->resolutions = (grk_tcd_resolution_t *) grk_malloc(l_res_data_size);
+            l_tilec->resolutions = (grk_tcd_resolution_t *) grok_malloc(l_res_data_size);
             if (! l_tilec->resolutions ) {
                 return false;
             }
@@ -972,10 +972,10 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
             l_tilec->resolutions_size = l_res_data_size;
             memset(l_tilec->resolutions,0, l_res_data_size);
         } else if (l_res_data_size > l_tilec->resolutions_size) {
-            grk_tcd_resolution_t* new_resolutions = (grk_tcd_resolution_t *) grk_realloc(l_tilec->resolutions, l_res_data_size);
+            grk_tcd_resolution_t* new_resolutions = (grk_tcd_resolution_t *) grok_realloc(l_tilec->resolutions, l_res_data_size);
             if (! new_resolutions) {
                 grk_event_msg(manager, EVT_ERROR, "Not enough memory for tile resolutions\n");
-                grk_free(l_tilec->resolutions);
+                grok_free(l_tilec->resolutions);
                 l_tilec->resolutions = NULL;
                 l_tilec->resolutions_size = 0;
                 return false;
@@ -1052,8 +1052,8 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                 l_res->numbands = 3;
             }
 
-            cblkwidthexpn = grk_min<uint32_t>(l_tccp->cblkw, cbgwidthexpn);
-            cblkheightexpn = grk_min<uint32_t>(l_tccp->cblkh, cbgheightexpn);
+            cblkwidthexpn = grok_min<uint32_t>(l_tccp->cblkw, cbgwidthexpn);
+            cblkheightexpn = grok_min<uint32_t>(l_tccp->cblkh, cbgheightexpn);
 			size_t nominalBlockSize = (1 << cblkwidthexpn)*(1 << cblkheightexpn);
             l_band = l_res->bands;
 
@@ -1087,7 +1087,7 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                 l_band->numbps = l_step_size->expn + l_tccp->numgbits - 1;      /* WHY -1 ? */
 
                 if (!l_band->precincts && (l_nb_precincts > 0U)) {
-                    l_band->precincts = (grk_tcd_precinct_t *) grk_malloc( /*3 * */ l_nb_precinct_size);
+                    l_band->precincts = (grk_tcd_precinct_t *) grok_malloc( /*3 * */ l_nb_precinct_size);
                     if (! l_band->precincts) {
 						grk_event_msg(manager, EVT_ERROR, "Not enough memory for band precints\n");
                         return false;
@@ -1097,10 +1097,10 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                     l_band->precincts_data_size = l_nb_precinct_size;
                 } else if (l_band->precincts_data_size < l_nb_precinct_size) {
 
-                    grk_tcd_precinct_t * new_precincts = (grk_tcd_precinct_t *) grk_realloc(l_band->precincts,/*3 * */ l_nb_precinct_size);
+                    grk_tcd_precinct_t * new_precincts = (grk_tcd_precinct_t *) grok_realloc(l_band->precincts,/*3 * */ l_nb_precinct_size);
                     if (! new_precincts) {
                         grk_event_msg(manager, EVT_ERROR, "Not enough memory to handle band precints\n");
-                        grk_free(l_band->precincts);
+                        grok_free(l_band->precincts);
                         l_band->precincts = NULL;
                         l_band->precincts_data_size = 0;
                         return false;
@@ -1124,10 +1124,10 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                     /* precinct size (global) */
                     /*fprintf(stderr, "\t cbgxstart=%d, l_band->x0 = %d \n",cbgxstart, l_band->x0);*/
 
-                    l_current_precinct->x0 = grk_max<uint32_t>(cbgxstart, l_band->x0);
-                    l_current_precinct->y0 = grk_max<uint32_t>(cbgystart, l_band->y0);
-                    l_current_precinct->x1 = grk_min<uint32_t>(cbgxend, l_band->x1);
-                    l_current_precinct->y1 = grk_min<uint32_t>(cbgyend, l_band->y1);
+                    l_current_precinct->x0 = grok_max<uint32_t>(cbgxstart, l_band->x0);
+                    l_current_precinct->y0 = grok_max<uint32_t>(cbgystart, l_band->y0);
+                    l_current_precinct->x1 = grok_min<uint32_t>(cbgxend, l_band->x1);
+                    l_current_precinct->y1 = grok_min<uint32_t>(cbgyend, l_band->y1);
                     /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
 
                     tlcblkxstart = grk_uint_floordivpow2(l_current_precinct->x0, cblkwidthexpn) << cblkwidthexpn;
@@ -1155,7 +1155,7 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                     l_nb_code_blocks_size = l_nb_code_blocks * (uint32_t)sizeof_block;
 
                     if (!l_current_precinct->cblks.blocks && (l_nb_code_blocks > 0U)) {
-                        l_current_precinct->cblks.blocks = grk_malloc(l_nb_code_blocks_size);
+                        l_current_precinct->cblks.blocks = grok_malloc(l_nb_code_blocks_size);
                         if (! l_current_precinct->cblks.blocks ) {
                             return false;
                         }
@@ -1164,9 +1164,9 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
 
                         l_current_precinct->block_size = l_nb_code_blocks_size;
                     } else if (l_nb_code_blocks_size > l_current_precinct->block_size) {
-                        void *new_blocks = grk_realloc(l_current_precinct->cblks.blocks, l_nb_code_blocks_size);
+                        void *new_blocks = grok_realloc(l_current_precinct->cblks.blocks, l_nb_code_blocks_size);
                         if (! new_blocks) {
-                            grk_free(l_current_precinct->cblks.blocks);
+                            grok_free(l_current_precinct->cblks.blocks);
                             l_current_precinct->cblks.blocks = NULL;
                             l_current_precinct->block_size = 0;
                             grk_event_msg(manager, EVT_ERROR, "Not enough memory for current precinct codeblock element\n");
@@ -1194,10 +1194,10 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
                                 return false;
                             }
                             /* code-block size (global) */
-                            l_code_block->x0 = grk_max<uint32_t>(cblkxstart, l_current_precinct->x0);
-                            l_code_block->y0 = grk_max<uint32_t>(cblkystart, l_current_precinct->y0);
-                            l_code_block->x1 = grk_min<uint32_t>(cblkxend, l_current_precinct->x1);
-                            l_code_block->y1 = grk_min<uint32_t>(cblkyend, l_current_precinct->y1);
+                            l_code_block->x0 = grok_max<uint32_t>(cblkxstart, l_current_precinct->x0);
+                            l_code_block->y0 = grok_max<uint32_t>(cblkystart, l_current_precinct->y0);
+                            l_code_block->x1 = grok_min<uint32_t>(cblkxend, l_current_precinct->x1);
+                            l_code_block->y1 = grok_min<uint32_t>(cblkyend, l_current_precinct->y1);
 
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
 								if (!grk_tcd_code_block_enc_allocate_data(l_code_block, nominalBlockSize)) {
@@ -1213,10 +1213,10 @@ static inline bool grk_tcd_init_tile(grk_tcd_t *p_tcd,
 							}
 
                             /* code-block size (global) */
-                            l_code_block->x0 = grk_max<uint32_t>(cblkxstart, l_current_precinct->x0);
-                            l_code_block->y0 = grk_max<uint32_t>(cblkystart, l_current_precinct->y0);
-                            l_code_block->x1 = grk_min<uint32_t>(cblkxend, l_current_precinct->x1);
-                            l_code_block->y1 = grk_min<uint32_t>(cblkyend, l_current_precinct->y1);
+                            l_code_block->x0 = grok_max<uint32_t>(cblkxstart, l_current_precinct->x0);
+                            l_code_block->y0 = grok_max<uint32_t>(cblkystart, l_current_precinct->y0);
+                            l_code_block->x1 = grok_min<uint32_t>(cblkxend, l_current_precinct->x1);
+                            l_code_block->y1 = grok_min<uint32_t>(cblkyend, l_current_precinct->y1);
                         }
                     }
                     ++l_current_precinct;
@@ -1282,13 +1282,13 @@ static bool grk_tcd_code_block_enc_allocate (grk_tcd_cblk_enc_t * p_code_block)
 {
     if (! p_code_block->layers) {
         /* no memset since data */
-        p_code_block->layers = (grk_tcd_layer_t*) grk_calloc(100, sizeof(grk_tcd_layer_t));
+        p_code_block->layers = (grk_tcd_layer_t*) grok_calloc(100, sizeof(grk_tcd_layer_t));
         if (! p_code_block->layers) {
             return false;
         }
     }
     if (! p_code_block->passes) {
-        p_code_block->passes = (grk_tcd_pass_t*) grk_calloc(100, sizeof(grk_tcd_pass_t));
+        p_code_block->passes = (grk_tcd_pass_t*) grok_calloc(100, sizeof(grk_tcd_pass_t));
         if (! p_code_block->passes) {
             return false;
         }
@@ -1305,9 +1305,9 @@ static bool grk_tcd_code_block_enc_allocate_data (grk_tcd_cblk_enc_t * p_code_bl
 
     if (l_data_size > p_code_block->data_size) {
         if (p_code_block->data) {
-            grk_free(p_code_block->data); 
+            grok_free(p_code_block->data); 
         }
-        p_code_block->data = (uint8_t*) grk_malloc(l_data_size+1);
+        p_code_block->data = (uint8_t*) grok_malloc(l_data_size+1);
         if(! p_code_block->data) {
             p_code_block->data_size = 0U;
             return false;
@@ -1324,7 +1324,7 @@ static bool grk_tcd_code_block_enc_allocate_data (grk_tcd_cblk_enc_t * p_code_bl
 bool grk_tcd_code_block_dec_allocate (grk_tcd_cblk_dec_t * p_code_block)
 {
     if (!p_code_block->segs) {
-        p_code_block->segs = (grk_tcd_seg_t *)grk_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(grk_tcd_seg_t));
+        p_code_block->segs = (grk_tcd_seg_t *)grok_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(grk_tcd_seg_t));
         if (!p_code_block->segs) {
             return false;
         }
@@ -1412,7 +1412,7 @@ bool grk_tcd_encode_tile(   grk_tcd_t *p_tcd,
                 p_cstr_info->tile[p_tile_no].pdx[i] = (int)l_tccp->prcw[i];
                 p_cstr_info->tile[p_tile_no].pdy[i] = (int)l_tccp->prch[i];
             }
-            p_cstr_info->tile[p_tile_no].packet = (opj_packet_info_t*) grk_calloc((size_t)p_cstr_info->numcomps * (size_t)p_cstr_info->numlayers * l_num_packs, sizeof(opj_packet_info_t));
+            p_cstr_info->tile[p_tile_no].packet = (opj_packet_info_t*) grok_calloc((size_t)p_cstr_info->numcomps * (size_t)p_cstr_info->numlayers * l_num_packs, sizeof(opj_packet_info_t));
             if (!p_cstr_info->tile[p_tile_no].packet) {
                 /* FIXME event manager error callback */
                 return false;
@@ -1722,7 +1722,7 @@ static void grk_tcd_free_tile(grk_tcd_t *p_tcd)
                             ++l_precinct;
                         }
 
-                        grk_free(l_band->precincts);
+                        grok_free(l_band->precincts);
                         l_band->precincts = nullptr;
                     }
                     ++l_band;
@@ -1730,7 +1730,7 @@ static void grk_tcd_free_tile(grk_tcd_t *p_tcd)
                 ++l_res;
             }
 
-            grk_free(l_tile_comp->resolutions);
+            grok_free(l_tile_comp->resolutions);
             l_tile_comp->resolutions = nullptr;
         }
 
@@ -1739,9 +1739,9 @@ static void grk_tcd_free_tile(grk_tcd_t *p_tcd)
         ++l_tile_comp;
     }
 
-    grk_free(l_tile->comps);
+    grok_free(l_tile->comps);
     l_tile->comps = nullptr;
-    grk_free(p_tcd->tile);
+    grok_free(p_tcd->tile);
     p_tcd->tile = nullptr;
 }
 
@@ -1860,7 +1860,7 @@ static bool grk_tcd_mct_decode ( grk_tcd_t *p_tcd, grk_event_mgr_t *p_manager)
                 return true;
             }
 
-            l_data = (uint8_t **) grk_malloc(l_tile->numcomps*sizeof(uint8_t*));
+            l_data = (uint8_t **) grok_malloc(l_tile->numcomps*sizeof(uint8_t*));
             if (! l_data) {
                 return false;
             }
@@ -1880,11 +1880,11 @@ static bool grk_tcd_mct_decode ( grk_tcd_t *p_tcd, grk_event_mgr_t *p_manager)
                         l_tile->numcomps,
                         /* tells if the data is signed */
                         p_tcd->image->comps->sgnd)) {
-                grk_free(l_data);
+                grok_free(l_data);
                 return false;
             }
 
-            grk_free(l_data);
+            grok_free(l_data);
         } else {
             if (l_tcp->tccps->qmfbid == 1) {
                 grk_mct_decode(grk_tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0, 0) ,
@@ -2002,14 +2002,14 @@ static void grk_tcd_code_block_dec_deallocate (grk_tcd_precinct_t * p_precinct)
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
 			l_code_block->seg_buffers.cleanup();
             if (l_code_block->segs) {
-                grk_free(l_code_block->segs );
+                grok_free(l_code_block->segs );
                 l_code_block->segs = nullptr;
             }
 
             ++l_code_block;
         }
 
-        grk_free(p_precinct->cblks.dec);
+        grok_free(p_precinct->cblks.dec);
         p_precinct->cblks.dec = nullptr;
     }
 }
@@ -2027,24 +2027,24 @@ static void grk_tcd_code_block_enc_deallocate (grk_tcd_precinct_t * p_precinct)
 
         for     (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno)  {
             if (l_code_block->owns_data && l_code_block->data) {
-                grk_free(l_code_block->data);
+                grok_free(l_code_block->data);
                 l_code_block->data = nullptr;
 				l_code_block->owns_data = false;
             }
 
             if (l_code_block->layers) {
-                grk_free(l_code_block->layers );
+                grok_free(l_code_block->layers );
                 l_code_block->layers = nullptr;
             }
 
             if (l_code_block->passes) {
-                grk_free(l_code_block->passes );
+                grok_free(l_code_block->passes );
                 l_code_block->passes = nullptr;
             }
             ++l_code_block;
         }
 
-        grk_free(p_precinct->cblks.enc);
+        grok_free(p_precinct->cblks.enc);
 
         p_precinct->cblks.enc = nullptr;
     }
@@ -2137,7 +2137,7 @@ static bool grk_tcd_mct_encode ( grk_tcd_t *p_tcd )
             return true;
         }
 
-        l_data = (uint8_t **) grk_malloc(l_tile->numcomps*sizeof(uint8_t*));
+        l_data = (uint8_t **) grok_malloc(l_tile->numcomps*sizeof(uint8_t*));
         if (! l_data) {
             return false;
         }
@@ -2157,11 +2157,11 @@ static bool grk_tcd_mct_encode ( grk_tcd_t *p_tcd )
                     l_tile->numcomps,
                     /* tells if the data is signed */
                     p_tcd->image->comps->sgnd) ) {
-            grk_free(l_data);
+            grok_free(l_data);
             return false;
         }
 
-        grk_free(l_data);
+        grok_free(l_data);
     } else if (l_tcp->tccps->qmfbid == 0) {
         grk_mct_encode_real(grk_tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0, 0),
                             grk_tile_buf_get_ptr(l_tile->comps[1].buf, 0, 0, 0, 0),
@@ -2403,7 +2403,7 @@ grk_tcd_cblk_enc_t::~grk_tcd_cblk_enc_t() {
 
 void grk_tcd_cblk_enc_t::cleanup() {
 	if (data && owns_data)
-		grk_free(data);
+		grok_free(data);
 	if (layers)
 		delete[] layers;
 	if (passes)
@@ -2412,7 +2412,7 @@ void grk_tcd_cblk_enc_t::cleanup() {
 
 bool grk_tcd_cblk_dec_t::alloc() {
 	if (!segs) {
-		segs = (grk_tcd_seg_t *)grk_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(grk_tcd_seg_t));
+		segs = (grk_tcd_seg_t *)grok_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(grk_tcd_seg_t));
 		if (!segs) {
 			return false;
 		}

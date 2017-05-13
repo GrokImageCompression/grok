@@ -59,7 +59,7 @@
 #include <xmmintrin.h>
 #endif
 
-#include "grk_includes.h"
+#include "grok_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
@@ -438,7 +438,7 @@ bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec)
 		/* FIXME event manager error callback */
 		return false;
 	}
-	bj = (int32_t*)grk_malloc(l_data_size);
+	bj = (int32_t*)grok_malloc(l_data_size);
 	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if (l_data_size != 0 && !bj) {
@@ -483,7 +483,7 @@ bool grk_dwt_encode_53(grk_tcd_tilecomp_t * tilec)
 		l_cur_res = l_last_res;
 		--l_last_res;
 	}
-	grk_free(bj);
+	grok_free(bj);
 #ifdef DEBUG_LOSSLESS_DWT
 	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
 	grk_dwt_decode_53(tilec, tilec->numresolutions, 8);
@@ -534,7 +534,7 @@ bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec)
 		/* FIXME event manager error callback */
 		return false;
 	}
-	bj = (int32_t*)grk_malloc(l_data_size);
+	bj = (int32_t*)grok_malloc(l_data_size);
 	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
 	if (l_data_size != 0 && !bj) {
@@ -580,7 +580,7 @@ bool grk_dwt_encode_97(grk_tcd_tilecomp_t * tilec)
 		--l_last_res;
 	}
 
-	grk_free(bj);
+	grok_free(bj);
 	return true;
 }
 
@@ -623,7 +623,7 @@ bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec,
 			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
 
 			uint32_t w = (tilec->x1 - tilec->x0);
-			h.mem = (int32_t*)grk_aligned_malloc(grk_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
+			h.mem = (int32_t*)grok_aligned_malloc(grk_dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
 			if (!h.mem) {
 				rc++;
 				goto cleanup;
@@ -666,7 +666,7 @@ bool grk_dwt_decode_53(grk_tcd_tilecomp_t* tilec,
 			}
 		cleanup:
 			if (h.mem)
-				grk_aligned_free(h.mem);
+				grok_aligned_free(h.mem);
 			decode_dwt_calling_barrier.arrive_and_wait();
 
 		}));
@@ -960,17 +960,17 @@ static void grk_v4dwt_decode(grk_v4dwt_t* restrict dwt)
 #ifdef __SSE__
     grk_v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
     grk_v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
-    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grk_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_delta));
-    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grk_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_gamma));
-    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grk_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_beta));
-    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grk_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_alpha));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_delta));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_gamma));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(grk_dwt_beta));
+    grk_v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(grk_dwt_alpha));
 #else
     grk_v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
     grk_v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
-    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grk_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_delta);
-    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grk_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_gamma);
-    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grk_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_beta);
-    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grk_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_alpha);
+    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_delta);
+    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_gamma);
+    grk_v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), grk_dwt_beta);
+    grk_v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), grk_dwt_alpha);
 #endif
 }
 
@@ -1014,7 +1014,7 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 
 			uint32_t w = (tilec->x1 - tilec->x0);
 
-			h.wavelet = (opj_v4_t*)grk_aligned_malloc((grk_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
+			h.wavelet = (opj_v4_t*)grok_aligned_malloc((grk_dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
 			if (!h.wavelet) {
 				/* FIXME event manager error callback */
 				rc++;
@@ -1101,7 +1101,7 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 
 		cleanup:
 			if (h.wavelet)
-				grk_aligned_free(h.wavelet);
+				grok_aligned_free(h.wavelet);
 			decode_dwt_calling_barrier.arrive_and_wait();
 
 		}));
