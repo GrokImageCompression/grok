@@ -59,7 +59,7 @@ namespace grk {
 @brief Implementation of raw encoding (RAW) for BYPASS mode
 */
 
-typedef struct grk_raw {
+struct raw_t {
     /** temporary buffer where bits are coded or decoded */
     uint8_t C;
     /** number of bits already read or free to write */
@@ -74,7 +74,7 @@ typedef struct grk_raw {
     uint8_t *start;
     /** pointer to the end of the buffer */
     uint8_t *end;
-} grk_raw_t;
+} ;
 
 
 /* ----------------------------------------------------------------------- */
@@ -82,25 +82,25 @@ typedef struct grk_raw {
 Create a new RAW handle
 @return Returns a new RAW handle if successful, returns NULL otherwise
 */
-grk_raw_t* grk_raw_create(void);
+raw_t* raw_create(void);
 /**
 Destroy a previously created RAW handle
 @param raw RAW handle to destroy
 */
-void grk_raw_destroy(grk_raw_t *raw);
+void raw_destroy(raw_t *raw);
 /**
 Initialize the decoder
 @param raw RAW handle
 @param bp Pointer to the start of the buffer from which the bytes will be read
 @param len Length of the input buffer
 */
-void grk_raw_init_dec(grk_raw_t *raw, uint8_t *bp, uint32_t len);
+void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len);
 /**
 Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param raw RAW handle
 @return Returns the decoded symbol (0 or 1)
 */
-uint32_t grk_raw_decode(grk_raw_t *raw);
+uint32_t raw_decode(raw_t *raw);
 /* ----------------------------------------------------------------------- */
 
 

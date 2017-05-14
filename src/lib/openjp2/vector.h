@@ -20,20 +20,20 @@
 
 namespace grk {
 
-struct grok_min_buf_t;
+struct min_buf_t;
 
-struct opj_vec_t {
-	opj_vec_t() : data(nullptr) {}
+struct grok_vec_t {
+	grok_vec_t() : data(nullptr) {}
 
 	bool init()
 	{
 		if (data)
 			return true;
-		data = new std::vector<grok_min_buf_t*>();
+		data = new std::vector<min_buf_t*>();
 		return data ? true : false;
 	}
 
-	bool push_back(grok_min_buf_t* value)
+	bool push_back(min_buf_t* value)
 	{
 		data->push_back(value);
 		return true;
@@ -75,7 +75,7 @@ struct opj_vec_t {
 		delete data;
 		data = NULL;
 	}
-	std::vector<grok_min_buf_t*>* data;		/* array of void* pointers */
+	std::vector<min_buf_t*>* data;		/* array of void* pointers */
 };
 
 

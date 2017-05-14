@@ -115,15 +115,15 @@ enum JP2_IMG_STATE {
 /**
 JP2 component
 */
-struct grk_jp2_comps_t {
+struct jp2_comps_t {
     uint32_t depth;
     uint32_t sgnd;
     uint32_t bpcc;
 } ;
 
 
-struct grk_jp2_buffer_t {
-	grk_jp2_buffer_t(uint8_t* buf, size_t size, bool owns) : buffer(buf), len(size), ownsData(owns)
+struct jp2_buffer_t {
+	jp2_buffer_t(uint8_t* buf, size_t size, bool owns) : buffer(buf), len(size), ownsData(owns)
 	{
 	}
 	bool alloc(size_t len) {
@@ -144,8 +144,8 @@ struct grk_jp2_buffer_t {
 };
 
 
-struct grk_jp2_uuid_t : public grk_jp2_buffer_t {
-	grk_jp2_uuid_t(const uint8_t myuuid[16], uint8_t* buf, size_t size, bool owns) :grk_jp2_buffer_t(buf,size,owns) {
+struct jp2_uuid_t : public jp2_buffer_t {
+	jp2_uuid_t(const uint8_t myuuid[16], uint8_t* buf, size_t size, bool owns) :jp2_buffer_t(buf,size,owns) {
 		for (int i = 0; i < 16; ++i) {
 			uuid[i] = myuuid[i];
 		}
@@ -158,13 +158,13 @@ struct grk_jp2_uuid_t : public grk_jp2_buffer_t {
 /**
 JPEG-2000 file format reader/writer
 */
-struct grk_jp2_t {
+struct jp2_t {
     /** handle to the J2K codec  */
-    grk_j2k_t *j2k;
+    j2k_t *j2k;
     /** list of validation procedures */
-    grk_procedure_list * m_validation_list;
+	procedure_list_t * m_validation_list;
     /** list of execution procedures */
-    grk_procedure_list * m_procedure_list;
+    procedure_list_t * m_procedure_list;
 
     /* width of image */
     uint32_t w;
@@ -184,7 +184,7 @@ struct grk_jp2_t {
     uint32_t minversion;
     uint32_t numcl;
     uint32_t *cl;
-    grk_jp2_comps_t *comps;
+    jp2_comps_t *comps;
     /* FIXME: The following two variables are used to save offset
       as we write out a JP2 file to disk. This mechanism is not flexible
       as codec writers will need to extend those fields as new part
@@ -193,7 +193,7 @@ struct grk_jp2_t {
     int64_t j2k_codestream_offset;
     uint32_t jp2_state;
     uint32_t jp2_img_state;
-    grk_jp2_color_t color;
+    jp2_color_t color;
 
     bool ignore_pclr_cmap_cdef;
 
@@ -203,34 +203,34 @@ struct grk_jp2_t {
 	bool  write_display_resolution;
 	double display_resolution[2];
 
-	grk_jp2_buffer_t xml;
-	grk_jp2_uuid_t uuids[JP2_MAX_NUM_UUIDS];
+	jp2_buffer_t xml;
+	jp2_uuid_t uuids[JP2_MAX_NUM_UUIDS];
 	uint32_t numUuids;
 };
 
 /**
 JP2 Box
 */
-struct grk_jp2_box_t {
+struct jp2_box_t {
     uint32_t length;
     uint32_t type;
     int32_t init_pos;
 } ;
 
-struct grk_jp2_header_handler_t {
+struct jp2_header_handler_t {
     /* marker value */
     uint32_t id;
     /* action linked to the marker */
-    bool (*handler) (     grk_jp2_t *jp2,
+    bool (*handler) (     jp2_t *jp2,
                           uint8_t *p_header_data,
                           uint32_t p_header_size,
-                          grk_event_mgr_t * p_manager);
+                          event_mgr_t * p_manager);
 };
 
 
-struct grk_jp2_img_header_writer_handler_t {
+struct jp2_img_header_writer_handler_t {
     /* action to perform */
-    uint8_t*   (*handler) (grk_jp2_t *jp2, uint32_t * p_data_size);
+    uint8_t*   (*handler) (jp2_t *jp2, uint32_t * p_data_size);
     /* result of the action : data */
     uint8_t*   m_data;
     /* size of data */
@@ -247,7 +247,7 @@ Decoding parameters are returned in jp2->j2k->cp.
 @param jp2 JP2 decompressor handle
 @param parameters decompression parameters
 */
-void grk_jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
+void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
 
 /**
  * Decode an image from a JPEG-2000 file stream
@@ -258,11 +258,11 @@ void grk_jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
  *
  * @return Returns a decoded image if successful, returns NULL otherwise
 */
-bool grk_jp2_decode(grk_jp2_t *jp2,
-					opj_plugin_tile_t* tile,
-                    grk_stream_private_t *p_stream,
+bool jp2_decode(jp2_t *jp2,
+					grok_plugin_tile_t* tile,
+                    stream_private_t *p_stream,
                     opj_image_t* p_image,
-                    grk_event_mgr_t * p_manager);
+                    event_mgr_t * p_manager);
 
 /**
  * Setup the encoder parameters using the current image and using user parameters.
@@ -274,10 +274,10 @@ bool grk_jp2_decode(grk_jp2_t *jp2,
  * @param p_manager  FIXME DOC
  * @return true if successful, false otherwise
 */
-bool grk_jp2_setup_encoder(  grk_jp2_t *jp2,
+bool jp2_setup_encoder(  jp2_t *jp2,
                              opj_cparameters_t *parameters,
                              opj_image_t *image,
-                             grk_event_mgr_t * p_manager);
+                             event_mgr_t * p_manager);
 
 /**
 Encode an image into a JPEG-2000 file stream
@@ -286,10 +286,10 @@ Encode an image into a JPEG-2000 file stream
 @param p_manager  event manager
 @return Returns true if successful, returns false otherwise
 */
-bool grk_jp2_encode(  grk_jp2_t *jp2,
-						opj_plugin_tile_t* tile,
-                      grk_stream_private_t *stream,
-                      grk_event_mgr_t * p_manager);
+bool jp2_encode(  jp2_t *jp2,
+						grok_plugin_tile_t* tile,
+                      stream_private_t *stream,
+                      event_mgr_t * p_manager);
 
 
 /**
@@ -302,19 +302,19 @@ bool grk_jp2_encode(  grk_jp2_t *jp2,
  *
  * @return true if the codec is valid.
  */
-bool grk_jp2_start_compress(grk_jp2_t *jp2,
-                            grk_stream_private_t *stream,
+bool jp2_start_compress(jp2_t *jp2,
+                            stream_private_t *stream,
                             opj_image_t * p_image,
-                            grk_event_mgr_t * p_manager);
+                            event_mgr_t * p_manager);
 
 
 /**
  * Ends the compression procedures and possibly add data to be read after the
  * codestream.
  */
-bool grk_jp2_end_compress(  grk_jp2_t *jp2,
-                            grk_stream_private_t *cio,
-                            grk_event_mgr_t * p_manager);
+bool jp2_end_compress(  jp2_t *jp2,
+                            stream_private_t *cio,
+                            event_mgr_t * p_manager);
 
 /* ----------------------------------------------------------------------- */
 
@@ -322,9 +322,9 @@ bool grk_jp2_end_compress(  grk_jp2_t *jp2,
  * Ends the decompression procedures and possibly add data to be read after the
  * codestream.
  */
-bool grk_jp2_end_decompress(grk_jp2_t *jp2,
-                            grk_stream_private_t *cio,
-                            grk_event_mgr_t * p_manager);
+bool jp2_end_decompress(jp2_t *jp2,
+                            stream_private_t *cio,
+                            event_mgr_t * p_manager);
 
 /**
  * Reads a jpeg2000 file header structure.
@@ -336,11 +336,11 @@ bool grk_jp2_end_decompress(grk_jp2_t *jp2,
  *
  * @return true if the box is valid.
  */
-bool grk_jp2_read_header(  grk_stream_private_t *p_stream,
-                           grk_jp2_t *jp2,
+bool jp2_read_header(  stream_private_t *p_stream,
+                           jp2_t *jp2,
 							opj_header_info_t* header_info,
                            opj_image_t ** p_image,
-                           grk_event_mgr_t * p_manager );
+                           event_mgr_t * p_manager );
 
 /**
  * Reads a tile header.
@@ -356,7 +356,7 @@ bool grk_jp2_read_header(  grk_stream_private_t *p_stream,
  * @param  p_stream      the stream to write data to.
  * @param  p_manager     the user event manager.
  */
-bool grk_jp2_read_tile_header ( grk_jp2_t * p_jp2,
+bool jp2_read_tile_header ( jp2_t * p_jp2,
                                 uint32_t * p_tile_index,
                                 uint64_t * p_data_size,
                                 uint32_t * p_tile_x0,
@@ -365,8 +365,8 @@ bool grk_jp2_read_tile_header ( grk_jp2_t * p_jp2,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                grk_stream_private_t *p_stream,
-                                grk_event_mgr_t * p_manager );
+                                stream_private_t *p_stream,
+                                event_mgr_t * p_manager );
 
 /**
  * Writes a tile.
@@ -378,12 +378,12 @@ bool grk_jp2_read_tile_header ( grk_jp2_t * p_jp2,
  * @param  p_stream      the stream to write data to.
  * @param  p_manager  the user event manager.
  */
-bool grk_jp2_write_tile (  grk_jp2_t *p_jp2,
+bool jp2_write_tile (  jp2_t *p_jp2,
                            uint32_t p_tile_index,
                            uint8_t * p_data,
                            uint64_t p_data_size,
-                           grk_stream_private_t *p_stream,
-                           grk_event_mgr_t * p_manager );
+                           stream_private_t *p_stream,
+                           event_mgr_t * p_manager );
 
 /**
  * Decode tile data.
@@ -396,25 +396,25 @@ bool grk_jp2_write_tile (  grk_jp2_t *p_jp2,
  *
  * @return FIXME DOC
  */
-bool grk_jp2_decode_tile (  grk_jp2_t * p_jp2,
+bool jp2_decode_tile (  jp2_t * p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            grk_stream_private_t *p_stream,
-                            grk_event_mgr_t * p_manager );
+                            stream_private_t *p_stream,
+                            event_mgr_t * p_manager );
 
 /**
  * Creates a jpeg2000 file decompressor.
  *
  * @return  an empty jpeg2000 file codec.
  */
-grk_jp2_t* grk_jp2_create (bool p_is_decoder);
+jp2_t* jp2_create (bool p_is_decoder);
 
 /**
 Destroy a JP2 decompressor handle
 @param jp2 JP2 decompressor handle to destroy
 */
-void grk_jp2_destroy(grk_jp2_t *jp2);
+void jp2_destroy(jp2_t *jp2);
 
 
 /**
@@ -430,28 +430,28 @@ void grk_jp2_destroy(grk_jp2_t *jp2);
  *
  * @return  true      if the area could be set.
  */
-bool grk_jp2_set_decode_area(  grk_jp2_t *p_jp2,
+bool jp2_set_decode_area(  jp2_t *p_jp2,
                                opj_image_t* p_image,
                                uint32_t p_start_x, uint32_t p_start_y,
                                uint32_t p_end_x, uint32_t p_end_y,
-                               grk_event_mgr_t * p_manager );
+                               event_mgr_t * p_manager );
 
 /**
 *
 */
-bool grk_jp2_get_tile(  grk_jp2_t *p_jp2,
-                        grk_stream_private_t *p_stream,
+bool jp2_get_tile(  jp2_t *p_jp2,
+                        stream_private_t *p_stream,
                         opj_image_t* p_image,
-                        grk_event_mgr_t * p_manager,
+                        event_mgr_t * p_manager,
                         uint32_t tile_index );
 
 
 /**
  *
  */
-bool grk_jp2_set_decoded_resolution_factor(grk_jp2_t *p_jp2,
+bool jp2_set_decoded_resolution_factor(jp2_t *p_jp2,
         uint32_t res_factor,
-        grk_event_mgr_t * p_manager);
+        event_mgr_t * p_manager);
 
 
 /**
@@ -462,7 +462,7 @@ bool grk_jp2_set_decoded_resolution_factor(grk_jp2_t *p_jp2,
  *@param out_stream      output stream where dump the elements.
  *
 */
-void jp2_dump (grk_jp2_t* p_jp2, int32_t flag, FILE* out_stream);
+void jp2_dump (jp2_t* p_jp2, int32_t flag, FILE* out_stream);
 
 /**
  * Get the codestream info from a JPEG2000 codec.
@@ -471,7 +471,7 @@ void jp2_dump (grk_jp2_t* p_jp2, int32_t flag, FILE* out_stream);
  *
  *@return  the codestream information extract from the jpg2000 codec
  */
-opj_codestream_info_v2_t* jp2_get_cstr_info(grk_jp2_t* p_jp2);
+opj_codestream_info_v2_t* jp2_get_cstr_info(jp2_t* p_jp2);
 
 /**
  * Get the codestream index from a JPEG2000 codec.
@@ -480,7 +480,7 @@ opj_codestream_info_v2_t* jp2_get_cstr_info(grk_jp2_t* p_jp2);
  *
  *@return  the codestream index extract from the jpg2000 codec
  */
-opj_codestream_index_t* jp2_get_cstr_index(grk_jp2_t* p_jp2);
+opj_codestream_index_t* jp2_get_cstr_index(jp2_t* p_jp2);
 
 
 /*@}*/

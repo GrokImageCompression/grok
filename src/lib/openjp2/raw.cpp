@@ -68,20 +68,20 @@ namespace grk {
 ==========================================================
 */
 
-grk_raw_t* grk_raw_create(void)
+raw_t* raw_create(void)
 {
-    grk_raw_t *raw = (grk_raw_t*)grok_malloc(sizeof(grk_raw_t));
+    raw_t *raw = (raw_t*)grok_malloc(sizeof(raw_t));
     return raw;
 }
 
-void grk_raw_destroy(grk_raw_t *raw)
+void raw_destroy(raw_t *raw)
 {
     if(raw) {
         grok_free(raw);
     }
 }
 
-void grk_raw_init_dec(grk_raw_t *raw, uint8_t *bp, uint32_t len)
+void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len)
 {
     raw->start = bp;
     raw->lenmax = len;
@@ -90,7 +90,7 @@ void grk_raw_init_dec(grk_raw_t *raw, uint8_t *bp, uint32_t len)
     raw->COUNT = 0;
 }
 
-uint32_t grk_raw_decode(grk_raw_t *raw)
+uint32_t raw_decode(raw_t *raw)
 {
     uint32_t d;
     if (raw->COUNT == 0) {

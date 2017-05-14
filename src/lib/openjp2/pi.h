@@ -73,25 +73,25 @@ by some function in T2.C.
 /**
 FIXME DOC
 */
-typedef struct grk_pi_resolution {
+struct pi_resolution_t {
     uint32_t pdx, pdy;
     uint32_t pw, ph;
-} grk_pi_resolution_t;
+} ;
 
 /**
 FIXME DOC
 */
-typedef struct grk_pi_comp {
+struct pi_comp_t {
     uint32_t dx, dy;
     /** number of resolution levels */
     uint32_t numresolutions;
-    grk_pi_resolution_t *resolutions;
-} grk_pi_comp_t;
+    pi_resolution_t *resolutions;
+} ;
 
 /**
 Packet iterator
 */
-typedef struct grk_pi_iterator {
+struct pi_iterator_t {
     /** Enabling Tile part generation*/
     uint8_t tp_on;
     /** precise if the packet has been already used (useful for progression order change) */
@@ -119,14 +119,14 @@ typedef struct grk_pi_iterator {
     /** number of components in the image */
     uint32_t numcomps;
     /** Components*/
-    grk_pi_comp_t *comps;
+    pi_comp_t *comps;
     /** FIXME DOC*/
     uint32_t tx0, ty0, tx1, ty1;
     /** FIXME DOC*/
     uint32_t x, y;
     /** FIXME DOC*/
     uint32_t dx, dy;
-} grk_pi_iterator_t;
+} ;
 
 /** @name Exported functions */
 /*@{*/
@@ -141,8 +141,8 @@ typedef struct grk_pi_iterator {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
 */
-grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *image,
-        opj_cp_t *cp,
+pi_iterator_t *pi_initialise_encode(const opj_image_t *image,
+        cp_t *cp,
         uint32_t tileno,
         J2K_T2_MODE t2_mode);
 
@@ -153,8 +153,8 @@ grk_pi_iterator_t *grk_pi_initialise_encode(const opj_image_t *image,
  * @param	p_cp		the coding parameters.
  * @param	p_tile_no	index of the tile being encoded.
 */
-void grk_pi_update_encoding_parameters(	const opj_image_t *p_image,
-                                        opj_cp_t *p_cp,
+void pi_update_encoding_parameters(	const opj_image_t *p_image,
+                                        cp_t *p_cp,
                                         uint32_t p_tile_no );
 
 /**
@@ -167,8 +167,8 @@ Modify the packet iterator for enabling tile part generation
 @param tppos The position of the tile part flag in the progression order
 @param t2_mode FIXME DOC
 */
-void grk_pi_init_encode(  grk_pi_iterator_t *pi,
-                            opj_cp_t *cp,
+void pi_init_encode(  pi_iterator_t *pi,
+                            cp_t *cp,
                             uint32_t tileno,
                             uint32_t pino,
                             uint32_t tpnum,
@@ -181,10 +181,10 @@ Create a packet iterator for Decoder
 @param cp Coding parameters
 @param tileno Number that identifies the tile for which to list the packets
 @return Returns a packet iterator that points to the first packet of the tile
-@see grk_pi_destroy
+@see pi_destroy
 */
-grk_pi_iterator_t *grk_pi_create_decode(opj_image_t * image,
-                                        opj_cp_t * cp,
+pi_iterator_t *pi_create_decode(opj_image_t * image,
+                                        cp_t * cp,
                                         uint32_t tileno);
 /**
  * Destroys a packet iterator array.
@@ -192,7 +192,7 @@ grk_pi_iterator_t *grk_pi_create_decode(opj_image_t * image,
  * @param	p_pi			the packet iterator array to destroy.
  * @param	p_nb_elements	the number of elements in the array.
  */
-void grk_pi_destroy(grk_pi_iterator_t *p_pi,
+void pi_destroy(pi_iterator_t *p_pi,
                     uint32_t p_nb_elements);
 
 /**
@@ -200,7 +200,7 @@ Modify the packet iterator to point to the next packet
 @param pi Packet iterator to modify
 @return Returns false if pi pointed to the last packet or else returns true
 */
-bool grk_pi_next(grk_pi_iterator_t * pi);
+bool pi_next(pi_iterator_t * pi);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

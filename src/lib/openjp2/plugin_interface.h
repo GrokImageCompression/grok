@@ -56,15 +56,15 @@ typedef void  (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(plugin_debug_mqc_t *mqc);
 // encoder interface
 /////////////////////
 
-typedef struct plugin_encode_user_callback_info {
+struct plugin_encode_user_callback_info_t {
     const char* input_file_name;
 	bool	outputFileNameIsRelative;
     const char* output_file_name;
     opj_cparameters_t* encoder_parameters;
     opj_image_t* image;
-    opj_plugin_tile_t* tile;
+    grok_plugin_tile_t* tile;
     int32_t	error_code;
-} plugin_encode_user_callback_info_t;
+} ;
 
 typedef void(*PLUGIN_ENCODE_USER_CALLBACK)(plugin_encode_user_callback_info_t* info);
 
@@ -95,12 +95,12 @@ typedef bool (*PLUGIN_IS_BATCH_ENCODE_COMPLETE)(void);
 // decoder interface
 ////////////////////
 
-typedef opj_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
+typedef grok_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
                                     size_t compressed_tile_id,
                                     opj_cparameters_t* encoder_parameters,
                                     opj_image_t* image);
 
-typedef struct plugin_decode_callback_info {
+struct plugin_decode_callback_info_t {
     size_t deviceId;
     size_t compressed_tile_id;
     GENERATE_TILE generate_tile_func;
@@ -110,9 +110,9 @@ typedef struct plugin_decode_callback_info {
 	opj_codec_t*				l_codec;
     opj_decompress_parameters* decoder_parameters;
     opj_image_t* image;
-    opj_plugin_tile_t* tile;
+    grok_plugin_tile_t* tile;
     int32_t	error_code;
-} plugin_decode_callback_info_t;
+} ;
 
 typedef void(*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);
 

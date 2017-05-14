@@ -68,7 +68,7 @@ used for
 <li>Debugging messages
 </ul>
 */
-typedef struct grk_event_mgr {
+typedef struct event_mgr {
     /** Data to call the event manager upon */
     void *			m_error_data;
     /** Data to call the event manager upon */
@@ -81,7 +81,7 @@ typedef struct grk_event_mgr {
     opj_msg_callback warning_handler;
     /** Debug message callback if available, NULL otherwise */
     opj_msg_callback info_handler;
-} grk_event_mgr_t;
+} event_mgr_t;
 
 
 #define EVT_ERROR	1	/**< Error event type */
@@ -107,13 +107,13 @@ typedef struct grk_event_mgr {
  *
  * @return Returns true if successful, returns false otherwise
  */
-bool grk_event_msg(grk_event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...);
+bool event_msg(event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...);
 /* ----------------------------------------------------------------------- */
 
 /**
  * Set the event manager with the default callback function for the 3 levels.
  */
-void grk_set_default_event_handler(grk_event_mgr_t * p_manager);
+void set_default_event_handler(event_mgr_t * p_manager);
 
 /*
 #ifdef __GNUC__

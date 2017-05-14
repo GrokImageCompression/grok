@@ -515,51 +515,51 @@ typedef struct opj_cparameters {
 /**
 Channel description: channel index, type, association
 */
-typedef struct grk_jp2_cdef_info {
+typedef struct jp2_cdef_info {
 	uint16_t cn;
 	uint16_t typ;	
 	uint16_t asoc;
-} grk_jp2_cdef_info_t;
+} jp2_cdef_info_t;
 
 /**
 Channel descriptions and number of descriptions
 */
-typedef struct grk_jp2_cdef {
-	grk_jp2_cdef_info_t *info;
+typedef struct jp2_cdef {
+	jp2_cdef_info_t *info;
 	uint16_t n;
-} grk_jp2_cdef_t;
+} jp2_cdef_t;
 
 /**
 Component mappings: channel index, mapping type, palette index
 */
-typedef struct grk_jp2_cmap_comp {
+typedef struct jp2_cmap_comp {
 	uint16_t cmp;
 	uint8_t mtyp, pcol;
-} grk_jp2_cmap_comp_t;
+} jp2_cmap_comp_t;
 
 /**
 Palette data: table entries, palette columns
 */
-typedef struct grk_jp2_pclr {
+typedef struct jp2_pclr {
 	uint32_t *entries;
 	uint8_t *channel_sign;
 	uint8_t *channel_size;
-	grk_jp2_cmap_comp_t *cmap;
+	jp2_cmap_comp_t *cmap;
 	uint16_t nr_entries;
 	uint8_t nr_channels;
-} grk_jp2_pclr_t;
+} jp2_pclr_t;
 
 /**
 Struct for ICC profile, palette, component mapping, channel description
 */
-typedef struct grk_jp2_color {
+typedef struct jp2_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
 
-	grk_jp2_cdef_t *jp2_cdef;
-	grk_jp2_pclr_t *jp2_pclr;
+	jp2_cdef_t *jp2_cdef;
+	jp2_pclr_t *jp2_pclr;
 	uint8_t jp2_has_colour_specification_box;
-} grk_jp2_color_t;
+} jp2_color_t;
 
 typedef struct opj_header_info {
 	/** initial code block width, default to 64 */
@@ -613,7 +613,7 @@ typedef struct opj_header_info {
 	// icc profile information etc
 	// note: the contents of this struct will remain valid
 	// until stream is destroyed
-	grk_jp2_color_t color;
+	jp2_color_t color;
 
 	uint8_t* xml_data;
 	size_t xml_data_len;
@@ -1538,10 +1538,10 @@ typedef struct opj_plugin_resolution {
 } opj_plugin_resolution_t;
 
 
-typedef struct opj_plugin_tile_component {
+typedef struct grok_plugin_tile_component {
 	size_t numResolutions;
 	opj_plugin_resolution_t** resolutions;
-} opj_plugin_tile_component_t;
+} grok_plugin_tile_component_t;
 
 #define OPJ_PLUGIN_DECODE_T2		1
 #define OPJ_PLUGIN_DECODE_T1		2
@@ -1549,11 +1549,11 @@ typedef struct opj_plugin_tile_component {
 
 
 
-typedef struct opj_plugin_tile {
+typedef struct grok_plugin_tile {
 	uint32_t decode_flag;
 	size_t numComponents;
-	opj_plugin_tile_component_t** tileComponents;
-} opj_plugin_tile_t;
+	grok_plugin_tile_component_t** tileComponents;
+} grok_plugin_tile_t;
 
 /**
 * Decode an image from a JPEG-2000 codestream
@@ -1577,7 +1577,7 @@ OPJ_API bool OPJ_CALLCONV opj_decode(opj_codec_t *p_decompressor,
  * @return 					true if success, otherwise false
  * */
 OPJ_API bool OPJ_CALLCONV opj_decode_ex(   opj_codec_t *p_decompressor,
-										opj_plugin_tile_t* tile,
+										grok_plugin_tile_t* tile,
                                         opj_stream_t *p_stream,
                                         opj_image_t *p_image);
 
@@ -1753,7 +1753,7 @@ OPJ_API bool OPJ_CALLCONV opj_encode(opj_codec_t *p_codec,
 * @return 				Returns true if successful, returns false otherwise
 */
 OPJ_API bool OPJ_CALLCONV opj_encode_with_plugin(opj_codec_t *p_codec,
-	opj_plugin_tile_t* tile,
+	grok_plugin_tile_t* tile,
 	opj_stream_t *p_stream);
 
 
@@ -1874,7 +1874,7 @@ OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
 
 #define OPJ_PLUGIN_STATE_MCT_ONLY			0x8
 
-OPJ_API uint32_t OPJ_CALLCONV opj_plugin_get_debug_state();
+OPJ_API uint32_t OPJ_CALLCONV grok_plugin_get_debug_state();
 
 /*
 Plugin encoding
@@ -1893,7 +1893,7 @@ typedef struct opj_plugin_encode_user_callback_info {
 	const char*			output_file_name;
 	opj_cparameters_t*	encoder_parameters;
 	opj_image_t*		image;
-	opj_plugin_tile_t*  tile;
+	grok_plugin_tile_t*  tile;
 	unsigned int		error_code;
 } opj_plugin_encode_user_callback_info_t;
 
@@ -1912,7 +1912,7 @@ OPJ_API void OPJ_CALLCONV opj_plugin_stop_batch_encode(void);
 Plugin decoding
 */
 
-typedef opj_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
+typedef grok_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 										size_t compressed_tile_id,
 										opj_header_info_t* header_info,
 										opj_image_t* image);
@@ -1927,7 +1927,7 @@ typedef struct opj_plugin_decode_callback_info {
 	opj_codec_t*				l_codec;
     opj_decompress_parameters*	decoder_parameters;
     opj_image_t*				image;
-	opj_plugin_tile_t*			tile;
+	grok_plugin_tile_t*			tile;
     unsigned int				error_code;
 } opj_plugin_decode_callback_info_t;
 

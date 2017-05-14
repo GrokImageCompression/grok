@@ -62,7 +62,7 @@ namespace grk {
 
 
 
-TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, grk_event_mgr_t *manager) :
+TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, event_mgr_t *manager) :
 	numleafsh(mynumleafsh),
 	numleafsv(mynumleafsv), 
 	numnodes(0), 
@@ -93,7 +93,7 @@ TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, grk_event_mgr_t *ma
     } while (n > 1);
 
     if (numnodes == 0) {
-        grk_event_msg(manager, EVT_WARNING, "tgt_create numnodes == 0, no tree created.\n");
+        event_msg(manager, EVT_WARNING, "tgt_create numnodes == 0, no tree created.\n");
 		throw std::runtime_error("tgt_create numnodes == 0, no tree created");
     }
 
@@ -143,7 +143,7 @@ TagTree::~TagTree() {
  * @param       p_num_leafs_v           the height of the array of leafs of the tree
  * @return      a new tag tree if successful, NULL otherwise
 */
-bool TagTree::init(uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, grk_event_mgr_t *p_manager)
+bool TagTree::init(uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, event_mgr_t *p_manager)
 {
     int32_t l_nplh[32];
     int32_t l_nplv[32];

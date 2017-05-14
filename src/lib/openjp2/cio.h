@@ -99,7 +99,7 @@ The functions in CIO.C have for goal to realize a byte input / output process.
 /**
 Byte input-output stream.
 */
-struct grk_stream_private_t {
+struct stream_private_t {
     /**
      * User data, be it files, ... The actual data depends on the type of the stream.
      */
@@ -158,16 +158,16 @@ struct grk_stream_private_t {
     /**
     * FIXME DOC.
     */
-    bool (* m_opj_skip)(grk_stream_private_t * ,
+    bool (* m_opj_skip)(stream_private_t * ,
 							int64_t ,
-							grk_event_mgr_t *);
+							event_mgr_t *);
 
     /**
     * FIXME DOC.
     */
-    bool (* m_opj_seek) (grk_stream_private_t * , 
+    bool (* m_opj_seek) (stream_private_t * , 
 						int64_t ,
-						grk_event_mgr_t *);
+						event_mgr_t *);
 
     /**
      * number of bytes containing in the buffer.
@@ -296,9 +296,9 @@ void grk_write_float_BE(uint8_t * p_buffer, float p_value);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
  */
-size_t grk_stream_read_data (grk_stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
+size_t stream_read_data (stream_private_t * p_stream, uint8_t * p_buffer, size_t p_size, event_mgr_t * p_event_mgr);
 
-size_t grk_stream_read_data_zero_copy(grk_stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, grk_event_mgr_t * p_event_mgr);
+size_t stream_read_data_zero_copy(stream_private_t * p_stream, uint8_t ** p_buffer, size_t p_size, event_mgr_t * p_event_mgr);
 
 /**
  * Writes some bytes to the stream.
@@ -308,10 +308,10 @@ size_t grk_stream_read_data_zero_copy(grk_stream_private_t * p_stream, uint8_t *
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes written, or -1 if an error occurred.
  */
-size_t grk_stream_write_data (grk_stream_private_t * p_stream,
+size_t stream_write_data (stream_private_t * p_stream,
 								const uint8_t * p_buffer,
 								size_t p_size, 
-								grk_event_mgr_t * p_event_mgr);
+								event_mgr_t * p_event_mgr);
 
 /**
  * Writes the content of the stream buffer to the stream.
@@ -319,8 +319,8 @@ size_t grk_stream_write_data (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if the data could be flushed, false else.
  */
-bool grk_stream_flush (grk_stream_private_t * p_stream, 
-						 grk_event_mgr_t * p_event_mgr);
+bool stream_flush (stream_private_t * p_stream, 
+						 event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -329,9 +329,9 @@ bool grk_stream_flush (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool grk_stream_skip (grk_stream_private_t * p_stream,
+bool stream_skip (stream_private_t * p_stream,
 						int64_t p_size, 
-						grk_event_mgr_t * p_event_mgr);
+						event_mgr_t * p_event_mgr);
 
 /**
  * Tells the byte offset on the stream (similar to ftell).
@@ -340,7 +340,7 @@ bool grk_stream_skip (grk_stream_private_t * p_stream,
  *
  * @return		the current position o fthe stream.
  */
-int64_t grk_stream_tell (const grk_stream_private_t * p_stream);
+int64_t stream_tell (const stream_private_t * p_stream);
 
 
 /**
@@ -350,7 +350,7 @@ int64_t grk_stream_tell (const grk_stream_private_t * p_stream);
  *
  * @return		Number of bytes left before the end of the stream.
  */
-int64_t grk_stream_get_number_byte_left (const grk_stream_private_t * p_stream);
+int64_t stream_get_number_byte_left (const stream_private_t * p_stream);
 
 /**
  * Skips a number of bytes from the stream.
@@ -359,9 +359,9 @@ int64_t grk_stream_get_number_byte_left (const grk_stream_private_t * p_stream);
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool grk_stream_write_skip (grk_stream_private_t * p_stream,
+bool stream_write_skip (stream_private_t * p_stream,
 								int64_t p_size, 
-								grk_event_mgr_t * p_event_mgr);
+								event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -370,9 +370,9 @@ bool grk_stream_write_skip (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool grk_stream_read_skip (grk_stream_private_t * p_stream,
+bool stream_read_skip (stream_private_t * p_stream,
 								int64_t p_size,
-								grk_event_mgr_t * p_event_mgr);
+								event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -381,9 +381,9 @@ bool grk_stream_read_skip (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if success, or false if an error occurred.
  */
-bool grk_stream_read_seek (grk_stream_private_t * p_stream, 
+bool stream_read_seek (stream_private_t * p_stream, 
 							int64_t p_size, 
-							grk_event_mgr_t * p_event_mgr);
+							event_mgr_t * p_event_mgr);
 
 /**
  * Skips a number of bytes from the stream.
@@ -392,9 +392,9 @@ bool grk_stream_read_seek (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		the number of bytes skipped, or -1 if an error occurred.
  */
-bool grk_stream_write_seek (grk_stream_private_t * p_stream, 
+bool stream_write_seek (stream_private_t * p_stream, 
 							int64_t p_size,
-							grk_event_mgr_t * p_event_mgr);
+							event_mgr_t * p_event_mgr);
 
 /**
  * Seeks a number of bytes from the stream.
@@ -403,38 +403,38 @@ bool grk_stream_write_seek (grk_stream_private_t * p_stream,
  * @param		p_event_mgr	the user event manager to be notified of special events.
  * @return		true if the stream is seekable.
  */
-bool grk_stream_seek (grk_stream_private_t * p_stream,
+bool stream_seek (stream_private_t * p_stream,
 						int64_t p_size,
-						grk_event_mgr_t * p_event_mgr);
+						event_mgr_t * p_event_mgr);
 
 /**
  * Tells if the given stream is seekable.
  */
-bool grk_stream_has_seek (const grk_stream_private_t * p_stream);
+bool stream_has_seek (const stream_private_t * p_stream);
 
 /**
  * FIXME DOC.
  */
-size_t grk_stream_default_read (void * p_buffer, 
+size_t stream_default_read (void * p_buffer, 
 								size_t p_nb_bytes,
 								void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-size_t grk_stream_default_write (void * p_buffer,
+size_t stream_default_write (void * p_buffer,
 								size_t p_nb_bytes,
 								void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-int64_t grk_stream_default_skip (int64_t p_nb_bytes, void * p_user_data);
+int64_t stream_default_skip (int64_t p_nb_bytes, void * p_user_data);
 
 /**
  * FIXME DOC.
  */
-bool grk_stream_default_seek (int64_t p_nb_bytes, void * p_user_data);
+bool stream_default_seek (int64_t p_nb_bytes, void * p_user_data);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
