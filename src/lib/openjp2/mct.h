@@ -80,7 +80,7 @@ Apply a reversible multi-component transform to an image
 @param c2 Samples blue component
 @param n Number of samples for each component
 */
-void grk_mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+void mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Apply a reversible multi-component inverse transform to an image
 @param c0 Samples for luminance component
@@ -88,13 +88,13 @@ Apply a reversible multi-component inverse transform to an image
 @param c2 Samples for blue chrominance component
 @param n Number of samples for each component
 */
-void grk_mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+void mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Get norm of the basis function used for the reversible multi-component transform
 @param compno Number of the component (0->Y, 1->U, 2->V)
 @return
 */
-double grk_mct_getnorm(uint32_t compno);
+double mct_getnorm(uint32_t compno);
 
 /**
 Apply an irreversible multi-component transform to an image
@@ -103,7 +103,7 @@ Apply an irreversible multi-component transform to an image
 @param c2 Samples blue component
 @param n Number of samples for each component
 */
-void grk_mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+void mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
 Apply an irreversible multi-component inverse transform to an image
 @param c0 Samples for luminance component
@@ -111,13 +111,13 @@ Apply an irreversible multi-component inverse transform to an image
 @param c2 Samples for blue chrominance component
 @param n Number of samples for each component
 */
-void grk_mct_decode_real(float* c0, float* c1, float* c2, uint64_t n);
+void mct_decode_real(float* c0, float* c1, float* c2, uint64_t n);
 /**
 Get norm of the basis function used for the irreversible multi-component transform
 @param compno Number of the component (0->Y, 1->U, 2->V)
 @return
 */
-double grk_mct_getnorm_real(uint32_t compno);
+double mct_getnorm_real(uint32_t compno);
 
 /**
 FIXME DOC
@@ -128,7 +128,7 @@ FIXME DOC
 @param is_signed        tells if the data is signed
 @return false if function encounter a problem, true otherwise
 */
-bool grk_mct_encode_custom(
+bool mct_encode_custom(
     uint8_t * p_coding_data,
     uint64_t n,
     uint8_t ** p_data,
@@ -143,7 +143,7 @@ FIXME DOC
 @param isSigned         tells if the data is signed
 @return false if function encounter a problem, true otherwise
 */
-bool grk_mct_decode_custom(
+bool mct_decode_custom(
     uint8_t * pDecodingData,
     uint64_t n,
     uint8_t ** pData,
@@ -162,11 +162,11 @@ void opj_calculate_norms(   double * pNorms,
 /**
 FIXME DOC
 */
-const double * grk_mct_get_mct_norms (void);
+const double * mct_get_mct_norms (void);
 /**
 FIXME DOC
 */
-const double * grk_mct_get_mct_norms_real (void);
+const double * mct_get_mct_norms_real (void);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

@@ -21,7 +21,7 @@ namespace grk {
 class RateControl
 {
 public:
-	static void convexHull(grk_tcd_pass_t *pass, uint32_t numPasses);
+	static void convexHull(tcd_pass_t *pass, uint32_t numPasses);
 	static uint16_t slopeToLog(double slope);
 	static double slopeFromLog(uint16_t logSlope);
 private:

@@ -323,7 +323,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
 
     /* conformance test suite produce annoying warning/error:
      * TIFFReadDirectory: Warning, /.../data/baseline/conformance/jp2_1.tif: unknown field with tag 37724 (0x935c) encountered.
-     * TIFFOpen: /.../data/baseline/nonregression/grk_jp2_1.tif: Cannot open.
+     * TIFFOpen: /.../data/baseline/nonregression/jp2_1.tif: Cannot open.
      * On Win32 this open a message box by default, so remove it from the test suite:
      */
 #ifdef OPJ_HAVE_LIBTIFF

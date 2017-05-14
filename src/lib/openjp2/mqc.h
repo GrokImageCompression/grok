@@ -72,16 +72,16 @@ in MQC.C are used by some function in T1.C.
 /**
 This struct defines the state of a context.
 */
-typedef struct grk_mqc_state {
+struct mqc_state_t {
     /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
     uint16_t qeval;
     /** the Most Probable Symbol (0 or 1) */
     uint8_t mps;
     /** next state if the next encoded symbol is the MPS */
-    grk_mqc_state *nmps;
+	mqc_state_t *nmps;
     /** next state if the next encoded symbol is the LPS */
-    grk_mqc_state *nlps;
-} grk_mqc_state_t;
+	mqc_state_t *nlps;
+} ;
 
 #define MQC_NUMCTXS 19
 
@@ -89,7 +89,7 @@ typedef struct grk_mqc_state {
 MQ coder
 */
 
-typedef struct grk_mqc {
+struct mqc_t {
     uint32_t C;
     uint32_t A;
     uint32_t COUNT;
@@ -97,12 +97,12 @@ typedef struct grk_mqc {
 	bool currentByteIs0xFF;
     uint8_t *start;
     uint8_t *end;
-    grk_mqc_state_t *ctxs[MQC_NUMCTXS];
-    grk_mqc_state_t **curctx;
+    mqc_state_t *ctxs[MQC_NUMCTXS];
+    mqc_state_t **curctx;
 
 	plugin_debug_mqc_t debug_mqc;
 
-} grk_mqc_t;
+} ;
 
 /** @name Exported functions */
 /*@{*/
@@ -111,55 +111,55 @@ typedef struct grk_mqc {
 Create a new MQC handle
 @return Returns a new MQC handle if successful, returns NULL otherwise
 */
-grk_mqc_t* grk_mqc_create(void);
+mqc_t* mqc_create(void);
 /**
 Destroy a previously created MQC handle
 @param mqc MQC handle to destroy
 */
-void grk_mqc_destroy(grk_mqc_t *mqc);
+void mqc_destroy(mqc_t *mqc);
 /**
 Return the number of bytes written/read since initialisation
 @param mqc MQC handle
 @return Returns the number of bytes already encoded
 */
-int32_t grk_mqc_numbytes(grk_mqc_t *mqc);
+int32_t mqc_numbytes(mqc_t *mqc);
 /**
 Reset the states of all the context of the coder/decoder
 (each context is set to a state where 0 and 1 are more or less equiprobable)
 @param mqc MQC handle
 */
-void grk_mqc_resetstates(grk_mqc_t *mqc);
+void mqc_resetstates(mqc_t *mqc);
 
 /**
 Initialize the encoder
 @param mqc MQC handle
 @param bp Pointer to the start of the buffer where the bytes will be written
 */
-void grk_mqc_init_enc(grk_mqc_t *mqc, uint8_t *bp);
+void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
 /**
 Set the current context used for coding/decoding
 @param mqc MQC handle
 @param ctxno Number that identifies the context
 */
-void grk_mqc_setcurctx(grk_mqc_t *mqc, uint8_t ctxno);
+void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno);
 /**
 Encode a symbol using the MQ-coder
 @param mqc MQC handle
 @param d The symbol to be encoded (0 or 1)
 */
-void grk_mqc_encode(grk_mqc_t *mqc, uint32_t d);
+void mqc_encode(mqc_t *mqc, uint32_t d);
 /**
 Flush the encoder, so that all remaining data is written
 @param mqc MQC handle
 */
-void grk_mqc_flush(grk_mqc_t *mqc);
+void mqc_flush(mqc_t *mqc);
 /**
 BYPASS mode switch, initialization operation.
 JPEG 2000 p 505.
 <h2>Not fully implemented and tested !!</h2>
 @param mqc MQC handle
 */
-void grk_mqc_bypass_init_enc(grk_mqc_t *mqc);
+void mqc_bypass_init_enc(mqc_t *mqc);
 /**
 BYPASS mode switch, coding operation.
 JPEG 2000 p 505.
@@ -167,47 +167,47 @@ JPEG 2000 p 505.
 @param mqc MQC handle
 @param d The symbol to be encoded (0 or 1)
 */
-void grk_mqc_bypass_enc(grk_mqc_t *mqc, uint32_t d);
+void mqc_bypass_enc(mqc_t *mqc, uint32_t d);
 /**
 BYPASS mode switch, flush operation
 <h2>Not fully implemented and tested !!</h2>
 @param mqc MQC handle
 */
-void grk_mqc_bypass_flush_enc(grk_mqc_t *mqc);
+void mqc_bypass_flush_enc(mqc_t *mqc);
 /**
 RESTART mode switch (TERMALL)
 @param mqc MQC handle
 @return Returns 1 (always)
 */
-uint32_t grk_mqc_restart_enc(grk_mqc_t *mqc);
+uint32_t mqc_restart_enc(mqc_t *mqc);
 /**
 RESTART mode switch (TERMALL) reinitialisation
 @param mqc MQC handle
 */
-void grk_mqc_restart_init_enc(grk_mqc_t *mqc);
+void mqc_restart_init_enc(mqc_t *mqc);
 /**
 ERTERM mode switch (PTERM)
 @param mqc MQC handle
 */
-void grk_mqc_erterm_enc(grk_mqc_t *mqc);
+void mqc_erterm_enc(mqc_t *mqc);
 /**
 SEGMARK mode switch (SEGSYM)
 @param mqc MQC handle
 */
-void grk_mqc_segmark_enc(grk_mqc_t *mqc);
+void mqc_segmark_enc(mqc_t *mqc);
 /**
 Initialize the decoder
 @param mqc MQC handle
 @param bp Pointer to the start of the buffer from which the bytes will be read
 @param len Length of the input buffer
 */
-void grk_mqc_init_dec(grk_mqc_t *mqc, uint8_t *bp, uint32_t len);
+void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len);
 /**
 Decode a symbol
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
-uint8_t grk_mqc_decode(grk_mqc_t * const mqc);
+uint8_t mqc_decode(mqc_t * const mqc);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

@@ -68,12 +68,12 @@ namespace grk {
 /**
  * declare a function pointer
  */
-typedef void (*grk_procedure)(void);
+typedef void (*procedure)(void);
 
 /**
  * A list of procedures.
 */
-typedef struct grk_procedure_list {
+struct procedure_list_t {
     /**
      * The number of validation procedures.
      */
@@ -85,9 +85,9 @@ typedef struct grk_procedure_list {
     /**
      * The array of procedures.
      */
-    grk_procedure * m_procedures;
+    procedure * m_procedures;
 
-} grk_procedure_list_t;
+} ;
 
 /* ----------------------------------------------------------------------- */
 
@@ -96,14 +96,14 @@ typedef struct grk_procedure_list {
  *
  * @return	the newly created validation list.
  */
-grk_procedure_list_t *  grk_procedure_list_create(void);
+procedure_list_t *  procedure_list_create(void);
 
 /**
  * Destroys a validation list.
  *
  * @param p_list the list to destroy.
  */
-void  grk_procedure_list_destroy(grk_procedure_list_t * p_list);
+void  procedure_list_destroy(procedure_list_t * p_list);
 
 /**
  * Adds a new validation procedure.
@@ -113,7 +113,7 @@ void  grk_procedure_list_destroy(grk_procedure_list_t * p_list);
  *
  * @return	true if the procedure could be added.
  */
-bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list, grk_procedure p_procedure, grk_event_mgr_t* p_manager);
+bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedure p_procedure, event_mgr_t* p_manager);
 
 /**
  * Gets the number of validation procedures.
@@ -122,7 +122,7 @@ bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list,
  *
  * @return the number of validation procedures.
  */
-uint32_t grk_procedure_list_get_nb_procedures (grk_procedure_list_t * p_validation_list);
+uint32_t procedure_list_get_nb_procedures (procedure_list_t * p_validation_list);
 
 /**
  * Gets the pointer on the first validation procedure. This function is similar to the C++
@@ -133,7 +133,7 @@ uint32_t grk_procedure_list_get_nb_procedures (grk_procedure_list_t * p_validati
  *
  * @return	a pointer to the first procedure.
  */
-grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_validation_list);
+procedure* procedure_list_get_first_procedure (procedure_list_t * p_validation_list);
 
 
 /**
@@ -142,7 +142,7 @@ grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_
  * @param	p_validation_list the list of procedure to clear.
  *
  */
-void grk_procedure_list_clear (grk_procedure_list_t * p_validation_list);
+void procedure_list_clear (procedure_list_t * p_validation_list);
 /*@}*/
 
 

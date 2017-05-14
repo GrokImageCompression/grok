@@ -27,9 +27,9 @@ RateInfo::RateInfo() : 	minimumSlope(USHRT_MAX),
 /*
 Synchronize with code block
 */
-void RateInfo::synch(grk_tcd_cblk_enc_t *cblk) {
+void RateInfo::synch(tcd_cblk_enc_t *cblk) {
 	for (auto passno = 0U; passno < cblk->num_passes_encoded; passno++) {
-		grk_tcd_pass_t *pass = &cblk->passes[passno];
+		tcd_pass_t *pass = &cblk->passes[passno];
 
 		//2. only process feasible truncation points
 		if (pass->slope == 0)

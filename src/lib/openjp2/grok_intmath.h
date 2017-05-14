@@ -58,7 +58,7 @@
 namespace grk {
 
 /**
-@file opj_intmath.h
+@file grok_intmath.h
 @brief Implementation of operations on integers (INT)
 
 The functions in OPJ_INTMATH.H have for goal to realize operations on integers.

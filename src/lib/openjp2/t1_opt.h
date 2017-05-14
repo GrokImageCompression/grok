@@ -169,20 +169,20 @@ namespace grk {
 // sign bit is stored at this location in 32 bit coefficient
 #define T1_DATA_SIGN_BIT_INDEX 31
 
-typedef uint32_t opj_flag_opt_t;
+typedef uint32_t flag_opt_t;
 
 /**
 Tier-1 coding (coding of code-block coefficients)
 */
-typedef struct grk_t1_opt {
-	grk_mqc_t *mqc;
+struct t1_opt_t {
+	mqc_t *mqc;
 	uint32_t  *data;
-	opj_flag_opt_t *flags;
+	flag_opt_t *flags;
 	uint32_t w;
 	uint32_t h;
 	uint32_t flags_stride;
 	bool   encoder;
-} grk_t1_opt_t;
+} ;
 
 /** @name Exported functions */
 /*@{*/
@@ -193,27 +193,27 @@ typedef struct grk_t1_opt {
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-grk_t1_opt_t* grk_t1_opt_create(bool isEncoder);
+t1_opt_t* t1_opt_create(bool isEncoder);
 
 /**
 * Destroys a previously created T1 handle
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-void grk_t1_opt_destroy(grk_t1_opt_t *p_t1);
+void t1_opt_destroy(t1_opt_t *p_t1);
 
 
-bool grk_t1_opt_allocate_buffers(grk_t1_opt_t *t1,
+bool t1_opt_allocate_buffers(t1_opt_t *t1,
 	uint32_t cblkw,
 	uint32_t cblkh);
 
-void grk_t1_opt_init_buffers(grk_t1_opt_t *t1,
+void t1_opt_init_buffers(t1_opt_t *t1,
 	uint32_t w,
 	uint32_t h);
 
 
-double grk_t1_opt_encode_cblk(grk_t1_opt_t *t1,
-	grk_tcd_cblk_enc_t* cblk,
+double t1_opt_encode_cblk(t1_opt_t *t1,
+	tcd_cblk_enc_t* cblk,
 	uint32_t orient,
 	uint32_t compno,
 	uint32_t level,

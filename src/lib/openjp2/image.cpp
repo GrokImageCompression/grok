@@ -171,7 +171,7 @@ namespace grk {
 	* @param p_image_header	the image header to update.
 	* @param p_cp				the coding parameters from which to update the image.
 	*/
-	void opj_image_comp_header_update(opj_image_t * p_image_header, const struct opj_cp * p_cp)
+	void opj_image_comp_header_update(opj_image_t * p_image_header, const cp_t * p_cp)
 	{
 		uint32_t i, l_width, l_height;
 		uint32_t l_x0, l_y0, l_x1, l_y1;
@@ -180,7 +180,7 @@ namespace grk {
 
 		l_x0 = grok_max<uint32_t>(p_cp->tx0, p_image_header->x0);
 		l_y0 = grok_max<uint32_t>(p_cp->ty0, p_image_header->y0);
-		l_x1 = p_cp->tx0 + (p_cp->tw - 1U) * p_cp->tdx; /* validity of p_cp members used here checked in grk_j2k_read_siz. Can't overflow. */
+		l_x1 = p_cp->tx0 + (p_cp->tw - 1U) * p_cp->tdx; /* validity of p_cp members used here checked in j2k_read_siz. Can't overflow. */
 		l_y1 = p_cp->ty0 + (p_cp->th - 1U) * p_cp->tdy; /* can't overflow */
 		l_x1 = grok_min<uint32_t>(grk_uint_adds(l_x1, p_cp->tdx), p_image_header->x1); /* use add saturated to prevent overflow */
 		l_y1 = grok_min<uint32_t>(grk_uint_adds(l_y1, p_cp->tdy), p_image_header->y1); /* use add saturated to prevent overflow */

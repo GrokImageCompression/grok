@@ -22,7 +22,7 @@ namespace grk {
 /* #define DEBUG_SEG_BUF */
 
 
-bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer)
+bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buffer)
 {
     int32_t i = 0;
     size_t offset = 0;
@@ -31,7 +31,7 @@ bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t*
         return false;
 
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        grok_min_buf_t* seg = (grok_min_buf_t*)min_buf_vec->get(i);
+        min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
         offset += seg->len;
@@ -40,9 +40,9 @@ bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t*
 
 }
 
-bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
+bool min_buf_vec_push_back(grok_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 {
-    grok_min_buf_t* seg = NULL;
+    min_buf_t* seg = NULL;
     if (!buf_vec || !buf || !len)
         return false;
 
@@ -50,7 +50,7 @@ bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
         buf_vec->init();
     }
 
-    seg = (grok_min_buf_t*)grok_malloc(sizeof(grk_buf_t));
+    seg = (min_buf_t*)grok_malloc(sizeof(grk_buf_t));
     if (!seg)
         return false;
 
@@ -64,14 +64,14 @@ bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len)
     return true;
 }
 
-uint16_t grok_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
+uint16_t min_buf_vec_get_len(grok_vec_t* min_buf_vec)
 {
     size_t i = 0;
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
     for (i = 0; i < min_buf_vec->size(); ++i) {
-        grok_min_buf_t* seg = (grok_min_buf_t*)min_buf_vec->get(i);
+        min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
         if (seg)
             len += seg->len;
     }
@@ -85,10 +85,10 @@ uint16_t grok_min_buf_vec_get_len(opj_vec_t* min_buf_vec)
 
 /*  Segmented Buffer Stream */
 
-opj_seg_buf_t::opj_seg_buf_t() : data_len(0), cur_seg_id(0) {
+seg_buf_t::seg_buf_t() : data_len(0), cur_seg_id(0) {
 }
 
-opj_seg_buf_t::~opj_seg_buf_t()  {
+seg_buf_t::~seg_buf_t()  {
 	for (auto& seg : segments) {
 		if (seg) {
 			grk_buf_free(seg);
@@ -98,7 +98,7 @@ opj_seg_buf_t::~opj_seg_buf_t()  {
 
 
 
-static void opj_seg_buf_increment(opj_seg_buf_t * seg_buf)
+static void seg_buf_increment(seg_buf_t * seg_buf)
 {
     grk_buf_t* cur_seg = NULL;
     if (seg_buf == NULL ||	seg_buf->cur_seg_id == seg_buf->segments.size()-1) {
@@ -112,7 +112,7 @@ static void opj_seg_buf_increment(opj_seg_buf_t * seg_buf)
     }
 }
 
-static size_t opj_seg_buf_read(opj_seg_buf_t * seg_buf,
+static size_t seg_buf_read(seg_buf_t * seg_buf,
                                void * p_buffer,
                                size_t p_nb_bytes)
 {
@@ -126,7 +126,7 @@ static size_t opj_seg_buf_read(opj_seg_buf_t * seg_buf,
         return 0;
 
     /*don't try to read more bytes than are available */
-    bytes_remaining_in_file = seg_buf->data_len - (size_t)opj_seg_buf_get_global_offset(seg_buf);
+    bytes_remaining_in_file = seg_buf->data_len - (size_t)seg_buf_get_global_offset(seg_buf);
     if (p_nb_bytes > bytes_remaining_in_file) {
 #ifdef DEBUG_SEG_BUF
         printf("Warning: attempt to read past end of segmented buffer\n");
@@ -146,7 +146,7 @@ static size_t opj_seg_buf_read(opj_seg_buf_t * seg_buf,
         if (p_buffer) {
             memcpy((uint8_t*)p_buffer + total_bytes_read,cur_seg->buf + cur_seg->offset, bytes_to_read);
         }
-        opj_seg_buf_incr_cur_seg_offset(seg_buf,(int64_t)bytes_to_read);
+        seg_buf_incr_cur_seg_offset(seg_buf,(int64_t)bytes_to_read);
 
         total_bytes_read	+= bytes_to_read;
         bytes_left_to_read	-= bytes_to_read;
@@ -158,7 +158,7 @@ static size_t opj_seg_buf_read(opj_seg_buf_t * seg_buf,
 
 /* Disable this method for now, since it is not needed at the moment */
 #if 0
-static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
+static int64_t seg_buf_skip(int64_t p_nb_bytes, seg_buf_t * seg_buf)
 {
     size_t bytes_in_current_segment;
     size_t bytes_remaining;
@@ -166,7 +166,7 @@ static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
     if (!seg_buf)
         return p_nb_bytes;
 
-    if (p_nb_bytes + opj_seg_buf_get_global_offset(seg_buf)> (int64_t)seg_buf->data_len) {
+    if (p_nb_bytes + seg_buf_get_global_offset(seg_buf)> (int64_t)seg_buf->data_len) {
 #ifdef DEBUG_SEG_BUF
         printf("Warning: attempt to skip past end of segmented buffer\n");
 #endif
@@ -185,19 +185,19 @@ static int64_t opj_seg_buf_skip(int64_t p_nb_bytes, opj_seg_buf_t * seg_buf)
         /* hoover up all the bytes in this segment, and move to the next one */
         if (bytes_in_current_segment > bytes_remaining) {
 
-            opj_seg_buf_incr_cur_seg_offset(seg_buf, bytes_in_current_segment);
+            seg_buf_incr_cur_seg_offset(seg_buf, bytes_in_current_segment);
 
             bytes_remaining	-= bytes_in_current_segment;
             cur_seg = (grk_buf_t*)opj_vec_get(&seg_buf->segments, seg_buf->cur_seg_id);
         } else { /* bingo! we found the segment */
-            opj_seg_buf_incr_cur_seg_offset(seg_buf, bytes_remaining);
+            seg_buf_incr_cur_seg_offset(seg_buf, bytes_remaining);
             return p_nb_bytes;
         }
     }
     return p_nb_bytes;
 }
 #endif
-static grk_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
+static grk_buf_t* seg_buf_add_segment(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
     grk_buf_t* new_seg = NULL;
     if (!seg_buf)
@@ -218,7 +218,7 @@ static grk_buf_t* opj_seg_buf_add_segment(opj_seg_buf_t* seg_buf, uint8_t* buf, 
 
 /*--------------------------------------------------------------------------*/
 
-void opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf)
+void seg_buf_cleanup(seg_buf_t* seg_buf)
 {
     size_t i;
     if (!seg_buf)
@@ -232,7 +232,7 @@ void opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf)
     seg_buf->segments.clear();
 }
 
-void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf)
+void seg_buf_rewind(seg_buf_t* seg_buf)
 {
 	size_t i;
     if (!seg_buf)
@@ -247,20 +247,20 @@ void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf)
 }
 
 
-bool opj_seg_buf_push_back(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len)
+bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
     grk_buf_t* seg = NULL;
     if (!seg_buf || !buf || !len)
         return false;
 
-	seg = opj_seg_buf_add_segment(seg_buf, buf, len);
+	seg = seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg)
         return false;
     seg->owns_data = false;
     return true;
 }
 
-bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
+bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len)
 {
     grk_buf_t* seg = NULL;
     uint8_t* buf = NULL;
@@ -271,7 +271,7 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
     if (!buf)
         return false;
 
-	seg = opj_seg_buf_add_segment(seg_buf, buf, len);
+	seg = seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg) {
 	    grok_free(buf);
         return false;
@@ -280,7 +280,7 @@ bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len)
     return true;
 }
 
-void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset)
+void seg_buf_incr_cur_seg_offset(seg_buf_t* seg_buf, uint64_t offset)
 {
     grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
@@ -288,7 +288,7 @@ void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset)
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
     grk_buf_incr_offset(cur_seg, offset);
     if ((size_t)cur_seg->offset == cur_seg->len) {
-        opj_seg_buf_increment(seg_buf);
+        seg_buf_increment(seg_buf);
     }
 
 }
@@ -298,7 +298,7 @@ void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset)
 * Zero copy read of contiguous chunk from current segment.
 * Returns false if unable to get a contiguous chunk, true otherwise
 */
-bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
+bool seg_buf_zero_copy_read(seg_buf_t* seg_buf,
                                 uint8_t** ptr,
                                 size_t chunk_len)
 {
@@ -311,13 +311,13 @@ bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
 
     if ((size_t)cur_seg->offset + chunk_len <= cur_seg->len) {
         *ptr = cur_seg->buf + cur_seg->offset;
-        opj_seg_buf_read(seg_buf, NULL, chunk_len);
+        seg_buf_read(seg_buf, NULL, chunk_len);
         return true;
     }
     return false;
 }
 
-bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buffer)
+bool seg_buf_copy_to_contiguous_buffer(seg_buf_t* seg_buf, uint8_t* buffer)
 {
 	size_t i = 0;
     size_t offset = 0;
@@ -335,7 +335,7 @@ bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buff
 
 }
 
-uint8_t* opj_seg_buf_get_global_ptr(opj_seg_buf_t* seg_buf)
+uint8_t* seg_buf_get_global_ptr(seg_buf_t* seg_buf)
 {
     grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
@@ -344,7 +344,7 @@ uint8_t* opj_seg_buf_get_global_ptr(opj_seg_buf_t* seg_buf)
     return (cur_seg) ? (cur_seg->buf + cur_seg->offset) : NULL;
 }
 
-size_t opj_seg_buf_get_cur_seg_len(opj_seg_buf_t* seg_buf)
+size_t seg_buf_get_cur_seg_len(seg_buf_t* seg_buf)
 {
     grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
@@ -353,7 +353,7 @@ size_t opj_seg_buf_get_cur_seg_len(opj_seg_buf_t* seg_buf)
     return (cur_seg) ? (cur_seg->len - (size_t)cur_seg->offset) : 0;
 }
 
-int64_t opj_seg_buf_get_cur_seg_offset(opj_seg_buf_t* seg_buf)
+int64_t seg_buf_get_cur_seg_offset(seg_buf_t* seg_buf)
 {
     grk_buf_t* cur_seg = NULL;
     if (!seg_buf)
@@ -363,7 +363,7 @@ int64_t opj_seg_buf_get_cur_seg_offset(opj_seg_buf_t* seg_buf)
 }
 
 
-int64_t opj_seg_buf_get_global_offset(opj_seg_buf_t* seg_buf)
+int64_t seg_buf_get_global_offset(seg_buf_t* seg_buf)
 {
     int32_t i = 0;
     int64_t offset = 0;
@@ -375,7 +375,7 @@ int64_t opj_seg_buf_get_global_offset(opj_seg_buf_t* seg_buf)
         grk_buf_t* seg = seg_buf->segments[i];
         offset += (int64_t)seg->len;
     }
-    return offset + opj_seg_buf_get_cur_seg_offset(seg_buf);
+    return offset + seg_buf_get_cur_seg_offset(seg_buf);
 }
 
 

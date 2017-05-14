@@ -42,12 +42,12 @@ typedef int32_t grk_handle_t;
 #endif
 
 
-typedef struct grk_buf_info {
+struct grk_buf_info_t {
     uint8_t *buf;
     int64_t off;
     size_t len;
     grk_handle_t fd;		// for file mapping
-} grk_buf_info_t;
+} ;
 
 static void grok_free_buffer_info(void* user_data)
 {
@@ -133,17 +133,17 @@ static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_
     opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)grk_seek_from_buffer);
 }
 
-size_t grk_get_buffer_stream_offset(opj_stream_t* stream) {
+size_t get_buffer_stream_offset(opj_stream_t* stream) {
 	if (!stream)
 		return 0;
-	grk_stream_private_t * private_stream = (grk_stream_private_t*)stream;
+	stream_private_t * private_stream = (stream_private_t*)stream;
 	if (!private_stream->m_user_data)
 		return 0;
 	grk_buf_info_t* buf = (grk_buf_info_t*)private_stream->m_user_data;
 	return buf->off;
 }
 
-opj_stream_t*  grk_create_buffer_stream(uint8_t *buf,
+opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream)
 {
@@ -371,7 +371,7 @@ static void grk_mem_map_free(void* user_data)
 /*
 Currently, only read streams are supported for memory mapped files.
 */
-opj_stream_t* grk_create_mapped_file_read_stream(const char *fname)
+opj_stream_t* create_mapped_file_read_stream(const char *fname)
 {
     opj_stream_t*	l_stream = NULL;
     grk_buf_info_t* buffer_info = NULL;

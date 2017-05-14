@@ -71,9 +71,9 @@ struct decodeBlockInfo {
 		x(0),
 		y(0)
 	{  }
-	grk_tcd_tilecomp_t* tilec;
+	tcd_tilecomp_t* tilec;
 	int32_t* tiledp;
-	grk_tcd_cblk_dec_t* cblk;
+	tcd_cblk_dec_t* cblk;
 	uint32_t resno;
 	uint32_t bandno;
 	float stepsize;
@@ -106,7 +106,7 @@ struct encodeBlockInfo {
 						mct_numcomps(0)
 	{  }
 	int32_t* tiledp;
-	grk_tcd_cblk_enc_t* cblk;
+	tcd_cblk_enc_t* cblk;
 	uint32_t compno;
 	uint32_t resno;
 	uint32_t bandno;
@@ -190,18 +190,18 @@ in T1.C are used by some function in TCD.C.
 /* ----------------------------------------------------------------------- */
 
 
-typedef uint16_t opj_flag_t;
+typedef uint16_t flag_t;
 
-typedef struct grk_t1 {
+struct t1_t {
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
 	/** MQC component */
-	grk_mqc_t *mqc;
+	mqc_t *mqc;
 	/** RAW component */
-	grk_raw_t *raw;
+	raw_t *raw;
 
 	int32_t  *data;
-	opj_flag_t *flags;
+	flag_t *flags;
 	uint32_t w;
 	uint32_t h;
 	uint32_t datasize;
@@ -209,9 +209,9 @@ typedef struct grk_t1 {
 	uint32_t flags_stride;
 	uint32_t data_stride;
 	bool   encoder;
-} grk_t1_t;
+} ;
 
-bool grk_t1_allocate_buffers(grk_t1_t *t1,
+bool t1_allocate_buffers(t1_t *t1,
 	uint32_t w,
 	uint32_t h);
 
@@ -224,15 +224,15 @@ Encode the code-blocks of a tile
 @param mct_norms  FIXME DOC
 @param mct_numcomps Number of components used for MCT
 */
-bool grk_t1_encode_cblks(   grk_tcd_tile_t *tile,
-                            grk_tcp_t *tcp,
+bool t1_encode_cblks(   tcd_tile_t *tile,
+                            tcp_t *tcp,
                             const double * mct_norms,
                             uint32_t mct_numcomps,
 							uint32_t numThreads);
 
 
-double grk_t1_encode_cblk(grk_t1_t *t1,
-						grk_tcd_cblk_enc_t* cblk,
+double t1_encode_cblk(t1_t *t1,
+						tcd_cblk_enc_t* cblk,
 						uint32_t orient,
 						uint32_t compno,
 						uint32_t level,
@@ -250,10 +250,10 @@ Decode the code-blocks of a tile
 @param tilec The tile to decode
 @param tccp Tile coding parameters
 */
-bool grk_t1_prepare_decode_cblks(   grk_tcd_tilecomp_t* tilec,
-                            opj_tccp_t* tccp,
+bool t1_prepare_decode_cblks(   tcd_tilecomp_t* tilec,
+                            tccp_t* tccp,
 							std::vector<decodeBlockInfo*>* blocks,
-                            grk_event_mgr_t * p_manager);
+                            event_mgr_t * p_manager);
 
 
 /**
@@ -264,8 +264,8 @@ Decode 1 code-block
 @param roishift Region of interest shifting value
 @param cblksty Code-block style
 */
-bool grk_t1_decode_cblk(grk_t1_t *t1,
-	grk_tcd_cblk_dec_t* cblk,
+bool t1_decode_cblk(t1_t *t1,
+	tcd_cblk_dec_t* cblk,
 	uint32_t orient,
 	uint32_t roishift,
 	uint32_t cblksty);
@@ -273,7 +273,7 @@ bool grk_t1_decode_cblk(grk_t1_t *t1,
 
 
 
-double grk_t1_getwmsedec(
+double t1_getwmsedec(
     int32_t nmsedec,
     uint32_t compno,
     uint32_t level,
@@ -286,22 +286,22 @@ double grk_t1_getwmsedec(
     uint32_t mct_numcomps);
 
 
-int16_t grk_t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
-int16_t grk_t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
+int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
+int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
 
 /**
 * Creates a new Tier 1 handle
 * and initializes the look-up tables of the Tier-1 coder/decoder
 * @return a new T1 handle if successful, returns NULL otherwise
 */
-grk_t1_t* grk_t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
+t1_t* t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
 
 /**
 * Destroys a previously created T1 handle
 *
 * @param p_t1 Tier 1 handle to destroy
 */
-void grk_t1_destroy(grk_t1_t *p_t1);
+void t1_destroy(t1_t *p_t1);
 
 
 

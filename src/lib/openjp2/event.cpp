@@ -72,7 +72,7 @@ static void grk_default_callback (const char *msg, void *client_data)
 
 
 /* ----------------------------------------------------------------------- */
-bool grk_event_msg(grk_event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
+bool event_msg(event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
 {
 #define OPJ_MSG_SIZE 512 /* 512 bytes should be more than enough for a short message */
     opj_msg_callback msg_handler = nullptr;
@@ -124,7 +124,7 @@ bool grk_event_msg(grk_event_mgr_t* p_event_mgr, int32_t event_type, const char 
     return true;
 }
 
-void grk_set_default_event_handler(grk_event_mgr_t * p_manager)
+void set_default_event_handler(event_mgr_t * p_manager)
 {
     p_manager->m_error_data = nullptr;
     p_manager->m_warning_data = nullptr;

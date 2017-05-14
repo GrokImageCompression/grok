@@ -56,16 +56,16 @@ namespace grk {
  */
 #define OPJ_VALIDATION_SIZE 10
 
-grk_procedure_list_t *  grk_procedure_list_create()
+procedure_list_t *  procedure_list_create()
 {
     /* memory allocation */
-    grk_procedure_list_t * l_validation = (grk_procedure_list_t *) grok_calloc(1,sizeof(grk_procedure_list_t));
+    procedure_list_t * l_validation = (procedure_list_t *) grok_calloc(1,sizeof(procedure_list_t));
     if (! l_validation) {
         return nullptr;
     }
     /* initialization */
     l_validation->m_nb_max_procedures = OPJ_VALIDATION_SIZE;
-    l_validation->m_procedures = (grk_procedure*)grok_calloc(OPJ_VALIDATION_SIZE, sizeof(grk_procedure));
+    l_validation->m_procedures = (procedure*)grok_calloc(OPJ_VALIDATION_SIZE, sizeof(procedure));
     if (! l_validation->m_procedures) {
         grok_free(l_validation);
         return nullptr;
@@ -73,7 +73,7 @@ grk_procedure_list_t *  grk_procedure_list_create()
     return l_validation;
 }
 
-void  grk_procedure_list_destroy(grk_procedure_list_t * p_list)
+void  procedure_list_destroy(procedure_list_t * p_list)
 {
     if (! p_list) {
         return;
@@ -85,23 +85,23 @@ void  grk_procedure_list_destroy(grk_procedure_list_t * p_list)
     grok_free(p_list);
 }
 
-bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list, grk_procedure p_procedure, grk_event_mgr_t* p_manager )
+bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedure p_procedure, event_mgr_t* p_manager )
 {
 
     assert(p_manager != NULL);
 
     if (p_validation_list->m_nb_max_procedures == p_validation_list->m_nb_procedures) {
-        grk_procedure * new_procedures;
+        procedure * new_procedures;
 
         p_validation_list->m_nb_max_procedures += OPJ_VALIDATION_SIZE;
-        new_procedures = (grk_procedure*)grok_realloc(
+        new_procedures = (procedure*)grok_realloc(
                              p_validation_list->m_procedures,
-                             p_validation_list->m_nb_max_procedures * sizeof(grk_procedure));
+                             p_validation_list->m_nb_max_procedures * sizeof(procedure));
         if (! new_procedures) {
             grok_free(p_validation_list->m_procedures);
             p_validation_list->m_nb_max_procedures = 0;
             p_validation_list->m_nb_procedures = 0;
-            grk_event_msg(p_manager, EVT_ERROR, "Not enough memory to add a new validation procedure\n");
+            event_msg(p_manager, EVT_ERROR, "Not enough memory to add a new validation procedure\n");
             return false;
         } else {
             p_validation_list->m_procedures = new_procedures;
@@ -113,17 +113,17 @@ bool grk_procedure_list_add_procedure (grk_procedure_list_t * p_validation_list,
     return true;
 }
 
-uint32_t grk_procedure_list_get_nb_procedures (grk_procedure_list_t * p_validation_list)
+uint32_t procedure_list_get_nb_procedures (procedure_list_t * p_validation_list)
 {
     return p_validation_list->m_nb_procedures;
 }
 
-grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_validation_list)
+procedure* procedure_list_get_first_procedure (procedure_list_t * p_validation_list)
 {
     return p_validation_list->m_procedures;
 }
 
-void grk_procedure_list_clear (grk_procedure_list_t * p_validation_list)
+void procedure_list_clear (procedure_list_t * p_validation_list)
 {
     p_validation_list->m_nb_procedures = 0;
 }

@@ -43,7 +43,7 @@ namespace grk {
 Smart wrapper to low level C array
 */
 
-struct grok_min_buf_t {
+struct min_buf_t {
     uint8_t *buf;		/* internal array*/
     uint16_t len;		/* length of array */
 };
@@ -51,18 +51,18 @@ struct grok_min_buf_t {
 /*
 Copy all segments, in sequence, into contiguous array
 */
-bool grok_min_buf_vec_copy_to_contiguous_buffer(opj_vec_t* min_buf_vec, uint8_t* buffer);
+bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buffer);
 
 /*
 Push buffer to back of min buf vector
 */
-bool grok_min_buf_vec_push_back(opj_vec_t* buf_vec, uint8_t* buf, uint16_t len);
+bool min_buf_vec_push_back(grok_vec_t* buf_vec, uint8_t* buf, uint16_t len);
 
 /*
 Sum lengths of all buffers
 */
 
-uint16_t grok_min_buf_vec_get_len(opj_vec_t* min_buf_vec);
+uint16_t min_buf_vec_get_len(grok_vec_t* min_buf_vec);
 
 
 /*
@@ -82,9 +82,9 @@ A segmented buffer stores a list of buffers, or segments, but can be treated as 
 contiguous buffer.
 
 */
-struct opj_seg_buf_t {
-	opj_seg_buf_t();
-	~opj_seg_buf_t();
+struct seg_buf_t {
+	seg_buf_t();
+	~seg_buf_t();
     size_t data_len;	/* total length of all segments*/
     size_t cur_seg_id;	/* current index into segments vector */
 	std::vector<grk_buf_t*> segments;
@@ -93,59 +93,59 @@ struct opj_seg_buf_t {
 /*
 Wrap existing array and add to the back of the segmented buffer.
 */
-bool opj_seg_buf_push_back(opj_seg_buf_t* seg_buf, uint8_t* buf, size_t len);
+bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len);
 
 /*
 Allocate array and add to the back of the segmented buffer
 */
-bool opj_seg_buf_alloc_and_push_back(opj_seg_buf_t* seg_buf, size_t len);
+bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len);
 
 /*
 Increment offset of current segment
 */
-void opj_seg_buf_incr_cur_seg_offset(opj_seg_buf_t* seg_buf, uint64_t offset);
+void seg_buf_incr_cur_seg_offset(seg_buf_t* seg_buf, uint64_t offset);
 
 /*
 Get length of current segment
 */
-size_t opj_seg_buf_get_cur_seg_len(opj_seg_buf_t* seg_buf);
+size_t seg_buf_get_cur_seg_len(seg_buf_t* seg_buf);
 
 /*
 Get offset of current segment
 */
-int64_t opj_seg_buf_get_cur_seg_offset(opj_seg_buf_t* seg_buf);
+int64_t seg_buf_get_cur_seg_offset(seg_buf_t* seg_buf);
 
 /*
 Treat segmented buffer as single contiguous buffer, and get current pointer
 */
-uint8_t* opj_seg_buf_get_global_ptr(opj_seg_buf_t* seg_buf);
+uint8_t* seg_buf_get_global_ptr(seg_buf_t* seg_buf);
 
 /*
 Treat segmented buffer as single contiguous buffer, and get current offset
 */
-int64_t opj_seg_buf_get_global_offset(opj_seg_buf_t* seg_buf);
+int64_t seg_buf_get_global_offset(seg_buf_t* seg_buf);
 
 /*
 Reset all offsets to zero, and set current segment to beginning of list
 */
-void opj_seg_buf_rewind(opj_seg_buf_t* seg_buf);
+void seg_buf_rewind(seg_buf_t* seg_buf);
 
 /*
 Copy all segments, in sequence, into contiguous array
 */
-bool opj_seg_buf_copy_to_contiguous_buffer(opj_seg_buf_t* seg_buf, uint8_t* buffer);
+bool seg_buf_copy_to_contiguous_buffer(seg_buf_t* seg_buf, uint8_t* buffer);
 
 /*
 Cleans up internal resources
 */
-void	opj_seg_buf_cleanup(opj_seg_buf_t* seg_buf);
+void	seg_buf_cleanup(seg_buf_t* seg_buf);
 
 /*
 Return current pointer, stored in ptr variable, and advance segmented buffer
 offset by chunk_len
 
 */
-bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
+bool seg_buf_zero_copy_read(seg_buf_t* seg_buf,
                                 uint8_t** ptr,
                                 size_t chunk_len);
 
