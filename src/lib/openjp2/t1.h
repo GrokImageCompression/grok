@@ -53,10 +53,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
-
 #include <vector>
 #include "testing.h"
 
+namespace grk {
 
 struct decodeBlockInfo {
 	decodeBlockInfo() : tilec(NULL),
@@ -312,3 +312,4 @@ void grk_t1_destroy(grk_t1_t *p_t1);
 
 
 
+}

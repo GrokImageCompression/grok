@@ -53,6 +53,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
+namespace grk {
 
 /*********************/
 /*   STATE FLAGS     */
@@ -232,3 +233,5 @@ double grk_t1_opt_encode_cblk(grk_t1_opt_t *t1,
 /*@}*/
 
 
+
+}

@@ -16,12 +16,13 @@
 */
 
 #pragma once
-
 #include <string>
 #include <vector>
 #include <thread>
 #include "BlockingQueue.h"
 
+namespace grk {
+	
 
 class T1Decoder
 {
@@ -34,3 +35,5 @@ private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 	BlockingQueue<decodeBlockInfo*> decodeQueue;
 };
+
+}

@@ -51,6 +51,8 @@
 
 #pragma once
 
+namespace grk {
+
 /**
 @file event.h
 @brief Implementation of a event callback system
@@ -125,3 +127,5 @@ void grk_set_default_event_handler(grk_event_mgr_t * p_manager);
 
 
 
+
+}

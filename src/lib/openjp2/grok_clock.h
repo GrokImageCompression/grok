@@ -48,6 +48,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
 Difference in successive grok_clock() calls tells you the elapsed time
@@ -61,5 +62,6 @@ double grok_clock(void);
 /*@}*/
 
 
+}
 
 

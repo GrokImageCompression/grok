@@ -55,9 +55,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
 #include "T1Decoder.h"
+
+
+namespace grk {
+
 
 /* ----------------------------------------------------------------------- */
 
@@ -2489,5 +2492,7 @@ grk_tcd_band_t::~grk_tcd_band_t() {
 	if (precincts) {
 		delete[] precincts;
 	}
+}
+
 }
 

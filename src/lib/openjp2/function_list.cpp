@@ -46,8 +46,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 /**
  * Default size of the validation list, if not sufficient, data will be reallocated with a double size.
@@ -124,4 +126,5 @@ grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_
 void grk_procedure_list_clear (grk_procedure_list_t * p_validation_list)
 {
     p_validation_list->m_nb_procedures = 0;
+}
 }

@@ -53,10 +53,12 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
 #include "t1_luts.h"
 #include "T1Encoder.h"
+
+namespace grk {
+
 
 /** @defgroup T1 T1 - Implementation of the tier-1 coding */
 /*@{*/
@@ -1633,4 +1635,7 @@ double grk_t1_encode_cblk(grk_t1_t *t1,
     }
 
 	return cumwmsedec;
+}
+
+
 }

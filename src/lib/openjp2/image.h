@@ -48,6 +48,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
 @file image.h
@@ -85,3 +86,4 @@ void opj_copy_image_header(const opj_image_t* p_image_src, opj_image_t* p_image_
 
 
 
+}

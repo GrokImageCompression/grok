@@ -55,7 +55,7 @@
 
 #pragma once
 
-
+namespace grk {
 
 class EncodedTileData {
 
@@ -88,3 +88,5 @@ private:
 };
 
 	
+
+}

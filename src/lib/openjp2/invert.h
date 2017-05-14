@@ -50,6 +50,8 @@
 
 #pragma once
 
+namespace grk {
+
 /**
 @file invert.h
 @brief Implementation of the matrix inversion
@@ -81,3 +83,4 @@ bool grk_matrix_inversion_f(float * pSrcMatrix,
 /*@}*/
 
 
+}

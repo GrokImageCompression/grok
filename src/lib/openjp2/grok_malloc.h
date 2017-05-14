@@ -51,6 +51,8 @@
 #pragma once
 
 #include <stddef.h>
+
+namespace grk {
 /**
 @file grok_malloc.h
 @brief Internal functions
@@ -113,3 +115,5 @@ void grok_free(void * m);
 /*@}*/
 
 
+
+}

@@ -55,6 +55,8 @@
 
 #pragma once
 
+namespace grk {
+
 /**
 @file opj_intmath.h
 @brief Implementation of operations on integers (INT)
@@ -243,3 +245,5 @@ static inline int32_t grk_int_fix_mul_t1(int32_t a, int32_t b)
 
 /*@}*/
 
+
+}

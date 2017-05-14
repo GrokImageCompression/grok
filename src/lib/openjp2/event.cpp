@@ -51,6 +51,9 @@
 
 #include "grok_includes.h"
 
+namespace grk {
+
+
 /* ==========================================================
      Utility functions
    ==========================================================*/
@@ -131,3 +134,4 @@ void grk_set_default_event_handler(grk_event_mgr_t * p_manager)
     p_manager->warning_handler = grk_default_callback;
 }
 
+}

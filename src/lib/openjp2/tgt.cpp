@@ -58,6 +58,9 @@
 #include "grok_includes.h"
 #include  <stdexcept>
 
+namespace grk {
+
+
 
 TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, grk_event_mgr_t *manager) :
 	numleafsh(mynumleafsh),
@@ -322,4 +325,6 @@ int32_t TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold)
 		node = *--stkptr;
 	}
 	return node->value;
+}
+
 }

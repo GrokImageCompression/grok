@@ -58,13 +58,15 @@
 #ifdef __SSE__
 #include <xmmintrin.h>
 #endif
-
 #include "grok_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
 
+
+
+namespace grk {
 
 
 
@@ -1113,4 +1115,7 @@ bool grk_dwt_decode_97(grk_tcd_tilecomp_t* restrict tilec,
 		t.join();
 	}
     return rc == 0 ? true : false;
+}
+
+
 }

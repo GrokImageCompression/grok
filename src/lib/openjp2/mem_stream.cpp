@@ -14,9 +14,7 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-
 #include "grok_includes.h"
-
 
 #ifdef _WIN32
 #include <windows.h>
@@ -34,6 +32,8 @@
 
 #include <fcntl.h>
 
+
+namespace grk {
 
 #ifdef _WIN32
 typedef void* grk_handle_t;
@@ -408,4 +408,7 @@ opj_stream_t* grk_create_mapped_file_read_stream(const char *fname)
 
 
     return l_stream;
+}
+
+
 }

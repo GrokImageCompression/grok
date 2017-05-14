@@ -16,9 +16,10 @@
 */
 
 #pragma once
-
-
 #include <vector>
+
+namespace grk {
+
 struct grok_min_buf_t;
 
 struct opj_vec_t {
@@ -38,7 +39,7 @@ struct opj_vec_t {
 		return true;
 	}
 
-	void* get( size_t index)
+	void* get(size_t index)
 	{
 		if (!data)
 			return NULL;
@@ -74,8 +75,9 @@ struct opj_vec_t {
 		delete data;
 		data = NULL;
 	}
-    std::vector<grok_min_buf_t*>* data;		/* array of void* pointers */
+	std::vector<grok_min_buf_t*>* data;		/* array of void* pointers */
 };
 
 
+}
 

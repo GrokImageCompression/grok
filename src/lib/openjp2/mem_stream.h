@@ -34,6 +34,7 @@
 */
 
 #pragma once
+namespace grk {
 
 opj_stream_t*  grk_create_buffer_stream(uint8_t *buf,
                                         size_t len,
@@ -42,3 +43,5 @@ size_t grk_get_buffer_stream_offset(opj_stream_t* stream);
 
 opj_stream_t* grk_create_mapped_file_read_stream(const char *fname);
 
+
+}

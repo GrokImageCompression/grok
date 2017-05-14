@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+
 #ifdef _WIN32
 #define MINPF_FILE_SEPARATOR   "\\"
 #else
@@ -29,6 +30,5 @@
 #define MINPF_MAX_PATH_LEN 4096
 
 #include "minpf_plugin.h"
-
 
 

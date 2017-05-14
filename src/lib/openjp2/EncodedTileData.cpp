@@ -14,8 +14,10 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 EncodedTileData::~EncodedTileData() {
 	dealloc();
@@ -51,3 +53,4 @@ void EncodedTileData::grow() {
 	alloc(size+32768);
 }
 
+}

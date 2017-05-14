@@ -46,8 +46,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
+namespace grk {
+
 
 /**
  * LUP decomposition
@@ -308,3 +309,4 @@ static void grk_lupInvert (float * pSrcMatrix,
     }
 }
 
+}

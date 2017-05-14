@@ -15,7 +15,6 @@
 *
 */
 
-
 #include "minpf_dynamic_library.h"
 #include <stdio.h>
 #include <cstring>
@@ -44,6 +43,8 @@ static std::string GetLastErrorAsString()
 }
 
 #endif
+
+namespace grk {
 
 
 bool minpf_get_full_path(const char* path,
@@ -163,5 +164,7 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 #else
 	return nullptr;
 #endif
+
+}
 
 }

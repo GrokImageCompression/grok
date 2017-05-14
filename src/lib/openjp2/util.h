@@ -18,6 +18,8 @@
 
 #pragma once
 
+namespace grk {
+
 struct grk_pt_t {
     int64_t x;
     int64_t y;
@@ -68,3 +70,5 @@ typedef struct grk_buf {
     bool owns_data;	/* true if buffer manages the buf array */
 } grk_buf_t;
 
+
+}

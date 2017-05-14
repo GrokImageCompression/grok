@@ -16,9 +16,7 @@
 */
 
 #pragma once
-
 #include "minpf_common.h"
-
 #ifdef WIN32
 #include <Windows.h>
 #else
@@ -30,6 +28,8 @@ typedef HMODULE dynamic_handle_t;
 #else
 typedef void* dynamic_handle_t;
 #endif
+
+namespace grk {
 
 struct minpf_dynamic_library {
 
@@ -49,3 +49,4 @@ bool minpf_get_full_path(const char* path,
 
 
 
+}

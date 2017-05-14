@@ -15,8 +15,10 @@
 *
 */
 #pragma once
-
 #include <stdint.h>
+
+namespace grk {
+
 
 struct minpf_platform_services;
 
@@ -66,3 +68,5 @@ typedef minpf_exit_func (*minpf_post_load_func)(const char* pluginPath, const mi
 
 extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const char* pluginPath, const minpf_platform_services * params);
 
+
+}

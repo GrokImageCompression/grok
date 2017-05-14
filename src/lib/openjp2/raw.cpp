@@ -50,8 +50,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 /*
 ==========================================================
@@ -109,3 +111,4 @@ uint32_t grk_raw_decode(grk_raw_t *raw)
     return d;
 }
 
+}

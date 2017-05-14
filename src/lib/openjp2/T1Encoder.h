@@ -21,6 +21,7 @@
 #include <atomic>
 #include <thread>
 
+namespace grk {
 
 class T1Encoder
 {
@@ -49,3 +50,6 @@ private:
 	mutable std::mutex distortion_mutex;
 
 };
+
+
+}

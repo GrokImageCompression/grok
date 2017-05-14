@@ -14,8 +14,13 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
+
 #include "grok_includes.h"
 #include "plugin_bridge.h"
+
+
+namespace grk {
+
 
 // Performed after T2, just before plugin decode is triggered
 // note: only support single segment at the moment
@@ -332,3 +337,5 @@ void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d) {
 	}
 }
 
+
+}

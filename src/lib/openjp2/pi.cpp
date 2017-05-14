@@ -56,6 +56,9 @@
 
 #include "grok_includes.h"
 
+namespace grk {
+
+
 /** @defgroup PI PI - Implementation of a packet iterator */
 /*@{*/
 
@@ -1885,4 +1888,6 @@ bool grk_pi_next(grk_pi_iterator_t * pi)
     }
 
     return false;
+}
+
 }

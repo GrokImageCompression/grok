@@ -33,9 +33,11 @@
 *
 */
 
-#pragma once
-
 #include <vector>
+
+#pragma once
+namespace grk {
+
 
 /*
 Smart wrapper to low level C array
@@ -149,3 +151,4 @@ bool opj_seg_buf_zero_copy_read(opj_seg_buf_t* seg_buf,
 
 
 
+}

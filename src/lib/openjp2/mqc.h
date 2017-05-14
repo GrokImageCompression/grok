@@ -56,6 +56,7 @@
 
 
 #pragma once
+namespace grk {
 
 /**
 @file mqc.h
@@ -213,3 +214,5 @@ uint8_t grk_mqc_decode(grk_mqc_t * const mqc);
 /*@}*/
 
 
+
+}

@@ -55,6 +55,7 @@
 
 #pragma once
 
+namespace grk {
 
 /**
 Bit input/output
@@ -159,4 +160,6 @@ private:
 
 };
 
+
+}
 	

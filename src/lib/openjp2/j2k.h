@@ -59,6 +59,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
 @file j2k.h
@@ -804,3 +805,5 @@ bool grk_j2k_end_compress( 	grk_j2k_t *p_j2k,
                             grk_event_mgr_t * p_manager);
 
 bool grk_j2k_setup_mct_encoding (grk_tcp_t * p_tcp, opj_image_t * p_image);
+
+}
