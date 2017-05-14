@@ -16,12 +16,12 @@
 */
 
 #pragma once
-
+#include <map>
+#include <stdint.h>
 
 #include "minpf_dynamic_library.h"
-#include <map>
 
-#include <stdint.h>
+namespace grk {
 
 #define MINPF_MAX_PLUGINS 32
 
@@ -50,3 +50,4 @@ int32_t minpf_load_from_path(const char* path, minpf_invoke_service_func func);
 const char* minpf_get_dynamic_library_extension(void);
 
 
+}

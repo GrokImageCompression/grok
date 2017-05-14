@@ -18,6 +18,8 @@
 
 #pragma once
 
+namespace grk {
+
 bool decode_synch_plugin_with_host(grk_tcd_t *tcd);
 bool decode_synch_host_with_plugin(grk_tcd_t *tcd);
 
@@ -43,3 +45,5 @@ void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d);
 void  mqc_next_plane(plugin_debug_mqc_t *mqc);
 
 
+
+}

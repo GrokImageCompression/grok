@@ -47,6 +47,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+
+
 #define OPJ_SKIP_POISON
 #include "grok_includes.h"
 
@@ -57,6 +60,8 @@
 #ifndef SIZE_MAX
 # define SIZE_MAX ((size_t) -1)
 #endif
+
+namespace grk {
 
 static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
 {
@@ -253,4 +258,5 @@ void grok_free(void *ptr)
 {
 	if (ptr)
 		free(ptr);
+}
 }

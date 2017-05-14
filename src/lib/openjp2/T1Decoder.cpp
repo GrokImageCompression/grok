@@ -14,13 +14,14 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
  */
-
 #include "grok_includes.h"
 #include "T1Decoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
 #include "testing.h"
 
+namespace grk {
+	
 
 T1Decoder::T1Decoder(uint16_t blockw, 
 					uint16_t blockh) :codeblock_width(blockw ? (1<<blockw) : 0), 
@@ -127,5 +128,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 		delete block;
 	}
 	return success;
+
+}
 
 }

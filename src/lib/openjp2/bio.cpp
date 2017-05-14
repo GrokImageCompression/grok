@@ -55,6 +55,8 @@
 
 #include "grok_includes.h"
 
+namespace grk {
+
 
 BitIO::BitIO() : start(nullptr), 
 				offset(0),
@@ -184,4 +186,5 @@ bool BitIO::inalign()
     }
     ct = 0;
     return true;
+}
 }

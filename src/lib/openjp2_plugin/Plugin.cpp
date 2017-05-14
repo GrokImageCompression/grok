@@ -21,7 +21,7 @@ extern "C"  PLUGIN_API int32_t exit_func()
 	return 0;
 }
 
-extern "C"  PLUGIN_API  void * create(minpf_object_params *params) {
+extern "C"  PLUGIN_API  void * create(grk::minpf_object_params *params) {
 	return 0;
 }
 
@@ -29,11 +29,11 @@ extern "C"  PLUGIN_API  int32_t destroy(void * object) {
 	return 0;
 }
 
-extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginPath, const minpf_platform_services * params)
+extern "C" PLUGIN_API grk::minpf_exit_func minpf_post_load_plugin(const char* pluginPath, const grk::minpf_platform_services * params)
 {
 	int res = 0;
 
-	minpf_register_params rp;
+	grk::minpf_register_params rp;
 	rp.version.major = 1;
 	rp.version.minor = 0;
 
@@ -42,7 +42,7 @@ extern "C" PLUGIN_API minpf_exit_func minpf_post_load_plugin(const char* pluginP
 
 	res = params->registerObject(PluginId, &rp);
 	if (res < 0)
-		return 0;
+		return nullptr;
 
 	// custom plugin initialization can happen here
 	//printf("Loaded plugin has been registered\n");
@@ -62,8 +62,8 @@ extern "C"  PLUGIN_API bool plugin_init(opj_plugin_init_info_t initInfo) {
 ////////////////////////////////////
 
 extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameters,
-											PLUGIN_ENCODE_USER_CALLBACK userCallback) {
-	plugin_encode_user_callback_info_t dummy;
+											grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
+	grk::plugin_encode_user_callback_info_t dummy;
 	dummy.error_code = 0;
 	return -1;
 }
@@ -71,7 +71,7 @@ extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameter
 extern "C"  PLUGIN_API int32_t plugin_batch_encode(const char* input_dir,
 													const char* output_dir,
 													opj_cparameters_t* encode_parameters,
-													PLUGIN_ENCODE_USER_CALLBACK userCallback) {
+													grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
 	return -1;
 }
 
@@ -90,14 +90,14 @@ extern "C"  PLUGIN_API void plugin_stop_batch_encode(void) {
 ////////////////////////////////////
 
 extern "C"  PLUGIN_API int32_t plugin_decode(opj_decompress_parameters* decode_parameters,
-											PLUGIN_DECODE_USER_CALLBACK userCallback) {
+											grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
 	return -1;
 }
 
 extern "C"  PLUGIN_API int32_t plugin_batch_decode(const char* input_dir,
 													const char* output_dir,
 													opj_decompress_parameters* decode_parameters,
-													PLUGIN_DECODE_USER_CALLBACK userCallback) {
+													grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
 
 	return -1;
 }
@@ -115,11 +115,11 @@ extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
 	return OPJ_PLUGIN_STATE_NO_DEBUG;
 }
 
-extern "C"  PLUGIN_API void plugin_debug_next_cxd(plugin_debug_mqc_t *mqc, uint32_t d) {
+extern "C"  PLUGIN_API void plugin_debug_next_cxd(grk::plugin_debug_mqc_t *mqc, uint32_t d) {
 
 }
 
-extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(plugin_debug_mqc_t *mqc) {
+extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(grk::plugin_debug_mqc_t *mqc) {
 
 }
 

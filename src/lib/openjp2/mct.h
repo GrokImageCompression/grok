@@ -57,6 +57,7 @@
 
 
 #pragma once
+namespace grk {
 
 /**
 @file mct.h
@@ -172,3 +173,5 @@ const double * grk_mct_get_mct_norms_real (void);
 /*@}*/
 
 
+
+}

@@ -56,6 +56,8 @@
 
 #pragma once
 
+namespace grk {
+
 /**
 @file dwt.h
 @brief Implementation of a discrete wavelet transform (DWT)
@@ -149,3 +151,5 @@ uint32_t grk_dwt_max_resolution(grk_tcd_resolution_t* restrict r, uint32_t i);
 /*@}*/
 
 
+
+}

@@ -3,6 +3,7 @@
 #include <mutex>
 #include <condition_variable>
 
+namespace grk {
 
 class Barrier {
 public:
@@ -28,8 +29,11 @@ public:
 private:
 	std::mutex mMutex;
 	std::condition_variable mCond;
-	std::size_t mThreshold;
-	std::size_t mCount;
-	std::size_t mGeneration;
+	size_t mThreshold;
+	size_t mCount;
+	size_t mGeneration;
 };
+
+
+}
 

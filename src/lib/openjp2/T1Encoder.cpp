@@ -22,6 +22,11 @@
 #include "testing.h"
 
 
+namespace grk {
+
+
+
+
 T1Encoder::T1Encoder() : tile(NULL), 
 						maxCblkW(0),
 						maxCblkH(0)
@@ -326,5 +331,8 @@ bool T1Encoder::encode(bool do_opt,
 		grk_t1_destroy(t);
 	}
 	return return_code;
+
+}
+
 
 }

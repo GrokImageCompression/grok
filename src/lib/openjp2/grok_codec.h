@@ -49,6 +49,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
  * Main codec handler used for compression or decompression.
@@ -134,7 +135,7 @@ typedef struct grk_codec_private {
         struct opj_compression {
             bool (* opj_start_compress) ( void *p_codec,
                                           grk_stream_private_t * cio,
-                                          struct opj_image * p_image,
+                                          opj_image_t * p_image,
                                           grk_event_mgr_t * p_manager);
 
             bool (* opj_encode) ( void * p_codec,
@@ -157,7 +158,7 @@ typedef struct grk_codec_private {
 
             bool (* opj_setup_encoder) ( void * p_codec,
                                          opj_cparameters_t * p_param,
-                                         struct opj_image * p_image,
+                                         opj_image_t * p_image,
                                          grk_event_mgr_t * p_manager);
         } m_compression;
     } m_codec_data;
@@ -176,3 +177,4 @@ grk_codec_private_t;
 
 
 
+}

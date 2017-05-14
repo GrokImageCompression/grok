@@ -5,6 +5,8 @@
 #include <queue>
 #include <vector>
 
+namespace grk {
+
 template<typename Data> class BlockingQueue
 {
 public:
@@ -78,3 +80,5 @@ private:
 	bool _active;
 };
 
+
+}

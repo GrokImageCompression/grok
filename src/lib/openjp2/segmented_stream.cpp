@@ -14,8 +14,10 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 /* #define DEBUG_SEG_BUF */
 
@@ -400,3 +402,4 @@ void grk_buf_free(grk_buf_t* buffer)
     grok_free(buffer);
 }
 
+}

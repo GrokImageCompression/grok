@@ -16,6 +16,7 @@
 */
 
 #pragma once
+namespace grk {
 
 
 class RateInfo
@@ -32,3 +33,6 @@ private:
 	uint16_t maximumSlope;
 
 };
+
+
+}

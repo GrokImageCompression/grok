@@ -58,6 +58,8 @@
 
 #pragma once
 
+namespace grk {
+
 const uint32_t tag_tree_uninitialized_node_value = 999;
 
 /**
@@ -149,5 +151,6 @@ private:
 
 
 
+}
 
 

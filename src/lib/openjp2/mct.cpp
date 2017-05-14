@@ -64,8 +64,9 @@
 #ifdef __SSE4_1__
 #include <smmintrin.h>
 #endif
-
 #include "grok_includes.h"
+
+namespace grk {
 
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
@@ -593,4 +594,7 @@ void opj_calculate_norms(	double * pNorms,
         }
         lNorms[i] = sqrt(lNorms[i]);
     }
+}
+
+
 }

@@ -14,8 +14,10 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
  */
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 RateInfo::RateInfo() : 	minimumSlope(USHRT_MAX), 
 						maximumSlope(0) {
@@ -45,4 +47,7 @@ void RateInfo::synch(grk_tcd_cblk_enc_t *cblk) {
 
 uint16_t RateInfo::getMinimumThresh() {
 	return minimumSlope;
+}
+
+
 }

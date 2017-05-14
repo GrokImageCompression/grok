@@ -57,6 +57,7 @@
 
 
 #pragma once
+using namespace grk;
 
 /**
 @file cio.h
@@ -69,6 +70,7 @@ The functions in CIO.C have for goal to realize a byte input / output process.
 /*@{*/
 
 #include "opj_config_private.h"
+
 
 /* ----------------------------------------------------------------------- */
 

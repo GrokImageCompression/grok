@@ -56,6 +56,8 @@
  */
 #pragma once
 
+namespace grk {
+
 /**
 @file t2.h
 @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
@@ -166,3 +168,5 @@ void grk_t2_destroy(grk_t2_t *t2);
 /*@}*/
 
 
+
+}

@@ -54,11 +54,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #include "grok_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
+
+namespace grk {
+
 
 /*
 
@@ -857,4 +859,7 @@ bool grk_dwt_region_decode97(grk_tcd_tilecomp_t* restrict tilec,
 		t.join();
 	}
 	 return success;
+}
+
+
 }

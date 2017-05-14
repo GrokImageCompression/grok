@@ -15,11 +15,13 @@
 *
 */
 
+#include "openjpeg.h"
+#include "minpf_plugin.h"
 
 #pragma once
 
-#include "openjpeg.h"
-#include "minpf_plugin.h"
+namespace grk {
+	
 
 /////////////////////
 // Debug Interface
@@ -130,3 +132,5 @@ static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_dec
 typedef void(*PLUGIN_STOP_BATCH_DECODE)(void);
 
 
+
+}

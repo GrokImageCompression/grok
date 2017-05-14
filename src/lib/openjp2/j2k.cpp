@@ -60,6 +60,9 @@
 
 #include "grok_includes.h"
 
+namespace grk {
+
+
 /** @defgroup J2K J2K - JPEG-2000 codestream reader/writer */
 /*@{*/
 
@@ -10464,4 +10467,6 @@ bool grk_j2k_write_tile (grk_j2k_t * p_j2k,
     }
 
     return true;
+}
+
 }

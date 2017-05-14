@@ -16,6 +16,7 @@
 */
 
 #pragma once
+namespace grk {
 
 /*
 Note: various coordinate systems are used to describe regions in the tile buffer.
@@ -91,3 +92,5 @@ grk_pt_t grk_tile_buf_get_interleaved_range(grk_tile_buf_component_t* comp,
 
 int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp);
 
+
+}

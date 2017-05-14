@@ -46,7 +46,6 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
 
 #ifdef _WIN32
@@ -56,6 +55,11 @@
 #include <sys/resource.h>
 #include <sys/times.h>
 #endif /* _WIN32 */
+
+
+
+namespace grk {
+
 
 double grok_clock(void)
 {
@@ -82,3 +86,4 @@ double grok_clock(void)
 #endif
 }
 
+}

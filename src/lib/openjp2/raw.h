@@ -52,6 +52,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
 @file raw.h
@@ -104,3 +105,5 @@ uint32_t grk_raw_decode(grk_raw_t *raw);
 
 
 
+
+}

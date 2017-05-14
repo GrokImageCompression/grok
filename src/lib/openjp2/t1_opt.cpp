@@ -58,6 +58,9 @@
 #include "grok_includes.h"
 #include "t1_luts.h"
 
+namespace grk {
+
+
 /** @defgroup T1 T1 - Implementation of the tier-1 coding */
 /*@{*/
 
@@ -723,4 +726,7 @@ double grk_t1_opt_encode_cblk(grk_t1_opt_t *t1,
         pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
     }
 	return cumwmsedec;
+}
+
+
 }

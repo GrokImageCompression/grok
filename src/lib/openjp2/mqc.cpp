@@ -55,6 +55,8 @@
  */
 
 #include "grok_includes.h"
+namespace grk {
+
 
 /** @defgroup MQC MQC - Implementation of an MQ-Coder */
 /*@{*/
@@ -617,4 +619,4 @@ void grk_mqc_setstate(grk_mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob
     mqc->ctxs[ctxno] = &mqc_states[msb + (uint32_t)(prob << 1)];
 }
 
-
+}

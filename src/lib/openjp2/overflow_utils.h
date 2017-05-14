@@ -19,6 +19,8 @@
 #include <climits>
 #include <stdint.h>
 
+namespace grk {
+
 
 inline bool grk_mult_will_overflow(uint32_t a, uint32_t b) {
 	return (b && (a > UINT_MAX / b));
@@ -26,4 +28,7 @@ inline bool grk_mult_will_overflow(uint32_t a, uint32_t b) {
 
 inline bool grk_add_will_overflow(uint32_t a, uint32_t b) {
 	return  (a > UINT_MAX - b);
+}
+
+
 }

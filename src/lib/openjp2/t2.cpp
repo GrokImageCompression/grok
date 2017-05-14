@@ -54,10 +54,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
 #include "testing.h"
 #include <memory>
+
+
+namespace grk {
+
 
 /** @defgroup T2 T2 - Implementation of a tier-2 coding */
 /*@{*/
@@ -1617,4 +1620,6 @@ static bool grk_t2_init_seg(   grk_tcd_cblk_dec_t* cblk,
     }
 
     return true;
+}
+
 }

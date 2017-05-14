@@ -55,6 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
+namespace grk {
 
 // code segment (code block can be encoded into multiple segments)
 struct grk_tcd_seg_t {
@@ -486,3 +487,5 @@ bool grk_tcd_needs_rate_control(grk_tcp_t *tcd_tcp, opj_encoding_param_t* enc_pa
 /*@}*/
 
 
+
+}

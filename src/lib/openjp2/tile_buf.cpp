@@ -15,8 +15,10 @@
 *
 */
 
-
 #include "grok_includes.h"
+
+namespace grk {
+
 
 bool grk_tile_buf_create_component(grk_tcd_tilecomp_t* tilec,
 									bool isEncoder,
@@ -332,3 +334,4 @@ int64_t grk_tile_buf_get_interleaved_upper_bound(grk_tile_buf_component_t* comp)
     return grok_max<int64_t>(horizontal.y, vertical.y);
 }
 
+}

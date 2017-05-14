@@ -17,6 +17,9 @@
 
 #include "grok_includes.h"
 
+namespace grk {
+
+
 
  /*
  Calculate feasible truncation points for a given code block.
@@ -186,4 +189,6 @@ See above discussion. We just need to reverse the forumula above.
 */
 double RateControl::slopeFromLog(uint16_t logSlope) {
 	return exp((logSlope + log(slopeCutoff) * scale - shift)*invScale);
+}
+
 }

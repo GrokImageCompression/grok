@@ -55,7 +55,10 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "grok_includes.h"
+namespace grk {
+
 
 /** @defgroup JP2 JP2 - JPEG-2000 file format reader/writer */
 /*@{*/
@@ -3525,4 +3528,7 @@ bool grk_jp2_set_decoded_resolution_factor(grk_jp2_t *p_jp2,
         grk_event_mgr_t * p_manager)
 {
     return grk_j2k_set_decoded_resolution_factor(p_jp2->j2k, res_factor, p_manager);
+}
+
+
 }

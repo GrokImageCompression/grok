@@ -17,10 +17,14 @@
 */
 
 #pragma once
-
 #include <stdexcept>
+
+namespace grk {
+
 
 class DecodeUnknownMarkerAtEndOfTileException : public std::exception {
 
 };
 
+
+}

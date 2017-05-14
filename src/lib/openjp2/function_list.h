@@ -49,6 +49,7 @@
 
 
 #pragma once
+namespace grk {
 
 /**
  * @file function_list.h
@@ -144,3 +145,5 @@ grk_procedure* grk_procedure_list_get_first_procedure (grk_procedure_list_t * p_
 void grk_procedure_list_clear (grk_procedure_list_t * p_validation_list);
 /*@}*/
 
+
+}

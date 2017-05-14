@@ -53,6 +53,7 @@
  */
 
 #pragma once
+namespace grk {
 
 /**
 @file jp2.h
@@ -487,4 +488,5 @@ opj_codestream_index_t* jp2_get_cstr_index(grk_jp2_t* p_jp2);
 /*@}*/
 
 
+}
 

@@ -65,6 +65,7 @@
 
 #include <fcntl.h>
 #include "grok_includes.h"
+using namespace grk;
 
 static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
@@ -620,31 +621,31 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_J2K:
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
 				opj_plugin_tile_t*,
-                grk_stream_private_t *,
-                grk_event_mgr_t * )) grk_j2k_encode;
+			grk_stream_private_t *,
+			grk::grk_event_mgr_t * )) grk_j2k_encode;
 
         l_codec->m_codec_data.m_compression.opj_end_compress = (bool (*) (	void *,
                 grk_stream_private_t *,
-                grk_event_mgr_t *)) grk_j2k_end_compress;
+                grk::grk_event_mgr_t *)) grk_j2k_end_compress;
 
         l_codec->m_codec_data.m_compression.opj_start_compress = (bool (*) (void *,
-                grk_stream_private_t *,
-                struct opj_image * ,
-                grk_event_mgr_t *)) grk_j2k_start_compress;
+			grk_stream_private_t *,
+                opj_image_t * ,
+			grk::grk_event_mgr_t *)) grk_j2k_start_compress;
 
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,
                 uint32_t,
                 uint8_t*,
                 uint64_t,
-                grk_stream_private_t *,
-                grk_event_mgr_t *) ) grk_j2k_write_tile;
+			grk_stream_private_t *,
+			grk::grk_event_mgr_t *) ) grk_j2k_write_tile;
 
         l_codec->m_codec_data.m_compression.opj_destroy = (void (*) (void *)) grk_j2k_destroy;
 
         l_codec->m_codec_data.m_compression.opj_setup_encoder = (bool (*) (	void *,
                 opj_cparameters_t *,
                 opj_image_t *,
-                grk_event_mgr_t * )) grk_j2k_setup_encoder;
+			grk::grk_event_mgr_t * )) grk_j2k_setup_encoder;
 
         l_codec->m_codec = grk_j2k_create_compress();
         if (! l_codec->m_codec) {
@@ -658,8 +659,8 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         /* get a JP2 decoder handle */
         l_codec->m_codec_data.m_compression.opj_encode = (bool (*) (void *,
 				opj_plugin_tile_t*,
-                grk_stream_private_t *,
-                grk_event_mgr_t * )) grk_jp2_encode;
+			grk_stream_private_t *,
+			grk::grk_event_mgr_t * )) grk_jp2_encode;
 
         l_codec->m_codec_data.m_compression.opj_end_compress = (bool (*) (	void *,
                 grk_stream_private_t *,
@@ -667,7 +668,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
 
         l_codec->m_codec_data.m_compression.opj_start_compress = (bool (*) (void *,
                 grk_stream_private_t *,
-                struct opj_image * ,
+                opj_image_t * ,
                 grk_event_mgr_t *))  grk_jp2_start_compress;
 
         l_codec->m_codec_data.m_compression.opj_write_tile = (bool (*) (void *,

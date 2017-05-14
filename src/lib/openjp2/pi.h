@@ -55,6 +55,8 @@
 
 
 #pragma once
+namespace grk {
+
 
 /**
 @file pi.h
@@ -205,3 +207,5 @@ bool grk_pi_next(grk_pi_iterator_t * pi);
 /*@}*/
 
 
+
+}

@@ -14,7 +14,6 @@
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
 */
-
 #include "minpf_plugin_manager.h"
 #include "minpf_plugin.h"
 #include <stdio.h>
@@ -26,6 +25,10 @@
 #else
 #include <dirent.h>
 #endif /* _WIN32 */
+
+
+namespace grk {
+
 
 minpf_plugin_manager* managerInstance;
 
@@ -247,4 +250,6 @@ static const char *get_filename_ext(const char *filename)
     if(!dot || dot == filename)
         return "";
     return dot + 1;
+}
+
 }
