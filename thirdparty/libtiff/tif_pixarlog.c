@@ -636,29 +636,27 @@ PixarLogGuessDataFmt(TIFFDirectory *td)
 	return guess;
 }
 
+#define TIFF_SIZE_T_MAX ((size_t) ~ ((size_t)0))
+#define TIFF_TMSIZE_T_MAX (tmsize_t)(TIFF_SIZE_T_MAX >> 1)
+
 static tmsize_t
 multiply_ms(tmsize_t m1, tmsize_t m2)
 {
-	tmsize_t bytes = m1 * m2;
-
-	if (m1 && bytes / m1 != m2)
-		bytes = 0;
-
-	return bytes;
+        if( m1 == 0 || m2 > TIFF_TMSIZE_T_MAX / m1 )
+            return 0;
+        return m1 * m2;
 }
 
 static tmsize_t
 add_ms(tmsize_t m1, tmsize_t m2)
 {
-	tmsize_t bytes = m1 + m2;
-
 	/* if either input is zero, assume overflow already occurred */
 	if (m1 == 0 || m2 == 0)
-		bytes = 0;
-	else if (bytes <= m1 || bytes <= m2)
-		bytes = 0;
+		return 0;
+	else if (m1 > TIFF_TMSIZE_T_MAX - m2)
+		return 0;
 
-	return bytes;
+	return m1 + m2;
 }
 
 static int
@@ -677,6 +675,12 @@ PixarLogSetupDecode(TIFF* tif)
 	tmsize_t tbuf_size;
 
 	assert(sp != NULL);
+
+	/* This function can possibly be called several times by */
+	/* PredictorSetupDecode() if this function succeeds but */
+	/* PredictorSetup() fails */
+	if( (sp->state & PLSTATE_INIT) != 0 )
+		return 1;
 
 	/* Make sure no byte swapping happens on the data
 	 * after decompression. */
@@ -780,6 +784,10 @@ PixarLogDecode(TIFF* tif, uint8* op, tmsize_t occ, uint16 s)
 
 	(void) s;
 	assert(sp != NULL);
+
+        sp->stream.next_in = tif->tif_rawcp;
+	sp->stream.avail_in = (uInt) tif->tif_rawcc;
+
 	sp->stream.next_out = (unsigned char *) sp->tbuf;
 	assert(sizeof(sp->stream.avail_out)==4);  /* if this assert gets raised,
 	    we need to simplify this code to reflect a ZLib that is likely updated
@@ -824,6 +832,9 @@ PixarLogDecode(TIFF* tif, uint8* op, tmsize_t occ, uint16 s)
 		    (unsigned long) tif->tif_row, (TIFF_UINT64_T) sp->stream.avail_out);
 		return (0);
 	}
+
+        tif->tif_rawcp = sp->stream.next_in;
+        tif->tif_rawcc = sp->stream.avail_in;
 
 	up = sp->tbuf;
 	/* Swap bytes in the data if from a different endian machine. */

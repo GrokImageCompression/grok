@@ -107,7 +107,11 @@ ZIPSetupDecode(TIFF* tif)
 	    sp->state = 0;
 	}
 
-	if (inflateInit(&sp->stream) != Z_OK) {
+	/* This function can possibly be called several times by */
+	/* PredictorSetupDecode() if this function succeeds but */
+	/* PredictorSetup() fails */
+	if ((sp->state & ZSTATE_INIT_DECODE) == 0 &&
+	    inflateInit(&sp->stream) != Z_OK) {
 		TIFFErrorExt(tif->tif_clientdata, module, "%s", SAFE_MSG(sp));
 		return (0);
 	} else {

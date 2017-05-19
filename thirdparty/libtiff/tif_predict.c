@@ -117,6 +117,9 @@ PredictorSetupDecode(TIFF* tif)
 	TIFFPredictorState* sp = PredictorState(tif);
 	TIFFDirectory* td = &tif->tif_dir;
 
+	/* Note: when PredictorSetup() fails, the effets of setupdecode() */
+	/* will not be "cancelled" so setupdecode() might be robust to */
+	/* be called several times. */
 	if (!(*sp->setupdecode)(tif) || !PredictorSetup(tif))
 		return 0;
 
