@@ -120,7 +120,7 @@ if(UNIX)
 endif()
 set_target_properties(${GROK_LIBRARY_NAME} PROPERTIES ${GROK_LIBRARY_PROPERTIES})
 if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
-  target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_LIBRARY_COMPILE_OPTIONS})
+  target_compile_options(${GROK_LIBRARY_NAME} PRIVATE ${GROK_COMPILE_OPTIONS})
 endif()
 
 # Install library

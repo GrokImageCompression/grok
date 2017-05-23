@@ -46,6 +46,9 @@ endif()
 # Loop over all executables:
 foreach(exe opj_decompress opj_compress opj_dump)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
+  if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
+    target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
+  endif()
   target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
     )
