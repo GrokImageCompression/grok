@@ -60,7 +60,7 @@ namespace grk {
 
 BitIO::BitIO() : start(nullptr), 
 				offset(0),
-				length(0),
+				buf_len(0),
 				buf(0),
 				ct(0),
 				sim_out(false) {
@@ -70,7 +70,7 @@ BitIO::BitIO() : start(nullptr),
 bool BitIO::byteout()
 {
     ct = buf == 0xff ? 7 : 8;
-    if (offset >= length) {
+    if (offset >= buf_len) {
         return false;
     }
     if (!sim_out)
@@ -83,7 +83,7 @@ bool BitIO::byteout()
 bool BitIO::bytein()
 {
     ct = buf == 0xff ? 7 : 8;
-    if (offset >= length) {
+    if (offset >= buf_len) {
         return false;
     }
     buf = start[offset];
@@ -91,19 +91,22 @@ bool BitIO::bytein()
     return true;
 }
 
-void BitIO::putbit( uint8_t b)
+bool BitIO::putbit( uint8_t b)
 {
+	bool rc = true;
     if (ct == 0) {
-        byteout(); /* MSD: why not check the return value of this function ? */
+        rc = byteout(); 
     }
     ct--;
     buf |= (uint8_t)(b << ct);
+	return rc;
 }
 
 uint8_t BitIO::getbit()
 {
     if (ct == 0) {
-        bytein(); /* MSD: why not check the return value of this function ? */
+        bool rc = bytein(); 
+		assert(rc);
     }
     ct--;
     return (buf >> ct) & 1;
@@ -118,7 +121,7 @@ uint64_t BitIO::numbytes()
 void BitIO::init_enc( uint8_t *bptr, uint64_t len)
 {
     start = bptr;
-	length = len;
+	buf_len = len;
     offset = 0;
     buf = 0;
     ct = 8;
@@ -128,7 +131,7 @@ void BitIO::init_enc( uint8_t *bptr, uint64_t len)
 void BitIO::init_dec( uint8_t *bptr, uint64_t len)
 {
     start = bptr;
-	length = len;
+	buf_len = len;
 	offset = 0;
     buf = 0;
     ct = 0;
@@ -136,20 +139,19 @@ void BitIO::init_dec( uint8_t *bptr, uint64_t len)
 
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-void BitIO::write( uint32_t v, uint32_t n) {
-	uint32_t i;
-
-	assert((n > 0U) && (n <= 32U));
-	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		putbit((v >> i) & 1);
+bool BitIO::write( uint32_t v, uint32_t n) {
+	if (n > 32U)
+		return false;
+	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
+		bool success = putbit((v >> i) & 1);
+		if (!success)
+			return false;
 	}
+	return true;
 }
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
 uint32_t BitIO::read( uint32_t n) {
-	uint32_t i;
-	uint32_t v;
-
 	assert((n > 0U) /* && (n <= 32U)*/);
 #ifdef OPJ_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
@@ -157,8 +159,8 @@ uint32_t BitIO::read( uint32_t n) {
 	/* This is the condition for overflow not to occur below which is needed because of OPJ_NOSANITIZE */
 	assert(n <= 32U);
 #endif
-	v = 0U;
-	for (i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
+	uint32_t v = 0U;
+	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
 		v |= getbit() << i; /* can't overflow, getbit returns 0 or 1 */
 	}
 	return v;

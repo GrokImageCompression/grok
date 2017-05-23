@@ -459,7 +459,8 @@ void mqc_flush(mqc_t *mqc)
     mqc->C <<= mqc->COUNT;
     mqc_byteout(mqc);
 
-    if (*mqc->bp != 0xff) {
+	//increment bp so that mqc_numbytes() will now return correct result
+	if (*mqc->bp != 0xff) {
         mqc->bp++;
     }
 }

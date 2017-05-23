@@ -83,15 +83,6 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
  */
 static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct);
 
-/**
- * Allocates memory for an encoding code block (but not data).
- */
-static bool tcd_code_block_enc_allocate (tcd_cblk_enc_t * p_code_block);
-
-/**
- * Allocates data for an encoding code block
- */
-static bool tcd_code_block_enc_allocate_data (tcd_cblk_enc_t * p_code_block, size_t nominalBlockSize);
 
 /**
  * Deallocates the encoding data of the given precinct.
@@ -1193,7 +1184,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                         if (isEncoder) {
                             tcd_cblk_enc_t* l_code_block = l_current_precinct->cblks.enc + cblkno;
 
-                            if (! tcd_code_block_enc_allocate(l_code_block)) {
+                            if (! l_code_block->alloc()) {
                                 return false;
                             }
                             /* code-block size (global) */
@@ -1203,7 +1194,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                             l_code_block->y1 = grok_min<uint32_t>(cblkyend, l_current_precinct->y1);
 
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
-								if (!tcd_code_block_enc_allocate_data(l_code_block, nominalBlockSize)) {
+								if (!l_code_block->alloc_data(nominalBlockSize)) {
 									return false;
 								}
 							}
@@ -1278,80 +1269,6 @@ bool tcd_init_decode_tile (tcd_t *p_tcd,
 
 }
 
-/**
- * Allocates memory for an encoding code block (but not data memory).
- */
-static bool tcd_code_block_enc_allocate (tcd_cblk_enc_t * p_code_block)
-{
-    if (! p_code_block->layers) {
-        /* no memset since data */
-        p_code_block->layers = (tcd_layer_t*) grok_calloc(100, sizeof(tcd_layer_t));
-        if (! p_code_block->layers) {
-            return false;
-        }
-    }
-    if (! p_code_block->passes) {
-        p_code_block->passes = (tcd_pass_t*) grok_calloc(100, sizeof(tcd_pass_t));
-        if (! p_code_block->passes) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Allocates data memory for an encoding code block.
- */
-static bool tcd_code_block_enc_allocate_data (tcd_cblk_enc_t * p_code_block, size_t nominalBlockSize)
-{
-    uint32_t l_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
-
-    if (l_data_size > p_code_block->data_size) {
-        if (p_code_block->data) {
-            grok_free(p_code_block->data); 
-        }
-        p_code_block->data = (uint8_t*) grok_malloc(l_data_size+1);
-        if(! p_code_block->data) {
-            p_code_block->data_size = 0U;
-            return false;
-        }
-        p_code_block->data_size = l_data_size;
-		p_code_block->owns_data = true;
-    }
-    return true;
-}
-
-/**
- * Allocates memory for a decoding code block (but not data)
- */
-bool tcd_code_block_dec_allocate (tcd_cblk_dec_t * p_code_block)
-{
-    if (!p_code_block->segs) {
-        p_code_block->segs = (tcd_seg_t *)grok_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(tcd_seg_t));
-        if (!p_code_block->segs) {
-            return false;
-        }
-        /*fprintf(stderr, "Allocate %d elements of code_block->data\n", OPJ_J2K_DEFAULT_NB_SEGS * sizeof(tcd_seg_t));*/
-
-        p_code_block->numSegmentsAllocated = OPJ_J2K_DEFAULT_NB_SEGS;
-
-        /*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
-        /*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
-    } else {
-        /* sanitize */
-        tcd_seg_t * l_segs = p_code_block->segs;
-        uint32_t l_current_max_segs = p_code_block->numSegmentsAllocated;
-
-        /* Note: since seg_buffers simply holds references to another data buffer,
-        we do not need to copy it  to the sanitized block  */
-		p_code_block->seg_buffers.cleanup();
-
-        memset(p_code_block, 0, sizeof(tcd_cblk_dec_t));
-        p_code_block->segs = l_segs;
-        p_code_block->numSegmentsAllocated = l_current_max_segs;
-    }
-    return true;
-}
 /*
 Get size of tile data, summed over all components, reflecting actual precision of data.
 opj_image_t always stores data in 32 bit format.
@@ -1983,14 +1900,12 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 }
 
 
-
 /**
  * Deallocates the encoding data of the given precinct.
  */
 static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
 {
     uint32_t cblkno , l_nb_code_blocks;
-
     tcd_cblk_dec_t * l_code_block = p_precinct->cblks.dec;
     if (l_code_block) {
         /*fprintf(stderr,"deallocate codeblock:{\n");*/
@@ -2003,15 +1918,9 @@ static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
         /*fprintf(stderr,"nb_code_blocks =%d\t}\n", l_nb_code_blocks);*/
 
         for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-			l_code_block->seg_buffers.cleanup();
-            if (l_code_block->segs) {
-                grok_free(l_code_block->segs );
-                l_code_block->segs = nullptr;
-            }
-
+			l_code_block->cleanup();
             ++l_code_block;
         }
-
         grok_free(p_precinct->cblks.dec);
         p_precinct->cblks.dec = nullptr;
     }
@@ -2023,32 +1932,14 @@ static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
 static void tcd_code_block_enc_deallocate (tcd_precinct_t * p_precinct)
 {
     uint32_t cblkno , l_nb_code_blocks;
-
     tcd_cblk_enc_t * l_code_block = p_precinct->cblks.enc;
     if (l_code_block) {
         l_nb_code_blocks = p_precinct->block_size / sizeof(tcd_cblk_enc_t);
-
         for     (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno)  {
-            if (l_code_block->owns_data && l_code_block->data) {
-                grok_free(l_code_block->data);
-                l_code_block->data = nullptr;
-				l_code_block->owns_data = false;
-            }
-
-            if (l_code_block->layers) {
-                grok_free(l_code_block->layers );
-                l_code_block->layers = nullptr;
-            }
-
-            if (l_code_block->passes) {
-                grok_free(l_code_block->passes );
-                l_code_block->passes = nullptr;
-            }
+			l_code_block->cleanup();
             ++l_code_block;
         }
-
         grok_free(p_precinct->cblks.enc);
-
         p_precinct->cblks.enc = nullptr;
     }
 }
@@ -2252,6 +2143,57 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
     if (l_t2 == nullptr) {
         return false;
     }
+#ifdef DEBUG_LOSSLESS_T2
+	for (uint32_t compno = 0; compno < p_tcd->image->numcomps; ++compno) {
+		tcd_tilecomp_t *tilec = &p_tcd->tile->comps[compno];
+		tilec->round_trip_resolutions = new tcd_resolution_t[tilec->numresolutions];
+		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
+			auto res = tilec->resolutions + resno;
+			auto roundRes = tilec->round_trip_resolutions + resno;
+			roundRes->x0 = res->x0;
+			roundRes->y0 = res->y0;
+			roundRes->x1 = res->x1;
+			roundRes->y1 = res->y1;
+			roundRes->numbands = res->numbands;
+			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
+				roundRes->bands[bandno] = res->bands[bandno];
+				roundRes->bands[bandno].x0 = res->bands[bandno].x0;
+				roundRes->bands[bandno].y0 = res->bands[bandno].y0;
+				roundRes->bands[bandno].x1 = res->bands[bandno].x1;
+				roundRes->bands[bandno].y1 = res->bands[bandno].y1;
+			}
+
+			// allocate
+			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
+				auto band = res->bands + bandno;
+				auto decodeBand = roundRes->bands + bandno;
+				if (!band->numPrecincts())
+					continue;
+				decodeBand->precincts = new tcd_precinct_t[band->numPrecincts()];
+				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts() * sizeof(tcd_precinct_t));
+				for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+					auto prec = band->precincts + precno;
+					auto decodePrec = decodeBand->precincts + precno;
+					decodePrec->cw = prec->cw;
+					decodePrec->ch = prec->ch;
+					if (prec->cblks.enc && prec->cw && prec->ch) {
+						decodePrec->initTagTrees(p_manager);
+						decodePrec->cblks.dec = new tcd_cblk_dec_t[decodePrec->cw * decodePrec->ch];
+						for (uint32_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
+							auto cblk = prec->cblks.enc + cblkno;
+							auto decodeCblk = decodePrec->cblks.dec + cblkno;
+							decodeCblk->x0 = cblk->x0;
+							decodeCblk->y0 = cblk->y0;
+							decodeCblk->x1 = cblk->x1;
+							decodeCblk->y1 = cblk->y1;
+							decodeCblk->alloc();
+						}
+					}
+				}
+			}
+		}
+	}
+#endif
 
     if (! t2_encode_packets(
                 l_t2,
@@ -2272,7 +2214,28 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
 
     t2_destroy(l_t2);
 
-    /*---------------CLEAN-------------------*/
+#ifdef DEBUG_LOSSLESS_T2
+	for (uint32_t compno = 0; compno < p_tcd->image->numcomps; ++compno) {
+		tcd_tilecomp_t *tilec = &p_tcd->tile->comps[compno];
+		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
+			auto roundRes = tilec->round_trip_resolutions + resno;
+			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
+				auto decodeBand = roundRes->bands + bandno;
+				if (decodeBand->precincts) {
+					for (size_t precno = 0; precno < decodeBand->numPrecincts(); ++precno) {
+						auto decodePrec = decodeBand->precincts + precno;
+						decodePrec->cleanupDecodeBlocks();
+					}
+					delete[] decodeBand->precincts;
+					decodeBand->precincts = nullptr;
+				}
+			}
+		}
+		delete[] tilec->round_trip_resolutions;
+	}
+#endif
+
+
     return true;
 }
 
@@ -2403,14 +2366,70 @@ bool tcd_copy_tile_data (       tcd_t *p_tcd,
 tcd_cblk_enc_t::~tcd_cblk_enc_t() {
 	cleanup();
 }
+bool tcd_cblk_enc_t::alloc() {
+	if (!layers) {
+		/* no memset since data */
+		layers = (tcd_layer_t*)grok_calloc(100, sizeof(tcd_layer_t));
+		if (!layers) {
+			return false;
+		}
+	}
+	if (!passes) {
+		passes = (tcd_pass_t*)grok_calloc(100, sizeof(tcd_pass_t));
+		if (!passes) {
+			return false;
+		}
+	}
+#ifdef DEBUG_LOSSLESS_T2
+	packet_length_info = new std::vector<packet_length_info_t>();
+#endif
+	return true;
+}
+
+
+/**
+* Allocates data memory for an encoding code block.
+*/
+bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize)
+{
+	uint32_t l_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
+
+	if (l_data_size > data_size) {
+		if (data) {
+			grok_free(data);
+		}
+		data = (uint8_t*)grok_malloc(l_data_size + 1);
+		if (!data) {
+			data_size = 0U;
+			return false;
+		}
+		data_size = l_data_size;
+		owns_data = true;
+	}
+	return true;
+}
 
 void tcd_cblk_enc_t::cleanup() {
-	if (data && owns_data)
+	if (owns_data && data) {
 		grok_free(data);
-	if (layers)
-		delete[] layers;
-	if (passes)
-		delete[] passes;
+		data = nullptr;
+		owns_data = false;
+	}
+
+	if (layers) {
+		grok_free(layers);
+		layers = nullptr;
+	}
+
+	if (passes) {
+		grok_free(passes);
+		passes = nullptr;
+	}
+#ifdef DEBUG_LOSSLESS_T2
+	if (packet_length_info)
+		delete packet_length_info;
+	packet_length_info = nullptr;
+#endif
 }
 
 bool tcd_cblk_dec_t::alloc() {
@@ -2425,6 +2444,10 @@ bool tcd_cblk_dec_t::alloc() {
 
 		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
 		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
+
+#ifdef DEBUG_LOSSLESS_T2
+		packet_length_info = new std::vector<packet_length_info_t>();
+#endif
 	}
 	else {
 		/* sanitize */
@@ -2441,6 +2464,24 @@ bool tcd_cblk_dec_t::alloc() {
 	}
 	return true;
 }
+
+void tcd_cblk_dec_t::cleanup() {
+	seg_buffers.cleanup();
+	if (segs) {
+		grok_free(segs);
+		segs = nullptr;
+	}
+#ifdef DEBUG_LOSSLESS_T2
+	if (packet_length_info)
+		delete packet_length_info;
+	packet_length_info = nullptr;
+#endif
+}
+
+tcd_cblk_dec_t::~tcd_cblk_dec_t() {
+	cleanup();
+}
+
 
 
 tcd_precinct_t::~tcd_precinct_t() {
