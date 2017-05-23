@@ -92,7 +92,7 @@ public:
 	@param v Value of bits
 	@param n Number of bits to write
 	*/
-	void write( uint32_t v, uint32_t n);
+	bool write( uint32_t v, uint32_t n);
 	/**
 	Read bits
 	@param bio BIO handle
@@ -121,7 +121,7 @@ private:
 	uint8_t *start;
 
 	uint64_t offset;
-	uint64_t length;
+	uint64_t buf_len;
 
 	/** temporary place where each byte is read or written */
 	uint8_t buf;
@@ -137,7 +137,7 @@ private:
 	@param bio BIO handle
 	@param b Bit to write (0 or 1)
 	*/
-	void putbit( uint8_t b);
+	bool putbit( uint8_t b);
 	/**
 	Read a bit
 	@param bio BIO handle

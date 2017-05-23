@@ -216,13 +216,6 @@ void T1Encoder::encodeOpt(size_t threadId) {
 		memset(cblkDecode->segs, 0, sizeof(tcd_seg_t));
 		auto seg = cblkDecode->segs;
 		seg->numpasses = block->cblk->num_passes_encoded;
-		if (block->resno == 1 &&
-			block->bandno ==2 &&
-			block->precno == 0 &&
-			block->cblkno == 0) {
-
-			seg->numpasses = 15;
-		}
 		auto rate = seg->numpasses  ? block->cblk->passes[seg->numpasses - 1].rate : 0;
 		seg->len = rate;
 		seg->dataindex = 0;
@@ -237,7 +230,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 				auto valBefore = block->unencodedData[index];
 				auto valAfter = t1Decode->data[index]/2;
 				if (valAfter != valBefore) {
-					printf("(%d,%d); expected=%x, actual=%x\n", i, j, valBefore, valAfter);
+					printf("T1 encode @ block location (%d,%d); original data=%x, round trip data=%x\n", i, j, valBefore, valAfter);
 				}
 				index++;
 			}

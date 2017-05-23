@@ -55,6 +55,9 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
+#include "testing.h"
+#include <vector>
+
 namespace grk {
 
 // code segment (code block can be encoded into multiple segments)
@@ -71,6 +74,16 @@ struct tcd_seg_t {
     uint32_t maxpasses;				// maximum number of passes in segment
     uint32_t numPassesInPacket;	// number of passes in segment from current packet
     uint32_t newlen;
+};
+
+struct packet_length_info_t {
+	packet_length_info_t(uint32_t mylength, uint32_t bits) : len(mylength), len_bits(bits) {}
+	packet_length_info_t() : len(0), len_bits(0) {}
+	bool operator==(packet_length_info_t& rhs)const {
+		return (rhs.len == len && rhs.len_bits == len_bits);
+	}
+	uint32_t len;
+	uint32_t len_bits;
 };
 
 // encoding/decoding pass
@@ -115,9 +128,15 @@ struct tcd_cblk_enc_t {
 							num_passes_included_in_current_layer(0),
 							num_passes_included_in_other_layers(0),
 							num_passes_encoded(0),
+#ifdef DEBUG_LOSSLESS_T2
+							included(0),
+							packet_length_info(nullptr),
+#endif
 							contextStream(nullptr) 
 	{}
 	~tcd_cblk_enc_t();
+	bool alloc();
+	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
     uint8_t* data;              /* data buffer*/
 	uint32_t data_size;         /* size of allocated data buffer */
@@ -131,6 +150,10 @@ struct tcd_cblk_enc_t {
     uint32_t num_passes_included_in_other_layers;	/* number of passes in other layers */
     uint32_t num_passes_encoded;					/* number of passes encoded */
     uint32_t* contextStream;
+#ifdef DEBUG_LOSSLESS_T2
+	uint32_t included;
+	std::vector<packet_length_info_t>* packet_length_info;
+#endif
 } ;
 
 //decoder code block
@@ -146,6 +169,9 @@ struct tcd_cblk_dec_t {
 							numlenbits(0),
 							numPassesInPacket(0),
 							numSegments(0),
+#ifdef DEBUG_LOSSLESS_T2
+							included(0),
+#endif
 							numSegmentsAllocated(0)
 	{}
 
@@ -160,14 +186,19 @@ struct tcd_cblk_dec_t {
 														numlenbits(rhs.numlenbits),
 														numPassesInPacket(0),
 														numSegments(0),
+#ifdef DEBUG_LOSSLESS_T2
+														 included(false),
+														packet_length_info(nullptr),
+#endif
 														numSegmentsAllocated(0)
 	{}
+
+	~tcd_cblk_dec_t();
 
 	/**
 	* Allocates memory for a decoding code block (but not data)
 	*/
 	bool alloc();
-
 	void cleanup();
 	uint8_t* data;					// pointer to plugin data. 
 	uint32_t dataSize;				/* size of data buffer */
@@ -179,6 +210,11 @@ struct tcd_cblk_dec_t {
     uint32_t numPassesInPacket;		/* number of passes added by current packet */
     uint32_t numSegments;			/* number of segment*/
     uint32_t numSegmentsAllocated;  // number of segments allocated for segs array
+#ifdef DEBUG_LOSSLESS_T2
+	uint32_t included;
+	std::vector<packet_length_info_t>* packet_length_info;
+#endif
+
 };
 
 // precinct
@@ -301,7 +337,10 @@ struct tcd_tilecomp_t {
     uint32_t x0, y0, x1, y1;			/* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numresolutions;			/* number of resolutions level */
     uint32_t minimum_num_resolutions;	/* number of resolutions level to decode (at max)*/
-    tcd_resolution_t *resolutions;  /* resolutions information */
+    tcd_resolution_t *resolutions;		/* resolutions information */
+#ifdef DEBUG_LOSSLESS_T2
+	tcd_resolution_t* round_trip_resolutions;  /* round trip resolution information */
+#endif
     uint32_t resolutions_size;			/* size of data for resolutions (in bytes) */
     uint64_t numpix;                  
     tile_buf_component_t* buf;
