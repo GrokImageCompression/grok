@@ -183,7 +183,7 @@ endif()
 if(CMAKE_COMPILER_IS_GNUCC)
   # Do not use ffast-math for all build, it would produce incorrect results, only set for release:
   set(GROK_LIBRARY_COMPILE_OPTIONS ${GROK_LIBRARY_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>")
-  set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>" -Wall -Wextra -Wconversion -Wunused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement)
+  set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} "$<$<CONFIG:Release>:-ffast-math>" -Wall -Wextra -Wconversion -Wunused-parameter)
 endif()
 
 #-----------------------------------------------------------------------------

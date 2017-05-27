@@ -136,7 +136,7 @@ public:
 	@param threshold Threshold to use when decoding value of the leaf
 	@return Returns the node's value
 	*/
-	bool decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, int32_t* value);
+	bool decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, uint32_t* value);
 
 private:
 

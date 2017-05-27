@@ -71,7 +71,7 @@ public:
 	@param bio BIO handle
 	@return Returns the number of bytes written
 	*/
-	uint64_t numbytes();
+	size_t numbytes();
 	/**
 	Init encoder
 	@param bio BIO handle
@@ -120,8 +120,8 @@ private:
 	/** pointer to the start of the buffer */
 	uint8_t *start;
 
-	uint64_t offset;
-	uint64_t buf_len;
+	size_t offset;
+	size_t buf_len;
 
 	/** temporary place where each byte is read or written */
 	uint8_t buf;

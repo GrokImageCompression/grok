@@ -284,15 +284,15 @@ void TagTree::encode(BitIO *bio, uint32_t leafno, int32_t threshold)
 
  bool TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold, uint8_t* decoded)
 {
-	 int32_t value;
+	 uint32_t value;
 	 if (!decodeValue(bio, leafno, threshold, &value))
 		 return false;
-    *decoded =  (value < threshold) ? 1 : 0;
+    *decoded =  (value < (uint32_t)threshold) ? 1 : 0;
 	return true;
 }
 
 
- bool TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, int32_t* value)
+ bool TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, uint32_t* value)
 {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;

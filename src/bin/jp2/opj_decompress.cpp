@@ -121,7 +121,7 @@ typedef struct img_folder {
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
 int get_num_images(char *imgdirpath);
-int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose);
+int load_images(dircnt_t *dirptr, char *imgdirpath);
 int get_file_format(const char *filename);
 char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
 static int infile_format(const char *fname);
@@ -375,7 +375,7 @@ int get_num_images(char *imgdirpath)
 }
 
 /* -------------------------------------------------------------------------- */
-int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose)
+int load_images(dircnt_t *dirptr, char *imgdirpath)
 {
     DIR *dir;
     struct dirent* content;
@@ -516,6 +516,7 @@ class GrokOutput : public StdOutput
 public:
 	virtual void usage(CmdLineInterface& c)
 	{
+		(void)c;
 		decode_help_display();
 	}
 };
@@ -1181,6 +1182,8 @@ bool store_file_to_disk = true;
 
 #ifdef OPJ_HAVE_LIBLCMS
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
+	(void)ContextID;
+	(void)ErrorCode;
 	fprintf(stdout, "[WARNING] LCMS error: %s\n", Text);
 }
 #endif
@@ -1277,7 +1280,7 @@ int main(int argc, char **argv)
                 dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
             }
         }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath, initParams.parameters.verbose)==1) {
+        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1) {
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -1394,7 +1397,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
 			}
 		}
-		if (load_images(dirptr, initParams->img_fol.imgdirpath, initParams->parameters.verbose) == 1) {
+		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}

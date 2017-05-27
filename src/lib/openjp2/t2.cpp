@@ -77,7 +77,7 @@ namespace grk {
 	@param n    delta Zil
 	*/
 	static void t2_putnumpasses(BitIO *bio, uint32_t n);
-	bool t2_getnumpasses(BitIO *bio, uint32_t* numpasses);
+	static bool t2_getnumpasses(BitIO *bio, uint32_t* numpasses);
 
 	/**
 	Encode a packet of a tile to a destination buffer
@@ -91,16 +91,15 @@ namespace grk {
 	@param cstr_info Codestream information structure
 	@return
 	*/
-	static bool t2_encode_packet(t2_t* p_t2,
-		uint32_t tileno,
-		tcd_tile_t *tile,
-		tcp_t *tcp,
-		pi_iterator_t *pi,
-		uint8_t *dest,
-		uint64_t * p_data_written,
-		uint64_t len,
-		opj_codestream_info_t *cstr_info,
-		event_mgr_t * p_manager);
+	static bool t2_encode_packet(uint32_t tileno,
+								tcd_tile_t *tile,
+								tcp_t *tcp,
+								pi_iterator_t *pi,
+								uint8_t *dest,
+								uint64_t * p_data_written,
+								uint64_t len,
+								opj_codestream_info_t *cstr_info,
+								event_mgr_t * p_manager);
 
 	/**
 	Encode a packet of a tile to a destination buffer
@@ -308,16 +307,15 @@ namespace grk {
 			if (l_current_pi->layno < p_maxlayers) {
 				l_nb_bytes = 0;
 
-				if (!t2_encode_packet(p_t2,
-					p_tile_no,
-					p_tile,
-					l_tcp,
-					l_current_pi,
-					l_current_data,
-					&l_nb_bytes,
-					p_max_len,
-					cstr_info,
-					p_manager)) {
+				if (!t2_encode_packet(p_tile_no,
+									p_tile,
+									l_tcp,
+									l_current_pi,
+									l_current_data,
+									&l_nb_bytes,
+									p_max_len,
+									cstr_info,
+									p_manager)) {
 					pi_destroy(l_pi, l_nb_pocs);
 					return false;
 				}
@@ -750,7 +748,7 @@ namespace grk {
 
 				/* if cblk not yet included before --> inclusion tagtree */
 				if (!l_cblk->numSegments) {
-					int32_t value;
+					uint32_t value;
 					if (!l_prc->incltree->decodeValue(l_bio.get(), cblkno, (int32_t)(p_pi->layno + 1), &value)) {
 						event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read `inclusion` bit \n");
 						return false;
@@ -974,16 +972,15 @@ namespace grk {
 	}
 	//--------------------------------------------------------------------------------------------------
 
-	static bool t2_encode_packet(t2_t* p_t2,
-		uint32_t tileno,
-		tcd_tile_t * tile,
-		tcp_t * tcp,
-		pi_iterator_t *pi,
-		uint8_t *dest,
-		uint64_t * p_data_written,
-		uint64_t num_bytes_available,
-		opj_codestream_info_t *cstr_info,
-		event_mgr_t * p_manager)
+	static bool t2_encode_packet(uint32_t tileno,
+								tcd_tile_t * tile,
+								tcp_t * tcp,
+								pi_iterator_t *pi,
+								uint8_t *dest,
+								uint64_t * p_data_written,
+								uint64_t num_bytes_available,
+								opj_codestream_info_t *cstr_info,
+								event_mgr_t * p_manager)
 	{
 		auto active_dest = dest;
 		uint32_t compno = pi->compno;
@@ -1144,10 +1141,10 @@ namespace grk {
 			return false;
 		}
 
-		uint64_t temp = (uint64_t)bio->numbytes();
+		auto temp = bio->numbytes();
 		active_dest += temp;
-		num_bytes_available -= temp;
-		numHeaderBytes += temp;
+		num_bytes_available -= (uint64_t)temp;
+		numHeaderBytes += (uint64_t)temp;
 
 		// EPH marker
 		if (tcp->csty & J2K_CP_CSTY_EPH) {

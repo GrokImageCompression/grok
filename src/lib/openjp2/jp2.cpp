@@ -803,6 +803,7 @@ static bool jp2_read_xml(jp2_t *jp2,
 							uint32_t p_xml_size,
 							event_mgr_t * p_manager) {
 
+	(void)p_manager;
 	if (!p_xml_data || !p_xml_size) {
 		return false;
 	}
@@ -907,7 +908,7 @@ static bool jp2_read_res_box(uint32_t *id,
 								 uint32_t *exponent,
 								uint8_t **p_resolution_data,
 								event_mgr_t * p_manager) {
-
+	(void)p_manager;
 	uint32_t box_size = 4 + 4 + 10;
 
 	uint32_t size = 0;
@@ -985,7 +986,7 @@ static bool jp2_read_res(jp2_t *jp2,
 			return false;
 		}
 		for (int i = 0; i < 2; ++i)
-			res[i] = calc_res(num[i], den[i], exponent[i]);
+			res[i] = calc_res((uint16_t)num[i], (uint16_t)den[i], (uint8_t)exponent[i]);
 
 		p_resolution_size -= OPJ_RESOLUTION_BOX_SIZE;
 	}
