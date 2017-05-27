@@ -82,11 +82,12 @@ bool BitIO::byteout()
 
 bool BitIO::bytein()
 {
-    ct = buf == 0xff ? 7 : 8;
     if (offset >= buf_len) {
+		assert(false);
         return false;
     }
-    buf = start[offset];
+	ct = buf == 0xff ? 7 : 8;
+	buf = start[offset];
 	offset++;
     return true;
 }
@@ -102,14 +103,16 @@ bool BitIO::putbit( uint8_t b)
 	return rc;
 }
 
-uint8_t BitIO::getbit()
+bool BitIO::getbit(uint32_t* bits, uint8_t pos)
 {
     if (ct == 0) {
-        bool rc = bytein(); 
-		assert(rc);
+		if (!bytein()) {
+			return false;
+		}
     }
     ct--;
-    return (buf >> ct) & 1;
+    *bits |= ((buf >> ct) & 1) << pos;
+	return true;
 }
 
 
@@ -151,7 +154,7 @@ bool BitIO::write( uint32_t v, uint32_t n) {
 }
 
 OPJ_NOSANITIZE("unsigned-integer-overflow")
-uint32_t BitIO::read( uint32_t n) {
+bool BitIO::read(uint32_t* bits, uint32_t n) {
 	assert((n > 0U) /* && (n <= 32U)*/);
 #ifdef OPJ_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
@@ -159,11 +162,13 @@ uint32_t BitIO::read( uint32_t n) {
 	/* This is the condition for overflow not to occur below which is needed because of OPJ_NOSANITIZE */
 	assert(n <= 32U);
 #endif
-	uint32_t v = 0U;
+	*bits  = 0U;
 	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		v |= getbit() << i; /* can't overflow, getbit returns 0 or 1 */
+		if (!getbit(bits, i)) {
+			return false;
+		}
 	}
-	return v;
+	return true;
 }
 
 bool BitIO::flush()
