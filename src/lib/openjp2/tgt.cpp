@@ -282,20 +282,23 @@ void TagTree::encode(BitIO *bio, uint32_t leafno, int32_t threshold)
     }
 }
 
-uint8_t TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold)
+ bool TagTree::decode(BitIO *bio, uint32_t leafno, int32_t threshold, uint8_t* decoded)
 {
-	auto value = decodeValue(bio, leafno, threshold);
-    return (value < threshold) ? 1 : 0;
+	 int32_t value;
+	 if (!decodeValue(bio, leafno, threshold, &value))
+		 return false;
+    *decoded =  (value < threshold) ? 1 : 0;
+	return true;
 }
 
 
-int32_t TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold)
+ bool TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, int32_t* value)
 {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;
 	TagTreeNode *node;
 	int32_t low;
-
+	*value = tag_tree_uninitialized_node_value;
 	stkptr = stk;
 	node = &nodes[leafno];
 	while (node->parent) {
@@ -311,7 +314,10 @@ int32_t TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold)
 			low = node->low;
 		}
 		while (low < threshold && low < node->value) {
-			if (bio->read(1)) {
+			uint32_t temp = 0;
+			if (!bio->read(&temp, 1))
+				return false;
+			if (temp) {
 				node->value = low;
 			}
 			else {
@@ -324,7 +330,8 @@ int32_t TagTree::decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold)
 		}
 		node = *--stkptr;
 	}
-	return node->value;
+	*value =  node->value;
+	return true;
 }
 
 }

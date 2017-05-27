@@ -99,7 +99,7 @@ public:
 	@param n Number of bits to read
 	@return Returns the corresponding read number
 	*/
-	uint32_t read( uint32_t n);
+	bool read(uint32_t* bits, uint32_t n);
 	/**
 	Flush bits
 	@param bio BIO handle
@@ -143,7 +143,7 @@ private:
 	@param bio BIO handle
 	@return Returns the read bit
 	*/
-	uint8_t getbit();
+	bool getbit(uint32_t* bits, uint8_t pos);
 	/**
 	Write a byte
 	@param bio BIO handle

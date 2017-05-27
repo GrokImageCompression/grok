@@ -70,14 +70,14 @@ namespace grk {
 
 	static void t2_putcommacode(BitIO *bio, int32_t n);
 
-	static uint32_t t2_getcommacode(BitIO *bio);
+	static  bool t2_getcommacode(BitIO *bio, uint32_t* n);
 	/**
 	Variable length code for signaling delta Zil (truncation point)
 	@param bio  Bit Input/Output component
 	@param n    delta Zil
 	*/
 	static void t2_putnumpasses(BitIO *bio, uint32_t n);
-	static uint32_t t2_getnumpasses(BitIO *bio);
+	bool t2_getnumpasses(BitIO *bio, uint32_t* numpasses);
 
 	/**
 	Encode a packet of a tile to a destination buffer
@@ -202,13 +202,15 @@ namespace grk {
 		bio->write(0, 1);
 	}
 
-	static uint32_t t2_getcommacode(BitIO *bio)
+	static  bool t2_getcommacode(BitIO *bio, uint32_t* n)
 	{
-		uint32_t n = 0;
-		while (bio->read(1)) {
-			++n;
+		*n = 0;
+		uint32_t temp;
+		bool rc = true;
+		while ( (rc = bio->read(&temp, 1)) && temp) {
+			++*n;
 		}
-		return n;
+		return rc;
 	}
 
 	static void t2_putnumpasses(BitIO *bio, uint32_t n)
@@ -230,18 +232,37 @@ namespace grk {
 		}
 	}
 
-	static uint32_t t2_getnumpasses(BitIO *bio)
+	static bool t2_getnumpasses(BitIO *bio, uint32_t* numpasses)
 	{
-		uint32_t n;
-		if (!bio->read(1))
-			return 1;
-		if (!bio->read(1))
-			return 2;
-		if ((n = bio->read(2)) != 3)
-			return (3 + n);
-		if ((n = bio->read(5)) != 31)
-			return (6 + n);
-		return (37 + bio->read(7));
+		uint32_t n=0;
+		if (!bio->read(&n, 1))
+			return false;
+		if (!n) {
+			*numpasses = 1;
+			return true;
+		}
+		if (!bio->read(&n, 1))
+			return false;
+		if (!n) {
+			*numpasses =  2;
+			return true;
+		}
+		if (!bio->read(&n, 2))
+			return false;
+		if (n != 3) {
+			*numpasses =  n + 3;
+			return true;
+		}
+		if (!bio->read(&n, 5))
+			return false;
+		if (n != 31) {
+			*numpasses =  n + 6;
+			return true;
+		}
+		if (!bio->read(&n, 7))
+			return false;
+		*numpasses = n + 37;
+		return true;
 	}
 
 	/* ----------------------------------------------------------------------- */
@@ -679,9 +700,14 @@ namespace grk {
 			l_modified_length_ptr = &(l_remaining_length);
 		}
 
-		l_bio->init_dec(l_header_data, *l_modified_length_ptr);
-
-		auto l_present = l_bio->read(1);
+		uint32_t l_present = 0;
+		if (*l_modified_length_ptr) {
+			l_bio->init_dec(l_header_data, *l_modified_length_ptr);
+			if (!l_bio->read(&l_present, 1)) {
+				event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read `present` bit \n");
+				return false;
+			}
+		}
 		JAS_FPRINTF(stderr, "present=%d \n", l_present);
 		if (!l_present) {
 			if (!l_bio->inalign())
@@ -724,7 +750,11 @@ namespace grk {
 
 				/* if cblk not yet included before --> inclusion tagtree */
 				if (!l_cblk->numSegments) {
-					auto value = l_prc->incltree->decodeValue(l_bio.get(), cblkno, (int32_t)(p_pi->layno + 1));
+					int32_t value;
+					if (!l_prc->incltree->decodeValue(l_bio.get(), cblkno, (int32_t)(p_pi->layno + 1), &value)) {
+						event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read `inclusion` bit \n");
+						return false;
+					}
 					if (value != tag_tree_uninitialized_node_value && value != p_pi->layno) {
 						event_msg(p_manager, EVT_WARNING, "Illegal inclusion tag tree found when decoding packet header\n");
 					}
@@ -732,10 +762,14 @@ namespace grk {
 					l_cblk->included = value;
 #endif
 					l_included = (value <= (int32_t)p_pi->layno) ? 1 : 0;
-				}
+					}
 				/* else one bit */
 				else {
-					l_included = l_bio->read(1);
+					if (!l_bio->read(&l_included, 1)) {
+						event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read `inclusion` bit \n");
+						return false;
+					}
+				
 #ifdef DEBUG_LOSSLESS_T2
 					l_cblk->included = l_included;
 #endif
@@ -752,8 +786,14 @@ namespace grk {
 				/* if cblk not yet included --> zero-bitplane tagtree */
 				if (!l_cblk->numSegments) {
 					uint32_t i = 0;
-					while (!l_prc->imsbtree->decode(l_bio.get(), cblkno, (int32_t)i)) {
+					uint8_t value;
+					bool rc = true;
+					while ( (rc = l_prc->imsbtree->decode(l_bio.get(), cblkno, (int32_t)i, &value)) && !value) {
 						++i;
+					}
+					if (!rc) {
+						event_msg(p_manager, EVT_ERROR, "Failed to decode zero-bitplane tag tree \n");
+						return false;
 					}
 
 					l_cblk->numbps = l_band->numbps + 1 - i;
@@ -765,8 +805,14 @@ namespace grk {
 				}
 
 				/* number of coding passes */
-				l_cblk->numPassesInPacket = t2_getnumpasses(l_bio.get());
-				l_increment = t2_getcommacode(l_bio.get());
+				if (!t2_getnumpasses(l_bio.get(), &l_cblk->numPassesInPacket)) {
+					event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read numpasses.\n");
+					return false;
+				}
+				if (!t2_getcommacode(l_bio.get(), &l_increment)) {
+					event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read length indicator increment.\n");
+					return false;
+				 }
 
 				/* length indicator increment */
 				l_cblk->numlenbits += l_increment;
@@ -792,7 +838,9 @@ namespace grk {
 				do {
 					auto l_seg = l_cblk->segs + l_segno;
 					l_seg->numPassesInPacket = (uint32_t)grok_min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), numPassesInPacket);
-					l_seg->newlen = l_bio->read(l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket));
+					if (!l_bio->read(&l_seg->newlen, l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket))) {
+						event_msg(p_manager, EVT_WARNING, "t2_read_packet_header: failed to read segment length \n");
+					}
 #ifdef DEBUG_LOSSLESS_T2
 					l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->newlen, 
 																			l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket)));
