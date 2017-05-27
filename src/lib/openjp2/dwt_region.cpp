@@ -202,7 +202,6 @@ static void region_decode97_scale(coeff97_t* w,
 static void region_decode97_lift(coeff97_t* l,
                                      coeff97_t* w,
                                      grk_pt_t range,
-                                     size_t count,
                                      int64_t max,
                                      float scale);
 
@@ -561,7 +560,6 @@ static void region_decode97_scale(coeff97_t* buffer,
 static void region_decode97_lift(coeff97_t* l,
                                      coeff97_t* w,
                                      grk_pt_t range,
-                                     size_t count,
 									int64_t maximum,
                                      float scale)
 {
@@ -631,7 +629,6 @@ static void region_decode97(dwt97_t* restrict dwt)
     region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
-                             dwt->s_n,
                              grok_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              dwt_delta);
 
@@ -639,14 +636,12 @@ static void region_decode97(dwt97_t* restrict dwt)
     region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
-                             dwt->d_n,
                              grok_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              dwt_gamma);
     /* inverse update */
     region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
-                             dwt->s_n,
                              grok_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              dwt_beta);
 
@@ -654,7 +649,6 @@ static void region_decode97(dwt97_t* restrict dwt)
     region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
-                             dwt->d_n,
                              grok_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              dwt_alpha);
 

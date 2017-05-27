@@ -78,11 +78,13 @@ extern "C" {
 
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
+	(void)module;
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\n");
 }
 
 void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
+	(void)module;
 	if (tiffWarningHandlerVerbose) {
 		vfprintf(stdout, fmt, ap);
 		fprintf(stdout, "\n");

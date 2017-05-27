@@ -205,7 +205,7 @@ static void sycc422_to_rgb(opj_image_t *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b;
 	const int *y, *cb, *cr;
-	size_t maxw, maxh, max, offx, loopmaxw;
+	size_t maxw, maxh, offx, loopmaxw;
 	int offset, upb;
 	size_t i;
 
@@ -218,7 +218,6 @@ static void sycc422_to_rgb(opj_image_t *img)
 	offset = 1 << (upb - 1); upb = (1 << upb) - 1;
 
 	maxw = (size_t)img->comps[0].w; maxh = (size_t)img->comps[0].h;
-	max = maxw * maxh;
 
 	y = img->comps[0].data;
 	cb = img->comps[1].data;
@@ -281,7 +280,7 @@ static void sycc420_to_rgb(opj_image_t *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
 	const int *y, *cb, *cr, *ny;
-	size_t maxw, maxh, max, offx, loopmaxw, offy, loopmaxh;
+	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
 	int offset, upb;
 	size_t i;
 	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
@@ -293,7 +292,6 @@ static void sycc420_to_rgb(opj_image_t *img)
 
 	maxw = (size_t)img->comps[0].w;
 	maxh = (size_t)img->comps[0].h;
-	max = maxw * maxh;
 
 	y = img->comps[0].data;
 	cb = img->comps[1].data;
@@ -572,7 +570,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 			int *r=nullptr, *g=nullptr, *b=nullptr;
             unsigned char *inbuf=nullptr, *outbuf=nullptr, *in=nullptr, *out=nullptr;
             max = max_w * max_h;
-            nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned char);
+            nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
             in = inbuf = (unsigned char*)malloc(nr_samples);
 			if (!in) {
 				goto cleanup;
@@ -610,7 +608,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 			int *r = nullptr, *g = nullptr, *b = nullptr;
             unsigned short *inbuf=nullptr, *outbuf=nullptr, *in=nullptr, *out=nullptr;
             max = max_w * max_h;
-            nr_samples = (cmsUInt32Number)max * 3 * (cmsUInt32Number)sizeof(unsigned short);
+            nr_samples =  max * 3 * (cmsUInt32Number)sizeof(unsigned short);
             in = inbuf = (unsigned short*)malloc(nr_samples);
 			if (!in)
 				goto cleanup;
@@ -654,7 +652,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 		unsigned char *outbuf = nullptr;
 
         max = max_w * max_h;
-        nr_samples = (cmsUInt32Number)max * 3 * sizeof(unsigned char);
+        nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
 		opj_image_comp_t *comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(opj_image_comp_t));
 		if (!comps)
 			goto cleanup;

@@ -441,7 +441,6 @@ static bool j2k_decode_tiles (  j2k_t *p_j2k,
 
 static bool j2k_pre_write_tile ( j2k_t * p_j2k,
                                      uint32_t p_tile_index,
-                                     stream_private_t *p_stream,
                                      event_mgr_t * p_manager );
 
 static bool j2k_copy_decoded_tile_to_output_image (tcd_t * p_tcd,
@@ -2635,7 +2634,6 @@ static bool j2k_read_coc (  j2k_t *p_j2k,
                                 event_mgr_t * p_manager
                              )
 {
-    cp_t *l_cp = NULL;
     tcp_t *l_tcp = NULL;
     opj_image_t *l_image = NULL;
     uint32_t l_comp_room;
@@ -2646,7 +2644,6 @@ static bool j2k_read_coc (  j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
     l_image = p_j2k->m_private_image;
 
@@ -7802,7 +7799,7 @@ static bool j2k_copy_decoded_tile_to_output_image (tcd_t * p_tcd,
         }
 
 
-		if ((offset_x0_src >width_src) || (offset_y0_src >height_src) || (offset_x1_src >(int32_t)width_src) || (offset_y1_src >(int32_t)height_src)) {
+		if ((offset_x0_src >width_src) || (offset_y0_src >height_src) || (offset_x1_src > width_src) || (offset_y1_src > height_src)) {
 			return false;
 		}
 
@@ -8406,7 +8403,6 @@ static void j2k_copy_tile_component_parameters( j2k_t *p_j2k )
 {
     /* loop */
     uint32_t i;
-    cp_t *l_cp = NULL;
     tcp_t *l_tcp = NULL;
     tccp_t *l_ref_tccp = NULL, *l_copied_tccp = NULL;
     uint32_t l_prc_size;
@@ -8414,7 +8410,6 @@ static void j2k_copy_tile_component_parameters( j2k_t *p_j2k )
     /* preconditions */
     assert(p_j2k != nullptr);
 
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
 
     l_ref_tccp = &l_tcp->tccps[0];
@@ -8696,7 +8691,6 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k )
 {
     uint32_t i;
-    cp_t *l_cp = NULL;
     tcp_t *l_tcp = NULL;
     tccp_t *l_ref_tccp = NULL;
     tccp_t *l_copied_tccp = NULL;
@@ -8704,8 +8698,6 @@ static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k )
 
     /* preconditions */
     assert(p_j2k != nullptr);
-
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
 
     l_ref_tccp = &l_tcp->tccps[0];
@@ -9170,7 +9162,6 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles)
     if (!copy_tile_data) {
 
         for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
-            tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + i;
             opj_image_comp_t* dest_comp = p_j2k->m_output_image->comps + i;
             uint32_t l_x0_dest = grk_uint_ceildivpow2(dest_comp->x0, dest_comp->decodeScaleFactor);
             uint32_t l_y0_dest = grk_uint_ceildivpow2(dest_comp->y0, dest_comp->decodeScaleFactor);
@@ -9681,7 +9672,7 @@ bool j2k_encode(j2k_t * p_j2k,
 #endif
     }
     for (i=0; i<l_nb_tiles; ++i) {
-        if (! j2k_pre_write_tile(p_j2k,i,p_stream,p_manager)) {
+        if (! j2k_pre_write_tile(p_j2k,i,p_manager)) {
             if (l_current_data)
                 grok_free(l_current_data);
             return false;
@@ -9816,12 +9807,10 @@ bool j2k_start_compress(j2k_t *p_j2k,
     return true;
 }
 
-static bool j2k_pre_write_tile (       j2k_t * p_j2k,
-        uint32_t p_tile_index,
-        stream_private_t *p_stream,
-        event_mgr_t * p_manager )
+static bool j2k_pre_write_tile (j2k_t * p_j2k,
+								uint32_t p_tile_index,
+								event_mgr_t * p_manager )
 {
-    (void)p_stream;
     if (p_tile_index != p_j2k->m_current_tile_number) {
         event_msg(p_manager, EVT_ERROR, "The given tile index does not match." );
         return false;
@@ -10352,6 +10341,7 @@ static bool j2k_end_encoding(  j2k_t *p_j2k,
                                    stream_private_t *p_stream,
                                    event_mgr_t * p_manager )
 {
+	(void)p_stream;
     /* preconditions */
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -10377,6 +10367,8 @@ static bool j2k_destroy_header_memory ( j2k_t * p_j2k,
         event_mgr_t * p_manager
                                           )
 {
+	(void)p_stream;
+	(void)p_manager;
     /* preconditions */
     assert(p_j2k != nullptr);
     assert(p_stream != nullptr);
@@ -10390,6 +10382,7 @@ static bool j2k_init_info(     j2k_t *p_j2k,
                                    stream_private_t *p_stream,
                                    event_mgr_t * p_manager )
 {
+	(void)p_stream;
     opj_codestream_info_t * l_cstr_info = nullptr;
 
     /* preconditions */
@@ -10413,6 +10406,7 @@ static bool j2k_create_tcd(     j2k_t *p_j2k,
                               )
 {
     /* preconditions */
+	(void)p_stream;
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
@@ -10440,7 +10434,7 @@ bool j2k_write_tile (j2k_t * p_j2k,
                          stream_private_t *p_stream,
                          event_mgr_t * p_manager )
 {
-    if (! j2k_pre_write_tile(p_j2k,p_tile_index,p_stream,p_manager)) {
+    if (! j2k_pre_write_tile(p_j2k,p_tile_index,p_manager)) {
         event_msg(p_manager, EVT_ERROR, "Error while j2k_pre_write_tile with tile index = %d\n", p_tile_index);
         return false;
     } else {

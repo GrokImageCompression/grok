@@ -116,7 +116,7 @@ bool BitIO::getbit(uint32_t* bits, uint8_t pos)
 }
 
 
-uint64_t BitIO::numbytes()
+size_t BitIO::numbytes()
 {
     return offset;
 }

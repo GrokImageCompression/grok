@@ -79,6 +79,11 @@ bool minpf_get_full_path(const char* path,
 #endif
 
 #else
+	(void)path;
+	(void)addr;
+	(void)handle;
+	(void)fullPath;
+	(void)fullPathLen;
 	return false;
 #endif
 }
@@ -97,6 +102,7 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
 	free(library);
 	return rc;
 #else
+	(void)library;
 	return false;
 #endif
 }
@@ -138,6 +144,8 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
     lib->handle = handle;
     return lib;
 #else
+	(void)error;
+	(void)path;
 	return nullptr;
 #endif
 }
@@ -162,6 +170,8 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 
     return rc;
 #else
+	(void)library;
+	(void)symbol;
 	return nullptr;
 #endif
 

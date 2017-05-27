@@ -362,8 +362,8 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 		} /* resno */
 
 		if (!single_lossless) {
-			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
 				* tilec->numpix;
 		}
 	} /* compno */
@@ -399,7 +399,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 				thresh = (lowerBound + upperBound) >> 1;
 				if (prevthresh != 0 && prevthresh ==thresh)
 					break;
-				tcd_makelayer_feasible(tcd, layno, thresh, false);
+				tcd_makelayer_feasible(tcd, layno, (uint16_t)thresh, false);
 				prevthresh = thresh;
 				if (cp->m_specific_param.m_enc.m_fixed_quality) {
 					double distoachieved =
@@ -431,7 +431,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 			goodthresh = upperBound;
 			t2_destroy(t2);
 
-			tcd_makelayer_feasible(tcd, layno, goodthresh, true);
+			tcd_makelayer_feasible(tcd, layno, (uint16_t)goodthresh, true);
 			cumdisto[layno] =
 				(layno == 0) ?
 				tcd_tile->distolayer[0] :
@@ -536,8 +536,8 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
             } /* bandno */
         } /* resno */
 
-		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
-			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1.0)
+		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
 			* tilec->numpix;
 
     } /* compno */
@@ -773,7 +773,6 @@ void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 							cblk->num_passes_included_in_other_layers;
 
 						for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
-							tcd_pass_t *pass = &cblk->passes[passno];
 							cumulative_included_passes_in_block = passno + 1;
 						}
 
@@ -1703,7 +1702,7 @@ static bool tcd_t1_decode ( tcd_t *p_tcd, event_mgr_t * p_manager)
     tcd_tilecomp_t* l_tile_comp = l_tile->comps;
     tccp_t * l_tccp = p_tcd->tcp->tccps;
 	std::vector<decodeBlockInfo*> blocks;
-	T1Decoder decoder(l_tccp->cblkw, l_tccp->cblkh);
+	T1Decoder decoder((uint16_t)l_tccp->cblkw, (uint16_t)l_tccp->cblkh);
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
         if (false == t1_prepare_decode_cblks(l_tile_comp, l_tccp,&blocks, p_manager)) {
             return false;
@@ -1844,8 +1843,6 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 			opj_image_comp_t * l_img_comp		= p_tcd->image->comps + compno;
 
 			tcd_resolution_t* l_res			= l_tile_comp->resolutions + l_img_comp->resno_decoded;
-			uint32_t l_width					= (l_res->x1 - l_res->x0);
-			uint32_t l_height					= (l_res->y1 - l_res->y0);
 
 			uint32_t scaledTileX0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.x0, l_img_comp->decodeScaleFactor);
 			uint32_t scaledTileY0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.y0, l_img_comp->decodeScaleFactor);
@@ -1856,8 +1853,6 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 			uint32_t y1 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y1, l_img_comp->decodeScaleFactor) - scaledTileY0);
 
 			uint32_t l_stride					= (l_tile_comp->x1 - l_tile_comp->x0) - (x1-x0);
-
-		//	assert(l_height == 0 || l_width + l_stride <= l_tile_comp->buf->data_size / l_height); 
 
 			if (l_img_comp->sgnd) {
 				l_min = -(1 << (l_img_comp->prec - 1));
@@ -1905,7 +1900,7 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
  */
 static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
 {
-    uint32_t cblkno , l_nb_code_blocks;
+    size_t cblkno , l_nb_code_blocks;
     tcd_cblk_dec_t * l_code_block = p_precinct->cblks.dec;
     if (l_code_block) {
         /*fprintf(stderr,"deallocate codeblock:{\n");*/

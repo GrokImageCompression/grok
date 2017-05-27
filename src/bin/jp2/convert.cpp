@@ -68,20 +68,6 @@ extern "C" {
 
 }
 
-/*
- * Get logarithm of an integer and round downwards.
- *
- * log2(a)
- */
-static int int_floorlog2(int a)
-{
-    int l;
-    for (l = 0; a > 1; l++) {
-        a >>= 1;
-    }
-    return l;
-}
-
 /* Component precision scaling */
 void clip_component(opj_image_comp_t* component, uint32_t precision)
 {
@@ -1721,7 +1707,8 @@ opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
             image->comps[0].data[i] = (index?0:255);
         }
     } else if(format == 4) {
-        uint32_t x, y, bit;
+        uint32_t x, y;
+		int8_t bit;
         unsigned char uc;
 
         i = 0;

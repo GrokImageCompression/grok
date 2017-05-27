@@ -558,6 +558,7 @@ class GrokOutput : public StdOutput
 public:
 	virtual void usage(CmdLineInterface& c)
 	{
+		(void)c;
 		compare_images_help_display();
 	}
 };

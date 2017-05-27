@@ -1661,7 +1661,7 @@ namespace grk {
 							if (nextTerm->rate > 0 && (cblk->data[nextTerm->rate - 1] == 0xFF)) {
 								nextRate--;
 							}
-							maxBytes = min(maxBytes, nextRate);
+							maxBytes = std::min<uint32_t>(maxBytes, nextRate);
 							break;
 						}
 					}

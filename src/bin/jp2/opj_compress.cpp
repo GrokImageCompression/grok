@@ -354,20 +354,18 @@ static unsigned int get_num_images(char *imgdirpath)
     return num_images;
 }
 
-static int load_images(dircnt_t *dirptr, char *imgdirpath, bool verbose)
+static int load_images(dircnt_t *dirptr, char *imgdirpath)
 {
-    DIR *dir;
-    struct dirent* content;
-    int i = 0;
-
     /*Reading the input images from given input directory*/
 
-    dir= opendir(imgdirpath);
+	DIR * dir= opendir(imgdirpath);
     if(!dir) {
         fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
         return 1;
     } 
 
+	struct dirent* content = nullptr;
+	int i = 0;
     while((content=readdir(dir))!=NULL) {
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
             continue;
@@ -449,6 +447,7 @@ class GrokOutput : public StdOutput
 public:
 	virtual void usage(CmdLineInterface& c)
 	{
+		(void)c;
 		encode_help_display();
 	}
 };
@@ -463,8 +462,8 @@ static int parse_cmdline_encoder_ex(int argc,
 									char *indexfilename,
 									size_t indexfilename_size,
 									char* plugin_path) {
-
-
+	(void)indexfilename;
+	(void)indexfilename_size;
 	try {
 
 		// Define the command line object.
@@ -1413,14 +1412,12 @@ int main(int argc, char **argv) {
 		return 0;
 
 	size_t num_compressed_files = 0;
-	uint32_t l_nb_tiles = 4;
 	uint32_t i, num_images, imageno;
 
 	//cache certain settings
 	auto tcp_mct = initParams.parameters.tcp_mct;
 	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
 
-	bool bUseTiles = false; /* true */
 	double t = grok_clock();
 	int success = 0;
 	opj_image_t *image = NULL;
@@ -1451,7 +1448,7 @@ int main(int argc, char **argv) {
         for(i=0;i<num_images;i++){
             dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
         }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath, initParams.parameters.verbose)==1){
+        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
 			goto cleanup;
         }
     }else{
@@ -1520,7 +1517,6 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	opj_image_t *image = info->image;
 	char  outfile[OPJ_PATH_LEN];
 	char  temp_ofname[OPJ_PATH_LEN];
-	char temp1[OPJ_PATH_LEN] = "";
 
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false;
@@ -1914,7 +1910,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 				}
 			}
-			if (load_images(dirptr, initParams->img_fol.imgdirpath, initParams->parameters.verbose) == 1) {
+			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
 				goto cleanup;
 			}
 			if (num_images == 0) {
