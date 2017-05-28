@@ -2090,6 +2090,7 @@ static bool j2k_read_siz(j2k_t *p_j2k,
 	if (l_tmp & OPJ_PROFILE_PART2) {
 		profile = OPJ_PROFILE_PART2;
 		part2_extensions = l_tmp & OPJ_PROFILE_PART2_EXTENSIONS_MASK;
+		(void)part2_extensions;
 	}
 	else {
 		profile = l_tmp & OPJ_PROFILE_MASK;
@@ -3095,7 +3096,6 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
     uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
     uint32_t l_chunk_size, l_comp_room;
 
-    cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
     opj_poc_t *l_current_poc = nullptr;
 
@@ -3120,7 +3120,6 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
         return false;
     }
 
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
     l_old_poc_nb = l_tcp->POC ? l_tcp->numpocs + 1 : 0;
     l_current_poc_nb += l_old_poc_nb;
@@ -4000,6 +3999,7 @@ static bool j2k_write_sod(     j2k_t *p_j2k,
                                    event_mgr_t * p_manager
                              )
 {
+	(void)p_stream;
     opj_codestream_info_t *l_cstr_info = nullptr;
     uint64_t l_remaining_data;
 
@@ -4229,7 +4229,6 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
     uint32_t l_nb_comp;
     opj_image_t * l_image = nullptr;
 
-    cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
     uint32_t l_comp_room, l_comp_no, l_roi_sty;
 
@@ -4252,7 +4251,6 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
         return false;
     }
 
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
 
     grk_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
@@ -4472,6 +4470,7 @@ static bool j2k_get_end_header(j2k_t *p_j2k,
                                    stream_private_t *p_stream,
                                    event_mgr_t * p_manager )
 {
+	(void)p_manager;
     /* preconditions */
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -4609,6 +4608,7 @@ static bool j2k_write_epc(     j2k_t *p_j2k,
                                    stream_private_t *p_stream,
                                    event_mgr_t * p_manager )
 {
+	(void)p_manager;
     opj_codestream_index_t * l_cstr_index = nullptr;
 
     /* preconditions */
@@ -6316,6 +6316,7 @@ static bool j2k_mct_validation (       j2k_t * p_j2k,
         stream_private_t *p_stream,
         event_mgr_t * p_manager )
 {
+	(void)p_stream;
     bool l_is_valid = true;
     uint32_t i,j;
 
@@ -6568,6 +6569,7 @@ static bool j2k_decoding_validation (  j2k_t *p_j2k,
         event_mgr_t * p_manager
                                         )
 {
+	(void)p_manager;
     bool l_is_valid = true;
 
     /* preconditions*/
@@ -6726,7 +6728,6 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//do QCD marker quantization step size sanity check
-	auto l_cp = &(p_j2k->m_cp);
 	auto l_tcp = j2k_get_tcp(p_j2k);
 	if (l_tcp->qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		uint32_t maxDecompositions = 0;
@@ -6811,6 +6812,7 @@ static bool j2k_copy_default_tcp_and_create_tcd (       j2k_t * p_j2k,
         event_mgr_t * p_manager
                                                     )
 {
+	(void)p_manager;
     tcp_t * l_tcp = nullptr;
     tcp_t * l_default_tcp = nullptr;
     uint32_t l_nb_tiles;
@@ -8587,7 +8589,6 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 {
     /* loop*/
     uint32_t l_band_no;
-    cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
     tccp_t *l_tccp = nullptr;
     uint8_t * l_current_ptr = nullptr;
@@ -8598,7 +8599,6 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
     assert(p_manager != nullptr);
     assert(p_header_data != nullptr);
 
-    l_cp = &(p_j2k->m_cp);
 	l_tcp = j2k_get_tcp(p_j2k);
 
     /* precondition again*/
@@ -10342,6 +10342,7 @@ static bool j2k_end_encoding(  j2k_t *p_j2k,
                                    event_mgr_t * p_manager )
 {
 	(void)p_stream;
+	(void)p_manager;
     /* preconditions */
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
