@@ -1028,7 +1028,7 @@ static void jp2_write_res_box( double resx, double resy,
 	grk_write_bytes(*l_current_res_ptr, OPJ_RESOLUTION_BOX_SIZE, 4);		/* write box size */
 	*l_current_res_ptr += 4;
 
-	grk_write_bytes(*l_current_res_ptr, JP2_CAPTURE_RES, 4);		/* Box ID */
+	grk_write_bytes(*l_current_res_ptr, box_id, 4);		/* Box ID */
 	*l_current_res_ptr += 4;
 
 	double res[2];
