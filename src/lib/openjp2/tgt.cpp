@@ -74,7 +74,6 @@ TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, event_mgr_t *manage
     TagTreeNode *node = nullptr;
     TagTreeNode *l_parent_node = nullptr;
     TagTreeNode *l_parent_node0 = nullptr;
-    TagTree *tree = nullptr;
     uint32_t i;
     int32_t  j,k;
     uint32_t numlvls;
@@ -145,6 +144,7 @@ TagTree::~TagTree() {
 */
 bool TagTree::init(uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, event_mgr_t *p_manager)
 {
+	(void)p_manager;
     int32_t l_nplh[32];
     int32_t l_nplv[32];
     TagTreeNode *l_node = nullptr;

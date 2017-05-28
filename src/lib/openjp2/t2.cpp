@@ -759,7 +759,7 @@ namespace grk {
 #ifdef DEBUG_LOSSLESS_T2
 					l_cblk->included = value;
 #endif
-					l_included = (value <= (int32_t)p_pi->layno) ? 1 : 0;
+					l_included = (value <= p_pi->layno) ? 1 : 0;
 					}
 				/* else one bit */
 				else {
@@ -830,8 +830,6 @@ namespace grk {
 						}
 					}
 				}
-				size_t offset = l_bio->numbytes();
-
 				auto numPassesInPacket = (int32_t)l_cblk->numPassesInPacket;
 				do {
 					auto l_seg = l_cblk->segs + l_segno;
