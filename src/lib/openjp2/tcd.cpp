@@ -378,7 +378,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	uint32_t upperBound = max_slope;
 	for (uint32_t layno = 0; layno < tcd_tcp->numlayers; layno++) {
 		uint32_t lowerBound = min_slope;
-		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grok_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+		uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? std::min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
 		/* Threshold for Marcela Index */
 		// start by including everything in this layer
@@ -551,7 +551,7 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
 		if (tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
 
 			double lowerBound = min_slope;
-			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? grok_min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
+			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? std::min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
 			/* Threshold for Marcela Index */
 			// start by including everything in this layer
@@ -908,15 +908,15 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
     /* 4 borders of the tile rescale on the image if necessary */
     l_tx0 = l_cp->tx0 + p * l_cp->tdx; /* can't be greater than l_image->x1 so won't overflow */
-    l_tile->x0 = grok_max<uint32_t>(l_tx0, l_image->x0);
-    l_tile->x1 = grok_min<uint32_t>(grk_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
+    l_tile->x0 = std::max<uint32_t>(l_tx0, l_image->x0);
+    l_tile->x1 = std::min<uint32_t>(grk_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
 	if (l_tile->x1 <= l_tile->x0) {
 		event_msg(manager, EVT_ERROR, "Tile x coordinates are not valid\n");
 		return false;
 	}
     l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
-    l_tile->y0 = grok_max<uint32_t>(l_ty0, l_image->y0);
-    l_tile->y1 = grok_min<uint32_t>(grk_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
+    l_tile->y0 = std::max<uint32_t>(l_ty0, l_image->y0);
+    l_tile->y1 = std::min<uint32_t>(grk_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
 	if (l_tile->y1 <= l_tile->y0) {
 		event_msg(manager, EVT_ERROR, "Tile y coordinates are not valid\n");
 		return false;
@@ -1045,8 +1045,8 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                 l_res->numbands = 3;
             }
 
-            cblkwidthexpn = grok_min<uint32_t>(l_tccp->cblkw, cbgwidthexpn);
-            cblkheightexpn = grok_min<uint32_t>(l_tccp->cblkh, cbgheightexpn);
+            cblkwidthexpn = std::min<uint32_t>(l_tccp->cblkw, cbgwidthexpn);
+            cblkheightexpn = std::min<uint32_t>(l_tccp->cblkh, cbgheightexpn);
 			size_t nominalBlockSize = (1 << cblkwidthexpn)*(1 << cblkheightexpn);
             l_band = l_res->bands;
 
@@ -1117,10 +1117,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     /* precinct size (global) */
                     /*fprintf(stderr, "\t cbgxstart=%d, l_band->x0 = %d \n",cbgxstart, l_band->x0);*/
 
-                    l_current_precinct->x0 = grok_max<uint32_t>(cbgxstart, l_band->x0);
-                    l_current_precinct->y0 = grok_max<uint32_t>(cbgystart, l_band->y0);
-                    l_current_precinct->x1 = grok_min<uint32_t>(cbgxend, l_band->x1);
-                    l_current_precinct->y1 = grok_min<uint32_t>(cbgyend, l_band->y1);
+                    l_current_precinct->x0 = std::max<uint32_t>(cbgxstart, l_band->x0);
+                    l_current_precinct->y0 = std::max<uint32_t>(cbgystart, l_band->y0);
+                    l_current_precinct->x1 = std::min<uint32_t>(cbgxend, l_band->x1);
+                    l_current_precinct->y1 = std::min<uint32_t>(cbgyend, l_band->y1);
                     /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
 
                     tlcblkxstart = grk_uint_floordivpow2(l_current_precinct->x0, cblkwidthexpn) << cblkwidthexpn;
@@ -1187,10 +1187,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                                 return false;
                             }
                             /* code-block size (global) */
-                            l_code_block->x0 = grok_max<uint32_t>(cblkxstart, l_current_precinct->x0);
-                            l_code_block->y0 = grok_max<uint32_t>(cblkystart, l_current_precinct->y0);
-                            l_code_block->x1 = grok_min<uint32_t>(cblkxend, l_current_precinct->x1);
-                            l_code_block->y1 = grok_min<uint32_t>(cblkyend, l_current_precinct->y1);
+                            l_code_block->x0 = std::max<uint32_t>(cblkxstart, l_current_precinct->x0);
+                            l_code_block->y0 = std::max<uint32_t>(cblkystart, l_current_precinct->y0);
+                            l_code_block->x1 = std::min<uint32_t>(cblkxend, l_current_precinct->x1);
+                            l_code_block->y1 = std::min<uint32_t>(cblkyend, l_current_precinct->y1);
 
 							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
 								if (!l_code_block->alloc_data(nominalBlockSize)) {
@@ -1206,10 +1206,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 							}
 
                             /* code-block size (global) */
-                            l_code_block->x0 = grok_max<uint32_t>(cblkxstart, l_current_precinct->x0);
-                            l_code_block->y0 = grok_max<uint32_t>(cblkystart, l_current_precinct->y0);
-                            l_code_block->x1 = grok_min<uint32_t>(cblkxend, l_current_precinct->x1);
-                            l_code_block->y1 = grok_min<uint32_t>(cblkyend, l_current_precinct->y1);
+                            l_code_block->x0 = std::max<uint32_t>(cblkxstart, l_current_precinct->x0);
+                            l_code_block->y0 = std::max<uint32_t>(cblkystart, l_current_precinct->y0);
+                            l_code_block->x1 = std::min<uint32_t>(cblkxend, l_current_precinct->x1);
+                            l_code_block->y1 = std::min<uint32_t>(cblkyend, l_current_precinct->y1);
                         }
                     }
                     ++l_current_precinct;

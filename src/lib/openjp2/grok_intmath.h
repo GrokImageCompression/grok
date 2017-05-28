@@ -72,14 +72,6 @@ The functions in OPJ_INTMATH.H have for goal to realize operations on integers.
 /* ----------------------------------------------------------------------- */
 
 
-template<typename T> T grok_min(T a, T b) {
-	return ((a < b) ? a : b);
-}
-template<typename T> T grok_max(T a, T b) {
-	return ((a > b) ? a : b);
-}
-
-
 /**
  Get the saturated sum of two unsigned integers
  @return Returns saturated sum of a+b

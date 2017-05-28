@@ -75,6 +75,7 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <climits>
+#include <algorithm>
 
 /*
   Use fseeko() and ftello() if they are available since they use
@@ -88,25 +89,18 @@
 #endif
 
 
-#if defined(WIN32) && !defined(Windows95) && !defined(__BORLANDC__) && \
-  !(defined(_MSC_VER) && _MSC_VER < 1400) && \
-  !(defined(__MINGW32__) && __MSVCRT_VERSION__ < 0x800)
-/*
-  Windows '95 and Borland C do not support _lseeki64
-  Visual Studio does not support _fseeki64 and _ftelli64 until the 2005 release.
-  Without these interfaces, files over 2GB in size are not supported for Windows.
-*/
-#  define OPJ_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
-#  define OPJ_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
-#  define OPJ_FTELL(stream) /* __int64 */ _ftelli64(stream)
-#  define OPJ_STAT_STRUCT_T struct _stati64
-#  define OPJ_STAT(path,stat_buff) _stati64(path,/* struct _stati64 */ stat_buff)
+#if defined(WIN32)
+#  define GROK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
+#  define GROK_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
+#  define GROK_FTELL(stream) /* __int64 */ _ftelli64(stream)
+#  define GROK_STAT_STRUCT_T struct _stati64
+#  define GROK_STAT(path,stat_buff) _stati64(path,/* struct _stati64 */ stat_buff)
 #else
-#  define OPJ_FSEEK(stream,offset,whence) fseek(stream,offset,whence)
-#  define OPJ_FSTAT(fildes,stat_buff) fstat(fildes,stat_buff)
-#  define OPJ_FTELL(stream) ftell(stream)
-#  define OPJ_STAT_STRUCT_T struct stat
-#  define OPJ_STAT(path,stat_buff) stat(path,stat_buff)
+#  define GROK_FSEEK(stream,offset,whence) fseek(stream,offset,whence)
+#  define GROK_FSTAT(fildes,stat_buff) fstat(fildes,stat_buff)
+#  define GROK_FTELL(stream) ftell(stream)
+#  define GROK_STAT_STRUCT_T struct stat
+#  define GROK_STAT(path,stat_buff) stat(path,stat_buff)
 #endif
 
 
@@ -139,11 +133,11 @@
 
 #ifdef __has_attribute
 #if __has_attribute(no_sanitize)
-#define OPJ_NOSANITIZE(kind) __attribute__((no_sanitize(kind)))
+#define GROK_NOSANITIZE(kind) __attribute__((no_sanitize(kind)))
 #endif
 #endif
-#ifndef OPJ_NOSANITIZE
-#define OPJ_NOSANITIZE(kind)
+#ifndef GROK_NOSANITIZE
+#define GROK_NOSANITIZE(kind)
 #endif
 
 
