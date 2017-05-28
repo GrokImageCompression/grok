@@ -382,7 +382,7 @@ bool dwt_region_decode53(tcd_tilecomp_t* tilec,
 
 				buffer_h.s_n = (int32_t)res_width;
 				buffer_v.s_n = (int32_t)res_height;
-				buffer_v.interleaved_offset = grok_max<int64_t>(0, interleaved_v.x - 2);
+				buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 2);
 
 				++tr;
 				res_width = (tr->x1 - tr->x0);
@@ -390,7 +390,7 @@ bool dwt_region_decode53(tcd_tilecomp_t* tilec,
 
 				buffer_h.d_n = (int32_t)(res_width - buffer_h.s_n);
 				buffer_h.odd_top_left_bit = tr->x0 & 1;
-				buffer_h.interleaved_offset = grok_max<int64_t>(0, interleaved_h.x - 2);
+				buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 2);
 
 				/* first do horizontal interleave */
 				int32_t * restrict tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0) + (buffer_v.range_even.x + threadId) * w;
@@ -568,7 +568,7 @@ static void region_decode97_lift(coeff97_t* l,
 
     auto count_low = range.x;
     auto count_high = range.y;
-    auto count_max = grok_min<int64_t>(count_high, maximum);
+    auto count_max = std::min<int64_t>(count_high, maximum);
 
     assert(count_low <= count_high);
     assert(maximum <= (int64_t)count);
@@ -629,27 +629,27 @@ static void region_decode97(dwt97_t* restrict dwt)
     region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
-                             grok_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              dwt_delta);
 
     /* inverse predict */
     region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
-                             grok_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              dwt_gamma);
     /* inverse update */
     region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                              dwt->data - dwt->interleaved_offset + odd_top_left_bit+1,
                              dwt->range_even,
-                             grok_min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
+                             std::min<int64_t>(dwt->s_n, dwt->d_n-odd_top_left_bit),
                              dwt_beta);
 
     /* inverse predict */
     region_decode97_lift(dwt->data - dwt->interleaved_offset + odd_top_left_bit,
                              dwt->data - dwt->interleaved_offset + even_top_left_bit+1,
                              dwt->range_odd,
-                             grok_min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
+                             std::min<int64_t>(dwt->d_n, dwt->s_n-even_top_left_bit),
                              dwt_alpha);
 
 }
@@ -738,7 +738,7 @@ bool dwt_region_decode97(tcd_tilecomp_t* restrict tilec,
 
 				buffer_h.d_n = (res_width - buffer_h.s_n);
 				buffer_h.odd_top_left_bit = res->x0 & 1;
-				buffer_h.interleaved_offset = grok_max<int64_t>(0, interleaved_h.x - 4);
+				buffer_h.interleaved_offset = std::max<int64_t>(0, interleaved_h.x - 4);
 
 				//  Step 1.  interleave and lift in horizontal direction 
 				float * restrict tile_data = (float*)tileBuf + tile_width * (buffer_v.range_even.x + (threadId<<2));
@@ -820,7 +820,7 @@ bool dwt_region_decode97(tcd_tilecomp_t* restrict tilec,
 				
 				buffer_v.d_n = (res_height - buffer_v.s_n);
 				buffer_v.odd_top_left_bit = res->y0 & 1;
-				buffer_v.interleaved_offset = grok_max<int64_t>(0, interleaved_v.x - 4);
+				buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 4);
 
 				tile_data = (float*)tileBuf + interleaved_h.x + (threadId<<2);
 				for (j = interleaved_h.y - interleaved_h.x - (threadId<<2); j > 3; j -= 4*numThreads) {

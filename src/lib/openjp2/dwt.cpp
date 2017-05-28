@@ -962,17 +962,17 @@ static void v4dwt_decode(v4dwt_t* restrict dwt)
 #ifdef __SSE__
     v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
     v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
-    v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_delta));
-    v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_gamma));
-    v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_beta));
-    v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_alpha));
+    v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_delta));
+    v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_gamma));
+    v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_beta));
+    v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_alpha));
 #else
     v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
     v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
-    v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), dwt_delta);
-    v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), dwt_gamma);
-    v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, grok_min<int32_t>(dwt->sn, dwt->dn-a), dwt_beta);
-    v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, grok_min<int32_t>(dwt->dn, dwt->sn-b), dwt_alpha);
+    v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), dwt_delta);
+    v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), dwt_gamma);
+    v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), dwt_beta);
+    v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), dwt_alpha);
 #endif
 }
 

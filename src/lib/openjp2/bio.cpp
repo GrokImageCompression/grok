@@ -141,7 +141,7 @@ void BitIO::init_dec( uint8_t *bptr, uint64_t len)
 }
 
 
-OPJ_NOSANITIZE("unsigned-integer-overflow")
+GROK_NOSANITIZE("unsigned-integer-overflow")
 bool BitIO::write( uint32_t v, uint32_t n) {
 	if (n > 32U)
 		return false;
@@ -153,13 +153,13 @@ bool BitIO::write( uint32_t v, uint32_t n) {
 	return true;
 }
 
-OPJ_NOSANITIZE("unsigned-integer-overflow")
+GROK_NOSANITIZE("unsigned-integer-overflow")
 bool BitIO::read(uint32_t* bits, uint32_t n) {
 	assert((n > 0U) /* && (n <= 32U)*/);
 #ifdef OPJ_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
 	/* Add this assert only for ubsan build. */
-	/* This is the condition for overflow not to occur below which is needed because of OPJ_NOSANITIZE */
+	/* This is the condition for overflow not to occur below which is needed because of GROK_NOSANITIZE */
 	assert(n <= 32U);
 #endif
 	*bits  = 0U;

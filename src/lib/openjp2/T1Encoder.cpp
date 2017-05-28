@@ -148,7 +148,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 #endif
 					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
 					uint32_t mag = (uint32_t)abs(tmp);
-					max = grok_max<uint32_t>(max, mag);
+					max = std::max<uint32_t>(max, mag);
 					t1->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					tileIndex++;
 					cblk_index++;
@@ -174,7 +174,7 @@ void T1Encoder::encodeOpt(size_t threadId) {
 
 					uint32_t mag = (uint32_t)abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-					max = grok_max<uint32_t>(max, mag);
+					max = std::max<uint32_t>(max, mag);
 					t1->data[cblk_index] = sign_mag;
 					
 					tileIndex++;

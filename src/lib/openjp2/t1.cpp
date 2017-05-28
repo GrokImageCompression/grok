@@ -1461,8 +1461,8 @@ namespace grk {
 								y += pres->y1 - pres->y0;
 							}
 
-							maxCblkW = grok_max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-							maxCblkH = grok_max<int32_t>(maxCblkH, 1 << tccp->cblkh);
+							maxCblkW = std::max<int32_t>(maxCblkW, 1 << tccp->cblkw);
+							maxCblkH = std::max<int32_t>(maxCblkH, 1 << tccp->cblkh);
 							auto block = new encodeBlockInfo();
 							block->compno = compno;
 							block->bandno = band->bandno;
@@ -1524,7 +1524,7 @@ namespace grk {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = 0; j < t1->h; ++j) {
 				int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-				max = grok_max<int32_t>(max, tmp);
+				max = std::max<int32_t>(max, tmp);
 			}
 		}
 

@@ -537,7 +537,7 @@ namespace grk {
 				}
 
 				if (!skip_layer_or_res)
-					l_img_comp->resno_decoded = grok_max<uint32_t>(l_current_pi->resno, l_img_comp->resno_decoded);
+					l_img_comp->resno_decoded = std::max<uint32_t>(l_current_pi->resno, l_img_comp->resno_decoded);
 				*p_data_read += l_nb_bytes_read;
 			}
 			++l_current_pi;
@@ -835,7 +835,7 @@ namespace grk {
 				auto numPassesInPacket = (int32_t)l_cblk->numPassesInPacket;
 				do {
 					auto l_seg = l_cblk->segs + l_segno;
-					l_seg->numPassesInPacket = (uint32_t)grok_min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), numPassesInPacket);
+					l_seg->numPassesInPacket = (uint32_t)std::min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), numPassesInPacket);
 					if (!l_bio->read(&l_seg->newlen, l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket))) {
 						event_msg(p_manager, EVT_WARNING, "t2_read_packet_header: failed to read segment length \n");
 					}
@@ -1102,7 +1102,7 @@ namespace grk {
 					len += pass->len;
 
 					if (pass->term || passno == l_nb_passes - 1) {
-						increment = (uint32_t)grok_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
+						increment = (uint32_t)std::max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
 							- ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
 						len = 0;
 						nump = 0;
@@ -1506,7 +1506,7 @@ namespace grk {
 					len += pass->len;
 
 					if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-						increment = (uint32_t)grok_max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
+						increment = (uint32_t)std::max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
 							- ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
 						len = 0;
 						nump = 0;

@@ -260,10 +260,10 @@ static void update_pi_dxy_for_comp(pi_iterator_t * pi, pi_comp_t *comp) {
 		uint64_t dx = comp->dx * ((uint64_t)1u << (res->pdx + comp->numresolutions - 1 - resno));
 		uint64_t dy = comp->dy * ((uint64_t)1u << (res->pdy + comp->numresolutions - 1 - resno));
 		if (dx < UINT_MAX) {
-			pi->dx = !pi->dx ? (uint32_t)dx : grok_min<uint32_t>(pi->dx, (uint32_t)dx);
+			pi->dx = !pi->dx ? (uint32_t)dx : std::min<uint32_t>(pi->dx, (uint32_t)dx);
 		}
 		if (dy < UINT_MAX) {
-			pi->dy = !pi->dy ? (uint32_t)dy : grok_min<uint32_t>(pi->dy, (uint32_t)dy);
+			pi->dy = !pi->dy ? (uint32_t)dy : std::min<uint32_t>(pi->dy, (uint32_t)dy);
 		}
 	}
 }
@@ -452,7 +452,7 @@ static bool pi_next_pcrl(pi_iterator_t * pi)
         for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
             for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
                 comp = &pi->comps[pi->compno];
-                for (pi->resno = pi->poc.resno0; pi->resno < grok_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
+                for (pi->resno = pi->poc.resno0; pi->resno < std::min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
                     uint32_t trx0, try0;
                     uint32_t trx1, try1;
@@ -526,7 +526,7 @@ static bool pi_next_cprl(pi_iterator_t * pi)
         }
         for (pi->y = pi->poc.ty0; pi->y < pi->poc.ty1; pi->y += pi->dy - (pi->y % pi->dy)) {
             for (pi->x = pi->poc.tx0; pi->x < pi->poc.tx1; pi->x += pi->dx - (pi->x % pi->dx)) {
-                for (pi->resno = pi->poc.resno0; pi->resno < grok_min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
+                for (pi->resno = pi->poc.resno0; pi->resno < std::min<uint32_t>(pi->poc.resno1, comp->numresolutions); pi->resno++) {
                     uint32_t levelno;
                     uint32_t trx0, try0;
                     uint32_t trx1, try1;
@@ -612,10 +612,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     q = p_tileno / p_cp->tw;
 
     /* find extent of tile */
-    *p_tx0 = grok_max<uint32_t>(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
-    *p_tx1 = grok_min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
-    *p_ty0 = grok_max<uint32_t>(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
-    *p_ty1 = grok_min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
+    *p_tx0 = std::max<uint32_t>(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
+    *p_tx1 = std::min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
+    *p_ty0 = std::max<uint32_t>(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
+    *p_ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
 
     /* max precision is 0 (can only grow) */
     *p_max_prec = 0;
@@ -656,9 +656,9 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
 
             /* take the minimum size for dx for each comp and resolution */
 			if (l_dx < UINT_MAX)
-				*p_dx_min = grok_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
+				*p_dx_min = std::min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
 			if (l_dy < UINT_MAX)
-				*p_dy_min = grok_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
+				*p_dy_min = std::min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
 
             /* various calculations of extents */
             l_level_no = l_tccp->numresolutions - 1 - resno;
@@ -736,11 +736,11 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 
     /* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
     l_tx0 = p_cp->tx0 + p * p_cp->tdx; /* can't be greater than p_image->x1 so won't overflow */
-    *p_tx0 = grok_max<uint32_t>(l_tx0, p_image->x0);
-    *p_tx1 = grok_min<uint32_t>(grk_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
+    *p_tx0 = std::max<uint32_t>(l_tx0, p_image->x0);
+    *p_tx1 = std::min<uint32_t>(grk_uint_adds(l_tx0, p_cp->tdx), p_image->x1);
     l_ty0 = p_cp->ty0 + q * p_cp->tdy; /* can't be greater than p_image->y1 so won't overflow */
-    *p_ty0 = grok_max<uint32_t>(l_ty0, p_image->y0);
-    *p_ty1 = grok_min<uint32_t>(grk_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
+    *p_ty0 = std::max<uint32_t>(l_ty0, p_image->y0);
+    *p_ty1 = std::min<uint32_t>(grk_uint_adds(l_ty0, p_cp->tdy), p_image->y1);
 
     /* max precision and resolution is 0 (can only grow)*/
     *p_max_prec = 0;
@@ -783,9 +783,9 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 			uint64_t l_dy = l_img_comp->dy * ((uint64_t)1u << (l_pdy + l_level_no));
             /* take the minimum size for l_dx for each comp and resolution*/
 			if (l_dx < UINT_MAX)
-	            *p_dx_min = grok_min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
+	            *p_dx_min = std::min<uint32_t>(*p_dx_min, (uint32_t)l_dx);
 			if (l_dy < UINT_MAX)
-				*p_dy_min = grok_min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
+				*p_dy_min = std::min<uint32_t>(*p_dy_min, (uint32_t)l_dy);
 
             /* various calculations of extents*/
             l_rx0 = grk_uint_ceildivpow2(l_tcx0, l_level_no);
@@ -1043,7 +1043,7 @@ static void pi_update_decode_poc (pi_iterator_t * p_pi,
         l_current_pi->poc.precno0 = 0;
         l_current_pi->poc.resno1 = l_current_poc->resno1; /* Resolution Level Index #0 (End) */
         l_current_pi->poc.compno1 = l_current_poc->compno1; /* Component Index #0 (End) */
-		l_current_pi->poc.layno1 = grok_min<uint32_t>(l_current_poc->layno1, p_tcp->numlayers); /* Layer Index #0 (End) */
+		l_current_pi->poc.layno1 = std::min<uint32_t>(l_current_poc->layno1, p_tcp->numlayers); /* Layer Index #0 (End) */
         l_current_pi->poc.precno1 = p_max_precision;
         ++l_current_pi;
         ++l_current_poc;

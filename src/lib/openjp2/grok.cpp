@@ -142,9 +142,9 @@ static uint64_t opj_get_data_length_from_file (FILE * p_file)
 {
     int64_t file_length = 0;
 
-    OPJ_FSEEK(p_file, 0, SEEK_END);
-    file_length = (int64_t)OPJ_FTELL(p_file);
-    OPJ_FSEEK(p_file, 0, SEEK_SET);
+    GROK_FSEEK(p_file, 0, SEEK_END);
+    file_length = (int64_t)GROK_FTELL(p_file);
+    GROK_FSEEK(p_file, 0, SEEK_SET);
 
     return (uint64_t)file_length;
 }
@@ -156,7 +156,7 @@ static size_t grk_write_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p_
 
 static int64_t opj_skip_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 {
-    if (OPJ_FSEEK(p_user_data,p_nb_bytes,SEEK_CUR)) {
+    if (GROK_FSEEK(p_user_data,p_nb_bytes,SEEK_CUR)) {
         return -1;
     }
 
@@ -165,7 +165,7 @@ static int64_t opj_skip_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 
 static bool opj_seek_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 {
-    if (OPJ_FSEEK(p_user_data,p_nb_bytes,SEEK_SET)) {
+    if (GROK_FSEEK(p_user_data,p_nb_bytes,SEEK_SET)) {
         return false;
     }
 
