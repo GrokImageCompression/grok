@@ -53,7 +53,7 @@
 #define OPJ_SKIP_POISON
 #include "grok_includes.h"
 
-#if defined(OPJ_HAVE_MALLOC_H) && defined(OPJ_HAVE_MEMALIGN)
+#if defined(GROK_HAVE_MALLOC_H) && defined(GROK_HAVE_MEMALIGN)
 # include <malloc.h>
 #endif
 
@@ -76,7 +76,7 @@ static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
         return NULL;
     }
 
-#if defined(OPJ_HAVE_POSIX_MEMALIGN)
+#if defined(GROK_HAVE_POSIX_MEMALIGN)
     /* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
      * This function was introduced in POSIX 1003.1d. Although this function is
      * superseded by aligned_alloc, it is more portable to older POSIX systems
@@ -85,10 +85,10 @@ static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
         ptr = NULL;
     }
     /* older linux */
-#elif defined(OPJ_HAVE_MEMALIGN)
+#elif defined(GROK_HAVE_MEMALIGN)
     ptr = memalign( alignment, size );
     /* _MSC_VER */
-#elif defined(OPJ_HAVE__ALIGNED_MALLOC)
+#elif defined(GROK_HAVE__ALIGNED_MALLOC)
     ptr = _aligned_malloc(size, alignment);
 #else
     /*
@@ -140,7 +140,7 @@ static inline void *grok_aligned_realloc_n(void *ptr, size_t alignment, size_t n
     }
 
     /* no portable aligned realloc */
-#if defined(OPJ_HAVE_POSIX_MEMALIGN) || defined(OPJ_HAVE_MEMALIGN)
+#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
     /* glibc doc states one can mix aligned malloc with realloc */
     r_ptr = realloc( ptr, new_size ); /* fast path */
     /* we simply use `size_t` to cast, since we are only interest in binary AND
@@ -158,7 +158,7 @@ static inline void *grok_aligned_realloc_n(void *ptr, size_t alignment, size_t n
         r_ptr = a_ptr;
     }
     /* _MSC_VER */
-#elif defined(OPJ_HAVE__ALIGNED_MALLOC)
+#elif defined(GROK_HAVE__ALIGNED_MALLOC)
     r_ptr = _aligned_realloc( ptr, new_size, alignment );
 #else
     if (ptr == NULL) {
@@ -235,9 +235,9 @@ void * grok_aligned_realloc(void *ptr, size_t size)
 
 void grok_aligned_free(void* ptr)
 {
-#if defined(OPJ_HAVE_POSIX_MEMALIGN) || defined(OPJ_HAVE_MEMALIGN)
+#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
     free( ptr );
-#elif defined(OPJ_HAVE__ALIGNED_MALLOC)
+#elif defined(GROK_HAVE__ALIGNED_MALLOC)
     _aligned_free( ptr );
 #else
     /* Generic implementation has malloced pointer stored in front of used area */

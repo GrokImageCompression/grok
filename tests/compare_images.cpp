@@ -59,9 +59,9 @@ extern "C" {
 #include "format_defs.h"
 #include "convert.h"
 
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
 #include <tiffio.h> /* TIFFSetWarningHandler */
-#endif /* OPJ_HAVE_LIBTIFF */
+#endif /* GROK_HAVE_LIBTIFF */
 
 }
 #include <string>
@@ -303,7 +303,7 @@ static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX
 	parameters.decod_format = TIF_DFMT;
 	strcpy(parameters.infile, filename);
 
-#ifdef OPJ_HAVE_LIBPNG
+#ifdef GROK_HAVE_LIBPNG
 	image_read = pngtoimage(filename, &parameters);
 #endif
 	if (!image_read) {
@@ -326,7 +326,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
      * TIFFOpen: /.../data/baseline/nonregression/jp2_1.tif: Cannot open.
      * On Win32 this open a message box by default, so remove it from the test suite:
      */
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
     TIFFSetWarningHandler(nullptr);
     TIFFSetErrorHandler(nullptr);
 #endif
@@ -338,7 +338,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     parameters.decod_format = TIF_DFMT;
     strcpy(parameters.infile, filename);
 
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
     image_read = tiftoimage(filename, &parameters, false);
 #endif
     if (!image_read) {
@@ -447,7 +447,7 @@ cleanup:
     return image;
 }
 
-#if defined(OPJ_HAVE_LIBPNG)
+#if defined(GROK_HAVE_LIBPNG)
 /*******************************************************************************
  *
  *******************************************************************************/
@@ -1032,7 +1032,7 @@ int main(int argc, char **argv)
          printf("<DartMeasurement name=\"PEAK_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n", it_comp, PEAK);
          printf("<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n", it_comp, MSE);
 
-#ifdef OPJ_HAVE_LIBPNG
+#ifdef GROK_HAVE_LIBPNG
                 {
 					char *filenamePNGbase_it_comp = nullptr;
 					char* filenamePNGtest_it_comp = nullptr;

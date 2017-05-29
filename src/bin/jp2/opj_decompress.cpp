@@ -80,7 +80,7 @@ extern "C" {
 #include "openjpeg.h"
 #include "convert.h"
 
-#ifdef OPJ_HAVE_LIBLCMS
+#ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
 #include "color.h"
@@ -1180,7 +1180,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 
 bool store_file_to_disk = true;
 
-#ifdef OPJ_HAVE_LIBLCMS
+#ifdef GROK_HAVE_LIBLCMS
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
 	(void)ContextID;
 	(void)ErrorCode;
@@ -1342,7 +1342,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 
-#ifdef OPJ_HAVE_LIBLCMS
+#ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
 #endif
 
@@ -1354,7 +1354,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		return EXIT_FAILURE;
 	}
 
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 	initParams->initialized = true;
@@ -1708,7 +1708,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	// (unless we are forcing to RGB). Otherwise, we apply the profile
 	if (image->icc_profile_buf && 
 		(info->decoder_parameters->force_rgb || (info->decoder_parameters->cod_format != TIF_DFMT &&	info->decoder_parameters->cod_format != PNG_DFMT) ) ) {
-#if defined(OPJ_HAVE_LIBLCMS)
+#if defined(GROK_HAVE_LIBLCMS)
 		if (image->icc_profile_len) {
 			color_apply_icc_profile(image, info->decoder_parameters->force_rgb);
 		}
@@ -1820,7 +1820,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
 			if (imagetotif(image, parameters->outfile, parameters->compression, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
@@ -1831,7 +1831,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
-#endif /* OPJ_HAVE_LIBTIFF */
+#endif /* GROK_HAVE_LIBTIFF */
 		case RAW_DFMT:			/* RAW */
 			if (imagetoraw(image, parameters->outfile)) {
 				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", parameters->outfile);
@@ -1864,7 +1864,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
-#ifdef OPJ_HAVE_LIBPNG
+#ifdef GROK_HAVE_LIBPNG
 		case PNG_DFMT:			/* PNG */
 			if (imagetopng(image, parameters->outfile, parameters->compressionLevel)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
@@ -1875,9 +1875,9 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
-#endif /* OPJ_HAVE_LIBPNG */
+#endif /* GROK_HAVE_LIBPNG */
 			/* Can happen if output file is TIFF or PNG
-			* and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
+			* and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 			*/
 		default:
 			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);

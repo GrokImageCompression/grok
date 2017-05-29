@@ -145,7 +145,7 @@ endif()
 
 if (APPLE)
 	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${GROK_INSTALL_LIB_DIR}")
-	option(OPJ_USE_DSYMUTIL "Call dsymutil on binaries after build." OFF)
+	option(GROK_USE_DSYMUTIL "Call dsymutil on binaries after build." OFF)
 endif()
 
 #-----------------------------------------------------------------------------
@@ -218,20 +218,20 @@ CHECK_INCLUDE_FILE("unistd.h"       HAVE_UNISTD_H)
 
 # Enable Large file support
 include(TestLargeFiles)
-OPJ_TEST_LARGE_FILES(OPJ_HAVE_LARGEFILES)
+OPJ_TEST_LARGE_FILES(GROK_HAVE_LARGEFILES)
 
 # Allocating Aligned Memory Blocks
 include(CheckIncludeFiles)
-check_include_files(malloc.h OPJ_HAVE_MALLOC_H)
+check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 # _aligned_alloc https://msdn.microsoft.com/en-us/library/8z34s9c6.aspx
-check_symbol_exists(_aligned_malloc malloc.h OPJ_HAVE__ALIGNED_MALLOC)
+check_symbol_exists(_aligned_malloc malloc.h GROK_HAVE__ALIGNED_MALLOC)
 # posix_memalign (needs _POSIX_C_SOURCE >= 200112L on Linux)
 set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200112L)
-check_symbol_exists(posix_memalign stdlib.h OPJ_HAVE_POSIX_MEMALIGN)
+check_symbol_exists(posix_memalign stdlib.h GROK_HAVE_POSIX_MEMALIGN)
 unset(CMAKE_REQUIRED_DEFINITIONS)
 # memalign (obsolete)
-check_symbol_exists(memalign malloc.h OPJ_HAVE_MEMALIGN)
+check_symbol_exists(memalign malloc.h GROK_HAVE_MEMALIGN)
 #-----------------------------------------------------------------------------
 # Build Library
 add_subdirectory(src/lib)

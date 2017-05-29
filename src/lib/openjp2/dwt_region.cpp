@@ -571,8 +571,6 @@ static void region_decode97_lift(coeff97_t* l,
     auto count_max = std::min<int64_t>(count_high, maximum);
 
     assert(count_low <= count_high);
-    assert(maximum <= (int64_t)count);
-
     if (count_low > 0) {
         fw += count_low << 3;
         fl = fw - 8;

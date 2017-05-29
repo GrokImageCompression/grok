@@ -1,5 +1,5 @@
 /* create opj_config.h for CMake */
-#cmakedefine OPJ_HAVE_STDINT_H 		@OPJ_HAVE_STDINT_H@
+#cmakedefine GROK_HAVE_STDINT_H 		@GROK_HAVE_STDINT_H@
 
 /*--------------------------------------------------------------------------*/
 /* OpenJPEG Versioning                                                      */

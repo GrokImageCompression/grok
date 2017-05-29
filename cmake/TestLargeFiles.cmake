@@ -7,7 +7,7 @@
 #  _LARGE_FILES
 #  _LARGEFILE_SOURCE
 #  _FILE_OFFSET_BITS 64
-#  OPJ_HAVE_FSEEKO
+#  GROK_HAVE_FSEEKO
 #
 #  However, it is YOUR job to make sure these defines are set in a #cmakedefine so they
 #  end up in a config.h file that is included in your source if necessary!
@@ -113,10 +113,10 @@ macro(OPJ_TEST_LARGE_FILES VARIABLE)
         endif()
 
 	    if(FSEEKO_COMPILE_OK)
-                set(OPJ_HAVE_FSEEKO ON CACHE INTERNAL "Result of test for fseeko/ftello")
+                set(GROK_HAVE_FSEEKO ON CACHE INTERNAL "Result of test for fseeko/ftello")
         else()
                 message(STATUS "Checking for fseeko/ftello - not found")
-                set(OPJ_HAVE_FSEEKO OFF CACHE INTERNAL "Result of test for fseeko/ftello")
+                set(GROK_HAVE_FSEEKO OFF CACHE INTERNAL "Result of test for fseeko/ftello")
         endif()
 
 	    if(FILE64_OK AND FSEEKO_COMPILE_OK)

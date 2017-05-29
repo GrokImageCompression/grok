@@ -130,6 +130,8 @@ extern "C" {
 	extern int imagetopng(opj_image_t *image, const char *write_idf, int32_t compressionLevel);
 	extern opj_image_t* pngtoimage(const char *filename, opj_cparameters_t *parameters);
 
+	// JPEG conversion
+	extern opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters);
 }
 
 

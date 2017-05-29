@@ -14,6 +14,7 @@ include_directories(
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
+  &{JPEG_INCLUDE_DIRNAME}
   )
 
  if(WIN32)
@@ -45,6 +46,8 @@ target_link_libraries(compare_images
   ${GROK_LIBRARY_NAME}
   ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
   )
+
+
 # To support universal exe:
 if(ZLIB_FOUND AND APPLE)
   target_link_libraries(compare_images z)
@@ -98,7 +101,7 @@ add_test(NAME rta5 COMMAND j2k_random_tile_access tte5.j2k)
 set_property(TEST rta5 APPEND PROPERTY DEPENDS tte5)
 
 # No image send to the dashboard if lib PNG is not available.
-if(NOT OPJ_HAVE_LIBPNG)
+if(NOT GROK_HAVE_LIBPNG)
   message(WARNING "Lib PNG seems to be not available: if you want run the non-regression tests with images reported to the dashboard, you need it (try BUILD_THIRDPARTY)")
 endif()
 
