@@ -83,7 +83,7 @@
   ftello() only on systems with special LFS support since some systems
   (e.g. FreeBSD) support a 64-bit off_t by default.
 */
-#if defined(OPJ_HAVE_FSEEKO) && !defined(fseek)
+#if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
 #  define fseek  fseeko
 #  define ftell  ftello
 #endif

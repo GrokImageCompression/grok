@@ -65,7 +65,7 @@ extern "C" {
 #include "openjpeg.h"
 #include "color.h"
 
-#ifdef OPJ_HAVE_LIBLCMS
+#ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
 
@@ -431,7 +431,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 
 }/* color_sycc_to_rgb() */
 
-#if defined(OPJ_HAVE_LIBLCMS)
+#if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
 void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
@@ -849,7 +849,7 @@ void color_cielab_to_rgb(opj_image_t *image)
     fprintf(stderr,"%s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__,__LINE__, enumcs);
 }/* color_apply_conversion() */
 
-#endif /* OPJ_HAVE_LIBLCMS */
+#endif /* GROK_HAVE_LIBLCMS */
 
 
 int color_cmyk_to_rgb(opj_image_t *image)

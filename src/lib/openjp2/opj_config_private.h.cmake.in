@@ -1,5 +1,5 @@
 /* create opj_config_private.h for CMake */
-#cmakedefine OPJ_HAVE_INTTYPES_H 	@OPJ_HAVE_INTTYPES_H@
+#cmakedefine GROK_HAVE_INTTYPES_H 	@GROK_HAVE_INTTYPES_H@
 
 #define OPJ_PACKAGE_VERSION "@PACKAGE_VERSION@"
 
@@ -15,21 +15,21 @@
 #cmakedefine _LARGEFILE_SOURCE
 #cmakedefine _LARGE_FILES
 #cmakedefine _FILE_OFFSET_BITS @_FILE_OFFSET_BITS@
-#cmakedefine OPJ_HAVE_FSEEKO @OPJ_HAVE_FSEEKO@
+#cmakedefine GROK_HAVE_FSEEKO @GROK_HAVE_FSEEKO@
 
 /* find whether or not have <malloc.h> */
-#cmakedefine OPJ_HAVE_MALLOC_H
+#cmakedefine GROK_HAVE_MALLOC_H
 /* check if function `aligned_alloc` exists */
-#cmakedefine OPJ_HAVE_ALIGNED_ALLOC
+#cmakedefine GROK_HAVE_ALIGNED_ALLOC
 /* check if function `_aligned_malloc` exists */
-#cmakedefine OPJ_HAVE__ALIGNED_MALLOC
+#cmakedefine GROK_HAVE__ALIGNED_MALLOC
 /* check if function `memalign` exists */
-#cmakedefine OPJ_HAVE_MEMALIGN
+#cmakedefine GROK_HAVE_MEMALIGN
 /* check if function `posix_memalign` exists */
-#cmakedefine OPJ_HAVE_POSIX_MEMALIGN
+#cmakedefine GROK_HAVE_POSIX_MEMALIGN
 
 #if !defined(_POSIX_C_SOURCE)
-#if defined(OPJ_HAVE_FSEEKO) || defined(OPJ_HAVE_POSIX_MEMALIGN)
+#if defined(GROK_HAVE_FSEEKO) || defined(GROK_HAVE_POSIX_MEMALIGN)
 /* Get declarations of fseeko, ftello, posix_memalign. */
 #define _POSIX_C_SOURCE 200112L
 #endif

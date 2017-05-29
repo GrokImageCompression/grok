@@ -169,7 +169,7 @@ if(GROK_CPPCHECK)
   endforeach()
 endif()
 
-if(OPJ_USE_DSYMUTIL)
+if(GROK_USE_DSYMUTIL)
   if(BUILD_SHARED_LIBS)
     add_custom_command(TARGET ${GROK_LIBRARY_NAME} POST_BUILD
     COMMAND "dsymutil" "$<TARGET_SONAME_FILE:${GROK_LIBRARY_NAME}>"

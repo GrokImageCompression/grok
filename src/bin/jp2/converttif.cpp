@@ -63,9 +63,9 @@ extern "C" {
 #include <string.h>
 #include <ctype.h>
 
-#ifndef OPJ_HAVE_LIBTIFF
-# error OPJ_HAVE_LIBTIFF_NOT_DEFINED
-#endif /* OPJ_HAVE_LIBTIFF */
+#ifndef GROK_HAVE_LIBTIFF
+# error GROK_HAVE_LIBTIFF_NOT_DEFINED
+#endif /* GROK_HAVE_LIBTIFF */
 
 #include <tiffio.h>
 #include "openjpeg.h"
@@ -1658,7 +1658,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 			goto cleanup;
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
-#if defined(OPJ_HAVE_LIBLCMS)
+#if defined(GROK_HAVE_LIBLCMS)
 		if (applyICC) {
 			if (image->icc_profile_len) {
 				color_apply_icc_profile(image, false);

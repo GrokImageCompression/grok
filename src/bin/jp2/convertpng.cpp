@@ -69,7 +69,7 @@ extern "C" {
 #include "convert.h"
 #include "color.h"
 
-#ifdef OPJ_HAVE_LIBLCMS
+#ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
 #endif
 

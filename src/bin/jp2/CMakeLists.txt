@@ -16,11 +16,14 @@ set(common_SRCS
 
   )
 
-if(OPJ_HAVE_LIBTIFF)
+if(GROK_HAVE_LIBTIFF)
 	list(APPEND common_SRCS converttif.cpp)
 endif()
-if(OPJ_HAVE_LIBPNG)
+if(GROK_HAVE_LIBPNG)
 	list(APPEND common_SRCS convertpng.cpp)
+endif()
+if(GROK_HAVE_LIBJPEG)
+	list(APPEND common_SRCS convertjpeg.cpp)
 endif()
 
 # Headers file are located here:
@@ -33,6 +36,7 @@ include_directories(
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
+  ${JPEG_INCLUDE_DIRNAME}
   )
 
 if(WIN32)
@@ -50,8 +54,11 @@ foreach(exe opj_decompress opj_compress opj_dump)
     target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
   endif()
   target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
-    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
+    ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}  ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
     )
+
+	
+
   # To support universal exe:
   if(ZLIB_FOUND AND APPLE)
     target_link_libraries(${exe} z)
@@ -68,7 +75,7 @@ foreach(exe opj_decompress opj_compress opj_dump)
     EXPORT OpenJPEGTargets
     DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
   )
-  if(OPJ_USE_DSYMUTIL)
+  if(GROK_USE_DSYMUTIL)
     add_custom_command(TARGET ${exe} POST_BUILD
     COMMAND "dsymutil" "$<TARGET_FILE:${exe}>"
     COMMENT "dsymutil $<TARGET_FILE:${exe}>"

@@ -53,21 +53,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _OPJ_FORMAT_DEFS_H_
-#define _OPJ_FORMAT_DEFS_H_
+#pragma once
 
-#define J2K_CFMT 0
-#define JP2_CFMT 1
-#define JPT_CFMT 2
+enum {
+	J2K_CFMT,
+	JP2_CFMT,
+	JPT_CFMT,
+	PXM_DFMT,
+	PGX_DFMT,
+	BMP_DFMT,
+	YUV_DFMT,
+	TIF_DFMT,
+	RAW_DFMT, /* MSB / Big Endian */
+	TGA_DFMT,
+	PNG_DFMT,
+	RAWL_DFMT, /* LSB / Little Endian */
+	JPG_DFMT
+};
 
-#define PXM_DFMT 10
-#define PGX_DFMT 11
-#define BMP_DFMT 12
-#define YUV_DFMT 13
-#define TIF_DFMT 14
-#define RAW_DFMT 15 /* MSB / Big Endian */
-#define TGA_DFMT 16
-#define PNG_DFMT 17
-#define RAWL_DFMT 18 /* LSB / Little Endian */
-
-#endif /* _OPJ_FORMAT_DEFS_H_ */

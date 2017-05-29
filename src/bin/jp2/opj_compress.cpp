@@ -381,10 +381,10 @@ static int get_file_format(char *filename)
 {
     unsigned int i;
     static const char *extension[] = {
-        "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
+        "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "jpg", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
     };
     static const int format[] = {
-        PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
+        PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
     };
     char * ext = strrchr(filename, '.');
     if (ext == NULL)
@@ -665,11 +665,12 @@ static int parse_cmdline_encoder_ex(int argc,
 				case RAWL_DFMT:
 				case TGA_DFMT:
 				case PNG_DFMT:
+				case JPG_DFMT:
 					break;
 				default:
 					fprintf(stderr,
 						"[ERROR] Unknown input file format: %s \n"
-						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.raw or *.tga\n",
+						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
 						infile);
 					return 1;
 			}
@@ -1557,6 +1558,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 		case RAWL_DFMT:
 		case TGA_DFMT:
 		case PNG_DFMT:
+		case JPG_DFMT:
 			break;
 		default:
 			if (info->encoder_parameters->verbose)
@@ -1596,7 +1598,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			}
 			break;
 
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
 		case TIF_DFMT:
 			image = tiftoimage(info->input_file_name, info->encoder_parameters,false);
 			if (!image) {
@@ -1605,7 +1607,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 				goto cleanup;
 			}
 			break;
-#endif /* OPJ_HAVE_LIBTIFF */
+#endif /* GROK_HAVE_LIBTIFF */
 
 		case RAW_DFMT:
 			image = rawtoimage(info->input_file_name, info->encoder_parameters);
@@ -1634,7 +1636,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 			}
 			break;
 
-#ifdef OPJ_HAVE_LIBPNG
+#ifdef GROK_HAVE_LIBPNG
 		case PNG_DFMT:
 			image = pngtoimage(info->input_file_name, info->encoder_parameters);
 			if (!image) {
@@ -1643,11 +1645,22 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 				goto cleanup;
 			}
 			break;
-#endif /* OPJ_HAVE_LIBPNG */
+#endif /* GROK_HAVE_LIBPNG */
+
+#ifdef GROK_HAVE_LIBJPEG
+		case JPG_DFMT:
+			image = jpegtoimage(info->input_file_name, info->encoder_parameters);
+			if (!image) {
+				fprintf(stderr, "Unable to load jpeg file\n");
+				bSuccess = false;
+				goto cleanup;
+			}
+			break;
+#endif /* GROK_HAVE_LIBPNG */
 		}
 
 		/* Can happen if input file is TIFF or PNG
-		* and OPJ_HAVE_LIBTIF or OPJ_HAVE_LIBPNG is undefined
+		* and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 		*/
 		if (!image) {
 			fprintf(stderr, "Unable to load file: no image generated.\n");
@@ -1833,7 +1846,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		return 1;
 	}
 
-#ifdef OPJ_HAVE_LIBTIFF
+#ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
 	
