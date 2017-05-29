@@ -197,6 +197,12 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 	*/
 
 	bps = cinfo.data_precision;
+	if (bps != 8) {
+		fprintf(stderr, "jpegtoimage: Unsupported image precision %d\n", bps);
+		success = false;
+		goto cleanup;
+	}
+
 	numcomps = cinfo.output_components;
 	w = cinfo.image_width;
 	h = cinfo.image_height;
