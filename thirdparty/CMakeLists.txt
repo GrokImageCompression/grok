@@ -99,7 +99,7 @@ if( BUILD_THIRDPARTY)
   set(LCMS_INCLUDE_DIRNAME ${GROK_SOURCE_DIR}/thirdparty/liblcms2/include PARENT_SCOPE) #
   set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
 else(BUILD_THIRDPARTY)
-  find_package(lcms2)
+  find_package(LCMS2)
   if(LCMS2_FOUND)
     message(STATUS "Your system seems to have a LCMS2 lib available, we will use it")
     set(GROK_HAVE_LIBLCMS 1 PARENT_SCOPE)
