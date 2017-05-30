@@ -1392,7 +1392,7 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
  * CINEMA                 : 12 bit precision
  */
-opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, bool applyICC)
+opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 {
     uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
@@ -1658,19 +1658,6 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, boo
 			goto cleanup;
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
-#if defined(GROK_HAVE_LIBLCMS)
-		if (applyICC) {
-			if (image->icc_profile_len) {
-				color_apply_icc_profile(image, false);
-			}
-			else {
-				color_cielab_to_rgb(image);
-			}
-			free(image->icc_profile_buf);
-			image->icc_profile_buf = NULL;
-			image->icc_profile_len = 0;
-		}
-#endif
 	}
 
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)	{

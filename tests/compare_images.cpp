@@ -339,7 +339,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBTIFF
-    image_read = tiftoimage(filename, &parameters, false);
+    image_read = tiftoimage(filename, &parameters);
 #endif
     if (!image_read) {
         fprintf(stderr, "Unable to load TIF file\n");
