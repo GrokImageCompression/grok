@@ -105,7 +105,7 @@ extern "C" {
 	int imagetobmp(opj_image_t *image, const char *outfile);
 
 	/* TIFF conversion*/
-	opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters, bool applyICC);
+	opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters);
 	int imagetotif(opj_image_t *image, const char *outfile, uint32_t compression, bool verbose);
 	void tiffSetErrorAndWarningHandlers(bool verbose);
 	/**
