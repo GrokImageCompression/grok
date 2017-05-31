@@ -299,8 +299,8 @@ namespace grk {
 
 		l_current_pi = &l_pi[p_pino];
 		if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
-			/* TODO ADE : add an error */
 			pi_destroy(l_pi, l_nb_pocs);
+			event_msg(p_manager, EVT_ERROR, "t2_encode_packets: Unknown progression order\n");
 			return false;
 		}
 		while (pi_next(l_current_pi)) {
@@ -360,7 +360,8 @@ namespace grk {
 		uint32_t p_maxlayers,
 		uint64_t * p_data_written,
 		uint64_t p_max_len,
-		uint32_t p_tp_pos)
+		uint32_t p_tp_pos,
+		event_mgr_t * p_manager)
 	{
 		opj_image_t *l_image = p_t2->image;
 		cp_t *l_cp = p_t2->cp;
@@ -388,8 +389,8 @@ namespace grk {
 				pi_init_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos, THRESH_CALC);
 
 				if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
-					/* TODO ADE : add an error */
 					pi_destroy(l_pi, l_nb_pocs);
+					event_msg(p_manager, EVT_ERROR, "t2_decode_packets_simulate: Unknown progression order\n");
 					return false;
 				}
 				while (pi_next(l_current_pi)) {
@@ -468,8 +469,8 @@ namespace grk {
 			 */
 
 			if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
-				/* TODO ADE : add an error */
 				pi_destroy(l_pi, l_nb_pocs);
+				event_msg(p_manager, EVT_ERROR, "t2_decode_packets: Unknown progression order\n");
 				return false;
 			}
 			while (pi_next(l_current_pi)) {

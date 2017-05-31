@@ -134,7 +134,7 @@ static void decode_help_display(void)
     fprintf(stdout,"    OPTIONAL\n");
     fprintf(stdout,"    Output file where file info will be dump.\n");
     fprintf(stdout,"    By default it will be in the stdout.\n");
-    fprintf(stdout,"  -v "); /* FIXME WIP_MSD */
+    fprintf(stdout,"  -v "); 
     fprintf(stdout,"    OPTIONAL\n");
     fprintf(stdout,"    Enable informative messages\n");
     fprintf(stdout,"    By default verbose mode is off.\n");
