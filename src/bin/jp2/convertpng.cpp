@@ -179,34 +179,13 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
     */
 
-	
-	// See if iCCP chunk is present
-	if (png_get_valid(png, info, PNG_INFO_iCCP))
-	{
-		uint32_t ProfileLen;
-		png_bytep ProfileData;
-		int  Compression;
-		png_charp ProfileName;
-
-		if (png_get_iCCP(png,
-			info,
-			&ProfileName,
-			&Compression,
-			&ProfileData,
-			&ProfileLen) == PNG_INFO_iCCP) {
-				image->icc_profile_len = ProfileLen;
-				image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
-				if (!image->icc_profile_buf)
-					return NULL;
-				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
-		}
+	OPJ_COLOR_SPACE colorSpace = OPJ_CLRSPC_UNKNOWN;
+	int srgbIntent = -1;
+	if (png_get_sRGB(png, info, &srgbIntent)) {
+		if (srgbIntent >= 0 && srgbIntent <= 3)
+			colorSpace = OPJ_CLRSPC_SRGB;
 	}
-	else {
-		double fileGamma=0.0;
-		if (png_get_gAMA(png, info, &fileGamma)) {
-			fprintf(stdout, "Warning: input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
-		}
-	}
+ 
 
     png_read_update_info(png, info);
     color_type = png_get_color_type(png, info);
@@ -228,6 +207,10 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
         fprintf(stderr,"pngtoimage: colortype %d is not supported\n", color_type);
         goto fin;
     }
+
+	if (colorSpace == OPJ_CLRSPC_UNKNOWN)
+		colorSpace = (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
+
     cvtCxToPx = convert_32s_CXPX_LUT[nr_comp];
     bit_depth = png_get_bit_depth(png, info);
 
@@ -273,16 +256,13 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
         cmptparm[i].h = height;
     }
 
-    image = opj_image_create(nr_comp, &cmptparm[0], (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY);
-    if(image == NULL) goto fin;
+    image = opj_image_create(nr_comp, &cmptparm[0], colorSpace);
+    if(image == NULL) 
+		goto fin;
     image->x0 = params->image_offset_x0;
     image->y0 = params->image_offset_y0;
     image->x1 = (image->x0 + (width  - 1) * params->subsampling_dx + 1 + image->x0);
     image->y1 = (image->y0 + (height - 1) * params->subsampling_dy + 1 + image->y0);
-
-    row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
-    if(row32s == NULL)
-		goto fin;
 
     /* Set alpha channel. Only non-premultiplied alpha is supported */
     image->comps[nr_comp-1U].alpha = 1U - (nr_comp & 1U);
@@ -290,6 +270,37 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     for(i = 0; i < nr_comp; i++) {
         planes[i] = image->comps[i].data;
     }
+
+	// See if iCCP chunk is present
+	if (png_get_valid(png, info, PNG_INFO_iCCP))
+	{
+		uint32_t ProfileLen	=0;
+		png_bytep ProfileData	=nullptr;
+		int  Compression	=0;
+		png_charp ProfileName	=nullptr;
+		if (png_get_iCCP(png,
+			info,
+			&ProfileName,
+			&Compression,
+			&ProfileData,
+			&ProfileLen) == PNG_INFO_iCCP) {
+				image->icc_profile_len = ProfileLen;
+				image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
+				if (!image->icc_profile_buf)
+					return NULL;
+				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+		}
+	}
+	else {
+		double fileGamma = 0.0;
+		if (png_get_gAMA(png, info, &fileGamma)) {
+			fprintf(stdout, "Warning: input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
+		}
+	}
+
+	row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
+	if (row32s == NULL)
+		goto fin;
 
     for(i = 0; i < height; ++i) {
         cvtXXTo32s(rows[i], row32s, (size_t)width * nr_comp,false);
