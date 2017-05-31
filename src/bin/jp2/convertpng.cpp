@@ -291,12 +291,26 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
 		}
 	}
-	else {
-		double fileGamma = 0.0;
-		if (png_get_gAMA(png, info, &fileGamma)) {
-			fprintf(stdout, "Warning: input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
-		}
+
+	if (params->verbose && png_get_valid(png, info, PNG_INFO_gAMA)) {
+		fprintf(stdout, "Warning: input PNG contains gamma value; this will not be stored in compressed image.\n");
 	}
+
+	if (params->verbose &&  png_get_valid(png, info, PNG_INFO_cHRM)) {
+		fprintf(stdout, "Warning: input PNG contains chroma information which will not be stored in compressed image.\n");
+	}
+
+	/*
+	double fileGamma = 0.0;
+	if (png_get_gAMA(png, info, &fileGamma)) {
+		fprintf(stdout, "Warning: input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
+	}
+	double wpx, wpy, rx, ry, gx, gy, bx, by; // white point and primaries
+	if (png_get_cHRM(png, info, &wpx, &wpy, &rx, &ry, &gx, &gy, &bx, &by)) 	{
+		fprintf(stdout, "Warning: input PNG contains chroma information which will not be stored in compressed image.\n");
+	}
+	*/
+
 
 	row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
 	if (row32s == NULL)
