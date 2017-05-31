@@ -2285,7 +2285,7 @@ static bool j2k_read_siz(j2k_t *p_j2k,
         ++l_current_tile_param;
     }
 
-    p_j2k->m_specific_param.m_decoder.m_state =  J2K_DEC_STATE_MH; /* FIXME J2K_DEC_STATE_MH; */
+    p_j2k->m_specific_param.m_decoder.m_state =  J2K_DEC_STATE_MH;
     opj_image_comp_header_update(l_image,l_cp);
 
     return true;
@@ -3131,32 +3131,32 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
     assert(l_current_poc_nb < 32);
 
     /* now poc is in use.*/
-    l_tcp->POC = 1;
+l_tcp->POC = 1;
 
-    l_current_poc = &l_tcp->pocs[l_old_poc_nb];
-    for     (i = l_old_poc_nb; i < l_current_poc_nb; ++i) {
-        grk_read_bytes(p_header_data,&(l_current_poc->resno0),1);                               /* RSpoc_i */
-        ++p_header_data;
-        grk_read_bytes(p_header_data,&(l_current_poc->compno0),l_comp_room);    /* CSpoc_i */
-        p_header_data+=l_comp_room;
-        grk_read_bytes(p_header_data,&(l_current_poc->layno1),2);                               /* LYEpoc_i */
-        /* make sure layer end is in acceptable bounds */
-        l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
-        p_header_data+=2;
-        grk_read_bytes(p_header_data,&(l_current_poc->resno1),1);                               /* REpoc_i */
-        ++p_header_data;
-        grk_read_bytes(p_header_data,&(l_current_poc->compno1),l_comp_room);    /* CEpoc_i */
-        p_header_data+=l_comp_room;
-        grk_read_bytes(p_header_data,&l_tmp,1);                                                                 /* Ppoc_i */
-        ++p_header_data;
-        l_current_poc->prg = (OPJ_PROG_ORDER) l_tmp;
-        /* make sure comp is in acceptable bounds */
-        l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
-        ++l_current_poc;
-    }
+l_current_poc = &l_tcp->pocs[l_old_poc_nb];
+for (i = l_old_poc_nb; i < l_current_poc_nb; ++i) {
+	grk_read_bytes(p_header_data, &(l_current_poc->resno0), 1);                               /* RSpoc_i */
+	++p_header_data;
+	grk_read_bytes(p_header_data, &(l_current_poc->compno0), l_comp_room);    /* CSpoc_i */
+	p_header_data += l_comp_room;
+	grk_read_bytes(p_header_data, &(l_current_poc->layno1), 2);                               /* LYEpoc_i */
+	/* make sure layer end is in acceptable bounds */
+	l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
+	p_header_data += 2;
+	grk_read_bytes(p_header_data, &(l_current_poc->resno1), 1);                               /* REpoc_i */
+	++p_header_data;
+	grk_read_bytes(p_header_data, &(l_current_poc->compno1), l_comp_room);    /* CEpoc_i */
+	p_header_data += l_comp_room;
+	grk_read_bytes(p_header_data, &l_tmp, 1);                                                                 /* Ppoc_i */
+	++p_header_data;
+	l_current_poc->prg = (OPJ_PROG_ORDER)l_tmp;
+	/* make sure comp is in acceptable bounds */
+	l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
+	++l_current_poc;
+}
 
-    l_tcp->numpocs = l_current_poc_nb - 1;
-    return true;
+l_tcp->numpocs = l_current_poc_nb - 1;
+return true;
 }
 
 /**
@@ -3167,36 +3167,36 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
  * @param       p_header_size   the size of the data contained in the TLM marker.
  * @param       p_manager               the user event manager.
 */
-static bool j2k_read_crg (  j2k_t *p_j2k,
-                                uint8_t * p_header_data,
-                                uint32_t p_header_size,
-                                event_mgr_t * p_manager
-                             )
+static bool j2k_read_crg(j2k_t *p_j2k,
+	uint8_t * p_header_data,
+	uint32_t p_header_size,
+	event_mgr_t * p_manager
+)
 {
-    uint32_t l_nb_comp;
-    /* preconditions */
-    assert(p_header_data != nullptr);
-    assert(p_j2k != nullptr);
-    assert(p_manager != nullptr);
+	uint32_t l_nb_comp;
+	/* preconditions */
+	assert(p_header_data != nullptr);
+	assert(p_j2k != nullptr);
+	assert(p_manager != nullptr);
 
-    l_nb_comp = p_j2k->m_private_image->numcomps;
+	l_nb_comp = p_j2k->m_private_image->numcomps;
 
-    if (p_header_size != l_nb_comp *4) {
-        event_msg(p_manager, EVT_ERROR, "Error reading CRG marker\n");
-        return false;
-    }
-    /* Do not care of this at the moment since only local variables are set here */
-    /*
-    for
-            (i = 0; i < l_nb_comp; ++i)
-    {
-            grk_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
-            p_header_data+=2;
-            grk_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
-            p_header_data+=2;
-    }
-    */
-    return true;
+	if (p_header_size != l_nb_comp * 4) {
+		event_msg(p_manager, EVT_ERROR, "Error reading CRG marker\n");
+		return false;
+	}
+	/* Do not care of this at the moment since only local variables are set here */
+	/*
+	for
+			(i = 0; i < l_nb_comp; ++i)
+	{
+			grk_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
+			p_header_data+=2;
+			grk_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
+			p_header_data+=2;
+	}
+	*/
+	return true;
 }
 
 /**
@@ -3207,51 +3207,57 @@ static bool j2k_read_crg (  j2k_t *p_j2k,
  * @param       p_header_size   the size of the data contained in the TLM marker.
  * @param       p_manager               the user event manager.
 */
-static bool j2k_read_tlm (  j2k_t *p_j2k,
-                                uint8_t * p_header_data,
-                                uint32_t p_header_size,
-                                event_mgr_t * p_manager
-                             )
+static bool j2k_read_tlm(j2k_t *p_j2k,
+	uint8_t * p_header_data,
+	uint32_t p_header_size,
+	event_mgr_t * p_manager
+)
 {
-    uint32_t l_Ztlm, l_Stlm, l_ST, l_SP, l_tot_num_tp_remaining, l_quotient, l_Ptlm_size;
-    /* preconditions */
-    assert(p_header_data != nullptr);
-    assert(p_j2k != nullptr);
-    assert(p_manager != nullptr);
+	uint32_t i_TLM, L;
+	uint32_t L_iT, L_iTP, l_tot_num_tp_remaining, l_quotient, l_Ptlm_size;
+	/* preconditions */
+	assert(p_header_data != nullptr);
+	assert(p_j2k != nullptr);
+	assert(p_manager != nullptr);
 
-    if (p_header_size < 2) {
-        event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
-        return false;
+	if (p_header_size < 2) {
+		event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
+		return false;
+	}
+	p_header_size -= 2;
+
+	grk_read_bytes(p_header_data, &i_TLM, 1);
+	++p_header_data;
+	grk_read_bytes(p_header_data, &L, 1);
+	++p_header_data;
+
+	// 0x70 ==  1110000
+	if ((L & ~0x70) != 0) {
+		event_msg(p_manager, EVT_ERROR, "Illegal L value in TLM marker\n");
+		return false;
+	}
+
+    L_iT = ((L >> 4) & 0x3);	// 0 <= L_iT <= 2
+	L_iTP = (L >> 6) & 0x1;		// 0 <= L_iTP <= 1
+
+    l_Ptlm_size = (L_iTP + 1) * 2;
+
+	l_quotient = l_Ptlm_size + L_iT;
+	if (p_header_size % l_quotient != 0) {
+	    event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
+	   return false;
+	}
+
+    l_tot_num_tp_remaining = p_header_size / l_quotient;
+	uint32_t l_Ttlm_i, l_Ptlm_i;
+    for   (uint32_t i = 0; i < l_tot_num_tp_remaining; ++i)   {
+		if (L_iT) {
+			grk_read_bytes(p_header_data, &l_Ttlm_i, L_iT);
+			p_header_data += L_iT;
+		}
+        grk_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);           
+        p_header_data += l_Ptlm_size;
     }
-    p_header_size -= 2;
-
-    grk_read_bytes(p_header_data,&l_Ztlm,1);                                /* Ztlm */
-    ++p_header_data;
-    grk_read_bytes(p_header_data,&l_Stlm,1);                                /* Stlm */
-    ++p_header_data;
-
-    l_ST = ((l_Stlm >> 4) & 0x3);
-    l_SP = (l_Stlm >> 6) & 0x1;
-
-    l_Ptlm_size = (l_SP + 1) * 2;
-    l_quotient = l_Ptlm_size + l_ST;
-
-    l_tot_num_tp_remaining = p_header_size % l_quotient;
-
-    if (l_tot_num_tp_remaining != 0) {
-        event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
-        return false;
-    }
-    /* FIXME Do not care of this at the moment since only local variables are set here */
-    /*
-    for
-            (i = 0; i < l_tot_num_tp; ++i)
-    {
-            grk_read_bytes(p_header_data,&l_Ttlm_i,l_ST);                           // Ttlm_i
-            p_header_data += l_ST;
-            grk_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);            // Ptlm_i
-            p_header_data += l_Ptlm_size;
-    }*/
     return true;
 }
 

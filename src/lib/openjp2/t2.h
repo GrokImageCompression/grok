@@ -125,7 +125,8 @@ bool t2_encode_packets_simulate(t2_t* t2,
                                   uint32_t maxlayers,
                                   uint64_t * p_data_written,
                                   uint64_t max_len,
-                                  uint32_t tppos);
+                                  uint32_t tppos,
+								event_mgr_t * p_manager);
 
 
 /**

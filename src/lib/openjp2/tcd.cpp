@@ -129,7 +129,8 @@ static bool tcd_t2_encode (     tcd_t *p_tcd,
 
 static bool tcd_rate_allocate_encode(   tcd_t *p_tcd,
 											uint64_t p_max_dest_size,
-											opj_codestream_info_t *p_cstr_info );
+											opj_codestream_info_t *p_cstr_info,
+											event_mgr_t * p_manager);
 
 static bool tcd_layer_needs_rate_control(uint32_t layno, tcp_t *tcd_tcp, encoding_param_t* enc_params);
 
@@ -141,7 +142,8 @@ static void tcd_makelayer_final(tcd_t *tcd,
 
 static bool tcd_pcrd_bisect_simple(tcd_t *tcd,
 	uint64_t * p_data_written,
-	uint64_t len);
+	uint64_t len,
+	event_mgr_t * p_manager);
 
 static void tcd_make_layer_simple(tcd_t *tcd,
 	uint32_t layno,
@@ -150,13 +152,15 @@ static void tcd_make_layer_simple(tcd_t *tcd,
 
 static bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	uint64_t * p_data_written,
-	uint64_t len);
+	uint64_t len,
+	event_mgr_t * p_manager);
 
 
 static void tcd_makelayer_feasible(tcd_t *tcd,
 	uint32_t layno,
 	uint16_t thresh,
-	bool final);
+	bool final,
+	event_mgr_t * p_manager);
 
 
 
@@ -305,7 +309,8 @@ Hybrid rate control using bisect algorithm with optimal truncation points
 */
 bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	uint64_t * p_data_written,
-	uint64_t len)
+	uint64_t len,
+	event_mgr_t * p_manager)
 {
 
 	bool single_lossless = tcd->tcp->numlayers == 1 && !tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
@@ -420,7 +425,8 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 						layno + 1,
 						p_data_written,
 						maxlen,
-						tcd->tp_pos)) {
+						tcd->tp_pos, 
+						p_manager)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -454,7 +460,8 @@ Simple bisect algorithm to calculate optimal layer truncation points
 */
 bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
                             uint64_t * p_data_written,
-                            uint64_t len)
+                            uint64_t len,
+							event_mgr_t * p_manager)
 {
     uint32_t compno, resno, bandno, precno, cblkno, layno;
     uint32_t passno;
@@ -595,7 +602,8 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
 														layno + 1,
 														p_data_written,
 														maxlen,
-														tcd->tp_pos)) {
+														tcd->tp_pos,
+														p_manager)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -1314,7 +1322,6 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
         p_tcd->tcd_tileno = p_tile_no;
         p_tcd->tcp = &p_tcd->cp->tcps[p_tile_no];
 
-        /* INDEX >> "Precinct_nb_X et Precinct_nb_Y" */
         if(p_cstr_info)  {
             uint32_t l_num_packs = 0;
             uint32_t i;
@@ -1333,11 +1340,10 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
             }
             p_cstr_info->tile[p_tile_no].packet = (opj_packet_info_t*) grok_calloc((size_t)p_cstr_info->numcomps * (size_t)p_cstr_info->numlayers * l_num_packs, sizeof(opj_packet_info_t));
             if (!p_cstr_info->tile[p_tile_no].packet) {
-                /* FIXME event manager error callback */
+				event_msg(p_manager, EVT_ERROR, "tcd_encode_tile: Out of memory error when allocating packet memory\n");
                 return false;
             }
         }
-		/* << INDEX */
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			set_context_stream(p_tcd);
 		}
@@ -1350,52 +1356,29 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
 		if (!p_tcd->current_plugin_tile || debugEncode) {
 
 			if (!debugEncode) {
-				/* FIXME _ProfStart(PGROUP_DC_SHIFT); */
-				/*---------------TILE-------------------*/
 				if (!tcd_dc_level_shift_encode(p_tcd)) {
 					return false;
 				}
-				/* FIXME _ProfStop(PGROUP_DC_SHIFT); */
-
-				/* FIXME _ProfStart(PGROUP_MCT); */
 				if (!tcd_mct_encode(p_tcd)) {
 					return false;
 				}
-				/* FIXME _ProfStop(PGROUP_MCT); */
 			}
-
 			if (!debugEncode || debugMCT) {
-				/* FIXME _ProfStart(PGROUP_DWT); */
 				if (!tcd_dwt_encode(p_tcd)) {
 					return false;
 				}
-				/* FIXME  _ProfStop(PGROUP_DWT); */
 			}
-
-
-			/* FIXME  _ProfStart(PGROUP_T1); */
 			if (!tcd_t1_encode(p_tcd)) {
 				return false;
 			}
-			/* FIXME _ProfStop(PGROUP_T1); */
-
 		}
-
-		/* FIXME _ProfStart(PGROUP_RATE); */
-		if (!tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info)) {
+		if (!tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info, p_manager)) {
 			return false;
 		}
-		/* FIXME _ProfStop(PGROUP_RATE); */
-
     }
-    /*--------------TIER2------------------*/
-
-    /* INDEX */
     if (p_cstr_info) {
         p_cstr_info->index_write = 1;
     }
-    /* FIXME _ProfStart(PGROUP_T2); */
-
     if (! tcd_t2_encode(p_tcd,
 							p_dest,
 							p_data_written,
@@ -1404,10 +1387,6 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
 							p_manager)) {
         return false;
     }
-    /* FIXME _ProfStop(PGROUP_T2); */
-
-    /*---------------CLEAN-------------------*/
-
     return true;
 }
 
@@ -2237,7 +2216,8 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
 
 static bool tcd_rate_allocate_encode(  tcd_t *p_tcd,
 											uint64_t p_max_dest_size,
-											opj_codestream_info_t *p_cstr_info )
+											opj_codestream_info_t *p_cstr_info,
+											event_mgr_t * p_manager)
 {
     cp_t * l_cp = p_tcd->cp;
     uint64_t l_nb_written = 0;
@@ -2250,17 +2230,17 @@ static bool tcd_rate_allocate_encode(  tcd_t *p_tcd,
         // rate control by rate/distortion or fixed quality 
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size, p_manager)) {
 				return false;
 			}
 			break;
 		case 1:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size, p_manager)) {
 				return false;
 			}
 			break;
 		default:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size, p_manager)) {
 				return false;
 			}
 			break;

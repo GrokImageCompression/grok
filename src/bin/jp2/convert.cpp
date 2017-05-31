@@ -2019,8 +2019,6 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
         return NULL;
     }
     numcomps = raw_cp->rawComp;
-
-    /* FIXME ADE at this point, tcp_mct has not been properly set in calling function */
     if (numcomps == 1) {
         color_space = OPJ_CLRSPC_GRAY;
     } else if ((numcomps >= 3) && (parameters->tcp_mct == 0)) {
