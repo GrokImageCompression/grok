@@ -116,6 +116,8 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     convert_XXx32s_C1R cvtXXTo32s = NULL;
     convert_32s_CXPX cvtCxToPx = NULL;
     int32_t* planes[4];
+	OPJ_COLOR_SPACE colorSpace = OPJ_CLRSPC_UNKNOWN;
+	int srgbIntent = -1;
 
     if((reader = fopen(read_idf, "rb")) == NULL) {
         fprintf(stderr,"pngtoimage: can not open %s\n",read_idf);
@@ -179,8 +181,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
     */
 
-	OPJ_COLOR_SPACE colorSpace = OPJ_CLRSPC_UNKNOWN;
-	int srgbIntent = -1;
+
 	if (png_get_sRGB(png, info, &srgbIntent)) {
 		if (srgbIntent >= 0 && srgbIntent <= 3)
 			colorSpace = OPJ_CLRSPC_SRGB;
