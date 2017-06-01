@@ -116,10 +116,18 @@ my_error_exit(j_common_ptr cinfo)
 * temporary files are deleted if the program is interrupted.  See libjpeg.txt.
 */
 
+struct jpegToImageInfo {
+	jpegToImageInfo() : image(nullptr), success(true), buffer32s(nullptr) {}
+
+	opj_image_t *image;
+	bool success;
+	int32_t* buffer32s;
+};
+
 opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 {
-	opj_image_t *image = NULL;
-	bool success = true;
+	jpegToImageInfo imageInfo;
+
 	int32_t* planes[3];
 	JDIMENSION w=0, h=0;
 	int bps = 0, numcomps = 0;
@@ -127,7 +135,6 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
 	opj_image_cmptparm_t cmptparm[3]; /* mono or RGB */
 	convert_32s_CXPX cvtCxToPx;
-	int32_t* buffer32s = nullptr;
 
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -165,7 +172,7 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 		* We need to clean up the JPEG object, close the input file, and return.
 		*/
 		jpeg_destroy_decompress(&cinfo);
-		success = false;
+		imageInfo.success = false;
 		goto cleanup;
 	}
 	/* Now we can initialize the JPEG decompression object. */
@@ -199,7 +206,7 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 	bps = cinfo.data_precision;
 	if (bps != 8) {
 		fprintf(stderr, "jpegtoimage: Unsupported image precision %d\n", bps);
-		success = false;
+		imageInfo.success = false;
 		goto cleanup;
 	}
 
@@ -223,39 +230,39 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 		cmptparm[j].h = h;
 	}
 	
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
-	if (!image) {
-		success = false;
+	imageInfo.image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	if (!imageInfo.image) {
+		imageInfo.success = false;
 		goto cleanup;
 	}
 	/* set image offset and reference grid */
-	image->x0 = parameters->image_offset_x0;
-	image->x1 = !image->x0 ? (w - 1) * 1 + 1 :
-		image->x0 + (w - 1) * 1 + 1;
-	if (image->x1 <= image->x0) {
+	imageInfo.image->x0 = parameters->image_offset_x0;
+	imageInfo.image->x1 = !imageInfo.image->x0 ? (w - 1) * 1 + 1 :
+		imageInfo.image->x0 + (w - 1) * 1 + 1;
+	if (imageInfo.image->x1 <= imageInfo.image->x0) {
 		fprintf(stderr, "jpegtoimage: Bad value for image->x1(%d) vs. "
-			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
-		success = false;
+			"image->x0(%d)\n\tAborting.\n", imageInfo.image->x1, imageInfo.image->x0);
+		imageInfo.success = false;
 		goto cleanup;
 	}
 
-	image->y0 = parameters->image_offset_y0;
-	image->y1 = !image->y0 ? (h - 1) * 1 + 1 :
-		image->y0 + (h - 1) * 1 + 1;
+	imageInfo.image->y0 = parameters->image_offset_y0;
+	imageInfo.image->y1 = !imageInfo.image->y0 ? (h - 1) * 1 + 1 :
+		imageInfo.image->y0 + (h - 1) * 1 + 1;
 
-	if (image->y1 <= image->y0) {
+	if (imageInfo.image->y1 <= imageInfo.image->y0) {
 		fprintf(stderr, "jpegtoimage: Bad value for image->y1(%d) vs. "
-			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
-		success = false;
+			"image->y0(%d)\n\tAborting.\n", imageInfo.image->y1, imageInfo.image->y0);
+		imageInfo.success = false;
 		goto cleanup;
 	}
 
 
 	for (int j = 0; j < numcomps; j++) {
-		planes[j] = image->comps[j].data;
+		planes[j] = imageInfo.image->comps[j].data;
 	}
 
-	buffer32s = new int32_t[w * numcomps];
+	imageInfo.buffer32s = new int32_t[w * numcomps];
 
 	/* We may need to do some setup of our own at this point before reading
 	* the data.  After jpeg_start_decompress() we have the correct scaled
@@ -269,7 +276,7 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 	buffer = (*cinfo.mem->alloc_sarray)
 		((j_common_ptr)&cinfo, JPOOL_IMAGE, row_stride, 1);
 	if (!buffer) {
-		success = false;
+		imageInfo.success = false;
 		goto cleanup;
 	}
 
@@ -286,8 +293,8 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 		*/
 		(void)jpeg_read_scanlines(&cinfo, buffer, 1);
 
-		cvtJpegTo32s(buffer[0], buffer32s, (size_t)w * numcomps, false);
-		cvtCxToPx(buffer32s, planes, (size_t)w);
+		cvtJpegTo32s(buffer[0], imageInfo.buffer32s, (size_t)w * numcomps, false);
+		cvtCxToPx(imageInfo.buffer32s, planes, (size_t)w);
 
 		planes[0] += w;
 		planes[1] += w;
@@ -316,20 +323,20 @@ cleanup:
 	if (infile)
 		fclose(infile);
 	
-	if (buffer32s)
-		delete[] buffer32s;
+	if (imageInfo.buffer32s)
+		delete[] imageInfo.buffer32s;
 
 	/* At this point you may want to check to see whether any corrupt-data
 	* warnings occurred (test whether jerr.pub.num_warnings is nonzero).
 	*/
 	assert(jerr.pub.num_warnings == 0);
 
-	if (success) {
-		return image;
+	if (imageInfo.success) {
+		return imageInfo.image;
 	}
-	if (image)
-		opj_image_destroy(image);
-	return NULL;
+	if (imageInfo.image)
+		opj_image_destroy(imageInfo.image);
+	return nullptr;
 }/* jpegtoimage() */
 
 
