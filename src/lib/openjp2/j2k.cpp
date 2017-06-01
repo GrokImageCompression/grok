@@ -2342,11 +2342,39 @@ static bool j2k_read_com (  j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_header_data != nullptr);
-    (void)p_header_size;
-	(void)p_j2k;
-	(void)p_header_data;
-	(void)p_manager;
+	assert(p_header_size != 0);
+	
+	if (p_header_size < 2) {
+		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Corrupt COM segment \n");
+		return false;
+	}	else if (p_header_size == 2) {
+		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Empty COM segment. Ignoring \n");
+		return true;
+	}
+	uint32_t commentType;
+	grk_read_bytes(p_header_data, &commentType, 2);
 
+	if (commentType == 0) {
+		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Binary comments not supported. Ignoring \n");
+		return true;
+	}
+	else if (commentType != 1) {
+		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Unrecognized comment type\n");
+		return false;
+	}
+
+	p_header_data += 2;
+	size_t commentSize = p_header_size - 2;
+	if (p_j2k->m_cp.comment)
+		grok_free(p_j2k->m_cp.comment);
+
+	p_j2k->m_cp.comment = (char*)grok_malloc(commentSize + 1U);
+	if (!p_j2k->m_cp.comment) {
+		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Out of memory when allocating for comment \n");
+		return true;
+	}
+	p_j2k->m_cp.comment[commentSize] = 0;
+	memcpy(p_j2k->m_cp.comment, p_header_data, commentSize);
     return true;
 }
 
