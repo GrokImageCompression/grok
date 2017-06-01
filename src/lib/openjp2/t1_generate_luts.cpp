@@ -36,7 +36,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "grok_includes.h"
 
 static int t1_init_ctxno_zc(int f, int orient)
 {
@@ -188,16 +188,16 @@ static int t1_init_ctxno_sc(int f)
     int hc, vc, n;
     n = 0;
 
-    hc = opj_int_min(((f & (T1_SIG_E | T1_SGN_E)) ==
+    hc = std::min<int>(((f & (T1_SIG_E | T1_SGN_E)) ==
                       T1_SIG_E) + ((f & (T1_SIG_W | T1_SGN_W)) == T1_SIG_W),
-                     1) - opj_int_min(((f & (T1_SIG_E | T1_SGN_E)) ==
+                     1) - std::min<int>(((f & (T1_SIG_E | T1_SGN_E)) ==
                                        (T1_SIG_E | T1_SGN_E)) +
                                       ((f & (T1_SIG_W | T1_SGN_W)) ==
                                        (T1_SIG_W | T1_SGN_W)), 1);
 
-    vc = opj_int_min(((f & (T1_SIG_N | T1_SGN_N)) ==
+    vc = std::min<int>(((f & (T1_SIG_N | T1_SGN_N)) ==
                       T1_SIG_N) + ((f & (T1_SIG_S | T1_SGN_S)) == T1_SIG_S),
-                     1) - opj_int_min(((f & (T1_SIG_N | T1_SGN_N)) ==
+                     1) - std::min<int>(((f & (T1_SIG_N | T1_SGN_N)) ==
                                        (T1_SIG_N | T1_SGN_N)) +
                                       ((f & (T1_SIG_S | T1_SGN_S)) ==
                                        (T1_SIG_S | T1_SGN_S)), 1);
@@ -231,16 +231,16 @@ static int t1_init_ctxno_sc_opt(int f)
     int hc, vc, n;
     n = 0;
 
-    hc = opj_int_min(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
+    hc = std::min<int>(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
                       T1_LUT_SIG_E) + ((f & (T1_LUT_SIG_W | T1_LUT_SGN_W)) == T1_LUT_SIG_W),
-                     1) - opj_int_min(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
+                     1) - std::min<int>(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
                                        (T1_LUT_SIG_E | T1_LUT_SGN_E)) +
                                       ((f & (T1_LUT_SIG_W | T1_LUT_SGN_W)) ==
                                        (T1_LUT_SIG_W | T1_LUT_SGN_W)), 1);
 
-    vc = opj_int_min(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
+    vc = std::min<int>(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
                       T1_LUT_SIG_N) + ((f & (T1_LUT_SIG_S | T1_LUT_SGN_S)) == T1_LUT_SIG_S),
-                     1) - opj_int_min(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
+                     1) - std::min<int>(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
                                        (T1_LUT_SIG_N | T1_LUT_SGN_N)) +
                                       ((f & (T1_LUT_SIG_S | T1_LUT_SGN_S)) ==
                                        (T1_LUT_SIG_S | T1_LUT_SGN_S)), 1);
@@ -272,16 +272,16 @@ static int t1_init_spb(int f)
 {
     int hc, vc, n;
 
-    hc = opj_int_min(((f & (T1_SIG_E | T1_SGN_E)) ==
+    hc = std::min<int>(((f & (T1_SIG_E | T1_SGN_E)) ==
                       T1_SIG_E) + ((f & (T1_SIG_W | T1_SGN_W)) == T1_SIG_W),
-                     1) - opj_int_min(((f & (T1_SIG_E | T1_SGN_E)) ==
+                     1) - std::min<int>(((f & (T1_SIG_E | T1_SGN_E)) ==
                                        (T1_SIG_E | T1_SGN_E)) +
                                       ((f & (T1_SIG_W | T1_SGN_W)) ==
                                        (T1_SIG_W | T1_SGN_W)), 1);
 
-    vc = opj_int_min(((f & (T1_SIG_N | T1_SGN_N)) ==
+    vc = std::min<int>(((f & (T1_SIG_N | T1_SGN_N)) ==
                       T1_SIG_N) + ((f & (T1_SIG_S | T1_SGN_S)) == T1_SIG_S),
-                     1) - opj_int_min(((f & (T1_SIG_N | T1_SGN_N)) ==
+                     1) - std::min<int>(((f & (T1_SIG_N | T1_SGN_N)) ==
                                        (T1_SIG_N | T1_SGN_N)) +
                                       ((f & (T1_SIG_S | T1_SGN_S)) ==
                                        (T1_SIG_S | T1_SGN_S)), 1);
@@ -299,16 +299,16 @@ static int t1_init_spb_opt(int f)
 {
     int hc, vc, n;
 
-    hc = opj_int_min(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
+    hc = std::min<int>(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
                       T1_LUT_SIG_E) + ((f & (T1_LUT_SIG_W | T1_LUT_SGN_W)) == T1_LUT_SIG_W),
-                     1) - opj_int_min(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
+                     1) - std::min<int>(((f & (T1_LUT_SIG_E | T1_LUT_SGN_E)) ==
                                        (T1_LUT_SIG_E | T1_LUT_SGN_E)) +
                                       ((f & (T1_LUT_SIG_W | T1_LUT_SGN_W)) ==
                                        (T1_LUT_SIG_W | T1_LUT_SGN_W)), 1);
 
-    vc = opj_int_min(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
+    vc = std::min<int>(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
                       T1_LUT_SIG_N) + ((f & (T1_LUT_SIG_S | T1_LUT_SGN_S)) == T1_LUT_SIG_S),
-                     1) - opj_int_min(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
+                     1) - std::min<int>(((f & (T1_LUT_SIG_N | T1_LUT_SGN_N)) ==
                                        (T1_LUT_SIG_N | T1_LUT_SGN_N)) +
                                       ((f & (T1_LUT_SIG_S | T1_LUT_SGN_S)) ==
                                        (T1_LUT_SIG_S | T1_LUT_SGN_S)), 1);
@@ -437,10 +437,10 @@ int main(int argc, char **argv)
         u = t;
         v = t - 1.5;
         lut_nmsedec_sig[i] =
-            opj_int_max(0,
+            std::max<int>(0,
                         (int) (floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) / pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
         lut_nmsedec_sig0[i] =
-            opj_int_max(0,
+            std::max<int>(0,
                         (int) (floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) / pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
         u = t - 1.0;
         if (i & (1 << (T1_NMSEDEC_BITS - 1))) {
@@ -449,10 +449,10 @@ int main(int argc, char **argv)
             v = t - 0.5;
         }
         lut_nmsedec_ref[i] =
-            opj_int_max(0,
+            std::max<int>(0,
                         (int) (floor((u * u - v * v) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) / pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
         lut_nmsedec_ref0[i] =
-            opj_int_max(0,
+            std::max<int>(0,
                         (int) (floor((u * u) * pow(2, T1_NMSEDEC_FRACBITS) + 0.5) / pow(2, T1_NMSEDEC_FRACBITS) * 8192.0));
     }
 
