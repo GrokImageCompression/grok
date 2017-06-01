@@ -907,13 +907,11 @@ static bool j2k_write_tlm(      j2k_t *p_j2k,
  * @param       p_j2k            J2K codec.
  * @param       p_data           FIXME DOC
  * @param       p_data_written   FIXME DOC
- * @param       p_stream         the stream to write data to.
  * @param       p_manager        the user event manager.
 */
 static bool j2k_write_sot(      j2k_t *p_j2k,
                                     uint8_t * p_data,
                                     uint64_t * p_data_written,
-                                    const stream_private_t *p_stream,
                                     event_mgr_t * p_manager );
 
 /**
@@ -3210,6 +3208,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k,
 	event_mgr_t * p_manager
 )
 {
+	(void)p_j2k;
 	uint32_t i_TLM, L;
 	uint32_t L_iT, L_iTP, l_tot_num_tp_remaining, l_quotient, l_Ptlm_size;
 	/* preconditions */
@@ -3272,6 +3271,7 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
                                 event_mgr_t * p_manager
                              )
 {
+	(void)p_j2k;
     /* preconditions */
     assert(p_header_data != nullptr);
     assert(p_j2k != nullptr);
@@ -3329,6 +3329,7 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
                                 event_mgr_t * p_manager
                              )
 {
+	(void)p_j2k;
     uint32_t l_Zplt, l_tmp, l_packet_len = 0, i;
 
     /* preconditions */
@@ -3759,14 +3760,13 @@ static bool j2k_write_tlm(     j2k_t *p_j2k,
 static bool j2k_write_sot(     j2k_t *p_j2k,
                                    uint8_t * p_data,
                                    uint64_t * p_data_written,
-                                   const stream_private_t *p_stream,
                                    event_mgr_t * p_manager
                              )
 {
+	(void)p_manager;
     /* preconditions */
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
-    assert(p_stream != nullptr);
 
     grk_write_bytes(p_data,J2K_MS_SOT,2);                                   /* SOT */
     p_data += 2;
@@ -4291,6 +4291,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
                                    stream_private_t *p_stream,
                                    event_mgr_t * p_manager )
 {
+	(void)p_manager;
     cp_t * l_cp = nullptr;
     opj_image_t * l_image = nullptr;
     tcp_t * l_tcp = nullptr;
@@ -6320,6 +6321,7 @@ static bool j2k_mct_validation (       j2k_t * p_j2k,
         event_mgr_t * p_manager )
 {
 	(void)p_stream;
+	(void)p_manager;
     bool l_is_valid = true;
     uint32_t i,j;
 
@@ -6530,6 +6532,7 @@ static bool j2k_encoding_validation (  j2k_t * p_j2k,
         stream_private_t *p_stream,
         event_mgr_t * p_manager )
 {
+	(void)p_stream;
     bool l_is_valid = true;
 
     /* preconditions */
@@ -6573,6 +6576,7 @@ static bool j2k_decoding_validation (  j2k_t *p_j2k,
                                         )
 {
 	(void)p_manager;
+	(void)p_stream;
     bool l_is_valid = true;
 
     /* preconditions*/
@@ -6816,6 +6820,7 @@ static bool j2k_copy_default_tcp_and_create_tcd (       j2k_t * p_j2k,
                                                     )
 {
 	(void)p_manager;
+	(void)p_stream;
     tcp_t * l_tcp = nullptr;
     tcp_t * l_default_tcp = nullptr;
     uint32_t l_nb_tiles;
@@ -10147,7 +10152,7 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
 
     l_current_nb_bytes_written = 0;
     l_begin_data = p_data;
-    if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_stream,p_manager)) {
+    if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_manager)) {
         return false;
     }
 
@@ -10233,7 +10238,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
         l_part_tile_size = 0;
         l_begin_data = p_data;
 
-        if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_stream,p_manager)) {
+        if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_manager)) {
             return false;
         }
 
@@ -10273,7 +10278,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
             l_part_tile_size = 0;
             l_begin_data = p_data;
 
-            if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_stream,p_manager)) {
+            if (! j2k_write_sot(p_j2k,p_data,&l_current_nb_bytes_written,p_manager)) {
                 return false;
             }
 

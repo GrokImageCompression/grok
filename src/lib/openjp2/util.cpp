@@ -37,7 +37,7 @@ static inline int64_t grk_int64_ceildiv(int64_t a, int64_t b)
 
 void rect_t::print(void)
 {
-	printf("Rectangle:  [%I64d,%I64d,%I64d,%I64d] \n", x0, y0, x1, y1);
+	printf("Rectangle:  [%" PRId64",%" PRId64",%" PRId64",%" PRId64"] \n", x0, y0, x1, y1);
 }
 
 rect_t::rect_t(void) : x0(0), y0(0), x1(0), y1(0)

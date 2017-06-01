@@ -159,8 +159,7 @@ static bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 static void tcd_makelayer_feasible(tcd_t *tcd,
 	uint32_t layno,
 	uint16_t thresh,
-	bool final,
-	event_mgr_t * p_manager);
+	bool final);
 
 
 
@@ -1821,8 +1820,6 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 			tccp_t * l_tccp					= p_tcd->tcp->tccps + compno;
 			opj_image_comp_t * l_img_comp		= p_tcd->image->comps + compno;
 
-			tcd_resolution_t* l_res			= l_tile_comp->resolutions + l_img_comp->resno_decoded;
-
 			uint32_t scaledTileX0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.x0, l_img_comp->decodeScaleFactor);
 			uint32_t scaledTileY0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.y0, l_img_comp->decodeScaleFactor);
 
@@ -1905,7 +1902,7 @@ static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
  */
 static void tcd_code_block_enc_deallocate (tcd_precinct_t * p_precinct)
 {
-    uint32_t cblkno , l_nb_code_blocks;
+    size_t cblkno , l_nb_code_blocks;
     tcd_cblk_enc_t * l_code_block = p_precinct->cblks.enc;
     if (l_code_block) {
         l_nb_code_blocks = p_precinct->block_size / sizeof(tcd_cblk_enc_t);
