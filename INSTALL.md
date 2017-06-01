@@ -40,8 +40,8 @@ to update the shared library cache.
 ### DOCUMENTATION
 
 To build the Doxygen documentation (Doxygen needs to be found on the system):
-(A 'html' directory is generated in the 'doc' directory)
-  make doc
+(A 'html' directory is generated in the `doc` directory)
+`$ make doc`
 
 Binaries are located in the `bin` directory.
 
@@ -78,19 +78,19 @@ The xcode project files can be generated using:
 ### Compile
 
 cmake can generate project files for the IDE you are using (VS2010, NMake, etc).
-Type 'cmake --help' for available generators on your platform.
+Type `cmake --help` for available generators on your platform.
 
 ### Third Party Libraries
 
-Make sure to build the third party libs (png, zlib ...):
+Make sure to build the third party libs (libpng, zlib etc.):
 
   `-DBUILD_THIRDPARTY:BOOL=ON`
   
 To open JPEG files, you will need to build and install a `libjpeg` compatible library (dev version). Recommended : libjpeg-turbo
 https://github.com/libjpeg-turbo/libjpeg-turbo
 
-If you are building Grok as a dynamic build, and you are also building libjpeg-turbo, then libjpeg-turbo should be built
-with the `WITH_CRT_DLL` flag on, to ensure the DLL version of the C runtime libraries are used. Also, ensure that the Grok
+If you are building Grok as a dynamic build, and you are also building `libjpeg-turbo`, then `libjpeg-turbo` should be built
+with the `WITH_CRT_DLL` flag on, to ensure that the DLL version of the C runtime libraries is used. Also, ensure that the Grok
 cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`, and that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
 
 
