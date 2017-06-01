@@ -40,15 +40,15 @@ struct plugin_debug_mqc_t {
 };
 
 
-static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
+
 typedef uint32_t(*PLUGIN_GET_DEBUG_STATE)(void);
 
 
-static const char* plugin_debug_mqc_next_cxd_method_name = "plugin_debug_mqc_next_cxd";
+
 typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(plugin_debug_mqc_t *mqc, uint32_t d);
 
 
-static const char* plugin_debug_mqc_next_plane_method_name = "plugin_debug_mqc_next_plane";
+
 typedef void  (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(plugin_debug_mqc_t *mqc);
 
 
@@ -68,25 +68,25 @@ struct plugin_encode_user_callback_info_t {
 
 typedef void(*PLUGIN_ENCODE_USER_CALLBACK)(plugin_encode_user_callback_info_t* info);
 
-static const char* plugin_init_method_name = "plugin_init";
+
 typedef bool(*PLUGIN_INIT)(opj_plugin_init_info_t initInfo);
 
 
-static const char* plugin_encode_method_name = "plugin_encode";
+
 typedef int32_t (*PLUGIN_ENCODE)( opj_cparameters_t* encoding_parameters, PLUGIN_ENCODE_USER_CALLBACK callback);
 
 
-static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
+
 typedef int32_t (*PLUGIN_BATCH_ENCODE)(const char* input_dir,
                                        const char* output_dir,
                                        opj_cparameters_t* encoding_parameters,
                                        PLUGIN_ENCODE_USER_CALLBACK userCallback);
 
-static const char* plugin_stop_batch_encode_method_name = "plugin_stop_batch_encode";
+
 typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 
 
-static const char* plugin_is_batch_encode_complete_method_name = "plugin_is_batch_encode_complete";
+
 typedef bool (*PLUGIN_IS_BATCH_ENCODE_COMPLETE)(void);
 
 
@@ -117,20 +117,21 @@ struct plugin_decode_callback_info_t {
 typedef void(*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);
 
 
-static const char* plugin_decode_method_name = "plugin_decode";
+
 typedef int32_t (*PLUGIN_DECODE)(opj_decompress_parameters* decoding_parameters,
                                  PLUGIN_DECODE_USER_CALLBACK userCallback);
 
 
-static const char* plugin_batch_decode_method_name = "plugin_batch_decode";
+
 typedef int32_t (*PLUGIN_BATCH_DECODE)(const char* input_dir,
                                        const char* output_dir,
                                        opj_decompress_parameters* decoding_parameters,
                                        PLUGIN_DECODE_USER_CALLBACK userCallback);
 
-static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decode";
+
 typedef void(*PLUGIN_STOP_BATCH_DECODE)(void);
 
 
 
 }
+
