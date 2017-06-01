@@ -1076,6 +1076,18 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
 Plugin interface implementation
 ***********************************************************************/
 
+
+static const char* plugin_get_debug_state_method_name = "plugin_get_debug_state";
+static const char* plugin_init_method_name = "plugin_init";
+static const char* plugin_encode_method_name = "plugin_encode";
+static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
+static const char* plugin_stop_batch_encode_method_name = "plugin_stop_batch_encode";
+static const char* plugin_is_batch_encode_complete_method_name = "plugin_is_batch_encode_complete";
+static const char* plugin_decode_method_name = "plugin_decode";
+static const char* plugin_batch_decode_method_name = "plugin_batch_decode";
+static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decode";
+
+
 static const char* get_path_separator() {
 #ifdef _WIN32
 	return "\\";

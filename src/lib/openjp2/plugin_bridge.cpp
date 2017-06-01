@@ -312,6 +312,10 @@ void set_context_stream(tcd_t *p_tcd) {
 	}
 }
 
+
+static const char* plugin_debug_mqc_next_cxd_method_name = "plugin_debug_mqc_next_cxd";
+static const char* plugin_debug_mqc_next_plane_method_name = "plugin_debug_mqc_next_plane";
+
 // Debug: these methods wrap plugin methods for parsing a context stream
 void  mqc_next_plane(plugin_debug_mqc_t *mqc) {
 	minpf_plugin_manager* mgr = NULL;
