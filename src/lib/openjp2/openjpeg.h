@@ -641,6 +641,10 @@ typedef struct opj_header_info {
 	uint8_t* xml_data;
 	size_t xml_data_len;
 
+	char* comment;
+	size_t comment_len;
+	bool isBinaryComment;
+
 } opj_header_info_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
