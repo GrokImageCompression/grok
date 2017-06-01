@@ -364,9 +364,11 @@ struct cp_t {
     uint32_t tdx;
     /** YTsiz */
     uint32_t tdy;
-    /** comment */
+	/** comment */
     char *comment;
-    /** number of tiles in width */
+	size_t comment_len;
+	bool isBinaryComment;
+	/** number of tiles in width */
     uint32_t tw;
     /** number of tiles in height */
     uint32_t th;

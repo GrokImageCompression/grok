@@ -2354,13 +2354,9 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 	uint32_t commentType;
 	grk_read_bytes(p_header_data, &commentType, 2);
 
-	if (commentType == 0) {
-		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Binary comments not supported. Ignoring \n");
-		return true;
-	}
-	else if (commentType != 1) {
-		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Unrecognized comment type\n");
-		return false;
+	p_j2k->m_cp.isBinaryComment = commentType == 1;
+	 if (commentType > 1) {
+		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values)\n");
 	}
 
 	p_header_data += 2;
@@ -2368,13 +2364,20 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 	if (p_j2k->m_cp.comment)
 		grok_free(p_j2k->m_cp.comment);
 
-	p_j2k->m_cp.comment = (char*)grok_malloc(commentSize + 1U);
+	size_t commentSizeToAlloc = commentSize;
+	if (!p_j2k->m_cp.isBinaryComment)
+		commentSizeToAlloc++;
+	p_j2k->m_cp.comment = (char*)grok_malloc(commentSizeToAlloc);
 	if (!p_j2k->m_cp.comment) {
-		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Out of memory when allocating for comment \n");
+		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Out of memory when allocating memory for comment \n");
 		return true;
 	}
-	p_j2k->m_cp.comment[commentSize] = 0;
 	memcpy(p_j2k->m_cp.comment, p_header_data, commentSize);
+	p_j2k->m_cp.comment_len = commentSize;
+
+	// make null-terminated string
+	if (!p_j2k->m_cp.isBinaryComment)
+		p_j2k->m_cp.comment[commentSize] = 0;
     return true;
 }
 
@@ -5871,11 +5874,13 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
 
     /* comment string */
     if(parameters->cp_comment) {
-        cp->comment = (char*)grok_malloc(strlen(parameters->cp_comment) + 1U);
+		cp->comment_len = strlen(parameters->cp_comment);
+        cp->comment = (char*)grok_malloc(cp->comment_len + 1U);
         if(!cp->comment) {
             event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
             return false;
         }
+		cp->comment_len = strlen(parameters->cp_comment);
         strcpy(cp->comment, parameters->cp_comment);
     } else {
         /* Create default comment for codestream */
@@ -5889,6 +5894,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
             return false;
         }
         sprintf(cp->comment,"%s%s", comment, version);
+		cp->comment_len = strlen(cp->comment);
     }
 
     /*
@@ -6290,6 +6296,10 @@ bool j2k_read_header(   stream_private_t *p_stream,
 		header_info->cp_tdy = p_j2k->m_cp.tdy;
 
 		header_info->tcp_numlayers = l_tcp->numlayers;
+
+		header_info->comment = p_j2k->m_cp.comment;
+		header_info->comment_len = p_j2k->m_cp.comment_len;
+		header_info->isBinaryComment = p_j2k->m_cp.isBinaryComment;
 	}
 
 
