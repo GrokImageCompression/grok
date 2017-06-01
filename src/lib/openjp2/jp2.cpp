@@ -2262,6 +2262,7 @@ static bool jp2_write_jp(	jp2_t *jp2,
                                 stream_private_t *cio,
                                 event_mgr_t * p_manager )
 {
+	(void)jp2;
     /* 12 bytes will be read */
     uint8_t l_signature_data [12];
 
@@ -2601,6 +2602,7 @@ static bool jp2_default_validation (	jp2_t * jp2,
         event_mgr_t * p_manager
                                        )
 {
+	(void)p_manager;
     bool l_is_valid = true;
     uint32_t i;
 
@@ -3233,6 +3235,8 @@ static bool jp2_setup_encoding_validation (jp2_t *jp2, event_mgr_t * p_manager)
 
 static bool jp2_setup_decoding_validation (jp2_t *jp2, event_mgr_t * p_manager)
 {
+	(void)jp2;
+	(void)p_manager;
     /* preconditions */
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
