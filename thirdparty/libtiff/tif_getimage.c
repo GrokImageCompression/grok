@@ -2241,7 +2241,7 @@ DECLARESepPutFunc(putseparate8bitYCbCr11tile)
 
 static int isInRefBlackWhiteRange(float f)
 {
-    return f >= (float)(-0x7FFFFFFF + 128) && f <= (float)0x7FFFFFFF;
+    return f > (float)(-0x7FFFFFFF + 128) && f < (float)0x7FFFFFFF;
 }
 
 static int
