@@ -455,7 +455,6 @@ static void region_interleave97_h(dwt97_t* restrict buffer,
 
 	int64_t bufferShift = buffer->bufferShiftEven();
     float* restrict buffer_data_ptr = (float*) (buffer->data + bufferShift);
-	int64_t bufferUpperLimit = buffer->dataSize - bufferShift;
     auto count_low = buffer->range_even.x;
     auto count_high = buffer->range_even.y;
 
@@ -509,7 +508,6 @@ static void region_interleave97_h(dwt97_t* restrict buffer,
 
 		bufferShift = buffer->bufferShiftOdd();
         buffer_data_ptr = (float*)(buffer->data + bufferShift);
-		bufferUpperLimit = buffer->dataSize - bufferShift;
         tile_data		+= buffer->s_n;
         size			-= buffer->s_n;
         count_low		= buffer->range_odd.x;

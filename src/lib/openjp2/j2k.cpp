@@ -1314,16 +1314,14 @@ static uint32_t j2k_get_num_tp( cp_t *cp, uint32_t pino, uint32_t tileno);
  * Calculates the total number of tile parts needed by the encoder to
  * encode such an image. If not enough memory is available, then the function return false.
  *
- * @param       p_nb_tiles      pointer that will hold the number of tile parts.
  * @param       cp                      the coding parameters for the image.
+ * @param       p_nb_tiles      pointer that will hold the number of tile parts.
  * @param       image           the image to encode.
- * @param       p_j2k                   the p_j2k encoder.
  * @param       p_manager       the user event manager.
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(   j2k_t *p_j2k,
-                                    cp_t *cp,
+static bool j2k_calculate_tp(        cp_t *cp,
                                     uint32_t * p_nb_tiles,
                                     opj_image_t *image,
                                     event_mgr_t * p_manager);
@@ -1807,8 +1805,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno)
     return tpnum;
 }
 
-static bool j2k_calculate_tp(  j2k_t *p_j2k,
-                                   cp_t *cp,
+static bool j2k_calculate_tp(      cp_t *cp,
                                    uint32_t * p_nb_tiles,
                                    opj_image_t *image,
                                    event_mgr_t * p_manager
@@ -1817,12 +1814,11 @@ static bool j2k_calculate_tp(  j2k_t *p_j2k,
     uint32_t pino,tileno;
     uint32_t l_nb_tiles;
     tcp_t *tcp;
-
+	(void)p_manager;
     /* preconditions */
     assert(p_nb_tiles != nullptr);
     assert(cp != nullptr);
     assert(image != nullptr);
-    assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
     l_nb_tiles = cp->tw * cp->th;
@@ -2349,6 +2345,9 @@ static bool j2k_read_com (  j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_header_data != nullptr);
     (void)p_header_size;
+	(void)p_j2k;
+	(void)p_header_data;
+	(void)p_manager;
 
     return true;
 }
@@ -2946,6 +2945,7 @@ static void j2k_write_poc_in_memory(   j2k_t *p_j2k,
         event_mgr_t * p_manager
                                        )
 {
+	(void)p_manager;
     uint32_t i;
     uint8_t * l_current_data = nullptr;
     uint32_t l_nb_comp;
@@ -3185,17 +3185,14 @@ static bool j2k_read_crg(j2k_t *p_j2k,
 		event_msg(p_manager, EVT_ERROR, "Error reading CRG marker\n");
 		return false;
 	}
-	/* Do not care of this at the moment since only local variables are set here */
-	/*
-	for
-			(i = 0; i < l_nb_comp; ++i)
+	uint32_t l_Xcrg_i, l_Ycrg_i;
+	for	(uint32_t i = 0; i < l_nb_comp; ++i)
 	{
 			grk_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
 			p_header_data+=2;
 			grk_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
 			p_header_data+=2;
 	}
-	*/
 	return true;
 }
 
@@ -10397,7 +10394,7 @@ static bool j2k_init_info(     j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
     (void)l_cstr_info;
-    return j2k_calculate_tp(p_j2k,&(p_j2k->m_cp),&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,p_j2k->m_private_image,p_manager);
+    return j2k_calculate_tp(&p_j2k->m_cp,&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,p_j2k->m_private_image,p_manager);
 }
 
 /**
