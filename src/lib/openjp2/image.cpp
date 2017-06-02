@@ -214,7 +214,7 @@ namespace grk {
 	{
 		uint32_t compno;
 
-		/* preconditions */
+		
 		assert(p_image_src != nullptr);
 		assert(p_image_dest != nullptr);
 
