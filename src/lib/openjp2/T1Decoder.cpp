@@ -24,8 +24,8 @@ namespace grk {
 	
 
 T1Decoder::T1Decoder(uint16_t blockw, 
-					uint16_t blockh) :codeblock_width(blockw ? ((uint16_t)1<<blockw) : 0),
-					  				  codeblock_height(blockh ? ((uint16_t)1<<blockh) : 0)
+					uint16_t blockh) :codeblock_width(  (uint16_t)(blockw ? (uint32_t)1<<blockw : 0)),
+					  				  codeblock_height( (uint16_t)(blockh ? (uint32_t)1<<blockh : 0))
 {}
 
 

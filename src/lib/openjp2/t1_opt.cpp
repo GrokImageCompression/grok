@@ -56,7 +56,7 @@
  */
 
 #include "grok_includes.h"
-#include "t1_luts.h"
+#include "t1_opt_luts.h"
 
 namespace grk
 {
@@ -73,7 +73,7 @@ namespace grk
 
 	static inline uint8_t		t1_getctxno_zc(uint32_t f, uint32_t orient);
 	static inline uint8_t		t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
-	static inline uint32_t		t1_getctxno_mag(uint32_t f);
+	static inline uint8_t		t1_getctxno_mag(uint32_t f);
 	static inline uint8_t		t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 	static inline void			t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride);
 
@@ -230,7 +230,7 @@ namespace grk
 	}
 
 
-	static inline uint32_t t1_getctxno_mag(uint32_t f)
+	static inline uint8_t t1_getctxno_mag(uint32_t f)
 	{
 		return (f & T1_MU_THIS) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 	}

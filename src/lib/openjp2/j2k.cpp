@@ -4358,7 +4358,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
 
     for (i=0; i<l_cp->th; ++i) {
         for (j=0; j<l_cp->tw; ++j) {
-            double l_offset = (*l_tp_stride_func)(l_tcp) / l_tcp->numlayers;
+            double l_offset = (double)((*l_tp_stride_func)(l_tcp) / l_tcp->numlayers);
 
             /* 4 borders of the tile rescale on the image if necessary */
             l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
@@ -5781,7 +5781,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
         } 
     } else {
         bool cap = false;
-		auto min_rate = image_bytes / parameters->max_cs_size;
+		auto min_rate = image_bytes / (double)parameters->max_cs_size;
         for (i = 0; i <  parameters->tcp_numlayers; i++) {
             if (parameters->tcp_rates[i] < min_rate) {
                 parameters->tcp_rates[i] = min_rate;

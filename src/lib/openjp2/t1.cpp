@@ -71,7 +71,7 @@ namespace grk {
 	*/
 	static inline uint8_t t1_getctxno_zc(uint32_t f, uint32_t orient);
 	static uint8_t t1_getctxno_sc(uint32_t f);
-	static inline uint32_t t1_getctxno_mag(uint32_t f);
+	static inline uint8_t t1_getctxno_mag(uint32_t f);
 	static uint8_t t1_getspb(uint32_t f);
 	static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
 	/**
@@ -272,9 +272,9 @@ namespace grk {
 		return lut_ctxno_sc[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 	}
 
-	static uint32_t t1_getctxno_mag(uint32_t f) {
-		uint32_t tmp1 = (f & T1_SIG_OTH) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG;
-		uint32_t tmp2 = (f & T1_REFINE) ? T1_CTXNO_MAG + 2 : tmp1;
+	static uint8_t t1_getctxno_mag(uint32_t f) {
+		uint8_t tmp1 = (f & T1_SIG_OTH) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG;
+		uint8_t tmp2 = (f & T1_REFINE) ? T1_CTXNO_MAG + 2 : tmp1;
 		return (tmp2);
 	}
 

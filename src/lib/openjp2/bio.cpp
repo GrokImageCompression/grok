@@ -99,7 +99,7 @@ bool BitIO::putbit( uint8_t b)
         rc = byteout(); 
     }
     ct--;
-    buf |= (uint8_t)(b << ct);
+    buf = static_cast<uint8_t>( buf | ((uint32_t)b << ct));
 	return rc;
 }
 
@@ -164,7 +164,7 @@ bool BitIO::read(uint32_t* bits, uint32_t n) {
 #endif
 	*bits  = 0U;
 	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		if (!getbit(bits, i)) {
+		if (!getbit(bits, static_cast<uint8_t>(i))) {
 			return false;
 		}
 	}

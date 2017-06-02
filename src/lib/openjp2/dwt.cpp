@@ -737,7 +737,7 @@ void dwt_calc_explicit_stepsizes(tccp_t * tccp, uint32_t prec)
             stepsize = 1.0;
         } else {
             double norm = dwt_norms_real[orient][level];
-            stepsize = ((uint64_t)1 << (gain)) / norm;
+            stepsize = (double)((uint64_t)1 << gain) / norm;
         }
         dwt_encode_stepsize((int32_t) floor(stepsize * 8192.0), (int32_t)(prec + gain), &tccp->stepsizes[bandno]);
     }
