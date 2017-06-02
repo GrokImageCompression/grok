@@ -1015,7 +1015,7 @@ void find_cf(double x, uint32_t* num, uint32_t* den) {
 		//printf("%ld:  %ld/%ld\n", a[i], p[i], q[i]);
 		if (fabs(x - a[i])<eps || (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX))
 			break;
-		x = 1.0 / (x - a[i]);
+		x = 1.0 / (x - (double)a[i]);
 	}
 	*num = (uint32_t)p[i - 1];
 	*den = (uint32_t)q[i - 1];

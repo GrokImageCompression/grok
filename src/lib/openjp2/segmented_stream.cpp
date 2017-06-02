@@ -24,13 +24,11 @@ namespace grk {
 
 bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buffer)
 {
-    int32_t i = 0;
-    size_t offset = 0;
-
     if (!buffer || !min_buf_vec)
         return false;
 
-    for (i = 0; i < min_buf_vec->size(); ++i) {
+	size_t offset = 0;
+    for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
         min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
         if (seg->len)
             memcpy(buffer + offset, seg->buf, seg->len);
@@ -66,14 +64,13 @@ bool min_buf_vec_push_back(grok_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 
 uint16_t min_buf_vec_get_len(grok_vec_t* min_buf_vec)
 {
-    size_t i = 0;
     uint16_t len = 0;
     if (!min_buf_vec || !min_buf_vec->data)
         return 0;
-    for (i = 0; i < min_buf_vec->size(); ++i) {
+    for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
         min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
         if (seg)
-            len += seg->len;
+            len = static_cast<uint16_t>((uint32_t)len + seg->len);
     }
     return len;
 
@@ -365,13 +362,11 @@ int64_t seg_buf_get_cur_seg_offset(seg_buf_t* seg_buf)
 
 int64_t seg_buf_get_global_offset(seg_buf_t* seg_buf)
 {
-    int32_t i = 0;
     int64_t offset = 0;
-
     if (!seg_buf)
         return 0;
 
-    for (i = 0; i < seg_buf->cur_seg_id; ++i) {
+    for (size_t i = 0; i < seg_buf->cur_seg_id; ++i) {
         grk_buf_t* seg = seg_buf->segments[i];
         offset += (int64_t)seg->len;
     }

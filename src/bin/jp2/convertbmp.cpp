@@ -320,8 +320,8 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 
 static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
 {
-    header->bfType  = (uint16_t)getc(IN);
-    header->bfType |= (uint16_t)((uint32_t)getc(IN) << 8);
+    header->bfType  = static_cast<uint16_t>(getc(IN));
+    header->bfType  = static_cast<uint16_t>(header->bfType | ((uint32_t)getc(IN) << 8));
 
     if (header->bfType != 19778) {
         fprintf(stderr,"Error, not a BMP file!\n");
@@ -335,11 +335,12 @@ static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
     header->bfSize |= (uint32_t)getc(IN) << 16;
     header->bfSize |= (uint32_t)getc(IN) << 24;
 
-    header->bfReserved1  = (uint16_t)getc(IN);
-    header->bfReserved1 |= (uint16_t)((uint32_t)getc(IN) << 8);
+    header->bfReserved1  = static_cast<uint16_t>(getc(IN));
+    header->bfReserved1  = static_cast<uint16_t>(header->bfReserved1 | ((uint32_t)getc(IN) << 8));
+	
 
-    header->bfReserved2  = (uint16_t)getc(IN);
-    header->bfReserved2 |= (uint16_t)((uint32_t)getc(IN) << 8);
+    header->bfReserved2  = static_cast<uint16_t>(getc(IN));
+    header->bfReserved2  = static_cast<uint16_t>(header->bfReserved2 | ((uint32_t)getc(IN) << 8));
 
     header->bfOffBits  = (uint32_t)getc(IN);
     header->bfOffBits |= (uint32_t)getc(IN) << 8;
@@ -380,11 +381,11 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
     header->biHeight |= (uint32_t)getc(IN) << 16;
     header->biHeight |= (uint32_t)getc(IN) << 24;
 
-    header->biPlanes  = (uint16_t)getc(IN);
-    header->biPlanes |= (uint16_t)((uint32_t)getc(IN) << 8);
+    header->biPlanes  = static_cast<uint16_t>(getc(IN));
+    header->biPlanes  = static_cast<uint16_t>(header->biPlanes | ((uint32_t)getc(IN) << 8));
 
     header->biBitCount  = (uint16_t)getc(IN);
-    header->biBitCount |= (uint16_t)((uint32_t)getc(IN) << 8);
+    header->biBitCount  = static_cast<uint16_t>(header->biBitCount | ((uint32_t)getc(IN) << 8));
 
     if(header->biSize >= 40U) {
         header->biCompression  = (uint32_t)getc(IN);
