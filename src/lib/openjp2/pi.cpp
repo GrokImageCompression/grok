@@ -597,7 +597,7 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
     /* position in x and y of tile */
     uint32_t p, q;
 
-    /* preconditions */
+    
     assert(p_cp != nullptr);
     assert(p_image != nullptr);
     assert(p_tileno < p_cp->tw * p_cp->th);
@@ -1853,7 +1853,7 @@ void pi_update_encoding_parameters(	const opj_image_t *p_image,
     /* pointers */
     tcp_t *l_tcp = nullptr;
 
-    /* preconditions */
+    
     assert(p_cp != nullptr);
     assert(p_image != nullptr);
     assert(p_tile_no < p_cp->tw * p_cp->th);

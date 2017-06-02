@@ -555,7 +555,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     /* read header from file */
     uint8_t l_data_header [8];
 
-    /* preconditions */
+    
     assert(cio != nullptr);
     assert(box != nullptr);
     assert(p_number_bytes_read != nullptr);
@@ -636,7 +636,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
                                uint32_t p_image_header_size,
                                event_mgr_t * p_manager )
 {
-    /* preconditions */
+    
     assert(p_image_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -723,7 +723,7 @@ static uint8_t * jp2_write_ihdr(jp2_t *jp2,
 {
     uint8_t * l_ihdr_data,* l_current_ihdr_ptr;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
 
@@ -772,7 +772,7 @@ static uint8_t * jp2_write_buffer(uint32_t boxId,
 									jp2_buffer_t* buffer,
 									uint32_t * p_nb_bytes_written){
 
-	/* preconditions */
+	
 	assert(p_nb_bytes_written != nullptr);
 
 	/* room for 8 bytes for box and jp2->xmlSize bytes */
@@ -822,7 +822,7 @@ static bool jp2_read_xml(jp2_t *jp2,
 static uint8_t * jp2_write_xml(jp2_t *jp2,
 									uint32_t * p_nb_bytes_written) {
 
-	/* preconditions */
+	
 	assert(jp2 != nullptr);
 	return jp2_write_buffer(JP2_XML, &jp2->xml, p_nb_bytes_written);
 }
@@ -856,7 +856,7 @@ static bool jp2_read_uuid(jp2_t *jp2,
 static uint8_t * jp2_write_uuids(jp2_t *jp2,
 									uint32_t * p_nb_bytes_written) {
 
-	/* preconditions */
+	
 	assert(jp2 != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
@@ -1117,7 +1117,7 @@ static uint8_t * jp2_write_bpcc(	jp2_t *jp2,
     uint32_t l_bpcc_size = 8 + jp2->numcomps;
     uint8_t * l_bpcc_data,* l_current_bpcc_ptr;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
 
@@ -1152,7 +1152,7 @@ static bool jp2_read_bpcc( jp2_t *jp2,
 {
     uint32_t i;
 
-    /* preconditions */
+    
     assert(p_bpc_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -1184,7 +1184,7 @@ static uint8_t * jp2_write_cdef(jp2_t *jp2, uint32_t * p_nb_bytes_written)
     uint32_t l_value;
     uint16_t i;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
     assert(jp2->color.jp2_cdef != nullptr);
@@ -1234,7 +1234,7 @@ static uint8_t * jp2_write_colr(  jp2_t *jp2,
     uint32_t l_colr_size = 11;
     uint8_t * l_colr_data,* l_current_colr_ptr;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
     assert(jp2->meth == 1 || jp2->meth == 2);
@@ -1551,7 +1551,7 @@ static bool jp2_read_pclr(	jp2_t *jp2,
     uint32_t l_value;
     uint8_t *orig_header_data = p_pclr_header_data;
 
-    /* preconditions */
+    
     assert(p_pclr_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -1651,7 +1651,7 @@ static bool jp2_read_cmap(	jp2_t * jp2,
     uint8_t i, nr_channels;
     uint32_t l_value;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_cmap_header_data != nullptr);
     assert(p_manager != nullptr);
@@ -1769,7 +1769,7 @@ static bool jp2_read_cdef(	jp2_t * jp2,
     uint16_t i;
     uint32_t l_value;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_cdef_header_data != nullptr);
     assert(p_manager != nullptr);
@@ -1862,7 +1862,7 @@ static bool jp2_read_colr( jp2_t *jp2,
 {
     uint32_t l_value;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_colr_header_data != nullptr);
     assert(p_manager != nullptr);
@@ -2071,7 +2071,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
     /* to store the data of the super box */
     uint8_t l_jp2h_data [8];
 
-    /* preconditions */
+    
     assert(stream != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2181,7 +2181,7 @@ static bool jp2_write_ftyp(jp2_t *jp2,
     uint8_t * l_ftyp_data, * l_current_data_ptr;
     bool l_result;
 
-    /* preconditions */
+    
     assert(cio != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2228,7 +2228,7 @@ static bool jp2_write_jp2c(jp2_t *jp2,
     int64_t j2k_codestream_exit;
     uint8_t l_data_header [8];
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(cio != nullptr);
     assert(p_manager != nullptr);
@@ -2266,7 +2266,7 @@ static bool jp2_write_jp(	jp2_t *jp2,
     /* 12 bytes will be read */
     uint8_t l_signature_data [12];
 
-    /* preconditions */
+    
     assert(cio != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2529,7 +2529,7 @@ bool jp2_end_decompress(jp2_t *jp2,
                             event_mgr_t * p_manager
                            )
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(cio != nullptr);
     assert(p_manager != nullptr);
@@ -2552,7 +2552,7 @@ bool jp2_end_compress(	jp2_t *jp2,
                             event_mgr_t * p_manager
                          )
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(cio != nullptr);
     assert(p_manager != nullptr);
@@ -2572,7 +2572,7 @@ bool jp2_end_compress(	jp2_t *jp2,
 
 static bool jp2_setup_end_header_writing (jp2_t *jp2, event_mgr_t * p_manager)
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -2585,7 +2585,7 @@ static bool jp2_setup_end_header_writing (jp2_t *jp2, event_mgr_t * p_manager)
 
 static bool jp2_setup_end_header_reading (jp2_t *jp2, event_mgr_t * p_manager)
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -2606,7 +2606,7 @@ static bool jp2_default_validation (	jp2_t * jp2,
     bool l_is_valid = true;
     uint32_t i;
 
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(cio != nullptr);
     assert(p_manager != nullptr);
@@ -2665,7 +2665,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
     uint32_t l_current_data_size;
     uint8_t * l_current_data = nullptr;
 
-    /* preconditions */
+    
     assert(stream != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2796,7 +2796,7 @@ static bool jp2_exec (  jp2_t * jp2,
     bool l_result = true;
     uint32_t l_nb_proc, i;
 
-    /* preconditions */
+    
     assert(p_procedure_list != nullptr);
     assert(jp2 != nullptr);
     assert(stream != nullptr);
@@ -2821,7 +2821,7 @@ bool jp2_start_compress(jp2_t *jp2,
                             event_mgr_t * p_manager
                            )
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(stream != nullptr);
     assert(p_manager != nullptr);
@@ -2899,7 +2899,7 @@ static bool jp2_read_jp(jp2_t *jp2,
 {
     uint32_t l_magic_number;
 
-    /* preconditions */
+    
     assert(p_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2945,7 +2945,7 @@ static bool jp2_read_ftyp(	jp2_t *jp2,
 {
     uint32_t i, l_remaining_bytes;
 
-    /* preconditions */
+    
     assert(p_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2999,7 +2999,7 @@ static bool jp2_skip_jp2c(	jp2_t *jp2,
                                 stream_private_t *stream,
                                 event_mgr_t * p_manager )
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(stream != nullptr);
     assert(p_manager != nullptr);
@@ -3034,7 +3034,7 @@ static bool jp2_read_jp2h(  jp2_t *jp2,
     const jp2_header_handler_t * l_current_handler;
     bool l_has_ihdr = 0;
 
-    /* preconditions */
+    
     assert(p_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -3104,7 +3104,7 @@ static bool jp2_read_boxhdr_char(   jp2_box_t *box,
 {
     uint32_t l_value;
 
-    /* preconditions */
+    
     assert(p_data != nullptr);
     assert(box != nullptr);
     assert(p_number_bytes_read != nullptr);
@@ -3171,7 +3171,7 @@ bool jp2_read_header(	stream_private_t *p_stream,
                             event_mgr_t * p_manager
                         )
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_stream != nullptr);
     assert(p_manager != nullptr);
@@ -3221,7 +3221,7 @@ bool jp2_read_header(	stream_private_t *p_stream,
 
 static bool jp2_setup_encoding_validation (jp2_t *jp2, event_mgr_t * p_manager)
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -3237,7 +3237,7 @@ static bool jp2_setup_decoding_validation (jp2_t *jp2, event_mgr_t * p_manager)
 {
 	(void)jp2;
 	(void)p_manager;
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -3248,7 +3248,7 @@ static bool jp2_setup_decoding_validation (jp2_t *jp2, event_mgr_t * p_manager)
 
 static bool jp2_setup_header_writing (jp2_t *jp2, event_mgr_t * p_manager)
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -3272,7 +3272,7 @@ static bool jp2_setup_header_writing (jp2_t *jp2, event_mgr_t * p_manager)
 
 static bool jp2_setup_header_reading (jp2_t *jp2, event_mgr_t * p_manager)
 {
-    /* preconditions */
+    
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
@@ -3510,7 +3510,7 @@ jp2_t* jp2_create(bool p_is_decoder)
 
 void jp2_dump(jp2_t* p_jp2, int32_t flag, FILE* out_stream)
 {
-    /* preconditions */
+    
     assert(p_jp2 != nullptr);
 
     j2k_dump(p_jp2->j2k,

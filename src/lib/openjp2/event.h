@@ -68,7 +68,7 @@ used for
 <li>Debugging messages
 </ul>
 */
-typedef struct event_mgr {
+struct event_mgr_t {
     /** Data to call the event manager upon */
     void *			m_error_data;
     /** Data to call the event manager upon */
@@ -81,7 +81,7 @@ typedef struct event_mgr {
     opj_msg_callback warning_handler;
     /** Debug message callback if available, NULL otherwise */
     opj_msg_callback info_handler;
-} event_mgr_t;
+};
 
 
 #define EVT_ERROR	1	/**< Error event type */
@@ -115,17 +115,9 @@ bool event_msg(event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...)
  */
 void set_default_event_handler(event_mgr_t * p_manager);
 
-/*
-#ifdef __GNUC__
-#pragma GCC poison printf fprintf
-#endif
-*/
-
 /*@}*/
 
 /*@}*/
-
-
 
 
 }
