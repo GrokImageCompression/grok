@@ -1,7 +1,95 @@
-cmake_minimum_required(VERSION 2.6)
+#    Copyright (C) 2016-2017 Grok Image Compression Inc.
+#
+#    This source code is free software: you can redistribute it and/or  modify
+#    it under the terms of the GNU Affero General Public License, version 3,
+#    as published by the Free Software Foundation.
+#
+#    This source code is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#    This source code incorporates work covered by the following copyright and
+#    permission notice:
+#
+# Copyright © 2015 Open Microscopy Environment / University of Dundee
+# Written by Roger Leigh <rleigh@codelibre.net>
+#
+# Permission to use, copy, modify, distribute, and sell this software and
+# its documentation for any purpose is hereby granted without fee, provided
+# that (i) the above copyright notices and this permission notice appear in
+# all copies of the software and related documentation, and (ii) the names of
+# Sam Leffler and Silicon Graphics may not be used in any advertising or
+# publicity relating to the software without the specific, prior written
+# permission of Sam Leffler and Silicon Graphics.
+#
+# THE SOFTWARE IS PROVIDED "AS-IS" AND WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS, IMPLIED OR OTHERWISE, INCLUDING WITHOUT LIMITATION, ANY
+# WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+#
+# IN NO EVENT SHALL SAM LEFFLER OR SILICON GRAPHICS BE LIABLE FOR
+# ANY SPECIAL, INCIDENTAL, INDIRECT OR CONSEQUENTIAL DAMAGES OF ANY KIND,
+# OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+# WHETHER OR NOT ADVISED OF THE POSSIBILITY OF DAMAGE, AND ON ANY THEORY OF
+# LIABILITY, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
+# OF THIS SOFTWARE.
+
+cmake_minimum_required(VERSION 2.8.9)
+
+# Default policy is from 2.8.9
+cmake_policy(VERSION 2.8.9)
+# Set MacOSX @rpath usage globally.
+if (POLICY CMP0020)
+  cmake_policy(SET CMP0020 NEW)
+endif(POLICY CMP0020)
+if (POLICY CMP0042)
+  cmake_policy(SET CMP0042 NEW)
+endif(POLICY CMP0042)
+# Use new variable expansion policy.
+if (POLICY CMP0053)
+  cmake_policy(SET CMP0053 NEW)
+endif(POLICY CMP0053)
+if (POLICY CMP0054)
+  cmake_policy(SET CMP0054 NEW)
+endif(POLICY CMP0054)
+
+
 project(libtiff C)
-# This convenient copy of libtiff does not support encapsulated zlib or jpeg
-# stream. see ZIP_SUPPORT and JPEG_SUPPORT values
+
+set(VERSION "\"4.0.8\"")
+set(PACKAGE_VERSION ${VERSION})
+set(PACKAGE "\"tiff\"")
+
+
+include(GNUInstallDirs)
+include(CheckCCompilerFlag)
+include(CheckCSourceCompiles)
+include(CheckIncludeFile)
+include(CheckTypeSize)
+include(CheckFunctionExists)
+enable_testing()
+
+macro(current_date var)
+  if(UNIX)
+    execute_process(COMMAND "date" +"%Y%m%d" OUTPUT_VARIABLE ${var})
+  endif()
+endmacro()
+
+current_date(RELEASE_DATE)
+
+macro(extra_dist)
+  foreach(file ${ARGV})
+    file(RELATIVE_PATH relfile "${PROJECT_SOURCE_DIR}"
+         "${CMAKE_CURRENT_SOURCE_DIR}/${file}")
+    list(APPEND EXTRA_DIST "${relfile}")
+  endforeach()
+  set(EXTRA_DIST "${EXTRA_DIST}" PARENT_SCOPE)
+endmacro()
+
 
 include_directories(BEFORE "${CMAKE_CURRENT_SOURCE_DIR}")
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}")
@@ -322,9 +410,7 @@ check_type_size(INT32 int32)
 set(HAVE_INT32 ${INT32})
 
 #
-set(VERSION "\"4.0.8\"")
-set(PACKAGE_VERSION ${VERSION})
-set(PACKAGE "\"tiff\"")
+
 
 # universal build ?
 if(APPLE)
