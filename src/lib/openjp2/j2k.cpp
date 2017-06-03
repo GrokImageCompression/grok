@@ -1037,19 +1037,6 @@ static bool j2k_write_eoc(      j2k_t *p_j2k,
                                     stream_private_t *p_stream,
                                     event_mgr_t * p_manager );
 
-#if 0
-/**
- * Reads a EOC marker (End Of Codestream)
- *
- * @param       p_j2k                   the jpeg2000 codec.
- * @param       p_stream                FIXME DOC
- * @param       p_manager               the user event manager.
-*/
-static bool j2k_read_eoc (      j2k_t *p_j2k,
-                                    stream_private_t *p_stream,
-                                    event_mgr_t * p_manager );
-#endif
-
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
  *
@@ -4225,8 +4212,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k,
 
 static bool j2k_write_eoc(     j2k_t *p_j2k,
                                    stream_private_t *p_stream,
-                                   event_mgr_t * p_manager
-                             )
+                                   event_mgr_t * p_manager)
 {
     
     assert(p_j2k != nullptr);
@@ -4289,7 +4275,7 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
 
     grk_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
     p_header_data+=l_comp_room;
-    grk_read_bytes(p_header_data,&l_roi_sty,1);                                     /* Srgn */
+    grk_read_bytes(p_header_data,&l_roi_sty,1);                     /* Srgn */
     ++p_header_data;
 
     /* testcase 3635.pdf.asan.77.2930 */
@@ -4449,57 +4435,6 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
     }
     return true;
 }
-
-#if 0
-static bool j2k_read_eoc (     j2k_t *p_j2k,
-                                   stream_private_t *p_stream,
-                                   event_mgr_t * p_manager )
-{
-    uint32_t i;
-    tcd_t * l_tcd = nullptr;
-    uint32_t l_nb_tiles;
-    tcp_t * l_tcp = nullptr;
-    bool l_success;
-
-    
-    assert(p_j2k != nullptr);
-    assert(p_manager != nullptr);
-    assert(p_stream != nullptr);
-
-    l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
-    l_tcp = p_j2k->m_cp.tcps;
-
-    l_tcd = tcd_create(true);
-    if (l_tcd == nullptr) {
-        event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
-        return false;
-    }
-
-    for (i = 0; i < l_nb_tiles; ++i) {
-        if (l_tcp->m_data) {
-            if (! tcd_init_decode_tile(l_tcd, i)) {
-                tcd_destroy(l_tcd);
-                event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
-                return false;
-            }
-
-            l_success = tcd_decode_tile(l_tcd, l_tcp->m_data, l_tcp->m_data_size, i);
-            /* cleanup */
-
-            if (! l_success) {
-                p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
-                break;
-            }
-        }
-
-        j2k_tcp_destroy(l_tcp);
-        ++l_tcp;
-    }
-
-    tcd_destroy(l_tcd);
-    return true;
-}
-#endif
 
 static bool j2k_get_end_header(j2k_t *p_j2k,
                                    stream_private_t *p_stream,
