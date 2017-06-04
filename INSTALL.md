@@ -86,11 +86,18 @@ Make sure to build the third party libs (libpng, zlib etc.):
 
   `-DBUILD_THIRDPARTY:BOOL=ON`
   
+ #### JPEG support
+  
 To open JPEG files, you will need to build and install a `libjpeg` compatible library (dev version). Recommended : libjpeg-turbo
 https://github.com/libjpeg-turbo/libjpeg-turbo
 
-If you are building Grok as a dynamic build, and you are also building `libjpeg-turbo`, then `libjpeg-turbo` should be built
-with the `WITH_CRT_DLL` flag on, to ensure that the DLL version of the C runtime libraries is used. Also, ensure that the Grok
-cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`, and that `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
+##### Grok dynamic build with JPEG support
+
+`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that  `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
+
+##### Grok static build with JPEG support
+
+`libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag off, to ensure that the static version of the C runtime libraries is used.
+
 
 

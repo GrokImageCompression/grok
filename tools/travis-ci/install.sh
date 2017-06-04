@@ -4,11 +4,11 @@
 
 #if cygwin, check path
 case ${MACHTYPE} in
-	*cygwin*) OPJ_CI_IS_CYGWIN=1;;
+	*cygwin*) GROK_CI_IS_CYGWIN=1;;
 	*) ;;
 esac
 
-if [ "${OPJ_CI_IS_CYGWIN:-}" == "1" ]; then
+if [ "${GROK_CI_IS_CYGWIN:-}" == "1" ]; then
 	# PATH is not yet set up
 	export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 fi
@@ -31,41 +31,41 @@ trap exit_handler EXIT
 trap exit ERR
 
 # We don't need anything for coverity scan builds. ABI check is managed in abi-check.sh
-if [ "${COVERITY_SCAN_BRANCH:-}" == "1" ] || [ "${OPJ_CI_ABI_CHECK:-}" == "1" ]; then
+if [ "${COVERITY_SCAN_BRANCH:-}" == "1" ] || [ "${GROK_CI_ABI_CHECK:-}" == "1" ]; then
 	exit 0
 fi
 
-if [ "${OPJ_CI_ASAN:-}" == "1" ]; then
+if [ "${GROK_CI_ASAN:-}" == "1" ]; then
 	# We need a new version of cmake than travis-ci provides
 	wget --no-check-certificate -qO - https://cmake.org/files/v3.5/cmake-3.5.2-Linux-x86_64.tar.gz | tar -xz
 	# copy to a directory that will not changed every version
 	mv cmake-3.5.2-Linux-x86_64 cmake-install
 fi
 
-if [ "${OPJ_CI_SKIP_TESTS:-}" != "1" ]; then
+if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 
-	OPJ_SOURCE_DIR=$(cd $(dirname $0)/../.. && pwd)
+	GROK_SOURCE_DIR=$(cd $(dirname $0)/../.. && pwd)
 
 	# We need test data
 	if [ "${TRAVIS_BRANCH:-}" != "" ]; then
-		OPJ_DATA_BRANCH=${TRAVIS_BRANCH}
+		GROK_DATA_BRANCH=${TRAVIS_BRANCH}
 	elif [ "${APPVEYOR_REPO_BRANCH:-}" != "" ]; then
-		OPJ_DATA_BRANCH=${APPVEYOR_REPO_BRANCH}
+		GROK_DATA_BRANCH=${APPVEYOR_REPO_BRANCH}
 	else
-		OPJ_DATA_BRANCH=$(git -C ${OPJ_SOURCE_DIR} branch | grep '*' | tr -d '*[[:blank:]]') #default to same branch as we're setting up
+		GROK_DATA_BRANCH=$(git -C ${GROK_SOURCE_DIR} branch | grep '*' | tr -d '*[[:blank:]]') #default to same branch as we're setting up
 	fi
-	OPJ_DATA_HAS_BRANCH=$(git ls-remote --heads git://github.com/uclouvain/openjpeg-data.git ${OPJ_DATA_BRANCH} | wc -l)
-	if [ ${OPJ_DATA_HAS_BRANCH} -eq 0 ]; then
-		OPJ_DATA_BRANCH=master #default to master
+	GROK_DATA_HAS_BRANCH=$(git ls-remote --heads git://github.com/GrokImageCompression/grok-test-data.git ${GROK_DATA_BRANCH} | wc -l)
+	if [ ${GROK_DATA_HAS_BRANCH} -eq 0 ]; then
+		GROK_DATA_BRANCH=master #default to master
 	fi
-	echo "Cloning openjpeg-data from ${OPJ_DATA_BRANCH} branch"
-	git clone --depth=1 --branch=${OPJ_DATA_BRANCH} git://github.com/uclouvain/openjpeg-data.git data
+	echo "Cloning grok-test-data from ${GROK_DATA_BRANCH} branch"
+	git clone --depth=1 --branch=${GROK_DATA_BRANCH} git://github.com/GrokImageCompression/grok-test-data.git data
 
 	# We need jpylyzer for the test suite
     JPYLYZER_VERSION="1.17.0"    
 	echo "Retrieving jpylyzer"
 	if [ "${APPVEYOR:-}" == "True" ]; then
-		wget --local-encoding=UTF-8 -q http://dl.bintray.com/openplanets/opf-windows/jpylyzer_${JPYLYZER_VERSION}_win32.zip
+		wget -q http://dl.bintray.com/openplanets/opf-windows/jpylyzer_${JPYLYZER_VERSION}_win32.zip
 		mkdir jpylyzer
 		cd jpylyzer
 		cmake -E tar -xf ../jpylyzer_${JPYLYZER_VERSION}_win32.zip
@@ -76,12 +76,12 @@ if [ "${OPJ_CI_SKIP_TESTS:-}" != "1" ]; then
 		chmod +x jpylyzer/jpylyzer.py
 	fi
 
-	# When OPJ_NONCOMMERCIAL=1, kakadu trial binaries are used for testing. Here's the copyright notice from kakadu:
+	# When GROK_NONCOMMERCIAL=1, kakadu trial binaries are used for testing. Here's the copyright notice from kakadu:
 	# Copyright is owned by NewSouth Innovations Pty Limited, commercial arm of the UNSW Australia in Sydney.
 	# You are free to trial these executables and even to re-distribute them, 
 	# so long as such use or re-distribution is accompanied with this copyright notice and is not for commercial gain.
 	# Note: Binaries can only be used for non-commercial purposes.
-	if [ "${OPJ_NONCOMMERCIAL:-}" == "1" ]; then
+	if [ "${GROK_NONCOMMERCIAL:-}" == "1" ]; then
 		if [ "${TRAVIS_OS_NAME:-}" == "linux" ] || uname -s | grep -i Linux &> /dev/null; then
 			echo "Retrieving Kakadu"
 			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU77_Demo_Apps_for_Linux-x86-64_150710.zip
@@ -114,4 +114,8 @@ if [ "${OPJ_CI_SKIP_TESTS:-}" != "1" ]; then
 			fi
 		fi
 	fi
+fi
+
+if [ "${GROK_CI_CHECK_STYLE:-}" == "1" ]; then
+    pip install --user autopep8
 fi
