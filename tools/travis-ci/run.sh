@@ -97,6 +97,10 @@ elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 	if which lsb_release > /dev/null; then
 		GROK_OS_NAME=$(lsb_release -si)$(lsb_release -sr | sed 's/\([^0-9]*\.[0-9]*\).*/\1/')
 	fi
+	sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
+	gcc --version
+	sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+	g++ --version
 	if [ -z "${CC##*gcc*}" ]; then
 		GROK_CC_VERSION=$(${CC} --version | head -1 | sed 's/.*\ \([0-9.]*[0-9]\)/\1/')
 		if [ -z "${CC##*mingw*}" ]; then
