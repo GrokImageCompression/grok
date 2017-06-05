@@ -4135,7 +4135,10 @@ static bool j2k_read_sod (j2k_t *p_j2k,
 		if (!l_tcp->m_data)
 			l_tcp->m_data = new seg_buf_t();
 
-        seg_buf_alloc_and_push_back(l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length);
+		if (!seg_buf_alloc_and_push_back(l_tcp->m_data, p_j2k->m_specific_param.m_decoder.m_sot_length)) {
+			event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
+			return false;
+		}
         l_current_read_size = stream_read_data(
                                     p_stream,
                                     seg_buf_get_global_ptr(l_tcp->m_data),
