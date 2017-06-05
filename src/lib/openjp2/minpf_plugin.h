@@ -59,7 +59,7 @@ typedef int32_t (*minpf_exit_func)();
 typedef minpf_exit_func (*minpf_post_load_func)(const char* pluginPath, const minpf_platform_services *);
 
 #ifndef PLUGIN_API
-#ifdef WIN32
+#ifdef _WIN32
 #define PLUGIN_API __declspec(dllexport)
 #else
 #define PLUGIN_API
