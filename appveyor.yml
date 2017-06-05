@@ -6,6 +6,8 @@ skip_tags: true
 clone_depth: 50
 environment:
   matrix:
+  - GROK_CI_ARCH: x86
+    GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
   - GROK_CI_ARCH: x64
     GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
 install:
