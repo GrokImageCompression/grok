@@ -7,8 +7,10 @@ Please see the LICENSE file for license details.
 
 Please see the project WIKI for library usage.
 
-## Current Status
+## Current Build Status
 [![badge-build]][link-build]
+
+[![badge-msvc-build]][link-msvc-build] 
 
 
 [badge-build]: https://travis-ci.org/GrokImageCompression/grok.svg?branch=master "Build Status"
