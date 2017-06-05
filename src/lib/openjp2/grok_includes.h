@@ -89,7 +89,7 @@
 #endif
 
 
-#if defined(WIN32)
+#if defined(_WIN32)
 #  define GROK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
 #  define GROK_FSTAT(fildes,stat_buff) _fstati64(fildes,/* struct _stati64 */ stat_buff)
 #  define GROK_FTELL(stream) /* __int64 */ _ftelli64(stream)

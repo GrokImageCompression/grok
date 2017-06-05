@@ -132,7 +132,7 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
 
     lib = (minpf_dynamic_library*)calloc(1, sizeof(minpf_dynamic_library));
 	if (!lib) {
-#ifdef WIN32
+#ifdef _WIN32
 		FreeLibrary(handle);
 #else
 		dlclose(handle);
@@ -158,7 +158,7 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 
     void* rc = nullptr;
 
-#ifdef WIN32
+#ifdef _WIN32
     rc =  GetProcAddress((HMODULE)library->handle, symbol);
     if (!rc) {
 
