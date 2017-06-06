@@ -25,11 +25,6 @@ function opjpath ()
 	fi
 }
 
-# ABI check is done by abi-check.sh
-if [ "${GROK_CI_ABI_CHECK:-}" == "1" ]; then
-	exit 0
-fi
-
 if [ "${GROK_CI_CC:-}" != "" ]; then
     export CC=${GROK_CI_CC}
     echo "Using ${CC}"
