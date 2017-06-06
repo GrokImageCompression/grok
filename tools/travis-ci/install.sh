@@ -30,11 +30,6 @@ function exit_handler ()
 trap exit_handler EXIT
 trap exit ERR
 
-# We don't need anything for coverity scan builds. ABI check is managed in abi-check.sh
-if [ "${COVERITY_SCAN_BRANCH:-}" == "1" ] || [ "${GROK_CI_ABI_CHECK:-}" == "1" ]; then
-	exit 0
-fi
-
 if [ "${GROK_CI_ASAN:-}" == "1" ]; then
 	# We need a new version of cmake than travis-ci provides
 	wget --no-check-certificate -qO - https://cmake.org/files/v3.5/cmake-3.5.2-Linux-x86_64.tar.gz | tar -xz
