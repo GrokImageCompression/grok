@@ -175,6 +175,8 @@ typedef uint32_t flag_opt_t;
 Tier-1 coding (coding of code-block coefficients)
 */
 struct t1_opt_t {
+	t1_opt_t(bool encoder);
+	~t1_opt_t();
 	mqc_t *mqc;
 	uint32_t  *data;
 	flag_opt_t *flags;
@@ -187,20 +189,6 @@ struct t1_opt_t {
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
-
-/**
-* Creates a new Tier 1 handle
-* and initializes the look-up tables of the Tier-1 coder/decoder
-* @return a new T1 handle if successful, returns NULL otherwise
-*/
-t1_opt_t* t1_opt_create(bool isEncoder);
-
-/**
-* Destroys a previously created T1 handle
-*
-* @param p_t1 Tier 1 handle to destroy
-*/
-void t1_opt_destroy(t1_opt_t *p_t1);
 
 
 bool t1_opt_allocate_buffers(t1_opt_t *t1,

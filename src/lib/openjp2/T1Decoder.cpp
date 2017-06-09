@@ -15,10 +15,14 @@
 *
  */
 #include "grok_includes.h"
-#include "T1Decoder.h"
 #include "Barrier.h"
 #include "ThreadPool.h"
-#include "testing.h"
+
+ // tier 1 interface
+#include "t1_interface.h"
+#include "t1.h"
+#include "T1Decoder.h"
+
 
 namespace grk {
 	
@@ -29,7 +33,7 @@ T1Decoder::T1Decoder(uint16_t blockw,
 {}
 
 
-bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
+bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads) {
 	if (!blocks)
 		return false;
 	decodeQueue.push_no_lock(blocks);
@@ -38,6 +42,19 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 	numThreads = 1;
 #endif
 
+	for (auto i = 0U; i < numThreads; ++i) {
+		auto t1 = new t1_t(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
+		if (!t1_allocate_buffers(
+			t1,
+			codeblock_width,
+			codeblock_height)) {
+			for (auto t : threadStorage) {
+				delete((t1_t*)t);
+			}
+			return false;
+		}
+		threadStorage.push_back(t1);
+	}
 
 	Barrier decode_t1_barrier(numThreads);
 	Barrier decode_t1_calling_barrier(numThreads + 1);
@@ -50,13 +67,13 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 						&decode_t1_calling_barrier,
 						threadId,
 						&success]()		{
-			auto t1 = t1_create(false, (uint16_t)codeblock_width, (uint16_t)codeblock_height);
-			if (!t1) {
-				success = false;
-				return;
-			}
+
 			decodeBlockInfo* block = NULL;
+			//1. get t1 struct for this thread
+			auto t1 = (t1_t*)threadStorage[threadId];
 			while (decodeQueue.tryPop(block)) {
+
+				//2. decode
 				if (!t1_decode_cblk(t1,
 										block->cblk,
 										block->bandno,
@@ -66,9 +83,8 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 						break;
 				}
 
-
+				//3. post-decode
 				auto t1_data = t1->data;
-
 				// ROI shift
 				if (block->roishift) {
 					int32_t threshold = 1 << block->roishift;
@@ -112,20 +128,27 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, int32_t numThreads
 						tile_data += tile_width;
 					}
 				}
+
+				//3. cleanup
 				delete block;
 			}
-			t1_destroy(t1);
 			decode_t1_barrier.arrive_and_wait();
 			decode_t1_calling_barrier.arrive_and_wait();
 		});
 	}
 
 	decode_t1_calling_barrier.arrive_and_wait();
+
 	// cleanup
 	delete pool;
 	decodeBlockInfo* block = NULL;
 	while (decodeQueue.tryPop(block)) {
 		delete block;
+	}
+
+	// clean up t1 structs
+	for (auto t : threadStorage) {
+		delete((t1_t*)t);
 	}
 	return success;
 

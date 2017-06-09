@@ -55,75 +55,9 @@
 #pragma once
 #include <vector>
 #include "testing.h"
+#include "Tier1.h"
 
 namespace grk {
-
-struct decodeBlockInfo {
-	decodeBlockInfo() : tilec(NULL),
-		tiledp(NULL),
-		cblk(NULL),
-		resno(0),
-		bandno(0),
-		stepsize(0),
-		roishift(0),
-		cblksty(0),
-		qmfbid(0),
-		x(0),
-		y(0)
-	{  }
-	tcd_tilecomp_t* tilec;
-	int32_t* tiledp;
-	tcd_cblk_dec_t* cblk;
-	uint32_t resno;
-	uint32_t bandno;
-	float stepsize;
-	uint32_t roishift;
-	uint32_t cblksty;
-	uint32_t qmfbid;
-	uint32_t x, y;		/* relative code block offset */
-};
-
-
-
-struct encodeBlockInfo {
-	encodeBlockInfo() : tiledp(NULL),
-						cblk(NULL),
-						compno(0),
-						resno(0),
-						bandno(0),
-						precno(0),
-						cblkno(0),
-						bandconst(0),
-						stepsize(0),
-						cblksty(0),
-						qmfbid(0),
-						x(0),
-						y(0),
-						mct_norms(NULL),
-#ifdef DEBUG_LOSSLESS_T1
-						unencodedData(nullptr),
-#endif
-						mct_numcomps(0)
-	{  }
-	int32_t* tiledp;
-	tcd_cblk_enc_t* cblk;
-	uint32_t compno;
-	uint32_t resno;
-	uint32_t bandno;
-	uint32_t precno;
-	uint32_t cblkno;
-	int32_t bandconst;
-	float stepsize;
-	uint32_t cblksty;
-	uint32_t qmfbid;
-	uint32_t x, y;		/* relative code block offset */
-	const double * mct_norms;
-	uint32_t mct_numcomps;
-#ifdef DEBUG_LOSSLESS_T1
-	int32_t* unencodedData;
-#endif
-};
-
 
 /**
 @file t1.h
@@ -137,8 +71,6 @@ in T1.C are used by some function in TCD.C.
 /*@{*/
 
 /* ----------------------------------------------------------------------- */
-#define T1_NMSEDEC_BITS 7
-
 #define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
 #define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
 #define T1_SIG_SW 0x0004	/**< Context orientation : South-West direction */
@@ -173,6 +105,7 @@ in T1.C are used by some function in TCD.C.
 #define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
 #define T1_NUMCTXS (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
 
+#define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
 #define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
@@ -192,14 +125,15 @@ in T1.C are used by some function in TCD.C.
 
 typedef uint16_t flag_t;
 
+struct mqc_t;
+
 struct t1_t {
+	~t1_t();
+	t1_t(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
-	/** MQC component */
 	mqc_t *mqc;
-	/** RAW component */
 	raw_t *raw;
-
 	int32_t  *data;
 	flag_t *flags;
 	uint32_t w;
@@ -214,22 +148,6 @@ struct t1_t {
 bool t1_allocate_buffers(t1_t *t1,
 	uint32_t w,
 	uint32_t h);
-
-
-/**
-Encode the code-blocks of a tile
-@param t1 T1 handle
-@param tile The tile to encode
-@param tcp Tile coding parameters
-@param mct_norms  FIXME DOC
-@param mct_numcomps Number of components used for MCT
-*/
-bool t1_encode_cblks(   tcd_tile_t *tile,
-                            tcp_t *tcp,
-                            const double * mct_norms,
-                            uint32_t mct_numcomps,
-							uint32_t numThreads);
-
 
 double t1_encode_cblk(t1_t *t1,
 						tcd_cblk_enc_t* cblk,
@@ -288,22 +206,6 @@ double t1_getwmsedec(
 
 int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
 int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
-
-/**
-* Creates a new Tier 1 handle
-* and initializes the look-up tables of the Tier-1 coder/decoder
-* @return a new T1 handle if successful, returns NULL otherwise
-*/
-t1_t* t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
-
-/**
-* Destroys a previously created T1 handle
-*
-* @param p_t1 Tier 1 handle to destroy
-*/
-void t1_destroy(t1_t *p_t1);
-
-
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

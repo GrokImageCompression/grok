@@ -23,28 +23,22 @@
 
 namespace grk {
 
+struct t1_opt_t;
+
 class T1Encoder
 {
 public:
-	T1Encoder();
-	bool encode(bool do_opt, tcd_tile_t *tile,
-				std::vector<encodeBlockInfo*>* blocks,
-				uint32_t maxCblkW, 
-				uint32_t maxCblkH,
-				uint32_t numThreads);
-
-	void encode();
-	void encodeOpt(size_t threadId);
-
-	std::atomic_bool return_code;
+	T1Encoder(bool opt, uint32_t encodeMaxCblkW, uint32_t encodeMaxCblkH, size_t numThreads);
+	~T1Encoder();
+	bool encode(tcd_tile_t *tile, std::vector<encodeBlockInfo*>* blocks);
 
 private:
-	tcd_tile_t *tile;
-	uint32_t maxCblkW;
-	uint32_t maxCblkH;
+	void encode(size_t threadId);
+	std::atomic_bool return_code;
 
-	std::vector<t1_opt_t*> t1OptVec;
-	std::vector<t1_t*> t1Vec;
+	tcd_tile_t *tile;
+	bool do_opt;
+	std::vector<t1_interface*> threadStructs;
 
 	BlockingQueue<encodeBlockInfo*> encodeQueue;
 	mutable std::mutex distortion_mutex;

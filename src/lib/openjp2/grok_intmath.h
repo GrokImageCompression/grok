@@ -219,18 +219,6 @@ static inline int32_t grk_int_fix_mul(int32_t a, int32_t b)
     return (int32_t) (temp >> 13);
 }
 
-static inline int32_t grk_int_fix_mul_t1(int32_t a, int32_t b)
-{
-#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-    int64_t temp = __emul(a, b);
-#else
-    int64_t temp = (int64_t) a * (int64_t) b ;
-#endif
-    temp += 4096;
-    assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
-    assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
-    return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) ;
-}
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
