@@ -56,7 +56,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "grok_includes.h"
-#include "T1Decoder.h"
+#include "Tier1.h"
+#include <memory>
 
 
 namespace grk {
@@ -1680,16 +1681,16 @@ static bool tcd_t1_decode ( tcd_t *p_tcd, event_mgr_t * p_manager)
     tcd_tilecomp_t* l_tile_comp = l_tile->comps;
     tccp_t * l_tccp = p_tcd->tcp->tccps;
 	std::vector<decodeBlockInfo*> blocks;
-	T1Decoder decoder((uint16_t)l_tccp->cblkw, (uint16_t)l_tccp->cblkh);
+	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
-        if (false == t1_prepare_decode_cblks(l_tile_comp, l_tccp,&blocks, p_manager)) {
+        if (!t1_wrap->prepareDecodeCodeblocks(l_tile_comp, l_tccp,&blocks, p_manager)) {
             return false;
         }
         ++l_tile_comp;
         ++l_tccp;
     }
-	decoder.decode(&blocks, p_tcd->numThreads);
-    return true;
+	// !!! assume that code block dimensions do not change over components
+	return t1_wrap->decodeCodeblocks((uint16_t)p_tcd->tcp->tccps->cblkw, (uint16_t)p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
 }
 
 
@@ -2094,7 +2095,9 @@ static bool tcd_t1_encode ( tcd_t *p_tcd )
         l_mct_norms = (const double *) (l_tcp->mct_norms);
     }
 
-    return t1_encode_cblks(p_tcd->tile,
+	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
+
+    return t1_wrap->encodeCodeblocks(p_tcd->tile,
 								l_tcp,
 								l_mct_norms,
 								l_mct_numcomps,

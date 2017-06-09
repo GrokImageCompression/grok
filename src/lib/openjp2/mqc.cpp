@@ -55,6 +55,11 @@
  */
 
 #include "grok_includes.h"
+
+// tier 1 interface
+#include "mqc.h"
+#include "t1.h"
+
 namespace grk {
 
 

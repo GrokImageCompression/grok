@@ -16,25 +16,26 @@
 */
 
 #pragma once
-#include <string>
-#include <vector>
-#include <thread>
-#include "BlockingQueue.h"
+
+#include "t1_interface.h"
 
 namespace grk {
-	
-struct decodeBlockInfo;
 
-class T1Decoder
+struct t1_t;
+struct t1_opt_t;
+class t1_impl : public t1_interface
 {
 public:
-	T1Decoder(uint16_t blockw, uint16_t blockh);
-	bool decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads);
-
+	t1_impl(bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
+	virtual ~t1_impl();
+	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
+	void prepareEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
 private:
-	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	BlockingQueue<decodeBlockInfo*> decodeQueue;
-	std::vector<void*> threadStorage;
+	bool doOpt;
+	t1_t* t1;
+	t1_opt_t* t1_opt;
+
 };
+
 
 }

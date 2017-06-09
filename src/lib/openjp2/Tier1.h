@@ -16,25 +16,33 @@
 */
 
 #pragma once
-#include <string>
+
+#include "grok_includes.h"
 #include <vector>
-#include <thread>
-#include "BlockingQueue.h"
+#include "t1_interface.h"
 
 namespace grk {
-	
-struct decodeBlockInfo;
 
-class T1Decoder
+
+
+class Tier1
 {
 public:
-	T1Decoder(uint16_t blockw, uint16_t blockh);
-	bool decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads);
+	
+	bool encodeCodeblocks(tcd_tile_t *tile,
+						tcp_t *tcp,
+						const double * mct_norms,
+						uint32_t mct_numcomps,
+						uint32_t numThreads);
 
-private:
-	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	BlockingQueue<decodeBlockInfo*> decodeQueue;
-	std::vector<void*> threadStorage;
+	bool prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
+								tccp_t* tccp,
+								std::vector<decodeBlockInfo*>* blocks,
+								event_mgr_t * p_manager);
+
+	bool decodeCodeblocks(uint16_t blockw, uint16_t blockh, std::vector<decodeBlockInfo*>* blocks, int32_t numThreads);
+
 };
+
 
 }

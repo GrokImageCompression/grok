@@ -54,6 +54,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "grok_includes.h"
+
+ // tier 1 interface
+#include "mqc.h"
+#include "t1.h"
 #include "t1_luts.h"
 #include "T1Encoder.h"
 
@@ -1112,13 +1116,14 @@ namespace grk {
 	bool t1_allocate_buffers(t1_t *t1,
 		uint32_t w,
 		uint32_t h) {
-		uint32_t datasize = w * h;
 		uint32_t flagssize;
 
 		/* encoder uses tile buffer, so no need to allocate */
 		if (!t1->encoder) {
+			uint32_t datasize = w * h;
 			if (datasize > t1->datasize) {
-				grok_aligned_free(t1->data);
+				if (t1->data)
+					grok_aligned_free(t1->data);
 				t1->data = (int32_t*)grok_aligned_malloc(datasize * sizeof(int32_t));
 				if (!t1->data) {
 					/* FIXME event manager error callback */
@@ -1126,8 +1131,7 @@ namespace grk {
 				}
 				t1->datasize = datasize;
 			}
-			if (t1->data)
-				memset(t1->data, 0, datasize * sizeof(int32_t));
+			memset(t1->data, 0, datasize * sizeof(int32_t));
 		}
 
 
@@ -1135,7 +1139,8 @@ namespace grk {
 		flagssize = t1->flags_stride * (h + 2);
 
 		if (flagssize > t1->flagssize) {
-			grok_aligned_free(t1->flags);
+			if (t1->flags)
+				grok_aligned_free(t1->flags);
 			t1->flags = (flag_t*)grok_aligned_malloc(flagssize * sizeof(flag_t));
 			if (!t1->flags) {
 				/* FIXME event manager error callback */
@@ -1156,39 +1161,39 @@ namespace grk {
 	 * and initializes the look-up tables of the Tier-1 coder/decoder
 	 * @return a new T1 handle if successful, returns NULL otherwise
 	*/
-	t1_t* t1_create(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height) {
-		t1_t *l_t1 = nullptr;
-
-		l_t1 = (t1_t*)grok_calloc(1, sizeof(t1_t));
-		if (!l_t1) {
-			return nullptr;
+	t1_t::t1_t(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height) :
+																					compressed_block(nullptr),
+																					compressed_block_size(0),
+																					mqc(nullptr),
+																					raw(nullptr),
+																					data(nullptr),
+																					flags(nullptr),
+																					w(0),
+																					h(0),
+																					datasize(0),
+																					flagssize(0),
+																					flags_stride(0),
+																					data_stride(0),
+																					 encoder(false) 	{
+		mqc = mqc_create();
+		if (!mqc) {
+			throw std::exception();
 		}
 
-		/* create MQC and RAW handles */
-		l_t1->mqc = mqc_create();
-		if (!l_t1->mqc) {
-			t1_destroy(l_t1);
-			return nullptr;
-		}
-
-		l_t1->raw = raw_create();
-		if (!l_t1->raw) {
-			t1_destroy(l_t1);
-			return nullptr;
+		raw = raw_create();
+		if (!raw) {
+			throw std::exception();
 		}
 
 		if (!isEncoder && code_block_width > 0 && code_block_height > 0) {
-			l_t1->compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
-			if (!l_t1->compressed_block) {
-				t1_destroy(l_t1);
-				return nullptr;
+			compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
+			if (!compressed_block) {
+				throw std::exception();
 			}
-			l_t1->compressed_block_size = (size_t)(code_block_width * code_block_height);
+			compressed_block_size = (size_t)(code_block_width * code_block_height);
 
 		}
-		l_t1->encoder = isEncoder;
-
-		return l_t1;
+		encoder = isEncoder;
 	}
 
 
@@ -1197,30 +1202,22 @@ namespace grk {
 	 *
 	 * @param p_t1 Tier 1 handle to destroy
 	*/
-	void t1_destroy(t1_t *p_t1) {
-		if (!p_t1) {
-			return;
-		}
+	t1_t::~t1_t() {
 
 		/* destroy MQC and RAW handles */
-		mqc_destroy(p_t1->mqc);
-		p_t1->mqc = nullptr;
-		raw_destroy(p_t1->raw);
-		p_t1->raw = nullptr;
+		mqc_destroy(mqc);
+		raw_destroy(raw);
 
 		/* encoder uses tile buffer, so no need to free */
-		if (!p_t1->encoder && p_t1->data) {
-			grok_aligned_free(p_t1->data);
-			p_t1->data = nullptr;
+		if (!encoder && data) {
+			grok_aligned_free(data);
 		}
 
-		if (p_t1->flags) {
-			grok_aligned_free(p_t1->flags);
-			p_t1->flags = nullptr;
+		if (flags) {
+			grok_aligned_free(flags);
 		}
-		if (p_t1->compressed_block)
-			grok_free(p_t1->compressed_block);
-		grok_free(p_t1);
+		if (compressed_block)
+			grok_free(compressed_block);
 	}
 
 	bool t1_prepare_decode_cblks(tcd_tilecomp_t* tilec,
@@ -1405,96 +1402,7 @@ namespace grk {
 		}
 		return true;
 	}
-
-
-
-
-	bool t1_encode_cblks(tcd_tile_t *tile,
-		tcp_t *tcp,
-		const double * mct_norms,
-		uint32_t mct_numcomps,
-		uint32_t numThreads)
-	{
-		bool do_opt = true;
-		uint32_t compno, resno, bandno, precno;
-		tile->distotile = 0;
-		for (compno = 0; compno < tile->numcomps; ++compno) {
-			tccp_t* tccp = tcp->tccps + compno;
-			if (tccp->cblksty != 0 &&
-				tccp->cblksty != J2K_CCP_CBLKSTY_RESET &&
-				tccp->cblksty != J2K_CCP_CBLKSTY_TERMALL) {
-				do_opt = false;
-				break;
-			}
-		}
-
-		std::vector<encodeBlockInfo*> blocks;
-		auto maxCblkW = 0;
-		auto maxCblkH = 0;
-
-		for (compno = 0; compno < tile->numcomps; ++compno) {
-			tcd_tilecomp_t* tilec = &tile->comps[compno];
-			tccp_t* tccp = &tcp->tccps[compno];
-			for (resno = 0; resno < tilec->numresolutions; ++resno) {
-				tcd_resolution_t *res = &tilec->resolutions[resno];
-
-				for (bandno = 0; bandno < res->numbands; ++bandno) {
-					tcd_band_t* restrict band = &res->bands[bandno];
-					int32_t bandconst = 8192 * 8192 / ((int32_t)floor(band->stepsize * 8192));
-
-					for (precno = 0; precno < res->pw * res->ph; ++precno) {
-						tcd_precinct_t *prc = &band->precincts[precno];
-						int32_t cblkno;
-						int32_t bandOdd = band->bandno & 1;
-						int32_t bandModTwo = band->bandno & 2;
-
-						for (cblkno = 0; cblkno < (int32_t)(prc->cw * prc->ch); ++cblkno) {
-							tcd_cblk_enc_t* cblk = prc->cblks.enc + cblkno;
-							int32_t x = cblk->x0 - band->x0;
-							int32_t y = cblk->y0 - band->y0;
-							if (bandOdd) {
-								tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-								x += pres->x1 - pres->x0;
-							}
-							if (bandModTwo) {
-								tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
-								y += pres->y1 - pres->y0;
-							}
-
-							maxCblkW = std::max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-							maxCblkH = std::max<int32_t>(maxCblkH, 1 << tccp->cblkh);
-							auto block = new encodeBlockInfo();
-							block->compno = compno;
-							block->bandno = band->bandno;
-							block->cblk = cblk;
-							block->cblksty = tccp->cblksty;
-							block->qmfbid = tccp->qmfbid;
-							block->resno = resno;
-							block->bandconst = bandconst;
-							block->stepsize = band->stepsize;
-							block->x = x;
-							block->y = y;
-							block->mct_norms = mct_norms;
-							block->mct_numcomps = mct_numcomps;
-							block->tiledp = tile_buf_get_ptr(tilec->buf, resno, bandno, (uint32_t)x, (uint32_t)y);
-							blocks.push_back(block);
-
-						} /* cblkno */
-					} /* precno */
-				} /* bandno */
-			} /* resno  */
-		} /* compno  */
-
-		T1Encoder encoder;
-		return encoder.encode(do_opt,
-			tile,
-			&blocks,
-			maxCblkW,
-			maxCblkH,
-			numThreads);
-
-	}
-
+		
 	double t1_encode_cblk(t1_t *t1,
 		tcd_cblk_enc_t* cblk,
 		uint32_t orient,

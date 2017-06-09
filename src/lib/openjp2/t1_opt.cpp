@@ -56,6 +56,11 @@
  */
 
 #include "grok_includes.h"
+
+// tier 1 interface
+#include "mqc.h"
+#include "t1_opt.h"
+#include "t1.h"
 #include "t1_opt_luts.h"
 
 namespace grk
@@ -139,60 +144,31 @@ namespace grk
 		uint32_t orient,
 		int32_t *nmsedec);
 
-	/**
-	* Creates a new Tier 1 handle
-	* and initializes the look-up tables of the Tier-1 coder/decoder
-	* @return a new T1 handle if successful, returns NULL otherwise
-	*/
-	t1_opt_t* t1_opt_create(bool isEncoder)
-	{
-		t1_opt_t *l_t1 = nullptr;
 
-		l_t1 = (t1_opt_t*)grok_calloc(1, sizeof(t1_opt_t));
-		if (!l_t1) {
-			return nullptr;
+	t1_opt_t::t1_opt_t(bool isEncoder) : mqc(nullptr), 
+										data(nullptr),
+										flags(nullptr),
+										w(0),
+										h(0),
+										flags_stride(0),
+										encoder(false) 	{
+
+		mqc = mqc_create();
+		if (!mqc) {
+			throw std::exception();
 		}
-
-		/* create MQC handles */
-		l_t1->mqc = mqc_create();
-		if (!l_t1->mqc) {
-			t1_opt_destroy(l_t1);
-			return nullptr;
-		}
-
-		l_t1->encoder = isEncoder;
-
-		return l_t1;
+		encoder = isEncoder;
 	}
 
-
-	/**
-	* Destroys a previously created T1 handle
-	*
-	* @param p_t1 Tier 1 handle to destroy
-	*/
-	void t1_opt_destroy(t1_opt_t *p_t1)
+	t1_opt_t::~t1_opt_t()
 	{
-		if (!p_t1) {
-			return;
+		mqc_destroy(mqc);
+		if (data) {
+			grok_aligned_free(data);
 		}
-
-		/* destroy MQC handles */
-		mqc_destroy(p_t1->mqc);
-		p_t1->mqc = nullptr;
-
-		/* encoder uses tile buffer, so no need to free */
-		if (p_t1->data) {
-			grok_aligned_free(p_t1->data);
-			p_t1->data = nullptr;
+		if (flags) {
+			grok_aligned_free(flags);
 		}
-
-		if (p_t1->flags) {
-			grok_aligned_free(p_t1->flags);
-			p_t1->flags = nullptr;
-		}
-
-		grok_free(p_t1);
 	}
 
 	static inline uint8_t t1_getctxno_zc(uint32_t f, uint32_t orient)
@@ -588,9 +564,8 @@ namespace grk
 	}
 
 	void t1_opt_init_buffers(t1_opt_t *t1,
-		uint32_t w,
-		uint32_t h)
-	{
+							uint32_t w,
+							uint32_t h)	{
 		uint32_t x;
 		flag_opt_t* p;
 		if (t1->data)
