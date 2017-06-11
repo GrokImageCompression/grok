@@ -62,7 +62,7 @@ t1_impl::~t1_impl() {
 
 // ENCODED
 
-void t1_impl::prepareEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
+void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
 	auto state = grok_plugin_get_debug_state();
 	if (doOpt) {
 		//1. prepare low-level encode

@@ -18,8 +18,7 @@
 #include "Barrier.h"
 #include "ThreadPool.h"
 
- // tier 1 interface
-#include "t1_impl.h"
+#include "t1_factory.h"
 #include "T1Decoder.h"
 
 
@@ -31,7 +30,7 @@ T1Decoder::T1Decoder(uint16_t blockw,
 					size_t numThreads) :codeblock_width(  (uint16_t)(blockw ? (uint32_t)1<<blockw : 0)),
 					  				  codeblock_height( (uint16_t)(blockh ? (uint32_t)1<<blockh : 0)) {
 	for (auto i = 0U; i < numThreads; ++i) {
-		threadStructs.push_back(new t1_impl(false,false, codeblock_width, codeblock_height));
+		threadStructs.push_back(t1_factory::get_t1(false,false, codeblock_width, codeblock_height));
 	}
 
 }

@@ -13,34 +13,15 @@
 *    You should have received a copy of the GNU Affero General Public License
 *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 *
-*/
+ */
 
-#pragma once
-
-#include "t1_interface.h"
+#include "t1_factory.h"
+#include "t1_impl.h"
 
 namespace grk {
 
-struct t1_t;
-struct t1_opt_t;
-class t1_impl : public t1_interface
-{
-public:
-	t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
-	virtual ~t1_impl();
-
-	void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
-	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
-
-	bool decode(decodeBlockInfo* block);
-	void postDecode(decodeBlockInfo* block);
-
-private:
-	bool doOpt;
-	t1_t* t1;
-	t1_opt_t* t1_opt;
-
-};
-
+t1_interface* t1_factory::get_t1(bool isEncoder, bool opt, uint32_t maxCblkW, uint32_t maxCblkH) {
+	return new t1_impl(isEncoder, opt, maxCblkW, maxCblkH);
+}
 
 }

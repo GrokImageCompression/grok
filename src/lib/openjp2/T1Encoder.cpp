@@ -21,7 +21,7 @@
 
 
 // tier 1 interface
-#include "t1_impl.h"
+#include "t1_factory.h"
 #include "T1Encoder.h"
 
 
@@ -32,7 +32,7 @@ T1Encoder::T1Encoder(bool opt,
 					uint32_t encodeMaxCblkH, 
 					size_t numThreads) : tile(nullptr), do_opt(opt) {
 	for (auto i = 0U; i < numThreads; ++i) {
-		threadStructs.push_back(new t1_impl(true,do_opt, encodeMaxCblkW, encodeMaxCblkH));
+		threadStructs.push_back(t1_factory::get_t1(true,do_opt, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 
@@ -48,7 +48,7 @@ void T1Encoder::encode(size_t threadId) {
 	auto impl = threadStructs[threadId];
 	while (return_code && encodeQueue.tryPop(block)) {
 		uint32_t max = 0;
-		impl->prepareEncode(block, tile, max);
+		impl->preEncode(block, tile, max);
 		auto dist = impl->encode(block, tile,max);
 		{
 			std::unique_lock<std::mutex> lk(distortion_mutex);
