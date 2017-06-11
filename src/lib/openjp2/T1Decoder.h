@@ -24,17 +24,19 @@
 namespace grk {
 	
 struct decodeBlockInfo;
+class t1_interface;
 
 class T1Decoder
 {
 public:
-	T1Decoder(uint16_t blockw, uint16_t blockh);
+	T1Decoder(uint16_t blockw, uint16_t blockh, size_t numThreads);
+	~T1Decoder();
 	bool decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads);
 
 private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 	BlockingQueue<decodeBlockInfo*> decodeQueue;
-	std::vector<void*> threadStorage;
+	std::vector<t1_interface*> threadStructs;
 };
 
 }

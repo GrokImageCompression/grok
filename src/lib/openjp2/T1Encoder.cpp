@@ -32,7 +32,7 @@ T1Encoder::T1Encoder(bool opt,
 					uint32_t encodeMaxCblkH, 
 					size_t numThreads) : tile(nullptr), do_opt(opt) {
 	for (auto i = 0U; i < numThreads; ++i) {
-		threadStructs.push_back(new t1_impl(do_opt, encodeMaxCblkW, encodeMaxCblkH));
+		threadStructs.push_back(new t1_impl(true,do_opt, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 

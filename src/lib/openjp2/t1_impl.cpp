@@ -35,9 +35,9 @@ static inline int32_t grk_int_fix_mul_t1(int32_t a, int32_t b)
 	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-t1_impl::t1_impl(bool opt, uint32_t maxCblkW,uint32_t maxCblkH) : doOpt(opt), t1(nullptr), t1_opt(nullptr) {
+t1_impl::t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH) : doOpt(opt), t1(nullptr), t1_opt(nullptr) {
 	if (doOpt) {
-		t1_opt = new t1_opt_t(true);
+		t1_opt = new t1_opt_t(isEncoder);
 		if (!t1_opt_allocate_buffers(t1_opt,
 									maxCblkW,
 									maxCblkH)) {
@@ -45,7 +45,7 @@ t1_impl::t1_impl(bool opt, uint32_t maxCblkW,uint32_t maxCblkH) : doOpt(opt), t1
 		}
 	}
 	else {
-		t1 = new t1_t(true, 0, 0);
+		t1 = new t1_t(isEncoder, maxCblkW, maxCblkH);
 		if (!t1_allocate_buffers(t1,
 			maxCblkW,
 			maxCblkH)) {
@@ -59,6 +59,8 @@ t1_impl::~t1_impl() {
 	if (t1_opt)
 		delete t1_opt;
 }
+
+// ENCODED
 
 void t1_impl::prepareEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
 	auto state = grok_plugin_get_debug_state();
@@ -257,6 +259,68 @@ double t1_impl::encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max) {
 			block->mct_numcomps);
 	}
 	return dist;
+}
+
+// DECODE
+
+bool t1_impl::decode(decodeBlockInfo* block) {
+	if (!t1_allocate_buffers(t1,
+							(block->cblk->x1 - block->cblk->x0),
+							(block->cblk->y1 - block->cblk->y0))) {
+		return false;
+	}
+	return t1_decode_cblk(t1,
+						block->cblk,
+						block->bandno,
+						(uint32_t)block->roishift,
+						block->cblksty);
+}
+
+void t1_impl::postDecode(decodeBlockInfo* block) {
+	auto t1_data = t1->data;
+	// ROI shift
+	if (block->roishift) {
+		int32_t threshold = 1 << block->roishift;
+		for (auto j = 0U; j < t1->h; ++j) {
+			for (auto i = 0U; i < t1->w; ++i) {
+				auto value = *t1_data;
+				auto magnitude = abs(value);
+				if (magnitude >= threshold) {
+					magnitude >>= block->roishift;
+					// ((value > 0) - (value < 0)) == signum(value)
+					*t1_data = ((value > 0) - (value < 0))* magnitude;
+				}
+				t1_data++;
+			}
+		}
+		//reset t1_data to start of buffer
+		t1_data = t1->data;
+	}
+
+	//dequantization
+	uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
+	if (block->qmfbid == 1) {
+		int32_t* restrict tile_data = block->tiledp;
+		for (auto j = 0U; j < t1->h; ++j) {
+			int32_t* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < t1->w; ++i) {
+				tile_row_data[i] = *t1_data / 2;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
+	else {
+		float* restrict tile_data = (float*)block->tiledp;
+		for (auto j = 0U; j < t1->h; ++j) {
+			float* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < t1->w; ++i) {
+				tile_row_data[i] = (float)*t1_data * block->stepsize;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
 }
 
 }

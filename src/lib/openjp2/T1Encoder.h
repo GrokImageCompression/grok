@@ -23,8 +23,6 @@
 
 namespace grk {
 
-struct t1_opt_t;
-
 class T1Encoder
 {
 public:
