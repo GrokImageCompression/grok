@@ -94,7 +94,7 @@ class t1_interface
 public:
 	virtual ~t1_interface() {}
 
-	virtual void prepareEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) = 0;
+	virtual void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) = 0;
 	virtual double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max)=0;
 	
 	virtual bool decode(decodeBlockInfo* block)=0;

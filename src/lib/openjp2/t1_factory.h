@@ -21,24 +21,11 @@
 
 namespace grk {
 
-struct t1_t;
-struct t1_opt_t;
-class t1_impl : public t1_interface
+
+class t1_factory 
 {
 public:
-	t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
-	virtual ~t1_impl();
-
-	void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
-	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
-
-	bool decode(decodeBlockInfo* block);
-	void postDecode(decodeBlockInfo* block);
-
-private:
-	bool doOpt;
-	t1_t* t1;
-	t1_opt_t* t1_opt;
+	static t1_interface* get_t1(bool isEncoder, bool opt, uint32_t maxCblkW, uint32_t maxCblkH);
 
 };
 
