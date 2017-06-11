@@ -9,8 +9,9 @@
 #   + For decoder related tests = dump, compare dump to base, (TODO: compare outpout decoding 
 #     image to base)
 #
-# Line begin with ! should failed (should be used for bad jpeg2000 file which should be 
-# gracefully rejected). Please add a short resume about why this file should be rejected.
+# Lines beginning with `!` should fail. We use this for bad jpeg2000 file which should be 
+# gracefully rejected. When adding a new test, please add a short summary of 
+# why this file should be rejected.
 #
 # You can use @INPUT_NR_PATH@ and @TEMP_PATH@ cmake variable which refers to GROK_DATA_ROOT 
 # repository. However you can use relative path or absolute path.
@@ -163,6 +164,9 @@ opj_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_pt
 opj_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_termall_pterm.j2k -M 20
 opj_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_termall_pterm.j2k -M 21
 opj_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_vsc_reset_termall_pterm_segsym.j2k -M 63
+
+# issue 92
+opj_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RPCL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
 
 # DECODER TEST SUITE
 opj_decompress -i  @INPUT_NR_PATH@/Bretagne2.j2k -o @TEMP_PATH@/Bretagne2.j2k.pgx
