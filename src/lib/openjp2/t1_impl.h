@@ -26,10 +26,15 @@ struct t1_opt_t;
 class t1_impl : public t1_interface
 {
 public:
-	t1_impl(bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
+	t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
 	virtual ~t1_impl();
-	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
+
 	void prepareEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
+	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
+
+	bool decode(decodeBlockInfo* block);
+	void postDecode(decodeBlockInfo* block);
+
 private:
 	bool doOpt;
 	t1_t* t1;

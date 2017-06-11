@@ -162,18 +162,6 @@ double t1_encode_cblk(t1_t *t1,
 						uint32_t mct_numcomps);
 
 
-
-/**
-Decode the code-blocks of a tile
-@param tilec The tile to decode
-@param tccp Tile coding parameters
-*/
-bool t1_prepare_decode_cblks(   tcd_tilecomp_t* tilec,
-                            tccp_t* tccp,
-							std::vector<decodeBlockInfo*>* blocks,
-                            event_mgr_t * p_manager);
-
-
 /**
 Decode 1 code-block
 @param t1 T1 handle
