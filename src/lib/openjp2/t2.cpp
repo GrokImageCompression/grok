@@ -91,7 +91,8 @@ namespace grk {
 	@param cstr_info Codestream information structure
 	@return
 	*/
-	static bool t2_encode_packet(uint32_t tileno,
+	static bool t2_encode_packet(t2_t* p_t2,
+								uint32_t tileno,
 								tcd_tile_t *tile,
 								tcp_t *tcp,
 								pi_iterator_t *pi,
@@ -307,7 +308,8 @@ namespace grk {
 			if (l_current_pi->layno < p_maxlayers) {
 				l_nb_bytes = 0;
 
-				if (!t2_encode_packet(p_tile_no,
+				if (!t2_encode_packet(p_t2,
+									p_tile_no,
 									p_tile,
 									l_tcp,
 									l_current_pi,
@@ -971,7 +973,8 @@ namespace grk {
 	}
 	//--------------------------------------------------------------------------------------------------
 
-	static bool t2_encode_packet(uint32_t tileno,
+	static bool t2_encode_packet(t2_t* p_t2,
+								uint32_t tileno,
 								tcd_tile_t * tile,
 								tcp_t * tcp,
 								pi_iterator_t *pi,
