@@ -204,7 +204,6 @@ bool tile_buf_alloc_component_data_decode(tile_buf_component_t* buf)
         buf->data_size_needed = buf->data_size;
         buf->owns_data = true;
     }
-
     return true;
 }
 

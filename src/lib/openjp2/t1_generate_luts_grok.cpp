@@ -37,8 +37,8 @@
  */
 
 #include "grok_includes.h"
-#include "t1.h"
-#include "t1_opt.h"
+#include "t1_grok.h"
+#include "t1_opt_grok.h"
 
 static int t1_init_ctxno_zc(int f, int orient)
 {

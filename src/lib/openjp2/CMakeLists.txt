@@ -38,8 +38,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/mem_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_clock.cpp
@@ -55,17 +53,19 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mqc_grok.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mqc_grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl_grok.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl_grok.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt_luts_grok.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_luts_grok.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_grok.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_grok.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt_grok.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt_grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tcd.cpp
@@ -155,7 +155,7 @@ endif()
 if(BUILD_LUTS_GENERATOR)
 # internal utility to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
-add_executable(t1_generate_luts t1_generate_luts.cpp)
+add_executable(t1_generate_luts t1_generate_luts_grok.cpp)
   if(UNIX)
     target_link_libraries(t1_generate_luts m)
   endif()
