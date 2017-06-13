@@ -381,10 +381,10 @@ static int get_file_format(char *filename)
 {
     unsigned int i;
     static const char *extension[] = {
-        "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "jpg", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
+        "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "tiff", "jpg", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
     };
     static const int format[] = {
-        PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
+        PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
     };
     char * ext = strrchr(filename, '.');
     if (ext == NULL)
