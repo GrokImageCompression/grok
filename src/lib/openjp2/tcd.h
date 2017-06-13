@@ -295,7 +295,9 @@ struct tcd_band_t {
 												stepsize(rhs.stepsize)
 	 {}
 	~tcd_band_t();
-
+	bool isEmpty() {
+		return ((x1 - x0 == 0) || (y1 - y0 == 0));
+	}
 	size_t numPrecincts() {
 		return precincts_data_size / sizeof(tcd_precinct_t);
 	}
