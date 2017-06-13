@@ -137,11 +137,8 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 
 					/* check if block overlaps with decode region */
 					cblk_rect = rect_t(x, y, x + (1 << tccp->cblkw), y + (1 << tccp->cblkh));
-
-
 					if (!tile_buf_hit_test(tilec->buf, &cblk_rect))
 						continue;
-
 
 					x -= band->x0;
 					y -= band->y0;
@@ -170,11 +167,10 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 					block->tiledp = tile_buf_get_ptr(tilec->buf, resno, bandno, (uint32_t)x, (uint32_t)y);
 					blocks->push_back(block);
 
-				} /* cblkno */
-			} /* precno */
-		} /* bandno */
-	} /* resno */
-
+				} 
+			} 
+		} 
+	} 
 	return true;
 }
 
@@ -183,7 +179,5 @@ bool Tier1::decodeCodeblocks(uint16_t blockw, uint16_t blockh, std::vector<decod
 	T1Decoder decoder(blockw, blockh, numThreads);
 	return decoder.decode(blocks, numThreads);
 }
-
-
 
 }
