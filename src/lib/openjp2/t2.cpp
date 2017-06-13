@@ -183,10 +183,6 @@ namespace grk {
 		uint32_t cblksty,
 		bool first);
 
-	static bool t2_empty_of_code_blocks(tcd_band_t* band) {
-		return ((band->x1 - band->x0 == 0) || (band->y1 - band->y0 == 0));
-	}
-
 	/*@}*/
 
 	/*@}*/
@@ -638,7 +634,7 @@ namespace grk {
 			/* reset tagtrees */
 			for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
 				auto l_band = l_res->bands + bandno;
-				if (t2_empty_of_code_blocks(l_band))
+				if (l_band->isEmpty())
 					continue;
 				tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
 				if (!(p_pi->precno < (l_band->numPrecincts()))) {
@@ -739,7 +735,7 @@ namespace grk {
 		}
 		for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
 			auto l_band = l_res->bands + bandno;
-			if (t2_empty_of_code_blocks(l_band)) {
+			if (l_band->isEmpty()) {
 				continue;
 			}
 
@@ -1016,7 +1012,7 @@ namespace grk {
 				auto prc = band->precincts + precno;
 				uint32_t l_nb_blocks = prc->cw * prc->ch;
 
-				if (t2_empty_of_code_blocks(band) || !l_nb_blocks) {
+				if (band->isEmpty() || !l_nb_blocks) {
 					band++;
 					continue;
 				}
@@ -1046,7 +1042,7 @@ namespace grk {
 			auto prc = band->precincts + precno;
 			uint64_t l_nb_blocks = prc->cw * prc->ch;
 
-			if (t2_empty_of_code_blocks(band) || !l_nb_blocks) {
+			if (band->isEmpty() || !l_nb_blocks) {
 				band++;
 				continue;
 			}
@@ -1173,7 +1169,7 @@ namespace grk {
 			auto prc = band->precincts + precno;
 			uint64_t l_nb_blocks = prc->cw * prc->ch;
 
-			if (t2_empty_of_code_blocks(band) || !l_nb_blocks) {
+			if (band->isEmpty() || !l_nb_blocks) {
 				band++;
 				continue;
 			}
@@ -1647,17 +1643,14 @@ namespace grk {
 	{
 		uint32_t bandno, cblkno;
 		uint32_t l_nb_code_blocks;
-		tcd_band_t *l_band = nullptr;
 		tcd_cblk_dec_t* l_cblk = nullptr;
 
 		*p_data_read = 0;
-		l_band = l_res->bands;
-
 		for (bandno = 0; bandno < l_res->numbands; ++bandno) {
+			auto l_band = l_res->bands + bandno;
 			tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
 
-			if ((l_band->x1 - l_band->x0 == 0) || (l_band->y1 - l_band->y0 == 0)) {
-				++l_band;
+			if (l_band->isEmpty()) {
 				continue;
 			}
 
@@ -1708,10 +1701,7 @@ namespace grk {
 
 				++l_cblk;
 			}
-
-			++l_band;
 		}
-
 		return true;
 	}
 
