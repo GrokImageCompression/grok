@@ -45,8 +45,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/overflow_utils.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/raw.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/raw.h
   ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.cpp
