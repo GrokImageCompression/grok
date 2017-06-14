@@ -35,7 +35,19 @@ static inline int32_t grk_int_fix_mul_t1(int32_t a, int32_t b)
 	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-t1_impl::t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH) : doOpt(opt), t1(nullptr), t1_opt(nullptr) {
+t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_opt(nullptr), doOpt(false) {
+	if (isEncoder) {
+		doOpt = true;
+		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
+			tccp_t* tccp = tcp->tccps + compno;
+			if (tccp->cblksty != 0 &&
+				tccp->cblksty != J2K_CCP_CBLKSTY_RESET &&
+				tccp->cblksty != J2K_CCP_CBLKSTY_TERMALL) {
+				doOpt = false;
+				break;
+			}
+		}
+	}
 	if (doOpt) {
 		t1_opt = new t1_opt_t(isEncoder);
 		if (!t1_opt_allocate_buffers(t1_opt,

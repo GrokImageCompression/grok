@@ -23,10 +23,12 @@ namespace grk {
 
 struct t1_t;
 struct t1_opt_t;
+struct tcp_t;
+
 class t1_impl : public t1_interface
 {
 public:
-	t1_impl(bool isEncoder, bool opt, uint32_t maxCblkW,uint32_t maxCblkH);
+	t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH);
 	virtual ~t1_impl();
 
 	void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
