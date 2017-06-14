@@ -112,9 +112,13 @@ struct tcd_layer_t {
     uint8_t *data;			/* data buffer (points to code block data) */
 } ;
 
+const uint8_t cblk_compressed_data_pad_left = 1;
+const uint8_t cblk_compressed_data_pad_right = 2;
+
 // encoder code block
 struct tcd_cblk_enc_t {
-	tcd_cblk_enc_t() : data(nullptr),
+	tcd_cblk_enc_t() : 	actualData(nullptr),
+							data(nullptr),
 							data_size(0),
 							owns_data(false),
 							layers(nullptr),
@@ -138,6 +142,7 @@ struct tcd_cblk_enc_t {
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
+	uint8_t* actualData;
     uint8_t* data;              /* data buffer*/
 	uint32_t data_size;         /* size of allocated data buffer */
 	bool owns_data;				// true if code block manages data buffer, otherwise false

@@ -2364,20 +2364,18 @@ bool tcd_cblk_enc_t::alloc() {
 
 /**
 * Allocates data memory for an encoding code block.
+* We actually allocate 1 more bytes than specified, and then offset data by +1.
+* This is done so that we can safely initialize the MQ coder pointer to data-1,
+* without risk of accessing uninitialized memory.
 */
-bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize)
-{
+bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize){
 	uint32_t l_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
-
 	if (l_data_size > data_size) {
-		if (data) {
-			grok_free(data);
+		if (owns_data && actualData) {
+			grok_free(actualData);
 		}
-		data = (uint8_t*)grok_malloc(l_data_size + 1);
-		if (!data) {
-			data_size = 0U;
-			return false;
-		}
+		actualData = new uint8_t[l_data_size + cblk_compressed_data_pad_left];
+		data = actualData+ cblk_compressed_data_pad_left;
 		data_size = l_data_size;
 		owns_data = true;
 	}
@@ -2385,8 +2383,9 @@ bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize)
 }
 
 void tcd_cblk_enc_t::cleanup() {
-	if (owns_data && data) {
-		grok_free(data);
+	if (owns_data && actualData) {
+		delete[] actualData;
+		actualData = nullptr;
 		data = nullptr;
 		owns_data = false;
 	}

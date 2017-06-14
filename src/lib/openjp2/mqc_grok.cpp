@@ -238,12 +238,7 @@ static mqc_state_t mqc_states[47 * 2] = {
 
 static void mqc_byteout(mqc_t *mqc)
 {
-    if (mqc->bp < mqc->start) {
-        mqc->bp++;
-        *mqc->bp = (uint8_t)(mqc->C >> 19);
-        mqc->C &= 0x7ffff;
-        mqc->COUNT = 8;
-    } else if (*mqc->bp == 0xff) {
+   if (*mqc->bp == 0xff) {
         mqc->bp++;
         *mqc->bp = (uint8_t)(mqc->C >> 20);
         mqc->C &= 0xfffff;
@@ -478,6 +473,7 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp)
     mqc->A = 0x8000;
     mqc->C = 0;
     mqc->bp = bp - 1;
+	*mqc->bp = 0;
     mqc->COUNT = 12;
     mqc->start = bp;
 	if (grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG) {
@@ -565,7 +561,6 @@ void mqc_bypass_flush_enc(mqc_t *mqc)
 uint32_t mqc_restart_enc(mqc_t *mqc)
 {
     uint32_t correction = 1;
-
     /* <flush part> */
     int32_t n = (int32_t)(27 - 15 - mqc->COUNT);
     mqc->C <<= mqc->COUNT;
@@ -575,7 +570,6 @@ uint32_t mqc_restart_enc(mqc_t *mqc)
         mqc->C <<= mqc->COUNT;
     }
     mqc_byteout(mqc);
-
     return correction;
 }
 
