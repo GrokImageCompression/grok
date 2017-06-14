@@ -398,6 +398,51 @@ static inline void mqc_renormd(mqc_t *const mqc)
 ==========================================================
 */
 
+raw_t* raw_create(void)
+{
+	raw_t *raw = (raw_t*)grok_malloc(sizeof(raw_t));
+	return raw;
+}
+
+void raw_destroy(raw_t *raw)
+{
+	if (raw) {
+		grok_free(raw);
+	}
+}
+
+void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len)
+{
+	raw->start = bp;
+	raw->lenmax = len;
+	raw->len = 0;
+	raw->C = 0;
+	raw->COUNT = 0;
+}
+
+uint32_t raw_decode(raw_t *raw)
+{
+	uint32_t d;
+	if (raw->COUNT == 0) {
+		raw->COUNT = 8;
+		if (raw->len == raw->lenmax) {
+			raw->C = 0xff;
+		}
+		else {
+			if (raw->C == 0xff) {
+				raw->COUNT = 7;
+			}
+			raw->C = *(raw->start + raw->len);
+			raw->len++;
+		}
+	}
+	raw->COUNT--;
+	d = ((uint32_t)raw->C >> raw->COUNT) & 0x01;
+
+	return d;
+}
+
+
 void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
 	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;

@@ -213,8 +213,6 @@ static inline long grk_lrintf(float f)
 #include "invert.h"
 #include "j2k.h"
 #include "jp2.h"
-
-#include "raw.h"
 #include "bio.h"
 #include "tile_buf.h"
 #include "pi.h"
