@@ -29,8 +29,8 @@ class Tier1
 {
 public:
 	
-	bool encodeCodeblocks(tcd_tile_t *tile,
-						tcp_t *tcp,
+	bool encodeCodeblocks(tcp_t *tcp, 
+						tcd_tile_t *tile,
 						const double * mct_norms,
 						uint32_t mct_numcomps,
 						uint32_t numThreads);
@@ -40,7 +40,12 @@ public:
 								std::vector<decodeBlockInfo*>* blocks,
 								event_mgr_t * p_manager);
 
-	bool decodeCodeblocks(uint16_t blockw, uint16_t blockh, std::vector<decodeBlockInfo*>* blocks, int32_t numThreads);
+	bool decodeCodeblocks(tcp_t *tcp,
+							tcd_tile_t *tile,
+							uint16_t blockw, 
+							uint16_t blockh,
+							std::vector<decodeBlockInfo*>* blocks,
+							int32_t numThreads);
 
 };
 

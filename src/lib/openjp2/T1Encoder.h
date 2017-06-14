@@ -26,16 +26,15 @@ namespace grk {
 class T1Encoder
 {
 public:
-	T1Encoder(bool opt, uint32_t encodeMaxCblkW, uint32_t encodeMaxCblkH, size_t numThreads);
+	T1Encoder(tcp_t *tcp, tcd_tile_t *tile, uint32_t encodeMaxCblkW, uint32_t encodeMaxCblkH, size_t numThreads);
 	~T1Encoder();
-	bool encode(tcd_tile_t *tile, std::vector<encodeBlockInfo*>* blocks);
+	bool encode(std::vector<encodeBlockInfo*>* blocks);
 
 private:
 	void encode(size_t threadId);
 	std::atomic_bool return_code;
 
 	tcd_tile_t *tile;
-	bool do_opt;
 	std::vector<t1_interface*> threadStructs;
 
 	BlockingQueue<encodeBlockInfo*> encodeQueue;

@@ -27,12 +27,12 @@
 
 namespace grk {
 
-T1Encoder::T1Encoder(bool opt, 
+T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
 					uint32_t encodeMaxCblkW,
 					uint32_t encodeMaxCblkH, 
-					size_t numThreads) : tile(nullptr), do_opt(opt) {
+					size_t numThreads) : tile(tile) {
 	for (auto i = 0U; i < numThreads; ++i) {
-		threadStructs.push_back(t1_factory::get_t1(true,do_opt, encodeMaxCblkW, encodeMaxCblkH));
+		threadStructs.push_back(t1_factory::get_t1(true,tcp, tile, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 
@@ -57,11 +57,9 @@ void T1Encoder::encode(size_t threadId) {
 		delete block;
 	}
 }
-bool T1Encoder::encode(	tcd_tile_t *encodeTile,
-						std::vector<encodeBlockInfo*>* blocks) {
+bool T1Encoder::encode(	std::vector<encodeBlockInfo*>* blocks) {
 	if (!blocks || blocks->size() == 0)
 		return true;
-	tile = encodeTile;
 	auto numThreads = threadStructs.size();
 #ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;

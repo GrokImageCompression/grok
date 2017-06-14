@@ -23,25 +23,14 @@
 namespace grk {
 
 
-bool Tier1::encodeCodeblocks(tcd_tile_t *tile,
-									tcp_t *tcp,
-									const double * mct_norms,
-									uint32_t mct_numcomps,
-									uint32_t numThreads) {
+bool Tier1::encodeCodeblocks(tcp_t *tcp,
+							tcd_tile_t *tile,
+							const double * mct_norms,
+							uint32_t mct_numcomps,
+							uint32_t numThreads) {
 
-	bool do_opt = true;
 	uint32_t compno, resno, bandno, precno;
 	tile->distotile = 0;
-	for (compno = 0; compno < tile->numcomps; ++compno) {
-		tccp_t* tccp = tcp->tccps + compno;
-		if (tccp->cblksty != 0 &&
-			tccp->cblksty != J2K_CCP_CBLKSTY_RESET &&
-			tccp->cblksty != J2K_CCP_CBLKSTY_TERMALL) {
-			do_opt = false;
-			break;
-		}
-	}
-
 	std::vector<encodeBlockInfo*> blocks;
 	auto maxCblkW = 0;
 	auto maxCblkH = 0;
@@ -99,11 +88,11 @@ bool Tier1::encodeCodeblocks(tcd_tile_t *tile,
 		} 
 	} 
 
-	T1Encoder encoder(do_opt,
+	T1Encoder encoder(tcp, tile,
 					maxCblkW,
 					maxCblkH,
 					numThreads);
-	return encoder.encode(tile,&blocks);
+	return encoder.encode(&blocks);
 }
 
 
@@ -175,8 +164,13 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 }
 
 
-bool Tier1::decodeCodeblocks(uint16_t blockw, uint16_t blockh, std::vector<decodeBlockInfo*>* blocks, int32_t numThreads) {
-	T1Decoder decoder(blockw, blockh, numThreads);
+bool Tier1::decodeCodeblocks(tcp_t *tcp,
+							tcd_tile_t *tile,
+							uint16_t blockw,
+							uint16_t blockh,
+							std::vector<decodeBlockInfo*>* blocks, 
+							int32_t numThreads) {
+	T1Decoder decoder(tcp, tile, blockw, blockh, numThreads);
 	return decoder.decode(blocks, numThreads);
 }
 

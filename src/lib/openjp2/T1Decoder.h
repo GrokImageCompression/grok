@@ -29,7 +29,11 @@ class t1_interface;
 class T1Decoder
 {
 public:
-	T1Decoder(uint16_t blockw, uint16_t blockh, size_t numThreads);
+	T1Decoder(tcp_t *tcp,
+				tcd_tile_t *tile, 
+				uint16_t blockw,
+				uint16_t blockh,
+				size_t numThreads);
 	~T1Decoder();
 	bool decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads);
 

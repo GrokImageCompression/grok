@@ -1690,7 +1690,7 @@ static bool tcd_t1_decode ( tcd_t *p_tcd, event_mgr_t * p_manager)
         ++l_tccp;
     }
 	// !!! assume that code block dimensions do not change over components
-	return t1_wrap->decodeCodeblocks((uint16_t)p_tcd->tcp->tccps->cblkw, (uint16_t)p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
+	return t1_wrap->decodeCodeblocks(p_tcd->tcp, p_tcd->tile, (uint16_t)p_tcd->tcp->tccps->cblkw, (uint16_t)p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
 }
 
 
@@ -2097,11 +2097,11 @@ static bool tcd_t1_encode ( tcd_t *p_tcd )
 
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 
-    return t1_wrap->encodeCodeblocks(p_tcd->tile,
-								l_tcp,
-								l_mct_norms,
-								l_mct_numcomps,
-								p_tcd->numThreads);
+    return t1_wrap->encodeCodeblocks(l_tcp,
+									p_tcd->tile,
+									l_mct_norms,
+									l_mct_numcomps,
+									p_tcd->numThreads);
 }
 
 static bool tcd_t2_encode (tcd_t *p_tcd,
