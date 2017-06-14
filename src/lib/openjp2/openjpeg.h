@@ -326,7 +326,6 @@ typedef enum COLOR_SPACE {
 typedef enum CODEC_FORMAT {
     OPJ_CODEC_UNKNOWN = -1,	/**< place-holder */
     OPJ_CODEC_J2K  = 0,		/**< JPEG-2000 codestream : read/write */
-    OPJ_CODEC_JPT  = 1,		/**< JPT-stream (JPEG 2000, JPIP) : read only */
     OPJ_CODEC_JP2  = 2,		/**< JP2 file format : read/write */
     OPJ_CODEC_JPP  = 3,		/**< JPP-stream (JPEG 2000, JPIP) : to be coded */
     OPJ_CODEC_JPX  = 4		/**< JPX file format (JPEG 2000 Part-2) : to be coded */
@@ -483,7 +482,7 @@ typedef struct opj_cparameters {
     uint32_t subsampling_dy;
     /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF; -1 means no input file format*/
     int32_t decod_format;
-    /** output file format 0: J2K, 1: JP2, 2: JPT; -1 means no output file format */
+    /** output file format 0: J2K, 1: JP2; -1 means no output file format */
     int32_t cod_format;
     /*@}*/
 
@@ -675,7 +674,7 @@ typedef struct opj_dparameters {
     char infile[OPJ_PATH_LEN];
     /** output file name */
     char outfile[OPJ_PATH_LEN];
-    /** input file format 0: J2K, 1: JP2, 2: JPT */
+    /** input file format 0: J2K, 1: JP2*/
     int32_t decod_format;
     /** output file format 0: PGX, 1: PxM, 2: BMP */
     int32_t cod_format;
@@ -724,7 +723,7 @@ typedef struct opj_decompress_params {
 	char infile[OPJ_PATH_LEN];
 	/** output file name */
 	char outfile[OPJ_PATH_LEN];
-	/** input file format 0: J2K, 1: JP2, 2: JPT */
+	/** input file format 0: J2K, 1: JP2*/
 	int decod_format;
 	/** output file format 0: PGX, 1: PxM, 2: BMP */
 	int cod_format;

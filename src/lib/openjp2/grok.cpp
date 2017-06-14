@@ -381,7 +381,6 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 
         break;
     case OPJ_CODEC_UNKNOWN:
-    case OPJ_CODEC_JPT:
     default:
         grok_free(l_codec);
         return nullptr;
@@ -694,7 +693,6 @@ opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT p_format)
         break;
 
     case OPJ_CODEC_UNKNOWN:
-    case OPJ_CODEC_JPT:
     default:
         grok_free(l_codec);
         return nullptr;

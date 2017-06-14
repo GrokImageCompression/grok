@@ -83,8 +83,8 @@ static int infile_format(const char *fname);
 int get_file_format(const char *filename)
 {
     unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "raw", "rawl", "tga", "png", "j2k", "jp2", "jpt", "j2c", "jpc" };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, JPT_CFMT, J2K_CFMT, J2K_CFMT };
+    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc" };
+    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
     char * ext = (char*)strrchr(filename, '.');
     if (ext == NULL)
         return -1;
@@ -125,10 +125,6 @@ static int infile_format(const char *fname)
         return -1;
 
     ext_format = get_file_format(fname);
-
-    if (ext_format == JPT_CFMT)
-        return JPT_CFMT;
-
     if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
         magic_format = JP2_CFMT;
         magic_s = ".jp2";

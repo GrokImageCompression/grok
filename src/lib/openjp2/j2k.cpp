@@ -5425,7 +5425,7 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
 }
 
 /* ----------------------------------------------------------------------- */
-/* J2K / JPT decoder interface                                             */
+/* J2K decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
 void j2k_setup_decoder(void *j2k_void, opj_dparameters_t *parameters)

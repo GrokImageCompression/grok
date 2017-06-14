@@ -58,7 +58,6 @@
 enum {
 	J2K_CFMT,
 	JP2_CFMT,
-	JPT_CFMT,
 	PXM_DFMT,
 	PGX_DFMT,
 	BMP_DFMT,

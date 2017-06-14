@@ -128,7 +128,7 @@ static void decode_help_display(void)
     fprintf(stdout,"	Image file Directory path \n");
     fprintf(stdout,"  -i <compressed file>\n");
     fprintf(stdout,"    REQUIRED only if an Input image directory not specified\n");
-    fprintf(stdout,"    Currently accepts J2K-files, JP2-files and JPT-files. The file type\n");
+    fprintf(stdout,"    Currently accepts J2K-files and JP2-files. The file type\n");
     fprintf(stdout,"    is identified based on its suffix.\n");
     fprintf(stdout,"  -o <output file>\n");
     fprintf(stdout,"    OPTIONAL\n");
@@ -195,8 +195,8 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 static int get_file_format(const char *filename)
 {
     unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "raw", "tga", "png", "j2k", "jp2", "jpt", "j2c", "jpc"  };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, JPT_CFMT, J2K_CFMT, J2K_CFMT };
+    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "raw", "tga", "png", "j2k", "jp2", "j2c", "jpc"  };
+    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
     const char *ext = strrchr(filename, '.');
     if (ext == nullptr)
         return -1;
@@ -266,13 +266,7 @@ static int infile_format(const char *fname)
     fclose(reader);
     if (l_nb_read != 12)
         return -1;
-
-
-
     ext_format = get_file_format(fname);
-
-    if (ext_format == JPT_CFMT)
-        return JPT_CFMT;
 
     if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
         magic_format = JP2_CFMT;
@@ -320,15 +314,12 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
             parameters->decod_format = infile_format(infile);
             switch(parameters->decod_format) {
             case J2K_CFMT:
-                break;
             case JP2_CFMT:
-                break;
-            case JPT_CFMT:
                 break;
             default:
                 fprintf(stderr,
                         "[ERROR] Unknown input file format: %s \n"
-                        "        Known file formats are *.j2k, *.jp2, *.jpc or *.jpt\n",
+                        "        Known file formats are *.j2k, *.jp2 or *.jpc\n",
                         infile);
                 return 1;
             }
@@ -564,11 +555,6 @@ int main(int argc, char *argv[])
         case JP2_CFMT: {	/* JPEG 2000 compressed image data */
             /* Get a decoder handle */
             l_codec = opj_create_decompress(OPJ_CODEC_JP2);
-            break;
-        }
-        case JPT_CFMT: {	/* JPEG 2000, JPIP */
-            /* Get a decoder handle */
-            l_codec = opj_create_decompress(OPJ_CODEC_JPT);
             break;
         }
         default:
