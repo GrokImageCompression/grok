@@ -59,38 +59,6 @@
 
 namespace grk {
 
-/**
-@file t1.h
-@brief Implementation of the tier-1 coding (coding of code-block coefficients) (T1)
-
-The functions in T1.C have for goal to realize the tier-1 coding operation. The functions
-in T1.C are used by some function in TCD.C.
-*/
-
-/** @defgroup T1 T1 - Implementation of the tier-1 coding */
-/*@{*/
-
-/* ----------------------------------------------------------------------- */
-#define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
-#define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
-#define T1_SIG_SW 0x0004	/**< Context orientation : South-West direction */
-#define T1_SIG_NW 0x0008	/**< Context orientation : North-West direction */
-#define T1_SIG_N 0x0010		/**< Context orientation : North direction */
-#define T1_SIG_E 0x0020		/**< Context orientation : East direction */
-#define T1_SIG_S 0x0040		/**< Context orientation : South direction */
-#define T1_SIG_W 0x0080		/**< Context orientation : West direction */
-#define T1_SIG_OTH (T1_SIG_N|T1_SIG_NE|T1_SIG_E|T1_SIG_SE|T1_SIG_S|T1_SIG_SW|T1_SIG_W|T1_SIG_NW)
-#define T1_SIG_PRIM (T1_SIG_N|T1_SIG_E|T1_SIG_S|T1_SIG_W)
-
-#define T1_SGN_N 0x0100
-#define T1_SGN_E 0x0200
-#define T1_SGN_S 0x0400
-#define T1_SGN_W 0x0800
-#define T1_SGN (T1_SGN_N|T1_SGN_E|T1_SGN_S|T1_SGN_W)
-
-#define T1_SIG 0x1000
-#define T1_REFINE 0x2000
-#define T1_VISIT 0x4000
 
 #define T1_NUMCTXS_ZC 9
 #define T1_NUMCTXS_SC 5
@@ -107,21 +75,6 @@ in T1.C are used by some function in TCD.C.
 
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
-
-#define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
-#define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
-
-/* ----------------------------------------------------------------------- */
-
-
-
-
-#define MACRO_t1_flags(x,y) t1->flags[((x)*(t1->flags_stride))+(y)]
-
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-
 
 typedef uint16_t flag_t;
 
