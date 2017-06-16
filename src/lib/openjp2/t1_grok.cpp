@@ -1481,12 +1481,14 @@ double t1_encode_cblk(t1_t *t1,
 		}
 	}
 
-	/* Code switch "ERTERM" (i.e. PTERM) */
 	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
-	if (cblksty & J2K_CCP_CBLKSTY_PTERM)
-		mqc_erterm_enc(mqc);
-	else if (!finalPass->term)
-		mqc_flush(mqc);
+	if (!finalPass->term) {
+		/* Code switch "ERTERM" (i.e. PTERM) */
+		if (cblksty & J2K_CCP_CBLKSTY_PTERM)
+			mqc_erterm_enc(mqc);
+		else 
+			mqc_flush(mqc);
+	}
 
 	cblk->num_passes_encoded = passno;
 
@@ -1496,12 +1498,15 @@ double t1_encode_cblk(t1_t *t1,
 			// increment pass->rate since it based on non-flushed MQ coder, where calculated rate is one less than actual rate
 			pass->rate++;
 
+			// maximum bytes in block
 			uint32_t maxBytes = mqc_numbytes(mqc);
+
 			if (LAZY) {
 				// find next term pass
 				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded; ++k) {
 					tcd_pass_t* nextTerm = cblk->passes + k;
 					if (nextTerm->term) {
+						// this rate is correct, since it has been flushed
 						auto nextRate = nextTerm->rate;
 						if (nextTerm->rate > 0 && (cblk->data[nextTerm->rate - 1] == 0xFF)) {
 							nextRate--;
