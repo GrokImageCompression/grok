@@ -59,6 +59,20 @@
 
 namespace grk {
 
+#define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
+#define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
+#define T1_SIG_SW 0x0004	/**< Context orientation : South-West direction */
+#define T1_SIG_NW 0x0008	/**< Context orientation : North-West direction */
+#define T1_SIG_N 0x0010		/**< Context orientation : North direction */
+#define T1_SIG_E 0x0020		/**< Context orientation : East direction */
+#define T1_SIG_S 0x0040		/**< Context orientation : South direction */
+#define T1_SIG_W 0x0080		/**< Context orientation : West direction */
+
+#define T1_SGN_N 0x0100
+#define T1_SGN_E 0x0200
+#define T1_SGN_S 0x0400
+#define T1_SGN_W 0x0800
+
 
 #define T1_NUMCTXS_ZC 9
 #define T1_NUMCTXS_SC 5

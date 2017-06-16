@@ -37,6 +37,7 @@
  */
 
 #include "grok_includes.h"
+#include "mqc_grok.h"
 #include "t1_grok.h"
 #include "t1_opt_grok.h"
 
