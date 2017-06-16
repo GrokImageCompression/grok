@@ -113,7 +113,6 @@ struct tcd_layer_t {
 } ;
 
 const uint8_t cblk_compressed_data_pad_left = 1;
-const uint8_t cblk_compressed_data_pad_right = 2;
 
 // encoder code block
 struct tcd_cblk_enc_t {

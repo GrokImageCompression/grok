@@ -63,12 +63,6 @@
 namespace grk {
 
 
-/** @defgroup MQC MQC - Implementation of an MQ-Coder */
-/*@{*/
-
-/** @name Local static functions */
-/*@{*/
-
 /**
 Output a byte, doing bit-stuffing if necessary.
 After a 0xff byte, the next byte must be smaller than 0x90.

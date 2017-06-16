@@ -58,31 +58,6 @@
 #pragma once
 namespace grk {
 
-/**
-@file mqc.h
-@brief Implementation of an MQ-Coder (MQC)
-
-The functions in MQC.C have for goal to realize the MQ-coder operations. The functions
-in MQC.C are used by some function in T1.C.
-*/
-
-/** @defgroup MQC MQC - Implementation of an MQ-Coder */
-/*@{*/
-
-/**
-This struct defines the state of a context.
-*/
-struct mqc_state_t {
-    /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
-    uint16_t qeval;
-    /** the Most Probable Symbol (0 or 1) */
-    uint8_t mps;
-    /** next state if the next encoded symbol is the MPS */
-	mqc_state_t *nmps;
-    /** next state if the next encoded symbol is the LPS */
-	mqc_state_t *nlps;
-} ;
-
 #define MQC_NUMCTXS 19
 
 struct raw_t {
@@ -130,10 +105,24 @@ uint32_t raw_decode(raw_t *raw);
 /* ----------------------------------------------------------------------- */
 
 
-
 /**
 MQ coder
 */
+
+/**
+This struct defines the state of a context.
+*/
+struct mqc_state_t {
+	/** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
+	uint16_t qeval;
+	/** the Most Probable Symbol (0 or 1) */
+	uint8_t mps;
+	/** next state if the next encoded symbol is the MPS */
+	mqc_state_t *nmps;
+	/** next state if the next encoded symbol is the LPS */
+	mqc_state_t *nlps;
+};
+
 
 struct mqc_t {
     uint32_t C;
@@ -145,14 +134,10 @@ struct mqc_t {
     uint8_t *end;
     mqc_state_t *ctxs[MQC_NUMCTXS];
     mqc_state_t **curctx;
-
 	plugin_debug_mqc_t debug_mqc;
-
 } ;
 
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
+
 /**
 Create a new MQC handle
 @return Returns a new MQC handle if successful, returns NULL otherwise
@@ -254,11 +239,5 @@ Decode a symbol
 @return Returns the decoded symbol (0 or 1)
 */
 uint8_t mqc_decode(mqc_t * const mqc);
-/* ----------------------------------------------------------------------- */
-/*@}*/
-
-/*@}*/
-
-
 
 }
