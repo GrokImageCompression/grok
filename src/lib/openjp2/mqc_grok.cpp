@@ -232,6 +232,7 @@ static mqc_state_t mqc_states[47 * 2] = {
 
 static void mqc_byteout(mqc_t *mqc)
 {
+   assert(mqc->bp >= mqc->start - 1);
    if (*mqc->bp == 0xff) {
         mqc->bp++;
         *mqc->bp = (uint8_t)(mqc->C >> 20);
@@ -502,6 +503,7 @@ void mqc_flush(mqc_t *mqc)
 	//increment bp so that mqc_numbytes() will now return correct result
 	if (*mqc->bp != 0xff) {
         mqc->bp++;
+		*mqc->bp = 0;
     }
 }
 
@@ -526,17 +528,18 @@ void mqc_bypass_enc(mqc_t *mqc, uint32_t d)
         mqc->bp++;
         *mqc->bp = (uint8_t)mqc->C;
         mqc->COUNT = 8;
-		mqc->C = 0;
 		// bit stuffing ensures that most significant bit equals zero
 		// for byte following 0xFF
         if (*mqc->bp == 0xff) {
             mqc->COUNT = 7;
         }
+		mqc->C = 0;
     }
 }
 
 void mqc_bypass_flush_enc(mqc_t *mqc)
 {
+	assert(mqc->bp >= mqc->start - 1);
     uint8_t bit_padding = 0;
     if (mqc->COUNT != 8) {
         while (mqc->COUNT > 0) {
@@ -549,6 +552,7 @@ void mqc_bypass_flush_enc(mqc_t *mqc)
 	}
 	if (*mqc->bp != 0xff) {
 		mqc->bp++;
+		*mqc->bp = 0;
 	}
 }
 
