@@ -255,7 +255,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 				}
 				pass->distortiondec = pluginPass->distortionDecrease;
 			}
-			uint32_t pluginRate = (uint32_t)(pluginPass->rate + 3);
+			uint32_t pluginRate = (uint32_t)(pluginPass->rate+1);
 			if (pluginRate > totalRatePlugin)
 				pluginRate = totalRatePlugin;
 

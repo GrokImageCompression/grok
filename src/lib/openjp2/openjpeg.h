@@ -690,7 +690,7 @@ typedef struct opj_dparameters {
     /** Verbose mode */
     bool m_verbose;
 
-    /** tile number ot the decoded tile*/
+    /** tile number of the decoded tile*/
     uint32_t tile_index;
     /** Nb of tile to decode */
     uint32_t nb_tile_to_decode;
@@ -741,7 +741,7 @@ typedef struct opj_decompress_params {
 	/** Verbose mode */
 	bool m_verbose;
 
-	/** tile number ot the decoded tile*/
+	/** tile number of the decoded tile*/
 	uint32_t tile_index;
 	/** Nb of tile to decode */
 	uint32_t nb_tile_to_decode;
