@@ -567,21 +567,6 @@ void mqc_bypass_flush_enc(mqc_t *mqc)
 	}
 }
 
-uint32_t mqc_restart_enc(mqc_t *mqc)
-{
-    uint32_t correction = 1;
-    /* <flush part> */
-    int32_t n = (int32_t)(27 - 15 - mqc->COUNT);
-    mqc->C <<= mqc->COUNT;
-    while (n > 0) {
-        mqc_byteout(mqc);
-        n -= (int32_t)mqc->COUNT;
-        mqc->C <<= mqc->COUNT;
-    }
-    mqc_byteout(mqc);
-    return correction;
-}
-
 void mqc_restart_init_enc(mqc_t *mqc)
 {
 	mqc_setcurctx(mqc, 0);
