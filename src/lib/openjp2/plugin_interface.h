@@ -97,7 +97,7 @@ typedef bool (*PLUGIN_IS_BATCH_ENCODE_COMPLETE)(void);
 
 typedef grok_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
                                     size_t compressed_tile_id,
-                                    opj_cparameters_t* encoder_parameters,
+									opj_header_info_t* header_info,
                                     opj_image_t* image);
 
 struct plugin_decode_callback_info_t {

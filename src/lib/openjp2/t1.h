@@ -93,6 +93,7 @@ namespace grk {
 typedef uint16_t flag_t;
 
 struct mqc_t;
+struct raw_t;
 
 struct t1_t {
 	~t1_t();
