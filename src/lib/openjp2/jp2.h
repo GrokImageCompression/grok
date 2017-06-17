@@ -126,9 +126,12 @@ struct jp2_buffer_t {
 	jp2_buffer_t(uint8_t* buf, size_t size, bool owns) : buffer(buf), len(size), ownsData(owns)
 	{
 	}
-	bool alloc(size_t len) {
+	jp2_buffer_t() : jp2_buffer_t(nullptr,0,false)
+	{
+	}
+	bool alloc(size_t length) {
 		dealloc();
-		buffer = (uint8_t*)grok_malloc(len);
+		buffer = (uint8_t*)grok_malloc(length);
 		ownsData = buffer != nullptr;
 		return buffer ? true : false;
 	}
