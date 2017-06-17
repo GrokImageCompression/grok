@@ -56,9 +56,9 @@
 #include "grok_includes.h"
 
  // tier 1 interface
-#include "mqc_grok.h"
-#include "t1_grok.h"
-#include "t1_luts_grok.h"
+#include "mqc.h"
+#include "t1.h"
+#include "t1_luts.h"
 #include "T1Encoder.h"
 
 namespace grk {

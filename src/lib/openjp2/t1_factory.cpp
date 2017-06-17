@@ -16,7 +16,7 @@
  */
 
 #include "t1_factory.h"
-#include "t1_impl_grok.h"
+#include "t1_impl.h"
 
 namespace grk {
 
