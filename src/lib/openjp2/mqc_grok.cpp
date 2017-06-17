@@ -603,7 +603,7 @@ void mqc_segmark_enc(mqc_t *mqc)
     mqc_setcurctx(mqc, 18);
 
     for (i = 1; i < 5; i++) {
-        mqc_encode(mqc, i % 2);
+        mqc_encode(mqc, i&1);
     }
 }
 
