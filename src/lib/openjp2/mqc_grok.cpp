@@ -581,20 +581,24 @@ void mqc_restart_init_enc(mqc_t *mqc)
 	}
 }
 
+// easy MQ codeword termination
+// See Taubman and Marcellin p 496 for details
 void mqc_flush_erterm(mqc_t *mqc)
 {
-    int32_t k = (int32_t)(11 - mqc->COUNT + 1);
-
-    while (k > 0) {
-        mqc->C <<= mqc->COUNT;
-        mqc->COUNT = 0;
-        mqc_byteout(mqc);
-        k -= (int32_t)mqc->COUNT;
+    int32_t n = (int32_t)(27 -15 - mqc->COUNT);
+	mqc->C <<= mqc->COUNT;
+    while (n > 0) {
+		mqc_byteout(mqc);
+		n -= (int32_t)mqc->COUNT;
+		mqc->C <<= mqc->COUNT;
     }
+	mqc_byteout(mqc);
 
-    if (*mqc->bp != 0xff) {
-        mqc_byteout(mqc);
-    }
+	//increment bp so that mqc_numbytes() will now return correct result
+	if (*mqc->bp != 0xff) {
+		mqc->bp++;
+		*mqc->bp = 0;
+	}
 }
 
 void mqc_segmark_enc(mqc_t *mqc)
