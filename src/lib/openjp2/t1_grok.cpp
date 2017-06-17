@@ -1437,11 +1437,7 @@ double t1_encode_cblk(t1_t *t1,
 					bypassFlush = passtype == 1;
 				}
 			}
-			if (bypassFlush) {
-				mqc_bypass_flush_enc(mqc);
-			}
-			else
-				mqc_flush(mqc);
+			mqc_big_flush(mqc, cblksty, bypassFlush);
 			pass->term = 1;
 		}
 		else {
@@ -1483,11 +1479,7 @@ double t1_encode_cblk(t1_t *t1,
 
 	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
 	if (!finalPass->term) {
-		/* Code switch "ERTERM" (i.e. PTERM) */
-		if (cblksty & J2K_CCP_CBLKSTY_PTERM)
-			mqc_erterm_enc(mqc);
-		else 
-			mqc_flush(mqc);
+		mqc_big_flush(mqc, cblksty,false);
 	}
 
 	cblk->num_passes_encoded = passno;

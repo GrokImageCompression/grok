@@ -507,6 +507,17 @@ void mqc_flush(mqc_t *mqc)
     }
 }
 
+void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush) {
+	if (bypassFlush) {
+		mqc_bypass_flush_enc(mqc);
+	}
+	/* Code switch "ERTERM" (i.e. PTERM) */
+	else if (cblksty & J2K_CCP_CBLKSTY_PTERM)
+		mqc_flush_erterm(mqc);
+	else
+		mqc_flush(mqc);
+}
+
 void mqc_bypass_init_enc(mqc_t *mqc)
 {
     mqc->C = 0;
@@ -585,7 +596,7 @@ void mqc_restart_init_enc(mqc_t *mqc)
 	}
 }
 
-void mqc_erterm_enc(mqc_t *mqc)
+void mqc_flush_erterm(mqc_t *mqc)
 {
     int32_t k = (int32_t)(11 - mqc->COUNT + 1);
 

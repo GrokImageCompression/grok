@@ -728,7 +728,8 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		cumwmsedec += tempwmsedec;
 
 		if (TERMALL) {
-			mqc_flush(mqc);
+			// t1_opt doesn't support bypass, so set to false
+			mqc_big_flush(mqc, cblksty,false);
 			correction = 0;
 			pass->term = 1;
 		}

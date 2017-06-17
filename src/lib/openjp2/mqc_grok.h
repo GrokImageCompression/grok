@@ -184,6 +184,9 @@ Flush the encoder, so that all remaining data is written
 @param mqc MQC handle
 */
 void mqc_flush(mqc_t *mqc);
+
+void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush);
+
 /**
 BYPASS mode switch, initialization operation.
 JPEG 2000 p 505.
@@ -220,7 +223,7 @@ void mqc_restart_init_enc(mqc_t *mqc);
 ERTERM mode switch (PTERM)
 @param mqc MQC handle
 */
-void mqc_erterm_enc(mqc_t *mqc);
+void mqc_flush_erterm(mqc_t *mqc);
 /**
 SEGMARK mode switch (SEGSYM)
 @param mqc MQC handle
