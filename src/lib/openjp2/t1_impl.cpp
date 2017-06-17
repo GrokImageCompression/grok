@@ -15,10 +15,10 @@
 *
  */
 #include "testing.h"
-#include "t1_impl_grok.h"
-#include "mqc_grok.h"
-#include "t1_grok.h"
-#include "t1_opt_grok.h"
+#include "t1_impl.h"
+#include "mqc.h"
+#include "t1.h"
+#include "t1_opt.h"
 
 namespace grk {
 
