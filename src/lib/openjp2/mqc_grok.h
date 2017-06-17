@@ -209,12 +209,6 @@ BYPASS mode switch, flush operation
 */
 void mqc_bypass_flush_enc(mqc_t *mqc);
 /**
-RESTART mode switch (TERMALL)
-@param mqc MQC handle
-@return Returns 1 (always)
-*/
-uint32_t mqc_restart_enc(mqc_t *mqc);
-/**
 RESTART mode switch (TERMALL) reinitialisation
 @param mqc MQC handle
 */
