@@ -807,10 +807,7 @@ static bool jp2_read_xml(jp2_t *jp2,
 	if (!p_xml_data || !p_xml_size) {
 		return false;
 	}
-	jp2->xml.len = p_xml_size;
-	if (jp2->xml.buffer)
-		grok_free(jp2->xml.buffer);
-	jp2->xml.buffer = (uint8_t*)grok_malloc(p_xml_size);
+	jp2->xml.alloc(p_xml_size);
 	if (!jp2->xml.buffer) {
 		jp2->xml.len = 0;
 		return false;
