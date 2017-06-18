@@ -1391,10 +1391,6 @@ double t1_encode_cblk(t1_t *t1,
 
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
-		// correction term is used for non-terminated passes, to ensure that maximal bits are
-		// extracted from the partial segment when code block is truncated at this pass
-		// See page 498 of Taubman and Marcellin for more details
-		uint32_t correction = 3;
 		type = T1_TYPE_MQ;
 		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
 			type = T1_TYPE_RAW;
@@ -1419,6 +1415,13 @@ double t1_encode_cblk(t1_t *t1,
 
 		tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
 		cumwmsedec += tempwmsedec;
+
+		// correction term is used for non-terminated passes, to ensure that maximal bits are
+		// extracted from the partial segment when code block is truncated at this pass
+		// See page 498 of Taubman and Marcellin for more details
+		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
+		// which is always 1 less than actual rate
+		uint32_t correction = 3 + 1;
 
 		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
 		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
@@ -1487,8 +1490,6 @@ double t1_encode_cblk(t1_t *t1,
 	for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
 		auto pass = cblk->passes + passno;
 		if (!pass->term) {
-			// increment pass->rate since it based on non-flushed MQ coder, where calculated rate is one less than actual rate
-			pass->rate++;
 
 			// maximum bytes in block
 			uint32_t maxBytes = mqc_numbytes(mqc);
