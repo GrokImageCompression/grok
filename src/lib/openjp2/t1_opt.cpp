@@ -704,10 +704,6 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
-		// correction term is used for non-terminated passes, to ensure that maximal bits are
-		// extracted from the partial segment when code block is truncated at this pass
-		// See page 498 of Taubman and Marcellin for more details
-		uint32_t correction = 3;
 		switch (passtype) {
 		case 0:
 			t1_enc_sigpass(t1, bpno, orient, &nmsedec);
@@ -727,6 +723,12 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
 		cumwmsedec += tempwmsedec;
 
+		// correction term is used for non-terminated passes, to ensure that maximal bits are
+		// extracted from the partial segment when code block is truncated at this pass
+		// See page 498 of Taubman and Marcellin for more details
+		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
+		// which is always 1 less than actual rate
+		uint32_t correction = 3 + 1;
 		if (TERMALL) {
 			// t1_opt doesn't support bypass, so set to false
 			mqc_big_flush(mqc, cblksty,false);
@@ -758,8 +760,6 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
 		tcd_pass_t *pass = &cblk->passes[passno];
 		if (!pass->term) {
-			// increment pass->rate since it based on non-flushed MQ coder, where calculated rate is one less than actual rate
-			pass->rate++;
 			auto bytes = mqc_numbytes(mqc);
 			if (pass->rate > (uint32_t)bytes)
 				pass->rate = (uint32_t)bytes;
