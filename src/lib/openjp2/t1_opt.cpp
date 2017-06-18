@@ -728,7 +728,7 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		// See page 498 of Taubman and Marcellin for more details
 		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
 		// which is always 1 less than actual rate
-		uint32_t correction = 3 + 1;
+		uint32_t correction = 4 + 1;
 		if (TERMALL) {
 			// t1_opt doesn't support bypass, so set to false
 			mqc_big_flush(mqc, cblksty,false);
