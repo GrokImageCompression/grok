@@ -1421,7 +1421,7 @@ double t1_encode_cblk(t1_t *t1,
 		// See page 498 of Taubman and Marcellin for more details
 		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
 		// which is always 1 less than actual rate
-		uint32_t correction = 3 + 1;
+		uint32_t correction = 4 + 1;
 
 		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
 		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
