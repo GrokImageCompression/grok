@@ -34,13 +34,13 @@
 .SH NAME
 opj_decompress \- 
 This program reads in a jpeg2000 image and converts it to another 
-image type. It is part of the OpenJPEG library.
+image type. It is part of the Grok library.
 .SP
 Valid input image extensions are
-.B .j2k, .jp2, .j2c, .jpt
+.B .j2k, .jp2, .j2c
 .SP
 Valid output image extensions are
-.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif \fR. For PNG resp. TIF it needs libpng resp. libtiff .
+.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif, .tiff \fR. For PNG resp. TIF it needs libpng resp. libtiff .
 .SH SYNOPSIS
 .P
 .B opj_decompress \-i \fRinfile.j2k \fB-o \fRoutfile.png
@@ -83,16 +83,6 @@ Embed index table box into the output JP2 file (compulsory for JPIP)
 .B -TP R
 Partition a tile into tile parts of different resolution levels (compulsory for JPT-stream)
 .P
-.SH JPWL OPTIONS
-Options usable only if the library has been compiled with
-.B BUILD_JPWL
-.TP
-.B -W c\fR[=Nc] (Nc is the  number of expected components in the codestream; default:3)
-.TP
-.B -W t\fR[=Nt] (Nt is the maximum number of tiles in the codestream; default:8192)
-.TP
-.B -W c\fR[=Nc]\fB, t\fR[=Nt] \fR(same as above)
-.P
 .SH REDUCTION
 Set the number of highest resolution levels to be discarded.
 The image resolution is effectively divided by 2 to the power of the number of discarded levels. The reduce factor is limited by the smallest total number of decomposition levels among tiles.
@@ -101,6 +91,8 @@ Set the maximum number of quality layers to decode. If there are less quality la
 .P
 '\".SH BUGS
 .SH AUTHORS
+Copyright (C) 2016-2017 Grok Image Compression Inc.
+.br
 Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
 .br
 Copyright (c) 2002-2014, Professor Benoit Macq
