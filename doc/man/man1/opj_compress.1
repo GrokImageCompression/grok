@@ -34,10 +34,10 @@
 .SH NAME
 opj_compress \- 
 This program reads in an image of a certain type and converts it to a
-jpeg2000 file. It is part of the OpenJPEG library.
+jpeg2000 file. It is part of the Grok library.
 .SP
 Valid input image extensions are
-.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif \fR. For PNG resp. TIF it needs libpng resp. libtiff .
+.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif, .tiff \fR. For PNG resp. TIF it needs libpng resp. libtiff .
 .SP
 Valid output image extensions are
 .B .j2k, .jp2
@@ -49,7 +49,6 @@ Valid output image extensions are
 .P
 .B opj_compress \-h \fRPrint a help message and exit.
 .P
-.R See JPWL OPTIONS for special options
 .SH OPTIONS
 .TP
 .B \-\^b " n,n"
@@ -152,45 +151,6 @@ e.g. \fB-ROI c=0,U=25\fR
 (Offset of the origin of the tiles (e.g. \-T 100,75) )
 .TP
 .B \-\^W
-(see JPWL OPTIONS)
-.P
-.SH JPWL OPTIONS
-Options usable only if the library has been compiled with \fB-DUSE_JPWL\fR
-.P
-.B      \-W h<tilepart><=type>, s<tilepart><=method>, a=<addr>, z=<size>, g=<range>, p<tilepart:pack><=type>
-.P
-.B h\fR selects the header error protection (EPB): \fBtype\fR can be
-   [0=none 1,absent=predefined 16=CRC-16 32=CRC-32 37-128=RS]
-   if \fBtilepart\fR is absent, it is for main and tile headers
-   if \fBtilepart\fR is present, it applies from that tile
-     onwards, up to the next h<> spec, or to the last tilepart
-     in the codestream (max. 16 specs)
-.P
-.B p \fRselects the packet error protection (EEP/UEP with EPBs)
-  to be applied to raw data: \fBtype\fR can be
-   [0=none 1,absent=predefined 16=CRC-16 32=CRC-32 37-128=RS]
-   if \fBtilepart:pack\fR is absent, it is from tile 0, packet 0
-   if \fBtilepart:pack\fR is present, it applies from that tile
-     and that packet onwards, up to the next packet spec
-     or to the last packet in the last tilepart in the stream
-     (max. 16 specs)
-.P
-.B s \fRenables sensitivity data insertion (ESD): \fBmethod\fR can be
-   [\-1=NO ESD 0=RELATIVE ERROR 1=MSE 2=MSE REDUCTION 3=PSNR
-    4=PSNR INCREMENT 5=MAXERR 6=TSE 7=RESERVED]
-   if \fBtilepart\fR is absent, it is for main header only
-   if \fBtilepart\fR is present, it applies from that tile
-     onwards, up to the next s<> spec, or to the last tilepart
-     in the codestream (max. 16 specs)
-.P
-.B g \fRdetermines the addressing mode: \fBrange\fR can be
-   [0=PACKET 1=BYTE RANGE 2=PACKET RANGE]
-.P
-.B a \fRdetermines the size of data addressing: \fBaddr\fR can be
-   2/4 bytes (small/large codestreams). If not set, auto-mode
-.P
-.B z \fRdetermines the size of sensitivity values: \fBsize\fR can be
-   1/2 bytes, for the transformed pseudo-floating point value
 .P
 .SH EXAMPLES
 .P
@@ -203,6 +163,8 @@ Options usable only if the library has been compiled with \fB-DUSE_JPWL\fR
 .B opj_compress \-i \fRlena.raw \fB-o \fRlena.j2k \fB-F \fR512,512,3,8,u
 .P
 .SH AUTHORS
+Copyright (C) 2016-2017 Grok Image Compression Inc.
+.br
 Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
 .br
 Copyright (c) 2002-2014, Professor Benoit Macq
