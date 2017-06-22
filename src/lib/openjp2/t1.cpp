@@ -1446,7 +1446,7 @@ double t1_encode_cblk(t1_t *t1,
 		else {
 			// SPP in raw region requires only a correction of one, since there are never more than 8 bits in C register
 			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
-				correction = 1;
+				correction = mqc->COUNT < 8 ? 1 : 0;
 			}
 			else if (mqc->COUNT < 5)
 				correction++;

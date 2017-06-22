@@ -533,7 +533,7 @@ void mqc_bypass_init_enc(mqc_t *mqc)
 void mqc_bypass_enc(mqc_t *mqc, uint32_t d)
 {
     mqc->COUNT--;
-    mqc->C = mqc->C + (d << mqc->COUNT);
+    mqc->C += d << mqc->COUNT;
     if (mqc->COUNT == 0) {
         mqc->bp++;
         *mqc->bp = (uint8_t)mqc->C;
