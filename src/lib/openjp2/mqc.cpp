@@ -503,7 +503,6 @@ void mqc_flush(mqc_t *mqc)
 	//increment bp so that mqc_numbytes() will now return correct result
 	if (*mqc->bp != 0xff) {
         mqc->bp++;
-		*mqc->bp = 0;
     }
 }
 
@@ -563,7 +562,6 @@ void mqc_bypass_flush_enc(mqc_t *mqc)
 	}
 	if (*mqc->bp != 0xff) {
 		mqc->bp++;
-		*mqc->bp = 0;
 	}
 }
 
@@ -597,7 +595,6 @@ void mqc_flush_erterm(mqc_t *mqc)
 	//increment bp so that mqc_numbytes() will now return correct result
 	if (*mqc->bp != 0xff) {
 		mqc->bp++;
-		*mqc->bp = 0;
 	}
 }
 
