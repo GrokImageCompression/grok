@@ -1908,6 +1908,7 @@ Plugin encoding
 
 typedef struct opj_plugin_init_info {
 	int32_t deviceId;
+	bool verbose;
 } opj_plugin_init_info_t;
 
 OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo);
