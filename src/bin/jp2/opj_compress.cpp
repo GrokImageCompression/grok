@@ -1864,6 +1864,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	// create codec
 	opj_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
+	initInfo.verbose = initParams->parameters.verbose;
 	if (!opj_plugin_init(initInfo)) {
 		opj_cleanup();
 		return 1;
