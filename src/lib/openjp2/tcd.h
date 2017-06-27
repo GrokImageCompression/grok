@@ -457,7 +457,7 @@ uint64_t tcd_get_decoded_tile_size (tcd_t *p_tcd );
 */
 bool tcd_encode_tile(   tcd_t *p_tcd,
                             uint32_t p_tile_no,
-                            uint8_t *p_dest,
+							GrokStream* p_stream,
                             uint64_t * p_data_written,
                             uint64_t p_len,
                             opj_codestream_info_t *p_cstr_info,

@@ -35,19 +35,7 @@
 
 namespace grk {
 
-#ifdef _WIN32
-typedef void* grk_handle_t;
-#else
-typedef int32_t grk_handle_t;
-#endif
 
-
-struct grk_buf_info_t {
-    uint8_t *buf;
-    int64_t off;
-    size_t len;
-    grk_handle_t fd;		// for file mapping
-} ;
 
 static void grok_free_buffer_info(void* user_data)
 {
@@ -92,29 +80,34 @@ static size_t grk_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
                                     grk_buf_info_t* p_source_buffer)
 {
-    memcpy(p_source_buffer->buf + (size_t)p_source_buffer->off, p_buffer, p_nb_bytes);
-    p_source_buffer->off += (int64_t)p_nb_bytes;
+	if (p_source_buffer->off + p_nb_bytes >=  p_source_buffer->len) {
+		return -1;
+	}
+	if (p_nb_bytes) {
+		memcpy(p_source_buffer->buf + (size_t)p_source_buffer->off, p_buffer, p_nb_bytes);
+		p_source_buffer->off += (int64_t)p_nb_bytes;
+	}
     return p_nb_bytes;
 }
 
-static int64_t grk_skip_from_buffer(int64_t p_nb_bytes,
+static bool grk_skip_from_buffer(int64_t p_nb_bytes,
                                     grk_buf_info_t * p_source_buffer)
 {
-    if (p_source_buffer->off + p_nb_bytes <  (int64_t)p_source_buffer->len) {
-        p_source_buffer->off += p_nb_bytes;
-    } else {
-        p_source_buffer->off = (int64_t)p_source_buffer->len;
-    }
-    return p_nb_bytes;
+	auto newOffset = p_source_buffer->off + p_nb_bytes;
+    if (newOffset >= 0 &&  newOffset <  (int64_t)p_source_buffer->len) {
+        p_source_buffer->off = newOffset;
+		return true;
+    } 
+	return false;
 }
 
-static bool grk_seek_from_buffer(int64_t p_nb_bytes,
+static bool grk_seek_from_buffer(size_t p_nb_bytes,
                                  grk_buf_info_t * p_source_buffer)
 {
-    if (p_nb_bytes <  (int64_t)p_source_buffer->len) {
+    if (p_nb_bytes <  p_source_buffer->len) {
         p_source_buffer->off = p_nb_bytes;
     } else {
-        p_source_buffer->off = (int64_t)p_source_buffer->len;
+        p_source_buffer->off = p_source_buffer->len;
     }
     return true;
 }
@@ -136,7 +129,7 @@ static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_
 size_t get_buffer_stream_offset(opj_stream_t* stream) {
 	if (!stream)
 		return 0;
-	stream_private_t * private_stream = (stream_private_t*)stream;
+	GrokStream * private_stream = (GrokStream*)stream;
 	if (!private_stream->m_user_data)
 		return 0;
 	grk_buf_info_t* buf = (grk_buf_info_t*)private_stream->m_user_data;
@@ -147,31 +140,28 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream)
 {
-    opj_stream_t* l_stream;
-    grk_buf_info_t* p_source_buffer = NULL;
-
     if (!buf || !len)
         return NULL;
 
-    p_source_buffer = (grk_buf_info_t*)grok_malloc(sizeof(grk_buf_info_t));
+	auto p_source_buffer = (grk_buf_info_t*)grok_calloc(1,sizeof(grk_buf_info_t));
     if (!p_source_buffer)
         return NULL;
 
-    l_stream = opj_stream_create(0, p_is_read_stream);
+	GrokStream* l_stream = new GrokStream(buf, len, p_is_read_stream);
     if (!l_stream) {
         grok_free(p_source_buffer);
         return NULL;
 
     }
 
-    memset(p_source_buffer, 0, sizeof(grk_buf_info_t));
     p_source_buffer->buf = buf;
     p_source_buffer->off = 0;
     p_source_buffer->len = len;
 
-    opj_stream_set_user_data(l_stream, p_source_buffer, grok_free_buffer_info);
-    grk_set_up_buffer_stream(l_stream, p_source_buffer->len, p_is_read_stream);
-    return l_stream;
+    opj_stream_set_user_data((opj_stream_t*)l_stream, p_source_buffer, grok_free_buffer_info);
+    grk_set_up_buffer_stream((opj_stream_t*)l_stream, p_source_buffer->len, p_is_read_stream);
+
+    return (opj_stream_t*)l_stream;
 }
 
 

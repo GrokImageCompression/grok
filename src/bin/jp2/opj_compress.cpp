@@ -1421,7 +1421,6 @@ int main(int argc, char **argv) {
 
 	double t = grok_clock();
 	int success = 0;
-	opj_image_t *image = NULL;
 	dircnt_t *dirptr = NULL;
 	/* Read directory if necessary */
     if(initParams.img_fol.set_imgdir==1){
@@ -1459,7 +1458,6 @@ int main(int argc, char **argv) {
 
     /*Encoding image one by one*/
     for(imageno=0;imageno<num_images;imageno++)	{
-        image = NULL;
 		if (initParams.parameters.verbose)
 			fprintf(stdout,"\n");
 		//restore cached settings
@@ -1476,19 +1474,18 @@ int main(int argc, char **argv) {
 		opj_plugin_encode_user_callback_info_t opjInfo;
 		memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
 		opjInfo.encoder_parameters = &initParams.parameters;
-		opjInfo.image = image;
+		opjInfo.image = nullptr;
 		opjInfo.output_file_name = initParams.parameters.outfile;
 		opjInfo.input_file_name = initParams.parameters.infile;
 
 		if (!plugin_compress_callback(&opjInfo)) {
-			opj_image_destroy(image);
-			return 1;
+			success = 1;
+			goto cleanup;
 		}
 
 		num_compressed_files++;
 		if (initParams.parameters.verbose)
 			fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
-		opj_image_destroy(image);
     }
 
 
@@ -1739,11 +1736,21 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
-	l_stream = opj_stream_create_default_file_stream(outfile, false);
-	//  option to write to buffer, assuming one knows how large uncompressed 
-	//auto len = (image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8);
-	//buff = new uint8_t[len];
-	//l_stream = opj_stream_create_buffer_stream(buff, len, false);
+	{
+		bool isBufferStream = true;
+		if (isBufferStream) {
+			//  option to write to buffer, assuming one knows how large compressed stream will be 
+			auto len = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+			if (len < 102400)
+				len = 102400;
+			buff = new uint8_t[len];
+			l_stream = opj_stream_create_buffer_stream(buff, len, false);
+		}
+		else {
+			l_stream = opj_stream_create_default_file_stream(outfile, false);
+		}
+	}
+
 	
 	if (!l_stream) {
 		fprintf(stderr, "failed to create stream\n");

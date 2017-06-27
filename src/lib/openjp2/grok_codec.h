@@ -62,7 +62,7 @@ struct codec_private_t {
          */
         struct grk_decompression {
             /** Main header reading function handler */
-            bool (*read_header) ( stream_private_t * cio,
+            bool (*read_header) ( GrokStream * cio,
                                       void * p_codec,
 									  opj_header_info_t* header_info,
                                       opj_image_t **p_image,
@@ -71,7 +71,7 @@ struct codec_private_t {
             /** Decoding function */
             bool (*decode) ( void * p_codec,
 								  grok_plugin_tile_t* tile,
-                                 stream_private_t * p_cio,
+                                 GrokStream * p_cio,
                                  opj_image_t * p_image,
                                  event_mgr_t * p_manager);
 
@@ -85,7 +85,7 @@ struct codec_private_t {
                                           uint32_t * p_tile_y1,
                                           uint32_t * p_nb_comps,
                                           bool * p_should_go_on,
-                                          stream_private_t * p_cio,
+                                          GrokStream * p_cio,
                                           event_mgr_t * p_manager);
 
             /** FIXME DOC */
@@ -93,12 +93,12 @@ struct codec_private_t {
                                           uint32_t p_tile_index,
                                           uint8_t * p_data,
                                           uint64_t p_data_size,
-                                          stream_private_t * p_cio,
+                                          GrokStream * p_cio,
                                           event_mgr_t * p_manager);
 
             /** Reading function used after codestream if necessary */
             bool (* end_decompress) ( void *p_codec,
-                                          stream_private_t * cio,
+                                          GrokStream * cio,
                                           event_mgr_t * p_manager);
 
             /** Codec destroy function handler */
@@ -118,7 +118,7 @@ struct codec_private_t {
 
             /** Get tile function */
             bool (*get_decoded_tile) ( void *p_codec,
-                                           stream_private_t * p_cio,
+                                           GrokStream * p_cio,
                                            opj_image_t *p_image,
                                            event_mgr_t * p_manager,
                                            uint32_t tile_index);
@@ -134,24 +134,24 @@ struct codec_private_t {
          */
         struct grk_compression {
             bool (* start_compress) ( void *p_codec,
-                                          stream_private_t * cio,
+                                          GrokStream * cio,
                                           opj_image_t * p_image,
                                           event_mgr_t * p_manager);
 
             bool (* encode) ( void * p_codec,
 									grok_plugin_tile_t*,
-                                  stream_private_t *p_cio,
+                                  GrokStream *p_cio,
                                   event_mgr_t * p_manager);
 
             bool (* write_tile) ( void * p_codec,
                                       uint32_t p_tile_index,
                                       uint8_t * p_data,
                                       uint64_t p_data_size,
-                                      stream_private_t * p_cio,
+                                      GrokStream * p_cio,
                                       event_mgr_t * p_manager);
 
             bool (* end_compress) (	void * p_codec,
-                                        stream_private_t * p_cio,
+                                        GrokStream * p_cio,
                                         event_mgr_t * p_manager);
 
             void (* destroy) (void * p_codec);

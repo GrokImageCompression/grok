@@ -260,7 +260,7 @@ static uint8_t * jp2_write_colr(   jp2_t *jp2,
  * @return	true if writing was successful.
  */
 static bool jp2_write_ftyp(	jp2_t *jp2,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager );
 
 /**
@@ -279,7 +279,7 @@ static bool jp2_read_ftyp(	jp2_t *jp2,
                                 event_mgr_t * p_manager );
 
 static bool jp2_skip_jp2c(	jp2_t *jp2,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager );
 
 /**
@@ -307,7 +307,7 @@ static bool jp2_read_jp2h(  jp2_t *jp2,
  * @return true if writing was successful.
  */
 static bool jp2_write_jp2h(jp2_t *jp2,
-                               stream_private_t *stream,
+                               GrokStream *stream,
                                event_mgr_t * p_manager );
 
 /**
@@ -320,7 +320,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
  * @return true if writing was successful.
 */
 static bool jp2_write_jp2c(	jp2_t *jp2,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager );
 
 /**
@@ -348,7 +348,7 @@ static bool jp2_read_jp(jp2_t *jp2,
  * @return true if writing was successful.
  */
 static bool jp2_write_jp(	jp2_t *jp2,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager );
 
 /**
@@ -432,7 +432,7 @@ static bool jp2_setup_end_header_reading (jp2_t *jp2, event_mgr_t * p_manager);
  * @return true if the box is valid.
  */
 static bool jp2_read_header_procedure(  jp2_t *jp2,
-        stream_private_t *stream,
+        GrokStream *stream,
         event_mgr_t * p_manager );
 
 /**
@@ -447,7 +447,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
  */
 static bool jp2_exec (  jp2_t * jp2,
                             procedure_list_t * p_procedure_list,
-                            stream_private_t *stream,
+                            GrokStream *stream,
                             event_mgr_t * p_manager );
 
 /**
@@ -462,7 +462,7 @@ static bool jp2_exec (  jp2_t * jp2,
 */
 static bool jp2_read_boxhdr(jp2_box_t *box,
                                 uint32_t * p_number_bytes_read,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager);
 
 /**
@@ -477,7 +477,7 @@ static bool jp2_setup_encoding_validation (jp2_t *jp2, event_mgr_t * p_manager);
 static bool jp2_setup_header_writing (jp2_t *jp2, event_mgr_t * p_manager);
 
 static bool jp2_default_validation (	jp2_t * jp2,
-        stream_private_t *cio,
+        GrokStream *cio,
         event_mgr_t * p_manager );
 
 /**
@@ -549,7 +549,7 @@ static bool jp2_setup_header_reading (jp2_t *jp2, event_mgr_t * p_manager);
 /* ----------------------------------------------------------------------- */
 static bool jp2_read_boxhdr(jp2_box_t *box,
                                 uint32_t * p_number_bytes_read,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager )
 {
     /* read header from file */
@@ -561,7 +561,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     assert(p_number_bytes_read != nullptr);
     assert(p_manager != nullptr);
 
-    *p_number_bytes_read = (uint32_t)stream_read_data(cio,l_data_header,8,p_manager);
+    *p_number_bytes_read = (uint32_t)cio->read(l_data_header,8,p_manager);
     if (*p_number_bytes_read != 8) {
         return false;
     }
@@ -571,7 +571,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     grk_read_bytes(l_data_header+4,&(box->type), 4);
 
     if(box->length == 0) { /* last box */
-        const int64_t bleft = stream_get_number_byte_left(cio);
+        const int64_t bleft = cio->get_number_byte_left();
         if (bleft > (int64_t)(0xFFFFFFFFU - 8U)) {
             event_msg(p_manager, EVT_ERROR, "Cannot handle box sizes higher than 2^32\n");
             return false;
@@ -586,7 +586,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     if (box->length == 1) {
         uint32_t l_xl_part_size;
 
-        uint32_t l_nb_bytes_read = (uint32_t)stream_read_data(cio,l_data_header,8,p_manager);
+        uint32_t l_nb_bytes_read = (uint32_t)cio->read(l_data_header,8,p_manager);
         if (l_nb_bytes_read != 8) {
             if (l_nb_bytes_read > 0) {
                 *p_number_bytes_read += l_nb_bytes_read;
@@ -735,31 +735,40 @@ static uint8_t * jp2_write_ihdr(jp2_t *jp2,
 
     l_current_ihdr_ptr = l_ihdr_data;
 
-    grk_write_bytes(l_current_ihdr_ptr,22,4);				/* write box size */
+	/* write box size */
+    grk_write_bytes(l_current_ihdr_ptr,22,4);				
     l_current_ihdr_ptr+=4;
 
-    grk_write_bytes(l_current_ihdr_ptr,JP2_IHDR, 4);		/* IHDR */
+	/* IHDR */
+    grk_write_bytes(l_current_ihdr_ptr,JP2_IHDR, 4);		
     l_current_ihdr_ptr+=4;
 
-    grk_write_bytes(l_current_ihdr_ptr,jp2->h, 4);		/* HEIGHT */
+	/* HEIGHT */
+    grk_write_bytes(l_current_ihdr_ptr,jp2->h, 4);		
     l_current_ihdr_ptr+=4;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->w, 4);		/* WIDTH */
+	/* WIDTH */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->w, 4);		
     l_current_ihdr_ptr+=4;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->numcomps, 2);		/* NC */
+	/* NC */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->numcomps, 2);		
     l_current_ihdr_ptr+=2;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->bpc, 1);		/* BPC */
+	/* BPC */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->bpc, 1);		
     ++l_current_ihdr_ptr;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->C, 1);		/* C : Always 7 */
+	/* C : Always 7 */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->C, 1);		
     ++l_current_ihdr_ptr;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->UnkC, 1);		/* UnkC, colorspace unknown */
+	/* UnkC, colorspace unknown */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->UnkC, 1);		
     ++l_current_ihdr_ptr;
 
-    grk_write_bytes(l_current_ihdr_ptr, jp2->IPR, 1);		/* IPR, no intellectual property */
+	/* IPR, no intellectual property */
+    grk_write_bytes(l_current_ihdr_ptr, jp2->IPR, 1);		
     ++l_current_ihdr_ptr;
 
     *p_nb_bytes_written = 22;
@@ -784,13 +793,16 @@ static uint8_t * jp2_write_buffer(uint32_t boxId,
 
 	uint8_t * l_current_ptr = l_data;
 
-	grk_write_bytes(l_current_ptr, total_size, 4);			/* write box size */
+	/* write box size */
+	grk_write_bytes(l_current_ptr, total_size, 4);			
 	l_current_ptr += 4;
 
-	grk_write_bytes(l_current_ptr, boxId, 4);					/* JP2_XML */
+	/* JP2_XML */
+	grk_write_bytes(l_current_ptr, boxId, 4);					
 	l_current_ptr += 4;
 
-	memcpy(l_current_ptr, buffer->buffer, buffer->len);				/* xml data */
+	/* xml data */
+	memcpy(l_current_ptr, buffer->buffer, buffer->len);				
 
 	*p_nb_bytes_written = total_size;
 	return l_data;
@@ -875,16 +887,20 @@ static uint8_t * jp2_write_uuids(jp2_t *jp2,
 	for (size_t i = 0; i < jp2->numUuids; ++i) {
 		auto uuid = jp2->uuids + i;
 		if (uuid->buffer && uuid->len) {
-			grk_write_bytes(l_current_uuid_ptr, (uint32_t)(8 + 16 + uuid->len), 4);	/* write box size */
+			/* write box size */
+			grk_write_bytes(l_current_uuid_ptr, (uint32_t)(8 + 16 + uuid->len), 4);
 			l_current_uuid_ptr += 4;
 
-			grk_write_bytes(l_current_uuid_ptr, JP2_UUID, 4);					/* JP2_UUID */
+			/* JP2_UUID */
+			grk_write_bytes(l_current_uuid_ptr, JP2_UUID, 4);					
 			l_current_uuid_ptr += 4;
 
-			memcpy(l_current_uuid_ptr, uuid->uuid, 16);							/* uuid  */
+			/* uuid  */
+			memcpy(l_current_uuid_ptr, uuid->uuid, 16);							
 			l_current_uuid_ptr += 16;
 
-			memcpy(l_current_uuid_ptr, uuid->buffer, (uint32_t)uuid->len);	/* uuid data */
+			/* uuid data */
+			memcpy(l_current_uuid_ptr, uuid->buffer, (uint32_t)uuid->len);	
 			l_current_uuid_ptr += uuid->len;
 		}
 	}
@@ -1022,10 +1038,12 @@ static void jp2_write_res_box( double resx, double resy,
 									uint32_t box_id,
 									uint8_t **l_current_res_ptr) {
 
-	grk_write_bytes(*l_current_res_ptr, OPJ_RESOLUTION_BOX_SIZE, 4);		/* write box size */
+	/* write box size */
+	grk_write_bytes(*l_current_res_ptr, OPJ_RESOLUTION_BOX_SIZE, 4);		
 	*l_current_res_ptr += 4;
 
-	grk_write_bytes(*l_current_res_ptr, box_id, 4);		/* Box ID */
+	/* Box ID */
+	grk_write_bytes(*l_current_res_ptr, box_id, 4);		
 	*l_current_res_ptr += 4;
 
 	double res[2];
@@ -1083,10 +1101,12 @@ static uint8_t * jp2_write_res(jp2_t *jp2,
 
 	l_current_res_ptr = l_res_data;
 
-	grk_write_bytes(l_current_res_ptr, size, 4);		/* write super-box size */
+	/* write super-box size */
+	grk_write_bytes(l_current_res_ptr, size, 4);		
 	l_current_res_ptr += 4;
 
-	grk_write_bytes(l_current_res_ptr, JP2_RES, 4);		/* Super-box ID */
+	/* Super-box ID */
+	grk_write_bytes(l_current_res_ptr, JP2_RES, 4);		
 	l_current_res_ptr += 4;
 
 	if (storeCapture) {
@@ -1125,14 +1145,17 @@ static uint8_t * jp2_write_bpcc(	jp2_t *jp2,
 
     l_current_bpcc_ptr = l_bpcc_data;
 
-    grk_write_bytes(l_current_bpcc_ptr,l_bpcc_size,4);				/* write box size */
+	/* write box size */
+    grk_write_bytes(l_current_bpcc_ptr,l_bpcc_size,4);				
     l_current_bpcc_ptr += 4;
 
-    grk_write_bytes(l_current_bpcc_ptr,JP2_BPCC,4);					/* BPCC */
+	/* BPCC */
+    grk_write_bytes(l_current_bpcc_ptr,JP2_BPCC,4);					
     l_current_bpcc_ptr += 4;
 
     for (i = 0; i < jp2->numcomps; ++i)  {
-        grk_write_bytes(l_current_bpcc_ptr, jp2->comps[i].bpcc, 1); /* write each component information */
+		/* write each component information */
+        grk_write_bytes(l_current_bpcc_ptr, jp2->comps[i].bpcc, 1); 
         ++l_current_bpcc_ptr;
     }
 
@@ -1197,25 +1220,31 @@ static uint8_t * jp2_write_cdef(jp2_t *jp2, uint32_t * p_nb_bytes_written)
 
     l_current_cdef_ptr = l_cdef_data;
 
-    grk_write_bytes(l_current_cdef_ptr,l_cdef_size,4);			/* write box size */
+	/* write box size */
+    grk_write_bytes(l_current_cdef_ptr,l_cdef_size,4);			
     l_current_cdef_ptr += 4;
 
-    grk_write_bytes(l_current_cdef_ptr,JP2_CDEF,4);					/* BPCC */
+	/* BPCC */
+    grk_write_bytes(l_current_cdef_ptr,JP2_CDEF,4);					
     l_current_cdef_ptr += 4;
 
     l_value = jp2->color.jp2_cdef->n;
-    grk_write_bytes(l_current_cdef_ptr,l_value,2);					/* N */
+	/* N */
+    grk_write_bytes(l_current_cdef_ptr,l_value,2);					
     l_current_cdef_ptr += 2;
 
     for (i = 0U; i < jp2->color.jp2_cdef->n; ++i) {
         l_value = jp2->color.jp2_cdef->info[i].cn;
-        grk_write_bytes(l_current_cdef_ptr,l_value,2);					/* Cni */
+		/* Cni */
+        grk_write_bytes(l_current_cdef_ptr,l_value,2);					
         l_current_cdef_ptr += 2;
         l_value = jp2->color.jp2_cdef->info[i].typ;
-        grk_write_bytes(l_current_cdef_ptr,l_value,2);					/* Typi */
+		/* Typi */
+        grk_write_bytes(l_current_cdef_ptr,l_value,2);					
         l_current_cdef_ptr += 2;
         l_value = jp2->color.jp2_cdef->info[i].asoc;
-        grk_write_bytes(l_current_cdef_ptr,l_value,2);					/* Asoci */
+		/* Asoci */
+        grk_write_bytes(l_current_cdef_ptr,l_value,2);					
         l_current_cdef_ptr += 2;
     }
     *p_nb_bytes_written = l_cdef_size;
@@ -1255,26 +1284,34 @@ static uint8_t * jp2_write_colr(  jp2_t *jp2,
 
     l_current_colr_ptr = l_colr_data;
 
-    grk_write_bytes(l_current_colr_ptr,l_colr_size,4);				/* write box size */
+	/* write box size */
+    grk_write_bytes(l_current_colr_ptr,l_colr_size,4);				
     l_current_colr_ptr += 4;
 
-    grk_write_bytes(l_current_colr_ptr,JP2_COLR,4);					/* BPCC */
+	/* BPCC */
+    grk_write_bytes(l_current_colr_ptr,JP2_COLR,4);					
     l_current_colr_ptr += 4;
 
-    grk_write_bytes(l_current_colr_ptr, jp2->meth,1);				/* METH */
+	/* METH */
+    grk_write_bytes(l_current_colr_ptr, jp2->meth,1);				
     ++l_current_colr_ptr;
 
-    grk_write_bytes(l_current_colr_ptr, jp2->precedence,1);			/* PRECEDENCE */
+	/* PRECEDENCE */
+    grk_write_bytes(l_current_colr_ptr, jp2->precedence,1);			
     ++l_current_colr_ptr;
 
-    grk_write_bytes(l_current_colr_ptr, jp2->approx,1);				/* APPROX */
+	/* APPROX */
+    grk_write_bytes(l_current_colr_ptr, jp2->approx,1);				
     ++l_current_colr_ptr;
 
-    if (jp2->meth == 1) { /* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
+	/* Meth value is restricted to 1 or 2 (Table I.9 of part 1) */
+    if (jp2->meth == 1) { 
+		/* EnumCS */
         grk_write_bytes(l_current_colr_ptr, jp2->enumcs,4);
-    }       /* EnumCS */
+    }       
     else {
-        if (jp2->meth == 2) {                                      /* ICC profile */
+		/* ICC profile */
+        if (jp2->meth == 2) {                                     
             uint32_t i;
             for(i = 0; i < jp2->color.icc_profile_len; ++i) {
                 grk_write_bytes(l_current_colr_ptr, jp2->color.icc_profile_buf[i], 1);
@@ -1284,7 +1321,6 @@ static uint8_t * jp2_write_colr(  jp2_t *jp2,
     }
 
     *p_nb_bytes_written = l_colr_size;
-
     return l_colr_data;
 }
 
@@ -1979,7 +2015,7 @@ static bool jp2_read_colr( jp2_t *jp2,
 
 bool jp2_decode(jp2_t *jp2,
 					grok_plugin_tile_t* tile,
-                    stream_private_t *p_stream,
+                    GrokStream *p_stream,
                     opj_image_t* p_image,
                     event_mgr_t * p_manager)
 {
@@ -2053,7 +2089,7 @@ bool jp2_decode(jp2_t *jp2,
 }
 
 static bool jp2_write_jp2h(jp2_t *jp2,
-                               stream_private_t *stream,
+                               GrokStream *stream,
                                event_mgr_t * p_manager
                               )
 {
@@ -2064,11 +2100,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
     /* size of data for super box*/
     uint32_t l_jp2h_size = 8;
     bool l_result = true;
-
-    /* to store the data of the super box */
-    uint8_t l_jp2h_data [8];
-
-    
+ 
     assert(stream != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2105,11 +2137,6 @@ static bool jp2_write_jp2h(jp2_t *jp2,
 		l_writers[l_nb_writers++].handler = jp2_write_uuids;
 	}
 
-
-    /* write box header */
-    /* write JP2H type */
-    grk_write_bytes(l_jp2h_data+4,JP2_JP2H,4);
-
     l_current_writer = l_writers;
     for (i=0; i<l_nb_writers; ++i) {
         l_current_writer->m_data = l_current_writer->handler(jp2,&(l_current_writer->m_size));
@@ -2136,18 +2163,19 @@ static bool jp2_write_jp2h(jp2_t *jp2,
     }
 
     /* write super box size */
-    grk_write_bytes(l_jp2h_data,l_jp2h_size,4);
-
-    /* write super box data on stream */
-    if (stream_write_data(stream,l_jp2h_data,8,p_manager) != 8) {
-        event_msg(p_manager, EVT_ERROR, "Stream error while writing JP2 Header box\n");
-        l_result = false;
-    }
+	if (!stream->write_int(l_jp2h_size, p_manager)) {
+		event_msg(p_manager, EVT_ERROR, "Stream error while writing JP2 Header box\n");
+		l_result = false;
+	}
+	if (!stream->write_int(JP2_JP2H, p_manager)) {
+		event_msg(p_manager, EVT_ERROR, "Stream error while writing JP2 Header box\n");
+		l_result = false;
+	}
 
     if (l_result) {
         l_current_writer = l_writers;
         for (i=0; i<l_nb_writers; ++i) {
-            if (stream_write_data(stream,l_current_writer->m_data,l_current_writer->m_size,p_manager) != l_current_writer->m_size) {
+            if (stream->write_bytes(l_current_writer->m_data,l_current_writer->m_size,p_manager) != l_current_writer->m_size) {
                 event_msg(p_manager, EVT_ERROR, "Stream error while writing JP2 Header box\n");
                 l_result = false;
                 break;
@@ -2170,84 +2198,72 @@ static bool jp2_write_jp2h(jp2_t *jp2,
 }
 
 static bool jp2_write_ftyp(jp2_t *jp2,
-                               stream_private_t *cio,
+                               GrokStream *cio,
                                event_mgr_t * p_manager )
 {
     uint32_t i;
     uint32_t l_ftyp_size = 16 + 4 * jp2->numcl;
-    uint8_t * l_ftyp_data, * l_current_data_ptr;
-    bool l_result;
-
+	bool l_result = true;
     
     assert(cio != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
-    l_ftyp_data = (uint8_t *) grok_calloc(1,l_ftyp_size);
+	if (!cio->write_int(l_ftyp_size, p_manager)) {
+		l_result = false;
+		goto end;
+	}
+	if (!cio->write_int(JP2_FTYP, p_manager)) {
+		l_result = false;
+		goto end;
+	}
+	if (!cio->write_int(jp2->brand, p_manager)) {
+		l_result = false;
+		goto end;
+	}
+	/* MinV */
+	if (!cio->write_int(jp2->minversion, p_manager)) {
+		l_result = false;
+		goto end;
+	}
 
-    if (l_ftyp_data == nullptr) {
-        event_msg(p_manager, EVT_ERROR, "Not enough memory to handle ftyp data\n");
-        return false;
-    }
-
-    l_current_data_ptr = l_ftyp_data;
-
-    grk_write_bytes(l_current_data_ptr, l_ftyp_size,4); /* box size */
-    l_current_data_ptr += 4;
-
-    grk_write_bytes(l_current_data_ptr, JP2_FTYP,4); /* FTYP */
-    l_current_data_ptr += 4;
-
-    grk_write_bytes(l_current_data_ptr, jp2->brand,4); /* BR */
-    l_current_data_ptr += 4;
-
-    grk_write_bytes(l_current_data_ptr, jp2->minversion,4); /* MinV */
-    l_current_data_ptr += 4;
-
+	/* CL */
     for (i = 0; i < jp2->numcl; i++)  {
-        grk_write_bytes(l_current_data_ptr, jp2->cl[i],4);	/* CL */
+		if (!cio->write_int(jp2->cl[i], p_manager)) {
+			l_result = false;
+			goto end;
+		}
     }
 
-    l_result = (stream_write_data(cio,l_ftyp_data,l_ftyp_size,p_manager) == l_ftyp_size);
-    if (! l_result) {
-        event_msg(p_manager, EVT_ERROR, "Error while writing ftyp data to stream\n");
-    }
-
-    grok_free(l_ftyp_data);
-
+end:
+	if (!l_result)
+		event_msg(p_manager, EVT_ERROR, "Error while writing ftyp data to stream\n");
     return l_result;
 }
 
 static bool jp2_write_jp2c(jp2_t *jp2,
-                               stream_private_t *cio,
+                               GrokStream *cio,
                                event_mgr_t * p_manager )
 {
-    int64_t j2k_codestream_exit;
-    uint8_t l_data_header [8];
-
-    
     assert(jp2 != nullptr);
     assert(cio != nullptr);
     assert(p_manager != nullptr);
-    assert(stream_has_seek(cio));
+    assert(cio->has_seek());
 
-    j2k_codestream_exit = stream_tell(cio);
-    grk_write_bytes(l_data_header,
-                    (uint32_t) (j2k_codestream_exit - jp2->j2k_codestream_offset),
-                    4); /* size of codestream */
-    grk_write_bytes(l_data_header + 4,JP2_JP2C,4);									   /* JP2C */
+	int64_t j2k_codestream_exit = cio->tell();
+	if (!cio->seek(jp2->j2k_codestream_offset, p_manager)) {
+		event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
+		return false;
+	}
 
-    if (! stream_seek(cio,jp2->j2k_codestream_offset,p_manager)) {
-        event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
-        return false;
-    }
-
-    if (stream_write_data(cio,l_data_header,8,p_manager) != 8) {
-        event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
-        return false;
-    }
-
-    if (! stream_seek(cio,j2k_codestream_exit,p_manager)) {
+	/* size of codestream */
+	if (!cio->write_int((uint32_t)(j2k_codestream_exit - jp2->j2k_codestream_offset), p_manager)) {
+		return false;
+	}
+	if (!cio->write_int(JP2_JP2C, p_manager)) {
+		return false;
+	}
+    if (! cio->seek(j2k_codestream_exit,p_manager)) {
         event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
         return false;
     }
@@ -2256,29 +2272,24 @@ static bool jp2_write_jp2c(jp2_t *jp2,
 }
 
 static bool jp2_write_jp(	jp2_t *jp2,
-                                stream_private_t *cio,
+                                GrokStream *cio,
                                 event_mgr_t * p_manager )
 {
 	(void)jp2;
-    /* 12 bytes will be read */
-    uint8_t l_signature_data [12];
-
-    
+  
     assert(cio != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
     /* write box length */
-    grk_write_bytes(l_signature_data,12,4);
+	if (!cio->write_int(12, p_manager))
+		return false;
     /* writes box type */
-    grk_write_bytes(l_signature_data+4,JP2_JP,4);
+	if (!cio->write_int(JP2_JP, p_manager))
+		return false;
     /* writes magic number*/
-    grk_write_bytes(l_signature_data+8,0x0d0a870a,4);
-
-    if (stream_write_data(cio,l_signature_data,12,p_manager) != 12) {
-        return false;
-    }
-
+	if (!cio->write_int(0x0d0a870a, p_manager))
+		return false;
     return true;
 }
 
@@ -2515,14 +2526,14 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 
 bool jp2_encode(jp2_t *jp2,
 					grok_plugin_tile_t* tile,
-                    stream_private_t *stream,
+                    GrokStream *stream,
                     event_mgr_t * p_manager)
 {
     return j2k_encode(jp2->j2k, tile,stream, p_manager);
 }
 
 bool jp2_end_decompress(jp2_t *jp2,
-                            stream_private_t *cio,
+                            GrokStream *cio,
                             event_mgr_t * p_manager
                            )
 {
@@ -2545,7 +2556,7 @@ bool jp2_end_decompress(jp2_t *jp2,
 }
 
 bool jp2_end_compress(	jp2_t *jp2,
-                            stream_private_t *cio,
+                            GrokStream *cio,
                             event_mgr_t * p_manager
                          )
 {
@@ -2595,7 +2606,7 @@ static bool jp2_setup_end_header_reading (jp2_t *jp2, event_mgr_t * p_manager)
 }
 
 static bool jp2_default_validation (	jp2_t * jp2,
-        stream_private_t *cio,
+        GrokStream *cio,
         event_mgr_t * p_manager
                                        )
 {
@@ -2644,13 +2655,13 @@ static bool jp2_default_validation (	jp2_t * jp2,
 
     /* stream validation */
     /* back and forth is needed */
-    l_is_valid &= stream_has_seek(cio);
+    l_is_valid &= cio->has_seek();
 
     return l_is_valid;
 }
 
 static bool jp2_read_header_procedure(  jp2_t *jp2,
-        stream_private_t *stream,
+        GrokStream *stream,
         event_mgr_t * p_manager
                                          )
 {
@@ -2711,7 +2722,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
                 } else {
                     event_msg(p_manager, EVT_WARNING, "JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored\n", (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0));
                     jp2->jp2_state |= JP2_STATE_UNKNOWN;
-                    if (!stream_skip(stream,l_current_data_size,p_manager)) {
+                    if (!stream->skip(l_current_data_size,p_manager)) {
                         event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
                         grok_free(l_current_data);
                         return false;
@@ -2719,9 +2730,9 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
                     continue;
                 }
             }
-            if ((int64_t)l_current_data_size > stream_get_number_byte_left(stream)) {
+            if ((int64_t)l_current_data_size > stream->get_number_byte_left()) {
                 /* do not even try to malloc if we can't read */
-                event_msg(p_manager, EVT_ERROR, "Invalid box size %d for box '%c%c%c%c'. Need %d bytes, %d bytes remaining \n", box.length, (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0), l_current_data_size, (uint32_t)stream_get_number_byte_left(stream));
+                event_msg(p_manager, EVT_ERROR, "Invalid box size %d for box '%c%c%c%c'. Need %d bytes, %d bytes remaining \n", box.length, (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0), l_current_data_size, (uint32_t)stream->get_number_byte_left());
                 grok_free(l_current_data);
                 return false;
             }
@@ -2736,7 +2747,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
                 l_last_data_size = l_current_data_size;
             }
 
-            l_nb_bytes_read = (uint32_t)stream_read_data(stream,l_current_data,l_current_data_size,p_manager);
+            l_nb_bytes_read = (uint32_t)stream->read(l_current_data,l_current_data_size,p_manager);
             if (l_nb_bytes_read != l_current_data_size) {
                 event_msg(p_manager, EVT_ERROR, "Problem with reading JPEG2000 box, stream error\n");
                 grok_free(l_current_data);
@@ -2759,7 +2770,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
                 return false;
             }
             jp2->jp2_state |= JP2_STATE_UNKNOWN;
-            if (!stream_skip(stream,l_current_data_size,p_manager)) {
+            if (!stream->skip(l_current_data_size,p_manager)) {
                 event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
                 grok_free(l_current_data);
                 return false;
@@ -2784,12 +2795,12 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
  */
 static bool jp2_exec (  jp2_t * jp2,
                             procedure_list_t * p_procedure_list,
-                            stream_private_t *stream,
+                            GrokStream *stream,
                             event_mgr_t * p_manager
                          )
 
 {
-    bool (** l_procedure) (jp2_t * jp2, stream_private_t *, event_mgr_t *) = nullptr;
+    bool (** l_procedure) (jp2_t * jp2, GrokStream *, event_mgr_t *) = nullptr;
     bool l_result = true;
     uint32_t l_nb_proc, i;
 
@@ -2800,7 +2811,7 @@ static bool jp2_exec (  jp2_t * jp2,
     assert(p_manager != nullptr);
 
     l_nb_proc = procedure_list_get_nb_procedures(p_procedure_list);
-    l_procedure = (bool (**) (jp2_t * jp2, stream_private_t *, event_mgr_t *)) procedure_list_get_first_procedure(p_procedure_list);
+    l_procedure = (bool (**) (jp2_t * jp2, GrokStream *, event_mgr_t *)) procedure_list_get_first_procedure(p_procedure_list);
 
     for	(i=0; i<l_nb_proc; ++i) {
         l_result = l_result && (*l_procedure) (jp2,stream,p_manager);
@@ -2813,7 +2824,7 @@ static bool jp2_exec (  jp2_t * jp2,
 }
 
 bool jp2_start_compress(jp2_t *jp2,
-                            stream_private_t *stream,
+                            GrokStream *stream,
                             opj_image_t * p_image,
                             event_mgr_t * p_manager
                            )
@@ -2993,7 +3004,7 @@ static bool jp2_read_ftyp(	jp2_t *jp2,
 }
 
 static bool jp2_skip_jp2c(	jp2_t *jp2,
-                                stream_private_t *stream,
+                                GrokStream *stream,
                                 event_mgr_t * p_manager )
 {
     
@@ -3001,9 +3012,9 @@ static bool jp2_skip_jp2c(	jp2_t *jp2,
     assert(stream != nullptr);
     assert(p_manager != nullptr);
 
-    jp2->j2k_codestream_offset = stream_tell(stream);
+    jp2->j2k_codestream_offset = stream->tell();
 
-    if (!stream_skip(stream,8,p_manager)) {
+    if (!stream->skip(8,p_manager)) {
         return false;
     }
 
@@ -3161,7 +3172,7 @@ static bool jp2_read_boxhdr_char(   jp2_box_t *box,
     return true;
 }
 
-bool jp2_read_header(	stream_private_t *p_stream,
+bool jp2_read_header(	GrokStream *p_stream,
                             jp2_t *jp2,
 							opj_header_info_t* header_info,
                             opj_image_t ** p_image,
@@ -3291,7 +3302,7 @@ bool jp2_read_tile_header ( jp2_t * p_jp2,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                stream_private_t *p_stream,
+                                GrokStream *p_stream,
                                 event_mgr_t * p_manager
                               )
 {
@@ -3310,7 +3321,7 @@ bool jp2_write_tile (	jp2_t *p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager
                         )
 
@@ -3322,7 +3333,7 @@ bool jp2_decode_tile (  jp2_t * p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager
                          )
 {
@@ -3402,7 +3413,7 @@ bool jp2_set_decode_area(	jp2_t *p_jp2,
 }
 
 bool jp2_get_tile(	jp2_t *p_jp2,
-                        stream_private_t *p_stream,
+                        GrokStream *p_stream,
                         opj_image_t* p_image,
                         event_mgr_t * p_manager,
                         uint32_t tile_index

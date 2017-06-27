@@ -55,60 +55,46 @@
 
 #pragma once
 
+#include "IBitIO.h"
+#include "IGrokStream.h"
+
 namespace grk {
 
 /**
 Bit input/output
 */
-class BitIO {
+class BitIO : public IBitIO {
 
 public:
 
-	BitIO();
+	BitIO(uint8_t *bp, uint64_t len, bool isEncoder);
+	BitIO(IGrokStream* stream, bool isEncoder);
 
 	/**
 	Number of bytes written.
-	@param bio BIO handle
 	@return Returns the number of bytes written
 	*/
 	size_t numbytes();
-	/**
-	Init encoder
-	@param bio BIO handle
-	@param bp Output buffer
-	@param len Output buffer length
-	*/
-	void init_enc( uint8_t *bp, uint64_t len);
-	/**
-	Init decoder
-	@param bio BIO handle
-	@param bp Input buffer
-	@param len Input buffer length
-	*/
-	void init_dec( uint8_t *bp, uint64_t len);
+
 	/**
 	Write bits
-	@param bio BIO handle
 	@param v Value of bits
 	@param n Number of bits to write
 	*/
 	bool write( uint32_t v, uint32_t n);
 	/**
 	Read bits
-	@param bio BIO handle
 	@param n Number of bits to read
 	@return Returns the corresponding read number
 	*/
 	bool read(uint32_t* bits, uint32_t n);
 	/**
 	Flush bits
-	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool flush();
 	/**
 	Passes the ending bits (coming from flushing)
-	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool inalign();
@@ -128,9 +114,13 @@ private:
 	/** coder : number of bits free to write. decoder : number of bits read */
 	uint8_t ct;
 
+	size_t total_bytes;
+
 	bool sim_out;
 
+	bool is_encoder;
 
+	IGrokStream* stream;
 
 	/**
 	Write a bit
@@ -150,6 +140,13 @@ private:
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool byteout();
+
+	/**
+	Write a byte
+	@param bio BIO handle
+	@return Returns true if successful, returns false otherwise
+	*/
+	bool byteout_stream();
 	/**
 	Read a byte
 	@param bio BIO handle

@@ -1448,56 +1448,57 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		return 1;
 	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
-	opj_image_t* image = NULL;
+	opj_image_t* image = nullptr;
+	uint8_t* buffer = nullptr;
+	{
+		bool isBufferStream = false;
+		if (isBufferStream) {
+			auto fp = fopen(parameters->infile, "rb");
+			if (!fp) {
+				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for reading", parameters->infile);
+				failed = 1;
+				goto cleanup;
+			}
 
-	/* read the input file and put it in memory */
-	/* ---------------------------------------- */
-	// use file stream 
-	info->l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
+			auto rc = fseek(fp, 0, SEEK_END);
+			if (rc == -1) {
+				fprintf(stderr, "ERROR -> opj_decompress: unable to seek on file %s", parameters->infile);
+				fclose(fp);
+				failed = 1;
+				goto cleanup;
+			}
+			auto lengthOfFile = ftell(fp);
+			if (lengthOfFile <= 0) {
+				fprintf(stderr, "ERROR -> opj_decompress: Zero or negative length for file %s", parameters->infile);
+				fclose(fp);
+				failed = 1;
+				goto cleanup;
+			}
+			rewind(fp);
+			buffer = new uint8_t[lengthOfFile];
+			size_t bytesRead = 0;
+			size_t totalBytes = 0;
+			while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
+				totalBytes += bytesRead;
+			}
+			fclose(fp);
+			if (totalBytes != lengthOfFile) {
+				fprintf(stderr, "ERROR -> opj_decompress: Unable to read full length of file %s", parameters->infile);
+				failed = 1;
+				goto cleanup;
+			}
+			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
+		}
+		else {
+			/* read the input file and put it in memory */
+			/* ---------------------------------------- */
+			// use file stream 
+			info->l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
 
-	// other option is to use memory mapped stream
-	//info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
-
-
-	// third option is to read from buffer
-	/*
-	auto fp = fopen(parameters->infile, "rb");
-	if (!fp) {
-		fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for reading", parameters->infile);
-		failed = 1;
-		goto cleanup;
+			// other option is to use memory mapped stream
+			//info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+		}
 	}
-
-	auto rc = fseek(fp, 0, SEEK_END);
-	if (rc == -1) {
-		fprintf(stderr, "ERROR -> opj_decompress: unable to seek on file %s", parameters->infile);
-		fclose(fp);
-		failed = 1;
-		goto cleanup;
-	}
-	auto lengthOfFile = ftell(fp);
-	if (lengthOfFile <= 0) {
-		fprintf(stderr, "ERROR -> opj_decompress: Zero or negative length for file %s", parameters->infile);
-		fclose(fp);
-		failed = 1;
-		goto cleanup;
-	}
-	rewind(fp);
-	buffer = new uint8_t[lengthOfFile];
-	size_t bytesRead = 0;
-	size_t totalBytes = 0;
-	while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
-		totalBytes += bytesRead;
-	}
-	fclose(fp);
-	if (totalBytes != lengthOfFile) {
-		fprintf(stderr, "ERROR -> opj_decompress: Unable to read full length of file %s", parameters->infile);
-		failed = 1;
-		goto cleanup;
-	}
-	info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
-	*/
-
 
 
 	if (!info->l_stream) {
@@ -1625,6 +1626,9 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 cleanup:
 	if (info->l_stream)
 		opj_stream_destroy(info->l_stream);
+	if (buffer)
+		delete[] buffer;
+	buffer = nullptr;
 	info->l_stream = NULL;
 	if (info->l_codec)
 		opj_destroy_codec(info->l_codec);

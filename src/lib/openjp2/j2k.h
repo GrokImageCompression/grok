@@ -484,8 +484,6 @@ struct j2k_enc_t {
     /** used in TLMmarker*/
     uint32_t m_total_tile_parts;	 /* totnum_tp */
 
-	EncodedTileData* tile;
-	EncodedTileData* tileHeader;
 } ;
 
 
@@ -577,7 +575,7 @@ char *j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
  * codestream.
  */
 bool j2k_end_decompress(j2k_t *j2k,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager);
 
 /**
@@ -590,7 +588,7 @@ bool j2k_end_decompress(j2k_t *j2k,
  *
  * @return true if the box is valid.
  */
-bool j2k_read_header(	stream_private_t *p_stream,
+bool j2k_read_header(	GrokStream *p_stream,
                             j2k_t* p_j2k,
 							opj_header_info_t* header_info,
 							opj_image_t** p_image,
@@ -624,7 +622,7 @@ bool j2k_decode_tile (  j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager );
 
 /**
@@ -650,7 +648,7 @@ bool j2k_read_tile_header ( j2k_t * p_j2k,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                stream_private_t *p_stream,
+                                GrokStream *p_stream,
                                 event_mgr_t * p_manager );
 
 
@@ -739,13 +737,13 @@ opj_codestream_index_t* j2k_get_cstr_index(j2k_t* p_j2k);
 */
 bool j2k_decode(j2k_t *j2k,
 					grok_plugin_tile_t* tile,
-                    stream_private_t *p_stream,
+                    GrokStream *p_stream,
                     opj_image_t *p_image,
                     event_mgr_t *p_manager);
 
 
 bool j2k_get_tile(	j2k_t *p_j2k,
-                        stream_private_t *p_stream,
+                        GrokStream *p_stream,
                         opj_image_t* p_image,
                         event_mgr_t * p_manager,
                         uint32_t tile_index );
@@ -768,7 +766,7 @@ bool j2k_write_tile (	j2k_t * p_j2k,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager );
 
 /**
@@ -776,7 +774,7 @@ bool j2k_write_tile (	j2k_t * p_j2k,
  */
 bool j2k_encode(	j2k_t * p_j2k,
 						grok_plugin_tile_t* tile,
-                        stream_private_t *cio,
+                        GrokStream *cio,
                         event_mgr_t * p_manager );
 
 /**
@@ -790,7 +788,7 @@ bool j2k_encode(	j2k_t * p_j2k,
  * @return true if the codec is valid.
  */
 bool j2k_start_compress(j2k_t *p_j2k,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             opj_image_t * p_image,
                             event_mgr_t * p_manager);
 
@@ -799,7 +797,7 @@ bool j2k_start_compress(j2k_t *p_j2k,
  * codestream.
  */
 bool j2k_end_compress( 	j2k_t *p_j2k,
-                            stream_private_t *cio,
+                            GrokStream *cio,
                             event_mgr_t * p_manager);
 
 bool j2k_setup_mct_encoding (tcp_t * p_tcp, opj_image_t * p_image);
