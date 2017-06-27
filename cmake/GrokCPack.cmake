@@ -9,10 +9,10 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
     include(${CMAKE_ROOT}/Modules/InstallRequiredSystemLibraries.cmake)
   endif()
 
-  set(OPJ_PACKAGE_DESCRIPTION_SUMMARY "Grok - Grok a JPEG 2000 implementation.")
-  set(OPJ_PACKAGE_CONTACT "boxerab@gmail.com")
+  set(GROK_PACKAGEDESCRIPTION_SUMMARY "Grok - Grok a JPEG 2000 implementation.")
+  set(GROK_PACKAGECONTACT "boxerab@gmail.com")
 
-  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${OPJ_PACKAGE_DESCRIPTION_SUMMARY})
+  set(CPACK_PACKAGE_DESCRIPTION_SUMMARY ${GROK_PACKAGEDESCRIPTION_SUMMARY})
   set(CPACK_PACKAGE_VENDOR           "Grok Image Compression Inc.")
   configure_file("${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
     "${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt" COPYONLY

@@ -498,7 +498,7 @@ bool mct_encode_custom(
     uint32_t lMultiplicator = 1 << 13;
     int32_t * lMctPtr;
 
-    OPJ_ARG_NOT_USED(isSigned);
+    ARG_NOT_USED(isSigned);
 
     lCurrentData = (int32_t *) grok_malloc((pNbComp + lNbMatCoeff) * sizeof(int32_t));
     if (! lCurrentData) {
@@ -549,7 +549,7 @@ bool mct_decode_custom(
     float * lCurrentResult = nullptr;
     float ** lData = (float **) pData;
 
-    OPJ_ARG_NOT_USED(isSigned);
+    ARG_NOT_USED(isSigned);
 
     lCurrentData = (float *) grok_malloc (2 * pNbComp * sizeof(float));
     if (! lCurrentData) {

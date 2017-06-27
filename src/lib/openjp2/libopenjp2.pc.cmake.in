@@ -7,7 +7,7 @@ includedir=${prefix}/@GROK_INSTALL_INCLUDE_DIR@
 
 Name: openjp2
 Description: JPEG2000 library (Part 1 and 2)
-URL: http://www.openjpeg.org/
+URL: https://github.com/GrokImageCompression/grok
 Version: @GROK_VERSION@
 Libs: -L${libdir} -lopenjp2
 Libs.private: -lm

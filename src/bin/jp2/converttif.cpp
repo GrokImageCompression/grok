@@ -106,12 +106,12 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
  <<-- <<-- <<-- <<-- */
 #define PUTBITS2(s, nb) \
 	trailing <<= remaining; \
-	trailing |= (unsigned int)((s) >> (nb - remaining)); \
-	*pDst++ = (OPJ_BYTE)trailing; \
-	trailing = (unsigned int)((s) & ((1U << (nb - remaining)) - 1U)); \
+	trailing |= (uint32_t)((s) >> (nb - remaining)); \
+	*pDst++ = (uint8_t)trailing; \
+	trailing = (uint32_t)((s) & ((1U << (nb - remaining)) - 1U)); \
 	if (nb >= (remaining + 8)) { \
-		*pDst++ = (OPJ_BYTE)(trailing >> (nb - (remaining + 8))); \
-		trailing &= (unsigned int)((1U << (nb - (remaining + 8))) - 1U); \
+		*pDst++ = (uint8_t)(trailing >> (nb - (remaining + 8))); \
+		trailing &= (uint32_t)((1U << (nb - (remaining + 8))) - 1U); \
 		remaining += 16 - nb; \
 	} else { \
 		remaining += 8 - nb; \
@@ -122,20 +122,20 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 		PUTBITS2(s, nb) \
 	} else { \
 		trailing <<= nb; \
-		trailing |= (unsigned int)(s); \
+		trailing |= (uint32_t)(s); \
 		remaining -= nb; \
 	}
 #define FLUSHBITS() \
 	if (remaining != 8) { \
 		trailing <<= remaining; \
-		*pDst++ = (OPJ_BYTE)trailing; \
+		*pDst++ = (uint8_t)trailing; \
 	}
 
-static void tif_32sto3u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -145,13 +145,13 @@ static void tif_32sto3u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 << 5) | (src1 << 2) | (src2 >> 1));
-		*pDst++ = (OPJ_BYTE)((src2 << 7) | (src3 << 4) | (src4 << 1) | (src5 >> 2));
-		*pDst++ = (OPJ_BYTE)((src5 << 6) | (src6 << 3) | (src7));
+		*pDst++ = (uint8_t)((src0 << 5) | (src1 << 2) | (src2 >> 1));
+		*pDst++ = (uint8_t)((src2 << 7) | (src3 << 4) | (src4 << 1) | (src5 >> 2));
+		*pDst++ = (uint8_t)((src5 << 6) | (src6 << 3) | (src7));
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS((uint32_t)pSrc[i + 0], 3)
@@ -177,11 +177,11 @@ static void tif_32sto3u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 	}
 }
 
-static void tif_32sto5u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -191,16 +191,16 @@ static void tif_32sto5u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 << 3) | (src1 >> 2));
-		*pDst++ = (OPJ_BYTE)((src1 << 6) | (src2 << 1) | (src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 1));
-		*pDst++ = (OPJ_BYTE)((src4 << 7) | (src5 << 2) | (src6 >> 3));
-		*pDst++ = (OPJ_BYTE)((src6 << 5) | (src7));
+		*pDst++ = (uint8_t)((src0 << 3) | (src1 >> 2));
+		*pDst++ = (uint8_t)((src1 << 6) | (src2 << 1) | (src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 1));
+		*pDst++ = (uint8_t)((src4 << 7) | (src5 << 2) | (src6 >> 3));
+		*pDst++ = (uint8_t)((src6 << 5) | (src7));
 
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS((uint32_t)pSrc[i + 0], 5)
@@ -226,11 +226,11 @@ static void tif_32sto5u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 	}
 }
 
-static void tif_32sto7u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto7u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -240,17 +240,17 @@ static void tif_32sto7u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 << 1) | (src1 >> 6));
-		*pDst++ = (OPJ_BYTE)((src1 << 2) | (src2 >> 5));
-		*pDst++ = (OPJ_BYTE)((src2 << 3) | (src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 3));
-		*pDst++ = (OPJ_BYTE)((src4 << 5) | (src5 >> 2));
-		*pDst++ = (OPJ_BYTE)((src5 << 6) | (src6 >> 1));
-		*pDst++ = (OPJ_BYTE)((src6 << 7) | (src7));
+		*pDst++ = (uint8_t)((src0 << 1) | (src1 >> 6));
+		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 5));
+		*pDst++ = (uint8_t)((src2 << 3) | (src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 3));
+		*pDst++ = (uint8_t)((src4 << 5) | (src5 >> 2));
+		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 1));
+		*pDst++ = (uint8_t)((src6 << 7) | (src7));
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS((uint32_t)pSrc[i + 0], 7)
@@ -276,11 +276,11 @@ static void tif_32sto7u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 	}
 }
 
-static void tif_32sto9u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -290,19 +290,19 @@ static void tif_32sto9u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 >> 1));
-		*pDst++ = (OPJ_BYTE)((src0 << 7) | (src1 >> 2));
-		*pDst++ = (OPJ_BYTE)((src1 << 6) | (src2 >> 3));
-		*pDst++ = (OPJ_BYTE)((src2 << 5) | (src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 5));
-		*pDst++ = (OPJ_BYTE)((src4 << 3) | (src5 >> 6));
-		*pDst++ = (OPJ_BYTE)((src5 << 2) | (src6 >> 7));
-		*pDst++ = (OPJ_BYTE)((src6 << 1) | (src7 >> 8));
-		*pDst++ = (OPJ_BYTE)(src7);
+		*pDst++ = (uint8_t)((src0 >> 1));
+		*pDst++ = (uint8_t)((src0 << 7) | (src1 >> 2));
+		*pDst++ = (uint8_t)((src1 << 6) | (src2 >> 3));
+		*pDst++ = (uint8_t)((src2 << 5) | (src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 5));
+		*pDst++ = (uint8_t)((src4 << 3) | (src5 >> 6));
+		*pDst++ = (uint8_t)((src5 << 2) | (src6 >> 7));
+		*pDst++ = (uint8_t)((src6 << 1) | (src7 >> 8));
+		*pDst++ = (uint8_t)(src7);
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS2((uint32_t)pSrc[i + 0], 9)
@@ -369,11 +369,11 @@ static void tif_32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
     }
 }
 
-static void tif_32sto11u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -383,21 +383,21 @@ static void tif_32sto11u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 >> 3));
-		*pDst++ = (OPJ_BYTE)((src0 << 5) | (src1 >> 6));
-		*pDst++ = (OPJ_BYTE)((src1 << 2) | (src2 >> 9));
-		*pDst++ = (OPJ_BYTE)((src2 >> 1));
-		*pDst++ = (OPJ_BYTE)((src2 << 7) | (src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 7));
-		*pDst++ = (OPJ_BYTE)((src4 << 1) | (src5 >> 10));
-		*pDst++ = (OPJ_BYTE)((src5 >> 2));
-		*pDst++ = (OPJ_BYTE)((src5 << 6) | (src6 >> 5));
-		*pDst++ = (OPJ_BYTE)((src6 << 3) | (src7 >> 8));
-		*pDst++ = (OPJ_BYTE)(src7);
+		*pDst++ = (uint8_t)((src0 >> 3));
+		*pDst++ = (uint8_t)((src0 << 5) | (src1 >> 6));
+		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 9));
+		*pDst++ = (uint8_t)((src2 >> 1));
+		*pDst++ = (uint8_t)((src2 << 7) | (src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 7));
+		*pDst++ = (uint8_t)((src4 << 1) | (src5 >> 10));
+		*pDst++ = (uint8_t)((src5 >> 2));
+		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 5));
+		*pDst++ = (uint8_t)((src6 << 3) | (src7 >> 8));
+		*pDst++ = (uint8_t)(src7);
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS2((uint32_t)pSrc[i + 0], 11)
@@ -441,11 +441,11 @@ static void tif_32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
     }
 }
 
-static void tif_32sto13u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -455,23 +455,23 @@ static void tif_32sto13u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 >> 5));
-		*pDst++ = (OPJ_BYTE)((src0 << 3) | (src1 >> 10));
-		*pDst++ = (OPJ_BYTE)((src1 >> 2));
-		*pDst++ = (OPJ_BYTE)((src1 << 6) | (src2 >> 7));
-		*pDst++ = (OPJ_BYTE)((src2 << 1) | (src3 >> 12));
-		*pDst++ = (OPJ_BYTE)((src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 9));
-		*pDst++ = (OPJ_BYTE)((src4 >> 1));
-		*pDst++ = (OPJ_BYTE)((src4 << 7) | (src5 >> 6));
-		*pDst++ = (OPJ_BYTE)((src5 << 2) | (src6 >> 11));
-		*pDst++ = (OPJ_BYTE)((src6 >> 3));
-		*pDst++ = (OPJ_BYTE)((src6 << 5) | (src7 >> 8));
-		*pDst++ = (OPJ_BYTE)(src7);
+		*pDst++ = (uint8_t)((src0 >> 5));
+		*pDst++ = (uint8_t)((src0 << 3) | (src1 >> 10));
+		*pDst++ = (uint8_t)((src1 >> 2));
+		*pDst++ = (uint8_t)((src1 << 6) | (src2 >> 7));
+		*pDst++ = (uint8_t)((src2 << 1) | (src3 >> 12));
+		*pDst++ = (uint8_t)((src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 9));
+		*pDst++ = (uint8_t)((src4 >> 1));
+		*pDst++ = (uint8_t)((src4 << 7) | (src5 >> 6));
+		*pDst++ = (uint8_t)((src5 << 2) | (src6 >> 11));
+		*pDst++ = (uint8_t)((src6 >> 3));
+		*pDst++ = (uint8_t)((src6 << 5) | (src7 >> 8));
+		*pDst++ = (uint8_t)(src7);
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS2((uint32_t)pSrc[i + 0], 13)
@@ -540,11 +540,11 @@ static void tif_32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
     }
 }
 
-static void tif_32sto15u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
+static void tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-	OPJ_SIZE_T i;
+	size_t i;
 
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t src0 = (uint32_t)pSrc[i + 0];
 		uint32_t src1 = (uint32_t)pSrc[i + 1];
 		uint32_t src2 = (uint32_t)pSrc[i + 2];
@@ -554,25 +554,25 @@ static void tif_32sto15u(const int32_t* pSrc, OPJ_BYTE* pDst, OPJ_SIZE_T length)
 		uint32_t src6 = (uint32_t)pSrc[i + 6];
 		uint32_t src7 = (uint32_t)pSrc[i + 7];
 
-		*pDst++ = (OPJ_BYTE)((src0 >> 7));
-		*pDst++ = (OPJ_BYTE)((src0 << 1) | (src1 >> 14));
-		*pDst++ = (OPJ_BYTE)((src1 >> 6));
-		*pDst++ = (OPJ_BYTE)((src1 << 2) | (src2 >> 13));
-		*pDst++ = (OPJ_BYTE)((src2 >> 5));
-		*pDst++ = (OPJ_BYTE)((src2 << 3) | (src3 >> 12));
-		*pDst++ = (OPJ_BYTE)((src3 >> 4));
-		*pDst++ = (OPJ_BYTE)((src3 << 4) | (src4 >> 11));
-		*pDst++ = (OPJ_BYTE)((src4 >> 3));
-		*pDst++ = (OPJ_BYTE)((src4 << 5) | (src5 >> 10));
-		*pDst++ = (OPJ_BYTE)((src5 >> 2));
-		*pDst++ = (OPJ_BYTE)((src5 << 6) | (src6 >> 9));
-		*pDst++ = (OPJ_BYTE)((src6 >> 1));
-		*pDst++ = (OPJ_BYTE)((src6 << 7) | (src7 >> 8));
-		*pDst++ = (OPJ_BYTE)(src7);
+		*pDst++ = (uint8_t)((src0 >> 7));
+		*pDst++ = (uint8_t)((src0 << 1) | (src1 >> 14));
+		*pDst++ = (uint8_t)((src1 >> 6));
+		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 13));
+		*pDst++ = (uint8_t)((src2 >> 5));
+		*pDst++ = (uint8_t)((src2 << 3) | (src3 >> 12));
+		*pDst++ = (uint8_t)((src3 >> 4));
+		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 11));
+		*pDst++ = (uint8_t)((src4 >> 3));
+		*pDst++ = (uint8_t)((src4 << 5) | (src5 >> 10));
+		*pDst++ = (uint8_t)((src5 >> 2));
+		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 9));
+		*pDst++ = (uint8_t)((src6 >> 1));
+		*pDst++ = (uint8_t)((src6 << 7) | (src7 >> 8));
+		*pDst++ = (uint8_t)(src7);
 	}
 
 	if (length & 7U) {
-		unsigned int trailing = 0U;
+		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
 		PUTBITS2((uint32_t)pSrc[i + 0], 15)
@@ -829,7 +829,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		auto alphaCount = 0;
 		for (i = 0U; i < numcomps; ++i) {
 			if (image->comps[i].alpha)
-				out[alphaCount++] = (image->comps[i].alpha == OPJ_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+				out[alphaCount++] = (image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
@@ -878,7 +878,7 @@ cleanup:
 
 #define GETBITS(dest, nb, mask, invert) { \
 	int needed = (nb); \
-	unsigned int dst = 0U; \
+	uint32_t dst = 0U; \
 	if (available == 0) { \
 		val = *pSrc++; \
 		available = 8; \
@@ -895,10 +895,10 @@ cleanup:
 	dest = INV((int32_t)dst, mask,invert); \
 }
 
-static void tif_3uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -914,7 +914,7 @@ static void tif_3uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -941,10 +941,10 @@ static void tif_3uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 			}
 	}
 }
-static void tif_5uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -962,7 +962,7 @@ static void tif_5uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -989,10 +989,10 @@ static void tif_5uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 			}
 	}
 }
-static void tif_7uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1012,7 +1012,7 @@ static void tif_7uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -1039,10 +1039,10 @@ static void tif_7uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 			}
 	}
 }
-static void tif_9uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1064,7 +1064,7 @@ static void tif_9uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, 
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -1127,10 +1127,10 @@ static void tif_10uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
     }
 }
 
-static void tif_11uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1154,7 +1154,7 @@ static void tif_11uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length,
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -1199,10 +1199,10 @@ static void tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
     }
 }
 
-static void tif_13uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1228,7 +1228,7 @@ static void tif_13uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length,
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -1293,10 +1293,10 @@ static void tif_14uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
     }
 }
 
-static void tif_15uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length, bool invert)
+static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-	OPJ_SIZE_T i;
-	for (i = 0; i < (length & ~(OPJ_SIZE_T)7U); i += 8U) {
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1324,7 +1324,7 @@ static void tif_15uto32s(const OPJ_BYTE* pSrc, int32_t* pDst, OPJ_SIZE_T length,
 
 	}
 	if (length & 7U) {
-		unsigned int val;
+		uint32_t val;
 		int available = 0;
 
 		length = length & 7U;
@@ -1640,9 +1640,9 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		//only support single alpha channel when reading in from TIFF
 		if ( (j == numcomps - 1) && (numAlphaChannels > 0)) {
 			if (sampleinfo && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA)
-				image->comps[j].alpha = OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
 			else
-				image->comps[j].alpha = OPJ_COMPONENT_TYPE_OPACITY;
+				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
 		}
     }
 

@@ -74,7 +74,7 @@ The functions in CIO.C have for goal to realize a byte input / output process.
 
 /* ----------------------------------------------------------------------- */
 
-#if defined(OPJ_BIG_ENDIAN)
+#if defined(GROK_BIG_ENDIAN)
 #define grk_write_bytes		grk_write_bytes_BE
 #define grk_read_bytes		grk_read_bytes_BE
 #define grk_write_double	grk_write_double_BE
@@ -91,10 +91,10 @@ The functions in CIO.C have for goal to realize a byte input / output process.
 #endif
 
 
-#define OPJ_STREAM_STATUS_OUTPUT  0x1U
-#define OPJ_STREAM_STATUS_INPUT   0x2U
-#define OPJ_STREAM_STATUS_END     0x4U
-#define OPJ_STREAM_STATUS_ERROR   0x8U
+#define GROK_STREAM_STATUS_OUTPUT  0x1U
+#define GROK_STREAM_STATUS_INPUT   0x2U
+#define GROK_STREAM_STATUS_END     0x4U
+#define GROK_STREAM_STATUS_ERROR   0x8U
 
 /**
 Byte input-output stream.
@@ -186,7 +186,7 @@ struct stream_private_t {
 
     /**
      * Flags to tell the status of the stream.
-     * Used with OPJ_STREAM_STATUS_* defines.
+     * Used with GROK_STREAM_STATUS_* defines.
      */
     uint32_t m_status;
 

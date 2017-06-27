@@ -184,8 +184,8 @@ BOOL APIENTRY
 DllMain(HINSTANCE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
 
-    OPJ_ARG_NOT_USED(lpReserved);
-    OPJ_ARG_NOT_USED(hModule);
+    ARG_NOT_USED(lpReserved);
+    ARG_NOT_USED(hModule);
 
     switch (ul_reason_for_call) {
     case DLL_PROCESS_ATTACH :

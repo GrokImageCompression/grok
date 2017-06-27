@@ -185,11 +185,11 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size,bool l_is_inpu
     }
 
     if (l_is_input) {
-        l_stream->m_status |= OPJ_STREAM_STATUS_INPUT;
+        l_stream->m_status |= GROK_STREAM_STATUS_INPUT;
         l_stream->m_opj_skip = stream_read_skip;
         l_stream->m_opj_seek = stream_read_seek;
     } else {
-        l_stream->m_status |= OPJ_STREAM_STATUS_OUTPUT;
+        l_stream->m_status |= GROK_STREAM_STATUS_OUTPUT;
         l_stream->m_opj_skip = stream_write_skip;
         l_stream->m_opj_seek = stream_write_seek;
     }
@@ -227,7 +227,7 @@ void OPJ_CALLCONV opj_stream_set_read_function(opj_stream_t* p_stream, opj_strea
 {
     stream_private_t* l_stream = (stream_private_t*) p_stream;
 
-    if ((!l_stream) || (! (l_stream->m_status & OPJ_STREAM_STATUS_INPUT))) {
+    if ((!l_stream) || (! (l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
         return;
     }
 
@@ -238,7 +238,7 @@ void OPJ_CALLCONV opj_stream_set_zero_copy_read_function(opj_stream_t* p_stream,
 {
     stream_private_t* l_stream = (stream_private_t*)p_stream;
 
-    if ((!l_stream) || (!(l_stream->m_status & OPJ_STREAM_STATUS_INPUT))) {
+    if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
         return;
     }
 
@@ -261,7 +261,7 @@ void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 {
     stream_private_t* l_stream = (stream_private_t*) p_stream;
 
-    if ((!l_stream )|| (! (l_stream->m_status & OPJ_STREAM_STATUS_OUTPUT))) {
+    if ((!l_stream )|| (! (l_stream->m_status & GROK_STREAM_STATUS_OUTPUT))) {
         return;
     }
 
@@ -318,7 +318,7 @@ size_t stream_read_data (stream_private_t * p_stream,
     }
 
     /* we are now in the case when the remaining data if not sufficient */
-    if (p_stream->m_status & OPJ_STREAM_STATUS_END) {
+    if (p_stream->m_status & GROK_STREAM_STATUS_END) {
         l_read_nb_bytes += p_stream->m_bytes_in_buffer;
         memcpy(p_buffer,p_stream->m_current_data,p_stream->m_bytes_in_buffer);
         p_stream->m_current_data += p_stream->m_bytes_in_buffer;
@@ -354,7 +354,7 @@ size_t stream_read_data (stream_private_t * p_stream,
                 event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
 
                 p_stream->m_bytes_in_buffer = 0;
-                p_stream->m_status |= OPJ_STREAM_STATUS_END;
+                p_stream->m_status |= GROK_STREAM_STATUS_END;
                 /* end of stream */
                 return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
             } else if	(p_stream->m_bytes_in_buffer < p_size) {
@@ -383,7 +383,7 @@ size_t stream_read_data (stream_private_t * p_stream,
                 event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
 
                 p_stream->m_bytes_in_buffer = 0;
-                p_stream->m_status |= OPJ_STREAM_STATUS_END;
+                p_stream->m_status |= GROK_STREAM_STATUS_END;
                 /* end of stream */
                 return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
             } else if (p_stream->m_bytes_in_buffer < p_size) {
@@ -418,7 +418,7 @@ size_t stream_read_data_zero_copy(stream_private_t * p_stream,
     if (l_read_nb_bytes == (size_t)-1) {
         /*  end of stream */
         event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
-        p_stream->m_status |= OPJ_STREAM_STATUS_END;
+        p_stream->m_status |= GROK_STREAM_STATUS_END;
         return (size_t)-1;
     } else {
         p_stream->m_byte_offset += (int64_t)l_read_nb_bytes;
@@ -433,7 +433,7 @@ size_t stream_write_data (stream_private_t * p_stream,
                               size_t p_size,
                               event_mgr_t * p_event_mgr)
 {
-	// handle case where there is non internal buffer (buffer stream)
+	// handle case where there is no internal buffer (buffer stream)
 	if (!p_stream->m_stored_data) {
 		/* we should do an actual write on the media */
 		auto l_current_write_nb_bytes = p_stream->m_write_fn((uint8_t*)p_buffer,
@@ -447,7 +447,7 @@ size_t stream_write_data (stream_private_t * p_stream,
     size_t l_remaining_bytes = 0;
     size_t l_write_nb_bytes = 0;
 
-    if (p_stream->m_status & OPJ_STREAM_STATUS_ERROR) {
+    if (p_stream->m_status & GROK_STREAM_STATUS_ERROR) {
         return (size_t)-1;
     }
 
@@ -457,34 +457,27 @@ size_t stream_write_data (stream_private_t * p_stream,
         /* we have more memory than required */
         if (l_remaining_bytes >= p_size) {
             memcpy(p_stream->m_current_data, p_buffer, p_size);
-
             p_stream->m_current_data += p_size;
             p_stream->m_bytes_in_buffer += p_size;
             l_write_nb_bytes += p_size;
             p_stream->m_byte_offset += (int64_t)p_size;
-
             return l_write_nb_bytes;
         }
 
-        /* we copy data and then do an actual read on the stream */
+        /* we copy part of data (if possible) and flush the stream */
         if (l_remaining_bytes) {
             l_write_nb_bytes += l_remaining_bytes;
-
             memcpy(p_stream->m_current_data,p_buffer,l_remaining_bytes);
-
             p_stream->m_current_data = p_stream->m_stored_data;
-
             p_buffer += l_remaining_bytes;
             p_size -= l_remaining_bytes;
             p_stream->m_bytes_in_buffer += l_remaining_bytes;
             p_stream->m_byte_offset += (int64_t)l_remaining_bytes;
         }
-
         if (! stream_flush(p_stream, p_event_mgr)) {
             return (size_t)-1;
         }
     }
-
 }
 
 bool stream_flush (stream_private_t * p_stream, 
@@ -492,28 +485,23 @@ bool stream_flush (stream_private_t * p_stream,
 {
     /* the number of bytes written on the media. */
     size_t l_current_write_nb_bytes = 0;
-
     p_stream->m_current_data = p_stream->m_stored_data;
-
     while (p_stream->m_bytes_in_buffer) {
         /* we should do an actual write on the media */
         l_current_write_nb_bytes = p_stream->m_write_fn(p_stream->m_current_data,
-                                   p_stream->m_bytes_in_buffer,
-                                   p_stream->m_user_data);
+														p_stream->m_bytes_in_buffer,
+														p_stream->m_user_data);
 
         if (l_current_write_nb_bytes == (size_t)-1) {
-            p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
+            p_stream->m_status |= GROK_STREAM_STATUS_ERROR;
             event_msg(p_event_mgr, EVT_INFO, "Error on writing stream!\n");
 
             return false;
         }
-
         p_stream->m_current_data += l_current_write_nb_bytes;
         p_stream->m_bytes_in_buffer -= l_current_write_nb_bytes;
     }
-
     p_stream->m_current_data = p_stream->m_stored_data;
-
     return true;
 }
 
@@ -523,9 +511,7 @@ bool stream_read_skip (stream_private_t * p_stream,
 {
     int64_t l_skip_nb_bytes = 0;
     int64_t l_current_skip_nb_bytes = 0;
-
     assert( p_size >= 0 );
-
     if (p_stream->m_bytes_in_buffer >= (size_t)p_size) {
         p_stream->m_current_data += p_size;
         /* it is safe to cast p_size to size_t since it is <= m_bytes_in_buffer
@@ -537,7 +523,7 @@ bool stream_read_skip (stream_private_t * p_stream,
     }
 
     /* we are now in the case when the remaining data if not sufficient */
-    if (p_stream->m_status & OPJ_STREAM_STATUS_END) {
+    if (p_stream->m_status & GROK_STREAM_STATUS_END) {
         l_skip_nb_bytes += (int64_t)p_stream->m_bytes_in_buffer;
         p_stream->m_current_data += p_stream->m_bytes_in_buffer;
         p_stream->m_bytes_in_buffer = 0;
@@ -559,7 +545,7 @@ bool stream_read_skip (stream_private_t * p_stream,
         if (l_current_skip_nb_bytes == (int64_t) -1) {
             event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
 
-            p_stream->m_status |= OPJ_STREAM_STATUS_END;
+            p_stream->m_status |= GROK_STREAM_STATUS_END;
             p_stream->m_byte_offset += l_skip_nb_bytes;
             /* end if stream */
 			return l_skip_nb_bytes ? true : false;
@@ -569,7 +555,6 @@ bool stream_read_skip (stream_private_t * p_stream,
     }
 
     p_stream->m_byte_offset += l_skip_nb_bytes;
-
     return l_skip_nb_bytes ? true : false;
 }
 
@@ -580,20 +565,18 @@ bool stream_write_skip (stream_private_t * p_stream,
     bool l_is_written = 0;
     int64_t l_current_skip_nb_bytes = 0;
     int64_t l_skip_nb_bytes = 0;
-
-    if (p_stream->m_status & OPJ_STREAM_STATUS_ERROR) {
+    if (p_stream->m_status & GROK_STREAM_STATUS_ERROR) {
 		return false;
     }
 
     /* we should flush data */
     l_is_written = stream_flush (p_stream, p_event_mgr);
     if (! l_is_written) {
-        p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
+        p_stream->m_status |= GROK_STREAM_STATUS_ERROR;
         p_stream->m_bytes_in_buffer = 0;
 		return false;
     }
     /* then skip */
-
     while (p_size > 0) {
         /* we should do an actual skip on the media */
         l_current_skip_nb_bytes = p_stream->m_skip_fn(p_size, p_stream->m_user_data);
@@ -601,7 +584,7 @@ bool stream_write_skip (stream_private_t * p_stream,
         if (l_current_skip_nb_bytes == (int64_t)-1) {
             event_msg(p_event_mgr, EVT_INFO, "Stream error!\n");
 
-            p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
+            p_stream->m_status |= GROK_STREAM_STATUS_ERROR;
             p_stream->m_byte_offset += l_skip_nb_bytes;
             /* end if stream */
 			return l_skip_nb_bytes ? true : false;
@@ -611,12 +594,10 @@ bool stream_write_skip (stream_private_t * p_stream,
     }
 
     p_stream->m_byte_offset += l_skip_nb_bytes;
-
     return l_skip_nb_bytes ? true : false;
 }
 
-int64_t stream_tell (const stream_private_t * p_stream)
-{
+int64_t stream_tell (const stream_private_t * p_stream){
     return p_stream->m_byte_offset;
 }
 
@@ -641,16 +622,16 @@ bool stream_read_seek (stream_private_t * p_stream,
 							int64_t p_size,
 							event_mgr_t * p_event_mgr)
 {
-    OPJ_ARG_NOT_USED(p_event_mgr);
+    ARG_NOT_USED(p_event_mgr);
     p_stream->m_current_data = p_stream->m_stored_data;
     p_stream->m_bytes_in_buffer = 0;
 
     if( !(p_stream->m_seek_fn(p_size,p_stream->m_user_data)) ) {
-        p_stream->m_status |= OPJ_STREAM_STATUS_END;
+        p_stream->m_status |= GROK_STREAM_STATUS_END;
         return false;
     } else {
         /* reset stream status */
-        p_stream->m_status &= (~OPJ_STREAM_STATUS_END);
+        p_stream->m_status &= (~GROK_STREAM_STATUS_END);
         p_stream->m_byte_offset = p_size;
 
     }
@@ -663,7 +644,7 @@ bool stream_write_seek (stream_private_t * p_stream,
 							event_mgr_t * p_event_mgr)
 {
     if (! stream_flush(p_stream,p_event_mgr)) {
-        p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
+        p_stream->m_status |= GROK_STREAM_STATUS_ERROR;
         return false;
     }
 
@@ -671,7 +652,7 @@ bool stream_write_seek (stream_private_t * p_stream,
     p_stream->m_bytes_in_buffer = 0;
 
     if (! p_stream->m_seek_fn(p_size,p_stream->m_user_data)) {
-        p_stream->m_status |= OPJ_STREAM_STATUS_ERROR;
+        p_stream->m_status |= GROK_STREAM_STATUS_ERROR;
         return false;
     } else {
         p_stream->m_byte_offset = p_size;
@@ -688,42 +669,37 @@ bool stream_seek (stream_private_t * p_stream,
     return p_stream->m_opj_seek(p_stream,p_size,p_event_mgr);
 }
 
-bool stream_has_seek (const stream_private_t * p_stream)
-{
+bool stream_has_seek (const stream_private_t * p_stream){
     return p_stream->m_seek_fn != stream_default_seek;
 }
 
 size_t stream_default_read (void * p_buffer, 
 								size_t p_nb_bytes,
-								void * p_user_data)
-{
-    OPJ_ARG_NOT_USED(p_buffer);
-    OPJ_ARG_NOT_USED(p_nb_bytes);
-    OPJ_ARG_NOT_USED(p_user_data);
+								void * p_user_data){
+    ARG_NOT_USED(p_buffer);
+    ARG_NOT_USED(p_nb_bytes);
+    ARG_NOT_USED(p_user_data);
     return (size_t) -1;
 }
 
 size_t stream_default_write (void * p_buffer, 
 								size_t p_nb_bytes,
-								void * p_user_data)
-{
-    OPJ_ARG_NOT_USED(p_buffer);
-    OPJ_ARG_NOT_USED(p_nb_bytes);
-    OPJ_ARG_NOT_USED(p_user_data);
+								void * p_user_data){
+    ARG_NOT_USED(p_buffer);
+    ARG_NOT_USED(p_nb_bytes);
+    ARG_NOT_USED(p_user_data);
     return (size_t) -1;
 }
 
-int64_t stream_default_skip (int64_t p_nb_bytes, void * p_user_data)
-{
-    OPJ_ARG_NOT_USED(p_nb_bytes);
-    OPJ_ARG_NOT_USED(p_user_data);
+int64_t stream_default_skip (int64_t p_nb_bytes, void * p_user_data){
+    ARG_NOT_USED(p_nb_bytes);
+    ARG_NOT_USED(p_user_data);
     return (int64_t) -1;
 }
 
-bool stream_default_seek (int64_t p_nb_bytes, void * p_user_data)
-{
-    OPJ_ARG_NOT_USED(p_nb_bytes);
-    OPJ_ARG_NOT_USED(p_user_data);
+bool stream_default_seek (int64_t p_nb_bytes, void * p_user_data){
+    ARG_NOT_USED(p_nb_bytes);
+    ARG_NOT_USED(p_user_data);
     return false;
 }
 

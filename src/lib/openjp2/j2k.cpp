@@ -10137,21 +10137,6 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
     p_total_data_size -= l_current_nb_bytes_written;
 
     if (!OPJ_IS_CINEMA(l_cp->rsiz)) {
-#if 0
-        for (compno = 1; compno < p_j2k->m_private_image->numcomps; compno++) {
-            l_current_nb_bytes_written = 0;
-            j2k_write_coc_in_memory(p_j2k,compno,p_data,&l_current_nb_bytes_written,p_manager);
-            l_nb_bytes_written += l_current_nb_bytes_written;
-            p_data += l_current_nb_bytes_written;
-            p_total_data_size -= l_current_nb_bytes_written;
-
-            l_current_nb_bytes_written = 0;
-            j2k_write_qcc_in_memory(p_j2k,compno,p_data,&l_current_nb_bytes_written,p_manager);
-            l_nb_bytes_written += l_current_nb_bytes_written;
-            p_data += l_current_nb_bytes_written;
-            p_total_data_size -= l_current_nb_bytes_written;
-        }
-#endif
         if (l_cp->tcps[p_j2k->m_current_tile_number].numpocs) {
             l_current_nb_bytes_written = 0;
             j2k_write_poc_in_memory(p_j2k,p_data,&l_current_nb_bytes_written,p_manager);

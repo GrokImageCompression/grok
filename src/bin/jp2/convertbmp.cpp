@@ -494,8 +494,7 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 
 static bool bmp_read_raw_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
-    OPJ_ARG_NOT_USED(width);
-
+    (void)(width);
     if ( fread(pData, sizeof(uint8_t), stride * height, IN) != (stride * height) ) {
         fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
         return false;

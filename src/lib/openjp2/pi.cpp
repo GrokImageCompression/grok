@@ -896,7 +896,7 @@ static void pi_update_encode_poc_and_final (   cp_t *p_cp,
     /* number of pocs*/
     uint32_t l_poc_bound;
 
-    OPJ_ARG_NOT_USED(p_max_res);
+    ARG_NOT_USED(p_max_res);
 
     /* preconditions in debug*/
     assert(p_cp != nullptr);
@@ -1022,7 +1022,7 @@ static void pi_update_decode_poc (pi_iterator_t * p_pi,
     pi_iterator_t * l_current_pi = nullptr;
     opj_poc_t* l_current_poc = 0;
 
-    OPJ_ARG_NOT_USED(p_max_res);
+    ARG_NOT_USED(p_max_res);
 
     /* preconditions in debug*/
     assert(p_pi != nullptr);

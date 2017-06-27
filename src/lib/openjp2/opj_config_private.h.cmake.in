@@ -43,7 +43,7 @@ machine doing the building. In order to support Universal Binaries on
 Mac OS X, we prefer those defines to decide the endianness.
 On other platforms we use the result of the TRY_RUN. */
 #if !defined(__APPLE__)
-#cmakedefine OPJ_BIG_ENDIAN
+#cmakedefine GROK_BIG_ENDIAN
 #elif defined(__BIG_ENDIAN__)
-# define OPJ_BIG_ENDIAN
+# define GROK_BIG_ENDIAN
 #endif
