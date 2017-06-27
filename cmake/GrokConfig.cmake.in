@@ -23,18 +23,18 @@ set(GROK_BUILD_SHARED_LIBS "@BUILD_SHARED_LIBS@")
 set(GROK_USE_FILE "@GROK_USE_FILE_CONFIG@")
 
 get_filename_component(SELF_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
-if(EXISTS ${SELF_DIR}/OpenJPEGTargets.cmake)
+if(EXISTS ${SELF_DIR}/GrokTargets.cmake)
   # This is an install tree
-  include(${SELF_DIR}/OpenJPEGTargets.cmake)
+  include(${SELF_DIR}/GrokTargets.cmake)
   get_filename_component(GROK_INCLUDE_ROOT "${SELF_DIR}/../../@GROK_INSTALL_INCLUDE_DIR@" ABSOLUTE)
   set(GROK_INCLUDE_DIRS ${GROK_INCLUDE_ROOT})
 
 else()
-  if(EXISTS ${SELF_DIR}/OpenJPEGExports.cmake)
+  if(EXISTS ${SELF_DIR}/GrokExports.cmake)
     # This is a build tree
     set( GROK_INCLUDE_DIRS @GROK_INCLUDE_PATH@)
 
-    include(${SELF_DIR}/OpenJPEGExports.cmake)
+    include(${SELF_DIR}/GrokExports.cmake)
 
   else()
     message(FATAL_ERROR "ooops")

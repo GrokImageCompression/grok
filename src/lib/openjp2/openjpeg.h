@@ -140,11 +140,6 @@ typedef int64_t  OPJ_OFF_T;
 typedef size_t   OPJ_SIZE_T;
  ///////////////////////////////////////////////////////////////////////////
 
-
-
-/* Avoid compile-time warning because parameter is not used */
-#define OPJ_ARG_NOT_USED(x) (void)(x)
-
 /*
 ==========================================================
    Useful constant definitions
@@ -836,9 +831,9 @@ typedef void * opj_stream_t;
 ==========================================================
 */
 
-#define OPJ_COMPONENT_TYPE_COLOUR 0
-#define OPJ_COMPONENT_TYPE_OPACITY 1
-#define OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 2
+#define GROK_COMPONENT_TYPE_COLOUR 0
+#define GROK_COMPONENT_TYPE_OPACITY 1
+#define GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 2
 
 /**
  * Defines a single image component
@@ -866,7 +861,7 @@ typedef struct opj_image_comp {
     uint32_t decodeScaleFactor;
     /** image component data */
     int32_t *data;
-    /** alpha channel: can be one of three values: {OPJ_COMPONENT_TYPE_COLOUR, OPJ_COMPONENT_TYPE_OPACITY, OPJ_COMPONENT_TYPE_PREMULTIPLIED_OPACITY} */
+    /** alpha channel: can be one of three values: {GROK_COMPONENT_TYPE_COLOUR, GROK_COMPONENT_TYPE_OPACITY, GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY} */
     uint16_t alpha;  
 } opj_image_comp_t;
 

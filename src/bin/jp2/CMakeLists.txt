@@ -72,7 +72,7 @@ foreach(exe opj_decompress opj_compress opj_dump)
   endif()
   # Install exe
   install(TARGETS ${exe}
-    EXPORT OpenJPEGTargets
+    EXPORT GrokTargets
     DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
   )
   if(GROK_USE_DSYMUTIL)

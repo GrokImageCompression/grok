@@ -1,6 +1,6 @@
 # - Define macro to check large file support
 #
-#  OPJ_TEST_LARGE_FILES(VARIABLE)
+#  GROK_TEST_LARGE_FILES(VARIABLE)
 #
 #  VARIABLE will be set to true if off_t is 64 bits, and fseeko/ftello present.
 #  This macro will also defines the necessary variable enable large file support, for instance
@@ -16,7 +16,7 @@
 #  by Julien Malik
 #
 
-macro(OPJ_TEST_LARGE_FILES VARIABLE)
+macro(GROK_TEST_LARGE_FILES VARIABLE)
     if(NOT DEFINED ${VARIABLE})
 
         # On most platforms it is probably overkill to first test the flags for 64-bit off_t,

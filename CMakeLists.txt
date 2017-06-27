@@ -151,7 +151,7 @@ endif()
 #-----------------------------------------------------------------------------
 # Big endian test:
 include (${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
-TEST_BIG_ENDIAN(OPJ_BIG_ENDIAN)
+TEST_BIG_ENDIAN(GROK_BIG_ENDIAN)
 
 #-----------------------------------------------------------------------------
 # Setup file for setting custom ctest vars
@@ -218,7 +218,7 @@ CHECK_INCLUDE_FILE("unistd.h"       HAVE_UNISTD_H)
 
 # Enable Large file support
 include(TestLargeFiles)
-OPJ_TEST_LARGE_FILES(GROK_HAVE_LARGEFILES)
+GROK_TEST_LARGE_FILES(GROK_HAVE_LARGEFILES)
 
 # Allocating Aligned Memory Blocks
 include(CheckIncludeFiles)
@@ -296,12 +296,12 @@ endif()
 
 #-----------------------------------------------------------------------------
 # install all targets referenced as GROKTargets
-install(EXPORT OpenJPEGTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
-configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/OpenJPEGConfig.cmake.in
-  ${${GROK_NAMESPACE}_BINARY_DIR}/OpenJPEGConfig.cmake
+install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
+configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/GrokConfig.cmake.in
+  ${${GROK_NAMESPACE}_BINARY_DIR}/GrokConfig.cmake
   @ONLY
 )
-install( FILES ${GROK_BINARY_DIR}/OpenJPEGConfig.cmake
+install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
   DESTINATION ${GROK_INSTALL_PACKAGE_DIR}
 )
 
@@ -315,7 +315,7 @@ endif()
 install(FILES LICENSE DESTINATION ${GROK_INSTALL_DOC_DIR})
 endif()
 
-include (cmake/OpenJPEGCPack.cmake)
+include (cmake/GrokCPack.cmake)
 
 #-----------------------------------------------------------------------------
 # pkgconfig support

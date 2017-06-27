@@ -64,8 +64,8 @@ namespace grk {
  */
 static void grk_default_callback (const char *msg, void *client_data)
 {
-    OPJ_ARG_NOT_USED(msg);
-    OPJ_ARG_NOT_USED(client_data);
+    ARG_NOT_USED(msg);
+    ARG_NOT_USED(client_data);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -74,7 +74,7 @@ static void grk_default_callback (const char *msg, void *client_data)
 /* ----------------------------------------------------------------------- */
 bool event_msg(event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
 {
-#define OPJ_MSG_SIZE 512 /* 512 bytes should be more than enough for a short message */
+	const int message_size = 512; /* 512 bytes should be more than enough for a short message */
     opj_msg_callback msg_handler = nullptr;
     void * l_data = nullptr;
 
@@ -105,15 +105,15 @@ bool event_msg(event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ..
     if ((fmt != nullptr) && (p_event_mgr != nullptr)) {
         va_list arg;
         size_t str_length/*, i, j*/; 
-        char message[OPJ_MSG_SIZE];
-        memset(message, 0, OPJ_MSG_SIZE);
+        char message[message_size];
+        memset(message, 0, message_size);
         /* initialize the optional parameter list */
         va_start(arg, fmt);
         /* check the length of the format string */
-        str_length = (strlen(fmt) > OPJ_MSG_SIZE) ? OPJ_MSG_SIZE : strlen(fmt);
+        str_length = (strlen(fmt) > message_size) ? message_size : strlen(fmt);
         (void)str_length;
         /* parse the format string and put the result in 'message' */
-        vsnprintf(message, OPJ_MSG_SIZE, fmt, arg); 
+        vsnprintf(message, message_size, fmt, arg);
         /* deinitialize the optional parameter list */
         va_end(arg);
 

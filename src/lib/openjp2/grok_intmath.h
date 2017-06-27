@@ -58,21 +58,6 @@
 namespace grk {
 
 /**
-@file grok_intmath.h
-@brief Implementation of operations on integers (INT)
-
-The functions in OPJ_INTMATH.H have for goal to realize operations on integers.
-*/
-
-/** @defgroup OPJ_INTMATH OPJ_INTMATH - Implementation of operations on integers */
-/*@{*/
-
-/** @name Exported functions (see also openjpeg.h) */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-
-
-/**
  Get the saturated sum of two unsigned integers
  @return Returns saturated sum of a+b
  */

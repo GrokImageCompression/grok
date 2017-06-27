@@ -77,6 +77,10 @@
 #include <climits>
 #include <algorithm>
 
+
+/* Avoid compile-time warning because parameter is not used */
+#define ARG_NOT_USED(x) (void)(x)
+
 /*
   Use fseeko() and ftello() if they are available since they use
   'off_t' rather than 'long'.  It is wrong to use fseeko() and

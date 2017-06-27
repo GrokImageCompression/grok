@@ -387,7 +387,7 @@ static inline void t1_dec_sigpass_step_raw(t1_t *t1,
 {
 	int32_t v, flag;
 	raw_t *raw = t1->raw;
-	OPJ_ARG_NOT_USED(orient);
+	ARG_NOT_USED(orient);
 
 	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
@@ -834,7 +834,7 @@ static void t1_dec_clnpass_step_partial(t1_t *t1,
 	uint8_t v;
 	mqc_t *mqc = t1->mqc;
 
-	OPJ_ARG_NOT_USED(orient);
+	ARG_NOT_USED(orient);
 
 	flag = *flagsp;
 	mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
@@ -1103,7 +1103,7 @@ double t1_getwmsedec(int32_t nmsedec,
 	const double * mct_norms,
 	uint32_t mct_numcomps) {
 	double w1 = 1, w2, wmsedec;
-	OPJ_ARG_NOT_USED(numcomps);
+	ARG_NOT_USED(numcomps);
 
 	if (mct_norms && (compno < mct_numcomps)) {
 		w1 = mct_norms[compno];

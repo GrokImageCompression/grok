@@ -54,7 +54,8 @@ namespace grk {
 /**
  * Default size of the validation list, if not sufficient, data will be reallocated with a double size.
  */
-#define OPJ_VALIDATION_SIZE 10
+	
+const int validation_size = 10;
 
 procedure_list_t *  procedure_list_create()
 {
@@ -64,8 +65,8 @@ procedure_list_t *  procedure_list_create()
         return nullptr;
     }
     /* initialization */
-    l_validation->m_nb_max_procedures = OPJ_VALIDATION_SIZE;
-    l_validation->m_procedures = (procedure*)grok_calloc(OPJ_VALIDATION_SIZE, sizeof(procedure));
+    l_validation->m_nb_max_procedures = validation_size;
+    l_validation->m_procedures = (procedure*)grok_calloc(validation_size, sizeof(procedure));
     if (! l_validation->m_procedures) {
         grok_free(l_validation);
         return nullptr;
@@ -93,7 +94,7 @@ bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedu
     if (p_validation_list->m_nb_max_procedures == p_validation_list->m_nb_procedures) {
         procedure * new_procedures;
 
-        p_validation_list->m_nb_max_procedures += OPJ_VALIDATION_SIZE;
+        p_validation_list->m_nb_max_procedures += validation_size;
         new_procedures = (procedure*)grok_realloc(
                              p_validation_list->m_procedures,
                              p_validation_list->m_nb_max_procedures * sizeof(procedure));
