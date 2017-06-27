@@ -16,10 +16,12 @@ include_directories(
 # Defines the source code for the library
 set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/Barrier.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/bio.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/bio.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/cio.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/cio.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/IBitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/GrokStream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/GrokStream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/IGrokStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/dwt.h
   ${CMAKE_CURRENT_SOURCE_DIR}/dwt_region.cpp

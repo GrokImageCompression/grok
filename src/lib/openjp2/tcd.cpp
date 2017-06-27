@@ -122,8 +122,8 @@ static bool tcd_dwt_encode ( tcd_t *p_tcd );
 static bool tcd_t1_encode ( tcd_t *p_tcd );
 
 static bool tcd_t2_encode (     tcd_t *p_tcd,
-                                    uint8_t * p_dest_data,
-                                    uint64_t * p_data_written,
+									GrokStream* p_stream,
+									uint64_t * p_data_written,
                                     uint64_t p_max_dest_size,
                                     opj_codestream_info_t *p_cstr_info,
 									event_mgr_t * p_manager);
@@ -1310,7 +1310,7 @@ uint64_t tcd_get_decoded_tile_size ( tcd_t *p_tcd )
 
 bool tcd_encode_tile(   tcd_t *p_tcd,
                             uint32_t p_tile_no,
-                            uint8_t *p_dest,
+							GrokStream* p_stream,
                             uint64_t * p_data_written,
                             uint64_t p_max_length,
                             opj_codestream_info_t *p_cstr_info,
@@ -1380,7 +1380,7 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
         p_cstr_info->index_write = 1;
     }
     if (! tcd_t2_encode(p_tcd,
-							p_dest,
+							p_stream,
 							p_data_written,
 							p_max_length,
 							p_cstr_info,
@@ -2105,7 +2105,7 @@ static bool tcd_t1_encode ( tcd_t *p_tcd )
 }
 
 static bool tcd_t2_encode (tcd_t *p_tcd,
-                               uint8_t * p_dest_data,
+								GrokStream* p_stream,
                                uint64_t * p_data_written,
                                uint64_t p_max_dest_size,
                                opj_codestream_info_t *p_cstr_info,
@@ -2174,7 +2174,7 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
                 p_tcd->tcd_tileno,
                 p_tcd->tile,
                 p_tcd->tcp->numlayers,
-                p_dest_data,
+				p_stream,
                 p_data_written,
                 p_max_dest_size,
                 p_cstr_info,

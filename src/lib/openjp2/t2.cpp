@@ -96,7 +96,7 @@ namespace grk {
 								tcd_tile_t *tile,
 								tcp_t *tcp,
 								pi_iterator_t *pi,
-								uint8_t *dest,
+								GrokStream* p_stream,
 								uint64_t * p_data_written,
 								uint64_t len,
 								opj_codestream_info_t *cstr_info,
@@ -267,7 +267,7 @@ namespace grk {
 		uint32_t p_tile_no,
 		tcd_tile_t *p_tile,
 		uint32_t p_maxlayers,
-		uint8_t *p_dest,
+		GrokStream* p_stream,
 		uint64_t * p_data_written,
 		uint64_t p_max_len,
 		opj_codestream_info_t *cstr_info,
@@ -276,7 +276,6 @@ namespace grk {
 		uint32_t p_pino,
 		event_mgr_t * p_manager)
 	{
-		uint8_t *l_current_data = p_dest;
 		uint64_t l_nb_bytes = 0;
 		pi_iterator_t *l_pi = nullptr;
 		pi_iterator_t *l_current_pi = nullptr;
@@ -289,9 +288,6 @@ namespace grk {
 		if (!l_pi) {
 			return false;
 		}
-
-		*p_data_written = 0;
-
 		pi_init_encode(l_pi, l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos, FINAL_PASS);
 
 		l_current_pi = &l_pi[p_pino];
@@ -309,7 +305,7 @@ namespace grk {
 									p_tile,
 									l_tcp,
 									l_current_pi,
-									l_current_data,
+									p_stream,
 									&l_nb_bytes,
 									p_max_len,
 									cstr_info,
@@ -318,9 +314,7 @@ namespace grk {
 					return false;
 				}
 
-				l_current_data += l_nb_bytes;
 				p_max_len -= l_nb_bytes;
-
 				*p_data_written += l_nb_bytes;
 
 				/* INDEX >> */
@@ -673,8 +667,6 @@ namespace grk {
 		step 1: Read packet header in the saved structure
 		step 2: Return to codestream for decoding
 		*/
-		std::unique_ptr<BitIO> l_bio(new BitIO());
-
 		uint8_t *l_header_data = nullptr;
 		uint8_t **l_header_data_start = nullptr;
 		uint32_t * l_modified_length_ptr = nullptr;
@@ -698,8 +690,8 @@ namespace grk {
 		}
 
 		uint32_t l_present = 0;
+		std::unique_ptr<BitIO> l_bio(new BitIO(l_header_data, *l_modified_length_ptr,false));
 		if (*l_modified_length_ptr) {
-			l_bio->init_dec(l_header_data, *l_modified_length_ptr);
 			if (!l_bio->read(&l_present, 1)) {
 				event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: failed to read `present` bit \n");
 				return false;
@@ -974,13 +966,12 @@ namespace grk {
 								tcd_tile_t * tile,
 								tcp_t * tcp,
 								pi_iterator_t *pi,
-								uint8_t *dest,
+								GrokStream* p_stream,
 								uint64_t * p_data_written,
 								uint64_t num_bytes_available,
 								opj_codestream_info_t *cstr_info,
 								event_mgr_t * p_manager)
 	{
-		auto active_dest = dest;
 		uint32_t compno = pi->compno;
 		uint32_t resno = pi->resno;
 		uint32_t precno = pi->precno;
@@ -988,19 +979,30 @@ namespace grk {
 		tcd_tilecomp_t *tilec = &tile->comps[compno];
 		tcd_resolution_t *res = &tilec->resolutions[resno];
 		uint64_t numHeaderBytes = 0;
+		size_t streamBytes = 0;
+		if (p_stream)
+			streamBytes = p_stream->tell();
 		// SOP marker
 		if (tcp->csty & J2K_CP_CSTY_SOP) {
-			if (num_bytes_available < 6) {
-				event_msg(p_manager, EVT_ERROR, "t2_encode_packet: destination buffer not large enough to store SOP header \n");
+			if (!p_stream->write_byte(255, p_manager)) {
 				return false;
 			}
-			active_dest[0] = 255;
-			active_dest[1] = 145;
-			active_dest[2] = 0;
-			active_dest[3] = 4;
-			active_dest[4] = (tile->packno >> 8) & 0xff; /* packno is uint32_t, in big endian format */
-			active_dest[5] = tile->packno & 0xff;
-			active_dest += 6;
+			if (!p_stream->write_byte(145, p_manager)) {
+				return false;
+			}
+			if (!p_stream->write_byte(0, p_manager)) {
+				return false;
+			}
+			if (!p_stream->write_byte(4, p_manager)) {
+				return false;
+			}
+			/* packno is uint32_t, in big endian format */
+			if (!p_stream->write_byte((tile->packno >> 8) & 0xff, p_manager)) {
+				return false;
+			}
+			if (!p_stream->write_byte(tile->packno & 0xff, p_manager)) {
+				return false;
+			}
 			num_bytes_available -= 6;
 			numHeaderBytes += 6;
 		}
@@ -1029,8 +1031,7 @@ namespace grk {
 			}
 		}
 
-		std::unique_ptr<BitIO> bio(new BitIO());
-		bio->init_enc(active_dest, num_bytes_available);
+		std::unique_ptr<BitIO> bio(new BitIO(p_stream, true));
 		// Empty header bit. Grok always sets this to 1,
 		// even though there is also an option to set it to zero.
 		if (!bio->write(1, 1))
@@ -1140,15 +1141,17 @@ namespace grk {
 		}
 
 		auto temp = bio->numbytes();
-		active_dest += temp;
 		num_bytes_available -= (uint64_t)temp;
 		numHeaderBytes += (uint64_t)temp;
 
 		// EPH marker
 		if (tcp->csty & J2K_CP_CSTY_EPH) {
-			active_dest[0] = 255;
-			active_dest[1] = 146;
-			active_dest += 2;
+			if (!p_stream->write_byte(255, p_manager)) {
+				return false;
+			}
+			if (!p_stream->write_byte(146, p_manager)) {
+				return false;
+			}
 			num_bytes_available -= 2;
 			numHeaderBytes += 2;
 		}
@@ -1157,10 +1160,10 @@ namespace grk {
 		/* << INDEX */
 		/* End of packet header position. Currently only represents the distance to start of packet
 		   Will be updated later by incrementing with packet start value*/
-		if (cstr_info && cstr_info->index_write) {
-			opj_packet_info_t *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
-			info_PK->end_ph_pos = (int64_t)(active_dest - dest);
-		}
+		//if (cstr_info && cstr_info->index_write) {
+		//	opj_packet_info_t *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
+		//	info_PK->end_ph_pos = (int64_t)(active_dest - dest);
+		//}
 		/* INDEX >> */
 
 		/* Writing the packet body */
@@ -1188,11 +1191,13 @@ namespace grk {
 					return false;
 				}
 
-				memcpy(active_dest, cblk_layer->data, cblk_layer->len);
+				if (cblk_layer->len) {
+					if (!p_stream->write_bytes(cblk_layer->data, cblk_layer->len, p_manager)) {
+						return false;
+					}
+					num_bytes_available -= cblk_layer->len;
+				}
 				cblk->num_passes_included_in_current_layer += cblk_layer->numpasses;
-				active_dest += cblk_layer->len;
-				num_bytes_available -= cblk_layer->len;
-
 				if (cstr_info && cstr_info->index_write) {
 					opj_packet_info_t *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
 					info_PK->disto += cblk_layer->disto;
@@ -1204,7 +1209,7 @@ namespace grk {
 			}
 			++band;
 		}
-		*p_data_written += (uint64_t)(active_dest - dest);
+		*p_data_written += p_stream->tell() - streamBytes;
 
 #ifdef DEBUG_LOSSLESS_T2
 		auto originalDataBytes = *p_data_written - numHeaderBytes;
@@ -1439,8 +1444,7 @@ namespace grk {
 			}
 		}
 
-		std::unique_ptr<BitIO> bio(new BitIO());
-		bio->init_enc(0, length);
+		std::unique_ptr<BitIO> bio(new BitIO(0, length, true));
 		bio->simulateOutput(true);
 		/* Empty header bit */
 		if (!bio->write(1, 1))

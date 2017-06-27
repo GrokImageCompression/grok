@@ -263,7 +263,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
 */
 bool jp2_decode(jp2_t *jp2,
 					grok_plugin_tile_t* tile,
-                    stream_private_t *p_stream,
+                    GrokStream *p_stream,
                     opj_image_t* p_image,
                     event_mgr_t * p_manager);
 
@@ -291,7 +291,7 @@ Encode an image into a JPEG-2000 file stream
 */
 bool jp2_encode(  jp2_t *jp2,
 						grok_plugin_tile_t* tile,
-                      stream_private_t *stream,
+                      GrokStream *stream,
                       event_mgr_t * p_manager);
 
 
@@ -306,7 +306,7 @@ bool jp2_encode(  jp2_t *jp2,
  * @return true if the codec is valid.
  */
 bool jp2_start_compress(jp2_t *jp2,
-                            stream_private_t *stream,
+                            GrokStream *stream,
                             opj_image_t * p_image,
                             event_mgr_t * p_manager);
 
@@ -316,7 +316,7 @@ bool jp2_start_compress(jp2_t *jp2,
  * codestream.
  */
 bool jp2_end_compress(  jp2_t *jp2,
-                            stream_private_t *cio,
+                            GrokStream *cio,
                             event_mgr_t * p_manager);
 
 /* ----------------------------------------------------------------------- */
@@ -326,7 +326,7 @@ bool jp2_end_compress(  jp2_t *jp2,
  * codestream.
  */
 bool jp2_end_decompress(jp2_t *jp2,
-                            stream_private_t *cio,
+                            GrokStream *cio,
                             event_mgr_t * p_manager);
 
 /**
@@ -339,7 +339,7 @@ bool jp2_end_decompress(jp2_t *jp2,
  *
  * @return true if the box is valid.
  */
-bool jp2_read_header(  stream_private_t *p_stream,
+bool jp2_read_header(  GrokStream *p_stream,
                            jp2_t *jp2,
 							opj_header_info_t* header_info,
                            opj_image_t ** p_image,
@@ -368,7 +368,7 @@ bool jp2_read_tile_header ( jp2_t * p_jp2,
                                 uint32_t * p_tile_y1,
                                 uint32_t * p_nb_comps,
                                 bool * p_go_on,
-                                stream_private_t *p_stream,
+                                GrokStream *p_stream,
                                 event_mgr_t * p_manager );
 
 /**
@@ -385,7 +385,7 @@ bool jp2_write_tile (  jp2_t *p_jp2,
                            uint32_t p_tile_index,
                            uint8_t * p_data,
                            uint64_t p_data_size,
-                           stream_private_t *p_stream,
+                           GrokStream *p_stream,
                            event_mgr_t * p_manager );
 
 /**
@@ -403,7 +403,7 @@ bool jp2_decode_tile (  jp2_t * p_jp2,
                             uint32_t p_tile_index,
                             uint8_t * p_data,
                             uint64_t p_data_size,
-                            stream_private_t *p_stream,
+                            GrokStream *p_stream,
                             event_mgr_t * p_manager );
 
 /**
@@ -443,7 +443,7 @@ bool jp2_set_decode_area(  jp2_t *p_jp2,
 *
 */
 bool jp2_get_tile(  jp2_t *p_jp2,
-                        stream_private_t *p_stream,
+                        GrokStream *p_stream,
                         opj_image_t* p_image,
                         event_mgr_t * p_manager,
                         uint32_t tile_index );

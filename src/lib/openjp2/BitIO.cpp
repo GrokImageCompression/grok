@@ -57,22 +57,40 @@
 
 namespace grk {
 
-
-BitIO::BitIO() : start(nullptr), 
-				offset(0),
-				buf_len(0),
-				buf(0),
-				ct(0),
-				sim_out(false) {
+BitIO::BitIO(uint8_t *bp, uint64_t len, bool isEncoder) : start(bp),
+														offset(0),
+														buf_len(len),
+														buf(0),
+														ct(isEncoder ? 8 : 0),
+														sim_out(false),
+														total_bytes(0), 
+														is_encoder(isEncoder), 
+														stream(nullptr) {
 
 }
 
+BitIO::BitIO(IGrokStream* strm, bool isEncoder) : start(nullptr),
+													offset(0),
+													buf_len(0),
+													buf(0),
+													ct(isEncoder ? 8 : 0),
+													sim_out(false),
+													total_bytes(0),
+													is_encoder(isEncoder), 
+													stream(strm) {
+}
+
+
 bool BitIO::byteout()
 {
-    ct = buf == 0xff ? 7 : 8;
-    if (offset >= buf_len) {
-        return false;
-    }
+	if (stream)
+		return byteout_stream();
+	if (offset == buf_len) {
+		if (!sim_out)
+			assert(false);
+		return false;
+	}
+	ct = buf == 0xff ? 7 : 8;
     if (!sim_out)
         start[offset] = buf;
     offset++;
@@ -80,9 +98,18 @@ bool BitIO::byteout()
     return true;
 }
 
+bool BitIO::byteout_stream()
+{
+	if (!stream->write_byte(buf, nullptr))
+		return false;
+	ct = buf == 0xff ? 7 : 8;
+	buf = 0;
+	return true;
+}
+
 bool BitIO::bytein()
 {
-    if (offset >= buf_len) {
+    if (offset == buf_len) {
 		assert(false);
         return false;
     }
@@ -94,13 +121,13 @@ bool BitIO::bytein()
 
 bool BitIO::putbit( uint8_t b)
 {
-	bool rc = true;
     if (ct == 0) {
-        rc = byteout(); 
+		if (!byteout())
+			return false;
     }
     ct--;
     buf = static_cast<uint8_t>( buf | ((uint32_t)b << ct));
-	return rc;
+	return true;
 }
 
 bool BitIO::getbit(uint32_t* bits, uint8_t pos)
@@ -118,42 +145,20 @@ bool BitIO::getbit(uint32_t* bits, uint8_t pos)
 
 size_t BitIO::numbytes()
 {
-    return offset;
-}
-
-void BitIO::init_enc( uint8_t *bptr, uint64_t len)
-{
-    start = bptr;
-	buf_len = len;
-    offset = 0;
-    buf = 0;
-    ct = 8;
-    sim_out = false;
-}
-
-void BitIO::init_dec( uint8_t *bptr, uint64_t len)
-{
-    start = bptr;
-	buf_len = len;
-	offset = 0;
-    buf = 0;
-    ct = 0;
+    return total_bytes + offset;
 }
 
 
-GROK_NOSANITIZE("unsigned-integer-overflow")
 bool BitIO::write( uint32_t v, uint32_t n) {
 	if (n > 32U)
 		return false;
-	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
-		bool success = putbit((v >> i) & 1);
-		if (!success)
+	for (int32_t i = n - 1; i >= 0; i--) { 
+		if (!putbit((v >> i) & 1))
 			return false;
 	}
 	return true;
 }
 
-GROK_NOSANITIZE("unsigned-integer-overflow")
 bool BitIO::read(uint32_t* bits, uint32_t n) {
 	assert((n > 0U) /* && (n <= 32U)*/);
 #ifdef OPJ_UBSAN_BUILD
@@ -163,7 +168,7 @@ bool BitIO::read(uint32_t* bits, uint32_t n) {
 	assert(n <= 32U);
 #endif
 	*bits  = 0U;
-	for (uint32_t i = n - 1; i < n; i--) { /* overflow used for end-loop condition */
+	for (int32_t i = n - 1; i >= 0; i--) { 
 		if (!getbit(bits, static_cast<uint8_t>(i))) {
 			return false;
 		}

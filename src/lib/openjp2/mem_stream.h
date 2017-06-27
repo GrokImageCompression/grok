@@ -36,6 +36,21 @@
 #pragma once
 namespace grk {
 
+#ifdef _WIN32
+	typedef void* grk_handle_t;
+#else
+	typedef int32_t grk_handle_t;
+#endif
+
+
+struct grk_buf_info_t {
+	uint8_t *buf;
+	int64_t off;
+	size_t len;
+	grk_handle_t fd;		// for file mapping
+};
+
+
 opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream);
