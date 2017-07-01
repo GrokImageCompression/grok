@@ -448,7 +448,7 @@ static char get_next_file(int imageno,
 	return 0;
 }
 
-static bool isDecodeFileFormatSupported(int32_t format) {
+static bool isNonJPEG2000FileFormatSupported(int32_t format) {
 	switch (format) {
 	case PGX_DFMT:
 	case PXM_DFMT:
@@ -685,7 +685,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			auto dummy = "dummy." + inForArg.getValue();
 			char *infile = (char*)(dummy).c_str();
 			parameters->decod_format = get_file_format(infile);
-			if (!isDecodeFileFormatSupported(parameters->decod_format)){
+			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)){
 				fprintf(stdout,
 					"[WARNING] Ignoring unknown input file format: %s \n"
 					"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
@@ -697,7 +697,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			char *infile = (char*)inputFileArg.getValue().c_str();
 			if (parameters->decod_format == -1) {
 				parameters->decod_format = get_file_format(infile);
-				if (!isDecodeFileFormatSupported(parameters->decod_format)) {
+				if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
 					fprintf(stderr,
 						"[ERROR] Unknown input file format: %s \n"
 						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
@@ -710,22 +710,6 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 
-		if (outputFileArg.isSet()) {
-			char *outfile = (char*)outputFileArg.getValue().c_str();
-			parameters->cod_format = get_file_format(outfile);
-			switch (parameters->cod_format) {
-				case J2K_CFMT:
-				case JP2_CFMT:
-					break;
-				default:
-					fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
-					return 1;
-			}
-			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
-				return 1;
-			}
-		}
-
 		if (outForArg.isSet()) {
 			char outformat[50];
 			char *of = (char*)outForArg.getValue().c_str();
@@ -733,15 +717,34 @@ static int parse_cmdline_encoder_ex(int argc,
 			img_fol->set_out_format = 1;
 			parameters->cod_format = get_file_format(outformat);
 			switch (parameters->cod_format) {
+			case J2K_CFMT:
+				img_fol->out_format = "j2k";
+				break;
+			case JP2_CFMT:
+				img_fol->out_format = "jp2";
+				break;
+			default:
+				fprintf(stderr, "Unknown output format image [only j2k, j2c, jp2]!! \n");
+				return 1;
+			}
+		}
+
+
+		if (outputFileArg.isSet()) {
+			char *outfile = (char*)outputFileArg.getValue().c_str();
+			if (parameters->cod_format == -1) {
+				parameters->cod_format = get_file_format(outfile);
+				switch (parameters->cod_format) {
 				case J2K_CFMT:
-					img_fol->out_format = "j2k";
-					break;
 				case JP2_CFMT:
-					img_fol->out_format = "jp2";
 					break;
 				default:
-					fprintf(stderr, "Unknown output format image [only j2k, j2c, jp2]!! \n");
+					fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
 					return 1;
+				}
+			}
+			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+				return 1;
 			}
 		}
 
@@ -1576,7 +1579,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	if (!image) {
 		if (parameters->decod_format == -1) {
 			parameters->decod_format = get_file_format((char*)info->input_file_name);
-			if (!isDecodeFileFormatSupported(parameters->decod_format)) {
+			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
 				if (info->encoder_parameters->verbose)
 					fprintf(stdout, "skipping file...\n");
 				bSuccess = false;
