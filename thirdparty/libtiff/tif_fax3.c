@@ -1043,7 +1043,11 @@ Fax3Encode2DRow(TIFF* tif, unsigned char* bp, unsigned char* rp, uint32 bits)
 	for (;;) {
 		b2 = finddiff2(rp, b1, bits, PIXEL(rp,b1));
 		if (b2 >= a1) {
-			int32 d = b1 - a1;
+			/* Naive computation triggers -fsanitize=undefined,unsigned-integer-overflow */
+			/* although it is correct unless the difference between both is < 31 bit */
+			/* int32 d = b1 - a1; */
+			int32 d = (b1 >= a1 && b1 - a1 <= 3U) ? (int32)(b1 - a1):
+			          (b1 < a1 && a1 - b1 <= 3U) ? -(int32)(a1 - b1) : 0x7FFFFFFF;
 			if (!(-3 <= d && d <= 3)) {	/* horizontal mode */
 				a2 = finddiff2(bp, a1, bits, PIXEL(bp,a1));
 				putcode(tif, &horizcode);

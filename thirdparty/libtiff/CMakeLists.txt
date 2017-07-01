@@ -58,7 +58,7 @@ if (POLICY CMP0054)
 endif(POLICY CMP0054)
 
 
-project(libtiff C)
+project(libtiff)
 
 set(VERSION "\"4.0.8\"")
 set(PACKAGE_VERSION ${VERSION})
@@ -128,6 +128,8 @@ set(TARGET_FILES
   tif_predict.h
   tif_print.c
   tif_read.c
+  tif_stream.cxx
+  tiffio.hxx
   tif_strip.c
   tif_swab.c
   tif_thunder.c
