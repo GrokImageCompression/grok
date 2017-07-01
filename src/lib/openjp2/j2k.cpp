@@ -257,12 +257,6 @@ static bool j2k_copy_default_tcp_and_create_tcd (       j2k_t * p_j2k,
         GrokStream *p_stream,
         event_mgr_t * p_manager );
 
-/**
- * Destroys the memory associated with the decoding of headers.
- */
-static bool j2k_destroy_header_memory ( j2k_t * p_j2k,
-        GrokStream *p_stream,
-        event_mgr_t * p_manager );
 
 /**
  * Reads the lookup table containing all the marker, status and action, and returns the handler associated
@@ -746,6 +740,7 @@ static bool j2k_write_poc(      j2k_t *p_j2k,
  */
 static bool j2k_write_poc_in_memory(j2k_t *p_j2k,
 										GrokStream *p_stream,
+										uint64_t * p_data_written,
                                         event_mgr_t * p_manager );
 /**
  * Gets the maximum size taken by the writing of a POC.
@@ -2902,11 +2897,13 @@ static bool j2k_write_poc(     j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
-	return j2k_write_poc_in_memory(p_j2k, p_stream, p_manager);
+	uint64_t p_data_written = 0;
+	return j2k_write_poc_in_memory(p_j2k, p_stream,&p_data_written, p_manager);
 }
 
 static bool j2k_write_poc_in_memory(   j2k_t *p_j2k,
 		GrokStream *p_stream,
+		uint64_t * p_data_written,
         event_mgr_t * p_manager)
 {
 	(void)p_manager;
@@ -2991,7 +2988,7 @@ static bool j2k_write_poc_in_memory(   j2k_t *p_j2k,
 
 		++l_current_poc;
 	}
-
+	*p_data_written = l_poc_size;
 	return true;
 }
 
@@ -3781,6 +3778,8 @@ static bool j2k_write_sot(j2k_t *p_j2k,
 	if (!p_stream->write_byte(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].m_nb_tile_parts, p_manager)) {
 		return false;
 	}
+
+	*p_data_written += 12;
 	return true;
 
 }
@@ -4380,25 +4379,6 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
         }
     }
 
-    l_img_comp = l_image->comps;
-    l_tile_size = 0;
-
-    for (i=0; i<l_image->numcomps; ++i) {
-		l_tile_size += (uint64_t)grk_uint_ceildiv(l_cp->tdx, l_img_comp->dx) *
-									grk_uint_ceildiv(l_cp->tdy, l_img_comp->dy) *
-									l_img_comp->prec;
-        ++l_img_comp;
-    }
-
-    l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
-    l_tile_size += j2k_get_specific_header_sizes(p_j2k);
-
-	// ToDo: use better estimate of signaling overhead for packets, 
-	// to avoid hard-coding this lower bound on tile buffer size
-
-	// allocate at least 256 bytes per component
-	if (l_tile_size < 256 * l_image->numcomps)
-		l_tile_size = 256 * l_image->numcomps;
 
     if (OPJ_IS_CINEMA(l_cp->rsiz)) {
         p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer =
@@ -9071,7 +9051,6 @@ opj_codestream_index_t* j2k_get_cstr_index(j2k_t* p_j2k)
 
         }
     }
-
     return l_cstr_index;
 }
 
@@ -9092,7 +9071,6 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k)
         if (!p_j2k->cstr_index->tile_index[it_tile].marker)
             return false;
     }
-
     return true;
 }
 
@@ -9264,7 +9242,6 @@ static bool j2k_setup_decoding (j2k_t *p_j2k, event_mgr_t * p_manager)
         return false;
     }
     /* DEVELOPER CORNER, add your custom procedures */
-
     return true;
 }
 
@@ -9398,10 +9375,8 @@ static bool j2k_decode_one_tile ( j2k_t *p_j2k,
         }
 
     }
-
     if (l_current_data)
         grok_free(l_current_data);
-
     return true;
 }
 
@@ -9418,7 +9393,6 @@ static bool j2k_setup_decoding_tile (j2k_t *p_j2k, event_mgr_t * p_manager)
         return false;
     }
     /* DEVELOPER CORNER, add your custom procedures */
-
     return true;
 }
 
@@ -9687,9 +9661,7 @@ bool j2k_encode(j2k_t * p_j2k,
 			}
 			return false;
 		}
-		
     }
-
     if (l_current_data) {
         grok_free(l_current_data);
     }
@@ -9708,7 +9680,6 @@ bool j2k_end_compress(  j2k_t *p_j2k,
     if (! j2k_exec (p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
         return false;
     }
-
     return true;
 }
 
@@ -9917,7 +9888,29 @@ static bool j2k_post_write_tile (   j2k_t * p_j2k,
     uint64_t l_tile_size = 0;
     uint64_t l_available_data;
 
+	auto l_cp = &(p_j2k->m_cp);
+	auto l_image = p_j2k->m_private_image;
+	auto l_tcp = l_cp->tcps;
+	auto l_img_comp = l_image->comps;
 	l_tile_size = 0;
+
+	for (uint32_t i = 0; i<l_image->numcomps; ++i) {
+		l_tile_size += (uint64_t)grk_uint_ceildiv(l_cp->tdx, l_img_comp->dx) *
+			grk_uint_ceildiv(l_cp->tdy, l_img_comp->dy) *
+			l_img_comp->prec;
+		++l_img_comp;
+	}
+
+	l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
+	l_tile_size += j2k_get_specific_header_sizes(p_j2k);
+
+	// ToDo: use better estimate of signaling overhead for packets, 
+	// to avoid hard-coding this lower bound on tile buffer size
+
+	// allocate at least 256 bytes per component
+	if (l_tile_size < 256 * l_image->numcomps)
+		l_tile_size = 256 * l_image->numcomps;
+
     l_available_data = l_tile_size;
     l_nb_bytes_written = 0;
     if (! j2k_write_first_tile_part(p_j2k,&l_nb_bytes_written,l_available_data,p_stream,p_manager)) {
@@ -9929,7 +9922,6 @@ static bool j2k_post_write_tile (   j2k_t * p_j2k,
         return false;
     }
     ++p_j2k->m_current_tile_number;
-
     return true;
 }
 
@@ -9954,9 +9946,6 @@ static bool j2k_setup_end_compress (j2k_t *p_j2k, event_mgr_t * p_manager)
         return false;
     }
     if (! procedure_list_add_procedure(p_j2k->m_procedure_list,(procedure)j2k_end_encoding, p_manager)) {
-        return false;
-    }
-    if (! procedure_list_add_procedure(p_j2k->m_procedure_list,(procedure)j2k_destroy_header_memory, p_manager)) {
         return false;
     }
     return true;
@@ -10083,20 +10072,19 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
 
     l_current_nb_bytes_written = 0;
 	uint64_t psot_location=0;
-	uint64_t bytesWrittenToStream = 12;
-    if (! j2k_write_sot(p_j2k,p_stream,&psot_location, nullptr,p_manager)) {
+    if (! j2k_write_sot(p_j2k,p_stream,&psot_location, &l_current_nb_bytes_written,p_manager)) {
         return false;
     }
-
     l_nb_bytes_written += l_current_nb_bytes_written;
     p_total_data_size -= l_current_nb_bytes_written;
 
     if (!OPJ_IS_CINEMA(l_cp->rsiz)) {
         if (l_cp->tcps[p_j2k->m_current_tile_number].numpocs) {
-			if (!j2k_write_poc_in_memory(p_j2k, p_stream, p_manager))
+			l_current_nb_bytes_written = 0;
+			if (!j2k_write_poc_in_memory(p_j2k, p_stream, &l_current_nb_bytes_written, p_manager))
 				return false;
-			bytesWrittenToStream += 
-				getPocSize(p_j2k->m_private_image->numcomps, p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].numpocs);
+			l_nb_bytes_written += l_current_nb_bytes_written;
+			p_total_data_size -= l_current_nb_bytes_written;
         }
     }
 
@@ -10104,26 +10092,21 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
     if (! j2k_write_sod(p_j2k,l_tcd,&l_current_nb_bytes_written,p_total_data_size,p_stream,p_manager)) {
         return false;
     }
-
     l_nb_bytes_written += l_current_nb_bytes_written;
+	p_total_data_size -= l_current_nb_bytes_written;
     * p_data_written = l_nb_bytes_written;
 
-	// add 12 for SOT marker
-	auto actualBytesWritten = l_nb_bytes_written + bytesWrittenToStream;
     /* Writing Psot in SOT marker */
 	/* PSOT */
 	auto currentLocation = p_stream->tell();
 	p_stream->seek(psot_location, p_manager);
-	if (!p_stream->write_int(actualBytesWritten, p_manager)) {
+	if (!p_stream->write_int(l_nb_bytes_written, p_manager)) {
 		return false;
 	}
 	p_stream->seek(currentLocation, p_manager);
-                             
-
     if (OPJ_IS_CINEMA(l_cp->rsiz)) {
-        j2k_update_tlm(p_j2k, actualBytesWritten);
+        j2k_update_tlm(p_j2k, l_nb_bytes_written);
     }
-
     return true;
 }
 
@@ -10163,8 +10146,6 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
         if (! j2k_write_sot(p_j2k,p_stream,&psot_location, &l_current_nb_bytes_written,p_manager)) {
             return false;
         }
-		uint64_t bytesWrittenToStream = 12;
-
         l_nb_bytes_written += l_current_nb_bytes_written;
         p_total_data_size -= l_current_nb_bytes_written;
         l_part_tile_size += l_current_nb_bytes_written;
@@ -10175,10 +10156,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
         }
         l_nb_bytes_written += l_current_nb_bytes_written;
         p_total_data_size -= l_current_nb_bytes_written;
-        l_part_tile_size += l_current_nb_bytes_written + bytesWrittenToStream;
-
-        /* Writing Psot in SOT marker */
-		/* PSOT */
+        l_part_tile_size += l_current_nb_bytes_written;
 
 		/* Writing Psot in SOT marker */
 		/* PSOT */
@@ -10188,8 +10166,6 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
 			return false;
 		}
 		p_stream->seek(currentLocation, p_manager);
-
-
         if (OPJ_IS_CINEMA(l_cp->rsiz)) {
             j2k_update_tlm(p_j2k,l_part_tile_size);
         }
@@ -10210,11 +10186,10 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
             if (! j2k_write_sot(p_j2k,p_stream,&psot_location, &l_current_nb_bytes_written,p_manager)) {
                 return false;
             }
-			uint64_t bytesWrittenToStream = 12;
 
             l_nb_bytes_written += l_current_nb_bytes_written;
             p_total_data_size -= l_current_nb_bytes_written;
-            l_part_tile_size += l_current_nb_bytes_written + bytesWrittenToStream;
+            l_part_tile_size += l_current_nb_bytes_written;
 
             l_current_nb_bytes_written = 0;
             if (! j2k_write_sod(p_j2k,l_tcd,&l_current_nb_bytes_written,p_total_data_size,p_stream,p_manager)) {
@@ -10237,13 +10212,10 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
             if (OPJ_IS_CINEMA(l_cp->rsiz)) {
                 j2k_update_tlm(p_j2k,l_part_tile_size);
             }
-
             ++p_j2k->m_specific_param.m_encoder.m_current_tile_part_number;
         }
     }
-
     *p_data_written = l_nb_bytes_written;
-
     return true;
 }
 
@@ -10266,15 +10238,12 @@ static bool j2k_write_updated_tlm( j2k_t *p_j2k,
     if (! p_stream->seek(l_tlm_position,p_manager)) {
         return false;
     }
-
     if (p_stream->write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer,l_tlm_size,p_manager) != l_tlm_size) {
         return false;
     }
-
     if (! p_stream->seek(l_current_position,p_manager)) {
         return false;
     }
-
     return true;
 }
 
@@ -10300,36 +10269,14 @@ static bool j2k_end_encoding(  j2k_t *p_j2k,
     return true;
 }
 
-/**
- * Destroys the memory associated with the decoding of headers.
- */
-static bool j2k_destroy_header_memory ( j2k_t * p_j2k,
-        GrokStream *p_stream,
-        event_mgr_t * p_manager
-                                          )
-{
-	(void)p_stream;
-	(void)p_manager;
-    
-    assert(p_j2k != nullptr);
-    assert(p_stream != nullptr);
-    assert(p_manager != nullptr);
-
-    return true;
-}
-
 static bool j2k_init_info(     j2k_t *p_j2k,
                                    GrokStream *p_stream,
                                    event_mgr_t * p_manager )
 {
 	(void)p_stream;
-    opj_codestream_info_t * l_cstr_info = nullptr;
-
-    
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
-    (void)l_cstr_info;
     return j2k_calculate_tp(&p_j2k->m_cp,&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,p_j2k->m_private_image,p_manager);
 }
 
