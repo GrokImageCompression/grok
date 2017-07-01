@@ -59,7 +59,7 @@ static size_t grk_zero_copy_read_from_buffer(void ** p_buffer,
     return l_nb_read ? l_nb_read : ((size_t)-1);
 }
 
-static size_t grk_read_from_buffer(void * p_buffer,
+static size_t grok_read_from_buffer(void * p_buffer,
                                    size_t p_nb_bytes,
                                    grk_buf_info_t* p_source_buffer)
 {
@@ -76,7 +76,7 @@ static size_t grk_read_from_buffer(void * p_buffer,
     return l_nb_read ? l_nb_read : ((size_t)-1);
 }
 
-static size_t grk_write_to_buffer(void * p_buffer,
+static size_t grok_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
                                     grk_buf_info_t* p_source_buffer)
 {
@@ -118,10 +118,10 @@ static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_
     opj_stream_set_user_data_length(l_stream, len);
 
     if (p_is_read_stream) {
-        opj_stream_set_read_function(l_stream, (opj_stream_read_fn)grk_read_from_buffer);
+        opj_stream_set_read_function(l_stream, (opj_stream_read_fn)grok_read_from_buffer);
         opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)grk_zero_copy_read_from_buffer);
     } else
-        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)grk_write_to_buffer);
+        opj_stream_set_write_function(l_stream, (opj_stream_write_fn)grok_write_to_buffer);
     opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)grk_skip_from_buffer);
     opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)grk_seek_from_buffer);
 }
@@ -192,7 +192,7 @@ int32_t grk_get_file_open_mode(const char* mode)
 
 #ifdef _WIN32
 
-static uint64_t  grk_size_proc(grk_handle_t fd)
+static uint64_t  grk_size_proc(grok_handle_t fd)
 {
     ULARGE_INTEGER m;
     m.LowPart = GetFileSize(fd, &m.HighPart);
@@ -200,7 +200,7 @@ static uint64_t  grk_size_proc(grk_handle_t fd)
 }
 
 
-static void* grk_map(grk_handle_t fd, size_t len)
+static void* grok_map(grok_handle_t fd, size_t len)
 {
 	(void)len;
     void* ptr = NULL;
@@ -229,14 +229,14 @@ static int32_t grk_unmap(void* ptr, size_t len)
     return rc;
 }
 
-static grk_handle_t grk_open_fd(const char* fname, const char* mode)
+static grok_handle_t grk_open_fd(const char* fname, const char* mode)
 {
     void*	fd = NULL;
     int32_t m = -1;
     DWORD			dwMode = 0;
 
     if (!fname)
-        return (grk_handle_t)-1;
+        return (grok_handle_t)-1;
 
 
     m = grk_get_file_open_mode(mode);
@@ -260,18 +260,18 @@ static grk_handle_t grk_open_fd(const char* fname, const char* mode)
         return NULL;
     }
 
-    fd = (grk_handle_t)CreateFileA(fname,
+    fd = (grok_handle_t)CreateFileA(fname,
                                    (m == O_RDONLY) ? GENERIC_READ : (GENERIC_READ | GENERIC_WRITE),
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, dwMode,
                                    (m == O_RDONLY) ? FILE_ATTRIBUTE_READONLY : FILE_ATTRIBUTE_NORMAL,
                                    NULL);
     if (fd == INVALID_HANDLE_VALUE) {
-        return (grk_handle_t)-1;
+        return (grok_handle_t)-1;
     }
     return fd;
 }
 
-static int32_t grk_close_fd(grk_handle_t fd)
+static int32_t grk_close_fd(grok_handle_t fd)
 {
     int32_t rc = -1;
     if (fd) {
@@ -282,7 +282,7 @@ static int32_t grk_close_fd(grk_handle_t fd)
 
 #else
 
-static uint64_t grk_size_proc(grk_handle_t fd)
+static uint64_t grk_size_proc(grok_handle_t fd)
 {
     struct stat sb;
     if (!fd)
@@ -294,7 +294,7 @@ static uint64_t grk_size_proc(grk_handle_t fd)
         return((uint64_t)sb.st_size);
 }
 
-static void* grk_map(grk_handle_t fd, size_t len)
+static void* grok_map(grok_handle_t fd, size_t len)
 {
 	(void)len;
     void* ptr = NULL;
@@ -315,12 +315,12 @@ static int32_t grk_unmap(void* ptr, size_t len)
     return 0;
 }
 
-static grk_handle_t grk_open_fd(const char* fname, const char* mode)
+static grok_handle_t grk_open_fd(const char* fname, const char* mode)
 {
-    grk_handle_t	fd = 0;
+    grok_handle_t	fd = 0;
     int32_t m = -1;
     if (!fname) {
-        return (grk_handle_t)-1;
+        return (grok_handle_t)-1;
     }
     m = grk_get_file_open_mode(mode);
     fd = open(fname, m, 0666);
@@ -332,12 +332,12 @@ static grk_handle_t grk_open_fd(const char* fname, const char* mode)
             printf("%s: Cannot open", fname);
         }
 #endif
-        return (grk_handle_t)-1;
+        return (grok_handle_t)-1;
     }
     return fd;
 }
 
-static int32_t grk_close_fd(grk_handle_t fd)
+static int32_t grk_close_fd(grok_handle_t fd)
 {
     if (!fd)
         return 0;
@@ -368,8 +368,8 @@ opj_stream_t* create_mapped_file_read_stream(const char *fname)
     void*			mapped_view = NULL;
     bool p_is_read_stream = true;
 
-    grk_handle_t	fd = grk_open_fd(fname, p_is_read_stream ? "r" : "w");
-    if (fd == (grk_handle_t)-1)
+    grok_handle_t	fd = grk_open_fd(fname, p_is_read_stream ? "r" : "w");
+    if (fd == (grok_handle_t)-1)
         return NULL;
 
     buffer_info = (grk_buf_info_t*)grok_malloc(sizeof(grk_buf_info_t));
@@ -383,7 +383,7 @@ opj_stream_t* create_mapped_file_read_stream(const char *fname)
         return NULL;
     }
 
-    mapped_view = grk_map(fd, buffer_info->len);
+    mapped_view = grok_map(fd, buffer_info->len);
     if (!mapped_view) {
         opj_stream_destroy(l_stream);
         grk_mem_map_free(buffer_info);
