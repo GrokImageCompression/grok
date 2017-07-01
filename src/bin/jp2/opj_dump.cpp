@@ -411,7 +411,7 @@ sample error debug callback expecting no client object
 static void error_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[ERROR] %s", msg);
+    fprintf(stderr, "[ERROR] %s", msg);
 }
 /**
 sample warning debug callback expecting no client object
