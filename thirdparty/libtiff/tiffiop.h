@@ -315,6 +315,13 @@ typedef size_t TIFFIOSize_t;
 #define _TIFF_off_t off_t
 #endif
 
+#if __clang_major__ >= 4 || (__clang_major__ == 3 && __clang_minor__ >= 8)
+#define TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW __attribute__((no_sanitize("unsigned-integer-overflow")))
+#else
+#define TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
+#endif
+
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -365,6 +372,11 @@ extern void* _TIFFCheckRealloc(TIFF*, void*, tmsize_t, tmsize_t, const char*);
 extern double _TIFFUInt64ToDouble(uint64);
 extern float _TIFFUInt64ToFloat(uint64);
 
+extern tmsize_t
+_TIFFReadEncodedStripAndAllocBuffer(TIFF* tif, uint32 strip,
+                                    void **buf, tmsize_t bufsizetoalloc,
+                                    tmsize_t size_to_read);
+
 extern int TIFFInitDumpMode(TIFF*, int);
 #ifdef PACKBITS_SUPPORT
 extern int TIFFInitPackBits(TIFF*, int);
@@ -387,6 +399,7 @@ extern int TIFFInitOJPEG(TIFF*, int);
 #endif
 #ifdef JPEG_SUPPORT
 extern int TIFFInitJPEG(TIFF*, int);
+extern int TIFFJPEGIsFullStripRequired(TIFF*);
 #endif
 #ifdef JBIG_SUPPORT
 extern int TIFFInitJBIG(TIFF*, int);

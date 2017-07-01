@@ -277,6 +277,7 @@ PredictorSetupEncode(TIFF* tif)
 /* - when storing into the byte stream, we explicitly mask with 0xff so */
 /*   as to make icc -check=conversions happy (not necessary by the standard) */
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horAcc8(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -344,6 +345,7 @@ swabHorAcc16(TIFF* tif, uint8* cp0, tmsize_t cc)
         return horAcc16(tif, cp0, cc);
 }
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horAcc16(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -378,6 +380,7 @@ swabHorAcc32(TIFF* tif, uint8* cp0, tmsize_t cc)
 	return horAcc32(tif, cp0, cc);
 }
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horAcc32(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -503,6 +506,7 @@ PredictorDecodeTile(TIFF* tif, uint8* op0, tmsize_t occ0, uint16 s)
 		return 0;
 }
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horDiff8(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -556,6 +560,7 @@ horDiff8(TIFF* tif, uint8* cp0, tmsize_t cc)
 	return 1;
 }
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horDiff16(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -595,6 +600,7 @@ swabHorDiff16(TIFF* tif, uint8* cp0, tmsize_t cc)
     return 1;
 }
 
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 horDiff32(TIFF* tif, uint8* cp0, tmsize_t cc)
 {
@@ -637,6 +643,7 @@ swabHorDiff32(TIFF* tif, uint8* cp0, tmsize_t cc)
 /*
  * Floating point predictor differencing routine.
  */
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
 static int
 fpDiff(TIFF* tif, uint8* cp0, tmsize_t cc)
 {

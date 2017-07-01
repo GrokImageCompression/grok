@@ -94,6 +94,7 @@ static int JBIGDecode(TIFF* tif, uint8* buffer, tmsize_t size, uint16 s)
 			     jbg_strerror(decodeStatus)
 #endif
 			     );
+		jbg_dec_free(&decoder);
 		return 0;
 	}
 

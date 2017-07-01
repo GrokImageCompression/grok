@@ -27,6 +27,8 @@
 #define WIN32_LEAN_AND_MEAN
 #define VC_EXTRALEAN
 
+#include <stdlib.h>
+
 #include "tiffiop.h"
 #ifdef JPEG_SUPPORT
 
@@ -47,6 +49,7 @@
 int TIFFFillStrip(TIFF* tif, uint32 strip);
 int TIFFFillTile(TIFF* tif, uint32 tile);
 int TIFFReInitJPEG_12( TIFF *tif, int scheme, int is_encode );
+int TIFFJPEGIsFullStripRequired_12(TIFF* tif);
 
 /* We undefine FAR to avoid conflict with JPEG definition */
 
@@ -145,6 +148,8 @@ typedef struct {
 
 	jpeg_error_mgr	err;		/* libjpeg error manager */
 	JMP_BUF		exit_jmpbuf;	/* for catching libjpeg failures */
+	
+	struct jpeg_progress_mgr progress;
 	/*
 	 * The following two members could be a union, but
 	 * they're small enough that it's not worth the effort.
@@ -175,6 +180,7 @@ typedef struct {
 	int		jpegtablesmode;	/* What to put in JPEGTables */
 
         int             ycbcrsampling_fetched;
+        int             max_allowed_scan_number;
 } JPEGState;
 
 #define	JState(tif)	((JPEGState*)(tif)->tif_data)
@@ -234,6 +240,33 @@ TIFFjpeg_output_message(j_common_ptr cinfo)
 	(*cinfo->err->format_message) (cinfo, buffer);
 	TIFFWarningExt(((JPEGState *) cinfo)->tif->tif_clientdata, "JPEGLib", "%s", buffer);
 }
+
+/* Avoid the risk of denial-of-service on crafted JPEGs with an insane */
+/* number of scans. */
+/* See http://www.libjpeg-turbo.org/pmwiki/uploads/About/TwoIssueswiththeJPEGStandard.pdf */
+static void
+TIFFjpeg_progress_monitor(j_common_ptr cinfo)
+{
+    JPEGState *sp = (JPEGState *) cinfo;	/* NB: cinfo assumed first */
+    if (cinfo->is_decompressor)
+    {
+        const int scan_no =
+            ((j_decompress_ptr)cinfo)->input_scan_number;
+        if (scan_no >= sp->max_allowed_scan_number)
+        {
+            TIFFErrorExt(((JPEGState *) cinfo)->tif->tif_clientdata, 
+                     "TIFFjpeg_progress_monitor",
+                     "Scan number %d exceeds maximum scans (%d). This limit "
+                     "can be raised through the LIBTIFF_JPEG_MAX_ALLOWED_SCAN_NUMBER "
+                     "environment variable.",
+                     scan_no, sp->max_allowed_scan_number);
+
+            jpeg_abort(cinfo);			/* clean up libjpeg state */
+            LONGJMP(sp->exit_jmpbuf, 1);		/* return to libtiff caller */
+        }
+    }
+}
+
 
 /*
  * Interface routines.  This layer of routines exists
@@ -337,8 +370,23 @@ TIFFjpeg_read_header(JPEGState* sp, boolean require_image)
 }
 
 static int
+TIFFjpeg_has_multiple_scans(JPEGState* sp)
+{
+	return CALLJPEG(sp, 0, jpeg_has_multiple_scans(&sp->cinfo.d));
+}
+
+static int
 TIFFjpeg_start_decompress(JPEGState* sp)
 {
+        const char* sz_max_allowed_scan_number;
+        /* progress monitor */
+        sp->cinfo.d.progress = &sp->progress;
+        sp->progress.progress_monitor = TIFFjpeg_progress_monitor;
+        sp->max_allowed_scan_number = 100;
+        sz_max_allowed_scan_number = getenv("LIBTIFF_JPEG_MAX_ALLOWED_SCAN_NUMBER");
+        if( sz_max_allowed_scan_number )
+            sp->max_allowed_scan_number = atoi(sz_max_allowed_scan_number);
+
 	return CALLVJPEG(sp, jpeg_start_decompress(&sp->cinfo.d));
 }
 
@@ -589,9 +637,8 @@ std_term_source(j_decompress_ptr cinfo)
 }
 
 static void
-TIFFjpeg_data_src(JPEGState* sp, TIFF* tif)
+TIFFjpeg_data_src(JPEGState* sp)
 {
-	(void) tif;
 	sp->cinfo.d.src = &sp->src;
 	sp->src.init_source = std_init_source;
 	sp->src.fill_input_buffer = std_fill_input_buffer;
@@ -617,9 +664,9 @@ tables_init_source(j_decompress_ptr cinfo)
 }
 
 static void
-TIFFjpeg_tables_src(JPEGState* sp, TIFF* tif)
+TIFFjpeg_tables_src(JPEGState* sp)
 {
-	TIFFjpeg_data_src(sp, tif);
+	TIFFjpeg_data_src(sp);
 	sp->src.init_source = tables_init_source;
 }
 
@@ -976,7 +1023,7 @@ JPEGSetupDecode(TIFF* tif)
 
 	/* Read JPEGTables if it is present */
 	if (TIFFFieldSet(tif,FIELD_JPEGTABLES)) {
-		TIFFjpeg_tables_src(sp, tif);
+		TIFFjpeg_tables_src(sp);
 		if(TIFFjpeg_read_header(sp,FALSE) != JPEG_HEADER_TABLES_ONLY) {
 			TIFFErrorExt(tif->tif_clientdata, "JPEGSetupDecode", "Bogus JPEGTables field");
 			return (0);
@@ -998,9 +1045,45 @@ JPEGSetupDecode(TIFF* tif)
 	}
 
 	/* Set up for reading normal data */
-	TIFFjpeg_data_src(sp, tif);
+	TIFFjpeg_data_src(sp);
 	tif->tif_postdecode = _TIFFNoPostDecode; /* override byte swapping */
 	return (1);
+}
+
+/* Returns 1 if the full strip should be read, even when doing scanline per */
+/* scanline decoding. This happens when the JPEG stream uses multiple scans. */
+/* Currently only called in CHUNKY_STRIP_READ_SUPPORT mode through */
+/* scanline interface. */
+/* Only reads tif->tif_dir.td_bitspersample, tif->tif_rawdata and */
+/* tif->tif_rawcc members. */
+/* Can be called independently of the usual setup/predecode/decode states */
+int TIFFJPEGIsFullStripRequired(TIFF* tif)
+{
+    int ret;
+    JPEGState state;
+
+#if defined(JPEG_DUAL_MODE_8_12) && !defined(TIFFJPEGIsFullStripRequired)
+    if( tif->tif_dir.td_bitspersample == 12 )
+        return TIFFJPEGIsFullStripRequired_12( tif );
+#endif
+
+    memset(&state, 0, sizeof(JPEGState));
+    state.tif = tif;
+
+    TIFFjpeg_create_decompress(&state);
+
+    TIFFjpeg_data_src(&state);
+
+    if (TIFFjpeg_read_header(&state, TRUE) != JPEG_HEADER_OK)
+    {
+        TIFFjpeg_destroy(&state);
+        return (0);
+    }
+    ret = TIFFjpeg_has_multiple_scans(&state);
+
+    TIFFjpeg_destroy(&state);
+
+    return ret;
 }
 
 /*
@@ -1043,13 +1126,13 @@ JPEGPreDecode(TIFF* tif, uint16 s)
 	/*
 	 * Check image parameters and set decompression parameters.
 	 */
-	segment_width = td->td_imagewidth;
-	segment_height = td->td_imagelength - tif->tif_row;
 	if (isTiled(tif)) {
                 segment_width = td->td_tilewidth;
                 segment_height = td->td_tilelength;
 		sp->bytesperline = TIFFTileRowSize(tif);
 	} else {
+		segment_width = td->td_imagewidth;
+		segment_height = td->td_imagelength - tif->tif_row;
 		if (segment_height > td->td_rowsperstrip)
 			segment_height = td->td_rowsperstrip;
 		sp->bytesperline = TIFFScanlineSize(tif);
@@ -1105,6 +1188,47 @@ JPEGPreDecode(TIFF* tif, uint16 s)
 		return (0);
 	}
 #endif
+
+        /* In some cases, libjpeg needs to allocate a lot of memory */
+        /* http://www.libjpeg-turbo.org/pmwiki/uploads/About/TwoIssueswiththeJPEGStandard.pdf */
+        if( TIFFjpeg_has_multiple_scans(sp) )
+        {
+            /* In this case libjpeg will need to allocate memory or backing */
+            /* store for all coefficients */
+            /* See call to jinit_d_coef_controller() from master_selection() */
+            /* in libjpeg */
+            toff_t nRequiredMemory = (toff_t)sp->cinfo.d.image_width *
+                                     sp->cinfo.d.image_height *
+                                     sp->cinfo.d.num_components *
+                                     ((td->td_bitspersample+7)/8);
+            /* BLOCK_SMOOTHING_SUPPORTED is generally defined, so we need */
+            /* to replicate the logic of jinit_d_coef_controller() */
+            if( sp->cinfo.d.progressive_mode )
+                nRequiredMemory *= 3;
+
+#ifndef TIFF_LIBJPEG_LARGEST_MEM_ALLOC
+#define TIFF_LIBJPEG_LARGEST_MEM_ALLOC (100 * 1024 * 1024)
+#endif
+
+            if( nRequiredMemory > TIFF_LIBJPEG_LARGEST_MEM_ALLOC &&
+                getenv("LIBTIFF_ALLOW_LARGE_LIBJPEG_MEM_ALLOC") == NULL )
+            {
+                    TIFFErrorExt(tif->tif_clientdata, module,
+                        "Reading this strip would require libjpeg to allocate "
+                        "at least %u bytes. "
+                        "This is disabled since above the %u threshold. "
+                        "You may override this restriction by defining the "
+                        "LIBTIFF_ALLOW_LARGE_LIBJPEG_MEM_ALLOC environment variable, "
+                        "or recompile libtiff by defining the "
+                        "TIFF_LIBJPEG_LARGEST_MEM_ALLOC macro to a value greater "
+                        "than %u",
+                        (unsigned)nRequiredMemory,
+                        (unsigned)TIFF_LIBJPEG_LARGEST_MEM_ALLOC,
+                        (unsigned)TIFF_LIBJPEG_LARGEST_MEM_ALLOC);
+                    return (0);
+            }
+        }
+
 	if (td->td_planarconfig == PLANARCONFIG_CONTIG) {
 		/* Component 0 should have expected sampling factors */
 		if (sp->cinfo.d.comp_info[0].h_samp_factor != sp->h_sampling ||
