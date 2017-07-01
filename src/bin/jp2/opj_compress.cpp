@@ -179,6 +179,8 @@ static void encode_help_display(void)
     fprintf(stdout,"[-O|-OutFor] <J2K|J2C|JP2>\n");
     fprintf(stdout,"    Output format for compressed files.\n");
     fprintf(stdout,"    Required only if -ImgDir is used\n");
+	fprintf(stdout, "[-K|-InFor] <pbm|pgm|ppm|pnm|pam|pgx|png|bmp|tif|raw|rawl|tga>\n");
+	fprintf(stdout, "    Input format. Will override file tag.\n");
     fprintf(stdout,"[-F|-Raw] <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
     fprintf(stdout,"    Characteristics of the raw input image\n");
     fprintf(stdout,"    If subsampling is omitted, 1x1 is assumed for all components\n");
@@ -422,23 +424,46 @@ static char get_next_file(int imageno,
 	if (parameters->verbose)
 		fprintf(stdout, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
-	parameters->decod_format = get_file_format((char*)infilename.c_str());
-	if (parameters->decod_format == -1)
-		return 1;
+	if (parameters->decod_format == -1) {
+		parameters->decod_format = get_file_format((char*)infilename.c_str());
+		if (parameters->decod_format == -1)
+			return 1;
+	}
 	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
 		return 1;
 	}
+	std::string output_root_filename;
+	// if we don't find a file tag, then just use the full file name
 	auto pos = image_filename.find(".");
-	if (pos == std::string::npos)
-		return 1;
-	std::string temp_ofname = image_filename.substr(0, pos);
+	if (pos != std::string::npos)
+		output_root_filename = image_filename.substr(0, pos);
+	else
+		output_root_filename = image_filename;
 	if (img_fol->set_out_format == 1) {
-		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + temp_ofname + "." + img_fol->out_format;
+		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + output_root_filename + "." + img_fol->out_format;
 		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
 		}
 	}
 	return 0;
+}
+
+static bool isDecodeFileFormatSupported(int32_t format) {
+	switch (format) {
+	case PGX_DFMT:
+	case PXM_DFMT:
+	case BMP_DFMT:
+	case TIF_DFMT:
+	case RAW_DFMT:
+	case RAWL_DFMT:
+	case TGA_DFMT:
+	case PNG_DFMT:
+	case JPG_DFMT:
+		break;
+	default:
+		return false;
+	}
+	return true;
 }
 
 
@@ -517,6 +542,10 @@ static int parse_cmdline_encoder_ex(int argc,
 		ValueArg<string> outForArg("O", "OutFor",
 								"Output format",
 								false, "", "string", cmd);
+
+		ValueArg<string> inForArg("K", "InFor",
+			"InputFormat format",
+			false, "", "string", cmd);
 
 		SwitchArg sopArg("S", "SOP",
 						"Add SOP markers", cmd);
@@ -652,27 +681,29 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->duration = durationArg.getValue();
 		}
 
+		if (inForArg.isSet()) {
+			auto dummy = "dummy." + inForArg.getValue();
+			char *infile = (char*)(dummy).c_str();
+			parameters->decod_format = get_file_format(infile);
+			if (!isDecodeFileFormatSupported(parameters->decod_format)){
+				fprintf(stdout,
+					"[WARNING] Ignoring unknown input file format: %s \n"
+					"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
+					infile);
+			}
+		}
 
 		if (inputFileArg.isSet()) {
 			char *infile = (char*)inputFileArg.getValue().c_str();
-			parameters->decod_format = get_file_format(infile);
-			switch (parameters->decod_format) {
-				case PGX_DFMT:
-				case PXM_DFMT:
-				case BMP_DFMT:
-				case TIF_DFMT:
-				case RAW_DFMT:
-				case RAWL_DFMT:
-				case TGA_DFMT:
-				case PNG_DFMT:
-				case JPG_DFMT:
-					break;
-				default:
+			if (parameters->decod_format == -1) {
+				parameters->decod_format = get_file_format(infile);
+				if (!isDecodeFileFormatSupported(parameters->decod_format)) {
 					fprintf(stderr,
 						"[ERROR] Unknown input file format: %s \n"
 						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
 						infile);
 					return 1;
+				}
 			}
 			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				return 1;
@@ -1288,7 +1319,7 @@ sample error debug callback expecting no client object
 static void error_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[ERROR] %s", msg);
+    fprintf(stderr, "[ERROR] %s", msg);
 }
 /**
 sample warning debug callback expecting no client object
@@ -1543,27 +1574,16 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 
 	if (!image) {
-		parameters->decod_format = get_file_format((char*)info->input_file_name);
+		if (parameters->decod_format == -1) {
+			parameters->decod_format = get_file_format((char*)info->input_file_name);
+			if (!isDecodeFileFormatSupported(parameters->decod_format)) {
+				if (info->encoder_parameters->verbose)
+					fprintf(stdout, "skipping file...\n");
+				bSuccess = false;
+				goto cleanup;
+			}
 
-		// check that format is supported
-		switch (info->encoder_parameters->decod_format) {
-		case PGX_DFMT:
-		case PXM_DFMT:
-		case BMP_DFMT:
-		case TIF_DFMT:
-		case RAW_DFMT:
-		case RAWL_DFMT:
-		case TGA_DFMT:
-		case PNG_DFMT:
-		case JPG_DFMT:
-			break;
-		default:
-			if (info->encoder_parameters->verbose)
-				fprintf(stdout, "skipping file...\n");
-			bSuccess = false;
-			goto cleanup;
 		}
-
 		/* decode the source image */
 		/* ----------------------- */
 
