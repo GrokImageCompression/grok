@@ -62,7 +62,7 @@ namespace grk {
  * Default callback function.
  * Do nothing.
  */
-static void grk_default_callback (const char *msg, void *client_data)
+static void default_callback (const char *msg, void *client_data)
 {
     ARG_NOT_USED(msg);
     ARG_NOT_USED(client_data);
@@ -129,9 +129,9 @@ void set_default_event_handler(event_mgr_t * p_manager)
     p_manager->m_error_data = nullptr;
     p_manager->m_warning_data = nullptr;
     p_manager->m_info_data = nullptr;
-    p_manager->error_handler = grk_default_callback;
-    p_manager->info_handler = grk_default_callback;
-    p_manager->warning_handler = grk_default_callback;
+    p_manager->error_handler = default_callback;
+    p_manager->info_handler = default_callback;
+    p_manager->warning_handler = default_callback;
 }
 
 }

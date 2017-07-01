@@ -687,7 +687,7 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	int32_t nmsedec = 0;
 	double tempwmsedec;
 
-	auto logMax = grk_int_floorlog2((int32_t)max) + 1;
+	auto logMax = int_floorlog2((int32_t)max) + 1;
 	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
 	if (!cblk->numbps)
 		return 0;

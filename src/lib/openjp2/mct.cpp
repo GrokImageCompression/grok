@@ -371,9 +371,9 @@ void mct_encode_real(
         int32_t r = c0[i];
         int32_t g = c1[i];
         int32_t b = c2[i];
-        int32_t y =  grk_int_fix_mul(r, 2449) + grk_int_fix_mul(g, 4809) + grk_int_fix_mul(b, 934);
-        int32_t u = -grk_int_fix_mul(r, 1382) - grk_int_fix_mul(g, 2714) + grk_int_fix_mul(b, 4096);
-        int32_t v =  grk_int_fix_mul(r, 4096) - grk_int_fix_mul(g, 3430) - grk_int_fix_mul(b, 666);
+        int32_t y =  int_fix_mul(r, 2449) + int_fix_mul(g, 4809) + int_fix_mul(b, 934);
+        int32_t u = -int_fix_mul(r, 1382) - int_fix_mul(g, 2714) + int_fix_mul(b, 4096);
+        int32_t v =  int_fix_mul(r, 4096) - int_fix_mul(g, 3430) - int_fix_mul(b, 666);
         c0[i] = y;
         c1[i] = u;
         c2[i] = v;
@@ -391,9 +391,9 @@ void mct_encode_real(
         int32_t r = c0[i];
         int32_t g = c1[i];
         int32_t b = c2[i];
-        int32_t y =  grk_int_fix_mul(r, 2449) + grk_int_fix_mul(g, 4809) + grk_int_fix_mul(b, 934);
-        int32_t u = -grk_int_fix_mul(r, 1382) - grk_int_fix_mul(g, 2714) + grk_int_fix_mul(b, 4096);
-        int32_t v =  grk_int_fix_mul(r, 4096) - grk_int_fix_mul(g, 3430) - grk_int_fix_mul(b, 666);
+        int32_t y =  int_fix_mul(r, 2449) + int_fix_mul(g, 4809) + int_fix_mul(b, 934);
+        int32_t u = -int_fix_mul(r, 1382) - int_fix_mul(g, 2714) + int_fix_mul(b, 4096);
+        int32_t v =  int_fix_mul(r, 4096) - int_fix_mul(g, 3430) - int_fix_mul(b, 666);
         c0[i] = y;
         c1[i] = u;
         c2[i] = v;
@@ -520,7 +520,7 @@ bool mct_encode_custom(
         for (j=0; j<pNbComp; ++j) {
             *(lData[j]) = 0;
             for (k=0; k<pNbComp; ++k) {
-                *(lData[j]) += grk_int_fix_mul(*lMctPtr, lCurrentData[k]);
+                *(lData[j]) += int_fix_mul(*lMctPtr, lCurrentData[k]);
                 ++lMctPtr;
             }
 

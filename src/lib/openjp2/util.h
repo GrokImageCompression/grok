@@ -20,7 +20,7 @@
 
 namespace grk {
 
-struct grk_pt_t {
+struct pt_t {
     int64_t x;
     int64_t y;
 
@@ -55,7 +55,7 @@ struct rect_t {
 
 	void subsample(uint32_t dx, uint32_t dy);
 
-	void pan(grk_pt_t* shift);
+	void pan(pt_t* shift);
 
 	void print(void);
 
@@ -63,7 +63,7 @@ struct rect_t {
 };
 
 
-struct grk_buf_t {
+struct buf_t {
     uint8_t *buf;		/* internal array*/
     uint64_t offset;	/* current offset into array */
     size_t len;		/* length of array */

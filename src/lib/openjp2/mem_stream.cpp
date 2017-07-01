@@ -43,9 +43,9 @@ static void grok_free_buffer_info(void* user_data)
         grok_free(user_data);
 }
 
-static size_t grk_zero_copy_read_from_buffer(void ** p_buffer,
+static size_t zero_copy_read_from_buffer(void ** p_buffer,
         size_t p_nb_bytes,
-        grk_buf_info_t* p_source_buffer)
+        buf_info_t* p_source_buffer)
 {
     size_t l_nb_read = 0;
 
@@ -61,7 +61,7 @@ static size_t grk_zero_copy_read_from_buffer(void ** p_buffer,
 
 static size_t grok_read_from_buffer(void * p_buffer,
                                    size_t p_nb_bytes,
-                                   grk_buf_info_t* p_source_buffer)
+                                   buf_info_t* p_source_buffer)
 {
     size_t l_nb_read;
 
@@ -78,7 +78,7 @@ static size_t grok_read_from_buffer(void * p_buffer,
 
 static size_t grok_write_to_buffer(void * p_buffer,
                                     size_t p_nb_bytes,
-                                    grk_buf_info_t* p_source_buffer)
+                                    buf_info_t* p_source_buffer)
 {
 	if (p_source_buffer->off + p_nb_bytes >=  p_source_buffer->len) {
 		return -1;
@@ -90,8 +90,8 @@ static size_t grok_write_to_buffer(void * p_buffer,
     return p_nb_bytes;
 }
 
-static bool grk_skip_from_buffer(int64_t p_nb_bytes,
-                                    grk_buf_info_t * p_source_buffer)
+static bool skip_from_buffer(int64_t p_nb_bytes,
+                                    buf_info_t * p_source_buffer)
 {
 	auto newOffset = p_source_buffer->off + p_nb_bytes;
     if (newOffset >= 0 &&  newOffset <  (int64_t)p_source_buffer->len) {
@@ -101,8 +101,8 @@ static bool grk_skip_from_buffer(int64_t p_nb_bytes,
 	return false;
 }
 
-static bool grk_seek_from_buffer(size_t p_nb_bytes,
-                                 grk_buf_info_t * p_source_buffer)
+static bool seek_from_buffer(size_t p_nb_bytes,
+                                 buf_info_t * p_source_buffer)
 {
     if (p_nb_bytes <  p_source_buffer->len) {
         p_source_buffer->off = p_nb_bytes;
@@ -113,17 +113,17 @@ static bool grk_seek_from_buffer(size_t p_nb_bytes,
 }
 
 
-static void grk_set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_is_read_stream)
+static void set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_is_read_stream)
 {
     opj_stream_set_user_data_length(l_stream, len);
 
     if (p_is_read_stream) {
         opj_stream_set_read_function(l_stream, (opj_stream_read_fn)grok_read_from_buffer);
-        opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)grk_zero_copy_read_from_buffer);
+        opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)zero_copy_read_from_buffer);
     } else
         opj_stream_set_write_function(l_stream, (opj_stream_write_fn)grok_write_to_buffer);
-    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)grk_skip_from_buffer);
-    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)grk_seek_from_buffer);
+    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)skip_from_buffer);
+    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)seek_from_buffer);
 }
 
 size_t get_buffer_stream_offset(opj_stream_t* stream) {
@@ -132,7 +132,7 @@ size_t get_buffer_stream_offset(opj_stream_t* stream) {
 	GrokStream * private_stream = (GrokStream*)stream;
 	if (!private_stream->m_user_data)
 		return 0;
-	grk_buf_info_t* buf = (grk_buf_info_t*)private_stream->m_user_data;
+	buf_info_t* buf = (buf_info_t*)private_stream->m_user_data;
 	return buf->off;
 }
 
@@ -143,7 +143,7 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
     if (!buf || !len)
         return NULL;
 
-	auto p_source_buffer = (grk_buf_info_t*)grok_calloc(1,sizeof(grk_buf_info_t));
+	auto p_source_buffer = (buf_info_t*)grok_calloc(1,sizeof(buf_info_t));
     if (!p_source_buffer)
         return NULL;
 
@@ -159,7 +159,7 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
     p_source_buffer->len = len;
 
     opj_stream_set_user_data((opj_stream_t*)l_stream, p_source_buffer, grok_free_buffer_info);
-    grk_set_up_buffer_stream((opj_stream_t*)l_stream, p_source_buffer->len, p_is_read_stream);
+    set_up_buffer_stream((opj_stream_t*)l_stream, p_source_buffer->len, p_is_read_stream);
 
     return (opj_stream_t*)l_stream;
 }
@@ -168,7 +168,7 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
 
 
 
-int32_t grk_get_file_open_mode(const char* mode)
+int32_t get_file_open_mode(const char* mode)
 {
     int32_t m = -1;
     switch (mode[0]) {
@@ -192,7 +192,7 @@ int32_t grk_get_file_open_mode(const char* mode)
 
 #ifdef _WIN32
 
-static uint64_t  grk_size_proc(grok_handle_t fd)
+static uint64_t  size_proc(grok_handle_t fd)
 {
     ULARGE_INTEGER m;
     m.LowPart = GetFileSize(fd, &m.HighPart);
@@ -220,7 +220,7 @@ static void* grok_map(grok_handle_t fd, size_t len)
     return ptr;
 }
 
-static int32_t grk_unmap(void* ptr, size_t len)
+static int32_t unmap(void* ptr, size_t len)
 {
     int32_t rc = -1;
     (void)len;
@@ -229,7 +229,7 @@ static int32_t grk_unmap(void* ptr, size_t len)
     return rc;
 }
 
-static grok_handle_t grk_open_fd(const char* fname, const char* mode)
+static grok_handle_t open_fd(const char* fname, const char* mode)
 {
     void*	fd = NULL;
     int32_t m = -1;
@@ -239,7 +239,7 @@ static grok_handle_t grk_open_fd(const char* fname, const char* mode)
         return (grok_handle_t)-1;
 
 
-    m = grk_get_file_open_mode(mode);
+    m = get_file_open_mode(mode);
     switch (m) {
     case O_RDONLY:
         dwMode = OPEN_EXISTING;
@@ -271,7 +271,7 @@ static grok_handle_t grk_open_fd(const char* fname, const char* mode)
     return fd;
 }
 
-static int32_t grk_close_fd(grok_handle_t fd)
+static int32_t close_fd(grok_handle_t fd)
 {
     int32_t rc = -1;
     if (fd) {
@@ -282,7 +282,7 @@ static int32_t grk_close_fd(grok_handle_t fd)
 
 #else
 
-static uint64_t grk_size_proc(grok_handle_t fd)
+static uint64_t size_proc(grok_handle_t fd)
 {
     struct stat sb;
     if (!fd)
@@ -303,26 +303,26 @@ static void* grok_map(grok_handle_t fd, size_t len)
     if (!fd)
         return NULL;
 
-    size64 = grk_size_proc(fd);
+    size64 = size_proc(fd);
     ptr = (void*)mmap(0, (size_t)size64, PROT_READ, MAP_SHARED, fd, 0);
     return ptr == (void*)-1 ? NULL : ptr;
 }
 
-static int32_t grk_unmap(void* ptr, size_t len)
+static int32_t unmap(void* ptr, size_t len)
 {
     if (ptr)
         munmap(ptr, len);
     return 0;
 }
 
-static grok_handle_t grk_open_fd(const char* fname, const char* mode)
+static grok_handle_t open_fd(const char* fname, const char* mode)
 {
     grok_handle_t	fd = 0;
     int32_t m = -1;
     if (!fname) {
         return (grok_handle_t)-1;
     }
-    m = grk_get_file_open_mode(mode);
+    m = get_file_open_mode(mode);
     fd = open(fname, m, 0666);
     if (fd < 0) {
 #ifdef DEBUG_ERRNO
@@ -337,7 +337,7 @@ static grok_handle_t grk_open_fd(const char* fname, const char* mode)
     return fd;
 }
 
-static int32_t grk_close_fd(grok_handle_t fd)
+static int32_t close_fd(grok_handle_t fd)
 {
     if (!fd)
         return 0;
@@ -348,12 +348,12 @@ static int32_t grk_close_fd(grok_handle_t fd)
 
 
 
-static void grk_mem_map_free(void* user_data)
+static void mem_map_free(void* user_data)
 {
     if (user_data) {
-        grk_buf_info_t* buffer_info = (grk_buf_info_t*)user_data;
-        grk_unmap(buffer_info->buf, buffer_info->len);
-        grk_close_fd(buffer_info->fd);
+        buf_info_t* buffer_info = (buf_info_t*)user_data;
+        unmap(buffer_info->buf, buffer_info->len);
+        close_fd(buffer_info->fd);
         grok_free(buffer_info);
     }
 }
@@ -364,37 +364,37 @@ Currently, only read streams are supported for memory mapped files.
 opj_stream_t* create_mapped_file_read_stream(const char *fname)
 {
     opj_stream_t*	l_stream = NULL;
-    grk_buf_info_t* buffer_info = NULL;
+    buf_info_t* buffer_info = NULL;
     void*			mapped_view = NULL;
     bool p_is_read_stream = true;
 
-    grok_handle_t	fd = grk_open_fd(fname, p_is_read_stream ? "r" : "w");
+    grok_handle_t	fd = open_fd(fname, p_is_read_stream ? "r" : "w");
     if (fd == (grok_handle_t)-1)
         return NULL;
 
-    buffer_info = (grk_buf_info_t*)grok_malloc(sizeof(grk_buf_info_t));
-    memset(buffer_info, 0, sizeof(grk_buf_info_t));
+    buffer_info = (buf_info_t*)grok_malloc(sizeof(buf_info_t));
+    memset(buffer_info, 0, sizeof(buf_info_t));
     buffer_info->fd = fd;
-    buffer_info->len = (size_t)grk_size_proc(fd);
+    buffer_info->len = (size_t)size_proc(fd);
 
     l_stream = opj_stream_create(0, p_is_read_stream);
     if (!l_stream) {
-        grk_mem_map_free(buffer_info);
+        mem_map_free(buffer_info);
         return NULL;
     }
 
     mapped_view = grok_map(fd, buffer_info->len);
     if (!mapped_view) {
         opj_stream_destroy(l_stream);
-        grk_mem_map_free(buffer_info);
+        mem_map_free(buffer_info);
         return NULL;
     }
 
     buffer_info->buf = (uint8_t*)mapped_view;
     buffer_info->off = 0;
 
-    opj_stream_set_user_data(l_stream, buffer_info, (opj_stream_free_user_data_fn)grk_mem_map_free);
-    grk_set_up_buffer_stream(l_stream, buffer_info->len, p_is_read_stream);
+    opj_stream_set_user_data(l_stream, buffer_info, (opj_stream_free_user_data_fn)mem_map_free);
+    set_up_buffer_stream(l_stream, buffer_info->len, p_is_read_stream);
 
 
     return l_stream;

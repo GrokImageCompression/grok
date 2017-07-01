@@ -28,7 +28,7 @@ namespace grk {
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline int64_t grk_int64_ceildiv(int64_t a, int64_t b)
+static inline int64_t int64_ceildiv(int64_t a, int64_t b)
 {
 	assert(b);
 	return (a + b - 1) / b;
@@ -94,10 +94,10 @@ bool rect_t::clip(rect_t* r2, rect_t* result)
 
 void rect_t::ceildivpow2(int32_t power)
 {
-	x0 = grk_int64_ceildivpow2(x0, power);
-	y0 = grk_int64_ceildivpow2(y0, power);
-	x1 = grk_int64_ceildivpow2(x1, power);
-	y1 = grk_int64_ceildivpow2(y1, power);
+	x0 = int64_ceildivpow2(x0, power);
+	y0 = int64_ceildivpow2(y0, power);
+	x1 = int64_ceildivpow2(x1, power);
+	y1 = int64_ceildivpow2(y1, power);
 
 }
 
@@ -107,7 +107,7 @@ int64_t rect_t::get_area(void)
 	return (x1 - x0) * (y1 - y0);
 }
 
-void rect_t::pan(grk_pt_t* shift)
+void rect_t::pan(pt_t* shift)
 {
 	x0 += shift->x;
 	y0 += shift->y;
@@ -117,10 +117,10 @@ void rect_t::pan(grk_pt_t* shift)
 
 void rect_t::subsample(uint32_t dx, uint32_t dy)
 {
-	x0 = grk_int64_ceildiv(x0, (int64_t)dx);
-	y0 = grk_int64_ceildiv(y0, (int64_t)dy);
-	x1 = grk_int64_ceildiv(x1, (int64_t)dx);
-	y1 = grk_int64_ceildiv(y1, (int64_t)dy);
+	x0 = int64_ceildiv(x0, (int64_t)dx);
+	y0 = int64_ceildiv(y0, (int64_t)dy);
+	x1 = int64_ceildiv(x1, (int64_t)dx);
+	y1 = int64_ceildiv(y1, (int64_t)dy);
 }
 
 void rect_t::grow(int64_t boundary)

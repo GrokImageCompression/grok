@@ -61,7 +61,7 @@ namespace grk {
  Get the saturated sum of two unsigned integers
  @return Returns saturated sum of a+b
  */
-static inline uint32_t grk_uint_adds(uint32_t a, uint32_t b)
+static inline uint32_t uint_adds(uint32_t a, uint32_t b)
 {
     uint64_t sum = (uint64_t)a + (uint64_t)b;
     return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t)sum;
@@ -76,7 +76,7 @@ Clamp an integer inside an interval
 <li>Returns min if (a < min)
 </ul>
 */
-static inline int32_t grk_int_clamp(int32_t a, int32_t min, int32_t max)
+static inline int32_t int_clamp(int32_t a, int32_t min, int32_t max)
 {
     if (a < min)
         return min;
@@ -89,7 +89,7 @@ static inline int32_t grk_int_clamp(int32_t a, int32_t min, int32_t max)
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline uint32_t  grk_uint_ceildiv(uint32_t  a, uint32_t  b)
+static inline uint32_t  uint_ceildiv(uint32_t  a, uint32_t  b)
 {
     assert(b);
     return (uint32_t)((a + (uint64_t)b - 1) / b);
@@ -99,7 +99,7 @@ static inline uint32_t  grk_uint_ceildiv(uint32_t  a, uint32_t  b)
 Divide an integer and round upwards
 @return Returns a divided by b
 */
-static inline uint32_t  grk_uint64_ceildiv(uint64_t  a, uint64_t  b)
+static inline uint32_t  uint64_ceildiv(uint64_t  a, uint64_t  b)
 {
 	assert(b);
 	return (uint32_t)((a + b - 1) / b);
@@ -109,7 +109,7 @@ static inline uint32_t  grk_uint64_ceildiv(uint64_t  a, uint64_t  b)
 Divide an integer by a power of 2 and round upwards
 @return Returns a divided by 2^b
 */
-static inline int32_t grk_int_ceildivpow2(int32_t a, int32_t b)
+static inline int32_t int_ceildivpow2(int32_t a, int32_t b)
 {
     return (int32_t)((a + ((int64_t)1 << b) - 1) >> b);
 }
@@ -118,7 +118,7 @@ static inline int32_t grk_int_ceildivpow2(int32_t a, int32_t b)
  Divide a 64bits integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static inline int32_t grk_int64_ceildivpow2(int64_t a, int32_t b)
+static inline int32_t int64_ceildivpow2(int64_t a, int32_t b)
 {
     return (int32_t)((a + ((int64_t)1 << b) - 1) >> b);
 }
@@ -127,7 +127,7 @@ static inline int32_t grk_int64_ceildivpow2(int64_t a, int32_t b)
 Divide a 64bits integer by a power of 2 and round upwards
 @return Returns a divided by 2^b
 */
-static inline uint32_t grk_uint64_ceildivpow2(uint64_t a, uint32_t b)
+static inline uint32_t uint64_ceildivpow2(uint64_t a, uint32_t b)
 {
 	return (uint32_t)((a + ((uint64_t)1 << b) - 1) >> b);
 }
@@ -137,7 +137,7 @@ static inline uint32_t grk_uint64_ceildivpow2(uint64_t a, uint32_t b)
  Divide an integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static inline uint32_t grk_uint_ceildivpow2(uint32_t a, uint32_t b)
+static inline uint32_t uint_ceildivpow2(uint32_t a, uint32_t b)
 {
     return (uint32_t)((a + ((uint64_t)1U << b) - 1U) >> b);
 }
@@ -146,7 +146,7 @@ static inline uint32_t grk_uint_ceildivpow2(uint32_t a, uint32_t b)
 Divide an integer by a power of 2 and round downwards
 @return Returns a divided by 2^b
 */
-static inline int32_t grk_int_floordivpow2(int32_t a, int32_t b)
+static inline int32_t int_floordivpow2(int32_t a, int32_t b)
 {
     return a >> b;
 }
@@ -155,7 +155,7 @@ static inline int32_t grk_int_floordivpow2(int32_t a, int32_t b)
 Divide an unsigned integer by a power of 2 and round downwards
 @return Returns a divided by 2^b
 */
-static inline int32_t grk_uint_floordivpow2(uint32_t a, uint32_t b)
+static inline int32_t uint_floordivpow2(uint32_t a, uint32_t b)
 {
 	return a >> b;
 }
@@ -164,7 +164,7 @@ static inline int32_t grk_uint_floordivpow2(uint32_t a, uint32_t b)
 Get logarithm of an integer and round downwards
 @return Returns log2(a)
 */
-static inline int32_t grk_int_floorlog2(int32_t a)
+static inline int32_t int_floorlog2(int32_t a)
 {
     int32_t l;
     for (l = 0; a > 1; l++) {
@@ -176,7 +176,7 @@ static inline int32_t grk_int_floorlog2(int32_t a)
 Get logarithm of an integer and round downwards
 @return Returns log2(a)
 */
-static inline uint32_t  grk_uint_floorlog2(uint32_t  a)
+static inline uint32_t  uint_floorlog2(uint32_t  a)
 {
     uint32_t  l;
     for (l = 0; a > 1; ++l) {
@@ -191,7 +191,7 @@ Multiply two fixed-precision rational numbers.
 @param b
 @return Returns a * b
 */
-static inline int32_t grk_int_fix_mul(int32_t a, int32_t b)
+static inline int32_t int_fix_mul(int32_t a, int32_t b)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
     int64_t temp = __emul(a, b);

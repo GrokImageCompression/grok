@@ -1256,7 +1256,7 @@ bool t1_decode_cblk(t1_t *t1,
 	if (cblk->numSegments && total_seg_len) {
 		/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
 		if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
-			block_buffer = ((grk_buf_t*)(cblk->seg_buffers.get(0)))->buf;
+			block_buffer = ((buf_t*)(cblk->seg_buffers.get(0)))->buf;
 		}
 		else {
 			/* block should have been allocated on creation of t1*/
@@ -1373,7 +1373,7 @@ double t1_encode_cblk(t1_t *t1,
 		}
 	}
 
-	auto logMax = grk_int_floorlog2((int32_t)max) + 1;
+	auto logMax = int_floorlog2((int32_t)max) + 1;
 	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
 	if (!cblk->numbps)
 		return 0;

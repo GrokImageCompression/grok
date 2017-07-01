@@ -43,7 +43,7 @@ namespace grk {
 #endif
 
 
-struct grk_buf_info_t {
+struct buf_info_t {
 	uint8_t *buf;
 	int64_t off;
 	size_t len;

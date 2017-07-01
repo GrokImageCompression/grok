@@ -825,12 +825,12 @@ namespace grk {
 				do {
 					auto l_seg = l_cblk->segs + l_segno;
 					l_seg->numPassesInPacket = (uint32_t)std::min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), numPassesInPacket);
-					if (!l_bio->read(&l_seg->newlen, l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket))) {
+					if (!l_bio->read(&l_seg->newlen, l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket))) {
 						event_msg(p_manager, EVT_WARNING, "t2_read_packet_header: failed to read segment length \n");
 					}
 #ifdef DEBUG_LOSSLESS_T2
 					l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->newlen, 
-																			l_cblk->numlenbits + grk_uint_floorlog2(l_seg->numPassesInPacket)));
+																			l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket)));
 #endif
 					JAS_FPRINTF(stderr, "included=%d numPassesInPacket=%d increment=%d len=%d \n", l_included, l_seg->numPassesInPacket, l_increment, l_seg->newlen);
 					numPassesInPacket -= (int32_t)l_cblk->segs[l_segno].numPassesInPacket;
@@ -1101,8 +1101,8 @@ namespace grk {
 					len += pass->len;
 
 					if (pass->term || passno == l_nb_passes - 1) {
-						increment = (uint32_t)std::max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
-							- ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
+						increment = (uint32_t)std::max<int32_t>((int32_t)increment, int_floorlog2((int32_t)len) + 1
+							- ((int32_t)cblk->numlenbits + int_floorlog2((int32_t)nump)));
 						len = 0;
 						nump = 0;
 					}
@@ -1121,9 +1121,9 @@ namespace grk {
 
 					if (pass->term || passno == l_nb_passes - 1) {
 #ifdef DEBUG_LOSSLESS_T2
-						cblk->packet_length_info->push_back(packet_length_info_t(len, cblk->numlenbits + (uint32_t)grk_int_floorlog2((int32_t)nump)));
+						cblk->packet_length_info->push_back(packet_length_info_t(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)));
 #endif
-						if (!bio->write(len, cblk->numlenbits + (uint32_t)grk_int_floorlog2((int32_t)nump)))
+						if (!bio->write(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)))
 							return false;
 						len = 0;
 						nump = 0;
@@ -1364,7 +1364,7 @@ namespace grk {
 									bool needs_delete = false;
 									/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
 									if (roundTripTotalSegLen == 1 && roundTripCblk->seg_buffers.get(0)) {
-										roundTripData = ((grk_buf_t*)(roundTripCblk->seg_buffers.get(0)))->buf;
+										roundTripData = ((buf_t*)(roundTripCblk->seg_buffers.get(0)))->buf;
 									}
 									else {
 										needs_delete = true;
@@ -1508,8 +1508,8 @@ namespace grk {
 					len += pass->len;
 
 					if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-						increment = (uint32_t)std::max<int32_t>((int32_t)increment, grk_int_floorlog2((int32_t)len) + 1
-							- ((int32_t)cblk->numlenbits + grk_int_floorlog2((int32_t)nump)));
+						increment = (uint32_t)std::max<int32_t>((int32_t)increment, int_floorlog2((int32_t)len) + 1
+							- ((int32_t)cblk->numlenbits + int_floorlog2((int32_t)nump)));
 						len = 0;
 						nump = 0;
 					}
@@ -1528,7 +1528,7 @@ namespace grk {
 					len += pass->len;
 
 					if (pass->term || passno == (cblk->num_passes_included_in_current_layer + layer->numpasses) - 1) {
-						if (!bio->write(len, cblk->numlenbits + (uint32_t)grk_int_floorlog2((int32_t)nump)))
+						if (!bio->write(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)))
 							return false;
 						len = 0;
 						nump = 0;

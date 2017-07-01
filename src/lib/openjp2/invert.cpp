@@ -53,14 +53,14 @@ namespace grk {
 /**
  * LUP decomposition
  */
-static bool grk_lupDecompose(float * matrix,
+static bool lupDecompose(float * matrix,
                              uint32_t * permutations,
                              float * p_swap_area,
                              uint32_t nb_compo);
 /**
  * LUP solving
  */
-static void grk_lupSolve(float * pResult,
+static void lupSolve(float * pResult,
                          float* pMatrix,
                          float* pVector,
                          uint32_t* pPermutations,
@@ -70,7 +70,7 @@ static void grk_lupSolve(float * pResult,
 /**
  *LUP inversion (call with the result of lupDecompose)
  */
-static void grk_lupInvert ( float * pSrcMatrix,
+static void lupInvert ( float * pSrcMatrix,
                             float * pDestMatrix,
                             uint32_t nb_compo,
                             uint32_t * pPermutations,
@@ -86,7 +86,7 @@ static void grk_lupInvert ( float * pSrcMatrix,
 /**
  * Matrix inversion.
  */
-bool grk_matrix_inversion_f(float * pSrcMatrix,
+bool matrix_inversion_f(float * pSrcMatrix,
                             float * pDestMatrix,
                             uint32_t nb_compo)
 {
@@ -105,12 +105,12 @@ bool grk_matrix_inversion_f(float * pSrcMatrix,
     l_double_data = (float *) (l_data + l_permutation_size);
     memset(lPermutations,0,l_permutation_size);
 
-    if(! grk_lupDecompose(pSrcMatrix,lPermutations,l_double_data,nb_compo)) {
+    if(! lupDecompose(pSrcMatrix,lPermutations,l_double_data,nb_compo)) {
         grok_free(l_data);
         return false;
     }
 
-    grk_lupInvert(pSrcMatrix,pDestMatrix,nb_compo,lPermutations,l_double_data,l_double_data + nb_compo,l_double_data + 2*nb_compo);
+    lupInvert(pSrcMatrix,pDestMatrix,nb_compo,lPermutations,l_double_data,l_double_data + nb_compo,l_double_data + 2*nb_compo);
     grok_free(l_data);
 
     return true;
@@ -122,7 +122,7 @@ bool grk_matrix_inversion_f(float * pSrcMatrix,
    Local functions
 ==========================================================
 */
-static bool grk_lupDecompose(float * matrix,uint32_t * permutations,
+static bool lupDecompose(float * matrix,uint32_t * permutations,
                              float * p_swap_area,
                              uint32_t nb_compo)
 {
@@ -222,7 +222,7 @@ static bool grk_lupDecompose(float * matrix,uint32_t * permutations,
     return true;
 }
 
-static void grk_lupSolve (float * pResult,
+static void lupSolve (float * pResult,
                           float * pMatrix,
                           float * pVector,
                           uint32_t* pPermutations,
@@ -283,7 +283,7 @@ static void grk_lupSolve (float * pResult,
 }
 
 
-static void grk_lupInvert (float * pSrcMatrix,
+static void lupInvert (float * pSrcMatrix,
                            float * pDestMatrix,
                            uint32_t nb_compo,
                            uint32_t * pPermutations,
@@ -300,7 +300,7 @@ static void grk_lupInvert (float * pSrcMatrix,
         lCurrentPtr = lLineMatrix++;
         memset(p_src_temp,0,lSwapSize);
         p_src_temp[j] = 1.0;
-        grk_lupSolve(p_dest_temp,pSrcMatrix,p_src_temp, pPermutations, nb_compo , p_swap_area);
+        lupSolve(p_dest_temp,pSrcMatrix,p_src_temp, pPermutations, nb_compo , p_swap_area);
 
         for (i = 0; i < nb_compo; ++i) {
             *(lCurrentPtr) = p_dest_temp[i];

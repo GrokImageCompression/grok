@@ -68,12 +68,12 @@ uint16_t min_buf_vec_get_len(grok_vec_t* min_buf_vec);
 /*
 Increment buffer offset
 */
-void grk_buf_incr_offset(grk_buf_t* buf, uint64_t off);
+void buf_incr_offset(buf_t* buf, uint64_t off);
 
 /*
 Free buffer and also its internal array if owns_data is true
 */
-void grk_buf_free(grk_buf_t* buf);
+void buf_free(buf_t* buf);
 
 
 /*  Segmented Buffer Interface
@@ -87,7 +87,7 @@ struct seg_buf_t {
 	~seg_buf_t();
     size_t data_len;	/* total length of all segments*/
     size_t cur_seg_id;	/* current index into segments vector */
-	std::vector<grk_buf_t*> segments;
+	std::vector<buf_t*> segments;
 };
 
 /*

@@ -117,8 +117,8 @@ struct dwt53_t {
     int32_t* data;
     int64_t d_n;
     int64_t s_n;
-    grk_pt_t	range_even;
-    grk_pt_t	range_odd;
+    pt_t	range_even;
+    pt_t	range_odd;
     int64_t  interleaved_offset;
     int64_t odd_top_left_bit;
 } ;
@@ -135,8 +135,8 @@ struct dwt97_t {
 	size_t		dataSize; // number of floats (four per coeff97_t struct)
     int64_t		d_n ;
     int64_t		s_n ;
-    grk_pt_t	range_even;
-    grk_pt_t	range_odd;
+    pt_t	range_even;
+    pt_t	range_odd;
     int64_t		interleaved_offset;
     int64_t		odd_top_left_bit;
 } ;
@@ -196,12 +196,12 @@ static void region_interleave97_v(dwt97_t* restrict buffer_v ,
 										size_t nb_elts_read);
 
 static void region_decode97_scale(coeff97_t* w,
-                                      grk_pt_t range,
+                                      pt_t range,
                                       const float scale);
 
 static void region_decode97_lift(coeff97_t* l,
                                      coeff97_t* w,
-                                     grk_pt_t range,
+                                     pt_t range,
                                      int64_t max,
                                      float scale);
 
@@ -376,8 +376,8 @@ bool dwt_region_decode53(tcd_tilecomp_t* tilec,
 				buffer_v.range_even = tile_buf_get_uninterleaved_range(tilec->buf, resno, true, false);
 				buffer_v.range_odd = tile_buf_get_uninterleaved_range(tilec->buf, resno, false, false);
 
-				grk_pt_t interleaved_h = tile_buf_get_interleaved_range(tilec->buf, resno, true);
-				grk_pt_t interleaved_v = tile_buf_get_interleaved_range(tilec->buf, resno, false);
+				pt_t interleaved_h = tile_buf_get_interleaved_range(tilec->buf, resno, true);
+				pt_t interleaved_v = tile_buf_get_interleaved_range(tilec->buf, resno, false);
 
 
 				buffer_h.s_n = (int32_t)res_width;
@@ -540,7 +540,7 @@ static void region_interleave97_v(dwt97_t* restrict buffer,
 }
 
 static void region_decode97_scale(coeff97_t* buffer,
-                                      grk_pt_t range,
+                                      pt_t range,
                                       const float scale)
 {
     float* restrict fw = ((float*) buffer);
@@ -557,7 +557,7 @@ static void region_decode97_scale(coeff97_t* buffer,
 
 static void region_decode97_lift(coeff97_t* l,
                                      coeff97_t* w,
-                                     grk_pt_t range,
+                                     pt_t range,
 									int64_t maximum,
                                      float scale)
 {
@@ -711,7 +711,7 @@ bool dwt_region_decode97(tcd_tilecomp_t* restrict tilec,
 			while (--numResolutions) {
 
 				int64_t j = 0;
-				grk_pt_t interleaved_h, interleaved_v;
+				pt_t interleaved_h, interleaved_v;
 
 				/* start with the first resolution, and work upwards*/
 

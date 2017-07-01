@@ -22,7 +22,7 @@
 
 namespace grk {
 
-static inline int32_t grk_int_fix_mul_t1(int32_t a, int32_t b)
+static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 	int64_t temp = __emul(a, b);
@@ -131,7 +131,7 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 					int32_t tmp = 0;
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
 						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						tmp = grk_int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+						tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
 					}
 					else {
 						tmp = tiledp[tileIndex];
@@ -184,7 +184,7 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 					//    in the plugin DWT step
 					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
 						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						block->tiledp[tileIndex] = grk_int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
+						block->tiledp[tileIndex] = int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
 					}
 					tileIndex++;
 				}

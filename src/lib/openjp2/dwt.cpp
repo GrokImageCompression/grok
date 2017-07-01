@@ -353,32 +353,32 @@ static void dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
     if (!cas) {
         if ((dn > 0) || (sn > 1)) {	/* NEW :  CASE ONE ELEMENT */
             for (i = 0; i < dn; i++)
-                OPJ_D(i) -= grk_int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 12993);
+                OPJ_D(i) -= int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 12993);
             for (i = 0; i < sn; i++)
-                OPJ_S(i) -= grk_int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 434);
+                OPJ_S(i) -= int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 434);
             for (i = 0; i < dn; i++)
-                OPJ_D(i) += grk_int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 7233);
+                OPJ_D(i) += int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 7233);
             for (i = 0; i < sn; i++)
-                OPJ_S(i) += grk_int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 3633);
+                OPJ_S(i) += int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 3633);
             for (i = 0; i < dn; i++)
-                OPJ_D(i) = grk_int_fix_mul(OPJ_D(i), 5038);	/*5038 */
+                OPJ_D(i) = int_fix_mul(OPJ_D(i), 5038);	/*5038 */
             for (i = 0; i < sn; i++)
-                OPJ_S(i) = grk_int_fix_mul(OPJ_S(i), 6659);	/*6660 */
+                OPJ_S(i) = int_fix_mul(OPJ_S(i), 6659);	/*6660 */
         }
     } else {
         if ((sn > 0) || (dn > 1)) {	/* NEW :  CASE ONE ELEMENT */
             for (i = 0; i < dn; i++)
-                OPJ_S(i) -= grk_int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 12993);
+                OPJ_S(i) -= int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 12993);
             for (i = 0; i < sn; i++)
-                OPJ_D(i) -= grk_int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 434);
+                OPJ_D(i) -= int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 434);
             for (i = 0; i < dn; i++)
-                OPJ_S(i) += grk_int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 7233);
+                OPJ_S(i) += int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 7233);
             for (i = 0; i < sn; i++)
-                OPJ_D(i) += grk_int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 3633);
+                OPJ_D(i) += int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 3633);
             for (i = 0; i < dn; i++)
-                OPJ_S(i) = grk_int_fix_mul(OPJ_S(i), 5038);	/*5038 */
+                OPJ_S(i) = int_fix_mul(OPJ_S(i), 5038);	/*5038 */
             for (i = 0; i < sn; i++)
-                OPJ_D(i) = grk_int_fix_mul(OPJ_D(i), 6659);	/*6660 */
+                OPJ_D(i) = int_fix_mul(OPJ_D(i), 6659);	/*6660 */
         }
     }
 }
@@ -386,8 +386,8 @@ static void dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps, stepsize_t *bandno_stepsize)
 {
     int32_t p, n;
-    p = grk_int_floorlog2(stepsize) - 13;
-    n = 11 - grk_int_floorlog2(stepsize);
+    p = int_floorlog2(stepsize) - 13;
+    n = 11 - int_floorlog2(stepsize);
     bandno_stepsize->mant = (n < 0 ? stepsize >> -n : stepsize << n) & 0x7ff;
     bandno_stepsize->expn = numbps - p;
 }
