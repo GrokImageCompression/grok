@@ -132,7 +132,7 @@ bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t * p_codec,
 
 /* ---------------------------------------------------------------------- */
 
-static size_t grk_read_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p_file)
+static size_t grok_read_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p_file)
 {
     size_t l_nb_read = fread(p_buffer,1,p_nb_bytes,p_file);
     return l_nb_read ? l_nb_read : (size_t)-1;
@@ -146,7 +146,7 @@ static uint64_t opj_get_data_length_from_file (FILE * p_file)
     return (uint64_t)file_length;
 }
 
-static size_t grk_write_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p_file)
+static size_t grok_write_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p_file)
 {
     return fwrite(p_buffer,1,p_nb_bytes,p_file);
 }
@@ -432,7 +432,7 @@ bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
 
         if(! l_codec->is_decompressor) {
             event_msg(&(l_codec->m_event_mgr), EVT_ERROR,
-                          "Codec provided to the grk_read_header function is not a decompressor handler.\n");
+                          "Codec provided to the grok_read_header function is not a decompressor handler.\n");
             return false;
         }
 
@@ -990,8 +990,8 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     opj_stream_set_user_data(l_stream, p_file, (opj_stream_free_user_data_fn) fclose);
 	if (p_is_read_stream)
 		opj_stream_set_user_data_length(l_stream, opj_get_data_length_from_file(p_file));
-    opj_stream_set_read_function(l_stream, (opj_stream_read_fn) grk_read_from_file);
-    opj_stream_set_write_function(l_stream, (opj_stream_write_fn) grk_write_from_file);
+    opj_stream_set_read_function(l_stream, (opj_stream_read_fn) grok_read_from_file);
+    opj_stream_set_write_function(l_stream, (opj_stream_write_fn) grok_write_from_file);
     opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn) opj_skip_from_file);
     opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn) opj_seek_from_file);
 

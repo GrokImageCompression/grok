@@ -1856,7 +1856,7 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 				for (uint32_t j = y0; j < y1; ++j) {
 					for (uint32_t i = x0; i < x1; ++i) {
 						float l_value	= *((float *)l_current_ptr);
-						*l_current_ptr	= grk_int_clamp((int32_t)grk_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); 
+						*l_current_ptr	= grk_int_clamp((int32_t)grok_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); 
 						l_current_ptr++;
 					}
 					l_current_ptr += l_stride;

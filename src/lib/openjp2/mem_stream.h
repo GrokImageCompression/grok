@@ -37,9 +37,9 @@
 namespace grk {
 
 #ifdef _WIN32
-	typedef void* grk_handle_t;
+	typedef void* grok_handle_t;
 #else
-	typedef int32_t grk_handle_t;
+	typedef int32_t grok_handle_t;
 #endif
 
 
@@ -47,7 +47,7 @@ struct grk_buf_info_t {
 	uint8_t *buf;
 	int64_t off;
 	size_t len;
-	grk_handle_t fd;		// for file mapping
+	grok_handle_t fd;		// for file mapping
 };
 
 

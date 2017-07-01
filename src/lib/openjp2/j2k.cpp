@@ -978,12 +978,12 @@ static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
 static void j2k_update_tlm (j2k_t * p_j2k, uint64_t p_tile_part_size )
 {
 	/* PSOT */
-    grk_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_j2k->m_current_tile_number,1);         
+    grok_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_j2k->m_current_tile_number,1);         
     ++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
 
 	//todo: handle tile part size greater than (2^32-1)
 	/* PSOT */
-    grk_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_tile_part_size,4);                                        
+    grok_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_tile_part_size,4);                                        
     p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current += 4;
 }
 
@@ -1427,7 +1427,7 @@ static void  j2k_read_int16_to_float (const void * p_src_data, void * p_dest_dat
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_bytes(l_src_data,&l_temp,2);
+        grok_read_bytes(l_src_data,&l_temp,2);
 
         l_src_data+=sizeof(int16_t);
 
@@ -1443,7 +1443,7 @@ static void  j2k_read_int32_to_float (const void * p_src_data, void * p_dest_dat
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_bytes(l_src_data,&l_temp,4);
+        grok_read_bytes(l_src_data,&l_temp,4);
 
         l_src_data+=sizeof(int32_t);
 
@@ -1459,7 +1459,7 @@ static void  j2k_read_float32_to_float (const void * p_src_data, void * p_dest_d
     float l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_float(l_src_data,&l_temp);
+        grok_read_float(l_src_data,&l_temp);
 
         l_src_data+=sizeof(float);
 
@@ -1475,7 +1475,7 @@ static void  j2k_read_float64_to_float (const void * p_src_data, void * p_dest_d
     double l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_double(l_src_data,&l_temp);
+        grok_read_double(l_src_data,&l_temp);
 
         l_src_data+=sizeof(double);
 
@@ -1491,7 +1491,7 @@ static void  j2k_read_int16_to_int32 (const void * p_src_data, void * p_dest_dat
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_bytes(l_src_data,&l_temp,2);
+        grok_read_bytes(l_src_data,&l_temp,2);
 
         l_src_data+=sizeof(int16_t);
 
@@ -1507,7 +1507,7 @@ static void  j2k_read_int32_to_int32 (const void * p_src_data, void * p_dest_dat
     uint32_t l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_bytes(l_src_data,&l_temp,4);
+        grok_read_bytes(l_src_data,&l_temp,4);
 
         l_src_data+=sizeof(int32_t);
 
@@ -1523,7 +1523,7 @@ static void  j2k_read_float32_to_int32 (const void * p_src_data, void * p_dest_d
     float l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_float(l_src_data,&l_temp);
+        grok_read_float(l_src_data,&l_temp);
 
         l_src_data+=sizeof(float);
 
@@ -1539,7 +1539,7 @@ static void  j2k_read_float64_to_int32 (const void * p_src_data, void * p_dest_d
     double l_temp;
 
     for (i=0; i<p_nb_elem; ++i) {
-        grk_read_double(l_src_data,&l_temp);
+        grok_read_double(l_src_data,&l_temp);
 
         l_src_data+=sizeof(double);
 
@@ -1557,7 +1557,7 @@ static void  j2k_write_float_to_int16 (const void * p_src_data, void * p_dest_da
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (uint32_t)*(l_src_data++);
 
-        grk_write_bytes(l_dest_data,l_temp,sizeof(int16_t));
+        grok_write_bytes(l_dest_data,l_temp,sizeof(int16_t));
 
         l_dest_data+=sizeof(int16_t);
     }
@@ -1573,7 +1573,7 @@ static void j2k_write_float_to_int32 (const void * p_src_data, void * p_dest_dat
     for (i=0; i<p_nb_elem; ++i) {
         l_temp =  (uint32_t)*(l_src_data++);
 
-        grk_write_bytes(l_dest_data,l_temp,sizeof(int32_t));
+        grok_write_bytes(l_dest_data,l_temp,sizeof(int32_t));
 
         l_dest_data+=sizeof(int32_t);
     }
@@ -1589,7 +1589,7 @@ static void  j2k_write_float_to_float (const void * p_src_data, void * p_dest_da
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (float) *(l_src_data++);
 
-        grk_write_float(l_dest_data,l_temp);
+        grok_write_float(l_dest_data,l_temp);
 
         l_dest_data+=sizeof(float);
     }
@@ -1605,7 +1605,7 @@ static void  j2k_write_float_to_float64 (const void * p_src_data, void * p_dest_
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (double) *(l_src_data++);
 
-        grk_write_double(l_dest_data,l_temp);
+        grok_write_double(l_dest_data,l_temp);
 
         l_dest_data+=sizeof(double);
     }
@@ -1891,7 +1891,7 @@ static bool j2k_read_soc(   j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(l_data,&l_marker,2);
+    grok_read_bytes(l_data,&l_marker,2);
     if (l_marker != J2K_MS_SOC) {
         return false;
     }
@@ -2062,7 +2062,7 @@ static bool j2k_read_siz(j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_tmp ,2);                                                /* Rsiz (capabilities) */
+    grok_read_bytes(p_header_data,&l_tmp ,2);                                                /* Rsiz (capabilities) */
     p_header_data+=2;
 
 	// sanity check on RSIZ
@@ -2084,23 +2084,23 @@ static bool j2k_read_siz(j2k_t *p_j2k,
 
 
 	l_cp->rsiz = (uint16_t)l_tmp;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_image->x1, 4);   /* Xsiz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_image->x1, 4);   /* Xsiz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_image->y1, 4);   /* Ysiz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_image->y1, 4);   /* Ysiz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_image->x0, 4);   /* X0siz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_image->x0, 4);   /* X0siz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_image->y0, 4);   /* Y0siz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_image->y0, 4);   /* Y0siz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_cp->tdx, 4);             /* XTsiz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_cp->tdx, 4);             /* XTsiz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_cp->tdy, 4);             /* YTsiz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_cp->tdy, 4);             /* YTsiz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_cp->tx0, 4);             /* XT0siz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_cp->tx0, 4);             /* XT0siz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_cp->ty0, 4);             /* YT0siz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_cp->ty0, 4);             /* YT0siz */
     p_header_data+=4;
-    grk_read_bytes(p_header_data, (uint32_t*) &l_tmp, 2);                 /* Csiz */
+    grok_read_bytes(p_header_data, (uint32_t*) &l_tmp, 2);                 /* Csiz */
     p_header_data+=2;
     if (l_tmp <= OPJ_MAX_NUM_COMPONENTS)
         l_image->numcomps = (uint16_t) l_tmp;
@@ -2154,14 +2154,14 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     /* Read the component information */
     for (i = 0; i < l_image->numcomps; ++i) {
         uint32_t tmp;
-        grk_read_bytes(p_header_data,&tmp,1);   /* Ssiz_i */
+        grok_read_bytes(p_header_data,&tmp,1);   /* Ssiz_i */
         ++p_header_data;
         l_img_comp->prec = (tmp & 0x7f) + 1;
         l_img_comp->sgnd = tmp >> 7;
-        grk_read_bytes(p_header_data,&tmp,1);   /* XRsiz_i */
+        grok_read_bytes(p_header_data,&tmp,1);   /* XRsiz_i */
         ++p_header_data;
         l_img_comp->dx = tmp; /* should be between 1 and 255 */
-        grk_read_bytes(p_header_data,&tmp,1);   /* YRsiz_i */
+        grok_read_bytes(p_header_data,&tmp,1);   /* YRsiz_i */
         ++p_header_data;
         l_img_comp->dy = tmp; /* should be between 1 and 255 */
         if( l_img_comp->dx < 1 || l_img_comp->dx > 255 ||
@@ -2338,7 +2338,7 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 		return true;
 	}
 	uint32_t commentType;
-	grk_read_bytes(p_header_data, &commentType, 2);
+	grok_read_bytes(p_header_data, &commentType, 2);
 
 	p_j2k->m_cp.isBinaryComment = commentType == 1;
 	 if (commentType > 1) {
@@ -2467,14 +2467,14 @@ static bool j2k_read_cod (  j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_tcp->csty,1);           /* Scod */
+    grok_read_bytes(p_header_data,&l_tcp->csty,1);           /* Scod */
     ++p_header_data;
     /* Make sure we know how to decode this */
     if ((l_tcp->csty & ~(uint32_t)(J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH)) != 0U) {
         event_msg(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n");
         return false;
     }
-    grk_read_bytes(p_header_data,&l_tmp,1);                         /* SGcod (A) */
+    grok_read_bytes(p_header_data,&l_tmp,1);                         /* SGcod (A) */
     ++p_header_data;
     l_tcp->prg = (OPJ_PROG_ORDER) l_tmp;
     /* Make sure progression order is valid */
@@ -2482,7 +2482,7 @@ static bool j2k_read_cod (  j2k_t *p_j2k,
         event_msg(p_manager, EVT_ERROR, "Unknown progression order in COD marker\n");
         l_tcp->prg = OPJ_PROG_UNKNOWN;
     }
-    grk_read_bytes(p_header_data,&l_tcp->numlayers,2);      /* SGcod (B) */
+    grok_read_bytes(p_header_data,&l_tcp->numlayers,2);      /* SGcod (B) */
     p_header_data+=2;
 
     if ((l_tcp->numlayers < 1U) || (l_tcp->numlayers > 65535U)) {
@@ -2497,7 +2497,7 @@ static bool j2k_read_cod (  j2k_t *p_j2k,
         l_tcp->num_layers_to_decode = l_tcp->numlayers;
     }
 
-    grk_read_bytes(p_header_data,&l_tcp->mct,1);            /* SGcod (C) */
+    grok_read_bytes(p_header_data,&l_tcp->mct,1);            /* SGcod (C) */
     ++p_header_data;
 
     p_header_size -= 5;
@@ -2661,14 +2661,14 @@ static bool j2k_read_coc (  j2k_t *p_j2k,
     }
     p_header_size -= l_comp_room + 1;
 
-    grk_read_bytes(p_header_data,&l_comp_no,l_comp_room);                   /* Ccoc */
+    grok_read_bytes(p_header_data,&l_comp_no,l_comp_room);                   /* Ccoc */
     p_header_data += l_comp_room;
     if (l_comp_no >= l_image->numcomps) {
         event_msg(p_manager, EVT_ERROR, "Error reading COC marker (bad number of components)\n");
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_tcp->tccps[l_comp_no].csty,1);                  /* Scoc */
+    grok_read_bytes(p_header_data,&l_tcp->tccps[l_comp_no].csty,1);                  /* Scoc */
     ++p_header_data ;
 
     if (! j2k_read_SPCod_SPCoc(p_j2k,l_comp_no,p_header_data,&p_header_size,p_manager)) {
@@ -2844,7 +2844,7 @@ static bool j2k_read_qcc(   j2k_t *p_j2k,
             event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
             return false;
         }
-        grk_read_bytes(p_header_data,&l_comp_no,1);
+        grok_read_bytes(p_header_data,&l_comp_no,1);
         ++p_header_data;
         --p_header_size;
     } else {
@@ -2852,7 +2852,7 @@ static bool j2k_read_qcc(   j2k_t *p_j2k,
             event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
             return false;
         }
-        grk_read_bytes(p_header_data,&l_comp_no,2);
+        grok_read_bytes(p_header_data,&l_comp_no,2);
         p_header_data+=2;
         p_header_size-=2;
     }
@@ -3113,19 +3113,19 @@ l_tcp->POC = 1;
 
 l_current_poc = &l_tcp->pocs[l_old_poc_nb];
 for (i = l_old_poc_nb; i < l_current_poc_nb; ++i) {
-	grk_read_bytes(p_header_data, &(l_current_poc->resno0), 1);                               /* RSpoc_i */
+	grok_read_bytes(p_header_data, &(l_current_poc->resno0), 1);                               /* RSpoc_i */
 	++p_header_data;
-	grk_read_bytes(p_header_data, &(l_current_poc->compno0), l_comp_room);    /* CSpoc_i */
+	grok_read_bytes(p_header_data, &(l_current_poc->compno0), l_comp_room);    /* CSpoc_i */
 	p_header_data += l_comp_room;
-	grk_read_bytes(p_header_data, &(l_current_poc->layno1), 2);                               /* LYEpoc_i */
+	grok_read_bytes(p_header_data, &(l_current_poc->layno1), 2);                               /* LYEpoc_i */
 	/* make sure layer end is in acceptable bounds */
 	l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
 	p_header_data += 2;
-	grk_read_bytes(p_header_data, &(l_current_poc->resno1), 1);                               /* REpoc_i */
+	grok_read_bytes(p_header_data, &(l_current_poc->resno1), 1);                               /* REpoc_i */
 	++p_header_data;
-	grk_read_bytes(p_header_data, &(l_current_poc->compno1), l_comp_room);    /* CEpoc_i */
+	grok_read_bytes(p_header_data, &(l_current_poc->compno1), l_comp_room);    /* CEpoc_i */
 	p_header_data += l_comp_room;
-	grk_read_bytes(p_header_data, &l_tmp, 1);                                                                 /* Ppoc_i */
+	grok_read_bytes(p_header_data, &l_tmp, 1);                                                                 /* Ppoc_i */
 	++p_header_data;
 	l_current_poc->prg = (OPJ_PROG_ORDER)l_tmp;
 	/* make sure comp is in acceptable bounds */
@@ -3166,9 +3166,9 @@ static bool j2k_read_crg(j2k_t *p_j2k,
 	uint32_t l_Xcrg_i, l_Ycrg_i;
 	for	(uint32_t i = 0; i < l_nb_comp; ++i)
 	{
-			grk_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
+			grok_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
 			p_header_data+=2;
-			grk_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
+			grok_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
 			p_header_data+=2;
 	}
 	return true;
@@ -3202,9 +3202,9 @@ static bool j2k_read_tlm(j2k_t *p_j2k,
 	}
 	p_header_size -= 2;
 
-	grk_read_bytes(p_header_data, &i_TLM, 1);
+	grok_read_bytes(p_header_data, &i_TLM, 1);
 	++p_header_data;
-	grk_read_bytes(p_header_data, &L, 1);
+	grok_read_bytes(p_header_data, &L, 1);
 	++p_header_data;
 
 	// 0x70 ==  1110000
@@ -3228,10 +3228,10 @@ static bool j2k_read_tlm(j2k_t *p_j2k,
 	uint32_t l_Ttlm_i, l_Ptlm_i;
     for   (uint32_t i = 0; i < l_tot_num_tp_remaining; ++i)   {
 		if (L_iT) {
-			grk_read_bytes(p_header_data, &l_Ttlm_i, L_iT);
+			grok_read_bytes(p_header_data, &l_Ttlm_i, L_iT);
 			p_header_data += L_iT;
 		}
-        grk_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);           
+        grok_read_bytes(p_header_data,&l_Ptlm_i,l_Ptlm_size);           
         p_header_data += l_Ptlm_size;
     }
     return true;
@@ -3263,12 +3263,12 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_Zplm,1);                                        // Zplm
+    grok_read_bytes(p_header_data,&l_Zplm,1);                                        // Zplm
     ++p_header_data;
     --header_size;
 
     while  (header_size > 0)   {
-        grk_read_bytes(p_header_data,&l_Nplm,1);                                // Nplm
+        grok_read_bytes(p_header_data,&l_Nplm,1);                                // Nplm
         ++p_header_data;
 		header_size -= (1+l_Nplm);
         if (header_size < 0)     {
@@ -3276,7 +3276,7 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
              return false;
         }
         for (i = 0; i < l_Nplm; ++i)       {
-            grk_read_bytes(p_header_data,&l_tmp,1);                         // Iplm_ij
+            grok_read_bytes(p_header_data,&l_tmp,1);                         // Iplm_ij
             ++p_header_data;
             // take only the last seven bytes
             l_packet_len |= (l_tmp & 0x7f);
@@ -3322,12 +3322,12 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_Zplt,1);                /* Zplt */
+    grok_read_bytes(p_header_data,&l_Zplt,1);                /* Zplt */
     ++p_header_data;
     --p_header_size;
 
     for (i = 0; i < p_header_size; ++i) {
-        grk_read_bytes(p_header_data,&l_tmp,1);         /* Iplt_ij */
+        grok_read_bytes(p_header_data,&l_tmp,1);         /* Iplt_ij */
         ++p_header_data;
         /* take only the last seven bytes */
         l_packet_len |= (l_tmp & 0x7f);
@@ -3379,7 +3379,7 @@ static bool j2k_read_ppm (
     l_cp = &(p_j2k->m_cp);
     l_cp->ppm = 1;
 
-    grk_read_bytes(p_header_data,&l_Z_ppm,1);               /* Z_ppm */
+    grok_read_bytes(p_header_data,&l_Z_ppm,1);               /* Z_ppm */
     ++p_header_data;
     --p_header_size;
 
@@ -3470,7 +3470,7 @@ static bool j2k_merge_ppm ( cp_t *p_cp, event_mgr_t * p_manager )
                         event_msg(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n");
                         return false;
                     }
-                    grk_read_bytes(l_data, &l_N_ppm, 4);
+                    grok_read_bytes(l_data, &l_N_ppm, 4);
                     l_data+=4;
                     l_data_size-=4;
                     l_ppm_data_size += l_N_ppm; /* can't overflow, max 256 markers of max 65536 bytes, that is when PPM markers are not corrupted which is checked elsewhere */
@@ -3528,7 +3528,7 @@ static bool j2k_merge_ppm ( cp_t *p_cp, event_mgr_t * p_manager )
                         event_msg(p_manager, EVT_ERROR, "Not enough bytes to read Nppm\n");
                         return false;
                     }
-                    grk_read_bytes(l_data, &l_N_ppm, 4);
+                    grok_read_bytes(l_data, &l_N_ppm, 4);
                     l_data+=4;
                     l_data_size-=4;
 
@@ -3599,7 +3599,7 @@ static bool j2k_read_ppt (  j2k_t *p_j2k,
     l_tcp = &(l_cp->tcps[p_j2k->m_current_tile_number]);
     l_tcp->ppt = 1;
 
-    grk_read_bytes(p_header_data,&l_Z_ppt,1);               /* Z_ppt */
+    grok_read_bytes(p_header_data,&l_Z_ppt,1);               /* Z_ppt */
     ++p_header_data;
     --p_header_size;
 
@@ -3802,13 +3802,13 @@ static bool j2k_get_sot_values(uint8_t *  p_header_data,
         return false;
     }
 
-    grk_read_bytes(p_header_data,p_tile_no,2);      /* Isot */
+    grok_read_bytes(p_header_data,p_tile_no,2);      /* Isot */
     p_header_data+=2;
-    grk_read_bytes(p_header_data,p_tot_len,4);      /* Psot */
+    grok_read_bytes(p_header_data,p_tot_len,4);      /* Psot */
     p_header_data+=4;
-    grk_read_bytes(p_header_data,p_current_part,1); /* TPsot */
+    grok_read_bytes(p_header_data,p_current_part,1); /* TPsot */
     ++p_header_data;
-    grk_read_bytes(p_header_data,p_num_parts ,1);   /* TNsot */
+    grok_read_bytes(p_header_data,p_num_parts ,1);   /* TNsot */
     ++p_header_data;
     return true;
 }
@@ -4251,9 +4251,9 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
 
 	l_tcp = j2k_get_tcp(p_j2k);
 
-    grk_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
+    grok_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
     p_header_data+=l_comp_room;
-    grk_read_bytes(p_header_data,&l_roi_sty,1);                     /* Srgn */
+    grok_read_bytes(p_header_data,&l_roi_sty,1);                     /* Srgn */
     ++p_header_data;
 
     /* testcase 3635.pdf.asan.77.2930 */
@@ -4264,7 +4264,7 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,(uint32_t *) (&(l_tcp->tccps[l_comp_no].roishift)),1);   /* SPrgn */
+    grok_read_bytes(p_header_data,(uint32_t *) (&(l_tcp->tccps[l_comp_no].roishift)),1);   /* SPrgn */
     ++p_header_data;
 
     return true;
@@ -4580,7 +4580,7 @@ static bool j2k_read_unk (     j2k_t *p_j2k,
         }
 
         /* read 2 bytes as the new marker ID*/
-        grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_unknown_marker,2);
+        grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_unknown_marker,2);
 
         if (!(l_unknown_marker < 0xff00)) {
 
@@ -4694,7 +4694,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     }
 
     /* first marker */
-    grk_read_bytes(p_header_data,&l_tmp,2);                         /* Zmct */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Zmct */
     p_header_data += 2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge mct data within multiple MCT records\n");
@@ -4707,7 +4707,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     }
 
     /* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
-    grk_read_bytes(p_header_data,&l_tmp,2);                         /* Imct */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Imct */
     p_header_data += 2;
 
     l_indix = l_tmp & 0xff;
@@ -4754,7 +4754,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     l_mct_data->m_array_type = (J2K_MCT_ARRAY_TYPE)((l_tmp  >> 8) & 3);
     l_mct_data->m_element_type = (J2K_MCT_ELEMENT_TYPE)((l_tmp  >> 10) & 3);
 
-    grk_read_bytes(p_header_data,&l_tmp,2);                         /* Ymct */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Ymct */
     p_header_data+=2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple MCT markers\n");
@@ -4924,7 +4924,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
     }
 
     /* first marker */
-    grk_read_bytes(p_header_data,&l_tmp,2);                         /* Zmcc */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Zmcc */
     p_header_data += 2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple data spanning\n");
@@ -4936,7 +4936,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_indix,1); /* Imcc -> no need for other values, take the first */
+    grok_read_bytes(p_header_data,&l_indix,1); /* Imcc -> no need for other values, take the first */
     ++p_header_data;
 
     l_mcc_record = l_tcp->m_mcc_records;
@@ -4977,14 +4977,14 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
     l_mcc_record->m_index = l_indix;
 
     /* only one marker atm */
-    grk_read_bytes(p_header_data,&l_tmp,2);                         /* Ymcc */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Ymcc */
     p_header_data+=2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple data spanning\n");
         return true;
     }
 
-    grk_read_bytes(p_header_data,&l_nb_collections,2);                              /* Qmcc -> number of collections -> 1 */
+    grok_read_bytes(p_header_data,&l_nb_collections,2);                              /* Qmcc -> number of collections -> 1 */
     p_header_data+=2;
 
     if (l_nb_collections > 1) {
@@ -5000,7 +5000,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
             return false;
         }
 
-        grk_read_bytes(p_header_data,&l_tmp,1); /* Xmcci type of component transformation -> array based decorrelation */
+        grok_read_bytes(p_header_data,&l_tmp,1); /* Xmcci type of component transformation -> array based decorrelation */
         ++p_header_data;
 
         if (l_tmp != 1) {
@@ -5008,7 +5008,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
             return true;
         }
 
-        grk_read_bytes(p_header_data,&l_nb_comps,2);
+        grok_read_bytes(p_header_data,&l_nb_comps,2);
 
         p_header_data+=2;
         p_header_size-=3;
@@ -5024,7 +5024,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
         p_header_size -= (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 2);
 
         for (j=0; j<l_mcc_record->m_nb_comps; ++j) {
-            grk_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Cmccij Component offset*/
+            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Cmccij Component offset*/
             p_header_data+=l_nb_bytes_by_comp;
 
             if (l_tmp != j) {
@@ -5033,7 +5033,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
             }
         }
 
-        grk_read_bytes(p_header_data,&l_nb_comps,2);
+        grok_read_bytes(p_header_data,&l_nb_comps,2);
         p_header_data+=2;
 
         l_nb_bytes_by_comp = 1 + (l_nb_comps>>15);
@@ -5052,7 +5052,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
         p_header_size -= (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 3);
 
         for (j=0; j<l_mcc_record->m_nb_comps; ++j) {
-            grk_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Wmccij Component offset*/
+            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Wmccij Component offset*/
             p_header_data+=l_nb_bytes_by_comp;
 
             if (l_tmp != j) {
@@ -5061,7 +5061,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
             }
         }
 
-        grk_read_bytes(p_header_data,&l_tmp,3); /* Wmccij Component offset*/
+        grok_read_bytes(p_header_data,&l_tmp,3); /* Wmccij Component offset*/
         p_header_data += 3;
 
         l_mcc_record->m_is_irreversible = ! ((l_tmp>>16) & 1);
@@ -5193,7 +5193,7 @@ static bool j2k_read_mco (      j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_nb_stages,1);                           /* Nmco : only one transform stage*/
+    grok_read_bytes(p_header_data,&l_nb_stages,1);                           /* Nmco : only one transform stage*/
     ++p_header_data;
 
     if (l_nb_stages > 1) {
@@ -5219,7 +5219,7 @@ static bool j2k_read_mco (      j2k_t *p_j2k,
     }
 
     for (i=0; i<l_nb_stages; ++i) {
-        grk_read_bytes(p_header_data,&l_tmp,1);
+        grok_read_bytes(p_header_data,&l_tmp,1);
         ++p_header_data;
 
         if (! j2k_add_mct(l_tcp,p_j2k->m_private_image,l_tmp)) {
@@ -5386,7 +5386,7 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(p_header_data,&l_nb_comp,2);                             /* Ncbd */
+    grok_read_bytes(p_header_data,&l_nb_comp,2);                             /* Ncbd */
     p_header_data+=2;
 
     if (l_nb_comp != l_num_comp) {
@@ -5396,7 +5396,7 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
 
     l_comp = p_j2k->m_private_image->comps;
     for (i=0; i<l_num_comp; ++i) {
-        grk_read_bytes(p_header_data,&l_comp_def,1);                    /* Component bit depth */
+        grok_read_bytes(p_header_data,&l_comp_def,1);                    /* Component bit depth */
         ++p_header_data;
         l_comp->sgnd = (l_comp_def>>7) & 1;
         l_comp->prec = (l_comp_def&0x7f) + 1;
@@ -6584,7 +6584,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
     }
 
     /* Read 2 bytes as the new marker ID */
-    grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
+    grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
 
     /* Try to read until the SOT is detected */
     while (l_current_marker != J2K_MS_SOT) {
@@ -6637,7 +6637,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
         }
 
         /* read 2 bytes as the marker size */
-        grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_marker_size,2);
+        grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_marker_size,2);
         l_marker_size -= 2; /* Subtract the size of the marker ID already read */
 
         /* Check if the marker size is compatible with the header data size */
@@ -6683,7 +6683,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
         }
 
         /* read 2 bytes as the new marker ID */
-        grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
+        grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
     }
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -7159,7 +7159,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t til
         }
 
         /* Read 2 bytes from buffer as the new marker ID */
-        grk_read_bytes(l_header_data, &l_current_marker, 2);
+        grok_read_bytes(l_header_data, &l_current_marker, 2);
 
         if (l_current_marker != J2K_MS_SOT) {
             /* assume all is OK */
@@ -7176,7 +7176,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t til
         }
 
         /* Read 2 bytes from the buffer as the marker size */
-        grk_read_bytes(l_header_data, &l_marker_size, 2);
+        grok_read_bytes(l_header_data, &l_marker_size, 2);
 
         /* Check marker size for SOT Marker */
         if (l_marker_size != 10) {
@@ -7278,7 +7278,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
             }
 
             /* Read 2 bytes from the buffer as the marker size */
-            grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_marker_size,2);
+            grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_marker_size,2);
 
             /* Check marker size (does not include marker ID but includes marker size) */
             if (l_marker_size < 2) {
@@ -7372,7 +7372,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                     return false;
                 }
                 /* Read 2 bytes from the buffer as the new marker ID */
-                grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
+                grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
             }
         }
         if(p_stream->get_number_byte_left() == 0
@@ -7417,7 +7417,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 }
 
                 /* Read 2 bytes from buffer as the new marker ID */
-                grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
+                grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
             }
         } else {
             /* Indicate we will try to read a new tile-part header*/
@@ -7432,7 +7432,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
             }
 
             /* Read 2 bytes from buffer as the new marker ID */
-            grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
+            grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
         }
     }
 
@@ -7596,7 +7596,7 @@ bool j2k_decode_tile (  j2k_t * p_j2k,
 			}
 
 			// read marker
-			grk_read_bytes(l_data, &l_current_marker, 2);
+			grok_read_bytes(l_data, &l_current_marker, 2);
 
 			// we found the EOC marker - set state accordingly and return true - can ignore all data after EOC
 			if (l_current_marker == J2K_MS_EOC) {
@@ -8274,7 +8274,7 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(l_current_ptr, &l_tccp->numresolutions ,1);              /* SPcox (D) */
+    grok_read_bytes(l_current_ptr, &l_tccp->numresolutions ,1);              /* SPcox (D) */
     ++l_tccp->numresolutions;                                                                               /* tccp->numresolutions = read() + 1 */
     if (l_tccp->numresolutions > OPJ_J2K_MAXRLVLS) {
         event_msg(p_manager, EVT_ERROR,
@@ -8292,11 +8292,11 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         return false;
     }
 
-    grk_read_bytes(l_current_ptr,&l_tccp->cblkw ,1);                /* SPcoc (E) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblkw ,1);                /* SPcoc (E) */
     ++l_current_ptr;
     l_tccp->cblkw += 2;
 
-    grk_read_bytes(l_current_ptr,&l_tccp->cblkh ,1);                /* SPcoc (F) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblkh ,1);                /* SPcoc (F) */
     ++l_current_ptr;
     l_tccp->cblkh += 2;
 
@@ -8306,14 +8306,14 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
     }
 
 
-    grk_read_bytes(l_current_ptr,&l_tccp->cblksty ,1);              /* SPcoc (G) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblksty ,1);              /* SPcoc (G) */
     ++l_current_ptr;
 	if (l_tccp->cblksty & 0xC0U) { /* 2 msb are reserved, assume we can't read */
 		event_msg(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element, Invalid code-block style found\n");
 		return false;
 	}
 
-    grk_read_bytes(l_current_ptr,&l_tccp->qmfbid ,1);               /* SPcoc (H) */
+    grok_read_bytes(l_current_ptr,&l_tccp->qmfbid ,1);               /* SPcoc (H) */
     ++l_current_ptr;
 
     *p_header_size = *p_header_size - 5;
@@ -8326,7 +8326,7 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         }
 
         for     (i = 0; i < l_tccp->numresolutions; ++i) {
-            grk_read_bytes(l_current_ptr,&l_tmp ,1);                /* SPcoc (I_i) */
+            grok_read_bytes(l_current_ptr,&l_tmp ,1);                /* SPcoc (I_i) */
             ++l_current_ptr;
             /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
             if ((i != 0) && (((l_tmp & 0xf) == 0) || ((l_tmp >> 4) == 0))) {
@@ -8553,7 +8553,7 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 		l_tccp->hasQCC = true;
 
     *p_header_size -= 1;
-    grk_read_bytes(l_current_ptr, &l_tmp ,1);                       /* Sqcx */
+    grok_read_bytes(l_current_ptr, &l_tmp ,1);                       /* Sqcx */
     ++l_current_ptr;
 
     l_tccp->qntsty = l_tmp & 0x1f;
@@ -8591,7 +8591,7 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
         for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
-            grk_read_bytes(l_current_ptr, &l_tmp ,1);                       /* SPqcx_i */
+            grok_read_bytes(l_current_ptr, &l_tmp ,1);                       /* SPqcx_i */
             ++l_current_ptr;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
                 l_tccp->stepsizes[l_band_no].expn = l_tmp >> 3;
@@ -8601,7 +8601,7 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
         *p_header_size = *p_header_size - l_tccp->numStepSizes;
     } else {
         for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
-            grk_read_bytes(l_current_ptr, &l_tmp ,2);                       /* SPqcx_i */
+            grok_read_bytes(l_current_ptr, &l_tmp ,2);                       /* SPqcx_i */
             l_current_ptr+=2;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
                 l_tccp->stepsizes[l_band_no].expn = l_tmp >> 11;
