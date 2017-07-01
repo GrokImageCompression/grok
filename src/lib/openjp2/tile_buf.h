@@ -39,8 +39,8 @@ struct tile_buf_band_t {
 struct tile_buf_resolution_t {
     tile_buf_band_t band_region[3];
     uint32_t num_bands;
-    grk_pt_t origin;		/* resolution origin, in canvas coordinates */
-    grk_pt_t bounds;		/* full width and height of resolution */
+    pt_t origin;		/* resolution origin, in canvas coordinates */
+    pt_t bounds;		/* full width and height of resolution */
 } ;
 
 struct tile_buf_component_t {
@@ -79,14 +79,14 @@ void tile_buf_destroy_component(tile_buf_component_t* comp);
 bool tile_buf_hit_test(tile_buf_component_t* comp, rect_t* rect);
 
 /* sub-band coordinates */
-grk_pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
+pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal);
 
 
 /* resolution coordinates */
-grk_pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
+pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal);
 

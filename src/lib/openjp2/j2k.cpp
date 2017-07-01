@@ -441,7 +441,7 @@ static bool j2k_copy_decoded_tile_to_output_image (tcd_t * p_tcd,
 										bool clearOutputOnInit,
 										event_mgr_t * p_manager);
 
-static void grk_get_tile_dimensions(opj_image_t * l_image,
+static void get_tile_dimensions(opj_image_t * l_image,
                                     tcd_tilecomp_t * l_tilec,
                                     opj_image_comp_t * l_img_comp,
                                     uint32_t* l_size_comp,
@@ -2127,8 +2127,8 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     }
 
     /* testcase issue427-illegal-tile-offset.jp2 */
-    l_tx1 = grk_uint_adds(l_cp->tx0, l_cp->tdx); /* manage overflow */
-    l_ty1 = grk_uint_adds(l_cp->ty0, l_cp->tdy); /* manage overflow */
+    l_tx1 = uint_adds(l_cp->tx0, l_cp->tdx); /* manage overflow */
+    l_ty1 = uint_adds(l_cp->ty0, l_cp->tdy); /* manage overflow */
     if ((l_cp->tx0 > l_image->x0) || (l_cp->ty0 > l_image->y0) || (l_tx1 <= l_image->x0) || (l_ty1 <= l_image->y0) ) {
         event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: illegal tile offset\n");
         return false;
@@ -2185,8 +2185,8 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     }
 
     /* Compute the number of tiles */
-    l_cp->tw = grk_uint_ceildiv(l_image->x1 - l_cp->tx0, l_cp->tdx);
-    l_cp->th = grk_uint_ceildiv(l_image->y1 - l_cp->ty0, l_cp->tdy);
+    l_cp->tw = uint_ceildiv(l_image->x1 - l_cp->tx0, l_cp->tdx);
+    l_cp->th = uint_ceildiv(l_image->y1 - l_cp->ty0, l_cp->tdy);
 
     /* Check that the number of tiles is valid */
 	if (l_cp->tw == 0 || l_cp->th == 0) {
@@ -2207,8 +2207,8 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     if (p_j2k->m_specific_param.m_decoder.m_discard_tiles) {
         p_j2k->m_specific_param.m_decoder.m_start_tile_x = (p_j2k->m_specific_param.m_decoder.m_start_tile_x - l_cp->tx0) / l_cp->tdx;
         p_j2k->m_specific_param.m_decoder.m_start_tile_y = (p_j2k->m_specific_param.m_decoder.m_start_tile_y - l_cp->ty0) / l_cp->tdy;
-        p_j2k->m_specific_param.m_decoder.m_end_tile_x = grk_uint_ceildiv((p_j2k->m_specific_param.m_decoder.m_end_tile_x - l_cp->tx0), l_cp->tdx);
-        p_j2k->m_specific_param.m_decoder.m_end_tile_y = grk_uint_ceildiv((p_j2k->m_specific_param.m_decoder.m_end_tile_y - l_cp->ty0), l_cp->tdy);
+        p_j2k->m_specific_param.m_decoder.m_end_tile_x = uint_ceildiv((p_j2k->m_specific_param.m_decoder.m_end_tile_x - l_cp->tx0), l_cp->tdx);
+        p_j2k->m_specific_param.m_decoder.m_end_tile_y = uint_ceildiv((p_j2k->m_specific_param.m_decoder.m_end_tile_y - l_cp->ty0), l_cp->tdy);
     } else {
         p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
         p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
@@ -5821,8 +5821,8 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
 		if (cp->tdx == 0 || cp->tdy == 0) {
 			return false;
 		}
-        cp->tw = grk_uint_ceildiv((image->x1 - cp->tx0), cp->tdx);
-        cp->th = grk_uint_ceildiv((image->y1 - cp->ty0), cp->tdy);
+        cp->tw = uint_ceildiv((image->x1 - cp->tx0), cp->tdx);
+        cp->th = uint_ceildiv((image->y1 - cp->ty0), cp->tdy);
     } else {
         cp->tdx = image->x1 - cp->tx0;
         cp->tdy = image->y1 - cp->ty0;
@@ -5926,7 +5926,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                 event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate encoder MCT decoding matrix \n");
                 return false;
             }
-            if(grk_matrix_inversion_f(lTmpBuf,(tcp->m_mct_decoding_matrix),image->numcomps) == false) {
+            if(matrix_inversion_f(lTmpBuf,(tcp->m_mct_decoding_matrix),image->numcomps) == false) {
                 grok_free(lTmpBuf);
                 lTmpBuf = NULL;
                 event_msg(p_manager, EVT_ERROR, "Failed to inverse encoder MCT decoding matrix \n");
@@ -5979,8 +5979,8 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
 
             tccp->csty = parameters->csty & 0x01;   /* 0 => one precinct || 1 => custom precinct  */
             tccp->numresolutions = parameters->numresolution;
-            tccp->cblkw = grk_int_floorlog2(parameters->cblockw_init);
-            tccp->cblkh = grk_int_floorlog2(parameters->cblockh_init);
+            tccp->cblkw = int_floorlog2(parameters->cblockw_init);
+            tccp->cblkh = int_floorlog2(parameters->cblockh_init);
             tccp->cblksty = parameters->mode;
             tccp->qmfbid = parameters->irreversible ? 0 : 1;
             tccp->qntsty = parameters->irreversible ? J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
@@ -6002,13 +6002,13 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                         if (parameters->prcw_init[p] < 1) {
                             tccp->prcw[it_res] = 1;
                         } else {
-                            tccp->prcw[it_res] = grk_uint_floorlog2(parameters->prcw_init[p]);
+                            tccp->prcw[it_res] = uint_floorlog2(parameters->prcw_init[p]);
                         }
 
                         if (parameters->prch_init[p] < 1) {
                             tccp->prch[it_res] = 1;
                         } else {
-                            tccp->prch[it_res] = grk_uint_floorlog2(parameters->prch_init[p]);
+                            tccp->prch[it_res] = uint_floorlog2(parameters->prch_init[p]);
                         }
 
                     } else {
@@ -6024,13 +6024,13 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                         if (size_prcw < 1) {
                             tccp->prcw[it_res] = 1;
                         } else {
-                            tccp->prcw[it_res] = grk_uint_floorlog2(size_prcw);
+                            tccp->prcw[it_res] = uint_floorlog2(size_prcw);
                         }
 
                         if (size_prch < 1) {
                             tccp->prch[it_res] = 1;
                         } else {
-                            tccp->prch[it_res] = grk_uint_floorlog2(size_prch);
+                            tccp->prch[it_res] = uint_floorlog2(size_prch);
                         }
                     }
                     p++;
@@ -7682,8 +7682,8 @@ static bool j2k_copy_decoded_tile_to_output_image (tcd_t * p_tcd,
 
 
         /* Border of the current output component. (x0_dest,y0_dest) corresponds to origin of dest buffer */
-		uint32_t x0_dest = grk_uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->decodeScaleFactor);
-		uint32_t y0_dest = grk_uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->decodeScaleFactor);
+		uint32_t x0_dest = uint_ceildivpow2(img_comp_dest->x0, img_comp_dest->decodeScaleFactor);
+		uint32_t y0_dest = uint_ceildivpow2(img_comp_dest->y0, img_comp_dest->decodeScaleFactor);
 		uint32_t x1_dest = x0_dest + img_comp_dest->w; /* can't overflow given that image->x1 is uint32 */
 		uint32_t y1_dest = y0_dest + img_comp_dest->h;
 
@@ -7962,7 +7962,7 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
 		if (l_cp->tdx == 0) {
 			return false;
 		}
-        p_j2k->m_specific_param.m_decoder.m_end_tile_x = grk_uint_ceildiv(p_end_x - l_cp->tx0, l_cp->tdx);
+        p_j2k->m_specific_param.m_decoder.m_end_tile_x = uint_ceildiv(p_end_x - l_cp->tx0, l_cp->tdx);
         p_image->x1 = p_end_x;
     }
 
@@ -7984,7 +7984,7 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
 		if (l_cp->tdy == 0) { 
 			return false;
 		}
-        p_j2k->m_specific_param.m_decoder.m_end_tile_y = grk_uint_ceildiv(p_end_y - l_cp->ty0, l_cp->tdy);
+        p_j2k->m_specific_param.m_decoder.m_end_tile_y = uint_ceildiv(p_end_y - l_cp->ty0, l_cp->tdy);
         p_image->y1 = p_end_y;
     }
     /* ----- */
@@ -7998,13 +7998,13 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
 			return false;
 		}
 
-        l_img_comp->x0 = grk_uint_ceildiv(p_image->x0, l_img_comp->dx);
-        l_img_comp->y0 = grk_uint_ceildiv(p_image->y0, l_img_comp->dy);
-        l_comp_x1 = grk_uint_ceildiv(p_image->x1, l_img_comp->dx);
-        l_comp_y1 = grk_uint_ceildiv(p_image->y1, l_img_comp->dy);
+        l_img_comp->x0 = uint_ceildiv(p_image->x0, l_img_comp->dx);
+        l_img_comp->y0 = uint_ceildiv(p_image->y0, l_img_comp->dy);
+        l_comp_x1 = uint_ceildiv(p_image->x1, l_img_comp->dx);
+        l_comp_y1 = uint_ceildiv(p_image->y1, l_img_comp->dy);
 
-		uint32_t l_x1 = grk_uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor);
-		uint32_t l_x0 = grk_uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor);
+		uint32_t l_x1 = uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor);
+		uint32_t l_x0 = uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor);
         if (l_x1 < l_x0) {
             event_msg(p_manager, EVT_ERROR,
                           "Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
@@ -8013,8 +8013,8 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
         }
 		l_img_comp->w = l_x1 - l_x0;
 
-		uint32_t l_y1 = grk_uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor);
-		uint32_t l_y0 = grk_uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor);
+		uint32_t l_y1 = uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor);
+		uint32_t l_y0 = uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor);
         if (l_y1 < l_y0) {
             event_msg(p_manager, EVT_ERROR,
                           "Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
@@ -9098,8 +9098,8 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles)
 
         for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
             opj_image_comp_t* dest_comp = p_j2k->m_output_image->comps + i;
-            uint32_t l_x0_dest = grk_uint_ceildivpow2(dest_comp->x0, dest_comp->decodeScaleFactor);
-            uint32_t l_y0_dest = grk_uint_ceildivpow2(dest_comp->y0, dest_comp->decodeScaleFactor);
+            uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0, dest_comp->decodeScaleFactor);
+            uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0, dest_comp->decodeScaleFactor);
             uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
             uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
 
@@ -9500,13 +9500,13 @@ bool j2k_get_tile(  j2k_t *p_j2k,
 
         l_img_comp->decodeScaleFactor = p_j2k->m_private_image->comps[compno].decodeScaleFactor;
 
-        l_img_comp->x0 = grk_uint_ceildiv(p_image->x0, l_img_comp->dx);
-        l_img_comp->y0 = grk_uint_ceildiv(p_image->y0, l_img_comp->dy);
-        l_comp_x1 = grk_uint_ceildiv(p_image->x1, l_img_comp->dx);
-        l_comp_y1 = grk_uint_ceildiv(p_image->y1, l_img_comp->dy);
+        l_img_comp->x0 = uint_ceildiv(p_image->x0, l_img_comp->dx);
+        l_img_comp->y0 = uint_ceildiv(p_image->y0, l_img_comp->dy);
+        l_comp_x1 = uint_ceildiv(p_image->x1, l_img_comp->dx);
+        l_comp_y1 = uint_ceildiv(p_image->y1, l_img_comp->dy);
 
-        l_img_comp->w = (grk_uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor) - grk_uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor));
-        l_img_comp->h = (grk_uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor) - grk_uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor));
+        l_img_comp->w = (uint_ceildivpow2(l_comp_x1, l_img_comp->decodeScaleFactor) - uint_ceildivpow2(l_img_comp->x0, l_img_comp->decodeScaleFactor));
+        l_img_comp->h = (uint_ceildivpow2(l_comp_y1, l_img_comp->decodeScaleFactor) - uint_ceildivpow2(l_img_comp->y0, l_img_comp->decodeScaleFactor));
 
         l_img_comp++;
     }
@@ -9758,7 +9758,7 @@ static bool j2k_pre_write_tile (j2k_t * p_j2k,
     return true;
 }
 
-static void grk_get_tile_dimensions(opj_image_t * l_image,
+static void get_tile_dimensions(opj_image_t * l_image,
                                     tcd_tilecomp_t * l_tilec,
                                     opj_image_comp_t * l_img_comp,
                                     uint32_t* l_size_comp,
@@ -9783,9 +9783,9 @@ static void grk_get_tile_dimensions(opj_image_t * l_image,
 
     *l_width  = (l_tilec->x1 - l_tilec->x0);
     *l_height = (l_tilec->y1 - l_tilec->y0);
-    *l_offset_x = grk_uint_ceildiv(l_image->x0, l_img_comp->dx);
-    *l_offset_y = grk_uint_ceildiv(l_image->y0, l_img_comp->dy);
-    *l_image_width = grk_uint_ceildiv(l_image->x1 - l_image->x0, l_img_comp->dx);
+    *l_offset_x = uint_ceildiv(l_image->x0, l_img_comp->dx);
+    *l_offset_y = uint_ceildiv(l_image->y0, l_img_comp->dy);
+    *l_image_width = uint_ceildiv(l_image->x1 - l_image->x0, l_img_comp->dx);
     *l_stride = *l_image_width - *l_width;
     *l_tile_offset = (l_tilec->x0 - *l_offset_x) + (uint64_t)(l_tilec->y0 - *l_offset_y) * *l_image_width;
 }
@@ -9802,7 +9802,7 @@ static void j2k_get_tile_data (tcd_t * p_tcd, uint8_t * p_data)
 		uint32_t l_size_comp, l_width, l_height, l_offset_x, l_offset_y, l_image_width, l_stride;
 		uint64_t l_tile_offset;
 
-        grk_get_tile_dimensions(l_image,
+        get_tile_dimensions(l_image,
                                 l_tilec,
                                 l_img_comp,
                                 &l_size_comp,
@@ -9895,8 +9895,8 @@ static bool j2k_post_write_tile (   j2k_t * p_j2k,
 	l_tile_size = 0;
 
 	for (uint32_t i = 0; i<l_image->numcomps; ++i) {
-		l_tile_size += (uint64_t)grk_uint_ceildiv(l_cp->tdx, l_img_comp->dx) *
-			grk_uint_ceildiv(l_cp->tdy, l_img_comp->dy) *
+		l_tile_size += (uint64_t)uint_ceildiv(l_cp->tdx, l_img_comp->dx) *
+			uint_ceildiv(l_cp->tdy, l_img_comp->dy) *
 			l_img_comp->prec;
 		++l_img_comp;
 	}

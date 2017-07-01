@@ -51,10 +51,10 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
 
     if (output_image) {
 		comp->dim= rect_t(
-                      grk_uint_ceildiv(output_image->x0,dx),
-                      grk_uint_ceildiv(output_image->y0,dy),
-                      grk_uint_ceildiv(output_image->x1,dx),
-                      grk_uint_ceildiv(output_image->y1,dy));
+                      uint_ceildiv(output_image->x0,dx),
+                      uint_ceildiv(output_image->y0,dy),
+                      uint_ceildiv(output_image->x1,dx),
+                      uint_ceildiv(output_image->y1,dy));
 
         /* clip output image to tile */
 		comp->tile_dim.clip(&comp->dim, &comp->dim);
@@ -104,7 +104,7 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
             if (resno > 0) {
 
                 /*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band  */
-                grk_pt_t shift;
+                pt_t shift;
                 shift.x = band->bandno & 1;
                 shift.y = band->bandno & 2;
 
@@ -239,16 +239,16 @@ bool tile_buf_hit_test(tile_buf_component_t* comp, rect_t* rect)
     return false;
 }
 
-grk_pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
+pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
         uint32_t resno,
         bool is_even,
         bool is_horizontal)
 {
-    grk_pt_t rc;
+    pt_t rc;
     tile_buf_resolution_t* res= NULL;
     tile_buf_resolution_t* prev_res = NULL;
     tile_buf_band_t *band= NULL;
-    memset(&rc, 0, sizeof(grk_pt_t));
+    memset(&rc, 0, sizeof(pt_t));
     if (!comp)
         return rc;
 
@@ -295,15 +295,15 @@ grk_pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
 
 }
 
-grk_pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
+pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
         uint32_t resno,
         bool is_horizontal)
 {
-    grk_pt_t rc;
-    grk_pt_t even;
-    grk_pt_t odd;
+    pt_t rc;
+    pt_t even;
+    pt_t odd;
     tile_buf_resolution_t* res = NULL;
-    memset(&rc, 0, sizeof(grk_pt_t));
+    memset(&rc, 0, sizeof(pt_t));
     if (!comp)
         return rc;
 
@@ -327,8 +327,8 @@ int64_t tile_buf_get_interleaved_upper_bound(tile_buf_component_t* comp)
 {
     if (!comp || comp->resolutions.empty())
         return 0;
-	grk_pt_t horizontal = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
-	grk_pt_t vertical   = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
+	pt_t horizontal = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
+	pt_t vertical   = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
     return std::max<int64_t>(horizontal.y, vertical.y);
 }

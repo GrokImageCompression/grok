@@ -917,14 +917,14 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     /* 4 borders of the tile rescale on the image if necessary */
     l_tx0 = l_cp->tx0 + p * l_cp->tdx; /* can't be greater than l_image->x1 so won't overflow */
     l_tile->x0 = std::max<uint32_t>(l_tx0, l_image->x0);
-    l_tile->x1 = std::min<uint32_t>(grk_uint_adds(l_tx0, l_cp->tdx), l_image->x1);
+    l_tile->x1 = std::min<uint32_t>(uint_adds(l_tx0, l_cp->tdx), l_image->x1);
 	if (l_tile->x1 <= l_tile->x0) {
 		event_msg(manager, EVT_ERROR, "Tile x coordinates are not valid\n");
 		return false;
 	}
     l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
     l_tile->y0 = std::max<uint32_t>(l_ty0, l_image->y0);
-    l_tile->y1 = std::min<uint32_t>(grk_uint_adds(l_ty0, l_cp->tdy), l_image->y1);
+    l_tile->y1 = std::min<uint32_t>(uint_adds(l_ty0, l_cp->tdy), l_image->y1);
 	if (l_tile->y1 <= l_tile->y0) {
 		event_msg(manager, EVT_ERROR, "Tile y coordinates are not valid\n");
 		return false;
@@ -947,10 +947,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 		}
 		l_image_comp->resno_decoded = 0;
         /* border of each l_tile component (global) */
-        l_tilec->x0 = grk_uint_ceildiv(l_tile->x0, l_image_comp->dx);
-        l_tilec->y0 = grk_uint_ceildiv(l_tile->y0, l_image_comp->dy);
-        l_tilec->x1 = grk_uint_ceildiv(l_tile->x1, l_image_comp->dx);
-        l_tilec->y1 = grk_uint_ceildiv(l_tile->y1, l_image_comp->dy);
+        l_tilec->x0 = uint_ceildiv(l_tile->x0, l_image_comp->dx);
+        l_tilec->y0 = uint_ceildiv(l_tile->y0, l_image_comp->dy);
+        l_tilec->x1 = uint_ceildiv(l_tile->x1, l_image_comp->dx);
+        l_tilec->y1 = uint_ceildiv(l_tile->y1, l_image_comp->dy);
         /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
 
         /* compute l_data_size with overflow check */
@@ -1006,20 +1006,20 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 			--l_level_no;
 
             /* border for each resolution level (global) */
-            l_res->x0 = grk_uint_ceildivpow2(l_tilec->x0, l_level_no);
-            l_res->y0 = grk_uint_ceildivpow2(l_tilec->y0, l_level_no);
-            l_res->x1 = grk_uint_ceildivpow2(l_tilec->x1, l_level_no);
-            l_res->y1 = grk_uint_ceildivpow2(l_tilec->y1, l_level_no);
+            l_res->x0 = uint_ceildivpow2(l_tilec->x0, l_level_no);
+            l_res->y0 = uint_ceildivpow2(l_tilec->y0, l_level_no);
+            l_res->x1 = uint_ceildivpow2(l_tilec->x1, l_level_no);
+            l_res->y1 = uint_ceildivpow2(l_tilec->y1, l_level_no);
             /*fprintf(stderr, "\t\t\tres_x0= %d, res_y0 =%d, res_x1=%d, res_y1=%d\n", l_res->x0, l_res->y0, l_res->x1, l_res->y1);*/
             /* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
             l_pdx = l_tccp->prcw[resno];
             l_pdy = l_tccp->prch[resno];
             /*fprintf(stderr, "\t\t\tpdx=%d, pdy=%d\n", l_pdx, l_pdy);*/
             /* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
-            l_tl_prc_x_start = grk_uint_floordivpow2(l_res->x0, l_pdx) << l_pdx;
-            l_tl_prc_y_start = grk_uint_floordivpow2(l_res->y0, l_pdy) << l_pdy;
-            l_br_prc_x_end = grk_uint_ceildivpow2(l_res->x1, l_pdx) << l_pdx;
-            l_br_prc_y_end = grk_uint_ceildivpow2(l_res->y1, l_pdy) << l_pdy;
+            l_tl_prc_x_start = uint_floordivpow2(l_res->x0, l_pdx) << l_pdx;
+            l_tl_prc_y_start = uint_floordivpow2(l_res->y0, l_pdy) << l_pdy;
+            l_br_prc_x_end = uint_ceildivpow2(l_res->x1, l_pdx) << l_pdx;
+            l_br_prc_y_end = uint_ceildivpow2(l_res->y1, l_pdy) << l_pdy;
             /*fprintf(stderr, "\t\t\tprc_x_start=%d, prc_y_start=%d, br_prc_x_end=%d, br_prc_y_end=%d \n", l_tl_prc_x_start, l_tl_prc_y_start, l_br_prc_x_end ,l_br_prc_y_end );*/
 
             l_res->pw = (l_res->x0 == l_res->x1) ? 0 : ((l_br_prc_x_end - l_tl_prc_x_start) >> l_pdx);
@@ -1046,8 +1046,8 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                 cbgheightexpn = l_pdy;
                 l_res->numbands = 1;
             } else {
-                tlcbgxstart = grk_uint_ceildivpow2(l_tl_prc_x_start, 1);
-                tlcbgystart = grk_uint_ceildivpow2(l_tl_prc_y_start, 1);
+                tlcbgxstart = uint_ceildivpow2(l_tl_prc_x_start, 1);
+                tlcbgystart = uint_ceildivpow2(l_tl_prc_y_start, 1);
                 cbgwidthexpn = l_pdx - 1;
                 cbgheightexpn = l_pdy - 1;
                 l_res->numbands = 3;
@@ -1064,10 +1064,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
                 if (resno == 0) {
                     l_band->bandno = 0 ;
-                    l_band->x0 = grk_uint_ceildivpow2(l_tilec->x0, l_level_no);
-                    l_band->y0 = grk_uint_ceildivpow2(l_tilec->y0, l_level_no);
-                    l_band->x1 = grk_uint_ceildivpow2(l_tilec->x1, l_level_no);
-                    l_band->y1 = grk_uint_ceildivpow2(l_tilec->y1, l_level_no);
+                    l_band->x0 = uint_ceildivpow2(l_tilec->x0, l_level_no);
+                    l_band->y0 = uint_ceildivpow2(l_tilec->y0, l_level_no);
+                    l_band->x1 = uint_ceildivpow2(l_tilec->x1, l_level_no);
+                    l_band->y1 = uint_ceildivpow2(l_tilec->y1, l_level_no);
                 } else {
                     l_band->bandno = bandno + 1;
                     /* x0b = 1 if bandno = 1 or 3 */
@@ -1075,10 +1075,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     /* y0b = 1 if bandno = 2 or 3 */
                     l_y0b = (int32_t)((l_band->bandno)>>1);
                     /* l_band border (global) */
-                    l_band->x0 = grk_uint64_ceildivpow2(l_tilec->x0 - ((uint64_t)l_x0b << l_level_no), l_level_no + 1);
-                    l_band->y0 = grk_uint64_ceildivpow2(l_tilec->y0 - ((uint64_t)l_y0b << l_level_no), l_level_no + 1);
-                    l_band->x1 = grk_uint64_ceildivpow2(l_tilec->x1 - ((uint64_t)l_x0b << l_level_no), l_level_no + 1);
-                    l_band->y1 = grk_uint64_ceildivpow2(l_tilec->y1 - ((uint64_t)l_y0b << l_level_no), l_level_no + 1);
+                    l_band->x0 = uint64_ceildivpow2(l_tilec->x0 - ((uint64_t)l_x0b << l_level_no), l_level_no + 1);
+                    l_band->y0 = uint64_ceildivpow2(l_tilec->y0 - ((uint64_t)l_y0b << l_level_no), l_level_no + 1);
+                    l_band->x1 = uint64_ceildivpow2(l_tilec->x1 - ((uint64_t)l_x0b << l_level_no), l_level_no + 1);
+                    l_band->y1 = uint64_ceildivpow2(l_tilec->y1 - ((uint64_t)l_y0b << l_level_no), l_level_no + 1);
                 }
 
                 /** avoid an if with storing function pointer */
@@ -1131,13 +1131,13 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     l_current_precinct->y1 = std::min<uint32_t>(cbgyend, l_band->y1);
                     /*fprintf(stderr, "\t prc_x0=%d; prc_y0=%d, prc_x1=%d; prc_y1=%d\n",l_current_precinct->x0, l_current_precinct->y0 ,l_current_precinct->x1, l_current_precinct->y1);*/
 
-                    tlcblkxstart = grk_uint_floordivpow2(l_current_precinct->x0, cblkwidthexpn) << cblkwidthexpn;
+                    tlcblkxstart = uint_floordivpow2(l_current_precinct->x0, cblkwidthexpn) << cblkwidthexpn;
                     /*fprintf(stderr, "\t tlcblkxstart =%d\n",tlcblkxstart );*/
-                    tlcblkystart = grk_uint_floordivpow2(l_current_precinct->y0, cblkheightexpn) << cblkheightexpn;
+                    tlcblkystart = uint_floordivpow2(l_current_precinct->y0, cblkheightexpn) << cblkheightexpn;
                     /*fprintf(stderr, "\t tlcblkystart =%d\n",tlcblkystart );*/
-                    brcblkxend = grk_uint_ceildivpow2(l_current_precinct->x1, cblkwidthexpn) << cblkwidthexpn;
+                    brcblkxend = uint_ceildivpow2(l_current_precinct->x1, cblkwidthexpn) << cblkwidthexpn;
                     /*fprintf(stderr, "\t brcblkxend =%d\n",brcblkxend );*/
-                    brcblkyend = grk_uint_ceildivpow2(l_current_precinct->y1, cblkheightexpn) << cblkheightexpn;
+                    brcblkyend = uint_ceildivpow2(l_current_precinct->y1, cblkheightexpn) << cblkheightexpn;
                     /*fprintf(stderr, "\t brcblkyend =%d\n",brcblkyend );*/
                     l_current_precinct->cw = ((brcblkxend - tlcblkxstart) >> cblkwidthexpn);
                     l_current_precinct->ch = ((brcblkyend - tlcblkystart) >> cblkheightexpn);
@@ -1821,13 +1821,13 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 			tccp_t * l_tccp					= p_tcd->tcp->tccps + compno;
 			opj_image_comp_t * l_img_comp		= p_tcd->image->comps + compno;
 
-			uint32_t scaledTileX0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.x0, l_img_comp->decodeScaleFactor);
-			uint32_t scaledTileY0 = grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.y0, l_img_comp->decodeScaleFactor);
+			uint32_t scaledTileX0 = uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.x0, l_img_comp->decodeScaleFactor);
+			uint32_t scaledTileY0 = uint_ceildivpow2((uint32_t)l_tile_comp->buf->tile_dim.y0, l_img_comp->decodeScaleFactor);
 
-			uint32_t x0 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x0, l_img_comp->decodeScaleFactor) - scaledTileX0);
-			uint32_t y0 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y0, l_img_comp->decodeScaleFactor) - scaledTileY0);
-			uint32_t x1 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x1, l_img_comp->decodeScaleFactor) - scaledTileX0);
-			uint32_t y1 = (grk_uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y1, l_img_comp->decodeScaleFactor) - scaledTileY0);
+			uint32_t x0 = (uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x0, l_img_comp->decodeScaleFactor) - scaledTileX0);
+			uint32_t y0 = (uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y0, l_img_comp->decodeScaleFactor) - scaledTileY0);
+			uint32_t x1 = (uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.x1, l_img_comp->decodeScaleFactor) - scaledTileX0);
+			uint32_t y1 = (uint_ceildivpow2((uint32_t)l_tile_comp->buf->dim.y1, l_img_comp->decodeScaleFactor) - scaledTileY0);
 
 			uint32_t l_stride					= (l_tile_comp->x1 - l_tile_comp->x0) - (x1-x0);
 
@@ -1846,7 +1846,7 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 			if (l_tccp->qmfbid == 1) {
 				for (uint32_t j = y0; j < y1; ++j) {
 					for (uint32_t i = x0; i < x1; ++i) {
-						*l_current_ptr = grk_int_clamp(*l_current_ptr + l_tccp->m_dc_level_shift, l_min, l_max);
+						*l_current_ptr = int_clamp(*l_current_ptr + l_tccp->m_dc_level_shift, l_min, l_max);
 						l_current_ptr++;
 					}
 					l_current_ptr += l_stride;
@@ -1856,7 +1856,7 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
 				for (uint32_t j = y0; j < y1; ++j) {
 					for (uint32_t i = x0; i < x1; ++i) {
 						float l_value	= *((float *)l_current_ptr);
-						*l_current_ptr	= grk_int_clamp((int32_t)grok_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); 
+						*l_current_ptr	= int_clamp((int32_t)grok_lrintf(l_value) + l_tccp->m_dc_level_shift, l_min, l_max); 
 						l_current_ptr++;
 					}
 					l_current_ptr += l_stride;

@@ -74,7 +74,7 @@ The function in INVERT.H compute a matrix inversion with a LUP method
  * @param n size of the matrix
  * @return true if the inversion is successful, false if the matrix is singular.
  */
-bool grk_matrix_inversion_f(float * pSrcMatrix,
+bool matrix_inversion_f(float * pSrcMatrix,
                             float * pDestMatrix,
                             uint32_t nb_compo);
 /* ----------------------------------------------------------------------- */

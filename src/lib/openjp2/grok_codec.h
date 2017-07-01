@@ -60,7 +60,7 @@ struct codec_private_t {
         /**
          * Decompression handler.
          */
-        struct grk_decompression {
+        struct decompression {
             /** Main header reading function handler */
             bool (*read_header) ( GrokStream * cio,
                                       void * p_codec,
@@ -132,7 +132,7 @@ struct codec_private_t {
         /**
          * Compression handler. FIXME DOC
          */
-        struct grk_compression {
+        struct compression {
             bool (* start_compress) ( void *p_codec,
                                           GrokStream * cio,
                                           opj_image_t * p_image,
@@ -169,7 +169,7 @@ struct codec_private_t {
     /** Flag to indicate if the codec is used to decode or encode*/
     bool is_decompressor;
     void (*opj_dump_codec) (void * p_codec, int32_t info_flag, FILE* output_stream);
-    opj_codestream_info_v2_t* (*grk_get_codec_info)(void* p_codec);
+    opj_codestream_info_v2_t* (*get_codec_info)(void* p_codec);
     opj_codestream_index_t* (*opj_get_codec_index)(void* p_codec);
 };
 

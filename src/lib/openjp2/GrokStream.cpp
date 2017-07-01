@@ -360,7 +360,7 @@ void GrokStream::write_increment(size_t p_size) {
 void GrokStream::sanity_check() {
 #ifdef _DEBUG
 	if (isBufferStream && m_user_data) {
-		grk_buf_info_t* buf = (grk_buf_info_t*)m_user_data;
+		buf_info_t* buf = (buf_info_t*)m_user_data;
 		assert(buf->buf + buf->off == m_current_data);
 	}
 #endif

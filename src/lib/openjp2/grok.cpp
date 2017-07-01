@@ -216,7 +216,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
     case OPJ_CODEC_J2K:
         l_codec->opj_dump_codec = (void (*) (void*, int32_t, FILE*)) j2k_dump;
 
-        l_codec->grk_get_codec_info = (opj_codestream_info_v2_t* (*) (void*) ) j2k_get_cstr_info;
+        l_codec->get_codec_info = (opj_codestream_info_v2_t* (*) (void*) ) j2k_get_cstr_info;
 
         l_codec->opj_get_codec_index = (opj_codestream_index_t* (*) (void*) ) j2k_get_cstr_index;
 
@@ -294,7 +294,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
         /* get a JP2 decoder handle */
         l_codec->opj_dump_codec = (void (*) (void*, int32_t, FILE*)) jp2_dump;
 
-        l_codec->grk_get_codec_info = (opj_codestream_info_v2_t* (*) (void*) ) jp2_get_cstr_info;
+        l_codec->get_codec_info = (opj_codestream_info_v2_t* (*) (void*) ) jp2_get_cstr_info;
 
         l_codec->opj_get_codec_index = (opj_codestream_index_t* (*) (void*) ) jp2_get_cstr_index;
 
@@ -910,7 +910,7 @@ opj_codestream_info_v2_t* OPJ_CALLCONV opj_get_cstr_info(opj_codec_t *p_codec)
     if (p_codec) {
         codec_private_t* l_codec = (codec_private_t*) p_codec;
 
-        return l_codec->grk_get_codec_info(l_codec->m_codec);
+        return l_codec->get_codec_info(l_codec->m_codec);
     }
 
     return NULL;
