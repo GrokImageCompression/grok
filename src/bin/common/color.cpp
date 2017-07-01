@@ -906,9 +906,6 @@ int color_cmyk_to_rgb(opj_image_t *image)
 
 }/* color_cmyk_to_rgb() */
 
-/*
- * This code has been adopted from sjpx_openjpeg.c of ghostscript
- */
 int color_esycc_to_rgb(opj_image_t *image)
 {
     int y, cb, cr, sign1, sign2, val;
