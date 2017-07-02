@@ -94,7 +94,7 @@ struct GrokStream : public IGrokStream {
 	~GrokStream();
 
 	/**
-	* User data, be it files, ... The actual data depends on the type of the stream.
+	* user-supplied data
 	*/
 	void *					m_user_data;
 
@@ -192,7 +192,7 @@ struct GrokStream : public IGrokStream {
 
 	/**
 	* Tells the byte offset on the stream (similar to ftell).
-	* @return		the current position o fthe stream.
+	* @return		the current position of the stream.
 	*/
 	int64_t tell(void);
 
@@ -260,42 +260,25 @@ private:
 
 	void sanity_check();
 
-	/**
-	* Pointer to the current read data.
-	*/
-	uint8_t *					m_current_data;
+	// number of bytes read/written from the beginning of the stream
+	int64_t			m_stream_offset;
 
-	/**
-	* The number of bytes read/written from the beginning of the stream
-	*/
-	int64_t			m_total_bytes;
+	// data stored into the stream if read from, or slated for write.
+	uint8_t *		m_buffer;
 
-	/**
-	* number of bytes read in from
-	*/
-	size_t			m_bytes_in_buffer;
-
-
-
-	/**
-	* Actual data stored into the stream if read from. Data is read by chunk of fixed size.
-	* you should never access this data directly.
-	*/
-	uint8_t *					m_buffer;
-
-	//The size of the buffer.
+	// size of m_buffer.
 	size_t			m_buffer_size;
 
+	// pointer to  current position in m_buffer.
+	uint8_t *		m_buffer_current_ptr;
+	
+	// number of bytes read in, or slated for write
+	size_t			m_bytes_in_buffer;
 
 	bool isBufferStream;
-
-
 };
 
 
-/** @name Exported functions (see also openjpeg.h) */
-/*@{*/
-/* ----------------------------------------------------------------------- */
 /**
 	* Write some bytes to the given data buffer, this function is used in Big Endian cpus.
 	* @param p_buffer		pointer the data buffer to write data to.
