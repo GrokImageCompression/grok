@@ -93,10 +93,10 @@ struct tcd_pass_t {
 						len(0),
 						term(0),
 						slope(0) {}
-    uint32_t rate;
+    uint16_t rate;
     double distortiondec;
-    uint32_t len;
-    uint32_t term : 1;
+    uint16_t len;
+    uint8_t term;
 	uint16_t slope;  //ln(slope) in 8.8 fixed point
 };
 
