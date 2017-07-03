@@ -90,15 +90,15 @@ static size_t grok_write_to_buffer(void * p_buffer,
     return p_nb_bytes;
 }
 
-static bool skip_from_buffer(int64_t p_nb_bytes,
+static int64_t skip_from_buffer(int64_t p_nb_bytes,
                                     buf_info_t * p_source_buffer)
 {
 	auto newOffset = p_source_buffer->off + p_nb_bytes;
     if (newOffset >= 0 &&  newOffset <  (int64_t)p_source_buffer->len) {
         p_source_buffer->off = newOffset;
-		return true;
+		return p_nb_bytes;
     } 
-	return false;
+	return INT64_MIN;
 }
 
 static bool seek_from_buffer(int64_t p_nb_bytes,
