@@ -284,11 +284,10 @@ template<typename TYPE> bool GrokStream::write(uint32_t p_value, uint8_t numByte
 
 	// handle case where there is no internal buffer (buffer stream)
 	if (isBufferStream) {
-		grok_write_bytes(m_buffer_current_ptr, p_value, numBytes);
-		auto l_current_skip_nb_bytes = m_skip_fn(numBytes,
-												m_user_data);
-		if (l_current_skip_nb_bytes == INT64_MIN)
+		// skip first to make sure that we are not at the end of the stream
+		if (m_skip_fn(numBytes,	m_user_data) == INT64_MIN)
 			return false;
+		grok_write_bytes(m_buffer_current_ptr, p_value, numBytes);
 		write_increment(numBytes);
 		return true;
 	}
