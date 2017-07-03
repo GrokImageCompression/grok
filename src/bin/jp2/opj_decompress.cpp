@@ -662,36 +662,6 @@ int parse_cmdline_decoder(int argc,
 			}
 		}
 
-		if (outputFileArg.isSet()) {
-			const char *outfile = outputFileArg.getValue().c_str();
-			parameters->cod_format = get_file_format(outfile);
-			switch (parameters->cod_format) {
-			case PGX_DFMT:
-				break;
-			case PXM_DFMT:
-				break;
-			case BMP_DFMT:
-				break;
-			case TIF_DFMT:
-				break;
-			case RAW_DFMT:
-				break;
-			case RAWL_DFMT:
-				break;
-			case TGA_DFMT:
-				break;
-			case PNG_DFMT:
-				break;
-			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
-				return 1;
-			}
-			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
-				fprintf(stderr, "[ERROR] Path is too long\n");
-				return 1;
-			}
-		}
-
 		if (outForArg.isSet()) {
 			char outformat[50];
 			const char *of = outForArg.getValue().c_str();
@@ -728,6 +698,38 @@ int parse_cmdline_decoder(int argc,
 				return 1;
 			}
 		}
+
+
+		if (outputFileArg.isSet()) {
+			const char *outfile = outputFileArg.getValue().c_str();
+			parameters->cod_format = get_file_format(outfile);
+			switch (parameters->cod_format) {
+			case PGX_DFMT:
+				break;
+			case PXM_DFMT:
+				break;
+			case BMP_DFMT:
+				break;
+			case TIF_DFMT:
+				break;
+			case RAW_DFMT:
+				break;
+			case RAWL_DFMT:
+				break;
+			case TGA_DFMT:
+				break;
+			case PNG_DFMT:
+				break;
+			default:
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
+				return 1;
+			}
+			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+				fprintf(stderr, "[ERROR] Path is too long\n");
+				return 1;
+			}
+		}
+
 
 		if (imgDirArg.isSet()) {
 			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
@@ -829,12 +831,14 @@ int parse_cmdline_decoder(int argc,
             return 1;
         }
     } else {
-        if((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
-            fprintf(stderr, "[ERROR] Required parameters are missing\n"
-                    "Example: %s -i image.j2k -o image.pgm\n",argv[0]);
-            fprintf(stderr, "   Help: %s -h\n",argv[0]);
-            return 1;
-        }
+		if (parameters->decod_format == -1) {
+			if ((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
+				fprintf(stderr, "[ERROR] Required parameters are missing\n"
+					"Example: %s -i image.j2k -o image.pgm\n", argv[0]);
+				fprintf(stderr, "   Help: %s -h\n", argv[0]);
+				return 1;
+			}
+		}
     }
     return 0;
 }
@@ -1215,17 +1219,6 @@ static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 int main(int argc, char **argv)
 {
 
-#ifndef NDEBUG
-	std::string out;
-	for (int i = 0; i < argc; ++i) {
-		out += std::string(" ") + argv[i];
-	}
-	out += "\n";
-	printf(out.c_str());
-#endif
-
-
-
 	int32_t num_images, imageno = 0;
 	dircnt_t *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
@@ -1244,6 +1237,20 @@ int main(int argc, char **argv)
 		rc = EXIT_FAILURE;
 		goto cleanup;
 	}
+
+#ifndef NDEBUG
+	if (initParams.parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		out += "\n";
+		printf(out.c_str());
+	}
+#endif
+
+
+
 	if (plugin_rc == EXIT_SUCCESS) {
 		rc = EXIT_SUCCESS;
 		goto cleanup;

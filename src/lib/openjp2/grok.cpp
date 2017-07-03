@@ -964,30 +964,35 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     size_t p_size,
     bool p_is_read_stream)
 {
+	bool stdin_stdout = !fname || !fname[0];
     opj_stream_t* l_stream = nullptr;
     FILE *p_file;
     const char *mode;
 
-    if (! fname) {
-        return NULL;
-    }
+	if (!stdin_stdout && (!fname || !fname[0])) {
+		return nullptr;
+	}
 
-    if(p_is_read_stream) mode = "rb";
-    else mode = "wb";
-
-    p_file = fopen(fname, mode);
-
-    if (! p_file) {
-        return NULL;
-    }
+	if (stdin_stdout) {
+		p_file = p_is_read_stream ? stdin : stdout;
+	}
+	else {
+		if (p_is_read_stream) mode = "rb";
+		else mode = "wb";
+		p_file = fopen(fname, mode);
+		if (!p_file) {
+			return NULL;
+		}
+	}
 
     l_stream = opj_stream_create(p_size,p_is_read_stream);
     if (! l_stream) {
-        fclose(p_file);
+		if (!stdin_stdout)
+			fclose(p_file);
         return NULL;
     }
 
-    opj_stream_set_user_data(l_stream, p_file, (opj_stream_free_user_data_fn) fclose);
+	opj_stream_set_user_data(l_stream, p_file, (opj_stream_free_user_data_fn) (stdin_stdout ? nullptr : fclose));
 	if (p_is_read_stream)
 		opj_stream_set_user_data_length(l_stream, opj_get_data_length_from_file(p_file));
     opj_stream_set_read_function(l_stream, (opj_stream_read_fn) grok_read_from_file);

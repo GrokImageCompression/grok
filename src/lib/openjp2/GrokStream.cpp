@@ -125,8 +125,7 @@ GrokStream::~GrokStream() {
 		m_free_user_data_fn(m_user_data);
 	}
 	if (!isBufferStream && m_buffer) {
-		grok_free(m_buffer);
-		m_buffer = nullptr;
+		delete[] m_buffer;
 	}
 }
 

@@ -60,6 +60,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+#include <io.h>
+#include <fcntl.h>
 
 extern "C" {
 
@@ -2127,6 +2129,7 @@ opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters)
 
 static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_endian)
 {
+	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
     FILE *rawFile = NULL;
     size_t res;
     unsigned int compno, numcomps;
@@ -2167,11 +2170,16 @@ static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_
 		return 1;
 	}
 
-    rawFile = fopen(outfile, "wb");
-    if (!rawFile) {
-        fprintf(stderr, "Failed to open %s for writing !!\n", outfile);
-        return 1;
-    }
+	if (writeToStdout) {
+		setmode(fileno(stdout), O_BINARY);
+		rawFile = stdout;
+	} else {
+		rawFile = fopen(outfile, "wb");
+		if (!rawFile) {
+			fprintf(stderr, "Failed to open %s for writing !!\n", outfile);
+			return 1;
+		}
+	}
 
     fails = 1;
     fprintf(stdout,"Raw image characteristics: %d components\n", image->numcomps);
@@ -2273,7 +2281,8 @@ static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_
     }
     fails = 0;
 fin:
-    fclose(rawFile);
+	if (!writeToStdout)
+		fclose(rawFile);
     return fails;
 }
 

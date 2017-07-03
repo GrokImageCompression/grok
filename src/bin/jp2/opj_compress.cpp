@@ -1251,12 +1251,21 @@ static int parse_cmdline_encoder_ex(int argc,
             return 1;
         }
     } else {
-        if((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
-            fprintf(stderr, "[ERROR] Required parameters are missing\n"
+        if (parameters->infile[0] == 0) {
+            fprintf(stderr, "[ERROR] Missing input file parameter\n"
                     "Example: %s -i image.pgm -o image.j2k\n",argv[0]);
             fprintf(stderr, "   Help: %s -h\n",argv[0]);
             return 1;
         }
+
+		if (parameters->cod_format == -1) {
+			if (parameters->outfile[0] == 0) {
+				fprintf(stderr, "[ERROR] Missing output file parameter\n"
+					"Example: %s -i image.pgm -o image.j2k\n", argv[0]);
+				fprintf(stderr, "   Help: %s -h\n", argv[0]);
+				return 1;
+			}
+		}
     }
 
     if ( (parameters->decod_format == RAW_DFMT && parameters->raw_cp.rawWidth == 0)
@@ -1423,15 +1432,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
 
-#ifndef NDEBUG
-	std::string out;
-	for (int i = 0; i < argc; ++i) {
-		out += std::string(" ") + argv[i];
-	}
-	out += "\n";
-	printf(out.c_str());
-#endif
-
 	CompressInitParams initParams;
 
 	// try to encode with plugin
@@ -1445,6 +1445,18 @@ int main(int argc, char **argv) {
 		return 1;
 	if (!rc)
 		return 0;
+
+
+#ifndef NDEBUG
+	if (initParams.parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		out += "\n";
+		printf(out.c_str());
+	}
+#endif
 
 	size_t num_compressed_files = 0;
 	uint32_t i, num_images, imageno;
@@ -1554,27 +1566,32 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bool bUseTiles = false;
 	bool createdImage = false;
 	uint8_t* buff = nullptr;
-								
-	if (info->output_file_name != NULL && info->output_file_name[0] != 0) {
-		if (info->outputFileNameIsRelative) {
-			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
-			if (img_fol_plugin.set_out_format == 1) {
-				sprintf(outfile, "%s%s%s.%s",
-					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
-					get_path_separator(),
-					temp_ofname,
-					img_fol_plugin.out_format);
+
+	// single image mode with output to stdout
+	if (!info->outputFileNameIsRelative && (!info->output_file_name || !info->output_file_name[0])) {
+		outfile[0] = 0;
+	}
+	else {
+		if (info->output_file_name && info->output_file_name[0]) {
+			if (info->outputFileNameIsRelative) {
+				strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
+				if (img_fol_plugin.set_out_format == 1) {
+					sprintf(outfile, "%s%s%s.%s",
+						out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
+						get_path_separator(),
+						temp_ofname,
+						img_fol_plugin.out_format);
+				}
+			}
+			else {
+				strcpy(outfile, info->output_file_name);
 			}
 		}
 		else {
-			strcpy(outfile, info->output_file_name);
+			bSuccess = false;
+			goto cleanup;
 		}
 	}
-	else {
-		bSuccess = false;
-		goto cleanup;
-	}
-
 
 	if (!image) {
 		if (parameters->decod_format == -1) {
