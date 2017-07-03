@@ -156,7 +156,7 @@ static int64_t opj_skip_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_CUR) ? false : true;
 }
 
-static bool opj_seek_from_file (size_t p_nb_bytes, FILE * p_user_data)
+static bool opj_seek_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 {
 	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_SET) ? false : true;
 }

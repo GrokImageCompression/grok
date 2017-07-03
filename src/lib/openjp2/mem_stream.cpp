@@ -101,10 +101,12 @@ static bool skip_from_buffer(int64_t p_nb_bytes,
 	return false;
 }
 
-static bool seek_from_buffer(size_t p_nb_bytes,
+static bool seek_from_buffer(int64_t p_nb_bytes,
                                  buf_info_t * p_source_buffer)
 {
-    if (p_nb_bytes <  p_source_buffer->len) {
+	if (p_nb_bytes < 0)
+		return false;
+    if ((size_t)p_nb_bytes <  p_source_buffer->len) {
         p_source_buffer->off = p_nb_bytes;
     } else {
         p_source_buffer->off = p_source_buffer->len;
