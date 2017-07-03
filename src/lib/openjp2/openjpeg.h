@@ -811,9 +811,10 @@ typedef size_t (* opj_stream_write_fn) (void * p_buffer,
 typedef bool (* opj_stream_skip_fn) (int64_t p_nb_bytes, void * p_user_data) ;
 
 /*
- * Callback function prototype for seek function
+ * Callback function prototype for seek function. Important!!! Implementation should be an absolute seek
+ * from beginning of stream, with p_nb_bytes >= 0
  */
-typedef bool (* opj_stream_seek_fn) (size_t p_nb_bytes, void * p_user_data) ;
+typedef bool (* opj_stream_seek_fn) (int64_t p_nb_bytes, void * p_user_data) ;
 
 /*
  * Callback function prototype for free user data function
