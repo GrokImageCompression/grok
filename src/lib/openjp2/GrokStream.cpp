@@ -285,7 +285,8 @@ template<typename TYPE> bool GrokStream::write(uint32_t p_value, uint8_t numByte
 	// handle case where there is no internal buffer (buffer stream)
 	if (isBufferStream) {
 		// skip first to make sure that we are not at the end of the stream
-		if (m_skip_fn(numBytes,	m_user_data) == INT64_MIN)
+		auto l_media_skip_bytes = m_skip_fn(numBytes, m_user_data);
+		if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != numBytes))
 			return false;
 		grok_write_bytes(m_buffer_current_ptr, p_value, numBytes);
 		write_increment(numBytes);
@@ -426,12 +427,11 @@ bool GrokStream::read_skip(int64_t p_size,
 
 
 	/* we should do an actual skip on the media */
-	if (m_skip_fn(p_size, m_user_data) == INT64_MIN) {
+	auto l_media_skip_bytes = m_skip_fn(p_size, m_user_data);
+	if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != p_size)) {
 		event_msg(p_event_mgr, EVT_INFO, "stream skip reached end/beginning!\n");
-
 		m_status |= GROK_STREAM_STATUS_END;
 		m_stream_offset += l_skip_nb_bytes;
-		/* end if stream */
 		return l_skip_nb_bytes ? true : false;
 	}
 	l_skip_nb_bytes += p_size;
@@ -454,10 +454,10 @@ bool GrokStream::write_skip(int64_t p_size,
 	}
 	/* then skip */
 	/* we should do an actual skip on the media */
-	if (m_skip_fn(p_size, m_user_data) == INT64_MIN) {
+	auto l_media_skip_bytes = m_skip_fn(p_size, m_user_data);
+	if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != p_size)){
 		event_msg(p_event_mgr, EVT_INFO, "GrokStream error!\n");
 		m_status |= GROK_STREAM_STATUS_ERROR;
-		/* end if stream */
 		return false;
 	}
 	m_stream_offset += p_size;

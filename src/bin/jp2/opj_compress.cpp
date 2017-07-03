@@ -1760,7 +1760,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	/* open a byte stream for writing and allocate memory for all tiles */
 	{
-		bool isBufferStream = true;
+		bool isBufferStream = false;
 		if (isBufferStream) {
 			//  option to write to buffer, assuming one knows how large compressed stream will be 
 			auto len = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
