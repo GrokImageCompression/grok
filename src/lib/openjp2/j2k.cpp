@@ -3109,32 +3109,37 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
     assert(l_current_poc_nb < 32);
 
     /* now poc is in use.*/
-l_tcp->POC = 1;
+	l_tcp->POC = 1;
 
-l_current_poc = &l_tcp->pocs[l_old_poc_nb];
-for (i = l_old_poc_nb; i < l_current_poc_nb; ++i) {
-	grok_read_bytes(p_header_data, &(l_current_poc->resno0), 1);                               /* RSpoc_i */
-	++p_header_data;
-	grok_read_bytes(p_header_data, &(l_current_poc->compno0), l_comp_room);    /* CSpoc_i */
-	p_header_data += l_comp_room;
-	grok_read_bytes(p_header_data, &(l_current_poc->layno1), 2);                               /* LYEpoc_i */
-	/* make sure layer end is in acceptable bounds */
-	l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
-	p_header_data += 2;
-	grok_read_bytes(p_header_data, &(l_current_poc->resno1), 1);                               /* REpoc_i */
-	++p_header_data;
-	grok_read_bytes(p_header_data, &(l_current_poc->compno1), l_comp_room);    /* CEpoc_i */
-	p_header_data += l_comp_room;
-	grok_read_bytes(p_header_data, &l_tmp, 1);                                                                 /* Ppoc_i */
-	++p_header_data;
-	l_current_poc->prg = (OPJ_PROG_ORDER)l_tmp;
-	/* make sure comp is in acceptable bounds */
-	l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
-	++l_current_poc;
-}
-
-l_tcp->numpocs = l_current_poc_nb - 1;
-return true;
+	l_current_poc = &l_tcp->pocs[l_old_poc_nb];
+	for (i = l_old_poc_nb; i < l_current_poc_nb; ++i) {
+		/* RSpoc_i */
+		grok_read_bytes(p_header_data, &(l_current_poc->resno0), 1);                             
+		++p_header_data;
+		/* CSpoc_i */
+		grok_read_bytes(p_header_data, &(l_current_poc->compno0), l_comp_room);  
+		p_header_data += l_comp_room;
+		/* LYEpoc_i */
+		grok_read_bytes(p_header_data, &(l_current_poc->layno1), 2);                               
+		/* make sure layer end is in acceptable bounds */
+		l_current_poc->layno1 = std::min<uint32_t>(l_current_poc->layno1, l_tcp->numlayers);
+		p_header_data += 2;
+		/* REpoc_i */
+		grok_read_bytes(p_header_data, &(l_current_poc->resno1), 1);                              
+		++p_header_data;
+		/* CEpoc_i */
+		grok_read_bytes(p_header_data, &(l_current_poc->compno1), l_comp_room);   
+		p_header_data += l_comp_room;
+		/* Ppoc_i */
+		grok_read_bytes(p_header_data, &l_tmp, 1);                                                               
+		++p_header_data;
+		l_current_poc->prg = (OPJ_PROG_ORDER)l_tmp;
+		/* make sure comp is in acceptable bounds */
+		l_current_poc->compno1 = std::min<uint32_t>(l_current_poc->compno1, l_nb_comp);
+		++l_current_poc;
+	}
+	l_tcp->numpocs = l_current_poc_nb - 1;
+	return true;
 }
 
 /**
@@ -3165,10 +3170,12 @@ static bool j2k_read_crg(j2k_t *p_j2k,
 	}
 	uint32_t l_Xcrg_i, l_Ycrg_i;
 	for	(uint32_t i = 0; i < l_nb_comp; ++i)
-	{
-			grok_read_bytes(p_header_data,&l_Xcrg_i,2);                              // Xcrg_i
+	{ 
+			// Xcrg_i
+			grok_read_bytes(p_header_data,&l_Xcrg_i,2);                             
 			p_header_data+=2;
-			grok_read_bytes(p_header_data,&l_Ycrg_i,2);                              // Xcrg_i
+			// Xcrg_i
+			grok_read_bytes(p_header_data,&l_Ycrg_i,2);                             
 			p_header_data+=2;
 	}
 	return true;
@@ -3263,12 +3270,14 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
         return false;
     }
 
-    grok_read_bytes(p_header_data,&l_Zplm,1);                                        // Zplm
+	// Zplm
+    grok_read_bytes(p_header_data,&l_Zplm,1);                                        
     ++p_header_data;
     --header_size;
 
     while  (header_size > 0)   {
-        grok_read_bytes(p_header_data,&l_Nplm,1);                                // Nplm
+		// Nplm
+        grok_read_bytes(p_header_data,&l_Nplm,1);                               
         ++p_header_data;
 		header_size -= (1+l_Nplm);
         if (header_size < 0)     {
@@ -3276,7 +3285,8 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
              return false;
         }
         for (i = 0; i < l_Nplm; ++i)       {
-            grok_read_bytes(p_header_data,&l_tmp,1);                         // Iplm_ij
+			// Iplm_ij
+            grok_read_bytes(p_header_data,&l_tmp,1);                       
             ++p_header_data;
             // take only the last seven bytes
             l_packet_len |= (l_tmp & 0x7f);
@@ -3322,12 +3332,14 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
         return false;
     }
 
-    grok_read_bytes(p_header_data,&l_Zplt,1);                /* Zplt */
+	/* Zplt */
+    grok_read_bytes(p_header_data,&l_Zplt,1);               
     ++p_header_data;
     --p_header_size;
 
     for (i = 0; i < p_header_size; ++i) {
-        grok_read_bytes(p_header_data,&l_tmp,1);         /* Iplt_ij */
+		/* Iplt_ij */
+        grok_read_bytes(p_header_data,&l_tmp,1);        
         ++p_header_data;
         /* take only the last seven bytes */
         l_packet_len |= (l_tmp & 0x7f);
@@ -3379,7 +3391,8 @@ static bool j2k_read_ppm (
     l_cp = &(p_j2k->m_cp);
     l_cp->ppm = 1;
 
-    grok_read_bytes(p_header_data,&l_Z_ppm,1);               /* Z_ppm */
+	/* Z_ppm */
+    grok_read_bytes(p_header_data,&l_Z_ppm,1);             
     ++p_header_data;
     --p_header_size;
 
@@ -3599,7 +3612,8 @@ static bool j2k_read_ppt (  j2k_t *p_j2k,
     l_tcp = &(l_cp->tcps[p_j2k->m_current_tile_number]);
     l_tcp->ppt = 1;
 
-    grok_read_bytes(p_header_data,&l_Z_ppt,1);               /* Z_ppt */
+	/* Z_ppt */
+    grok_read_bytes(p_header_data,&l_Z_ppt,1);             
     ++p_header_data;
     --p_header_size;
 
@@ -3801,14 +3815,17 @@ static bool j2k_get_sot_values(uint8_t *  p_header_data,
         event_msg(p_manager, EVT_ERROR, "Error reading SOT marker\n");
         return false;
     }
-
-    grok_read_bytes(p_header_data,p_tile_no,2);      /* Isot */
+	/* Isot */
+    grok_read_bytes(p_header_data,p_tile_no,2);      
     p_header_data+=2;
-    grok_read_bytes(p_header_data,p_tot_len,4);      /* Psot */
+	/* Psot */
+    grok_read_bytes(p_header_data,p_tot_len,4);      
     p_header_data+=4;
-    grok_read_bytes(p_header_data,p_current_part,1); /* TPsot */
+	/* TPsot */
+    grok_read_bytes(p_header_data,p_current_part,1);
     ++p_header_data;
-    grok_read_bytes(p_header_data,p_num_parts ,1);   /* TNsot */
+	/* TNsot */
+    grok_read_bytes(p_header_data,p_num_parts ,1);  
     ++p_header_data;
     return true;
 }
@@ -4251,9 +4268,11 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
 
 	l_tcp = j2k_get_tcp(p_j2k);
 
-    grok_read_bytes(p_header_data,&l_comp_no,l_comp_room);           /* Crgn */
+	/* Crgn */
+    grok_read_bytes(p_header_data,&l_comp_no,l_comp_room);          
     p_header_data+=l_comp_room;
-    grok_read_bytes(p_header_data,&l_roi_sty,1);                     /* Srgn */
+	/* Srgn */
+    grok_read_bytes(p_header_data,&l_roi_sty,1);                    
     ++p_header_data;
 
     /* testcase 3635.pdf.asan.77.2930 */
@@ -4264,7 +4283,8 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
         return false;
     }
 
-    grok_read_bytes(p_header_data,(uint32_t *) (&(l_tcp->tccps[l_comp_no].roishift)),1);   /* SPrgn */
+	/* SPrgn */
+    grok_read_bytes(p_header_data,(uint32_t *) (&(l_tcp->tccps[l_comp_no].roishift)),1);  
     ++p_header_data;
 
     return true;
@@ -4694,7 +4714,8 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     }
 
     /* first marker */
-    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Zmct */
+	/* Zmct */
+    grok_read_bytes(p_header_data,&l_tmp,2);                         
     p_header_data += 2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge mct data within multiple MCT records\n");
@@ -4754,7 +4775,8 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     l_mct_data->m_array_type = (J2K_MCT_ARRAY_TYPE)((l_tmp  >> 8) & 3);
     l_mct_data->m_element_type = (J2K_MCT_ELEMENT_TYPE)((l_tmp  >> 10) & 3);
 
-    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Ymct */
+	/* Ymct */
+    grok_read_bytes(p_header_data,&l_tmp,2);                        
     p_header_data+=2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple MCT markers\n");
@@ -4924,7 +4946,8 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
     }
 
     /* first marker */
-    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Zmcc */
+	/* Zmcc */
+    grok_read_bytes(p_header_data,&l_tmp,2);                       
     p_header_data += 2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple data spanning\n");
@@ -4977,14 +5000,16 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
     l_mcc_record->m_index = l_indix;
 
     /* only one marker atm */
-    grok_read_bytes(p_header_data,&l_tmp,2);                         /* Ymcc */
+	/* Ymcc */
+    grok_read_bytes(p_header_data,&l_tmp,2);                        
     p_header_data+=2;
     if (l_tmp != 0) {
         event_msg(p_manager, EVT_WARNING, "Cannot take in charge multiple data spanning\n");
         return true;
     }
 
-    grok_read_bytes(p_header_data,&l_nb_collections,2);                              /* Qmcc -> number of collections -> 1 */
+	/* Qmcc -> number of collections -> 1 */
+    grok_read_bytes(p_header_data,&l_nb_collections,2);                             
     p_header_data+=2;
 
     if (l_nb_collections > 1) {
@@ -5024,7 +5049,8 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
         p_header_size -= (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 2);
 
         for (j=0; j<l_mcc_record->m_nb_comps; ++j) {
-            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Cmccij Component offset*/
+			/* Cmccij Component offset*/
+            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);       
             p_header_data+=l_nb_bytes_by_comp;
 
             if (l_tmp != j) {
@@ -5052,7 +5078,8 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
         p_header_size -= (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 3);
 
         for (j=0; j<l_mcc_record->m_nb_comps; ++j) {
-            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);        /* Wmccij Component offset*/
+			/* Wmccij Component offset*/
+            grok_read_bytes(p_header_data,&l_tmp,l_nb_bytes_by_comp);       
             p_header_data+=l_nb_bytes_by_comp;
 
             if (l_tmp != j) {
@@ -5060,8 +5087,8 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
                 return true;
             }
         }
-
-        grok_read_bytes(p_header_data,&l_tmp,3); /* Wmccij Component offset*/
+		/* Wmccij Component offset*/
+        grok_read_bytes(p_header_data,&l_tmp,3); 
         p_header_data += 3;
 
         l_mcc_record->m_is_irreversible = ! ((l_tmp>>16) & 1);
@@ -5192,8 +5219,8 @@ static bool j2k_read_mco (      j2k_t *p_j2k,
         event_msg(p_manager, EVT_ERROR, "Error reading MCO marker\n");
         return false;
     }
-
-    grok_read_bytes(p_header_data,&l_nb_stages,1);                           /* Nmco : only one transform stage*/
+	/* Nmco : only one transform stage*/
+    grok_read_bytes(p_header_data,&l_nb_stages,1);                           
     ++p_header_data;
 
     if (l_nb_stages > 1) {
@@ -5385,8 +5412,8 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
         event_msg(p_manager, EVT_ERROR, "Crror reading CBD marker\n");
         return false;
     }
-
-    grok_read_bytes(p_header_data,&l_nb_comp,2);                             /* Ncbd */
+	/* Ncbd */
+    grok_read_bytes(p_header_data,&l_nb_comp,2);                           
     p_header_data+=2;
 
     if (l_nb_comp != l_num_comp) {
@@ -5396,7 +5423,8 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
 
     l_comp = p_j2k->m_private_image->comps;
     for (i=0; i<l_num_comp; ++i) {
-        grok_read_bytes(p_header_data,&l_comp_def,1);                    /* Component bit depth */
+		/* Component bit depth */
+        grok_read_bytes(p_header_data,&l_comp_def,1);                   
         ++p_header_data;
         l_comp->sgnd = (l_comp_def>>7) & 1;
         l_comp->prec = (l_comp_def&0x7f) + 1;
@@ -5853,7 +5881,8 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                 }
                 tcp->rates[j] = parameters->tcp_rates[j];
             } else {
-                if (cp->m_specific_param.m_enc.m_fixed_quality) {       /* add fixed_quality */
+				/* add fixed_quality */
+                if (cp->m_specific_param.m_enc.m_fixed_quality) {      
                     tcp->distoratio[j] = parameters->tcp_distoratio[j];
                 } else {
                     tcp->rates[j] = parameters->tcp_rates[j];
@@ -8273,8 +8302,8 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         event_msg(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n");
         return false;
     }
-
-    grok_read_bytes(l_current_ptr, &l_tccp->numresolutions ,1);              /* SPcox (D) */
+	/* SPcox (D) */
+    grok_read_bytes(l_current_ptr, &l_tccp->numresolutions ,1);            
     ++l_tccp->numresolutions;                                                                               /* tccp->numresolutions = read() + 1 */
     if (l_tccp->numresolutions > OPJ_J2K_MAXRLVLS) {
         event_msg(p_manager, EVT_ERROR,
@@ -8291,12 +8320,12 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         p_j2k->m_specific_param.m_decoder.m_state |= 0x8000;/* FIXME J2K_DEC_STATE_ERR;*/
         return false;
     }
-
-    grok_read_bytes(l_current_ptr,&l_tccp->cblkw ,1);                /* SPcoc (E) */
+	/* SPcoc (E) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblkw ,1);              
     ++l_current_ptr;
     l_tccp->cblkw += 2;
-
-    grok_read_bytes(l_current_ptr,&l_tccp->cblkh ,1);                /* SPcoc (F) */
+	/* SPcoc (F) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblkh ,1);              
     ++l_current_ptr;
     l_tccp->cblkh += 2;
 
@@ -8305,15 +8334,15 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
         return false;
     }
 
-
-    grok_read_bytes(l_current_ptr,&l_tccp->cblksty ,1);              /* SPcoc (G) */
+	/* SPcoc (G) */
+    grok_read_bytes(l_current_ptr,&l_tccp->cblksty ,1);             
     ++l_current_ptr;
 	if (l_tccp->cblksty & 0xC0U) { /* 2 msb are reserved, assume we can't read */
 		event_msg(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element, Invalid code-block style found\n");
 		return false;
 	}
-
-    grok_read_bytes(l_current_ptr,&l_tccp->qmfbid ,1);               /* SPcoc (H) */
+	/* SPcoc (H) */
+    grok_read_bytes(l_current_ptr,&l_tccp->qmfbid ,1);              
     ++l_current_ptr;
 
     *p_header_size = *p_header_size - 5;
@@ -8325,8 +8354,9 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
             return false;
         }
 
-        for     (i = 0; i < l_tccp->numresolutions; ++i) {
-            grok_read_bytes(l_current_ptr,&l_tmp ,1);                /* SPcoc (I_i) */
+        for (i = 0; i < l_tccp->numresolutions; ++i) {
+			/* SPcoc (I_i) */
+            grok_read_bytes(l_current_ptr,&l_tmp ,1);               
             ++l_current_ptr;
             /* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
             if ((i != 0) && (((l_tmp & 0xf) == 0) || ((l_tmp >> 4) == 0))) {
@@ -8553,7 +8583,8 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 		l_tccp->hasQCC = true;
 
     *p_header_size -= 1;
-    grok_read_bytes(l_current_ptr, &l_tmp ,1);                       /* Sqcx */
+	/* Sqcx */
+    grok_read_bytes(l_current_ptr, &l_tmp ,1);                     
     ++l_current_ptr;
 
     l_tccp->qntsty = l_tmp & 0x1f;
@@ -8591,7 +8622,8 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
         for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
-            grok_read_bytes(l_current_ptr, &l_tmp ,1);                       /* SPqcx_i */
+			/* SPqcx_i */
+            grok_read_bytes(l_current_ptr, &l_tmp ,1);                       
             ++l_current_ptr;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
                 l_tccp->stepsizes[l_band_no].expn = l_tmp >> 3;
@@ -8601,7 +8633,8 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
         *p_header_size = *p_header_size - l_tccp->numStepSizes;
     } else {
         for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
-            grok_read_bytes(l_current_ptr, &l_tmp ,2);                       /* SPqcx_i */
+			/* SPqcx_i */
+            grok_read_bytes(l_current_ptr, &l_tmp ,2);                       
             l_current_ptr+=2;
             if (l_band_no < OPJ_J2K_MAXBANDS) {
                 l_tccp->stepsizes[l_band_no].expn = l_tmp >> 11;
@@ -8811,9 +8844,7 @@ static void j2k_dump_MH_index(j2k_t* p_j2k, FILE* out_stream)
             fprintf(out_stream,"\t }\n");
         }
     }
-
     fprintf(out_stream,"}\n");
-
 }
 
 
