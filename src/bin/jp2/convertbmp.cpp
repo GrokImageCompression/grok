@@ -59,6 +59,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <io.h>
+#include <fcntl.h>
 
 #include "openjpeg.h"
 #include "convert.h"
@@ -791,6 +793,7 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
 
 int imagetobmp(opj_image_t * image, const char *outfile)
 {
+	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
     int w, h;
     int i, pad;
     FILE *fdest = NULL;
@@ -800,6 +803,19 @@ int imagetobmp(opj_image_t * image, const char *outfile)
         fprintf(stderr, "Unsupported precision: %d\n", image->comps[0].prec);
         return 1;
     }
+
+	if (writeToStdout) {
+		setmode(fileno(stdout), O_BINARY);
+		fdest = stdout;
+	}
+	else {
+		fdest = fopen(outfile, "wb");
+		if (!fdest) {
+			fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
+			return 1;
+		}
+	}
+
     if (image->numcomps >= 3 && image->comps[0].dx == image->comps[1].dx
             && image->comps[1].dx == image->comps[2].dx
             && image->comps[0].dy == image->comps[1].dy
@@ -813,13 +829,6 @@ int imagetobmp(opj_image_t * image, const char *outfile)
         /* -->> -->> -->> -->>
         24 bits color
         <<-- <<-- <<-- <<-- */
-
-        fdest = fopen(outfile, "wb");
-        if (!fdest) {
-            fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
-            return 1;
-        }
-
         w = (int)image->comps[0].w;
         h = (int)image->comps[0].h;
 
@@ -906,18 +915,11 @@ int imagetobmp(opj_image_t * image, const char *outfile)
                     fprintf(fdest, "%c", 0);
             }
         }
-        fclose(fdest);
     } else {			/* Gray-scale */
 
         /* -->> -->> -->> -->>
         8 bits non code (Gray scale)
         <<-- <<-- <<-- <<-- */
-
-        fdest = fopen(outfile, "wb");
-        if (!fdest) {
-            fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
-            return 1;
-        }
         w = (int)image->comps[0].w;
         h = (int)image->comps[0].h;
 
@@ -983,8 +985,10 @@ int imagetobmp(opj_image_t * image, const char *outfile)
                     fprintf(fdest, "%c", 0);
             }
         }
-        fclose(fdest);
+
     }
 
+	if (!writeToStdout)
+		fclose(fdest);
     return 0;
 }

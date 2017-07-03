@@ -60,6 +60,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <io.h>
+#include <fcntl.h>
 
 #include <zlib.h>
 #include <png.h>
@@ -357,6 +359,7 @@ static void convert_32s16u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length
 }
 int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLevel)
 {
+	bool writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
     FILE * volatile writer = NULL;
     png_structp png = NULL;
     png_infop info = NULL;
@@ -426,10 +429,15 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         fprintf(stderr,"imagetopng: can not create %s\n\twrong bit_depth %d\n", write_idf, prec);
         return fails;
     }
+	if (writeToStdout) {
+		setmode(fileno(stdout), O_BINARY);
+		writer = stdout;
+	}
+	else {
+		writer = fopen(write_idf, "wb");
+		if (writer == NULL) return fails;
+	}
 
-    writer = fopen(write_idf, "wb");
-
-    if(writer == NULL) return fails;
 
     /* Create and initialize the png_struct with the desired error handler
      * functions.  If you want to use the default stderr and longjump method,
@@ -609,9 +617,11 @@ fin:
     if(buffer32s) {
         free(buffer32s);
     }
-    fclose(writer);
-
-    if(fails) (void)remove(write_idf); /* ignore return value */
+	if (!writeToStdout) {
+		fclose(writer);
+		if (fails)
+			(void)remove(write_idf); /* ignore return value */
+	}
 
     return fails;
 }/* imagetopng() */
