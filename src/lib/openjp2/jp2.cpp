@@ -2510,14 +2510,14 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 
 	if (parameters->write_capture_resolution) {
 		jp2->write_capture_resolution = true;
-		for (int i = 0; i < 2; ++i) {
+		for (i = 0; i < 2; ++i) {
 			jp2->capture_resolution[i] = parameters->capture_resolution[i];
 		}
 	}
 
 	if (parameters->write_display_resolution) {
 		jp2->write_display_resolution = true;
-		for (int i = 0; i < 2; ++i) {
+		for (i = 0; i < 2; ++i) {
 			jp2->display_resolution[i] = parameters->display_resolution[i];
 		}
 	}

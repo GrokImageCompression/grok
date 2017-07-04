@@ -1091,8 +1091,7 @@ static bool j2k_read_unk( j2k_t *p_j2k,
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
-static bool j2k_write_mct_record(       j2k_t *p_j2k,
-        mct_data_t * p_mct_record,
+static bool j2k_write_mct_record(   mct_data_t * p_mct_record,
         GrokStream *p_stream,
         event_mgr_t * p_manager );
 
@@ -1117,8 +1116,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
-static bool j2k_write_mcc_record(   j2k_t *p_j2k,
-                                        simple_mcc_decorrelation_data_t * p_mcc_record,
+static bool j2k_write_mcc_record(       simple_mcc_decorrelation_data_t * p_mcc_record,
                                         GrokStream *p_stream,
                                         event_mgr_t * p_manager );
 
@@ -1864,7 +1862,7 @@ static bool j2k_write_soc(     j2k_t *p_j2k,
     assert(p_stream != nullptr);
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
-
+	(void)p_j2k;
 	return p_stream->write_short(J2K_MS_SOC, p_manager);
 }
 
@@ -1940,7 +1938,7 @@ static bool j2k_write_siz(     j2k_t *p_j2k,
 	}
 
 	/* L_SIZ */
-	if (!p_stream->write_short(l_size_len - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_size_len - 2), p_manager)) {
 		return false;
 	}
 
@@ -1990,7 +1988,7 @@ static bool j2k_write_siz(     j2k_t *p_j2k,
 	}
 
 	/* Csiz */
-	if (!p_stream->write_short(l_image->numcomps, p_manager)) {
+	if (!p_stream->write_short((uint16_t)l_image->numcomps, p_manager)) {
 		return false;
 	}
 
@@ -1998,17 +1996,17 @@ static bool j2k_write_siz(     j2k_t *p_j2k,
     for (i = 0; i < l_image->numcomps; ++i) {
         /* TODO here with MCT ? */
 		/* Ssiz_i */
-		if (!p_stream->write_byte(l_img_comp->prec - 1 + (l_img_comp->sgnd << 7), p_manager)) {
+		if (!p_stream->write_byte((uint8_t)(l_img_comp->prec - 1 + (l_img_comp->sgnd << 7)), p_manager)) {
 			return false;
 		}
 
 		/* XRsiz_i */
-		if (!p_stream->write_byte(l_img_comp->dx, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_img_comp->dx, p_manager)) {
 			return false;
 		}
 
 		/* YRsiz_i */
-		if (!p_stream->write_byte(l_img_comp->dy, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_img_comp->dy, p_manager)) {
 			return false;
 		}
         ++l_img_comp;
@@ -2296,7 +2294,7 @@ static bool j2k_write_com(     j2k_t *p_j2k,
 	}
 
 	/* L_COM */
-	if (!p_stream->write_short(l_total_com_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_total_com_size - 2), p_manager)) {
 		return false;
 	}
 
@@ -2374,7 +2372,6 @@ static bool j2k_write_cod(     j2k_t *p_j2k,
     cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
     uint32_t l_code_size;
-    uint8_t * l_current_data = nullptr;
     
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -2390,27 +2387,27 @@ static bool j2k_write_cod(     j2k_t *p_j2k,
 	}
 
 	/* L_COD */
-	if (!p_stream->write_short(l_code_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_code_size - 2), p_manager)) {
 		return false;
 	}
 
 	/* Scod */
-	if (!p_stream->write_byte(l_tcp->csty, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tcp->csty, p_manager)) {
 		return false;
 	}
 
 	/* SGcod (A) */
-	if (!p_stream->write_byte((uint32_t)l_tcp->prg, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tcp->prg, p_manager)) {
 		return false;
 	}
 
 	/* SGcod (B) */
-	if (!p_stream->write_short(l_tcp->numlayers, p_manager)) {
+	if (!p_stream->write_short((uint16_t)l_tcp->numlayers, p_manager)) {
 		return false;
 	}
 
 	/* SGcod (C) */
-	if (!p_stream->write_byte(l_tcp->mct, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tcp->mct, p_manager)) {
 		return false;
 	}
 
@@ -2582,24 +2579,24 @@ static bool j2k_write_coc_in_memory(   j2k_t *p_j2k,
 	}
 
 	/* L_COC */
-	if (!p_stream->write_short(l_coc_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_coc_size - 2), p_manager)) {
 		return false;
 	}
 
 	/* Ccoc */
 	if (l_comp_room == 2) {
-		if (!p_stream->write_short(p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t)p_comp_no, p_manager)) {
 			return false;
 		}
 	}
 	else {
-		if (!p_stream->write_byte(p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)p_comp_no, p_manager)) {
 			return false;
 		}
 	}
 
 	/* Scoc */
-	if (!p_stream->write_byte(l_tcp->tccps[p_comp_no].csty, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tcp->tccps[p_comp_no].csty, p_manager)) {
 		return false;
 	}
     return j2k_write_SPCod_SPCoc(p_j2k,p_j2k->m_current_tile_number,0,p_stream,p_manager);
@@ -2689,9 +2686,7 @@ static bool j2k_write_qcd(     j2k_t *p_j2k,
                              )
 {
     uint32_t l_qcd_size;
-    uint8_t * l_current_data = nullptr;
-
-    
+   
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
@@ -2704,7 +2699,7 @@ static bool j2k_write_qcd(     j2k_t *p_j2k,
 	}
 
 	/* L_QCD */
-	if (!p_stream->write_short(l_qcd_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_qcd_size - 2), p_manager)) {
 		return false;
 	}
 
@@ -2788,23 +2783,23 @@ static bool j2k_write_qcc_in_memory(   j2k_t *p_j2k,
         --l_qcc_size;
 
 		/* L_QCC */
-		if (!p_stream->write_short(l_qcc_size - 2, p_manager)) {
+		if (!p_stream->write_short((uint16_t)(l_qcc_size - 2), p_manager)) {
 			return false;
 		}
 
 		/* Cqcc */
-		if (!p_stream->write_byte(p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)p_comp_no, p_manager)) {
 			return false;
 		}
 
     } else {
 		/* L_QCC */
-		if (!p_stream->write_short(l_qcc_size - 2, p_manager)) {
+		if (!p_stream->write_short((uint16_t)(l_qcc_size - 2), p_manager)) {
 			return false;
 		}
 
 		/* Cqcc */
-		if (!p_stream->write_short(p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t)p_comp_no, p_manager)) {
 			return false;
 		}
     }
@@ -2885,7 +2880,7 @@ static uint8_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
 	else {
 		l_poc_room = 2;
 	}
-	return 4 + (5 + 2 * l_poc_room) * l_nb_poc;
+	return (uint8_t)(4 + (5 + 2 * l_poc_room) * l_nb_poc);
 }
 
 static bool j2k_write_poc(     j2k_t *p_j2k,
@@ -2944,40 +2939,40 @@ static bool j2k_write_poc_in_memory(   j2k_t *p_j2k,
 	l_current_poc = l_tcp->pocs;
 	for (i = 0; i < l_nb_poc; ++i) {
 		/* RSpoc_i */
-		if (!p_stream->write_byte(l_current_poc->resno0, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_current_poc->resno0, p_manager)) {
 			return false;
 		}
 
 		/* CSpoc_i */
-		if (!p_stream->write_byte(l_current_poc->compno0, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_current_poc->compno0, p_manager)) {
 			return false;
 		}
 
 		/* LYEpoc_i */
-		if (!p_stream->write_short(l_current_poc->layno1, p_manager)) {
+		if (!p_stream->write_short((uint16_t)l_current_poc->layno1, p_manager)) {
 			return false;
 		}
 
 		/* REpoc_i */
-		if (!p_stream->write_byte(l_current_poc->resno1, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_current_poc->resno1, p_manager)) {
 			return false;
 		}
 
 		/* CEpoc_i */
 		if (l_poc_room == 2) {
-			if (!p_stream->write_short(l_current_poc->compno1, p_manager)) {
+			if (!p_stream->write_short((uint16_t)l_current_poc->compno1, p_manager)) {
 				return false;
 			}
 
 		}
 		else {
-			if (!p_stream->write_byte(l_current_poc->compno1, p_manager)) {
+			if (!p_stream->write_byte((uint8_t)l_current_poc->compno1, p_manager)) {
 				return false;
 			}
 		}
 
 		/* Ppoc_i */
-		if (!p_stream->write_byte((uint32_t)l_current_poc->prg, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_current_poc->prg, p_manager)) {
 			return false;
 		}
 
@@ -3732,7 +3727,7 @@ static bool j2k_write_tlm(     j2k_t *p_j2k,
 	}
 
 	/* Lpoc */
-	if (!p_stream->write_short(l_tlm_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_tlm_size - 2), p_manager)) {
 		return false;
 	}
 
@@ -3772,7 +3767,7 @@ static bool j2k_write_sot(j2k_t *p_j2k,
 	}
 
 	/* Isot */
-	if (!p_stream->write_short(p_j2k->m_current_tile_number, p_manager)) {
+	if (!p_stream->write_short((uint16_t)p_j2k->m_current_tile_number, p_manager)) {
 		return false;
 	}
 
@@ -3784,12 +3779,12 @@ static bool j2k_write_sot(j2k_t *p_j2k,
 
 
 	/* TPsot */
-	if (!p_stream->write_byte(p_j2k->m_specific_param.m_encoder.m_current_tile_part_number, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)p_j2k->m_specific_param.m_encoder.m_current_tile_part_number, p_manager)) {
 		return false;
 	}
 
 	/* TNsot */
-	if (!p_stream->write_byte(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].m_nb_tile_parts, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].m_nb_tile_parts, p_manager)) {
 		return false;
 	}
 
@@ -4181,18 +4176,18 @@ static bool j2k_write_rgn(j2k_t *p_j2k,
 	}
 
 	/* Lrgn */
-	if (!p_stream->write_short(l_rgn_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_rgn_size - 2), p_manager)) {
 		return false;
 	}
 
 	/* Crgn */
 	if (l_comp_room == 2) {
-		if (!p_stream->write_short(p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t)p_comp_no, p_manager)) {
 			return false;
 		}
 	}
 	else {
-		if (!p_stream->write_byte(p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)p_comp_no, p_manager)) {
 			return false;
 		}
 	}
@@ -4203,7 +4198,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k,
 	}
 
 	/* SPrgn */
-	if (!p_stream->write_byte((uint32_t)l_tccp->roishift, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tccp->roishift, p_manager)) {
 		return false;
 	}
     return true;
@@ -4217,7 +4212,7 @@ static bool j2k_write_eoc(     j2k_t *p_j2k,
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
-
+	(void)p_j2k;
 	if (!p_stream->write_short(J2K_MS_EOC, p_manager)) {
 		return false;
 	}
@@ -4310,14 +4305,12 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
     cp_t * l_cp = nullptr;
     opj_image_t * l_image = nullptr;
     tcp_t * l_tcp = nullptr;
-    opj_image_comp_t * l_img_comp = nullptr;
 
     uint32_t i,j,k;
     uint32_t l_x0,l_y0,l_x1,l_y1;
     double * l_rates = 0;
     double l_sot_remove;
     uint32_t l_bits_empty, l_size_pixel;
-    uint64_t l_tile_size = 0;
     uint32_t l_last_res;
     float (* l_tp_stride_func)(tcp_t *) = nullptr;
 
@@ -4451,7 +4444,7 @@ static bool j2k_write_mct_data_group(  j2k_t *p_j2k,
 
     for (i=0; i<l_tcp->m_nb_mct_records; ++i) {
 
-        if (! j2k_write_mct_record(p_j2k,l_mct_record,p_stream,p_manager)) {
+        if (! j2k_write_mct_record(l_mct_record,p_stream,p_manager)) {
             return false;
         }
 
@@ -4462,7 +4455,7 @@ static bool j2k_write_mct_data_group(  j2k_t *p_j2k,
 
     for     (i=0; i<l_tcp->m_nb_mcc_records; ++i) {
 
-        if (! j2k_write_mcc_record(p_j2k,l_mcc_record,p_stream,p_manager)) {
+        if (! j2k_write_mcc_record(l_mcc_record,p_stream,p_manager)) {
             return false;
         }
 
@@ -4634,16 +4627,12 @@ static bool j2k_read_unk (     j2k_t *p_j2k,
     return true;
 }
 
-static bool j2k_write_mct_record(   j2k_t *p_j2k,
-									mct_data_t * p_mct_record,
+static bool j2k_write_mct_record( 	mct_data_t * p_mct_record,
 									GrokStream *p_stream,
 									event_mgr_t * p_manager )
 {
     uint32_t l_mct_size;
     uint32_t l_tmp;
-
-    
-    assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
@@ -4655,7 +4644,7 @@ static bool j2k_write_mct_record(   j2k_t *p_j2k,
 	}
 
 	/* Lmct */
-	if (!p_stream->write_short(l_mct_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_mct_size - 2), p_manager)) {
 		return false;
 	}
 
@@ -4667,7 +4656,7 @@ static bool j2k_write_mct_record(   j2k_t *p_j2k,
     /* only one marker atm */
     l_tmp = (p_mct_record->m_index & 0xff) | (p_mct_record->m_array_type << 8) | (p_mct_record->m_element_type << 10);
 
-	if (!p_stream->write_short(l_tmp, p_manager)) {
+	if (!p_stream->write_short((uint16_t)l_tmp, p_manager)) {
 		return false;
 	}
 
@@ -4798,8 +4787,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     return true;
 }
 
-static bool j2k_write_mcc_record(      j2k_t *p_j2k,
-        simple_mcc_decorrelation_data_t * p_mcc_record,
+static bool j2k_write_mcc_record(   simple_mcc_decorrelation_data_t * p_mcc_record,
         GrokStream *p_stream,
         event_mgr_t * p_manager )
 {
@@ -4809,8 +4797,6 @@ static bool j2k_write_mcc_record(      j2k_t *p_j2k,
     uint32_t l_mask;
     uint32_t l_tmcc;
 
-    
-    assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
@@ -4830,7 +4816,7 @@ static bool j2k_write_mcc_record(      j2k_t *p_j2k,
 	}
 
 	/* Lmcc */
-	if (!p_stream->write_short(l_mcc_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_mcc_size - 2), p_manager)) {
 		return false;
 	}
 
@@ -4842,7 +4828,7 @@ static bool j2k_write_mcc_record(      j2k_t *p_j2k,
 	}
 
 	/* Imcc -> no need for other values, take the first */
-	if (!p_stream->write_byte(p_mcc_record->m_index, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)p_mcc_record->m_index, p_manager)) {
 		return false;
 	}
 
@@ -4863,26 +4849,26 @@ static bool j2k_write_mcc_record(      j2k_t *p_j2k,
 	}
 
 	/* Nmcci number of input components involved and size for each component offset = 8 bits */
-	if (!p_stream->write_short(p_mcc_record->m_nb_comps | l_mask, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(p_mcc_record->m_nb_comps | l_mask), p_manager)) {
 		return false;
 	}
 
     for (i=0; i<p_mcc_record->m_nb_comps; ++i) {
 		/* Cmccij Component offset*/
 		if (l_nb_bytes_for_comp == 2) {
-			if (!p_stream->write_short(i, p_manager)) {
+			if (!p_stream->write_short((uint16_t)i, p_manager)) {
 				return false;
 			}
 		}
 		else {
-			if (!p_stream->write_byte(i, p_manager)) {
+			if (!p_stream->write_byte((uint8_t)i, p_manager)) {
 				return false;
 			}
 		}
     }
 
 	/* Mmcci number of output components involved and size for each component offset = 8 bits */
-	if (!p_stream->write_short(p_mcc_record->m_nb_comps | l_mask, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(p_mcc_record->m_nb_comps | l_mask), p_manager)) {
 		return false;
 	}
 
@@ -4890,12 +4876,12 @@ static bool j2k_write_mcc_record(      j2k_t *p_j2k,
     for (i=0; i<p_mcc_record->m_nb_comps; ++i) {
 		/* Wmccij Component offset*/
 		if (l_nb_bytes_for_comp == 2) {
-			if (!p_stream->write_short(i, p_manager)) {
+			if (!p_stream->write_short((uint16_t)i, p_manager)) {
 				return false;
 			}
 		}
 		else {
-			if (!p_stream->write_byte(i, p_manager)) {
+			if (!p_stream->write_byte((uint8_t)i, p_manager)) {
 				return false;
 			}
 		}
@@ -5167,19 +5153,19 @@ static bool j2k_write_mco(     j2k_t *p_j2k,
 	}
 
 	/* Lmco */
-	if (!p_stream->write_short(l_mco_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_mco_size - 2), p_manager)) {
 		return false;
 	}
 
 	/* Nmco : only one transform stage*/
-	if (!p_stream->write_byte(l_tcp->m_nb_mcc_records, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tcp->m_nb_mcc_records, p_manager)) {
 		return false;
 	}
 
     l_mcc_record = l_tcp->m_mcc_records;
     for (i=0; i<l_tcp->m_nb_mcc_records; ++i) {
 		/* Imco -> use the mcc indicated by 1*/
-		if (!p_stream->write_byte(l_mcc_record->m_index, p_manager)) {
+		if (!p_stream->write_byte((uint8_t)l_mcc_record->m_index, p_manager)) {
 			return false;
 		}
         ++l_mcc_record;
@@ -5362,12 +5348,12 @@ static bool j2k_write_cbd( j2k_t *p_j2k,
 	}
 
 	/* L_CBD */
-	if (!p_stream->write_short(l_cbd_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_cbd_size - 2), p_manager)) {
 		return false;
 	}
 
 	/* Ncbd */
-	if (!p_stream->write_short(l_image->numcomps, p_manager)) {
+	if (!p_stream->write_short((uint16_t)l_image->numcomps, p_manager)) {
 		return false;
 	}
 
@@ -5375,7 +5361,7 @@ static bool j2k_write_cbd( j2k_t *p_j2k,
 
     for (i=0; i<l_image->numcomps; ++i) {
 		/* Component bit depth */
-		if (!p_stream->write_byte((l_comp->sgnd << 7) | (l_comp->prec - 1), p_manager)) {
+		if (!p_stream->write_byte((uint8_t)((l_comp->sgnd << 7) | (l_comp->prec - 1)), p_manager)) {
 			return false;
 		}
         ++l_comp;
@@ -8242,34 +8228,34 @@ static bool j2k_write_SPCod_SPCoc(     j2k_t *p_j2k,
 
 
 	/* SPcoc (D) */
-	if (!p_stream->write_byte(l_tccp->numresolutions - 1, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)(l_tccp->numresolutions - 1), p_manager)) {
 		return false;
 	}
 
 	/* SPcoc (E) */
-	if (!p_stream->write_byte(l_tccp->cblkw - 2, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)(l_tccp->cblkw - 2), p_manager)) {
 		return false;
 	}
 
 	/* SPcoc (F) */
-	if (!p_stream->write_byte(l_tccp->cblkh - 2, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)(l_tccp->cblkh - 2), p_manager)) {
 		return false;
 	}
 
 	/* SPcoc (G) */
-	if (!p_stream->write_byte(l_tccp->cblksty, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tccp->cblksty, p_manager)) {
 		return false;
 	}
 
 	/* SPcoc (H) */
-	if (!p_stream->write_byte(l_tccp->qmfbid, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tccp->qmfbid, p_manager)) {
 		return false;
 	}
 
     if (l_tccp->csty & J2K_CCP_CSTY_PRT) {
         for (i = 0; i < l_tccp->numresolutions; ++i) {
 			/* SPcoc (I_i) */
-			if (!p_stream->write_byte(l_tccp->prcw[i] + (l_tccp->prch[i] << 4), p_manager)) {
+			if (!p_stream->write_byte((uint8_t)(l_tccp->prcw[i] + (l_tccp->prch[i] << 4)), p_manager)) {
 				return false;
 			}
         }
@@ -8522,21 +8508,21 @@ static bool j2k_write_SQcd_SQcc(       j2k_t *p_j2k,
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT)  {
 
 		/* Sqcx */
-		if (!p_stream->write_byte(l_tccp->qntsty + (l_tccp->numgbits << 5), p_manager)) {
+		if (!p_stream->write_byte((uint8_t)(l_tccp->qntsty + (l_tccp->numgbits << 5)), p_manager)) {
 			return false;
 		}
 
         for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
             l_expn = l_tccp->stepsizes[l_band_no].expn;
 			/* SPqcx_i */
-			if (!p_stream->write_byte(l_expn << 3, p_manager)) {
+			if (!p_stream->write_byte((uint8_t)(l_expn << 3), p_manager)) {
 				return false;
 			}
         }
     } else {
 
 		/* Sqcx */
-		if (!p_stream->write_byte(l_tccp->qntsty + (l_tccp->numgbits << 5), p_manager)) {
+		if (!p_stream->write_byte((uint8_t)(l_tccp->qntsty + (l_tccp->numgbits << 5)), p_manager)) {
 			return false;
 		}
 
@@ -8545,7 +8531,7 @@ static bool j2k_write_SQcd_SQcc(       j2k_t *p_j2k,
             l_mant = l_tccp->stepsizes[l_band_no].mant;
 
 			/* SPqcx_i */
-			if (!p_stream->write_short((l_expn << 11) + l_mant, p_manager)) {
+			if (!p_stream->write_short((uint16_t)((l_expn << 11) + l_mant), p_manager)) {
 				return false;
 			}
         }
@@ -9922,13 +9908,11 @@ static bool j2k_post_write_tile (   j2k_t * p_j2k,
 										event_mgr_t * p_manager )
 {
     uint64_t l_nb_bytes_written;
-    uint8_t * l_current_data = nullptr;
     uint64_t l_tile_size = 0;
     uint64_t l_available_data;
 
 	auto l_cp = &(p_j2k->m_cp);
 	auto l_image = p_j2k->m_private_image;
-	auto l_tcp = l_cp->tcps;
 	auto l_img_comp = l_image->comps;
 	l_tile_size = 0;
 
@@ -10092,7 +10076,6 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
 {
     uint64_t l_nb_bytes_written = 0;
     uint64_t l_current_nb_bytes_written;
-    uint8_t * l_begin_data = nullptr;
 
     tcd_t * l_tcd = nullptr;
     cp_t * l_cp = nullptr;

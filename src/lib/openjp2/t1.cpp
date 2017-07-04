@@ -1459,7 +1459,7 @@ double t1_encode_cblk(t1_t *t1,
 		}
 
 		pass->distortiondec = cumwmsedec;
-		pass->rate = mqc_numbytes(mqc) + correction;
+		pass->rate = (uint16_t)(mqc_numbytes(mqc) + correction);
 
 		//note: passtype and bpno have already been updated to next pass,
 		// while pass pointer still points to current pass
@@ -1509,8 +1509,8 @@ double t1_encode_cblk(t1_t *t1,
 					}
 				}
 			}
-			if (pass->rate > (uint32_t)maxBytes)
-				pass->rate = (uint32_t)maxBytes;
+			if (pass->rate > (uint16_t)maxBytes)
+				pass->rate = (uint16_t)maxBytes;
 			// prevent generation of FF as last data byte of a pass 
 			if (cblk->data[pass->rate - 1] == 0xFF) {
 				pass->rate--;

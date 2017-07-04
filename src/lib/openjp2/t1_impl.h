@@ -38,9 +38,9 @@ public:
 	void postDecode(decodeBlockInfo* block);
 
 private:
-	bool doOpt;
 	t1_t* t1;
 	t1_opt_t* t1_opt;
+	bool doOpt;
 
 };
 
