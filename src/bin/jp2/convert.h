@@ -79,6 +79,8 @@
 
 extern "C" {
 
+	void grok_set_binary_mode(FILE* file);
+
 	/* Component precision clipping */
 	void clip_component(opj_image_comp_t* component, uint32_t precision);
 	/* Component precision scaling */
@@ -132,6 +134,7 @@ extern "C" {
 
 	// JPEG conversion
 	extern opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters);
+	extern int imagetojpeg(opj_image_t* image, const char *filename, int quality, bool verbose);
 }
 
 
