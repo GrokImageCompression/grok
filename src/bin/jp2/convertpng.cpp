@@ -60,10 +60,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
 
 #include <zlib.h>
 #include <png.h>
@@ -125,9 +121,7 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	int srgbIntent = -1;
 
 	if (readFromStdin) {
-#ifdef _WIN32
-		setmode(fileno(stdin), O_BINARY);
-#endif
+		grok_set_binary_mode(stdin);
 		reader = stdin;
 	}
 	else {
@@ -441,9 +435,7 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         return fails;
     }
 	if (writeToStdout) {
-#ifdef _WIN32
-		setmode(fileno(stdout), O_BINARY);
-#endif
+		grok_set_binary_mode(stdout);
 		writer = stdout;
 	}
 	else {

@@ -97,459 +97,6 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
-
-#if 0
-
-#define GROK_STREAM_STATUS_OUTPUT  0x1U
-#define GROK_STREAM_STATUS_INPUT   0x2U
-#define GROK_STREAM_STATUS_END     0x4U
-#define GROK_STREAM_STATUS_ERROR   0x8U
-
-
-struct GrokStream {
-
-	GrokStream(FILE* fd, size_t p_buffer_size, bool l_is_input);
-	~GrokStream();
-
-
-	uint32_t m_status;
-
-	size_t read(uint8_t * p_buffer, size_t p_size);
-	size_t write_bytes(const uint8_t * p_buffer,	size_t p_size);
-	bool flush();
-	bool skip(int64_t p_size);
-	int64_t tell(void);
-	bool seek(size_t p_size);
-
-private:
-
-	bool write_skip(int64_t p_size);
-	bool read_skip(int64_t p_size);
-	bool read_seek(size_t p_size);
-	bool write_seek(size_t p_size);
-	void write_increment(size_t p_size);
-
-	FILE*	m_user_data;
-
-	// number of bytes read/written from the beginning of the stream
-	int64_t			m_stream_offset;
-
-	// data stored into the stream if read from, or slated for write.
-	uint8_t *		m_buffer;
-
-	// size of m_buffer.
-	size_t			m_buffer_size;
-
-	// pointer to  current position in m_buffer.
-	uint8_t *		m_buffer_current_ptr;
-
-	// number of bytes read in, or slated for write
-	size_t			m_bytes_in_buffer;
-
-};
-
-
-
-GrokStream::GrokStream(FILE* fd, size_t p_buffer_size, bool l_is_input) : m_user_data(fd),
-																		m_buffer(nullptr),
-																		m_buffer_current_ptr(nullptr),
-																		m_bytes_in_buffer(0),
-																		m_stream_offset(0),
-																		m_buffer_size(0),
-																		m_status(0)
-{
-
-	m_buffer_size = p_buffer_size;
-	m_buffer = new uint8_t[p_buffer_size];
-	m_buffer_current_ptr = m_buffer;
-
-
-	if (l_is_input) {
-		m_status |= GROK_STREAM_STATUS_INPUT;
-	}
-	else {
-		m_status |= GROK_STREAM_STATUS_OUTPUT;
-	}
-}
-GrokStream::~GrokStream() {
-	if (m_buffer) {
-		delete[] m_buffer;
-	}
-}
-
-size_t GrokStream::read(uint8_t * p_buffer,
-	size_t p_size)
-{
-	size_t l_read_nb_bytes = 0;
-	if (m_bytes_in_buffer >= p_size) {
-		memcpy(p_buffer, m_buffer_current_ptr, p_size);
-		m_buffer_current_ptr += p_size;
-		m_bytes_in_buffer -= p_size;
-		l_read_nb_bytes += p_size;
-		m_stream_offset += (int64_t)p_size;
-		return l_read_nb_bytes;
-	}
-
-	/* if we get here, the remaining data in buffer is not sufficient */
-	if (m_status & GROK_STREAM_STATUS_END) {
-		l_read_nb_bytes += m_bytes_in_buffer;
-		memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
-		m_stream_offset += (int64_t)m_bytes_in_buffer;
-		m_buffer_current_ptr += m_bytes_in_buffer;
-		m_bytes_in_buffer = 0;
-		return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
-	}
-
-	/* the flag is not set, we copy data and then do an actual read on the stream */
-	if (m_bytes_in_buffer) {
-		l_read_nb_bytes += m_bytes_in_buffer;
-		memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
-		p_buffer += m_bytes_in_buffer;
-		p_size -= m_bytes_in_buffer;
-		m_stream_offset += (int64_t)m_bytes_in_buffer;
-		m_buffer_current_ptr = m_buffer;
-		m_bytes_in_buffer = 0;
-	}
-	else {
-		/* case where we are already at the end of the buffer
-		so reset the m_buffer_current_ptr to point to the start of the
-		stored buffer to get ready to read from disk*/
-		m_buffer_current_ptr = m_buffer;
-	}
-
-	for (;;) {
-		/* we should read less than a chunk -> read a chunk */
-		if (p_size < m_buffer_size) {
-			/* we should do an actual read on the media */
-			m_bytes_in_buffer = fread(m_buffer, 1,m_buffer_size, m_user_data);
-			if (m_bytes_in_buffer == (size_t)-1) {
-				/* end of stream */
-				//event_msg(p_event_mgr, EVT_INFO, "GrokStream reached its end !\n");
-
-				m_bytes_in_buffer = 0;
-				m_status |= GROK_STREAM_STATUS_END;
-				/* end of stream */
-				return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
-			}
-			else if (m_bytes_in_buffer < p_size) {
-				/* not enough data */
-				l_read_nb_bytes += m_bytes_in_buffer;
-				memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
-				p_buffer += m_bytes_in_buffer;
-				p_size -= m_bytes_in_buffer;
-				m_stream_offset += (int64_t)m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
-			}
-			else {
-				l_read_nb_bytes += p_size;
-				memcpy(p_buffer, m_buffer_current_ptr, p_size);
-				m_buffer_current_ptr += p_size;
-				m_bytes_in_buffer -= p_size;
-				m_stream_offset += (int64_t)p_size;
-				return l_read_nb_bytes;
-			}
-		}
-		else {
-			/* direct read on the dest buffer */
-			m_bytes_in_buffer = fread(p_buffer,1, p_size, m_user_data);
-
-			if (m_bytes_in_buffer == (size_t)-1) {
-				/*  end of stream */
-				//event_msg(p_event_mgr, EVT_INFO, "GrokStream reached its end !\n");
-
-				m_bytes_in_buffer = 0;
-				m_status |= GROK_STREAM_STATUS_END;
-				/* end of stream */
-				return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
-			}
-			else if (m_bytes_in_buffer < p_size) {
-				/* not enough data */
-				l_read_nb_bytes += m_bytes_in_buffer;
-				p_buffer += m_bytes_in_buffer;
-				p_size -= m_bytes_in_buffer;
-				m_stream_offset += (int64_t)m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
-			}
-			else {
-				/* we have read the exact size */
-				l_read_nb_bytes += m_bytes_in_buffer;
-				m_stream_offset += (int64_t)m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
-				return l_read_nb_bytes;
-			}
-		}
-	}
-}
-
-
-size_t GrokStream::write_bytes(const uint8_t * p_buffer,
-	size_t p_size)
-{
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
-		return (size_t)-1;
-	}
-	size_t l_write_nb_bytes = 0;
-	for (;;) {
-		size_t l_remaining_bytes = m_buffer_size - m_bytes_in_buffer;
-
-		/* we have more memory than required */
-		if (l_remaining_bytes >= p_size) {
-			l_write_nb_bytes += p_size;
-			memcpy(m_buffer_current_ptr, p_buffer, p_size);
-			write_increment(p_size);
-			return l_write_nb_bytes;
-		}
-
-		/* we copy part of data (if possible) and flush the stream */
-		if (l_remaining_bytes) {
-			l_write_nb_bytes += l_remaining_bytes;
-			memcpy(m_buffer_current_ptr, p_buffer, l_remaining_bytes);
-			m_buffer_current_ptr = m_buffer;
-			m_bytes_in_buffer += l_remaining_bytes;
-			m_stream_offset += (int64_t)l_remaining_bytes;
-			p_buffer += l_remaining_bytes;
-			p_size -= l_remaining_bytes;
-		}
-		if (!flush()) {
-			return (size_t)-1;
-		}
-	}
-}
-
-void GrokStream::write_increment(size_t p_size) {
-	m_buffer_current_ptr += p_size;
-	m_bytes_in_buffer += p_size;
-	m_stream_offset += (int64_t)p_size;
-}
-
-
-// force write of any remaining bytes from double buffer
-bool GrokStream::flush()
-{
-
-	/* the number of bytes written on the media. */
-	size_t l_current_write_nb_bytes = 0;
-	m_buffer_current_ptr = m_buffer;
-	while (m_bytes_in_buffer) {
-		/* we should do an actual write on the media */
-		l_current_write_nb_bytes = fwrite(m_buffer_current_ptr,1,
-										m_bytes_in_buffer,
-										m_user_data);
-
-		if (l_current_write_nb_bytes == (size_t)-1) {
-			m_status |= GROK_STREAM_STATUS_ERROR;
-			//if (p_event_mgr)
-			//	event_msg(p_event_mgr, EVT_INFO, "Error on writing stream!\n");
-			return false;
-		}
-		m_buffer_current_ptr += l_current_write_nb_bytes;
-		m_bytes_in_buffer -= l_current_write_nb_bytes;
-	}
-	m_buffer_current_ptr = m_buffer;
-	return true;
-}
-
-bool GrokStream::read_skip(int64_t p_size)
-{
-	assert(p_size >= 0);
-	if (m_bytes_in_buffer >= (size_t)p_size) {
-		m_buffer_current_ptr += p_size;
-		/* it is safe to cast p_size to size_t since it is <= m_bytes_in_buffer
-		which is of type size_t */
-		m_bytes_in_buffer -= (size_t)p_size;
-		m_stream_offset += p_size;
-		return true;
-	}
-
-	/* if we get here, then the remaining data in buffer is not sufficient */
-	if (m_status & GROK_STREAM_STATUS_END) {
-		m_buffer_current_ptr += m_bytes_in_buffer;
-		m_bytes_in_buffer = 0;
-		m_stream_offset += (int64_t)m_bytes_in_buffer;
-		return m_bytes_in_buffer ? true : false;
-	}
-
-	int64_t l_skip_nb_bytes = 0;
-	/* the flag is not set, we copy data and then do an actual skip on the stream */
-	if (m_bytes_in_buffer) {
-		l_skip_nb_bytes += (int64_t)m_bytes_in_buffer;
-		p_size -= (int64_t)m_bytes_in_buffer;
-		m_buffer_current_ptr = m_buffer;
-		m_bytes_in_buffer = 0;
-	}
-
-	/* we should do an actual skip on the media */
-	if (fseek(m_user_data, p_size, SEEK_CUR)) {
-		//event_msg(p_event_mgr, EVT_INFO, "stream skip reached end/beginning!\n");
-		m_status |= GROK_STREAM_STATUS_END;
-		m_stream_offset += l_skip_nb_bytes;
-		return l_skip_nb_bytes ? true : false;
-	}
-	l_skip_nb_bytes += p_size;
-	m_stream_offset += l_skip_nb_bytes;
-	return l_skip_nb_bytes ? true : false;
-}
-
-bool GrokStream::write_skip(int64_t p_size)
-{
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
-		return false;
-	}
-
-	/* we should flush data */
-	if (!flush()) {
-		m_status |= GROK_STREAM_STATUS_ERROR;
-		m_bytes_in_buffer = 0;
-		return false;
-	}
-	/* then skip */
-	/* we should do an actual skip on the media */
-	if (fseek(m_user_data, p_size, SEEK_CUR)) {
-		//event_msg(p_event_mgr, EVT_INFO, "GrokStream error!\n");
-		m_status |= GROK_STREAM_STATUS_ERROR;
-		return false;
-	}
-	m_stream_offset += p_size;
-	return true;
-}
-
-int64_t GrokStream::tell() {
-	return m_stream_offset;
-}
-
-
-bool GrokStream::skip(int64_t p_size)
-{
-	assert(p_size >= 0);
-	if (m_status & GROK_STREAM_STATUS_INPUT)
-		return read_skip(p_size);
-	else {
-		return write_skip(p_size);
-	}
-}
-
-bool GrokStream::read_seek(size_t p_size)
-{
-	m_buffer_current_ptr = m_buffer;
-	m_bytes_in_buffer = 0;
-
-	if (fseek(m_user_data, p_size, SEEK_SET))	{
-		m_status |= GROK_STREAM_STATUS_END;
-		return false;
-	}
-	else {
-		/* reset stream status */
-		m_status &= (~GROK_STREAM_STATUS_END);
-		m_stream_offset = p_size;
-
-	}
-
-	return true;
-}
-
-//absolute seek in stream
-bool GrokStream::write_seek(size_t p_size)
-{
-	if (!flush()) {
-		m_status |= GROK_STREAM_STATUS_ERROR;
-		return false;
-	}
-
-	m_buffer_current_ptr = m_buffer;
-	m_bytes_in_buffer = 0;
-
-	if (fseek(m_user_data, p_size, SEEK_SET))	{
-		m_status |= GROK_STREAM_STATUS_ERROR;
-		return false;
-	}
-	else {
-		m_stream_offset = p_size;
-	}
-	return true;
-}
-
-bool GrokStream::seek(size_t p_size)
-{
-	if (m_status & GROK_STREAM_STATUS_INPUT)
-		return read_seek(p_size);
-	else {
-		return write_seek(p_size);
-	}
-}
-
-
-static tsize_t StdioTiffReadProc(thandle_t handle, tdata_t buf, tsize_t size)
-{
-	GrokStream *stream = (GrokStream *)handle;
-	if (!stream)
-		return 0;
-	return stream->read((uint8_t*)buf, size);
-}
-
-static tsize_t StdioTiffWriteProc(thandle_t handle, tdata_t buf, tsize_t size)
-{
-	GrokStream *stream = (GrokStream *)handle;
-	if (!stream)
-		return 0;
-	return stream->write_bytes((uint8_t*)buf, size);
-}
-/*===========================================================================*/
-
-static toff_t StdioTiffSeekProc(thandle_t handle, toff_t off, int whence)
-{
-	GrokStream *stream = (GrokStream *)handle;
-	switch (whence) {
-	case SEEK_SET: {
-		return (stream->seek(off) ? off : 0);
-		break;
-	}
-	case SEEK_CUR: {
-		return (stream->skip(off) ? off : 0);
-		break;
-	}
-	case SEEK_END: {
-		stream->flush();
-		return off;
-		break;
-	}
-	}
-	return 1;
-}
-/*===========================================================================*/
-
-static int StdioTiffCloseProc(thandle_t handle)
-{
-	GrokStream *stream = (GrokStream *)handle;
-	if (!stream)
-		return 1;
-	if (!stream->flush())
-		return 1;
-	return 0;
-}
-/*===========================================================================*/
-
-
-static toff_t StdioTiffSizeProc(thandle_t handle)
-{
-	return 1000000000;
-}
-
-static int StdioTiffMapProc(thandle_t handle, tdata_t* base, toff_t* psize)
-{
-	return (1);
-}
-
-
-static void StdioTiffUnmapProc(thandle_t handle, tdata_t base, toff_t size)
-{
-	return;
-}
-
-#endif
-
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -1063,16 +610,15 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
     TIFF *tif=nullptr;
     tdata_t buf=nullptr;
     tsize_t strip_size, rowStride;
-    int32_t* buffer32s = NULL;
     int32_t const* planes[4];
-    convert_32s_PXCX cvtPxToCx = NULL;
+	int32_t* buffer32s = NULL;
+	convert_32s_PXCX cvtPxToCx = NULL;
     convert_32sXXx_C1R cvt32sToTif = NULL;
 	bool success = true;
 	int32_t firstAlpha = -1;
-
+	size_t numAlphaChannels = 0;
     planes[0] = image->comps[0].data;
     uint32_t numcomps = image->numcomps;
-	size_t numAlphaChannels = 0;;
     if (image->color_space == OPJ_CLRSPC_CMYK) {
         if (numcomps < 4U) {
             fprintf(stderr,"imagetotif: CMYK images shall be composed of at least 4 planes.\n");
@@ -1150,24 +696,18 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		success = false;
 		goto cleanup;
 	}
-	tif = TIFFOpen(outfile, "wb");
-    if (!tif) {
-        fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
-		success = false;
-		goto cleanup;
-    }
-    for (i = 0U; i < numcomps; ++i) {
-        clip_component(&(image->comps[i]), image->comps[0].prec);
-    }
-    cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
-    switch (tif_bps) {
-    case 1:
-    case 2:
-    case 4:
-    case 6:
-    case 8:
-        cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
-        break;
+	for (i = 0U; i < numcomps; ++i) {
+		clip_component(&(image->comps[i]), image->comps[0].prec);
+	}
+	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
+	switch (tif_bps) {
+	case 1:
+	case 2:
+	case 4:
+	case 6:
+	case 8:
+		cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
+		break;
 	case 3:
 		cvt32sToTif = tif_32sto3u;
 		break;
@@ -1180,32 +720,58 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 	case 9:
 		cvt32sToTif = tif_32sto9u;
 		break;
-    case 10:
-        cvt32sToTif = tif_32sto10u;
-        break;
+	case 10:
+		cvt32sToTif = tif_32sto10u;
+		break;
 	case 11:
 		cvt32sToTif = tif_32sto11u;
 		break;
-    case 12:
-        cvt32sToTif = tif_32sto12u;
-        break;
+	case 12:
+		cvt32sToTif = tif_32sto12u;
+		break;
 	case 13:
 		cvt32sToTif = tif_32sto13u;
 		break;
-    case 14:
-        cvt32sToTif = tif_32sto14u;
-        break;
+	case 14:
+		cvt32sToTif = tif_32sto14u;
+		break;
 	case 15:
 		cvt32sToTif = tif_32sto15u;
 		break;
-    case 16:
-        cvt32sToTif = (convert_32sXXx_C1R)tif_32sto16u;
-        break;
-    default:
-        /* never here */
-        break;
-    }
+	case 16:
+		cvt32sToTif = (convert_32sXXx_C1R)tif_32sto16u;
+		break;
+	default:
+		/* never here */
+		break;
+	}
+	// Alpha channels
+	for (i = 0U; i < numcomps; ++i) {
+		if (image->comps[i].alpha) {
+			if (firstAlpha == -1)
+				firstAlpha = 0;
+			numAlphaChannels++;
+		}
+	}
+	// TIFF assumes that alpha channels occur as last channels in image.
+	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
+		if (verbose)
+			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
+		numAlphaChannels = 0;
+	}
+	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
+	if (buffer32s == NULL) {
+		success = false;
+		goto cleanup;
+	}
 
+
+	tif = TIFFOpen(outfile, "wb");
+    if (!tif) {
+        fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
+		success = false;
+		goto cleanup;
+    }
 
     TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
     TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -1261,20 +827,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		}
 	}
 
-	// Alpha channels
-	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].alpha) {
-			if (firstAlpha == -1)
-				firstAlpha = 0;
-			numAlphaChannels++;
-		}
-	}
-	// TIFF assumes that alpha channels occur as last channels in image.
-	if (numAlphaChannels && (firstAlpha+numAlphaChannels >= numcomps)) {
-		if (verbose)
-			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
-		numAlphaChannels = 0;
-	}
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
 		auto alphaCount = 0;
@@ -1284,8 +836,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
-	
-
 
     strip_size = TIFFStripSize(tif);
     rowStride = (width * numcomps * tif_bps + 7U) / 8U;
@@ -1296,11 +846,6 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
     }
     buf = _TIFFmalloc(strip_size);
     if (buf == NULL) {
-		success = false;
-		goto cleanup;
-    }
-    buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
-    if (buffer32s == NULL) {
 		success = false;
 		goto cleanup;
     }

@@ -178,7 +178,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 
 			if (m_bytes_in_buffer == (size_t)-1) {
 				/* end of stream */
-				event_msg(p_event_mgr, EVT_INFO, "GrokStream reached its end !\n");
+				event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
 
 				m_bytes_in_buffer = 0;
 				m_status |= GROK_STREAM_STATUS_END;
@@ -210,7 +210,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 
 			if (m_bytes_in_buffer == (size_t)-1) {
 				/*  end of stream */
-				event_msg(p_event_mgr, EVT_INFO, "GrokStream reached its end !\n");
+				event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
 
 				m_bytes_in_buffer = 0;
 				m_status |= GROK_STREAM_STATUS_END;
@@ -246,7 +246,7 @@ size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 
 	if (l_read_nb_bytes == (size_t)-1) {
 		/*  end of stream */
-		event_msg(p_event_mgr, EVT_INFO, "GrokStream reached its end !\n");
+		event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
 		m_status |= GROK_STREAM_STATUS_END;
 		return (size_t)-1;
 	}

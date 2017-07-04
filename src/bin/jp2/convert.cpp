@@ -72,6 +72,14 @@ extern "C" {
 
 }
 
+void grok_set_binary_mode(FILE* file) {
+#ifdef _WIN32
+	_setmode(_fileno(stdin), _O_BINARY);
+#else
+	(void)file;
+#endif
+}
+
 /* Component precision scaling */
 void clip_component(opj_image_comp_t* component, uint32_t precision)
 {
@@ -2018,9 +2026,7 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     }
 
 	if (readFromStdin) {
-#ifdef _WIN32
-		setmode(fileno(stdin), O_BINARY);
-#endif
+		grok_set_binary_mode(stdin);
 		f = stdin;
 	}
 	else {
@@ -2182,9 +2188,7 @@ static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_
 	}
 
 	if (writeToStdout) {
-#ifdef _WIN32
-		setmode(fileno(stdout), O_BINARY);
-#endif
+		grok_set_binary_mode(stdout);
 		rawFile = stdout;
 	} else {
 		rawFile = fopen(outfile, "wb");

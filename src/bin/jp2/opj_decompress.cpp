@@ -404,8 +404,8 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 int get_file_format(const char *filename)
 {
     unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT,RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT,J2K_CFMT, J2K_CFMT };
+    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
+    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, JPG_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT,J2K_CFMT, J2K_CFMT };
     const char * ext = strrchr(filename, '.');
     if (ext == NULL)
         return -1;
@@ -686,6 +686,9 @@ int parse_cmdline_decoder(int argc,
 			case BMP_DFMT:
 				img_fol->out_format = "bmp";
 				break;
+			case JPG_DFMT:
+				img_fol->out_format = "jpg";
+				break;
 			case TIF_DFMT:
 				img_fol->out_format = "tif";
 				break;
@@ -702,7 +705,7 @@ int parse_cmdline_decoder(int argc,
 				img_fol->out_format = "png";
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outformat);
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw or *.tga]!!\n", outformat);
 				return 1;
 			}
 		}
@@ -713,23 +716,17 @@ int parse_cmdline_decoder(int argc,
 			parameters->cod_format = get_file_format(outfile);
 			switch (parameters->cod_format) {
 			case PGX_DFMT:
-				break;
 			case PXM_DFMT:
-				break;
 			case BMP_DFMT:
-				break;
 			case TIF_DFMT:
-				break;
 			case RAW_DFMT:
-				break;
 			case RAWL_DFMT:
-				break;
 			case TGA_DFMT:
-				break;
 			case PNG_DFMT:
+			case JPG_DFMT:
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.raw or *.tga]!!\n", outfile);
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif,*jpg, *jpeg, *.raw or *.tga]!!\n", outfile);
 				return 1;
 			}
 			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
@@ -1871,6 +1868,20 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
 			break;
+#ifdef GROK_HAVE_LIBJPEG 
+		case JPG_DFMT:			/* JPEG */
+			if (imagetojpeg(image, parameters->outfile, parameters->compressionLevel,parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
+				failed = 1;
+			}
+			else {
+				if (parameters->verbose)
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+			}
+			break;
+
+#endif
+
 #ifdef GROK_HAVE_LIBPNG
 		case PNG_DFMT:			/* PNG */
 			if (imagetopng(image, parameters->outfile, parameters->compressionLevel)) {
