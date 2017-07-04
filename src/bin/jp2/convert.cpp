@@ -74,7 +74,7 @@ extern "C" {
 
 void grok_set_binary_mode(FILE* file) {
 #ifdef _WIN32
-	_setmode(_fileno(stdin), _O_BINARY);
+	_setmode(_fileno(file), _O_BINARY);
 #else
 	(void)file;
 #endif
