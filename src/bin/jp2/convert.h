@@ -102,7 +102,7 @@ extern "C" {
 
 	/* BMP conversion */
 	opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters);
-	int imagetobmp(opj_image_t *image, const char *outfile);
+	int imagetobmp(opj_image_t *image, const char *outfile, bool verbose);
 
 	/* TIFF conversion*/
 	opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters);

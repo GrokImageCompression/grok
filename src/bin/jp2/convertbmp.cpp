@@ -791,7 +791,7 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
     return image;
 }
 
-int imagetobmp(opj_image_t * image, const char *outfile)
+int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 {
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
     int w, h;
@@ -869,17 +869,20 @@ int imagetobmp(opj_image_t * image, const char *outfile)
 
         if (image->comps[0].prec > 8) {
             adjustR = (int)image->comps[0].prec - 8;
-            printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
+			if (verbose)
+				printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
         } else
             adjustR = 0;
         if (image->comps[1].prec > 8) {
             adjustG = (int)image->comps[1].prec - 8;
-            printf("BMP CONVERSION: Truncating component 1 from %d bits to 8 bits\n", image->comps[1].prec);
+			if (verbose)
+				printf("BMP CONVERSION: Truncating component 1 from %d bits to 8 bits\n", image->comps[1].prec);
         } else
             adjustG = 0;
         if (image->comps[2].prec > 8) {
             adjustB = (int)image->comps[2].prec - 8;
-            printf("BMP CONVERSION: Truncating component 2 from %d bits to 8 bits\n", image->comps[2].prec);
+			if (verbose)
+				printf("BMP CONVERSION: Truncating component 2 from %d bits to 8 bits\n", image->comps[2].prec);
         } else
             adjustB = 0;
 
@@ -961,7 +964,8 @@ int imagetobmp(opj_image_t * image, const char *outfile)
 
         if (image->comps[0].prec > 8) {
             adjustR = (int)image->comps[0].prec - 8;
-            printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
+			if (verbose)
+				printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
         } else
             adjustR = 0;
 
