@@ -615,11 +615,12 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 
 opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
 {
+	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
     opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
     uint8_t lut_R[256], lut_G[256], lut_B[256];
     uint8_t const* pLUT[3];
     opj_image_t * image = NULL;
-    FILE *IN;
+    FILE *IN = nullptr;
     OPJ_BITMAPFILEHEADER File_h;
     OPJ_BITMAPINFOHEADER Info_h;
     uint32_t i, palette_len, numcmpts = 1U;
@@ -631,11 +632,19 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
     pLUT[1] = lut_G;
     pLUT[2] = lut_B;
 
-    IN = fopen(filename, "rb");
-    if (!IN) {
-        fprintf(stderr, "Failed to open %s for reading !!\n", filename);
-        return NULL;
-    }
+	if (readFromStdin) {
+#ifdef _WIN32
+		setmode(fileno(stdin), O_BINARY);
+#endif
+		IN = stdin;
+	}
+	else {
+		IN = fopen(filename, "rb");
+		if (!IN) {
+			fprintf(stderr, "Failed to open %s for reading !!\n", filename);
+			return NULL;
+		}
+	}
 
     if (!bmp_read_file_header(IN, &File_h)) {
         fclose(IN);

@@ -103,6 +103,7 @@ static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length
 
 opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 {
+	bool readFromStdin = ((read_idf == nullptr) || (read_idf[0] == 0));
     png_structp  png = nullptr;
     png_infop    info = nullptr;
     int bit_depth, interlace_type,compression_type, filter_type;
@@ -123,10 +124,18 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	OPJ_COLOR_SPACE colorSpace = OPJ_CLRSPC_UNKNOWN;
 	int srgbIntent = -1;
 
-    if((reader = fopen(read_idf, "rb")) == NULL) {
-        fprintf(stderr,"pngtoimage: can not open %s\n",read_idf);
-        return NULL;
-    }
+	if (readFromStdin) {
+#ifdef _WIN32
+		setmode(fileno(stdin), O_BINARY);
+#endif
+		reader = stdin;
+	}
+	else {
+		if ((reader = fopen(read_idf, "rb")) == NULL) {
+			fprintf(stderr, "pngtoimage: can not open %s\n", read_idf);
+			return NULL;
+		}
+	}
 
     if(fread(sigbuf, 1, MAGIC_SIZE, reader) != MAGIC_SIZE
             || memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {

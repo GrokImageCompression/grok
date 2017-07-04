@@ -22,6 +22,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 
 extern "C" {
@@ -126,6 +130,7 @@ struct jpegToImageInfo {
 
 opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 {
+	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
 	jpegToImageInfo imageInfo;
 
 	int32_t* planes[3];
@@ -156,9 +161,17 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 								  * requires it in order to read binary files.
 								  */
 
-	if ((infile = fopen(filename, "rb")) == NULL) {
-		fprintf(stderr, "can't open %s\n", filename);
-		return 0;
+	if (readFromStdin) {
+#ifdef _WIN32
+		setmode(fileno(stdin), O_BINARY);
+#endif
+		infile = stdin;
+	}
+	else {
+		if ((infile = fopen(filename, "rb")) == NULL) {
+			fprintf(stderr, "can't open %s\n", filename);
+			return 0;
+		}
 	}
 
 	/* Step 1: allocate and initialize JPEG decompression object */

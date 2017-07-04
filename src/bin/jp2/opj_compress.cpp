@@ -1249,12 +1249,14 @@ static int parse_cmdline_encoder_ex(int argc,
             return 1;
         }
     } else {
-        if (parameters->infile[0] == 0) {
-            fprintf(stderr, "[ERROR] Missing input file parameter\n"
-                    "Example: %s -i image.pgm -o image.j2k\n",argv[0]);
-            fprintf(stderr, "   Help: %s -h\n",argv[0]);
-            return 1;
-        }
+		if (parameters->cod_format == -1) {
+			if (parameters->infile[0] == 0) {
+				fprintf(stderr, "[ERROR] Missing input file parameter\n"
+					"Example: %s -i image.pgm -o image.j2k\n", argv[0]);
+				fprintf(stderr, "   Help: %s -h\n", argv[0]);
+				return 1;
+			}
+		}
 
 		if (parameters->outfile[0] == 0) {
 			fprintf(stderr, "[ERROR] Missing output file parameter\n"
