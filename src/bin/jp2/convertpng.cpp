@@ -60,8 +60,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 
 #include <zlib.h>
 #include <png.h>
@@ -430,7 +432,9 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         return fails;
     }
 	if (writeToStdout) {
+#ifdef _WIN32
 		setmode(fileno(stdout), O_BINARY);
+#endif
 		writer = stdout;
 	}
 	else {
