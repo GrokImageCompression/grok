@@ -1994,6 +1994,7 @@ int imagetopnm(opj_image_t * image, const char *outfile, int force_split)
  <<-- <<-- <<-- <<-- */
 static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *parameters, bool big_endian)
 {
+	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
 	raw_cparameters_t *raw_cp = &parameters->raw_cp;
     uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
@@ -2016,12 +2017,20 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
         return NULL;
     }
 
-    f = fopen(filename, "rb");
-    if (!f) {
-        fprintf(stderr, "Failed to open %s for reading !!\n", filename);
-        fprintf(stderr,"Aborting\n");
-        return NULL;
-    }
+	if (readFromStdin) {
+#ifdef _WIN32
+		setmode(fileno(stdin), O_BINARY);
+#endif
+		f = stdin;
+	}
+	else {
+		f = fopen(filename, "rb");
+		if (!f) {
+			fprintf(stderr, "Failed to open %s for reading !!\n", filename);
+			fprintf(stderr, "Aborting\n");
+			return NULL;
+		}
+	}
     numcomps = raw_cp->rawComp;
     if (numcomps == 1) {
         color_space = OPJ_CLRSPC_GRAY;
