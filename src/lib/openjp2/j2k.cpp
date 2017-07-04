@@ -6667,6 +6667,13 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
         /* read 2 bytes as the marker size */
         grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_marker_size,2);
+		
+		/* Check marker size (does not include marker ID but includes marker size) */
+		if (l_marker_size < 2) {
+			event_msg(p_manager, EVT_ERROR, "Inconsistent marker size\n");
+			return false;
+		}
+
         l_marker_size -= 2; /* Subtract the size of the marker ID already read */
 
         /* Check if the marker size is compatible with the header data size */
