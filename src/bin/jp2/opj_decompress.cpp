@@ -619,6 +619,10 @@ int parse_cmdline_decoder(int argc,
 
 		parameters->serialize_xml = xmlArg.isSet();
 
+		if (verboseArg.isSet()) {
+			parameters->verbose = verboseArg.getValue();
+		}
+
 		if (forceRgbArg.isSet()) {
 			parameters->force_rgb = true;
 		}
@@ -660,6 +664,10 @@ int parse_cmdline_decoder(int argc,
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}
+		}
+
+		if (parameters->verbose && outForArg.isSet() && !outputFileArg.isSet() && !outDirArg.isSet()) {
+			parameters->verbose = false;
 		}
 
 		if (outForArg.isSet()) {
@@ -729,14 +737,6 @@ int parse_cmdline_decoder(int argc,
 				return 1;
 			}
 		}
-
-
-		if (imgDirArg.isSet()) {
-			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
-			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
-			img_fol->set_imgdir = 1;
-		}
-
 		if (outDirArg.isSet()) {
 			if (out_fol) {
 				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
@@ -744,6 +744,14 @@ int parse_cmdline_decoder(int argc,
 				out_fol->set_imgdir = 1;
 			}
 		}
+
+		if (imgDirArg.isSet()) {
+			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
+			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
+			img_fol->set_imgdir = 1;
+		}
+
+
 
 		if (reduceArg.isSet()) {
 			parameters->core.cp_reduce = reduceArg.getValue();
@@ -799,9 +807,7 @@ int parse_cmdline_decoder(int argc,
 		}
 
 
-		if (verboseArg.isSet()) {
-			parameters->verbose = verboseArg.getValue();
-		}
+
 
 	}
 	catch (ArgException &e)  // catch any exceptions
