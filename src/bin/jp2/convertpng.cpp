@@ -499,7 +499,7 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
      * color_type == PNG_COLOR_TYPE_RGB_ALPHA) && bit_depth < 8
      *
      */
-    png_set_compression_level(png, (compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? Z_BEST_COMPRESSION : compressionLevel);
+    png_set_compression_level(png, (compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? 3 : compressionLevel);
 
     if(nr_comp >= 3) { /* RGB(A) */
         color_type = PNG_COLOR_TYPE_RGB;

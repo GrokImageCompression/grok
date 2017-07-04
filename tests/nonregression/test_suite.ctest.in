@@ -366,80 +366,80 @@ opj_decompress -i @INPUT_NR_PATH@/issue458.jp2 -o @TEMP_PATH@/issue458.jp2.pgx
 
 # decode with specific area
 # prec=12; nb_c=1 
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04.j2k.png -d 0,0,1024,1024
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_1.j2k.png -d 512,640,640,768
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_2.j2k.png -d 896,896,1024,1024
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_3.j2k.png -d 100,500,300,800
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_4.j2k.png -d 260,520,360,600
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_5.j2k.png -d 260,520,360,660
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_6.j2k.png -d 360,520,400,600
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_10.j2k.png -d 0,0,1024,1024 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_11.j2k.png -d 512,640,640,768 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_12.j2k.png -d 896,896,1024,1024 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_13.j2k.png -d 100,500,300,800 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_14.j2k.png -d 260,520,360,600 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_15.j2k.png -d 260,520,360,660 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_16.j2k.png -d 360,520,400,600 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04.j2k.png -L 9 -d 0,0,1024,1024
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_1.j2k.png -L 9 -d 512,640,640,768
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_2.j2k.png -L 9 -d 896,896,1024,1024
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_3.j2k.png -L 9 -d 100,500,300,800
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_4.j2k.png -L 9 -d 260,520,360,600
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_5.j2k.png -L 9 -d 260,520,360,660
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_6.j2k.png -L 9 -d 360,520,400,600
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_10.j2k.png -L 9 -d 0,0,1024,1024 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_11.j2k.png -L 9 -d 512,640,640,768 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_12.j2k.png -L 9 -d 896,896,1024,1024 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_13.j2k.png -L 9 -d 100,500,300,800 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_14.j2k.png -L 9 -d 260,520,360,600 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_15.j2k.png -L 9 -d 260,520,360,660 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_16.j2k.png -L 9 -d 360,520,400,600 -r 2
 
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63.j2k.png -t 63 
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63_r2.j2k.png -t 63 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_18.t12.j2k.png -t 12 
-opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_19_t12_r1.j2k.png -t 12 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63.j2k.png -L 9 -t 63 
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_17_t63_r2.j2k.png -L 9 -t 63 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_18.t12.j2k.png -L 9 -t 12 
+opj_decompress -i @INPUT_CONF_PATH@/p1_04.j2k -o @TEMP_PATH@/p1_04_19_t12_r1.j2k.png -L 9 -t 12 -r 1
 
 # prec=8; nb_c=3 
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06.j2k.png -d 0,0,12,12
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_1.j2k.png -d 1,8,8,11
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_2.j2k.png -d 9,9,12,12
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_3.j2k.png -d 10,4,12,10
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_4.j2k.png -d 3,3,9,9
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_5.j2k.png -d 4,4,7,7
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_6.j2k.png -d 4,4,5,5
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7.j2k.png -d 0,0,12,12 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_1.j2k.png -d 1,8,8,11 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_2.j2k.png -d 9,9,12,12 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_3.j2k.png -d 10,4,12,10 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_4.j2k.png -d 3,3,9,9 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_5.j2k.png -d 4,4,7,7 -r 1
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_6.j2k.png -d 4,4,5,5 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06.j2k.png -L 9 -d 0,0,12,12
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_1.j2k.png -L 9 -d 1,8,8,11
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_2.j2k.png -L 9 -d 9,9,12,12
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_3.j2k.png -L 9 -d 10,4,12,10
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_4.j2k.png -L 9 -d 3,3,9,9
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_5.j2k.png -L 9 -d 4,4,7,7
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_6.j2k.png -L 9 -d 4,4,5,5
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7.j2k.png -L 9 -d 0,0,12,12 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_1.j2k.png -L 9 -d 1,8,8,11 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_2.j2k.png -L 9 -d 9,9,12,12 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_3.j2k.png -L 9 -d 10,4,12,10 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_4.j2k.png -L 9 -d 3,3,9,9 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_5.j2k.png -L 9 -d 4,4,7,7 -r 1
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_7_6.j2k.png -L 9 -d 4,4,5,5 -r 1
 
 # see Grok issue #59 for details on why opj_decompress should error out in the test below
-!opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_8_6.j2k.png -d 9,9,12,12 -r 2
+!opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_8_6.j2k.png -L 9 -d 9,9,12,12 -r 2
 
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9.j2k.png -t 0
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_1.j2k.png -t 5
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_2.j2k.png -t 9
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_3.j2k.png -t 15
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9.j2k.png -L 9 -t 0
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_1.j2k.png -L 9 -t 5
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_2.j2k.png -L 9 -t 9
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_9_3.j2k.png -L 9 -t 15
 
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10.j2k.png -t 0 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_1.j2k.png -t 5 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_2.j2k.png -t 9 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10.j2k.png -L 9 -t 0 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_1.j2k.png -L 9 -t 5 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_2.j2k.png -L 9 -t 9 -r 2
 
 # see Grok issue #59 for details on why opj_decompress should error out in the test below
-!opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -t 15 -r 2
+!opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_10_3.j2k.png -L 9 -t 15 -r 2
 
-opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_11.j2k.png -r 4
+opj_decompress -i @INPUT_CONF_PATH@/p1_06.j2k -o @TEMP_PATH@/p1_06_11.j2k.png -L 9 -r 4
 
 # prec=4; nb_c=3 ; signd=yes
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04.j2k.png -d 0,0,256,256
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_1.j2k.png -d 128,0,256,128
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_2.j2k.png -d 50,10,120,200
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_3.j2k.png -d 10,150,190,210
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_4.j2k.png -d 100,80,200,150
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_5.j2k.png -d 150,20,200,50
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6.j2k.png -d 0,0,256,256 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_1.j2k.png -d 128,0,256,128 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_2.j2k.png -d 50,10,120,200 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_3.j2k.png -d 10,150,190,210  -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_4.j2k.png -d 100,80,200,150 -r 2
-opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_5.j2k.png -d 150,20,200,50 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04.j2k.png -L 9 -d 0,0,256,256
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_1.j2k.png -L 9 -d 128,0,256,128
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_2.j2k.png -L 9 -d 50,10,120,200
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_3.j2k.png -L 9 -d 10,150,190,210
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_4.j2k.png -L 9 -d 100,80,200,150
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_5.j2k.png -L 9 -d 150,20,200,50
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6.j2k.png -L 9 -d 0,0,256,256 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_1.j2k.png -L 9 -d 128,0,256,128 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_2.j2k.png -L 9 -d 50,10,120,200 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_3.j2k.png -L 9 -d 10,150,190,210  -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_4.j2k.png -L 9 -d 100,80,200,150 -r 2
+opj_decompress -i @INPUT_CONF_PATH@/p0_04.j2k -o @TEMP_PATH@/p0_04_6_5.j2k.png -L 9 -d 150,20,200,50 -r 2
 
 # prec=8; nb_c=1 ; non standard origin (image offset and tile offset); sample sep: 2x1
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01.j2k.png -d 5,128,127,226
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_1.j2k.png -d 5,128,122,99
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_2.j2k.png -d 50,10,120,200
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_3.j2k.png -d 10,150,190,210
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_4.j2k.png -d 100,80,200,150
-#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_5.j2k.png -d 150,20,200,50
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01.j2k.png -L 9 -d 5,128,127,226
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_1.j2k.png -L 9 -d 5,128,122,99
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_2.j2k.png -L 9 -d 50,10,120,200
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_3.j2k.png -L 9 -d 10,150,190,210
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_4.j2k.png -L 9 -d 100,80,200,150
+#opj_decompress -i @INPUT_CONF_PATH@/p1_01.j2k -o @TEMP_PATH@/p1_01_5.j2k.png -L 9 -d 150,20,200,50
 
 # issue 322 limited tif support
 # GRAYSCALE 
@@ -488,45 +488,45 @@ opj_decompress -i @INPUT_NR_PATH@/issue235.jp2 -o @TEMP_PATH@/issue235.jp2.pgx
 
 # issue 264, add checks for png
 # GRAYSCALE 
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-1.png -p 1S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-2.png -p 2S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-4.png -p 4S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-6.png -p 6S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-8.png -p 8S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-10.png -p 10S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-12.png -p 12S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-14.png -p 14S
-opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-16.png -p 16S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-1.png -L 9 -p 1S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-2.png -L 9 -p 2S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-4.png -L 9 -p 4S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-6.png -L 9 -p 6S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-8.png -L 9 -p 8S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-10.png -L 9 -p 10S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-12.png -L 9 -p 12S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-14.png -L 9 -p 14S
+opj_decompress -i @INPUT_CONF_PATH@/a1_mono.j2c -o @TEMP_PATH@/a1_mono_png-16.png -L 9 -p 16S
 # GRAYSCALE ALPHA
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-1.png -p 1S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-2.png -p 2S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-4.png -p 4S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-6.png -p 6S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-8.png -p 8S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-10.png -p 10S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-12.png -p 12S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-14.png -p 14S
-opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-16.png -p 16S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-1.png -L 9 -p 1S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-2.png -L 9 -p 2S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-4.png -L 9 -p 4S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-6.png -L 9 -p 6S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-8.png -L 9 -p 8S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-10.png -L 9 -p 10S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-12.png -L 9 -p 12S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-14.png -L 9 -p 14S
+opj_decompress -i @INPUT_NR_PATH@/basn4a08.jp2 -o @TEMP_PATH@/basn4a08_png-16.png -L 9 -p 16S
 # RGB
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-1.png -p 1S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-2.png -p 2S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-4.png -p 4S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-6.png -p 6S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-8.png -p 8S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-10.png -p 10S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-12.png -p 12S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-14.png -p 14S
-opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-16.png -p 16S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-1.png -L 9 -p 1S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-2.png -L 9 -p 2S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-4.png -L 9 -p 4S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-6.png -L 9 -p 6S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-8.png -L 9 -p 8S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-10.png -L 9 -p 10S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-12.png -L 9 -p 12S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-14.png -L 9 -p 14S
+opj_decompress -i @INPUT_CONF_PATH@/p0_14.j2k -o @TEMP_PATH@/p0_14_png-16.png -L 9 -p 16S
 # RGBA
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-1.png -p 1S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-2.png -p 2S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-4.png -p 4S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-6.png -p 6S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-8.png -p 8S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-10.png -p 10S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-12.png -p 12S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-14.png -p 14S
-opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-16.png -p 16S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-1.png -L 9 -p 1S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-2.png -L 9 -p 2S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-4.png -L 9 -p 4S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-6.png -L 9 -p 6S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-8.png -L 9 -p 8S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-10.png -L 9 -p 10S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-12.png -L 9 -p 12S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-14.png -L 9 -p 14S
+opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_png-16.png -L 9 -p 16S
 
 # issue 388
 !opj_decompress -i @INPUT_NR_PATH@/v4dwt_interleave_h.gsr105.j2k -o @TEMP_PATH@/v4dwt_interleave_h.gsr105.j2k.pgx
@@ -543,7 +543,7 @@ opj_decompress -i @INPUT_NR_PATH@/issue559-eci-090-CIELab.jp2 -o @TEMP_PATH@/iss
 opj_decompress -i @INPUT_NR_PATH@/issue559-eci-091-CIELab.jp2 -o @TEMP_PATH@/issue559-eci-091-CIELab.jp2.pgx
 
 # issue 653 Last box of undefined size byg
-opj_decompress -i @INPUT_NR_PATH@/issue653-zero-unknownbox.jp2 -o @TEMP_PATH@/issue653-zero-unknownbox.jp2.png -p 8S
+opj_decompress -i @INPUT_NR_PATH@/issue653-zero-unknownbox.jp2 -o @TEMP_PATH@/issue653-zero-unknownbox.jp2.png -L 9 -p 8S
 
 # issue 729 decompress 3/5/7/9/11/13/15 bits precision to tiff
 # GRAYSCALE 
@@ -580,9 +580,9 @@ opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-13.ti
 opj_decompress -i @INPUT_NR_PATH@/basn6a08.jp2 -o @TEMP_PATH@/basn6a08_tif-15.tif -p 15S
 
 # issue 725
-!opj_decompress -i @INPUT_NR_PATH@/issue725.jp2 -o @TEMP_PATH@/issue725.png
+!opj_decompress -i @INPUT_NR_PATH@/issue725.jp2 -o @TEMP_PATH@/issue725.png -L 9
 # issue 726
-opj_decompress -i @INPUT_NR_PATH@/issue726.j2k -o @TEMP_PATH@/issue726.png
+opj_decompress -i @INPUT_NR_PATH@/issue726.j2k -o @TEMP_PATH@/issue726.png -L 9
 # issue 733
 !opj_decompress -i @INPUT_NR_PATH@/issue733.jp2 -o @TEMP_PATH@/issue733.png
 # issue 774
@@ -591,7 +591,7 @@ opj_decompress -i @INPUT_NR_PATH@/issue726.j2k -o @TEMP_PATH@/issue726.png
 !opj_decompress -i @INPUT_NR_PATH@/issue775.j2k -o @TEMP_PATH@/issue775.png
 !opj_decompress -i @INPUT_NR_PATH@/issue775-2.j2k -o @TEMP_PATH@/issue775-2.png
 # issue 818
-opj_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png
+opj_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png -L 9
 # issue 823
 !opj_decompress -i @INPUT_NR_PATH@/issue823.jp2 -o @TEMP_PATH@/issue823.png
 # issue 826
