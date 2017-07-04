@@ -59,7 +59,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 
 	auto pool = new ThreadPool(numThreads);
 	volatile bool success = true;
-	for (auto threadId = 0; threadId < numThreads; threadId++) {
+	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		pool->enqueue([this,
 						&decode_t1_barrier,
 						&decode_t1_calling_barrier,

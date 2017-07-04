@@ -81,7 +81,7 @@ static size_t grok_write_to_buffer(void * p_buffer,
                                     buf_info_t* p_source_buffer)
 {
 	if (p_source_buffer->off + p_nb_bytes >=  p_source_buffer->len) {
-		return -1;
+		return 0;
 	}
 	if (p_nb_bytes) {
 		memcpy(p_source_buffer->buf + (size_t)p_source_buffer->off, p_buffer, p_nb_bytes);

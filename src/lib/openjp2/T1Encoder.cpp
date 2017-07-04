@@ -43,7 +43,6 @@ T1Encoder::~T1Encoder() {
 }
 
 void T1Encoder::encode(size_t threadId) {
-	auto state = grok_plugin_get_debug_state();
 	encodeBlockInfo* block = NULL;
 	auto impl = threadStructs[threadId];
 	while (return_code && encodeQueue.tryPop(block)) {

@@ -62,8 +62,8 @@ BitIO::BitIO(uint8_t *bp, uint64_t len, bool isEncoder) : start(bp),
 														buf_len(len),
 														buf(0),
 														ct(isEncoder ? 8 : 0),
+														total_bytes(0),
 														sim_out(false),
-														total_bytes(0), 
 														is_encoder(isEncoder), 
 														stream(nullptr) {
 
@@ -74,8 +74,8 @@ BitIO::BitIO(IGrokStream* strm, bool isEncoder) : start(nullptr),
 													buf_len(0),
 													buf(0),
 													ct(isEncoder ? 8 : 0),
-													sim_out(false),
 													total_bytes(0),
+													sim_out(false),
 													is_encoder(isEncoder), 
 													stream(strm) {
 }

@@ -745,7 +745,7 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 			bpno--;
 		}
 		pass->distortiondec = cumwmsedec;
-		pass->rate = mqc_numbytes(mqc) + correction;
+		pass->rate = (uint16_t)(mqc_numbytes(mqc) + correction);
 
 		if (TERMALL && bpno >= 0) {
 			mqc_restart_init_enc(mqc);
@@ -761,8 +761,8 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		tcd_pass_t *pass = &cblk->passes[passno];
 		if (!pass->term) {
 			auto bytes = mqc_numbytes(mqc);
-			if (pass->rate > (uint32_t)bytes)
-				pass->rate = (uint32_t)bytes;
+			if (pass->rate >(uint16_t)bytes)
+				pass->rate = (uint16_t)bytes;
 			// prevent generation of FF as last data byte of a pass
 			if (cblk->data[pass->rate - 1] == 0xFF) {
 				pass->rate--;

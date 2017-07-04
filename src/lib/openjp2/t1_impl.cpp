@@ -57,7 +57,7 @@ t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW
 		}
 	}
 	else {
-		t1 = new t1_t(isEncoder, maxCblkW, maxCblkH);
+		t1 = new t1_t(isEncoder, (uint16_t)maxCblkW, (uint16_t)maxCblkH);
 		if (!t1_allocate_buffers(t1,
 			maxCblkW,
 			maxCblkH)) {

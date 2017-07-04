@@ -70,12 +70,12 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 	m_write_fn(nullptr),
 	m_skip_fn(nullptr),
 	m_seek_fn(nullptr),
+	m_status(0),
+	m_stream_offset(0),
 	m_buffer(nullptr),
+	m_buffer_size(0),
 	m_buffer_current_ptr(nullptr),
 	m_bytes_in_buffer(0),
-	m_stream_offset(0),
-	m_buffer_size(0),
-	m_status(0),
 	isBufferStream(false)
 {
 
@@ -100,12 +100,12 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 																m_write_fn(nullptr),
 																m_skip_fn(nullptr),
 																m_seek_fn(nullptr),
+																m_status(0),
+																m_stream_offset(0),
 																m_buffer(nullptr),
+																m_buffer_size(0),
 																m_buffer_current_ptr(nullptr),
 																m_bytes_in_buffer(0),
-																m_stream_offset(0),
-																m_buffer_size(0),
-																m_status(0),
 																isBufferStream(true)
 {
 

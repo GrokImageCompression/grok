@@ -101,7 +101,6 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 											std::vector<decodeBlockInfo*>* blocks,
 											event_mgr_t * p_manager) {
 	uint32_t resno, bandno, precno;
-	bool rc = true;
 	if (!tile_buf_alloc_component_data_decode(tilec->buf)) {
 		event_msg(p_manager, EVT_ERROR, "Not enough memory for tile data\n");
 		return false;
