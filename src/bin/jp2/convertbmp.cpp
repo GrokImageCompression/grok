@@ -59,8 +59,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
+
 
 #include "openjpeg.h"
 #include "convert.h"
@@ -805,7 +808,9 @@ int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
     }
 
 	if (writeToStdout) {
+#ifdef _WIN32
 		setmode(fileno(stdout), O_BINARY);
+#endif
 		fdest = stdout;
 	}
 	else {

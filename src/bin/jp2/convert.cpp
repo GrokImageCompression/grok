@@ -60,8 +60,10 @@
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
+#ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>
+#endif
 
 extern "C" {
 
@@ -2171,7 +2173,9 @@ static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_
 	}
 
 	if (writeToStdout) {
+#ifdef _WIN32
 		setmode(fileno(stdout), O_BINARY);
+#endif
 		rawFile = stdout;
 	} else {
 		rawFile = fopen(outfile, "wb");
