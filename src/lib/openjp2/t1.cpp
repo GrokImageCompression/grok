@@ -69,9 +69,9 @@ namespace grk {
 
 #define T1_SGN (T1_SGN_N|T1_SGN_E|T1_SGN_S|T1_SGN_W)
 
-#define T1_SIG 0x1000
-#define T1_REFINE 0x2000
-#define T1_VISIT 0x4000
+const flag_t  T1_SIG = 0x1000;
+const flag_t  T1_REFINE = 0x2000;
+const flag_t T1_VISIT = 0x4000;
 
 
 #define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
@@ -822,7 +822,7 @@ static void t1_enc_clnpass_step(t1_t *t1,
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
 	}
-	*flagsp &= ~T1_VISIT;
+	*flagsp &= (flag_t)~T1_VISIT;
 }
 
 static void t1_dec_clnpass_step_partial(t1_t *t1,
@@ -841,7 +841,7 @@ static void t1_dec_clnpass_step_partial(t1_t *t1,
 	v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
 	*datap = v ? -oneplushalf : oneplushalf;
 	t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
-	*flagsp &= ~T1_VISIT;
+	*flagsp &= (flag_t)~T1_VISIT;
 }
 
 static void t1_dec_clnpass_step(t1_t *t1,
@@ -864,7 +864,7 @@ static void t1_dec_clnpass_step(t1_t *t1,
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
 	}
-	*flagsp &= ~T1_VISIT;
+	*flagsp &= (flag_t)~T1_VISIT;
 }
 
 static void t1_dec_clnpass_step_vsc(t1_t *t1,
@@ -893,7 +893,7 @@ static void t1_dec_clnpass_step_vsc(t1_t *t1,
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
 	}
-	*flagsp &= ~T1_VISIT;
+	*flagsp &= (flag_t)~T1_VISIT;
 }
 
 static void t1_enc_clnpass(t1_t *t1,
@@ -997,7 +997,7 @@ static void t1_dec_clnpass(t1_t *t1,
 					}
 					mqc_setcurctx(mqc, T1_CTXNO_UNI);
 					runlen = mqc_decode(mqc);
-					runlen = (runlen << 1) | mqc_decode(mqc);
+					runlen = (uint8_t)(runlen << 1) | mqc_decode(mqc);
 				}
 				else {
 					runlen = 0;
@@ -1034,7 +1034,7 @@ static void t1_dec_clnpass(t1_t *t1,
 					}
 					mqc_setcurctx(mqc, T1_CTXNO_UNI);
 					runlen = mqc_decode(mqc);
-					runlen = (runlen << 1) | mqc_decode(mqc);
+					runlen = (uint8_t)(runlen << 1) | mqc_decode(mqc);
 					flags2 += (uint32_t)runlen * t1->flags_stride;
 					data2 += (uint32_t)runlen * t1->w;
 					for (j = (uint32_t)runlen; j < 4 && j < t1->h; ++j) {
@@ -1081,9 +1081,9 @@ static void t1_dec_clnpass(t1_t *t1,
 		uint8_t v = 0;
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
 		v = mqc_decode(mqc);
-		v = (v << 1) | mqc_decode(mqc);
-		v = (v << 1) | mqc_decode(mqc);
-		v = (v << 1) | mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
 		/*
 		if (v!=0xa) {
 			event_msg(t1->cinfo, EVT_WARNING, "Bad segmentation symbol %x\n", v);
@@ -1116,7 +1116,7 @@ double t1_getwmsedec(int32_t nmsedec,
 		w2 = dwt_getnorm_real(level, orient);
 	}
 
-	wmsedec = w1 * w2 * stepsize * ((size_t)1 << bpno);
+	wmsedec = w1 * w2 * stepsize * (double)((size_t)1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;
 
 	return wmsedec;
@@ -1516,7 +1516,7 @@ double t1_encode_cblk(t1_t *t1,
 				pass->rate--;
 			}
 		}
-		pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
+		pass->len = (uint16_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
 		assert(pass->len != -1);
 	}
 

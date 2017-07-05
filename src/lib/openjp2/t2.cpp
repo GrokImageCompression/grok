@@ -667,8 +667,8 @@ namespace grk {
 		*/
 		uint8_t *l_header_data = nullptr;
 		uint8_t **l_header_data_start = nullptr;
-		uint32_t * l_modified_length_ptr = nullptr;
-		uint32_t l_remaining_length = 0;
+		size_t * l_modified_length_ptr = nullptr;
+		size_t l_remaining_length = 0;
 		if (l_cp->ppm == 1) { /* PPM */
 			l_header_data_start = &l_cp->ppm_data;
 			l_header_data = *l_header_data_start;
@@ -683,7 +683,7 @@ namespace grk {
 		else { /* Normal Case */
 			l_header_data_start = &(active_src);
 			l_header_data = *l_header_data_start;
-			l_remaining_length = (uint32_t)(p_src_data + p_max_length - l_header_data);
+			l_remaining_length = (size_t)(p_src_data + p_max_length - l_header_data);
 			l_modified_length_ptr = &(l_remaining_length);
 		}
 
@@ -703,7 +703,7 @@ namespace grk {
 
 			/* EPH markers */
 			if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-				if ((*l_modified_length_ptr - (uint32_t)(l_header_data - *l_header_data_start)) < 2U) {
+				if ((*l_modified_length_ptr - (size_t)(l_header_data - *l_header_data_start)) < 2U) {
 					event_msg(p_manager, EVT_WARNING, "Not enough space for expected EPH marker\n");
 				}
 				else if ((*l_header_data) != 0xff || (*(l_header_data + 1) != 0x92)) {
@@ -714,12 +714,12 @@ namespace grk {
 				}
 			}
 
-			auto l_header_length = (uint32_t)(l_header_data - *l_header_data_start);
-			*l_modified_length_ptr -= (uint32_t)l_header_length;
+			auto l_header_length = (size_t)(l_header_data - *l_header_data_start);
+			*l_modified_length_ptr -= l_header_length;
 			*l_header_data_start += l_header_length;
 
 			*p_is_data_present = false;
-			*p_data_read = (uint32_t)(active_src - p_src_data);
+			*p_data_read = (size_t)(active_src - p_src_data);
 			seg_buf_incr_cur_seg_offset(src_buf, *p_data_read);
 			return true;
 		}
@@ -862,7 +862,7 @@ namespace grk {
 			}
 		}
 
-		auto l_header_length = (uint32_t)(l_header_data - *l_header_data_start);
+		auto l_header_length = (size_t)(l_header_data - *l_header_data_start);
 		JAS_FPRINTF(stderr, "hdrlen=%d \n", l_header_length);
 		JAS_FPRINTF(stderr, "packet body\n");
 		*l_modified_length_ptr -= l_header_length;

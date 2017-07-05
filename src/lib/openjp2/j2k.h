@@ -275,9 +275,9 @@ struct tcp_t {
     /** used to keep a track of the allocated memory */
     uint8_t *ppt_buffer;
     /** Number of bytes stored inside ppt_data*/
-    uint32_t ppt_data_size;
+	size_t ppt_data_size;
     /** size of ppt_data*/
-    uint32_t ppt_len;
+	size_t ppt_len;
     /** fixed_quality */
     double distoratio[100];
 	// quantization style as read from QCD marker
@@ -325,7 +325,7 @@ struct tcp_t {
 
 struct encoding_param_t {
     /** Maximum rate for each component. If == 0, component size limitation is not considered */
-    uint32_t m_max_comp_size;
+	size_t m_max_comp_size;
     /** Position of tile part flag in progression order*/
     uint32_t m_tp_pos;
     /** Flag determining tile part generation*/
@@ -381,9 +381,9 @@ struct cp_t {
     /** packet header store there for future use in t2_decode_packet */
     uint8_t *ppm_data;
     /** size of the ppm_data*/
-    uint32_t ppm_len;
+	size_t ppm_len;
     /** size of the ppm_data*/
-    uint32_t ppm_data_read;
+	size_t ppm_data_read;
 
     uint8_t *ppm_data_current;
 
@@ -392,7 +392,7 @@ struct cp_t {
     /** pointer remaining on the first byte of the first header if ppm is used */
     uint8_t *ppm_data_first;
     /** Number of bytes actually stored inside the ppm_data */
-    uint32_t ppm_data_size;
+	size_t ppm_data_size;
     /** use in case of multiple marker PPM (number of info already store) */
     int32_t ppm_store;
     /** use in case of multiple marker PPM (case on non-finished previous info) */

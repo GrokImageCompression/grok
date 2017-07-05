@@ -199,7 +199,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		}
 
 		bool goodData = true;
-		uint32_t totalRatePlugin = (uint32_t)plugin_cblk->compressedDataLength;
+		uint16_t totalRatePlugin = (uint16_t)plugin_cblk->compressedDataLength;
 
 		//check data
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
@@ -241,7 +241,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 			}
 		}
 
-		uint32_t lastRate = 0;
+		uint16_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
 			tcd_pass_t *pass = cblk->passes + passno;
 			opj_plugin_pass_t* pluginPass = plugin_cblk->passes + passno;
@@ -255,7 +255,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 				}
 				pass->distortiondec = pluginPass->distortionDecrease;
 			}
-			uint32_t pluginRate = (uint32_t)(pluginPass->rate+1);
+			uint16_t pluginRate = (uint16_t)(pluginPass->rate+1);
 			if (pluginRate > totalRatePlugin)
 				pluginRate = totalRatePlugin;
 
@@ -271,7 +271,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 			}
 
 			pass->rate = pluginRate;
-			pass->len = pass->rate - lastRate;
+			pass->len = (uint16_t)(pass->rate - lastRate);
 			lastRate = pass->rate;
 		}
 	}
