@@ -2257,6 +2257,7 @@ static bool jp2_write_jp2c(jp2_t *jp2,
 	}
 
 	/* size of codestream */
+	//ToDo support code stream > 2^32 -1 
 	if (!cio->write_int(j2k_codestream_exit - jp2->j2k_codestream_offset, p_manager)) {
 		return false;
 	}
