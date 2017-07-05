@@ -97,69 +97,83 @@ static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length
     }
 }
 
+struct pngToImageInfo {
+	pngToImageInfo() : png(nullptr),
+						reader(nullptr),
+						rows(nullptr),
+						row32s(nullptr),
+						image(nullptr), 
+						readFromStdin(false), 
+						colorSpace(OPJ_CLRSPC_UNKNOWN)
+	{}
+
+	png_structp  png;
+	FILE *reader;
+	uint8_t** rows;
+	int32_t* row32s;
+	opj_image_t *image;
+	bool readFromStdin;
+	OPJ_COLOR_SPACE colorSpace;
+};
+
+
 opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 {
-	bool readFromStdin = ((read_idf == nullptr) || (read_idf[0] == 0));
-    png_structp  png = nullptr;
+	pngToImageInfo local_info;
     png_infop    info = nullptr;
     int bit_depth, interlace_type,compression_type, filter_type;
     uint32_t i;
     png_uint_32  width=0U, height = 0U;
     int color_type;
-    FILE *reader = nullptr;
-    uint8_t** rows = nullptr;
-    int32_t* row32s = nullptr;
-    /* j2k: */
-    opj_image_t *image = nullptr;
+	local_info.readFromStdin = ((read_idf == nullptr) || (read_idf[0] == 0));
     opj_image_cmptparm_t cmptparm[4];
     uint32_t nr_comp;
     uint8_t sigbuf[8];
     convert_XXx32s_C1R cvtXXTo32s = NULL;
     convert_32s_CXPX cvtCxToPx = NULL;
     int32_t* planes[4];
-	OPJ_COLOR_SPACE colorSpace = OPJ_CLRSPC_UNKNOWN;
 	int srgbIntent = -1;
 
-	if (readFromStdin) {
+	if (local_info.readFromStdin) {
 		grok_set_binary_mode(stdin);
-		reader = stdin;
+		local_info.reader = stdin;
 	}
 	else {
-		if ((reader = fopen(read_idf, "rb")) == NULL) {
+		if ((local_info.reader = fopen(read_idf, "rb")) == NULL) {
 			fprintf(stderr, "pngtoimage: can not open %s\n", read_idf);
 			return NULL;
 		}
 	}
 
-    if(fread(sigbuf, 1, MAGIC_SIZE, reader) != MAGIC_SIZE
+    if(fread(sigbuf, 1, MAGIC_SIZE, local_info.reader) != MAGIC_SIZE
             || memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
         fprintf(stderr,"pngtoimage: %s is no valid PNG file\n",read_idf);
         goto fin;
     }
 
-    if((png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
+    if((local_info.png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
                                      NULL, NULL, NULL)) == NULL)
         goto fin;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
-	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
 
-    if((info = png_create_info_struct(png)) == NULL)
+    if((info = png_create_info_struct(local_info.png)) == NULL)
         goto fin;
 
-    if(setjmp(png_jmpbuf(png)))
+    if(setjmp(png_jmpbuf(local_info.png)))
         goto fin;
 
 
 
-    png_init_io(png, reader);
-    png_set_sig_bytes(png, MAGIC_SIZE);
+    png_init_io(local_info.png, local_info.reader);
+    png_set_sig_bytes(local_info.png, MAGIC_SIZE);
 
-    png_read_info(png, info);
+    png_read_info(local_info.png, info);
 
-    if(png_get_IHDR(png, info, &width, &height,
+    if(png_get_IHDR(local_info.png, info, &width, &height,
                     &bit_depth, &color_type, &interlace_type,
                     &compression_type, &filter_type) == 0)
         goto fin;
@@ -173,30 +187,30 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
      * to alpha channels.
      */
     if(color_type == PNG_COLOR_TYPE_PALETTE) {
-        png_set_expand(png);
+        png_set_expand(local_info.png);
     }
 
-    if(png_get_valid(png, info, PNG_INFO_tRNS)) {
-        png_set_expand(png);
+    if(png_get_valid(local_info.png, info, PNG_INFO_tRNS)) {
+        png_set_expand(local_info.png);
     }
     /* We might want to expand background */
     /*
-    if(png_get_valid(png, info, PNG_INFO_bKGD)) {
+    if(png_get_valid(local_info.png, info, PNG_INFO_bKGD)) {
     	png_color_16p bgnd;
-    	png_get_bKGD(png, info, &bgnd);
-    	png_set_background(png, bgnd, PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
+    	png_get_bKGD(local_info.png, info, &bgnd);
+    	png_set_background(local_info.png, bgnd, PNG_BACKGROUND_GAMMA_FILE, 1, 1.0);
     }
     */
 
 
-	if (png_get_sRGB(png, info, &srgbIntent)) {
+	if (png_get_sRGB(local_info.png, info, &srgbIntent)) {
 		if (srgbIntent >= 0 && srgbIntent <= 3)
-			colorSpace = OPJ_CLRSPC_SRGB;
+			local_info.colorSpace = OPJ_CLRSPC_SRGB;
 	}
  
 
-    png_read_update_info(png, info);
-    color_type = png_get_color_type(png, info);
+    png_read_update_info(local_info.png, info);
+    color_type = png_get_color_type(local_info.png, info);
 
     switch (color_type) {
     case PNG_COLOR_TYPE_GRAY:
@@ -216,11 +230,11 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
         goto fin;
     }
 
-	if (colorSpace == OPJ_CLRSPC_UNKNOWN)
-		colorSpace = (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
+	if (local_info.colorSpace == OPJ_CLRSPC_UNKNOWN)
+		local_info.colorSpace = (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
 
     cvtCxToPx = convert_32s_CXPX_LUT[nr_comp];
-    bit_depth = png_get_bit_depth(png, info);
+    bit_depth = png_get_bit_depth(local_info.png, info);
 
     switch (bit_depth) {
     case 1:
@@ -238,20 +252,20 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
     }
 
 
-    rows = (uint8_t**)calloc(height, sizeof(uint8_t*));
-	if (rows == NULL) {
+	local_info.rows = (uint8_t**)calloc(height, sizeof(uint8_t*));
+	if (local_info.rows == NULL) {
 		fprintf(stderr, "pngtoimage: out of memory\n");
 		goto fin;
 	}
 	for (i = 0; i < height; ++i) {
-		rows[i] = (uint8_t*)malloc(png_get_rowbytes(png, info));
-		if (!rows[i]) {
+		local_info.rows[i] = (uint8_t*)malloc(png_get_rowbytes(local_info.png, info));
+		if (!local_info.rows[i]) {
 			fprintf(stderr, "pngtoimage: out of memory\n");
 			goto fin;
 		}
 	}
 
-    png_read_image(png, rows);
+    png_read_image(local_info.png, local_info.rows);
 
     /* Create image */
     memset(cmptparm, 0, sizeof(cmptparm));
@@ -264,47 +278,47 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
         cmptparm[i].h = height;
     }
 
-    image = opj_image_create(nr_comp, &cmptparm[0], colorSpace);
-    if(image == NULL) 
+	local_info.image = opj_image_create(nr_comp, &cmptparm[0], local_info.colorSpace);
+    if(local_info.image == NULL)
 		goto fin;
-    image->x0 = params->image_offset_x0;
-    image->y0 = params->image_offset_y0;
-    image->x1 = (image->x0 + (width  - 1) * params->subsampling_dx + 1 + image->x0);
-    image->y1 = (image->y0 + (height - 1) * params->subsampling_dy + 1 + image->y0);
+	local_info.image->x0 = params->image_offset_x0;
+	local_info.image->y0 = params->image_offset_y0;
+	local_info.image->x1 = (local_info.image->x0 + (width  - 1) * params->subsampling_dx + 1 + local_info.image->x0);
+	local_info.image->y1 = (local_info.image->y0 + (height - 1) * params->subsampling_dy + 1 + local_info.image->y0);
 
     /* Set alpha channel. Only non-premultiplied alpha is supported */
-    image->comps[nr_comp-1U].alpha = 1U - (nr_comp & 1U);
+	local_info.image->comps[nr_comp-1U].alpha = 1U - (nr_comp & 1U);
 
     for(i = 0; i < nr_comp; i++) {
-        planes[i] = image->comps[i].data;
+        planes[i] = local_info.image->comps[i].data;
     }
 
 	// See if iCCP chunk is present
-	if (png_get_valid(png, info, PNG_INFO_iCCP))
+	if (png_get_valid(local_info.png, info, PNG_INFO_iCCP))
 	{
 		uint32_t ProfileLen	=0;
 		png_bytep ProfileData	=nullptr;
 		int  Compression	=0;
 		png_charp ProfileName	=nullptr;
-		if (png_get_iCCP(png,
+		if (png_get_iCCP(local_info.png,
 			info,
 			&ProfileName,
 			&Compression,
 			&ProfileData,
 			&ProfileLen) == PNG_INFO_iCCP) {
-				image->icc_profile_len = ProfileLen;
-				image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
-				if (!image->icc_profile_buf)
+				local_info.image->icc_profile_len = ProfileLen;
+				local_info.image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
+				if (!local_info.image->icc_profile_buf)
 					return NULL;
-				memcpy(image->icc_profile_buf, ProfileData, ProfileLen);
+				memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
 		}
 	}
 
-	if (params->verbose && png_get_valid(png, info, PNG_INFO_gAMA)) {
+	if (params->verbose && png_get_valid(local_info.png, info, PNG_INFO_gAMA)) {
 		fprintf(stdout, "Warning: input PNG contains gamma value; this will not be stored in compressed image.\n");
 	}
 
-	if (params->verbose &&  png_get_valid(png, info, PNG_INFO_cHRM)) {
+	if (params->verbose &&  png_get_valid(local_info.png, info, PNG_INFO_cHRM)) {
 		fprintf(stdout, "Warning: input PNG contains chroma information which will not be stored in compressed image.\n");
 	}
 
@@ -320,36 +334,34 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	*/
 
 
-	row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
-	if (row32s == NULL)
+	local_info.row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
+	if (local_info.row32s == NULL)
 		goto fin;
 
     for(i = 0; i < height; ++i) {
-        cvtXXTo32s(rows[i], row32s, (size_t)width * nr_comp,false);
-        cvtCxToPx(row32s, planes, width);
+        cvtXXTo32s(local_info.rows[i], local_info.row32s, (size_t)width * nr_comp,false);
+        cvtCxToPx(local_info.row32s, planes, width);
         planes[0] += width;
         planes[1] += width;
         planes[2] += width;
         planes[3] += width;
     }
 fin:
-    if(rows) {
+    if(local_info.rows) {
 		for (i = 0; i < height; ++i) {
-			if (rows[i])
-				free(rows[i]);
+			if (local_info.rows[i])
+				free(local_info.rows[i]);
 		}
-        free(rows);
+        free(local_info.rows);
     }
-    if (row32s) {
-        free(row32s);
+    if (local_info.row32s) {
+        free(local_info.row32s);
     }
-    if(png)
-        png_destroy_read_struct(&png, &info, NULL);
+    if(local_info.png)
+        png_destroy_read_struct(&local_info.png, &info, NULL);
 
-    fclose(reader);
-
-    return image;
-
+    fclose(local_info.reader);
+    return local_info.image;
 }/* pngtoimage() */
 
 
@@ -362,21 +374,35 @@ static void convert_32s16u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length
         *pDst++ = (uint8_t)val;
     }
 }
+
+struct imageToPngInfo {
+	imageToPngInfo() : png(nullptr),
+					writer(nullptr),
+					row_buf(nullptr),
+					buffer32s(nullptr),
+					image(nullptr),
+					writeToStdout(false), 
+					fails(1)
+	{}
+	png_structp png;
+	FILE * volatile writer;
+	png_bytep volatile row_buf;
+	int32_t* volatile buffer32s;
+	opj_image_t *image;
+	bool writeToStdout;
+	volatile int fails;
+};
+
 int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLevel)
 {
-	bool writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
-    FILE * volatile writer = NULL;
-    png_structp png = NULL;
+	imageToPngInfo local_info;
+	local_info.writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
     png_infop info = NULL;
-    png_bytep volatile row_buf = NULL;
     int nr_comp, color_type;
     volatile int prec;
     png_color_8 sig_bit;
     int32_t const* planes[4];
     int i;
-    int32_t* volatile buffer32s = NULL;
-
-    volatile int fails = 1;
 
     memset(&sig_bit, 0, sizeof(sig_bit));
     prec = (int)image->comps[0].prec;
@@ -432,15 +458,16 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 
     if(prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
         fprintf(stderr,"imagetopng: can not create %s\n\twrong bit_depth %d\n", write_idf, prec);
-        return fails;
+        return local_info.fails;
     }
-	if (writeToStdout) {
+	if (local_info.writeToStdout) {
 		grok_set_binary_mode(stdout);
-		writer = stdout;
+		local_info.writer = stdout;
 	}
 	else {
-		writer = fopen(write_idf, "wb");
-		if (writer == NULL) return fails;
+		local_info.writer = fopen(write_idf, "wb");
+		if (local_info.writer == NULL)
+			return local_info.fails;
 	}
 
 
@@ -450,29 +477,30 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
      * the library version is compatible with the one used at compile time,
      * in case we are using dynamically linked libraries.  REQUIRED.
      */
-    png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
+	local_info.png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
                                   NULL, NULL, NULL);
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
-	png_set_option(png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
-    if(png == NULL) goto fin;
+    if(local_info.png == NULL) 
+		goto fin;
 
     /* Allocate/initialize the image information data.  REQUIRED
      */
-    info = png_create_info_struct(png);
+    info = png_create_info_struct(local_info.png);
 
     if(info == NULL) goto fin;
 
     /* Set error handling.  REQUIRED if you are not supplying your own
      * error handling functions in the png_create_write_struct() call.
      */
-    if(setjmp(png_jmpbuf(png))) goto fin;
+    if(setjmp(png_jmpbuf(local_info.png))) goto fin;
 
     /* I/O initialization functions is REQUIRED
      */
-    png_init_io(png, writer);
+    png_init_io(local_info.png, local_info.writer);
 
     /* Set the image information here.  Width and height are up to 2^31,
      * bit_depth is one of 1, 2, 4, 8, or 16, but valid values also depend on
@@ -491,7 +519,8 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
      * color_type == PNG_COLOR_TYPE_RGB_ALPHA) && bit_depth < 8
      *
      */
-    png_set_compression_level(png, (compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? 3 : compressionLevel);
+    png_set_compression_level(local_info.png, 
+								(compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? 3 : compressionLevel);
 
     if(nr_comp >= 3) { /* RGB(A) */
         color_type = PNG_COLOR_TYPE_RGB;
@@ -505,10 +534,10 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         sig_bit.alpha = (png_byte)prec;
     }
 
-    png_set_IHDR(png, info, image->comps[0].w, image->comps[0].h, prec, color_type,
+    png_set_IHDR(local_info.png, info, image->comps[0].w, image->comps[0].h, prec, color_type,
                  PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE,  PNG_FILTER_TYPE_BASE);
 
-    png_set_sBIT(png, info, &sig_bit);
+    png_set_sBIT(local_info.png, info, &sig_bit);
     /* png_set_gamma(png, 2.2, 1./2.2); */
     /* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
@@ -526,7 +555,7 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 				cmsCloseProfile(in_prof);
 				if (result) {
 					std::string u8_conv = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.to_bytes(description.get());
-					png_set_iCCP(png,
+					png_set_iCCP(local_info.png,
 						info,
 						(png_const_charp)(description.get()),
 						PNG_COMPRESSION_TYPE_BASE,
@@ -542,30 +571,30 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 	}
 
 	// handle libpng errors
-	if (setjmp(png_jmpbuf(png))) {
+	if (setjmp(png_jmpbuf(local_info.png))) {
 		goto fin;
 	}
 
-    png_write_info(png, info);
+    png_write_info(local_info.png, info);
 
     /* setup conversion */
     {
         size_t rowStride;
         png_size_t png_row_size;
 
-        png_row_size = png_get_rowbytes(png, info);
+        png_row_size = png_get_rowbytes(local_info.png, info);
         rowStride = ((size_t)image->comps[0].w * (size_t)nr_comp * (size_t)prec + 7U) / 8U;
         if (rowStride != (size_t)png_row_size) {
             fprintf(stderr, "Invalid PNG row size\n");
             goto fin;
         }
-        row_buf = (png_bytep)malloc(png_row_size);
-        if (row_buf == NULL) {
+		local_info.row_buf = (png_bytep)malloc(png_row_size);
+        if (local_info.row_buf == NULL) {
             fprintf(stderr, "Can't allocate memory for PNG row\n");
             goto fin;
         }
-        buffer32s = (int32_t*)malloc((size_t)image->comps[0].w * (size_t)nr_comp * sizeof(int32_t));
-        if (buffer32s == NULL) {
+		local_info.buffer32s = (int32_t*)malloc((size_t)image->comps[0].w * (size_t)nr_comp * sizeof(int32_t));
+        if (local_info.buffer32s == NULL) {
             fprintf(stderr, "Can't allocate memory for interleaved 32s row\n");
             goto fin;
         }
@@ -578,8 +607,8 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         convert_32s_PXCX cvtPxToCx = convert_32s_PXCX_LUT[nr_comp];
         convert_32sXXx_C1R cvt32sToPack = NULL;
         int32_t adjust = image->comps[0].sgnd ? 1 << (prec - 1) : 0;
-        png_bytep row_buf_cpy = row_buf;
-        int32_t* buffer32s_cpy = buffer32s;
+        png_bytep row_buf_cpy = local_info.row_buf;
+        int32_t* buffer32s_cpy = local_info.buffer32s;
 
         switch (prec) {
         case 1:
@@ -600,7 +629,7 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         for(y = 0; y < image->comps[0].h; ++y) {
             cvtPxToCx(planes, buffer32s_cpy, width, adjust);
             cvt32sToPack(buffer32s_cpy, row_buf_cpy, width * (size_t)nr_comp);
-            png_write_row(png, row_buf_cpy);
+            png_write_row(local_info.png, row_buf_cpy);
             planes[0] += width;
             planes[1] += width;
             planes[2] += width;
@@ -608,25 +637,25 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         }
     }
 
-    png_write_end(png, info);
+    png_write_end(local_info.png, info);
 
-    fails = 0;
+	local_info.fails = 0;
 
 fin:
-    if(png) {
-        png_destroy_write_struct(&png, &info);
+    if(local_info.png) {
+        png_destroy_write_struct(&local_info.png, &info);
     }
-    if(row_buf) {
-        free(row_buf);
+    if(local_info.row_buf) {
+        free(local_info.row_buf);
     }
-    if(buffer32s) {
-        free(buffer32s);
+    if(local_info.buffer32s) {
+        free(local_info.buffer32s);
     }
-	if (!writeToStdout) {
-		fclose(writer);
-		if (fails)
+	if (!local_info.writeToStdout) {
+		fclose(local_info.writer);
+		if (local_info.fails)
 			(void)remove(write_idf); /* ignore return value */
 	}
 
-    return fails;
+    return local_info.fails;
 }/* imagetopng() */
