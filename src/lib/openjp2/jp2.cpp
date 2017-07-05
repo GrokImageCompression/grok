@@ -1026,7 +1026,7 @@ void find_cf(double x, uint32_t* num, uint32_t* den) {
 		p[i] = a[i] * p[i - 1] + p[i - 2];
 		q[i] = a[i] * q[i - 1] + q[i - 2];
 		//printf("%ld:  %ld/%ld\n", a[i], p[i], q[i]);
-		if (fabs(x - a[i])<eps || (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX))
+		if (fabs(x - (double)a[i])<eps || (p[i] > USHRT_MAX) || (q[i] > USHRT_MAX))
 			break;
 		x = 1.0 / (x - (double)a[i]);
 	}
@@ -2257,7 +2257,7 @@ static bool jp2_write_jp2c(jp2_t *jp2,
 	}
 
 	/* size of codestream */
-	if (!cio->write_int((uint32_t)(j2k_codestream_exit - jp2->j2k_codestream_offset), p_manager)) {
+	if (!cio->write_int(j2k_codestream_exit - jp2->j2k_codestream_offset, p_manager)) {
 		return false;
 	}
 	if (!cio->write_int(JP2_JP2C, p_manager)) {

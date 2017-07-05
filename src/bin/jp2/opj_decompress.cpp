@@ -1488,11 +1488,11 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			buffer = new uint8_t[lengthOfFile];
 			size_t bytesRead = 0;
 			size_t totalBytes = 0;
-			while (bytesRead = fread(buffer, 1, lengthOfFile, fp)) {
+			while ( (bytesRead = fread(buffer, 1, lengthOfFile, fp)) ) {
 				totalBytes += bytesRead;
 			}
 			fclose(fp);
-			if (totalBytes != lengthOfFile) {
+			if (totalBytes != (size_t)lengthOfFile) {
 				fprintf(stderr, "ERROR -> opj_decompress: Unable to read full length of file %s", parameters->infile);
 				failed = 1;
 				goto cleanup;

@@ -720,7 +720,7 @@ static bool j2k_read_qcc(   j2k_t *p_j2k,
                                 uint32_t p_header_size,
                                 event_mgr_t * p_manager);
 
-static uint8_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
+static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 
 /**
  * Writes the POC marker (Progression Order Change)
@@ -2872,7 +2872,7 @@ static bool j2k_read_qcc(   j2k_t *p_j2k,
     return true;
 }
 
-static uint8_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
+static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
 	uint32_t l_poc_room;
 	if (l_nb_comp <= 256) {
 		l_poc_room = 1;
@@ -2880,7 +2880,7 @@ static uint8_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
 	else {
 		l_poc_room = 2;
 	}
-	return (uint8_t)(4 + (5 + 2 * l_poc_room) * l_nb_poc);
+	return (uint16_t)(4 + (5 + 2 * l_poc_room) * l_nb_poc);
 }
 
 static bool j2k_write_poc(     j2k_t *p_j2k,
@@ -2933,7 +2933,7 @@ static bool j2k_write_poc_in_memory(   j2k_t *p_j2k,
 	}
 
 	/* Lpoc */
-	if (!p_stream->write_short(l_poc_size - 2, p_manager)) {
+	if (!p_stream->write_short((uint16_t)(l_poc_size - 2), p_manager)) {
 		return false;
 	}
 	l_current_poc = l_tcp->pocs;
@@ -4335,7 +4335,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
 
     for (i=0; i<l_cp->th; ++i) {
         for (j=0; j<l_cp->tw; ++j) {
-            double l_offset = (double)((*l_tp_stride_func)(l_tcp) / l_tcp->numlayers);
+            double l_offset = (double)(*l_tp_stride_func)(l_tcp) / l_tcp->numlayers;
 
             /* 4 borders of the tile rescale on the image if necessary */
             l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
@@ -9923,7 +9923,7 @@ static bool j2k_post_write_tile (   j2k_t * p_j2k,
 		++l_img_comp;
 	}
 
-	l_tile_size = (uint64_t)(l_tile_size * 0.1625); /* 1.3/8 = 0.1625 */
+	l_tile_size = (uint64_t)((double)(l_tile_size) * 0.1625); /* 1.3/8 = 0.1625 */
 	l_tile_size += j2k_get_specific_header_sizes(p_j2k);
 
 	// ToDo: use better estimate of signaling overhead for packets, 

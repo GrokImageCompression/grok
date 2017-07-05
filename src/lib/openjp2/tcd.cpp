@@ -368,8 +368,8 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 
 		if (!single_lossless) {
 			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-				* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-				* tilec->numpix;
+				* (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+				* (double)tilec->numpix;
 		}
 	} /* compno */
 
@@ -544,8 +544,8 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
         } /* resno */
 
 		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-			* (((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-			* tilec->numpix;
+			* (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+			* (double)tilec->numpix;
 
     } /* compno */
 
