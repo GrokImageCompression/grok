@@ -432,12 +432,6 @@ struct j2k_dec_t {
     uint32_t m_end_tile_x;
     uint32_t m_end_tile_y;
 
-     // Decoded area set by the user
-    uint32_t m_DA_x0;
-    uint32_t m_DA_y0;
-    uint32_t m_DA_x1;
-    uint32_t m_DA_y1;
-
     /** Index of the tile to decode (used in get_tile); initialized to -1 */
     int32_t m_tile_ind_to_dec;
     /** Position of the last SOT marker read */
