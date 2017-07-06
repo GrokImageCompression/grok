@@ -551,109 +551,96 @@ bool GrokStream::has_seek(void) {
 }
 
 
-
-void grok_write_bytes_BE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
-{
-	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + sizeof(uint32_t) - p_nb_bytes;
-
-	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(uint32_t));
-
+template<typename TYPE> void grok_write_BE(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
+	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + sizeof(TYPE) - p_nb_bytes;
+	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	memcpy(p_buffer, l_data_ptr, p_nb_bytes);
 }
-
-void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes)
-{
+template<typename TYPE> void grok_write_LE(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
 	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + p_nb_bytes - 1;
-	uint32_t i;
-
-	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(uint32_t));
-
-	for (i = 0; i < p_nb_bytes; ++i) {
+	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
+	for (uint32_t i = 0; i < p_nb_bytes; ++i) {
 		*(p_buffer++) = *(l_data_ptr--);
 	}
 }
-
-void grok_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
-{
-	uint8_t * l_data_ptr = ((uint8_t *)p_value);
-
-	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(uint32_t));
-
-	*p_value = 0;
-	memcpy(l_data_ptr + sizeof(uint32_t) - p_nb_bytes, p_buffer, p_nb_bytes);
+void grok_write_bytes_BE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes){
+	grok_write_BE<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes)
-{
+void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes) {
+	grok_write_LE<uint32_t>(p_buffer, p_value, p_nb_bytes);
+}
+
+void grok_write_64_BE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes) {
+	grok_write_BE<uint64_t>(p_buffer, p_value, p_nb_bytes);
+}
+
+void grok_write_64_LE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes) {
+	grok_write_LE<uint64_t>(p_buffer, p_value, p_nb_bytes);
+}
+
+void grok_write_float_BE(uint8_t * p_buffer, float p_value){
+	grok_write_BE<float>(p_buffer, p_value, sizeof(float));
+}
+
+void grok_write_float_LE(uint8_t * p_buffer, float p_value){
+	grok_write_LE<float>(p_buffer, p_value, sizeof(float));
+}
+
+
+void grok_write_double_BE(uint8_t * p_buffer, double p_value){
+	grok_write_BE<double>(p_buffer, p_value, sizeof(double));
+}
+
+void grok_write_double_LE(uint8_t * p_buffer, double p_value){
+	grok_write_LE<double>(p_buffer, p_value, sizeof(double));
+}
+
+template<typename TYPE> void grok_read_BE(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes) {
+	uint8_t * l_data_ptr = ((uint8_t *)p_value);
+	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
+	*p_value = 0;
+	memcpy(l_data_ptr + sizeof(TYPE) - p_nb_bytes, p_buffer, p_nb_bytes);
+}
+template<typename TYPE> void grok_read_LE(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes) {
 	uint8_t * l_data_ptr = ((uint8_t *)p_value) + p_nb_bytes - 1;
-	uint32_t i;
-
-	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(uint32_t));
-
+	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	*p_value = 0;
-	for (i = 0; i < p_nb_bytes; ++i) {
+	for (uint32_t i = 0; i < p_nb_bytes; ++i) {
 		*(l_data_ptr--) = *(p_buffer++);
 	}
 }
 
-void grok_write_double_BE(uint8_t * p_buffer, double p_value)
-{
-	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value);
-	memcpy(p_buffer, l_data_ptr, sizeof(double));
+void grok_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
+	grok_read_BE<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_write_double_LE(uint8_t * p_buffer, double p_value)
-{
-	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + sizeof(double) - 1;
-	uint32_t i;
-	for (i = 0; i < sizeof(double); ++i) {
-		*(p_buffer++) = *(l_data_ptr--);
-	}
+void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
+	grok_read_LE<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_read_double_BE(const uint8_t * p_buffer, double * p_value)
-{
-	uint8_t * l_data_ptr = ((uint8_t *)p_value);
-	memcpy(l_data_ptr, p_buffer, sizeof(double));
+void grok_read_64_BE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
+	grok_read_BE<uint64_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_read_double_LE(const uint8_t * p_buffer, double * p_value)
-{
-	uint8_t * l_data_ptr = ((uint8_t *)p_value) + sizeof(double) - 1;
-	uint32_t i;
-	for (i = 0; i < sizeof(double); ++i) {
-		*(l_data_ptr--) = *(p_buffer++);
-	}
+void grok_read_64_LE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
+	grok_read_LE<uint64_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_write_float_BE(uint8_t * p_buffer, float p_value)
-{
-	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value);
-	memcpy(p_buffer, l_data_ptr, sizeof(float));
+void grok_read_float_BE(const uint8_t * p_buffer, float * p_value){
+	grok_read_BE<float>(p_buffer, p_value, sizeof(float));
 }
 
-void grok_write_float_LE(uint8_t * p_buffer, float p_value)
-{
-	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + sizeof(float) - 1;
-	uint32_t i;
-	for (i = 0; i < sizeof(float); ++i) {
-		*(p_buffer++) = *(l_data_ptr--);
-	}
+void grok_read_float_LE(const uint8_t * p_buffer, float * p_value){
+	grok_read_LE<float>(p_buffer, p_value, sizeof(float));
 }
 
-void grok_read_float_BE(const uint8_t * p_buffer, float * p_value)
-{
-	uint8_t * l_data_ptr = ((uint8_t *)p_value);
-	memcpy(l_data_ptr, p_buffer, sizeof(float));
+void grok_read_double_BE(const uint8_t * p_buffer, double * p_value){
+	grok_read_BE<double>(p_buffer, p_value, sizeof(double));
 }
 
-void grok_read_float_LE(const uint8_t * p_buffer, float * p_value)
-{
-	uint8_t * l_data_ptr = ((uint8_t *)p_value) + sizeof(float) - 1;
-	uint32_t i;
-	for (i = 0; i < sizeof(float); ++i) {
-		*(l_data_ptr--) = *(p_buffer++);
-	}
+void grok_read_double_LE(const uint8_t * p_buffer, double * p_value){
+	grok_read_LE<double>(p_buffer, p_value, sizeof(double));
 }
 
 

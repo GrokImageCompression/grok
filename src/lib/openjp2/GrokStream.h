@@ -63,18 +63,22 @@
 namespace grk {
 
 #if defined(GROK_BIG_ENDIAN)
-#define grok_write_bytes		grok_write_bytes_BE
+#define grok_write_bytes	grok_write_bytes_BE
 #define grok_read_bytes		grok_read_bytes_BE
+#define grok_write_64		grok_write_64_BE
+#define grok_read_64		grok_read_64_BE
 #define grok_write_double	grok_write_double_BE
-#define grok_read_double		grok_read_double_BE
-#define grok_write_float		grok_write_float_BE
+#define grok_read_double	grok_read_double_BE
+#define grok_write_float	grok_write_float_BE
 #define grok_read_float		grok_read_float_BE
 #else
-#define grok_write_bytes		grok_write_bytes_LE
+#define grok_write_bytes	grok_write_bytes_LE
 #define grok_read_bytes		grok_read_bytes_LE
+#define grok_write_64		grok_write_64_LE
+#define grok_read_64		grok_read_64_LE
 #define grok_write_double	grok_write_double_LE
-#define grok_read_double		grok_read_double_LE
-#define grok_write_float		grok_write_float_LE
+#define grok_read_double	grok_read_double_LE
+#define grok_write_float	grok_write_float_LE
 #define grok_read_float		grok_read_float_LE
 #endif
 
