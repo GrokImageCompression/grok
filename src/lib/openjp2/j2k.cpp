@@ -391,7 +391,7 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k,
 /**
  * Updates the Tile Length Marker.
  */
-static void j2k_update_tlm ( j2k_t * p_j2k, uint64_t p_tile_part_size);
+static void j2k_update_tlm ( j2k_t * p_j2k, uint32_t p_tile_part_size);
 
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -920,7 +920,7 @@ static bool j2k_write_sot(      j2k_t *p_j2k,
 static bool j2k_get_sot_values(uint8_t *  p_header_data,
                                    uint32_t  p_header_size,
                                    uint32_t* p_tile_no,
-                                   size_t* p_tot_len,
+                                   uint32_t* p_tot_len,
                                    uint32_t* p_current_part,
                                    uint32_t* p_num_parts,
                                    event_mgr_t * p_manager );
@@ -975,14 +975,13 @@ static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
 
 
 
-static void j2k_update_tlm (j2k_t * p_j2k, uint64_t p_tile_part_size )
+static void j2k_update_tlm (j2k_t * p_j2k, uint32_t p_tile_part_size )
 {
 	/* PSOT */
     grok_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_j2k->m_current_tile_number,1);         
     ++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
 
 	/* PSOT */
-	//ToDo support code stream > 2^32 -1 
     grok_write_bytes(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,p_tile_part_size,4);                                        
     p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current += 4;
 }
@@ -3796,7 +3795,7 @@ static bool j2k_write_sot(j2k_t *p_j2k,
 static bool j2k_get_sot_values(uint8_t *  p_header_data,
                                    uint32_t  p_header_size,
                                    uint32_t* p_tile_no,
-                                   size_t* p_tot_len,
+									uint32_t* p_tot_len,
                                    uint32_t* p_current_part,
                                    uint32_t* p_num_parts,
                                    event_mgr_t * p_manager )
@@ -3814,10 +3813,7 @@ static bool j2k_get_sot_values(uint8_t *  p_header_data,
     grok_read_bytes(p_header_data,p_tile_no,2);      
     p_header_data+=2;
 	/* Psot */
-	//ToDo support code stream > 2^32 -1 
-	uint32_t temp = 0;
-    grok_read_bytes(p_header_data,&temp,4); 
-	*p_tot_len = temp;
+    grok_read_bytes(p_header_data,p_tot_len,4);
     p_header_data+=4;
 	/* TPsot */
     grok_read_bytes(p_header_data,p_current_part,1);
@@ -3835,7 +3831,7 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
 {
     cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
-	size_t l_tot_len = 0;
+	uint32_t l_tot_len = 0;
 	uint32_t l_num_parts = 0;
     uint32_t l_current_part;
     uint32_t l_tile_x,l_tile_y;
@@ -4106,12 +4102,11 @@ static bool j2k_read_sod (j2k_t *p_j2k,
         l_cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index[l_current_tile_part].end_pos =
             l_current_pos + p_j2k->m_specific_param.m_decoder.m_sot_length + 2;
 
-		//ToDo support code stream > 2^32 -1 
         if (false == j2k_add_tlmarker(p_j2k->m_current_tile_number,
                                           l_cstr_index,
                                           J2K_MS_SOD,
                                           l_current_pos,
-                                          p_j2k->m_specific_param.m_decoder.m_sot_length + 2)) {
+                                          (uint32_t)(p_j2k->m_specific_param.m_decoder.m_sot_length + 2))) {
             event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n");
             return false;
         }
@@ -7160,7 +7155,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t til
     uint32_t l_current_marker;
     uint32_t l_marker_size;
     uint32_t l_tile_no, l_current_part, l_num_parts;
-	size_t l_tot_len;
+	uint32_t l_tot_len;
 
     /* initialize to no correction needed */
     *p_correction_needed = false;
@@ -10125,15 +10120,14 @@ static bool j2k_write_first_tile_part (j2k_t *p_j2k,
 
     /* Writing Psot in SOT marker */
 	/* PSOT */
-	//ToDo support code stream > 2^32 -1 
 	auto currentLocation = p_stream->tell();
 	p_stream->seek(psot_location, p_manager);
-	if (!p_stream->write_int(l_nb_bytes_written, p_manager)) {
+	if (!p_stream->write_int((uint32_t)l_nb_bytes_written, p_manager)) {
 		return false;
 	}
 	p_stream->seek(currentLocation, p_manager);
     if (OPJ_IS_CINEMA(l_cp->rsiz)) {
-        j2k_update_tlm(p_j2k, l_nb_bytes_written);
+        j2k_update_tlm(p_j2k, (uint32_t)l_nb_bytes_written);
     }
     return true;
 }
@@ -10148,7 +10142,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
     uint32_t tilepartno=0;
     uint64_t l_nb_bytes_written = 0;
     uint64_t l_current_nb_bytes_written;
-    uint64_t l_part_tile_size;
+    uint32_t l_part_tile_size;
     uint32_t tot_num_tp;
     uint32_t pino;
 
@@ -10176,7 +10170,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
         }
         l_nb_bytes_written += l_current_nb_bytes_written;
         p_total_data_size -= l_current_nb_bytes_written;
-        l_part_tile_size += l_current_nb_bytes_written;
+        l_part_tile_size += (uint32_t)l_current_nb_bytes_written;
 
         l_current_nb_bytes_written = 0;
         if (! j2k_write_sod(p_j2k,l_tcd,&l_current_nb_bytes_written,p_total_data_size,p_stream,p_manager)) {
@@ -10184,11 +10178,10 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
         }
         l_nb_bytes_written += l_current_nb_bytes_written;
         p_total_data_size -= l_current_nb_bytes_written;
-        l_part_tile_size += l_current_nb_bytes_written;
+        l_part_tile_size += (uint32_t)l_current_nb_bytes_written;
 
 		/* Writing Psot in SOT marker */
 		/* PSOT */
-		//ToDo support code stream > 2^32 -1 
 		auto currentLocation = p_stream->tell();
 		p_stream->seek(psot_location, p_manager);
 		if (!p_stream->write_int(l_part_tile_size, p_manager)) {
@@ -10218,7 +10211,7 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
 
             l_nb_bytes_written += l_current_nb_bytes_written;
             p_total_data_size -= l_current_nb_bytes_written;
-            l_part_tile_size += l_current_nb_bytes_written;
+            l_part_tile_size += (uint32_t)l_current_nb_bytes_written;
 
             l_current_nb_bytes_written = 0;
             if (! j2k_write_sod(p_j2k,l_tcd,&l_current_nb_bytes_written,p_total_data_size,p_stream,p_manager)) {
@@ -10227,11 +10220,10 @@ static bool j2k_write_all_tile_parts(  j2k_t *p_j2k,
 
             l_nb_bytes_written += l_current_nb_bytes_written;
             p_total_data_size -= l_current_nb_bytes_written;
-            l_part_tile_size += l_current_nb_bytes_written;
+            l_part_tile_size += (uint32_t)l_current_nb_bytes_written;
 
             /* Writing Psot in SOT marker */
 			/* PSOT */
-			//ToDo support code stream > 2^32 -1 
 			auto currentLocation = p_stream->tell();
 			p_stream->seek(psot_location, p_manager);
 			if (!p_stream->write_int(l_part_tile_size, p_manager)) {
