@@ -215,9 +215,8 @@ struct jp2_t {
 JP2 Box
 */
 struct jp2_box_t {
-    uint32_t length;
+    uint64_t length;
     uint32_t type;
-    int32_t init_pos;
 } ;
 
 struct jp2_header_handler_t {
