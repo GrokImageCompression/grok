@@ -62,6 +62,9 @@
 
 namespace grk {
 
+template<typename TYPE> void grok_write(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes);
+template<typename TYPE> void grok_read(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes);
+
 GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(nullptr),
 	m_free_user_data_fn(nullptr),
 	m_user_data_length(0),
@@ -273,7 +276,11 @@ bool GrokStream::write_int(uint32_t p_value, event_mgr_t * p_event_mgr) {
 	return write<uint32_t>(p_value, sizeof(uint32_t), p_event_mgr);
 }
 
-template<typename TYPE> bool GrokStream::write(uint32_t p_value, uint8_t numBytes, event_mgr_t * p_event_mgr) {
+bool GrokStream::write_64(uint64_t p_value, event_mgr_t * p_event_mgr) {
+	return write<uint64_t>(p_value, sizeof(uint64_t), p_event_mgr);
+}
+
+template<typename TYPE> bool GrokStream::write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr) {
 
 	if (m_status & GROK_STREAM_STATUS_ERROR) {
 		return false;
@@ -287,7 +294,7 @@ template<typename TYPE> bool GrokStream::write(uint32_t p_value, uint8_t numByte
 		auto l_media_skip_bytes = m_skip_fn(numBytes, m_user_data);
 		if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != numBytes))
 			return false;
-		grok_write_bytes(m_buffer_current_ptr, p_value, numBytes);
+		grok_write(m_buffer_current_ptr, p_value, numBytes);
 		write_increment(numBytes);
 		return true;
 	}
@@ -297,7 +304,7 @@ template<typename TYPE> bool GrokStream::write(uint32_t p_value, uint8_t numByte
 			return false;
 		}
 	}
-	grok_write_bytes(m_buffer_current_ptr, p_value, numBytes);
+	grok_write(m_buffer_current_ptr, p_value, numBytes);
 	write_increment(numBytes);
 	return true;
 }
@@ -551,98 +558,67 @@ bool GrokStream::has_seek(void) {
 }
 
 
-template<typename TYPE> void grok_write_BE(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
+template<typename TYPE> void grok_write(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
+#if defined(GROK_BIG_ENDIAN)
 	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + sizeof(TYPE) - p_nb_bytes;
 	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	memcpy(p_buffer, l_data_ptr, p_nb_bytes);
-}
-template<typename TYPE> void grok_write_LE(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
+#else
 	const uint8_t * l_data_ptr = ((const uint8_t *)&p_value) + p_nb_bytes - 1;
 	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	for (uint32_t i = 0; i < p_nb_bytes; ++i) {
 		*(p_buffer++) = *(l_data_ptr--);
 	}
+#endif
 }
-void grok_write_bytes_BE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes){
-	grok_write_BE<uint32_t>(p_buffer, p_value, p_nb_bytes);
-}
-
-void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes) {
-	grok_write_LE<uint32_t>(p_buffer, p_value, p_nb_bytes);
+void grok_write_bytes(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes){
+	grok_write<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_write_64_BE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes) {
-	grok_write_BE<uint64_t>(p_buffer, p_value, p_nb_bytes);
+void grok_write_64(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes) {
+	grok_write<uint64_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_write_64_LE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes) {
-	grok_write_LE<uint64_t>(p_buffer, p_value, p_nb_bytes);
+void grok_write_float(uint8_t * p_buffer, float p_value){
+	grok_write<float>(p_buffer, p_value, sizeof(float));
 }
 
-void grok_write_float_BE(uint8_t * p_buffer, float p_value){
-	grok_write_BE<float>(p_buffer, p_value, sizeof(float));
+void grok_write_double(uint8_t * p_buffer, double p_value){
+	grok_write<double>(p_buffer, p_value, sizeof(double));
 }
 
-void grok_write_float_LE(uint8_t * p_buffer, float p_value){
-	grok_write_LE<float>(p_buffer, p_value, sizeof(float));
-}
-
-
-void grok_write_double_BE(uint8_t * p_buffer, double p_value){
-	grok_write_BE<double>(p_buffer, p_value, sizeof(double));
-}
-
-void grok_write_double_LE(uint8_t * p_buffer, double p_value){
-	grok_write_LE<double>(p_buffer, p_value, sizeof(double));
-}
-
-template<typename TYPE> void grok_read_BE(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes) {
+template<typename TYPE> void grok_read(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes) {
+#if defined(GROK_BIG_ENDIAN)
 	uint8_t * l_data_ptr = ((uint8_t *)p_value);
 	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	*p_value = 0;
 	memcpy(l_data_ptr + sizeof(TYPE) - p_nb_bytes, p_buffer, p_nb_bytes);
-}
-template<typename TYPE> void grok_read_LE(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes) {
+#else
 	uint8_t * l_data_ptr = ((uint8_t *)p_value) + p_nb_bytes - 1;
 	assert(p_nb_bytes > 0 && p_nb_bytes <= sizeof(TYPE));
 	*p_value = 0;
 	for (uint32_t i = 0; i < p_nb_bytes; ++i) {
 		*(l_data_ptr--) = *(p_buffer++);
 	}
+#endif
 }
 
-void grok_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
-	grok_read_BE<uint32_t>(p_buffer, p_value, p_nb_bytes);
+void grok_read_bytes(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
+	grok_read<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
-	grok_read_LE<uint32_t>(p_buffer, p_value, p_nb_bytes);
+void grok_read_64(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
+	grok_read<uint64_t>(p_buffer, p_value, p_nb_bytes);
 }
 
-void grok_read_64_BE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
-	grok_read_BE<uint64_t>(p_buffer, p_value, p_nb_bytes);
+void grok_read_float(const uint8_t * p_buffer, float * p_value){
+	grok_read<float>(p_buffer, p_value, sizeof(float));
 }
 
-void grok_read_64_LE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
-	grok_read_LE<uint64_t>(p_buffer, p_value, p_nb_bytes);
-}
 
-void grok_read_float_BE(const uint8_t * p_buffer, float * p_value){
-	grok_read_BE<float>(p_buffer, p_value, sizeof(float));
+void grok_read_double(const uint8_t * p_buffer, double * p_value){
+	grok_read<double>(p_buffer, p_value, sizeof(double));
 }
-
-void grok_read_float_LE(const uint8_t * p_buffer, float * p_value){
-	grok_read_LE<float>(p_buffer, p_value, sizeof(float));
-}
-
-void grok_read_double_BE(const uint8_t * p_buffer, double * p_value){
-	grok_read_BE<double>(p_buffer, p_value, sizeof(double));
-}
-
-void grok_read_double_LE(const uint8_t * p_buffer, double * p_value){
-	grok_read_LE<double>(p_buffer, p_value, sizeof(double));
-}
-
 
 }
 
