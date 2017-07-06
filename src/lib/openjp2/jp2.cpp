@@ -552,9 +552,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
                                 GrokStream *cio,
                                 event_mgr_t * p_manager )
 {
-    /* read header from file */
     uint8_t l_data_header [8];
-
     
     assert(cio != nullptr);
     assert(box != nullptr);
@@ -567,43 +565,31 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     }
 
     /* process read data */
-    grok_read_bytes(l_data_header,&(box->length), 4);
+	uint32_t L = 0;
+    grok_read_bytes(l_data_header,&L, 4);
+	box->length = L;
     grok_read_bytes(l_data_header+4,&(box->type), 4);
 
     if(box->length == 0) { /* last box */
         const int64_t bleft = cio->get_number_byte_left();
-        if (bleft > (int64_t)(0xFFFFFFFFU - 8U)) {
-            event_msg(p_manager, EVT_ERROR, "Cannot handle box sizes higher than 2^32\n");
-            return false;
-        }
-        box->length = (uint32_t)bleft + 8U;
-        assert( (int64_t)box->length == bleft + 8 );
+        box->length = bleft + 8U;
+        assert( box->length == bleft + 8 );
         return true;
     }
 
-    /* do we have a "special very large box ?" */
-    /* read then the XLBox */
+    /* read XL  */
     if (box->length == 1) {
-        uint32_t l_xl_part_size;
-
         uint32_t l_nb_bytes_read = (uint32_t)cio->read(l_data_header,8,p_manager);
         if (l_nb_bytes_read != 8) {
             if (l_nb_bytes_read > 0) {
                 *p_number_bytes_read += l_nb_bytes_read;
             }
-
             return false;
         }
-
-        *p_number_bytes_read = 16;
-        grok_read_bytes(l_data_header,&l_xl_part_size, 4);
-        if (l_xl_part_size != 0) {
-            event_msg(p_manager, EVT_ERROR, "Cannot handle box sizes higher than 2^32\n");
-            return false;
-        }
-        grok_read_bytes(l_data_header+4,&(box->length), 4);
-    }
-    return true;
+        grok_read_64(l_data_header,&box->length, 8);
+		*p_number_bytes_read += l_nb_bytes_read;
+	}
+	return true;
 }
 
 #if 0
@@ -2712,7 +2698,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
 
         l_current_handler = jp2_find_handler(box.type);
         l_current_handler_misplaced = jp2_img_find_handler(box.type);
-        l_current_data_size = box.length - l_nb_bytes_read;
+        l_current_data_size = (uint32_t)(box.length - l_nb_bytes_read);
 
         if ((l_current_handler != nullptr) || (l_current_handler_misplaced != nullptr)) {
             if (l_current_handler == nullptr) {
@@ -3065,13 +3051,13 @@ static bool jp2_read_jp2h(  jp2_t *jp2,
             return false;
         }
 
-        if (box.length > header_size) {
+        if (box.length > (uint64_t)header_size) {
             event_msg(p_manager, EVT_ERROR, "Stream error while reading JP2 Header box: box length is inconsistent.\n");
             return false;
         }
 
         l_current_handler = jp2_img_find_handler(box.type);
-        l_current_data_size = box.length - l_box_size;
+        l_current_data_size = (uint32_t)(box.length - l_box_size);
         p_header_data += l_box_size;
 
         if (l_current_handler != nullptr) {
@@ -3111,9 +3097,6 @@ static bool jp2_read_boxhdr_char(   jp2_box_t *box,
                                         event_mgr_t * p_manager
                                     )
 {
-    uint32_t l_value;
-
-    
     assert(p_data != nullptr);
     assert(box != nullptr);
     assert(p_number_bytes_read != nullptr);
@@ -3125,38 +3108,26 @@ static bool jp2_read_boxhdr_char(   jp2_box_t *box,
     }
 
     /* process read data */
-    grok_read_bytes(p_data, &l_value, 4);
+	uint32_t L = 0;
+    grok_read_bytes(p_data, &L, 4);
+	box->length = L;
     p_data += 4;
-    box->length = l_value;
 
-    grok_read_bytes(p_data, &l_value, 4);
+    grok_read_bytes(p_data, &box->type, 4);
     p_data += 4;
-    box->type = l_value;
 
-    *p_number_bytes_read = 8;
+	*p_number_bytes_read = 8;
 
-    /* do we have a "special very large box ?" */
-    /* read then the XLBox */
+    /* read XL parameter */
     if (box->length == 1) {
-        uint32_t l_xl_part_size;
-
         if (p_box_max_size < 16) {
             event_msg(p_manager, EVT_ERROR, "Cannot handle XL box of less than 16 bytes\n");
             return false;
         }
 
-        grok_read_bytes(p_data,&l_xl_part_size, 4);
-        p_data += 4;
-        *p_number_bytes_read += 4;
-
-        if (l_xl_part_size != 0) {
-            event_msg(p_manager, EVT_ERROR, "Cannot handle box sizes higher than 2^32\n");
-            return false;
-        }
-
-        grok_read_bytes(p_data, &l_value, 4);
-        *p_number_bytes_read += 4;
-        box->length = (uint32_t)(l_value);
+		grok_read_64(p_data,&box->length,8);
+        p_data += 8;
+        *p_number_bytes_read += 8;
 
         if (box->length == 0) {
             event_msg(p_manager, EVT_ERROR, "Cannot handle box of undefined sizes\n");

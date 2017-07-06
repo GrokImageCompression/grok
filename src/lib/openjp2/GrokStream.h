@@ -300,6 +300,24 @@ void grok_write_bytes_BE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
 	*/
 void grok_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
 
+
+/**
+* Write some bytes to the given data buffer, this function is used in Big Endian cpus.
+* @param p_buffer		pointer the data buffer to write data to.
+* @param p_value		the value to write
+* @param p_nb_bytes	the number of bytes to write
+*/
+void grok_write_64_BE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes);
+
+/**
+* Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
+* @param p_buffer		pointer the data buffer to read data from.
+* @param p_value		pointer to the value that will store the data.
+* @param p_nb_bytes	the nb bytes to read.
+* @return				the number of bytes read or -1 if an error occurred.
+*/
+void grok_read_64_BE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes);
+
 /**
 	* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to write data to.
@@ -319,6 +337,23 @@ void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
 void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
 
 
+/**
+* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
+* @param p_buffer		pointer the data buffer to write data to.
+* @param p_value		the value to write
+* @param p_nb_bytes	the number of bytes to write
+* @return				the number of bytes written or -1 if an error occurred
+*/
+void grok_write_64_LE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes);
+
+/**
+* Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
+* @param p_buffer		pointer the data buffer to read data from.
+* @param p_value		pointer to the value that will store the data.
+* @param p_nb_bytes	the nb bytes to read.
+* @return				the number of bytes read or -1 if an error occurred.
+*/
+void grok_read_64_LE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes);
 /**
 	* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to write data to.
