@@ -62,26 +62,6 @@
 
 namespace grk {
 
-#if defined(GROK_BIG_ENDIAN)
-#define grok_write_bytes	grok_write_bytes_BE
-#define grok_read_bytes		grok_read_bytes_BE
-#define grok_write_64		grok_write_64_BE
-#define grok_read_64		grok_read_64_BE
-#define grok_write_double	grok_write_double_BE
-#define grok_read_double	grok_read_double_BE
-#define grok_write_float	grok_write_float_BE
-#define grok_read_float		grok_read_float_BE
-#else
-#define grok_write_bytes	grok_write_bytes_LE
-#define grok_read_bytes		grok_read_bytes_LE
-#define grok_write_64		grok_write_64_LE
-#define grok_read_64		grok_read_64_LE
-#define grok_write_double	grok_write_double_LE
-#define grok_read_double	grok_read_double_LE
-#define grok_write_float	grok_write_float_LE
-#define grok_read_float		grok_read_float_LE
-#endif
-
 
 #define GROK_STREAM_STATUS_OUTPUT  0x1U
 #define GROK_STREAM_STATUS_INPUT   0x2U
@@ -166,6 +146,7 @@ struct GrokStream : public IGrokStream {
 	bool write_short(uint16_t p_value, event_mgr_t * p_event_mgr);
 	bool write_24(uint32_t p_value, event_mgr_t * p_event_mgr);
 	bool write_int(uint32_t p_value, event_mgr_t * p_event_mgr);
+	bool write_64(uint64_t p_value, event_mgr_t * p_event_mgr);
 
 	/**
 	* Writes some bytes to the stream (no correction for endian!).
@@ -260,7 +241,7 @@ private:
 		event_mgr_t * p_event_mgr);
 
 	void write_increment(size_t p_size);
-	template<typename TYPE> bool write(uint32_t p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
+	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
 
 	void sanity_check();
 
@@ -289,43 +270,9 @@ private:
 	* @param p_value		the value to write
 	* @param p_nb_bytes	the number of bytes to write
 */
-void grok_write_bytes_BE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
-
-/**
-	* Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
-	* @param p_buffer		pointer the data buffer to read data from.
-	* @param p_value		pointer to the value that will store the data.
-	* @param p_nb_bytes	the nb bytes to read.
-	* @return				the number of bytes read or -1 if an error occurred.
-	*/
-void grok_read_bytes_BE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
+void grok_write_bytes(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
 
 
-/**
-* Write some bytes to the given data buffer, this function is used in Big Endian cpus.
-* @param p_buffer		pointer the data buffer to write data to.
-* @param p_value		the value to write
-* @param p_nb_bytes	the number of bytes to write
-*/
-void grok_write_64_BE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes);
-
-/**
-* Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
-* @param p_buffer		pointer the data buffer to read data from.
-* @param p_value		pointer to the value that will store the data.
-* @param p_nb_bytes	the nb bytes to read.
-* @return				the number of bytes read or -1 if an error occurred.
-*/
-void grok_read_64_BE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes);
-
-/**
-	* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
-	* @param p_buffer		pointer the data buffer to write data to.
-	* @param p_value		the value to write
-	* @param p_nb_bytes	the number of bytes to write
-	* @return				the number of bytes written or -1 if an error occurred
-*/
-void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_bytes);
 
 /**
 	* Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
@@ -334,7 +281,7 @@ void grok_write_bytes_LE(uint8_t * p_buffer, uint32_t p_value, uint32_t p_nb_byt
 	* @param p_nb_bytes	the nb bytes to read.
 	* @return				the number of bytes read or -1 if an error occurred.
 	*/
-void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
+void grok_read_bytes(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes);
 
 
 /**
@@ -344,7 +291,7 @@ void grok_read_bytes_LE(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p
 * @param p_nb_bytes	the number of bytes to write
 * @return				the number of bytes written or -1 if an error occurred
 */
-void grok_write_64_LE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes);
+void grok_write_64(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes);
 
 /**
 * Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
@@ -353,63 +300,36 @@ void grok_write_64_LE(uint8_t * p_buffer, uint64_t p_value, uint32_t p_nb_bytes)
 * @param p_nb_bytes	the nb bytes to read.
 * @return				the number of bytes read or -1 if an error occurred.
 */
-void grok_read_64_LE(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes);
+void grok_read_64(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes);
 /**
 	* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to write data to.
 	* @param p_value		the value to write
 	*/
-void grok_write_double_LE(uint8_t * p_buffer, double p_value);
-
-/***
-	* Write some bytes to the given data buffer, this function is used in Big Endian cpus.
-	* @param p_buffer		pointer the data buffer to write data to.
-	* @param p_value		the value to write
-	*/
-void grok_write_double_BE(uint8_t * p_buffer, double p_value);
+void grok_write_double(uint8_t * p_buffer, double p_value);
 
 /**
 	* Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to read data from.
 	* @param p_value		pointer to the value that will store the data.
 	*/
-void grok_read_double_LE(const uint8_t * p_buffer, double * p_value);
+void grok_read_double(const uint8_t * p_buffer, double * p_value);
 
-/**
-	* Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
-	* @param p_buffer		pointer the data buffer to read data from.
-	* @param p_value		pointer to the value that will store the data.
-	*/
-void grok_read_double_BE(const uint8_t * p_buffer, double * p_value);
 
 /**
 	* Reads some bytes from the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to read data from.
 	* @param p_value		pointer to the value that will store the data.
 	*/
-void grok_read_float_LE(const uint8_t * p_buffer, float * p_value);
+void grok_read_float(const uint8_t * p_buffer, float * p_value);
 
-/**
-	* Reads some bytes from the given data buffer, this function is used in Big Endian cpus.
-	* @param p_buffer		pointer the data buffer to read data from.
-	* @param p_value		pointer to the value that will store the data.
-	*/
-void grok_read_float_BE(const uint8_t * p_buffer, float * p_value);
 
 /**
 	* Write some bytes to the given data buffer, this function is used in Little Endian cpus.
 	* @param p_buffer		pointer the data buffer to write data to.
 	* @param p_value		the value to write
 	*/
-void grok_write_float_LE(uint8_t * p_buffer, float p_value);
-
-/***
-	* Write some bytes to the given data buffer, this function is used in Big Endian cpus.
-	* @param p_buffer		pointer the data buffer to write data to.
-	* @param p_value		the value to write
-	*/
-void grok_write_float_BE(uint8_t * p_buffer, float p_value);
-
+void grok_write_float(uint8_t * p_buffer, float p_value);
 
 
 }
