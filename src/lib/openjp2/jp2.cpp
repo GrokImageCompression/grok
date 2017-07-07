@@ -2243,12 +2243,18 @@ static bool jp2_write_jp2c(jp2_t *jp2,
 	}
 
 	/* size of codestream */
-	//ToDo support code stream > 2^32 -1 
-	if (!cio->write_int(j2k_codestream_exit - jp2->j2k_codestream_offset, p_manager)) {
+	uint32_t length = jp2->needs_xl_jp2c_box_length ? 1 : (uint32_t)(j2k_codestream_exit - jp2->j2k_codestream_offset);
+	if (!cio->write_int(length, p_manager)) {
 		return false;
 	}
 	if (!cio->write_int(JP2_JP2C, p_manager)) {
 		return false;
+	}
+	// XL box
+	if (length == 1) {
+		if (!cio->write_64(j2k_codestream_exit - jp2->j2k_codestream_offset, p_manager)) {
+			return false;
+		}
 	}
     if (! cio->seek(j2k_codestream_exit,p_manager)) {
         event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
@@ -2816,7 +2822,8 @@ bool jp2_start_compress(jp2_t *jp2,
                             event_mgr_t * p_manager
                            )
 {
-    
+	if (!p_image)
+		return false;
     assert(jp2 != nullptr);
     assert(stream != nullptr);
     assert(p_manager != nullptr);
@@ -2835,6 +2842,13 @@ bool jp2_start_compress(jp2_t *jp2,
     if (! jp2_setup_header_writing(jp2, p_manager)) {
         return false;
     }
+
+	uint64_t image_size = 0;
+	for (auto i = 0U; i < p_image->numcomps; ++i) {
+		auto comp = p_image->comps + i;
+		image_size += (uint64_t)((comp->w * comp->h) * (comp->prec/8.0));
+	}
+	jp2->needs_xl_jp2c_box_length = (image_size > (uint64_t)1 << 30) ? true : false;
 
     /* write header */
     if (! jp2_exec (jp2,jp2->m_procedure_list,stream,p_manager)) {
@@ -3001,7 +3015,8 @@ static bool jp2_skip_jp2c(	jp2_t *jp2,
 
     jp2->j2k_codestream_offset = stream->tell();
 
-    if (!stream->skip(8,p_manager)) {
+	int64_t skip_bytes = jp2->needs_xl_jp2c_box_length ? 16 : 8;
+    if (!stream->skip(skip_bytes,p_manager)) {
         return false;
     }
 
