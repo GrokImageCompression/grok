@@ -60,7 +60,7 @@
 
 namespace grk {
 
-/**
+/*
 Bit input/output
 */
 class BitIO : public IBitIO {
@@ -70,30 +70,30 @@ public:
 	BitIO(uint8_t *bp, uint64_t len, bool isEncoder);
 	BitIO(IGrokStream* stream, bool isEncoder);
 
-	/**
+	/*
 	Number of bytes written.
 	@return Returns the number of bytes written
 	*/
 	size_t numbytes();
 
-	/**
+	/*
 	Write bits
 	@param v Value of bits
 	@param n Number of bits to write
 	*/
 	bool write( uint32_t v, uint32_t n);
-	/**
+	/*
 	Read bits
 	@param n Number of bits to read
 	@return Returns the corresponding read number
 	*/
 	bool read(uint32_t* bits, uint32_t n);
-	/**
+	/*
 	Flush bits
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool flush();
-	/**
+	/*
 	Passes the ending bits (coming from flushing)
 	@return Returns true if successful, returns false otherwise
 	*/
@@ -103,15 +103,15 @@ public:
 
 private:
 
-	/** pointer to the start of the buffer */
+	/* pointer to the start of the buffer */
 	uint8_t *start;
 
 	size_t offset;
 	size_t buf_len;
 
-	/** temporary place where each byte is read or written */
+	/* temporary place where each byte is read or written */
 	uint8_t buf;
-	/** coder : number of bits free to write. decoder : number of bits read */
+	/* coder : number of bits free to write. decoder : number of bits read */
 	uint8_t ct;
 
 	size_t total_bytes;
@@ -122,32 +122,32 @@ private:
 
 	IGrokStream* stream;
 
-	/**
+	/*
 	Write a bit
 	@param bio BIO handle
 	@param b Bit to write (0 or 1)
 	*/
 	bool putbit( uint8_t b);
-	/**
+	/*
 	Read a bit
 	@param bio BIO handle
 	@return Returns the read bit
 	*/
 	bool getbit(uint32_t* bits, uint8_t pos);
-	/**
+	/*
 	Write a byte
 	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool byteout();
 
-	/**
+	/*
 	Write a byte
 	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
 	*/
 	bool byteout_stream();
-	/**
+	/*
 	Read a byte
 	@param bio BIO handle
 	@return Returns true if successful, returns false otherwise
