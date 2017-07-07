@@ -194,6 +194,7 @@ struct jp2_t {
       of the standard are implemented.
     */
     int64_t j2k_codestream_offset;
+	bool needs_xl_jp2c_box_length;
     uint32_t jp2_state;
     uint32_t jp2_img_state;
     jp2_color_t color;
