@@ -1462,6 +1462,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	uint8_t* buffer = nullptr;
 	{
 		bool isBufferStream = false;
+		bool isMappedFile = false;
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
 			if (!fp) {
@@ -1499,14 +1500,11 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			}
 			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
 		}
-		else {
-			/* read the input file and put it in memory */
-			/* ---------------------------------------- */
+		else  if (isMappedFile) {
+			info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+		} else {
 			// use file stream 
 			info->l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
-
-			// other option is to use memory mapped stream
-			//info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
 		}
 	}
 
