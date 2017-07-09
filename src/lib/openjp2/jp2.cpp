@@ -573,7 +573,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box,
     if(box->length == 0) { /* last box */
         const int64_t bleft = cio->get_number_byte_left();
         box->length = bleft + 8U;
-        assert( box->length == bleft + 8 );
+        assert( box->length == (uint64_t)(bleft + 8) );
         return true;
     }
 

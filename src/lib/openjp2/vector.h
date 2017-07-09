@@ -43,7 +43,7 @@ struct grok_vec_t {
 	{
 		if (!data)
 			return NULL;
-		assert(index < data->size() && index >= 0);
+		assert(index < data->size());
 		if (index >= data->size()) {
 			return NULL;
 		}
