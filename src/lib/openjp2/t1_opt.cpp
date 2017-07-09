@@ -769,7 +769,6 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 			}
 		}
 		pass->len = (uint16_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
-		assert(pass->len != -1);
 	}
 	return cumwmsedec;
 }

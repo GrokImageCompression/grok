@@ -7722,9 +7722,6 @@ static bool j2k_copy_decoded_tile_to_output_image (tcd_t * p_tcd,
          * offset_y0_dest, width_dest, height_dest)  which will be modified
          * by this input area.
          * */
-        assert( res->x0 >= 0);
-        assert( res->x1 >= 0);
-
 		uint32_t offset_x0_dest=0, offset_y0_dest=0;
 		uint32_t offset_x0_src=0, offset_y0_src=0, offset_x1_src=0, offset_y1_src=0;
 		uint32_t width_dest=0, height_dest=0;

@@ -67,6 +67,7 @@ bool minpf_get_full_path(const char* path,
 	}
 	return true;
 #else
+	(void)handle;
 	Dl_info dl_info;
 	memset(&dl_info, 0, sizeof(dl_info));
 	if (dladdr(addr, &dl_info) && strlen(dl_info.dli_fname) < fullPathLen) {
@@ -108,6 +109,7 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
 }
 
 minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error){
+	(void)error;
 #ifdef OPJ_BUILD_PLUGIN_LOADER
     minpf_dynamic_library* lib = NULL;
 	dynamic_handle_t handle = NULL;
@@ -144,7 +146,6 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
     lib->handle = handle;
     return lib;
 #else
-	(void)error;
 	(void)path;
 	return nullptr;
 #endif

@@ -443,8 +443,7 @@ int main(int argc, char *argv[])
 	for (int i = 0; i < argc; ++i) {
 		out += std::string(" ") + argv[i];
 	}
-	out += "\n";
-	printf(out.c_str());
+	printf("%s\n",out.c_str());
 #endif
 
     FILE *fout = nullptr;
