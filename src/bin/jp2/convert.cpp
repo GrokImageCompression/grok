@@ -72,11 +72,12 @@ extern "C" {
 
 }
 
-void grok_set_binary_mode(FILE* file) {
+bool grok_set_binary_mode(FILE* file) {
 #ifdef _WIN32
-	_setmode(_fileno(file), _O_BINARY);
+	return (_setmode(_fileno(file), _O_BINARY) != -1);
 #else
 	(void)file;
+	return true;
 #endif
 }
 
@@ -2026,7 +2027,8 @@ static opj_image_t* rawtoimage_common(const char *filename, opj_cparameters_t *p
     }
 
 	if (readFromStdin) {
-		grok_set_binary_mode(stdin);
+		if (!grok_set_binary_mode(stdin))
+			return nullptr;
 		f = stdin;
 	}
 	else {
@@ -2188,7 +2190,8 @@ static int imagetoraw_common(opj_image_t * image, const char *outfile, bool big_
 	}
 
 	if (writeToStdout) {
-		grok_set_binary_mode(stdout);
+		if (!grok_set_binary_mode(stdin))
+			return 1;
 		rawFile = stdout;
 	} else {
 		rawFile = fopen(outfile, "wb");

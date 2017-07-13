@@ -135,7 +135,8 @@ opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	int srgbIntent = -1;
 
 	if (local_info.readFromStdin) {
-		grok_set_binary_mode(stdin);
+		if (!grok_set_binary_mode(stdin))
+			return nullptr;
 		local_info.reader = stdin;
 	}
 	else {
@@ -461,7 +462,8 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
         return local_info.fails;
     }
 	if (local_info.writeToStdout) {
-		grok_set_binary_mode(stdout);
+		if (!grok_set_binary_mode(stdin))
+			return 1;
 		local_info.writer = stdout;
 	}
 	else {
