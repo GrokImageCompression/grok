@@ -627,7 +627,8 @@ opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
     pLUT[2] = lut_B;
 
 	if (readFromStdin) {
-		grok_set_binary_mode(stdin);
+		if (!grok_set_binary_mode(stdin))
+			return nullptr;
 		IN = stdin;
 	}
 	else {
@@ -809,7 +810,8 @@ int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
     }
 
 	if (writeToStdout) {
-		grok_set_binary_mode(stdout);
+		if (!grok_set_binary_mode(stdin))
+			return 1;
 		fdest = stdout;
 	}
 	else {

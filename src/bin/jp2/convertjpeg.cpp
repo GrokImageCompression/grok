@@ -288,7 +288,8 @@ int imagetojpeg(opj_image_t* image, const char *filename, int quality, bool verb
 	* requires it in order to write binary files.
 	*/
 	if (info.writeToStdout) {
-		grok_set_binary_mode(stdout);
+		if (!grok_set_binary_mode(stdin))
+			return 1;
 		outfile = stdout;
 	}
 	else {
@@ -437,7 +438,8 @@ opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 								  */
 
 	if (readFromStdin) {
-		grok_set_binary_mode(stdin);
+		if (!grok_set_binary_mode(stdin))
+			return nullptr;
 		infile = stdin;
 	}
 	else {

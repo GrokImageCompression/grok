@@ -79,7 +79,7 @@
 
 extern "C" {
 
-	void grok_set_binary_mode(FILE* file);
+	bool grok_set_binary_mode(FILE* file);
 
 	/* Component precision clipping */
 	void clip_component(opj_image_comp_t* component, uint32_t precision);
