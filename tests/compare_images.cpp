@@ -906,7 +906,7 @@ int main(int argc, char **argv)
 
     /* check dimensions (issue 286)*/
     if(imageBase->numcomps != imageTest->numcomps ) {
-        printf("ERROR: dimension mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
+        fprintf(stderr,"ERROR: dimension mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
         goto cleanup;
     }
 
@@ -915,35 +915,35 @@ int main(int argc, char **argv)
 		auto baseComp = imageBase->comps + it_comp;
 		auto testComp = imageTest->comps + it_comp;
 		if (baseComp->sgnd != testComp->sgnd) {
-			printf("ERROR: sign mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->sgnd, testComp->sgnd);
+			fprintf(stderr,"ERROR: sign mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
 		if (inParam.regionSet) {
 			if (testComp->w != inParam.region[2] - inParam.region[0]) {
-				printf("ERROR: test image component %d width doesn't match region width %d\n", testComp->w, inParam.region[2] - inParam.region[0]);
+				fprintf(stderr,"ERROR: test image component %d width doesn't match region width %d\n", testComp->w, inParam.region[2] - inParam.region[0]);
 				goto cleanup;
 			}
 			if (testComp->h != inParam.region[3] - inParam.region[1]) {
-				printf("ERROR: test image component %d height doesn't match region height %d\n", testComp->h, inParam.region[3] - inParam.region[1]);
+				fprintf(stderr,"ERROR: test image component %d height doesn't match region height %d\n", testComp->h, inParam.region[3] - inParam.region[1]);
 				goto cleanup;
 			}
 		}
 		else {
 
 			if (baseComp->h != testComp->h) {
-				printf("ERROR: height mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->h, testComp->h);
+				fprintf(stderr,"ERROR: height mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
-				printf("ERROR: width mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->w, testComp->w);
+				fprintf(stderr,"ERROR: width mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
-			printf("ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->prec, testComp->prec);
+			fprintf(stderr,"ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
 
@@ -1017,7 +1017,7 @@ int main(int argc, char **argv)
             printf("<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n", it_comp, MSE);
 
             if ( (MSE > inParam.tabMSEvalues[it_comp]) || (PEAK > inParam.tabPEAKvalues[it_comp]) ) {
-                printf("ERROR: MSE (%f) or PEAK (%f) values produced by the decoded file are greater "
+                fprintf(stderr,"ERROR: MSE (%f) or PEAK (%f) values produced by the decoded file are greater "
                        "than the allowable error (respectively %f and %f) \n",
                        MSE, PEAK, inParam.tabMSEvalues[it_comp], inParam.tabPEAKvalues[it_comp]);
                 goto cleanup;
