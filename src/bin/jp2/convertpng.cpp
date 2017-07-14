@@ -78,7 +78,6 @@ extern "C" {
 #include <memory>
 #include <iostream>
 #include <string>
-#include <codecvt>
 #include <cassert>
 #include <locale>
 
@@ -86,6 +85,22 @@ extern "C" {
 #define MAGIC_SIZE 8
 /* PNG allows bits per sample: 1, 2, 4, 8, 16 */
 
+static std::string convert_wide_to_narrow(const wchar_t* input) {
+	if (!input)
+		return "";
+	mbstate_t mbs;
+	mbrlen(NULL, 0, &mbs);
+	auto len = wcsrtombs(nullptr, &input, 0, &mbs);
+	if (len == 0)
+		return "";
+	std::unique_ptr<char[]> buffer(new char[len + 1]);
+	auto ret = wcsrtombs(buffer.get(), &input, len, &mbs);
+	// if wcsrtombs fails on any character, return empty string
+	if (ret == (size_t)-1)
+		return "";
+	buffer.get()[len] = 0;
+	return buffer.get();
+}
 
 static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
@@ -556,10 +571,10 @@ int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLe
 				cmsUInt32Number result = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, description.get(), bufferSize);
 				cmsCloseProfile(in_prof);
 				if (result) {
-					std::string u8_conv = std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>, wchar_t>{}.to_bytes(description.get());
+					std::string u8_conv = convert_wide_to_narrow(description.get());
 					png_set_iCCP(local_info.png,
 						info,
-						(png_const_charp)(description.get()),
+						(png_const_charp)(u8_conv.c_str()),
 						PNG_COMPRESSION_TYPE_BASE,
 						image->icc_profile_buf,
 						image->icc_profile_len);
