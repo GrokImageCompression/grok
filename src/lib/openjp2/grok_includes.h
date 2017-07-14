@@ -76,6 +76,8 @@
 #include <inttypes.h>
 #include <climits>
 #include <algorithm>
+#include <sstream>
+#include <iostream>
 
 
 /* Avoid compile-time warning because parameter is not used */
