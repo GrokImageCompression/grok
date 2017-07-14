@@ -8655,15 +8655,13 @@ static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k )
     tcp_t *l_tcp = NULL;
     tccp_t *l_ref_tccp = NULL;
     tccp_t *l_copied_tccp = NULL;
-    uint32_t l_size;
-
-    
+  
     assert(p_j2k != nullptr);
 	l_tcp = j2k_get_tcp(p_j2k);
 
     l_ref_tccp = &l_tcp->tccps[0];
     l_copied_tccp = l_ref_tccp + 1;
-    l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
+    auto l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
 
     for     (i=1; i<p_j2k->m_private_image->numcomps; ++i) {
         l_copied_tccp->qntsty = l_ref_tccp->qntsty;

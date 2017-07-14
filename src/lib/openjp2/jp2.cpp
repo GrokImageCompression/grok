@@ -2860,9 +2860,8 @@ bool jp2_start_compress(jp2_t *jp2,
 
 static const jp2_header_handler_t * jp2_find_handler (uint32_t p_id)
 {
-    uint32_t i, l_handler_size = sizeof(jp2_header) / sizeof(jp2_header_handler_t);
-
-    for (i=0; i<l_handler_size; ++i) {
+    auto l_handler_size = sizeof(jp2_header) / sizeof(jp2_header_handler_t);
+    for (uint32_t i=0; i<l_handler_size; ++i) {
         if (jp2_header[i].id == p_id) {
             return &jp2_header[i];
         }
@@ -2879,8 +2878,8 @@ static const jp2_header_handler_t * jp2_find_handler (uint32_t p_id)
  */
 static const jp2_header_handler_t * jp2_img_find_handler (uint32_t p_id)
 {
-    uint32_t i, l_handler_size = sizeof(jp2_img_header) / sizeof(jp2_header_handler_t);
-    for (i=0; i<l_handler_size; ++i) {
+    auto l_handler_size = sizeof(jp2_img_header) / sizeof(jp2_header_handler_t);
+    for (uint32_t i=0; i<l_handler_size; ++i) {
         if (jp2_img_header[i].id == p_id) {
             return &jp2_img_header[i];
         }
