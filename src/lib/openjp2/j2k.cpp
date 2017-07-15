@@ -8794,7 +8794,7 @@ static void j2k_dump_MH_index(j2k_t* p_j2k, FILE* out_stream)
     if (cstr_index->marker) {
         for (it_marker=0; it_marker < cstr_index->marknum ; it_marker++) {
 
-#if !defined(__GNU__) || (__GNUC__ > 5 || \
+#if !defined(__GNUC__) || (__GNUC__ > 5 || \
 						  (__GNUC__ == 5 && (__GNUC_MINOR__ > 4 || \
 											 (__GNUC_MINOR__ == 4 && \
 											  __GNUC_PATCHLEVEL__ > 0))))
@@ -8803,7 +8803,7 @@ static void j2k_dump_MH_index(j2k_t* p_j2k, FILE* out_stream)
 				cstr_index->marker[it_marker].pos,
 				cstr_index->marker[it_marker].len);
 #else
-			fprintf(out_stream, "\t\t type=%#x, pos=%ld, len=%d\n",
+			fprintf(out_stream, "\t\t type=%#x, pos=%lld, len=%d\n",
 				cstr_index->marker[it_marker].type,
 				(int64_t)cstr_index->marker[it_marker].pos,
 				cstr_index->marker[it_marker].len);
