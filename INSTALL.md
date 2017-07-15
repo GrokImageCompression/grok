@@ -8,6 +8,9 @@ change to this directory, and run:
 
 `$ cmake /PATH/TO/SOURCE`
 
+On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
+If you are running windows, OSX or X-Windows, then the cmake gui may be used.
+
 
 ## UNIX/LINUX/OSX
 
@@ -89,13 +92,14 @@ Make sure to build the third party libs (libpng, zlib etc.):
  #### JPEG support
   
 To open JPEG files, you will need to build and install a `libjpeg` compatible library (dev version). Recommended : libjpeg-turbo
-https://github.com/libjpeg-turbo/libjpeg-turbo
+https://github.com/libjpeg-turbo/libjpeg-turbo . On debian systems, the `libjpeg-turbo8-dev` package will provide you with
+a development version of the library.
 
-##### Grok dynamic build with JPEG support
+##### Grok dynamic build with JPEG support (Windows)
 
 `libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag on, to ensure that the dynamic version of the C runtime libraries is used. Also, if Grok is linking with dynamic build of `libjpeg-turbo`, (cmake flag `JPEG_LIBRARY` is set to `LIBJPEG_INSTALL_DIRECTORY/jpeg.lib`), then make sure that  `LIBJPEG_INSTALL_DIRECTORY/bin` is on the path.
 
-##### Grok static build with JPEG support
+##### Grok static build with JPEG support (Windows)
 
 `libjpeg-turbo` must be built with the `WITH_CRT_DLL` flag off, to ensure that the static version of the C runtime libraries is used.
 
