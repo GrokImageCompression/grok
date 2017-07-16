@@ -763,11 +763,11 @@ static int parse_cmdline_encoder_ex(int argc,
 			double lastRate = DBL_MAX;
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				if (parameters->tcp_rates[i] > lastRate) {
-					printf("[ERROR]: rates must be listed in descending order\n");
+					fprintf(stderr, "[Error]: rates must be listed in descending order\n");
 					return 1;
 				}
 				if (parameters->tcp_rates[i] < 1.0) {
-					printf("[ERROR]: rates must be greater than or equal to one\n");
+					fprintf(stderr, "[Error]: rates must be greater than or equal to one\n");
 					return 1;
 				}
 				lastRate = parameters->tcp_rates[i];
@@ -799,11 +799,11 @@ static int parse_cmdline_encoder_ex(int argc,
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				auto distortion = parameters->tcp_distoratio[i];
 				if (distortion < 0) {
-					printf("[ERROR]: PSNR values must be greater than or equal to zero\n");
+					fprintf(stderr, "[Error]: PSNR values must be greater than or equal to zero\n");
 					return 1;
 				}
 				if (distortion < lastDistortion && !(i == parameters->tcp_numlayers-1 && distortion == 0)) {
-					printf("[ERROR]: PSNR values must be listed in ascending order\n");
+					fprintf(stderr, "[Error]: PSNR values must be listed in ascending order\n");
 					return 1;
 				}
 				lastDistortion = distortion;

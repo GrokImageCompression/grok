@@ -556,15 +556,16 @@ static bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			printf("[Error]: null data for component %d",i);
+			fprintf(stderr, "[Error]: null data for component %d",i);
 			return false;
 		}
 	}
 
+	// check that all components have same dimensions
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].w != image->comps[0].w ||
 					image->comps[i].h != image->comps[0].h) {
-			printf("[Error]: dimensions of component %d differ from component 0", i);
+			fprintf(stderr, "[Error]: dimensions of component %d differ from dimensions of component 0", i);
 			return false;
 		}
 	}
