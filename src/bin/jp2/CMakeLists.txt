@@ -66,10 +66,6 @@ foreach(exe opj_decompress opj_compress opj_dump)
     target_link_libraries(${exe} ${Z_LIBNAME})
   endif()
 
-  # On unix you need to link to the math library:
-  if(UNIX)
-    target_link_libraries(${exe} m)
-  endif()
   # Install exe
   install(TARGETS ${exe}
     EXPORT GrokTargets
