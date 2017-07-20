@@ -20,6 +20,7 @@ Thumbs.db
 *.ilk
 *.log
 [Bb]in
+!/src/bin/
 [Dd]ebug*/
 *.lib
 *.sbr
@@ -30,3 +31,4 @@ _ReSharper*/
 .vs/
 #Nuget packages folder
 packages/
+

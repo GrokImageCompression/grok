@@ -80,7 +80,7 @@ extern "C" {
 #include "openjpeg.h"
 #include "convert.h"
 #include "format_defs.h"
-#include "opj_string.h"
+#include "grok_string.h"
 #include "color.h"
 }
 #include <float.h>
@@ -429,7 +429,7 @@ static char get_next_file(int imageno,
 		if (parameters->decod_format == -1)
 			return 1;
 	}
-	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
+	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
 		return 1;
 	}
 	std::string output_root_filename;
@@ -441,7 +441,7 @@ static char get_next_file(int imageno,
 		output_root_filename = image_filename;
 	if (img_fol->set_out_format == 1) {
 		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + output_root_filename + "." + img_fol->out_format;
-		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
+		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
 		}
 	}
@@ -705,7 +705,7 @@ static int parse_cmdline_encoder_ex(int argc,
 					return 1;
 				}
 			}
-			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				return 1;
 			}
 		}
@@ -741,7 +741,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
 				return 1;
 			}
-		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
 				return 1;
 			}
 		}

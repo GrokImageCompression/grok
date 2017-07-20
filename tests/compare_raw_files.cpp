@@ -52,7 +52,7 @@ extern "C" {
 #include <string.h>
 #include <ctype.h>
 
-#include "opj_getopt.h"
+#include "grok_getopt.h"
 }
 #include <string>
 
@@ -89,44 +89,44 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
     param->base_filename = NULL;
     param->test_filename = NULL;
 
-    opj_opterr = 0;
-    while ((c = opj_getopt(argc, argv, optlist)) != -1)
+    grok_opterr = 0;
+    while ((c = grok_getopt(argc, argv, optlist)) != -1)
         switch (c) {
         case 'b':
-            sizemembasefile = strlen(opj_optarg)+1;
+            sizemembasefile = strlen(grok_optarg)+1;
             free(param->base_filename); /* handle dup option */
             param->base_filename = (char*) malloc(sizemembasefile);
 			if (!param->base_filename) {
 				fprintf(stderr, "Out of memory\n");
 				return 1;
 			}
-            strcpy(param->base_filename, opj_optarg);
+            strcpy(param->base_filename, grok_optarg);
             /*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
             break;
         case 't':
-            sizememtestfile = strlen(opj_optarg) + 1;
+            sizememtestfile = strlen(grok_optarg) + 1;
             free(param->test_filename); /* handle dup option */
             param->test_filename = (char*) malloc(sizememtestfile);
 			if (!param->test_filename) {
 				fprintf(stderr, "Out of memory\n");
 				return 1;
 			}
-            strcpy(param->test_filename, opj_optarg);
+            strcpy(param->test_filename, grok_optarg);
             /*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
             break;
         case '?':
-            if ((opj_optopt == 'b') || (opj_optopt == 't'))
-                fprintf(stderr, "Option -%c requires an argument.\n", opj_optopt);
-            else if (isprint(opj_optopt))	fprintf(stderr, "Unknown option `-%c'.\n", opj_optopt);
-            else	fprintf(stderr, "Unknown option character `\\x%x'.\n", opj_optopt);
+            if ((grok_optopt == 'b') || (grok_optopt == 't'))
+                fprintf(stderr, "Option -%c requires an argument.\n", grok_optopt);
+            else if (isprint(grok_optopt))	fprintf(stderr, "Unknown option `-%c'.\n", grok_optopt);
+            else	fprintf(stderr, "Unknown option character `\\x%x'.\n", grok_optopt);
             return 1;
         default:
-            fprintf(stderr, "WARNING -> this option is not valid \"-%c %s\"\n", c, opj_optarg);
+            fprintf(stderr, "WARNING -> this option is not valid \"-%c %s\"\n", c, grok_optarg);
             break;
         }
 
-    if (opj_optind != argc) {
-        for (index = opj_optind; index < argc; index++)
+    if (grok_optind != argc) {
+        for (index = grok_optind; index < argc; index++)
             fprintf(stderr,"Non-option argument %s\n", argv[index]);
         return 1;
     }
