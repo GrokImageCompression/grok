@@ -73,11 +73,11 @@ extern "C" {
 #endif /* _WIN32 */
 
 #include "openjpeg.h"
-#include "opj_getopt.h"
+#include "grok_getopt.h"
 #include "convert.h"
 
 #include "format_defs.h"
-#include "opj_string.h"
+#include "grok_string.h"
 }
 
 #include <string>
@@ -224,7 +224,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     if (parameters->decod_format == -1)
         return 1;
     sprintf(infilename,"%s/%s",img_fol->imgdirpath,image_filename);
-    if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
+    if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {
         return 1;
     }
 
@@ -236,7 +236,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     }
     if(img_fol->set_out_format==1) {
         sprintf(outfilename,"%s/%s.%s",img_fol->imgdirpath,temp_ofname,img_fol->out_format);
-        if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
+        if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
             return 1;
         }
     }
@@ -297,7 +297,7 @@ static int infile_format(const char *fname)
 static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *parameters,img_fol_t *img_fol)
 {
     int totlen, c;
-    opj_option_t long_option[]= {
+    grok_option_t long_option[]= {
         {"ImgDir",REQ_ARG, nullptr ,'y'}
     };
     const char optlist[] = "i:o:f:hv";
@@ -305,12 +305,12 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
     totlen=sizeof(long_option);
     img_fol->set_out_format = 0;
     do {
-        c = opj_getopt_long(argc, argv,optlist,long_option,totlen);
+        c = grok_getopt_long(argc, argv,optlist,long_option,totlen);
         if (c == -1)
             break;
         switch (c) {
         case 'i': {		/* input file */
-            char *infile = opj_optarg;
+            char *infile = grok_optarg;
             parameters->decod_format = infile_format(infile);
             switch(parameters->decod_format) {
             case J2K_CFMT:
@@ -323,7 +323,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
                         infile);
                 return 1;
             }
-            if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+            if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
                 fprintf(stderr, "[ERROR] Path is too long\n");
                 return 1;
             }
@@ -333,7 +333,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
         /* ------------------------------------------------------ */
 
         case 'o': {   /* output file */
-            if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), opj_optarg) != 0) {
+            if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), grok_optarg) != 0) {
                 fprintf(stderr, "[ERROR] Path is too long\n");
                 return 1;
             }
@@ -342,7 +342,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 
         /* ----------------------------------------------------- */
         case 'f': 			/* flag */
-            img_fol->flag = atoi(opj_optarg);
+            img_fol->flag = atoi(grok_optarg);
             break;
         /* ----------------------------------------------------- */
 
@@ -353,10 +353,10 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
         /* ------------------------------------------------------ */
 
         case 'y': {		/* Image Directory path */
-            img_fol->imgdirpath = (char*)malloc(strlen(opj_optarg) + 1);
+            img_fol->imgdirpath = (char*)malloc(strlen(grok_optarg) + 1);
 			if (!img_fol->imgdirpath)
 				return 1;
-            strcpy(img_fol->imgdirpath,opj_optarg);
+            strcpy(img_fol->imgdirpath,grok_optarg);
             img_fol->set_imgdir=1;
         }
         break;

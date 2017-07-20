@@ -10,9 +10,9 @@ set(common_SRCS
   convertbmp.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.h
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_string.h
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.h
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_string.h
 
   )
 

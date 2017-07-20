@@ -47,18 +47,19 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OPJ_STRING_H
-#define OPJ_STRING_H
+#pragma once
 
 #include <errno.h>
 #include <string.h>
 
+namespace grk {
+
 /* strnlen is not standard, strlen_s is C11... */
 /* keep in mind there still is a buffer read overflow possible */
-static size_t opj_strnlen_s(const char *src, size_t max_len)
+static size_t strnlen_s(const char *src, size_t max_len)
 {
 	size_t len;
-	
+
 	if (src == NULL) {
 		return 0U;
 	}
@@ -68,7 +69,7 @@ static size_t opj_strnlen_s(const char *src, size_t max_len)
 
 /* should be equivalent to C11 function except for the handler */
 /* keep in mind there still is a buffer read overflow possible */
-static int opj_strcpy_s(char* dst, size_t dst_size, const char* src)
+static int strcpy_s(char* dst, size_t dst_size, const char* src)
 {
 	size_t src_len = 0U;
 	if ((dst == NULL) || (dst_size == 0U)) {
@@ -78,7 +79,7 @@ static int opj_strcpy_s(char* dst, size_t dst_size, const char* src)
 		dst[0] = '\0';
 		return EINVAL;
 	}
-	src_len = opj_strnlen_s(src, dst_size);
+	src_len = strnlen_s(src, dst_size);
 	if (src_len >= dst_size) {
 		return ERANGE;
 	}
@@ -87,4 +88,6 @@ static int opj_strcpy_s(char* dst, size_t dst_size, const char* src)
 	return 0;
 }
 
-#endif /* OPJ_STRING_H */
+}
+
+

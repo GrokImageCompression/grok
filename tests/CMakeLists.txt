@@ -32,14 +32,14 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/convert.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/converttif.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   )
 
 set(compare_dump_files_SRCS compare_dump_files.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c)
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp)
 
 set(compare_raw_files_SRCS compare_raw_files.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/opj_getopt.c)
+  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp)
 
 add_executable(compare_images ${compare_images_SRCS})
 target_link_libraries(compare_images

@@ -86,7 +86,7 @@ extern "C" {
 #include "color.h"
 
 #include "format_defs.h"
-#include "opj_string.h"
+#include "grok_string.h"
 
 }
 
@@ -443,7 +443,7 @@ char get_next_file(int imageno,
 	parameters->decod_format = infile_format(infilename.c_str());
 	if (parameters->decod_format == -1)
 		return 1;
-	if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
+	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
 		return 1;
 	}
 	auto pos = image_filename.find(".");
@@ -452,7 +452,7 @@ char get_next_file(int imageno,
 	std::string temp_ofname = image_filename.substr(0,pos);
 	if (img_fol->set_out_format == 1) {
 		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + temp_ofname + "." + img_fol->out_format;
-		if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
+		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
 		}
 	}
@@ -660,7 +660,7 @@ int parse_cmdline_decoder(int argc,
 					infile);
 				return 1;
 			}
-			if (opj_strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
+			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}
@@ -729,7 +729,7 @@ int parse_cmdline_decoder(int argc,
 				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif,*jpg, *jpeg, *.raw or *.tga]!!\n", outfile);
 				return 1;
 			}
-			if (opj_strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
+			if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}

@@ -53,7 +53,7 @@ extern "C" {
 #include <assert.h>
 
 #include "opj_apps_config.h"
-#include "opj_getopt.h"
+#include "grok_getopt.h"
 
 #include "openjpeg.h"
 #include "format_defs.h"
