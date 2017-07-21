@@ -1229,101 +1229,111 @@ int main(int argc, char **argv)
 	uint32_t num_decompressed_images = 0;
 
 	DecompressInitParams initParams;
-	// try to encode with plugin
-	int plugin_rc = plugin_main(argc, argv, &initParams);
 
-	// return immediately if either 
-	// initParams was not initialized (something was wrong with command line params)
-	// or
-	// plugin was successful
-	if (!initParams.initialized) {
-		rc = EXIT_FAILURE;
-		goto cleanup;
-	}
+	try {
+
+
+		// try to encode with plugin
+		int plugin_rc = plugin_main(argc, argv, &initParams);
+
+		// return immediately if either 
+		// initParams was not initialized (something was wrong with command line params)
+		// or
+		// plugin was successful
+		if (!initParams.initialized) {
+			rc = EXIT_FAILURE;
+			goto cleanup;
+		}
 
 #ifndef NDEBUG
-	if (initParams.parameters.verbose) {
-		std::string out;
-		for (int i = 0; i < argc; ++i) {
-			out += std::string(" ") + argv[i];
+		if (initParams.parameters.verbose) {
+			std::string out;
+			for (int i = 0; i < argc; ++i) {
+				out += std::string(" ") + argv[i];
+			}
+			printf("%s\n", out.c_str());
 		}
-		printf("%s\n",out.c_str());
-	}
 #endif
 
 
 
-	if (plugin_rc == EXIT_SUCCESS) {
-		rc = EXIT_SUCCESS;
-		goto cleanup;
-	}
-    /* Initialize reading of directory */
-    if(initParams.img_fol.set_imgdir==1) {
-        int it_image;
-        num_images=get_num_images(initParams.img_fol.imgdirpath);
-		if (num_images <= 0) {
-			fprintf(stderr, "Folder is empty\n");
-			rc = EXIT_FAILURE;
+		if (plugin_rc == EXIT_SUCCESS) {
+			rc = EXIT_SUCCESS;
 			goto cleanup;
 		}
-
-        dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
-        if(dirptr) {
-            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
-			if (!dirptr->filename_buf) {
+		/* Initialize reading of directory */
+		if (initParams.img_fol.set_imgdir == 1) {
+			int it_image;
+			num_images = get_num_images(initParams.img_fol.imgdirpath);
+			if (num_images <= 0) {
+				fprintf(stderr, "Folder is empty\n");
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
 
-            dirptr->filename = (char**) malloc((size_t)num_images*sizeof(char*));
-			if (!dirptr->filename) {
+			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			if (dirptr) {
+				dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
+				if (!dirptr->filename_buf) {
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+
+				dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
+				if (!dirptr->filename) {
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+				for (it_image = 0; it_image < num_images; it_image++) {
+					dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+				}
+			}
+			if (load_images(dirptr, initParams.img_fol.imgdirpath) == 1) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
-            for(it_image=0; it_image<num_images; it_image++) {
-                dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
-            }
-        }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1) {
-			rc = EXIT_FAILURE;
-			goto cleanup;
-        }
-    } else {
-        num_images=1;
-    }
+		}
+		else {
+			num_images = 1;
+		}
 
-    t_cumulative = grok_clock();
+		t_cumulative = grok_clock();
 
-    /*Decoding image one by one*/
-    for (imageno = 0; imageno < num_images; imageno++) {
-		if (initParams.parameters.verbose)
-			fprintf(stdout, "\n");
-        if (initParams.img_fol.set_imgdir == 1) {
-			if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-				if (initParams.parameters.verbose)
-					fprintf(stdout, "skipping file...\n");
+		/*Decoding image one by one*/
+		for (imageno = 0; imageno < num_images; imageno++) {
+			if (initParams.parameters.verbose)
+				fprintf(stdout, "\n");
+			if (initParams.img_fol.set_imgdir == 1) {
+				if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
+					if (initParams.parameters.verbose)
+						fprintf(stdout, "skipping file...\n");
+					continue;
+				}
+			}
+
+			opj_plugin_decode_callback_info_t info;
+			memset(&info, 0, sizeof(opj_plugin_decode_callback_info_t));
+			info.decoder_parameters = &initParams.parameters;
+
+			if (plugin_pre_decode_callback(&info)) {
+				rc = EXIT_FAILURE;
 				continue;
 			}
-        }
-
-		opj_plugin_decode_callback_info_t info;
-		memset(&info, 0, sizeof(opj_plugin_decode_callback_info_t));
-		info.decoder_parameters = &initParams.parameters;
-
-		if (plugin_pre_decode_callback(&info)) {
-			rc = EXIT_FAILURE;
-			continue;
+			if (plugin_post_decode_callback(&info)) {
+				rc = EXIT_FAILURE;
+				continue;
+			}
+			num_decompressed_images++;
 		}
-		if (plugin_post_decode_callback(&info)) {
-			rc = EXIT_FAILURE;
-			continue;
+		t_cumulative = grok_clock() - t_cumulative;
+		if (initParams.parameters.verbose && num_decompressed_images && rc != EXIT_FAILURE) {
+			fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 		}
-		num_decompressed_images++;
-    }
-    t_cumulative = grok_clock() - t_cumulative;
-    if (initParams.parameters.verbose && num_decompressed_images && rc != EXIT_FAILURE) {
-        fprintf(stdout, "decode time: %d ms \n", (int)( (t_cumulative * 1000) / num_decompressed_images));
-    }
+	} catch (std::bad_alloc ba){
+		std::cerr << "[Error]: Out of memory. Exiting." << std::endl;
+		rc = 1;
+		goto cleanup;
+	}
 cleanup:
 	if (dirptr) {
 		if (dirptr->filename_buf)

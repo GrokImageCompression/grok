@@ -1429,114 +1429,119 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
  */
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
-
 	CompressInitParams initParams;
+	dircnt_t *dirptr = NULL;
+	int success = 0;
+	try {
 
-	// try to encode with plugin
-	int rc =  plugin_main(argc, argv, &initParams);
+		// try to encode with plugin
+		int rc = plugin_main(argc, argv, &initParams);
 
-	// return immediately if either 
-	// initParams was not initialized (something was wrong with command line params)
-	// or
-	// plugin was successful
-	if (!initParams.initialized)
-		return 1;
-	if (!rc)
-		return 0;
+		// return immediately if either 
+		// initParams was not initialized (something was wrong with command line params)
+		// or
+		// plugin was successful
+		if (!initParams.initialized)
+			return 1;
+		if (!rc)
+			return 0;
 
 
 #ifndef NDEBUG
-	if (initParams.parameters.verbose) {
-		std::string out;
-		for (int i = 0; i < argc; ++i) {
-			out += std::string(" ") + argv[i];
+		if (initParams.parameters.verbose) {
+			std::string out;
+			for (int i = 0; i < argc; ++i) {
+				out += std::string(" ") + argv[i];
+			}
+			printf("%s\n", out.c_str());
 		}
-		printf("%s\n",out.c_str());
-	}
 #endif
 
-	size_t num_compressed_files = 0;
-	uint32_t i, num_images, imageno;
+		size_t num_compressed_files = 0;
+		uint32_t i, num_images, imageno;
 
-	//cache certain settings
-	auto tcp_mct = initParams.parameters.tcp_mct;
-	auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
+		//cache certain settings
+		auto tcp_mct = initParams.parameters.tcp_mct;
+		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
 
-	double t = grok_clock();
-	int success = 0;
-	dircnt_t *dirptr = NULL;
-	/* Read directory if necessary */
-    if(initParams.img_fol.set_imgdir==1){
-        num_images=get_num_images(initParams.img_fol.imgdirpath);
-		if (num_images == 0) {
-			fprintf(stderr, "Folder is empty\n");
-			goto cleanup;
+		double t = grok_clock();
+		/* Read directory if necessary */
+		if (initParams.img_fol.set_imgdir == 1) {
+			num_images = get_num_images(initParams.img_fol.imgdirpath);
+			if (num_images == 0) {
+				fprintf(stderr, "Folder is empty\n");
+				goto cleanup;
+			}
+			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			if (!dirptr) {
+				success = 1;
+				goto cleanup;
+			}
+			dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN * sizeof(char));
+			if (!dirptr->filename_buf) {
+				success = 1;
+				goto cleanup;
+			}
+			dirptr->filename = (char**)malloc(num_images * sizeof(char*));
+			if (!dirptr->filename) {
+				success = 1;
+				goto cleanup;
+			}
+
+			for (i = 0; i < num_images; i++) {
+				dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
+			}
+			if (load_images(dirptr, initParams.img_fol.imgdirpath) == 1) {
+				goto cleanup;
+			}
 		}
-        dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
-		if (!dirptr) {
-			success = 1;
-			goto cleanup;
-		}
-        dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));
-		if (!dirptr->filename_buf) {
-			success = 1;
-			goto cleanup;
-		}
-		dirptr->filename = (char**) malloc(num_images*sizeof(char*));
-		if (!dirptr->filename) {
-			success = 1;
-			goto cleanup;
-		}
-
-        for(i=0;i<num_images;i++){
-            dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
-        }
-        if(load_images(dirptr, initParams.img_fol.imgdirpath)==1){
-			goto cleanup;
-        }
-    }else{
-        num_images=1;
-    }
-
-
-    /*Encoding image one by one*/
-    for(imageno=0;imageno<num_images;imageno++)	{
-		if (initParams.parameters.verbose)
-			fprintf(stdout,"\n");
-		//restore cached settings
-		initParams.parameters.tcp_mct = tcp_mct;
-		initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
-        if(initParams.img_fol.set_imgdir==1){
-            if (get_next_file((int)imageno, dirptr,&initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-				if (initParams.parameters.verbose)
-					fprintf(stdout,"skipping file...\n");
-                continue;
-            }
-        }
-
-		opj_plugin_encode_user_callback_info_t opjInfo;
-		memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
-		opjInfo.encoder_parameters = &initParams.parameters;
-		opjInfo.image = nullptr;
-		opjInfo.output_file_name = initParams.parameters.outfile;
-		opjInfo.input_file_name = initParams.parameters.infile;
-
-		if (!plugin_compress_callback(&opjInfo)) {
-			success = 1;
-			goto cleanup;
+		else {
+			num_images = 1;
 		}
 
-		num_compressed_files++;
-		if (initParams.parameters.verbose)
-			fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
-    }
+
+		/*Encoding image one by one*/
+		for (imageno = 0; imageno < num_images; imageno++) {
+			if (initParams.parameters.verbose)
+				fprintf(stdout, "\n");
+			//restore cached settings
+			initParams.parameters.tcp_mct = tcp_mct;
+			initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
+			if (initParams.img_fol.set_imgdir == 1) {
+				if (get_next_file((int)imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
+					if (initParams.parameters.verbose)
+						fprintf(stdout, "skipping file...\n");
+					continue;
+				}
+			}
+
+			opj_plugin_encode_user_callback_info_t opjInfo;
+			memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
+			opjInfo.encoder_parameters = &initParams.parameters;
+			opjInfo.image = nullptr;
+			opjInfo.output_file_name = initParams.parameters.outfile;
+			opjInfo.input_file_name = initParams.parameters.infile;
+
+			if (!plugin_compress_callback(&opjInfo)) {
+				success = 1;
+				goto cleanup;
+			}
+
+			num_compressed_files++;
+			if (initParams.parameters.verbose)
+				fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
+		}
 
 
-    t = grok_clock() - t;
-    if (initParams.parameters.verbose && num_compressed_files) {
-		    fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0)/(double)num_compressed_files));
-    }
-
+		t = grok_clock() - t;
+		if (initParams.parameters.verbose && num_compressed_files) {
+			fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0) / (double)num_compressed_files));
+		}
+	} catch (std::bad_alloc ba){
+		std::cerr << "[Error]: Out of memory. Exiting." << std::endl;
+		success = 1;
+		goto cleanup;
+	}
 cleanup:
 	if (dirptr) {
 		if (dirptr->filename_buf)
@@ -1545,7 +1550,9 @@ cleanup:
 			free(dirptr->filename);
 		free(dirptr);
 	}
-    return success;
+	opj_cleanup();
+	return success;
+
 }
 
 img_fol_t img_fol_plugin, out_fol_plugin;
