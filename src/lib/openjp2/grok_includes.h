@@ -212,7 +212,6 @@ static inline long grok_lrintf(float f)
 #include "dwt.h"
 #include "dwt53.h"
 #include "dwt97.h"
-#include "dwt_region.h"
 #include "t2.h"
 #include "mct.h"
 #include "grok_intmath.h"

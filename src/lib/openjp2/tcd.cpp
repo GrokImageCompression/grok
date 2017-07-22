@@ -1717,7 +1717,8 @@ static bool tcd_dwt_decode ( tcd_t *p_tcd )
                     continue;
                 }
             } else {
-                if (! dwt_decode_97(l_tile_comp, 
+				dwt97 dwt;
+                if (! dwt.decode(l_tile_comp, 
 											l_img_comp->resno_decoded+1,
 											p_tcd->numThreads)) {
                     rc = false;
@@ -2065,7 +2066,8 @@ bool tcd_dwt_encode ( tcd_t *p_tcd )
                     continue;
                 }
             } else if (l_tccp->qmfbid == 0) {
-                if (! dwt_encode_97(tile_comp)) {
+				dwt97 dwt;
+                if (! dwt.encode(tile_comp)) {
                     rc = false;
                     continue;
                 }

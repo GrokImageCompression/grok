@@ -60,9 +60,9 @@ namespace grk {
 
 struct dwt_t {
 	int32_t* mem;
-	int32_t dn;
-	int32_t sn;
-	int32_t cas;
+	uint32_t d_n;
+	uint32_t s_n;
+	uint8_t cas;
 };
 
 class dwt : public dwt_interface {
@@ -70,31 +70,10 @@ public:
 	virtual ~dwt() {}
 protected:
 	uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
-	void deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas);
-	void deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas);
-	void interleave_v(dwt_t* v, int32_t *a, int32_t x);
-	void interleave_h(dwt_t* h, int32_t *a);
-
+	void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n, int32_t x, int32_t cas);
+	void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n, int32_t cas);
 };
 
-
-
-/**
-@file dwt.h
-@brief Implementation of a discrete wavelet transform (DWT)
-
-The functions in DWT.C have for goal to realize forward and inverse discrete wavelet
-transform with filter 5-3 (reversible) and filter 9-7 (irreversible). The functions in
-DWT.C are used by some function in TCD.C.
-*/
-
-/** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
-/*@{*/
-
-
-/** @name Exported functions */
-/*@{*/
-/* ----------------------------------------------------------------------- */
 /**
 Get the gain of a subband for the reversible 5-3 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
@@ -108,22 +87,6 @@ Get the norm of a wavelet function of a subband at a specified level for the rev
 @return Returns the norm of the wavelet function
 */
 double dwt_getnorm(uint32_t level, uint32_t orient);
-/**
-Forward 9-7 wavelet transform in 2-D.
-Apply an irreversible DWT transform to a component of an image.
-@param tilec Tile component information (current tile)
-*/
-bool dwt_encode_97(tcd_tilecomp_t * tilec);
-/**
-Inverse 9-7 wavelet transform in 2-D.
-Apply an irreversible inverse DWT transform to a component of an image.
-@param tilec Tile component information (current tile)
-@param numres Number of resolution levels to decode
-*/
-bool dwt_decode_97(tcd_tilecomp_t* restrict tilec,
-						uint32_t numres,
-						uint32_t numThreads);
-
 /**
 Get the gain of a subband for the irreversible 9-7 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
@@ -143,12 +106,4 @@ Explicit calculation of the Quantization Stepsizes
 @param prec Precint analyzed
 */
 void dwt_calc_explicit_stepsizes(tccp_t * tccp, uint32_t prec);
-
-/* ----------------------------------------------------------------------- */
-/*@}*/
-
-/*@}*/
-
-
-
 }
