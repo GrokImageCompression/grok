@@ -68,14 +68,6 @@
 
 namespace grk {
 
-
-
-/** @defgroup DWT DWT - Implementation of a discrete wavelet transform */
-/*@{*/
-
-/** @name Local data structures */
-/*@{*/
-
 struct dwt_t {
     int32_t* mem;
     int32_t dn;
@@ -85,10 +77,10 @@ struct dwt_t {
 
 typedef union {
     float	f[4];
-} opj_v4_t;
+} dwt_v4_t;
 
 struct v4dwt_t {
-    opj_v4_t*	wavelet ;
+    dwt_v4_t*	wavelet ;
     int32_t		dn ;
     int32_t		sn ;
     int32_t		cas ;
@@ -99,13 +91,14 @@ static const float dwt_beta  =  0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 
-static const float opj_K      = 1.230174105f; /*  10078 */
-static const float opj_c13318 = 1.625732422f;
+static const float dwt_K      = 1.230174105f; /*  10078 */
+static const float dwt_c13318 = 1.625732422f;
 
-/*@}*/
-
-/** @name Local static functions */
-/*@{*/
+/* <summary>                             */
+/* Determine maximum computed resolution level for inverse wavelet transform */
+/* </summary>
+*/
+static uint32_t dwt_max_resolution(tcd_resolution_t* restrict r, uint32_t i);
 
 /**
 Forward lazy transform (horizontal)
@@ -150,28 +143,24 @@ static void v4dwt_interleave_h(v4dwt_t* restrict w, float* restrict a, int32_t x
 static void v4dwt_interleave_v(v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read);
 
 #ifdef __SSE__
-static void v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c);
+static void v4dwt_decode_step1_sse(dwt_v4_t* w, int32_t count, const __m128 c);
 
-static void v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c);
+static void v4dwt_decode_step2_sse(dwt_v4_t* l, dwt_v4_t* w, int32_t k, int32_t m, __m128 c);
 
 #else
-static void v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c);
+static void v4dwt_decode_step1(dwt_v4_t* w, int32_t count, const float c);
 
-static void v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c);
+static void v4dwt_decode_step2(dwt_v4_t* l, dwt_v4_t* w, int32_t k, int32_t m, float c);
 
 #endif
 
-/*@}*/
-
-/*@}*/
-
-#define OPJ_S(i) a[(i)*2]
-#define OPJ_D(i) a[(1+(i)*2)]
-#define OPJ_S_(i) ((i)<0?OPJ_S(0):((i)>=sn?OPJ_S(sn-1):OPJ_S(i)))
-#define OPJ_D_(i) ((i)<0?OPJ_D(0):((i)>=dn?OPJ_D(dn-1):OPJ_D(i)))
+#define GROK_S(i) a[(i)*2]
+#define GROK_D(i) a[(1+(i)*2)]
+#define GROK_S_(i) ((i)<0?GROK_S(0):((i)>=sn?GROK_S(sn-1):GROK_S(i)))
+#define GROK_D_(i) ((i)<0?GROK_D(0):((i)>=dn?GROK_D(dn-1):GROK_D(i)))
 /* new */
-#define OPJ_SS_(i) ((i)<0?OPJ_S(0):((i)>=dn?OPJ_S(dn-1):OPJ_S(i)))
-#define OPJ_DD_(i) ((i)<0?OPJ_D(0):((i)>=sn?OPJ_D(sn-1):OPJ_D(i)))
+#define GROK_SS_(i) ((i)<0?GROK_S(0):((i)>=dn?GROK_S(dn-1):GROK_S(i)))
+#define GROK_DD_(i) ((i)<0?GROK_D(0):((i)>=sn?GROK_D(sn-1):GROK_D(i)))
 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
@@ -302,15 +291,15 @@ static void dwt_encode_line_53(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) {	/* NEW :  CASE ONE ELEMENT */
-            for (i = 0; i < dn; i++) OPJ_D(i) -= (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
-            for (i = 0; i < sn; i++) OPJ_S(i) += (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
+            for (i = 0; i < dn; i++) GROK_D(i) -= (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
+            for (i = 0; i < sn; i++) GROK_S(i) += (GROK_D_(i - 1) + GROK_D_(i) + 2) >> 2;
         }
     } else {
         if (!sn && dn == 1)		    /* NEW :  CASE ONE ELEMENT */
-            OPJ_S(0) *= 2;
+            GROK_S(0) *= 2;
         else {
-            for (i = 0; i < dn; i++) OPJ_S(i) -= (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
-            for (i = 0; i < sn; i++) OPJ_D(i) += (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
+            for (i = 0; i < dn; i++) GROK_S(i) -= (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
+            for (i = 0; i < sn; i++) GROK_D(i) += (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
         }
     }
 }
@@ -329,16 +318,16 @@ static void dwt_decode_line_53(dwt_t *v)
 
 	if (!cas) {
 		if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
-			for (i = 0; i < sn; i++) OPJ_S(i) -= (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
-			for (i = 0; i < dn; i++) OPJ_D(i) += (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
+			for (i = 0; i < sn; i++) GROK_S(i) -= (GROK_D_(i - 1) + GROK_D_(i) + 2) >> 2;
+			for (i = 0; i < dn; i++) GROK_D(i) += (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
 		}
 	}
 	else {
 		if (!sn  && dn == 1)          /* NEW :  CASE ONE ELEMENT */
-			OPJ_S(0) /= 2;
+			GROK_S(0) /= 2;
 		else {
-			for (i = 0; i < sn; i++) OPJ_D(i) -= (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
-			for (i = 0; i < dn; i++) OPJ_S(i) += (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
+			for (i = 0; i < sn; i++) GROK_D(i) -= (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
+			for (i = 0; i < dn; i++) GROK_S(i) += (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
 		}
 	}
 
@@ -353,32 +342,32 @@ static void dwt_encode_line_97(int32_t *a, int32_t dn, int32_t sn, int32_t cas)
     if (!cas) {
         if ((dn > 0) || (sn > 1)) {	/* NEW :  CASE ONE ELEMENT */
             for (i = 0; i < dn; i++)
-                OPJ_D(i) -= int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 12993);
+                GROK_D(i) -= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12993);
             for (i = 0; i < sn; i++)
-                OPJ_S(i) -= int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 434);
+                GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
             for (i = 0; i < dn; i++)
-                OPJ_D(i) += int_fix_mul(OPJ_S_(i) + OPJ_S_(i + 1), 7233);
+                GROK_D(i) += int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
             for (i = 0; i < sn; i++)
-                OPJ_S(i) += int_fix_mul(OPJ_D_(i - 1) + OPJ_D_(i), 3633);
+                GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
             for (i = 0; i < dn; i++)
-                OPJ_D(i) = int_fix_mul(OPJ_D(i), 5038);	/*5038 */
+                GROK_D(i) = int_fix_mul(GROK_D(i), 5038);	/*5038 */
             for (i = 0; i < sn; i++)
-                OPJ_S(i) = int_fix_mul(OPJ_S(i), 6659);	/*6660 */
+                GROK_S(i) = int_fix_mul(GROK_S(i), 6659);	/*6660 */
         }
     } else {
         if ((sn > 0) || (dn > 1)) {	/* NEW :  CASE ONE ELEMENT */
             for (i = 0; i < dn; i++)
-                OPJ_S(i) -= int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 12993);
+                GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12993);
             for (i = 0; i < sn; i++)
-                OPJ_D(i) -= int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 434);
+                GROK_D(i) -= int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
             for (i = 0; i < dn; i++)
-                OPJ_S(i) += int_fix_mul(OPJ_DD_(i) + OPJ_DD_(i - 1), 7233);
+                GROK_S(i) += int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 7233);
             for (i = 0; i < sn; i++)
-                OPJ_D(i) += int_fix_mul(OPJ_SS_(i) + OPJ_SS_(i + 1), 3633);
+                GROK_D(i) += int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
             for (i = 0; i < dn; i++)
-                OPJ_S(i) = int_fix_mul(OPJ_S(i), 5038);	/*5038 */
+                GROK_S(i) = int_fix_mul(GROK_S(i), 5038);	/*5038 */
             for (i = 0; i < sn; i++)
-                OPJ_D(i) = int_fix_mul(OPJ_D(i), 6659);	/*6660 */
+                GROK_D(i) = int_fix_mul(GROK_D(i), 6659);	/*6660 */
         }
     }
 }
@@ -805,7 +794,7 @@ static void v4dwt_interleave_h(v4dwt_t* restrict w, float* restrict a, int32_t x
 
 static void v4dwt_interleave_v(v4dwt_t* restrict v , float* restrict a , int32_t x, int32_t nb_elts_read)
 {
-    opj_v4_t* restrict bi = v->wavelet + v->cas;
+    dwt_v4_t* restrict bi = v->wavelet + v->cas;
     int32_t i;
 
     for(i = 0; i < v->sn; ++i) {
@@ -822,7 +811,7 @@ static void v4dwt_interleave_v(v4dwt_t* restrict v , float* restrict a , int32_t
 
 #ifdef __SSE__
 
-static void v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c)
+static void v4dwt_decode_step1_sse(dwt_v4_t* w, int32_t count, const __m128 c)
 {
     __m128* restrict vw = (__m128*) w;
     int32_t i;
@@ -844,7 +833,7 @@ static void v4dwt_decode_step1_sse(opj_v4_t* w, int32_t count, const __m128 c)
     }
 }
 
-void v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m128 c)
+void v4dwt_decode_step2_sse(dwt_v4_t* l, dwt_v4_t* w, int32_t k, int32_t m, __m128 c)
 {
     __m128* restrict vl = (__m128*) l;
     __m128* restrict vw = (__m128*) w;
@@ -873,7 +862,7 @@ void v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, __m1
 
 #else
 
-static void v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c)
+static void v4dwt_decode_step1(dwt_v4_t* w, int32_t count, const float c)
 {
     float* restrict fw = (float*) w;
     int32_t i;
@@ -889,7 +878,7 @@ static void v4dwt_decode_step1(opj_v4_t* w, int32_t count, const float c)
     }
 }
 
-static void v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w, int32_t k, int32_t m, float c)
+static void v4dwt_decode_step2(dwt_v4_t* l, dwt_v4_t* w, int32_t k, int32_t m, float c)
 {
     float* fl = (float*) l;
     float* fw = (float*) w;
@@ -960,15 +949,15 @@ static void v4dwt_decode(v4dwt_t* restrict dwt)
         b = 0;
     }
 #ifdef __SSE__
-    v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(opj_K));
-    v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(opj_c13318));
+    v4dwt_decode_step1_sse(dwt->wavelet+a, dwt->sn, _mm_set1_ps(dwt_K));
+    v4dwt_decode_step1_sse(dwt->wavelet+b, dwt->dn, _mm_set1_ps(dwt_c13318));
     v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_delta));
     v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_gamma));
     v4dwt_decode_step2_sse(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), _mm_set1_ps(dwt_beta));
     v4dwt_decode_step2_sse(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), _mm_set1_ps(dwt_alpha));
 #else
-    v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, opj_K);
-    v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, opj_c13318);
+    v4dwt_decode_step1(dwt->wavelet+a, dwt->sn, dwt_K);
+    v4dwt_decode_step1(dwt->wavelet+b, dwt->dn, dwt_c13318);
     v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), dwt_delta);
     v4dwt_decode_step2(dwt->wavelet+a, dwt->wavelet+b+1, dwt->dn, std::min<int32_t>(dwt->dn, dwt->sn-b), dwt_gamma);
     v4dwt_decode_step2(dwt->wavelet+b, dwt->wavelet+a+1, dwt->sn, std::min<int32_t>(dwt->sn, dwt->dn-a), dwt_beta);
@@ -1016,7 +1005,7 @@ bool dwt_decode_97(tcd_tilecomp_t* restrict tilec,
 
 			uint32_t w = (tilec->x1 - tilec->x0);
 
-			h.wavelet = (opj_v4_t*)grok_aligned_malloc((dwt_max_resolution(res, numResolutions)) * sizeof(opj_v4_t));
+			h.wavelet = (dwt_v4_t*)grok_aligned_malloc((dwt_max_resolution(res, numResolutions)) * sizeof(dwt_v4_t));
 			if (!h.wavelet) {
 				/* FIXME event manager error callback */
 				rc++;
