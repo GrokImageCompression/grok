@@ -58,6 +58,27 @@
 
 namespace grk {
 
+struct dwt_t {
+	int32_t* mem;
+	int32_t dn;
+	int32_t sn;
+	int32_t cas;
+};
+
+class dwt : public dwt_interface {
+public:
+	virtual ~dwt() {}
+protected:
+	uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
+	void deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas);
+	void deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas);
+	void interleave_v(dwt_t* v, int32_t *a, int32_t x);
+	void interleave_h(dwt_t* h, int32_t *a);
+
+};
+
+
+
 /**
 @file dwt.h
 @brief Implementation of a discrete wavelet transform (DWT)
@@ -74,23 +95,6 @@ DWT.C are used by some function in TCD.C.
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
-/**
-Forward 5-3 wavelet transform in 2-D.
-Apply a reversible DWT transform to a component of an image.
-@param tilec Tile component information (current tile)
-*/
-bool dwt_encode_53(tcd_tilecomp_t * tilec);
-
-/**
-Inverse 5-3 wavelet transform in 2-D.
-Apply a reversible inverse DWT transform to a component of an image.
-@param tilec Tile component information (current tile)
-@param numres Number of resolution levels to decode
-*/
-bool dwt_decode_53(tcd_tilecomp_t* tilec,
-					uint32_t numres,
-					uint32_t numThreads);
-
 /**
 Get the gain of a subband for the reversible 5-3 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
