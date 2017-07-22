@@ -68,12 +68,124 @@
 
 namespace grk {
 
-struct dwt_t {
-    int32_t* mem;
-    int32_t dn;
-    int32_t sn;
-    int32_t cas;
-} ;
+
+
+/* <summary>                             */
+/* Determine maximum computed resolution level for inverse wavelet transform */
+/* </summary>                            */
+uint32_t dwt::max_resolution(tcd_resolution_t* restrict r, uint32_t i)
+{
+	uint32_t mr = 0;
+	uint32_t w;
+	while (--i) {
+		++r;
+		if (mr < (w = r->x1 - r->x0))
+			mr = w;
+		if (mr < (w = r->y1 - r->y0))
+			mr = w;
+	}
+	return mr;
+}
+
+
+/* <summary>                             */
+/* Forward lazy transform (vertical).    */
+/* </summary>                            */
+void dwt::deinterleave_v(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t x, int32_t cas)
+{
+	int32_t i = sn;
+	int32_t * l_dest = b;
+	int32_t * l_src = a + cas;
+
+	while (i--) {
+		*l_dest = *l_src;
+		l_dest += x;
+		l_src += 2;
+	} /* b[i*x]=a[2*i+cas]; */
+
+	l_dest = b + sn * x;
+	l_src = a + 1 - cas;
+
+	i = dn;
+	while (i--) {
+		*l_dest = *l_src;
+		l_dest += x;
+		l_src += 2;
+	} /*b[(sn+i)*x]=a[(2*i+1-cas)];*/
+}
+
+/* <summary>			                 */
+/* Forward lazy transform (horizontal).  */
+/* </summary>                            */
+void dwt::deinterleave_h(int32_t *a, int32_t *b, int32_t dn, int32_t sn, int32_t cas)
+{
+	int32_t i;
+	int32_t * l_dest = b;
+	int32_t * l_src = a + cas;
+
+	for (i = 0; i<sn; ++i) {
+		*l_dest++ = *l_src;
+		l_src += 2;
+	}
+
+	l_dest = b + sn;
+	l_src = a + 1 - cas;
+
+	for (i = 0; i<dn; ++i) {
+		*l_dest++ = *l_src;
+		l_src += 2;
+	}
+}
+
+/* <summary>                             */
+/* Inverse lazy transform (vertical).    */
+/* </summary>                            */
+void dwt::interleave_v(dwt_t* v, int32_t *a, int32_t x)
+{
+	int32_t *ai = a;
+	int32_t *bi = v->mem + v->cas;
+	int32_t  i = v->sn;
+	while (i--) {
+		*bi = *ai;
+		bi += 2;
+		ai += x;
+	}
+	ai = a + (v->sn * x);
+	bi = v->mem + 1 - v->cas;
+	i = v->dn;
+	while (i--) {
+		*bi = *ai;
+		bi += 2;
+		ai += x;
+	}
+}
+
+
+/* <summary>                             */
+/* Inverse lazy transform (horizontal).  */
+/* </summary>                            */
+void dwt::interleave_h(dwt_t* h, int32_t *a)
+{
+	int32_t *ai = a;
+	int32_t *bi = h->mem + h->cas;
+	int32_t  i = h->sn;
+	while (i--) {
+		*bi = *(ai++);
+		bi += 2;
+	}
+	ai = a + h->sn;
+	bi = h->mem + 1 - h->cas;
+	i = h->dn;
+	while (i--) {
+		*bi = *(ai++);
+		bi += 2;
+	}
+}
+
+
+
+
+
 
 typedef union {
     float	f[4];
@@ -388,111 +500,6 @@ static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps, stepsize_t *ba
 */
 
 
-/* Forward 5-3 wavelet transform in 2-D. */
-/* </summary>                           */
-bool dwt_encode_53(tcd_tilecomp_t * tilec)
-{
-	int32_t k;
-	int32_t *a = nullptr;
-	int32_t *aj = nullptr;
-	int32_t *bj = nullptr;
-	int32_t w;
-
-	int32_t rw;			/* width of the resolution level computed   */
-	int32_t rh;			/* height of the resolution level computed  */
-	size_t l_data_size;
-
-	tcd_resolution_t * l_cur_res = 0;
-	tcd_resolution_t * l_last_res = 0;
-
-	w = tilec->x1 - tilec->x0;
-	int32_t num_decomps = (int32_t)tilec->numresolutions - 1;
-	a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-
-	l_cur_res = tilec->resolutions + num_decomps;
-	l_last_res = l_cur_res - 1;
-
-
-
-#ifdef DEBUG_LOSSLESS_DWT
-	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
-	int32_t rh_full = l_cur_res->y1 - l_cur_res->y0;
-	int32_t* before = new int32_t[rw_full * rh_full];
-	memcpy(before, a, rw_full * rh_full * sizeof(int32_t));
-	int32_t* after = new int32_t[rw_full * rh_full];
-
-#endif
-
-	l_data_size = dwt_max_resolution(tilec->resolutions, tilec->numresolutions) * sizeof(int32_t);
-	/* overflow check */
-	if (l_data_size > SIZE_MAX) {
-		/* FIXME event manager error callback */
-		return false;
-	}
-	bj = (int32_t*)grok_malloc(l_data_size);
-	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
-	/* in that case, so do not error out */
-	if (l_data_size != 0 && !bj) {
-		return false;
-	}
-
-	while (num_decomps--) {
-		int32_t rw1;		/* width of the resolution level once lower than computed one                                       */
-		int32_t rh1;		/* height of the resolution level once lower than computed one                                      */
-		int32_t cas_col;	/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		int32_t cas_row;	/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		int32_t dn, sn;
-
-		rw = l_cur_res->x1 - l_cur_res->x0;
-		rh = l_cur_res->y1 - l_cur_res->y0;
-		rw1 = l_last_res->x1 - l_last_res->x0;
-		rh1 = l_last_res->y1 - l_last_res->y0;
-
-		cas_row = l_cur_res->x0 & 1;
-		cas_col = l_cur_res->y0 & 1;
-
-		sn = rh1;
-		dn = rh - rh1;
-
-		for (int32_t j = 0; j < rw; ++j) {
-			aj = a + j;
-			for (k = 0; k < rh; ++k) {
-				bj[k] = aj[k*w];
-			}
-			dwt_encode_line_53(bj, dn, sn, cas_col);
-			dwt_deinterleave_v(bj, aj, dn, sn, w, cas_col);
-		}
-		sn = rw1;
-		dn = rw - rw1;
-
-		for (int32_t j = 0; j < rh; j++) {
-			aj = a + j * w;
-			for (k = 0; k < rw; k++)  bj[k] = aj[k];
-			dwt_encode_line_53(bj, dn, sn, cas_row);
-			dwt_deinterleave_h(bj, aj, dn, sn, cas_row);
-		}
-		l_cur_res = l_last_res;
-		--l_last_res;
-	}
-	grok_free(bj);
-#ifdef DEBUG_LOSSLESS_DWT
-	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
-	dwt_decode_53(tilec, tilec->numresolutions, 8);
-	for (int m = 0; m < rw_full; ++m) {
-		for (int p = 0; p < rh_full; ++p) {
-			auto expected = a[m + p * rw_full];
-			auto actual = before[m + p * rw_full];
-			if (expected != actual) {
-				printf("(%d, %d); expected %d, got %d\n", m, p, expected, actual);
-			}
-		}
-	}
-	memcpy(a, after, rw_full * rh_full * sizeof(int32_t));
-	delete[] before;
-	delete[] after;
-#endif
-	return true;
-}
 
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 2-D. */
@@ -574,103 +581,6 @@ bool dwt_encode_97(tcd_tilecomp_t * tilec)
 	grok_free(bj);
 	return true;
 }
-
-/* <summary>                            */
-/* Inverse 5-3 wavelet transform in 2-D. */
-/* </summary>                           */
-bool dwt_decode_53(tcd_tilecomp_t* tilec, 
-					uint32_t numres,
-					uint32_t numThreads)
-{
-	if (numres == 1U) {
-		return true;
-	}
-    if (tile_buf_is_decode_region(tilec->buf))
-        return dwt_region_decode53(tilec, numres, numThreads);
-
-	std::vector<std::thread> dwtWorkers;
-	int rc = 0;
-	auto tileBuf = (int32_t*)tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-	Barrier decode_dwt_barrier(numThreads);
-	Barrier decode_dwt_calling_barrier(numThreads + 1);
-
-	for (auto threadId = 0U; threadId < numThreads; threadId++) {
-		dwtWorkers.push_back(std::thread([tilec,
-			numres,
-			&rc,
-			tileBuf,
-			&decode_dwt_barrier,
-			&decode_dwt_calling_barrier,
-			threadId,
-			numThreads]()
-		{
-			auto numResolutions = numres;
-			dwt_t h;
-			dwt_t v;
-
-			tcd_resolution_t* tr = tilec->resolutions;
-
-			uint32_t rw = (tr->x1 - tr->x0);	/* width of the resolution level computed */
-			uint32_t rh = (tr->y1 - tr->y0);	/* height of the resolution level computed */
-
-			uint32_t w = (tilec->x1 - tilec->x0);
-			h.mem = (int32_t*)grok_aligned_malloc(dwt_max_resolution(tr, numResolutions) * sizeof(int32_t));
-			if (!h.mem) {
-				rc++;
-				goto cleanup;
-			}
-
-			v.mem = h.mem;
-
-			while (--numResolutions) {
-				int32_t * restrict tiledp = tileBuf;
-
-				++tr;
-				h.sn = (int32_t)rw;
-				v.sn = (int32_t)rh;
-
-				rw = (tr->x1 - tr->x0);
-				rh = (tr->y1 - tr->y0);
-
-				h.dn = (int32_t)(rw - (uint32_t)h.sn);
-				h.cas = tr->x0 % 2;
-
-				for (uint32_t j = threadId; j < rh; j += numThreads) {
-					dwt_interleave_h(&h, &tiledp[j*w]);
-					dwt_decode_line_53(&h);
-					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
-				}
-
-				v.dn = (int32_t)(rh - (uint32_t)v.sn);
-				v.cas = tr->y0 % 2;
-
-				decode_dwt_barrier.arrive_and_wait();
-
-				for (uint32_t j = threadId; j < rw; j += numThreads) {
-					dwt_interleave_v(&v, &tiledp[j], (int32_t)w);
-					dwt_decode_line_53(&v);
-					for (uint32_t k = 0; k < rh; ++k) {
-						tiledp[k * w + j] = v.mem[k];
-					}
-				}
-				decode_dwt_barrier.arrive_and_wait();
-			}
-		cleanup:
-			if (h.mem)
-				grok_aligned_free(h.mem);
-			decode_dwt_calling_barrier.arrive_and_wait();
-
-		}));
-	}
-	decode_dwt_calling_barrier.arrive_and_wait();
-
-	for (auto& t : dwtWorkers) {
-		t.join();
-	}
-	return rc == 0 ? true : false;
-
-}
-
 
 /* <summary>                          */
 /* Get gain of 5-3 wavelet transform. */

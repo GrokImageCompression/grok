@@ -169,22 +169,6 @@ static inline long grok_lrintf(float f)
     return (long)((f>0.0f) ? (f + 0.5f) : (f - 0.5f));
 #endif
 }
-#elif defined(__BORLANDC__)
-static inline long grok_lrintf(float f)
-{
-#ifdef _M_X64
-    return (long)((f>0.0f) ? (f + 0.5f):(f -0.5f));
-#else
-    int i;
-
-    _asm {
-        fld f
-        fistp i
-    };
-
-    return i;
-#endif
-}
 #else
 static inline long grok_lrintf(float f)
 {
@@ -224,7 +208,10 @@ static inline long grok_lrintf(float f)
 #include "pi.h"
 #include "tgt.h"
 #include "tcd.h"
+#include "dwt_interface.h"
 #include "dwt.h"
+#include "dwt53.h"
+#include "dwt97.h"
 #include "dwt_region.h"
 #include "t2.h"
 #include "mct.h"

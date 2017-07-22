@@ -1709,7 +1709,8 @@ static bool tcd_dwt_decode ( tcd_t *p_tcd )
             tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
             opj_image_comp_t * l_img_comp = p_tcd->image->comps + compno;
             if (l_tccp->qmfbid == 1) {
-                if (! dwt_decode_53(l_tile_comp,
+				dwt53 dwt;
+                if (! dwt.decode(l_tile_comp,
 									l_img_comp->resno_decoded+1,
 									p_tcd->numThreads)) {
                     rc = false;
@@ -2058,7 +2059,8 @@ bool tcd_dwt_encode ( tcd_t *p_tcd )
             tcd_tilecomp_t * tile_comp = p_tcd->tile->comps + compno;
             tccp_t * l_tccp = p_tcd->tcp->tccps + compno;
             if (l_tccp->qmfbid == 1) {
-                if (! dwt_encode_53(tile_comp)) {
+				dwt53 dwt;
+                if (! dwt.encode(tile_comp)) {
                     rc = false;
                     continue;
                 }
