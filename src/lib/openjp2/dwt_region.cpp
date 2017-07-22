@@ -154,8 +154,8 @@ static const float dwt_beta  =  0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
 
-static const float opj_K      = 1.230174105f; /*  10078 */
-static const float opj_c13318 = 1.625732422f;
+static const float dwt_K      = 1.230174105f; /*  10078 */
+static const float dwt_c13318 = 1.625732422f;
 
 /*@}*/
 
@@ -272,14 +272,14 @@ static void dwt_region_interleave53_v(dwt53_t* buffer_v,
 /* </summary>
 */
 
-#define OPJ_S(i) a[(i)<<1]
-#define OPJ_D(i) a[(1+((i)<<1))]
-#define OPJ_S_(i) ((i)<0?OPJ_S(0):((i)>=s_n?OPJ_S(s_n-1):OPJ_S(i)))
-#define OPJ_D_(i) ((i)<0?OPJ_D(0):((i)>=d_n?OPJ_D(d_n-1):OPJ_D(i)))
+#define GROK_S(i) a[(i)<<1]
+#define GROK_D(i) a[(1+((i)<<1))]
+#define GROK_S_(i) ((i)<0?GROK_S(0):((i)>=s_n?GROK_S(s_n-1):GROK_S(i)))
+#define GROK_D_(i) ((i)<0?GROK_D(0):((i)>=d_n?GROK_D(d_n-1):GROK_D(i)))
 
 
-#define OPJ_SS_(i) ((i)<0?OPJ_S(0):((i)>=d_n?OPJ_S(d_n-1):OPJ_S(i)))
-#define OPJ_DD_(i) ((i)<0?OPJ_D(0):((i)>=s_n?OPJ_D(s_n-1):OPJ_D(i)))
+#define GROK_SS_(i) ((i)<0?GROK_S(0):((i)>=d_n?GROK_S(d_n-1):GROK_S(i)))
+#define GROK_DD_(i) ((i)<0?GROK_D(0):((i)>=s_n?GROK_D(s_n-1):GROK_D(i)))
 
 static void dwt_region_decode53_1d(dwt53_t *buffer)
 {
@@ -290,22 +290,22 @@ static void dwt_region_decode53_1d(dwt53_t *buffer)
         if ((d_n > 0) || (s_n > 1)) {
             /* inverse update */
             for (auto i = buffer->range_even.x; i < buffer->range_even.y; ++i)
-                OPJ_S(i) -= (OPJ_D_(i - 1) + OPJ_D_(i) + 2) >> 2;
+                GROK_S(i) -= (GROK_D_(i - 1) + GROK_D_(i) + 2) >> 2;
             /* inverse predict */
             for (auto i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
-                OPJ_D(i) += (OPJ_S_(i) + OPJ_S_(i + 1)) >> 1;
+                GROK_D(i) += (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
         }
     } else {
         if (!s_n  && d_n == 1)
-            OPJ_S(0) >>=1;
+            GROK_S(0) >>=1;
         else {
             /* inverse update */
             for (auto i = buffer->range_even.x; i < buffer->range_even.y; ++i)
-                OPJ_D(i) -= (OPJ_SS_(i) + OPJ_SS_(i + 1) + 2) >> 2;
+                GROK_D(i) -= (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
 
             /* inverse predict */
             for (auto i = buffer->range_odd.x; i < buffer->range_odd.y; ++i)
-                OPJ_S(i) += (OPJ_DD_(i) + OPJ_DD_(i - 1)) >> 1;
+                GROK_S(i) += (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
         }
     }
 }
@@ -614,12 +614,12 @@ static void region_decode97(dwt97_t* restrict dwt)
     /* inverse low-pass scale */
     region_decode97_scale(dwt->data - dwt->interleaved_offset+ odd_top_left_bit,
                               dwt->range_even,
-                              opj_K);
+                              dwt_K);
 
     /* inverse high-pass scale */
     region_decode97_scale(dwt->data - dwt->interleaved_offset + even_top_left_bit,
                               dwt->range_odd,
-                              opj_c13318);
+                              dwt_c13318);
 
     /* inverse update */
     region_decode97_lift(dwt->data - dwt->interleaved_offset + even_top_left_bit,

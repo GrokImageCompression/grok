@@ -140,11 +140,6 @@ Explicit calculation of the Quantization Stepsizes
 */
 void dwt_calc_explicit_stepsizes(tccp_t * tccp, uint32_t prec);
 
-/* <summary>                             */
-/* Determine maximum computed resolution level for inverse wavelet transform */
-/* </summary>
-*/
-uint32_t dwt_max_resolution(tcd_resolution_t* restrict r, uint32_t i);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
