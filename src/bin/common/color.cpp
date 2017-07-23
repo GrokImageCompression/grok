@@ -59,7 +59,6 @@
 #include <math.h>
 #include <assert.h>
 
-extern "C" {
 
 #include "opj_apps_config.h"
 #include "openjpeg.h"
@@ -69,7 +68,6 @@ extern "C" {
 #include <lcms2.h>
 #endif
 
-}
 
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {

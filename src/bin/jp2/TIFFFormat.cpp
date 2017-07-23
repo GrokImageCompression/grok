@@ -55,26 +55,24 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-extern "C" {
+#include <cstdio>
+#include <cstdlib>
 #include "opj_apps_config.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include "openjpeg.h"
+#include "TIFFFormat.h"
+#include "convert.h"
+#include <cstring>
 
 #ifndef GROK_HAVE_LIBTIFF
 # error GROK_HAVE_LIBTIFF_NOT_DEFINED
 #endif /* GROK_HAVE_LIBTIFF */
 
 #include <tiffio.h>
-#include "openjpeg.h"
-#include "convert.h"
 #include "color.h"
-}
-
 #include <cassert>
 #include <memory>
+
+
 
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
@@ -99,9 +97,9 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 
 /* -->> -->> -->> -->>
 
- TIFF IMAGE FORMAT
+TIFF IMAGE FORMAT
 
- <<-- <<-- <<-- <<-- */
+<<-- <<-- <<-- <<-- */
 #define PUTBITS2(s, nb) \
 	trailing <<= remaining; \
 	trailing |= (uint32_t)((s) >> (nb - remaining)); \
@@ -330,41 +328,41 @@ static void tif_32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 
 static void tif_32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        uint32_t src1 = (uint32_t)pSrc[i+1];
-        uint32_t src2 = (uint32_t)pSrc[i+2];
-        uint32_t src3 = (uint32_t)pSrc[i+3];
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src1 = (uint32_t)pSrc[i + 1];
+		uint32_t src2 = (uint32_t)pSrc[i + 2];
+		uint32_t src3 = (uint32_t)pSrc[i + 3];
 
-        *pDst++ = (uint8_t)(src0 >> 2);
-        *pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
-        *pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
-        *pDst++ = (uint8_t)(((src2 & 0x3FU) << 2) | (src3 >> 8));
-        *pDst++ = (uint8_t)(src3);
-    }
+		*pDst++ = (uint8_t)(src0 >> 2);
+		*pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
+		*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
+		*pDst++ = (uint8_t)(((src2 & 0x3FU) << 2) | (src3 >> 8));
+		*pDst++ = (uint8_t)(src3);
+	}
 
-    if (length & 3U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        uint32_t src1 = 0U;
-        uint32_t src2 = 0U;
-        length = length & 3U;
+	if (length & 3U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src1 = 0U;
+		uint32_t src2 = 0U;
+		length = length & 3U;
 
-        if (length > 1U) {
-            src1 = (uint32_t)pSrc[i+1];
-            if (length > 2U) {
-                src2 = (uint32_t)pSrc[i+2];
-            }
-        }
-        *pDst++ = (uint8_t)(src0 >> 2);
-        *pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
-        if (length > 1U) {
-            *pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
-            if (length > 2U) {
-                *pDst++ = (uint8_t)(((src2 & 0x3FU) << 2));
-            }
-        }
-    }
+		if (length > 1U) {
+			src1 = (uint32_t)pSrc[i + 1];
+			if (length > 2U) {
+				src2 = (uint32_t)pSrc[i + 2];
+			}
+		}
+		*pDst++ = (uint8_t)(src0 >> 2);
+		*pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
+		if (length > 1U) {
+			*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
+			if (length > 2U) {
+				*pDst++ = (uint8_t)(((src2 & 0x3FU) << 2));
+			}
+		}
+	}
 }
 
 static void tif_32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
@@ -422,21 +420,21 @@ static void tif_32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 }
 static void tif_32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)1U); i+=2U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        uint32_t src1 = (uint32_t)pSrc[i+1];
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)1U); i += 2U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src1 = (uint32_t)pSrc[i + 1];
 
-        *pDst++ = (uint8_t)(src0 >> 4);
-        *pDst++ = (uint8_t)(((src0 & 0xFU) << 4) | (src1 >> 8));
-        *pDst++ = (uint8_t)(src1);
-    }
+		*pDst++ = (uint8_t)(src0 >> 4);
+		*pDst++ = (uint8_t)(((src0 & 0xFU) << 4) | (src1 >> 8));
+		*pDst++ = (uint8_t)(src1);
+	}
 
-    if (length & 1U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        *pDst++ = (uint8_t)(src0 >> 4);
-        *pDst++ = (uint8_t)(((src0 & 0xFU) << 4));
-    }
+	if (length & 1U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		*pDst++ = (uint8_t)(src0 >> 4);
+		*pDst++ = (uint8_t)(((src0 & 0xFU) << 4));
+	}
 }
 
 static void tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
@@ -497,45 +495,45 @@ static void tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 
 static void tif_32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        uint32_t src1 = (uint32_t)pSrc[i+1];
-        uint32_t src2 = (uint32_t)pSrc[i+2];
-        uint32_t src3 = (uint32_t)pSrc[i+3];
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src1 = (uint32_t)pSrc[i + 1];
+		uint32_t src2 = (uint32_t)pSrc[i + 2];
+		uint32_t src3 = (uint32_t)pSrc[i + 3];
 
-        *pDst++ = (uint8_t)(src0 >> 6);
-        *pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
-        *pDst++ = (uint8_t)(src1 >> 4);
-        *pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
-        *pDst++ = (uint8_t)(src2 >> 2);
-        *pDst++ = (uint8_t)(((src2 & 0x3U) << 6) | (src3 >> 8));
-        *pDst++ = (uint8_t)(src3);
-    }
+		*pDst++ = (uint8_t)(src0 >> 6);
+		*pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
+		*pDst++ = (uint8_t)(src1 >> 4);
+		*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
+		*pDst++ = (uint8_t)(src2 >> 2);
+		*pDst++ = (uint8_t)(((src2 & 0x3U) << 6) | (src3 >> 8));
+		*pDst++ = (uint8_t)(src3);
+	}
 
-    if (length & 3U) {
-        uint32_t src0 = (uint32_t)pSrc[i+0];
-        uint32_t src1 = 0U;
-        uint32_t src2 = 0U;
-        length = length & 3U;
+	if (length & 3U) {
+		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src1 = 0U;
+		uint32_t src2 = 0U;
+		length = length & 3U;
 
-        if (length > 1U) {
-            src1 = (uint32_t)pSrc[i+1];
-            if (length > 2U) {
-                src2 = (uint32_t)pSrc[i+2];
-            }
-        }
-        *pDst++ = (uint8_t)(src0 >> 6);
-        *pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
-        if (length > 1U) {
-            *pDst++ = (uint8_t)(src1 >> 4);
-            *pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
-            if (length > 2U) {
-                *pDst++ = (uint8_t)(src2 >> 2);
-                *pDst++ = (uint8_t)(((src2 & 0x3U) << 6));
-            }
-        }
-    }
+		if (length > 1U) {
+			src1 = (uint32_t)pSrc[i + 1];
+			if (length > 2U) {
+				src2 = (uint32_t)pSrc[i + 2];
+			}
+		}
+		*pDst++ = (uint8_t)(src0 >> 6);
+		*pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
+		if (length > 1U) {
+			*pDst++ = (uint8_t)(src1 >> 4);
+			*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
+			if (length > 2U) {
+				*pDst++ = (uint8_t)(src2 >> 2);
+				*pDst++ = (uint8_t)(((src2 & 0x3U) << 6));
+			}
+		}
+	}
 }
 
 static void tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
@@ -598,45 +596,47 @@ static void tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 
 static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
 {
-    size_t i;
-    for (i = 0; i < length; ++i) {
-        pDst[i] = (uint16_t)pSrc[i];
-    }
+	size_t i;
+	for (i = 0; i < length; ++i) {
+		pDst[i] = (uint16_t)pSrc[i];
+	}
 }
 
-int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
+static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
 {
-    int tiPhoto;
-    TIFF *tif=nullptr;
-    tdata_t buf=nullptr;
-    tsize_t strip_size, rowStride;
-    int32_t const* planes[4];
+	int tiPhoto;
+	TIFF *tif = nullptr;
+	tdata_t buf = nullptr;
+	tsize_t strip_size, rowStride;
+	int32_t const* planes[4];
 	int32_t* buffer32s = NULL;
 	convert_32s_PXCX cvtPxToCx = NULL;
-    convert_32sXXx_C1R cvt32sToTif = NULL;
+	convert_32sXXx_C1R cvt32sToTif = NULL;
 	bool success = true;
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
-    planes[0] = image->comps[0].data;
-    uint32_t numcomps = image->numcomps;
-    if (image->color_space == OPJ_CLRSPC_CMYK) {
-        if (numcomps < 4U) {
-            fprintf(stderr,"imagetotif: CMYK images shall be composed of at least 4 planes.\n");
-            fprintf(stderr,"\tAborting\n");
-            return 1;
-        }
-        tiPhoto = PHOTOMETRIC_SEPARATED;
-        if (numcomps > 4U) {
-            numcomps = 4U; /* Alpha not supported */
-        }
-    } else if (numcomps > 2U) {
-        tiPhoto = PHOTOMETRIC_RGB;
-        if (numcomps > 4U) {
-            numcomps = 4U;
-        }
-    } else {
-        tiPhoto = PHOTOMETRIC_MINISBLACK;
-    }
+	planes[0] = image->comps[0].data;
+	uint32_t numcomps = image->numcomps;
+	if (image->color_space == OPJ_CLRSPC_CMYK) {
+		if (numcomps < 4U) {
+			fprintf(stderr, "imagetotif: CMYK images shall be composed of at least 4 planes.\n");
+			fprintf(stderr, "\tAborting\n");
+			return 1;
+		}
+		tiPhoto = PHOTOMETRIC_SEPARATED;
+		if (numcomps > 4U) {
+			numcomps = 4U; /* Alpha not supported */
+		}
+	}
+	else if (numcomps > 2U) {
+		tiPhoto = PHOTOMETRIC_RGB;
+		if (numcomps > 4U) {
+			numcomps = 4U;
+		}
+	}
+	else {
+		tiPhoto = PHOTOMETRIC_MINISBLACK;
+	}
 
 	uint32_t sgnd = image->comps[0].sgnd;
 	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
@@ -663,31 +663,31 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		}
 	}
 	uint32_t i;
-    for (i = 1U; i < numcomps; ++i) {
-        if (image->comps[0].dx != image->comps[i].dx) {
-            break;
-        }
-        if (image->comps[0].dy != image->comps[i].dy) {
-            break;
-        }
-        if (image->comps[0].prec != image->comps[i].prec) {
-            break;
-        }
-        if (image->comps[0].sgnd != image->comps[i].sgnd) {
-            break;
-        }
-        planes[i] = image->comps[i].data;
-    }
-    if (i != numcomps) {
-        fprintf(stderr,"imagetotif: All components shall have the same subsampling, same bit depth.\n");
-        fprintf(stderr,"\tAborting\n");
+	for (i = 1U; i < numcomps; ++i) {
+		if (image->comps[0].dx != image->comps[i].dx) {
+			break;
+		}
+		if (image->comps[0].dy != image->comps[i].dy) {
+			break;
+		}
+		if (image->comps[0].prec != image->comps[i].prec) {
+			break;
+		}
+		if (image->comps[0].sgnd != image->comps[i].sgnd) {
+			break;
+		}
+		planes[i] = image->comps[i].data;
+	}
+	if (i != numcomps) {
+		fprintf(stderr, "imagetotif: All components shall have the same subsampling, same bit depth.\n");
+		fprintf(stderr, "\tAborting\n");
 		success = false;
 		goto cleanup;
-    }
+	}
 
 
 	// even bits per sample
-	if (bps > 16) 
+	if (bps > 16)
 		bps = 0;
 	if (bps == 0)
 	{
@@ -767,20 +767,20 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 
 
 	tif = TIFFOpen(outfile, "wb");
-    if (!tif) {
-        fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
+	if (!tif) {
+		fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
 		success = false;
 		goto cleanup;
-    }
+	}
 
-    TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
-    TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
-    TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
-    TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
-    TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
-    TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-    TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-    TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
+	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
+	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
+	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
 	if (compression == COMPRESSION_ADOBE_DEFLATE) {
 #ifdef ZIP_SUPPORT
 		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE);  // zip compression
@@ -808,7 +808,7 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 				return false;
 			memcpy(buf, image->iptc_buf, image->iptc_len);
 			iptc_buf = buf;
-		} 
+		}
 
 		// Tag is of type TIFF_LONG, so byte length is divided by four 
 		if (TIFFIsByteSwapped(tif))
@@ -822,8 +822,8 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
 		for (int i = 0; i < 2; ++i) {
-			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0]/100);
-			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1]/100);
+			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0] / 100);
+			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1] / 100);
 		}
 	}
 
@@ -837,28 +837,28 @@ int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, b
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
 
-    strip_size = TIFFStripSize(tif);
-    rowStride = (width * numcomps * tif_bps + 7U) / 8U;
-    if (rowStride != strip_size) {
-        fprintf(stderr, "Invalid TIFF strip size\n");
+	strip_size = TIFFStripSize(tif);
+	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
+	if (rowStride != strip_size) {
+		fprintf(stderr, "Invalid TIFF strip size\n");
 		success = false;
 		goto cleanup;
-    }
-    buf = _TIFFmalloc(strip_size);
-    if (buf == NULL) {
+	}
+	buf = _TIFFmalloc(strip_size);
+	if (buf == NULL) {
 		success = false;
 		goto cleanup;
-    }
+	}
 
-    for (i = 0; i < image->comps[0].h; ++i) {
-        cvtPxToCx(planes, buffer32s, (size_t)width, adjust);
-        cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
-        (void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
-        planes[0] += width;
-        planes[1] += width;
-        planes[2] += width;
-        planes[3] += width;
-    }
+	for (i = 0; i < image->comps[0].h; ++i) {
+		cvtPxToCx(planes, buffer32s, (size_t)width, adjust);
+		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
+		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
+		planes[0] += width;
+		planes[1] += width;
+		planes[2] += width;
+		planes[3] += width;
+	}
 
 cleanup:
 	if (buf)
@@ -868,7 +868,7 @@ cleanup:
 	if (buffer32s)
 		free(buffer32s);
 
-    return success ? 0 : 1;
+	return success ? 0 : 1;
 }/* imagetotif() */
 
 
@@ -963,7 +963,7 @@ static void tif_5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		length = length & 7U;
 
-		GETBITS(pDst[i + 0], 5, INV_MASK_5,invert)
+		GETBITS(pDst[i + 0], 5, INV_MASK_5, invert)
 
 			if (length > 1U) {
 				GETBITS(pDst[i + 1], 5, INV_MASK_5, invert)
@@ -1013,7 +1013,7 @@ static void tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		length = length & 7U;
 
-		GETBITS(pDst[i + 0], 7,INV_MASK_7,invert)
+		GETBITS(pDst[i + 0], 7, INV_MASK_7, invert)
 
 			if (length > 1U) {
 				GETBITS(pDst[i + 1], 7, INV_MASK_7, invert)
@@ -1065,20 +1065,20 @@ static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		length = length & 7U;
 
-		GETBITS(pDst[i + 0], 9, INV_MASK_9,invert)
+		GETBITS(pDst[i + 0], 9, INV_MASK_9, invert)
 
 			if (length > 1U) {
-				GETBITS(pDst[i + 1], 9, INV_MASK_9,invert)
+				GETBITS(pDst[i + 1], 9, INV_MASK_9, invert)
 					if (length > 2U) {
-						GETBITS(pDst[i + 2], 9, INV_MASK_9,invert)
+						GETBITS(pDst[i + 2], 9, INV_MASK_9, invert)
 							if (length > 3U) {
-								GETBITS(pDst[i + 3], 9, INV_MASK_9,invert)
+								GETBITS(pDst[i + 3], 9, INV_MASK_9, invert)
 									if (length > 4U) {
-										GETBITS(pDst[i + 4], 9, INV_MASK_9,invert)
+										GETBITS(pDst[i + 4], 9, INV_MASK_9, invert)
 											if (length > 5U) {
-												GETBITS(pDst[i + 5], 9, INV_MASK_9,invert)
+												GETBITS(pDst[i + 5], 9, INV_MASK_9, invert)
 													if (length > 6U) {
-														GETBITS(pDst[i + 6], 9, INV_MASK_9,invert)
+														GETBITS(pDst[i + 6], 9, INV_MASK_9, invert)
 													}
 											}
 									}
@@ -1092,35 +1092,35 @@ static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 static void tif_10uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        uint32_t val2 = *pSrc++;
-        uint32_t val3 = *pSrc++;
-        uint32_t val4 = *pSrc++;
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
 
 		pDst[i + 0] = INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert);
-        pDst[i+1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
-        pDst[i+2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
-        pDst[i+3] = INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert);
+		pDst[i + 1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
+		pDst[i + 2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
+		pDst[i + 3] = INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert);
 
-    }
-    if (length & 3U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        length = length & 3U;
-        pDst[i+0] = INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert);
+	}
+	if (length & 3U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		length = length & 3U;
+		pDst[i + 0] = INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert);
 
-        if (length > 1U) {
-            uint32_t val2 = *pSrc++;
-            pDst[i+1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
-            if (length > 2U) {
-                uint32_t val3 = *pSrc++;
-                pDst[i+2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
-            }
-        }
-    }
+		if (length > 1U) {
+			uint32_t val2 = *pSrc++;
+			pDst[i + 1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
+			if (length > 2U) {
+				uint32_t val3 = *pSrc++;
+				pDst[i + 2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
+			}
+		}
+	}
 }
 
 static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
@@ -1179,20 +1179,20 @@ static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 }
 static void tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)1U); i+=2U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        uint32_t val2 = *pSrc++;
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)1U); i += 2U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
 
-        pDst[i+0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
-        pDst[i+1] = INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert);
-    }
-    if (length & 1U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        pDst[i+0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
-    }
+		pDst[i + 0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
+		pDst[i + 1] = INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert);
+	}
+	if (length & 1U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		pDst[i + 0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
+	}
 }
 
 static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
@@ -1254,39 +1254,39 @@ static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 
 static void tif_14uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-    size_t i;
-    for (i = 0; i < (length & ~(size_t)3U); i+=4U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        uint32_t val2 = *pSrc++;
-        uint32_t val3 = *pSrc++;
-        uint32_t val4 = *pSrc++;
-        uint32_t val5 = *pSrc++;
-        uint32_t val6 = *pSrc++;
+	size_t i;
+	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		uint32_t val2 = *pSrc++;
+		uint32_t val3 = *pSrc++;
+		uint32_t val4 = *pSrc++;
+		uint32_t val5 = *pSrc++;
+		uint32_t val6 = *pSrc++;
 
-        pDst[i+0] = INV((int32_t)((val0 << 6) | (val1 >> 2)), INV_MASK_14, invert);
-        pDst[i+1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
-        pDst[i+2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
-        pDst[i+3] = INV((int32_t)(((val5 & 0x3FU) << 8) | val6), INV_MASK_14, invert);
+		pDst[i + 0] = INV((int32_t)((val0 << 6) | (val1 >> 2)), INV_MASK_14, invert);
+		pDst[i + 1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
+		pDst[i + 2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
+		pDst[i + 3] = INV((int32_t)(((val5 & 0x3FU) << 8) | val6), INV_MASK_14, invert);
 
-    }
-    if (length & 3U) {
-        uint32_t val0 = *pSrc++;
-        uint32_t val1 = *pSrc++;
-        length = length & 3U;
-        pDst[i+0] = (int32_t)((val0 << 6) | (val1 >> 2));
+	}
+	if (length & 3U) {
+		uint32_t val0 = *pSrc++;
+		uint32_t val1 = *pSrc++;
+		length = length & 3U;
+		pDst[i + 0] = (int32_t)((val0 << 6) | (val1 >> 2));
 
-        if (length > 1U) {
-            uint32_t val2 = *pSrc++;
-            uint32_t val3 = *pSrc++;
-            pDst[i+1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
-            if (length > 2U) {
-                uint32_t val4 = *pSrc++;
-                uint32_t val5 = *pSrc++;
-                pDst[i+2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
-            }
-        }
-    }
+		if (length > 1U) {
+			uint32_t val2 = *pSrc++;
+			uint32_t val3 = *pSrc++;
+			pDst[i + 1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
+			if (length > 2U) {
+				uint32_t val4 = *pSrc++;
+				uint32_t val5 = *pSrc++;
+				pDst[i + 2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
+			}
+		}
+	}
 }
 
 static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
@@ -1309,7 +1309,7 @@ static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 		uint32_t val13 = *pSrc++;
 		uint32_t val14 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 7) | (val1 >> 1)), (1<<15)-1, invert);
+		pDst[i + 0] = INV((int32_t)((val0 << 7) | (val1 >> 1)), (1 << 15) - 1, invert);
 		pDst[i + 1] = INV((int32_t)(((val1 & 0x1U) << 14) | (val2 << 6) | (val3 >> 2)), INV_MASK_15, invert);
 		pDst[i + 2] = INV((int32_t)(((val3 & 0x3U) << 13) | (val4 << 5) | (val5 >> 3)), INV_MASK_15, invert);
 		pDst[i + 3] = INV((int32_t)(((val5 & 0x7U) << 12) | (val6 << 4) | (val7 >> 4)), INV_MASK_15, invert);
@@ -1351,10 +1351,10 @@ static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 /* seems that libtiff decodes this to machine endianness */
 static void tif_16uto32s(const uint16_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
-    size_t i;
-    for (i = 0; i < length; i++) {
-        pDst[i] = INV(pSrc[i], 0xFFFF,invert);
-    }
+	size_t i;
+	for (i = 0; i < length; i++) {
+		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
+	}
 }
 
 static void set_resolution(double* res, float resx, float resy, short resUnit) {
@@ -1363,16 +1363,16 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 	res[1] = resy;
 
 	switch (resUnit) {
-	// no known units. Used for images with non-square pixels
+		// no known units. Used for images with non-square pixels
 	case 1:
 		break;
-	// inches  
+		// inches  
 	case 2:
 		//2.54 cm / inch
 		res[0] *= 100 / 2.54;
 		res[1] *= 100 / 2.54;
 		break;
-	// cm
+		// cm
 	case 3:
 		res[0] *= 100;
 		res[1] *= 100;
@@ -1385,48 +1385,48 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 }
 
 /*
- * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
- * CINEMA                 : 12 bit precision
- */
-opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
+* libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
+* CINEMA                 : 12 bit precision
+*/
+static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 {
-    uint32_t subsampling_dx = parameters->subsampling_dx;
+	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
-    TIFF *tif;
-    tdata_t buf = NULL;
-    tstrip_t strip;
-    tsize_t strip_size;
-    OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
-    opj_image_cmptparm_t cmptparm[4]; /* RGBA */
-    opj_image_t *image = NULL;
+	TIFF *tif;
+	tdata_t buf = NULL;
+	tstrip_t strip;
+	tsize_t strip_size;
+	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
+	opj_image_cmptparm_t cmptparm[4]; /* RGBA */
+	opj_image_t *image = NULL;
 	uint32_t numAlphaChannels = 0;
-	unsigned short tiBps=0, tiPhoto=0, tiSf=0, tiSpp=0, tiPC=0;
-	short tiResUnit=0;
-	float tiXRes=0, tiYRes=0;
-    uint32_t tiWidth=0, tiHeight=0;
-    bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
-    convert_XXx32s_C1R cvtTifTo32s = NULL;
-    convert_32s_CXPX cvtCxToPx = NULL;
-    int32_t* buffer32s = NULL;
-    int32_t* planes[4];
+	unsigned short tiBps = 0, tiPhoto = 0, tiSf = 0, tiSpp = 0, tiPC = 0;
+	short tiResUnit = 0;
+	float tiXRes = 0, tiYRes = 0;
+	uint32_t tiWidth = 0, tiHeight = 0;
+	bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
+	convert_XXx32s_C1R cvtTifTo32s = NULL;
+	convert_32s_CXPX cvtCxToPx = NULL;
+	int32_t* buffer32s = NULL;
+	int32_t* planes[4];
 	tsize_t rowStride;
 	bool success = true;
-    tif = TIFFOpen(filename, "r");
+	tif = TIFFOpen(filename, "r");
 
-    if(!tif) {
-        fprintf(stderr, "tiftoimage:Failed to open %s for reading\n", filename);
-        return 0;
-    }
-    tiBps = tiPhoto = tiSf = tiSpp = tiPC = 0;
-    tiWidth = tiHeight = 0;
+	if (!tif) {
+		fprintf(stderr, "tiftoimage:Failed to open %s for reading\n", filename);
+		return 0;
+	}
+	tiBps = tiPhoto = tiSf = tiSpp = tiPC = 0;
+	tiWidth = tiHeight = 0;
 
-    TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
-    TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
-    TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
-    TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf);
-    TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
-    TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
-    TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
+	TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
+	TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
+	TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf);
+	TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
+	TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
@@ -1436,10 +1436,10 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 	uint32_t icclen = 0;
 	uint8_t* iccbuf = nullptr;
 	uint8_t *iptc_buf = nullptr;
-	uint32_t iptc_len=0;
+	uint32_t iptc_len = 0;
 	uint8_t *xmp_buf = nullptr;
-	uint32_t xmp_len=0;
-	uint16* sampleinfo=nullptr;
+	uint32_t xmp_len = 0;
+	uint16* sampleinfo = nullptr;
 	uint16 extrasamples = 0;
 
 
@@ -1447,7 +1447,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 	// use image resolution if present
 	if (parameters->write_capture_resolution &&
 		parameters->capture_resolution[0] == 0 &&
-			parameters->capture_resolution[1] == 0) {
+		parameters->capture_resolution[1] == 0) {
 
 		TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
 		TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
@@ -1470,45 +1470,45 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		fprintf(stderr, "tiftoimage: Bad value for samples per pixel == %hu.\n"
-			 "\tAborting.\n", tiSpp);
+			"\tAborting.\n", tiSpp);
 		success = false;
 		goto cleanup;
-		
+
 	}
 	if (tiBps > 16U || tiBps == 0) {
 		fprintf(stderr, "tiftoimage: Bad values for Bits == %d.\n"
-			 "\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
+			"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
 		success = false;
 		goto cleanup;
 	}
-	
+
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE &&  tiPhoto != PHOTOMETRIC_RGB) {
 		fprintf(stderr, "tiftoimage: Bad color format %d.\n"
-			 "\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
+			"\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
 		fprintf(stderr, "\tAborting\n");
 		success = false;
 		goto cleanup;
 	}
 
-	
+
 	if (tiWidth == 0 || tiHeight == 0) {
 		fprintf(stderr, "tiftoimage: Bad values for width(%u) "
-			 "and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
+			"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
 		success = false;
 		goto cleanup;
 
 	}
 
 
-    switch (tiBps) {
-    case 1:
-    case 2:
-    case 4:
-    case 6:
-    case 8:
-        cvtTifTo32s = convert_XXu32s_C1R_LUT[tiBps];
-        break;
-    /* others are specific to TIFF */
+	switch (tiBps) {
+	case 1:
+	case 2:
+	case 4:
+	case 6:
+	case 8:
+		cvtTifTo32s = convert_XXu32s_C1R_LUT[tiBps];
+		break;
+		/* others are specific to TIFF */
 	case 3:
 		cvtTifTo32s = tif_3uto32s;
 		break;
@@ -1521,96 +1521,98 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 	case 9:
 		cvtTifTo32s = tif_9uto32s;
 		break;
-    case 10:
-        cvtTifTo32s = tif_10uto32s;
-        break;
+	case 10:
+		cvtTifTo32s = tif_10uto32s;
+		break;
 	case 11:
 		cvtTifTo32s = tif_11uto32s;
 		break;
-    case 12:
-        cvtTifTo32s = tif_12uto32s;
-        break;
+	case 12:
+		cvtTifTo32s = tif_12uto32s;
+		break;
 	case 13:
 		cvtTifTo32s = tif_13uto32s;
 		break;
-    case 14:
-        cvtTifTo32s = tif_14uto32s;
-        break;
+	case 14:
+		cvtTifTo32s = tif_14uto32s;
+		break;
 	case 15:
 		cvtTifTo32s = tif_15uto32s;
 		break;
-    case 16:
-        cvtTifTo32s = (convert_XXx32s_C1R)tif_16uto32s;
-        break;
-    default:
-        /* never here */
-        break;
-    }
+	case 16:
+		cvtTifTo32s = (convert_XXx32s_C1R)tif_16uto32s;
+		break;
+	default:
+		/* never here */
+		break;
+	}
 
 
-    TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,
-                            &extrasamples, &sampleinfo);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,
+		&extrasamples, &sampleinfo);
 
-    if(extrasamples >= 1) {
-        switch(sampleinfo[0]) {
-        case EXTRASAMPLE_UNSPECIFIED:
-            // Workaround for some images without correct info about alpha channel
-			if (tiSpp == 4 || tiSpp == 2) 
+	if (extrasamples >= 1) {
+		switch (sampleinfo[0]) {
+		case EXTRASAMPLE_UNSPECIFIED:
+			// Workaround for some images without correct info about alpha channel
+			if (tiSpp == 4 || tiSpp == 2)
 				numAlphaChannels = 1;
-            break;
+			break;
 
-        case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
-        case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
+		case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
+		case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
 			numAlphaChannels = 1;
-            break;
-        }
-    } 
+			break;
+		}
+	}
 
 
-    /* initialize image components */
-    memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
+	/* initialize image components */
+	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
 
-    if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
+	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
-			fprintf(stdout,"WARNING:\n"
-                "Input image bitdepth is %d bits\n"
-                "TIF conversion has automatically rescaled to 12-bits\n"
-                "to comply with cinema profiles.\n",
-                tiBps);
-    } else {
-        is_cinema = 0U;
-    }
+			fprintf(stdout, "WARNING:\n"
+				"Input image bitdepth is %d bits\n"
+				"TIF conversion has automatically rescaled to 12-bits\n"
+				"to comply with cinema profiles.\n",
+				tiBps);
+	}
+	else {
+		is_cinema = 0U;
+	}
 
 
-    if(tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
-        numcomps = 3 + numAlphaChannels;
-        color_space = OPJ_CLRSPC_SRGB;
-    } else if (tiPhoto == PHOTOMETRIC_MINISBLACK || tiPhoto == PHOTOMETRIC_MINISWHITE) { /* GRAY(A) */
-        numcomps = 1 + numAlphaChannels;
-        color_space = OPJ_CLRSPC_GRAY;
-    }
+	if (tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
+		numcomps = 3 + numAlphaChannels;
+		color_space = OPJ_CLRSPC_SRGB;
+	}
+	else if (tiPhoto == PHOTOMETRIC_MINISBLACK || tiPhoto == PHOTOMETRIC_MINISWHITE) { /* GRAY(A) */
+		numcomps = 1 + numAlphaChannels;
+		color_space = OPJ_CLRSPC_GRAY;
+	}
 
-    cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
-    if (tiPC == PLANARCONFIG_SEPARATE) {
-        cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
-        tiSpp = 1U; /* consider only one sample per plane */
-    }
+	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
+	if (tiPC == PLANARCONFIG_SEPARATE) {
+		cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
+		tiSpp = 1U; /* consider only one sample per plane */
+	}
 
-    for(uint32_t j = 0; j < numcomps; j++) {
-        cmptparm[j].prec = tiBps;
-        cmptparm[j].dx = subsampling_dx;
-        cmptparm[j].dy = subsampling_dy;
-        cmptparm[j].w = w;
-        cmptparm[j].h = h;
-    }
+	for (uint32_t j = 0; j < numcomps; j++) {
+		cmptparm[j].prec = tiBps;
+		cmptparm[j].dx = subsampling_dx;
+		cmptparm[j].dy = subsampling_dy;
+		cmptparm[j].w = w;
+		cmptparm[j].h = h;
+	}
 
-    image = opj_image_create(numcomps, &cmptparm[0], color_space);
-    if(!image) {
+	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	if (!image) {
 		success = false;
 		goto cleanup;
-    }
-    /* set image offset and reference grid */
-    image->x0 = parameters->image_offset_x0;
+	}
+	/* set image offset and reference grid */
+	image->x0 = parameters->image_offset_x0;
 	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
 		image->x0 + (w - 1) * subsampling_dx + 1;
 	if (image->x1 <= image->x0) {
@@ -1621,32 +1623,32 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 	}
 
 	image->y0 = parameters->image_offset_y0;
-    image->y1 =	!image->y0 ? (h - 1) * subsampling_dy + 1 :
-                image->y0 + (h - 1) * subsampling_dy + 1;
+	image->y1 = !image->y0 ? (h - 1) * subsampling_dy + 1 :
+		image->y0 + (h - 1) * subsampling_dy + 1;
 
 	if (image->y1 <= image->y0) {
 		fprintf(stderr, "tiftoimage: Bad value for image->y1(%d) vs. "
-			 "image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
+			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
 		success = false;
 		goto cleanup;
 	}
 
-    for(uint32_t j = 0; j < numcomps; j++) {
-        planes[j] = image->comps[j].data;
+	for (uint32_t j = 0; j < numcomps; j++) {
+		planes[j] = image->comps[j].data;
 		//only support single alpha channel when reading in from TIFF
-		if ( (j == numcomps - 1) && (numAlphaChannels > 0)) {
+		if ((j == numcomps - 1) && (numAlphaChannels > 0)) {
 			if (sampleinfo && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA)
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
 			else
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
 		}
-    }
+	}
 
 
 	// handle embedded ICC profile (with sanity check on binary size of profile)
 	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
-														icclen > 0 &&
-															icclen < 1000000000) {
+		icclen > 0 &&
+		icclen < 1000000000) {
 		image->icc_profile_len = icclen;
 		image->icc_profile_buf = (uint8_t*)malloc(icclen);
 		if (!image->icc_profile_buf) {
@@ -1656,7 +1658,7 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
 	}
 
-	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1)	{
+	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
 			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
 
@@ -1683,51 +1685,51 @@ opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
 
-    strip_size = TIFFStripSize(tif);
-    buf = _TIFFmalloc(strip_size);
-    if (buf == NULL) {
+	strip_size = TIFFStripSize(tif);
+	buf = _TIFFmalloc(strip_size);
+	if (buf == NULL) {
 		success = false;
 		goto cleanup;
-    }
-    rowStride = (w * tiSpp * tiBps + 7U) / 8U;
-    buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
-    if (buffer32s == NULL) {
+	}
+	rowStride = (w * tiSpp * tiBps + 7U) / 8U;
+	buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
+	if (buffer32s == NULL) {
 		success = false;
 		goto cleanup;
-    }
+	}
 
-    strip = 0;
-    do {
-        planes[0] = image->comps[currentPlane].data; /* to manage planar data */
-        h= (int)tiHeight;
-        /* Read the Image components */
-        for(; (h > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
-            const uint8_t *dat8;
-			tsize_t ssize=0;
+	strip = 0;
+	do {
+		planes[0] = image->comps[currentPlane].data; /* to manage planar data */
+		h = (int)tiHeight;
+		/* Read the Image components */
+		for (; (h > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+			const uint8_t *dat8;
+			tsize_t ssize = 0;
 
-            ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
 				fprintf(stderr, "tiftoimage: Bad value for ssize(%lld) "
-					 "vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
+					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
 				success = false;
 				goto cleanup;
 			}
-            dat8 = (const uint8_t*)buf;
+			dat8 = (const uint8_t*)buf;
 
-            while (ssize >= rowStride) {
-                cvtTifTo32s(dat8, buffer32s, (size_t)w * tiSpp, invert);
-                cvtCxToPx(buffer32s, planes, (size_t)w);
-                planes[0] += w;
-                planes[1] += w;
-                planes[2] += w;
-                planes[3] += w;
-                dat8  += rowStride;
-                ssize -= rowStride;
-                h--;
-            }
-        }
-        currentPlane++;
-    } while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
+			while (ssize >= rowStride) {
+				cvtTifTo32s(dat8, buffer32s, (size_t)w * tiSpp, invert);
+				cvtCxToPx(buffer32s, planes, (size_t)w);
+				planes[0] += w;
+				planes[1] += w;
+				planes[2] += w;
+				planes[3] += w;
+				dat8 += rowStride;
+				ssize -= rowStride;
+				h--;
+			}
+		}
+		currentPlane++;
+	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
 
 cleanup:
 	if (buffer32s)
@@ -1751,4 +1753,11 @@ cleanup:
 	return NULL;
 
 }/* tiftoimage() */
+
+bool TIFFFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+	return imagetotif(image, filename.c_str(), compressionParam, verbose) ? false : true;
+}
+opj_image_t*  TIFFFormat::decode(std::string filename, opj_cparameters_t *parameters) {
+	return tiftoimage(filename.c_str(), parameters);
+}
 

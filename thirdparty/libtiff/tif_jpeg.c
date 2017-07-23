@@ -318,7 +318,7 @@ TIFFjpeg_set_colorspace(JPEGState* sp, J_COLOR_SPACE colorspace)
 }
 
 static int
-TIFFjpeg_set_quality(JPEGState* sp, int quality, boolean force_baseline)
+TIFFjpeg_set_quality(JPEGState* sp, int compressionParam, boolean force_baseline)
 {
 	return CALLVJPEG(sp,
 	    jpeg_set_quality(&sp->cinfo.c, quality, force_baseline));

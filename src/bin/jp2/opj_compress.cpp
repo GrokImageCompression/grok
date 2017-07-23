@@ -58,7 +58,7 @@
  */
 
 
-extern "C" {
+
 #ifdef _WIN32
 #include "windirent.h"
 #else
@@ -78,11 +78,19 @@ extern "C" {
 
 #include "opj_apps_config.h"
 #include "openjpeg.h"
+#include "RAWFormat.h"
+#include "PNMFormat.h"
+#include "PGXFormat.h"
+#include "TGAFormat.h"
+#include "BMPFormat.h"
+#include "JPEGFormat.h"
+#include "TIFFFormat.h"
+#include "PNGFormat.h"
 #include "convert.h"
 #include "format_defs.h"
 #include "grok_string.h"
 #include "color.h"
-}
+
 #include <float.h>
 #include <math.h>
 #include <assert.h>
@@ -1613,89 +1621,116 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 		switch (info->encoder_parameters->decod_format) {
 		case PGX_DFMT:
-			image = pgxtoimage(info->input_file_name, info->encoder_parameters);
+		{
+			PGXFormat pgx;
+			image = pgx.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pgx file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 		case PXM_DFMT:
-			image = pnmtoimage(info->input_file_name, info->encoder_parameters);
+		{
+			PNMFormat pnm(false);
+			image = pnm.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load pnm file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 		case BMP_DFMT:
-			image = bmptoimage(info->input_file_name, info->encoder_parameters);
+		{
+			BMPFormat bmp;
+			image = bmp.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load bmp file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 #ifdef GROK_HAVE_LIBTIFF
 		case TIF_DFMT:
-			image = tiftoimage(info->input_file_name, info->encoder_parameters);
+		{
+			TIFFFormat tif;
+			image = tif.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load tiff file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 #endif /* GROK_HAVE_LIBTIFF */
 
 		case RAW_DFMT:
-			image = rawtoimage(info->input_file_name, info->encoder_parameters);
+		{
+			RAWFormat raw(true);
+			image = raw.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 		case RAWL_DFMT:
-			image = rawltoimage(info->input_file_name, info->encoder_parameters);
+		{
+			RAWFormat raw(false);
+			image = raw.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load raw file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 		case TGA_DFMT:
-			image = tgatoimage(info->input_file_name, info->encoder_parameters);
+		{
+			TGAFormat tga;
+			image = tga.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load tga file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 
 #ifdef GROK_HAVE_LIBPNG
 		case PNG_DFMT:
-			image = pngtoimage(info->input_file_name, info->encoder_parameters);
+		{
+			PNGFormat png;
+			image = png.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load png file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 #endif /* GROK_HAVE_LIBPNG */
 
 #ifdef GROK_HAVE_LIBJPEG
 		case JPG_DFMT:
-			image = jpegtoimage(info->input_file_name, info->encoder_parameters);
+		{
+			JPEGFormat jpeg;
+			image = jpeg.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
 				fprintf(stderr, "Unable to load jpeg file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
+		}
 			break;
 #endif /* GROK_HAVE_LIBPNG */
 		}
