@@ -7,29 +7,43 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(common_SRCS
   convert.cpp
   convert.h
-  convertbmp.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/IImageFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/BMPFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/BMPFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/TGAFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/TGAFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/RAWFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/RAWFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/TIFFFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/JPEGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_string.h
-
   )
 
 if(GROK_HAVE_LIBTIFF)
-	list(APPEND common_SRCS converttif.cpp)
+	list(APPEND common_SRCS TIFFFormat.cpp)
 endif()
 if(GROK_HAVE_LIBPNG)
-	list(APPEND common_SRCS convertpng.cpp)
+	list(APPEND common_SRCS PNGFormat.cpp)
 endif()
 if(GROK_HAVE_LIBJPEG)
-	list(APPEND common_SRCS convertjpeg.cpp)
+	list(APPEND common_SRCS JPEGFormat.cpp)
 endif()
 
 # Headers file are located here:
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/openjp2 # opj_config.h
-  ${GROK_BINARY_DIR}/src/bin/common # opj_apps_config.h
+  ${GROK_BINARY_DIR}/src/lib/openjp2 
+  ${GROK_BINARY_DIR}/src/bin/common 
   ${GROK_SOURCE_DIR}/src/lib/openjp2
   ${GROK_SOURCE_DIR}/src/bin/common
   ${LCMS_INCLUDE_DIRNAME}

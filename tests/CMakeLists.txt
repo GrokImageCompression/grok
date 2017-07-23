@@ -30,10 +30,25 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
   ${GROK_SOURCE_DIR}/src/bin/jp2/convert.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/convertpng.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/converttif.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   )
+
+ if(GROK_HAVE_LIBTIFF)
+ 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/TIFFFormat.h)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/TIFFFormat.cpp)
+endif()
+
+if(GROK_HAVE_LIBPNG)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.cpp)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h)
+endif()
 
 set(compare_dump_files_SRCS compare_dump_files.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp)

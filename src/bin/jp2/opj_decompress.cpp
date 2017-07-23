@@ -57,7 +57,6 @@
  */
 
 
-extern "C" {
 
 #include "opj_apps_config.h"
 
@@ -78,6 +77,14 @@ extern "C" {
 #endif /* _WIN32 */
 
 #include "openjpeg.h"
+#include "RAWFormat.h"
+#include "PNMFormat.h"
+#include "PGXFormat.h"
+#include "TGAFormat.h"
+#include "BMPFormat.h"
+#include "JPEGFormat.h"
+#include "TIFFFormat.h"
+#include "PNGFormat.h"
 #include "convert.h"
 
 #ifdef GROK_HAVE_LIBLCMS
@@ -87,8 +94,6 @@ extern "C" {
 
 #include "format_defs.h"
 #include "grok_string.h"
-
-}
 
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
@@ -1800,7 +1805,9 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		/* ------------------- */
 		switch (parameters->cod_format) {
 		case PXM_DFMT:			/* PNM PGM PPM */
-			if (imagetopnm(image, parameters->outfile, parameters->split_pnm)) {
+		{
+			PNMFormat pnm(parameters->split_pnm);
+			if (!pnm.encode(image, parameters->outfile, 0,parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1808,10 +1815,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 
 		case PGX_DFMT:			/* PGX */
-			if (imagetopgx(image, parameters->outfile)) {
+		{
+			PGXFormat pgx;
+			if (!pgx.encode(image, parameters->outfile, 0, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1819,10 +1829,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 
 		case BMP_DFMT:			/* BMP */
-			if (imagetobmp(image, parameters->outfile, parameters->verbose)) {
+		{
+			BMPFormat bmp;
+			if (!bmp.encode(image, parameters->outfile,0, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1830,10 +1843,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 #ifdef GROK_HAVE_LIBTIFF
 		case TIF_DFMT:			/* TIFF */
-			if (imagetotif(image, parameters->outfile, parameters->compression, parameters->verbose)) {
+		{
+			TIFFFormat tif;
+			if (!tif.encode(image, parameters->outfile, parameters->compression, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1841,10 +1857,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 #endif /* GROK_HAVE_LIBTIFF */
 		case RAW_DFMT:			/* RAW */
-			if (imagetoraw(image, parameters->outfile)) {
+		{
+			RAWFormat raw(true);
+			if (raw.encode(image, parameters->outfile,0, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1852,10 +1871,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 
 		case RAWL_DFMT:			/* RAWL */
-			if (imagetorawl(image, parameters->outfile)) {
+		{
+			RAWFormat raw(false);
+			if (raw.encode(image, parameters->outfile, 0, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1863,10 +1885,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 
 		case TGA_DFMT:			/* TGA */
-			if (imagetotga(image, parameters->outfile)) {
+		{
+			TGAFormat tga;
+			if (!tga.encode(image, parameters->outfile,0,parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1874,10 +1899,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 #ifdef GROK_HAVE_LIBJPEG 
 		case JPG_DFMT:			/* JPEG */
-			if (imagetojpeg(image, parameters->outfile, parameters->compressionLevel,parameters->verbose)) {
+		{
+			JPEGFormat jpeg;
+			if (!jpeg.encode(image, parameters->outfile, parameters->compressionLevel, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1885,13 +1913,16 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 
 #endif
 
 #ifdef GROK_HAVE_LIBPNG
 		case PNG_DFMT:			/* PNG */
-			if (imagetopng(image, parameters->outfile, parameters->compressionLevel)) {
+		{
+			PNGFormat png;
+			if (!png.encode(image, parameters->outfile, parameters->compressionLevel, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
 				failed = 1;
 			}
@@ -1899,6 +1930,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 				if (parameters->verbose)
 					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
 			}
+		}
 			break;
 #endif /* GROK_HAVE_LIBPNG */
 			/* Can happen if output file is TIFF or PNG

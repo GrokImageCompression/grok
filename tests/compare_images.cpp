@@ -43,8 +43,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -56,14 +54,21 @@ extern "C" {
 #include "grok_getopt.h"
 
 #include "openjpeg.h"
+#include "PNMFormat.h"
+#include "PGXFormat.h"
 #include "format_defs.h"
 #include "convert.h"
 
+#ifdef GROK_HAVE_LIBPNG
+#include "PNGFormat.h"
+#endif
+
 #ifdef GROK_HAVE_LIBTIFF
+#include "TIFFFormat.h"
 #include <tiffio.h> /* TIFFSetWarningHandler */
 #endif /* GROK_HAVE_LIBTIFF */
 
-}
+
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
@@ -226,8 +231,9 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
         } else
             filenameComponentPGX = createMultiComponentsFilename(filename, it_file, separator);
 
-        /* Read the tif file corresponding to the component */
-        image_read = pnmtoimage(filenameComponentPGX, &parameters);
+        /* Read the file corresponding to the component */
+		PNMFormat pnm(false);
+        image_read = pnm.decode(filenameComponentPGX, &parameters);
         if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
             fprintf(stderr, "Unable to load ppm file: %s\n", filenameComponentPGX);
 			if (filenameComponentPGX)
@@ -304,7 +310,8 @@ static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX
 	strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBPNG
-	image_read = pngtoimage(filename, &parameters);
+	PNGFormat png;
+	image_read = png.decode(filename, &parameters);
 #endif
 	if (!image_read) {
 		fprintf(stderr, "Unable to load PNG file\n");
@@ -339,7 +346,8 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBTIFF
-    image_read = tiftoimage(filename, &parameters);
+	TIFFFormat tif;
+    image_read = tif.decode(filename, &parameters);
 #endif
     if (!image_read) {
         fprintf(stderr, "Unable to load TIF file\n");
@@ -394,7 +402,8 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
 		}
 
         /* Read the pgx file corresponding to the component */
-        image_read = pgxtoimage(filenameComponentPGX, &parameters);
+		PGXFormat pgx;
+        image_read = pgx.decode(filenameComponentPGX, &parameters);
 		if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
             fprintf(stderr, "Unable to load pgx file\n");
 			if (filenameComponentPGX)
@@ -467,8 +476,8 @@ static int imageToPNG(const opj_image_t* image, const char* filename, int num_co
 
     image_write = opj_image_create(1u, &param_image_write, OPJ_CLRSPC_GRAY);
     memcpy(image_write->comps->data, image->comps[num_comp_select].data, param_image_write.h * param_image_write.w * sizeof(int));
-
-    imagetopng(image_write, filename, DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
+	PNGFormat png;
+    png.encode(image_write, filename, DECOMPRESS_COMPRESSION_LEVEL_DEFAULT, true);
 
     opj_image_destroy(image_write);
 

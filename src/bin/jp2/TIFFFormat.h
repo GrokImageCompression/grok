@@ -54,52 +54,15 @@
  */
 
 #pragma once
+#include "ImageFormat.h"
 
 
-#define INV_MASK_16 0xFFFF
-#define INV_MASK_15 ((1<<15)-1)
-#define INV_MASK_14 ((1<<14)-1)
-#define INV_MASK_13 ((1<<13)-1)
-#define INV_MASK_12 ((1<<12)-1)
-#define INV_MASK_11 ((1<<11)-1)
-#define INV_MASK_10 ((1<<10)-1)
-#define INV_MASK_9 ((1<<9)-1)
-#define INV_MASK_8 0xFF
-#define INV_MASK_7 ((1<<7)-1)
-#define INV_MASK_6 ((1<<6)-1)
-#define INV_MASK_5 ((1<<5)-1)
-#define INV_MASK_4 ((1<<4)-1)
-#define INV_MASK_3 ((1<<3)-1)
-#define INV_MASK_2 ((1<<2)-1)
+ /* TIFF conversion*/
+void tiffSetErrorAndWarningHandlers(bool verbose);
 
-
-#define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
-
-
-
-extern "C" {
-
-	bool grok_set_binary_mode(FILE* file);
-
-	/* Component precision clipping */
-	void clip_component(opj_image_comp_t* component, uint32_t precision);
-	/* Component precision scaling */
-	void scale_component(opj_image_comp_t* component, uint32_t precision);
-
-	/* planar / interleaved conversions */
-	typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
-	extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
-	typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
-	extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
-	/* bit depth conversions */
-	typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
-	extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
-	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
-	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
-	bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps);
-}
-
-
-
-
-
+class TIFFFormat {
+public:
+	virtual ~TIFFFormat() {}
+	bool encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose);
+	opj_image_t* decode(std::string filename, opj_cparameters_t *parameters);
+};

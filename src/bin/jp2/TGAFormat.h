@@ -16,3 +16,13 @@
  */
 #pragma once
 
+#include "ImageFormat.h"
+
+#include "ImageFormat.h"
+
+class TGAFormat {
+public:
+	virtual ~TGAFormat() {}
+	bool encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose);
+	opj_image_t* decode(std::string filename, opj_cparameters_t *parameters);
+};
