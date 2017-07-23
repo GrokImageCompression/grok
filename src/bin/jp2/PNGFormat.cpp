@@ -83,7 +83,7 @@ static std::string convert_wide_to_narrow(const wchar_t* input) {
 	if (!input)
 		return "";
 	mbstate_t mbs;
-	mbrlen(NULL, 0, &mbs);
+	memset(&mbs, 0, sizeof mbs);
 	auto len = wcsrtombs(nullptr, &input, 0, &mbs);
 	if (len == 0)
 		return "";
