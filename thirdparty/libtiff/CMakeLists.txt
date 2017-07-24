@@ -64,6 +64,10 @@ set(VERSION "\"4.0.8\"")
 set(PACKAGE_VERSION ${VERSION})
 set(PACKAGE "\"tiff\"")
 
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "/EHsc")
+ENDIF(MSVC)
+
 
 include(GNUInstallDirs)
 include(CheckCCompilerFlag)
