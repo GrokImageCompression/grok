@@ -1,5 +1,9 @@
 # UNIT TESTS
 
+IF(MSVC)
+    SET(CMAKE_CXX_FLAGS "/EHsc")
+ENDIF(MSVC)
+
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/openjp2 # opj_config.h
   ${GROK_SOURCE_DIR}/src/lib/openjp2
