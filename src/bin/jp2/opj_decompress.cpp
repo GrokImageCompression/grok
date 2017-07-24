@@ -539,7 +539,7 @@ int parse_cmdline_decoder(int argc,
 	try {
 
 		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', "0.9");
+		CmdLine cmd("Command description message", ' ', opj_version());
 		
 		// set the output
 		GrokOutput output;
