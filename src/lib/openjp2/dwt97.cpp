@@ -158,15 +158,15 @@ bool dwt97::decode(tcd_tilecomp_t* restrict tilec,
 				float * restrict aj = tileBuf + ((w << 2) * threadId);
 				uint64_t bufsize = (uint64_t)(tilec->x1 - tilec->x0) * (tilec->y1 - tilec->y0) - (threadId * (w << 2));
 
-				h.s_n = (int32_t)rw;
-				v.s_n = (int32_t)rh;
+				h.s_n = rw;
+				v.s_n = rh;
 
 				++res;
 
 				rw = (res->x1 - res->x0);	// width of the resolution level computed 
 				rh = (res->y1 - res->y0);	// height of the resolution level computed 
 
-				h.d_n = (int32_t)(rw - (uint32_t)h.s_n);
+				h.d_n = (uint32_t)(rw - h.s_n);
 				h.cas = res->x0 & 1;
 				int32_t j;
 				for (j = (int32_t)rh - (threadId << 2); j > 3; j -= (numThreads << 2)) {
@@ -202,7 +202,7 @@ bool dwt97::decode(tcd_tilecomp_t* restrict tilec,
 
 				decode_dwt_barrier.arrive_and_wait();
 
-				v.d_n = (int32_t)(rh - (uint32_t)v.s_n);
+				v.d_n = (int32_t)(rh - v.s_n);
 				v.cas = res->y0 & 1;
 
 				decode_dwt_barrier.arrive_and_wait();

@@ -308,13 +308,13 @@ bool dwt53::decode(tcd_tilecomp_t* tilec,
 				int32_t * restrict tiledp = tileBuf;
 
 				++tr;
-				h.s_n = (int32_t)rw;
-				v.s_n = (int32_t)rh;
+				h.s_n = rw;
+				v.s_n = rh;
 
 				rw = (tr->x1 - tr->x0);
 				rh = (tr->y1 - tr->y0);
 
-				h.d_n = (int32_t)(rw - (uint32_t)h.s_n);
+				h.d_n = (int32_t)(rw - h.s_n);
 				h.cas = tr->x0 & 1;
 
 				for (uint32_t j = threadId; j < rh; j += numThreads) {
@@ -323,7 +323,7 @@ bool dwt53::decode(tcd_tilecomp_t* tilec,
 					memcpy(&tiledp[j*w], h.mem, rw * sizeof(int32_t));
 				}
 
-				v.d_n = (int32_t)(rh - (uint32_t)v.s_n);
+				v.d_n = (int32_t)(rh - v.s_n);
 				v.cas = tr->y0 & 1;
 
 				decode_dwt_barrier.arrive_and_wait();
@@ -562,8 +562,8 @@ bool dwt53::region_decode(tcd_tilecomp_t* tilec,
 				pt_t interleaved_h = tile_buf_get_interleaved_range(tilec->buf, resno, true);
 				pt_t interleaved_v = tile_buf_get_interleaved_range(tilec->buf, resno, false);
 
-				buffer_h.s_n = (int32_t)res_width;
-				buffer_v.s_n = (int32_t)res_height;
+				buffer_h.s_n = res_width;
+				buffer_v.s_n = res_height;
 				buffer_v.interleaved_offset = std::max<int64_t>(0, interleaved_v.x - 2);
 
 				++tr;
@@ -593,7 +593,7 @@ bool dwt53::region_decode(tcd_tilecomp_t* tilec,
 				}
 				decode_dwt_barrier.arrive_and_wait();
 
-				buffer_v.d_n = (int32_t)(res_height - buffer_v.s_n);
+				buffer_v.d_n = (res_height - buffer_v.s_n);
 				buffer_v.odd_top_left_bit = tr->y0 & 1;
 
 				// next do vertical interleave 

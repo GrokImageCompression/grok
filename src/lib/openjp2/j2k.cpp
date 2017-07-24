@@ -9491,11 +9491,10 @@ bool j2k_get_tile(  j2k_t *p_j2k,
     l_tile_x = tile_index % p_j2k->m_cp.tw;
     l_tile_y = tile_index / p_j2k->m_cp.tw;
 
-	original_image_rect= rect_t(
-                  (int32_t)p_image->x0,
-                  (int32_t)p_image->y0,
-                  (int32_t)p_image->x1,
-                  (int32_t)p_image->y1);
+	original_image_rect= rect_t(p_image->x0,
+								  p_image->y0,
+								  p_image->x1,
+								  p_image->y1);
 
     p_image->x0 = l_tile_x * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
     if (p_image->x0 < p_j2k->m_private_image->x0)

@@ -302,7 +302,7 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	/* create the image */
-	image = opj_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
+	image = opj_image_create(numcomps, &cmptparm[0], color_space);
 
 	if (!image) {
 		fclose(f);
