@@ -1,7 +1,7 @@
 //---------------------------------------------------------------------------------
 //
 //  Little Color Management System
-//  Copyright (c) 1998-2016 Marti Maria Saguer
+//  Copyright (c) 1998-2017 Marti Maria Saguer
 //
 // Permission is hereby granted, free of charge, to any person obtaining
 // a copy of this software and associated documentation files (the "Software"),
@@ -643,9 +643,9 @@ cmsBool  CMSEXPORT cmsNamedColorInfo(const cmsNAMEDCOLORLIST* NamedColorList, cm
 
     if (nColor >= cmsNamedColorCount(NamedColorList)) return FALSE;
 
-    if (Name) strcpy(Name, NamedColorList->List[nColor].Name);
-    if (Prefix) strcpy(Prefix, NamedColorList->Prefix);
-    if (Suffix) strcpy(Suffix, NamedColorList->Suffix);
+    if (Name) strncpy(Name, NamedColorList->List[nColor].Name, sizeof(Name));
+    if (Prefix) strncpy(Prefix, NamedColorList->Prefix, sizeof(Prefix));
+    if (Suffix) strncpy(Suffix, NamedColorList->Suffix, sizeof(Suffix));
     if (PCS)
         memmove(PCS, NamedColorList ->List[nColor].PCS, 3*sizeof(cmsUInt16Number));
 
