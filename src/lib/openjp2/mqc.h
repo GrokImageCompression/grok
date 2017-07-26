@@ -60,6 +60,8 @@ namespace grk {
 
 #define MQC_NUMCTXS 19
 
+const uint16_t A_MIN = 0x8000;
+
 struct raw_t {
 	/** temporary buffer where bits are coded or decoded */
 	uint8_t C;
@@ -126,8 +128,10 @@ struct mqc_state_t {
 
 struct mqc_t {
     uint32_t C;
-    uint32_t A;
-    uint32_t COUNT;
+    uint16_t A;
+	uint16_t MIN_A_C;
+	uint16_t Q_SUM;
+    uint8_t COUNT;
     uint8_t *bp;
 	bool currentByteIs0xFF;
     uint8_t *start;
