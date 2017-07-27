@@ -671,7 +671,9 @@ int parse_cmdline_decoder(int argc,
 			}
 		}
 
+		// disable verbose mode when writing to stdout
 		if (parameters->verbose && outForArg.isSet() && !outputFileArg.isSet() && !outDirArg.isSet()) {
+			fprintf(stdout, "[WARNING] Verbose mode is automatically disabled when decompressing to stdout\n");
 			parameters->verbose = false;
 		}
 
@@ -710,7 +712,7 @@ int parse_cmdline_decoder(int argc,
 				img_fol->out_format = "png";
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw or *.tga]!!\n", outformat);
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n", outformat);
 				return 1;
 			}
 		}
@@ -731,7 +733,7 @@ int parse_cmdline_decoder(int argc,
 			case JPG_DFMT:
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif,*jpg, *jpeg, *.raw or *.tga]!!\n", outfile);
+				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n", outfile);
 				return 1;
 			}
 			if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
