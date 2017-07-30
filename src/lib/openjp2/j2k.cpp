@@ -9469,7 +9469,8 @@ bool j2k_decode(j2k_t * p_j2k,
     opj_copy_image_header(p_image, p_j2k->m_output_image);
 
     /* customization of the decoding */
-    j2k_setup_decoding(p_j2k, p_manager);
+	if (!j2k_setup_decoding(p_j2k, p_manager))
+		return false;
 	p_j2k->m_tcd->current_plugin_tile = tile;
 
     /* Decode the codestream */
@@ -9587,7 +9588,8 @@ bool j2k_get_tile(  j2k_t *p_j2k,
 	}
 
     /* customization of the decoding */
-    j2k_setup_decoding_tile(p_j2k, p_manager);
+	if (!j2k_setup_decoding_tile(p_j2k, p_manager))
+		return false;
 
     /* Decode the codestream */
     if (! j2k_exec (p_j2k,p_j2k->m_procedure_list,p_stream,p_manager)) {
