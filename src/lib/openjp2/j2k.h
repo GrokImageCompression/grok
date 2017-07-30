@@ -286,6 +286,9 @@ struct tcp_t {
 	uint32_t numStepSizes;
     /** tile-component coding parameters */
     tccp_t *tccps;
+	// current tile part number (-1 if not yet initialized
+	int32_t  m_current_tile_part_number;
+
     /** number of tile parts for the tile. */
     uint32_t m_nb_tile_parts;
 

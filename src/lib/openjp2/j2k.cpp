@@ -79,6 +79,7 @@ tcp_t::tcp_t() : csty(0),
 						ppt_data_size(0),
 						ppt_len(0),
 						tccps(NULL),
+						m_current_tile_part_number(-1),
 						m_nb_tile_parts(0),
 						m_data(NULL),
 						mct_norms(NULL),
@@ -3860,6 +3861,23 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
     l_tile_x = p_j2k->m_current_tile_number % l_cp->tw;
     l_tile_y = p_j2k->m_current_tile_number / l_cp->tw;
 
+	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
+	/* of https://github.com/uclouvain/openjpeg/issues/939 */
+	/* We must avoid reading twice the same tile part number for a given tile */
+	/* so as to avoid various issues, like opj_j2k_merge_ppt being called */
+	/* several times. */
+	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
+	/* should appear in increasing order. */
+	if (l_tcp->m_current_tile_part_number + 1 != (int32_t)l_current_part) {
+		event_msg(p_manager, EVT_ERROR,
+			"Invalid tile part index for tile number %d. "
+			"Got %d, expected %d\n",
+			p_j2k->m_current_tile_number,
+			l_current_part,
+			l_tcp->m_current_tile_part_number + 1);
+		return false;
+	}
+	++l_tcp->m_current_tile_part_number;
     /* look for the tile in the list of already processed tile (in parts). */
     /* Optimization possible here with a more complex data structure and with the removing of tiles */
     /* since the time taken by this function can only grow at the time */
@@ -6953,7 +6971,7 @@ void j2k_destroy (j2k_t *p_j2k)
 
         if (p_j2k->m_specific_param.m_decoder.m_default_tcp != nullptr) {
             j2k_tcp_destroy(p_j2k->m_specific_param.m_decoder.m_default_tcp);
-            grok_free(p_j2k->m_specific_param.m_decoder.m_default_tcp);
+            delete p_j2k->m_specific_param.m_decoder.m_default_tcp;
             p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
         }
 
@@ -8068,7 +8086,7 @@ j2k_t* j2k_create_decompress(void)
     l_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction_checked = 1;
 #endif
 
-    l_j2k->m_specific_param.m_decoder.m_default_tcp = (tcp_t*) grok_calloc(1,sizeof(tcp_t));
+    l_j2k->m_specific_param.m_decoder.m_default_tcp = new tcp_t();
     if (!l_j2k->m_specific_param.m_decoder.m_default_tcp) {
         j2k_destroy(l_j2k);
         return nullptr;
@@ -9561,6 +9579,12 @@ bool j2k_get_tile(  j2k_t *p_j2k,
     opj_copy_image_header(p_image, p_j2k->m_output_image);
 
     p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = (int32_t)tile_index;
+
+	// reset tile part numbers, in case we are re-using the same codec object from previous decode
+	uint32_t l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	for (uint32_t i = 0; i < l_nb_tiles; ++i) {
+		p_j2k->m_cp.tcps[i].m_current_tile_part_number = -1;
+	}
 
     /* customization of the decoding */
     j2k_setup_decoding_tile(p_j2k, p_manager);
