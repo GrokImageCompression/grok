@@ -854,7 +854,8 @@ int color_cmyk_to_rgb(opj_image_t *image)
 {
     float C, M, Y, K;
     float sC, sM, sY, sK;
-    unsigned int w, h, max, i;
+    uint32_t w, h;
+	uint64_t i, area;
 
     w = image->comps[0].w;
     h = image->comps[0].h;
@@ -863,14 +864,14 @@ int color_cmyk_to_rgb(opj_image_t *image)
 		return 1;
 
 
-    max = w * h;
+	area = (uint64_t)w * h;
 
     sC = 1.0F / (float)((1 << image->comps[0].prec) - 1);
     sM = 1.0F / (float)((1 << image->comps[1].prec) - 1);
     sY = 1.0F / (float)((1 << image->comps[2].prec) - 1);
     sK = 1.0F / (float)((1 << image->comps[3].prec) - 1);
 
-    for(i = 0; i < max; ++i) {
+    for(i = 0; i < area; ++i) {
         /* CMYK values from 0 to 1 */
         C = (float)(image->comps[0].data[i]) * sC;
         M = (float)(image->comps[1].data[i]) * sM;
@@ -907,7 +908,8 @@ int color_cmyk_to_rgb(opj_image_t *image)
 int color_esycc_to_rgb(opj_image_t *image)
 {
     int y, cb, cr, sign1, sign2, val;
-    unsigned int w, h, max, i;
+	uint32_t w, h;
+	uint64_t area, i;
     int flip_value = (1 << (image->comps[0].prec-1));
     int max_value = (1 << image->comps[0].prec) - 1;
 
@@ -920,9 +922,9 @@ int color_esycc_to_rgb(opj_image_t *image)
     sign1 = (int)image->comps[1].sgnd;
     sign2 = (int)image->comps[2].sgnd;
 
-    max = w * h;
+	area = (uint64_t)w * h;
 
-    for(i = 0; i < max; ++i) {
+    for(i = 0; i < area; ++i) {
 
         y = image->comps[0].data[i];
         cb = image->comps[1].data[i];

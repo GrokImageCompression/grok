@@ -302,7 +302,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	int subsampling_dy = parameters->subsampling_dy;
 
 	FILE *fp = NULL;
-	uint32_t i, compno, numcomps, w, h, prec, format;
+	uint32_t compno, numcomps, w, h, prec, format;
 	OPJ_COLOR_SPACE color_space;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
 	opj_image_t * image = NULL;
@@ -360,12 +360,13 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 	w = header_info.width;
 	h = header_info.height;
+	uint64_t area = (uint64_t)w * h;
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
 	memset(&cmptparm[0], 0, (size_t)numcomps * sizeof(opj_image_cmptparm_t));
 
-	for (i = 0; i < numcomps; i++) {
+	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
 		cmptparm[i].sgnd = 0;
 		cmptparm[i].dx = subsampling_dx;
@@ -394,7 +395,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	if ((format == 2) || (format == 3)) { /* ascii pixmap */
 		unsigned int index;
 
-		for (i = 0; i < w * h; i++) {
+		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1)
@@ -413,7 +414,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 		one = (prec < 9);
 
-		for (i = 0; i < w * h; i++) {
+		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
@@ -434,7 +435,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		}
 	}
 	else if (format == 1) { /* ascii bitmap */
-		for (i = 0; i < w * h; i++) {
+		for (uint64_t i = 0; i < area; i++) {
 			unsigned int index;
 
 			if (fscanf(fp, "%u", &index) != 1)
@@ -448,7 +449,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		int8_t bit;
 		unsigned char uc;
 
-		i = 0;
+		uint64_t i = 0;
 		for (y = 0; y < h; ++y) {
 			bit = -1;
 			uc = 0;
@@ -467,7 +468,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	else if ((format == 7 && header_info.bw)) { /*MONO*/
 		unsigned char uc;
 
-		for (i = 0; i < w * h; ++i) {
+		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
 				fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
