@@ -127,8 +127,8 @@ static unsigned int readuint(FILE * f, int bigendian)
 static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 {
 	FILE *f = NULL;
-	uint32_t w, h, prec;
-	uint32_t i, numcomps, max;
+	uint32_t w, h, prec, numcomps, max;
+	uint64_t i, area;
 	OPJ_COLOR_SPACE color_space;
 	opj_image_cmptparm_t cmptparm;	/* maximum of 1 component  */
 	opj_image_t * image = NULL;
@@ -224,8 +224,8 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	/* set image data */
 
 	comp = &image->comps[0];
-
-	for (i = 0; i < w * h; i++) {
+	area = (uint64_t)w * h;
+	for (i = 0; i < area; i++) {
 		uint32_t v;
 		if (force8) {
 			v = readuchar(f) + adjustS;
@@ -287,8 +287,8 @@ static inline int clamp(const int value, const int prec, const int sgnd)
 
 static int imagetopgx(opj_image_t * image, const char *outfile)
 {
-	int w, h;
-	int i, j, fails = 1;
+	uint32_t w, h;
+	int j, fails = 1;
 	unsigned int compno;
 	FILE *fdest = NULL;
 	size_t total = 0;
@@ -333,8 +333,8 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 			goto fin;
 		}
 
-		w = (int)image->comps[compno].w;
-		h = (int)image->comps[compno].h;
+		w = image->comps[compno].w;
+		h = image->comps[compno].h;
 
 		fprintf(fdest, "PG ML %c %d %d %d\n", comp->sgnd ? '-' : '+', comp->prec,
 			w, h);
@@ -346,7 +346,7 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		else
 			nbytes = 4;
 
-		for (i = 0; i < w * h; i++) {
+		for (uint64_t i = 0; i < (uint64_t)w * h; i++) {
 			/* FIXME: clamp func is being called within a loop */
 			const int val = clamp(image->comps[compno].data[i],
 				(int)comp->prec, (int)comp->sgnd);
