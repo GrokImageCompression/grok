@@ -645,7 +645,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
     p_image_header_data += 2;
 
 	if ((jp2->numcomps == 0) ||
-		(jp2->numcomps > OPJ_MAX_NUM_COMPONENTS)) {
+		(jp2->numcomps > max_num_components)) {
 		event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: num components=%d does not conform to standard\n", jp2->numcomps);
 		return false;
 	}
@@ -669,8 +669,8 @@ static bool jp2_read_ihdr( jp2_t *jp2,
 	// and high bit set indicates signed data,
 	// unset indicates unsigned data
 	if (((jp2->bpc != 0xFF) &&
-		((jp2->bpc & 0x7F) > (OPJ_MAX_PRECISION - 1)))) {
-		event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: bpc=%d does not conform to standard\n", jp2->bpc);
+		((jp2->bpc & 0x7F) > (GROK_MAX_PRECISION - 1)))) {
+		event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: bpc=%d not supported.\n", jp2->bpc);
 		return false;
 	}
 
@@ -2325,7 +2325,7 @@ bool jp2_setup_encoder(	jp2_t *jp2,
     /* ------------------- */
 
     /* Check if number of components respects standard */
-    if (image->numcomps < 1 || image->numcomps > OPJ_MAX_NUM_COMPONENTS) {
+    if (image->numcomps < 1 || image->numcomps > max_num_components) {
         event_msg(p_manager, EVT_ERROR, "Invalid number of components specified while setting up JP2 encoder\n");
         return false;
     }

@@ -785,7 +785,7 @@ namespace grk {
 
 					l_cblk->numbps = l_band->numbps + 1 - i;
 					// BIBO analysis gives upper limit on number of bit planes
-					if (l_cblk->numbps > OPJ_MAX_PRECISION + OPJ_J2K_MAXRLVLS * 5) {
+					if (l_cblk->numbps > max_precision + OPJ_J2K_MAXRLVLS * 5) {
 						event_msg(p_manager, EVT_WARNING, "Number of bit planes %u is impossibly large.\n", l_cblk->numbps);
 					}
 					l_cblk->numlenbits = 3;
@@ -1717,7 +1717,7 @@ namespace grk {
 
 		if (l_nb_segs > cblk->numSegmentsAllocated) {
 			tcd_seg_t* new_segs;
-			cblk->numSegmentsAllocated += OPJ_J2K_DEFAULT_NB_SEGS;
+			cblk->numSegmentsAllocated += default_numbers_segments;
 
 			new_segs = (tcd_seg_t*)grok_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(tcd_seg_t));
 			if (!new_segs) {

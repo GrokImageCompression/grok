@@ -118,8 +118,7 @@
 
 #include "minpf_plugin_manager.h"
 #include "plugin_interface.h"
-
-#include "openjpeg.h"
+#include "grok.h"
 
 /*
  ==========================================================

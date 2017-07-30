@@ -2099,7 +2099,7 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     p_header_data+=4;
     grok_read_bytes(p_header_data, (uint32_t*) &l_tmp, 2);                 /* Csiz */
     p_header_data+=2;
-    if (l_tmp <= OPJ_MAX_NUM_COMPONENTS)
+    if (l_tmp <= max_num_components)
         l_image->numcomps = (uint16_t) l_tmp;
     else {
         event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: number of component is illegal -> %d\n", l_tmp);
@@ -2134,8 +2134,8 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     }
 
 	uint64_t tileArea = (uint64_t)(l_tx1 - l_cp->tx0) *(l_ty1 - l_cp->ty0);
-	if (tileArea > OPJ_MAX_TILE_AREA) {
-		event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: tile area = %llu greater than max tile area = %llu\n",tileArea, OPJ_MAX_TILE_AREA);
+	if (tileArea > max_tile_area) {
+		event_msg(p_manager, EVT_ERROR, "Error with SIZ marker: tile area = %llu greater than max tile area = %llu\n",tileArea, max_tile_area);
 		return false;
 
 	}
@@ -2172,10 +2172,10 @@ static bool j2k_read_siz(j2k_t *p_j2k,
         }
 
 		if (l_img_comp->prec == 0 || 
-				l_img_comp->prec > OPJ_MAX_PRECISION) {
+				l_img_comp->prec > GROK_MAX_PRECISION) {
 			event_msg(p_manager, EVT_ERROR,
-				"Invalid precision for comp = %d : prec=%u (should be between 1 and %d according to the JPEG2000 standard)\n",
-				i, l_img_comp->prec, OPJ_MAX_PRECISION);
+				"Invalid precision for comp = %d : prec=%u (should be between 1 and %d according to the JPEG2000 standard). Grok only supports precision up to %d\n",
+				i, l_img_comp->prec, max_precision, GROK_MAX_PRECISION);
 			return false;
 		}
         l_img_comp->resno_decoded = 0;                                                          /* number of resolution decoded */
@@ -2230,23 +2230,23 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     }
 
     p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records =
-        (mct_data_t*)grok_calloc(OPJ_J2K_MCT_DEFAULT_NB_RECORDS ,sizeof(mct_data_t));
+        (mct_data_t*)grok_calloc(default_number_mct_records ,sizeof(mct_data_t));
 
     if (! p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records) {
         event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
         return false;
     }
-    p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mct_records = OPJ_J2K_MCT_DEFAULT_NB_RECORDS;
+    p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mct_records = default_number_mct_records;
 
     p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records =
         (simple_mcc_decorrelation_data_t*)
-        grok_calloc(OPJ_J2K_MCC_DEFAULT_NB_RECORDS, sizeof(simple_mcc_decorrelation_data_t));
+        grok_calloc(default_number_mcc_records, sizeof(simple_mcc_decorrelation_data_t));
 
     if (! p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records) {
         event_msg(p_manager, EVT_ERROR, "Not enough memory to take in charge SIZ marker\n");
         return false;
     }
-    p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mcc_records = OPJ_J2K_MCC_DEFAULT_NB_RECORDS;
+    p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mcc_records = default_number_mcc_records;
 
     /* set up default dc level shift */
     for (i=0; i<l_image->numcomps; ++i) {
@@ -4737,7 +4737,7 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
     if (i == l_tcp->m_nb_mct_records) {
         if (l_tcp->m_nb_mct_records == l_tcp->m_nb_max_mct_records) {
             mct_data_t *new_mct_records;
-            l_tcp->m_nb_max_mct_records += OPJ_J2K_MCT_DEFAULT_NB_RECORDS;
+            l_tcp->m_nb_max_mct_records += default_number_mct_records;
 
             new_mct_records = (mct_data_t *) grok_realloc(l_tcp->m_mct_records, l_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
             if (! new_mct_records) {
@@ -4965,7 +4965,7 @@ static bool j2k_read_mcc (     j2k_t *p_j2k,
 		// resize l_tcp->m_nb_mcc_records if necessary
         if (l_tcp->m_nb_mcc_records == l_tcp->m_nb_max_mcc_records) {
             simple_mcc_decorrelation_data_t *new_mcc_records;
-            l_tcp->m_nb_max_mcc_records += OPJ_J2K_MCC_DEFAULT_NB_RECORDS;
+            l_tcp->m_nb_max_mcc_records += default_number_mcc_records;
 
             new_mcc_records = (simple_mcc_decorrelation_data_t *) grok_realloc(
                                   l_tcp->m_mcc_records, l_tcp->m_nb_max_mcc_records * sizeof(simple_mcc_decorrelation_data_t));
@@ -6341,7 +6341,7 @@ bool j2k_setup_mct_encoding(tcp_t * p_tcp, opj_image_t * p_image)
     if (p_tcp->m_mct_decoding_matrix) {
         if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
             mct_data_t *new_mct_records;
-            p_tcp->m_nb_max_mct_records += OPJ_J2K_MCT_DEFAULT_NB_RECORDS;
+            p_tcp->m_nb_max_mct_records += default_number_mct_records;
 
             new_mct_records = (mct_data_t *) grok_realloc(p_tcp->m_mct_records, p_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
             if (! new_mct_records) {
@@ -6383,7 +6383,7 @@ bool j2k_setup_mct_encoding(tcp_t * p_tcp, opj_image_t * p_image)
 
     if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
         mct_data_t *new_mct_records;
-        p_tcp->m_nb_max_mct_records += OPJ_J2K_MCT_DEFAULT_NB_RECORDS;
+        p_tcp->m_nb_max_mct_records += default_number_mct_records;
         new_mct_records = (mct_data_t *) grok_realloc(p_tcp->m_mct_records, p_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
         if (! new_mct_records) {
             grok_free(p_tcp->m_mct_records);
@@ -6446,7 +6446,7 @@ bool j2k_setup_mct_encoding(tcp_t * p_tcp, opj_image_t * p_image)
 
     if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
         simple_mcc_decorrelation_data_t *new_mcc_records;
-        p_tcp->m_nb_max_mcc_records += OPJ_J2K_MCT_DEFAULT_NB_RECORDS;
+        p_tcp->m_nb_max_mcc_records += default_number_mct_records;
         new_mcc_records = (simple_mcc_decorrelation_data_t *) grok_realloc(
                               p_tcp->m_mcc_records, p_tcp->m_nb_max_mcc_records * sizeof(simple_mcc_decorrelation_data_t));
         if (! new_mcc_records) {
@@ -8074,13 +8074,13 @@ j2k_t* j2k_create_decompress(void)
         return nullptr;
     }
 
-    l_j2k->m_specific_param.m_decoder.m_header_data = (uint8_t *) grok_calloc(1,OPJ_J2K_DEFAULT_HEADER_SIZE);
+    l_j2k->m_specific_param.m_decoder.m_header_data = (uint8_t *) grok_calloc(1,default_header_size);
     if (! l_j2k->m_specific_param.m_decoder.m_header_data) {
         j2k_destroy(l_j2k);
         return nullptr;
     }
 
-    l_j2k->m_specific_param.m_decoder.m_header_data_size = OPJ_J2K_DEFAULT_HEADER_SIZE;
+    l_j2k->m_specific_param.m_decoder.m_header_data_size = default_header_size;
 
     l_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = -1 ;
 
