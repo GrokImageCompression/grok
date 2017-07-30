@@ -2412,13 +2412,13 @@ void tcd_cblk_enc_t::cleanup() {
 
 bool tcd_cblk_dec_t::alloc() {
 	if (!segs) {
-		segs = (tcd_seg_t *)grok_calloc(OPJ_J2K_DEFAULT_NB_SEGS, sizeof(tcd_seg_t));
+		segs = (tcd_seg_t *)grok_calloc(default_numbers_segments, sizeof(tcd_seg_t));
 		if (!segs) {
 			return false;
 		}
-		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", OPJ_J2K_DEFAULT_NB_SEGS * sizeof(tcd_seg_t));*/
+		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(tcd_seg_t));*/
 
-		numSegmentsAllocated = OPJ_J2K_DEFAULT_NB_SEGS;
+		numSegmentsAllocated = default_numbers_segments;
 
 		/*fprintf(stderr, "Allocate 8192 elements of code_block->data\n");*/
 		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/

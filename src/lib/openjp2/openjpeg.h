@@ -116,6 +116,10 @@ defined with this macro as being exported.
 #include <stdio.h>
 
 
+// GROK DEFINES
+#define GROK_MAX_PRECISION 16
+
+
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
 
 typedef bool OPJ_BOOL;
@@ -140,41 +144,19 @@ typedef int64_t  OPJ_OFF_T;
 typedef size_t   OPJ_SIZE_T;
  ///////////////////////////////////////////////////////////////////////////
 
-/*
-==========================================================
-   Useful constant definitions
-==========================================================
-*/
-
-// 64 Giga Pixels
-#define OPJ_MAX_TILE_AREA  67108864000
-
 #define OPJ_PATH_LEN 4096 /**< Maximum allowed size for filenames */
-
-#define OPJ_MAX_PRECISION 38			// maximum number of magnitude bits
-#define OPJ_MAX_NUM_COMPONENTS 16384	// maximum allowed number components
 // note: range for number of decomposition levels is 0-32
 // So, accordingly, range for number of resolutions is 1-33
 #define OPJ_J2K_MAXRLVLS 33					/**< Maximum number of resolution levels authorized */
 #define OPJ_J2K_MAXBANDS (3*OPJ_J2K_MAXRLVLS-2)	/**< Maximum number of sub-bands */
 
-#define OPJ_J2K_DEFAULT_NB_SEGS				10
-#define OPJ_J2K_STREAM_CHUNK_SIZE			0x100000 /** 1 mega by default */
-#define OPJ_J2K_DEFAULT_HEADER_SIZE			1000
-#define OPJ_J2K_MCC_DEFAULT_NB_RECORDS		10
-#define OPJ_J2K_MCT_DEFAULT_NB_RECORDS		10
-
-/**
- * EXPERIMENTAL FOR THE MOMENT
- * Supported options about file information used only in j2k_dump
-*/
+// used by dump
 #define OPJ_IMG_INFO		1	/**< Basic image information provided to the user */
 #define OPJ_J2K_MH_INFO		2	/**< Codestream information based only on the main header */
 #define OPJ_J2K_TH_INFO		4	/**< Tile information based on the current tile header */
 #define OPJ_J2K_TCH_INFO	8	/**< Tile/Component information of all tiles */
 #define OPJ_J2K_MH_IND		16	/**< Codestream index based only on the main header */
 #define OPJ_J2K_TH_IND		32	/**< Tile index based on the current tile */
-/*FIXME #define OPJ_J2K_CSTR_IND	48*/	/**<  */
 #define OPJ_JP2_INFO		128	/**< JP2 file information */
 #define OPJ_JP2_IND			256	/**< JP2 file index */
 
@@ -321,9 +303,7 @@ typedef enum COLOR_SPACE {
 typedef enum CODEC_FORMAT {
     OPJ_CODEC_UNKNOWN = -1,	/**< place-holder */
     OPJ_CODEC_J2K  = 0,		/**< JPEG-2000 codestream : read/write */
-    OPJ_CODEC_JP2  = 2,		/**< JP2 file format : read/write */
-    OPJ_CODEC_JPP  = 3,		/**< JPP-stream (JPEG 2000, JPIP) : to be coded */
-    OPJ_CODEC_JPX  = 4		/**< JPX file format (JPEG 2000 Part-2) : to be coded */
+    OPJ_CODEC_JP2  = 2		/**< JP2 file format : read/write */
 } OPJ_CODEC_FORMAT;
 
 
@@ -450,7 +430,7 @@ typedef struct opj_cparameters {
     uint32_t mode;
     /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
     uint32_t irreversible;
-    /** region of interest: affected component in [0..3]; -1 means no ROI */
+    /** region of interest: affected component in [0..3]; -1 indicates no ROI */
     int32_t roi_compno;
     /** region of interest: upshift value */
     uint32_t roi_shift;
@@ -475,9 +455,9 @@ typedef struct opj_cparameters {
     uint32_t subsampling_dx;
     /** subsampling value for dy */
     uint32_t subsampling_dy;
-    /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF; -1 means no input file format*/
+    /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF; -1 indicates no input file format*/
     int32_t decod_format;
-    /** output file format 0: J2K, 1: JP2; -1 means no output file format */
+    /** output file format 0: J2K, 1: JP2; -1 indicates no output file format */
     int32_t cod_format;
     /*@}*/
 
