@@ -130,8 +130,15 @@ if(WIN32)
   else()
     add_definitions(-DOPJ_STATIC)
   endif()
+  add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
+  set(INSTALL_LIBS ${GROK_LIBRARY_NAME})
+else()
+  # Builds both static and dynamic libs
+  add_library(${GROK_LIBRARY_NAME} SHARED ${GROK_SRCS})
+  add_library(${GROK_LIBRARY_NAME}_static STATIC ${GROK_SRCS})
+  set_target_properties(${GROK_LIBRARY_NAME}_static PROPERTIES OUTPUT_NAME ${GROK_LIBRARY_NAME})
+  set(INSTALL_LIBS ${GROK_LIBRARY_NAME} ${GROK_LIBRARY_NAME}_static)
 endif()
-add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
 if(UNIX)
   target_link_libraries(${GROK_LIBRARY_NAME} ${CMAKE_THREAD_LIBS_INIT})
 endif()
@@ -141,7 +148,7 @@ if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
 endif()
 
 # Install library
-install(TARGETS ${GROK_LIBRARY_NAME}
+install(TARGETS ${INSTALL_LIBS}
   EXPORT GrokTargets
   RUNTIME DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
   LIBRARY DESTINATION ${GROK_INSTALL_LIB_DIR} COMPONENT Libraries
