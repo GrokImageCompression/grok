@@ -823,6 +823,11 @@ namespace grk {
 				do {
 					auto l_seg = l_cblk->segs + l_segno;
 					l_seg->numPassesInPacket = (uint32_t)std::min<int32_t>((int32_t)(l_seg->maxpasses - l_seg->numpasses), numPassesInPacket);
+					uint32_t bits_to_read = l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket);
+					if (bits_to_read > 32) {
+						event_msg(p_manager, EVT_ERROR, "t2_read_packet_header: too many bits in segment length \n");
+						return false;
+					}
 					if (!l_bio->read(&l_seg->newlen, l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket))) {
 						event_msg(p_manager, EVT_WARNING, "t2_read_packet_header: failed to read segment length \n");
 					}
