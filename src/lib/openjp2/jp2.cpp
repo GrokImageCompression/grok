@@ -2716,9 +2716,12 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
                     event_msg(p_manager, EVT_WARNING, "JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored\n", (uint8_t)(box.type>>24), (uint8_t)(box.type>>16), (uint8_t)(box.type>>8), (uint8_t)(box.type>>0));
                     jp2->jp2_state |= JP2_STATE_UNKNOWN;
                     if (!stream->skip(l_current_data_size,p_manager)) {
-                        event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
-                        grok_free(l_current_data);
-                        return false;
+						event_msg(p_manager, EVT_WARNING,
+							"Problem with skipping JPEG2000 box, stream error\n");
+						grok_free(l_current_data);
+						// ignore error and return true if code stream box has already been read
+						// (we don't worry about any boxes after code stream)
+                        return jp2->jp2_state & JP2_STATE_CODESTREAM ? true : false;
                     }
                     continue;
                 }
@@ -2764,9 +2767,12 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
             }
             jp2->jp2_state |= JP2_STATE_UNKNOWN;
             if (!stream->skip(l_current_data_size,p_manager)) {
-                event_msg(p_manager, EVT_ERROR, "Problem with skipping JPEG2000 box, stream error\n");
-                grok_free(l_current_data);
-                return false;
+				event_msg(p_manager, EVT_WARNING,
+					"Problem with skipping JPEG2000 box, stream error\n");
+				grok_free(l_current_data);
+				// ignore error and return true if code stream box has already been read
+				// (we don't worry about any boxes after code stream)
+				return jp2->jp2_state & JP2_STATE_CODESTREAM ? true : false;
             }
         }
     }

@@ -292,7 +292,7 @@ template<typename TYPE> bool GrokStream::write(TYPE p_value, uint8_t numBytes, e
 	if (isBufferStream) {
 		// skip first to make sure that we are not at the end of the stream
 		auto l_media_skip_bytes = m_skip_fn(numBytes, m_user_data);
-		if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != numBytes))
+		if (l_media_skip_bytes == GROK_FAILED_SKIP_RETURN_VALUE || (l_media_skip_bytes != numBytes))
 			return false;
 		grok_write(m_buffer_current_ptr, p_value, numBytes);
 		write_increment(numBytes);
@@ -402,19 +402,25 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 }
 
 bool GrokStream::read_skip(int64_t p_size,
-	event_mgr_t * p_event_mgr)
+							event_mgr_t * p_event_mgr)
 {
-	assert(p_size >= 0);
+	// skip is always forward, while seek can move backwards or forwards
+	if (p_size < 0)
+		return false;
+
+	// if we have more than p_size bytes already buffered, then we can just update the stream
+	// and return; no need to skip on media
 	if (m_bytes_in_buffer >= (size_t)p_size) {
 		m_buffer_current_ptr += p_size;
-		/* it is safe to cast p_size to size_t since it is <= m_bytes_in_buffer
-		which is of type size_t */
+		// it is safe to cast p_size to size_t since it is <= m_bytes_in_buffer
+		// which is of type size_t
 		m_bytes_in_buffer -= (size_t)p_size;
 		m_stream_offset += p_size;
 		return true;
 	}
 
-	/* if we get here, then the remaining data in buffer is not sufficient */
+	// if we are already at the end of the stream, then just advance by m_bytes_in_buffer
+	// and return
 	if (m_status & GROK_STREAM_STATUS_END) {
 		m_buffer_current_ptr += m_bytes_in_buffer;
 		m_bytes_in_buffer = 0;
@@ -422,27 +428,38 @@ bool GrokStream::read_skip(int64_t p_size,
 		return m_bytes_in_buffer ? true : false;
 	}
 
-	int64_t l_skip_nb_bytes = 0;
-	/* the flag is not set, we copy data and then do an actual skip on the stream */
+	int64_t skip_bytes = 0;
 	if (m_bytes_in_buffer) {
-		l_skip_nb_bytes += (int64_t)m_bytes_in_buffer;
+		skip_bytes += (int64_t)m_bytes_in_buffer;
 		p_size -= (int64_t)m_bytes_in_buffer;
 		m_buffer_current_ptr = m_buffer;
 		m_bytes_in_buffer = 0;
 	}
 
-
-	/* we should do an actual skip on the media */
-	auto l_media_skip_bytes = m_skip_fn(p_size, m_user_data);
-	if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != p_size)) {
-		event_msg(p_event_mgr, EVT_INFO, "stream skip reached end/beginning!\n");
+	// check if we are skipping past end of stream
+	if ((m_stream_offset + skip_bytes + p_size) >	m_user_data_length) {
+		event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
+		m_stream_offset += skip_bytes;
+		skip_bytes = m_user_data_length -m_stream_offset;
+		seek(m_user_data_length,p_event_mgr);
 		m_status |= GROK_STREAM_STATUS_END;
-		m_stream_offset += l_skip_nb_bytes;
-		return l_skip_nb_bytes ? true : false;
+		return skip_bytes ? true : false;
 	}
-	l_skip_nb_bytes += p_size;
-	m_stream_offset += l_skip_nb_bytes;
-	return l_skip_nb_bytes ? true : false;
+	
+
+	// do an actual skip on the media 
+	auto l_media_skip_bytes = m_skip_fn(p_size, m_user_data);
+	if (l_media_skip_bytes == GROK_FAILED_SKIP_RETURN_VALUE || (l_media_skip_bytes < p_size)) {
+		event_msg(p_event_mgr, EVT_INFO, "Stream skip reached end/beginning!\n");
+		m_status |= GROK_STREAM_STATUS_END;
+		if (l_media_skip_bytes != GROK_FAILED_SKIP_RETURN_VALUE)
+			skip_bytes += l_media_skip_bytes;
+		m_stream_offset += skip_bytes;
+		return skip_bytes ? true : false;
+	}
+	skip_bytes += p_size;
+	m_stream_offset += skip_bytes;
+	return skip_bytes ? true : false;
 }
 
 bool GrokStream::write_skip(int64_t p_size,
@@ -461,7 +478,7 @@ bool GrokStream::write_skip(int64_t p_size,
 	/* then skip */
 	/* we should do an actual skip on the media */
 	auto l_media_skip_bytes = m_skip_fn(p_size, m_user_data);
-	if (l_media_skip_bytes == INT64_MIN || (l_media_skip_bytes != p_size)){
+	if (l_media_skip_bytes == GROK_FAILED_SKIP_RETURN_VALUE || (l_media_skip_bytes != p_size)){
 		event_msg(p_event_mgr, EVT_INFO, "GrokStream error!\n");
 		m_status |= GROK_STREAM_STATUS_ERROR;
 		return false;
@@ -480,9 +497,7 @@ int64_t GrokStream::get_number_byte_left(void)
 {
 	assert(m_stream_offset >= 0);
 	assert(m_user_data_length >= (uint64_t)m_stream_offset);
-	return m_user_data_length ?
-		(int64_t)(m_user_data_length)-m_stream_offset :
-		0;
+	return m_user_data_length ?	(int64_t)(m_user_data_length)-m_stream_offset :	0;
 }
 
 bool GrokStream::skip(int64_t p_size,

@@ -118,6 +118,7 @@ defined with this macro as being exported.
 
 // GROK DEFINES
 #define GROK_MAX_PRECISION 16
+#define GROK_FAILED_SKIP_RETURN_VALUE INT64_MAX
 
 
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
@@ -787,7 +788,8 @@ typedef size_t (* opj_stream_write_fn) (void * p_buffer,
 
 /*
  * Callback function prototype for skip function. Important!!! Skip is relative to current
- * position in stream. If skip succeeds, then return number of bytes skipped. Otherwise, return INT64_MIN.
+ * position in stream. If skip succeeds, then return number of bytes skipped.
+ *  Otherwise, return GROK_FAILED_SKIP_RETURN_VALUE.
  */
 typedef int64_t(* opj_stream_skip_fn) (int64_t p_nb_bytes, void * p_user_data) ;
 

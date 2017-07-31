@@ -98,7 +98,7 @@ static int64_t skip_from_buffer(int64_t p_nb_bytes,
         p_source_buffer->off = newOffset;
 		return p_nb_bytes;
     } 
-	return INT64_MIN;
+	return GROK_FAILED_SKIP_RETURN_VALUE;
 }
 
 static bool seek_from_buffer(int64_t p_nb_bytes,
