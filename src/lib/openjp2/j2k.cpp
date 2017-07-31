@@ -7481,10 +7481,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 
     /* Current marker is the EOC marker ?*/
     if (l_current_marker == J2K_MS_EOC) {
-        if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC ) {
-            p_j2k->m_current_tile_number = 0;
-            p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
-        }
+       p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
     }
 
     /* FIXME DOC ???*/
