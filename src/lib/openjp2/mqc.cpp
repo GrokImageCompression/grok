@@ -265,8 +265,8 @@ static void mqc_byteout(mqc_t *mqc)
 static void mqc_renorme(mqc_t *mqc)
 {
     do {
-        mqc->A <<= 1;
-        mqc->C <<= 1;
+        mqc->A = (uint16_t)(mqc->A<< 1);
+        mqc->C = (mqc->C << 1);
         mqc->COUNT--;
         if (mqc->COUNT == 0) {
             mqc_byteout(mqc);
@@ -276,7 +276,7 @@ static void mqc_renorme(mqc_t *mqc)
 
 static void mqc_codemps(mqc_t *mqc)
 {
-    mqc->A -= (*mqc->curctx)->qeval;
+    mqc->A = (uint16_t)(mqc->A - (*mqc->curctx)->qeval);
     if (mqc->A < A_MIN) {
         if (mqc->A < (*mqc->curctx)->qeval) {
             mqc->A = (*mqc->curctx)->qeval;
@@ -292,7 +292,7 @@ static void mqc_codemps(mqc_t *mqc)
 
 static void mqc_codelps(mqc_t *mqc)
 {
-    mqc->A -= (*mqc->curctx)->qeval;
+    mqc->A = (uint16_t)(mqc->A - (*mqc->curctx)->qeval);
     if (mqc->A < (*mqc->curctx)->qeval) {
         mqc->C += (*mqc->curctx)->qeval;
     } else {
@@ -376,8 +376,8 @@ static inline void mqc_renormd(mqc_t *const mqc)
         if (mqc->COUNT == 0) {
             mqc_bytein(mqc);
         }
-        mqc->A <<= 1;
-        mqc->C <<= 1;
+        mqc->A = (uint16_t)(mqc->A<< 1);
+        mqc->C = (mqc->C << 1);
         mqc->COUNT--;
     } while (mqc->A < A_MIN);
 }
@@ -619,7 +619,7 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len)
 	mqc->C = (uint32_t)(currentByte << 8);
     mqc_bytein(mqc);
     mqc->C <<= 7;
-    mqc->COUNT -= 7;
+    mqc->COUNT = (uint8_t)(mqc->COUNT - 7);
     mqc->A = A_MIN;
 	mqc->MIN_A_C = 0;
 	mqc->Q_SUM = 0;
@@ -627,14 +627,14 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len)
 
 uint8_t mqc_decode(mqc_t *const mqc)
 {
-	uint32_t Q_SUM = mqc->Q_SUM + (*mqc->curctx)->qeval;
-	if (mqc->MIN_A_C >= Q_SUM) {
-		mqc->Q_SUM = Q_SUM;
+	uint32_t Q_SUM = (uint16_t)(mqc->Q_SUM + (*mqc->curctx)->qeval);
+	if (mqc->MIN_A_C >= (uint16_t)Q_SUM) {
+		mqc->Q_SUM = (uint16_t)Q_SUM;
 		return (*mqc->curctx)->mps;
 	} 
-	mqc->A -= Q_SUM;
-	Q_SUM <<= 8;
-	uint8_t d;
+	mqc->A = (uint16_t)(mqc->A - Q_SUM);
+	Q_SUM  <<=  8;
+	uint8_t d=0;
     if (mqc->C< Q_SUM) {
 		mqc->C -= (mqc->Q_SUM << 8);
 		d = mqc_lpsexchange(mqc);
@@ -645,7 +645,7 @@ uint8_t mqc_decode(mqc_t *const mqc)
 		}
     }
 	mqc_renormd(mqc);
-	mqc->MIN_A_C = std::min<uint16_t>(mqc->A - A_MIN, mqc->C>>8);
+	mqc->MIN_A_C = std::min<uint16_t>((uint16_t)(mqc->A - A_MIN), (uint16_t)(mqc->C>>8));
 	mqc->Q_SUM = 0;
     return d;
 }
