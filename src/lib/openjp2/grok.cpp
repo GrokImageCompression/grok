@@ -153,7 +153,7 @@ static size_t grok_write_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p
 
 static int64_t opj_skip_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 {
-	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_CUR) ? INT64_MIN : p_nb_bytes;
+	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_CUR) ? GROK_FAILED_SKIP_RETURN_VALUE : p_nb_bytes;
 }
 
 static bool opj_seek_from_file (int64_t p_nb_bytes, FILE * p_user_data)
