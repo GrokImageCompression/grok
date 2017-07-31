@@ -356,7 +356,7 @@ Apply collected palette data
 @param color Collector for profile, cdef and pclr data
 @param image
 */
-static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color);
+static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color, event_mgr_t * p_manager);
 
 static void jp2_free_pclr(jp2_color_t *color);
 
@@ -1460,8 +1460,7 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color, event_mgr_t 
     return true;
 }
 
-/* file9.jp2 */
-static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color)
+static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color, event_mgr_t * p_manager)
 {
     opj_image_comp_t *old_comps, *new_comps;
     uint8_t *channel_size, *channel_sign;
@@ -1478,13 +1477,24 @@ static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color)
     cmap = color->jp2_pclr->cmap;
     nr_channels = color->jp2_pclr->nr_channels;
 
+
+	for (i = 0; i < nr_channels; ++i) {
+		/* Palette mapping: */
+		cmp = cmap[i].cmp;
+		if (image->comps[cmp].data == NULL) {
+			event_msg(p_manager, EVT_ERROR,
+				"image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n", i);
+			return false;
+		}
+	}
+
+
     old_comps = image->comps;
-    new_comps = (opj_image_comp_t*)
-                grok_malloc(nr_channels * sizeof(opj_image_comp_t));
+    new_comps = (opj_image_comp_t*)grok_malloc(nr_channels * sizeof(opj_image_comp_t));
     if (!new_comps) {
-        /* FIXME no error code for jp2_apply_pclr */
-        /* FIXME event manager error callback */
-        return;
+		event_msg(p_manager, EVT_ERROR,
+			"Memory allocation failure in opj_jp2_apply_pclr().\n");
+        return false;
     }
     for(i = 0; i < nr_channels; ++i) {
         pcol = cmap[i].pcol;
@@ -1503,11 +1513,13 @@ static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color)
 
         /* Palette mapping: */
         if (!opj_image_single_component_data_alloc(new_comps + i)) {
-            grok_free(new_comps);
-            new_comps = NULL;
-            /* FIXME no error code for jp2_apply_pclr */
-            /* FIXME event manager error callback */
-            return;
+			while (i > 0) {
+				--i;
+				grok_aligned_free (new_comps[i].data);
+			}
+			grok_free(new_comps);
+			event_msg(p_manager, EVT_ERROR,	"Memory allocation failure in opj_jp2_apply_pclr().\n");
+			return false;
         }
         new_comps[i].prec = channel_size[i];
         new_comps[i].sgnd = channel_sign[i];
@@ -1537,8 +1549,10 @@ static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color)
             assert( dst );
             for(j = 0; j < max; ++j) {
                 /* The index */
-                if((k = src[j]) < 0) k = 0;
-                else if(k > top_k) k = top_k;
+                if((k = src[j]) < 0) 
+					k = 0;
+                else if(k > top_k) 
+					k = top_k;
 
                 /* The colour */
                 dst[j] = (int32_t)entries[k * nr_channels + pcol];
@@ -1553,6 +1567,7 @@ static void jp2_apply_pclr(opj_image_t *image, jp2_color_t *color)
     grok_free(old_comps);
     image->comps = new_comps;
     image->numcomps = nr_channels;
+	return true;
 
 }/* apply_pclr() */
 
@@ -2037,8 +2052,10 @@ bool jp2_decode(jp2_t *jp2,
             /* Part 1, I.5.3.4: Either both or none : */
             if( !jp2->color.jp2_pclr->cmap)
                 jp2_free_pclr(&(jp2->color));
-            else
-                jp2_apply_pclr(p_image, &(jp2->color));
+			else {
+				if (!jp2_apply_pclr(p_image, &(jp2->color), p_manager))
+					return false;
+			}
         }
 
         /* Apply channel definitions if needed */
@@ -3443,8 +3460,10 @@ bool jp2_get_tile(	jp2_t *p_jp2,
         /* Part 1, I.5.3.4: Either both or none : */
         if( !p_jp2->color.jp2_pclr->cmap)
             jp2_free_pclr(&(p_jp2->color));
-        else
-            jp2_apply_pclr(p_image, &(p_jp2->color));
+		else {
+			if (!jp2_apply_pclr(p_image, &(p_jp2->color), p_manager)) 
+				return false;
+		}
     }
 
 	/* Apply channel definitions if needed */
