@@ -437,7 +437,7 @@ bool GrokStream::read_skip(int64_t p_size,
 	}
 
 	// check if we are skipping past end of stream
-	if ((m_stream_offset + skip_bytes + p_size) >	m_user_data_length) {
+	if ((m_stream_offset + skip_bytes + p_size) >	(int64_t)m_user_data_length) {
 		event_msg(p_event_mgr, EVT_INFO, "Stream reached its end !\n");
 		m_stream_offset += skip_bytes;
 		skip_bytes = m_user_data_length -m_stream_offset;
