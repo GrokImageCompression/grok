@@ -118,7 +118,8 @@ defined with this macro as being exported.
 
 // GROK DEFINES
 #define GROK_MAX_PRECISION 16
-#define GROK_FAILED_SKIP_RETURN_VALUE INT64_MAX
+// return this value in skip method when skip fails
+#define GROK_FAILED_SKIP_RETURN_VALUE INT64_MIN
 
 
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
