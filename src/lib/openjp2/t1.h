@@ -119,7 +119,7 @@ bool t1_allocate_buffers(t1_t *t1,
 
 double t1_encode_cblk(t1_t *t1,
 						tcd_cblk_enc_t* cblk,
-						uint32_t orient,
+						uint8_t orient,
 						uint32_t compno,
 						uint32_t level,
 						uint32_t qmfbid,
@@ -140,7 +140,7 @@ Decode 1 code-block
 */
 bool t1_decode_cblk(t1_t *t1,
 	tcd_cblk_dec_t* cblk,
-	uint32_t orient,
+	uint8_t orient,
 	uint32_t roishift,
 	uint32_t cblksty);
 
@@ -151,7 +151,7 @@ double t1_getwmsedec(
     int32_t nmsedec,
     uint32_t compno,
     uint32_t level,
-    uint32_t orient,
+    uint8_t orient,
     int32_t bpno,
     uint32_t qmfbid,
     double stepsize,

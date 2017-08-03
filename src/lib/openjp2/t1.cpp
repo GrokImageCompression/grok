@@ -82,10 +82,10 @@ const flag_t T1_VISIT = 0x4000;
 /**
 Tier-1 coding (coding of code-block coefficients)
 */
-static inline uint8_t t1_getctxno_zc(uint32_t f, uint32_t orient);
-static uint8_t t1_getctxno_sc(uint32_t f);
-static inline uint8_t t1_getctxno_mag(uint32_t f);
-static uint8_t t1_getspb(uint32_t f);
+static inline uint8_t t1_getctxno_zc(flag_t f, uint8_t orient);
+static uint8_t t1_getctxno_sc(flag_t f);
+static inline uint8_t t1_getctxno_mag(flag_t f);
+static uint8_t t1_getspb(flag_t f);
 static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
 /**
 Encode significant pass
@@ -93,12 +93,12 @@ Encode significant pass
 static void t1_enc_sigpass_step(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t vsc);
+	bool vsc);
 
 /**
 Decode significant pass
@@ -107,22 +107,22 @@ static inline void t1_dec_sigpass_step_raw(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
-	int32_t vsc);
+	bool vsc);
 static inline void t1_dec_sigpass_step_mqc(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf);
 static inline void t1_dec_sigpass_step_mqc_vsc(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
-	int32_t vsc);
+	bool vsc);
 
 
 /**
@@ -130,7 +130,7 @@ Encode significant pass
 */
 static void t1_enc_sigpass(t1_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec,
 	uint8_t type,
 	uint32_t cblksty);
@@ -141,16 +141,16 @@ Decode significant pass
 static void t1_dec_sigpass_raw(
 	t1_t *t1,
 	int32_t bpno,
-	int32_t orient,
-	int32_t cblksty);
+	uint8_t orient,
+	uint32_t cblksty);
 static void t1_dec_sigpass_mqc(
 	t1_t *t1,
 	int32_t bpno,
-	int32_t orient);
+	uint8_t orient);
 static void t1_dec_sigpass_mqc_vsc(
 	t1_t *t1,
 	int32_t bpno,
-	int32_t orient);
+	uint8_t orient);
 
 
 
@@ -164,7 +164,7 @@ static void t1_enc_refpass_step(t1_t *t1,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t vsc);
+	bool vsc);
 
 
 /**
@@ -182,7 +182,7 @@ Decode refinement pass
 static void t1_dec_refpass_raw(
 	t1_t *t1,
 	int32_t bpno,
-	int32_t cblksty);
+	uint32_t cblksty);
 static void t1_dec_refpass_mqc(
 	t1_t *t1,
 	int32_t bpno);
@@ -200,7 +200,7 @@ static inline void  t1_dec_refpass_step_raw(
 	int32_t *datap,
 	int32_t poshalf,
 	int32_t neghalf,
-	int32_t vsc);
+	bool vsc);
 static inline void t1_dec_refpass_step_mqc(
 	t1_t *t1,
 	flag_t *flagsp,
@@ -213,7 +213,7 @@ static inline void t1_dec_refpass_step_mqc_vsc(
 	int32_t *datap,
 	int32_t poshalf,
 	int32_t neghalf,
-	int32_t vsc);
+	bool vsc);
 
 
 
@@ -224,12 +224,12 @@ static void t1_enc_clnpass_step(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
 	uint32_t partial,
-	uint32_t vsc);
+	bool vsc);
 /**
 Decode clean-up pass
 */
@@ -237,29 +237,29 @@ static void t1_dec_clnpass_step_partial(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf);
 static void t1_dec_clnpass_step(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf);
 static void t1_dec_clnpass_step_vsc(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
 	int32_t partial,
-	int32_t vsc);
+	bool vsc);
 /**
 Encode clean-up pass
 */
 static void t1_enc_clnpass(
 	t1_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec,
 	uint32_t cblksty);
 /**
@@ -268,8 +268,8 @@ Decode clean-up pass
 static void t1_dec_clnpass(
 	t1_t *t1,
 	int32_t bpno,
-	int32_t orient,
-	int32_t cblksty);
+	uint8_t orient,
+	uint32_t cblksty);
 
 /*@}*/
 
@@ -277,21 +277,21 @@ static void t1_dec_clnpass(
 
 
 
-static uint8_t t1_getctxno_zc(uint32_t f, uint32_t orient) {
+static uint8_t t1_getctxno_zc(flag_t f, uint8_t orient) {
 	return lut_ctxno_zc[(orient << 8) | (f & T1_SIG_OTH)];
 }
 
-static uint8_t t1_getctxno_sc(uint32_t f) {
+static uint8_t t1_getctxno_sc(flag_t f) {
 	return lut_ctxno_sc[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 }
 
-static uint8_t t1_getctxno_mag(uint32_t f) {
+static uint8_t t1_getctxno_mag(flag_t f) {
 	uint8_t tmp1 = (f & T1_SIG_OTH) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG;
 	uint8_t tmp2 = (f & T1_REFINE) ? T1_CTXNO_MAG + 2 : tmp1;
 	return (tmp2);
 }
 
-static uint8_t t1_getspb(uint32_t f) {
+static uint8_t t1_getspb(flag_t f) {
 	return lut_spb[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 }
 
@@ -338,12 +338,12 @@ static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 static void t1_enc_sigpass_step(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t vsc
+	bool vsc
 )
 {
 	int32_t v;
@@ -381,9 +381,9 @@ static void t1_enc_sigpass_step(t1_t *t1,
 static inline void t1_dec_sigpass_step_raw(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
-	int32_t vsc)
+	bool vsc)
 {
 	int32_t v, flag;
 	raw_t *raw = t1->raw;
@@ -403,7 +403,7 @@ static inline void t1_dec_sigpass_step_raw(t1_t *t1,
 static inline void t1_dec_sigpass_step_mqc(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf)
 {
 	int32_t flag;
@@ -427,9 +427,9 @@ static inline void t1_dec_sigpass_step_mqc(t1_t *t1,
 static inline void t1_dec_sigpass_step_mqc_vsc(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
-	int32_t vsc)
+	bool vsc)
 {
 	int32_t flag;
 	uint8_t v;
@@ -453,7 +453,7 @@ static inline void t1_dec_sigpass_step_mqc_vsc(t1_t *t1,
 
 static void t1_enc_sigpass(t1_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec,
 	uint8_t type,
 	uint32_t cblksty
@@ -485,8 +485,8 @@ static void t1_enc_sigpass(t1_t *t1,
 
 static void t1_dec_sigpass_raw(t1_t *t1,
 	int32_t bpno,
-	int32_t orient,
-	int32_t cblksty)
+	uint8_t orient,
+	uint32_t cblksty)
 {
 	int32_t one, half, oneplushalf, vsc;
 	uint32_t i, j, k;
@@ -511,7 +511,7 @@ static void t1_dec_sigpass_raw(t1_t *t1,
 
 static void t1_dec_sigpass_mqc(t1_t *t1,
 	int32_t bpno,
-	int32_t orient)
+	uint8_t orient)
 {
 	int32_t one, half, oneplushalf;
 	uint32_t i, j, k;
@@ -553,7 +553,7 @@ static void t1_dec_sigpass_mqc(t1_t *t1,
 
 static void t1_dec_sigpass_mqc_vsc(t1_t *t1,
 	int32_t bpno,
-	int32_t orient)
+	uint8_t orient)
 {
 	int32_t one, half, oneplushalf, vsc;
 	uint32_t i, j, k;
@@ -585,7 +585,7 @@ static void t1_enc_refpass_step(t1_t *t1,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t vsc)
+	bool vsc)
 {
 	int32_t v;
 	uint32_t flag;
@@ -612,7 +612,7 @@ static inline void t1_dec_refpass_step_raw(t1_t *t1,
 	int32_t *datap,
 	int32_t poshalf,
 	int32_t neghalf,
-	int32_t vsc)
+	bool vsc)
 {
 	int32_t v, t, flag;
 
@@ -653,7 +653,7 @@ static inline void t1_dec_refpass_step_mqc_vsc(t1_t *t1,
 	int32_t *datap,
 	int32_t poshalf,
 	int32_t neghalf,
-	int32_t vsc)
+	bool vsc)
 {
 	int32_t t, flag;
 	uint8_t v;
@@ -702,11 +702,11 @@ static void t1_enc_refpass(t1_t *t1,
 
 static void t1_dec_refpass_raw(t1_t *t1,
 	int32_t bpno,
-	int32_t cblksty)
+	uint32_t cblksty)
 {
 	int32_t one, poshalf, neghalf;
 	uint32_t i, j, k;
-	int32_t vsc;
+	bool vsc;
 	one = 1 << bpno;
 	poshalf = one >> 1;
 	neghalf = bpno > 0 ? -poshalf : -1;
@@ -770,7 +770,7 @@ static void t1_dec_refpass_mqc_vsc(t1_t *t1,
 	int32_t bpno) {
 	int32_t one, poshalf, neghalf;
 	uint32_t i, j, k;
-	int32_t vsc;
+	bool vsc;
 	one = 1 << bpno;
 	poshalf = one >> 1;
 	neghalf = bpno > 0 ? -poshalf : -1;
@@ -794,12 +794,12 @@ static void t1_dec_refpass_mqc_vsc(t1_t *t1,
 static void t1_enc_clnpass_step(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
 	uint32_t partial,
-	uint32_t vsc) {
+	bool vsc) {
 	int32_t v;
 	uint32_t flag;
 
@@ -828,7 +828,7 @@ static void t1_enc_clnpass_step(t1_t *t1,
 static void t1_dec_clnpass_step_partial(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf) {
 	int32_t flag;
 	uint8_t v;
@@ -847,7 +847,7 @@ static void t1_dec_clnpass_step_partial(t1_t *t1,
 static void t1_dec_clnpass_step(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf) {
 	int32_t flag;
 	uint8_t v;
@@ -870,10 +870,10 @@ static void t1_dec_clnpass_step(t1_t *t1,
 static void t1_dec_clnpass_step_vsc(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	int32_t orient,
+	uint8_t orient,
 	int32_t oneplushalf,
 	int32_t partial,
-	int32_t vsc) {
+	bool vsc) {
 	int32_t flag;
 	uint8_t v;
 
@@ -898,7 +898,7 @@ static void t1_dec_clnpass_step_vsc(t1_t *t1,
 
 static void t1_enc_clnpass(t1_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec,
 	uint32_t cblksty) {
 	uint32_t i, j, k;
@@ -965,8 +965,8 @@ static void t1_enc_clnpass(t1_t *t1,
 
 static void t1_dec_clnpass(t1_t *t1,
 	int32_t bpno,
-	int32_t orient,
-	int32_t cblksty) {
+	uint8_t orient,
+	uint32_t cblksty) {
 	int32_t one, half, oneplushalf, agg, vsc;
 	uint8_t runlen;
 	uint32_t i, j, k;
@@ -1095,7 +1095,7 @@ static void t1_dec_clnpass(t1_t *t1,
 double t1_getwmsedec(int32_t nmsedec,
 	uint32_t compno,
 	uint32_t level,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	uint32_t qmfbid,
 	double stepsize,
@@ -1231,7 +1231,7 @@ t1_t::~t1_t() {
 
 bool t1_decode_cblk(t1_t *t1,
 	tcd_cblk_dec_t* cblk,
-	uint32_t orient,
+	uint8_t orient,
 	uint32_t roishift,
 	uint32_t cblksty)
 {
@@ -1342,7 +1342,7 @@ bool t1_decode_cblk(t1_t *t1,
 		
 double t1_encode_cblk(t1_t *t1,
 	tcd_cblk_enc_t* cblk,
-	uint32_t orient,
+	uint8_t orient,
 	uint32_t compno,
 	uint32_t level,
 	uint32_t qmfbid,

@@ -173,7 +173,7 @@ static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps, stepsize_t *ba
 /* <summary>                          */
 /* Get gain of 5-3 wavelet transform. */
 /* </summary>                         */
-uint32_t dwt_getgain(uint32_t orient)
+uint32_t dwt_getgain(uint8_t orient)
 {
     if (orient == 0)
         return 0;
@@ -185,7 +185,7 @@ uint32_t dwt_getgain(uint32_t orient)
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
-double dwt_getnorm(uint32_t level, uint32_t orient)
+double dwt_getnorm(uint32_t level, uint8_t orient)
 {
     return dwt_norms[orient][level];
 }
@@ -194,7 +194,7 @@ double dwt_getnorm(uint32_t level, uint32_t orient)
 /* <summary>                          */
 /* Get gain of 9-7 wavelet transform. */
 /* </summary>                         */
-uint32_t dwt_getgain_real(uint32_t orient)
+uint32_t dwt_getgain_real(uint8_t orient)
 {
     (void)orient;
     return 0;
@@ -203,7 +203,7 @@ uint32_t dwt_getgain_real(uint32_t orient)
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
-double dwt_getnorm_real(uint32_t level, uint32_t orient)
+double dwt_getnorm_real(uint32_t level, uint8_t orient)
 {
     return dwt_norms_real[orient][level];
 }

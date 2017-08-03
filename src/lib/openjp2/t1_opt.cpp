@@ -131,7 +131,7 @@ namespace grk
 #define ENC_FLAGS(x, y) (t1->flags[(x) + 1 + (((y) >> 2) + 1) * t1->flags_stride])
 #define ENC_FLAGS_ADDRESS(x, y) (t1->flags + ((x) + 1 + (((y) >> 2) + 1) * t1->flags_stride))
 
-static inline uint8_t		t1_getctxno_zc(uint32_t f, uint32_t orient);
+static inline uint8_t		t1_getctxno_zc(uint32_t f, uint8_t orient);
 static inline uint8_t		t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 static inline uint8_t		t1_getctxno_mag(uint32_t f);
 static inline uint8_t		t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
@@ -143,7 +143,7 @@ Encode significant pass
 static void t1_enc_sigpass_step(t1_opt_t *t1,
 	flag_opt_t *flagsp,
 	uint32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec);
@@ -153,7 +153,7 @@ Encode significant pass
 */
 static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec);
 
 
@@ -182,7 +182,7 @@ static void t1_enc_clnpass_step(
 	t1_opt_t *t1,
 	flag_opt_t *flagsp,
 	uint32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
@@ -196,7 +196,7 @@ Encode clean-up pass
 static void t1_enc_clnpass(
 	t1_opt_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec);
 
 
@@ -226,7 +226,7 @@ t1_opt_t::~t1_opt_t()
 	}
 }
 
-static inline uint8_t t1_getctxno_zc(uint32_t f, uint32_t orient)
+static inline uint8_t t1_getctxno_zc(uint32_t f, uint8_t orient)
 {
 	return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
 }
@@ -351,7 +351,7 @@ static void t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_
 static void  t1_enc_sigpass_step(t1_opt_t *t1,
 	flag_opt_t *flagsp,
 	uint32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec)
@@ -386,7 +386,7 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 
 static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec)
 {
 	uint32_t i, k;
@@ -484,7 +484,7 @@ static void t1_enc_refpass(
 static void t1_enc_clnpass_step(t1_opt_t *t1,
 	flag_opt_t *flagsp,
 	uint32_t *datap,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec,
@@ -545,7 +545,7 @@ static void t1_enc_clnpass_step(t1_opt_t *t1,
 
 static void t1_enc_clnpass(t1_opt_t *t1,
 	int32_t bpno,
-	uint32_t orient,
+	uint8_t orient,
 	int32_t *nmsedec)
 {
 	uint32_t i, k;
@@ -666,7 +666,7 @@ void t1_opt_init_buffers(t1_opt_t *t1,
 
 double t1_opt_encode_cblk(t1_opt_t *t1,
 	tcd_cblk_enc_t* cblk,
-	uint32_t orient,
+	uint8_t orient,
 	uint32_t compno,
 	uint32_t level,
 	uint32_t qmfbid,
