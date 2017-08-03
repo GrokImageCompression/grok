@@ -131,7 +131,7 @@ void t1_opt_init_buffers(t1_opt_t *t1,
 
 double t1_opt_encode_cblk(t1_opt_t *t1,
 	tcd_cblk_enc_t* cblk,
-	uint32_t orient,
+	uint8_t orient,
 	uint32_t compno,
 	uint32_t level,
 	uint32_t qmfbid,

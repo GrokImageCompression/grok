@@ -868,7 +868,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                                      size_t sizeof_block,
                                      event_mgr_t* manager)
 {
-    uint32_t (*l_gain_ptr)(uint32_t) = nullptr;
+    uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
     uint32_t compno, resno, bandno, precno, cblkno;
     tcp_t * l_tcp = nullptr;
     cp_t * l_cp = nullptr;
