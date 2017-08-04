@@ -325,8 +325,9 @@ pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
 
 int64_t tile_buf_get_interleaved_upper_bound(tile_buf_component_t* comp)
 {
-    if (!comp || comp->resolutions.empty())
+    if (!comp || comp->resolutions.empty()){
         return 0;
+    }
 	pt_t horizontal = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, true);
 	pt_t vertical   = tile_buf_get_interleaved_range(comp, (uint32_t)comp->resolutions.size() - 1, false);
 
