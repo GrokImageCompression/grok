@@ -297,7 +297,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	local_info.image->y1 = (local_info.image->y0 + (height - 1) * params->subsampling_dy + 1 + local_info.image->y0);
 
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
-	local_info.image->comps[nr_comp - 1U].alpha = 1U - (nr_comp & 1U);
+	local_info.image->comps[nr_comp - 1U].alpha = (uint16_t)(1U - (nr_comp & 1U));
 
 	for (i = 0; i < nr_comp; i++) {
 		planes[i] = local_info.image->comps[i].data;

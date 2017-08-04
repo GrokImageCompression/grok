@@ -142,12 +142,14 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         size_t len,
                                         bool p_is_read_stream)
 {
-    if (!buf || !len)
+    if (!buf || !len) {
         return NULL;
+    }
 
 	auto p_source_buffer = (buf_info_t*)grok_calloc(1,sizeof(buf_info_t));
-    if (!p_source_buffer)
+    if (!p_source_buffer) {
         return NULL;
+    }
 
 	GrokStream* l_stream = new GrokStream(buf, len, p_is_read_stream);
     if (!l_stream) {

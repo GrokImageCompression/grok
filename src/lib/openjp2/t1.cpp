@@ -347,11 +347,11 @@ static void t1_enc_sigpass_step(t1_t *t1,
 )
 {
 	int32_t v;
-	uint32_t flag;
+	flag_t flag;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		v = (abs(*datap) & one) ? 1 : 0;
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
@@ -406,17 +406,17 @@ static inline void t1_dec_sigpass_step_mqc(t1_t *t1,
 	uint8_t orient,
 	int32_t oneplushalf)
 {
-	int32_t flag;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
 	flag = *flagsp;
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
-		mqc_setcurctx(mqc, t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
+		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
-			mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
-			v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
+			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
+			v = mqc_decode(mqc) ^ t1_getspb(flag);
 			*datap = v ? -oneplushalf : oneplushalf;
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
@@ -431,17 +431,17 @@ static inline void t1_dec_sigpass_step_mqc_vsc(t1_t *t1,
 	int32_t oneplushalf,
 	bool vsc)
 {
-	int32_t flag;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
-		mqc_setcurctx(mqc, t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
+		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
-			mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
-			v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
+			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
+			v = mqc_decode(mqc) ^ t1_getspb(flag);
 			*datap = v ? -oneplushalf : oneplushalf;
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
@@ -588,11 +588,11 @@ static void t1_enc_refpass_step(t1_t *t1,
 	bool vsc)
 {
 	int32_t v;
-	uint32_t flag;
+	flag_t flag;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		*nmsedec += t1_getnmsedec_ref((uint32_t)abs(*datap), (uint32_t)(bpno));
 		v = (abs(*datap) & one) ? 1 : 0;
@@ -633,14 +633,15 @@ static inline void t1_dec_refpass_step_mqc(t1_t *t1,
 	int32_t poshalf,
 	int32_t neghalf)
 {
-	int32_t t, flag;
+	int32_t t;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
 	flag = *flagsp;
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-		mqc_setcurctx(mqc, t1_getctxno_mag((uint32_t)flag));
+		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
 		v = mqc_decode(mqc);
 		t = v ? poshalf : neghalf;
 		*datap += *datap < 0 ? -t : t;
@@ -655,14 +656,15 @@ static inline void t1_dec_refpass_step_mqc_vsc(t1_t *t1,
 	int32_t neghalf,
 	bool vsc)
 {
-	int32_t t, flag;
+	int32_t t;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-		mqc_setcurctx(mqc, t1_getctxno_mag((uint32_t)flag));
+		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
 		v = mqc_decode(mqc);
 		t = v ? poshalf : neghalf;
 		*datap += *datap < 0 ? -t : t;
@@ -801,11 +803,11 @@ static void t1_enc_clnpass_step(t1_t *t1,
 	uint32_t partial,
 	bool vsc) {
 	int32_t v;
-	uint32_t flag;
+	flag_t flag;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? (uint32_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (uint32_t)(*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if (partial) {
 		goto LABEL_PARTIAL;
 	}
@@ -818,7 +820,7 @@ static void t1_enc_clnpass_step(t1_t *t1,
 			*nmsedec += t1_getnmsedec_sig((uint32_t)abs(*datap), (uint32_t)(bpno));
 			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
 			v = *datap < 0 ? 1 : 0;
-			mqc_encode(mqc, (uint32_t)(v ^ t1_getspb((uint32_t)flag)));
+			mqc_encode(mqc, (uint32_t)(v ^ t1_getspb(flag)));
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
 	}
@@ -830,15 +832,15 @@ static void t1_dec_clnpass_step_partial(t1_t *t1,
 	int32_t *datap,
 	uint8_t orient,
 	int32_t oneplushalf) {
-	int32_t flag;
+	flag_t flag;
 	uint8_t v;
 	mqc_t *mqc = t1->mqc;
 
 	ARG_NOT_USED(orient);
 
 	flag = *flagsp;
-	mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
-	v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
+	mqc_setcurctx(mqc, t1_getctxno_sc(flag));
+	v = mqc_decode(mqc) ^ t1_getspb(flag);
 	*datap = v ? -oneplushalf : oneplushalf;
 	t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 	*flagsp &= (flag_t)~T1_VISIT;
@@ -849,17 +851,17 @@ static void t1_dec_clnpass_step(t1_t *t1,
 	int32_t *datap,
 	uint8_t orient,
 	int32_t oneplushalf) {
-	int32_t flag;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
 	flag = *flagsp;
 	if (!(flag & (T1_SIG | T1_VISIT))) {
-		mqc_setcurctx(mqc, t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
+		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
-			mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
-			v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
+			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
+			v = mqc_decode(mqc) ^ t1_getspb(flag);
 			*datap = v ? -oneplushalf : oneplushalf;
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
@@ -874,21 +876,21 @@ static void t1_dec_clnpass_step_vsc(t1_t *t1,
 	int32_t oneplushalf,
 	int32_t partial,
 	bool vsc) {
-	int32_t flag;
+	flag_t flag;
 	uint8_t v;
 
 	mqc_t *mqc = t1->mqc;
 
-	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if (partial) {
 		goto LABEL_PARTIAL;
 	}
 	if (!(flag & (T1_SIG | T1_VISIT))) {
-		mqc_setcurctx(mqc, t1_getctxno_zc((uint32_t)flag, (uint32_t)orient));
+		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
 		LABEL_PARTIAL:
-			mqc_setcurctx(mqc, t1_getctxno_sc((uint32_t)flag));
-			v = mqc_decode(mqc) ^ t1_getspb((uint32_t)flag);
+			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
+			v = mqc_decode(mqc) ^ t1_getspb(flag);
 			*datap = v ? -oneplushalf : oneplushalf;
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}

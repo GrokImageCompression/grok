@@ -1082,7 +1082,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                 }
 
                 /** avoid an if with storing function pointer */
-                l_gain = (*l_gain_ptr) (l_band->bandno);
+                l_gain = (*l_gain_ptr) ((uint8_t)l_band->bandno);
                 numbps = l_image_comp->prec + l_gain;
                 l_band->stepsize = (float)(((1.0 + l_step_size->mant / 2048.0) * pow(2.0, (int32_t) (numbps - l_step_size->expn)))) * fraction;
                 l_band->numbps = l_step_size->expn + l_tccp->numgbits - 1;      /* WHY -1 ? */

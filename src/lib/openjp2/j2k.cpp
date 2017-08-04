@@ -9306,8 +9306,9 @@ static bool j2k_decode_tiles ( j2k_t *p_j2k,
             break;
     }
 
-    if (l_current_data)
+    if (l_current_data) {
         grok_free(l_current_data);
+    }
 
 	if (num_tiles_decoded == 0) {
 		event_msg(p_manager, EVT_ERROR, "No tiles were decoded. Exiting\n");

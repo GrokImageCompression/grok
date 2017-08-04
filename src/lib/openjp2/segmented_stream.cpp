@@ -24,8 +24,9 @@ namespace grk {
 
 bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buffer)
 {
-    if (!buffer || !min_buf_vec)
+    if (!buffer || !min_buf_vec){
         return false;
+    }
 
 	size_t offset = 0;
     for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
@@ -247,8 +248,9 @@ void seg_buf_rewind(seg_buf_t* seg_buf)
 bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
     buf_t* seg = NULL;
-    if (!seg_buf || !buf || !len)
+    if (!seg_buf || !buf || !len){
         return false;
+    }
 
 	seg = seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg)
@@ -265,8 +267,9 @@ bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len)
         return false;
 
     buf = (uint8_t*)grok_malloc(len);
-    if (!buf)
+    if (!buf){
         return false;
+    }
 
 	seg = seg_buf_add_segment(seg_buf, buf, len);
 	if (!seg) {

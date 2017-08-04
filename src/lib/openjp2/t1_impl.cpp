@@ -201,7 +201,7 @@ double t1_impl::encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max) {
 	if (doOpt) {
 		dist =   t1_opt_encode_cblk(t1_opt,
 			block->cblk,
-			block->bandno,
+			(uint8_t)block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid,
@@ -260,7 +260,7 @@ double t1_impl::encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max) {
 	else {
 		dist = t1_encode_cblk(t1,
 			block->cblk,
-			block->bandno,
+			(uint8_t)block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid,
@@ -283,8 +283,8 @@ bool t1_impl::decode(decodeBlockInfo* block) {
 	}
 	return t1_decode_cblk(t1,
 						block->cblk,
-						block->bandno,
-						(uint32_t)block->roishift,
+						(uint8_t)block->bandno,
+						block->roishift,
 						block->cblksty);
 }
 
