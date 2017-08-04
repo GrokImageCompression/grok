@@ -3863,9 +3863,8 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
 
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
-	/* We must avoid reading twice the same tile part number for a given tile */
-	/* so as to avoid various issues, like opj_j2k_merge_ppt being called */
-	/* several times. */
+	/* We must avoid reading the same tile part number twice for a given tile */
+	/* to avoid various issues, like opj_j2k_merge_ppt being called several times. */
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
 	if (l_tcp->m_current_tile_part_number + 1 != (int32_t)l_current_part) {
@@ -3895,10 +3894,23 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
 
     /* Ref A.4.2: Psot could be equal zero if it is the last tile-part of the codestream.*/
     if (!l_tot_len) {
-        event_msg(p_manager, EVT_INFO, "Psot value of the current tile-part is equal to zero, "
-                      "we assuming it is the last tile-part of the codestream.\n");
+		event_msg(p_manager, EVT_INFO, "Psot value of the current tile-part is equal to zero; "
+                      "we assume it is the last tile-part of the codestream.\n");
         p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
     }
+
+	// ensure that current tile part number read from SOT marker
+	// is not larger than total number of tile parts
+	if (l_tcp->m_nb_tile_parts != 0 && l_current_part >= l_tcp->m_nb_tile_parts) {
+		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
+		event_msg(p_manager, EVT_ERROR,
+			"Current tile part number (%d) read from SOT marker is greater than total "
+			"number of tile-parts (%d).\n", l_current_part, 
+			l_tcp->m_nb_tile_parts);
+		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
+		return OPJ_FALSE;
+	}
+
 
     if (l_num_parts != 0) { /* Number of tile-part header is provided by this tile-part header */
         l_num_parts += p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction;
