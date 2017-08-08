@@ -74,7 +74,7 @@ typedef struct {
 typedef struct {
 	uint32_t biSize;             /* Size of the structure in bytes */
 	uint32_t biWidth;            /* Width of the image in pixels */
-	uint32_t biHeight;           /* Heigth of the image in pixels */
+	uint32_t biHeight;           /* Height of the image in pixels */
 	uint16_t biPlanes;           /* 1 */
 	uint16_t biBitCount;         /* Number of color bits by pixels */
 	uint32_t biCompression;      /* Type of encoding 0: none 1: RLE8 2: RLE4 */

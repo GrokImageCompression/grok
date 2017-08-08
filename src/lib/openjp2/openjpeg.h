@@ -187,7 +187,7 @@ typedef enum CINEMA_MODE {
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMD)
  *
- * These values help chosing the RSIZ value for the J2K codestream.
+ * These values help choose the RSIZ value for the J2K codestream.
  * The RSIZ value triggers various encoding options, as detailed in Table A.10.
  * If OPJ_PROFILE_PART2 is chosen, it has to be combined with one or more extensions
  * described hereunder.

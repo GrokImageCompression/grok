@@ -170,13 +170,13 @@ static bool j2k_decoding_validation (   j2k_t * p_j2k,
         event_mgr_t * p_manager );
 
 /**
- * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
+ * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool j2k_setup_encoding_validation (j2k_t *p_j2k, event_mgr_t * p_manager);
 
 /**
- * Sets up the validation ,i.e. adds the procedures to lauch to make sure the codec parameters
+ * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
 static bool j2k_setup_decoding_validation (j2k_t *p_j2k, event_mgr_t * p_manager);
@@ -225,7 +225,7 @@ static bool j2k_create_tcd(     j2k_t *p_j2k,
                                     event_mgr_t * p_manager );
 
 /**
- * Excutes the given procedures on the given codec.
+ * Executes the given procedures on the given codec.
  *
  * @param       p_procedure_list        the list of procedures to execute
  * @param       p_j2k                           the jpeg2000 codec to execute the procedures on.
