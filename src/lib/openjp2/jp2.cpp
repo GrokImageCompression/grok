@@ -99,7 +99,7 @@ static uint8_t * jp2_write_ihdr(jp2_t *jp2,
 
 
 /**
-* Read the XML box
+* Read XML box
 *
 * @param	jp2					jpeg2000 file codec.
 * @param	p_xml_data			pointer to actual data (already read from file)
@@ -114,7 +114,7 @@ static bool jp2_read_xml(jp2_t *jp2,
 	event_mgr_t * p_manager);
 
 /**
-* Writes the XML box
+* Write XML box
 *
 * @param jp2					jpeg2000 file codec.
 * @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
@@ -126,7 +126,7 @@ static uint8_t * jp2_write_xml(jp2_t *jp2,
 
 
 /**
-* Writes buffer box
+* Write buffer box
 *
 * @param boxId					box id.
 * @param buffer					buffer with data
@@ -770,7 +770,7 @@ static uint8_t * jp2_write_buffer(uint32_t boxId,
 	
 	assert(p_nb_bytes_written != nullptr);
 
-	/* room for 8 bytes for box and jp2->xmlSize bytes */
+	/* need 8 bytes for box plus buffer->len bytes for buffer*/
 	uint32_t total_size = 8 + (uint32_t)buffer->len;
 	auto l_data = (uint8_t *)grok_calloc(1, total_size);
 	if (l_data == nullptr) {
@@ -783,11 +783,11 @@ static uint8_t * jp2_write_buffer(uint32_t boxId,
 	grok_write_bytes(l_current_ptr, total_size, 4);			
 	l_current_ptr += 4;
 
-	/* JP2_XML */
+	/* write box id */
 	grok_write_bytes(l_current_ptr, boxId, 4);					
 	l_current_ptr += 4;
 
-	/* xml data */
+	/* write buffer data */
 	memcpy(l_current_ptr, buffer->buffer, buffer->len);				
 
 	*p_nb_bytes_written = total_size;
@@ -2800,7 +2800,7 @@ static bool jp2_read_header_procedure(  jp2_t *jp2,
 }
 
 /**
- * Excutes the given procedures on the given codec.
+ * Executes the given procedures on the given codec.
  *
  * @param	p_procedure_list	the list of procedures to execute
  * @param	jp2					the jpeg2000 file codec to execute the procedures on.
