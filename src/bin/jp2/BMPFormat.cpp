@@ -818,14 +818,20 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 {
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
-	int w, h;
-	int i, pad;
+	uint32_t w, h, i;
+	int32_t pad;
 	FILE *fdest = NULL;
 	int adjustR, adjustG, adjustB;
 
-	if (image->comps[0].prec < 8) {
-		fprintf(stderr, "Unsupported precision: %d\n", image->comps[0].prec);
+	if (image->numcomps == 0) {
+		fprintf(stderr, "Unsupported number of components: %d\n", image->numcomps);
 		return 1;
+	}
+	for (i = 0; i < image->numcomps; ++i) {
+		if (image->comps[i].prec < 8) {
+			fprintf(stderr, "Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
+			return 1;
+		}
 	}
 
 	if (writeToStdout) {
@@ -854,8 +860,8 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		/* -->> -->> -->> -->>
 		24 bits color
 		<<-- <<-- <<-- <<-- */
-		w = (int)image->comps[0].w;
-		h = (int)image->comps[0].h;
+		w = image->comps[0].w;
+		h = image->comps[0].h;
 
 		fprintf(fdest, "BM");
 
@@ -916,27 +922,36 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 
 		for (i = 0; i < w * h; i++) {
 			uint8_t rc, gc, bc;
-			int r, g, b;
+			int32_t r, g, b;
 
 			r = image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
 			r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-			r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
-			if (r > 255) r = 255;
-			else if (r < 0) r = 0;
+			if (adjustR > 0)
+				r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+			if (r > 255) 
+				r = 255;
+			else if (r < 0)
+				r = 0;
 			rc = (uint8_t)r;
 
 			g = image->comps[1].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
 			g += (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-			g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
-			if (g > 255) g = 255;
-			else if (g < 0) g = 0;
+			if (adjustG > 0)
+				g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
+			if (g > 255)
+				g = 255;
+			else if (g < 0)
+				g = 0;
 			gc = (uint8_t)g;
 
 			b = image->comps[2].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
 			b += (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
-			b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
-			if (b > 255) b = 255;
-			else if (b < 0) b = 0;
+			if (adjustB > 0)
+				b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
+			if (b > 255) 
+				b = 255;
+			else if (b < 0) 
+				b = 0;
 			bc = (uint8_t)b;
 
 			fprintf(fdest, "%c%c%c", bc, gc, rc);
@@ -949,11 +964,11 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 	}
 	else {			/* Gray-scale */
 
-					/* -->> -->> -->> -->>
-					8 bits non code (Gray scale)
-					<<-- <<-- <<-- <<-- */
-		w = (int)image->comps[0].w;
-		h = (int)image->comps[0].h;
+		/* -->> -->> -->> -->>
+		8 bits non code (Gray scale)
+		<<-- <<-- <<-- <<-- */
+		w = image->comps[0].w;
+		h = image->comps[0].h;
 
 		fprintf(fdest, "BM");
 
@@ -1004,13 +1019,16 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		}
 
 		for (i = 0; i < w * h; i++) {
-			int r;
+			int32_t r;
 
 			r = image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
 			r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-			r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
-			if (r > 255) r = 255;
-			else if (r < 0) r = 0;
+			if (adjustR > 0)
+				r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+			if (r > 255)
+				r = 255;
+			else if (r < 0)
+				r = 0;
 
 			fprintf(fdest, "%c", (uint8_t)r);
 
