@@ -5758,6 +5758,14 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
         return false;
     }
 
+	/* if no rate entered, lossless by default */
+	if (parameters->tcp_numlayers == 0) {
+		parameters->tcp_rates[0] = 0;
+		parameters->tcp_numlayers=1;
+		parameters->cp_disto_alloc = 1;
+	}
+
+
     /* see if max_codestream_size does limit input rate */
 	double image_bytes = ((double)image->numcomps * image->comps[0].w * image->comps[0].h * image->comps[0].prec) /
 																			(8 * image->comps[0].dx * image->comps[0].dy);

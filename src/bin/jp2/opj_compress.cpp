@@ -1293,7 +1293,7 @@ static int parse_cmdline_encoder_ex(int argc,
     /* if no rate entered, lossless by default */
     if (parameters->tcp_numlayers == 0) {
         parameters->tcp_rates[0] = 0;	
-        parameters->tcp_numlayers++;
+        parameters->tcp_numlayers=1;
         parameters->cp_disto_alloc = 1;
     }
 
