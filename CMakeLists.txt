@@ -43,18 +43,11 @@ set(PACKAGE_VERSION
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
 # two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
-#   1.0   |  0
-#   1.1   |  1
-#   1.2   |  2
-#   1.3   |  3
-#   1.4   |  4
-#   1.5   |  5
-#   1.5.1 |  5
 #   2.0   |  6
 #   2.0.1 |  6
 #   2.1   |  7
 #   2.1.1 |  7
-#   2.3.0 |  7
+#   2.3.0 |  8
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
