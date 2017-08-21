@@ -314,14 +314,14 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	*/
 	jpeg_set_quality(&cinfo,
 		(compressionParam == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ? 90 : compressionParam,
-		1 /* limit to baseline-JPEG values */);
+		(boolean) TRUE /* limit to baseline-JPEG values */);
 
 	/* Step 4: Start compressor */
 
 	/* TRUE ensures that we will write a complete interchange-JPEG file.
 	* Pass TRUE unless you are very sure of what you're doing.
 	*/
-	jpeg_start_compress(&cinfo, 1);
+	jpeg_start_compress(&cinfo, (boolean) TRUE);
 
 	/* Step 5: while (scan lines remain to be written) */
 	/*           jpeg_write_scanlines(...); */
