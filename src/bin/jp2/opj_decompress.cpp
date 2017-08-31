@@ -939,7 +939,7 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
         opj_set_default_decoder_parameters(&(parameters->core));
 
 		parameters->numThreads = 8;
-		parameters->deviceId = -1;
+		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
     }
