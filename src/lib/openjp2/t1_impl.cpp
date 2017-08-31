@@ -66,10 +66,8 @@ t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW
 	}
 }
 t1_impl::~t1_impl() {
-	if (t1)
-		delete t1;
-	if (t1_opt)
-		delete t1_opt;
+	delete t1;
+	delete t1_opt;
 }
 
 // ENCODED

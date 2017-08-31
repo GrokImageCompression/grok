@@ -358,10 +358,8 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	jpeg_destroy_compress(&cinfo);
 
 cleanup:
-	if (info.buffer)
-		delete[] info.buffer;
-	if (info.buffer32s)
-		delete[] info.buffer32s;
+	delete[] info.buffer;
+	delete[] info.buffer32s;
 	return info.success ? 0 : 1;
 }
 
@@ -609,8 +607,7 @@ cleanup:
 	if (infile)
 		fclose(infile);
 
-	if (imageInfo.buffer32s)
-		delete[] imageInfo.buffer32s;
+	delete[] imageInfo.buffer32s;
 
 	/* At this point you may want to check to see whether any corrupt-data
 	* warnings occurred (test whether jerr.pub.num_warnings is nonzero).

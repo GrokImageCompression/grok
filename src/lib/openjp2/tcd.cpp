@@ -1610,11 +1610,9 @@ static void tcd_free_tile(tcd_t *p_tcd)
 
 						l_nb_precincts = l_band->numPrecincts();
                         for (precno = 0; precno < l_nb_precincts; ++precno) {
-							if (l_precinct->incltree)
-								delete l_precinct->incltree;
+							delete l_precinct->incltree;
                             l_precinct->incltree = nullptr;
-							if (l_precinct->imsbtree)
-								delete l_precinct->imsbtree;
+							delete l_precinct->imsbtree;
                             l_precinct->imsbtree = nullptr;
                             (*l_tcd_code_block_deallocate) (l_precinct);
                             ++l_precinct;
@@ -2404,8 +2402,7 @@ void tcd_cblk_enc_t::cleanup() {
 		passes = nullptr;
 	}
 #ifdef DEBUG_LOSSLESS_T2
-	if (packet_length_info)
-		delete packet_length_info;
+	delete packet_length_info;
 	packet_length_info = nullptr;
 #endif
 }
@@ -2450,8 +2447,7 @@ void tcd_cblk_dec_t::cleanup() {
 		segs = nullptr;
 	}
 #ifdef DEBUG_LOSSLESS_T2
-	if (packet_length_info)
-		delete packet_length_info;
+	delete packet_length_info;
 	packet_length_info = nullptr;
 #endif
 }
@@ -2463,10 +2459,8 @@ tcd_cblk_dec_t::~tcd_cblk_dec_t() {
 
 
 tcd_precinct_t::~tcd_precinct_t() {
-	if (incltree)
-		delete incltree;
-	if (imsbtree)
-		delete imsbtree;
+	delete incltree;
+	delete imsbtree;
 }
 
 void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
@@ -2508,9 +2502,7 @@ void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 	}
 }
 tcd_band_t::~tcd_band_t() {
-	if (precincts) {
-		delete[] precincts;
-	}
+	delete[] precincts;
 }
 
 }

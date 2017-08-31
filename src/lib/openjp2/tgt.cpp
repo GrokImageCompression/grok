@@ -129,9 +129,7 @@ TagTree::TagTree(uint32_t mynumleafsh, uint32_t mynumleafsv, event_mgr_t *manage
 
 
 TagTree::~TagTree() {
-	if (nodes) {
-		delete[] nodes;
-	}
+	delete[] nodes;
 }
 
 

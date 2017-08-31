@@ -24,8 +24,7 @@ EncodedTileData::~EncodedTileData() {
 }
 
 void EncodedTileData::dealloc() {
-	if (data)
-		delete[] data;
+	delete[] data;
 	data = nullptr;
 	size = 0;
 	offset = 0;
