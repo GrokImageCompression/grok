@@ -79,9 +79,9 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	if [ "${GROK_NONCOMMERCIAL:-}" == "1" ]; then
 		if [ "${TRAVIS_OS_NAME:-}" == "linux" ] || uname -s | grep -i Linux &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827.zip
-			cmake -E tar -xf KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827.zip
-			mv KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827 kdu
+			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU77_Demo_Apps_for_Linux-x86-64_150710.zip
+			cmake -E tar -xf KDU77_Demo_Apps_for_Linux-x86-64_150710.zip
+			mv KDU77_Demo_Apps_for_Linux-x86-64_150710 kdu
 		elif [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 			echo "Retrieving Kakadu"
 			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU77_Demo_Apps_for_OSX109_150710.dmg_.zip
