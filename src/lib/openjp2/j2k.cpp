@@ -7169,10 +7169,8 @@ static void j2k_tcp_destroy (tcp_t *p_tcp)
 
 static void j2k_tcp_data_destroy (tcp_t *p_tcp)
 {
-	if (p_tcp->m_data) {
-		delete p_tcp->m_data;
-		p_tcp->m_data = NULL;
-	}
+	delete p_tcp->m_data;
+	p_tcp->m_data = NULL;
 }
 
 static void j2k_cp_destroy (cp_t *p_cp)

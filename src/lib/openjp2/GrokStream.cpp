@@ -127,7 +127,7 @@ GrokStream::~GrokStream() {
 	if (m_free_user_data_fn) {
 		m_free_user_data_fn(m_user_data);
 	}
-	if (!isBufferStream && m_buffer) {
+	if (!isBufferStream) {
 		delete[] m_buffer;
 	}
 }
@@ -651,8 +651,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_default_create(bool l_is_input)
 
 void OPJ_CALLCONV opj_stream_destroy(opj_stream_t* p_stream) {
 	auto stream = (grk::GrokStream*)(p_stream);
-	if (stream)
-		delete stream;
+	delete stream;
 }
 
 void OPJ_CALLCONV opj_stream_set_read_function(opj_stream_t* p_stream,

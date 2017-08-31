@@ -1650,8 +1650,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 cleanup:
 	if (info->l_stream)
 		opj_stream_destroy(info->l_stream);
-	if (buffer)
-		delete[] buffer;
+	delete[] buffer;
 	buffer = nullptr;
 	info->l_stream = NULL;
 	if (info->l_codec)

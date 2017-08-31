@@ -128,8 +128,7 @@ void   minpf_cleanup_plugin_manager(void)
         }
 
 		for (auto plug = managerInstance->plugins->begin(); plug != managerInstance->plugins->end(); ++plug) {
-			if (plug->second)
-				delete plug->second;
+			delete plug->second;
 		}
 		delete managerInstance->plugins;
         free(managerInstance);
