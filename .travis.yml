@@ -8,7 +8,7 @@ matrix:
     dist: trusty
     sudo: required
     compiler: g++
-    env: GROK_CI_ARCH=x86_64 GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1
+    env: GROK_CI_ARCH=x86_64 GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1 GROK_NONCOMMERCIAL=1
     addons:
       apt:
         sources:
