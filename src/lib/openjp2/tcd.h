@@ -129,7 +129,7 @@ struct tcd_cblk_enc_t {
 							numbps(0),
 							numlenbits(0),
 							num_passes_included_in_current_layer(0),
-							num_passes_included_in_other_layers(0),
+							num_passes_included_in_previous_layers(0),
 							num_passes_encoded(0),
 #ifdef DEBUG_LOSSLESS_T2
 							included(0),
@@ -151,7 +151,7 @@ struct tcd_cblk_enc_t {
     uint32_t numbps;
     uint32_t numlenbits;
     uint32_t num_passes_included_in_current_layer;  /* number of passes encoded in current layer */
-    uint32_t num_passes_included_in_other_layers;	/* number of passes in other layers */
+    uint32_t num_passes_included_in_previous_layers;	/* number of passes in previous layers */
     uint32_t num_passes_encoded;					/* number of passes encoded */
     uint32_t* contextStream;
 #ifdef DEBUG_LOSSLESS_T2
