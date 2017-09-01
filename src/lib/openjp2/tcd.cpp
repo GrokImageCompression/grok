@@ -162,9 +162,6 @@ static void tcd_makelayer_feasible(tcd_t *tcd,
 	uint16_t thresh,
 	bool final);
 
-
-
-
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -173,15 +170,12 @@ Create a new TCD handle
 tcd_t* tcd_create(bool p_is_decoder)
 {
     tcd_t *l_tcd = nullptr;
-
     /* create the tcd structure */
     l_tcd = (tcd_t*) grok_calloc(1,sizeof(tcd_t));
     if (!l_tcd) {
         return nullptr;
     }
-
     l_tcd->m_is_decoder = p_is_decoder ? 1 : 0;
-
     return l_tcd;
 }
 
@@ -213,13 +207,11 @@ bool tcd_needs_rate_control(tcp_t *tcd_tcp, encoding_param_t* enc_params) {
 
 bool tcd_make_single_lossless_layer(tcd_t *tcd) {
 	if (tcd->tcp->numlayers == 1 && !tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
-
 		tcd_makelayer_final(tcd, 0);
 		return true;
 	}
 	return false;
 }
-
 
 void tcd_makelayer_feasible(tcd_t *tcd,
 								uint32_t layno,
@@ -229,15 +221,11 @@ void tcd_makelayer_feasible(tcd_t *tcd,
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
 	tcd_tile_t *tcd_tile = tcd->tile;
-
 	tcd_tile->distolayer[layno] = 0;
-
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
 		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
-
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			tcd_resolution_t *res = tilec->resolutions + resno;
-
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				tcd_band_t *band = res->bands + bandno;
 
@@ -250,13 +238,13 @@ void tcd_makelayer_feasible(tcd_t *tcd,
 						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0) {
-							cblk->num_passes_included_in_other_layers = 0;
+							cblk->num_passes_included_in_previous_layers = 0;
 						}
 
 						cumulative_included_passes_in_block =
-							cblk->num_passes_included_in_other_layers;
+							cblk->num_passes_included_in_previous_layers;
 
-						for (passno = cblk->num_passes_included_in_other_layers;
+						for (passno = cblk->num_passes_included_in_previous_layers;
 							passno < cblk->num_passes_encoded; passno++) {
 							tcd_pass_t *pass = &cblk->passes[passno];
 
@@ -269,7 +257,7 @@ void tcd_makelayer_feasible(tcd_t *tcd,
 						}
 
 						layer->numpasses =
-							cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+							cumulative_included_passes_in_block - cblk->num_passes_included_in_previous_layers;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -277,32 +265,28 @@ void tcd_makelayer_feasible(tcd_t *tcd,
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_other_layers == 0) {
+						if (cblk->num_passes_included_in_previous_layers == 0) {
 							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
 							layer->disto =	cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 						}
 						else {
 							layer->len =
-								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
-							layer->data =	cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
+							layer->data =	cblk->data + cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
 							layer->disto =	
-								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].distortiondec;
 						}
 
 						tcd_tile->distolayer[layno] += layer->disto;
-
 						if (final)
-							cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
+							cblk->num_passes_included_in_previous_layers = cumulative_included_passes_in_block;
 					}
 				}
 			}
 		}
 	}
 }
-
-
-
 
 /*
 Hybrid rate control using bisect algorithm with optimal truncation points
@@ -452,9 +436,6 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	return true;
 }
 
-
-
-
 /*
 Simple bisect algorithm to calculate optimal layer truncation points
 */
@@ -482,19 +463,14 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
     for (compno = 0; compno < tcd_tile->numcomps; compno++) {
         tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
         tilec->numpix = 0;
-
         for (resno = 0; resno < tilec->numresolutions; resno++) {
             tcd_resolution_t *res = &tilec->resolutions[resno];
-
             for (bandno = 0; bandno < res->numbands; bandno++) {
                 tcd_band_t *band = &res->bands[bandno];
-
                 for (precno = 0; precno < res->pw * res->ph; precno++) {
                     tcd_precinct_t *prc = &band->precincts[precno];
-
                     for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
                         tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
-
 						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(tcd,
@@ -556,7 +532,6 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
 	double upperBound = max_slope;
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
 		if (tcd_layer_needs_rate_control(layno, tcd_tcp, &cp->m_specific_param.m_enc)) {
-
 			double lowerBound = min_slope;
 			uint64_t maxlen = tcd_tcp->rates[layno] > 0.0f ? std::min<uint64_t>(((uint64_t)ceil(tcd_tcp->rates[layno])), len) : len;
 
@@ -564,14 +539,11 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
 			// start by including everything in this layer
 			double goodthresh = 0;
 
-
 			// thresh from previous iteration - starts off uninitialized
 			// used to bail out if difference with current thresh is small enough
 			double prevthresh = -1;
-
 			double distotarget =
 				tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
-
 
 			t2_t*t2 = t2_create(tcd->image, cp);
 			if (t2 == nullptr) {
@@ -632,12 +604,10 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
     }
     return true;
 }
-
 static void prepareBlockForFirstLayer(tcd_cblk_enc_t* cblk) {
-	cblk->num_passes_included_in_other_layers = 0;
+	cblk->num_passes_included_in_previous_layers = 0;
 	cblk->num_passes_included_in_current_layer = 0;
 	cblk->numlenbits = 0;
-
 }
 
 /*
@@ -651,51 +621,38 @@ void tcd_make_layer_simple(tcd_t *tcd,
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
 	tcd_tile_t *tcd_tile = tcd->tile;
-
 	tcd_tile->distolayer[layno] = 0;
-
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
 		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
-
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			tcd_resolution_t *res = tilec->resolutions + resno;
-
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				tcd_band_t *band = res->bands + bandno;
-
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
 					tcd_precinct_t *prc = band->precincts + precno;
-
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
 						tcd_layer_t *layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
-
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
 						}
-
 						if (thresh == 0) {
 							cumulative_included_passes_in_block = cblk->num_passes_encoded;
 						}
 						else {
-
-							cumulative_included_passes_in_block =	cblk->num_passes_included_in_other_layers;
-
-							for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
+							cumulative_included_passes_in_block =	cblk->num_passes_included_in_previous_layers;
+							for (passno = cblk->num_passes_included_in_previous_layers; passno < cblk->num_passes_encoded; passno++) {
 								uint32_t dr;
 								double dd;
 								tcd_pass_t *pass = &cblk->passes[passno];
-
 								if (cumulative_included_passes_in_block == 0) {
 									dr = pass->rate;
 									dd = pass->distortiondec;
 								}
 								else {
-									dr =
-										pass->rate - cblk->passes[cumulative_included_passes_in_block - 1].rate;
-									dd =
-										pass->distortiondec - cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
+									dr = pass->rate - cblk->passes[cumulative_included_passes_in_block - 1].rate;
+									dd = pass->distortiondec - cblk->passes[cumulative_included_passes_in_block - 1].distortiondec;
 								}
 
 								if (!dr) {
@@ -710,15 +667,14 @@ void tcd_make_layer_simple(tcd_t *tcd,
 							}
 						}
 
-						layer->numpasses = 	cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
-
+						layer->numpasses = 	cumulative_included_passes_in_block - cblk->num_passes_included_in_previous_layers;
 						if (!layer->numpasses) {
 							layer->disto = 0;
 							continue;
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_other_layers == 0) {
+						if (cblk->num_passes_included_in_previous_layers == 0) {
 							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
 							layer->disto =
@@ -726,17 +682,16 @@ void tcd_make_layer_simple(tcd_t *tcd,
 						}
 						else {
 							layer->len =
-								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
 							layer->data =
-								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->data + cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
 							layer->disto =
-								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].distortiondec;
 						}
 
 						tcd_tile->distolayer[layno] += layer->disto;
-
 						if (final)
-							cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
+							cblk->num_passes_included_in_previous_layers = cumulative_included_passes_in_block;
 					}
 				}
 			}
@@ -745,9 +700,7 @@ void tcd_make_layer_simple(tcd_t *tcd,
 }
 
 
-/*
-Add all remaining passes to this layer
-*/
+// Add all remaining passes to this layer
 void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 {
 	uint32_t compno, resno, bandno, precno, cblkno;
@@ -758,34 +711,24 @@ void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
 		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
-
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
 			tcd_resolution_t *res = tilec->resolutions + resno;
-
 			for (bandno = 0; bandno < res->numbands; bandno++) {
 				tcd_band_t *band = res->bands + bandno;
-
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
 					tcd_precinct_t *prc = band->precincts + precno;
-
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
 						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
 						tcd_layer_t *layer = cblk->layers + layno;
-						uint32_t cumulative_included_passes_in_block;
-
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
 						}
-
-						cumulative_included_passes_in_block =
-							cblk->num_passes_included_in_other_layers;
-
-						for (passno = cblk->num_passes_included_in_other_layers; passno < cblk->num_passes_encoded; passno++) {
-							cumulative_included_passes_in_block = passno + 1;
-						}
+						uint32_t cumulative_included_passes_in_block =	cblk->num_passes_included_in_previous_layers;
+						if (cblk->num_passes_encoded > cblk->num_passes_included_in_previous_layers)
+							cumulative_included_passes_in_block = cblk->num_passes_encoded;
 
 						layer->numpasses =
-							cumulative_included_passes_in_block - cblk->num_passes_included_in_other_layers;
+							cumulative_included_passes_in_block - cblk->num_passes_included_in_previous_layers;
 
 						if (!layer->numpasses) {
 							layer->disto = 0;
@@ -793,7 +736,7 @@ void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 						}
 
 						// update layer
-						if (cblk->num_passes_included_in_other_layers == 0) {
+						if (cblk->num_passes_included_in_previous_layers == 0) {
 							layer->len = cblk->passes[cumulative_included_passes_in_block - 1].rate;
 							layer->data = cblk->data;
 							layer->disto =
@@ -801,32 +744,25 @@ void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 						}
 						else {
 							layer->len =
-								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->passes[cumulative_included_passes_in_block - 1].rate - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
 							layer->data =
-								cblk->data + cblk->passes[cblk->num_passes_included_in_other_layers - 1].rate;
+								cblk->data + cblk->passes[cblk->num_passes_included_in_previous_layers - 1].rate;
 							layer->disto =
-								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_other_layers - 1].distortiondec;
+								cblk->passes[cumulative_included_passes_in_block - 1].distortiondec - cblk->passes[cblk->num_passes_included_in_previous_layers - 1].distortiondec;
 						}
-
 						tcd_tile->distolayer[layno] += layer->disto;
-
-						cblk->num_passes_included_in_other_layers = cumulative_included_passes_in_block;
-
-						assert(cblk->num_passes_included_in_other_layers == cblk->num_passes_encoded);
+						cblk->num_passes_included_in_previous_layers = cumulative_included_passes_in_block;
+						assert(cblk->num_passes_included_in_previous_layers == cblk->num_passes_encoded);
 					}
 				}
 			}
 		}
 	}
 }
-
-
-
 bool tcd_init( tcd_t *p_tcd,
                    opj_image_t * p_image,
                    cp_t * p_cp,
-				   uint32_t numThreads)
-{
+				   uint32_t numThreads){
     p_tcd->image = p_image;
     p_tcd->cp = p_cp;
 
@@ -843,15 +779,13 @@ bool tcd_init( tcd_t *p_tcd,
     p_tcd->tile->numcomps = p_image->numcomps;
     p_tcd->tp_pos = p_cp->m_specific_param.m_enc.m_tp_pos;
 	p_tcd->numThreads = numThreads;
-
     return true;
 }
 
 /**
 Destroy a previously created TCD handle
 */
-void tcd_destroy(tcd_t *tcd)
-{
+void tcd_destroy(tcd_t *tcd){
     if (tcd) {
         tcd_free_tile(tcd);
         grok_free(tcd);
