@@ -1,15 +1,14 @@
 version: 2.2.0.{build}
-branches:
-  except:
-  - coverity_scan
 skip_tags: true
 clone_depth: 50
 environment:
   matrix:
   - GROK_CI_ARCH: x86
     GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
+    GROK_NONCOMMERCIAL: 1
   - GROK_CI_ARCH: x64
     GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
+    GROK_NONCOMMERCIAL: 1
 install:
 - cmd: c:\cygwin\bin\bash ./tools/travis-ci/install.sh
 build_script:

@@ -84,24 +84,24 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 			mv KDU77_Demo_Apps_for_Linux-x86-64_150710 kdu
 		elif [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU77_Demo_Apps_for_OSX109_150710.dmg_.zip
-			cmake -E tar -xf KDU77_Demo_Apps_for_OSX109_150710.dmg_.zip
+			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_OSX1011_170827.zip
+			cmake -E tar -xf KDU7A2_Demo_Apps_for_OSX1011_170827.zip
 			wget -q http://downloads.sourceforge.net/project/catacombae/HFSExplorer/0.23/hfsexplorer-0.23-bin.zip
 			mkdir hfsexplorer && cmake -E chdir hfsexplorer tar -xf ../hfsexplorer-0.23-bin.zip
-			./hfsexplorer/bin/unhfs.sh -o ./ -fsroot Kakadu-demo-apps.pkg  KDU77_Demo_Apps_for_OSX109_150710.dmg
-			pkgutil --expand Kakadu-demo-apps.pkg ./kdu
+			./hfsexplorer/bin/unhfs.sh -o ./ -fsroot KDU7A2_Demo_Apps_for_OSX_170827.pkg  KDU7A2_Demo_Apps_for_OSX1011_170827.dmg
+			pkgutil --expand KDU7A2_Demo_Apps_for_OSX_170827.pkg ./kdu
 			cd kdu
-			cat libkduv77r.pkg/Payload | gzip -d | cpio -id
+			cat libkduv7ar.pkg/Payload | gzip -d | cpio -id
 			cat kduexpand.pkg/Payload | gzip -d | cpio -id
 			cat kducompress.pkg/Payload | gzip -d | cpio -id
-			install_name_tool -id ${PWD}/libkdu_v77R.dylib libkdu_v77R.dylib 
-			install_name_tool -change /usr/local/lib/libkdu_v77R.dylib ${PWD}/libkdu_v77R.dylib kdu_compress
-			install_name_tool -change /usr/local/lib/libkdu_v77R.dylib ${PWD}/libkdu_v77R.dylib kdu_expand
+			install_name_tool -id ${PWD}/libkdu_v7AR.dylib libkdu_v7AR.dylib 
+			install_name_tool -change /usr/local/lib/libkdu_v7AR.dylib ${PWD}/libkdu_v7AR.dylib kdu_compress
+			install_name_tool -change /usr/local/lib/libkdu_v7AR.dylib ${PWD}/libkdu_v7AR.dylib kdu_expand
 		elif [ "${APPVEYOR:-}" == "True" ] || uname -s | grep -i MINGW &> /dev/null || uname -s | grep -i CYGWIN &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU77_Demo_Apps_for_Win32_150710.msi_.zip
-			cmake -E tar -xf KDU77_Demo_Apps_for_Win32_150710.msi_.zip
-			msiexec /i KDU77_Demo_Apps_for_Win32_150710.msi /quiet /qn /norestart
+			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_Win32_170827.zip
+			cmake -E tar -xf KDU7A2_Demo_Apps_for_Win32_170827.zip
+			msiexec /i KDU7A2_Demo_Apps_for_Win32_170827.msi /quiet /qn /norestart
 			if [ -d "C:/Program Files/Kakadu" ]; then
 				cp -r "C:/Program Files/Kakadu" ./kdu
 			else
