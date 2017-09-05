@@ -704,9 +704,7 @@ void tcd_make_layer_simple(tcd_t *tcd,
 void tcd_makelayer_final(tcd_t *tcd, uint32_t layno)
 {
 	uint32_t compno, resno, bandno, precno, cblkno;
-	uint32_t passno;
 	tcd_tile_t *tcd_tile = tcd->tile;
-
 	tcd_tile->distolayer[layno] = 0;
 
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
