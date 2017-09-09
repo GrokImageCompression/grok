@@ -5,7 +5,7 @@
  *  file:  DocBookOutput.h
  * 
  *  Copyright (c) 2004, Michael E. Smoot
- *  All rights reverved.
+ *  All rights reserved.
  * 
  *  See the file COPYING in the top directory of this distribution for
  *  more information.
@@ -100,7 +100,7 @@ inline void DocBookOutput::usage(CmdLineInterface& _cmd )
 	std::string xversion = _cmd.getVersion();
 	theDelimiter = _cmd.getDelimiter();
 	XorHandler xorHandler = _cmd.getXorHandler();
-	std::vector< std::vector<Arg*> > xorList = xorHandler.getXorList();
+	const std::vector< std::vector<Arg*> > xorList = xorHandler.getXorList();
 	basename(progName);
 
 	std::cout << "<?xml version='1.0'?>" << std::endl;

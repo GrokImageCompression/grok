@@ -5,7 +5,7 @@
  *  file:  ZshCompletionOutput.h
  * 
  *  Copyright (c) 2006, Oliver Kiddle
- *  All rights reverved.
+ *  All rights reserved.
  * 
  *  See the file COPYING in the top directory of this distribution for
  *  more information.
@@ -193,7 +193,7 @@ inline void ZshCompletionOutput::printOption(Arg* a, std::string mutex)
 	std::string name = a->nameStartString() + a->getName();
 	std::string desc = a->getDescription();
 
-	// remove full stop and capitalisation from description as
+	// remove full stop and capitalization from description as
 	// this is the convention for zsh function
 	if (!desc.compare(0, 12, "(required)  "))
 	{
@@ -231,6 +231,12 @@ inline void ZshCompletionOutput::printOption(Arg* a, std::string mutex)
 	if ( a->isValueRequired() )
 	{
 		std::string arg = a->shortID();
+        // Example arg: "[-A <integer>] ... "
+        size_t pos = arg.rfind(" ... ");
+        if (pos != std::string::npos) {
+            arg.erase(pos);
+        }
+
 		arg.erase(0, arg.find_last_of(theDelimiter) + 1);
 		if ( arg.at(arg.length()-1) == ']' )
 			arg.erase(arg.length()-1);
