@@ -6,7 +6,7 @@
  *
  *  Copyright (c) 2003, Michael E. Smoot .
  *  Copyright (c) 2004, Michael E. Smoot, Daniel Aarno.
- *  All rights reverved.
+ *  All rights reserved.
  *
  *  See the file COPYING in the top directory of this distribution for
  *  more information.
@@ -119,7 +119,7 @@ class CmdLine : public CmdLineInterface
 
 		/**
 		 * A list of Visitors to be explicitly deleted when the destructor
-		 * is called.  At the moment, these are the Vistors created for the
+		 * is called.  At the moment, these are the Visitors created for the
 		 * default Args.
 		 */
 		std::list<Visitor*> _visitorDeleteOnExitList;
@@ -237,7 +237,7 @@ private:
 		 * add does not need to be called.
 		 * \param xors - List of Args to be added and xor'd.
 		 */
-		void xorAdd( std::vector<Arg*>& xors );
+		void xorAdd( const std::vector<Arg*>& xors );
 
 		/**
 		 * Parses the command line.
@@ -403,7 +403,7 @@ inline void CmdLine::_constructor()
 	deleteOnExit(v);
 }
 
-inline void CmdLine::xorAdd( std::vector<Arg*>& ors )
+inline void CmdLine::xorAdd( const std::vector<Arg*>& ors )
 {
 	_xorHandler.add( ors );
 
