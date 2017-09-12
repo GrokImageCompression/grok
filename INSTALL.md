@@ -40,7 +40,7 @@ Everyone else can run:
 
 `$ DESTDIR=$HOME/local make install`
 
-Note: On Linux, for a shared library build, you must run
+Note: On Linux, after your first shared library build, you must run
 
 `$ sudo ldconfig`
 
