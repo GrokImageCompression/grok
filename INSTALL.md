@@ -1,7 +1,7 @@
 # How to Build and Install Grok binaries
 
 
-Grok uses cmake (www.cmake.org) to configure builds across multiple platforms.
+Grok uses `cmake` (www.cmake.org) to configure builds across multiple platforms.
 
 To configure using defaults, create a build directory `/PATH/TO/BUILD`,
 change to this directory, and run:
@@ -9,10 +9,16 @@ change to this directory, and run:
 `$ cmake /PATH/TO/SOURCE`
 
 On headless systems, `ccmake` (an ncurses application) may be used to configure the build.
-If you are running windows, OSX or X-Windows, then the cmake gui may be used.
+If you are running Windows, OSX or X-Windows, then the `cmake` gui may be used.
 
 
 ## UNIX/LINUX/OSX
+
+### SHARED/STATIC
+
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `opj_compress` and `opj_decompress` binaries are
+linked to dynamic or static builds of the codec library `libopenjp2`. Either way, both static and dynamic versions
+of `libopenjp2` are built on the system.
 
 
 ### DEBUG/RELEASE
@@ -68,6 +74,7 @@ Main available cmake flags:
 
 ## OSX
 
+OSX builds are configured similiar to Unix builds.
 
 The xcode project files can be generated using:
 
@@ -76,6 +83,13 @@ The xcode project files can be generated using:
 
 
 ## WINDOWS
+
+
+### SHARED/STATIC
+
+The `BUILD_SHARED_LIBS` `cmake` flag determines if the `opj_compress` and `opj_decompress` binaries are
+linked to dynamic or static builds of the codec library `libopenjp2`, and also if a static or dynamic version
+of `libopenjp2` is built on the system.
 
 
 ### Compile
