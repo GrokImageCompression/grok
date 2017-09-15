@@ -111,8 +111,9 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
 				res->band_region[bandno].dim.pan(&shift);
 				res->band_region[bandno].dim.ceildivpow2(1);
 
-                /* boundary padding */
-				res->band_region[bandno].dim.grow(irreversible ? 3 : 2);
+                // boundary padding. These numbers are slightly larger than they theoretically should be,
+				// but we want to make sure that we don't have bugs at the region boundaries
+				res->band_region[bandno].dim.grow(irreversible ? 5 : 3);
 
             }
 
