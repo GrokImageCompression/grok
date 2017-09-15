@@ -74,8 +74,6 @@ const flag_t  T1_REFINE = 0x2000;
 const flag_t T1_VISIT = 0x4000;
 
 
-#define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
-#define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
 #define MACRO_t1_flags(x,y) t1->flags[((x)*(t1->flags_stride))+(y)]
 
 
@@ -107,7 +105,6 @@ static inline void t1_dec_sigpass_step_raw(
 	t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint8_t orient,
 	int32_t oneplushalf,
 	bool vsc);
 static inline void t1_dec_sigpass_step_mqc(
@@ -351,6 +348,7 @@ static void t1_enc_sigpass_step(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		v = (abs(*datap) & one) ? 1 : 0;
@@ -381,14 +379,13 @@ static void t1_enc_sigpass_step(t1_t *t1,
 static inline void t1_dec_sigpass_step_raw(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
-	uint8_t orient,
 	int32_t oneplushalf,
 	bool vsc)
 {
 	int32_t v, flag;
 	raw_t *raw = t1->raw;
-	ARG_NOT_USED(orient);
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		if (raw_decode(raw)) {
@@ -436,6 +433,7 @@ static inline void t1_dec_sigpass_step_mqc_vsc(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
@@ -467,6 +465,7 @@ static void t1_enc_sigpass(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_enc_sigpass_step(
 					t1,
@@ -496,12 +495,12 @@ static void t1_dec_sigpass_raw(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_dec_sigpass_step_raw(
 					t1,
 					&t1->flags[((j + 1) * t1->flags_stride) + i + 1],
 					&t1->data[(j * t1->w) + i],
-					orient,
 					oneplushalf,
 					vsc);
 			}
@@ -563,6 +562,7 @@ static void t1_dec_sigpass_mqc_vsc(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = (j == k + 3 || j == t1->h - 1) ? 1 : 0;
 				t1_dec_sigpass_step_mqc_vsc(
 					t1,
@@ -592,6 +592,7 @@ static void t1_enc_refpass_step(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		*nmsedec += t1_getnmsedec_ref((uint32_t)abs(*datap), (uint32_t)(bpno));
@@ -618,6 +619,7 @@ static inline void t1_dec_refpass_step_raw(t1_t *t1,
 
 	raw_t *raw = t1->raw;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		v = (int32_t)raw_decode(raw);
@@ -662,6 +664,7 @@ static inline void t1_dec_refpass_step_mqc_vsc(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
@@ -687,6 +690,7 @@ static void t1_enc_refpass(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_enc_refpass_step(
 					t1,
@@ -715,6 +719,7 @@ static void t1_dec_refpass_raw(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_dec_refpass_step_raw(
 					t1,
@@ -779,6 +784,7 @@ static void t1_dec_refpass_mqc_vsc(t1_t *t1,
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			for (j = k; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_dec_refpass_step_mqc_vsc(
 					t1,
@@ -807,6 +813,7 @@ static void t1_enc_clnpass_step(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if (partial) {
 		goto LABEL_PARTIAL;
@@ -881,6 +888,7 @@ static void t1_dec_clnpass_step_vsc(t1_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
+	// ignore locations in next stripe when VSC flag is set
 	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if (partial) {
 		goto LABEL_PARTIAL;
@@ -949,6 +957,7 @@ static void t1_enc_clnpass(t1_t *t1,
 				runlen = 0;
 			}
 			for (j = k + runlen; j < k + 4 && j < t1->h; ++j) {
+				// VSC flag is set for last line of stripe
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
 				t1_enc_clnpass_step(
 					t1,
@@ -1005,6 +1014,7 @@ static void t1_dec_clnpass(t1_t *t1,
 					runlen = 0;
 				}
 				for (j = k + (uint32_t)runlen; j < k + 4 && j < t1->h; ++j) {
+					// VSC flag is set for last line of stripe
 					vsc = (j == k + 3 || j == t1->h - 1) ? 1 : 0;
 					t1_dec_clnpass_step_vsc(
 						t1,
