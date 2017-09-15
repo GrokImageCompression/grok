@@ -138,7 +138,6 @@ Decode significant pass
 static void t1_dec_sigpass_raw(
 	t1_t *t1,
 	int32_t bpno,
-	uint8_t orient,
 	uint32_t cblksty);
 static void t1_dec_sigpass_mqc(
 	t1_t *t1,
@@ -484,7 +483,6 @@ static void t1_enc_sigpass(t1_t *t1,
 
 static void t1_dec_sigpass_raw(t1_t *t1,
 	int32_t bpno,
-	uint8_t orient,
 	uint32_t cblksty)
 {
 	int32_t one, half, oneplushalf, vsc;
@@ -1311,7 +1309,7 @@ bool t1_decode_cblk(t1_t *t1,
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW) {
-					t1_dec_sigpass_raw(t1, bpno_plus_one, (int32_t)orient, (int32_t)cblksty);
+					t1_dec_sigpass_raw(t1, bpno_plus_one, (int32_t)cblksty);
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {

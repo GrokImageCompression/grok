@@ -730,7 +730,7 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
-		auto type = T1_TYPE_MQ;
+		uint8_t type = T1_TYPE_MQ;
 		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
 			type = T1_TYPE_RAW;
 
