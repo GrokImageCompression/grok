@@ -90,6 +90,9 @@ namespace grk {
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
+#define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
+#define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
+
 typedef uint16_t flag_t;
 
 struct mqc_t;

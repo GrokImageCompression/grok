@@ -37,12 +37,15 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 
 t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_opt(nullptr), doOpt(false) {
 	if (isEncoder) {
+		// currently we only do optimized encode for default mode, 
+		// or combination of RESET, TERMALL and BYPASS modes
 		doOpt = true;
 		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
 			tccp_t* tccp = tcp->tccps + compno;
-			if (tccp->cblksty != 0 &&
-				tccp->cblksty != J2K_CCP_CBLKSTY_RESET &&
-				tccp->cblksty != J2K_CCP_CBLKSTY_TERMALL) {
+			if (tccp->cblksty & (~J2K_CCP_CBLKSTY_RESET & 
+								~J2K_CCP_CBLKSTY_TERMALL & 
+								~J2K_CCP_CBLKSTY_LAZY &
+								~J2K_CCP_CBLKSTY_SEGSYM)) {
 				doOpt = false;
 				break;
 			}
@@ -93,23 +96,14 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 		if (block->qmfbid == 1) {
 			for (auto j = 0U; j < t1_opt->h; ++j) {
 				for (auto i = 0U; i < t1_opt->w; ++i) {
-					int32_t tmp = 0;
-					// the next few lines were messing up post-encode comparison
-					// between plugin and grok open source
-					/*
-					// pass through otherwise
-					if (!(state & OPJ_PLUGIN_STATE_DEBUG) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
-					tmp = block->tiledp[tileIndex] *= (1<<T1_NMSEDEC_FRACBITS);
-					}
-					else
-					{
-					tmp = block->tiledp[tileIndex];
-					}
-					*/
 #ifdef DEBUG_LOSSLESS_T1
 					block->unencodedData[cblk_index] = block->tiledp[tileIndex];
 #endif
-					tmp = block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
+					// should we disable multiplication by (1 << T1_NMSEDEC_FRACBITS)
+					// when ((state & OPJ_PLUGIN_STATE_DEBUG) && !(state & OPJ_PLUGIN_STATE_PRE_TR1)) is true ?
+					// Disabling multiplication was messing up post-encode comparison
+					// between plugin and grok open source
+					int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
 					uint32_t mag = (uint32_t)abs(tmp);
 					max = std::max<uint32_t>(max, mag);
 					t1_opt->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
@@ -123,7 +117,7 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 			for (auto j = 0U; j < t1_opt->h; ++j) {
 				for (auto i = 0U; i < t1_opt->w; ++i) {
 					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
-					// 1. plugin is being used for full T1 encoding, so no need to quantize in OPJ
+					// 1. plugin is being used for full T1 encoding, so no need to quantize in grok
 					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
 					//    in the plugin DWT step
 					int32_t tmp = 0;
@@ -134,12 +128,10 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 					else {
 						tmp = tiledp[tileIndex];
 					}
-
 					uint32_t mag = (uint32_t)abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					max = std::max<uint32_t>(max, mag);
 					t1_opt->data[cblk_index] = sign_mag;
-
 					tileIndex++;
 					cblk_index++;
 				}

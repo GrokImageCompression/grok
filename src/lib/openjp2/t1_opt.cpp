@@ -146,7 +146,8 @@ static void t1_enc_sigpass_step(t1_opt_t *t1,
 	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
-	int32_t *nmsedec);
+	int32_t *nmsedec, 
+	uint8_t type);
 
 /**
 Encode significant pass
@@ -154,7 +155,8 @@ Encode significant pass
 static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
-	int32_t *nmsedec);
+	int32_t *nmsedec,
+	uint8_t type);
 
 
 /**
@@ -165,7 +167,8 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 	uint32_t *datap,
 	int32_t bpno,
 	int32_t one,
-	int32_t *nmsedec);
+	int32_t *nmsedec, 
+	uint8_t type);
 
 
 /**
@@ -173,7 +176,8 @@ Encode refinement pass
 */
 static void t1_enc_refpass(t1_opt_t *t1,
 	int32_t bpno,
-	int32_t *nmsedec);
+	int32_t *nmsedec, 
+	uint8_t type);
 
 /**
 Encode clean-up pass
@@ -354,7 +358,8 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 	uint8_t orient,
 	int32_t bpno,
 	int32_t one,
-	int32_t *nmsedec)
+	int32_t *nmsedec, 
+	uint8_t type)
 {
 	uint32_t v;
 	mqc_t *mqc = t1->mqc;
@@ -368,13 +373,23 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 		if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
-			mqc_encode(mqc, v);
+			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
+				mqc_bypass_enc(mqc, (uint32_t)v);
+			}
+			else {
+				mqc_encode(mqc, (uint32_t)v);
+			}
 			if (v) {
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
 				*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
 				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
-				mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
+				if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
+					mqc_bypass_enc(mqc, (uint32_t)v);
+				}
+				else {
+					mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
+				}
 				t1_updateflags(flagsp, ci3, v, t1->flags_stride);
 			}
 			/* set propagation pass bit for this location */
@@ -387,7 +402,8 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
-	int32_t *nmsedec)
+	int32_t *nmsedec, 
+	uint8_t type)
 {
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
@@ -407,7 +423,8 @@ static void t1_enc_sigpass(t1_opt_t *t1,
 				orient,
 				bpno,
 				one,
-				nmsedec);
+				nmsedec,
+				type);
 
 			++f;
 			++d;
@@ -422,7 +439,8 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 	uint32_t *datap,
 	int32_t bpno,
 	int32_t one,
-	int32_t *nmsedec)
+	int32_t *nmsedec, 
+	uint8_t type)
 {
 	uint32_t v;
 	mqc_t *mqc = t1->mqc;
@@ -443,7 +461,12 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 			*nmsedec += t1_getnmsedec_ref(*datap, (uint32_t)bpno);
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_mag(shift_flags));
-			mqc_encode(mqc, v);
+			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
+				mqc_bypass_enc(mqc, (uint32_t)v);
+			}
+			else {
+				mqc_encode(mqc, (uint32_t)v);
+			}
 			/* flip magnitude refinement bit*/
 			*flagsp |= T1_MU_THIS << ci3;
 		}
@@ -454,7 +477,8 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 static void t1_enc_refpass(
 	t1_opt_t *t1,
 	int32_t bpno,
-	int32_t *nmsedec)
+	int32_t *nmsedec, 
+	uint8_t type)
 {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
@@ -472,7 +496,8 @@ static void t1_enc_refpass(
 				d,
 				bpno,
 				one,
-				nmsedec);
+				nmsedec, 
+				type);
 			++f;
 			++d;
 		}
@@ -692,8 +717,6 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	if (!cblk->numbps)
 		return 0;
 
-	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
-
 	bpno = (int32_t)(cblk->numbps - 1);
 	passtype = 2;
 	mqc_init_enc(mqc, cblk->data);
@@ -702,24 +725,33 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		mqc->debug_mqc.contextStream = cblk->contextStream;
 	}
 
+	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
+	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
+
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
+		auto type = T1_TYPE_MQ;
+		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+			type = T1_TYPE_RAW;
+
 		switch (passtype) {
 		case 0:
-			t1_enc_sigpass(t1, bpno, orient, &nmsedec);
+			t1_enc_sigpass(t1, bpno, orient, &nmsedec,type);
 			break;
 		case 1:
-			t1_enc_refpass(t1, bpno, &nmsedec);
+			t1_enc_refpass(t1, bpno, &nmsedec,type);
 			break;
 		case 2:
 			t1_enc_clnpass(t1, bpno, orient, &nmsedec);
+			/* code switch SEGMARK (i.e. SEGSYM) */
+			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
+				mqc_segmark_enc(mqc);
 			if (state & OPJ_PLUGIN_STATE_DEBUG) {
 				mqc_next_plane(&mqc->debug_mqc);
 			}
 			break;
 		}
-		if (cblksty == J2K_CCP_CBLKSTY_RESET)
-			mqc_resetstates(mqc);
+
 		tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
 		cumwmsedec += tempwmsedec;
 
@@ -729,41 +761,96 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
 		// which is always 1 less than actual rate
 		uint32_t correction = 4 + 1;
-		if (TERMALL) {
-			// t1_opt doesn't support bypass, so set to false
-			mqc_big_flush(mqc, cblksty,false);
+
+		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
+		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
+		// does not get terminated unless TERMALL is also set
+		if (TERMALL ||
+			(LAZY && ((bpno < ((int32_t)cblk->numbps - 4) && (passtype > 0)) ||
+			((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
+
 			correction = 0;
+			auto bypassFlush = false;
+			if (LAZY) {
+				if (TERMALL) {
+					bypassFlush = (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2);
+				}
+				else {
+					bypassFlush = passtype == 1;
+				}
+			}
+			mqc_big_flush(mqc, cblksty, bypassFlush);
 			pass->term = 1;
 		}
 		else {
-			if (mqc->COUNT < 5)
+			// SPP in raw region requires only a correction of one, since there are never more than 8 bits in C register
+			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
+				correction = mqc->COUNT < 8 ? 1 : 0;
+			}
+			else if (mqc->COUNT < 5)
 				correction++;
 			pass->term = 0;
 		}
+
 		if (++passtype == 3) {
 			passtype = 0;
 			bpno--;
 		}
+
 		pass->distortiondec = cumwmsedec;
 		pass->rate = (uint16_t)(mqc_numbytes(mqc) + correction);
 
-		if (TERMALL && bpno >= 0) {
-			mqc_restart_init_enc(mqc);
+		//note: passtype and bpno have already been updated to next pass,
+		// while pass pointer still points to current pass
+		if (bpno >= 0) {
+			if (pass->term) {
+				type = T1_TYPE_MQ;
+				if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+					type = T1_TYPE_RAW;
+				if (type == T1_TYPE_RAW)
+					mqc_bypass_init_enc(mqc);
+				else
+					mqc_restart_init_enc(mqc);
+			}
+
+			/* Code-switch "RESET" */
+			if (cblksty & J2K_CCP_CBLKSTY_RESET)
+				mqc_resetstates(mqc);
 		}
 	}
 
 	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
-	if (!finalPass->term)
-		mqc_flush(mqc);
+	if (!finalPass->term) {
+		mqc_big_flush(mqc, cblksty, false);
+	}
+
 	cblk->num_passes_encoded = passno;
 
 	for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
-		tcd_pass_t *pass = &cblk->passes[passno];
+		auto pass = cblk->passes + passno;
 		if (!pass->term) {
-			auto bytes = mqc_numbytes(mqc);
-			if (pass->rate >(uint16_t)bytes)
-				pass->rate = (uint16_t)bytes;
-			// prevent generation of FF as last data byte of a pass
+
+			// maximum bytes in block
+			uint32_t maxBytes = mqc_numbytes(mqc);
+
+			if (LAZY) {
+				// find next term pass
+				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded; ++k) {
+					tcd_pass_t* nextTerm = cblk->passes + k;
+					if (nextTerm->term) {
+						// this rate is correct, since it has been flushed
+						auto nextRate = nextTerm->rate;
+						if (nextTerm->rate > 0 && (cblk->data[nextTerm->rate - 1] == 0xFF)) {
+							nextRate--;
+						}
+						maxBytes = std::min<uint32_t>(maxBytes, nextRate);
+						break;
+					}
+				}
+			}
+			if (pass->rate > (uint16_t)maxBytes)
+				pass->rate = (uint16_t)maxBytes;
+			// prevent generation of FF as last data byte of a pass 
 			if (cblk->data[pass->rate - 1] == 0xFF) {
 				pass->rate--;
 			}
