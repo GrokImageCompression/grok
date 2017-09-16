@@ -67,66 +67,6 @@ namespace grk
 {
 
 
-/*
-* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
-* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
-* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
-*/
-
-#define T1_CHI_0_I  18
-#define T1_CHI_1_I  19
-#define T1_CHI_0    (1U << T1_CHI_0_I)
-#define T1_CHI_1    (1U << T1_CHI_1_I)
-#define T1_MU_0     (1U << 20)
-#define T1_PI_0     (1U << 21)
-#define T1_CHI_2_I  22
-#define T1_CHI_2    (1U << T1_CHI_2_I)
-#define T1_MU_1     (1U << 23)
-#define T1_PI_1     (1U << 24)
-#define T1_CHI_3    (1U << 25)
-#define T1_MU_2     (1U << 26)
-#define T1_PI_2     (1U << 27)
-#define T1_CHI_4    (1U << 28)
-#define T1_MU_3     (1U << 29)
-#define T1_PI_3     (1U << 30)
-#define T1_CHI_5    (1U << 31)
-
-/** As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
-*  indicate the significance state of the west neighbour of data point zero
-*  of our four, the point itself, and its east neighbour respectively.
-*  Many of the bits are arranged so that given a flags word, you can
-*  look at the values for the data point 0, then shift the flags
-*  word right by 3 bits and look at the same bit positions to see the
-*  values for data point 1.
-*
-*  The #defines below are convenience flags; say you have a flags word
-*  f, you can do things like
-*
-*  (f & T1_SIGMA_THIS)
-*
-*  to see the significance bit of data point 0, then do
-*
-*  ((f >> 3) & T1_SIGMA_THIS)
-*
-*  to see the significance bit of data point 1.
-*/
-
-#define T1_SIGMA_NW   T1_SIGMA_0
-#define T1_SIGMA_N    T1_SIGMA_1
-#define T1_SIGMA_NE   T1_SIGMA_2
-#define T1_SIGMA_W    T1_SIGMA_3
-#define T1_SIGMA_THIS T1_SIGMA_4
-#define T1_SIGMA_E    T1_SIGMA_5
-#define T1_SIGMA_SW   T1_SIGMA_6
-#define T1_SIGMA_S    T1_SIGMA_7
-#define T1_SIGMA_SE   T1_SIGMA_8
-#define T1_SIGMA_NEIGHBOURS (T1_SIGMA_NW | T1_SIGMA_N | T1_SIGMA_NE | T1_SIGMA_W | T1_SIGMA_E | T1_SIGMA_SW | T1_SIGMA_S | T1_SIGMA_SE)
-
-#define T1_CHI_THIS   T1_CHI_1
-#define T1_CHI_THIS_I T1_CHI_1_I
-#define T1_MU_THIS    T1_MU_0
-#define T1_PI_THIS    T1_PI_0
-
 
 #define ENC_FLAGS(x, y) (t1->flags[(x) + 1 + (((y) >> 2) + 1) * t1->flags_stride])
 #define ENC_FLAGS_ADDRESS(x, y) (t1->flags + ((x) + 1 + (((y) >> 2) + 1) * t1->flags_stride))
@@ -239,9 +179,9 @@ static inline uint8_t t1_getctxno_zc(uint32_t f, uint8_t orient)
 static uint8_t t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
 {
 	/*
-	0 pfX T1_CHI_THIS           T1_LUT_CTXNO_SGN_W
+	0 pfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_W
 	1 tfX T1_SIGMA_1            T1_LUT_CTXNO_SIG_N
-	2 nfX T1_CHI_THIS           T1_LUT_CTXNO_SGN_E
+	2 nfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_E
 	3 tfX T1_SIGMA_3            T1_LUT_CTXNO_SIG_W
 	4  fX T1_CHI_(THIS - 1)     T1_LUT_CTXNO_SGN_N
 	5 tfX T1_SIGMA_5            T1_LUT_CTXNO_SIG_E
@@ -251,8 +191,8 @@ static uint8_t t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t 
 
 	uint32_t lu = (fX >> ci3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
 
-	lu |= (pfX >> (T1_CHI_THIS_I + ci3)) & (1U << 0);
-	lu |= (nfX >> (T1_CHI_THIS_I - 2U + ci3)) & (1U << 2);
+	lu |= (pfX >> (T1_CHI_CURRENT_I + ci3)) & (1U << 0);
+	lu |= (nfX >> (T1_CHI_CURRENT_I - 2U + ci3)) & (1U << 2);
 	if (ci3 == 0U) {
 		lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
 	}
@@ -267,15 +207,15 @@ static uint8_t t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t 
 
 static inline uint8_t t1_getctxno_mag(uint32_t f)
 {
-	return (f & T1_MU_THIS) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
+	return (f & T1_MU_CURRENT) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 }
 
 static uint8_t t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
 {
 	/*
-	0 pfX T1_CHI_THIS           T1_LUT_SGN_W
+	0 pfX T1_CHI_CURRENT           T1_LUT_SGN_W
 	1 tfX T1_SIGMA_1            T1_LUT_SIG_N
-	2 nfX T1_CHI_THIS           T1_LUT_SGN_E
+	2 nfX T1_CHI_CURRENT           T1_LUT_SGN_E
 	3 tfX T1_SIGMA_3            T1_LUT_SIG_W
 	4  fX T1_CHI_(THIS - 1)     T1_LUT_SGN_N
 	5 tfX T1_SIGMA_5            T1_LUT_SIG_E
@@ -285,8 +225,8 @@ static uint8_t t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
 
 	uint32_t lu = (fX >> ci3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
 
-	lu |= (pfX >> (T1_CHI_THIS_I + ci3)) & (1U << 0);
-	lu |= (nfX >> (T1_CHI_THIS_I - 2U + ci3)) & (1U << 2);
+	lu |= (pfX >> (T1_CHI_CURRENT_I + ci3)) & (1U << 0);
+	lu |= (nfX >> (T1_CHI_CURRENT_I - 2U + ci3)) & (1U << 2);
 	if (ci3 == 0U) {
 		lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
 	}
@@ -305,7 +245,7 @@ static void t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_
 	flag_opt_t* south = NULL;
 
 	/* mark target as significant */
-	*flagsp |= T1_SIGMA_THIS << ci3;
+	*flagsp |= T1_SIGMA_CURRENT << ci3;
 
 	/* north-west, north, north-east */
 	if (ci3 == 0U) {
@@ -370,7 +310,7 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 		uint32_t const shift_flags = *flagsp >> ci3;
 		/* if location is not significant, has not been coded in significance pass, and is in preferred neighbourhood,
 		then code in this pass: */
-		if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
 			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
@@ -382,7 +322,8 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 			if (v) {
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
-				*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
+				if (nmsedec)
+					*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
 				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
 				if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
 					mqc_bypass_enc(mqc, (uint32_t)v);
@@ -393,7 +334,7 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 				t1_updateflags(flagsp, ci3, v, t1->flags_stride);
 			}
 			/* set propagation pass bit for this location */
-			*flagsp |= T1_PI_THIS << ci3;
+			*flagsp |= T1_PI_CURRENT << ci3;
 		}
 		datap += t1->w;
 	}
@@ -413,7 +354,8 @@ static void t1_enc_sigpass(t1_opt_t *t1,
 	flag_opt_t* f = ENC_FLAGS_ADDRESS(0, 0);
 	uint32_t* d = t1->data;
 
-	*nmsedec = 0;
+	if (nmsedec)
+		*nmsedec = 0;
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			t1_enc_sigpass_step(
@@ -457,8 +399,9 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
 		uint32_t shift_flags = *flagsp >> ci3;
 		/* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
-		if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS) {
-			*nmsedec += t1_getnmsedec_ref(*datap, (uint32_t)bpno);
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == T1_SIGMA_CURRENT) {
+			if (nmsedec)
+				*nmsedec += t1_getnmsedec_ref(*datap, (uint32_t)bpno);
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_mag(shift_flags));
 			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
@@ -468,7 +411,7 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 				mqc_encode(mqc, (uint32_t)v);
 			}
 			/* flip magnitude refinement bit*/
-			*flagsp |= T1_MU_THIS << ci3;
+			*flagsp |= T1_MU_CURRENT << ci3;
 		}
 		datap += t1->w;
 	}
@@ -487,7 +430,8 @@ static void t1_enc_refpass(
 	uint32_t const data_row_extra = (t1->w << 2) - t1->w;
 	uint32_t* d = t1->data;
 
-	*nmsedec = 0;
+	if (nmsedec)
+		*nmsedec = 0;
 	for (k = 0U; k < t1->h; k += 4U) {
 		for (i = 0U; i < t1->w; ++i) {
 			t1_enc_refpass_step(
@@ -548,13 +492,14 @@ static void t1_enc_clnpass_step(t1_opt_t *t1,
 
 		shift_flags = *flagsp >> ci3;
 
-		if (!(shift_flags & (T1_SIGMA_THIS | T1_PI_THIS))) {
+		if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
 			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
 			v = (*datap >> one) & 1;
 			mqc_encode(mqc, v);
 			if (v) {
 			LABEL_PARTIAL:
-				*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
+				if (nmsedec)
+					*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
 				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
@@ -579,7 +524,8 @@ static void t1_enc_clnpass(t1_opt_t *t1,
 
 	mqc_t *mqc = t1->mqc;
 
-	*nmsedec = 0;
+	if (nmsedec)
+		*nmsedec = 0;
 
 	for (k = 0; k < t1->h; k += 4) {
 		for (i = 0; i < t1->w; ++i) {
@@ -700,7 +646,8 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	uint32_t numcomps,
 	const double * mct_norms,
 	uint32_t mct_numcomps,
-	uint32_t max)
+	uint32_t max, 
+	bool doRateControl)
 {
 	double cumwmsedec = 0.0;
 
@@ -710,7 +657,8 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	int32_t bpno;
 	uint32_t passtype;
 	int32_t nmsedec = 0;
-	double tempwmsedec;
+	int32_t* msePtr = doRateControl ? &nmsedec : nullptr;
+	double tempwmsedec=0;
 
 	auto logMax = int_floorlog2((int32_t)max) + 1;
 	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
@@ -736,13 +684,13 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 
 		switch (passtype) {
 		case 0:
-			t1_enc_sigpass(t1, bpno, orient, &nmsedec,type);
+			t1_enc_sigpass(t1, bpno, orient, msePtr,type);
 			break;
 		case 1:
-			t1_enc_refpass(t1, bpno, &nmsedec,type);
+			t1_enc_refpass(t1, bpno, msePtr,type);
 			break;
 		case 2:
-			t1_enc_clnpass(t1, bpno, orient, &nmsedec);
+			t1_enc_clnpass(t1, bpno, orient, msePtr);
 			/* code switch SEGMARK (i.e. SEGSYM) */
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
@@ -752,8 +700,10 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 			break;
 		}
 
-		tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
-		cumwmsedec += tempwmsedec;
+		if (doRateControl) {
+			tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
+			cumwmsedec += tempwmsedec;
+		}
 
 		// correction term is used for non-terminated passes, to ensure that maximal bits are
 		// extracted from the partial segment when code block is truncated at this pass

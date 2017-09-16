@@ -186,7 +186,10 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 }
 
 
-double t1_impl::encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max) {
+double t1_impl::encode(encodeBlockInfo* block, 
+						tcd_tile_t *tile, 
+						uint32_t max,
+						bool doRateControl) {
 	double dist = 0;
 	if (doOpt) {
 		dist =   t1_opt_encode_cblk(t1_opt,
@@ -200,7 +203,8 @@ double t1_impl::encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max) {
 			tile->numcomps,
 			block->mct_norms,
 			block->mct_numcomps,
-			max);
+			max, 
+			doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
 		t1_t* t1Decode = new t1_t(false, t1_opt->w, t1_opt->h);
 

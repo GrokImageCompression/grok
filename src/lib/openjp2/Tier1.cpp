@@ -27,7 +27,8 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp,
 							tcd_tile_t *tile,
 							const double * mct_norms,
 							uint32_t mct_numcomps,
-							uint32_t numThreads) {
+							uint32_t numThreads, 
+							bool doRateControl) {
 
 	uint32_t compno, resno, bandno, precno;
 	tile->distotile = 0;
@@ -91,7 +92,8 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp,
 	T1Encoder encoder(tcp, tile,
 					maxCblkW,
 					maxCblkH,
-					numThreads);
+					numThreads, 
+					doRateControl);
 	return encoder.encode(&blocks);
 }
 

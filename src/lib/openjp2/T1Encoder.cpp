@@ -30,7 +30,9 @@ namespace grk {
 T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
 					uint32_t encodeMaxCblkW,
 					uint32_t encodeMaxCblkH, 
-					size_t numThreads) : tile(tile) {
+					size_t numThreads, 
+					bool needsRateControl) : tile(tile), 
+											needsRateControl(needsRateControl) {
 	for (auto i = 0U; i < numThreads; ++i) {
 		threadStructs.push_back(t1_factory::get_t1(true,tcp, tile, encodeMaxCblkW, encodeMaxCblkH));
 	}
@@ -48,7 +50,7 @@ void T1Encoder::encode(size_t threadId) {
 	while (return_code && encodeQueue.tryPop(block)) {
 		uint32_t max = 0;
 		impl->preEncode(block, tile, max);
-		auto dist = impl->encode(block, tile,max);
+		auto dist = impl->encode(block, tile,max, needsRateControl);
 		{
 			std::unique_lock<std::mutex> lk(distortion_mutex);
 			tile->distotile += dist;
