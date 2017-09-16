@@ -82,10 +82,10 @@ struct encodeBlockInfo {
 	uint32_t qmfbid;
 	uint32_t x, y;		/* relative code block offset */
 	const double * mct_norms;
-	uint32_t mct_numcomps;
 #ifdef DEBUG_LOSSLESS_T1
 	int32_t* unencodedData;
 #endif
+	uint32_t mct_numcomps;
 };
 
 
@@ -95,7 +95,7 @@ public:
 	virtual ~t1_interface() {}
 
 	virtual void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) = 0;
-	virtual double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max)=0;
+	virtual double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max, bool doRateControl)=0;
 	
 	virtual bool decode(decodeBlockInfo* block)=0;
 	virtual void postDecode(decodeBlockInfo* block)=0;

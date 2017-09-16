@@ -204,7 +204,8 @@ bool tcd_needs_rate_control(tcp_t *tcd_tcp, encoding_param_t* enc_params) {
 	return false;
 }
 
-
+// lossless in the sense that no code passes are removed; it mays still be a lossless layer
+// due to irreversible DWT and quantization
 bool tcd_make_single_lossless_layer(tcd_t *tcd) {
 	if (tcd->tcp->numlayers == 1 && !tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
 		tcd_makelayer_final(tcd, 0);
@@ -297,7 +298,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	event_mgr_t * p_manager)
 {
 
-	bool single_lossless = tcd->tcp->numlayers == 1 && !tcd_layer_needs_rate_control(0, tcd->tcp, &tcd->cp->m_specific_param.m_enc);
+	bool single_lossless = tcd_make_single_lossless_layer(tcd);
 	double cumdisto[100];
 	const double K = 1;
 	double maxSE = 0;
@@ -357,7 +358,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 		}
 	} /* compno */
 
-	if (tcd_make_single_lossless_layer(tcd)) {
+	if (single_lossless) {
 		return true;
 	}
 
@@ -460,6 +461,8 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
     tcd_tile->numpix = 0;         
 	uint32_t state = grok_plugin_get_debug_state();
 
+	bool single_lossless = tcd_make_single_lossless_layer(tcd);
+
     for (compno = 0; compno < tcd_tile->numcomps; compno++) {
         tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
         tilec->numpix = 0;
@@ -484,48 +487,51 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
 								&numPix);
 						}
 
-						for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
-							tcd_pass_t *pass = &cblk->passes[passno];
-							int32_t dr;
-							double dd, rdslope;
+						if (!single_lossless) {
+							for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
+								tcd_pass_t *pass = &cblk->passes[passno];
+								int32_t dr;
+								double dd, rdslope;
 
-							if (passno == 0) {
-								dr = (int32_t)pass->rate;
-								dd = pass->distortiondec;
-							}
-							else {
-								dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
-								dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
-							}
+								if (passno == 0) {
+									dr = (int32_t)pass->rate;
+									dd = pass->distortiondec;
+								}
+								else {
+									dr = (int32_t)(pass->rate - cblk->passes[passno - 1].rate);
+									dd = pass->distortiondec - cblk->passes[passno - 1].distortiondec;
+								}
 
-							if (dr == 0) {
-								continue;
-							}
+								if (dr == 0) {
+									continue;
+								}
 
-							rdslope = dd / dr;
-							if (rdslope < min_slope) {
-								min_slope = rdslope;
-							}
+								rdslope = dd / dr;
+								if (rdslope < min_slope) {
+									min_slope = rdslope;
+								}
 
-							if (rdslope > max_slope) {
-								max_slope = rdslope;
-							}
-						} /* passno */
-						tcd_tile->numpix += numPix;
-						tilec->numpix += numPix;
+								if (rdslope > max_slope) {
+									max_slope = rdslope;
+								}
+							} /* passno */
+							tcd_tile->numpix += numPix;
+							tilec->numpix += numPix;
+						}
 	
                     } /* cbklno */
                 } /* precno */
             } /* bandno */
         } /* resno */
 
-		maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-			* (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
-			* (double)tilec->numpix;
+		if (!single_lossless)
+			maxSE += (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+				* (double)(((uint64_t)1 << tcd->image->comps[compno].prec) - 1)
+				* (double)tilec->numpix;
 
     } /* compno */
 
-	if (tcd_make_single_lossless_layer(tcd)) {
+	if (single_lossless) {
 		return true;
 	}
 
@@ -2035,7 +2041,8 @@ static bool tcd_t1_encode ( tcd_t *p_tcd )
 									p_tcd->tile,
 									l_mct_norms,
 									l_mct_numcomps,
-									p_tcd->numThreads);
+									p_tcd->numThreads, 
+		tcd_needs_rate_control(p_tcd->tcp,  &p_tcd->cp->m_specific_param.m_enc));
 }
 
 static bool tcd_t2_encode (tcd_t *p_tcd,

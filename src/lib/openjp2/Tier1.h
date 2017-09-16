@@ -33,7 +33,8 @@ public:
 						tcd_tile_t *tile,
 						const double * mct_norms,
 						uint32_t mct_numcomps,
-						uint32_t numThreads);
+						uint32_t numThreads, 
+						bool doRateControl);
 
 	bool prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 								tccp_t* tccp,

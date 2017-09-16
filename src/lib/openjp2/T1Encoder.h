@@ -26,7 +26,12 @@ namespace grk {
 class T1Encoder
 {
 public:
-	T1Encoder(tcp_t *tcp, tcd_tile_t *tile, uint32_t encodeMaxCblkW, uint32_t encodeMaxCblkH, size_t numThreads);
+	T1Encoder(tcp_t *tcp,
+				tcd_tile_t *tile,
+				uint32_t encodeMaxCblkW,
+				uint32_t encodeMaxCblkH, 
+				size_t numThreads,
+				bool needsRateControl);
 	~T1Encoder();
 	bool encode(std::vector<encodeBlockInfo*>* blocks);
 
@@ -39,6 +44,7 @@ private:
 
 	BlockingQueue<encodeBlockInfo*> encodeQueue;
 	mutable std::mutex distortion_mutex;
+	bool needsRateControl;
 
 };
 

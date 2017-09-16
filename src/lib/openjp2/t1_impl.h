@@ -32,7 +32,7 @@ public:
 	virtual ~t1_impl();
 
 	void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
-	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max);
+	double encode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t max, bool doRateControl);
 
 	bool decode(decodeBlockInfo* block);
 	void postDecode(decodeBlockInfo* block);
