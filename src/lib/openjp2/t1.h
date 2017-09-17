@@ -100,25 +100,24 @@ struct raw_t;
 
 struct t1_t {
 	~t1_t();
-	t1_t(bool isEncoder, uint16_t code_block_width, uint16_t code_block_height);
+	t1_t(uint16_t code_block_width, uint16_t code_block_height);
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
 	mqc_t *mqc;
 	raw_t *raw;
 	int32_t  *data;
 	flag_t *flags;
-	uint32_t w;
-	uint32_t h;
+	uint16_t w;
+	uint16_t h;
 	uint32_t datasize;
 	uint32_t flagssize;
-	uint32_t flags_stride;
-	uint32_t data_stride;
-	bool   encoder;
+	uint16_t flags_stride;
+	bool encoder;
 } ;
 
 bool t1_allocate_buffers(t1_t *t1,
-	uint32_t w,
-	uint32_t h);
+	uint16_t w,
+	uint16_t h);
 
 
 /**

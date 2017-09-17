@@ -290,22 +290,23 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 		/* if location is not significant, has not been coded in significance pass, and is in preferred neighbourhood,
 		then code in this pass: */
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
-			v = (*datap >> one) & 1;
+			auto dataPoint = *datap;
+			v = (dataPoint >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
-			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-				mqc_bypass_enc(mqc, (uint32_t)v);
+			if (type == T1_TYPE_RAW) {
+				mqc_bypass_enc(mqc, v);
 			}
 			else {
-				mqc_encode(mqc, (uint32_t)v);
+				mqc_encode(mqc, v);
 			}
 			if (v) {
 				/* sign bit */
-				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
+				v = dataPoint >> T1_DATA_SIGN_BIT_INDEX;
 				if (nmsedec)
-					*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
+					*nmsedec += t1_getnmsedec_sig(dataPoint, (uint32_t)bpno);
 				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
-				if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-					mqc_bypass_enc(mqc, (uint32_t)v);
+				if (type == T1_TYPE_RAW) {	
+					mqc_bypass_enc(mqc, v);
 				}
 				else {
 					mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
@@ -385,11 +386,11 @@ static void t1_enc_refpass_step(t1_opt_t *t1,
 				*nmsedec += t1_getnmsedec_ref(*datap, (uint32_t)bpno);
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, t1_getctxno_mag(shift_flags));
-			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-				mqc_bypass_enc(mqc, (uint32_t)v);
+			if (type == T1_TYPE_RAW) {	
+				mqc_bypass_enc(mqc, v);
 			}
 			else {
-				mqc_encode(mqc, (uint32_t)v);
+				mqc_encode(mqc, v);
 			}
 			/* flip magnitude refinement bit*/
 			*flagsp |= T1_MU_CURRENT << ci3;

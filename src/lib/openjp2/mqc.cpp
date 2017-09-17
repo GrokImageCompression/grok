@@ -230,8 +230,7 @@ static mqc_state_t mqc_states[47 * 2] = {
 ==========================================================
 */
 
-static void mqc_byteout(mqc_t *mqc)
-{
+static void mqc_byteout(mqc_t *mqc){
    assert(mqc->bp >= mqc->start - 1);
    if (*mqc->bp == 0xff) {
         mqc->bp++;
@@ -261,9 +260,7 @@ static void mqc_byteout(mqc_t *mqc)
         }
     }
 }
-
-static void mqc_renorme(mqc_t *mqc)
-{
+static void mqc_renorme(mqc_t *mqc){
     do {
         mqc->A = (uint16_t)(mqc->A<< 1);
         mqc->C = (mqc->C << 1);
@@ -273,74 +270,70 @@ static void mqc_renorme(mqc_t *mqc)
         }
     } while (mqc->A < A_MIN);
 }
-
-static void mqc_codemps(mqc_t *mqc)
-{
-    mqc->A = (uint16_t)(mqc->A - (*mqc->curctx)->qeval);
+static void mqc_codemps(mqc_t *mqc){
+	auto curctx = *mqc->curctx;
+	auto qeval = curctx->qeval;
+    mqc->A = (uint16_t)(mqc->A - qeval);
     if (mqc->A < A_MIN) {
-        if (mqc->A < (*mqc->curctx)->qeval) {
-            mqc->A = (*mqc->curctx)->qeval;
+        if (mqc->A < qeval) {
+            mqc->A = qeval;
         } else {
-            mqc->C += (*mqc->curctx)->qeval;
+            mqc->C += qeval;
         }
-        *mqc->curctx = (*mqc->curctx)->nmps;
+        *mqc->curctx = curctx->nmps;
         mqc_renorme(mqc);
     } else {
-        mqc->C += (*mqc->curctx)->qeval;
+        mqc->C += qeval;
     }
 }
-
-static void mqc_codelps(mqc_t *mqc)
-{
-    mqc->A = (uint16_t)(mqc->A - (*mqc->curctx)->qeval);
-    if (mqc->A < (*mqc->curctx)->qeval) {
-        mqc->C += (*mqc->curctx)->qeval;
+static void mqc_codelps(mqc_t *mqc){
+	auto curctx = *mqc->curctx;
+	auto qeval = curctx->qeval;
+    mqc->A = (uint16_t)(mqc->A - qeval);
+    if (mqc->A < qeval) {
+        mqc->C += qeval;
     } else {
-        mqc->A = (*mqc->curctx)->qeval;
+        mqc->A = qeval;
     }
-    *mqc->curctx = (*mqc->curctx)->nlps;
+    *mqc->curctx = curctx->nlps;
     mqc_renorme(mqc);
 }
-
-static void mqc_setbits(mqc_t *mqc)
-{
+static void mqc_setbits(mqc_t *mqc){
     uint32_t tempc = mqc->C + mqc->A;
     mqc->C |= 0xffff;
     if (mqc->C >= tempc) {
         mqc->C -= A_MIN;
     }
 }
-
 static inline uint8_t mqc_mpsexchange(mqc_t *const mqc)
 {
 	uint8_t d;
-    if (mqc->A < (*mqc->curctx)->qeval) {
-        d = (uint8_t)(1 - (*mqc->curctx)->mps);
-        *mqc->curctx = (*mqc->curctx)->nlps;
+	auto curctx = *mqc->curctx;
+    if (mqc->A < curctx->qeval) {
+        d = (uint8_t)(1 - curctx->mps);
+        *mqc->curctx = curctx->nlps;
     } else {
-        d = (*mqc->curctx)->mps;
-        *mqc->curctx = (*mqc->curctx)->nmps;
+        d = curctx->mps;
+        *mqc->curctx = curctx->nmps;
     }
     return d;
 }
-
-static inline uint8_t mqc_lpsexchange(mqc_t *const mqc)
-{
+static inline uint8_t mqc_lpsexchange(mqc_t *const mqc){
 	uint8_t d;
-    if (mqc->A < (*mqc->curctx)->qeval) {
-        mqc->A = (*mqc->curctx)->qeval;
-        d = (*mqc->curctx)->mps;
-        *mqc->curctx = (*mqc->curctx)->nmps;
+	auto curctx = *mqc->curctx;
+	auto qeval = curctx->qeval;
+    if (mqc->A < qeval) {
+        mqc->A = qeval;
+        d = curctx->mps;
+        *mqc->curctx = curctx->nmps;
     } else {
-        mqc->A = (*mqc->curctx)->qeval;
-        d = (uint8_t)(1 - (*mqc->curctx)->mps);
-        *mqc->curctx = (*mqc->curctx)->nlps;
+        mqc->A = qeval;
+        d = (uint8_t)(1 - curctx->mps);
+        *mqc->curctx = curctx->nlps;
     }
     return d;
 }
-
-static void mqc_bytein(mqc_t *const mqc)
-{
+static void mqc_bytein(mqc_t *const mqc){
     if (mqc->bp < mqc->end) {
         uint8_t nextByte = (mqc->bp + 1 < mqc->end) ? *(mqc->bp + 1) : 0xFF;
         if (mqc->currentByteIs0xFF) {
@@ -368,10 +361,7 @@ static void mqc_bytein(mqc_t *const mqc)
         mqc->COUNT = 8;
     }
 }
-
-
-static inline void mqc_renormd(mqc_t *const mqc)
-{
+static inline void mqc_renormd(mqc_t *const mqc){
     do {
         if (mqc->COUNT == 0) {
             mqc_bytein(mqc);
@@ -388,31 +378,23 @@ static inline void mqc_renormd(mqc_t *const mqc)
 ==========================================================
 */
 
-raw_t* raw_create(void)
-{
+raw_t* raw_create(void){
 	raw_t *raw = (raw_t*)grok_malloc(sizeof(raw_t));
 	return raw;
 }
-
-void raw_destroy(raw_t *raw)
-{
+void raw_destroy(raw_t *raw){
 	if (raw) {
 		grok_free(raw);
 	}
 }
-
-void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len)
-{
+void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len){
 	raw->start = bp;
 	raw->lenmax = len;
 	raw->len = 0;
 	raw->C = 0;
 	raw->COUNT = 0;
 }
-
-uint32_t raw_decode(raw_t *raw)
-{
-	uint32_t d;
+uint32_t raw_decode(raw_t *raw){
 	if (raw->COUNT == 0) {
 		raw->COUNT = 8;
 		if (raw->len == raw->lenmax) {
@@ -427,42 +409,29 @@ uint32_t raw_decode(raw_t *raw)
 		}
 	}
 	raw->COUNT--;
-	d = ((uint32_t)raw->C >> raw->COUNT) & 0x01;
-
-	return d;
+	return  ((uint32_t)raw->C >> raw->COUNT) & 0x01;
 }
-
-
 void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
 	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
 	mqc->curctx = &mqc->ctxs[(uint32_t)ctxno];
 }
-
-mqc_t* mqc_create(void)
-{
-    mqc_t *mqc = (mqc_t*)grok_calloc(1,sizeof(mqc_t));
-    return mqc;
+mqc_t* mqc_create(void){
+    return (mqc_t*)grok_calloc(1, sizeof(mqc_t));
 }
-
-void mqc_destroy(mqc_t *mqc)
-{
+void mqc_destroy(mqc_t *mqc){
     if(mqc) {
         grok_free(mqc);
     }
 }
-
 // beware: always outputs ONE LESS than actual number of encoded bytes, until after flush is called.
 // After flush, the result returned is correct.
-int32_t mqc_numbytes(mqc_t *mqc)
-{
+int32_t mqc_numbytes(mqc_t *mqc){
     ptrdiff_t diff = mqc->bp - mqc->start;
     return (int32_t)diff;
 }
-
-void mqc_init_enc(mqc_t *mqc, uint8_t *bp)
-{
+void mqc_init_enc(mqc_t *mqc, uint8_t *bp){
 	mqc_resetstates(mqc);
     mqc_setcurctx(mqc, 0);
     mqc->A = A_MIN;
@@ -478,9 +447,7 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp)
 		mqc->debug_mqc.debug_state = grok_plugin_get_debug_state();
 	}
 }
-
-void mqc_encode(mqc_t *mqc, uint32_t d)
-{
+void mqc_encode(mqc_t *mqc, uint8_t d){
 	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG) &&
 		!(mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
@@ -491,21 +458,17 @@ void mqc_encode(mqc_t *mqc, uint32_t d)
         mqc_codelps(mqc);
     }
 }
-
-void mqc_flush(mqc_t *mqc)
-{
+void mqc_flush(mqc_t *mqc){
     mqc_setbits(mqc);
     mqc->C <<= mqc->COUNT;
     mqc_byteout(mqc);
     mqc->C <<= mqc->COUNT;
     mqc_byteout(mqc);
-
 	//increment bp so that mqc_numbytes() will now return correct result
 	if (*mqc->bp != 0xff) {
         mqc->bp++;
     }
 }
-
 void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush) {
 	if (bypassFlush) {
 		mqc_bypass_flush_enc(mqc);
@@ -517,8 +480,7 @@ void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush) {
 		mqc_flush(mqc);
 }
 
-void mqc_bypass_init_enc(mqc_t *mqc)
-{
+void mqc_bypass_init_enc(mqc_t *mqc){
     mqc->C = 0;
     mqc->COUNT = 8;
 	//note: mqc->bp is guaranteed to be greater than mqc->start, since we have already performed
@@ -527,13 +489,11 @@ void mqc_bypass_init_enc(mqc_t *mqc)
 	if (*mqc->bp == 0xff) {
 		mqc->COUNT = 7;
 	}
-
 }
-
-void mqc_bypass_enc(mqc_t *mqc, uint32_t d)
+void mqc_bypass_enc(mqc_t *mqc, uint8_t d)
 {
     mqc->COUNT--;
-    mqc->C += d << mqc->COUNT;
+    mqc->C += (uint32_t)d << mqc->COUNT;
     if (mqc->COUNT == 0) {
         mqc->bp++;
         *mqc->bp = (uint8_t)mqc->C;
@@ -546,9 +506,7 @@ void mqc_bypass_enc(mqc_t *mqc, uint32_t d)
 		mqc->C = 0;
     }
 }
-
-void mqc_bypass_flush_enc(mqc_t *mqc)
-{
+void mqc_bypass_flush_enc(mqc_t *mqc){
 	assert(mqc->bp >= mqc->start - 1);
     uint8_t bit_padding = 0;
     if (mqc->COUNT != 8) {
@@ -564,9 +522,7 @@ void mqc_bypass_flush_enc(mqc_t *mqc)
 		mqc->bp++;
 	}
 }
-
-void mqc_restart_init_enc(mqc_t *mqc)
-{
+void mqc_restart_init_enc(mqc_t *mqc){
 	mqc_setcurctx(mqc, 0);
 	mqc->A = A_MIN;
 	mqc->C = 0;
@@ -578,11 +534,9 @@ void mqc_restart_init_enc(mqc_t *mqc)
 		}
 	}
 }
-
 // easy MQ codeword termination
 // See Taubman and Marcellin p 496 for details
-void mqc_flush_erterm(mqc_t *mqc)
-{
+void mqc_flush_erterm(mqc_t *mqc){
     int32_t n = (int32_t)(27 -15 - mqc->COUNT);
 	mqc->C <<= mqc->COUNT;
     while (n > 0) {
@@ -591,25 +545,18 @@ void mqc_flush_erterm(mqc_t *mqc)
 		mqc->C <<= mqc->COUNT;
     }
 	mqc_byteout(mqc);
-
 	//increment bp so that mqc_numbytes() will now return correct result
 	if (*mqc->bp != 0xff) {
 		mqc->bp++;
 	}
 }
-
-void mqc_segmark_enc(mqc_t *mqc)
-{
-    uint32_t i;
+void mqc_segmark_enc(mqc_t *mqc){
     mqc_setcurctx(mqc, 18);
-
-    for (i = 1; i < 5; i++) {
+    for (uint8_t i = 1; i < 5; i++) {
         mqc_encode(mqc, i&1);
     }
 }
-
-void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len)
-{
+void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len){
     mqc_setcurctx(mqc, 0);
     mqc->start = bp;
     mqc->end = bp + len;
@@ -624,9 +571,7 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len)
 	mqc->MIN_A_C = 0;
 	mqc->Q_SUM = 0;
 }
-
-uint8_t mqc_decode(mqc_t *const mqc)
-{
+uint8_t mqc_decode(mqc_t *const mqc){
 	uint32_t Q_SUM = (uint16_t)(mqc->Q_SUM + (*mqc->curctx)->qeval);
 	if (mqc->MIN_A_C >= (uint16_t)Q_SUM) {
 		mqc->Q_SUM = (uint16_t)Q_SUM;
@@ -650,8 +595,7 @@ uint8_t mqc_decode(mqc_t *const mqc)
     return d;
 }
 
-void mqc_resetstates(mqc_t *mqc)
-{
+void mqc_resetstates(mqc_t *mqc){
     uint32_t i;
     for (i = 0; i < MQC_NUMCTXS; i++) {
         mqc->ctxs[i] = mqc_states;
@@ -661,8 +605,7 @@ void mqc_resetstates(mqc_t *mqc)
 	mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
-void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob)
-{
+void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob){
     mqc->ctxs[ctxno] = &mqc_states[msb + (uint32_t)(prob << 1)];
 }
 

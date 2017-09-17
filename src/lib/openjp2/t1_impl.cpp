@@ -46,7 +46,7 @@ t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW
 		}
 	}
 	else {
-		t1 = new t1_t(isEncoder, (uint16_t)maxCblkW, (uint16_t)maxCblkH);
+		t1 = new t1_t((uint16_t)maxCblkW, (uint16_t)maxCblkH);
 		if (!t1_allocate_buffers(t1,
 			maxCblkW,
 			maxCblkH)) {
@@ -138,7 +138,6 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 		block->tiledp =
 			tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, block->x, block->y);
 		t1->data = block->tiledp;
-		t1->data_stride = tile_width;
 		if (block->qmfbid == 1) {
 			for (auto j = 0U; j < t1->h; ++j) {
 				for (auto i = 0U; i < t1->w; ++i) {

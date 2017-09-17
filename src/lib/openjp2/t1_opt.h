@@ -174,9 +174,9 @@ struct t1_opt_t {
 	mqc_t *mqc;
 	uint32_t  *data;
 	flag_opt_t *flags;
-	uint32_t w;
-	uint32_t h;
-	uint32_t flags_stride;
+	uint16_t w;
+	uint16_t h;
+	uint16_t flags_stride;
 	bool   encoder;
 } ;
 
