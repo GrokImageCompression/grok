@@ -712,6 +712,7 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 		// which is always 1 less than actual rate
 		uint32_t correction = 4 + 1;
 
+		// ** Terminate certain passes **
 		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
 		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
 		// does not get terminated unless TERMALL is also set
@@ -733,9 +734,10 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 			pass->term = 1;
 		}
 		else {
-			// SPP in raw region requires only a correction of one, since there are never more than 8 bits in C register
-			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
-				correction = mqc->COUNT < 8 ? 1 : 0;
+			// SPP in raw region requires only a correction of one, 
+			// since there are never more than 7 bits in C register
+			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4)) ) {
+				correction = (mqc->COUNT < 8 ? 1 : 0) + 1;
 			}
 			else if (mqc->COUNT < 5)
 				correction++;
@@ -775,7 +777,6 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 	}
 
 	cblk->num_passes_encoded = passno;
-
 	for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
 		auto pass = cblk->passes + passno;
 		if (!pass->term) {
@@ -805,6 +806,10 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 				pass->rate--;
 			}
 		}
+#ifndef NDEBUG
+		int32_t diff = (int32_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
+		assert(diff >= 0);
+#endif
 		pass->len = (uint16_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
 	}
 	return cumwmsedec;
