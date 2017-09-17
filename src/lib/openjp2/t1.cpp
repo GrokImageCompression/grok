@@ -63,7 +63,6 @@
 
 namespace grk {
 
-
 #define T1_SIG_OTH (T1_SIG_N|T1_SIG_NE|T1_SIG_E|T1_SIG_SE|T1_SIG_S|T1_SIG_SW|T1_SIG_W|T1_SIG_NW)
 #define T1_SIG_PRIM (T1_SIG_N|T1_SIG_E|T1_SIG_S|T1_SIG_W)
 
@@ -73,9 +72,7 @@ const flag_t  T1_SIG = 0x1000;
 const flag_t  T1_REFINE = 0x2000;
 const flag_t T1_VISIT = 0x4000;
 
-
 #define MACRO_t1_flags(x,y) t1->flags[((x)*(t1->flags_stride))+(y)]
-
 
 /**
 Tier-1 coding (coding of code-block coefficients)
@@ -85,18 +82,6 @@ static uint8_t t1_getctxno_sc(flag_t f);
 static inline uint8_t t1_getctxno_mag(flag_t f);
 static uint8_t t1_getspb(flag_t f);
 static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
-/**
-Encode significant pass
-*/
-static void t1_enc_sigpass_step(t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type,
-	bool vsc);
 
 /**
 Decode significant pass
@@ -121,17 +106,6 @@ static inline void t1_dec_sigpass_step_mqc_vsc(
 	int32_t oneplushalf,
 	bool vsc);
 
-
-/**
-Encode significant pass
-*/
-static void t1_enc_sigpass(t1_t *t1,
-	int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t cblksty);
-
 /**
 Decode significant pass
 */
@@ -147,30 +121,6 @@ static void t1_dec_sigpass_mqc_vsc(
 	t1_t *t1,
 	int32_t bpno,
 	uint8_t orient);
-
-
-
-/**
-Encode refinement pass
-*/
-static void t1_enc_refpass_step(t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type,
-	bool vsc);
-
-
-/**
-Encode refinement pass
-*/
-static void t1_enc_refpass(t1_t *t1,
-	int32_t bpno,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t cblksty);
 
 /**
 Decode refinement pass
@@ -211,21 +161,6 @@ static inline void t1_dec_refpass_step_mqc_vsc(
 	int32_t neghalf,
 	bool vsc);
 
-
-
-/**
-Encode clean-up pass
-*/
-static void t1_enc_clnpass_step(
-	t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint32_t partial,
-	bool vsc);
 /**
 Decode clean-up pass
 */
@@ -249,15 +184,7 @@ static void t1_dec_clnpass_step_vsc(
 	int32_t oneplushalf,
 	int32_t partial,
 	bool vsc);
-/**
-Encode clean-up pass
-*/
-static void t1_enc_clnpass(
-	t1_t *t1,
-	int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint32_t cblksty);
+
 /**
 Decode clean-up pass
 */
@@ -331,50 +258,6 @@ static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 	sp[1] |= T1_SIG_NW;
 }
 
-static void t1_enc_sigpass_step(t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type,
-	bool vsc
-)
-{
-	int32_t v;
-	flag_t flag;
-
-	mqc_t *mqc = t1->mqc;
-
-	// ignore locations in next stripe when VSC flag is set
-	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
-		v = (abs(*datap) & one) ? 1 : 0;
-		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
-		if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-			mqc_bypass_enc(mqc, (uint32_t)v);
-		}
-		else {
-			mqc_encode(mqc, (uint32_t)v);
-		}
-		if (v) {
-			v = *datap < 0 ? 1 : 0;
-			*nmsedec += t1_getnmsedec_sig((uint32_t)abs(*datap), (uint32_t)(bpno));
-			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
-			if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-				mqc_bypass_enc(mqc, (uint32_t)v);
-			}
-			else {
-				mqc_encode(mqc, (uint32_t)(v ^ t1_getspb((uint32_t)flag)));
-			}
-			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
-		}
-		*flagsp |= T1_VISIT;
-	}
-}
-
-
 static inline void t1_dec_sigpass_step_raw(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
@@ -443,41 +326,6 @@ static inline void t1_dec_sigpass_step_mqc_vsc(t1_t *t1,
 			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
 		}
 		*flagsp |= T1_VISIT;
-	}
-}
-
-
-
-static void t1_enc_sigpass(t1_t *t1,
-	int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t cblksty
-)
-{
-	uint32_t i, j, k, vsc;
-	int32_t one;
-
-	*nmsedec = 0;
-	one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	for (k = 0; k < t1->h; k += 4) {
-		for (i = 0; i < t1->w; ++i) {
-			for (j = k; j < k + 4 && j < t1->h; ++j) {
-				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
-				t1_enc_sigpass_step(
-					t1,
-					&t1->flags[((j + 1) * t1->flags_stride) + i + 1],
-					&t1->data[(j * t1->data_stride) + i],
-					orient,
-					bpno,
-					one,
-					nmsedec,
-					type,
-					vsc);
-			}
-		}
 	}
 }
 
@@ -574,38 +422,6 @@ static void t1_dec_sigpass_mqc_vsc(t1_t *t1,
 	}
 }
 
-
-
-static void t1_enc_refpass_step(t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type,
-	bool vsc)
-{
-	int32_t v;
-	flag_t flag;
-
-	mqc_t *mqc = t1->mqc;
-
-	// ignore locations in next stripe when VSC flag is set
-	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-		*nmsedec += t1_getnmsedec_ref((uint32_t)abs(*datap), (uint32_t)(bpno));
-		v = (abs(*datap) & one) ? 1 : 0;
-		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
-		if (type == T1_TYPE_RAW) {	/* BYPASS/LAZY MODE */
-			mqc_bypass_enc(mqc, (uint32_t)v);
-		}
-		else {
-			mqc_encode(mqc, (uint32_t)v);
-		}
-		*flagsp |= T1_REFINE;
-	}
-}
-
 static inline void t1_dec_refpass_step_raw(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
@@ -674,35 +490,6 @@ static inline void t1_dec_refpass_step_mqc_vsc(t1_t *t1,
 }
 
 
-static void t1_enc_refpass(t1_t *t1,
-	int32_t bpno,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t cblksty)
-{
-	uint32_t i, j, k, vsc;
-	int32_t one;
-
-	*nmsedec = 0;
-	one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	for (k = 0; k < t1->h; k += 4) {
-		for (i = 0; i < t1->w; ++i) {
-			for (j = k; j < k + 4 && j < t1->h; ++j) {
-				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
-				t1_enc_refpass_step(
-					t1,
-					&t1->flags[((j + 1) * t1->flags_stride) + i + 1],
-					&t1->data[(j * t1->data_stride) + i],
-					bpno,
-					one,
-					nmsedec,
-					type,
-					vsc);
-			}
-		}
-	}
-}
 
 static void t1_dec_refpass_raw(t1_t *t1,
 	int32_t bpno,
@@ -796,42 +583,6 @@ static void t1_dec_refpass_mqc_vsc(t1_t *t1,
 	}
 }
 
-
-static void t1_enc_clnpass_step(t1_t *t1,
-	flag_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint32_t partial,
-	bool vsc) {
-	int32_t v;
-	flag_t flag;
-
-	mqc_t *mqc = t1->mqc;
-
-	// ignore locations in next stripe when VSC flag is set
-	flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-	if (partial) {
-		goto LABEL_PARTIAL;
-	}
-	if (!(*flagsp & (T1_SIG | T1_VISIT))) {
-		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
-		v = (abs(*datap) & one) ? 1 : 0;
-		mqc_encode(mqc, (uint32_t)v);
-		if (v) {
-		LABEL_PARTIAL:
-			*nmsedec += t1_getnmsedec_sig((uint32_t)abs(*datap), (uint32_t)(bpno));
-			mqc_setcurctx(mqc, t1_getctxno_sc(flag));
-			v = *datap < 0 ? 1 : 0;
-			mqc_encode(mqc, (uint32_t)(v ^ t1_getspb(flag)));
-			t1_updateflags(flagsp, (uint32_t)v, t1->flags_stride);
-		}
-	}
-	*flagsp &= (flag_t)~T1_VISIT;
-}
-
 static void t1_dec_clnpass_step_partial(t1_t *t1,
 	flag_t *flagsp,
 	int32_t *datap,
@@ -902,74 +653,6 @@ static void t1_dec_clnpass_step_vsc(t1_t *t1,
 		}
 	}
 	*flagsp &= (flag_t)~T1_VISIT;
-}
-
-static void t1_enc_clnpass(t1_t *t1,
-	int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint32_t cblksty) {
-	uint32_t i, j, k;
-	int32_t one;
-	uint32_t agg, runlen, vsc;
-
-	mqc_t *mqc = t1->mqc;
-
-	*nmsedec = 0;
-	one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
-	for (k = 0; k < t1->h; k += 4) {
-		for (i = 0; i < t1->w; ++i) {
-			if (k + 3 < t1->h) {
-				if (cblksty & J2K_CCP_CBLKSTY_VSC) {
-					agg = !(MACRO_t1_flags(1 + k, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
-						|| MACRO_t1_flags(1 + k + 1, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
-						|| MACRO_t1_flags(1 + k + 2, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
-						|| (MACRO_t1_flags(1 + k + 3, 1 + i)
-							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) & (T1_SIG | T1_VISIT | T1_SIG_OTH));
-				}
-				else {
-					agg = !((MACRO_t1_flags(1 + k, 1 + i) |
-						MACRO_t1_flags(1 + k + 1, 1 + i) |
-						MACRO_t1_flags(1 + k + 2, 1 + i) |
-						MACRO_t1_flags(1 + k + 3, 1 + i)) & (T1_SIG | T1_VISIT | T1_SIG_OTH));
-				}
-			}
-			else {
-				agg = 0;
-			}
-			if (agg) {
-				for (runlen = 0; runlen < 4; ++runlen) {
-					if (abs(t1->data[((k + runlen)*t1->data_stride) + i]) & one)
-						break;
-				}
-				mqc_setcurctx(mqc, T1_CTXNO_AGG);
-				mqc_encode(mqc, runlen != 4);
-				if (runlen == 4) {
-					continue;
-				}
-				mqc_setcurctx(mqc, T1_CTXNO_UNI);
-				mqc_encode(mqc, runlen >> 1);
-				mqc_encode(mqc, runlen & 1);
-			}
-			else {
-				runlen = 0;
-			}
-			for (j = k + runlen; j < k + 4 && j < t1->h; ++j) {
-				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == t1->h - 1)) ? 1 : 0;
-				t1_enc_clnpass_step(
-					t1,
-					&t1->flags[((j + 1) * t1->flags_stride) + i + 1],
-					&t1->data[(j * t1->data_stride) + i],
-					orient,
-					bpno,
-					one,
-					nmsedec,
-					agg && (j == k + runlen),
-					vsc);
-			}
-		}
-	}
 }
 
 static void t1_dec_clnpass(t1_t *t1,
@@ -1350,187 +1033,4 @@ bool t1_decode_cblk(t1_t *t1,
 	return true;
 }
 		
-double t1_encode_cblk(t1_t *t1,
-	tcd_cblk_enc_t* cblk,
-	uint8_t orient,
-	uint32_t compno,
-	uint32_t level,
-	uint32_t qmfbid,
-	double stepsize,
-	uint32_t cblksty,
-	uint32_t numcomps,
-	const double * mct_norms,
-	uint32_t mct_numcomps)
-{
-	double cumwmsedec = 0.0;
-
-	mqc_t *mqc = t1->mqc;
-
-	uint32_t passno;
-	int32_t bpno;
-	uint32_t passtype;
-	int32_t nmsedec = 0;
-	int32_t max;
-	uint32_t i, j;
-	uint8_t type = T1_TYPE_MQ;
-	double tempwmsedec;
-
-	max = 0;
-	for (i = 0; i < t1->w; ++i) {
-		for (j = 0; j < t1->h; ++j) {
-			int32_t tmp = abs(t1->data[i + j*t1->data_stride]);
-			max = std::max<int32_t>(max, tmp);
-		}
-	}
-
-	auto logMax = int_floorlog2((int32_t)max) + 1;
-	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
-	if (!cblk->numbps)
-		return 0;
-
-	bpno = (int32_t)(cblk->numbps - 1);
-	passtype = 2;
-	mqc_init_enc(mqc, cblk->data);
-	uint32_t state = grok_plugin_get_debug_state();
-	if (state & OPJ_PLUGIN_STATE_DEBUG) {
-		mqc->debug_mqc.contextStream = cblk->contextStream;
-	}
-
-	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
-	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
-
-	for (passno = 0; bpno >= 0; ++passno) {
-		tcd_pass_t *pass = &cblk->passes[passno];
-		type = T1_TYPE_MQ;
-		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
-			type = T1_TYPE_RAW;
-
-		switch (passtype) {
-		case 0:
-			t1_enc_sigpass(t1, bpno, orient, &nmsedec, type, cblksty);
-			break;
-		case 1:
-			t1_enc_refpass(t1, bpno, &nmsedec, type, cblksty);
-			break;
-		case 2:
-			t1_enc_clnpass(t1, bpno, orient, &nmsedec, cblksty);
-			/* code switch SEGMARK (i.e. SEGSYM) */
-			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
-				mqc_segmark_enc(mqc);
-			if (state & OPJ_PLUGIN_STATE_DEBUG) {
-				mqc_next_plane(&mqc->debug_mqc);
-			}
-			break;
-		}
-
-		tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno, qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
-		cumwmsedec += tempwmsedec;
-
-		// correction term is used for non-terminated passes, to ensure that maximal bits are
-		// extracted from the partial segment when code block is truncated at this pass
-		// See page 498 of Taubman and Marcellin for more details
-		// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
-		// which is always 1 less than actual rate
-		uint32_t correction = 4 + 1;
-
-		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
-		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
-		// does not get terminated unless TERMALL is also set
-		if (TERMALL ||
-			(LAZY && ((bpno < ((int32_t)cblk->numbps - 4) && (passtype > 0)) ||
-			((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
-
-			correction = 0;
-			auto bypassFlush = false;
-			if (LAZY) {
-				if (TERMALL) {
-					bypassFlush = (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2);
-				}
-				else {
-					bypassFlush = passtype == 1;
-				}
-			}
-			mqc_big_flush(mqc, cblksty, bypassFlush);
-			pass->term = 1;
-		}
-		else {
-			// SPP in raw region requires only a correction of one, since there are never more than 8 bits in C register
-			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
-				correction = mqc->COUNT < 8 ? 1 : 0;
-			}
-			else if (mqc->COUNT < 5)
-				correction++;
-			pass->term = 0;
-		}
-
-		if (++passtype == 3) {
-			passtype = 0;
-			bpno--;
-		}
-
-		pass->distortiondec = cumwmsedec;
-		pass->rate = (uint16_t)(mqc_numbytes(mqc) + correction);
-
-		//note: passtype and bpno have already been updated to next pass,
-		// while pass pointer still points to current pass
-		if (bpno >= 0) {
-			if (pass->term) {
-				type = T1_TYPE_MQ;
-				if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
-					type = T1_TYPE_RAW;
-				if (type == T1_TYPE_RAW)
-					mqc_bypass_init_enc(mqc);
-				else
-					mqc_restart_init_enc(mqc);
-			}
-
-			/* Code-switch "RESET" */
-			if (cblksty & J2K_CCP_CBLKSTY_RESET)
-				mqc_resetstates(mqc);
-		}
-	}
-
-	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
-	if (!finalPass->term) {
-		mqc_big_flush(mqc, cblksty,false);
-	}
-
-	cblk->num_passes_encoded = passno;
-
-	for (passno = 0; passno < cblk->num_passes_encoded; passno++) {
-		auto pass = cblk->passes + passno;
-		if (!pass->term) {
-
-			// maximum bytes in block
-			uint32_t maxBytes = mqc_numbytes(mqc);
-
-			if (LAZY) {
-				// find next term pass
-				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded; ++k) {
-					tcd_pass_t* nextTerm = cblk->passes + k;
-					if (nextTerm->term) {
-						// this rate is correct, since it has been flushed
-						auto nextRate = nextTerm->rate;
-						if (nextTerm->rate > 0 && (cblk->data[nextTerm->rate - 1] == 0xFF)) {
-							nextRate--;
-						}
-						maxBytes = std::min<uint32_t>(maxBytes, nextRate);
-						break;
-					}
-				}
-			}
-			if (pass->rate > (uint16_t)maxBytes)
-				pass->rate = (uint16_t)maxBytes;
-			// prevent generation of FF as last data byte of a pass 
-			if (cblk->data[pass->rate - 1] == 0xFF) {
-				pass->rate--;
-			}
-		}
-		pass->len = (uint16_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
-	}
-
-	return cumwmsedec;
-}
-
-
 }

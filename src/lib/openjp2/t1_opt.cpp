@@ -75,7 +75,7 @@ static inline uint8_t		t1_getctxno_zc(uint32_t f, uint8_t orient);
 static inline uint8_t		t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 static inline uint8_t		t1_getctxno_mag(uint32_t f);
 static inline uint8_t		t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
-static inline void			t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride);
+static inline void			t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc);
 
 /**
 Encode significant pass
@@ -87,7 +87,8 @@ static void t1_enc_sigpass_step(t1_opt_t *t1,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec, 
-	uint8_t type);
+	uint8_t type,
+	uint32_t cblksty);
 
 /**
 Encode significant pass
@@ -96,7 +97,8 @@ static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
 	int32_t *nmsedec,
-	uint8_t type);
+	uint8_t type, 
+	uint32_t cblksty);
 
 
 /**
@@ -132,7 +134,8 @@ static void t1_enc_clnpass_step(
 	int32_t *nmsedec,
 	uint32_t agg,
 	uint32_t runlen,
-	uint32_t y);
+	uint32_t y, 
+	uint32_t cblksty);
 
 /**
 Encode clean-up pass
@@ -141,7 +144,8 @@ static void t1_enc_clnpass(
 	t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
-	int32_t *nmsedec);
+	int32_t *nmsedec, 
+	uint32_t cblksty);
 
 
 t1_opt_t::t1_opt_t(bool isEncoder) : mqc(nullptr), 
@@ -238,58 +242,32 @@ static uint8_t t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
 	return lut_spb_opt[lu];
 }
 
-static void t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride)
+#define t1_update_flags_macro(flagsp, ci3, s, stride, vsc) \
+{ \
+	/* update current flag */  \
+    flagsp[-1] |= T1_SIGMA_5 << (ci3); \
+    *flagsp |= (((s) << T1_CHI_1_I) | T1_SIGMA_4) << (ci3); \
+    flagsp[1] |= T1_SIGMA_3 << (ci3); \
+	/* update north flag if we are at top of column and VSC is false */ \
+    if ( ((ci3) == 0U) & ((vsc)==0U)) { \
+        flag_opt_t* north = flagsp - (stride); \
+        *north |= ((s) << T1_CHI_5_I) | T1_SIGMA_16; \
+        north[-1] |= T1_SIGMA_17; \
+        north[1] |= T1_SIGMA_15; \
+    } \
+	/* update south flag*/  \
+    if (ci3 == 9u) { \
+        flag_opt_t* south = (flagsp) + (stride); \
+        *south |= ((s) << T1_CHI_0_I) | T1_SIGMA_1; \
+        south[-1] |= T1_SIGMA_2; \
+        south[1] |= T1_SIGMA_0; \
+    } \
+}
+
+
+static void t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc)
 {
-	/* set up to point to the north and south data points' flags words, if required */
-	flag_opt_t* north = NULL;
-	flag_opt_t* south = NULL;
-
-	/* mark target as significant */
-	*flagsp |= T1_SIGMA_CURRENT << ci3;
-
-	/* north-west, north, north-east */
-	if (ci3 == 0U) {
-		north = flagsp - stride;
-		*north |= T1_SIGMA_16;
-		north[-1] |= T1_SIGMA_17;
-		north[1] |= T1_SIGMA_15;
-	}
-
-	/* south-west, south, south-east */
-	if (ci3 == 9) {
-		south = flagsp + stride;
-		*south |= T1_SIGMA_1;
-		south[-1] |= T1_SIGMA_2;
-		south[1] |= T1_SIGMA_0;
-	}
-
-	/* east */
-	flagsp[-1] |= T1_SIGMA_5 << ci3;
-
-	/* west */
-	flagsp[1] |= T1_SIGMA_3 << ci3;
-
-	if (s) {
-		switch (ci3) {
-		case 0U: {
-			*flagsp |= T1_CHI_1;
-			*north |= T1_CHI_5;
-			break;
-		}
-		case 3:
-			*flagsp |= T1_CHI_2;
-			break;
-		case 6:
-			*flagsp |= T1_CHI_3;
-			break;
-		case 9: {
-			*flagsp |= T1_CHI_4;
-			*south |= T1_CHI_0;
-			break;
-		}
-
-		}
-	}
+	t1_update_flags_macro(flagsp, ci3, s, stride, vsc);
 }
 
 static void  t1_enc_sigpass_step(t1_opt_t *t1,
@@ -299,7 +277,8 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 	int32_t bpno,
 	int32_t one,
 	int32_t *nmsedec, 
-	uint8_t type)
+	uint8_t type, 
+	uint32_t cblksty)
 {
 	uint32_t v;
 	mqc_t *mqc = t1->mqc;
@@ -331,7 +310,7 @@ static void  t1_enc_sigpass_step(t1_opt_t *t1,
 				else {
 					mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
 				}
-				t1_updateflags(flagsp, ci3, v, t1->flags_stride);
+				t1_updateflags(flagsp, ci3, v, t1->flags_stride, (ci3==0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -344,7 +323,8 @@ static void t1_enc_sigpass(t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
 	int32_t *nmsedec, 
-	uint8_t type)
+	uint8_t type,
+	uint32_t cblksty)
 {
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
@@ -366,7 +346,8 @@ static void t1_enc_sigpass(t1_opt_t *t1,
 				bpno,
 				one,
 				nmsedec,
-				type);
+				type, 
+				cblksty);
 
 			++f;
 			++d;
@@ -459,7 +440,8 @@ static void t1_enc_clnpass_step(t1_opt_t *t1,
 	int32_t *nmsedec,
 	uint32_t agg,
 	uint32_t runlen,
-	uint32_t y)
+	uint32_t y, 
+	uint32_t cblksty)
 {
 	uint32_t v;
 	mqc_t *mqc = t1->mqc;
@@ -504,7 +486,7 @@ static void t1_enc_clnpass_step(t1_opt_t *t1,
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
 				mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
-				t1_updateflags(flagsp, ci3, v, t1->flags_stride);
+				t1_updateflags(flagsp, ci3, v, t1->flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
@@ -516,7 +498,8 @@ static void t1_enc_clnpass_step(t1_opt_t *t1,
 static void t1_enc_clnpass(t1_opt_t *t1,
 	int32_t bpno,
 	uint8_t orient,
-	int32_t *nmsedec)
+	int32_t *nmsedec, 
+	uint32_t cblksty)
 {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
@@ -557,7 +540,8 @@ static void t1_enc_clnpass(t1_opt_t *t1,
 				nmsedec,
 				agg,
 				runlen,
-				k);
+				k, 
+				cblksty);
 		}
 	}
 }
@@ -684,13 +668,13 @@ double t1_opt_encode_cblk(t1_opt_t *t1,
 
 		switch (passtype) {
 		case 0:
-			t1_enc_sigpass(t1, bpno, orient, msePtr,type);
+			t1_enc_sigpass(t1, bpno, orient, msePtr,type, cblksty);
 			break;
 		case 1:
 			t1_enc_refpass(t1, bpno, msePtr,type);
 			break;
 		case 2:
-			t1_enc_clnpass(t1, bpno, orient, msePtr);
+			t1_enc_clnpass(t1, bpno, orient, msePtr,cblksty);
 			/* code switch SEGMARK (i.e. SEGSYM) */
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);

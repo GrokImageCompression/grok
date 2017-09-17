@@ -118,7 +118,8 @@ namespace grk {
 #define T1_CHI_4    (1U << 28)
 #define T1_MU_3     (1U << 29)
 #define T1_PI_3     (1U << 30)
-#define T1_CHI_5    (1U << 31)
+#define T1_CHI_5_I	31 
+#define T1_CHI_5    (1U << T1_CHI_5_I)
 
 /**The #defines below are convenience flags; say you have a flags word
 *  f, you can do things like

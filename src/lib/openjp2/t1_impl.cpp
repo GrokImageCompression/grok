@@ -37,21 +37,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 
 t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_opt(nullptr), doOpt(false) {
 	if (isEncoder) {
-		// currently we only do optimized encode for default mode, 
-		// or combination of RESET, TERMALL and BYPASS modes
 		doOpt = true;
-		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
-			tccp_t* tccp = tcp->tccps + compno;
-			if (tccp->cblksty & (~J2K_CCP_CBLKSTY_RESET & 
-								~J2K_CCP_CBLKSTY_TERMALL & 
-								~J2K_CCP_CBLKSTY_LAZY &
-								~J2K_CCP_CBLKSTY_SEGSYM)) {
-				doOpt = false;
-				break;
-			}
-		}
-	}
-	if (doOpt) {
 		t1_opt = new t1_opt_t(isEncoder);
 		if (!t1_opt_allocate_buffers(t1_opt,
 									maxCblkW,
@@ -190,9 +176,7 @@ double t1_impl::encode(encodeBlockInfo* block,
 						tcd_tile_t *tile, 
 						uint32_t max,
 						bool doRateControl) {
-	double dist = 0;
-	if (doOpt) {
-		dist =   t1_opt_encode_cblk(t1_opt,
+	double dist =   t1_opt_encode_cblk(t1_opt,
 			block->cblk,
 			(uint8_t)block->bandno,
 			block->compno,
@@ -250,20 +234,6 @@ double t1_impl::encode(encodeBlockInfo* block,
 		delete[] block->unencodedData;
 		block->unencodedData = nullptr;
 #endif
-	}
-	else {
-		dist = t1_encode_cblk(t1,
-			block->cblk,
-			(uint8_t)block->bandno,
-			block->compno,
-			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
-			block->qmfbid,
-			block->stepsize,
-			block->cblksty,
-			tile->numcomps,
-			block->mct_norms,
-			block->mct_numcomps);
-	}
 	return dist;
 }
 

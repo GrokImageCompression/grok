@@ -120,18 +120,6 @@ bool t1_allocate_buffers(t1_t *t1,
 	uint32_t w,
 	uint32_t h);
 
-double t1_encode_cblk(t1_t *t1,
-						tcd_cblk_enc_t* cblk,
-						uint8_t orient,
-						uint32_t compno,
-						uint32_t level,
-						uint32_t qmfbid,
-						double stepsize,
-						uint32_t cblksty,
-						uint32_t numcomps,
-						const double * mct_norms,
-						uint32_t mct_numcomps);
-
 
 /**
 Decode 1 code-block
