@@ -182,7 +182,7 @@ Encode a symbol using the MQ-coder
 @param mqc MQC handle
 @param d The symbol to be encoded (0 or 1)
 */
-void mqc_encode(mqc_t *mqc, uint32_t d);
+void mqc_encode(mqc_t *mqc, uint8_t d);
 /**
 Flush the encoder, so that all remaining data is written
 @param mqc MQC handle
@@ -205,7 +205,7 @@ JPEG 2000 p 505.
 @param mqc MQC handle
 @param d The symbol to be encoded (0 or 1)
 */
-void mqc_bypass_enc(mqc_t *mqc, uint32_t d);
+void mqc_bypass_enc(mqc_t *mqc, uint8_t d);
 /**
 BYPASS mode switch, flush operation
 <h2>Not fully implemented and tested !!</h2>
