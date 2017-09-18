@@ -17,7 +17,7 @@
 #include "testing.h"
 #include "t1_impl.h"
 #include "mqc.h"
-#include "t1.h"
+#include "t1_decode.h"
 #include "t1_encode.h"
 
 namespace grk {
@@ -35,19 +35,16 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_encoder(nullptr), doOpt(false) {
+t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_encoder(nullptr) {
 	if (isEncoder) {
-		doOpt = true;
 		t1_encoder = new t1_encode(isEncoder);
 		if (!t1_encoder->allocate_buffers(maxCblkW,	maxCblkH)) {
 			throw std::exception();
 		}
 	}
 	else {
-		t1 = new t1_t((uint16_t)maxCblkW, (uint16_t)maxCblkH);
-		if (!t1_allocate_buffers(t1,
-			maxCblkW,
-			maxCblkH)) {
+		t1 = new t1_decode((uint16_t)maxCblkW, (uint16_t)maxCblkH);
+		if (!t1->allocate_buffers(maxCblkW,maxCblkH)) {
 			throw std::exception();
 		}
 	}
@@ -61,110 +58,65 @@ t1_impl::~t1_impl() {
 
 void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
 	auto state = grok_plugin_get_debug_state();
-	if (doOpt) {
-		//1. prepare low-level encode
-		auto tilec = tile->comps + block->compno;
-		t1_encoder->init_buffers((block->cblk->x1 - block->cblk->x0),
-								(block->cblk->y1 - block->cblk->y0));
+	//1. prepare low-level encode
+	auto tilec = tile->comps + block->compno;
+	t1_encoder->init_buffers((block->cblk->x1 - block->cblk->x0),
+							(block->cblk->y1 - block->cblk->y0));
 
-		uint32_t tile_width = (tilec->x1 - tilec->x0);
-		auto tileLineAdvance = tile_width - t1_encoder->w;
-		auto tiledp = block->tiledp;
+	uint32_t tile_width = (tilec->x1 - tilec->x0);
+	auto tileLineAdvance = tile_width - t1_encoder->w;
+	auto tiledp = block->tiledp;
 #ifdef DEBUG_LOSSLESS_T1
-		block->unencodedData = new int32_t[t1_encode->w * t1_encode->h];
+	block->unencodedData = new int32_t[t1_encode->w * t1_encode->h];
 #endif
-		uint32_t tileIndex = 0;
-		max = 0;
-		uint32_t cblk_index = 0;
-		if (block->qmfbid == 1) {
-			for (auto j = 0U; j < t1_encoder->h; ++j) {
-				for (auto i = 0U; i < t1_encoder->w; ++i) {
+	uint32_t tileIndex = 0;
+	max = 0;
+	uint32_t cblk_index = 0;
+	if (block->qmfbid == 1) {
+		for (auto j = 0U; j < t1_encoder->h; ++j) {
+			for (auto i = 0U; i < t1_encoder->w; ++i) {
 #ifdef DEBUG_LOSSLESS_T1
-					block->unencodedData[cblk_index] = block->tiledp[tileIndex];
+				block->unencodedData[cblk_index] = block->tiledp[tileIndex];
 #endif
-					// should we disable multiplication by (1 << T1_NMSEDEC_FRACBITS)
-					// when ((state & OPJ_PLUGIN_STATE_DEBUG) && !(state & OPJ_PLUGIN_STATE_PRE_TR1)) is true ?
-					// Disabling multiplication was messing up post-encode comparison
-					// between plugin and grok open source
-					int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
-					uint32_t mag = (uint32_t)abs(tmp);
-					max = std::max<uint32_t>(max, mag);
-					t1_encoder->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-					tileIndex++;
-					cblk_index++;
-				}
-				tileIndex += tileLineAdvance;
+				// should we disable multiplication by (1 << T1_NMSEDEC_FRACBITS)
+				// when ((state & OPJ_PLUGIN_STATE_DEBUG) && !(state & OPJ_PLUGIN_STATE_PRE_TR1)) is true ?
+				// Disabling multiplication was messing up post-encode comparison
+				// between plugin and grok open source
+				int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
+				uint32_t mag = (uint32_t)abs(tmp);
+				max = std::max<uint32_t>(max, mag);
+				t1_encoder->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				tileIndex++;
+				cblk_index++;
 			}
-		}
-		else {
-			for (auto j = 0U; j < t1_encoder->h; ++j) {
-				for (auto i = 0U; i < t1_encoder->w; ++i) {
-					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
-					// 1. plugin is being used for full T1 encoding, so no need to quantize in grok
-					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
-					//    in the plugin DWT step
-					int32_t tmp = 0;
-					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
-						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
-					}
-					else {
-						tmp = tiledp[tileIndex];
-					}
-					uint32_t mag = (uint32_t)abs(tmp);
-					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
-					max = std::max<uint32_t>(max, mag);
-					t1_encoder->data[cblk_index] = sign_mag;
-					tileIndex++;
-					cblk_index++;
-				}
-				tileIndex += tileLineAdvance;
-			}
+			tileIndex += tileLineAdvance;
 		}
 	}
 	else {
-		//1. prepare low-level encode
-		uint32_t tileIndex = 0, tileLineAdvance;
-		t1_allocate_buffers(t1,
-			block->cblk->x1 - block->cblk->x0,
-			block->cblk->y1 - block->cblk->y0);
-
-		auto tilec = tile->comps + block->compno;
-		uint32_t tile_width = tilec->x1 - tilec->x0;
-		tileLineAdvance = tile_width - t1->w;
-		block->tiledp =
-			tile_buf_get_ptr(tilec->buf, block->resno, block->bandno, block->x, block->y);
-		t1->data = block->tiledp;
-		if (block->qmfbid == 1) {
-			for (auto j = 0U; j < t1->h; ++j) {
-				for (auto i = 0U; i < t1->w; ++i) {
-					// pass through otherwise
-					if (!(state & OPJ_PLUGIN_STATE_DEBUG) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
-						block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS);
-					}
-					tileIndex++;
+		for (auto j = 0U; j < t1_encoder->h; ++j) {
+			for (auto i = 0U; i < t1_encoder->w; ++i) {
+				// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
+				// 1. plugin is being used for full T1 encoding, so no need to quantize in grok
+				// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
+				//    in the plugin DWT step
+				int32_t tmp = 0;
+				if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
+					((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
+					tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
 				}
-				tileIndex += tileLineAdvance;
-			}
-		}
-		else {
-			for (auto j = 0U; j < t1->h; ++j) {
-				for (auto i = 0U; i < t1->w; ++i) {
-					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
-					// 1. plugin is being used for full T1 encoding, so no need to quantize in OPJ
-					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
-					//    in the plugin DWT step
-					if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
-						((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
-						block->tiledp[tileIndex] = int_fix_mul_t1(block->tiledp[tileIndex], block->bandconst);
-					}
-					tileIndex++;
+				else {
+					tmp = tiledp[tileIndex];
 				}
-				tileIndex += tileLineAdvance;
+				uint32_t mag = (uint32_t)abs(tmp);
+				uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				max = std::max<uint32_t>(max, mag);
+				t1_encoder->data[cblk_index] = sign_mag;
+				tileIndex++;
+				cblk_index++;
 			}
+			tileIndex += tileLineAdvance;
 		}
 	}
-
 }
 
 
@@ -185,7 +137,7 @@ double t1_impl::encode(encodeBlockInfo* block,
 										max, 
 										doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
-		t1_t* t1Decode = new t1_t(false, t1_encode->w, t1_encode->h);
+		t1_decode* t1Decode = new t1_decode(false, t1_encode->w, t1_encode->h);
 
 		tcd_cblk_dec_t* cblkDecode = new tcd_cblk_dec_t();
 		cblkDecode->data = nullptr;
@@ -235,13 +187,11 @@ double t1_impl::encode(encodeBlockInfo* block,
 // DECODE
 
 bool t1_impl::decode(decodeBlockInfo* block) {
-	if (!t1_allocate_buffers(t1,
-							(block->cblk->x1 - block->cblk->x0),
+	if (!t1->allocate_buffers((block->cblk->x1 - block->cblk->x0),
 							(block->cblk->y1 - block->cblk->y0))) {
 		return false;
 	}
-	return t1_decode_cblk(t1,
-						block->cblk,
+	return t1->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
 						block->roishift,
 						block->cblksty);

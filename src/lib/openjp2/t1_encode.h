@@ -196,7 +196,6 @@ public:
 	uint16_t w;
 	uint16_t h;
 	uint16_t flags_stride;
-	bool   encoder;
 private:
 
 
