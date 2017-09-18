@@ -1,0 +1,422 @@
+/*
+*    Copyright (C) 2016-2017 Grok Image Compression Inc.
+*
+*    This source code is free software: you can redistribute it and/or  modify
+*    it under the terms of the GNU Affero General Public License, version 3,
+*    as published by the Free Software Foundation.
+*
+*    This source code is distributed in the hope that it will be useful,
+*    but WITHOUT ANY WARRANTY; without even the implied warranty of
+*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*    GNU Affero General Public License for more details.
+*
+*    You should have received a copy of the GNU Affero General Public License
+*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*
+*
+*    This source code incorporates work covered by the following copyright and
+*    permission notice:
+*
+ * The copyright in this software is being made available under the 2-clauses
+ * BSD License, included below. This software may be subject to other third
+ * party and contributor rights, including patent rights, and no such rights
+ * are granted under this license.
+ *
+ * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+ * Copyright (c) 2002-2014, Professor Benoit Macq
+ * Copyright (c) 2001-2003, David Janssens
+ * Copyright (c) 2002-2003, Yannick Verschueren
+ * Copyright (c) 2003-2007, Francois-Olivier Devaux
+ * Copyright (c) 2003-2014, Antonin Descampe
+ * Copyright (c) 2005, Herve Drolon, FreeImage Team
+ * Copyright (c) 2007, Callum Lerwick <seg@haxxed.com>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS `AS IS'
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
+#include "grok_includes.h"
+
+ // tier 1 interface
+#include "mqc.h"
+#include "t1.h"
+#include "t1_decode_opt.h"
+#include "t1_luts.h"
+#include "T1Encoder.h"
+
+namespace grk {
+
+
+t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
+																				compressed_block(nullptr),
+																				compressed_block_size(0),
+																				mqc(nullptr),
+																				raw(nullptr) {
+	mqc = mqc_create();
+	if (!mqc) {
+		throw std::exception();
+	}
+	raw = raw_create();
+	if (!raw) {
+		throw std::exception();
+	}
+	if (code_block_width > 0 && code_block_height > 0) {
+		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
+		if (!compressed_block) {
+			throw std::exception();
+		}
+		compressed_block_size = (size_t)(code_block_width * code_block_height);
+	}
+}
+t1_decode_opt::~t1_decode_opt() {
+	/* destroy MQC and RAW handles */
+	mqc_destroy(mqc);
+	raw_destroy(raw);
+	if (compressed_block)
+		grok_free(compressed_block);
+	if (dataPtr)
+		grok_aligned_free(dataPtr);
+}
+
+
+/*
+Allocate buffers
+@param cblkw	maximum width of code block
+@param cblkh	maximum height of code block
+
+*/
+bool t1_decode_opt::allocateBuffers(uint16_t cblkw, uint16_t cblkh)
+{
+	if (!t1::allocateBuffers(cblkw, cblkh))
+		return false;
+	if (!dataPtr) {
+		dataPtr = (int32_t*)grok_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
+		if (!dataPtr) {
+			/* FIXME event manager error callback */
+			return false;
+		}
+	}
+	return true;
+}
+
+/*
+Initialize buffers
+@param w	width of code block
+@param h	height of code block
+*/
+void t1_decode_opt::initBuffers(uint16_t w, uint16_t h) {
+	t1::initBuffers(w, h);
+	if (dataPtr)
+		memset(dataPtr, 0, w*h * sizeof(int32_t));
+
+}
+
+inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
+											int32_t *datap,
+											uint8_t orient,
+											int32_t oneplushalf, 
+											uint32_t cblksty){
+	if (*flagsp == 0U) {
+		return;  /* Nothing to do for any of the 4 data points */
+	}
+	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
+		flag_opt_t const shift_flags = *flagsp >> ci3;
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
+			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
+			if (mqc_decode(mqc)) {
+				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
+				*datap = v ? -oneplushalf : oneplushalf;
+				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
+			}
+			/* set propagation pass bit for this location */
+			*flagsp |= T1_PI_CURRENT << ci3;
+		}
+	}
+}
+
+void t1_decode_opt::sigpass(int32_t bpno, 
+							uint8_t orient,
+							uint32_t cblksty) {
+	int32_t one, half, oneplushalf;
+	uint32_t i, k;
+	one = 1 << bpno;
+	half = one >> 1;
+	oneplushalf = one | half;
+	uint32_t const flag_row_extra = flags_stride - w;
+	uint32_t const data_row_extra = (w << 2) - w;
+
+	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
+	int32_t* d = dataPtr;
+	for (k = 0; k < h; k += 4) {
+		for (i = 0; i < w; ++i) {
+			sigpass_step(f, d, orient, oneplushalf, cblksty);
+			++f;
+			++d;
+		}
+		d += data_row_extra;
+		f += flag_row_extra;
+	}
+}
+inline void t1_decode_opt::refpass_step(	flag_opt_t *flagsp,
+											int32_t *datap,
+											int32_t poshalf){
+	uint32_t v;
+	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
+		/* none significant */
+		return;
+	}
+	if ((*flagsp & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) == (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) {
+		/* all processed by sigpass */
+		return;
+	}
+
+	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
+		uint32_t shift_flags = *flagsp >> ci3;
+		/* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == T1_SIGMA_CURRENT) {
+			mqc_setcurctx(mqc, getMRPContext(shift_flags));
+			uint8_t v = mqc_decode(mqc);
+			*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
+
+			/* flip magnitude refinement bit*/
+			*flagsp |= T1_MU_CURRENT << ci3;
+		}
+		datap += w;
+	}
+}
+void t1_decode_opt::refpass(int32_t bpno) {
+	int32_t one = 1 << bpno;
+	int32_t poshalf = one >> 1;
+	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
+	uint32_t const flag_row_extra = flags_stride - w;
+	uint32_t const data_row_extra = (w << 2) - w;
+	int32_t* d = dataPtr;
+	uint32_t i, k;
+	for (k = 0U; k < h; k += 4U) {
+		for (i = 0U; i < w; ++i) {
+			refpass_step(f,
+						d,
+						poshalf);
+			++f;
+			++d;
+		}
+		f += flag_row_extra;
+		d += data_row_extra;
+	}
+}
+
+void t1_decode_opt::clnpass_step(	flag_opt_t *flagsp,
+								int32_t *datap,
+								uint8_t orient,
+								int32_t oneplushalf, 
+								uint32_t agg,
+								uint32_t runlen,
+								uint32_t y,
+								uint32_t cblksty) {
+
+
+	uint32_t v;
+	uint32_t lim;
+	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+
+	if ((*flagsp & check) == check) {
+		if (runlen == 0) {
+			*flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+		}
+		else if (runlen == 1) {
+			*flagsp &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
+		}
+		else if (runlen == 2) {
+			*flagsp &= ~(T1_PI_2 | T1_PI_3);
+		}
+		else if (runlen == 3) {
+			*flagsp &= ~(T1_PI_3);
+		}
+		return;
+	}
+	runlen *= 3;
+	lim = 4U < (h - y) ? 12U : 3 * (h - y);
+	for (uint32_t ci3 = runlen; ci3 < lim; ci3 += 3) {
+		if ((agg != 0) && (ci3 == runlen)) {
+			goto LABEL_PARTIAL;
+		}
+		flag_opt_t shift_flags = *flagsp >> ci3;
+		if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
+			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
+			if (mqc_decode(mqc)) {
+			LABEL_PARTIAL:
+				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
+				*datap = v ? -oneplushalf : oneplushalf;
+				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+			}
+		}
+		*flagsp &= ~(T1_PI_0 << ci3);
+		datap += w;
+	}
+}
+void t1_decode_opt::clnpass(int32_t bpno,
+							uint8_t orient,
+							uint32_t cblksty) {
+	int32_t one, half, oneplushalf;
+	one = 1 << bpno;
+	half = one >> 1;
+	oneplushalf = one | half;
+	uint32_t i, j, k;
+	uint32_t agg, runlen;
+	for (k = 0; k < h; k += 4) {
+		for (i = 0; i < w; ++i) {
+			agg = !flags[i + 1 + ((k >> 2) + 1) * flags_stride];
+			if (agg) {
+				mqc_setcurctx(mqc, T1_CTXNO_AGG);
+				if (!mqc_decode(mqc)) {
+					continue;
+				}
+				mqc_setcurctx(mqc, T1_CTXNO_UNI);
+				runlen = mqc_decode(mqc);
+				runlen = (uint8_t)(runlen << 1) | mqc_decode(mqc);
+			}
+			else {
+				runlen = 0;
+			}
+			clnpass_step(FLAGS_ADDRESS(i, k),
+						dataPtr + ((k + runlen) * w) + i,
+						orient,
+						one,
+						agg,
+						runlen,
+						k,
+						cblksty);
+		}
+	}
+	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
+		uint8_t v = 0;
+		mqc_setcurctx(mqc, T1_CTXNO_UNI);
+		v = mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
+		v = (uint8_t)(v << 1) | mqc_decode(mqc);
+		/*
+		if (v!=0xa) {
+			event_msg(cinfo, EVT_WARNING, "Bad segmentation symbol %x\n", v);
+		}
+		*/
+	}
+}
+bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
+							uint8_t orient,
+							uint32_t roishift,
+							uint32_t cblksty)
+{
+	int32_t bpno_plus_one;
+	uint32_t passtype;
+	uint32_t segno, passno;
+	uint8_t type = T1_TYPE_MQ; /* BYPASS mode */
+	uint8_t* block_buffer = NULL;
+	size_t total_seg_len;
+
+	initBuffers(cblk->x1 - cblk->x0, cblk->y1 - cblk->y0);
+
+	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
+	if (cblk->numSegments && total_seg_len) {
+		/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
+		if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
+			block_buffer = ((buf_t*)(cblk->seg_buffers.get(0)))->buf;
+		}
+		else {
+			/* block should have been allocated on creation of t1*/
+			if (!compressed_block)
+				return false;
+			if (compressed_block_size < total_seg_len) {
+				uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
+				if (!new_block)
+					return false;
+				compressed_block = new_block;
+				compressed_block_size = total_seg_len;
+			}
+			min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, compressed_block);
+			block_buffer = compressed_block;
+		}
+	}
+	else {
+		return true;
+	}
+	bpno_plus_one = (int32_t)(roishift + cblk->numbps);
+	passtype = 2;
+	mqc_resetstates(mqc);
+	for (segno = 0; segno < cblk->numSegments; ++segno) {
+		tcd_seg_t *seg = &cblk->segs[segno];
+
+		/* BYPASS mode */
+		type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+		if (type == T1_TYPE_RAW) {
+			raw_init_dec(raw, block_buffer + seg->dataindex, seg->len);
+		}
+		else {
+			mqc_init_dec(mqc, block_buffer + seg->dataindex, seg->len);
+		}
+		for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
+			switch (passtype) {
+			case 0:
+				if (type == T1_TYPE_RAW) {
+					//sigpass_raw(bpno_plus_one, (int32_t)cblksty);
+				}
+				else {
+					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+						//sigpass_vsc(bpno_plus_one, (int32_t)orient);
+					}
+					else {
+						sigpass(bpno_plus_one, orient,cblksty);
+					}
+				}
+				break;
+			case 1:
+				if (type == T1_TYPE_RAW) {
+					//refpass_raw(bpno_plus_one, (int32_t)cblksty);
+				}
+				else {
+					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+						//refpass_vsc(bpno_plus_one);
+					}
+					else {
+						refpass(bpno_plus_one);
+					}
+				}
+				break;
+			case 2:
+				clnpass(bpno_plus_one, (int32_t)orient, (int32_t)cblksty);
+				break;
+			}
+
+			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
+				mqc_resetstates(mqc);
+			}
+			if (++passtype == 3) {
+				passtype = 0;
+				bpno_plus_one--;
+			}
+		}
+	}
+	return true;
+}
+		
+}

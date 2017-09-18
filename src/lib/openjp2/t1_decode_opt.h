@@ -60,19 +60,17 @@
 
 namespace grk {
 
-
-typedef uint16_t flag_t;
-
 struct mqc_t;
 struct raw_t;
 
 class t1;
 
-class t1_decode : public t1 {
+class t1_decode_opt : public t1 {
 public:
-	~t1_decode();
-	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
+	~t1_decode_opt();
+	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
 	bool allocateBuffers(uint16_t w,uint16_t h);
+
 	/**
 	Decode 1 code-block
 	@param t1 T1 handle
@@ -87,64 +85,33 @@ public:
 					uint32_t cblksty);
 	int32_t  *dataPtr;
 private:
-	flag_t *flags;
-	uint16_t flags_stride;
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
 	mqc_t *mqc;
 	raw_t *raw;
 
-	void init_buffers(uint16_t w, uint16_t h);
-	inline void sigpass_step_raw(flag_t *flagsp,
-		int32_t *datap,
-		int32_t oneplushalf,
-		bool vsc);
-	 inline void sigpass_step(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf);
-	 inline void sigpass_step_vsc(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		bool vsc);
-	 void sigpass_raw(	int32_t bpno,uint32_t cblksty);
-	 void sigpass(	int32_t bpno,uint8_t orient);
-	 void sigpass_vsc(int32_t bpno,uint8_t orient);
-
-	void refpass_raw(int32_t bpno,uint32_t cblksty);
+	void initBuffers(uint16_t w, uint16_t h);
+	 inline void sigpass_step(flag_opt_t *flagsp,
+								int32_t *datap,
+								uint8_t orient,
+								int32_t oneplushalf, 
+								 uint32_t cblksty);
+	 void sigpass(	int32_t bpno,uint8_t orient, uint32_t cblksty);
 	void refpass(int32_t bpno);
-	void refpass_vsc(int32_t bpno);
-	inline void  refpass_step_raw(flag_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf,
-		bool vsc);
-	inline void refpass_step(flag_t *flagsp,
+	inline void refpass_step(flag_opt_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf);
-	inline void refpass_step_vsc(flag_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf,
-		bool vsc);
-
-	void clnpass_step_partial(flag_t *flagsp,
-		int32_t *datap,
-		int32_t oneplushalf);
-	void clnpass_step(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf);
-	void clnpass_step_vsc(flag_t *flagsp,
+	void clnpass_step(flag_opt_t *flagsp,
 		int32_t *datap,
 		uint8_t orient,
 		int32_t oneplushalf,
-		int32_t partial,
-		bool vsc);
+		uint32_t agg,
+		uint32_t runlen,
+		uint32_t y,
+		uint32_t cblksty);
 	void clnpass(int32_t bpno,
 		uint8_t orient,
 		uint32_t cblksty);
-
-	void updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
 } ;
 
 

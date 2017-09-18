@@ -21,8 +21,9 @@
 
 namespace grk {
 
-struct t1_decode;
-struct t1_encode;
+class t1_decode_opt;
+class t1_decode;
+class t1_encode;
 struct tcp_t;
 
 class t1_impl : public t1_interface
@@ -38,7 +39,8 @@ public:
 	void postDecode(decodeBlockInfo* block);
 
 private:
-	t1_decode* t1;
+	t1_decode_opt* t1_decoder_opt;
+	t1_decode* t1_decoder;
 	t1_encode* t1_encoder;
 };
 

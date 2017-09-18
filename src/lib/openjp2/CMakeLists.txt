@@ -72,6 +72,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_luts.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_opt.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_opt.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1_encode.cpp

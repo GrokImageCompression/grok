@@ -564,7 +564,7 @@ void t1_decode::clnpass(	int32_t bpno,
 		*/
 	}
 }
-bool t1_decode::allocate_buffers(uint16_t w, uint16_t h) {
+bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 	/* encoder uses tile buffer, so no need to allocate */
 	uint32_t new_datasize = w * h;
 	if (dataPtr)
