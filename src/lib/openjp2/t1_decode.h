@@ -66,11 +66,14 @@ typedef uint16_t flag_t;
 struct mqc_t;
 struct raw_t;
 
-class t1_decode {
+class t1;
+
+class t1_decode : public t1 {
 public:
 	~t1_decode();
 	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
 	bool allocate_buffers(uint16_t w,uint16_t h);
+	void init_buffers(uint16_t w, uint16_t h);
 
 	/**
 	Decode 1 code-block
@@ -84,19 +87,14 @@ public:
 					uint8_t orient,
 					uint32_t roishift,
 					uint32_t cblksty);
-	int32_t  *data;
-	uint16_t w;
-	uint16_t h;
-
+	int32_t  *dataPtr;
 private:
 	flag_t *flags;
+	uint16_t flags_stride;
 	uint8_t* compressed_block;
 	size_t compressed_block_size;
 	mqc_t *mqc;
 	raw_t *raw;
-	uint32_t datasize;
-	uint32_t flagssize;
-	uint16_t flags_stride;
 
 	/**
 	Decode significant pass
@@ -105,42 +103,33 @@ private:
 		int32_t *datap,
 		int32_t oneplushalf,
 		bool vsc);
-	 inline void sigpass_step_mqc(flag_t *flagsp,
+	 inline void sigpass_step(flag_t *flagsp,
 		int32_t *datap,
 		uint8_t orient,
 		int32_t oneplushalf);
-	 inline void sigpass_step_mqc_vsc(flag_t *flagsp,
+	 inline void sigpass_step_vsc(flag_t *flagsp,
 		int32_t *datap,
 		uint8_t orient,
 		int32_t oneplushalf,
 		bool vsc);
-
-	/**
-	Decode significant pass
-	*/
 	 void sigpass_raw(	int32_t bpno,uint32_t cblksty);
-	 void sigpass_mqc(	int32_t bpno,uint8_t orient);
-	 void sigpass_mqc_vsc(int32_t bpno,uint8_t orient);
+	 void sigpass(	int32_t bpno,uint8_t orient);
+	 void sigpass_vsc(int32_t bpno,uint8_t orient);
 
 	/**
 	Decode refinement pass
 	*/
 	void refpass_raw(int32_t bpno,uint32_t cblksty);
-	void refpass_mqc(int32_t bpno);
-	void refpass_mqc_vsc(int32_t bpno);
-
-
-	/**
-	Decode refinement pass
-	*/
+	void refpass(int32_t bpno);
+	void refpass_vsc(int32_t bpno);
 	inline void  refpass_step_raw(flag_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf,
 		bool vsc);
-	inline void refpass_step_mqc(flag_t *flagsp,
+	inline void refpass_step(flag_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf);
-	inline void refpass_step_mqc_vsc(flag_t *flagsp,
+	inline void refpass_step_vsc(flag_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf,
 		bool vsc);
@@ -155,17 +144,12 @@ private:
 		int32_t *datap,
 		uint8_t orient,
 		int32_t oneplushalf);
-
 	void clnpass_step_vsc(flag_t *flagsp,
 		int32_t *datap,
 		uint8_t orient,
 		int32_t oneplushalf,
 		int32_t partial,
 		bool vsc);
-
-	/**
-	Decode clean-up pass
-	*/
 	void clnpass(int32_t bpno,
 		uint8_t orient,
 		uint32_t cblksty);
