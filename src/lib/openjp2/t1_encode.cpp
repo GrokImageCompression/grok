@@ -85,9 +85,9 @@ static inline void			t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s
 
 t1_encode::t1_encode(bool isEncoder) : mqc(nullptr),
 									data(nullptr),
-									flags(nullptr),
 									w(0),
 									h(0),
+									flags(nullptr),
 									flags_stride(0)	{
 
 	mqc = mqc_create();

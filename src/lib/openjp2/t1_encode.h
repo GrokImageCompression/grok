@@ -190,15 +190,13 @@ public:
 		uint32_t max,
 		bool doRateControl);
 
-	mqc_t *mqc;
 	uint32_t  *data;
-	flag_opt_t *flags;
 	uint16_t w;
 	uint16_t h;
-	uint16_t flags_stride;
 private:
-
-
+	mqc_t *mqc;
+	flag_opt_t *flags;
+	uint16_t flags_stride;
 	/**
 	Encode significant pass
 	*/
