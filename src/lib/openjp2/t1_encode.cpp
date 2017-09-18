@@ -61,22 +61,22 @@
 #include "t1_luts.h"
 #include "t1_opt_luts.h"
 
-namespace grk
-{
-t1_encode::t1_encode() : data(nullptr), 
-						mqc(nullptr)	{
+namespace grk {
+	namespace grk_t1 {
+
+t1_encode::t1_encode() : data(nullptr),
+	mqc(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
 	}
 }
-t1_encode::~t1_encode(){
+t1_encode::~t1_encode() {
 	mqc_destroy(mqc);
 	if (data) {
 		grok_aligned_free(data);
 	}
 }
-
 
 /*
 Allocate buffers
@@ -107,17 +107,15 @@ void t1_encode::initBuffers(uint16_t w, uint16_t h) {
 	t1::initBuffers(w, h);
 	if (data)
 		memset(data, 0, w*h * sizeof(int32_t));
-
 }
-
 void  t1_encode::sigpass_step(flag_opt_t *flagsp,
-								uint32_t *datap,
-								uint8_t orient,
-								int32_t bpno,
-								int32_t one,
-								int32_t *nmsedec, 
-								uint8_t type, 
-								uint32_t cblksty){
+	uint32_t *datap,
+	uint8_t orient,
+	int32_t bpno,
+	int32_t one,
+	int32_t *nmsedec,
+	uint8_t type,
+	uint32_t cblksty) {
 	uint32_t v;
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
@@ -142,13 +140,13 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 				if (nmsedec)
 					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t)bpno);
 				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
-				if (type == T1_TYPE_RAW) {	
+				if (type == T1_TYPE_RAW) {
 					mqc_bypass_enc(mqc, v);
 				}
 				else {
 					mqc_encode(mqc, v ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3));
 				}
-				updateFlags(flagsp, ci3, v, flags_stride, (ci3==0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -157,10 +155,10 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 	}
 }
 void t1_encode::sigpass(int32_t bpno,
-						uint8_t orient,
-						int32_t *nmsedec, 
-						uint8_t type,
-						uint32_t cblksty){
+	uint8_t orient,
+	int32_t *nmsedec,
+	uint8_t type,
+	uint32_t cblksty) {
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
@@ -173,13 +171,13 @@ void t1_encode::sigpass(int32_t bpno,
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
 			sigpass_step(f,
-						d,
-						orient,
-						bpno,
-						one,
-						nmsedec,
-						type, 
-						cblksty);
+				d,
+				orient,
+				bpno,
+				one,
+				nmsedec,
+				type,
+				cblksty);
 
 			++f;
 			++d;
@@ -189,11 +187,11 @@ void t1_encode::sigpass(int32_t bpno,
 	}
 }
 void t1_encode::refpass_step(flag_opt_t *flagsp,
-							uint32_t *datap,
-							int32_t bpno,
-							int32_t one,
-							int32_t *nmsedec, 
-							uint8_t type){
+	uint32_t *datap,
+	int32_t bpno,
+	int32_t one,
+	int32_t *nmsedec,
+	uint8_t type) {
 	uint32_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
@@ -211,7 +209,7 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 				*nmsedec += getnmsedec_ref(*datap, (uint32_t)bpno);
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, getMRPContext(shift_flags));
-			if (type == T1_TYPE_RAW) {	
+			if (type == T1_TYPE_RAW) {
 				mqc_bypass_enc(mqc, v);
 			}
 			else {
@@ -224,8 +222,8 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 	}
 }
 void t1_encode::refpass(int32_t bpno,
-	int32_t *nmsedec, 
-	uint8_t type){
+	int32_t *nmsedec,
+	uint8_t type) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
 	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
@@ -241,7 +239,7 @@ void t1_encode::refpass(int32_t bpno,
 				d,
 				bpno,
 				one,
-				nmsedec, 
+				nmsedec,
 				type);
 			++f;
 			++d;
@@ -258,7 +256,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 	int32_t *nmsedec,
 	uint32_t agg,
 	uint32_t runlen,
-	uint32_t y, 
+	uint32_t y,
 	uint32_t cblksty)
 {
 	uint32_t v;
@@ -311,8 +309,8 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 }
 void t1_encode::clnpass(int32_t bpno,
 	uint8_t orient,
-	int32_t *nmsedec, 
-	uint32_t cblksty){
+	int32_t *nmsedec,
+	uint32_t cblksty) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg, runlen;
@@ -322,7 +320,7 @@ void t1_encode::clnpass(int32_t bpno,
 
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
-			agg = !flags[i+1 + ((k >> 2) + 1) * flags_stride];
+			agg = !flags[i + 1 + ((k >> 2) + 1) * flags_stride];
 			if (agg) {
 				for (runlen = 0; runlen < 4; ++runlen) {
 					if ((data[((k + runlen)*w) + i] >> one) & 1)
@@ -348,7 +346,7 @@ void t1_encode::clnpass(int32_t bpno,
 				nmsedec,
 				agg,
 				runlen,
-				k, 
+				k,
 				cblksty);
 		}
 	}
@@ -395,17 +393,17 @@ int16_t t1_encode::getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 }
 
 double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
-								uint8_t orient,
-								uint32_t compno,
-								uint32_t level,
-								uint32_t qmfbid,
-								double stepsize,
-								uint32_t cblksty,
-								uint32_t numcomps,
-								const double * mct_norms,
-								uint32_t mct_numcomps,
-								uint32_t max, 
-								bool doRateControl)
+	uint8_t orient,
+	uint32_t compno,
+	uint32_t level,
+	uint32_t qmfbid,
+	double stepsize,
+	uint32_t cblksty,
+	uint32_t numcomps,
+	const double * mct_norms,
+	uint32_t mct_numcomps,
+	uint32_t max,
+	bool doRateControl)
 {
 	double cumwmsedec = 0.0;
 
@@ -414,7 +412,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	uint32_t passtype;
 	int32_t nmsedec = 0;
 	int32_t* msePtr = doRateControl ? &nmsedec : nullptr;
-	double tempwmsedec=0;
+	double tempwmsedec = 0;
 
 	auto logMax = int_floorlog2((int32_t)max) + 1;
 	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
@@ -440,13 +438,13 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 
 		switch (passtype) {
 		case 0:
-			sigpass(bpno, orient, msePtr,type, cblksty);
+			sigpass(bpno, orient, msePtr, type, cblksty);
 			break;
 		case 1:
-			refpass(bpno, msePtr,type);
+			refpass(bpno, msePtr, type);
 			break;
 		case 2:
-			clnpass(bpno, orient, msePtr,cblksty);
+			clnpass(bpno, orient, msePtr, cblksty);
 			/* code switch SEGMARK (i.e. SEGSYM) */
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
@@ -457,16 +455,16 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 		}
 
 		if (doRateControl) {
-			tempwmsedec = getwmsedec(nmsedec, 
-									compno,
-									level,
-									orient,
-									bpno,
-									qmfbid,
-									stepsize,
-									numcomps,
-									mct_norms,
-									mct_numcomps);
+			tempwmsedec = getwmsedec(nmsedec,
+				compno,
+				level,
+				orient,
+				bpno,
+				qmfbid,
+				stepsize,
+				numcomps,
+				mct_norms,
+				mct_numcomps);
 			cumwmsedec += tempwmsedec;
 		}
 
@@ -501,7 +499,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 		else {
 			// SPP in raw region requires only a correction of one, 
 			// since there are never more than 7 bits in C register
-			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4)) ) {
+			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
 				correction = (mqc->COUNT < 8 ? 1 : 0) + 1;
 			}
 			else if (mqc->COUNT < 5)
@@ -580,5 +578,81 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	return cumwmsedec;
 }
 
+static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
+{
+#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
+	int64_t temp = __emul(a, b);
+#else
+	int64_t temp = (int64_t)a * (int64_t)b;
+#endif
+	temp += 4096;
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
+}
 
+void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
+	auto state = grok_plugin_get_debug_state();
+	//1. prepare low-level encode
+	auto tilec = tile->comps + block->compno;
+	initBuffers((block->cblk->x1 - block->cblk->x0),
+		(block->cblk->y1 - block->cblk->y0));
+
+	uint32_t tile_width = (tilec->x1 - tilec->x0);
+	auto tileLineAdvance = tile_width - w;
+	auto tiledp = block->tiledp;
+#ifdef DEBUG_LOSSLESS_T1
+	block->unencodedData = new int32_t[t1_encoder->w * t1_encoder->h];
+#endif
+	uint32_t tileIndex = 0;
+	max = 0;
+	uint32_t cblk_index = 0;
+	if (block->qmfbid == 1) {
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+#ifdef DEBUG_LOSSLESS_T1
+				block->unencodedData[cblk_index] = block->tiledp[tileIndex];
+#endif
+				// should we disable multiplication by (1 << T1_NMSEDEC_FRACBITS)
+				// when ((state & OPJ_PLUGIN_STATE_DEBUG) && !(state & OPJ_PLUGIN_STATE_PRE_TR1)) is true ?
+				// Disabling multiplication was messing up post-encode comparison
+				// between plugin and grok open source
+				int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
+				uint32_t mag = (uint32_t)abs(tmp);
+				max = std::max<uint32_t>(max, mag);
+				data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				tileIndex++;
+				cblk_index++;
+			}
+			tileIndex += tileLineAdvance;
+		}
+	}
+	else {
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+				// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
+				// 1. plugin is being used for full T1 encoding, so no need to quantize in grok
+				// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
+				//    in the plugin DWT step
+				int32_t tmp = 0;
+				if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
+					((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
+					tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+				}
+				else {
+					tmp = tiledp[tileIndex];
+				}
+				uint32_t mag = (uint32_t)abs(tmp);
+				uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				max = std::max<uint32_t>(max, mag);
+				data[cblk_index] = sign_mag;
+				tileIndex++;
+				cblk_index++;
+			}
+			tileIndex += tileLineAdvance;
+		}
+	}
+}
+
+}
 }

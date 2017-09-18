@@ -58,6 +58,7 @@
 #include "Tier1.h"
 
 namespace grk {
+	namespace grk_t1 {
 
 #define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
 #define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
@@ -93,27 +94,27 @@ namespace grk {
 #define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
 
-	/*********************/
-	/*   STATE FLAGS     */
-	/*********************/
+		/*********************/
+		/*   STATE FLAGS     */
+		/*********************/
 
 
-	/** We hold the state of individual data points for the T1 encoder using
-	*  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
-	*  to the 4-point-high columns that the data is processed in.
-	*  These #defines declare the layout of a 32-bit flags word.
-	*  This is currently done for encoding only.
-	*/
+		/** We hold the state of individual data points for the T1 encoder using
+		*  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
+		*  to the 4-point-high columns that the data is processed in.
+		*  These #defines declare the layout of a 32-bit flags word.
+		*  This is currently done for encoding only.
+		*/
 
-	/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total
-	*  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
-	*  indicate the significance state of the west neighbour of data point zero
-	*  of our four, the point itself, and its east neighbour respectively.
-	*  Many of the bits are arranged so that given a flags word, you can
-	*  look at the values for the data point 0, then shift the flags
-	*  word right by 3 bits and look at the same bit positions to see the
-	*  values for data point 1.
-	*/
+		/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total
+		*  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
+		*  indicate the significance state of the west neighbour of data point zero
+		*  of our four, the point itself, and its east neighbour respectively.
+		*  Many of the bits are arranged so that given a flags word, you can
+		*  look at the values for the data point 0, then shift the flags
+		*  word right by 3 bits and look at the same bit positions to see the
+		*  values for data point 1.
+		*/
 
 #define T1_SIGMA_0  (1U << 0)
 #define T1_SIGMA_1  (1U << 1)
@@ -134,11 +135,11 @@ namespace grk {
 #define T1_SIGMA_16 (1U << 16)
 #define T1_SIGMA_17 (1U << 17)
 
-	/*
-	* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
-	* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
-	* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
-	*/
+		/*
+		* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
+		* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
+		* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
+		*/
 
 #define T1_CHI_0_I  18
 #define T1_CHI_0    (1U << T1_CHI_0_I)
@@ -159,17 +160,17 @@ namespace grk {
 #define T1_CHI_5_I	31 
 #define T1_CHI_5    (1U << T1_CHI_5_I)
 
-	/**The #defines below are convenience flags; say you have a flags word
-	*  f, you can do things like
-	*
-	*  (f & T1_SIGMA_CURRENT)
-	*
-	*  to see the significance bit of data point 0, then do
-	*
-	*  ((f >> 3) & T1_SIGMA_CURRENT)
-	*
-	*  to see the significance bit of data point 1.
-	*/
+		/**The #defines below are convenience flags; say you have a flags word
+		*  f, you can do things like
+		*
+		*  (f & T1_SIGMA_CURRENT)
+		*
+		*  to see the significance bit of data point 0, then do
+		*
+		*  ((f >> 3) & T1_SIGMA_CURRENT)
+		*
+		*  to see the significance bit of data point 1.
+		*/
 
 #define T1_SIGMA_NW   T1_SIGMA_0
 #define T1_SIGMA_N    T1_SIGMA_1
@@ -197,37 +198,37 @@ namespace grk {
 #define T1_LUT_SIG_S (1U << 7)
 
 
-	// sign bit is stored at this location in 32 bit coefficient
+		// sign bit is stored at this location in 32 bit coefficient
 #define T1_DATA_SIGN_BIT_INDEX 31
 
 #define FLAGS_ADDRESS(x, y) (flags + ((x) + 1 + (((y) >> 2) + 1) * flags_stride))
 
 
-typedef uint32_t flag_opt_t;
+		typedef uint32_t flag_opt_t;
 
-class t1 {
-public:
-	t1();
-	virtual ~t1();
-	uint16_t w;
-	uint16_t h;
-protected:
-	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
-	void initBuffers(uint16_t w, uint16_t h);
+		class t1 {
+		public:
+			t1();
+			virtual ~t1();
+			uint16_t w;
+			uint16_t h;
+		protected:
+			bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
+			void initBuffers(uint16_t w, uint16_t h);
 
-	flag_opt_t *flags;
-	uint16_t flags_stride;
+			flag_opt_t *flags;
+			uint16_t flags_stride;
 
-	void  updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc);
+			void  updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc);
 
-	uint8_t		getZeroCodingContext(uint32_t f, uint8_t orient);
-	uint8_t		getSignCodingContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
-	uint8_t		getMRPContext(uint32_t f);
-	uint8_t		getSPPContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
+			uint8_t		getZeroCodingContext(uint32_t f, uint8_t orient);
+			uint8_t		getSignCodingContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
+			uint8_t		getMRPContext(uint32_t f);
+			uint8_t		getSPPContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 
-};
+		};
 
 
-
+	}
 
 }

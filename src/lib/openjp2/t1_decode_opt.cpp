@@ -63,13 +63,13 @@
 #include "T1Encoder.h"
 
 namespace grk {
-
+	namespace grk_t1 {
 
 t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
-																				compressed_block(nullptr),
-																				compressed_block_size(0),
-																				mqc(nullptr),
-																				raw(nullptr) {
+	compressed_block(nullptr),
+	compressed_block_size(0),
+	mqc(nullptr),
+	raw(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
@@ -130,10 +130,10 @@ void t1_decode_opt::initBuffers(uint16_t w, uint16_t h) {
 }
 
 inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
-											int32_t *datap,
-											uint8_t orient,
-											int32_t oneplushalf, 
-											uint32_t cblksty){
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf,
+	uint32_t cblksty) {
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
 	}
@@ -153,9 +153,9 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 	}
 }
 
-void t1_decode_opt::sigpass(int32_t bpno, 
-							uint8_t orient,
-							uint32_t cblksty) {
+void t1_decode_opt::sigpass(int32_t bpno,
+	uint8_t orient,
+	uint32_t cblksty) {
 	int32_t one, half, oneplushalf;
 	uint32_t i, k;
 	one = 1 << bpno;
@@ -176,9 +176,9 @@ void t1_decode_opt::sigpass(int32_t bpno,
 		f += flag_row_extra;
 	}
 }
-inline void t1_decode_opt::refpass_step(	flag_opt_t *flagsp,
-											int32_t *datap,
-											int32_t poshalf){
+inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
+	int32_t *datap,
+	int32_t poshalf) {
 	uint32_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
@@ -214,8 +214,8 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	for (k = 0U; k < h; k += 4U) {
 		for (i = 0U; i < w; ++i) {
 			refpass_step(f,
-						d,
-						poshalf);
+				d,
+				poshalf);
 			++f;
 			++d;
 		}
@@ -224,14 +224,14 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	}
 }
 
-void t1_decode_opt::clnpass_step(	flag_opt_t *flagsp,
-								int32_t *datap,
-								uint8_t orient,
-								int32_t oneplushalf, 
-								uint32_t agg,
-								uint32_t runlen,
-								uint32_t y,
-								uint32_t cblksty) {
+void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf,
+	uint32_t agg,
+	uint32_t runlen,
+	uint32_t y,
+	uint32_t cblksty) {
 
 
 	uint32_t v;
@@ -275,8 +275,8 @@ void t1_decode_opt::clnpass_step(	flag_opt_t *flagsp,
 	}
 }
 void t1_decode_opt::clnpass(int32_t bpno,
-							uint8_t orient,
-							uint32_t cblksty) {
+	uint8_t orient,
+	uint32_t cblksty) {
 	int32_t one, half, oneplushalf;
 	one = 1 << bpno;
 	half = one >> 1;
@@ -299,13 +299,13 @@ void t1_decode_opt::clnpass(int32_t bpno,
 				runlen = 0;
 			}
 			clnpass_step(FLAGS_ADDRESS(i, k),
-						dataPtr + ((k + runlen) * w) + i,
-						orient,
-						one,
-						agg,
-						runlen,
-						k,
-						cblksty);
+				dataPtr + ((k + runlen) * w) + i,
+				orient,
+				one,
+				agg,
+				runlen,
+				k,
+				cblksty);
 		}
 	}
 	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
@@ -323,9 +323,9 @@ void t1_decode_opt::clnpass(int32_t bpno,
 	}
 }
 bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
-							uint8_t orient,
-							uint32_t roishift,
-							uint32_t cblksty)
+	uint8_t orient,
+	uint32_t roishift,
+	uint32_t cblksty)
 {
 	int32_t bpno_plus_one;
 	uint32_t passtype;
@@ -385,7 +385,7 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 						//sigpass_vsc(bpno_plus_one, (int32_t)orient);
 					}
 					else {
-						sigpass(bpno_plus_one, orient,cblksty);
+						sigpass(bpno_plus_one, orient, cblksty);
 					}
 				}
 				break;
@@ -418,5 +418,55 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 	}
 	return true;
 }
-		
+
+
+void t1_decode_opt::postDecode(decodeBlockInfo* block) {
+	auto t1_data = dataPtr;
+	// ROI shift
+	if (block->roishift) {
+		int32_t threshold = 1 << block->roishift;
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+				auto value = *t1_data;
+				auto magnitude = abs(value);
+				if (magnitude >= threshold) {
+					magnitude >>= block->roishift;
+					// ((value > 0) - (value < 0)) == signum(value)
+					*t1_data = ((value > 0) - (value < 0))* magnitude;
+				}
+				t1_data++;
+			}
+		}
+		//reset t1_data to start of buffer
+		t1_data = dataPtr;
+	}
+
+	//dequantization
+	uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
+	if (block->qmfbid == 1) {
+		int32_t* restrict tile_data = block->tiledp;
+		for (auto j = 0U; j < h; ++j) {
+			int32_t* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < w; ++i) {
+				tile_row_data[i] = *t1_data / 2;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
+	else {
+		float* restrict tile_data = (float*)block->tiledp;
+		for (auto j = 0U; j < h; ++j) {
+			float* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < w; ++i) {
+				tile_row_data[i] = (float)*t1_data * block->stepsize;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
+}
+
+
+}
 }
