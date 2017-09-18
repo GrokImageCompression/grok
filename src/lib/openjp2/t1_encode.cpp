@@ -88,14 +88,12 @@ t1_encode::t1_encode(bool isEncoder) : mqc(nullptr),
 									flags(nullptr),
 									w(0),
 									h(0),
-									flags_stride(0),
-									encoder(false) 	{
+									flags_stride(0)	{
 
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
 	}
-	encoder = isEncoder;
 }
 
 t1_encode::~t1_encode()

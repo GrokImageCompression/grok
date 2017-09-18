@@ -56,40 +56,127 @@
 #include <vector>
 #include "testing.h"
 #include "Tier1.h"
+#include "t1.h"
 
 namespace grk {
 
-#define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
-#define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
-#define T1_SIG_SW 0x0004	/**< Context orientation : South-West direction */
-#define T1_SIG_NW 0x0008	/**< Context orientation : North-West direction */
-#define T1_SIG_N 0x0010		/**< Context orientation : North direction */
-#define T1_SIG_E 0x0020		/**< Context orientation : East direction */
-#define T1_SIG_S 0x0040		/**< Context orientation : South direction */
-#define T1_SIG_W 0x0080		/**< Context orientation : West direction */
 
-#define T1_SGN_N 0x0100
-#define T1_SGN_E 0x0200
-#define T1_SGN_S 0x0400
-#define T1_SGN_W 0x0800
+typedef uint16_t flag_t;
+
+struct mqc_t;
+struct raw_t;
+
+class t1_decode {
+public:
+	~t1_decode();
+	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
+	uint8_t* compressed_block;
+	size_t compressed_block_size;
+	mqc_t *mqc;
+	raw_t *raw;
+	int32_t  *data;
+	flag_t *flags;
+	uint16_t w;
+	uint16_t h;
+	uint32_t datasize;
+	uint32_t flagssize;
+	uint16_t flags_stride;
+
+	bool allocate_buffers(uint16_t w,uint16_t h);
 
 
-#define T1_NUMCTXS_ZC 9
-#define T1_NUMCTXS_SC 5
-#define T1_NUMCTXS_MAG 3
-#define T1_NUMCTXS_AGG 1
-#define T1_NUMCTXS_UNI 1
+	/**
+	Decode 1 code-block
+	@param t1 T1 handle
+	@param cblk Code-block coding parameters
+	@param orient
+	@param roishift Region of interest shifting value
+	@param cblksty Code-block style
+	*/
+	bool decode_cblk(tcd_cblk_dec_t* cblk,
+					uint8_t orient,
+					uint32_t roishift,
+					uint32_t cblksty);
 
-#define T1_CTXNO_ZC 0
-#define T1_CTXNO_SC (T1_CTXNO_ZC+T1_NUMCTXS_ZC)
-#define T1_CTXNO_MAG (T1_CTXNO_SC+T1_NUMCTXS_SC)
-#define T1_CTXNO_AGG (T1_CTXNO_MAG+T1_NUMCTXS_MAG)
-#define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
-#define T1_NUMCTXS (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
+private:
 
-#define T1_NMSEDEC_BITS 7
-#define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
+	/**
+	Decode significant pass
+	*/
+	inline void sigpass_step_raw(flag_t *flagsp,
+		int32_t *datap,
+		int32_t oneplushalf,
+		bool vsc);
+	 inline void sigpass_step_mqc(flag_t *flagsp,
+		int32_t *datap,
+		uint8_t orient,
+		int32_t oneplushalf);
+	 inline void sigpass_step_mqc_vsc(flag_t *flagsp,
+		int32_t *datap,
+		uint8_t orient,
+		int32_t oneplushalf,
+		bool vsc);
 
-#define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
-#define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
+	/**
+	Decode significant pass
+	*/
+	 void sigpass_raw(	int32_t bpno,uint32_t cblksty);
+	 void sigpass_mqc(	int32_t bpno,uint8_t orient);
+	 void sigpass_mqc_vsc(int32_t bpno,uint8_t orient);
+
+	/**
+	Decode refinement pass
+	*/
+	void refpass_raw(int32_t bpno,uint32_t cblksty);
+	void refpass_mqc(int32_t bpno);
+	void refpass_mqc_vsc(int32_t bpno);
+
+
+	/**
+	Decode refinement pass
+	*/
+	inline void  refpass_step_raw(flag_t *flagsp,
+		int32_t *datap,
+		int32_t poshalf,
+		int32_t neghalf,
+		bool vsc);
+	inline void refpass_step_mqc(flag_t *flagsp,
+		int32_t *datap,
+		int32_t poshalf,
+		int32_t neghalf);
+	inline void refpass_step_mqc_vsc(flag_t *flagsp,
+		int32_t *datap,
+		int32_t poshalf,
+		bool vsc);
+
+	/**
+	Decode clean-up pass
+	*/
+	void clnpass_step_partial(flag_t *flagsp,
+		int32_t *datap,
+		int32_t oneplushalf);
+	void clnpass_step(flag_t *flagsp,
+		int32_t *datap,
+		uint8_t orient,
+		int32_t oneplushalf);
+
+	void clnpass_step_vsc(flag_t *flagsp,
+		int32_t *datap,
+		uint8_t orient,
+		int32_t oneplushalf,
+		int32_t partial,
+		bool vsc);
+
+	/**
+	Decode clean-up pass
+	*/
+	void clnpass(int32_t bpno,
+		uint8_t orient,
+		uint32_t cblksty);
+
+	void updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
+} ;
+
+
+
 }
