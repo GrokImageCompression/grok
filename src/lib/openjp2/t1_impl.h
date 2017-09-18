@@ -17,13 +17,13 @@
 
 #pragma once
 
+#include "t1_decode.h"
+#include "t1_encode.h"
+#include "t1_decode_opt.h"
 #include "t1_interface.h"
 
 namespace grk {
 
-class t1_decode_opt;
-class t1_decode;
-class t1_encode;
 struct tcp_t;
 
 class t1_impl : public t1_interface
@@ -39,9 +39,9 @@ public:
 	void postDecode(decodeBlockInfo* block);
 
 private:
-	t1_decode_opt* t1_decoder_opt;
-	t1_decode* t1_decoder;
-	t1_encode* t1_encoder;
+	grk_t1::t1_decode_opt* t1_decoder_opt;
+	grk_t1::t1_decode* t1_decoder;
+	grk_t1::t1_encode* t1_encoder;
 };
 
 

@@ -63,15 +63,16 @@
 #include "T1Encoder.h"
 
 namespace grk {
+	namespace grk_t1 {
 
 #define T1_SIG_OTH (T1_SIG_N|T1_SIG_NE|T1_SIG_E|T1_SIG_SE|T1_SIG_S|T1_SIG_SW|T1_SIG_W|T1_SIG_NW)
 #define T1_SIG_PRIM (T1_SIG_N|T1_SIG_E|T1_SIG_S|T1_SIG_W)
 
 #define T1_SGN (T1_SGN_N|T1_SGN_E|T1_SGN_S|T1_SGN_W)
 
-const flag_t  T1_SIG = 0x1000;
-const flag_t  T1_REFINE = 0x2000;
-const flag_t T1_VISIT = 0x4000;
+		const flag_t  T1_SIG = 0x1000;
+		const flag_t  T1_REFINE = 0x2000;
+		const flag_t T1_VISIT = 0x4000;
 
 #define MACRO_t1_flags(x,y) flags[((x)*(flags_stride))+(y)]
 
@@ -128,12 +129,12 @@ void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 
 
 t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
-																				flags(nullptr),
-																				flags_stride(0),
-																				compressed_block(nullptr),
-																				compressed_block_size(0),
-																				mqc(nullptr),
-																				raw(nullptr) {
+	flags(nullptr),
+	flags_stride(0),
+	compressed_block(nullptr),
+	compressed_block_size(0),
+	mqc(nullptr),
+	raw(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
@@ -161,9 +162,9 @@ t1_decode::~t1_decode() {
 }
 
 inline void t1_decode::sigpass_step(flag_t *flagsp,
-											int32_t *datap,
-											uint8_t orient,
-											int32_t oneplushalf){
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf) {
 	flag_t flag = *flagsp;
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
@@ -280,10 +281,10 @@ void t1_decode::refpass_raw(int32_t bpno,
 	}
 }
 inline void t1_decode::sigpass_step_vsc(flag_t *flagsp,
-												int32_t *datap,
-												uint8_t orient,
-												int32_t oneplushalf,
-												bool vsc){
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf,
+	bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
 	flag_t flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
@@ -297,7 +298,7 @@ inline void t1_decode::sigpass_step_vsc(flag_t *flagsp,
 		*flagsp |= T1_VISIT;
 	}
 }
-void t1_decode::sigpass_vsc(int32_t bpno,uint8_t orient){
+void t1_decode::sigpass_vsc(int32_t bpno, uint8_t orient) {
 	int32_t one, half, oneplushalf, vsc;
 	uint32_t i, j, k;
 	one = 1 << bpno;
@@ -317,9 +318,9 @@ void t1_decode::sigpass_vsc(int32_t bpno,uint8_t orient){
 		}
 	}
 }
-inline void t1_decode::refpass_step(	flag_t *flagsp,
-											int32_t *datap,
-											int32_t poshalf){
+inline void t1_decode::refpass_step(flag_t *flagsp,
+	int32_t *datap,
+	int32_t poshalf) {
 	flag_t flag = *flagsp;
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
@@ -366,9 +367,9 @@ void t1_decode::refpass(int32_t bpno) {
 	}
 }
 inline void t1_decode::refpass_step_vsc(flag_t *flagsp,
-												int32_t *datap,
-												int32_t poshalf,
-												bool vsc){
+	int32_t *datap,
+	int32_t poshalf,
+	bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
 	flag_t flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
@@ -393,9 +394,9 @@ void t1_decode::refpass_vsc(int32_t bpno) {
 		}
 	}
 }
-void t1_decode::clnpass_step_partial(	flag_t *flagsp,
-										int32_t *datap,
-										int32_t oneplushalf) {
+void t1_decode::clnpass_step_partial(flag_t *flagsp,
+	int32_t *datap,
+	int32_t oneplushalf) {
 	flag_t flag = *flagsp;
 	mqc_setcurctx(mqc, t1_getctxno_sc(flag));
 	uint8_t v = mqc_decode(mqc) ^ t1_getspb(flag);
@@ -404,10 +405,10 @@ void t1_decode::clnpass_step_partial(	flag_t *flagsp,
 	*flagsp &= (flag_t)~T1_VISIT;
 }
 
-void t1_decode::clnpass_step(	flag_t *flagsp,
-								int32_t *datap,
-								uint8_t orient,
-								int32_t oneplushalf) {
+void t1_decode::clnpass_step(flag_t *flagsp,
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf) {
 	flag_t flag = *flagsp;
 	if (!(flag & (T1_SIG | T1_VISIT))) {
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
@@ -421,12 +422,12 @@ void t1_decode::clnpass_step(	flag_t *flagsp,
 	*flagsp &= (flag_t)~T1_VISIT;
 }
 
-void t1_decode::clnpass_step_vsc(	flag_t *flagsp,
-									int32_t *datap,
-									uint8_t orient,
-									int32_t oneplushalf,
-									int32_t partial,
-									bool vsc) {
+void t1_decode::clnpass_step_vsc(flag_t *flagsp,
+	int32_t *datap,
+	uint8_t orient,
+	int32_t oneplushalf,
+	int32_t partial,
+	bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
 	flag_t flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if (partial) {
@@ -445,9 +446,9 @@ void t1_decode::clnpass_step_vsc(	flag_t *flagsp,
 	*flagsp &= (flag_t)~T1_VISIT;
 }
 
-void t1_decode::clnpass(	int32_t bpno,
-							uint8_t orient,
-							uint32_t cblksty) {
+void t1_decode::clnpass(int32_t bpno,
+	uint8_t orient,
+	uint32_t cblksty) {
 	int32_t one, half, oneplushalf, vsc;
 	uint8_t runlen;
 	uint32_t i, j, k;
@@ -584,7 +585,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 		/* FIXME event manager error callback */
 		return false;
 	}
-	init_buffers(w,h);
+	init_buffers(w, h);
 	return true;
 }
 void t1_decode::init_buffers(uint16_t w, uint16_t h) {
@@ -595,9 +596,9 @@ void t1_decode::init_buffers(uint16_t w, uint16_t h) {
 	memset(flags, 0, flags_stride * (h + 2) * sizeof(flag_t));
 }
 bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
-							uint8_t orient,
-							uint32_t roishift,
-							uint32_t cblksty)
+	uint8_t orient,
+	uint32_t roishift,
+	uint32_t cblksty)
 {
 	int32_t bpno_plus_one;
 	uint32_t passtype;
@@ -689,6 +690,55 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 		}
 	}
 	return true;
+}
+
+void t1_decode::postDecode(decodeBlockInfo* block) {
+	auto t1_data = dataPtr;
+	// ROI shift
+	if (block->roishift) {
+		int32_t threshold = 1 << block->roishift;
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+				auto value = *t1_data;
+				auto magnitude = abs(value);
+				if (magnitude >= threshold) {
+					magnitude >>= block->roishift;
+					// ((value > 0) - (value < 0)) == signum(value)
+					*t1_data = ((value > 0) - (value < 0))* magnitude;
+				}
+				t1_data++;
+			}
+		}
+		//reset t1_data to start of buffer
+		t1_data = dataPtr;
+	}
+
+	//dequantization
+	uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
+	if (block->qmfbid == 1) {
+		int32_t* restrict tile_data = block->tiledp;
+		for (auto j = 0U; j < h; ++j) {
+			int32_t* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < w; ++i) {
+				tile_row_data[i] = *t1_data / 2;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
+	else {
+		float* restrict tile_data = (float*)block->tiledp;
+		for (auto j = 0U; j < h; ++j) {
+			float* restrict tile_row_data = tile_data;
+			for (auto i = 0U; i < w; ++i) {
+				tile_row_data[i] = (float)*t1_data * block->stepsize;
+				t1_data++;
+			}
+			tile_data += tile_width;
+		}
+	}
+}
+
 }
 		
 }

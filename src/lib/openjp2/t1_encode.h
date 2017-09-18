@@ -54,111 +54,114 @@
  */
 #pragma once
 namespace grk {
+	namespace grk_t1 {
 
-class t1;
+		class t1;
 
-/**
-Tier-1 coding (coding of code-block coefficients)
-*/
-class t1_encode : public t1 {
-public:
-	t1_encode();
-	~t1_encode();
-	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
-	void initBuffers(uint16_t w, uint16_t h);
+		/**
+		Tier-1 coding (coding of code-block coefficients)
+		*/
+		class t1_encode : public t1 {
+		public:
+			t1_encode();
+			~t1_encode();
+			bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
+			void initBuffers(uint16_t w, uint16_t h);
+			void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);
+			double encode_cblk(tcd_cblk_enc_t* cblk,
+				uint8_t orient,
+				uint32_t compno,
+				uint32_t level,
+				uint32_t qmfbid,
+				double stepsize,
+				uint32_t cblksty,
+				uint32_t numcomps,
+				const double * mct_norms,
+				uint32_t mct_numcomps,
+				uint32_t max,
+				bool doRateControl);
+			uint32_t  *data;
+		private:
+			mqc_t *mqc;
+			/**
+			Encode significant pass
+			*/
+			void sigpass_step(flag_opt_t *flagsp,
+				uint32_t *datap,
+				uint8_t orient,
+				int32_t bpno,
+				int32_t one,
+				int32_t *nmsedec,
+				uint8_t type,
+				uint32_t cblksty);
 
-	double encode_cblk(tcd_cblk_enc_t* cblk,
-		uint8_t orient,
-		uint32_t compno,
-		uint32_t level,
-		uint32_t qmfbid,
-		double stepsize,
-		uint32_t cblksty,
-		uint32_t numcomps,
-		const double * mct_norms,
-		uint32_t mct_numcomps,
-		uint32_t max,
-		bool doRateControl);
-	uint32_t  *data;
-private:
-	mqc_t *mqc;
-	/**
-	Encode significant pass
-	*/
-	void sigpass_step(	flag_opt_t *flagsp,
-		uint32_t *datap,
-		uint8_t orient,
-		int32_t bpno,
-		int32_t one,
-		int32_t *nmsedec,
-		uint8_t type,
-		uint32_t cblksty);
-
-	/**
-	Encode significant pass
-	*/
-	void sigpass(int32_t bpno,
-		uint8_t orient,
-		int32_t *nmsedec,
-		uint8_t type,
-		uint32_t cblksty);
-
-
-	/**
-	Encode refinement pass
-	*/
-	void refpass_step(	flag_opt_t *flagsp,
-		uint32_t *datap,
-		int32_t bpno,
-		int32_t one,
-		int32_t *nmsedec,
-		uint8_t type);
+			/**
+			Encode significant pass
+			*/
+			void sigpass(int32_t bpno,
+				uint8_t orient,
+				int32_t *nmsedec,
+				uint8_t type,
+				uint32_t cblksty);
 
 
-	/**
-	Encode refinement pass
-	*/
-	void refpass(	int32_t bpno,
-		int32_t *nmsedec,
-		uint8_t type);
+			/**
+			Encode refinement pass
+			*/
+			void refpass_step(flag_opt_t *flagsp,
+				uint32_t *datap,
+				int32_t bpno,
+				int32_t one,
+				int32_t *nmsedec,
+				uint8_t type);
 
-	/**
-	Encode clean-up pass
-	*/
-	void clnpass_step(flag_opt_t *flagsp,
-		uint32_t *datap,
-		uint8_t orient,
-		int32_t bpno,
-		int32_t one,
-		int32_t *nmsedec,
-		uint32_t agg,
-		uint32_t runlen,
-		uint32_t y,
-		uint32_t cblksty);
 
-	/**
-	Encode clean-up pass
-	*/
-	void clnpass(int32_t bpno,
-		uint8_t orient,
-		int32_t *nmsedec,
-		uint32_t cblksty);
+			/**
+			Encode refinement pass
+			*/
+			void refpass(int32_t bpno,
+				int32_t *nmsedec,
+				uint8_t type);
 
-	double getwmsedec(
-		int32_t nmsedec,
-		uint32_t compno,
-		uint32_t level,
-		uint8_t orient,
-		int32_t bpno,
-		uint32_t qmfbid,
-		double stepsize,
-		uint32_t numcomps,
-		const double * mct_norms,
-		uint32_t mct_numcomps);
+			/**
+			Encode clean-up pass
+			*/
+			void clnpass_step(flag_opt_t *flagsp,
+				uint32_t *datap,
+				uint8_t orient,
+				int32_t bpno,
+				int32_t one,
+				int32_t *nmsedec,
+				uint32_t agg,
+				uint32_t runlen,
+				uint32_t y,
+				uint32_t cblksty);
 
-	int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
-	int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
-};
+			/**
+			Encode clean-up pass
+			*/
+			void clnpass(int32_t bpno,
+				uint8_t orient,
+				int32_t *nmsedec,
+				uint32_t cblksty);
+
+			double getwmsedec(
+				int32_t nmsedec,
+				uint32_t compno,
+				uint32_t level,
+				uint8_t orient,
+				int32_t bpno,
+				uint32_t qmfbid,
+				double stepsize,
+				uint32_t numcomps,
+				const double * mct_norms,
+				uint32_t mct_numcomps);
+
+			int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
+			int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
+		};
+
+	}
 
 }
 
