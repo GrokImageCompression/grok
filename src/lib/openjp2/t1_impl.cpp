@@ -18,7 +18,10 @@
 #include "t1_impl.h"
 #include "mqc.h"
 #include "t1_decode.h"
+#include "t1_decode_opt.h"
 #include "t1_encode.h"
+
+#define DECODER t1_decoder
 
 namespace grk {
 
@@ -39,7 +42,7 @@ t1_impl::t1_impl(bool isEncoder,
 				tcp_t *tcp,
 				tcd_tile_t *tile,
 				uint16_t maxCblkW,
-				uint16_t maxCblkH) : t1(nullptr), t1_encoder(nullptr) {
+				uint16_t maxCblkH) : t1_decoder_opt(nullptr), t1_decoder(nullptr), t1_encoder(nullptr) {
 	if (isEncoder) {
 		t1_encoder = new t1_encode();
 		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
@@ -47,14 +50,15 @@ t1_impl::t1_impl(bool isEncoder,
 		}
 	}
 	else {
-		t1 = new t1_decode(maxCblkW,maxCblkH);
-		if (!t1->allocate_buffers(maxCblkW,maxCblkH)) {
+		DECODER = new t1_decode(maxCblkW,maxCblkH);
+		if (!DECODER->allocateBuffers(maxCblkW,maxCblkH)) {
 			throw std::exception();
 		}
 	}
 }
 t1_impl::~t1_impl() {
-	delete t1;
+	delete t1_decoder;
+	delete t1_decoder_opt;
 	delete t1_encoder;
 }
 
@@ -191,19 +195,19 @@ double t1_impl::encode(encodeBlockInfo* block,
 // DECODE
 
 bool t1_impl::decode(decodeBlockInfo* block) {
-	return t1->decode_cblk(	block->cblk,
+	return DECODER->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
 						block->roishift,
 						block->cblksty);
 }
 
 void t1_impl::postDecode(decodeBlockInfo* block) {
-	auto t1_data = t1->dataPtr;
+	auto t1_data = DECODER->dataPtr;
 	// ROI shift
 	if (block->roishift) {
 		int32_t threshold = 1 << block->roishift;
-		for (auto j = 0U; j < t1->h; ++j) {
-			for (auto i = 0U; i < t1->w; ++i) {
+		for (auto j = 0U; j < DECODER->h; ++j) {
+			for (auto i = 0U; i < DECODER->w; ++i) {
 				auto value = *t1_data;
 				auto magnitude = abs(value);
 				if (magnitude >= threshold) {
@@ -215,16 +219,16 @@ void t1_impl::postDecode(decodeBlockInfo* block) {
 			}
 		}
 		//reset t1_data to start of buffer
-		t1_data = t1->dataPtr;
+		t1_data = DECODER->dataPtr;
 	}
 
 	//dequantization
 	uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
 	if (block->qmfbid == 1) {
 		int32_t* restrict tile_data = block->tiledp;
-		for (auto j = 0U; j < t1->h; ++j) {
+		for (auto j = 0U; j < DECODER->h; ++j) {
 			int32_t* restrict tile_row_data = tile_data;
-			for (auto i = 0U; i < t1->w; ++i) {
+			for (auto i = 0U; i < DECODER->w; ++i) {
 				tile_row_data[i] = *t1_data / 2;
 				t1_data++;
 			}
@@ -233,9 +237,9 @@ void t1_impl::postDecode(decodeBlockInfo* block) {
 	}
 	else {
 		float* restrict tile_data = (float*)block->tiledp;
-		for (auto j = 0U; j < t1->h; ++j) {
+		for (auto j = 0U; j < DECODER->h; ++j) {
 			float* restrict tile_row_data = tile_data;
-			for (auto i = 0U; i < t1->w; ++i) {
+			for (auto i = 0U; i < DECODER->w; ++i) {
 				tile_row_data[i] = (float)*t1_data * block->stepsize;
 				t1_data++;
 			}

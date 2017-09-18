@@ -123,7 +123,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 		return;  /* Nothing to do for any of the 4 data points */
 	}
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
-		uint32_t const shift_flags = *flagsp >> ci3;
+		flag_opt_t const shift_flags = *flagsp >> ci3;
 		/* if location is not significant, has not been coded in significance pass, and is in preferred neighbourhood,
 		then code in this pass: */
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
@@ -165,7 +165,6 @@ void t1_encode::sigpass(int32_t bpno,
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
-
 	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
 	uint32_t* d = data;
 
