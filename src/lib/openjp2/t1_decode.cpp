@@ -254,28 +254,24 @@ void t1_decode::sigpass_mqc_vsc(int32_t bpno,uint8_t orient){
 inline void t1_decode::refpass_step_raw(flag_t *flagsp,
 											int32_t *datap,
 											int32_t poshalf,
-											int32_t neghalf,
 											bool vsc){
 	// ignore locations in next stripe when VSC flag is set
 	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		uint8_t v = (int32_t)raw_decode(raw);
-		int32_t t = v ? poshalf : neghalf;
-		*datap += *datap < 0 ? -t : t;
+		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
 		*flagsp |= T1_REFINE;
 	}
 }
 
 inline void t1_decode::refpass_step_mqc(	flag_t *flagsp,
 											int32_t *datap,
-											int32_t poshalf,
-											int32_t neghalf){
+											int32_t poshalf){
 	flag_t flag = *flagsp;
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
 		uint8_t v = mqc_decode(mqc);
-		int32_t t = v ? poshalf : neghalf;
-		*datap += *datap < 0 ? -t : t;
+		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
 		*flagsp |= T1_REFINE;
 	}
 }
@@ -293,12 +289,11 @@ inline void t1_decode::refpass_step_mqc_vsc(flag_t *flagsp,
 }
 void t1_decode::refpass_raw(int32_t bpno,
 								uint32_t cblksty){
-	int32_t one, poshalf, neghalf;
+	int32_t one, poshalf;
 	uint32_t i, j, k;
 	bool vsc;
 	one = 1 << bpno;
 	poshalf = one >> 1;
-	neghalf = bpno > 0 ? -poshalf : -1;
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
 			for (j = k; j < k + 4 && j < h; ++j) {
@@ -307,35 +302,33 @@ void t1_decode::refpass_raw(int32_t bpno,
 				refpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
 					&data[(j * w) + i],
 					poshalf,
-					neghalf,
 					vsc);
 			}
 		}
 	}
 }
 void t1_decode::refpass_mqc(int32_t bpno) {
-	int32_t one, poshalf, neghalf;
+	int32_t one, poshalf;
 	uint32_t i, j, k;
 	int32_t *data1 = data;
 	flag_t *flags1 = &flags[1];
 	one = 1 << bpno;
 	poshalf = one >> 1;
-	neghalf = bpno > 0 ? -poshalf : -1;
 	for (k = 0; k < (h & ~3u); k += 4) {
 		for (i = 0; i < w; ++i) {
 			int32_t *data2 = data1 + i;
 			flag_t *flags2 = flags1 + i;
 			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf, neghalf);
+			refpass_step_mqc(flags2, data2, poshalf);
 			data2 += w;
 			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf, neghalf);
+			refpass_step_mqc(flags2, data2, poshalf);
 			data2 += w;
 			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf, neghalf);
+			refpass_step_mqc(flags2, data2, poshalf);
 			data2 += w;
 			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf, neghalf);
+			refpass_step_mqc(flags2, data2, poshalf);
 			data2 += w;
 		}
 		data1 += (size_t)w << 2;
@@ -346,7 +339,7 @@ void t1_decode::refpass_mqc(int32_t bpno) {
 		flag_t *flags2 = flags1 + i;
 		for (j = k; j < h; ++j) {
 			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf, neghalf);
+			refpass_step_mqc(flags2, data2, poshalf);
 			data2 += w;
 		}
 	}
@@ -551,15 +544,14 @@ void t1_decode::clnpass(	int32_t bpno,
 	* and initializes the look-up tables of the Tier-1 coder/decoder
 	* @return a new T1 handle if successful, returns NULL otherwise
 */
-t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) :
+t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) :	data(nullptr),
+																				w(0),
+																				h(0),
 																				compressed_block(nullptr),
 																				compressed_block_size(0),
 																				mqc(nullptr),
 																				raw(nullptr),
-																				data(nullptr),
 																				flags(nullptr),
-																				w(0),
-																				h(0),
 																				datasize(0),
 																				flagssize(0),
 																				flags_stride(0)	{

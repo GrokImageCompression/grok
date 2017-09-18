@@ -70,20 +70,7 @@ class t1_decode {
 public:
 	~t1_decode();
 	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
-	uint8_t* compressed_block;
-	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
-	int32_t  *data;
-	flag_t *flags;
-	uint16_t w;
-	uint16_t h;
-	uint32_t datasize;
-	uint32_t flagssize;
-	uint16_t flags_stride;
-
 	bool allocate_buffers(uint16_t w,uint16_t h);
-
 
 	/**
 	Decode 1 code-block
@@ -97,8 +84,19 @@ public:
 					uint8_t orient,
 					uint32_t roishift,
 					uint32_t cblksty);
+	int32_t  *data;
+	uint16_t w;
+	uint16_t h;
 
 private:
+	flag_t *flags;
+	uint8_t* compressed_block;
+	size_t compressed_block_size;
+	mqc_t *mqc;
+	raw_t *raw;
+	uint32_t datasize;
+	uint32_t flagssize;
+	uint16_t flags_stride;
 
 	/**
 	Decode significant pass
@@ -138,12 +136,10 @@ private:
 	inline void  refpass_step_raw(flag_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf,
-		int32_t neghalf,
 		bool vsc);
 	inline void refpass_step_mqc(flag_t *flagsp,
 		int32_t *datap,
-		int32_t poshalf,
-		int32_t neghalf);
+		int32_t poshalf);
 	inline void refpass_step_mqc_vsc(flag_t *flagsp,
 		int32_t *datap,
 		int32_t poshalf,
