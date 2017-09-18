@@ -54,164 +54,70 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #include "grok_includes.h"
-
-// tier 1 interface
 #include "mqc.h"
-#include "t1_encode.h"
 #include "t1.h"
+#include "t1_encode.h"
 #include "t1_luts.h"
 #include "t1_opt_luts.h"
 
 namespace grk
 {
-
-	
-int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
-int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
-
-
-#define ENC_FLAGS(x, y) (flags[(x) + 1 + (((y) >> 2) + 1) * flags_stride])
-#define ENC_FLAGS_ADDRESS(x, y) (flags + ((x) + 1 + (((y) >> 2) + 1) * flags_stride))
-
-static inline uint8_t		t1_getctxno_zc(uint32_t f, uint8_t orient);
-static inline uint8_t		t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
-static inline uint8_t		t1_getctxno_mag(uint32_t f);
-static inline uint8_t		t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
-static inline void			t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc);
-
-
-
-t1_encode::t1_encode(bool isEncoder) : mqc(nullptr),
-									data(nullptr),
-									w(0),
-									h(0),
-									flags(nullptr),
-									flags_stride(0)	{
-
+t1_encode::t1_encode() : data(nullptr), 
+						mqc(nullptr)	{
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
 	}
 }
-
-t1_encode::~t1_encode()
-{
+t1_encode::~t1_encode(){
 	mqc_destroy(mqc);
 	if (data) {
 		grok_aligned_free(data);
 	}
-	if (flags) {
-		grok_aligned_free(flags);
-	}
 }
 
-static inline uint8_t t1_getctxno_zc(uint32_t f, uint8_t orient)
+
+/*
+Allocate buffers
+@param cblkw	maximum width of code block
+@param cblkh	maximum height of code block
+
+*/
+bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh)
 {
-	return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
-}
-
-
-static uint8_t t1_getctxno_sc(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
-{
-	/*
-	0 pfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_W
-	1 tfX T1_SIGMA_1            T1_LUT_CTXNO_SIG_N
-	2 nfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_E
-	3 tfX T1_SIGMA_3            T1_LUT_CTXNO_SIG_W
-	4  fX T1_CHI_(THIS - 1)     T1_LUT_CTXNO_SGN_N
-	5 tfX T1_SIGMA_5            T1_LUT_CTXNO_SIG_E
-	6  fX T1_CHI_(THIS + 1)     T1_LUT_CTXNO_SGN_S
-	7 tfX T1_SIGMA_7            T1_LUT_CTXNO_SIG_S
-	*/
-
-	uint32_t lu = (fX >> ci3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
-
-	lu |= (pfX >> (T1_CHI_CURRENT_I + ci3)) & (1U << 0);
-	lu |= (nfX >> (T1_CHI_CURRENT_I - 2U + ci3)) & (1U << 2);
-	if (ci3 == 0U) {
-		lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
+	if (!t1::allocateBuffers(cblkw, cblkh))
+		return false;
+	if (!data) {
+		data = (uint32_t*)grok_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
+		if (!data) {
+			/* FIXME event manager error callback */
+			return false;
+		}
 	}
-	else {
-		lu |= (fX >> (T1_CHI_1_I - 4U + (ci3 - 3))) & (1U << 4);
-	}
-	lu |= (fX >> (T1_CHI_2_I - 6U + ci3)) & (1U << 6);
-
-	return lut_ctxno_sc_opt[lu];
+	return true;
 }
 
+/*
+Initialize buffers
+@param w	width of code block
+@param h	height of code block
+*/
+void t1_encode::initBuffers(uint16_t w, uint16_t h) {
+	t1::initBuffers(w, h);
+	if (data)
+		memset(data, 0, w*h * sizeof(int32_t));
 
-static inline uint8_t t1_getctxno_mag(uint32_t f)
-{
-	return (f & T1_MU_CURRENT) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
-}
-
-static uint8_t t1_getspb(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
-{
-	/*
-	0 pfX T1_CHI_CURRENT           T1_LUT_SGN_W
-	1 tfX T1_SIGMA_1            T1_LUT_SIG_N
-	2 nfX T1_CHI_CURRENT           T1_LUT_SGN_E
-	3 tfX T1_SIGMA_3            T1_LUT_SIG_W
-	4  fX T1_CHI_(THIS - 1)     T1_LUT_SGN_N
-	5 tfX T1_SIGMA_5            T1_LUT_SIG_E
-	6  fX T1_CHI_(THIS + 1)     T1_LUT_SGN_S
-	7 tfX T1_SIGMA_7            T1_LUT_SIG_S
-	*/
-
-	uint32_t lu = (fX >> ci3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
-
-	lu |= (pfX >> (T1_CHI_CURRENT_I + ci3)) & (1U << 0);
-	lu |= (nfX >> (T1_CHI_CURRENT_I - 2U + ci3)) & (1U << 2);
-	if (ci3 == 0U) {
-		lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
-	}
-	else {
-		lu |= (fX >> (T1_CHI_1_I - 4U + (ci3 - 3))) & (1U << 4);
-	}
-	lu |= (fX >> (T1_CHI_2_I - 6U + ci3)) & (1U << 6);
-
-	return lut_spb_opt[lu];
-}
-
-#define t1_update_flags_macro(flagsp, ci3, s, stride, vsc) \
-{ \
-	/* update current flag */  \
-    flagsp[-1] |= T1_SIGMA_5 << (ci3); \
-    *flagsp |= (((s) << T1_CHI_1_I) | T1_SIGMA_4) << (ci3); \
-    flagsp[1] |= T1_SIGMA_3 << (ci3); \
-	/* update north flag if we are at top of column and VSC is false */ \
-    if ( ((ci3) == 0U) & ((vsc)==0U)) { \
-        flag_opt_t* north = flagsp - (stride); \
-        *north |= ((s) << T1_CHI_5_I) | T1_SIGMA_16; \
-        north[-1] |= T1_SIGMA_17; \
-        north[1] |= T1_SIGMA_15; \
-    } \
-	/* update south flag*/  \
-    if (ci3 == 9u) { \
-        flag_opt_t* south = (flagsp) + (stride); \
-        *south |= ((s) << T1_CHI_0_I) | T1_SIGMA_1; \
-        south[-1] |= T1_SIGMA_2; \
-        south[1] |= T1_SIGMA_0; \
-    } \
-}
-
-
-static void t1_updateflags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc)
-{
-	t1_update_flags_macro(flagsp, ci3, s, stride, vsc);
 }
 
 void  t1_encode::sigpass_step(flag_opt_t *flagsp,
-	uint32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec, 
-	uint8_t type, 
-	uint32_t cblksty)
-{
+								uint32_t *datap,
+								uint8_t orient,
+								int32_t bpno,
+								int32_t one,
+								int32_t *nmsedec, 
+								uint8_t type, 
+								uint32_t cblksty){
 	uint32_t v;
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
@@ -223,7 +129,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			auto dataPoint = *datap;
 			v = (dataPoint >> one) & 1;
-			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
+			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_enc(mqc, v);
 			}
@@ -234,15 +140,15 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 				/* sign bit */
 				v = dataPoint >> T1_DATA_SIGN_BIT_INDEX;
 				if (nmsedec)
-					*nmsedec += t1_getnmsedec_sig(dataPoint, (uint32_t)bpno);
-				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
+					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t)bpno);
+				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
 				if (type == T1_TYPE_RAW) {	
 					mqc_bypass_enc(mqc, v);
 				}
 				else {
-					mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
+					mqc_encode(mqc, v ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3));
 				}
-				t1_updateflags(flagsp, ci3, v, flags_stride, (ci3==0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride, (ci3==0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -250,19 +156,17 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 		datap += w;
 	}
 }
-
 void t1_encode::sigpass(int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec, 
-	uint8_t type,
-	uint32_t cblksty)
-{
+						uint8_t orient,
+						int32_t *nmsedec, 
+						uint8_t type,
+						uint32_t cblksty){
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
 
-	flag_opt_t* f = ENC_FLAGS_ADDRESS(0, 0);
+	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
 	uint32_t* d = data;
 
 	if (nmsedec)
@@ -270,13 +174,13 @@ void t1_encode::sigpass(int32_t bpno,
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
 			sigpass_step(f,
-				d,
-				orient,
-				bpno,
-				one,
-				nmsedec,
-				type, 
-				cblksty);
+						d,
+						orient,
+						bpno,
+						one,
+						nmsedec,
+						type, 
+						cblksty);
 
 			++f;
 			++d;
@@ -285,14 +189,12 @@ void t1_encode::sigpass(int32_t bpno,
 		f += flag_row_extra;
 	}
 }
-
 void t1_encode::refpass_step(flag_opt_t *flagsp,
-	uint32_t *datap,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec, 
-	uint8_t type)
-{
+							uint32_t *datap,
+							int32_t bpno,
+							int32_t one,
+							int32_t *nmsedec, 
+							uint8_t type){
 	uint32_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
@@ -302,15 +204,14 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 		/* all processed by sigpass */
 		return;
 	}
-
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
 		uint32_t shift_flags = *flagsp >> ci3;
 		/* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == T1_SIGMA_CURRENT) {
 			if (nmsedec)
-				*nmsedec += t1_getnmsedec_ref(*datap, (uint32_t)bpno);
+				*nmsedec += getnmsedec_ref(*datap, (uint32_t)bpno);
 			v = (*datap >> one) & 1;
-			mqc_setcurctx(mqc, t1_getctxno_mag(shift_flags));
+			mqc_setcurctx(mqc, getMRPContext(shift_flags));
 			if (type == T1_TYPE_RAW) {	
 				mqc_bypass_enc(mqc, v);
 			}
@@ -323,14 +224,12 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 		datap += w;
 	}
 }
-
 void t1_encode::refpass(int32_t bpno,
 	int32_t *nmsedec, 
-	uint8_t type)
-{
+	uint8_t type){
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
-	flag_opt_t* f = ENC_FLAGS_ADDRESS(0, 0);
+	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
 	uint32_t* d = data;
@@ -352,7 +251,6 @@ void t1_encode::refpass(int32_t bpno,
 		d += data_row_extra;
 	}
 }
-
 void t1_encode::clnpass_step(flag_opt_t *flagsp,
 	uint32_t *datap,
 	uint8_t orient,
@@ -394,31 +292,28 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 		shift_flags = *flagsp >> ci3;
 
 		if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
-			mqc_setcurctx(mqc, t1_getctxno_zc(shift_flags, orient));
+			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
 			v = (*datap >> one) & 1;
 			mqc_encode(mqc, v);
 			if (v) {
 			LABEL_PARTIAL:
 				if (nmsedec)
-					*nmsedec += t1_getnmsedec_sig(*datap, (uint32_t)bpno);
-				mqc_setcurctx(mqc, t1_getctxno_sc(*flagsp, flagsp[-1], flagsp[1], ci3));
+					*nmsedec += getnmsedec_sig(*datap, (uint32_t)bpno);
+				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
-				mqc_encode(mqc, v ^ t1_getspb(*flagsp, flagsp[-1], flagsp[1], ci3));
-				t1_updateflags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+				mqc_encode(mqc, v ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
 		datap += w;
 	}
 }
-
-
 void t1_encode::clnpass(int32_t bpno,
 	uint8_t orient,
 	int32_t *nmsedec, 
-	uint32_t cblksty)
-{
+	uint32_t cblksty){
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg, runlen;
@@ -428,7 +323,7 @@ void t1_encode::clnpass(int32_t bpno,
 
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
-			agg = !ENC_FLAGS(i, k);
+			agg = !flags[i+1 + ((k >> 2) + 1) * flags_stride];
 			if (agg) {
 				for (runlen = 0; runlen < 4; ++runlen) {
 					if ((data[((k + runlen)*w) + i] >> one) & 1)
@@ -446,7 +341,7 @@ void t1_encode::clnpass(int32_t bpno,
 			else {
 				runlen = 0;
 			}
-			clnpass_step(ENC_FLAGS_ADDRESS(i, k),
+			clnpass_step(FLAGS_ADDRESS(i, k),
 				data + ((k + runlen) * w) + i,
 				orient,
 				bpno,
@@ -459,76 +354,6 @@ void t1_encode::clnpass(int32_t bpno,
 		}
 	}
 }
-
-
-bool t1_encode::allocate_buffers(uint32_t cblkw,uint32_t cblkh)
-{
-	if (!data) {
-		data = (uint32_t*)grok_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
-		if (!data) {
-			/* FIXME event manager error callback */
-			return false;
-		}
-	}
-	if (!flags) {
-		auto flags_stride = cblkw + 2;
-		auto flags_height = (cblkh + 3U) >> 2;
-		auto flagssize = flags_stride * (flags_height + 2);
-		flags = (flag_opt_t*)grok_aligned_malloc(flagssize * sizeof(flag_opt_t));
-		if (!flags) {
-			/* FIXME event manager error callback */
-			return false;
-		}
-	}
-	return true;
-}
-
-void t1_encode::init_buffers(uint32_t w,uint32_t h)	{
-	uint32_t x;
-	flag_opt_t* p;
-	if (data)
-		memset(data, 0, w*h * sizeof(int32_t));
-
-	flags_stride = w + 2;
-	auto flags_height = (h + 3U) >> 2;
-	auto flagssize = flags_stride * (flags_height + 2);
-	memset(flags, 0, flagssize * sizeof(flag_opt_t)); /* Shall we keep memset for encoder ? */
-
-	/* BIG FAT XXX */
-	p = &flags[0];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to hopefully stop any passes being interested in this entry */
-		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
-
-	p = &flags[((flags_height + 1) * flags_stride)];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to hopefully stop any passes being interested in this entry */
-		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
-
-	unsigned char hMod4 = h & 3;
-	if (hMod4) {
-		uint32_t v = 0;
-		p = &flags[((flags_height)* flags_stride)];
-		if (hMod4 == 1) {
-			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
-		}
-		else if (hMod4 == 2) {
-			v |= T1_PI_2 | T1_PI_3;
-		}
-		else if (hMod4 == 3) {
-			v |= T1_PI_3;
-		}
-		for (x = 0; x < flags_stride; ++x) {
-			*p++ = v;
-		}
-	}
-
-	this->w = w;
-	this->h = h;
-}
-
 double t1_encode::getwmsedec(int32_t nmsedec,
 	uint32_t compno,
 	uint32_t level,
@@ -556,19 +381,17 @@ double t1_encode::getwmsedec(int32_t nmsedec,
 	return wmsedec;
 }
 
-int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos) {
+int16_t t1_encode::getnmsedec_sig(uint32_t x, uint32_t bitpos) {
 	if (bitpos > 0) {
 		return lut_nmsedec_sig[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
 	}
-
 	return lut_nmsedec_sig0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
 }
 
-int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos) {
+int16_t t1_encode::getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 	if (bitpos > 0) {
 		return lut_nmsedec_ref[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
 	}
-
 	return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
 }
 

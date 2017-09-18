@@ -57,6 +57,7 @@
 
  // tier 1 interface
 #include "mqc.h"
+#include "t1.h"
 #include "t1_decode.h"
 #include "t1_luts.h"
 #include "T1Encoder.h"
@@ -125,22 +126,41 @@ void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 	sp[1] |= T1_SIG_NW;
 }
 
-inline void t1_decode::sigpass_step_raw(flag_t *flagsp,
-											int32_t *datap,
-											int32_t oneplushalf,
-											bool vsc){
-	// ignore locations in next stripe when VSC flag is set
-	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
-		if (raw_decode(raw)) {
-			uint8_t v = (int32_t)raw_decode(raw);
-			*datap = v ? -oneplushalf : oneplushalf;
-			updateflags(flagsp, (uint32_t)v, flags_stride);
+
+t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
+																				flags(nullptr),
+																				flags_stride(0),
+																				compressed_block(nullptr),
+																				compressed_block_size(0),
+																				mqc(nullptr),
+																				raw(nullptr) {
+	mqc = mqc_create();
+	if (!mqc) {
+		throw std::exception();
+	}
+	raw = raw_create();
+	if (!raw) {
+		throw std::exception();
+	}
+	if (code_block_width > 0 && code_block_height > 0) {
+		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
+		if (!compressed_block) {
+			throw std::exception();
 		}
-		*flagsp |= T1_VISIT;
+		compressed_block_size = (size_t)(code_block_width * code_block_height);
 	}
 }
-inline void t1_decode::sigpass_step_mqc(flag_t *flagsp,
+t1_decode::~t1_decode() {
+	/* destroy MQC and RAW handles */
+	mqc_destroy(mqc);
+	raw_destroy(raw);
+	if (compressed_block)
+		grok_free(compressed_block);
+	if (dataPtr)
+		grok_aligned_free(dataPtr);
+}
+
+inline void t1_decode::sigpass_step(flag_t *flagsp,
 											int32_t *datap,
 											uint8_t orient,
 											int32_t oneplushalf){
@@ -156,7 +176,110 @@ inline void t1_decode::sigpass_step_mqc(flag_t *flagsp,
 		*flagsp |= T1_VISIT;
 	}
 }
-inline void t1_decode::sigpass_step_mqc_vsc(flag_t *flagsp,
+
+void t1_decode::sigpass(int32_t bpno, uint8_t orient) {
+	int32_t one, half, oneplushalf;
+	uint32_t i, j, k;
+	int32_t *data1 = dataPtr;
+	flag_t *flags1 = &flags[1];
+	one = 1 << bpno;
+	half = one >> 1;
+	oneplushalf = one | half;
+	for (k = 0; k < (h & ~3u); k += 4) {
+		for (i = 0; i < w; ++i) {
+			int32_t *data2 = data1 + i;
+			flag_t *flags2 = flags1 + i;
+			flags2 += flags_stride;
+			sigpass_step(flags2, data2, orient, oneplushalf);
+			data2 += w;
+			flags2 += flags_stride;
+			sigpass_step(flags2, data2, orient, oneplushalf);
+			data2 += w;
+			flags2 += flags_stride;
+			sigpass_step(flags2, data2, orient, oneplushalf);
+			data2 += w;
+			flags2 += flags_stride;
+			sigpass_step(flags2, data2, orient, oneplushalf);
+			data2 += w;
+		}
+		data1 += (size_t)w << 2;
+		flags1 += (size_t)flags_stride << 2;
+	}
+	for (i = 0; i < w; ++i) {
+		int32_t *data2 = data1 + i;
+		flag_t *flags2 = flags1 + i;
+		for (j = k; j < h; ++j) {
+			flags2 += flags_stride;
+			sigpass_step(flags2, data2, orient, oneplushalf);
+			data2 += w;
+		}
+	}
+}
+inline void t1_decode::sigpass_step_raw(flag_t *flagsp,
+	int32_t *datap,
+	int32_t oneplushalf,
+	bool vsc) {
+	// ignore locations in next stripe when VSC flag is set
+	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
+		if (raw_decode(raw)) {
+			uint8_t v = (int32_t)raw_decode(raw);
+			*datap = v ? -oneplushalf : oneplushalf;
+			updateflags(flagsp, (uint32_t)v, flags_stride);
+		}
+		*flagsp |= T1_VISIT;
+	}
+}
+void t1_decode::sigpass_raw(int32_t bpno, uint32_t cblksty) {
+	int32_t one = 1 << bpno;
+	int32_t half = one >> 1;
+	int32_t oneplushalf = one | half;
+	for (uint32_t k = 0; k < h; k += 4) {
+		for (uint32_t i = 0; i < w; ++i) {
+			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
+				// VSC flag is set for last line of stripe
+				int32_t vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
+				sigpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
+					&dataPtr[(j * w) + i],
+					oneplushalf,
+					vsc);
+			}
+		}
+	}
+}
+inline void t1_decode::refpass_step_raw(flag_t *flagsp,
+	int32_t *datap,
+	int32_t poshalf,
+	bool vsc) {
+	// ignore locations in next stripe when VSC flag is set
+	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
+		uint8_t v = (int32_t)raw_decode(raw);
+		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
+		*flagsp |= T1_REFINE;
+	}
+}
+void t1_decode::refpass_raw(int32_t bpno,
+	uint32_t cblksty) {
+	int32_t one, poshalf;
+	uint32_t i, j, k;
+	bool vsc;
+	one = 1 << bpno;
+	poshalf = one >> 1;
+	for (k = 0; k < h; k += 4) {
+		for (i = 0; i < w; ++i) {
+			for (j = k; j < k + 4 && j < h; ++j) {
+				// VSC flag is set for last line of stripe
+				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
+				refpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
+					&dataPtr[(j * w) + i],
+					poshalf,
+					vsc);
+			}
+		}
+	}
+}
+inline void t1_decode::sigpass_step_vsc(flag_t *flagsp,
 												int32_t *datap,
 												uint8_t orient,
 												int32_t oneplushalf,
@@ -174,63 +297,7 @@ inline void t1_decode::sigpass_step_mqc_vsc(flag_t *flagsp,
 		*flagsp |= T1_VISIT;
 	}
 }
-void t1_decode::sigpass_raw(int32_t bpno,uint32_t cblksty){
-	int32_t one = 1 << bpno;
-	int32_t half = one >> 1;
-	int32_t oneplushalf = one | half;
-	for (uint32_t k = 0; k < h; k += 4) {
-		for (uint32_t i = 0; i < w; ++i) {
-			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
-				// VSC flag is set for last line of stripe
-				int32_t vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
-				sigpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
-					&data[(j * w) + i],
-					oneplushalf,
-					vsc);
-			}
-		}
-	}
-}
-
-void t1_decode::sigpass_mqc(int32_t bpno,uint8_t orient){
-	int32_t one, half, oneplushalf;
-	uint32_t i, j, k;
-	int32_t *data1 = data;
-	flag_t *flags1 = &flags[1];
-	one = 1 << bpno;
-	half = one >> 1;
-	oneplushalf = one | half;
-	for (k = 0; k < (h & ~3u); k += 4) {
-		for (i = 0; i < w; ++i) {
-			int32_t *data2 = data1 + i;
-			flag_t *flags2 = flags1 + i;
-			flags2 += flags_stride;
-			sigpass_step_mqc(flags2, data2, orient, oneplushalf);
-			data2 += w;
-			flags2 += flags_stride;
-			sigpass_step_mqc(flags2, data2, orient, oneplushalf);
-			data2 += w;
-			flags2 += flags_stride;
-			sigpass_step_mqc(flags2, data2, orient, oneplushalf);
-			data2 += w;
-			flags2 += flags_stride;
-			sigpass_step_mqc(flags2, data2, orient, oneplushalf);
-			data2 += w;
-		}
-		data1 += (size_t)w << 2;
-		flags1 += (size_t)flags_stride << 2;
-	}
-	for (i = 0; i < w; ++i) {
-		int32_t *data2 = data1 + i;
-		flag_t *flags2 = flags1 + i;
-		for (j = k; j < h; ++j) {
-			flags2 += flags_stride;
-			sigpass_step_mqc(flags2, data2, orient, oneplushalf);
-			data2 += w;
-		}
-	}
-}
-void t1_decode::sigpass_mqc_vsc(int32_t bpno,uint8_t orient){
+void t1_decode::sigpass_vsc(int32_t bpno,uint8_t orient){
 	int32_t one, half, oneplushalf, vsc;
 	uint32_t i, j, k;
 	one = 1 << bpno;
@@ -241,8 +308,8 @@ void t1_decode::sigpass_mqc_vsc(int32_t bpno,uint8_t orient){
 			for (j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
 				vsc = (j == k + 3 || j == h - 1) ? 1 : 0;
-				sigpass_step_mqc_vsc(&flags[((j + 1) * flags_stride) + i + 1],
-					&data[(j * w) + i],
+				sigpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
+					&dataPtr[(j * w) + i],
 					orient,
 					oneplushalf,
 					vsc);
@@ -250,21 +317,7 @@ void t1_decode::sigpass_mqc_vsc(int32_t bpno,uint8_t orient){
 		}
 	}
 }
-
-inline void t1_decode::refpass_step_raw(flag_t *flagsp,
-											int32_t *datap,
-											int32_t poshalf,
-											bool vsc){
-	// ignore locations in next stripe when VSC flag is set
-	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
-	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-		uint8_t v = (int32_t)raw_decode(raw);
-		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
-		*flagsp |= T1_REFINE;
-	}
-}
-
-inline void t1_decode::refpass_step_mqc(	flag_t *flagsp,
+inline void t1_decode::refpass_step(	flag_t *flagsp,
 											int32_t *datap,
 											int32_t poshalf){
 	flag_t flag = *flagsp;
@@ -275,7 +328,44 @@ inline void t1_decode::refpass_step_mqc(	flag_t *flagsp,
 		*flagsp |= T1_REFINE;
 	}
 }
-inline void t1_decode::refpass_step_mqc_vsc(flag_t *flagsp,
+void t1_decode::refpass(int32_t bpno) {
+	int32_t one, poshalf;
+	uint32_t i, j, k;
+	int32_t *data1 = dataPtr;
+	flag_t *flags1 = &flags[1];
+	one = 1 << bpno;
+	poshalf = one >> 1;
+	for (k = 0; k < (h & ~3u); k += 4) {
+		for (i = 0; i < w; ++i) {
+			int32_t *data2 = data1 + i;
+			flag_t *flags2 = flags1 + i;
+			flags2 += flags_stride;
+			refpass_step(flags2, data2, poshalf);
+			data2 += w;
+			flags2 += flags_stride;
+			refpass_step(flags2, data2, poshalf);
+			data2 += w;
+			flags2 += flags_stride;
+			refpass_step(flags2, data2, poshalf);
+			data2 += w;
+			flags2 += flags_stride;
+			refpass_step(flags2, data2, poshalf);
+			data2 += w;
+		}
+		data1 += (size_t)w << 2;
+		flags1 += (size_t)flags_stride << 2;
+	}
+	for (i = 0; i < w; ++i) {
+		int32_t *data2 = data1 + i;
+		flag_t *flags2 = flags1 + i;
+		for (j = k; j < h; ++j) {
+			flags2 += flags_stride;
+			refpass_step(flags2, data2, poshalf);
+			data2 += w;
+		}
+	}
+}
+inline void t1_decode::refpass_step_vsc(flag_t *flagsp,
 												int32_t *datap,
 												int32_t poshalf,
 												bool vsc){
@@ -287,65 +377,7 @@ inline void t1_decode::refpass_step_mqc_vsc(flag_t *flagsp,
 		*flagsp |= T1_REFINE;
 	}
 }
-void t1_decode::refpass_raw(int32_t bpno,
-								uint32_t cblksty){
-	int32_t one, poshalf;
-	uint32_t i, j, k;
-	bool vsc;
-	one = 1 << bpno;
-	poshalf = one >> 1;
-	for (k = 0; k < h; k += 4) {
-		for (i = 0; i < w; ++i) {
-			for (j = k; j < k + 4 && j < h; ++j) {
-				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
-				refpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
-					&data[(j * w) + i],
-					poshalf,
-					vsc);
-			}
-		}
-	}
-}
-void t1_decode::refpass_mqc(int32_t bpno) {
-	int32_t one, poshalf;
-	uint32_t i, j, k;
-	int32_t *data1 = data;
-	flag_t *flags1 = &flags[1];
-	one = 1 << bpno;
-	poshalf = one >> 1;
-	for (k = 0; k < (h & ~3u); k += 4) {
-		for (i = 0; i < w; ++i) {
-			int32_t *data2 = data1 + i;
-			flag_t *flags2 = flags1 + i;
-			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf);
-			data2 += w;
-			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf);
-			data2 += w;
-			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf);
-			data2 += w;
-			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf);
-			data2 += w;
-		}
-		data1 += (size_t)w << 2;
-		flags1 += (size_t)flags_stride << 2;
-	}
-	for (i = 0; i < w; ++i) {
-		int32_t *data2 = data1 + i;
-		flag_t *flags2 = flags1 + i;
-		for (j = k; j < h; ++j) {
-			flags2 += flags_stride;
-			refpass_step_mqc(flags2, data2, poshalf);
-			data2 += w;
-		}
-	}
-}
-
-void t1_decode::refpass_mqc_vsc(int32_t bpno) {
+void t1_decode::refpass_vsc(int32_t bpno) {
 	int32_t one = 1 << bpno;
 	int32_t poshalf = one >> 1;
 	for (uint32_t k = 0; k < h; k += 4) {
@@ -353,15 +385,14 @@ void t1_decode::refpass_mqc_vsc(int32_t bpno) {
 			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
 				uint8_t vsc = ((j == k + 3 || j == h - 1)) ? 1 : 0;
-				refpass_step_mqc_vsc(&flags[((j + 1) * flags_stride) + i + 1],
-					&data[(j * w) + i],
+				refpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
+					&dataPtr[(j * w) + i],
 					poshalf,
 					vsc);
 			}
 		}
 	}
 }
-
 void t1_decode::clnpass_step_partial(	flag_t *flagsp,
 										int32_t *datap,
 										int32_t oneplushalf) {
@@ -417,25 +448,22 @@ void t1_decode::clnpass_step_vsc(	flag_t *flagsp,
 void t1_decode::clnpass(	int32_t bpno,
 							uint8_t orient,
 							uint32_t cblksty) {
-	int32_t one, half, oneplushalf, agg, vsc;
+	int32_t one, half, oneplushalf, vsc;
 	uint8_t runlen;
 	uint32_t i, j, k;
-	int32_t segsym = cblksty & J2K_CCP_CBLKSTY_SEGSYM;
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
 	if (cblksty & J2K_CCP_CBLKSTY_VSC) {
 		for (k = 0; k < h; k += 4) {
 			for (i = 0; i < w; ++i) {
+				int32_t agg = 0;
 				if (k + 3 < h) {
 					agg = !(MACRO_t1_flags(1 + k, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
 						|| MACRO_t1_flags(1 + k + 1, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
 						|| MACRO_t1_flags(1 + k + 2, 1 + i) & (T1_SIG | T1_VISIT | T1_SIG_OTH)
 						|| (MACRO_t1_flags(1 + k + 3, 1 + i)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) & (T1_SIG | T1_VISIT | T1_SIG_OTH));
-				}
-				else {
-					agg = 0;
 				}
 				if (agg) {
 					mqc_setcurctx(mqc, T1_CTXNO_AGG);
@@ -453,7 +481,7 @@ void t1_decode::clnpass(	int32_t bpno,
 					// VSC flag is set for last line of stripe
 					vsc = (j == k + 3 || j == h - 1) ? 1 : 0;
 					clnpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
-						&data[(j * w) + i],
+						&dataPtr[(j * w) + i],
 						orient,
 						oneplushalf,
 						agg && (j == k + (uint32_t)runlen),
@@ -463,13 +491,13 @@ void t1_decode::clnpass(	int32_t bpno,
 		}
 	}
 	else {
-		int32_t *data1 = data;
+		int32_t *data1 = dataPtr;
 		flag_t *flags1 = &flags[1];
 		for (k = 0; k < (h & ~3u); k += 4) {
 			for (i = 0; i < w; ++i) {
 				int32_t *data2 = data1 + i;
 				flag_t *flags2 = flags1 + i;
-				agg = !((MACRO_t1_flags(1 + k, 1 + i) |
+				int32_t agg = !((MACRO_t1_flags(1 + k, 1 + i) |
 					MACRO_t1_flags(1 + k + 1, 1 + i) |
 					MACRO_t1_flags(1 + k + 2, 1 + i) |
 					MACRO_t1_flags(1 + k + 3, 1 + i)) & (T1_SIG | T1_VISIT | T1_SIG_OTH));
@@ -522,7 +550,7 @@ void t1_decode::clnpass(	int32_t bpno,
 			}
 		}
 	}
-	if (segsym) {
+	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
 		uint8_t v = 0;
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
 		v = mqc_decode(mqc);
@@ -536,93 +564,36 @@ void t1_decode::clnpass(	int32_t bpno,
 		*/
 	}
 }
-
-
-
-/**
-	* Creates a new Tier 1 handle
-	* and initializes the look-up tables of the Tier-1 coder/decoder
-	* @return a new T1 handle if successful, returns NULL otherwise
-*/
-t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) :	data(nullptr),
-																				w(0),
-																				h(0),
-																				compressed_block(nullptr),
-																				compressed_block_size(0),
-																				mqc(nullptr),
-																				raw(nullptr),
-																				flags(nullptr),
-																				datasize(0),
-																				flagssize(0),
-																				flags_stride(0)	{
-	mqc = mqc_create();
-	if (!mqc) {
-		throw std::exception();
-	}
-	raw = raw_create();
-	if (!raw) {
-		throw std::exception();
-	}
-
-	if (code_block_width > 0 && code_block_height > 0) {
-		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
-		if (!compressed_block) {
-			throw std::exception();
-		}
-		compressed_block_size = (size_t)(code_block_width * code_block_height);
-	}
-}
-/**
-	* Destroys a previously created T1 handle
-	*
-	* @param p_t1 Tier 1 handle to destroy
-*/
-t1_decode::~t1_decode() {
-	/* destroy MQC and RAW handles */
-	mqc_destroy(mqc);
-	raw_destroy(raw);
-	if (data) {
-		grok_aligned_free(data);
-	}
-	if (flags) {
-		grok_aligned_free(flags);
-	}
-	if (compressed_block)
-		grok_free(compressed_block);
-}
-
 bool t1_decode::allocate_buffers(uint16_t w, uint16_t h) {
 	/* encoder uses tile buffer, so no need to allocate */
 	uint32_t new_datasize = w * h;
-	if (new_datasize > datasize) {
-		if (data)
-			grok_aligned_free(data);
-		data = (int32_t*)grok_aligned_malloc(new_datasize * sizeof(int32_t));
-		if (!data) {
-			/* FIXME event manager error callback */
-			return false;
-		}
-		datasize = new_datasize;
+	if (dataPtr)
+		grok_aligned_free(dataPtr);
+	dataPtr = (int32_t*)grok_aligned_malloc(new_datasize * sizeof(int32_t));
+	if (!dataPtr) {
+		/* FIXME event manager error callback */
+		return false;
 	}
-	memset(data, 0, datasize * sizeof(int32_t));
+
 	flags_stride = w + 2;
 	uint32_t new_flagssize = flags_stride * (h + 2);
-	if (new_flagssize > flagssize) {
-		if (flags)
-			grok_aligned_free(flags);
-		flags = (flag_t*)grok_aligned_malloc(new_flagssize * sizeof(flag_t));
-		if (!flags) {
-			/* FIXME event manager error callback */
-			return false;
-		}
-		flagssize = new_flagssize;
+	if (flags)
+		grok_aligned_free(flags);
+	flags = (flag_t*)grok_aligned_malloc(new_flagssize * sizeof(flag_t));
+	if (!flags) {
+		/* FIXME event manager error callback */
+		return false;
 	}
-	memset(flags, 0, flagssize * sizeof(flag_t));
-	this->w = w;
-	this->h = h;
+	init_buffers(w,h);
 	return true;
 }
-
+void t1_decode::init_buffers(uint16_t w, uint16_t h) {
+	this->w = w;
+	this->h = h;
+	flags_stride = w + 2;
+	memset(dataPtr, 0, w * h * sizeof(int32_t));
+	memset(flags, 0, flags_stride * (h + 2) * sizeof(flag_t));
+}
 bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 							uint8_t orient,
 							uint32_t roishift,
@@ -635,9 +606,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t* block_buffer = NULL;
 	size_t total_seg_len;
 
-	if (!allocate_buffers(cblk->x1 - cblk->x0,	cblk->y1 - cblk->y0)) {
-		return false;
-	}
+	init_buffers(cblk->x1 - cblk->x0, cblk->y1 - cblk->y0);
 
 	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
 	if (cblk->numSegments && total_seg_len) {
@@ -685,10 +654,10 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
-						sigpass_mqc_vsc(bpno_plus_one, (int32_t)orient);
+						sigpass_vsc(bpno_plus_one, (int32_t)orient);
 					}
 					else {
-						sigpass_mqc(bpno_plus_one, (int32_t)orient);
+						sigpass(bpno_plus_one, (int32_t)orient);
 					}
 				}
 				break;
@@ -698,10 +667,10 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
-						refpass_mqc_vsc(bpno_plus_one);
+						refpass_vsc(bpno_plus_one);
 					}
 					else {
-						refpass_mqc(bpno_plus_one);
+						refpass(bpno_plus_one);
 					}
 				}
 				break;

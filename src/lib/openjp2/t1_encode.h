@@ -55,127 +55,17 @@
 #pragma once
 namespace grk {
 
-	/*********************/
-	/*   STATE FLAGS     */
-	/*********************/
-
-
-	/** We hold the state of individual data points for the T1 encoder using
-	*  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
-	*  to the 4-point-high columns that the data is processed in.
-	*  These #defines declare the layout of a 32-bit flags word.
-	*  This is currently done for encoding only.
-	*/
-
-	/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total
-	*  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
-	*  indicate the significance state of the west neighbour of data point zero
-	*  of our four, the point itself, and its east neighbour respectively.
-	*  Many of the bits are arranged so that given a flags word, you can
-	*  look at the values for the data point 0, then shift the flags
-	*  word right by 3 bits and look at the same bit positions to see the
-	*  values for data point 1.
-	*/
-
-#define T1_SIGMA_0  (1U << 0)
-#define T1_SIGMA_1  (1U << 1)
-#define T1_SIGMA_2  (1U << 2)
-#define T1_SIGMA_3  (1U << 3)
-#define T1_SIGMA_4  (1U << 4)
-#define T1_SIGMA_5  (1U << 5)
-#define T1_SIGMA_6  (1U << 6)
-#define T1_SIGMA_7  (1U << 7)
-#define T1_SIGMA_8  (1U << 8)
-#define T1_SIGMA_9  (1U << 9)
-#define T1_SIGMA_10 (1U << 10)
-#define T1_SIGMA_11 (1U << 11)
-#define T1_SIGMA_12 (1U << 12)
-#define T1_SIGMA_13 (1U << 13)
-#define T1_SIGMA_14 (1U << 14)
-#define T1_SIGMA_15 (1U << 15)
-#define T1_SIGMA_16 (1U << 16)
-#define T1_SIGMA_17 (1U << 17)
-
-	/*
-	* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
-	* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
-	* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
-	*/
-
-#define T1_CHI_0_I  18
-#define T1_CHI_0    (1U << T1_CHI_0_I)
-#define T1_CHI_1_I  19
-#define T1_CHI_1    (1U << T1_CHI_1_I)
-#define T1_MU_0     (1U << 20)
-#define T1_PI_0     (1U << 21)
-#define T1_CHI_2_I  22
-#define T1_CHI_2    (1U << T1_CHI_2_I)
-#define T1_MU_1     (1U << 23)
-#define T1_PI_1     (1U << 24)
-#define T1_CHI_3    (1U << 25)
-#define T1_MU_2     (1U << 26)
-#define T1_PI_2     (1U << 27)
-#define T1_CHI_4    (1U << 28)
-#define T1_MU_3     (1U << 29)
-#define T1_PI_3     (1U << 30)
-#define T1_CHI_5_I	31 
-#define T1_CHI_5    (1U << T1_CHI_5_I)
-
-	/**The #defines below are convenience flags; say you have a flags word
-	*  f, you can do things like
-	*
-	*  (f & T1_SIGMA_CURRENT)
-	*
-	*  to see the significance bit of data point 0, then do
-	*
-	*  ((f >> 3) & T1_SIGMA_CURRENT)
-	*
-	*  to see the significance bit of data point 1.
-	*/
-
-#define T1_SIGMA_NW   T1_SIGMA_0
-#define T1_SIGMA_N    T1_SIGMA_1
-#define T1_SIGMA_NE   T1_SIGMA_2
-#define T1_SIGMA_W    T1_SIGMA_3
-#define T1_SIGMA_CURRENT T1_SIGMA_4
-#define T1_SIGMA_E    T1_SIGMA_5
-#define T1_SIGMA_SW   T1_SIGMA_6
-#define T1_SIGMA_S    T1_SIGMA_7
-#define T1_SIGMA_SE   T1_SIGMA_8
-#define T1_SIGMA_NEIGHBOURS (T1_SIGMA_NW | T1_SIGMA_N | T1_SIGMA_NE | T1_SIGMA_W | T1_SIGMA_E | T1_SIGMA_SW | T1_SIGMA_S | T1_SIGMA_SE)
-
-#define T1_CHI_CURRENT   T1_CHI_1
-#define T1_CHI_CURRENT_I T1_CHI_1_I
-#define T1_MU_CURRENT    T1_MU_0
-#define T1_PI_CURRENT    T1_PI_0
-
-#define T1_LUT_SGN_W (1U << 0)
-#define T1_LUT_SIG_N (1U << 1)
-#define T1_LUT_SGN_E (1U << 2)
-#define T1_LUT_SIG_W (1U << 3)
-#define T1_LUT_SGN_N (1U << 4)
-#define T1_LUT_SIG_E (1U << 5)
-#define T1_LUT_SGN_S (1U << 6)
-#define T1_LUT_SIG_S (1U << 7)
-
-
-	// sign bit is stored at this location in 32 bit coefficient
-#define T1_DATA_SIGN_BIT_INDEX 31
-
-
-typedef uint32_t flag_opt_t;
+class t1;
 
 /**
 Tier-1 coding (coding of code-block coefficients)
 */
-class t1_encode {
+class t1_encode : public t1 {
 public:
-	t1_encode(bool encoder);
+	t1_encode();
 	~t1_encode();
-
-	bool allocate_buffers(uint32_t cblkw, uint32_t cblkh);
-
-	void init_buffers(uint32_t w, uint32_t h);
+	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
+	void initBuffers(uint16_t w, uint16_t h);
 
 	double encode_cblk(tcd_cblk_enc_t* cblk,
 		uint8_t orient,
@@ -189,14 +79,9 @@ public:
 		uint32_t mct_numcomps,
 		uint32_t max,
 		bool doRateControl);
-
 	uint32_t  *data;
-	uint16_t w;
-	uint16_t h;
 private:
 	mqc_t *mqc;
-	flag_opt_t *flags;
-	uint16_t flags_stride;
 	/**
 	Encode significant pass
 	*/
@@ -271,7 +156,8 @@ private:
 		const double * mct_norms,
 		uint32_t mct_numcomps);
 
-
+	int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
+	int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
 };
 
 }

@@ -35,15 +35,19 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_encoder(nullptr) {
+t1_impl::t1_impl(bool isEncoder, 
+				tcp_t *tcp,
+				tcd_tile_t *tile,
+				uint16_t maxCblkW,
+				uint16_t maxCblkH) : t1(nullptr), t1_encoder(nullptr) {
 	if (isEncoder) {
-		t1_encoder = new t1_encode(isEncoder);
-		if (!t1_encoder->allocate_buffers(maxCblkW,	maxCblkH)) {
+		t1_encoder = new t1_encode();
+		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
 			throw std::exception();
 		}
 	}
 	else {
-		t1 = new t1_decode((uint16_t)maxCblkW, (uint16_t)maxCblkH);
+		t1 = new t1_decode(maxCblkW,maxCblkH);
 		if (!t1->allocate_buffers(maxCblkW,maxCblkH)) {
 			throw std::exception();
 		}
@@ -60,14 +64,14 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 	auto state = grok_plugin_get_debug_state();
 	//1. prepare low-level encode
 	auto tilec = tile->comps + block->compno;
-	t1_encoder->init_buffers((block->cblk->x1 - block->cblk->x0),
+	t1_encoder->initBuffers((block->cblk->x1 - block->cblk->x0),
 							(block->cblk->y1 - block->cblk->y0));
 
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 	auto tileLineAdvance = tile_width - t1_encoder->w;
 	auto tiledp = block->tiledp;
 #ifdef DEBUG_LOSSLESS_T1
-	block->unencodedData = new int32_t[t1_encode->w * t1_encode->h];
+	block->unencodedData = new int32_t[t1_encoder->w * t1_encoder->h];
 #endif
 	uint32_t tileIndex = 0;
 	max = 0;
@@ -137,7 +141,7 @@ double t1_impl::encode(encodeBlockInfo* block,
 										max, 
 										doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
-		t1_decode* t1Decode = new t1_decode(false, t1_encode->w, t1_encode->h);
+		t1_decode* t1Decode = new t1_decode(t1_encoder->w, t1_encoder->h);
 
 		tcd_cblk_dec_t* cblkDecode = new tcd_cblk_dec_t();
 		cblkDecode->data = nullptr;
@@ -159,12 +163,12 @@ double t1_impl::encode(encodeBlockInfo* block,
 		seg->dataindex = 0;
 		min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
 		//decode
-		t1_decode_cblk(t1Decode, cblkDecode, block->bandno, 0, 0);
+		t1Decode->decode_cblk(cblkDecode, block->bandno, 0, 0);
 
 		//compare
 		auto index = 0;
-		for (uint32_t j = 0; j < t1_encode->h; ++j) {
-			for (uint32_t i = 0; i < t1_encode->w; ++i) {
+		for (uint32_t j = 0; j < t1_encoder->h; ++j) {
+			for (uint32_t i = 0; i < t1_encoder->w; ++i) {
 				auto valBefore = block->unencodedData[index];
 				auto valAfter = t1Decode->data[index] / 2;
 				if (valAfter != valBefore) {
@@ -187,10 +191,6 @@ double t1_impl::encode(encodeBlockInfo* block,
 // DECODE
 
 bool t1_impl::decode(decodeBlockInfo* block) {
-	if (!t1->allocate_buffers((block->cblk->x1 - block->cblk->x0),
-							(block->cblk->y1 - block->cblk->y0))) {
-		return false;
-	}
 	return t1->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
 						block->roishift,
@@ -198,7 +198,7 @@ bool t1_impl::decode(decodeBlockInfo* block) {
 }
 
 void t1_impl::postDecode(decodeBlockInfo* block) {
-	auto t1_data = t1->data;
+	auto t1_data = t1->dataPtr;
 	// ROI shift
 	if (block->roishift) {
 		int32_t threshold = 1 << block->roishift;
@@ -215,7 +215,7 @@ void t1_impl::postDecode(decodeBlockInfo* block) {
 			}
 		}
 		//reset t1_data to start of buffer
-		t1_data = t1->data;
+		t1_data = t1->dataPtr;
 	}
 
 	//dequantization
