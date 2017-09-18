@@ -18,7 +18,7 @@
 #include "t1_impl.h"
 #include "mqc.h"
 #include "t1.h"
-#include "t1_opt.h"
+#include "t1_encode.h"
 
 namespace grk {
 
@@ -35,13 +35,11 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
 	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_opt(nullptr), doOpt(false) {
+t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW,uint32_t maxCblkH) : t1(nullptr), t1_encoder(nullptr), doOpt(false) {
 	if (isEncoder) {
 		doOpt = true;
-		t1_opt = new t1_opt_t(isEncoder);
-		if (!t1_opt_allocate_buffers(t1_opt,
-									maxCblkW,
-									maxCblkH)) {
+		t1_encoder = new t1_encode(isEncoder);
+		if (!t1_encoder->allocate_buffers(maxCblkW,	maxCblkH)) {
 			throw std::exception();
 		}
 	}
@@ -56,7 +54,7 @@ t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW
 }
 t1_impl::~t1_impl() {
 	delete t1;
-	delete t1_opt;
+	delete t1_encoder;
 }
 
 // ENCODED
@@ -66,22 +64,21 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 	if (doOpt) {
 		//1. prepare low-level encode
 		auto tilec = tile->comps + block->compno;
-		t1_opt_init_buffers(t1_opt,
-			(block->cblk->x1 - block->cblk->x0),
-			(block->cblk->y1 - block->cblk->y0));
+		t1_encoder->init_buffers((block->cblk->x1 - block->cblk->x0),
+								(block->cblk->y1 - block->cblk->y0));
 
 		uint32_t tile_width = (tilec->x1 - tilec->x0);
-		auto tileLineAdvance = tile_width - t1_opt->w;
+		auto tileLineAdvance = tile_width - t1_encoder->w;
 		auto tiledp = block->tiledp;
 #ifdef DEBUG_LOSSLESS_T1
-		block->unencodedData = new int32_t[t1_opt->w * t1_opt->h];
+		block->unencodedData = new int32_t[t1_encode->w * t1_encode->h];
 #endif
 		uint32_t tileIndex = 0;
 		max = 0;
 		uint32_t cblk_index = 0;
 		if (block->qmfbid == 1) {
-			for (auto j = 0U; j < t1_opt->h; ++j) {
-				for (auto i = 0U; i < t1_opt->w; ++i) {
+			for (auto j = 0U; j < t1_encoder->h; ++j) {
+				for (auto i = 0U; i < t1_encoder->w; ++i) {
 #ifdef DEBUG_LOSSLESS_T1
 					block->unencodedData[cblk_index] = block->tiledp[tileIndex];
 #endif
@@ -92,7 +89,7 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 					int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
 					uint32_t mag = (uint32_t)abs(tmp);
 					max = std::max<uint32_t>(max, mag);
-					t1_opt->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+					t1_encoder->data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					tileIndex++;
 					cblk_index++;
 				}
@@ -100,8 +97,8 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 			}
 		}
 		else {
-			for (auto j = 0U; j < t1_opt->h; ++j) {
-				for (auto i = 0U; i < t1_opt->w; ++i) {
+			for (auto j = 0U; j < t1_encoder->h; ++j) {
+				for (auto i = 0U; i < t1_encoder->w; ++i) {
 					// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
 					// 1. plugin is being used for full T1 encoding, so no need to quantize in grok
 					// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
@@ -117,7 +114,7 @@ void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max)
 					uint32_t mag = (uint32_t)abs(tmp);
 					uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 					max = std::max<uint32_t>(max, mag);
-					t1_opt->data[cblk_index] = sign_mag;
+					t1_encoder->data[cblk_index] = sign_mag;
 					tileIndex++;
 					cblk_index++;
 				}
@@ -175,21 +172,20 @@ double t1_impl::encode(encodeBlockInfo* block,
 						tcd_tile_t *tile, 
 						uint32_t max,
 						bool doRateControl) {
-	double dist =   t1_opt_encode_cblk(t1_opt,
-			block->cblk,
-			(uint8_t)block->bandno,
-			block->compno,
-			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
-			block->qmfbid,
-			block->stepsize,
-			block->cblksty,
-			tile->numcomps,
-			block->mct_norms,
-			block->mct_numcomps,
-			max, 
-			doRateControl);
+	double dist = t1_encoder->encode_cblk(block->cblk,
+										(uint8_t)block->bandno,
+										block->compno,
+										(tile->comps + block->compno)->numresolutions - 1 - block->resno,
+										block->qmfbid,
+										block->stepsize,
+										block->cblksty,
+										tile->numcomps,
+										block->mct_norms,
+										block->mct_numcomps,
+										max, 
+										doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
-		t1_t* t1Decode = new t1_t(false, t1_opt->w, t1_opt->h);
+		t1_t* t1Decode = new t1_t(false, t1_encode->w, t1_encode->h);
 
 		tcd_cblk_dec_t* cblkDecode = new tcd_cblk_dec_t();
 		cblkDecode->data = nullptr;
@@ -215,8 +211,8 @@ double t1_impl::encode(encodeBlockInfo* block,
 
 		//compare
 		auto index = 0;
-		for (uint32_t j = 0; j < t1_opt->h; ++j) {
-			for (uint32_t i = 0; i < t1_opt->w; ++i) {
+		for (uint32_t j = 0; j < t1_encode->h; ++j) {
+			for (uint32_t i = 0; i < t1_encode->w; ++i) {
 				auto valBefore = block->unencodedData[index];
 				auto valAfter = t1Decode->data[index] / 2;
 				if (valAfter != valBefore) {

@@ -22,7 +22,7 @@
 namespace grk {
 
 struct t1_t;
-struct t1_opt_t;
+struct t1_encode;
 struct tcp_t;
 
 class t1_impl : public t1_interface
@@ -39,7 +39,7 @@ public:
 
 private:
 	t1_t* t1;
-	t1_opt_t* t1_opt;
+	t1_encode* t1_encoder;
 	bool doOpt;
 
 };

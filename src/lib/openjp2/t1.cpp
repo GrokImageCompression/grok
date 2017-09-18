@@ -216,22 +216,6 @@ static uint8_t t1_getspb(flag_t f) {
 	return lut_spb[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 }
 
-int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos) {
-	if (bitpos > 0) {
-		return lut_nmsedec_sig[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
-	}
-
-	return lut_nmsedec_sig0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
-}
-
-int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos) {
-	if (bitpos > 0) {
-		return lut_nmsedec_ref[(x >> (bitpos)) & ((1 << T1_NMSEDEC_BITS) - 1)];
-	}
-
-	return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
-}
-
 static void t1_updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 	flag_t *np = flagsp - stride;
 	flag_t *sp = flagsp + stride;
@@ -715,32 +699,7 @@ static void t1_dec_clnpass(t1_t *t1,
 		*/
 	}
 }
-double t1_getwmsedec(int32_t nmsedec,
-	uint32_t compno,
-	uint32_t level,
-	uint8_t orient,
-	int32_t bpno,
-	uint32_t qmfbid,
-	double stepsize,
-	uint32_t numcomps,
-	const double * mct_norms,
-	uint32_t mct_numcomps) {
-	double w1 = 1, w2, wmsedec;
-	ARG_NOT_USED(numcomps);
 
-	if (mct_norms && (compno < mct_numcomps)) {
-		w1 = mct_norms[compno];
-	}
-	if (qmfbid == 1) {
-		w2 = dwt_getnorm(level, orient);
-	}
-	else {	/* if (qmfbid == 0) */
-		w2 = dwt_getnorm_real(level, orient);
-	}
-	wmsedec = w1 * w2 * stepsize * (double)((size_t)1 << bpno);
-	wmsedec *= wmsedec * nmsedec / 8192.0;
-	return wmsedec;
-}
 bool t1_allocate_buffers(t1_t *t1,
 						uint16_t w,
 						uint16_t h) {
