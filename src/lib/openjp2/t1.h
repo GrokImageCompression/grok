@@ -98,7 +98,8 @@ typedef uint16_t flag_t;
 struct mqc_t;
 struct raw_t;
 
-struct t1_t {
+class t1_t {
+public:
 	~t1_t();
 	t1_t(uint16_t code_block_width, uint16_t code_block_height);
 	uint8_t* compressed_block;
@@ -137,21 +138,7 @@ bool t1_decode_cblk(t1_t *t1,
 
 
 
-double t1_getwmsedec(
-    int32_t nmsedec,
-    uint32_t compno,
-    uint32_t level,
-    uint8_t orient,
-    int32_t bpno,
-    uint32_t qmfbid,
-    double stepsize,
-    uint32_t numcomps,
-    const double * mct_norms,
-    uint32_t mct_numcomps);
 
-
-int16_t t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
-int16_t t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/

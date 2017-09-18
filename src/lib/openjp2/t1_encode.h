@@ -55,27 +55,27 @@
 #pragma once
 namespace grk {
 
-/*********************/
-/*   STATE FLAGS     */
-/*********************/
+	/*********************/
+	/*   STATE FLAGS     */
+	/*********************/
 
 
-/** We hold the state of individual data points for the T1 encoder using
-*  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
-*  to the 4-point-high columns that the data is processed in.
-*  These #defines declare the layout of a 32-bit flags word.
-*  This is currently done for encoding only.
-*/
+	/** We hold the state of individual data points for the T1 encoder using
+	*  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
+	*  to the 4-point-high columns that the data is processed in.
+	*  These #defines declare the layout of a 32-bit flags word.
+	*  This is currently done for encoding only.
+	*/
 
-/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total 
-*  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
-*  indicate the significance state of the west neighbour of data point zero
-*  of our four, the point itself, and its east neighbour respectively.
-*  Many of the bits are arranged so that given a flags word, you can
-*  look at the values for the data point 0, then shift the flags
-*  word right by 3 bits and look at the same bit positions to see the
-*  values for data point 1.
-*/
+	/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total
+	*  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
+	*  indicate the significance state of the west neighbour of data point zero
+	*  of our four, the point itself, and its east neighbour respectively.
+	*  Many of the bits are arranged so that given a flags word, you can
+	*  look at the values for the data point 0, then shift the flags
+	*  word right by 3 bits and look at the same bit positions to see the
+	*  values for data point 1.
+	*/
 
 #define T1_SIGMA_0  (1U << 0)
 #define T1_SIGMA_1  (1U << 1)
@@ -96,11 +96,11 @@ namespace grk {
 #define T1_SIGMA_16 (1U << 16)
 #define T1_SIGMA_17 (1U << 17)
 
-/*
-* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
-* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
-* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
-*/
+	/*
+	* T1_CHI_X is the sign flag for the (X+1)th location in the stripe column.
+	* T1_PI_X  indicates whether Xth location was coded in significance propagation pass
+	* T1_MU_X  indicates whether Xth location belongs to the magnitude refinement pass
+	*/
 
 #define T1_CHI_0_I  18
 #define T1_CHI_0    (1U << T1_CHI_0_I)
@@ -121,17 +121,17 @@ namespace grk {
 #define T1_CHI_5_I	31 
 #define T1_CHI_5    (1U << T1_CHI_5_I)
 
-/**The #defines below are convenience flags; say you have a flags word
-*  f, you can do things like
-*
-*  (f & T1_SIGMA_CURRENT)
-*
-*  to see the significance bit of data point 0, then do
-*
-*  ((f >> 3) & T1_SIGMA_CURRENT)
-*
-*  to see the significance bit of data point 1.
-*/
+	/**The #defines below are convenience flags; say you have a flags word
+	*  f, you can do things like
+	*
+	*  (f & T1_SIGMA_CURRENT)
+	*
+	*  to see the significance bit of data point 0, then do
+	*
+	*  ((f >> 3) & T1_SIGMA_CURRENT)
+	*
+	*  to see the significance bit of data point 1.
+	*/
 
 #define T1_SIGMA_NW   T1_SIGMA_0
 #define T1_SIGMA_N    T1_SIGMA_1
@@ -159,18 +159,37 @@ namespace grk {
 #define T1_LUT_SIG_S (1U << 7)
 
 
-// sign bit is stored at this location in 32 bit coefficient
+	// sign bit is stored at this location in 32 bit coefficient
 #define T1_DATA_SIGN_BIT_INDEX 31
 
-	
+
 typedef uint32_t flag_opt_t;
 
 /**
 Tier-1 coding (coding of code-block coefficients)
 */
-struct t1_opt_t {
-	t1_opt_t(bool encoder);
-	~t1_opt_t();
+class t1_encode {
+public:
+	t1_encode(bool encoder);
+	~t1_encode();
+
+	bool allocate_buffers(uint32_t cblkw, uint32_t cblkh);
+
+	void init_buffers(uint32_t w, uint32_t h);
+
+	double encode_cblk(tcd_cblk_enc_t* cblk,
+		uint8_t orient,
+		uint32_t compno,
+		uint32_t level,
+		uint32_t qmfbid,
+		double stepsize,
+		uint32_t cblksty,
+		uint32_t numcomps,
+		const double * mct_norms,
+		uint32_t mct_numcomps,
+		uint32_t max,
+		bool doRateControl);
+
 	mqc_t *mqc;
 	uint32_t  *data;
 	flag_opt_t *flags;
@@ -178,29 +197,85 @@ struct t1_opt_t {
 	uint16_t h;
 	uint16_t flags_stride;
 	bool   encoder;
-} ;
-
-bool t1_opt_allocate_buffers(t1_opt_t *t1,
-	uint32_t cblkw,
-	uint32_t cblkh);
-
-void t1_opt_init_buffers(t1_opt_t *t1,
-	uint32_t w,
-	uint32_t h);
+private:
 
 
-double t1_opt_encode_cblk(t1_opt_t *t1,
-	tcd_cblk_enc_t* cblk,
-	uint8_t orient,
-	uint32_t compno,
-	uint32_t level,
-	uint32_t qmfbid,
-	double stepsize,
-	uint32_t cblksty,
-	uint32_t numcomps,
-	const double * mct_norms,
-	uint32_t mct_numcomps,
-	uint32_t max, 
-	bool doRateControl);
+	/**
+	Encode significant pass
+	*/
+	void sigpass_step(	flag_opt_t *flagsp,
+		uint32_t *datap,
+		uint8_t orient,
+		int32_t bpno,
+		int32_t one,
+		int32_t *nmsedec,
+		uint8_t type,
+		uint32_t cblksty);
+
+	/**
+	Encode significant pass
+	*/
+	void sigpass(int32_t bpno,
+		uint8_t orient,
+		int32_t *nmsedec,
+		uint8_t type,
+		uint32_t cblksty);
+
+
+	/**
+	Encode refinement pass
+	*/
+	void refpass_step(	flag_opt_t *flagsp,
+		uint32_t *datap,
+		int32_t bpno,
+		int32_t one,
+		int32_t *nmsedec,
+		uint8_t type);
+
+
+	/**
+	Encode refinement pass
+	*/
+	void refpass(	int32_t bpno,
+		int32_t *nmsedec,
+		uint8_t type);
+
+	/**
+	Encode clean-up pass
+	*/
+	void clnpass_step(flag_opt_t *flagsp,
+		uint32_t *datap,
+		uint8_t orient,
+		int32_t bpno,
+		int32_t one,
+		int32_t *nmsedec,
+		uint32_t agg,
+		uint32_t runlen,
+		uint32_t y,
+		uint32_t cblksty);
+
+	/**
+	Encode clean-up pass
+	*/
+	void clnpass(int32_t bpno,
+		uint8_t orient,
+		int32_t *nmsedec,
+		uint32_t cblksty);
+
+	double getwmsedec(
+		int32_t nmsedec,
+		uint32_t compno,
+		uint32_t level,
+		uint8_t orient,
+		int32_t bpno,
+		uint32_t qmfbid,
+		double stepsize,
+		uint32_t numcomps,
+		const double * mct_norms,
+		uint32_t mct_numcomps);
+
+
+};
 
 }
+
