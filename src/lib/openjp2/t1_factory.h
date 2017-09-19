@@ -25,7 +25,11 @@ namespace grk {
 class t1_factory 
 {
 public:
-	static t1_interface* get_t1(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint32_t maxCblkW, uint32_t maxCblkH);
+	static t1_interface* get_t1(bool isEncoder,
+								tcp_t *tcp,
+								tcd_tile_t *tile,
+								uint16_t maxCblkW,
+								uint16_t maxCblkH);
 
 };
 

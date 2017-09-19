@@ -59,7 +59,6 @@
 #include "mqc.h"
 #include "t1.h"
 #include "t1_decode_opt.h"
-#include "t1_luts.h"
 #include "T1Encoder.h"
 
 namespace grk {
@@ -179,7 +178,6 @@ void t1_decode_opt::sigpass(int32_t bpno,
 inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
 	int32_t *datap,
 	int32_t poshalf) {
-	uint32_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
 		return;
@@ -233,8 +231,6 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 	uint32_t y,
 	uint32_t cblksty) {
 
-
-	uint32_t v;
 	uint32_t lim;
 	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 
@@ -255,19 +251,23 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 	}
 	runlen *= 3;
 	lim = 4U < (h - y) ? 12U : 3 * (h - y);
+	flag_opt_t shift_flags;
 	for (uint32_t ci3 = runlen; ci3 < lim; ci3 += 3) {
 		if ((agg != 0) && (ci3 == runlen)) {
-			goto LABEL_PARTIAL;
-		}
-		flag_opt_t shift_flags = *flagsp >> ci3;
-		if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
-			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
-			if (mqc_decode(mqc)) {
-			LABEL_PARTIAL:
-				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
-				uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
-				*datap = v ? -oneplushalf : oneplushalf;
-				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+			mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+			uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
+			*datap = v ? -oneplushalf : oneplushalf;
+			updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+		} else {
+			shift_flags = *flagsp >> ci3;
+			if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
+				mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
+				if (mqc_decode(mqc)) {
+					mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+					uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
+					*datap = v ? -oneplushalf : oneplushalf;
+					updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+				}
 			}
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
@@ -281,7 +281,7 @@ void t1_decode_opt::clnpass(int32_t bpno,
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
-	uint32_t i, j, k;
+	uint32_t i, k;
 	uint32_t agg, runlen;
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
@@ -334,7 +334,7 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t* block_buffer = NULL;
 	size_t total_seg_len;
 
-	initBuffers(cblk->x1 - cblk->x0, cblk->y1 - cblk->y0);
+	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
 
 	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
 	if (cblk->numSegments && total_seg_len) {
