@@ -129,10 +129,10 @@ void t1_decode_opt::initBuffers(uint16_t w, uint16_t h) {
 }
 
 inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t oneplushalf,
-	uint32_t cblksty) {
+										int32_t *datap,
+										uint8_t orient,
+										int32_t oneplushalf,
+										uint32_t cblksty) {
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
 	}
@@ -141,8 +141,9 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
 			if (mqc_decode(mqc)) {
-				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
-				uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
+				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+				mqc_setcurctx(mqc, getSignCodingContext(lu));
+				uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
 				*datap = v ? -oneplushalf : oneplushalf;
 				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
 			}
@@ -176,8 +177,8 @@ void t1_decode_opt::sigpass(int32_t bpno,
 	}
 }
 inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
-	int32_t *datap,
-	int32_t poshalf) {
+										int32_t *datap,
+										int32_t poshalf) {
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
 		return;
@@ -223,17 +224,15 @@ void t1_decode_opt::refpass(int32_t bpno) {
 }
 
 void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
-	int32_t *datap,
-	uint8_t orient,
-	int32_t oneplushalf,
-	uint32_t agg,
-	uint32_t runlen,
-	uint32_t y,
-	uint32_t cblksty) {
+								int32_t *datap,
+								uint8_t orient,
+								int32_t oneplushalf,
+								uint32_t agg,
+								uint32_t runlen,
+								uint32_t y,
+								uint32_t cblksty) {
 
-	uint32_t lim;
 	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-
 	if ((*flagsp & check) == check) {
 		if (runlen == 0) {
 			*flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
@@ -250,25 +249,25 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 		return;
 	}
 	runlen *= 3;
-	lim = 4U < (h - y) ? 12U : 3 * (h - y);
+	uint32_t lim = 4U < (h - y) ? 12U : 3 * (h - y);
 	flag_opt_t shift_flags;
 	for (uint32_t ci3 = runlen; ci3 < lim; ci3 += 3) {
+		uint8_t signCoding = 0;
 		if ((agg != 0) && (ci3 == runlen)) {
-			mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
-			uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
-			*datap = v ? -oneplushalf : oneplushalf;
-			updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+			signCoding = 1;
 		} else {
 			shift_flags = *flagsp >> ci3;
 			if (!(shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))) {
 				mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
-				if (mqc_decode(mqc)) {
-					mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
-					uint8_t v = mqc_decode(mqc) ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3);
-					*datap = v ? -oneplushalf : oneplushalf;
-					updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
-				}
+				signCoding = mqc_decode(mqc);
 			}
+		}
+		if (signCoding) {
+			uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+			mqc_setcurctx(mqc, getSignCodingContext(lu));
+			uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
+			*datap = v ? -oneplushalf : oneplushalf;
+			updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
 		datap += w;
@@ -301,7 +300,7 @@ void t1_decode_opt::clnpass(int32_t bpno,
 			clnpass_step(FLAGS_ADDRESS(i, k),
 				dataPtr + ((k + runlen) * w) + i,
 				orient,
-				one,
+				oneplushalf,
 				agg,
 				runlen,
 				k,

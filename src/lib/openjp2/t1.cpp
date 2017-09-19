@@ -150,8 +150,7 @@ namespace grk {
 		{
 			return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
 		}
-		uint8_t t1::getSignCodingContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
-		{
+		uint32_t t1::getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3) {
 			/*
 			0 pfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_W
 			1 tfX T1_SIGMA_1            T1_LUT_CTXNO_SIG_N
@@ -173,35 +172,18 @@ namespace grk {
 				lu |= (fX >> (T1_CHI_1_I - 4U + (ci3 - 3))) & (1U << 4);
 			}
 			lu |= (fX >> (T1_CHI_2_I - 6U + ci3)) & (1U << 6);
+			return lu;
+		}
+		uint8_t t1::getSignCodingContext(uint32_t lu)
+		{
 			return lut_ctxno_sc_opt[lu];
 		}
 		uint8_t t1::getMRPContext(uint32_t f) {
 			return (f & T1_MU_CURRENT) ? (T1_CTXNO_MAG + 2) : ((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 		}
 
-		uint8_t t1::getSPPContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3)
+		uint8_t t1::getSPByte(uint32_t lu)
 		{
-			/*
-			0 pfX T1_CHI_CURRENT           T1_LUT_SGN_W
-			1 tfX T1_SIGMA_1            T1_LUT_SIG_N
-			2 nfX T1_CHI_CURRENT           T1_LUT_SGN_E
-			3 tfX T1_SIGMA_3            T1_LUT_SIG_W
-			4  fX T1_CHI_(THIS - 1)     T1_LUT_SGN_N
-			5 tfX T1_SIGMA_5            T1_LUT_SIG_E
-			6  fX T1_CHI_(THIS + 1)     T1_LUT_SGN_S
-			7 tfX T1_SIGMA_7            T1_LUT_SIG_S
-			*/
-			uint32_t lu = (fX >> ci3) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 | T1_SIGMA_7);
-			lu |= (pfX >> (T1_CHI_CURRENT_I + ci3)) & (1U << 0);
-			lu |= (nfX >> (T1_CHI_CURRENT_I - 2U + ci3)) & (1U << 2);
-			if (ci3 == 0U) {
-				lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
-			}
-			else {
-				lu |= (fX >> (T1_CHI_1_I - 4U + (ci3 - 3))) & (1U << 4);
-			}
-			lu |= (fX >> (T1_CHI_2_I - 6U + ci3)) & (1U << 6);
-
 			return lut_spb_opt[lu];
 		}
 		void t1::updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc) {
