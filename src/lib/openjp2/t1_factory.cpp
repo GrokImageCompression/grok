@@ -23,8 +23,8 @@ namespace grk {
 t1_interface* t1_factory::get_t1(bool isEncoder,
 								tcp_t *tcp,
 								tcd_tile_t *tile,
-								uint32_t maxCblkW, 
-								uint32_t maxCblkH) {
+								uint16_t maxCblkW,
+								uint16_t maxCblkH) {
 	return new t1_impl(isEncoder, tcp, tile, maxCblkW, maxCblkH);
 }
 
