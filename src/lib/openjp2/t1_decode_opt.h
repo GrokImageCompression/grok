@@ -97,12 +97,14 @@ namespace grk {
 				int32_t *datap,
 				uint8_t orient,
 				int32_t oneplushalf,
+				uint32_t maxci3,
 				uint32_t cblksty);
 			void sigpass(int32_t bpno, uint8_t orient, uint32_t cblksty);
 			void refpass(int32_t bpno);
 			inline void refpass_step(flag_opt_t *flagsp,
 				int32_t *datap,
-				int32_t poshalf);
+				int32_t poshalf, 
+				uint32_t maxci3);
 			void clnpass_step(flag_opt_t *flagsp,
 				int32_t *datap,
 				uint8_t orient,

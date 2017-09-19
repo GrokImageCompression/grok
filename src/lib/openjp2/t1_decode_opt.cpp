@@ -132,11 +132,12 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 										int32_t *datap,
 										uint8_t orient,
 										int32_t oneplushalf,
+										uint32_t maxci3,
 										uint32_t cblksty) {
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
 	}
-	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
+	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		flag_opt_t const shift_flags = *flagsp >> ci3;
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
@@ -166,19 +167,23 @@ void t1_decode_opt::sigpass(int32_t bpno,
 
 	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
 	int32_t* d = dataPtr;
-	for (k = 0; k < h; k += 4) {
+	for (k = 0; k < (h&~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
-			sigpass_step(f, d, orient, oneplushalf, cblksty);
+			sigpass_step(f, d, orient, oneplushalf, 12,cblksty);
 			++f;
 			++d;
 		}
 		d += data_row_extra;
 		f += flag_row_extra;
 	}
+	if (k < h) {
+		sigpass_step(f, d, orient, oneplushalf, (h - k)*3, cblksty);
+	}
 }
 inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
 										int32_t *datap,
-										int32_t poshalf) {
+										int32_t poshalf, 
+										uint32_t maxci3) {
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
 		return;
@@ -188,7 +193,7 @@ inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
 		return;
 	}
 
-	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
+	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		uint32_t shift_flags = *flagsp >> ci3;
 		/* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == T1_SIGMA_CURRENT) {
@@ -210,17 +215,25 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	uint32_t const data_row_extra = (w << 2) - w;
 	int32_t* d = dataPtr;
 	uint32_t i, k;
-	for (k = 0U; k < h; k += 4U) {
+	for (k = 0U; k < (h&~3); k += 4U) {
 		for (i = 0U; i < w; ++i) {
 			refpass_step(f,
 				d,
-				poshalf);
+				poshalf, 
+				12);
 			++f;
 			++d;
 		}
 		f += flag_row_extra;
 		d += data_row_extra;
 	}
+	if (k < h) {
+		refpass_step(f,
+			d,
+			poshalf,
+			(h - k) * 3);
+	}
+
 }
 
 void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
@@ -282,7 +295,7 @@ void t1_decode_opt::clnpass(int32_t bpno,
 	oneplushalf = one | half;
 	uint32_t i, k;
 	uint32_t agg, runlen;
-	for (k = 0; k < h; k += 4) {
+	for (k = 0; k < (h&~3); k += 4) {
 		for (i = 0; i < w; ++i) {
 			agg = !flags[i + 1 + ((k >> 2) + 1) * flags_stride];
 			if (agg) {
@@ -307,6 +320,22 @@ void t1_decode_opt::clnpass(int32_t bpno,
 				cblksty);
 		}
 	}
+
+	if (k < h) {
+		for (i = 0; i < w; ++i) {
+			for (uint32_t j = k; j < h; ++j) {
+				clnpass_step(FLAGS_ADDRESS(i, j),
+					dataPtr + (j * w) + i,
+					orient,
+					oneplushalf,
+					0,
+					0,
+					j,
+					cblksty);
+			}
+		}
+	}
+
 	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
 		uint8_t v = 0;
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
