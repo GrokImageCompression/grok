@@ -139,12 +139,13 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 				v = dataPoint >> T1_DATA_SIGN_BIT_INDEX;
 				if (nmsedec)
 					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t)bpno);
-				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				if (type == T1_TYPE_RAW) {
 					mqc_bypass_enc(mqc, v);
 				}
 				else {
-					mqc_encode(mqc, v ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+					mqc_encode(mqc, v ^ getSPByte(lu));
 				}
 				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
 			}
@@ -296,10 +297,11 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 			LABEL_PARTIAL:
 				if (nmsedec)
 					*nmsedec += getnmsedec_sig(*datap, (uint32_t)bpno);
-				mqc_setcurctx(mqc, getSignCodingContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				/* sign bit */
 				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
-				mqc_encode(mqc, v ^ getSPPContext(*flagsp, flagsp[-1], flagsp[1], ci3));
+				mqc_encode(mqc, v ^ getSPByte(lu));
 				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
 		}

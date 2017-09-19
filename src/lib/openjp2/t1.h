@@ -222,9 +222,10 @@ namespace grk {
 			void  updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s, uint32_t stride, uint8_t vsc);
 
 			uint8_t		getZeroCodingContext(uint32_t f, uint8_t orient);
-			uint8_t		getSignCodingContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 			uint8_t		getMRPContext(uint32_t f);
-			uint8_t		getSPPContext(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
+			uint8_t		getSignCodingContext(uint32_t lu);
+			uint8_t		getSPByte(uint32_t lu);
+			uint32_t    getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX, uint32_t nfX, uint32_t ci3);
 
 		};
 
