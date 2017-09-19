@@ -359,6 +359,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 	} /* compno */
 
 	if (single_lossless) {
+		tcd_makelayer_final(tcd, 0);
 		return true;
 	}
 
