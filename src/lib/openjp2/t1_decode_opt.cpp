@@ -62,7 +62,6 @@
 #include "T1Encoder.h"
 
 namespace grk {
-	namespace grk_t1 {
 
 t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
 	compressed_block(nullptr),
@@ -497,4 +496,4 @@ void t1_decode_opt::postDecode(decodeBlockInfo* block) {
 
 
 }
-}
+

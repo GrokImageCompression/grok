@@ -39,9 +39,9 @@ public:
 	void postDecode(decodeBlockInfo* block);
 
 private:
-	grk_t1::t1_decode_opt* t1_decoder_opt;
-	grk_t1::t1_decode* t1_decoder;
-	grk_t1::t1_encode* t1_encoder;
+	t1_decode_opt* t1_decoder_opt;
+	t1_decode* t1_decoder;
+	t1_encode* t1_encoder;
 };
 
 

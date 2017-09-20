@@ -57,7 +57,6 @@
 
 #pragma once
 namespace grk {
-	namespace grk_t1 {
 
 #define MQC_NUMCTXS 19
 
@@ -242,4 +241,3 @@ uint8_t mqc_decode(mqc_t * const mqc);
 
 }
 
-}

@@ -63,7 +63,7 @@
 #include "T1Encoder.h"
 
 namespace grk {
-	namespace grk_t1 {
+
 
 #define T1_SIG_OTH (T1_SIG_N|T1_SIG_NE|T1_SIG_E|T1_SIG_SE|T1_SIG_S|T1_SIG_SW|T1_SIG_W|T1_SIG_NW)
 #define T1_SIG_PRIM (T1_SIG_N|T1_SIG_E|T1_SIG_S|T1_SIG_W)
@@ -739,6 +739,5 @@ void t1_decode::postDecode(decodeBlockInfo* block) {
 	}
 }
 
-}
-		
+	
 }

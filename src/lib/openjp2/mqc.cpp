@@ -62,7 +62,7 @@
 
 
 namespace grk {
-	namespace grk_t1 {
+
 
 
 /**
@@ -625,4 +625,3 @@ void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob) {
 
 }
 
-}
