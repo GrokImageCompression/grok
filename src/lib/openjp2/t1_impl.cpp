@@ -31,13 +31,13 @@ t1_impl::t1_impl(bool isEncoder,
 				uint16_t maxCblkW,
 				uint16_t maxCblkH) : t1_decoder_opt(nullptr), t1_decoder(nullptr), t1_encoder(nullptr) {
 	if (isEncoder) {
-		t1_encoder = new grk_t1::t1_encode();
+		t1_encoder = new t1_encode();
 		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
 			throw std::exception();
 		}
 	}
 	else {
-		DECODER = new grk_t1::t1_decode(maxCblkW,maxCblkH);
+		DECODER = new t1_decode(maxCblkW,maxCblkH);
 		if (!DECODER->allocateBuffers(maxCblkW,maxCblkH)) {
 			throw std::exception();
 		}

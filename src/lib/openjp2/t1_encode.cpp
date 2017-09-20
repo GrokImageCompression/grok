@@ -62,7 +62,6 @@
 #include "t1_opt_luts.h"
 
 namespace grk {
-	namespace grk_t1 {
 
 t1_encode::t1_encode() : data(nullptr),
 	mqc(nullptr) {
@@ -656,5 +655,4 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 	}
 }
 
-}
 }
