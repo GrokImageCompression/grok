@@ -58,6 +58,12 @@
 #pragma once
 namespace grk {
 
+// the next line must be uncommented in order to support debugging 
+// for plugin encode
+//#define PLUGIN_DEBUG_ENCODE
+
+const unsigned int totalNumContextStates = 47 * 2;
+
 #define MQC_NUMCTXS 19
 
 const uint16_t A_MIN = 0x8000;
@@ -122,6 +128,8 @@ struct mqc_state_t {
 	/** next state if the next encoded symbol is the LPS */
 	mqc_state_t *nlps;
 };
+
+extern mqc_state_t mqc_states[totalNumContextStates];
 
 
 struct mqc_t {

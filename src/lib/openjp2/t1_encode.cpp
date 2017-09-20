@@ -424,9 +424,11 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	passtype = 2;
 	mqc_init_enc(mqc, cblk->data);
 	uint32_t state = grok_plugin_get_debug_state();
+#ifdef PLUGIN_DEBUG_ENCODE
 	if (state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = cblk->contextStream;
 	}
+#endif
 
 	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
 	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
@@ -449,9 +451,11 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 			/* code switch SEGMARK (i.e. SEGSYM) */
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
+#ifdef PLUGIN_DEBUG_ENCODE
 			if (state & OPJ_PLUGIN_STATE_DEBUG) {
 				mqc_next_plane(&mqc->debug_mqc);
 			}
+#endif
 			break;
 		}
 
