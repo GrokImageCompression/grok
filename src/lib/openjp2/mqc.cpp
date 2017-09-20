@@ -63,8 +63,6 @@
 
 namespace grk {
 
-
-
 /**
 Output a byte, doing bit-stuffing if necessary.
 After a 0xff byte, the next byte must be smaller than 0x90.
@@ -129,7 +127,7 @@ static inline void mqc_renormd(mqc_t *const mqc);
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-static mqc_state_t mqc_states[47 * 2] = {
+static mqc_state_t mqc_states[totalNumContextStates] = {
 	{0x5601, 0, &mqc_states[2], &mqc_states[3]},
 	{0x5601, 1, &mqc_states[3], &mqc_states[2]},
 	{0x3401, 0, &mqc_states[4], &mqc_states[12]},
@@ -424,9 +422,11 @@ uint32_t raw_decode(raw_t *raw) {
 	return  ((uint32_t)raw->C >> raw->COUNT) & 0x01;
 }
 void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
+#ifdef PLUGIN_DEBUG_ENCODE
 	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
+#endif
 	mqc->curctx = &mqc->ctxs[(uint32_t)ctxno];
 }
 mqc_t* mqc_create(void) {
@@ -452,23 +452,137 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
 	*mqc->bp = 0;
 	mqc->COUNT = 12;
 	mqc->start = bp;
+#ifdef PLUGIN_DEBUG_ENCODE
 	if (grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = NULL;
 		mqc->debug_mqc.contextCacheCount = 0;
 		mqc->debug_mqc.contextStreamByteCount = 0;
 		mqc->debug_mqc.debug_state = grok_plugin_get_debug_state();
 	}
+#endif
 }
 void mqc_encode(mqc_t *mqc, uint8_t d) {
+#ifdef PLUGIN_DEBUG_ENCODE
 	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG) &&
 		!(mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
-	if ((*mqc->curctx)->mps == d) {
-		mqc_codemps(mqc);
+#endif
+	auto curctx = *mqc->curctx;
+	if (curctx->mps == d) {
+		//BEGIN codemps
+		auto qeval = curctx->qeval;
+		mqc->A = (uint16_t)(mqc->A - qeval);
+		if (mqc->A < A_MIN) {
+			if (mqc->A < qeval) {
+				mqc->A = qeval;
+			}
+			else {
+				mqc->C += qeval;
+			}
+			*mqc->curctx = curctx->nmps;
+			//BEGIN renorme
+			do {
+				mqc->A = (uint16_t)(mqc->A << 1);
+				mqc->C = (mqc->C << 1);
+				mqc->COUNT--;
+				if (mqc->COUNT == 0) {
+					//BEGIN byteout
+					assert(mqc->bp >= mqc->start - 1);
+					if (*mqc->bp == 0xff) {
+						mqc->bp++;
+						*mqc->bp = (uint8_t)(mqc->C >> 20);
+						mqc->C &= 0xfffff;
+						mqc->COUNT = 7;
+					}
+					else {
+						if ((mqc->C & 0x8000000) == 0) {
+							mqc->bp++;
+							*mqc->bp = (uint8_t)(mqc->C >> 19);
+							mqc->C &= 0x7ffff;
+							mqc->COUNT = 8;
+						}
+						else {
+							(*mqc->bp)++;
+							if (*mqc->bp == 0xff) {
+								mqc->C &= 0x7ffffff;
+								mqc->bp++;
+								*mqc->bp = (uint8_t)(mqc->C >> 20);
+								mqc->C &= 0xfffff;
+								mqc->COUNT = 7;
+							}
+							else {
+								mqc->bp++;
+								*mqc->bp = (uint8_t)(mqc->C >> 19);
+								mqc->C &= 0x7ffff;
+								mqc->COUNT = 8;
+							}
+						}
+					}
+					//END byteout
+				}
+			} while (mqc->A < A_MIN);
+			//END renorme
+		}
+		else {
+			mqc->C += qeval;
+		}
+		//END codemps
 	}
 	else {
-		mqc_codelps(mqc);
+		//BEGIN codelps
+		auto qeval = curctx->qeval;
+		mqc->A = (uint16_t)(mqc->A - qeval);
+		if (mqc->A < qeval) {
+			mqc->C += qeval;
+		}
+		else {
+			mqc->A = qeval;
+		}
+		*mqc->curctx = curctx->nlps;
+		//BEGIN renorme
+		do {
+			mqc->A = (uint16_t)(mqc->A << 1);
+			mqc->C = (mqc->C << 1);
+			mqc->COUNT--;
+			if (mqc->COUNT == 0) {
+				//BEGIN byteout
+				assert(mqc->bp >= mqc->start - 1);
+				if (*mqc->bp == 0xff) {
+					mqc->bp++;
+					*mqc->bp = (uint8_t)(mqc->C >> 20);
+					mqc->C &= 0xfffff;
+					mqc->COUNT = 7;
+				}
+				else {
+					if ((mqc->C & 0x8000000) == 0) {
+						mqc->bp++;
+						*mqc->bp = (uint8_t)(mqc->C >> 19);
+						mqc->C &= 0x7ffff;
+						mqc->COUNT = 8;
+					}
+					else {
+						(*mqc->bp)++;
+						if (*mqc->bp == 0xff) {
+							mqc->C &= 0x7ffffff;
+							mqc->bp++;
+							*mqc->bp = (uint8_t)(mqc->C >> 20);
+							mqc->C &= 0xfffff;
+							mqc->COUNT = 7;
+						}
+						else {
+							mqc->bp++;
+							*mqc->bp = (uint8_t)(mqc->C >> 19);
+							mqc->C &= 0x7ffff;
+							mqc->COUNT = 8;
+						}
+					}
+				}
+				//END byteout
+			}
+		} while (mqc->A < A_MIN);
+		//END renorme
+		//END codelps
 	}
 }
 void mqc_flush(mqc_t *mqc) {
