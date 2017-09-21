@@ -29,7 +29,7 @@ struct tcp_t;
 class t1_impl : public t1_interface
 {
 public:
-	t1_impl(bool isEncoder, tcp_t *tcp, tcd_tile_t *tile, uint16_t maxCblkW, uint16_t maxCblkH);
+	t1_impl(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
 	virtual ~t1_impl();
 
 	void preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max);

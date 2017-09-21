@@ -25,7 +25,7 @@ t1_interface* t1_factory::get_t1(bool isEncoder,
 								tcd_tile_t *tile,
 								uint16_t maxCblkW,
 								uint16_t maxCblkH) {
-	return new t1_impl(isEncoder, tcp, tile, maxCblkW, maxCblkH);
+	return new t1_impl(isEncoder, tcp, maxCblkW, maxCblkH);
 }
 
 }

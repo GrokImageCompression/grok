@@ -222,10 +222,10 @@ inline void t1_decode::sigpass_step_raw(flag_t *flagsp,
 	int32_t oneplushalf,
 	bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	flag_t flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		if (raw_decode(raw)) {
-			uint8_t v = (int32_t)raw_decode(raw);
+			uint8_t v = raw_decode(raw);
 			*datap = v ? -oneplushalf : oneplushalf;
 			updateflags(flagsp, (uint32_t)v, flags_stride);
 		}
@@ -240,7 +240,7 @@ void t1_decode::sigpass_raw(int32_t bpno, uint32_t cblksty) {
 		for (uint32_t i = 0; i < w; ++i) {
 			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				int32_t vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
+				bool vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? true : false;
 				sigpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					oneplushalf,
@@ -254,9 +254,9 @@ inline void t1_decode::refpass_step_raw(flag_t *flagsp,
 	int32_t poshalf,
 	bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag = vsc ? ((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
+	flag_t flag = vsc ? (flag_t)((*flagsp) & (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) : (*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
-		uint8_t v = (int32_t)raw_decode(raw);
+		uint8_t v = raw_decode(raw);
 		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
 		*flagsp |= T1_REFINE;
 	}
@@ -272,7 +272,7 @@ void t1_decode::refpass_raw(int32_t bpno,
 		for (i = 0; i < w; ++i) {
 			for (j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == h - 1)) ? 1 : 0;
+				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? 1 : 0;
 				refpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					poshalf,
@@ -309,7 +309,7 @@ void t1_decode::sigpass_vsc(int32_t bpno, uint8_t orient) {
 		for (i = 0; i < w; ++i) {
 			for (j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				vsc = (j == k + 3 || j == h - 1) ? 1 : 0;
+				vsc = (j == k + 3 || j == (uint32_t)(h - 1)) ? 1 : 0;
 				sigpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					orient,
@@ -386,7 +386,7 @@ void t1_decode::refpass_vsc(int32_t bpno) {
 		for (uint32_t i = 0; i < w; ++i) {
 			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				uint8_t vsc = ((j == k + 3 || j == h - 1)) ? 1 : 0;
+				uint8_t vsc = ((j == k + 3 || j == (uint32_t)(h - 1))) ? 1 : 0;
 				refpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					poshalf,
@@ -481,7 +481,7 @@ void t1_decode::clnpass(int32_t bpno,
 				}
 				for (j = k + (uint32_t)runlen; j < k + 4 && j < h; ++j) {
 					// VSC flag is set for last line of stripe
-					vsc = (j == k + 3 || j == h - 1) ? 1 : 0;
+					vsc = (j == k + 3 || j == (uint32_t)(h - 1)) ? 1 : 0;
 					clnpass_step_vsc(&flags[((j + 1) * flags_stride) + i + 1],
 						&dataPtr[(j * w) + i],
 						orient,
@@ -577,7 +577,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 		return false;
 	}
 
-	flags_stride = w + 2;
+	flags_stride = (uint16_t)(w + 2);
 	uint32_t new_flagssize = flags_stride * (h + 2);
 	if (flags)
 		grok_aligned_free(flags);
@@ -592,7 +592,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 void t1_decode::init_buffers(uint16_t w, uint16_t h) {
 	this->w = w;
 	this->h = h;
-	flags_stride = w + 2;
+	flags_stride = (uint16_t)(w + 2);
 	memset(dataPtr, 0, w * h * sizeof(int32_t));
 	memset(flags, 0, flags_stride * (h + 2) * sizeof(flag_t));
 }
@@ -608,7 +608,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t* block_buffer = NULL;
 	size_t total_seg_len;
 
-	init_buffers(cblk->x1 - cblk->x0, cblk->y1 - cblk->y0);
+	init_buffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
 
 	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
 	if (cblk->numSegments && total_seg_len) {

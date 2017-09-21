@@ -60,7 +60,6 @@
 // tier 1 interface
 #include "mqc.h"
 #include "t1.h"
-#include "t1_luts.h"
 #include "t1_opt_luts.h"
 
 namespace grk {
@@ -107,7 +106,7 @@ Initialize buffers
 void t1::initBuffers(uint16_t w, uint16_t h) {
 	uint32_t x;
 	flag_opt_t* p;
-	flags_stride = w + 2;
+	flags_stride = (uint16_t)(w + 2);
 	auto flags_height = (h + 3U) >> 2;
 	auto flagssize = flags_stride * (flags_height + 2);
 	memset(flags, 0, flagssize * sizeof(flag_opt_t));

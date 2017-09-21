@@ -128,7 +128,7 @@ static inline void mqc_renormd(mqc_t *const mqc);
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-static mqc_state_t mqc_states[totalNumContextStates] = {
+mqc_state_t mqc_states[totalNumContextStates] = {
 	{0x5601, 0, &mqc_states[2], &mqc_states[3]},
 	{0x5601, 1, &mqc_states[3], &mqc_states[2]},
 	{0x3401, 0, &mqc_states[4], &mqc_states[12]},
@@ -405,7 +405,7 @@ void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len) {
 	raw->C = 0;
 	raw->COUNT = 0;
 }
-uint32_t raw_decode(raw_t *raw) {
+uint8_t raw_decode(raw_t *raw) {
 	if (raw->COUNT == 0) {
 		raw->COUNT = 8;
 		if (raw->len == raw->lenmax) {
