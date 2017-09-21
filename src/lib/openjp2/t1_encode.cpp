@@ -59,7 +59,7 @@
 #include "t1.h"
 #include "t1_encode.h"
 #include "t1_luts.h"
-#include "t1_opt_luts.h"
+
 
 namespace grk {
 
@@ -115,7 +115,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 	int32_t *nmsedec,
 	uint8_t type,
 	uint32_t cblksty) {
-	uint32_t v;
+	uint8_t v;
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
 	}
@@ -135,7 +135,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 			}
 			if (v) {
 				/* sign bit */
-				v = dataPoint >> T1_DATA_SIGN_BIT_INDEX;
+				v = (uint8_t)(dataPoint >> T1_DATA_SIGN_BIT_INDEX);
 				if (nmsedec)
 					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t)bpno);
 				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
@@ -192,7 +192,7 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type) {
-	uint32_t v;
+	uint8_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
 		/* none significant */
 		return;
@@ -259,7 +259,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 	uint32_t y,
 	uint32_t cblksty)
 {
-	uint32_t v;
+	uint8_t v;
 	uint32_t lim;
 	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 
@@ -299,7 +299,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
 				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				/* sign bit */
-				v = *datap >> T1_DATA_SIGN_BIT_INDEX;
+				v = (uint8_t)(*datap >> T1_DATA_SIGN_BIT_INDEX);
 				mqc_encode(mqc, v ^ getSPByte(lu));
 				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
@@ -314,7 +314,8 @@ void t1_encode::clnpass(int32_t bpno,
 	uint32_t cblksty) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
-	uint32_t agg, runlen;
+	uint32_t agg;
+	uint8_t runlen;
 
 	if (nmsedec)
 		*nmsedec = 0;
@@ -333,7 +334,7 @@ void t1_encode::clnpass(int32_t bpno,
 					continue;
 				}
 				mqc_setcurctx(mqc, T1_CTXNO_UNI);
-				mqc_encode(mqc, runlen >> 1);
+				mqc_encode(mqc, (uint8_t)(runlen >> 1));
 				mqc_encode(mqc, runlen & 1);
 			}
 			else {
@@ -423,8 +424,8 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	bpno = (int32_t)(cblk->numbps - 1);
 	passtype = 2;
 	mqc_init_enc(mqc, cblk->data);
-	uint32_t state = grok_plugin_get_debug_state();
 #ifdef PLUGIN_DEBUG_ENCODE
+	uint32_t state = grok_plugin_get_debug_state();
 	if (state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = cblk->contextStream;
 	}
@@ -600,8 +601,8 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 	auto state = grok_plugin_get_debug_state();
 	//1. prepare low-level encode
 	auto tilec = tile->comps + block->compno;
-	initBuffers((block->cblk->x1 - block->cblk->x0),
-		(block->cblk->y1 - block->cblk->y0));
+	initBuffers((uint16_t)(block->cblk->x1 - block->cblk->x0),
+		(uint16_t)(block->cblk->y1 - block->cblk->y0));
 
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 	auto tileLineAdvance = tile_width - w;

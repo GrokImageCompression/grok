@@ -107,7 +107,7 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param raw RAW handle
 @return Returns the decoded symbol (0 or 1)
 */
-uint32_t raw_decode(raw_t *raw);
+uint8_t raw_decode(raw_t *raw);
 /* ----------------------------------------------------------------------- */
 
 

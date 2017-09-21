@@ -28,8 +28,8 @@
 namespace grk {
 
 T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
-					uint32_t encodeMaxCblkW,
-					uint32_t encodeMaxCblkH, 
+					uint16_t encodeMaxCblkW,
+					uint16_t encodeMaxCblkH,
 					size_t numThreads, 
 					bool needsRateControl) : tile(tile), 
 											needsRateControl(needsRateControl) {

@@ -33,8 +33,8 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp,
 	uint32_t compno, resno, bandno, precno;
 	tile->distotile = 0;
 	std::vector<encodeBlockInfo*> blocks;
-	auto maxCblkW = 0;
-	auto maxCblkH = 0;
+	uint16_t maxCblkW = 0;
+	uint16_t maxCblkH = 0;
 
 	for (compno = 0; compno < tile->numcomps; ++compno) {
 		tcd_tilecomp_t* tilec = &tile->comps[compno];
@@ -65,8 +65,8 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp,
 							y += pres->y1 - pres->y0;
 						}
 
-						maxCblkW = std::max<int32_t>(maxCblkW, 1 << tccp->cblkw);
-						maxCblkH = std::max<int32_t>(maxCblkH, 1 << tccp->cblkh);
+						maxCblkW = std::max<int16_t>(maxCblkW, (uint16_t)(1 << tccp->cblkw));
+						maxCblkH = std::max<int16_t>(maxCblkH, (uint16_t)(1 << tccp->cblkh));
 						auto block = new encodeBlockInfo();
 						block->compno = compno;
 						block->bandno = band->bandno;

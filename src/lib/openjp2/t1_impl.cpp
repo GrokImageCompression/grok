@@ -26,9 +26,9 @@ namespace grk {
 
 t1_impl::t1_impl(bool isEncoder, 
 				tcp_t *tcp,
-				tcd_tile_t *tile,
 				uint16_t maxCblkW,
 				uint16_t maxCblkH) : t1_decoder(nullptr), t1_encoder(nullptr) {
+	(void)tcp;
 	if (isEncoder) {
 		t1_encoder = new t1_encode();
 		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
