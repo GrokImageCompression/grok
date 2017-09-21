@@ -57,7 +57,7 @@
 
  // tier 1 interface
 #include "mqc.h"
-#include "t1.h"
+#include "t1_decode_base.h"
 #include "t1_decode.h"
 #include "t1_luts.h"
 #include "T1Encoder.h"
@@ -128,13 +128,14 @@ void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 }
 
 
-t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
-	flags(nullptr),
-	flags_stride(0),
-	compressed_block(nullptr),
-	compressed_block_size(0),
-	mqc(nullptr),
-	raw(nullptr) {
+t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width, code_block_height), 
+																			dataPtr(nullptr),
+																			flags(nullptr),
+																			flags_stride(0),
+																			compressed_block(nullptr),
+																			compressed_block_size(0),
+																			mqc(nullptr),
+																			raw(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();

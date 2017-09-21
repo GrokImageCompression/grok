@@ -57,17 +57,18 @@
 
  // tier 1 interface
 #include "mqc.h"
-#include "t1.h"
+#include "t1_decode_base.h"
 #include "t1_decode_opt.h"
 #include "T1Encoder.h"
 
 namespace grk {
 
-t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
-	compressed_block(nullptr),
-	compressed_block_size(0),
-	mqc(nullptr),
-	raw(nullptr) {
+t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width,code_block_height),
+																						dataPtr(nullptr),
+																						compressed_block(nullptr),
+																						compressed_block_size(0),
+																						mqc(nullptr),
+																						raw(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
@@ -133,9 +134,6 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 										int32_t oneplushalf,
 										uint32_t maxci3,
 										uint32_t cblksty) {
-	if (*flagsp == 0U) {
-		return;  /* Nothing to do for any of the 4 data points */
-	}
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		flag_opt_t const shift_flags = *flagsp >> ci3;
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
@@ -168,6 +166,9 @@ void t1_decode_opt::sigpass(int32_t bpno,
 	int32_t* d = dataPtr;
 	for (k = 0; k < (h&~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
+			if (*f == 0U) {
+				continue;  /* Nothing to do for any of the 4 data points */
+			}
 			sigpass_step(f, d, orient, oneplushalf, 12,cblksty);
 			++f;
 			++d;
@@ -183,14 +184,6 @@ inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
 										int32_t *datap,
 										int32_t poshalf, 
 										uint32_t maxci3) {
-	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
-		/* none significant */
-		return;
-	}
-	if ((*flagsp & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) == (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) {
-		/* all processed by sigpass */
-		return;
-	}
 
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		uint32_t shift_flags = *flagsp >> ci3;
@@ -216,6 +209,8 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	uint32_t i, k;
 	for (k = 0U; k < (h&~3); k += 4U) {
 		for (i = 0U; i < w; ++i) {
+			if (!*f)
+				continue;
 			refpass_step(f,
 				d,
 				poshalf, 

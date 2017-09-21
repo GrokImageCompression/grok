@@ -57,6 +57,7 @@
 #include "grok_includes.h"
 
 // tier 1 interface
+#include "t1_decode_base.h"
 #include "t1_decode.h"
 #include "mqc.h"
 

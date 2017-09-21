@@ -63,13 +63,14 @@ namespace grk {
 struct mqc_t;
 struct raw_t;
 
-class t1_decode_base;
+class t1;
 
-class t1_decode_opt : public t1_decode_base {
+class t1_decode_base : public t1 {
 public:
-	~t1_decode_opt();
-	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
-	bool allocateBuffers(uint16_t w, uint16_t h) override;
+	t1_decode_base(uint16_t code_block_width, uint16_t code_block_height);
+	virtual ~t1_decode_base();
+
+	virtual bool allocateBuffers(uint16_t w, uint16_t h)=0;
 
 	/**
 	Decode 1 code-block
@@ -79,42 +80,15 @@ public:
 	@param roishift Region of interest shifting value
 	@param cblksty Code-block style
 	*/
-	bool decode_cblk(tcd_cblk_dec_t* cblk,
+	virtual bool decode_cblk(tcd_cblk_dec_t* cblk,
 		uint8_t orient,
 		uint32_t roishift,
-		uint32_t cblksty) override;
-	void postDecode(decodeBlockInfo* block) override;
-	int32_t  *dataPtr;
-private:
-	uint8_t* compressed_block;
-	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
+		uint32_t cblksty)=0;
+	virtual void postDecode(decodeBlockInfo* block)=0;
 
-	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		uint32_t maxci3,
-		uint32_t cblksty);
-	void sigpass(int32_t bpno, uint8_t orient, uint32_t cblksty);
-	void refpass(int32_t bpno);
-	inline void refpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf, 
-		uint32_t maxci3);
-	void clnpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		uint32_t agg,
-		uint32_t runlen,
-		uint32_t y,
-		uint32_t cblksty);
-	void clnpass(int32_t bpno,
-		uint8_t orient,
-		uint32_t cblksty);
+
+	int32_t  *dataPtr;
+
 };
 
 }
