@@ -292,10 +292,10 @@ void t1_decode_opt::clnpass(int32_t bpno,
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
-	uint32_t i, k;
+	uint32_t k;
 	uint32_t agg, runlen;
 	for (k = 0; k < (h&~3); k += 4) {
-		for (i = 0; i < w; ++i) {
+		for (uint32_t i = 0; i < w; ++i) {
 			agg = !flags[i + 1 + ((k >> 2) + 1) * flags_stride];
 			if (agg) {
 				mqc_setcurctx(mqc, T1_CTXNO_AGG);
@@ -321,17 +321,15 @@ void t1_decode_opt::clnpass(int32_t bpno,
 	}
 
 	if (k < h) {
-		for (i = 0; i < w; ++i) {
-			for (uint32_t j = k; j < h; ++j) {
-				clnpass_step(FLAGS_ADDRESS(i, j),
-					dataPtr + (j * w) + i,
-					orient,
-					oneplushalf,
-					0,
-					0,
-					j,
-					cblksty);
-			}
+		for (uint32_t i = 0; i < w; ++i) {
+			clnpass_step(FLAGS_ADDRESS(i, k),
+				dataPtr + (k * w) + i,
+				orient,
+				oneplushalf,
+				0,
+				0,
+				k,
+				cblksty);
 		}
 	}
 
