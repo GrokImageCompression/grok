@@ -29,6 +29,7 @@
  * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
+ * Copyright (c) 2007, Callum Lerwick <seg@haxxed.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,71 +53,23 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#pragma once
-#include <vector>
-#include "testing.h"
-#include "Tier1.h"
+#include "grok_includes.h"
+
+ // tier 1 interface
+#include "mqc.h"
 #include "t1.h"
+#include "t1_decode_base.h"
+#include "T1Encoder.h"
 
 namespace grk {
 
-struct mqc_t;
-struct raw_t;
-
-class t1_decode_base;
-
-class t1_decode_opt : public t1_decode_base {
-public:
-	~t1_decode_opt();
-	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
-	bool allocateBuffers(uint16_t w, uint16_t h) override;
-
-	/**
-	Decode 1 code-block
-	@param t1 T1 handle
-	@param cblk Code-block coding parameters
-	@param orient
-	@param roishift Region of interest shifting value
-	@param cblksty Code-block style
-	*/
-	bool decode_cblk(tcd_cblk_dec_t* cblk,
-		uint8_t orient,
-		uint32_t roishift,
-		uint32_t cblksty) override;
-	void postDecode(decodeBlockInfo* block) override;
-	int32_t  *dataPtr;
-private:
-	uint8_t* compressed_block;
-	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
-
-	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		uint32_t maxci3,
-		uint32_t cblksty);
-	void sigpass(int32_t bpno, uint8_t orient, uint32_t cblksty);
-	void refpass(int32_t bpno);
-	inline void refpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf, 
-		uint32_t maxci3);
-	void clnpass_step(flag_opt_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		uint32_t agg,
-		uint32_t runlen,
-		uint32_t y,
-		uint32_t cblksty);
-	void clnpass(int32_t bpno,
-		uint8_t orient,
-		uint32_t cblksty);
-};
-
+t1_decode_base::t1_decode_base(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr)
+{
+}
+t1_decode_base::~t1_decode_base() {
+	if (dataPtr)
+		grok_aligned_free(dataPtr);
 }
 
+}
 

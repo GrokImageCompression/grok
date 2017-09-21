@@ -21,7 +21,6 @@
 #include "t1_decode_opt.h"
 #include "t1_encode.h"
 
-#define DECODER t1_decoder
 
 namespace grk {
 
@@ -29,7 +28,7 @@ t1_impl::t1_impl(bool isEncoder,
 				tcp_t *tcp,
 				tcd_tile_t *tile,
 				uint16_t maxCblkW,
-				uint16_t maxCblkH) : t1_decoder_opt(nullptr), t1_decoder(nullptr), t1_encoder(nullptr) {
+				uint16_t maxCblkH) : t1_decoder(nullptr), t1_encoder(nullptr) {
 	if (isEncoder) {
 		t1_encoder = new t1_encode();
 		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
@@ -37,15 +36,17 @@ t1_impl::t1_impl(bool isEncoder,
 		}
 	}
 	else {
-		DECODER = new t1_decode(maxCblkW,maxCblkH);
-		if (!DECODER->allocateBuffers(maxCblkW,maxCblkH)) {
+		//if (!tcp->csty)
+		//	t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
+		//else
+		t1_decoder = new t1_decode(maxCblkW, maxCblkH);
+		if (!t1_decoder->allocateBuffers(maxCblkW,maxCblkH)) {
 			throw std::exception();
 		}
 	}
 }
 t1_impl::~t1_impl() {
 	delete t1_decoder;
-	delete t1_decoder_opt;
 	delete t1_encoder;
 }
 void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
@@ -115,14 +116,14 @@ double t1_impl::encode(encodeBlockInfo* block,
 	return dist;
 }
 bool t1_impl::decode(decodeBlockInfo* block) {
-	return DECODER->decode_cblk(	block->cblk,
+	return t1_decoder->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
 						block->roishift,
 						block->cblksty);
 }
 
 void t1_impl::postDecode(decodeBlockInfo* block) {
-	DECODER->postDecode(block);
+	t1_decoder->postDecode(block);
 }
 
 

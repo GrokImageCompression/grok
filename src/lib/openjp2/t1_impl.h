@@ -16,7 +16,7 @@
 */
 
 #pragma once
-
+#include "t1_decode_base.h"
 #include "t1_decode.h"
 #include "t1_encode.h"
 #include "t1_decode_opt.h"
@@ -39,9 +39,10 @@ public:
 	void postDecode(decodeBlockInfo* block);
 
 private:
-	t1_decode_opt* t1_decoder_opt;
-	t1_decode* t1_decoder;
+	t1_decode_base* t1_decoder;
 	t1_encode* t1_encoder;
+
+
 };
 
 

@@ -65,13 +65,13 @@ typedef uint16_t flag_t;
 struct mqc_t;
 struct raw_t;
 
-class t1;
+class t1_decode_base;
 
-class t1_decode : public t1 {
+class t1_decode : public t1_decode_base {
 public:
 	~t1_decode();
 	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
-	bool allocateBuffers(uint16_t w, uint16_t h);
+	bool allocateBuffers(uint16_t w, uint16_t h) override;
 	/**
 	Decode 1 code-block
 	@param t1 T1 handle
@@ -83,8 +83,8 @@ public:
 	bool decode_cblk(tcd_cblk_dec_t* cblk,
 		uint8_t orient,
 		uint32_t roishift,
-		uint32_t cblksty);
-	void postDecode(decodeBlockInfo* block);
+		uint32_t cblksty) override;
+	void postDecode(decodeBlockInfo* block) override;
 	int32_t  *dataPtr;
 private:
 	flag_t *flags;
