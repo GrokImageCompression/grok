@@ -343,34 +343,27 @@ static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
 	return d;
 }
 static void mqc_bytein(mqc_t *const mqc) {
-	if (mqc->bp < mqc->end) {
-		uint8_t nextByte = (mqc->bp + 1 < mqc->end) ? *(mqc->bp + 1) : 0xFF;
-		if (mqc->currentByteIs0xFF) {
-			if (nextByte > 0x8F) {
-				// found termination marker - synthesize 1's in C register and do not increment bp
-				mqc->C += 0xFF;
-				mqc->COUNT = 8;
-			}
-			else {
-				// bit stuff next byte and add to C register
-				mqc->bp++;
-				mqc->C += nextByte << 1;
-				mqc->COUNT = 7;
-			}
-		}
-		else {
-			// add next byte to C register
-			mqc->bp++;
-			mqc->C += nextByte;
+	uint8_t nextByte = (mqc->bp + 1 < mqc->end) ? *(mqc->bp + 1) : 0xFF;
+	if (mqc->currentByteIs0xFF) {
+		if (nextByte > 0x8F) {
+			// found termination marker - synthesize 1's in C register and do not increment bp
+			mqc->C += 0xFF;
 			mqc->COUNT = 8;
 		}
-		mqc->currentByteIs0xFF = nextByte == 0xFF;
+		else {
+			// bit stuff next byte and add to C register
+			mqc->bp++;
+			mqc->C += nextByte << 1;
+			mqc->COUNT = 7;
+		}
 	}
 	else {
-		// end of code stream has been reached - synthesize 1's in C register and do not increment bp
-		mqc->C += 0xFF;
+		// add next byte to C register
+		mqc->bp++;
+		mqc->C += nextByte;
 		mqc->COUNT = 8;
 	}
+	mqc->currentByteIs0xFF = nextByte == 0xFF;
 }
 static inline void mqc_renormd(mqc_t *const mqc) {
 	do {

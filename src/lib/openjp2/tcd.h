@@ -212,7 +212,7 @@ struct tcd_cblk_dec_t {
     uint32_t numbps;
     uint32_t numlenbits;
     uint32_t numPassesInPacket;		/* number of passes added by current packet */
-    uint32_t numSegments;			/* number of segment*/
+    uint32_t numSegments;			/* number of segment in block*/
     uint32_t numSegmentsAllocated;  // number of segments allocated for segs array
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;

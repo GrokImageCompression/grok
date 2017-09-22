@@ -605,30 +605,28 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint32_t passtype;
 	uint32_t segno, passno;
 	uint8_t type = T1_TYPE_MQ; /* BYPASS mode */
-	uint8_t* block_buffer = NULL;
 	size_t total_seg_len;
 
 	init_buffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
-
-	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
-	if (cblk->numSegments && total_seg_len) {
-		/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
-		if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
-			block_buffer = ((buf_t*)(cblk->seg_buffers.get(0)))->buf;
-		}
-		else {
-			/* block should have been allocated on creation of t1*/
-			if (!compressed_block)
+	auto min_buf_vec = &cblk->seg_buffers;
+	total_seg_len = min_buf_vec_get_len(min_buf_vec) + 2;
+	if (total_seg_len) {
+		/* block should have been allocated on creation of t1*/
+		if (!compressed_block)
+			return false;
+		if (compressed_block_size < total_seg_len) {
+			uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
+			if (!new_block)
 				return false;
-			if (compressed_block_size < total_seg_len) {
-				uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
-				if (!new_block)
-					return false;
-				compressed_block = new_block;
-				compressed_block_size = total_seg_len;
-			}
-			min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, compressed_block);
-			block_buffer = compressed_block;
+			compressed_block = new_block;
+			compressed_block_size = total_seg_len;
+		}
+		size_t offset = 0;
+		// note: min_buf_vec only contains segments of non-zero length
+		for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
+			min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
+			memcpy(compressed_block + offset, seg->buf, seg->len);
+			offset += seg->len;	
 		}
 	}
 	else {
@@ -637,16 +635,22 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	bpno_plus_one = (int32_t)(roishift + cblk->numbps);
 	passtype = 2;
 	mqc_resetstates(mqc);
+	uint8_t byte1 = 0;
+	uint8_t byte2 = 0;
 	for (segno = 0; segno < cblk->numSegments; ++segno) {
 		tcd_seg_t *seg = &cblk->segs[segno];
-
+		uint32_t synthOffset = seg->dataindex + seg->len;
+		byte1 = compressed_block[synthOffset];
+		byte2 = compressed_block[synthOffset +1];
+		compressed_block[synthOffset]=0xFF;
+		compressed_block[synthOffset + 1]=0xFF;
 		/* BYPASS mode */
 		type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
-			raw_init_dec(raw, block_buffer + seg->dataindex, seg->len);
+			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
 		else {
-			mqc_init_dec(mqc, block_buffer + seg->dataindex, seg->len);
+			mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
 		}
 		for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
@@ -684,11 +688,15 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
 				mqc_resetstates(mqc);
 			}
+
+
 			if (++passtype == 3) {
 				passtype = 0;
 				bpno_plus_one--;
 			}
 		}
+		compressed_block[synthOffset] = byte1;
+		compressed_block[synthOffset + 1] =  byte2;
 	}
 	return true;
 }
