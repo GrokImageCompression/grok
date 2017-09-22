@@ -70,8 +70,6 @@ public:
 	t1_decode_base(uint16_t code_block_width, uint16_t code_block_height);
 	virtual ~t1_decode_base();
 
-	virtual bool allocateBuffers(uint16_t w, uint16_t h)=0;
-
 	/**
 	Decode 1 code-block
 	@param t1 T1 handle
@@ -88,6 +86,13 @@ public:
 
 
 	int32_t  *dataPtr;
+
+protected:
+	bool allocCompressed(tcd_cblk_dec_t* cblk);
+	uint8_t* compressed_block;
+	size_t compressed_block_size;
+	mqc_t *mqc;
+	raw_t *raw;
 
 };
 

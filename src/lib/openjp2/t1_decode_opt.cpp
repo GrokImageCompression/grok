@@ -64,35 +64,11 @@
 namespace grk {
 
 t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width,code_block_height),
-																						dataPtr(nullptr),
-																						compressed_block(nullptr),
-																						compressed_block_size(0),
-																						mqc(nullptr),
-																						raw(nullptr) {
-	mqc = mqc_create();
-	if (!mqc) {
+																					dataPtr(nullptr){
+	if (!allocateBuffers(code_block_width, code_block_height))
 		throw std::exception();
-	}
-	raw = raw_create();
-	if (!raw) {
-		throw std::exception();
-	}
-	if (code_block_width > 0 && code_block_height > 0) {
-		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
-		if (!compressed_block) {
-			throw std::exception();
-		}
-		compressed_block_size = (size_t)(code_block_width * code_block_height);
-	}
 }
 t1_decode_opt::~t1_decode_opt() {
-	/* destroy MQC and RAW handles */
-	mqc_destroy(mqc);
-	raw_destroy(raw);
-	if (compressed_block)
-		grok_free(compressed_block);
-	if (dataPtr)
-		grok_aligned_free(dataPtr);
 }
 
 
@@ -121,10 +97,10 @@ Initialize buffers
 @param w	width of code block
 @param h	height of code block
 */
-void t1_decode_opt::initBuffers(uint16_t w, uint16_t h) {
-	t1::initBuffers(w, h);
+void t1_decode_opt::initBuffers(uint16_t cblkw, uint16_t cblkh) {
+	t1::initBuffers(cblkw, cblkh);
 	if (dataPtr)
-		memset(dataPtr, 0, w*h * sizeof(int32_t));
+		memset(dataPtr, 0, cblkw*cblkh * sizeof(int32_t));
 
 }
 
@@ -351,58 +327,41 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint32_t passtype;
 	uint32_t segno, passno;
 	uint8_t type = T1_TYPE_MQ; /* BYPASS mode */
-	uint8_t* block_buffer = NULL;
-	size_t total_seg_len;
-
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
-
-	total_seg_len = min_buf_vec_get_len(&cblk->seg_buffers);
-	if (cblk->numSegments && total_seg_len) {
-		/* if there is only one segment, then it is already contiguous, so no need to make a copy*/
-		if (total_seg_len == 1 && cblk->seg_buffers.get(0)) {
-			block_buffer = ((buf_t*)(cblk->seg_buffers.get(0)))->buf;
-		}
-		else {
-			/* block should have been allocated on creation of t1*/
-			if (!compressed_block)
-				return false;
-			if (compressed_block_size < total_seg_len) {
-				uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
-				if (!new_block)
-					return false;
-				compressed_block = new_block;
-				compressed_block_size = total_seg_len;
-			}
-			min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, compressed_block);
-			block_buffer = compressed_block;
-		}
-	}
-	else {
+	if (!min_buf_vec_get_len(&cblk->seg_buffers))
 		return true;
-	}
+	if (!allocCompressed(cblk))
+		return false;
 	bpno_plus_one = (int32_t)(roishift + cblk->numbps);
 	passtype = 2;
 	mqc_resetstates(mqc);
+
+
 	for (segno = 0; segno < cblk->numSegments; ++segno) {
 		tcd_seg_t *seg = &cblk->segs[segno];
-
-		/* BYPASS mode */
+		uint32_t synthOffset = seg->dataindex + seg->len;
+		uint8_t byte1 = compressed_block[synthOffset];
+		uint8_t byte2 = compressed_block[synthOffset + 1];
+		compressed_block[synthOffset] = 0xFF;
+		compressed_block[synthOffset + 1] = 0xFF;
 		type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
-			raw_init_dec(raw, block_buffer + seg->dataindex, seg->len);
+			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
 		else {
-			mqc_init_dec(mqc, block_buffer + seg->dataindex, seg->len);
+			mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
 		}
 		for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
+
+            ///////////////////////////////////////////////////////////////////////////////
 			case 0:
 				if (type == T1_TYPE_RAW) {
-					//sigpass_raw(bpno_plus_one, (int32_t)cblksty);
+					//sigpass_raw(bpno_plus_one, cblksty);
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
-						//sigpass_vsc(bpno_plus_one, (int32_t)orient);
+						//sigpass_vsc(bpno_plus_one, orient);
 					}
 					else {
 						sigpass(bpno_plus_one, orient, cblksty);
@@ -423,9 +382,13 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				break;
 			case 2:
-				clnpass(bpno_plus_one, (int32_t)orient, (int32_t)cblksty);
+				clnpass(bpno_plus_one, orient, cblksty);
 				break;
 			}
+			////////////////////////////////////////////////////////////////
+
+
+
 
 			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
 				mqc_resetstates(mqc);
@@ -435,6 +398,8 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 				bpno_plus_one--;
 			}
 		}
+		compressed_block[synthOffset] = byte1;
+		compressed_block[synthOffset + 1] = byte2;
 	}
 	return true;
 }

@@ -63,12 +63,58 @@
 
 namespace grk {
 
-t1_decode_base::t1_decode_base(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr)
+t1_decode_base::t1_decode_base(uint16_t code_block_width, uint16_t code_block_height) : dataPtr(nullptr),
+																						compressed_block(nullptr),
+																						compressed_block_size(0),
+																						mqc(nullptr),
+																						raw(nullptr)
 {
+	mqc = mqc_create();
+	if (!mqc) {
+		throw std::exception();
+	}
+	raw = raw_create();
+	if (!raw) {
+		throw std::exception();
+	}
+	if (code_block_width > 0 && code_block_height > 0) {
+		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
+		if (!compressed_block) {
+			throw std::exception();
+		}
+		compressed_block_size = (size_t)(code_block_width * code_block_height);
+	}
 }
 t1_decode_base::~t1_decode_base() {
+	mqc_destroy(mqc);
+	raw_destroy(raw);
+	if (compressed_block)
+		grok_free(compressed_block);
+
 	if (dataPtr)
 		grok_aligned_free(dataPtr);
+}
+
+bool t1_decode_base::allocCompressed(tcd_cblk_dec_t* cblk) {
+	/* block should have been allocated on creation of t1*/
+	if (!compressed_block)
+		return false;
+	auto min_buf_vec = &cblk->seg_buffers;
+	uint16_t total_seg_len = min_buf_vec_get_len(min_buf_vec)+2;
+	if (compressed_block_size < total_seg_len) {
+		uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
+		if (!new_block)
+			return false;
+		compressed_block = new_block;
+		compressed_block_size = total_seg_len;
+	}
+	size_t offset = 0;
+	// note: min_buf_vec only contains segments of non-zero length
+	for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
+		min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
+		memcpy(compressed_block + offset, seg->buf, seg->len);
+		offset += seg->len;
+	}
 }
 
 }

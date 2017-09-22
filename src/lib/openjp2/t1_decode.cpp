@@ -131,35 +131,11 @@ void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width, code_block_height), 
 																			dataPtr(nullptr),
 																			flags(nullptr),
-																			flags_stride(0),
-																			compressed_block(nullptr),
-																			compressed_block_size(0),
-																			mqc(nullptr),
-																			raw(nullptr) {
-	mqc = mqc_create();
-	if (!mqc) {
+																			flags_stride(0) {
+	if (!allocateBuffers(code_block_width, code_block_height))
 		throw std::exception();
-	}
-	raw = raw_create();
-	if (!raw) {
-		throw std::exception();
-	}
-	if (code_block_width > 0 && code_block_height > 0) {
-		compressed_block = (uint8_t*)grok_malloc((size_t)code_block_width * (size_t)code_block_height);
-		if (!compressed_block) {
-			throw std::exception();
-		}
-		compressed_block_size = (size_t)(code_block_width * code_block_height);
-	}
 }
 t1_decode::~t1_decode() {
-	/* destroy MQC and RAW handles */
-	mqc_destroy(mqc);
-	raw_destroy(raw);
-	if (compressed_block)
-		grok_free(compressed_block);
-	if (dataPtr)
-		grok_aligned_free(dataPtr);
 }
 
 inline void t1_decode::sigpass_step(flag_t *flagsp,
@@ -569,14 +545,13 @@ void t1_decode::clnpass(int32_t bpno,
 bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 	/* encoder uses tile buffer, so no need to allocate */
 	uint32_t new_datasize = w * h;
-	if (dataPtr)
-		grok_aligned_free(dataPtr);
-	dataPtr = (int32_t*)grok_aligned_malloc(new_datasize * sizeof(int32_t));
 	if (!dataPtr) {
-		/* FIXME event manager error callback */
-		return false;
+		dataPtr = (int32_t*)grok_aligned_malloc(w*h * sizeof(int32_t));
+		if (!dataPtr) {
+			/* FIXME event manager error callback */
+			return false;
+		}
 	}
-
 	flags_stride = (uint16_t)(w + 2);
 	uint32_t new_flagssize = flags_stride * (h + 2);
 	if (flags)
@@ -586,90 +561,61 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 		/* FIXME event manager error callback */
 		return false;
 	}
-	init_buffers(w, h);
+	initBuffers(w, h);
 	return true;
 }
-void t1_decode::init_buffers(uint16_t w, uint16_t h) {
-	this->w = w;
-	this->h = h;
+void t1_decode::initBuffers(uint16_t cblkw, uint16_t cblkh) {
+	w = cblkw;
+	h = cblkh;
 	flags_stride = (uint16_t)(w + 2);
-	memset(dataPtr, 0, w * h * sizeof(int32_t));
 	memset(flags, 0, flags_stride * (h + 2) * sizeof(flag_t));
+	if (dataPtr)
+		memset(dataPtr, 0, w * h * sizeof(int32_t));
 }
 bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t orient,
 	uint32_t roishift,
 	uint32_t cblksty)
 {
-	int32_t bpno_plus_one;
-	uint32_t passtype;
-	uint32_t segno, passno;
-	uint8_t type = T1_TYPE_MQ; /* BYPASS mode */
-	size_t total_seg_len;
-
-	init_buffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
-	auto min_buf_vec = &cblk->seg_buffers;
-	total_seg_len = min_buf_vec_get_len(min_buf_vec) + 2;
-	if (total_seg_len) {
-		/* block should have been allocated on creation of t1*/
-		if (!compressed_block)
-			return false;
-		if (compressed_block_size < total_seg_len) {
-			uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
-			if (!new_block)
-				return false;
-			compressed_block = new_block;
-			compressed_block_size = total_seg_len;
-		}
-		size_t offset = 0;
-		// note: min_buf_vec only contains segments of non-zero length
-		for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
-			min_buf_t* seg = (min_buf_t*)min_buf_vec->get(i);
-			memcpy(compressed_block + offset, seg->buf, seg->len);
-			offset += seg->len;	
-		}
-	}
-	else {
+	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
+	if (!min_buf_vec_get_len(&cblk->seg_buffers))
 		return true;
-	}
-	bpno_plus_one = (int32_t)(roishift + cblk->numbps);
-	passtype = 2;
+	if (!allocCompressed(cblk))
+		return false;
+	int32_t bpno_plus_one = (int32_t)(roishift + cblk->numbps);
+	uint32_t passtype = 2;
 	mqc_resetstates(mqc);
-	uint8_t byte1 = 0;
-	uint8_t byte2 = 0;
-	for (segno = 0; segno < cblk->numSegments; ++segno) {
+	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
 		tcd_seg_t *seg = &cblk->segs[segno];
 		uint32_t synthOffset = seg->dataindex + seg->len;
-		byte1 = compressed_block[synthOffset];
-		byte2 = compressed_block[synthOffset +1];
-		compressed_block[synthOffset]=0xFF;
-		compressed_block[synthOffset + 1]=0xFF;
-		/* BYPASS mode */
-		type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+		uint16_t stash = *((uint16_t*)(compressed_block + synthOffset));
+		*((uint16_t*)(compressed_block + synthOffset))=0xFFFF;
+		uint8_t type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) &&
+						(passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
 			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
 		else {
 			mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
 		}
-		for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
+		for (uint32_t passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW) {
-					sigpass_raw(bpno_plus_one, (int32_t)cblksty);
+					sigpass_raw(bpno_plus_one, cblksty);
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
-						sigpass_vsc(bpno_plus_one, (int32_t)orient);
+						sigpass_vsc(bpno_plus_one, orient);
 					}
 					else {
-						sigpass(bpno_plus_one, (int32_t)orient);
+						sigpass(bpno_plus_one, orient);
 					}
 				}
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW) {
-					refpass_raw(bpno_plus_one, (int32_t)cblksty);
+					refpass_raw(bpno_plus_one, cblksty);
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
@@ -681,7 +627,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				break;
 			case 2:
-				clnpass(bpno_plus_one, (int32_t)orient, (int32_t)cblksty);
+				clnpass(bpno_plus_one, orient, cblksty);
 				break;
 			}
 
@@ -695,8 +641,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				bpno_plus_one--;
 			}
 		}
-		compressed_block[synthOffset] = byte1;
-		compressed_block[synthOffset + 1] =  byte2;
+		*((uint16_t*)(compressed_block + synthOffset)) = stash;
 	}
 	return true;
 }
