@@ -40,9 +40,6 @@ t1_impl::t1_impl(bool isEncoder,
 		//	t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
 		//else
 		t1_decoder = new t1_decode(maxCblkW, maxCblkH);
-		if (!t1_decoder->allocateBuffers(maxCblkW,maxCblkH)) {
-			throw std::exception();
-		}
 	}
 }
 t1_impl::~t1_impl() {

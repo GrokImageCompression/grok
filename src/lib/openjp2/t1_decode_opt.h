@@ -67,9 +67,8 @@ class t1_decode_base;
 
 class t1_decode_opt : public t1_decode_base {
 public:
-	~t1_decode_opt();
 	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
-	bool allocateBuffers(uint16_t w, uint16_t h) override;
+	~t1_decode_opt();
 
 	/**
 	Decode 1 code-block
@@ -86,11 +85,7 @@ public:
 	void postDecode(decodeBlockInfo* block) override;
 	int32_t  *dataPtr;
 private:
-	uint8_t* compressed_block;
-	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
-
+	bool allocateBuffers(uint16_t w, uint16_t h);
 	void initBuffers(uint16_t w, uint16_t h);
 	inline void sigpass_step(flag_opt_t *flagsp,
 		int32_t *datap,

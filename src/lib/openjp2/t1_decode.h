@@ -69,9 +69,8 @@ class t1_decode_base;
 
 class t1_decode : public t1_decode_base {
 public:
-	~t1_decode();
 	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
-	bool allocateBuffers(uint16_t w, uint16_t h) override;
+	~t1_decode();
 	/**
 	Decode 1 code-block
 	@param t1 T1 handle
@@ -89,12 +88,9 @@ public:
 private:
 	flag_t *flags;
 	uint16_t flags_stride;
-	uint8_t* compressed_block;
-	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
 
-	void init_buffers(uint16_t w, uint16_t h);
+	bool allocateBuffers(uint16_t w, uint16_t h);
+	void initBuffers(uint16_t w, uint16_t h);
 	inline void sigpass_step_raw(flag_t *flagsp,
 		int32_t *datap,
 		int32_t oneplushalf,
