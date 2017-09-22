@@ -63,8 +63,7 @@
 
 namespace grk {
 
-t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width,code_block_height),
-																					dataPtr(nullptr){
+t1_decode_opt::t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width,code_block_height){
 	if (!allocateBuffers(code_block_width, code_block_height))
 		throw std::exception();
 }
@@ -124,6 +123,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
 		}
+		datap += w;
 	}
 }
 
@@ -142,10 +142,9 @@ void t1_decode_opt::sigpass(int32_t bpno,
 	int32_t* d = dataPtr;
 	for (k = 0; k < (h&~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
-			if (*f == 0U) {
-				continue;  /* Nothing to do for any of the 4 data points */
+			if (*f) {
+				sigpass_step(f, d, orient, oneplushalf, 12, cblksty);
 			}
-			sigpass_step(f, d, orient, oneplushalf, 12,cblksty);
 			++f;
 			++d;
 		}
@@ -153,7 +152,13 @@ void t1_decode_opt::sigpass(int32_t bpno,
 		f += flag_row_extra;
 	}
 	if (k < h) {
-		sigpass_step(f, d, orient, oneplushalf, (h - k)*3, cblksty);
+		for (i = 0; i < w; ++i) {
+			if (*f) {
+				sigpass_step(f, d, orient, oneplushalf, (h - k) * 3, cblksty);
+			}
+			++f;
+			++d;
+		}
 	}
 }
 inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp,
@@ -185,12 +190,12 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	uint32_t i, k;
 	for (k = 0U; k < (h&~3); k += 4U) {
 		for (i = 0U; i < w; ++i) {
-			if (!*f)
-				continue;
-			refpass_step(f,
-				d,
-				poshalf, 
-				12);
+			if (*f) {
+				refpass_step(f,
+					d,
+					poshalf,
+					12);
+			}
 			++f;
 			++d;
 		}
@@ -198,10 +203,14 @@ void t1_decode_opt::refpass(int32_t bpno) {
 		d += data_row_extra;
 	}
 	if (k < h) {
-		refpass_step(f,
-			d,
-			poshalf,
-			(h - k) * 3);
+		for (uint32_t i = 0; i < w; ++i) {
+			refpass_step(f,
+				d,
+				poshalf,
+				(h - k) * 3);
+			++f;
+			++d;
+		}
 	}
 
 }

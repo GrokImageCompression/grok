@@ -83,7 +83,6 @@ public:
 		uint32_t roishift,
 		uint32_t cblksty) override;
 	void postDecode(decodeBlockInfo* block) override;
-	int32_t  *dataPtr;
 private:
 	bool allocateBuffers(uint16_t w, uint16_t h);
 	void initBuffers(uint16_t w, uint16_t h);
