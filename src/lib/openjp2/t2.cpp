@@ -935,21 +935,20 @@ namespace grk {
 							p_pi->compno);
 						return false;
 					}
-
+					//initialize dataindex to current contiguous size of code block
 					if (l_seg->numpasses == 0) {
 						l_seg->dataindex = l_cblk->dataSize;
 					}
-
-					min_buf_vec_push_back(&l_cblk->seg_buffers, seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
-
-					*(p_data_read) += l_seg->newlen;
-					seg_buf_incr_cur_seg_offset(src_buf, l_seg->newlen);
+					// only add segment to seg_buffers if length is greater than zero
+					if (l_seg->newlen) {
+						min_buf_vec_push_back(&l_cblk->seg_buffers, seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
+						*(p_data_read) += l_seg->newlen;
+						seg_buf_incr_cur_seg_offset(src_buf, l_seg->newlen);
+						l_cblk->dataSize += l_seg->newlen;
+						l_seg->len += l_seg->newlen;
+					}
 					l_seg->numpasses += l_seg->numPassesInPacket;
 					numPassesInPacket -= l_seg->numPassesInPacket;
-
-					l_cblk->dataSize += l_seg->newlen;
-					l_seg->len += l_seg->newlen;
-
 					if (numPassesInPacket > 0) {
 						++l_seg;
 						++l_cblk->numSegments;
