@@ -129,7 +129,6 @@ void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
 
 
 t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : t1_decode_base(code_block_width, code_block_height), 
-																			dataPtr(nullptr),
 																			flags(nullptr),
 																			flags_stride(0) {
 	if (!allocateBuffers(code_block_width, code_block_height))

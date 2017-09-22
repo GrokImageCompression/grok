@@ -115,6 +115,7 @@ bool t1_decode_base::allocCompressed(tcd_cblk_dec_t* cblk) {
 		memcpy(compressed_block + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
+	return true;
 }
 
 }

@@ -84,7 +84,6 @@ public:
 		uint32_t roishift,
 		uint32_t cblksty) override;
 	void postDecode(decodeBlockInfo* block) override;
-	int32_t  *dataPtr;
 private:
 	flag_t *flags;
 	uint16_t flags_stride;
