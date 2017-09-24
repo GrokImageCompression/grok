@@ -332,38 +332,29 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint32_t roishift,
 	uint32_t cblksty)
 {
-	int32_t bpno_plus_one;
-	uint32_t passtype;
-	uint32_t segno, passno;
-	uint8_t type = T1_TYPE_MQ; /* BYPASS mode */
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
 	if (!min_buf_vec_get_len(&cblk->seg_buffers))
 		return true;
 	if (!allocCompressed(cblk))
 		return false;
-	bpno_plus_one = (int32_t)(roishift + cblk->numbps);
-	passtype = 2;
+	int32_t bpno_plus_one = (int32_t)(roishift + cblk->numbps);
+	uint32_t passtype = 2;
 	mqc_resetstates(mqc);
-
-
-	for (segno = 0; segno < cblk->numSegments; ++segno) {
+	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
 		tcd_seg_t *seg = &cblk->segs[segno];
 		uint32_t synthOffset = seg->dataindex + seg->len;
-		uint8_t byte1 = compressed_block[synthOffset];
-		uint8_t byte2 = compressed_block[synthOffset + 1];
-		compressed_block[synthOffset] = 0xFF;
-		compressed_block[synthOffset + 1] = 0xFF;
-		type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) && (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+		uint16_t stash = *((uint16_t*)(compressed_block + synthOffset));
+		*((uint16_t*)(compressed_block + synthOffset)) = 0xFFFF;
+		uint8_t type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) &&
+			(passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
 			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
 		else {
 			mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
 		}
-		for (passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
+		for (uint32_t passno = 0; (passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
-
-            ///////////////////////////////////////////////////////////////////////////////
 			case 0:
 				if (type == T1_TYPE_RAW) {
 					//sigpass_raw(bpno_plus_one, cblksty);
@@ -373,13 +364,13 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 						//sigpass_vsc(bpno_plus_one, orient);
 					}
 					else {
-						sigpass(bpno_plus_one, orient, cblksty);
+						sigpass(bpno_plus_one, orient,cblksty);
 					}
 				}
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW) {
-					//refpass_raw(bpno_plus_one, (int32_t)cblksty);
+					//refpass_raw(bpno_plus_one, cblksty);
 				}
 				else {
 					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
@@ -394,21 +385,18 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 				clnpass(bpno_plus_one, orient, cblksty);
 				break;
 			}
-			////////////////////////////////////////////////////////////////
-
-
-
 
 			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
 				mqc_resetstates(mqc);
 			}
+
+
 			if (++passtype == 3) {
 				passtype = 0;
 				bpno_plus_one--;
 			}
 		}
-		compressed_block[synthOffset] = byte1;
-		compressed_block[synthOffset + 1] = byte2;
+		*((uint16_t*)(compressed_block + synthOffset)) = stash;
 	}
 	return true;
 }

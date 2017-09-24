@@ -36,10 +36,11 @@ t1_impl::t1_impl(bool isEncoder,
 		}
 	}
 	else {
-		//if (!tcp->csty)
-		//	t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
-		//else
-		t1_decoder = new t1_decode(maxCblkW, maxCblkH);
+		tccp_t *tccp = &tcp->tccps[0];
+		if (!tccp->cblksty)
+			t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
+		else
+			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
 	}
 }
 t1_impl::~t1_impl() {
