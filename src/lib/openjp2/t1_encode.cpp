@@ -428,6 +428,9 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	uint32_t state = grok_plugin_get_debug_state();
 	if (state & OPJ_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = cblk->contextStream;
+		mqc->debug_mqc.orient = orient;
+		mqc->debug_mqc.compno = compno;
+		mqc->debug_mqc.level =  level;
 	}
 #endif
 
