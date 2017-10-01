@@ -55,16 +55,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSE4_1__
-#include <smmintrin.h>
-#endif
+
+#include "CPUArch.h"
 #include "grok_includes.h"
+
 
 namespace grk {
 

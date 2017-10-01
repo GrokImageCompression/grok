@@ -97,9 +97,7 @@
 
  */
 
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
+#include "CPUArch.h"
 #include "grok_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
