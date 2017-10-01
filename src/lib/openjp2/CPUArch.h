@@ -58,6 +58,10 @@
 
 #pragma once
 
+#define GROK_SKIP_POISON
+
+#include "grok_includes.h"
+
 // SIMD #defines for 64-bit arch
 #if defined(_M_X64)
 #   ifndef __SSE__

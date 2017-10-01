@@ -105,7 +105,7 @@ Deallocates or frees a memory block.
 */
 void grok_free(void * m);
 
-#if defined(__GNUC__) && !defined(OPJ_SKIP_POISON)
+#if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
 #pragma GCC poison malloc calloc realloc free
 #endif
 

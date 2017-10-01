@@ -50,7 +50,7 @@
 
 
 
-#define OPJ_SKIP_POISON
+#define GROK_SKIP_POISON
 #include "grok_includes.h"
 
 #if defined(GROK_HAVE_MALLOC_H) && defined(GROK_HAVE_MEMALIGN)
