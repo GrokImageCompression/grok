@@ -30,7 +30,6 @@ class T1Decoder
 {
 public:
 	T1Decoder(tcp_t *tcp,
-				tcd_tile_t *tile, 
 				uint16_t blockw,
 				uint16_t blockh,
 				size_t numThreads);

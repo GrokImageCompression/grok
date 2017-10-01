@@ -166,12 +166,11 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 
 
 bool Tier1::decodeCodeblocks(tcp_t *tcp,
-							tcd_tile_t *tile,
 							uint16_t blockw,
 							uint16_t blockh,
 							std::vector<decodeBlockInfo*>* blocks, 
 							int32_t numThreads) {
-	T1Decoder decoder(tcp, tile, blockw, blockh, numThreads);
+	T1Decoder decoder(tcp, blockw, blockh, numThreads);
 	return decoder.decode(blocks, numThreads);
 }
 

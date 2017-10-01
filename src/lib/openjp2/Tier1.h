@@ -42,8 +42,7 @@ public:
 								event_mgr_t * p_manager);
 
 	bool decodeCodeblocks(tcp_t *tcp,
-							tcd_tile_t *tile,
-							uint16_t blockw, 
+								uint16_t blockw,
 							uint16_t blockh,
 							std::vector<decodeBlockInfo*>* blocks,
 							int32_t numThreads);
