@@ -1627,7 +1627,7 @@ static bool tcd_t1_decode ( tcd_t *p_tcd, event_mgr_t * p_manager)
         ++l_tccp;
     }
 	// !!! assume that code block dimensions do not change over components
-	return t1_wrap->decodeCodeblocks(p_tcd->tcp, p_tcd->tile, (uint16_t)p_tcd->tcp->tccps->cblkw, (uint16_t)p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
+	return t1_wrap->decodeCodeblocks(p_tcd->tcp, (uint16_t)p_tcd->tcp->tccps->cblkw, (uint16_t)p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
 }
 
 

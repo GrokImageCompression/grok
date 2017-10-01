@@ -34,7 +34,7 @@ T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
 					bool needsRateControl) : tile(tile), 
 											needsRateControl(needsRateControl) {
 	for (auto i = 0U; i < numThreads; ++i) {
-		threadStructs.push_back(t1_factory::get_t1(true,tcp, tile, encodeMaxCblkW, encodeMaxCblkH));
+		threadStructs.push_back(t1_factory::get_t1(true,tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 

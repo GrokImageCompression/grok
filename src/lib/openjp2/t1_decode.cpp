@@ -543,7 +543,6 @@ void t1_decode::clnpass(int32_t bpno,
 }
 bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 	/* encoder uses tile buffer, so no need to allocate */
-	uint32_t new_datasize = w * h;
 	if (!dataPtr) {
 		dataPtr = (int32_t*)grok_aligned_malloc(w*h * sizeof(int32_t));
 		if (!dataPtr) {
