@@ -1578,6 +1578,7 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	bool bUseTiles = false;
 	bool createdImage = false;
 	uint8_t* buff = nullptr;
+	bool isBufferStream = false;
 
 	// single image mode with output to stdout
 	if (!info->outputFileNameIsRelative && (!info->output_file_name || !info->output_file_name[0])) {
@@ -1815,19 +1816,14 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
-	{
-		bool isBufferStream = false;
-		if (isBufferStream) {
-			//  option to write to buffer, assuming one knows how large compressed stream will be 
-			auto len = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
-			if (len < 102400)
-				len = 102400;
-			buff = new uint8_t[len];
-			l_stream = opj_stream_create_buffer_stream(buff, len, false);
-		}
-		else {
-			l_stream = opj_stream_create_default_file_stream(outfile, false);
-		}
+	if (isBufferStream) {
+		//  option to write to buffer, assuming one knows how large compressed stream will be 
+		auto len = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+		buff = new uint8_t[len];
+		l_stream = opj_stream_create_buffer_stream(buff, len, false);
+	}
+	else {
+		l_stream = opj_stream_create_default_file_stream(outfile, false);
 	}
 
 	
@@ -1877,9 +1873,19 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 
 	if (buff) {
 		auto fp = fopen(outfile, "wb");
-		auto len = opj_stream_get_write_buffer_stream_length(l_stream);
-		fwrite(buff, len, 1,fp);
-		fclose(fp);
+		if (!fp) {
+			fprintf(stderr, "Buffer compress: failed to open file %s for writing\n", outfile);
+		}
+		else {
+			auto len = opj_stream_get_write_buffer_stream_length(l_stream);
+			size_t written = fwrite(buff, 1,len, fp);
+			if (written != len) {
+				fprintf(stderr, "Buffer compress: only %zd bytes written out of %zd total\n", len, written);
+			}
+			fclose(fp);
+		}
+		delete[] buff;
+		buff = nullptr;
 
 	}
 	if (l_stream) {
@@ -1900,6 +1906,9 @@ static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* inf
 	}
 
 cleanup:
+	if (buff) {
+		delete[] buff;
+	}
 	if (l_stream)
 		opj_stream_destroy(l_stream);
 	if (l_codec)
