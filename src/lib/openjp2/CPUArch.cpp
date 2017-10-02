@@ -55,7 +55,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "grok_includes.h"
 #include "CPUArch.h"
 
 namespace grk {
