@@ -104,6 +104,10 @@
 #include <immintrin.h>
 #endif
 
+#if defined(__GNUC__)
+#pragma GCC poison malloc calloc realloc free
+#endif
+
 namespace grk {
 
 
