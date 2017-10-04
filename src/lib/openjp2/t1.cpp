@@ -104,45 +104,36 @@ Initialize buffers
 @param h	height of code block
 */
 void t1::initBuffers(uint16_t w, uint16_t h) {
-	uint32_t x;
-	flag_opt_t* p;
+	this->w = w;
+	this->h = h;
 	flags_stride = (uint16_t)(w + 2);
 	auto flags_height = (h + 3U) >> 2;
 	auto flagssize = flags_stride * (flags_height + 2);
 	memset(flags, 0, flagssize * sizeof(flag_opt_t));
 
-	/* BIG FAT XXX */
-	p = &flags[0];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to prevent any passes from being interested in this entry */
-		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
-
-	p = &flags[((flags_height + 1) * flags_stride)];
-	for (x = 0; x < flags_stride; ++x) {
-		/* magic value to prevent any passes from being interested in this entry */
-		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-	}
-
-	unsigned char hMod4 = h & 3;
-	if (hMod4) {
-		uint32_t v = 0;
-		p = &flags[((flags_height)* flags_stride)];
-		if (hMod4 == 1) {
-			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
-		}
-		else if (hMod4 == 2) {
-			v |= T1_PI_2 | T1_PI_3;
-		}
-		else if (hMod4 == 3) {
-			v |= T1_PI_3;
-		}
-		for (x = 0; x < flags_stride; ++x) {
+	// handle last stripe if its height is less than 4
+	flag_opt_t* p = flags;
+	unsigned char lastHeight = h & 3;
+	if (lastHeight) {
+		flag_opt_t v = T1_PI_3 | ((lastHeight <= 2) << T1_PI_2_I) | ((lastHeight == 1) << T1_PI_1_I);
+		p = flags + ((flags_height)* flags_stride);
+		for (uint32_t x = 0; x < flags_stride; ++x) {
 			*p++ = v;
 		}
 	}
-	this->w = w;
-	this->h = h;
+
+	///////////////////////////////////////////////////////////////////////////////////
+	// Top and bottom boundary lines of flags buffer: set magic value
+	// to prevent any passes from being interested in these entries
+	// Note: setting magic below is not strictly necessary, but should save a few cycles.
+	for (uint32_t x = 0; x < flags_stride; ++x) {
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
+	p = flags + ((flags_height + 1) * flags_stride);
+	for (uint32_t x = 0; x < flags_stride; ++x) {
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
+	////////////////////////////////////////////////////////////////////////////
 }
 uint8_t t1::getZeroCodingContext(uint32_t f, uint8_t orient)
 {
