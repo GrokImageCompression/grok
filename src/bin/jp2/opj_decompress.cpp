@@ -74,6 +74,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/times.h>
+#include <unistd.h>
 #endif /* _WIN32 */
 
 #include "openjpeg.h"
