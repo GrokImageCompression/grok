@@ -1376,6 +1376,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	int32_t success = 0;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
+	bool isBatch = false;
 
 #ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
@@ -1408,10 +1409,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		goto cleanup;
 	}
 
-	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
-	uint32_t state = grok_plugin_get_debug_state();
-	if ((state & OPJ_PLUGIN_STATE_DEBUG)) {
-		isBatch = 0;
+	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
+	if ((grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG)) {
+		isBatch = false;
 	}
 	if (isBatch) {
 		success = opj_plugin_batch_decode(initParams->img_fol.imgdirpath, 
