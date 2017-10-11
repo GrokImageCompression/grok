@@ -90,7 +90,7 @@ typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
 
 
 
-typedef bool (*PLUGIN_IS_BATCH_ENCODE_COMPLETE)(void);
+typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 
 
 

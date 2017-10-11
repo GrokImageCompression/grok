@@ -1985,7 +1985,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
-				if (opj_plugin_is_batch_encode_complete()) {
+				if (opj_plugin_is_batch_complete()) {
 					break;
 				}
 			}
