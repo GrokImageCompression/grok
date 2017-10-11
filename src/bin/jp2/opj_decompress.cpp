@@ -1648,15 +1648,14 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 cleanup:
-	if (info->l_stream)
-		opj_stream_destroy(info->l_stream);
 	delete[] buffer;
-	buffer = nullptr;
-	info->l_stream = NULL;
-	if (info->l_codec)
-		opj_destroy_codec(info->l_codec);
-	info->l_codec = NULL;
 	if (failed) {
+		if (info->l_stream)
+			opj_stream_destroy(info->l_stream);
+		info->l_stream = NULL;
+		if (info->l_codec)
+			opj_destroy_codec(info->l_codec);
+		info->l_codec = NULL;
 		if (image)
 			opj_image_destroy(image);
 		info->image = NULL;
