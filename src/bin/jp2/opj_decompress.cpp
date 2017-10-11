@@ -1648,14 +1648,14 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	}
 
 cleanup:
+	if (info->l_stream)
+		opj_stream_destroy(info->l_stream);
+	info->l_stream = NULL;
+	if (info->l_codec)
+		opj_destroy_codec(info->l_codec);
+	info->l_codec = NULL;
 	delete[] buffer;
 	if (failed) {
-		if (info->l_stream)
-			opj_stream_destroy(info->l_stream);
-		info->l_stream = NULL;
-		if (info->l_codec)
-			opj_destroy_codec(info->l_codec);
-		info->l_codec = NULL;
 		if (image)
 			opj_image_destroy(image);
 		info->image = NULL;
@@ -1673,27 +1673,6 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
-
-	/*
-	if (info->tile) {
-		info->tile->decode_flag = OPJ_PLUGIN_DECODE_POST_T1 ;
-		if (!(opj_decode_ex(info->l_codec, info->tile, info->l_stream, image) && opj_end_decompress(info->l_codec, info->l_stream))) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
-			failed = 1;
-			goto cleanup;
-		}
-	}
-	*/
-
-	/* Close the byte stream */
-	if (info->l_stream)
-		opj_stream_destroy(info->l_stream);
-	info->l_stream = NULL;
-	if (info->l_codec)
-		opj_destroy_codec(info->l_codec);
-	info->l_codec = NULL;
-	
-	// info->tile will be destroyed by plugin
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
