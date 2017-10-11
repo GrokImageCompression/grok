@@ -102,6 +102,19 @@
 using namespace TCLAP;
 using namespace std;
 
+
+#ifdef _WIN32
+int batch_sleep(int val) {
+	Sleep(val);
+	return 0;
+}
+#else
+int batch_sleep(int val) {
+	return usleep(val);
+}
+#endif
+
+
 typedef struct dircnt {
     /** Buffer for holding images read from Directory*/
     char *filename_buf;
@@ -1359,7 +1372,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 {
 	int32_t num_images, imageno = 0;
 	dircnt_t *dirptr = nullptr;
-	int rc = EXIT_SUCCESS;
+	int32_t success = 0;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 
@@ -1381,50 +1394,80 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!opj_initialize(initParams->plugin_path))
-		return EXIT_FAILURE;
-
+	if (!opj_initialize(initParams->plugin_path)) {
+		opj_cleanup();
+		return 1;
+	}
 
 	// create codec
 	opj_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	if (!opj_plugin_init(initInfo)) {
-		rc = EXIT_FAILURE;
+		success = 1;
 		goto cleanup;
 	}
 
-	/* Initialize reading of directory */
-	if (initParams->img_fol.set_imgdir == 1) {
-		num_images = get_num_images(initParams->img_fol.imgdirpath);
-		if (num_images <= 0) {
-			fprintf(stderr, "Folder is empty\n");
-			rc = EXIT_FAILURE;
-			goto cleanup;
-		}
-		dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
-		if (dirptr) {
-			dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
-			if (!dirptr->filename_buf) {
-				rc =  EXIT_FAILURE;
-				goto cleanup;
+	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
+	uint32_t state = grok_plugin_get_debug_state();
+	if ((state & OPJ_PLUGIN_STATE_DEBUG)) {
+		isBatch = 0;
+	}
+	if (isBatch) {
+		success = opj_plugin_batch_decode(initParams->img_fol.imgdirpath, 
+											initParams->out_fol.imgdirpath,
+											&initParams->parameters, 
+											plugin_pre_decode_callback,
+											plugin_post_decode_callback);
+		// if plugin successfully begins batch encode, then wait for batch to complete
+		if (success == 0) {
+			uint32_t slice = 100;	//ms
+			uint32_t slicesPerSecond = 1000 / slice;
+			uint32_t seconds = initParams->parameters.duration;
+			if (!seconds)
+				seconds = UINT_MAX;
+			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
+				batch_sleep(100);
+				if (opj_plugin_is_batch_complete()) {
+					break;
+				}
 			}
-			dirptr->filename = (char**)malloc(num_images * sizeof(char*));
-			if (!dirptr->filename) {
-				rc = EXIT_FAILURE;
-				goto cleanup;
-			}
-
-			for (int it_image = 0; it_image<num_images; it_image++) {
-				dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
-			}
-		}
-		if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
-			rc = EXIT_FAILURE;
-			goto cleanup;
+			opj_plugin_stop_batch_encode();
 		}
 	}
 	else {
-		num_images = 1;
+		/* Initialize reading of directory */
+		if (initParams->img_fol.set_imgdir == 1) {
+			num_images = get_num_images(initParams->img_fol.imgdirpath);
+			if (num_images <= 0) {
+				fprintf(stderr, "Folder is empty\n");
+				success = 1;
+				goto cleanup;
+			}
+			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			if (dirptr) {
+				dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
+				if (!dirptr->filename_buf) {
+					success = 1;
+					goto cleanup;
+				}
+				dirptr->filename = (char**)malloc(num_images * sizeof(char*));
+				if (!dirptr->filename) {
+					success = 1;
+					goto cleanup;
+				}
+
+				for (int it_image = 0; it_image < num_images; it_image++) {
+					dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+				}
+			}
+			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
+				success = 1;
+				goto cleanup;
+			}
+		}
+		else {
+			num_images = 1;
+		}
 	}
 
 	t_cumulative = grok_clock();
@@ -1442,18 +1485,14 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		}
 
 		//1. try to decode using plugin
-		rc = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
-
-		//2. fallback
-		if (rc == -1 || rc == EXIT_FAILURE) {
-			rc = EXIT_FAILURE;
+		success = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+		if (success != 0)
 			goto cleanup;
-		}
 		num_decompressed_images++;
 
 	}
 	t_cumulative = grok_clock() - t_cumulative;
-	if (initParams->parameters.verbose && num_decompressed_images && rc == EXIT_SUCCESS) {
+	if (initParams->parameters.verbose && num_decompressed_images && success == 0) {
 		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}
 cleanup:
@@ -1465,7 +1504,7 @@ cleanup:
 			free(dirptr->filename);
 		free(dirptr);
 	}
-	return rc;
+	return success;
 }
 
 
