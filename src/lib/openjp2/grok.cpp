@@ -1075,7 +1075,7 @@ static const char* plugin_init_method_name = "plugin_init";
 static const char* plugin_encode_method_name = "plugin_encode";
 static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
 static const char* plugin_stop_batch_encode_method_name = "plugin_stop_batch_encode";
-static const char* plugin_is_batch_encode_complete_method_name = "plugin_is_batch_encode_complete";
+static const char* plugin_is_batch_complete_method_name = "plugin_is_batch_complete";
 static const char* plugin_decode_method_name = "plugin_decode";
 static const char* plugin_batch_decode_method_name = "plugin_batch_decode";
 static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decode";
@@ -1221,18 +1221,18 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
     return -1;
 }
 
-PLUGIN_IS_BATCH_ENCODE_COMPLETE funcPluginIsBatchEncodeComplete = NULL;
-OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void) {
+PLUGIN_IS_BATCH_COMPLETE funcPluginIsBatchComplete = NULL;
+OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void) {
 	minpf_plugin_manager* mgr = NULL;
 	if (!pluginLoaded)
 		return true;
 
 	mgr = minpf_get_plugin_manager();
 	if (mgr && mgr->num_libraries > 0) {
-		if (!funcPluginIsBatchEncodeComplete)
-			funcPluginIsBatchEncodeComplete = (PLUGIN_IS_BATCH_ENCODE_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_is_batch_encode_complete_method_name);
-		if (funcPluginIsBatchEncodeComplete) {
-			return  funcPluginIsBatchEncodeComplete();
+		if (!funcPluginIsBatchComplete)
+			funcPluginIsBatchComplete = (PLUGIN_IS_BATCH_COMPLETE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_is_batch_complete_method_name);
+		if (funcPluginIsBatchComplete) {
+			return  funcPluginIsBatchComplete();
 		}
 	}
 	return true;

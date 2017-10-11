@@ -1910,7 +1910,7 @@ OPJ_API int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_paramet
 
 OPJ_API int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir, const char* output_dir, opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_encode_complete(void);
+OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void);
 
 OPJ_API void OPJ_CALLCONV opj_plugin_stop_batch_encode(void);
 
