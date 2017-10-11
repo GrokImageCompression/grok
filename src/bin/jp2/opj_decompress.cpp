@@ -1514,22 +1514,25 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		return 1;
 	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
+	if (!parameters)
+		return 1;
 	opj_image_t* image = nullptr;
 	uint8_t* buffer = nullptr;
+	const char* infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	{
 		bool isBufferStream = false;
 		bool isMappedFile = false;
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
 			if (!fp) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for reading", parameters->infile);
+				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for reading", infile);
 				failed = 1;
 				goto cleanup;
 			}
 
 			auto rc = fseek(fp, 0, SEEK_END);
 			if (rc == -1) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to seek on file %s", parameters->infile);
+				fprintf(stderr, "ERROR -> opj_decompress: unable to seek on file %s", infile);
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
@@ -1557,16 +1560,16 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
 		}
 		else  if (isMappedFile) {
-			info->l_stream = opj_stream_create_mapped_file_read_stream(parameters->infile);
+			info->l_stream = opj_stream_create_mapped_file_read_stream(infile);
 		} else {
 			// use file stream 
-			info->l_stream = opj_stream_create_default_file_stream(parameters->infile, true);
+			info->l_stream = opj_stream_create_default_file_stream(infile, true);
 		}
 	}
 
 
 	if (!info->l_stream) {
-		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", parameters->infile);
+		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", infile);
 		failed = 1;
 		goto cleanup;
 	}
@@ -1713,6 +1716,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	int failed = 0;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
+	const char* outfile = info->output_file_name ? info->output_file_name : parameters->outfile;
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
@@ -1826,13 +1830,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case PXM_DFMT:			/* PNM PGM PPM */
 		{
 			PNMFormat pnm(parameters->split_pnm);
-			if (!pnm.encode(image, parameters->outfile, 0,parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			if (!pnm.encode(image, outfile, 0,parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1840,13 +1844,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case PGX_DFMT:			/* PGX */
 		{
 			PGXFormat pgx;
-			if (!pgx.encode(image, parameters->outfile, 0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1854,13 +1858,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case BMP_DFMT:			/* BMP */
 		{
 			BMPFormat bmp;
-			if (!bmp.encode(image, parameters->outfile,0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			if (!bmp.encode(image, outfile,0, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1868,13 +1872,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case TIF_DFMT:			/* TIFF */
 		{
 			TIFFFormat tif;
-			if (!tif.encode(image, parameters->outfile, parameters->compression, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			if (!tif.encode(image, outfile, parameters->compression, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1882,13 +1886,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case RAW_DFMT:			/* RAW */
 		{
 			RAWFormat raw(true);
-			if (raw.encode(image, parameters->outfile,0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", parameters->outfile);
+			if (raw.encode(image, outfile,0, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1896,13 +1900,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case RAWL_DFMT:			/* RAWL */
 		{
 			RAWFormat raw(false);
-			if (raw.encode(image, parameters->outfile, 0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", parameters->outfile);
+			if (raw.encode(image, outfile, 0, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1910,13 +1914,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case TGA_DFMT:			/* TGA */
 		{
 			TGAFormat tga;
-			if (!tga.encode(image, parameters->outfile,0,parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", parameters->outfile);
+			if (!tga.encode(image, outfile,0,parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1924,13 +1928,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case JPG_DFMT:			/* JPEG */
 		{
 			JPEGFormat jpeg;
-			if (!jpeg.encode(image, parameters->outfile, parameters->compressionLevel, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
+			if (!jpeg.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1941,13 +1945,13 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 		case PNG_DFMT:			/* PNG */
 		{
 			PNGFormat png;
-			if (!png.encode(image, parameters->outfile, parameters->compressionLevel, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", parameters->outfile);
+			if (!png.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
+				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
 			else {
 				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", parameters->outfile);
+					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1956,7 +1960,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			* and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 			*/
 		default:
-			fprintf(stderr, "[ERROR] Outfile %s not generated\n", parameters->outfile);
+			fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 			failed = 1;
 			break;
 		}
@@ -1972,7 +1976,7 @@ cleanup:
 		opj_image_destroy(image);
 	info->image = NULL;
 	if (failed)
-		(void)remove(parameters->outfile); /* ignore return value */
+		(void)remove(outfile); /* ignore return value */
 	return failed;
 }
 
