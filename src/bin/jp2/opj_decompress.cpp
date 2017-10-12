@@ -1371,7 +1371,7 @@ cleanup:
 
 int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 {
-	int32_t num_images, imageno = 0;
+	int32_t num_images=0, imageno = 0;
 	dircnt_t *dirptr = nullptr;
 	int32_t success = 0;
 	double t_cumulative = 0;
