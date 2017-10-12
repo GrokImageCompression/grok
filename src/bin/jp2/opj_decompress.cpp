@@ -1432,7 +1432,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 					break;
 				}
 			}
-			opj_plugin_stop_batch_encode();
+			opj_plugin_stop_batch_decode();
 		}
 	}
 	else {
