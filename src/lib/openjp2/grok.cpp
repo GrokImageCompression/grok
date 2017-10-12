@@ -1267,25 +1267,27 @@ opj_plugin_decode_callback userPostDecodeCallback = 0;
 void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
 {
     /* set code block data etc on code object */
-    opj_plugin_decode_callback_info_t opjInfo;
-    memset(&opjInfo, 0, sizeof(opj_plugin_decode_callback_info_t));
-    opjInfo.generate_tile_func = (OPJ_GENERATE_TILE)info->generate_tile_func;
-    opjInfo.input_file_name = info->input_file_name;
-    opjInfo.output_file_name = info->output_file_name;
-    opjInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
-    opjInfo.image = (opj_image_t*)info->image;
-    opjInfo.tile = (grok_plugin_tile_t*)info->tile;
-    if (!opjInfo.image) {
+    opj_plugin_decode_callback_info_t grokInfo;
+    memset(&grokInfo, 0, sizeof(opj_plugin_decode_callback_info_t));
+    grokInfo.generate_tile_func = (OPJ_GENERATE_TILE)info->generate_tile_func;
+    grokInfo.input_file_name	= info->input_file_name;
+    grokInfo.output_file_name	= info->output_file_name;
+	grokInfo.decod_format		= info->decod_format;
+	grokInfo.cod_format			= info->cod_format;
+    grokInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
+    grokInfo.image = (opj_image_t*)info->image;
+    grokInfo.tile = (grok_plugin_tile_t*)info->tile;
+    if (!grokInfo.image) {
 		if (userPreDecodeCallback) {
-			userPreDecodeCallback(&opjInfo);
-			info->image = opjInfo.image;
-			info->tile = opjInfo.tile;
-			info->l_stream = opjInfo.l_stream;
-			info->l_codec = opjInfo.l_codec;
+			userPreDecodeCallback(&grokInfo);
+			info->image = grokInfo.image;
+			info->tile = grokInfo.tile;
+			info->l_stream = grokInfo.l_stream;
+			info->l_codec = grokInfo.l_codec;
 		}
     } else {
         if (userPostDecodeCallback)
-            userPostDecodeCallback(&opjInfo);
+            userPostDecodeCallback(&grokInfo);
     }
 }
 

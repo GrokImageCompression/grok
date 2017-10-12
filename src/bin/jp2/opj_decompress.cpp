@@ -1334,6 +1334,8 @@ int main(int argc, char **argv)
 
 			opj_plugin_decode_callback_info_t info;
 			memset(&info, 0, sizeof(opj_plugin_decode_callback_info_t));
+			info.decod_format = -1;
+			info.cod_format = -1;
 			info.decoder_parameters = &initParams.parameters;
 
 			if (plugin_pre_decode_callback(&info)) {
@@ -1519,6 +1521,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	opj_image_t* image = nullptr;
 	uint8_t* buffer = nullptr;
 	const char* infile = info->input_file_name ? info->input_file_name : parameters->infile;
+	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
 	{
 		bool isBufferStream = false;
 		bool isMappedFile = false;
@@ -1577,7 +1580,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	/* decode the JPEG2000 stream */
 	/* ---------------------- */
 
-	switch (parameters->decod_format) {
+	switch (decod_format) {
 	case J2K_CFMT: {	/* JPEG-2000 codestream */
 						/* Get a decoder handle */
 		info->l_codec = opj_create_decompress(OPJ_CODEC_J2K);
@@ -1717,6 +1720,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
 	const char* outfile = info->output_file_name ? info->output_file_name : parameters->outfile;
+	int cod_format = info->cod_format != -1 ? info->cod_format : parameters->cod_format;
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
@@ -1826,7 +1830,7 @@ int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	if (store_file_to_disk) {
 		/* create output image */
 		/* ------------------- */
-		switch (parameters->cod_format) {
+		switch (cod_format) {
 		case PXM_DFMT:			/* PNM PGM PPM */
 		{
 			PNMFormat pnm(parameters->split_pnm);
