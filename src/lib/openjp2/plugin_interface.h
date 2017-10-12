@@ -109,6 +109,10 @@ struct plugin_decode_callback_info_t {
     GENERATE_TILE generate_tile_func;
     const char* input_file_name;
     const char* output_file_name;
+	// input file format 0: J2K, 1: JP2
+	int decod_format;
+	// output file format 0: PGX, 1: PxM, 2: BMP etc 
+	int cod_format;
 	opj_stream_t*				l_stream;
 	opj_codec_t*				l_codec;
     opj_decompress_parameters* decoder_parameters;
