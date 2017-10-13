@@ -427,8 +427,8 @@ struct j2k_dec_t {
      tcp_t *m_default_tcp;
     uint8_t  *m_header_data;
     uint32_t m_header_data_size;
-    /** to tell the tile part length */
-    uint64_t m_sot_length;
+    // tile part data length 
+    uint64_t tile_part_data_length;
     /** Only tile indices in the correct range will be decoded.*/
     uint32_t m_start_tile_x;
     uint32_t m_start_tile_y;
@@ -443,11 +443,11 @@ struct j2k_dec_t {
     /**
      * Indicate that the current tile-part is assumed to be the last tile part of the codestream.
      * This is useful in the case when PSot is equal to zero. The sot length will be computed in the
-     * SOD reader function. FIXME NOT USED for the moment
+     * SOD reader function.
      */
     bool   m_last_tile_part;
-    /** to tell that a tile can be decoded. */
-    uint32_t m_can_decode			: 1;
+    // Indicates that a tile's data can be decoded 
+    uint32_t ready_to_decode_tile_part_data	: 1;
     uint32_t m_discard_tiles		: 1;
     uint32_t m_skip_data			: 1;
     /** TNsot correction : see issue 254 **/
