@@ -23,59 +23,34 @@ namespace grk {
 struct min_buf_t;
 
 struct grok_vec_t {
-	grok_vec_t() : data(nullptr) {}
+	grok_vec_t();
+	bool init();
+	bool push_back(min_buf_t* value);
+	void* get(size_t index);
+	int32_t size();
+	void* back();
+	void cleanup();
 
-	bool init()
-	{
-		if (data)
-			return true;
-		data = new std::vector<min_buf_t*>();
-		return data ? true : false;
-	}
+	/*
+	Copy all segments, in sequence, into contiguous array
+	*/
+	bool copy_to_contiguous_buffer(uint8_t* buffer);
 
-	bool push_back(min_buf_t* value)
-	{
-		data->push_back(value);
-		return true;
-	}
+	/*
+	Push buffer to back of min buf vector
+	*/
+	bool push_back(uint8_t* buf, uint16_t len);
 
-	void* get(size_t index)
-	{
-		if (!data)
-			return nullptr;
-		assert(index < data->size());
-		if (index >= data->size()) {
-			return nullptr;
-		}
-		return data->operator[](index);
-	}
+	/*
+	Sum lengths of all buffers
+	*/
 
-	int32_t size()
-	{
-		if (!data)
-			return 0;
-		return (int32_t)data->size();
-	}
+	uint16_t get_len(void);
 
-	void* back()
-	{
-		if (!data)
-			return nullptr;
-		return data->back();
-	}
 
-	void cleanup()
-	{
-		if (!data)
-			return;
-		for (auto it = data->begin(); it != data->end(); ++it) {
-			if (*it)
-				grok_free(*it);
-		}
-		delete data;
-		data = nullptr;
-	}
-	std::vector<min_buf_t*>* data;		/* array of void* pointers */
+
+
+	std::vector<min_buf_t*>* data;
 };
 
 

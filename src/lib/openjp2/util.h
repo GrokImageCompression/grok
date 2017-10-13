@@ -64,6 +64,18 @@ struct rect_t {
 
 
 struct buf_t {
+	buf_t() : buf(nullptr), 
+				offset(0),
+				len(0),
+				owns_data(false) {}
+	buf_t(uint8_t *buffer, size_t length) : buf(buffer), 
+											offset(0), 
+											len(length),
+											owns_data(false) {}
+
+	~buf_t();
+	void incr_offset(uint64_t off);
+
     uint8_t *buf;		/* internal array*/
     uint64_t offset;	/* current offset into array */
     size_t len;		/* length of array */

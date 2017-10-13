@@ -847,7 +847,8 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     l_image = p_tcd->image;
     l_image_comp = p_tcd->image->comps;
 
-    seg_buf_rewind(l_tcp->m_tile_data);
+	if (l_tcp->m_tile_data)
+		l_tcp->m_tile_data->rewind();
 
     p = p_tile_no % l_cp->tw;       /* tile coordinates */
     q = p_tile_no / l_cp->tw;

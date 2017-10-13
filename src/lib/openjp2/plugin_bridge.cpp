@@ -53,8 +53,8 @@ bool decode_synch_plugin_with_host(tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = min_buf_vec_get_len(&cblk->seg_buffers);
-							min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = cblk->seg_buffers.get_len();
+							cblk->seg_buffers.copy_to_contiguous_buffer(plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 
@@ -98,8 +98,8 @@ bool decode_synch_host_with_plugin(tcd_t *tcd) {
 
 							// copy segments into plugin codeblock buffer, and point host code block data
 							// to plugin data buffer
-							plugin_cblk->compressedDataLength = min_buf_vec_get_len(&cblk->seg_buffers);
-							min_buf_vec_copy_to_contiguous_buffer(&cblk->seg_buffers, plugin_cblk->compressedData);
+							plugin_cblk->compressedDataLength = cblk->seg_buffers.get_len();
+							cblk->seg_buffers.copy_to_contiguous_buffer(plugin_cblk->compressedData);
 							cblk->data = plugin_cblk->compressedData;
 							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
 
