@@ -73,7 +73,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
 {
 #  define __progname nargv[0]
     static char *place = EMSG;	/* option letter processing */
-    const char *oli = NULL;	/* option letter list index */
+    const char *oli = nullptr;	/* option letter list index */
 
     if (grok_optreset || !*place) {	/* update scanning pointer */
         grok_optreset = 0;
@@ -107,7 +107,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
 	if (!oli)
 		return (BADCH);
     if (*++oli != ':') {		/* don't need argument */
-        grok_optarg = NULL;
+        grok_optarg = nullptr;
         if (!*place)
             ++grok_optind;
     } else {			/* need an argument */

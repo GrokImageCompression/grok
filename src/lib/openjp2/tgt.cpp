@@ -138,7 +138,7 @@ TagTree::~TagTree() {
  *
  * @param       p_num_leafs_h           the width of the array of leafs of the tree
  * @param       p_num_leafs_v           the height of the array of leafs of the tree
- * @return      a new tag tree if successful, NULL otherwise
+ * @return      a new tag tree if successful, nullptr otherwise
 */
 bool TagTree::init(uint32_t p_num_leafs_h, uint32_t p_num_leafs_v, event_mgr_t *p_manager)
 {

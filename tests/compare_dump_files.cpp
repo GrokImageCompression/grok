@@ -87,8 +87,8 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
     int c;
 
     /* Init parameters */
-    param->base_filename = NULL;
-    param->test_filename = NULL;
+    param->base_filename = nullptr;
+    param->test_filename = nullptr;
 
     grok_opterr = 0;
 
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 
 
     test_cmp_parameters inParam;
-    FILE *fbase=NULL, *ftest=NULL;
+    FILE *fbase=nullptr, *ftest=nullptr;
     int same = 0;
   char lbase[512];
   char strbase[512];
@@ -172,14 +172,14 @@ int main(int argc, char **argv)
 
     /* open base file */
     printf("Try to open: %s for reading ... ", inParam.base_filename);
-    if((fbase = fopen(inParam.base_filename, "rb"))==NULL) {
+    if((fbase = fopen(inParam.base_filename, "rb"))==nullptr) {
         goto cleanup;
     }
     printf("Ok.\n");
 
     /* open test file */
     printf("Try to open: %s for reading ... ", inParam.test_filename);
-    if((ftest = fopen(inParam.test_filename, "rb"))==NULL) {
+    if((ftest = fopen(inParam.test_filename, "rb"))==nullptr) {
         goto cleanup;
     }
     printf("Ok.\n");

@@ -83,9 +83,9 @@ struct GrokStream : public IGrokStream {
 	void *					m_user_data;
 
 	/**
-	* Pointer to function to free m_user_data (NULL at initialization)
-	* when destroying the stream. If pointer is NULL the function is not
-	* called and the m_user_data is not freed (even if non-NULL).
+	* Pointer to function to free m_user_data (nullptr at initialization)
+	* when destroying the stream. If pointer is nullptr the function is not
+	* called and the m_user_data is not freed (even if non-nullptr).
 	*/
 	opj_stream_free_user_data_fn		m_free_user_data_fn;
 
@@ -96,23 +96,23 @@ struct GrokStream : public IGrokStream {
 	uint64_t 				m_user_data_length;
 
 	/**
-	* Pointer to actual read function (NULL at the initialization of the cio).
+	* Pointer to actual read function (nullptr at the initialization of the cio).
 	*/
 	opj_stream_read_fn		m_read_fn;
 
 	/**
-	* Pointer to actual zero copy read function (NULL at the initialization of the cio).
+	* Pointer to actual zero copy read function (nullptr at the initialization of the cio).
 	*/
 	opj_stream_zero_copy_read_fn		m_zero_copy_read_fn;
 
 
 	/**
-		* Pointer to actual write function (NULL at the initialization of the cio.
+		* Pointer to actual write function (nullptr at the initialization of the cio.
 		*/
 	opj_stream_write_fn		m_write_fn;
 
 	/**
-	* Pointer to actual skip function (NULL at the initialization of the cio.
+	* Pointer to actual skip function (nullptr at the initialization of the cio.
 	* There is no seek function to prevent from back and forth slow procedures.
 	*/
 	opj_stream_skip_fn		m_skip_fn;

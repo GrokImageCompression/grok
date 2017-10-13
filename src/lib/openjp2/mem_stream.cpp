@@ -143,18 +143,18 @@ opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         bool p_is_read_stream)
 {
     if (!buf || !len) {
-        return NULL;
+        return nullptr;
     }
 
 	auto p_source_buffer = (buf_info_t*)grok_calloc(1,sizeof(buf_info_t));
     if (!p_source_buffer) {
-        return NULL;
+        return nullptr;
     }
 
 	GrokStream* l_stream = new GrokStream(buf, len, p_is_read_stream);
     if (!l_stream) {
         grok_free(p_source_buffer);
-        return NULL;
+        return nullptr;
 
     }
 
@@ -207,17 +207,17 @@ static uint64_t  size_proc(grok_handle_t fd)
 static void* grok_map(grok_handle_t fd, size_t len)
 {
 	(void)len;
-    void* ptr = NULL;
-    HANDLE hMapFile = NULL;
+    void* ptr = nullptr;
+    HANDLE hMapFile = nullptr;
 
     if (!fd || !len)
-        return NULL;
+        return nullptr;
 
     /* Passing in 0 for the maximum file size indicates that we
     would like to create a file mapping object for the full file size */
-    hMapFile = CreateFileMapping(fd, NULL, PAGE_READONLY, 0, 0, NULL);
-    if (hMapFile == NULL) {
-        return NULL;
+    hMapFile = CreateFileMapping(fd, nullptr, PAGE_READONLY, 0, 0, nullptr);
+    if (hMapFile == nullptr) {
+        return nullptr;
     }
     ptr = MapViewOfFile(hMapFile, FILE_MAP_READ, 0, 0, 0);
     CloseHandle(hMapFile);
@@ -235,7 +235,7 @@ static int32_t unmap(void* ptr, size_t len)
 
 static grok_handle_t open_fd(const char* fname, const char* mode)
 {
-    void*	fd = NULL;
+    void*	fd = nullptr;
     int32_t m = -1;
     DWORD			dwMode = 0;
 
@@ -261,14 +261,14 @@ static grok_handle_t open_fd(const char* fname, const char* mode)
         dwMode = CREATE_ALWAYS;
         break;
     default:
-        return NULL;
+        return nullptr;
     }
 
     fd = (grok_handle_t)CreateFileA(fname,
                                    (m == O_RDONLY) ? GENERIC_READ : (GENERIC_READ | GENERIC_WRITE),
-                                   FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, dwMode,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, dwMode,
                                    (m == O_RDONLY) ? FILE_ATTRIBUTE_READONLY : FILE_ATTRIBUTE_NORMAL,
-                                   NULL);
+                                   nullptr);
     if (fd == INVALID_HANDLE_VALUE) {
         return (grok_handle_t)-1;
     }
@@ -301,15 +301,15 @@ static uint64_t size_proc(grok_handle_t fd)
 static void* grok_map(grok_handle_t fd, size_t len)
 {
 	(void)len;
-    void* ptr = NULL;
+    void* ptr = nullptr;
     uint64_t		size64 = 0;
 
     if (!fd)
-        return NULL;
+        return nullptr;
 
     size64 = size_proc(fd);
     ptr = (void*)mmap(0, (size_t)size64, PROT_READ, MAP_SHARED, fd, 0);
-    return ptr == (void*)-1 ? NULL : ptr;
+    return ptr == (void*)-1 ? nullptr : ptr;
 }
 
 static int32_t unmap(void* ptr, size_t len)
@@ -330,7 +330,7 @@ static grok_handle_t open_fd(const char* fname, const char* mode)
     fd = open(fname, m, 0666);
     if (fd < 0) {
 #ifdef DEBUG_ERRNO
-        if (errno > 0 && strerror(errno) != NULL) {
+        if (errno > 0 && strerror(errno) != nullptr) {
             printf("%s: %s", fname, strerror(errno));
         } else {
             printf("%s: Cannot open", fname);
@@ -367,14 +367,14 @@ Currently, only read streams are supported for memory mapped files.
 */
 opj_stream_t* create_mapped_file_read_stream(const char *fname)
 {
-    opj_stream_t*	l_stream = NULL;
-    buf_info_t* buffer_info = NULL;
-    void*			mapped_view = NULL;
+    opj_stream_t*	l_stream = nullptr;
+    buf_info_t* buffer_info = nullptr;
+    void*			mapped_view = nullptr;
     bool p_is_read_stream = true;
 
     grok_handle_t	fd = open_fd(fname, p_is_read_stream ? "r" : "w");
     if (fd == (grok_handle_t)-1)
-        return NULL;
+        return nullptr;
 
     buffer_info = (buf_info_t*)grok_malloc(sizeof(buf_info_t));
     memset(buffer_info, 0, sizeof(buf_info_t));
@@ -384,14 +384,14 @@ opj_stream_t* create_mapped_file_read_stream(const char *fname)
     l_stream = opj_stream_create(0, p_is_read_stream);
     if (!l_stream) {
         mem_map_free(buffer_info);
-        return NULL;
+        return nullptr;
     }
 
     mapped_view = grok_map(fd, buffer_info->len);
     if (!mapped_view) {
         opj_stream_destroy(l_stream);
         mem_map_free(buffer_info);
-        return NULL;
+        return nullptr;
     }
 
     buffer_info->buf = (uint8_t*)mapped_view;

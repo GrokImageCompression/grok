@@ -23,9 +23,9 @@
 namespace grk {
 
 struct decodeBlockInfo {
-	decodeBlockInfo() : tilec(NULL),
-		tiledp(NULL),
-		cblk(NULL),
+	decodeBlockInfo() : tilec(nullptr),
+		tiledp(nullptr),
+		cblk(nullptr),
 		resno(0),
 		bandno(0),
 		stepsize(0),
@@ -50,8 +50,8 @@ struct decodeBlockInfo {
 
 
 struct encodeBlockInfo {
-	encodeBlockInfo() : tiledp(NULL),
-		cblk(NULL),
+	encodeBlockInfo() : tiledp(nullptr),
+		cblk(nullptr),
 		compno(0),
 		resno(0),
 		bandno(0),
@@ -63,7 +63,7 @@ struct encodeBlockInfo {
 		qmfbid(0),
 		x(0),
 		y(0),
-		mct_norms(NULL),
+		mct_norms(nullptr),
 #ifdef DEBUG_LOSSLESS_T1
 		unencodedData(nullptr),
 #endif

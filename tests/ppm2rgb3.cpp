@@ -86,7 +86,7 @@ static int readheader( FILE *ppm, int *X, int *Y, int *bpp )
 
 static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
 {
-    FILE *outf[] = {NULL, NULL, NULL};
+    FILE *outf[] = {nullptr, nullptr, nullptr};
     int i, x, y = 0;
     char outfn[4096];
 	outfn[4095] = '\0';
@@ -95,7 +95,7 @@ static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
         "grn",
         "blu"
     };
-    char *image_line = NULL;
+    char *image_line = nullptr;
     int ok = 0;
 	if (!X || !fn || !ppm)
 		goto cleanup;
@@ -138,7 +138,7 @@ cleanup:
 int main(int argc, char *argv[])
 {
     const char *fn;
-    FILE *ppm = NULL;
+    FILE *ppm = nullptr;
     int X, Y, bpp;
     int ok = 0;
 

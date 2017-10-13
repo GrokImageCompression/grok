@@ -71,7 +71,7 @@ static int get_file_format(const char *filename)
     static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "raw", "tga", "png", "j2k", "jp2","j2c", "jpc" };
     static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
     char * ext = (char*)strrchr(filename, '.');
-    if (ext == NULL)
+    if (ext == nullptr)
         return -1;
     ext++;
     if(ext) {
@@ -128,7 +128,7 @@ static int infile_format(const char *fname)
 
     reader = fopen(fname, "rb");
 
-    if (reader == NULL)
+    if (reader == nullptr)
         return -1;
 
     memset(buf, 0, 12);
@@ -170,10 +170,10 @@ int main(int argc, char **argv)
 {
     uint32_t index;
     opj_dparameters_t parameters;			/* decompression parameters */
-    opj_image_t* image = NULL;
-    opj_stream_t *l_stream = NULL;				/* Stream */
-    opj_codec_t* l_codec = NULL;				/* Handle to a decompressor */
-    opj_codestream_info_v2_t* cstr_info = NULL;
+    opj_image_t* image = nullptr;
+    opj_stream_t *l_stream = nullptr;				/* Stream */
+    opj_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
+    opj_codestream_info_v2_t* cstr_info = nullptr;
 
     /* Index of corner tiles */
     uint32_t tile_ul = 0;
@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE; \
 	} \
   for(index = 0; index < image->numcomps; ++index) { \
-    if( image->comps[index].data == NULL ){ \
+    if( image->comps[index].data == nullptr ){ \
     	fprintf(stderr, "ERROR -> j2k_to_image: failed to decode tile %d\n", tile_index); \
 		opj_stream_destroy(l_stream); \
 		opj_destroy_cstr_info(&cstr_info); \

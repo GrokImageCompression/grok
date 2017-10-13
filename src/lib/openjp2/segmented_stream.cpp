@@ -41,7 +41,7 @@ bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buf
 
 bool min_buf_vec_push_back(grok_vec_t* buf_vec, uint8_t* buf, uint16_t len)
 {
-    min_buf_t* seg = NULL;
+    min_buf_t* seg = nullptr;
     if (!buf_vec || !buf || !len)
         return false;
 
@@ -98,8 +98,8 @@ seg_buf_t::~seg_buf_t()  {
 
 static void seg_buf_increment(seg_buf_t * seg_buf)
 {
-    buf_t* cur_seg = NULL;
-    if (seg_buf == NULL ||	seg_buf->cur_seg_id == seg_buf->segments.size()-1) {
+    buf_t* cur_seg = nullptr;
+    if (seg_buf == nullptr ||	seg_buf->cur_seg_id == seg_buf->segments.size()-1) {
         return;
     }
 
@@ -120,7 +120,7 @@ static size_t seg_buf_read(seg_buf_t * seg_buf,
     size_t bytes_left_to_read;
     size_t bytes_remaining_in_file;
 
-    if (p_buffer == NULL || p_nb_bytes == 0 || seg_buf == NULL)
+    if (p_buffer == nullptr || p_nb_bytes == 0 || seg_buf == nullptr)
         return 0;
 
     /*don't try to read more bytes than are available */
@@ -197,12 +197,12 @@ static int64_t seg_buf_skip(int64_t p_nb_bytes, seg_buf_t * seg_buf)
 #endif
 static buf_t* seg_buf_add_segment(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
-    buf_t* new_seg = NULL;
+    buf_t* new_seg = nullptr;
     if (!seg_buf)
-        return NULL;
+        return nullptr;
     new_seg = (buf_t*)grok_malloc(sizeof(buf_t));
     if (!new_seg)
-        return NULL;
+        return nullptr;
 
     memset(new_seg, 0, sizeof(buf_t));
     new_seg->buf = buf;
@@ -247,7 +247,7 @@ void seg_buf_rewind(seg_buf_t* seg_buf)
 
 bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 {
-    buf_t* seg = NULL;
+    buf_t* seg = nullptr;
     if (!seg_buf || !buf || !len){
         return false;
     }
@@ -261,8 +261,8 @@ bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len)
 
 bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len)
 {
-    buf_t* seg = NULL;
-    uint8_t* buf = NULL;
+    buf_t* seg = nullptr;
+    uint8_t* buf = nullptr;
     if (!seg_buf || !len)
         return false;
 
@@ -282,7 +282,7 @@ bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len)
 
 void seg_buf_incr_cur_seg_offset(seg_buf_t* seg_buf, uint64_t offset)
 {
-    buf_t* cur_seg = NULL;
+    buf_t* cur_seg = nullptr;
     if (!seg_buf)
         return;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -302,7 +302,7 @@ bool seg_buf_zero_copy_read(seg_buf_t* seg_buf,
                                 uint8_t** ptr,
                                 size_t chunk_len)
 {
-    buf_t* cur_seg = NULL;
+    buf_t* cur_seg = nullptr;
     if (!seg_buf)
         return false;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -311,7 +311,7 @@ bool seg_buf_zero_copy_read(seg_buf_t* seg_buf,
 
     if ((size_t)cur_seg->offset + chunk_len <= cur_seg->len) {
         *ptr = cur_seg->buf + cur_seg->offset;
-        seg_buf_read(seg_buf, NULL, chunk_len);
+        seg_buf_read(seg_buf, nullptr, chunk_len);
         return true;
     }
     return false;
@@ -337,16 +337,16 @@ bool seg_buf_copy_to_contiguous_buffer(seg_buf_t* seg_buf, uint8_t* buffer)
 
 uint8_t* seg_buf_get_global_ptr(seg_buf_t* seg_buf)
 {
-    buf_t* cur_seg = NULL;
+    buf_t* cur_seg = nullptr;
     if (!seg_buf)
-        return NULL;
+        return nullptr;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
-    return (cur_seg) ? (cur_seg->buf + cur_seg->offset) : NULL;
+    return (cur_seg) ? (cur_seg->buf + cur_seg->offset) : nullptr;
 }
 
 size_t seg_buf_get_cur_seg_len(seg_buf_t* seg_buf)
 {
-    buf_t* cur_seg = NULL;
+    buf_t* cur_seg = nullptr;
     if (!seg_buf)
         return 0;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];
@@ -355,7 +355,7 @@ size_t seg_buf_get_cur_seg_len(seg_buf_t* seg_buf)
 
 int64_t seg_buf_get_cur_seg_offset(seg_buf_t* seg_buf)
 {
-    buf_t* cur_seg = NULL;
+    buf_t* cur_seg = nullptr;
     if (!seg_buf)
         return 0;
     cur_seg = seg_buf->segments[seg_buf->cur_seg_id];

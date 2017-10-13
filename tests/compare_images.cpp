@@ -527,12 +527,12 @@ static int parse_DA_values(char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32
 	int it = 0;
 	int values[4];
 	char delims[] = ",";
-	char *result = NULL;
+	char *result = nullptr;
 	result = strtok(inArg, delims);
 
-	while ((result != NULL) && (it < 4)) {
+	while ((result != nullptr) && (it < 4)) {
 		values[it] = atoi(result);
-		result = strtok(NULL, delims);
+		result = strtok(nullptr, delims);
 		it++;
 	}
 

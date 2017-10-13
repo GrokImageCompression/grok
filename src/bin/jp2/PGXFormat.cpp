@@ -58,7 +58,7 @@
  Load a single image component encoded in PGX file format
  @param filename Name of the PGX file to load
  @param parameters *List ?*
- @return Returns a greyscale image if successful, returns NULL otherwise
+ @return Returns a greyscale image if successful, returns nullptr otherwise
  */
 
 
@@ -126,12 +126,12 @@ static unsigned int readuint(FILE * f, int bigendian)
 
 static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
 {
-	FILE *f = NULL;
+	FILE *f = nullptr;
 	uint32_t w, h, prec, numcomps, max;
 	uint64_t i, area;
 	OPJ_COLOR_SPACE color_space;
 	opj_image_cmptparm_t cmptparm;	/* maximum of 1 component  */
-	opj_image_t * image = NULL;
+	opj_image_t * image = nullptr;
 	int adjustS, ushift, dshift, force8;
 
 	char endian1, endian2, sign;
@@ -139,7 +139,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 
 	char temp[32];
 	uint32_t bigendian;
-	opj_image_comp_t *comp = NULL;
+	opj_image_comp_t *comp = nullptr;
 
 	numcomps = 1;
 	color_space = OPJ_CLRSPC_GRAY;
@@ -151,14 +151,14 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	f = fopen(filename, "rb");
 	if (!f) {
 		fprintf(stderr, "Failed to open %s for reading !\n", filename);
-		return NULL;
+		return nullptr;
 	}
 
 	fseek(f, 0, SEEK_SET);
 	if (fscanf(f, "PG%[ \t]%c%c%[ \t+-]%d%[ \t]%d%[ \t]%d", temp, &endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
 		fclose(f);
 		fprintf(stderr, "ERROR: Failed to read the right number of element from the fscanf() function!\n");
-		return NULL;
+		return nullptr;
 	}
 
 	i = 0;
@@ -178,7 +178,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	else {
 		fclose(f);
 		fprintf(stderr, "Bad pgx header, please check input file\n");
-		return NULL;
+		return nullptr;
 	}
 
 	/* initialize image component */
@@ -213,7 +213,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	image = opj_image_create(numcomps, &cmptparm, color_space);
 	if (!image) {
 		fclose(f);
-		return NULL;
+		return nullptr;
 	}
 	/* set image offset and reference grid */
 	image->x0 = cmptparm.x0;
@@ -290,9 +290,9 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 	uint32_t w, h;
 	int j, fails = 1;
 	unsigned int compno;
-	FILE *fdest = NULL;
+	FILE *fdest = nullptr;
 	size_t total = 0;
-	char *name = NULL;
+	char *name = nullptr;
 	for (compno = 0; compno < image->numcomps; compno++) {
 		opj_image_comp_t *comp = &image->comps[compno];
 		char bname[256]; /* buffer for name */
@@ -315,7 +315,7 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		}
 		if (total > 256) {
 			name = (char*)malloc(total + 1);
-			if (name == NULL) {
+			if (name == nullptr) {
 				fprintf(stderr, "imagetopgx: out of memory\n");
 				goto fin;
 			}
@@ -365,7 +365,7 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		if (total > 256)
 			free(name);
 		fclose(fdest);
-		fdest = NULL;
+		fdest = nullptr;
 	}
 	fails = 0;
 fin:

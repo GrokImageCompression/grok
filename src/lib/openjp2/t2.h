@@ -153,7 +153,7 @@ bool t2_decode_packets(	t2_t *t2,
  *
  * @param	p_image		Source or destination image
  * @param	p_cp		Image coding parameters.
- * @return		a new T2 handle if successful, NULL otherwise.
+ * @return		a new T2 handle if successful, nullptr otherwise.
 */
 t2_t* t2_create(opj_image_t *p_image, cp_t *p_cp);
 

@@ -42,10 +42,10 @@ struct grok_vec_t {
 	void* get(size_t index)
 	{
 		if (!data)
-			return NULL;
+			return nullptr;
 		assert(index < data->size());
 		if (index >= data->size()) {
-			return NULL;
+			return nullptr;
 		}
 		return data->operator[](index);
 	}
@@ -60,7 +60,7 @@ struct grok_vec_t {
 	void* back()
 	{
 		if (!data)
-			return NULL;
+			return nullptr;
 		return data->back();
 	}
 
@@ -73,7 +73,7 @@ struct grok_vec_t {
 				grok_free(*it);
 		}
 		delete data;
-		data = NULL;
+		data = nullptr;
 	}
 	std::vector<min_buf_t*>* data;		/* array of void* pointers */
 };

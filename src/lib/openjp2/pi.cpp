@@ -278,8 +278,8 @@ static void update_pi_dxy(pi_iterator_t * pi) {
 
 static bool pi_next_lrcp(pi_iterator_t * pi)
 {
-    pi_comp_t *comp = NULL;
-    pi_resolution_t *res = NULL;
+    pi_comp_t *comp = nullptr;
+    pi_resolution_t *res = nullptr;
     uint32_t index = 0;
 
     if (!pi->first) {
@@ -319,8 +319,8 @@ LABEL_SKIP:
 
 static bool pi_next_rlcp(pi_iterator_t * pi)
 {
-    pi_comp_t *comp = NULL;
-    pi_resolution_t *res = NULL;
+    pi_comp_t *comp = nullptr;
+    pi_resolution_t *res = nullptr;
     uint32_t index = 0;
 
     if (!pi->first) {
@@ -359,8 +359,8 @@ LABEL_SKIP:
 
 static bool pi_next_rpcl(pi_iterator_t * pi)
 {
-    pi_comp_t *comp = NULL;
-    pi_resolution_t *res = NULL;
+    pi_comp_t *comp = nullptr;
+    pi_resolution_t *res = nullptr;
     uint32_t index = 0;
 
     if (!pi->first) {
@@ -432,8 +432,8 @@ LABEL_SKIP:
 
 static bool pi_next_pcrl(pi_iterator_t * pi)
 {
-    pi_comp_t *comp = NULL;
-    pi_resolution_t *res = NULL;
+    pi_comp_t *comp = nullptr;
+    pi_resolution_t *res = nullptr;
     uint32_t index = 0;
 
     if (!pi->first) {
@@ -503,8 +503,8 @@ LABEL_SKIP:
 
 static bool pi_next_cprl(pi_iterator_t * pi)
 {
-    pi_comp_t *comp = NULL;
-    pi_resolution_t *res = NULL;
+    pi_comp_t *comp = nullptr;
+    pi_resolution_t *res = nullptr;
     uint32_t index = 0;
 
     if (!pi->first) {
@@ -843,7 +843,7 @@ static pi_iterator_t * pi_create(	const opj_image_t *image,
     /* memory allocations*/
     l_pi = (pi_iterator_t*) grok_calloc((l_poc_bound), sizeof(pi_iterator_t));
     if (!l_pi) {
-        return NULL;
+        return nullptr;
     }
 
     l_current_pi = l_pi;
@@ -852,7 +852,7 @@ static pi_iterator_t * pi_create(	const opj_image_t *image,
         l_current_pi->comps = (pi_comp_t*) grok_calloc(image->numcomps, sizeof(pi_comp_t));
         if (! l_current_pi->comps) {
             pi_destroy(l_pi, l_poc_bound);
-            return NULL;
+            return nullptr;
         }
 
         l_current_pi->numcomps = image->numcomps;

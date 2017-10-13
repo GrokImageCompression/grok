@@ -52,7 +52,7 @@ int32_t minpf_register_object(const char * id, const minpf_register_params * par
 {
     minpf_plugin_api_version v;
     minpf_plugin_manager* pluginManager = minpf_get_plugin_manager();
-    minpf_register_params* registered_params = NULL;
+    minpf_register_params* registered_params = nullptr;
 
     if (!id || id[0] == '\0' || !params)
         return -1;
@@ -94,7 +94,7 @@ void minpf_initialize_plugin_manager(minpf_plugin_manager* manager)
         return;
     manager->platformServices.version.major = 1;
     manager->platformServices.version.minor = 0;
-    manager->platformServices.invokeService = NULL;
+    manager->platformServices.invokeService = nullptr;
     manager->platformServices.registerObject = minpf_register_object;
 
     manager->plugins  = new std::map<const char*, minpf_register_params*>();
@@ -106,7 +106,7 @@ minpf_plugin_manager*  minpf_get_plugin_manager(void)
     if (!managerInstance) {
 		managerInstance = (minpf_plugin_manager*)calloc(1, sizeof(minpf_plugin_manager));
         if (!managerInstance)
-            return NULL;
+            return nullptr;
         minpf_initialize_plugin_manager(managerInstance);
     }
     return managerInstance;
@@ -133,19 +133,19 @@ void   minpf_cleanup_plugin_manager(void)
 		delete managerInstance->plugins;
         free(managerInstance);
     }
-	managerInstance = NULL;
+	managerInstance = nullptr;
 }
 
 static int32_t minpf_load(const char* path)
 {
-    minpf_post_load_func postLoadFunc = NULL;
-    minpf_dynamic_library* lib = NULL;
+    minpf_post_load_func postLoadFunc = nullptr;
+    minpf_dynamic_library* lib = nullptr;
 
     minpf_plugin_manager* mgr = minpf_get_plugin_manager();
     if (!mgr || mgr->num_libraries == MINPF_MAX_PLUGINS) {
         return -1;
     }
-    lib = minpf_load_dynamic_library(path, NULL);
+    lib = minpf_load_dynamic_library(path, nullptr);
     if (!lib) {
         return -1;
     }
@@ -205,7 +205,7 @@ int32_t minpf_load_from_dir(const char* directory_path, minpf_invoke_service_fun
     }
 
     int32_t rc = -1;
-    while((content=readdir(dir))!=NULL) {
+    while((content=readdir(dir))!=nullptr) {
 
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
             continue;
