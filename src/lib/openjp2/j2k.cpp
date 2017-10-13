@@ -4097,13 +4097,17 @@ static bool j2k_read_sod (j2k_t *p_j2k,
             p_j2k->m_specific_param.m_decoder.m_sot_length -= 2;
     }
     if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
+		auto bytesLeftInStream = p_stream->get_number_byte_left();
         // check that there are enough bytes in stream to fill tile data
-        if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > p_stream->get_number_byte_left()) {
+        if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > bytesLeftInStream) {
             event_msg(p_manager, 
 						EVT_WARNING, 
 						"Tile part length size %lld inconsistent with stream length %lld\n", 
 						p_j2k->m_specific_param.m_decoder.m_sot_length, 
 						p_stream->get_number_byte_left());
+
+			// sanitize m_sot_length
+			p_j2k->m_specific_param.m_decoder.m_sot_length = bytesLeftInStream;
         }
     } 
     /* Index */
