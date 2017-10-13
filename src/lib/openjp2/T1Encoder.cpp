@@ -45,7 +45,7 @@ T1Encoder::~T1Encoder() {
 }
 
 void T1Encoder::encode(size_t threadId) {
-	encodeBlockInfo* block = NULL;
+	encodeBlockInfo* block = nullptr;
 	auto impl = threadStructs[threadId];
 	while (return_code && encodeQueue.tryPop(block)) {
 		uint32_t max = 0;
@@ -88,7 +88,7 @@ bool T1Encoder::encode(	std::vector<encodeBlockInfo*>* blocks) {
 	delete pool;
 	
 	// clean up remaining blocks
-	encodeBlockInfo* block = NULL;
+	encodeBlockInfo* block = nullptr;
 	while (encodeQueue.tryPop(block)) {
 		delete block;
 	}

@@ -52,7 +52,7 @@
 opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc)
 {
     uint32_t compno;
-    opj_image_t *image = NULL;
+    opj_image_t *image = nullptr;
 
     image = (opj_image_t*) grk::grok_calloc(1, sizeof(opj_image_t));
     if(image) {
@@ -64,7 +64,7 @@ opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts, opj_image_cmptparm
             /* TODO replace with event manager, breaks API */
             /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
             opj_image_destroy(image);
-            return NULL;
+            return nullptr;
         }
         /* create the individual image components */
         for(compno = 0; compno < numcmpts; compno++) {
@@ -81,7 +81,7 @@ opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts, opj_image_cmptparm
                 /* TODO replace with event manager, breaks API */
                 /* fprintf(stderr,"Unable to allocate memory for image.\n"); */
                 opj_image_destroy(image);
-                return NULL;
+                return nullptr;
             }
         }
     }
@@ -176,7 +176,7 @@ namespace grk {
 		uint32_t i, l_width, l_height;
 		uint32_t l_x0, l_y0, l_x1, l_y1;
 		uint32_t l_comp_x0, l_comp_y0, l_comp_x1, l_comp_y1;
-		opj_image_comp_t* l_img_comp = NULL;
+		opj_image_comp_t* l_img_comp = nullptr;
 
 		l_x0 = std::max<uint32_t>(p_cp->tx0, p_image_header->x0);
 		l_y0 = std::max<uint32_t>(p_cp->ty0, p_image_header->y0);
@@ -226,14 +226,14 @@ namespace grk {
 		if (p_image_dest->comps) {
 			opj_image_all_components_data_free(p_image_dest);
 			grok_free(p_image_dest->comps);
-			p_image_dest->comps = NULL;
+			p_image_dest->comps = nullptr;
 		}
 
 		p_image_dest->numcomps = p_image_src->numcomps;
 
 		p_image_dest->comps = (opj_image_comp_t*)grok_malloc(p_image_dest->numcomps * sizeof(opj_image_comp_t));
 		if (!p_image_dest->comps) {
-			p_image_dest->comps = NULL;
+			p_image_dest->comps = nullptr;
 			p_image_dest->numcomps = 0;
 			return;
 		}
@@ -242,7 +242,7 @@ namespace grk {
 			memcpy(&(p_image_dest->comps[compno]),
 				&(p_image_src->comps[compno]),
 				sizeof(opj_image_comp_t));
-			p_image_dest->comps[compno].data = NULL;
+			p_image_dest->comps[compno].data = nullptr;
 		}
 
 		p_image_dest->color_space = p_image_src->color_space;
@@ -251,7 +251,7 @@ namespace grk {
 		if (p_image_dest->icc_profile_len) {
 			p_image_dest->icc_profile_buf = (uint8_t*)grok_malloc(p_image_dest->icc_profile_len);
 			if (!p_image_dest->icc_profile_buf) {
-				p_image_dest->icc_profile_buf = NULL;
+				p_image_dest->icc_profile_buf = nullptr;
 				p_image_dest->icc_profile_len = 0;
 				return;
 			}
@@ -260,7 +260,7 @@ namespace grk {
 				p_image_src->icc_profile_len);
 		}
 		else
-			p_image_dest->icc_profile_buf = NULL;
+			p_image_dest->icc_profile_buf = nullptr;
 
 		return;
 	}

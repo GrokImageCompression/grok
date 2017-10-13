@@ -237,7 +237,7 @@ struct simple_mcc_decorrelation_data_t {
 ;
 
 struct ppx_t {
-    uint8_t*   m_data; /* m_data == NULL => Zppx not read yet */
+    uint8_t*   m_data; /* m_data == nullptr => Zppx not read yet */
     uint32_t	m_data_size;
 } ;
 
@@ -292,7 +292,7 @@ struct tcp_t {
     /** number of tile parts for the tile. */
     uint32_t m_nb_tile_parts;
 
-    seg_buf_t* m_data;
+    seg_buf_t* m_tile_data;
 
     /** encoding norms */
     double *	mct_norms;
@@ -547,7 +547,7 @@ void j2k_setup_decoder(void* j2k_void, opj_dparameters_t *parameters);
 /**
  * Creates a J2K compression structure
  *
- * @return Returns a handle to a J2K compressor if successful, returns NULL otherwise
+ * @return Returns a handle to a J2K compressor if successful, returns nullptr otherwise
 */
 j2k_t* j2k_create_compress(void);
 
@@ -671,7 +671,7 @@ bool j2k_set_decode_area(	j2k_t *p_j2k,
 /**
  * Creates a J2K decompression structure.
  *
- * @return a handle to a J2K decompressor if successful, NULL otherwise.
+ * @return a handle to a J2K decompressor if successful, nullptr otherwise.
  */
 j2k_t* j2k_create_decompress(void);
 

@@ -138,8 +138,8 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	opj_image_cmptparm_t cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
-	convert_XXx32s_C1R cvtXXTo32s = NULL;
-	convert_32s_CXPX cvtCxToPx = NULL;
+	convert_XXx32s_C1R cvtXXTo32s = nullptr;
+	convert_32s_CXPX cvtCxToPx = nullptr;
 	int32_t* planes[4];
 	int srgbIntent = -1;
 
@@ -149,9 +149,9 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 		local_info.reader = stdin;
 	}
 	else {
-		if ((local_info.reader = fopen(read_idf, "rb")) == NULL) {
+		if ((local_info.reader = fopen(read_idf, "rb")) == nullptr) {
 			fprintf(stderr, "pngtoimage: can not open %s\n", read_idf);
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -162,7 +162,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	}
 
 	if ((local_info.png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
-		NULL, NULL, NULL)) == NULL)
+		nullptr, nullptr, nullptr)) == nullptr)
 		goto fin;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
@@ -170,7 +170,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
 
-	if ((info = png_create_info_struct(local_info.png)) == NULL)
+	if ((info = png_create_info_struct(local_info.png)) == nullptr)
 		goto fin;
 
 	if (setjmp(png_jmpbuf(local_info.png)))
@@ -263,7 +263,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 
 
 	local_info.rows = (uint8_t**)calloc(height, sizeof(uint8_t*));
-	if (local_info.rows == NULL) {
+	if (local_info.rows == nullptr) {
 		fprintf(stderr, "pngtoimage: out of memory\n");
 		goto fin;
 	}
@@ -289,7 +289,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	}
 
 	local_info.image = opj_image_create(nr_comp, &cmptparm[0], local_info.colorSpace);
-	if (local_info.image == NULL)
+	if (local_info.image == nullptr)
 		goto fin;
 	local_info.image->x0 = params->image_offset_x0;
 	local_info.image->y0 = params->image_offset_y0;
@@ -319,7 +319,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 			local_info.image->icc_profile_len = ProfileLen;
 			local_info.image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
 			if (!local_info.image->icc_profile_buf)
-				return NULL;
+				return nullptr;
 			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
 		}
 	}
@@ -345,7 +345,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 
 
 	local_info.row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
-	if (local_info.row32s == NULL)
+	if (local_info.row32s == nullptr)
 		goto fin;
 
 	for (i = 0; i < height; ++i) {
@@ -368,7 +368,7 @@ fin:
 		free(local_info.row32s);
 	}
 	if (local_info.png)
-		png_destroy_read_struct(&local_info.png, &info, NULL);
+		png_destroy_read_struct(&local_info.png, &info, nullptr);
 
 	fclose(local_info.reader);
 	return local_info.image;
@@ -407,7 +407,7 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 {
 	imageToPngInfo local_info;
 	local_info.writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
-	png_infop info = NULL;
+	png_infop info = nullptr;
 	int nr_comp, color_type;
 	volatile int prec;
 	png_color_8 sig_bit;
@@ -480,32 +480,32 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 	}
 	else {
 		local_info.writer = fopen(write_idf, "wb");
-		if (local_info.writer == NULL)
+		if (local_info.writer == nullptr)
 			return local_info.fails;
 	}
 
 
 	/* Create and initialize the png_struct with the desired error handler
 	* functions.  If you want to use the default stderr and longjump method,
-	* you can supply NULL for the last three parameters.  We also check that
+	* you can supply nullptr for the last three parameters.  We also check that
 	* the library version is compatible with the one used at compile time,
 	* in case we are using dynamically linked libraries.  REQUIRED.
 	*/
 	local_info.png = png_create_write_struct(PNG_LIBPNG_VER_STRING,
-		NULL, NULL, NULL);
+		nullptr, nullptr, nullptr);
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
 	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
-	if (local_info.png == NULL)
+	if (local_info.png == nullptr)
 		goto fin;
 
 	/* Allocate/initialize the image information data.  REQUIRED
 	*/
 	info = png_create_info_struct(local_info.png);
 
-	if (info == NULL) goto fin;
+	if (info == nullptr) goto fin;
 
 	/* Set error handling.  REQUIRED if you are not supplying your own
 	* error handling functions in the png_create_write_struct() call.
@@ -604,12 +604,12 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 			goto fin;
 		}
 		local_info.row_buf = (png_bytep)malloc(png_row_size);
-		if (local_info.row_buf == NULL) {
+		if (local_info.row_buf == nullptr) {
 			fprintf(stderr, "Can't allocate memory for PNG row\n");
 			goto fin;
 		}
 		local_info.buffer32s = (int32_t*)malloc((size_t)image->comps[0].w * (size_t)nr_comp * sizeof(int32_t));
-		if (local_info.buffer32s == NULL) {
+		if (local_info.buffer32s == nullptr) {
 			fprintf(stderr, "Can't allocate memory for interleaved 32s row\n");
 			goto fin;
 		}
@@ -620,7 +620,7 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 		size_t width = image->comps[0].w;
 		uint32_t y;
 		convert_32s_PXCX cvtPxToCx = convert_32s_PXCX_LUT[nr_comp];
-		convert_32sXXx_C1R cvt32sToPack = NULL;
+		convert_32sXXx_C1R cvt32sToPack = nullptr;
 		int32_t adjust = image->comps[0].sgnd ? 1 << (prec - 1) : 0;
 		png_bytep row_buf_cpy = local_info.row_buf;
 		int32_t* buffer32s_cpy = local_info.buffer32s;

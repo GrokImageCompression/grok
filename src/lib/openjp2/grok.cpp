@@ -285,7 +285,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format)
 
         if (! l_codec->m_codec) {
             grok_free(l_codec);
-            return NULL;
+            return nullptr;
         }
 
         break;
@@ -418,7 +418,7 @@ bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
 	opj_codec_t *p_codec,
 	opj_image_t **p_image) {
 
-	return opj_read_header_ex(p_stream, p_codec, NULL, p_image);
+	return opj_read_header_ex(p_stream, p_codec, nullptr, p_image);
 }
 
 bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
@@ -449,7 +449,7 @@ bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
 bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec,
 	opj_stream_t *p_stream,
 	opj_image_t* p_image) {
-	return opj_decode_ex(p_codec, NULL, p_stream, p_image);
+	return opj_decode_ex(p_codec, nullptr, p_stream, p_image);
 }
 
 bool OPJ_CALLCONV opj_decode_ex(   opj_codec_t *p_codec,
@@ -758,7 +758,7 @@ bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
 
 bool OPJ_CALLCONV opj_encode(opj_codec_t *p_info, opj_stream_t *p_stream)
 {
-	return opj_encode_with_plugin(p_info, NULL, p_stream);
+	return opj_encode_with_plugin(p_info, nullptr, p_stream);
 }
 
 bool OPJ_CALLCONV opj_encode_with_plugin(opj_codec_t *p_info, grok_plugin_tile_t* tile, opj_stream_t *p_stream)
@@ -913,7 +913,7 @@ opj_codestream_info_v2_t* OPJ_CALLCONV opj_get_cstr_info(opj_codec_t *p_codec)
         return l_codec->get_codec_info(l_codec->m_codec);
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void OPJ_CALLCONV opj_destroy_cstr_info(opj_codestream_info_v2_t **cstr_info)
@@ -929,7 +929,7 @@ void OPJ_CALLCONV opj_destroy_cstr_info(opj_codestream_info_v2_t **cstr_info)
         }
 
         grok_free((*cstr_info));
-        (*cstr_info) = NULL;
+        (*cstr_info) = nullptr;
     }
 }
 
@@ -941,14 +941,14 @@ opj_codestream_index_t * OPJ_CALLCONV opj_get_cstr_index(opj_codec_t *p_codec)
         return l_codec->opj_get_codec_index(l_codec->m_codec);
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void OPJ_CALLCONV opj_destroy_cstr_index(opj_codestream_index_t **p_cstr_index)
 {
     if (*p_cstr_index) {
         j2k_destroy_cstr_index(*p_cstr_index);
-        (*p_cstr_index) = NULL;
+        (*p_cstr_index) = nullptr;
     }
 }
 
@@ -981,7 +981,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
 		else mode = "wb";
 		p_file = fopen(fname, mode);
 		if (!p_file) {
-			return NULL;
+			return nullptr;
 		}
 	}
 
@@ -989,7 +989,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     if (! l_stream) {
 		if (!stdin_stdout)
 			fclose(p_file);
-        return NULL;
+        return nullptr;
     }
 
 	opj_stream_set_user_data(l_stream, p_file, (opj_stream_free_user_data_fn) (stdin_stdout ? nullptr : fclose));
@@ -1042,7 +1042,7 @@ void OPJ_CALLCONV opj_image_all_components_data_free(opj_image_t* image)
 
 bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* comp)
 {
-    int32_t* data = NULL;
+    int32_t* data = nullptr;
     if (!comp)
         return false;
 
@@ -1060,7 +1060,7 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp)
         return;
     if (comp->data) {
         grok_aligned_free(comp->data);
-        comp->data = NULL;
+        comp->data = nullptr;
     }
 }
 
@@ -1102,12 +1102,12 @@ bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 
 	// form absolute plugin path
 	auto pluginPath = std::string(info.plugin_path) + get_path_separator() + pluginName;
-	int32_t rc = minpf_load_from_path(pluginPath.c_str(), NULL);
+	int32_t rc = minpf_load_from_path(pluginPath.c_str(), nullptr);
 
 	// if fails, try local path
 	if (rc) {
 		std::string localPlugin = std::string(".") + get_path_separator() + pluginName;
-		rc = minpf_load_from_path(localPlugin.c_str(), NULL);
+		rc = minpf_load_from_path(localPlugin.c_str(), nullptr);
 
 	}
 	pluginLoaded = !rc;
@@ -1119,8 +1119,8 @@ bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
 
 uint32_t OPJ_CALLCONV grok_plugin_get_debug_state()
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_GET_DEBUG_STATE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_GET_DEBUG_STATE func = nullptr;
     uint32_t rc = OPJ_PLUGIN_STATE_NO_DEBUG;
 
     if (!pluginLoaded)
@@ -1142,8 +1142,8 @@ void OPJ_CALLCONV opj_plugin_cleanup(void)
 }
 
 OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo) {
-	minpf_plugin_manager* mgr = NULL;
-	PLUGIN_INIT func = NULL;
+	minpf_plugin_manager* mgr = nullptr;
+	PLUGIN_INIT func = nullptr;
 	if (!pluginLoaded)
 		return false;
 
@@ -1183,8 +1183,8 @@ void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* inf
 int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters,
                                        OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_ENCODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_ENCODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
@@ -1205,8 +1205,8 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
         opj_cparameters_t* encode_parameters,
         OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_BATCH_ENCODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_BATCH_ENCODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
@@ -1221,9 +1221,9 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
     return -1;
 }
 
-PLUGIN_IS_BATCH_COMPLETE funcPluginIsBatchComplete = NULL;
+PLUGIN_IS_BATCH_COMPLETE funcPluginIsBatchComplete = nullptr;
 OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void) {
-	minpf_plugin_manager* mgr = NULL;
+	minpf_plugin_manager* mgr = nullptr;
 	if (!pluginLoaded)
 		return true;
 
@@ -1240,8 +1240,8 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void) {
 
 void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_STOP_BATCH_DECODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_STOP_BATCH_DECODE func = nullptr;
     if (!pluginLoaded)
         return;
 
@@ -1295,15 +1295,15 @@ int32_t OPJ_CALLCONV opj_plugin_decode(opj_decompress_parameters* decode_paramet
                                        opj_plugin_decode_callback preDecode,
                                        opj_plugin_decode_callback postDecode)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_DECODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_DECODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
     userPreDecodeCallback = preDecode;
     userPostDecodeCallback = postDecode;
     mgr = minpf_get_plugin_manager();
-    func = NULL;
+    func = nullptr;
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_decode_method_name);
         if (func) {
@@ -1320,8 +1320,8 @@ int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
         opj_plugin_decode_callback preDecode,
         opj_plugin_decode_callback postDecode)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_BATCH_DECODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_BATCH_DECODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
@@ -1339,8 +1339,8 @@ int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
 
 void OPJ_CALLCONV opj_plugin_stop_batch_decode(void)
 {
-    minpf_plugin_manager* mgr = NULL;
-    PLUGIN_STOP_BATCH_DECODE func = NULL;
+    minpf_plugin_manager* mgr = nullptr;
+    PLUGIN_STOP_BATCH_DECODE func = nullptr;
     if (!pluginLoaded)
         return;
 

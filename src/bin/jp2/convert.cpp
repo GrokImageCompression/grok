@@ -213,7 +213,7 @@ static void convert_32s_C4P4(const int32_t* pSrc, int32_t* const* pDst, size_t l
     }
 }
 const convert_32s_CXPX convert_32s_CXPX_LUT[5] = {
-    NULL,
+    nullptr,
     convert_32s_C1P1,
     convert_32s_C2P2,
     convert_32s_C3P3,
@@ -269,7 +269,7 @@ static void convert_32s_P4C4(int32_t const* const* pSrc, int32_t* pDst, size_t l
     }
 }
 const convert_32s_PXCX convert_32s_PXCX_LUT[5] = {
-    NULL,
+    nullptr,
     convert_32s_P1C1,
     convert_32s_P2C2,
     convert_32s_P3C3,
@@ -390,14 +390,14 @@ static void convert_8u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length,
     }
 }
 const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9] = {
-    NULL,
+    nullptr,
     convert_1u32s_C1R,
     convert_2u32s_C1R,
-    NULL,
+    nullptr,
     convert_4u32s_C1R,
-    NULL,
+    nullptr,
     convert_6u32s_C1R,
-    NULL,
+    nullptr,
     convert_8u32s_C1R
 };
 
@@ -537,14 +537,14 @@ static void convert_32s8u_C1R(const int32_t* pSrc, uint8_t* pDst, size_t length)
     }
 }
 const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9] = {
-    NULL,
+    nullptr,
     convert_32s1u_C1R,
     convert_32s2u_C1R,
-    NULL,
+    nullptr,
     convert_32s4u_C1R,
-    NULL,
+    nullptr,
     convert_32s6u_C1R,
-    NULL,
+    nullptr,
     convert_32s8u_C1R
 };
 

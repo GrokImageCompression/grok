@@ -355,7 +355,7 @@ static unsigned int get_num_images(char *imgdirpath)
     }
 
     num_images=0;
-    while((content=readdir(dir))!=NULL) {
+    while((content=readdir(dir))!=nullptr) {
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
             continue;
         num_images++;
@@ -376,7 +376,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 
 	struct dirent* content = nullptr;
 	int i = 0;
-    while((content=readdir(dir))!=NULL) {
+    while((content=readdir(dir))!=nullptr) {
         if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
             continue;
 
@@ -397,7 +397,7 @@ static int get_file_format(char *filename)
         PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
     };
     char * ext = strrchr(filename, '.');
-    if (ext == NULL)
+    if (ext == nullptr)
         return -1;
     ext++;
     for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
@@ -830,7 +830,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			uint32_t len;
 			bool raw_signed = false;
 			substr2 = (char*)strchr(rawFormatArg.getValue().c_str(), '@');
-			if (substr2 == NULL) {
+			if (substr2 == nullptr) {
 				len = (uint32_t)rawFormatArg.getValue().length();
 			}
 			else {
@@ -838,7 +838,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				substr2++; /* skip '@' character */
 			}
 			substr1 = (char*)malloc((len + 1) * sizeof(char));
-			if (substr1 == NULL) {
+			if (substr1 == nullptr) {
 				return 1;
 			}
 			memcpy(substr1, rawFormatArg.getValue().c_str(), len);
@@ -868,25 +868,25 @@ static int parse_cmdline_encoder_ex(int argc,
 				raw_cp->rawBitDepth = bitdepth;
 				raw_cp->rawSigned = raw_signed;
 				raw_cp->rawComps = (raw_comp_cparameters_t*)malloc(((uint32_t)(ncomp)) * sizeof(raw_comp_cparameters_t));
-				if (raw_cp->rawComps == NULL) {
+				if (raw_cp->rawComps == nullptr) {
 					free(substr1);
 					return 1;
 				}
 				for (compno = 0; compno < ncomp && !wrong; compno++) {
-					if (substr2 == NULL) {
+					if (substr2 == nullptr) {
 						raw_cp->rawComps[compno].dx = lastdx;
 						raw_cp->rawComps[compno].dy = lastdy;
 					}
 					else {
 						int dx, dy;
 						sep = strchr(substr2, ':');
-						if (sep == NULL) {
+						if (sep == nullptr) {
 							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
 								lastdx = dx;
 								lastdy = dy;
 								raw_cp->rawComps[compno].dx = dx;
 								raw_cp->rawComps[compno].dy = dy;
-								substr2 = NULL;
+								substr2 = nullptr;
 							}
 							else {
 								wrong = true;
@@ -1008,7 +1008,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (pocArg.isSet()) {
 			int numpocs = 0;		/* number of progression order change (POC) default 0 */
-			opj_poc_t *POC = NULL;	/* POC : used in case of Progression order change */
+			opj_poc_t *POC = nullptr;	/* POC : used in case of Progression order change */
 
 			char *s = (char*)pocArg.getValue().c_str();
 			POC = parameters->POC;
@@ -1138,7 +1138,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 			/* Open file */
 			FILE * lFile = fopen(lFilename, "r");
-			if (lFile == NULL) {
+			if (lFile == nullptr) {
 				return 1;
 			}
 
@@ -1147,7 +1147,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			lStrLen = (size_t)ftell(lFile);
 			fseek(lFile, 0, SEEK_SET);
 			lMatrix = (char *)malloc(lStrLen + 1);
-			if (lMatrix == NULL) {
+			if (lMatrix == nullptr) {
 				fclose(lFile);
 				return 1;
 			}
@@ -1176,7 +1176,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			lMctComp = lNbComp * lNbComp;
 			lTotalComp = lMctComp + lNbComp;
 			lSpace = (float *)malloc((size_t)lTotalComp * sizeof(float));
-			if (lSpace == NULL) {
+			if (lSpace == nullptr) {
 				free(lMatrix);
 				return 1;
 			}
@@ -1404,10 +1404,10 @@ struct CompressInitParams {
 		// clean up encode parameters
 		if (parameters.cp_comment)
 			free(parameters.cp_comment);
-		parameters.cp_comment = NULL ;
+		parameters.cp_comment = nullptr ;
 		if (parameters.raw_cp.rawComps)
 			free(parameters.raw_cp.rawComps);
-		parameters.raw_cp.rawComps = NULL;
+		parameters.raw_cp.rawComps = nullptr;
 
 
 		if (img_fol.imgdirpath)
@@ -1438,7 +1438,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
 	CompressInitParams initParams;
-	dircnt_t *dirptr = NULL;
+	dircnt_t *dirptr = nullptr;
 	int success = 0;
 	try {
 
@@ -1971,7 +1971,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if ((state & OPJ_PLUGIN_STATE_DEBUG) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
-	dircnt_t *dirptr = NULL;
+	dircnt_t *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 	if (isBatch) {

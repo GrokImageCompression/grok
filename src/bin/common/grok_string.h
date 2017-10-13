@@ -60,7 +60,7 @@ static size_t strnlen_s(const char *src, size_t max_len)
 {
 	size_t len;
 
-	if (src == NULL) {
+	if (src == nullptr) {
 		return 0U;
 	}
 	for (len = 0U; (*src != '\0') && (len < max_len); src++, len++);
@@ -72,10 +72,10 @@ static size_t strnlen_s(const char *src, size_t max_len)
 static int strcpy_s(char* dst, size_t dst_size, const char* src)
 {
 	size_t src_len = 0U;
-	if ((dst == NULL) || (dst_size == 0U)) {
+	if ((dst == nullptr) || (dst_size == 0U)) {
 		return EINVAL;
 	}
-	if (src == NULL) {
+	if (src == nullptr) {
 		dst[0] = '\0';
 		return EINVAL;
 	}

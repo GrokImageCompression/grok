@@ -72,12 +72,12 @@
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
-		return NULL;
+		return nullptr;
 
     opj_image_cmptparm_t* cmptparms = (opj_image_cmptparm_t*)calloc(numcmpts, sizeof(opj_image_cmptparm_t));
 	if (!cmptparms)
-		return NULL;
-    opj_image_t* img = NULL;
+		return nullptr;
+    opj_image_t* img = nullptr;
     uint32_t compno=0U;
     for (compno = 0U; compno < numcmpts; ++compno) {
         memset(cmptparms + compno, 0, sizeof(opj_image_cmptparm_t));
@@ -178,12 +178,12 @@ static void sycc444_to_rgb(opj_image_t *img)
 	d1 = g = new_image->comps[1].data;
 	d2 = b = new_image->comps[2].data;
 
-	new_image->comps[0].data = NULL;
-	new_image->comps[1].data = NULL;
-	new_image->comps[2].data = NULL;
+	new_image->comps[0].data = nullptr;
+	new_image->comps[1].data = nullptr;
+	new_image->comps[2].data = nullptr;
 
 	opj_image_destroy(new_image);
-	new_image = NULL;
+	new_image = nullptr;
 	
 	for (i = 0U; i < max; ++i)
 	{
@@ -225,12 +225,12 @@ static void sycc422_to_rgb(opj_image_t *img)
 	d1 = g = new_image->comps[1].data;
 	d2 = b = new_image->comps[2].data;
 
-	new_image->comps[0].data = NULL;
-	new_image->comps[1].data = NULL;
-	new_image->comps[2].data = NULL;
+	new_image->comps[0].data = nullptr;
+	new_image->comps[1].data = nullptr;
+	new_image->comps[2].data = nullptr;
 
 	opj_image_destroy(new_image);
-	new_image = NULL;
+	new_image = nullptr;
 
 
 	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
@@ -299,12 +299,12 @@ static void sycc420_to_rgb(opj_image_t *img)
 	d1 = g = new_image->comps[1].data;
 	d2 = b = new_image->comps[2].data;
 
-	new_image->comps[0].data = NULL;
-	new_image->comps[1].data = NULL;
-	new_image->comps[2].data = NULL;
+	new_image->comps[0].data = nullptr;
+	new_image->comps[1].data = nullptr;
+	new_image->comps[2].data = nullptr;
 
 	opj_image_destroy(new_image);
-	new_image = NULL;
+	new_image = nullptr;
 
 	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
 	offx = img->x0 & 1U;
@@ -435,12 +435,12 @@ void color_sycc_to_rgb(opj_image_t *img)
 void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 {
 	cmsHPROFILE in_prof = nullptr , out_prof=nullptr;
-    cmsHTRANSFORM transform = NULL;
+    cmsHTRANSFORM transform = nullptr;
     cmsColorSpaceSignature in_space, out_space;
     cmsUInt32Number intent, in_type, out_type, nr_samples;
     int prec, i, max, max_w, max_h;
     OPJ_COLOR_SPACE oldspace;
-    opj_image_t* new_image = NULL;
+    opj_image_t* new_image = nullptr;
 
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
@@ -452,7 +452,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
     fclose(icm);
 #endif
 
-    if(in_prof == NULL)
+    if(in_prof == nullptr)
 		return;
 
     in_space = cmsGetPCS(in_prof);
@@ -554,7 +554,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 	out_prof = nullptr;
 
 
-    if(transform == NULL) {
+    if(transform == nullptr) {
 #ifdef DEBUG_PROFILE
         fprintf(stderr,"%s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
                 "ICC Profile ignored.\n",__FILE__,__LINE__);
@@ -681,11 +681,11 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
         image->comps[1].data = new_image->comps[0].data;
         image->comps[2].data = new_image->comps[1].data;
 
-        new_image->comps[0].data= NULL;
-        new_image->comps[1].data = NULL;
+        new_image->comps[0].data= nullptr;
+        new_image->comps[1].data = nullptr;
 
         opj_image_destroy(new_image);
-        new_image = NULL;
+        new_image = nullptr;
 
 		if (forceRGB)
 			image->numcomps += 2;
@@ -757,7 +757,7 @@ void color_cielab_to_rgb(opj_image_t *image)
         cmsCIELab Lab;
         opj_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
 
-        in = cmsCreateLab4Profile(NULL);
+        in = cmsCreateLab4Profile(nullptr);
         out = cmsCreate_sRGBProfile();
 
         transform = cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
@@ -765,7 +765,7 @@ void color_cielab_to_rgb(opj_image_t *image)
         cmsCloseProfile(in);
         cmsCloseProfile(out);
 
-        if(transform == NULL) {
+        if(transform == nullptr) {
             return;
         }
         prec0 = (double)image->comps[0].prec;
@@ -800,12 +800,12 @@ void color_cielab_to_rgb(opj_image_t *image)
         green = dst1 = new_image->comps[1].data;
         blue = dst2	 = new_image->comps[2].data;
 
-        new_image->comps[0].data=NULL;
-        new_image->comps[1].data=NULL;
-        new_image->comps[2].data=NULL;
+        new_image->comps[0].data=nullptr;
+        new_image->comps[1].data=nullptr;
+        new_image->comps[2].data=nullptr;
 
         opj_image_destroy(new_image);
-        new_image = NULL;
+        new_image = nullptr;
 
         minL = -(rl * ol) / (pow(2, prec0) - 1);
         maxL = minL + rl;

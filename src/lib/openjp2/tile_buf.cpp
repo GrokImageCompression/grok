@@ -31,7 +31,7 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
 {
     int32_t resno = 0;
     rect_t	component_output_rect;
-    tile_buf_component_t* comp = NULL;
+    tile_buf_component_t* comp = nullptr;
 
     if (!tilec)
         return false;
@@ -41,7 +41,7 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
     if (!comp) {
         return false;
     }
-	comp->data = NULL;
+	comp->data = nullptr;
 
 	comp->tile_dim= rect_t(
                   tilec->x0,
@@ -215,7 +215,7 @@ void tile_buf_destroy_component(tile_buf_component_t* comp)
         return;
     if (comp->data && comp->owns_data)
         grok_aligned_free(comp->data);
-    comp->data = NULL;
+    comp->data = nullptr;
     comp->data_size = 0;
     comp->data_size_needed = 0;
 	for (auto& res : comp->resolutions) {
@@ -246,9 +246,9 @@ pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t* comp,
         bool is_horizontal)
 {
     pt_t rc;
-    tile_buf_resolution_t* res= NULL;
-    tile_buf_resolution_t* prev_res = NULL;
-    tile_buf_band_t *band= NULL;
+    tile_buf_resolution_t* res= nullptr;
+    tile_buf_resolution_t* prev_res = nullptr;
+    tile_buf_band_t *band= nullptr;
     memset(&rc, 0, sizeof(pt_t));
     if (!comp)
         return rc;
@@ -303,7 +303,7 @@ pt_t tile_buf_get_interleaved_range(tile_buf_component_t* comp,
     pt_t rc;
     pt_t even;
     pt_t odd;
-    tile_buf_resolution_t* res = NULL;
+    tile_buf_resolution_t* res = nullptr;
     memset(&rc, 0, sizeof(pt_t));
     if (!comp)
         return rc;

@@ -75,11 +75,11 @@ struct event_mgr_t {
     void *			m_warning_data;
     /** Data to call the event manager upon */
     void *			m_info_data;
-    /** Error message callback if available, NULL otherwise */
+    /** Error message callback if available, nullptr otherwise */
     opj_msg_callback error_handler;
-    /** Warning message callback if available, NULL otherwise */
+    /** Warning message callback if available, nullptr otherwise */
     opj_msg_callback warning_handler;
-    /** Debug message callback if available, NULL otherwise */
+    /** Debug message callback if available, nullptr otherwise */
     opj_msg_callback info_handler;
 };
 

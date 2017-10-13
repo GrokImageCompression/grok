@@ -152,7 +152,7 @@ static void bmp24toimage(const uint8_t* pData, uint32_t stride, opj_image_t* ima
 	int index;
 	uint32_t width, height;
 	uint32_t x, y;
-	const uint8_t *pSrc = NULL;
+	const uint8_t *pSrc = nullptr;
 
 	width = image->comps[0].w;
 	height = image->comps[0].h;
@@ -195,7 +195,7 @@ static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 	int index;
 	uint32_t width, height;
 	uint32_t x, y;
-	const uint8_t *pSrc = NULL;
+	const uint8_t *pSrc = nullptr;
 	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
@@ -247,7 +247,7 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 	int index;
 	uint32_t width, height;
 	uint32_t x, y;
-	const uint8_t *pSrc = NULL;
+	const uint8_t *pSrc = nullptr;
 	bool hasAlpha = false;
 	uint32_t redShift, redPrec;
 	uint32_t greenShift, greenPrec;
@@ -295,7 +295,7 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint8_t const* const* pLUT)
 {
 	uint32_t width, height;
-	const uint8_t *pSrc = NULL;
+	const uint8_t *pSrc = nullptr;
 
 	width = image->comps[0].w;
 	height = image->comps[0].h;
@@ -623,13 +623,13 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
-	opj_image_t * image = NULL;
+	opj_image_t * image = nullptr;
 	FILE *IN = nullptr;
 	OPJ_BITMAPFILEHEADER File_h;
 	OPJ_BITMAPINFOHEADER Info_h;
 	uint32_t i, palette_len, numcmpts = 1U;
 	bool l_result = false;
-	uint8_t* pData = NULL;
+	uint8_t* pData = nullptr;
 	uint32_t stride;
 
 	pLUT[0] = lut_R;
@@ -645,17 +645,17 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		IN = fopen(filename, "rb");
 		if (!IN) {
 			fprintf(stderr, "Failed to open %s for reading !!\n", filename);
-			return NULL;
+			return nullptr;
 		}
 	}
 
 	if (!bmp_read_file_header(IN, &File_h)) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 	if (!bmp_read_info_header(IN, &Info_h)) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 
 	/* Load palette */
@@ -694,30 +694,30 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (Info_h.biWidth == 0 || Info_h.biHeight == 0) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 
 	if (Info_h.biBitCount > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 	stride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
 		if (8 > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) {
 			fclose(IN);
-			return NULL;
+			return nullptr;
 		}
 		stride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
 	}
 
 	if (stride > ((OPJ_UINT32)-1) / sizeof(OPJ_UINT8) / Info_h.biHeight) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 	pData = (uint8_t *)calloc(1, stride * Info_h.biHeight * sizeof(uint8_t));
-	if (pData == NULL) {
+	if (pData == nullptr) {
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 	/* Place the cursor at the beginning of the image information */
 	fseek(IN, 0, SEEK_SET);
@@ -745,7 +745,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	if (!l_result) {
 		free(pData);
 		fclose(IN);
-		return NULL;
+		return nullptr;
 	}
 
 	/* create the image */
@@ -763,7 +763,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	if (!image) {
 		fclose(IN);
 		free(pData);
-		return NULL;
+		return nullptr;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].alpha = 1;
@@ -807,7 +807,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	}
 	else {
 		opj_image_destroy(image);
-		image = NULL;
+		image = nullptr;
 		fprintf(stderr, "Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [%d]\n", Info_h.biBitCount);
 	}
 	free(pData);
@@ -820,7 +820,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
 	uint32_t w, h, i;
 	int32_t pad;
-	FILE *fdest = NULL;
+	FILE *fdest = nullptr;
 	int adjustR, adjustG, adjustB;
 
 	if (image->numcomps == 0) {

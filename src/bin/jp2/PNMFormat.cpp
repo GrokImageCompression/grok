@@ -71,16 +71,16 @@ struct pnm_header {
 static char *skip_white(char *s)
 {
 	if (!s)
-		return NULL;
+		return nullptr;
 	while (*s) {
-		if (*s == '\n' || *s == '\r') return NULL;
+		if (*s == '\n' || *s == '\r') return nullptr;
 		if (isspace(*s)) {
 			++s;
 			continue;
 		}
 		return s;
 	}
-	return NULL;
+	return nullptr;
 }
 
 static char *skip_int(char *start, int *out_n)
@@ -91,7 +91,7 @@ static char *skip_int(char *start, int *out_n)
 	*out_n = 0;
 
 	s = skip_white(start);
-	if (s == NULL) return NULL;
+	if (s == nullptr) return nullptr;
 	start = s;
 
 	while (*s) {
@@ -111,7 +111,7 @@ static char *skip_idf(char *start, char out_idf[256])
 	char c;
 
 	s = skip_white(start);
-	if (s == NULL) return NULL;
+	if (s == nullptr) return nullptr;
 	start = s;
 
 	while (*s) {
@@ -134,8 +134,8 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 	char idf[256], type[256];
 	char line[256];
 
-	if (fgets(line, 250, reader) == NULL) {
-		fprintf(stderr, "\nWARNING: fgets return a NULL value");
+	if (fgets(line, 250, reader) == nullptr) {
+		fprintf(stderr, "\nWARNING: fgets return a nullptr value");
 		return;
 	}
 
@@ -162,7 +162,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		if (format == 7) {
 			s = skip_idf(s, idf);
 
-			if (s == NULL || *s == 0) return;
+			if (s == nullptr || *s == 0) return;
 
 			if (strcmp(idf, "ENDHDR") == 0) {
 				end = 1;
@@ -170,31 +170,31 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 			}
 			if (strcmp(idf, "WIDTH") == 0) {
 				s = skip_int(s, &ph->width);
-				if (s == NULL || *s == 0) return;
+				if (s == nullptr || *s == 0) return;
 
 				continue;
 			}
 			if (strcmp(idf, "HEIGHT") == 0) {
 				s = skip_int(s, &ph->height);
-				if (s == NULL || *s == 0) return;
+				if (s == nullptr || *s == 0) return;
 
 				continue;
 			}
 			if (strcmp(idf, "DEPTH") == 0) {
 				s = skip_int(s, &ph->depth);
-				if (s == NULL || *s == 0) return;
+				if (s == nullptr || *s == 0) return;
 
 				continue;
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
-				if (s == NULL || *s == 0) return;
+				if (s == nullptr || *s == 0) return;
 
 				continue;
 			}
 			if (strcmp(idf, "TUPLTYPE") == 0) {
 				s = skip_idf(s, type);
-				if (s == NULL || *s == 0) return;
+				if (s == nullptr || *s == 0) return;
 
 				if (strcmp(type, "BLACKANDWHITE") == 0) {
 					ph->bw = 1;
@@ -231,13 +231,13 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		  /* Here format is in range [1,6] */
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
-			if ((s == NULL) || (*s == 0) || (ph->width < 1)) return;
+			if ((s == nullptr) || (*s == 0) || (ph->width < 1)) return;
 			allow_null = 1;
 		}
 		if (ph->height == 0) {
 			s = skip_int(s, &ph->height);
-			if ((s == NULL) && allow_null) continue;
-			if ((s == NULL) || (*s == 0) || (ph->height < 1)) return;
+			if ((s == nullptr) && allow_null) continue;
+			if ((s == nullptr) || (*s == 0) || (ph->height < 1)) return;
 			if (format == 1 || format == 4) {
 				break;
 			}
@@ -245,8 +245,8 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		}
 		/* here, format is in P2, P3, P5, P6 */
 		s = skip_int(s, &ph->maxval);
-		if ((s == NULL) && allow_null) continue;
-		if ((s == NULL) || (*s == 0)) return;
+		if ((s == nullptr) && allow_null) continue;
+		if ((s == nullptr) || (*s == 0)) return;
 		break;
 	}/* while(fgets( ) */
 	if (format == 2 || format == 3 || format > 4)
@@ -301,16 +301,16 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
 
-	FILE *fp = NULL;
+	FILE *fp = nullptr;
 	uint32_t compno, numcomps, w, h, prec, format;
 	OPJ_COLOR_SPACE color_space;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
-	opj_image_t * image = NULL;
+	opj_image_t * image = nullptr;
 	struct pnm_header header_info;
 
-	if ((fp = fopen(filename, "rb")) == NULL) {
+	if ((fp = fopen(filename, "rb")) == nullptr) {
 		fprintf(stderr, "pnmtoimage:Failed to open %s for reading!\n", filename);
-		return NULL;
+		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
 
@@ -318,7 +318,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (!header_info.ok) {
 		fclose(fp);
-		return NULL;
+		return nullptr;
 	}
 
 	format = header_info.format;
@@ -345,7 +345,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 	default:
 		fclose(fp);
-		return NULL;
+		return nullptr;
 	}
 
 
@@ -378,13 +378,13 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (!image) {
 		fclose(fp);
-		return NULL;
+		return nullptr;
 	}
 
 
 	if (!sanityCheckOnImage(image, numcomps)) {
 		fclose(fp);
-		return NULL;
+		return nullptr;
 	}
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
@@ -420,7 +420,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(fp);
-					return NULL;
+					return nullptr;
 				}
 				if (one) {
 					image->comps[compno].data[i] = c0;
@@ -481,21 +481,21 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split)
 {
-	int *red = NULL;
-	int* green = NULL;
-	int* blue = NULL;
-	int* alpha = NULL;
+	int *red = nullptr;
+	int* green = nullptr;
+	int* blue = nullptr;
+	int* alpha = nullptr;
 	int wr, hr, max;
 	int i;
 	unsigned int compno, ncomp;
 	int adjustR, adjustG, adjustB, adjustA;
 	int fails, two, want_gray, has_alpha, triple;
 	int prec, v;
-	FILE *fdest = NULL;
+	FILE *fdest = nullptr;
 	const char *tmp = outfile;
 	char *destname;
 
-	alpha = NULL;
+	alpha = nullptr;
 
 	if ((prec = (int)image->comps[0].prec) > 16) {
 		fprintf(stderr, "%s:%d:imagetopnm\n\tprecision %d is larger than 16"
@@ -549,7 +549,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 			green = image->comps[1].data;
 			blue = image->comps[2].data;
 		}
-		else green = blue = NULL;
+		else green = blue = nullptr;
 
 		if (has_alpha) {
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
@@ -654,7 +654,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 		fprintf(stderr, "           is written to the file\n");
 	}
 	destname = (char*)malloc(strlen(outfile) + 8);
-	if (destname == NULL) {
+	if (destname == nullptr) {
 		fprintf(stderr, "imagetopnm: out of memory\n");
 		fclose(fdest);
 		return 1;

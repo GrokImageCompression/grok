@@ -847,7 +847,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     l_image = p_tcd->image;
     l_image_comp = p_tcd->image->comps;
 
-    seg_buf_rewind(l_tcp->m_data);
+    seg_buf_rewind(l_tcp->m_tile_data);
 
     p = p_tile_no % l_cp->tw;       /* tile coordinates */
     q = p_tile_no / l_cp->tw;
@@ -916,7 +916,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
             if (! new_resolutions) {
                 event_msg(manager, EVT_ERROR, "Not enough memory for tile resolutions\n");
                 grok_free(l_tilec->resolutions);
-                l_tilec->resolutions = NULL;
+                l_tilec->resolutions = nullptr;
                 l_tilec->resolutions_size = 0;
                 return false;
             }
@@ -1041,7 +1041,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     if (! new_precincts) {
                         event_msg(manager, EVT_ERROR, "Not enough memory to handle band precints\n");
                         grok_free(l_band->precincts);
-                        l_band->precincts = NULL;
+                        l_band->precincts = nullptr;
                         l_band->precincts_data_size = 0;
                         return false;
                     }
@@ -1107,7 +1107,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                         void *new_blocks = grok_realloc(l_current_precinct->cblks.blocks, l_nb_code_blocks_size);
                         if (! new_blocks) {
                             grok_free(l_current_precinct->cblks.blocks);
-                            l_current_precinct->cblks.blocks = NULL;
+                            l_current_precinct->cblks.blocks = nullptr;
                             l_current_precinct->block_size = 0;
                             event_msg(manager, EVT_ERROR, "Not enough memory for current precinct codeblock element\n");
                             return false;
@@ -1188,7 +1188,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 	if (!isEncoder) {
 		if (state & OPJ_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(p_tcd->current_plugin_tile, l_tile)) {
-				manager->warning_handler("plugin tile differs from opj tile", NULL);
+				manager->warning_handler("plugin tile differs from opj tile", nullptr);
 			}
 		}
 	}
@@ -1197,7 +1197,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
 bool tcd_init_encode_tile (tcd_t *p_tcd, uint32_t p_tile_no, event_mgr_t* p_manager)
 {
-    return tcd_init_tile(p_tcd, p_tile_no, NULL, true, 1.0F, sizeof(tcd_cblk_enc_t), p_manager);
+    return tcd_init_tile(p_tcd, p_tile_no, nullptr, true, 1.0F, sizeof(tcd_cblk_enc_t), p_manager);
 }
 
 bool tcd_init_decode_tile (tcd_t *p_tcd,
@@ -1570,7 +1570,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
         }
 
         tile_buf_destroy_component(l_tile_comp->buf);
-        l_tile_comp->buf = NULL;
+        l_tile_comp->buf = nullptr;
         ++l_tile_comp;
     }
 

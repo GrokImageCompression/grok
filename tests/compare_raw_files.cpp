@@ -86,8 +86,8 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
     int c;
 
     /* Init parameters*/
-    param->base_filename = NULL;
-    param->test_filename = NULL;
+    param->base_filename = nullptr;
+    param->test_filename = nullptr;
 
     grok_opterr = 0;
     while ((c = grok_getopt(argc, argv, optlist)) != -1)
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
 
     int pos = 0;
     test_cmp_parameters inParam;
-    FILE *file_test=NULL, *file_base=NULL;
+    FILE *file_test=nullptr, *file_base=nullptr;
     unsigned char equal = 0U; /* returns error by default */
 
     /* Get parameters from command line*/

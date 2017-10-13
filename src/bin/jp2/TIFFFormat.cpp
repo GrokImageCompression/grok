@@ -609,9 +609,9 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	tdata_t buf = nullptr;
 	tsize_t strip_size, rowStride;
 	int32_t const* planes[4];
-	int32_t* buffer32s = NULL;
-	convert_32s_PXCX cvtPxToCx = NULL;
-	convert_32sXXx_C1R cvt32sToTif = NULL;
+	int32_t* buffer32s = nullptr;
+	convert_32s_PXCX cvtPxToCx = nullptr;
+	convert_32sXXx_C1R cvt32sToTif = nullptr;
 	bool success = true;
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
@@ -760,7 +760,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		numAlphaChannels = 0;
 	}
 	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
-	if (buffer32s == NULL) {
+	if (buffer32s == nullptr) {
 		success = false;
 		goto cleanup;
 	}
@@ -845,7 +845,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		goto cleanup;
 	}
 	buf = _TIFFmalloc(strip_size);
-	if (buf == NULL) {
+	if (buf == nullptr) {
 		success = false;
 		goto cleanup;
 	}
@@ -1393,21 +1393,21 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	TIFF *tif;
-	tdata_t buf = NULL;
+	tdata_t buf = nullptr;
 	tstrip_t strip;
 	tsize_t strip_size;
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA */
-	opj_image_t *image = NULL;
+	opj_image_t *image = nullptr;
 	uint32_t numAlphaChannels = 0;
 	unsigned short tiBps = 0, tiPhoto = 0, tiSf = 0, tiSpp = 0, tiPC = 0;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
 	uint32_t tiWidth = 0, tiHeight = 0;
 	bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
-	convert_XXx32s_C1R cvtTifTo32s = NULL;
-	convert_32s_CXPX cvtCxToPx = NULL;
-	int32_t* buffer32s = NULL;
+	convert_XXx32s_C1R cvtTifTo32s = nullptr;
+	convert_32s_CXPX cvtCxToPx = nullptr;
+	int32_t* buffer32s = nullptr;
 	int32_t* planes[4];
 	tsize_t rowStride;
 	bool success = true;
@@ -1687,13 +1687,13 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	strip_size = TIFFStripSize(tif);
 	buf = _TIFFmalloc(strip_size);
-	if (buf == NULL) {
+	if (buf == nullptr) {
 		success = false;
 		goto cleanup;
 	}
 	rowStride = (w * tiSpp * tiBps + 7U) / 8U;
 	buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
-	if (buffer32s == NULL) {
+	if (buffer32s == nullptr) {
 		success = false;
 		goto cleanup;
 	}
@@ -1750,7 +1750,7 @@ cleanup:
 
 	if (image)
 		opj_image_destroy(image);
-	return NULL;
+	return nullptr;
 
 }/* tiftoimage() */
 

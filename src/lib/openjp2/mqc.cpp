@@ -448,7 +448,7 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
 	mqc->start = bp;
 #ifdef PLUGIN_DEBUG_ENCODE
 	if (grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG) {
-		mqc->debug_mqc.contextStream = NULL;
+		mqc->debug_mqc.contextStream = nullptr;
 		mqc->debug_mqc.contextCacheCount = 0;
 		mqc->debug_mqc.contextStreamByteCount = 0;
 		mqc->debug_mqc.debug_state = grok_plugin_get_debug_state();

@@ -259,7 +259,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
  * @param p_image   FIXME DOC
  * @param p_manager FIXME DOC
  *
- * @return Returns a decoded image if successful, returns NULL otherwise
+ * @return Returns a decoded image if successful, returns nullptr otherwise
 */
 bool jp2_decode(jp2_t *jp2,
 					grok_plugin_tile_t* tile,

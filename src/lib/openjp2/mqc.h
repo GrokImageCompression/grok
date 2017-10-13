@@ -87,7 +87,7 @@ struct raw_t {
 /* ----------------------------------------------------------------------- */
 /**
 Create a new RAW handle
-@return Returns a new RAW handle if successful, returns NULL otherwise
+@return Returns a new RAW handle if successful, returns nullptr otherwise
 */
 raw_t* raw_create(void);
 /**
@@ -150,7 +150,7 @@ struct mqc_t {
 
 /**
 Create a new MQC handle
-@return Returns a new MQC handle if successful, returns NULL otherwise
+@return Returns a new MQC handle if successful, returns nullptr otherwise
 */
 mqc_t* mqc_create(void);
 /**

@@ -89,7 +89,7 @@ void  procedure_list_destroy(procedure_list_t * p_list)
 bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedure p_procedure, event_mgr_t* p_manager )
 {
 
-    assert(p_manager != NULL);
+    assert(p_manager != nullptr);
 
     if (p_validation_list->m_nb_max_procedures == p_validation_list->m_nb_procedures) {
         procedure * new_procedures;

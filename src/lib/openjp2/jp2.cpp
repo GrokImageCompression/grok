@@ -485,7 +485,7 @@ static bool jp2_default_validation (	jp2_t * jp2,
  *
  * @param	p_id	the id of the handler to fetch.
  *
- * @return	the given handler or NULL if it could not be found.
+ * @return	the given handler or nullptr if it could not be found.
  */
 static const jp2_header_handler_t * jp2_img_find_handler (uint32_t p_id);
 
@@ -494,7 +494,7 @@ static const jp2_header_handler_t * jp2_img_find_handler (uint32_t p_id);
  *
  * @param	p_id	the id of the handler to fetch.
  *
- * @return	the given handler or NULL if it could not be found.
+ * @return	the given handler or nullptr if it could not be found.
  */
 static const jp2_header_handler_t * jp2_find_handler (uint32_t p_id );
 
@@ -627,7 +627,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
 
-	if (jp2->comps != NULL) {
+	if (jp2->comps != nullptr) {
 		event_msg(p_manager, EVT_WARNING, "Ignoring ihdr box. First ihdr box already read\n");
 		return OPJ_TRUE;
 	}
@@ -1481,9 +1481,9 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color, event_mgr_t *
 	for (i = 0; i < nr_channels; ++i) {
 		/* Palette mapping: */
 		cmp = cmap[i].cmp;
-		if (image->comps[cmp].data == NULL) {
+		if (image->comps[cmp].data == nullptr) {
 			event_msg(p_manager, EVT_ERROR,
-				"image->comps[%d].data == NULL in opj_jp2_apply_pclr().\n", i);
+				"image->comps[%d].data == nullptr in opj_jp2_apply_pclr().\n", i);
 			return false;
 		}
 	}
@@ -1504,11 +1504,11 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color, event_mgr_t *
         if(cmap[i].mtyp == 0) {
             assert( pcol == 0 );
             new_comps[i] = old_comps[cmp];
-            new_comps[i].data = NULL;
+            new_comps[i].data = nullptr;
         } else {
             assert( i == pcol );
             new_comps[pcol] = old_comps[cmp];
-            new_comps[pcol].data = NULL;
+            new_comps[pcol].data = nullptr;
         }
 
         /* Palette mapping: */
@@ -1644,7 +1644,7 @@ static bool jp2_read_pclr(	jp2_t *jp2,
     jp2_pclr->entries = entries;
     jp2_pclr->nr_entries = nr_entries;
     jp2_pclr->nr_channels = (uint8_t) l_value;
-    jp2_pclr->cmap = NULL;
+    jp2_pclr->cmap = nullptr;
 
     jp2->color.jp2_pclr = jp2_pclr;
 
@@ -1692,7 +1692,7 @@ static bool jp2_read_cmap(	jp2_t * jp2,
     (void)p_cmap_header_size;
 
     /* Need nr_channels: */
-    if(jp2->color.jp2_pclr == NULL) {
+    if(jp2->color.jp2_pclr == nullptr) {
         event_msg(p_manager, EVT_ERROR, "Need to read a PCLR box before the CMAP box.\n");
         return false;
     }
@@ -1789,7 +1789,7 @@ static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color, event_mgr_t *
     if(color->jp2_cdef->info) grok_free(color->jp2_cdef->info);
 
     grok_free(color->jp2_cdef);
-    color->jp2_cdef = NULL;
+    color->jp2_cdef = nullptr;
 
 }/* jp2_apply_cdef() */
 
@@ -1943,7 +1943,7 @@ static bool jp2_read_colr( jp2_t *jp2,
             uint32_t rl, ol, ra, oa, rb, ob, il;
 
             cielab = (uint32_t*)grok_malloc(9 * sizeof(uint32_t));
-			if (cielab == NULL) {
+			if (cielab == nullptr) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory for cielab\n");
 				return false;
 			}
@@ -2119,7 +2119,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
         l_writers[l_nb_writers++].handler = jp2_write_colr;
     }
 
-    if (jp2->color.jp2_cdef != NULL) {
+    if (jp2->color.jp2_cdef != nullptr) {
         l_writers[l_nb_writers++].handler = jp2_write_cdef;
     }
 
@@ -2405,7 +2405,7 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 			// clean up existing icc profile in jp2 struct
 			if (jp2->color.icc_profile_buf) {
 				grok_free(jp2->color.icc_profile_buf);
-				jp2->color.icc_profile_buf = NULL;
+				jp2->color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to jp2 struct
 			jp2->color.icc_profile_len = image->icc_profile_len;
@@ -2488,7 +2488,7 @@ bool jp2_setup_encoder(	jp2_t *jp2,
             return false;
         }
         /* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
-        /* in which case jp2->color.jp2_cdef->info will be NULL => valid for destruction */
+        /* in which case jp2->color.jp2_cdef->info will be nullptr => valid for destruction */
         jp2->color.jp2_cdef->info = (jp2_cdef_info_t*) grok_malloc(image->numcomps * sizeof(jp2_cdef_info_t));
         if (!jp2->color.jp2_cdef->info) {
             /* memory will be freed by jp2_destroy */
@@ -2889,7 +2889,7 @@ static const jp2_header_handler_t * jp2_find_handler (uint32_t p_id)
             return &jp2_header[i];
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 /**
@@ -2908,7 +2908,7 @@ static const jp2_header_handler_t * jp2_img_find_handler (uint32_t p_id)
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
 /**
@@ -3381,7 +3381,7 @@ void jp2_destroy(jp2_t *jp2)
         if (jp2->color.jp2_cdef) {
             if (jp2->color.jp2_cdef->info) {
                 grok_free(jp2->color.jp2_cdef->info);
-                jp2->color.jp2_cdef->info = NULL;
+                jp2->color.jp2_cdef->info = nullptr;
             }
 
             grok_free(jp2->color.jp2_cdef);
@@ -3474,7 +3474,7 @@ bool jp2_get_tile(	jp2_t *p_jp2,
     if(p_jp2->color.icc_profile_buf) {
         p_image->icc_profile_buf = p_jp2->color.icc_profile_buf;
         p_image->icc_profile_len = p_jp2->color.icc_profile_len;
-        p_jp2->color.icc_profile_buf = NULL;
+        p_jp2->color.icc_profile_buf = nullptr;
 		p_jp2->color.icc_profile_len = 0;
     }
 
@@ -3503,10 +3503,10 @@ jp2_t* jp2_create(bool p_is_decoder)
         }
 
         /* Color structure */
-        jp2->color.icc_profile_buf = NULL;
+        jp2->color.icc_profile_buf = nullptr;
         jp2->color.icc_profile_len = 0;
-        jp2->color.jp2_cdef = NULL;
-        jp2->color.jp2_pclr = NULL;
+        jp2->color.jp2_cdef = nullptr;
+        jp2->color.jp2_pclr = nullptr;
         jp2->color.jp2_has_colour_specification_box = 0;
 
         /* validation list creation */

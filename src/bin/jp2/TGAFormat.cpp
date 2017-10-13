@@ -265,13 +265,13 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (!tga_readheader(f, &pixel_bit_depth, &image_width, &image_height, &flip_image)) {
 		fclose(f);
-		return NULL;
+		return nullptr;
 	}
 
 	/* We currently only support 24 & 32 bit tga's ... */
 	if (!((pixel_bit_depth == 24) || (pixel_bit_depth == 32))) {
 		fclose(f);
-		return NULL;
+		return nullptr;
 	}
 
 	/* initialize image components */
@@ -306,12 +306,12 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (!image) {
 		fclose(f);
-		return NULL;
+		return nullptr;
 	}
 
 	if (!sanityCheckOnImage(image, numcomps)) {
 		fclose(f);
-		return NULL;
+		return nullptr;
 	}
 
 	/* set image offset and reference grid */
@@ -337,19 +337,19 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 
 				image->comps[0].data[index] = r;
@@ -365,25 +365,25 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 				if (!fread(&a, 1, 1, f)) {
 					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
-					return NULL;
+					return nullptr;
 				}
 
 				image->comps[0].data[index] = r;

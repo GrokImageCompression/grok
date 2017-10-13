@@ -1238,7 +1238,7 @@ OPJ_API void OPJ_CALLCONV opj_cleanup();
  * @param numcmpts      number of components
  * @param cmptparms     components parameters
  * @param clrspc        image color space
- * @return returns      a new image structure if successful, returns NULL otherwise
+ * @return returns      a new image structure if successful, returns nullptr otherwise
  * */
 OPJ_API opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc);
 
@@ -1256,7 +1256,7 @@ OPJ_API void OPJ_CALLCONV opj_image_destroy(opj_image_t *image);
  * @param	cmptparms   the components parameters
  * @param	clrspc      the image color space
  *
- * @return	a new image structure if successful, NULL otherwise.
+ * @return	a new image structure if successful, nullptr otherwise.
 */
 OPJ_API opj_image_t* OPJ_CALLCONV opj_image_tile_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc);
 
@@ -1412,7 +1412,7 @@ OPJ_API bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t * p_codec,
  * Creates a J2K/JP2 decompression structure
  * @param format 		Decoder to select
  *
- * @return Returns a handle to a decompressor if successful, returns NULL otherwise
+ * @return Returns a handle to a decompressor if successful, returns nullptr otherwise
  * */
 OPJ_API opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT format);
 
@@ -1684,7 +1684,7 @@ OPJ_API bool OPJ_CALLCONV opj_decode_tile_data(	opj_codec_t *p_codec,
 /**
  * Creates a J2K/JP2 compression structure
  * @param 	format 		Coder to select
- * @return 				Returns a handle to a compressor if successful, returns NULL otherwise
+ * @return 				Returns a handle to a compressor if successful, returns nullptr otherwise
  */
 OPJ_API opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT format);
 

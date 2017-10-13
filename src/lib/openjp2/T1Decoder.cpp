@@ -65,7 +65,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 						threadId,
 						&success]()		{
 
-			decodeBlockInfo* block = NULL;
+			decodeBlockInfo* block = nullptr;
 			auto impl = threadStructs[threadId];
 			while (decodeQueue.tryPop(block)) {
 				if (!impl->decode(block)) {
@@ -84,7 +84,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 
 	// cleanup
 	delete pool;
-	decodeBlockInfo* block = NULL;
+	decodeBlockInfo* block = nullptr;
 	while (decodeQueue.tryPop(block)) {
 		delete block;
 	}

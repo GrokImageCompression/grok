@@ -544,14 +544,14 @@ namespace grk {
 	 *
 	 * @param       p_image         Source or destination image
 	 * @param       p_cp            Image coding parameters.
-	 * @return              a new T2 handle if successful, NULL otherwise.
+	 * @return              a new T2 handle if successful, nullptr otherwise.
 	*/
 	t2_t* t2_create(opj_image_t *p_image, cp_t *p_cp)
 	{
 		/* create the t2 structure */
 		t2_t *l_t2 = (t2_t*)grok_calloc(1, sizeof(t2_t));
 		if (!l_t2) {
-			return NULL;
+			return nullptr;
 		}
 		l_t2->image = p_image;
 		l_t2->cp = p_cp;
@@ -1726,7 +1726,7 @@ namespace grk {
 			new_segs = (tcd_seg_t*)grok_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(tcd_seg_t));
 			if (!new_segs) {
 				grok_free(cblk->segs);
-				cblk->segs = NULL;
+				cblk->segs = nullptr;
 				cblk->numSegmentsAllocated = 0;
 				/* event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
 				return false;

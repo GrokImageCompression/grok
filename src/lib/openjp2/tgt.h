@@ -86,7 +86,7 @@ public:
 	Create a tag tree
 	@param numleafsh Width of the array of leafs of the tree
 	@param numleafsv Height of the array of leafs of the tree
-	@return Returns a new tag tree if successful, returns NULL otherwise
+	@return Returns a new tag tree if successful, returns nullptr otherwise
 	*/
 	TagTree(uint32_t numleafsh, uint32_t numleafsv, event_mgr_t *manager);
 	~TagTree();
