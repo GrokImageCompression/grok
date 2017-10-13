@@ -7453,8 +7453,10 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
             }
         }
-        if(p_stream->get_number_byte_left() == 0
-                && p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC)
+
+		// no bytes left and no EOC marker : we're done!
+        if(!p_stream->get_number_byte_left()
+				&& p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_NEOC)
             break;
 
         /* If we didn't skip data before, we need to read the SOD marker*/
@@ -7475,7 +7477,6 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 if (l_correction_needed) {
                     uint32_t l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
                     uint32_t l_tile_no;
-
                     p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 0;
                     p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction = 1;
                     /* correct tiles */
@@ -7508,7 +7509,6 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                 return false;
             }
-
             /* Read 2 bytes from buffer as the new marker ID */
             grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
         }
@@ -7519,16 +7519,15 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
        p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
     }
 
-    /* FIXME DOC ???*/
+    //if we are not ready to decode tile part data, then skip tiles with no tile data
+	// !! Why ???
     if ( ! p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
         uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
         l_tcp = p_j2k->m_cp.tcps + p_j2k->m_current_tile_number;
-
         while( (p_j2k->m_current_tile_number < l_nb_tiles) && (!l_tcp->m_tile_data) ) {
             ++p_j2k->m_current_tile_number;
             ++l_tcp;
         }
-
         if (p_j2k->m_current_tile_number == l_nb_tiles) {
             *p_go_on = false;
             return true;
@@ -7540,9 +7539,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
         return false;
     }
     /*FIXME ???*/
-
     l_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
-
     if (! tcd_init_decode_tile(p_j2k->m_tcd,
                                    p_j2k->m_output_image,
                                    p_j2k->m_current_tile_number,
@@ -7554,17 +7551,15 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
     event_msg(p_manager, EVT_INFO, "Header of tile %d / %d has been read.\n",
                   p_j2k->m_current_tile_number+1, (p_j2k->m_cp.th * p_j2k->m_cp.tw));
 
-    *p_tile_index = p_j2k->m_current_tile_number;
-    *p_go_on = true;
-    *p_data_size = tcd_get_decoded_tile_size(p_j2k->m_tcd);
-    *p_tile_x0 = p_j2k->m_tcd->tile->x0;
-    *p_tile_y0 = p_j2k->m_tcd->tile->y0;
-    *p_tile_x1 = p_j2k->m_tcd->tile->x1;
-    *p_tile_y1 = p_j2k->m_tcd->tile->y1;
-    *p_nb_comps = p_j2k->m_tcd->tile->numcomps;
-
+    *p_tile_index	= p_j2k->m_current_tile_number;
+    *p_go_on		= true;
+    *p_data_size	= tcd_get_decoded_tile_size(p_j2k->m_tcd);
+    *p_tile_x0		= p_j2k->m_tcd->tile->x0;
+    *p_tile_y0		= p_j2k->m_tcd->tile->y0;
+    *p_tile_x1		= p_j2k->m_tcd->tile->x1;
+    *p_tile_y1		= p_j2k->m_tcd->tile->y1;
+    *p_nb_comps		= p_j2k->m_tcd->tile->numcomps;
     p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_DATA;
-
     return true;
 }
 

@@ -1523,7 +1523,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	const char* infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
 	{
-		bool isBufferStream = false;
+		bool isBufferStream = true;
 		bool isMappedFile = false;
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
@@ -1549,13 +1549,9 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 			}
 			rewind(fp);
 			buffer = new uint8_t[lengthOfFile];
-			size_t bytesRead = 0;
-			size_t totalBytes = 0;
-			while ( (bytesRead = fread(buffer, 1, lengthOfFile, fp)) ) {
-				totalBytes += bytesRead;
-			}
+			size_t bytesRead = fread(buffer, 1, lengthOfFile, fp);
 			fclose(fp);
-			if (totalBytes != (size_t)lengthOfFile) {
+			if (bytesRead != (size_t)lengthOfFile) {
 				fprintf(stderr, "ERROR -> opj_decompress: Unable to read full length of file %s", parameters->infile);
 				failed = 1;
 				goto cleanup;
