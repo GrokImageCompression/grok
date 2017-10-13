@@ -1897,16 +1897,18 @@ static bool j2k_read_soc(   j2k_t *p_j2k,
     /* Next marker should be a SIZ marker in the main header */
     p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSIZ;
 
-    /* FIXME move it in a index structure included in p_j2k*/
-    p_j2k->cstr_index->main_head_start = p_stream->tell() - 2;
+	if (p_j2k->cstr_index) {
+		/* FIXME move it in a index structure included in p_j2k*/
+		p_j2k->cstr_index->main_head_start = p_stream->tell() - 2;
 
-    event_msg(p_manager, EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
+		event_msg(p_manager, EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
 
-    /* Add the marker to the codestream index*/
-    if (false == j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC, p_j2k->cstr_index->main_head_start, 2)) {
-        event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n");
-        return false;
-    }
+		/* Add the marker to the codestream index*/
+		if (false == j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC, p_j2k->cstr_index->main_head_start, 2)) {
+			event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n");
+			return false;
+		}
+	}
     return true;
 }
 
@@ -4638,7 +4640,7 @@ static bool j2k_read_unk (     j2k_t *p_j2k,
             } else {
                 if (l_marker_handler->id != J2K_MS_UNK) {
                     /* Add the marker to the codestream index*/
-                    if (l_marker_handler->id != J2K_MS_SOT) {
+                    if (p_j2k->cstr_index && l_marker_handler->id != J2K_MS_SOT) {
                         bool res = j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_UNK,
                                                         (uint32_t) p_stream->tell() - l_size_unk,
                                                         l_size_unk);
@@ -6306,10 +6308,12 @@ bool j2k_read_header(   GrokStream *p_stream,
     /* Copy codestream image information to the output image */
     opj_copy_image_header(p_j2k->m_private_image, *p_image);
 
-    /*Allocate and initialize some elements of codestrem index*/
-    if (!j2k_allocate_tile_element_cstr_index(p_j2k)) {
-        return false;
-    }
+	if (p_j2k->cstr_index) {
+		/*Allocate and initialize some elements of codestrem index*/
+		if (!j2k_allocate_tile_element_cstr_index(p_j2k)) {
+			return false;
+		}
+	}
 
     return true;
 }
@@ -6753,15 +6757,17 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
             return false;
         }
 
-        /* Add the marker to the codestream index*/
-        if (false == j2k_add_mhmarker(
-                    p_j2k->cstr_index,
-                    l_marker_handler->id,
-                    (uint32_t) p_stream->tell() - l_marker_size - 4,
-                    l_marker_size + 4 )) {
-            event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n");
-            return false;
-        }
+		if (p_j2k->cstr_index) {
+			/* Add the marker to the codestream index*/
+			if (false == j2k_add_mhmarker(
+				p_j2k->cstr_index,
+				l_marker_handler->id,
+				(uint32_t)p_stream->tell() - l_marker_size - 4,
+				l_marker_size + 4)) {
+				event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n");
+				return false;
+			}
+		}
 
         /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
         if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
@@ -6816,8 +6822,10 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
     event_msg(p_manager, EVT_INFO, "Main header has been correctly decoded.\n");
 
-    /* Position of the last element if the main header */
-    p_j2k->cstr_index->main_head_end = (uint32_t) p_stream->tell() - 2;
+	if (p_j2k->cstr_index) {
+		/* Position of the last element if the main header */
+		p_j2k->cstr_index->main_head_end = (uint32_t)p_stream->tell() - 2;
+	}
 
     /* Next step: read a tile-part header */
     p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
@@ -7426,15 +7434,17 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 return false;
             }
 
-            /* Add the marker to the codestream index*/
-            if (false == j2k_add_tlmarker(p_j2k->m_current_tile_number,
-                                              p_j2k->cstr_index,
-                                              l_marker_handler->id,
-                                              (uint32_t) p_stream->tell() - l_marker_size - 4,
-                                              l_marker_size + 4 )) {
-                event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n");
-                return false;
-            }
+			if (p_j2k->cstr_index) {
+				/* Add the marker to the codestream index*/
+				if (false == j2k_add_tlmarker(p_j2k->m_current_tile_number,
+					p_j2k->cstr_index,
+					l_marker_handler->id,
+					(uint32_t)p_stream->tell() - l_marker_size - 4,
+					l_marker_size + 4)) {
+					event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n");
+					return false;
+				}
+			}
 
             /* Keep the position of the last SOT marker read */
             if ( l_marker_handler->id == J2K_MS_SOT ) {
