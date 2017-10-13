@@ -3939,16 +3939,16 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
     /* If know the number of tile part header we will check if we didn't read the last*/
     if (l_tcp->m_nb_tile_parts) {
         if (l_tcp->m_nb_tile_parts == (l_current_part+1)) {
-            p_j2k->m_specific_param.m_decoder.m_can_decode = 1; /* Process the last tile-part header*/
+            p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 1; /* Process the last tile-part header*/
         }
     }
 
     if (!p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
         /* Keep the size of data to skip after this marker */
-        p_j2k->m_specific_param.m_decoder.m_sot_length = l_tot_len - 12; /* SOT_marker_size = 12 */
+        p_j2k->m_specific_param.m_decoder.tile_part_data_length = l_tot_len - 12; /* SOT marker size = 12 */
     } else {
         /* FIXME: need to be computed from the number of bytes remaining in the codestream */
-        p_j2k->m_specific_param.m_decoder.m_sot_length = 0;
+        p_j2k->m_specific_param.m_decoder.tile_part_data_length = 0;
     }
 
     p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPH;
@@ -4089,25 +4089,26 @@ static bool j2k_read_sod (j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
+	// note: we subtract 2 to account for SOD marker
 	tcp_t * l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
     if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
-        p_j2k->m_specific_param.m_decoder.m_sot_length = (uint64_t)(p_stream->get_number_byte_left() - 2);
+        p_j2k->m_specific_param.m_decoder.tile_part_data_length = (uint64_t)(p_stream->get_number_byte_left() - 2);
     } else {
-        if (p_j2k->m_specific_param.m_decoder.m_sot_length >= 2 )
-            p_j2k->m_specific_param.m_decoder.m_sot_length -= 2;
+        if (p_j2k->m_specific_param.m_decoder.tile_part_data_length >= 2 )
+            p_j2k->m_specific_param.m_decoder.tile_part_data_length -= 2;
     }
-    if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
+    if (p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
 		auto bytesLeftInStream = p_stream->get_number_byte_left();
         // check that there are enough bytes in stream to fill tile data
-        if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > bytesLeftInStream) {
+        if ((int64_t)p_j2k->m_specific_param.m_decoder.tile_part_data_length > bytesLeftInStream) {
             event_msg(p_manager, 
 						EVT_WARNING, 
 						"Tile part length size %lld inconsistent with stream length %lld\n", 
-						p_j2k->m_specific_param.m_decoder.m_sot_length, 
+						p_j2k->m_specific_param.m_decoder.tile_part_data_length, 
 						p_stream->get_number_byte_left());
 
-			// sanitize m_sot_length
-			p_j2k->m_specific_param.m_decoder.m_sot_length = bytesLeftInStream;
+			// sanitize tile_part_data_length
+			p_j2k->m_specific_param.m_decoder.tile_part_data_length = bytesLeftInStream;
         }
     } 
     /* Index */
@@ -4119,13 +4120,13 @@ static bool j2k_read_sod (j2k_t *p_j2k,
         l_cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index[l_current_tile_part].end_header =
             l_current_pos;
         l_cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index[l_current_tile_part].end_pos =
-            l_current_pos + p_j2k->m_specific_param.m_decoder.m_sot_length + 2;
+            l_current_pos + p_j2k->m_specific_param.m_decoder.tile_part_data_length + 2;
 
         if (false == j2k_add_tlmarker(p_j2k->m_current_tile_number,
                                           l_cstr_index,
                                           J2K_MS_SOD,
                                           l_current_pos,
-                                          (uint32_t)(p_j2k->m_specific_param.m_decoder.m_sot_length + 2))) {
+                                          (uint32_t)(p_j2k->m_specific_param.m_decoder.tile_part_data_length + 2))) {
             event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n");
             return false;
         }
@@ -4133,20 +4134,20 @@ static bool j2k_read_sod (j2k_t *p_j2k,
         /*l_cstr_index->packno = 0;*/
     }
 	size_t l_current_read_size = 0;
-    if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
+    if (p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
 		if (!l_tcp->m_tile_data)
 			l_tcp->m_tile_data = new seg_buf_t();
 
-		if (!l_tcp->m_tile_data->alloc_and_push_back( p_j2k->m_specific_param.m_decoder.m_sot_length)) {
+		if (!l_tcp->m_tile_data->alloc_and_push_back( p_j2k->m_specific_param.m_decoder.tile_part_data_length)) {
 			event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
 			return false;
 		}
         l_current_read_size = p_stream->read(l_tcp->m_tile_data->get_global_ptr(),
-											p_j2k->m_specific_param.m_decoder.m_sot_length,
+											p_j2k->m_specific_param.m_decoder.tile_part_data_length,
 											p_manager);
 
      } 
-    if (l_current_read_size != p_j2k->m_specific_param.m_decoder.m_sot_length) {
+    if (l_current_read_size != p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
         p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
     } else {
         p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
@@ -4602,7 +4603,7 @@ static bool j2k_read_unk (     j2k_t *p_j2k,
     for (;;) {
         /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
         if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -6643,7 +6644,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
     /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
     if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-        event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+        event_msg(p_manager, EVT_ERROR, "Stream too short\n");
         return false;
     }
 
@@ -6696,7 +6697,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
         /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
         if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -6727,7 +6728,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
         /* Try to read the rest of the marker segment from stream and copy them into the buffer */
         if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,l_marker_size,p_manager) != l_marker_size) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -6751,7 +6752,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
 
         /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
         if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -7245,7 +7246,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t til
 
         /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
         if (p_stream->read( l_header_data, 2, p_manager) != 2) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -7260,7 +7261,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t til
         l_marker_size -= 2;
 
         if (p_stream->read( l_header_data, l_marker_size, p_manager) != l_marker_size) {
-            event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+            event_msg(p_manager, EVT_ERROR, "Stream too short\n");
             return false;
         }
 
@@ -7335,7 +7336,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
     }
 
     /* Read into the codestream until reach the EOC or ! can_decode ??? FIXME */
-    while ( (!p_j2k->m_specific_param.m_decoder.m_can_decode) && (l_current_marker != J2K_MS_EOC) ) {
+    while ( (!p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) && (l_current_marker != J2K_MS_EOC) ) {
 
         /* Try to read until the Start Of Data is detected */
         while (l_current_marker != J2K_MS_SOD) {
@@ -7347,7 +7348,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 
             /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
             if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-                event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                 return false;
             }
 
@@ -7360,10 +7361,11 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                 return false;
             }
 
-            /* Why this condition? FIXME */
+            // subtract tile part header and header marker size
             if (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH) {
-                p_j2k->m_specific_param.m_decoder.m_sot_length -= (l_marker_size + 2);
+                p_j2k->m_specific_param.m_decoder.tile_part_data_length -= (l_marker_size + 2);
             }
+
             l_marker_size -= 2; /* Subtract the size of the marker ID already read */
 
             /* Get the marker handler from the marker ID */
@@ -7399,7 +7401,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 
             /* Try to read the rest of the marker segment from stream and copy them into the buffer */
             if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,l_marker_size,p_manager) != l_marker_size) {
-                event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                 return false;
             }
 
@@ -7426,7 +7428,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 				}
 			}
 
-            /* Keep the position of the last SOT marker read */
+            // Cache position of last SOT marker read 
             if ( l_marker_handler->id == J2K_MS_SOT ) {
                 uint32_t sot_pos = (uint32_t) p_stream->tell() - l_marker_size - 4 ;
                 if (sot_pos > p_j2k->m_specific_param.m_decoder.m_last_sot_read_pos) {
@@ -7435,19 +7437,19 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
             }
 
             if (p_j2k->m_specific_param.m_decoder.m_skip_data) {
-                /* Skip the rest of the tile part header*/
-                if (!p_stream->skip(p_j2k->m_specific_param.m_decoder.m_sot_length,p_manager)) {
-                    event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                // Skip the rest of the tile part header
+                if (!p_stream->skip(p_j2k->m_specific_param.m_decoder.tile_part_data_length,p_manager)) {
+                    event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                     return false;
                 }
-                l_current_marker = J2K_MS_SOD; /* Normally we reached a SOD */
+                l_current_marker = J2K_MS_SOD; //We force current marker to equal SOD
             } else {
-                /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
+                // Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
                 if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-                    event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                    event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                     return false;
                 }
-                /* Read 2 bytes from the buffer as the new marker ID */
+                // Read 2 bytes from the buffer as the new marker ID 
                 grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
             }
         }
@@ -7461,7 +7463,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
             if (! j2k_read_sod(p_j2k, p_stream, p_manager)) {
                 return false;
             }
-            if (p_j2k->m_specific_param.m_decoder.m_can_decode && !p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction_checked) {
+            if (p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data && !p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction_checked) {
                 /* Issue 254 */
                 bool l_correction_needed;
 
@@ -7474,7 +7476,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                     uint32_t l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
                     uint32_t l_tile_no;
 
-                    p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
+                    p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 0;
                     p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction = 1;
                     /* correct tiles */
                     for (l_tile_no = 0U; l_tile_no < l_nb_tiles; ++l_tile_no) {
@@ -7485,10 +7487,10 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
                     event_msg(p_manager, EVT_WARNING, "Non conformant codestream TPsot==TNsot.\n");
                 }
             }
-            if (! p_j2k->m_specific_param.m_decoder.m_can_decode) {
+            if (! p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
                 /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
                 if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-                    event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                    event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                     return false;
                 }
 
@@ -7498,12 +7500,12 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
         } else {
             /* Indicate we will try to read a new tile-part header*/
             p_j2k->m_specific_param.m_decoder.m_skip_data = 0;
-            p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
+            p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 0;
             p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
 
             /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
             if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,2,p_manager) != 2) {
-                event_msg(p_manager, EVT_ERROR, "GrokStream too short\n");
+                event_msg(p_manager, EVT_ERROR, "Stream too short\n");
                 return false;
             }
 
@@ -7518,7 +7520,7 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
     }
 
     /* FIXME DOC ???*/
-    if ( ! p_j2k->m_specific_param.m_decoder.m_can_decode) {
+    if ( ! p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
         uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
         l_tcp = p_j2k->m_cp.tcps + p_j2k->m_current_tile_number;
 
@@ -7650,7 +7652,7 @@ bool j2k_decode_tile (  j2k_t * p_j2k,
 		/* we only destroy the data, which will be re-read in read_tile_header*/
 		j2k_tcp_data_destroy(l_tcp);
 
-		p_j2k->m_specific_param.m_decoder.m_can_decode = 0;
+		p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 0;
 		p_j2k->m_specific_param.m_decoder.m_state &= (~(J2K_DEC_STATE_DATA));
 
 		// if there is no EOC marker and there is also no data left, then simply return true
@@ -9273,7 +9275,7 @@ static bool j2k_decode_tiles ( j2k_t *p_j2k,
 		catch (DecodeUnknownMarkerAtEndOfTileException e) {
 			// only worry about exception if we have more tiles to decode
 			if (nr_tiles < num_tiles_to_decode - 1) {
-				event_msg(p_manager, EVT_ERROR, "GrokStream too short, expected SOT\n");
+				event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
 				if (l_current_data)
 					grok_free(l_current_data);
 				event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n", l_current_tile_no + 1, num_tiles_to_decode);
