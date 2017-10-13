@@ -130,12 +130,17 @@ int64_t seg_buf_t::skip(int64_t p_nb_bytes)
 #endif
 buf_t* seg_buf_t::add_segment(uint8_t* buf, size_t len)
 {
-    buf_t* new_seg = nullptr;
-    new_seg = new buf_t(buf, len);
-	segments.push_back(new_seg);
-    cur_seg_id = (int32_t)segments.size() - 1;
-    data_len += len;
+    buf_t* new_seg = new buf_t(buf, len);
+	add_segment(new_seg);
     return new_seg;
+}
+
+void  seg_buf_t::add_segment(buf_t* seg) {
+	if (!seg)
+		return;
+	segments.push_back(seg);
+	cur_seg_id = (int32_t)segments.size() - 1;
+	data_len += seg->len;
 }
 
 void seg_buf_t::cleanup(void)

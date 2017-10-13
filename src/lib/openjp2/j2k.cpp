@@ -4101,7 +4101,7 @@ static bool j2k_read_sod (j2k_t *p_j2k,
         if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > p_stream->get_number_byte_left()) {
             event_msg(p_manager, 
 						EVT_WARNING, 
-						"Tile part length size %d inconsistent with stream length %lld\n", 
+						"Tile part length size %lld inconsistent with stream length %lld\n", 
 						p_j2k->m_specific_param.m_decoder.m_sot_length, 
 						p_stream->get_number_byte_left());
         }
