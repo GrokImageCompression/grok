@@ -616,8 +616,8 @@ namespace grk {
 		event_mgr_t *p_manager)
 
 	{
-		uint8_t *p_src_data = seg_buf_get_global_ptr(src_buf);
-		uint64_t p_max_length = src_buf->data_len - seg_buf_get_global_offset(src_buf);
+		uint8_t *p_src_data = src_buf->get_global_ptr();
+		uint64_t p_max_length = src_buf->data_len - src_buf->get_global_offset();
 		uint32_t l_nb_code_blocks = 0;
 		uint8_t *active_src = p_src_data;
 		cp_t *l_cp = p_t2->cp;
@@ -720,7 +720,7 @@ namespace grk {
 
 			*p_is_data_present = false;
 			*p_data_read = (size_t)(active_src - p_src_data);
-			seg_buf_incr_cur_seg_offset(src_buf, *p_data_read);
+			src_buf->incr_cur_seg_offset(*p_data_read);
 			return true;
 		}
 		for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
@@ -875,7 +875,7 @@ namespace grk {
 
 		*p_is_data_present = true;
 		*p_data_read = (uint32_t)(active_src - p_src_data);
-		seg_buf_incr_cur_seg_offset(src_buf, *p_data_read);
+		src_buf->incr_cur_seg_offset(*p_data_read);
 
 		return true;
 	}
@@ -919,7 +919,7 @@ namespace grk {
 
 				uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
 				do {
-					size_t offset = (size_t)seg_buf_get_global_offset(src_buf);
+					size_t offset = (size_t)src_buf->get_global_offset();
 					size_t len = src_buf->data_len;
 					// Check possible overflow on segment length
 					if (((offset + l_seg->newlen) > len)) {
@@ -941,9 +941,9 @@ namespace grk {
 					}
 					// only add segment to seg_buffers if length is greater than zero
 					if (l_seg->newlen) {
-						min_buf_vec_push_back(&l_cblk->seg_buffers, seg_buf_get_global_ptr(src_buf), (uint16_t)l_seg->newlen);
+						l_cblk->seg_buffers.push_back(src_buf->get_global_ptr(), (uint16_t)l_seg->newlen);
 						*(p_data_read) += l_seg->newlen;
-						seg_buf_incr_cur_seg_offset(src_buf, l_seg->newlen);
+						src_buf->incr_cur_seg_offset(l_seg->newlen);
 						l_cblk->dataSize += l_seg->newlen;
 						l_seg->len += l_seg->newlen;
 					}
@@ -1601,7 +1601,7 @@ namespace grk {
 		bool l_read_data;
 		uint64_t l_nb_bytes_read = 0;
 		uint64_t l_nb_total_bytes_read = 0;
-		uint64_t p_max_length = (uint64_t)seg_buf_get_cur_seg_len(src_buf);
+		uint64_t p_max_length = (uint64_t)src_buf->get_cur_seg_len();
 
 		*p_data_read = 0;
 
@@ -1630,7 +1630,7 @@ namespace grk {
 				p_manager)) {
 				return false;
 			}
-			seg_buf_incr_cur_seg_offset(src_buf, l_nb_bytes_read);
+			src_buf->incr_cur_seg_offset(l_nb_bytes_read);
 			l_nb_total_bytes_read += l_nb_bytes_read;
 		}
 		*p_data_read = l_nb_total_bytes_read;

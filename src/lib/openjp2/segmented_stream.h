@@ -44,36 +44,12 @@ Smart wrapper to low level C array
 */
 
 struct min_buf_t {
+	min_buf_t() : buf(nullptr), len(0) {}
+	min_buf_t(uint8_t* buffer, uint16_t length) : buf(buffer), 
+												  len(length) {}
     uint8_t *buf;		/* internal array*/
     uint16_t len;		/* length of array */
 };
-
-/*
-Copy all segments, in sequence, into contiguous array
-*/
-bool min_buf_vec_copy_to_contiguous_buffer(grok_vec_t* min_buf_vec, uint8_t* buffer);
-
-/*
-Push buffer to back of min buf vector
-*/
-bool min_buf_vec_push_back(grok_vec_t* buf_vec, uint8_t* buf, uint16_t len);
-
-/*
-Sum lengths of all buffers
-*/
-
-uint16_t min_buf_vec_get_len(grok_vec_t* min_buf_vec);
-
-
-/*
-Increment buffer offset
-*/
-void buf_incr_offset(buf_t* buf, uint64_t off);
-
-/*
-Free buffer and also its internal array if owns_data is true
-*/
-void buf_free(buf_t* buf);
 
 
 /*  Segmented Buffer Interface
@@ -85,69 +61,74 @@ contiguous buffer.
 struct seg_buf_t {
 	seg_buf_t();
 	~seg_buf_t();
+
+	/*
+	Wrap existing array and add to the back of the segmented buffer.
+	*/
+	bool push_back( uint8_t* buf, size_t len);
+
+	/*
+	Allocate array and add to the back of the segmented buffer
+	*/
+	bool alloc_and_push_back( size_t len);
+
+	/*
+	Increment offset of current segment
+	*/
+	void incr_cur_seg_offset( uint64_t offset);
+
+	/*
+	Get length of current segment
+	*/
+	size_t get_cur_seg_len(void);
+
+	/*
+	Get offset of current segment
+	*/
+	int64_t get_cur_seg_offset(void);
+
+	/*
+	Treat segmented buffer as single contiguous buffer, and get current pointer
+	*/
+	uint8_t* get_global_ptr(void);
+
+	/*
+	Treat segmented buffer as single contiguous buffer, and get current offset
+	*/
+	int64_t get_global_offset(void);
+
+	/*
+	Reset all offsets to zero, and set current segment to beginning of list
+	*/
+	void rewind(void);
+
+	void increment(void);
+
+	size_t read(void * p_buffer, size_t p_nb_bytes);
+
+	buf_t* add_segment(uint8_t* buf, size_t len);
+
+	/*
+	Copy all segments, in sequence, into contiguous array
+	*/
+	bool copy_to_contiguous_buffer( uint8_t* buffer);
+
+	/*
+	Cleans up internal resources
+	*/
+	void	cleanup(void);
+
+	/*
+	Return current pointer, stored in ptr variable, and advance segmented buffer
+	offset by chunk_len
+	*/
+	bool zero_copy_read(uint8_t** ptr,	size_t chunk_len);
+
+
     size_t data_len;	/* total length of all segments*/
     size_t cur_seg_id;	/* current index into segments vector */
 	std::vector<buf_t*> segments;
 };
-
-/*
-Wrap existing array and add to the back of the segmented buffer.
-*/
-bool seg_buf_push_back(seg_buf_t* seg_buf, uint8_t* buf, size_t len);
-
-/*
-Allocate array and add to the back of the segmented buffer
-*/
-bool seg_buf_alloc_and_push_back(seg_buf_t* seg_buf, size_t len);
-
-/*
-Increment offset of current segment
-*/
-void seg_buf_incr_cur_seg_offset(seg_buf_t* seg_buf, uint64_t offset);
-
-/*
-Get length of current segment
-*/
-size_t seg_buf_get_cur_seg_len(seg_buf_t* seg_buf);
-
-/*
-Get offset of current segment
-*/
-int64_t seg_buf_get_cur_seg_offset(seg_buf_t* seg_buf);
-
-/*
-Treat segmented buffer as single contiguous buffer, and get current pointer
-*/
-uint8_t* seg_buf_get_global_ptr(seg_buf_t* seg_buf);
-
-/*
-Treat segmented buffer as single contiguous buffer, and get current offset
-*/
-int64_t seg_buf_get_global_offset(seg_buf_t* seg_buf);
-
-/*
-Reset all offsets to zero, and set current segment to beginning of list
-*/
-void seg_buf_rewind(seg_buf_t* seg_buf);
-
-/*
-Copy all segments, in sequence, into contiguous array
-*/
-bool seg_buf_copy_to_contiguous_buffer(seg_buf_t* seg_buf, uint8_t* buffer);
-
-/*
-Cleans up internal resources
-*/
-void	seg_buf_cleanup(seg_buf_t* seg_buf);
-
-/*
-Return current pointer, stored in ptr variable, and advance segmented buffer
-offset by chunk_len
-
-*/
-bool seg_buf_zero_copy_read(seg_buf_t* seg_buf,
-                                uint8_t** ptr,
-                                size_t chunk_len);
 
 
 

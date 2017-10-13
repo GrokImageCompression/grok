@@ -4084,36 +4084,20 @@ static bool j2k_write_sod(     j2k_t *p_j2k,
 
 static bool j2k_read_sod (j2k_t *p_j2k,
                               GrokStream *p_stream,
-                              event_mgr_t * p_manager
-                             )
-{
-    size_t l_current_read_size;
-    opj_codestream_index_t * l_cstr_index = nullptr;
-    tcp_t * l_tcp = nullptr;
-    bool l_sot_length_pb_detected = false;
-
-    
+                              event_mgr_t * p_manager){
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
-    l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
-
+	tcp_t * l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
     if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
-        /* stream_get_number_byte_left returns int64_t
-        // but we are in the last tile part,
-        // so its result will fit on uint32_t unless we find
-        // a file with a single tile part of more than 4 GB...*/
         p_j2k->m_specific_param.m_decoder.m_sot_length = (uint64_t)(p_stream->get_number_byte_left() - 2);
     } else {
-        /* Check to avoid pass the limit of uint32_t */
         if (p_j2k->m_specific_param.m_decoder.m_sot_length >= 2 )
             p_j2k->m_specific_param.m_decoder.m_sot_length -= 2;
     }
-
     if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
-        /* If we are here, we'll try to read the data after allocation */
-        /* Check enough bytes left in stream before allocation */
+        // check that there are enough bytes in stream to fill tile data
         if ((int64_t)p_j2k->m_specific_param.m_decoder.m_sot_length > p_stream->get_number_byte_left()) {
             event_msg(p_manager, 
 						EVT_WARNING, 
@@ -4121,12 +4105,9 @@ static bool j2k_read_sod (j2k_t *p_j2k,
 						p_j2k->m_specific_param.m_decoder.m_sot_length, 
 						p_stream->get_number_byte_left());
         }
-    } else {
-        l_sot_length_pb_detected = true;
-    }
-
+    } 
     /* Index */
-    l_cstr_index = p_j2k->cstr_index;
+	opj_codestream_index_t* l_cstr_index = p_j2k->cstr_index;
     if (l_cstr_index) {
         int64_t l_current_pos = p_stream->tell() - 2;
 
@@ -4147,25 +4128,20 @@ static bool j2k_read_sod (j2k_t *p_j2k,
 
         /*l_cstr_index->packno = 0;*/
     }
-
-    /* Patch to support new PHR data */
-    if (!l_sot_length_pb_detected) {
+	size_t l_current_read_size = 0;
+    if (p_j2k->m_specific_param.m_decoder.m_sot_length) {
 		if (!l_tcp->m_tile_data)
 			l_tcp->m_tile_data = new seg_buf_t();
 
-		if (!seg_buf_alloc_and_push_back(l_tcp->m_tile_data, p_j2k->m_specific_param.m_decoder.m_sot_length)) {
+		if (!l_tcp->m_tile_data->alloc_and_push_back( p_j2k->m_specific_param.m_decoder.m_sot_length)) {
 			event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
 			return false;
 		}
-        l_current_read_size = p_stream->read(
-                                    seg_buf_get_global_ptr(l_tcp->m_tile_data),
-                                    p_j2k->m_specific_param.m_decoder.m_sot_length,
-                                    p_manager);
+        l_current_read_size = p_stream->read(l_tcp->m_tile_data->get_global_ptr(),
+											p_j2k->m_specific_param.m_decoder.m_sot_length,
+											p_manager);
 
-     } else {
-        l_current_read_size = 0;
-    }
-
+     } 
     if (l_current_read_size != p_j2k->m_specific_param.m_decoder.m_sot_length) {
         p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
     } else {

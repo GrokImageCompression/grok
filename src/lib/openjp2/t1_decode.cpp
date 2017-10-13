@@ -576,7 +576,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint32_t cblksty)
 {
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
-	if (!min_buf_vec_get_len(&cblk->seg_buffers))
+	if (!cblk->seg_buffers.get_len())
 		return true;
 	if (!allocCompressed(cblk))
 		return false;
