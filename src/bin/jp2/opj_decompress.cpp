@@ -1523,7 +1523,7 @@ int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
 	const char* infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
 	{
-		bool isBufferStream = true;
+		bool isBufferStream = false;
 		bool isMappedFile = false;
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
