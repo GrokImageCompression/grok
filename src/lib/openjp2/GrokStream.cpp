@@ -74,9 +74,9 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 	m_skip_fn(nullptr),
 	m_seek_fn(nullptr),
 	m_status(0),
-	m_stream_offset(0),
 	m_buffer(nullptr),
 	m_buffer_size(0),
+	m_stream_offset(0),
 	m_buffer_current_ptr(nullptr),
 	m_bytes_in_buffer(0),
 	isBufferStream(false)
@@ -104,9 +104,9 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 																m_skip_fn(nullptr),
 																m_seek_fn(nullptr),
 																m_status(0),
-																m_stream_offset(0),
 																m_buffer(nullptr),
 																m_buffer_size(0),
+																m_stream_offset(0),
 																m_buffer_current_ptr(nullptr),
 																m_bytes_in_buffer(0),
 																isBufferStream(true)
@@ -132,13 +132,17 @@ GrokStream::~GrokStream() {
 	}
 }
 
+//note: passing in nullptr for p_buffer will execute a zero-copy read
 size_t GrokStream::read(uint8_t * p_buffer,
 	size_t p_size,
 	event_mgr_t * p_event_mgr)
 {
+	if (!p_buffer && !supportsZeroCopy())
+		throw new std::exception();
 	size_t l_read_nb_bytes = 0;
 	if (m_bytes_in_buffer >= p_size) {
-		memcpy(p_buffer, m_buffer_current_ptr, p_size);
+		if (p_buffer)
+			memcpy(p_buffer, m_buffer_current_ptr, p_size);
 		m_buffer_current_ptr += p_size;
 		m_bytes_in_buffer -= p_size;
 		l_read_nb_bytes += p_size;
@@ -149,7 +153,8 @@ size_t GrokStream::read(uint8_t * p_buffer,
 	/* if we get here, the remaining data in buffer is not sufficient */
 	if (m_status & GROK_STREAM_STATUS_END) {
 		l_read_nb_bytes += m_bytes_in_buffer;
-		memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
+		if (p_buffer)
+			memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
 		m_stream_offset += (int64_t)m_bytes_in_buffer;
 		m_buffer_current_ptr += m_bytes_in_buffer;
 		m_bytes_in_buffer = 0;
@@ -159,7 +164,8 @@ size_t GrokStream::read(uint8_t * p_buffer,
 	/* the flag is not set, we copy data and then do an actual read on the stream */
 	if (m_bytes_in_buffer) {
 		l_read_nb_bytes += m_bytes_in_buffer;
-		memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
+		if (p_buffer)
+			memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
 		p_buffer += m_bytes_in_buffer;
 		p_size -= m_bytes_in_buffer;
 		m_stream_offset += (int64_t)m_bytes_in_buffer;
@@ -191,7 +197,8 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			else if (m_bytes_in_buffer < p_size) {
 				/* not enough data */
 				l_read_nb_bytes += m_bytes_in_buffer;
-				memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
+				if (p_buffer)
+					memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
 				p_buffer += m_bytes_in_buffer;
 				p_size -= m_bytes_in_buffer;
 				m_stream_offset += (int64_t)m_bytes_in_buffer;
@@ -200,7 +207,8 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			}
 			else {
 				l_read_nb_bytes += p_size;
-				memcpy(p_buffer, m_buffer_current_ptr, p_size);
+				if (p_buffer)
+					memcpy(p_buffer, m_buffer_current_ptr, p_size);
 				m_buffer_current_ptr += p_size;
 				m_bytes_in_buffer -= p_size;
 				m_stream_offset += (int64_t)p_size;
@@ -223,7 +231,8 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			else if (m_bytes_in_buffer < p_size) {
 				/* not enough data */
 				l_read_nb_bytes += m_bytes_in_buffer;
-				p_buffer += m_bytes_in_buffer;
+				if (p_buffer)
+					p_buffer += m_bytes_in_buffer;
 				p_size -= m_bytes_in_buffer;
 				m_stream_offset += (int64_t)m_bytes_in_buffer;
 				m_buffer_current_ptr = m_buffer;
@@ -353,7 +362,6 @@ size_t GrokStream::write_bytes(const uint8_t * p_buffer,
 		}
 	}
 }
-
 void GrokStream::write_increment(size_t p_size) {
 	m_buffer_current_ptr += p_size;
 	if (!isBufferStream)
@@ -363,22 +371,12 @@ void GrokStream::write_increment(size_t p_size) {
 	m_stream_offset += (int64_t)p_size;
 }
 
-void GrokStream::sanity_check() {
-#ifdef _DEBUG
-	if (isBufferStream && m_user_data) {
-		buf_info_t* buf = (buf_info_t*)m_user_data;
-		assert(buf->buf + buf->off == m_buffer_current_ptr);
-	}
-#endif
-}
-
 // force write of any remaining bytes from double buffer
 bool GrokStream::flush(event_mgr_t * p_event_mgr)
 {
 	if (isBufferStream) {
 		return true;
 	}
-
 	/* the number of bytes written on the media. */
 	size_t l_current_write_nb_bytes = 0;
 	m_buffer_current_ptr = m_buffer;
@@ -515,9 +513,25 @@ bool GrokStream::read_seek(size_t p_size,
 	event_mgr_t * p_event_mgr)
 {
 	ARG_NOT_USED(p_event_mgr);
-	m_buffer_current_ptr = m_buffer;
-	m_bytes_in_buffer = 0;
+	//no seek on media necessary for buffer stream
+	if (isBufferStream) {
+		if (p_size >= m_buffer_size) {
+			m_bytes_in_buffer = 0;
+			m_buffer_current_ptr = m_buffer;
+			m_status |= GROK_STREAM_STATUS_END;
+			return false;
+		}
+		m_status &= (~GROK_STREAM_STATUS_END);
+		m_stream_offset = p_size;
+		m_buffer_current_ptr = m_buffer + p_size;
+		m_bytes_in_buffer = m_buffer_size - p_size;
+		return true;
+	}
 
+
+	//invalidate current buffer contents
+	m_bytes_in_buffer = 0;
+	m_buffer_current_ptr = m_buffer;
 	if (!(m_seek_fn(p_size, m_user_data))) {
 		m_status |= GROK_STREAM_STATUS_END;
 		return false;
@@ -526,9 +540,7 @@ bool GrokStream::read_seek(size_t p_size,
 		/* reset stream status */
 		m_status &= (~GROK_STREAM_STATUS_END);
 		m_stream_offset = p_size;
-
 	}
-
 	return true;
 }
 

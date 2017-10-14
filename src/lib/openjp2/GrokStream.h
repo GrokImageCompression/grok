@@ -202,6 +202,9 @@ struct GrokStream : public IGrokStream {
 	*/
 	bool has_seek();
 
+	bool supportsZeroCopy() { return isBufferStream && (m_status & GROK_STREAM_STATUS_INPUT); }
+	uint8_t* getCurrentPtr() { return m_buffer_current_ptr; }
+
 private:
 
 	/**
@@ -243,18 +246,20 @@ private:
 	void write_increment(size_t p_size);
 	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
 
-	void sanity_check();
+	///////////////////////////////////////////////////////////////////
+	// data stored into the stream if read from, or slated for write.
+	// (does not change) 
+	uint8_t *		m_buffer;
+
+	// size of m_buffer.
+	// (does not change) 
+	size_t			m_buffer_size;
+	///////////////////////////////////////////////////////////////////
 
 	// number of bytes read/written from the beginning of the stream
 	int64_t			m_stream_offset;
 
-	// data stored into the stream if read from, or slated for write.
-	uint8_t *		m_buffer;
-
-	// size of m_buffer.
-	size_t			m_buffer_size;
-
-	// pointer to  current position in m_buffer.
+	// current pointer for reading from buffer or writing to buffer
 	uint8_t *		m_buffer_current_ptr;
 	
 	// number of bytes read in, or slated for write

@@ -4138,13 +4138,24 @@ static bool j2k_read_sod (j2k_t *p_j2k,
 		if (!l_tcp->m_tile_data)
 			l_tcp->m_tile_data = new seg_buf_t();
 
-		if (!l_tcp->m_tile_data->alloc_and_push_back( p_j2k->m_specific_param.m_decoder.tile_part_data_length)) {
-			event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
-			return false;
+		auto len = p_j2k->m_specific_param.m_decoder.tile_part_data_length;
+		uint8_t* buff = nullptr;
+		auto zeroCopy = p_stream->supportsZeroCopy();
+		if (!zeroCopy) {
+			try {
+				buff = new uint8_t[len];
+			}
+			catch (std::bad_alloc) {
+				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
+				return false;
+			}
+		} else {
+			buff = p_stream->getCurrentPtr();
 		}
-        l_current_read_size = p_stream->read(l_tcp->m_tile_data->get_global_ptr(),
-											p_j2k->m_specific_param.m_decoder.tile_part_data_length,
+        l_current_read_size = p_stream->read(zeroCopy ? nullptr : buff,
+											len,
 											p_manager);
+		l_tcp->m_tile_data->add_segment(buff,len,!zeroCopy);
 
      } 
     if (l_current_read_size != p_j2k->m_specific_param.m_decoder.tile_part_data_length) {

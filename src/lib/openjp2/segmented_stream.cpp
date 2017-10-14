@@ -128,9 +128,9 @@ int64_t seg_buf_t::skip(int64_t p_nb_bytes)
     return p_nb_bytes;
 }
 #endif
-buf_t* seg_buf_t::add_segment(uint8_t* buf, size_t len)
+buf_t* seg_buf_t::add_segment(uint8_t* buf, size_t len, bool ownsData)
 {
-    buf_t* new_seg = new buf_t(buf, len);
+    auto new_seg = new buf_t(buf, len,ownsData);
 	add_segment(new_seg);
     return new_seg;
 }
@@ -172,7 +172,7 @@ bool seg_buf_t::push_back(uint8_t* buf, size_t len)
     if ( !buf || !len){
         return false;
     }
-	seg = add_segment(buf, len);
+	seg = add_segment(buf, len,false);
 	if (!seg)
         return false;
     seg->owns_data = false;
@@ -186,7 +186,7 @@ bool seg_buf_t::alloc_and_push_back(size_t len)
     if ( !len)
         return false;
     buf = new uint8_t[len];
-	seg = add_segment(buf, len);
+	seg = add_segment(buf, len,false);
 	if (!seg) {
 	    delete[] buf;
         return false;
