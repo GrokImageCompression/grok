@@ -492,7 +492,6 @@ uint64_t GrokStream::tell() {
 
 int64_t GrokStream::get_number_byte_left(void)
 {
-	assert(m_stream_offset >= 0);
 	assert(m_user_data_length >= m_stream_offset);
 	return m_user_data_length ?	(int64_t)(m_user_data_length)-m_stream_offset :	0;
 }
