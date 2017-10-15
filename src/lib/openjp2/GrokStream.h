@@ -231,8 +231,7 @@ private:
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		true if success, or false if an error occurred.
 	*/
-	bool read_seek(size_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool read_seek(size_t offset,	event_mgr_t * p_event_mgr);
 
 	/**
 	* Skips a number of bytes from the stream.

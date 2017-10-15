@@ -86,31 +86,29 @@ struct IGrokStream {
 		event_mgr_t * p_event_mgr)= 0;
 
 	/**
-	* Skips a number of bytes from the stream.
-	* @param		p_size		the number of bytes to skip.
+	* Seeks to absolute offset in stream.
+	* @param		offset		absolute stream offset
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		true if success, or false if an error occurred.
 	*/
-	virtual bool read_seek(size_t p_size,
+	virtual bool read_seek(size_t offset,
 		event_mgr_t * p_event_mgr)= 0;
 
 	/**
-	* Skips a number of bytes from the stream.
-	* @param		p_size		the number of bytes to skip.
+	* Seeks to absolute offset in stream.
+	* @param		offset		absolute offset in stream
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		the number of bytes skipped, or -1 if an error occurred.
 	*/
-	virtual bool write_seek(size_t p_size,
-		event_mgr_t * p_event_mgr)= 0;
+	virtual bool write_seek(size_t offset,	event_mgr_t * p_event_mgr)= 0;
 
 	/**
-	* Seeks a number of bytes from the stream.
-	* @param		p_size		the number of bytes to skip.
+	* Seeks to absolute offset in stream.
+	* @param		offset		absolute offset in stream
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		true if the stream is seekable.
 	*/
-	virtual bool seek(size_t p_size,
-		event_mgr_t * p_event_mgr)= 0;
+	virtual bool seek(size_t offset,event_mgr_t * p_event_mgr)= 0;
 
 	/**
 	* Tells if the given stream is seekable.
