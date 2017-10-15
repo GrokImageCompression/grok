@@ -172,18 +172,17 @@ struct GrokStream : public IGrokStream {
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		the number of bytes skipped, or -1 if an error occurred.
 	*/
-	bool skip(int64_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool skip(int64_t p_size,event_mgr_t * p_event_mgr);
 
 	/**
 	* Tells the byte offset on the stream (similar to ftell).
 	* @return		the current position of the stream.
 	*/
-	int64_t tell(void);
+	uint64_t tell(void);
 
 
 	/**
-	* Get the number of bytes left before the end of the stream (similar to cio_numbytesleft).
+	* Get the number of bytes left before the end of the stream 
 	* @return		Number of bytes left before the end of the stream.
 	*/
 	int64_t get_number_byte_left(void);
@@ -194,8 +193,7 @@ struct GrokStream : public IGrokStream {
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		true if the stream is seekable.
 	*/
-	bool seek(size_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool seek(uint64_t p_size,event_mgr_t * p_event_mgr);
 
 	/**
 	* Tells if the given stream is seekable.
@@ -213,8 +211,7 @@ private:
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		the number of bytes skipped, or -1 if an error occurred.
 	*/
-	bool write_skip(int64_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool write_skip(int64_t p_size,	event_mgr_t * p_event_mgr);
 
 	/**
 	* Skips a number of bytes from the stream.
@@ -222,8 +219,7 @@ private:
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		the number of bytes skipped, or -1 if an error occurred.
 	*/
-	bool read_skip(int64_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool read_skip(int64_t p_size,	event_mgr_t * p_event_mgr);
 
 	/**
 	* Skips a number of bytes from the stream.
@@ -231,7 +227,7 @@ private:
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		true if success, or false if an error occurred.
 	*/
-	bool read_seek(size_t offset,	event_mgr_t * p_event_mgr);
+	bool read_seek(uint64_t offset,	event_mgr_t * p_event_mgr);
 
 	/**
 	* Skips a number of bytes from the stream.
@@ -239,8 +235,7 @@ private:
 	* @param		p_event_mgr	the user event manager to be notified of special events.
 	* @return		the number of bytes skipped, or -1 if an error occurred.
 	*/
-	bool write_seek(size_t p_size,
-		event_mgr_t * p_event_mgr);
+	bool write_seek(uint64_t p_size, event_mgr_t * p_event_mgr);
 
 	void write_increment(size_t p_size);
 	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
@@ -256,7 +251,7 @@ private:
 	///////////////////////////////////////////////////////////////////
 
 	// number of bytes read/written from the beginning of the stream
-	int64_t			m_stream_offset;
+	uint64_t			m_stream_offset;
 
 	// current pointer for reading from buffer or writing to buffer
 	uint8_t *		m_buffer_current_ptr;
