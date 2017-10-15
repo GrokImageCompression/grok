@@ -509,44 +509,44 @@ bool GrokStream::skip(int64_t p_size,
 	}
 }
 
-bool GrokStream::read_seek(size_t p_size,
-	event_mgr_t * p_event_mgr)
+bool GrokStream::read_seek(size_t offset,event_mgr_t * p_event_mgr)
 {
 	ARG_NOT_USED(p_event_mgr);
-	//no seek on media necessary for buffer stream
-	if (isBufferStream) {
-		if (p_size >= m_buffer_size) {
-			m_bytes_in_buffer = 0;
-			m_buffer_current_ptr = m_buffer;
-			m_status |= GROK_STREAM_STATUS_END;
-			return false;
+	// 1. try to seek in buffer
+	if (!(m_status & GROK_STREAM_STATUS_END)) {
+		bool seekInBuffer = false;
+		int64_t increment=0;
+		if ((offset >= m_stream_offset && offset < m_stream_offset + m_bytes_in_buffer) ||
+			(offset < m_stream_offset && offset > m_stream_offset - (m_buffer_size - m_bytes_in_buffer))) {
+			increment = offset - m_stream_offset;
+			seekInBuffer = true;
 		}
-		m_status &= (~GROK_STREAM_STATUS_END);
-		m_stream_offset = p_size;
-		m_buffer_current_ptr = m_buffer + p_size;
-		m_bytes_in_buffer = m_buffer_size - p_size;
-		return true;
+		if (seekInBuffer) {
+			m_status &= (~GROK_STREAM_STATUS_END);
+			m_stream_offset = offset;
+			m_buffer_current_ptr += increment;
+			m_bytes_in_buffer -= increment;
+			return true;
+		}
 	}
 
-
-	//invalidate current buffer contents
+	//2. Since we can't seek in buffer, we must invalidate
+	//  buffer contents and seek in media
 	m_bytes_in_buffer = 0;
 	m_buffer_current_ptr = m_buffer;
-	if (!(m_seek_fn(p_size, m_user_data))) {
+	if (!(m_seek_fn(offset, m_user_data))) {
 		m_status |= GROK_STREAM_STATUS_END;
 		return false;
 	}
 	else {
-		/* reset stream status */
 		m_status &= (~GROK_STREAM_STATUS_END);
-		m_stream_offset = p_size;
+		m_stream_offset = offset;
 	}
 	return true;
 }
 
 //absolute seek in stream
-bool GrokStream::write_seek(size_t p_size,
-	event_mgr_t * p_event_mgr)
+bool GrokStream::write_seek(size_t offset,	event_mgr_t * p_event_mgr)
 {
 	if (!flush(p_event_mgr)) {
 		m_status |= GROK_STREAM_STATUS_ERROR;
@@ -556,27 +556,26 @@ bool GrokStream::write_seek(size_t p_size,
 	m_buffer_current_ptr = m_buffer;
 	m_bytes_in_buffer = 0;
 
-	if (!m_seek_fn(p_size, m_user_data)) {
+	if (!m_seek_fn(offset, m_user_data)) {
 		m_status |= GROK_STREAM_STATUS_ERROR;
 		return false;
 	}
 	else {
-		m_stream_offset = p_size;
+		m_stream_offset = offset;
 	}
 
 	if (isBufferStream)
-		m_buffer_current_ptr = m_buffer + p_size;
+		m_buffer_current_ptr = m_buffer + offset;
 
 	return true;
 }
 
-bool GrokStream::seek(size_t p_size,
-	event_mgr_t * p_event_mgr)
+bool GrokStream::seek(size_t offset,event_mgr_t * p_event_mgr)
 {
 	if (m_status & GROK_STREAM_STATUS_INPUT)
-		return read_seek(p_size, p_event_mgr);
+		return read_seek(offset, p_event_mgr);
 	else {
-		return write_seek(p_size, p_event_mgr);
+		return write_seek(offset, p_event_mgr);
 	}
 }
 
