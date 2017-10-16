@@ -118,9 +118,6 @@ defined with this macro as being exported.
 
 // GROK DEFINES
 #define GROK_MAX_PRECISION 16
-// return this value in skip method when skip fails
-#define GROK_FAILED_SKIP_RETURN_VALUE INT64_MIN
-
 
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
 
@@ -1318,6 +1315,7 @@ OPJ_API void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream, 
 
 /**
  * Sets the given function to be used as a skip function.
+ * Deprecated - not used anymore
  * @param		p_stream	the stream to modify
  * @param		p_function	the function to use a skip function.
 */
