@@ -606,11 +606,13 @@ typedef struct opj_header_info {
 	*/
 	uint32_t enumcs;
 
-	// icc profile information etc
+	// icc profile information etc.
 	// note: the contents of this struct will remain valid
-	// until stream is destroyed
+	// until the codec is destroyed
 	jp2_color_t color;
 
+	// note: xml_data will remain valid
+	// until codec is destroyed
 	uint8_t* xml_data;
 	size_t xml_data_len;
 
@@ -1934,6 +1936,7 @@ typedef struct grok_plugin_decode_callback_info {
 	int cod_format;
 	opj_stream_t*				l_stream;
 	opj_codec_t*				l_codec;
+	opj_header_info_t			header_info;
     opj_decompress_parameters*	decoder_parameters;
     opj_image_t*				image;
 	grok_plugin_tile_t*			tile;

@@ -1510,17 +1510,16 @@ cleanup:
 	return success;
 }
 
-
+// return: 0 for success, non-zero for failure
 int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
-	opj_decompress_parameters* parameters = info->decoder_parameters;
+	auto parameters = info->decoder_parameters;
 	if (!parameters)
 		return 1;
-	opj_image_t* image = nullptr;
 	uint8_t* buffer = nullptr;
-	const char* infile = info->input_file_name ? info->input_file_name : parameters->infile;
+	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
 	{
 		bool isBufferStream = false;
@@ -1599,48 +1598,38 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	opj_set_warning_handler(info->l_codec, warning_callback, &parameters->verbose);
 	opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
-	/* Setup the decoder decoding parameters using user parameters */
 	if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
 		failed = 1;
 		goto cleanup;
 	}
 
-	opj_header_info_t header_info;
-	memset(&header_info, 0, sizeof(opj_header_info_t));
-
-	/* Read the main header of the codestream and if necessary the JP2 boxes*/
-	if (!opj_read_header_ex(info->l_stream, info->l_codec, &header_info, &image)) {
-		info->image = image;
+	/* Read the main header of the codestream (j2k) and also JP2 boxes (jp2)*/
+	if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
 		failed = 1;
 		goto cleanup;
 	}
 
 	// store XML to file
-	if (header_info.xml_data && header_info.xml_data_len && parameters->serialize_xml) {
+	if (info->header_info.xml_data && info->header_info.xml_data_len && parameters->serialize_xml) {
 		std::string xmlFile = std::string(parameters->outfile) + ".xml";
 		auto fp = fopen(xmlFile.c_str(), "wb");
 		if (!fp) {
-			fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for writing", xmlFile.c_str());
-			failed = 1;
-			goto cleanup;
+			fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
 		}
-		if (fwrite(header_info.xml_data, 1, header_info.xml_data_len, fp) != header_info.xml_data_len) {
-			fprintf(stderr, "ERROR -> opj_decompress: unable to write all data to file file %s for writing", xmlFile.c_str());
+		if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
+			fprintf(stderr, "ERROR -> opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
 			fclose(fp);
-			failed = 1;
-			goto cleanup;
 		}
-		fclose(fp);
+		if (fp)
+			fclose(fp);
 	}
 
-	info->image = image;
-
 	// limit to 16 bit precision
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		if (image->comps[i].prec > 16) {
-			fprintf(stderr, "ERROR -> opj_decompress: Precision = %d not supported:\n", image->comps[i].prec);
+	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
+		if (info->image->comps[i].prec > 16) {
+			fprintf(stderr, "ERROR -> opj_decompress: Precision = %d not supported:\n", info->image->comps[i].prec);
 			failed = 1;
 			goto cleanup;
 		}
@@ -1648,12 +1637,12 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (info->generate_tile_func) {
 		info->tile = info->generate_tile_func(info->deviceId,
 												info->compressed_tile_id,
-												&header_info,
-												image);
+												&info->header_info,
+												info->image);
 		info->tile->decode_flag = OPJ_PLUGIN_DECODE_T2;
 	}
 
-	/* It is just here to illustrate how to use the resolution after set parameters */
+	/* Uncomment to set number of resolutions to be decoded */
 	/*
 	if (!opj_set_decoded_resolution_factor(info->l_codec, 0)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to set the resolution factor tile!\n");
@@ -1661,8 +1650,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	}
 	*/
 
-	/* Optional if you want decode the entire image */
-	if (!opj_set_decode_area(info->l_codec, image, parameters->DA_x0,
+	if (!opj_set_decode_area(info->l_codec, info->image, parameters->DA_x0,
 		parameters->DA_y0,
 		parameters->DA_x1,
 		parameters->DA_y1)) {
@@ -1672,21 +1660,20 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	}
 
 	if (!parameters->nb_tile_to_decode) {
-		/* Get the decoded image */
-		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, image) && opj_end_decompress(info->l_codec, info->l_stream))) {
+		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
 			failed = 1;
 			goto cleanup;
 		}
 	}
 	else {
-		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, image, parameters->tile_index)) {
+		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
 			failed = 1;
 			goto cleanup;
 		}
 		if (parameters->verbose)
-			fprintf(stdout, "tile %d is decoded!\n\n", parameters->tile_index);
+			fprintf(stdout, "Tile %d was decoded.\n\n", parameters->tile_index);
 	}
 
 cleanup:
@@ -1698,8 +1685,8 @@ cleanup:
 	info->l_codec = nullptr;
 	delete[] buffer;
 	if (failed) {
-		if (image)
-			opj_image_destroy(image);
+		if (info->image)
+			opj_image_destroy(info->image);
 		info->image = nullptr;
 	}
 	return failed;
