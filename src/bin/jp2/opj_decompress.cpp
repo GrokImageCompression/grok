@@ -1235,8 +1235,8 @@ struct DecompressInitParams {
 
 };
 
-static int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info);
-static int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info);
+static int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info);
+static int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info);
 static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 
 
@@ -1332,8 +1332,8 @@ int main(int argc, char **argv)
 				}
 			}
 
-			opj_plugin_decode_callback_info_t info;
-			memset(&info, 0, sizeof(opj_plugin_decode_callback_info_t));
+			grok_plugin_decode_callback_info_t info;
+			memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
 			info.decod_format = -1;
 			info.cod_format = -1;
 			info.decoder_parameters = &initParams.parameters;
@@ -1404,9 +1404,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 
 	// create codec
-	opj_plugin_init_info_t initInfo;
+	grok_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
-	if (!opj_plugin_init(initInfo)) {
+	if (!grok_plugin_init(initInfo)) {
 		success = 1;
 		goto cleanup;
 	}
@@ -1416,7 +1416,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		isBatch = false;
 	}
 	if (isBatch) {
-		success = opj_plugin_batch_decode(initParams->img_fol.imgdirpath, 
+		success = grok_plugin_batch_decode(initParams->img_fol.imgdirpath, 
 											initParams->out_fol.imgdirpath,
 											&initParams->parameters, 
 											plugin_pre_decode_callback,
@@ -1430,11 +1430,11 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
-				if (opj_plugin_is_batch_complete()) {
+				if (grok_plugin_is_batch_complete()) {
 					break;
 				}
 			}
-			opj_plugin_stop_batch_decode();
+			grok_plugin_stop_batch_decode();
 		}
 	}
 	else {
@@ -1488,7 +1488,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		}
 
 		//1. try to decode using plugin
-		success = opj_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+		success = grok_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
 		if (success != 0)
 			goto cleanup;
 		num_decompressed_images++;
@@ -1511,7 +1511,7 @@ cleanup:
 }
 
 
-int plugin_pre_decode_callback(opj_plugin_decode_callback_info_t* info) {
+int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
@@ -1708,7 +1708,7 @@ cleanup:
 /*
 Post-process decompressed image and store in selected image format
 */
-int plugin_post_decode_callback(opj_plugin_decode_callback_info_t* info) {
+int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return -1;
 

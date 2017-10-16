@@ -1500,13 +1500,13 @@ OPJ_API bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
 // Structs to pass data between plugin and grok
 ////////////////////////////////////////////////////
 
-typedef struct opj_plugin_pass {
+typedef struct grok_plugin_pass {
 	double distortionDecrease;  //distortion decrease up to and including this pass
 	size_t rate;    // rate up to and including this pass
 	size_t length;	//stream length for this pass
-} opj_plugin_pass_t;
+} grok_plugin_pass_t;
 
-typedef struct opj_plugin_code_block {
+typedef struct grok_plugin_code_block {
 
 	/////////////////////////
 	// debug info
@@ -1520,33 +1520,33 @@ typedef struct opj_plugin_code_block {
 	size_t compressedDataLength;
 	size_t numBitPlanes;
 	size_t numPasses;
-	opj_plugin_pass_t passes[67];
+	grok_plugin_pass_t passes[67];
 	unsigned int sortedIndex;
-} opj_plugin_code_block_t;
+} grok_plugin_code_block_t;
 
-typedef struct opj_plugin_precinct {
+typedef struct grok_plugin_precinct {
 	size_t numBlocks;
-	opj_plugin_code_block_t** blocks;
-} opj_plugin_precinct_t;
+	grok_plugin_code_block_t** blocks;
+} grok_plugin_precinct_t;
 
-typedef struct opj_plugin_band {
+typedef struct grok_plugin_band {
 	size_t orient;
 	size_t numPrecincts;
-	opj_plugin_precinct_t** precincts;
+	grok_plugin_precinct_t** precincts;
 	float stepsize;
-} opj_plugin_band_t;
+} grok_plugin_band_t;
 
-typedef struct opj_plugin_resolution {
+typedef struct grok_plugin_resolution {
 	size_t level;
 	size_t numBands;
-	opj_plugin_band_t** bands;
+	grok_plugin_band_t** bands;
 
-} opj_plugin_resolution_t;
+} grok_plugin_resolution_t;
 
 
 typedef struct grok_plugin_tile_component {
 	size_t numResolutions;
-	opj_plugin_resolution_t** resolutions;
+	grok_plugin_resolution_t** resolutions;
 } grok_plugin_tile_component_t;
 
 #define OPJ_PLUGIN_DECODE_T2		1
@@ -1850,13 +1850,13 @@ Plugin Interface
 Plugin management
 */
 
-typedef struct opj_plugin_load_info {
+typedef struct grok_plugin_load_info {
     const char* plugin_path;
-} opj_plugin_load_info_t;
+} grok_plugin_load_info_t;
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info);
+OPJ_API bool OPJ_CALLCONV grok_plugin_load(grok_plugin_load_info_t info);
 
-OPJ_API void OPJ_CALLCONV opj_plugin_cleanup(void);
+OPJ_API void OPJ_CALLCONV grok_plugin_cleanup(void);
 
 // No debug is done on plugin. Production setting.
 #define OPJ_PLUGIN_STATE_NO_DEBUG			0x0
@@ -1886,15 +1886,15 @@ OPJ_API uint32_t OPJ_CALLCONV grok_plugin_get_debug_state();
 Plugin encoding
 */
 
-typedef struct opj_plugin_init_info {
+typedef struct grok_plugin_init_info {
 	int32_t deviceId;
 	bool verbose;
-} opj_plugin_init_info_t;
+} grok_plugin_init_info_t;
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo);
+OPJ_API bool OPJ_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo);
 
 
-typedef struct opj_plugin_encode_user_callback_info {
+typedef struct grok_plugin_encode_user_callback_info {
 	const char*			input_file_name;
 	bool				outputFileNameIsRelative;
 	const char*			output_file_name;
@@ -1902,17 +1902,17 @@ typedef struct opj_plugin_encode_user_callback_info {
 	opj_image_t*		image;
 	grok_plugin_tile_t*  tile;
 	unsigned int		error_code;
-} opj_plugin_encode_user_callback_info_t;
+} grok_plugin_encode_user_callback_info_t;
 
-typedef bool(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(opj_plugin_encode_user_callback_info_t* info);
+typedef bool(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(grok_plugin_encode_user_callback_info_t* info);
 
-OPJ_API int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-OPJ_API int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir, const char* output_dir, opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir, const char* output_dir, opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void);
+OPJ_API bool OPJ_CALLCONV grok_plugin_is_batch_complete(void);
 
-OPJ_API void OPJ_CALLCONV opj_plugin_stop_batch_encode(void);
+OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_encode(void);
 
 
 /*
@@ -1924,7 +1924,7 @@ typedef grok_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 										opj_header_info_t* header_info,
 										opj_image_t* image);
 
-typedef struct opj_plugin_decode_callback_info {
+typedef struct grok_plugin_decode_callback_info {
     size_t						deviceId;
     size_t						compressed_tile_id;
     OPJ_GENERATE_TILE			generate_tile_func;
@@ -1940,21 +1940,21 @@ typedef struct opj_plugin_decode_callback_info {
     opj_image_t*				image;
 	grok_plugin_tile_t*			tile;
     unsigned int				error_code;
-} opj_plugin_decode_callback_info_t;
+} grok_plugin_decode_callback_info_t;
 
-typedef int(*opj_plugin_decode_callback)(opj_plugin_decode_callback_info_t* info);
+typedef int(*grok_plugin_decode_callback)(grok_plugin_decode_callback_info_t* info);
 
-OPJ_API int32_t OPJ_CALLCONV opj_plugin_decode(opj_decompress_parameters* decode_parameters,
-        opj_plugin_decode_callback preDecode,
-        opj_plugin_decode_callback postDecode);
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parameters,
+        grok_plugin_decode_callback preDecode,
+        grok_plugin_decode_callback postDecode);
 
-OPJ_API int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
         const char* output_dir,
         opj_decompress_parameters* decode_parameters,
-        opj_plugin_decode_callback preDecode,
-        opj_plugin_decode_callback postDecode);
+        grok_plugin_decode_callback preDecode,
+        grok_plugin_decode_callback postDecode);
 
-OPJ_API void OPJ_CALLCONV opj_plugin_stop_batch_decode(void);
+OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_decode(void);
 
 
 

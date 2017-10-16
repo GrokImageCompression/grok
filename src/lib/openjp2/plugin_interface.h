@@ -72,7 +72,7 @@ struct plugin_encode_user_callback_info_t {
 typedef void(*PLUGIN_ENCODE_USER_CALLBACK)(plugin_encode_user_callback_info_t* info);
 
 
-typedef bool(*PLUGIN_INIT)(opj_plugin_init_info_t initInfo);
+typedef bool(*PLUGIN_INIT)(grok_plugin_init_info_t initInfo);
 
 
 
