@@ -1989,7 +1989,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	
 	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	uint32_t state = grok_plugin_get_debug_state();
-	if ((state & OPJ_PLUGIN_STATE_DEBUG) || (state & OPJ_PLUGIN_STATE_PRE_TR1)) {
+	if ((state & GROK_PLUGIN_STATE_DEBUG) || (state & GROK_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
 	dircnt_t *dirptr = nullptr;

@@ -119,7 +119,7 @@ bool decode_synch_host_with_plugin(tcd_t *tcd) {
 bool tile_equals(grok_plugin_tile_t* plugin_tile,
 	tcd_tile_t *p_tile) {
 	uint32_t state = grok_plugin_get_debug_state();
-	if (!(state & OPJ_PLUGIN_STATE_DEBUG))
+	if (!(state & GROK_PLUGIN_STATE_DEBUG))
 		return true;
 	if ((!plugin_tile && p_tile) || (plugin_tile && !p_tile))
 		return false;
@@ -181,7 +181,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		grok_plugin_code_block_t* plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grok_plugin_get_debug_state();
 
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
 				printf("Warning: ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
 			}
@@ -192,7 +192,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		cblk->num_passes_encoded = (uint32_t)plugin_cblk->numPasses;
 		*numPix = (uint32_t)plugin_cblk->numPix;
 
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 			if (plugin_cblk->numPix != opjNumPix)
 				printf("Warning: ojp numPix %d differs from plugin numPix %d\n", opjNumPix, (uint32_t)plugin_cblk->numPix);
@@ -202,7 +202,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		uint16_t totalRatePlugin = (uint16_t)plugin_cblk->compressedDataLength;
 
 		//check data
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			uint32_t totalRate = 0;
 			if (cblk->num_passes_encoded > 0) {
 				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
@@ -232,7 +232,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		cblk->data_size = (uint32_t)(plugin_cblk->compressedDataLength);
 		cblk->owns_data = false;
 		cblk->numbps = (uint32_t)plugin_cblk->numBitPlanes;
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (cblk->x0 != plugin_cblk->x0 ||
 				cblk->y0 != plugin_cblk->y0 ||
 				cblk->x1 != plugin_cblk->x1 ||
@@ -248,7 +248,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 
 			// synch distortion, if applicable
 			if (tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
-				if (state & OPJ_PLUGIN_STATE_DEBUG) {
+				if (state & GROK_PLUGIN_STATE_DEBUG) {
 					if (fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec) > 0.01) {
 						printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
 					}
@@ -264,7 +264,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 				pluginRate--;
 			}
 
-			if (state & OPJ_PLUGIN_STATE_DEBUG) {
+			if (state & GROK_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
 					printf("Warning: plugin rate %d differs from OPJ rate %d\n", pluginRate, pass->rate);
 				}

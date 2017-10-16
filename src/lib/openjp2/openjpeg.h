@@ -1549,9 +1549,9 @@ typedef struct grok_plugin_tile_component {
 	grok_plugin_resolution_t** resolutions;
 } grok_plugin_tile_component_t;
 
-#define OPJ_PLUGIN_DECODE_T2		1
-#define OPJ_PLUGIN_DECODE_T1		2
-#define OPJ_PLUGIN_DECODE_POST_T1	4
+#define GROK_PLUGIN_DECODE_T2		1
+#define GROK_PLUGIN_DECODE_T1		2
+#define GROK_PLUGIN_DECODE_POST_T1	4
 
 
 
@@ -1859,7 +1859,7 @@ OPJ_API bool OPJ_CALLCONV grok_plugin_load(grok_plugin_load_info_t info);
 OPJ_API void OPJ_CALLCONV grok_plugin_cleanup(void);
 
 // No debug is done on plugin. Production setting.
-#define OPJ_PLUGIN_STATE_NO_DEBUG			0x0
+#define GROK_PLUGIN_STATE_NO_DEBUG			0x0
 
 //For encode debugging, the plugin first performs a T1 encode.
 // Then:
@@ -1872,13 +1872,13 @@ OPJ_API void OPJ_CALLCONV grok_plugin_cleanup(void);
 //4. during host encode, each context that is formed is compared against context stream from plugin
 //5. rate control - synch with plugin code stream, and compare
 //6. T2 and store to disk
-#define OPJ_PLUGIN_STATE_DEBUG		0x1
+#define GROK_PLUGIN_STATE_DEBUG		0x1
 
-#define OPJ_PLUGIN_STATE_PRE_TR1			0x2
+#define GROK_PLUGIN_STATE_PRE_TR1			0x2
 
-#define OPJ_PLUGIN_STATE_DWT_QUANTIZATION	0x4
+#define GROK_PLUGIN_STATE_DWT_QUANTIZATION	0x4
 
-#define OPJ_PLUGIN_STATE_MCT_ONLY			0x8
+#define GROK_PLUGIN_STATE_MCT_ONLY			0x8
 
 OPJ_API uint32_t OPJ_CALLCONV grok_plugin_get_debug_state();
 
@@ -1904,11 +1904,11 @@ typedef struct grok_plugin_encode_user_callback_info {
 	unsigned int		error_code;
 } grok_plugin_encode_user_callback_info_t;
 
-typedef bool(*OPJ_PLUGIN_ENCODE_USER_CALLBACK)(grok_plugin_encode_user_callback_info_t* info);
+typedef bool(*GROK_PLUGIN_ENCODE_USER_CALLBACK)(grok_plugin_encode_user_callback_info_t* info);
 
-OPJ_API int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters, GROK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir, const char* output_dir, opj_cparameters_t* encode_parameters, OPJ_PLUGIN_ENCODE_USER_CALLBACK callback);
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir, const char* output_dir, opj_cparameters_t* encode_parameters, GROK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
 OPJ_API bool OPJ_CALLCONV grok_plugin_is_batch_complete(void);
 
@@ -1943,7 +1943,7 @@ typedef struct grok_plugin_decode_callback_info {
     unsigned int				error_code;
 } grok_plugin_decode_callback_info_t;
 
-typedef int(*grok_plugin_decode_callback)(grok_plugin_decode_callback_info_t* info);
+typedef int32_t (*grok_plugin_decode_callback)(grok_plugin_decode_callback_info_t* info);
 
 OPJ_API int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parameters,
         grok_plugin_decode_callback preDecode,

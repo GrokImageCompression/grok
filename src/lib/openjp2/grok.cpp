@@ -1115,7 +1115,7 @@ uint32_t OPJ_CALLCONV grok_plugin_get_debug_state()
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_GET_DEBUG_STATE func = nullptr;
-    uint32_t rc = OPJ_PLUGIN_STATE_NO_DEBUG;
+    uint32_t rc = GROK_PLUGIN_STATE_NO_DEBUG;
 
     if (!pluginLoaded)
         return rc;
@@ -1156,7 +1156,7 @@ OPJ_API bool OPJ_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo) {
 Encode Implementation
 ********************/
 
-OPJ_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
+GROK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
 
 /* wrapper for user's encode callback */
 void grok_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* info)
@@ -1175,7 +1175,7 @@ void grok_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* in
 }
 
 int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters,
-                                       OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
+                                       GROK_PLUGIN_ENCODE_USER_CALLBACK callback)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_ENCODE func = nullptr;
@@ -1197,7 +1197,7 @@ int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters,
 int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir,
         const char* output_dir,
         opj_cparameters_t* encode_parameters,
-        OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
+        GROK_PLUGIN_ENCODE_USER_CALLBACK callback)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_BATCH_ENCODE func = nullptr;
@@ -1258,8 +1258,9 @@ grok_plugin_decode_callback userPreDecodeCallback = 0;
 grok_plugin_decode_callback userPostDecodeCallback = 0;
 
 /* wrapper for user's decode callback */
-void grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
+int32_t grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
 {
+	int32_t rc = -1;
     /* set code block data etc on code object */
     grok_plugin_decode_callback_info_t grokInfo;
     memset(&grokInfo, 0, sizeof(grok_plugin_decode_callback_info_t));
@@ -1273,7 +1274,7 @@ void grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
     grokInfo.tile = (grok_plugin_tile_t*)info->tile;
     if (!grokInfo.image) {
 		if (userPreDecodeCallback) {
-			userPreDecodeCallback(&grokInfo);
+			rc = userPreDecodeCallback(&grokInfo);
 			info->image = grokInfo.image;
 			info->tile = grokInfo.tile;
 			info->l_stream = grokInfo.l_stream;
@@ -1281,8 +1282,9 @@ void grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
 		}
     } else {
         if (userPostDecodeCallback)
-            userPostDecodeCallback(&grokInfo);
+           rc =  userPostDecodeCallback(&grokInfo);
     }
+	return rc;
 }
 
 int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parameters,

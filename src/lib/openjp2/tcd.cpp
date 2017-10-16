@@ -327,7 +327,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 						tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
 
 						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
-						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
+						if (!(state &GROK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(tcd,
 								compno,
 								resno,
@@ -476,7 +476,7 @@ bool tcd_pcrd_bisect_simple(  tcd_t *tcd,
                     for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
                         tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
-						if (!(state &OPJ_PLUGIN_STATE_PRE_TR1)) {
+						if (!(state &GROK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(tcd,
 								compno,
 								resno,
@@ -1140,14 +1140,14 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                             l_code_block->x1 = std::min<uint32_t>(cblkxend, l_current_precinct->x1);
                             l_code_block->y1 = std::min<uint32_t>(cblkyend, l_current_precinct->y1);
 
-							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
+							if (!p_tcd->current_plugin_tile || (state & GROK_PLUGIN_STATE_DEBUG)) {
 								if (!l_code_block->alloc_data(nominalBlockSize)) {
 									return false;
 								}
 							}
                         } else {
                             tcd_cblk_dec_t* l_code_block = l_current_precinct->cblks.dec + cblkno;
-							if (!p_tcd->current_plugin_tile || (state & OPJ_PLUGIN_STATE_DEBUG)) {
+							if (!p_tcd->current_plugin_tile || (state & GROK_PLUGIN_STATE_DEBUG)) {
 								if (!l_code_block->alloc()) {
 									return false;
 								}
@@ -1187,7 +1187,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
 	// decoder plugin debug sanity check on tile struct
 	if (!isEncoder) {
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(p_tcd->current_plugin_tile, l_tile)) {
 				manager->warning_handler("plugin tile differs from opj tile", nullptr);
 			}
@@ -1284,14 +1284,14 @@ bool tcd_encode_tile(   tcd_t *p_tcd,
                 return false;
             }
         }
-		if (state & OPJ_PLUGIN_STATE_DEBUG) {
+		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			set_context_stream(p_tcd);
 		}
 
 		// When debugging the encoder, we do all of T1 up to and including DWT in the plugin, and pass this in as image data.
 		// This way, both OPJ and plugin start with same inputs for context formation and MQ coding.
-		bool debugEncode = state & OPJ_PLUGIN_STATE_DEBUG;
-		bool debugMCT = (state & OPJ_PLUGIN_STATE_MCT_ONLY) ? true : false ;
+		bool debugEncode = state & GROK_PLUGIN_STATE_DEBUG;
+		bool debugMCT = (state & GROK_PLUGIN_STATE_MCT_ONLY) ? true : false ;
 
 		if (!p_tcd->current_plugin_tile || debugEncode) {
 
@@ -1337,13 +1337,13 @@ bool tcd_decode_tile(tcd_t *p_tcd,
 	p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
 
 	bool doT2 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag& OPJ_PLUGIN_DECODE_T2);
+		(p_tcd->current_plugin_tile->decode_flag& GROK_PLUGIN_DECODE_T2);
 
 	bool doT1 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag & OPJ_PLUGIN_DECODE_T1);
+		(p_tcd->current_plugin_tile->decode_flag & GROK_PLUGIN_DECODE_T1);
 
 	bool doPostT1 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag & OPJ_PLUGIN_DECODE_POST_T1);
+		(p_tcd->current_plugin_tile->decode_flag & GROK_PLUGIN_DECODE_POST_T1);
 
 	if (doT2) {
 		uint64_t l_data_read = 0;

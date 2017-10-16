@@ -112,7 +112,7 @@ extern "C"  PLUGIN_API void plugin_stop_batch_decode(void) {
 /////////////////////////////////
 
 extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
-	return OPJ_PLUGIN_STATE_NO_DEBUG;
+	return GROK_PLUGIN_STATE_NO_DEBUG;
 }
 
 extern "C"  PLUGIN_API void plugin_debug_next_cxd(grk::plugin_debug_mqc_t *mqc, uint32_t d) {
