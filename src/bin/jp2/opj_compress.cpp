@@ -1579,6 +1579,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	bool createdImage = false;
 	uint8_t* buff = nullptr;
 	bool isBufferStream = false;
+	uint64_t fileLength=0;
 
 	// single image mode with output to stdout
 	if (!info->outputFileNameIsRelative && (!info->output_file_name || !info->output_file_name[0])) {
@@ -1604,6 +1605,25 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			bSuccess = false;
 			goto cleanup;
 		}
+	}
+
+	if (isBufferStream) {
+		auto fp = fopen(info->input_file_name, "rb");
+		if (!fp) {
+			fprintf(stderr, "ERROR -> opj_compress: unable to open file %s for reading", info->input_file_name);
+			bSuccess = false;
+			goto cleanup;
+		}
+
+		auto rc = fseek(fp, 0, SEEK_END);
+		if (rc == -1) {
+			fprintf(stderr, "ERROR -> opj_compress: unable to seek on file %s", info->input_file_name);
+			fclose(fp);
+			bSuccess = false;
+			goto cleanup;
+		}
+		fileLength = ftell(fp);
+		fclose(fp);
 	}
 
 	if (!image) {
@@ -1816,9 +1836,10 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 	/* open a byte stream for writing and allocate memory for all tiles */
-	if (isBufferStream) {
+	if (isBufferStream && fileLength) {
 		//  option to write to buffer, assuming one knows how large compressed stream will be 
-		auto len = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+		uint64_t imageSize = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+		auto len = fileLength > imageSize ? fileLength : imageSize;
 		buff = new uint8_t[len];
 		l_stream = opj_stream_create_buffer_stream(buff, len, false);
 	}
