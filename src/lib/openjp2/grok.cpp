@@ -71,15 +71,15 @@ static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path)
 {
     if (!is_initialized) {
-		opj_plugin_load_info_t info;
+		grok_plugin_load_info_t info;
 		info.plugin_path = plugin_path;
-        is_initialized = opj_plugin_load(info);
+        is_initialized = grok_plugin_load(info);
     }
     return is_initialized;
 }
 
 OPJ_API void OPJ_CALLCONV opj_cleanup() {
-	opj_plugin_cleanup();
+	grok_plugin_cleanup();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -1091,7 +1091,7 @@ static const char* get_path_separator() {
 
 
 bool pluginLoaded = false;
-bool OPJ_CALLCONV opj_plugin_load(opj_plugin_load_info_t info)
+bool OPJ_CALLCONV grok_plugin_load(grok_plugin_load_info_t info)
 {
 	// form plugin name
 	std::string pluginName = "";
@@ -1135,13 +1135,13 @@ uint32_t OPJ_CALLCONV grok_plugin_get_debug_state()
     return rc;
 }
 
-void OPJ_CALLCONV opj_plugin_cleanup(void)
+void OPJ_CALLCONV grok_plugin_cleanup(void)
 {
     minpf_cleanup_plugin_manager();
     pluginLoaded = false;
 }
 
-OPJ_API bool OPJ_CALLCONV opj_plugin_init(opj_plugin_init_info_t initInfo) {
+OPJ_API bool OPJ_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo) {
 	minpf_plugin_manager* mgr = nullptr;
 	PLUGIN_INIT func = nullptr;
 	if (!pluginLoaded)
@@ -1165,11 +1165,11 @@ Encode Implementation
 OPJ_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
 
 /* wrapper for user's encode callback */
-void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* info)
+void grok_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* info)
 {
     /* set code block data etc on code object */
-    opj_plugin_encode_user_callback_info_t opjInfo;
-    memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
+    grok_plugin_encode_user_callback_info_t opjInfo;
+    memset(&opjInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
     opjInfo.input_file_name = info->input_file_name;
 	opjInfo.outputFileNameIsRelative = info->outputFileNameIsRelative;
     opjInfo.output_file_name = info->output_file_name;
@@ -1180,7 +1180,7 @@ void opj_plugin_internal_encode_callback(plugin_encode_user_callback_info_t* inf
         userEncodeCallback(&opjInfo);
 }
 
-int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters,
+int32_t OPJ_CALLCONV grok_plugin_encode(opj_cparameters_t* encode_parameters,
                                        OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
 {
     minpf_plugin_manager* mgr = nullptr;
@@ -1193,14 +1193,14 @@ int32_t OPJ_CALLCONV opj_plugin_encode(opj_cparameters_t* encode_parameters,
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_ENCODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_encode_method_name);
         if (func) {
-            return func((opj_cparameters_t*)encode_parameters, opj_plugin_internal_encode_callback);
+            return func((opj_cparameters_t*)encode_parameters, grok_plugin_internal_encode_callback);
         }
     }
     return -1;
 }
 
 
-int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
+int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir,
         const char* output_dir,
         opj_cparameters_t* encode_parameters,
         OPJ_PLUGIN_ENCODE_USER_CALLBACK callback)
@@ -1215,14 +1215,14 @@ int32_t OPJ_CALLCONV opj_plugin_batch_encode(const char* input_dir,
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_BATCH_ENCODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_encode_method_name);
         if (func) {
-            return  func(input_dir, output_dir, (opj_cparameters_t*)encode_parameters, opj_plugin_internal_encode_callback);
+            return  func(input_dir, output_dir, (opj_cparameters_t*)encode_parameters, grok_plugin_internal_encode_callback);
         }
     }
     return -1;
 }
 
 PLUGIN_IS_BATCH_COMPLETE funcPluginIsBatchComplete = nullptr;
-OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void) {
+OPJ_API bool OPJ_CALLCONV grok_plugin_is_batch_complete(void) {
 	minpf_plugin_manager* mgr = nullptr;
 	if (!pluginLoaded)
 		return true;
@@ -1238,7 +1238,7 @@ OPJ_API bool OPJ_CALLCONV opj_plugin_is_batch_complete(void) {
 	return true;
 }
 
-void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
+void OPJ_CALLCONV grok_plugin_stop_batch_encode(void)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_STOP_BATCH_DECODE func = nullptr;
@@ -1260,15 +1260,15 @@ void OPJ_CALLCONV opj_plugin_stop_batch_encode(void)
 Decode Implementation
 ********************/
 
-opj_plugin_decode_callback userPreDecodeCallback = 0;
-opj_plugin_decode_callback userPostDecodeCallback = 0;
+grok_plugin_decode_callback userPreDecodeCallback = 0;
+grok_plugin_decode_callback userPostDecodeCallback = 0;
 
 /* wrapper for user's decode callback */
-void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
+void grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
 {
     /* set code block data etc on code object */
-    opj_plugin_decode_callback_info_t grokInfo;
-    memset(&grokInfo, 0, sizeof(opj_plugin_decode_callback_info_t));
+    grok_plugin_decode_callback_info_t grokInfo;
+    memset(&grokInfo, 0, sizeof(grok_plugin_decode_callback_info_t));
     grokInfo.generate_tile_func = (OPJ_GENERATE_TILE)info->generate_tile_func;
     grokInfo.input_file_name	= info->input_file_name;
     grokInfo.output_file_name	= info->output_file_name;
@@ -1291,9 +1291,9 @@ void opj_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
     }
 }
 
-int32_t OPJ_CALLCONV opj_plugin_decode(opj_decompress_parameters* decode_parameters,
-                                       opj_plugin_decode_callback preDecode,
-                                       opj_plugin_decode_callback postDecode)
+int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parameters,
+                                       grok_plugin_decode_callback preDecode,
+                                       grok_plugin_decode_callback postDecode)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_DECODE func = nullptr;
@@ -1307,18 +1307,18 @@ int32_t OPJ_CALLCONV opj_plugin_decode(opj_decompress_parameters* decode_paramet
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_decode_method_name);
         if (func) {
-            return func((opj_decompress_parameters*)decode_parameters, opj_plugin_internal_decode_callback);
+            return func((opj_decompress_parameters*)decode_parameters, grok_plugin_internal_decode_callback);
         }
     }
     return -1;
 }
 
 
-int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
+int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
         const char* output_dir,
         opj_decompress_parameters* decode_parameters,
-        opj_plugin_decode_callback preDecode,
-        opj_plugin_decode_callback postDecode)
+        grok_plugin_decode_callback preDecode,
+        grok_plugin_decode_callback postDecode)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_BATCH_DECODE func = nullptr;
@@ -1331,13 +1331,13 @@ int32_t OPJ_CALLCONV opj_plugin_batch_decode(const char* input_dir,
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_decode_method_name);
         if (func) {
-            return  func(input_dir, output_dir, (opj_decompress_parameters*)decode_parameters, opj_plugin_internal_decode_callback);
+            return  func(input_dir, output_dir, (opj_decompress_parameters*)decode_parameters, grok_plugin_internal_decode_callback);
         }
     }
     return -1;
 }
 
-void OPJ_CALLCONV opj_plugin_stop_batch_decode(void)
+void OPJ_CALLCONV grok_plugin_stop_batch_decode(void)
 {
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_STOP_BATCH_DECODE func = nullptr;

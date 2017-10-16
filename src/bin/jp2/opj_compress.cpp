@@ -134,7 +134,7 @@ typedef struct img_folder {
     char set_out_format;
 } img_fol_t;
 
-static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info);
+static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
 
 static void encode_help_display(void)
 {
@@ -1523,8 +1523,8 @@ int main(int argc, char **argv) {
 				}
 			}
 
-			opj_plugin_encode_user_callback_info_t opjInfo;
-			memset(&opjInfo, 0, sizeof(opj_plugin_encode_user_callback_info_t));
+			grok_plugin_encode_user_callback_info_t opjInfo;
+			memset(&opjInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
 			opjInfo.encoder_parameters = &initParams.parameters;
 			opjInfo.image = nullptr;
 			opjInfo.output_file_name = initParams.parameters.outfile;
@@ -1565,7 +1565,7 @@ cleanup:
 
 img_fol_t img_fol_plugin, out_fol_plugin;
 
-static bool plugin_compress_callback(opj_plugin_encode_user_callback_info_t* info) {
+static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info) {
 	opj_cparameters_t* parameters = info->encoder_parameters;
 	bool bSuccess = true;
 	opj_stream_t *l_stream = nullptr;
@@ -1957,10 +1957,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	out_fol_plugin = initParams->out_fol;
 
 	// create codec
-	opj_plugin_init_info_t initInfo;
+	grok_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
-	if (!opj_plugin_init(initInfo)) {
+	if (!grok_plugin_init(initInfo)) {
 		opj_cleanup();
 		return 1;
 
@@ -1975,7 +1975,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 	if (isBatch) {
-		success = opj_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
+		success = grok_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
 		// if plugin successfully begins batch encode, then wait for batch to complete
 		if (success==0) {
 			uint32_t slice = 100;	//ms
@@ -1985,11 +1985,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
 				batch_sleep(100);
-				if (opj_plugin_is_batch_complete()) {
+				if (grok_plugin_is_batch_complete()) {
 					break;
 				}
 			}
-			opj_plugin_stop_batch_encode();
+			grok_plugin_stop_batch_encode();
 		}
 	}
 	else 	{
@@ -2045,7 +2045,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			//restore cached settings
 			initParams->parameters.tcp_mct =  tcp_mct;
 			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-			success = opj_plugin_encode(&initParams->parameters, plugin_compress_callback);
+			success = grok_plugin_encode(&initParams->parameters, plugin_compress_callback);
 			if (success != 0)
 				break;
 		}
