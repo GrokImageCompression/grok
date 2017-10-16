@@ -121,7 +121,7 @@ struct plugin_decode_callback_info_t {
     int32_t	error_code;
 } ;
 
-typedef void(*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);
+typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);
 
 
 

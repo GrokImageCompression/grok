@@ -417,7 +417,7 @@ uint8_t raw_decode(raw_t *raw) {
 }
 void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
 #ifdef PLUGIN_DEBUG_ENCODE
-	if (mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_DEBUG) {
+	if (mqc->debug_mqc.debug_state & GROK_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
 #endif
@@ -447,7 +447,7 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
 	mqc->COUNT = 12;
 	mqc->start = bp;
 #ifdef PLUGIN_DEBUG_ENCODE
-	if (grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG) {
+	if (grok_plugin_get_debug_state() & GROK_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = nullptr;
 		mqc->debug_mqc.contextCacheCount = 0;
 		mqc->debug_mqc.contextStreamByteCount = 0;
@@ -457,8 +457,8 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
 }
 void mqc_encode(mqc_t *mqc, uint8_t d) {
 #ifdef PLUGIN_DEBUG_ENCODE
-	if ((mqc->debug_mqc.debug_state  & OPJ_PLUGIN_STATE_DEBUG) &&
-		!(mqc->debug_mqc.debug_state & OPJ_PLUGIN_STATE_PRE_TR1)) {
+	if ((mqc->debug_mqc.debug_state  & GROK_PLUGIN_STATE_DEBUG) &&
+		!(mqc->debug_mqc.debug_state & GROK_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
 #endif

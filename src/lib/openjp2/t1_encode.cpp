@@ -426,7 +426,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	mqc_init_enc(mqc, cblk->data);
 #ifdef PLUGIN_DEBUG_ENCODE
 	uint32_t state = grok_plugin_get_debug_state();
-	if (state & OPJ_PLUGIN_STATE_DEBUG) {
+	if (state & GROK_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.contextStream = cblk->contextStream;
 		mqc->debug_mqc.orient = orient;
 		mqc->debug_mqc.compno = compno;
@@ -456,7 +456,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
 #ifdef PLUGIN_DEBUG_ENCODE
-			if (state & OPJ_PLUGIN_STATE_DEBUG) {
+			if (state & GROK_PLUGIN_STATE_DEBUG) {
 				mqc_next_plane(&mqc->debug_mqc);
 			}
 #endif
@@ -623,7 +623,7 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 				block->unencodedData[cblk_index] = block->tiledp[tileIndex];
 #endif
 				// should we disable multiplication by (1 << T1_NMSEDEC_FRACBITS)
-				// when ((state & OPJ_PLUGIN_STATE_DEBUG) && !(state & OPJ_PLUGIN_STATE_PRE_TR1)) is true ?
+				// when ((state & GROK_PLUGIN_STATE_DEBUG) && !(state & GROK_PLUGIN_STATE_PRE_TR1)) is true ?
 				// Disabling multiplication was messing up post-encode comparison
 				// between plugin and grok open source
 				int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
@@ -644,8 +644,8 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 				// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
 				//    in the plugin DWT step
 				int32_t tmp = 0;
-				if (!(state & OPJ_PLUGIN_STATE_DEBUG) ||
-					((state & OPJ_PLUGIN_STATE_PRE_TR1) && !(state & OPJ_PLUGIN_STATE_DWT_QUANTIZATION))) {
+				if (!(state & GROK_PLUGIN_STATE_DEBUG) ||
+					((state & GROK_PLUGIN_STATE_PRE_TR1) && !(state & GROK_PLUGIN_STATE_DWT_QUANTIZATION))) {
 					tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
 				}
 				else {

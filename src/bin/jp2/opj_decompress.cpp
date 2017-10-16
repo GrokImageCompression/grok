@@ -1412,7 +1412,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 
 	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
-	if ((grok_plugin_get_debug_state() & OPJ_PLUGIN_STATE_DEBUG)) {
+	if ((grok_plugin_get_debug_state() & GROK_PLUGIN_STATE_DEBUG)) {
 		isBatch = false;
 	}
 	if (isBatch) {
@@ -1521,7 +1521,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	uint8_t* buffer = nullptr;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
-	{
+	if (!info->l_stream) {
 		bool isBufferStream = false;
 		bool isMappedFile = false;
 		if (isBufferStream) {
@@ -1572,25 +1572,24 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
-	/* decode the JPEG2000 stream */
-	/* ---------------------- */
-
-	switch (decod_format) {
-	case J2K_CFMT: {	/* JPEG-2000 codestream */
-						/* Get a decoder handle */
-		info->l_codec = opj_create_decompress(OPJ_CODEC_J2K);
-		break;
-	}
-	case JP2_CFMT: {	/* JPEG 2000 compressed image data */
-						/* Get a decoder handle */
-		info->l_codec = opj_create_decompress(OPJ_CODEC_JP2);
-		break;
-	}
-	default:
-		if (parameters->verbose)
-			fprintf(stdout, "skipping file..\n");
-		failed = 1;
-		goto cleanup;
+	if (!info->l_codec) {
+		switch (decod_format) {
+		case J2K_CFMT: {	/* JPEG-2000 codestream */
+							/* Get a decoder handle */
+			info->l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+			break;
+		}
+		case JP2_CFMT: {	/* JPEG 2000 compressed image data */
+							/* Get a decoder handle */
+			info->l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+			break;
+		}
+		default:
+			if (parameters->verbose)
+				fprintf(stdout, "skipping file..\n");
+			failed = 1;
+			goto cleanup;
+		}
 	}
 
 	/* catch events using our callbacks and give a local context */
@@ -1639,7 +1638,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 												info->compressed_tile_id,
 												&info->header_info,
 												info->image);
-		info->tile->decode_flag = OPJ_PLUGIN_DECODE_T2;
+		info->tile->decode_flag = GROK_PLUGIN_DECODE_T2;
 	}
 
 	/* Uncomment to set number of resolutions to be decoded */
