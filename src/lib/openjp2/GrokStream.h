@@ -112,12 +112,6 @@ struct GrokStream : public IGrokStream {
 	opj_stream_write_fn		m_write_fn;
 
 	/**
-	* Pointer to actual skip function (nullptr at the initialization of the cio.
-	* There is no seek function to prevent from back and forth slow procedures.
-	*/
-	opj_stream_skip_fn		m_skip_fn;
-
-	/**
 	* Pointer to actual seek function (if available).
 	*/
 	opj_stream_seek_fn		m_seek_fn;

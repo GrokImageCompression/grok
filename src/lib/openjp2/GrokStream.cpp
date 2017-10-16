@@ -71,7 +71,6 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 	m_read_fn(nullptr),
 	m_zero_copy_read_fn(nullptr),
 	m_write_fn(nullptr),
-	m_skip_fn(nullptr),
 	m_seek_fn(nullptr),
 	m_status(0),
 	m_buffer(nullptr),
@@ -101,7 +100,6 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 																m_read_fn(nullptr),
 																m_zero_copy_read_fn(nullptr),
 																m_write_fn(nullptr),
-																m_skip_fn(nullptr),
 																m_seek_fn(nullptr),
 																m_status(0),
 																m_buffer(nullptr),
@@ -300,8 +298,7 @@ template<typename TYPE> bool GrokStream::write(TYPE p_value, uint8_t numBytes, e
 	// handle case where there is no internal buffer (buffer stream)
 	if (isBufferStream) {
 		// skip first to make sure that we are not at the end of the stream
-		auto l_media_skip_bytes = m_skip_fn(numBytes, m_user_data);
-		if (l_media_skip_bytes == GROK_FAILED_SKIP_RETURN_VALUE || (l_media_skip_bytes != numBytes))
+		if (!m_seek_fn(m_stream_offset + numBytes, m_user_data))
 			return false;
 		grok_write(m_buffer_current_ptr, p_value, numBytes);
 		write_increment(numBytes);
@@ -630,13 +627,7 @@ void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 	l_stream->m_write_fn = p_function;
 }
 
-void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream,
-	opj_stream_skip_fn p_function) {
-	auto l_stream = (grk::GrokStream*)p_stream;
-	if (!l_stream) {
-		return;
-	}
-	l_stream->m_skip_fn = p_function;
+void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream,	opj_stream_skip_fn p_function) {
 }
 
 void OPJ_CALLCONV opj_stream_set_user_data(opj_stream_t* p_stream,

@@ -90,17 +90,6 @@ static size_t grok_write_to_buffer(void * p_buffer,
     return p_nb_bytes;
 }
 
-static int64_t skip_from_buffer(int64_t p_nb_bytes,
-                                    buf_info_t * p_source_buffer)
-{
-	auto newOffset = p_source_buffer->off + p_nb_bytes;
-    if (newOffset >= 0 &&  newOffset <  (int64_t)p_source_buffer->len) {
-        p_source_buffer->off = newOffset;
-		return p_nb_bytes;
-    } 
-	return GROK_FAILED_SKIP_RETURN_VALUE;
-}
-
 static bool seek_from_buffer(int64_t p_nb_bytes,
                                  buf_info_t * p_source_buffer)
 {
@@ -124,7 +113,6 @@ static void set_up_buffer_stream(opj_stream_t* l_stream, size_t len, bool p_is_r
         opj_stream_set_zero_copy_read_function(l_stream, (opj_stream_zero_copy_read_fn)zero_copy_read_from_buffer);
     } else
         opj_stream_set_write_function(l_stream, (opj_stream_write_fn)grok_write_to_buffer);
-    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn)skip_from_buffer);
     opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn)seek_from_buffer);
 }
 

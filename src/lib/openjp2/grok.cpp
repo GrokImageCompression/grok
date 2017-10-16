@@ -151,12 +151,7 @@ static size_t grok_write_from_file (void * p_buffer, size_t p_nb_bytes, FILE * p
     return fwrite(p_buffer,1,p_nb_bytes,p_file);
 }
 
-static int64_t opj_skip_from_file (int64_t p_nb_bytes, FILE * p_user_data)
-{
-	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_CUR) ? GROK_FAILED_SKIP_RETURN_VALUE : p_nb_bytes;
-}
-
-static bool opj_seek_from_file (int64_t p_nb_bytes, FILE * p_user_data)
+static bool grok_seek_from_file (int64_t p_nb_bytes, FILE * p_user_data)
 {
 	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_SET) ? false : true;
 }
@@ -997,8 +992,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
 		opj_stream_set_user_data_length(l_stream, opj_get_data_length_from_file(p_file));
     opj_stream_set_read_function(l_stream, (opj_stream_read_fn) grok_read_from_file);
     opj_stream_set_write_function(l_stream, (opj_stream_write_fn) grok_write_from_file);
-    opj_stream_set_skip_function(l_stream, (opj_stream_skip_fn) opj_skip_from_file);
-    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn) opj_seek_from_file);
+    opj_stream_set_seek_function(l_stream, (opj_stream_seek_fn) grok_seek_from_file);
 
     return l_stream;
 }
