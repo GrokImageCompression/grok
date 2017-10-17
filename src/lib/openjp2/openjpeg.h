@@ -1361,8 +1361,17 @@ OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_default_file_stream (const 
 OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (const char *fname,
         size_t p_buffer_size,
         bool p_is_read_stream);
+
+/** Create a stream from a buffer
+* @param buf			buffer
+* @param buffer_len    length of buffer
+* @param ownsBuffer	if true, library will delete[] buffer. Otherwise, it is the caller's
+*						responsibility to delete the buffer
+* @param p_is_read_stream  whether the stream is a read stream (true) or not (false)
+*/
 OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_buffer_stream(uint8_t *buf,
         size_t buffer_len,
+		bool ownsBuffer,
         bool p_is_read_stream);
 
 OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream_t*);

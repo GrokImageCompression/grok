@@ -1841,7 +1841,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		uint64_t imageSize = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
 		auto len = fileLength > imageSize ? fileLength : imageSize;
 		buff = new uint8_t[len];
-		l_stream = opj_stream_create_buffer_stream(buff, len, false);
+		l_stream = opj_stream_create_buffer_stream(buff, len, true, false);
 	}
 	else {
 		l_stream = opj_stream_create_default_file_stream(outfile, false);
@@ -1927,9 +1927,6 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 cleanup:
-	if (buff) {
-		delete[] buff;
-	}
 	if (l_stream)
 		opj_stream_destroy(l_stream);
 	if (l_codec)
