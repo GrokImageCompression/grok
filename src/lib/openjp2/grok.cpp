@@ -1280,15 +1280,10 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
 		if (userPreDecodeCallback) {
 			rc = userPreDecodeCallback(&grokInfo);
-			//now return various structs to plugin
-			if (!info->image)
-				info->image = grokInfo.image;
-			if (!info->tile)
-				info->tile = grokInfo.tile;
-			if (!info->l_stream)
-				info->l_stream = grokInfo.l_stream;
-			if (!info->l_codec)
-				info->l_codec = grokInfo.l_codec;
+			//synch
+			info->image = grokInfo.image;
+			info->l_stream = grokInfo.l_stream;
+			info->l_codec = grokInfo.l_codec;
 		}
     } 
 	// post T1 calls are routed to post-decode callback
