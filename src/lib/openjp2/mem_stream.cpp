@@ -39,8 +39,9 @@ namespace grk {
 
 static void grok_free_buffer_info(void* user_data)
 {
-    if (user_data)
-        grok_free(user_data);
+	auto data = (buf_info_t*)user_data;
+	if (data)
+		delete data;
 }
 
 static size_t zero_copy_read_from_buffer(void ** p_buffer,
@@ -127,29 +128,15 @@ size_t get_buffer_stream_offset(opj_stream_t* stream) {
 }
 
 opj_stream_t*  create_buffer_stream(uint8_t *buf,
-                                        size_t len,
+                                        size_t len, 
+										bool ownsBuffer,
                                         bool p_is_read_stream)
 {
     if (!buf || !len) {
         return nullptr;
     }
-
-	auto p_source_buffer = (buf_info_t*)grok_calloc(1,sizeof(buf_info_t));
-    if (!p_source_buffer) {
-        return nullptr;
-    }
-
 	GrokStream* l_stream = new GrokStream(buf, len, p_is_read_stream);
-    if (!l_stream) {
-        grok_free(p_source_buffer);
-        return nullptr;
-
-    }
-
-    p_source_buffer->buf = buf;
-    p_source_buffer->off = 0;
-    p_source_buffer->len = len;
-
+	auto p_source_buffer = new buf_info_t(buf, 0,len, ownsBuffer);
     opj_stream_set_user_data((opj_stream_t*)l_stream, p_source_buffer, grok_free_buffer_info);
     set_up_buffer_stream((opj_stream_t*)l_stream, p_source_buffer->len, p_is_read_stream);
 

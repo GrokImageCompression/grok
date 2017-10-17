@@ -1009,9 +1009,10 @@ OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream
 
 opj_stream_t* OPJ_CALLCONV opj_stream_create_buffer_stream(uint8_t *buf,
         size_t len,
+		bool ownsBuffer,
         bool p_is_read_stream)
 {
-    return create_buffer_stream(buf, len, p_is_read_stream);
+    return create_buffer_stream(buf, len, ownsBuffer,p_is_read_stream);
 
 }
 

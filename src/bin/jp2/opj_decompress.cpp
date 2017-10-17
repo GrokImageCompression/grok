@@ -1555,7 +1555,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				failed = 1;
 				goto cleanup;
 			}
-			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile, true);
+			info->l_stream = opj_stream_create_buffer_stream(buffer, true, lengthOfFile, true);
 		}
 		else  if (isMappedFile) {
 			info->l_stream = opj_stream_create_mapped_file_read_stream(infile);
@@ -1682,7 +1682,6 @@ cleanup:
 	if (info->l_codec)
 		opj_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
-	delete[] buffer;
 	if (failed) {
 		if (info->image)
 			opj_image_destroy(info->image);

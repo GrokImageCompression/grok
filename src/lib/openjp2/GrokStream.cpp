@@ -574,8 +574,6 @@ void grok_read_double(const uint8_t * p_buffer, double * p_value){
 
 }
 
-
-
 opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size, bool l_is_input)
 {
 	return (opj_stream_t*)(new grk::GrokStream(p_buffer_size, l_is_input));

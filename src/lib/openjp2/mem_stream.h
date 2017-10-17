@@ -44,15 +44,31 @@ namespace grk {
 
 
 struct buf_info_t {
+	buf_info_t() : buf_info_t(nullptr, 0, 0,false) {}
+	buf_info_t(uint8_t *buffer,	
+				int64_t offset,
+				size_t length, 
+				bool owns) : buf(buffer), 
+							off(offset),
+							len(length),
+							fd(0), 
+							ownsBuffer(owns)
+	{}
+	~buf_info_t() {
+		if (ownsBuffer)
+			delete[] buf;
+	}
 	uint8_t *buf;
 	int64_t off;
 	size_t len;
 	grok_handle_t fd;		// for file mapping
+	bool ownsBuffer;
 };
 
 
 opj_stream_t*  create_buffer_stream(uint8_t *buf,
                                         size_t len,
+										bool ownsBuffer,
                                         bool p_is_read_stream);
 size_t get_buffer_stream_offset(opj_stream_t* stream);
 
