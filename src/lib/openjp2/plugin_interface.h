@@ -17,6 +17,7 @@
 
 #include "openjpeg.h"
 #include "minpf_plugin.h"
+#include <string>
 
 #pragma once
 
@@ -103,12 +104,31 @@ typedef void(*INIT_DECODER)(size_t deviceId,
 									opj_header_info_t* header_info,
                                     opj_image_t* image);
 
-struct plugin_decode_callback_info_t {
+struct PluginDecodeCallbackInfo {
+	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, nullptr) 
+	{}
+	PluginDecodeCallbackInfo(std::string input,
+							grok_plugin_tile_t* tile,
+							opj_image_t* image) : 	PluginDecodeCallbackInfo(input,
+																			"",
+																			tile,
+																			image)
+	{}
+	PluginDecodeCallbackInfo(std::string input,
+		std::string output,
+		grok_plugin_tile_t* tile,
+		opj_image_t* image) : inputFile(input),
+		outputFile(output),
+		decod_format(-1),
+		cod_format(-1),
+		tile(tile),
+		image(image),
+		decode_flags(GROK_DECODE_HEADER | GROK_DECODE_T2) {}
     size_t deviceId;
     size_t compressed_tile_id;
 	INIT_DECODER init_decoder_func;
-    const char* input_file_name;
-    const char* output_file_name;
+    std::string inputFile;
+    std::string outputFile;
 	// input file format 0: J2K, 1: JP2
 	int decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
@@ -122,7 +142,7 @@ struct plugin_decode_callback_info_t {
 	uint32_t	decode_flags;
 } ;
 
-typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);
+typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(PluginDecodeCallbackInfo* info);
 
 
 

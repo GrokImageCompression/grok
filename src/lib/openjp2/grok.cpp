@@ -1259,15 +1259,14 @@ grok_plugin_decode_callback userPreDecodeCallback = 0;
 grok_plugin_decode_callback userPostDecodeCallback = 0;
 
 /* wrapper for user's decode callback */
-int32_t grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info)
-{
+int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 	int32_t rc = -1;
     /* set code block data etc on code object */
     grok_plugin_decode_callback_info_t grokInfo;
     memset(&grokInfo, 0, sizeof(grok_plugin_decode_callback_info_t));
     grokInfo.init_decoder_func = (GROK_INIT_DECODER)info->init_decoder_func;
-    grokInfo.input_file_name	= info->input_file_name;
-    grokInfo.output_file_name	= info->output_file_name;
+    grokInfo.input_file_name	= info->inputFile.c_str();
+    grokInfo.output_file_name	= info->outputFile.c_str();
 	grokInfo.decod_format		= info->decod_format;
 	grokInfo.cod_format			= info->cod_format;
     grokInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
@@ -1279,10 +1278,15 @@ int32_t grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info
     if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
 		if (userPreDecodeCallback) {
 			rc = userPreDecodeCallback(&grokInfo);
-			info->image = grokInfo.image;
-			info->tile = grokInfo.tile;
-			info->l_stream = grokInfo.l_stream;
-			info->l_codec = grokInfo.l_codec;
+			//now return various structs to plugin
+			if (!info->image)
+				info->image = grokInfo.image;
+			if (!info->tile)
+				info->tile = grokInfo.tile;
+			if (!info->l_stream)
+				info->l_stream = grokInfo.l_stream;
+			if (!info->l_codec)
+				info->l_codec = grokInfo.l_codec;
 		}
     } 
 	// post T1 calls are routed to post-decode callback
