@@ -119,6 +119,7 @@ struct plugin_decode_callback_info_t {
     opj_image_t* image;
     grok_plugin_tile_t* tile;
     int32_t	error_code;
+	uint32_t	decode_flags;
 } ;
 
 typedef int32_t (*PLUGIN_DECODE_USER_CALLBACK)(plugin_decode_callback_info_t* info);

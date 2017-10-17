@@ -1273,6 +1273,7 @@ int32_t grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info
     grokInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
     grokInfo.image = (opj_image_t*)info->image;
     grokInfo.tile = (grok_plugin_tile_t*)info->tile;
+	grokInfo.decode_flags = info->decode_flags;
     if (!grokInfo.image) {
 		if (userPreDecodeCallback) {
 			rc = userPreDecodeCallback(&grokInfo);
