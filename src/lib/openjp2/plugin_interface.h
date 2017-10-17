@@ -105,7 +105,10 @@ typedef void(*INIT_DECODER)(size_t deviceId,
                                     opj_image_t* image);
 
 struct PluginDecodeCallbackInfo {
-	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("", "", nullptr, nullptr) 
+	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("",
+															"",
+															nullptr,
+															nullptr) 
 	{}
 	PluginDecodeCallbackInfo(std::string input,
 							grok_plugin_tile_t* tile,
@@ -115,15 +118,23 @@ struct PluginDecodeCallbackInfo {
 																			image)
 	{}
 	PluginDecodeCallbackInfo(std::string input,
-		std::string output,
-		grok_plugin_tile_t* tile,
-		opj_image_t* image) : inputFile(input),
-		outputFile(output),
-		decod_format(-1),
-		cod_format(-1),
-		tile(tile),
-		image(image),
-		decode_flags(GROK_DECODE_HEADER | GROK_DECODE_T2) {}
+							std::string output,
+							grok_plugin_tile_t* tile,
+							opj_image_t* image) :   deviceId(0),
+													compressed_tile_id(0),
+													init_decoder_func(nullptr),
+													inputFile(input),
+													outputFile(output),
+													decod_format(-1),
+													cod_format(-1),
+													l_stream(nullptr),
+													l_codec(nullptr),
+													decoder_parameters(nullptr),
+													image(image),
+													tile(tile),
+													error_code(0),
+													decode_flags(GROK_DECODE_HEADER)
+	{}
     size_t deviceId;
     size_t compressed_tile_id;
 	INIT_DECODER init_decoder_func;
