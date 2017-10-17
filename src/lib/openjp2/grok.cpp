@@ -1274,6 +1274,7 @@ int32_t grok_plugin_internal_decode_callback(plugin_decode_callback_info_t* info
     grokInfo.image = (opj_image_t*)info->image;
     grokInfo.tile = (grok_plugin_tile_t*)info->tile;
 	grokInfo.decode_flags = info->decode_flags;
+	grokInfo.compressed_tile_id = info->compressed_tile_id;
 	// all calls up to and including T1 are routed to pre-decode callback
     if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
 		if (userPreDecodeCallback) {
