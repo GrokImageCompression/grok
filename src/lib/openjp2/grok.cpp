@@ -1269,9 +1269,11 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     grokInfo.output_file_name	= info->outputFile.empty() ? nullptr : info->outputFile.c_str();
 	grokInfo.decod_format		= info->decod_format;
 	grokInfo.cod_format			= info->cod_format;
-    grokInfo.decoder_parameters = (opj_decompress_parameters*)info->decoder_parameters;
-    grokInfo.image = (opj_image_t*)info->image;
-    grokInfo.tile = (grok_plugin_tile_t*)info->tile;
+    grokInfo.decoder_parameters = info->decoder_parameters;
+	grokInfo.l_stream			= info->l_stream;
+	grokInfo.l_codec			= info->l_codec;
+    grokInfo.image				= info->image;
+    grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
 	grokInfo.compressed_tile_id = info->compressed_tile_id;
 	// all calls up to and including T1 are routed to pre-decode callback
