@@ -1558,9 +1558,11 @@ typedef struct grok_plugin_tile_component {
 	grok_plugin_resolution_t** resolutions;
 } grok_plugin_tile_component_t;
 
-#define GROK_PLUGIN_DECODE_T2		1
-#define GROK_PLUGIN_DECODE_T1		2
-#define GROK_PLUGIN_DECODE_POST_T1	4
+#define GROK_DECODE_HEADER	(1 << 0)
+#define GROK_DECODE_T2		(1 << 1)
+#define GROK_DECODE_T1		(1 << 2)
+#define GROK_DECODE_POST_T1	(1 << 3)
+#define GROK_DECODE_ALL		(GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
 
 
 
@@ -1950,6 +1952,7 @@ typedef struct grok_plugin_decode_callback_info {
     opj_image_t*				image;
 	grok_plugin_tile_t*			tile;
     unsigned int				error_code;
+	uint32_t					decode_flags;
 } grok_plugin_decode_callback_info_t;
 
 typedef int32_t (*grok_plugin_decode_callback)(grok_plugin_decode_callback_info_t* info);

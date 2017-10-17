@@ -1336,6 +1336,7 @@ int main(int argc, char **argv)
 			memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
 			info.decod_format = -1;
 			info.cod_format = -1;
+			info.decode_flags = GROK_DECODE_ALL;
 			info.decoder_parameters = &initParams.parameters;
 
 			if (plugin_pre_decode_callback(&info)) {
@@ -1521,6 +1522,8 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	uint8_t* buffer = nullptr;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
+
+	//1. initialize
 	if (!info->l_stream) {
 		bool isBufferStream = false;
 		bool isMappedFile = false;
@@ -1602,29 +1605,45 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		}
 	}
 
+	// 2. read header
+	if (info->decode_flags & GROK_DECODE_HEADER) {
+		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
+		if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
+			failed = 1;
+			goto cleanup;
+		}
 
-	// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
-	if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
-		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
-		failed = 1;
+		// store XML to file
+		if (info->header_info.xml_data && info->header_info.xml_data_len && parameters->serialize_xml) {
+			std::string xmlFile = std::string(parameters->outfile) + ".xml";
+			auto fp = fopen(xmlFile.c_str(), "wb");
+			if (!fp) {
+				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
+			}
+			if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
+				fprintf(stderr, "ERROR -> opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
+				fclose(fp);
+			}
+			if (fp)
+				fclose(fp);
+		}
+	}
+
+	if (info->generate_tile_func) {
+		info->tile = info->generate_tile_func(info->deviceId,
+												info->compressed_tile_id,
+												&info->header_info,
+												info->image);
+		info->tile->decode_flag = GROK_DECODE_T2;
+	}
+
+	// header-only decode
+	if (info->decode_flags & GROK_DECODE_T2 == 0)
 		goto cleanup;
-	}
 
-	// store XML to file
-	if (info->header_info.xml_data && info->header_info.xml_data_len && parameters->serialize_xml) {
-		std::string xmlFile = std::string(parameters->outfile) + ".xml";
-		auto fp = fopen(xmlFile.c_str(), "wb");
-		if (!fp) {
-			fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
-		}
-		if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
-			fprintf(stderr, "ERROR -> opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
-			fclose(fp);
-		}
-		if (fp)
-			fclose(fp);
-	}
 
+	//3. decode
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {
@@ -1632,13 +1651,6 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			failed = 1;
 			goto cleanup;
 		}
-	}
-	if (info->generate_tile_func) {
-		info->tile = info->generate_tile_func(info->deviceId,
-												info->compressed_tile_id,
-												&info->header_info,
-												info->image);
-		info->tile->decode_flag = GROK_PLUGIN_DECODE_T2;
 	}
 
 	/* Uncomment to set number of resolutions to be decoded */
@@ -1658,7 +1670,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
-	// 1. decode all tiles
+	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
 		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
@@ -1666,7 +1678,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			goto cleanup;
 		}
 	}
-	// 2. or, decode one particular tile
+	// or, decode one particular tile
 	else {
 		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
@@ -1676,6 +1688,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		if (parameters->verbose)
 			fprintf(stdout, "Tile %d was decoded.\n\n", parameters->tile_index);
 	}
+
 
 cleanup:
 	if (info->l_stream)
