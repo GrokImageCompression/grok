@@ -1628,22 +1628,25 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			if (fp)
 				fclose(fp);
 		}
-	}
 
-	if (info->generate_tile_func) {
-		info->tile = info->generate_tile_func(info->deviceId,
-												info->compressed_tile_id,
-												&info->header_info,
-												info->image);
-		info->tile->decode_flag = GROK_DECODE_T2;
+		if (info->init_decoder_func) {
+			info->init_decoder_func(info->deviceId,
+				info->compressed_tile_id,
+				&info->header_info,
+				info->image);
+			return 0;
+		}
 	}
 
 	// header-only decode
-	if (info->decode_flags & GROK_DECODE_T2 == 0)
+	if (info->decode_flags == GROK_DECODE_HEADER)
 		goto cleanup;
 
 
 	//3. decode
+	if (info->tile)
+		info->tile->decode_flags = info->decode_flags;
+
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {

@@ -1337,13 +1337,13 @@ bool tcd_decode_tile(tcd_t *p_tcd,
 	p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
 
 	bool doT2 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag& GROK_DECODE_T2);
+		(p_tcd->current_plugin_tile->decode_flags& GROK_DECODE_T2);
 
 	bool doT1 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag & GROK_DECODE_T1);
+		(p_tcd->current_plugin_tile->decode_flags & GROK_DECODE_T1);
 
 	bool doPostT1 = !p_tcd->current_plugin_tile ||
-		(p_tcd->current_plugin_tile->decode_flag & GROK_DECODE_POST_T1);
+		(p_tcd->current_plugin_tile->decode_flags & GROK_DECODE_POST_T1);
 
 	if (doT2) {
 		uint64_t l_data_read = 0;

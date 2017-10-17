@@ -98,7 +98,7 @@ typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 // decoder interface
 ////////////////////
 
-typedef grok_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
+typedef void(*INIT_DECODER)(size_t deviceId,
                                     size_t compressed_tile_id,
 									opj_header_info_t* header_info,
                                     opj_image_t* image);
@@ -106,7 +106,7 @@ typedef grok_plugin_tile_t*(*GENERATE_TILE)(size_t deviceId,
 struct plugin_decode_callback_info_t {
     size_t deviceId;
     size_t compressed_tile_id;
-    GENERATE_TILE generate_tile_func;
+	INIT_DECODER init_decoder_func;
     const char* input_file_name;
     const char* output_file_name;
 	// input file format 0: J2K, 1: JP2

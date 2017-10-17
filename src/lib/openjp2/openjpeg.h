@@ -1567,7 +1567,7 @@ typedef struct grok_plugin_tile_component {
 
 
 typedef struct grok_plugin_tile {
-	uint32_t decode_flag;
+	uint32_t decode_flags;
 	size_t numComponents;
 	grok_plugin_tile_component_t** tileComponents;
 } grok_plugin_tile_t;
@@ -1930,7 +1930,7 @@ OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_encode(void);
 Plugin decoding
 */
 
-typedef grok_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
+typedef void(*GROK_INIT_DECODER)(size_t deviceId,
 										size_t compressed_tile_id,
 										opj_header_info_t* header_info,
 										opj_image_t* image);
@@ -1938,7 +1938,7 @@ typedef grok_plugin_tile_t*(*OPJ_GENERATE_TILE)(size_t deviceId,
 typedef struct grok_plugin_decode_callback_info {
     size_t						deviceId;
     size_t						compressed_tile_id;
-    OPJ_GENERATE_TILE			generate_tile_func;
+    GROK_INIT_DECODER			init_decoder_func;
     const char*					input_file_name;
     const char*					output_file_name;
 	// input file format 0: J2K, 1: JP2
