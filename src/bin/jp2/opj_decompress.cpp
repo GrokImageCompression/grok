@@ -1590,20 +1590,20 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			failed = 1;
 			goto cleanup;
 		}
+		/* catch events using our callbacks and give a local context */
+		opj_set_info_handler(info->l_codec, info_callback, &parameters->verbose);
+		opj_set_warning_handler(info->l_codec, warning_callback, &parameters->verbose);
+		opj_set_error_handler(info->l_codec, error_callback, nullptr);
+
+		if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
+			fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
+			failed = 1;
+			goto cleanup;
+		}
 	}
 
-	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(info->l_codec, info_callback, &parameters->verbose);
-	opj_set_warning_handler(info->l_codec, warning_callback, &parameters->verbose);
-	opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
-	if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
-		fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
-		failed = 1;
-		goto cleanup;
-	}
-
-	/* Read the main header of the codestream (j2k) and also JP2 boxes (jp2)*/
+	// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
 	if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
 		fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
 		failed = 1;
@@ -1658,6 +1658,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		goto cleanup;
 	}
 
+	// 1. decode all tiles
 	if (!parameters->nb_tile_to_decode) {
 		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
@@ -1665,6 +1666,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			goto cleanup;
 		}
 	}
+	// 2. or, decode one particular tile
 	else {
 		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
 			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
