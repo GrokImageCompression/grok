@@ -1407,6 +1407,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	// create codec
 	grok_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
+	initInfo.verbose = initParams->parameters.verbose;
 	if (!grok_plugin_init(initInfo)) {
 		success = 1;
 		goto cleanup;
