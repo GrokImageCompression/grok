@@ -1901,7 +1901,7 @@ static bool j2k_read_soc(   j2k_t *p_j2k,
 		/* FIXME move it in a index structure included in p_j2k*/
 		p_j2k->cstr_index->main_head_start = p_stream->tell() - 2;
 
-		event_msg(p_manager, EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
+		//event_msg(p_manager, EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
 
 		/* Add the marker to the codestream index*/
 		if (false == j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC, p_j2k->cstr_index->main_head_start, 2)) {
@@ -3896,7 +3896,7 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
 
     /* Ref A.4.2: Psot could be equal zero if it is the last tile-part of the codestream.*/
     if (!l_tot_len) {
-		event_msg(p_manager, EVT_INFO, "Psot value of the current tile-part is equal to zero; "
+		event_msg(p_manager, EVT_WARNING, "Psot value of the current tile-part is equal to zero; "
                       "we assume it is the last tile-part of the codestream.\n");
         p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
     }
@@ -6811,9 +6811,7 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
         event_msg(p_manager, EVT_ERROR, "Failed to merge PPM data\n");
         return false;
     }
-
-    event_msg(p_manager, EVT_INFO, "Main header has been correctly decoded.\n");
-
+	// event_msg(p_manager, EVT_INFO, "Main header has been correctly decoded.\n");
 	if (p_j2k->cstr_index) {
 		/* Position of the last element if the main header */
 		p_j2k->cstr_index->main_head_end = (uint32_t)p_stream->tell() - 2;
@@ -7559,8 +7557,8 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
         return false;
     }
 
-    event_msg(p_manager, EVT_INFO, "Header of tile %d / %d has been read.\n",
-                  p_j2k->m_current_tile_number+1, (p_j2k->m_cp.th * p_j2k->m_cp.tw));
+    //event_msg(p_manager, EVT_INFO, "Header of tile %d / %d has been read.\n",
+    //              p_j2k->m_current_tile_number+1, (p_j2k->m_cp.th * p_j2k->m_cp.tw));
 
     *p_tile_index	= p_j2k->m_current_tile_number;
     *p_go_on		= true;
@@ -7974,7 +7972,7 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
     }
 
     if ( !p_start_x && !p_start_y && !p_end_x && !p_end_y) {
-        event_msg(p_manager, EVT_INFO, "No decoded area parameters, set the decoded area to the whole image\n");
+        //event_msg(p_manager, EVT_INFO, "No decoded area parameters, set the decoded area to the whole image\n");
 
         p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
         p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
@@ -8103,10 +8101,8 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
 
         l_img_comp++;
     }
-
-    event_msg( p_manager, EVT_INFO,"Setting decoding area to %d,%d,%d,%d\n",
-                   p_image->x0, p_image->y0, p_image->x1, p_image->y1);
-
+    //event_msg( p_manager, EVT_INFO,"Setting decoding area to %d,%d,%d,%d\n",
+    //               p_image->x0, p_image->y0, p_image->x1, p_image->y1);
     return true;
 }
 
@@ -9288,7 +9284,7 @@ static bool j2k_decode_tiles ( j2k_t *p_j2k,
 				return false;
 			}
 		}
-        event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
+        //event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
 
         /* copy from current data to output image, if necessary */
         if (l_current_data) {
@@ -9300,7 +9296,7 @@ static bool j2k_decode_tiles ( j2k_t *p_j2k,
                 grok_free(l_current_data);
                 return false;
             }
-            event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
+           // event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
         }
 
 		num_tiles_decoded++;
@@ -9442,7 +9438,7 @@ static bool j2k_decode_one_tile ( j2k_t *p_j2k,
 		catch (DecodeUnknownMarkerAtEndOfTileException e) {
 			// suppress exception
 		}
-        event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+        //event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
         if (l_current_data) {
             if (!j2k_copy_decoded_tile_to_output_image(p_j2k->m_tcd, 
@@ -9454,9 +9450,7 @@ static bool j2k_decode_one_tile ( j2k_t *p_j2k,
                 return false;
             }
         }
-        event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no+1);
-
-
+        //event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no+1);
         if(l_current_tile_no == l_tile_no_to_dec) {
             /* move into the codestream to the first SOT (FIXME or not move?)*/
             if (!(p_stream->seek( p_j2k->cstr_index->main_head_end + 2, p_manager) ) ) {
@@ -9846,9 +9840,7 @@ static bool j2k_pre_write_tile (j2k_t * p_j2k,
         event_msg(p_manager, EVT_ERROR, "The given tile index does not match." );
         return false;
     }
-
-    event_msg(p_manager, EVT_INFO, "tile number %d / %d\n", p_j2k->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.th);
-
+    //event_msg(p_manager, EVT_INFO, "tile number %d / %d\n", p_j2k->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.th);
     p_j2k->m_specific_param.m_encoder.m_current_tile_part_number = 0;
     p_j2k->m_tcd->cur_totnum_tp = p_j2k->m_cp.tcps[p_tile_index].m_nb_tile_parts;
     p_j2k->m_specific_param.m_encoder.m_current_poc_tile_part_number = 0;

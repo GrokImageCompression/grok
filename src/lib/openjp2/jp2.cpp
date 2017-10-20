@@ -679,7 +679,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
 
     /* Should be equal to 7 cf. chapter about image header box of the norm */
     if (jp2->C != 7) {
-        event_msg(p_manager, EVT_INFO, "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n", jp2->C);
+        event_msg(p_manager, EVT_WARNING, "JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n", jp2->C);
     }
 
     grok_read_bytes(p_image_header_data,&(jp2->UnkC),1);			/* UnkC */
@@ -1910,7 +1910,7 @@ static bool jp2_read_colr( jp2_t *jp2,
      * specification boxes after the first.'
     */
     if(jp2->color.jp2_has_colour_specification_box) {
-        event_msg(p_manager, EVT_INFO, "A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.\n");
+        event_msg(p_manager, EVT_WARNING, "A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.\n");
         p_colr_header_data += p_colr_header_size;
         return true;
     }
@@ -2008,7 +2008,7 @@ static bool jp2_read_colr( jp2_t *jp2,
     } else if (jp2->meth > 2) {
         /*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
         conforming JP2 reader shall ignore the entire Colour Specification box.*/
-        event_msg(p_manager, EVT_INFO, "COLR BOX meth value is not a regular value (%d), "
+        event_msg(p_manager, EVT_WARNING, "COLR BOX meth value is not a regular value (%d), "
                       "so we will ignore the entire Colour Specification box. \n", jp2->meth);
     }
     return true;

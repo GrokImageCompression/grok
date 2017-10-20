@@ -184,9 +184,6 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			m_bytes_in_buffer = m_read_fn(m_buffer, m_buffer_size, m_user_data);
 
 			if (m_bytes_in_buffer == (size_t)-1) {
-				/* end of stream */
-				event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
-
 				m_bytes_in_buffer = 0;
 				m_status |= GROK_STREAM_STATUS_END;
 				/* end of stream */
@@ -218,9 +215,6 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			m_bytes_in_buffer = m_read_fn(p_buffer, p_size, m_user_data);
 
 			if (m_bytes_in_buffer == (size_t)-1) {
-				/*  end of stream */
-				event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
-
 				m_bytes_in_buffer = 0;
 				m_status |= GROK_STREAM_STATUS_END;
 				/* end of stream */
@@ -255,8 +249,6 @@ size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 	size_t l_read_nb_bytes = m_zero_copy_read_fn((void**)p_buffer, p_size, m_user_data);
 
 	if (l_read_nb_bytes == (size_t)-1) {
-		/*  end of stream */
-		event_msg(p_event_mgr, EVT_INFO, "stream reached its end !\n");
 		m_status |= GROK_STREAM_STATUS_END;
 		return (size_t)-1;
 	}
@@ -386,7 +378,7 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 		if (l_current_write_nb_bytes == (size_t)-1) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
 			if (p_event_mgr)
-				event_msg(p_event_mgr, EVT_INFO, "Error on writing stream!\n");
+				event_msg(p_event_mgr, EVT_ERROR, "Error on writing stream!\n");
 			return false;
 		}
 		m_buffer_current_ptr += l_current_write_nb_bytes;
