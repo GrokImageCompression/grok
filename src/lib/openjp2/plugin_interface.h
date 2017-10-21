@@ -99,11 +99,6 @@ typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 // decoder interface
 ////////////////////
 
-typedef void(*INIT_DECODER)(size_t deviceId,
-                                    size_t compressed_tile_id,
-									opj_header_info_t* header_info,
-                                    opj_image_t* image);
-
 struct PluginDecodeCallbackInfo {
 	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("",
 															"",
@@ -122,7 +117,7 @@ struct PluginDecodeCallbackInfo {
 							grok_plugin_tile_t* tile,
 							opj_image_t* image) :   deviceId(0),
 													compressed_tile_id(0),
-													init_decoder_func(nullptr),
+													init_decoders_func(nullptr),
 													inputFile(input),
 													outputFile(output),
 													decod_format(-1),
@@ -137,7 +132,7 @@ struct PluginDecodeCallbackInfo {
 	{}
     size_t deviceId;
     size_t compressed_tile_id;
-	INIT_DECODER init_decoder_func;
+	GROK_INIT_DECODERS init_decoders_func;
     std::string inputFile;
     std::string outputFile;
 	// input file format 0: J2K, 1: JP2

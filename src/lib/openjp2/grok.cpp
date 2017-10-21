@@ -1264,7 +1264,7 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     /* set code block data etc on code object */
     grok_plugin_decode_callback_info_t grokInfo;
     memset(&grokInfo, 0, sizeof(grok_plugin_decode_callback_info_t));
-    grokInfo.init_decoder_func = (GROK_INIT_DECODER)info->init_decoder_func;
+    grokInfo.init_decoders_func  = info->init_decoders_func;
     grokInfo.input_file_name	= info->inputFile.empty() ? nullptr : info->inputFile.c_str();
     grokInfo.output_file_name	= info->outputFile.empty() ? nullptr : info->outputFile.c_str();
 	grokInfo.decod_format		= info->decod_format;
