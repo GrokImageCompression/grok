@@ -1630,11 +1630,8 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				fclose(fp);
 		}
 
-		if (info->init_decoder_func) {
-			info->init_decoder_func(info->deviceId,
-				info->compressed_tile_id,
-				&info->header_info,
-				info->image);
+		if (info->init_decoders_func) {
+			info->init_decoders_func(&info->header_info,	info->image);
 			return 0;
 		}
 	}
