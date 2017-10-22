@@ -79,12 +79,12 @@ static void mqc_renorme(mqc_t *mqc);
 Encode the most probable symbol
 @param mqc MQC handle
 */
-static void mqc_codemps(mqc_t *mqc);
+//static void mqc_codemps(mqc_t *mqc);
 /**
 Encode the most least symbol
 @param mqc MQC handle
 */
-static void mqc_codelps(mqc_t *mqc);
+//static void mqc_codelps(mqc_t *mqc);
 /**
 Fill mqc->C with 1's for flushing
 @param mqc MQC handle
@@ -274,6 +274,7 @@ static void mqc_renorme(mqc_t *mqc) {
 		}
 	} while (mqc->A < A_MIN);
 }
+/*
 static void mqc_codemps(mqc_t *mqc) {
 	auto curctx = *mqc->curctx;
 	auto qeval = curctx->qeval;
@@ -305,6 +306,7 @@ static void mqc_codelps(mqc_t *mqc) {
 	*mqc->curctx = curctx->nlps;
 	mqc_renorme(mqc);
 }
+*/
 static void mqc_setbits(mqc_t *mqc) {
 	uint32_t tempc = mqc->C + mqc->A;
 	mqc->C |= 0xffff;
