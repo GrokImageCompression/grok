@@ -135,6 +135,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 	size_t p_size,
 	event_mgr_t * p_event_mgr)
 {
+	ARG_NOT_USED(p_event_mgr);
 	if (!p_buffer && !supportsZeroCopy())
 		throw new std::exception();
 	size_t l_read_nb_bytes = 0;
@@ -246,6 +247,7 @@ size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 	size_t p_size,
 	event_mgr_t * p_event_mgr)
 {
+	ARG_NOT_USED(p_event_mgr);
 	size_t l_read_nb_bytes = m_zero_copy_read_fn((void**)p_buffer, p_size, m_user_data);
 
 	if (l_read_nb_bytes == (size_t)-1) {
@@ -618,6 +620,8 @@ void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 }
 
 void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream,	opj_stream_skip_fn p_function) {
+	ARG_NOT_USED(p_stream);
+	ARG_NOT_USED(p_function);
 }
 
 void OPJ_CALLCONV opj_stream_set_user_data(opj_stream_t* p_stream,

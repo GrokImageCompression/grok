@@ -458,7 +458,6 @@ typedef struct opj_cparameters {
     int32_t decod_format;
     /** output file format 0: J2K, 1: JP2; -1 indicates no output file format */
     int32_t cod_format;
-    /*@}*/
 
 	raw_cparameters_t raw_cp;
 
@@ -736,7 +735,7 @@ typedef struct opj_decompress_params {
 	bool serialize_xml;
 
 	uint32_t compression;
-	int32_t  compressionLevel;   // compression "quality", depending on file format we are writing to
+	int32_t  compressionLevel;   // compression "quality". Meaning of "quality" depends on file format we are writing to
 
 	uint32_t numThreads;
 	int32_t deviceId;
@@ -787,14 +786,14 @@ typedef size_t (* opj_stream_write_fn) (void * p_buffer,
 										void * p_user_data) ;
 
 /*
- * Callback function prototype for skip function. Important!!! Skip is relative to current
- * position in stream. If skip succeeds, then return number of bytes skipped.
- *  Otherwise, return GROK_FAILED_SKIP_RETURN_VALUE.
+ * Callback function prototype for skip function.
+ * Not currently used.
  */
 typedef int64_t(* opj_stream_skip_fn) (int64_t p_nb_bytes, void * p_user_data) ;
 
 /*
- * Callback function prototype for seek function. Important!!! Implementation should be an absolute seek
+ * Callback function prototype for seek function. 
+ * Important!!! Implementation should be an absolute seek
  * from beginning of stream, with p_nb_bytes >= 0
  */
 typedef bool (* opj_stream_seek_fn) (int64_t p_nb_bytes, void * p_user_data) ;
@@ -880,8 +879,6 @@ typedef struct opj_image {
 
 	uint8_t *xmp_buf;
 	size_t xmp_len;
-
-
 } opj_image_t;
 
 
@@ -975,13 +972,13 @@ typedef struct opj_tile_info {
     /** end position */
     uint32_t end_pos;
     /** precinct number for each resolution level (width) */
-    uint32_t pw[33];
+    uint32_t pw[OPJ_J2K_MAXRLVLS];
     /** precinct number for each resolution level (height) */
-    uint32_t ph[33];
+    uint32_t ph[OPJ_J2K_MAXRLVLS];
     /** precinct size (in power of 2), in X for each resolution level */
-    uint32_t pdx[33];
+    uint32_t pdx[OPJ_J2K_MAXRLVLS];
     /** precinct size (in power of 2), in Y for each resolution level */
-    uint32_t pdy[33];
+    uint32_t pdy[OPJ_J2K_MAXRLVLS];
     /** information concerning packets inside tile */
     opj_packet_info_t *packet;
     int64_t numpix;
@@ -1048,9 +1045,6 @@ typedef struct opj_codestream_info {
     /** information regarding tiles inside image */
     opj_tile_info_t *tile;
 } opj_codestream_info_t;
-
-/* <----------------------------------------------------------- */
-/* new output management of the codestream information and index */
 
 /**
  * Tile-component coding parameters information
@@ -1433,8 +1427,8 @@ OPJ_API opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT format)
 OPJ_API void OPJ_CALLCONV opj_destroy_codec(opj_codec_t * p_codec);
 
 /**
- * Read after the codestream if necessary
- * @param	p_codec			the JPEG2000 codec to read.
+ * End compression
+ * @param	p_codec			the JPEG2000 codec
  * @param	p_stream		the JPEG2000 stream.
  */
 OPJ_API bool OPJ_CALLCONV opj_end_decompress (	opj_codec_t *p_codec,
@@ -1501,9 +1495,11 @@ OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
  * @return	true			if the area could be set.
  */
 OPJ_API bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
-        opj_image_t* p_image,
-        uint32_t p_start_x, uint32_t p_start_y,
-        uint32_t p_end_x, uint32_t p_end_y );
+												opj_image_t* p_image,
+												uint32_t p_start_x, 
+												uint32_t p_start_y,
+												uint32_t p_end_x, 
+												uint32_t p_end_y );
 
 ////////////////////////////////////////////////////
 // Structs to pass data between plugin and grok
@@ -1657,7 +1653,6 @@ OPJ_API bool OPJ_CALLCONV opj_write_tile (	opj_codec_t *p_codec,
  * @param	p_should_go_on	pointer to a boolean that will hold the fact that the decoding should go on. In case the
  *							codestream is over at the time of the call, the value will be set to false. The user should then stop
  *							the decoding.
- * @param	p_stream		the stream to decode.
  * @return	true			if the tile header could be decoded. In case the decoding should end, the returned value is still true.
  *							returning false may be the result of a shortage of memory or an internal error.
  */
@@ -1701,23 +1696,22 @@ OPJ_API opj_codec_t* OPJ_CALLCONV opj_create_compress(OPJ_CODEC_FORMAT format);
 
 /**
 Set encoding parameters to default values, that means :
-<ul>
-<li>Lossless
-<li>1 tile
-<li>Size of precinct : 2^15 x 2^15 (means 1 precinct)
-<li>Size of code-block : 64 x 64
-<li>Number of resolutions: 6
-<li>No SOP marker in the codestream
-<li>No EPH marker in the codestream
-<li>No sub-sampling in x or y direction
-<li>No mode switch activated
-<li>Progression order: LRCP
-<li>No index file
-<li>No ROI upshifted
-<li>No offset of the origin of the image
-<li>No offset of the origin of the tiles
-<li>Reversible DWT 5-3
-</ul>
+
+Lossless
+1 tile
+Size of precinct : 2^15 x 2^15 (means 1 precinct)
+Size of code-block : 64 x 64
+Number of resolutions: 6
+No SOP marker in the codestream
+No EPH marker in the codestream
+No sub-sampling in x or y direction
+No mode switch activated
+Progression order: LRCP
+No index file
+No ROI upshifted
+No offset of the origin of the image
+No offset of the origin of the tiles
+Reversible DWT 5-3
 @param parameters Compression parameters
 */
 OPJ_API void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *parameters);
@@ -1763,8 +1757,9 @@ OPJ_API bool OPJ_CALLCONV opj_encode(opj_codec_t *p_codec,
                                      opj_stream_t *p_stream);
 
 /**
-* Encode an image into a JPEG-2000 codestream
+* Encode an image into a JPEG-2000 codestream using plugin
 * @param p_codec 		compressor handle
+* @param tile			plugin tile
 * @param p_stream 		Output buffer stream
 *
 * @return 				Returns true if successful, returns false otherwise
@@ -1883,12 +1878,9 @@ OPJ_API void OPJ_CALLCONV grok_plugin_cleanup(void);
 //4. during host encode, each context that is formed is compared against context stream from plugin
 //5. rate control - synch with plugin code stream, and compare
 //6. T2 and store to disk
-#define GROK_PLUGIN_STATE_DEBUG		0x1
-
+#define GROK_PLUGIN_STATE_DEBUG				0x1
 #define GROK_PLUGIN_STATE_PRE_TR1			0x2
-
 #define GROK_PLUGIN_STATE_DWT_QUANTIZATION	0x4
-
 #define GROK_PLUGIN_STATE_MCT_ONLY			0x8
 
 OPJ_API uint32_t OPJ_CALLCONV grok_plugin_get_debug_state();
