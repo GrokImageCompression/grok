@@ -291,7 +291,10 @@ static void encode_help_display(void)
     fprintf(stdout,"    Use array-based MCT, values are coma separated, line by line\n");
     fprintf(stdout,"    No specific separators between lines, no space allowed between values.\n");
     fprintf(stdout,"    If this option is used, it automatically sets \"-mct\" option to 2.\n");
-    fprintf(stdout,"[-w|-cinema2K] <24|48>\n");
+	fprintf(stdout, "[-Z|-RSIZ] <rsiz>\n");
+	fprintf(stdout, "    Profile, main level, sub level and version.\n");
+	fprintf(stdout, "	Note: this flag will be ignored if cinema profile flags are used.\n");
+	fprintf(stdout,"[-w|-cinema2K] <24|48>\n");
     fprintf(stdout,"    Digital Cinema 2K profile compliant codestream.\n");
     fprintf(stdout,"	Need to specify the frames per second for a 2K resolution.\n");
     fprintf(stdout,"    Only 24 or 48 fps are currently allowed.\n");
@@ -515,6 +518,10 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
 			"Number of encode repetitions, for either a folder or a single file",
+			false, 0, "unsigned integer", cmd);
+
+		ValueArg<uint16_t> rsizArg("Z", "RSIZ",
+			"RSIZ",
 			false, 0, "unsigned integer", cmd);
 
 		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
@@ -1061,7 +1068,6 @@ static int parse_cmdline_encoder_ex(int argc,
 				out_fol->set_imgdir = 1;
 			}
 		}
-
 		if (cinema2KArg.isSet()) {
 			int fps = cinema2KArg.getValue();
 			if (fps == 24) {
@@ -1089,6 +1095,16 @@ static int parse_cmdline_encoder_ex(int argc,
 			if (parameters->verbose)
 				fprintf(stdout, "CINEMA 4K profile activated\n"
 					"Other options specified could be overridden\n");
+		}
+		if (rsizArg.isSet()) {
+			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
+				fprintf(stdout, "Warning: Cinema profile set - RSIZ parameter ignored.\n");
+			}
+			else {
+				parameters->rsiz = rsizArg.getValue();
+
+				//
+			}
 		}
 
 		if (modeArg.isSet()) {

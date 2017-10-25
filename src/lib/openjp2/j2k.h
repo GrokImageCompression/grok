@@ -355,8 +355,6 @@ struct decoding_param_t {
  * Coding parameters
  */
 struct cp_t {
-    /** Size of the image in bits*/
-    /*int img_size;*/
     /** Rsiz*/
     uint16_t rsiz;
     /** XTOsiz */

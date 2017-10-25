@@ -185,37 +185,60 @@ typedef enum CINEMA_MODE {
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMD)
  *
  * These values help choose the RSIZ value for the J2K codestream.
- * The RSIZ value triggers various encoding options, as detailed in Table A.10.
+ * The RSIZ value forces various encoding options, as detailed in Table A.10.
  * If OPJ_PROFILE_PART2 is chosen, it has to be combined with one or more extensions
- * described hereunder.
+ * described below.
  *   Example: rsiz = OPJ_PROFILE_PART2 | OPJ_EXTENSION_MCT;
  *
- * For broadcast profiles, the OPJ_PROFILE value has to be combined with the targeted
- * mainlevel (3-0 LSB, value between 0 and 11):
- *   Example: rsiz = OPJ_PROFILE_BC_MULTI | 0x0005; (here mainlevel 5)
+ * For broadcast profiles, the OPJ_PROFILE value has to be combined with the target
+ * level (3-0 LSB, value between 0 and 11):
+ *   Example: rsiz = OPJ_PROFILE_BC_MULTI | 0x0005; //level equals 5
  *
- * For IMF profiles, the OPJ_PROFILE value has to be combined with the targeted mainlevel
- * (3-0 LSB, value between 0 and 11) and sublevel (7-4 LSB, value between 0 and 9):
- *   Example: rsiz = OPJ_PROFILE_IMF_2K | 0x0040 | 0x0005; (here main 5 and sublevel 4)
+ * For IMF profiles, the OPJ_PROFILE value has to be combined with the target main-level
+ * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
+ *   Example: rsiz = OPJ_PROFILE_IMF_2K | 0x0040 | 0x0005; // level equals 5 and sub-level equals 4
  *
  *
- * Broadcast main level (15444-1 AMD4,AMD8)
+ * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
+ *
+ * indicates maximum bit rate and sample rate for a code stream
  *
  * Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
  *
- * Level 0: no max rate
- * Level 1:	200 Mbits/s, 65  Msamples/s
- * Level 2:	200 Mbits/s, 130 Msamples/s
- * Level 3:	200 Mbits/s, 195 Msamples/s
- * Level 4:	400 Mbits/s, 260 Msamples/s
- * Level 5:	800Mbits/s,  520 Msamples/s
- * Level >= 6: 2^(Level-6) * 1600 Mbits/s, 2^(Level-6) * 1200 Msamples/s
+ * 0:		no maximum rate
+ * 1:		200 Mbits/s, 65  Msamples/s
+ * 2:		200 Mbits/s, 130 Msamples/s
+ * 3:		200 Mbits/s, 195 Msamples/s
+ * 4:		400 Mbits/s, 260 Msamples/s
+ * 5:		800Mbits/s,  520 Msamples/s
+ * >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
+ * 
+ * Note: level cannot be greater than 11
  *
  * Broadcast tiling
  *
  * Either single-tile or multi-tile. Multi-tile only permits
  * 1 or 4 tiles per frame, where multiple tiles have identical 
  * sizes, and are configured in either 2x2 or 1x4 layout.
+ * 
+ *************************************************************
+ *
+ * IMF main-level (3-0) LSB (15444-1 AMD8)
+ *
+ * main-level indicates maximum number of samples per second,
+ * as listed above.
+ *
+ *
+ * IMF sub-level (7-4) LSB (15444-1 AMD8)
+ *
+ * sub-level indicates maximum bit rate for a code stream:
+ *
+ * 0:	no maximum rate
+ * >0:	2^sub-level * 100 Mbits/second
+ *
+ * Note: sub-level cannot be greater than 9, and cannot be larger 
+ * then maximum of (main-level -2) and 1.
+ *
  * 
  * */
 #define OPJ_PROFILE_NONE        0x0000 /** no profile, conform to 15444-1 */
