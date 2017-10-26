@@ -115,10 +115,6 @@ defined with this macro as being exported.
 #include <stdint.h>
 #include <stdio.h>
 
-
-// GROK DEFINES
-#define GROK_MAX_PRECISION 16
-
 // FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
 
 typedef bool OPJ_BOOL;
@@ -196,10 +192,11 @@ typedef enum CINEMA_MODE {
  *
  * For IMF profiles, the OPJ_PROFILE value has to be combined with the target main-level
  * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
- *   Example: rsiz = OPJ_PROFILE_IMF_2K | 0x0040 | 0x0005; // level equals 5 and sub-level equals 4
+ *   Example: rsiz = OPJ_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level equals 4
  *
- *
+ * *********************************************
  * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
+ * *********************************************
  *
  * indicates maximum bit rate and sample rate for a code stream
  *
@@ -215,7 +212,9 @@ typedef enum CINEMA_MODE {
  * 
  * Note: level cannot be greater than 11
  *
+ * ****************
  * Broadcast tiling
+ * ****************
  *
  * Either single-tile or multi-tile. Multi-tile only permits
  * 1 or 4 tiles per frame, where multiple tiles have identical 
@@ -223,13 +222,17 @@ typedef enum CINEMA_MODE {
  * 
  *************************************************************
  *
+ * ***************************************
  * IMF main-level (3-0) LSB (15444-1 AMD8)
+ * ***************************************
  *
  * main-level indicates maximum number of samples per second,
  * as listed above.
  *
  *
+ * **************************************
  * IMF sub-level (7-4) LSB (15444-1 AMD8)
+ * **************************************
  *
  * sub-level indicates maximum bit rate for a code stream:
  *
@@ -286,13 +289,6 @@ typedef enum CINEMA_MODE {
 #define OPJ_CINEMA_48_CS     651041     /** Maximum codestream length for 48fps */
 #define OPJ_CINEMA_24_COMP   1041666    /** Maximum size per color component for 2K & 4K @ 24fps */
 #define OPJ_CINEMA_48_COMP   520833		/** Maximum size per color component for 2K @ 48fps */
-
-/*
-==========================================================
-   enum definitions
-==========================================================
-*/
-
 
 /**
  * Progression order
@@ -462,7 +458,6 @@ typedef struct opj_cparameters {
     uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
     /** initial precinct height */
     uint32_t prch_init[OPJ_J2K_MAXRLVLS];
-
     /**@name command line encoder parameters (not used inside the library) */
     /*@{*/
     /** input file name */
@@ -481,22 +476,18 @@ typedef struct opj_cparameters {
     int32_t decod_format;
     /** output file format 0: J2K, 1: JP2; -1 indicates no output file format */
     int32_t cod_format;
-
 	raw_cparameters_t raw_cp;
-
     /**
      * Maximum size (in bytes) for each component.
      * If == 0, component size limitation is not considered
      * */
     uint32_t max_comp_size;
-
     /** Tile part generation*/
     uint8_t tp_on;
     /** Flag for Tile part generation*/
 	uint8_t tp_flag;
     /** MCT (multiple component transform) */
 	uint8_t tcp_mct;
-
     /** Naive implementation of MCT restricted to a single reversible array based
         encoding without offset concerning all the components. */
     void * mct_data;
@@ -510,23 +501,17 @@ typedef struct opj_cparameters {
     /** RSIZ value
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
-
 	bool  write_capture_resolution;
 	double capture_resolution[2];
-
 	bool  write_display_resolution;
 	double display_resolution[2];
-
 	uint32_t rateControlAlgorithm; // 0: bisect with all truncation points,  1: bisect with only feasible truncation points
-
 	uint32_t numThreads;
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
-
 	bool verbose;
-
 } opj_cparameters_t;
 
 
@@ -573,7 +558,6 @@ Struct for ICC profile, palette, component mapping, channel description
 typedef struct jp2_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
-
 	jp2_cdef_t *jp2_cdef;
 	jp2_pclr_t *jp2_pclr;
 	uint8_t jp2_has_colour_specification_box;
@@ -584,28 +568,21 @@ typedef struct opj_header_info {
 	uint32_t cblockw_init;
 	/** initial code block height, default to 64 */
 	uint32_t cblockh_init;
-
 	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
 	uint32_t irreversible;
-
 	/** multi-component transform identifier */
 	uint32_t mct;
-
 	/** RSIZ value
 	To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
 	uint16_t rsiz;
-
 	/** number of resolutions */
 	uint32_t numresolutions;
-
 	/** csty : coding style */
 	uint32_t csty;
-
 	/** initial precinct width */
 	uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
 	/** initial precinct height */
 	uint32_t prch_init[OPJ_J2K_MAXRLVLS];
-
 	/** XTOsiz */
 	uint32_t cp_tx0;
 	/** YTOsiz */
@@ -614,10 +591,8 @@ typedef struct opj_header_info {
 	uint32_t cp_tdx;
 	/** YTsiz */
 	uint32_t cp_tdy;
-
 	/** number of layers */
 	uint32_t tcp_numlayers;
-
 	/*
 	Colour space enumeration:
 	12	CMYK
@@ -627,21 +602,17 @@ typedef struct opj_header_info {
 	19	EYCC
 	*/
 	uint32_t enumcs;
-
 	// icc profile information etc.
 	// note: the contents of this struct will remain valid
 	// until the codec is destroyed
 	jp2_color_t color;
-
 	// note: xml_data will remain valid
 	// until codec is destroyed
 	uint8_t* xml_data;
 	size_t xml_data_len;
-
 	char* comment;
 	size_t comment_len;
 	bool isBinaryComment;
-
 } opj_header_info_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
@@ -665,7 +636,6 @@ typedef struct opj_dparameters {
     if == 0 or not used, all the quality layers are decoded
     */
     uint32_t cp_layer;
-
     /**@name command line decoder parameters (not used inside the library) */
     /*@{*/
     /** input file name */
@@ -676,7 +646,6 @@ typedef struct opj_dparameters {
     int32_t decod_format;
     /** output file format 0: PGX, 1: PxM, 2: BMP */
     int32_t cod_format;
-
     /** Decoding area left boundary */
     uint32_t DA_x0;
     /** Decoding area right boundary */
@@ -687,19 +656,15 @@ typedef struct opj_dparameters {
     uint32_t DA_y1;
     /** Verbose mode */
     bool m_verbose;
-
     /** tile number of the decoded tile*/
     uint32_t tile_index;
     /** Nb of tile to decode */
     uint32_t nb_tile_to_decode;
     uint32_t flags;
 	uint32_t numThreads;
-
 	// do not use : solely for backwards-compatibility
 	uint32_t jpwl_exp_comps;
 } opj_dparameters_t;
-
-
 
 typedef enum opj_prec_mode {
 	OPJ_PREC_MODE_CLIP,
@@ -716,7 +681,6 @@ typedef struct opj_prec {
 typedef struct opj_decompress_params {
 	/** core library parameters */
 	opj_dparameters_t core;
-
 	/** input file name */
 	char infile[OPJ_PATH_LEN];
 	/** output file name */
@@ -727,7 +691,6 @@ typedef struct opj_decompress_params {
 	int cod_format;
 	/** index file name */
 	char indexfilename[OPJ_PATH_LEN];
-
 	/** Decoding area left boundary */
 	uint32_t DA_x0;
 	/** Decoding area right boundary */
@@ -738,36 +701,28 @@ typedef struct opj_decompress_params {
 	uint32_t DA_y1;
 	/** Verbose mode */
 	bool m_verbose;
-
 	/** tile number of the decoded tile*/
 	uint32_t tile_index;
 	/** Nb of tile to decode */
 	uint32_t nb_tile_to_decode;
-
 	opj_precision* precision;
 	uint32_t     nb_precision;
-
 	/* force output colorspace to RGB */
 	bool force_rgb;
 	/* upsample components according to their dx/dy values */
 	bool upsample;
 	/* split output components to different files */
 	bool split_pnm;
-
 	/* serialize xml metadata to disk */
 	bool serialize_xml;
-
 	uint32_t compression;
 	int32_t  compressionLevel;   // compression "quality". Meaning of "quality" depends on file format we are writing to
-
 	uint32_t numThreads;
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
-
 	bool verbose;
-
 } opj_decompress_parameters;
 
 typedef void * opj_codec_t;
@@ -893,13 +848,10 @@ typedef struct opj_image {
     uint8_t *icc_profile_buf;
     /** size of ICC profile */
     uint32_t icc_profile_len;
-
 	double capture_resolution[2];
 	double display_resolution[2];
-
 	uint8_t *iptc_buf;
 	size_t iptc_len;
-
 	uint8_t *xmp_buf;
 	size_t xmp_len;
 } opj_image_t;
@@ -929,10 +881,9 @@ typedef struct opj_image_comptparm {
     uint32_t sgnd;
 } opj_image_cmptparm_t;
 
-
 /*
 ==========================================================
-   Information on the JPEG 2000 codestream
+   Information about the JPEG 2000 codestream
 ==========================================================
 */
 
@@ -962,7 +913,6 @@ typedef struct opj_marker_info {
     /** length, marker val included */
     uint32_t len;
 } opj_marker_info_t;
-
 
 /**
  * Index structure : Information concerning tile-parts
@@ -1058,7 +1008,6 @@ typedef struct opj_codestream_info {
     opj_marker_info_t *marker;
     /** actual size of markers array */
     uint32_t maxmarknum;
-
     /** main header position */
     uint64_t main_head_start;
     /** main header position */
@@ -1108,7 +1057,6 @@ opj_tccp_info_t;
  * Tile coding parameters information
  */
 typedef struct opj_tile_v2_info {
-
     /** number (index) of tile */
     uint32_t tileno;
     /** coding style */
@@ -1119,7 +1067,6 @@ typedef struct opj_tile_v2_info {
     uint32_t numlayers;
     /** multi-component transform identifier */
     uint32_t mct;
-
     /** information concerning tile component parameters*/
     opj_tccp_info_t *tccp_info;
 
@@ -1142,16 +1089,12 @@ typedef struct opj_codestream_info_v2 {
     uint32_t tw;
     /** number of tiles in Y */
     uint32_t th;
-
     /** number of components*/
     uint32_t nbcomps;
-
     /** Default information regarding tiles inside image */
     opj_tile_info_v2_t m_default_tile_info;
-
     /** information regarding tiles inside image */
     opj_tile_info_v2_t *tile_info; /* FIXME not used for the moment */
-
 } opj_codestream_info_v2_t;
 
 
@@ -1165,7 +1108,6 @@ typedef struct opj_tp_index {
     int64_t end_header;
     /** end position */
     int64_t end_pos;
-
 } opj_tp_index_t;
 
 /**
@@ -1174,7 +1116,6 @@ typedef struct opj_tp_index {
 typedef struct opj_tile_index {
     /** tile index */
     uint32_t tileno;
-
     /** number of tile parts */
     uint32_t nb_tps;
     /** current nb of tile part (allocated)*/
@@ -1183,20 +1124,16 @@ typedef struct opj_tile_index {
     uint32_t current_tpsno;
     /** information concerning tile parts */
     opj_tp_index_t *tp_index;
-
     /** number of markers */
     uint32_t marknum;
     /** list of markers */
     opj_marker_info_t *marker;
     /** actual size of markers array */
     uint32_t maxmarknum;
-
-
     /** packet number */
     uint32_t nb_packet;
     /** information concerning packets inside tile */
     opj_packet_info_t *packet_index;
-
 } opj_tile_index_t;
 
 /**
@@ -1207,45 +1144,30 @@ typedef struct opj_codestream_index {
     uint64_t main_head_start;
     /** main header end position (first SOT position) */
     uint64_t main_head_end;
-
     /** codestream's size */
     uint64_t codestream_size;
-
     /** number of markers */
     uint32_t marknum;
     /** list of markers */
     opj_marker_info_t *marker;
     /** actual size of markers array */
     uint32_t maxmarknum;
-
-    /** */
     uint32_t nb_of_tiles;
-    /** */
     opj_tile_index_t *tile_index; /* FIXME not used for the moment */
-
 } opj_codestream_index_t;
 /* -----------------------------------------------------------> */
 
-
-
-/*
-==========================================================
-   openjpeg version
-==========================================================
-*/
-
-/* Get the version of the Grok library*/
+// version
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
-
-/* Initialize Grok library */
+//initialize plugin
 OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path);
-
+//un-initialize plugin
 OPJ_API void OPJ_CALLCONV opj_cleanup();
 
 /*
-==========================================================
+=================================
    image functions definitions
-==========================================================
+=================================
 */
 
 /**
@@ -1277,9 +1199,9 @@ OPJ_API void OPJ_CALLCONV opj_image_destroy(opj_image_t *image);
 OPJ_API opj_image_t* OPJ_CALLCONV opj_image_tile_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc);
 
 /*
-==========================================================
+=================================
    stream functions definitions
-==========================================================
+=================================
 */
 
 /**
@@ -1294,7 +1216,7 @@ OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_default_create(bool p_is_input);
 /**
  * Creates an abstract stream. This function does nothing except allocating memory and initializing the abstract stream.
  *
- * @param	p_buffer_size  FIXME DOC
+ * @param	p_buffer_size   size of stream's double-buffer
  * @param	p_is_input		if set to true then the stream will be an input stream, an output stream else.
  *
  * @return	a stream object.
@@ -1323,7 +1245,6 @@ OPJ_API void OPJ_CALLCONV opj_stream_set_read_function(opj_stream_t* p_stream, o
 * @param		p_function	the function to use a read function.
 */
 OPJ_API void OPJ_CALLCONV opj_stream_set_zero_copy_read_function(opj_stream_t* p_stream, opj_stream_zero_copy_read_fn p_function);
-
 
 /**
  * Sets the given function to be used as a write function.
@@ -1396,9 +1317,9 @@ OPJ_API size_t OPJ_CALLCONV opj_stream_get_write_buffer_stream_length(opj_stream
 OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_mapped_file_read_stream(const char *fname);
 
 /*
-==========================================================
+========================================
    event manager functions definitions
-==========================================================
+========================================
 */
 /**
  * Set the info handler used by Grok.
@@ -1429,9 +1350,9 @@ OPJ_API bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t * p_codec,
         void * p_user_data);
 
 /*
-==========================================================
+===============================
    codec functions definitions
-==========================================================
+===============================
 */
 
 /**
@@ -1494,10 +1415,9 @@ OPJ_API bool OPJ_CALLCONV opj_read_header(opj_stream_t *p_stream,
  *
  * @param	p_stream			the jpeg2000 stream.
  * @param	p_codec				the jpeg2000 codec to read.
- * @param	encoding_parameters	struct to store various pieces of information from jpeg2000 header 
+ * @param	header_info			information read from jpeg 2000 header.
  * @param	p_image				the image structure initialized with the characteristics
  *								of encoded image.
- *
  * @return true				if the main header of the codestream and the JP2 header is correctly read.
  */
 OPJ_API bool OPJ_CALLCONV opj_read_header_ex (	opj_stream_t *p_stream,
@@ -1524,9 +1444,9 @@ OPJ_API bool OPJ_CALLCONV opj_set_decode_area(	opj_codec_t *p_codec,
 												uint32_t p_end_x, 
 												uint32_t p_end_y );
 
-////////////////////////////////////////////////////
-// Structs to pass data between plugin and grok
-////////////////////////////////////////////////////
+////////////////////////////////////////////////
+// Structs to pass data between grok and plugin
+/////////////////////////////////////////////////
 
 typedef struct grok_plugin_pass {
 	double distortionDecrease;  //distortion decrease up to and including this pass
@@ -1535,14 +1455,11 @@ typedef struct grok_plugin_pass {
 } grok_plugin_pass_t;
 
 typedef struct grok_plugin_code_block {
-
 	/////////////////////////
 	// debug info
 	uint32_t x0, y0, x1, y1;
 	unsigned int* contextStream;
 	///////////////////////////
-
-
 	size_t numPix;
 	unsigned char* compressedData;
 	size_t compressedDataLength;
@@ -1568,9 +1485,7 @@ typedef struct grok_plugin_resolution {
 	size_t level;
 	size_t numBands;
 	grok_plugin_band_t** bands;
-
 } grok_plugin_resolution_t;
-
 
 typedef struct grok_plugin_tile_component {
 	size_t numResolutions;
@@ -1582,8 +1497,6 @@ typedef struct grok_plugin_tile_component {
 #define GROK_DECODE_T1		(1 << 2)
 #define GROK_DECODE_POST_T1	(1 << 3)
 #define GROK_DECODE_ALL		(GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
-
-
 
 typedef struct grok_plugin_tile {
 	uint32_t decode_flags;
@@ -1767,8 +1680,6 @@ OPJ_API bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
 OPJ_API bool OPJ_CALLCONV opj_end_compress (opj_codec_t *p_codec,
         opj_stream_t *p_stream);
 
-
-
 /**
  * Encode an image into a JPEG-2000 codestream
  * @param p_codec 		compressor handle
@@ -1797,8 +1708,6 @@ OPJ_API bool OPJ_CALLCONV opj_encode_with_plugin(opj_codec_t *p_codec,
    codec output functions definitions
 ==========================================================
 */
-/* EXPERIMENTAL FUNCTIONS FOR NOW, USED ONLY IN J2K_DUMP*/
-
 /**
 Destroy Codestream information after compression or decompression
 @param cstr_info Codestream information structure
@@ -1840,7 +1749,6 @@ OPJ_API opj_codestream_index_t * OPJ_CALLCONV opj_get_cstr_index(opj_codec_t *p_
 
 OPJ_API void OPJ_CALLCONV opj_destroy_cstr_index(opj_codestream_index_t **p_cstr_index);
 
-
 /*
 ==========================================================
    MCT functions
@@ -1868,12 +1776,9 @@ OPJ_API void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t*
 
 OPJ_API bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* image);
 
-
-
-/*********************************************************************
+/*****************
 Plugin Interface
-**********************************************************************/
-
+******************/
 
 /*
 Plugin management
@@ -1919,7 +1824,6 @@ typedef struct grok_plugin_init_info {
 
 OPJ_API bool OPJ_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo);
 
-
 typedef struct grok_plugin_encode_user_callback_info {
 	const char*			input_file_name;
 	bool				outputFileNameIsRelative;
@@ -1939,7 +1843,6 @@ OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_encode(const char* input_dir, con
 OPJ_API bool OPJ_CALLCONV grok_plugin_is_batch_complete(void);
 
 OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_encode(void);
-
 
 /*
 Plugin decoding
@@ -1981,8 +1884,6 @@ OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
         grok_plugin_decode_callback postDecode);
 
 OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_decode(void);
-
-
 
 #ifdef __cplusplus
 }
