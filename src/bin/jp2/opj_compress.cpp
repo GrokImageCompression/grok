@@ -296,11 +296,12 @@ static void encode_help_display(void)
 	fprintf(stdout, "	Note: this flag will be ignored if cinema profile flags are used.\n");
 	fprintf(stdout,"[-w|-cinema2K] <24|48>\n");
     fprintf(stdout,"    Digital Cinema 2K profile compliant codestream.\n");
-    fprintf(stdout,"	Need to specify the frames per second for a 2K resolution.\n");
+    fprintf(stdout,"	Need to specify the frames per second.\n");
     fprintf(stdout,"    Only 24 or 48 fps are currently allowed.\n");
-    fprintf(stdout,"[-x|-cinema4K]\n");
+    fprintf(stdout,"[-x|-cinema4K] <24|48>\n");
     fprintf(stdout,"    Digital Cinema 4K profile compliant codestream.\n");
-    fprintf(stdout,"	Frames per second not required. Default value is 24fps.\n");
+	fprintf(stdout, "	Need to specify the frames per second.\n");
+	fprintf(stdout, "    Only 24 or 48 fps are currently allowed.\n");
     fprintf(stdout,"[-C|-Comment] <comment>\n");
     fprintf(stdout,"    Add <comment> in the comment marker segment.\n");
 	fprintf(stdout, "[-Q|-CaptureRes] <capture resolution X,capture resolution Y>\n");
@@ -490,6 +491,28 @@ public:
 
 /* ------------------------------------------------------------------------------------ */
 
+static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, opj_cparameters_t *parameters) {
+	bool isValid = true;
+	if (arg->isSet()) {
+		int fps = arg->getValue();
+		if (fps == 24) {
+			parameters->rsiz = profile;
+			parameters->max_comp_size = OPJ_CINEMA_24_COMP;
+			parameters->max_cs_size = OPJ_CINEMA_24_CS;
+		}
+		else if (fps == 48) {
+			parameters->rsiz = profile;
+			parameters->max_comp_size = OPJ_CINEMA_48_COMP;
+			parameters->max_cs_size = OPJ_CINEMA_48_CS;
+		}
+		else {
+			isValid = false;
+			if (parameters->verbose)
+				fprintf(stderr, "Incorrect digital cinema frame rate %d : must be either 24 or 48\n", fps);
+		}
+	}
+	return isValid;
+}
 static int parse_cmdline_encoder_ex(int argc, 
 									char **argv,
 									opj_cparameters_t *parameters,
@@ -527,8 +550,10 @@ static int parse_cmdline_encoder_ex(int argc,
 		ValueArg<uint32_t> cinema2KArg("w", "cinema2K", 
 										"Digital cinema 2K profile",
 										false,24, "unsigned integer", cmd);
-		SwitchArg cinema4KArg("x", "cinema4K",
-										"Digital cinema 4K profile", cmd);
+		ValueArg<uint32_t> cinema4KArg("x", "cinema4K",
+									"Digital cinema 2K profile",
+									false, 24, "unsigned integer", cmd);
+
 		ValueArg<string> imgDirArg("y", "ImgDir",
 									"Image directory",
 									false, "", "string", cmd);
@@ -1069,32 +1094,18 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 		if (cinema2KArg.isSet()) {
-			int fps = cinema2KArg.getValue();
-			if (fps == 24) {
-				parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
-				parameters->max_comp_size = OPJ_CINEMA_24_COMP;
-				parameters->max_cs_size = OPJ_CINEMA_24_CS;
-			}
-			else if (fps == 48) {
-				parameters->rsiz = OPJ_PROFILE_CINEMA_2K;
-				parameters->max_comp_size = OPJ_CINEMA_48_COMP;
-				parameters->max_cs_size = OPJ_CINEMA_48_CS;
-			}
-			else {
-				fprintf(stderr, "Incorrect value!! must be 24 or 48\n");
+			if (!checkCinema(&cinema2KArg, OPJ_PROFILE_CINEMA_2K, parameters)) {
 				return 1;
 			}
-			if (parameters->verbose)
 			fprintf(stdout, "CINEMA 2K profile activated\n"
-				"Other options specified could be overridden\n");
-		
+				"Other options specified may be overridden\n");
 		}
-
 		if (cinema4KArg.isSet()) {
-			parameters->rsiz = OPJ_PROFILE_CINEMA_4K;
-			if (parameters->verbose)
-				fprintf(stdout, "CINEMA 4K profile activated\n"
-					"Other options specified could be overridden\n");
+			if (!checkCinema(&cinema4KArg, OPJ_PROFILE_CINEMA_4K, parameters)) {
+				return 1;
+			}
+			fprintf(stdout, "CINEMA 4K profile activated\n"
+				"Other options specified may be overridden\n");
 		}
 		if (rsizArg.isSet()) {
 			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
