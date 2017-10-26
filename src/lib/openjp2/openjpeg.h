@@ -282,13 +282,13 @@ typedef enum CINEMA_MODE {
 #define OPJ_IS_IMF(v)        (((v) >= OPJ_PROFILE_IMF_2K) && ((v) <= ((OPJ_PROFILE_IMF_8K_R) | (0x009b))))
 #define OPJ_IS_PART2(v)      ((v) & OPJ_PROFILE_PART2)
 
-/**
- * JPEG 2000 codestream and component size limits in cinema profiles
+ /**
+ * JPEG 2000 codestream and component size limits on cinema profiles
  * */
-#define OPJ_CINEMA_24_CS     1302083   	/** Maximum codestream length for 24fps */
-#define OPJ_CINEMA_48_CS     651041     /** Maximum codestream length for 48fps */
-#define OPJ_CINEMA_24_COMP   1041666    /** Maximum size per color component for 2K & 4K @ 24fps */
-#define OPJ_CINEMA_48_COMP   520833		/** Maximum size per color component for 2K @ 48fps */
+#define OPJ_CINEMA_24_CS     1302083   	/** Maximum codestream length @ 24fps */
+#define OPJ_CINEMA_48_CS     651041     /** Maximum codestream length @ 48fps */
+#define OPJ_CINEMA_24_COMP   1041666    /** Maximum size per color component @ 24fps */
+#define OPJ_CINEMA_48_COMP   520833		/** Maximum size per color component @ 48fps */
 
 /**
  * Progression order
