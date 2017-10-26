@@ -21,6 +21,8 @@
 
 namespace grk {
 
+#define GROK_MAX_PRECISION 16
+
 // 64 Giga Pixels
 const uint64_t max_tile_area = 67108864000;
 const uint32_t max_precision = 38;			// maximum number of magnitude bits, according to ISO standard
