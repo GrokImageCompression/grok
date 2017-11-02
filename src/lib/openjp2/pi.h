@@ -180,7 +180,7 @@ Create a packet iterator for Decoder
 @param image Raw image for which the packets will be listed
 @param cp Coding parameters
 @param tileno Number that identifies the tile for which to list the packets
-@return Returns a packet iterator that points to the first packet of the tile
+@return a packet iterator that points to the first packet of the tile
 @see pi_destroy
 */
 pi_iterator_t *pi_create_decode(opj_image_t * image,
@@ -198,7 +198,7 @@ void pi_destroy(pi_iterator_t *p_pi,
 /**
 Modify the packet iterator to point to the next packet
 @param pi Packet iterator to modify
-@return Returns false if pi pointed to the last packet or else returns true
+@return false if pi pointed to the last packet or else returns true
 */
 bool pi_next(pi_iterator_t * pi);
 /* ----------------------------------------------------------------------- */

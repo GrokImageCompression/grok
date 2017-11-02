@@ -391,10 +391,10 @@ static bool pi_next_rpcl(pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = ceildiv<uint64_t>((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = ceildiv<uint64_t>((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = ceildiv<uint64_t>((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = ceildiv<uint64_t>((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))  ))) {
@@ -408,9 +408,9 @@ static bool pi_next_rpcl(pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
+                    prci = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
                            - uint_floordivpow2(trx0, res->pdx);
-                    prcj = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                    prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
@@ -462,10 +462,10 @@ static bool pi_next_pcrl(pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = ceildiv<uint64_t>((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = ceildiv<uint64_t>((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = ceildiv<uint64_t>((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = ceildiv<uint64_t>((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
@@ -479,9 +479,9 @@ static bool pi_next_pcrl(pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)),res->pdx)
+                    prci = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)),res->pdx)
                            - uint_floordivpow2(trx0, res->pdx);
-                    prcj = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                    prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
@@ -536,10 +536,10 @@ static bool pi_next_cprl(pi_iterator_t * pi)
                     levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= OPJ_J2K_MAXRLVLS)
 						continue;
-                    trx0 = uint64_ceildiv((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
-                    try0 = uint64_ceildiv((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
-                    trx1 = uint64_ceildiv((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
-                    try1 = uint64_ceildiv((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
+                    trx0 = ceildiv<uint64_t>((uint64_t)pi->tx0, ((uint64_t)comp->dx << levelno));
+                    try0 = ceildiv<uint64_t>((uint64_t)pi->ty0, ((uint64_t)comp->dy << levelno));
+                    trx1 = ceildiv<uint64_t>((uint64_t)pi->tx1, ((uint64_t)comp->dx << levelno));
+                    try1 = ceildiv<uint64_t>((uint64_t)pi->ty1, ((uint64_t)comp->dy << levelno));
                     rpx = res->pdx + levelno;
                     rpy = res->pdy + levelno;
                     if (!(((uint64_t)pi->y % ((uint64_t)comp->dy << rpy) == 0) || ((pi->y == pi->ty0) && (((uint64_t)try0 << levelno) % ((uint64_t)1 << rpy))))) {
@@ -553,9 +553,9 @@ static bool pi_next_cprl(pi_iterator_t * pi)
 
                     if ((trx0==trx1)||(try0==try1)) continue;
 
-                    prci = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
+                    prci = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->x, ((uint64_t)comp->dx << levelno)), res->pdx)
                            - uint_floordivpow2(trx0, res->pdx);
-                    prcj = uint_floordivpow2(uint64_ceildiv((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
+                    prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = prci + prcj * res->pw;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
@@ -635,10 +635,10 @@ static void opj_get_encoding_parameters(	const opj_image_t *p_image,
         uint32_t l_product;
         uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
 
-        l_tcx0 = uint_ceildiv(*p_tx0, l_img_comp->dx);
-        l_tcy0 = uint_ceildiv(*p_ty0, l_img_comp->dy);
-        l_tcx1 = uint_ceildiv(*p_tx1, l_img_comp->dx);
-        l_tcy1 = uint_ceildiv(*p_ty1, l_img_comp->dy);
+        l_tcx0 = ceildiv<uint32_t>(*p_tx0, l_img_comp->dx);
+        l_tcy0 = ceildiv<uint32_t>(*p_ty0, l_img_comp->dy);
+        l_tcx1 = ceildiv<uint32_t>(*p_tx1, l_img_comp->dx);
+        l_tcy1 = ceildiv<uint32_t>(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;
@@ -761,10 +761,10 @@ static void opj_get_all_encoding_parameters(   const opj_image_t *p_image,
 
         lResolutionPtr = p_resolutions[compno];
 
-        l_tcx0 = uint_ceildiv(*p_tx0, l_img_comp->dx);
-        l_tcy0 = uint_ceildiv(*p_ty0, l_img_comp->dy);
-        l_tcx1 = uint_ceildiv(*p_tx1, l_img_comp->dx);
-        l_tcy1 = uint_ceildiv(*p_ty1, l_img_comp->dy);
+        l_tcx0 = ceildiv<uint32_t>(*p_tx0, l_img_comp->dx);
+        l_tcy0 = ceildiv<uint32_t>(*p_ty0, l_img_comp->dy);
+        l_tcx1 = ceildiv<uint32_t>(*p_tx1, l_img_comp->dx);
+        l_tcy1 = ceildiv<uint32_t>(*p_ty1, l_img_comp->dy);
 
         if (l_tccp->numresolutions > *p_max_res) {
             *p_max_res = l_tccp->numresolutions;

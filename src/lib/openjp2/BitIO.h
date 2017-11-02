@@ -72,7 +72,7 @@ public:
 
 	/*
 	Number of bytes written.
-	@return Returns the number of bytes written
+	@return the number of bytes written
 	*/
 	size_t numbytes();
 
@@ -85,17 +85,17 @@ public:
 	/*
 	Read bits
 	@param n Number of bits to read
-	@return Returns the corresponding read number
+	@return the corresponding read number
 	*/
 	bool read(uint32_t* bits, uint32_t n);
 	/*
 	Flush bits
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	bool flush();
 	/*
 	Passes the ending bits (coming from flushing)
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	bool inalign();
 
@@ -131,26 +131,26 @@ private:
 	/*
 	Read a bit
 	@param bio BIO handle
-	@return Returns the read bit
+	@return the read bit
 	*/
 	bool getbit(uint32_t* bits, uint8_t pos);
 	/*
 	Write a byte
 	@param bio BIO handle
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	bool byteout();
 
 	/*
 	Write a byte
 	@param bio BIO handle
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	bool byteout_stream();
 	/*
 	Read a byte
 	@param bio BIO handle
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	bool bytein();
 

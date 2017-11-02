@@ -401,7 +401,7 @@ struct tcd_t {
 /**
 Create a new TCD handle
 @param p_is_decoder FIXME DOC
-@return Returns a new TCD handle if successful returns nullptr otherwise
+@return a new TCD handle if successful returns nullptr otherwise
 */
 tcd_t* tcd_create(bool p_is_decoder);
 

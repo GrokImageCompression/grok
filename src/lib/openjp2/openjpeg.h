@@ -1359,7 +1359,7 @@ OPJ_API bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t * p_codec,
  * Creates a J2K/JP2 decompression structure
  * @param format 		Decoder to select
  *
- * @return Returns a handle to a decompressor if successful, returns nullptr otherwise
+ * @return a handle to a decompressor if successful, returns nullptr otherwise
  * */
 OPJ_API opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT format);
 

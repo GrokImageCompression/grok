@@ -26,7 +26,7 @@ namespace grk {
 
 /**
 Divide an integer and round upwards
-@return Returns a divided by b
+@return a divided by b
 */
 static inline int64_t int64_ceildiv(int64_t a, int64_t b)
 {
@@ -92,7 +92,7 @@ bool rect_t::clip(rect_t* r2, rect_t* result)
 }
 
 
-void rect_t::ceildivpow2(int32_t power)
+void rect_t::ceildivpow2(uint32_t power)
 {
 	x0 = int64_ceildivpow2(x0, power);
 	y0 = int64_ceildivpow2(y0, power);

@@ -887,10 +887,10 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 		}
 		l_image_comp->resno_decoded = 0;
         /* border of each l_tile component (global) */
-        l_tilec->x0 = uint_ceildiv(l_tile->x0, l_image_comp->dx);
-        l_tilec->y0 = uint_ceildiv(l_tile->y0, l_image_comp->dy);
-        l_tilec->x1 = uint_ceildiv(l_tile->x1, l_image_comp->dx);
-        l_tilec->y1 = uint_ceildiv(l_tile->y1, l_image_comp->dy);
+        l_tilec->x0 = ceildiv<uint32_t>(l_tile->x0, l_image_comp->dx);
+        l_tilec->y0 = ceildiv<uint32_t>(l_tile->y0, l_image_comp->dy);
+        l_tilec->x1 = ceildiv<uint32_t>(l_tile->x1, l_image_comp->dx);
+        l_tilec->y1 = ceildiv<uint32_t>(l_tile->y1, l_image_comp->dy);
         /*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", l_tilec->x0, l_tilec->y0,l_tilec->x1,l_tilec->y1);*/
 
         /* compute l_data_size with overflow check */

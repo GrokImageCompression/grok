@@ -77,27 +77,27 @@ protected:
 /**
 Get the gain of a subband for the reversible 5-3 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
-@return Returns 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
+@return 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
 */
 uint32_t dwt_getgain(uint8_t orient) ;
 /**
 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
 @param level Level of the wavelet function
 @param orient Band of the wavelet function
-@return Returns the norm of the wavelet function
+@return the norm of the wavelet function
 */
 double dwt_getnorm(uint32_t level, uint8_t orient);
 /**
 Get the gain of a subband for the irreversible 9-7 DWT.
 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
-@return Returns the gain of the 9-7 wavelet transform
+@return the gain of the 9-7 wavelet transform
 */
 uint32_t dwt_getgain_real(uint8_t orient);
 /**
 Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
 @param level Level of the wavelet function
 @param orient Band of the wavelet function
-@return Returns the norm of the 9-7 wavelet
+@return the norm of the 9-7 wavelet
 */
 double dwt_getnorm_real(uint32_t level, uint8_t orient);
 /**

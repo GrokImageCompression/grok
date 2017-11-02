@@ -70,7 +70,7 @@ The functions in grok_malloc.h are internal utilities used for memory management
 /**
 Allocate an uninitialized memory block
 @param size Bytes to allocate
-@return Returns a void pointer to the allocated space, or nullptr if there is insufficient memory available
+@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
 */
 void * grok_malloc(size_t size);
 
@@ -78,14 +78,14 @@ void * grok_malloc(size_t size);
 Allocate a memory block with elements initialized to 0
 @param num Blocks to allocate
 @param size Bytes per block to allocate
-@return Returns a void pointer to the allocated space, or nullptr if there is insufficient memory available
+@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
 */
 void * grok_calloc(size_t numOfElements, size_t sizeOfElements);
 
 /**
 Allocate memory aligned to a 16 byte boundary
 @param size Bytes to allocate
-@return Returns a void pointer to the allocated space, or nullptr if there is insufficient memory available
+@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
 */
 void * grok_aligned_malloc(size_t size);
 void * grok_aligned_realloc(void *ptr, size_t size);
@@ -95,7 +95,7 @@ void grok_aligned_free(void* ptr);
 Reallocate memory blocks.
 @param m Pointer to previously allocated memory block
 @param s New size in bytes
-@return Returns a void pointer to the reallocated (and possibly moved) memory block
+@return a void pointer to the reallocated (and possibly moved) memory block
 */
 void * grok_realloc(void * m, size_t s);
 
