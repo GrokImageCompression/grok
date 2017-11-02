@@ -259,7 +259,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
  * @param p_image   FIXME DOC
  * @param p_manager FIXME DOC
  *
- * @return Returns a decoded image if successful, returns nullptr otherwise
+ * @return a decoded image if successful, returns nullptr otherwise
 */
 bool jp2_decode(jp2_t *jp2,
 					grok_plugin_tile_t* tile,
@@ -287,7 +287,7 @@ Encode an image into a JPEG-2000 file stream
 @param jp2      JP2 compressor handle
 @param stream    Output buffer stream
 @param p_manager  event manager
-@return Returns true if successful, returns false otherwise
+@return true if successful, returns false otherwise
 */
 bool jp2_encode(  jp2_t *jp2,
 						grok_plugin_tile_t* tile,

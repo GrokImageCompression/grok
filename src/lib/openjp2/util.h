@@ -47,7 +47,7 @@ struct rect_t {
 
 	bool clip( rect_t* r2, rect_t* result);
 
-	void ceildivpow2( int32_t power);
+	void ceildivpow2( uint32_t power);
 
 	void grow(int64_t boundary);
 

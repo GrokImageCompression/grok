@@ -368,7 +368,7 @@ static void jp2_free_pclr(jp2_color_t *color);
  * @param p_pclr_header_size    FIXME DOC
  * @param p_manager
  *
- * @return Returns true if successful, returns false otherwise
+ * @return true if successful, returns false otherwise
 */
 static bool jp2_read_pclr(	jp2_t *jp2,
                                 uint8_t * p_pclr_header_data,
@@ -383,7 +383,7 @@ static bool jp2_read_pclr(	jp2_t *jp2,
  * @param p_cmap_header_size  FIXME DOC
  * @param p_manager           FIXME DOC
  *
- * @return Returns true if successful, returns false otherwise
+ * @return true if successful, returns false otherwise
 */
 
 static bool jp2_read_cmap(	jp2_t * jp2,

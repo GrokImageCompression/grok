@@ -58,7 +58,7 @@
  Load a single image component encoded in PGX file format
  @param filename Name of the PGX file to load
  @param parameters *List ?*
- @return Returns a greyscale image if successful, returns nullptr otherwise
+ @return a greyscale image if successful, returns nullptr otherwise
  */
 
 

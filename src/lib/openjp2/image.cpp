@@ -187,10 +187,10 @@ namespace grk {
 
 		l_img_comp = p_image_header->comps;
 		for (i = 0; i < p_image_header->numcomps; ++i) {
-			l_comp_x0 = uint_ceildiv(l_x0, l_img_comp->dx);
-			l_comp_y0 = uint_ceildiv(l_y0, l_img_comp->dy);
-			l_comp_x1 = uint_ceildiv(l_x1, l_img_comp->dx);
-			l_comp_y1 = uint_ceildiv(l_y1, l_img_comp->dy);
+			l_comp_x0 = ceildiv<uint32_t>(l_x0, l_img_comp->dx);
+			l_comp_y0 = ceildiv<uint32_t>(l_y0, l_img_comp->dy);
+			l_comp_x1 = ceildiv<uint32_t>(l_x1, l_img_comp->dx);
+			l_comp_y1 = ceildiv<uint32_t>(l_y1, l_img_comp->dy);
 			l_width = uint_ceildivpow2(l_comp_x1 - l_comp_x0, l_img_comp->decodeScaleFactor);
 			l_height = uint_ceildivpow2(l_comp_y1 - l_comp_y0, l_img_comp->decodeScaleFactor);
 			l_img_comp->w = l_width;

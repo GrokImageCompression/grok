@@ -105,7 +105,7 @@ struct event_mgr_t {
  * @param event_type 		Event type or callback to use to send the message
  * @param fmt 				Format-control string (plus optional arguments)
  *
- * @return Returns true if successful, returns false otherwise
+ * @return true if successful, returns false otherwise
  */
 bool event_msg(event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...);
 /* ----------------------------------------------------------------------- */

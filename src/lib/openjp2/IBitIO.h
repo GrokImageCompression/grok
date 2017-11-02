@@ -30,7 +30,7 @@ public:
 
 	/**
 	Number of bytes written.
-	@return Returns the number of bytes written
+	@return the number of bytes written
 	*/
 	virtual size_t numbytes()=0;
 
@@ -43,17 +43,17 @@ public:
 	/**
 	Read bits
 	@param n Number of bits to read
-	@return Returns the corresponding read number
+	@return the corresponding read number
 	*/
 	virtual bool read(uint32_t* bits, uint32_t n)= 0;
 	/**
 	Flush bits
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	virtual bool flush()= 0;
 	/**
 	Passes the ending bits (coming from flushing)
-	@return Returns true if successful, returns false otherwise
+	@return true if successful, returns false otherwise
 	*/
 	virtual bool inalign()= 0;
 

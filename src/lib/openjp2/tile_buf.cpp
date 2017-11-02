@@ -51,10 +51,10 @@ bool tile_buf_create_component(tcd_tilecomp_t* tilec,
 
     if (output_image) {
 		comp->dim= rect_t(
-                      uint_ceildiv(output_image->x0,dx),
-                      uint_ceildiv(output_image->y0,dy),
-                      uint_ceildiv(output_image->x1,dx),
-                      uint_ceildiv(output_image->y1,dy));
+                      ceildiv<uint32_t>(output_image->x0,dx),
+                      ceildiv<uint32_t>(output_image->y0,dy),
+                      ceildiv<uint32_t>(output_image->x1,dx),
+                      ceildiv<uint32_t>(output_image->y1,dy));
 
         /* clip output image to tile */
 		comp->tile_dim.clip(&comp->dim, &comp->dim);

@@ -86,7 +86,7 @@ public:
 	Create a tag tree
 	@param numleafsh Width of the array of leafs of the tree
 	@param numleafsv Height of the array of leafs of the tree
-	@return Returns a new tag tree if successful, returns nullptr otherwise
+	@return a new tag tree if successful, returns nullptr otherwise
 	*/
 	TagTree(uint32_t numleafsh, uint32_t numleafsv, event_mgr_t *manager);
 	~TagTree();
@@ -124,7 +124,7 @@ public:
 	@param bio Pointer to a BIO handle
 	@param leafno Number that identifies the leaf to decode
 	@param threshold Threshold to use when decoding value of the leaf
-	@return Returns 1 if the node's value < threshold, returns 0 otherwise
+	@return 1 if the node's value < threshold, returns 0 otherwise
 	*/
 	bool decode(BitIO *bio, uint32_t leafno, int32_t threshold, uint8_t* decoded);
 
@@ -134,7 +134,7 @@ public:
 	@param bio Pointer to a BIO handle
 	@param leafno Number that identifies the leaf to decode
 	@param threshold Threshold to use when decoding value of the leaf
-	@return Returns the node's value
+	@return the node's value
 	*/
 	bool decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, uint32_t* value);
 

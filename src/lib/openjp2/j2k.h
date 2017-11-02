@@ -545,7 +545,7 @@ void j2k_setup_decoder(void* j2k_void, opj_dparameters_t *parameters);
 /**
  * Creates a J2K compression structure
  *
- * @return Returns a handle to a J2K compressor if successful, returns nullptr otherwise
+ * @return a handle to a J2K compressor if successful, returns nullptr otherwise
 */
 j2k_t* j2k_create_compress(void);
 

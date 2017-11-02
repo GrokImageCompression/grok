@@ -52,7 +52,7 @@ namespace grk {
 
 /**
 Difference in successive grok_clock() calls tells you the elapsed time
-@return Returns time in seconds
+@return time in seconds
 */
 double grok_clock(void);
 

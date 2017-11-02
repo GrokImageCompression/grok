@@ -87,7 +87,7 @@ struct raw_t {
 /* ----------------------------------------------------------------------- */
 /**
 Create a new RAW handle
-@return Returns a new RAW handle if successful, returns nullptr otherwise
+@return a new RAW handle if successful, returns nullptr otherwise
 */
 raw_t* raw_create(void);
 /**
@@ -105,7 +105,7 @@ void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len);
 /**
 Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param raw RAW handle
-@return Returns the decoded symbol (0 or 1)
+@return the decoded symbol (0 or 1)
 */
 uint8_t raw_decode(raw_t *raw);
 /* ----------------------------------------------------------------------- */
@@ -150,7 +150,7 @@ struct mqc_t {
 
 /**
 Create a new MQC handle
-@return Returns a new MQC handle if successful, returns nullptr otherwise
+@return a new MQC handle if successful, returns nullptr otherwise
 */
 mqc_t* mqc_create(void);
 /**
@@ -161,7 +161,7 @@ void mqc_destroy(mqc_t *mqc);
 /**
 Return the number of bytes written/read since initialisation
 @param mqc MQC handle
-@return Returns the number of bytes already encoded
+@return the number of bytes already encoded
 */
 int32_t mqc_numbytes(mqc_t *mqc);
 /**
@@ -243,7 +243,7 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len);
 /**
 Decode a symbol
 @param mqc MQC handle
-@return Returns the decoded symbol (0 or 1)
+@return the decoded symbol (0 or 1)
 */
 uint8_t mqc_decode(mqc_t * const mqc);
 
