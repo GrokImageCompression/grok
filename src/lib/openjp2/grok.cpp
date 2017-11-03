@@ -1284,6 +1284,9 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 			info->image = grokInfo.image;
 			info->l_stream = grokInfo.l_stream;
 			info->l_codec = grokInfo.l_codec;
+			// something went wrong....
+			if (!info->image)
+				return -1;
 		}
     } 
 	// post T1 calls are routed to post-decode callback
