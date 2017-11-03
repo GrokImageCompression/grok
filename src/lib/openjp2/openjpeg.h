@@ -822,6 +822,8 @@ typedef struct opj_image_comp {
     uint32_t decodeScaleFactor;
     /** image component data */
     int32_t *data;
+	// if true, then image will manage data, otherwise up to caller
+	bool owns_data;
     /** alpha channel: can be one of three values: {GROK_COMPONENT_TYPE_COLOUR, GROK_COMPONENT_TYPE_OPACITY, GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY} */
     uint16_t alpha;  
 } opj_image_comp_t;
