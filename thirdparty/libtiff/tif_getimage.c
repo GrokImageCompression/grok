@@ -626,7 +626,7 @@ gtTileContig(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
     uint32 col, row, y, rowstoread;
     tmsize_t pos;
     uint32 tw, th;
-    unsigned char* buf;
+    unsigned char* buf = NULL;
     int32 fromskew, toskew;
     uint32 nrow;
     int ret = 1, flip;
@@ -634,13 +634,14 @@ gtTileContig(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
     int32 this_toskew, leftmost_toskew;
     int32 leftmost_fromskew;
     uint32 leftmost_tw;
+    tmsize_t bufsize;
 
-    buf = (unsigned char*) _TIFFmalloc(TIFFTileSize(tif));
-    if (buf == 0) {
-		TIFFErrorExt(tif->tif_clientdata, TIFFFileName(tif), "%s", "No space for tile buffer");
-		return (0);
+    bufsize = TIFFTileSize(tif);
+    if (bufsize == 0) {
+        TIFFErrorExt(tif->tif_clientdata, TIFFFileName(tif), "%s", "No space for tile buffer");
+        return (0);
     }
-    _TIFFmemset(buf, 0, TIFFTileSize(tif));
+
     TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tw);
     TIFFGetField(tif, TIFFTAG_TILELENGTH, &th);
 
@@ -660,7 +661,7 @@ gtTileContig(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
     leftmost_fromskew = img->col_offset % tw;
     leftmost_tw = tw - leftmost_fromskew;
     leftmost_toskew = toskew + leftmost_fromskew;
-    for (row = 0; row < h; row += nrow)
+    for (row = 0; ret != 0 && row < h; row += nrow)
     {
         rowstoread = th - (row + img->row_offset) % th;
     	nrow = (row + rowstoread > h ? h - row : rowstoread);
@@ -671,8 +672,9 @@ gtTileContig(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 	col = img->col_offset;
 	while (tocol < w)
         {
-	    if (TIFFReadTile(tif, buf, col,  
-			     row+img->row_offset, 0, 0)==(tmsize_t)(-1) && img->stoponerr)
+	    if (_TIFFReadTileAndAllocBuffer(tif, (void**) &buf, bufsize, col,
+			     row+img->row_offset, 0, 0)==(tmsize_t)(-1) &&
+                (buf == NULL || img->stoponerr))
             {
                 ret = 0;
                 break;
@@ -737,11 +739,11 @@ gtTileSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 	uint32 col, row, y, rowstoread;
 	tmsize_t pos;
 	uint32 tw, th;
-	unsigned char* buf;
-	unsigned char* p0;
-	unsigned char* p1;
-	unsigned char* p2;
-	unsigned char* pa;
+	unsigned char* buf = NULL;
+	unsigned char* p0 = NULL;
+	unsigned char* p1 = NULL;
+	unsigned char* p2 = NULL;
+	unsigned char* pa = NULL;
 	tmsize_t tilesize;
 	tmsize_t bufsize;
 	int32 fromskew, toskew;
@@ -760,16 +762,7 @@ gtTileSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 		TIFFErrorExt(tif->tif_clientdata, TIFFFileName(tif), "Integer overflow in %s", "gtTileSeparate");
 		return (0);
 	}
-	buf = (unsigned char*) _TIFFmalloc(bufsize);
-	if (buf == 0) {
-		TIFFErrorExt(tif->tif_clientdata, TIFFFileName(tif), "%s", "No space for tile buffer");
-		return (0);
-	}
-	_TIFFmemset(buf, 0, bufsize);
-	p0 = buf;
-	p1 = p0 + tilesize;
-	p2 = p1 + tilesize;
-	pa = (alpha?(p2+tilesize):NULL);
+
 	TIFFGetField(tif, TIFFTAG_TILEWIDTH, &tw);
 	TIFFGetField(tif, TIFFTAG_TILELENGTH, &th);
 
@@ -789,7 +782,6 @@ gtTileSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
           case PHOTOMETRIC_MINISBLACK:
           case PHOTOMETRIC_PALETTE:
             colorchannels = 1;
-            p2 = p1 = p0;
             break;
 
           default:
@@ -803,7 +795,7 @@ gtTileSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 	leftmost_fromskew = img->col_offset % tw;
 	leftmost_tw = tw - leftmost_fromskew;
 	leftmost_toskew = toskew + leftmost_fromskew;
-	for (row = 0; row < h; row += nrow)
+	for (row = 0; ret != 0 && row < h; row += nrow)
 	{
 		rowstoread = th - (row + img->row_offset) % th;
 		nrow = (row + rowstoread > h ? h - row : rowstoread);
@@ -814,7 +806,30 @@ gtTileSeparate(TIFFRGBAImage* img, uint32* raster, uint32 w, uint32 h)
 		col = img->col_offset;
 		while (tocol < w)
 		{
-			if (TIFFReadTile(tif, p0, col,  
+                        if( buf == NULL )
+                        {
+                            if (_TIFFReadTileAndAllocBuffer(
+                                    tif, (void**) &buf, bufsize, col,
+                                    row+img->row_offset,0,0)==(tmsize_t)(-1)
+                                && (buf == NULL || img->stoponerr))
+                            {
+                                    ret = 0;
+                                    break;
+                            }
+                            p0 = buf;
+                            if( colorchannels == 1 )
+                            {
+                                p2 = p1 = p0;
+                                pa = (alpha?(p0+3*tilesize):NULL);
+                            }
+                            else
+                            {
+                                p1 = p0 + tilesize;
+                                p2 = p1 + tilesize;
+                                pa = (alpha?(p2+tilesize):NULL);
+                            }
+                        }
+			else if (TIFFReadTile(tif, p0, col,  
 			    row+img->row_offset,0,0)==(tmsize_t)(-1) && img->stoponerr)
 			{
 				ret = 0;
@@ -1854,7 +1869,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr44tile)
 
     (void) y;
     /* adjust fromskew */
-    fromskew = (fromskew * 18) / 4;
+    fromskew = (fromskew / 4) * (4*2+2);
     if ((h & 3) == 0 && (w & 3) == 0) {				        
         for (; h >= 4; h -= 4) {
             x = w>>2;
@@ -1957,7 +1972,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr42tile)
     int32 incr = 2*toskew+w;
 
     (void) y;
-    fromskew = (fromskew * 10) / 4;
+    fromskew = (fromskew / 4) * (4*2+2);
     if ((w & 3) == 0 && (h & 1) == 0) {
         for (; h >= 2; h -= 2) {
             x = w>>2;
@@ -2035,7 +2050,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr42tile)
 DECLAREContigPutFunc(putcontig8bitYCbCr41tile)
 {
     (void) y;
-    /* XXX adjust fromskew */
+    fromskew = (fromskew / 4) * (4*1+2);
     do {
 	x = w>>2;
 	while(x>0) {
@@ -2082,7 +2097,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr22tile)
 	uint32* cp2;
 	int32 incr = 2*toskew+w;
 	(void) y;
-	fromskew = (fromskew / 2) * 6;
+	fromskew = (fromskew / 2) * (2*2+2);
 	cp2 = cp+w+toskew;
 	while (h>=2) {
 		x = w;
@@ -2138,7 +2153,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr22tile)
 DECLAREContigPutFunc(putcontig8bitYCbCr21tile)
 {
 	(void) y;
-	fromskew = (fromskew * 4) / 2;
+	fromskew = (fromskew / 2) * (2*1+2);
 	do {
 		x = w>>1;
 		while(x>0) {
@@ -2177,7 +2192,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr12tile)
 	uint32* cp2;
 	int32 incr = 2*toskew+w;
 	(void) y;
-	fromskew = (fromskew / 2) * 4;
+	fromskew = (fromskew / 1) * (1 * 2 + 2);
 	cp2 = cp+w+toskew;
 	while (h>=2) {
 		x = w;
@@ -2213,7 +2228,7 @@ DECLAREContigPutFunc(putcontig8bitYCbCr12tile)
 DECLAREContigPutFunc(putcontig8bitYCbCr11tile)
 {
 	(void) y;
-	fromskew *= 3;
+	fromskew = (fromskew / 1) * (1 * 1 + 2);
 	do {
 		x = w; /* was x = w>>1; patched 2000/09/25 warmerda@home.com */
 		do {

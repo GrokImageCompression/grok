@@ -51,24 +51,32 @@ void
 TIFFError(const char* module, const char* fmt, ...)
 {
 	va_list ap;
-	va_start(ap, fmt);
-	if (_TIFFerrorHandler)
+	if (_TIFFerrorHandler) {
+		va_start(ap, fmt);	
 		(*_TIFFerrorHandler)(module, fmt, ap);
-	if (_TIFFerrorHandlerExt)
+		va_end(ap);
+	}
+	if (_TIFFerrorHandlerExt) {
+		va_start(ap, fmt);
 		(*_TIFFerrorHandlerExt)(0, module, fmt, ap);
-	va_end(ap);
+		va_end(ap);
+	}
 }
 
 void
 TIFFErrorExt(thandle_t fd, const char* module, const char* fmt, ...)
 {
 	va_list ap;
-	va_start(ap, fmt);
-	if (_TIFFerrorHandler)
+	if (_TIFFerrorHandler) {
+		va_start(ap, fmt);
 		(*_TIFFerrorHandler)(module, fmt, ap);
-	if (_TIFFerrorHandlerExt)
+		va_end(ap);
+	}
+	if (_TIFFerrorHandlerExt) {
+		va_start(ap, fmt);
 		(*_TIFFerrorHandlerExt)(fd, module, fmt, ap);
-	va_end(ap);
+		va_end(ap);
+	}
 }
 
 /*
