@@ -872,6 +872,8 @@ _TIFFVGetField(TIFF* tif, uint32 tag, va_list ap)
                 TIFFTagValue *tv = td->td_customValues + i;
                 if (tv->info->field_tag != tag)
                     continue;
+                if( tv->value == NULL )
+                    return 0;
                 val = *(uint16 *)tv->value;
                 /* Truncate to SamplesPerPixel, since the */
                 /* setting code for INKNAMES assume that there are SamplesPerPixel */
