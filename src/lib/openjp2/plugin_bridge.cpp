@@ -69,53 +69,6 @@ bool decode_synch_plugin_with_host(tcd_t *tcd) {
 	return true;
 }
 
-// Performed after plugin decode
-bool decode_synch_host_with_plugin(tcd_t *tcd) {
-	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
-		tcd_tile_t *tcd_tile = tcd->tile;
-		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
-			tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
-			for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-				tcd_resolution_t *res = &tilec->resolutions[resno];
-
-				for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-					tcd_band_t *band = &res->bands[bandno];
-
-					for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
-						tcd_precinct_t *prc = &band->precincts[precno];
-
-						for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-
-							grok_plugin_band_t* plugin_band = tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
-							grok_plugin_precinct_t* precinct = plugin_band->precincts[precno];
-							grok_plugin_code_block_t* plugin_cblk = precinct->blocks[cblkno];
-
-							tcd_cblk_dec_t *cblk = &prc->cblks.dec[cblkno];
-							if (!cblk->numSegments)
-								continue;
-							if (cblk->numSegments != 1)
-								return false;
-
-							// copy segments into plugin codeblock buffer, and point host code block data
-							// to plugin data buffer
-							plugin_cblk->compressedDataLength = cblk->seg_buffers.get_len();
-							cblk->seg_buffers.copy_to_contiguous_buffer(plugin_cblk->compressedData);
-							cblk->data = plugin_cblk->compressedData;
-							cblk->dataSize = (uint32_t)plugin_cblk->compressedDataLength;
-
-							plugin_cblk->numBitPlanes = cblk->numbps;
-							plugin_cblk->numPasses = cblk->segs[0].numpasses;
-						}
-					}
-				}
-			}
-		}
-	}
-	return true;
-}
-
-
-
 bool tile_equals(grok_plugin_tile_t* plugin_tile,
 	tcd_tile_t *p_tile) {
 	uint32_t state = grok_plugin_get_debug_state();

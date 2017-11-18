@@ -1357,9 +1357,6 @@ bool tcd_decode_tile(tcd_t *p_tcd,
 	}
 
 	if (doT1) {
-		if (!decode_synch_host_with_plugin(p_tcd))
-			return false;
-
 		if (!tcd_t1_decode(p_tcd, p_manager)) {
 			return false;
 		}
