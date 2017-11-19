@@ -1855,7 +1855,6 @@ typedef void(*GROK_INIT_DECODERS)(opj_header_info_t* header_info,
 
 typedef struct grok_plugin_decode_callback_info {
     size_t						deviceId;
-    size_t						compressed_tile_id;
     GROK_INIT_DECODERS			init_decoders_func;
     const char*					input_file_name;
     const char*					output_file_name;
