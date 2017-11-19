@@ -1867,6 +1867,7 @@ typedef struct grok_plugin_decode_callback_info {
 	opj_header_info_t			header_info;
     opj_decompress_parameters*	decoder_parameters;
     opj_image_t*				image;
+	bool						plugin_owns_image;
 	grok_plugin_tile_t*			tile;
     unsigned int				error_code;
 	uint32_t					decode_flags;

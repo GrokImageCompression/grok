@@ -125,6 +125,7 @@ struct PluginDecodeCallbackInfo {
 													l_codec(nullptr),
 													decoder_parameters(nullptr),
 													image(image),
+													plugin_owns_image(false),
 													tile(tile),
 													error_code(0),
 													decode_flags(GROK_DECODE_HEADER)
@@ -141,6 +142,7 @@ struct PluginDecodeCallbackInfo {
 	opj_codec_t*				l_codec;
     opj_decompress_parameters* decoder_parameters;
     opj_image_t* image;
+	bool plugin_owns_image;
     grok_plugin_tile_t* tile;
     int32_t	error_code;
 	uint32_t	decode_flags;

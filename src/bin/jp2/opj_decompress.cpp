@@ -1973,9 +1973,12 @@ cleanup:
 	if (info->l_codec)
 		opj_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
-	if (image)
-		opj_image_destroy(image);
-	info->image = nullptr;
+	//clean up image if either plugin does not "own" the image, or decode failed
+	if (!info->plugin_owns_image || failed) {
+		if (image)
+			opj_image_destroy(image);
+		info->image = nullptr;
+	}
 	if (failed)
 		(void)remove(outfile); /* ignore return value */
 	return failed;

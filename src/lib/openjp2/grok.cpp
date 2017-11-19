@@ -1075,6 +1075,7 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 	grokInfo.l_stream			= info->l_stream;
 	grokInfo.l_codec			= info->l_codec;
     grokInfo.image				= info->image;
+	grokInfo.plugin_owns_image			= info->plugin_owns_image;
     grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
 	// all calls up to and including T1 are routed to pre-decode callback
