@@ -116,7 +116,6 @@ struct PluginDecodeCallbackInfo {
 							std::string output,
 							grok_plugin_tile_t* tile,
 							opj_image_t* image) :   deviceId(0),
-													compressed_tile_id(0),
 													init_decoders_func(nullptr),
 													inputFile(input),
 													outputFile(output),
@@ -131,7 +130,6 @@ struct PluginDecodeCallbackInfo {
 													decode_flags(GROK_DECODE_HEADER)
 	{}
     size_t deviceId;
-    size_t compressed_tile_id;
 	GROK_INIT_DECODERS init_decoders_func;
     std::string inputFile;
     std::string outputFile;
