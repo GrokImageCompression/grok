@@ -61,7 +61,6 @@ enum {
 	PXM_DFMT,
 	PGX_DFMT,
 	BMP_DFMT,
-	YUV_DFMT,
 	TIF_DFMT,
 	RAW_DFMT, /* MSB / Big Endian */
 	TGA_DFMT,
