@@ -344,7 +344,7 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 		tcd_seg_t *seg = &cblk->segs[segno];
 		uint32_t synthOffset = seg->dataindex + seg->len;
 		uint16_t stash = *((uint16_t*)(compressed_block + synthOffset));
-		*((uint16_t*)(compressed_block + synthOffset)) = 0xFFFF;
+		*((uint16_t*)(compressed_block + synthOffset)) = synthBytes;
 		uint8_t type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) &&
 			(passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {

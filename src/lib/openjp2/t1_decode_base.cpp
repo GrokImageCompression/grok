@@ -100,7 +100,7 @@ bool t1_decode_base::allocCompressed(tcd_cblk_dec_t* cblk) {
 	if (!compressed_block)
 		return false;
 	auto min_buf_vec = &cblk->seg_buffers;
-	uint16_t total_seg_len = (uint16_t)(min_buf_vec->get_len()+2);
+	uint16_t total_seg_len = (uint16_t)(min_buf_vec->get_len()+ numSynthBytes);
 	if (compressed_block_size < total_seg_len) {
 		uint8_t* new_block = (uint8_t*)grok_realloc(compressed_block, total_seg_len);
 		if (!new_block)

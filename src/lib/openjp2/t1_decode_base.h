@@ -60,9 +60,14 @@
 
 namespace grk {
 
+// two bytes 0xFF 0xFF are synthesized at the end of each code block compressed buffer
+// to simulate "end of compressed stream" marker. This allows code to avoid checking
+// for end of compressed stream by length
+const uint16_t numSynthBytes = 2;
+const uint16_t synthBytes = 0xFFFF;
+
 struct mqc_t;
 struct raw_t;
-
 class t1;
 
 class t1_decode_base : public t1 {
