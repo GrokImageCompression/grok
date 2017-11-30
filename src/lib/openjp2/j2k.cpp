@@ -578,7 +578,7 @@ static bool j2k_write_cod(      j2k_t *p_j2k,
                                     event_mgr_t * p_manager );
 
 /**
- * Reads a COD marker (Coding Styke defaults)
+ * Reads a COD marker (Coding Style defaults)
  * @param       p_header_data   the data contained in the COD box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the COD marker.
@@ -2428,7 +2428,7 @@ static bool j2k_write_cod(     j2k_t *p_j2k,
 }
 
 /**
- * Reads a COD marker (Coding Styke defaults)
+ * Reads a COD marker (Coding Style defaults)
  * @param       p_header_data   the data contained in the COD box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the COD marker.
@@ -2460,8 +2460,7 @@ static bool j2k_read_cod (  j2k_t *p_j2k,
 
     /* Only one COD per tile */
     if (l_tcp->cod) {
-        event_msg(p_manager, EVT_ERROR, "COD marker already read. No more than one COD marker per tile.\n");
-        return false;
+        event_msg(p_manager, EVT_WARNING, "Multiple COD markers detected for tile part %d. The JPEG 2000 standard does not allow more than one COD marker per tile.\n", l_tcp->m_current_tile_part_number);
     }
     l_tcp->cod = 1;
 
