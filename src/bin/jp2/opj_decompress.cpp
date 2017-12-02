@@ -1418,11 +1418,15 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		isBatch = false;
 	}
 	if (isBatch) {
-		success = grok_plugin_batch_decode(initParams->img_fol.imgdirpath, 
+		//initialize batch
+		success = grok_plugin_init_batch_decode(initParams->img_fol.imgdirpath, 
 											initParams->out_fol.imgdirpath,
 											&initParams->parameters, 
 											plugin_pre_decode_callback,
 											plugin_post_decode_callback);
+		//start batch
+		if (success)
+			success = grok_plugin_batch_decode();
 		// if plugin successfully begins batch encode, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms

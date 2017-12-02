@@ -157,11 +157,12 @@ typedef int32_t (*PLUGIN_DECODE)(opj_decompress_parameters* decoding_parameters,
 
 
 
-typedef int32_t (*PLUGIN_BATCH_DECODE)(const char* input_dir,
+typedef int32_t(*PLUGIN_INIT_BATCH_DECODE)(const char* input_dir,
                                        const char* output_dir,
                                        opj_decompress_parameters* decoding_parameters,
                                        PLUGIN_DECODE_USER_CALLBACK userCallback);
 
+typedef int32_t(*PLUGIN_BATCH_DECODE)(void);
 
 typedef void(*PLUGIN_STOP_BATCH_DECODE)(void);
 

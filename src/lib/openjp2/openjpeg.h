@@ -1879,11 +1879,13 @@ OPJ_API int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decod
         grok_plugin_decode_callback preDecode,
         grok_plugin_decode_callback postDecode);
 
-OPJ_API int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
+OPJ_API int32_t OPJ_CALLCONV grok_plugin_init_batch_decode(const char* input_dir,
         const char* output_dir,
         opj_decompress_parameters* decode_parameters,
         grok_plugin_decode_callback preDecode,
         grok_plugin_decode_callback postDecode);
+
+OPJ_API int32_t  OPJ_CALLCONV grok_plugin_batch_decode(void);
 
 OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_decode(void);
 
