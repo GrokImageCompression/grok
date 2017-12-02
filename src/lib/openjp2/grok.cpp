@@ -896,6 +896,7 @@ static const char* plugin_batch_encode_method_name = "plugin_batch_encode";
 static const char* plugin_stop_batch_encode_method_name = "plugin_stop_batch_encode";
 static const char* plugin_is_batch_complete_method_name = "plugin_is_batch_complete";
 static const char* plugin_decode_method_name = "plugin_decode";
+static const char* plugin_init_batch_decode_method_name = "plugin_init_batch_decode";
 static const char* plugin_batch_decode_method_name = "plugin_batch_decode";
 static const char* plugin_stop_batch_decode_method_name = "plugin_stop_batch_decode";
 
@@ -1119,13 +1120,13 @@ int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parame
     }
     return -1;
 }
-int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
+int32_t OPJ_CALLCONV grok_plugin_init_batch_decode(const char* input_dir,
         const char* output_dir,
         opj_decompress_parameters* decode_parameters,
         grok_plugin_decode_callback preDecode,
         grok_plugin_decode_callback postDecode){
     minpf_plugin_manager* mgr = nullptr;
-    PLUGIN_BATCH_DECODE func = nullptr;
+    PLUGIN_INIT_BATCH_DECODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
@@ -1133,12 +1134,26 @@ int32_t OPJ_CALLCONV grok_plugin_batch_decode(const char* input_dir,
     userPostDecodeCallback = postDecode;
     mgr = minpf_get_plugin_manager();
     if (mgr && mgr->num_libraries > 0) {
-        func = (PLUGIN_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_decode_method_name);
+        func = (PLUGIN_INIT_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_init_batch_decode_method_name);
         if (func) {
             return  func(input_dir, output_dir, (opj_decompress_parameters*)decode_parameters, grok_plugin_internal_decode_callback);
         }
     }
     return -1;
+}
+int32_t OPJ_CALLCONV grok_plugin_batch_decode(void) {
+	minpf_plugin_manager* mgr = nullptr;
+	PLUGIN_BATCH_DECODE func = nullptr;
+	if (!pluginLoaded)
+		return -1;
+	mgr = minpf_get_plugin_manager();
+	if (mgr && mgr->num_libraries > 0) {
+		func = (PLUGIN_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_batch_decode_method_name);
+		if (func) {
+			return func();
+		}
+	}
+	return -1;
 }
 void OPJ_CALLCONV grok_plugin_stop_batch_decode(void){
     minpf_plugin_manager* mgr = nullptr;
