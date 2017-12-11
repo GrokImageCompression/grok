@@ -696,9 +696,6 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		success = false;
 		goto cleanup;
 	}
-	for (i = 0U; i < numcomps; ++i) {
-		clip_component(&(image->comps[i]), image->comps[0].prec);
-	}
 	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
 	switch (tif_bps) {
 	case 1:

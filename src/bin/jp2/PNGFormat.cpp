@@ -442,9 +442,6 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 		fprintf(stderr, "\tAborting\n");
 		return 1;
 	}
-	for (i = 0; i < nr_comp; ++i) {
-		clip_component(&(image->comps[i]), image->comps[0].prec);
-	}
 	if (prec > 8 && prec < 16) {
 		for (i = 0; i < nr_comp; ++i) {
 			scale_component(&(image->comps[i]), 16);
