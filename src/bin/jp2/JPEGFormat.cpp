@@ -221,11 +221,6 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		info.success = false;
 		goto cleanup;
 	}
-
-	for (i = 0U; i < numcomps; ++i) {
-		clip_component(&(image->comps[i]), image->comps[0].prec);
-	}
-
 	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
 	switch (bps) {
 	case 1:
