@@ -550,7 +550,7 @@ void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas){
 	if (!cas) {
 		if ((d_n > 0) || (s_n > 1)) {	/* NEW :  CASE ONE ELEMENT */
 			for (i = 0; i < d_n; i++)
-				GROK_D(i) -= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12993);
+				GROK_D(i) -= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
 			for (i = 0; i < s_n; i++)
 				GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
 			for (i = 0; i < d_n; i++)
@@ -566,7 +566,7 @@ void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas){
 	else {
 		if ((s_n > 0) || (d_n > 1)) {	/* NEW :  CASE ONE ELEMENT */
 			for (i = 0; i < d_n; i++)
-				GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12993);
+				GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12994);
 			for (i = 0; i < s_n; i++)
 				GROK_D(i) -= int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
 			for (i = 0; i < d_n; i++)
