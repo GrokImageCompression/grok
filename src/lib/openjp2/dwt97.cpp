@@ -558,9 +558,9 @@ void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas){
 			for (i = 0; i < s_n; i++)
 				GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
 			for (i = 0; i < d_n; i++)
-				GROK_D(i) = int_fix_mul(GROK_D(i), 5038);	/*5038 */
+				GROK_D(i) = int_fix_mul(GROK_D(i), 5039);	
 			for (i = 0; i < s_n; i++)
-				GROK_S(i) = int_fix_mul(GROK_S(i), 6659);	/*6660 */
+				GROK_S(i) = int_fix_mul(GROK_S(i), 6659);	
 		}
 	}
 	else {
@@ -574,9 +574,9 @@ void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas){
 			for (i = 0; i < s_n; i++)
 				GROK_D(i) += int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
 			for (i = 0; i < d_n; i++)
-				GROK_S(i) = int_fix_mul(GROK_S(i), 5038);	/*5038 */
+				GROK_S(i) = int_fix_mul(GROK_S(i), 5039);	
 			for (i = 0; i < s_n; i++)
-				GROK_D(i) = int_fix_mul(GROK_D(i), 6659);	/*6660 */
+				GROK_D(i) = int_fix_mul(GROK_D(i), 6659);	
 		}
 	}
 }
