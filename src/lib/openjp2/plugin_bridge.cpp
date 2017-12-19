@@ -39,6 +39,7 @@ bool decode_synch_plugin_with_host(tcd_t *tcd) {
 					auto band = &res->bands[bandno];
 					auto plugin_band = plugin_res->bands[bandno];
 					assert(plugin_band->numPrecincts == res->pw * res->ph);
+					plugin_band->stepsize = band->stepsize;
 					for (uint32_t precno = 0; precno < res->pw * res->ph; precno++) {
 						auto prc = &band->precincts[precno];
 						auto plugin_prc = plugin_band->precincts[precno];
