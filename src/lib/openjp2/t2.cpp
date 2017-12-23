@@ -487,7 +487,7 @@ namespace grk {
 					skip_precinct = true;
 					for (bandno = 0; bandno < res->numbands && skip_precinct; ++bandno) {
 						tcd_band_t* band = res->bands + bandno;
-						auto num_precincts = band->numPrecincts();
+						auto num_precincts = band->numPrecincts;
 						uint32_t precno;
 						for (precno = 0; precno < num_precincts && skip_precinct; ++precno) {
 							rect_t prec_rect;
@@ -629,7 +629,7 @@ namespace grk {
 				if (l_band->isEmpty())
 					continue;
 				tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
-				if (!(p_pi->precno < (l_band->numPrecincts()))) {
+				if (!(p_pi->precno < (l_band->numPrecincts))) {
 					event_msg(p_manager, EVT_ERROR, "Invalid precinct\n");
 					return false;
 				}
@@ -1242,7 +1242,7 @@ namespace grk {
 				auto roundTripBand = roundRes->bands + bandno;
 				if (!band->precincts)
 					continue;
-				for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+				for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto roundTripPrec = roundTripBand->precincts + precno;
 					for (uint32_t cblkno = 0; cblkno < prec->cw * prec->ch; ++cblkno) {
@@ -1337,7 +1337,7 @@ namespace grk {
 						auto roundTripBand = roundRes->bands + bandno;
 						if (!band->precincts)
 							continue;
-						for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+						for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
 							auto prec = band->precincts + precno;
 							auto roundTripPrec = roundTripBand->precincts + precno;
 							for (uint32_t cblkno = 0; cblkno < prec->cw * prec->ch; ++cblkno) {

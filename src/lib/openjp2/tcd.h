@@ -302,13 +302,11 @@ struct tcd_band_t {
 	bool isEmpty() {
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
 	}
-	size_t numPrecincts() {
-		return precincts_data_size / sizeof(tcd_precinct_t);
-	}
     uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
     tcd_precinct_t* precincts;	/* precinct information */
     uint32_t precincts_data_size;	/* size of data taken by precincts */
+	size_t numPrecincts;
     uint32_t numbps;
     float stepsize;
 };

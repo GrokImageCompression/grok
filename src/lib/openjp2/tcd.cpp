@@ -1044,6 +1044,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                         grok_free(l_band->precincts);
                         l_band->precincts = nullptr;
                         l_band->precincts_data_size = 0;
+						l_band->numPrecincts = 0;
                         return false;
                     }
                     l_band->precincts = new_precincts;
@@ -1051,7 +1052,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     memset(((uint8_t *) l_band->precincts) + l_band->precincts_data_size,0,l_nb_precinct_size - l_band->precincts_data_size);
                     l_band->precincts_data_size = l_nb_precinct_size;
                 }
-
+				l_band->numPrecincts = l_nb_precincts;
                 l_current_precinct = l_band->precincts;
                 for (precno = 0; precno < l_nb_precincts; ++precno) {
                     uint32_t tlcblkxstart, tlcblkystart, brcblkxend, brcblkyend;
@@ -1545,7 +1546,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
                     l_precinct = l_band->precincts;
                     if (l_precinct) {
 
-						l_nb_precincts = l_band->numPrecincts();
+						l_nb_precincts = l_band->numPrecincts;
                         for (precno = 0; precno < l_nb_precincts; ++precno) {
 							delete l_precinct->incltree;
                             l_precinct->incltree = nullptr;
@@ -2081,11 +2082,11 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
 			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
 				auto band = res->bands + bandno;
 				auto decodeBand = roundRes->bands + bandno;
-				if (!band->numPrecincts())
+				if (!band->numPrecincts)
 					continue;
-				decodeBand->precincts = new tcd_precinct_t[band->numPrecincts()];
-				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts() * sizeof(tcd_precinct_t));
-				for (size_t precno = 0; precno < band->numPrecincts(); ++precno) {
+				decodeBand->precincts = new tcd_precinct_t[band->numPrecincts];
+				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(tcd_precinct_t));
+				for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
 					decodePrec->cw = prec->cw;
@@ -2136,7 +2137,7 @@ static bool tcd_t2_encode (tcd_t *p_tcd,
 			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
 				auto decodeBand = roundRes->bands + bandno;
 				if (decodeBand->precincts) {
-					for (size_t precno = 0; precno < decodeBand->numPrecincts(); ++precno) {
+					for (size_t precno = 0; precno < decodeBand->numPrecincts; ++precno) {
 						auto decodePrec = decodeBand->precincts + precno;
 						decodePrec->cleanupDecodeBlocks();
 					}
