@@ -94,7 +94,7 @@ bool tile_equals(grok_plugin_tile_t* plugin_tile,
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
 				tcd_band_t* band = resolution->bands + bandno;
 				grok_plugin_band_t* plugin_band = plugin_resolution->bands[bandno];
-				size_t num_precincts = band->numPrecincts();
+				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
 				for (size_t precno = 0; precno < num_precincts; ++precno) {
