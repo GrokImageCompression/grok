@@ -57,23 +57,21 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #ifdef _WIN32
 #include "windirent.h"
-#else
-#include <dirent.h>
-#endif /* _WIN32 */
-
-#ifdef _WIN32
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
+#include <dirent.h>
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/times.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #endif /* _WIN32 */
 
 #include "opj_apps_config.h"
@@ -99,6 +97,43 @@
 #include <cstdlib>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
+
+void exit_func() {
+	grok_plugin_stop_batch_encode();
+	opj_cleanup();
+}
+
+#ifdef  WIN32
+BOOL sig_handler(DWORD signum)
+{
+	switch (signum)
+	{
+	case CTRL_CLOSE_EVENT:
+		exit_func();
+		return(TRUE);
+
+	default:
+		return FALSE;
+	}
+}
+#else
+void sig_handler(int signum){
+	exit_func();
+}
+#endif 
+
+void setup_signal_handler()
+{
+#ifdef  WIN32
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)sig_handler, TRUE);
+#else
+	struct sigaction sa;
+	sa.sa_handler = &sig_handler;
+	sigfillset(&sa.sa_mask);
+	sigaction(SIGHUP, &sa, NULL);
+#endif  
+}
+
 
 
 using namespace TCLAP;
@@ -2020,6 +2055,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 	if (isBatch) {
+		setup_signal_handler();
 		success = grok_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
 		// if plugin successfully begins batch encode, then wait for batch to complete
 		if (success==0) {
