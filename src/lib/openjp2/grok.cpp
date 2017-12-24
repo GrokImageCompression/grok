@@ -1042,12 +1042,12 @@ OPJ_API bool OPJ_CALLCONV grok_plugin_is_batch_complete(void) {
 }
 void OPJ_CALLCONV grok_plugin_stop_batch_encode(void){
     minpf_plugin_manager* mgr = nullptr;
-    PLUGIN_STOP_BATCH_DECODE func = nullptr;
+    PLUGIN_STOP_BATCH_ENCODE func = nullptr;
     if (!pluginLoaded)
         return;
     mgr = minpf_get_plugin_manager();
     if (mgr && mgr->num_libraries > 0) {
-        func = (PLUGIN_STOP_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_stop_batch_encode_method_name);
+        func = (PLUGIN_STOP_BATCH_ENCODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_stop_batch_encode_method_name);
         if (func) {
             func();
         }
