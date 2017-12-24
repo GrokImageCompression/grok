@@ -60,21 +60,22 @@
 
 #include "opj_apps_config.h"
 
-#ifdef _WIN32
-#include "windirent.h"
-#else
-#include <dirent.h>
-#endif /* _WIN32 */
 
 #ifdef _WIN32
+#include "windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
+#include <dirent.h>
 #include <strings.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/times.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #endif /* _WIN32 */
 
 #include "openjpeg.h"
@@ -102,6 +103,39 @@
 
 using namespace TCLAP;
 using namespace std;
+
+
+#ifdef  WIN32
+BOOL sig_handler(DWORD signum)
+{
+	switch (signum)
+	{
+	case CTRL_CLOSE_EVENT:
+		//opj_cleanup();
+		return(TRUE);
+
+	default:
+		return FALSE;
+	}
+}
+#else
+void sig_handler(int signum) {
+	opj_cleanup();
+}
+#endif 
+
+void setup_signal_handler()
+{
+#ifdef  WIN32
+	SetConsoleCtrlHandler((PHANDLER_ROUTINE)sig_handler, TRUE);
+#else
+	struct sigaction sa;
+	sa.sa_handler = &sig_handler;
+	sigfillset(&sa.sa_mask);
+	sigaction(SIGHUP, &sa, NULL);
+#endif  
+}
+
 
 
 #ifdef _WIN32
@@ -1240,20 +1274,15 @@ static int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info)
 static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 
 
-int main(int argc, char **argv)
-{
-
+int main(int argc, char **argv){
 	int32_t num_images, imageno = 0;
 	dircnt_t *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
-
 	DecompressInitParams initParams;
 
 	try {
-
-
 		// try to encode with plugin
 		int plugin_rc = plugin_main(argc, argv, &initParams);
 
@@ -1419,6 +1448,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 	if (isBatch) {
 		//initialize batch
+		setup_signal_handler();
 		success = grok_plugin_init_batch_decode(initParams->img_fol.imgdirpath, 
 											initParams->out_fol.imgdirpath,
 											&initParams->parameters, 
