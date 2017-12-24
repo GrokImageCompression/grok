@@ -105,13 +105,18 @@ using namespace TCLAP;
 using namespace std;
 
 
+void exit_func() {
+	grok_plugin_stop_batch_decode();
+	opj_cleanup();
+}
+
 #ifdef  WIN32
 BOOL sig_handler(DWORD signum)
 {
 	switch (signum)
 	{
 	case CTRL_CLOSE_EVENT:
-		//opj_cleanup();
+		exit_func();
 		return(TRUE);
 
 	default:
@@ -120,7 +125,7 @@ BOOL sig_handler(DWORD signum)
 }
 #else
 void sig_handler(int signum) {
-	opj_cleanup();
+	exit_func();
 }
 #endif 
 
