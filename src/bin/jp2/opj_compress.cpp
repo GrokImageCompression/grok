@@ -121,6 +121,7 @@ BOOL sig_handler(DWORD signum)
 }
 #else
 void sig_handler(int signum){
+	(void)signum;
 	exit_func();
 }
 #endif 
