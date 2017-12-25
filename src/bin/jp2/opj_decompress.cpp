@@ -60,7 +60,6 @@
 
 #include "opj_apps_config.h"
 
-
 #ifdef _WIN32
 #include "windirent.h"
 #define strcasecmp _stricmp
@@ -77,6 +76,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #endif /* _WIN32 */
+
+#include "common.h"
+using namespace grk;
 
 #include "openjpeg.h"
 #include "RAWFormat.h"
@@ -140,41 +142,6 @@ void setup_signal_handler()
 	sigaction(SIGHUP, &sa, NULL);
 #endif  
 }
-
-
-
-#ifdef _WIN32
-int batch_sleep(int val) {
-	Sleep(val);
-	return 0;
-}
-#else
-int batch_sleep(int val) {
-	return usleep(val);
-}
-#endif
-
-
-typedef struct dircnt {
-    /** Buffer for holding images read from Directory*/
-    char *filename_buf;
-    /** Pointer to the buffer*/
-    char **filename;
-} dircnt_t;
-
-
-typedef struct img_folder {
-    /** The directory path of the folder containing input images*/
-    char *imgdirpath;
-    /** Output format*/
-    const char *out_format;
-    /** Enable option*/
-    char set_imgdir;
-    /** Enable Cod Format for output*/
-    char set_out_format;
-
-} img_fol_t;
-
 
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
@@ -337,17 +304,17 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
         }
         if (count == 3) {
             if ((prec < 1) || (prec > 32)) {
-                fprintf(stderr,"Invalid precision %d in precision option %s\n", prec, option);
+                fprintf(stderr,"[ERROR] Invalid precision %d in precision option %s\n", prec, option);
                 l_result = false;
                 break;
             }
             if ((mode != 'C') && (mode != 'S')) {
-                fprintf(stderr,"Invalid precision mode %c in precision option %s\n", mode, option);
+                fprintf(stderr,"[ERROR] Invalid precision mode %c in precision option %s\n", mode, option);
                 l_result = false;
                 break;
             }
             if (comma != ',') {
-                fprintf(stderr,"Invalid character %c in precision option %s\n", comma, option);
+                fprintf(stderr,"[ERROR] Invalid character %c in precision option %s\n", comma, option);
                 l_result = false;
                 break;
             }
@@ -356,7 +323,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                 /* first one */
                 parameters->precision = (opj_precision *)malloc(sizeof(opj_precision));
                 if (parameters->precision == nullptr) {
-                    fprintf(stderr,"Could not allocate memory for precision option\n");
+                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
@@ -365,14 +332,14 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                 opj_precision* l_new;
 
                 if (l_new_size == 0U) {
-                    fprintf(stderr,"Could not allocate memory for precision option\n");
+                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
 
                 l_new = (opj_precision *)realloc(parameters->precision, l_new_size * sizeof(opj_precision));
                 if (l_new == nullptr) {
-                    fprintf(stderr,"Could not allocate memory for precision option\n");
+                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
@@ -398,7 +365,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
             }
             l_remaining += 1;
         } else {
-            fprintf(stderr,"Could not parse precision option %s\n", option);
+            fprintf(stderr,"[ERROR] Could not parse precision option %s\n", option);
             l_result = false;
             break;
         }
@@ -419,7 +386,7 @@ int get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 0;
     }
 
@@ -443,7 +410,7 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 1;
     }
 
@@ -707,13 +674,11 @@ int parse_cmdline_decoder(int argc,
 			case JP2_CFMT:
 				break;
 			case -2:
-				fprintf(stderr,
-					"!! infile cannot be read: %s !!\n\n",
+				fprintf(stderr,"[ERROR] infile cannot be read: %s !!\n\n",
 					infile);
 				return 1;
 			default:
-				fprintf(stderr,
-					"[ERROR] Unknown input file format: %s \n"
+				fprintf(stderr,"[ERROR] Unknown input file format: %s \n"
 					"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
 					infile);
 				return 1;
@@ -765,7 +730,7 @@ int parse_cmdline_decoder(int argc,
 				img_fol->out_format = "png";
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n", outformat);
+				fprintf(stderr, "[ERROR] Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n", outformat);
 				return 1;
 			}
 		}
@@ -786,7 +751,7 @@ int parse_cmdline_decoder(int argc,
 			case JPG_DFMT:
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n", outfile);
+				fprintf(stderr, "[ERROR] Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n", outfile);
 				return 1;
 			}
 			if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
@@ -1021,7 +986,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
 
     l_new_components = (opj_image_cmptparm_t*)malloc((original->numcomps + 2U) * sizeof(opj_image_cmptparm_t));
     if (l_new_components == nullptr) {
-        fprintf(stderr, "ERROR -> opj_decompress: failed to allocate memory for RGB image!\n");
+        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for RGB image!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -1049,7 +1014,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
     l_new_image = opj_image_create(original->numcomps + 2U, l_new_components, OPJ_CLRSPC_SRGB);
     free(l_new_components);
     if (l_new_image == nullptr) {
-        fprintf(stderr, "ERROR -> opj_decompress: failed to allocate memory for RGB image!\n");
+        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for RGB image!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -1093,7 +1058,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 		if (!(original->comps+compno))
 			return nullptr;
         if (original->comps[compno].decodeScaleFactor > 0U) {
-            fprintf(stderr, "ERROR -> opj_decompress: -upsample not supported with reduction\n");
+            fprintf(stderr, "[ERROR] opj_decompress: -upsample not supported with reduction\n");
             opj_image_destroy(original);
             return nullptr;
         }
@@ -1108,7 +1073,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     /* Upsample is needed */
     l_new_components = (opj_image_cmptparm_t*)malloc(original->numcomps * sizeof(opj_image_cmptparm_t));
     if (l_new_components == nullptr) {
-        fprintf(stderr, "ERROR -> opj_decompress: failed to allocate memory for upsampled components!\n");
+        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for upsampled components!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -1138,7 +1103,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     l_new_image = opj_image_create(original->numcomps, l_new_components, original->color_space);
     free(l_new_components);
     if (l_new_image == nullptr) {
-        fprintf(stderr, "ERROR -> opj_decompress: failed to allocate memory for upsampled components!\n");
+        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for upsampled components!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -1166,7 +1131,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
             xoff = l_org_cmp->dx * l_org_cmp->x0 -  original->x0;
             yoff = l_org_cmp->dy * l_org_cmp->y0 -  original->y0;
             if ((xoff >= l_org_cmp->dx) || (yoff >= l_org_cmp->dy)) {
-                fprintf(stderr, "ERROR -> opj_decompress: Invalid image/component parameters found when upsampling\n");
+                fprintf(stderr, "[ERROR] opj_decompress: Invalid image/component parameters found when upsampling\n");
                 opj_image_destroy(original);
                 opj_image_destroy(l_new_image);
                 return nullptr;
@@ -1321,7 +1286,7 @@ int main(int argc, char **argv){
 			int it_image;
 			num_images = get_num_images(initParams.img_fol.imgdirpath);
 			if (num_images <= 0) {
-				fprintf(stderr, "Folder is empty\n");
+				fprintf(stderr, "[ERROR] Folder is empty\n");
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
@@ -1483,7 +1448,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		if (initParams->img_fol.set_imgdir == 1) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			if (num_images <= 0) {
-				fprintf(stderr, "Folder is empty\n");
+				fprintf(stderr, "[ERROR] Folder is empty\n");
 				success = 1;
 				goto cleanup;
 			}
@@ -1518,7 +1483,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
-		fprintf(stderr, "\n");
+		fprintf(stdout, "\n");
 
 		if (initParams->img_fol.set_imgdir == 1) {
 			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
@@ -1570,21 +1535,21 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
 			if (!fp) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for reading", infile);
+				fprintf(stderr, "[ERROR] opj_decompress: unable to open file %s for reading", infile);
 				failed = 1;
 				goto cleanup;
 			}
 
 			auto rc = fseek(fp, 0, SEEK_END);
 			if (rc == -1) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to seek on file %s", infile);
+				fprintf(stderr, "[ERROR] opj_decompress: unable to seek on file %s", infile);
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
 			}
 			auto lengthOfFile = ftell(fp);
 			if (lengthOfFile <= 0) {
-				fprintf(stderr, "ERROR -> opj_decompress: Zero or negative length for file %s", parameters->infile);
+				fprintf(stderr, "[ERROR] opj_decompress: Zero or negative length for file %s", parameters->infile);
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
@@ -1594,7 +1559,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			size_t bytesRead = fread(buffer, 1, lengthOfFile, fp);
 			fclose(fp);
 			if (bytesRead != (size_t)lengthOfFile) {
-				fprintf(stderr, "ERROR -> opj_decompress: Unable to read full length of file %s", parameters->infile);
+				fprintf(stderr, "[ERROR] opj_decompress: Unable to read full length of file %s", parameters->infile);
 				failed = 1;
 				goto cleanup;
 			}
@@ -1610,7 +1575,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 
 
 	if (!info->l_stream) {
-		fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n", infile);
+		fprintf(stderr, "[ERROR] failed to create the stream from the file %s\n", infile);
 		failed = 1;
 		goto cleanup;
 	}
@@ -1639,7 +1604,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
 		if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to setup the decoder\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to setup the decoder\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1649,7 +1614,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (info->decode_flags & GROK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
 		if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to read the header\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to read the header\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1659,10 +1624,10 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			std::string xmlFile = std::string(parameters->outfile) + ".xml";
 			auto fp = fopen(xmlFile.c_str(), "wb");
 			if (!fp) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
+				fprintf(stderr, "[ERROR] opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
 			}
 			if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
-				fprintf(stderr, "ERROR -> opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
+				fprintf(stderr, "[ERROR] opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
 				fclose(fp);
 			}
 			if (fp)
@@ -1687,7 +1652,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {
-			fprintf(stderr, "ERROR -> opj_decompress: Precision = %d not supported:\n", info->image->comps[i].prec);
+			fprintf(stderr, "[ERROR] opj_decompress: Precision = %d not supported:\n", info->image->comps[i].prec);
 			failed = 1;
 			goto cleanup;
 		}
@@ -1696,7 +1661,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	/* Uncomment to set number of resolutions to be decoded */
 	/*
 	if (!opj_set_decoded_resolution_factor(info->l_codec, 0)) {
-		fprintf(stderr, "ERROR -> opj_decompress: failed to set the resolution factor tile!\n");
+		fprintf(stderr, "[ERROR] opj_decompress: failed to set the resolution factor tile!\n");
 		return -1;
 	}
 	*/
@@ -1705,7 +1670,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		parameters->DA_y0,
 		parameters->DA_x1,
 		parameters->DA_y1)) {
-		fprintf(stderr, "ERROR -> opj_decompress: failed to set the decoded area\n");
+		fprintf(stderr, "[ERROR] opj_decompress: failed to set the decoded area\n");
 		failed = 1;
 		goto cleanup;
 	}
@@ -1713,7 +1678,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
 		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to decode image!\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to decode image!\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1721,7 +1686,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	// or, decode one particular tile
 	else {
 		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to decode tile!\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to decode tile!\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1770,14 +1735,14 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	}
 	else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters->cod_format != TIF_DFMT)) {
 		if (color_cmyk_to_rgb(image)) {
-			fprintf(stderr, "ERROR -> opj_decompress: CMYK to RGB colour conversion failed !\n");
+			fprintf(stderr, "[ERROR] opj_decompress: CMYK to RGB colour conversion failed !\n");
 			failed = 1;
 			goto cleanup;
 		}
 	}
 	else if (image->color_space == OPJ_CLRSPC_EYCC) {
 		if (color_esycc_to_rgb(image)) {
-			fprintf(stderr, "ERROR -> opj_decompress: eSYCC to RGB colour conversion failed !\n");
+			fprintf(stderr, "[ERROR] opj_decompress: eSYCC to RGB colour conversion failed !\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1835,7 +1800,7 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (parameters->upsample) {
 		image = upsample_image_components(image);
 		if (image == nullptr) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to upsample image components!\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to upsample image components!\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1851,14 +1816,14 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			image = convert_gray_to_rgb(image);
 			break;
 		default:
-			fprintf(stderr, "ERROR -> opj_decompress: don't know how to convert image to RGB colorspace!\n");
+			fprintf(stderr, "[ERROR] opj_decompress: don't know how to convert image to RGB colorspace!\n");
 			opj_image_destroy(image);
 			image = nullptr;
 			failed = 1;
 			goto cleanup;
 		}
 		if (image == nullptr) {
-			fprintf(stderr, "ERROR -> opj_decompress: failed to convert to RGB image!\n");
+			fprintf(stderr, "[ERROR] opj_decompress: failed to convert to RGB image!\n");
 			goto cleanup;
 		}
 	}
