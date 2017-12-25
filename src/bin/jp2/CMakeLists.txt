@@ -29,6 +29,8 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/jp2/JPEGFormat.h
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
+  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_string.h

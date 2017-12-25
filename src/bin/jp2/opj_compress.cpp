@@ -74,6 +74,9 @@
 #include <fcntl.h>
 #endif /* _WIN32 */
 
+#include "common.h"
+using namespace grk;
+
 #include "opj_apps_config.h"
 #include "openjpeg.h"
 #include "RAWFormat.h"
@@ -139,35 +142,6 @@ void setup_signal_handler()
 using namespace TCLAP;
 using namespace std;
 
-
-#ifdef _WIN32
-int batch_sleep(int val) {
-	Sleep(val);
-	return 0;
-}
-#else
-int batch_sleep(int val) {
-	return usleep(val);
-}
-#endif
-
-typedef struct dircnt {
-    /** Buffer for holding images read from Directory*/
-    char *filename_buf;
-    /** Pointer to the buffer*/
-    char **filename;
-} dircnt_t;
-
-typedef struct img_folder {
-    /** The directory path of the folder containing input images*/
-    char *imgdirpath;
-    /** Output format*/
-    const char *out_format;
-    /** Enable option*/
-    char set_imgdir;
-    /** Enable Cod Format for output*/
-    char set_out_format;
-} img_fol_t;
 
 static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
 
@@ -389,7 +363,7 @@ static unsigned int get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 0;
     }
 
@@ -409,7 +383,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 
 	DIR * dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 1;
     } 
 
@@ -543,7 +517,7 @@ static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, opj_cparamete
 		else {
 			isValid = false;
 			if (parameters->verbose)
-				fprintf(stderr, "Incorrect digital cinema frame rate %d : must be either 24 or 48\n", fps);
+				fprintf(stderr, "[ERROR] Incorrect digital cinema frame rate %d : must be either 24 or 48\n", fps);
 		}
 	}
 	return isValid;
@@ -799,7 +773,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				img_fol->out_format = "jp2";
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image [only j2k, j2c, jp2]!! \n");
+				fprintf(stderr, "[ERROR] Unknown output format image [only j2k, j2c, jp2]!! \n");
 				return 1;
 			}
 		}
@@ -813,7 +787,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			case JP2_CFMT:
 				break;
 			default:
-				fprintf(stderr, "Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
+				fprintf(stderr, "[ERROR] Unknown output format image %s [only *.j2k, *.j2c or *.jp2]!! \n", outfile);
 				return 1;
 			}
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
@@ -838,11 +812,11 @@ static int parse_cmdline_encoder_ex(int argc,
 			double lastRate = DBL_MAX;
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				if (parameters->tcp_rates[i] > lastRate) {
-					fprintf(stderr, "[Error]: rates must be listed in descending order\n");
+					fprintf(stderr, "[ERROR] rates must be listed in descending order\n");
 					return 1;
 				}
 				if (parameters->tcp_rates[i] < 1.0) {
-					fprintf(stderr, "[Error]: rates must be greater than or equal to one\n");
+					fprintf(stderr, "[ERROR] rates must be greater than or equal to one\n");
 					return 1;
 				}
 				lastRate = parameters->tcp_rates[i];
@@ -874,11 +848,11 @@ static int parse_cmdline_encoder_ex(int argc,
 			for (uint32_t i = 0; i < parameters->tcp_numlayers; ++i) {
 				auto distortion = parameters->tcp_distoratio[i];
 				if (distortion < 0) {
-					fprintf(stderr, "[Error]: PSNR values must be greater than or equal to zero\n");
+					fprintf(stderr, "[ERROR] PSNR values must be greater than or equal to zero\n");
 					return 1;
 				}
 				if (distortion < lastDistortion && !(i == parameters->tcp_numlayers-1 && distortion == 0)) {
-					fprintf(stderr, "[Error]: PSNR values must be listed in ascending order\n");
+					fprintf(stderr, "[ERROR] PSNR values must be listed in ascending order\n");
 					return 1;
 				}
 				lastDistortion = distortion;
@@ -973,7 +947,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 			free(substr1);
 			if (wrong) {
-				fprintf(stderr, "\nError: invalid raw image parameters\n");
+				fprintf(stderr, "\n[ERROR]  invalid raw image parameters\n");
 				fprintf(stderr, "Please use the Format option -F:\n");
 				fprintf(stderr, "-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
 				fprintf(stderr, "If subsampling is omitted, 1x1 is assumed for all components\n");
@@ -987,12 +961,12 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (tilesArg.isSet()) {
 			int32_t cp_tdx = 0, cp_tdy = 0;
 			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &cp_tdx, &cp_tdy) == EOF) {
-				fprintf(stderr, "sscanf failed for tiles argument\n");
+				fprintf(stderr, "[ERROR] sscanf failed for tiles argument\n");
 				return 1;
 			}
 			// sanity check on tile dimensions
 			if (cp_tdx <= 0 || cp_tdy <= 0) {
-				fprintf(stderr, "Tile dimensions must be strictly positive\n");
+				fprintf(stderr, "[ERROR] Tile dimensions must be strictly positive\n");
 				return 1;
 			}
 			parameters->cp_tdx = cp_tdx;
@@ -1016,7 +990,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				ret = sscanf(s, "[%d,%d]%c", &parameters->prcw_init[res_spec],
 					&parameters->prch_init[res_spec], &sep);
 				if (!(ret == 2 && sep == 0) && !(ret == 3 && sep == ',')) {
-					fprintf(stderr, "\nError: could not parse precinct dimension: '%s' %x\n", s, sep);
+					fprintf(stderr, "\n[ERROR]  could not parse precinct dimension: '%s' %x\n", s, sep);
 					fprintf(stderr, "Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]\n");
 					return 1;
 				}
@@ -1030,13 +1004,13 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (codeBlockDimArg.isSet()) {
 			int cblockw_init = 0, cblockh_init = 0;
 			if (sscanf(codeBlockDimArg.getValue().c_str(), "%d,%d", &cblockw_init, &cblockh_init) == EOF) {
-				fprintf(stderr, "sscanf failed for code block dimension argument\n");
+				fprintf(stderr, "[ERROR] sscanf failed for code block dimension argument\n");
 				return 1;
 			}
 			if (cblockw_init * cblockh_init > 4096 || cblockw_init > 1024
 				|| cblockw_init < 4 || cblockh_init > 1024 || cblockh_init < 4) {
 				fprintf(stderr,
-					"!! Size of code_block error (option -b) !!\n\nRestriction :\n"
+					"[ERROR] Size of code block error (option -b)\n\nRestriction :\n"
 					"    * width*height<=4096\n    * 4<=width,height<= 1024\n\n");
 				return 1;
 			}
@@ -1050,7 +1024,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			strncpy(progression, progressionOrderArg.getValue().c_str(), 4);
 			parameters->prog_order = give_progression(progression);
 			if (parameters->prog_order == -1) {
-				fprintf(stderr, "Unrecognized progression order "
+				fprintf(stderr, "[ERROR] Unrecognized progression order "
 					"[LRCP, RLCP, RPCL, PCRL, CPRL] !!\n");
 				return 1;
 			}
@@ -1059,7 +1033,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (subsamplingFactorArg.isSet()) {
 			if (sscanf(subsamplingFactorArg.getValue().c_str(), "%d,%d", &parameters->subsampling_dx,
 				&parameters->subsampling_dy) != 2) {
-				fprintf(stderr, "'-s' sub-sampling argument error !  [-s dx,dy]\n");
+				fprintf(stderr, "[ERROR] '-s' sub-sampling argument error !  [-s dx,dy]\n");
 				return 1;
 			}
 		}
@@ -1067,7 +1041,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (imageOffsetArg.isSet()) {
 			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d", &parameters->image_offset_x0,
 				&parameters->image_offset_y0) != 2) {
-				fprintf(stderr, "-d 'image offset' argument "
+				fprintf(stderr, "[ERROR] -d 'image offset' argument "
 					"error !! [-d x0,y0]\n");
 				return 1;
 			}
@@ -1165,7 +1139,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (captureResArg.isSet()) {
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,
 				parameters->capture_resolution + 1) != 2) {
-				fprintf(stderr, "-Q 'capture resolution' argument error !! [-Q X0,Y0]");
+				fprintf(stderr, "[ERROR] -Q 'capture resolution' argument error !! [-Q X0,Y0]");
 				return 1;
 			}
 			parameters->write_capture_resolution = true;
@@ -1173,7 +1147,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (displayResArg.isSet()) {
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->display_resolution,
 				parameters->display_resolution + 1) != 2) {
-				fprintf(stderr, "-D 'display resolution' argument error !! [-D X0,Y0]");
+				fprintf(stderr, "[ERROR] -D 'display resolution' argument error !! [-D X0,Y0]");
 				return 1;
 			}
 			parameters->write_display_resolution = true;
@@ -1182,7 +1156,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (mctArg.isSet()) {
 			int mct_mode = mctArg.getValue();
 			if (mct_mode < 0 || mct_mode > 2) {
-				fprintf(stderr, "MCT incorrect value!! Current accepted values are 0, 1 or 2.\n");
+				fprintf(stderr, "[ERROR] MCT incorrect value. Current accepted values are 0, 1 or 2.\n");
 				return 1;
 			}
 			parameters->tcp_mct = (uint8_t)mct_mode;
@@ -1268,14 +1242,14 @@ static int parse_cmdline_encoder_ex(int argc,
 		if (roiArg.isSet()) {
 			if (sscanf(roiArg.getValue().c_str(), "c=%d,U=%d", &parameters->roi_compno,
 				&parameters->roi_shift) != 2) {
-				fprintf(stderr, "ROI error !! [-ROI c='compno',U='shift']\n");
+				fprintf(stderr, "[ERROR] ROI error !! [-ROI c='compno',U='shift']\n");
 				return 1;
 			}
 		}
 
 		if (tileOffsetArg.isSet()) {
 			if (sscanf(tileOffsetArg.getValue().c_str(), "%d,%d", &parameters->cp_tx0, &parameters->cp_ty0) != 2) {
-				fprintf(stderr, "-T 'tile offset' argument error !! [-T X0,Y0]");
+				fprintf(stderr, "[ERROR] -T 'tile offset' argument error !! [-T X0,Y0]");
 				return 1;
 			}
 		}
@@ -1370,7 +1344,7 @@ static int parse_cmdline_encoder_ex(int argc,
     for (uint32_t i = 0; i < parameters->numpocs; i++) {
         if (parameters->POC[i].prg == -1) {
             fprintf(stderr,
-                    "Unrecognized progression order in option -P (POC n %d) [LRCP, RLCP, RPCL, PCRL, CPRL] !!\n",
+                    "[ERROR] Unrecognized progression order in option -P (POC n %d) [LRCP, RLCP, RPCL, PCRL, CPRL] !!\n",
                     i + 1);
         }
     }
@@ -1384,7 +1358,7 @@ static int parse_cmdline_encoder_ex(int argc,
     }
 
 	if (parameters->tcp_mct == 2 && !parameters->mct_data) {
-		fprintf(stderr, "Custom MCT has been set but no array-based MCT has been provided.\n");
+		fprintf(stderr, "[ERROR] Custom MCT has been set but no array-based MCT has been provided.\n");
 		return false;
 	}
 
@@ -1672,14 +1646,14 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	if (isBufferStream) {
 		auto fp = fopen(info->input_file_name, "rb");
 		if (!fp) {
-			fprintf(stderr, "ERROR -> opj_compress: unable to open file %s for reading", info->input_file_name);
+			fprintf(stderr, "[ERROR] opj_compress: unable to open file %s for reading", info->input_file_name);
 			bSuccess = false;
 			goto cleanup;
 		}
 
 		auto rc = fseek(fp, 0, SEEK_END);
 		if (rc == -1) {
-			fprintf(stderr, "ERROR -> opj_compress: unable to seek on file %s", info->input_file_name);
+			fprintf(stderr, "[ERROR] opj_compress: unable to seek on file %s", info->input_file_name);
 			fclose(fp);
 			bSuccess = false;
 			goto cleanup;
@@ -1708,7 +1682,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			PGXFormat pgx;
 			image = pgx.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load pgx file\n");
+				fprintf(stderr, "[ERROR] Unable to load pgx file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1720,7 +1694,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			PNMFormat pnm(false);
 			image = pnm.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load pnm file\n");
+				fprintf(stderr, "[ERROR] Unable to load pnm file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1732,7 +1706,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			BMPFormat bmp;
 			image = bmp.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load bmp file\n");
+				fprintf(stderr, "[ERROR] Unable to load bmp file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1745,7 +1719,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			TIFFFormat tif;
 			image = tif.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load tiff file\n");
+				fprintf(stderr, "[ERROR] Unable to load tiff file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1758,7 +1732,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			RAWFormat raw(true);
 			image = raw.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load raw file\n");
+				fprintf(stderr, "[ERROR] Unable to load raw file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1770,7 +1744,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			RAWFormat raw(false);
 			image = raw.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load raw file\n");
+				fprintf(stderr, "[ERROR] Unable to load raw file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1782,7 +1756,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			TGAFormat tga;
 			image = tga.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load tga file\n");
+				fprintf(stderr, "[ERROR] Unable to load tga file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1795,7 +1769,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			PNGFormat png;
 			image = png.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load png file\n");
+				fprintf(stderr, "[ERROR] Unable to load png file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1809,7 +1783,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			JPEGFormat jpeg;
 			image = jpeg.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				fprintf(stderr, "Unable to load jpeg file\n");
+				fprintf(stderr, "[ERROR] Unable to load jpeg file\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1822,7 +1796,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		* and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 		*/
 		if (!image) {
-			fprintf(stderr, "Unable to load file: no image generated.\n");
+			fprintf(stderr, "[ERROR] Unable to load file: no image generated.\n");
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -1832,7 +1806,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec > 16) {
-			fprintf(stderr, "Precision = %d not supported:\n", image->comps[i].prec);
+			fprintf(stderr, "[ERROR] Precision = %d not supported:\n", image->comps[i].prec);
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -1844,13 +1818,13 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 	else {            /* mct mode has been set in commandline */
 		if ((parameters->tcp_mct == 1) && (image->numcomps < 3)) {
-			fprintf(stderr, "RGB->YCC conversion cannot be used:\n");
+			fprintf(stderr, "[ERROR] RGB->YCC conversion cannot be used:\n");
 			fprintf(stderr, "Input image has less than 3 components\n");
 			bSuccess = false;
 			goto cleanup;
 		}
 		if ((parameters->tcp_mct == 2) && (!parameters->mct_data)) {
-			fprintf(stderr, "Custom MCT has been set but no array-based MCT\n");
+			fprintf(stderr, "[ERROR] Custom MCT has been set but no array-based MCT\n");
 			fprintf(stderr, "has been provided. Aborting.\n");
 			bSuccess = false;
 			goto cleanup;
@@ -1892,7 +1866,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	opj_set_error_handler(l_codec, error_callback, nullptr);
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
-		fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
+		fprintf(stderr, "[ERROR] failed to encode image: opj_setup_encoder\n");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1911,7 +1885,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 
 	
 	if (!l_stream) {
-		fprintf(stderr, "failed to create stream\n");
+		fprintf(stderr, "[ERROR] failed to create stream\n");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1919,7 +1893,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	/* encode the image */
 	bSuccess = opj_start_compress(l_codec, image, l_stream);
 	if (!bSuccess) {
-		fprintf(stderr, "failed to encode image: opj_start_compress\n");
+		fprintf(stderr, "[ERROR] failed to encode image: opj_start_compress\n");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1930,7 +1904,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		assert(l_data);
 		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
 			if (!opj_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
-				fprintf(stderr, "ERROR -> test_tile_encoder: failed to write the tile %d!\n", i);
+				fprintf(stderr, "[ERROR] test_tile_encoder: failed to write the tile %d!\n", i);
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1940,7 +1914,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	else {
 		bSuccess = bSuccess && opj_encode_with_plugin(l_codec, info->tile, l_stream);
 		if (!bSuccess) {
-			fprintf(stderr, "failed to encode image: opj_encode\n");
+			fprintf(stderr, "[ERROR] failed to encode image: opj_encode\n");
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -1949,7 +1923,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 
 	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
-		fprintf(stderr, "failed to encode image: opj_end_compress\n");
+		fprintf(stderr, "[ERROR] failed to encode image: opj_end_compress\n");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1957,13 +1931,13 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	if (buff) {
 		auto fp = fopen(outfile, "wb");
 		if (!fp) {
-			fprintf(stderr, "Buffer compress: failed to open file %s for writing\n", outfile);
+			fprintf(stderr, "[ERROR] Buffer compress: failed to open file %s for writing\n", outfile);
 		}
 		else {
 			auto len = opj_stream_get_write_buffer_stream_length(l_stream);
 			size_t written = fwrite(buff, 1,len, fp);
 			if (written != len) {
-				fprintf(stderr, "Buffer compress: only %zd bytes written out of %zd total\n", len, written);
+				fprintf(stderr, "[ERROR] Buffer compress: only %zd bytes written out of %zd total\n", len, written);
 			}
 			fclose(fp);
 		}
@@ -1982,7 +1956,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 	if (!bSuccess) {
-		fprintf(stderr, "failed to encode image\n");
+		fprintf(stderr, "[ERROR] failed to encode image\n");
 		remove(parameters->outfile);
 		bSuccess = false;
 		goto cleanup;
@@ -2104,7 +2078,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				goto cleanup;
 			}
 			if (num_images == 0) {
-				fprintf(stderr, "Folder is empty\n");
+				fprintf(stderr, "[ERROR] Folder is empty\n");
 				goto cleanup;
 			}
 		}
@@ -2119,7 +2093,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			if (initParams->img_fol.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr,
 								&initParams->img_fol, initParams->out_fol.imgdirpath ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
-					fprintf(stderr, "skipping file...\n");
+					fprintf(stdout, "skipping file...\n");
 					continue;
 				}
 			}
