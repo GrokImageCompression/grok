@@ -106,7 +106,7 @@ void exit_func() {
 	opj_cleanup();
 }
 
-#ifdef  WIN32
+#ifdef  _WIN32
 BOOL sig_handler(DWORD signum){
 	switch (signum)	{
 	case CTRL_C_EVENT:
@@ -129,7 +129,7 @@ void sig_handler(int signum){
 
 void setup_signal_handler()
 {
-#ifdef  WIN32
+#ifdef  _WIN32
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)sig_handler, TRUE);
 #else
 	struct sigaction sa;
