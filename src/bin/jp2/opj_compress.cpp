@@ -107,11 +107,12 @@ void exit_func() {
 }
 
 #ifdef  WIN32
-BOOL sig_handler(DWORD signum)
-{
-	switch (signum)
-	{
+BOOL sig_handler(DWORD signum){
+	switch (signum)	{
+	case CTRL_C_EVENT:
+	case CTRL_BREAK_EVENT:
 	case CTRL_CLOSE_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
 		exit_func();
 		return(TRUE);
 
