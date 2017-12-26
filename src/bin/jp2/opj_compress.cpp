@@ -112,6 +112,7 @@ BOOL sig_handler(DWORD signum){
 	case CTRL_C_EVENT:
 	case CTRL_BREAK_EVENT:
 	case CTRL_CLOSE_EVENT:
+	case CTRL_LOGOFF_EVENT:
 	case CTRL_SHUTDOWN_EVENT:
 		exit_func();
 		return(TRUE);
