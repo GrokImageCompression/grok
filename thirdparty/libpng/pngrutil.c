@@ -1,7 +1,7 @@
 
 /* pngrutil.c - utilities to read a PNG file
  *
- * Last changed in libpng 1.6.33 [(PENDING RELEASE)]
+ * Last changed in libpng 1.6.33 [September 28, 2017]
  * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
@@ -102,7 +102,7 @@ png_get_int_32)(png_const_bytep buf)
 png_uint_16 (PNGAPI
 png_get_uint_16)(png_const_bytep buf)
 {
-   /* ANSI-C requires an int value to accomodate at least 16 bits so this
+   /* ANSI-C requires an int value to accommodate at least 16 bits so this
     * works and allows the compiler not to worry about possible narrowing
     * on 32-bit systems.  (Pre-ANSI systems did not make integers smaller
     * than 16 bits either.)
@@ -314,6 +314,7 @@ png_read_buffer(png_structrp png_ptr, png_alloc_size_t new_size, int warn)
 
       if (buffer != NULL)
       {
+         memset(buffer, 0, new_size); /* just in case */
          png_ptr->read_buffer = buffer;
          png_ptr->read_buffer_size = new_size;
       }
@@ -673,6 +674,8 @@ png_decompress_chunk(png_structrp png_ptr,
 
                if (text != NULL)
                {
+                  memset(text, 0, buffer_size);
+
                   ret = png_inflate(png_ptr, png_ptr->chunk_name, 1/*finish*/,
                       png_ptr->read_buffer + prefix_size, &lzsize,
                       text + prefix_size, newlength);
@@ -736,9 +739,7 @@ png_decompress_chunk(png_structrp png_ptr,
             {
                /* inflateReset failed, store the error message */
                png_zstream_error(png_ptr, ret);
-
-               if (ret == Z_STREAM_END)
-                  ret = PNG_UNEXPECTED_ZLIB_RETURN;
+               ret = PNG_UNEXPECTED_ZLIB_RETURN;
             }
          }
 
@@ -1476,7 +1477,7 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                         /* Now read the tag table; a variable size buffer is
                          * needed at this point, allocate one for the whole
                          * profile.  The header check has already validated
-                         * that none of these stuff will overflow.
+                         * that none of this stuff will overflow.
                          */
                         const png_uint_32 tag_count = png_get_uint_32(
                             profile_header+128);
@@ -1583,19 +1584,11 @@ png_handle_iCCP(png_structrp png_ptr, png_inforp info_ptr, png_uint_32 length)
                                        return;
                                     }
                                  }
-
-                                 else if (size > 0)
-                                    errmsg = "truncated";
-
-#ifndef __COVERITY__
-                                 else
+                                 if (errmsg == NULL)
                                     errmsg = png_ptr->zstream.msg;
-#endif
                               }
-
                               /* else png_icc_check_tag_table output an error */
                            }
-
                            else /* profile truncated */
                               errmsg = png_ptr->zstream.msg;
                         }

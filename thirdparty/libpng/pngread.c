@@ -1,7 +1,7 @@
 
 /* pngread.c - read a PNG file
  *
- * Last changed in libpng 1.6.32 [August 24, 2017]
+ * Last changed in libpng 1.6.33 [September 28, 2017]
  * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
@@ -3759,7 +3759,13 @@ png_image_read_direct(png_voidp argument)
          mode = PNG_ALPHA_PNG;
          output_gamma = PNG_DEFAULT_sRGB;
       }
-
+      
+      if ((change & PNG_FORMAT_FLAG_ASSOCIATED_ALPHA) != 0)
+      {
+         mode = PNG_ALPHA_OPTIMIZED;
+         change &= ~PNG_FORMAT_FLAG_ASSOCIATED_ALPHA;
+      }
+      
       /* If 'do_local_background' is set check for the presence of gamma
        * correction; this is part of the work-round for the libpng bug
        * described above.
@@ -3985,6 +3991,10 @@ png_image_read_direct(png_voidp argument)
       else if (do_local_compose != 0) /* internal error */
          png_error(png_ptr, "png_image_read: alpha channel lost");
 
+      if ((format & PNG_FORMAT_FLAG_ASSOCIATED_ALPHA) != 0) {
+         info_format |= PNG_FORMAT_FLAG_ASSOCIATED_ALPHA;
+      }
+
       if (info_ptr->bit_depth == 16)
          info_format |= PNG_FORMAT_FLAG_LINEAR;
 
@@ -4140,7 +4150,7 @@ png_image_finish_read(png_imagep image, png_const_colorp background,
              *
              * NOTE: this will be changed in 1.7 because PNG_IMAGE_BUFFER_SIZE
              * will be changed to use png_alloc_size_t; bigger images can be
-             * accomodated on 64-bit systems.
+             * accommodated on 64-bit systems.
              */
             if (image->height <=
                 0xffffffffU/PNG_IMAGE_PIXEL_COMPONENT_SIZE(image->format)/check)

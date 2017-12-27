@@ -1,7 +1,7 @@
 
 /* png.c - location for general purpose libpng functions
  *
- * Last changed in libpng 1.6.33 [(PENDING RELEASE)]
+ * Last changed in libpng 1.6.33 [September 28, 2017]
  * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
@@ -14,7 +14,7 @@
 #include "pngpriv.h"
 
 /* Generate a compiler error if there is an old png.h in the search path. */
-typedef png_libpng_version_1_6_33beta03 Your_png_h_is_not_version_1_6_33beta03;
+typedef png_libpng_version_1_6_35beta01 Your_png_h_is_not_version_1_6_35beta01;
 
 #ifdef __GNUC__
 /* The version tests may need to be added to, but the problem warning has
@@ -816,14 +816,14 @@ png_get_copyright(png_const_structrp png_ptr)
 #else
 #  ifdef __STDC__
    return PNG_STRING_NEWLINE \
-      "libpng version 1.6.33beta03 - September 8, 2017" PNG_STRING_NEWLINE \
+      "libpng version 1.6.35beta01 - September 29, 2017" PNG_STRING_NEWLINE \
       "Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson" \
       PNG_STRING_NEWLINE \
       "Copyright (c) 1996-1997 Andreas Dilger" PNG_STRING_NEWLINE \
       "Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc." \
       PNG_STRING_NEWLINE;
 #  else
-   return "libpng version 1.6.33beta03 - September 8, 2017\
+   return "libpng version 1.6.35beta01 - September 29, 2017\
       Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson\
       Copyright (c) 1996-1997 Andreas Dilger\
       Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.";
@@ -942,7 +942,7 @@ png_handle_as_unknown(png_const_structrp png_ptr, png_const_bytep chunk_name)
 
    /* The code is the fifth byte after each four byte string.  Historically this
     * code was always searched from the end of the list, this is no longer
-    * necessary because the 'set' routine handles duplicate entries correcty.
+    * necessary because the 'set' routine handles duplicate entries correctly.
     */
    do /* num_chunk_list > 0, so at least one */
    {
@@ -1979,7 +1979,6 @@ icc_check_length(png_const_structrp png_ptr, png_colorspacerp colorspace,
    if (profile_length < 132)
       return png_icc_profile_error(png_ptr, colorspace, name, profile_length,
           "too short");
-
    return 1;
 }
 
@@ -2068,7 +2067,7 @@ png_icc_check_header(png_const_structrp png_ptr, png_colorspacerp colorspace,
     */
 
    /* Data checks (could be skipped).  These checks must be independent of the
-    * version number; however, the version number doesn't accomodate changes in
+    * version number; however, the version number doesn't accommodate changes in
     * the header fields (just the known tags and the interpretation of the
     * data.)
     */
@@ -2225,25 +2224,22 @@ png_icc_check_tag_table(png_const_structrp png_ptr, png_colorspacerp colorspace,
        * type signature then 0.
        */
 
-      if (!tag_start)
-         return 0;
-
-      if ((tag_start & 3) != 0)
-      {
-         /* CNHP730S.icc shipped with Microsoft Windows 64 violates this, it is
-          * only a warning here because libpng does not care about the
-          * alignment.
-          */
-         (void)png_icc_profile_error(png_ptr, NULL, name, tag_id,
-             "ICC profile tag start not a multiple of 4");
-      }
-
       /* This is a hard error; potentially it can cause read outside the
        * profile.
        */
       if (tag_start > profile_length || tag_length > profile_length - tag_start)
          return png_icc_profile_error(png_ptr, colorspace, name, tag_id,
              "ICC profile tag outside profile");
+
+      if ((tag_start & 3) != 0)
+      {
+         /* CNHP730S.icc shipped with Microsoft Windows 64 violates this; it is
+          * only a warning here because libpng does not care about the
+          * alignment.
+          */
+         (void)png_icc_profile_error(png_ptr, NULL, name, tag_id,
+             "ICC profile tag start not a multiple of 4");
+      }
    }
 
    return 1; /* success, maybe with warnings */
@@ -2711,7 +2707,7 @@ png_check_IHDR(png_const_structrp png_ptr,
 
 #if defined(PNG_sCAL_SUPPORTED) || defined(PNG_pCAL_SUPPORTED)
 /* ASCII to fp functions */
-/* Check an ASCII formated floating point value, see the more detailed
+/* Check an ASCII formatted floating point value, see the more detailed
  * comments in pngpriv.h
  */
 /* The following is used internally to preserve the sticky flags */
@@ -3765,7 +3761,7 @@ png_log16bit(png_uint_32 x)
  * of getting this accuracy in practice.
  *
  * To deal with this the following exp() function works out the exponent of the
- * frational part of the logarithm by using an accurate 32-bit value from the
+ * fractional part of the logarithm by using an accurate 32-bit value from the
  * top four fractional bits then multiplying in the remaining bits.
  */
 static const png_uint_32
