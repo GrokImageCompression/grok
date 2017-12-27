@@ -137,10 +137,10 @@ void encode_synch_with_plugin(tcd_t *tcd,
 
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
-				printf("Warning: ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
+				printf("[WARNING]  ojp band step size %f differs from plugin step size %f\n", band->stepsize, plugin_band->stepsize);
 			}
 			if (cblk->num_passes_encoded != plugin_cblk->numPasses)
-				printf("Warning: OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->num_passes_encoded, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
+				printf("[WARNING]  OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n", cblk->num_passes_encoded, (uint32_t)plugin_cblk->numPasses, compno, resno, bandno, cblkno);
 		}
 
 		cblk->num_passes_encoded = (uint32_t)plugin_cblk->numPasses;
@@ -149,7 +149,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 			if (plugin_cblk->numPix != opjNumPix)
-				printf("Warning: ojp numPix %d differs from plugin numPix %d\n", opjNumPix, (uint32_t)plugin_cblk->numPix);
+				printf("[WARNING]  ojp numPix %d differs from plugin numPix %d\n", opjNumPix, (uint32_t)plugin_cblk->numPix);
 		}
 
 		bool goodData = true;
@@ -161,13 +161,13 @@ void encode_synch_with_plugin(tcd_t *tcd,
 			if (cblk->num_passes_encoded > 0) {
 				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
 				if (totalRatePlugin != totalRate) {
-					printf("Warning: opj rate %d differs from plugin rate %d\n", totalRate, totalRatePlugin);
+					printf("[WARNING]  opj rate %d differs from plugin rate %d\n", totalRate, totalRatePlugin);
 				}
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
 				if (cblk->data[p] != plugin_cblk->compressedData[p]) {
-					printf("Warning: data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
+					printf("[WARNING]  data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
 						p,
 						compno,
 						resno,
@@ -191,7 +191,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 				cblk->y0 != plugin_cblk->y0 ||
 				cblk->x1 != plugin_cblk->x1 ||
 				cblk->y1 != plugin_cblk->y1) {
-				printf("Error: plugin code block bounding box differs from OPJ code block");
+				printf("[ERROR] plugin code block bounding box differs from OPJ code block");
 			}
 		}
 
@@ -204,7 +204,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 			if (tcd_needs_rate_control(tcd->tcp, &tcd->cp->m_specific_param.m_enc)) {
 				if (state & GROK_PLUGIN_STATE_DEBUG) {
 					if (fabs(pass->distortiondec - pluginPass->distortionDecrease) / fabs(pass->distortiondec) > 0.01) {
-						printf("Warning: distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
+						printf("[WARNING]  distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n", passno, pluginPass->distortionDecrease, pass->distortiondec);
 					}
 				}
 				pass->distortiondec = pluginPass->distortionDecrease;
@@ -220,7 +220,7 @@ void encode_synch_with_plugin(tcd_t *tcd,
 
 			if (state & GROK_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
-					printf("Warning: plugin rate %d differs from OPJ rate %d\n", pluginRate, pass->rate);
+					printf("[WARNING]  plugin rate %d differs from OPJ rate %d\n", pluginRate, pass->rate);
 				}
 			}
 

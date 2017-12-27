@@ -325,7 +325,7 @@ static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
 	header->bfType = static_cast<uint16_t>(header->bfType | ((uint32_t)getc(IN) << 8));
 
 	if (header->bfType != 19778) {
-		fprintf(stderr, "Error, not a BMP file!\n");
+		fprintf(stderr, "[ERROR] not a BMP file!\n");
 		return false;
 	}
 
@@ -368,7 +368,7 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 	case 124U: /* BITMAPV5HEADER */
 		break;
 	default:
-		fprintf(stderr, "Error, unknown BMP header size %d\n", header->biSize);
+		fprintf(stderr, "[ERROR] unknown BMP header size %d\n", header->biSize);
 		return false;
 	}
 
@@ -449,7 +449,7 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		header->biColorSpaceType |= (uint32_t)getc(IN) << 24;
 
 		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP), IN) != sizeof(header->biColorSpaceEP)) {
-			fprintf(stderr, "Error, can't  read BMP header\n");
+			fprintf(stderr, "[ERROR] can't  read BMP header\n");
 			return false;
 		}
 
@@ -497,7 +497,7 @@ static bool bmp_read_raw_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_
 {
 	(void)(width);
 	if (fread(pData, sizeof(uint8_t), stride * height, IN) != (stride * height)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return false;
 	}
 	return true;
@@ -644,7 +644,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	else {
 		IN = fopen(filename, "rb");
 		if (!IN) {
-			fprintf(stderr, "Failed to open %s for reading !!\n", filename);
+			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
 			return nullptr;
 		}
 	}
@@ -738,7 +738,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		l_result = bmp_read_rle4_data(IN, pData, stride, Info_h.biWidth, Info_h.biHeight);
 		break;
 	default:
-		fprintf(stderr, "Unsupported BMP compression\n");
+		fprintf(stderr, "[ERROR] Unsupported BMP compression\n");
 		l_result = false;
 		break;
 	}
@@ -824,12 +824,12 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 	int adjustR, adjustG, adjustB;
 
 	if (image->numcomps == 0) {
-		fprintf(stderr, "Unsupported number of components: %d\n", image->numcomps);
+		fprintf(stderr, "[ERROR] Unsupported number of components: %d\n", image->numcomps);
 		return 1;
 	}
 	for (i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
-			fprintf(stderr, "Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
+			fprintf(stderr, "[ERROR] Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
 			return 1;
 		}
 	}
@@ -842,7 +842,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 	else {
 		fdest = fopen(outfile, "wb");
 		if (!fdest) {
-			fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
 			return 1;
 		}
 	}

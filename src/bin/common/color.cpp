@@ -111,7 +111,7 @@ static bool all_components_equal_subsampling(opj_image_t *image) {
 		}
 	}
 	if (i != image->numcomps) {
-		fprintf(stderr, "Color conversion: all components must have the same subsampling.\n");
+		fprintf(stderr, "[ERROR] Color conversion: all components must have the same subsampling.\n");
 		return false;
 	}
 	return true;
@@ -422,7 +422,7 @@ void color_sycc_to_rgb(opj_image_t *img)
               && (img->comps[2].dy == 1)) { /* no sub-sample */
         sycc444_to_rgb(img);
     } else {
-        fprintf(stderr,"%s:%d:color_sycc_to_rgb\n\tCAN NOT CONVERT\n", __FILE__,__LINE__);
+        fprintf(stderr,"[ERROR] %s:%d:color_sycc_to_rgb\n\tCAN NOT CONVERT\n", __FILE__,__LINE__);
         return;
     }
     img->color_space = OPJ_CLRSPC_SRGB;
@@ -512,7 +512,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
         image->color_space = OPJ_CLRSPC_SRGB;
     } else {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"%s:%d: color_apply_icc_profile\n\tICC Profile has unknown "
+        fprintf(stderr,"[ERROR] %s:%d: color_apply_icc_profile\n\tICC Profile has unknown "
                 "output colorspace(%#x)(%c%c%c%c)\n\tICC Profile ignored.\n",
                 __FILE__,__LINE__,out_space,
                 (out_space>>24) & 0xff,(out_space>>16) & 0xff,
@@ -522,11 +522,11 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
     }
 
 #ifdef DEBUG_PROFILE
-    fprintf(stderr,"%s:%d:color_apply_icc_profile\n\tchannels(%d) prec(%d) w(%d) h(%d)"
+    fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tchannels(%d) prec(%d) w(%d) h(%d)"
             "\n\tprofile: in(%p) out(%p)\n",__FILE__,__LINE__,image->numcomps,prec,
             max_w,max_h, (void*)in_prof,(void*)out_prof);
 
-    fprintf(stderr,"\trender_intent (%u)\n\t"
+    fprintf(stderr,"[ERROR] \trender_intent (%u)\n\t"
             "color_space: in(%#x)(%c%c%c%c)   out:(%#x)(%c%c%c%c)\n\t"
             "       type: in(%u)              out:(%u)\n",
             intent,
@@ -556,7 +556,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
 
     if(transform == nullptr) {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"%s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
+        fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
                 "ICC Profile ignored.\n",__FILE__,__LINE__);
 #endif
         image->color_space = oldspace;
@@ -733,7 +733,7 @@ void color_cielab_to_rgb(opj_image_t *image)
     numcomps = (int)image->numcomps;
 
     if(numcomps != 3) {
-        fprintf(stderr,"%s:%d:\n\tnumcomps %d not handled. Quitting.\n",
+        fprintf(stderr,"[ERROR] %s:%d:\n\tnumcomps %d not handled. Quitting.\n",
                 __FILE__,__LINE__,numcomps);
         return;
     }
@@ -844,7 +844,7 @@ void color_cielab_to_rgb(opj_image_t *image)
         return;
     }
 
-    fprintf(stderr,"%s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__,__LINE__, enumcs);
+    fprintf(stderr,"[ERROR] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__,__LINE__, enumcs);
 }/* color_apply_conversion() */
 
 #endif /* GROK_HAVE_LIBLCMS */

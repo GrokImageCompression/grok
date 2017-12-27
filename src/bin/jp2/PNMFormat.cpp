@@ -135,17 +135,17 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 	char line[256];
 
 	if (fgets(line, 250, reader) == nullptr) {
-		fprintf(stderr, "\nWARNING: fgets return a nullptr value");
+		fprintf(stderr, "[ERROR]  fgets return a nullptr value");
 		return;
 	}
 
 	if (line[0] != 'P') {
-		fprintf(stderr, "read_pnm_header:PNM:magic P missing\n");
+		fprintf(stderr, "[ERROR] read_pnm_header:PNM:magic P missing\n");
 		return;
 	}
 	format = atoi(line + 1);
 	if (format < 1 || format > 7) {
-		fprintf(stderr, "read_pnm_header:magic format %d invalid\n", format);
+		fprintf(stderr, "[ERROR] read_pnm_header:magic format %d invalid\n", format);
 		return;
 	}
 	ph->format = format;
@@ -221,10 +221,10 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 					ttype = 1;
 					continue;
 				}
-				fprintf(stderr, "read_pnm_header:unknown P7 TUPLTYPE %s\n", type);
+				fprintf(stderr, "[ERROR] read_pnm_header:unknown P7 TUPLTYPE %s\n", type);
 				return;
 			}
-			fprintf(stderr, "read_pnm_header:unknown P7 idf %s\n", idf);
+			fprintf(stderr, "[ERROR] read_pnm_header:unknown P7 idf %s\n", idf);
 			return;
 		} /* if(format == 7) */
 
@@ -259,9 +259,11 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 	{
 		if (!end)
 		{
-			fprintf(stderr, "read_pnm_header:P7 without ENDHDR\n"); return;
+			fprintf(stderr, "[ERROR] read_pnm_header:P7 without ENDHDR\n");
+			return;
 		}
-		if (ph->depth < 1 || ph->depth > 4) return;
+		if (ph->depth < 1 || ph->depth > 4)
+			return;
 
 		if (ttype)
 			ph->ok = 1;
@@ -309,7 +311,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	struct pnm_header header_info;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		fprintf(stderr, "pnmtoimage:Failed to open %s for reading!\n", filename);
+		fprintf(stderr, "[ERROR] pnmtoimage:Failed to open %s for reading!\n", filename);
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
@@ -399,7 +401,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1)
-					fprintf(stderr, "\nWARNING: fscanf return a number of element different from the expected.\n");
+					fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
 
 				image->comps[compno].data[i] = (int32_t)(index * 255) / header_info.maxval;
 			}
@@ -417,7 +419,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(fp);
 					return nullptr;
@@ -427,7 +429,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 				}
 				else {
 					if (!fread(&c1, 1, 1, fp))
-						fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+						fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					/* netpbm: */
 					image->comps[compno].data[i] = ((c0 << 8) | c1);
 				}
@@ -439,7 +441,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 			unsigned int index;
 
 			if (fscanf(fp, "%u", &index) != 1)
-				fprintf(stderr, "\nWARNING: fscanf return a number of element different from the expected.\n");
+				fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
 
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
@@ -470,7 +472,7 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
-				fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+				fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
@@ -498,7 +500,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 	alpha = nullptr;
 
 	if ((prec = (int)image->comps[0].prec) > 16) {
-		fprintf(stderr, "%s:%d:imagetopnm\n\tprecision %d is larger than 16"
+		fprintf(stderr, "[ERROR] %s:%d:imagetopnm\n\tprecision %d is larger than 16"
 			"\n\t: refused.\n", __FILE__, __LINE__, prec);
 		return 1;
 	}
@@ -533,7 +535,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 		fdest = fopen(outfile, "wb");
 
 		if (!fdest) {
-			fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
 			return fails;
 		}
 		two = (prec > 8);
@@ -650,12 +652,12 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 	/* YUV or MONO: */
 
 	if (image->numcomps > ncomp) {
-		fprintf(stderr, "WARNING -> [PGM file] Only the first component\n");
-		fprintf(stderr, "           is written to the file\n");
+		fprintf(stdout, "WARNING -> [PGM file] Only the first component\n");
+		fprintf(stdout, "           is written to the file\n");
 	}
 	destname = (char*)malloc(strlen(outfile) + 8);
 	if (destname == nullptr) {
-		fprintf(stderr, "imagetopnm: out of memory\n");
+		fprintf(stderr, "[ERROR] imagetopnm: out of memory\n");
 		fclose(fdest);
 		return 1;
 	}
@@ -674,7 +676,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 
 		fdest = fopen(destname, "wb");
 		if (!fdest) {
-			fprintf(stderr, "ERROR -> failed to open %s for writing\n", destname);
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n", destname);
 			free(destname);
 			return 1;
 		}

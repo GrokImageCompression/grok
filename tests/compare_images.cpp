@@ -235,7 +235,7 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
 		PNMFormat pnm(false);
         image_read = pnm.decode(filenameComponentPGX, &parameters);
         if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
-            fprintf(stderr, "Unable to load ppm file: %s\n", filenameComponentPGX);
+            fprintf(stderr, "[ERROR] Unable to load ppm file: %s\n", filenameComponentPGX);
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
 			goto cleanup;
@@ -314,7 +314,7 @@ static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX
 	image_read = png.decode(filename, &parameters);
 #endif
 	if (!image_read) {
-		fprintf(stderr, "Unable to load PNG file\n");
+		fprintf(stderr, "[ERROR] Unable to load PNG file\n");
 		return nullptr;
 	}
 
@@ -350,7 +350,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     image_read = tif.decode(filename, &parameters);
 #endif
     if (!image_read) {
-        fprintf(stderr, "Unable to load TIF file\n");
+        fprintf(stderr, "[ERROR] Unable to load TIF file\n");
         return nullptr;
     }
 
@@ -405,7 +405,7 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
 		PGXFormat pgx;
         image_read = pgx.decode(filenameComponentPGX, &parameters);
 		if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
-            fprintf(stderr, "Unable to load pgx file\n");
+            fprintf(stderr, "[ERROR] Unable to load pgx file\n");
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
 			goto cleanup;
@@ -675,7 +675,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 		}
 
 		if (param->nbcomp == 0) {
-			fprintf(stderr, "Need to indicate the number of components !\n");
+			fprintf(stderr, "[ERROR] Need to indicate the number of components !\n");
 			return 1;
 		}
 		/* else */
@@ -683,7 +683,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 			param->tabMSEvalues = parseToleranceValues(MSElistvalues, param->nbcomp);
 			param->tabPEAKvalues = parseToleranceValues(PEAKlistvalues, param->nbcomp);
 			if ((param->tabMSEvalues == nullptr) || (param->tabPEAKvalues == nullptr)) {
-				fprintf(stderr, "MSE and PEAK values are not correct (respectively need %d values)\n", param->nbcomp);
+				fprintf(stderr, "[ERROR] MSE and PEAK values are not correct (respectively need %d values)\n", param->nbcomp);
 				return 1;
 			}
 		}
@@ -764,12 +764,12 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 				assert(param->separator_test[0] == 0);
 			}
 			else {
-				fprintf(stderr, "If number of components is > 1, we need separator\n");
+				fprintf(stderr, "[ERROR] If number of components is > 1, we need separator\n");
 				return 1;
 			}
 		}
 		if ((param->nr_flag) && (flagP || flagM)) {
-			fprintf(stderr, "Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
+			fprintf(stderr, "[ERROR] Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
 			return 1;
 		}
 		if ((!param->nr_flag) && (!flagP || !flagM)) {
@@ -915,7 +915,7 @@ int main(int argc, char **argv)
 
     /* check dimensions (issue 286)*/
     if(imageBase->numcomps != imageTest->numcomps ) {
-        fprintf(stderr,"ERROR: dimension mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
+        fprintf(stderr,"[ERROR] dimension mismatch (%d><%d)\n", imageBase->numcomps, imageTest->numcomps);
         goto cleanup;
     }
 
@@ -924,35 +924,35 @@ int main(int argc, char **argv)
 		auto baseComp = imageBase->comps + it_comp;
 		auto testComp = imageTest->comps + it_comp;
 		if (baseComp->sgnd != testComp->sgnd) {
-			fprintf(stderr,"ERROR: sign mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->sgnd, testComp->sgnd);
+			fprintf(stderr,"[ERROR]  sign mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
 		if (inParam.regionSet) {
 			if (testComp->w != inParam.region[2] - inParam.region[0]) {
-				fprintf(stderr,"ERROR: test image component %d width doesn't match region width %d\n", testComp->w, inParam.region[2] - inParam.region[0]);
+				fprintf(stderr,"[ERROR] test image component %d width doesn't match region width %d\n", testComp->w, inParam.region[2] - inParam.region[0]);
 				goto cleanup;
 			}
 			if (testComp->h != inParam.region[3] - inParam.region[1]) {
-				fprintf(stderr,"ERROR: test image component %d height doesn't match region height %d\n", testComp->h, inParam.region[3] - inParam.region[1]);
+				fprintf(stderr,"[ERROR] test image component %d height doesn't match region height %d\n", testComp->h, inParam.region[3] - inParam.region[1]);
 				goto cleanup;
 			}
 		}
 		else {
 
 			if (baseComp->h != testComp->h) {
-				fprintf(stderr,"ERROR: height mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->h, testComp->h);
+				fprintf(stderr,"[ERROR]  height mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
-				fprintf(stderr,"ERROR: width mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->w, testComp->w);
+				fprintf(stderr,"[ERROR]  width mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
-			fprintf(stderr,"ERROR: precision mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->prec, testComp->prec);
+			fprintf(stderr,"[ERROR]  precision mismatch [comp %d] (%d><%d)\n", it_comp, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
 
@@ -1026,7 +1026,7 @@ int main(int argc, char **argv)
             printf("<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n", it_comp, MSE);
 
             if ( (MSE > inParam.tabMSEvalues[it_comp]) || (PEAK > inParam.tabPEAKvalues[it_comp]) ) {
-                fprintf(stderr,"ERROR: MSE (%f) or PEAK (%f) values produced by the decoded file are greater "
+                fprintf(stderr,"[ERROR] MSE (%f) or PEAK (%f) values produced by the decoded file are greater "
                        "than the allowable error (respectively %f and %f) \n",
                        MSE, PEAK, inParam.tabMSEvalues[it_comp], inParam.tabPEAKvalues[it_comp]);
                 goto cleanup;

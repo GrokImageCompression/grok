@@ -85,13 +85,12 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	unsigned short ch;
 
 	if (!(raw_cp->rawWidth && raw_cp->rawHeight && raw_cp->rawComp && raw_cp->rawBitDepth)) {
-		fprintf(stderr, "\nError: invalid raw image parameters\n");
+		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
 		fprintf(stderr, "Please use the Format option -F:\n");
 		fprintf(stderr, "-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
 		fprintf(stderr, "If subsampling is omitted, 1x1 is assumed for all components\n");
 		fprintf(stderr, "Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2\n");
 		fprintf(stderr, "         for raw 512x512 image with 4:2:0 subsampling\n");
-		fprintf(stderr, "Aborting.\n");
 		return nullptr;
 	}
 
@@ -103,8 +102,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	else {
 		f = fopen(filename, "rb");
 		if (!f) {
-			fprintf(stderr, "Failed to open %s for reading !!\n", filename);
-			fprintf(stderr, "Aborting\n");
+			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
 			return nullptr;
 		}
 	}
@@ -125,8 +123,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	h = raw_cp->rawHeight;
 	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
 	if (!cmptparm) {
-		fprintf(stderr, "Failed to allocate image components parameters !!\n");
-		fprintf(stderr, "Aborting\n");
+		fprintf(stderr, "[ERROR] Failed to allocate image components parameters !!\n");
 		fclose(f);
 		return nullptr;
 	}
@@ -158,7 +155,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 			uint32_t nloop = (w*h) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
 			for (i = 0; i < nloop; i++) {
 				if (!fread(&value, 1, 1, f)) {
-					fprintf(stderr, "Error reading raw file. End of file probably reached.\n");
+					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
@@ -175,13 +172,13 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 				unsigned char temp1;
 				unsigned char temp2;
 				if (!fread(&temp1, 1, 1, f)) {
-					fprintf(stderr, "Error reading raw file. End of file probably reached.\n");
+					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&temp2, 1, 1, f)) {
-					fprintf(stderr, "Error reading raw file. End of file probably reached.\n");
+					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
@@ -197,14 +194,14 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 		}
 	}
 	else {
-		fprintf(stderr, "Grok cannot encode raw components with bit depth higher than 16 bits.\n");
+		fprintf(stderr, "[ERROR] Grok cannot encode raw components with bit depth higher than 16 bits.\n");
 		opj_image_destroy(image);
 		fclose(f);
 		return nullptr;
 	}
 
 	if (fread(&ch, 1, 1, f)) {
-		fprintf(stderr, "Warning. End of raw file not reached... processing anyway\n");
+		fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
 	}
 	fclose(f);
 
@@ -224,7 +221,7 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 	(void)big_endian;
 
 	if ((image->numcomps * image->x1 * image->y1) == 0) {
-		fprintf(stderr, "\nError: invalid raw image parameters\n");
+		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
 		return 1;
 	}
 
@@ -249,8 +246,7 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 		}
 	}
 	if (compno != numcomps) {
-		fprintf(stderr, "imagetoraw_common: All components shall have the same subsampling, same bit depth, same sign.\n");
-		fprintf(stderr, "\tAborting\n");
+		fprintf(stderr, "[ERROR] imagetoraw_common: All components shall have the same subsampling, same bit depth, same sign.\n");
 		return 1;
 	}
 
@@ -262,7 +258,7 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 	else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			fprintf(stderr, "Failed to open %s for writing !!\n", outfile);
+			fprintf(stderr, "[ERROR] Failed to open %s for writing !!\n", outfile);
 			return 1;
 		}
 	}
@@ -289,8 +285,8 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 						uc = (unsigned char)(curr & mask);
 						res = fwrite(&uc, 1, 1, rawFile);
 						if (res < 1) {
-							fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-							goto fin;
+							fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+							goto beach;
 						}
 						ptr++;
 					}
@@ -307,8 +303,8 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 						uc = (unsigned char)(curr & mask);
 						res = fwrite(&uc, 1, 1, rawFile);
 						if (res < 1) {
-							fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-							goto fin;
+							fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+							goto beach;
 						}
 						ptr++;
 					}
@@ -331,8 +327,8 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 						uc16.val = (signed short)(curr & mask);
 						res = fwrite(uc16.vals, 1, 2, rawFile);
 						if (res < 2) {
-							fprintf(stderr, "failed to write 2 byte for %s\n", outfile);
-							goto fin;
+							fprintf(stderr, "[ERROR] failed to write 2 byte for %s\n", outfile);
+							goto beach;
 						}
 						ptr++;
 					}
@@ -353,8 +349,8 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 						uc16.val = (unsigned short)(curr & mask);
 						res = fwrite(uc16.vals, 1, 2, rawFile);
 						if (res < 2) {
-							fprintf(stderr, "failed to write 2 byte for %s\n", outfile);
-							goto fin;
+							fprintf(stderr, "[ERROR] failed to write 2 byte for %s\n", outfile);
+							goto beach;
 						}
 						ptr++;
 					}
@@ -362,16 +358,16 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 			}
 		}
 		else if (image->comps[compno].prec <= 32) {
-			fprintf(stderr, "More than 16 bits per component no handled yet\n");
-			goto fin;
+			fprintf(stderr, "[ERROR] More than 16 bits per component no handled yet\n");
+			goto beach;
 		}
 		else {
-			fprintf(stderr, "Error: invalid precision: %d\n", image->comps[compno].prec);
-			goto fin;
+			fprintf(stderr, "[ERROR] invalid precision: %d\n", image->comps[compno].prec);
+			goto beach;
 		}
 	}
 	fails = 0;
-fin:
+beach:
 	if (!writeToStdout)
 		fclose(rawFile);
 	return fails;

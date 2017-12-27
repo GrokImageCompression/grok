@@ -99,7 +99,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
             ++grok_optind;
         if (grok_opterr && *ostr != ':') {
             fprintf(stderr,
-                    "%s: illegal option -- %c\n", __progname, grok_optopt);
+                    "[ERROR] %s: illegal option -- %c\n", __progname, grok_optopt);
             return (BADCH);
         }
     }
@@ -119,7 +119,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
                 return (BADARG);
             if (grok_opterr) {
                 fprintf(stderr,
-                        "%s: option requires an argument -- %c\n",
+                        "[ERROR] %s: option requires an argument -- %c\n",
                         __progname, grok_optopt);
                 return (BADCH);
             }
@@ -178,7 +178,7 @@ again:
                 if (!strcmp(o->name,arg)) {	/* match */
                     if (o->has_arg == 0) {
                         if ((argv[grok_optind+1])&&(!(argv[grok_optind+1][0]=='-'))) {
-                            fprintf(stderr,"%s: option does not require an argument. Ignoring %s\n",arg,argv[grok_optind+1]);
+                            fprintf(stderr,"[ERROR] %s: option does not require an argument. Ignoring %s\n",arg,argv[grok_optind+1]);
                             ++grok_optind;
                         }
                     } else {
@@ -186,14 +186,14 @@ again:
                         if(grok_optarg) {
                             if (grok_optarg[0] == '-') { /* Has read next input parameter: No arg for current parameter */
                                 if (grok_opterr) {
-                                    fprintf(stderr,"%s: option requires an argument\n",arg);
+                                    fprintf(stderr,"[ERROR] %s: option requires an argument\n",arg);
                                     return (BADCH);
                                 }
                             }
                         }
                         if (!grok_optarg && o->has_arg==1) {	/* no argument there */
                             if (grok_opterr) {
-                                fprintf(stderr,"%s: option requires an argument \n",arg);
+                                fprintf(stderr,"[ERROR] %s: option requires an argument \n",arg);
                                 return (BADCH);
                             }
                         }
@@ -207,7 +207,7 @@ again:
                     return 0;
                 }
             }/*(end for)String not found in the list*/
-            fprintf(stderr,"Invalid option %s\n",arg);
+            fprintf(stderr,"[ERROR] Invalid option %s\n",arg);
             ++grok_optind;
             return (BADCH);
         } else { /*Single character input parameter*/
@@ -231,14 +231,14 @@ again:
                     if(grok_optarg) {
                         if (grok_optarg[0] == '-') { /* Has read next input parameter: No arg for current parameter */
                             if (grok_opterr) {
-                                fprintf(stderr,"%s: option requires an argument\n",arg);
+                                fprintf(stderr,"[ERROR] %s: option requires an argument\n",arg);
                                 return (BADCH);
                             }
                         }
                     }
                     if (!grok_optarg) {	/* missing argument */
                         if (grok_opterr) {
-                            fprintf(stderr,"%s: option requires an argument\n",arg);
+                            fprintf(stderr,"[ERROR] %s: option requires an argument\n",arg);
                             return (BADCH);
                         }
                     }
@@ -251,14 +251,14 @@ found:
                 ++grok_optind;
                 return grok_optopt;
             }	else {	/* not found */
-                fprintf(stderr,"Invalid option %s\n",arg);
+                fprintf(stderr,"[ERROR] Invalid option %s\n",arg);
                 ++grok_optind;
                 return (BADCH);
             }/*end of not found*/
 
         }/* end of single character*/
     }/*end '-'*/
-    fprintf(stderr,"Invalid option\n");
+    fprintf(stderr,"[ERROR] Invalid option\n");
     ++grok_optind;
     return (BADCH);;
 }/*end function*/
