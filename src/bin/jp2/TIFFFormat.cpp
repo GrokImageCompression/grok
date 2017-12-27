@@ -619,7 +619,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	uint32_t numcomps = image->numcomps;
 	if (image->color_space == OPJ_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
-			fprintf(stderr, "imagetotif: CMYK images shall be composed of at least 4 planes.\n");
+			fprintf(stderr, "[ERROR] imagetotif: CMYK images shall be composed of at least 4 planes.\n");
 			fprintf(stderr, "\tAborting\n");
 			return 1;
 		}
@@ -647,7 +647,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	uint32_t bps = image->comps[0].prec;
 	uint32_t tif_bps = bps;
 	if (bps == 0) {
-		fprintf(stderr, "imagetotif: image precision is zero.\n");
+		fprintf(stderr, "[ERROR] imagetotif: image precision is zero.\n");
 		success = false;
 		goto cleanup;
 	}
@@ -679,7 +679,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
-		fprintf(stderr, "imagetotif: All components shall have the same subsampling, same bit depth.\n");
+		fprintf(stderr, "[ERROR] imagetotif: All components shall have the same subsampling, same bit depth.\n");
 		fprintf(stderr, "\tAborting\n");
 		success = false;
 		goto cleanup;
@@ -691,7 +691,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		bps = 0;
 	if (bps == 0)
 	{
-		fprintf(stderr, "imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
+		fprintf(stderr, "[ERROR] imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
 		fprintf(stderr, "\tAborting\n");
 		success = false;
 		goto cleanup;
@@ -765,7 +765,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 
 	tif = TIFFOpen(outfile, "wb");
 	if (!tif) {
-		fprintf(stderr, "imagetotif:failed to open %s for writing\n", outfile);
+		fprintf(stderr, "[ERROR] imagetotif:failed to open %s for writing\n", outfile);
 		success = false;
 		goto cleanup;
 	}
@@ -837,7 +837,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	strip_size = TIFFStripSize(tif);
 	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
 	if (rowStride != strip_size) {
-		fprintf(stderr, "Invalid TIFF strip size\n");
+		fprintf(stderr, "[ERROR] Invalid TIFF strip size\n");
 		success = false;
 		goto cleanup;
 	}
@@ -1411,7 +1411,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	tif = TIFFOpen(filename, "r");
 
 	if (!tif) {
-		fprintf(stderr, "tiftoimage:Failed to open %s for reading\n", filename);
+		fprintf(stderr, "[ERROR] tiftoimage:Failed to open %s for reading\n", filename);
 		return 0;
 	}
 	tiBps = tiPhoto = tiSf = tiSpp = tiPC = 0;
@@ -1466,21 +1466,21 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
-		fprintf(stderr, "tiftoimage: Bad value for samples per pixel == %hu.\n"
+		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"
 			"\tAborting.\n", tiSpp);
 		success = false;
 		goto cleanup;
 
 	}
 	if (tiBps > 16U || tiBps == 0) {
-		fprintf(stderr, "tiftoimage: Bad values for Bits == %d.\n"
+		fprintf(stderr, "[ERROR] tiftoimage: Bad values for Bits == %d.\n"
 			"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
 		success = false;
 		goto cleanup;
 	}
 
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE &&  tiPhoto != PHOTOMETRIC_RGB) {
-		fprintf(stderr, "tiftoimage: Bad color format %d.\n"
+		fprintf(stderr, "[ERROR] tiftoimage: Bad color format %d.\n"
 			"\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
 		fprintf(stderr, "\tAborting\n");
 		success = false;
@@ -1489,7 +1489,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 
 	if (tiWidth == 0 || tiHeight == 0) {
-		fprintf(stderr, "tiftoimage: Bad values for width(%u) "
+		fprintf(stderr, "[ERROR] tiftoimage: Bad values for width(%u) "
 			"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
 		success = false;
 		goto cleanup;
@@ -1613,7 +1613,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
 		image->x0 + (w - 1) * subsampling_dx + 1;
 	if (image->x1 <= image->x0) {
-		fprintf(stderr, "tiftoimage: Bad value for image->x1(%d) vs. "
+		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->x1(%d) vs. "
 			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
 		success = false;
 		goto cleanup;
@@ -1624,7 +1624,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		image->y0 + (h - 1) * subsampling_dy + 1;
 
 	if (image->y1 <= image->y0) {
-		fprintf(stderr, "tiftoimage: Bad value for image->y1(%d) vs. "
+		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->y1(%d) vs. "
 			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
 		success = false;
 		goto cleanup;
@@ -1706,7 +1706,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 			ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
-				fprintf(stderr, "tiftoimage: Bad value for ssize(%lld) "
+				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
 					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
 				success = false;
 				goto cleanup;

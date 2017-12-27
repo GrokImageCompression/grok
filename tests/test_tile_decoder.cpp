@@ -251,7 +251,7 @@ int main (int argc, char *argv[])
     l_stream = opj_stream_create_default_file_stream(input_file,true);
     if (!l_stream) {
         free(l_data);
-        fprintf(stderr, "ERROR -> failed to create the stream from the file\n");
+        fprintf(stderr, "[ERROR] failed to create the stream from the file\n");
         return EXIT_FAILURE;
     }
 
@@ -284,7 +284,7 @@ int main (int argc, char *argv[])
         break;
     }
     default: {
-        fprintf(stderr, "ERROR -> Not a valid JPEG2000 file!\n");
+        fprintf(stderr, "[ERROR] Not a valid JPEG2000 file!\n");
         free(l_data);
         opj_stream_destroy(l_stream);
         return EXIT_FAILURE;
@@ -298,7 +298,7 @@ int main (int argc, char *argv[])
 
     /* Setup the decoder decoding parameters using user parameters */
     if (! opj_setup_decoder(l_codec, &l_param)) {
-        fprintf(stderr, "ERROR -> j2k_dump: failed to setup the decoder\n");
+        fprintf(stderr, "[ERROR] j2k_dump: failed to setup the decoder\n");
         free(l_data);
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
@@ -307,7 +307,7 @@ int main (int argc, char *argv[])
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
     if (! opj_read_header(l_stream, l_codec,&l_image)) {
-        fprintf(stderr, "ERROR -> j2k_to_image: failed to read the header\n");
+        fprintf(stderr, "[ERROR] j2k_to_image: failed to read the header\n");
         free(l_data);
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
@@ -315,7 +315,7 @@ int main (int argc, char *argv[])
     }
 
     if (!opj_set_decode_area(l_codec, l_image, da_x0, da_y0,da_x1, da_y1)) {
-        fprintf(stderr,	"ERROR -> j2k_to_image: failed to set the decoded area\n");
+        fprintf(stderr,	"[ERROR] j2k_to_image: failed to set the decoded area\n");
         free(l_data);
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);

@@ -187,7 +187,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 
 	planes[0] = image->comps[0].data;
 	if (bps == 0) {
-		fprintf(stderr, "imagetotif: image precision is zero.\n");
+		fprintf(stderr, "[ERROR] imagetojpeg: image precision is zero.\n");
 		info.success = false;
 		goto cleanup;
 	}
@@ -216,7 +216,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
-		fprintf(stderr, "imagetojpeg: All components shall have the same subsampling, same bit depth.\n");
+		fprintf(stderr, "[ERROR] imagetojpeg: All components shall have the same subsampling, same bit depth.\n");
 		fprintf(stderr, "\tAborting\n");
 		info.success = false;
 		goto cleanup;
@@ -231,7 +231,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		cvt32sToTif = convert_32sXXu_C1R_LUT[bps];
 		break;
 	default:
-		fprintf(stderr, "imagetojpeg: Unsupported precision %d.\n", bps);
+		fprintf(stderr, "[ERROR] imagetojpeg: Unsupported precision %d.\n", bps);
 		info.success = false;
 		goto cleanup;
 		break;
@@ -284,8 +284,9 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	}
 	else {
 		if ((outfile = fopen(filename, "wb")) == nullptr) {
-			fprintf(stderr, "can't open %s\n", filename);
-			exit(1);
+			fprintf(stderr, "[ERROR] can't open %s\n", filename);
+			info.success = false;
+			goto cleanup;
 		}
 	}
 	jpeg_stdio_dest(&cinfo, outfile);
@@ -432,7 +433,7 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	}
 	else {
 		if ((infile = fopen(filename, "rb")) == nullptr) {
-			fprintf(stderr, "can't open %s\n", filename);
+			fprintf(stderr, "[ERROR] can't open %s\n", filename);
 			return 0;
 		}
 	}
@@ -481,7 +482,7 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 
 	bps = cinfo.data_precision;
 	if (bps != 8) {
-		fprintf(stderr, "jpegtoimage: Unsupported image precision %d\n", bps);
+		fprintf(stderr, "[ERROR] jpegtoimage: Unsupported image precision %d\n", bps);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -516,7 +517,7 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	imageInfo.image->x1 = !imageInfo.image->x0 ? (w - 1) * 1 + 1 :
 		imageInfo.image->x0 + (w - 1) * 1 + 1;
 	if (imageInfo.image->x1 <= imageInfo.image->x0) {
-		fprintf(stderr, "jpegtoimage: Bad value for image->x1(%d) vs. "
+		fprintf(stderr, "[ERROR] jpegtoimage: Bad value for image->x1(%d) vs. "
 			"image->x0(%d)\n\tAborting.\n", imageInfo.image->x1, imageInfo.image->x0);
 		imageInfo.success = false;
 		goto cleanup;
@@ -527,7 +528,7 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 		imageInfo.image->y0 + (h - 1) * 1 + 1;
 
 	if (imageInfo.image->y1 <= imageInfo.image->y0) {
-		fprintf(stderr, "jpegtoimage: Bad value for image->y1(%d) vs. "
+		fprintf(stderr, "[ERROR] jpegtoimage: Bad value for image->y1(%d) vs. "
 			"image->y0(%d)\n\tAborting.\n", imageInfo.image->y1, imageInfo.image->y0);
 		imageInfo.success = false;
 		goto cleanup;

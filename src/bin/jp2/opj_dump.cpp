@@ -152,7 +152,7 @@ static int get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 0;
     }
 
@@ -176,7 +176,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"Could not open Folder %s\n",imgdirpath);
+        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
         return 1;
     } 
 	
@@ -219,7 +219,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     char *temp_p, temp1[OPJ_PATH_LEN]="";
 
     strcpy(image_filename,dirptr->filename[imageno]);
-    fprintf(stderr,"File Number %d \"%s\"\n",imageno,image_filename);
+    fprintf(stdout,"File Number %d \"%s\"\n",imageno,image_filename);
     parameters->decod_format = get_file_format(image_filename);
     if (parameters->decod_format == -1)
         return 1;
@@ -513,7 +513,7 @@ int main(int argc, char *argv[])
     if (parameters.outfile[0] != 0) {
         fout = fopen(parameters.outfile,"w");
         if (!fout) {
-            fprintf(stderr, "ERROR -> failed to open %s for writing\n", parameters.outfile);
+            fprintf(stderr, "[ERROR] failed to open %s for writing\n", parameters.outfile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -537,7 +537,7 @@ int main(int argc, char *argv[])
 
         l_stream = opj_stream_create_default_file_stream(parameters.infile,1);
         if (!l_stream) {
-            fprintf(stderr, "ERROR -> failed to create the stream from the file %s\n",parameters.infile);
+            fprintf(stderr, "[ERROR] failed to create the stream from the file %s\n",parameters.infile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -570,14 +570,14 @@ int main(int argc, char *argv[])
 
         /* Setup the decoder decoding parameters using user parameters */
         if ( !opj_setup_decoder(l_codec, &parameters) ) {
-            fprintf(stderr, "ERROR -> opj_dump: failed to setup the decoder\n");
+            fprintf(stderr, "[ERROR] opj_dump: failed to setup the decoder\n");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
         if(! opj_read_header(l_stream, l_codec,&image)) {
-            fprintf(stderr, "ERROR -> opj_dump: failed to read the header\n");
+            fprintf(stderr, "[ERROR] opj_dump: failed to read the header\n");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }

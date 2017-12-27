@@ -282,7 +282,7 @@ static void encode_help_display(void)
     fprintf(stdout,"    or Components (C).\n");
     fprintf(stdout,"[-R|-ROI] c=<component index>,U=<upshifting value>\n");
     fprintf(stdout,"    Quantization indices upshifted for a component. \n");
-    fprintf(stdout,"    Warning: This option does not implement the usual ROI (Region of Interest).\n");
+    fprintf(stdout,"    [WARNING] This option does not implement the usual ROI (Region of Interest).\n");
     fprintf(stdout,"    It should be understood as a 'Component of Interest'. It offers the \n");
     fprintf(stdout,"    possibility to upshift the value of a component during quantization step.\n");
     fprintf(stdout,"    The value after c= is the component number [0, 1, 2, ...] and the value \n");
@@ -956,7 +956,6 @@ static int parse_cmdline_encoder_ex(int argc,
 				fprintf(stderr, "If subsampling is omitted, 1x1 is assumed for all components\n");
 				fprintf(stderr, "Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2\n");
 				fprintf(stderr, "         for raw 512x512 image with 4:2:0 subsampling\n");
-				fprintf(stderr, "Aborting.\n");
 				return 1;
 			}
 		}
@@ -1051,7 +1050,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (pocArg.isSet()) {
-			int numpocs = 0;		/* number of progression order change (POC) default 0 */
+			uint32_t numpocs = 0;		/* number of progression order change (POC) default 0 */
 			opj_poc_t *POC = nullptr;	/* POC : used in case of Progression order change */
 
 			char *s = (char*)pocArg.getValue().c_str();
@@ -1071,7 +1070,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				}
 				s++;
 			}
-			parameters->numpocs = (uint32_t)numpocs;
+			parameters->numpocs = numpocs;
 		}
 
 		if (sopArg.isSet()) {
@@ -1121,12 +1120,10 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 		if (rsizArg.isSet()) {
 			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
-				fprintf(stdout, "Warning: Cinema profile set - RSIZ parameter ignored.\n");
+				fprintf(stdout, "[WARNING]  Cinema profile set - RSIZ parameter ignored.\n");
 			}
 			else {
 				parameters->rsiz = rsizArg.getValue();
-
-				//
 			}
 		}
 
@@ -1585,7 +1582,7 @@ int main(int argc, char **argv) {
 			fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0) / (double)num_compressed_files));
 		}
 	} catch (std::bad_alloc ba){
-		std::cerr << "[Error]: Out of memory. Exiting." << std::endl;
+		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;
 		success = 1;
 		goto cleanup;
 	}

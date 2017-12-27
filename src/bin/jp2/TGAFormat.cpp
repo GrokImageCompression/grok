@@ -112,7 +112,7 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 		return 0;
 
 	if (fread(tga, TGA_HEADER_SIZE, 1, fp) != 1) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	id_len = tga[0];
@@ -140,11 +140,11 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	if (id_len) {
 		unsigned char *id = (unsigned char *)malloc(id_len);
 		if (!id) {
-			fprintf(stderr, "tga_readheader: out of memory out\n");
+			fprintf(stderr, "[ERROR] tga_readheader: out of memory out\n");
 			return 0;
 		}
 		if (!fread(id, id_len, 1, fp)) {
-			fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+			fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 			free(id);
 			return 0;
 		}
@@ -155,7 +155,7 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	// Note :-  9 - RLE encoded palettized.
 	//	  	   10 - RLE encoded RGB. */
 	if (image_type > 8) {
-		fprintf(stderr, "Sorry, compressed tga files are not currently supported.\n");
+		fprintf(stderr, "[ERROR] Sorry, compressed tga files are not currently supported.\n");
 		return 0;
 	}
 
@@ -165,7 +165,7 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	palette_size = cmap_len * (cmap_entry_size / 8);
 
 	if (palette_size>0) {
-		fprintf(stderr, "File contains a palette - not yet supported.");
+		fprintf(stderr, "[ERROR] File contains a palette - not yet supported.");
 		fseek(fp, palette_size, SEEK_CUR);
 	}
 	return 1;
@@ -195,7 +195,7 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	if (bits_per_pixel < 256)
 		pixel_depth = (unsigned char)bits_per_pixel;
 	else {
-		fprintf(stderr, "ERROR: Wrong bits per pixel inside tga_header");
+		fprintf(stderr, "[ERROR] Wrong bits per pixel inside tga_header");
 		return 0;
 	}
 	uc0 = 0;
@@ -259,7 +259,7 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 
 	f = fopen(filename, "rb");
 	if (!f) {
-		fprintf(stderr, "Failed to open %s for reading !!\n", filename);
+		fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
 		return 0;
 	}
 
@@ -334,19 +334,19 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				unsigned char r, g, b;
 
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
@@ -362,25 +362,25 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 			for (x = 0; x<image_width; x++) {
 				unsigned char r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
 				}
 				if (!fread(&a, 1, 1, f)) {
-					fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					fclose(f);
 					return nullptr;
@@ -417,7 +417,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
-		fprintf(stderr, "ERROR -> failed to open %s for writing\n", outfile);
+		fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
 		return 1;
 	}
 
@@ -432,7 +432,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 			|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
 			fclose(fdest);
-			fprintf(stderr, "Unable to create a tga file with such J2K image charateristics.");
+			fprintf(stderr, "[ERROR] Unable to create a tga file with such J2K image charateristics.");
 			return 1;
 		}
 	}
@@ -447,7 +447,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 	bpp = write_alpha ? 32 : 24;
 
 	if (!tga_writeheader(fdest, bpp, width, height, true))
-		goto fin;
+		goto beach;
 
 	alpha_channel = image->numcomps - 1;
 
@@ -481,7 +481,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 
 			if (res < 1) {
 				fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-				goto fin;
+				goto beach;
 			}
 			if (g > 255.) g = 255.;
 			else if (g < 0.) g = 0.;
@@ -489,8 +489,8 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-				goto fin;
+				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+				goto beach;
 			}
 			if (r > 255.) r = 255.;
 			else if (r < 0.) r = 0.;
@@ -498,8 +498,8 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-				goto fin;
+				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+				goto beach;
 			}
 
 			if (write_alpha) {
@@ -510,14 +510,14 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
-					goto fin;
+					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+					goto beach;
 				}
 			}
 		}
 	}
 	fails = 0;
-fin:
+beach:
 	fclose(fdest);
 
 	return fails;

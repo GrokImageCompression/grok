@@ -98,7 +98,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizemembasefile = strlen(grok_optarg) + 1;
             param->base_filename = (char*) malloc(sizemembasefile);
 			if (!param->base_filename) {
-				fprintf(stderr, "Out of memory\n");
+				fprintf(stderr, "[ERROR] Out of memory\n");
 				return 1;
 			}
             strcpy(param->base_filename, grok_optarg);
@@ -108,7 +108,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizememtestfile = strlen(grok_optarg) + 1;
             param->test_filename = (char*) malloc(sizememtestfile);
 			if (!param->test_filename) {
-				fprintf(stderr, "Out of memory\n");
+				fprintf(stderr, "[ERROR] Out of memory\n");
 				return 1;
 			}
             strcpy(param->test_filename, grok_optarg);
@@ -116,18 +116,18 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             break;
         case '?':
             if ( (grok_optopt == 'b') || (grok_optopt == 't') )
-                fprintf(stderr, "Option -%c requires an argument.\n", grok_optopt);
-            else if (isprint(grok_optopt)) fprintf(stderr, "Unknown option `-%c'.\n", grok_optopt);
-            else fprintf(stderr, "Unknown option character `\\x%x'.\n", grok_optopt);
+                fprintf(stderr, "[ERROR] Option -%c requires an argument.\n", grok_optopt);
+            else if (isprint(grok_optopt)) fprintf(stderr, "[ERROR] Unknown option `-%c'.\n", grok_optopt);
+            else fprintf(stderr, "[ERROR] Unknown option character `\\x%x'.\n", grok_optopt);
             return 1;
         default:
-            fprintf(stderr, "WARNING -> this option is not valid \"-%c %s\"\n", c, grok_optarg);
+            fprintf(stdout, "[WARNING] this option is not valid \"-%c %s\"\n", c, grok_optarg);
             break;
         }
 
     if (grok_optind != argc) {
         for (index = grok_optind; index < argc; index++)
-            fprintf(stderr,"Non-option argument %s\n", argv[index]);
+            fprintf(stderr,"[ERROR] Non-option argument %s\n", argv[index]);
         return 1;
     }
 
@@ -189,11 +189,11 @@ int main(int argc, char **argv)
     int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
     assert( nbase != 511 && ntest != 511 );
         if( nbase != 1 || ntest != 1 ) {
-            fprintf(stderr, "could not parse line from files\n" );
+            fprintf(stderr, "[ERROR] could not parse line from files\n" );
             goto cleanup;
         }
         if( strcmp( strbase, strtest ) != 0 ) {
-            fprintf(stderr,"<%s> vs. <%s>\n", strbase, strtest);
+            fprintf(stderr,"[ERROR] <%s> vs. <%s>\n", strbase, strtest);
             goto cleanup;
         }
     }

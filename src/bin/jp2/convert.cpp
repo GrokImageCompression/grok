@@ -555,7 +555,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			fprintf(stderr, "[Error]: null data for component %d",i);
+			fprintf(stderr, "[ERROR] null data for component %d",i);
 			return false;
 		}
 	}
@@ -564,7 +564,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].w != image->comps[0].w ||
 					image->comps[i].h != image->comps[0].h) {
-			fprintf(stderr, "[Error]: dimensions of component %d differ from dimensions of component 0", i);
+			fprintf(stderr, "[ERROR] dimensions of component %d differ from dimensions of component 0", i);
 			return false;
 		}
 	}

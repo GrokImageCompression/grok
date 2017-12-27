@@ -76,7 +76,7 @@ static unsigned char readuchar(FILE * f)
 {
 	unsigned char c1;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	return c1;
@@ -86,11 +86,11 @@ static unsigned short readushort(FILE * f, int bigendian)
 {
 	unsigned char c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (bigendian)
@@ -103,19 +103,19 @@ static unsigned int readuint(FILE * f, int bigendian)
 {
 	unsigned char c1, c2, c3, c4;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c3, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c4, 1, 1, f)) {
-		fprintf(stderr, "\nError: fread return a number of element different from the expected.\n");
+		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (bigendian)
@@ -150,14 +150,14 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 
 	f = fopen(filename, "rb");
 	if (!f) {
-		fprintf(stderr, "Failed to open %s for reading !\n", filename);
+		fprintf(stderr, "[ERROR] Failed to open %s for reading !\n", filename);
 		return nullptr;
 	}
 
 	fseek(f, 0, SEEK_SET);
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp, &endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
 		fclose(f);
-		fprintf(stderr, "ERROR: Failed to read the right number of element from the fscanf() function!\n");
+		fprintf(stderr, "[ERROR] Failed to read the right number of element from the fscanf() function!\n");
 		return nullptr;
 	}
 
@@ -177,7 +177,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	}
 	else {
 		fclose(f);
-		fprintf(stderr, "Bad pgx header, please check input file\n");
+		fprintf(stderr, "[ERROR] Bad pgx header, please check input file\n");
 		return nullptr;
 	}
 
@@ -302,22 +302,22 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
-			fprintf(stderr, "ERROR: imagetopgx: output file name larger than 4096.");
-			goto fin;
+			fprintf(stderr, "[ERROR] imagetopgx: output file name larger than 4096.");
+			goto beach;
 		}
 		const size_t dotpos = olen - 4;
 		total = dotpos + 1 + 1 + 4; /* '-' + '[1-3]' + '.pgx' */
 
 		if (outfile[dotpos] != '.') {
 			/* `pgx` was recognized but there is no dot at expected position */
-			fprintf(stderr, "ERROR -> Impossible happen.");
-			goto fin;
+			fprintf(stderr, "[ERROR] The impossible happened.");
+			goto beach;
 		}
 		if (total > 256) {
 			name = (char*)malloc(total + 1);
 			if (name == nullptr) {
-				fprintf(stderr, "imagetopgx: out of memory\n");
-				goto fin;
+				fprintf(stderr, "[ERROR] imagetopgx: out of memory\n");
+				goto beach;
 			}
 		}
 		//copy root outfile name to "name"
@@ -329,8 +329,8 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 
 		if (!fdest) {
 
-			fprintf(stderr, "ERROR -> failed to open %s for writing\n", name);
-			goto fin;
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n", name);
+			goto beach;
 		}
 
 		w = image->comps[compno].w;
@@ -357,8 +357,8 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "failed to write 1 byte for %s\n", name);
-					goto fin;
+					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", name);
+					goto beach;
 				}
 			}
 		}
@@ -368,7 +368,7 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		fdest = nullptr;
 	}
 	fails = 0;
-fin:
+beach:
 	if (name && total > 256)
 		free(name);
 	if (fdest)
