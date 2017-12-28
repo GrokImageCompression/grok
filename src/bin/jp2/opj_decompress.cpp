@@ -1842,10 +1842,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
-			}
 		}
 			break;
 
@@ -1855,10 +1851,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
-			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1870,10 +1862,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
-			}
 		}
 			break;
 #ifdef GROK_HAVE_LIBTIFF
@@ -1883,10 +1871,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			if (!tif.encode(image, outfile, parameters->compression, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
 				failed = 1;
-			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1898,10 +1882,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
-			}
 		}
 			break;
 
@@ -1912,23 +1892,14 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 				fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", outfile);
 				failed = 1;
 			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
-			}
 		}
-			break;
-
+		break;
 		case TGA_DFMT:			/* TGA */
 		{
 			TGAFormat tga;
 			if (!tga.encode(image, outfile,0,parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", outfile);
 				failed = 1;
-			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1939,10 +1910,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
 				failed = 1;
-			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;
@@ -1956,10 +1923,6 @@ int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			if (!png.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
 				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
 				failed = 1;
-			}
-			else {
-				if (parameters->verbose)
-					fprintf(stdout, "[INFO] Generated Outfile %s\n", outfile);
 			}
 		}
 			break;

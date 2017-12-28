@@ -1477,7 +1477,6 @@ int main(int argc, char **argv) {
 	dircnt_t *dirptr = nullptr;
 	int success = 0;
 	try {
-
 		// try to encode with plugin
 		int rc = plugin_main(argc, argv, &initParams);
 
@@ -1489,8 +1488,6 @@ int main(int argc, char **argv) {
 			return 1;
 		if (!rc)
 			return 0;
-
-
 #ifndef NDEBUG
 		if (initParams.parameters.verbose) {
 			std::string out;
@@ -1500,7 +1497,6 @@ int main(int argc, char **argv) {
 			printf("%s\n", out.c_str());
 		}
 #endif
-
 		size_t num_compressed_files = 0;
 		uint32_t i, num_images, imageno;
 
@@ -1531,7 +1527,6 @@ int main(int argc, char **argv) {
 				success = 1;
 				goto cleanup;
 			}
-
 			for (i = 0; i < num_images; i++) {
 				dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
 			}
@@ -1542,8 +1537,6 @@ int main(int argc, char **argv) {
 		else {
 			num_images = 1;
 		}
-
-
 		/*Encoding image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
 			if (initParams.parameters.verbose)
@@ -1558,7 +1551,6 @@ int main(int argc, char **argv) {
 					continue;
 				}
 			}
-
 			grok_plugin_encode_user_callback_info_t opjInfo;
 			memset(&opjInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
 			opjInfo.encoder_parameters = &initParams.parameters;
@@ -1570,13 +1562,8 @@ int main(int argc, char **argv) {
 				success = 1;
 				goto cleanup;
 			}
-
 			num_compressed_files++;
-			if (initParams.parameters.verbose)
-				fprintf(stdout, "[INFO] Generated outfile %s\n", initParams.parameters.outfile);
 		}
-
-
 		t = grok_clock() - t;
 		if (initParams.parameters.verbose && num_compressed_files) {
 			fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0) / (double)num_compressed_files));
