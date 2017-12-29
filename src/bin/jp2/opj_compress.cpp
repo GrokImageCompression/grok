@@ -103,7 +103,6 @@ using namespace grk;
 
 void exit_func() {
 	grok_plugin_stop_batch_encode();
-	opj_cleanup();
 }
 
 #ifdef  _WIN32

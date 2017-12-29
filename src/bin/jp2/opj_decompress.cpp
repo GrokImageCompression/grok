@@ -109,7 +109,6 @@ using namespace std;
 
 void exit_func() {
 	grok_plugin_stop_batch_decode();
-	opj_cleanup();
 }
 
 #ifdef  _WIN32
