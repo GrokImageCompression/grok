@@ -1437,7 +1437,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 			if (!seconds)
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds*slicesPerSecond; ++i) {
-				batch_sleep(100);
+				batch_sleep(1);
 				if (grok_plugin_is_batch_complete()) {
 					break;
 				}

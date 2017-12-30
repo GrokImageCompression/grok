@@ -72,18 +72,17 @@
 #include <fcntl.h>
 #endif /* _WIN32 */
 
-namespace grk {
-	
-#ifdef _WIN32
-	int batch_sleep(int val) {
-		Sleep(val);
-		return 0;
-	}
-#else
-	int batch_sleep(int val) {
-		return usleep(val);
-	}
-#endif
+#include <condition_variable>
+using namespace std::chrono_literals;
 
+namespace grk {
+
+std::condition_variable sleep_cv;
+std::mutex sleep_cv_m;
+int batch_sleep(int val) {
+	std::unique_lock<std::mutex> lk(sleep_cv_m);
+	sleep_cv.wait_for(lk, val * 100ms, [] {return false; });
+	return 0;
+};
 
 }
