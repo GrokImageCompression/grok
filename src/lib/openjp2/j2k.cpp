@@ -3896,10 +3896,10 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
     }
 
 
-    /* Ref A.4.2: Psot could be equal zero if it is the last tile-part of the codestream.*/
+    /* Ref A.4.2: Psot may equal zero if it is the last tile-part of the codestream.*/
     if (!l_tot_len) {
-		event_msg(p_manager, EVT_WARNING, "Psot value of the current tile-part is equal to zero; "
-                      "we assume it is the last tile-part of the codestream.\n");
+		//event_msg(p_manager, EVT_WARNING, "Psot value of the current tile-part is equal to zero; "
+        //              "we assume it is the last tile-part of the codestream.\n");
         p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
     }
 
