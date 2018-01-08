@@ -6346,6 +6346,9 @@ bool j2k_read_header(   GrokStream *p_stream,
 		header_info->cp_tdx = p_j2k->m_cp.tdx;
 		header_info->cp_tdy = p_j2k->m_cp.tdy;
 
+		header_info->cp_tw = p_j2k->m_cp.tw;
+		header_info->cp_th = p_j2k->m_cp.th;
+
 		header_info->tcp_numlayers = l_tcp->numlayers;
 
 		header_info->comment = p_j2k->m_cp.comment;
