@@ -1351,10 +1351,8 @@ bool tcd_decode_tile(tcd_t *p_tcd,
 		if (!tcd_t2_decode(p_tcd, p_tile_no, src_buf, &l_data_read, p_manager)) {
 			return false;
 		}
-
 		// synch plugin with T2 data
-		if (!decode_synch_plugin_with_host(p_tcd))
-			return false;
+		decode_synch_plugin_with_host(p_tcd, p_manager);
 	}
 
 	if (doT1) {
