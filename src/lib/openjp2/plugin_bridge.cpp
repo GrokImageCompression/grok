@@ -24,7 +24,7 @@ namespace grk {
 
 // Performed after T2, just before plugin decode is triggered
 // note: only support single segment at the moment
-bool decode_synch_plugin_with_host(tcd_t *tcd) {
+void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto tcd_tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -48,8 +48,11 @@ bool decode_synch_plugin_with_host(tcd_t *tcd) {
 							auto cblk = &prc->cblks.dec[cblkno];
 							if (!cblk->numSegments)
 								continue;
-							if (cblk->numSegments != 1)
-								return false;
+							if (cblk->numSegments != 1) {
+								event_msg(p_manager, EVT_INFO,
+									"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.\n");
+								throw PluginDecodeUnsupportedException();
+							}
 							grok_plugin_code_block_t* plugin_cblk = plugin_prc->blocks[cblkno];
 
 							// copy segments into plugin codeblock buffer, and point host code block data
@@ -67,7 +70,6 @@ bool decode_synch_plugin_with_host(tcd_t *tcd) {
 			}
 		}
 	}
-	return true;
 }
 
 bool tile_equals(grok_plugin_tile_t* plugin_tile,

@@ -35,4 +35,8 @@ const uint32_t  default_header_size = 1000;
 const uint32_t  default_number_mcc_records = 10;
 const uint32_t  default_number_mct_records = 10;
 
+//exceptions
+class PluginDecodeUnsupportedException : public std::exception {
+};
+
 }

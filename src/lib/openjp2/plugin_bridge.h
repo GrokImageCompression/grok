@@ -20,7 +20,7 @@
 
 namespace grk {
 
-bool decode_synch_plugin_with_host(tcd_t *tcd);
+void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager);
 
 void encode_synch_with_plugin(tcd_t *tcd,
 	uint32_t compno,
