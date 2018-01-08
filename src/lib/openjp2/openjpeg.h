@@ -1850,7 +1850,7 @@ OPJ_API void OPJ_CALLCONV grok_plugin_stop_batch_encode(void);
 Plugin decoding
 */
 
-typedef void(*GROK_INIT_DECODERS)(opj_header_info_t* header_info,
+typedef int(*GROK_INIT_DECODERS)(opj_header_info_t* header_info,
 										opj_image_t* image);
 
 typedef struct grok_plugin_decode_callback_info {

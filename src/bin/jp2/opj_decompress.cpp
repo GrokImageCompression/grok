@@ -1637,8 +1637,7 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 		}
 
 		if (info->init_decoders_func) {
-			info->init_decoders_func(&info->header_info,	info->image);
-			return 0;
+			return info->init_decoders_func(&info->header_info,	info->image);
 		}
 	}
 
