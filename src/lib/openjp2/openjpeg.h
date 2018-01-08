@@ -591,6 +591,10 @@ typedef struct opj_header_info {
 	uint32_t cp_tdx;
 	/** YTsiz */
 	uint32_t cp_tdy;
+	/** number of tiles in width */
+	uint32_t cp_tw;
+	/** number of tiles in height */
+	uint32_t cp_th;
 	/** number of layers */
 	uint32_t tcp_numlayers;
 	/*
