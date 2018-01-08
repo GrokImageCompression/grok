@@ -1083,6 +1083,8 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
 		if (userPreDecodeCallback) {
 			rc = userPreDecodeCallback(&grokInfo);
+			if (rc)
+				return rc;
 			//synch
 			info->image = grokInfo.image;
 			info->l_stream = grokInfo.l_stream;
