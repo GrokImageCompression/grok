@@ -1837,6 +1837,8 @@ typedef struct grok_plugin_encode_user_callback_info {
 	opj_cparameters_t*	encoder_parameters;
 	opj_image_t*		image;
 	grok_plugin_tile_t*  tile;
+	uint8_t* compressBuffer;
+	size_t compressBufferLen;
 	unsigned int		error_code;
 } grok_plugin_encode_user_callback_info_t;
 

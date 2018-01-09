@@ -1599,53 +1599,28 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false;
 	bool createdImage = false;
-	uint8_t* buff = nullptr;
-	bool isBufferStream = false;
-	uint64_t fileLength=0;
+	bool inMemoryCompression = false;
 
-	// single image mode with output to stdout
-	if (!info->outputFileNameIsRelative && (!info->output_file_name || !info->output_file_name[0])) {
-		outfile[0] = 0;
-	}
-	else {
-		if (info->output_file_name && info->output_file_name[0]) {
-			if (info->outputFileNameIsRelative) {
-				strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
-				if (img_fol_plugin.set_out_format == 1) {
-					sprintf(outfile, "%s%s%s.%s",
-						out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
-						get_path_separator(),
-						temp_ofname,
-						img_fol_plugin.out_format);
-				}
-			}
-			else {
-				strcpy(outfile, info->output_file_name);
+	// get output file
+	outfile[0] = 0;
+	if (info->output_file_name && info->output_file_name[0]) {
+		if (info->outputFileNameIsRelative) {
+			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
+			if (img_fol_plugin.set_out_format == 1) {
+				sprintf(outfile, "%s%s%s.%s",
+					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
+					get_path_separator(),
+					temp_ofname,
+					img_fol_plugin.out_format);
 			}
 		}
 		else {
-			bSuccess = false;
-			goto cleanup;
+			strcpy(outfile, info->output_file_name);
 		}
 	}
-
-	if (isBufferStream) {
-		auto fp = fopen(info->input_file_name, "rb");
-		if (!fp) {
-			fprintf(stderr, "[ERROR] opj_compress: unable to open file %s for reading", info->input_file_name);
-			bSuccess = false;
-			goto cleanup;
-		}
-
-		auto rc = fseek(fp, 0, SEEK_END);
-		if (rc == -1) {
-			fprintf(stderr, "[ERROR] opj_compress: unable to seek on file %s", info->input_file_name);
-			fclose(fp);
-			bSuccess = false;
-			goto cleanup;
-		}
-		fileLength = ftell(fp);
-		fclose(fp);
+	else {
+		bSuccess = false;
+		goto cleanup;
 	}
 
 	if (!image) {
@@ -1789,6 +1764,33 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		createdImage = true;
 	}
 
+	if (inMemoryCompression) {
+		auto fp = fopen(info->input_file_name, "rb");
+		if (!fp) {
+			fprintf(stderr, "[ERROR] opj_compress: unable to open file %s for reading", info->input_file_name);
+			bSuccess = false;
+			goto cleanup;
+		}
+
+		auto rc = fseek(fp, 0, SEEK_END);
+		if (rc == -1) {
+			fprintf(stderr, "[ERROR] opj_compress: unable to seek on file %s", info->input_file_name);
+			fclose(fp);
+			bSuccess = false;
+			goto cleanup;
+		}
+		auto fileLength = ftell(fp);
+		fclose(fp);
+
+		if (fileLength) {
+			//  option to write to buffer, assuming one knows how large compressed stream will be 
+			uint64_t imageSize = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
+			info->compressBufferLen = fileLength > imageSize ? fileLength : imageSize;
+			info->compressBuffer = new uint8_t[info->compressBufferLen];
+		}
+	}
+
+
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec > 16) {
@@ -1822,10 +1824,6 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		parameters->rateControlAlgorithm = 0;
 	}
 
-
-	/* encode the destination image */
-	/* ---------------------------- */
-
 	switch (parameters->cod_format) {
 	case J2K_CFMT:	/* JPEG-2000 codestream */
 	{
@@ -1856,20 +1854,16 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		bSuccess = false;
 		goto cleanup;
 	}
-
-	/* open a byte stream for writing and allocate memory for all tiles */
-	if (isBufferStream && fileLength) {
-		//  option to write to buffer, assuming one knows how large compressed stream will be 
-		uint64_t imageSize = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
-		auto len = fileLength > imageSize ? fileLength : imageSize;
-		buff = new uint8_t[len];
-		l_stream = opj_stream_create_buffer_stream(buff, len, true, false);
+	if (info->compressBuffer) {
+		// let stream clean up compress buffer
+		l_stream = opj_stream_create_buffer_stream(info->compressBuffer, 
+													info->compressBufferLen, 
+													true,
+													false);
 	}
 	else {
 		l_stream = opj_stream_create_default_file_stream(outfile, false);
 	}
-
-	
 	if (!l_stream) {
 		fprintf(stderr, "[ERROR] failed to create stream\n");
 		bSuccess = false;
@@ -1905,49 +1899,40 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			goto cleanup;
 		}
 	}
-
-
 	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
 		fprintf(stderr, "[ERROR] failed to encode image: opj_end_compress\n");
 		bSuccess = false;
 		goto cleanup;
 	}
-
-	if (buff) {
+	if (info->compressBuffer) {
 		auto fp = fopen(outfile, "wb");
 		if (!fp) {
 			fprintf(stderr, "[ERROR] Buffer compress: failed to open file %s for writing\n", outfile);
 		}
 		else {
 			auto len = opj_stream_get_write_buffer_stream_length(l_stream);
-			size_t written = fwrite(buff, 1,len, fp);
+			size_t written = fwrite(info->compressBuffer, 1,len, fp);
 			if (written != len) {
 				fprintf(stderr, "[ERROR] Buffer compress: only %zd bytes written out of %zd total\n", len, written);
 			}
 			fclose(fp);
 		}
-		delete[] buff;
-		buff = nullptr;
-
 	}
 	if (l_stream) {
 		opj_stream_destroy(l_stream);
 		l_stream = nullptr;
 	}
-
 	if (l_codec) {
 		opj_destroy_codec(l_codec);
 		l_codec = nullptr;
 	}
-
 	if (!bSuccess) {
 		fprintf(stderr, "[ERROR] failed to encode image\n");
 		remove(parameters->outfile);
 		bSuccess = false;
 		goto cleanup;
 	}
-
 cleanup:
 	if (l_stream)
 		opj_stream_destroy(l_stream);
@@ -1957,7 +1942,6 @@ cleanup:
 		opj_image_destroy(image);
 	return bSuccess;
 }
-
 
 static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if (!initParams)
