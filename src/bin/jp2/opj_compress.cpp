@@ -1475,6 +1475,15 @@ int main(int argc, char **argv) {
 	CompressInitParams initParams;
 	dircnt_t *dirptr = nullptr;
 	int success = 0;
+#ifndef NDEBUG
+	if (initParams.parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		printf("%s\n", out.c_str());
+	}
+#endif
 	try {
 		// try to encode with plugin
 		int rc = plugin_main(argc, argv, &initParams);
@@ -1487,15 +1496,6 @@ int main(int argc, char **argv) {
 			return 1;
 		if (!rc)
 			return 0;
-#ifndef NDEBUG
-		if (initParams.parameters.verbose) {
-			std::string out;
-			for (int i = 0; i < argc; ++i) {
-				out += std::string(" ") + argv[i];
-			}
-			printf("%s\n", out.c_str());
-		}
-#endif
 		size_t num_compressed_files = 0;
 		uint32_t i, num_images, imageno;
 

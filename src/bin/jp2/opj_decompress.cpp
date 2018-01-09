@@ -1254,6 +1254,16 @@ int main(int argc, char **argv){
 	uint32_t num_decompressed_images = 0;
 	DecompressInitParams initParams;
 
+#ifndef NDEBUG
+	if (initParams.parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		printf("%s\n", out.c_str());
+	}
+#endif
+
 	try {
 		// try to encode with plugin
 		int plugin_rc = plugin_main(argc, argv, &initParams);
@@ -1266,19 +1276,6 @@ int main(int argc, char **argv){
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}
-
-#ifndef NDEBUG
-		if (initParams.parameters.verbose) {
-			std::string out;
-			for (int i = 0; i < argc; ++i) {
-				out += std::string(" ") + argv[i];
-			}
-			printf("%s\n", out.c_str());
-		}
-#endif
-
-
-
 		if (plugin_rc == EXIT_SUCCESS) {
 			rc = EXIT_SUCCESS;
 			goto cleanup;
