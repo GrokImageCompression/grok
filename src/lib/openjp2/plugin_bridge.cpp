@@ -48,11 +48,19 @@ void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager) {
 							auto cblk = &prc->cblks.dec[cblkno];
 							if (!cblk->numSegments)
 								continue;
+							// sanity check
 							if (cblk->numSegments != 1) {
 								event_msg(p_manager, EVT_INFO,
 									"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.\n");
 								throw PluginDecodeUnsupportedException();
 							}
+							auto maxPasses = 3 * (tcd->image->comps[0].prec + BIBO_EXTRA_BITS) - 2;
+							if (cblk->segs[0].numpasses > maxPasses) {
+								event_msg(p_manager, EVT_INFO,
+									"Number of passes %d in segment exceeds BIBO maximum %d. Image will be decoded on CPU.\n", cblk->segs[0].numpasses, maxPasses);
+								throw PluginDecodeUnsupportedException();
+							}
+
 							grok_plugin_code_block_t* plugin_cblk = plugin_prc->blocks[cblkno];
 
 							// copy segments into plugin codeblock buffer, and point host code block data
