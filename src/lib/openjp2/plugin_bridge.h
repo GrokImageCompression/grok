@@ -18,6 +18,20 @@
 
 #pragma once
 
+/* BIBO analysis - extra bits needed to avoid overflow:
+
+Lossless:
+without colour transform: 4 extra bits
+with colour transform:    5 extra bits
+
+Lossy:
+
+Need 1 extra bit
+
+So,  worst-case scenario is lossless with colour transform : need to add 5 more bits to prec to avoid overflow
+*/
+#define BIBO_EXTRA_BITS 5
+
 namespace grk {
 
 void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager);
