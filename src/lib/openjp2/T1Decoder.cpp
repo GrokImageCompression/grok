@@ -57,7 +57,8 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 	Barrier decode_t1_calling_barrier(numThreads + 1);
 
 	auto pool = new ThreadPool(numThreads);
-	std::atomic_bool success = true;
+	std::atomic_bool success;
+	success = true;
 	for (auto threadId = 0U; threadId < numThreads; threadId++) {
 		pool->enqueue([this,
 						&decode_t1_barrier,
