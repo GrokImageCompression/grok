@@ -1520,6 +1520,10 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
+	if (info->decode_flags == GROK_PLUGIN_DECODE_FAILED) {
+		failed = 1;
+		goto cleanup;
+	}
 	auto parameters = info->decoder_parameters;
 	if (!parameters)
 		return 1;

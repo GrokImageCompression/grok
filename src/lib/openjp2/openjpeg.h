@@ -1502,6 +1502,7 @@ typedef struct grok_plugin_tile_component {
 #define GROK_DECODE_T2		(1 << 1)
 #define GROK_DECODE_T1		(1 << 2)
 #define GROK_DECODE_POST_T1	(1 << 3)
+#define GROK_PLUGIN_DECODE_FAILED  (1 << 4)
 #define GROK_DECODE_ALL		(GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
 
 typedef struct grok_plugin_tile {
