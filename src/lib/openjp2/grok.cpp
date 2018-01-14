@@ -1080,15 +1080,13 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
 	// all calls up to and including T1 are routed to pre-decode callback
-    if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
+	if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
 		if (userPreDecodeCallback) {
 			try {
 				rc = userPreDecodeCallback(&grokInfo);
-				if (rc)
-					return rc;
 			}
 			catch (PluginDecodeUnsupportedException ex) {
-				return -1;
+				rc = -1;
 			};
 			//synch
 			info->image = grokInfo.image;
@@ -1096,9 +1094,9 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 			info->l_codec = grokInfo.l_codec;
 			// something went wrong....
 			if (!info->image)
-				return -1;
+				rc = -1;
 		}
-    } 
+	}
 	// post T1 calls are routed to post-decode callback
 	else {
         if (userPostDecodeCallback)
