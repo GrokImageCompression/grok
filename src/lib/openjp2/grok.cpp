@@ -1088,10 +1088,6 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 			catch (PluginDecodeUnsupportedException ex) {
 				rc = -1;
 			};
-			//synch
-			info->image = grokInfo.image;
-			info->l_stream = grokInfo.l_stream;
-			info->l_codec = grokInfo.l_codec;
 		}
 	}
 	// post T1 calls are routed to post-decode callback
@@ -1099,6 +1095,10 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
         if (userPostDecodeCallback)
            rc =  userPostDecodeCallback(&grokInfo);
     }
+	//synch
+	info->image = grokInfo.image;
+	info->l_stream = grokInfo.l_stream;
+	info->l_codec = grokInfo.l_codec;
 	return rc;
 }
 
