@@ -1941,8 +1941,7 @@ cleanup:
 	if (info->l_codec)
 		opj_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
-	//clean up image if either plugin does not "own" the image, or decode failed
-	if (!info->plugin_owns_image || failed) {
+	if (!info->plugin_owns_image) {
 		if (image)
 			opj_image_destroy(image);
 		info->image = nullptr;
