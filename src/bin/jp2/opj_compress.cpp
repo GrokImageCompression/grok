@@ -1545,8 +1545,6 @@ int main(int argc, char **argv) {
 			initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
 			if (initParams.img_fol.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-					if (initParams.parameters.verbose)
-						fprintf(stdout, "skipping file...\n");
 					continue;
 				}
 			}
@@ -1627,8 +1625,6 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		if (parameters->decod_format == -1) {
 			parameters->decod_format = get_file_format((char*)info->input_file_name);
 			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
-				if (info->encoder_parameters->verbose)
-					fprintf(stdout, "skipping file...\n");
 				bSuccess = false;
 				goto cleanup;
 			}
@@ -1838,8 +1834,6 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		break;
 	}
 	default:
-		if (parameters->verbose)
-			fprintf(stdout, "skipping file..\n");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2063,7 +2057,6 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			if (initParams->img_fol.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr,
 								&initParams->img_fol, initParams->out_fol.imgdirpath ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
-					fprintf(stdout, "skipping file...\n");
 					continue;
 				}
 			}

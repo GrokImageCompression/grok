@@ -1324,8 +1324,6 @@ int main(int argc, char **argv){
 				fprintf(stdout, "\n");
 			if (initParams.img_fol.set_imgdir == 1) {
 				if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-					if (initParams.parameters.verbose)
-						fprintf(stdout, "skipping file...\n");
 					continue;
 				}
 			}
@@ -1486,8 +1484,6 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 		if (initParams->img_fol.set_imgdir == 1) {
 			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
-				if (initParams->parameters.verbose)
-					fprintf(stdout, "skipping file...\n");
 				continue;
 			}
 		}
@@ -1595,8 +1591,6 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 			break;
 		}
 		default:
-			if (parameters->verbose)
-				fprintf(stdout, "skipping file..\n");
 			failed = 1;
 			goto cleanup;
 		}

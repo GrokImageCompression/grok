@@ -527,7 +527,6 @@ int main(int argc, char *argv[])
 
         if(img_fol.set_imgdir==1) {
             if (get_next_file(imageno, dirptr,&img_fol, &parameters)) {
-                fprintf(stderr,"skipping file...\n");
                 continue;
             }
         }
@@ -557,7 +556,6 @@ int main(int argc, char *argv[])
             break;
         }
         default:
-            fprintf(stderr, "skipping file..\n");
             opj_stream_destroy(l_stream);
 			l_stream = nullptr;
             continue;
