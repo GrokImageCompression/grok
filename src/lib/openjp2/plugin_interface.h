@@ -100,36 +100,25 @@ typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 ////////////////////
 
 struct PluginDecodeCallbackInfo {
-	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("",
-															"",
-															nullptr,
-															nullptr) 
-	{}
-	PluginDecodeCallbackInfo(std::string input,
-							grok_plugin_tile_t* tile,
-							opj_image_t* image) : 	PluginDecodeCallbackInfo(input,
-																			"",
-																			tile,
-																			image)
-	{}
+	PluginDecodeCallbackInfo() : PluginDecodeCallbackInfo("","",nullptr,-1,	0){}
 	PluginDecodeCallbackInfo(std::string input,
 							std::string output,
-							grok_plugin_tile_t* tile,
-							opj_image_t* image) :   deviceId(0),
-													init_decoders_func(nullptr),
-													inputFile(input),
-													outputFile(output),
-													decod_format(-1),
-													cod_format(-1),
-													l_stream(nullptr),
-													l_codec(nullptr),
-													decoder_parameters(nullptr),
-													image(image),
-													plugin_owns_image(false),
-													tile(tile),
-													error_code(0),
-													decode_flags(GROK_DECODE_HEADER)
-	{}
+							opj_decompress_parameters* decoderParameters,
+							int format,
+							uint32_t	flags) : deviceId(0),
+												init_decoders_func(nullptr),
+												inputFile(input),
+												outputFile(output),
+												decod_format(format),
+												cod_format(-1),
+												l_stream(nullptr),
+												l_codec(nullptr),
+												decoder_parameters(decoderParameters),
+												image(nullptr),
+												plugin_owns_image(false),
+												tile(nullptr),
+												error_code(0),
+												decode_flags(flags){}
     size_t deviceId;
 	GROK_INIT_DECODERS init_decoders_func;
     std::string inputFile;
