@@ -1520,8 +1520,10 @@ int decode_callback(grok_plugin_decode_callback_info_t* info) {
 		if (info->l_codec)
 			opj_destroy_codec(info->l_codec);
 		info->l_codec = nullptr;
-		if (info->image)
+		if (info->image && !info->plugin_owns_image) {
 			opj_image_destroy(info->image);
+			info->image = nullptr;
+		}
 		info->image = nullptr;
 		rc = 0;
 	}
@@ -1963,9 +1965,8 @@ cleanup:
 	if (info->l_codec)
 		opj_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
-	if (!info->plugin_owns_image) {
-		if (image)
-			opj_image_destroy(image);
+	if (image && !info->plugin_owns_image) {
+		opj_image_destroy(image);
 		info->image = nullptr;
 	}
 	if (failed)
