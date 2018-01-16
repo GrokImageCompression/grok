@@ -1513,6 +1513,11 @@ cleanup:
 
 int decode_callback(grok_plugin_decode_callback_info_t* info) {
 	int rc = -1;
+	// GROK_DECODE_T1 flag specifies full decode on CPU, so
+	// we don't need to initialize the decoder in this case
+	if (info->decode_flags & GROK_DECODE_T1) {
+		info->init_decoders_func = nullptr;
+	}
 	if (info->decode_flags & GROK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
 			opj_stream_destroy(info->l_stream);
@@ -1530,11 +1535,6 @@ int decode_callback(grok_plugin_decode_callback_info_t* info) {
 	if (info->decode_flags & (GROK_DECODE_HEADER |
 		GROK_DECODE_T1 |
 		GROK_DECODE_T2)) {
-		// GROK_DECODE_T1 flag specifies full decode on CPU
-		if (info->decode_flags & GROK_DECODE_T1) {
-			info->tile = nullptr;
-			info->init_decoders_func = nullptr;
-		}
 		rc = pre_decode(info);
 		if (rc)
 			return rc;
