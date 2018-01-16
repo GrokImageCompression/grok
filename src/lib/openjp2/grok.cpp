@@ -1058,8 +1058,8 @@ void OPJ_CALLCONV grok_plugin_stop_batch_encode(void){
 Decode Implementation
 ********************/
 
-grok_plugin_decode_callback userPreDecodeCallback = 0;
-grok_plugin_decode_callback userPostDecodeCallback = 0;
+grok_plugin_decode_callback decodeCallback = 0;
+
 
 /* wrapper for user's decode callback */
 int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
@@ -1080,21 +1080,14 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
     grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
 	// all calls up to and including T1 are routed to pre-decode callback
-	if ((grokInfo.decode_flags & GROK_DECODE_POST_T1) == 0) {
-		if (userPreDecodeCallback) {
-			try {
-				rc = userPreDecodeCallback(&grokInfo);
-			}
-			catch (PluginDecodeUnsupportedException ex) {
-				rc = -1;
-			};
+	if (decodeCallback) {
+		try {
+			rc = decodeCallback(&grokInfo);
 		}
+		catch (PluginDecodeUnsupportedException ex) {
+			rc = -1;
+		};
 	}
-	// post T1 calls are routed to post-decode callback
-	else {
-        if (userPostDecodeCallback)
-           rc =  userPostDecodeCallback(&grokInfo);
-    }
 	//synch
 	info->image = grokInfo.image;
 	info->l_stream = grokInfo.l_stream;
@@ -1103,15 +1096,13 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 }
 
 int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parameters,
-                                       grok_plugin_decode_callback preDecode,
-                                       grok_plugin_decode_callback postDecode){
+                                       grok_plugin_decode_callback callback){
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_DECODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
-    userPreDecodeCallback = preDecode;
-    userPostDecodeCallback = postDecode;
+    decodeCallback = callback;
     mgr = minpf_get_plugin_manager();
     func = nullptr;
     if (mgr && mgr->num_libraries > 0) {
@@ -1125,15 +1116,13 @@ int32_t OPJ_CALLCONV grok_plugin_decode(opj_decompress_parameters* decode_parame
 int32_t OPJ_CALLCONV grok_plugin_init_batch_decode(const char* input_dir,
         const char* output_dir,
         opj_decompress_parameters* decode_parameters,
-        grok_plugin_decode_callback preDecode,
-        grok_plugin_decode_callback postDecode){
+        grok_plugin_decode_callback callback){
     minpf_plugin_manager* mgr = nullptr;
     PLUGIN_INIT_BATCH_DECODE func = nullptr;
     if (!pluginLoaded)
         return -1;
 
-    userPreDecodeCallback = preDecode;
-    userPostDecodeCallback = postDecode;
+    decodeCallback = callback;
     mgr = minpf_get_plugin_manager();
     if (mgr && mgr->num_libraries > 0) {
         func = (PLUGIN_INIT_BATCH_DECODE)minpf_get_symbol(mgr->dynamic_libraries[0], plugin_init_batch_decode_method_name);
