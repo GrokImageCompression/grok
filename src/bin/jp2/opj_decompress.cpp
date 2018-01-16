@@ -1529,7 +1529,6 @@ int decode_callback(grok_plugin_decode_callback_info_t* info) {
 			opj_image_destroy(info->image);
 			info->image = nullptr;
 		}
-		info->image = nullptr;
 		rc = 0;
 	}
 	if (info->decode_flags & (GROK_DECODE_HEADER |
