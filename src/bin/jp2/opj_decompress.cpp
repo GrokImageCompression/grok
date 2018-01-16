@@ -1513,7 +1513,7 @@ cleanup:
 
 int decode_callback(grok_plugin_decode_callback_info_t* info) {
 	int rc = -1;
-	if (info->decode_flags == GROK_PLUGIN_DECODE_CLEAN) {
+	if (info->decode_flags & GROK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
 			opj_stream_destroy(info->l_stream);
 		info->l_stream = nullptr;

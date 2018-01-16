@@ -1079,14 +1079,8 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 	grokInfo.plugin_owns_image			= info->plugin_owns_image;
     grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
-	// all calls up to and including T1 are routed to pre-decode callback
 	if (decodeCallback) {
-		try {
-			rc = decodeCallback(&grokInfo);
-		}
-		catch (PluginDecodeUnsupportedException ex) {
-			rc = -1;
-		};
+		rc = decodeCallback(&grokInfo);
 	}
 	//synch
 	info->image = grokInfo.image;
