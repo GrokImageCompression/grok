@@ -1241,8 +1241,9 @@ struct DecompressInitParams {
 
 };
 
-static int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info);
-static int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info);
+static int decode_callback(grok_plugin_decode_callback_info_t* info);
+static int pre_decode(grok_plugin_decode_callback_info_t* info);
+static int post_decode(grok_plugin_decode_callback_info_t* info);
 static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 
 
@@ -1335,11 +1336,11 @@ int main(int argc, char **argv){
 			info.decode_flags = GROK_DECODE_ALL;
 			info.decoder_parameters = &initParams.parameters;
 
-			if (plugin_pre_decode_callback(&info)) {
+			if (pre_decode(&info)) {
 				rc = EXIT_FAILURE;
 				continue;
 			}
-			if (plugin_post_decode_callback(&info)) {
+			if (post_decode(&info)) {
 				rc = EXIT_FAILURE;
 				continue;
 			}
@@ -1419,8 +1420,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		success = grok_plugin_init_batch_decode(initParams->img_fol.imgdirpath, 
 											initParams->out_fol.imgdirpath,
 											&initParams->parameters, 
-											plugin_pre_decode_callback,
-											plugin_post_decode_callback);
+											decode_callback);
 		//start batch
 		if (success)
 			success = grok_plugin_batch_decode();
@@ -1489,7 +1489,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		}
 
 		//1. try to decode using plugin
-		success = grok_plugin_decode(&initParams->parameters, plugin_pre_decode_callback, plugin_post_decode_callback);
+		success = grok_plugin_decode(&initParams->parameters, decode_callback);
 		if (success != 0)
 			goto cleanup;
 		num_decompressed_images++;
@@ -1511,8 +1511,40 @@ cleanup:
 	return success;
 }
 
+int decode_callback(grok_plugin_decode_callback_info_t* info) {
+	int rc = -1;
+	if (info->decode_flags == GROK_PLUGIN_DECODE_CLEAN) {
+		if (info->l_stream)
+			opj_stream_destroy(info->l_stream);
+		info->l_stream = nullptr;
+		if (info->l_codec)
+			opj_destroy_codec(info->l_codec);
+		info->l_codec = nullptr;
+		if (info->image)
+			opj_image_destroy(info->image);
+		info->image = nullptr;
+		rc = 0;
+	}
+	if (info->decode_flags & (GROK_DECODE_HEADER |
+		GROK_DECODE_T1 |
+		GROK_DECODE_T2)) {
+		// GROK_DECODE_T1 flag specifies full decode on CPU
+		if (info->decode_flags & GROK_DECODE_T1) {
+			info->tile = nullptr;
+			info->init_decoders_func = nullptr;
+		}
+		rc = pre_decode(info);
+		if (rc)
+			return rc;
+	}
+	if (info->decode_flags & GROK_DECODE_POST_T1){
+		rc = post_decode(info);
+	}
+	return rc;
+}
+
 // return: 0 for success, non-zero for failure
-int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
+int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
@@ -1522,10 +1554,6 @@ int plugin_pre_decode_callback(grok_plugin_decode_callback_info_t* info) {
 	uint8_t* buffer = nullptr;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
-	if (info->decode_flags == GROK_PLUGIN_DECODE_FAILED) {
-		failed = 1;
-		goto cleanup;
-	}
 	//1. initialize
 	if (!info->l_stream) {
 		bool isBufferStream = false;
@@ -1708,7 +1736,7 @@ cleanup:
 /*
 Post-process decompressed image and store in selected image format
 */
-int plugin_post_decode_callback(grok_plugin_decode_callback_info_t* info) {
+int post_decode(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return -1;
 
