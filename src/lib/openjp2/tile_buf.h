@@ -63,8 +63,6 @@ int32_t* tile_buf_get_ptr(tile_buf_component_t* buf,
                               uint32_t offsetx,
                               uint32_t offsety);
 
-void tile_buf_set_ptr(tile_buf_component_t* buf, int32_t* ptr);
-
 bool tile_buf_alloc_component_data_decode(tile_buf_component_t* buf);
 
 bool tile_buf_alloc_component_data_encode(tile_buf_component_t* buf);

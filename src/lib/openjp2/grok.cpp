@@ -881,6 +881,7 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp){
         return;
     grok_aligned_free(comp->data);
     comp->data = nullptr;
+	comp->owns_data = false;
 }
 
 
