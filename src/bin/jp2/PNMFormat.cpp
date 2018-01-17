@@ -383,11 +383,6 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		return nullptr;
 	}
 
-
-	if (!sanityCheckOnImage(image, numcomps)) {
-		fclose(fp);
-		return nullptr;
-	}
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
