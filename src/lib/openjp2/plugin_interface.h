@@ -16,6 +16,7 @@
 */
 
 #include "openjpeg.h"
+#include <cstring>
 #include "minpf_plugin.h"
 #include <string>
 
