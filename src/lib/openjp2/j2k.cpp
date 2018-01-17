@@ -130,6 +130,7 @@ static void j2k_transfer_image_data(opj_image_t* src, opj_image_t* dest)
         dest_comp->resno_decoded = src_comp->resno_decoded;
         opj_image_single_component_data_free(dest_comp);
         dest_comp->data = src_comp->data;
+		dest_comp->owns_data = src_comp->owns_data;
         src_comp->data = nullptr;
     }
 }
@@ -7692,8 +7693,13 @@ bool j2k_decode_tile (  j2k_t * p_j2k,
 				uint32_t i, j;
 				tcd_tilecomp_t* tilec = p_j2k->m_tcd->tile->comps + compno;
 				opj_image_comp_t* comp = p_j2k->m_output_image->comps + compno;
+
+				//transfer memory from tile component to output image
 				comp->data = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-				tile_buf_set_ptr(tilec->buf, nullptr);
+				comp->owns_data = tilec->buf->owns_data;
+				tilec->buf->data = nullptr;
+				tilec->buf->owns_data = false;
+
 				comp->resno_decoded = p_j2k->m_tcd->image->comps[compno].resno_decoded;
 
 				/* now sanitize data */
@@ -9776,8 +9782,8 @@ bool j2k_encode(j2k_t * p_j2k,
         for (j=0; j<p_j2k->m_tcd->image->numcomps; ++j) {
             tcd_tilecomp_t* l_tilec = p_tcd->tile->comps + j;
             if (l_reuse_data) {
-                opj_image_comp_t * l_img_comp = p_tcd->image->comps + j;
-                tile_buf_set_ptr(l_tilec->buf, l_img_comp->data);
+				l_tilec->buf->data = (p_tcd->image->comps + j)->data;
+				l_tilec->buf->owns_data = false;
             } else {
                 if(! tile_buf_alloc_component_data_encode(l_tilec->buf)) {
                     event_msg(p_manager, EVT_ERROR, "Error allocating tile component data." );

@@ -152,12 +152,6 @@ int32_t* tile_buf_get_ptr(tile_buf_component_t* buf,
 
 }
 
-void tile_buf_set_ptr(tile_buf_component_t* buf, int32_t* ptr)
-{
-    buf->data = ptr;
-    buf->owns_data = false;
-}
-
 bool tile_buf_alloc_component_data_encode(tile_buf_component_t* buf)
 {
     if (!buf)
