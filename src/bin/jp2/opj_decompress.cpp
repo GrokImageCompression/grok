@@ -1254,17 +1254,6 @@ int main(int argc, char **argv){
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 	DecompressInitParams initParams;
-
-#ifndef NDEBUG
-	if (initParams.parameters.verbose) {
-		std::string out;
-		for (int i = 0; i < argc; ++i) {
-			out += std::string(" ") + argv[i];
-		}
-		printf("%s\n", out.c_str());
-	}
-#endif
-
 	try {
 		// try to encode with plugin
 		int plugin_rc = plugin_main(argc, argv, &initParams);
@@ -1389,6 +1378,16 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	if (parse_cmdline_decoder(argc, argv, &initParams->parameters, &initParams->img_fol, &initParams->out_fol, initParams->plugin_path) == 1) {
 		return EXIT_FAILURE;
 	}
+
+#ifndef NDEBUG
+	if (initParams->parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		printf("%s\n", out.c_str());
+	}
+#endif
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
