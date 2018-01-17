@@ -1475,15 +1475,6 @@ int main(int argc, char **argv) {
 	CompressInitParams initParams;
 	dircnt_t *dirptr = nullptr;
 	int success = 0;
-#ifndef NDEBUG
-	if (initParams.parameters.verbose) {
-		std::string out;
-		for (int i = 0; i < argc; ++i) {
-			out += std::string(" ") + argv[i];
-		}
-		printf("%s\n", out.c_str());
-	}
-#endif
 	try {
 		// try to encode with plugin
 		int rc = plugin_main(argc, argv, &initParams);
@@ -1958,6 +1949,16 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 								initParams->plugin_path) == 1) {
 		return 1;
 	}
+
+#ifndef NDEBUG
+	if (initParams->parameters.verbose) {
+		std::string out;
+		for (int i = 0; i < argc; ++i) {
+			out += std::string(" ") + argv[i];
+		}
+		printf("%s\n", out.c_str());
+	}
+#endif
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
