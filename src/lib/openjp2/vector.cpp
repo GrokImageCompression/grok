@@ -55,7 +55,7 @@ void grok_vec_t::cleanup()	{
 		return;
 	for (auto it = data->begin(); it != data->end(); ++it) {
 		if (*it)
-			grok_free(*it);
+			delete (*it);
 	}
 	delete data;
 	data = nullptr;
