@@ -192,8 +192,11 @@ static void sycc444_to_rgb(opj_image_t *img)
 	}
 	opj_image_all_components_data_free(img);
 	img->comps[0].data = d0;
+	img->comps[0].owns_data = true;
 	img->comps[1].data = d1;
+	img->comps[1].owns_data = true;
 	img->comps[2].data = d2;
+	img->comps[2].owns_data = true;
 	img->color_space = OPJ_CLRSPC_SRGB;
 	return;
 }/* sycc444_to_rgb() */
@@ -261,8 +264,11 @@ static void sycc422_to_rgb(opj_image_t *img)
 	opj_image_all_components_data_free(img);
 
 	img->comps[0].data = d0;
+	img->comps[0].owns_data = true;
 	img->comps[1].data = d1;
+	img->comps[1].owns_data = true;
 	img->comps[2].data = d2;
+	img->comps[2].owns_data = true;
 
 	img->comps[1].w = img->comps[2].w = img->comps[0].w;
 	img->comps[1].h = img->comps[2].h = img->comps[0].h;
@@ -381,8 +387,11 @@ static void sycc420_to_rgb(opj_image_t *img)
 
 	opj_image_all_components_data_free(img);
 	img->comps[0].data = d0;
+	img->comps[0].owns_data = true;
 	img->comps[1].data = d1;
+	img->comps[1].owns_data = true;
 	img->comps[2].data = d2;
+	img->comps[2].owns_data = true;
 
 	img->comps[1].w = img->comps[2].w = img->comps[0].w;
 	img->comps[1].h = img->comps[2].h = img->comps[0].h;
@@ -678,8 +687,10 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB)
         image->comps[1] = image->comps[0];
         image->comps[2] = image->comps[0];
 
-        image->comps[1].data = new_image->comps[0].data;
-        image->comps[2].data = new_image->comps[1].data;
+		image->comps[1].data = new_image->comps[0].data;
+		image->comps[1].owns_data = true;
+		image->comps[2].data = new_image->comps[1].data;
+		image->comps[2].owns_data = true;
 
         new_image->comps[0].data= nullptr;
         new_image->comps[1].data = nullptr;
@@ -832,9 +843,12 @@ void color_cielab_to_rgb(opj_image_t *image)
         }
         cmsDeleteTransform(transform);
         opj_image_all_components_data_free(image);
-        image->comps[0].data = dst0;
-        image->comps[1].data = dst1;
-        image->comps[2].data = dst2;
+		image->comps[0].data = dst0;
+		image->comps[0].owns_data = true;
+		image->comps[1].data = dst1;
+		image->comps[1].owns_data = true;
+		image->comps[2].data = dst2;
+		image->comps[2].owns_data = true;
 
         image->color_space = OPJ_CLRSPC_SRGB;
         image->comps[0].prec = 16;
