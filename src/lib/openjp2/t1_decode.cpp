@@ -135,6 +135,8 @@ t1_decode::t1_decode(uint16_t code_block_width, uint16_t code_block_height) : t1
 		throw std::exception();
 }
 t1_decode::~t1_decode() {
+	if (flags)
+		grok_aligned_free(flags);
 }
 
 inline void t1_decode::sigpass_step(flag_t *flagsp,
