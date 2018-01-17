@@ -1077,7 +1077,7 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 	grokInfo.l_stream			= info->l_stream;
 	grokInfo.l_codec			= info->l_codec;
     grokInfo.image				= info->image;
-	grokInfo.plugin_owns_image			= info->plugin_owns_image;
+	grokInfo.plugin_owns_image	= info->plugin_owns_image;
     grokInfo.tile				= info->tile;
 	grokInfo.decode_flags = info->decode_flags;
 	if (decodeCallback) {
@@ -1087,6 +1087,7 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo* info){
 	info->image = grokInfo.image;
 	info->l_stream = grokInfo.l_stream;
 	info->l_codec = grokInfo.l_codec;
+	info->header_info = grokInfo.header_info;
 	return rc;
 }
 

@@ -118,7 +118,9 @@ struct PluginDecodeCallbackInfo {
 												plugin_owns_image(false),
 												tile(nullptr),
 												error_code(0),
-												decode_flags(flags){}
+												decode_flags(flags){
+		memset(&header_info, 0, sizeof(header_info));
+	}
     size_t deviceId;
 	GROK_INIT_DECODERS init_decoders_func;
     std::string inputFile;
@@ -130,6 +132,7 @@ struct PluginDecodeCallbackInfo {
 	opj_stream_t*				l_stream;
 	opj_codec_t*				l_codec;
     opj_decompress_parameters* decoder_parameters;
+	opj_header_info_t			header_info;
     opj_image_t* image;
 	bool plugin_owns_image;
     grok_plugin_tile_t* tile;
