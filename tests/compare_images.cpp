@@ -58,6 +58,7 @@
 #include "PGXFormat.h"
 #include "format_defs.h"
 #include "convert.h"
+#include "common.h"
 
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
@@ -522,46 +523,6 @@ static int get_decod_format(test_cmp_parameters* param)
  * Parse command line
  *******************************************************************************/
 
-static int parse_DA_values(char* inArg, uint32_t *DA_x0, uint32_t *DA_y0, uint32_t *DA_x1, uint32_t *DA_y1)
-{
-	int it = 0;
-	int values[4];
-	char delims[] = ",";
-	char *result = nullptr;
-	result = strtok(inArg, delims);
-
-	while ((result != nullptr) && (it < 4)) {
-		values[it] = atoi(result);
-		result = strtok(nullptr, delims);
-		it++;
-	}
-
-	// region must be specified by 4 values exactly
-	if (it != 4) {
-		fprintf(stdout, "[WARNING] Decode region must be specified by exactly four coordinates. Ignoring specified region\n");
-		return EXIT_FAILURE;
-
-	}
-
-	// don't allow negative values
-	if ((values[0] < 0 ||
-		values[1] < 0 ||
-		values[2] < 0 ||
-		values[3] < 0)) {
-		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
-			values[0], values[1], values[2], values[3]);
-		return EXIT_FAILURE;
-	}
-	else {
-		*DA_x0 = values[0];
-		*DA_y0 = values[1];
-		*DA_x1 = values[2];
-		*DA_y1 = values[3];
-		return EXIT_SUCCESS;
-	}
-}
-
-
 class GrokOutput : public StdOutput
 {
 public:
@@ -664,7 +625,12 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 		}
 		if (regionArg.isSet()) {
 			uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-			if (parse_DA_values((char*)regionArg.getValue().c_str(), &x0, &y0, &x1, &y1) == EXIT_SUCCESS) {
+			if (grk::parse_DA_values(true,
+								(char*)regionArg.getValue().c_str(),
+								&x0,
+								&y0, 
+								&x1,
+								&y1) == EXIT_SUCCESS) {
 				param->region[0] = x0;
 				param->region[1] = y0;
 				param->region[2] = x1;

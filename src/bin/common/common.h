@@ -55,6 +55,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 namespace grk {
 
 int batch_sleep(int val);
@@ -77,5 +79,11 @@ struct img_fol_t {
 	char set_out_format;
 } ;
 
+int parse_DA_values(bool verbose,
+	char* inArg,
+	uint32_t *DA_x0,
+	uint32_t *DA_y0,
+	uint32_t *DA_x1,
+	uint32_t *DA_y1);
 
 }

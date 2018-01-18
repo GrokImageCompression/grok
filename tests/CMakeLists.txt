@@ -33,6 +33,8 @@ endif()
 set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
+  ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/common.h
   ${GROK_SOURCE_DIR}/src/bin/jp2/convert.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.h

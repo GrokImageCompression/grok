@@ -79,10 +79,64 @@ namespace grk {
 
 std::condition_variable sleep_cv;
 std::mutex sleep_cv_m;
+// val == # of 100ms increments to wait
 int batch_sleep(int val) {
 	std::unique_lock<std::mutex> lk(sleep_cv_m);
 	sleep_cv.wait_for(lk, val * 100ms, [] {return false; });
 	return 0;
 };
+
+
+/* -------------------------------------------------------------------------- */
+/**
+* Parse decoding area input values
+* separator = ","
+*/
+/* -------------------------------------------------------------------------- */
+int parse_DA_values(bool verbose,
+					char* inArg,
+					uint32_t *DA_x0,
+					uint32_t *DA_y0,
+					uint32_t *DA_x1,
+					uint32_t *DA_y1)
+{
+	int it = 0;
+	int values[4];
+	char delims[] = ",";
+	char *result = nullptr;
+	result = strtok(inArg, delims);
+
+	while ((result != nullptr) && (it < 4)) {
+		values[it] = atoi(result);
+		result = strtok(nullptr, delims);
+		it++;
+	}
+
+	// region must be specified by 4 values exactly
+	if (it != 4) {
+		if (verbose)
+			fprintf(stdout, "[WARNING] Decode region must be specified by exactly four coordinates. Ignoring specified region\n");
+		return EXIT_FAILURE;
+
+	}
+
+	// don't allow negative values
+	if ((values[0] < 0 ||
+		values[1] < 0 ||
+		values[2] < 0 ||
+		values[3] < 0)) {
+		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
+			values[0], values[1], values[2], values[3]);
+		return EXIT_FAILURE;
+	}
+	else {
+		*DA_x0 = values[0];
+		*DA_y0 = values[1];
+		*DA_x1 = values[2];
+		*DA_y1 = values[3];
+		return EXIT_SUCCESS;
+	}
+}
+
 
 }
