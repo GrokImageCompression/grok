@@ -1107,15 +1107,19 @@ static int parse_cmdline_encoder_ex(int argc,
 			if (!checkCinema(&cinema2KArg, OPJ_PROFILE_CINEMA_2K, parameters)) {
 				return 1;
 			}
-			fprintf(stdout, "CINEMA 2K profile activated\n"
-				"Other options specified may be overridden\n");
+			if (parameters->verbose) {
+				fprintf(stdout, "[WARNING] CINEMA 2K profile activated\n"
+					"Other options specified may be overridden\n");
+			}
 		}
 		if (cinema4KArg.isSet()) {
 			if (!checkCinema(&cinema4KArg, OPJ_PROFILE_CINEMA_4K, parameters)) {
 				return 1;
 			}
-			fprintf(stdout, "CINEMA 4K profile activated\n"
-				"Other options specified may be overridden\n");
+			if (parameters->verbose) {
+				fprintf(stdout, "[WARNING] CINEMA 4K profile activated\n"
+					"Other options specified may be overridden\n");
+			}
 		}
 		if (rsizArg.isSet()) {
 			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
