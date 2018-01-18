@@ -1544,7 +1544,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
                     l_precinct = l_band->precincts;
                     if (l_precinct) {
 
-						l_nb_precincts = l_band->numPrecincts;
+						l_nb_precincts = l_band->precincts_data_size / sizeof(tcd_precinct_t);
                         for (precno = 0; precno < l_nb_precincts; ++precno) {
 							delete l_precinct->incltree;
                             l_precinct->incltree = nullptr;
