@@ -2388,18 +2388,6 @@ void tcd_cblk_dec_t::cleanup() {
 	packet_length_info = nullptr;
 #endif
 }
-
-tcd_cblk_dec_t::~tcd_cblk_dec_t() {
-	cleanup();
-}
-
-
-
-tcd_precinct_t::~tcd_precinct_t() {
-	delete incltree;
-	delete imsbtree;
-}
-
 void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 	
 	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
@@ -2438,9 +2426,5 @@ void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 		}
 	}
 }
-tcd_band_t::~tcd_band_t() {
-	delete[] precincts;
-}
-
 }
 

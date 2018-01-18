@@ -196,9 +196,6 @@ struct tcd_cblk_dec_t {
 #endif
 														numSegmentsAllocated(0)
 	{}
-
-	~tcd_cblk_dec_t();
-
 	/**
 	* Allocates memory for a decoding code block (but not data)
 	*/
@@ -247,8 +244,6 @@ struct tcd_precinct_t {
 														imsbtree(nullptr) {
 		cblks.blocks = nullptr;
 	}
-	~tcd_precinct_t();
-	
 	void initTagTrees(event_mgr_t* manager);
 
 	void cleanupEncodeBlocks() {
@@ -298,7 +293,6 @@ struct tcd_band_t {
 												numbps(rhs.numbps),
 												stepsize(rhs.stepsize)
 	 {}
-	~tcd_band_t();
 	bool isEmpty() {
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
 	}
