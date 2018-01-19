@@ -72,6 +72,7 @@
 #include <fcntl.h>
 #endif /* _WIN32 */
 
+#include <cstring>
 #include <condition_variable>
 using namespace std::chrono_literals;
 
