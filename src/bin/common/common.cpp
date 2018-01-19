@@ -54,7 +54,8 @@
  */
 
 #include "common.h"
-#include <stdio.h>
+#include <cstdio>
+#include <cstdlib>
 
 #ifdef _WIN32
 #include <Windows.h>
