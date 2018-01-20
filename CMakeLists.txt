@@ -100,7 +100,7 @@ option(BUILD_DOC "Build the HTML documentation (with doxygen if available)." OFF
 
 string(TOLOWER ${PROJECT_NAME} projectname)
 #drop in replacement for openjpeg
-set(GROK_INSTALL_SUBDIR "openjpeg-2.2")
+set(GROK_INSTALL_SUBDIR "openjpeg-2.3")
 
 if(NOT GROK_INSTALL_BIN_DIR)
   set(GROK_INSTALL_BIN_DIR "bin")
@@ -167,10 +167,10 @@ mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 #-----------------------------------------------------------------------------
 # configure name mangling to allow multiple libraries to coexist
 # peacefully
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg_mangle.h.in)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/grok_mangle.h.in)
 set(MANGLE_PREFIX ${GROK_LIBRARY_NAME})
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/openjpeg_mangle.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/openjpeg_mangle.h
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/grok_mangle.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/grok_mangle.h
                @ONLY)
 endif()
 
