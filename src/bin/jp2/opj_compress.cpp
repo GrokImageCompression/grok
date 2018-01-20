@@ -1551,8 +1551,11 @@ int main(int argc, char **argv) {
 			opjInfo.input_file_name = initParams.parameters.infile;
 
 			if (!plugin_compress_callback(&opjInfo)) {
-				success = 1;
-				goto cleanup;
+				if (num_images == 1) {
+					success = 1;
+					goto cleanup;
+				}
+				continue;
 			}
 			num_compressed_files++;
 		}

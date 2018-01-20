@@ -2179,10 +2179,10 @@ static bool j2k_read_siz(j2k_t *p_j2k,
         }
 
 		if (l_img_comp->prec == 0 || 
-				l_img_comp->prec > GROK_MAX_PRECISION) {
+				l_img_comp->prec > max_supported_precision) {
 			event_msg(p_manager, EVT_ERROR,
-				"Invalid precision for comp = %d : prec=%u (should be between 1 and %d according to the JPEG2000 standard). Grok only supports precision up to %d\n",
-				i, l_img_comp->prec, max_precision, GROK_MAX_PRECISION);
+				"Unsupported precision for comp = %d : prec=%u (Grok only supportes precision between 1 and %d)\n",
+				i, l_img_comp->prec, max_supported_precision);
 			return false;
 		}
         l_img_comp->resno_decoded = 0;                                                          /* number of resolution decoded */

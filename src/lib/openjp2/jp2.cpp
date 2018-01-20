@@ -669,7 +669,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
 	// and high bit set indicates signed data,
 	// unset indicates unsigned data
 	if (((jp2->bpc != 0xFF) &&
-		((jp2->bpc & 0x7F) > (GROK_MAX_PRECISION - 1)))) {
+		((jp2->bpc & 0x7F) > (max_supported_precision - 1)))) {
 		event_msg(p_manager, EVT_ERROR, "JP2 IHDR box: bpc=%d not supported.\n", jp2->bpc);
 		return false;
 	}
@@ -2346,6 +2346,23 @@ bool jp2_setup_encoder(	jp2_t *jp2,
         event_msg(p_manager, EVT_ERROR, "Invalid number of components specified while setting up JP2 encoder\n");
         return false;
     }
+	//sanity check on image
+	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
+		event_msg(p_manager, EVT_ERROR, "Invalid input image dimensions found while setting up JP2 encoder\n");
+		return false;
+	}
+	for (i = 0; i < image->numcomps; ++i) {
+		auto comp = image->comps + i;
+		if (comp->w == 0 || comp->h == 0) {
+			event_msg(p_manager, EVT_ERROR, "Invalid input image component dimensions found while setting up JP2 encoder\n");
+			return false;
+		}
+		if (comp->prec == 0) {
+			event_msg(p_manager, EVT_ERROR, "Invalid component precision of 0 found while setting up JP2 encoder\n");
+			return false;
+		}
+		
+	}
 
     if (j2k_setup_encoder(jp2->j2k, parameters, image, p_manager ) == false) {
         return false;
@@ -2367,7 +2384,6 @@ bool jp2_setup_encoder(	jp2_t *jp2,
     jp2->cl[0] = JP2_JP2;	/* CL0 : JP2 */
 
     /* Image Header box */
-
     jp2->numcomps = image->numcomps;	/* NC */
     jp2->comps = (jp2_comps_t*) grok_malloc(jp2->numcomps * sizeof(jp2_comps_t));
     if (!jp2->comps) {
@@ -2378,7 +2394,6 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 
     jp2->h = image->y1 - image->y0;		/* HEIGHT */
     jp2->w = image->x1 - image->x0;		/* WIDTH */
-    /* BPC */
     depth_0 = image->comps[0].prec - 1;
     sign = image->comps[0].sgnd;
     jp2->bpc = depth_0 + (sign << 7);
@@ -2650,11 +2665,6 @@ static bool jp2_default_validation (	jp2_t * jp2,
 
     /* PARAMETER VALIDATION */
     /* number of components */
-    l_is_valid &= (jp2->numcl > 0);
-    /* width */
-    l_is_valid &= (jp2->h > 0);
-    /* height */
-    l_is_valid &= (jp2->w > 0);
     /* precision */
     for (i = 0; i < jp2->numcomps; ++i)	{
         l_is_valid &= ((jp2->comps[i].bpcc & 0x7FU) < 38U); /* 0 is valid, ignore sign for check */
