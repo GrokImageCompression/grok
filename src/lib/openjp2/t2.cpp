@@ -785,7 +785,7 @@ namespace grk {
 
 					l_cblk->numbps = l_band->numbps + 1 - i;
 					// BIBO analysis gives upper limit on number of bit planes
-					if (l_cblk->numbps > max_precision + OPJ_J2K_MAXRLVLS * 5) {
+					if (l_cblk->numbps > max_precision_jpeg_2000 + OPJ_J2K_MAXRLVLS * 5) {
 						event_msg(p_manager, EVT_WARNING, "Number of bit planes %u is impossibly large.\n", l_cblk->numbps);
 					}
 					l_cblk->numlenbits = 3;
@@ -1188,7 +1188,9 @@ namespace grk {
 				}
 
 				if (cblk_layer->len > num_bytes_available) {
-					event_msg(p_manager, EVT_ERROR, "Code block layer size exceeds number of available bytes in tile buffer\n");
+					event_msg(p_manager, EVT_ERROR, 
+	"Code block layer size %d exceeds number of available bytes %d in tile buffer\n", 
+								cblk_layer->len,num_bytes_available);
 					return false;
 				}
 
