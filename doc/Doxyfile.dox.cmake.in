@@ -4,7 +4,7 @@
 # Project related configuration options
 #---------------------------------------------------------------------------
 DOXYFILE_ENCODING      = UTF-8
-PROJECT_NAME           = OpenJPEG
+PROJECT_NAME           = Grok
 PROJECT_NUMBER         = @GROK_VERSION@
 OUTPUT_DIRECTORY       = @GROK_BINARY_DIR@/doc
 CREATE_SUBDIRS         = NO

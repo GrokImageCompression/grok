@@ -8423,7 +8423,7 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
     ++l_tccp->numresolutions;                                                                               /* tccp->numresolutions = read() + 1 */
     if (l_tccp->numresolutions > OPJ_J2K_MAXRLVLS) {
         event_msg(p_manager, EVT_ERROR,
-                      "Invalid value for numresolutions : %d, max value is set in openjpeg.h at %d\n",
+                      "Number of resolutions %d is greater than maximum allowed number %d\n",
                       l_tccp->numresolutions, OPJ_J2K_MAXRLVLS);
         return false;
     }
