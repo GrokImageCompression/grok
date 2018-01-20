@@ -1,4 +1,4 @@
-version: 2.2.0.{build}
+version: 2.3.0.{build}
 skip_tags: true
 clone_depth: 50
 environment:
@@ -17,4 +17,15 @@ build_script:
 
     bash ./tools/travis-ci/run.sh
 test: off
-deploy: off
+deploy:
+  #release: grok-$(appveyor_repo_tag_name)
+  description: 'Grok $(appveyor_repo_tag_name) has been released.'
+  provider: GitHub
+  auth_token:
+    secure: FtYzcjnMCkJfBzRwxQCQWuojEbJm3+N0L+tVRTzJc2B0ZlcWQE8ph0xbrRAjfJJy
+  artifact: /.*\.zip/            # upload all zip packages to release assets
+  draft: false
+  prerelease: false
+  on:
+    appveyor_repo_tag: true        # deploy on tag push only
+    GROK_CI_INCLUDE_IF_DEPLOY: 1
