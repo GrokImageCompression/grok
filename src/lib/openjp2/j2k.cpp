@@ -6044,7 +6044,10 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                     numpocs_tile++;
                 }
             }
-
+			if (numpocs_tile == 0) {
+				event_msg(p_manager, EVT_ERROR, "Problem with specified progression order changes\n");
+				return false;
+			}
             tcp->numpocs = numpocs_tile -1 ;
         } else {
             tcp->numpocs = 0;
@@ -6123,9 +6126,8 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                 }
             }
             for (i = 0; i < image->numcomps; i++) {
-                tccp_t *tccp = &tcp->tccps[i];
-                opj_image_comp_t * l_comp = &(image->comps[i]);
-
+                tccp_t *tccp = tcp->tccps + i;
+                opj_image_comp_t * l_comp = image->comps + i;
                 if (! l_comp->sgnd) {
                     tccp->m_dc_level_shift = 1 << (l_comp->prec - 1);
                 }
