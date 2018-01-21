@@ -190,7 +190,7 @@ inline bool MultiSwitchArg::processArg(int *i, std::vector<std::string>& args)
 inline std::string 
 MultiSwitchArg::shortID(const std::string& val) const
 {
-	return Arg::shortID(val) + " ... ";
+	return Arg::shortID(val) + " ...";
 }
 
 inline std::string 

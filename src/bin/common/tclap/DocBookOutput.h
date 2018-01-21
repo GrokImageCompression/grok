@@ -134,7 +134,7 @@ inline void DocBookOutput::usage(CmdLineInterface& _cmd )
 
 		std::cout << "</group>" << std::endl;
 	}
-	
+
 	// rest of args
 	for (ArgListIterator it = argList.begin(); it != argList.end(); it++)
 		if ( !xorHandler.contains( (*it) ) )
@@ -242,6 +242,7 @@ inline void DocBookOutput::printShortArg(Arg* a)
 		removeChar(arg,']');
 		removeChar(arg,'<');
 		removeChar(arg,'>');
+		removeChar(arg,'.');
 		arg.erase(0, arg.find_last_of(theDelimiter) + 1);
 		std::cout << theDelimiter;
 		std::cout << "<replaceable>" << arg << "</replaceable>";
@@ -280,6 +281,7 @@ inline void DocBookOutput::printLongArg(Arg* a)
 		removeChar(arg,']');
 		removeChar(arg,'<');
 		removeChar(arg,'>');
+		removeChar(arg,'.');
 		arg.erase(0, arg.find_last_of(theDelimiter) + 1);
 		std::cout << theDelimiter;
 		std::cout << "<replaceable>" << arg << "</replaceable>";

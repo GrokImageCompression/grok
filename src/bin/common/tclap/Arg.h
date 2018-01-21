@@ -6,6 +6,7 @@
  *
  *  Copyright (c) 2003, Michael E. Smoot .
  *  Copyright (c) 2004, Michael E. Smoot, Daniel Aarno .
+ *  Copyright (c) 2017 Google Inc.
  *  All rights reserved.
  *
  *  See the file COPYING in the top directory of this distribution for
@@ -27,8 +28,6 @@
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#else
-#define HAVE_SSTREAM
 #endif
 
 #include <string>
@@ -38,15 +37,7 @@
 #include <iomanip>
 #include <cstdio>
 
-#if defined(HAVE_SSTREAM)
-#include <sstream>
-typedef std::istringstream istringstream;
-#elif defined(HAVE_STRSTREAM)
-#include <strstream>
-typedef std::istrstream istringstream;
-#else
-#error "Need a stringstream (sstream or strstream) to compile!"
-#endif
+#include <tclap/sstream.h>
 
 #include <tclap/ArgException.h>
 #include <tclap/Visitor.h>
@@ -415,7 +406,7 @@ template<typename T> void
 ExtractValue(T &destVal, const std::string& strVal, ValueLike vl)
 {
     static_cast<void>(vl); // Avoid warning about unused vl
-    std::istringstream is(strVal);
+    istringstream is(strVal.c_str());
 
     int valuesRead = 0;
     while ( is.good() ) {
