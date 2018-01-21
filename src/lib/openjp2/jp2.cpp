@@ -2340,30 +2340,6 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 
     /* setup the J2K codec */
     /* ------------------- */
-
-    /* Check if number of components respects standard */
-    if (image->numcomps < 1 || image->numcomps > max_num_components) {
-        event_msg(p_manager, EVT_ERROR, "Invalid number of components specified while setting up JP2 encoder\n");
-        return false;
-    }
-	//sanity check on image
-	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
-		event_msg(p_manager, EVT_ERROR, "Invalid input image dimensions found while setting up JP2 encoder\n");
-		return false;
-	}
-	for (i = 0; i < image->numcomps; ++i) {
-		auto comp = image->comps + i;
-		if (comp->w == 0 || comp->h == 0) {
-			event_msg(p_manager, EVT_ERROR, "Invalid input image component dimensions found while setting up JP2 encoder\n");
-			return false;
-		}
-		if (comp->prec == 0) {
-			event_msg(p_manager, EVT_ERROR, "Invalid component precision of 0 found while setting up JP2 encoder\n");
-			return false;
-		}
-		
-	}
-
     if (j2k_setup_encoder(jp2->j2k, parameters, image, p_manager ) == false) {
         return false;
     }

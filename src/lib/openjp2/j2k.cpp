@@ -5750,6 +5750,27 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
         return false;
     }
 
+	//sanity check on image
+	if (image->numcomps < 1 || image->numcomps > max_num_components) {
+		event_msg(p_manager, EVT_ERROR, "Invalid number of components specified while setting up JP2 encoder\n");
+		return false;
+	}
+	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
+		event_msg(p_manager, EVT_ERROR, "Invalid input image dimensions found while setting up JP2 encoder\n");
+		return false;
+	}
+	for (i = 0; i < image->numcomps; ++i) {
+		auto comp = image->comps + i;
+		if (comp->w == 0 || comp->h == 0) {
+			event_msg(p_manager, EVT_ERROR, "Invalid input image component dimensions found while setting up JP2 encoder\n");
+			return false;
+		}
+		if (comp->prec == 0) {
+			event_msg(p_manager, EVT_ERROR, "Invalid component precision of 0 found while setting up JP2 encoder\n");
+			return false;
+		}
+	}
+
     if ((parameters->numresolution == 0) || (parameters->numresolution > OPJ_J2K_MAXRLVLS)) {
         event_msg(p_manager, EVT_ERROR, "Invalid number of resolutions : %d not in range [1,%d]\n", parameters->numresolution, OPJ_J2K_MAXRLVLS);
         return false;
@@ -6128,42 +6149,33 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
             } else {
                 tccp->roishift = 0;
             }
-
             if ((parameters->csty & J2K_CCP_CSTY_PRT) && parameters->res_spec){
 				uint32_t p = 0;
 				int32_t it_res;
                 assert( tccp->numresolutions > 0 );
                 for (it_res = (int32_t)tccp->numresolutions - 1; it_res >= 0; it_res--) {
                     if (p < parameters->res_spec) {
-
                         if (parameters->prcw_init[p] < 1) {
                             tccp->prcw[it_res] = 1;
                         } else {
                             tccp->prcw[it_res] = uint_floorlog2(parameters->prcw_init[p]);
                         }
-
                         if (parameters->prch_init[p] < 1) {
                             tccp->prch[it_res] = 1;
                         } else {
                             tccp->prch[it_res] = uint_floorlog2(parameters->prch_init[p]);
                         }
-
                     } else {
                         uint32_t res_spec = parameters->res_spec;
                         uint32_t size_prcw = 0;
                         uint32_t size_prch = 0;
-
-                        assert(res_spec>0); /* issue 189 */
                         size_prcw = parameters->prcw_init[res_spec - 1] >> (p - (res_spec - 1));
                         size_prch = parameters->prch_init[res_spec - 1] >> (p - (res_spec - 1));
-
-
                         if (size_prcw < 1) {
                             tccp->prcw[it_res] = 1;
                         } else {
                             tccp->prcw[it_res] = uint_floorlog2(size_prcw);
                         }
-
                         if (size_prch < 1) {
                             tccp->prch[it_res] = 1;
                         } else {
@@ -6179,11 +6191,9 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
                     tccp->prch[j] = 15;
                 }
             }
-
             dwt_calc_explicit_stepsizes(tccp, image->comps[i].prec);
         }
     }
-
     if (parameters->mct_data) {
         grok_free(parameters->mct_data);
         parameters->mct_data = nullptr;
