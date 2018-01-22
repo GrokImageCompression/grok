@@ -1727,8 +1727,7 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
 
 /* ----------------------------------------------------------------------- */
 
-static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno)
-{
+static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno){
     const char *prog = nullptr;
     int32_t i;
     uint32_t tpnum = 1;
@@ -1770,7 +1769,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno)
                 tpnum *= l_current_poc->layE;
                 break;
             }
-            /* whould we split here ? */
+			//we start a new tile part with every progression change
             if ( cp->m_specific_param.m_enc.m_tp_flag == prog[i] ) {
                 cp->m_specific_param.m_enc.m_tp_pos=i;
                 break;
@@ -1783,12 +1782,10 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno)
     return tpnum;
 }
 
-static bool j2k_calculate_tp(      cp_t *cp,
-                                   uint32_t * p_nb_tiles,
-                                   opj_image_t *image,
-                                   event_mgr_t * p_manager
-                                )
-{
+static bool j2k_calculate_tp(cp_t *cp,
+                             uint32_t * p_nb_tiles,
+                             opj_image_t *image,
+                             event_mgr_t * p_manager){
     uint32_t pino,tileno;
     uint32_t l_nb_tiles;
     tcp_t *tcp;
@@ -1807,32 +1804,22 @@ static bool j2k_calculate_tp(      cp_t *cp,
     /* TODO mergeV2: check this part which use cstr_info */
     /*if (p_j2k->cstr_info) {
             opj_tile_info_t * l_info_tile_ptr = p_j2k->cstr_info->tile;
-
             for (tileno = 0; tileno < l_nb_tiles; ++tileno) {
                     uint32_t cur_totnum_tp = 0;
-
                     pi_update_encoding_parameters(image,cp,tileno);
-
                     for (pino = 0; pino <= tcp->numpocs; ++pino)
                     {
                             uint32_t tp_num = j2k_get_num_tp(cp,pino,tileno);
-
                             *p_nb_tiles = *p_nb_tiles + tp_num;
-
                             cur_totnum_tp += tp_num;
                     }
-
                     tcp->m_nb_tile_parts = cur_totnum_tp;
-
                     l_info_tile_ptr->tp = (opj_tp_info_t *) grok_malloc(cur_totnum_tp * sizeof(opj_tp_info_t));
                     if (l_info_tile_ptr->tp == nullptr) {
                             return false;
                     }
-
                     memset(l_info_tile_ptr->tp,0,cur_totnum_tp * sizeof(opj_tp_info_t));
-
                     l_info_tile_ptr->num_tps = cur_totnum_tp;
-
                     ++l_info_tile_ptr;
                     ++tcp;
             }
@@ -1840,22 +1827,22 @@ static bool j2k_calculate_tp(      cp_t *cp,
     else */{
         for (tileno = 0; tileno < l_nb_tiles; ++tileno) {
             uint32_t cur_totnum_tp = 0;
-
             pi_update_encoding_parameters(image,cp,tileno);
-
             for (pino = 0; pino <= tcp->numpocs; ++pino) {
                 uint32_t tp_num = j2k_get_num_tp(cp,pino,tileno);
-
-                *p_nb_tiles = *p_nb_tiles + tp_num;
-
+				if (tp_num > 255) {
+					event_msg(p_manager, EVT_ERROR, 
+						"Tile %d contains more than 255 tile parts, which is not permitted by the JPEG 2000 standard.\n",tileno);
+					return false;
+				}
+					
+                *p_nb_tiles += tp_num;
                 cur_totnum_tp += tp_num;
             }
             tcp->m_nb_tile_parts = cur_totnum_tp;
-
             ++tcp;
         }
     }
-
     return true;
 }
 
