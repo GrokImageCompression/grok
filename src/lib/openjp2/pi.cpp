@@ -289,11 +289,20 @@ static bool pi_next_lrcp(pi_iterator_t * pi)
     } 
 
     pi->first = 0;
-    for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
-        for (pi->resno = pi->poc.resno0; pi->resno < pi->poc.resno1;
-                pi->resno++) {
-            for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1; pi->compno++) {
+    for (pi->layno = pi->poc.layno0; 
+			pi->layno < pi->poc.layno1; 
+				pi->layno++) {
+
+        for (pi->resno = pi->poc.resno0; 
+				pi->resno < pi->poc.resno1;
+					pi->resno++) {
+
+            for (pi->compno = pi->poc.compno0; 
+					pi->compno < pi->poc.compno1; 
+						pi->compno++) {
+
                 comp = &pi->comps[pi->compno];
+				//skip resolutions greater than current component resolution
                 if (pi->resno >= comp->numresolutions) {
                     continue;
                 }
@@ -301,8 +310,19 @@ static bool pi_next_lrcp(pi_iterator_t * pi)
                 if (!pi->tp_on) {
                     pi->poc.precno1 = res->pw * res->ph;
                 }
-                for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1; pi->precno++) {
-                    index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
+                for (pi->precno = pi->poc.precno0; 
+						pi->precno < pi->poc.precno1;
+							pi->precno++) {
+
+					//skip precinct numbers greater than total number of precincts
+					// for this resolution
+					if (pi->precno >= res->pw * res->ph)
+						continue;
+
+                    index = pi->layno * pi->step_l + 
+								pi->resno * pi->step_r + 
+									pi->compno * pi->step_c + 
+										pi->precno * pi->step_p;
                     if (!pi->include[index]) {
                         pi->include[index] = 1;
                         return true;
@@ -342,6 +362,11 @@ static bool pi_next_rlcp(pi_iterator_t * pi)
                     pi->poc.precno1 = res->pw * res->ph;
                 }
                 for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1; pi->precno++) {
+					//skip precinct numbers greater than total number of precincts
+					// for this resolution
+					if (pi->precno >= res->pw * res->ph)
+						continue;
+
                     index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                     if (!pi->include[index]) {
                         pi->include[index] = 1;
@@ -413,6 +438,10 @@ static bool pi_next_rpcl(pi_iterator_t * pi)
                     prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
+					//skip precinct numbers greater than total number of precincts
+					// for this resolution
+					if (pi->precno >= res->pw * res->ph)
+						continue;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
@@ -484,6 +513,10 @@ static bool pi_next_pcrl(pi_iterator_t * pi)
                     prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = (prci + prcj * res->pw);
+					//skip precinct numbers greater than total number of precincts
+					// for this resolution
+					if (pi->precno >= res->pw * res->ph)
+						continue;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
@@ -558,6 +591,10 @@ static bool pi_next_cprl(pi_iterator_t * pi)
                     prcj = uint_floordivpow2(ceildiv<uint64_t>((uint64_t)pi->y, ((uint64_t)comp->dy << levelno)), res->pdy)
                            - uint_floordivpow2(try0, res->pdy);
                     pi->precno = prci + prcj * res->pw;
+					//skip precinct numbers greater than total number of precincts
+					// for this resolution
+					if (pi->precno >= res->pw * res->ph)
+						continue;
                     for (pi->layno = pi->poc.layno0; pi->layno < pi->poc.layno1; pi->layno++) {
                         index = pi->layno * pi->step_l + pi->resno * pi->step_r + pi->compno * pi->step_c + pi->precno * pi->step_p;
                         if (!pi->include[index]) {
