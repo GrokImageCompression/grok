@@ -1,5 +1,4 @@
 version: 2.3.0.{build}
-skip_tags: true
 clone_depth: 50
 environment:
   matrix:
@@ -26,6 +25,7 @@ deploy:
   artifact: /.*\.zip/            # upload all zip packages to release assets
   draft: false
   prerelease: false
+  tag: $(APPVEYOR_REPO_TAG_NAME)
   on:
     appveyor_repo_tag: true        # deploy on tag push only
     GROK_CI_INCLUDE_IF_DEPLOY: 1
