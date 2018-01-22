@@ -5,9 +5,11 @@ environment:
   - GROK_CI_ARCH: x86
     GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
     GROK_NONCOMMERCIAL: 1
+	GROK_CI_INCLUDE_IF_DEPLOY: 1
   - GROK_CI_ARCH: x64
     GROK_CI_VSCOMNTOOLS: $(VS140COMNTOOLS)
     GROK_NONCOMMERCIAL: 1
+	GROK_CI_INCLUDE_IF_DEPLOY: 1
 install:
 - cmd: c:\cygwin\bin\bash ./tools/travis-ci/install.sh
 build_script:
