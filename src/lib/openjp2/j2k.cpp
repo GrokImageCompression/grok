@@ -2335,7 +2335,7 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 
 	p_j2k->m_cp.isBinaryComment = commentType == 1;
 	 if (commentType > 1) {
-		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values)\n");
+		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values\n");
 	}
 
 	p_header_data += 2;
