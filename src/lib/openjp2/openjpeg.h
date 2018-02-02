@@ -325,7 +325,7 @@ typedef enum CODEC_FORMAT {
 } OPJ_CODEC_FORMAT;
 
 
-#define  OPJ_NUM_COMMENTS_SUPPORTED 16
+#define  OPJ_NUM_COMMENTS_SUPPORTED 256
 
 /*
 ==========================================================
