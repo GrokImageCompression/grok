@@ -2266,40 +2266,37 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     return true;
 }
 
-static bool j2k_write_com(     j2k_t *p_j2k,
-                                   GrokStream *p_stream,
-                                   event_mgr_t * p_manager
-                             )
-{
-    uint32_t l_comment_size;
-    uint32_t l_total_com_size;
-    const char *l_comment;
-    
+static bool j2k_write_com(j2k_t *p_j2k,
+                          GrokStream *p_stream,
+                           event_mgr_t * p_manager){
+   
     assert(p_j2k != nullptr);
     assert(p_stream != nullptr);
     assert(p_manager != nullptr);
 
-    l_comment = p_j2k->m_cp.comment;
-    l_comment_size = (uint32_t)strlen(l_comment);
-    l_total_com_size = l_comment_size + 6;
+	for (uint32_t i = 0; i < p_j2k->m_cp.num_comments; ++i) {
+		const char * l_comment = p_j2k->m_cp.comment[i];
+		uint32_t l_comment_size = (uint32_t)strlen(l_comment);
+		uint32_t l_total_com_size = l_comment_size + 6;
 
-	/* COM */
-	if (!p_stream->write_short(J2K_MS_COM, p_manager)) {
-		return false;
-	}
+		/* COM */
+		if (!p_stream->write_short(J2K_MS_COM, p_manager)) {
+			return false;
+		}
 
-	/* L_COM */
-	if (!p_stream->write_short((uint16_t)(l_total_com_size - 2), p_manager)) {
-		return false;
-	}
+		/* L_COM */
+		if (!p_stream->write_short((uint16_t)(l_total_com_size - 2), p_manager)) {
+			return false;
+		}
 
-	/* General use (IS 8859-15:1999 (Latin) values) */
-	if (!p_stream->write_short(1, p_manager)) {
-		return false;
-	}
+		/* General use (IS 8859-15:1999 (Latin) values) */
+		if (!p_stream->write_short(1, p_manager)) {
+			return false;
+		}
 
-	if (!p_stream->write_bytes((uint8_t*)l_comment, l_comment_size, p_manager)) {
-		return false;
+		if (!p_stream->write_bytes((uint8_t*)l_comment, l_comment_size, p_manager)) {
+			return false;
+		}
 	}
     return true;
 }
@@ -2333,30 +2330,33 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 	uint32_t commentType;
 	grok_read_bytes(p_header_data, &commentType, 2);
 
-	p_j2k->m_cp.isBinaryComment = commentType == 1;
+	if (p_j2k->m_cp.num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
+		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Only %d comments are supported. Ignoring\n", OPJ_NUM_COMMENTS_SUPPORTED);
+		return true;
+	}
+	auto numComments = p_j2k->m_cp.num_comments;
+	p_j2k->m_cp.isBinaryComment[numComments] = commentType == 1;
 	 if (commentType > 1) {
 		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values\n");
 	}
 
 	p_header_data += 2;
 	size_t commentSize = p_header_size - 2;
-	if (p_j2k->m_cp.comment)
-		grok_free(p_j2k->m_cp.comment);
-
 	size_t commentSizeToAlloc = commentSize;
-	if (!p_j2k->m_cp.isBinaryComment)
+	if (!p_j2k->m_cp.isBinaryComment[numComments])
 		commentSizeToAlloc++;
-	p_j2k->m_cp.comment = (char*)grok_malloc(commentSizeToAlloc);
-	if (!p_j2k->m_cp.comment) {
+	p_j2k->m_cp.comment[numComments] = (char*)grok_malloc(commentSizeToAlloc);
+	if (!p_j2k->m_cp.comment[numComments]) {
 		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Out of memory when allocating memory for comment \n");
-		return true;
+		return false;
 	}
-	memcpy(p_j2k->m_cp.comment, p_header_data, commentSize);
-	p_j2k->m_cp.comment_len = commentSize;
+	memcpy(p_j2k->m_cp.comment[numComments], p_header_data, commentSize);
+	p_j2k->m_cp.comment_len[numComments] = commentSize;
 
 	// make null-terminated string
-	if (!p_j2k->m_cp.isBinaryComment)
-		p_j2k->m_cp.comment[commentSize] = 0;
+	if (!p_j2k->m_cp.isBinaryComment[numComments])
+		p_j2k->m_cp.comment[numComments][commentSize] = 0;
+	p_j2k->m_cp.num_comments++;
     return true;
 }
 
@@ -5932,28 +5932,34 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
     cp->ty0 = parameters->cp_ty0;
 
     /* comment string */
-    if(parameters->cp_comment) {
-		cp->comment_len = strlen(parameters->cp_comment);
-        cp->comment = (char*)grok_malloc(cp->comment_len + 1U);
-        if(!cp->comment) {
-            event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
-            return false;
-        }
-		cp->comment_len = strlen(parameters->cp_comment);
-        strcpy(cp->comment, parameters->cp_comment);
+    if(parameters->num_comments) {
+		for (int i = 0; i < parameters->num_comments;++i) {
+			cp->comment_len[i] = strlen(parameters->cp_comment[i]);
+			cp->comment[i] = (char*)grok_malloc(cp->comment_len[i] + 1U);
+			if (!cp->comment[i]) {
+				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
+				return false;
+			}
+			cp->comment_len[i] = strlen(parameters->cp_comment[i]);
+			strcpy(cp->comment[i], parameters->cp_comment[i]);
+			cp->isBinaryComment[i] = false;
+			cp->num_comments++;
+		}
     } else {
         /* Create default comment for codestream */
         const char comment[] = "Created by Grok     version ";
         const size_t clen = strlen(comment);
         const char *version = opj_version();
 
-        cp->comment = (char*)grok_malloc(clen+strlen(version)+1);
-        if(!cp->comment) {
+        cp->comment[0] = (char*)grok_malloc(clen+strlen(version)+1);
+        if(!cp->comment[0]) {
             event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate comment string\n");
             return false;
         }
-        sprintf(cp->comment,"%s%s", comment, version);
-		cp->comment_len = strlen(cp->comment);
+        sprintf(cp->comment[0],"%s%s", comment, version);
+		cp->comment_len[0] = strlen(cp->comment[0]);
+		cp->num_comments = 1;
+		cp->isBinaryComment[0] = false;
     }
 
     /*
@@ -6351,27 +6357,25 @@ bool j2k_read_header(   GrokStream *p_stream,
 
 		header_info->tcp_numlayers = l_tcp->numlayers;
 
-		header_info->comment = p_j2k->m_cp.comment;
-		header_info->comment_len = p_j2k->m_cp.comment_len;
-		header_info->isBinaryComment = p_j2k->m_cp.isBinaryComment;
+		header_info->num_comments = p_j2k->m_cp.num_comments;
+		for (int i = 0; i < header_info->num_comments; ++i) {
+			header_info->comment[i] = p_j2k->m_cp.comment[i];
+			header_info->comment_len[i] = p_j2k->m_cp.comment_len[i];
+			header_info->isBinaryComment[i] = p_j2k->m_cp.isBinaryComment[i];
+		}
 	}
-
-
     *p_image = opj_image_create0();
     if (! (*p_image)) {
         return false;
     }
-
     /* Copy codestream image information to the output image */
     opj_copy_image_header(p_j2k->m_private_image, *p_image);
-
 	if (p_j2k->cstr_index) {
 		/*Allocate and initialize some elements of codestrem index*/
 		if (!j2k_allocate_tile_element_cstr_index(p_j2k)) {
 			return false;
 		}
 	}
-
     return true;
 }
 
@@ -7270,8 +7274,11 @@ static void j2k_cp_destroy (cp_t *p_cp)
     grok_free(p_cp->ppm_buffer);
     p_cp->ppm_buffer = nullptr;
     p_cp->ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
-    grok_free(p_cp->comment);
-    p_cp->comment = nullptr;
+	for (int i = 0; i < p_cp->num_comments; ++i) {
+		grok_free(p_cp->comment[i]);
+		p_cp->comment[i] = nullptr;
+	}
+	p_cp->num_comments = 0;
 }
 
 static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream, uint32_t tile_no, bool* p_correction_needed, event_mgr_t * p_manager )
@@ -10179,7 +10186,7 @@ static bool j2k_setup_header_writing (j2k_t *p_j2k, event_mgr_t * p_manager)
         return false;
     }
 
-    if (p_j2k->m_cp.comment != nullptr)  {
+    if (p_j2k->m_cp.num_comments)  {
         if (! procedure_list_add_procedure(p_j2k->m_procedure_list,(procedure)j2k_write_com, p_manager)) {
             return false;
         }

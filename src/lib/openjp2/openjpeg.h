@@ -325,6 +325,8 @@ typedef enum CODEC_FORMAT {
 } OPJ_CODEC_FORMAT;
 
 
+#define  OPJ_NUM_COMMENTS_SUPPORTED 16
+
 /*
 ==========================================================
    event manager typedef definitions
@@ -423,7 +425,8 @@ typedef struct opj_cparameters {
 	// Legacy: DO NOT USE !!!!!
 	uint32_t cp_fixed_alloc;
     /** comment for coding */
-    char *cp_comment;
+    char *cp_comment[OPJ_NUM_COMMENTS_SUPPORTED];
+	size_t num_comments;
     /** csty : coding style */
     uint32_t csty;
     /** progression order (default OPJ_LRCP) */
@@ -614,9 +617,10 @@ typedef struct opj_header_info {
 	// until codec is destroyed
 	uint8_t* xml_data;
 	size_t xml_data_len;
-	char* comment;
-	size_t comment_len;
-	bool isBinaryComment;
+	size_t num_comments;
+	char* comment[OPJ_NUM_COMMENTS_SUPPORTED];
+	size_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	bool isBinaryComment[OPJ_NUM_COMMENTS_SUPPORTED];
 } opj_header_info_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
