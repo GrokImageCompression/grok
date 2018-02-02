@@ -1354,7 +1354,7 @@ static int parse_cmdline_encoder_ex(int argc,
     if((parameters->cp_tx0 > 0 && parameters->cp_tx0 > parameters->image_offset_x0) ||
 		(parameters->cp_ty0 > 0 && parameters->cp_ty0 > parameters->image_offset_y0)) {
         fprintf(stderr,
-                "[ERROR] Tile offset dimension is unnappropriate --> TX0(%d)<=IMG_X0(%d) TYO(%d)<=IMG_Y0(%d) \n",
+                "[ERROR] Tile offset cannot be greater than image offset : TX0(%d)<=IMG_X0(%d) TYO(%d)<=IMG_Y0(%d) \n",
                 parameters->cp_tx0, parameters->image_offset_x0, parameters->cp_ty0, parameters->image_offset_y0);
         return 1;
     }
