@@ -1262,6 +1262,10 @@ static int parse_cmdline_encoder_ex(int argc,
 			istringstream f(commentArg.getValue());
 			string s;
 			while (getline(f, s, '|')) {
+				if (parameters->num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
+					fprintf(stdout, "[WARNING] Grok encoder is limited to %d comments. Ignoring subsequent comments.\n", OPJ_NUM_COMMENTS_SUPPORTED);
+					break;
+				}
 				parameters->cp_comment[parameters->num_comments] = 
 						(char*)malloc(s.length() + 1);
 				if (parameters->cp_comment[parameters->num_comments]) {
