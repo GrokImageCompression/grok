@@ -98,6 +98,7 @@ using namespace grk;
 #include <limits.h>
 #include <cstddef>
 #include <cstdlib>
+#include <sstream>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
@@ -1258,10 +1259,18 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (commentArg.isSet()) {
-			parameters->cp_comment = (char*)malloc(commentArg.getValue().length() + 1);
-			if (parameters->cp_comment) {
-				strcpy(parameters->cp_comment, commentArg.getValue().c_str());
+			istringstream f(commentArg.getValue());
+			string s;
+			while (getline(f, s, '|')) {
+				parameters->cp_comment[parameters->num_comments] = 
+						(char*)malloc(s.length() + 1);
+				if (parameters->cp_comment[parameters->num_comments]) {
+					strcpy(parameters->cp_comment[parameters->num_comments],
+							s.c_str());
+					parameters->num_comments++;
+				}
 			}
+
 		}
 
 		if (tpArg.isSet()) {
@@ -1439,16 +1448,12 @@ struct CompressInitParams {
 	}
 
 	~CompressInitParams() {
-
-		// clean up encode parameters
-		if (parameters.cp_comment)
-			free(parameters.cp_comment);
-		parameters.cp_comment = nullptr ;
+		for (int i = 0; i < parameters.num_comments; ++i) {
+			if (parameters.cp_comment[i])
+				free(parameters.cp_comment[i]);
+		}
 		if (parameters.raw_cp.rawComps)
 			free(parameters.raw_cp.rawComps);
-		parameters.raw_cp.rawComps = nullptr;
-
-
 		if (img_fol.imgdirpath)
 			free(img_fol.imgdirpath);
 		if (out_fol.imgdirpath)

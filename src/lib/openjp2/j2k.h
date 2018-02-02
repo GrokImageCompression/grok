@@ -365,10 +365,11 @@ struct cp_t {
     uint32_t tdx;
     /** YTsiz */
     uint32_t tdy;
-	/** comment */
-    char *comment;
-	size_t comment_len;
-	bool isBinaryComment;
+	/** comments */
+	size_t num_comments;
+    char *comment[OPJ_NUM_COMMENTS_SUPPORTED];
+	size_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	bool isBinaryComment[OPJ_NUM_COMMENTS_SUPPORTED];
 	/** number of tiles in width */
     uint32_t tw;
     /** number of tiles in height */
