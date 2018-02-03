@@ -1262,21 +1262,23 @@ static int parse_cmdline_encoder_ex(int argc,
 			istringstream f(commentArg.getValue());
 			string s;
 			while (getline(f, s, '|')) {
-				if (parameters->num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
+				size_t count = parameters->cp_num_comments;
+				if (count == OPJ_NUM_COMMENTS_SUPPORTED) {
 					fprintf(stdout, "[WARNING] Grok encoder is limited to %d comments. Ignoring subsequent comments.\n", OPJ_NUM_COMMENTS_SUPPORTED);
 					break;
 				}
 				if (s.empty())
 					continue;
-				parameters->cp_comment[parameters->num_comments] = 
-						(char*)malloc(s.length() + 1);
-				if (parameters->cp_comment[parameters->num_comments]) {
-					strcpy(parameters->cp_comment[parameters->num_comments],
-							s.c_str());
-					parameters->num_comments++;
+				parameters->cp_comment_len[count] = s.length();
+				// ISO Latin comment
+				parameters->cp_is_binary_comment[count] = false;
+				parameters->cp_comment[count] =	(char*)malloc(s.length());
+				if (parameters->cp_comment[count]) {
+					strcpy(parameters->cp_comment[count],s.c_str());
+					parameters->cp_comment_len[count] = s.length();
+					parameters->cp_num_comments++;
 				}
 			}
-
 		}
 
 		if (tpArg.isSet()) {
@@ -1454,7 +1456,7 @@ struct CompressInitParams {
 	}
 
 	~CompressInitParams() {
-		for (int i = 0; i < parameters.num_comments; ++i) {
+		for (int i = 0; i < parameters.cp_num_comments; ++i) {
 			if (parameters.cp_comment[i])
 				free(parameters.cp_comment[i]);
 		}

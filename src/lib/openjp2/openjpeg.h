@@ -426,7 +426,9 @@ typedef struct opj_cparameters {
 	uint32_t cp_fixed_alloc;
     /** comment for coding */
     char *cp_comment[OPJ_NUM_COMMENTS_SUPPORTED];
-	size_t num_comments;
+	size_t cp_comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	bool  cp_is_binary_comment[OPJ_NUM_COMMENTS_SUPPORTED];
+	size_t cp_num_comments;
     /** csty : coding style */
     uint32_t csty;
     /** progression order (default OPJ_LRCP) */

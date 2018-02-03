@@ -2230,7 +2230,9 @@ static bool j2k_write_com(j2k_t *p_j2k,
 
 	for (uint32_t i = 0; i < p_j2k->m_cp.num_comments; ++i) {
 		const char * l_comment = p_j2k->m_cp.comment[i];
-		uint32_t l_comment_size = (uint32_t)strlen(l_comment);
+		uint32_t l_comment_size = p_j2k->m_cp.comment_len[i];
+		if (!l_comment_size)
+			continue;
 		uint32_t l_total_com_size = l_comment_size + 6;
 
 		/* COM */
@@ -2243,8 +2245,7 @@ static bool j2k_write_com(j2k_t *p_j2k,
 			return false;
 		}
 
-		/* General use (IS 8859-15:1999 (Latin) values) */
-		if (!p_stream->write_short(1, p_manager)) {
+		if (!p_stream->write_short(p_j2k->m_cp.isBinaryComment[i] ? 0 : 1, p_manager)) {
 			return false;
 		}
 
@@ -5859,17 +5860,18 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
     cp->ty0 = parameters->cp_ty0;
 
     /* comment string */
-    if(parameters->num_comments) {
-		for (int i = 0; i < parameters->num_comments;++i) {
-			cp->comment_len[i] = strlen(parameters->cp_comment[i]);
-			cp->comment[i] = (char*)grok_malloc(cp->comment_len[i] + 1U);
+    if(parameters->cp_num_comments) {
+		for (int i = 0; i < parameters->cp_num_comments;++i) {
+			cp->comment_len[i] = parameters->cp_comment_len[i];
+			if (!cp->comment_len[i])
+				continue;
+			cp->comment[i] = (char*)grok_malloc(cp->comment_len[i]);
 			if (!cp->comment[i]) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
 				return false;
 			}
-			cp->comment_len[i] = strlen(parameters->cp_comment[i]);
-			strcpy(cp->comment[i], parameters->cp_comment[i]);
-			cp->isBinaryComment[i] = false;
+			memcpy(cp->comment[i], parameters->cp_comment[i], cp->comment_len[i]);
+			cp->isBinaryComment[i] = parameters->cp_is_binary_comment[i];
 			cp->num_comments++;
 		}
     } else {
