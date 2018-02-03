@@ -1421,200 +1421,165 @@ static const opj_dec_memory_marker_handler_t j2k_memory_marker_handler_tab [] = 
     {J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0}/*j2k_read_unk is directly used*/
 };
 
-static void  j2k_read_int16_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+///////////////////////////////////////////////////////////////////////////////
+static void  j2k_read_int16_to_float (const void * p_src_data, 
+									void * p_dest_data,
+									uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     float * l_dest_data = (float *) p_dest_data;
     uint32_t i;
     uint32_t l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
-        grok_read_bytes(l_src_data,&l_temp,2);
-
+        grok_read_bytes(l_src_data,&l_temp,sizeof(int16_t));
         l_src_data+=sizeof(int16_t);
-
         *(l_dest_data++) = (float) l_temp;
     }
 }
-
-static void  j2k_read_int32_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_int32_to_float (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     float * l_dest_data = (float *) p_dest_data;
     uint32_t i;
     uint32_t l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
-        grok_read_bytes(l_src_data,&l_temp,4);
-
+        grok_read_bytes(l_src_data,&l_temp,sizeof(int32_t));
         l_src_data+=sizeof(int32_t);
-
         *(l_dest_data++) = (float) l_temp;
     }
 }
-
-static void  j2k_read_float32_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_float32_to_float (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     float * l_dest_data = (float *) p_dest_data;
     uint32_t i;
     float l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         grok_read_float(l_src_data,&l_temp);
-
         l_src_data+=sizeof(float);
-
         *(l_dest_data++) = l_temp;
     }
 }
-
-static void  j2k_read_float64_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_float64_to_float (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     float * l_dest_data = (float *) p_dest_data;
     uint32_t i;
     double l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         grok_read_double(l_src_data,&l_temp);
-
         l_src_data+=sizeof(double);
-
         *(l_dest_data++) = (float) l_temp;
     }
 }
-
-static void  j2k_read_int16_to_int32 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_int16_to_int32 (const void * p_src_data, 
+										void * p_dest_data, 
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     int32_t * l_dest_data = (int32_t *) p_dest_data;
     uint32_t i;
     uint32_t l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
-        grok_read_bytes(l_src_data,&l_temp,2);
-
+        grok_read_bytes(l_src_data,&l_temp, sizeof(int16_t));
         l_src_data+=sizeof(int16_t);
-
         *(l_dest_data++) = (int32_t) l_temp;
     }
 }
-
-static void  j2k_read_int32_to_int32 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_int32_to_int32 (const void * p_src_data, 
+									void * p_dest_data,
+									uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     int32_t * l_dest_data = (int32_t *) p_dest_data;
     uint32_t i;
     uint32_t l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
-        grok_read_bytes(l_src_data,&l_temp,4);
-
+        grok_read_bytes(l_src_data,&l_temp, sizeof(int32_t));
         l_src_data+=sizeof(int32_t);
-
         *(l_dest_data++) = (int32_t) l_temp;
     }
 }
-
-static void  j2k_read_float32_to_int32 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_float32_to_int32 (const void * p_src_data, 
+										void * p_dest_data, 
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     int32_t * l_dest_data = (int32_t *) p_dest_data;
     uint32_t i;
     float l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         grok_read_float(l_src_data,&l_temp);
-
         l_src_data+=sizeof(float);
-
         *(l_dest_data++) = (int32_t) l_temp;
     }
 }
-
-static void  j2k_read_float64_to_int32 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_read_float64_to_int32 (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_src_data = (uint8_t *) p_src_data;
     int32_t * l_dest_data = (int32_t *) p_dest_data;
     uint32_t i;
     double l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         grok_read_double(l_src_data,&l_temp);
-
         l_src_data+=sizeof(double);
-
         *(l_dest_data++) = (int32_t) l_temp;
     }
 }
-
-static void  j2k_write_float_to_int16 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_write_float_to_int16 (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_dest_data = (uint8_t *) p_dest_data;
     float * l_src_data = (float *) p_src_data;
     uint32_t i;
     uint32_t l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (uint32_t)*(l_src_data++);
-
         grok_write_bytes(l_dest_data,l_temp,sizeof(int16_t));
-
         l_dest_data+=sizeof(int16_t);
     }
 }
-
-static void j2k_write_float_to_int32 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void j2k_write_float_to_int32 (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_dest_data = (uint8_t *) p_dest_data;
     float * l_src_data = (float *) p_src_data;
     uint32_t i;
     uint32_t l_temp;
-
-    for (i=0; i<p_nb_elem; ++i) {
+	for (i=0; i<p_nb_elem; ++i) {
         l_temp =  (uint32_t)*(l_src_data++);
-
         grok_write_bytes(l_dest_data,l_temp,sizeof(int32_t));
-
         l_dest_data+=sizeof(int32_t);
     }
 }
-
-static void  j2k_write_float_to_float (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_write_float_to_float (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_dest_data = (uint8_t *) p_dest_data;
     float * l_src_data = (float *) p_src_data;
     uint32_t i;
     float l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (float) *(l_src_data++);
-
         grok_write_float(l_dest_data,l_temp);
-
         l_dest_data+=sizeof(float);
     }
 }
-
-static void  j2k_write_float_to_float64 (const void * p_src_data, void * p_dest_data, uint32_t p_nb_elem)
-{
+static void  j2k_write_float_to_float64 (const void * p_src_data, 
+										void * p_dest_data,
+										uint32_t p_nb_elem){
     uint8_t * l_dest_data = (uint8_t *) p_dest_data;
     float * l_src_data = (float *) p_src_data;
     uint32_t i;
     double l_temp;
-
     for (i=0; i<p_nb_elem; ++i) {
         l_temp = (double) *(l_src_data++);
-
         grok_write_double(l_dest_data,l_temp);
-
         l_dest_data+=sizeof(double);
     }
 }
-
-char *j2k_convert_progression_order(OPJ_PROG_ORDER prg_order)
-{
+/////////////////////////////////////////////////////////////////////////////
+char *j2k_convert_progression_order(OPJ_PROG_ORDER prg_order){
     j2k_prog_order_t *po;
     for(po = j2k_prog_order_list; po->enum_prog != -1; po++ ) {
         if(po->enum_prog == prg_order) {
@@ -1629,8 +1594,7 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
                                    uint32_t p_nb_resolutions,
                                    uint32_t p_num_comps,
                                    uint32_t p_num_layers,
-                                   event_mgr_t * p_manager)
-{
+                                   event_mgr_t * p_manager){
     uint32_t* packet_array;
     uint32_t index , resno, compno, layno;
     uint32_t i;
@@ -1719,9 +1683,7 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
     if (loss) {
         event_msg(p_manager , EVT_ERROR, "Missing packets possible loss of data\n");
     }
-
     grok_free(packet_array);
-
     return !loss;
 }
 
@@ -1778,7 +1740,6 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno){
     } else {
         tpnum=1;
     }
-
     return tpnum;
 }
 
@@ -1848,8 +1809,7 @@ static bool j2k_calculate_tp(cp_t *cp,
 
 static bool j2k_write_soc(     j2k_t *p_j2k,
                                    GrokStream *p_stream,
-                                   event_mgr_t * p_manager )
-{
+                                   event_mgr_t * p_manager ){
     assert(p_stream != nullptr);
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -1865,12 +1825,9 @@ static bool j2k_write_soc(     j2k_t *p_j2k,
 */
 static bool j2k_read_soc(   j2k_t *p_j2k,
                                 GrokStream *p_stream,
-                                event_mgr_t * p_manager
-                            )
-{
+                                event_mgr_t * p_manager){
     uint8_t l_data [2];
     uint32_t l_marker;
-
     
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -1905,8 +1862,7 @@ static bool j2k_read_soc(   j2k_t *p_j2k,
 
 static bool j2k_write_siz(     j2k_t *p_j2k,
                                    GrokStream *p_stream,
-                                   event_mgr_t * p_manager )
-{
+                                   event_mgr_t * p_manager ){
     uint32_t i;
     uint32_t l_size_len;
     opj_image_t * l_image = nullptr;
@@ -2017,9 +1973,7 @@ static bool j2k_write_siz(     j2k_t *p_j2k,
 static bool j2k_read_siz(j2k_t *p_j2k,
                              uint8_t * p_header_data,
                              uint32_t p_header_size,
-                             event_mgr_t * p_manager
-                            )
-{
+                             event_mgr_t * p_manager){
     uint32_t i;
     uint32_t l_nb_comp;
     uint32_t l_nb_comp_remain;
@@ -2184,13 +2138,13 @@ static bool j2k_read_siz(j2k_t *p_j2k,
     /* Check that the number of tiles is valid */
 	if (l_cp->tw == 0 || l_cp->th == 0) {
 		event_msg(p_manager, EVT_ERROR,
-			"Invalid grid of tiles: %u x %u. Standard requires at least one tile in grid. \n",
+			"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. \n",
 			l_cp->tw, l_cp->th);
 		return false;
 	}
     if (l_cp->tw > 65535 / l_cp->th) {
         event_msg(  p_manager, EVT_ERROR,
-                        "Invalid grid of tiles : %u x %u.  Maximum fixed by JPEG 2000 standard is 65535 tiles\n",
+                        "Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of 65535 tiles\n",
                         l_cp->tw, l_cp->th);
         return false;
     }
@@ -2531,8 +2485,7 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no, uint32_t p_s
 {
     cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
-
-    
+   
     assert(p_j2k != nullptr);
 
     l_cp = &(p_j2k->m_cp);
@@ -2541,17 +2494,13 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no, uint32_t p_s
     if (l_tcp->tccps[p_first_comp_no].csty != l_tcp->tccps[p_second_comp_no].csty) {
         return false;
     }
-
-
     return j2k_compare_SPCod_SPCoc(p_j2k, p_j2k->m_current_tile_number, p_first_comp_no, p_second_comp_no);
 }
 
 static bool j2k_write_coc_in_memory(   j2k_t *p_j2k,
         uint32_t p_comp_no,
 		GrokStream *p_stream,
-        event_mgr_t * p_manager
-                                       )
-{
+        event_mgr_t * p_manager){
     cp_t *l_cp = nullptr;
     tcp_t *l_tcp = nullptr;
     uint32_t l_coc_size;
@@ -2596,14 +2545,11 @@ static bool j2k_write_coc_in_memory(   j2k_t *p_j2k,
     return j2k_write_SPCod_SPCoc(p_j2k,p_j2k->m_current_tile_number,0,p_stream,p_manager);
 }
 
-static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k)
-{
+static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k){
     uint32_t i,j;
     uint32_t l_nb_comp;
     uint32_t l_nb_tiles;
     uint32_t l_max = 0;
-
-    
 
     l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th ;
     l_nb_comp = p_j2k->m_private_image->numcomps;
@@ -2613,7 +2559,6 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k)
             l_max = std::max<uint32_t>(l_max,j2k_get_SPCod_SPCoc_size(p_j2k,i,j));
         }
     }
-
     return 6 + l_max;
 }
 
@@ -2627,9 +2572,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k)
 static bool j2k_read_coc (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
                                 uint32_t p_header_size,
-                                event_mgr_t * p_manager
-                             )
-{
+                                event_mgr_t * p_manager){
     tcp_t *l_tcp = nullptr;
     opj_image_t *l_image = nullptr;
     uint32_t l_comp_room;
@@ -2676,9 +2619,7 @@ static bool j2k_read_coc (  j2k_t *p_j2k,
 
 static bool j2k_write_qcd(     j2k_t *p_j2k,
                                    GrokStream *p_stream,
-                                   event_mgr_t * p_manager
-                             )
-{
+                                   event_mgr_t * p_manager){
     uint32_t l_qcd_size;
    
     assert(p_j2k != nullptr);
@@ -2715,9 +2656,7 @@ static bool j2k_write_qcd(     j2k_t *p_j2k,
 static bool j2k_read_qcd (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
                                 uint32_t p_header_size,
-                                event_mgr_t * p_manager
-                             )
-{
+                                event_mgr_t * p_manager){
     
     assert(p_header_data != nullptr);
     assert(p_j2k != nullptr);
@@ -2742,9 +2681,7 @@ static bool j2k_read_qcd (  j2k_t *p_j2k,
 static bool j2k_write_qcc(     j2k_t *p_j2k,
                                    uint32_t p_comp_no,
                                    GrokStream *p_stream,
-                                   event_mgr_t * p_manager
-                             ){
-   
+                                   event_mgr_t * p_manager){
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
@@ -2760,9 +2697,7 @@ static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no, uint32_t p_s
 static bool j2k_write_qcc_in_memory(   j2k_t *p_j2k,
         uint32_t p_comp_no,
 		GrokStream *p_stream,
-        event_mgr_t * p_manager
-                                       )
-{
+        event_mgr_t * p_manager){
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
 
@@ -2801,8 +2736,7 @@ static bool j2k_write_qcc_in_memory(   j2k_t *p_j2k,
     return j2k_write_SQcd_SQcc(p_j2k,p_j2k->m_current_tile_number,p_comp_no,p_stream,p_manager);
 }
 
-static uint32_t j2k_get_max_qcc_size (j2k_t *p_j2k)
-{
+static uint32_t j2k_get_max_qcc_size (j2k_t *p_j2k){
     return j2k_get_max_coc_size(p_j2k);
 }
 
@@ -3055,9 +2989,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k)
 static bool j2k_read_poc (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
                                 uint32_t p_header_size,
-                                event_mgr_t * p_manager
-                             )
-{
+                                event_mgr_t * p_manager){
     uint32_t i, l_nb_comp, l_tmp;
     opj_image_t * l_image = nullptr;
     uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
@@ -3142,9 +3074,7 @@ static bool j2k_read_poc (  j2k_t *p_j2k,
 static bool j2k_read_crg(j2k_t *p_j2k,
 	uint8_t * p_header_data,
 	uint32_t p_header_size,
-	event_mgr_t * p_manager
-)
-{
+	event_mgr_t * p_manager){
 	uint32_t l_nb_comp;
 	
 	assert(p_header_data != nullptr);
@@ -3158,8 +3088,7 @@ static bool j2k_read_crg(j2k_t *p_j2k,
 		return false;
 	}
 	uint32_t l_Xcrg_i, l_Ycrg_i;
-	for	(uint32_t i = 0; i < l_nb_comp; ++i)
-	{ 
+	for	(uint32_t i = 0; i < l_nb_comp; ++i)	{ 
 			// Xcrg_i
 			grok_read_bytes(p_header_data,&l_Xcrg_i,2);                             
 			p_header_data+=2;
@@ -3277,7 +3206,7 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
 			// Iplm_ij
             grok_read_bytes(p_header_data,&l_tmp,1);                       
             ++p_header_data;
-            // take only the last seven bytes
+			/* take only the lower seven bits */
             l_packet_len |= (l_tmp & 0x7f);
             if  (l_tmp & 0x80)        {
                 l_packet_len <<= 7;
@@ -3298,9 +3227,9 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
  * Reads a PLT marker (Packet length, tile-part header)
  *
  * @param       p_header_data   the data contained in the PLT box.
- * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the PLT marker.
- * @param       p_manager               the user event manager.
+ * @param       p_manager       the user event manager.
 */
 static bool j2k_read_plt (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
@@ -3309,9 +3238,6 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
                              )
 {
 	(void)p_j2k;
-    uint32_t l_Zplt, l_tmp, l_packet_len = 0, i;
-
-    
     assert(p_header_data != nullptr);
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
@@ -3322,15 +3248,18 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
     }
 
 	/* Zplt */
-    grok_read_bytes(p_header_data,&l_Zplt,1);               
+	uint32_t l_Zplt;
+	grok_read_bytes(p_header_data,&l_Zplt,1);               
     ++p_header_data;
     --p_header_size;
 
-    for (i = 0; i < p_header_size; ++i) {
+	uint32_t l_tmp;
+	uint32_t l_packet_len = 0;
+    for (uint32_t i = 0; i < p_header_size; ++i) {
 		/* Iplt_ij */
         grok_read_bytes(p_header_data,&l_tmp,1);        
         ++p_header_data;
-        /* take only the last seven bytes */
+        /* take only the lower seven bits */
         l_packet_len |= (l_tmp & 0x7f);
         if (l_tmp & 0x80) {
             l_packet_len <<= 7;
@@ -3339,12 +3268,10 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
             l_packet_len = 0;
         }
     }
-
     if (l_packet_len != 0) {
         event_msg(p_manager, EVT_ERROR, "Error reading PLT marker\n");
         return false;
     }
-
     return true;
 }
 
