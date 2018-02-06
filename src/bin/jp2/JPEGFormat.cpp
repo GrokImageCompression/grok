@@ -346,7 +346,8 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 
 	jpeg_finish_compress(&cinfo);
 	/* After finish_compress, we can close the output file. */
-	fclose(outfile);
+	if (!info.writeToStdout)
+		fclose(outfile);
 
 	/* Step 7: release JPEG compression object */
 
@@ -386,8 +387,12 @@ cleanup:
 */
 
 struct jpegToImageInfo {
-	jpegToImageInfo() : image(nullptr), success(true), buffer32s(nullptr) {}
+	jpegToImageInfo() : readFromStdin(false),
+						image(nullptr), 
+						success(true),
+						buffer32s(nullptr) {}
 
+	bool readFromStdin;
 	opj_image_t *image;
 	bool success;
 	int32_t* buffer32s;
@@ -395,8 +400,8 @@ struct jpegToImageInfo {
 
 static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
 {
-	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
 	jpegToImageInfo imageInfo;
+	imageInfo.readFromStdin = ((filename == nullptr) || (filename[0] == 0));
 
 	int32_t* planes[3];
 	JDIMENSION w = 0, h = 0;
@@ -426,7 +431,7 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 								  * requires it in order to read binary files.
 								  */
 
-	if (readFromStdin) {
+	if (imageInfo.readFromStdin) {
 		if (!grok_set_binary_mode(stdin))
 			return nullptr;
 		infile = stdin;
@@ -600,7 +605,7 @@ cleanup:
 	* so as to simplify the setjmp error logic above.  (Actually, I don't
 	* think that jpeg_destroy can do an error exit, but why assume anything...)
 	*/
-	if (infile)
+	if (!imageInfo.readFromStdin && infile)
 		fclose(infile);
 
 	delete[] imageInfo.buffer32s;

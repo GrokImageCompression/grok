@@ -1259,7 +1259,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (commentArg.isSet()) {
-			istringstream f(commentArg.getValue());
+			std::istringstream f(commentArg.getValue());
 			string s;
 			while (getline(f, s, '|')) {
 				size_t count = parameters->cp_num_comments;
@@ -1456,7 +1456,7 @@ struct CompressInitParams {
 	}
 
 	~CompressInitParams() {
-		for (int i = 0; i < parameters.cp_num_comments; ++i) {
+		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
 			if (parameters.cp_comment[i])
 				free(parameters.cp_comment[i]);
 		}
@@ -1571,6 +1571,8 @@ int main(int argc, char **argv) {
 				continue;
 			}
 			num_compressed_files++;
+			//reset decode format
+			opjInfo.encoder_parameters->decod_format = -1;
 		}
 		t = grok_clock() - t;
 		if (initParams.parameters.verbose && num_compressed_files) {
@@ -1782,17 +1784,25 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		auto rc = fseek(fp, 0, SEEK_END);
 		if (rc == -1) {
 			fprintf(stderr, "[ERROR] opj_compress: unable to seek on file %s", info->input_file_name);
-			fclose(fp);
+			if (fp)
+				fclose(fp);
 			bSuccess = false;
 			goto cleanup;
 		}
 		auto fileLength = ftell(fp);
-		fclose(fp);
+		if (fileLength == -1){
+			if (fp)
+				fclose(fp);
+			bSuccess = false;
+			goto cleanup;
+		}
+		if (fp)
+			fclose(fp);
 
 		if (fileLength) {
 			//  option to write to buffer, assuming one knows how large compressed stream will be 
 			uint64_t imageSize = (((image->x1 - image->x0) * (image->y1 - image->y0) * image->numcomps * ((image->comps[0].prec + 7) / 8)) * 3) / 2;
-			info->compressBufferLen = fileLength > imageSize ? fileLength : imageSize;
+			info->compressBufferLen = (size_t)fileLength > imageSize ? (size_t)fileLength : imageSize;
 			info->compressBuffer = new uint8_t[info->compressBufferLen];
 		}
 	}
@@ -1921,22 +1931,9 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			if (written != len) {
 				fprintf(stderr, "[ERROR] Buffer compress: only %zd bytes written out of %zd total\n", len, written);
 			}
-			fclose(fp);
+			if (fp)
+				fclose(fp);
 		}
-	}
-	if (l_stream) {
-		opj_stream_destroy(l_stream);
-		l_stream = nullptr;
-	}
-	if (l_codec) {
-		opj_destroy_codec(l_codec);
-		l_codec = nullptr;
-	}
-	if (!bSuccess) {
-		fprintf(stderr, "[ERROR] failed to encode image\n");
-		remove(parameters->outfile);
-		bSuccess = false;
-		goto cleanup;
 	}
 cleanup:
 	if (l_stream)
@@ -1945,6 +1942,10 @@ cleanup:
 		opj_destroy_codec(l_codec);
 	if (createdImage)
 		opj_image_destroy(image);
+	if (!bSuccess) {
+		fprintf(stderr, "[ERROR] failed to encode image\n");
+		remove(parameters->outfile);
+	}
 	return bSuccess;
 }
 

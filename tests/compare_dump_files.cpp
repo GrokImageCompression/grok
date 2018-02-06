@@ -146,7 +146,7 @@ int main(int argc, char **argv)
 		out += std::string(" ") + argv[i];
 	}
 	out += "\n";
-	printf(out.c_str());
+	printf("%s",out.c_str());
 #endif
 
 
@@ -202,8 +202,10 @@ int main(int argc, char **argv)
     printf("\n***** TEST SUCCEED: Files are the same. *****\n");
 cleanup:
     /*Close File*/
-    if(fbase) fclose(fbase);
-    if(ftest) fclose(ftest);
+    if(fbase) 
+		fclose(fbase);
+    if(ftest) 
+		fclose(ftest);
 
     /* Free memory*/
     free(inParam.base_filename);

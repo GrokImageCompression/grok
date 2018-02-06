@@ -309,22 +309,18 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
 	opj_image_t * image = nullptr;
 	struct pnm_header header_info;
+	uint64_t area = 0;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
 		fprintf(stderr, "[ERROR] pnmtoimage:Failed to open %s for reading!\n", filename);
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
-
 	read_pnm_header(fp, &header_info);
-
 	if (!header_info.ok) {
-		fclose(fp);
-		return nullptr;
+		goto cleanup;
 	}
-
 	format = header_info.format;
-
 	switch (format) {
 	case 1: /* ascii bitmap */
 	case 4: /* raw bitmap */
@@ -346,11 +342,8 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		break;
 
 	default:
-		fclose(fp);
-		return nullptr;
+		goto cleanup;
 	}
-
-
 	if (numcomps < 3)
 		color_space = OPJ_CLRSPC_GRAY;/* GRAY, GRAYA */
 	else
@@ -358,11 +351,12 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 
 	prec = has_prec(header_info.maxval);
 
-	if (prec < 8) prec = 8;
+	if (prec < 8)
+		prec = 8;
 
 	w = header_info.width;
 	h = header_info.height;
-	uint64_t area = (uint64_t)w * h;
+	area = (uint64_t)w * h;
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
@@ -377,10 +371,8 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		cmptparm[i].h = h;
 	}
 	image = opj_image_create(numcomps, &cmptparm[0], color_space);
-
 	if (!image) {
-		fclose(fp);
-		return nullptr;
+		goto cleanup;
 	}
 
 	/* set image offset and reference grid */
@@ -408,16 +400,14 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 			&& (header_info.gray || header_info.graya
 				|| header_info.rgb || header_info.rgba))) { /* binary pixmap */
 		unsigned char c0, c1, one;
-
 		one = (prec < 9);
-
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(fp);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (one) {
 					image->comps[compno].data[i] = c0;
@@ -434,10 +424,8 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	else if (format == 1) { /* ascii bitmap */
 		for (uint64_t i = 0; i < area; i++) {
 			unsigned int index;
-
 			if (fscanf(fp, "%u", &index) != 1)
 				fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
-
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
 	}
@@ -445,16 +433,21 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		uint32_t x, y;
 		int8_t bit;
 		unsigned char uc;
-
 		uint64_t i = 0;
 		for (y = 0; y < h; ++y) {
 			bit = -1;
 			uc = 0;
-
 			for (x = 0; x < w; ++x) {
 				if (bit == -1) {
 					bit = 7;
-					uc = (unsigned char)getc(fp);
+					int c = getc(fp);
+					if (c == EOF) {
+						fprintf(stderr, "[ERROR] pnmtoimage reached EOF.\n");
+						opj_image_destroy(image);
+						image = nullptr;
+						goto cleanup;
+					}
+					uc = (unsigned char)c;
 				}
 				image->comps[0].data[i] = (((uc >> bit) & 1) ? 0 : 255);
 				--bit;
@@ -464,15 +457,15 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	}
 	else if ((format == 7 && header_info.bw)) { /*MONO*/
 		unsigned char uc;
-
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
 				fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
-	fclose(fp);
-
+cleanup:
+	if (fp)
+		fclose(fp);
 	return image;
 }/* pnmtoimage() */
 
@@ -575,8 +568,10 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 			if (two) {
 				v = *red + adjustR;
 				++red;
-				if (v > 65535) v = 65535;
-				else if (v < 0) v = 0;
+				if (v > 65535)
+					v = 65535;
+				else if (v < 0)
+					v = 0;
 
 				/* netpbm: */
 				fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
@@ -584,16 +579,20 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 				if (triple) {
 					v = *green + adjustG;
 					++green;
-					if (v > 65535) v = 65535;
-					else if (v < 0) v = 0;
+					if (v > 65535) 
+						v = 65535;
+					else if (v < 0)
+						v = 0;
 
 					/* netpbm: */
 					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
 
 					v = *blue + adjustB;
 					++blue;
-					if (v > 65535) v = 65535;
-					else if (v < 0) v = 0;
+					if (v > 65535)
+						v = 65535;
+					else if (v < 0)
+						v = 0;
 
 					/* netpbm: */
 					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
@@ -603,8 +602,10 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 				if (has_alpha) {
 					v = *alpha + adjustA;
 					++alpha;
-					if (v > 65535) v = 65535;
-					else if (v < 0) v = 0;
+					if (v > 65535)
+						v = 65535;
+					else if (v < 0)
+						v = 0;
 
 					/* netpbm: */
 					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
@@ -621,26 +622,31 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 			fprintf(fdest, "%c", (unsigned char)v);
 			if (triple) {
 				v = *green++;
-				if (v > 255) v = 255;
-				else if (v < 0) v = 0;
+				if (v > 255) 
+					v = 255;
+				else if (v < 0)
+					v = 0;
 
 				fprintf(fdest, "%c", (unsigned char)v);
 				v = *blue++;
-				if (v > 255) v = 255;
-				else if (v < 0) v = 0;
+				if (v > 255)
+					v = 255;
+				else if (v < 0) 
+					v = 0;
 
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 			if (has_alpha) {
 				v = *alpha++;
-				if (v > 255) v = 255;
-				else if (v < 0) v = 0;
-
+				if (v > 255)
+					v = 255;
+				else if (v < 0)
+					v = 0;
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 		}	/* for(i */
-
-		fclose(fdest);
+		if (fdest)
+			fclose(fdest);
 		return 0;
 	}
 
@@ -653,7 +659,8 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 	destname = (char*)malloc(strlen(outfile) + 8);
 	if (destname == nullptr) {
 		fprintf(stderr, "[ERROR] imagetopnm: out of memory\n");
-		fclose(fdest);
+		if (fdest)
+			fclose(fdest);
 		return 1;
 	}
 
@@ -717,10 +724,10 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 		}
-		fclose(fdest);
+		if (fdest)
+			fclose(fdest);
 	} /* for (compno */
 	free(destname);
-
 	return 0;
 }/* imagetopnm() */
 

@@ -369,8 +369,8 @@ beach:
 	}
 	if (local_info.png)
 		png_destroy_read_struct(&local_info.png, &info, nullptr);
-
-	fclose(local_info.reader);
+	if (!local_info.readFromStdin &&  local_info.reader)
+		fclose(local_info.reader);
 	return local_info.image;
 }/* pngtoimage() */
 
@@ -664,7 +664,8 @@ beach:
 		free(local_info.buffer32s);
 	}
 	if (!local_info.writeToStdout) {
-		fclose(local_info.writer);
+		if (local_info.writer)
+			fclose(local_info.writer);
 		if (local_info.fails)
 			(void)remove(write_idf); /* ignore return value */
 	}

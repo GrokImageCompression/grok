@@ -55,9 +55,12 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstddef>
 
 namespace grk {
+
+const size_t maxICCProfileBufferLen = 10000000;
 
 int batch_sleep(int val);
 

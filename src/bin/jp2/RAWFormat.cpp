@@ -103,7 +103,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 		f = fopen(filename, "rb");
 		if (!f) {
 			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
-			return nullptr;
+			goto cleanup;
 		}
 	}
 	numcomps = raw_cp->rawComp;
@@ -124,8 +124,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
 	if (!cmptparm) {
 		fprintf(stderr, "[ERROR] Failed to allocate image components parameters !!\n");
-		fclose(f);
-		return nullptr;
+		goto cleanup;
 	}
 	/* initialize image components */
 	for (i = 0; i < numcomps; i++) {
@@ -140,8 +139,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	image = opj_image_create(numcomps, &cmptparm[0], color_space);
 	free(cmptparm);
 	if (!image) {
-		fclose(f);
-		return nullptr;
+		goto cleanup;
 	}
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
@@ -157,8 +155,8 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 				if (!fread(&value, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				image->comps[compno].data[i] = raw_cp->rawSigned ? (char)value : value;
 			}
@@ -174,14 +172,14 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 				if (!fread(&temp1, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&temp2, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (big_endian) {
 					value = (unsigned short)((temp1 << 8) + temp2);
@@ -196,15 +194,16 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	else {
 		fprintf(stderr, "[ERROR] Grok cannot encode raw components with bit depth higher than 16 bits.\n");
 		opj_image_destroy(image);
-		fclose(f);
-		return nullptr;
+		image = nullptr;
+		goto cleanup;
 	}
 
 	if (fread(&ch, 1, 1, f)) {
 		fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
 	}
-	fclose(f);
-
+cleanup:
+	if (f && !readFromStdin)
+		fclose(f);
 	return image;
 }
 
@@ -368,7 +367,7 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 	}
 	fails = 0;
 beach:
-	if (!writeToStdout)
+	if (!writeToStdout && rawFile)
 		fclose(rawFile);
 	return fails;
 }
