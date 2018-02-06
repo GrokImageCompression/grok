@@ -133,7 +133,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	opj_image_cmptparm_t cmptparm;	/* maximum of 1 component  */
 	opj_image_t * image = nullptr;
 	int adjustS, ushift, dshift, force8;
-
+	int c;
 	char endian1, endian2, sign;
 	char signtmp[32];
 
@@ -145,9 +145,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	color_space = OPJ_CLRSPC_GRAY;
 
 	memset(&cmptparm, 0, sizeof(opj_image_cmptparm_t));
-
 	max = 0;
-
 	f = fopen(filename, "rb");
 	if (!f) {
 		fprintf(stderr, "[ERROR] Failed to open %s for reading !\n", filename);
@@ -156,9 +154,8 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 
 	fseek(f, 0, SEEK_SET);
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp, &endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
-		fclose(f);
 		fprintf(stderr, "[ERROR] Failed to read the right number of element from the fscanf() function!\n");
-		return nullptr;
+		goto cleanup;
 	}
 
 	i = 0;
@@ -168,7 +165,9 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		i++;
 	}
 
-	fgetc(f);
+	c = fgetc(f);
+	if (c == EOF)
+		goto cleanup;
 	if (endian1 == 'M' && endian2 == 'L') {
 		bigendian = 1;
 	}
@@ -176,9 +175,8 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		bigendian = 0;
 	}
 	else {
-		fclose(f);
 		fprintf(stderr, "[ERROR] Bad pgx header, please check input file\n");
-		return nullptr;
+		goto cleanup;
 	}
 
 	/* initialize image component */
@@ -198,8 +196,10 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		force8 = 1;
 		ushift = 8 - prec;
 		dshift = prec - ushift;
-		if (cmptparm.sgnd) adjustS = (1 << (prec - 1));
-		else adjustS = 0;
+		if (cmptparm.sgnd) 
+			adjustS = (1 << (prec - 1));
+		else 
+			adjustS = 0;
 		cmptparm.sgnd = 0;
 		prec = 8;
 	}
@@ -212,8 +212,7 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	/* create the image */
 	image = opj_image_create(numcomps, &cmptparm, color_space);
 	if (!image) {
-		fclose(f);
-		return nullptr;
+		goto cleanup;
 	}
 	/* set image offset and reference grid */
 	image->x0 = cmptparm.x0;
@@ -231,10 +230,8 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 			v = readuchar(f) + adjustS;
 			v = (v << ushift) + (v >> dshift);
 			comp->data[i] = (unsigned char)v;
-
 			if (v > max)
 				max = v;
-
 			continue;
 		}
 		if (comp->prec == 8) {
@@ -265,7 +262,9 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 			max = v;
 		comp->data[i] = v;
 	}
-	fclose(f);
+cleanup:
+	if (f)
+		fclose(f);
 	return image;
 }
 
@@ -364,7 +363,8 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		}
 		if (total > 256)
 			free(name);
-		fclose(fdest);
+		if (fdest)
+			fclose(fdest);
 		fdest = nullptr;
 	}
 	fails = 0;
@@ -373,7 +373,6 @@ beach:
 		free(name);
 	if (fdest)
 		fclose(fdest);
-
 	return fails;
 }
 

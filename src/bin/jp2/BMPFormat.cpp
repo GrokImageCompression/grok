@@ -60,7 +60,15 @@
 #include "BMPFormat.h"
 #include "convert.h"
 #include <cstring>
+#include "common.h"
 
+enum BmpColourType {
+	LCS_CALIBRATED_RGB = 0,
+	LCS_sRGB =	1,
+	LCS_WINDOWS_COLOR_SPACE =	2,
+	PROFILE_LINKED =	3,
+	PROFILE_EMBEDDED =	4
+};
 
 
 typedef struct {
@@ -97,6 +105,18 @@ typedef struct {
 	uint32_t biIccProfileSize;   /* ICC profile size */
 	uint32_t biReserved;         /* Reserved */
 } OPJ_BITMAPINFOHEADER;
+
+template<typename T> bool get_int(FILE* IN, T* val) {
+	T rc = 0;
+	for (size_t i = 0; i < sizeof(T) << 3; i += 8) {
+		int temp = getc(IN);
+		if (temp == EOF)
+			return false;
+		rc |= (T)temp << i;
+	}
+	*val = rc;
+	return true;
+}
 
 static void opj_applyLUT8u_8u32s_C1R(
 	uint8_t const* pSrc, int32_t srcStride,
@@ -321,32 +341,20 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 
 static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
 {
-	header->bfType = static_cast<uint16_t>(getc(IN));
-	header->bfType = static_cast<uint16_t>(header->bfType | ((uint32_t)getc(IN) << 8));
-
+	if (!get_int<uint16_t>(IN, &header->bfType))
+		return false;
 	if (header->bfType != 19778) {
 		fprintf(stderr, "[ERROR] not a BMP file!\n");
 		return false;
 	}
-
-	/* FILE HEADER */
-	/* ------------- */
-	header->bfSize = (uint32_t)getc(IN);
-	header->bfSize |= (uint32_t)getc(IN) << 8;
-	header->bfSize |= (uint32_t)getc(IN) << 16;
-	header->bfSize |= (uint32_t)getc(IN) << 24;
-
-	header->bfReserved1 = static_cast<uint16_t>(getc(IN));
-	header->bfReserved1 = static_cast<uint16_t>(header->bfReserved1 | ((uint32_t)getc(IN) << 8));
-
-
-	header->bfReserved2 = static_cast<uint16_t>(getc(IN));
-	header->bfReserved2 = static_cast<uint16_t>(header->bfReserved2 | ((uint32_t)getc(IN) << 8));
-
-	header->bfOffBits = (uint32_t)getc(IN);
-	header->bfOffBits |= (uint32_t)getc(IN) << 8;
-	header->bfOffBits |= (uint32_t)getc(IN) << 16;
-	header->bfOffBits |= (uint32_t)getc(IN) << 24;
+	if (!get_int<uint32_t>(IN, &header->bfSize))
+		return false;
+	if (!get_int<uint16_t>(IN, &header->bfReserved1))
+		return false;
+	if (!get_int<uint16_t>(IN, &header->bfReserved2))
+		return false;
+	if (!get_int<uint32_t>(IN, &header->bfOffBits))
+		return false;
 	return true;
 }
 static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
@@ -354,10 +362,8 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
-	header->biSize = (uint32_t)getc(IN);
-	header->biSize |= (uint32_t)getc(IN) << 8;
-	header->biSize |= (uint32_t)getc(IN) << 16;
-	header->biSize |= (uint32_t)getc(IN) << 24;
+	if (!get_int<uint32_t>(IN,&header->biSize))
+		return false;
 
 	switch (header->biSize) {
 	case 12U:  /* BITMAPCOREHEADER */
@@ -371,124 +377,65 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		fprintf(stderr, "[ERROR] unknown BMP header size %d\n", header->biSize);
 		return false;
 	}
-
-	header->biWidth = (uint32_t)getc(IN);
-	header->biWidth |= (uint32_t)getc(IN) << 8;
-	header->biWidth |= (uint32_t)getc(IN) << 16;
-	header->biWidth |= (uint32_t)getc(IN) << 24;
-
-	header->biHeight = (uint32_t)getc(IN);
-	header->biHeight |= (uint32_t)getc(IN) << 8;
-	header->biHeight |= (uint32_t)getc(IN) << 16;
-	header->biHeight |= (uint32_t)getc(IN) << 24;
-
-	header->biPlanes = static_cast<uint16_t>(getc(IN));
-	header->biPlanes = static_cast<uint16_t>(header->biPlanes | ((uint32_t)getc(IN) << 8));
-
-	header->biBitCount = (uint16_t)getc(IN);
-	header->biBitCount = static_cast<uint16_t>(header->biBitCount | ((uint32_t)getc(IN) << 8));
+	if (!get_int<uint32_t>(IN, &header->biWidth))
+		return false;
+	if (!get_int<uint32_t>(IN, &header->biHeight))
+		return false;
+	if (!get_int<uint16_t>(IN, &header->biPlanes))
+		return false;
+	if (!get_int<uint16_t>(IN, &header->biBitCount))
+		return false;
 
 	if (header->biSize >= 40U) {
-		header->biCompression = (uint32_t)getc(IN);
-		header->biCompression |= (uint32_t)getc(IN) << 8;
-		header->biCompression |= (uint32_t)getc(IN) << 16;
-		header->biCompression |= (uint32_t)getc(IN) << 24;
-
-		header->biSizeImage = (uint32_t)getc(IN);
-		header->biSizeImage |= (uint32_t)getc(IN) << 8;
-		header->biSizeImage |= (uint32_t)getc(IN) << 16;
-		header->biSizeImage |= (uint32_t)getc(IN) << 24;
-
-		header->biXpelsPerMeter = (uint32_t)getc(IN);
-		header->biXpelsPerMeter |= (uint32_t)getc(IN) << 8;
-		header->biXpelsPerMeter |= (uint32_t)getc(IN) << 16;
-		header->biXpelsPerMeter |= (uint32_t)getc(IN) << 24;
-
-		header->biYpelsPerMeter = (uint32_t)getc(IN);
-		header->biYpelsPerMeter |= (uint32_t)getc(IN) << 8;
-		header->biYpelsPerMeter |= (uint32_t)getc(IN) << 16;
-		header->biYpelsPerMeter |= (uint32_t)getc(IN) << 24;
-
-		header->biClrUsed = (uint32_t)getc(IN);
-		header->biClrUsed |= (uint32_t)getc(IN) << 8;
-		header->biClrUsed |= (uint32_t)getc(IN) << 16;
-		header->biClrUsed |= (uint32_t)getc(IN) << 24;
-
-		header->biClrImportant = (uint32_t)getc(IN);
-		header->biClrImportant |= (uint32_t)getc(IN) << 8;
-		header->biClrImportant |= (uint32_t)getc(IN) << 16;
-		header->biClrImportant |= (uint32_t)getc(IN) << 24;
+		if (!get_int<uint32_t>(IN, &header->biCompression))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biSizeImage))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biXpelsPerMeter))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biYpelsPerMeter))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biClrUsed))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biClrImportant))
+			return false;
 	}
 
 	if (header->biSize >= 56U) {
-		header->biRedMask = (uint32_t)getc(IN);
-		header->biRedMask |= (uint32_t)getc(IN) << 8;
-		header->biRedMask |= (uint32_t)getc(IN) << 16;
-		header->biRedMask |= (uint32_t)getc(IN) << 24;
-
-		header->biGreenMask = (uint32_t)getc(IN);
-		header->biGreenMask |= (uint32_t)getc(IN) << 8;
-		header->biGreenMask |= (uint32_t)getc(IN) << 16;
-		header->biGreenMask |= (uint32_t)getc(IN) << 24;
-
-		header->biBlueMask = (uint32_t)getc(IN);
-		header->biBlueMask |= (uint32_t)getc(IN) << 8;
-		header->biBlueMask |= (uint32_t)getc(IN) << 16;
-		header->biBlueMask |= (uint32_t)getc(IN) << 24;
-
-		header->biAlphaMask = (uint32_t)getc(IN);
-		header->biAlphaMask |= (uint32_t)getc(IN) << 8;
-		header->biAlphaMask |= (uint32_t)getc(IN) << 16;
-		header->biAlphaMask |= (uint32_t)getc(IN) << 24;
+		if (!get_int<uint32_t>(IN, &header->biRedMask))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biGreenMask))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biBlueMask))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biAlphaMask))
+			return false;
 	}
 
 	if (header->biSize >= 108U) {
-		header->biColorSpaceType = (uint32_t)getc(IN);
-		header->biColorSpaceType |= (uint32_t)getc(IN) << 8;
-		header->biColorSpaceType |= (uint32_t)getc(IN) << 16;
-		header->biColorSpaceType |= (uint32_t)getc(IN) << 24;
-
+		if (!get_int<uint32_t>(IN, &header->biColorSpaceType))
+			return false;
 		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP), IN) != sizeof(header->biColorSpaceEP)) {
 			fprintf(stderr, "[ERROR] can't  read BMP header\n");
 			return false;
 		}
-
-		header->biRedGamma = (uint32_t)getc(IN);
-		header->biRedGamma |= (uint32_t)getc(IN) << 8;
-		header->biRedGamma |= (uint32_t)getc(IN) << 16;
-		header->biRedGamma |= (uint32_t)getc(IN) << 24;
-
-		header->biGreenGamma = (uint32_t)getc(IN);
-		header->biGreenGamma |= (uint32_t)getc(IN) << 8;
-		header->biGreenGamma |= (uint32_t)getc(IN) << 16;
-		header->biGreenGamma |= (uint32_t)getc(IN) << 24;
-
-		header->biBlueGamma = (uint32_t)getc(IN);
-		header->biBlueGamma |= (uint32_t)getc(IN) << 8;
-		header->biBlueGamma |= (uint32_t)getc(IN) << 16;
-		header->biBlueGamma |= (uint32_t)getc(IN) << 24;
+		if (!get_int<uint32_t>(IN, &header->biRedGamma))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biGreenGamma))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biBlueGamma))
+			return false;
 	}
 
 	if (header->biSize >= 124U) {
-		header->biIntent = (uint32_t)getc(IN);
-		header->biIntent |= (uint32_t)getc(IN) << 8;
-		header->biIntent |= (uint32_t)getc(IN) << 16;
-		header->biIntent |= (uint32_t)getc(IN) << 24;
-
-		header->biIccProfileData = (uint32_t)getc(IN);
-		header->biIccProfileData |= (uint32_t)getc(IN) << 8;
-		header->biIccProfileData |= (uint32_t)getc(IN) << 16;
-		header->biIccProfileData |= (uint32_t)getc(IN) << 24;
-
-		header->biIccProfileSize = (uint32_t)getc(IN);
-		header->biIccProfileSize |= (uint32_t)getc(IN) << 8;
-		header->biIccProfileSize |= (uint32_t)getc(IN) << 16;
-		header->biIccProfileSize |= (uint32_t)getc(IN) << 24;
-
-		header->biReserved = (uint32_t)getc(IN);
-		header->biReserved |= (uint32_t)getc(IN) << 8;
-		header->biReserved |= (uint32_t)getc(IN) << 16;
-		header->biReserved |= (uint32_t)getc(IN) << 24;
+		if (!get_int<uint32_t>(IN, &header->biIntent))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biIccProfileData))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biIccProfileSize))
+			return false;
+		if (!get_int<uint32_t>(IN, &header->biReserved))
+			return false;
 	}
 	return true;
 }
@@ -515,17 +462,22 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	x = y = 0U;
 	while (y < height) {
 		int c = getc(IN);
-
+		if (c == EOF)
+			return false;
 		if (c) {
 			int j;
-			uint8_t c1 = (uint8_t)getc(IN);
-
+			int temp = getc(IN);
+			if (temp == EOF)
+				return false;
+			uint8_t c1 = (uint8_t)temp;
 			for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
 				*pix = c1;
 			}
 		}
 		else {
 			c = getc(IN);
+			if (c == EOF)
+				return false;
 			if (c == 0x00) { /* EOL */
 				x = 0;
 				++y;
@@ -536,15 +488,22 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			}
 			else if (c == 0x02) { /* MOVE by dxdy */
 				c = getc(IN);
+				if (c == EOF)
+					return false;
 				x += (uint32_t)c;
 				c = getc(IN);
+				if (c == EOF)
+					return false;
 				y += (uint32_t)c;
 				pix = pData + y * stride + x;
 			}
 			else { /* 03 .. 255 */
 				int j;
 				for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
-					uint8_t c1 = (uint8_t)getc(IN);
+					int temp = getc(IN);
+					if (temp == EOF)
+						return false;
+					uint8_t c1 = (uint8_t)temp;
 					*pix = c1;
 				}
 				if ((uint32_t)c & 1U) { /* skip padding byte */
@@ -568,11 +527,15 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	x = y = 0U;
 	while (y < height) {
 		int c = getc(IN);
-		if (c == EOF) break;
+		if (c == EOF) 
+			break;
 
 		if (c) {/* encoded mode */
 			int j;
-			uint8_t c1 = (uint8_t)getc(IN);
+			int temp = getc(IN);
+			if (temp == EOF)
+				return false;
+			uint8_t c1 = (uint8_t)temp;
 
 			for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
 				*pix = (uint8_t)((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
@@ -580,7 +543,8 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 		}
 		else { /* absolute mode */
 			c = getc(IN);
-			if (c == EOF) break;
+			if (c == EOF) 
+				break;
 
 			if (c == 0x00) { /* EOL */
 				x = 0;
@@ -591,9 +555,16 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 				break;
 			}
 			else if (c == 0x02) { /* MOVE by dxdy */
-				c = getc(IN);
+				int temp = getc(IN);
+				if (temp == EOF)
+					return false;
+				c = (uint8_t)temp;
 				x += (uint32_t)c;
-				c = getc(IN);
+
+				temp = getc(IN);
+				if (temp == EOF)
+					return false;
+				c = (uint8_t)temp;
 				y += (uint32_t)c;
 				pix = pData + y * stride + x;
 			}
@@ -603,7 +574,10 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 
 				for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
 					if ((j & 1) == 0) {
-						c1 = (uint8_t)getc(IN);
+						int temp = getc(IN);
+						if (temp == EOF)
+							return false;
+						c1 = (uint8_t)temp;
 					}
 					*pix = (uint8_t)((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
 				}
@@ -623,6 +597,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
+	uint8_t* iccData = nullptr;
 	opj_image_t * image = nullptr;
 	FILE *IN = nullptr;
 	OPJ_BITMAPFILEHEADER File_h;
@@ -631,7 +606,8 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	bool l_result = false;
 	uint8_t* pData = nullptr;
 	uint32_t stride;
-
+	int32_t beginningOfInfoHeader = -1;
+	int32_t endOfInfoHeader = -1;
 	pLUT[0] = lut_R;
 	pLUT[1] = lut_G;
 	pLUT[2] = lut_B;
@@ -649,13 +625,32 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		}
 	}
 
-	if (!bmp_read_file_header(IN, &File_h)) {
-		fclose(IN);
-		return nullptr;
-	}
-	if (!bmp_read_info_header(IN, &Info_h)) {
-		fclose(IN);
-		return nullptr;
+	if (!bmp_read_file_header(IN, &File_h)) 
+		goto cleanup;
+	//cache location of beginning of info header
+	beginningOfInfoHeader = ftell(IN);
+	if (beginningOfInfoHeader == -1)
+		goto cleanup;
+	if (!bmp_read_info_header(IN, &Info_h)) 
+		goto cleanup;
+	// ICC profile
+	if (Info_h.biColorSpaceType == PROFILE_EMBEDDED && 
+		Info_h.biIccProfileSize &&
+		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
+		iccData = (uint8_t*)malloc(Info_h.biIccProfileSize);
+		if (!iccData) {
+			goto cleanup;
+		}
+		//cache location of end of info header
+		endOfInfoHeader = ftell(IN);
+		if (endOfInfoHeader == -1)
+			goto cleanup;
+		//read in ICC profile
+		fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET);
+		if (fread(iccData, Info_h.biIccProfileSize, 1, IN) != Info_h.biIccProfileSize)
+			goto cleanup;
+		//restore file pointer
+		fseek(IN, endOfInfoHeader, SEEK_SET);
 	}
 
 	/* Load palette */
@@ -674,10 +669,21 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		if (palette_len > 0U) {
 			uint8_t has_color = 0U;
 			for (i = 0U; i < palette_len; i++) {
-				lut_B[i] = (uint8_t)getc(IN);
-				lut_G[i] = (uint8_t)getc(IN);
-				lut_R[i] = (uint8_t)getc(IN);
-				(void)getc(IN); /* padding */
+				int temp = getc(IN);
+				if (temp == EOF) 
+					goto cleanup;
+				lut_B[i] = (uint8_t)temp;
+				temp = getc(IN);
+				if (temp == EOF) 
+					goto cleanup;
+				lut_G[i] = (uint8_t)temp;
+				temp = getc(IN);
+				if (temp == EOF) 
+					goto cleanup;
+				lut_R[i] = (uint8_t)temp;
+				temp = getc(IN); /* padding */
+				if (temp == EOF) 
+					goto cleanup;
 				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
 			}
 			if (has_color) {
@@ -692,36 +698,28 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		}
 	}
 
-	if (Info_h.biWidth == 0 || Info_h.biHeight == 0) {
-		fclose(IN);
-		return nullptr;
-	}
+	if (Info_h.biWidth == 0 || Info_h.biHeight == 0) 
+		goto cleanup;
+	if (Info_h.biBitCount > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) 
+		goto cleanup;
 
-	if (Info_h.biBitCount > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) {
-		fclose(IN);
-		return nullptr;
-	}
 	stride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
-		if (8 > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) {
-			fclose(IN);
-			return nullptr;
-		}
+		if (8 > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) 
+			goto cleanup;
 		stride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
 	}
 
-	if (stride > ((OPJ_UINT32)-1) / sizeof(OPJ_UINT8) / Info_h.biHeight) {
-		fclose(IN);
-		return nullptr;
-	}
+	if (stride > ((OPJ_UINT32)-1) / sizeof(OPJ_UINT8) / Info_h.biHeight) 
+		goto cleanup;
 	pData = (uint8_t *)calloc(1, stride * Info_h.biHeight * sizeof(uint8_t));
-	if (pData == nullptr) {
-		fclose(IN);
-		return nullptr;
-	}
+	if (pData == nullptr) 
+		goto cleanup;
 	/* Place the cursor at the beginning of the image information */
-	fseek(IN, 0, SEEK_SET);
-	fseek(IN, (long)File_h.bfOffBits, SEEK_SET);
+	if (fseek(IN, 0, SEEK_SET))
+		goto cleanup;
+	if (fseek(IN, (long)File_h.bfOffBits, SEEK_SET))
+		goto cleanup;
 
 	switch (Info_h.biCompression) {
 	case 0:
@@ -743,9 +741,7 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		break;
 	}
 	if (!l_result) {
-		free(pData);
-		fclose(IN);
-		return nullptr;
+		goto cleanup;
 	}
 
 	/* create the image */
@@ -761,9 +757,12 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 
 	image = opj_image_create(numcmpts, &cmptparm[0], (numcmpts == 1U) ? OPJ_CLRSPC_GRAY : OPJ_CLRSPC_SRGB);
 	if (!image) {
-		fclose(IN);
-		free(pData);
-		return nullptr;
+		goto cleanup;
+	}
+	if (iccData) {
+		image->icc_profile_len = Info_h.biIccProfileSize;
+		image->icc_profile_buf = iccData;
+		iccData = nullptr;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].alpha = 1;
@@ -810,8 +809,13 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		image = nullptr;
 		fprintf(stderr, "Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [%d]\n", Info_h.biBitCount);
 	}
-	free(pData);
-	fclose(IN);
+cleanup:
+	if (iccData)
+		free(iccData);
+	if (pData)
+		free(pData);
+	if (!readFromStdin && IN)
+		fclose(IN);
 	return image;
 }
 
@@ -1040,7 +1044,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 
 	}
 
-	if (!writeToStdout)
+	if (!writeToStdout && fdest)
 		fclose(fdest);
 	return 0;
 }

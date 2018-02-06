@@ -62,6 +62,7 @@
 #include "TIFFFormat.h"
 #include "convert.h"
 #include <cstring>
+#include "common.h"
 
 #ifndef GROK_HAVE_LIBTIFF
 # error GROK_HAVE_LIBTIFF_NOT_DEFINED
@@ -1644,8 +1645,8 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	// handle embedded ICC profile (with sanity check on binary size of profile)
 	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
-		icclen > 0 &&
-		icclen < 1000000000) {
+						icclen > 0 &&
+						icclen < grk::maxICCProfileBufferLen) {
 		image->icc_profile_len = icclen;
 		image->icc_profile_buf = (uint8_t*)malloc(icclen);
 		if (!image->icc_profile_buf) {

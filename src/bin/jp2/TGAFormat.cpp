@@ -264,7 +264,8 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	if (!tga_readheader(f, &pixel_bit_depth, &image_width, &image_height, &flip_image)) {
-		fclose(f);
+		if (f)
+			fclose(f);
 		return nullptr;
 	}
 
@@ -303,15 +304,15 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 
 	/* create the image */
 	image = opj_image_create(numcomps, &cmptparm[0], color_space);
-
 	if (!image) {
-		fclose(f);
+		if (f)
+			fclose(f);
 		return nullptr;
 	}
-
 	if (!sanityCheckOnImage(image, numcomps)) {
-		fclose(f);
-		return nullptr;
+		opj_image_destroy(image);
+		image = nullptr;
+		goto cleanup;
 	}
 
 	/* set image offset and reference grid */
@@ -336,20 +337,20 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				if (!fread(&b, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 
 				image->comps[0].data[index] = r;
@@ -364,20 +365,20 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				if (!fread(&b, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
-					return nullptr;
+					image = nullptr;
+					goto cleanup;
 				}
 				if (!fread(&a, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
@@ -397,7 +398,9 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 			fprintf(stderr, "Currently unsupported bit depth : %s\n", filename);
 		}
 	}
-	fclose(f);
+cleanup:
+	if (f)
+		fclose(f);
 	return image;
 }
 

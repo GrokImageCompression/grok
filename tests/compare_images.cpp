@@ -763,7 +763,7 @@ int main(int argc, char **argv)
 		out += std::string(" ") + argv[i];
 	}
 	out += "\n";
-	printf(out.c_str());
+	printf("%s",out.c_str());
 #endif
 
     test_cmp_parameters inParam;

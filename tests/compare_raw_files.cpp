@@ -145,7 +145,7 @@ int main(int argc, char **argv)
 		out += std::string(" ") + argv[i];
 	}
 	out += "\n";
-	printf(out.c_str());
+	printf("%s",out.c_str());
 #endif
 
     int pos = 0;
@@ -209,8 +209,10 @@ int main(int argc, char **argv)
 
     if(equal) fprintf(stdout,"---- TEST SUCCEED: Files are equal ----\n");
 cleanup:
-    if(file_test) fclose(file_test);
-    if(file_base) fclose(file_base);
+    if(file_test) 
+		fclose(file_test);
+    if(file_base) 
+		fclose(file_base);
 
     /* Free Memory */
     free(inParam.base_filename);

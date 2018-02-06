@@ -74,7 +74,7 @@ static void mqc_byteout(mqc_t *mqc);
 Renormalize mqc->A and mqc->C while encoding, so that mqc->A stays between 0x8000 and 0x10000
 @param mqc MQC handle
 */
-static void mqc_renorme(mqc_t *mqc);
+//static void mqc_renorme(mqc_t *mqc);
 /**
 Encode the most probable symbol
 @param mqc MQC handle
@@ -264,6 +264,7 @@ static void mqc_byteout(mqc_t *mqc) {
 		}
 	}
 }
+/*
 static void mqc_renorme(mqc_t *mqc) {
 	do {
 		mqc->A = (uint16_t)(mqc->A << 1);
@@ -274,7 +275,6 @@ static void mqc_renorme(mqc_t *mqc) {
 		}
 	} while (mqc->A < A_MIN);
 }
-/*
 static void mqc_codemps(mqc_t *mqc) {
 	auto curctx = *mqc->curctx;
 	auto qeval = curctx->qeval;

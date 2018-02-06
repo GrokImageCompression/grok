@@ -2230,7 +2230,7 @@ static bool j2k_write_com(j2k_t *p_j2k,
 
 	for (uint32_t i = 0; i < p_j2k->m_cp.num_comments; ++i) {
 		const char * l_comment = p_j2k->m_cp.comment[i];
-		uint32_t l_comment_size = p_j2k->m_cp.comment_len[i];
+		uint32_t l_comment_size = (uint32_t)p_j2k->m_cp.comment_len[i];
 		if (!l_comment_size)
 			continue;
 		uint32_t l_total_com_size = l_comment_size + 6;
@@ -5861,7 +5861,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
 
     /* comment string */
     if(parameters->cp_num_comments) {
-		for (int i = 0; i < parameters->cp_num_comments;++i) {
+		for (size_t i = 0; i < parameters->cp_num_comments;++i) {
 			cp->comment_len[i] = parameters->cp_comment_len[i];
 			if (!cp->comment_len[i])
 				continue;
@@ -6287,7 +6287,7 @@ bool j2k_read_header(   GrokStream *p_stream,
 		header_info->tcp_numlayers = l_tcp->numlayers;
 
 		header_info->num_comments = p_j2k->m_cp.num_comments;
-		for (int i = 0; i < header_info->num_comments; ++i) {
+		for (size_t i = 0; i < header_info->num_comments; ++i) {
 			header_info->comment[i] = p_j2k->m_cp.comment[i];
 			header_info->comment_len[i] = p_j2k->m_cp.comment_len[i];
 			header_info->isBinaryComment[i] = p_j2k->m_cp.isBinaryComment[i];
@@ -7203,7 +7203,7 @@ static void j2k_cp_destroy (cp_t *p_cp)
     grok_free(p_cp->ppm_buffer);
     p_cp->ppm_buffer = nullptr;
     p_cp->ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
-	for (int i = 0; i < p_cp->num_comments; ++i) {
+	for (size_t i = 0; i < p_cp->num_comments; ++i) {
 		grok_free(p_cp->comment[i]);
 		p_cp->comment[i] = nullptr;
 	}
