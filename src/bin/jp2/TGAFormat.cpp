@@ -98,7 +98,7 @@ static unsigned short get_ushort(const unsigned char *data)
 
 #define TGA_HEADER_SIZE 18
 
-static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
+static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	unsigned int *width, unsigned int *height, int *flip_image)
 {
 	int palette_size;
@@ -109,11 +109,11 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	unsigned short /*x_origin, y_origin,*/ image_w, image_h;
 
 	if (!bits_per_pixel || !width || !height || !flip_image)
-		return 0;
+		return false;
 
 	if (fread(tga, TGA_HEADER_SIZE, 1, fp) != 1) {
 		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
-		return 0;
+		return false;
 	}
 	id_len = tga[0];
 	/*cmap_type = tga[1];*/
@@ -141,12 +141,12 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 		unsigned char *id = (unsigned char *)malloc(id_len);
 		if (!id) {
 			fprintf(stderr, "[ERROR] tga_readheader: out of memory out\n");
-			return 0;
+			return false;
 		}
 		if (!fread(id, id_len, 1, fp)) {
 			fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 			free(id);
-			return 0;
+			return false;
 		}
 		free(id);
 	}
@@ -156,7 +156,7 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	//	  	   10 - RLE encoded RGB. */
 	if (image_type > 8) {
 		fprintf(stderr, "[ERROR] Sorry, compressed tga files are not currently supported.\n");
-		return 0;
+		return false;
 	}
 
 	*flip_image = !(image_desc & 32);
@@ -166,9 +166,10 @@ static int tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 
 	if (palette_size>0) {
 		fprintf(stderr, "[ERROR] File contains a palette - not yet supported.");
-		fseek(fp, palette_size, SEEK_CUR);
+		if (fseek(fp, palette_size, SEEK_CUR))
+			return false;
 	}
-	return 1;
+	return false;
 }
 
 #ifdef GROK_BIG_ENDIAN
