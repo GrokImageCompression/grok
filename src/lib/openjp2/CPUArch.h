@@ -110,6 +110,9 @@
 
 namespace grk {
 
+class CPUArch {
+	CPUArch();
+};
 
 
 }

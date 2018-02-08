@@ -601,7 +601,6 @@ static opj_image_t* bmptoimage(const char *filename,
 	uint8_t* pData = nullptr;
 	uint32_t stride;
 	long beginningOfInfoHeader = -1;
-	long endOfInfoHeader = -1;
 	pLUT[0] = lut_R;
 	pLUT[1] = lut_G;
 	pLUT[2] = lut_B;

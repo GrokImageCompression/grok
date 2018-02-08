@@ -59,6 +59,6 @@
 
 namespace grk {
 
-
+CPUArch::CPUArch() {}
 
 }
