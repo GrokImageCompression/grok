@@ -62,14 +62,8 @@
 #include <cstring>
 #include "common.h"
 
-enum BmpColourType {
-	LCS_CALIBRATED_RGB = 0,
-	LCS_sRGB =	1,
-	LCS_WINDOWS_COLOR_SPACE =	2,
-	PROFILE_LINKED =	3,
-	PROFILE_EMBEDDED =	4
-};
-
+#define BMP_ICC_PROFILE_LINKED          'LINK'
+#define BMP_ICC_PROFILE_EMBEDDED        'MBED'
 
 typedef struct {
 	uint16_t bfType;      /* 'BM' for Bitmap (19776) */
@@ -591,13 +585,13 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	return true;
 }
 
-static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *parameters)
+static opj_image_t* bmptoimage(const char *filename, 
+								opj_cparameters_t *parameters)
 {
 	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
 	opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
-	uint8_t* iccData = nullptr;
 	opj_image_t * image = nullptr;
 	FILE *IN = nullptr;
 	OPJ_BITMAPFILEHEADER File_h;
@@ -606,8 +600,8 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	bool l_result = false;
 	uint8_t* pData = nullptr;
 	uint32_t stride;
-	int32_t beginningOfInfoHeader = -1;
-	int32_t endOfInfoHeader = -1;
+	long beginningOfInfoHeader = -1;
+	long endOfInfoHeader = -1;
 	pLUT[0] = lut_R;
 	pLUT[1] = lut_G;
 	pLUT[2] = lut_B;
@@ -633,26 +627,6 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		goto cleanup;
 	if (!bmp_read_info_header(IN, &Info_h)) 
 		goto cleanup;
-	// ICC profile
-	if (Info_h.biColorSpaceType == PROFILE_EMBEDDED && 
-		Info_h.biIccProfileSize &&
-		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
-		iccData = (uint8_t*)malloc(Info_h.biIccProfileSize);
-		if (!iccData) {
-			goto cleanup;
-		}
-		//cache location of end of info header
-		endOfInfoHeader = ftell(IN);
-		if (endOfInfoHeader == -1)
-			goto cleanup;
-		//read in ICC profile
-		fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET);
-		if (fread(iccData, Info_h.biIccProfileSize, 1, IN) != Info_h.biIccProfileSize)
-			goto cleanup;
-		//restore file pointer
-		fseek(IN, endOfInfoHeader, SEEK_SET);
-	}
-
 	/* Load palette */
 	if (Info_h.biBitCount <= 8U) {
 		memset(&lut_R[0], 0, sizeof(lut_R));
@@ -759,10 +733,23 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 	if (!image) {
 		goto cleanup;
 	}
-	if (iccData) {
+	// ICC profile
+	if (Info_h.biSize == sizeof(OPJ_BITMAPINFOHEADER) &&
+		Info_h.biColorSpaceType == BMP_ICC_PROFILE_EMBEDDED &&
+		Info_h.biIccProfileSize &&
+		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
+
+		//allocate buffer
+		image->icc_profile_buf = (uint8_t*)malloc(Info_h.biIccProfileSize);
+		if (!image->icc_profile_buf) {
+			goto cleanup;
+		}
+		//read in ICC profile
+		fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET);
+		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, IN);
+		if (bytesRead != Info_h.biIccProfileSize)
+			goto cleanup;
 		image->icc_profile_len = Info_h.biIccProfileSize;
-		image->icc_profile_buf = iccData;
-		iccData = nullptr;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].alpha = 1;
@@ -810,8 +797,6 @@ static opj_image_t* bmptoimage(const char *filename, opj_cparameters_t *paramete
 		fprintf(stderr, "Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [%d]\n", Info_h.biBitCount);
 	}
 cleanup:
-	if (iccData)
-		free(iccData);
 	if (pData)
 		free(pData);
 	if (!readFromStdin && IN)
