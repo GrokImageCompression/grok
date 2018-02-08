@@ -62,8 +62,8 @@
 #include <cstring>
 #include "common.h"
 
-#define BMP_ICC_PROFILE_LINKED          'LINK'
-#define BMP_ICC_PROFILE_EMBEDDED        'MBED'
+// `MBED` in big endian format
+const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
 
 typedef struct {
 	uint16_t bfType;      /* 'BM' for Bitmap (19776) */
@@ -804,6 +804,22 @@ cleanup:
 	return image;
 }
 
+static bool write_int(FILE* fdest, uint32_t val) {
+	int rc = fprintf(fdest, "%c%c%c%c", val & 0xff, (val >> 8) & 0xff, (val >> 16) & 0xff, (val >> 24) & 0xff);
+	return (rc == sizeof(val));
+}
+static bool write_int24(FILE* fdest, uint8_t val1, uint8_t val2, uint8_t val3) {
+	int rc = fprintf(fdest, "%c%c%c", val1, val2,val3);
+	return (rc == 3);
+}
+static bool write_short(FILE* fdest, uint16_t val) {
+	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
+	return (rc == sizeof(val));
+}
+static bool write_char(FILE* fdest, uint8_t val) {
+	int rc = fprintf(fdest, "%c", val);
+	return (rc == sizeof(val));
+}
 static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 {
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
@@ -811,28 +827,29 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 	int32_t pad;
 	FILE *fdest = nullptr;
 	int adjustR, adjustG, adjustB;
+	int rc = -1;
 
 	if (image->numcomps == 0) {
 		fprintf(stderr, "[ERROR] Unsupported number of components: %d\n", image->numcomps);
-		return 1;
+		goto cleanup;
 	}
 	for (i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
 			fprintf(stderr, "[ERROR] Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
-			return 1;
+			goto cleanup;
 		}
 	}
 
 	if (writeToStdout) {
 		if (!grok_set_binary_mode(stdin))
-			return 1;
+			goto cleanup;
 		fdest = stdout;
 	}
 	else {
 		fdest = fopen(outfile, "wb");
 		if (!fdest) {
 			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
-			return 1;
+			goto cleanup;
 		}
 	}
 
@@ -852,41 +869,42 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		w = image->comps[0].w;
 		h = image->comps[0].h;
 
-		fprintf(fdest, "BM");
+		if (fprintf(fdest, "BM") != 2)
+			goto cleanup;
 
 		/* FILE HEADER */
 		/* ------------- */
-		fprintf(fdest, "%c%c%c%c",
-			(uint8_t)(h * w * 3 + 3 * h * (w % 2) + 54) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2) + 54) >> 8) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2) + 54) >> 16) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2) + 54) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (54) & 0xff, ((54) >> 8) & 0xff, ((54) >> 16) & 0xff, ((54) >> 24) & 0xff);
+		if (!write_int(fdest, 3 * h * w + 3 * h * (w % 2) + 54))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, 54))
+			goto cleanup;
 
 		/* INFO HEADER   */
 		/* ------------- */
-		fprintf(fdest, "%c%c%c%c", (40) & 0xff, ((40) >> 8) & 0xff, ((40) >> 16) & 0xff, ((40) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)((w) & 0xff),
-			(uint8_t)((w) >> 8) & 0xff,
-			(uint8_t)((w) >> 16) & 0xff,
-			(uint8_t)((w) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)((h) & 0xff),
-			(uint8_t)((h) >> 8) & 0xff,
-			(uint8_t)((h) >> 16) & 0xff,
-			(uint8_t)((h) >> 24) & 0xff);
-		fprintf(fdest, "%c%c", (1) & 0xff, ((1) >> 8) & 0xff);
-		fprintf(fdest, "%c%c", (24) & 0xff, ((24) >> 8) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)(3 * h * w + 3 * h * (w % 2)) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2)) >> 8) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2)) >> 16) & 0xff,
-			(uint8_t)((h * w * 3 + 3 * h * (w % 2)) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (7834) & 0xff, ((7834) >> 8) & 0xff, ((7834) >> 16) & 0xff, ((7834) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (7834) & 0xff, ((7834) >> 8) & 0xff, ((7834) >> 16) & 0xff, ((7834) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-
+		if (!write_int(fdest, 40))
+			goto cleanup;
+		if (!write_int(fdest, w))
+			goto cleanup;
+		if (!write_int(fdest, h))
+			goto cleanup;
+		if (!write_short(fdest,1))
+			goto cleanup;
+		if (!write_short(fdest,24))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, 3 * h * w + 3 * h * (w % 2)))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
 		if (image->comps[0].prec > 8) {
 			adjustR = (int)image->comps[0].prec - 8;
 			if (verbose)
@@ -943,11 +961,15 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 				b = 0;
 			bc = (uint8_t)b;
 
-			fprintf(fdest, "%c%c%c", bc, gc, rc);
+			if (!write_int24(fdest, bc, gc, rc))
+				goto cleanup;
+
 
 			if ((i + 1) % w == 0) {
-				for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--)	/* ADD */
-					fprintf(fdest, "%c", 0);
+				for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--) {	/* ADD */
+					if (!write_char(fdest, 0))
+						goto cleanup;
+				}
 			}
 		}
 	}
@@ -959,42 +981,42 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		w = image->comps[0].w;
 		h = image->comps[0].h;
 
-		fprintf(fdest, "BM");
+		if (fprintf(fdest, "BM") != 2)
+			goto cleanup;
 
 		/* FILE HEADER */
 		/* ------------- */
-		fprintf(fdest, "%c%c%c%c", (uint8_t)(h * w + 54 + 1024 + h * (w % 2)) & 0xff,
-			(uint8_t)((h * w + 54 + 1024 + h * (w % 2)) >> 8) & 0xff,
-			(uint8_t)((h * w + 54 + 1024 + h * (w % 2)) >> 16) & 0xff,
-			(uint8_t)((h * w + 54 + 1024 + w * (w % 2)) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (54 + 1024) & 0xff, ((54 + 1024) >> 8) & 0xff,
-			((54 + 1024) >> 16) & 0xff,
-			((54 + 1024) >> 24) & 0xff);
+		if (!write_int(fdest, h * w + 54 + 1024 + h * (w % 2)))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, 54 + 1024))
+			goto cleanup;
 
-		/* INFO HEADER */
+		/* INFO HEADER   */
 		/* ------------- */
-		fprintf(fdest, "%c%c%c%c", (40) & 0xff, ((40) >> 8) & 0xff, ((40) >> 16) & 0xff, ((40) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)((w) & 0xff),
-			(uint8_t)((w) >> 8) & 0xff,
-			(uint8_t)((w) >> 16) & 0xff,
-			(uint8_t)((w) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)((h) & 0xff),
-			(uint8_t)((h) >> 8) & 0xff,
-			(uint8_t)((h) >> 16) & 0xff,
-			(uint8_t)((h) >> 24) & 0xff);
-		fprintf(fdest, "%c%c", (1) & 0xff, ((1) >> 8) & 0xff);
-		fprintf(fdest, "%c%c", (8) & 0xff, ((8) >> 8) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (0) & 0xff, ((0) >> 8) & 0xff, ((0) >> 16) & 0xff, ((0) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (uint8_t)(h * w + h * (w % 2)) & 0xff,
-			(uint8_t)((h * w + h * (w % 2)) >> 8) & 0xff,
-			(uint8_t)((h * w + h * (w % 2)) >> 16) & 0xff,
-			(uint8_t)((h * w + h * (w % 2)) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (7834) & 0xff, ((7834) >> 8) & 0xff, ((7834) >> 16) & 0xff, ((7834) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (7834) & 0xff, ((7834) >> 8) & 0xff, ((7834) >> 16) & 0xff, ((7834) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (256) & 0xff, ((256) >> 8) & 0xff, ((256) >> 16) & 0xff, ((256) >> 24) & 0xff);
-		fprintf(fdest, "%c%c%c%c", (256) & 0xff, ((256) >> 8) & 0xff, ((256) >> 16) & 0xff, ((256) >> 24) & 0xff);
-
+		if (!write_int(fdest, 40))
+			goto cleanup;
+		if (!write_int(fdest, w))
+			goto cleanup;
+		if (!write_int(fdest, h))
+			goto cleanup;
+		if (!write_short(fdest, 1))
+			goto cleanup;
+		if (!write_short(fdest, 8))
+			goto cleanup;
+		if (!write_int(fdest, 0))
+			goto cleanup;
+		if (!write_int(fdest, h * w + h * (w % 2)))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 7834))
+			goto cleanup;
+		if (!write_int(fdest, 256))
+			goto cleanup;
+		if (!write_int(fdest, 256))
+			goto cleanup;
 		if (image->comps[0].prec > 8) {
 			adjustR = (int)image->comps[0].prec - 8;
 			if (verbose)
@@ -1004,13 +1026,13 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 			adjustR = 0;
 
 		for (i = 0; i < 256; i++) {
-			fprintf(fdest, "%c%c%c%c", i, i, i, 0);
+			if (fprintf(fdest, "%c%c%c%c", i, i, i, 0) != 4)
+				goto cleanup;
 		}
 
 		for (i = 0; i < w * h; i++) {
-			int32_t r;
-
-			r = image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
+			int32_t r = 
+				image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
 			r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
 			if (adjustR > 0)
 				r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
@@ -1019,19 +1041,24 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 			else if (r < 0)
 				r = 0;
 
-			fprintf(fdest, "%c", (uint8_t)r);
+			if (!write_char(fdest, (uint8_t)r))
+				goto cleanup;
 
 			if ((i + 1) % w == 0) {
-				for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--)	/* ADD */
-					fprintf(fdest, "%c", 0);
+				for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) {/* ADD */
+					if (!write_char(fdest, 0))
+						goto cleanup;
+				}
 			}
 		}
 
 	}
-
+	// success !!
+	rc = 0;
+cleanup:
 	if (!writeToStdout && fdest)
 		fclose(fdest);
-	return 0;
+	return rc;
 }
 
 
