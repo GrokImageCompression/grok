@@ -44,6 +44,8 @@ if(GROK_HAVE_LIBPNG)
 endif()
 if(GROK_HAVE_LIBJPEG)
 	list(APPEND common_SRCS JPEGFormat.cpp)
+	list(APPEND common_SRCS iccjpeg.c)
+	list(APPEND common_SRCS iccjpeg.h)
 endif()
 
 # Headers file are located here:

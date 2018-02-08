@@ -25,14 +25,14 @@
 
 #ifndef GROK_HAVE_LIBJPEG
 # error GROK_HAVE_LIBJPEG_NOT_DEFINED
-#endif /* GROK_HAVE_LIBPNG */
+#endif /* GROK_HAVE_LIBJPEG */
 
 
 
 #include "jpeglib.h"
 #include <setjmp.h>
 #include <cassert>
-
+#include "iccjpeg.h"
 
 
 /*
@@ -318,6 +318,11 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	* Pass TRUE unless you are very sure of what you're doing.
 	*/
 	jpeg_start_compress(&cinfo, (boolean)TRUE);
+	if (image->icc_profile_buf) {
+		write_icc_profile(&cinfo, 
+							image->icc_profile_buf,
+							image->icc_profile_len);
+	}
 
 	/* Step 5: while (scan lines remain to be written) */
 	/*           jpeg_write_scanlines(...); */
@@ -341,7 +346,6 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		planes[2] += width;
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
-
 	/* Step 6: Finish compression */
 
 	jpeg_finish_compress(&cinfo);
@@ -410,6 +414,8 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
 	opj_image_cmptparm_t cmptparm[3]; /* mono or RGB */
 	convert_32s_CXPX cvtCxToPx;
+	JOCTET *icc_data_ptr = nullptr;
+	unsigned int icc_data_len = 0;
 
 	/* This struct contains the JPEG decompression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -459,6 +465,8 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	}
 	/* Now we can initialize the JPEG decompression object. */
 	jpeg_create_decompress(&cinfo);
+	setup_read_icc_profile(&cinfo);
+
 
 	/* Step 2: specify data source (eg, a file) */
 	jpeg_stdio_src(&cinfo, infile);
@@ -471,6 +479,11 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	*   (b) we passed TRUE to reject a tables-only JPEG file as an error.
 	* See libjpeg.txt for more info.
 	*/
+
+	// read ICC profile
+	if (read_icc_profile(&cinfo, &icc_data_ptr, &icc_data_len)) {
+		
+	}
 
 	/* Step 4: set parameters for decompression */
 
@@ -516,6 +529,12 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	if (!imageInfo.image) {
 		imageInfo.success = false;
 		goto cleanup;
+	}
+	if (icc_data_ptr && icc_data_len) {
+		imageInfo.image->icc_profile_buf = icc_data_ptr;
+		imageInfo.image->icc_profile_len = icc_data_len;
+		icc_data_ptr = nullptr;
+		icc_data_len = 0;
 	}
 	/* set image offset and reference grid */
 	imageInfo.image->x0 = parameters->image_offset_x0;

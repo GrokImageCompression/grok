@@ -1731,10 +1731,15 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		}
 	}
 
-	// A TIFF or PNG image can store the ICC profile, so no need to apply it in this case,
-	// (unless we are forcing to RGB). Otherwise, we apply the profile
+	// A TIFF,PNG or JPEG image can store the ICC profile,
+	// so no need to apply it in this case,
+	// (unless we are forcing to RGB).
+	// Otherwise, we apply the profile
 	if (image->icc_profile_buf && 
-		(info->decoder_parameters->force_rgb || (info->decoder_parameters->cod_format != TIF_DFMT &&	info->decoder_parameters->cod_format != PNG_DFMT) ) ) {
+		(info->decoder_parameters->force_rgb ||
+		(info->decoder_parameters->cod_format != TIF_DFMT &&
+		info->decoder_parameters->cod_format != PNG_DFMT &&
+		info->decoder_parameters->cod_format != JPG_DFMT) ) ) {
 #if defined(GROK_HAVE_LIBLCMS)
 		if (image->icc_profile_len) {
 			color_apply_icc_profile(image, info->decoder_parameters->force_rgb);
