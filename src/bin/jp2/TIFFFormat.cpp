@@ -1644,7 +1644,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 
 	// handle embedded ICC profile (with sanity check on binary size of profile)
-	if (TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) &&
+	if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
 						icclen > 0 &&
 						icclen < grk::maxICCProfileBufferLen) {
 		image->icc_profile_len = icclen;
