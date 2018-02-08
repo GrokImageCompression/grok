@@ -1659,9 +1659,6 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
 			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
-
-		if (image->iptc_buf)
-			free(image->iptc_buf);
 		image->iptc_len = iptc_len;
 		image->iptc_buf = (uint8_t*)malloc(iptc_len);
 		if (!image->iptc_buf) {
@@ -1672,8 +1669,6 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	if (TIFFGetField(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
-		if (image->xmp_buf)
-			free(image->xmp_buf);
 		image->xmp_len = xmp_len;
 		image->xmp_buf = (uint8_t*)malloc(xmp_len);
 		if (!image->xmp_buf) {
