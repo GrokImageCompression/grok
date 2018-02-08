@@ -1659,7 +1659,9 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
 			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
-		image->iptc_len = iptc_len;
+		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
+		// by 4 to get the length in bytes
+		image->iptc_len = iptc_len * 4;
 		image->iptc_buf = (uint8_t*)malloc(iptc_len);
 		if (!image->iptc_buf) {
 			success = false;
