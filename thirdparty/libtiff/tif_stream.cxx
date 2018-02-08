@@ -373,6 +373,9 @@ _tiffStreamOpen(const char* name, const char* mode, void *fd)
 				_tiffosSizeProc,
 				_tiffDummyMapProc,
                                 _tiffDummyUnmapProc);
+		if (!tif) {
+			delete data;
+		}
 	} else {
 		tiffis_data	*data = new tiffis_data;
 		data->stream = reinterpret_cast<istream *>(fd);
@@ -387,6 +390,9 @@ _tiffStreamOpen(const char* name, const char* mode, void *fd)
 				_tiffisSizeProc,
 				_tiffDummyMapProc,
                                 _tiffDummyUnmapProc);
+		if (!tif) {
+			delete data;
+		}
 	}
 
 	return (tif);
