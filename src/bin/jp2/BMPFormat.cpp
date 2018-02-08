@@ -745,7 +745,8 @@ static opj_image_t* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 		//read in ICC profile
-		fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET);
+		if (fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET))
+			goto cleanup;
 		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, IN);
 		if (bytesRead != Info_h.biIccProfileSize)
 			goto cleanup;
