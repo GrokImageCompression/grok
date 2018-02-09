@@ -335,19 +335,19 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 
 static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
 {
-	if (!get_int<uint16_t>(IN, &header->bfType))
+	if (!get_int(IN, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
 		fprintf(stderr, "[ERROR] not a BMP file!\n");
 		return false;
 	}
-	if (!get_int<uint32_t>(IN, &header->bfSize))
+	if (!get_int(IN, &header->bfSize))
 		return false;
-	if (!get_int<uint16_t>(IN, &header->bfReserved1))
+	if (!get_int(IN, &header->bfReserved1))
 		return false;
-	if (!get_int<uint16_t>(IN, &header->bfReserved2))
+	if (!get_int(IN, &header->bfReserved2))
 		return false;
-	if (!get_int<uint32_t>(IN, &header->bfOffBits))
+	if (!get_int(IN, &header->bfOffBits))
 		return false;
 	return true;
 }
@@ -356,7 +356,7 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
-	if (!get_int<uint32_t>(IN,&header->biSize))
+	if (!get_int(IN,&header->biSize))
 		return false;
 
 	switch (header->biSize) {
@@ -371,64 +371,64 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		fprintf(stderr, "[ERROR] unknown BMP header size %d\n", header->biSize);
 		return false;
 	}
-	if (!get_int<uint32_t>(IN, &header->biWidth))
+	if (!get_int(IN, &header->biWidth))
 		return false;
-	if (!get_int<uint32_t>(IN, &header->biHeight))
+	if (!get_int(IN, &header->biHeight))
 		return false;
-	if (!get_int<uint16_t>(IN, &header->biPlanes))
+	if (!get_int(IN, &header->biPlanes))
 		return false;
-	if (!get_int<uint16_t>(IN, &header->biBitCount))
+	if (!get_int(IN, &header->biBitCount))
 		return false;
 
 	if (header->biSize >= 40U) {
-		if (!get_int<uint32_t>(IN, &header->biCompression))
+		if (!get_int(IN, &header->biCompression))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biSizeImage))
+		if (!get_int(IN, &header->biSizeImage))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biXpelsPerMeter))
+		if (!get_int(IN, &header->biXpelsPerMeter))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biYpelsPerMeter))
+		if (!get_int(IN, &header->biYpelsPerMeter))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biClrUsed))
+		if (!get_int(IN, &header->biClrUsed))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biClrImportant))
+		if (!get_int(IN, &header->biClrImportant))
 			return false;
 	}
 
 	if (header->biSize >= 56U) {
-		if (!get_int<uint32_t>(IN, &header->biRedMask))
+		if (!get_int(IN, &header->biRedMask))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biGreenMask))
+		if (!get_int(IN, &header->biGreenMask))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biBlueMask))
+		if (!get_int(IN, &header->biBlueMask))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biAlphaMask))
+		if (!get_int(IN, &header->biAlphaMask))
 			return false;
 	}
 
 	if (header->biSize >= 108U) {
-		if (!get_int<uint32_t>(IN, &header->biColorSpaceType))
+		if (!get_int(IN, &header->biColorSpaceType))
 			return false;
 		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP), IN) != sizeof(header->biColorSpaceEP)) {
 			fprintf(stderr, "[ERROR] can't  read BMP header\n");
 			return false;
 		}
-		if (!get_int<uint32_t>(IN, &header->biRedGamma))
+		if (!get_int(IN, &header->biRedGamma))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biGreenGamma))
+		if (!get_int(IN, &header->biGreenGamma))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biBlueGamma))
+		if (!get_int(IN, &header->biBlueGamma))
 			return false;
 	}
 
 	if (header->biSize >= 124U) {
-		if (!get_int<uint32_t>(IN, &header->biIntent))
+		if (!get_int(IN, &header->biIntent))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biIccProfileData))
+		if (!get_int(IN, &header->biIccProfileData))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biIccProfileSize))
+		if (!get_int(IN, &header->biIccProfileSize))
 			return false;
-		if (!get_int<uint32_t>(IN, &header->biReserved))
+		if (!get_int(IN, &header->biReserved))
 			return false;
 	}
 	return true;
