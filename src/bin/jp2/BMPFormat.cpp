@@ -106,7 +106,7 @@ template<typename T> bool get_int(FILE* IN, T* val) {
 		int temp = getc(IN);
 		if (temp == EOF)
 			return false;
-		rc |= (T)temp << i;
+		rc |= (T)(temp << i);
 	}
 	*val = rc;
 	return true;
