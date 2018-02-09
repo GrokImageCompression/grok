@@ -34,30 +34,6 @@
 #include <cassert>
 #include "iccjpeg.h"
 
-
-/*
-* ERROR HANDLING:
-*
-* The JPEG library's standard error handler (jerror.c) is divided into
-* several "methods" which you can override individually.  This lets you
-* adjust the behavior without duplicating a lot of code, which you might
-* have to update with each future release.
-*
-* Our example here shows how to override the "error_exit" method so that
-* control is returned to the library's caller when a fatal error occurs,
-* rather than calling exit() as the standard error_exit method does.
-*
-* We use C's setjmp/longjmp facility to return control.  This means that the
-* routine which calls the JPEG library must first execute a setjmp() call to
-* establish the return point.  We want the replacement error_exit to do a
-* longjmp().  But we need to make the setjmp buffer accessible to the
-* error_exit routine.  To do this, we make a private extension of the
-* standard JPEG error handler object.  (If we were using C++, we'd say we
-* were making a subclass of the regular error handler.)
-*
-* Here's the extended error handler struct:
-*/
-
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;    /* "public" fields */
 
@@ -65,10 +41,6 @@ struct my_error_mgr {
 };
 
 typedef struct my_error_mgr *my_error_ptr;
-
-/*
-* Here's the routine that will replace the standard error_exit method:
-*/
 
 METHODDEF(void)
 my_error_exit(j_common_ptr cinfo)
@@ -85,13 +57,15 @@ my_error_exit(j_common_ptr cinfo)
 }
 
 struct imageToJpegInfo {
-	imageToJpegInfo() : success(true),
+	imageToJpegInfo() : outfile(nullptr),
+		success(true),
 		buffer(nullptr),
 		buffer32s(nullptr),
 		color_space(JCS_UNKNOWN),
 		writeToStdout(false)
 	{}
 
+	FILE *outfile;
 	bool success;
 	uint8_t* buffer;
 	int32_t* buffer32s;
@@ -119,6 +93,17 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	// actual bits per sample
 	uint32_t bps = image->comps[0].prec;
 	uint32_t i = 0;
+
+	struct my_error_mgr jerr;
+	JSAMPROW row_pointer[1];      /* pointer to JSAMPLE row[s] */
+
+								  /* Step 1: allocate and initialize JPEG compression object */
+
+								  /* We have to set up the error handler first, in case the initialization
+								  * step fails.  (Unlikely, but it could happen if you are out of memory.)
+								  * This routine fills in the contents of struct jerr, and returns jerr's
+								  * address which we place into the link field in cinfo.
+								  */
 
 	/* This struct contains the JPEG compression parameters and pointers to
 	* working space (which is allocated as needed by the JPEG library).
@@ -165,19 +150,6 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		}
 		break;
 	}
-
-	struct my_error_mgr jerr;
-	/* More stuff */
-	FILE *outfile;                /* target file */
-	JSAMPROW row_pointer[1];      /* pointer to JSAMPLE row[s] */
-
-								  /* Step 1: allocate and initialize JPEG compression object */
-
-								  /* We have to set up the error handler first, in case the initialization
-								  * step fails.  (Unlikely, but it could happen if you are out of memory.)
-								  * This routine fills in the contents of struct jerr, and returns jerr's
-								  * address which we place into the link field in cinfo.
-								  */
 
 	if (image->numcomps > 4) {
 		info.success = false;
@@ -280,16 +252,16 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	if (info.writeToStdout) {
 		if (!grok_set_binary_mode(stdin))
 			return 1;
-		outfile = stdout;
+		info.outfile = stdout;
 	}
 	else {
-		if ((outfile = fopen(filename, "wb")) == nullptr) {
+		if ((info.outfile = fopen(filename, "wb")) == nullptr) {
 			fprintf(stderr, "[ERROR] can't open %s\n", filename);
 			info.success = false;
 			goto cleanup;
 		}
 	}
-	jpeg_stdio_dest(&cinfo, outfile);
+	jpeg_stdio_dest(&cinfo, info.outfile);
 
 	/* Step 3: set parameters for compression */
 
@@ -347,18 +319,18 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		(void)jpeg_write_scanlines(&cinfo, row_pointer, 1);
 	}
 	/* Step 6: Finish compression */
-
 	jpeg_finish_compress(&cinfo);
+
+cleanup:
 	/* After finish_compress, we can close the output file. */
-	if (!info.writeToStdout)
-		fclose(outfile);
+	if (info.outfile && !info.writeToStdout)
+		fclose(info.outfile);
 
 	/* Step 7: release JPEG compression object */
 
 	/* This is an important step since it will release a good deal of memory. */
 	jpeg_destroy_compress(&cinfo);
 
-cleanup:
 	delete[] info.buffer;
 	delete[] info.buffer32s;
 	return info.success ? 0 : 1;
@@ -391,18 +363,21 @@ cleanup:
 */
 
 struct jpegToImageInfo {
-	jpegToImageInfo() : readFromStdin(false),
+	jpegToImageInfo() : infile(nullptr),
+						readFromStdin(false),
 						image(nullptr), 
 						success(true),
 						buffer32s(nullptr) {}
 
+	FILE *infile;
 	bool readFromStdin;
 	opj_image_t *image;
 	bool success;
 	int32_t* buffer32s;
 };
 
-static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *parameters)
+static opj_image_t* jpegtoimage(const char *filename, 
+								opj_cparameters_t *parameters)
 {
 	jpegToImageInfo imageInfo;
 	imageInfo.readFromStdin = ((filename == nullptr) || (filename[0] == 0));
@@ -427,7 +402,6 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	*/
 	struct my_error_mgr jerr;
 	/* More stuff */
-	FILE *infile;                 /* source file */
 	JSAMPARRAY buffer;            /* Output row buffer */
 	int row_stride;               /* physical row width in output buffer */
 
@@ -440,10 +414,10 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	if (imageInfo.readFromStdin) {
 		if (!grok_set_binary_mode(stdin))
 			return nullptr;
-		infile = stdin;
+		imageInfo.infile = stdin;
 	}
 	else {
-		if ((infile = fopen(filename, "rb")) == nullptr) {
+		if ((imageInfo.infile = fopen(filename, "rb")) == nullptr) {
 			fprintf(stderr, "[ERROR] can't open %s\n", filename);
 			return 0;
 		}
@@ -456,10 +430,6 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	jerr.pub.error_exit = my_error_exit;
 	/* Establish the setjmp return context for my_error_exit to use. */
 	if (setjmp(jerr.setjmp_buffer)) {
-		/* If we get here, the JPEG code has signaled an error.
-		* We need to clean up the JPEG object, close the input file, and return.
-		*/
-		jpeg_destroy_decompress(&cinfo);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -467,9 +437,8 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	jpeg_create_decompress(&cinfo);
 	setup_read_icc_profile(&cinfo);
 
-
 	/* Step 2: specify data source (eg, a file) */
-	jpeg_stdio_src(&cinfo, infile);
+	jpeg_stdio_src(&cinfo, imageInfo.infile);
 
 	/* Step 3: read file parameters with jpeg_read_header() */
 
@@ -611,35 +580,33 @@ static opj_image_t* jpegtoimage(const char *filename, opj_cparameters_t *paramet
 	/* We can ignore the return value since suspension is not possible
 	* with the stdio data source.
 	*/
-
-	/* Step 8: Release JPEG decompression object */
-
-	/* This is an important step since it will release a good deal of memory. */
-	jpeg_destroy_decompress(&cinfo);
-
 cleanup:
+	jpeg_destroy_decompress(&cinfo);
 
 	/* After finish_decompress, we can close the input file.
 	* Here we postpone it until after no more JPEG errors are possible,
 	* so as to simplify the setjmp error logic above.  (Actually, I don't
 	* think that jpeg_destroy can do an error exit, but why assume anything...)
 	*/
-	if (!imageInfo.readFromStdin && infile)
-		fclose(infile);
+	if (imageInfo.infile && !imageInfo.readFromStdin)
+		fclose(imageInfo.infile);
 
 	delete[] imageInfo.buffer32s;
 
 	/* At this point you may want to check to see whether any corrupt-data
 	* warnings occurred (test whether jerr.pub.num_warnings is nonzero).
 	*/
-	assert(jerr.pub.num_warnings == 0);
-
-	if (imageInfo.success) {
-		return imageInfo.image;
+	if (jerr.pub.num_warnings != 0) {
+		if (parameters->verbose)
+			fprintf(stdout, "[WARNING] JPEG library reported %d of corrupt data warnings", jerr.pub.num_warnings);
 	}
-	if (imageInfo.image)
-		opj_image_destroy(imageInfo.image);
-	return nullptr;
+	
+	if (!imageInfo.success) {
+		if (imageInfo.image)
+			opj_image_destroy(imageInfo.image);
+		imageInfo.image = nullptr;
+	}
+	return imageInfo.image;
 }/* jpegtoimage() */
 
 bool JPEGFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
