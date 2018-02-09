@@ -305,6 +305,20 @@ typedef enum PROG_ORDER {
 /**
  * Supported image color spaces
 */
+
+#define OPJ_CUSTOM_CIELAB_SPACE 0x0
+#define OPJ_DEFAULT_CIELAB_SPACE 0x44454600  //'DEF'
+#define OPJ_CIE_DAY   ((((uint32_t) 'C')<<24) + (((uint32_t) 'T')<<16))
+#define OPJ_CIE_D50   ((uint32_t) 0x00443530)
+#define OPJ_CIE_D65   ((uint32_t) 0x00443635)
+#define OPJ_CIE_D75   ((uint32_t) 0x00443735)
+#define OPJ_CIE_SA   ((uint32_t) 0x00005341)
+#define OPJ_CIE_SC   ((uint32_t) 0x00005343)
+#define OPJ_CIE_F2   ((uint32_t) 0x00004632)
+#define OPJ_CIE_F7   ((uint32_t) 0x00004637)
+#define OPJ_CIE_F11   ((uint32_t) 0x00463131)
+
+
 typedef enum COLOR_SPACE {
     OPJ_CLRSPC_UNKNOWN = -1,	/**< not supported by the library */
     OPJ_CLRSPC_UNSPECIFIED = 0,	/**< not specified in the codestream */

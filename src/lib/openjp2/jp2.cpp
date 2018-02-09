@@ -1941,8 +1941,9 @@ static bool jp2_read_colr( jp2_t *jp2,
         if(jp2->enumcs == 14) { /* CIELab */
             uint32_t *cielab;
             uint32_t rl, ol, ra, oa, rb, ob, il;
-
-            cielab = (uint32_t*)grok_malloc(9 * sizeof(uint32_t));
+			bool nonDefaultLab = p_colr_header_size == 35;
+			// only two ints are needed for default CIELab space
+            cielab = (uint32_t*)grok_malloc((nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
 			if (cielab == nullptr) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory for cielab\n");
 				return false;
@@ -1951,8 +1952,8 @@ static bool jp2_read_colr( jp2_t *jp2,
 
             /* default values */
             rl = ra = rb = ol = oa = ob = 0;
-            il = 0x00443530; /* D50 */
-            cielab[1] = 0x44454600;/* DEF */
+            il = OPJ_CIE_D50;
+            cielab[1] = OPJ_DEFAULT_CIELAB_SPACE;
 
             if(p_colr_header_size == 35) {
                 grok_read_bytes(p_colr_header_data, &rl, 4);
@@ -1970,18 +1971,17 @@ static bool jp2_read_colr( jp2_t *jp2,
                 grok_read_bytes(p_colr_header_data, &il, 4);
                 p_colr_header_data += 4;
 
-                cielab[1] = 0;
+				cielab[1] = OPJ_CUSTOM_CIELAB_SPACE;
+				cielab[2] = rl;
+				cielab[4] = ra;
+				cielab[6] = rb;
+				cielab[3] = ol;
+				cielab[5] = oa;
+				cielab[7] = ob;
+				cielab[8] = il;
             } else if(p_colr_header_size != 7) {
                 event_msg(p_manager, EVT_WARNING, "Bad COLR header box (CIELab, bad size: %d)\n", p_colr_header_size);
             }
-            cielab[2] = rl;
-            cielab[4] = ra;
-            cielab[6] = rb;
-            cielab[3] = ol;
-            cielab[5] = oa;
-            cielab[7] = ob;
-            cielab[8] = il;
-
             jp2->color.icc_profile_buf = (uint8_t*)cielab;
             jp2->color.icc_profile_len = 0;
         }
@@ -1997,13 +1997,11 @@ static bool jp2_read_colr( jp2_t *jp2,
             jp2->color.icc_profile_len = 0;
             return false;
         }
-
         for (it_icc_value = 0; it_icc_value < icc_len; ++it_icc_value) {
             grok_read_bytes(p_colr_header_data,&l_value,1);		/* icc values */
             ++p_colr_header_data;
             jp2->color.icc_profile_buf[it_icc_value] = (uint8_t) l_value;
         }
-
         jp2->color.jp2_has_colour_specification_box = 1;
     } else if (jp2->meth > 2) {
         /*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
