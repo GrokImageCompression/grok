@@ -598,7 +598,7 @@ cleanup:
 	*/
 	if (jerr.pub.num_warnings != 0) {
 		if (parameters->verbose)
-			fprintf(stdout, "[WARNING] JPEG library reported %d of corrupt data warnings", jerr.pub.num_warnings);
+			fprintf(stdout, "[WARNING] JPEG library reported %d of corrupt data warnings", (int)jerr.pub.num_warnings);
 	}
 	
 	if (!imageInfo.success) {
