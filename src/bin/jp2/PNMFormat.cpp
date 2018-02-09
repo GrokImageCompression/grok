@@ -298,7 +298,8 @@ static int has_prec(int val)
 	return 16;
 }
 
-static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *parameters)
+static opj_image_t* pnmtoimage(const char *filename, 
+								opj_cparameters_t *parameters)
 {
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
@@ -387,8 +388,10 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
-				if (fscanf(fp, "%u", &index) != 1)
-					fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+				if (fscanf(fp, "%u", &index) != 1) {
+					if (parameters->verbose)
+						fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+				}
 
 				image->comps[compno].data[i] = (int32_t)(index * 255) / header_info.maxval;
 			}
@@ -424,8 +427,10 @@ static opj_image_t* pnmtoimage(const char *filename, opj_cparameters_t *paramete
 	else if (format == 1) { /* ascii bitmap */
 		for (uint64_t i = 0; i < area; i++) {
 			unsigned int index;
-			if (fscanf(fp, "%u", &index) != 1)
-				fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+			if (fscanf(fp, "%u", &index) != 1) {
+				if (parameters->verbose)
+					fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+			}
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
 	}
@@ -469,7 +474,10 @@ cleanup:
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split)
+static int imagetopnm(opj_image_t * image, 
+					const char *outfile,
+					bool force_split, 
+					bool verbose)
 {
 	int *red = nullptr;
 	int* green = nullptr;
@@ -653,8 +661,10 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 	/* YUV or MONO: */
 
 	if (image->numcomps > ncomp) {
-		fprintf(stdout, "WARNING -> [PGM file] Only the first component\n");
-		fprintf(stdout, "           is written to the file\n");
+		if (verbose) {
+			fprintf(stdout, "WARNING -> [PGM file] Only the first component\n");
+			fprintf(stdout, "           is written to the file\n");
+		}
 	}
 	destname = (char*)malloc(strlen(outfile) + 8);
 	if (destname == nullptr) {
@@ -734,7 +744,7 @@ static int imagetopnm(opj_image_t * image, const char *outfile, bool force_split
 bool PNMFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
+	return imagetopnm(image, filename.c_str(), forceSplit,verbose) ? false : true;
 }
 opj_image_t* PNMFormat::decode(std::string filename, opj_cparameters_t *parameters) {
 	return pnmtoimage(filename.c_str(), parameters);

@@ -127,8 +127,9 @@ int parse_DA_values(bool verbose,
 		values[1] < 0 ||
 		values[2] < 0 ||
 		values[3] < 0)) {
-		fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
-			values[0], values[1], values[2], values[3]);
+		if (verbose)
+			fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
+				values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
 	else {

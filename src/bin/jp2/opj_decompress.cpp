@@ -1439,8 +1439,6 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
-		fprintf(stdout, "\n");
-
 		if (initParams->img_fol.set_imgdir == 1) {
 			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
 				continue;

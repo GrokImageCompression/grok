@@ -403,7 +403,10 @@ struct imageToPngInfo {
 	volatile int fails;
 };
 
-static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compressionLevel)
+static int imagetopng(opj_image_t * image, 
+					const char *write_idf,
+					int32_t compressionLevel,
+					bool verbose)
 {
 	imageToPngInfo local_info;
 	local_info.writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
@@ -577,7 +580,7 @@ static int imagetopng(opj_image_t * image, const char *write_idf, int32_t compre
 				}
 			}
 		}
-		if (!iccWasStored)
+		if (verbose && !iccWasStored)
 			fprintf(stdout, "imagetopng: Failed to store ICC profile.\n");
 
 	}
@@ -676,7 +679,7 @@ beach:
 
 bool PNGFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
 	(void)verbose;
-	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
+	return imagetopng(image, filename.c_str(), compressionParam,verbose) ? false : true;
 }
 opj_image_t*  PNGFormat::decode(std::string filename, opj_cparameters_t *parameters) {
 	return pngtoimage(filename.c_str(), parameters);
