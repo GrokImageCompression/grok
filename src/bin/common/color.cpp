@@ -68,8 +68,6 @@
 #include <lcms2.h>
 #endif
 
-static void color_cielab_to_rgb(opj_image_t *image, bool verbose);
-
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
@@ -442,7 +440,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 #if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
+void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 {
 	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
@@ -458,12 +456,6 @@ void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
 
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
-
-	if (image->icc_profile_buf && !image->icc_profile_len) {
-		color_cielab_to_rgb(image,verbose);
-		return;
-	}
-
 	in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 #ifdef DEBUG_PROFILE
     FILE *icm = fopen("debug.icm","wb");
@@ -531,7 +523,7 @@ void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
         image->color_space = OPJ_CLRSPC_SRGB;
     } else {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"[ERROR] %s:%d: color_apply_profile\n\tICC Profile has unknown "
+        fprintf(stderr,"[ERROR] %s:%d: color_apply_icc_profile\n\tICC Profile has unknown "
                 "output colorspace(%#x)(%c%c%c%c)\n\tICC Profile ignored.\n",
                 __FILE__,__LINE__,out_space,
                 (out_space>>24) & 0xff,(out_space>>16) & 0xff,
@@ -541,7 +533,7 @@ void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
     }
 
 #ifdef DEBUG_PROFILE
-    fprintf(stderr,"[ERROR] %s:%d:color_apply_profile\n\tchannels(%d) prec(%d) w(%d) h(%d)"
+    fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tchannels(%d) prec(%d) w(%d) h(%d)"
             "\n\tprofile: in(%p) out(%p)\n",__FILE__,__LINE__,image->numcomps,prec,
             max_w,max_h, (void*)in_prof,(void*)out_prof);
 
@@ -575,7 +567,7 @@ void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
 
     if(transform == nullptr) {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"[ERROR] %s:%d:color_apply_profile\n\tcmsCreateTransform failed. "
+        fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
                 "ICC Profile ignored.\n",__FILE__,__LINE__);
 #endif
         image->color_space = oldspace;
@@ -731,12 +723,13 @@ cleanup:
 		cmsCloseProfile(out_prof);
 	if (transform)
 		cmsDeleteTransform(transform);
-}/* color_apply_profile() */
+}/* color_apply_icc_profile() */
 
 // transform LAB colour space to sRGB @ 16 bit precision
-static void color_cielab_to_rgb(opj_image_t *image,bool verbose){
-    int *row;
+void color_cielab_to_rgb(opj_image_t *image,bool verbose){
+    uint32_t *row;
     int enumcs, numcomps;
+	bool defaultType = true;
     image->color_space = OPJ_CLRSPC_SRGB;
     numcomps = (int)image->numcomps;
     if(numcomps != 3) {
@@ -747,8 +740,11 @@ static void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     }
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
-    row = (int*)image->icc_profile_buf;
+    row = (uint32_t*)image->icc_profile_buf;
     enumcs = row[0];
+	uint32_t illuminant = OPJ_CIE_D50;
+	cmsCIExyY WhitePoint;
+	defaultType = row[1] == OPJ_DEFAULT_CIELAB_SPACE;
 	if (enumcs != 14) { /* CIELab */
 		if (verbose)
 			fprintf(stdout, "[WARNING] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__, __LINE__, enumcs);
@@ -759,30 +755,16 @@ static void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 	// range, offset and precision for L,a and b coordinates
     double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
     double minL, maxL, mina, maxa, minb, maxb;
-    unsigned int default_type;
     unsigned int i, max;
     cmsUInt16Number RGB[3];
     opj_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
-	// D50 Lab input profile
-	cmsHPROFILE in = cmsCreateLab4Profile(nullptr);
-	// sRGB output profile
-	cmsHPROFILE out = cmsCreate_sRGBProfile();
-	cmsHTRANSFORM transform = 
-		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
-
-    cmsCloseProfile(in);
-    cmsCloseProfile(out);
-
-    if(transform == nullptr) {
-        return;
-    }
+	if (!new_image)
+		return;
     prec_L = (double)image->comps[0].prec;
     prec_a = (double)image->comps[1].prec;
     prec_b = (double)image->comps[2].prec;
 
-    default_type = (unsigned int)row[1];
-
-    if(default_type == 0x44454600) { // default Lab space
+    if(defaultType) { // default Lab space
         r_L = 100;
         r_a = 170;
         r_b = 200;
@@ -796,7 +778,52 @@ static void color_cielab_to_rgb(opj_image_t *image,bool verbose){
         o_L = row[3];
         o_a = row[5];
         o_b = row[7];
+		illuminant = row[8];
     }
+	switch (illuminant) {
+	case OPJ_CIE_D50:
+		break;
+	case OPJ_CIE_D65:
+		cmsWhitePointFromTemp(&WhitePoint, 6504);
+		break;
+	case OPJ_CIE_D75:
+		cmsWhitePointFromTemp(&WhitePoint, 7500);
+		break;
+	case OPJ_CIE_SA:
+		cmsWhitePointFromTemp(&WhitePoint, 2856);
+		break;
+	case OPJ_CIE_SC:
+		cmsWhitePointFromTemp(&WhitePoint, 6774);
+		break;
+	case OPJ_CIE_F2:
+		cmsWhitePointFromTemp(&WhitePoint, 4100);
+		break;
+	case OPJ_CIE_F7:
+		cmsWhitePointFromTemp(&WhitePoint, 6500);
+		break;
+	case OPJ_CIE_F11:
+		cmsWhitePointFromTemp(&WhitePoint, 4000);
+		break;
+	default:
+		if (verbose)
+			fprintf(stdout, "[WARNING] Unrecognized illuminant in CIELab colour space. Setting to default Daylight50\n");
+		illuminant = OPJ_CIE_D50;
+		break;
+	}
+
+	// Lab input profile
+	cmsHPROFILE in = cmsCreateLab4Profile(illuminant == OPJ_CIE_D50 ? nullptr : &WhitePoint);
+	// sRGB output profile
+	cmsHPROFILE out = cmsCreate_sRGBProfile();
+	cmsHTRANSFORM transform =
+		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
+
+	cmsCloseProfile(in);
+	cmsCloseProfile(out);
+	if (transform == nullptr) {
+		opj_image_destroy(new_image);
+		return;
+	}
 
     L = src0 = image->comps[0].data;
     a = src1 = image->comps[1].data;

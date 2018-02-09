@@ -1729,35 +1729,44 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			goto cleanup;
 		}
 	}
-	canStoreICC = (info->decoder_parameters->cod_format == TIF_DFMT ||
-						info->decoder_parameters->cod_format == PNG_DFMT ||
-						info->decoder_parameters->cod_format == JPG_DFMT);
 
-	// A TIFF,PNG or JPEG image can store the ICC profile,
-	// so no need to apply it in this case,
-	// (unless we are forcing to RGB).
-	// Otherwise, we apply the profile
-	if (image->icc_profile_buf && 
-		(info->decoder_parameters->force_rgb || !canStoreICC) ) {
+	if (image->icc_profile_buf) {
+		if (!image->icc_profile_len)
+			color_cielab_to_rgb(image, info->decoder_parameters->verbose);
+		else {
+			// A TIFF,PNG or JPEG image can store the ICC profile,
+			// so no need to apply it in this case,
+			// (unless we are forcing to RGB).
+			// Otherwise, we apply the profile
+			canStoreICC = (info->decoder_parameters->cod_format == TIF_DFMT ||
+				info->decoder_parameters->cod_format == PNG_DFMT ||
+				info->decoder_parameters->cod_format == JPG_DFMT);
+			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
-			const char* infile = 
-				info->decoder_parameters->infile[0] ? 
-						info->decoder_parameters->infile :
-										info->input_file_name;
-			const char* outfile = 
-				info->decoder_parameters->outfile[0] ?
-						info->decoder_parameters->outfile :
-									info->output_file_name;
-			if (parameters->verbose && !info->decoder_parameters->force_rgb)
-				fprintf(stdout, "[WARNING] Input file %s contains a color profile,\nbut the codec is unable to store this profile in the output file %s.\nThe profile will therefore be applied to the output image before saving.\n", infile, outfile);
-			color_apply_profile(image, 
-								info->decoder_parameters->force_rgb,
-								info->decoder_parameters->verbose);
+				const char* infile =
+					info->decoder_parameters->infile[0] ?
+					info->decoder_parameters->infile :
+					info->input_file_name;
+				const char* outfile =
+					info->decoder_parameters->outfile[0] ?
+					info->decoder_parameters->outfile :
+					info->output_file_name;
+				if (parameters->verbose && !info->decoder_parameters->force_rgb)
+					fprintf(stdout, "[WARNING] Input file %s contains a color profile,\nbut the codec is unable to store this profile in the output file %s.\nThe profile will therefore be applied to the output image before saving.\n", infile, outfile);
+				color_apply_icc_profile(image,
+					info->decoder_parameters->force_rgb,
+					info->decoder_parameters->verbose);
 #endif
-		free(image->icc_profile_buf);
-		image->icc_profile_buf = nullptr;
-		image->icc_profile_len = 0;
+			}
+		}
+		if (!image->icc_profile_len ||
+			(info->decoder_parameters->force_rgb || !canStoreICC)) {
+			free(image->icc_profile_buf);
+			image->icc_profile_buf = nullptr;
+			image->icc_profile_len = 0;
+		}
 	}
+
 
 	/* Force output precision */
 	/* ---------------------- */
