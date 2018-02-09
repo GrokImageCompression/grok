@@ -64,7 +64,7 @@
 bool RAWFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return encode_common(image, filename.c_str(), bigEndian) ? false : true;
+	return encode_common(image, filename.c_str(), bigEndian,verbose) ? false : true;
 }
 opj_image_t* RAWFormat::decode(std::string filename, opj_cparameters_t *parameters) {
 	return decode_common(filename.c_str(), parameters, bigEndian);
@@ -199,7 +199,8 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	}
 
 	if (fread(&ch, 1, 1, f)) {
-		fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
+		if (parameters->verbose)
+			fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
 	}
 cleanup:
 	if (f && !readFromStdin)
@@ -207,7 +208,10 @@ cleanup:
 	return image;
 }
 
-int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_endian)
+int RAWFormat::encode_common(opj_image_t * image, 
+							const char *outfile,
+							bool big_endian,
+							bool verbose)
 {
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
 	FILE *rawFile = nullptr;
@@ -263,11 +267,13 @@ int RAWFormat::encode_common(opj_image_t * image, const char *outfile, bool big_
 	}
 
 	fails = 1;
-	fprintf(stdout, "Raw image characteristics: %d components\n", image->numcomps);
+	if (verbose)
+		fprintf(stdout, "Raw image characteristics: %d components\n", image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
-		fprintf(stdout, "Component %u characteristics: %dx%dx%d %s\n", compno, image->comps[compno].w,
-			image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
+		if (verbose)
+			fprintf(stdout, "Component %u characteristics: %dx%dx%d %s\n", compno, image->comps[compno].w,
+				image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
 
 		w = (int)image->comps[compno].w;
 		h = (int)image->comps[compno].h;

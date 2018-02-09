@@ -708,6 +708,10 @@ static int parse_cmdline_encoder_ex(int argc,
 		img_fol->set_out_format = 0;
 		parameters->raw_cp.rawWidth = 0;
 
+
+		if (verboseArg.isSet()) {
+			parameters->verbose = verboseArg.getValue();
+		}
 		if (repetitionsArg.isSet()) {
 			parameters->repeats = repetitionsArg.getValue();
 		}
@@ -737,7 +741,8 @@ static int parse_cmdline_encoder_ex(int argc,
 			auto dummy = "dummy." + inForArg.getValue();
 			char *infile = (char*)(dummy).c_str();
 			parameters->decod_format = get_file_format(infile);
-			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)){
+			if (parameters->verbose &&
+				!isNonJPEG2000FileFormatSupported(parameters->decod_format)){
 				fprintf(stdout,
 					"[WARNING] Ignoring unknown input file format: %s \n"
 					"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
@@ -1286,11 +1291,6 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->tp_on = 1;
 
 		}
-
-		if (verboseArg.isSet()) {
-			parameters->verbose = verboseArg.getValue();
-		}
-
 	}
 	catch (ArgException &e)  // catch any exceptions
 	{

@@ -27,6 +27,9 @@ public:
 private:
 	bool bigEndian;
 	opj_image_t* decode_common(const char *filename, opj_cparameters_t *parameters, bool big_endian);
-	int encode_common(opj_image_t * image, const char *outfile, bool big_endian);
+	int encode_common(opj_image_t * image, 
+					const char *outfile,
+					bool big_endian, 
+					bool verbose);
 
 };
