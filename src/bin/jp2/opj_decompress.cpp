@@ -1752,7 +1752,9 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 									info->output_file_name;
 			if (parameters->verbose && !info->decoder_parameters->force_rgb)
 				fprintf(stdout, "[WARNING] Input file %s contains a color profile,\nbut the codec is unable to store this profile in the output file %s.\nThe profile will therefore be applied to the output image before saving.\n", infile, outfile);
-			color_apply_profile(image, info->decoder_parameters->force_rgb);
+			color_apply_profile(image, 
+								info->decoder_parameters->force_rgb,
+								info->decoder_parameters->verbose);
 #endif
 		free(image->icc_profile_buf);
 		image->icc_profile_buf = nullptr;

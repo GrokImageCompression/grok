@@ -2035,7 +2035,9 @@ bool jp2_decode(jp2_t *jp2,
         }
 
         /* Set Image Color Space */
-        if (jp2->enumcs == 16)
+		if (jp2->enumcs == 12)
+			p_image->color_space = OPJ_CLRSPC_CMYK;
+        else if (jp2->enumcs == 16)
             p_image->color_space = OPJ_CLRSPC_SRGB;
         else if (jp2->enumcs == 17)
             p_image->color_space = OPJ_CLRSPC_GRAY;
@@ -2043,8 +2045,6 @@ bool jp2_decode(jp2_t *jp2,
             p_image->color_space = OPJ_CLRSPC_SYCC;
         else if (jp2->enumcs == 24)
             p_image->color_space = OPJ_CLRSPC_EYCC;
-        else if (jp2->enumcs == 12)
-            p_image->color_space = OPJ_CLRSPC_CMYK;
         else
             p_image->color_space = OPJ_CLRSPC_UNKNOWN;
 

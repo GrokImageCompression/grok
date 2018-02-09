@@ -68,7 +68,7 @@
 #include <lcms2.h>
 #endif
 
-static void color_cielab_to_rgb(opj_image_t *image);
+static void color_cielab_to_rgb(opj_image_t *image, bool verbose);
 
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
@@ -442,7 +442,7 @@ void color_sycc_to_rgb(opj_image_t *img)
 #if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_profile(opj_image_t *image, bool forceRGB)
+void color_apply_profile(opj_image_t *image, bool forceRGB, bool verbose)
 {
 	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
@@ -460,7 +460,7 @@ void color_apply_profile(opj_image_t *image, bool forceRGB)
 		return;
 
 	if (image->icc_profile_buf && !image->icc_profile_len) {
-		color_cielab_to_rgb(image);
+		color_cielab_to_rgb(image,verbose);
 		return;
 	}
 
@@ -733,14 +733,15 @@ cleanup:
 		cmsDeleteTransform(transform);
 }/* color_apply_profile() */
 
-static void color_cielab_to_rgb(opj_image_t *image)
-{
+// transform LAB colour space to sRGB @ 16 bit precision
+static void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     int *row;
     int enumcs, numcomps;
     image->color_space = OPJ_CLRSPC_SRGB;
     numcomps = (int)image->numcomps;
     if(numcomps != 3) {
-        fprintf(stderr,"[ERROR] %s:%d:\n\tnumcomps %d not handled. Quitting.\n",
+		if (verbose)
+			fprintf(stdout,"[WARNING] %s:%d:\n\tnumcomps %d not handled. Quitting.\n",
                 __FILE__,__LINE__,numcomps);
         return;
     }
@@ -749,19 +750,22 @@ static void color_cielab_to_rgb(opj_image_t *image)
     row = (int*)image->icc_profile_buf;
     enumcs = row[0];
 	if (enumcs != 14) { /* CIELab */
-		fprintf(stderr, "[ERROR] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__, __LINE__, enumcs);
+		if (verbose)
+			fprintf(stdout, "[WARNING] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__, __LINE__, enumcs);
 		return;
 	}
- 
     int *L, *a, *b, *red, *green, *blue;
     int *src0, *src1, *src2, *dst0, *dst1, *dst2;
-    double rl, ol, ra, oa, rb, ob, prec0, prec1, prec2;
+	// range, offset and precision for L,a and b coordinates
+    double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
     double minL, maxL, mina, maxa, minb, maxb;
     unsigned int default_type;
     unsigned int i, max;
     cmsUInt16Number RGB[3];
     opj_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
+	// D50 Lab input profile
 	cmsHPROFILE in = cmsCreateLab4Profile(nullptr);
+	// sRGB output profile
 	cmsHPROFILE out = cmsCreate_sRGBProfile();
 	cmsHTRANSFORM transform = 
 		cmsCreateTransform(in, TYPE_Lab_DBL, out, TYPE_RGB_16, INTENT_PERCEPTUAL, 0);
@@ -772,26 +776,26 @@ static void color_cielab_to_rgb(opj_image_t *image)
     if(transform == nullptr) {
         return;
     }
-    prec0 = (double)image->comps[0].prec;
-    prec1 = (double)image->comps[1].prec;
-    prec2 = (double)image->comps[2].prec;
+    prec_L = (double)image->comps[0].prec;
+    prec_a = (double)image->comps[1].prec;
+    prec_b = (double)image->comps[2].prec;
 
     default_type = (unsigned int)row[1];
 
-    if(default_type == 0x44454600) { /* DEF : default */
-        rl = 100;
-        ra = 170;
-        rb = 200;
-        ol = 0;
-        oa = pow(2, prec1 - 1);
-        ob = pow(2, prec2 - 2) +  pow(2, prec2 - 3);
+    if(default_type == 0x44454600) { // default Lab space
+        r_L = 100;
+        r_a = 170;
+        r_b = 200;
+        o_L = 0;
+        o_a = pow(2, prec_a - 1);	 // 2 ^ (prec_b - 1)
+        o_b = 3 * pow(2, prec_b - 3); // 0.75 * 2 ^ (prec_b - 1)
     } else {
-        rl = row[2];
-        ra = row[4];
-        rb = row[6];
-        ol = row[3];
-        oa = row[5];
-        ob = row[7];
+        r_L = row[2];
+        r_a = row[4];
+        r_b = row[6];
+        o_L = row[3];
+        o_a = row[5];
+        o_b = row[7];
     }
 
     L = src0 = image->comps[0].data;
@@ -811,29 +815,29 @@ static void color_cielab_to_rgb(opj_image_t *image)
     opj_image_destroy(new_image);
     new_image = nullptr;
 
-    minL = -(rl * ol) / (pow(2, prec0) - 1);
-    maxL = minL + rl;
+    minL = -(r_L * o_L) / (pow(2, prec_L) - 1);
+    maxL = minL + r_L;
 
-    mina = -(ra * oa)/(pow(2, prec1)-1);
-    maxa = mina + ra;
+    mina = -(r_a * o_a)/(pow(2, prec_a)-1);
+    maxa = mina + r_a;
 
-    minb = -(rb * ob)/(pow(2, prec2)-1);
-    maxb = minb + rb;
+    minb = -(r_b * o_b)/(pow(2, prec_b)-1);
+    maxb = minb + r_b;
 
     for(i = 0; i < max; ++i) {
 		cmsCIELab Lab;
-        Lab.L = minL + (double)(*L) * (maxL - minL)/(pow(2, prec0)-1);
+        Lab.L = minL + (double)(*L) * (maxL - minL)/(pow(2, prec_L)-1);
         ++L;
-        Lab.a = mina + (double)(*a) * (maxa - mina)/(pow(2, prec1)-1);
+        Lab.a = mina + (double)(*a) * (maxa - mina)/(pow(2, prec_a)-1);
         ++a;
-        Lab.b = minb + (double)(*b) * (maxb - minb)/(pow(2, prec2)-1);
+        Lab.b = minb + (double)(*b) * (maxb - minb)/(pow(2, prec_b)-1);
         ++b;
 
         cmsDoTransform(transform, &Lab, RGB, 1);
 
-        *red++ = RGB[0];
-        *green++ = RGB[1];
-        *blue++ = RGB[2];
+        *red++		= RGB[0];
+        *green++	= RGB[1];
+        *blue++		= RGB[2];
     }
     cmsDeleteTransform(transform);
     opj_image_all_components_data_free(image);
