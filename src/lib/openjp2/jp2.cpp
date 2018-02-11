@@ -154,18 +154,6 @@ static bool jp2_read_uuid(jp2_t *jp2,
 	uint32_t p_header_data_size,
 	event_mgr_t * p_manager);
 
-/**
-* Writes a UUID box
-*
-* @param jp2					jpeg2000 file codec.
-* @param p_nb_bytes_written		pointer to store the nb of bytes written by the function.
-*
-* @return	the data being copied.
-*/
-static uint8_t * jp2_write_uuids(jp2_t *jp2,
-	uint32_t * p_nb_bytes_written);
-
-
 
 /**
 * Reads a Resolution box
@@ -309,6 +297,10 @@ static bool jp2_read_jp2h(  jp2_t *jp2,
 static bool jp2_write_jp2h(jp2_t *jp2,
                                GrokStream *stream,
                                event_mgr_t * p_manager );
+
+static bool jp2_write_uuids(jp2_t *jp2,
+							GrokStream *stream,
+							event_mgr_t * p_manager);
 
 /**
  * Writes the Jpeg2000 codestream Header box - JP2C Header box. This function must be called AFTER the coding has been done.
@@ -847,53 +839,6 @@ static bool jp2_read_uuid(jp2_t *jp2,
 	return false;
 
 }
-
-static uint8_t * jp2_write_uuids(jp2_t *jp2,
-									uint32_t * p_nb_bytes_written) {
-
-	
-	assert(jp2 != nullptr);
-	assert(p_nb_bytes_written != nullptr);
-
-	// calculate total size needed for all uuids
-	size_t total_uuid_size = 0;
-	for (size_t i = 0; i < jp2->numUuids; ++i) {
-		auto uuid = jp2->uuids + i;
-		if (uuid->buffer && uuid->len) {
-			total_uuid_size += 8 + 16 + uuid->len;
-		}
-	}
-	auto l_uuid_data = (uint8_t *)grok_calloc(1, total_uuid_size);
-	if (l_uuid_data == nullptr) {
-		return nullptr;
-	}
-	uint8_t *l_current_uuid_ptr = l_uuid_data;
-
-	// write the uuids
-	for (size_t i = 0; i < jp2->numUuids; ++i) {
-		auto uuid = jp2->uuids + i;
-		if (uuid->buffer && uuid->len) {
-			/* write box size */
-			grok_write_bytes(l_current_uuid_ptr, (uint32_t)(8 + 16 + uuid->len), 4);
-			l_current_uuid_ptr += 4;
-
-			/* JP2_UUID */
-			grok_write_bytes(l_current_uuid_ptr, JP2_UUID, 4);					
-			l_current_uuid_ptr += 4;
-
-			/* uuid  */
-			memcpy(l_current_uuid_ptr, uuid->uuid, 16);							
-			l_current_uuid_ptr += 16;
-
-			/* uuid data */
-			memcpy(l_current_uuid_ptr, uuid->buffer, (uint32_t)uuid->len);	
-			l_current_uuid_ptr += uuid->len;
-		}
-	}
-	*p_nb_bytes_written = (uint32_t)total_uuid_size;
-	return l_uuid_data;
-}
-
 
 double calc_res(uint16_t num, uint16_t den, int8_t exponent) {
 	if (den == 0)
@@ -2091,9 +2036,7 @@ bool jp2_decode(jp2_t *jp2,
 
 static bool jp2_write_jp2h(jp2_t *jp2,
                                GrokStream *stream,
-                               event_mgr_t * p_manager
-                              )
-{
+                               event_mgr_t * p_manager){
     jp2_img_header_writer_handler_t l_writers [32];
     jp2_img_header_writer_handler_t * l_current_writer;
 
@@ -2134,10 +2077,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
 	if (jp2->xml.buffer && jp2->xml.len) {
 		l_writers[l_nb_writers++].handler = jp2_write_xml;
 	}
-	if (jp2->numUuids) {
-		l_writers[l_nb_writers++].handler = jp2_write_uuids;
-	}
-
+	
     l_current_writer = l_writers;
     for (i=0; i<l_nb_writers; ++i) {
         l_current_writer->m_data = l_current_writer->handler(jp2,&(l_current_writer->m_size));
@@ -2197,6 +2137,32 @@ static bool jp2_write_jp2h(jp2_t *jp2,
 
     return l_result;
 }
+
+static bool jp2_write_uuids(jp2_t *jp2,
+	GrokStream *cio,
+	event_mgr_t * p_manager) {
+	assert(jp2 != nullptr);
+
+	// write the uuids
+	for (size_t i = 0; i < jp2->numUuids; ++i) {
+		auto uuid = jp2->uuids + i;
+		if (uuid->buffer && uuid->len) {
+			/* write box size */
+			cio->write_int((uint32_t)(8 + 16 + uuid->len), p_manager);
+
+			/* JP2_UUID */
+			cio->write_int(JP2_UUID, p_manager);
+
+			/* uuid  */
+			cio->write_bytes(uuid->uuid, 16, p_manager);
+
+			/* uuid data */
+			cio->write_bytes(uuid->buffer, (uint32_t)uuid->len, p_manager);
+		}
+	}
+	return true;
+}
+
 
 static bool jp2_write_ftyp(jp2_t *jp2,
                                GrokStream *cio,
@@ -2861,7 +2827,6 @@ bool jp2_start_compress(jp2_t *jp2,
     if (! jp2_exec (jp2,jp2->m_procedure_list,stream,p_manager)) {
         return false;
     }
-
     return j2k_start_compress(jp2->j2k,stream,p_image,p_manager);
 }
 
@@ -3262,6 +3227,9 @@ static bool jp2_setup_header_writing (jp2_t *jp2, event_mgr_t * p_manager)
     if (! procedure_list_add_procedure(jp2->m_procedure_list,(procedure)jp2_write_jp2h, p_manager)) {
         return false;
     }
+	if (!procedure_list_add_procedure(jp2->m_procedure_list, (procedure)jp2_write_uuids, p_manager)) {
+		return false;
+	}
     if (! procedure_list_add_procedure(jp2->m_procedure_list,(procedure)jp2_skip_jp2c,p_manager)) {
         return false;
     }

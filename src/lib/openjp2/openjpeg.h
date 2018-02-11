@@ -1693,7 +1693,7 @@ OPJ_API bool OPJ_CALLCONV opj_setup_encoder(opj_codec_t *p_codec,
  * Start to compress the current image.
  * @param p_codec 		Compressor handle
  * @param image 	    Input filled image
- * @param p_stream 		Input stgream
+ * @param p_stream 		Input stream
  */
 OPJ_API bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
         opj_image_t * p_image,
@@ -1702,7 +1702,7 @@ OPJ_API bool OPJ_CALLCONV opj_start_compress (	opj_codec_t *p_codec,
 /**
  * End to compress the current image.
  * @param p_codec 		Compressor handle
- * @param p_stream 		Input stgream
+ * @param p_stream 		Input stream
  */
 OPJ_API bool OPJ_CALLCONV opj_end_compress (opj_codec_t *p_codec,
         opj_stream_t *p_stream);
