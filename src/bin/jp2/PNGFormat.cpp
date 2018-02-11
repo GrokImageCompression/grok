@@ -585,6 +585,16 @@ static int imagetopng(opj_image_t * image,
 
 	}
 
+	if (image->xmp_buf && image->xmp_len) {
+		png_text txt;
+		txt.key = (png_charp) "XML:com.adobe.xmp";
+		txt.compression = PNG_ITXT_COMPRESSION_NONE;
+		txt.text_length = image->xmp_len;
+		txt.text = (png_charp)image->xmp_buf;
+		txt.lang = NULL;
+		txt.lang_key = NULL;
+		png_set_text(local_info.png,info, &txt, 1);
+	}
 	// handle libpng errors
 	if (setjmp(png_jmpbuf(local_info.png))) {
 		goto beach;
