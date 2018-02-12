@@ -1352,6 +1352,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
+#ifdef GROK_HAVE_LIBPNG
+	pngSetVerboseFlag(initParams->parameters.verbose);
+#endif
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec

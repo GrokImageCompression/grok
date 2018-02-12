@@ -79,6 +79,20 @@
 #define MAGIC_SIZE 8
  /* PNG allows bits per sample: 1, 2, 4, 8, 16 */
 
+static bool pngWarningHandlerVerbose = true;
+
+static void png_warning_fn(png_structp png_ptr,
+						 png_const_charp warning_message) {
+	if (pngWarningHandlerVerbose) {
+		fprintf(stderr, "libpng warning: %s", warning_message);
+		fprintf(stderr, "\n");
+	}
+}
+
+void pngSetVerboseFlag(bool verbose) {
+	pngWarningHandlerVerbose = verbose;
+}
+
 static std::string convert_wide_to_narrow(const wchar_t* input) {
 	if (!input)
 		return "";
@@ -126,7 +140,8 @@ struct pngToImageInfo {
 };
 
 
-static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
+static opj_image_t *pngtoimage(const char *read_idf, 
+								opj_cparameters_t * params)
 {
 	pngToImageInfo local_info;
 	png_infop    info = nullptr;
@@ -164,7 +179,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	}
 
 	if ((local_info.png = png_create_read_struct(PNG_LIBPNG_VER_STRING,
-		nullptr, nullptr, nullptr)) == nullptr)
+		nullptr, nullptr, png_warning_fn)) == nullptr)
 		goto beach;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
