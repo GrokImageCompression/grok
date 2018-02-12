@@ -659,6 +659,12 @@ static int imagetopng(opj_image_t * image,
 		txt.lang_key = NULL;
 		png_set_text(local_info.png,info, &txt, 1);
 	}
+
+	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
+		png_set_pHYs(local_info.png, info, (png_uint_32)(image->capture_resolution[0]),
+			(png_uint_32)(image->capture_resolution[1]), PNG_RESOLUTION_METER);
+	}
+
 	// handle libpng errors
 	if (setjmp(png_jmpbuf(local_info.png))) {
 		goto beach;
