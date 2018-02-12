@@ -1361,23 +1361,17 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 	res[1] = resy;
 
 	switch (resUnit) {
-		// no known units. Used for images with non-square pixels
-	case 1:
-		break;
-		// inches  
-	case 2:
+	case RESUNIT_INCH:
 		//2.54 cm / inch
 		res[0] *= 100 / 2.54;
 		res[1] *= 100 / 2.54;
 		break;
 		// cm
-	case 3:
+	case RESUNIT_CENTIMETER:
 		res[0] *= 100;
 		res[1] *= 100;
 		break;
 	default:
-		res[0] = 0;
-		res[1] = 0;
 		break;
 	}
 }
@@ -1439,15 +1433,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint32_t xmp_len = 0;
 	uint16* sampleinfo = nullptr;
 	uint16 extrasamples = 0;
-
-
-	bool hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-	bool hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-	bool hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
-	if (hasXRes && hasYRes && hasResUnit) {
-		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
-		parameters->write_capture_resolution_from_file = true;
-	}
+	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"
@@ -1623,6 +1609,16 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 			else
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
 		}
+	}
+
+	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
+		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+		parameters->write_capture_resolution_from_file = true;
+		image->capture_resolution[0] = tiXRes;
+		image->capture_resolution[1] = tiYRes;
 	}
 
 
