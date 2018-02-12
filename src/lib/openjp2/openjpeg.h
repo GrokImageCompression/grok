@@ -644,6 +644,14 @@ typedef struct opj_header_info {
 	char* comment[OPJ_NUM_COMMENTS_SUPPORTED];
 	size_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[OPJ_NUM_COMMENTS_SUPPORTED];
+
+	bool  has_capture_resolution;
+	double capture_resolution[2];
+
+	bool  has_display_resolution;
+	double display_resolution[2];
+
+
 } opj_header_info_t;
 
 #define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001

@@ -202,10 +202,10 @@ struct jp2_t {
 
     bool ignore_pclr_cmap_cdef;
 
-	bool  write_capture_resolution;
+	bool  has_capture_resolution;
 	double capture_resolution[2];
 
-	bool  write_display_resolution;
+	bool  has_display_resolution;
 	double display_resolution[2];
 
 	jp2_buffer_t xml;
