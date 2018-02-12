@@ -142,6 +142,8 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	convert_32s_CXPX cvtCxToPx = nullptr;
 	int32_t* planes[4];
 	int srgbIntent = -1;
+	png_textp text_ptr;
+	int num_comments = 0;
 
 	if (local_info.readFromStdin) {
 		if (!grok_set_binary_mode(stdin))
@@ -168,7 +170,7 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
 	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
-
+	
 	// treat some errors as warnings
 	png_set_benign_errors(local_info.png, 1);
 
@@ -344,6 +346,35 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	fprintf(stdout, "[WARNING]  input PNG contains chroma information which will not be stored in compressed image.\n");
 	}
 	*/
+		
+	num_comments = png_get_text(local_info.png, info, &text_ptr, NULL);
+	if (num_comments) {
+		for (int i = 0; i < num_comments; ++i) {
+			const char* key = text_ptr[i].key;
+			if (!strcmp(key, "Description")) {
+
+			}
+			else if (!strcmp(key, "Author")) {
+
+			}
+			else if (!strcmp(key, "Title")) {
+
+			}
+			else if (!strcmp(key, "XML:com.adobe.xmp")) {
+				if (text_ptr[i].text_length) {
+					local_info.image->xmp_len = text_ptr[i].text_length;
+					local_info.image->xmp_buf = (uint8_t*)malloc(local_info.image->xmp_len);
+					if (!local_info.image->xmp_buf)
+						return nullptr;
+					memcpy(local_info.image->xmp_buf, text_ptr[i].text, local_info.image->xmp_len);
+				}
+			}
+			// other comments
+			else {
+
+			}
+		}
+	}
 
 
 	local_info.row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
