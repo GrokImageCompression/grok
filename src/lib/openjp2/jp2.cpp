@@ -922,9 +922,11 @@ static bool jp2_read_res(jp2_t *jp2,
 		switch (id) {
 		case JP2_CAPTURE_RES:
 			res = jp2->capture_resolution;
+			jp2->has_capture_resolution = true;
 			break;
 		case JP2_DISPLAY_RES:
 			res = jp2->display_resolution;
+			jp2->has_display_resolution = true;
 			break;
 		default:
 			return false;
@@ -2064,7 +2066,7 @@ static bool jp2_write_jp2h(jp2_t *jp2,
         l_writers[l_nb_writers++].handler = jp2_write_cdef;
     }
 
-	if (jp2->write_display_resolution || jp2->write_capture_resolution) {
+	if (jp2->has_display_resolution || jp2->has_capture_resolution) {
 		bool storeCapture = jp2->capture_resolution[0] > 0 &&
 			jp2->capture_resolution[1] > 0;
 
@@ -2474,40 +2476,40 @@ bool jp2_setup_encoder(	jp2_t *jp2,
     jp2->approx = 0;		/* APPROX */
 
 	if (parameters->write_capture_resolution) {
-		jp2->write_capture_resolution = true;
+		jp2->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			jp2->capture_resolution[i] = parameters->capture_resolution[i];
 		}
 	}
 	else if (parameters->write_capture_resolution_from_file) {
-		jp2->write_capture_resolution = true;
+		jp2->has_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			jp2->capture_resolution[i] = parameters->capture_resolution_from_file[i];
 		}
 	}
 	if (parameters->write_display_resolution) {
-		jp2->write_display_resolution = true;
+		jp2->has_display_resolution = true;
 		double resX = parameters->display_resolution[0];
 		double resY = parameters->display_resolution[1];
 		//if display resolution equals (0,0), then use capture resolution
 		//if available
 		if (resX == 0 && resY == 0) {
-			if (jp2->write_capture_resolution) {
+			if (jp2->has_capture_resolution) {
 				resX = parameters->capture_resolution[0];
 				resY = parameters->capture_resolution[1];
 			}
 			else {
-				jp2->write_display_resolution = false;
+				jp2->has_display_resolution = false;
 			}
 		}
-		if (jp2->write_display_resolution) {
+		if (jp2->has_display_resolution) {
 			jp2->display_resolution[0] = resX;
 			jp2->display_resolution[1] = resY;
 		}
 	}
 
 	if (parameters->write_display_resolution) {
-		jp2->write_display_resolution = true;
+		jp2->has_display_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			jp2->display_resolution[i] = parameters->display_resolution[i];
 		}
@@ -3194,6 +3196,20 @@ bool jp2_read_header(	GrokStream *p_stream,
 
 		header_info->xml_data		= jp2->xml.buffer;
 		header_info->xml_data_len	= jp2->xml.len;
+
+		if (jp2->has_capture_resolution) {
+			header_info->has_capture_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				header_info->capture_resolution[i] = 
+								jp2->capture_resolution[i];
+		}
+
+		if (jp2->has_display_resolution) {
+			header_info->has_display_resolution = true;
+			for (int i = 0; i < 2; ++i)
+				header_info->display_resolution[i] =
+				jp2->display_resolution[i];
+		}
 	}
 
     bool rc =  j2k_read_header(	p_stream,
