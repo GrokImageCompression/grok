@@ -249,7 +249,7 @@ struct tcd_precinct_t {
 	void cleanupEncodeBlocks() {
 		if (!cblks.enc)
 			return;
-		for (uint32_t i = 0; i < cw*ch; ++i)
+		for (uint64_t i = 0; i < (uint64_t)cw*ch; ++i)
 			(cblks.enc + i)->cleanup();
 		delete[] cblks.enc;
 	}
@@ -266,7 +266,7 @@ struct tcd_precinct_t {
         tcd_cblk_dec_t* dec;
         void*               blocks;
     } cblks;
-    uint32_t block_size;			/* size taken by cblks (in bytes) */
+    uint64_t block_size;	/* size taken by cblks (in bytes) */
     TagTree *incltree;	    /* inclusion tree */
     TagTree *imsbtree;	    /* IMSB tree */
 };

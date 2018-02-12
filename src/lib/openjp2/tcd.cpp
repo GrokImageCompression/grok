@@ -808,7 +808,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                                      event_mgr_t* manager)
 {
     uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
-    uint32_t compno, resno, bandno, precno, cblkno;
+    uint32_t compno, resno, bandno, precno;
     tcp_t * l_tcp = nullptr;
     cp_t * l_cp = nullptr;
     tcd_tile_t * l_tile = nullptr;
@@ -833,9 +833,9 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     /* room needed to store l_nb_precinct precinct for a resolution */
     uint32_t l_nb_precinct_size;
     /* number of code blocks for a precinct*/
-    uint32_t l_nb_code_blocks;
+    uint64_t l_nb_code_blocks, cblkno;
     /* room needed to store l_nb_code_blocks code blocks for a precinct*/
-    uint32_t l_nb_code_blocks_size;
+	uint64_t l_nb_code_blocks_size;
 
 	uint32_t state = grok_plugin_get_debug_state();
 
@@ -1083,18 +1083,9 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     l_current_precinct->cw = ((brcblkxend - tlcblkxstart) >> cblkwidthexpn);
                     l_current_precinct->ch = ((brcblkyend - tlcblkystart) >> cblkheightexpn);
 
-					if (mult_will_overflow(l_current_precinct->cw, l_current_precinct->ch)) {
-						event_msg(manager, EVT_ERROR, "l_nb_code_blocks calculation would overflow \n");
-						return false;
-					}
-                    l_nb_code_blocks = l_current_precinct->cw * l_current_precinct->ch;
+                    l_nb_code_blocks = (uint64_t)l_current_precinct->cw * l_current_precinct->ch;
                     /*fprintf(stderr, "\t\t\t\t precinct_cw = %d x recinct_ch = %d\n",l_current_precinct->cw, l_current_precinct->ch);      */
-
-					if (mult_will_overflow(l_nb_code_blocks, (uint32_t)sizeof_block)) {
-						event_msg(manager, EVT_ERROR, "l_nb_code_blocks_size calculation would overflow \n");
-						return false;
-					}
-                    l_nb_code_blocks_size = l_nb_code_blocks * (uint32_t)sizeof_block;
+                    l_nb_code_blocks_size = l_nb_code_blocks * sizeof_block;
 
                     if (!l_current_precinct->cblks.blocks && (l_nb_code_blocks > 0U)) {
                         l_current_precinct->cblks.blocks = grok_malloc(l_nb_code_blocks_size);
@@ -1813,7 +1804,7 @@ static bool tcd_dc_level_shift_decode ( tcd_t *p_tcd )
  */
 static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
 {
-    size_t cblkno , l_nb_code_blocks;
+    uint64_t cblkno , l_nb_code_blocks;
     tcd_cblk_dec_t * l_code_block = p_precinct->cblks.dec;
     if (l_code_block) {
         /*fprintf(stderr,"deallocate codeblock:{\n");*/
@@ -1839,7 +1830,7 @@ static void tcd_code_block_dec_deallocate (tcd_precinct_t * p_precinct)
  */
 static void tcd_code_block_enc_deallocate (tcd_precinct_t * p_precinct)
 {
-    size_t cblkno , l_nb_code_blocks;
+    uint64_t cblkno , l_nb_code_blocks;
     tcd_cblk_enc_t * l_code_block = p_precinct->cblks.enc;
     if (l_code_block) {
         l_nb_code_blocks = p_precinct->block_size / sizeof(tcd_cblk_enc_t);
