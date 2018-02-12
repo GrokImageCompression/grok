@@ -159,6 +159,8 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	int srgbIntent = -1;
 	png_textp text_ptr;
 	int num_comments = 0;
+	int unit;
+	png_uint_32 resx, resy;
 
 	if (local_info.readFromStdin) {
 		if (!grok_set_binary_mode(stdin))
@@ -391,6 +393,17 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		}
 	}
 
+	if (png_get_pHYs(local_info.png, info, &resx, &resy, &unit)) {
+		if (unit == PNG_RESOLUTION_METER) {
+			local_info.image->capture_resolution[0] = resx;
+			local_info.image->capture_resolution[1] = resy;
+		}
+		else {
+			if (params->verbose) {
+				fprintf(stdout, "[WARNING]  input PNG contains resolution information in unknown units. Ignoring\n");
+			}
+		}
+	}
 
 	local_info.row32s = (int32_t *)malloc((size_t)width * nr_comp * sizeof(int32_t));
 	if (local_info.row32s == nullptr)
