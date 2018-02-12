@@ -76,31 +76,33 @@ opj_compress -i @INPUT_NR_PATH@/issue203-127x64-bgr16.bmp -o @TEMP_PATH@/issue20
 opj_compress -i @INPUT_NR_PATH@/issue203-127x64-bgrx.bmp -o @TEMP_PATH@/issue203-127x64-bgrx.bmp.jp2
 
 # issue 322 limited tif support 
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-01.tif -o @TEMP_PATH@/flower-minisblack-01.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-02.tif -o @TEMP_PATH@/flower-minisblack-02.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-04.tif -o @TEMP_PATH@/flower-minisblack-04.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-06.tif -o @TEMP_PATH@/flower-minisblack-06.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-08.tif -o @TEMP_PATH@/flower-minisblack-08.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-10.tif -o @TEMP_PATH@/flower-minisblack-10.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-12.tif -o @TEMP_PATH@/flower-minisblack-12.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-14.tif -o @TEMP_PATH@/flower-minisblack-14.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-16.tif -o @TEMP_PATH@/flower-minisblack-16.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-02.tif -o @TEMP_PATH@/flower-rgb-contig-02.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-04.tif -o @TEMP_PATH@/flower-rgb-contig-04.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-08.tif -o @TEMP_PATH@/flower-rgb-contig-08.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-10.tif -o @TEMP_PATH@/flower-rgb-contig-10.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-12.tif -o @TEMP_PATH@/flower-rgb-contig-12.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-14.tif -o @TEMP_PATH@/flower-rgb-contig-14.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-16.tif -o @TEMP_PATH@/flower-rgb-contig-16.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-02.tif -o @TEMP_PATH@/flower-rgb-planar-02.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-04.tif -o @TEMP_PATH@/flower-rgb-planar-04.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-08.tif -o @TEMP_PATH@/flower-rgb-planar-08.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-10.tif -o @TEMP_PATH@/flower-rgb-planar-10.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-12.tif -o @TEMP_PATH@/flower-rgb-planar-12.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-14.tif -o @TEMP_PATH@/flower-rgb-planar-14.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-16.tif -o @TEMP_PATH@/flower-rgb-planar-16.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/basn6a08.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/basn4a08.tif.jp2
+# note: since our reference files do not have capture resolution stored, we disable capture resolution 
+# storage via command line parameter "-Q 0,0"
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-01.tif -o @TEMP_PATH@/flower-minisblack-01.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-02.tif -o @TEMP_PATH@/flower-minisblack-02.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-04.tif -o @TEMP_PATH@/flower-minisblack-04.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-06.tif -o @TEMP_PATH@/flower-minisblack-06.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-08.tif -o @TEMP_PATH@/flower-minisblack-08.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-10.tif -o @TEMP_PATH@/flower-minisblack-10.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-12.tif -o @TEMP_PATH@/flower-minisblack-12.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-14.tif -o @TEMP_PATH@/flower-minisblack-14.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-16.tif -o @TEMP_PATH@/flower-minisblack-16.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-02.tif -o @TEMP_PATH@/flower-rgb-contig-02.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-04.tif -o @TEMP_PATH@/flower-rgb-contig-04.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-08.tif -o @TEMP_PATH@/flower-rgb-contig-08.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-10.tif -o @TEMP_PATH@/flower-rgb-contig-10.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-12.tif -o @TEMP_PATH@/flower-rgb-contig-12.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-14.tif -o @TEMP_PATH@/flower-rgb-contig-14.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-contig-16.tif -o @TEMP_PATH@/flower-rgb-contig-16.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-02.tif -o @TEMP_PATH@/flower-rgb-planar-02.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-04.tif -o @TEMP_PATH@/flower-rgb-planar-04.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-08.tif -o @TEMP_PATH@/flower-rgb-planar-08.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-10.tif -o @TEMP_PATH@/flower-rgb-planar-10.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-12.tif -o @TEMP_PATH@/flower-rgb-planar-12.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-14.tif -o @TEMP_PATH@/flower-rgb-planar-14.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-rgb-planar-16.tif -o @TEMP_PATH@/flower-rgb-planar-16.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/basn6a08.tif -o @TEMP_PATH@/basn6a08.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/basn4a08.tif -o @TEMP_PATH@/basn4a08.tif.jp2 -Q 0,0
 
 # issue 536 (PNG images are always read as RGB(A) images) + issue 264 (convert.c is unmaintainable)
 # Test all images from pngsuite
@@ -139,13 +141,15 @@ opj_compress -i @INPUT_NR_PATH@/pngsuite/ftp1n3p08.png -o @TEMP_PATH@/ftp1n3p08.
 opj_compress -i @INPUT_NR_PATH@/issue571.tif -o @TEMP_PATH@/issue571.tif.j2k
 
 # issue 729 Allow to read 3/5/7/9/11/13/15 bpp tif files 
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-03.tif -o @TEMP_PATH@/flower-minisblack-03.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-05.tif -o @TEMP_PATH@/flower-minisblack-05.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-07.tif -o @TEMP_PATH@/flower-minisblack-07.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-09.tif -o @TEMP_PATH@/flower-minisblack-09.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-11.tif -o @TEMP_PATH@/flower-minisblack-11.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-13.tif -o @TEMP_PATH@/flower-minisblack-13.tif.jp2
-opj_compress -i @INPUT_NR_PATH@/flower-minisblack-15.tif -o @TEMP_PATH@/flower-minisblack-15.tif.jp2
+# note: since our reference files do not have capture resolution stored, we disable capture resolution 
+# storage via command line parameter "-Q 0,0"
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-03.tif -o @TEMP_PATH@/flower-minisblack-03.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-05.tif -o @TEMP_PATH@/flower-minisblack-05.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-07.tif -o @TEMP_PATH@/flower-minisblack-07.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-09.tif -o @TEMP_PATH@/flower-minisblack-09.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-11.tif -o @TEMP_PATH@/flower-minisblack-11.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-13.tif -o @TEMP_PATH@/flower-minisblack-13.tif.jp2 -Q 0,0
+opj_compress -i @INPUT_NR_PATH@/flower-minisblack-15.tif -o @TEMP_PATH@/flower-minisblack-15.tif.jp2 -Q 0,0
 
 # issue 843 Crash with invalid ppm file
 !opj_compress -i @INPUT_NR_PATH@/issue843.ppm -o @TEMP_PATH@/issue843.ppm.jp2

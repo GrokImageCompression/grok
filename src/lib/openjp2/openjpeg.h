@@ -520,10 +520,17 @@ typedef struct opj_cparameters {
     /** RSIZ value
         To be used to combine OPJ_PROFILE_*, OPJ_EXTENSION_* and (sub)levels values. */
     uint16_t rsiz;
+
+	// set to true if input file stores capture resolution
+	bool  write_capture_resolution_from_file;
+	double capture_resolution_from_file[2];
+
 	bool  write_capture_resolution;
 	double capture_resolution[2];
+
 	bool  write_display_resolution;
 	double display_resolution[2];
+
 	uint32_t rateControlAlgorithm; // 0: bisect with all truncation points,  1: bisect with only feasible truncation points
 	uint32_t numThreads;
 	int32_t deviceId;
