@@ -1697,12 +1697,20 @@ Post-process decompressed image and store in selected image format
 int post_decode(grok_plugin_decode_callback_info_t* info) {
 	if (!info)
 		return -1;
-
-	bool canStoreICC = false;
 	int failed = 0;
+	bool canStoreICC = false;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
-	const char* outfile = info->output_file_name ? info->output_file_name : parameters->outfile;
+	const char* infile =
+		info->decoder_parameters->infile[0] ?
+		info->decoder_parameters->infile :
+		info->input_file_name;
+	const char* outfile =
+		info->decoder_parameters->outfile[0] ?
+		info->decoder_parameters->outfile :
+		info->output_file_name;
+
+	//const char* outfile = info->output_file_name ? info->output_file_name : parameters->outfile;
 	int cod_format = info->cod_format != -1 ? info->cod_format : parameters->cod_format;
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
@@ -1730,6 +1738,23 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		}
 	}
 
+	if (image->xmp_buf) {
+		bool canStoreXMP = 
+			(info->decoder_parameters->cod_format == TIF_DFMT ||
+			info->decoder_parameters->cod_format == PNG_DFMT );
+		if (!canStoreXMP && parameters->verbose) {
+			fprintf(stdout, "[WARNING] Input file %s contains XMP meta-data,\nbut the file format for output file %s does not support storage of this data.\n", infile, outfile);
+		}
+	}
+
+	if (image->iptc_buf) {
+		bool canStoreIPTC_IIM =
+			(info->decoder_parameters->cod_format == TIF_DFMT);
+		if (!canStoreIPTC_IIM && parameters->verbose) {
+			fprintf(stdout, "[WARNING] Input file %s contains legacy IPTC-IIM meta-data,\nbut the file format for output file %s does not support storage of this data.\n", infile, outfile);
+		}
+	}
+
 	if (image->icc_profile_buf) {
 		if (!image->icc_profile_len)
 			color_cielab_to_rgb(image, info->decoder_parameters->verbose);
@@ -1743,14 +1768,6 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 				info->decoder_parameters->cod_format == JPG_DFMT);
 			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
-				const char* infile =
-					info->decoder_parameters->infile[0] ?
-					info->decoder_parameters->infile :
-					info->input_file_name;
-				const char* outfile =
-					info->decoder_parameters->outfile[0] ?
-					info->decoder_parameters->outfile :
-					info->output_file_name;
 				if (parameters->verbose && !info->decoder_parameters->force_rgb)
 					fprintf(stdout, "[WARNING] Input file %s contains a color profile,\nbut the codec is unable to store this profile in the output file %s.\nThe profile will therefore be applied to the output image before saving.\n", infile, outfile);
 				color_apply_icc_profile(image,
