@@ -453,7 +453,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
     OPJ_COLOR_SPACE oldspace;
     opj_image_t* new_image = nullptr;
 	unsigned char *inbuf = nullptr, *outbuf = nullptr;
-
+	(void)verbose;
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
 	in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);

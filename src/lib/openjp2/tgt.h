@@ -70,8 +70,8 @@ struct TagTreeNode {
 	TagTreeNode() : parent(nullptr), value(0), low(0), known(0) {}
 
     TagTreeNode *parent;
-    int32_t value;
-    int32_t low;
+    int64_t value;
+    int64_t low;
     uint32_t known;
 } ;
 
@@ -88,7 +88,7 @@ public:
 	@param numleafsv Height of the array of leafs of the tree
 	@return a new tag tree if successful, returns nullptr otherwise
 	*/
-	TagTree(uint32_t numleafsh, uint32_t numleafsv, event_mgr_t *manager);
+	TagTree(uint64_t numleafsh, uint64_t numleafsv, event_mgr_t *manager);
 	~TagTree();
 
 
@@ -100,7 +100,7 @@ public:
 	* @param p_manager       the event manager
 	* @return	true if successful, false otherwise
 	*/
-	bool init(uint32_t  p_num_leafs_h,	uint32_t  p_num_leafs_v, event_mgr_t *p_manager);
+	bool init(uint64_t  p_num_leafs_h, uint64_t  p_num_leafs_v, event_mgr_t *p_manager);
 
 	/**
 	Reset a tag tree (set all leaves to 0)
@@ -111,14 +111,14 @@ public:
 	@param leafno Number that identifies the leaf to modify
 	@param value New value of the leaf
 	*/
-	void setvalue(	uint32_t leafno,	int32_t value);
+	void setvalue(uint64_t leafno,	int64_t value);
 	/**
 	Encode the value of a leaf of the tag tree up to a given threshold
 	@param bio Pointer to a BIO handle
 	@param leafno Number that identifies the leaf to encode
 	@param threshold Threshold to use when encoding value of the leaf
 	*/
-	void encode(BitIO *bio,	uint32_t leafno,	int32_t threshold);
+	void encode(BitIO *bio, uint64_t leafno,	int64_t threshold);
 	/**
 	Decode the value of a leaf of the tag tree up to a given threshold
 	@param bio Pointer to a BIO handle
@@ -126,7 +126,7 @@ public:
 	@param threshold Threshold to use when decoding value of the leaf
 	@return 1 if the node's value < threshold, returns 0 otherwise
 	*/
-	bool decode(BitIO *bio, uint32_t leafno, int32_t threshold, uint8_t* decoded);
+	bool decode(BitIO *bio, uint64_t leafno, int64_t threshold, uint8_t* decoded);
 
 
 	/**
@@ -136,15 +136,15 @@ public:
 	@param threshold Threshold to use when decoding value of the leaf
 	@return the node's value
 	*/
-	bool decodeValue(BitIO *bio, uint32_t leafno, int32_t threshold, uint32_t* value);
+	bool decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold, uint64_t* value);
 
 private:
 
-    uint32_t  numleafsh;
-    uint32_t  numleafsv;
-    uint32_t numnodes;
+	uint64_t  numleafsh;
+	uint64_t  numleafsv;
+	uint64_t numnodes;
     TagTreeNode *nodes;
-    uint32_t  nodes_size;		/* maximum size taken by nodes */
+	uint64_t  nodes_size;		/* maximum size taken by nodes */
 
 
 };

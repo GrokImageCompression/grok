@@ -1115,8 +1115,8 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 					l_current_precinct->initTagTrees(manager);
 					
                     for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-                        uint32_t cblkxstart = tlcblkxstart + (cblkno % l_current_precinct->cw) * (1 << cblkwidthexpn);
-                        uint32_t cblkystart = tlcblkystart + (cblkno / l_current_precinct->cw) * (1 << cblkheightexpn);
+                        uint32_t cblkxstart = tlcblkxstart + (uint32_t)(cblkno % l_current_precinct->cw) * (1 << cblkwidthexpn);
+                        uint32_t cblkystart = tlcblkystart + (uint32_t)(cblkno / l_current_precinct->cw) * (1 << cblkheightexpn);
                         uint32_t cblkxend = cblkxstart + (1 << cblkwidthexpn);
                         uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
