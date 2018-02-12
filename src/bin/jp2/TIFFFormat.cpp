@@ -1441,30 +1441,13 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint16 extrasamples = 0;
 
 
-	// if write_capture_resolution is enabled but capture_resolution equals 0,0, then
-	// use image resolution if present
-	if (parameters->write_capture_resolution &&
-		parameters->capture_resolution[0] == 0 &&
-		parameters->capture_resolution[1] == 0) {
-
-		TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
-		TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
-		TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
-		set_resolution(parameters->capture_resolution, tiXRes, tiYRes, tiResUnit);
+	bool hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	bool hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	bool hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	if (hasXRes && hasYRes && hasResUnit) {
+		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+		parameters->write_capture_resolution_from_file = true;
 	}
-
-	// if write_display_resolution is enabled but display_resolution equals 0,0, then
-	// use image resolution if present
-	if (parameters->write_display_resolution &&
-		parameters->display_resolution[0] == 0 &&
-		parameters->display_resolution[1] == 0) {
-
-		TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes);
-		TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes);
-		TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit);
-		set_resolution(parameters->display_resolution, tiXRes, tiYRes, tiResUnit);
-	}
-
 
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"

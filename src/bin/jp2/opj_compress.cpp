@@ -1545,12 +1545,14 @@ int main(int argc, char **argv) {
 			num_images = 1;
 		}
 		/*Encoding image one by one*/
-		for (imageno = 0; imageno < num_images; imageno++) {
-			if (initParams.parameters.verbose)
-				fprintf(stdout, "\n");
+		for (imageno = 0; imageno <	num_images; imageno++) {
+			//clear for next file encode
+			initParams.parameters.write_capture_resolution_from_file = false;
+
 			//restore cached settings
 			initParams.parameters.tcp_mct = tcp_mct;
 			initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
+
 			if (initParams.img_fol.set_imgdir == 1) {
 				if (get_next_file((int)imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
 					continue;

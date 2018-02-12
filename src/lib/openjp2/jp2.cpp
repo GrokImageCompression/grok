@@ -987,7 +987,7 @@ static void jp2_write_res_box( double resx, double resy,
 	int32_t exponent[2];
 
 	for (size_t i = 0; i < 2; ++i) {
-		exponent[i] = (int32_t)log(res[i]);
+		exponent[i] = (int32_t)log10(res[i]);
 		if (exponent[i] < 1)
 			exponent[i] = 0;
 		if (exponent[i] >= 1) {
@@ -1010,7 +1010,7 @@ static void jp2_write_res_box( double resx, double resy,
 static uint8_t * jp2_write_res(jp2_t *jp2,
 									uint32_t * p_nb_bytes_written)
 {
-	uint8_t * l_res_data, *l_current_res_ptr;
+	uint8_t * l_res_data = nullptr, *l_current_res_ptr=nullptr;
 	assert(jp2);
 	assert(p_nb_bytes_written);
 
@@ -2477,6 +2477,32 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 		jp2->write_capture_resolution = true;
 		for (i = 0; i < 2; ++i) {
 			jp2->capture_resolution[i] = parameters->capture_resolution[i];
+		}
+	}
+	else if (parameters->write_capture_resolution_from_file) {
+		jp2->write_capture_resolution = true;
+		for (i = 0; i < 2; ++i) {
+			jp2->capture_resolution[i] = parameters->capture_resolution_from_file[i];
+		}
+	}
+	if (parameters->write_display_resolution) {
+		jp2->write_display_resolution = true;
+		double resX = parameters->display_resolution[0];
+		double resY = parameters->display_resolution[1];
+		//if display resolution equals (0,0), then use capture resolution
+		//if available
+		if (resX == 0 && resY == 0) {
+			if (jp2->write_capture_resolution) {
+				resX = parameters->capture_resolution[0];
+				resY = parameters->capture_resolution[1];
+			}
+			else {
+				jp2->write_display_resolution = false;
+			}
+		}
+		if (jp2->write_display_resolution) {
+			jp2->display_resolution[0] = resX;
+			jp2->display_resolution[1] = resY;
 		}
 	}
 
