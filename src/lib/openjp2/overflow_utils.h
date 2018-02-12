@@ -26,9 +26,5 @@ inline bool mult_will_overflow(uint32_t a, uint32_t b) {
 	return (b && (a > UINT_MAX / b));
 }
 
-inline bool add_will_overflow(uint32_t a, uint32_t b) {
-	return  (a > UINT_MAX - b);
-}
-
 
 }

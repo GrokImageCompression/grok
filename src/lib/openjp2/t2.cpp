@@ -618,7 +618,7 @@ namespace grk {
 	{
 		uint8_t *p_src_data = src_buf->get_global_ptr();
 		uint64_t p_max_length = src_buf->data_len - src_buf->get_global_offset();
-		uint32_t l_nb_code_blocks = 0;
+		uint64_t l_nb_code_blocks = 0;
 		uint8_t *active_src = p_src_data;
 		cp_t *l_cp = p_t2->cp;
 
@@ -637,8 +637,8 @@ namespace grk {
 					l_prc->incltree->reset();
 				if (l_prc->imsbtree)
 					l_prc->imsbtree->reset();
-				l_nb_code_blocks = l_prc->cw * l_prc->ch;
-				for (uint32_t cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
+				l_nb_code_blocks = (uint64_t)l_prc->cw * l_prc->ch;
+				for (uint64_t cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
 					auto l_cblk = l_prc->cblks.dec + cblkno;
 					l_cblk->numSegments = 0;
 				}
@@ -730,8 +730,8 @@ namespace grk {
 			}
 
 			tcd_precinct_t *l_prc = l_band->precincts + p_pi->precno;
-			l_nb_code_blocks = l_prc->cw * l_prc->ch;
-			for (uint32_t cblkno = 0; cblkno < l_nb_code_blocks; cblkno++) {
+			l_nb_code_blocks = (uint64_t)l_prc->cw * l_prc->ch;
+			for (uint64_t cblkno = 0; cblkno < l_nb_code_blocks; cblkno++) {
 				uint32_t l_included = 0, l_increment = 0;
 				auto l_cblk = l_prc->cblks.dec + cblkno;
 
@@ -886,14 +886,14 @@ namespace grk {
 		uint64_t * p_data_read,
 		event_mgr_t* p_manager)
 	{
-		uint32_t bandno, cblkno;
-		uint32_t l_nb_code_blocks;
+		uint32_t bandno;
+		uint64_t l_nb_code_blocks, cblkno;
 		tcd_band_t *l_band = nullptr;
 		tcd_cblk_dec_t* l_cblk = nullptr;
 		l_band = l_res->bands;
 		for (bandno = 0; bandno < l_res->numbands; ++bandno) {
 			tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
-			l_nb_code_blocks = l_prc->cw * l_prc->ch;
+			l_nb_code_blocks = (uint64_t)l_prc->cw * l_prc->ch;
 			l_cblk = l_prc->cblks.dec;
 
 			for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
@@ -1648,8 +1648,8 @@ namespace grk {
 		uint64_t p_max_length,
 		event_mgr_t *p_manager)
 	{
-		uint32_t bandno, cblkno;
-		uint32_t l_nb_code_blocks;
+		uint32_t bandno;
+		uint64_t l_nb_code_blocks, cblkno;
 		tcd_cblk_dec_t* l_cblk = nullptr;
 
 		*p_data_read = 0;
@@ -1661,7 +1661,7 @@ namespace grk {
 				continue;
 			}
 
-			l_nb_code_blocks = l_prc->cw * l_prc->ch;
+			l_nb_code_blocks = (uint64_t)l_prc->cw * l_prc->ch;
 			l_cblk = l_prc->cblks.dec;
 
 			for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
