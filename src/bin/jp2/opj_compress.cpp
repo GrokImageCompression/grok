@@ -1279,7 +1279,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				parameters->cp_is_binary_comment[count] = false;
 				parameters->cp_comment[count] =	(char*)malloc(s.length());
 				if (parameters->cp_comment[count]) {
-					strcpy(parameters->cp_comment[count],s.c_str());
+					memcpy(parameters->cp_comment[count],s.c_str(), s.length());
 					parameters->cp_comment_len[count] = s.length();
 					parameters->cp_num_comments++;
 				}
