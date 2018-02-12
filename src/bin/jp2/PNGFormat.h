@@ -18,6 +18,9 @@
 
 #include "ImageFormat.h"
 
+
+void pngSetVerboseFlag(bool verbose);
+
 class PNGFormat {
 public:
 	virtual ~PNGFormat() {}
