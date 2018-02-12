@@ -581,6 +581,8 @@ static opj_image_t* jpegtoimage(const char *filename,
 	* with the stdio data source.
 	*/
 cleanup:
+	if (icc_data_ptr)
+		free(icc_data_ptr);
 	jpeg_destroy_decompress(&cinfo);
 
 	/* After finish_decompress, we can close the input file.
