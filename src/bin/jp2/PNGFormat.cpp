@@ -169,6 +169,8 @@ static opj_image_t *pngtoimage(const char *read_idf, opj_cparameters_t * params)
 	// because it deems it broken. (a controversial decision)
 	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
 
+	// treat some errors as warnings
+	png_set_benign_errors(local_info.png, 1);
 
 	if ((info = png_create_info_struct(local_info.png)) == nullptr)
 		goto beach;
@@ -497,6 +499,9 @@ static int imagetopng(opj_image_t * image,
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 
 	// because it deems it broken. (a controversial decision)
 	png_set_option(local_info.png, PNG_SKIP_sRGB_CHECK_PROFILE, PNG_OPTION_ON);
+
+	// treat some errors as warnings
+	png_set_benign_errors(local_info.png, 1);
 
 	if (local_info.png == nullptr)
 		goto beach;
