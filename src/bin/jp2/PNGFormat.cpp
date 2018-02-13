@@ -83,6 +83,7 @@ static bool pngWarningHandlerVerbose = true;
 
 static void png_warning_fn(png_structp png_ptr,
 						 png_const_charp warning_message) {
+	(void)png_ptr;
 	if (pngWarningHandlerVerbose) {
 		fprintf(stderr, "libpng warning: %s", warning_message);
 		fprintf(stderr, "\n");
