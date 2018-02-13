@@ -64,7 +64,7 @@
 bool RAWFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return encode_common(image, filename.c_str(), bigEndian,verbose) ? false : true;
+	return encode_common(image, filename.c_str(), bigEndian,verbose) ? true : false;
 }
 opj_image_t* RAWFormat::decode(std::string filename, opj_cparameters_t *parameters) {
 	return decode_common(filename.c_str(), parameters, bigEndian);
