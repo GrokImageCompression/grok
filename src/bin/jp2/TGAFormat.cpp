@@ -253,8 +253,6 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	opj_image_cmptparm_t cmptparm[4];	/* maximum 4 components */
 	uint32_t numcomps;
 	OPJ_COLOR_SPACE color_space;
-	bool mono;
-	bool save_alpha;
 	uint32_t subsampling_dx, subsampling_dy;
 	uint32_t i;
 
@@ -278,15 +276,13 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 
 	/* initialize image components */
 	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
-
-	mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
-	save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); /* Mono with alpha, or RGB with alpha */
-
-	if (mono) {
+	//bool mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
+	bool save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); // Mono with alpha, or RGB with alpha
+	/*if (mono) {
 		color_space = OPJ_CLRSPC_GRAY;
 		numcomps = save_alpha ? 2 : 1;
 	}
-	else {
+	else*/ {
 		numcomps = save_alpha ? 4 : 3;
 		color_space = OPJ_CLRSPC_SRGB;
 	}
