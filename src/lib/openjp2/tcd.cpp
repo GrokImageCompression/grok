@@ -2193,7 +2193,7 @@ bool tcd_copy_tile_data (       tcd_t *p_tcd,
     uint32_t l_size_comp, l_remaining;
     uint64_t l_nb_elem;
 	uint64_t l_data_size = tcd_get_encoded_tile_size(p_tcd);
-    if (l_data_size != p_src_length) {
+    if (!p_tcd || !p_src || (l_data_size != p_src_length)) {
         return false;
     }
 

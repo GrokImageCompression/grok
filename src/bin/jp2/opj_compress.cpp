@@ -1188,9 +1188,15 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 
 			/* Set size of file and read its content*/
-			fseek(lFile, 0, SEEK_END);
+			if (fseek(lFile, 0, SEEK_END)) {
+				fclose(lFile);
+				return 1;
+			}
 			lStrLen = (size_t)ftell(lFile);
-			fseek(lFile, 0, SEEK_SET);
+			if (fseek(lFile, 0, SEEK_SET)) {
+				fclose(lFile);
+				return 1;
+			}
 			lMatrix = (char *)malloc(lStrLen + 1);
 			if (lMatrix == nullptr) {
 				fclose(lFile);
