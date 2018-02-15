@@ -254,7 +254,7 @@ int RAWFormat::encode_common(opj_image_t * image,
 	}
 
 	if (writeToStdout) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grok_set_binary_mode(stdout))
 			return 1;
 		rawFile = stdout;
 	}
