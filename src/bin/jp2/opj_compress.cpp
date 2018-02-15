@@ -1525,7 +1525,6 @@ static int compress(std::string image_filename,
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
 	CompressInitParams initParams;
-	dircnt_t *dirptr = nullptr;
 	int success = 0;
 	try {
 		// try to encode with plugin
@@ -1587,13 +1586,6 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 cleanup:
-	if (dirptr) {
-		if (dirptr->filename_buf)
-			free(dirptr->filename_buf);
-		if (dirptr->filename)
-			free(dirptr->filename);
-		free(dirptr);
-	}
 	opj_cleanup();
 	return success;
 

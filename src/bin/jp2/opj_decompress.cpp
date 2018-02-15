@@ -1967,8 +1967,17 @@ cleanup:
 		opj_image_destroy(image);
 		info->image = nullptr;
 	}
-	if (failed)
-		(void)remove(outfile); /* ignore return value */
+	if (failed) {
+		bool isFile = true;
+#ifndef _WIN32
+		struct stat statInfo;
+		if (lstat(outfile, &statInfo) != -1) {
+			isFile = S_ISREG(statInfo.st_mode);
+		}
+#endif
+		if (isFile && outfile)
+			(void)remove(outfile); /* ignore return value */
+	}
 	return failed;
 }
 
