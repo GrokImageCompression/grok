@@ -22,8 +22,8 @@ class RAWFormat {
 public:
 	RAWFormat(bool isBig) : bigEndian(isBig) {}
 	virtual ~RAWFormat() {}
-	bool encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose);
-	opj_image_t* decode(std::string filename, opj_cparameters_t *parameters);
+	bool encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose);
+	opj_image_t* decode(const char* filename, opj_cparameters_t *parameters);
 private:
 	bool bigEndian;
 	opj_image_t* decode_common(const char *filename, opj_cparameters_t *parameters, bool big_endian);

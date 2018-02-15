@@ -371,11 +371,11 @@ beach:
 }
 
 
-bool PGXFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+bool PGXFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return imagetopgx(image, filename.c_str()) ? false : true;
+	return imagetopgx(image, filename) ? false : true;
 }
-opj_image_t*  PGXFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return pgxtoimage(filename.c_str(), parameters);
+opj_image_t*  PGXFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return pgxtoimage(filename, parameters);
 }

@@ -63,6 +63,6 @@ void tiffSetErrorAndWarningHandlers(bool verbose);
 class TIFFFormat {
 public:
 	virtual ~TIFFFormat() {}
-	bool encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose);
-	opj_image_t* decode(std::string filename, opj_cparameters_t *parameters);
+	bool encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose);
+	opj_image_t* decode(const char* filename, opj_cparameters_t *parameters);
 };
