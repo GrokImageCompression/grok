@@ -250,7 +250,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	* requires it in order to write binary files.
 	*/
 	if (info.writeToStdout) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grok_set_binary_mode(stdout))
 			return 1;
 		info.outfile = stdout;
 	}

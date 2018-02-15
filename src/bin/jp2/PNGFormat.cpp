@@ -536,7 +536,7 @@ static int imagetopng(opj_image_t * image,
 		return local_info.fails;
 	}
 	if (local_info.writeToStdout) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grok_set_binary_mode(stdout))
 			return 1;
 		local_info.writer = stdout;
 	}
