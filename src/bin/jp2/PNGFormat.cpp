@@ -750,7 +750,7 @@ beach:
 	if (!local_info.writeToStdout) {
 		if (local_info.writer)
 			fclose(local_info.writer);
-		if (local_info.fails)
+		if (local_info.fails && write_idf)
 			(void)remove(write_idf); /* ignore return value */
 	}
 

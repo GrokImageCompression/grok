@@ -1944,14 +1944,7 @@ cleanup:
 		info->image = nullptr;
 	}
 	if (failed) {
-		bool isFile = true;
-#ifndef _WIN32
-		struct stat statInfo;
-		if (lstat(outfile, &statInfo) != -1) {
-			isFile = S_ISREG(statInfo.st_mode);
-		}
-#endif
-		if (isFile && outfile)
+		if (outfile)
 			(void)remove(outfile); /* ignore return value */
 	}
 	return failed;
