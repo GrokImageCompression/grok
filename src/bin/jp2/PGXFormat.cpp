@@ -296,7 +296,6 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 	int j, fails = 1;
 	unsigned int compno;
 	FILE *fdest = nullptr;
-	size_t total = 0;
 	for (compno = 0; compno < image->numcomps; compno++) {
 		opj_image_comp_t *comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
@@ -313,8 +312,6 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
-		total = dotpos + 1 + 1 + 4; /* '-' + '[1-3]' + '.pgx' */
-
 		if (outfile[dotpos] != '.') {
 			/* `pgx` was recognized but there is no dot at expected position */
 			fprintf(stderr, "[ERROR] The impossible happened.");

@@ -150,7 +150,7 @@ void setup_signal_handler()
 int get_num_images(char *imgdirpath);
 int load_images(dircnt_t *dirptr, char *imgdirpath);
 int get_file_format(const char *filename);
-char get_next_file(int imageno, dircnt_t *dirptr, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
+char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
 static int infile_format(const char *fname);
 
 int parse_cmdline_decoder(int argc, 
@@ -455,15 +455,14 @@ static const char* get_path_separator() {
 }
 
 
+
 /* -------------------------------------------------------------------------- */
-char get_next_file(int imageno, 
-					dircnt_t *dirptr,
+char get_next_file(std::string image_filename,
 					img_fol_t *img_fol,
 					img_fol_t* out_fol,
 					opj_decompress_parameters *parameters) {
-	std::string image_filename = dirptr->filename[imageno];
 	if (parameters->verbose)
-		fprintf(stdout, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
+		fprintf(stdout, "File Number \"%s\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
 	parameters->decod_format = infile_format(infilename.c_str());
 	if (parameters->decod_format == -1)
@@ -1207,9 +1206,35 @@ static int post_decode(grok_plugin_decode_callback_info_t* info);
 static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 
 
+// returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
+int decode(const char* fileName, DecompressInitParams *initParams) {
+	if (initParams->img_fol.set_imgdir) {
+		if (get_next_file(fileName,
+			&initParams->img_fol,
+			initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
+			return 2;
+		}
+	}
+
+	grok_plugin_decode_callback_info_t info;
+	memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
+	info.decod_format = -1;
+	info.cod_format = -1;
+	info.decode_flags = GROK_DECODE_ALL;
+	info.decoder_parameters = &initParams->parameters;
+
+	if (pre_decode(&info)) {
+		return 0;
+	}
+	if (post_decode(&info)) {
+		return 0;
+	}
+	return 1;
+}
+
+
 int main(int argc, char **argv){
 	int32_t num_images, imageno = 0;
-	dircnt_t *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
@@ -1230,73 +1255,32 @@ int main(int argc, char **argv){
 			rc = EXIT_SUCCESS;
 			goto cleanup;
 		}
-		/* Initialize reading of directory */
-		if (initParams.img_fol.set_imgdir) {
-			int it_image;
-			num_images = get_num_images(initParams.img_fol.imgdirpath);
-			if (num_images <= 0) {
-				fprintf(stderr, "[ERROR] Folder is empty\n");
-				rc = EXIT_FAILURE;
-				goto cleanup;
-			}
-
-			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
-			if (dirptr) {
-				dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
-				if (!dirptr->filename_buf) {
-					rc = EXIT_FAILURE;
-					goto cleanup;
-				}
-
-				dirptr->filename = (char**)malloc((size_t)num_images * sizeof(char*));
-				if (!dirptr->filename) {
-					rc = EXIT_FAILURE;
-					goto cleanup;
-				}
-				for (it_image = 0; it_image < num_images; it_image++) {
-					dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
-				}
-			}
-			if (load_images(dirptr, initParams.img_fol.imgdirpath) == 1) {
-				rc = EXIT_FAILURE;
-				goto cleanup;
-			}
-		}
-		else {
-			num_images = 1;
-		}
-
 		t_cumulative = grok_clock();
-
-		/*Decoding image one by one*/
-		for (imageno = 0; imageno < num_images; imageno++) {
-			if (initParams.parameters.verbose)
-				fprintf(stdout, "\n");
-			if (initParams.img_fol.set_imgdir) {
-				if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-					continue;
-				}
-			}
-
-			grok_plugin_decode_callback_info_t info;
-			memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
-			info.decod_format = -1;
-			info.cod_format = -1;
-			info.decode_flags = GROK_DECODE_ALL;
-			info.decoder_parameters = &initParams.parameters;
-
-			if (pre_decode(&info)) {
+		if (!initParams.img_fol.set_imgdir) {
+			if (!decode("", &initParams)) {
 				rc = EXIT_FAILURE;
-				continue;
-			}
-			if (post_decode(&info)) {
-				rc = EXIT_FAILURE;
-				continue;
+				goto cleanup;
 			}
 			num_decompressed_images++;
 		}
+		else {
+			auto dir = opendir(initParams.img_fol.imgdirpath);
+			if (!dir) {
+				fprintf(stderr, "[ERROR] Could not open Folder %s\n", initParams.img_fol.imgdirpath);
+				rc = EXIT_FAILURE;
+				goto cleanup;
+			}
+			struct dirent* content = nullptr;
+			while ((content = readdir(dir)) != nullptr) {
+				if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
+					continue;
+				if (decode(content->d_name, &initParams) == 1)
+					num_decompressed_images++;
+			}
+			closedir(dir);
+		}
 		t_cumulative = grok_clock() - t_cumulative;
-		if (initParams.parameters.verbose && num_decompressed_images && rc != EXIT_FAILURE) {
+		if (initParams.parameters.verbose && num_decompressed_images) {
 			fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 		}
 	} catch (std::bad_alloc ba){
@@ -1305,13 +1289,6 @@ int main(int argc, char **argv){
 		goto cleanup;
 	}
 cleanup:
-	if (dirptr) {
-		if (dirptr->filename_buf)
-			free(dirptr->filename_buf);
-		if (dirptr->filename)
-			free(dirptr->filename);
-		free(dirptr);
-	}
 	destroy_parameters(&initParams.parameters);
 	opj_cleanup();
 	return rc;
@@ -1443,7 +1420,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
 		if (initParams->img_fol.set_imgdir) {
-			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
+			if (get_next_file(dirptr->filename[imageno], &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
 				continue;
 			}
 		}
