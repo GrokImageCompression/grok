@@ -438,15 +438,13 @@ static const char* get_path_separator() {
 }
 
 
-static char get_next_file(int imageno,
-							dircnt_t *dirptr,
+static char get_next_file(std::string image_filename,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
 							opj_cparameters_t *parameters){
 
-	std::string image_filename = dirptr->filename[imageno];
 	if (parameters->verbose)
-		fprintf(stdout, "File Number %d \"%s\"\n", imageno, image_filename.c_str());
+		fprintf(stdout, "File \"%s\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
 	if (parameters->decod_format == -1) {
 		parameters->decod_format = get_file_format((char*)infilename.c_str());
@@ -463,7 +461,7 @@ static char get_next_file(int imageno,
 		output_root_filename = image_filename.substr(0, pos);
 	else
 		output_root_filename = image_filename;
-	if (img_fol->set_out_format == 1) {
+	if (img_fol->set_out_format) {
 		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + output_root_filename + "." + img_fol->out_format;
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
@@ -705,7 +703,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		cmd.parse(argc, argv);
 
-		img_fol->set_out_format = 0;
+		img_fol->set_out_format = false;
 		parameters->raw_cp.rawWidth = 0;
 
 
@@ -771,7 +769,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			char outformat[50];
 			char *of = (char*)outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
-			img_fol->set_out_format = 1;
+			img_fol->set_out_format = true;
 			parameters->cod_format = get_file_format(outformat);
 			switch (parameters->cod_format) {
 			case J2K_CFMT:
@@ -1095,18 +1093,18 @@ static int parse_cmdline_encoder_ex(int argc,
 				strcpy(plugin_path, pluginPathArg.getValue().c_str());
 		}
 
-		img_fol->set_imgdir = 0;
+		img_fol->set_imgdir = false;
 		if (imgDirArg.isSet()) {
 			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
 			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
-			img_fol->set_imgdir = 1;
+			img_fol->set_imgdir = true;
 		}
 		if (out_fol) {
-			out_fol->set_imgdir = 0;
+			out_fol->set_imgdir = false;
 			if (outDirArg.isSet()) {
 				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
 				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
-				out_fol->set_imgdir = 1;
+				out_fol->set_imgdir = true;
 			}
 		}
 		if (cinema2KArg.isSet()) {
@@ -1303,12 +1301,12 @@ static int parse_cmdline_encoder_ex(int argc,
 		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
 	}
 
-    if(img_fol->set_imgdir == 1) {
+    if(img_fol->set_imgdir) {
         if(!(parameters->infile[0] == 0)) {
             fprintf(stderr, "[ERROR] options -ImgDir and -i cannot be used together !!\n");
             return 1;
         }
-        if(img_fol->set_out_format == 0) {
+        if(!img_fol->set_out_format) {
             fprintf(stderr, "[ERROR] When -ImgDir is used, -OutFor <FORMAT> must be used !!\n");
             fprintf(stderr, "Only one format allowed! Valid formats are j2k and jp2!!\n");
             return 1;
@@ -1489,6 +1487,37 @@ struct CompressInitParams {
 static int plugin_main(int argc, char **argv, CompressInitParams* initParams);
 
 
+// returns 0 if failed, 1 if succeeded, 
+// and 2 if file is not suitable for compression
+static int compress(std::string image_filename,
+	CompressInitParams* initParams,
+	uint8_t tcp_mct,
+	uint32_t rateControlAlgorithm) {
+	//clear for next file encode
+	initParams->parameters.write_capture_resolution_from_file = false;
+	initParams->parameters.decod_format = -1;
+
+	//restore cached settings
+	initParams->parameters.tcp_mct = tcp_mct;
+	initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
+
+	if (initParams->img_fol.set_imgdir) {
+		if (get_next_file(image_filename, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
+			return 2;
+		}
+	}
+	grok_plugin_encode_user_callback_info_t callbackInfo;
+	memset(&callbackInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
+	callbackInfo.encoder_parameters = &initParams->parameters;
+	callbackInfo.image = nullptr;
+	callbackInfo.output_file_name = initParams->parameters.outfile;
+	callbackInfo.input_file_name = initParams->parameters.infile;
+
+	return plugin_compress_callback(&callbackInfo) ? 1 : 0;
+}
+
+
+
 /* -------------------------------------------------------------------------- */
 /**
  * OPJ_COMPRESS MAIN
@@ -1511,76 +1540,42 @@ int main(int argc, char **argv) {
 		if (!rc)
 			return 0;
 		size_t num_compressed_files = 0;
-		uint32_t i, num_images, imageno;
 
 		//cache certain settings
 		auto tcp_mct = initParams.parameters.tcp_mct;
 		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
-
 		double t = grok_clock();
-		/* Read directory if necessary */
-		if (initParams.img_fol.set_imgdir == 1) {
-			num_images = get_num_images(initParams.img_fol.imgdirpath);
-			if (num_images == 0) {
-				fprintf(stderr, "Folder is empty\n");
-				goto cleanup;
-			}
-			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
-			if (!dirptr) {
+
+		if (!initParams.img_fol.set_imgdir) {
+			auto rc = compress("",
+				&initParams,
+				tcp_mct,
+				rateControlAlgorithm);
+			if (rc == 0) {
 				success = 1;
 				goto cleanup;
-			}
-			dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN * sizeof(char));
-			if (!dirptr->filename_buf) {
-				success = 1;
-				goto cleanup;
-			}
-			dirptr->filename = (char**)malloc(num_images * sizeof(char*));
-			if (!dirptr->filename) {
-				success = 1;
-				goto cleanup;
-			}
-			for (i = 0; i < num_images; i++) {
-				dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
-			}
-			if (load_images(dirptr, initParams.img_fol.imgdirpath) == 1) {
-				goto cleanup;
-			}
-		}
-		else {
-			num_images = 1;
-		}
-		/*Encoding image one by one*/
-		for (imageno = 0; imageno <	num_images; imageno++) {
-			//clear for next file encode
-			initParams.parameters.write_capture_resolution_from_file = false;
-
-			//restore cached settings
-			initParams.parameters.tcp_mct = tcp_mct;
-			initParams.parameters.rateControlAlgorithm = rateControlAlgorithm;
-
-			if (initParams.img_fol.set_imgdir == 1) {
-				if (get_next_file((int)imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
-					continue;
-				}
-			}
-			grok_plugin_encode_user_callback_info_t opjInfo;
-			memset(&opjInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
-			opjInfo.encoder_parameters = &initParams.parameters;
-			opjInfo.image = nullptr;
-			opjInfo.output_file_name = initParams.parameters.outfile;
-			opjInfo.input_file_name = initParams.parameters.infile;
-
-			if (!plugin_compress_callback(&opjInfo)) {
-				if (num_images == 1) {
-					success = 1;
-					goto cleanup;
-				}
-				continue;
 			}
 			num_compressed_files++;
-			//reset decode format
-			opjInfo.encoder_parameters->decod_format = -1;
+		}
+		else {
+			auto dir = opendir(initParams.img_fol.imgdirpath);
+			if (!dir) {
+				fprintf(stderr, "[ERROR] Could not open Folder %s\n", initParams.img_fol.imgdirpath);
+				success = 1;
+				goto cleanup;
+			}
+			struct dirent* content = nullptr;
+			while ((content = readdir(dir)) != nullptr) {
+				if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
+					continue;
+				auto rc = compress(content->d_name,
+					&initParams,
+					tcp_mct,
+					rateControlAlgorithm);
+				if (rc == 1)
+					num_compressed_files++;
+			}
+			closedir(dir);
 		}
 		t = grok_clock() - t;
 		if (initParams.parameters.verbose && num_compressed_files) {
@@ -1604,6 +1599,7 @@ cleanup:
 
 }
 
+
 img_fol_t img_fol_plugin, out_fol_plugin;
 
 static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info) {
@@ -1625,7 +1621,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	if (info->output_file_name && info->output_file_name[0]) {
 		if (info->outputFileNameIsRelative) {
 			strcpy(temp_ofname, get_file_name((char*)info->output_file_name));
-			if (img_fol_plugin.set_out_format == 1) {
+			if (img_fol_plugin.set_out_format) {
 				sprintf(outfile, "%s%s%s.%s",
 					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
 					get_path_separator(),
@@ -2044,7 +2040,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	else 	{
 		// loop through all files
 		/* Read directory if necessary */
-		if (initParams->img_fol.set_imgdir == 1) {
+		if (initParams->img_fol.set_imgdir) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			if (!num_images)
 				goto cleanup;
@@ -2084,8 +2080,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		auto rateControlAlgorithm = initParams->parameters.rateControlAlgorithm;
 		/*Encoding image one by one*/
 		for (imageno = 0; imageno < num_images; imageno++) {
-			if (initParams->img_fol.set_imgdir == 1) {
-				if (get_next_file((int)imageno, dirptr,
+			if (initParams->img_fol.set_imgdir) {
+				if (get_next_file(dirptr->filename[imageno],
 								&initParams->img_fol, initParams->out_fol.imgdirpath ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
 					continue;
 				}

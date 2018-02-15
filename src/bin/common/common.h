@@ -77,9 +77,9 @@ struct img_fol_t {
 	/** Output format*/
 	const char *out_format;
 	/** Enable option*/
-	char set_imgdir;
+	bool set_imgdir;
 	/** Enable Cod Format for output*/
-	char set_out_format;
+	bool set_out_format;
 } ;
 
 int parse_DA_values(bool verbose,

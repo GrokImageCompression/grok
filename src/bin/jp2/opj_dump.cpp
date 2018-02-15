@@ -97,9 +97,9 @@ typedef struct img_folder {
     /** Output format*/
     const char *out_format;
     /** Enable option*/
-    char set_imgdir;
+    bool set_imgdir;
     /** Enable Cod Format for output*/
-    char set_out_format;
+    bool set_out_format;
 
     int flag;
 } img_fol_t;
@@ -234,7 +234,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
         strcat(temp_ofname,temp1);
         sprintf(temp1,".%s",temp_p);
     }
-    if(img_fol->set_out_format==1) {
+    if(img_fol->set_out_format) {
         sprintf(outfilename,"%s/%s.%s",img_fol->imgdirpath,temp_ofname,img_fol->out_format);
         if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename) != 0) {
             return 1;
@@ -303,7 +303,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
     const char optlist[] = "i:o:f:hv";
 
     totlen=sizeof(long_option);
-    img_fol->set_out_format = 0;
+    img_fol->set_out_format = false;
     do {
         c = grok_getopt_long(argc, argv,optlist,long_option,totlen);
         if (c == -1)
@@ -357,7 +357,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 			if (!img_fol->imgdirpath)
 				return 1;
             strcpy(img_fol->imgdirpath,grok_optarg);
-            img_fol->set_imgdir=1;
+			img_fol->set_imgdir = true;
         }
         break;
 
@@ -376,12 +376,12 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
     } while(c != -1);
 
     /* check for possible errors */
-    if(img_fol->set_imgdir==1) {
+    if(img_fol->set_imgdir) {
         if(!(parameters->infile[0]==0)) {
             fprintf(stderr, "[ERROR] options -ImgDir and -i cannot be used together.\n");
             return 1;
         }
-        if(img_fol->set_out_format == 0) {
+        if(!img_fol->set_out_format) {
             fprintf(stderr, "[ERROR] When -ImgDir is used, -OutFor <FORMAT> must be used.\n");
             fprintf(stderr, "Only one format allowed.\n"
                     "Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.\n");
@@ -474,7 +474,7 @@ int main(int argc, char *argv[])
     }
 
     /* Initialize reading of directory */
-    if(img_fol.set_imgdir==1) {
+    if(img_fol.set_imgdir) {
         int it_image;
         num_images=get_num_images(img_fol.imgdirpath);
 		if (num_images == 0) {
@@ -525,7 +525,7 @@ int main(int argc, char *argv[])
 
         fprintf(stderr,"\n");
 
-        if(img_fol.set_imgdir==1) {
+        if(img_fol.set_imgdir) {
             if (get_next_file(imageno, dirptr,&img_fol, &parameters)) {
                 continue;
             }
