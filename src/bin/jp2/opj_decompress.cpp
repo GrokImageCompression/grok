@@ -1234,7 +1234,7 @@ int decode(const char* fileName, DecompressInitParams *initParams) {
 
 
 int main(int argc, char **argv){
-	int32_t num_images, imageno = 0;
+	int32_t imageno = 0;
 	int rc = EXIT_SUCCESS;
 	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
