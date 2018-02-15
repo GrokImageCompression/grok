@@ -1062,10 +1062,10 @@ cleanup:
 }
 
 
-bool BMPFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+bool BMPFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
-	return imagetobmp(image, filename.c_str(), verbose) ? false : true;
+	return imagetobmp(image, filename, verbose) ? false : true;
 }
-opj_image_t*  BMPFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return bmptoimage(filename.c_str(), parameters);
+opj_image_t*  BMPFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return bmptoimage(filename, parameters);
 }

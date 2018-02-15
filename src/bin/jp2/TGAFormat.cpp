@@ -524,11 +524,11 @@ beach:
 }
 
 
-bool TGAFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+bool TGAFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return imagetotga(image, filename.c_str()) ? false : true;
+	return imagetotga(image, filename) ? false : true;
 }
-opj_image_t*  TGAFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return tgatoimage(filename.c_str(), parameters);
+opj_image_t*  TGAFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return tgatoimage(filename, parameters);
 }

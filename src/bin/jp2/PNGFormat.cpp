@@ -758,10 +758,10 @@ beach:
 }/* imagetopng() */
 
 
-bool PNGFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+bool PNGFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)verbose;
-	return imagetopng(image, filename.c_str(), compressionParam,verbose) ? false : true;
+	return imagetopng(image, filename, compressionParam,verbose) ? false : true;
 }
-opj_image_t*  PNGFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return pngtoimage(filename.c_str(), parameters);
+opj_image_t*  PNGFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return pngtoimage(filename, parameters);
 }

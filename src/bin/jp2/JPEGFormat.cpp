@@ -611,11 +611,11 @@ cleanup:
 	return imageInfo.image;
 }/* jpegtoimage() */
 
-bool JPEGFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
-	return imagetojpeg(image, filename.c_str(), compressionParam, verbose) ? false : true;
+bool JPEGFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+	return imagetojpeg(image, filename, compressionParam, verbose) ? false : true;
 }
-opj_image_t*  JPEGFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return jpegtoimage(filename.c_str(), parameters);
+opj_image_t*  JPEGFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return jpegtoimage(filename, parameters);
 }
 
 

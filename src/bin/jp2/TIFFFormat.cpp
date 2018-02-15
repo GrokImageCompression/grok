@@ -1728,10 +1728,10 @@ cleanup:
 
 }/* tiftoimage() */
 
-bool TIFFFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
-	return imagetotif(image, filename.c_str(), compressionParam, verbose) ? false : true;
+bool TIFFFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
 }
-opj_image_t*  TIFFFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return tiftoimage(filename.c_str(), parameters);
+opj_image_t*  TIFFFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return tiftoimage(filename, parameters);
 }
 

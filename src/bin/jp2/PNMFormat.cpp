@@ -741,12 +741,12 @@ static int imagetopnm(opj_image_t * image,
 	return 0;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(opj_image_t* image, std::string filename, int compressionParam, bool verbose) {
+bool PNMFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	(void)verbose;
-	return imagetopnm(image, filename.c_str(), forceSplit,verbose) ? false : true;
+	return imagetopnm(image, filename, forceSplit,verbose) ? false : true;
 }
-opj_image_t* PNMFormat::decode(std::string filename, opj_cparameters_t *parameters) {
-	return pnmtoimage(filename.c_str(), parameters);
+opj_image_t* PNMFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return pnmtoimage(filename, parameters);
 }
 
