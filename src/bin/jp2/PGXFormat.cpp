@@ -297,12 +297,10 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 	unsigned int compno;
 	FILE *fdest = nullptr;
 	size_t total = 0;
-	char *name = nullptr;
 	for (compno = 0; compno < image->numcomps; compno++) {
 		opj_image_comp_t *comp = &image->comps[compno];
-		char bname[256]; /* buffer for name */
-		bname[255] = '\0';
-		name = bname; /* pointer */
+		char bname[4096]; /* buffer for name */
+		bname[4095] = '\0';
 		int nbytes = 0;
 		size_t res;
 		const size_t olen = strlen(outfile);
@@ -322,23 +320,14 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 			fprintf(stderr, "[ERROR] The impossible happened.");
 			goto beach;
 		}
-		if (total > 256) {
-			name = (char*)malloc(total + 1);
-			if (name == nullptr) {
-				fprintf(stderr, "[ERROR] imagetopgx: out of memory\n");
-				goto beach;
-			}
-		}
 		//copy root outfile name to "name"
-		memcpy(name, outfile, dotpos);
+		memcpy(bname, outfile, dotpos);
 		//add new tag
-		sprintf(name + dotpos, "_%u.pgx", compno);
-
-		fdest = fopen(name, "wb");
-
+		sprintf(bname + dotpos, "_%u.pgx", compno);
+		fdest = fopen(bname, "wb");
 		if (!fdest) {
 
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n", name);
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n", bname);
 			goto beach;
 		}
 
@@ -365,21 +354,17 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", name);
+					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", bname);
 					goto beach;
 				}
 			}
 		}
-		if (total > 256)
-			free(name);
 		if (fdest)
 			fclose(fdest);
 		fdest = nullptr;
 	}
 	fails = 0;
 beach:
-	if (name && total > 256)
-		free(name);
 	if (fdest)
 		fclose(fdest);
 	return fails;
