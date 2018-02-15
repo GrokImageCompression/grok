@@ -475,7 +475,7 @@ char get_next_file(int imageno,
 	if (pos == std::string::npos)
 		return 1;
 	std::string temp_ofname = image_filename.substr(0,pos);
-	if (img_fol->set_out_format == 1) {
+	if (img_fol->set_out_format) {
 		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + temp_ofname + "." + img_fol->out_format;
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
@@ -699,7 +699,7 @@ int parse_cmdline_decoder(int argc,
 			char outformat[50];
 			const char *of = outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
-			img_fol->set_out_format = 1;
+			img_fol->set_out_format = true;
 			parameters->cod_format = get_file_format(outformat);
 			switch (parameters->cod_format) {
 			case PGX_DFMT:
@@ -763,14 +763,14 @@ int parse_cmdline_decoder(int argc,
 			if (out_fol) {
 				out_fol->imgdirpath = (char*)malloc(strlen(outDirArg.getValue().c_str()) + 1);
 				strcpy(out_fol->imgdirpath, outDirArg.getValue().c_str());
-				out_fol->set_imgdir = 1;
+				out_fol->set_imgdir = true;
 			}
 		}
 
 		if (imgDirArg.isSet()) {
 			img_fol->imgdirpath = (char*)malloc(strlen(imgDirArg.getValue().c_str()) + 1);
 			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
-			img_fol->set_imgdir = 1;
+			img_fol->set_imgdir = true;
 		}
 
 
@@ -850,12 +850,12 @@ int parse_cmdline_decoder(int argc,
 #endif
 
     /* check for possible errors */
-    if(img_fol->set_imgdir==1) {
+    if(img_fol->set_imgdir) {
         if(!(parameters->infile[0]==0)) {
             fprintf(stderr, "[ERROR] options -ImgDir and -i cannot be used together.\n");
             return 1;
         }
-        if(img_fol->set_out_format == 0) {
+        if(!img_fol->set_out_format) {
             fprintf(stderr, "[ERROR] When -ImgDir is used, -OutFor <FORMAT> must be used.\n");
             fprintf(stderr, "Only one format allowed.\n"
                     "Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.\n");
@@ -1231,7 +1231,7 @@ int main(int argc, char **argv){
 			goto cleanup;
 		}
 		/* Initialize reading of directory */
-		if (initParams.img_fol.set_imgdir == 1) {
+		if (initParams.img_fol.set_imgdir) {
 			int it_image;
 			num_images = get_num_images(initParams.img_fol.imgdirpath);
 			if (num_images <= 0) {
@@ -1272,7 +1272,7 @@ int main(int argc, char **argv){
 		for (imageno = 0; imageno < num_images; imageno++) {
 			if (initParams.parameters.verbose)
 				fprintf(stdout, "\n");
-			if (initParams.img_fol.set_imgdir == 1) {
+			if (initParams.img_fol.set_imgdir) {
 				if (get_next_file(imageno, dirptr, &initParams.img_fol, initParams.out_fol.set_imgdir ? &initParams.out_fol : &initParams.img_fol, &initParams.parameters)) {
 					continue;
 				}
@@ -1404,7 +1404,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 	else {
 		/* Initialize reading of directory */
-		if (initParams->img_fol.set_imgdir == 1) {
+		if (initParams->img_fol.set_imgdir) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			if (num_images <= 0) {
 				fprintf(stderr, "[ERROR] Folder is empty\n");
@@ -1442,7 +1442,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
-		if (initParams->img_fol.set_imgdir == 1) {
+		if (initParams->img_fol.set_imgdir) {
 			if (get_next_file(imageno, dirptr, &initParams->img_fol, initParams->out_fol.set_imgdir ? &initParams->out_fol : &initParams->img_fol, &initParams->parameters)) {
 				continue;
 			}
