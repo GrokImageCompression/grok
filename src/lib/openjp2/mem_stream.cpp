@@ -71,7 +71,9 @@ static size_t grok_read_from_buffer(void * p_buffer,
     } else {
         l_nb_read = (p_source_buffer->len - (size_t)p_source_buffer->off);
     }
-    memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off, l_nb_read);
+	// (don't copy buffer into itself)
+	if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
+		memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off, l_nb_read);
     p_source_buffer->off += (int64_t)l_nb_read;
 
     return l_nb_read ? l_nb_read : ((size_t)-1);

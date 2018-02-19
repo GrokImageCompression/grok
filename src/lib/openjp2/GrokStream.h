@@ -235,7 +235,7 @@ private:
 	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
 
 	///////////////////////////////////////////////////////////////////
-	// data stored into the stream if read from, or slated for write.
+	// data stored from the stream if read from, or slated for write.
 	// (does not change) 
 	uint8_t *		m_buffer;
 

@@ -1493,6 +1493,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
+		// toggle only one of the two booleans below
 		bool isBufferStream = false;
 		bool isMappedFile = false;
 		if (isBufferStream) {
@@ -1526,7 +1527,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 				failed = 1;
 				goto cleanup;
 			}
-			info->l_stream = opj_stream_create_buffer_stream(buffer, true, lengthOfFile, true);
+			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile,true, true);
 		}
 		else  if (isMappedFile) {
 			info->l_stream = opj_stream_create_mapped_file_read_stream(infile);
