@@ -1940,7 +1940,7 @@ cleanup:
 		opj_image_destroy(image);
 	if (!bSuccess) {
 		fprintf(stderr, "[ERROR] failed to encode image\n");
-		if (parameters->outfile)
+		if (parameters->outfile[0])
 			remove(parameters->outfile);
 	}
 	return bSuccess;

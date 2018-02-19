@@ -56,15 +56,12 @@
  */
 
 #include "grok_includes.h"
-
-
-
-
 namespace grk {
 
 template<typename TYPE> void grok_write(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes);
 template<typename TYPE> void grok_read(const uint8_t* p_buffer, TYPE* p_value, uint32_t p_nb_bytes);
 
+//file stream
 GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(nullptr),
 	m_free_user_data_fn(nullptr),
 	m_user_data_length(0),
@@ -78,14 +75,13 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 	m_stream_offset(0),
 	m_buffer_current_ptr(nullptr),
 	m_bytes_in_buffer(0),
-	isBufferStream(false)
-{
+	isBufferStream(false){
 
 	m_buffer_size = p_buffer_size;
-	m_buffer = new uint8_t[p_buffer_size];
-	m_buffer_current_ptr = m_buffer;
-
-
+	if (p_buffer_size) {
+		m_buffer = new uint8_t[p_buffer_size];
+		m_buffer_current_ptr = m_buffer;
+	}
 	if (l_is_input) {
 		m_status |= GROK_STREAM_STATUS_INPUT;
 	}
@@ -93,7 +89,7 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 		m_status |= GROK_STREAM_STATUS_OUTPUT;
 	}
 }
-
+//memory buffer stream
 GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) : m_user_data(nullptr),
 																m_free_user_data_fn(nullptr),
 																m_user_data_length(0),
@@ -109,7 +105,6 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 																m_bytes_in_buffer(0),
 																isBufferStream(true)
 {
-
 	m_buffer_size = p_buffer_size;
 	m_buffer = buffer;
 	m_buffer_current_ptr = buffer;
@@ -120,7 +115,6 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 		m_status |= GROK_STREAM_STATUS_OUTPUT;
 	}
 }
-
 GrokStream::~GrokStream() {
 	if (m_free_user_data_fn) {
 		m_free_user_data_fn(m_user_data);
@@ -129,17 +123,19 @@ GrokStream::~GrokStream() {
 		delete[] m_buffer;
 	}
 }
-
 //note: passing in nullptr for p_buffer will execute a zero-copy read
 size_t GrokStream::read(uint8_t * p_buffer,
 	size_t p_size,
-	event_mgr_t * p_event_mgr)
-{
+	event_mgr_t * p_event_mgr) {
 	ARG_NOT_USED(p_event_mgr);
 	if (!p_buffer && !supportsZeroCopy())
 		throw new std::exception();
+	assert(p_size);
+	if (!p_size)
+		return 0;
 	size_t l_read_nb_bytes = 0;
-	if (m_bytes_in_buffer >= p_size) {
+	// 1. if we have enough bytes in buffer, then read from buffer and return
+	if (p_size <= m_bytes_in_buffer) {
 		if (p_buffer)
 			memcpy(p_buffer, m_buffer_current_ptr, p_size);
 		m_buffer_current_ptr += p_size;
@@ -148,24 +144,23 @@ size_t GrokStream::read(uint8_t * p_buffer,
 		m_stream_offset += p_size;
 		return l_read_nb_bytes;
 	}
-
-	/* if we get here, the remaining data in buffer is not sufficient */
+	//2. if stream is at end, then read remaining bytes in buffer and return
 	if (m_status & GROK_STREAM_STATUS_END) {
 		l_read_nb_bytes += m_bytes_in_buffer;
-		if (p_buffer)
+		if (p_buffer && m_bytes_in_buffer)
 			memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
 		m_stream_offset += m_bytes_in_buffer;
 		m_buffer_current_ptr += m_bytes_in_buffer;
 		m_bytes_in_buffer = 0;
 		return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
 	}
-
-	/* the flag is not set, we copy data and then do an actual read on the stream */
+	// 3. read remaining bytes in buffer 
 	if (m_bytes_in_buffer) {
 		l_read_nb_bytes += m_bytes_in_buffer;
-		if (p_buffer)
+		if (p_buffer) {
 			memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
-		p_buffer += m_bytes_in_buffer;
+			p_buffer += m_bytes_in_buffer;
+		}
 		p_size -= m_bytes_in_buffer;
 		m_stream_offset += m_bytes_in_buffer;
 		m_buffer_current_ptr = m_buffer;
@@ -177,33 +172,34 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			stored buffer to get ready to read from disk*/
 		m_buffer_current_ptr = m_buffer;
 	}
-
-	for (;;) {
-		/* we should read less than a chunk -> read a chunk */
-		if (p_size < m_buffer_size) {
-			/* we should do an actual read on the media */
+	//4. read from media
+	
+	//a) very first memory buffer "read", or buffered file read
+	if (m_buffer) {
+		for (;;) {
 			m_bytes_in_buffer = m_read_fn(m_buffer, m_buffer_size, m_user_data);
-
+			// i) end of stream
 			if (m_bytes_in_buffer == (size_t)-1) {
 				m_bytes_in_buffer = 0;
 				m_status |= GROK_STREAM_STATUS_END;
-				/* end of stream */
 				return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
 			}
+			// ii) or not enough data
 			else if (m_bytes_in_buffer < p_size) {
-				/* not enough data */
 				l_read_nb_bytes += m_bytes_in_buffer;
-				if (p_buffer)
+				if (p_buffer) {
 					memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
-				p_buffer += m_bytes_in_buffer;
+					p_buffer += m_bytes_in_buffer;
+				}
 				p_size -= m_bytes_in_buffer;
 				m_stream_offset += m_bytes_in_buffer;
 				m_buffer_current_ptr = m_buffer;
 				m_bytes_in_buffer = 0;
 			}
+			// iii) or we have read the exact amount requested
 			else {
 				l_read_nb_bytes += p_size;
-				if (p_buffer)
+				if (p_buffer && p_size)
 					memcpy(p_buffer, m_buffer_current_ptr, p_size);
 				m_buffer_current_ptr += p_size;
 				m_bytes_in_buffer -= p_size;
@@ -211,42 +207,27 @@ size_t GrokStream::read(uint8_t * p_buffer,
 				return l_read_nb_bytes;
 			}
 		}
+	}
+	// b) copy to dest buffer (memory mapped file)
+	else {
+		auto bytes_read  = m_read_fn(p_buffer, p_size, m_user_data);
+		// i) end of stream
+		if (bytes_read == (size_t)-1) {
+			m_status |= GROK_STREAM_STATUS_END;
+			return (size_t)-1;
+		}
+		// ii) or we have read the exact amount requested
 		else {
-			/* direct read on the dest buffer */
-			m_bytes_in_buffer = m_read_fn(p_buffer, p_size, m_user_data);
-
-			if (m_bytes_in_buffer == (size_t)-1) {
-				m_bytes_in_buffer = 0;
-				m_status |= GROK_STREAM_STATUS_END;
-				/* end of stream */
-				return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
-			}
-			else if (m_bytes_in_buffer < p_size) {
-				/* not enough data */
-				l_read_nb_bytes += m_bytes_in_buffer;
-				if (p_buffer)
-					p_buffer += m_bytes_in_buffer;
-				p_size -= m_bytes_in_buffer;
-				m_stream_offset += m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
-			}
-			else {
-				/* we have read the exact size */
-				l_read_nb_bytes += m_bytes_in_buffer;
-				m_stream_offset += m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
-				return l_read_nb_bytes;
-			}
+			if (p_buffer)
+				p_buffer += bytes_read;
+			m_stream_offset += bytes_read;
+			return bytes_read;
 		}
 	}
 }
-
 size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 	size_t p_size,
-	event_mgr_t * p_event_mgr)
-{
+	event_mgr_t * p_event_mgr){
 	ARG_NOT_USED(p_event_mgr);
 	size_t l_read_nb_bytes = m_zero_copy_read_fn((void**)p_buffer, p_size, m_user_data);
 
@@ -258,31 +239,23 @@ size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 		m_stream_offset += l_read_nb_bytes;
 		return l_read_nb_bytes;
 	}
-
 }
-
 bool GrokStream::write_byte(uint8_t p_value, event_mgr_t * p_event_mgr) {
 	return write_bytes(&p_value, 1, p_event_mgr) == 1;
 }
-
 bool GrokStream::write_short(uint16_t p_value, event_mgr_t * p_event_mgr) {
 	return write<uint16_t>(p_value, sizeof(uint16_t), p_event_mgr);
 }
-
 bool GrokStream::write_24(uint32_t p_value, event_mgr_t * p_event_mgr) {
 	return write<uint32_t>(p_value, 3, p_event_mgr);
 }
-
 bool GrokStream::write_int(uint32_t p_value, event_mgr_t * p_event_mgr) {
 	return write<uint32_t>(p_value, sizeof(uint32_t), p_event_mgr);
 }
-
 bool GrokStream::write_64(uint64_t p_value, event_mgr_t * p_event_mgr) {
 	return write<uint64_t>(p_value, sizeof(uint64_t), p_event_mgr);
 }
-
 template<typename TYPE> bool GrokStream::write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr) {
-
 	if (m_status & GROK_STREAM_STATUS_ERROR) {
 		return false;
 	}
@@ -308,12 +281,14 @@ template<typename TYPE> bool GrokStream::write(TYPE p_value, uint8_t numBytes, e
 	write_increment(numBytes);
 	return true;
 }
-
-
 size_t GrokStream::write_bytes(const uint8_t * p_buffer,
 	size_t p_size,
 	event_mgr_t * p_event_mgr)
 {
+	assert(p_size);
+	if (!p_size || !p_buffer)
+		return 0;
+
 	if (m_status & GROK_STREAM_STATUS_ERROR) {
 		return (size_t)-1;
 	}
@@ -379,8 +354,7 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 
 		if (l_current_write_nb_bytes == (size_t)-1) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
-			if (p_event_mgr)
-				event_msg(p_event_mgr, EVT_ERROR, "Error on writing stream!\n");
+			event_msg(p_event_mgr, EVT_ERROR, "Error on writing stream!\n");
 			return false;
 		}
 		m_buffer_current_ptr += l_current_write_nb_bytes;
@@ -391,8 +365,7 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 }
 
 bool GrokStream::read_skip(int64_t p_size,
-							event_mgr_t * p_event_mgr)
-{
+							event_mgr_t * p_event_mgr){
 	int64_t offset = m_stream_offset + p_size;
 	if (offset < 0)
 		return false;
@@ -400,26 +373,20 @@ bool GrokStream::read_skip(int64_t p_size,
 }
 
 bool GrokStream::write_skip(int64_t p_size,
-	event_mgr_t * p_event_mgr)
-{
+							event_mgr_t * p_event_mgr){
 	int64_t offset = m_stream_offset + p_size;
 	if (offset < 0)
 		return false;
 	return write_seek(offset, p_event_mgr);
 }
-
 uint64_t GrokStream::tell() {
 	return m_stream_offset;
 }
-
-int64_t GrokStream::get_number_byte_left(void)
-{
+int64_t GrokStream::get_number_byte_left(void){
 	assert(m_user_data_length >= m_stream_offset);
 	return m_user_data_length ?	(int64_t)(m_user_data_length)-m_stream_offset :	0;
 }
-
-bool GrokStream::skip(int64_t p_size,event_mgr_t * p_event_mgr)
-{
+bool GrokStream::skip(int64_t p_size,event_mgr_t * p_event_mgr){
 	assert(p_size >= 0);
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		return read_skip(p_size, p_event_mgr);
@@ -427,9 +394,7 @@ bool GrokStream::skip(int64_t p_size,event_mgr_t * p_event_mgr)
 		return write_skip(p_size, p_event_mgr);
 	}
 }
-
-bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr)
-{
+bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr){
 	ARG_NOT_USED(p_event_mgr);
 	if (m_status & GROK_STREAM_STATUS_ERROR) {
 		return false;
@@ -490,19 +455,16 @@ bool GrokStream::write_seek(uint64_t offset,event_mgr_t * p_event_mgr)
 		m_buffer_current_ptr = m_buffer + offset;
 	return true;
 }
-bool GrokStream::seek(uint64_t offset,event_mgr_t * p_event_mgr)
-{
+bool GrokStream::seek(uint64_t offset,event_mgr_t * p_event_mgr){
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		return read_seek(offset, p_event_mgr);
 	else {
 		return write_seek(offset, p_event_mgr);
 	}
 }
-
 bool GrokStream::has_seek(void) {
 	return m_seek_fn != nullptr;
 }
-
 
 template<typename TYPE> void grok_write(uint8_t * p_buffer, TYPE p_value, uint32_t p_nb_bytes) {
 #if defined(GROK_BIG_ENDIAN)
@@ -552,37 +514,28 @@ template<typename TYPE> void grok_read(const uint8_t* p_buffer, TYPE* p_value, u
 void grok_read_bytes(const uint8_t * p_buffer, uint32_t * p_value, uint32_t p_nb_bytes){
 	grok_read<uint32_t>(p_buffer, p_value, p_nb_bytes);
 }
-
 void grok_read_64(const uint8_t * p_buffer, uint64_t * p_value, uint32_t p_nb_bytes) {
 	grok_read<uint64_t>(p_buffer, p_value, p_nb_bytes);
 }
-
 void grok_read_float(const uint8_t * p_buffer, float * p_value){
 	grok_read<float>(p_buffer, p_value, sizeof(float));
 }
-
-
 void grok_read_double(const uint8_t * p_buffer, double * p_value){
 	grok_read<double>(p_buffer, p_value, sizeof(double));
 }
-
 }
-
 opj_stream_t* OPJ_CALLCONV opj_stream_create(size_t p_buffer_size, bool l_is_input)
 {
 	return (opj_stream_t*)(new grk::GrokStream(p_buffer_size, l_is_input));
 }
-
 opj_stream_t* OPJ_CALLCONV opj_stream_default_create(bool l_is_input)
 {
 	return opj_stream_create(grk::stream_chunk_size, l_is_input);
 }
-
 void OPJ_CALLCONV opj_stream_destroy(opj_stream_t* p_stream) {
 	auto stream = (grk::GrokStream*)(p_stream);
 	delete stream;
 }
-
 void OPJ_CALLCONV opj_stream_set_read_function(opj_stream_t* p_stream,
 	opj_stream_read_fn p_function) {
 	auto l_stream = (grk::GrokStream*)p_stream;
@@ -591,7 +544,6 @@ void OPJ_CALLCONV opj_stream_set_read_function(opj_stream_t* p_stream,
 	}
 	l_stream->m_read_fn = p_function;
 }
-
 void OPJ_CALLCONV opj_stream_set_zero_copy_read_function(opj_stream_t* p_stream,
 	opj_stream_zero_copy_read_fn p_function) {
 	auto l_stream = (grk::GrokStream*)p_stream;
@@ -600,7 +552,6 @@ void OPJ_CALLCONV opj_stream_set_zero_copy_read_function(opj_stream_t* p_stream,
 	}
 	l_stream->m_zero_copy_read_fn = p_function;
 }
-
 void OPJ_CALLCONV opj_stream_set_seek_function(opj_stream_t* p_stream,
 	opj_stream_seek_fn p_function) {
 	auto l_stream = (grk::GrokStream*)p_stream;
@@ -609,7 +560,6 @@ void OPJ_CALLCONV opj_stream_set_seek_function(opj_stream_t* p_stream,
 	}
 	l_stream->m_seek_fn = p_function;
 }
-
 void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 	opj_stream_write_fn p_function) {
 	auto l_stream = (grk::GrokStream*)p_stream;
@@ -618,12 +568,10 @@ void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 	}
 	l_stream->m_write_fn = p_function;
 }
-
 void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream,	opj_stream_skip_fn p_function) {
 	ARG_NOT_USED(p_stream);
 	ARG_NOT_USED(p_function);
 }
-
 void OPJ_CALLCONV opj_stream_set_user_data(opj_stream_t* p_stream,
 	void * p_data,
 	opj_stream_free_user_data_fn p_function) {
@@ -633,7 +581,6 @@ void OPJ_CALLCONV opj_stream_set_user_data(opj_stream_t* p_stream,
 	l_stream->m_user_data = p_data;
 	l_stream->m_free_user_data_fn = p_function;
 }
-
 void OPJ_CALLCONV opj_stream_set_user_data_length(opj_stream_t* p_stream,
 	uint64_t data_length) {
 	auto l_stream = (grk::GrokStream*)p_stream;
@@ -641,5 +588,3 @@ void OPJ_CALLCONV opj_stream_set_user_data_length(opj_stream_t* p_stream,
 		return;
 	l_stream->m_user_data_length = data_length;
 }
-
-
