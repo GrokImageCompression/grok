@@ -1737,8 +1737,13 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	}
 
 	if (image->icc_profile_buf) {
-		if (!image->icc_profile_len)
+		if (!image->icc_profile_len) {
+#if defined(GROK_HAVE_LIBLCMS)
 			color_cielab_to_rgb(image, info->decoder_parameters->verbose);
+#else
+			fprintf(stdout, "[WARNING] Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB\n");
+#endif
+		}
 		else {
 			// A TIFF,PNG or JPEG image can store the ICC profile,
 			// so no need to apply it in this case,

@@ -622,9 +622,9 @@ static int imagetopng(opj_image_t * image,
 	/* png_set_sRGB(png, info, PNG_sRGB_INTENT_PERCEPTUAL); */
 
 	// Set iCCP chunk
-	if (image->icc_profile_buf && image->icc_profile_len)
-	{
+	if (image->icc_profile_buf && image->icc_profile_len)	{
 		bool iccWasStored = false;
+#if defined(GROK_HAVE_LIBLCMS)
 		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 		if (in_prof) {
 			cmsUInt32Number bufferSize = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
@@ -645,9 +645,9 @@ static int imagetopng(opj_image_t * image,
 				}
 			}
 		}
+#endif
 		if (verbose && !iccWasStored)
 			fprintf(stdout, "imagetopng: Failed to store ICC profile.\n");
-
 	}
 
 	if (image->xmp_buf && image->xmp_len) {
