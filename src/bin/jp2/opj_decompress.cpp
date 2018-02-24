@@ -99,6 +99,7 @@ using namespace grk;
 #include "format_defs.h"
 #include "grok_string.h"
 
+#include <climits>
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
