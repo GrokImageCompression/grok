@@ -1838,12 +1838,7 @@ static bool jp2_read_cdef(	jp2_t * jp2,
 static bool jp2_read_colr( jp2_t *jp2,
                                uint8_t * p_colr_header_data,
                                uint32_t p_colr_header_size,
-                               event_mgr_t * p_manager
-                             )
-{
-    uint32_t l_value;
-
-    
+                               event_mgr_t * p_manager){
     assert(jp2 != nullptr);
     assert(p_colr_header_data != nullptr);
     assert(p_manager != nullptr);
@@ -1935,20 +1930,18 @@ static bool jp2_read_colr( jp2_t *jp2,
         jp2->color.jp2_has_colour_specification_box = 1;
     } else if (jp2->meth == 2) {
         /* ICC profile */
-        int32_t it_icc_value = 0;
-        int32_t icc_len = (int32_t)p_colr_header_size - 3;
-
-        jp2->color.icc_profile_len = (uint32_t)icc_len;
+        uint32_t icc_len = (uint32_t)(p_colr_header_size - 3);
+		if (icc_len == 0) {
+			event_msg(p_manager, EVT_ERROR, "ICC profile buffer length equals zero\n");
+			return false;
+		}
         jp2->color.icc_profile_buf = (uint8_t*) grok_calloc(1,(size_t)icc_len);
         if (!jp2->color.icc_profile_buf) {
             jp2->color.icc_profile_len = 0;
             return false;
         }
-        for (it_icc_value = 0; it_icc_value < icc_len; ++it_icc_value) {
-            grok_read_bytes(p_colr_header_data,&l_value,1);		/* icc values */
-            ++p_colr_header_data;
-            jp2->color.icc_profile_buf[it_icc_value] = (uint8_t) l_value;
-        }
+		memcpy(jp2->color.icc_profile_buf, p_colr_header_data, icc_len);
+		jp2->color.icc_profile_len = icc_len;
         jp2->color.jp2_has_colour_specification_box = 1;
     } else if (jp2->meth > 2) {
         /*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
