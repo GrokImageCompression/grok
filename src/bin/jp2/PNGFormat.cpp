@@ -623,7 +623,9 @@ static int imagetopng(opj_image_t * image,
 
 	// Set iCCP chunk
 	if (image->icc_profile_buf && image->icc_profile_len)	{
-		bool iccWasStored = false;
+		std::string profileName = "Unknown";
+		// if lcms is present, try to extract the description tag from the ICC header,
+		// and use this tag as the profile name
 #if defined(GROK_HAVE_LIBLCMS)
 		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 		if (in_prof) {
@@ -632,22 +634,19 @@ static int imagetopng(opj_image_t * image,
 				size_t numWideChars = (bufferSize + 1) / 2;
 				std::unique_ptr<wchar_t[]> description(new wchar_t[numWideChars]);
 				cmsUInt32Number result = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, description.get(), bufferSize);
-				cmsCloseProfile(in_prof);
 				if (result) {
-					std::string u8_conv = convert_wide_to_narrow(description.get());
-					png_set_iCCP(local_info.png,
-						info,
-						(png_const_charp)(u8_conv.c_str()),
-						PNG_COMPRESSION_TYPE_BASE,
-						image->icc_profile_buf,
-						image->icc_profile_len);
-					iccWasStored = true;
+					profileName = convert_wide_to_narrow(description.get());
 				}
 			}
+			cmsCloseProfile(in_prof);
 		}
 #endif
-		if (verbose && !iccWasStored)
-			fprintf(stdout, "imagetopng: Failed to store ICC profile.\n");
+		png_set_iCCP(local_info.png,
+			info,
+			profileName.c_str(),
+			PNG_COMPRESSION_TYPE_BASE,
+			image->icc_profile_buf,
+			image->icc_profile_len);
 	}
 
 	if (image->xmp_buf && image->xmp_len) {
