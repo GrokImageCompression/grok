@@ -568,6 +568,34 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 			return false;
 		}
 	}
+
+	// check that all components have same precision
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].prec != image->comps[0].prec ) {
+			fprintf(stderr, "[ERROR] precision of component %d differ from precision of component 0", i);
+			return false;
+		}
+	}
+	
+	// check that all components have same sign
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].sgnd != image->comps[0].sgnd) {
+			fprintf(stderr, "[ERROR] signedness of component %d differ from signedness of component 0", i);
+			return false;
+		}
+	}
+
 	return true;
 
+}
+
+bool isSubsampled(opj_image_t* image) {
+	if (!image)
+		return false;
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		if (image->comps[i].dx != 1 || image->comps[i].dy != 1) {
+			return true;
+		}
+	}
+	return  false;
 }

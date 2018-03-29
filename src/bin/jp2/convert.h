@@ -97,6 +97,7 @@ extern "C" {
 	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
 	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
 	bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps);
+	bool isSubsampled(opj_image_t* image);
 }
 
 
