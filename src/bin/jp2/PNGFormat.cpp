@@ -470,6 +470,7 @@ static int imagetopng(opj_image_t * image,
 					int32_t compressionLevel,
 					bool verbose)
 {
+	(void)verbose;
 	imageToPngInfo local_info;
 	local_info.writeToStdout = ((write_idf == nullptr) || (write_idf[0] == 0));
 	png_infop info = nullptr;

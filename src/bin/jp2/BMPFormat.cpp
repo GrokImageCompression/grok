@@ -116,13 +116,9 @@ static void opj_applyLUT8u_8u32s_C1R(
 	uint8_t const* pSrc, int32_t srcStride,
 	int32_t* pDst, int32_t dstStride,
 	uint8_t const* pLUT,
-	uint32_t width, uint32_t height)
-{
-	uint32_t y;
-
-	for (y = height; y != 0U; --y) {
+	uint32_t width, uint32_t height){
+	for (uint32_t y = height; y != 0U; --y) {
 		uint32_t x;
-
 		for (x = 0; x < width; x++) {
 			pDst[x] = (int32_t)pLUT[pSrc[x]];
 		}
@@ -135,8 +131,7 @@ static void opj_applyLUT8u_8u32s_C1P3R(
 	uint8_t const* pSrc, int32_t srcStride,
 	int32_t* const* pDst, int32_t const* pDstStride,
 	uint8_t const* const* pLUT,
-	uint32_t width, uint32_t height)
-{
+	uint32_t width, uint32_t height){
 	uint32_t y;
 	int32_t* pR = pDst[0];
 	int32_t* pG = pDst[1];
@@ -146,9 +141,7 @@ static void opj_applyLUT8u_8u32s_C1P3R(
 	uint8_t const* pLUT_B = pLUT[2];
 
 	for (y = height; y != 0U; --y) {
-		uint32_t x;
-
-		for (x = 0; x < width; x++) {
+		for (uint32_t x = 0; x < width; x++) {
 			uint8_t idx = pSrc[x];
 			pR[x] = (int32_t)pLUT_R[idx];
 			pG[x] = (int32_t)pLUT_G[idx];
@@ -160,25 +153,22 @@ static void opj_applyLUT8u_8u32s_C1P3R(
 		pB += pDstStride[2];
 	}
 }
-
-static void bmp24toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image)
-{
+static void bmp24toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image){
 	int index;
 	uint32_t width, height;
-	uint32_t x, y;
 	const uint8_t *pSrc = nullptr;
-
 	width = image->comps[0].w;
 	height = image->comps[0].h;
-
 	index = 0;
 	pSrc = pData + (height - 1U) * stride;
-	for (y = 0; y < height; y++) {
-		for (x = 0; x < width; x++) {
-			image->comps[0].data[index] = (int32_t)pSrc[3 * x + 2];	/* R */
-			image->comps[1].data[index] = (int32_t)pSrc[3 * x + 1];	/* G */
-			image->comps[2].data[index] = (int32_t)pSrc[3 * x + 0];	/* B */
+	for (uint32_t y = 0; y < height; y++) {
+		size_t src_index = 0;
+		for (uint32_t x = 0; x < width; x++) {
+			image->comps[0].data[index] = (int32_t)pSrc[src_index + 2];	/* R */
+			image->comps[1].data[index] = (int32_t)pSrc[src_index + 1];	/* G */
+			image->comps[2].data[index] = (int32_t)pSrc[src_index];	/* B */
 			index++;
+			src_index += 3;
 		}
 		pSrc -= stride;
 	}
@@ -187,9 +177,7 @@ static void bmp24toimage(const uint8_t* pData, uint32_t stride, opj_image_t* ima
 static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t* shift, uint32_t* prec)
 {
 	uint32_t l_shift, l_prec;
-
 	l_shift = l_prec = 0U;
-
 	if (mask != 0U) {
 		while ((mask & 1U) == 0U) {
 			mask >>= 1;
@@ -203,7 +191,6 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t* shift, uint32_t
 	*shift = l_shift;
 	*prec = l_prec;
 }
-
 static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
@@ -218,31 +205,27 @@ static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 
 	width = image->comps[0].w;
 	height = image->comps[0].h;
-
 	hasAlpha = image->numcomps > 3U;
-
 	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
 	bmp_mask_get_shift_and_prec(alphaMask, &alphaShift, &alphaPrec);
-
 	image->comps[0].prec = redPrec;
 	image->comps[1].prec = greenPrec;
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha) {
 		image->comps[3].prec = alphaPrec;
 	}
-
 	index = 0;
 	pSrc = pData + (height - 1U) * stride;
 	for (y = 0; y < height; y++) {
+		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
 			uint32_t value = 0U;
-
-			value |= ((uint32_t)pSrc[4 * x + 0]) << 0;
-			value |= ((uint32_t)pSrc[4 * x + 1]) << 8;
-			value |= ((uint32_t)pSrc[4 * x + 2]) << 16;
-			value |= ((uint32_t)pSrc[4 * x + 3]) << 24;
+			value |= ((uint32_t)pSrc[src_index]) << 0;
+			value |= ((uint32_t)pSrc[src_index + 1]) << 8;
+			value |= ((uint32_t)pSrc[src_index + 2]) << 16;
+			value |= ((uint32_t)pSrc[src_index + 3]) << 24;
 
 			image->comps[0].data[index] = (int32_t)((value & redMask) >> redShift);   /* R */
 			image->comps[1].data[index] = (int32_t)((value & greenMask) >> greenShift); /* G */
@@ -251,11 +234,11 @@ static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 				image->comps[3].data[index] = (int32_t)((value & alphaMask) >> alphaShift);  /* A */
 			}
 			index++;
+			src_index += 4;
 		}
 		pSrc -= stride;
 	}
 }
-
 static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
@@ -270,29 +253,24 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 
 	width = image->comps[0].w;
 	height = image->comps[0].h;
-
 	hasAlpha = image->numcomps > 3U;
-
 	bmp_mask_get_shift_and_prec(redMask, &redShift, &redPrec);
 	bmp_mask_get_shift_and_prec(greenMask, &greenShift, &greenPrec);
 	bmp_mask_get_shift_and_prec(blueMask, &blueShift, &bluePrec);
 	bmp_mask_get_shift_and_prec(alphaMask, &alphaShift, &alphaPrec);
-
 	image->comps[0].prec = redPrec;
 	image->comps[1].prec = greenPrec;
 	image->comps[2].prec = bluePrec;
 	if (hasAlpha) {
 		image->comps[3].prec = alphaPrec;
 	}
-
 	index = 0;
 	pSrc = pData + (height - 1U) * stride;
 	for (y = 0; y < height; y++) {
+		size_t src_index = 0;
 		for (x = 0; x < width; x++) {
-			uint32_t value = 0U;
-
-			value |= ((uint32_t)pSrc[2 * x + 0]) << 0;
-			value |= ((uint32_t)pSrc[2 * x + 1]) << 8;
+			uint32_t value = ((uint32_t)pSrc[src_index + 0]) << 0;
+			value |= ((uint32_t)pSrc[src_index + 1]) << 8;
 
 			image->comps[0].data[index] = (int32_t)((value & redMask) >> redShift);   /* R */
 			image->comps[1].data[index] = (int32_t)((value & greenMask) >> greenShift); /* G */
@@ -301,11 +279,11 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 				image->comps[3].data[index] = (int32_t)((value & alphaMask) >> alphaShift);  /* A */
 			}
 			index++;
+			src_index += 2;
 		}
 		pSrc -= stride;
 	}
 }
-
 static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint8_t const* const* pLUT)
 {
 	uint32_t width, height;
@@ -313,7 +291,6 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 
 	width = image->comps[0].w;
 	height = image->comps[0].h;
-
 	pSrc = pData + (height - 1U) * stride;
 	if (image->numcomps == 1U) {
 		opj_applyLUT8u_8u32s_C1R(pSrc, -(int32_t)stride, image->comps[0].data, (int32_t)width, pLUT[0], width, height);
@@ -332,9 +309,7 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 	}
 	return image;
 }
-
-static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
-{
+static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header){
 	if (!get_int(IN, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
@@ -351,8 +326,7 @@ static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header)
 		return false;
 	return true;
 }
-static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
-{
+static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header){
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
@@ -379,7 +353,6 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		return false;
 	if (!get_int(IN, &header->biBitCount))
 		return false;
-
 	if (header->biSize >= 40U) {
 		if (!get_int(IN, &header->biCompression))
 			return false;
@@ -394,7 +367,6 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		if (!get_int(IN, &header->biClrImportant))
 			return false;
 	}
-
 	if (header->biSize >= 56U) {
 		if (!get_int(IN, &header->biRedMask))
 			return false;
@@ -405,7 +377,6 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		if (!get_int(IN, &header->biAlphaMask))
 			return false;
 	}
-
 	if (header->biSize >= 108U) {
 		if (!get_int(IN, &header->biColorSpaceType))
 			return false;
@@ -420,7 +391,6 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header)
 		if (!get_int(IN, &header->biBlueGamma))
 			return false;
 	}
-
 	if (header->biSize >= 124U) {
 		if (!get_int(IN, &header->biIntent))
 			return false;
@@ -509,7 +479,6 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	}/* while() */
 	return true;
 }
-
 static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
 	uint32_t x, y;
@@ -584,7 +553,6 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	}  /* while(y < height) */
 	return true;
 }
-
 static opj_image_t* bmptoimage(const char *filename, 
 								opj_cparameters_t *parameters)
 {
@@ -803,43 +771,41 @@ cleanup:
 		fclose(IN);
 	return image;
 }
-
 static bool write_int(FILE* fdest, uint32_t val) {
 	int rc = fprintf(fdest, "%c%c%c%c", val & 0xff, (val >> 8) & 0xff, (val >> 16) & 0xff, (val >> 24) & 0xff);
 	return (rc == sizeof(val));
-}
-static bool write_int24(FILE* fdest, uint8_t val1, uint8_t val2, uint8_t val3) {
-	int rc = fprintf(fdest, "%c%c%c", val1, val2,val3);
-	return (rc == 3);
 }
 static bool write_short(FILE* fdest, uint16_t val) {
 	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
 	return (rc == sizeof(val));
 }
-static bool write_char(FILE* fdest, uint8_t val) {
-	int rc = fprintf(fdest, "%c", val);
-	return (rc == sizeof(val));
-}
-static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
-{
+static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
-	uint32_t w, h, i;
+	uint32_t w, h;
 	int32_t pad;
 	FILE *fdest = nullptr;
 	int adjustR, adjustG, adjustB;
 	int rc = -1;
+	uint8_t* destBuff = nullptr;
 
-	if (image->numcomps == 0) {
+	if (!sanityCheckOnImage(image, image->numcomps)) {
+		goto cleanup;
+	}
+	if (image->numcomps != 1 && image->numcomps != 3) {
 		fprintf(stderr, "[ERROR] Unsupported number of components: %d\n", image->numcomps);
 		goto cleanup;
 	}
-	for (i = 0; i < image->numcomps; ++i) {
+	if (isSubsampled(image)) {
+		fprintf(stderr, "[ERROR] Sub-sampled images not supported");
+		goto cleanup;
+	}
+
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
 			fprintf(stderr, "[ERROR] Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
 			goto cleanup;
 		}
 	}
-
 	if (writeToStdout) {
 		if (!grok_set_binary_mode(stdout))
 			goto cleanup;
@@ -853,16 +819,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		}
 	}
 
-	if (image->numcomps >= 3 && image->comps[0].dx == image->comps[1].dx
-		&& image->comps[1].dx == image->comps[2].dx
-		&& image->comps[0].dy == image->comps[1].dy
-		&& image->comps[1].dy == image->comps[2].dy
-		&& image->comps[0].prec == image->comps[1].prec
-		&& image->comps[1].prec == image->comps[2].prec
-		&& image->comps[0].sgnd == image->comps[1].sgnd
-		&& image->comps[1].sgnd == image->comps[2].sgnd) {
-
-
+	if (image->numcomps == 3) {
 		/* -->> -->> -->> -->>
 		24 bits color
 		<<-- <<-- <<-- <<-- */
@@ -926,51 +883,54 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		}
 		else
 			adjustB = 0;
+		uint32_t sz = w*h;
+		size_t padW = ((3 * w + 3) >> 2) << 2;
+		uint8_t* destBuff = new uint8_t[padW];
+		for (uint32_t j = 0; j < h; j++) {
+			uint32_t destInd = 0;
+			for (uint32_t i = 0; i < w; i++) {
+				uint8_t rc, gc, bc;
+				int32_t r, g, b;
 
-		for (i = 0; i < w * h; i++) {
-			uint8_t rc, gc, bc;
-			int32_t r, g, b;
+				r = image->comps[0].data[sz - (j+1) * w + i];
+				r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
+				if (adjustR > 0)
+					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+				if (r > 255)
+					r = 255;
+				else if (r < 0)
+					r = 0;
+				rc = (uint8_t)r;
 
-			r = image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
-			r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-			if (adjustR > 0)
-				r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
-			if (r > 255) 
-				r = 255;
-			else if (r < 0)
-				r = 0;
-			rc = (uint8_t)r;
+				g = image->comps[1].data[sz - (j + 1) * w + i];
+				g += (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
+				if (adjustG > 0)
+					g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
+				if (g > 255)
+					g = 255;
+				else if (g < 0)
+					g = 0;
+				gc = (uint8_t)g;
 
-			g = image->comps[1].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
-			g += (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-			if (adjustG > 0)
-				g = ((g >> adjustG) + ((g >> (adjustG - 1)) % 2));
-			if (g > 255)
-				g = 255;
-			else if (g < 0)
-				g = 0;
-			gc = (uint8_t)g;
-
-			b = image->comps[2].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
-			b += (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
-			if (adjustB > 0)
-				b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
-			if (b > 255) 
-				b = 255;
-			else if (b < 0) 
-				b = 0;
-			bc = (uint8_t)b;
-
-			if (!write_int24(fdest, bc, gc, rc))
-				goto cleanup;
-
-
-			if ((i + 1) % w == 0) {
-				for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--) {	/* ADD */
-					if (!write_char(fdest, 0))
-						goto cleanup;
-				}
+				b = image->comps[2].data[sz - (j + 1) * w + i];
+				b += (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+				if (adjustB > 0)
+					b = ((b >> adjustB) + ((b >> (adjustB - 1)) % 2));
+				if (b > 255)
+					b = 255;
+				else if (b < 0)
+					b = 0;
+				bc = (uint8_t)b;
+				destBuff[destInd++] = bc;
+				destBuff[destInd++] = gc;
+				destBuff[destInd++] = rc;
 			}
+			// pad at end of row to ensure that width is divisible by 4
+			for (pad = (3 * w) % 4 ? 4 - (3 * w) % 4 : 0; pad > 0; pad--) {	/* ADD */
+				destBuff[destInd++] = 0;
+			}
+			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
+				goto cleanup;
 		}
 	}
 	else {			/* Gray-scale */
@@ -1025,37 +985,40 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose)
 		else
 			adjustR = 0;
 
-		for (i = 0; i < 256; i++) {
+		for (uint32_t  i = 0; i < 256; i++) {
 			if (fprintf(fdest, "%c%c%c%c", i, i, i, 0) != 4)
 				goto cleanup;
 		}
 
-		for (i = 0; i < w * h; i++) {
-			int32_t r = 
-				image->comps[0].data[w * h - ((i) / (w)+1) * w + (i) % (w)];
-			r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-			if (adjustR > 0)
-				r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
-			if (r > 255)
-				r = 255;
-			else if (r < 0)
-				r = 0;
-
-			if (!write_char(fdest, (uint8_t)r))
-				goto cleanup;
-
-			if ((i + 1) % w == 0) {
-				for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) {/* ADD */
-					if (!write_char(fdest, 0))
-						goto cleanup;
-				}
+		uint32_t sz = w*h;
+		size_t padW = ((w + 3) >> 2) << 2;
+		uint8_t* destBuff = new uint8_t[padW];
+		for (uint32_t j = 0; j < h; j++) {
+			uint32_t destInd = 0;
+			for (uint32_t i = 0; i < w; i++) {
+				int32_t r =	image->comps[0].data[sz - (j+1) * w + i];
+				r += (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
+				if (adjustR > 0)
+					r = ((r >> adjustR) + ((r >> (adjustR - 1)) % 2));
+				if (r > 255)
+					r = 255;
+				else if (r < 0)
+					r = 0;
+				destBuff[destInd++] = (uint8_t)r;
 			}
+			// pad at end of row to ensure that width is divisible by 4
+			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) {/* ADD */
+				destBuff[destInd++] = 0;
+			}
+			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
+				goto cleanup;
 		}
 
 	}
 	// success !!
 	rc = 0;
 cleanup:
+	delete[] destBuff;
 	if (!writeToStdout && fdest)
 		fclose(fdest);
 	return rc;
