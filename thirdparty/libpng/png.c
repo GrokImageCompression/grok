@@ -1,8 +1,8 @@
 
 /* png.c - location for general purpose libpng functions
  *
- * Last changed in libpng 1.6.33 [September 28, 2017]
- * Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson
+ * Last changed in libpng 1.6.35 [(PENDING RELEASE)]
+ * Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson
  * (Version 0.96 Copyright (c) 1996, 1997 Andreas Dilger)
  * (Version 0.88 Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.)
  *
@@ -14,7 +14,7 @@
 #include "pngpriv.h"
 
 /* Generate a compiler error if there is an old png.h in the search path. */
-typedef png_libpng_version_1_6_35beta01 Your_png_h_is_not_version_1_6_35beta01;
+typedef png_libpng_version_1_6_35beta02 Your_png_h_is_not_version_1_6_35beta02;
 
 #ifdef __GNUC__
 /* The version tests may need to be added to, but the problem warning has
@@ -816,15 +816,15 @@ png_get_copyright(png_const_structrp png_ptr)
 #else
 #  ifdef __STDC__
    return PNG_STRING_NEWLINE \
-      "libpng version 1.6.35beta01 - September 29, 2017" PNG_STRING_NEWLINE \
-      "Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson" \
+      "libpng version 1.6.35beta02 - March 6, 2018" PNG_STRING_NEWLINE \
+      "Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson" \
       PNG_STRING_NEWLINE \
       "Copyright (c) 1996-1997 Andreas Dilger" PNG_STRING_NEWLINE \
       "Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc." \
       PNG_STRING_NEWLINE;
 #  else
-   return "libpng version 1.6.35beta01 - September 29, 2017\
-      Copyright (c) 1998-2002,2004,2006-2017 Glenn Randers-Pehrson\
+   return "libpng version 1.6.35beta02 - March 6, 2018\
+      Copyright (c) 1998-2002,2004,2006-2018 Glenn Randers-Pehrson\
       Copyright (c) 1996-1997 Andreas Dilger\
       Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.";
 #  endif
@@ -4344,7 +4344,7 @@ png_set_option(png_structrp png_ptr, int option, int onoff)
       png_uint_32 setting = (2U + (onoff != 0)) << option;
       png_uint_32 current = png_ptr->options;
 
-      png_ptr->options = (png_uint_32)(((current & ~mask) | setting) & 0xff);
+      png_ptr->options = (png_uint_32)((current & ~mask) | setting);
 
       return (int)(current & mask) >> option;
    }
