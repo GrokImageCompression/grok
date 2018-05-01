@@ -174,12 +174,12 @@ namespace grk {
 	/**
 	@param cblk
 	@param index
-	@param cblksty
+	@param mode_switch
 	@param first
 	*/
 	static bool t2_init_seg(tcd_cblk_dec_t* cblk,
 		uint32_t index,
-		uint32_t cblksty,
+		uint32_t mode_switch,
 		bool first);
 
 	/*@}*/
@@ -806,7 +806,7 @@ namespace grk {
 				uint32_t l_segno = 0;
 
 				if (!l_cblk->numSegments) {
-					if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, true)) {
+					if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].mode_switch, true)) {
 						return false;
 					}
 				}
@@ -814,7 +814,7 @@ namespace grk {
 					l_segno = l_cblk->numSegments - 1;
 					if (l_cblk->segs[l_segno].numpasses == l_cblk->segs[l_segno].maxpasses) {
 						++l_segno;
-						if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, false)) {
+						if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].mode_switch, false)) {
 							return false;
 						}
 					}
@@ -839,7 +839,7 @@ namespace grk {
 					numPassesInPacket -= (int32_t)l_cblk->segs[l_segno].numPassesInPacket;
 					if (numPassesInPacket > 0) {
 						++l_segno;
-						if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].cblksty, false)) {
+						if (!t2_init_seg(l_cblk, l_segno, p_tcp->tccps[p_pi->compno].mode_switch, false)) {
 							return false;
 						}
 					}
@@ -1715,7 +1715,7 @@ namespace grk {
 
 	static bool t2_init_seg(tcd_cblk_dec_t* cblk,
 		uint32_t index,
-		uint32_t cblksty,
+		uint32_t mode_switch,
 		bool first)
 	{
 		tcd_seg_t* seg = nullptr;
@@ -1739,10 +1739,10 @@ namespace grk {
 		seg = &cblk->segs[index];
 		memset(seg, 0, sizeof(tcd_seg_t));
 
-		if (cblksty & J2K_CCP_CBLKSTY_TERMALL) {
+		if (mode_switch & J2K_CCP_CBLKSTY_TERMALL) {
 			seg->maxpasses = 1;
 		}
-		else if (cblksty & J2K_CCP_CBLKSTY_LAZY) {
+		else if (mode_switch & J2K_CCP_CBLKSTY_LAZY) {
 			if (first) {
 				seg->maxpasses = 10;
 			}

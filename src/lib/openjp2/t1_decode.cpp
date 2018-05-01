@@ -209,7 +209,7 @@ inline void t1_decode::sigpass_step_raw(flag_t *flagsp,
 		*flagsp |= T1_VISIT;
 	}
 }
-void t1_decode::sigpass_raw(int32_t bpno, uint32_t cblksty) {
+void t1_decode::sigpass_raw(int32_t bpno, uint32_t mode_switch) {
 	int32_t one = 1 << bpno;
 	int32_t half = one >> 1;
 	int32_t oneplushalf = one | half;
@@ -217,7 +217,7 @@ void t1_decode::sigpass_raw(int32_t bpno, uint32_t cblksty) {
 		for (uint32_t i = 0; i < w; ++i) {
 			for (uint32_t j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				bool vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? true : false;
+				bool vsc = ((mode_switch & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? true : false;
 				sigpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					oneplushalf,
@@ -239,7 +239,7 @@ inline void t1_decode::refpass_step_raw(flag_t *flagsp,
 	}
 }
 void t1_decode::refpass_raw(int32_t bpno,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	int32_t one, poshalf;
 	uint32_t i, j, k;
 	bool vsc;
@@ -249,7 +249,7 @@ void t1_decode::refpass_raw(int32_t bpno,
 		for (i = 0; i < w; ++i) {
 			for (j = k; j < k + 4 && j < h; ++j) {
 				// VSC flag is set for last line of stripe
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? 1 : 0;
+				vsc = ((mode_switch & J2K_CCP_CBLKSTY_VSC) && (j == k + 3 || j == (uint32_t)(h - 1))) ? 1 : 0;
 				refpass_step_raw(&flags[((j + 1) * flags_stride) + i + 1],
 					&dataPtr[(j * w) + i],
 					poshalf,
@@ -426,14 +426,14 @@ void t1_decode::clnpass_step_vsc(flag_t *flagsp,
 
 void t1_decode::clnpass(int32_t bpno,
 	uint8_t orient,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	int32_t one, half, oneplushalf, vsc;
 	uint8_t runlen;
 	uint32_t i, j, k;
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
-	if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+	if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
 		for (k = 0; k < h; k += 4) {
 			for (i = 0; i < w; ++i) {
 				int32_t agg = 0;
@@ -529,7 +529,7 @@ void t1_decode::clnpass(int32_t bpno,
 			}
 		}
 	}
-	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
+	if (mode_switch & J2K_CCP_CBLKSTY_SEGSYM) {
 		uint8_t v = 0;
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
 		v = mqc_decode(mqc);
@@ -575,7 +575,7 @@ void t1_decode::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t orient,
 	uint32_t roishift,
-	uint32_t cblksty)
+	uint32_t mode_switch)
 {
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
 	if (!cblk->seg_buffers.get_len())
@@ -591,7 +591,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 		uint16_t stash = *((uint16_t*)(compressed_block + synthOffset));
 		*((uint16_t*)(compressed_block + synthOffset))=0xFFFF;
 		uint8_t type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) &&
-						(passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+						(passtype < 2) && (mode_switch & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
 			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
@@ -602,10 +602,10 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW) {
-					sigpass_raw(bpno_plus_one, cblksty);
+					sigpass_raw(bpno_plus_one, mode_switch);
 				}
 				else {
-					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
 						sigpass_vsc(bpno_plus_one, orient);
 					}
 					else {
@@ -615,10 +615,10 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW) {
-					refpass_raw(bpno_plus_one, cblksty);
+					refpass_raw(bpno_plus_one, mode_switch);
 				}
 				else {
-					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
 						refpass_vsc(bpno_plus_one);
 					}
 					else {
@@ -627,11 +627,11 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				break;
 			case 2:
-				clnpass(bpno_plus_one, orient, cblksty);
+				clnpass(bpno_plus_one, orient, mode_switch);
 				break;
 			}
 
-			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
+			if ((mode_switch & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
 				mqc_resetstates(mqc);
 			}
 

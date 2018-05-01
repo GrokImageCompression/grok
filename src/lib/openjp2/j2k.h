@@ -187,8 +187,8 @@ struct tccp_t {
     uint32_t cblkw;
     /** log2(code-blocks height) */
     uint32_t cblkh;
-    /** code-block coding style */
-    uint32_t cblksty;
+    /** code-block mode */
+    uint32_t mode_switch;
     /** discrete wavelet transform identifier */
     uint32_t qmfbid;
 	// true if there is a QCC marker, otherwise false

@@ -71,7 +71,7 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp,
 						block->compno = compno;
 						block->bandno = band->bandno;
 						block->cblk = cblk;
-						block->cblksty = tccp->cblksty;
+						block->mode_switch = tccp->mode_switch;
 						block->qmfbid = tccp->qmfbid;
 						block->resno = resno;
 						block->bandconst = bandconst;
@@ -146,7 +146,7 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t* tilec,
 					auto block = new decodeBlockInfo();
 					block->bandno = band->bandno;
 					block->cblk = cblk;
-					block->cblksty = tccp->cblksty;
+					block->mode_switch = tccp->mode_switch;
 					block->qmfbid = tccp->qmfbid;
 					block->resno = resno;
 					block->roishift = tccp->roishift;

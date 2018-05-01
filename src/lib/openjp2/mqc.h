@@ -195,7 +195,7 @@ Flush the encoder, so that all remaining data is written
 */
 void mqc_flush(mqc_t *mqc);
 
-void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush);
+void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush);
 
 /**
 BYPASS mode switch, initialization operation.
