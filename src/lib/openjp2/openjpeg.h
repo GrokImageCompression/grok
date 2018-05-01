@@ -603,6 +603,10 @@ typedef struct opj_header_info {
 	uint16_t rsiz;
 	/** number of resolutions */
 	uint32_t numresolutions;
+	// coding style can be specified in main header COD segment,
+	// tile header COD segment, and tile component COC segment.
+	// !!! Assume that coding style does not vary across tile components !!!
+	uint32_t csty;
 	// mode switch is specified in main header COD segment, and can
 	// be overridden in a tile header. !!! Assume that mode does
 	// not vary across tiles !!!
