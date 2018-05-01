@@ -6063,7 +6063,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
             tccp->numresolutions = parameters->numresolution;
             tccp->cblkw = int_floorlog2(parameters->cblockw_init);
             tccp->cblkh = int_floorlog2(parameters->cblockh_init);
-            tccp->cblksty = parameters->mode;
+            tccp->mode_switch = parameters->mode;
             tccp->qmfbid = parameters->irreversible ? 0 : 1;
             tccp->qntsty = parameters->irreversible ? J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
             tccp->numgbits = 2;
@@ -6270,7 +6270,8 @@ bool j2k_read_header(   GrokStream *p_stream,
 		header_info->mct = l_tcp->mct;
 		header_info->rsiz = l_cp->rsiz;
 		header_info->numresolutions = l_tccp->numresolutions;
-		header_info->csty = l_tcp->csty;
+		// !!! assume that mode switch is constant across all tiles
+		header_info->mode_switch = l_tccp->mode_switch;
 		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
 			header_info->prcw_init[i] = 1 << l_tccp->prcw[i];
 			header_info->prch_init[i] = 1 << l_tccp->prch[i];
@@ -8240,7 +8241,7 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p
     if (l_tccp0->cblkh != l_tccp1->cblkh) {
         return false;
     }
-    if (l_tccp0->cblksty != l_tccp1->cblksty) {
+    if (l_tccp0->mode_switch != l_tccp1->mode_switch) {
         return false;
     }
     if (l_tccp0->qmfbid != l_tccp1->qmfbid) {
@@ -8301,7 +8302,7 @@ static bool j2k_write_SPCod_SPCoc(     j2k_t *p_j2k,
 	}
 
 	/* SPcoc (G) */
-	if (!p_stream->write_byte((uint8_t)l_tccp->cblksty, p_manager)) {
+	if (!p_stream->write_byte((uint8_t)l_tccp->mode_switch, p_manager)) {
 		return false;
 	}
 
@@ -8386,9 +8387,9 @@ static bool j2k_read_SPCod_SPCoc(  j2k_t *p_j2k,
     }
 
 	/* SPcoc (G) */
-    grok_read_bytes(l_current_ptr,&l_tccp->cblksty ,1);             
+    grok_read_bytes(l_current_ptr,&l_tccp->mode_switch ,1);             
     ++l_current_ptr;
-	if (l_tccp->cblksty & 0xC0U) { /* 2 msb are reserved, assume we can't read */
+	if (l_tccp->mode_switch & 0xC0U) { /* 2 msb are reserved, assume we can't read */
 		event_msg(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element, Invalid code-block style found\n");
 		return false;
 	}
@@ -8451,7 +8452,7 @@ static void j2k_copy_tile_component_parameters( j2k_t *p_j2k )
         l_copied_tccp->numresolutions = l_ref_tccp->numresolutions;
         l_copied_tccp->cblkw = l_ref_tccp->cblkw;
         l_copied_tccp->cblkh = l_ref_tccp->cblkh;
-        l_copied_tccp->cblksty = l_ref_tccp->cblksty;
+        l_copied_tccp->mode_switch = l_ref_tccp->mode_switch;
         l_copied_tccp->qmfbid = l_ref_tccp->qmfbid;
         memcpy(l_copied_tccp->prcw,l_ref_tccp->prcw,l_prc_size);
         memcpy(l_copied_tccp->prch,l_ref_tccp->prch,l_prc_size);
@@ -8753,7 +8754,7 @@ static void j2k_dump_tile_info( tcp_t * l_default_tile,uint32_t numcomps,FILE* o
             fprintf(out_stream, "\t\t\t numresolutions=%d\n", l_tccp->numresolutions);
             fprintf(out_stream, "\t\t\t cblkw=2^%d\n", l_tccp->cblkw);
             fprintf(out_stream, "\t\t\t cblkh=2^%d\n", l_tccp->cblkh);
-            fprintf(out_stream, "\t\t\t cblksty=%#x\n", l_tccp->cblksty);
+            fprintf(out_stream, "\t\t\t cblksty=%#x\n", l_tccp->mode_switch);
             fprintf(out_stream, "\t\t\t qmfbid=%d\n", l_tccp->qmfbid);
 
             fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
@@ -9019,7 +9020,7 @@ opj_codestream_info_v2_t* j2k_get_cstr_info(j2k_t* p_j2k)
         l_tccp_info->numresolutions = l_tccp->numresolutions;
         l_tccp_info->cblkw = l_tccp->cblkw;
         l_tccp_info->cblkh = l_tccp->cblkh;
-        l_tccp_info->cblksty = l_tccp->cblksty;
+        l_tccp_info->mode_switch = l_tccp->mode_switch;
         l_tccp_info->qmfbid = l_tccp->qmfbid;
         if (l_tccp->numresolutions < OPJ_J2K_MAXRLVLS) {
             memcpy(l_tccp_info->prch, l_tccp->prch, l_tccp->numresolutions);

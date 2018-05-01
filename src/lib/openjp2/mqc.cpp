@@ -592,12 +592,12 @@ void mqc_flush(mqc_t *mqc) {
 		mqc->bp++;
 	}
 }
-void mqc_big_flush(mqc_t *mqc, uint32_t cblksty, bool bypassFlush) {
+void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush) {
 	if (bypassFlush) {
 		mqc_bypass_flush_enc(mqc);
 	}
 	/* Code switch "ERTERM" (i.e. PTERM) */
-	else if (cblksty & J2K_CCP_CBLKSTY_PTERM)
+	else if (mode_switch & J2K_CCP_CBLKSTY_PTERM)
 		mqc_flush_erterm(mqc);
 	else
 		mqc_flush(mqc);

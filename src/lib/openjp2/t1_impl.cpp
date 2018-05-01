@@ -37,7 +37,7 @@ t1_impl::t1_impl(bool isEncoder,
 	}
 	else {
 		tccp_t *tccp = &tcp->tccps[0];
-		if (!tccp->cblksty)
+		if (!tccp->mode_switch)
 			t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
 		else
 			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
@@ -60,7 +60,7 @@ double t1_impl::encode(encodeBlockInfo* block,
 										(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 										block->qmfbid,
 										block->stepsize,
-										block->cblksty,
+										block->mode_switch,
 										tile->numcomps,
 										block->mct_norms,
 										block->mct_numcomps,
@@ -117,7 +117,7 @@ bool t1_impl::decode(decodeBlockInfo* block) {
 	return t1_decoder->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
 						block->roishift,
-						block->cblksty);
+						block->mode_switch);
 }
 
 void t1_impl::postDecode(decodeBlockInfo* block) {

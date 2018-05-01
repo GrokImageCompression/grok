@@ -114,7 +114,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 	int32_t one,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	uint8_t v;
 	if (*flagsp == 0U) {
 		return;  /* Nothing to do for any of the 4 data points */
@@ -146,7 +146,7 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 				else {
 					mqc_encode(mqc, v ^ getSPByte(lu));
 				}
-				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (mode_switch & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -158,7 +158,7 @@ void t1_encode::sigpass(int32_t bpno,
 	uint8_t orient,
 	int32_t *nmsedec,
 	uint8_t type,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
@@ -177,7 +177,7 @@ void t1_encode::sigpass(int32_t bpno,
 				one,
 				nmsedec,
 				type,
-				cblksty);
+				mode_switch);
 
 			++f;
 			++d;
@@ -257,7 +257,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 	uint32_t agg,
 	uint32_t runlen,
 	uint32_t y,
-	uint32_t cblksty)
+	uint32_t mode_switch)
 {
 	uint8_t v;
 	uint32_t lim;
@@ -301,7 +301,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 				/* sign bit */
 				v = (uint8_t)(*datap >> T1_DATA_SIGN_BIT_INDEX);
 				mqc_encode(mqc, v ^ getSPByte(lu));
-				updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+				updateFlags(flagsp, ci3, v, flags_stride, (mode_switch & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
@@ -311,7 +311,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 void t1_encode::clnpass(int32_t bpno,
 	uint8_t orient,
 	int32_t *nmsedec,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg;
@@ -349,7 +349,7 @@ void t1_encode::clnpass(int32_t bpno,
 				agg,
 				runlen,
 				k,
-				cblksty);
+				mode_switch);
 		}
 	}
 }
@@ -400,7 +400,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	uint32_t level,
 	uint32_t qmfbid,
 	double stepsize,
-	uint32_t cblksty,
+	uint32_t mode_switch,
 	uint32_t numcomps,
 	const double * mct_norms,
 	uint32_t mct_numcomps,
@@ -434,8 +434,8 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	}
 #endif
 
-	bool TERMALL = (cblksty & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
-	bool LAZY = (cblksty & J2K_CCP_CBLKSTY_LAZY);
+	bool TERMALL = (mode_switch & J2K_CCP_CBLKSTY_TERMALL) ? true : false;
+	bool LAZY = (mode_switch & J2K_CCP_CBLKSTY_LAZY);
 
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
@@ -445,15 +445,15 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 
 		switch (passtype) {
 		case 0:
-			sigpass(bpno, orient, msePtr, type, cblksty);
+			sigpass(bpno, orient, msePtr, type, mode_switch);
 			break;
 		case 1:
 			refpass(bpno, msePtr, type);
 			break;
 		case 2:
-			clnpass(bpno, orient, msePtr, cblksty);
+			clnpass(bpno, orient, msePtr, mode_switch);
 			/* code switch SEGMARK (i.e. SEGSYM) */
-			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
+			if (mode_switch & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
 #ifdef PLUGIN_DEBUG_ENCODE
 			if (state & GROK_PLUGIN_STATE_DEBUG) {
@@ -502,7 +502,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 					bypassFlush = passtype == 1;
 				}
 			}
-			mqc_big_flush(mqc, cblksty, bypassFlush);
+			mqc_big_flush(mqc, mode_switch, bypassFlush);
 			pass->term = 1;
 		}
 		else {
@@ -538,14 +538,14 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 			}
 
 			/* Code-switch "RESET" */
-			if (cblksty & J2K_CCP_CBLKSTY_RESET)
+			if (mode_switch & J2K_CCP_CBLKSTY_RESET)
 				mqc_resetstates(mqc);
 		}
 	}
 
 	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
 	if (!finalPass->term) {
-		mqc_big_flush(mqc, cblksty, false);
+		mqc_big_flush(mqc, mode_switch, false);
 	}
 
 	cblk->num_passes_encoded = passno;

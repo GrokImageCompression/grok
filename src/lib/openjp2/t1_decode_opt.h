@@ -76,12 +76,12 @@ public:
 	@param cblk Code-block coding parameters
 	@param orient
 	@param roishift Region of interest shifting value
-	@param cblksty Code-block style
+	@param mode_switch Code-block style
 	*/
 	bool decode_cblk(tcd_cblk_dec_t* cblk,
 		uint8_t orient,
 		uint32_t roishift,
-		uint32_t cblksty) override;
+		uint32_t mode_switch) override;
 	void postDecode(decodeBlockInfo* block) override;
 private:
 	bool allocateBuffers(uint16_t w, uint16_t h);
@@ -91,8 +91,8 @@ private:
 		uint8_t orient,
 		int32_t oneplushalf,
 		uint32_t maxci3,
-		uint32_t cblksty);
-	void sigpass(int32_t bpno, uint8_t orient, uint32_t cblksty);
+		uint32_t mode_switch);
+	void sigpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
 	void refpass(int32_t bpno);
 	inline void refpass_step(flag_opt_t *flagsp,
 		int32_t *datap,
@@ -105,10 +105,10 @@ private:
 		uint32_t agg,
 		uint32_t runlen,
 		uint32_t y,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 	void clnpass(int32_t bpno,
 		uint8_t orient,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 };
 
 }

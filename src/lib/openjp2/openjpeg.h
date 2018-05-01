@@ -463,7 +463,7 @@ typedef struct opj_cparameters {
     uint32_t cblockw_init;
     /** initial code block height, default to 64 */
     uint32_t cblockh_init;
-    /** mode switch (cblk_style) */
+    /** mode switch */
     uint32_t mode;
     /** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
     uint32_t irreversible;
@@ -603,8 +603,10 @@ typedef struct opj_header_info {
 	uint16_t rsiz;
 	/** number of resolutions */
 	uint32_t numresolutions;
-	/** csty : coding style */
-	uint32_t csty;
+	// mode switch is specified in main header COD segment, and can
+	// be overridden in a tile header. !!! Assume that mode does
+	// not vary across tiles !!!
+	uint32_t mode_switch;
 	/** initial precinct width */
 	uint32_t prcw_init[OPJ_J2K_MAXRLVLS];
 	/** initial precinct height */
@@ -1073,8 +1075,8 @@ typedef struct opj_tccp_info {
     uint32_t cblkw;
     /** code-blocks height */
     uint32_t cblkh;
-    /** code-block coding style */
-    uint32_t cblksty;
+    /** code block mode */
+    uint32_t mode_switch;
     /** discrete wavelet transform identifier */
     uint32_t qmfbid;
     /** quantisation style */

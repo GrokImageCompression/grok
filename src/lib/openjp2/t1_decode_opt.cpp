@@ -108,7 +108,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 										uint8_t orient,
 										int32_t oneplushalf,
 										uint32_t maxci3,
-										uint32_t cblksty) {
+										uint32_t mode_switch) {
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		flag_opt_t const shift_flags = *flagsp >> ci3;
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
@@ -118,7 +118,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
 				*datap = v ? -oneplushalf : oneplushalf;
-				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (cblksty & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (mode_switch & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -129,7 +129,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp,
 
 void t1_decode_opt::sigpass(int32_t bpno,
 	uint8_t orient,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	int32_t one, half, oneplushalf;
 	uint32_t i, k;
 	one = 1 << bpno;
@@ -143,7 +143,7 @@ void t1_decode_opt::sigpass(int32_t bpno,
 	for (k = 0; k < (h&~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
 			if (*f) {
-				sigpass_step(f, d, orient, oneplushalf, 12, cblksty);
+				sigpass_step(f, d, orient, oneplushalf, 12, mode_switch);
 			}
 			++f;
 			++d;
@@ -154,7 +154,7 @@ void t1_decode_opt::sigpass(int32_t bpno,
 	if (k < h) {
 		for (i = 0; i < w; ++i) {
 			if (*f) {
-				sigpass_step(f, d, orient, oneplushalf, (h - k) * 3, cblksty);
+				sigpass_step(f, d, orient, oneplushalf, (h - k) * 3, mode_switch);
 			}
 			++f;
 			++d;
@@ -222,7 +222,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 								uint32_t agg,
 								uint32_t runlen,
 								uint32_t y,
-								uint32_t cblksty) {
+								uint32_t mode_switch) {
 
 	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 	if ((*flagsp & check) == check) {
@@ -259,7 +259,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 			mqc_setcurctx(mqc, getSignCodingContext(lu));
 			uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
 			*datap = v ? -oneplushalf : oneplushalf;
-			updateFlags(flagsp, ci3, v, flags_stride, (cblksty & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+			updateFlags(flagsp, ci3, v, flags_stride, (mode_switch & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
 		datap += w;
@@ -267,7 +267,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp,
 }
 void t1_decode_opt::clnpass(int32_t bpno,
 	uint8_t orient,
-	uint32_t cblksty) {
+	uint32_t mode_switch) {
 	int32_t one, half, oneplushalf;
 	one = 1 << bpno;
 	half = one >> 1;
@@ -296,7 +296,7 @@ void t1_decode_opt::clnpass(int32_t bpno,
 				agg,
 				runlen,
 				k,
-				cblksty);
+				mode_switch);
 		}
 	}
 
@@ -309,11 +309,11 @@ void t1_decode_opt::clnpass(int32_t bpno,
 				0,
 				0,
 				k,
-				cblksty);
+				mode_switch);
 		}
 	}
 
-	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
+	if (mode_switch & J2K_CCP_CBLKSTY_SEGSYM) {
 		uint8_t v = 0;
 		mqc_setcurctx(mqc, T1_CTXNO_UNI);
 		v = mqc_decode(mqc);
@@ -330,7 +330,7 @@ void t1_decode_opt::clnpass(int32_t bpno,
 bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t orient,
 	uint32_t roishift,
-	uint32_t cblksty)
+	uint32_t mode_switch)
 {
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
 	if (!cblk->seg_buffers.get_len())
@@ -346,7 +346,7 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 		uint16_t stash = *((uint16_t*)(compressed_block + synthOffset));
 		*((uint16_t*)(compressed_block + synthOffset)) = synthBytes;
 		uint8_t type = ((bpno_plus_one <= ((int32_t)(cblk->numbps)) - 4) &&
-			(passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+			(passtype < 2) && (mode_switch & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 		if (type == T1_TYPE_RAW) {
 			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
 		}
@@ -357,23 +357,23 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 			switch (passtype) {
 			case 0:
 				if (type == T1_TYPE_RAW) {
-					//sigpass_raw(bpno_plus_one, cblksty);
+					//sigpass_raw(bpno_plus_one, mode_switch);
 				}
 				else {
-					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
 						//sigpass_vsc(bpno_plus_one, orient);
 					}
 					else {
-						sigpass(bpno_plus_one, orient,cblksty);
+						sigpass(bpno_plus_one, orient,mode_switch);
 					}
 				}
 				break;
 			case 1:
 				if (type == T1_TYPE_RAW) {
-					//refpass_raw(bpno_plus_one, cblksty);
+					//refpass_raw(bpno_plus_one, mode_switch);
 				}
 				else {
-					if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
 						//refpass_vsc(bpno_plus_one);
 					}
 					else {
@@ -382,11 +382,11 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t* cblk,
 				}
 				break;
 			case 2:
-				clnpass(bpno_plus_one, orient, cblksty);
+				clnpass(bpno_plus_one, orient, mode_switch);
 				break;
 			}
 
-			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
+			if ((mode_switch & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
 				mqc_resetstates(mqc);
 			}
 

@@ -73,7 +73,7 @@ public:
 		uint32_t level,
 		uint32_t qmfbid,
 		double stepsize,
-		uint32_t cblksty,
+		uint32_t mode_switch,
 		uint32_t numcomps,
 		const double * mct_norms,
 		uint32_t mct_numcomps,
@@ -92,7 +92,7 @@ private:
 		int32_t one,
 		int32_t *nmsedec,
 		uint8_t type,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 
 	/**
 	Encode significant pass
@@ -101,7 +101,7 @@ private:
 		uint8_t orient,
 		int32_t *nmsedec,
 		uint8_t type,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 
 
 	/**
@@ -134,7 +134,7 @@ private:
 		uint32_t agg,
 		uint32_t runlen,
 		uint32_t y,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 
 	/**
 	Encode clean-up pass
@@ -142,7 +142,7 @@ private:
 	void clnpass(int32_t bpno,
 		uint8_t orient,
 		int32_t *nmsedec,
-		uint32_t cblksty);
+		uint32_t mode_switch);
 
 	double getwmsedec(
 		int32_t nmsedec,
