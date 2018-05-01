@@ -6270,6 +6270,8 @@ bool j2k_read_header(   GrokStream *p_stream,
 		header_info->mct = l_tcp->mct;
 		header_info->rsiz = l_cp->rsiz;
 		header_info->numresolutions = l_tccp->numresolutions;
+		// !!! assume that coding style is constant across all tile components
+		header_info->csty = l_tccp->csty;
 		// !!! assume that mode switch is constant across all tiles
 		header_info->mode_switch = l_tccp->mode_switch;
 		for (uint32_t i = 0; i < header_info->numresolutions; ++i) {
