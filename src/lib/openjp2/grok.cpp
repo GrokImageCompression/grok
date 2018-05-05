@@ -810,8 +810,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
     bool p_is_read_stream){
 	bool stdin_stdout = !fname || !fname[0];
     opj_stream_t* l_stream = nullptr;
-    FILE *p_file;
-    const char *mode;
+    FILE *p_file = nullptr;
 	if (!stdin_stdout && (!fname || !fname[0])) {
 		return nullptr;
 	}
@@ -819,8 +818,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
 		p_file = p_is_read_stream ? stdin : stdout;
 	}
 	else {
-		if (p_is_read_stream) mode = "rb";
-		else mode = "wb";
+	    const char *mode = (p_is_read_stream) ? "rb" : "wb";
 		p_file = fopen(fname, mode);
 		if (!p_file) {
 			return nullptr;
