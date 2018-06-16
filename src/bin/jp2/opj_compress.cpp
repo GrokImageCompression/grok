@@ -243,12 +243,12 @@ static void encode_help_display(void)
     fprintf(stdout,"    The maximum value permitted is 64x64. \n");
     fprintf(stdout,"    Default: 64x64.\n");
     fprintf(stdout,"[-c|-PrecinctDims] [<prec width>,<prec height>],[<prec width>,<prec height>],...\n");
-    fprintf(stdout,"    Precinct size. Values specified must be power of 2. \n");
-    fprintf(stdout,"    Multiple records may be supplied, in which case the first record refers\n");
-    fprintf(stdout,"    to the highest resolution level and subsequent records to lower \n");
-    fprintf(stdout,"    resolution levels. The last specified record is right-shifted for each \n");
-    fprintf(stdout,"    remaining lower resolution levels.\n");
-    fprintf(stdout,"    Default: 215x215 at each resolution.\n");
+    fprintf(stdout,"    Precinct dimensions. Dimensions specified must be powers of 2. \n");
+    fprintf(stdout,"    Multiple records may be specified, in which case the first record refers \n");
+    fprintf(stdout,"    to the highest resolution level and subsequent records refer to lower \n");
+    fprintf(stdout,"    resolution levels. The last specified record's dimensions are progressively right-shifted (halved in size) \n");
+    fprintf(stdout,"    for each remaining lower resolution level.\n");
+    fprintf(stdout,"    Default: 2^15x2^15 at each resolution i.e. precincts are not used.\n");
     fprintf(stdout,"[-t|-TileDim] <tile width>,<tile height>\n");
     fprintf(stdout,"    Tile dimensions.\n");
     fprintf(stdout,"    Default: the dimension of the whole image, thus only one tile.\n");
