@@ -3593,6 +3593,10 @@ static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t * p_manager)
     if (p_tcp->ppt == 0U) {
         return true;
     }
+    if (p_tcp->ppt_buffer != nullptr) {
+        event_msg(p_manager, EVT_ERROR,"multiple calls to j2k_merge_ppt()\n");
+        return false;
+    }
 
     l_ppt_data_size = 0U;
     for (i = 0U; i < p_tcp->ppt_markers_count; ++i) {
@@ -7529,7 +7533,10 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 
     /* Current marker is the EOC marker ?*/
     if (l_current_marker == J2K_MS_EOC) {
-       p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
+       if ( p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
+    	  p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
+    	  p_j2k->m_current_tile_number = 0;
+       }
     }
 
     //if we are not ready to decode tile part data, then skip tiles with no tile data
@@ -7551,8 +7558,6 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
         event_msg(p_manager, EVT_ERROR, "Failed to merge PPT data\n");
         return false;
     }
-    /*FIXME ???*/
-    l_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
     if (! tcd_init_decode_tile(p_j2k->m_tcd,
                                    p_j2k->m_output_image,
                                    p_j2k->m_current_tile_number,
@@ -7560,10 +7565,6 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
 		event_msg(p_manager, EVT_ERROR, "Cannot decode tile %d\n", p_j2k->m_current_tile_number);
         return false;
     }
-
-    //event_msg(p_manager, EVT_INFO, "Header of tile %d / %d has been read.\n",
-    //              p_j2k->m_current_tile_number+1, (p_j2k->m_cp.th * p_j2k->m_cp.tw));
-
     *p_tile_index	= p_j2k->m_current_tile_number;
     *p_go_on		= true;
     *p_data_size	= tcd_get_decoded_tile_size(p_j2k->m_tcd);
