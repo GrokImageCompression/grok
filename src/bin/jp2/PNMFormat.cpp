@@ -155,14 +155,16 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		char *s;
 		int allow_null = 0;
 
-		if (*line == '#') continue;
+		if (*line == '#')
+			continue;
 
 		s = line;
 
 		if (format == 7) {
 			s = skip_idf(s, idf);
 
-			if (s == nullptr || *s == 0) return;
+			if (s == nullptr || *s == 0)
+				return;
 
 			if (strcmp(idf, "ENDHDR") == 0) {
 				end = 1;
@@ -170,31 +172,36 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 			}
 			if (strcmp(idf, "WIDTH") == 0) {
 				s = skip_int(s, &ph->width);
-				if (s == nullptr || *s == 0) return;
+				if (s == nullptr || *s == 0 || ph->width < 0)
+					return;
 
 				continue;
 			}
 			if (strcmp(idf, "HEIGHT") == 0) {
 				s = skip_int(s, &ph->height);
-				if (s == nullptr || *s == 0) return;
+				if (s == nullptr || *s == 0 || ph->height < 0)
+					return;
 
 				continue;
 			}
 			if (strcmp(idf, "DEPTH") == 0) {
 				s = skip_int(s, &ph->depth);
-				if (s == nullptr || *s == 0) return;
+				if (s == nullptr || *s == 0 || ph->depth < 0)
+					return;
 
 				continue;
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
-				if (s == nullptr || *s == 0) return;
+				if (s == nullptr || *s == 0 || ph->maxval < 0)
+					return;
 
 				continue;
 			}
 			if (strcmp(idf, "TUPLTYPE") == 0) {
 				s = skip_idf(s, type);
-				if (s == nullptr || *s == 0) return;
+				if (s == nullptr || *s == 0)
+					return;
 
 				if (strcmp(type, "BLACKANDWHITE") == 0) {
 					ph->bw = 1;
@@ -231,13 +238,16 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		  /* Here format is in range [1,6] */
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
-			if ((s == nullptr) || (*s == 0) || (ph->width < 1)) return;
+			if ((s == nullptr) || (*s == 0) || (ph->width < 1))
+				return;
 			allow_null = 1;
 		}
 		if (ph->height == 0) {
 			s = skip_int(s, &ph->height);
-			if ((s == nullptr) && allow_null) continue;
-			if ((s == nullptr) || (*s == 0) || (ph->height < 1)) return;
+			if ((s == nullptr) && allow_null)
+				continue;
+			if ((s == nullptr) || (*s == 0) || (ph->height < 1))
+				return;
 			if (format == 1 || format == 4) {
 				break;
 			}
@@ -245,15 +255,19 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 		}
 		/* here, format is in P2, P3, P5, P6 */
 		s = skip_int(s, &ph->maxval);
-		if ((s == nullptr) && allow_null) continue;
-		if ((s == nullptr) || (*s == 0)) return;
+		if ((s == nullptr) && allow_null)
+			continue;
+		if ((s == nullptr) || (*s == 0))
+			return;
 		break;
 	}/* while(fgets( ) */
 	if (format == 2 || format == 3 || format > 4)
 	{
-		if (ph->maxval < 1 || ph->maxval > 65535) return;
+		if (ph->maxval < 1 || ph->maxval > 65535)
+			return;
 	}
-	if (ph->width < 1 || ph->height < 1) return;
+	if (ph->width < 1 || ph->height < 1)
+		return;
 
 	if (format == 7)
 	{
