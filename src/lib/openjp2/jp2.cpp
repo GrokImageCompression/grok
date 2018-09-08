@@ -1244,12 +1244,9 @@ static uint8_t * jp2_write_colr(  jp2_t *jp2,
     }       
     else {
 		/* ICC profile */
-        if (jp2->meth == 2) {                                     
-            uint32_t i;
-            for(i = 0; i < jp2->color.icc_profile_len; ++i) {
-                grok_write_bytes(l_current_colr_ptr, jp2->color.icc_profile_buf[i], 1);
-                ++l_current_colr_ptr;
-            }
+        if (jp2->meth == 2) {    
+			memcpy(l_current_colr_ptr, jp2->color.icc_profile_buf, jp2->color.icc_profile_len);
+			l_current_colr_ptr += jp2->color.icc_profile_len;
         }
     }
 
