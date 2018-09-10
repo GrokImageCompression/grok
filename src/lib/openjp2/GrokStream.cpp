@@ -156,7 +156,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			memcpy(p_buffer, m_buffer_current_ptr, m_bytes_in_buffer);
 		m_stream_offset += m_bytes_in_buffer;
 		m_buffer_current_ptr += m_bytes_in_buffer;
-		m_bytes_in_buffer = 0;
+		invalidate_buffer();
 		return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
 	}
 	// 3. read remaining bytes in buffer 
@@ -168,24 +168,17 @@ size_t GrokStream::read(uint8_t * p_buffer,
 		}
 		p_size -= m_bytes_in_buffer;
 		m_stream_offset += m_bytes_in_buffer;
-		m_buffer_current_ptr = m_buffer;
-		m_bytes_in_buffer = 0;
 	}
-	else {
-		/* case where we are already at the end of the buffer
-			so reset the m_buffer_current_ptr to point to the start of the
-			stored buffer to get ready to read from disk*/
-		m_buffer_current_ptr = m_buffer;
-	}
+
 	//4. read from media
-	
+	invalidate_buffer();
 	//a) very first memory buffer "read", or buffered file read
 	if (m_buffer) {
 		for (;;) {
 			m_bytes_in_buffer = m_read_fn(m_buffer, m_buffer_size, m_user_data);
 			// i) end of stream
 			if (m_bytes_in_buffer == (size_t)-1) {
-				m_bytes_in_buffer = 0;
+				invalidate_buffer();
 				m_status |= GROK_STREAM_STATUS_END;
 				return l_read_nb_bytes ? l_read_nb_bytes : (size_t)-1;
 			}
@@ -198,8 +191,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 				}
 				p_size -= m_bytes_in_buffer;
 				m_stream_offset += m_bytes_in_buffer;
-				m_buffer_current_ptr = m_buffer;
-				m_bytes_in_buffer = 0;
+				invalidate_buffer();
 			}
 			// iii) or we have read the exact amount requested
 			else {
@@ -372,6 +364,14 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 	return true;
 }
 
+void GrokStream::invalidate_buffer() {
+	m_buffer_current_ptr = m_buffer;
+	m_bytes_in_buffer = 0;
+	if (m_status & GROK_STREAM_STATUS_INPUT) {
+		m_read_bytes_chunk = 0;
+	}
+}
+
 bool GrokStream::read_skip(int64_t p_size,
 							event_mgr_t * p_event_mgr){
 	int64_t offset = m_stream_offset + p_size;
@@ -413,7 +413,8 @@ bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr){
 		int64_t increment=0;
 		if ((offset >= m_stream_offset && 
 			offset < m_stream_offset + m_bytes_in_buffer) ||
-			(offset < m_stream_offset && offset > m_stream_offset - (m_read_bytes_chunk - m_bytes_in_buffer))) {
+			(offset < m_stream_offset && 
+				offset >= m_stream_offset - (m_read_bytes_chunk - m_bytes_in_buffer))) {
 			increment = offset - m_stream_offset;
 			seekInBuffer = true;
 		}
@@ -429,8 +430,7 @@ bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr){
 
 	//2. Since we can't seek in buffer, we must invalidate
 	//  buffer contents and seek in media
-	m_bytes_in_buffer = 0;
-	m_buffer_current_ptr = m_buffer;
+	invalidate_buffer();
 	if (!(m_seek_fn(offset, m_user_data))) {
 		m_status |= GROK_STREAM_STATUS_END;
 		return false;
@@ -452,8 +452,7 @@ bool GrokStream::write_seek(uint64_t offset,event_mgr_t * p_event_mgr)
 		m_status |= GROK_STREAM_STATUS_ERROR;
 		return false;
 	}
-	m_buffer_current_ptr = m_buffer;
-	m_bytes_in_buffer = 0;
+	invalidate_buffer();
 	if (!m_seek_fn(offset, m_user_data)) {
 		m_status |= GROK_STREAM_STATUS_ERROR;
 		return false;
