@@ -253,6 +253,9 @@ private:
 	// number of bytes read in, or slated for write
 	size_t			m_bytes_in_buffer;
 
+	// number of bytes read into buffer. This will be <= m_buffer_size
+	size_t m_read_bytes_chunk;
+
 	bool isBufferStream;
 };
 
