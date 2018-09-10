@@ -4255,9 +4255,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
     tcp_t * l_tcp = nullptr;
 
     uint32_t i,j,k;
-    uint32_t l_x0,l_y0,l_x1,l_y1;
     double * l_rates = 0;
-    double l_sot_remove;
     uint32_t l_bits_empty, l_size_pixel;
     uint32_t l_last_res;
     float (* l_tp_stride_func)(tcp_t *) = nullptr;
@@ -4271,9 +4269,14 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
     l_image = p_j2k->m_private_image;
     l_tcp = l_cp->tcps;
 
+	auto width = l_image->x1 - l_image->x0;
+	auto height = l_image->y1 - l_image->y0;
+	if (width <= 0 || height <= 0)
+		return false;
+
     l_bits_empty = 8 * l_image->comps->dx * l_image->comps->dy;
     l_size_pixel = l_image->numcomps * l_image->comps->prec;
-    l_sot_remove = (double) p_stream->tell() / (l_cp->th * l_cp->tw);
+    auto header_size = (double) p_stream->tell();
 
     if (l_cp->m_specific_param.m_enc.m_tp_on) {
         l_tp_stride_func = j2k_get_tp_stride;
@@ -4286,15 +4289,16 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
             double l_offset = (double)(*l_tp_stride_func)(l_tcp) / l_tcp->numlayers;
 
             /* 4 borders of the tile rescale on the image if necessary */
-            l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
-            l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy), l_image->y0);
-            l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx), l_image->x1);
-            l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
+            auto l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
+            auto l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy), l_image->y0);
+            auto l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx), l_image->x1);
+            auto l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
+			auto numTilePixels = (uint64_t)(l_x1 - l_x0) * (l_y1 - l_y0);
 
             l_rates = l_tcp->rates;
             for (k = 0; k < l_tcp->numlayers; ++k) {
                 if (*l_rates > 0.0f) {
-                    *l_rates =  ((((double)l_size_pixel * (l_x1 - l_x0) * (l_y1 - l_y0)))
+                    *l_rates =  ((((double)l_size_pixel * numTilePixels))
                                 / ((*l_rates) * l_bits_empty)) - l_offset;
                 }
                 ++l_rates;
@@ -4307,9 +4311,16 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
     for (i=0; i<l_cp->th; ++i) {
         for (j=0; j<l_cp->tw; ++j) {
             l_rates = l_tcp->rates;
+			/* 4 borders of the tile rescale on the image if necessary */
+			auto l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx), l_image->x0);
+			auto l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy), l_image->y0);
+			auto l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx), l_image->x1);
+			auto l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy), l_image->y1);
+			auto numTilePixels = (uint64_t)(l_x1 - l_x0) * (l_y1 - l_y0);
+			auto sot_adjust = (numTilePixels * header_size) / ((uint64_t)width*height);
 
             if (*l_rates > 0.0) {
-                *l_rates -= l_sot_remove;
+                *l_rates -= sot_adjust;
 
                 if (*l_rates < 30.0f) {
                     *l_rates = 30.0f;
@@ -4321,7 +4332,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
             for (k = 1; k < l_last_res; ++k) {
 
                 if (*l_rates > 0.0) {
-                    *l_rates -= l_sot_remove;
+                    *l_rates -= sot_adjust;
 
                     if (*l_rates < *(l_rates - 1) + 10.0) {
                         *l_rates  = (*(l_rates - 1)) + 20.0;
@@ -4331,7 +4342,7 @@ static bool j2k_update_rates(  j2k_t *p_j2k,
             }
 
             if (*l_rates > 0.0) {
-                *l_rates -= (l_sot_remove + 2.0);
+                *l_rates -= (sot_adjust + 2.0);
                 if (*l_rates < *(l_rates - 1) + 10.0) {
                     *l_rates  = (*(l_rates - 1)) + 20.0;
                 }
