@@ -75,6 +75,7 @@ GrokStream::GrokStream(size_t p_buffer_size, bool l_is_input) : m_user_data(null
 	m_stream_offset(0),
 	m_buffer_current_ptr(nullptr),
 	m_bytes_in_buffer(0),
+	m_read_bytes_chunk(0),
 	isBufferStream(false){
 
 	m_buffer_size = p_buffer_size;
@@ -103,6 +104,7 @@ GrokStream::GrokStream(uint8_t* buffer, size_t p_buffer_size, bool l_is_input) :
 																m_stream_offset(0),
 																m_buffer_current_ptr(nullptr),
 																m_bytes_in_buffer(0),
+																m_read_bytes_chunk(0),
 																isBufferStream(true)
 {
 	m_buffer_size = p_buffer_size;
@@ -136,9 +138,12 @@ size_t GrokStream::read(uint8_t * p_buffer,
 	size_t l_read_nb_bytes = 0;
 	// 1. if we have enough bytes in buffer, then read from buffer and return
 	if (p_size <= m_bytes_in_buffer) {
+		assert(m_buffer_current_ptr >= m_buffer);
 		if (p_buffer)
 			memcpy(p_buffer, m_buffer_current_ptr, p_size);
+		
 		m_buffer_current_ptr += p_size;
+		assert(m_buffer_current_ptr >= m_buffer);
 		m_bytes_in_buffer -= p_size;
 		l_read_nb_bytes += p_size;
 		m_stream_offset += p_size;
@@ -198,10 +203,12 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			}
 			// iii) or we have read the exact amount requested
 			else {
+				m_read_bytes_chunk = m_bytes_in_buffer;
 				l_read_nb_bytes += p_size;
 				if (p_buffer && p_size)
 					memcpy(p_buffer, m_buffer_current_ptr, p_size);
 				m_buffer_current_ptr += p_size;
+				assert(m_buffer_current_ptr >= m_buffer);
 				m_bytes_in_buffer -= p_size;
 				m_stream_offset += p_size;
 				return l_read_nb_bytes;
@@ -358,6 +365,7 @@ bool GrokStream::flush(event_mgr_t * p_event_mgr)
 			return false;
 		}
 		m_buffer_current_ptr += l_current_write_nb_bytes;
+		assert(m_buffer_current_ptr >= m_buffer);
 		m_bytes_in_buffer -= l_current_write_nb_bytes;
 	}
 	m_buffer_current_ptr = m_buffer;
@@ -403,8 +411,9 @@ bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr){
 	if (!(m_status & GROK_STREAM_STATUS_END)) {
 		bool seekInBuffer = false;
 		int64_t increment=0;
-		if ((offset >= m_stream_offset && offset < m_stream_offset + m_bytes_in_buffer) ||
-			(offset < m_stream_offset && offset > m_stream_offset - (m_buffer_size - m_bytes_in_buffer))) {
+		if ((offset >= m_stream_offset && 
+			offset < m_stream_offset + m_bytes_in_buffer) ||
+			(offset < m_stream_offset && offset > m_stream_offset - (m_read_bytes_chunk - m_bytes_in_buffer))) {
 			increment = offset - m_stream_offset;
 			seekInBuffer = true;
 		}
@@ -412,6 +421,7 @@ bool GrokStream::read_seek(uint64_t offset,event_mgr_t * p_event_mgr){
 			m_status &= (~GROK_STREAM_STATUS_END);
 			m_stream_offset = offset;
 			m_buffer_current_ptr += increment;
+			assert(m_buffer_current_ptr >= m_buffer);
 			m_bytes_in_buffer -= increment;
 			return true;
 		}
