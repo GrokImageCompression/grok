@@ -233,6 +233,7 @@ private:
 
 	void write_increment(size_t p_size);
 	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes, event_mgr_t * p_event_mgr);
+	void invalidate_buffer();
 
 	///////////////////////////////////////////////////////////////////
 	// data stored from the stream if read from, or slated for write.
