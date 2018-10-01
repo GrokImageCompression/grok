@@ -115,7 +115,7 @@ tcp_t::tcp_t() : csty(0),
 /*@{*/
 
 static bool j2k_fromTileHeader(j2k_t *p_j2k) {
-	return p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH;
+	return (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
 }
 
 /**
@@ -971,7 +971,7 @@ static bool j2k_read_sod(   j2k_t *p_j2k,
 
 static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
 	auto l_cp = &(p_j2k->m_cp);
-	return (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
+	return (j2k_fromTileHeader(p_j2k)) ?
 		l_cp->tcps + p_j2k->m_current_tile_number :
 		p_j2k->m_specific_param.m_decoder.m_default_tcp;
 }
@@ -6801,33 +6801,6 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
         /* read 2 bytes as the new marker ID */
         grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
     }
-
-	// do QCD marker quantization step size sanity check
-	// see page 553 of Taubman and Marcellin for more details on this check
-	// Warning!!! main QCD/QCC can be overridden by tile QCD/QCC and we don't take
-	// this into account in this sanity check. 
-	auto l_tcp = j2k_get_tcp(p_j2k);
-	if (l_tcp->qntsty != J2K_CCP_QNTSTY_SIQNT) {
-		uint32_t maxDecompositions = 0;
-		for (uint32_t k = 0; k < p_j2k->m_private_image->numcomps; ++k) {
-			auto l_tccp = l_tcp->tccps + k;
-			if (l_tccp->numresolutions == 0 )
-				continue;
-			// only consider number of resolutions from a component
-			// whose scope is covered by main QCD;
-			// ignore components that are out of scope (i.e. under main QCC scope)
-			if (l_tccp->fromQCC)
-				continue;
-			auto decomps = l_tccp->numresolutions - 1;
-			if (maxDecompositions < decomps)
-				maxDecompositions = decomps;
-		}
-		if ((l_tcp->numStepSizes < 3 * maxDecompositions + 1)) {
-			event_msg(p_manager, EVT_ERROR, "From Main QCD marker, "
-				"number of step sizes (%d) is less than 3* (max decompositions) + 1, where max decompositions = %d \n", l_tcp->numStepSizes, maxDecompositions);
-			return false;
-		}
-	}
 	if (l_has_siz == 0) {
         event_msg(p_manager, EVT_ERROR, "required SIZ marker not found in main header\n");
         return false;
@@ -7559,6 +7532,65 @@ bool j2k_read_tile_header(      j2k_t * p_j2k,
             grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
         }
     }
+	// do QCD marker quantization step size sanity check
+	// see page 553 of Taubman and Marcellin for more details on this check
+	l_tcp = j2k_get_tcp(p_j2k);
+	if (l_tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
+		auto numComps = p_j2k->m_private_image->numcomps;
+		//1. Check main QCD
+		uint32_t maxTileDecompositions = 0;
+		for (uint32_t k = 0; k < numComps; ++k) {
+			auto l_tccp = l_tcp->tccps + k;
+			if (l_tccp->numresolutions == 0)
+				continue;
+			// only consider number of resolutions from a component
+			// whose scope is covered by main QCD;
+			// ignore components that are out of scope 
+			// i.e. under main QCC scope, or tile QCD/QCC scope
+			if (l_tccp->fromQCC || l_tccp->fromTileHeader)
+				continue;
+			auto decomps = l_tccp->numresolutions - 1;
+			if (maxTileDecompositions < decomps)
+				maxTileDecompositions = decomps;
+		}
+		if ((l_tcp->main_qcd_numStepSizes < 3 * maxTileDecompositions + 1)) {
+			event_msg(p_manager, EVT_ERROR, "From Main QCD marker, "
+				"number of step sizes (%d) is less than 3* (tile decompositions) + 1, where tile decompositions = %d \n", l_tcp->main_qcd_numStepSizes, maxTileDecompositions);
+			return false;
+		}
+
+		//2. Check Tile QCD
+		tccp_t* qcd_comp = nullptr;
+		for (uint32_t k = 0; k < numComps; ++k) {
+			auto l_tccp = l_tcp->tccps + k;
+			if (l_tccp->fromTileHeader && !l_tccp->fromQCC) {
+				qcd_comp = l_tccp;
+				break;
+			}
+		}
+		if (qcd_comp && (qcd_comp->qntsty != J2K_CCP_QNTSTY_SIQNT)) {
+			uint32_t maxTileDecompositions = 0;
+			for (uint32_t k = 0; k < numComps; ++k) {
+				auto l_tccp = l_tcp->tccps + k;
+				if (l_tccp->numresolutions == 0)
+					continue;
+				// only consider number of resolutions from a component
+				// whose scope is covered by Tile QCD;
+				// ignore components that are out of scope 
+				// i.e. under Tile QCC scope
+				if (l_tccp->fromQCC && l_tccp->fromTileHeader)
+					continue;
+				auto decomps = l_tccp->numresolutions - 1;
+				if (maxTileDecompositions < decomps)
+					maxTileDecompositions = decomps;
+			}
+			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
+				event_msg(p_manager, EVT_ERROR, "From Tile QCD marker, "
+					"number of step sizes (%d) is less than 3* (tile decompositions) + 1, where tile decompositions = %d \n", qcd_comp->numStepSizes, maxTileDecompositions);
+				return false;
+			}
+		}
+	}
 
     /* Current marker is the EOC marker ?*/
     if (l_current_marker == J2K_MS_EOC) {
@@ -8005,7 +8037,7 @@ bool j2k_set_decode_area(       j2k_t *p_j2k,
     opj_image_comp_t* l_img_comp = nullptr;
 
     /* Check if we have read the main header */
-    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) { /* FIXME J2K_DEC_STATE_TPHSOT)*/
+    if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) { 
         event_msg(p_manager, EVT_ERROR, "Need to decode the main header before setting decode area");
         return false;
     }
@@ -8668,7 +8700,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC,
 		l_tccp->fromTileHeader = fromTileHeader;
 		l_tccp->qntsty = qntsty;
 		if (mainQCD)
-			l_tcp->qntsty = l_tccp->qntsty;
+			l_tcp->main_qcd_qntsty = l_tccp->qntsty;
 		l_tccp->numgbits = l_tmp >> 5;
 		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
 			l_tccp->numStepSizes = 1;
@@ -8684,7 +8716,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC,
 			}
 		}
 		if (mainQCD)
-			l_tcp->numStepSizes = l_tccp->numStepSizes;
+			l_tcp->main_qcd_numStepSizes = l_tccp->numStepSizes;
 	}
     if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
         for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
