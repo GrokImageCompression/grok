@@ -282,10 +282,10 @@ struct tcp_t {
 	size_t ppt_len;
     /** fixed_quality */
     double distoratio[100];
-	// quantization style as read from QCD marker
-	uint32_t qntsty;
-	// number of step sizes as read from QCD marker
-	uint32_t numStepSizes;
+	// quantization style as read from main QCD marker
+	uint32_t main_qcd_qntsty;
+	// number of step sizes as read from main QCD marker
+	uint32_t main_qcd_numStepSizes;
     /** tile-component coding parameters */
     tccp_t *tccps;
 	// current tile part number (-1 if not yet initialized
