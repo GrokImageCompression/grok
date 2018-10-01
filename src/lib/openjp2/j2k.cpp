@@ -114,6 +114,10 @@ tcp_t::tcp_t() : csty(0),
 /** @name Local static functions */
 /*@{*/
 
+static bool j2k_fromTileHeader(j2k_t *p_j2k) {
+	return p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH;
+}
+
 /**
 Transfer data from src to dest for each component, and null out src data.
 Assumption:  src and dest have the same number of components
@@ -401,7 +405,7 @@ static void j2k_update_tlm ( j2k_t * p_j2k, uint32_t p_tile_part_size);
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
- * @param		isQCD			true if reading QCD, otherwise false (reading QCC)
+ * @param		fromQCC			true if reading QCC, otherwise false (reading QCD)
  * @param       p_j2k           J2K codec.
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
@@ -409,7 +413,7 @@ static void j2k_update_tlm ( j2k_t * p_j2k, uint32_t p_tile_part_size);
  * @param       p_manager       the user event manager.
  *
 */
-static bool j2k_read_SQcd_SQcc( bool isQCD,
+static bool j2k_read_SQcd_SQcc( bool fromQCC,
 									j2k_t *p_j2k,
                                     uint32_t compno,
                                     uint8_t * p_header_data,
@@ -422,13 +426,6 @@ static bool j2k_read_SQcd_SQcc( bool isQCD,
  * @param               p_j2k           the J2k codec.
  */
 static void j2k_copy_tile_component_parameters( j2k_t *p_j2k );
-
-/**
- * Copies the tile quantization parameters of all the component from the first tile component.
- *
- * @param               p_j2k           the J2k codec.
- */
-static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k );
 
 /**
  * Reads the tiles.
@@ -975,7 +972,7 @@ static bool j2k_read_sod(   j2k_t *p_j2k,
 static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
 	auto l_cp = &(p_j2k->m_cp);
 	return (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_TPH) ?
-		&l_cp->tcps[p_j2k->m_current_tile_number] :
+		l_cp->tcps + p_j2k->m_current_tile_number :
 		p_j2k->m_specific_param.m_decoder.m_default_tcp;
 }
 
@@ -2650,10 +2647,10 @@ static bool j2k_write_qcd(     j2k_t *p_j2k,
 
 /**
  * Reads a QCD marker (Quantization defaults)
+ * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCD box.
- * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the QCD marker.
- * @param       p_manager               the user event manager.
+ * @param       p_manager       the user event manager.
 */
 static bool j2k_read_qcd (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
@@ -2663,20 +2660,37 @@ static bool j2k_read_qcd (  j2k_t *p_j2k,
     assert(p_header_data != nullptr);
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
-
-    if (! j2k_read_SQcd_SQcc(true,p_j2k,0,p_header_data,&p_header_size,p_manager)) {
+    if (! j2k_read_SQcd_SQcc(false,p_j2k,0,p_header_data,&p_header_size,p_manager)) {
         event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
         return false;
     }
-
     if (p_header_size != 0) {
         event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
         return false;
     }
 
-    /* Apply the quantization parameters to other components of the current tile or the m_default_tcp */
-    j2k_copy_tile_quantization_parameters(p_j2k);
-
+    // Apply the quantization parameters to the other components
+	// of the current tile, or to m_default_tcp 
+	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_ref_tccp = l_tcp->tccps;
+	auto l_target_tccp = l_ref_tccp + 1;
+	bool fromTileHeader = j2k_fromTileHeader(p_j2k);
+	for (uint32_t i = 1; i<p_j2k->m_private_image->numcomps; ++i) {
+		// respect the QCD/QCC scoping rules
+		bool ignore = false;
+		if ((!l_ref_tccp->fromTileHeader) && l_target_tccp->fromQCC)
+			ignore = true;
+		if ((l_ref_tccp->fromTileHeader) &&
+					(l_target_tccp->fromTileHeader && l_target_tccp->fromQCC))
+			ignore = true;
+		if (!ignore) {
+			l_target_tccp->qntsty = l_ref_tccp->qntsty;
+			l_target_tccp->numgbits = l_ref_tccp->numgbits;
+			auto l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
+			memcpy(l_target_tccp->stepsizes, l_ref_tccp->stepsizes, l_size);
+		}
+		++l_target_tccp;
+	}
     return true;
 }
 
@@ -2789,7 +2803,7 @@ static bool j2k_read_qcc(   j2k_t *p_j2k,
         return false;
     }
 
-    if (! j2k_read_SQcd_SQcc(false,p_j2k,l_comp_no,p_header_data,&p_header_size,p_manager)) {
+    if (! j2k_read_SQcd_SQcc(true,p_j2k,l_comp_no,p_header_data,&p_header_size,p_manager)) {
         event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
         return false;
     }
@@ -6788,30 +6802,33 @@ static bool j2k_read_header_procedure( j2k_t *p_j2k,
         grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,&l_current_marker,2);
     }
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//do QCD marker quantization step size sanity check
+	// do QCD marker quantization step size sanity check
+	// see page 553 of Taubman and Marcellin for more details on this check
+	// Warning!!! main QCD/QCC can be overridden by tile QCD/QCC and we don't take
+	// this into account in this sanity check. 
 	auto l_tcp = j2k_get_tcp(p_j2k);
 	if (l_tcp->qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		uint32_t maxDecompositions = 0;
 		for (uint32_t k = 0; k < p_j2k->m_private_image->numcomps; ++k) {
 			auto l_tccp = l_tcp->tccps + k;
-			if (l_tccp->numresolutions == 0 || l_tccp->hasQCC)
+			if (l_tccp->numresolutions == 0 )
+				continue;
+			// only consider number of resolutions from a component
+			// whose scope is covered by main QCD;
+			// ignore components that are out of scope (i.e. under main QCC scope)
+			if (l_tccp->fromQCC)
 				continue;
 			auto decomps = l_tccp->numresolutions - 1;
 			if (maxDecompositions < decomps)
 				maxDecompositions = decomps;
 		}
-
-		// see page 553 of Taubman and Marcellin for more details on this check
 		if ((l_tcp->numStepSizes < 3 * maxDecompositions + 1)) {
-			event_msg(p_manager, EVT_ERROR, "From QCD marker, "
+			event_msg(p_manager, EVT_ERROR, "From Main QCD marker, "
 				"number of step sizes (%d) is less than 3* (max decompositions) + 1, where max decompositions = %d \n", l_tcp->numStepSizes, maxDecompositions);
 			return false;
 		}
 	}
-	//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	
-    if (l_has_siz == 0) {
+	if (l_has_siz == 0) {
         event_msg(p_manager, EVT_ERROR, "required SIZ marker not found in main header\n");
         return false;
     }
@@ -8613,7 +8630,7 @@ static bool j2k_write_SQcd_SQcc(       j2k_t *p_j2k,
     return true;
 }
 
-static bool j2k_read_SQcd_SQcc(bool isQCD,
+static bool j2k_read_SQcd_SQcc(bool fromQCC,
 									j2k_t *p_j2k,
                                    uint32_t p_comp_no,
                                    uint8_t* p_header_data,
@@ -8628,57 +8645,58 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 		event_msg(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n");
 		return false;
 	}
-
+	bool ignore = false;
+	bool fromTileHeader = j2k_fromTileHeader(p_j2k);
+	bool mainQCD = !fromQCC && !fromTileHeader;
+	// scoping rules
 	auto l_tcp = j2k_get_tcp(p_j2k);
 	auto l_tccp = l_tcp->tccps + p_comp_no;
-	if (!isQCD)
-		l_tccp->hasQCC = true;
+	if ((!fromTileHeader && !fromQCC) && l_tccp->fromQCC)
+		ignore = true;
+	if ((fromTileHeader && !fromQCC) &&  (l_tccp->fromTileHeader && l_tccp->fromQCC))
+		ignore = true;
+	////////////////////////////////////////////////////////////////////////
     *p_header_size -= 1;
 	/* Sqcx */
 	uint32_t l_tmp = 0;
 	auto l_current_ptr = p_header_data;
     grok_read_bytes(l_current_ptr, &l_tmp ,1);                     
     ++l_current_ptr;
-
-    l_tccp->qntsty = l_tmp & 0x1f;
-	if (isQCD)
-		l_tcp->qntsty = l_tccp->qntsty;
-    l_tccp->numgbits = l_tmp >> 5;
-    if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-		l_tccp->numStepSizes = 1;
-    } else {
-		l_tccp->numStepSizes = (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
-                     (*p_header_size) :
-                     (*p_header_size) / 2;
-
-		if (!isQCD) {
-			uint32_t maxDecompositions = 0;
-			if (l_tccp->numresolutions > 0)
-				maxDecompositions = l_tccp->numresolutions - 1;
-			// see page 553 of Taubman and Marcellin for more details on this check
-			if ((l_tccp->numStepSizes < 3 * maxDecompositions + 1)) {
-				event_msg(p_manager, EVT_ERROR, "While reading QCC marker, "
-					"number of step sizes (%d) is less than 3* (max decompositions) + 1, where max decompositions = %d \n", l_tccp->numStepSizes, maxDecompositions);
-				return false;
+	auto qntsty = l_tmp & 0x1f;
+	if (!ignore) {
+		l_tccp->fromQCC = fromQCC;
+		l_tccp->fromTileHeader = fromTileHeader;
+		l_tccp->qntsty = qntsty;
+		if (mainQCD)
+			l_tcp->qntsty = l_tccp->qntsty;
+		l_tccp->numgbits = l_tmp >> 5;
+		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+			l_tccp->numStepSizes = 1;
+		}
+		else {
+			l_tccp->numStepSizes = (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
+				(*p_header_size) :
+				(*p_header_size) / 2;
+			if (l_tccp->numStepSizes > OPJ_J2K_MAXBANDS) {
+				event_msg(p_manager, EVT_WARNING, "While reading QCD or QCC marker segment, "
+					"number of step sizes (%d) is greater than OPJ_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
+					"OPJ_J2K_MAXBANDS (%d) and skip the rest.\n", l_tccp->numStepSizes, OPJ_J2K_MAXBANDS, OPJ_J2K_MAXBANDS);
 			}
 		}
-        if(l_tccp->numStepSizes > OPJ_J2K_MAXBANDS ) {
-            event_msg(p_manager, EVT_WARNING, "While reading QCD or QCC marker segment, "
-                          "number of step sizes (%d) is greater than OPJ_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
-                          "OPJ_J2K_MAXBANDS (%d) and skip the rest.\n", l_tccp->numStepSizes, OPJ_J2K_MAXBANDS, OPJ_J2K_MAXBANDS);
-        }
-    }
-	if (isQCD)
-		l_tcp->numStepSizes = l_tccp->numStepSizes;
-    if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-        for     (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
+		if (mainQCD)
+			l_tcp->numStepSizes = l_tccp->numStepSizes;
+	}
+    if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
+        for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
 			/* SPqcx_i */
             grok_read_bytes(l_current_ptr, &l_tmp ,1);                       
             ++l_current_ptr;
-            if (l_band_no < OPJ_J2K_MAXBANDS) {
-                l_tccp->stepsizes[l_band_no].expn = l_tmp >> 3;
-                l_tccp->stepsizes[l_band_no].mant = 0;
-            }
+			if (!ignore) {
+				if (l_band_no < OPJ_J2K_MAXBANDS) {
+					l_tccp->stepsizes[l_band_no].expn = l_tmp >> 3;
+					l_tccp->stepsizes[l_band_no].mant = 0;
+				}
+			}
         }
         *p_header_size = *p_header_size - l_tccp->numStepSizes;
     } else {
@@ -8686,41 +8704,29 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 			/* SPqcx_i */
             grok_read_bytes(l_current_ptr, &l_tmp ,2);                       
             l_current_ptr+=2;
-            if (l_band_no < OPJ_J2K_MAXBANDS) {
-                l_tccp->stepsizes[l_band_no].expn = l_tmp >> 11;
-                l_tccp->stepsizes[l_band_no].mant = l_tmp & 0x7ff;
-            }
+			if (!ignore) {
+				if (l_band_no < OPJ_J2K_MAXBANDS) {
+					l_tccp->stepsizes[l_band_no].expn = l_tmp >> 11;
+					l_tccp->stepsizes[l_band_no].mant = l_tmp & 0x7ff;
+				}
+			}
         }
         *p_header_size = *p_header_size - 2* l_tccp->numStepSizes;
     }
-
     /* if scalar derived, then compute other stepsizes */
-    if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-        for (uint32_t  l_band_no = 1; l_band_no < OPJ_J2K_MAXBANDS; l_band_no++) {
-			uint32_t bandDividedBy3 = (l_band_no - 1) / 3;
-			l_tccp->stepsizes[l_band_no].expn = 0;
-			if (l_tccp->stepsizes[0].expn > bandDividedBy3)
-				l_tccp->stepsizes[l_band_no].expn = l_tccp->stepsizes[0].expn - bandDividedBy3;
-            l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
-        }
-    }
+	if (!ignore) {
+		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+			for (uint32_t l_band_no = 1; l_band_no < OPJ_J2K_MAXBANDS; l_band_no++) {
+				uint32_t bandDividedBy3 = (l_band_no - 1) / 3;
+				l_tccp->stepsizes[l_band_no].expn = 0;
+				if (l_tccp->stepsizes[0].expn > bandDividedBy3)
+					l_tccp->stepsizes[l_band_no].expn = l_tccp->stepsizes[0].expn - bandDividedBy3;
+				l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
+			}
+		}
+	}
     return true;
 }
-
-static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k ){
-    assert(p_j2k != nullptr);
-	auto l_tcp = j2k_get_tcp(p_j2k);
-	auto l_ref_tccp = l_tcp->tccps;
-	auto l_copied_tccp = l_ref_tccp + 1;
-    auto l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
-    for (uint32_t i=1; i<p_j2k->m_private_image->numcomps; ++i) {
-        l_copied_tccp->qntsty = l_ref_tccp->qntsty;
-        l_copied_tccp->numgbits = l_ref_tccp->numgbits;
-        memcpy(l_copied_tccp->stepsizes,l_ref_tccp->stepsizes,l_size);
-        ++l_copied_tccp;
-    }
-}
-
 static void j2k_dump_tile_info( tcp_t * l_default_tile,uint32_t numcomps,FILE* out_stream)
 {
     if (l_default_tile) {

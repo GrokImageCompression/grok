@@ -191,8 +191,10 @@ struct tccp_t {
     uint32_t mode_switch;
     /** discrete wavelet transform identifier */
     uint32_t qmfbid;
-	// true if there is a QCC marker, otherwise false
-	bool hasQCC;
+	// true if quantization marker was read from QCC otherwise false
+	bool fromQCC;
+	// true if quantization marker was read from tile header
+	bool fromTileHeader;
     /** quantisation style */
     uint32_t qntsty;
     /** stepsizes used for quantization */
