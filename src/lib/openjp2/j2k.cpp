@@ -401,6 +401,7 @@ static void j2k_update_tlm ( j2k_t * p_j2k, uint32_t p_tile_part_size);
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
+ * @param		isQCD			true if reading QCD, otherwise false (reading QCC)
  * @param       p_j2k           J2K codec.
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
@@ -2743,8 +2744,8 @@ static uint32_t j2k_get_max_qcc_size (j2k_t *p_j2k){
 
 /**
  * Reads a QCC marker (Quantization component)
+ * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCC box.
- * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the QCC marker.
  * @param       p_manager               the user event manager.
 */
@@ -8618,38 +8619,24 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
                                    uint8_t* p_header_data,
                                    uint32_t * p_header_size,
                                    event_mgr_t * p_manager
-                                  )
-{
-    /* loop*/
-    uint32_t l_band_no;
-    tcp_t *l_tcp = nullptr;
-    tccp_t *l_tccp = nullptr;
-    uint8_t * l_current_ptr = nullptr;
-    uint32_t l_tmp;
-
-    /* preconditions*/
+                                  ){
     assert(p_j2k != nullptr);
     assert(p_manager != nullptr);
     assert(p_header_data != nullptr);
+	assert(p_comp_no <  p_j2k->m_private_image->numcomps);
+	if (*p_header_size < 1) {
+		event_msg(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n");
+		return false;
+	}
 
-	l_tcp = j2k_get_tcp(p_j2k);
-
-    /* precondition again*/
-    assert(p_comp_no <  p_j2k->m_private_image->numcomps);
-
-    l_tccp = &l_tcp->tccps[p_comp_no];
-    l_current_ptr = p_header_data;
-
-    if (*p_header_size < 1) {
-        event_msg(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n");
-        return false;
-    }
-
+	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tccp = l_tcp->tccps + p_comp_no;
 	if (!isQCD)
 		l_tccp->hasQCC = true;
-
     *p_header_size -= 1;
 	/* Sqcx */
+	uint32_t l_tmp = 0;
+	auto l_current_ptr = p_header_data;
     grok_read_bytes(l_current_ptr, &l_tmp ,1);                     
     ++l_current_ptr;
 
@@ -8675,19 +8662,16 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 				return false;
 			}
 		}
-
         if(l_tccp->numStepSizes > OPJ_J2K_MAXBANDS ) {
             event_msg(p_manager, EVT_WARNING, "While reading QCD or QCC marker segment, "
                           "number of step sizes (%d) is greater than OPJ_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
                           "OPJ_J2K_MAXBANDS (%d) and skip the rest.\n", l_tccp->numStepSizes, OPJ_J2K_MAXBANDS, OPJ_J2K_MAXBANDS);
         }
     }
-
 	if (isQCD)
 		l_tcp->numStepSizes = l_tccp->numStepSizes;
-
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-        for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
+        for     (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
 			/* SPqcx_i */
             grok_read_bytes(l_current_ptr, &l_tmp ,1);                       
             ++l_current_ptr;
@@ -8698,7 +8682,7 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
         }
         *p_header_size = *p_header_size - l_tccp->numStepSizes;
     } else {
-        for     (l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
+        for (uint32_t  l_band_no = 0; l_band_no < l_tccp->numStepSizes; l_band_no++) {
 			/* SPqcx_i */
             grok_read_bytes(l_current_ptr, &l_tmp ,2);                       
             l_current_ptr+=2;
@@ -8712,7 +8696,7 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
 
     /* if scalar derived, then compute other stepsizes */
     if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-        for (l_band_no = 1; l_band_no < OPJ_J2K_MAXBANDS; l_band_no++) {
+        for (uint32_t  l_band_no = 1; l_band_no < OPJ_J2K_MAXBANDS; l_band_no++) {
 			uint32_t bandDividedBy3 = (l_band_no - 1) / 3;
 			l_tccp->stepsizes[l_band_no].expn = 0;
 			if (l_tccp->stepsizes[0].expn > bandDividedBy3)
@@ -8720,25 +8704,16 @@ static bool j2k_read_SQcd_SQcc(bool isQCD,
             l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
         }
     }
-
     return true;
 }
 
-static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k )
-{
-    uint32_t i;
-    tcp_t *l_tcp = nullptr;
-    tccp_t *l_ref_tccp = nullptr;
-    tccp_t *l_copied_tccp = nullptr;
-  
+static void j2k_copy_tile_quantization_parameters( j2k_t *p_j2k ){
     assert(p_j2k != nullptr);
-	l_tcp = j2k_get_tcp(p_j2k);
-
-    l_ref_tccp = &l_tcp->tccps[0];
-    l_copied_tccp = l_ref_tccp + 1;
+	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_ref_tccp = l_tcp->tccps;
+	auto l_copied_tccp = l_ref_tccp + 1;
     auto l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
-
-    for     (i=1; i<p_j2k->m_private_image->numcomps; ++i) {
+    for (uint32_t i=1; i<p_j2k->m_private_image->numcomps; ++i) {
         l_copied_tccp->qntsty = l_ref_tccp->qntsty;
         l_copied_tccp->numgbits = l_ref_tccp->numgbits;
         memcpy(l_copied_tccp->stepsizes,l_ref_tccp->stepsizes,l_size);
