@@ -224,8 +224,8 @@ static bool j2k_build_encoder ( j2k_t * p_j2k,
 /**
  * Creates a tile-coder decoder.
  *
- * @param       p_stream                        the stream to write data to.
  * @param       p_j2k                           J2K codec.
+ * @param       p_stream                        the stream to write data to.
  * @param       p_manager                   the user event manager.
 */
 static bool j2k_create_tcd(     j2k_t *p_j2k,
@@ -235,10 +235,10 @@ static bool j2k_create_tcd(     j2k_t *p_j2k,
 /**
  * Executes the given procedures on the given codec.
  *
+ * @param       p_j2k                   the jpeg2000 codec to execute the procedures on.
  * @param       p_procedure_list        the list of procedures to execute
- * @param       p_j2k                           the jpeg2000 codec to execute the procedures on.
- * @param       p_stream                        the stream to execute the procedures on.
- * @param       p_manager                       the user manager.
+ * @param       p_stream                the stream to execute the procedures on.
+ * @param       p_manager               the user manager.
  *
  * @return      true                            if all the procedures were successfully executed.
  */
@@ -250,8 +250,8 @@ static bool j2k_exec (  j2k_t * p_j2k,
 /**
  * Updates the rates of the tcp.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_update_rates(   j2k_t *p_j2k,
@@ -261,7 +261,11 @@ static bool j2k_update_rates(   j2k_t *p_j2k,
 /**
  * Copies the decoding tile parameters onto all the tile parameters.
  * Creates also the tile decoder.
- */
+ *
+ * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
+ * @param       p_manager               the user event manager.
+  */
 static bool j2k_copy_default_tcp_and_create_tcd (       j2k_t * p_j2k,
         GrokStream *p_stream,
         event_mgr_t * p_manager );
@@ -307,16 +311,18 @@ static void j2k_cp_destroy (cp_t *p_cp);
  *
  * @return true if SPCdod are equals.
  */
-static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_first_comp_no, uint32_t p_second_comp_no);
+static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, 
+									uint32_t p_tile_no,
+									uint32_t p_first_comp_no,
+									uint32_t p_second_comp_no);
 
 /**
  * Writes a SPCod or SPCoc element, i.e. the coding style of a given component of a tile.
  *
  * @param       p_j2k           J2K codec.
- * @param       p_tile_no       FIXME DOC
+ * @param       p_tile_no       tile index
  * @param       p_comp_no       the component number to output.
- * @param       p_data          FIXME DOC
- * @param       p_header_size   FIXME DOC
+ * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
  *
  * @return FIXME DOC
@@ -357,9 +363,9 @@ static bool j2k_read_SPCod_SPCoc(   j2k_t *p_j2k,
 /**
  * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
+ * @param       p_j2k                   the J2K codec.
  * @param       p_tile_no               the tile index.
  * @param       p_comp_no               the component being outputted.
- * @param       p_j2k                   the J2K codec.
  *
  * @return      the number of bytes taken by the SPCod element.
  */
@@ -377,17 +383,19 @@ static uint32_t j2k_get_SQcd_SQcc_size (  j2k_t *p_j2k,
  *
  * @return true if equals.
  */
-static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_first_comp_no, uint32_t p_second_comp_no);
+static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, 
+									uint32_t p_tile_no,
+									uint32_t p_first_comp_no,
+									uint32_t p_second_comp_no);
 
 
 /**
  * Writes a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
  *
+ * @param       p_j2k                   J2K codec.
  * @param       p_tile_no               the tile to output.
  * @param       p_comp_no               the component number to output.
- * @param       p_data                  the data buffer.
- * @param       p_header_size   pointer to the size of the data buffer, it is changed by the function.
- * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  *
 */
@@ -483,8 +491,8 @@ static bool j2k_write_all_tile_parts(   j2k_t *p_j2k,
 /**
  * Gets the offset of the header.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_get_end_header( j2k_t *p_j2k,
@@ -502,8 +510,8 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
 /**
  * Writes the SOC marker (Start Of Codestream)
  *
- * @param       p_stream                        the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
 static bool j2k_write_soc(      j2k_t *p_j2k,
@@ -546,8 +554,8 @@ static bool j2k_read_siz(j2k_t *p_j2k,
 /**
  * Writes the COM marker (comment)
  *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
+ * @param       p_j2k           J2K codec.
+ * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
 static bool j2k_write_com(      j2k_t *p_j2k,
@@ -568,8 +576,8 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 /**
  * Writes the COD marker (Coding style default)
  *
- * @param       p_stream                        the stream to write data to.
- * @param       p_j2k                   J2K codec.
+ * @param       p_j2k           J2K codec.
+ * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
 static bool j2k_write_cod(      j2k_t *p_j2k,
@@ -578,8 +586,9 @@ static bool j2k_write_cod(      j2k_t *p_j2k,
 
 /**
  * Reads a COD marker (Coding Style defaults)
- * @param       p_header_data   the data contained in the COD box.
+ *
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the COD box.
  * @param       p_header_size   the size of the data contained in the COD marker.
  * @param       p_manager               the user event manager.
 */
@@ -597,7 +606,9 @@ static bool j2k_read_cod (  j2k_t *p_j2k,
  *
  * @return      true if equals
  */
-static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no, uint32_t p_second_comp_no);
+static bool j2k_compare_coc(j2k_t *p_j2k, 
+							uint32_t p_first_comp_no,
+							uint32_t p_second_comp_no);
 
 /**
  * Writes the COC marker (Coding style component)
@@ -615,11 +626,10 @@ static bool j2k_write_coc(  j2k_t *p_j2k,
 /**
  * Writes the COC marker (Coding style component)
  *
- * @param       p_j2k                   J2K codec.
- * @param       p_comp_no               the index of the component to output.
- * @param       p_data          FIXME DOC
- * @param       p_data_written  FIXME DOC
- * @param       p_manager               the user event manager.
+ * @param       p_j2k       J2K codec.
+ * @param       p_comp_no   the index of the component to output.
+ * @param       p_stream    the stream to write data to.
+ * @param       p_manager   the user event manager.
 */
 static bool j2k_write_coc_in_memory(j2k_t *p_j2k,
                                         uint32_t p_comp_no,
@@ -635,10 +645,11 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k);
 
 /**
  * Reads a COC marker (Coding Style Component)
+ *
+ * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the COC box.
- * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the COC marker.
- * @param       p_manager               the user event manager.
+ * @param       p_manager       the user event manager.
 */
 static bool j2k_read_coc (  j2k_t *p_j2k,
                                 uint8_t * p_header_data,
@@ -658,8 +669,9 @@ static bool j2k_write_qcd(      j2k_t *p_j2k,
 
 /**
  * Reads a QCD marker (Quantization defaults)
- * @param       p_header_data   the data contained in the QCD box.
+ *
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the QCD box.
  * @param       p_header_size   the size of the data contained in the QCD marker.
  * @param       p_manager               the user event manager.
 */
@@ -677,14 +689,16 @@ static bool j2k_read_qcd (  j2k_t *p_j2k,
  *
  * @return true if equals.
  */
-static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no, uint32_t p_second_comp_no);
+static bool j2k_compare_qcc(j2k_t *p_j2k, 
+							uint32_t p_first_comp_no,
+							uint32_t p_second_comp_no);
 
 /**
  * Writes the QCC marker (quantization component)
  *
+ * @param       p_j2k                   J2K codec.
  * @param       p_comp_no       the index of the component to output.
  * @param       p_stream                the stream to write data to.
- * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_qcc(      j2k_t *p_j2k,
@@ -697,8 +711,7 @@ static bool j2k_write_qcc(      j2k_t *p_j2k,
  *
  * @param       p_j2k           J2K codec.
  * @param       p_comp_no       the index of the component to output.
- * @param       p_data          FIXME DOC
- * @param       p_data_written  the stream to write data to.
+ * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
 static bool j2k_write_qcc_in_memory(j2k_t *p_j2k,
@@ -713,8 +726,8 @@ static uint32_t j2k_get_max_qcc_size (j2k_t *p_j2k);
 
 /**
  * Reads a QCC marker (Quantization component)
- * @param       p_header_data   the data contained in the QCC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the QCC box.
  * @param       p_header_size   the size of the data contained in the QCC marker.
  * @param       p_manager               the user event manager.
 */
@@ -728,8 +741,8 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 /**
  * Writes the POC marker (Progression Order Change)
  *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
+ * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_poc(      j2k_t *p_j2k,
@@ -739,6 +752,8 @@ static bool j2k_write_poc(      j2k_t *p_j2k,
  * Writes the POC marker (Progression Order Change)
  *
  * @param       p_j2k          J2K codec.
+ * @param       p_stream       the stream to write data to.
+ * @param       p_data_written number of bytes written
  * @param       p_manager      the user event manager.
  */
 static bool j2k_write_poc_in_memory(j2k_t *p_j2k,
@@ -753,8 +768,8 @@ static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k);
 /**
  * Reads a POC marker (Progression Order Change)
  *
- * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
  * @param       p_manager               the user event manager.
 */
@@ -778,8 +793,8 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k);
 /**
  * Reads a CRG marker (Component registration)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
  * @param       p_manager               the user event manager.
 */
@@ -790,8 +805,8 @@ static bool j2k_read_crg (  j2k_t *p_j2k,
 /**
  * Reads a TLM marker (Tile Length Marker)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
  * @param       p_manager               the user event manager.
 */
@@ -803,8 +818,8 @@ static bool j2k_read_tlm (  j2k_t *p_j2k,
 /**
  * Writes the updated tlm.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_updated_tlm(      j2k_t *p_j2k,
@@ -814,8 +829,8 @@ static bool j2k_write_updated_tlm(      j2k_t *p_j2k,
 /**
  * Reads a PLM marker (Packet length, main header marker)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
  * @param       p_manager               the user event manager.
 */
@@ -826,8 +841,8 @@ static bool j2k_read_plm (  j2k_t *p_j2k,
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
- * @param       p_header_data   the data contained in the PLT box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the PLT box.
  * @param       p_header_size   the size of the data contained in the PLT marker.
  * @param       p_manager               the user event manager.
 */
@@ -839,8 +854,8 @@ static bool j2k_read_plt (  j2k_t *p_j2k,
 /**
  * Reads a PPM marker (Packed headers, main header)
  *
- * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
  * @param       p_manager               the user event manager.
  */
@@ -862,8 +877,8 @@ static bool j2k_merge_ppm ( cp_t *p_cp, event_mgr_t * p_manager );
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
  *
- * @param       p_header_data   the data contained in the PPT box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the PPT box.
  * @param       p_header_size   the size of the data contained in the PPT marker.
  * @param       p_manager               the user event manager.
 */
@@ -885,8 +900,8 @@ static bool j2k_merge_ppt (  tcp_t *p_tcp,
 /**
  * Writes the TLM marker (Tile Length Marker)
  *
- * @param       p_stream                                the stream to write data to.
- * @param       p_j2k                           J2K codec.
+ * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_tlm(      j2k_t *p_j2k,
@@ -897,8 +912,9 @@ static bool j2k_write_tlm(      j2k_t *p_j2k,
  * Writes the SOT marker (Start of tile-part)
  *
  * @param       p_j2k            J2K codec.
- * @param       p_data           FIXME DOC
- * @param       p_data_written   FIXME DOC
+ * @param       p_stream         the stream to write data to.
+ * @param       psot_location    PSOT location
+ * @param       p_data_written   number of bytes written
  * @param       p_manager        the user event manager.
 */
 static bool j2k_write_sot(      j2k_t *p_j2k,
@@ -930,8 +946,8 @@ static bool j2k_get_sot_values(uint8_t *  p_header_data,
 /**
  * Reads a SOT marker (Start of tile-part)
  *
- * @param       p_header_data   the data contained in the SOT marker.
  * @param       p_j2k           the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the SOT marker.
  * @param       p_header_size   the size of the data contained in the PPT marker.
  * @param       p_manager       the user event manager.
 */
@@ -943,10 +959,9 @@ static bool j2k_read_sot (  j2k_t *p_j2k,
  * Writes the SOD marker (Start of data)
  *
  * @param       p_j2k               J2K codec.
- * @param       p_tile_coder        FIXME DOC
- * @param       p_data              FIXME DOC
- * @param       p_data_written      FIXME DOC
- * @param       p_total_data_size   FIXME DOC
+ * @param       p_tile_coder        tile coder
+ * @param       p_data_written      number of bytes written
+ * @param       p_total_data_size   total data size
  * @param       p_stream            the stream to write data to.
  * @param       p_manager           the user event manager.
 */
@@ -1009,8 +1024,8 @@ static bool j2k_write_rgn(  j2k_t *p_j2k,
 /**
  * Reads a RGN marker (Region Of Interest)
  *
- * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
  * @param       p_manager               the user event manager.
 */
@@ -1022,8 +1037,8 @@ static bool j2k_read_rgn (j2k_t *p_j2k,
 /**
  * Writes the EOC marker (End of Codestream)
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_eoc(      j2k_t *p_j2k,
@@ -1033,8 +1048,8 @@ static bool j2k_write_eoc(      j2k_t *p_j2k,
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
  *
- * @param       p_stream                        the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                        the stream to write data to.
  * @param       p_manager       the user event manager.
 */
 static bool j2k_write_mct_data_group(   j2k_t *p_j2k,
@@ -1044,8 +1059,8 @@ static bool j2k_write_mct_data_group(   j2k_t *p_j2k,
 /**
  * Inits the Info
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_init_info(      j2k_t *p_j2k,
@@ -1059,7 +1074,10 @@ Add main header marker information
 @param pos          byte offset of marker segment
 @param len          length of marker segment
  */
-static bool j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t type, int64_t pos, uint32_t len) ;
+static bool j2k_add_mhmarker(opj_codestream_index_t *cstr_index,
+							uint32_t type,
+							int64_t pos, 
+							uint32_t len) ;
 /**
 Add tile header marker information
 @param tileno       tile index number
@@ -1068,7 +1086,11 @@ Add tile header marker information
 @param pos          byte offset of marker segment
 @param len          length of marker segment
  */
-static bool j2k_add_tlmarker(uint32_t tileno, opj_codestream_index_t *cstr_index, uint32_t type, int64_t pos, uint32_t len);
+static bool j2k_add_tlmarker(uint32_t tileno, 
+							opj_codestream_index_t *cstr_index,
+							uint32_t type,
+							int64_t pos,
+							uint32_t len);
 
 /**
  * Reads an unknown marker
@@ -1088,7 +1110,6 @@ static bool j2k_read_unk( j2k_t *p_j2k,
 /**
  * Writes the MCT marker (Multiple Component Transform)
  *
- * @param       p_j2k           J2K codec.
  * @param       p_mct_record    FIXME DOC
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
@@ -1100,8 +1121,8 @@ static bool j2k_write_mct_record(   mct_data_t * p_mct_record,
 /**
  * Reads a MCT marker (Multiple Component Transform)
  *
- * @param       p_header_data   the data contained in the MCT box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the MCT box.
  * @param       p_header_size   the size of the data contained in the MCT marker.
  * @param       p_manager               the user event manager.
 */
@@ -1113,7 +1134,6 @@ static bool j2k_read_mct (      j2k_t *p_j2k,
 /**
  * Writes the MCC marker (Multiple Component Collection)
  *
- * @param       p_j2k                   J2K codec.
  * @param       p_mcc_record            FIXME DOC
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
@@ -1125,8 +1145,8 @@ static bool j2k_write_mcc_record(       simple_mcc_decorrelation_data_t * p_mcc_
 /**
  * Reads a MCC marker (Multiple Component Collection)
  *
- * @param       p_header_data   the data contained in the MCC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the MCC box.
  * @param       p_header_size   the size of the data contained in the MCC marker.
  * @param       p_manager               the user event manager.
 */
@@ -1138,8 +1158,8 @@ static bool j2k_read_mcc (      j2k_t *p_j2k,
 /**
  * Writes the MCO marker (Multiple component transformation ordering)
  *
- * @param       p_stream                                the stream to write data to.
  * @param       p_j2k                           J2K codec.
+ * @param       p_stream                                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_mco(      j2k_t *p_j2k,
@@ -1149,8 +1169,8 @@ static bool j2k_write_mco(      j2k_t *p_j2k,
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
- * @param       p_header_data   the data contained in the MCO box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the MCO box.
  * @param       p_header_size   the size of the data contained in the MCO marker.
  * @param       p_manager               the user event manager.
 */
@@ -1179,8 +1199,8 @@ static void  j2k_write_float_to_float64 (const void * p_src_data, void * p_dest_
 /**
  * Ends the encoding, i.e. frees memory.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_end_encoding(   j2k_t *p_j2k,
@@ -1190,8 +1210,8 @@ static bool j2k_end_encoding(   j2k_t *p_j2k,
 /**
  * Writes the CBD marker (Component bit depth definition)
  *
- * @param       p_stream                                the stream to write data to.
  * @param       p_j2k                           J2K codec.
+ * @param       p_stream                                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_cbd(      j2k_t *p_j2k,
@@ -1200,8 +1220,9 @@ static bool j2k_write_cbd(      j2k_t *p_j2k,
 
 /**
  * Reads a CBD marker (Component bit depth definition)
- * @param       p_header_data   the data contained in the CBD box.
+ *
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the CBD box.
  * @param       p_header_size   the size of the data contained in the CBD marker.
  * @param       p_manager               the user event manager.
 */
@@ -1214,8 +1235,8 @@ static bool j2k_read_cbd (      j2k_t *p_j2k,
 /**
  * Writes COC marker for each component.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_all_coc( j2k_t *p_j2k,
@@ -1225,8 +1246,8 @@ static bool j2k_write_all_coc( j2k_t *p_j2k,
 /**
  * Writes QCC marker for each component.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_all_qcc( j2k_t *p_j2k,
@@ -1236,8 +1257,8 @@ static bool j2k_write_all_qcc( j2k_t *p_j2k,
 /**
  * Writes regions of interests.
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_regions(  j2k_t *p_j2k,
@@ -1247,8 +1268,8 @@ static bool j2k_write_regions(  j2k_t *p_j2k,
 /**
  * Writes EPC ????
  *
- * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
+ * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
 */
 static bool j2k_write_epc(      j2k_t *p_j2k,
