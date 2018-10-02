@@ -602,3 +602,5 @@ opj_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png -L 9
 !opj_decompress -i @INPUT_NR_PATH@/issue826.jp2 -o @TEMP_PATH@/issue826.png
 # issue 820
 !opj_decompress -i @INPUT_NR_PATH@/issue820.jp2 -o @TEMP_PATH@/issue820.png
+# OpenJPEG issue 1125
+!opj_decompress -i  @INPUT_NR_PATH@/openjpeg_1125.jp2 -o @TEMP_PATH@/openjpeg_1125.png
