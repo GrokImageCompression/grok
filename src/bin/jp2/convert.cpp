@@ -555,7 +555,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			fprintf(stderr, "[ERROR] null data for component %d",i);
+			fprintf(stderr, "[ERROR] null data for component %d\n",i);
 			return false;
 		}
 	}
@@ -564,7 +564,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].w != image->comps[0].w ||
 					image->comps[i].h != image->comps[0].h) {
-			fprintf(stderr, "[ERROR] dimensions of component %d differ from dimensions of component 0", i);
+			fprintf(stderr, "[ERROR] Dimensions of component %d differ from dimensions of component 0\n", i);
 			return false;
 		}
 	}
@@ -572,7 +572,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	// check that all components have same precision
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].prec != image->comps[0].prec ) {
-			fprintf(stderr, "[ERROR] precision of component %d differ from precision of component 0", i);
+			fprintf(stderr, "[ERROR] precision of component %d differ from precision of component 0\n", i);
 			return false;
 		}
 	}
@@ -580,7 +580,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	// check that all components have same sign
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].sgnd != image->comps[0].sgnd) {
-			fprintf(stderr, "[ERROR] signedness of component %d differ from signedness of component 0", i);
+			fprintf(stderr, "[ERROR] signedness of component %d differ from signedness of component 0\n", i);
 			return false;
 		}
 	}

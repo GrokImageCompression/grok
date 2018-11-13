@@ -304,17 +304,17 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
-			fprintf(stderr, "[ERROR] imagetopgx: output file name size larger than 4096.");
+			fprintf(stderr, "[ERROR] imagetopgx: output file name size larger than 4096.\n");
 			goto beach;
 		}
 		if (olen < 5) {
-			fprintf(stderr, "[ERROR] imagetopgx: output file name size less than 5.");
+			fprintf(stderr, "[ERROR] imagetopgx: output file name size less than 5.\n");
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
 		if (outfile[dotpos] != '.') {
 			/* `pgx` was recognized but there is no dot at expected position */
-			fprintf(stderr, "[ERROR] The impossible happened.");
+			fprintf(stderr, "[ERROR] The impossible happened.\n");
 			goto beach;
 		}
 		//copy root outfile name to "name"

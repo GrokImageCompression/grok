@@ -135,7 +135,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 	char line[256];
 
 	if (fgets(line, 250, reader) == nullptr) {
-		fprintf(stderr, "[ERROR]  fgets return a nullptr value");
+		fprintf(stderr, "[ERROR]  fgets return a nullptr value\n");
 		return;
 	}
 
