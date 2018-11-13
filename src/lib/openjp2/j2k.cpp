@@ -4578,7 +4578,7 @@ static bool j2k_read_unk (     j2k_t *p_j2k,
     assert(p_manager != nullptr);
     assert(p_stream != nullptr);
 
-    event_msg(p_manager, EVT_WARNING, "Unknown marker\n");
+    event_msg(p_manager, EVT_WARNING, "Unknown marker 0x%04x\n", *output_marker);
 
     for (;;) {
         /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
