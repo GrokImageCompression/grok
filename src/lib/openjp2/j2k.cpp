@@ -2691,26 +2691,23 @@ static bool j2k_read_qcd (  j2k_t *p_j2k,
     }
 
     // Apply the quantization parameters to the other components
-	// of the current tile, or to m_default_tcp 
+	// of the current tile or m_default_tcp
 	auto l_tcp = j2k_get_tcp(p_j2k);
 	auto l_ref_tccp = l_tcp->tccps;
-	auto l_target_tccp = l_ref_tccp + 1;
-	bool fromTileHeader = j2k_fromTileHeader(p_j2k);
 	for (uint32_t i = 1; i<p_j2k->m_private_image->numcomps; ++i) {
+		auto l_target_tccp = l_ref_tccp + i;
 		// respect the QCD/QCC scoping rules
 		bool ignore = false;
-		if ((!l_ref_tccp->fromTileHeader) && l_target_tccp->fromQCC)
-			ignore = true;
-		if ((l_ref_tccp->fromTileHeader) &&
-					(l_target_tccp->fromTileHeader && l_target_tccp->fromQCC))
-			ignore = true;
+		if (l_target_tccp->fromQCC){
+			if (!l_ref_tccp->fromTileHeader || (l_ref_tccp->fromTileHeader && l_target_tccp->fromTileHeader))
+				ignore = true;
+		}
 		if (!ignore) {
 			l_target_tccp->qntsty = l_ref_tccp->qntsty;
 			l_target_tccp->numgbits = l_ref_tccp->numgbits;
 			auto l_size = OPJ_J2K_MAXBANDS * sizeof(stepsize_t);
 			memcpy(l_target_tccp->stepsizes, l_ref_tccp->stepsizes, l_size);
 		}
-		++l_target_tccp;
 	}
     return true;
 }
