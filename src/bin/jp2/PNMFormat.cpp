@@ -505,14 +505,16 @@ static int imagetopnm(opj_image_t * image,
 	int prec, v;
 	FILE *fdest = nullptr;
 	const char *tmp = outfile;
-	char *destname;
+	char *destname = nullptr;
+	int rc = 0;
 
 	alpha = nullptr;
 
 	if ((prec = (int)image->comps[0].prec) > 16) {
 		fprintf(stderr, "[ERROR] %s:%d:imagetopnm\n\tprecision %d is larger than 16"
 			"\n\t: refused.\n", __FILE__, __LINE__, prec);
-		return 1;
+		rc = 1;
+		goto cleanup;
 	}
 	two = has_alpha = 0;
 	fails = 1;
@@ -546,7 +548,8 @@ static int imagetopnm(opj_image_t * image,
 
 		if (!fdest) {
 			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
-			return fails;
+			rc = 1;
+			goto cleanup;
 		}
 		two = (prec > 8);
 		triple = (ncomp > 2);
@@ -667,9 +670,7 @@ static int imagetopnm(opj_image_t * image,
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 		}	/* for(i */
-		if (fdest)
-			fclose(fdest);
-		return 0;
+		goto cleanup;
 	}
 
 	/* YUV or MONO: */
@@ -681,11 +682,10 @@ static int imagetopnm(opj_image_t * image,
 		}
 	}
 	destname = (char*)malloc(strlen(outfile) + 8);
-	if (destname == nullptr) {
+	if (!destname) {
 		fprintf(stderr, "[ERROR] imagetopnm: out of memory\n");
-		if (fdest)
-			fclose(fdest);
-		return 1;
+		rc = 1;
+		goto cleanup;
 	}
 
 	for (compno = 0; compno < ncomp; compno++) {
@@ -703,8 +703,8 @@ static int imagetopnm(opj_image_t * image,
 		fdest = fopen(destname, "wb");
 		if (!fdest) {
 			fprintf(stderr, "[ERROR] failed to open %s for writing\n", destname);
-			free(destname);
-			return 1;
+			rc = 1;
+			goto cleanup;
 		}
 		wr = (int)image->comps[compno].w;
 		hr = (int)image->comps[compno].h;
@@ -715,6 +715,10 @@ static int imagetopnm(opj_image_t * image,
 			opj_version(), wr, hr, max);
 
 		red = image->comps[compno].data;
+		if (!red){
+			rc = 1;
+			goto cleanup;
+		}
 		adjustR =
 			(image->comps[compno].sgnd ? 1 << (image->comps[compno].prec - 1) : 0);
 
@@ -748,11 +752,17 @@ static int imagetopnm(opj_image_t * image,
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 		}
-		if (fdest)
+		if (fdest){
 			fclose(fdest);
+			fdest = NULL;
+		}
 	} /* for (compno */
-	free(destname);
-	return 0;
+cleanup:
+	if (destname)
+		free(destname);
+	if (fdest)
+		fclose(fdest);
+	return rc;
 }/* imagetopnm() */
 
 bool PNMFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
