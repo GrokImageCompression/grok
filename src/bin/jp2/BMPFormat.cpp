@@ -416,14 +416,14 @@ static bool bmp_read_raw_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_
 
 static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
-	uint32_t x, y;
+	uint32_t x, y, written;
 	uint8_t *pix;
 	const uint8_t *beyond;
 
 	beyond = pData + stride * height;
 	pix = pData;
 
-	x = y = 0U;
+	x = y = written = 0U;
 	while (y < height) {
 		int c = getc(IN);
 		if (c == EOF)
@@ -436,6 +436,7 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			uint8_t c1 = (uint8_t)temp;
 			for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
 				*pix = c1;
+				written++;
 			}
 		}
 		else {
@@ -469,6 +470,7 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 						return false;
 					uint8_t c1 = (uint8_t)temp;
 					*pix = c1;
+					written++;
 				}
 				if ((uint32_t)c & 1U) { /* skip padding byte */
 					if (getc(IN) == EOF)
@@ -477,6 +479,10 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			}
 		}
 	}/* while() */
+	if (written != width*height){
+		fprintf(stderr, "[ERROR] Number of pixels written does not match specified image dimensions.\n");
+		return false;
+	}
 	return true;
 }
 static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
