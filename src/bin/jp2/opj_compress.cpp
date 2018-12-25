@@ -1580,7 +1580,7 @@ int main(int argc, char **argv) {
 		if (initParams.parameters.verbose && num_compressed_files) {
 			fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0) / (double)num_compressed_files));
 		}
-	} catch (std::bad_alloc ba){
+	} catch (std::bad_alloc& ba){
 		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;
 		success = 1;
 		goto cleanup;

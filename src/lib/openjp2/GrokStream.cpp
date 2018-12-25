@@ -223,6 +223,7 @@ size_t GrokStream::read(uint8_t * p_buffer,
 			return bytes_read;
 		}
 	}
+	return 0;
 }
 size_t GrokStream::read_data_zero_copy(uint8_t ** p_buffer,
 	size_t p_size,
@@ -326,6 +327,7 @@ size_t GrokStream::write_bytes(const uint8_t * p_buffer,
 			return (size_t)-1;
 		}
 	}
+	return l_write_nb_bytes;
 }
 void GrokStream::write_increment(size_t p_size) {
 	m_buffer_current_ptr += p_size;
