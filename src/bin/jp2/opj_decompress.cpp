@@ -1283,7 +1283,7 @@ int main(int argc, char **argv){
 		if (initParams.parameters.verbose && num_decompressed_images) {
 			fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 		}
-	} catch (std::bad_alloc ba){
+	} catch (std::bad_alloc& ba){
 		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;
 		rc = 1;
 		goto cleanup;
