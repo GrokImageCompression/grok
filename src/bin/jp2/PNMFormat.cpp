@@ -755,10 +755,13 @@ static int imagetopnm(opj_image_t * image,
 				fprintf(fdest, "%c", (unsigned char)v);
 			}
 		}
-		if (fdest){
-			fclose(fdest);
-			fdest = NULL;
+		if (!grk::safe_fclose(fdest)){
+			fdest = nullptr;
+			rc = 1;
+			goto cleanup;
+
 		}
+		fdest = nullptr;
 	} /* for (compno */
 cleanup:
 	if (destname)
