@@ -2388,7 +2388,7 @@ void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 			try {
 				incltree = new TagTree(cw, ch, manager);
 			}
-			catch (std::exception e) {
+			catch (std::exception& e) {
 				event_msg(manager, EVT_WARNING, "No incltree created.\n");
 			}
 		}
@@ -2404,7 +2404,7 @@ void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 			try {
 				imsbtree = new TagTree(cw, ch, manager);
 			}
-			catch (std::exception e) {
+			catch (std::exception& e) {
 				event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
 			}
 		}

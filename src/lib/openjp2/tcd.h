@@ -280,6 +280,7 @@ struct tcd_band_t {
 						bandno(0),
 						precincts(nullptr),
 						precincts_data_size(0),
+						numPrecincts(0),
 						numbps(0),
 						stepsize(0) {}
 
@@ -290,6 +291,7 @@ struct tcd_band_t {
 												bandno(rhs.bandno),
 												precincts(nullptr),
 												precincts_data_size(0),
+												numPrecincts(rhs.numPrecincts),
 												numbps(rhs.numbps),
 												stepsize(rhs.stepsize)
 	 {}
@@ -311,6 +313,8 @@ struct tcd_resolution_t {
 							y0(0),
 							x1(0),
 							y1(0),
+							pw(0),
+							ph(0),
 							numbands(0) {}
 	tcd_resolution_t(const tcd_resolution_t& rhs) : x0(rhs.x0),
 															y0(rhs.y0),
