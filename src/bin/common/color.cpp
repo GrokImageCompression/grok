@@ -452,7 +452,6 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
     int prec, i, max, max_w, max_h;
     OPJ_COLOR_SPACE oldspace;
     opj_image_t* new_image = nullptr;
-	unsigned char *inbuf = nullptr, *outbuf = nullptr;
 	(void)verbose;
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
@@ -576,7 +575,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
     if(image->numcomps > 2) { /* RGB, RGBA */
         if( prec <= 8 ) {
 			int *r=nullptr, *g=nullptr, *b=nullptr;
-            unsigned char *in=nullptr, *out=nullptr;
+            unsigned char *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
             max = max_w * max_h;
             nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
             in = inbuf = (unsigned char*)malloc(nr_samples);
@@ -585,6 +584,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 			}
             out = outbuf = (unsigned char*)malloc(nr_samples);
 			if (!out) {
+				free(inbuf);
 				goto cleanup;
 			}
 
@@ -609,9 +609,11 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
                 *g++ = (int)*out++;
                 *b++ = (int)*out++;
             }
+    		free(inbuf);
+    		free(outbuf);
         } else {
 			int *r = nullptr, *g = nullptr, *b = nullptr;
-            unsigned short *inbuf=nullptr, *outbuf=nullptr, *in=nullptr, *out=nullptr;
+            unsigned short *in=nullptr, *inbuf=nullptr, *out=nullptr, *outbuf = nullptr;
             max = max_w * max_h;
             nr_samples =  max * 3 * (cmsUInt32Number)sizeof(unsigned short);
             in = inbuf = (unsigned short*)malloc(nr_samples);
@@ -619,6 +621,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 				goto cleanup;
             out = outbuf = (unsigned short*)malloc(nr_samples);
 			if (!out) {
+				free(inbuf);
 				goto cleanup;
 			}
 
@@ -643,13 +646,14 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
                 *g++ = (int)*out++;
                 *b++ = (int)*out++;
             }
+    		free(inbuf);
+    		free(outbuf);
         }
     } else { /* GRAY, GRAYA */
 		int *r = nullptr;
 		int *g = nullptr;
 		int *b = nullptr;
-		unsigned char *in = nullptr;
-		unsigned char *out = nullptr;
+        unsigned char *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
 
         max = max_w * max_h;
         nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
@@ -663,11 +667,14 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 			goto cleanup;
         out = outbuf = (unsigned char*)malloc(nr_samples);
 		if (!out) {
+			free(inbuf);
 			goto cleanup;
 		}
 
         new_image = image_create(2, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
 		if (!new_image) {
+			free(inbuf);
+			free(outbuf);
 			goto cleanup;
 		}
 
@@ -711,10 +718,10 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 				out += 2;
 			}
         }
+		free(inbuf);
+		free(outbuf);
     }/* if(image->numcomps */
 cleanup:
-	free(inbuf);
-	free(outbuf);
 	if (in_prof)
 		cmsCloseProfile(in_prof);
 	if (out_prof)
