@@ -33,6 +33,7 @@
 #include <setjmp.h>
 #include <cassert>
 #include "iccjpeg.h"
+#include "common.h"
 
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;    /* "public" fields */
@@ -322,10 +323,6 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	jpeg_finish_compress(&cinfo);
 
 cleanup:
-	/* After finish_compress, we can close the output file. */
-	if (info.outfile && !info.writeToStdout)
-		fclose(info.outfile);
-
 	/* Step 7: release JPEG compression object */
 
 	/* This is an important step since it will release a good deal of memory. */
@@ -333,6 +330,13 @@ cleanup:
 
 	delete[] info.buffer;
 	delete[] info.buffer32s;
+	/* After finish_compress, we can close the output file. */
+	if (info.outfile && !info.writeToStdout){
+		if (!grk::safe_fclose(info.outfile)){
+			info.success = 1;
+		}
+	}
+
 	return info.success ? 0 : 1;
 }
 
@@ -585,14 +589,6 @@ cleanup:
 		free(icc_data_ptr);
 	jpeg_destroy_decompress(&cinfo);
 
-	/* After finish_decompress, we can close the input file.
-	* Here we postpone it until after no more JPEG errors are possible,
-	* so as to simplify the setjmp error logic above.  (Actually, I don't
-	* think that jpeg_destroy can do an error exit, but why assume anything...)
-	*/
-	if (imageInfo.infile && !imageInfo.readFromStdin)
-		fclose(imageInfo.infile);
-
 	delete[] imageInfo.buffer32s;
 
 	/* At this point you may want to check to see whether any corrupt-data
@@ -604,9 +600,19 @@ cleanup:
 	}
 	
 	if (!imageInfo.success) {
-		if (imageInfo.image)
-			opj_image_destroy(imageInfo.image);
+		opj_image_destroy(imageInfo.image);
 		imageInfo.image = nullptr;
+	}
+	/* After finish_decompress, we can close the input file.
+	* Here we postpone it until after no more JPEG errors are possible,
+	* so as to simplify the setjmp error logic above.  (Actually, I don't
+	* think that jpeg_destroy can do an error exit, but why assume anything...)
+	*/
+	if (imageInfo.infile && !imageInfo.readFromStdin){
+		if (!grk::safe_fclose(imageInfo.infile)){
+			opj_image_destroy(imageInfo.image);
+			imageInfo.image = nullptr;
+		}
 	}
 	return imageInfo.image;
 }/* jpegtoimage() */

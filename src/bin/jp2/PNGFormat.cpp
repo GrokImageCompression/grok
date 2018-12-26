@@ -74,6 +74,7 @@
 #include <string>
 #include <cassert>
 #include <locale>
+#include "common.h"
 
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
 #define MAGIC_SIZE 8
@@ -431,8 +432,12 @@ beach:
 	}
 	if (local_info.png)
 		png_destroy_read_struct(&local_info.png, &info, nullptr);
-	if (!local_info.readFromStdin &&  local_info.reader)
-		fclose(local_info.reader);
+	if (!local_info.readFromStdin &&  local_info.reader){
+		if (!grk::safe_fclose(local_info.reader)){
+			opj_image_destroy(local_info.image);
+			local_info.image = nullptr;
+		}
+	}
 	return local_info.image;
 }/* pngtoimage() */
 
@@ -748,8 +753,9 @@ beach:
 		free(local_info.buffer32s);
 	}
 	if (!local_info.writeToStdout) {
-		if (local_info.writer)
-			fclose(local_info.writer);
+		if (!grk::safe_fclose(local_info.writer)){
+			local_info.fails = 1;
+		}
 		if (local_info.fails && write_idf)
 			(void)remove(write_idf); /* ignore return value */
 	}

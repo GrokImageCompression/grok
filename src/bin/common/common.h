@@ -57,6 +57,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdio>
 
 namespace grk {
 
@@ -88,5 +89,7 @@ int parse_DA_values(bool verbose,
 	uint32_t *DA_y0,
 	uint32_t *DA_x1,
 	uint32_t *DA_y1);
+
+bool safe_fclose(FILE* fd);
 
 }

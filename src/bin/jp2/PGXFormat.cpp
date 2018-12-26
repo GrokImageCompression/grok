@@ -70,6 +70,7 @@
 #include "PGXFormat.h"
 #include "convert.h"
 #include <cstring>
+#include "common.h"
 
 
 static unsigned char readuchar(FILE * f)
@@ -264,8 +265,10 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		comp->data[i] = v;
 	}
 cleanup:
-	if (f)
-		fclose(f);
+	if (!grk::safe_fclose(f)) {
+		opj_image_destroy(image);
+		image = nullptr;
+	}
 	return image;
 }
 
@@ -356,14 +359,17 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 				}
 			}
 		}
-		if (fdest)
-			fclose(fdest);
+		if (!grk::safe_fclose(fdest)){
+			fdest = nullptr;
+			goto beach;
+		}
 		fdest = nullptr;
 	}
 	fails = 0;
 beach:
-	if (fdest)
-		fclose(fdest);
+	if (!grk::safe_fclose(fdest)){
+		fails = 1;
+	}
 	return fails;
 }
 

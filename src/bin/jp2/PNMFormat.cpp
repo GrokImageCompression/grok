@@ -60,6 +60,7 @@
 #include "PNMFormat.h"
 #include "convert.h"
 #include <cstring>
+#include "common.h"
 
 
 struct pnm_header {
@@ -483,8 +484,10 @@ static opj_image_t* pnmtoimage(const char *filename,
 		}
 	}
 cleanup:
-	if (fp)
-		fclose(fp);
+	if (!grk::safe_fclose(fp)){
+		opj_image_destroy(image);
+		image = nullptr;
+	}
 	return image;
 }/* pnmtoimage() */
 
@@ -760,8 +763,8 @@ static int imagetopnm(opj_image_t * image,
 cleanup:
 	if (destname)
 		free(destname);
-	if (fdest)
-		fclose(fdest);
+	if (!grk::safe_fclose(fdest))
+		rc = -1;
 	return rc;
 }/* imagetopnm() */
 

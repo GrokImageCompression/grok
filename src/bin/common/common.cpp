@@ -141,5 +141,11 @@ int parse_DA_values(bool verbose,
 	}
 }
 
+bool safe_fclose(FILE* fd){
+	if (!fd)
+		return true;
+	return fclose(fd) ? false : true;
+
+}
 
 }
