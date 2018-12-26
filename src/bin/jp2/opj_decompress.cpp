@@ -103,6 +103,7 @@ using namespace grk;
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
+#include "common.h"
 
 using namespace TCLAP;
 using namespace std;
@@ -504,7 +505,9 @@ static int infile_format(const char *fname)
 
     memset(buf, 0, 12);
     l_nb_read = fread(buf, 1, 12, reader);
-    fclose(reader);
+    if (!grk::safe_fclose(reader)){
+    	return -2;
+    }
     if (l_nb_read != 12)
         return -1;
 
@@ -1522,7 +1525,12 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 			rewind(fp);
 			buffer = new uint8_t[lengthOfFile];
 			size_t bytesRead = fread(buffer, 1, lengthOfFile, fp);
-			fclose(fp);
+			if (!grk::safe_fclose(fp)) {
+				fprintf(stderr, "[ERROR] Error closing file \n");
+				failed = 1;
+				goto cleanup;
+			}
+
 			if (bytesRead != (size_t)lengthOfFile) {
 				fprintf(stderr, "[ERROR] opj_decompress: Unable to read full length of file %s", parameters->infile);
 				failed = 1;
@@ -1588,13 +1596,19 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 			auto fp = fopen(xmlFile.c_str(), "wb");
 			if (!fp) {
 				fprintf(stderr, "[ERROR] opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
+				failed = 1;
+				goto cleanup;
 			}
 			if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
 				fprintf(stderr, "[ERROR] opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
 				fclose(fp);
+				failed = 1;
+				goto cleanup;
 			}
-			if (fp)
-				fclose(fp);
+			if (!grk::safe_fclose(fp)){
+				failed = 1;
+				goto cleanup;
+			}
 		}
 
 		if (info->init_decoders_func) {

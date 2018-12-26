@@ -773,8 +773,12 @@ static opj_image_t* bmptoimage(const char *filename,
 cleanup:
 	if (pData)
 		free(pData);
-	if (!readFromStdin && IN)
-		fclose(IN);
+	if (!readFromStdin && IN){
+		if (!grk::safe_fclose(IN)){
+			opj_image_destroy(image);
+			image = nullptr;
+		}
+	}
 	return image;
 }
 static bool write_int(FILE* fdest, uint32_t val) {
@@ -1025,8 +1029,11 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 	rc = 0;
 cleanup:
 	delete[] destBuff;
-	if (!writeToStdout && fdest)
-		fclose(fdest);
+	if (!writeToStdout && fdest){
+		if (!grk::safe_fclose(fdest)){
+			rc = 1;
+		}
+	}
 	return rc;
 }
 

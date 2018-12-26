@@ -713,10 +713,8 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
         }
     }/* if(image->numcomps */
 cleanup:
-	if (inbuf)
-		free(inbuf);
-	if (outbuf)
-		free(outbuf);
+	free(inbuf);
+	free(outbuf);
 	if (in_prof)
 		cmsCloseProfile(in_prof);
 	if (out_prof)

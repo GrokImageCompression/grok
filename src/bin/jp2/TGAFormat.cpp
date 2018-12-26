@@ -60,6 +60,7 @@
 #include "TGAFormat.h"
 #include "convert.h"
 #include <cstring>
+#include "common.h"
 
 
 
@@ -263,14 +264,13 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	if (!tga_readheader(f, &pixel_bit_depth, &image_width, &image_height, &flip_image)) {
-		if (f)
-			fclose(f);
+		grk::safe_fclose(f);
 		return nullptr;
 	}
 
 	/* We currently only support 24 & 32 bit tga's ... */
 	if (!((pixel_bit_depth == 24) || (pixel_bit_depth == 32))) {
-		fclose(f);
+		grk::safe_fclose(f);
 		return nullptr;
 	}
 
@@ -302,8 +302,7 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	/* create the image */
 	image = opj_image_create(numcomps, &cmptparm[0], color_space);
 	if (!image) {
-		if (f)
-			fclose(f);
+		grk::safe_fclose(f);
 		return nullptr;
 	}
 	if (!sanityCheckOnImage(image, numcomps)) {
@@ -380,7 +379,7 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				if (!fread(&a, 1, 1, f)) {
 					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
-					fclose(f);
+					grk::safe_fclose(f);
 					return nullptr;
 				}
 
@@ -396,8 +395,10 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 		}
 	}
 cleanup:
-	if (f)
-		fclose(f);
+	if (!grk::safe_fclose(f)) {
+		opj_image_destroy(image);
+		image = nullptr;
+	}
 	return image;
 }
 
@@ -431,7 +432,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 			|| (image->comps[0].prec != image->comps[i + 1].prec)
 			|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
-			fclose(fdest);
+			grk::safe_fclose(fdest);
 			fprintf(stderr, "[ERROR] Unable to create a tga file with such J2K image charateristics.");
 			return 1;
 		}
@@ -518,8 +519,8 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 	}
 	fails = 0;
 beach:
-	fclose(fdest);
-
+	if (!grk::safe_fclose(fdest))
+		fails = 1;
 	return fails;
 }
 

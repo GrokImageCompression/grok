@@ -60,6 +60,7 @@
 #include "openjpeg.h"
 #include "RAWFormat.h"
 #include "convert.h"
+#include "common.h"
 
 bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
@@ -203,8 +204,12 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 			fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
 	}
 cleanup:
-	if (f && !readFromStdin)
-		fclose(f);
+	if (f && !readFromStdin){
+		if (!grk::safe_fclose(f)){
+			opj_image_destroy(image);
+			image = nullptr;
+		}
+	}
 	return image;
 }
 
@@ -373,7 +378,9 @@ int RAWFormat::encode_common(opj_image_t * image,
 	}
 	fails = 0;
 beach:
-	if (!writeToStdout && rawFile)
-		fclose(rawFile);
+	if (!writeToStdout && rawFile){
+		if (!grk::safe_fclose(rawFile))
+			fails = 1;
+	}
 	return fails;
 }
