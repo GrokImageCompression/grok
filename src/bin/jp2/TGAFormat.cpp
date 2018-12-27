@@ -404,17 +404,16 @@ cleanup:
 
 static int imagetotga(opj_image_t * image, const char *outfile)
 {
-	int width, height, bpp, x, y;
-	bool write_alpha;
+	int width=0, height=0, bpp=0, x=0, y=0;
+	bool write_alpha=false;
 	unsigned int i;
-	int adjustR, adjustG, adjustB, fails;
+	int adjustR=0, adjustG=0, adjustB=0, fails=1;
 	unsigned int alpha_channel;
 	float r, g, b, a;
 	unsigned char value;
-	float scale;
-	FILE *fdest;
-	size_t res;
-	fails = 1;
+	float scale=0;
+	FILE *fdest=nullptr;
+	size_t res=0;
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
@@ -455,8 +454,10 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 	scale = 255.0f / (float)((1 << image->comps[0].prec) - 1);
 
 	adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
-	adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-	adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+	if (image->numcomps >= 3) {
+		adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
+		adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+	}
 
 	for (y = 0; y < height; y++) {
 		unsigned int index = (unsigned int)(y*width);
