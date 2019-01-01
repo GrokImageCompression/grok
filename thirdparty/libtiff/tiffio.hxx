@@ -31,6 +31,7 @@
 
 #include <iostream>
 #include "tiff.h"
+#include "tiffio.h"
 
 extern TIFF* TIFFStreamOpen(const char*, std::ostream *);
 extern TIFF* TIFFStreamOpen(const char*, std::istream *);
