@@ -33,7 +33,7 @@
 
 //      Little-Endian to Big-Endian
 
-// Adjust a word value after being readed/ before being written from/to an ICC profile
+// Adjust a word value after being read/ before being written from/to an ICC profile
 cmsUInt16Number CMSEXPORT  _cmsAdjustEndianess16(cmsUInt16Number Word)
 {
 #ifndef CMS_USE_BIG_ENDIAN
@@ -99,8 +99,8 @@ void CMSEXPORT  _cmsAdjustEndianess64(cmsUInt64Number* Result, cmsUInt64Number* 
     _cmsAssert(Result != NULL);
 
 #  ifdef CMS_DONT_USE_INT64
-    (*Result)[0] = QWord[0];
-    (*Result)[1] = QWord[1];
+    (*Result)[0] = (*QWord)[0];
+    (*Result)[1] = (*QWord)[1];
 #  else
     *Result = *QWord;
 #  endif
