@@ -51,15 +51,12 @@ void RateControl::convexHull(tcd_pass_t *pass, uint32_t numPasses) {
 		// 3. all intermediate points are processed, and pass is not rejected,
 		//    in which case current pass meets feasible-truncation conditions
 		while (1) {
-
 			// calculate rate and distortion deltas
 			dr += intermed_pass->len;
 			if (p_intermed == 0) {
-
 				dd += intermed_pass->distortiondec;
 			}
 			else {
-
 				dd += intermed_pass->distortiondec - (intermed_pass - 1)->distortiondec;
 			}
 
@@ -68,7 +65,6 @@ void RateControl::convexHull(tcd_pass_t *pass, uint32_t numPasses) {
 			// (Corollary 8.3)
 			if (dd <= 0) {
 				current_pass->slope = 0;
-
 				break;
 			}
 
@@ -79,39 +75,30 @@ void RateControl::convexHull(tcd_pass_t *pass, uint32_t numPasses) {
 			// all intermediate points have been processed and current
 			// point has survived: mark current point as feasible
 			if (p_intermed == -1) {
-
 				// update slope for current point (Equation 8.8)
 				slope_cache[p] = dd / dr;
 				current_pass->slope = slopeToLog(slope_cache[p]);
-
 				break;
 			}
 
 			// skip previously-rejected intermediate point
 			if (intermed_pass->slope == 0) {
-
 				continue;
-
 			}
 
 			// reject intermediate point as non-feasible:
 			// distortion-rate slope must be finite
 			if (dr == 0) {
-
 				intermed_pass->slope = 0;
-
 			}
 			// reject intermediate point as non-feasible:
 			// distortion-rate slope must be strictly monotone decreasing
 			// (Corollary 8.3)
 			else if ((slope_cache[p_intermed] * dr) <= dd) {
-
 				intermed_pass->slope = 0;
-
 			}
 			// feasible truncation point
 			else {
-
 				// update slope for current point (Equation 8.8)
 				slope_cache[p] = dd / dr;
 				current_pass->slope = slopeToLog(slope_cache[p]);
@@ -122,12 +109,10 @@ void RateControl::convexHull(tcd_pass_t *pass, uint32_t numPasses) {
 				if (current_pass->slope >= intermed_pass->slope) {
 					intermed_pass->slope = 0;
 				}
-
 				break;
 			}
 		}
 	}
-
 	delete[] slope_cache;
 }
 
