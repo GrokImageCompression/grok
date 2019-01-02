@@ -385,10 +385,9 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 			double distotarget =
 				tcd_tile->distotile - ((K * maxSE) / pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
-			uint32_t thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
-				thresh = (lowerBound + upperBound) >> 1;
-				if (prevthresh != 0 && prevthresh ==thresh)
+				uint32_t thresh = (lowerBound + upperBound) >> 1;
+				if (prevthresh != 0 && (fabs(prevthresh - thresh)) < 0.001)
 					break;
 				tcd_makelayer_feasible(tcd, layno, (uint16_t)thresh, false);
 				prevthresh = thresh;
