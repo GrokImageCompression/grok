@@ -387,7 +387,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd,
 
 			for (uint32_t i = 0; i < 128; ++i) {
 				uint32_t thresh = (lowerBound + upperBound) >> 1;
-				if (prevthresh != 0 && (fabs(prevthresh - thresh)) < 0.001)
+				if (prevthresh != 0 && prevthresh == thresh)
 					break;
 				tcd_makelayer_feasible(tcd, layno, (uint16_t)thresh, false);
 				prevthresh = thresh;
