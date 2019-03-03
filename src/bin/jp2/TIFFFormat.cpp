@@ -1391,7 +1391,6 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA */
 	opj_image_t *image = nullptr;
-	uint32_t numAlphaChannels = 0;
 	unsigned short tiBps = 0, tiPhoto = 0, tiSf = 0, tiSpp = 0, tiPC = 0;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
@@ -1514,25 +1513,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		break;
 	}
 
-
-	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,
-		&extrasamples, &sampleinfo);
-
-	if (extrasamples >= 1) {
-		switch (sampleinfo[0]) {
-		case EXTRASAMPLE_UNSPECIFIED:
-			// Workaround for some images without correct info about alpha channel
-			if (tiSpp == 4 || tiSpp == 2)
-				numAlphaChannels = 1;
-			break;
-
-		case EXTRASAMPLE_ASSOCALPHA: /* data pre-multiplied */
-		case EXTRASAMPLE_UNASSALPHA: /* data not pre-multiplied */
-			numAlphaChannels = 1;
-			break;
-		}
-	}
-
+	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
 
 	/* initialize image components */
 	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
@@ -1551,11 +1532,11 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 
 	if (tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
-		numcomps = 3 + numAlphaChannels;
+		numcomps = 3 + extrasamples;
 		color_space = OPJ_CLRSPC_SRGB;
 	}
 	else if (tiPhoto == PHOTOMETRIC_MINISBLACK || tiPhoto == PHOTOMETRIC_MINISWHITE) { /* GRAY(A) */
-		numcomps = 1 + numAlphaChannels;
+		numcomps = 1 + extrasamples;
 		color_space = OPJ_CLRSPC_GRAY;
 	}
 
@@ -1602,12 +1583,20 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	for (uint32_t j = 0; j < numcomps; j++) {
 		planes[j] = image->comps[j].data;
-		//only support single alpha channel when reading in from TIFF
-		if ((j == numcomps - 1) && (numAlphaChannels > 0)) {
-			if (sampleinfo && sampleinfo[0] == EXTRASAMPLE_ASSOCALPHA)
+		// handle alpha channel
+		auto numColourChannels = numcomps - extrasamples;
+		if (extrasamples > 0 && j >=  numColourChannels) {
+			auto alphaType = sampleinfo[j - numColourChannels];
+			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-			else
+			else if (alphaType== EXTRASAMPLE_UNASSALPHA)
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+			else {
+				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
+				if (numcomps == 2 || numcomps == 4){
+					image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+				}
+			}
 		}
 	}
 

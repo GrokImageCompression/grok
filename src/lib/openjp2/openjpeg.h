@@ -837,9 +837,9 @@ typedef void * opj_stream_t;
 ==========================================================
 */
 
-#define GROK_COMPONENT_TYPE_COLOUR 0
-#define GROK_COMPONENT_TYPE_OPACITY 1
-#define GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 2
+#define GROK_COMPONENT_TYPE_NON_OPACITY	 			0
+#define GROK_COMPONENT_TYPE_OPACITY 				1
+#define GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	2
 
 /**
  * Defines a single image component
@@ -869,7 +869,12 @@ typedef struct opj_image_comp {
     int32_t *data;
 	// if true, then image will manage data, otherwise up to caller
 	bool owns_data;
-    /** alpha channel: can be one of three values: {GROK_COMPONENT_TYPE_COLOUR, GROK_COMPONENT_TYPE_OPACITY, GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY} */
+    /** alpha channel: can be one of three values: {GROK_COMPONENT_TYPE_NON_OPACITY, GROK_COMPONENT_TYPE_OPACITY, GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY}
+     *
+     * GROK_COMPONENT_TYPE_NON_OPACITY				: this component is not an alpha channel
+	 * GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel, and the colour channels have been pre-multiplied by alpha
+     * GROK_COMPONENT_TYPE_OPACITY					: this component is an alpha channel, and the colour channels have not been pre-multiplied by alpha
+     * */
     uint16_t alpha;  
 } opj_image_comp_t;
 
