@@ -72,6 +72,7 @@
 #include <sys/times.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
