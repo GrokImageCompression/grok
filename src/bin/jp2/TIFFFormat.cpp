@@ -1391,7 +1391,8 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA */
 	opj_image_t *image = nullptr;
-	unsigned short tiBps = 0, tiPhoto = 0, tiSf = 0, tiSpp = 0, tiPC = 0;
+	unsigned short tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
+	bool hasTiSf = false;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
 	uint32_t tiWidth = 0, tiHeight = 0;
@@ -1408,16 +1409,14 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		fprintf(stderr, "[ERROR] tiftoimage:Failed to open %s for reading\n", filename);
 		return 0;
 	}
-	tiBps = tiPhoto = tiSf = tiSpp = tiPC = 0;
-	tiWidth = tiHeight = 0;
 
 	TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
 	TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
 	TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
-	TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf);
 	TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
 	TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
 	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	hasTiSf =TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
@@ -1433,6 +1432,13 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint16* sampleinfo = nullptr;
 	uint16 extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
+
+	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
+		fprintf(stderr, "[ERROR] tiftoimage: Unsupported sample format %d\n"
+			"\tAborting.\n", tiSf);
+		success = false;
+		goto cleanup;
+	}
 
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"
@@ -1598,6 +1604,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 				}
 			}
 		}
+		image->comps[j].sgnd = (tiSf == SAMPLEFORMAT_INT);
 	}
 
 	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
