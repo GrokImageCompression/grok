@@ -221,7 +221,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     strcpy(image_filename,dirptr->filename[imageno]);
     fprintf(stdout,"File Number %d \"%s\"\n",imageno,image_filename);
     parameters->decod_format = get_file_format(image_filename);
-    if (parameters->decod_format == -1)
+    if (parameters->decod_format == UNKNOWN_FORMAT)
         return 1;
     sprintf(infilename,"%s/%s",img_fol->imgdirpath,image_filename);
     if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename) != 0) {

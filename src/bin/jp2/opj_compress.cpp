@@ -102,6 +102,13 @@ using namespace grk;
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 
+
+using namespace TCLAP;
+using namespace std;
+
+static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
+static GROK_SUPPORTED_FILE_FORMAT get_file_format(char *filename);
+
 void exit_func() {
 	grok_plugin_stop_batch_encode();
 }
@@ -140,13 +147,6 @@ void setup_signal_handler()
 #endif  
 }
 
-
-
-using namespace TCLAP;
-using namespace std;
-
-
-static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
 
 static void encode_help_display(void)
 {
@@ -403,25 +403,25 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
     return 0;
 }
 
-static int get_file_format(char *filename)
+static GROK_SUPPORTED_FILE_FORMAT get_file_format(char *filename)
 {
     unsigned int i;
     static const char *extension[] = {
         "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "tiff", "jpg", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
     };
-    static const int format[] = {
+    static const GROK_SUPPORTED_FILE_FORMAT format[] = {
         PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
     };
     char * ext = strrchr(filename, '.');
     if (ext == nullptr)
-        return -1;
+        return UNKNOWN_FORMAT;
     ext++;
     for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
         if(strcasecmp(ext, extension[i]) == 0) {
             return format[i];
         }
     }
-    return -1;
+    return UNKNOWN_FORMAT;
 }
 
 static char * get_file_name(char *name)
@@ -446,9 +446,9 @@ static char get_next_file(std::string image_filename,
 	if (parameters->verbose)
 		fprintf(stdout, "File \"%s\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
-	if (parameters->decod_format == -1) {
+	if (parameters->decod_format == UNKNOWN_FORMAT) {
 		parameters->decod_format = get_file_format((char*)infilename.c_str());
-		if (parameters->decod_format == -1)
+		if (parameters->decod_format == UNKNOWN_FORMAT)
 			return 1;
 	}
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
@@ -750,7 +750,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (inputFileArg.isSet()) {
 			char *infile = (char*)inputFileArg.getValue().c_str();
-			if (parameters->decod_format == -1) {
+			if (parameters->decod_format == UNKNOWN_FORMAT) {
 				parameters->decod_format = get_file_format(infile);
 				if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
 					fprintf(stderr,
@@ -762,6 +762,24 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				return 1;
+			}
+		}
+		else {
+			// check for possible input from STDIN
+			if (!imgDirArg.isSet()){
+				bool fromStdin = false;
+				if (inForArg.isSet()) {
+					for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
+						if (supportedStdoutFileFormats[i] == parameters->decod_format){
+							fromStdin = true;
+							break;
+						}
+					}
+				}
+				if (!fromStdin){
+					fprintf(stderr, "[ERROR] Missing input file\n");
+					return 1;
+				}
 			}
 		}
 
@@ -1317,7 +1335,7 @@ static int parse_cmdline_encoder_ex(int argc,
             return 1;
         }
     } else {
-		if (parameters->cod_format == -1) {
+		if (parameters->cod_format == UNKNOWN_FORMAT) {
 			if (parameters->infile[0] == 0) {
 				fprintf(stderr, "[ERROR] Missing input file parameter\n"
 					"Example: %s -i image.pgm -o image.j2k\n", argv[0]);
@@ -1495,7 +1513,7 @@ static int compress(std::string image_filename,
 	uint32_t rateControlAlgorithm) {
 	//clear for next file encode
 	initParams->parameters.write_capture_resolution_from_file = false;
-	initParams->parameters.decod_format = -1;
+	initParams->parameters.decod_format = UNKNOWN_FORMAT;
 
 	//restore cached settings
 	initParams->parameters.tcp_mct = tcp_mct;
@@ -1631,7 +1649,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 	if (!image) {
-		if (parameters->decod_format == -1) {
+		if (parameters->decod_format == UNKNOWN_FORMAT) {
 			parameters->decod_format = get_file_format((char*)info->input_file_name);
 			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
 				bSuccess = false;

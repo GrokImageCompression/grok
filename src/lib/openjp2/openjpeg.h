@@ -491,10 +491,10 @@ typedef struct opj_cparameters {
     uint32_t subsampling_dx;
     /** subsampling value for dy */
     uint32_t subsampling_dy;
-    /** input file format 0: PGX, 1: PxM, 2: BMP 3:TIF; -1 indicates no input file format*/
-    int32_t decod_format;
-    /** output file format 0: J2K, 1: JP2; -1 indicates no output file format */
-    int32_t cod_format;
+    /** input file format*/
+    uint32_t decod_format;
+    /** output file format*/
+    uint32_t cod_format;
 	raw_cparameters_t raw_cp;
     /**
      * Maximum size (in bytes) for each component.
@@ -687,9 +687,9 @@ typedef struct opj_dparameters {
     char infile[OPJ_PATH_LEN];
     /** output file name */
     char outfile[OPJ_PATH_LEN];
-    /** input file format 0: J2K, 1: JP2*/
-    int32_t decod_format;
-    /** output file format 0: PGX, 1: PxM, 2: BMP */
+    /** input file format*/
+    uint32_t decod_format;
+    /** output file format*/
     int32_t cod_format;
     /** Decoding area left boundary */
     uint32_t DA_x0;

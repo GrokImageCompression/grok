@@ -337,12 +337,6 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format){
 void OPJ_CALLCONV opj_set_default_decoder_parameters(opj_dparameters_t *parameters){
     if(parameters) {
         memset(parameters, 0, sizeof(opj_dparameters_t));
-        /* default decoding parameters */
-        parameters->cp_layer = 0;
-        parameters->cp_reduce = 0;
-        parameters->decod_format = -1;
-        parameters->cod_format = -1;
-        parameters->flags = 0;
 		parameters->numThreads = 8;
     }
 }
