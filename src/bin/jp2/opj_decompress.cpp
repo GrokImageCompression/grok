@@ -108,6 +108,20 @@ using namespace grk;
 using namespace TCLAP;
 using namespace std;
 
+static int get_num_images(char *imgdirpath);
+int load_images(dircnt_t *dirptr, char *imgdirpath);
+static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
+static int infile_format(const char *fname);
+
+static int parse_cmdline_decoder(int argc,
+							char **argv,
+							opj_decompress_parameters *parameters,
+							img_fol_t *img_fol,
+							img_fol_t *out_fol,
+							char* plugin_path);
+static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
+static GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
+
 
 void exit_func() {
 	grok_plugin_stop_batch_decode();
@@ -146,25 +160,6 @@ void setup_signal_handler()
 	sigaction(SIGHUP, &sa, NULL);
 #endif  
 }
-
-/* -------------------------------------------------------------------------- */
-/* Declarations                                                               */
-int get_num_images(char *imgdirpath);
-int load_images(dircnt_t *dirptr, char *imgdirpath);
-int get_file_format(const char *filename);
-char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
-static int infile_format(const char *fname);
-
-int parse_cmdline_decoder(int argc, 
-							char **argv,
-							opj_decompress_parameters *parameters,
-							img_fol_t *img_fol,
-							img_fol_t *out_fol,
-							char* plugin_path);
-static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
-
-/* -------------------------------------------------------------------------- */
-
 
 /**
 sample error callback expecting a FILE* client object
@@ -265,8 +260,7 @@ static void decode_help_display(void)
 			"  [-s | -split-pnm]\n"
             "    Split output components to different files when writing to PNM\n"
 			"  [-c | -compression]\n"
-			"    Compression format for output file. Currently, only zip is supported for TIFF output (set parameter to 8)\n"
-            "\n");
+			"    Compression format for output file. Currently, only zip is supported for TIFF output (set parameter to 8)\n");
 	fprintf(stdout, "  [-X | -XML]\n"
 		"    Store XML metadata to file. File name will be set to \"output file name\" + \".xml\"\n");
     fprintf(stdout,"\n");
@@ -428,14 +422,14 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 }
 
 /* -------------------------------------------------------------------------- */
-int get_file_format(const char *filename)
+GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename)
 {
     unsigned int i;
     static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, JPG_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT,J2K_CFMT, J2K_CFMT };
+    static const GROK_SUPPORTED_FILE_FORMAT format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, JPG_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT,J2K_CFMT, J2K_CFMT };
     const char * ext = strrchr(filename, '.');
     if (ext == nullptr)
-        return -1;
+        return UNKNOWN_FORMAT;
     ext++;
     if(*ext) {
         for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
@@ -445,7 +439,7 @@ int get_file_format(const char *filename)
         }
     }
 
-    return -1;
+    return UNKNOWN_FORMAT;
 }
 
 static const char* get_path_separator() {
@@ -761,6 +755,24 @@ int parse_cmdline_decoder(int argc,
 				fprintf(stderr, "[ERROR] Path is too long\n");
 				return 1;
 			}
+		} else {
+			// check for possible output to STDOUT
+			if (!imgDirArg.isSet()){
+				bool toStdout = false;
+				if (outForArg.isSet()) {
+					for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
+						if (supportedStdoutFileFormats[i] == parameters->cod_format){
+							toStdout = true;
+							break;
+						}
+					}
+				}
+				if (!toStdout){
+					fprintf(stderr, "[ERROR] Missing output file\n");
+					return 1;
+				}
+			}
+
 		}
 		if (outDirArg.isSet()) {
 			if (out_fol) {

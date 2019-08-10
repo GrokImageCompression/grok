@@ -55,7 +55,8 @@
 
 #pragma once
 
-enum {
+enum GROK_SUPPORTED_FILE_FORMAT {
+	UNKNOWN_FORMAT,
 	J2K_CFMT,
 	JP2_CFMT,
 	PXM_DFMT,
