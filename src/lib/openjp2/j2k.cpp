@@ -1621,55 +1621,22 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
     uint32_t step_r = p_num_comps * step_c;
     uint32_t step_l = p_nb_resolutions * step_r;
     bool loss = false;
-    uint32_t layno0 = 0;
-
-    packet_array = (uint32_t*) grok_calloc(step_l * p_num_layers, sizeof(uint32_t));
-    if (packet_array == nullptr) {
-        event_msg(p_manager , EVT_ERROR, "Not enough memory for checking the poc values.\n");
-        return false;
-    }
 
     if (p_nb_pocs == 0) {
-        grok_free(packet_array);
         return true;
     }
-
-    index = step_r * p_pocs->resno0;
-    /* take each resolution for each poc */
-    for (resno = p_pocs->resno0 ; resno < p_pocs->resno1 ; ++resno) {
-        uint32_t res_index = index + p_pocs->compno0 * step_c;
-
-        /* take each comp of each resolution for each poc */
-        for (compno = p_pocs->compno0 ; compno < p_pocs->compno1 ; ++compno) {
-            uint32_t comp_index = res_index + layno0 * step_l;
-
-            /* and finally take each layer of each res of ... */
-            for (layno = layno0; layno < p_pocs->layno1 ; ++layno) {
-                /*index = step_r * resno + step_c * compno + step_l * layno;*/
-                packet_array[comp_index] = 1;
-                comp_index += step_l;
-            }
-
-            res_index += step_c;
-        }
-
-        index += step_r;
-    }
-    ++p_pocs;
+    packet_array = new uint32_t[step_l * p_num_layers];
 
     /* iterate through all the pocs */
-    for (i = 1; i < p_nb_pocs ; ++i) {
-        uint32_t l_last_layno1 = (p_pocs-1)->layno1 ;
-
-        layno0 = (p_pocs->layno1 > l_last_layno1)? l_last_layno1 : 0;
+    for (i = 0; i < p_nb_pocs ; ++i) {
         index = step_r * p_pocs->resno0;
-
         /* take each resolution for each poc */
         for (resno = p_pocs->resno0 ; resno < p_pocs->resno1 ; ++resno) {
             uint32_t res_index = index + p_pocs->compno0 * step_c;
 
             /* take each comp of each resolution for each poc */
             for (compno = p_pocs->compno0 ; compno < p_pocs->compno1 ; ++compno) {
+                const uint32_t layno0 = 0;
                 uint32_t comp_index = res_index + layno0 * step_l;
 
                 /* and finally take each layer of each res of ... */
@@ -1678,13 +1645,10 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
                     packet_array[comp_index] = 1;
                     comp_index += step_l;
                 }
-
                 res_index += step_c;
             }
-
             index += step_r;
         }
-
         ++p_pocs;
     }
 
@@ -1702,7 +1666,7 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
     if (loss) {
         event_msg(p_manager , EVT_ERROR, "Missing packets possible loss of data\n");
     }
-    grok_free(packet_array);
+    delete[] packet_array;
     return !loss;
 }
 
