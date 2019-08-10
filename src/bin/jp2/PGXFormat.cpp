@@ -310,14 +310,13 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 			fprintf(stderr, "[ERROR] imagetopgx: output file name size larger than 4096.\n");
 			goto beach;
 		}
-		if (olen < 5) {
-			fprintf(stderr, "[ERROR] imagetopgx: output file name size less than 5.\n");
+		if (olen < 4) {
+			fprintf(stderr, "[ERROR] imagetopgx: output file name size less than 4.\n");
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
 		if (outfile[dotpos] != '.') {
-			/* `pgx` was recognized but there is no dot at expected position */
-			fprintf(stderr, "[ERROR] The impossible happened.\n");
+			fprintf(stderr, "[ERROR] pgx was recognized but there was no dot at expected position .\n");
 			goto beach;
 		}
 		//copy root outfile name to "name"
