@@ -63,7 +63,8 @@ struct imageToJpegInfo {
 		buffer(nullptr),
 		buffer32s(nullptr),
 		color_space(JCS_UNKNOWN),
-		writeToStdout(false)
+		writeToStdout(false),
+		adjust(0)
 	{}
 
 	FILE *outfile;
@@ -72,6 +73,7 @@ struct imageToJpegInfo {
 	int32_t* buffer32s;
 	J_COLOR_SPACE color_space;
 	bool writeToStdout;
+	uint32_t adjust;
 };
 
 
@@ -88,7 +90,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	size_t numAlphaChannels = 0;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
-	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
+	info.adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
 	uint32_t width = image->comps[0].w;
 
 	// actual bits per sample
@@ -311,7 +313,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		* Here the array is only one element long, but you could pass
 		* more than one scanline at a time if that's more convenient.
 		*/
-		cvtPxToCx(planes, info.buffer32s, (size_t)width, adjust);
+		cvtPxToCx(planes, info.buffer32s, (size_t)width, info.adjust);
 		cvt32sToTif(info.buffer32s, (uint8_t *)info.buffer, (size_t)width * numcomps);
 		row_pointer[0] = info.buffer;
 		planes[0] += width;
