@@ -695,6 +695,10 @@ static int imagetopnm(opj_image_t * image,
 		if (ncomp > 1) {
 			/*sprintf(destname, "%d.%s", compno, outfile);*/
 			const size_t olen = strlen(outfile);
+			if (olen < 4) {
+				fprintf(stderr, "[ERROR] imagetopnm: output file name size less than 4.\n");
+				goto cleanup;
+			}
 			const size_t dotpos = olen - 4;
 
 			strncpy(destname, outfile, dotpos);
