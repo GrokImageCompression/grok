@@ -1620,27 +1620,26 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
     uint32_t step_c = 1;
     uint32_t step_r = p_num_comps * step_c;
     uint32_t step_l = p_nb_resolutions * step_r;
-    bool loss = false;
-
     if (p_nb_pocs == 0) {
         return true;
     }
     packet_array = new uint32_t[step_l * p_num_layers];
+    memset(packet_array, 0, step_l * p_num_layers * sizeof(uint32_t));
 
     /* iterate through all the pocs */
     for (i = 0; i < p_nb_pocs ; ++i) {
         index = step_r * p_pocs->resno0;
         /* take each resolution for each poc */
-        for (resno = p_pocs->resno0 ; resno < p_pocs->resno1 ; ++resno) {
+        for (resno = p_pocs->resno0 ; resno < std::min<uint32_t>(p_pocs->resno1,p_nb_resolutions)  ; ++resno) {
             uint32_t res_index = index + p_pocs->compno0 * step_c;
 
             /* take each comp of each resolution for each poc */
-            for (compno = p_pocs->compno0 ; compno < p_pocs->compno1 ; ++compno) {
+            for (compno = p_pocs->compno0 ; compno < std::min<uint32_t>(p_pocs->compno1,p_num_comps)  ; ++compno) {
                 const uint32_t layno0 = 0;
                 uint32_t comp_index = res_index + layno0 * step_l;
 
                 /* and finally take each layer of each res of ... */
-                for (layno = layno0; layno < p_pocs->layno1 ; ++layno) {
+                for (layno = layno0; layno < std::min<uint32_t>(p_pocs->layno1,p_num_layers)  ; ++layno) {
                     /*index = step_r * resno + step_c * compno + step_l * layno;*/
                     packet_array[comp_index] = 1;
                     comp_index += step_l;
@@ -1652,12 +1651,12 @@ static bool j2k_check_poc_val( const opj_poc_t *p_pocs,
         ++p_pocs;
     }
 
+    bool loss = false;
     index = 0;
     for (layno = 0; layno < p_num_layers ; ++layno) {
         for (resno = 0; resno < p_nb_resolutions; ++resno) {
             for (compno = 0; compno < p_num_comps; ++compno) {
                 loss |= (packet_array[index]!=1);
-                /*index = step_r * resno + step_c * compno + step_l * layno;*/
                 index += step_c;
             }
         }
