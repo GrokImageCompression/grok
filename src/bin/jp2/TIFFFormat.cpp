@@ -640,7 +640,6 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	}
 
 	uint32_t sgnd = image->comps[0].sgnd;
-	uint32_t adjust = sgnd ? 1 << (image->comps[0].prec - 1) : 0;
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
 
@@ -773,6 +772,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
 	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
 	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
@@ -849,7 +849,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	}
 
 	for (i = 0; i < image->comps[0].h; ++i) {
-		cvtPxToCx(planes, buffer32s, (size_t)width, adjust);
+		cvtPxToCx(planes, buffer32s, (size_t)width,0);
 		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
 		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
 		planes[0] += width;
