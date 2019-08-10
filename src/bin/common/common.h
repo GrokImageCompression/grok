@@ -91,5 +91,6 @@ int parse_DA_values(bool verbose,
 	uint32_t *DA_y1);
 
 bool safe_fclose(FILE* fd);
+bool useStdinStdout( const char *filename);
 
 }

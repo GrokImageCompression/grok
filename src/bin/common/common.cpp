@@ -148,4 +148,8 @@ bool safe_fclose(FILE* fd){
 
 }
 
+bool useStdinStdout( const char *filename){
+	return (filename == nullptr) || (filename[0] == 0);
+}
+
 }

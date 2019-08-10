@@ -562,7 +562,7 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 static opj_image_t* bmptoimage(const char *filename, 
 								opj_cparameters_t *parameters)
 {
-	bool readFromStdin = ((filename == nullptr) || (filename[0] == 0));
+	bool readFromStdin = grk::useStdinStdout(filename);
 	opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
@@ -790,7 +790,7 @@ static bool write_short(FILE* fdest, uint16_t val) {
 	return (rc == sizeof(val));
 }
 static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
-	bool writeToStdout = ((outfile == nullptr) || (outfile[0] == 0));
+	bool writeToStdout = grk::useStdinStdout(outfile);
 	uint32_t w, h;
 	int32_t pad;
 	FILE *fdest = nullptr;
