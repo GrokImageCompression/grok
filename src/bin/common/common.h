@@ -58,8 +58,12 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
+#include "format_defs.h"
 
 namespace grk {
+
+const GROK_SUPPORTED_FILE_FORMAT supportedStdoutFileFormats[] =
+											{BMP_DFMT,PNG_DFMT,RAW_DFMT, RAWL_DFMT};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
