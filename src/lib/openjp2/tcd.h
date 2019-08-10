@@ -62,12 +62,17 @@ namespace grk {
 
 // code segment (code block can be encoded into multiple segments)
 struct tcd_seg_t {
-	tcd_seg_t() : dataindex(0), 
-					numpasses(0),
-					len(0), 
-					maxpasses(0),
-					numPassesInPacket(0),
-					newlen(0) {}
+	tcd_seg_t() {
+		clear();
+	}
+	void clear() {
+		dataindex=0;
+		numpasses = 0;
+		len = 0;
+		maxpasses = 0;
+		numPassesInPacket = 0;
+		newlen = 0;
+	}
     uint32_t dataindex;				// segment data offset in contiguous memory block 
     uint32_t numpasses;				// number of passes in segment
     uint32_t len;
@@ -162,22 +167,10 @@ struct tcd_cblk_enc_t {
 
 //decoder code block
 struct tcd_cblk_dec_t {
-	tcd_cblk_dec_t() : data(nullptr),
-							dataSize(0),
-							segs(nullptr),
-							x0(0),
-							y0(0),
-							x1(0),
-							y1(0),
-							numbps(0),
-							numlenbits(0),
-							numPassesInPacket(0),
-							numSegments(0),
-#ifdef DEBUG_LOSSLESS_T2
-							included(0),
-#endif
-							numSegmentsAllocated(0)
-	{}
+	tcd_cblk_dec_t()
+	{
+		init();
+	}
 
 	tcd_cblk_dec_t(const tcd_cblk_enc_t& rhs) : data(nullptr),
 														dataSize(0),
@@ -199,6 +192,7 @@ struct tcd_cblk_dec_t {
 	/**
 	* Allocates memory for a decoding code block (but not data)
 	*/
+	void init();
 	bool alloc();
 	void cleanup();
 	uint8_t* data;					// pointer to plugin data. 
@@ -284,7 +278,6 @@ struct tcd_band_t {
 						y1(0), 
 						bandno(0),
 						precincts(nullptr),
-						precincts_data_size(0),
 						numPrecincts(0),
 						numbps(0),
 						stepsize(0) {}
@@ -295,7 +288,6 @@ struct tcd_band_t {
 												  y1(rhs.y1),
 												bandno(rhs.bandno),
 												precincts(nullptr),
-												precincts_data_size(0),
 												numPrecincts(rhs.numPrecincts),
 												numbps(rhs.numbps),
 												stepsize(rhs.stepsize)
@@ -306,7 +298,6 @@ struct tcd_band_t {
     uint32_t x0, y0, x1, y1;		/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t bandno;
     tcd_precinct_t* precincts;	/* precinct information */
-    uint32_t precincts_data_size;	/* size of data taken by precincts */
 	size_t numPrecincts;
     uint32_t numbps;
     float stepsize;
@@ -348,7 +339,6 @@ struct tcd_tilecomp_t {
 #ifdef DEBUG_LOSSLESS_T2
 	tcd_resolution_t* round_trip_resolutions;  /* round trip resolution information */
 #endif
-    uint32_t resolutions_size;			/* size of data for resolutions (in bytes) */
     uint64_t numpix;                  
     tile_buf_component_t* buf;
 };
