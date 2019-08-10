@@ -335,7 +335,7 @@ static void mem_map_free(void* user_data)
         buf_info_t* buffer_info = (buf_info_t*)user_data;
         unmap(buffer_info->buf, buffer_info->len);
         close_fd(buffer_info->fd);
-        grok_free(buffer_info);
+        delete buffer_info;
     }
 }
 
@@ -353,8 +353,7 @@ opj_stream_t* create_mapped_file_read_stream(const char *fname)
     if (fd == (grok_handle_t)-1)
         return nullptr;
 
-    buffer_info = (buf_info_t*)grok_malloc(sizeof(buf_info_t));
-    memset(buffer_info, 0, sizeof(buf_info_t));
+    buffer_info = new buf_info_t();
     buffer_info->fd = fd;
     buffer_info->len = (size_t)size_proc(fd);
 
