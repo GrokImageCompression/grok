@@ -1737,7 +1737,7 @@ namespace grk {
 		}
 
 		seg = &cblk->segs[index];
-		memset(seg, 0, sizeof(tcd_seg_t));
+		seg->clear();
 
 		if (mode_switch & J2K_CCP_CBLKSTY_TERMALL) {
 			seg->maxpasses = 1;

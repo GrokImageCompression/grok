@@ -829,8 +829,6 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     uint32_t l_tl_prc_x_start, l_tl_prc_y_start, l_br_prc_x_end, l_br_prc_y_end;
     /* number of precinct for a resolution */
     uint32_t l_nb_precincts;
-    /* room needed to store l_nb_precinct precinct for a resolution */
-    uint32_t l_nb_precinct_size;
     /* number of code blocks for a precinct*/
     uint64_t l_nb_code_blocks, cblkno;
     /* room needed to store l_nb_code_blocks code blocks for a precinct*/
@@ -879,7 +877,6 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     /*tile->numcomps = image->numcomps; */
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
         uint64_t l_tile_data_size=0;
-        uint32_t l_res_data_size=0;
         /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
 		if (l_image_comp->dx == 0 || l_image_comp->dy == 0) {
 			return false;
@@ -894,38 +891,23 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
         /* compute l_data_size with overflow check */
         l_tile_data_size = (uint64_t)(l_tilec->x1 - l_tilec->x0) * (uint64_t)(l_tilec->y1 - l_tilec->y0) * sizeof(uint32_t);
-        l_tilec->numresolutions = l_tccp->numresolutions;
-        if (l_tccp->numresolutions < l_cp->m_specific_param.m_dec.m_reduce) {
+        uint32_t numresolutions = l_tccp->numresolutions;
+        if (numresolutions < l_cp->m_specific_param.m_dec.m_reduce) {
             l_tilec->minimum_num_resolutions = 1;
         } else {
-            l_tilec->minimum_num_resolutions = l_tccp->numresolutions - l_cp->m_specific_param.m_dec.m_reduce;
+            l_tilec->minimum_num_resolutions = numresolutions - l_cp->m_specific_param.m_dec.m_reduce;
         }
-
-        l_res_data_size = l_tilec->numresolutions * (uint32_t)sizeof(tcd_resolution_t);
-
         if (l_tilec->resolutions == nullptr) {
-            l_tilec->resolutions = (tcd_resolution_t *) grok_malloc(l_res_data_size);
-            if (! l_tilec->resolutions ) {
-                return false;
+            l_tilec->resolutions = new tcd_resolution_t[numresolutions];
+        } else if (numresolutions > l_tilec->numresolutions) {
+            tcd_resolution_t* new_resolutions = new tcd_resolution_t[numresolutions];
+            for (uint32_t i =0; i < l_tilec->numresolutions; ++i){
+            	new_resolutions[i] = l_tilec->resolutions[i];
             }
-            /*fprintf(stderr, "\tAllocate resolutions of tilec (tcd_resolution_t): %d\n",l_data_size);*/
-            l_tilec->resolutions_size = l_res_data_size;
-            memset(l_tilec->resolutions,0, l_res_data_size);
-        } else if (l_res_data_size > l_tilec->resolutions_size) {
-            tcd_resolution_t* new_resolutions = (tcd_resolution_t *) grok_realloc(l_tilec->resolutions, l_res_data_size);
-            if (! new_resolutions) {
-                event_msg(manager, EVT_ERROR, "Not enough memory for tile resolutions\n");
-                grok_free(l_tilec->resolutions);
-                l_tilec->resolutions = nullptr;
-                l_tilec->resolutions_size = 0;
-                return false;
-            }
+            delete[] l_tilec->resolutions;
             l_tilec->resolutions = new_resolutions;
-            /*fprintf(stderr, "\tReallocate data of tilec (int): from %d to %d x uint32_t\n", l_tilec->resolutions_size, l_data_size);*/
-            memset(((uint8_t*) l_tilec->resolutions)+l_tilec->resolutions_size,0, l_res_data_size - l_tilec->resolutions_size);
-            l_tilec->resolutions_size = l_res_data_size;
         }
-
+        l_tilec->numresolutions = numresolutions;
         l_level_no = l_tilec->numresolutions;
         l_res = l_tilec->resolutions;
         l_step_size = l_tccp->stepsizes;
@@ -975,7 +957,6 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 				event_msg(manager, EVT_ERROR, "l_nb_precinct_size calculation would overflow \n");
 				return false;
 			}
-            l_nb_precinct_size = l_nb_precincts * (uint32_t)sizeof(tcd_precinct_t);
             if (resno == 0) {
                 tlcbgxstart = l_tl_prc_x_start;
                 tlcbgystart = l_tl_prc_y_start;
@@ -1027,29 +1008,14 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                 l_band->numbps = l_step_size->expn + l_tccp->numgbits - 1;      /* WHY -1 ? */
 
                 if (!l_band->precincts && (l_nb_precincts > 0U)) {
-                    l_band->precincts = (tcd_precinct_t *) grok_malloc( /*3 * */ l_nb_precinct_size);
-                    if (! l_band->precincts) {
-						event_msg(manager, EVT_ERROR, "Not enough memory for band precints\n");
-                        return false;
-                    }
-                    /*fprintf(stderr, "\t\t\t\tAllocate precincts of a band (tcd_precinct_t): %d\n",l_nb_precinct_size);     */
-                    memset(l_band->precincts,0,l_nb_precinct_size);
-                    l_band->precincts_data_size = l_nb_precinct_size;
-                } else if (l_band->precincts_data_size < l_nb_precinct_size) {
+                    l_band->precincts = new tcd_precinct_t[l_nb_precincts];
+                } else if (l_band->numPrecincts < l_nb_precincts) {
 
-                    tcd_precinct_t * new_precincts = (tcd_precinct_t *) grok_realloc(l_band->precincts,/*3 * */ l_nb_precinct_size);
-                    if (! new_precincts) {
-                        event_msg(manager, EVT_ERROR, "Not enough memory to handle band precints\n");
-                        grok_free(l_band->precincts);
-                        l_band->precincts = nullptr;
-                        l_band->precincts_data_size = 0;
-						l_band->numPrecincts = 0;
-                        return false;
-                    }
+                    tcd_precinct_t * new_precincts = new tcd_precinct_t[l_nb_precincts];
+                    for (uint32_t i = 0; i < l_band->numPrecincts; ++i)
+                    	new_precincts[i] = l_band->precincts[i];
                     l_band->precincts = new_precincts;
-                    /*fprintf(stderr, "\t\t\t\tReallocate precincts of a band (tcd_precinct_t): from %d to %d\n",l_band->precincts_data_size, l_nb_precinct_size);*/
-                    memset(((uint8_t *) l_band->precincts) + l_band->precincts_data_size,0,l_nb_precinct_size - l_band->precincts_data_size);
-                    l_band->precincts_data_size = l_nb_precinct_size;
+
                 }
 				l_band->numPrecincts = l_nb_precincts;
                 l_current_precinct = l_band->precincts;
@@ -1499,7 +1465,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
     tcd_resolution_t *l_res = nullptr;
     tcd_band_t *l_band = nullptr;
     tcd_precinct_t *l_precinct = nullptr;
-    size_t l_nb_resolutions, l_nb_precincts;
+    size_t l_nb_resolutions;
     void (* l_tcd_code_block_deallocate) (tcd_precinct_t *) = nullptr;
 
     if (! p_tcd) {
@@ -1527,15 +1493,14 @@ static void tcd_free_tile(tcd_t *p_tcd)
         l_res = l_tile_comp->resolutions;
         if (l_res) {
 
-            l_nb_resolutions = l_tile_comp->resolutions_size / sizeof(tcd_resolution_t);
+            l_nb_resolutions = l_tile_comp->numresolutions ;
             for (resno = 0; resno < l_nb_resolutions; ++resno) {
                 l_band = l_res->bands;
                 for     (bandno = 0; bandno < 3; ++bandno) {
                     l_precinct = l_band->precincts;
                     if (l_precinct) {
 
-						l_nb_precincts = l_band->precincts_data_size / sizeof(tcd_precinct_t);
-                        for (precno = 0; precno < l_nb_precincts; ++precno) {
+						for (precno = 0; precno < l_band->numPrecincts; ++precno) {
 							delete l_precinct->incltree;
                             l_precinct->incltree = nullptr;
 							delete l_precinct->imsbtree;
@@ -1544,7 +1509,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
                             ++l_precinct;
                         }
 
-                        grok_free(l_band->precincts);
+                        delete[] l_band->precincts;
                         l_band->precincts = nullptr;
                     }
                     ++l_band;
@@ -1552,7 +1517,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
                 ++l_res;
             }
 
-            grok_free(l_tile_comp->resolutions);
+            delete[] l_tile_comp->resolutions;
             l_tile_comp->resolutions = nullptr;
         }
 
@@ -2301,7 +2266,7 @@ bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize){
 	uint32_t l_data_size = (uint32_t)(nominalBlockSize * sizeof(uint32_t));
 	if (l_data_size > data_size) {
 		if (owns_data && actualData) {
-			grok_free(actualData);
+			delete[] actualData;
 		}
 		actualData = new uint8_t[l_data_size + cblk_compressed_data_pad_left];
 		data = actualData+ cblk_compressed_data_pad_left;
@@ -2336,7 +2301,7 @@ void tcd_cblk_enc_t::cleanup() {
 
 bool tcd_cblk_dec_t::alloc() {
 	if (!segs) {
-		segs = (tcd_seg_t *)grok_calloc(default_numbers_segments, sizeof(tcd_seg_t));
+		segs = new tcd_seg_t[default_numbers_segments];
 		if (!segs) {
 			return false;
 		}
@@ -2359,20 +2324,35 @@ bool tcd_cblk_dec_t::alloc() {
 		/* Note: since seg_buffers simply holds references to another data buffer,
 		we do not need to copy it  to the sanitized block  */
 		seg_buffers.cleanup();
-
-		memset(this, 0, sizeof(tcd_cblk_dec_t));
+		init();
 		segs = l_segs;
 		numSegmentsAllocated = l_current_max_segs;
 	}
 	return true;
 }
 
+void tcd_cblk_dec_t::init() {
+	data = nullptr;
+	dataSize = 0;
+	segs = nullptr;
+	x0 = 0;
+	y0 = 0;
+	x1 = 0;
+	y1 = 0;
+	numbps = 0;
+	numlenbits = 0;
+	numPassesInPacket = 0;
+	numSegments = 0;
+#ifdef DEBUG_LOSSLESS_T2
+	included = 0;
+#endif
+	numSegmentsAllocated = 0;
+}
+
 void tcd_cblk_dec_t::cleanup() {
 	seg_buffers.cleanup();
-	if (segs) {
-		grok_free(segs);
-		segs = nullptr;
-	}
+	delete[] segs;
+	segs = nullptr;
 #ifdef DEBUG_LOSSLESS_T2
 	delete packet_length_info;
 	packet_length_info = nullptr;
