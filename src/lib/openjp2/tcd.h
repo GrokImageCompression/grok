@@ -233,16 +233,21 @@ struct tcd_precinct_t {
 		cblks.blocks = nullptr;
 	}
 
-	tcd_precinct_t(const tcd_precinct_t& rhs) :x0(rhs.x0),
+	tcd_precinct_t(tcd_precinct_t& rhs) :x0(rhs.x0),
 														y0(rhs.y0),
 														x1(rhs.x1),
 														y1(rhs.y1),
-														cw(0),
-														ch(0),
-														block_size(0),
-														incltree( nullptr),
-														imsbtree(nullptr) {
-		cblks.blocks = nullptr;
+														cw(rhs.cw),
+														ch(rhs.ch),
+														block_size(rhs.block_size),
+														incltree( rhs.incltree),
+														imsbtree(rhs.imsbtree) {
+		cblks.blocks = rhs.cblks.blocks;
+		rhs.cblks.blocks = nullptr;
+		rhs.block_size = 0;
+		rhs.incltree = nullptr;
+		rhs.imsbtree = nullptr;
+
 	}
 	void initTagTrees(event_mgr_t* manager);
 
