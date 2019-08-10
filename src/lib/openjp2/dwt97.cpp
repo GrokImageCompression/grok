@@ -187,10 +187,13 @@ bool dwt97::decode(tcd_tilecomp_t* restrict tilec,
 						switch (j) {
 						case 3:
 							aj[k + (int32_t)(w << 1)] = h.wavelet[k].f[2];
+							// fall through
 						case 2:
 							aj[k + (int32_t)w] = h.wavelet[k].f[1];
+							  // fall through
 						case 1:
 							aj[k] = h.wavelet[k].f[0];
+							  // fall through
 						}
 					}
 				}
@@ -690,8 +693,10 @@ bool dwt97::region_decode(tcd_tilecomp_t* restrict tilec,
 						switch (j) {
 						case 3:
 							tile_data[k + (tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+							  // fall through
 						case 2:
 							tile_data[k + tile_width] = buffer_h.data[buffer_index].f[1];
+							  // fall through
 						case 1:
 							tile_data[k] = buffer_h.data[buffer_index].f[0];
 						}
@@ -728,8 +733,10 @@ bool dwt97::region_decode(tcd_tilecomp_t* restrict tilec,
 						switch (j) {
 						case 3:
 							tile_data[k + (tile_width << 1)] = buffer_h.data[buffer_index].f[2];
+							  // fall through
 						case 2:
 							tile_data[k + tile_width] = buffer_h.data[buffer_index].f[1];
+							  // fall through
 						case 1:
 							tile_data[k] = buffer_h.data[buffer_index].f[0];
 						}

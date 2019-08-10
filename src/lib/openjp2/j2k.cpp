@@ -4100,7 +4100,7 @@ static bool j2k_read_sod (j2k_t *p_j2k,
 			try {
 				buff = new uint8_t[len];
 			}
-			catch (std::bad_alloc) {
+			catch (std::bad_alloc &ex) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate segment\n");
 				return false;
 			}
@@ -9326,7 +9326,7 @@ static bool j2k_decode_tiles ( j2k_t *p_j2k,
 				return false;
 			}
 		}
-		catch (DecodeUnknownMarkerAtEndOfTileException e) {
+		catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// only worry about exception if we have more tiles to decode
 			if (nr_tiles < num_tiles_to_decode - 1) {
 				event_msg(p_manager, EVT_ERROR, "Stream too short, expected SOT\n");
@@ -9487,7 +9487,7 @@ static bool j2k_decode_one_tile ( j2k_t *p_j2k,
 				return false;
 			}
 		}
-		catch (DecodeUnknownMarkerAtEndOfTileException e) {
+		catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// suppress exception
 		}
         //event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);

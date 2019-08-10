@@ -1600,7 +1600,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	opj_stream_t *l_stream = nullptr;
 	opj_codec_t* l_codec = nullptr;
 	opj_image_t *image = info->image;
-	char  outfile[OPJ_PATH_LEN];
+	char  outfile[3 * OPJ_PATH_LEN];
 	char  temp_ofname[OPJ_PATH_LEN];
 
 	uint32_t l_nb_tiles = 4;

@@ -800,6 +800,11 @@ void OPJ_CALLCONV opj_destroy_cstr_index(opj_codestream_index_t **p_cstr_index){
 
 /* ---------------------------------------------------------------------- */
 
+static void grok_free_file (void * p_user_data){
+	if (p_user_data)
+		fclose( (FILE*)p_user_data);
+}
+
 opj_stream_t* OPJ_CALLCONV opj_stream_create_default_file_stream (const char *fname, 
 																	bool p_is_read_stream){
     return opj_stream_create_file_stream(fname, stream_chunk_size, p_is_read_stream);
@@ -830,7 +835,7 @@ opj_stream_t* OPJ_CALLCONV opj_stream_create_file_stream (
 			fclose(p_file);
         return nullptr;
     }
-	opj_stream_set_user_data(l_stream, p_file, (opj_stream_free_user_data_fn) (stdin_stdout ? nullptr : fclose));
+	opj_stream_set_user_data(l_stream, (void*)p_file, (opj_stream_free_user_data_fn) (stdin_stdout ? nullptr : grok_free_file));
 	if (p_is_read_stream)
 		opj_stream_set_user_data_length(l_stream, opj_get_data_length_from_file(p_file));
     opj_stream_set_read_function(l_stream, (opj_stream_read_fn) grok_read_from_file);

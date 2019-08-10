@@ -3334,7 +3334,7 @@ bool jp2_decode_tile (  jp2_t * p_jp2,
 	try {
 		rc = j2k_decode_tile(p_jp2->j2k, p_tile_index, p_data, p_data_size, p_stream, p_manager);
 	}
-	catch (DecodeUnknownMarkerAtEndOfTileException e) {
+	catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		//suppress exception
 	}
 	return rc;
