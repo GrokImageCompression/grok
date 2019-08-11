@@ -73,7 +73,7 @@ opj_image_t* RAWFormat::decode(const char* filename, opj_cparameters_t *paramete
 
 opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *parameters, bool big_endian)
 {
-	bool readFromStdin = grk::useStdinStdout(filename);
+	bool readFromStdin = grk::useStdio(filename);
 	raw_cparameters_t *raw_cp = &parameters->raw_cp;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
@@ -218,7 +218,7 @@ int RAWFormat::encode_common(opj_image_t * image,
 							bool big_endian,
 							bool verbose)
 {
-	bool writeToStdout = grk::useStdinStdout(outfile);
+	bool writeToStdout = grk::useStdio(outfile);
 	FILE *rawFile = nullptr;
 	size_t res;
 	unsigned int compno, numcomps;

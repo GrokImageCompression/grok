@@ -82,7 +82,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	if (!image)
 		return 1;
 	imageToJpegInfo info;
-	info.writeToStdout = grk::useStdinStdout(filename);
+	info.writeToStdout = grk::useStdio(filename);
 	convert_32s_PXCX cvtPxToCx = nullptr;
 	convert_32sXXx_C1R cvt32sToTif = nullptr;
 	int32_t const* planes[3];
@@ -386,7 +386,7 @@ static opj_image_t* jpegtoimage(const char *filename,
 								opj_cparameters_t *parameters)
 {
 	jpegToImageInfo imageInfo;
-	imageInfo.readFromStdin = grk::useStdinStdout(filename);
+	imageInfo.readFromStdin = grk::useStdio(filename);
 
 	int32_t* planes[3];
 	JDIMENSION w = 0, h = 0;
