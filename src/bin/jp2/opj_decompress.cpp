@@ -758,15 +758,8 @@ int parse_cmdline_decoder(int argc,
 		} else {
 			// check for possible output to STDOUT
 			if (!imgDirArg.isSet()){
-				bool toStdout = false;
-				if (outForArg.isSet()) {
-					for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
-						if (supportedStdoutFileFormats[i] == parameters->cod_format){
-							toStdout = true;
-							break;
-						}
-					}
-				}
+				bool toStdout = outForArg.isSet() &&
+						grk::supportedStdinStdoutFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->decod_format);
 				if (!toStdout){
 					fprintf(stderr, "[ERROR] Missing output file\n");
 					return 1;

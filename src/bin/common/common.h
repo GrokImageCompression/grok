@@ -96,5 +96,6 @@ int parse_DA_values(bool verbose,
 
 bool safe_fclose(FILE* fd);
 bool useStdinStdout( const char *filename);
+bool supportedStdinStdoutFormat(GROK_SUPPORTED_FILE_FORMAT format);
 
 }
