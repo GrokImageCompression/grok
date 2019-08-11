@@ -764,7 +764,7 @@ int parse_cmdline_decoder(int argc,
 			// check for possible output to STDOUT
 			if (!imgDirArg.isSet()){
 				bool toStdout = outForArg.isSet() &&
-						grk::supportedStdinStdoutFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->decod_format);
+						grk::supportedStdinStdoutFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->cod_format);
 				if (!toStdout){
 					fprintf(stderr, "[ERROR] Missing output file\n");
 					return 1;
