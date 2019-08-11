@@ -767,15 +767,8 @@ static int parse_cmdline_encoder_ex(int argc,
 		else {
 			// check for possible input from STDIN
 			if (!imgDirArg.isSet()){
-				bool fromStdin = false;
-				if (inForArg.isSet()) {
-					for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
-						if (supportedStdoutFileFormats[i] == parameters->decod_format){
-							fromStdin = true;
-							break;
-						}
-					}
-				}
+				bool fromStdin = inForArg.isSet() &&
+						grk::supportedStdinStdoutFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->decod_format);
 				if (!fromStdin){
 					fprintf(stderr, "[ERROR] Missing input file\n");
 					return 1;
