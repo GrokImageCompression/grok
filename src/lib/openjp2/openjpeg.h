@@ -731,9 +731,9 @@ typedef struct opj_decompress_params {
 	/** output file name */
 	char outfile[OPJ_PATH_LEN];
 	/** input file format 0: J2K, 1: JP2*/
-	int decod_format;
+	uint32_t decod_format;
 	/** output file format 0: PGX, 1: PxM, 2: BMP */
-	int cod_format;
+	uint32_t cod_format;
 	/** index file name */
 	char indexfilename[OPJ_PATH_LEN];
 	/** Decoding area left boundary */
