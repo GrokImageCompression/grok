@@ -1506,7 +1506,9 @@ static int compress(std::string image_filename,
 	uint32_t rateControlAlgorithm) {
 	//clear for next file encode
 	initParams->parameters.write_capture_resolution_from_file = false;
-	initParams->parameters.decod_format = UNKNOWN_FORMAT;
+	// don't reset format if reading from STDIN
+	if (initParams->parameters.infile[0])
+		initParams->parameters.decod_format = UNKNOWN_FORMAT;
 
 	//restore cached settings
 	initParams->parameters.tcp_mct = tcp_mct;
