@@ -151,7 +151,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	uint32_t i;
 	png_uint_32  width = 0U, height = 0U;
 	int color_type;
-	local_info.readFromStdin = grk::useStdinStdout(read_idf);
+	local_info.readFromStdin = grk::useStdio(read_idf);
 	opj_image_cmptparm_t cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
@@ -477,7 +477,7 @@ static int imagetopng(opj_image_t * image,
 {
 	(void)verbose;
 	imageToPngInfo local_info;
-	local_info.writeToStdout = grk::useStdinStdout(write_idf);
+	local_info.writeToStdout = grk::useStdio(write_idf);
 	png_infop info = nullptr;
 	int nr_comp, color_type;
 	volatile int prec;

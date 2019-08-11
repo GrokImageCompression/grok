@@ -470,7 +470,7 @@ static char get_next_file(std::string image_filename,
 	return 0;
 }
 
-static bool isNonJPEG2000FileFormatSupported(int32_t format) {
+static bool isDecodedFormatSupported(int32_t format) {
 	switch (format) {
 	case PGX_DFMT:
 	case PXM_DFMT:
@@ -740,7 +740,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			char *infile = (char*)(dummy).c_str();
 			parameters->decod_format = get_file_format(infile);
 			if (parameters->verbose &&
-				!isNonJPEG2000FileFormatSupported(parameters->decod_format)){
+				!isDecodedFormatSupported(parameters->decod_format)){
 				fprintf(stdout,
 					"[WARNING] Ignoring unknown input file format: %s \n"
 					"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
@@ -752,7 +752,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			char *infile = (char*)inputFileArg.getValue().c_str();
 			if (parameters->decod_format == UNKNOWN_FORMAT) {
 				parameters->decod_format = get_file_format(infile);
-				if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
+				if (!isDecodedFormatSupported(parameters->decod_format)) {
 					fprintf(stderr,
 						"[ERROR] Unknown input file format: %s \n"
 						"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
@@ -768,7 +768,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			// check for possible input from STDIN
 			if (!imgDirArg.isSet()){
 				bool fromStdin = inForArg.isSet() &&
-						grk::supportedStdinStdoutFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->decod_format);
+						grk::supportedStdioFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->decod_format);
 				if (!fromStdin){
 					fprintf(stderr, "[ERROR] Missing input file\n");
 					return 1;
@@ -1644,7 +1644,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	if (!image) {
 		if (parameters->decod_format == UNKNOWN_FORMAT) {
 			parameters->decod_format = get_file_format((char*)info->input_file_name);
-			if (!isNonJPEG2000FileFormatSupported(parameters->decod_format)) {
+			if (!isDecodedFormatSupported(parameters->decod_format)) {
 				bSuccess = false;
 				goto cleanup;
 			}

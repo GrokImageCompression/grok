@@ -148,11 +148,11 @@ bool safe_fclose(FILE* fd){
 
 }
 
-bool useStdinStdout( const char *filename){
+bool useStdio( const char *filename){
 	return (filename == nullptr) || (filename[0] == 0);
 }
 
-bool supportedStdinStdoutFormat(GROK_SUPPORTED_FILE_FORMAT format){
+bool supportedStdioFormat(GROK_SUPPORTED_FILE_FORMAT format){
 	for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
 		if (supportedStdoutFileFormats[i] == format){
 			return true;
