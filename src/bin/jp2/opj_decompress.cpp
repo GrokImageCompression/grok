@@ -111,7 +111,7 @@ using namespace std;
 static int get_num_images(char *imgdirpath);
 int load_images(dircnt_t *dirptr, char *imgdirpath);
 static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
-static int infile_format(const char *fname);
+static bool infile_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt);
 
 static int parse_cmdline_decoder(int argc,
 							char **argv,
@@ -460,8 +460,7 @@ char get_next_file(std::string image_filename,
 	if (parameters->verbose)
 		fprintf(stdout, "File Number \"%s\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
-	parameters->decod_format = infile_format(infilename.c_str());
-	if (parameters->decod_format == -1)
+	if (!infile_format(infilename.c_str(), (GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format) || parameters->decod_format == UNKNOWN_FORMAT)
 		return 1;
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
 		return 1;
@@ -484,26 +483,25 @@ char get_next_file(std::string image_filename,
 /* position 45: "\xff\x52" */
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 
-static int infile_format(const char *fname)
+static bool infile_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
 {
     FILE *reader;
     const char *s, *magic_s;
-    int ext_format, magic_format;
+    GROK_SUPPORTED_FILE_FORMAT ext_format = UNKNOWN_FORMAT, magic_format = UNKNOWN_FORMAT;
     unsigned char buf[12];
     size_t l_nb_read;
 
     reader = fopen(fname, "rb");
-
     if (reader == nullptr)
-        return -2;
+        return false;
 
     memset(buf, 0, 12);
     l_nb_read = fread(buf, 1, 12, reader);
     if (!grk::safe_fclose(reader)){
-    	return -2;
+    	return false;
     }
     if (l_nb_read != 12)
-        return -1;
+        return false;
 
     ext_format = get_file_format(fname);
 
@@ -513,11 +511,16 @@ static int infile_format(const char *fname)
     } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
         magic_format = J2K_CFMT;
         magic_s = ".j2k or .jpc or .j2c";
-    } else
-        return -1;
+    } else {
+    	*fmt = UNKNOWN_FORMAT;
+    	return true;
+    }
 
-    if (magic_format == ext_format)
-        return ext_format;
+
+    if (magic_format == ext_format) {
+        *fmt =  ext_format;
+        return true;
+    }
 
     s = fname + strlen(fname) - 4;
 
@@ -526,7 +529,8 @@ static int infile_format(const char *fname)
             "FOUND %s. SHOULD BE %s\n", s, magic_s);
     fputs("===========================================\n", stderr);
 
-    return magic_format;
+    *fmt = UNKNOWN_FORMAT;
+    return true;
 }
 
 
@@ -664,7 +668,8 @@ int parse_cmdline_decoder(int argc,
 		// process
 		if (inputFileArg.isSet()) {
 			const char *infile = inputFileArg.getValue().c_str();
-			parameters->decod_format = infile_format(infile);
+			if (!infile_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format))
+				return 1;
 			switch (parameters->decod_format) {
 			case J2K_CFMT:
 				break;
@@ -874,7 +879,7 @@ int parse_cmdline_decoder(int argc,
             return 1;
         }
     } else {
-		if (parameters->decod_format == -1) {
+		if (parameters->decod_format == UNKNOWN_FORMAT) {
 			if ((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
 				fprintf(stderr, "[ERROR] Required parameters are missing\n"
 					"Example: %s -i image.j2k -o image.pgm\n", argv[0]);
@@ -920,8 +925,8 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
         memset(parameters, 0, sizeof(opj_decompress_parameters));
 
         /* default decoding parameters (command line specific) */
-        parameters->decod_format = -1;
-        parameters->cod_format = -1;
+        parameters->decod_format = UNKNOWN_FORMAT;
+        parameters->cod_format = UNKNOWN_FORMAT;
 
         /* default decoding parameters (core) */
         opj_set_default_decoder_parameters(&(parameters->core));
@@ -1227,8 +1232,8 @@ int decode(const char* fileName, DecompressInitParams *initParams) {
 
 	grok_plugin_decode_callback_info_t info;
 	memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
-	info.decod_format = -1;
-	info.cod_format = -1;
+	info.decod_format = UNKNOWN_FORMAT;
+	info.cod_format = UNKNOWN_FORMAT;
 	info.decode_flags = GROK_DECODE_ALL;
 	info.decoder_parameters = &initParams->parameters;
 
@@ -1499,7 +1504,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		return 1;
 	uint8_t* buffer = nullptr;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
-	int decod_format = info->decod_format != -1 ? info->decod_format : parameters->decod_format;
+	int decod_format = info->decod_format != UNKNOWN_FORMAT ? info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
 		// toggle only one of the two booleans below
@@ -1710,8 +1715,8 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		info->decoder_parameters->outfile :
 		info->output_file_name;
 
-	//const char* outfile = info->output_file_name ? info->output_file_name : parameters->outfile;
-	int cod_format = info->cod_format != -1 ? info->cod_format : parameters->cod_format;
+	GROK_SUPPORTED_FILE_FORMAT cod_format =
+			(GROK_SUPPORTED_FILE_FORMAT)(info->cod_format != UNKNOWN_FORMAT ? info->cod_format : parameters->cod_format);
 
 	if (image->color_space != OPJ_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
