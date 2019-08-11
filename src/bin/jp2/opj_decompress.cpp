@@ -61,7 +61,7 @@
 #include "opj_apps_config.h"
 
 #ifdef _WIN32
-#include "windirent.h"
+#include "../common/windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
@@ -108,11 +108,8 @@ using namespace grk;
 using namespace TCLAP;
 using namespace std;
 
-static int get_num_images(char *imgdirpath);
 int load_images(dircnt_t *dirptr, char *imgdirpath);
 static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
-static bool infile_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt);
-
 static int parse_cmdline_decoder(int argc,
 							char **argv,
 							opj_decompress_parameters *parameters,
@@ -120,7 +117,6 @@ static int parse_cmdline_decoder(int argc,
 							img_fol_t *out_fol,
 							char* plugin_path);
 static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
-static GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
 
 
 void exit_func() {
@@ -370,30 +366,6 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
     return l_result;
 }
 
-/* -------------------------------------------------------------------------- */
-
-int get_num_images(char *imgdirpath)
-{
-    DIR *dir;
-    struct dirent* content;
-    int num_images = 0;
-
-    /*Reading the input images from given input directory*/
-
-    dir= opendir(imgdirpath);
-    if(!dir) {
-        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
-        return 0;
-    }
-
-    while((content=readdir(dir))!=nullptr) {
-        if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
-            continue;
-        num_images++;
-    }
-    closedir(dir);
-    return num_images;
-}
 
 /* -------------------------------------------------------------------------- */
 int load_images(dircnt_t *dirptr, char *imgdirpath)
@@ -422,37 +394,6 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 }
 
 /* -------------------------------------------------------------------------- */
-GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename)
-{
-    unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const GROK_SUPPORTED_FILE_FORMAT format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, TIF_DFMT, JPG_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT,J2K_CFMT, J2K_CFMT };
-    const char * ext = strrchr(filename, '.');
-    if (ext == nullptr)
-        return UNKNOWN_FORMAT;
-    ext++;
-    if(*ext) {
-        for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
-            if(strcasecmp(ext, extension[i]) == 0) {
-                return format[i];
-            }
-        }
-    }
-
-    return UNKNOWN_FORMAT;
-}
-
-static const char* get_path_separator() {
-#ifdef _WIN32
-	return "\\";
-#else
-	return "/";
-#endif
-}
-
-
-
-/* -------------------------------------------------------------------------- */
 char get_next_file(std::string image_filename,
 					img_fol_t *img_fol,
 					img_fol_t* out_fol,
@@ -460,7 +401,7 @@ char get_next_file(std::string image_filename,
 	if (parameters->verbose)
 		fprintf(stdout, "File Number \"%s\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
-	if (!infile_format(infilename.c_str(), (GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format) || parameters->decod_format == UNKNOWN_FORMAT)
+	if (!grk::jpeg2000_file_format(infilename.c_str(), (GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format) || parameters->decod_format == UNKNOWN_FORMAT)
 		return 1;
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infilename.c_str()) != 0) {
 		return 1;
@@ -479,60 +420,6 @@ char get_next_file(std::string image_filename,
 }
 
 /* -------------------------------------------------------------------------- */
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-/* position 45: "\xff\x52" */
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-
-static bool infile_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
-{
-    FILE *reader;
-    const char *s, *magic_s;
-    GROK_SUPPORTED_FILE_FORMAT ext_format = UNKNOWN_FORMAT, magic_format = UNKNOWN_FORMAT;
-    unsigned char buf[12];
-    size_t l_nb_read;
-
-    reader = fopen(fname, "rb");
-    if (reader == nullptr)
-        return false;
-
-    memset(buf, 0, 12);
-    l_nb_read = fread(buf, 1, 12, reader);
-    if (!grk::safe_fclose(reader)){
-    	return false;
-    }
-    if (l_nb_read != 12)
-        return false;
-
-    ext_format = get_file_format(fname);
-
-    if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
-        magic_format = JP2_CFMT;
-        magic_s = ".jp2";
-    } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-        magic_format = J2K_CFMT;
-        magic_s = ".j2k or .jpc or .j2c";
-    } else {
-    	*fmt = UNKNOWN_FORMAT;
-    	return true;
-    }
-
-
-    if (magic_format == ext_format) {
-        *fmt =  ext_format;
-        return true;
-    }
-
-    s = fname + strlen(fname) - 4;
-
-    fputs("\n===========================================\n", stderr);
-    fprintf(stderr, "The extension of this file is incorrect.\n"
-            "FOUND %s. SHOULD BE %s\n", s, magic_s);
-    fputs("===========================================\n", stderr);
-
-    *fmt = UNKNOWN_FORMAT;
-    return true;
-}
-
 
 class GrokOutput : public StdOutput
 {
@@ -668,17 +555,13 @@ int parse_cmdline_decoder(int argc,
 		// process
 		if (inputFileArg.isSet()) {
 			const char *infile = inputFileArg.getValue().c_str();
-			if (!infile_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format))
+			if (!jpeg2000_file_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format))
 				return 1;
 			switch (parameters->decod_format) {
 			case J2K_CFMT:
 				break;
 			case JP2_CFMT:
 				break;
-			case -2:
-				fprintf(stderr,"[ERROR] infile cannot be read: %s !!\n\n",
-					infile);
-				return 1;
 			default:
 				fprintf(stderr,"[ERROR] Unknown input file format: %s \n"
 					"        Known file formats are *.j2k, *.jp2 or *.jpc\n",

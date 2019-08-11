@@ -59,7 +59,7 @@ extern "C" {
 #include <math.h>
 
 #ifdef _WIN32
-#include "windirent.h"
+#include "../common/windirent.h"
 #else
 #include <dirent.h>
 #endif /* _WIN32 */
@@ -215,7 +215,7 @@ static int get_file_format(const char *filename)
 /* -------------------------------------------------------------------------- */
 static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_dparameters_t *parameters)
 {
-    char image_filename[OPJ_PATH_LEN], infilename[OPJ_PATH_LEN],outfilename[OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
+    char image_filename[OPJ_PATH_LEN], infilename[3*OPJ_PATH_LEN],outfilename[3*OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
     char *temp_p, temp1[OPJ_PATH_LEN]="";
 
     strcpy(image_filename,dirptr->filename[imageno]);
