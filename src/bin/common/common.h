@@ -97,5 +97,10 @@ int parse_DA_values(bool verbose,
 bool safe_fclose(FILE* fd);
 bool useStdio( const char *filename);
 bool supportedStdioFormat(GROK_SUPPORTED_FILE_FORMAT format);
+bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt);
+GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
+const char* get_path_separator();
+char * get_file_name(char *name);
+int get_num_images(char *imgdirpath);
 
 }

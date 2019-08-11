@@ -58,7 +58,7 @@
  */
 
 #ifdef _WIN32
-#include "windirent.h"
+#include "../common/windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #else
@@ -107,7 +107,6 @@ using namespace TCLAP;
 using namespace std;
 
 static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
-static GROK_SUPPORTED_FILE_FORMAT get_file_format(char *filename);
 
 void exit_func() {
 	grok_plugin_stop_batch_encode();
@@ -356,30 +355,6 @@ static OPJ_PROG_ORDER give_progression(const char progression[4])
     return OPJ_PROG_UNKNOWN;
 }
 
-static unsigned int get_num_images(char *imgdirpath)
-{
-    DIR *dir;
-    struct dirent* content;
-    unsigned int num_images = 0;
-
-    /*Reading the input images from given input directory*/
-
-    dir= opendir(imgdirpath);
-    if(!dir) {
-        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
-        return 0;
-    }
-
-    num_images=0;
-    while((content=readdir(dir))!=nullptr) {
-        if(strcmp(".",content->d_name)==0 || strcmp("..",content->d_name)==0 )
-            continue;
-        num_images++;
-    }
-    closedir(dir);
-    return num_images;
-}
-
 static int load_images(dircnt_t *dirptr, char *imgdirpath)
 {
     /*Reading the input images from given input directory*/
@@ -403,41 +378,6 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
     return 0;
 }
 
-static GROK_SUPPORTED_FILE_FORMAT get_file_format(char *filename)
-{
-    unsigned int i;
-    static const char *extension[] = {
-        "pgx", "pnm", "pgm", "ppm", "pbm", "pam", "bmp", "tif", "tiff", "jpg", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc"
-    };
-    static const GROK_SUPPORTED_FILE_FORMAT format[] = {
-        PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, JPG_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT
-    };
-    char * ext = strrchr(filename, '.');
-    if (ext == nullptr)
-        return UNKNOWN_FORMAT;
-    ext++;
-    for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
-        if(strcasecmp(ext, extension[i]) == 0) {
-            return format[i];
-        }
-    }
-    return UNKNOWN_FORMAT;
-}
-
-static char * get_file_name(char *name)
-{
-    return strtok(name,".");
-}
-
-static const char* get_path_separator() {
-#ifdef _WIN32
-	return "\\";
-#else
-	return "/";
-#endif
-}
-
-
 static char get_next_file(std::string image_filename,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
@@ -445,7 +385,7 @@ static char get_next_file(std::string image_filename,
 
 	if (parameters->verbose)
 		fprintf(stdout, "File \"%s\"\n", image_filename.c_str());
-	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
+	std::string infilename = img_fol->imgdirpath + std::string(grk::get_path_separator()) + image_filename;
 	if (parameters->decod_format == UNKNOWN_FORMAT) {
 		parameters->decod_format = get_file_format((char*)infilename.c_str());
 		if (parameters->decod_format == UNKNOWN_FORMAT)
@@ -462,7 +402,7 @@ static char get_next_file(std::string image_filename,
 	else
 		output_root_filename = image_filename;
 	if (img_fol->set_out_format) {
-		std::string outfilename = out_fol->imgdirpath + std::string(get_path_separator()) + output_root_filename + "." + img_fol->out_format;
+		std::string outfilename = out_fol->imgdirpath + std::string(grk::get_path_separator()) + output_root_filename + "." + img_fol->out_format;
 		if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfilename.c_str()) != 0) {
 			return 1;
 		}
@@ -1629,7 +1569,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			if (img_fol_plugin.set_out_format) {
 				sprintf(outfile, "%s%s%s.%s",
 					out_fol_plugin.imgdirpath ? out_fol_plugin.imgdirpath : img_fol_plugin.imgdirpath,
-					get_path_separator(),
+					grk::get_path_separator(),
 					temp_ofname,
 					img_fol_plugin.out_format);
 			}

@@ -690,7 +690,7 @@ typedef struct opj_dparameters {
     /** input file format*/
     uint32_t decod_format;
     /** output file format*/
-    int32_t cod_format;
+    uint32_t cod_format;
     /** Decoding area left boundary */
     uint32_t DA_x0;
     /** Decoding area right boundary */
