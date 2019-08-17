@@ -1964,18 +1964,40 @@ bool jp2_decode(jp2_t *jp2,
         }
 
         /* Set Image Color Space */
-		if (jp2->enumcs == 12)
-			p_image->color_space = OPJ_CLRSPC_CMYK;
-        else if (jp2->enumcs == 16)
-            p_image->color_space = OPJ_CLRSPC_SRGB;
-        else if (jp2->enumcs == 17)
-            p_image->color_space = OPJ_CLRSPC_GRAY;
-        else if (jp2->enumcs == 18)
-            p_image->color_space = OPJ_CLRSPC_SYCC;
-        else if (jp2->enumcs == 24)
-            p_image->color_space = OPJ_CLRSPC_EYCC;
-        else
-            p_image->color_space = OPJ_CLRSPC_UNKNOWN;
+        switch (jp2->enumcs){
+        case 12:
+        	p_image->color_space = OPJ_CLRSPC_CMYK;
+        	break;
+        case 14:
+           	if (jp2->color.icc_profile_buf){
+				if ( ((uint32_t *)jp2->color.icc_profile_buf)[1] == OPJ_DEFAULT_CIELAB_SPACE)
+					p_image->color_space = OPJ_CLRSPC_DEFAULT_CIE;
+				else
+					p_image->color_space = OPJ_CLRSPC_CUSTOM_CIE;
+        	} else {
+        		event_msg(p_manager, EVT_ERROR, "n");
+        		return false;
+        	}
+        	break;
+        case 16:
+        	p_image->color_space = OPJ_CLRSPC_SRGB;
+        	break;
+        case 17:
+        	p_image->color_space = OPJ_CLRSPC_GRAY;
+        	break;
+        case 18:
+        	p_image->color_space = OPJ_CLRSPC_SYCC;
+        	break;
+        case 24:
+        	p_image->color_space = OPJ_CLRSPC_EYCC;
+        	break;
+        default:
+        	p_image->color_space = OPJ_CLRSPC_UNKNOWN;
+        	break;
+        }
+        if (jp2->meth == 2 && jp2->color.icc_profile_buf){
+        	p_image->color_space = OPJ_CLRSPC_ICC;
+        }
 
         if(jp2->color.jp2_pclr) {
             /* Part 1, I.5.3.4: Either both or none : */

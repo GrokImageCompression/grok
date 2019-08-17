@@ -326,7 +326,10 @@ typedef enum COLOR_SPACE {
     OPJ_CLRSPC_GRAY = 2,		/**< grayscale */
     OPJ_CLRSPC_SYCC = 3,		/**< YUV */
     OPJ_CLRSPC_EYCC = 4,        /**< e-YCC */
-    OPJ_CLRSPC_CMYK = 5         /**< CMYK */
+    OPJ_CLRSPC_CMYK = 5,        /**< CMYK */
+    OPJ_CLRSPC_DEFAULT_CIE  = 6,        /**< default CIE LAB */
+    OPJ_CLRSPC_CUSTOM_CIE  = 7,    /**< custom CIE LAB */
+    OPJ_CLRSPC_ICC  = 8         /**< ICC profile */
 } OPJ_COLOR_SPACE;
 
 /**
