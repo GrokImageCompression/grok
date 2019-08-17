@@ -718,11 +718,17 @@ static opj_image_t* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 		//read in ICC profile
-		if (fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET))
+		if (fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET)){
+		    free(image->icc_profile_buf);
+		    image->icc_profile_buf = nullptr;
 			goto cleanup;
+		}
 		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, IN);
-		if (bytesRead != Info_h.biIccProfileSize)
+		if (bytesRead != Info_h.biIccProfileSize){
+		    free(image->icc_profile_buf);
+		    image->icc_profile_buf = nullptr;
 			goto cleanup;
+		}
 		image->icc_profile_len = Info_h.biIccProfileSize;
 	}
 	if (numcmpts == 4U) {
