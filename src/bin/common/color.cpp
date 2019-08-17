@@ -734,9 +734,8 @@ cleanup:
 void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     uint32_t *row;
     int enumcs, numcomps;
-	bool defaultType = true;
-    image->color_space = OPJ_CLRSPC_SRGB;
     numcomps = (int)image->numcomps;
+    // sanity checks
     if(numcomps != 3) {
 		if (verbose)
 			fprintf(stdout,"[WARNING] %s:%d:\n\tnumcomps %d not handled. Quitting.\n",
@@ -747,14 +746,17 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 		return;
     row = (uint32_t*)image->icc_profile_buf;
     enumcs = row[0];
-	uint32_t illuminant = OPJ_CIE_D50;
-	cmsCIExyY WhitePoint;
-	defaultType = row[1] == OPJ_DEFAULT_CIELAB_SPACE;
 	if (enumcs != 14) { /* CIELab */
 		if (verbose)
 			fprintf(stdout, "[WARNING] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__, __LINE__, enumcs);
 		return;
 	}
+
+	bool defaultType = true;
+    image->color_space = OPJ_CLRSPC_SRGB;
+	uint32_t illuminant = OPJ_CIE_D50;
+	cmsCIExyY WhitePoint;
+	defaultType = row[1] == OPJ_DEFAULT_CIELAB_SPACE;
     int *L, *a, *b, *red, *green, *blue;
     int *src0, *src1, *src2, *dst0, *dst1, *dst2;
 	// range, offset and precision for L,a and b coordinates
@@ -886,7 +888,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     image->comps[2].prec = 16;
 
     
-}/* color_apply_conversion() */
+}/* color_cielab_to_rgb() */
 
 #endif /* GROK_HAVE_LIBLCMS */
 

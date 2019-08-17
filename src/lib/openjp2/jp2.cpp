@@ -1868,18 +1868,16 @@ static bool jp2_read_colr( jp2_t *jp2,
             event_msg(p_manager, EVT_ERROR, "Bad COLR header box (bad size: %d)\n", p_colr_header_size);
             return false;
         }
+        grok_read_bytes(p_colr_header_data,&jp2->enumcs ,4);			/* EnumCS */
+        p_colr_header_data += 4;
+
         if ((p_colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
             /* testcase Altona_Technical_v20_x4.pdf */
             event_msg(p_manager, EVT_WARNING, "Bad COLR header box (bad size: %d)\n", p_colr_header_size);
         }
 
-        grok_read_bytes(p_colr_header_data,&jp2->enumcs ,4);			/* EnumCS */
-
-        p_colr_header_data += 4;
-
         if(jp2->enumcs == 14) { /* CIELab */
             uint32_t *cielab;
-            uint32_t rl, ol, ra, oa, rb, ob, il;
 			bool nonDefaultLab = p_colr_header_size == 35;
 			// only two ints are needed for default CIELab space
             cielab = (uint32_t*)grok_malloc((nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
@@ -1888,13 +1886,10 @@ static bool jp2_read_colr( jp2_t *jp2,
 				return false;
 			}
             cielab[0] = 14; /* enumcs */
-
-            /* default values */
-            rl = ra = rb = ol = oa = ob = 0;
-            il = OPJ_CIE_D50;
             cielab[1] = OPJ_DEFAULT_CIELAB_SPACE;
 
             if(p_colr_header_size == 35) {
+                uint32_t rl, ol, ra, oa, rb, ob, il;
                 grok_read_bytes(p_colr_header_data, &rl, 4);
                 p_colr_header_data += 4;
                 grok_read_bytes(p_colr_header_data, &ol, 4);
@@ -1934,7 +1929,6 @@ static bool jp2_read_colr( jp2_t *jp2,
 		}
         jp2->color.icc_profile_buf = (uint8_t*) grok_calloc(1,(size_t)icc_len);
         if (!jp2->color.icc_profile_buf) {
-            jp2->color.icc_profile_len = 0;
             return false;
         }
 		memcpy(jp2->color.icc_profile_buf, p_colr_header_data, icc_len);
@@ -2003,6 +1997,7 @@ bool jp2_decode(jp2_t *jp2,
             p_image->icc_profile_buf = jp2->color.icc_profile_buf;
             p_image->icc_profile_len = jp2->color.icc_profile_len;
             jp2->color.icc_profile_buf = nullptr;
+            jp2->color.icc_profile_len = 0;
         }
 
 		// retrieve special uuids

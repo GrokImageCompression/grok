@@ -632,6 +632,7 @@ typedef struct opj_header_info {
 	/*
 	Colour space enumeration:
 	12	CMYK
+	14  CIE LAB
 	16	sRGB
 	17	Grayscale
 	18	SYCC
