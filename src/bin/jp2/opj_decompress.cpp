@@ -1589,6 +1589,8 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	bool canStoreICC = false;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
+	bool canStoreCIE = info->decoder_parameters->cod_format == TIF_DFMT;
+	bool isCIE = image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE;
 	const char* infile =
 		info->decoder_parameters->infile[0] ?
 		info->decoder_parameters->infile :
@@ -1642,14 +1644,20 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			fprintf(stdout, "[WARNING] Input file %s contains legacy IPTC-IIM meta-data,\nbut the file format for output file %s does not support storage of this data.\n", infile, outfile);
 		}
 	}
-
 	if (image->icc_profile_buf) {
-		if (!image->icc_profile_len) {
+		if (isCIE) {
+			if (!canStoreCIE || info->decoder_parameters->force_rgb){
 #if defined(GROK_HAVE_LIBLCMS)
+			if (parameters->verbose && !info->decoder_parameters->force_rgb)
+				fprintf(stdout, "[WARNING] Input file %s is in CIE colour space,\n"
+						"but the codec is unable to store this information in the output file %s.\n"
+						"The output image will therefore be converted to sRGB before saving.\n",
+						infile, outfile);
 			color_cielab_to_rgb(image, info->decoder_parameters->verbose);
 #else
 			fprintf(stdout, "[WARNING] Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB\n");
 #endif
+			}
 		}
 		else {
 			// A TIFF,PNG or JPEG image can store the ICC profile,
@@ -1672,7 +1680,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 #endif
 			}
 		}
-		if (!image->icc_profile_len || info->decoder_parameters->force_rgb || !canStoreICC) {
+		if ((isCIE && !canStoreCIE)|| info->decoder_parameters->force_rgb || (!isCIE && !canStoreICC)) {
 			free(image->icc_profile_buf);
 			image->icc_profile_buf = nullptr;
 			image->icc_profile_len = 0;

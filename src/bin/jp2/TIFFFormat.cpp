@@ -638,6 +638,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	else {
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
+	if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE)
+		tiPhoto = PHOTOMETRIC_ICCLAB;
 
 	uint32_t sgnd = image->comps[0].sgnd;
 	uint32_t width = image->comps[0].w;
@@ -785,8 +787,12 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 #endif
 	}
 
-	if (image->icc_profile_buf && image->icc_profile_len) {
-		TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
+	if (image->icc_profile_buf) {
+		if (image->color_space == OPJ_CLRSPC_ICC)
+			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
+		else if (image->color_space == OPJ_CLRSPC_CUSTOM_CIE){
+			TIFFSetField(tif, TIFFTAG_ICCPROFILE, 32, image->icc_profile_buf);
+		}
 	}
 
 	if (image->xmp_buf && image->xmp_len) {
