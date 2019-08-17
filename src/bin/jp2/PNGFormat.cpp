@@ -339,11 +339,11 @@ static opj_image_t *pngtoimage(const char *read_idf,
 			&Compression,
 			&ProfileData,
 			&ProfileLen) == PNG_INFO_iCCP) {
-			local_info.image->icc_profile_len = ProfileLen;
 			local_info.image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
 			if (!local_info.image->icc_profile_buf)
 				return nullptr;
 			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
+			local_info.image->icc_profile_len = ProfileLen;
 		}
 	}
 

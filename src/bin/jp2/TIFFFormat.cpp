@@ -1622,13 +1622,13 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
 						icclen > 0 &&
 						icclen < grk::maxICCProfileBufferLen) {
-		image->icc_profile_len = icclen;
 		image->icc_profile_buf = (uint8_t*)malloc(icclen);
 		if (!image->icc_profile_buf) {
 			success = false;
 			goto cleanup;
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
+		image->icc_profile_len = icclen;
 	}
 
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
