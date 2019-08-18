@@ -96,6 +96,13 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
+static bool readTiffPixels(TIFF *tif,
+							opj_image_comp_t *comps,
+							uint32_t numcomps,
+							uint16_t tiSpp,
+							uint16_t tiPC,
+							uint16_t tiPhoto);
+
 /* -->> -->> -->> -->>
 
 TIFF IMAGE FORMAT
@@ -127,6 +134,25 @@ TIFF IMAGE FORMAT
 		trailing <<= remaining; \
 		*pDst++ = (uint8_t)trailing; \
 	}
+
+#define GETBITS(dest, nb, mask, invert) { \
+	int needed = (nb); \
+	uint32_t dst = 0U; \
+	if (available == 0) { \
+		val = *pSrc++; \
+		available = 8; \
+	} \
+	while (needed > available) { \
+		dst |= val & ((1U << available) - 1U); \
+		needed -= available; \
+		dst <<= needed; \
+		val = *pSrc++; \
+		available = 8; \
+	} \
+	dst |= (val >> (available - needed)) & ((1U << needed) - 1U); \
+	available -= needed; \
+	dest = INV((int32_t)dst, mask,invert); \
+}
 
 static void tif_32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 {
@@ -603,295 +629,6 @@ static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
 	}
 }
 
-static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
-{
-	int tiPhoto;
-	TIFF *tif = nullptr;
-	tdata_t buf = nullptr;
-	tsize_t strip_size, rowStride;
-	int32_t const* planes[4];
-	int32_t* buffer32s = nullptr;
-	convert_32s_PXCX cvtPxToCx = nullptr;
-	convert_32sXXx_C1R cvt32sToTif = nullptr;
-	bool success = true;
-	int32_t firstAlpha = -1;
-	size_t numAlphaChannels = 0;
-	planes[0] = image->comps[0].data;
-	uint32_t numcomps = image->numcomps;
-	uint32_t sgnd = image->comps[0].sgnd;
-
-	if (image->color_space == OPJ_CLRSPC_CMYK) {
-		if (numcomps < 4U) {
-			fprintf(stderr, "[ERROR] imagetotif: CMYK images shall be composed of at least 4 planes.\n");
-			fprintf(stderr, "\tAborting\n");
-			return 1;
-		}
-		tiPhoto = PHOTOMETRIC_SEPARATED;
-		if (numcomps > 4U) {
-			numcomps = 4U; /* Alpha not supported */
-		}
-	}
-	else if (numcomps > 2U) {
-		tiPhoto = PHOTOMETRIC_RGB;
-		if (numcomps > 4U) {
-			numcomps = 4U;
-		}
-	}
-	else {
-		tiPhoto = PHOTOMETRIC_MINISBLACK;
-	}
-	if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE)
-		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
-
-	uint32_t width = image->comps[0].w;
-	uint32_t height = image->comps[0].h;
-
-	// actual bits per sample
-	uint32_t bps = image->comps[0].prec;
-	uint32_t tif_bps = bps;
-	if (bps == 0) {
-		fprintf(stderr, "[ERROR] imagetotif: image precision is zero.\n");
-		success = false;
-		goto cleanup;
-	}
-
-
-
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		auto comp = image->comps[i];
-		if (!comp.data) {
-			success = false;
-			goto cleanup;
-		}
-	}
-	uint32_t i;
-	for (i = 1U; i < numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
-			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
-			break;
-		}
-		if (image->comps[0].prec != image->comps[i].prec) {
-			break;
-		}
-		if (image->comps[0].sgnd != image->comps[i].sgnd) {
-			break;
-		}
-		planes[i] = image->comps[i].data;
-	}
-	if (i != numcomps) {
-		fprintf(stderr, "[ERROR] imagetotif: All components shall have the same subsampling, same bit depth.\n");
-		fprintf(stderr, "\tAborting\n");
-		success = false;
-		goto cleanup;
-	}
-
-
-	// even bits per sample
-	if (bps > 16)
-		bps = 0;
-	if (bps == 0)
-	{
-		fprintf(stderr, "[ERROR] imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
-		fprintf(stderr, "\tAborting\n");
-		success = false;
-		goto cleanup;
-	}
-	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
-	switch (tif_bps) {
-	case 1:
-	case 2:
-	case 4:
-	case 6:
-	case 8:
-		cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
-		break;
-	case 3:
-		cvt32sToTif = tif_32sto3u;
-		break;
-	case 5:
-		cvt32sToTif = tif_32sto5u;
-		break;
-	case 7:
-		cvt32sToTif = tif_32sto7u;
-		break;
-	case 9:
-		cvt32sToTif = tif_32sto9u;
-		break;
-	case 10:
-		cvt32sToTif = tif_32sto10u;
-		break;
-	case 11:
-		cvt32sToTif = tif_32sto11u;
-		break;
-	case 12:
-		cvt32sToTif = tif_32sto12u;
-		break;
-	case 13:
-		cvt32sToTif = tif_32sto13u;
-		break;
-	case 14:
-		cvt32sToTif = tif_32sto14u;
-		break;
-	case 15:
-		cvt32sToTif = tif_32sto15u;
-		break;
-	case 16:
-		cvt32sToTif = (convert_32sXXx_C1R)tif_32sto16u;
-		break;
-	default:
-		/* never here */
-		break;
-	}
-	// Alpha channels
-	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].alpha) {
-			if (firstAlpha == -1)
-				firstAlpha = 0;
-			numAlphaChannels++;
-		}
-	}
-	// TIFF assumes that alpha channels occur as last channels in image.
-	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
-		if (verbose)
-			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
-		numAlphaChannels = 0;
-	}
-	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
-	if (buffer32s == nullptr) {
-		success = false;
-		goto cleanup;
-	}
-
-
-	tif = TIFFOpen(outfile, "wb");
-	if (!tif) {
-		fprintf(stderr, "[ERROR] imagetotif:failed to open %s for writing\n", outfile);
-		success = false;
-		goto cleanup;
-	}
-
-	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
-	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
-    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
-	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
-	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
-	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
-	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
-	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
-	if (compression == COMPRESSION_ADOBE_DEFLATE) {
-#ifdef ZIP_SUPPORT
-		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE);  // zip compression
-#endif
-	}
-
-	if (image->icc_profile_buf) {
-		if (image->color_space == OPJ_CLRSPC_ICC)
-			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
-	}
-
-	if (image->xmp_buf && image->xmp_len) {
-		TIFFSetField(tif, TIFFTAG_XMLPACKET, image->xmp_len, image->xmp_buf);
-	}
-
-	if (image->iptc_buf && image->iptc_len) {
-		auto iptc_buf = image->iptc_buf;
-		auto iptc_len = image->iptc_len;
-
-		// length must be multiple of 4
-		uint8_t* buf = nullptr;
-		iptc_len += (4 - (iptc_len & 0x03));
-		if (iptc_len != image->iptc_len) {
-			buf = (uint8_t*)calloc(iptc_len, 1);
-			if (!buf)
-				return false;
-			memcpy(buf, image->iptc_buf, image->iptc_len);
-			iptc_buf = buf;
-		}
-
-		// Tag is of type TIFF_LONG, so byte length is divided by four 
-		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32_t *)iptc_buf, iptc_len / 4);
-		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)iptc_len / 4, (void *)iptc_buf);
-
-		if (buf)
-			free(buf);
-	}
-
-	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
-		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
-		for (int i = 0; i < 2; ++i) {
-			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0] / 100);
-			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1] / 100);
-		}
-	}
-
-	if (numAlphaChannels) {
-		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
-		auto alphaCount = 0;
-		for (i = 0U; i < numcomps; ++i) {
-			if (image->comps[i].alpha)
-				out[alphaCount++] = (image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
-		}
-		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
-	}
-
-	strip_size = TIFFStripSize(tif);
-	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
-	if (rowStride != strip_size) {
-		fprintf(stderr, "[ERROR] Invalid TIFF strip size\n");
-		success = false;
-		goto cleanup;
-	}
-	buf = _TIFFmalloc(strip_size);
-	if (buf == nullptr) {
-		success = false;
-		goto cleanup;
-	}
-
-	for (i = 0; i < image->comps[0].h; ++i) {
-		cvtPxToCx(planes, buffer32s, (size_t)width,0);
-		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
-		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
-		planes[0] += width;
-		planes[1] += width;
-		planes[2] += width;
-		planes[3] += width;
-	}
-
-cleanup:
-	if (buf)
-		_TIFFfree((void*)buf);
-	if (tif)
-		TIFFClose(tif);
-	if (buffer32s)
-		free(buffer32s);
-
-	return success ? 0 : 1;
-}/* imagetotif() */
-
-
-#define GETBITS(dest, nb, mask, invert) { \
-	int needed = (nb); \
-	uint32_t dst = 0U; \
-	if (available == 0) { \
-		val = *pSrc++; \
-		available = 8; \
-	} \
-	while (needed > available) { \
-		dst |= val & ((1U << available) - 1U); \
-		needed -= available; \
-		dst <<= needed; \
-		val = *pSrc++; \
-		available = 8; \
-	} \
-	dst |= (val >> (available - needed)) & ((1U << needed) - 1U); \
-	available -= needed; \
-	dest = INV((int32_t)dst, mask,invert); \
-}
 
 static void tif_3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
@@ -1386,29 +1123,21 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 */
 static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
 {
+	TIFF *tif;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
-	TIFF *tif;
-	tdata_t buf = nullptr;
-	tstrip_t strip;
-	tsize_t strip_size;
 	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
-	opj_image_cmptparm_t cmptparm[4]; /* RGBA */
+	opj_image_cmptparm_t cmptparm[4];
 	opj_image_t *image = nullptr;
-	unsigned short tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
+	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
 	uint32_t tiWidth = 0, tiHeight = 0;
 	bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
-	convert_XXx32s_C1R cvtTifTo32s = nullptr;
-	convert_32s_CXPX cvtCxToPx = nullptr;
-	int32_t* buffer32s = nullptr;
-	int32_t* planes[4];
-	tsize_t rowStride;
 	bool success = true;
-	tif = TIFFOpen(filename, "r");
 
+	tif = TIFFOpen(filename, "r");
 	if (!tif) {
 		fprintf(stderr, "[ERROR] tiftoimage:Failed to open %s for reading\n", filename);
 		return 0;
@@ -1424,9 +1153,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
-	bool invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
 	uint32_t numcomps = 0;
-	uint32_t currentPlane = 0;
 	uint32_t icclen = 0;
 	uint8_t* iccbuf = nullptr;
 	uint8_t *iptc_buf = nullptr;
@@ -1438,19 +1165,18 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
 
+	// 1. sanity checks
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
 		fprintf(stderr, "[ERROR] tiftoimage: Unsupported sample format %d\n"
 			"\tAborting.\n", tiSf);
 		success = false;
 		goto cleanup;
 	}
-
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"
 			"\tAborting.\n", tiSpp);
 		success = false;
 		goto cleanup;
-
 	}
 	if (tiBps > 16U || tiBps == 0) {
 		fprintf(stderr, "[ERROR] tiftoimage: Bad values for Bits == %d.\n"
@@ -1458,7 +1184,6 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		success = false;
 		goto cleanup;
 	}
-
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK &&
 			tiPhoto != PHOTOMETRIC_MINISWHITE &&
 			tiPhoto != PHOTOMETRIC_RGB &&
@@ -1470,8 +1195,6 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		success = false;
 		goto cleanup;
 	}
-
-
 	if (tiWidth == 0 || tiHeight == 0) {
 		fprintf(stderr, "[ERROR] tiftoimage: Bad values for width(%u) "
 			"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
@@ -1479,15 +1202,214 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		goto cleanup;
 
 	}
+	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
+
+	// 2. initialize image components and signed/unsigned
+	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
+	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
+		if (parameters->verbose)
+			fprintf(stdout, "WARNING:\n"
+				"Input image bitdepth is %d bits\n"
+				"TIF conversion has automatically rescaled to 12-bits\n"
+				"to comply with cinema profiles.\n",
+				tiBps);
+	}
+	else {
+		is_cinema = 0U;
+	}
+	numcomps = extrasamples;
+	switch (tiPhoto){
+	case PHOTOMETRIC_RGB:
+		color_space = OPJ_CLRSPC_SRGB;
+		numcomps+=3;
+		break;
+	case PHOTOMETRIC_MINISBLACK:
+	case PHOTOMETRIC_MINISWHITE:
+		color_space = OPJ_CLRSPC_GRAY;
+		numcomps++;
+		break;
+	case PHOTOMETRIC_CIELAB:
+	case PHOTOMETRIC_ICCLAB:
+		color_space = OPJ_CLRSPC_DEFAULT_CIE;
+		numcomps+=3;
+		if (tiSpp != 3){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+					"Input image is in CIE colour space but samples per pixel = %d\n",
+					tiSpp);
+		}
+		break;
+	default:
+		break;
+	}
+	if (numcomps == 0){
+		success = false;
+		goto cleanup;
+	}
+
+	if (tiPhoto == PHOTOMETRIC_CIELAB){
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+						"Input image is in CIE colour space but sample format is unsigned int\n");
+		}
+		isSigned = true;
+	} else if (tiPhoto == PHOTOMETRIC_ICCLAB){
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+						"Input image is in ICC CIE colour space but sample format is signed int\n");
+		}
+		isSigned = false;
+	}
+
+	// 4. create image
+	for (uint32_t j = 0; j < numcomps; j++) {
+		cmptparm[j].prec = tiBps;
+		cmptparm[j].dx = subsampling_dx;
+		cmptparm[j].dy = subsampling_dy;
+		cmptparm[j].w = w;
+		cmptparm[j].h = h;
+	}
+	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	if (!image) {
+		success = false;
+		goto cleanup;
+	}
+	/* set image offset and reference grid */
+	image->x0 = parameters->image_offset_x0;
+	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
+		image->x0 + (w - 1) * subsampling_dx + 1;
+	if (image->x1 <= image->x0) {
+		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->x1(%d) vs. "
+			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
+		success = false;
+		goto cleanup;
+	}
+	image->y0 = parameters->image_offset_y0;
+	image->y1 = !image->y0 ? (h - 1) * subsampling_dy + 1 :
+		image->y0 + (h - 1) * subsampling_dy + 1;
+	if (image->y1 <= image->y0) {
+		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->y1(%d) vs. "
+			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
+		success = false;
+		goto cleanup;
+	}
+	for (uint32_t j = 0; j < numcomps; j++) {
+		// handle alpha channel
+		auto numColourChannels = numcomps - extrasamples;
+		if (extrasamples > 0 && j >=  numColourChannels) {
+			auto alphaType = sampleinfo[j - numColourChannels];
+			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
+				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+			else if (alphaType== EXTRASAMPLE_UNASSALPHA)
+				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+			else {
+				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
+				if (numcomps == 2 || numcomps == 4){
+					image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+				}
+			}
+		}
+		image->comps[j].sgnd = isSigned ? 1 : 0;
+	}
+
+	// 5. extract capture resolution
+	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
+		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+		parameters->write_capture_resolution_from_file = true;
+		image->capture_resolution[0] = tiXRes;
+		image->capture_resolution[1] = tiYRes;
+	}
+	// 6. extract embedded ICC profile (with sanity check on binary size of profile)
+	if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
+						icclen > 0 &&
+						icclen < grk::maxICCProfileBufferLen) {
+		image->icc_profile_buf = (uint8_t*)malloc(icclen);
+		if (!image->icc_profile_buf) {
+			success = false;
+			goto cleanup;
+		}
+		memcpy(image->icc_profile_buf, iccbuf, icclen);
+		image->icc_profile_len = icclen;
+	}
+    // 7. extract IPTC meta-data
+	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
+		if (TIFFIsByteSwapped(tif))
+			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
+		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
+		// by 4 to get the length in bytes
+		image->iptc_len = iptc_len * 4;
+		image->iptc_buf = (uint8_t*)malloc(iptc_len);
+		if (!image->iptc_buf) {
+			success = false;
+			goto cleanup;
+		}
+		memcpy(image->iptc_buf, iptc_buf, iptc_len);
+	}
+	// 8. extract XML meta-data
+	if (TIFFGetField(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
+		image->xmp_len = xmp_len;
+		image->xmp_buf = (uint8_t*)malloc(xmp_len);
+		if (!image->xmp_buf) {
+			success = false;
+			goto cleanup;
+		}
+		memcpy(image->xmp_buf, xmp_buf, xmp_len);
+	}
+
+	// 9. read pixel data
+	success = success && readTiffPixels(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
+
+cleanup:
+	if (tif)
+		TIFFClose(tif);
+	if (success) {
+		if (is_cinema) {
+			for (uint32_t j = 0; j < numcomps; ++j) {
+				scale_component(&(image->comps[j]), 12);
+			}
+		}
+		return image;
+	}
+	if (image)
+		opj_image_destroy(image);
+
+	return nullptr;
+}/* tiftoimage() */
 
 
-	switch (tiBps) {
+static bool readTiffPixels(TIFF *tif,
+							opj_image_comp_t *comps,
+							uint32_t numcomps,
+							uint16_t tiSpp,
+							uint16_t tiPC,
+							uint16_t tiPhoto){
+	if (!tif)
+		return false;
+
+	bool success = true;
+	convert_XXx32s_C1R cvtTifTo32s = nullptr;
+	convert_32s_CXPX cvtCxToPx = nullptr;
+	int32_t* planes[4];
+	tsize_t rowStride;
+	bool invert;
+	tdata_t buf = nullptr;
+	tstrip_t strip;
+	tsize_t strip_size;
+	uint32_t currentPlane = 0;
+	int32_t  *buffer32s = nullptr;
+
+	switch (comps[0].prec) {
 	case 1:
 	case 2:
 	case 4:
 	case 6:
 	case 8:
-		cvtTifTo32s = convert_XXu32s_C1R_LUT[tiBps];
+		cvtTifTo32s = convert_XXu32s_C1R_LUT[comps[0].prec];
 		break;
 		/* others are specific to TIFF */
 	case 3:
@@ -1527,244 +1449,330 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		/* never here */
 		break;
 	}
-
-	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
-
-	/* initialize image components */
-	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
-
-	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
-		if (parameters->verbose)
-			fprintf(stdout, "WARNING:\n"
-				"Input image bitdepth is %d bits\n"
-				"TIF conversion has automatically rescaled to 12-bits\n"
-				"to comply with cinema profiles.\n",
-				tiBps);
-	}
-	else {
-		is_cinema = 0U;
-	}
-
-	numcomps = extrasamples;
-	switch (tiPhoto){
-	case PHOTOMETRIC_RGB:
-		color_space = OPJ_CLRSPC_SRGB;
-		numcomps+=3;
-		break;
-	case PHOTOMETRIC_MINISBLACK:
-	case PHOTOMETRIC_MINISWHITE:
-		color_space = OPJ_CLRSPC_GRAY;
-		numcomps++;
-		break;
-	case PHOTOMETRIC_CIELAB:
-	case PHOTOMETRIC_ICCLAB:
-		color_space = OPJ_CLRSPC_DEFAULT_CIE;
-		numcomps+=3;
-		if (tiSpp && tiSpp != 3){
-			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-					"Input image is in CIE colour space but samples per pixel = %d\n",
-					tiSpp);
-		}
-		break;
-	default:
-		break;
-	}
-
-	if (tiPhoto == PHOTOMETRIC_CIELAB){
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)){
-			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-						"Input image is in CIE colour space but sample format is unsigned int\n");
-		}
-		isSigned = true;
-	} else if (tiPhoto == PHOTOMETRIC_ICCLAB){
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)){
-			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-						"Input image is in ICC CIE colour space but sample format is signed int\n");
-		}
-		isSigned = false;
-	}
-
-
 	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
 	if (tiPC == PLANARCONFIG_SEPARATE) {
 		cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
 		tiSpp = 1U; /* consider only one sample per plane */
 	}
 
-	for (uint32_t j = 0; j < numcomps; j++) {
-		cmptparm[j].prec = tiBps;
-		cmptparm[j].dx = subsampling_dx;
-		cmptparm[j].dy = subsampling_dy;
-		cmptparm[j].w = w;
-		cmptparm[j].h = h;
-	}
-
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
-	if (!image) {
-		success = false;
-		goto cleanup;
-	}
-	/* set image offset and reference grid */
-	image->x0 = parameters->image_offset_x0;
-	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
-		image->x0 + (w - 1) * subsampling_dx + 1;
-	if (image->x1 <= image->x0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->x1(%d) vs. "
-			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
-		success = false;
-		goto cleanup;
-	}
-
-	image->y0 = parameters->image_offset_y0;
-	image->y1 = !image->y0 ? (h - 1) * subsampling_dy + 1 :
-		image->y0 + (h - 1) * subsampling_dy + 1;
-
-	if (image->y1 <= image->y0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->y1(%d) vs. "
-			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
-		success = false;
-		goto cleanup;
-	}
-
-	for (uint32_t j = 0; j < numcomps; j++) {
-		planes[j] = image->comps[j].data;
-		// handle alpha channel
-		auto numColourChannels = numcomps - extrasamples;
-		if (extrasamples > 0 && j >=  numColourChannels) {
-			auto alphaType = sampleinfo[j - numColourChannels];
-			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
-				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-			else if (alphaType== EXTRASAMPLE_UNASSALPHA)
-				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
-			else {
-				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
-				if (numcomps == 2 || numcomps == 4){
-					image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
-				}
-			}
-		}
-		image->comps[j].sgnd = isSigned ? 1 : 0;
-	}
-
-	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-	hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-	hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
-	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
-		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
-		parameters->write_capture_resolution_from_file = true;
-		image->capture_resolution[0] = tiXRes;
-		image->capture_resolution[1] = tiYRes;
-	}
-
-
-	// handle embedded ICC profile (with sanity check on binary size of profile)
-	if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
-						icclen > 0 &&
-						icclen < grk::maxICCProfileBufferLen) {
-		image->icc_profile_buf = (uint8_t*)malloc(icclen);
-		if (!image->icc_profile_buf) {
-			success = false;
-			goto cleanup;
-		}
-		memcpy(image->icc_profile_buf, iccbuf, icclen);
-		image->icc_profile_len = icclen;
-	}
-
-	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
-		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
-		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
-		// by 4 to get the length in bytes
-		image->iptc_len = iptc_len * 4;
-		image->iptc_buf = (uint8_t*)malloc(iptc_len);
-		if (!image->iptc_buf) {
-			success = false;
-			goto cleanup;
-		}
-		memcpy(image->iptc_buf, iptc_buf, iptc_len);
-	}
-
-	if (TIFFGetField(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
-		image->xmp_len = xmp_len;
-		image->xmp_buf = (uint8_t*)malloc(xmp_len);
-		if (!image->xmp_buf) {
-			success = false;
-			goto cleanup;
-		}
-		memcpy(image->xmp_buf, xmp_buf, xmp_len);
-	}
-
 	strip_size = TIFFStripSize(tif);
 	buf = _TIFFmalloc(strip_size);
 	if (buf == nullptr) {
 		success = false;
+		goto local_cleanup;
+	}
+	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+	buffer32s = new int32_t[(size_t)comps[0].w * tiSpp];
+	strip = 0;
+	invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
+	for (uint32_t j = 0; j < numcomps; j++) {
+		planes[j] = comps[j].data;
+	}
+	do {
+		opj_image_comp_t *comp = comps + currentPlane;
+		planes[0] = comp->data; /* to manage planar data */
+		uint32_t height = (int)comp->h;
+		/* Read the Image components */
+		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize < 1 || ssize > strip_size) {
+				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
+					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
+				success = false;
+				goto local_cleanup;
+			}
+			const uint8_t *datau8 = (const uint8_t*)buf;
+			while (ssize >= rowStride) {
+				cvtTifTo32s(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
+				cvtCxToPx(buffer32s, planes, (size_t)comp->w);
+				planes[0] += comp->w;
+				planes[1] += comp->w;
+				planes[2] += comp->w;
+				planes[3] += comp->w;
+				datau8 += rowStride;
+				ssize -= rowStride;
+				height--;
+			}
+		}
+		currentPlane++;
+	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
+local_cleanup:
+	delete[] buffer32s;
+	if (buf)
+		_TIFFfree(buf);
+	return success;
+}
+
+static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
+{
+	int tiPhoto;
+	TIFF *tif = nullptr;
+	tdata_t buf = nullptr;
+	tsize_t strip_size, rowStride;
+	int32_t const* planes[4];
+	int32_t* buffer32s = nullptr;
+	convert_32s_PXCX cvtPxToCx = nullptr;
+	convert_32sXXx_C1R cvt32sToTif = nullptr;
+	bool success = true;
+	int32_t firstAlpha = -1;
+	size_t numAlphaChannels = 0;
+	planes[0] = image->comps[0].data;
+	uint32_t numcomps = image->numcomps;
+	uint32_t sgnd = image->comps[0].sgnd;
+
+	if (image->color_space == OPJ_CLRSPC_CMYK) {
+		if (numcomps < 4U) {
+			fprintf(stderr, "[ERROR] imagetotif: CMYK images shall be composed of at least 4 planes.\n");
+			fprintf(stderr, "\tAborting\n");
+			return 1;
+		}
+		tiPhoto = PHOTOMETRIC_SEPARATED;
+		if (numcomps > 4U) {
+			numcomps = 4U; /* Alpha not supported */
+		}
+	}
+	else if (numcomps > 2U) {
+		tiPhoto = PHOTOMETRIC_RGB;
+		if (numcomps > 4U) {
+			numcomps = 4U;
+		}
+	}
+	else {
+		tiPhoto = PHOTOMETRIC_MINISBLACK;
+	}
+	if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE)
+		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
+
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+
+	// actual bits per sample
+	uint32_t bps = image->comps[0].prec;
+	uint32_t tif_bps = bps;
+	if (bps == 0) {
+		fprintf(stderr, "[ERROR] imagetotif: image precision is zero.\n");
+		success = false;
 		goto cleanup;
 	}
-	rowStride = (w * tiSpp * tiBps + 7U) / 8U;
-	buffer32s = (int32_t *)malloc((size_t)w * tiSpp * sizeof(int32_t));
+
+
+
+	//check for null image components
+	for (uint32_t i = 0; i < numcomps; ++i) {
+		auto comp = image->comps[i];
+		if (!comp.data) {
+			success = false;
+			goto cleanup;
+		}
+	}
+	uint32_t i;
+	for (i = 1U; i < numcomps; ++i) {
+		if (image->comps[0].dx != image->comps[i].dx) {
+			break;
+		}
+		if (image->comps[0].dy != image->comps[i].dy) {
+			break;
+		}
+		if (image->comps[0].prec != image->comps[i].prec) {
+			break;
+		}
+		if (image->comps[0].sgnd != image->comps[i].sgnd) {
+			break;
+		}
+		planes[i] = image->comps[i].data;
+	}
+	if (i != numcomps) {
+		fprintf(stderr, "[ERROR] imagetotif: All components shall have the same subsampling, same bit depth.\n");
+		fprintf(stderr, "\tAborting\n");
+		success = false;
+		goto cleanup;
+	}
+
+
+	// even bits per sample
+	if (bps > 16)
+		bps = 0;
+	if (bps == 0)
+	{
+		fprintf(stderr, "[ERROR] imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
+		fprintf(stderr, "\tAborting\n");
+		success = false;
+		goto cleanup;
+	}
+	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
+	switch (tif_bps) {
+	case 1:
+	case 2:
+	case 4:
+	case 6:
+	case 8:
+		cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
+		break;
+	case 3:
+		cvt32sToTif = tif_32sto3u;
+		break;
+	case 5:
+		cvt32sToTif = tif_32sto5u;
+		break;
+	case 7:
+		cvt32sToTif = tif_32sto7u;
+		break;
+	case 9:
+		cvt32sToTif = tif_32sto9u;
+		break;
+	case 10:
+		cvt32sToTif = tif_32sto10u;
+		break;
+	case 11:
+		cvt32sToTif = tif_32sto11u;
+		break;
+	case 12:
+		cvt32sToTif = tif_32sto12u;
+		break;
+	case 13:
+		cvt32sToTif = tif_32sto13u;
+		break;
+	case 14:
+		cvt32sToTif = tif_32sto14u;
+		break;
+	case 15:
+		cvt32sToTif = tif_32sto15u;
+		break;
+	case 16:
+		cvt32sToTif = (convert_32sXXx_C1R)tif_32sto16u;
+		break;
+	default:
+		/* never here */
+		break;
+	}
+	// Alpha channels
+	for (i = 0U; i < numcomps; ++i) {
+		if (image->comps[i].alpha) {
+			if (firstAlpha == -1)
+				firstAlpha = 0;
+			numAlphaChannels++;
+		}
+	}
+	// TIFF assumes that alpha channels occur as last channels in image.
+	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
+		if (verbose)
+			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
+		numAlphaChannels = 0;
+	}
+	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
 	if (buffer32s == nullptr) {
 		success = false;
 		goto cleanup;
 	}
 
-	strip = 0;
-	do {
-		planes[0] = image->comps[currentPlane].data; /* to manage planar data */
-		h = (int)tiHeight;
-		/* Read the Image components */
-		for (; (h > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
-			const uint8_t *dat8;
-			tsize_t ssize = 0;
 
-			ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
-			if (ssize < 1 || ssize > strip_size) {
-				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
-					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
-				success = false;
-				goto cleanup;
-			}
-			dat8 = (const uint8_t*)buf;
-
-			while (ssize >= rowStride) {
-				cvtTifTo32s(dat8, buffer32s, (size_t)w * tiSpp, invert);
-				cvtCxToPx(buffer32s, planes, (size_t)w);
-				planes[0] += w;
-				planes[1] += w;
-				planes[2] += w;
-				planes[3] += w;
-				dat8 += rowStride;
-				ssize -= rowStride;
-				h--;
-			}
-		}
-		currentPlane++;
-	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-
-cleanup:
-	if (buffer32s)
-		free(buffer32s);
-	if (buf)
-		_TIFFfree(buf);
-	if (tif)
-		TIFFClose(tif);
-
-	if (success) {
-		if (is_cinema) {
-			for (uint32_t j = 0; j < numcomps; ++j) {
-				scale_component(&(image->comps[j]), 12);
-			}
-		}
-		return image;
+	tif = TIFFOpen(outfile, "wb");
+	if (!tif) {
+		fprintf(stderr, "[ERROR] imagetotif:failed to open %s for writing\n", outfile);
+		success = false;
+		goto cleanup;
 	}
 
-	if (image)
-		opj_image_destroy(image);
-	return nullptr;
+	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
+	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
+    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
+	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
+	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
+	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
+	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
+	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+	if (compression == COMPRESSION_ADOBE_DEFLATE) {
+#ifdef ZIP_SUPPORT
+		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE);  // zip compression
+#endif
+	}
 
-}/* tiftoimage() */
+	if (image->icc_profile_buf) {
+		if (image->color_space == OPJ_CLRSPC_ICC)
+			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
+	}
+
+	if (image->xmp_buf && image->xmp_len) {
+		TIFFSetField(tif, TIFFTAG_XMLPACKET, image->xmp_len, image->xmp_buf);
+	}
+
+	if (image->iptc_buf && image->iptc_len) {
+		auto iptc_buf = image->iptc_buf;
+		auto iptc_len = image->iptc_len;
+
+		// length must be multiple of 4
+		uint8_t* buf = nullptr;
+		iptc_len += (4 - (iptc_len & 0x03));
+		if (iptc_len != image->iptc_len) {
+			buf = (uint8_t*)calloc(iptc_len, 1);
+			if (!buf)
+				return false;
+			memcpy(buf, image->iptc_buf, image->iptc_len);
+			iptc_buf = buf;
+		}
+
+		// Tag is of type TIFF_LONG, so byte length is divided by four
+		if (TIFFIsByteSwapped(tif))
+			TIFFSwabArrayOfLong((uint32_t *)iptc_buf, iptc_len / 4);
+		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)iptc_len / 4, (void *)iptc_buf);
+
+		if (buf)
+			free(buf);
+	}
+
+	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
+		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
+		for (int i = 0; i < 2; ++i) {
+			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0] / 100);
+			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1] / 100);
+		}
+	}
+
+	if (numAlphaChannels) {
+		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
+		auto alphaCount = 0;
+		for (i = 0U; i < numcomps; ++i) {
+			if (image->comps[i].alpha)
+				out[alphaCount++] = (image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+		}
+		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
+	}
+
+	strip_size = TIFFStripSize(tif);
+	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
+	if (rowStride != strip_size) {
+		fprintf(stderr, "[ERROR] Invalid TIFF strip size\n");
+		success = false;
+		goto cleanup;
+	}
+	buf = _TIFFmalloc(strip_size);
+	if (buf == nullptr) {
+		success = false;
+		goto cleanup;
+	}
+
+	for (i = 0; i < image->comps[0].h; ++i) {
+		cvtPxToCx(planes, buffer32s, (size_t)width,0);
+		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
+		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
+		planes[0] += width;
+		planes[1] += width;
+		planes[2] += width;
+		planes[3] += width;
+	}
+
+cleanup:
+	if (buf)
+		_TIFFfree((void*)buf);
+	if (tif)
+		TIFFClose(tif);
+	if (buffer32s)
+		free(buffer32s);
+
+	return success ? 0 : 1;
+}/* imagetotif() */
+
 
 bool TIFFFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
