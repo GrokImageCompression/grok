@@ -178,23 +178,25 @@ static void convert_32s_C2P2(const int32_t* pSrc, int32_t* const* pDst, size_t l
     size_t i;
     int32_t* pDst0 = pDst[0];
     int32_t* pDst1 = pDst[1];
+    size_t src_index = 0;
 
     for (i = 0; i < length; i++) {
-        pDst0[i] = pSrc[2*i+0];
-        pDst1[i] = pSrc[2*i+1];
+        pDst0[i] = pSrc[src_index++];
+        pDst1[i] = pSrc[src_index++];
     }
 }
 static void convert_32s_C3P3(const int32_t* pSrc, int32_t* const* pDst, size_t length)
 {
-    size_t i;
     int32_t* pDst0 = pDst[0];
     int32_t* pDst1 = pDst[1];
     int32_t* pDst2 = pDst[2];
+    size_t i;
+    size_t src_index = 0;
 
     for (i = 0; i < length; i++) {
-        pDst0[i] = pSrc[3*i+0];
-        pDst1[i] = pSrc[3*i+1];
-        pDst2[i] = pSrc[3*i+2];
+        pDst0[i] = pSrc[src_index++];
+        pDst1[i] = pSrc[src_index++];
+        pDst2[i] = pSrc[src_index++];
     }
 }
 static void convert_32s_C4P4(const int32_t* pSrc, int32_t* const* pDst, size_t length)
@@ -204,12 +206,13 @@ static void convert_32s_C4P4(const int32_t* pSrc, int32_t* const* pDst, size_t l
     int32_t* pDst1 = pDst[1];
     int32_t* pDst2 = pDst[2];
     int32_t* pDst3 = pDst[3];
+    size_t src_index = 0;
 
     for (i = 0; i < length; i++) {
-        pDst0[i] = pSrc[4*i+0];
-        pDst1[i] = pSrc[4*i+1];
-        pDst2[i] = pSrc[4*i+2];
-        pDst3[i] = pSrc[4*i+3];
+        pDst0[i] = pSrc[src_index++];
+        pDst1[i] = pSrc[src_index++];
+        pDst2[i] = pSrc[src_index++];
+        pDst3[i] = pSrc[src_index++];
     }
 }
 const convert_32s_CXPX convert_32s_CXPX_LUT[5] = {
