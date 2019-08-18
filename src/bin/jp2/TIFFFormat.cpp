@@ -96,13 +96,18 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
-static bool readTiffPixels(TIFF *tif,
+static bool readTiffPixelsUnsigned(TIFF *tif,
 							opj_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
 							uint16_t tiPhoto);
-
+static bool readTiffPixelsSigned(TIFF *tif,
+							opj_image_comp_t *comps,
+							uint32_t numcomps,
+							uint16_t tiSpp,
+							uint16_t tiPC,
+							uint16_t tiPhoto);
 /* -->> -->> -->> -->>
 
 TIFF IMAGE FORMAT
@@ -1362,7 +1367,10 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	// 9. read pixel data
-	success = success && readTiffPixels(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
+	if (isSigned && image->comps[0].sgnd)
+		success = success && readTiffPixelsSigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
+	else
+		success = success && readTiffPixelsUnsigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
 
 cleanup:
 	if (tif)
@@ -1382,7 +1390,7 @@ cleanup:
 }/* tiftoimage() */
 
 
-static bool readTiffPixels(TIFF *tif,
+static bool readTiffPixelsUnsigned(TIFF *tif,
 							opj_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
@@ -1502,6 +1510,81 @@ local_cleanup:
 		_TIFFfree(buf);
 	return success;
 }
+
+static bool readTiffPixelsSigned(TIFF *tif,
+							opj_image_comp_t *comps,
+							uint32_t numcomps,
+							uint16_t tiSpp,
+							uint16_t tiPC,
+							uint16_t tiPhoto){
+	if (!tif)
+		return false;
+
+	(void)tiPhoto;
+	bool success = true;
+	convert_32s_CXPX cvtCxToPx = nullptr;
+	int32_t* planes[4];
+	tsize_t rowStride;
+	tdata_t buf = nullptr;
+	tstrip_t strip;
+	tsize_t strip_size;
+	uint32_t currentPlane = 0;
+	int32_t  *buffer32s = nullptr;
+
+	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
+	if (tiPC == PLANARCONFIG_SEPARATE) {
+		cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
+		tiSpp = 1U; /* consider only one sample per plane */
+	}
+
+	strip_size = TIFFStripSize(tif);
+	buf = _TIFFmalloc(strip_size);
+	if (buf == nullptr) {
+		success = false;
+		goto local_cleanup;
+	}
+	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+	buffer32s = new int32_t[(size_t)comps[0].w * tiSpp];
+	strip = 0;
+	for (uint32_t j = 0; j < numcomps; j++) {
+		planes[j] = comps[j].data;
+	}
+	do {
+		opj_image_comp_t *comp = comps + currentPlane;
+		planes[0] = comp->data; /* to manage planar data */
+		uint32_t height = (int)comp->h;
+		/* Read the Image components */
+		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize < 1 || ssize > strip_size) {
+				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
+					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
+				success = false;
+				goto local_cleanup;
+			}
+			const int8_t *datau8 = (const int8_t*)buf;
+			while (ssize >= rowStride) {
+				for (size_t i=0; i < (size_t)comp->w * tiSpp; ++i)
+					buffer32s[i] =datau8[i];
+				cvtCxToPx(buffer32s, planes, (size_t)comp->w);
+				planes[0] += comp->w;
+				planes[1] += comp->w;
+				planes[2] += comp->w;
+				planes[3] += comp->w;
+				datau8 += rowStride;
+				ssize -= rowStride;
+				height--;
+			}
+		}
+		currentPlane++;
+	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
+local_cleanup:
+	delete[] buffer32s;
+	if (buf)
+		_TIFFfree(buf);
+	return success;
+}
+
 
 static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
 {
