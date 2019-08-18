@@ -2380,11 +2380,13 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 		}
     } else {
         jp2->meth = 1;
-        if (image->color_space == 1)
+        if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE)
+            jp2->enumcs = 14;
+        else if (image->color_space == OPJ_CLRSPC_SRGB)
             jp2->enumcs = 16;	/* sRGB as defined by IEC 61966-2-1 */
-        else if (image->color_space == 2)
+        else if (image->color_space == OPJ_CLRSPC_GRAY)
             jp2->enumcs = 17;	/* greyscale */
-        else if (image->color_space == 3)
+        else if (image->color_space == OPJ_CLRSPC_SYCC)
             jp2->enumcs = 18;	/* YUV */
     }
 
