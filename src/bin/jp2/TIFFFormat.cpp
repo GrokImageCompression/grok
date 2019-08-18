@@ -1438,6 +1438,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint16* sampleinfo = nullptr;
 	uint16 extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
+	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
 
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
 		fprintf(stderr, "[ERROR] tiftoimage: Unsupported sample format %d\n"
@@ -1460,7 +1461,11 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		goto cleanup;
 	}
 
-	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE &&  tiPhoto != PHOTOMETRIC_RGB) {
+	if (tiPhoto != PHOTOMETRIC_MINISBLACK &&
+			tiPhoto != PHOTOMETRIC_MINISWHITE &&
+			tiPhoto != PHOTOMETRIC_RGB &&
+			tiPhoto != PHOTOMETRIC_ICCLAB &&
+			tiPhoto != PHOTOMETRIC_CIELAB) {
 		fprintf(stderr, "[ERROR] tiftoimage: Bad color format %d.\n"
 			"\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
 		fprintf(stderr, "\tAborting\n");
@@ -1542,15 +1547,48 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		is_cinema = 0U;
 	}
 
-
-	if (tiPhoto == PHOTOMETRIC_RGB) { /* RGB(A) */
-		numcomps = 3 + extrasamples;
+	numcomps = extrasamples;
+	switch (tiPhoto){
+	case PHOTOMETRIC_RGB:
 		color_space = OPJ_CLRSPC_SRGB;
-	}
-	else if (tiPhoto == PHOTOMETRIC_MINISBLACK || tiPhoto == PHOTOMETRIC_MINISWHITE) { /* GRAY(A) */
-		numcomps = 1 + extrasamples;
+		numcomps+=3;
+		break;
+	case PHOTOMETRIC_MINISBLACK:
+	case PHOTOMETRIC_MINISWHITE:
 		color_space = OPJ_CLRSPC_GRAY;
+		numcomps++;
+		break;
+	case PHOTOMETRIC_CIELAB:
+	case PHOTOMETRIC_ICCLAB:
+		color_space = OPJ_CLRSPC_DEFAULT_CIE;
+		numcomps+=3;
+		if (tiSpp && tiSpp != 3){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+					"Input image is in CIE colour space but samples per pixel = %d\n",
+					tiSpp);
+		}
+		break;
+	default:
+		break;
 	}
+
+	if (tiPhoto == PHOTOMETRIC_CIELAB){
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+						"Input image is in CIE colour space but sample format is unsigned int\n");
+		}
+		isSigned = true;
+	} else if (tiPhoto == PHOTOMETRIC_ICCLAB){
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)){
+			if (parameters->verbose)
+				fprintf(stdout, "WARNING:\n"
+						"Input image is in ICC CIE colour space but sample format is signed int\n");
+		}
+		isSigned = false;
+	}
+
 
 	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
 	if (tiPC == PLANARCONFIG_SEPARATE) {
@@ -1610,7 +1648,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 				}
 			}
 		}
-		image->comps[j].sgnd = (tiSf == SAMPLEFORMAT_INT);
+		image->comps[j].sgnd = isSigned ? 1 : 0;
 	}
 
 	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
