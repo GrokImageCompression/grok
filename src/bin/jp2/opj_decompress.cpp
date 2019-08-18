@@ -1589,7 +1589,8 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	bool canStoreICC = false;
 	opj_decompress_parameters* parameters = info->decoder_parameters;
 	opj_image_t* image = info->image;
-	bool canStoreCIE = info->decoder_parameters->cod_format == TIF_DFMT;
+	bool canStoreCIE = (info->decoder_parameters->cod_format == TIF_DFMT) &&
+			(image->color_space == OPJ_CLRSPC_DEFAULT_CIE);
 	bool isCIE = image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE;
 	const char* infile =
 		info->decoder_parameters->infile[0] ?
