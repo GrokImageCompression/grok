@@ -618,6 +618,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	size_t numAlphaChannels = 0;
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
+	uint32_t sgnd = image->comps[0].sgnd;
+
 	if (image->color_space == OPJ_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
 			fprintf(stderr, "[ERROR] imagetotif: CMYK images shall be composed of at least 4 planes.\n");
@@ -639,9 +641,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
 	if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE)
-		tiPhoto = PHOTOMETRIC_ICCLAB;
+		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
 
-	uint32_t sgnd = image->comps[0].sgnd;
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
 
@@ -790,9 +791,6 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	if (image->icc_profile_buf) {
 		if (image->color_space == OPJ_CLRSPC_ICC)
 			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
-		else if (image->color_space == OPJ_CLRSPC_CUSTOM_CIE){
-			TIFFSetField(tif, TIFFTAG_ICCPROFILE, 32, image->icc_profile_buf);
-		}
 	}
 
 	if (image->xmp_buf && image->xmp_len) {
