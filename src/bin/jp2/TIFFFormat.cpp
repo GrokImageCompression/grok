@@ -1141,6 +1141,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	uint32_t tiWidth = 0, tiHeight = 0;
 	bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
 	bool success = true;
+	bool isCIE = false;
 
 	tif = TIFFOpen(filename, "r");
 	if (!tif) {
@@ -1235,6 +1236,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		break;
 	case PHOTOMETRIC_CIELAB:
 	case PHOTOMETRIC_ICCLAB:
+		isCIE = true;
 		color_space = OPJ_CLRSPC_DEFAULT_CIE;
 		numcomps+=3;
 		if (tiSpp != 3){
@@ -1330,17 +1332,21 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		image->capture_resolution[1] = tiYRes;
 	}
 	// 6. extract embedded ICC profile (with sanity check on binary size of profile)
-	if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
-						icclen > 0 &&
-						icclen < grk::maxICCProfileBufferLen) {
-		image->icc_profile_buf = (uint8_t*)malloc(icclen);
-		if (!image->icc_profile_buf) {
-			success = false;
-			goto cleanup;
+	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
+	// CIE and ICC
+	if (!isCIE) {
+		if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
+							icclen > 0 &&
+							icclen < grk::maxICCProfileBufferLen) {
+			image->icc_profile_buf = (uint8_t*)malloc(icclen);
+			if (!image->icc_profile_buf) {
+				success = false;
+				goto cleanup;
+			}
+			memcpy(image->icc_profile_buf, iccbuf, icclen);
+			image->icc_profile_len = icclen;
+			image->color_space = OPJ_CLRSPC_ICC;
 		}
-		memcpy(image->icc_profile_buf, iccbuf, icclen);
-		image->icc_profile_len = icclen;
-		image->color_space = OPJ_CLRSPC_ICC;
 	}
     // 7. extract IPTC meta-data
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
