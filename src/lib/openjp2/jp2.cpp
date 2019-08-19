@@ -2362,7 +2362,7 @@ bool jp2_setup_encoder(	jp2_t *jp2,
     }
 
     /* Colour Specification box */
-    if(image->icc_profile_len) {
+    if(image->color_space == OPJ_CLRSPC_ICC) {
         jp2->meth = 2;
         jp2->enumcs = 0;
 		if (image->icc_profile_buf) {
