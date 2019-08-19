@@ -320,16 +320,16 @@ typedef enum PROG_ORDER {
 
 
 typedef enum COLOR_SPACE {
-    OPJ_CLRSPC_UNKNOWN = -1,	/**< not supported by the library */
-    OPJ_CLRSPC_UNSPECIFIED = 0,	/**< not specified in the codestream */
-    OPJ_CLRSPC_SRGB = 1,		/**< sRGB */
-    OPJ_CLRSPC_GRAY = 2,		/**< grayscale */
-    OPJ_CLRSPC_SYCC = 3,		/**< YUV */
-    OPJ_CLRSPC_EYCC = 4,        /**< e-YCC */
-    OPJ_CLRSPC_CMYK = 5,        /**< CMYK */
-    OPJ_CLRSPC_DEFAULT_CIE  = 6,        /**< default CIE LAB */
-    OPJ_CLRSPC_CUSTOM_CIE  = 7,    /**< custom CIE LAB */
-    OPJ_CLRSPC_ICC  = 8         /**< ICC profile */
+    OPJ_CLRSPC_UNKNOWN = 0,			/**< not supported by the library */
+    OPJ_CLRSPC_UNSPECIFIED = 1,		/**< not specified in the codestream */
+    OPJ_CLRSPC_SRGB = 2,			/**< sRGB */
+    OPJ_CLRSPC_GRAY = 3,			/**< grayscale */
+    OPJ_CLRSPC_SYCC = 4,			/**< YUV */
+    OPJ_CLRSPC_EYCC = 5,        	/**< e-YCC */
+    OPJ_CLRSPC_CMYK = 6,        	/**< CMYK */
+    OPJ_CLRSPC_DEFAULT_CIE  = 7,   	/**< default CIE LAB */
+    OPJ_CLRSPC_CUSTOM_CIE  = 8,    	/**< custom CIE LAB */
+    OPJ_CLRSPC_ICC  = 9            	/**< ICC profile */
 } OPJ_COLOR_SPACE;
 
 /**

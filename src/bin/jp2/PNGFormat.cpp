@@ -344,6 +344,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 				return nullptr;
 			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
 			local_info.image->icc_profile_len = ProfileLen;
+			local_info.image->color_space = OPJ_CLRSPC_ICC;
 		}
 	}
 

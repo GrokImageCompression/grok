@@ -730,6 +730,7 @@ static opj_image_t* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 		image->icc_profile_len = Info_h.biIccProfileSize;
+		image->color_space = OPJ_CLRSPC_ICC;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].alpha = 1;

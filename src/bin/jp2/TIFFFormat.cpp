@@ -1340,6 +1340,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		}
 		memcpy(image->icc_profile_buf, iccbuf, icclen);
 		image->icc_profile_len = icclen;
+		image->color_space = OPJ_CLRSPC_ICC;
 	}
     // 7. extract IPTC meta-data
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
