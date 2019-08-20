@@ -1270,6 +1270,14 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		isSigned = false;
 	}
 
+	if (isSigned) {
+		if (PHOTOMETRIC_MINISWHITE || tiBps != 8){
+			fprintf(stderr, "[ERROR] tiftoimage: only non-inverted 8-bit signed images are supported\n");
+			success = false;
+			goto cleanup;
+		}
+	}
+
 	// 4. create image
 	for (uint32_t j = 0; j < numcomps; j++) {
 		cmptparm[j].prec = tiBps;
@@ -1374,7 +1382,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	}
 
 	// 9. read pixel data
-	if (isSigned && image->comps[0].sgnd)
+	if (isSigned)
 		success = success && readTiffPixelsSigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
 	else
 		success = success && readTiffPixelsUnsigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
