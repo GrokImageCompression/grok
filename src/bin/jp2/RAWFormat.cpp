@@ -62,16 +62,65 @@
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
-	(void)compressionParam;
-	(void)verbose;
-	return encode_common(image, filename, bigEndian,verbose) ? true : false;
+// swap endian for 16 bit int
+template<typename T> static inline T swap(T x)
+{
+	return (T)(((x >> 8) & 0x00ff) | ((x & 0x00ff) << 8));
 }
-opj_image_t* RAWFormat::decode(const char* filename, opj_cparameters_t *parameters) {
-	return decode_common(filename, parameters, bigEndian);
+// no-op specialization for 8 bit
+template<> inline uint8_t swap(uint8_t x)
+{
+	return x;
+}
+// no-op specialization for 8 bit
+template<> inline int8_t swap(int8_t x)
+{
+	return x;
+}
+template<typename T> static inline T endian(T x, bool fromBigEndian){
+
+#ifdef GROK_BIG_ENDIAN
+	if (!fromBigEndian)
+	   return swap<T>(x);
+#else
+	if (fromBigEndian)
+	   return swap<T>(x);
+#endif
+	return x;
 }
 
-opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *parameters, bool big_endian)
+bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+	(void)compressionParam;
+	return imagetoraw(image, filename, bigEndian,verbose) ? true : false;
+}
+opj_image_t* RAWFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+	return rawtoimage(filename, parameters, bigEndian);
+}
+
+template<typename T> static bool readBytes(FILE *rawFile, bool fromBigEndian,
+										int32_t* ptr,
+										uint64_t nloop){
+	const size_t bufSize = 4096;
+	uint8_t buf[bufSize];
+
+	for (uint64_t i = 0; i < nloop; i+=bufSize) {
+		size_t ct = fread(buf, 1, bufSize, rawFile);
+		if (!ct)
+			return false;
+		uint8_t *inPtr = buf;
+		for (size_t j = 0; j < ct; j += sizeof(T)){
+		    T* value = (T*)(inPtr);
+		    *(ptr++) = endian<T>(*value, fromBigEndian);
+		    inPtr += sizeof(T);
+		}
+	}
+
+	return true;
+}
+
+opj_image_t* RAWFormat::rawtoimage(const char *filename,
+										opj_cparameters_t *parameters,
+										bool big_endian)
 {
 	bool readFromStdin = grk::useStdio(filename);
 	raw_cparameters_t *raw_cp = &parameters->raw_cp;
@@ -84,6 +133,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	opj_image_cmptparm_t *cmptparm;
 	opj_image_t * image = nullptr;
 	unsigned short ch;
+	bool success = true;
 
 	if (!(raw_cp->rawWidth && raw_cp->rawHeight && raw_cp->rawComp && raw_cp->rawBitDepth)) {
 		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
@@ -104,6 +154,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 		f = fopen(filename, "rb");
 		if (!f) {
 			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
+			success = false;
 			goto cleanup;
 		}
 	}
@@ -125,6 +176,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
 	if (!cmptparm) {
 		fprintf(stderr, "[ERROR] Failed to allocate image components parameters !!\n");
+		success = false;
 		goto cleanup;
 	}
 	/* initialize image components */
@@ -140,6 +192,7 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	image = opj_image_create(numcomps, &cmptparm[0], color_space);
 	free(cmptparm);
 	if (!image) {
+		success = false;
 		goto cleanup;
 	}
 	/* set image offset and reference grid */
@@ -149,53 +202,40 @@ opj_image_t* RAWFormat::decode_common(const char *filename, opj_cparameters_t *p
 	image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
 
 	if (raw_cp->rawBitDepth <= 8) {
-		unsigned char value = 0;
 		for (compno = 0; compno < numcomps; compno++) {
-			uint32_t nloop = (w*h) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
-			for (i = 0; i < nloop; i++) {
-				if (!fread(&value, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
-					opj_image_destroy(image);
-					image = nullptr;
-					goto cleanup;
-				}
-				image->comps[compno].data[i] = raw_cp->rawSigned ? (char)value : value;
+			int32_t *ptr = image->comps[compno].data;
+			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			bool rc;
+			if (raw_cp->rawSigned)
+				rc = readBytes<int8_t>(f, big_endian, ptr,nloop);
+			else
+				rc = readBytes<uint8_t>(f, big_endian, ptr,nloop);
+			if (!rc){
+				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
+				success = false;
+				goto cleanup;
 			}
 		}
 	}
 	else if (raw_cp->rawBitDepth <= 16) {
-		unsigned short value;
 		for (compno = 0; compno < numcomps; compno++) {
-			uint32_t nloop = (w*h) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
-			for (i = 0; i < nloop; i++) {
-				unsigned char temp1;
-				unsigned char temp2;
-				if (!fread(&temp1, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
-					opj_image_destroy(image);
-					image = nullptr;
-					goto cleanup;
-				}
-				if (!fread(&temp2, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
-					opj_image_destroy(image);
-					image = nullptr;
-					goto cleanup;
-				}
-				if (big_endian) {
-					value = (unsigned short)((temp1 << 8) + temp2);
-				}
-				else {
-					value = (unsigned short)((temp2 << 8) + temp1);
-				}
-				image->comps[compno].data[i] = raw_cp->rawSigned ? (short)value : value;
+			auto ptr = image->comps[compno].data;
+			uint64_t nloop = ((uint64_t)w*h*sizeof(uint16_t)) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			bool rc;
+			if (raw_cp->rawSigned)
+				rc = readBytes<int16_t>(f, big_endian, ptr,nloop);
+			else
+				rc = readBytes<uint16_t>(f, big_endian, ptr,nloop);
+			if (!rc){
+				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
+				success = false;
+				goto cleanup;
 			}
 		}
 	}
 	else {
 		fprintf(stderr, "[ERROR] Grok cannot encode raw components with bit depth higher than 16 bits.\n");
-		opj_image_destroy(image);
-		image = nullptr;
+		success = false;
 		goto cleanup;
 	}
 
@@ -210,24 +250,63 @@ cleanup:
 			image = nullptr;
 		}
 	}
+	if (!success){
+		opj_image_destroy(image);
+		image = nullptr;
+	}
 	return image;
 }
 
-int RAWFormat::encode_common(opj_image_t * image, 
+template<typename T> static bool writeBytes(FILE *rawFile, bool fromBigEndian,
+										int32_t* ptr,
+										uint32_t w, uint32_t h,
+										int32_t lower, int32_t upper){
+	const size_t bufSize = 4096;
+	uint8_t buf[bufSize];
+	uint8_t *outPtr = buf;
+	size_t outCount = 0;
+
+	for (uint32_t line = 0; line < h; line++) {
+		for (uint32_t row = 0; row < w; row++) {
+			int32_t curr = *ptr++;
+			if (curr > upper)
+				curr = upper;
+			else if (curr < lower)
+				curr = lower;
+			T uc = endian<T>((T)(curr), fromBigEndian);
+			uint8_t* currPtr = (uint8_t*)&uc;
+			for (uint32_t i = 0; i < sizeof(T) && outCount < bufSize; ++i){
+				*outPtr++ = *currPtr++;
+				outCount++;
+			}
+			if (outCount == bufSize) {
+				size_t res = fwrite(buf, 1, bufSize, rawFile);
+				if (res != bufSize)
+					return false;
+				outCount = 0;
+				outPtr = buf;
+			}
+		}
+	}
+	//flush
+	if (outCount) {
+		size_t res = fwrite(buf, 1, outCount, rawFile);
+		if (res != outCount)
+			return false;
+	}
+
+	return true;
+}
+
+int RAWFormat::imagetoraw(opj_image_t * image, 
 							const char *outfile,
 							bool big_endian,
 							bool verbose)
 {
 	bool writeToStdout = grk::useStdio(outfile);
 	FILE *rawFile = nullptr;
-	size_t res;
 	unsigned int compno, numcomps;
-	int w, h, fails;
-	int line, row, curr, mask;
-	int *ptr;
-	unsigned char uc;
-	(void)big_endian;
-
+	int fails;
 	if ((image->numcomps * image->x1 * image->y1) == 0) {
 		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
 		return 1;
@@ -280,92 +359,31 @@ int RAWFormat::encode_common(opj_image_t * image,
 			fprintf(stdout, "Component %u characteristics: %dx%dx%d %s\n", compno, image->comps[compno].w,
 				image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
 
-		w = (int)image->comps[compno].w;
-		h = (int)image->comps[compno].h;
+		auto w = image->comps[compno].w;
+		auto h = image->comps[compno].h;
+		bool sgnd = image->comps[compno].sgnd ;
+		auto prec = image->comps[compno].prec;
 
-		if (image->comps[compno].prec <= 8) {
-			if (image->comps[compno].sgnd == 1) {
-				mask = (1 << image->comps[compno].prec) - 1;
-				ptr = image->comps[compno].data;
-				for (line = 0; line < h; line++) {
-					for (row = 0; row < w; row++) {
-						curr = *ptr;
-						if (curr > 127) curr = 127;
-						else if (curr < -128) curr = -128;
-						uc = (unsigned char)(curr & mask);
-						res = fwrite(&uc, 1, 1, rawFile);
-						if (res < 1) {
-							fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
-							goto beach;
-						}
-						ptr++;
-					}
-				}
-			}
-			else if (image->comps[compno].sgnd == 0) {
-				mask = (1 << image->comps[compno].prec) - 1;
-				ptr = image->comps[compno].data;
-				for (line = 0; line < h; line++) {
-					for (row = 0; row < w; row++) {
-						curr = *ptr;
-						if (curr > 255) curr = 255;
-						else if (curr < 0) curr = 0;
-						uc = (unsigned char)(curr & mask);
-						res = fwrite(&uc, 1, 1, rawFile);
-						if (res < 1) {
-							fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
-							goto beach;
-						}
-						ptr++;
-					}
-				}
-			}
+		int32_t lower = sgnd ? -(1 << (prec-1)) : 0;
+		int32_t upper = sgnd? -lower -1 : (1 << image->comps[compno].prec) - 1;
+		int32_t *ptr = image->comps[compno].data;
+
+		bool rc;
+		if (prec <= 8) {
+			if (sgnd)
+				rc = writeBytes<int8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+			else
+				rc = writeBytes<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+			if (!rc)
+				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
 		}
-		else if (image->comps[compno].prec <= 16) {
-			if (image->comps[compno].sgnd == 1) {
-				union {
-					signed short val;
-					signed char vals[2];
-				} uc16;
-				mask = (1 << image->comps[compno].prec) - 1;
-				ptr = image->comps[compno].data;
-				for (line = 0; line < h; line++) {
-					for (row = 0; row < w; row++) {
-						curr = *ptr;
-						if (curr > 32767) curr = 32767;
-						else if (curr < -32768) curr = -32768;
-						uc16.val = (signed short)(curr & mask);
-						res = fwrite(uc16.vals, 1, 2, rawFile);
-						if (res < 2) {
-							fprintf(stderr, "[ERROR] failed to write 2 byte for %s\n", outfile);
-							goto beach;
-						}
-						ptr++;
-					}
-				}
-			}
-			else if (image->comps[compno].sgnd == 0) {
-				union {
-					unsigned short val;
-					unsigned char vals[2];
-				} uc16;
-				mask = (1 << image->comps[compno].prec) - 1;
-				ptr = image->comps[compno].data;
-				for (line = 0; line < h; line++) {
-					for (row = 0; row < w; row++) {
-						curr = *ptr;
-						if (curr > 65535) curr = 65535;
-						else if (curr < 0) curr = 0;
-						uc16.val = (unsigned short)(curr & mask);
-						res = fwrite(uc16.vals, 1, 2, rawFile);
-						if (res < 2) {
-							fprintf(stderr, "[ERROR] failed to write 2 byte for %s\n", outfile);
-							goto beach;
-						}
-						ptr++;
-					}
-				}
-			}
+		else if (prec <= 16) {
+			if (sgnd)
+				rc = writeBytes<int16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+			else
+				rc = writeBytes<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+			if (!rc)
+				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
 		}
 		else if (image->comps[compno].prec <= 32) {
 			fprintf(stderr, "[ERROR] More than 16 bits per component no handled yet\n");
