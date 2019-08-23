@@ -93,11 +93,9 @@ static size_t grok_write_to_buffer(void * p_buffer,
     return p_nb_bytes;
 }
 
-static bool seek_from_buffer(int64_t p_nb_bytes,
+static bool seek_from_buffer(uint64_t p_nb_bytes,
                                  buf_info_t * p_source_buffer)
 {
-	if (p_nb_bytes < 0)
-		return false;
     if ((size_t)p_nb_bytes <  p_source_buffer->len) {
         p_source_buffer->off = p_nb_bytes;
     } else {

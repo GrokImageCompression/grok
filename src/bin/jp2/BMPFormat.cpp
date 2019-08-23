@@ -647,17 +647,17 @@ static opj_image_t* bmptoimage(const char *filename,
 
 	if (Info_h.biWidth == 0 || Info_h.biHeight == 0) 
 		goto cleanup;
-	if (Info_h.biBitCount > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) 
+	if (Info_h.biBitCount > (((uint32_t)-1) - 31) / Info_h.biWidth)
 		goto cleanup;
 
 	stride = ((Info_h.biWidth * Info_h.biBitCount + 31U) / 32U) * 4U; /* rows are aligned on 32bits */
 	if (Info_h.biBitCount == 4 && Info_h.biCompression == 2) { /* RLE 4 gets decoded as 8 bits data for now... */
-		if (8 > (((OPJ_UINT32)-1) - 31) / Info_h.biWidth) 
+		if (8 > (((uint32_t)-1) - 31) / Info_h.biWidth)
 			goto cleanup;
 		stride = ((Info_h.biWidth * 8U + 31U) / 32U) * 4U;
 	}
 
-	if (stride > ((OPJ_UINT32)-1) / sizeof(OPJ_UINT8) / Info_h.biHeight) 
+	if (stride > ((uint32_t)-1) / sizeof(uint8_t) / Info_h.biHeight)
 		goto cleanup;
 	pData = (uint8_t *)calloc(1, stride * Info_h.biHeight * sizeof(uint8_t));
 	if (pData == nullptr) 

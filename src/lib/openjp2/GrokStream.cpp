@@ -579,10 +579,7 @@ void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream,
 	}
 	l_stream->m_write_fn = p_function;
 }
-void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream,	opj_stream_skip_fn p_function) {
-	ARG_NOT_USED(p_stream);
-	ARG_NOT_USED(p_function);
-}
+
 void OPJ_CALLCONV opj_stream_set_user_data(opj_stream_t* p_stream,
 	void * p_data,
 	opj_stream_free_user_data_fn p_function) {

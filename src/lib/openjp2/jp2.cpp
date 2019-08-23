@@ -621,7 +621,7 @@ static bool jp2_read_ihdr( jp2_t *jp2,
 
 	if (jp2->comps != nullptr) {
 		event_msg(p_manager, EVT_WARNING, "Ignoring ihdr box. First ihdr box already read\n");
-		return OPJ_TRUE;
+		return true;
 	}
 	
 	if (p_image_header_size != 14) {
@@ -696,11 +696,9 @@ static bool jp2_read_ihdr( jp2_t *jp2,
 }
 
 static uint8_t * jp2_write_ihdr(jp2_t *jp2,
-                                    uint32_t * p_nb_bytes_written
-                                   )
+                                    uint32_t * p_nb_bytes_written)
 {
     uint8_t * l_ihdr_data,* l_current_ihdr_ptr;
-
     
     assert(jp2 != nullptr);
     assert(p_nb_bytes_written != nullptr);
@@ -754,12 +752,9 @@ static uint8_t * jp2_write_ihdr(jp2_t *jp2,
     return l_ihdr_data;
 }
 
-
 static uint8_t * jp2_write_buffer(uint32_t boxId,
 									jp2_buffer_t* buffer,
 									uint32_t * p_nb_bytes_written){
-
-	
 	assert(p_nb_bytes_written != nullptr);
 
 	/* need 8 bytes for box plus buffer->len bytes for buffer*/
@@ -783,10 +778,9 @@ static uint8_t * jp2_write_buffer(uint32_t boxId,
 	memcpy(l_current_ptr, buffer->buffer, buffer->len);				
 
 	*p_nb_bytes_written = total_size;
+
 	return l_data;
-
 }
-
 
 static bool jp2_read_xml(jp2_t *jp2,
 							uint8_t *p_xml_data,
@@ -808,18 +802,14 @@ static bool jp2_read_xml(jp2_t *jp2,
 
 static uint8_t * jp2_write_xml(jp2_t *jp2,
 									uint32_t * p_nb_bytes_written) {
-
-	
 	assert(jp2 != nullptr);
 	return jp2_write_buffer(JP2_XML, &jp2->xml, p_nb_bytes_written);
 }
-
 
 static bool jp2_read_uuid(jp2_t *jp2,
 								uint8_t *p_header_data,
 								uint32_t p_header_size,
 								event_mgr_t * p_manager) {
-
 	if (!p_header_data || !p_header_size || p_header_size < 16) {
 		return false;
 	}
@@ -836,8 +826,8 @@ static bool jp2_read_uuid(jp2_t *jp2,
 		jp2->numUuids++;
 		return true;
 	}
-	return false;
 
+	return false;
 }
 
 double calc_res(uint16_t num, uint16_t den, int8_t exponent) {
@@ -1100,12 +1090,10 @@ static uint8_t * jp2_write_bpcc(	jp2_t *jp2,
 static bool jp2_read_bpcc( jp2_t *jp2,
                                uint8_t * p_bpc_header_data,
                                uint32_t p_bpc_header_size,
-                               event_mgr_t * p_manager
-                             )
+                               event_mgr_t * p_manager)
 {
     uint32_t i;
 
-    
     assert(p_bpc_header_data != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -1633,7 +1621,6 @@ static bool jp2_read_cmap(	jp2_t * jp2,
     assert(jp2 != nullptr);
     assert(p_cmap_header_data != nullptr);
     assert(p_manager != nullptr);
-    (void)p_cmap_header_size;
 
     /* Need nr_channels: */
     if(jp2->color.jp2_pclr == nullptr) {
@@ -2060,33 +2047,23 @@ static bool jp2_write_jp2h(jp2_t *jp2,
 
     memset(l_writers,0,sizeof(l_writers));
 
-    if (jp2->bpc == 255) {
-        l_writers[l_nb_writers++].handler = jp2_write_ihdr;
+    l_writers[l_nb_writers++].handler = jp2_write_ihdr;
+    if (jp2->bpc == 255)
         l_writers[l_nb_writers++].handler = jp2_write_bpcc;
-        l_writers[l_nb_writers++].handler = jp2_write_colr;
-    } else {
-        l_writers[l_nb_writers++].handler = jp2_write_ihdr;
-        l_writers[l_nb_writers++].handler = jp2_write_colr;
-    }
-
-    if (jp2->color.jp2_cdef != nullptr) {
+    l_writers[l_nb_writers++].handler = jp2_write_colr;
+    if (jp2->color.jp2_cdef){
         l_writers[l_nb_writers++].handler = jp2_write_cdef;
     }
-
 	if (jp2->has_display_resolution || jp2->has_capture_resolution) {
 		bool storeCapture = jp2->capture_resolution[0] > 0 &&
 			jp2->capture_resolution[1] > 0;
-
 		bool storeDisplay = jp2->display_resolution[0] > 0 &&
 			jp2->display_resolution[1] > 0;
-
 		if (storeCapture || storeDisplay)
 			l_writers[l_nb_writers++].handler = jp2_write_res;
 	}
-	if (jp2->xml.buffer && jp2->xml.len) {
+	if (jp2->xml.buffer && jp2->xml.len)
 		l_writers[l_nb_writers++].handler = jp2_write_xml;
-	}
-	
     l_current_writer = l_writers;
     for (i=0; i<l_nb_writers; ++i) {
         l_current_writer->m_data = l_current_writer->handler(jp2,&(l_current_writer->m_size));
@@ -2095,7 +2072,6 @@ static bool jp2_write_jp2h(jp2_t *jp2,
             l_result = false;
             break;
         }
-
         l_jp2h_size += l_current_writer->m_size;
         ++l_current_writer;
     }
@@ -2108,7 +2084,6 @@ static bool jp2_write_jp2h(jp2_t *jp2,
             }
             ++l_current_writer;
         }
-
         return false;
     }
 
@@ -2171,7 +2146,6 @@ static bool jp2_write_uuids(jp2_t *jp2,
 	}
 	return true;
 }
-
 
 static bool jp2_write_ftyp(jp2_t *jp2,
                                GrokStream *cio,
@@ -2259,7 +2233,6 @@ static bool jp2_write_jp(	jp2_t *jp2,
                                 event_mgr_t * p_manager )
 {
 	(void)jp2;
-  
     assert(cio != nullptr);
     assert(jp2 != nullptr);
     assert(p_manager != nullptr);
@@ -2306,7 +2279,6 @@ bool jp2_setup_encoder(	jp2_t *jp2,
     uint32_t alpha_count;
     uint32_t color_channels = 0U;
     uint32_t alpha_channel = 0U;
-
 
     if(!jp2 || !parameters || !image)
         return false;
@@ -2403,7 +2375,6 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 		image->xmp_buf = nullptr;
 		image->xmp_len = 0;
 	}
-
 	
     /* Component Definition box */
     /* FIXME not provided by parameters */
