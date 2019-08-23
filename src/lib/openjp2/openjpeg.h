@@ -407,17 +407,17 @@ typedef struct raw_comp_cparameters {
 /*@{*/
 typedef struct raw_cparameters {
 	/** width of the raw image */
-	uint32_t rawWidth;
+	uint32_t width;
 	/** height of the raw image */
-	uint32_t rawHeight;
+	uint32_t height;
 	/** number of components of the raw image */
-	uint32_t rawComp;
+	uint32_t numcomps;
 	/** bit depth of the raw image */
-	uint32_t rawBitDepth;
+	uint32_t prec;
 	/** signed/unsigned raw image */
-	bool rawSigned;
+	bool sgnd;
 	/** raw components parameters */
-	raw_comp_cparameters_t *rawComps;
+	raw_comp_cparameters_t *comps;
 	/*@}*/
 } raw_cparameters_t;
 

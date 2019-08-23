@@ -644,7 +644,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		cmd.parse(argc, argv);
 
 		img_fol->set_out_format = false;
-		parameters->raw_cp.rawWidth = 0;
+		parameters->raw_cp.width = 0;
 
 
 		if (verboseArg.isSet()) {
@@ -860,20 +860,20 @@ static int parse_cmdline_encoder_ex(int argc,
 				int compno;
 				int lastdx = 1;
 				int lastdy = 1;
-				raw_cp->rawWidth = width;
-				raw_cp->rawHeight = height;
-				raw_cp->rawComp = ncomp;
-				raw_cp->rawBitDepth = bitdepth;
-				raw_cp->rawSigned = raw_signed;
-				raw_cp->rawComps = (raw_comp_cparameters_t*)malloc(((uint32_t)(ncomp)) * sizeof(raw_comp_cparameters_t));
-				if (raw_cp->rawComps == nullptr) {
+				raw_cp->width = width;
+				raw_cp->height = height;
+				raw_cp->numcomps = ncomp;
+				raw_cp->prec = bitdepth;
+				raw_cp->sgnd = raw_signed;
+				raw_cp->comps = (raw_comp_cparameters_t*)malloc(((uint32_t)(ncomp)) * sizeof(raw_comp_cparameters_t));
+				if (raw_cp->comps == nullptr) {
 					free(substr1);
 					return 1;
 				}
 				for (compno = 0; compno < ncomp && !wrong; compno++) {
 					if (substr2 == nullptr) {
-						raw_cp->rawComps[compno].dx = lastdx;
-						raw_cp->rawComps[compno].dy = lastdy;
+						raw_cp->comps[compno].dx = lastdx;
+						raw_cp->comps[compno].dy = lastdy;
 					}
 					else {
 						int dx, dy;
@@ -882,8 +882,8 @@ static int parse_cmdline_encoder_ex(int argc,
 							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
 								lastdx = dx;
 								lastdy = dy;
-								raw_cp->rawComps[compno].dx = dx;
-								raw_cp->rawComps[compno].dy = dy;
+								raw_cp->comps[compno].dx = dx;
+								raw_cp->comps[compno].dy = dy;
 								substr2 = nullptr;
 							}
 							else {
@@ -892,8 +892,8 @@ static int parse_cmdline_encoder_ex(int argc,
 						}
 						else {
 							if (sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2) == 3) {
-								raw_cp->rawComps[compno].dx = dx;
-								raw_cp->rawComps[compno].dy = dy;
+								raw_cp->comps[compno].dx = dx;
+								raw_cp->comps[compno].dy = dy;
 							}
 							else {
 								wrong = true;
@@ -1285,8 +1285,8 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
     }
 
-    if ( (parameters->decod_format == RAW_DFMT && parameters->raw_cp.rawWidth == 0)
-            || (parameters->decod_format == RAWL_DFMT && parameters->raw_cp.rawWidth == 0)) {
+    if ( (parameters->decod_format == RAW_DFMT && parameters->raw_cp.width == 0)
+            || (parameters->decod_format == RAWL_DFMT && parameters->raw_cp.width == 0)) {
         fprintf(stderr,"[ERROR] invalid raw image parameters\n");
         fprintf(stderr,"Please use the Format option -F:\n");
         fprintf(stderr,"-F rawWidth,rawHeight,rawComp,rawBitDepth,s/u (Signed/Unsigned)\n");
@@ -1326,8 +1326,8 @@ static int parse_cmdline_encoder_ex(int argc,
 
     /* If subsampled image is provided, automatically disable MCT */
     if ( ((parameters->decod_format == RAW_DFMT) || (parameters->decod_format == RAWL_DFMT))
-            && (   ((parameters->raw_cp.rawComp > 1 ) && ((parameters->raw_cp.rawComps[1].dx > 1) || (parameters->raw_cp.rawComps[1].dy > 1)))
-                   || ((parameters->raw_cp.rawComp > 2 ) && ((parameters->raw_cp.rawComps[2].dx > 1) || (parameters->raw_cp.rawComps[2].dy > 1)))
+            && (   ((parameters->raw_cp.numcomps > 1 ) && ((parameters->raw_cp.comps[1].dx > 1) || (parameters->raw_cp.comps[1].dy > 1)))
+                   || ((parameters->raw_cp.numcomps > 2 ) && ((parameters->raw_cp.comps[2].dx > 1) || (parameters->raw_cp.comps[2].dy > 1)))
                )) {
         parameters->tcp_mct = 0;
     }
@@ -1415,8 +1415,8 @@ struct CompressInitParams {
 			if (parameters.cp_comment[i])
 				free(parameters.cp_comment[i]);
 		}
-		if (parameters.raw_cp.rawComps)
-			free(parameters.raw_cp.rawComps);
+		if (parameters.raw_cp.comps)
+			free(parameters.raw_cp.comps);
 		if (img_fol.imgdirpath)
 			free(img_fol.imgdirpath);
 		if (out_fol.imgdirpath)
