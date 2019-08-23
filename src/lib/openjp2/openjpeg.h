@@ -115,29 +115,6 @@ defined with this macro as being exported.
 #include <stdint.h>
 #include <stdio.h>
 
-// FOR BACKWARDS COMPATIBILITY  /////////////////////////////////////////
-
-typedef bool OPJ_BOOL;
-#define OPJ_TRUE true
-#define OPJ_FALSE false
-
-typedef char          OPJ_CHAR;
-typedef float         OPJ_FLOAT32;
-typedef double        OPJ_FLOAT64;
-typedef unsigned char OPJ_BYTE;
-
-typedef int8_t   OPJ_INT8;
-typedef uint8_t  OPJ_UINT8;
-typedef int16_t  OPJ_INT16;
-typedef uint16_t OPJ_UINT16;
-typedef int32_t  OPJ_INT32;
-typedef uint32_t OPJ_UINT32;
-typedef int64_t  OPJ_INT64;
-typedef uint64_t OPJ_UINT64;
-
-typedef int64_t  OPJ_OFF_T; 
-typedef size_t   OPJ_SIZE_T;
- ///////////////////////////////////////////////////////////////////////////
 
 #define OPJ_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 // note: range for number of decomposition levels is 0-32
@@ -154,28 +131,6 @@ typedef size_t   OPJ_SIZE_T;
 #define OPJ_J2K_TH_IND		32	/**< Tile index based on the current tile */
 #define OPJ_JP2_INFO		128	/**< JP2 file information */
 #define OPJ_JP2_IND			256	/**< JP2 file index */
-
-/**
-* DEPRECATED: use RSIZ, OPJ_PROFILE_* and OPJ_EXTENSION_* instead
-* Rsiz Capabilities
-* */
-typedef enum RSIZ_CAPABILITIES {
-	OPJ_STD_RSIZ = 0,		/** Standard JPEG2000 profile*/
-	OPJ_CINEMA2K = 3,		/** Profile name for a 2K image*/
-	OPJ_CINEMA4K = 4,		/** Profile name for a 4K image*/
-	OPJ_MCT = 0x8100
-} OPJ_RSIZ_CAPABILITIES;
-
-/**
-* DEPRECATED: use RSIZ, OPJ_PROFILE_* and OPJ_EXTENSION_* instead
-* Digital cinema operation mode
-* */
-typedef enum CINEMA_MODE {
-	OPJ_OFF = 0,			/** Not Digital Cinema*/
-	OPJ_CINEMA2K_24 = 1,	/** 2K Digital Cinema at 24 fps*/
-	OPJ_CINEMA2K_48 = 2,	/** 2K Digital Cinema at 48 fps*/
-	OPJ_CINEMA4K_24 = 3		/** 4K Digital Cinema at 24 fps*/
-}OPJ_CINEMA_MODE;
 
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMD)
@@ -439,8 +394,6 @@ typedef struct opj_cparameters {
     uint32_t cp_disto_alloc;
     /** allocation by fixed_quality */
     uint32_t cp_fixed_quality;
-	// Legacy: DO NOT USE !!!!!
-	uint32_t cp_fixed_alloc;
     /** comment for coding */
     char *cp_comment[OPJ_NUM_COMMENTS_SUPPORTED];
 	size_t cp_comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
@@ -711,8 +664,6 @@ typedef struct opj_dparameters {
     uint32_t nb_tile_to_decode;
     uint32_t flags;
 	uint32_t numThreads;
-	// do not use : solely for backwards-compatibility
-	uint32_t jpwl_exp_comps;
 } opj_dparameters_t;
 
 typedef enum opj_prec_mode {
@@ -813,17 +764,9 @@ typedef size_t (* opj_stream_write_fn) (void * p_buffer,
 										void * p_user_data) ;
 
 /*
- * Callback function prototype for skip function.
- * Not currently used.
+ * Callback function prototype for (absolute) seek function.
  */
-typedef int64_t(* opj_stream_skip_fn) (int64_t p_nb_bytes, void * p_user_data) ;
-
-/*
- * Callback function prototype for seek function. 
- * Important!!! Implementation should be an absolute seek
- * from beginning of stream, with p_nb_bytes >= 0
- */
-typedef bool (* opj_stream_seek_fn) (int64_t p_nb_bytes, void * p_user_data) ;
+typedef bool (* opj_stream_seek_fn) (uint64_t p_nb_bytes, void * p_user_data) ;
 
 /*
  * Callback function prototype for free user data function
@@ -929,8 +872,6 @@ typedef struct opj_image_comptparm {
     uint32_t x0;
     /** y component offset compared to the whole image */
     uint32_t y0;
-	// LEGACY - DO NOT USE
-	uint32_t bpp;
     /** precision */
     uint32_t prec;
     /** signed (1) / unsigned (0) */
@@ -1101,7 +1042,7 @@ typedef struct opj_tccp_info {
     /** number of guard bits */
     uint32_t numgbits;
     /** Region Of Interest shift */
-    int32_t roishift;
+    uint32_t roishift;
     /** precinct width */
     uint32_t prcw[OPJ_J2K_MAXRLVLS];
     /** precinct height */
@@ -1254,6 +1195,13 @@ OPJ_API void OPJ_CALLCONV opj_image_destroy(opj_image_t *image);
 */
 OPJ_API opj_image_t* OPJ_CALLCONV opj_image_tile_create(uint32_t numcmpts, opj_image_cmptparm_t *cmptparms, OPJ_COLOR_SPACE clrspc);
 
+
+OPJ_API void OPJ_CALLCONV opj_image_all_components_data_free(opj_image_t* image);
+
+OPJ_API void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* image);
+
+OPJ_API bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* image);
+
 /*
 =================================
    stream functions definitions
@@ -1308,14 +1256,6 @@ OPJ_API void OPJ_CALLCONV opj_stream_set_zero_copy_read_function(opj_stream_t* p
  * @param		p_function	the function to use a write function.
 */
 OPJ_API void OPJ_CALLCONV opj_stream_set_write_function(opj_stream_t* p_stream, opj_stream_write_fn p_function);
-
-/**
- * Sets the given function to be used as a skip function.
- * Deprecated - not used anymore
- * @param		p_stream	the stream to modify
- * @param		p_function	the function to use a skip function.
-*/
-OPJ_API void OPJ_CALLCONV opj_stream_set_skip_function(opj_stream_t* p_stream, opj_stream_skip_fn p_function);
 
 /**
  * Sets the given function to be used as a seek function, the stream is then seekable.
@@ -1827,11 +1767,6 @@ OPJ_API bool OPJ_CALLCONV opj_set_MCT( opj_cparameters_t *parameters,
                                        int32_t * p_dc_shift,
                                        uint32_t pNbComp);
 
-OPJ_API void OPJ_CALLCONV opj_image_all_components_data_free(opj_image_t* image);
-
-OPJ_API void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* image);
-
-OPJ_API bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* image);
 
 /*****************
 Plugin Interface

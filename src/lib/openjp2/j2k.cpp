@@ -3828,7 +3828,7 @@ static bool j2k_read_sot ( j2k_t *p_j2k,
 			"number of tile-parts (%d).\n", l_current_part, 
 			l_tcp->m_nb_tile_parts);
 		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
-		return OPJ_FALSE;
+		return false;
 	}
 
 
