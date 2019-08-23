@@ -135,7 +135,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	unsigned short ch;
 	bool success = true;
 
-	if (!(raw_cp->rawWidth && raw_cp->rawHeight && raw_cp->rawComp && raw_cp->rawBitDepth)) {
+	if (!(raw_cp->width && raw_cp->height && raw_cp->numcomps && raw_cp->prec)) {
 		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
 		fprintf(stderr, "Please use the Format option -F:\n");
 		fprintf(stderr, "-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
@@ -158,7 +158,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 			goto cleanup;
 		}
 	}
-	numcomps = raw_cp->rawComp;
+	numcomps = raw_cp->numcomps;
 	if (numcomps == 1) {
 		color_space = OPJ_CLRSPC_GRAY;
 	}
@@ -171,8 +171,8 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	else {
 		color_space = OPJ_CLRSPC_UNKNOWN;
 	}
-	w = raw_cp->rawWidth;
-	h = raw_cp->rawHeight;
+	w = raw_cp->width;
+	h = raw_cp->height;
 	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
 	if (!cmptparm) {
 		fprintf(stderr, "[ERROR] Failed to allocate image components parameters !!\n");
@@ -181,10 +181,10 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	}
 	/* initialize image components */
 	for (i = 0; i < numcomps; i++) {
-		cmptparm[i].prec = raw_cp->rawBitDepth;
-		cmptparm[i].sgnd = raw_cp->rawSigned;
-		cmptparm[i].dx = subsampling_dx * raw_cp->rawComps[i].dx;
-		cmptparm[i].dy = subsampling_dy * raw_cp->rawComps[i].dy;
+		cmptparm[i].prec = raw_cp->prec;
+		cmptparm[i].sgnd = raw_cp->sgnd;
+		cmptparm[i].dx = subsampling_dx * raw_cp->comps[i].dx;
+		cmptparm[i].dy = subsampling_dy * raw_cp->comps[i].dy;
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
@@ -201,12 +201,12 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	image->x1 = parameters->image_offset_x0 + (w - 1) *	subsampling_dx + 1;
 	image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
 
-	if (raw_cp->rawBitDepth <= 8) {
+	if (raw_cp->prec <= 8) {
 		for (compno = 0; compno < numcomps; compno++) {
 			int32_t *ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
 			bool rc;
-			if (raw_cp->rawSigned)
+			if (raw_cp->sgnd)
 				rc = readBytes<int8_t>(f, big_endian, ptr,nloop);
 			else
 				rc = readBytes<uint8_t>(f, big_endian, ptr,nloop);
@@ -217,12 +217,12 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 			}
 		}
 	}
-	else if (raw_cp->rawBitDepth <= 16) {
+	else if (raw_cp->prec <= 16) {
 		for (compno = 0; compno < numcomps; compno++) {
 			auto ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t)w*h*sizeof(uint16_t)) / (raw_cp->rawComps[compno].dx*raw_cp->rawComps[compno].dy);
+			uint64_t nloop = ((uint64_t)w*h*sizeof(uint16_t)) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
 			bool rc;
-			if (raw_cp->rawSigned)
+			if (raw_cp->sgnd)
 				rc = readBytes<int16_t>(f, big_endian, ptr,nloop);
 			else
 				rc = readBytes<uint16_t>(f, big_endian, ptr,nloop);
