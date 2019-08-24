@@ -1355,10 +1355,7 @@ sample warning debug callback expecting no client object
 */
 static void warning_callback(const char *msg, void *client_data)
 {
-	bool verbose = true;
-	if (client_data)
-		verbose = *((bool*)client_data);
-	if (verbose)
+    (void)client_data;
     fprintf(stdout, "[WARNING] %s", msg);
 }
 /**
@@ -1366,10 +1363,7 @@ sample debug callback expecting no client object
 */
 static void info_callback(const char *msg, void *client_data)
 {
-	bool verbose = true;
-	if (client_data)
-		verbose = *((bool*)client_data);
-	if (verbose)
+    (void)client_data;
     fprintf(stdout, "[INFO] %s", msg);
 }
 
@@ -1809,8 +1803,10 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 	/* catch events using our callbacks and give a local context */
-	opj_set_info_handler(l_codec, info_callback, &parameters->verbose);
-	opj_set_warning_handler(l_codec, warning_callback, &parameters->verbose);
+	if (parameters->verbose) {
+		opj_set_info_handler(l_codec, info_callback, nullptr);
+		opj_set_warning_handler(l_codec, warning_callback, nullptr);
+	}
 	opj_set_error_handler(l_codec, error_callback, nullptr);
 
 	if (!opj_setup_encoder(l_codec, parameters, image)) {
