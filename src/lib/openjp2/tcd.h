@@ -244,6 +244,7 @@ struct tcd_precinct_t {
 
 	}
 	void initTagTrees(event_mgr_t* manager);
+	void deleteTagTrees();
 
 	void cleanupEncodeBlocks() {
 		if (!cblks.enc)
@@ -279,6 +280,7 @@ struct tcd_band_t {
 						bandno(0),
 						precincts(nullptr),
 						numPrecincts(0),
+						numAllocatedPrecincts(0),
 						numbps(0),
 						stepsize(0) {}
 
@@ -289,6 +291,7 @@ struct tcd_band_t {
 												bandno(rhs.bandno),
 												precincts(nullptr),
 												numPrecincts(rhs.numPrecincts),
+												numAllocatedPrecincts(rhs.numAllocatedPrecincts),
 												numbps(rhs.numbps),
 												stepsize(rhs.stepsize)
 	 {}
@@ -299,6 +302,7 @@ struct tcd_band_t {
     uint32_t bandno;
     tcd_precinct_t* precincts;	/* precinct information */
 	size_t numPrecincts;
+	size_t numAllocatedPrecincts;
     uint32_t numbps;
     float stepsize;
 };
