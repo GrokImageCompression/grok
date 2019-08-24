@@ -170,22 +170,16 @@ sample warning callback expecting a FILE* client object
 */
 static void warning_callback(const char *msg, void *client_data)
 {
-	bool verbose = true;
-	if (client_data)
-		verbose = *((bool*)client_data);
-	if (verbose)
-		fprintf(stdout, "[WARNING] %s", msg);
+	(void)client_data;
+	fprintf(stdout, "[WARNING] %s", msg);
 }
 /**
 sample debug callback expecting no client object
 */
 static void info_callback(const char *msg, void *client_data)
 {
-	bool verbose = true;
-	if (client_data)
-		verbose = *((bool*)client_data);
-	if (verbose)
-		fprintf(stdout, "[INFO] %s", msg);
+	(void)client_data;
+	fprintf(stdout, "[INFO] %s", msg);
 }
 
 
@@ -1463,8 +1457,10 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 			goto cleanup;
 		}
 		/* catch events using our callbacks and give a local context */
-		opj_set_info_handler(info->l_codec, info_callback, &parameters->verbose);
-		opj_set_warning_handler(info->l_codec, warning_callback, &parameters->verbose);
+		if (parameters->verbose) {
+			opj_set_info_handler(info->l_codec, info_callback, nullptr);
+			opj_set_warning_handler(info->l_codec, warning_callback, nullptr);
+		}
 		opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
 		if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
