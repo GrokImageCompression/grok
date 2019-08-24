@@ -2207,16 +2207,25 @@ static bool jp2_write_jp2c(jp2_t *jp2,
 	}
 
 	/* size of codestream */
-	uint32_t length = jp2->needs_xl_jp2c_box_length ? 1 : (uint32_t)(j2k_codestream_exit - jp2->j2k_codestream_offset);
-	if (!cio->write_int(length, p_manager)) {
+	uint64_t actualLength = j2k_codestream_exit - jp2->j2k_codestream_offset;
+	// initialize signalledLength to 0, indicating length was not known
+	// when file was written
+	uint32_t signaledLength = 0;
+	if (jp2->needs_xl_jp2c_box_length)
+		signaledLength = 1;
+	else {
+		if (actualLength < (uint64_t)1 << 32)
+			signaledLength = (uint32_t)actualLength;
+	}
+	if (!cio->write_int(signaledLength, p_manager)) {
 		return false;
 	}
 	if (!cio->write_int(JP2_JP2C, p_manager)) {
 		return false;
 	}
 	// XL box
-	if (length == 1) {
-		if (!cio->write_64(j2k_codestream_exit - jp2->j2k_codestream_offset, p_manager)) {
+	if (signaledLength == 1) {
+		if (!cio->write_64(actualLength, p_manager)) {
 			return false;
 		}
 	}
@@ -2824,6 +2833,7 @@ bool jp2_start_compress(jp2_t *jp2,
         return false;
     }
 
+    // estimate if codec stream may be larger than 2^32 bytes
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
