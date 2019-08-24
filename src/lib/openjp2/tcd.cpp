@@ -1009,13 +1009,13 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
 
                 if (!l_band->precincts && (l_nb_precincts > 0U)) {
                     l_band->precincts = new tcd_precinct_t[l_nb_precincts];
-                } else if (l_band->numPrecincts < l_nb_precincts) {
-
+                    l_band->numAllocatedPrecincts = l_nb_precincts;
+                } else if (l_band->numAllocatedPrecincts < l_nb_precincts) {
                     tcd_precinct_t * new_precincts = new tcd_precinct_t[l_nb_precincts];
-                    for (uint32_t i = 0; i < l_band->numPrecincts; ++i)
-                    	new_precincts[i] = l_band->precincts[i];
+                    if (l_band->precincts)
+                    	delete[] l_band->precincts;
                     l_band->precincts = new_precincts;
-
+                    l_band->numAllocatedPrecincts = l_nb_precincts;
                 }
 				l_band->numPrecincts = l_nb_precincts;
                 l_current_precinct = l_band->precincts;
@@ -1488,27 +1488,20 @@ static void tcd_free_tile(tcd_t *p_tcd)
     }
 
     l_tile_comp = l_tile->comps;
-
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
         l_res = l_tile_comp->resolutions;
         if (l_res) {
-
             l_nb_resolutions = l_tile_comp->numresolutions ;
             for (resno = 0; resno < l_nb_resolutions; ++resno) {
                 l_band = l_res->bands;
                 for     (bandno = 0; bandno < 3; ++bandno) {
                     l_precinct = l_band->precincts;
                     if (l_precinct) {
-
-						for (precno = 0; precno < l_band->numPrecincts; ++precno) {
-							delete l_precinct->incltree;
-                            l_precinct->incltree = nullptr;
-							delete l_precinct->imsbtree;
-                            l_precinct->imsbtree = nullptr;
+						for (precno = 0; precno < l_band->numAllocatedPrecincts; ++precno) {
+							l_precinct->deleteTagTrees();
                             (*l_tcd_code_block_deallocate) (l_precinct);
                             ++l_precinct;
                         }
-
                         delete[] l_band->precincts;
                         l_band->precincts = nullptr;
                     }
@@ -1516,16 +1509,13 @@ static void tcd_free_tile(tcd_t *p_tcd)
                 } /* for (resno */
                 ++l_res;
             }
-
             delete[] l_tile_comp->resolutions;
             l_tile_comp->resolutions = nullptr;
         }
-
         tile_buf_destroy_component(l_tile_comp->buf);
         l_tile_comp->buf = nullptr;
         ++l_tile_comp;
     }
-
     grok_free(l_tile->comps);
     l_tile->comps = nullptr;
     grok_free(p_tcd->tile);
@@ -2358,6 +2348,16 @@ void tcd_cblk_dec_t::cleanup() {
 	packet_length_info = nullptr;
 #endif
 }
+
+void tcd_precinct_t::deleteTagTrees(){
+	if (incltree)
+		delete incltree;
+	incltree = nullptr;
+	if (imsbtree)
+		delete imsbtree;
+	imsbtree = nullptr;
+}
+
 void tcd_precinct_t::initTagTrees(event_mgr_t* manager) {
 	
 	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
