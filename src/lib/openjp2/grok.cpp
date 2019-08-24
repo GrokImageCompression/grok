@@ -603,7 +603,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         parameters->tcp_numlayers = 0;
         parameters->cp_disto_alloc = 0;
         parameters->cp_fixed_quality = 0;
-		parameters->numThreads = 8;
+		parameters->numThreads = std::thread::hardware_concurrency();;
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
     }
