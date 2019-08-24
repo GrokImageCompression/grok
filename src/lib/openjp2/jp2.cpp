@@ -2200,7 +2200,7 @@ static bool jp2_write_jp2c(jp2_t *jp2,
     assert(p_manager != nullptr);
     assert(cio->has_seek());
 
-	int64_t j2k_codestream_exit = cio->tell();
+	uint64_t j2k_codestream_exit = cio->tell();
 	if (!cio->seek(jp2->j2k_codestream_offset, p_manager)) {
 		event_msg(p_manager, EVT_ERROR, "Failed to seek in the stream.\n");
 		return false;

@@ -194,7 +194,7 @@ struct jp2_t {
       as codec writers will need to extend those fields as new part
       of the standard are implemented.
     */
-    int64_t j2k_codestream_offset;
+    uint64_t j2k_codestream_offset;
 	bool needs_xl_jp2c_box_length;
     uint32_t jp2_state;
     uint32_t jp2_img_state;
