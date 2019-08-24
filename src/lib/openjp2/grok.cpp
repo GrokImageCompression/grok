@@ -866,7 +866,7 @@ bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* comp){
     int32_t* data = nullptr;
     if (!comp)
         return false;
-    data = (int32_t*)grok_aligned_malloc(comp->w * comp->h * sizeof(uint32_t));
+    data = (int32_t*)grok_aligned_malloc((uint64_t)comp->w * comp->h * sizeof(uint32_t));
     if (!data)
         return false;
     opj_image_single_component_data_free(comp);
