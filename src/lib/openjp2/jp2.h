@@ -200,8 +200,6 @@ struct jp2_t {
     uint32_t jp2_img_state;
     jp2_color_t color;
 
-    bool ignore_pclr_cmap_cdef;
-
 	bool  has_capture_resolution;
 	double capture_resolution[2];
 

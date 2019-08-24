@@ -1945,87 +1945,86 @@ bool jp2_decode(jp2_t *jp2,
         return false;
     }
 
-    if (!jp2->ignore_pclr_cmap_cdef) {
-        if (!jp2_check_color(p_image, &(jp2->color), p_manager)) {
-            return false;
-        }
+	if (!jp2_check_color(p_image, &(jp2->color), p_manager)) {
+		return false;
+	}
 
-        /* Set Image Color Space */
-        switch (jp2->enumcs){
-        case 12:
-        	p_image->color_space = OPJ_CLRSPC_CMYK;
-        	break;
-        case 14:
-           	if (jp2->color.icc_profile_buf){
-				if ( ((uint32_t *)jp2->color.icc_profile_buf)[1] == OPJ_DEFAULT_CIELAB_SPACE)
-					p_image->color_space = OPJ_CLRSPC_DEFAULT_CIE;
-				else
-					p_image->color_space = OPJ_CLRSPC_CUSTOM_CIE;
-        	} else {
-        		event_msg(p_manager, EVT_ERROR, "n");
-        		return false;
-        	}
-        	break;
-        case 16:
-        	p_image->color_space = OPJ_CLRSPC_SRGB;
-        	break;
-        case 17:
-        	p_image->color_space = OPJ_CLRSPC_GRAY;
-        	break;
-        case 18:
-        	p_image->color_space = OPJ_CLRSPC_SYCC;
-        	break;
-        case 24:
-        	p_image->color_space = OPJ_CLRSPC_EYCC;
-        	break;
-        default:
-        	p_image->color_space = OPJ_CLRSPC_UNKNOWN;
-        	break;
-        }
-        if (jp2->meth == 2 && jp2->color.icc_profile_buf){
-        	p_image->color_space = OPJ_CLRSPC_ICC;
-        }
-
-        if(jp2->color.jp2_pclr) {
-            /* Part 1, I.5.3.4: Either both or none : */
-            if( !jp2->color.jp2_pclr->cmap)
-                jp2_free_pclr(&(jp2->color));
-			else {
-				if (!jp2_apply_pclr(p_image, &(jp2->color), p_manager))
-					return false;
-			}
-        }
-
-        /* Apply channel definitions if needed */
-        if(jp2->color.jp2_cdef) {
-            jp2_apply_cdef(p_image, &(jp2->color), p_manager);
-        }
-
-		// retrieve icc profile
-        if(jp2->color.icc_profile_buf) {
-            p_image->icc_profile_buf = jp2->color.icc_profile_buf;
-            p_image->icc_profile_len = jp2->color.icc_profile_len;
-            jp2->color.icc_profile_buf = nullptr;
-            jp2->color.icc_profile_len = 0;
-        }
-
-		// retrieve special uuids
-		for (uint32_t i = 0; i < jp2->numUuids; ++i) {
-			auto uuid = jp2->uuids + i;
-			if (memcmp(uuid->uuid, IPTC_UUID, 16)==0) {
-				p_image->iptc_buf = uuid->buffer;
-				p_image->iptc_len = uuid->len;
-				uuid->buffer = nullptr;
-				uuid->len = 0;
-			}
-			else if (memcmp(uuid->uuid, XMP_UUID, 16)==0) {
-				p_image->xmp_buf = uuid->buffer;
-				p_image->xmp_len = uuid->len;
-				uuid->buffer = nullptr;
-				uuid->len = 0;
-			}
+	/* Set Image Color Space */
+	switch (jp2->enumcs){
+	case 12:
+		p_image->color_space = OPJ_CLRSPC_CMYK;
+		break;
+	case 14:
+		if (jp2->color.icc_profile_buf){
+			if ( ((uint32_t *)jp2->color.icc_profile_buf)[1] == OPJ_DEFAULT_CIELAB_SPACE)
+				p_image->color_space = OPJ_CLRSPC_DEFAULT_CIE;
+			else
+				p_image->color_space = OPJ_CLRSPC_CUSTOM_CIE;
+		} else {
+			event_msg(p_manager, EVT_ERROR, "n");
+			return false;
 		}
-    }
+		break;
+	case 16:
+		p_image->color_space = OPJ_CLRSPC_SRGB;
+		break;
+	case 17:
+		p_image->color_space = OPJ_CLRSPC_GRAY;
+		break;
+	case 18:
+		p_image->color_space = OPJ_CLRSPC_SYCC;
+		break;
+	case 24:
+		p_image->color_space = OPJ_CLRSPC_EYCC;
+		break;
+	default:
+		p_image->color_space = OPJ_CLRSPC_UNKNOWN;
+		break;
+	}
+	if (jp2->meth == 2 && jp2->color.icc_profile_buf){
+		p_image->color_space = OPJ_CLRSPC_ICC;
+	}
+
+	if(jp2->color.jp2_pclr) {
+		/* Part 1, I.5.3.4: Either both or none : */
+		if( !jp2->color.jp2_pclr->cmap)
+			jp2_free_pclr(&(jp2->color));
+		else {
+			if (!jp2_apply_pclr(p_image, &(jp2->color), p_manager))
+				return false;
+		}
+	}
+
+	/* Apply channel definitions if needed */
+	if(jp2->color.jp2_cdef) {
+		jp2_apply_cdef(p_image, &(jp2->color), p_manager);
+	}
+
+	// retrieve icc profile
+	if(jp2->color.icc_profile_buf) {
+		p_image->icc_profile_buf = jp2->color.icc_profile_buf;
+		p_image->icc_profile_len = jp2->color.icc_profile_len;
+		jp2->color.icc_profile_buf = nullptr;
+		jp2->color.icc_profile_len = 0;
+	}
+
+	// retrieve special uuids
+	for (uint32_t i = 0; i < jp2->numUuids; ++i) {
+		auto uuid = jp2->uuids + i;
+		if (memcmp(uuid->uuid, IPTC_UUID, 16)==0) {
+			p_image->iptc_buf = uuid->buffer;
+			p_image->iptc_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
+		}
+		else if (memcmp(uuid->uuid, XMP_UUID, 16)==0) {
+			p_image->xmp_buf = uuid->buffer;
+			p_image->xmp_len = uuid->len;
+			uuid->buffer = nullptr;
+			uuid->len = 0;
+		}
+	}
+
 
     return true;
 }
@@ -2270,7 +2269,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters)
 
     /* further JP2 initializations go here */
     jp2->color.jp2_has_colour_specification_box = 0;
-    jp2->ignore_pclr_cmap_cdef = parameters->flags & OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG;
+
 }
 
 /* ----------------------------------------------------------------------- */
