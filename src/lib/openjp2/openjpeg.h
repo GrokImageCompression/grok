@@ -617,8 +617,6 @@ typedef struct opj_header_info {
 
 } opj_header_info_t;
 
-#define OPJ_DPARAMETERS_IGNORE_PCLR_CMAP_CDEF_FLAG	0x0001
-
 /**
  * Decompression parameters
  * */
