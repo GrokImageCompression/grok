@@ -2827,7 +2827,7 @@ bool jp2_start_compress(jp2_t *jp2,
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
-		image_size += (uint64_t)((comp->w * comp->h) * (comp->prec/8.0));
+		image_size += (uint64_t)comp->w * comp->h * ((comp->prec + 7)/8);
 	}
 	jp2->needs_xl_jp2c_box_length = (image_size > (uint64_t)1 << 30) ? true : false;
 
