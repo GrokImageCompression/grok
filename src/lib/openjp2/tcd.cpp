@@ -1012,6 +1012,9 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     l_band->numAllocatedPrecincts = l_nb_precincts;
                 } else if (l_band->numAllocatedPrecincts < l_nb_precincts) {
                     tcd_precinct_t * new_precincts = new tcd_precinct_t[l_nb_precincts];
+                    for (int i = 0; i < l_band->numAllocatedPrecincts; ++i){
+                    	new_precincts[i] = l_band->precincts[i];
+                    }
                     if (l_band->precincts)
                     	delete[] l_band->precincts;
                     l_band->precincts = new_precincts;

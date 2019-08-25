@@ -251,12 +251,12 @@ struct tcd_precinct_t {
 			return;
 		for (uint64_t i = 0; i < (uint64_t)cw*ch; ++i)
 			(cblks.enc + i)->cleanup();
-		delete[] cblks.enc;
+		grok_free(cblks.blocks);
 	}
 	void cleanupDecodeBlocks() {
 		if (!cblks.dec)
 			return;
-		delete[] cblks.dec;
+		grok_free(cblks.blocks);
 	}
 
     uint32_t x0, y0, x1, y1;		/* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */

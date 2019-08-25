@@ -1722,17 +1722,12 @@ namespace grk {
 		uint32_t l_nb_segs = index + 1;
 
 		if (l_nb_segs > cblk->numSegmentsAllocated) {
-			tcd_seg_t* new_segs;
+			tcd_seg_t* 	new_segs = new tcd_seg_t[cblk->numSegmentsAllocated + cblk->numSegmentsAllocated];
+			for (int i = 0; i < cblk->numSegmentsAllocated; ++i)
+				new_segs[i] = cblk->segs[i];
 			cblk->numSegmentsAllocated += default_numbers_segments;
-
-			new_segs = (tcd_seg_t*)grok_realloc(cblk->segs, cblk->numSegmentsAllocated * sizeof(tcd_seg_t));
-			if (!new_segs) {
-				grok_free(cblk->segs);
-				cblk->segs = nullptr;
-				cblk->numSegmentsAllocated = 0;
-				/* event_msg(p_manager, EVT_ERROR, "Not enough memory to initialize segment %d\n", l_nb_segs); */
-				return false;
-			}
+			if (cblk->segs)
+				delete[] cblk->segs;
 			cblk->segs = new_segs;
 		}
 
