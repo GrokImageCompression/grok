@@ -18,9 +18,6 @@
 
 namespace grk {
 
-
-
-
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
@@ -136,5 +133,21 @@ void rect_t::grow2(int64_t boundaryx, int64_t boundaryy)
 	x1 += boundaryx;
 	y1 += boundaryy;
 }
+
+uint32_t hardware_concurrency(){
+	uint32_t ret = 0;
+
+#if _MSC_VER >= 1200 && MSC_VER <= 1910
+	SYSTEM_INFO sysinfo;
+	GetSystemInfo(&sysinfo);
+	ret = sysinfo.dwNumberOfProcessors;
+
+#else
+	ret = std::thread::hardware_concurrency();
+#endif
+	return ret;
+}
+
+
 
 }
