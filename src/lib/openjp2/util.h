@@ -18,7 +18,11 @@
 
 #pragma once
 
+#include <thread>
+
 namespace grk {
+
+uint32_t hardware_concurrency();
 
 struct pt_t {
     int64_t x;
@@ -80,3 +84,4 @@ struct buf_t {
 
 
 }
+

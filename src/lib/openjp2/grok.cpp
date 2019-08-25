@@ -60,7 +60,6 @@
 #include <sys/stat.h>
 # include <unistd.h>
 # include <sys/mman.h>
-#include <thread>
 
 #endif
 
@@ -338,7 +337,7 @@ opj_codec_t* OPJ_CALLCONV opj_create_decompress(OPJ_CODEC_FORMAT p_format){
 void OPJ_CALLCONV opj_set_default_decoder_parameters(opj_dparameters_t *parameters){
     if(parameters) {
         memset(parameters, 0, sizeof(opj_dparameters_t));
-		parameters->numThreads = std::thread::hardware_concurrency();
+		parameters->numThreads = hardware_concurrency();
     }
 }
 bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
@@ -603,7 +602,7 @@ void OPJ_CALLCONV opj_set_default_encoder_parameters(opj_cparameters_t *paramete
         parameters->tcp_numlayers = 0;
         parameters->cp_disto_alloc = 0;
         parameters->cp_fixed_quality = 0;
-		parameters->numThreads = std::thread::hardware_concurrency();;
+		parameters->numThreads = hardware_concurrency();;
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
     }
