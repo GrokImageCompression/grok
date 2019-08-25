@@ -874,7 +874,6 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
     }
     /*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", l_tile->x0, l_tile->y0,l_tile->x1,l_tile->y1);*/
 
-    /*tile->numcomps = image->numcomps; */
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
         uint64_t l_tile_data_size=0;
         /*fprintf(stderr, "compno = %d/%d\n", compno, l_tile->numcomps);*/
@@ -899,13 +898,15 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
         }
         if (l_tilec->resolutions == nullptr) {
             l_tilec->resolutions = new tcd_resolution_t[numresolutions];
-        } else if (numresolutions > l_tilec->numresolutions) {
+            l_tilec->numAllocatedResolutions = numresolutions;
+        } else if (numresolutions > l_tilec->numAllocatedResolutions) {
             tcd_resolution_t* new_resolutions = new tcd_resolution_t[numresolutions];
             for (uint32_t i =0; i < l_tilec->numresolutions; ++i){
             	new_resolutions[i] = l_tilec->resolutions[i];
             }
             delete[] l_tilec->resolutions;
             l_tilec->resolutions = new_resolutions;
+            l_tilec->numAllocatedResolutions = numresolutions;
         }
         l_tilec->numresolutions = numresolutions;
         l_level_no = l_tilec->numresolutions;
@@ -1012,7 +1013,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                     l_band->numAllocatedPrecincts = l_nb_precincts;
                 } else if (l_band->numAllocatedPrecincts < l_nb_precincts) {
                     tcd_precinct_t * new_precincts = new tcd_precinct_t[l_nb_precincts];
-                    for (int i = 0; i < l_band->numAllocatedPrecincts; ++i){
+                    for (size_t i = 0; i < l_band->numAllocatedPrecincts; ++i){
                     	new_precincts[i] = l_band->precincts[i];
                     }
                     if (l_band->precincts)
@@ -1494,7 +1495,7 @@ static void tcd_free_tile(tcd_t *p_tcd)
     for (compno = 0; compno < l_tile->numcomps; ++compno) {
         l_res = l_tile_comp->resolutions;
         if (l_res) {
-            l_nb_resolutions = l_tile_comp->numresolutions ;
+            l_nb_resolutions = l_tile_comp->numAllocatedResolutions ;
             for (resno = 0; resno < l_nb_resolutions; ++resno) {
                 l_band = l_res->bands;
                 for     (bandno = 0; bandno < 3; ++bandno) {

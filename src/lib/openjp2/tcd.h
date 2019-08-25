@@ -338,6 +338,7 @@ struct tcd_resolution_t {
 struct tcd_tilecomp_t {
     uint32_t x0, y0, x1, y1;			/* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numresolutions;			/* number of resolutions level */
+    uint32_t numAllocatedResolutions;
     uint32_t minimum_num_resolutions;	/* number of resolutions level to decode (at max)*/
     tcd_resolution_t *resolutions;		/* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
