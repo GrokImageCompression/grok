@@ -95,23 +95,6 @@ void pngSetVerboseFlag(bool verbose) {
 	pngWarningHandlerVerbose = verbose;
 }
 
-static std::string convert_wide_to_narrow(const wchar_t* input) {
-	if (!input)
-		return "";
-	mbstate_t mbs;
-	memset(&mbs, 0, sizeof mbs);
-	auto len = wcsrtombs(nullptr, &input, 0, &mbs);
-	if (len == 0)
-		return "";
-	std::unique_ptr<char[]> buffer(new char[len + 1]);
-	auto ret = wcsrtombs(buffer.get(), &input, len, &mbs);
-	// if wcsrtombs fails on any character, return empty string
-	if (ret == (size_t)-1)
-		return "";
-	buffer.get()[len] = 0;
-	return buffer.get();
-}
-
 static void convert_16u32s_C1R(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
 {
 	size_t i;
@@ -636,13 +619,12 @@ static int imagetopng(opj_image_t * image,
 #if defined(GROK_HAVE_LIBLCMS)
 		auto in_prof = cmsOpenProfileFromMem(image->icc_profile_buf, image->icc_profile_len);
 		if (in_prof) {
-			cmsUInt32Number bufferSize = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
+			cmsUInt32Number bufferSize = cmsGetProfileInfoASCII(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, nullptr, 0);
 			if (bufferSize) {
-				size_t numWideChars = (bufferSize + 1) / 2;
-				std::unique_ptr<wchar_t[]> description(new wchar_t[numWideChars]);
-				cmsUInt32Number result = cmsGetProfileInfo(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, description.get(), bufferSize);
+				std::unique_ptr<char[]> description(new char[bufferSize]);
+				cmsUInt32Number result = cmsGetProfileInfoASCII(in_prof, cmsInfoDescription, cmsNoLanguage, cmsNoCountry, description.get(), bufferSize);
 				if (result) {
-					profileName = convert_wide_to_narrow(description.get());
+					profileName = description.get();
 				}
 			}
 			cmsCloseProfile(in_prof);
