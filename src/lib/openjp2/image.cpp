@@ -98,17 +98,17 @@ void OPJ_CALLCONV opj_image_destroy(opj_image_t *image)
         }
 
         if(image->icc_profile_buf) {
-			grk::grok_free(image->icc_profile_buf);
+			opj_buffer_delete(image->icc_profile_buf);
 			image->icc_profile_buf = nullptr;
         }
 
 		if (image->iptc_buf) {
-			grk::grok_free(image->iptc_buf);
+			opj_buffer_delete(image->iptc_buf);
 			image->iptc_buf = nullptr;
 		}
 
 		if (image->xmp_buf) {
-			grk::grok_free(image->xmp_buf);
+			opj_buffer_delete(image->xmp_buf);
 			image->xmp_buf = nullptr;
 		}
 
@@ -249,12 +249,7 @@ namespace grk {
 		p_image_dest->icc_profile_len = p_image_src->icc_profile_len;
 
 		if (p_image_dest->icc_profile_len) {
-			p_image_dest->icc_profile_buf = (uint8_t*)grok_malloc(p_image_dest->icc_profile_len);
-			if (!p_image_dest->icc_profile_buf) {
-				p_image_dest->icc_profile_buf = nullptr;
-				p_image_dest->icc_profile_len = 0;
-				return;
-			}
+			p_image_dest->icc_profile_buf = opj_buffer_new(p_image_dest->icc_profile_len);
 			memcpy(p_image_dest->icc_profile_buf,
 				p_image_src->icc_profile_buf,
 				p_image_src->icc_profile_len);

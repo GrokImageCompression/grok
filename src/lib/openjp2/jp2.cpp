@@ -1867,7 +1867,7 @@ static bool jp2_read_colr( jp2_t *jp2,
             uint32_t *cielab;
 			bool nonDefaultLab = p_colr_header_size == 35;
 			// only two ints are needed for default CIELab space
-            cielab = (uint32_t*)grok_malloc((nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
+            cielab = (uint32_t*)opj_buffer_new((nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
 			if (cielab == nullptr) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory for cielab\n");
 				return false;
@@ -1914,10 +1914,7 @@ static bool jp2_read_colr( jp2_t *jp2,
 			event_msg(p_manager, EVT_ERROR, "ICC profile buffer length equals zero\n");
 			return false;
 		}
-        jp2->color.icc_profile_buf = (uint8_t*) grok_calloc(1,(size_t)icc_len);
-        if (!jp2->color.icc_profile_buf) {
-            return false;
-        }
+        jp2->color.icc_profile_buf = opj_buffer_new((size_t)icc_len);
 		memcpy(jp2->color.icc_profile_buf, p_colr_header_data, icc_len);
 		jp2->color.icc_profile_len = icc_len;
         jp2->color.jp2_has_colour_specification_box = 1;
@@ -2348,14 +2345,12 @@ bool jp2_setup_encoder(	jp2_t *jp2,
 		if (image->icc_profile_buf) {
 			// clean up existing icc profile in jp2 struct
 			if (jp2->color.icc_profile_buf) {
-				grok_free(jp2->color.icc_profile_buf);
+				opj_buffer_delete(jp2->color.icc_profile_buf);
 				jp2->color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to jp2 struct
 			jp2->color.icc_profile_len = image->icc_profile_len;
-			jp2->color.icc_profile_buf = (uint8_t*)grok_malloc(jp2->color.icc_profile_len);
-			if (!jp2->color.icc_profile_buf)
-				return false;
+			jp2->color.icc_profile_buf = opj_buffer_new(jp2->color.icc_profile_len);
 			memcpy(jp2->color.icc_profile_buf, image->icc_profile_buf, jp2->color.icc_profile_len);
 		}
     } else {
@@ -3357,7 +3352,7 @@ void jp2_destroy(jp2_t *jp2)
         }
 
         if (jp2->color.icc_profile_buf) {
-            grok_free(jp2->color.icc_profile_buf);
+            opj_buffer_delete(jp2->color.icc_profile_buf);
             jp2->color.icc_profile_buf = nullptr;
         }
 

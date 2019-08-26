@@ -2282,7 +2282,7 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 	size_t commentSizeToAlloc = commentSize;
 	if (!p_j2k->m_cp.isBinaryComment[numComments])
 		commentSizeToAlloc++;
-	p_j2k->m_cp.comment[numComments] = (char*)grok_malloc(commentSizeToAlloc);
+	p_j2k->m_cp.comment[numComments] = (char*)opj_buffer_new(commentSizeToAlloc);
 	if (!p_j2k->m_cp.comment[numComments]) {
 		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Out of memory when allocating memory for comment \n");
 		return false;
@@ -5876,7 +5876,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
 			cp->comment_len[i] = parameters->cp_comment_len[i];
 			if (!cp->comment_len[i])
 				continue;
-			cp->comment[i] = (char*)grok_malloc(cp->comment_len[i]);
+			cp->comment[i] = (char*)opj_buffer_new(cp->comment_len[i]);
 			if (!cp->comment[i]) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
 				return false;
@@ -5891,7 +5891,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
         const size_t clen = strlen(comment);
         const char *version = opj_version();
 
-        cp->comment[0] = (char*)grok_malloc(clen+strlen(version)+1);
+        cp->comment[0] = (char*)opj_buffer_new(clen+strlen(version)+1);
         if(!cp->comment[0]) {
             event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate comment string\n");
             return false;
@@ -7194,7 +7194,7 @@ static void j2k_cp_destroy (cp_t *p_cp)
     p_cp->ppm_buffer = nullptr;
     p_cp->ppm_data = nullptr; /* ppm_data belongs to the allocated buffer pointed by ppm_buffer */
 	for (size_t i = 0; i < p_cp->num_comments; ++i) {
-		grok_free(p_cp->comment[i]);
+		opj_buffer_delete((uint8_t*)p_cp->comment[i]);
 		p_cp->comment[i] = nullptr;
 	}
 	p_cp->num_comments = 0;

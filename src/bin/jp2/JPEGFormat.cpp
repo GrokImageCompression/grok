@@ -506,11 +506,14 @@ static opj_image_t* jpegtoimage(const char *filename,
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		imageInfo.image->icc_profile_buf = icc_data_ptr;
+		imageInfo.image->icc_profile_buf = opj_buffer_new(icc_data_len);
+		memcpy(imageInfo.image->icc_profile_buf, icc_data_ptr, icc_data_len);
 		imageInfo.image->icc_profile_len = icc_data_len;
-		icc_data_ptr = nullptr;
 		icc_data_len = 0;
 	}
+	if (icc_data_ptr)
+		free(icc_data_ptr);
+	icc_data_ptr = nullptr;
 	/* set image offset and reference grid */
 	imageInfo.image->x0 = parameters->image_offset_x0;
 	imageInfo.image->x1 = !imageInfo.image->x0 ? (w - 1) * 1 + 1 :

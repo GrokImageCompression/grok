@@ -322,9 +322,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 			&Compression,
 			&ProfileData,
 			&ProfileLen) == PNG_INFO_iCCP) {
-			local_info.image->icc_profile_buf = (uint8_t*)malloc(ProfileLen);
-			if (!local_info.image->icc_profile_buf)
-				return nullptr;
+			local_info.image->icc_profile_buf = opj_buffer_new(ProfileLen);
 			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
 			local_info.image->icc_profile_len = ProfileLen;
 			local_info.image->color_space = OPJ_CLRSPC_ICC;
@@ -366,9 +364,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 			else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
 					local_info.image->xmp_len = text_ptr[i].text_length;
-					local_info.image->xmp_buf = (uint8_t*)malloc(local_info.image->xmp_len);
-					if (!local_info.image->xmp_buf)
-						return nullptr;
+					local_info.image->xmp_buf = opj_buffer_new(local_info.image->xmp_len);
 					memcpy(local_info.image->xmp_buf, text_ptr[i].text, local_info.image->xmp_len);
 				}
 			}
