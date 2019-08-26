@@ -1200,6 +1200,9 @@ OPJ_API void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t*
 
 OPJ_API bool OPJ_CALLCONV opj_image_single_component_data_alloc(opj_image_comp_t* image);
 
+OPJ_API uint8_t* OPJ_CALLCONV opj_buffer_new(size_t len);
+
+OPJ_API void OPJ_CALLCONV opj_buffer_delete(uint8_t *buffer);
 /*
 =================================
    stream functions definitions

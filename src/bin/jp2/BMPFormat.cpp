@@ -712,20 +712,15 @@ static opj_image_t* bmptoimage(const char *filename,
 		Info_h.biIccProfileSize &&
 		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
 
-		//allocate buffer
-		image->icc_profile_buf = (uint8_t*)malloc(Info_h.biIccProfileSize);
-		if (!image->icc_profile_buf) {
-			goto cleanup;
-		}
 		//read in ICC profile
 		if (fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET)){
-		    free(image->icc_profile_buf);
-		    image->icc_profile_buf = nullptr;
 			goto cleanup;
 		}
+		//allocate buffer
+		image->icc_profile_buf = opj_buffer_new(Info_h.biIccProfileSize);
 		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, IN);
 		if (bytesRead != Info_h.biIccProfileSize){
-		    free(image->icc_profile_buf);
+		    opj_buffer_delete(image->icc_profile_buf);
 		    image->icc_profile_buf = nullptr;
 			goto cleanup;
 		}

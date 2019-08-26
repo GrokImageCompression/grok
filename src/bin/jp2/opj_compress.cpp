@@ -1232,7 +1232,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				parameters->cp_comment_len[count] = s.length();
 				// ISO Latin comment
 				parameters->cp_is_binary_comment[count] = false;
-				parameters->cp_comment[count] =	(char*)malloc(s.length());
+				parameters->cp_comment[count] =	(char*)opj_buffer_new(s.length());
 				if (parameters->cp_comment[count]) {
 					memcpy(parameters->cp_comment[count],s.c_str(), s.length());
 					parameters->cp_comment_len[count] = s.length();
@@ -1407,7 +1407,7 @@ struct CompressInitParams {
 	~CompressInitParams() {
 		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
 			if (parameters.cp_comment[i])
-				free(parameters.cp_comment[i]);
+				opj_buffer_delete((uint8_t*)parameters.cp_comment[i]);
 		}
 		if (parameters.raw_cp.comps)
 			free(parameters.raw_cp.comps);

@@ -881,6 +881,12 @@ void OPJ_CALLCONV opj_image_single_component_data_free(opj_image_comp_t* comp){
 	comp->owns_data = false;
 }
 
+uint8_t* OPJ_CALLCONV opj_buffer_new(size_t len){
+	return new uint8_t[len];
+}
+void OPJ_CALLCONV opj_buffer_delete(uint8_t *buf){
+	delete[] buf;
+}
 
 /**********************************************************************
 Plugin interface implementation

@@ -1676,7 +1676,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			}
 		}
 		if ((isCIE && !canStoreCIE)|| info->decoder_parameters->force_rgb || (!isCIE && !canStoreICC)) {
-			free(image->icc_profile_buf);
+			opj_buffer_delete(image->icc_profile_buf);
 			image->icc_profile_buf = nullptr;
 			image->icc_profile_len = 0;
 		}
