@@ -60,7 +60,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_clock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_clock.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/overflow_utils.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
   ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.cpp
