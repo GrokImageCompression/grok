@@ -15,7 +15,6 @@
 *
  */
 #include "grok_includes.h"
-#include "Barrier.h"
 #include "ThreadPool.h"
 
 #include "t1_factory.h"
@@ -30,6 +29,7 @@ T1Decoder::T1Decoder(tcp_t *tcp,
 					uint16_t blockh, 
 					size_t numThreads) :codeblock_width(  (uint16_t)(blockw ? (uint32_t)1<<blockw : 0)),
 					  				  codeblock_height( (uint16_t)(blockh ? (uint32_t)1<<blockh : 0)) {
+	Scheduler::g_TS.Initialize((uint32_t)numThreads);
 	for (auto i = 0U; i < numThreads; ++i) {
 		threadStructs.push_back(t1_factory::get_t1(false,tcp, codeblock_width, codeblock_height));
 	}
@@ -45,7 +45,7 @@ T1Decoder::~T1Decoder() {
 
 
 
-bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads) {
+bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks) {
 	if (!blocks)
 		return false;
 	decodeQueue.push_no_lock(blocks);
@@ -53,22 +53,15 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 #ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
 #endif
-	Barrier decode_t1_barrier(numThreads);
-	Barrier decode_t1_calling_barrier(numThreads + 1);
 
-	auto pool = new ThreadPool(numThreads);
-	std::atomic_bool success;
 	success = true;
-	for (auto threadId = 0U; threadId < numThreads; threadId++) {
-		pool->enqueue([this,
-						&decode_t1_barrier,
-						&decode_t1_calling_barrier,
-						threadId,
-						&success]()		{
-
-			decodeBlockInfo* block = nullptr;
-			auto impl = threadStructs[threadId];
-			while (decodeQueue.tryPop(block)) {
+    enki::TaskSet task( (uint32_t)decodeQueue.size(), [this]( enki::TaskSetPartition range, uint32_t threadnum  ) {
+	   for (auto i=range.start; i < range.end; ++i) {
+		   if (!success)
+			   break;
+		   decodeBlockInfo* block = nullptr;
+			auto impl = threadStructs[threadnum];
+			if (decodeQueue.tryPop(block)) {
 				if (!impl->decode(block)) {
 						success = false;
 						delete block;
@@ -77,15 +70,12 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads)
 				impl->postDecode(block);
 				delete block;
 			}
-			decode_t1_barrier.arrive_and_wait();
-			decode_t1_calling_barrier.arrive_and_wait();
-		});
-	}
+	   }
+	  }  );
 
-	decode_t1_calling_barrier.arrive_and_wait();
+  Scheduler::g_TS.AddTaskSetToPipe( &task );
+  Scheduler::g_TS.WaitforTask( &task );
 
-	// cleanup
-	delete pool;
 	decodeBlockInfo* block = nullptr;
 	while (decodeQueue.tryPop(block)) {
 		delete block;

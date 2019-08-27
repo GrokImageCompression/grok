@@ -37,7 +37,6 @@ public:
 
 private:
 	void encode(size_t threadId);
-	std::atomic_bool return_code;
 
 	tcd_tile_t *tile;
 	std::vector<t1_interface*> threadStructs;

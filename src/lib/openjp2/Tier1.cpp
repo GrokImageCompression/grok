@@ -171,7 +171,7 @@ bool Tier1::decodeCodeblocks(tcp_t *tcp,
 							std::vector<decodeBlockInfo*>* blocks, 
 							int32_t numThreads) {
 	T1Decoder decoder(tcp, blockw, blockh, numThreads);
-	return decoder.decode(blocks, numThreads);
+	return decoder.decode(blocks);
 }
 
 }

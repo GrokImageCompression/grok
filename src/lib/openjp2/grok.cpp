@@ -67,6 +67,8 @@
 #include "grok_includes.h"
 using namespace grk;
 
+enki::TaskScheduler Scheduler::g_TS;
+
 static bool is_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char* plugin_path){
     if (!is_initialized) {

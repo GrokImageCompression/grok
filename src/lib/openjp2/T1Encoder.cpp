@@ -16,9 +16,6 @@
  */
 
 #include "grok_includes.h"
-#include "Barrier.h"
-#include "ThreadPool.h"
-
 
 // tier 1 interface
 #include "t1_factory.h"
@@ -33,6 +30,10 @@ T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
 					size_t numThreads, 
 					bool needsRateControl) : tile(tile), 
 											needsRateControl(needsRateControl) {
+#ifdef DEBUG_LOSSLESS_T1
+	numThreads = 1;
+#endif
+	Scheduler::g_TS.Initialize((uint32_t)numThreads);
 	for (auto i = 0U; i < numThreads; ++i) {
 		threadStructs.push_back(t1_factory::get_t1(true,tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
@@ -47,10 +48,11 @@ T1Encoder::~T1Encoder() {
 void T1Encoder::encode(size_t threadId) {
 	encodeBlockInfo* block = nullptr;
 	auto impl = threadStructs[threadId];
-	while (return_code && encodeQueue.tryPop(block)) {
+	if (encodeQueue.tryPop(block)) {
 		uint32_t max = 0;
 		impl->preEncode(block, tile, max);
 		auto dist = impl->encode(block, tile,max, needsRateControl);
+		if (needsRateControl)
 		{
 			std::unique_lock<std::mutex> lk(distortion_mutex);
 			tile->distotile += dist;
@@ -61,38 +63,17 @@ void T1Encoder::encode(size_t threadId) {
 bool T1Encoder::encode(	std::vector<encodeBlockInfo*>* blocks) {
 	if (!blocks || blocks->size() == 0)
 		return true;
-	auto numThreads = threadStructs.size();
-#ifdef DEBUG_LOSSLESS_T1
-	numThreads = 1;
-#endif
 	encodeQueue.push_no_lock(blocks);
-	return_code = true;
+     enki::TaskSet task( (uint32_t)encodeQueue.size(), [this]( enki::TaskSetPartition range, uint32_t threadnum  ) {
+	   for (auto i=range.start; i < range.end; ++i)
+		   encode(threadnum);
+	  }  );
 
-	Barrier encode_t1_barrier(numThreads);
-	Barrier encode_t1_calling_barrier(numThreads + 1);
+   Scheduler::g_TS.AddTaskSetToPipe( &task );
+   Scheduler::g_TS.WaitforTask( &task );
 
-	auto pool = new ThreadPool(numThreads);
-	for (auto threadId = 0U; threadId < numThreads; threadId++) {
-		pool->enqueue([this,
-						&encode_t1_barrier,
-						&encode_t1_calling_barrier,
-						threadId] {
-
-			encode(threadId);
-			encode_t1_barrier.arrive_and_wait();
-			encode_t1_calling_barrier.arrive_and_wait();
-		});
-	}
-
-	encode_t1_calling_barrier.arrive_and_wait();
-	delete pool;
-	
-	// clean up remaining blocks
-	encodeBlockInfo* block = nullptr;
-	while (encodeQueue.tryPop(block)) {
-		delete block;
-	}
-	return return_code;
+   assert(encodeQueue.empty());
+	return true;
 }
 
 
