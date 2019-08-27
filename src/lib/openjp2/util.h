@@ -19,8 +19,14 @@
 #pragma once
 
 #include <thread>
+#include <climits>
+#include <stdint.h>
 
 namespace grk {
+
+inline bool mult_will_overflow(uint32_t a, uint32_t b) {
+	return (b && (a > UINT_MAX / b));
+}
 
 uint32_t hardware_concurrency();
 
