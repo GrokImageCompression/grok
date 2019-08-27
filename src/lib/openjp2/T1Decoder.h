@@ -34,12 +34,13 @@ public:
 				uint16_t blockh,
 				size_t numThreads);
 	~T1Decoder();
-	bool decode(std::vector<decodeBlockInfo*>* blocks, size_t numThreads);
+	bool decode(std::vector<decodeBlockInfo*>* blocks);
 
 private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
 	BlockingQueue<decodeBlockInfo*> decodeQueue;
 	std::vector<t1_interface*> threadStructs;
+	std::atomic_bool success;
 };
 
 }
