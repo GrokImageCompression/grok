@@ -62,19 +62,18 @@
 #include <cstring>
 #include "common.h"
 
-
 struct pnm_header {
 	int width, height, maxval, depth, format;
 	char rgb, rgba, gray, graya, bw;
 	char ok;
 };
 
-static char *skip_white(char *s)
-{
+static char* skip_white(char *s) {
 	if (!s)
 		return nullptr;
 	while (*s) {
-		if (*s == '\n' || *s == '\r') return nullptr;
+		if (*s == '\n' || *s == '\r')
+			return nullptr;
 		if (isspace(*s)) {
 			++s;
 			continue;
@@ -84,19 +83,20 @@ static char *skip_white(char *s)
 	return nullptr;
 }
 
-static char *skip_int(char *start, int *out_n)
-{
+static char* skip_int(char *start, int *out_n) {
 	char *s;
 	char c;
 
 	*out_n = 0;
 
 	s = skip_white(start);
-	if (s == nullptr) return nullptr;
+	if (s == nullptr)
+		return nullptr;
 	start = s;
 
 	while (*s) {
-		if (!isdigit(*s)) break;
+		if (!isdigit(*s))
+			break;
 		++s;
 	}
 	c = *s;
@@ -106,13 +106,13 @@ static char *skip_int(char *start, int *out_n)
 	return s;
 }
 
-static char *skip_idf(char *start, char out_idf[256])
-{
+static char* skip_idf(char *start, char out_idf[256]) {
 	char *s;
 	char c;
 
 	s = skip_white(start);
-	if (s == nullptr) return nullptr;
+	if (s == nullptr)
+		return nullptr;
 	start = s;
 
 	while (*s) {
@@ -129,8 +129,7 @@ static char *skip_idf(char *start, char out_idf[256])
 	return s;
 }
 
-static void read_pnm_header(FILE *reader, struct pnm_header *ph)
-{
+static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	int format, end, ttype;
 	char idf[256], type[256];
 	char line[256];
@@ -146,7 +145,8 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 	}
 	format = atoi(line + 1);
 	if (format < 1 || format > 7) {
-		fprintf(stderr, "[ERROR] read_pnm_header:magic format %d invalid\n", format);
+		fprintf(stderr, "[ERROR] read_pnm_header:magic format %d invalid\n",
+				format);
 		return;
 	}
 	ph->format = format;
@@ -229,14 +229,16 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 					ttype = 1;
 					continue;
 				}
-				fprintf(stderr, "[ERROR] read_pnm_header:unknown P7 TUPLTYPE %s\n", type);
+				fprintf(stderr,
+						"[ERROR] read_pnm_header:unknown P7 TUPLTYPE %s\n",
+						type);
 				return;
 			}
 			fprintf(stderr, "[ERROR] read_pnm_header:unknown P7 idf %s\n", idf);
 			return;
 		} /* if(format == 7) */
 
-		  /* Here format is in range [1,6] */
+		/* Here format is in range [1,6] */
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
 			if ((s == nullptr) || (*s == 0) || (ph->width < 1))
@@ -262,18 +264,15 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 			return;
 		break;
 	}/* while(fgets( ) */
-	if (format == 2 || format == 3 || format > 4)
-	{
+	if (format == 2 || format == 3 || format > 4) {
 		if (ph->maxval < 1 || ph->maxval > 65535)
 			return;
 	}
 	if (ph->width < 1 || ph->height < 1)
 		return;
 
-	if (format == 7)
-	{
-		if (!end)
-		{
+	if (format == 7) {
+		if (!end) {
 			fprintf(stderr, "[ERROR] read_pnm_header:P7 without ENDHDR\n");
 			return;
 		}
@@ -282,40 +281,50 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph)
 
 		if (ttype)
 			ph->ok = 1;
-	}
-	else
-	{
+	} else {
 		ph->ok = 1;
-		if (format == 1 || format == 4)
-		{
+		if (format == 1 || format == 4) {
 			ph->maxval = 255;
 		}
 	}
 }
 
-static int has_prec(int val)
-{
-	if (val < 2) return 1;
-	if (val < 4) return 2;
-	if (val < 8) return 3;
-	if (val < 16) return 4;
-	if (val < 32) return 5;
-	if (val < 64) return 6;
-	if (val < 128) return 7;
-	if (val < 256) return 8;
-	if (val < 512) return 9;
-	if (val < 1024) return 10;
-	if (val < 2048) return 11;
-	if (val < 4096) return 12;
-	if (val < 8192) return 13;
-	if (val < 16384) return 14;
-	if (val < 32768) return 15;
+static int has_prec(int val) {
+	if (val < 2)
+		return 1;
+	if (val < 4)
+		return 2;
+	if (val < 8)
+		return 3;
+	if (val < 16)
+		return 4;
+	if (val < 32)
+		return 5;
+	if (val < 64)
+		return 6;
+	if (val < 128)
+		return 7;
+	if (val < 256)
+		return 8;
+	if (val < 512)
+		return 9;
+	if (val < 1024)
+		return 10;
+	if (val < 2048)
+		return 11;
+	if (val < 4096)
+		return 12;
+	if (val < 8192)
+		return 13;
+	if (val < 16384)
+		return 14;
+	if (val < 32768)
+		return 15;
 	return 16;
 }
 
-static opj_image_t* pnmtoimage(const char *filename, 
-								opj_cparameters_t *parameters)
-{
+static opj_image_t* pnmtoimage(const char *filename,
+		opj_cparameters_t *parameters) {
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
 
@@ -323,12 +332,13 @@ static opj_image_t* pnmtoimage(const char *filename,
 	uint32_t compno, numcomps, w, h, prec, format;
 	OPJ_COLOR_SPACE color_space;
 	opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
-	opj_image_t * image = nullptr;
+	opj_image_t *image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		fprintf(stderr, "[ERROR] pnmtoimage:Failed to open %s for reading!\n", filename);
+		fprintf(stderr, "[ERROR] pnmtoimage:Failed to open %s for reading!\n",
+				filename);
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
@@ -372,11 +382,11 @@ static opj_image_t* pnmtoimage(const char *filename,
 
 	w = header_info.width;
 	h = header_info.height;
-	area = (uint64_t)w * h;
+	area = (uint64_t) w * h;
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
-	memset(&cmptparm[0], 0, (size_t)numcomps * sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof(opj_image_cmptparm_t));
 
 	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
@@ -405,51 +415,51 @@ static opj_image_t* pnmtoimage(const char *filename,
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1) {
 					if (parameters->verbose)
-						fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+						fprintf(stdout,
+								"[WARNING] fscanf return a number of element different from the expected.\n");
 				}
 
-				image->comps[compno].data[i] = (int32_t)(index * 255) / header_info.maxval;
+				image->comps[compno].data[i] = (int32_t) (index * 255)
+						/ header_info.maxval;
 			}
 		}
-	}
-	else if ((format == 5)
-		|| (format == 6)
-		|| ((format == 7)
-			&& (header_info.gray || header_info.graya
-				|| header_info.rgb || header_info.rgba))) { /* binary pixmap */
+	} else if ((format == 5) || (format == 6)
+			|| ((format == 7)
+					&& (header_info.gray || header_info.graya || header_info.rgb
+							|| header_info.rgba))) { /* binary pixmap */
 		unsigned char c0, c1, one;
 		one = (prec < 9);
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (one) {
 					image->comps[compno].data[i] = c0;
-				}
-				else {
+				} else {
 					if (!fread(&c1, 1, 1, fp))
-						fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+						fprintf(stderr,
+								"[ERROR] fread return a number of element different from the expected.\n");
 					/* netpbm: */
 					image->comps[compno].data[i] = ((c0 << 8) | c1);
 				}
 			}
 		}
-	}
-	else if (format == 1) { /* ascii bitmap */
+	} else if (format == 1) { /* ascii bitmap */
 		for (uint64_t i = 0; i < area; i++) {
 			unsigned int index;
 			if (fscanf(fp, "%u", &index) != 1) {
 				if (parameters->verbose)
-					fprintf(stdout, "[WARNING] fscanf return a number of element different from the expected.\n");
+					fprintf(stdout,
+							"[WARNING] fscanf return a number of element different from the expected.\n");
 			}
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
-	}
-	else if (format == 4) {
+	} else if (format == 4) {
 		uint32_t x, y;
 		int8_t bit;
 		unsigned char uc;
@@ -467,39 +477,35 @@ static opj_image_t* pnmtoimage(const char *filename,
 						image = nullptr;
 						goto cleanup;
 					}
-					uc = (unsigned char)c;
+					uc = (unsigned char) c;
 				}
 				image->comps[0].data[i] = (((uc >> bit) & 1) ? 0 : 255);
 				--bit;
 				++i;
 			}
 		}
-	}
-	else if ((format == 7 && header_info.bw)) { /*MONO*/
+	} else if ((format == 7 && header_info.bw)) { /*MONO*/
 		unsigned char uc;
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
-				fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+				fprintf(stderr,
+						"[ERROR] fread return a number of element different from the expected.\n");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
-cleanup:
-	if (!grk::safe_fclose(fp)){
+	cleanup: if (!grk::safe_fclose(fp)) {
 		opj_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(opj_image_t * image, 
-					const char *outfile,
-					bool force_split, 
-					bool verbose)
-{
+static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
+		bool verbose) {
 	int *red = nullptr;
-	int* green = nullptr;
-	int* blue = nullptr;
-	int* alpha = nullptr;
+	int *green = nullptr;
+	int *blue = nullptr;
+	int *alpha = nullptr;
 	int wr, hr, max;
 	int i;
 	unsigned int compno, ncomp;
@@ -513,9 +519,10 @@ static int imagetopnm(opj_image_t * image,
 
 	alpha = nullptr;
 
-	if ((prec = (int)image->comps[0].prec) > 16) {
-		fprintf(stderr, "[ERROR] %s:%d:imagetopnm\n\tprecision %d is larger than 16"
-			"\n\t: refused.\n", __FILE__, __LINE__, prec);
+	if ((prec = (int) image->comps[0].prec) > 16) {
+		fprintf(stderr,
+				"[ERROR] %s:%d:imagetopnm\n\tprecision %d is larger than 16"
+						"\n\t: refused.\n", __FILE__, __LINE__, prec);
 		rc = 1;
 		goto cleanup;
 	}
@@ -527,26 +534,27 @@ static int imagetopnm(opj_image_t * image,
 		return fails;
 	}
 
-	while (*tmp) ++tmp;
+	while (*tmp)
+		++tmp;
 	tmp -= 2;
 	want_gray = (*tmp == 'g' || *tmp == 'G');
 
 	if (want_gray)
 		ncomp = 1;
 
-	if ((!force_split) &&
-		(ncomp == 2 /* GRAYA */
-			|| (ncomp > 2 /* RGB, RGBA */
-				&& image->comps[0].dx == image->comps[1].dx
-				&& image->comps[1].dx == image->comps[2].dx
-				&& image->comps[0].dy == image->comps[1].dy
-				&& image->comps[1].dy == image->comps[2].dy
-				&& image->comps[0].prec == image->comps[1].prec
-				&& image->comps[1].prec == image->comps[2].prec
-				&& image->comps[0].sgnd == image->comps[1].sgnd
-				&& image->comps[1].sgnd == image->comps[2].sgnd
+	if ((!force_split)
+			&& (ncomp == 2 /* GRAYA */
+					|| (ncomp > 2 /* RGB, RGBA */
+					&& image->comps[0].dx == image->comps[1].dx
+							&& image->comps[1].dx == image->comps[2].dx
+							&& image->comps[0].dy == image->comps[1].dy
+							&& image->comps[1].dy == image->comps[2].dy
+							&& image->comps[0].prec == image->comps[1].prec
+							&& image->comps[1].prec == image->comps[2].prec
+							&& image->comps[0].sgnd == image->comps[1].sgnd
+							&& image->comps[1].sgnd == image->comps[2].sgnd
 
-				))) {
+					))) {
 		fdest = fopen(outfile, "wb");
 
 		if (!fdest) {
@@ -556,8 +564,8 @@ static int imagetopnm(opj_image_t * image,
 		}
 		two = (prec > 8);
 		triple = (ncomp > 2);
-		wr = (int)image->comps[0].w;
-		hr = (int)image->comps[0].h;
+		wr = (int) image->comps[0].w;
+		hr = (int) image->comps[0].h;
 		max = (1 << prec) - 1;
 		has_alpha = (ncomp == 4 || ncomp == 2);
 
@@ -566,125 +574,174 @@ static int imagetopnm(opj_image_t * image,
 		if (triple) {
 			green = image->comps[1].data;
 			blue = image->comps[2].data;
-		}
-		else green = blue = nullptr;
+		} else
+			green = blue = nullptr;
 
 		if (has_alpha) {
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
 
 			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %d\nHEIGHT %d\nDEPTH %u\n"
-				"MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", opj_version(),
-				wr, hr, ncomp, max, tt);
+					"MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", opj_version(), wr, hr,
+					ncomp, max, tt);
 			alpha = image->comps[ncomp - 1].data;
-			adjustA = (image->comps[ncomp - 1].sgnd ?
-				1 << (image->comps[ncomp - 1].prec - 1) : 0);
-		}
-		else {
-			fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n",
-				opj_version(), wr, hr, max);
+			adjustA = (
+					image->comps[ncomp - 1].sgnd ?
+							1 << (image->comps[ncomp - 1].prec - 1) : 0);
+		} else {
+			fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n", opj_version(), wr, hr,
+					max);
 			adjustA = 0;
 		}
 		adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
 
 		if (triple) {
-			adjustG = (image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
-			adjustB = (image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
-		}
-		else adjustG = adjustB = 0;
+			adjustG = (
+					image->comps[1].sgnd ? 1 << (image->comps[1].prec - 1) : 0);
+			adjustB = (
+					image->comps[2].sgnd ? 1 << (image->comps[2].prec - 1) : 0);
+		} else
+			adjustG = adjustB = 0;
 
-		for (i = 0; i < wr * hr; ++i) {
-			if (two) {
+		if (two) {
+			const size_t bufSize = 4096;
+			uint16_t buf[bufSize];
+			uint16_t *outPtr = buf;
+			size_t outCount = 0;
+
+			for (i = 0; i < wr * hr; i+= bufSize) {
 				v = *red + adjustR;
 				++red;
-				if (v > 65535)
-					v = 65535;
+				if (v > INT16_MAX)
+					v = INT16_MAX;
 				else if (v < 0)
 					v = 0;
 
 				/* netpbm: */
-				fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
-
+				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					rc = 1;
+					goto cleanup;
+				}
 				if (triple) {
 					v = *green + adjustG;
 					++green;
-					if (v > 65535) 
-						v = 65535;
+					if (v > INT16_MAX)
+						v = INT16_MAX;
 					else if (v < 0)
 						v = 0;
 
 					/* netpbm: */
-					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
-
+					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
 					v = *blue + adjustB;
 					++blue;
-					if (v > 65535)
-						v = 65535;
+					if (v > INT16_MAX)
+						v = INT16_MAX;
 					else if (v < 0)
 						v = 0;
 
 					/* netpbm: */
-					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
-
+					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
 				}/* if(triple) */
 
 				if (has_alpha) {
 					v = *alpha + adjustA;
 					++alpha;
-					if (v > 65535)
-						v = 65535;
+					if (v > INT16_MAX)
+						v = INT16_MAX;
+					else if (v < 0)
+						v = 0;
+					/* netpbm: */
+					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
+				}
+				if (outCount) {
+					size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+					if (res != outCount)
+						rc = 1;
+				}
+			}
+		} else {
+			const size_t bufSize = 4096;
+			uint8_t buf[bufSize];
+			uint8_t *outPtr = buf;
+			size_t outCount = 0;
+			for (i = 0; i < wr * hr; ++i) {
+				/* prec <= 8: */
+				v = *red++;
+				if (v > UINT8_MAX)
+					v = UINT8_MAX;
+				else if (v < 0)
+					v = 0;
+
+				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					rc = 1;
+					goto cleanup;
+				}
+				if (triple) {
+					v = *green++;
+					if (v > UINT8_MAX)
+						v = UINT8_MAX;
 					else if (v < 0)
 						v = 0;
 
-					/* netpbm: */
-					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
+					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
+					v = *blue++;
+					if (v > UINT8_MAX)
+						v = UINT8_MAX;
+					else if (v < 0)
+						v = 0;
+
+					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
 				}
-				continue;
-
-			}	/* if(two) */
-
-				/* prec <= 8: */
-			v = *red++;
-			if (v > 255) v = 255;
-			else if (v < 0) v = 0;
-
-			fprintf(fdest, "%c", (unsigned char)v);
-			if (triple) {
-				v = *green++;
-				if (v > 255) 
-					v = 255;
-				else if (v < 0)
-					v = 0;
-
-				fprintf(fdest, "%c", (unsigned char)v);
-				v = *blue++;
-				if (v > 255)
-					v = 255;
-				else if (v < 0) 
-					v = 0;
-
-				fprintf(fdest, "%c", (unsigned char)v);
+				if (has_alpha) {
+					v = *alpha++;
+					if (v > UINT8_MAX)
+						v = UINT8_MAX;
+					else if (v < 0)
+						v = 0;
+					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
+				}
 			}
-			if (has_alpha) {
-				v = *alpha++;
-				if (v > 255)
-					v = 255;
-				else if (v < 0)
-					v = 0;
-				fprintf(fdest, "%c", (unsigned char)v);
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
+				if (res != outCount)
+					rc = 1;
 			}
-		}	/* for(i */
-		goto cleanup;
+		}
 	}
 
 	/* YUV or MONO: */
-
 	if (image->numcomps > ncomp) {
 		if (verbose) {
 			fprintf(stdout, "WARNING -> [PGM file] Only the first component\n");
 			fprintf(stdout, "           is written to the file\n");
 		}
 	}
-	destname = (char*)malloc(strlen(outfile) + 8);
+	destname = (char*) malloc(strlen(outfile) + 8);
 	if (!destname) {
 		fprintf(stderr, "[ERROR] imagetopnm: out of memory\n");
 		rc = 1;
@@ -696,91 +753,125 @@ static int imagetopnm(opj_image_t * image,
 			/*sprintf(destname, "%d.%s", compno, outfile);*/
 			const size_t olen = strlen(outfile);
 			if (olen < 4) {
-				fprintf(stderr, "[ERROR] imagetopnm: output file name size less than 4.\n");
+				fprintf(stderr,
+						"[ERROR] imagetopnm: output file name size less than 4.\n");
 				goto cleanup;
 			}
 			const size_t dotpos = olen - 4;
 
 			strncpy(destname, outfile, dotpos);
 			sprintf(destname + dotpos, "_%u.pgm", compno);
-		}
-		else
+		} else
 			sprintf(destname, "%s", outfile);
 
 		fdest = fopen(destname, "wb");
 		if (!fdest) {
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n", destname);
+			fprintf(stderr, "[ERROR] failed to open %s for writing\n",
+					destname);
 			rc = 1;
 			goto cleanup;
 		}
-		wr = (int)image->comps[compno].w;
-		hr = (int)image->comps[compno].h;
-		prec = (int)image->comps[compno].prec;
+		wr = (int) image->comps[compno].w;
+		hr = (int) image->comps[compno].h;
+		prec = (int) image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
-		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n",
-			opj_version(), wr, hr, max);
+		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n", opj_version(), wr, hr, max);
 
 		red = image->comps[compno].data;
-		if (!red){
+		if (!red) {
 			rc = 1;
 			goto cleanup;
 		}
-		adjustR =
-			(image->comps[compno].sgnd ? 1 << (image->comps[compno].prec - 1) : 0);
+		adjustR = (
+				image->comps[compno].sgnd ?
+						1 << (image->comps[compno].prec - 1) : 0);
 
 		if (prec > 8) {
+			const size_t bufSize = 4096;
+			uint16_t buf[bufSize];
+			uint16_t *outPtr = buf;
+			size_t outCount = 0;
+
 			for (i = 0; i < wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
-				if (v > 65535) v = 65535;
-				else if (v < 0) v = 0;
-
+				if (v > UINT16_MAX)
+					v = UINT16_MAX;
+				else if (v < 0)
+					v = 0;
 				/* netpbm: */
-				fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
-
+				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					rc = 1;
+					goto cleanup;
+				}
 				if (has_alpha) {
 					v = *alpha++;
-					if (v > 65535) v = 65535;
-					else if (v < 0) v = 0;
-
+					if (v > UINT16_MAX)
+						v = UINT16_MAX;
+					else if (v < 0)
+						v = 0;
 					/* netpbm: */
-					fprintf(fdest, "%c%c", (unsigned char)(v >> 8), (unsigned char)v);
+					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
+							&outCount, bufSize, true, fdest)) {
+						rc = 1;
+						goto cleanup;
+					}
 				}
 			}/* for(i */
-		}
-		else { /* prec <= 8 */
+			//flush
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+				if (res != outCount)
+					rc = 1;
+			}
+		} else { /* prec <= 8 */
+			const size_t bufSize = 4096;
+			uint8_t buf[bufSize];
+			uint8_t *outPtr = buf;
+			size_t outCount = 0;
 			for (i = 0; i < wr * hr; ++i) {
 				v = *red + adjustR;
 				++red;
-				if (v > 255) v = 255;
-				else if (v < 0) v = 0;
-
-				fprintf(fdest, "%c", (unsigned char)v);
+				if (v > UINT8_MAX)
+					v = UINT8_MAX;
+				else if (v < 0)
+					v = 0;
+				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					rc = 1;
+					goto cleanup;
+				}
+			}
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
+				if (res != outCount)
+					rc = 1;
 			}
 		}
-		if (!grk::safe_fclose(fdest)){
+		if (!grk::safe_fclose(fdest)) {
 			fdest = nullptr;
 			rc = 1;
 			goto cleanup;
-
 		}
 		fdest = nullptr;
 	} /* for (compno */
-cleanup:
-	if (destname)
+	cleanup: if (destname)
 		free(destname);
 	if (!grk::safe_fclose(fdest))
 		rc = -1;
 	return rc;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
-	(void)compressionParam;
-	(void)verbose;
-	return imagetopnm(image, filename, forceSplit,verbose) ? false : true;
+bool PNMFormat::encode(opj_image_t *image, const char *filename,
+		int compressionParam, bool verbose) {
+	(void) compressionParam;
+	(void) verbose;
+	return imagetopnm(image, filename, forceSplit, verbose) ? false : true;
 }
-opj_image_t* PNMFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+opj_image_t* PNMFormat::decode(const char *filename,
+		opj_cparameters_t *parameters) {
 	return pnmtoimage(filename, parameters);
 }
 
