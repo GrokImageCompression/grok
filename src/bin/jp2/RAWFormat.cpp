@@ -62,33 +62,6 @@
 #include "convert.h"
 #include "common.h"
 
-// swap endian for 16 bit int
-template<typename T> static inline T swap(T x)
-{
-	return (T)(((x >> 8) & 0x00ff) | ((x & 0x00ff) << 8));
-}
-// no-op specialization for 8 bit
-template<> inline uint8_t swap(uint8_t x)
-{
-	return x;
-}
-// no-op specialization for 8 bit
-template<> inline int8_t swap(int8_t x)
-{
-	return x;
-}
-template<typename T> static inline T endian(T x, bool fromBigEndian){
-
-#ifdef GROK_BIG_ENDIAN
-	if (!fromBigEndian)
-	   return swap<T>(x);
-#else
-	if (fromBigEndian)
-	   return swap<T>(x);
-#endif
-	return x;
-}
-
 bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	return imagetoraw(image, filename, bigEndian,verbose) ? true : false;
@@ -97,22 +70,20 @@ opj_image_t* RAWFormat::decode(const char* filename, opj_cparameters_t *paramete
 	return rawtoimage(filename, parameters, bigEndian);
 }
 
-template<typename T> static bool readBytes(FILE *rawFile, bool fromBigEndian,
+template<typename T> static bool read(FILE *rawFile, bool big_endian,
 										int32_t* ptr,
 										uint64_t nloop){
 	const size_t bufSize = 4096;
-	uint8_t buf[bufSize];
+	T buf[bufSize];
 
 	for (uint64_t i = 0; i < nloop; i+=bufSize) {
-		size_t ct = fread(buf, 1, bufSize, rawFile);
-		if (!ct)
+		size_t target = (i + bufSize > nloop) ? (nloop - i) : bufSize;
+		size_t ct = fread(buf, sizeof(T), target, rawFile);
+		if (ct != target)
 			return false;
-		uint8_t *inPtr = buf;
-		for (size_t j = 0; j < ct; j += sizeof(T)){
-		    T* value = (T*)(inPtr);
-		    *(ptr++) = endian<T>(*value, fromBigEndian);
-		    inPtr += sizeof(T);
-		}
+		T *inPtr = buf;
+		for (size_t j = 0; j < ct; j++)
+		    *(ptr++) = grk::endian<T>(*inPtr++, big_endian);
 	}
 
 	return true;
@@ -207,9 +178,9 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
 			bool rc;
 			if (raw_cp->sgnd)
-				rc = readBytes<int8_t>(f, big_endian, ptr,nloop);
+				rc = read<int8_t>(f, big_endian, ptr,nloop);
 			else
-				rc = readBytes<uint8_t>(f, big_endian, ptr,nloop);
+				rc = read<uint8_t>(f, big_endian, ptr,nloop);
 			if (!rc){
 				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 				success = false;
@@ -220,12 +191,12 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	else if (raw_cp->prec <= 16) {
 		for (compno = 0; compno < numcomps; compno++) {
 			auto ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t)w*h*sizeof(uint16_t)) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
+			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
 			bool rc;
 			if (raw_cp->sgnd)
-				rc = readBytes<int16_t>(f, big_endian, ptr,nloop);
+				rc = read<int16_t>(f, big_endian, ptr,nloop);
 			else
-				rc = readBytes<uint16_t>(f, big_endian, ptr,nloop);
+				rc = read<uint16_t>(f, big_endian, ptr,nloop);
 			if (!rc){
 				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
 				success = false;
@@ -257,40 +228,33 @@ cleanup:
 	return image;
 }
 
-template<typename T> static bool writeBytes(FILE *rawFile, bool fromBigEndian,
+template<typename T> static bool write(FILE *rawFile, bool big_endian,
 										int32_t* ptr,
 										uint32_t w, uint32_t h,
 										int32_t lower, int32_t upper){
 	const size_t bufSize = 4096;
-	uint8_t buf[bufSize];
-	uint8_t *outPtr = buf;
+	T buf[bufSize];
+	T *outPtr = buf;
 	size_t outCount = 0;
 
-	for (uint32_t line = 0; line < h; line++) {
-		for (uint32_t row = 0; row < w; row++) {
-			int32_t curr = *ptr++;
-			if (curr > upper)
-				curr = upper;
-			else if (curr < lower)
-				curr = lower;
-			T uc = endian<T>((T)(curr), fromBigEndian);
-			uint8_t* currPtr = (uint8_t*)&uc;
-			for (uint32_t i = 0; i < sizeof(T) && outCount < bufSize; ++i){
-				*outPtr++ = *currPtr++;
-				outCount++;
-			}
-			if (outCount == bufSize) {
-				size_t res = fwrite(buf, 1, bufSize, rawFile);
-				if (res != bufSize)
-					return false;
-				outCount = 0;
-				outPtr = buf;
-			}
-		}
+	for (uint32_t i = 0; i < w*h; ++i) {
+		int32_t curr = *ptr++;
+		if (curr > upper)
+			curr = upper;
+		else if (curr < lower)
+			curr = lower;
+		if (!grk::writeBytes<T>((T)curr,
+							buf,
+							&outPtr,
+							&outCount,
+							bufSize,
+							big_endian,
+							rawFile))
+			return false;
 	}
 	//flush
 	if (outCount) {
-		size_t res = fwrite(buf, 1, outCount, rawFile);
+		size_t res = fwrite(buf, sizeof(T), outCount, rawFile);
 		if (res != outCount)
 			return false;
 	}
@@ -371,17 +335,17 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 		bool rc;
 		if (prec <= 8) {
 			if (sgnd)
-				rc = writeBytes<int8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+				rc = write<int8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
 			else
-				rc = writeBytes<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+				rc = write<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
 			if (!rc)
 				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
 		}
 		else if (prec <= 16) {
 			if (sgnd)
-				rc = writeBytes<int16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+				rc = write<int16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
 			else
-				rc = writeBytes<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+				rc = write<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
 			if (!rc)
 				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
 		}

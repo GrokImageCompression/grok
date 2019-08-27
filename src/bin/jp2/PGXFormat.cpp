@@ -71,6 +71,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include <cassert>
 
 
 static unsigned char readuchar(FILE * f)
@@ -272,27 +273,6 @@ cleanup:
 	return image;
 }
 
-#define CLAMP(x,a,b) (x < a) ? a : (x > b ? b : x)
-
-// note: we don't support precision > 16
-static inline int clamp(const int32_t value, 
-						const uint32_t prec,
-						const uint32_t sgnd)
-{
-	if (sgnd) {
-		if (prec <= 8)       
-			return CLAMP(value, -128, 127);
-		else /*if (prec <= 16) */
-			return CLAMP(value, -32768, 32767);
-	}
-	else {
-		if (prec <= 8)       
-			return CLAMP(value, 0, 255);
-		else /*if (prec <= 16) */
-			return CLAMP(value, 0, 65535);
-	}
-}
-
 static int imagetopgx(opj_image_t * image, const char *outfile)
 {
 	uint32_t w, h;
@@ -345,7 +325,7 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 
 		for (uint64_t i = 0; i < (uint64_t)w * h; i++) {
 			/* FIXME: clamp func is being called within a loop */
-			const int val = clamp(image->comps[compno].data[i],	comp->prec, comp->sgnd);
+			const int val = grk::clamp(image->comps[compno].data[i],	comp->prec, comp->sgnd);
 
 			for (j = nbytes - 1; j >= 0; j--) {
 				int v = (int)(val >> (j * 8));

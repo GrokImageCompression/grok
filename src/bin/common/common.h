@@ -59,6 +59,7 @@
 #include <cstddef>
 #include <cstdio>
 #include "format_defs.h"
+#include <cassert>
 
 namespace grk {
 
@@ -102,5 +103,85 @@ GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
 const char* get_path_separator();
 char * get_file_name(char *name);
 int get_num_images(char *imgdirpath);
+
+#define CLAMP(x,a,b) (x < a) ? a : (x > b ? b : x)
+
+// note: we don't support precision > 16
+inline int clamp(const int32_t value,
+						const uint32_t prec,
+						const uint32_t sgnd)
+{
+	assert(prec <= 16);
+	if (sgnd) {
+		if (prec <= 8)
+			return CLAMP(value, INT8_MIN, INT8_MAX);
+		else /*if (prec <= 16) */
+			return CLAMP(value, INT16_MIN, INT16_MAX);
+	}
+	else {
+		if (prec <= 8)
+			return CLAMP(value, 0, UINT8_MAX);
+		else /*if (prec <= 16) */
+			return CLAMP(value, 0, UINT16_MAX);
+	}
+}
+
+
+
+// swap endian for 16 bit integer
+template<typename T> inline T swap(T x)
+{
+	return (T)((x >> 8) | ((x & 0x00ff) << 8));
+}
+// specialization for 32 bit unsigned
+template<> inline uint32_t swap(uint32_t x)
+{
+	return (uint32_t)(  ( x >> 24) |
+						((x & 0x00ff0000) >> 8) |
+						((x & 0x0000ff00) << 8) |
+						((x & 0x000000ff) << 24)  );
+}
+// no-op specialization for 8 bit
+template<> inline uint8_t swap(uint8_t x)
+{
+	return x;
+}
+// no-op specialization for 8 bit
+template<> inline int8_t swap(int8_t x)
+{
+	return x;
+}
+template<typename T> inline T endian(T x, bool big_endian){
+
+#ifdef GROK_BIG_ENDIAN
+	if (!big_endian)
+	   return swap<T>(x);
+#else
+	if (big_endian)
+	   return swap<T>(x);
+#endif
+	return x;
+}
+
+template<typename T> inline bool writeBytes(T val,
+								T *buf,
+								T **outPtr,
+								size_t* outCount,
+								size_t len,
+								bool big_endian,
+								FILE* out){
+	if (*outCount >= len)
+		return false;
+	*(*outPtr)++ = grk::endian<T>(val, big_endian);
+	(*outCount)++;
+	if (*outCount == len) {
+		size_t res = fwrite(buf, sizeof(T), len, out);
+		if (res != len)
+			return false;
+		*outCount = 0;
+		*outPtr = buf;
+	}
+	return true;
+}
 
 }
