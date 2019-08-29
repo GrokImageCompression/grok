@@ -54,14 +54,12 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
- /**
+/**
  Load a single image component encoded in PGX file format
  @param filename Name of the PGX file to load
  @param parameters *List ?*
  @return a greyscale image if successful, returns nullptr otherwise
  */
-
-
 
 #include <cstdio>
 #include <cstdlib>
@@ -73,67 +71,72 @@
 #include "common.h"
 #include <cassert>
 
-
-static unsigned char readuchar(FILE * f)
-{
+static unsigned char readuchar(FILE *f) {
 	unsigned char c1;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	return c1;
 }
 
-static unsigned short readushort(FILE * f, int bigendian)
-{
+static unsigned short readushort(FILE *f, int bigendian) {
 	unsigned char c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (bigendian)
-		return (unsigned short)((c1 << 8) + c2);
+		return (unsigned short) ((c1 << 8) + c2);
 	else
-		return (unsigned short)((c2 << 8) + c1);
+		return (unsigned short) ((c2 << 8) + c1);
 }
 
-static unsigned int readuint(FILE * f, int bigendian)
-{
+static unsigned int readuint(FILE *f, int bigendian) {
 	unsigned char c1, c2, c3, c4;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c3, 1, 1, f)) {
-		fprintf(stderr, "[ERROR]  fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR]  fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (!fread(&c4, 1, 1, f)) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR] fread return a number of element different from the expected.\n");
 		return 0;
 	}
 	if (bigendian)
-		return (unsigned int)(c1 << 24) + (unsigned int)(c2 << 16) + (unsigned int)(c3 << 8) + c4;
+		return (unsigned int) (c1 << 24) + (unsigned int) (c2 << 16)
+				+ (unsigned int) (c3 << 8) + c4;
 	else
-		return (unsigned int)(c4 << 24) + (unsigned int)(c3 << 16) + (unsigned int)(c2 << 8) + c1;
+		return (unsigned int) (c4 << 24) + (unsigned int) (c3 << 16)
+				+ (unsigned int) (c2 << 8) + c1;
 }
 
-static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *parameters)
-{
+static opj_image_t* pgxtoimage(const char *filename,
+		opj_cparameters_t *parameters) {
 	FILE *f = nullptr;
 	uint32_t w, h, prec, numcomps, max;
 	uint64_t i, area;
 	OPJ_COLOR_SPACE color_space;
-	opj_image_cmptparm_t cmptparm;	/* maximum of 1 component  */
-	opj_image_t * image = nullptr;
+	opj_image_cmptparm_t cmptparm; /* maximum of 1 component  */
+	opj_image_t *image = nullptr;
 	int adjustS, ushift, dshift, force8;
 	int c;
 	char endian1, endian2, sign;
@@ -156,15 +159,18 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 
 	if (fseek(f, 0, SEEK_SET))
 		goto cleanup;
-	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp, &endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
-		fprintf(stderr, "[ERROR] Failed to read the right number of element from the fscanf() function!\n");
+	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp,
+			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
+		fprintf(stderr,
+				"[ERROR] Failed to read the right number of element from the fscanf() function!\n");
 		goto cleanup;
 	}
 
 	i = 0;
 	sign = '+';
 	while (signtmp[i] != '\0') {
-		if (signtmp[i] == '-') sign = '-';
+		if (signtmp[i] == '-')
+			sign = '-';
 		i++;
 	}
 
@@ -173,11 +179,9 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		goto cleanup;
 	if (endian1 == 'M' && endian2 == 'L') {
 		bigendian = 1;
-	}
-	else if (endian2 == 'M' && endian1 == 'L') {
+	} else if (endian2 == 'M' && endian1 == 'L') {
 		bigendian = 0;
-	}
-	else {
+	} else {
 		fprintf(stderr, "[ERROR] Bad pgx header, please check input file\n");
 		goto cleanup;
 	}
@@ -186,27 +190,36 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 
 	cmptparm.x0 = parameters->image_offset_x0;
 	cmptparm.y0 = parameters->image_offset_y0;
-	cmptparm.w = !cmptparm.x0 ? ((w - 1) * parameters->subsampling_dx + 1) : cmptparm.x0 + (uint32_t)(w - 1) * parameters->subsampling_dx + 1;
-	cmptparm.h = !cmptparm.y0 ? ((h - 1) * parameters->subsampling_dy + 1) : cmptparm.y0 + (uint32_t)(h - 1) * parameters->subsampling_dy + 1;
+	cmptparm.w =
+			!cmptparm.x0 ?
+					((w - 1) * parameters->subsampling_dx + 1) :
+					cmptparm.x0
+							+ (uint32_t) (w - 1) * parameters->subsampling_dx
+							+ 1;
+	cmptparm.h =
+			!cmptparm.y0 ?
+					((h - 1) * parameters->subsampling_dy + 1) :
+					cmptparm.y0
+							+ (uint32_t) (h - 1) * parameters->subsampling_dy
+							+ 1;
 
 	if (sign == '-') {
 		cmptparm.sgnd = 1;
-	}
-	else {
+	} else {
 		cmptparm.sgnd = 0;
 	}
 	if (prec < 8) {
 		force8 = 1;
 		ushift = 8 - prec;
 		dshift = prec - ushift;
-		if (cmptparm.sgnd) 
+		if (cmptparm.sgnd)
 			adjustS = (1 << (prec - 1));
-		else 
+		else
 			adjustS = 0;
 		cmptparm.sgnd = 0;
 		prec = 8;
-	}
-	else ushift = dshift = force8 = adjustS = 0;
+	} else
+		ushift = dshift = force8 = adjustS = 0;
 
 	cmptparm.prec = prec;
 	cmptparm.dx = parameters->subsampling_dx;
@@ -226,13 +239,13 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 	/* set image data */
 
 	comp = &image->comps[0];
-	area = (uint64_t)w * h;
+	area = (uint64_t) w * h;
 	for (i = 0; i < area; i++) {
 		uint32_t v;
 		if (force8) {
 			v = readuchar(f) + adjustS;
 			v = (v << ushift) + (v >> dshift);
-			comp->data[i] = (unsigned char)v;
+			comp->data[i] = (unsigned char) v;
 			if (v > max)
 				max = v;
 			continue;
@@ -240,41 +253,34 @@ static opj_image_t* pgxtoimage(const char *filename, opj_cparameters_t *paramete
 		if (comp->prec == 8) {
 			if (!comp->sgnd) {
 				v = readuchar(f);
+			} else {
+				v = (char) readuchar(f);
 			}
-			else {
-				v = (char)readuchar(f);
-			}
-		}
-		else if (comp->prec <= 16) {
+		} else if (comp->prec <= 16) {
 			if (!comp->sgnd) {
 				v = readushort(f, bigendian);
+			} else {
+				v = (short) readushort(f, bigendian);
 			}
-			else {
-				v = (short)readushort(f, bigendian);
-			}
-		}
-		else {
+		} else {
 			if (!comp->sgnd) {
 				v = readuint(f, bigendian);
-			}
-			else {
-				v = (int)readuint(f, bigendian);
+			} else {
+				v = (int) readuint(f, bigendian);
 			}
 		}
 		if (v > max)
 			max = v;
 		comp->data[i] = v;
 	}
-cleanup:
-	if (!grk::safe_fclose(f)) {
+	cleanup: if (!grk::safe_fclose(f)) {
 		opj_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }
 
-static int imagetopgx(opj_image_t * image, const char *outfile)
-{
+static int imagetopgx(opj_image_t *image, const char *outfile) {
 	uint32_t w, h;
 	int j, fails = 1;
 	unsigned int compno;
@@ -287,16 +293,19 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
-			fprintf(stderr, "[ERROR] imagetopgx: output file name size larger than 4096.\n");
+			fprintf(stderr,
+					"[ERROR] imagetopgx: output file name size larger than 4096.\n");
 			goto beach;
 		}
 		if (olen < 4) {
-			fprintf(stderr, "[ERROR] imagetopgx: output file name size less than 4.\n");
+			fprintf(stderr,
+					"[ERROR] imagetopgx: output file name size less than 4.\n");
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
 		if (outfile[dotpos] != '.') {
-			fprintf(stderr, "[ERROR] pgx was recognized but there was no dot at expected position .\n");
+			fprintf(stderr,
+					"[ERROR] pgx was recognized but there was no dot at expected position .\n");
 			goto beach;
 		}
 		//copy root outfile name to "name"
@@ -313,8 +322,8 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		w = image->comps[compno].w;
 		h = image->comps[compno].h;
 
-		fprintf(fdest, "PG ML %c %d %d %d\n", comp->sgnd ? '-' : '+', comp->prec,
-			w, h);
+		fprintf(fdest, "PG ML %c %d %d %d\n", comp->sgnd ? '-' : '+',
+				comp->prec, w, h);
 
 		if (comp->prec <= 8)
 			nbytes = 1;
@@ -323,41 +332,43 @@ static int imagetopgx(opj_image_t * image, const char *outfile)
 		else
 			nbytes = 4;
 
-		for (uint64_t i = 0; i < (uint64_t)w * h; i++) {
+		for (uint64_t i = 0; i < (uint64_t) w * h; i++) {
 			/* FIXME: clamp func is being called within a loop */
-			const int val = grk::clamp(image->comps[compno].data[i],	comp->prec, comp->sgnd);
+			const int val = grk::clamp(image->comps[compno].data[i], comp->prec,
+					comp->sgnd);
 
 			for (j = nbytes - 1; j >= 0; j--) {
-				int v = (int)(val >> (j * 8));
-				unsigned char byte = (unsigned char)v;
+				int v = (int) (val >> (j * 8));
+				unsigned char byte = (unsigned char) v;
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", bname);
+					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+							bname);
 					goto beach;
 				}
 			}
 		}
-		if (!grk::safe_fclose(fdest)){
+		if (!grk::safe_fclose(fdest)) {
 			fdest = nullptr;
 			goto beach;
 		}
 		fdest = nullptr;
 	}
 	fails = 0;
-beach:
-	if (!grk::safe_fclose(fdest)){
+	beach: if (!grk::safe_fclose(fdest)) {
 		fails = 1;
 	}
 	return fails;
 }
 
-
-bool PGXFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
-	(void)compressionParam;
-	(void)verbose;
+bool PGXFormat::encode(opj_image_t *image, const char *filename,
+		int compressionParam, bool verbose) {
+	(void) compressionParam;
+	(void) verbose;
 	return imagetopgx(image, filename) ? false : true;
 }
-opj_image_t*  PGXFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+opj_image_t* PGXFormat::decode(const char *filename,
+		opj_cparameters_t *parameters) {
 	return pgxtoimage(filename, parameters);
 }
