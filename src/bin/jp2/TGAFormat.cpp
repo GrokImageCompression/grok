@@ -62,8 +62,6 @@
 #include <cstring>
 #include "common.h"
 
-
-
 #ifdef INFORMATION_ONLY
  /* TGA header definition. */
 struct tga_header {
@@ -88,9 +86,8 @@ struct tga_header {
 };
 #endif /* INFORMATION_ONLY */
 
-static unsigned short get_ushort(const unsigned char *data)
-{
-	unsigned short val = *(const unsigned short *)data;
+static unsigned short get_ushort(const unsigned char *data) {
+	unsigned short val = *(const unsigned short*) data;
 #ifdef GROK_BIG_ENDIAN
 	val = ((val & 0xffU) << 8) | (val >> 8);
 #endif
@@ -100,20 +97,20 @@ static unsigned short get_ushort(const unsigned char *data)
 #define TGA_HEADER_SIZE 18
 
 static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
-	unsigned int *width, unsigned int *height, int *flip_image)
-{
+		unsigned int *width, unsigned int *height, int *flip_image) {
 	int palette_size;
 	unsigned char tga[TGA_HEADER_SIZE];
-	unsigned char id_len, /*cmap_type,*/ image_type;
+	unsigned char id_len, /*cmap_type,*/image_type;
 	unsigned char pixel_depth, image_desc;
-	unsigned short /*cmap_index,*/ cmap_len, cmap_entry_size;
-	unsigned short /*x_origin, y_origin,*/ image_w, image_h;
+	unsigned short /*cmap_index,*/cmap_len, cmap_entry_size;
+	unsigned short /*x_origin, y_origin,*/image_w, image_h;
 
 	if (!bits_per_pixel || !width || !height || !flip_image)
 		return false;
 
 	if (fread(tga, TGA_HEADER_SIZE, 1, fp) != 1) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+		fprintf(stderr,
+				"[ERROR] fread return a number of element different from the expected.\n");
 		return false;
 	}
 	id_len = tga[0];
@@ -122,7 +119,6 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	/*cmap_index = get_ushort(&tga[3]);*/
 	cmap_len = get_ushort(&tga[5]);
 	cmap_entry_size = tga[7];
-
 
 #if 0
 	x_origin = get_ushort(&tga[8]);
@@ -133,19 +129,20 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	pixel_depth = tga[16];
 	image_desc = tga[17];
 
-	*bits_per_pixel = (unsigned int)pixel_depth;
-	*width = (unsigned int)image_w;
-	*height = (unsigned int)image_h;
+	*bits_per_pixel = (unsigned int) pixel_depth;
+	*width = (unsigned int) image_w;
+	*height = (unsigned int) image_h;
 
 	/* Ignore tga identifier, if present ... */
 	if (id_len) {
-		unsigned char *id = (unsigned char *)malloc(id_len);
+		unsigned char *id = (unsigned char*) malloc(id_len);
 		if (!id) {
 			fprintf(stderr, "[ERROR] tga_readheader: out of memory out\n");
 			return false;
 		}
 		if (!fread(id, id_len, 1, fp)) {
-			fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+			fprintf(stderr,
+					"[ERROR] fread return a number of element different from the expected.\n");
 			free(id);
 			return false;
 		}
@@ -153,10 +150,11 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	}
 
 	/* Test for compressed formats ... not yet supported ...
-	// Note :-  9 - RLE encoded palettized.
-	//	  	   10 - RLE encoded RGB. */
+	 // Note :-  9 - RLE encoded palettized.
+	 //	  	   10 - RLE encoded RGB. */
 	if (image_type > 8) {
-		fprintf(stderr, "[ERROR] Sorry, compressed tga files are not currently supported.\n");
+		fprintf(stderr,
+				"[ERROR] Sorry, compressed tga files are not currently supported.\n");
 		return false;
 	}
 
@@ -165,7 +163,7 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	/* Palettized formats are not yet supported, skip over the palette, if present ... */
 	palette_size = cmap_len * (cmap_entry_size / 8);
 
-	if (palette_size>0) {
+	if (palette_size > 0) {
 		fprintf(stderr, "[ERROR] File contains a palette - not yet supported.");
 		if (fseek(fp, palette_size, SEEK_CUR))
 			return false;
@@ -183,8 +181,7 @@ static inline uint16_t swap16(uint16_t x)
 #endif
 
 static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
-	bool flip_image)
-{
+		bool flip_image) {
 	uint16_t image_w, image_h, us0;
 	unsigned char uc0, image_type;
 	unsigned char pixel_depth, image_desc;
@@ -195,33 +192,50 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	pixel_depth = 0;
 
 	if (bits_per_pixel < 256)
-		pixel_depth = (unsigned char)bits_per_pixel;
+		pixel_depth = (unsigned char) bits_per_pixel;
 	else {
 		fprintf(stderr, "[ERROR] Wrong bits per pixel inside tga_header");
 		return 0;
 	}
 	uc0 = 0;
 
-	if (fwrite(&uc0, 1, 1, fp) != 1) goto fails; /* id_length */
-	if (fwrite(&uc0, 1, 1, fp) != 1) goto fails; /* colour_map_type */
+	if (fwrite(&uc0, 1, 1, fp) != 1)
+		goto fails;
+	/* id_length */
+	if (fwrite(&uc0, 1, 1, fp) != 1)
+		goto fails;
+	/* colour_map_type */
 
 	image_type = 2; /* Uncompressed. */
-	if (fwrite(&image_type, 1, 1, fp) != 1) goto fails;
+	if (fwrite(&image_type, 1, 1, fp) != 1)
+		goto fails;
 
 	us0 = 0;
-	if (fwrite(&us0, 2, 1, fp) != 1) goto fails; /* colour_map_index */
-	if (fwrite(&us0, 2, 1, fp) != 1) goto fails; /* colour_map_length */
-	if (fwrite(&uc0, 1, 1, fp) != 1) goto fails; /* colour_map_entry_size */
+	if (fwrite(&us0, 2, 1, fp) != 1)
+		goto fails;
+	/* colour_map_index */
+	if (fwrite(&us0, 2, 1, fp) != 1)
+		goto fails;
+	/* colour_map_length */
+	if (fwrite(&uc0, 1, 1, fp) != 1)
+		goto fails;
+	/* colour_map_entry_size */
 
-	if (fwrite(&us0, 2, 1, fp) != 1) goto fails; /* x_origin */
-	if (fwrite(&us0, 2, 1, fp) != 1) goto fails; /* y_origin */
+	if (fwrite(&us0, 2, 1, fp) != 1)
+		goto fails;
+	/* x_origin */
+	if (fwrite(&us0, 2, 1, fp) != 1)
+		goto fails;
+	/* y_origin */
 
-	image_w = (unsigned short)width;
-	image_h = (unsigned short)height;
+	image_w = (unsigned short) width;
+	image_h = (unsigned short) height;
 
 #ifndef GROK_BIG_ENDIAN
-	if (fwrite(&image_w, 2, 1, fp) != 1) goto fails;
-	if (fwrite(&image_h, 2, 1, fp) != 1) goto fails;
+	if (fwrite(&image_w, 2, 1, fp) != 1)
+		goto fails;
+	if (fwrite(&image_h, 2, 1, fp) != 1)
+		goto fails;
 #else
 	image_w = swap16(image_w);
 	image_h = swap16(image_h);
@@ -229,29 +243,30 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	if (fwrite(&image_h, 2, 1, fp) != 1) goto fails;
 #endif
 
-	if (fwrite(&pixel_depth, 1, 1, fp) != 1) goto fails;
+	if (fwrite(&pixel_depth, 1, 1, fp) != 1)
+		goto fails;
 
 	image_desc = 8; /* 8 bits per component. */
 
 	if (flip_image)
 		image_desc |= 32;
-	if (fwrite(&image_desc, 1, 1, fp) != 1) goto fails;
+	if (fwrite(&image_desc, 1, 1, fp) != 1)
+		goto fails;
 
 	return 1;
 
-fails:
-	fputs("\nwrite_tgaheader: write ERROR\n", stderr);
+	fails: fputs("\nwrite_tgaheader: write ERROR\n", stderr);
 	return 0;
 }
 
-static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *parameters)
-{
+static opj_image_t* tgatoimage(const char *filename,
+		opj_cparameters_t *parameters) {
 	FILE *f;
 	opj_image_t *image;
 	unsigned int image_width, image_height, pixel_bit_depth;
 	unsigned int x, y;
 	int flip_image = 0;
-	opj_image_cmptparm_t cmptparm[4];	/* maximum 4 components */
+	opj_image_cmptparm_t cmptparm[4]; /* maximum 4 components */
 	uint32_t numcomps;
 	OPJ_COLOR_SPACE color_space;
 	uint32_t subsampling_dx, subsampling_dy;
@@ -263,7 +278,8 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 		return 0;
 	}
 
-	if (!tga_readheader(f, &pixel_bit_depth, &image_width, &image_height, &flip_image)) {
+	if (!tga_readheader(f, &pixel_bit_depth, &image_width, &image_height,
+			&flip_image)) {
 		grk::safe_fclose(f);
 		return nullptr;
 	}
@@ -279,10 +295,10 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	//bool mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
 	bool save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); // Mono with alpha, or RGB with alpha
 	/*if (mono) {
-		color_space = OPJ_CLRSPC_GRAY;
-		numcomps = save_alpha ? 2 : 1;
-	}
-	else*/ {
+	 color_space = OPJ_CLRSPC_GRAY;
+	 numcomps = save_alpha ? 2 : 1;
+	 }
+	 else*/{
 		numcomps = save_alpha ? 4 : 3;
 		color_space = OPJ_CLRSPC_SRGB;
 	}
@@ -314,36 +330,45 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
-	image->x1 = !image->x0 ? (image_width - 1)  * subsampling_dx + 1 : image->x0 + (image_width - 1)  * subsampling_dx + 1;
-	image->y1 = !image->y0 ? (image_height - 1) * subsampling_dy + 1 : image->y0 + (image_height - 1) * subsampling_dy + 1;
+	image->x1 =
+			!image->x0 ?
+					(image_width - 1) * subsampling_dx + 1 :
+					image->x0 + (image_width - 1) * subsampling_dx + 1;
+	image->y1 =
+			!image->y0 ?
+					(image_height - 1) * subsampling_dy + 1 :
+					image->y0 + (image_height - 1) * subsampling_dy + 1;
 
 	/* set image data */
 	for (y = 0; y < image_height; y++) {
 		int index;
 
 		if (flip_image)
-			index = (int)((image_height - y - 1)*image_width);
+			index = (int) ((image_height - y - 1) * image_width);
 		else
-			index = (int)(y*image_width);
+			index = (int) (y * image_width);
 
 		if (numcomps == 3) {
-			for (x = 0; x<image_width; x++) {
+			for (x = 0; x < image_width; x++) {
 				unsigned char r, g, b;
 
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
@@ -354,30 +379,33 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				image->comps[2].data[index] = b;
 				index++;
 			}
-		}
-		else if (numcomps == 4) {
-			for (x = 0; x<image_width; x++) {
+		} else if (numcomps == 4) {
+			for (x = 0; x < image_width; x++) {
 				unsigned char r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&a, 1, 1, f)) {
-					fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+					fprintf(stderr,
+							"[ERROR] fread return a number of element different from the expected.\n");
 					opj_image_destroy(image);
 					grk::safe_fclose(f);
 					return nullptr;
@@ -389,31 +417,28 @@ static opj_image_t* tgatoimage(const char *filename, opj_cparameters_t *paramete
 				image->comps[3].data[index] = a;
 				index++;
 			}
-		}
-		else {
+		} else {
 			fprintf(stderr, "Currently unsupported bit depth : %s\n", filename);
 		}
 	}
-cleanup:
-	if (!grk::safe_fclose(f)) {
+	cleanup: if (!grk::safe_fclose(f)) {
 		opj_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }
 
-static int imagetotga(opj_image_t * image, const char *outfile)
-{
-	int width=0, height=0, bpp=0, x=0, y=0;
-	bool write_alpha=false;
+static int imagetotga(opj_image_t *image, const char *outfile) {
+	int width = 0, height = 0, bpp = 0, x = 0, y = 0;
+	bool write_alpha = false;
 	unsigned int i;
-	int adjustR=0, adjustG=0, adjustB=0, fails=1;
+	int adjustR = 0, adjustG = 0, adjustB = 0, fails = 1;
 	unsigned int alpha_channel;
 	float r, g, b, a;
 	unsigned char value;
-	float scale=0;
-	FILE *fdest=nullptr;
-	size_t res=0;
+	float scale = 0;
+	FILE *fdest = nullptr;
+	size_t res = 0;
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
@@ -427,18 +452,19 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 
 	for (i = 0; i < image->numcomps - 1; i++) {
 		if ((image->comps[0].dx != image->comps[i + 1].dx)
-			|| (image->comps[0].dy != image->comps[i + 1].dy)
-			|| (image->comps[0].prec != image->comps[i + 1].prec)
-			|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
+				|| (image->comps[0].dy != image->comps[i + 1].dy)
+				|| (image->comps[0].prec != image->comps[i + 1].prec)
+				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
 			grk::safe_fclose(fdest);
-			fprintf(stderr, "[ERROR] Unable to create a tga file with such J2K image charateristics.");
+			fprintf(stderr,
+					"[ERROR] Unable to create a tga file with such J2K image charateristics.");
 			return 1;
 		}
 	}
 
-	width = (int)image->comps[0].w;
-	height = (int)image->comps[0].h;
+	width = (int) image->comps[0].w;
+	height = (int) image->comps[0].h;
 
 	/* Mono with alpha, or RGB with alpha. */
 	write_alpha = (image->numcomps == 2) || (image->numcomps == 4);
@@ -451,7 +477,7 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 
 	alpha_channel = image->numcomps - 1;
 
-	scale = 255.0f / (float)((1 << image->comps[0].prec) - 1);
+	scale = 255.0f / (float) ((1 << image->comps[0].prec) - 1);
 
 	adjustR = (image->comps[0].sgnd ? 1 << (image->comps[0].prec - 1) : 0);
 	if (image->numcomps >= 3) {
@@ -460,77 +486,87 @@ static int imagetotga(opj_image_t * image, const char *outfile)
 	}
 
 	for (y = 0; y < height; y++) {
-		unsigned int index = (unsigned int)(y*width);
+		unsigned int index = (unsigned int) (y * width);
 
 		for (x = 0; x < width; x++, index++) {
-			r = (float)(image->comps[0].data[index] + adjustR);
+			r = (float) (image->comps[0].data[index] + adjustR);
 
 			if (image->numcomps > 2) {
-				g = (float)(image->comps[1].data[index] + adjustG);
-				b = (float)(image->comps[2].data[index] + adjustB);
-			}
-			else {
+				g = (float) (image->comps[1].data[index] + adjustG);
+				b = (float) (image->comps[2].data[index] + adjustB);
+			} else {
 				/* Greyscale ... */
 				g = r;
 				b = r;
 			}
 
 			/* TGA format writes BGR ... */
-			if (b > 255.) b = 255.;
-			else if (b < 0.) b = 0.;
-			value = (unsigned char)(b*scale);
+			if (b > 255.)
+				b = 255.;
+			else if (b < 0.)
+				b = 0.;
+			value = (unsigned char) (b * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
 				fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
 				goto beach;
 			}
-			if (g > 255.) g = 255.;
-			else if (g < 0.) g = 0.;
-			value = (unsigned char)(g*scale);
+			if (g > 255.)
+				g = 255.;
+			else if (g < 0.)
+				g = 0.;
+			value = (unsigned char) (g * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+						outfile);
 				goto beach;
 			}
-			if (r > 255.) r = 255.;
-			else if (r < 0.) r = 0.;
-			value = (unsigned char)(r*scale);
+			if (r > 255.)
+				r = 255.;
+			else if (r < 0.)
+				r = 0.;
+			value = (unsigned char) (r * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+						outfile);
 				goto beach;
 			}
 
 			if (write_alpha) {
-				a = (float)(image->comps[alpha_channel].data[index]);
-				if (a > 255.) a = 255.;
-				else if (a < 0.) a = 0.;
-				value = (unsigned char)(a*scale);
+				a = (float) (image->comps[alpha_channel].data[index]);
+				if (a > 255.)
+					a = 255.;
+				else if (a < 0.)
+					a = 0.;
+				value = (unsigned char) (a * scale);
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n", outfile);
+					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+							outfile);
 					goto beach;
 				}
 			}
 		}
 	}
 	fails = 0;
-beach:
-	if (!grk::safe_fclose(fdest))
+	beach: if (!grk::safe_fclose(fdest))
 		fails = 1;
 	return fails;
 }
 
-
-bool TGAFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
-	(void)compressionParam;
-	(void)verbose;
+bool TGAFormat::encode(opj_image_t *image, const char *filename,
+		int compressionParam, bool verbose) {
+	(void) compressionParam;
+	(void) verbose;
 	return imagetotga(image, filename) ? false : true;
 }
-opj_image_t*  TGAFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+opj_image_t* TGAFormat::decode(const char *filename,
+		opj_cparameters_t *parameters) {
 	return tgatoimage(filename, parameters);
 }
