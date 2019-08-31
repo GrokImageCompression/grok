@@ -70,7 +70,7 @@ bool T1Encoder::encode(	std::vector<encodeBlockInfo*>* blocks) {
 	  }  );
 
    Scheduler::g_TS.AddTaskSetToPipe( &task );
-   Scheduler::g_TS.WaitforTask( &task );
+   Scheduler::g_TS.WaitforAllAndShutdown();
 
    assert(encodeQueue.empty());
 	return true;
