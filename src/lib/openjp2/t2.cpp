@@ -772,18 +772,30 @@ namespace grk {
 
 				/* if cblk not yet included --> zero-bitplane tagtree */
 				if (!l_cblk->numSegments) {
-					uint32_t i = 0;
+					uint32_t K_msbs= 0;
 					uint8_t value;
 					bool rc = true;
-					while ( (rc = l_prc->imsbtree->decode(l_bio.get(), cblkno, i, &value)) && !value) {
-						++i;
+
+					// see Taubman + Marcellin page 388
+					// loop below stops at (# of missing bit planes  + 1)
+					while ( (rc = l_prc->imsbtree->decode(l_bio.get(), cblkno, K_msbs, &value)) && !value) {
+						++K_msbs;
 					}
+					assert(K_msbs >= 1);
+					K_msbs--;
+
 					if (!rc) {
 						event_msg(p_manager, EVT_ERROR, "Failed to decode zero-bitplane tag tree \n");
 						return false;
 					}
 
-					l_cblk->numbps = l_band->numbps + 1 - i;
+					if (K_msbs > l_band->numbps){
+						event_msg(p_manager, EVT_WARNING,
+								"More missing bit planes (%d) than band bit planes (%d).\n", K_msbs, l_band->numbps);
+						l_cblk->numbps = l_band->numbps;
+					} else {
+						l_cblk->numbps = l_band->numbps - K_msbs;
+					}
 					// BIBO analysis gives upper limit on number of bit planes
 					if (l_cblk->numbps > max_precision_jpeg_2000 + OPJ_J2K_MAXRLVLS * 5) {
 						event_msg(p_manager, EVT_WARNING, "Number of bit planes %u is impossibly large.\n", l_cblk->numbps);

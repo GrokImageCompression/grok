@@ -574,7 +574,6 @@ void t1_decode::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 }
 bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 	uint8_t orient,
-	uint32_t roishift,
 	uint32_t mode_switch)
 {
 	initBuffers((uint16_t)(cblk->x1 - cblk->x0), (uint16_t)(cblk->y1 - cblk->y0));
@@ -582,7 +581,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t* cblk,
 		return true;
 	if (!allocCompressed(cblk))
 		return false;
-	int32_t bpno_plus_one = (int32_t)(roishift + cblk->numbps);
+	int32_t bpno_plus_one = (int32_t)(cblk->numbps);
 	uint32_t passtype = 2;
 	mqc_resetstates(mqc);
 	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {

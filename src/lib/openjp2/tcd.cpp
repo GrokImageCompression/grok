@@ -1008,7 +1008,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd,
                 l_band->stepsize = (float)(((1.0 + l_step_size->mant / 2048.0) * pow(2.0, (int32_t) (numbps - l_step_size->expn)))) * fraction;
 
                 // see Taubman + Marcellin - Equation 10.22
-                l_band->numbps = std::max<int32_t>(0, (int32_t)(l_step_size->expn + l_tccp->numgbits) - 1);
+                l_band->numbps = l_tccp->roishift + std::max<int32_t>(0, (int32_t)(l_step_size->expn + l_tccp->numgbits) - 1);
 
                 if (!l_band->precincts && (l_nb_precincts > 0U)) {
                     l_band->precincts = new tcd_precinct_t[l_nb_precincts];
