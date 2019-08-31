@@ -772,7 +772,7 @@ namespace grk {
 
 				/* if cblk not yet included --> zero-bitplane tagtree */
 				if (!l_cblk->numSegments) {
-					uint64_t i = 0;
+					uint32_t i = 0;
 					uint8_t value;
 					bool rc = true;
 					while ( (rc = l_prc->imsbtree->decode(l_bio.get(), cblkno, i, &value)) && !value) {
@@ -783,7 +783,7 @@ namespace grk {
 						return false;
 					}
 
-					l_cblk->numbps = l_band->numbps + 1 - (uint32_t)i;
+					l_cblk->numbps = l_band->numbps + 1 - i;
 					// BIBO analysis gives upper limit on number of bit planes
 					if (l_cblk->numbps > max_precision_jpeg_2000 + OPJ_J2K_MAXRLVLS * 5) {
 						event_msg(p_manager, EVT_WARNING, "Number of bit planes %u is impossibly large.\n", l_cblk->numbps);
