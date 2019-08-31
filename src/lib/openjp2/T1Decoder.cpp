@@ -74,7 +74,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*>* blocks) {
 	  }  );
 
   Scheduler::g_TS.AddTaskSetToPipe( &task );
-  Scheduler::g_TS.WaitforTask( &task );
+  Scheduler::g_TS.WaitforAllAndShutdown();
 
 	decodeBlockInfo* block = nullptr;
 	while (decodeQueue.tryPop(block)) {
