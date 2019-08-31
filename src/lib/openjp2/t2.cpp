@@ -743,7 +743,15 @@ namespace grk {
 						return false;
 					}
 					if (value != tag_tree_uninitialized_node_value && value != p_pi->layno) {
-						event_msg(p_manager, EVT_WARNING, "Illegal inclusion tag tree found when decoding packet header\n");
+						std::string msg = "Illegal inclusion tag tree found when decoding packet header.\n";
+						msg += "This problem can occur if empty packets are used (i.e., packets whose first header\n";
+						msg += "bit is 0) and the value coded by the inclusion tag tree in a subsequent packet\n";
+						msg += "is not exactly equal to the index of the quality layer in which each code-block\n";
+						msg += "makes its first contribution.  Such an error may occur from a\n";
+						msg += "mis-interpretation of the standard.  The problem may also occur as a result of\n";
+						msg += "a corrupted code-stream\n";
+						event_msg(p_manager, EVT_WARNING, "%s\n", msg.c_str());
+
 					}
 #ifdef DEBUG_LOSSLESS_T2
 					l_cblk->included = value;
@@ -1735,7 +1743,7 @@ namespace grk {
 
 		if (l_nb_segs > cblk->numSegmentsAllocated) {
 			tcd_seg_t* 	new_segs = new tcd_seg_t[cblk->numSegmentsAllocated + cblk->numSegmentsAllocated];
-			for (int i = 0; i < cblk->numSegmentsAllocated; ++i)
+			for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
 				new_segs[i] = cblk->segs[i];
 			cblk->numSegmentsAllocated += default_numbers_segments;
 			if (cblk->segs)
