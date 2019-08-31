@@ -116,7 +116,6 @@ double t1_impl::encode(encodeBlockInfo* block,
 bool t1_impl::decode(decodeBlockInfo* block) {
 	return t1_decoder->decode_cblk(	block->cblk,
 						(uint8_t)block->bandno,
-						block->roishift,
 						block->mode_switch);
 }
 

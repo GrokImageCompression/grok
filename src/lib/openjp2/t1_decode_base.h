@@ -85,7 +85,6 @@ public:
 	*/
 	virtual bool decode_cblk(tcd_cblk_dec_t* cblk,
 		uint8_t orient,
-		uint32_t roishift,
 		uint32_t mode_switch)=0;
 	virtual void postDecode(decodeBlockInfo* block)=0;
 

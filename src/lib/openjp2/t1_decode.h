@@ -81,7 +81,6 @@ public:
 	*/
 	bool decode_cblk(tcd_cblk_dec_t* cblk,
 		uint8_t orient,
-		uint32_t roishift,
 		uint32_t mode_switch) override;
 	void postDecode(decodeBlockInfo* block) override;
 private:
