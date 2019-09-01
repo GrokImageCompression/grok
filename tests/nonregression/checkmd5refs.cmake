@@ -1,4 +1,4 @@
-#    Copyright (C) 2016-2017 Grok Image Compression Inc.
+#    Copyright (C) 2016-2019 Grok Image Compression Inc.
 #
 #    This source code is free software: you can redistribute it and/or  modify
 #    it under the terms of the GNU Affero General Public License, version 3,
