@@ -24,6 +24,7 @@ include_directories(
   ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/openjp2 # opj_config.h and opj_config_private.h
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/jp2
+  ${GROK_SOURCE_DIR}/src/include
 )
 # Defines the source code for the library
 set(GROK_SRCS

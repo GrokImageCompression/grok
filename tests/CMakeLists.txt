@@ -14,6 +14,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/lib/openjp2
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
+  ${GROK_SOURCE_DIR}/src/include
   ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
