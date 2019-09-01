@@ -237,7 +237,7 @@ template<typename T> static bool write(FILE *rawFile, bool big_endian,
 	T *outPtr = buf;
 	size_t outCount = 0;
 
-	for (uint32_t i = 0; i < w*h; ++i) {
+	for (uint64_t i = 0; i < (uint64_t)w*h; ++i) {
 		int32_t curr = *ptr++;
 		if (curr > upper)
 			curr = upper;
