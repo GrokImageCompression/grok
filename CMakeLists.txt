@@ -223,6 +223,7 @@ check_include_files(malloc.h GROK_HAVE_MALLOC_H)
 include(CheckSymbolExists)
 # _aligned_alloc https://msdn.microsoft.com/en-us/library/8z34s9c6.aspx
 check_symbol_exists(_aligned_malloc malloc.h GROK_HAVE__ALIGNED_MALLOC)
+check_symbol_exists(aligned_alloc stdlib.h GROK_HAVE_ALIGNED_ALLOC)
 # posix_memalign (needs _POSIX_C_SOURCE >= 200112L on Linux)
 set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200112L)
 check_symbol_exists(posix_memalign stdlib.h GROK_HAVE_POSIX_MEMALIGN)
