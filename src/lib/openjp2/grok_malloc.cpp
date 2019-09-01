@@ -76,7 +76,9 @@ static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
         return nullptr;
     }
 
-#if defined(GROK_HAVE_POSIX_MEMALIGN)
+#if defined(GROK_HAVE_ALIGNED_ALLOC)
+	ptr = aligned_alloc(alignment, size);
+#elif defined(GROK_HAVE_POSIX_MEMALIGN)
     /* aligned_alloc requires c11, restrict to posix_memalign for now. Quote:
      * This function was introduced in POSIX 1003.1d. Although this function is
      * superseded by aligned_alloc, it is more portable to older POSIX systems
