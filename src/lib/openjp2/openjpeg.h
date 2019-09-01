@@ -298,6 +298,7 @@ typedef enum CODEC_FORMAT {
 
 
 #define  OPJ_NUM_COMMENTS_SUPPORTED 256
+#define OPJ_MAX_COMMENT_LENGTH (UINT16_MAX-2)
 
 /*
 ==========================================================
@@ -396,7 +397,7 @@ typedef struct opj_cparameters {
     uint32_t cp_fixed_quality;
     /** comment for coding */
     char *cp_comment[OPJ_NUM_COMMENTS_SUPPORTED];
-	size_t cp_comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	uint16_t cp_comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
 	bool  cp_is_binary_comment[OPJ_NUM_COMMENTS_SUPPORTED];
 	size_t cp_num_comments;
     /** csty : coding style */
@@ -605,7 +606,7 @@ typedef struct opj_header_info {
 	size_t xml_data_len;
 	size_t num_comments;
 	char* comment[OPJ_NUM_COMMENTS_SUPPORTED];
-	size_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	uint16_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[OPJ_NUM_COMMENTS_SUPPORTED];
 
 	bool  has_capture_resolution;

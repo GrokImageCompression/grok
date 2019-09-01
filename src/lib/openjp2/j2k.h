@@ -370,7 +370,7 @@ struct cp_t {
 	/** comments */
 	size_t num_comments;
     char *comment[OPJ_NUM_COMMENTS_SUPPORTED];
-	size_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
+	uint16_t comment_len[OPJ_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[OPJ_NUM_COMMENTS_SUPPORTED];
 	/** number of tiles in width */
     uint32_t tw;

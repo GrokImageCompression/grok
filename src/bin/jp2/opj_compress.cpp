@@ -1222,22 +1222,25 @@ static int parse_cmdline_encoder_ex(int argc,
 			std::istringstream f(commentArg.getValue());
 			string s;
 			while (getline(f, s, '|')) {
-				size_t count = parameters->cp_num_comments;
-				if (count == OPJ_NUM_COMMENTS_SUPPORTED) {
-					fprintf(stdout, "[WARNING] Grok encoder is limited to %d comments. Ignoring subsequent comments.\n", OPJ_NUM_COMMENTS_SUPPORTED);
-					break;
-				}
 				if (s.empty())
 					continue;
-				parameters->cp_comment_len[count] = s.length();
+				if (s.length() > OPJ_MAX_COMMENT_LENGTH){
+					fprintf(stdout,
+							"[WARNING] Comment length %d is greater than maximum comment length %d. Ignoring\n",(uint32_t)s.length(), OPJ_MAX_COMMENT_LENGTH);
+					continue;
+				}
+				size_t count = parameters->cp_num_comments;
+				if (count == OPJ_NUM_COMMENTS_SUPPORTED) {
+					fprintf(stdout,
+							"[WARNING] Grok encoder is limited to %d comments. Ignoring subsequent comments.\n", OPJ_NUM_COMMENTS_SUPPORTED);
+					break;
+				}
 				// ISO Latin comment
 				parameters->cp_is_binary_comment[count] = false;
 				parameters->cp_comment[count] =	(char*)opj_buffer_new(s.length());
-				if (parameters->cp_comment[count]) {
-					memcpy(parameters->cp_comment[count],s.c_str(), s.length());
-					parameters->cp_comment_len[count] = s.length();
-					parameters->cp_num_comments++;
-				}
+				memcpy(parameters->cp_comment[count],s.c_str(), s.length());
+				parameters->cp_comment_len[count] = (uint16_t)s.length();
+				parameters->cp_num_comments++;
 			}
 		}
 

@@ -2212,10 +2212,16 @@ static bool j2k_write_com(j2k_t *p_j2k,
 
 	for (uint32_t i = 0; i < p_j2k->m_cp.num_comments; ++i) {
 		const char * l_comment = p_j2k->m_cp.comment[i];
-		uint32_t l_comment_size = (uint32_t)p_j2k->m_cp.comment_len[i];
-		if (!l_comment_size)
+		uint16_t l_comment_size = p_j2k->m_cp.comment_len[i];
+		if (!l_comment_size){
+			event_msg(p_manager, EVT_WARNING, "Empty comment. Ignoring\n");
 			continue;
-		uint32_t l_total_com_size = l_comment_size + 6;
+		}
+		if (l_comment_size > OPJ_MAX_COMMENT_LENGTH){
+			event_msg(p_manager, EVT_WARNING, "Comment length %s is greater than maximum comment length %d. Ignoring\n",l_comment_size, OPJ_MAX_COMMENT_LENGTH);
+			continue;
+		}
+		uint32_t l_total_com_size = (uint32_t)l_comment_size + 6;
 
 		/* COM */
 		if (!p_stream->write_short(J2K_MS_COM, p_manager)) {
@@ -2264,13 +2270,13 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Empty COM segment. Ignoring \n");
 		return true;
 	}
-	uint32_t commentType;
-	grok_read_bytes(p_header_data, &commentType, 2);
-
 	if (p_j2k->m_cp.num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
 		event_msg(p_manager, EVT_WARNING, "j2k_read_com: Only %d comments are supported. Ignoring\n", OPJ_NUM_COMMENTS_SUPPORTED);
 		return true;
 	}
+
+	uint32_t commentType;
+	grok_read_bytes(p_header_data, &commentType, 2);
 	auto numComments = p_j2k->m_cp.num_comments;
 	p_j2k->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	 if (commentType > 1) {
@@ -2278,7 +2284,7 @@ static bool j2k_read_com (  j2k_t *p_j2k,
 	}
 
 	p_header_data += 2;
-	size_t commentSize = p_header_size - 2;
+	uint16_t commentSize = p_header_size - 2;
 	size_t commentSizeToAlloc = commentSize;
 	if (!p_j2k->m_cp.isBinaryComment[numComments])
 		commentSizeToAlloc++;
@@ -5874,8 +5880,14 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
     if(parameters->cp_num_comments) {
 		for (size_t i = 0; i < parameters->cp_num_comments;++i) {
 			cp->comment_len[i] = parameters->cp_comment_len[i];
-			if (!cp->comment_len[i])
+			if (!cp->comment_len[i]){
+				event_msg(p_manager, EVT_WARNING, "Empty comment. Ignoring\n");
 				continue;
+			}
+			if (cp->comment_len[i] > OPJ_MAX_COMMENT_LENGTH){
+				event_msg(p_manager, EVT_WARNING, "Comment length %s is greater than maximum comment length %d. Ignoring\n",cp->comment_len[i], OPJ_MAX_COMMENT_LENGTH);
+				continue;
+			}
 			cp->comment[i] = (char*)opj_buffer_new(cp->comment_len[i]);
 			if (!cp->comment[i]) {
 				event_msg(p_manager, EVT_ERROR, "Not enough memory to allocate copy of comment string\n");
@@ -5897,7 +5909,7 @@ bool j2k_setup_encoder(     j2k_t *p_j2k,
             return false;
         }
         sprintf(cp->comment[0],"%s%s", comment, version);
-		cp->comment_len[0] = strlen(cp->comment[0]);
+		cp->comment_len[0] = (uint16_t)strlen(cp->comment[0]);
 		cp->num_comments = 1;
 		cp->isBinaryComment[0] = false;
     }
