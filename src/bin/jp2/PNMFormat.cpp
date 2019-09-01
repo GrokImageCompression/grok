@@ -506,8 +506,8 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 	int *green = nullptr;
 	int *blue = nullptr;
 	int *alpha = nullptr;
-	int wr, hr, max;
-	int i;
+	uint32_t wr, hr, max;
+	uint64_t i;
 	unsigned int compno, ncomp;
 	int adjustR, adjustG, adjustB, adjustA;
 	int fails, two, want_gray, has_alpha, triple;
@@ -608,7 +608,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < wr * hr; i+= bufSize) {
+			for (i = 0; i < (uint64_t)wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > INT16_MAX)
@@ -676,7 +676,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < wr * hr; ++i) {
+			for (i = 0; i < wr * hr; i++) {
 				/* prec <= 8: */
 				v = *red++;
 				if (v > UINT8_MAX)
@@ -793,7 +793,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < wr * hr; i++) {
+			for (i = 0; i < (uint64_t)wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > UINT16_MAX)
@@ -831,7 +831,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < wr * hr; ++i) {
+			for (i = 0; i < (uint64_t)wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > UINT8_MAX)
