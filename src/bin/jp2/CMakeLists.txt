@@ -59,6 +59,7 @@ include_directories(
   ${PNG_INCLUDE_DIRNAME}
   ${TIFF_INCLUDE_DIRNAME}
   ${JPEG_INCLUDE_DIRNAME}
+  ${GROK_SOURCE_DIR}/src/include
   )
 
 if(WIN32)
