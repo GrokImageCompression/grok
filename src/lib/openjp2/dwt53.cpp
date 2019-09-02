@@ -61,7 +61,7 @@
  Synthesis DWT Transform for a region wholly contained inside of a tile component
  =================================================================================
 
- Notes on DWT tranform:
+ Notes on DWT transform:
 
  The first step in the synthesis transform is interleaving, where sub-bands are transformed
  into resolution space by interleaving even and odd coordinates
