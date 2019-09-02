@@ -1155,10 +1155,10 @@ typedef struct opj_codestream_index {
 
 // version
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
-//initialize plugin
+//initialize library
 OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path);
-//un-initialize plugin
-OPJ_API void OPJ_CALLCONV opj_cleanup();
+//deinitialize library
+OPJ_API void OPJ_CALLCONV opj_deinitialize();
 
 /*
 =================================

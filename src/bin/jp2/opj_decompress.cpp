@@ -1179,7 +1179,7 @@ int main(int argc, char **argv){
 	}
 cleanup:
 	destroy_parameters(&initParams.parameters);
-	opj_cleanup();
+	opj_deinitialize();
 	return rc;
 }
 
@@ -1225,8 +1225,8 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 
 	// loads plugin but does not actually create codec
 	if (!opj_initialize(initParams->plugin_path)) {
-		opj_cleanup();
-		return 1;
+		success = 1;
+		goto cleanup;
 	}
 
 	// create codec
@@ -1326,7 +1326,6 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		spdlog::info("decode time: {} ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}
 cleanup:
-	opj_cleanup();
 	if (dirptr) {
 		if (dirptr->filename_buf) 
 			free(dirptr->filename_buf);
