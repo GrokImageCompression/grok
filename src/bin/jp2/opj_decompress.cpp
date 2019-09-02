@@ -104,6 +104,7 @@ using namespace grk;
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 using namespace TCLAP;
 using namespace std;
@@ -163,7 +164,7 @@ sample error callback expecting a FILE* client object
 static void error_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	fprintf(stderr, "[ERROR] %s", msg);
+	spdlog::error(msg);
 }
 /**
 sample warning callback expecting a FILE* client object
@@ -171,7 +172,7 @@ sample warning callback expecting a FILE* client object
 static void warning_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	fprintf(stdout, "[WARNING] %s", msg);
+	spdlog::warn(msg);
 }
 /**
 sample debug callback expecting no client object
@@ -179,7 +180,7 @@ sample debug callback expecting no client object
 static void info_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	fprintf(stdout, "[INFO] %s", msg);
+	spdlog::info(msg);
 }
 
 
@@ -290,17 +291,17 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
         }
         if (count == 3) {
             if ((prec < 1) || (prec > 32)) {
-                fprintf(stderr,"[ERROR] Invalid precision %d in precision option %s\n", prec, option);
+                spdlog::error("Invalid precision {} in precision option {}\n", prec, option);
                 l_result = false;
                 break;
             }
             if ((mode != 'C') && (mode != 'S')) {
-                fprintf(stderr,"[ERROR] Invalid precision mode %c in precision option %s\n", mode, option);
+                spdlog::error("Invalid precision mode %c in precision option {}\n", mode, option);
                 l_result = false;
                 break;
             }
             if (comma != ',') {
-                fprintf(stderr,"[ERROR] Invalid character %c in precision option %s\n", comma, option);
+                spdlog::error("Invalid character %c in precision option {}\n", comma, option);
                 l_result = false;
                 break;
             }
@@ -309,7 +310,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                 /* first one */
                 parameters->precision = (opj_precision *)malloc(sizeof(opj_precision));
                 if (parameters->precision == nullptr) {
-                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
+                    spdlog::error("Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
@@ -318,14 +319,14 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                 opj_precision* l_new;
 
                 if (l_new_size == 0U) {
-                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
+                    spdlog::error("Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
 
                 l_new = (opj_precision *)realloc(parameters->precision, l_new_size * sizeof(opj_precision));
                 if (l_new == nullptr) {
-                    fprintf(stderr,"[ERROR] Could not allocate memory for precision option\n");
+                    spdlog::error("Could not allocate memory for precision option\n");
                     l_result = false;
                     break;
                 }
@@ -351,7 +352,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
             }
             l_remaining += 1;
         } else {
-            fprintf(stderr,"[ERROR] Could not parse precision option %s\n", option);
+            spdlog::error("Could not parse precision option {}\n", option);
             l_result = false;
             break;
         }
@@ -372,7 +373,7 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
+        spdlog::error("Could not open Folder {}\n",imgdirpath);
         return 1;
     }
 
@@ -393,7 +394,7 @@ char get_next_file(std::string image_filename,
 					img_fol_t* out_fol,
 					opj_decompress_parameters *parameters) {
 	if (parameters->verbose)
-		fprintf(stdout, "File Number \"%s\"\n", image_filename.c_str());
+		spdlog::info("File Number \"{}\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
 	if (!grk::jpeg2000_file_format(infilename.c_str(), (GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format) || parameters->decod_format == UNKNOWN_FORMAT)
 		return 1;
@@ -557,20 +558,20 @@ int parse_cmdline_decoder(int argc,
 			case JP2_CFMT:
 				break;
 			default:
-				fprintf(stderr,"[ERROR] Unknown input file format: %s \n"
+				spdlog::error("Unknown input file format: {} \n"
 					"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
 					infile);
 				return 1;
 			}
 			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
-				fprintf(stderr, "[ERROR] Path is too long\n");
+				spdlog::error( "Path is too long\n");
 				return 1;
 			}
 		}
 
 		// disable verbose mode when writing to stdout
 		if (parameters->verbose && outForArg.isSet() && !outputFileArg.isSet() && !outDirArg.isSet()) {
-			fprintf(stdout, "[WARNING] Verbose mode is automatically disabled when decompressing to stdout\n");
+			spdlog::warn(" Verbose mode is automatically disabled when decompressing to stdout\n");
 			parameters->verbose = false;
 		}
 
@@ -609,7 +610,7 @@ int parse_cmdline_decoder(int argc,
 				img_fol->out_format = "png";
 				break;
 			default:
-				fprintf(stderr, "[ERROR] Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n", outformat);
+				spdlog::error( "Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n", outformat);
 				return 1;
 			}
 		}
@@ -630,11 +631,11 @@ int parse_cmdline_decoder(int argc,
 			case JPG_DFMT:
 				break;
 			default:
-				fprintf(stderr, "[ERROR] Unknown output format image %s [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n", outfile);
+				spdlog::error( "Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n", outfile);
 				return 1;
 			}
 			if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), outfile) != 0) {
-				fprintf(stderr, "[ERROR] Path is too long\n");
+				spdlog::error( "Path is too long\n");
 				return 1;
 			}
 		} else {
@@ -643,7 +644,7 @@ int parse_cmdline_decoder(int argc,
 				bool toStdout = outForArg.isSet() &&
 						grk::supportedStdioFormat((GROK_SUPPORTED_FILE_FORMAT)parameters->cod_format);
 				if (!toStdout){
-					fprintf(stderr, "[ERROR] Missing output file\n");
+					spdlog::error( "Missing output file\n");
 					return 1;
 				}
 			}
@@ -687,7 +688,7 @@ int parse_cmdline_decoder(int argc,
 			size_t size_optarg = (size_t)strlen(decodeRegionArg.getValue().c_str()) + 1U;
 			char *ROI_values = (char*)malloc(size_optarg);
 			if (ROI_values == nullptr) {
-				fprintf(stderr, "[ERROR] Couldn't allocate memory\n");
+				spdlog::error( "Couldn't allocate memory\n");
 				return 1;
 			}
 			ROI_values[0] = '\0';
@@ -742,25 +743,25 @@ int parse_cmdline_decoder(int argc,
     /* check for possible errors */
     if(img_fol->set_imgdir) {
         if(!(parameters->infile[0]==0)) {
-            fprintf(stderr, "[ERROR] options -ImgDir and -i cannot be used together.\n");
+            spdlog::error( "options -ImgDir and -i cannot be used together.\n");
             return 1;
         }
         if(!img_fol->set_out_format) {
-            fprintf(stderr, "[ERROR] When -ImgDir is used, -OutFor <FORMAT> must be used.\n");
-            fprintf(stderr, "Only one format allowed.\n"
+            spdlog::error( "When -ImgDir is used, -OutFor <FORMAT> must be used.\n");
+            spdlog::error( "Only one format allowed.\n"
                     "Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.\n");
             return 1;
         }
         if(!((parameters->outfile[0] == 0))) {
-            fprintf(stderr, "[ERROR] options -ImgDir and -o cannot be used together.\n");
+            spdlog::error( "options -ImgDir and -o cannot be used together.\n");
             return 1;
         }
     } else {
 		if (parameters->decod_format == UNKNOWN_FORMAT) {
 			if ((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
-				fprintf(stderr, "[ERROR] Required parameters are missing\n"
-					"Example: %s -i image.j2k -o image.pgm\n", argv[0]);
-				fprintf(stderr, "   Help: %s -h\n", argv[0]);
+				spdlog::error( "Required parameters are missing\n"
+					"Example: {} -i image.j2k -o image.pgm\n", argv[0]);
+				spdlog::error( "   Help: {} -h\n", argv[0]);
 				return 1;
 			}
 		}
@@ -836,7 +837,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
 
     l_new_components = (opj_image_cmptparm_t*)malloc((original->numcomps + 2U) * sizeof(opj_image_cmptparm_t));
     if (l_new_components == nullptr) {
-        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for RGB image!\n");
+        spdlog::error( "opj_decompress: failed to allocate memory for RGB image!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -864,7 +865,7 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
     l_new_image = opj_image_create(original->numcomps + 2U, l_new_components, OPJ_CLRSPC_SRGB);
     free(l_new_components);
     if (l_new_image == nullptr) {
-        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for RGB image!\n");
+        spdlog::error( "opj_decompress: failed to allocate memory for RGB image!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -908,7 +909,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 		if (!(original->comps+compno))
 			return nullptr;
         if (original->comps[compno].decodeScaleFactor > 0U) {
-            fprintf(stderr, "[ERROR] opj_decompress: -upsample not supported with reduction\n");
+            spdlog::error( "opj_decompress: -upsample not supported with reduction\n");
             opj_image_destroy(original);
             return nullptr;
         }
@@ -923,7 +924,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     /* Upsample is needed */
     l_new_components = (opj_image_cmptparm_t*)malloc(original->numcomps * sizeof(opj_image_cmptparm_t));
     if (l_new_components == nullptr) {
-        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for upsampled components!\n");
+        spdlog::error( "opj_decompress: failed to allocate memory for upsampled components!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -953,7 +954,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     l_new_image = opj_image_create(original->numcomps, l_new_components, original->color_space);
     free(l_new_components);
     if (l_new_image == nullptr) {
-        fprintf(stderr, "[ERROR] opj_decompress: failed to allocate memory for upsampled components!\n");
+        spdlog::error( "opj_decompress: failed to allocate memory for upsampled components!\n");
         opj_image_destroy(original);
         return nullptr;
     }
@@ -981,7 +982,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
             xoff = l_org_cmp->dx * l_org_cmp->x0 -  original->x0;
             yoff = l_org_cmp->dy * l_org_cmp->y0 -  original->y0;
             if ((xoff >= l_org_cmp->dx) || (yoff >= l_org_cmp->dy)) {
-                fprintf(stderr, "[ERROR] opj_decompress: Invalid image/component parameters found when upsampling\n");
+                spdlog::error( "opj_decompress: Invalid image/component parameters found when upsampling\n");
                 opj_image_destroy(original);
                 opj_image_destroy(l_new_image);
                 return nullptr;
@@ -1061,7 +1062,7 @@ bool store_file_to_disk = true;
 void MycmsLogErrorHandlerFunction(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text) {
 	(void)ContextID;
 	(void)ErrorCode;
-	fprintf(stdout, "[WARNING] LCMS error: %s\n", Text);
+	spdlog::warn(" LCMS error: {}\n", Text);
 }
 #endif
 
@@ -1154,7 +1155,7 @@ int main(int argc, char **argv){
 		else {
 			auto dir = opendir(initParams.img_fol.imgdirpath);
 			if (!dir) {
-				fprintf(stderr, "[ERROR] Could not open Folder %s\n", initParams.img_fol.imgdirpath);
+				spdlog::error( "Could not open Folder {}\n", initParams.img_fol.imgdirpath);
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
@@ -1169,10 +1170,10 @@ int main(int argc, char **argv){
 		}
 		t_cumulative = grok_clock() - t_cumulative;
 		if (initParams.parameters.verbose && num_decompressed_images) {
-			fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
+			spdlog::info("decode time: {} ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 		}
 	} catch (std::bad_alloc& ba){
-		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;
+		spdlog::error("Out of memory. Exiting.");
 		rc = 1;
 		goto cleanup;
 	}
@@ -1272,7 +1273,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		if (initParams->img_fol.set_imgdir) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			if (num_images <= 0) {
-				fprintf(stderr, "[ERROR] Folder is empty\n");
+				spdlog::error( "Folder is empty\n");
 				success = 1;
 				goto cleanup;
 			}
@@ -1322,7 +1323,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 	t_cumulative = grok_clock() - t_cumulative;
 	if (initParams->parameters.verbose && num_decompressed_images && success == 0) {
-		fprintf(stdout, "decode time: %d ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
+		spdlog::info("decode time: {} ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
 	}
 cleanup:
 	opj_cleanup();
@@ -1388,21 +1389,21 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		if (isBufferStream) {
 			auto fp = fopen(parameters->infile, "rb");
 			if (!fp) {
-				fprintf(stderr, "[ERROR] opj_decompress: unable to open file %s for reading", infile);
+				spdlog::error( "opj_decompress: unable to open file {} for reading", infile);
 				failed = 1;
 				goto cleanup;
 			}
 
 			auto rc = fseek(fp, 0, SEEK_END);
 			if (rc == -1) {
-				fprintf(stderr, "[ERROR] opj_decompress: unable to seek on file %s", infile);
+				spdlog::error( "opj_decompress: unable to seek on file {}", infile);
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
 			}
 			auto lengthOfFile = ftell(fp);
 			if (lengthOfFile <= 0) {
-				fprintf(stderr, "[ERROR] opj_decompress: Zero or negative length for file %s", parameters->infile);
+				spdlog::error( "opj_decompress: Zero or negative length for file {}", parameters->infile);
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
@@ -1411,13 +1412,13 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 			buffer = new uint8_t[lengthOfFile];
 			size_t bytesRead = fread(buffer, 1, lengthOfFile, fp);
 			if (!grk::safe_fclose(fp)) {
-				fprintf(stderr, "[ERROR] Error closing file \n");
+				spdlog::error( "Error closing file \n");
 				failed = 1;
 				goto cleanup;
 			}
 
 			if (bytesRead != (size_t)lengthOfFile) {
-				fprintf(stderr, "[ERROR] opj_decompress: Unable to read full length of file %s", parameters->infile);
+				spdlog::error( "opj_decompress: Unable to read full length of file {}", parameters->infile);
 				failed = 1;
 				goto cleanup;
 			}
@@ -1433,7 +1434,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 
 
 	if (!info->l_stream) {
-		fprintf(stderr, "[ERROR] failed to create the stream from the file %s\n", infile);
+		spdlog::error( "failed to create the stream from the file {}\n", infile);
 		failed = 1;
 		goto cleanup;
 	}
@@ -1462,7 +1463,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		opj_set_error_handler(info->l_codec, error_callback, nullptr);
 
 		if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to setup the decoder\n");
+			spdlog::error( "opj_decompress: failed to setup the decoder\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1472,7 +1473,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	if (info->decode_flags & GROK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
 		if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to read the header\n");
+			spdlog::error( "opj_decompress: failed to read the header\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1482,12 +1483,12 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 			std::string xmlFile = std::string(parameters->outfile) + ".xml";
 			auto fp = fopen(xmlFile.c_str(), "wb");
 			if (!fp) {
-				fprintf(stderr, "[ERROR] opj_decompress: unable to open file %s for writing xml to", xmlFile.c_str());
+				spdlog::error( "opj_decompress: unable to open file {} for writing xml to", xmlFile.c_str());
 				failed = 1;
 				goto cleanup;
 			}
 			if (fp && fwrite(info->header_info.xml_data, 1, info->header_info.xml_data_len, fp) != info->header_info.xml_data_len) {
-				fprintf(stderr, "[ERROR] opj_decompress: unable to write all xml data to file %s", xmlFile.c_str());
+				spdlog::error( "opj_decompress: unable to write all xml data to file {}", xmlFile.c_str());
 				fclose(fp);
 				failed = 1;
 				goto cleanup;
@@ -1515,7 +1516,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {
-			fprintf(stderr, "[ERROR] opj_decompress: Precision = %d not supported:\n", info->image->comps[i].prec);
+			spdlog::error( "opj_decompress: Precision = {} not supported:\n", info->image->comps[i].prec);
 			failed = 1;
 			goto cleanup;
 		}
@@ -1524,7 +1525,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	/* Uncomment to set number of resolutions to be decoded */
 	/*
 	if (!opj_set_decoded_resolution_factor(info->l_codec, 0)) {
-		fprintf(stderr, "[ERROR] opj_decompress: failed to set the resolution factor tile!\n");
+		spdlog::error( "opj_decompress: failed to set the resolution factor tile!\n");
 		return -1;
 	}
 	*/
@@ -1533,7 +1534,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		parameters->DA_y0,
 		parameters->DA_x1,
 		parameters->DA_y1)) {
-		fprintf(stderr, "[ERROR] opj_decompress: failed to set the decoded area\n");
+		spdlog::error( "opj_decompress: failed to set the decoded area\n");
 		failed = 1;
 		goto cleanup;
 	}
@@ -1541,7 +1542,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
 		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to decode image!\n");
+			spdlog::error( "opj_decompress: failed to decode image!\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1549,12 +1550,12 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	// or, decode one particular tile
 	else {
 		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to decode tile!\n");
+			spdlog::error( "opj_decompress: failed to decode tile!\n");
 			failed = 1;
 			goto cleanup;
 		}
 		if (parameters->verbose)
-			fprintf(stdout, "Tile %d was decoded.\n\n", parameters->tile_index);
+			spdlog::info("Tile {} was decoded.\n\n", parameters->tile_index);
 	}
 
 
@@ -1610,14 +1611,14 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	}
 	else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters->cod_format != TIF_DFMT)) {
 		if (color_cmyk_to_rgb(image)) {
-			fprintf(stderr, "[ERROR] opj_decompress: CMYK to RGB colour conversion failed !\n");
+			spdlog::error( "opj_decompress: CMYK to RGB colour conversion failed !\n");
 			failed = 1;
 			goto cleanup;
 		}
 	}
 	else if (image->color_space == OPJ_CLRSPC_EYCC) {
 		if (color_esycc_to_rgb(image)) {
-			fprintf(stderr, "[ERROR] opj_decompress: eSYCC to RGB colour conversion failed !\n");
+			spdlog::error( "opj_decompress: eSYCC to RGB colour conversion failed !\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1628,7 +1629,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			(info->decoder_parameters->cod_format == TIF_DFMT ||
 			info->decoder_parameters->cod_format == PNG_DFMT );
 		if (!canStoreXMP && parameters->verbose) {
-			fprintf(stdout, "[WARNING] Input file %s contains XMP meta-data,\nbut the file format for output file %s does not support storage of this data.\n", infile, outfile);
+			spdlog::warn( " Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.\n", infile, outfile);
 		}
 	}
 
@@ -1636,7 +1637,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		bool canStoreIPTC_IIM =
 			(info->decoder_parameters->cod_format == TIF_DFMT);
 		if (!canStoreIPTC_IIM && parameters->verbose) {
-			fprintf(stdout, "[WARNING] Input file %s contains legacy IPTC-IIM meta-data,\nbut the file format for output file %s does not support storage of this data.\n", infile, outfile);
+			spdlog::warn( " Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.\n", infile, outfile);
 		}
 	}
 	if (image->icc_profile_buf) {
@@ -1644,13 +1645,13 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			if (!canStoreCIE || info->decoder_parameters->force_rgb){
 #if defined(GROK_HAVE_LIBLCMS)
 			if (parameters->verbose && !info->decoder_parameters->force_rgb)
-				fprintf(stdout, "[WARNING] Input file %s is in CIE colour space,\n"
-						"but the codec is unable to store this information in the output file %s.\n"
+				spdlog::warn( " Input file {} is in CIE colour space,\n"
+						"but the codec is unable to store this information in the output file {}.\n"
 						"The output image will therefore be converted to sRGB before saving.\n",
 						infile, outfile);
 			color_cielab_to_rgb(image, info->decoder_parameters->verbose);
 #else
-			fprintf(stdout, "[WARNING] Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB\n");
+			spdlog::warn(" Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB\n");
 #endif
 			}
 		}
@@ -1665,8 +1666,8 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
 				if (parameters->verbose && !info->decoder_parameters->force_rgb)
-					fprintf(stdout, "[WARNING] Input file %s contains a color profile,\n"
-							"but the codec is unable to store this profile in the output file %s.\n"
+					spdlog::warn(" Input file {} contains a color profile,\n"
+							"but the codec is unable to store this profile in the output file {}.\n"
 							"The profile will therefore be applied to the output image before saving.\n",
 							infile, outfile);
 				color_apply_icc_profile(image,
@@ -1718,7 +1719,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	if (parameters->upsample) {
 		image = upsample_image_components(image);
 		if (image == nullptr) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to upsample image components!\n");
+			spdlog::error( "opj_decompress: failed to upsample image components!\n");
 			failed = 1;
 			goto cleanup;
 		}
@@ -1734,14 +1735,14 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			image = convert_gray_to_rgb(image);
 			break;
 		default:
-			fprintf(stderr, "[ERROR] opj_decompress: don't know how to convert image to RGB colorspace!\n");
+			spdlog::error( "opj_decompress: don't know how to convert image to RGB colorspace!\n");
 			opj_image_destroy(image);
 			image = nullptr;
 			failed = 1;
 			goto cleanup;
 		}
 		if (image == nullptr) {
-			fprintf(stderr, "[ERROR] opj_decompress: failed to convert to RGB image!\n");
+			spdlog::error( "opj_decompress: failed to convert to RGB image!\n");
 			goto cleanup;
 		}
 	}
@@ -1754,7 +1755,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			PNMFormat pnm(parameters->split_pnm);
 			if (!pnm.encode(image, outfile, 0,parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+				spdlog::error( "Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1764,7 +1765,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			PGXFormat pgx;
 			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+				spdlog::error( "Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1774,7 +1775,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			BMPFormat bmp;
 			if (!bmp.encode(image, outfile,0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+				spdlog::error( "Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1784,7 +1785,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			TIFFFormat tif;
 			if (!tif.encode(image, outfile, parameters->compression, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+				spdlog::error( "Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1794,7 +1795,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			RAWFormat raw(true);
 			if (raw.encode(image, outfile,0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating raw file. Outfile %s not generated\n", outfile);
+				spdlog::error( "Error generating raw file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1804,7 +1805,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			RAWFormat raw(false);
 			if (raw.encode(image, outfile, 0, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating rawl file. Outfile %s not generated\n", outfile);
+				spdlog::error( "Error generating rawl file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1813,7 +1814,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			TGAFormat tga;
 			if (!tga.encode(image, outfile,0,parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating tga file. Outfile %s not generated\n", outfile);
+				spdlog::error( "Error generating tga file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1823,7 +1824,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			JPEGFormat jpeg;
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
+				spdlog::error( "Error generating png file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1836,7 +1837,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		{
 			PNGFormat png;
 			if (!png.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
-				fprintf(stderr, "[ERROR] Error generating png file. Outfile %s not generated\n", outfile);
+				spdlog::error( "Error generating png file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
@@ -1846,7 +1847,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			* and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 			*/
 		default:
-			fprintf(stderr, "[ERROR] Outfile %s not generated\n", outfile);
+			spdlog::error( "Outfile {} not generated\n", outfile);
 			failed = 1;
 			break;
 		}
