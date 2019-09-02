@@ -1053,7 +1053,7 @@ static void pi_update_decode_poc (pi_iterator_t * p_pi,
     /* loop*/
     uint32_t pino;
 
-    /* encoding prameters to set*/
+    /* encoding parameters to set*/
     uint32_t l_bound;
 
     pi_iterator_t * l_current_pi = nullptr;
@@ -1225,7 +1225,7 @@ pi_iterator_t *pi_create_decode(opj_image_t *p_image,
     uint32_t * l_tmp_data;
     uint32_t ** l_tmp_ptr;
 
-    /* encoding prameters to set */
+    /* encoding parameters to set */
     uint32_t l_max_res;
     uint32_t l_max_prec;
     uint32_t l_tx0,l_tx1,l_ty0,l_ty1;
@@ -1413,7 +1413,7 @@ pi_iterator_t *pi_initialise_encode(const opj_image_t *p_image,
     uint32_t * l_tmp_data;
     uint32_t ** l_tmp_ptr;
 
-    /* encoding prameters to set*/
+    /* encoding parameters to set*/
     uint32_t l_max_res;
     uint32_t l_max_prec;
     uint32_t l_tx0,l_tx1,l_ty0,l_ty1;

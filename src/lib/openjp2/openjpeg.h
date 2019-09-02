@@ -791,9 +791,9 @@ typedef void * opj_stream_t;
  * Defines a single image component
  * */
 typedef struct opj_image_comp {
-    /** XRsiz: horizontal separation of a sample of ith component with respect to the reference grid */
+    /** XRsiz: horizontal separation of a sample of with component with respect to the reference grid */
     uint32_t dx;
-    /** YRsiz: vertical separation of a sample of ith component with respect to the reference grid */
+    /** YRsiz: vertical separation of a sample of with component with respect to the reference grid */
     uint32_t dy;
     /** data width */
     uint32_t w;
@@ -859,9 +859,9 @@ typedef struct opj_image {
  * Component parameters structure used by the opj_image_create function
  * */
 typedef struct opj_image_comptparm {
-    /** XRsiz: horizontal separation of a sample of ith component with respect to the reference grid */
+    /** XRsiz: horizontal separation of a sample of with component with respect to the reference grid */
     uint32_t dx;
-    /** YRsiz: vertical separation of a sample of ith component with respect to the reference grid */
+    /** YRsiz: vertical separation of a sample of with component with respect to the reference grid */
     uint32_t dy;
     /** data width */
     uint32_t w;
@@ -1719,7 +1719,7 @@ OPJ_API void OPJ_CALLCONV opj_destroy_cstr_info(opj_codestream_info_v2_t **cstr_
  *
  * @param	p_codec			the jpeg2000 codec.
  * @param	info_flag		type of information dump.
- * @param	output_stream	output stream where dump the informations get from the codec.
+ * @param	output_stream	output stream where dump the information get from the codec.
  *
  */
 OPJ_API void OPJ_CALLCONV opj_dump_codec(	opj_codec_t *p_codec,

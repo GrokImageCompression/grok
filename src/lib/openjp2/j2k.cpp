@@ -5786,7 +5786,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		cp->m_specific_param.m_enc.m_tp_on = 1;
 	}
 
-	/* initialize the mutiple tiles */
+	/* initialize multiple tiles */
 	/* ---------------------------- */
 	cp->tcps = (tcp_t*) grok_calloc(cp->tw * cp->th, sizeof(tcp_t));
 	if (!cp->tcps) {
@@ -9643,7 +9643,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
 	if (p_j2k->m_output_image)
 		opj_image_destroy(p_j2k->m_output_image);
 
-	/* Create the ouput image from the information previously computed*/
+	/* Create the output image from the information previously computed*/
 	p_j2k->m_output_image = opj_image_create0();
 	if (!(p_j2k->m_output_image)) {
 		return false;
