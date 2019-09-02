@@ -69,14 +69,18 @@ using namespace grk;
 
 enki::TaskScheduler Scheduler::g_TS;
 
-static bool is_initialized = false;
-bool OPJ_CALLCONV opj_initialize(const char* plugin_path){
-    if (!is_initialized) {
+static bool is_plugin_initialized = false;
+bool OPJ_CALLCONV opj_initialize(const char* plugin_path, uint32_t numthreads){
+    if (!numthreads)
+    	Scheduler::g_TS.Initialize();
+    else
+    	Scheduler::g_TS.Initialize(numthreads);
+    if (!is_plugin_initialized) {
 		grok_plugin_load_info_t info;
 		info.plugin_path = plugin_path;
-        is_initialized = grok_plugin_load(info);
+		is_plugin_initialized = grok_plugin_load(info);
     }
-    return is_initialized;
+	return is_plugin_initialized;
 }
 
 OPJ_API void OPJ_CALLCONV opj_deinitialize() {
@@ -919,6 +923,9 @@ static const char* get_path_separator() {
 bool pluginLoaded = false;
 bool OPJ_CALLCONV grok_plugin_load(grok_plugin_load_info_t info)
 {
+	if (!info.plugin_path)
+		return false;
+
 	// form plugin name
 	std::string pluginName = "";
 #if !defined(_WIN32)

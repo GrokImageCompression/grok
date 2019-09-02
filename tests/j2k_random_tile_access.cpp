@@ -213,6 +213,7 @@ int main(int argc, char **argv)
                 parameters.infile);
         return EXIT_FAILURE;
     }
+    opj_initialize(nullptr,0);
 
     /* catch events using our callbacks and give a local context */
     opj_set_info_handler(l_codec, info_callback,nullptr);
@@ -292,6 +293,8 @@ int main(int argc, char **argv)
 
     /* Free image data structure */
     opj_image_destroy(image);
+
+    opj_deinitialize();
 
     return EXIT_SUCCESS;
 }

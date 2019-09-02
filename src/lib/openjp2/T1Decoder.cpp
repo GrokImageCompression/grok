@@ -29,7 +29,6 @@ T1Decoder::T1Decoder(tcp_t *tcp,
 					uint16_t blockh, 
 					size_t numThreads) :codeblock_width(  (uint16_t)(blockw ? (uint32_t)1<<blockw : 0)),
 					  				  codeblock_height( (uint16_t)(blockh ? (uint32_t)1<<blockh : 0)) {
-	Scheduler::g_TS.Initialize((uint32_t)numThreads);
 	for (auto i = 0U; i < numThreads; ++i) {
 		threadStructs.push_back(t1_factory::get_t1(false,tcp, codeblock_width, codeblock_height));
 	}

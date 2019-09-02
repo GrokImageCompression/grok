@@ -247,7 +247,7 @@ int main (int argc, char *argv[])
     if (! l_data) {
         return EXIT_FAILURE;
     }
-
+    opj_initialize(nullptr,0);
     l_stream = opj_stream_create_default_file_stream(input_file,true);
     if (!l_stream) {
         free(l_data);
@@ -382,6 +382,8 @@ int main (int argc, char *argv[])
 
     /* Print profiling*/
     /*PROFPRINT();*/
+
+    opj_deinitialize();
 
     return EXIT_SUCCESS;
 }
