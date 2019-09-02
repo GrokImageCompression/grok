@@ -120,6 +120,8 @@ int main (int argc, char *argv[])
 	uint32_t irreversible;
     const char* output_file;
 
+    opj_initialize(nullptr,0);
+
     /* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
     if( argc == 9 ) {
         num_comps = atoi( argv[1] );
@@ -326,6 +328,7 @@ cleanup:
 
     /* Print profiling*/
     /*PROFPRINT();*/
+	opj_deinitialize();
 
     return rc;
 }

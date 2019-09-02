@@ -453,6 +453,8 @@ int main(int argc, char *argv[])
     dircnt_t *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 
+    opj_initialize(nullptr,0);
+
     /* Set decoding parameters to default values */
     opj_set_default_decoder_parameters(&parameters);
 
@@ -626,6 +628,8 @@ cleanup:
 
     if (fout)
 		fclose(fout);
+
+    opj_deinitialize();
 
     return rc;
 }

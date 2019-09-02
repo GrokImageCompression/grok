@@ -716,7 +716,6 @@ typedef struct opj_decompress_params {
 	bool serialize_xml;
 	uint32_t compression;
 	int32_t  compressionLevel;   // compression "quality". Meaning of "quality" depends on file format we are writing to
-	uint32_t numThreads;
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
@@ -1156,7 +1155,7 @@ typedef struct opj_codestream_index {
 // version
 OPJ_API const char * OPJ_CALLCONV opj_version(void);
 //initialize library
-OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path);
+OPJ_API bool OPJ_CALLCONV opj_initialize(const char* plugin_path, uint32_t numthreads);
 //deinitialize library
 OPJ_API void OPJ_CALLCONV opj_deinitialize();
 

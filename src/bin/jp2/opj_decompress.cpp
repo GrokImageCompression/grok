@@ -1224,7 +1224,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!opj_initialize(initParams->plugin_path)) {
+	if (!opj_initialize(initParams->plugin_path, initParams->parameters.core.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}

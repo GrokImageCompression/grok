@@ -78,6 +78,7 @@
 #include <cstring>
 #include <condition_variable>
 using namespace std::chrono_literals;
+#include "spdlog/spdlog.h"
 
 namespace grk {
 
@@ -226,13 +227,8 @@ bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
     }
 
     s = fname + (strlen(fname) > 4 ? strlen(fname) - 4 : 0);
-
-    fputs("\n===========================================\n", stderr);
-    fprintf(stderr, "The extension of this file is incorrect.\n"
-            "FOUND %s. SHOULD BE %s\n", s, magic_s);
-    fputs("===========================================\n", stderr);
-
-    *fmt = UNKNOWN_FORMAT;
+    spdlog::warn("The extension of this file is incorrect.\n FOUND {}. SHOULD BE {}\n", s, magic_s);
+    *fmt = magic_format;
     return true;
 }
 

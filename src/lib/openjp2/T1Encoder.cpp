@@ -33,7 +33,6 @@ T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile,
 #ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
 #endif
-	Scheduler::g_TS.Initialize((uint32_t)numThreads);
 	for (auto i = 0U; i < numThreads; ++i) {
 		threadStructs.push_back(t1_factory::get_t1(true,tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
