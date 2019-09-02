@@ -1537,7 +1537,7 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 cleanup:
-	opj_cleanup();
+	opj_deinitialize();
 	return success;
 
 }
@@ -1903,8 +1903,15 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if (!initParams)
 		return 1;
 
+	dircnt_t *dirptr = nullptr;
+	int32_t success = 0;
+	uint32_t num_images, imageno;
+
 	/* set encoding parameters to default values */
 	opj_set_default_encoder_parameters(&initParams->parameters);
+
+	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
+	uint32_t state = grok_plugin_get_debug_state();
 
 
 	/* parse input and get user encoding parameters */
@@ -1918,7 +1925,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 								initParams->indexfilename,
 								sizeof(initParams->indexfilename),
 								initParams->plugin_path) == 1) {
-		return 1;
+		success =  1;
+		goto cleanup;
 	}
 
 #ifndef NDEBUG
@@ -1939,8 +1947,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 
 	// loads plugin but does not actually create codec
 	if (!opj_initialize(initParams->plugin_path)) {
-		opj_cleanup();
-		return 1;
+		success =  1;
+		goto cleanup;
 	}
 
 	img_fol_plugin = initParams->img_fol;
@@ -1951,19 +1959,13 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
 	if (!grok_plugin_init(initInfo)) {
-		opj_cleanup();
-		return 1;
+		success =  1;
+		goto cleanup;
 
 	}
-	
-	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
-	uint32_t state = grok_plugin_get_debug_state();
 	if ((state & GROK_PLUGIN_STATE_DEBUG) || (state & GROK_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
-	dircnt_t *dirptr = nullptr;
-	int32_t success = 0;
-	uint32_t num_images, imageno;
 	if (isBatch) {
 		setup_signal_handler();
 		success = grok_plugin_batch_encode(initParams->img_fol.imgdirpath, initParams->out_fol.imgdirpath, &initParams->parameters, plugin_compress_callback);
@@ -2049,6 +2051,5 @@ cleanup:
 			free(dirptr->filename);
 		free(dirptr);
 	}
-	opj_cleanup();
 	return success;
 }

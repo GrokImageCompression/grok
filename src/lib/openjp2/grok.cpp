@@ -79,7 +79,7 @@ bool OPJ_CALLCONV opj_initialize(const char* plugin_path){
     return is_initialized;
 }
 
-OPJ_API void OPJ_CALLCONV opj_cleanup() {
+OPJ_API void OPJ_CALLCONV opj_deinitialize() {
 	grok_plugin_cleanup();
 }
 
