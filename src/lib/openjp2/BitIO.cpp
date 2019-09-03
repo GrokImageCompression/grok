@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -57,32 +57,18 @@
 
 namespace grk {
 
-BitIO::BitIO(uint8_t *bp, uint64_t len, bool isEncoder) : start(bp),
-														offset(0),
-														buf_len(len),
-														buf(0),
-														ct(isEncoder ? 8 : 0),
-														total_bytes(0),
-														sim_out(false),
-														is_encoder(isEncoder), 
-														stream(nullptr) {
+BitIO::BitIO(uint8_t *bp, uint64_t len, bool isEncoder) :
+		start(bp), offset(0), buf_len(len), buf(0), ct(isEncoder ? 8 : 0), total_bytes(
+				0), sim_out(false), is_encoder(isEncoder), stream(nullptr) {
 
 }
 
-BitIO::BitIO(IGrokStream* strm, bool isEncoder) : start(nullptr),
-													offset(0),
-													buf_len(0),
-													buf(0),
-													ct(isEncoder ? 8 : 0),
-													total_bytes(0),
-													sim_out(false),
-													is_encoder(isEncoder), 
-													stream(strm) {
+BitIO::BitIO(IGrokStream *strm, bool isEncoder) :
+		start(nullptr), offset(0), buf_len(0), buf(0), ct(isEncoder ? 8 : 0), total_bytes(
+				0), sim_out(false), is_encoder(isEncoder), stream(strm) {
 }
 
-
-bool BitIO::byteout()
-{
+bool BitIO::byteout() {
 	if (stream)
 		return byteout_stream();
 	if (offset == buf_len) {
@@ -91,15 +77,14 @@ bool BitIO::byteout()
 		return false;
 	}
 	ct = buf == 0xff ? 7 : 8;
-    if (!sim_out)
-        start[offset] = buf;
-    offset++;
-    buf = 0;
-    return true;
+	if (!sim_out)
+		start[offset] = buf;
+	offset++;
+	buf = 0;
+	return true;
 }
 
-bool BitIO::byteout_stream()
-{
+bool BitIO::byteout_stream() {
 	if (!stream->write_byte(buf, nullptr))
 		return false;
 	ct = buf == 0xff ? 7 : 8;
@@ -107,59 +92,53 @@ bool BitIO::byteout_stream()
 	return true;
 }
 
-bool BitIO::bytein()
-{
-    if (offset == buf_len) {
+bool BitIO::bytein() {
+	if (offset == buf_len) {
 		assert(false);
-        return false;
-    }
+		return false;
+	}
 	ct = buf == 0xff ? 7 : 8;
 	buf = start[offset];
 	offset++;
-    return true;
-}
-
-bool BitIO::putbit( uint8_t b)
-{
-    if (ct == 0) {
-		if (!byteout())
-			return false;
-    }
-    ct--;
-    buf = static_cast<uint8_t>( buf | ((uint32_t)b << ct));
 	return true;
 }
 
-bool BitIO::getbit(uint32_t* bits, uint8_t pos)
-{
-    if (ct == 0) {
+bool BitIO::putbit(uint8_t b) {
+	if (ct == 0) {
+		if (!byteout())
+			return false;
+	}
+	ct--;
+	buf = static_cast<uint8_t>(buf | ((uint32_t) b << ct));
+	return true;
+}
+
+bool BitIO::getbit(uint32_t *bits, uint8_t pos) {
+	if (ct == 0) {
 		if (!bytein()) {
 			return false;
 		}
-    }
-    ct--;
-    *bits |= ((buf >> ct) & 1) << pos;
+	}
+	ct--;
+	*bits |= ((buf >> ct) & 1) << pos;
 	return true;
 }
 
-
-size_t BitIO::numbytes()
-{
-    return total_bytes + offset;
+size_t BitIO::numbytes() {
+	return total_bytes + offset;
 }
 
-
-bool BitIO::write( uint32_t v, uint32_t n) {
+bool BitIO::write(uint32_t v, uint32_t n) {
 	if (n > 32U)
 		return false;
-	for (int32_t i = n - 1; i >= 0; i--) { 
+	for (int32_t i = n - 1; i >= 0; i--) {
 		if (!putbit((v >> i) & 1))
 			return false;
 	}
 	return true;
 }
 
-bool BitIO::read(uint32_t* bits, uint32_t n) {
+bool BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n > 0 && n <= 32);
 #ifdef OPJ_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
@@ -167,8 +146,8 @@ bool BitIO::read(uint32_t* bits, uint32_t n) {
 	/* This is the condition for overflow not to occur below which is needed because of GROK_NOSANITIZE */
 	assert(n <= 32U);
 #endif
-	*bits  = 0U;
-	for (int32_t i = n - 1; i >= 0; i--) { 
+	*bits = 0U;
+	for (int32_t i = n - 1; i >= 0; i--) {
 		if (!getbit(bits, static_cast<uint8_t>(i))) {
 			return false;
 		}
@@ -176,27 +155,25 @@ bool BitIO::read(uint32_t* bits, uint32_t n) {
 	return true;
 }
 
-bool BitIO::flush()
-{
-    if (! byteout()) {
-        return false;
-    }
-    if (ct == 7) {
-        if (! byteout()) {
-            return false;
-        }
-    }
-    return true;
+bool BitIO::flush() {
+	if (!byteout()) {
+		return false;
+	}
+	if (ct == 7) {
+		if (!byteout()) {
+			return false;
+		}
+	}
+	return true;
 }
 
-bool BitIO::inalign()
-{
-    if ((buf & 0xff) == 0xff) {
-        if (! bytein()) {
-            return false;
-        }
-    }
-    ct = 0;
-    return true;
+bool BitIO::inalign() {
+	if ((buf & 0xff) == 0xff) {
+		if (!bytein()) {
+			return false;
+		}
+	}
+	ct = 0;
+	return true;
 }
 }

@@ -1,24 +1,23 @@
 /**
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*/
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 
 #include "minpf_dynamic_library.h"
 #include <stdio.h>
 #include <cstring>
-
 
 #ifdef _WIN32
 #include <string>
@@ -46,12 +45,8 @@ static std::string GetLastErrorAsString()
 
 namespace grk {
 
-
-bool minpf_get_full_path(const char* path,
-							void *addr,
-							dynamic_handle_t handle,
-							char* fullPath,
-							size_t fullPathLen) {
+bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
+		char *fullPath, size_t fullPathLen) {
 #ifdef OPJ_BUILD_PLUGIN_LOADER
 	if (!path || !addr || !fullPath || !fullPathLen) {
 		return false;
@@ -80,16 +75,16 @@ bool minpf_get_full_path(const char* path,
 #endif
 
 #else
-	(void)path;
-	(void)addr;
-	(void)handle;
-	(void)fullPath;
-	(void)fullPathLen;
+	(void) path;
+	(void) addr;
+	(void) handle;
+	(void) fullPath;
+	(void) fullPathLen;
 	return false;
 #endif
 }
 
-bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
+bool minpf_unload_dynamic_library(minpf_dynamic_library *library) {
 #ifdef OPJ_BUILD_PLUGIN_LOADER
 	if (!library)
 		return true;
@@ -103,13 +98,14 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library* library) {
 	free(library);
 	return rc;
 #else
-	(void)library;
+	(void) library;
 	return false;
 #endif
 }
 
-minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error){
-	(void)error;
+minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
+		char *error) {
+	(void) error;
 #ifdef OPJ_BUILD_PLUGIN_LOADER
     minpf_dynamic_library* lib = nullptr;
 	dynamic_handle_t handle = nullptr;
@@ -146,13 +142,12 @@ minpf_dynamic_library*  minpf_load_dynamic_library(const char* path, char* error
     lib->handle = handle;
     return lib;
 #else
-	(void)path;
+	(void) path;
 	return nullptr;
 #endif
 }
 
-void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
-{
+void* minpf_get_symbol(minpf_dynamic_library *library, const char *symbol) {
 #ifdef OPJ_BUILD_PLUGIN_LOADER
     if (!library || !library->handle)
         return nullptr;
@@ -171,8 +166,8 @@ void* minpf_get_symbol(minpf_dynamic_library* library, const char* symbol)
 
     return rc;
 #else
-	(void)library;
-	(void)symbol;
+	(void) library;
+	(void) symbol;
 	return nullptr;
 #endif
 

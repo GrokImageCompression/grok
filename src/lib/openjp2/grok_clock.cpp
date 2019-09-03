@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -56,13 +56,9 @@
 #include <sys/times.h>
 #endif /* _WIN32 */
 
-
-
 namespace grk {
 
-
-double grok_clock(void)
-{
+double grok_clock(void) {
 #ifdef _WIN32
     /* _WIN32: use QueryPerformance (very accurate) */
     LARGE_INTEGER freq , t ;
@@ -73,16 +69,16 @@ double grok_clock(void)
     QueryPerformanceCounter ( & t ) ;
     return (double)t.QuadPart /(double) freq.QuadPart ;
 #else
-    /* Unix or Linux: use resource usage */
-    struct rusage t;
-    double procTime;
-    /* (1) Get the rusage data structure at this moment (man getrusage) */
-    getrusage(0,&t);
-    /* (2) What is the elapsed time ? - CPU time = User time + System time */
-    /* (2a) Get the seconds */
-    procTime = (double)(t.ru_utime.tv_sec + t.ru_stime.tv_sec);
-    /* (2b) More precisely! Get the microseconds part ! */
-    return ( procTime + (double)(t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6 ) ;
+	/* Unix or Linux: use resource usage */
+	struct rusage t;
+	double procTime;
+	/* (1) Get the rusage data structure at this moment (man getrusage) */
+	getrusage(0, &t);
+	/* (2) What is the elapsed time ? - CPU time = User time + System time */
+	/* (2a) Get the seconds */
+	procTime = (double) (t.ru_utime.tv_sec + t.ru_stime.tv_sec);
+	/* (2b) More precisely! Get the microseconds part ! */
+	return (procTime + (double) (t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6);
 #endif
 }
 

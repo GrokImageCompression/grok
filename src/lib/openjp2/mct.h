@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -55,17 +55,16 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #pragma once
 namespace grk {
 
 /**
-@file mct.h
-@brief Implementation of a multi-component transforms (MCT)
+ @file mct.h
+ @brief Implementation of a multi-component transforms (MCT)
 
-The functions in MCT.C have for goal to realize reversible and irreversible multicomponent
-transform. The functions in MCT.C are used by some function in TCD.C.
-*/
+ The functions in MCT.C have for goal to realize reversible and irreversible multicomponent
+ transform. The functions in MCT.C are used by some function in TCD.C.
+ */
 
 /** @defgroup MCT MCT - Implementation of a multi-component transform */
 /*@{*/
@@ -74,104 +73,92 @@ transform. The functions in MCT.C are used by some function in TCD.C.
 /*@{*/
 /* ----------------------------------------------------------------------- */
 /**
-Apply a reversible multi-component transform to an image
-@param c0 Samples for red component
-@param c1 Samples for green component
-@param c2 Samples blue component
-@param n Number of samples for each component
-*/
+ Apply a reversible multi-component transform to an image
+ @param c0 Samples for red component
+ @param c1 Samples for green component
+ @param c2 Samples blue component
+ @param n Number of samples for each component
+ */
 void mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
-Apply a reversible multi-component inverse transform to an image
-@param c0 Samples for luminance component
-@param c1 Samples for red chrominance component
-@param c2 Samples for blue chrominance component
-@param n Number of samples for each component
-*/
+ Apply a reversible multi-component inverse transform to an image
+ @param c0 Samples for luminance component
+ @param c1 Samples for red chrominance component
+ @param c2 Samples for blue chrominance component
+ @param n Number of samples for each component
+ */
 void mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
-Get norm of the basis function used for the reversible multi-component transform
-@param compno Number of the component (0->Y, 1->U, 2->V)
-@return
-*/
+ Get norm of the basis function used for the reversible multi-component transform
+ @param compno Number of the component (0->Y, 1->U, 2->V)
+ @return
+ */
 double mct_getnorm(uint32_t compno);
 
 /**
-Apply an irreversible multi-component transform to an image
-@param c0 Samples for red component
-@param c1 Samples for green component
-@param c2 Samples blue component
-@param n Number of samples for each component
-*/
+ Apply an irreversible multi-component transform to an image
+ @param c0 Samples for red component
+ @param c1 Samples for green component
+ @param c2 Samples blue component
+ @param n Number of samples for each component
+ */
 void mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 /**
-Apply an irreversible multi-component inverse transform to an image
-@param c0 Samples for luminance component
-@param c1 Samples for red chrominance component
-@param c2 Samples for blue chrominance component
-@param n Number of samples for each component
-*/
-void mct_decode_real(float* c0, float* c1, float* c2, uint64_t n);
+ Apply an irreversible multi-component inverse transform to an image
+ @param c0 Samples for luminance component
+ @param c1 Samples for red chrominance component
+ @param c2 Samples for blue chrominance component
+ @param n Number of samples for each component
+ */
+void mct_decode_real(float *c0, float *c1, float *c2, uint64_t n);
 /**
-Get norm of the basis function used for the irreversible multi-component transform
-@param compno Number of the component (0->Y, 1->U, 2->V)
-@return
-*/
+ Get norm of the basis function used for the irreversible multi-component transform
+ @param compno Number of the component (0->Y, 1->U, 2->V)
+ @return
+ */
 double mct_getnorm_real(uint32_t compno);
 
 /**
-FIXME DOC
-@param p_coding_data    MCT data
-@param n                size of components
-@param p_data           components
-@param p_nb_comp        nb of components (i.e. size of p_data)
-@param is_signed        tells if the data is signed
-@return false if function encounter a problem, true otherwise
-*/
-bool mct_encode_custom(
-    uint8_t * p_coding_data,
-    uint64_t n,
-    uint8_t ** p_data,
-    uint32_t p_nb_comp,
-    uint32_t is_signed);
+ FIXME DOC
+ @param p_coding_data    MCT data
+ @param n                size of components
+ @param p_data           components
+ @param p_nb_comp        nb of components (i.e. size of p_data)
+ @param is_signed        tells if the data is signed
+ @return false if function encounter a problem, true otherwise
+ */
+bool mct_encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
+		uint32_t p_nb_comp, uint32_t is_signed);
 /**
-FIXME DOC
-@param pDecodingData    MCT data
-@param n                size of components
-@param pData            components
-@param pNbComp          nb of components (i.e. size of p_data)
-@param isSigned         tells if the data is signed
-@return false if function encounter a problem, true otherwise
-*/
-bool mct_decode_custom(
-    uint8_t * pDecodingData,
-    uint64_t n,
-    uint8_t ** pData,
-    uint32_t pNbComp,
-    uint32_t isSigned);
+ FIXME DOC
+ @param pDecodingData    MCT data
+ @param n                size of components
+ @param pData            components
+ @param pNbComp          nb of components (i.e. size of p_data)
+ @param isSigned         tells if the data is signed
+ @return false if function encounter a problem, true otherwise
+ */
+bool mct_decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
+		uint32_t pNbComp, uint32_t isSigned);
 /**
-FIXME DOC
-@param pNorms           MCT data
-@param p_nb_comps       size of components
-@param pMatrix          components
-@return
-*/
-void opj_calculate_norms(   double * pNorms,
-                            uint32_t p_nb_comps,
-                            float * pMatrix);
+ FIXME DOC
+ @param pNorms           MCT data
+ @param p_nb_comps       size of components
+ @param pMatrix          components
+ @return
+ */
+void opj_calculate_norms(double *pNorms, uint32_t p_nb_comps, float *pMatrix);
 /**
-FIXME DOC
-*/
-const double * mct_get_mct_norms (void);
+ FIXME DOC
+ */
+const double* mct_get_mct_norms(void);
 /**
-FIXME DOC
-*/
-const double * mct_get_mct_norms_real (void);
+ FIXME DOC
+ */
+const double* mct_get_mct_norms_real(void);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
-
-
 
 }

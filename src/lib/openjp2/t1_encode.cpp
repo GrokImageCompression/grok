@@ -1,23 +1,23 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -60,11 +60,10 @@
 #include "t1_encode.h"
 #include "t1_luts.h"
 
-
 namespace grk {
 
-t1_encode::t1_encode() : data(nullptr),
-	mqc(nullptr) {
+t1_encode::t1_encode() :
+		data(nullptr), mqc(nullptr) {
 	mqc = mqc_create();
 	if (!mqc) {
 		throw std::exception();
@@ -78,17 +77,16 @@ t1_encode::~t1_encode() {
 }
 
 /*
-Allocate buffers
-@param cblkw	maximum width of code block
-@param cblkh	maximum height of code block
+ Allocate buffers
+ @param cblkw	maximum width of code block
+ @param cblkh	maximum height of code block
 
-*/
-bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh)
-{
+ */
+bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 	if (!t1::allocateBuffers(cblkw, cblkh))
 		return false;
 	if (!data) {
-		data = (uint32_t*)grok_aligned_malloc(cblkw*cblkh * sizeof(int32_t));
+		data = (uint32_t*) grok_aligned_malloc(cblkw * cblkh * sizeof(int32_t));
 		if (!data) {
 			/* FIXME event manager error callback */
 			return false;
@@ -98,55 +96,51 @@ bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh)
 }
 
 /*
-Initialize buffers
-@param w	width of code block
-@param h	height of code block
-*/
+ Initialize buffers
+ @param w	width of code block
+ @param h	height of code block
+ */
 void t1_encode::initBuffers(uint16_t w, uint16_t h) {
 	t1::initBuffers(w, h);
 	if (data)
-		memset(data, 0, w*h * sizeof(int32_t));
+		memset(data, 0, w * h * sizeof(int32_t));
 }
-void  t1_encode::sigpass_step(flag_opt_t *flagsp,
-	uint32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t mode_switch) {
+void t1_encode::sigpass_step(flag_opt_t *flagsp, uint32_t *datap,
+		uint8_t orient, int32_t bpno, int32_t one, int32_t *nmsedec,
+		uint8_t type, uint32_t mode_switch) {
 	uint8_t v;
 	if (*flagsp == 0U) {
-		return;  /* Nothing to do for any of the 4 data points */
+		return; /* Nothing to do for any of the 4 data points */
 	}
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
 		flag_opt_t const shift_flags = *flagsp >> ci3;
 		/* if location is not significant, has not been coded in significance pass, and is in preferred neighbourhood,
-		then code in this pass: */
-		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U && (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
+		 then code in this pass: */
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U
+				&& (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			auto dataPoint = *datap;
 			v = (dataPoint >> one) & 1;
 			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_enc(mqc, v);
-			}
-			else {
+			} else {
 				mqc_encode(mqc, v);
 			}
 			if (v) {
 				/* sign bit */
-				v = (uint8_t)(dataPoint >> T1_DATA_SIGN_BIT_INDEX);
+				v = (uint8_t) (dataPoint >> T1_DATA_SIGN_BIT_INDEX);
 				if (nmsedec)
-					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t)bpno);
-				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+					*nmsedec += getnmsedec_sig(dataPoint, (uint32_t) bpno);
+				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1],
+						flagsp[1], ci3);
 				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				if (type == T1_TYPE_RAW) {
 					mqc_bypass_enc(mqc, v);
-				}
-				else {
+				} else {
 					mqc_encode(mqc, v ^ getSPByte(lu));
 				}
-				updateFlags(flagsp, ci3, v, flags_stride, (ci3 == 0) && (mode_switch & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride,
+						(ci3 == 0) && (mode_switch & J2K_CCP_CBLKSTY_VSC));
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -154,30 +148,20 @@ void  t1_encode::sigpass_step(flag_opt_t *flagsp,
 		datap += w;
 	}
 }
-void t1_encode::sigpass(int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint8_t type,
-	uint32_t mode_switch) {
+void t1_encode::sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
+		uint8_t type, uint32_t mode_switch) {
 	uint32_t i, k;
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
-	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
-	uint32_t* d = data;
+	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
+	uint32_t *d = data;
 
 	if (nmsedec)
 		*nmsedec = 0;
 	for (k = 0; k < h; k += 4) {
 		for (i = 0; i < w; ++i) {
-			sigpass_step(f,
-				d,
-				orient,
-				bpno,
-				one,
-				nmsedec,
-				type,
-				mode_switch);
+			sigpass_step(f, d, orient, bpno, one, nmsedec, type, mode_switch);
 
 			++f;
 			++d;
@@ -186,33 +170,31 @@ void t1_encode::sigpass(int32_t bpno,
 		f += flag_row_extra;
 	}
 }
-void t1_encode::refpass_step(flag_opt_t *flagsp,
-	uint32_t *datap,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint8_t type) {
+void t1_encode::refpass_step(flag_opt_t *flagsp, uint32_t *datap, int32_t bpno,
+		int32_t one, int32_t *nmsedec, uint8_t type) {
 	uint8_t v;
-	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13)) == 0) {
+	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
+			== 0) {
 		/* none significant */
 		return;
 	}
-	if ((*flagsp & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) == (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) {
+	if ((*flagsp & (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3))
+			== (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3)) {
 		/* all processed by sigpass */
 		return;
 	}
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
 		uint32_t shift_flags = *flagsp >> ci3;
 		/* if location is significant, but has not been coded in significance propagation pass, then code in this pass: */
-		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == T1_SIGMA_CURRENT) {
+		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT))
+				== T1_SIGMA_CURRENT) {
 			if (nmsedec)
-				*nmsedec += getnmsedec_ref(*datap, (uint32_t)bpno);
+				*nmsedec += getnmsedec_ref(*datap, (uint32_t) bpno);
 			v = (*datap >> one) & 1;
 			mqc_setcurctx(mqc, getMRPContext(shift_flags));
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_enc(mqc, v);
-			}
-			else {
+			} else {
 				mqc_encode(mqc, v);
 			}
 			/* flip magnitude refinement bit*/
@@ -221,26 +203,19 @@ void t1_encode::refpass_step(flag_opt_t *flagsp,
 		datap += w;
 	}
 }
-void t1_encode::refpass(int32_t bpno,
-	int32_t *nmsedec,
-	uint8_t type) {
+void t1_encode::refpass(int32_t bpno, int32_t *nmsedec, uint8_t type) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
-	flag_opt_t* f = FLAGS_ADDRESS(0, 0);
+	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
-	uint32_t* d = data;
+	uint32_t *d = data;
 
 	if (nmsedec)
 		*nmsedec = 0;
 	for (k = 0U; k < h; k += 4U) {
 		for (i = 0U; i < w; ++i) {
-			refpass_step(f,
-				d,
-				bpno,
-				one,
-				nmsedec,
-				type);
+			refpass_step(f, d, bpno, one, nmsedec, type);
 			++f;
 			++d;
 		}
@@ -248,32 +223,22 @@ void t1_encode::refpass(int32_t bpno,
 		d += data_row_extra;
 	}
 }
-void t1_encode::clnpass_step(flag_opt_t *flagsp,
-	uint32_t *datap,
-	uint8_t orient,
-	int32_t bpno,
-	int32_t one,
-	int32_t *nmsedec,
-	uint32_t agg,
-	uint32_t runlen,
-	uint32_t y,
-	uint32_t mode_switch)
-{
+void t1_encode::clnpass_step(flag_opt_t *flagsp, uint32_t *datap,
+		uint8_t orient, int32_t bpno, int32_t one, int32_t *nmsedec,
+		uint32_t agg, uint32_t runlen, uint32_t y, uint32_t mode_switch) {
 	uint8_t v;
 	uint32_t lim;
-	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13 | T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13
+			| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
 
 	if ((*flagsp & check) == check) {
 		if (runlen == 0) {
 			*flagsp &= ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-		}
-		else if (runlen == 1) {
+		} else if (runlen == 1) {
 			*flagsp &= ~(T1_PI_1 | T1_PI_2 | T1_PI_3);
-		}
-		else if (runlen == 2) {
+		} else if (runlen == 2) {
 			*flagsp &= ~(T1_PI_2 | T1_PI_3);
-		}
-		else if (runlen == 3) {
+		} else if (runlen == 3) {
 			*flagsp &= ~(T1_PI_3);
 		}
 		return;
@@ -293,25 +258,24 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp,
 			v = (*datap >> one) & 1;
 			mqc_encode(mqc, v);
 			if (v) {
-			LABEL_PARTIAL:
-				if (nmsedec)
-					*nmsedec += getnmsedec_sig(*datap, (uint32_t)bpno);
-				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1], flagsp[1], ci3);
+				LABEL_PARTIAL: if (nmsedec)
+					*nmsedec += getnmsedec_sig(*datap, (uint32_t) bpno);
+				uint32_t lu = getSignCodingOrSPPByteIndex(*flagsp, flagsp[-1],
+						flagsp[1], ci3);
 				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				/* sign bit */
-				v = (uint8_t)(*datap >> T1_DATA_SIGN_BIT_INDEX);
+				v = (uint8_t) (*datap >> T1_DATA_SIGN_BIT_INDEX);
 				mqc_encode(mqc, v ^ getSPByte(lu));
-				updateFlags(flagsp, ci3, v, flags_stride, (mode_switch & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+				updateFlags(flagsp, ci3, v, flags_stride,
+						(mode_switch & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
 			}
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
 		datap += w;
 	}
 }
-void t1_encode::clnpass(int32_t bpno,
-	uint8_t orient,
-	int32_t *nmsedec,
-	uint32_t mode_switch) {
+void t1_encode::clnpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
+		uint32_t mode_switch) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg;
@@ -325,7 +289,7 @@ void t1_encode::clnpass(int32_t bpno,
 			agg = !flags[i + 1 + ((k >> 2) + 1) * flags_stride];
 			if (agg) {
 				for (runlen = 0; runlen < 4; ++runlen) {
-					if ((data[((k + runlen)*w) + i] >> one) & 1)
+					if ((data[((k + runlen) * w) + i] >> one) & 1)
 						break;
 				}
 				mqc_setcurctx(mqc, T1_CTXNO_AGG);
@@ -334,35 +298,19 @@ void t1_encode::clnpass(int32_t bpno,
 					continue;
 				}
 				mqc_setcurctx(mqc, T1_CTXNO_UNI);
-				mqc_encode(mqc, (uint8_t)(runlen >> 1));
+				mqc_encode(mqc, (uint8_t) (runlen >> 1));
 				mqc_encode(mqc, runlen & 1);
-			}
-			else {
+			} else {
 				runlen = 0;
 			}
-			clnpass_step(FLAGS_ADDRESS(i, k),
-				data + ((k + runlen) * w) + i,
-				orient,
-				bpno,
-				one,
-				nmsedec,
-				agg,
-				runlen,
-				k,
-				mode_switch);
+			clnpass_step(FLAGS_ADDRESS(i, k), data + ((k + runlen) * w) + i,
+					orient, bpno, one, nmsedec, agg, runlen, k, mode_switch);
 		}
 	}
 }
-double t1_encode::getwmsedec(int32_t nmsedec,
-	uint32_t compno,
-	uint32_t level,
-	uint8_t orient,
-	int32_t bpno,
-	uint32_t qmfbid,
-	double stepsize,
-	uint32_t numcomps,
-	const double * mct_norms,
-	uint32_t mct_numcomps) {
+double t1_encode::getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
+		uint8_t orient, int32_t bpno, uint32_t qmfbid, double stepsize,
+		uint32_t numcomps, const double *mct_norms, uint32_t mct_numcomps) {
 	double w1 = 1, w2, wmsedec;
 	ARG_NOT_USED(numcomps);
 
@@ -371,11 +319,10 @@ double t1_encode::getwmsedec(int32_t nmsedec,
 	}
 	if (qmfbid == 1) {
 		w2 = dwt_getnorm(level, orient);
-	}
-	else {	/* if (qmfbid == 0) */
+	} else { /* if (qmfbid == 0) */
 		w2 = dwt_getnorm_real(level, orient);
 	}
-	wmsedec = w1 * w2 * stepsize * (double)((size_t)1 << bpno);
+	wmsedec = w1 * w2 * stepsize * (double) ((size_t) 1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;
 	return wmsedec;
 }
@@ -394,34 +341,27 @@ int16_t t1_encode::getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 	return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
 }
 
-double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
-	uint8_t orient,
-	uint32_t compno,
-	uint32_t level,
-	uint32_t qmfbid,
-	double stepsize,
-	uint32_t mode_switch,
-	uint32_t numcomps,
-	const double * mct_norms,
-	uint32_t mct_numcomps,
-	uint32_t max,
-	bool doRateControl)
-{
+double t1_encode::encode_cblk(tcd_cblk_enc_t *cblk, uint8_t orient,
+		uint32_t compno, uint32_t level, uint32_t qmfbid, double stepsize,
+		uint32_t mode_switch, uint32_t numcomps, const double *mct_norms,
+		uint32_t mct_numcomps, uint32_t max, bool doRateControl) {
 	double cumwmsedec = 0.0;
 
 	uint32_t passno;
 	int32_t bpno;
 	uint32_t passtype;
 	int32_t nmsedec = 0;
-	int32_t* msePtr = doRateControl ? &nmsedec : nullptr;
+	int32_t *msePtr = doRateControl ? &nmsedec : nullptr;
 	double tempwmsedec = 0;
 
-	auto logMax = int_floorlog2((int32_t)max) + 1;
-	cblk->numbps = (max && (logMax > T1_NMSEDEC_FRACBITS)) ? (uint32_t)(logMax - T1_NMSEDEC_FRACBITS) : 0;
+	auto logMax = int_floorlog2((int32_t) max) + 1;
+	cblk->numbps =
+			(max && (logMax > T1_NMSEDEC_FRACBITS)) ?
+					(uint32_t) (logMax - T1_NMSEDEC_FRACBITS) : 0;
 	if (!cblk->numbps)
 		return 0;
 
-	bpno = (int32_t)(cblk->numbps - 1);
+	bpno = (int32_t) (cblk->numbps - 1);
 	passtype = 2;
 	mqc_init_enc(mqc, cblk->data);
 #ifdef PLUGIN_DEBUG_ENCODE
@@ -440,7 +380,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 	for (passno = 0; bpno >= 0; ++passno) {
 		tcd_pass_t *pass = &cblk->passes[passno];
 		uint8_t type = T1_TYPE_MQ;
-		if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+		if (LAZY && (bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2))
 			type = T1_TYPE_RAW;
 
 		switch (passtype) {
@@ -464,16 +404,8 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 		}
 
 		if (doRateControl) {
-			tempwmsedec = getwmsedec(nmsedec,
-				compno,
-				level,
-				orient,
-				bpno,
-				qmfbid,
-				stepsize,
-				numcomps,
-				mct_norms,
-				mct_numcomps);
+			tempwmsedec = getwmsedec(nmsedec, compno, level, orient, bpno,
+					qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
 			cumwmsedec += tempwmsedec;
 		}
 
@@ -488,30 +420,31 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 		// In LAZY mode, we need to terminate pass 2 from fourth bit plane, 
 		// and passes 1 and 2 from subsequent bit planes. Pass 0 in lazy region
 		// does not get terminated unless TERMALL is also set
-		if (TERMALL ||
-			(LAZY && ((bpno < ((int32_t)cblk->numbps - 4) && (passtype > 0)) ||
-			((bpno == ((int32_t)cblk->numbps - 4)) && (passtype == 2))))) {
+		if (TERMALL
+				|| (LAZY
+						&& ((bpno < ((int32_t) cblk->numbps - 4)
+								&& (passtype > 0))
+								|| ((bpno == ((int32_t) cblk->numbps - 4))
+										&& (passtype == 2))))) {
 
 			correction = 0;
 			auto bypassFlush = false;
 			if (LAZY) {
 				if (TERMALL) {
-					bypassFlush = (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2);
-				}
-				else {
+					bypassFlush = (bpno < ((int32_t) (cblk->numbps) - 4))
+							&& (passtype < 2);
+				} else {
 					bypassFlush = passtype == 1;
 				}
 			}
 			mqc_big_flush(mqc, mode_switch, bypassFlush);
 			pass->term = 1;
-		}
-		else {
+		} else {
 			// SPP in raw region requires only a correction of one, 
 			// since there are never more than 7 bits in C register
-			if (LAZY && (bpno < ((int32_t)cblk->numbps - 4))) {
+			if (LAZY && (bpno < ((int32_t) cblk->numbps - 4))) {
 				correction = (mqc->COUNT < 8 ? 1 : 0) + 1;
-			}
-			else if (mqc->COUNT < 5)
+			} else if (mqc->COUNT < 5)
 				correction++;
 			pass->term = 0;
 		}
@@ -522,14 +455,15 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 		}
 
 		pass->distortiondec = cumwmsedec;
-		pass->rate = (uint16_t)(mqc_numbytes(mqc) + correction);
+		pass->rate = (uint16_t) (mqc_numbytes(mqc) + correction);
 
 		//note: passtype and bpno have already been updated to next pass,
 		// while pass pointer still points to current pass
 		if (bpno >= 0) {
 			if (pass->term) {
 				type = T1_TYPE_MQ;
-				if (LAZY && (bpno < ((int32_t)(cblk->numbps) - 4)) && (passtype < 2))
+				if (LAZY && (bpno < ((int32_t) (cblk->numbps) - 4))
+						&& (passtype < 2))
 					type = T1_TYPE_RAW;
 				if (type == T1_TYPE_RAW)
 					mqc_bypass_init_enc(mqc);
@@ -558,12 +492,14 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 
 			if (LAZY) {
 				// find next term pass
-				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded; ++k) {
-					tcd_pass_t* nextTerm = cblk->passes + k;
+				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded;
+						++k) {
+					tcd_pass_t *nextTerm = cblk->passes + k;
 					if (nextTerm->term) {
 						// this rate is correct, since it has been flushed
 						auto nextRate = nextTerm->rate;
-						if (nextTerm->rate > 0 && (cblk->data[nextTerm->rate - 1] == 0xFF)) {
+						if (nextTerm->rate > 0
+								&& (cblk->data[nextTerm->rate - 1] == 0xFF)) {
 							nextRate--;
 						}
 						maxBytes = std::min<uint32_t>(maxBytes, nextRate);
@@ -571,41 +507,44 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t* cblk,
 					}
 				}
 			}
-			if (pass->rate > (uint16_t)maxBytes)
-				pass->rate = (uint16_t)maxBytes;
+			if (pass->rate > (uint16_t) maxBytes)
+				pass->rate = (uint16_t) maxBytes;
 			// prevent generation of FF as last data byte of a pass 
 			if (cblk->data[pass->rate - 1] == 0xFF) {
 				pass->rate--;
 			}
 		}
 #ifndef NDEBUG
-		int32_t diff = (int32_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
+		int32_t diff = (int32_t) (pass->rate
+				- (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
 		assert(diff >= 0);
 #endif
-		pass->len = (uint16_t)(pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
+		pass->len = (uint16_t) (pass->rate
+				- (passno == 0 ? 0 : cblk->passes[passno - 1].rate));
 	}
 	return cumwmsedec;
 }
 
-static inline int32_t int_fix_mul_t1(int32_t a, int32_t b)
-{
+static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 	int64_t temp = __emul(a, b);
 #else
-	int64_t temp = (int64_t)a * (int64_t)b;
+	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;
 	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
-	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
-	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
+	assert(
+			(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
+void t1_encode::preEncode(encodeBlockInfo *block, tcd_tile_t *tile,
+		uint32_t &max) {
 	auto state = grok_plugin_get_debug_state();
 	//1. prepare low-level encode
 	auto tilec = tile->comps + block->compno;
-	initBuffers((uint16_t)(block->cblk->x1 - block->cblk->x0),
-		(uint16_t)(block->cblk->y1 - block->cblk->y0));
+	initBuffers((uint16_t) (block->cblk->x1 - block->cblk->x0),
+			(uint16_t) (block->cblk->y1 - block->cblk->y0));
 
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 	auto tileLineAdvance = tile_width - w;
@@ -626,17 +565,18 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 				// when ((state & GROK_PLUGIN_STATE_DEBUG) && !(state & GROK_PLUGIN_STATE_PRE_TR1)) is true ?
 				// Disabling multiplication was messing up post-encode comparison
 				// between plugin and grok open source
-				int32_t tmp = (block->tiledp[tileIndex] *= (1 << T1_NMSEDEC_FRACBITS));
-				uint32_t mag = (uint32_t)abs(tmp);
+				int32_t tmp = (block->tiledp[tileIndex] *= (1
+						<< T1_NMSEDEC_FRACBITS));
+				uint32_t mag = (uint32_t) abs(tmp);
 				max = std::max<uint32_t>(max, mag);
-				data[cblk_index] = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				data[cblk_index] = mag
+						| ((uint32_t) (tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 				tileIndex++;
 				cblk_index++;
 			}
 			tileIndex += tileLineAdvance;
 		}
-	}
-	else {
+	} else {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				// In lossy mode, we do a direct pass through of the image data in two cases while in debug encode mode:
@@ -644,15 +584,16 @@ void t1_encode::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& ma
 				// 2. plugin is only being used for pre T1 encoding, and we are applying quantization
 				//    in the plugin DWT step
 				int32_t tmp = 0;
-				if (!(state & GROK_PLUGIN_STATE_DEBUG) ||
-					((state & GROK_PLUGIN_STATE_PRE_TR1) && !(state & GROK_PLUGIN_STATE_DWT_QUANTIZATION))) {
+				if (!(state & GROK_PLUGIN_STATE_DEBUG)
+						|| ((state & GROK_PLUGIN_STATE_PRE_TR1)
+								&& !(state & GROK_PLUGIN_STATE_DWT_QUANTIZATION))) {
 					tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
-				}
-				else {
+				} else {
 					tmp = tiledp[tileIndex];
 				}
-				uint32_t mag = (uint32_t)abs(tmp);
-				uint32_t sign_mag = mag | ((uint32_t)(tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
+				uint32_t mag = (uint32_t) abs(tmp);
+				uint32_t sign_mag = mag
+						| ((uint32_t) (tmp < 0) << T1_DATA_SIGN_BIT_INDEX);
 				max = std::max<uint32_t>(max, mag);
 				data[cblk_index] = sign_mag;
 				tileIndex++;

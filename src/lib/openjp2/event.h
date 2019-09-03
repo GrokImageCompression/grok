@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -54,35 +54,34 @@
 namespace grk {
 
 /**
-@file event.h
-@brief Implementation of a event callback system
+ @file event.h
+ @brief Implementation of a event callback system
 
-The functions in EVENT.C have for goal to send output messages (errors, warnings, debug) to the user.
-*/
+ The functions in EVENT.C have for goal to send output messages (errors, warnings, debug) to the user.
+ */
 /**
-Message handler object
-used for
-<ul>
-<li>Error messages
-<li>Warning messages
-<li>Debugging messages
-</ul>
-*/
+ Message handler object
+ used for
+ <ul>
+ <li>Error messages
+ <li>Warning messages
+ <li>Debugging messages
+ </ul>
+ */
 struct event_mgr_t {
-    /** Data to call the event manager upon */
-    void *			m_error_data;
-    /** Data to call the event manager upon */
-    void *			m_warning_data;
-    /** Data to call the event manager upon */
-    void *			m_info_data;
-    /** Error message callback if available, nullptr otherwise */
-    opj_msg_callback error_handler;
-    /** Warning message callback if available, nullptr otherwise */
-    opj_msg_callback warning_handler;
-    /** Debug message callback if available, nullptr otherwise */
-    opj_msg_callback info_handler;
+	/** Data to call the event manager upon */
+	void *m_error_data;
+	/** Data to call the event manager upon */
+	void *m_warning_data;
+	/** Data to call the event manager upon */
+	void *m_info_data;
+	/** Error message callback if available, nullptr otherwise */
+	opj_msg_callback error_handler;
+	/** Warning message callback if available, nullptr otherwise */
+	opj_msg_callback warning_handler;
+	/** Debug message callback if available, nullptr otherwise */
+	opj_msg_callback info_handler;
 };
-
 
 #define EVT_ERROR	1	/**< Error event type */
 #define EVT_WARNING	2	/**< Warning event type */
@@ -95,7 +94,6 @@ struct event_mgr_t {
 /*@{*/
 /* ----------------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -107,17 +105,17 @@ struct event_mgr_t {
  *
  * @return true if successful, returns false otherwise
  */
-bool event_msg(event_mgr_t* event_mgr, int32_t event_type, const char *fmt, ...);
+bool event_msg(event_mgr_t *event_mgr, int32_t event_type, const char *fmt,
+		...);
 /* ----------------------------------------------------------------------- */
 
 /**
  * Set the event manager with the default callback function for the 3 levels.
  */
-void set_default_event_handler(event_mgr_t * p_manager);
+void set_default_event_handler(event_mgr_t *p_manager);
 
 /*@}*/
 
 /*@}*/
-
 
 }

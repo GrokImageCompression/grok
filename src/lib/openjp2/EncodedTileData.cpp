@@ -1,23 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*/
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include "grok_includes.h"
 
 namespace grk {
-
 
 EncodedTileData::~EncodedTileData() {
 	dealloc();
@@ -36,8 +35,7 @@ void EncodedTileData::alloc(uint64_t len) {
 	if (!data) {
 		data = new uint8_t[len];
 		size = len;
-	}
-	else if (len > size) {
+	} else if (len > size) {
 		auto temp = new uint8_t[len];
 		memcpy(temp, data, size);
 		delete[] data;
@@ -49,7 +47,7 @@ void EncodedTileData::alloc(uint64_t len) {
 void EncodedTileData::grow() {
 	if (!data)
 		return;
-	alloc(size+32768);
+	alloc(size + 32768);
 }
 
 }

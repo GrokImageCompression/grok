@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -53,85 +53,81 @@
 
 namespace grk {
 
-
 /* ==========================================================
-     Utility functions
-   ==========================================================*/
+ Utility functions
+ ==========================================================*/
 /* ----------------------------------------------------------------------- */
 /**
  * Default callback function.
  * Do nothing.
  */
-static void default_callback (const char *msg, void *client_data)
-{
-    ARG_NOT_USED(msg);
-    ARG_NOT_USED(client_data);
+static void default_callback(const char *msg, void *client_data) {
+	ARG_NOT_USED(msg);
+	ARG_NOT_USED(client_data);
 }
 
 /* ----------------------------------------------------------------------- */
 
-
 /* ----------------------------------------------------------------------- */
-bool event_msg(event_mgr_t* p_event_mgr, int32_t event_type, const char *fmt, ...)
-{
+bool event_msg(event_mgr_t *p_event_mgr, int32_t event_type, const char *fmt,
+		...) {
 	const int message_size = 512; /* 512 bytes should be more than enough for a short message */
-    opj_msg_callback msg_handler = nullptr;
-    void * l_data = nullptr;
+	opj_msg_callback msg_handler = nullptr;
+	void *l_data = nullptr;
 
-    if(p_event_mgr != nullptr) {
-        switch(event_type) {
-        case EVT_ERROR:
-            msg_handler = p_event_mgr->error_handler;
-            l_data = p_event_mgr->m_error_data;
-            break;
-        case EVT_WARNING:
-            msg_handler = p_event_mgr->warning_handler;
-            l_data = p_event_mgr->m_warning_data;
-            break;
-        case EVT_INFO:
-            msg_handler = p_event_mgr->info_handler;
-            l_data = p_event_mgr->m_info_data;
-            break;
-        default:
-            break;
-        }
-        if(msg_handler == nullptr) {
-            return false;
-        }
-    } else {
-        return false;
-    }
+	if (p_event_mgr != nullptr) {
+		switch (event_type) {
+		case EVT_ERROR:
+			msg_handler = p_event_mgr->error_handler;
+			l_data = p_event_mgr->m_error_data;
+			break;
+		case EVT_WARNING:
+			msg_handler = p_event_mgr->warning_handler;
+			l_data = p_event_mgr->m_warning_data;
+			break;
+		case EVT_INFO:
+			msg_handler = p_event_mgr->info_handler;
+			l_data = p_event_mgr->m_info_data;
+			break;
+		default:
+			break;
+		}
+		if (msg_handler == nullptr) {
+			return false;
+		}
+	} else {
+		return false;
+	}
 
-    if ((fmt != nullptr) && (p_event_mgr != nullptr)) {
-        va_list arg;
-        size_t str_length/*, i, j*/; 
-        char message[message_size];
-        memset(message, 0, message_size);
-        /* initialize the optional parameter list */
-        va_start(arg, fmt);
-        /* check the length of the format string */
-        str_length = (strlen(fmt) > message_size) ? message_size : strlen(fmt);
-        (void)str_length;
-        /* parse the format string and put the result in 'message' */
-        vsnprintf(message, message_size, fmt, arg);
-        /* deinitialize the optional parameter list */
-        va_end(arg);
+	if ((fmt != nullptr) && (p_event_mgr != nullptr)) {
+		va_list arg;
+		size_t str_length/*, i, j*/;
+		char message[message_size];
+		memset(message, 0, message_size);
+		/* initialize the optional parameter list */
+		va_start(arg, fmt);
+		/* check the length of the format string */
+		str_length = (strlen(fmt) > message_size) ? message_size : strlen(fmt);
+		(void) str_length;
+		/* parse the format string and put the result in 'message' */
+		vsnprintf(message, message_size, fmt, arg);
+		/* deinitialize the optional parameter list */
+		va_end(arg);
 
-        /* output the message to the user program */
-        msg_handler(message, l_data);
-    }
+		/* output the message to the user program */
+		msg_handler(message, l_data);
+	}
 
-    return true;
+	return true;
 }
 
-void set_default_event_handler(event_mgr_t * p_manager)
-{
-    p_manager->m_error_data = nullptr;
-    p_manager->m_warning_data = nullptr;
-    p_manager->m_info_data = nullptr;
-    p_manager->error_handler = default_callback;
-    p_manager->info_handler = default_callback;
-    p_manager->warning_handler = default_callback;
+void set_default_event_handler(event_mgr_t *p_manager) {
+	p_manager->m_error_data = nullptr;
+	p_manager->m_warning_data = nullptr;
+	p_manager->m_info_data = nullptr;
+	p_manager->error_handler = default_callback;
+	p_manager->info_handler = default_callback;
+	p_manager->warning_handler = default_callback;
 }
 
 }

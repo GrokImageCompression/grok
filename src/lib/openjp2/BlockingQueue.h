@@ -7,10 +7,11 @@
 
 namespace grk {
 
-template<typename Data> class BlockingQueue
-{
+template<typename Data> class BlockingQueue {
 public:
-	BlockingQueue() : _active(true) {}
+	BlockingQueue() :
+			_active(true) {
+	}
 	void deactivate() {
 		std::lock_guard<std::mutex> lk(_mutex);
 		_active = false;
@@ -23,13 +24,12 @@ public:
 			_queue.pop();
 	}
 
-	void push_no_lock(std::vector<Data>* data) {
+	void push_no_lock(std::vector<Data> *data) {
 		for (auto d = data->begin(); d != data->end(); ++d)
 			_queue.push(*d);
 	}
 
-	void push(Data const& data)
-	{
+	void push(Data const &data) {
 		{
 			std::lock_guard<std::mutex> lk(_mutex);
 			if (!_active)
@@ -39,22 +39,19 @@ public:
 		_condition.notify_one();
 	}
 
-	bool empty() const
-	{
+	bool empty() const {
 		std::lock_guard<std::mutex> lk(_mutex);
 		return _queue.empty();
 	}
 
-	bool tryPop(Data& value)
-	{
+	bool tryPop(Data &value) {
 		std::lock_guard<std::mutex> lk(_mutex);
 		return pop(value);
 	}
 
-	bool waitAndPop(Data& value)
-	{
+	bool waitAndPop(Data &value) {
 		std::unique_lock<std::mutex> lk(_mutex);
-		_condition.wait(lk, [this]{ return !_active || !_queue.empty(); });
+		_condition.wait(lk, [this] {return !_active || !_queue.empty();});
 		return pop(value);
 	}
 
@@ -63,10 +60,9 @@ public:
 		return _queue.size();
 	}
 
-
 private:
 
-	bool pop(Data& value) {
+	bool pop(Data &value) {
 		if (_queue.empty())
 			return false;
 		value = _queue.front();
@@ -79,6 +75,5 @@ private:
 	std::condition_variable _condition;
 	bool _active;
 };
-
 
 }

@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -59,23 +59,23 @@
 namespace grk {
 
 /**
-@file t2.h
-@brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
+ @file t2.h
+ @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
 
-*/
+ */
 
 /** @defgroup T2 T2 - Implementation of a tier-2 coding */
 /*@{*/
 
 /**
-Tier-2 coding
-*/
+ Tier-2 coding
+ */
 struct t2_t {
 
-    /** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
-    opj_image_t *image;
-    /** pointer to the image coding parameters */
-    cp_t *cp;
+	/** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
+	opj_image_t *image;
+	/** pointer to the image coding parameters */
+	cp_t *cp;
 };
 
 /** @name Exported functions */
@@ -83,70 +83,52 @@ struct t2_t {
 /* ----------------------------------------------------------------------- */
 
 /**
-Encode the packets of a tile to a destination buffer
-@param t2               T2 handle
-@param tileno           number of the tile encoded
-@param tile             the tile for which to write the packets
-@param maxlayers        maximum number of layers
-@param dest             the destination buffer
-@param p_data_written   FIXME DOC
-@param len              the length of the destination buffer
-@param cstr_info        Codestream information structure
-@param tpnum            Tile part number of the current tile
-@param tppos            The position of the tile part flag in the progression order
-@param pino             FIXME DOC
-*/
-bool t2_encode_packets(	t2_t* t2,
-                            uint32_t tileno,
-                            tcd_tile_t *tile,
-                            uint32_t maxlayers,
-							GrokStream* p_stream,
-                            uint64_t * p_data_written,
-                            uint64_t len,
-                            opj_codestream_info_t *cstr_info,
-                            uint32_t tpnum,
-                            uint32_t tppos,
-                            uint32_t pino, 
-							event_mgr_t * p_manager);
-
-/**
-Encode the packets of a tile to a destination buffer
-@param t2               T2 handle
-@param tileno           number of the tile encoded
-@param tile             the tile for which to write the packets
-@param maxlayers        maximum number of layers
-@param p_data_written   FIXME DOC
-@param len              the length of the destination buffer
-@param tppos            The position of the tile part flag in the progression order
-*/
-bool t2_encode_packets_simulate(t2_t* t2,
-                                  uint32_t tileno,
-                                  tcd_tile_t *tile,
-                                  uint32_t maxlayers,
-                                  uint64_t * p_data_written,
-                                  uint64_t max_len,
-                                  uint32_t tppos,
-								event_mgr_t * p_manager);
-
-
-/**
-Decode the packets of a tile from a source buffer
-@param t2 T2 handle
-@param tileno number that identifies the tile for which to decode the packets
-@param tile tile for which to decode the packets
-@param src         FIXME DOC
-@param p_data_read the source buffer
-@param len length of the source buffer
-@param cstr_info   FIXME DOC
-
-@return FIXME DOC
+ Encode the packets of a tile to a destination buffer
+ @param t2               T2 handle
+ @param tileno           number of the tile encoded
+ @param tile             the tile for which to write the packets
+ @param maxlayers        maximum number of layers
+ @param dest             the destination buffer
+ @param p_data_written   FIXME DOC
+ @param len              the length of the destination buffer
+ @param cstr_info        Codestream information structure
+ @param tpnum            Tile part number of the current tile
+ @param tppos            The position of the tile part flag in the progression order
+ @param pino             FIXME DOC
  */
-bool t2_decode_packets(	t2_t *t2,
-                            uint32_t tileno,
-                            tcd_tile_t *tile,
-                            seg_buf_t* src_buf,
-                            uint64_t * p_data_read,
-                            event_mgr_t *p_manager);
+bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
+		uint32_t maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
+		uint64_t len, opj_codestream_info_t *cstr_info, uint32_t tpnum,
+		uint32_t tppos, uint32_t pino, event_mgr_t *p_manager);
+
+/**
+ Encode the packets of a tile to a destination buffer
+ @param t2               T2 handle
+ @param tileno           number of the tile encoded
+ @param tile             the tile for which to write the packets
+ @param maxlayers        maximum number of layers
+ @param p_data_written   FIXME DOC
+ @param len              the length of the destination buffer
+ @param tppos            The position of the tile part flag in the progression order
+ */
+bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
+		uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
+		uint32_t tppos, event_mgr_t *p_manager);
+
+/**
+ Decode the packets of a tile from a source buffer
+ @param t2 T2 handle
+ @param tileno number that identifies the tile for which to decode the packets
+ @param tile tile for which to decode the packets
+ @param src         FIXME DOC
+ @param p_data_read the source buffer
+ @param len length of the source buffer
+ @param cstr_info   FIXME DOC
+
+ @return FIXME DOC
+ */
+bool t2_decode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
+		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager);
 
 /**
  * Creates a Tier 2 handle
@@ -154,20 +136,18 @@ bool t2_decode_packets(	t2_t *t2,
  * @param	p_image		Source or destination image
  * @param	p_cp		Image coding parameters.
  * @return		a new T2 handle if successful, nullptr otherwise.
-*/
+ */
 t2_t* t2_create(opj_image_t *p_image, cp_t *p_cp);
 
 /**
-Destroy a T2 handle
-@param t2 T2 handle to destroy
-*/
+ Destroy a T2 handle
+ @param t2 T2 handle to destroy
+ */
 void t2_destroy(t2_t *t2);
 
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
-
-
 
 }

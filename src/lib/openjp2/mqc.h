@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -54,7 +54,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #pragma once
 namespace grk {
 
@@ -83,41 +82,39 @@ struct raw_t {
 	uint8_t *start;
 };
 
-
 /* ----------------------------------------------------------------------- */
 /**
-Create a new RAW handle
-@return a new RAW handle if successful, returns nullptr otherwise
-*/
+ Create a new RAW handle
+ @return a new RAW handle if successful, returns nullptr otherwise
+ */
 raw_t* raw_create(void);
 /**
-Destroy a previously created RAW handle
-@param raw RAW handle to destroy
-*/
+ Destroy a previously created RAW handle
+ @param raw RAW handle to destroy
+ */
 void raw_destroy(raw_t *raw);
 /**
-Initialize the decoder
-@param raw RAW handle
-@param bp Pointer to the start of the buffer from which the bytes will be read
-@param len Length of the input buffer
-*/
+ Initialize the decoder
+ @param raw RAW handle
+ @param bp Pointer to the start of the buffer from which the bytes will be read
+ @param len Length of the input buffer
+ */
 void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len);
 /**
-Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
-@param raw RAW handle
-@return the decoded symbol (0 or 1)
-*/
+ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
+ @param raw RAW handle
+ @return the decoded symbol (0 or 1)
+ */
 uint8_t raw_decode(raw_t *raw);
 /* ----------------------------------------------------------------------- */
 
+/**
+ MQ coder
+ */
 
 /**
-MQ coder
-*/
-
-/**
-This struct defines the state of a context.
-*/
+ This struct defines the state of a context.
+ */
 struct mqc_state_t {
 	/** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
 	uint16_t qeval;
@@ -130,7 +127,6 @@ struct mqc_state_t {
 };
 
 extern mqc_state_t mqc_states[totalNumContextStates];
-
 
 struct mqc_t {
 	uint32_t C;
@@ -147,105 +143,104 @@ struct mqc_t {
 	plugin_debug_mqc_t debug_mqc;
 };
 
-
 /**
-Create a new MQC handle
-@return a new MQC handle if successful, returns nullptr otherwise
-*/
+ Create a new MQC handle
+ @return a new MQC handle if successful, returns nullptr otherwise
+ */
 mqc_t* mqc_create(void);
 /**
-Destroy a previously created MQC handle
-@param mqc MQC handle to destroy
-*/
+ Destroy a previously created MQC handle
+ @param mqc MQC handle to destroy
+ */
 void mqc_destroy(mqc_t *mqc);
 /**
-Return the number of bytes written/read since initialisation
-@param mqc MQC handle
-@return the number of bytes already encoded
-*/
+ Return the number of bytes written/read since initialisation
+ @param mqc MQC handle
+ @return the number of bytes already encoded
+ */
 int32_t mqc_numbytes(mqc_t *mqc);
 /**
-Reset the states of all the context of the coder/decoder
-(each context is set to a state where 0 and 1 are more or less equiprobable)
-@param mqc MQC handle
-*/
+ Reset the states of all the context of the coder/decoder
+ (each context is set to a state where 0 and 1 are more or less equiprobable)
+ @param mqc MQC handle
+ */
 void mqc_resetstates(mqc_t *mqc);
 
 /**
-Initialize the encoder
-@param mqc MQC handle
-@param bp Pointer to the start of the buffer where the bytes will be written
-*/
+ Initialize the encoder
+ @param mqc MQC handle
+ @param bp Pointer to the start of the buffer where the bytes will be written
+ */
 void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
 /**
-Set the current context used for coding/decoding
-@param mqc MQC handle
-@param ctxno Number that identifies the context
-*/
+ Set the current context used for coding/decoding
+ @param mqc MQC handle
+ @param ctxno Number that identifies the context
+ */
 void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno);
 /**
-Encode a symbol using the MQ-coder
-@param mqc MQC handle
-@param d The symbol to be encoded (0 or 1)
-*/
+ Encode a symbol using the MQ-coder
+ @param mqc MQC handle
+ @param d The symbol to be encoded (0 or 1)
+ */
 void mqc_encode(mqc_t *mqc, uint8_t d);
 /**
-Flush the encoder, so that all remaining data is written
-@param mqc MQC handle
-*/
+ Flush the encoder, so that all remaining data is written
+ @param mqc MQC handle
+ */
 void mqc_flush(mqc_t *mqc);
 
 void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush);
 
 /**
-BYPASS mode switch, initialization operation.
-JPEG 2000 p 505.
-<h2>Not fully implemented and tested !!</h2>
-@param mqc MQC handle
-*/
+ BYPASS mode switch, initialization operation.
+ JPEG 2000 p 505.
+ <h2>Not fully implemented and tested !!</h2>
+ @param mqc MQC handle
+ */
 void mqc_bypass_init_enc(mqc_t *mqc);
 /**
-BYPASS mode switch, coding operation.
-JPEG 2000 p 505.
-<h2>Not fully implemented and tested !!</h2>
-@param mqc MQC handle
-@param d The symbol to be encoded (0 or 1)
-*/
+ BYPASS mode switch, coding operation.
+ JPEG 2000 p 505.
+ <h2>Not fully implemented and tested !!</h2>
+ @param mqc MQC handle
+ @param d The symbol to be encoded (0 or 1)
+ */
 void mqc_bypass_enc(mqc_t *mqc, uint8_t d);
 /**
-BYPASS mode switch, flush operation
-<h2>Not fully implemented and tested !!</h2>
-@param mqc MQC handle
-*/
+ BYPASS mode switch, flush operation
+ <h2>Not fully implemented and tested !!</h2>
+ @param mqc MQC handle
+ */
 void mqc_bypass_flush_enc(mqc_t *mqc);
 /**
-RESTART mode switch (TERMALL) reinitialisation
-@param mqc MQC handle
-*/
+ RESTART mode switch (TERMALL) reinitialisation
+ @param mqc MQC handle
+ */
 void mqc_restart_init_enc(mqc_t *mqc);
 /**
-ERTERM mode switch (PTERM)
-@param mqc MQC handle
-*/
+ ERTERM mode switch (PTERM)
+ @param mqc MQC handle
+ */
 void mqc_flush_erterm(mqc_t *mqc);
 /**
-SEGMARK mode switch (SEGSYM)
-@param mqc MQC handle
-*/
+ SEGMARK mode switch (SEGSYM)
+ @param mqc MQC handle
+ */
 void mqc_segmark_enc(mqc_t *mqc);
 /**
-Initialize the decoder
-@param mqc MQC handle
-@param bp Pointer to the start of the buffer from which the bytes will be read
-@param len Length of the input buffer
-*/
+ Initialize the decoder
+ @param mqc MQC handle
+ @param bp Pointer to the start of the buffer from which the bytes will be read
+ @param len Length of the input buffer
+ */
 void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len);
 /**
-Decode a symbol
-@param mqc MQC handle
-@return the decoded symbol (0 or 1)
-*/
-uint8_t mqc_decode(mqc_t * const mqc);
+ Decode a symbol
+ @param mqc MQC handle
+ @return the decoded symbol (0 or 1)
+ */
+uint8_t mqc_decode(mqc_t *const mqc);
 
 }
 
