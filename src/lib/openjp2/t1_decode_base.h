@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -70,30 +70,28 @@ struct mqc_t;
 struct raw_t;
 class t1;
 
-class t1_decode_base : public t1 {
+class t1_decode_base: public t1 {
 public:
 	t1_decode_base(uint16_t code_block_width, uint16_t code_block_height);
 	virtual ~t1_decode_base();
 
 	/**
-	Decode 1 code-block
-	@param t1 T1 handle
-	@param cblk Code-block coding parameters
-	@param orient
-	@param roishift Region of interest shifting value
-	@param mode_switch Code-block style
-	*/
-	virtual bool decode_cblk(tcd_cblk_dec_t* cblk,
-		uint8_t orient,
-		uint32_t mode_switch)=0;
-	virtual void postDecode(decodeBlockInfo* block)=0;
+	 Decode 1 code-block
+	 @param t1 T1 handle
+	 @param cblk Code-block coding parameters
+	 @param orient
+	 @param roishift Region of interest shifting value
+	 @param mode_switch Code-block style
+	 */
+	virtual bool decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
+			uint32_t mode_switch)=0;
+	virtual void postDecode(decodeBlockInfo *block)=0;
 
-
-	int32_t  *dataPtr;
+	int32_t *dataPtr;
 
 protected:
-	bool allocCompressed(tcd_cblk_dec_t* cblk);
-	uint8_t* compressed_block;
+	bool allocCompressed(tcd_cblk_dec_t *cblk);
+	uint8_t *compressed_block;
 	size_t compressed_block_size;
 	mqc_t *mqc;
 	raw_t *raw;
@@ -101,5 +99,4 @@ protected:
 };
 
 }
-
 

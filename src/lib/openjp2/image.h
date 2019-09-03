@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -51,11 +51,11 @@
 namespace grk {
 
 /**
-@file image.h
-@brief Implementation of operations on images (IMAGE)
+ @file image.h
+ @brief Implementation of operations on images (IMAGE)
 
-The functions in IMAGE.C have for goal to realize operations on images.
-*/
+ The functions in IMAGE.C have for goal to realize operations on images.
+ */
 
 struct opj_image;
 struct cp_t;
@@ -70,20 +70,17 @@ struct cp_t;
  */
 opj_image_t* opj_image_create0(void);
 
-
-
 /**
  * Updates the components characteristics of the image from the coding parameters.
  *
  * @param p_image_header		the image header to update.
  * @param p_cp					the coding parameters from which to update the image.
  */
-void opj_image_comp_header_update(opj_image_t * p_image, const cp_t* p_cp);
+void opj_image_comp_header_update(opj_image_t *p_image, const cp_t *p_cp);
 
-void opj_copy_image_header(const opj_image_t* p_image_src, opj_image_t* p_image_dest);
+void opj_copy_image_header(const opj_image_t *p_image_src,
+		opj_image_t *p_image_dest);
 
 /*@}*/
-
-
 
 }

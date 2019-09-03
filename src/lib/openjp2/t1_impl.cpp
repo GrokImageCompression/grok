@@ -1,18 +1,18 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 #include "testing.h"
 #include "t1_impl.h"
@@ -21,24 +21,21 @@
 #include "t1_decode_opt.h"
 #include "t1_encode.h"
 
-
 namespace grk {
 
-t1_impl::t1_impl(bool isEncoder, 
-				tcp_t *tcp,
-				uint16_t maxCblkW,
-				uint16_t maxCblkH) : t1_decoder(nullptr), t1_encoder(nullptr) {
-	(void)tcp;
+t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW,
+		uint16_t maxCblkH) :
+		t1_decoder(nullptr), t1_encoder(nullptr) {
+	(void) tcp;
 	if (isEncoder) {
 		t1_encoder = new t1_encode();
-		if (!t1_encoder->allocateBuffers(maxCblkW,	maxCblkH)) {
+		if (!t1_encoder->allocateBuffers(maxCblkW, maxCblkH)) {
 			throw std::exception();
 		}
-	}
-	else {
+	} else {
 		tccp_t *tccp = &tcp->tccps[0];
 		if (!tccp->mode_switch)
-			t1_decoder = new t1_decode_opt(maxCblkW,maxCblkH);
+			t1_decoder = new t1_decode_opt(maxCblkW, maxCblkH);
 		else
 			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
 	}
@@ -47,25 +44,17 @@ t1_impl::~t1_impl() {
 	delete t1_decoder;
 	delete t1_encoder;
 }
-void t1_impl::preEncode(encodeBlockInfo* block, tcd_tile_t *tile, uint32_t& max) {
+void t1_impl::preEncode(encodeBlockInfo *block, tcd_tile_t *tile,
+		uint32_t &max) {
 	t1_encoder->preEncode(block, tile, max);
 }
-double t1_impl::encode(encodeBlockInfo* block, 
-						tcd_tile_t *tile, 
-						uint32_t max,
-						bool doRateControl) {
-	double dist = t1_encoder->encode_cblk(block->cblk,
-										(uint8_t)block->bandno,
-										block->compno,
-										(tile->comps + block->compno)->numresolutions - 1 - block->resno,
-										block->qmfbid,
-										block->stepsize,
-										block->mode_switch,
-										tile->numcomps,
-										block->mct_norms,
-										block->mct_numcomps,
-										max, 
-										doRateControl);
+double t1_impl::encode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t max,
+		bool doRateControl) {
+	double dist = t1_encoder->encode_cblk(block->cblk, (uint8_t) block->bandno,
+			block->compno,
+			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
+			block->qmfbid, block->stepsize, block->mode_switch, tile->numcomps,
+			block->mct_norms, block->mct_numcomps, max, doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
 		t1_decode* t1Decode = new t1_decode(t1_encoder->w, t1_encoder->h);
 
@@ -113,15 +102,13 @@ double t1_impl::encode(encodeBlockInfo* block,
 #endif
 	return dist;
 }
-bool t1_impl::decode(decodeBlockInfo* block) {
-	return t1_decoder->decode_cblk(	block->cblk,
-						(uint8_t)block->bandno,
-						block->mode_switch);
+bool t1_impl::decode(decodeBlockInfo *block) {
+	return t1_decoder->decode_cblk(block->cblk, (uint8_t) block->bandno,
+			block->mode_switch);
 }
 
-void t1_impl::postDecode(decodeBlockInfo* block) {
+void t1_impl::postDecode(decodeBlockInfo *block) {
 	t1_decoder->postDecode(block);
 }
-
 
 }

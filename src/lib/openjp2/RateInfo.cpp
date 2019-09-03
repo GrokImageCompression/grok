@@ -1,32 +1,31 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
 
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 #include "grok_includes.h"
 
 namespace grk {
 
-
-RateInfo::RateInfo() : 	minimumSlope(USHRT_MAX), 
-						maximumSlope(0) {
+RateInfo::RateInfo() :
+		minimumSlope(USHRT_MAX), maximumSlope(0) {
 
 }
 
 /*
-Synchronize with code block
-*/
+ Synchronize with code block
+ */
 void RateInfo::synch(tcd_cblk_enc_t *cblk) {
 	for (auto passno = 0U; passno < cblk->num_passes_encoded; passno++) {
 		tcd_pass_t *pass = &cblk->passes[passno];
@@ -48,6 +47,5 @@ void RateInfo::synch(tcd_cblk_enc_t *cblk) {
 uint16_t RateInfo::getMinimumThresh() {
 	return minimumSlope;
 }
-
 
 }

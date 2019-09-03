@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -67,41 +67,33 @@ struct raw_t;
 
 class t1_decode_base;
 
-class t1_decode : public t1_decode_base {
+class t1_decode: public t1_decode_base {
 public:
 	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
 	~t1_decode();
 	/**
-	Decode 1 code-block
-	@param t1 T1 handle
-	@param cblk Code-block coding parameters
-	@param orient
-	@param roishift Region of interest shifting value
-	@param mode_switch encode mode switch
-	*/
-	bool decode_cblk(tcd_cblk_dec_t* cblk,
-		uint8_t orient,
-		uint32_t mode_switch) override;
-	void postDecode(decodeBlockInfo* block) override;
+	 Decode 1 code-block
+	 @param t1 T1 handle
+	 @param cblk Code-block coding parameters
+	 @param orient
+	 @param roishift Region of interest shifting value
+	 @param mode_switch encode mode switch
+	 */
+	bool decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient, uint32_t mode_switch)
+			override;
+	void postDecode(decodeBlockInfo *block) override;
 private:
 	flag_t *flags;
 	uint16_t flags_stride;
 
 	bool allocateBuffers(uint16_t w, uint16_t h);
 	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step_raw(flag_t *flagsp,
-		int32_t *datap,
-		int32_t oneplushalf,
-		bool vsc);
-	inline void sigpass_step(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf);
-	inline void sigpass_step_vsc(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		bool vsc);
+	inline void sigpass_step_raw(flag_t *flagsp, int32_t *datap,
+			int32_t oneplushalf, bool vsc);
+	inline void sigpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf);
+	inline void sigpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, bool vsc);
 	void sigpass_raw(int32_t bpno, uint32_t mode_switch);
 	void sigpass(int32_t bpno, uint8_t orient);
 	void sigpass_vsc(int32_t bpno, uint8_t orient);
@@ -109,34 +101,19 @@ private:
 	void refpass_raw(int32_t bpno, uint32_t mode_switch);
 	void refpass(int32_t bpno);
 	void refpass_vsc(int32_t bpno);
-	inline void  refpass_step_raw(flag_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf,
-		bool vsc);
-	inline void refpass_step(flag_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf);
-	inline void refpass_step_vsc(flag_t *flagsp,
-		int32_t *datap,
-		int32_t poshalf,
-		bool vsc);
+	inline void refpass_step_raw(flag_t *flagsp, int32_t *datap,
+			int32_t poshalf, bool vsc);
+	inline void refpass_step(flag_t *flagsp, int32_t *datap, int32_t poshalf);
+	inline void refpass_step_vsc(flag_t *flagsp, int32_t *datap,
+			int32_t poshalf, bool vsc);
 
-	void clnpass_step_partial(flag_t *flagsp,
-		int32_t *datap,
-		int32_t oneplushalf);
-	void clnpass_step(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf);
-	void clnpass_step_vsc(flag_t *flagsp,
-		int32_t *datap,
-		uint8_t orient,
-		int32_t oneplushalf,
-		int32_t partial,
-		bool vsc);
-	void clnpass(int32_t bpno,
-		uint8_t orient,
-		uint32_t mode_switch);
+	void clnpass_step_partial(flag_t *flagsp, int32_t *datap,
+			int32_t oneplushalf);
+	void clnpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf);
+	void clnpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, int32_t partial, bool vsc);
+	void clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
 
 	void updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
 };

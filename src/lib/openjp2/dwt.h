@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -53,57 +53,58 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #pragma once
 
 namespace grk {
 
 struct dwt_t {
-	int32_t* mem;
+	int32_t *mem;
 	uint32_t d_n;
 	uint32_t s_n;
 	uint8_t cas;
 };
 
-class dwt : public dwt_interface {
+class dwt: public dwt_interface {
 public:
-	virtual ~dwt() {}
-protected:
-	uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
-	void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n, int32_t x, int32_t cas);
-	void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n, int32_t cas);
+	virtual ~dwt() {
+	}
+protected:uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
+	void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+			int32_t x, int32_t cas);
+	void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+			int32_t cas);
 };
 
 /**
-Get the gain of a subband for the reversible 5-3 DWT.
-@param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
-@return 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
-*/
-uint32_t dwt_getgain(uint8_t orient) ;
+ Get the gain of a subband for the reversible 5-3 DWT.
+ @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
+ @return 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
+ */
+uint32_t dwt_getgain(uint8_t orient);
 /**
-Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
-@param level Level of the wavelet function
-@param orient Band of the wavelet function
-@return the norm of the wavelet function
-*/
+ Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
+ @param level Level of the wavelet function
+ @param orient Band of the wavelet function
+ @return the norm of the wavelet function
+ */
 double dwt_getnorm(uint32_t level, uint8_t orient);
 /**
-Get the gain of a subband for the irreversible 9-7 DWT.
-@param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
-@return the gain of the 9-7 wavelet transform
-*/
+ Get the gain of a subband for the irreversible 9-7 DWT.
+ @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
+ @return the gain of the 9-7 wavelet transform
+ */
 uint32_t dwt_getgain_real(uint8_t orient);
 /**
-Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
-@param level Level of the wavelet function
-@param orient Band of the wavelet function
-@return the norm of the 9-7 wavelet
-*/
+ Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
+ @param level Level of the wavelet function
+ @param orient Band of the wavelet function
+ @return the norm of the 9-7 wavelet
+ */
 double dwt_getnorm_real(uint32_t level, uint8_t orient);
 /**
-Explicit calculation of the Quantization Stepsizes
-@param tccp Tile-component coding parameters
-@param prec Precint analyzed
-*/
-void dwt_calc_explicit_stepsizes(tccp_t * tccp, uint32_t prec);
+ Explicit calculation of the Quantization Stepsizes
+ @param tccp Tile-component coding parameters
+ @param prec Precint analyzed
+ */
+void dwt_calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec);
 }

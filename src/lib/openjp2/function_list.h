@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -47,7 +47,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #pragma once
 namespace grk {
 
@@ -56,7 +55,7 @@ namespace grk {
  * @brief Implementation of a list of procedures.
 
  * The functions in validation.c aims to have access to a list of procedures.
-*/
+ */
 
 /** @defgroup VAL VAL - validation procedure*/
 /*@{*/
@@ -72,22 +71,22 @@ typedef void (*procedure)(void);
 
 /**
  * A list of procedures.
-*/
+ */
 struct procedure_list_t {
-    /**
-     * The number of validation procedures.
-     */
-    uint32_t m_nb_procedures;
-    /**
-     * The number of the array of validation procedures.
-     */
-    uint32_t m_nb_max_procedures;
-    /**
-     * The array of procedures.
-     */
-    procedure * m_procedures;
+	/**
+	 * The number of validation procedures.
+	 */
+	uint32_t m_nb_procedures;
+	/**
+	 * The number of the array of validation procedures.
+	 */
+	uint32_t m_nb_max_procedures;
+	/**
+	 * The array of procedures.
+	 */
+	procedure *m_procedures;
 
-} ;
+};
 
 /* ----------------------------------------------------------------------- */
 
@@ -96,14 +95,14 @@ struct procedure_list_t {
  *
  * @return	the newly created validation list.
  */
-procedure_list_t *  procedure_list_create(void);
+procedure_list_t* procedure_list_create(void);
 
 /**
  * Destroys a validation list.
  *
  * @param p_list the list to destroy.
  */
-void  procedure_list_destroy(procedure_list_t * p_list);
+void procedure_list_destroy(procedure_list_t *p_list);
 
 /**
  * Adds a new validation procedure.
@@ -113,7 +112,8 @@ void  procedure_list_destroy(procedure_list_t * p_list);
  *
  * @return	true if the procedure could be added.
  */
-bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedure p_procedure, event_mgr_t* p_manager);
+bool procedure_list_add_procedure(procedure_list_t *p_validation_list,
+		procedure p_procedure, event_mgr_t *p_manager);
 
 /**
  * Gets the number of validation procedures.
@@ -122,7 +122,7 @@ bool procedure_list_add_procedure (procedure_list_t * p_validation_list, procedu
  *
  * @return the number of validation procedures.
  */
-uint32_t procedure_list_get_nb_procedures (procedure_list_t * p_validation_list);
+uint32_t procedure_list_get_nb_procedures(procedure_list_t *p_validation_list);
 
 /**
  * Gets the pointer on the first validation procedure. This function is similar to the C++
@@ -133,8 +133,8 @@ uint32_t procedure_list_get_nb_procedures (procedure_list_t * p_validation_list)
  *
  * @return	a pointer to the first procedure.
  */
-procedure* procedure_list_get_first_procedure (procedure_list_t * p_validation_list);
-
+procedure* procedure_list_get_first_procedure(
+		procedure_list_t *p_validation_list);
 
 /**
  * Clears the list of validation procedures.
@@ -142,8 +142,7 @@ procedure* procedure_list_get_first_procedure (procedure_list_t * p_validation_l
  * @param	p_validation_list the list of procedure to clear.
  *
  */
-void procedure_list_clear (procedure_list_t * p_validation_list);
+void procedure_list_clear(procedure_list_t *p_validation_list);
 /*@}*/
-
 
 }

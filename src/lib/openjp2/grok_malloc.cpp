@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -48,8 +48,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-
 #define GROK_SKIP_POISON
 #include "grok_includes.h"
 
@@ -63,18 +61,17 @@
 
 namespace grk {
 
-static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
-{
-    void* ptr;
+static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
+	void *ptr;
 
-    /* alignment shall be power of 2 */
-    assert( (alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
-    /* alignment shall be at least sizeof(void*) */
-    assert( alignment >= sizeof(void*));
+	/* alignment shall be power of 2 */
+	assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
+	/* alignment shall be at least sizeof(void*) */
+	assert(alignment >= sizeof(void*));
 
-    if (size == 0U) { /* prevent implementation defined behavior of realloc */
-        return nullptr;
-    }
+	if (size == 0U) { /* prevent implementation defined behavior of realloc */
+		return nullptr;
+	}
 
 #if defined(GROK_HAVE_ALIGNED_ALLOC)
 	ptr = aligned_alloc(alignment, size);
@@ -126,40 +123,40 @@ static inline void *grk_aligned_alloc_n(size_t alignment, size_t size)
         ((void**) ptr)[-1] = mem;
     }
 #endif
-    return ptr;
+	return ptr;
 }
-static inline void *grok_aligned_realloc_n(void *ptr, size_t alignment, size_t new_size)
-{
-    void *r_ptr;
+static inline void* grok_aligned_realloc_n(void *ptr, size_t alignment,
+		size_t new_size) {
+	void *r_ptr;
 
-    /* alignment shall be power of 2 */
-    assert( (alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
-    /* alignment shall be at least sizeof(void*) */
-    assert( alignment >= sizeof(void*));
+	/* alignment shall be power of 2 */
+	assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
+	/* alignment shall be at least sizeof(void*) */
+	assert(alignment >= sizeof(void*));
 
-    if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
-        return nullptr;
-    }
+	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
+		return nullptr;
+	}
 
-    /* no portable aligned realloc */
+	/* no portable aligned realloc */
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
-    /* glibc doc states one can mix aligned malloc with realloc */
-    r_ptr = realloc( ptr, new_size ); /* fast path */
-    /* we simply use `size_t` to cast, since we are only interest in binary AND
-     * operator */
-    if( ((size_t)r_ptr & (alignment - 1U)) != 0U ) {
-        /* this is non-trivial to implement a portable aligned realloc, so use a
-         * simple approach where we do not need a function that return the size of an
-         * allocated array (eg. _msize on Windows, malloc_size on MacOS,
-         * malloc_usable_size on systems with glibc) */
-        void *a_ptr = grk_aligned_alloc_n(alignment, new_size);
-        if (a_ptr != nullptr) {
-            memcpy(a_ptr, r_ptr, new_size);
-        }
-        free( r_ptr );
-        r_ptr = a_ptr;
-    }
-    /* _MSC_VER */
+	/* glibc doc states one can mix aligned malloc with realloc */
+	r_ptr = realloc(ptr, new_size); /* fast path */
+	/* we simply use `size_t` to cast, since we are only interest in binary AND
+	 * operator */
+	if (((size_t) r_ptr & (alignment - 1U)) != 0U) {
+		/* this is non-trivial to implement a portable aligned realloc, so use a
+		 * simple approach where we do not need a function that return the size of an
+		 * allocated array (eg. _msize on Windows, malloc_size on MacOS,
+		 * malloc_usable_size on systems with glibc) */
+		void *a_ptr = grk_aligned_alloc_n(alignment, new_size);
+		if (a_ptr != nullptr) {
+			memcpy(a_ptr, r_ptr, new_size);
+		}
+		free(r_ptr);
+		r_ptr = a_ptr;
+	}
+	/* _MSC_VER */
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
     r_ptr = _aligned_realloc( ptr, new_size, alignment );
 #else
@@ -208,17 +205,15 @@ static inline void *grok_aligned_realloc_n(void *ptr, size_t alignment, size_t n
         }
     }
 #endif
-    return r_ptr;
+	return r_ptr;
 }
-void * grok_malloc(size_t size)
-{
-    if (size == 0U) { /* prevent implementation defined behavior of realloc */
-        return nullptr;
-    }
-    return malloc(size);
+void* grok_malloc(size_t size) {
+	if (size == 0U) { /* prevent implementation defined behavior of realloc */
+		return nullptr;
+	}
+	return malloc(size);
 }
-void * grok_calloc(size_t num, size_t size)
-{
+void* grok_calloc(size_t num, size_t size) {
 	if (num == 0 || size == 0) {
 		/* prevent implementation defined behavior of realloc */
 		return nullptr;
@@ -226,19 +221,16 @@ void * grok_calloc(size_t num, size_t size)
 	return calloc(num, size);
 }
 
-void *grok_aligned_malloc(size_t size)
-{
-    return grk_aligned_alloc_n(16U, size);
+void* grok_aligned_malloc(size_t size) {
+	return grk_aligned_alloc_n(16U, size);
 }
-void * grok_aligned_realloc(void *ptr, size_t size)
-{
-    return grok_aligned_realloc_n(ptr, 16U, size);
+void* grok_aligned_realloc(void *ptr, size_t size) {
+	return grok_aligned_realloc_n(ptr, 16U, size);
 }
 
-void grok_aligned_free(void* ptr)
-{
+void grok_aligned_free(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
-    free( ptr );
+	free(ptr);
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
     _aligned_free( ptr );
 #else
@@ -249,15 +241,13 @@ void grok_aligned_free(void* ptr)
 #endif
 }
 
-void * grok_realloc(void *ptr, size_t new_size)
-{
-    if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
-        return nullptr;
-    }
-    return realloc(ptr, new_size);
+void* grok_realloc(void *ptr, size_t new_size) {
+	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
+		return nullptr;
+	}
+	return realloc(ptr, new_size);
 }
-void grok_free(void *ptr)
-{
+void grok_free(void *ptr) {
 	if (ptr)
 		free(ptr);
 }

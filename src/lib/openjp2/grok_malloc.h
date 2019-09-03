@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -54,11 +54,11 @@
 
 namespace grk {
 /**
-@file grok_malloc.h
-@brief Internal functions
+ @file grok_malloc.h
+ @brief Internal functions
 
-The functions in grok_malloc.h are internal utilities used for memory management.
-*/
+ The functions in grok_malloc.h are internal utilities used for memory management.
+ */
 
 /** @defgroup MISC MISC - Miscellaneous internal functions */
 /*@{*/
@@ -68,42 +68,42 @@ The functions in grok_malloc.h are internal utilities used for memory management
 /* ----------------------------------------------------------------------- */
 
 /**
-Allocate an uninitialized memory block
-@param size Bytes to allocate
-@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
-*/
-void * grok_malloc(size_t size);
+ Allocate an uninitialized memory block
+ @param size Bytes to allocate
+ @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
+ */
+void* grok_malloc(size_t size);
 
 /**
-Allocate a memory block with elements initialized to 0
-@param num Blocks to allocate
-@param size Bytes per block to allocate
-@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
-*/
-void * grok_calloc(size_t numOfElements, size_t sizeOfElements);
+ Allocate a memory block with elements initialized to 0
+ @param num Blocks to allocate
+ @param size Bytes per block to allocate
+ @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
+ */
+void* grok_calloc(size_t numOfElements, size_t sizeOfElements);
 
 /**
-Allocate memory aligned to a 16 byte boundary
-@param size Bytes to allocate
-@return a void pointer to the allocated space, or nullptr if there is insufficient memory available
-*/
-void * grok_aligned_malloc(size_t size);
-void * grok_aligned_realloc(void *ptr, size_t size);
-void grok_aligned_free(void* ptr);
+ Allocate memory aligned to a 16 byte boundary
+ @param size Bytes to allocate
+ @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
+ */
+void* grok_aligned_malloc(size_t size);
+void* grok_aligned_realloc(void *ptr, size_t size);
+void grok_aligned_free(void *ptr);
 
 /**
-Reallocate memory blocks.
-@param m Pointer to previously allocated memory block
-@param s New size in bytes
-@return a void pointer to the reallocated (and possibly moved) memory block
-*/
-void * grok_realloc(void * m, size_t s);
+ Reallocate memory blocks.
+ @param m Pointer to previously allocated memory block
+ @param s New size in bytes
+ @return a void pointer to the reallocated (and possibly moved) memory block
+ */
+void* grok_realloc(void *m, size_t s);
 
 /**
-Deallocates or frees a memory block.
-@param m Previously allocated memory block to be freed
-*/
-void grok_free(void * m);
+ Deallocates or frees a memory block.
+ @param m Previously allocated memory block to be freed
+ */
+void grok_free(void *m);
 
 #if defined(__GNUC__) && !defined(GROK_SKIP_POISON)
 #pragma GCC poison malloc calloc realloc free
@@ -113,7 +113,5 @@ void grok_free(void * m);
 /*@}*/
 
 /*@}*/
-
-
 
 }

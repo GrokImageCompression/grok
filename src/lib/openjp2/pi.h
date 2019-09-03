@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -53,80 +53,78 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #pragma once
 namespace grk {
 
-
 /**
-@file pi.h
-@brief Implementation of a packet iterator (PI)
+ @file pi.h
+ @brief Implementation of a packet iterator (PI)
 
-The functions in PI.C have for goal to realize a packet iterator that permits to get the next
-packet following the progression order and change of it. The functions in PI.C are used
-by some function in T2.C.
-*/
+ The functions in PI.C have for goal to realize a packet iterator that permits to get the next
+ packet following the progression order and change of it. The functions in PI.C are used
+ by some function in T2.C.
+ */
 
 /** @defgroup PI PI - Implementation of a packet iterator */
 /*@{*/
 
 /**
-FIXME DOC
-*/
+ FIXME DOC
+ */
 struct pi_resolution_t {
-    uint32_t pdx, pdy;
-    uint32_t pw, ph;
-} ;
+	uint32_t pdx, pdy;
+	uint32_t pw, ph;
+};
 
 /**
-FIXME DOC
-*/
+ FIXME DOC
+ */
 struct pi_comp_t {
-    uint32_t dx, dy;
-    /** number of resolution levels */
-    uint32_t numresolutions;
-    pi_resolution_t *resolutions;
-} ;
+	uint32_t dx, dy;
+	/** number of resolution levels */
+	uint32_t numresolutions;
+	pi_resolution_t *resolutions;
+};
 
 /**
-Packet iterator
-*/
+ Packet iterator
+ */
 struct pi_iterator_t {
-    /** Enabling Tile part generation*/
-    uint8_t tp_on;
-    /** precise if the packet has been already used (useful for progression order change) */
-    int16_t *include;
-    /** layer step used to localize the packet in the include vector */
-    uint32_t step_l;
-    /** resolution step used to localize the packet in the include vector */
-    uint32_t step_r;
-    /** component step used to localize the packet in the include vector */
-    uint32_t step_c;
-    /** precinct step used to localize the packet in the include vector */
-    uint32_t step_p;
-    /** component that identify the packet */
-    uint32_t compno;
-    /** resolution that identify the packet */
-    uint32_t resno;
-    /** precinct that identify the packet */
-    uint32_t precno;
-    /** layer that identify the packet */
-    uint32_t layno;
-    /** 0 if the first packet */
-    bool first;
-    /** progression order change information */
-    opj_poc_t poc;
-    /** number of components in the image */
-    uint32_t numcomps;
-    /** Components*/
-    pi_comp_t *comps;
-    /** FIXME DOC*/
-    uint32_t tx0, ty0, tx1, ty1;
-    /** FIXME DOC*/
-    uint32_t x, y;
-    /** FIXME DOC*/
-    uint32_t dx, dy;
-} ;
+	/** Enabling Tile part generation*/
+	uint8_t tp_on;
+	/** precise if the packet has been already used (useful for progression order change) */
+	int16_t *include;
+	/** layer step used to localize the packet in the include vector */
+	uint32_t step_l;
+	/** resolution step used to localize the packet in the include vector */
+	uint32_t step_r;
+	/** component step used to localize the packet in the include vector */
+	uint32_t step_c;
+	/** precinct step used to localize the packet in the include vector */
+	uint32_t step_p;
+	/** component that identify the packet */
+	uint32_t compno;
+	/** resolution that identify the packet */
+	uint32_t resno;
+	/** precinct that identify the packet */
+	uint32_t precno;
+	/** layer that identify the packet */
+	uint32_t layno;
+	/** 0 if the first packet */
+	bool first;
+	/** progression order change information */
+	opj_poc_t poc;
+	/** number of components in the image */
+	uint32_t numcomps;
+	/** Components*/
+	pi_comp_t *comps;
+	/** FIXME DOC*/
+	uint32_t tx0, ty0, tx1, ty1;
+	/** FIXME DOC*/
+	uint32_t x, y;
+	/** FIXME DOC*/
+	uint32_t dx, dy;
+};
 
 /** @name Exported functions */
 /*@{*/
@@ -140,11 +138,9 @@ struct pi_iterator_t {
  * @param	t2_mode	the type of pass for generating the packet iterator
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
-*/
-pi_iterator_t *pi_initialise_encode(const opj_image_t *image,
-        cp_t *cp,
-        uint32_t tileno,
-        J2K_T2_MODE t2_mode);
+ */
+pi_iterator_t* pi_initialise_encode(const opj_image_t *image, cp_t *cp,
+		uint32_t tileno, J2K_T2_MODE t2_mode);
 
 /**
  * Updates the encoding parameters of the codec.
@@ -152,60 +148,49 @@ pi_iterator_t *pi_initialise_encode(const opj_image_t *image,
  * @param	p_image		the image being encoded.
  * @param	p_cp		the coding parameters.
  * @param	p_tile_no	index of the tile being encoded.
-*/
-void pi_update_encoding_parameters(	const opj_image_t *p_image,
-                                        cp_t *p_cp,
-                                        uint32_t p_tile_no );
+ */
+void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
+		uint32_t p_tile_no);
 
 /**
-Modify the packet iterator for enabling tile part generation
-@param pi Handle to the packet iterator generated in pi_initialise_encode
-@param cp Coding parameters
-@param tileno Number that identifies the tile for which to list the packets
-@param pino   FIXME DOC
-@param tpnum Tile part number of the current tile
-@param tppos The position of the tile part flag in the progression order
-@param t2_mode FIXME DOC
-*/
-void pi_init_encode(  pi_iterator_t *pi,
-                            cp_t *cp,
-                            uint32_t tileno,
-                            uint32_t pino,
-                            uint32_t tpnum,
-                            uint32_t tppos,
-                            J2K_T2_MODE t2_mode);
+ Modify the packet iterator for enabling tile part generation
+ @param pi Handle to the packet iterator generated in pi_initialise_encode
+ @param cp Coding parameters
+ @param tileno Number that identifies the tile for which to list the packets
+ @param pino   FIXME DOC
+ @param tpnum Tile part number of the current tile
+ @param tppos The position of the tile part flag in the progression order
+ @param t2_mode FIXME DOC
+ */
+void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
+		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode);
 
 /**
-Create a packet iterator for Decoder
-@param image Raw image for which the packets will be listed
-@param cp Coding parameters
-@param tileno Number that identifies the tile for which to list the packets
-@return a packet iterator that points to the first packet of the tile
-@see pi_destroy
-*/
-pi_iterator_t *pi_create_decode(opj_image_t * image,
-                                        cp_t * cp,
-                                        uint32_t tileno);
+ Create a packet iterator for Decoder
+ @param image Raw image for which the packets will be listed
+ @param cp Coding parameters
+ @param tileno Number that identifies the tile for which to list the packets
+ @return a packet iterator that points to the first packet of the tile
+ @see pi_destroy
+ */
+pi_iterator_t* pi_create_decode(opj_image_t *image, cp_t *cp, uint32_t tileno);
 /**
  * Destroys a packet iterator array.
  *
  * @param	p_pi			the packet iterator array to destroy.
  * @param	p_nb_elements	the number of elements in the array.
  */
-void pi_destroy(pi_iterator_t *p_pi,
-                    uint32_t p_nb_elements);
+void pi_destroy(pi_iterator_t *p_pi, uint32_t p_nb_elements);
 
 /**
-Modify the packet iterator to point to the next packet
-@param pi Packet iterator to modify
-@return false if pi pointed to the last packet or else returns true
-*/
-bool pi_next(pi_iterator_t * pi);
+ Modify the packet iterator to point to the next packet
+ @param pi Packet iterator to modify
+ @return false if pi pointed to the last packet or else returns true
+ */
+bool pi_next(pi_iterator_t *pi);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 
 /*@}*/
-
-
 
 }

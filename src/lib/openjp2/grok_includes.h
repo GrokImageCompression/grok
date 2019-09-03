@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2019 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2019 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -50,7 +50,6 @@
  */
 #pragma once
 
-
 /*
  * This must be included before any system headers,
  * since they can react to macro defined there
@@ -59,9 +58,9 @@
 
 /*
  ==========================================================
-   Standard includes used by the library
+ Standard includes used by the library
  ==========================================================
-*/
+ */
 #include <memory.h>
 #include <stdlib.h>
 #include <string>
@@ -78,21 +77,19 @@
 #include <sstream>
 #include <iostream>
 
-
 /* Avoid compile-time warning because parameter is not used */
 #define ARG_NOT_USED(x) (void)(x)
 
 /*
-  Use fseeko() and ftello() if they are available since they use
-  'off_t' rather than 'long'.  It is wrong to use fseeko() and
-  ftello() only on systems with special LFS support since some systems
-  (e.g. FreeBSD) support a 64-bit off_t by default.
-*/
+ Use fseeko() and ftello() if they are available since they use
+ 'off_t' rather than 'long'.  It is wrong to use fseeko() and
+ ftello() only on systems with special LFS support since some systems
+ (e.g. FreeBSD) support a 64-bit off_t by default.
+ */
 #if defined(GROK_HAVE_FSEEKO) && !defined(fseek)
 #  define fseek  fseeko
 #  define ftell  ftello
 #endif
-
 
 #if defined(_WIN32)
 #  define GROK_FSEEK(stream,offset,whence) _fseeki64(stream,/* __int64 */ offset,whence)
@@ -108,10 +105,9 @@
 #  define GROK_STAT(path,stat_buff) stat(path,stat_buff)
 #endif
 
-
 /*
  ==========================================================
-   Grok interface
+ Grok interface
  ==========================================================
  */
 
@@ -121,9 +117,9 @@
 
 /*
  ==========================================================
-   Grok modules
+ Grok modules
  ==========================================================
-*/
+ */
 
 /* Are restricted pointers available? (C99) */
 #if (__STDC_VERSION__ != 199901L)
@@ -143,7 +139,6 @@
 #ifndef GROK_NOSANITIZE
 #define GROK_NOSANITIZE(kind)
 #endif
-
 
 /* MSVC before 2013 and Borland C do not have lrintf */
 #if defined(_MSC_VER)
@@ -168,9 +163,8 @@ static inline long grok_lrintf(float f)
 #endif
 }
 #else
-static inline long grok_lrintf(float f)
-{
-    return lrintf(f);
+static inline long grok_lrintf(float f) {
+	return lrintf(f);
 }
 #endif
 
