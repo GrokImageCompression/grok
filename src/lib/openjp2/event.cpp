@@ -53,10 +53,11 @@
 
 namespace grk {
 
-/* ==========================================================
- Utility functions
- ==========================================================*/
-/* ----------------------------------------------------------------------- */
+const uint32_t EVT_ERROR = 1;	/**< Error event type */
+const uint32_t EVT_WARNING= 2;	/**< Warning event type */
+const uint32_t EVT_INFO	= 4;	/**< Debug event type */
+
+
 /**
  * Default callback function.
  * Do nothing.
@@ -66,68 +67,53 @@ static void default_callback(const char *msg, void *client_data) {
 	ARG_NOT_USED(client_data);
 }
 
-/* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
-bool event_msg(event_mgr_t *p_event_mgr, int32_t event_type, const char *fmt,
-		...) {
-	const int message_size = 512; /* 512 bytes should be more than enough for a short message */
-	opj_msg_callback msg_handler = nullptr;
-	void *l_data = nullptr;
-
-	if (p_event_mgr != nullptr) {
-		switch (event_type) {
-		case EVT_ERROR:
-			msg_handler = p_event_mgr->error_handler;
-			l_data = p_event_mgr->m_error_data;
-			break;
-		case EVT_WARNING:
-			msg_handler = p_event_mgr->warning_handler;
-			l_data = p_event_mgr->m_warning_data;
-			break;
-		case EVT_INFO:
-			msg_handler = p_event_mgr->info_handler;
-			l_data = p_event_mgr->m_info_data;
-			break;
-		default:
-			break;
-		}
-		if (msg_handler == nullptr) {
-			return false;
-		}
-	} else {
-		return false;
-	}
-
-	if ((fmt != nullptr) && (p_event_mgr != nullptr)) {
-		va_list arg;
-		size_t str_length/*, i, j*/;
+template <typename ... Args>
+bool log(opj_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+{
+    const int message_size = 512;
+	if ((format != nullptr)) {
 		char message[message_size];
 		memset(message, 0, message_size);
-		/* initialize the optional parameter list */
-		va_start(arg, fmt);
-		/* check the length of the format string */
-		str_length = (strlen(fmt) > message_size) ? message_size : strlen(fmt);
-		(void) str_length;
 		/* parse the format string and put the result in 'message' */
-		vsnprintf(message, message_size, fmt, arg);
-		/* deinitialize the optional parameter list */
-		va_end(arg);
-
+		vsnprintf(message, message_size, format, args...);
 		/* output the message to the user program */
 		msg_handler(message, l_data);
 	}
-
 	return true;
 }
 
-void set_default_event_handler(event_mgr_t *p_manager) {
-	p_manager->m_error_data = nullptr;
-	p_manager->m_warning_data = nullptr;
-	p_manager->m_info_data = nullptr;
-	p_manager->error_handler = default_callback;
-	p_manager->info_handler = default_callback;
-	p_manager->warning_handler = default_callback;
+bool GROK_INFO(const char *fmt,	...){
+	va_list arg;
+	va_start(arg, fmt);
+	bool rc =
+			log(codec_private_t::m_event_mgr.info_handler, codec_private_t::m_event_mgr.m_info_data, fmt, arg);
+	va_end(arg);
+	return rc;
+}
+bool GROK_WARN(const char *fmt,	...){
+	va_list arg;
+	va_start(arg, fmt);
+	bool rc =
+			log(codec_private_t::m_event_mgr.warning_handler, codec_private_t::m_event_mgr.m_warning_data, fmt, arg);
+	va_end(arg);
+	return rc;
+}
+bool GROK_ERROR(const char *fmt,...){
+	va_list arg;
+	va_start(arg, fmt);
+	bool rc =
+			log(codec_private_t::m_event_mgr.error_handler, codec_private_t::m_event_mgr.m_error_data, fmt, arg);
+	va_end(arg);
+	return rc;
+}
+
+void set_default_event_handler() {
+	codec_private_t::m_event_mgr.m_error_data = nullptr;
+	codec_private_t::m_event_mgr.m_warning_data = nullptr;
+	codec_private_t::m_event_mgr.m_info_data = nullptr;
+	codec_private_t::m_event_mgr.error_handler = default_callback;
+	codec_private_t::m_event_mgr.info_handler = default_callback;
+	codec_private_t::m_event_mgr.warning_handler = default_callback;
 }
 
 }

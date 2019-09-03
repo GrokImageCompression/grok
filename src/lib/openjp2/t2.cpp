@@ -91,7 +91,7 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses);
  */
 static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 		pi_iterator_t *pi, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t len, opj_codestream_info_t *cstr_info, event_mgr_t *p_manager);
+		uint64_t len, opj_codestream_info_t *cstr_info);
 
 /**
  Encode a packet of a tile to a destination buffer
@@ -122,22 +122,20 @@ static bool t2_encode_packet_simulate(tcd_tile_t *tile, tcp_t *tcp,
  @return  FIXME DOC
  */
 static bool t2_decode_packet(t2_t *t2, tcd_resolution_t *l_res, tcp_t *tcp,
-		pi_iterator_t *pi, seg_buf_t *src_buf, uint64_t *data_read,
-		event_mgr_t *p_manager);
+		pi_iterator_t *pi, seg_buf_t *src_buf, uint64_t *data_read);
 
 static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
-		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read,
-		event_mgr_t *p_manager);
+		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read);
 
 static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 		tcp_t *p_tcp, pi_iterator_t *p_pi, bool *p_is_data_present,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager);
+		seg_buf_t *src_buf, uint64_t *p_data_read);
 
 static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager);
+		seg_buf_t *src_buf, uint64_t *p_data_read);
 
 static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		uint64_t *p_data_read, uint64_t p_max_length, event_mgr_t *p_manager);
+		uint64_t *p_data_read, uint64_t p_max_length);
 
 /**
  @param cblk
@@ -223,7 +221,7 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses) {
 bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 		uint32_t p_maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t p_max_len, opj_codestream_info_t *cstr_info, uint32_t p_tp_num,
-		uint32_t p_tp_pos, uint32_t p_pino, event_mgr_t *p_manager) {
+		uint32_t p_tp_pos, uint32_t p_pino) {
 	uint64_t l_nb_bytes = 0;
 	pi_iterator_t *l_pi = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
@@ -242,7 +240,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 	l_current_pi = &l_pi[p_pino];
 	if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 		pi_destroy(l_pi, l_nb_pocs);
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"t2_encode_packets: Unknown progression order\n");
 		return false;
 	}
@@ -251,7 +249,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 			l_nb_bytes = 0;
 
 			if (!t2_encode_packet(p_tile_no, p_tile, l_tcp, l_current_pi,
-					p_stream, &l_nb_bytes, p_max_len, cstr_info, p_manager)) {
+					p_stream, &l_nb_bytes, p_max_len, cstr_info)) {
 				pi_destroy(l_pi, l_nb_pocs);
 				return false;
 			}
@@ -294,7 +292,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 
 bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 		tcd_tile_t *p_tile, uint32_t p_maxlayers, uint64_t *p_data_written,
-		uint64_t p_max_len, uint32_t p_tp_pos, event_mgr_t *p_manager) {
+		uint64_t p_max_len, uint32_t p_tp_pos) {
 	opj_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
 	tcp_t *l_tcp = l_cp->tcps + p_tile_no;
@@ -326,7 +324,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 
 			if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 				pi_destroy(l_pi, l_nb_pocs);
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"t2_decode_packets_simulate: Unknown progression order\n");
 				return false;
 			}
@@ -372,7 +370,7 @@ static void opj_null_jas_fprintf(FILE *file, const char *format, ...) {
 #endif
 
 bool t2_decode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager) {
+		seg_buf_t *src_buf, uint64_t *p_data_read) {
 	pi_iterator_t *l_pi = nullptr;
 	uint32_t pino;
 	opj_image_t *l_image = p_t2->image;
@@ -401,7 +399,7 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 
 		if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 			pi_destroy(l_pi, l_nb_pocs);
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"t2_decode_packets: Unknown progression order\n");
 			return false;
 		}
@@ -448,15 +446,14 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 				l_nb_bytes_read = 0;
 				if (!t2_decode_packet(p_t2,
 						&p_tile->comps[l_current_pi->compno].resolutions[l_current_pi->resno],
-						l_tcp, l_current_pi, src_buf, &l_nb_bytes_read,
-						p_manager)) {
+						l_tcp, l_current_pi, src_buf, &l_nb_bytes_read)) {
 					pi_destroy(l_pi, l_nb_pocs);
 					return false;
 				}
 			} else {
 				l_nb_bytes_read = 0;
 				if (!t2_skip_packet(p_t2, p_tile, l_tcp, l_current_pi, src_buf,
-						&l_nb_bytes_read, p_manager)) {
+						&l_nb_bytes_read)) {
 					pi_destroy(l_pi, l_nb_pocs);
 					return false;
 				}
@@ -500,15 +497,14 @@ void t2_destroy(t2_t *t2) {
 }
 
 static bool t2_decode_packet(t2_t *p_t2, tcd_resolution_t *l_res, tcp_t *p_tcp,
-		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read,
-		event_mgr_t *p_manager) {
+		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read) {
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
 	uint64_t l_nb_total_bytes_read = 0;
 	*p_data_read = 0;
 
 	if (!t2_read_packet_header(p_t2, l_res, p_tcp, p_pi, &l_read_data, src_buf,
-			&l_nb_bytes_read, p_manager)) {
+			&l_nb_bytes_read)) {
 		return false;
 	}
 	l_nb_total_bytes_read += l_nb_bytes_read;
@@ -516,8 +512,7 @@ static bool t2_decode_packet(t2_t *p_t2, tcd_resolution_t *l_res, tcp_t *p_tcp,
 	/* we should read data for the packet */
 	if (l_read_data) {
 		l_nb_bytes_read = 0;
-		if (!t2_read_packet_data(l_res, p_pi, src_buf, &l_nb_bytes_read,
-				p_manager)) {
+		if (!t2_read_packet_data(l_res, p_pi, src_buf, &l_nb_bytes_read)) {
 			return false;
 		}
 		l_nb_total_bytes_read += l_nb_bytes_read;
@@ -528,7 +523,7 @@ static bool t2_decode_packet(t2_t *p_t2, tcd_resolution_t *l_res, tcp_t *p_tcp,
 
 static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 		tcp_t *p_tcp, pi_iterator_t *p_pi, bool *p_is_data_present,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager)
+		seg_buf_t *src_buf, uint64_t *p_data_read)
 
 		{
 	uint8_t *p_src_data = src_buf->get_global_ptr();
@@ -545,7 +540,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				continue;
 			tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
 			if (!(p_pi->precno < (l_band->numPrecincts))) {
-				event_msg(p_manager, EVT_ERROR, "Invalid precinct\n");
+				GROK_ERROR( "Invalid precinct\n");
 				return false;
 			}
 			if (l_prc->incltree)
@@ -563,10 +558,10 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
 		if (p_max_length < 6) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Not enough space for expected SOP marker\n");
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
-			event_msg(p_manager, EVT_WARNING, "Expected SOP marker\n");
+			GROK_WARN( "Expected SOP marker\n");
 		} else {
 			active_src += 6;
 		}
@@ -605,7 +600,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			new BitIO(l_header_data, *l_modified_length_ptr, false));
 	if (*l_modified_length_ptr) {
 		if (!l_bio->read(&l_present, 1)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"t2_read_packet_header: failed to read `present` bit \n");
 			return false;
 		}
@@ -620,11 +615,11 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 		if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 			if ((*l_modified_length_ptr
 					- (size_t) (l_header_data - *l_header_data_start)) < 2U) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"Not enough space for expected EPH marker\n");
 			} else if ((*l_header_data) != 0xff
 					|| (*(l_header_data + 1) != 0x92)) {
-				event_msg(p_manager, EVT_WARNING, "Expected EPH marker\n");
+				GROK_WARN( "Expected EPH marker\n");
 			} else {
 				l_header_data += 2;
 			}
@@ -656,7 +651,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				uint64_t value;
 				if (!l_prc->incltree->decodeValue(l_bio.get(), cblkno,
 						p_pi->layno + 1, &value)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"t2_read_packet_header: failed to read `inclusion` bit \n");
 					return false;
 				}
@@ -675,7 +670,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 					msg +=
 							"mis-interpretation of the standard.  The problem may also occur as a result of\n";
 					msg += "a corrupted code-stream\n";
-					event_msg(p_manager, EVT_WARNING, "%s\n", msg.c_str());
+					GROK_WARN( "%s\n", msg.c_str());
 
 				}
 #ifdef DEBUG_LOSSLESS_T2
@@ -686,7 +681,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			/* else one bit */
 			else {
 				if (!l_bio->read(&l_included, 1)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"t2_read_packet_header: failed to read `inclusion` bit \n");
 					return false;
 				}
@@ -719,13 +714,13 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				K_msbs--;
 
 				if (!rc) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Failed to decode zero-bitplane tag tree \n");
 					return false;
 				}
 
 				if (K_msbs > l_band->numbps) {
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"More missing bit planes (%d) than band bit planes (%d).\n",
 							K_msbs, l_band->numbps);
 					l_cblk->numbps = l_band->numbps;
@@ -735,7 +730,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				// BIBO analysis gives upper limit on number of bit planes
 				if (l_cblk->numbps
 						> max_precision_jpeg_2000 + OPJ_J2K_MAXRLVLS * 5) {
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"Number of bit planes %u is impossibly large.\n",
 							l_cblk->numbps);
 				}
@@ -744,12 +739,12 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 
 			/* number of coding passes */
 			if (!t2_getnumpasses(l_bio.get(), &l_cblk->numPassesInPacket)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"t2_read_packet_header: failed to read numpasses.\n");
 				return false;
 			}
 			if (!t2_getcommacode(l_bio.get(), &l_increment)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"t2_read_packet_header: failed to read length indicator increment.\n");
 				return false;
 			}
@@ -783,14 +778,14 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				uint32_t bits_to_read = l_cblk->numlenbits
 						+ uint_floorlog2(l_seg->numPassesInPacket);
 				if (bits_to_read > 32) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"t2_read_packet_header: too many bits in segment length \n");
 					return false;
 				}
 				if (!l_bio->read(&l_seg->newlen,
 						l_cblk->numlenbits
 								+ uint_floorlog2(l_seg->numPassesInPacket))) {
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"t2_read_packet_header: failed to read segment length \n");
 				}
 #ifdef DEBUG_LOSSLESS_T2
@@ -815,7 +810,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	}
 
 	if (!l_bio->inalign()) {
-		event_msg(p_manager, EVT_ERROR, "Unable to read packet header\n");
+		GROK_ERROR( "Unable to read packet header\n");
 		return false;
 	}
 
@@ -825,10 +820,10 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
 		if ((*l_modified_length_ptr
 				- (uint32_t) (l_header_data - *l_header_data_start)) < 2U) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Not enough space for expected EPH marker\n");
 		} else if ((*l_header_data) != 0xff || (*(l_header_data + 1) != 0x92)) {
-			event_msg(p_manager, EVT_WARNING, "Expected EPH marker\n");
+			GROK_WARN( "Expected EPH marker\n");
 		} else {
 			l_header_data += 2;
 		}
@@ -848,7 +843,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 }
 
 static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager) {
+		seg_buf_t *src_buf, uint64_t *p_data_read) {
 	uint32_t bandno;
 	uint64_t l_nb_code_blocks, cblkno;
 	tcd_band_t *l_band = nullptr;
@@ -885,7 +880,7 @@ static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 				size_t len = src_buf->data_len;
 				// Check possible overflow on segment length
 				if (((offset + l_seg->newlen) > len)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"read packet data: segment offset (%u) plus segment length %u is greater than total length \nof all segments (%u) for codeblock %d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)\n",
 							offset, l_seg->newlen, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
@@ -922,8 +917,7 @@ static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 
 static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 		pi_iterator_t *pi, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t num_bytes_available, opj_codestream_info_t *cstr_info,
-		event_mgr_t *p_manager) {
+		uint64_t num_bytes_available, opj_codestream_info_t *cstr_info) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
@@ -936,23 +930,23 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 		streamBytes = p_stream->tell();
 	// SOP marker
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
-		if (!p_stream->write_byte(255, p_manager)) {
+		if (!p_stream->write_byte(255)) {
 			return false;
 		}
-		if (!p_stream->write_byte(145, p_manager)) {
+		if (!p_stream->write_byte(145)) {
 			return false;
 		}
-		if (!p_stream->write_byte(0, p_manager)) {
+		if (!p_stream->write_byte(0)) {
 			return false;
 		}
-		if (!p_stream->write_byte(4, p_manager)) {
+		if (!p_stream->write_byte(4)) {
 			return false;
 		}
 		/* packno is uint32_t, in big endian format */
-		if (!p_stream->write_byte((tile->packno >> 8) & 0xff, p_manager)) {
+		if (!p_stream->write_byte((tile->packno >> 8) & 0xff)) {
 			return false;
 		}
-		if (!p_stream->write_byte(tile->packno & 0xff, p_manager)) {
+		if (!p_stream->write_byte(tile->packno & 0xff)) {
 			return false;
 		}
 		num_bytes_available -= 6;
@@ -1099,7 +1093,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 	}
 
 	if (!bio->flush()) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"t2_encode_packet: Bit IO flush failed while encoding packet\n");
 		return false;
 	}
@@ -1110,10 +1104,10 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 
 	// EPH marker
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
-		if (!p_stream->write_byte(255, p_manager)) {
+		if (!p_stream->write_byte(255)) {
 			return false;
 		}
-		if (!p_stream->write_byte(146, p_manager)) {
+		if (!p_stream->write_byte(146)) {
 			return false;
 		}
 		num_bytes_available -= 2;
@@ -1150,15 +1144,14 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 			}
 
 			if (cblk_layer->len > num_bytes_available) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Code block layer size %d exceeds number of available bytes %d in tile buffer\n",
 						cblk_layer->len, num_bytes_available);
 				return false;
 			}
 
 			if (cblk_layer->len) {
-				if (!p_stream->write_bytes(cblk_layer->data, cblk_layer->len,
-						p_manager)) {
+				if (!p_stream->write_bytes(cblk_layer->data, cblk_layer->len)) {
 					return false;
 				}
 				num_bytes_available -= cblk_layer->len;
@@ -1193,8 +1186,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 			pi,
 			&l_read_data,
 			src_buf.get(),
-			&l_nb_bytes_read,
-			p_manager)) {
+			&l_nb_bytes_read)) {
 			rc = false;
 		}
 		if (rc) {
@@ -1289,8 +1281,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 				if (!t2_read_packet_data(roundRes,
 					pi,
 					src_buf.get(),
-					&l_nb_bytes_read,
-					p_manager)) {
+					&l_nb_bytes_read)) {
 					rc = false;
 				}
 				else {
@@ -1567,8 +1558,7 @@ static bool t2_encode_packet_simulate(tcd_tile_t *tile, tcp_t *tcp,
 	return true;
 }
 static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
-		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read,
-		event_mgr_t *p_manager) {
+		pi_iterator_t *p_pi, seg_buf_t *src_buf, uint64_t *p_data_read) {
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
 	uint64_t l_nb_total_bytes_read = 0;
@@ -1578,7 +1568,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 
 	if (!t2_read_packet_header(p_t2,
 			&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_tcp, p_pi,
-			&l_read_data, src_buf, &l_nb_bytes_read, p_manager)) {
+			&l_read_data, src_buf, &l_nb_bytes_read)) {
 		return false;
 	}
 
@@ -1591,7 +1581,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 
 		if (!t2_skip_packet_data(
 				&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
-				&l_nb_bytes_read, p_max_length, p_manager)) {
+				&l_nb_bytes_read, p_max_length)) {
 			return false;
 		}
 		src_buf->incr_cur_seg_offset(l_nb_bytes_read);
@@ -1603,7 +1593,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 }
 
 static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		uint64_t *p_data_read, uint64_t p_max_length, event_mgr_t *p_manager) {
+		uint64_t *p_data_read, uint64_t p_max_length) {
 	uint32_t bandno;
 	uint64_t l_nb_code_blocks, cblkno;
 	tcd_cblk_dec_t *l_cblk = nullptr;
@@ -1646,7 +1636,7 @@ static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 				/* Check possible overflow then size */
 				if (((*p_data_read + l_seg->newlen) < (*p_data_read))
 						|| ((*p_data_read + l_seg->newlen) > p_max_length)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
 							l_seg->newlen, p_max_length, cblkno, p_pi->precno,
 							bandno, p_pi->resno, p_pi->compno);

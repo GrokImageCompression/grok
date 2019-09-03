@@ -535,7 +535,7 @@ void j2k_setup_decoder(void *j2k_void, opj_dparameters_t *parameters);
 j2k_t* j2k_create_compress(void);
 
 bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
-		opj_image_t *image, event_mgr_t *p_manager);
+		opj_image_t *image);
 
 /**
  Converts an enum type progression order to string type
@@ -551,8 +551,7 @@ char* j2k_convert_progression_order(OPJ_PROG_ORDER prg_order);
  * Ends the decompression procedures and possibiliy add data to be read after the
  * codestream.
  */
-bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream);
 
 /**
  * Reads a jpeg2000 codestream header structure.
@@ -565,8 +564,7 @@ bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream,
  * @return true if the box is valid.
  */
 bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
-		opj_header_info_t *header_info, opj_image_t **p_image,
-		event_mgr_t *p_manager);
+		opj_header_info_t *header_info, opj_image_t **p_image);
 
 /**
  * Destroys a jpeg2000 codec.
@@ -592,7 +590,7 @@ void j2k_destroy_cstr_index(opj_codestream_index_t *p_cstr_ind);
  * @param	p_manager	the user event manager.
  */
 bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint64_t p_data_size, GrokStream *p_stream);
 
 /**
  * Reads a tile header.
@@ -611,7 +609,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, GrokStream *p_stream, event_mgr_t *p_manager);
+		bool *p_go_on, GrokStream *p_stream);
 
 /**
  * Sets the given area to be decoded. This function should be called right after grok_read_header and before any tile header reading.
@@ -627,8 +625,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
  * @return	true			if the area could be set.
  */
 bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
-		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y,
-		event_mgr_t *p_manager);
+		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y);
 
 /**
  * Creates a J2K decompression structure.
@@ -694,13 +691,11 @@ opj_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k);
  * @return FIXME DOC
  */
 bool j2k_decode(j2k_t *j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		opj_image_t *p_image, event_mgr_t *p_manager);
+		opj_image_t *p_image);
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
-		event_mgr_t *p_manager, uint32_t tile_index);
+bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index);
 
-bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor,
-		event_mgr_t *p_manager);
+bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
 
 /**
  * Writes a tile.
@@ -712,13 +707,12 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor,
  * @param	p_manager	the user event manager.
  */
 bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint64_t p_data_size, GrokStream *p_stream);
 
 /**
  * Encodes an image into a JPEG-2000 codestream
  */
-bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio,
-		event_mgr_t *p_manager);
+bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
@@ -731,13 +725,13 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio,
  * @return true if the codec is valid.
  */
 bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
-		opj_image_t *p_image, event_mgr_t *p_manager);
+		opj_image_t *p_image);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
  * codestream.
  */
-bool j2k_end_compress(j2k_t *p_j2k, GrokStream *cio, event_mgr_t *p_manager);
+bool j2k_end_compress(j2k_t *p_j2k, GrokStream *cio);
 
 bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image);
 

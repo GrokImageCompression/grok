@@ -113,7 +113,7 @@ void procedure_list_destroy(procedure_list_t *p_list);
  * @return	true if the procedure could be added.
  */
 bool procedure_list_add_procedure(procedure_list_t *p_validation_list,
-		procedure p_procedure, event_mgr_t *p_manager);
+		procedure p_procedure);
 
 /**
  * Gets the number of validation procedures.

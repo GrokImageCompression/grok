@@ -53,27 +53,12 @@
 
 namespace grk {
 
-/**
- @file event.h
- @brief Implementation of a event callback system
-
- The functions in EVENT.C have for goal to send output messages (errors, warnings, debug) to the user.
- */
-/**
- Message handler object
- used for
- <ul>
- <li>Error messages
- <li>Warning messages
- <li>Debugging messages
- </ul>
- */
 struct event_mgr_t {
-	/** Data to call the event manager upon */
+	/** Data to call the event manager with */
 	void *m_error_data;
-	/** Data to call the event manager upon */
+	/** Data to call the event manager with */
 	void *m_warning_data;
-	/** Data to call the event manager upon */
+	/** Data to call the event manager with */
 	void *m_info_data;
 	/** Error message callback if available, nullptr otherwise */
 	opj_msg_callback error_handler;
@@ -83,36 +68,17 @@ struct event_mgr_t {
 	opj_msg_callback info_handler;
 };
 
-#define EVT_ERROR	1	/**< Error event type */
-#define EVT_WARNING	2	/**< Warning event type */
-#define EVT_INFO	4	/**< Debug event type */
 
-/** @defgroup EVENT EVENT - Implementation of a event callback system */
-/*@{*/
+bool GROK_INFO(const char *fmt,	...);
+bool GROK_WARN(const char *fmt,	...);
+bool GROK_ERROR(const char *fmt,...);
 
-/** @name Exported functions (see also openjpeg.h) */
-/*@{*/
-/* ----------------------------------------------------------------------- */
-
-/* ----------------------------------------------------------------------- */
-
-/**
- * Write formatted data to a string and send the string to a user callback.
- *
- * @param event_mgr			Event handler
- * @param event_type 		Event type or callback to use to send the message
- * @param fmt 				Format-control string (plus optional arguments)
- *
- * @return true if successful, returns false otherwise
- */
-bool event_msg(event_mgr_t *event_mgr, int32_t event_type, const char *fmt,
-		...);
 /* ----------------------------------------------------------------------- */
 
 /**
  * Set the event manager with the default callback function for the 3 levels.
  */
-void set_default_event_handler(event_mgr_t *p_manager);
+void set_default_event_handler();
 
 /*@}*/
 

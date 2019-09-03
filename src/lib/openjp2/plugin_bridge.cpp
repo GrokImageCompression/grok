@@ -22,7 +22,7 @@ namespace grk {
 
 // Performed after T2, just before plugin decode is triggered
 // note: only support single segment at the moment
-void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager) {
+void decode_synch_plugin_with_host(tcd_t *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto tcd_tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -50,7 +50,7 @@ void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager) {
 								continue;
 							// sanity check
 							if (cblk->numSegments != 1) {
-								event_msg(p_manager, EVT_INFO,
+								GROK_INFO(
 										"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.\n");
 								throw PluginDecodeUnsupportedException();
 							}
@@ -58,7 +58,7 @@ void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager) {
 									* (tcd->image->comps[0].prec
 											+ BIBO_EXTRA_BITS) - 2;
 							if (cblk->segs[0].numpasses > maxPasses) {
-								event_msg(p_manager, EVT_INFO,
+								GROK_INFO(
 										"Number of passes %d in segment exceeds BIBO maximum %d. Image will be decoded on CPU.\n",
 										cblk->segs[0].numpasses, maxPasses);
 								throw PluginDecodeUnsupportedException();

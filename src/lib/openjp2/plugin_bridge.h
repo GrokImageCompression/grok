@@ -33,7 +33,7 @@
 
 namespace grk {
 
-void decode_synch_plugin_with_host(tcd_t *tcd, event_mgr_t *p_manager);
+void decode_synch_plugin_with_host(tcd_t *tcd);
 
 void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 		uint32_t bandno, uint32_t precno, uint32_t cblkno, tcd_band_t *band,

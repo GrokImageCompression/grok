@@ -30,7 +30,7 @@ public:
 			uint32_t mct_numcomps, uint32_t numThreads, bool doRateControl);
 
 	bool prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
-			std::vector<decodeBlockInfo*> *blocks, event_mgr_t *p_manager);
+			std::vector<decodeBlockInfo*> *blocks);
 
 	bool decodeCodeblocks(tcp_t *tcp, uint16_t blockw, uint16_t blockh,
 			std::vector<decodeBlockInfo*> *blocks, int32_t numThreads);

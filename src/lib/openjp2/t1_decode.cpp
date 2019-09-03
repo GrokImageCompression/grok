@@ -514,7 +514,7 @@ void t1_decode::clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch) {
 		v = (uint8_t) (v << 1) | mqc_decode(mqc);
 		/*
 		 if (v!=0xa) {
-		 event_msg(cinfo, EVT_WARNING, "Bad segmentation symbol %x\n", v);
+		 GROK_WARN( "Bad segmentation symbol %x\n", v);
 		 }
 		 */
 	}

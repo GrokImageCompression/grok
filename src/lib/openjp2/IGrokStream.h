@@ -23,35 +23,33 @@ struct IGrokStream {
 	virtual ~IGrokStream() {
 	}
 
-	virtual bool write_byte(uint8_t p_value, event_mgr_t *p_event_mgr)=0;
-	virtual bool write_short(uint16_t p_value, event_mgr_t *p_event_mgr) = 0;
-	virtual bool write_24(uint32_t p_value, event_mgr_t *p_event_mgr)=0;
-	virtual bool write_int(uint32_t p_value, event_mgr_t *p_event_mgr) = 0;
+	virtual bool write_byte(uint8_t p_value)=0;
+	virtual bool write_short(uint16_t p_value) = 0;
+	virtual bool write_24(uint32_t p_value)=0;
+	virtual bool write_int(uint32_t p_value) = 0;
 
 	/**
 	 * Writes some bytes to the stream.
 	 * @param		p_buffer	pointer to the data buffer holds the data to be written.
 	 * @param		p_size		number of bytes to write.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		the number of bytes written, or -1 if an error occurred.
 	 */
-	virtual size_t write_bytes(const uint8_t *p_buffer, size_t p_size,
-			event_mgr_t *p_event_mgr)= 0;
+	virtual size_t write_bytes(const uint8_t *p_buffer, size_t p_size)= 0;
 
 	/**
 	 * Writes the content of the stream buffer to the stream.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
 	 * @return		true if the data could be flushed, false else.
 	 */
-	virtual bool flush(event_mgr_t *p_event_mgr)= 0;
+	virtual bool flush()= 0;
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	virtual bool skip(int64_t p_size, event_mgr_t *p_event_mgr)= 0;
+	virtual bool skip(int64_t p_size)= 0;
 
 	/**
 	 * Tells the byte offset on the stream (similar to ftell).
@@ -68,42 +66,42 @@ struct IGrokStream {
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	virtual bool write_skip(int64_t p_size, event_mgr_t *p_event_mgr)= 0;
+	virtual bool write_skip(int64_t p_size)= 0;
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	virtual bool read_skip(int64_t p_size, event_mgr_t *p_event_mgr)= 0;
+	virtual bool read_skip(int64_t p_size)= 0;
 
 	/**
 	 * Seeks to absolute offset in stream.
 	 * @param		offset		absolute stream offset
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		true if success, or false if an error occurred.
 	 */
-	virtual bool read_seek(uint64_t offset, event_mgr_t *p_event_mgr)= 0;
+	virtual bool read_seek(uint64_t offset)= 0;
 
 	/**
 	 * Seeks to absolute offset in stream.
 	 * @param		offset		absolute offset in stream
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	virtual bool write_seek(uint64_t offset, event_mgr_t *p_event_mgr)= 0;
+	virtual bool write_seek(uint64_t offset)= 0;
 
 	/**
 	 * Seeks to absolute offset in stream.
 	 * @param		offset		absolute offset in stream
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+
 	 * @return		true if the stream is seekable.
 	 */
-	virtual bool seek(uint64_t offset, event_mgr_t *p_event_mgr)= 0;
+	virtual bool seek(uint64_t offset)= 0;
 
 	/**
 	 * Tells if the given stream is seekable.

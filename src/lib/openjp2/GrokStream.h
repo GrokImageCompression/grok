@@ -124,46 +124,44 @@ struct GrokStream: public IGrokStream {
 	 * Reads some bytes from the stream.
 	 * @param		p_buffer	pointer to the data buffer that will receive the data.
 	 * @param		p_size		number of bytes to read.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes read, or -1 if an error occurred or if the stream is at the end.
 	 */
-	size_t read(uint8_t *p_buffer, size_t p_size, event_mgr_t *p_event_mgr);
+	size_t read(uint8_t *p_buffer, size_t p_size);
 
-	size_t read_data_zero_copy(uint8_t **p_buffer, size_t p_size,
-			event_mgr_t *p_event_mgr);
+	size_t read_data_zero_copy(uint8_t **p_buffer, size_t p_size);
 
-	bool write_byte(uint8_t p_value, event_mgr_t *p_event_mgr);
+	bool write_byte(uint8_t p_value);
 
 	// write methods that take endian into account
-	bool write_short(uint16_t p_value, event_mgr_t *p_event_mgr);
-	bool write_24(uint32_t p_value, event_mgr_t *p_event_mgr);
-	bool write_int(uint32_t p_value, event_mgr_t *p_event_mgr);
-	bool write_64(uint64_t p_value, event_mgr_t *p_event_mgr);
+	bool write_short(uint16_t p_value);
+	bool write_24(uint32_t p_value);
+	bool write_int(uint32_t p_value);
+	bool write_64(uint64_t p_value);
 
 	/**
 	 * Writes some bytes to the stream (no correction for endian!).
 	 * @param		p_buffer	pointer to the data buffer holds the data to be written.
 	 * @param		p_size		number of bytes to write.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes written, or -1 if an error occurred.
 	 */
-	size_t write_bytes(const uint8_t *p_buffer, size_t p_size,
-			event_mgr_t *p_event_mgr);
+	size_t write_bytes(const uint8_t *p_buffer, size_t p_size);
 
 	/**
 	 * Writes the content of the stream buffer to the stream.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		true if the data could be flushed, false else.
 	 */
-	bool flush(event_mgr_t *p_event_mgr);
+	bool flush();
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	bool skip(int64_t p_size, event_mgr_t *p_event_mgr);
+	bool skip(int64_t p_size);
 
 	/**
 	 * Tells the byte offset on the stream (similar to ftell).
@@ -180,10 +178,10 @@ struct GrokStream: public IGrokStream {
 	/**
 	 * Seeks a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		true if the stream is seekable.
 	 */
-	bool seek(uint64_t p_size, event_mgr_t *p_event_mgr);
+	bool seek(uint64_t p_size);
 
 	/**
 	 * Tells if the given stream is seekable.
@@ -202,38 +200,37 @@ private:
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	bool write_skip(int64_t p_size, event_mgr_t *p_event_mgr);
+	bool write_skip(int64_t p_size);
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	bool read_skip(int64_t p_size, event_mgr_t *p_event_mgr);
+	bool read_skip(int64_t p_size);
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		true if success, or false if an error occurred.
 	 */
-	bool read_seek(uint64_t offset, event_mgr_t *p_event_mgr);
+	bool read_seek(uint64_t offset);
 
 	/**
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
-	 * @param		p_event_mgr	the user event manager to be notified of special events.
+	 
 	 * @return		the number of bytes skipped, or -1 if an error occurred.
 	 */
-	bool write_seek(uint64_t p_size, event_mgr_t *p_event_mgr);
+	bool write_seek(uint64_t p_size);
 
 	void write_increment(size_t p_size);
-	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes,
-			event_mgr_t *p_event_mgr);
+	template<typename TYPE> bool write(TYPE p_value, uint8_t numBytes);
 	void invalidate_buffer();
 
 	///////////////////////////////////////////////////////////////////
