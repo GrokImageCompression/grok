@@ -2220,8 +2220,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 
 	if ((l_tcp->numlayers < 1U) || (l_tcp->numlayers > 65535U)) {
-		GROK_ERROR(
-				"Invalid number of layers in COD marker : %d not in range [1-65535]\n",
+		GROK_ERROR("Invalid number of layers in COD marker : %d not in range [1-65535]\n",
 				l_tcp->numlayers);
 		return false;
 	}
@@ -2235,7 +2234,11 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	grok_read_bytes(p_header_data, &l_tcp->mct, 1); /* SGcod (C) */
 	++p_header_data;
-
+	if (l_tcp->mct > 1 )
+	{
+		GROK_ERROR("Invalid MCT value : %d. Should be either 0 or 1", l_tcp->mct);
+		return false;
+	}
 	p_header_size = (uint16_t)(p_header_size - 5);
 	for (i = 0; i < l_image->numcomps; ++i) {
 		l_tcp->tccps[i].csty = l_tcp->csty & J2K_CCP_CSTY_PRT;
@@ -8305,6 +8308,11 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	}
 	/* SPcoc (H) */
 	grok_read_bytes(l_current_ptr, &l_tccp->qmfbid, 1);
+	if (l_tccp->qmfbid > 1){
+		GROK_ERROR("Invalid qmfbid : %d. Should be either 0 or 1", l_tccp->qmfbid);
+		return false;
+	}
+
 	++l_current_ptr;
 
 	*p_header_size = (uint16_t)(*p_header_size - 5);

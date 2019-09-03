@@ -34,7 +34,7 @@ set(BLACKLIST_JPEG2000_TMP
     edf_c2_1178956.jp2
     edf_c2_1000290.jp2
     #edf_c2_1000691.jp2 # ok
-    #edf_c2_20.jp2 #looks ok as per kdu_jp2info
+    edf_c2_20.jp2
     edf_c2_1377017.jp2
     edf_c2_1002767.jp2
     edf_c2_10025.jp2
