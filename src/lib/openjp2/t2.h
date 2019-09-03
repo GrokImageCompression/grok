@@ -99,7 +99,7 @@ struct t2_t {
 bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
 		uint32_t maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t len, opj_codestream_info_t *cstr_info, uint32_t tpnum,
-		uint32_t tppos, uint32_t pino, event_mgr_t *p_manager);
+		uint32_t tppos, uint32_t pino);
 
 /**
  Encode the packets of a tile to a destination buffer
@@ -113,7 +113,7 @@ bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
  */
 bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
 		uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
-		uint32_t tppos, event_mgr_t *p_manager);
+		uint32_t tppos);
 
 /**
  Decode the packets of a tile from a source buffer
@@ -128,7 +128,7 @@ bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
  @return FIXME DOC
  */
 bool t2_decode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
-		seg_buf_t *src_buf, uint64_t *p_data_read, event_mgr_t *p_manager);
+		seg_buf_t *src_buf, uint64_t *p_data_read);
 
 /**
  * Creates a Tier 2 handle

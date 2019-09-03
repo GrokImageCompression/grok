@@ -219,8 +219,7 @@ struct jp2_header_handler_t {
 	/* marker value */
 	uint32_t id;
 	/* action linked to the marker */
-	bool (*handler)(jp2_t *jp2, uint8_t *p_header_data, uint32_t p_header_size,
-			event_mgr_t *p_manager);
+	bool (*handler)(jp2_t *jp2, uint8_t *p_header_data, uint32_t p_header_size);
 };
 
 struct jp2_img_header_writer_handler_t {
@@ -254,7 +253,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
  * @return a decoded image if successful, returns nullptr otherwise
  */
 bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		opj_image_t *p_image, event_mgr_t *p_manager);
+		opj_image_t *p_image);
 
 /**
  * Setup the encoder parameters using the current image and using user parameters.
@@ -267,7 +266,7 @@ bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
  * @return true if successful, false otherwise
  */
 bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
-		opj_image_t *image, event_mgr_t *p_manager);
+		opj_image_t *image);
 
 /**
  Encode an image into a JPEG-2000 file stream
@@ -276,8 +275,7 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
  @param p_manager  event manager
  @return true if successful, returns false otherwise
  */
-bool jp2_encode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *stream,
-		event_mgr_t *p_manager);
+bool jp2_encode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *stream);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
@@ -289,14 +287,13 @@ bool jp2_encode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *stream,
  *
  * @return true if the codec is valid.
  */
-bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, opj_image_t *p_image,
-		event_mgr_t *p_manager);
+bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, opj_image_t *p_image);
 
 /**
  * Ends the compression procedures and possibly add data to be read after the
  * codestream.
  */
-bool jp2_end_compress(jp2_t *jp2, GrokStream *cio, event_mgr_t *p_manager);
+bool jp2_end_compress(jp2_t *jp2, GrokStream *cio);
 
 /* ----------------------------------------------------------------------- */
 
@@ -304,7 +301,7 @@ bool jp2_end_compress(jp2_t *jp2, GrokStream *cio, event_mgr_t *p_manager);
  * Ends the decompression procedures and possibly add data to be read after the
  * codestream.
  */
-bool jp2_end_decompress(jp2_t *jp2, GrokStream *cio, event_mgr_t *p_manager);
+bool jp2_end_decompress(jp2_t *jp2, GrokStream *cio);
 
 /**
  * Reads a jpeg2000 file header structure.
@@ -317,8 +314,7 @@ bool jp2_end_decompress(jp2_t *jp2, GrokStream *cio, event_mgr_t *p_manager);
  * @return true if the box is valid.
  */
 bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
-		opj_header_info_t *header_info, opj_image_t **p_image,
-		event_mgr_t *p_manager);
+		opj_header_info_t *header_info, opj_image_t **p_image);
 
 /**
  * Reads a tile header.
@@ -337,7 +333,7 @@ bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
 bool jp2_read_tile_header(jp2_t *p_jp2, uint32_t *p_tile_index,
 		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, GrokStream *p_stream, event_mgr_t *p_manager);
+		bool *p_go_on, GrokStream *p_stream);
 
 /**
  * Writes a tile.
@@ -350,7 +346,7 @@ bool jp2_read_tile_header(jp2_t *p_jp2, uint32_t *p_tile_index,
  * @param  p_manager  the user event manager.
  */
 bool jp2_write_tile(jp2_t *p_jp2, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint64_t p_data_size, GrokStream *p_stream);
 
 /**
  * Decode tile data.
@@ -364,7 +360,7 @@ bool jp2_write_tile(jp2_t *p_jp2, uint32_t p_tile_index, uint8_t *p_data,
  * @return FIXME DOC
  */
 bool jp2_decode_tile(jp2_t *p_jp2, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint64_t p_data_size, GrokStream *p_stream);
 
 /**
  * Creates a jpeg2000 file decompressor.
@@ -393,20 +389,17 @@ void jp2_destroy(jp2_t *jp2);
  * @return  true      if the area could be set.
  */
 bool jp2_set_decode_area(jp2_t *p_jp2, opj_image_t *p_image, uint32_t p_start_x,
-		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y,
-		event_mgr_t *p_manager);
+		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y);
 
 /**
  *
  */
-bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image,
-		event_mgr_t *p_manager, uint32_t tile_index);
+bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index);
 
 /**
  *
  */
-bool jp2_set_decoded_resolution_factor(jp2_t *p_jp2, uint32_t res_factor,
-		event_mgr_t *p_manager);
+bool jp2_set_decoded_resolution_factor(jp2_t *p_jp2, uint32_t res_factor);
 
 /**
  * Dump some elements from the JP2 decompression structure .

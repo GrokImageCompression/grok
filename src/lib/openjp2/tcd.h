@@ -214,7 +214,7 @@ struct tcd_precinct_t {
 		rhs.imsbtree = nullptr;
 
 	}
-	void initTagTrees(event_mgr_t *manager);
+	void initTagTrees();
 	void deleteTagTrees();
 
 	void cleanupEncodeBlocks() {
@@ -381,7 +381,7 @@ bool tcd_init(tcd_t *p_tcd, opj_image_t *p_image, cp_t *p_cp,
  * @return	true if the remaining data is sufficient.
  */
 bool tcd_init_decode_tile(tcd_t *p_tcd, opj_image_t *output_image,
-		uint32_t p_tile_no, event_mgr_t *p_manager);
+		uint32_t p_tile_no);
 
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
@@ -400,7 +400,7 @@ uint64_t tcd_get_decoded_tile_size(tcd_t *p_tcd);
  */
 bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t p_len,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager);
+		opj_codestream_info_t *p_cstr_info);
 
 /**
  Decode a tile from a buffer into a raw image
@@ -411,8 +411,7 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
  @param cstr_info  FIXME DOC
  @param manager the event manager.
  */
-bool tcd_decode_tile(tcd_t *tcd, seg_buf_t *src_buf, uint32_t tileno,
-		event_mgr_t *manager);
+bool tcd_decode_tile(tcd_t *tcd, seg_buf_t *src_buf, uint32_t tileno);
 
 /**
  * Copies tile data from the system onto the given memory block.
@@ -434,8 +433,7 @@ uint64_t tcd_get_encoded_tile_size(tcd_t *p_tcd);
  *
  * @return true if the encoding values could be set (false otherwise).
  */
-bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no,
-		event_mgr_t *p_manager);
+bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no);
 
 /**
  * Copies tile data from the given memory block onto the system.

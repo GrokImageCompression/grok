@@ -212,3 +212,4 @@ static inline long grok_lrintf(float f) {
 #include "RateControl.h"
 #include "RateInfo.h"
 #include "ThreadPool.h"
+#include "grok_codec.h"

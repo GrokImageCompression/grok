@@ -123,13 +123,12 @@ static void j2k_transfer_image_data(opj_image_t *src, opj_image_t *dest) {
 /**
  * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_header_reading(j2k_t *p_j2k, event_mgr_t *p_manager);
+static bool j2k_setup_header_reading(j2k_t *p_j2k);
 
 /**
  * The read header procedure.
  */
-static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * The default encoding validation procedure without any extension.
@@ -140,8 +139,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * The default decoding validation procedure without any extension.
@@ -152,26 +150,25 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_encoding_validation(j2k_t *p_j2k, event_mgr_t *p_manager);
+static bool j2k_setup_encoding_validation(j2k_t *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_decoding_validation(j2k_t *p_j2k, event_mgr_t *p_manager);
+static bool j2k_setup_decoding_validation(j2k_t *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_end_compress(j2k_t *p_j2k, event_mgr_t *p_manager);
+static bool j2k_setup_end_compress(j2k_t *p_j2k);
 
 /**
  * The mct encoding validation procedure.
@@ -182,19 +179,16 @@ static bool j2k_setup_end_compress(j2k_t *p_j2k, event_mgr_t *p_manager);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Builds the tcd decoder to use to decode tile.
  */
-static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream);
 /**
  * Builds the tcd encoder to use to encode tile.
  */
-static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Creates a tile-coder decoder.
@@ -203,8 +197,7 @@ static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                        the stream to write data to.
  * @param       p_manager                   the user event manager.
  */
-static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Executes the given procedures on the given codec.
@@ -217,7 +210,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream,
  * @return      true                            if all the procedures were successfully executed.
  */
 static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Updates the rates of the tcp.
@@ -226,8 +219,7 @@ static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Copies the decoding tile parameters onto all the tile parameters.
@@ -238,7 +230,7 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Reads the lookup table containing all the marker, status and action, and returns the handler associated
@@ -296,7 +288,7 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
  * @return FIXME DOC
  */
 static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
-		uint32_t p_comp_no, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint32_t p_comp_no, GrokStream *p_stream);
 
 /**
  * Gets the size taken by writing a SPCod or SPCoc for the given tile and component.
@@ -319,8 +311,7 @@ static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t p_tile_no,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
-		uint8_t *p_header_data, uint16_t *p_header_size,
-		event_mgr_t *p_manager);
+		uint8_t *p_header_data, uint16_t *p_header_size);
 
 /**
  * Gets the size taken by writing SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -358,7 +349,7 @@ static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
  *
  */
 static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
-		uint32_t p_comp_no, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint32_t p_comp_no, GrokStream *p_stream);
 
 /**
  * Updates the Tile Length Marker.
@@ -377,8 +368,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t p_tile_part_size);
  *
  */
 static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t compno,
-		uint8_t *p_header_data, uint16_t *p_header_size,
-		event_mgr_t *p_manager);
+		uint8_t *p_header_data, uint16_t *p_header_size);
 
 /**
  * Copies the tile component parameters of all the component from the first tile component.
@@ -390,15 +380,12 @@ static void j2k_copy_tile_component_parameters(j2k_t *p_j2k);
 /**
  * Reads the tiles.
  */
-static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream);
 
-static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t p_tile_index,
-		event_mgr_t *p_manager);
+static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t p_tile_index);
 
 static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
-		opj_image_t *p_output_image, bool clearOutputOnInit,
-		event_mgr_t *p_manager);
+		opj_image_t *p_output_image, bool clearOutputOnInit);
 
 static void get_tile_dimensions(opj_image_t *l_image, tcd_tilecomp_t *l_tilec,
 		opj_image_comp_t *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
@@ -407,22 +394,19 @@ static void get_tile_dimensions(opj_image_t *l_image, tcd_tilecomp_t *l_tilec,
 
 static void j2k_get_tile_data(tcd_t *p_tcd, uint8_t *p_data);
 
-static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Sets up the procedures to do on writing header.
  * Developers wanting to extend the library can add their own writing procedures.
  */
-static bool j2k_setup_header_writing(j2k_t *p_j2k, event_mgr_t *p_manager);
+static bool j2k_setup_header_writing(j2k_t *p_j2k);
 
 static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
-		uint64_t p_total_data_size, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+		uint64_t p_total_data_size, GrokStream *p_stream);
 
 static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
-		uint64_t p_total_data_size, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+		uint64_t p_total_data_size, GrokStream *p_stream);
 
 /**
  * Gets the offset of the header.
@@ -431,8 +415,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream);
 
 static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
 
@@ -449,8 +432,7 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
  * @param       p_stream                        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a SOC marker (Start of Codestream)
@@ -458,8 +440,7 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream        XXX needs data
  * @param       p_manager       the user event manager.
  */
-static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the SIZ marker (image and tile size)
@@ -468,8 +449,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a SIZ marker (image and tile size)
@@ -479,7 +459,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the COM marker (comment)
@@ -488,8 +468,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a COM marker (comments)
@@ -499,7 +478,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 /**
  * Writes the COD marker (Coding style default)
  *
@@ -507,8 +486,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a COD marker (Coding Style defaults)
@@ -519,7 +497,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Compares 2 COC markers (Coding style component)
@@ -542,7 +520,7 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no,
  * @param       p_manager   the user event manager.
  */
 static bool j2k_write_coc(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Writes the COC marker (Coding style component)
@@ -553,7 +531,7 @@ static bool j2k_write_coc(j2k_t *p_j2k, uint32_t p_comp_no,
  * @param       p_manager   the user event manager.
  */
 static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Gets the maximum size taken by a coc.
@@ -571,7 +549,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k);
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the QCD marker (quantization default)
@@ -580,8 +558,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a QCD marker (Quantization defaults)
@@ -592,7 +569,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Compare QCC markers (quantization component)
@@ -615,7 +592,7 @@ static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Writes the QCC marker (quantization component)
@@ -626,7 +603,7 @@ static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t p_comp_no,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Gets the maximum size taken by a qcc.
@@ -641,7 +618,7 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k);
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
 
@@ -652,8 +629,7 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream);
 /**
  * Writes the POC marker (Progression Order Change)
  *
@@ -663,7 +639,7 @@ static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager      the user event manager.
  */
 static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
-		uint64_t *p_data_written, event_mgr_t *p_manager);
+		uint64_t *p_data_written);
 /**
  * Gets the maximum size taken by the writing of a POC.
  */
@@ -678,7 +654,7 @@ static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k);
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
@@ -701,7 +677,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k);
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 /**
  * Reads a TLM marker (Tile Length Marker)
  *
@@ -711,7 +687,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the updated tlm.
@@ -720,8 +696,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a PLM marker (Packet length, main header marker)
@@ -732,7 +707,7 @@ static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
@@ -742,7 +717,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Reads a PPM marker (Packed headers, main header)
@@ -754,7 +729,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
  */
 
 static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Merges all PPM markers read (Packed headers, main header)
@@ -762,7 +737,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
  * @param       p_manager the user event manager.
  */
-static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager);
+static bool j2k_merge_ppm(cp_t *p_cp);
 
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -773,7 +748,7 @@ static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager);
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Merges all PPT markers read (Packed headers, tile-part header)
@@ -781,7 +756,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t *p_manager);
+static bool j2k_merge_ppt(tcp_t *p_tcp);
 
 /**
  * Writes the TLM marker (Tile Length Marker)
@@ -790,8 +765,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t *p_manager);
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the SOT marker (Start of tile-part)
@@ -803,8 +777,7 @@ static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager        the user event manager.
  */
 static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
-		uint64_t *psot_location, uint64_t *p_data_written,
-		event_mgr_t *p_manager);
+		uint64_t *psot_location, uint64_t *p_data_written);
 
 /**
  * Reads values from a SOT marker (Start of tile-part)
@@ -821,7 +794,7 @@ static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
  */
 static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
 		uint32_t *p_tile_no, uint32_t *p_tot_len, uint32_t *p_current_part,
-		uint32_t *p_num_parts, event_mgr_t *p_manager);
+		uint32_t *p_num_parts);
 /**
  * Reads a SOT marker (Start of tile-part)
  *
@@ -831,7 +804,7 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 /**
  * Writes the SOD marker (Start of data)
  *
@@ -844,7 +817,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 		uint64_t *p_data_written, uint64_t p_total_data_size,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Reads a SOD marker (Start Of Data)
@@ -853,8 +826,7 @@ static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
  * @param       p_stream                FIXME DOC
  * @param       p_manager               the user event manager.
  */
-static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream);
 
 static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
 	auto l_cp = &(p_j2k->m_cp);
@@ -888,7 +860,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t p_tile_part_size) {
  * @param       p_manager               the user event manager.
  */
 static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
-		uint32_t nb_comps, GrokStream *p_stream, event_mgr_t *p_manager);
+		uint32_t nb_comps, GrokStream *p_stream);
 
 /**
  * Reads a RGN marker (Region Of Interest)
@@ -899,7 +871,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the EOC marker (End of Codestream)
@@ -908,8 +880,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -918,8 +889,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Inits the Info
@@ -928,8 +898,7 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  Add main header marker information
@@ -963,7 +932,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
  * @return      true                    if the marker could be deduced.
  */
 static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
-		uint32_t *output_marker, event_mgr_t *p_manager);
+		uint32_t *output_marker);
 
 /**
  * Writes the MCT marker (Multiple Component Transform)
@@ -972,8 +941,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream        the stream to write data to.
  * @param       p_manager       the user event manager.
  */
-static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream);
 
 /**
  * Reads a MCT marker (Multiple Component Transform)
@@ -984,7 +952,7 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the MCC marker (Multiple Component Collection)
@@ -994,7 +962,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
-		GrokStream *p_stream, event_mgr_t *p_manager);
+		GrokStream *p_stream);
 
 /**
  * Reads a MCC marker (Multiple Component Collection)
@@ -1005,7 +973,7 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes the MCO marker (Multiple component transformation ordering)
@@ -1014,8 +982,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
@@ -1026,7 +993,7 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 static bool j2k_add_mct(tcp_t *p_tcp, opj_image_t *p_image, uint32_t p_index);
 
@@ -1064,8 +1031,7 @@ static void j2k_write_float_to_float64(const void *p_src_data,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the CBD marker (Component bit depth definition)
@@ -1074,8 +1040,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a CBD marker (Component bit depth definition)
@@ -1086,7 +1051,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager);
+		uint16_t p_header_size);
 
 /**
  * Writes COC marker for each component.
@@ -1095,8 +1060,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes QCC marker for each component.
@@ -1105,8 +1069,7 @@ static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes regions of interests.
@@ -1115,8 +1078,7 @@ static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes EPC ????
@@ -1125,8 +1087,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream                the stream to write data to.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager);
+static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream);
 
 /**
  * Checks the progression order changes values. Tells of the poc given as input are valid.
@@ -1142,8 +1103,7 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream,
  * @return      true if the pocs are valid.
  */
 static bool j2k_check_poc_val(const opj_poc_t *p_pocs, uint32_t p_nb_pocs,
-		uint32_t p_nb_resolutions, uint32_t numcomps, uint32_t numlayers,
-		event_mgr_t *p_manager);
+		uint32_t p_nb_resolutions, uint32_t numcomps, uint32_t numlayers);
 
 /**
  * Gets the number of tile parts used for the given change of progression (if any) and the given tile.
@@ -1167,8 +1127,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno);
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image,
-		event_mgr_t *p_manager);
+static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image);
 
 static void j2k_dump_MH_info(j2k_t *p_j2k, FILE *out_stream);
 
@@ -1183,10 +1142,9 @@ static float j2k_get_default_stride(tcp_t *p_tcp);
 static uint32_t j2k_initialise_4K_poc(opj_poc_t *POC, uint32_t numres);
 
 static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
-		opj_image_t *image, event_mgr_t *p_manager);
+		opj_image_t *image);
 
-static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
-		event_mgr_t *p_manager);
+static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz);
 
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
@@ -1199,7 +1157,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
  * @return true if the function was successful, false else.
  */
 static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
-		uint32_t tile_no, bool *p_correction_needed, event_mgr_t *p_manager);
+		uint32_t tile_no, bool *p_correction_needed);
 
 /*@}*/
 
@@ -1242,7 +1200,7 @@ typedef struct opj_dec_memory_marker_handler {
 	uint32_t states;
 	/** action linked to the marker */
 	bool (*handler)(j2k_t *p_j2k, uint8_t *p_header_data,
-			uint16_t p_header_size, event_mgr_t *p_manager);
+			uint16_t p_header_size);
 } opj_dec_memory_marker_handler_t;
 
 static const opj_dec_memory_marker_handler_t j2k_memory_marker_handler_tab[] = {
@@ -1425,8 +1383,7 @@ char* j2k_convert_progression_order(OPJ_PROG_ORDER prg_order) {
 }
 
 static bool j2k_check_poc_val(const opj_poc_t *p_pocs, uint32_t p_nb_pocs,
-		uint32_t p_nb_resolutions, uint32_t p_num_comps, uint32_t p_num_layers,
-		event_mgr_t *p_manager) {
+		uint32_t p_nb_resolutions, uint32_t p_num_comps, uint32_t p_num_layers) {
 	uint32_t *packet_array;
 	uint32_t index, resno, compno, layno;
 	uint32_t i;
@@ -1482,7 +1439,7 @@ static bool j2k_check_poc_val(const opj_poc_t *p_pocs, uint32_t p_nb_pocs,
 	}
 
 	if (loss) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Missing packets possible loss of data\n");
 	}
 	delete[] packet_array;
@@ -1545,17 +1502,16 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno) {
 	return tpnum;
 }
 
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image,
-		event_mgr_t *p_manager) {
+static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image) {
 	uint32_t pino, tileno;
 	uint32_t l_nb_tiles;
 	tcp_t *tcp;
-	(void) p_manager;
+	
 
 	assert(p_nb_tiles != nullptr);
 	assert(cp != nullptr);
 	assert(image != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_nb_tiles = cp->tw * cp->th;
 	*p_nb_tiles = 0;
@@ -1592,7 +1548,7 @@ static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image,
 			for (pino = 0; pino <= tcp->numpocs; ++pino) {
 				uint32_t tp_num = j2k_get_num_tp(cp, pino, tileno);
 				if (tp_num > 255) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Tile %d contains more than 255 tile parts, which is not permitted by the JPEG 2000 standard.\n",
 							tileno);
 					return false;
@@ -1608,13 +1564,12 @@ static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, opj_image_t *image,
 	return true;
 }
 
-static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	(void) p_j2k;
-	return p_stream->write_short(J2K_MS_SOC, p_manager);
+	return p_stream->write_short(J2K_MS_SOC);
 }
 
 /**
@@ -1623,16 +1578,15 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream        FIXME DOC
  * @param       p_manager       the user event manager.
  */
-static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint8_t l_data[2];
 	uint32_t l_marker;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
-	if (p_stream->read(l_data, 2, p_manager) != 2) {
+	if (p_stream->read(l_data, 2) != 2) {
 		return false;
 	}
 
@@ -1648,13 +1602,13 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream,
 		/* FIXME move it in a index structure included in p_j2k*/
 		p_j2k->cstr_index->main_head_start = p_stream->tell() - 2;
 
-		//event_msg(p_manager, EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
+		//event_msg( EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
 
 		/* Add the marker to the codestream index*/
 		if (false
 				== j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC,
 						p_j2k->cstr_index->main_head_start, 2)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to add mh marker\n");
 			return false;
 		}
@@ -1662,8 +1616,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_size_len;
 	opj_image_t *l_image = nullptr;
@@ -1672,7 +1625,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	cp = &(p_j2k->m_cp);
@@ -1682,62 +1635,62 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
 	/* write SOC identifier */
 
 	/* SIZ */
-	if (!p_stream->write_short(J2K_MS_SIZ, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_SIZ)) {
 		return false;
 	}
 
 	/* L_SIZ */
-	if (!p_stream->write_short((uint16_t) (l_size_len - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_size_len - 2))) {
 		return false;
 	}
 
 	/* Rsiz (capabilities) */
-	if (!p_stream->write_short(cp->rsiz, p_manager)) {
+	if (!p_stream->write_short(cp->rsiz)) {
 		return false;
 	}
 
 	/* Xsiz */
-	if (!p_stream->write_int(l_image->x1, p_manager)) {
+	if (!p_stream->write_int(l_image->x1)) {
 		return false;
 	}
 
 	/* Ysiz */
-	if (!p_stream->write_int(l_image->y1, p_manager)) {
+	if (!p_stream->write_int(l_image->y1)) {
 		return false;
 	}
 
 	/* X0siz */
-	if (!p_stream->write_int(l_image->x0, p_manager)) {
+	if (!p_stream->write_int(l_image->x0)) {
 		return false;
 	}
 
 	/* Y0siz */
-	if (!p_stream->write_int(l_image->y0, p_manager)) {
+	if (!p_stream->write_int(l_image->y0)) {
 		return false;
 	}
 
 	/* XTsiz */
-	if (!p_stream->write_int(cp->tdx, p_manager)) {
+	if (!p_stream->write_int(cp->tdx)) {
 		return false;
 	}
 
 	/* YTsiz */
-	if (!p_stream->write_int(cp->tdy, p_manager)) {
+	if (!p_stream->write_int(cp->tdy)) {
 		return false;
 	}
 
 	/* XT0siz */
-	if (!p_stream->write_int(cp->tx0, p_manager)) {
+	if (!p_stream->write_int(cp->tx0)) {
 		return false;
 	}
 
 	/* YT0siz */
-	if (!p_stream->write_int(cp->ty0, p_manager)) {
+	if (!p_stream->write_int(cp->ty0)) {
 		return false;
 	}
 
 	/* Csiz */
-	if (!p_stream->write_short((uint16_t) l_image->numcomps, p_manager)) {
+	if (!p_stream->write_short((uint16_t) l_image->numcomps)) {
 		return false;
 	}
 
@@ -1745,18 +1698,17 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
 		/* TODO here with MCT ? */
 		/* Ssiz_i */
 		if (!p_stream->write_byte(
-				(uint8_t) (l_img_comp->prec - 1 + (l_img_comp->sgnd << 7)),
-				p_manager)) {
+				(uint8_t) (l_img_comp->prec - 1 + (l_img_comp->sgnd << 7)))) {
 			return false;
 		}
 
 		/* XRsiz_i */
-		if (!p_stream->write_byte((uint8_t) l_img_comp->dx, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_img_comp->dx)) {
 			return false;
 		}
 
 		/* YRsiz_i */
-		if (!p_stream->write_byte((uint8_t) l_img_comp->dy, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_img_comp->dy)) {
 			return false;
 		}
 		++l_img_comp;
@@ -1772,7 +1724,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t i;
 	uint32_t l_nb_comp;
 	uint32_t l_nb_comp_remain;
@@ -1785,7 +1737,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	tcp_t *l_current_tile_param = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_header_data != nullptr);
 
 	l_image = p_j2k->m_private_image;
@@ -1793,7 +1745,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
 	if (p_header_size < 36) {
-		event_msg(p_manager, EVT_ERROR, "Error with SIZ marker size\n");
+		GROK_ERROR( "Error with SIZ marker size\n");
 		return false;
 	}
 
@@ -1801,7 +1753,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_nb_comp = l_remaining_size / 3;
 	l_nb_comp_remain = l_remaining_size % 3;
 	if (l_nb_comp_remain != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error with SIZ marker size\n");
+		GROK_ERROR( "Error with SIZ marker size\n");
 		return false;
 	}
 
@@ -1820,7 +1772,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		profile = l_tmp & OPJ_PROFILE_MASK;
 		if ((profile > OPJ_PROFILE_CINEMA_LTS)
 				&& !OPJ_IS_BROADCAST(profile) && !OPJ_IS_IMF(profile)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Non-compliant Rsiz value 0x%x in SIZ marker\n", l_tmp);
 			return false;
 		}
@@ -1848,14 +1800,14 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (l_tmp <= max_num_components)
 		l_image->numcomps = (uint16_t) l_tmp;
 	else {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error with SIZ marker: number of component is illegal -> %d\n",
 				l_tmp);
 		return false;
 	}
 
 	if (l_image->numcomps != l_nb_comp) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)\n",
 				l_image->numcomps, l_nb_comp);
 		return false;
@@ -1868,12 +1820,12 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		ss << "Error with SIZ marker: negative or zero image size ("
 				<< (int64_t) l_image->x1 - l_image->x0 << " x "
 				<< (int64_t) l_image->y1 - l_image->y0 << ")" << std::endl;
-		event_msg(p_manager, EVT_ERROR, "%s", ss.str().c_str());
+		GROK_ERROR( "%s", ss.str().c_str());
 		return false;
 	}
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
 	if ((l_cp->tdx == 0U) || (l_cp->tdy == 0U)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error with SIZ marker: invalid tile size (tdx: %d, tdy: %d)\n",
 				l_cp->tdx, l_cp->tdy);
 		return false;
@@ -1884,14 +1836,14 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_ty1 = uint_adds(l_cp->ty0, l_cp->tdy); /* manage overflow */
 	if ((l_cp->tx0 > l_image->x0) || (l_cp->ty0 > l_image->y0)
 			|| (l_tx1 <= l_image->x0) || (l_ty1 <= l_image->y0)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error with SIZ marker: illegal tile offset\n");
 		return false;
 	}
 
 	uint64_t tileArea = (uint64_t) (l_tx1 - l_cp->tx0) * (l_ty1 - l_cp->ty0);
 	if (tileArea > max_tile_area) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error with SIZ marker: tile area = %llu greater than max tile area = %llu\n",
 				tileArea, max_tile_area);
 		return false;
@@ -1903,7 +1855,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 			sizeof(opj_image_comp_t));
 	if (l_image->comps == nullptr) {
 		l_image->numcomps = 0;
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker\n");
 		return false;
 	}
@@ -1925,7 +1877,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_img_comp->dy = tmp; /* should be between 1 and 255 */
 		if (l_img_comp->dx < 1 || l_img_comp->dx > 255 || l_img_comp->dy < 1
 				|| l_img_comp->dy > 255) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Invalid values for comp = %d : dx=%u dy=%u\n (should be between 1 and 255 according to the JPEG2000 standard)",
 					i, l_img_comp->dx, l_img_comp->dy);
 			return false;
@@ -1933,7 +1885,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		if (l_img_comp->prec == 0
 				|| l_img_comp->prec > max_supported_precision) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Unsupported precision for comp = %d : prec=%u (Grok only supportes precision between 1 and %d)\n",
 					i, l_img_comp->prec, max_supported_precision);
 			return false;
@@ -1949,13 +1901,13 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* Check that the number of tiles is valid */
 	if (l_cp->tw == 0 || l_cp->th == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. \n",
 				l_cp->tw, l_cp->th);
 		return false;
 	}
 	if (l_cp->tw > 65535 / l_cp->th) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of 65535 tiles\n",
 				l_cp->tw, l_cp->th);
 		return false;
@@ -1986,7 +1938,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* memory allocations */
 	l_cp->tcps = (tcp_t*) grok_calloc(l_nb_tiles, sizeof(tcp_t));
 	if (l_cp->tcps == nullptr) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker\n");
 		return false;
 	}
@@ -1994,7 +1946,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps =
 			(tccp_t*) grok_calloc(l_image->numcomps, sizeof(tccp_t));
 	if (p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps == nullptr) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker\n");
 		return false;
 	}
@@ -2004,7 +1956,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 					sizeof(mct_data_t));
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker\n");
 		return false;
 	}
@@ -2017,7 +1969,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 					sizeof(simple_mcc_decorrelation_data_t));
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker\n");
 		return false;
 	}
@@ -2037,7 +1989,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_current_tile_param->tccps = (tccp_t*) grok_calloc(l_image->numcomps,
 				sizeof(tccp_t));
 		if (l_current_tile_param->tccps == nullptr) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to take in charge SIZ marker\n");
 			return false;
 		}
@@ -2051,22 +2003,21 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	for (uint32_t i = 0; i < p_j2k->m_cp.num_comments; ++i) {
 		const char *l_comment = p_j2k->m_cp.comment[i];
 		uint16_t l_comment_size = p_j2k->m_cp.comment_len[i];
 		if (!l_comment_size) {
-			event_msg(p_manager, EVT_WARNING, "Empty comment. Ignoring\n");
+			GROK_WARN( "Empty comment. Ignoring\n");
 			continue;
 		}
 		if (l_comment_size > OPJ_MAX_COMMENT_LENGTH) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Comment length %s is greater than maximum comment length %d. Ignoring\n",
 					l_comment_size, OPJ_MAX_COMMENT_LENGTH);
 			continue;
@@ -2074,23 +2025,20 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream,
 		uint32_t l_total_com_size = (uint32_t) l_comment_size + 6;
 
 		/* COM */
-		if (!p_stream->write_short(J2K_MS_COM, p_manager)) {
+		if (!p_stream->write_short(J2K_MS_COM)) {
 			return false;
 		}
 
 		/* L_COM */
-		if (!p_stream->write_short((uint16_t) (l_total_com_size - 2),
-				p_manager)) {
+		if (!p_stream->write_short((uint16_t) (l_total_com_size - 2))) {
 			return false;
 		}
 
-		if (!p_stream->write_short(p_j2k->m_cp.isBinaryComment[i] ? 0 : 1,
-				p_manager)) {
+		if (!p_stream->write_short(p_j2k->m_cp.isBinaryComment[i] ? 0 : 1)) {
 			return false;
 		}
 
-		if (!p_stream->write_bytes((uint8_t*) l_comment, l_comment_size,
-				p_manager)) {
+		if (!p_stream->write_bytes((uint8_t*) l_comment, l_comment_size)) {
 			return false;
 		}
 	}
@@ -2105,23 +2053,23 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_header_data != nullptr);
 	assert(p_header_size != 0);
 
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "j2k_read_com: Corrupt COM segment \n");
+		GROK_ERROR( "j2k_read_com: Corrupt COM segment \n");
 		return false;
 	} else if (p_header_size == 2) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"j2k_read_com: Empty COM segment. Ignoring \n");
 		return true;
 	}
 	if (p_j2k->m_cp.num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"j2k_read_com: Only %d comments are supported. Ignoring\n",
 				OPJ_NUM_COMMENTS_SUPPORTED);
 		return true;
@@ -2132,7 +2080,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	auto numComments = p_j2k->m_cp.num_comments;
 	p_j2k->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if (commentType > 1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values\n");
 	}
 
@@ -2144,7 +2092,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_j2k->m_cp.comment[numComments] = (char*) opj_buffer_new(
 			commentSizeToAlloc);
 	if (!p_j2k->m_cp.comment[numComments]) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"j2k_read_com: Out of memory when allocating memory for comment \n");
 		return false;
 	}
@@ -2158,14 +2106,13 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream) {
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_code_size;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_cp = &(p_j2k->m_cp);
@@ -2174,38 +2121,37 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream,
 			+ j2k_get_SPCod_SPCoc_size(p_j2k, p_j2k->m_current_tile_number, 0);
 
 	/* COD */
-	if (!p_stream->write_short(J2K_MS_COD, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_COD)) {
 		return false;
 	}
 
 	/* L_COD */
-	if (!p_stream->write_short((uint16_t) (l_code_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_code_size - 2))) {
 		return false;
 	}
 
 	/* Scod */
-	if (!p_stream->write_byte((uint8_t) l_tcp->csty, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tcp->csty)) {
 		return false;
 	}
 
 	/* SGcod (A) */
-	if (!p_stream->write_byte((uint8_t) l_tcp->prg, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tcp->prg)) {
 		return false;
 	}
 
 	/* SGcod (B) */
-	if (!p_stream->write_short((uint16_t) l_tcp->numlayers, p_manager)) {
+	if (!p_stream->write_short((uint16_t) l_tcp->numlayers)) {
 		return false;
 	}
 
 	/* SGcod (C) */
-	if (!p_stream->write_byte((uint8_t) l_tcp->mct, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tcp->mct)) {
 		return false;
 	}
 
-	if (!j2k_write_SPCod_SPCoc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error writing COD marker\n");
+	if (!j2k_write_SPCod_SPCoc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream)) {
+		GROK_ERROR( "Error writing COD marker\n");
 		return false;
 	}
 
@@ -2220,7 +2166,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	/* loop */
 	uint32_t i;
 	uint32_t l_tmp;
@@ -2230,7 +2176,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	l_cp = &(p_j2k->m_cp);
@@ -2240,7 +2186,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* Only one COD per tile */
 	if (l_tcp->cod) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Multiple COD markers detected for tile part %d. The JPEG 2000 standard does not allow more than one COD marker per tile.\n",
 				l_tcp->m_current_tile_part_number);
 	}
@@ -2248,7 +2194,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* Make sure room is sufficient */
 	if (p_header_size < 5) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COD marker\n");
+		GROK_ERROR( "Error reading COD marker\n");
 		return false;
 	}
 
@@ -2258,7 +2204,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	if ((l_tcp->csty
 			& ~(uint32_t) (J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH))
 			!= 0U) {
-		event_msg(p_manager, EVT_ERROR, "Unknown Scod value in COD marker\n");
+		GROK_ERROR( "Unknown Scod value in COD marker\n");
 		return false;
 	}
 	grok_read_bytes(p_header_data, &l_tmp, 1); /* SGcod (A) */
@@ -2266,7 +2212,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_tcp->prg = (OPJ_PROG_ORDER) l_tmp;
 	/* Make sure progression order is valid */
 	if (l_tcp->prg > OPJ_CPRL) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Unknown progression order in COD marker\n");
 		l_tcp->prg = OPJ_PROG_UNKNOWN;
 	}
@@ -2274,7 +2220,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 
 	if ((l_tcp->numlayers < 1U) || (l_tcp->numlayers > 65535U)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid number of layers in COD marker : %d not in range [1-65535]\n",
 				l_tcp->numlayers);
 		return false;
@@ -2295,14 +2241,13 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_tcp->tccps[i].csty = l_tcp->csty & J2K_CCP_CSTY_PRT;
 	}
 
-	if (!j2k_read_SPCod_SPCoc(p_j2k, 0, p_header_data, &p_header_size,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COD marker\n");
+	if (!j2k_read_SPCod_SPCoc(p_j2k, 0, p_header_data, &p_header_size)) {
+		GROK_ERROR( "Error reading COD marker\n");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COD marker\n");
+		GROK_ERROR( "Error reading COD marker\n");
 		return false;
 	}
 
@@ -2313,11 +2258,11 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 }
 
 static bool j2k_write_coc(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
-	return j2k_write_coc_in_memory(p_j2k, p_comp_no, p_stream, p_manager);
+	return j2k_write_coc_in_memory(p_j2k, p_comp_no, p_stream);
 
 }
 
@@ -2340,7 +2285,7 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no,
 }
 
 static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_coc_size;
@@ -2348,7 +2293,7 @@ static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
 	uint32_t l_comp_room;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_cp = &(p_j2k->m_cp);
 	l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -2359,33 +2304,32 @@ static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
 					p_comp_no);
 
 	/* COC */
-	if (!p_stream->write_short(J2K_MS_COC, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_COC)) {
 		return false;
 	}
 
 	/* L_COC */
-	if (!p_stream->write_short((uint16_t) (l_coc_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_coc_size - 2))) {
 		return false;
 	}
 
 	/* Ccoc */
 	if (l_comp_room == 2) {
-		if (!p_stream->write_short((uint16_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t) p_comp_no)) {
 			return false;
 		}
 	} else {
-		if (!p_stream->write_byte((uint8_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) p_comp_no)) {
 			return false;
 		}
 	}
 
 	/* Scoc */
-	if (!p_stream->write_byte((uint8_t) l_tcp->tccps[p_comp_no].csty,
-			p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tcp->tccps[p_comp_no].csty)) {
 		return false;
 	}
 	return j2k_write_SPCod_SPCoc(p_j2k, p_j2k->m_current_tile_number, 0,
-			p_stream, p_manager);
+			p_stream);
 }
 
 static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
@@ -2414,7 +2358,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	tcp_t *l_tcp = nullptr;
 	opj_image_t *l_image = nullptr;
 	uint32_t l_comp_room;
@@ -2422,7 +2366,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_tcp = j2k_get_tcp(p_j2k);
 	l_image = p_j2k->m_private_image;
@@ -2431,7 +2375,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* make sure room is sufficient*/
 	if (p_header_size < l_comp_room + 1) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COC marker\n");
+		GROK_ERROR( "Error reading COC marker\n");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - (l_comp_room + 1));
@@ -2439,7 +2383,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_comp_no, l_comp_room); /* Ccoc */
 	p_header_data += l_comp_room;
 	if (l_comp_no >= l_image->numcomps) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error reading COC marker (bad number of components)\n");
 		return false;
 	}
@@ -2447,43 +2391,40 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_tcp->tccps[l_comp_no].csty, 1); /* Scoc */
 	++p_header_data;
 
-	if (!j2k_read_SPCod_SPCoc(p_j2k, l_comp_no, p_header_data, &p_header_size,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COC marker\n");
+	if (!j2k_read_SPCod_SPCoc(p_j2k, l_comp_no, p_header_data, &p_header_size)) {
+		GROK_ERROR( "Error reading COC marker\n");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading COC marker\n");
+		GROK_ERROR( "Error reading COC marker\n");
 		return false;
 	}
 	return true;
 }
 
-static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_qcd_size;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_qcd_size = 4
 			+ j2k_get_SQcd_SQcc_size(p_j2k, p_j2k->m_current_tile_number, 0);
 
 	/* QCD */
-	if (!p_stream->write_short(J2K_MS_QCD, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_QCD)) {
 		return false;
 	}
 
 	/* L_QCD */
-	if (!p_stream->write_short((uint16_t) (l_qcd_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_qcd_size - 2))) {
 		return false;
 	}
 
-	if (!j2k_write_SQcd_SQcc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error writing QCD marker\n");
+	if (!j2k_write_SQcd_SQcc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream)) {
+		GROK_ERROR( "Error writing QCD marker\n");
 		return false;
 	}
 
@@ -2498,18 +2439,17 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
-	if (!j2k_read_SQcd_SQcc(false, p_j2k, 0, p_header_data, &p_header_size,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
+	
+	if (!j2k_read_SQcd_SQcc(false, p_j2k, 0, p_header_data, &p_header_size)) {
+		GROK_ERROR( "Error reading QCD marker\n");
 		return false;
 	}
 	if (p_header_size != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading QCD marker\n");
+		GROK_ERROR( "Error reading QCD marker\n");
 		return false;
 	}
 
@@ -2538,12 +2478,12 @@ static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
 }
 
 static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
-	return j2k_write_qcc_in_memory(p_j2k, p_comp_no, p_stream, p_manager);
+	return j2k_write_qcc_in_memory(p_j2k, p_comp_no, p_stream);
 }
 
 static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no,
@@ -2553,16 +2493,16 @@ static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no,
 }
 
 static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	uint32_t l_qcc_size = 6
 			+ j2k_get_SQcd_SQcc_size(p_j2k, p_j2k->m_current_tile_number,
 					p_comp_no);
 
 	/* QCC */
-	if (!p_stream->write_short(J2K_MS_QCC, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_QCC)) {
 		return false;
 	}
 
@@ -2570,29 +2510,29 @@ static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
 		--l_qcc_size;
 
 		/* L_QCC */
-		if (!p_stream->write_short((uint16_t) (l_qcc_size - 2), p_manager)) {
+		if (!p_stream->write_short((uint16_t) (l_qcc_size - 2))) {
 			return false;
 		}
 
 		/* Cqcc */
-		if (!p_stream->write_byte((uint8_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) p_comp_no)) {
 			return false;
 		}
 
 	} else {
 		/* L_QCC */
-		if (!p_stream->write_short((uint16_t) (l_qcc_size - 2), p_manager)) {
+		if (!p_stream->write_short((uint16_t) (l_qcc_size - 2))) {
 			return false;
 		}
 
 		/* Cqcc */
-		if (!p_stream->write_short((uint16_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t) p_comp_no)) {
 			return false;
 		}
 	}
 
 	return j2k_write_SQcd_SQcc(p_j2k, p_j2k->m_current_tile_number, p_comp_no,
-			p_stream, p_manager);
+			p_stream);
 }
 
 static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k) {
@@ -2607,18 +2547,18 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k) {
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t l_num_comp, l_comp_no;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_num_comp = p_j2k->m_private_image->numcomps;
 
 	if (l_num_comp <= 256) {
 		if (p_header_size < 1) {
-			event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
+			GROK_ERROR( "Error reading QCC marker\n");
 			return false;
 		}
 		grok_read_bytes(p_header_data, &l_comp_no, 1);
@@ -2626,7 +2566,7 @@ static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		--p_header_size;
 	} else {
 		if (p_header_size < 2) {
-			event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
+			GROK_ERROR( "Error reading QCC marker\n");
 			return false;
 		}
 		grok_read_bytes(p_header_data, &l_comp_no, 2);
@@ -2635,20 +2575,20 @@ static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	if (l_comp_no >= p_j2k->m_private_image->numcomps) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid component number: %d, regarding the number of components %d\n",
 				l_comp_no, p_j2k->m_private_image->numcomps);
 		return false;
 	}
 
 	if (!j2k_read_SQcd_SQcc(true, p_j2k, l_comp_no, p_header_data,
-			&p_header_size, p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
+			&p_header_size)) {
+		GROK_ERROR( "Error reading QCC marker\n");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading QCC marker\n");
+		GROK_ERROR( "Error reading QCC marker\n");
 		return false;
 	}
 
@@ -2665,20 +2605,19 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
 	return (uint16_t) (4 + (5 + 2 * l_poc_room) * l_nb_poc);
 }
 
-static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	uint64_t p_data_written = 0;
-	return j2k_write_poc_in_memory(p_j2k, p_stream, &p_data_written, p_manager);
+	return j2k_write_poc_in_memory(p_j2k, p_stream, &p_data_written);
 }
 
 static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
-		uint64_t *p_data_written, event_mgr_t *p_manager) {
-	(void) p_manager;
+		uint64_t *p_data_written) {
+	
 	uint32_t i;
 	uint32_t l_nb_comp;
 	uint32_t l_nb_poc;
@@ -2689,7 +2628,7 @@ static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
 	uint32_t l_poc_room;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_tcp = &p_j2k->m_cp.tcps[p_j2k->m_current_tile_number];
 	l_tccp = &l_tcp->tccps[0];
@@ -2704,54 +2643,50 @@ static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
 
 	auto l_poc_size = getPocSize(l_nb_comp, 1 + l_tcp->numpocs);
 	/* POC  */
-	if (!p_stream->write_short(J2K_MS_POC, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_POC)) {
 		return false;
 	}
 
 	/* Lpoc */
-	if (!p_stream->write_short((uint16_t) (l_poc_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_poc_size - 2))) {
 		return false;
 	}
 	l_current_poc = l_tcp->pocs;
 	for (i = 0; i < l_nb_poc; ++i) {
 		/* RSpoc_i */
-		if (!p_stream->write_byte((uint8_t) l_current_poc->resno0, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_current_poc->resno0)) {
 			return false;
 		}
 
 		/* CSpoc_i */
-		if (!p_stream->write_byte((uint8_t) l_current_poc->compno0,
-				p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_current_poc->compno0)) {
 			return false;
 		}
 
 		/* LYEpoc_i */
-		if (!p_stream->write_short((uint16_t) l_current_poc->layno1,
-				p_manager)) {
+		if (!p_stream->write_short((uint16_t) l_current_poc->layno1)) {
 			return false;
 		}
 
 		/* REpoc_i */
-		if (!p_stream->write_byte((uint8_t) l_current_poc->resno1, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_current_poc->resno1)) {
 			return false;
 		}
 
 		/* CEpoc_i */
 		if (l_poc_room == 2) {
-			if (!p_stream->write_short((uint16_t) l_current_poc->compno1,
-					p_manager)) {
+			if (!p_stream->write_short((uint16_t) l_current_poc->compno1)) {
 				return false;
 			}
 
 		} else {
-			if (!p_stream->write_byte((uint8_t) l_current_poc->compno1,
-					p_manager)) {
+			if (!p_stream->write_byte((uint8_t) l_current_poc->compno1)) {
 				return false;
 			}
 		}
 
 		/* Ppoc_i */
-		if (!p_stream->write_byte((uint8_t) l_current_poc->prg, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_current_poc->prg)) {
 			return false;
 		}
 
@@ -2838,7 +2773,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k) {
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t i, l_nb_comp, l_tmp;
 	opj_image_t *l_image = nullptr;
 	uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
@@ -2849,7 +2784,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	l_nb_comp = l_image->numcomps;
@@ -2863,7 +2798,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_current_poc_remaining = p_header_size % l_chunk_size;
 
 	if ((l_current_poc_nb <= 0) || (l_current_poc_remaining != 0)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading POC marker\n");
+		GROK_ERROR( "Error reading POC marker\n");
 		return false;
 	}
 
@@ -2872,7 +2807,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_current_poc_nb += l_old_poc_nb;
 
 	if (l_current_poc_nb >= 32) {
-		event_msg(p_manager, EVT_ERROR, "Too many POCs %d\n", l_current_poc_nb);
+		GROK_ERROR( "Too many POCs %d\n", l_current_poc_nb);
 		return false;
 	}
 	assert(l_current_poc_nb < 32);
@@ -2922,17 +2857,17 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t l_nb_comp;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_nb_comp = p_j2k->m_private_image->numcomps;
 
 	if (p_header_size != l_nb_comp * 4) {
-		event_msg(p_manager, EVT_ERROR, "Error reading CRG marker\n");
+		GROK_ERROR( "Error reading CRG marker\n");
 		return false;
 	}
 	uint32_t l_Xcrg_i, l_Ycrg_i;
@@ -2956,17 +2891,17 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	(void) p_j2k;
 	uint32_t i_TLM, L;
 	uint32_t L_iT, L_iTP, l_tot_num_tp_remaining, l_quotient, l_Ptlm_size;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
+		GROK_ERROR( "Error reading TLM marker\n");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - 2);
@@ -2978,7 +2913,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	// 0x70 ==  1110000
 	if ((L & ~0x70) != 0) {
-		event_msg(p_manager, EVT_ERROR, "Illegal L value in TLM marker\n");
+		GROK_ERROR( "Illegal L value in TLM marker\n");
 		return false;
 	}
 
@@ -2989,7 +2924,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	l_quotient = l_Ptlm_size + L_iT;
 	if (p_header_size % l_quotient != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading TLM marker\n");
+		GROK_ERROR( "Error reading TLM marker\n");
 		return false;
 	}
 
@@ -3015,16 +2950,16 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	(void) p_j2k;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	uint32_t l_Zplm, l_Nplm, l_tmp, l_packet_len = 0, i;
 	int64_t header_size = p_header_size;
 	if (header_size < 1) {
-		event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
+		GROK_ERROR( "Error reading PLM marker\n");
 		return false;
 	}
 
@@ -3039,7 +2974,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 		++p_header_data;
 		header_size -= (1 + l_Nplm);
 		if (header_size < 0) {
-			event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
+			GROK_ERROR( "Error reading PLM marker\n");
 			return false;
 		}
 		for (i = 0; i < l_Nplm; ++i) {
@@ -3056,7 +2991,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 		}
 		if (l_packet_len != 0) {
-			event_msg(p_manager, EVT_ERROR, "Error reading PLM marker\n");
+			GROK_ERROR( "Error reading PLM marker\n");
 			return false;
 		}
 	}
@@ -3072,14 +3007,14 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_manager       the user event manager.
  */
 static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	(void) p_j2k;
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (p_header_size < 1) {
-		event_msg(p_manager, EVT_ERROR, "Error reading PLT marker\n");
+		GROK_ERROR( "Error reading PLT marker\n");
 		return false;
 	}
 
@@ -3105,7 +3040,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 		}
 	}
 	if (l_packet_len != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading PLT marker\n");
+		GROK_ERROR( "Error reading PLT marker\n");
 		return false;
 	}
 	return true;
@@ -3121,17 +3056,17 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
  */
 
 static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	cp_t *l_cp = nullptr;
 	uint32_t l_Z_ppm;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "Error reading PPM marker\n");
+		GROK_ERROR( "Error reading PPM marker\n");
 		return false;
 	}
 
@@ -3150,7 +3085,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		l_cp->ppm_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
 		if (l_cp->ppm_markers == nullptr) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to read PPM marker\n");
 			return false;
 		}
@@ -3162,7 +3097,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_newCount * sizeof(ppx_t));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on l_cp destruction */
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to read PPM marker\n");
 			return false;
 		}
@@ -3174,14 +3109,14 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_cp->ppm_markers[l_Z_ppm].m_data != nullptr) {
 		/* clean up to be done on l_cp destruction */
-		event_msg(p_manager, EVT_ERROR, "Zppm %u already read\n", l_Z_ppm);
+		GROK_ERROR( "Zppm %u already read\n", l_Z_ppm);
 		return false;
 	}
 
 	l_cp->ppm_markers[l_Z_ppm].m_data = (uint8_t*) grok_malloc(p_header_size);
 	if (l_cp->ppm_markers[l_Z_ppm].m_data == nullptr) {
 		/* clean up to be done on l_cp destruction */
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to read PPM marker\n");
 		return false;
 	}
@@ -3197,11 +3132,11 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
  * @param       p_manager the user event manager.
  */
-static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager) {
+static bool j2k_merge_ppm(cp_t *p_cp) {
 	uint32_t i, l_ppm_data_size, l_N_ppm_remaining;
 
 	assert(p_cp != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_cp->ppm_buffer == nullptr);
 
 	if (p_cp->ppm == 0U) {
@@ -3230,7 +3165,7 @@ static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager) {
 					/* read Nppm */
 					if (l_data_size < 4U) {
 						/* clean up to be done on l_cp destruction */
-						event_msg(p_manager, EVT_ERROR,
+						GROK_ERROR(
 								"Not enough bytes to read Nppm\n");
 						return false;
 					}
@@ -3253,13 +3188,13 @@ static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager) {
 
 	if (l_N_ppm_remaining != 0U) {
 		/* clean up to be done on l_cp destruction */
-		event_msg(p_manager, EVT_ERROR, "Corrupted PPM markers\n");
+		GROK_ERROR( "Corrupted PPM markers\n");
 		return false;
 	}
 
 	p_cp->ppm_buffer = (uint8_t*) grok_malloc(l_ppm_data_size);
 	if (p_cp->ppm_buffer == nullptr) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to read PPM marker\n");
 		return false;
 	}
@@ -3291,7 +3226,7 @@ static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager) {
 					/* read Nppm */
 					if (l_data_size < 4U) {
 						/* clean up to be done on l_cp destruction */
-						event_msg(p_manager, EVT_ERROR,
+						GROK_ERROR(
 								"Not enough bytes to read Nppm\n");
 						return false;
 					}
@@ -3339,24 +3274,24 @@ static bool j2k_merge_ppm(cp_t *p_cp, event_mgr_t *p_manager) {
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_Z_ppt;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "Error reading PPT marker\n");
+		GROK_ERROR( "Error reading PPT marker\n");
 		return false;
 	}
 
 	l_cp = &(p_j2k->m_cp);
 	if (l_cp->ppm) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n");
 		return false;
 	}
@@ -3376,7 +3311,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		l_tcp->ppt_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
 		if (l_tcp->ppt_markers == nullptr) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to read PPT marker\n");
 			return false;
 		}
@@ -3388,7 +3323,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_newCount * sizeof(ppx_t));
 		if (new_ppt_markers == nullptr) {
 			/* clean up to be done on l_tcp destruction */
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to read PPT marker\n");
 			return false;
 		}
@@ -3400,14 +3335,14 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_tcp->ppt_markers[l_Z_ppt].m_data != nullptr) {
 		/* clean up to be done on l_tcp destruction */
-		event_msg(p_manager, EVT_ERROR, "Zppt %u already read\n", l_Z_ppt);
+		GROK_ERROR( "Zppt %u already read\n", l_Z_ppt);
 		return false;
 	}
 
 	l_tcp->ppt_markers[l_Z_ppt].m_data = (uint8_t*) grok_malloc(p_header_size);
 	if (l_tcp->ppt_markers[l_Z_ppt].m_data == nullptr) {
 		/* clean up to be done on l_tcp destruction */
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to read PPT marker\n");
 		return false;
 	}
@@ -3422,18 +3357,18 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t *p_manager) {
+static bool j2k_merge_ppt(tcp_t *p_tcp) {
 	uint32_t i, l_ppt_data_size;
 
 	assert(p_tcp != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_tcp->ppt_buffer == nullptr);
 
 	if (p_tcp->ppt == 0U) {
 		return true;
 	}
 	if (p_tcp->ppt_buffer != nullptr) {
-		event_msg(p_manager, EVT_ERROR, "multiple calls to j2k_merge_ppt()\n");
+		GROK_ERROR( "multiple calls to j2k_merge_ppt()\n");
 		return false;
 	}
 
@@ -3444,7 +3379,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t *p_manager) {
 
 	p_tcp->ppt_buffer = (uint8_t*) grok_malloc(l_ppt_data_size);
 	if (p_tcp->ppt_buffer == nullptr) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to read PPT marker\n");
 		return false;
 	}
@@ -3472,12 +3407,11 @@ static bool j2k_merge_ppt(tcp_t *p_tcp, event_mgr_t *p_manager) {
 	return true;
 }
 
-static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_tlm_size;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_tlm_size = 6 + (5 * p_j2k->m_specific_param.m_encoder.m_total_tile_parts);
@@ -3487,72 +3421,67 @@ static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream,
 	p_j2k->m_specific_param.m_encoder.m_tlm_start = p_stream->tell();
 
 	/* TLM */
-	if (!p_stream->write_short(J2K_MS_TLM, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_TLM)) {
 		return false;
 	}
 
 	/* Lpoc */
-	if (!p_stream->write_short((uint16_t) (l_tlm_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_tlm_size - 2))) {
 		return false;
 	}
 
 	/* Ztlm=0*/
-	if (!p_stream->write_byte(0, p_manager)) {
+	if (!p_stream->write_byte(0)) {
 		return false;
 	}
 
 	/* Stlm ST=1(8bits-255 tiles max),SP=1(Ptlm=32bits) */
-	if (!p_stream->write_byte(0x50, p_manager)) {
+	if (!p_stream->write_byte(0x50)) {
 		return false;
 	}
 	/* do nothing on the 5 * l_j2k->m_specific_param.m_encoder.m_total_tile_parts remaining data */
 	if (!p_stream->skip(
-			(5 * p_j2k->m_specific_param.m_encoder.m_total_tile_parts),
-			p_manager)) {
+			(5 * p_j2k->m_specific_param.m_encoder.m_total_tile_parts))) {
 		return false;
 	}
 	return true;
 }
 
 static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
-		uint64_t *psot_location, uint64_t *p_data_written,
-		event_mgr_t *p_manager) {
+		uint64_t *psot_location, uint64_t *p_data_written) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* SOT */
-	if (!p_stream->write_short(J2K_MS_SOT, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_SOT)) {
 		return false;
 	}
 
 	/* Lsot */
-	if (!p_stream->write_short(10, p_manager)) {
+	if (!p_stream->write_short(10)) {
 		return false;
 	}
 
 	/* Isot */
-	if (!p_stream->write_short((uint16_t) p_j2k->m_current_tile_number,
-			p_manager)) {
+	if (!p_stream->write_short((uint16_t) p_j2k->m_current_tile_number)) {
 		return false;
 	}
 
 	/* Psot  */
 	*psot_location = p_stream->tell();
-	if (!p_stream->skip(4, p_manager)) {
+	if (!p_stream->skip(4)) {
 		return false;
 	}
 
 	/* TPsot */
 	if (!p_stream->write_byte(
-			(uint8_t) p_j2k->m_specific_param.m_encoder.m_current_tile_part_number,
-			p_manager)) {
+			(uint8_t) p_j2k->m_specific_param.m_encoder.m_current_tile_part_number)) {
 		return false;
 	}
 
 	/* TNsot */
 	if (!p_stream->write_byte(
-			(uint8_t) p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].m_nb_tile_parts,
-			p_manager)) {
+			(uint8_t) p_j2k->m_cp.tcps[p_j2k->m_current_tile_number].m_nb_tile_parts)) {
 		return false;
 	}
 
@@ -3563,14 +3492,14 @@ static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
 
 static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
 		uint32_t *p_tile_no, uint32_t *p_tot_len, uint32_t *p_current_part,
-		uint32_t *p_num_parts, event_mgr_t *p_manager) {
+		uint32_t *p_num_parts) {
 
 	assert(p_header_data != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* Size of this marker is fixed = 12 (we have already read marker and its size)*/
 	if (p_header_size != 8) {
-		event_msg(p_manager, EVT_ERROR, "Error reading SOT marker\n");
+		GROK_ERROR( "Error reading SOT marker\n");
 		return false;
 	}
 	/* Isot */
@@ -3589,7 +3518,7 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
 }
 
 static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_tot_len = 0;
@@ -3598,12 +3527,12 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_tile_x, l_tile_y;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!j2k_get_sot_values(p_header_data, p_header_size,
 			&(p_j2k->m_current_tile_number), &l_tot_len, &l_current_part,
-			&l_num_parts, p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Error reading SOT marker\n");
+			&l_num_parts)) {
+		GROK_ERROR( "Error reading SOT marker\n");
 		return false;
 	}
 
@@ -3611,7 +3540,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
 	if (p_j2k->m_current_tile_number >= l_cp->tw * l_cp->th) {
-		event_msg(p_manager, EVT_ERROR, "Invalid tile number %d\n",
+		GROK_ERROR( "Invalid tile number %d\n",
 				p_j2k->m_current_tile_number);
 		return false;
 	}
@@ -3627,7 +3556,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* ISO 15444-1 A.4.2 Start of tile-part (SOT) mandates that tile parts */
 	/* should appear in increasing order. */
 	if (l_tcp->m_current_tile_part_number + 1 != (int32_t) l_current_part) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid tile part index for tile number %d. "
 						"Got %d, expected %d\n", p_j2k->m_current_tile_number,
 				l_current_part, l_tcp->m_current_tile_part_number + 1);
@@ -3641,10 +3570,10 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* PSot should be equal to zero or >=14 or <= 2^32-1 */
 	if ((l_tot_len != 0) && (l_tot_len < 14)) {
 		if (l_tot_len == 12) { /* special case for the PHR data which are read by kakadu*/
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Empty SOT marker detected: Psot=%d.\n", l_tot_len);
 		} else {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Psot value is not correct regards to the JPEG2000 norm: %d.\n",
 					l_tot_len);
 			return false;
@@ -3653,7 +3582,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the codestream.*/
 	if (!l_tot_len) {
-		//event_msg(p_manager, EVT_WARNING, "Psot value of the current tile-part is equal to zero; "
+		//GROK_WARN( "Psot value of the current tile-part is equal to zero; "
 		//              "we assume it is the last tile-part of the codestream.\n");
 		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
 	}
@@ -3663,7 +3592,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (l_tcp->m_nb_tile_parts != 0
 			&& l_current_part >= l_tcp->m_nb_tile_parts) {
 		/* Fixes https://bugs.chromium.org/p/oss-fuzz/issues/detail?id=2851 */
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Current tile part number (%d) read from SOT marker is greater than total "
 						"number of tile-parts (%d).\n", l_current_part,
 				l_tcp->m_nb_tile_parts);
@@ -3678,7 +3607,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 		 * tile-parts for that tile and zero (A.4.2 of 15444-1 : 2002). */
 		if (l_tcp->m_nb_tile_parts) {
 			if (l_current_part >= l_tcp->m_nb_tile_parts) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"In SOT marker, TPSot (%d) is not valid regards to the current "
 								"number of tile-part (%d), giving up\n",
 						l_current_part, l_tcp->m_nb_tile_parts);
@@ -3688,7 +3617,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 		}
 		if (l_current_part >= l_num_parts) {
 			/* testcase 451.pdf.SIGSEGV.ce9.3723 */
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"In SOT marker, TPSot (%d) is not valid regards to the current "
 							"number of tile-part (header) (%d), giving up\n",
 					l_current_part, l_num_parts);
@@ -3750,7 +3679,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 						(opj_tp_index_t*) grok_calloc(l_num_parts,
 								sizeof(opj_tp_index_t));
 				if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Not enough memory to read SOT marker. Tile index allocation failed\n");
 					return false;
 				}
@@ -3764,7 +3693,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 							p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index);
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
 							nullptr;
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Not enough memory to read SOT marker. Tile index allocation failed\n");
 					return false;
 				}
@@ -3784,7 +3713,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 					if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
 						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 								0;
-						event_msg(p_manager, EVT_ERROR,
+						GROK_ERROR(
 								"Not enough memory to read SOT marker. Tile index allocation failed\n");
 						return false;
 					}
@@ -3807,7 +3736,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 								nullptr;
 						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 								0;
-						event_msg(p_manager, EVT_ERROR,
+						GROK_ERROR(
 								"Not enough memory to read SOT marker. Tile index allocation failed\n");
 						return false;
 					}
@@ -3824,16 +3753,16 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 
 static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 		uint64_t *p_data_written, uint64_t p_total_data_size,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	opj_codestream_info_t *l_cstr_info = nullptr;
 	uint64_t l_remaining_data;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	/* SOD */
-	if (!p_stream->write_short(J2K_MS_SOD, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_SOD)) {
 		return false;
 	}
 
@@ -3855,18 +3784,17 @@ static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 		}
 	}
 	if (!tcd_encode_tile(p_tile_coder, p_j2k->m_current_tile_number, p_stream,
-			p_data_written, l_remaining_data, l_cstr_info, p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Cannot encode tile\n");
+			p_data_written, l_remaining_data, l_cstr_info)) {
+		GROK_ERROR( "Cannot encode tile\n");
 		return false;
 	}
 
 	return true;
 }
 
-static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	// note: we subtract 2 to account for SOD marker
@@ -3883,8 +3811,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
 		// check that there are enough bytes in stream to fill tile data
 		if ((int64_t) p_j2k->m_specific_param.m_decoder.tile_part_data_length
 				> bytesLeftInStream) {
-			event_msg(p_manager,
-			EVT_WARNING,
+			GROK_WARN(
 					"Tile part length size %lld inconsistent with stream length %lld\n",
 					p_j2k->m_specific_param.m_decoder.tile_part_data_length,
 					p_stream->get_number_byte_left());
@@ -3913,7 +3840,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
 				J2K_MS_SOD, l_current_pos,
 						(uint32_t) (p_j2k->m_specific_param.m_decoder.tile_part_data_length
 								+ 2))) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to add tl marker\n");
 			return false;
 		}
@@ -3932,15 +3859,14 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
 			try {
 				buff = new uint8_t[len];
 			} catch (std::bad_alloc &ex) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate segment\n");
 				return false;
 			}
 		} else {
 			buff = p_stream->getCurrentPtr();
 		}
-		l_current_read_size = p_stream->read(zeroCopy ? nullptr : buff, len,
-				p_manager);
+		l_current_read_size = p_stream->read(zeroCopy ? nullptr : buff, len);
 		l_tcp->m_tile_data->add_segment(buff, len, !zeroCopy);
 
 	}
@@ -3954,7 +3880,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream,
 }
 
 static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
-		uint32_t nb_comps, GrokStream *p_stream, event_mgr_t *p_manager) {
+		uint32_t nb_comps, GrokStream *p_stream) {
 	uint32_t l_rgn_size;
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
@@ -3962,7 +3888,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
 	uint32_t l_comp_room;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_cp = &(p_j2k->m_cp);
@@ -3977,49 +3903,48 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
 	l_rgn_size = 6 + l_comp_room;
 
 	/* RGN  */
-	if (!p_stream->write_short(J2K_MS_RGN, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_RGN)) {
 		return false;
 	}
 
 	/* Lrgn */
-	if (!p_stream->write_short((uint16_t) (l_rgn_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_rgn_size - 2))) {
 		return false;
 	}
 
 	/* Crgn */
 	if (l_comp_room == 2) {
-		if (!p_stream->write_short((uint16_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_short((uint16_t) p_comp_no)) {
 			return false;
 		}
 	} else {
-		if (!p_stream->write_byte((uint8_t) p_comp_no, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) p_comp_no)) {
 			return false;
 		}
 	}
 
 	/* Srgn */
-	if (!p_stream->write_byte(0, p_manager)) {
+	if (!p_stream->write_byte(0)) {
 		return false;
 	}
 
 	/* SPrgn */
-	if (!p_stream->write_byte((uint8_t) l_tccp->roishift, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tccp->roishift)) {
 		return false;
 	}
 	return true;
 }
 
-static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 	(void) p_j2k;
-	if (!p_stream->write_short(J2K_MS_EOC, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_EOC)) {
 		return false;
 	}
-	if (!p_stream->flush(p_manager)) {
+	if (!p_stream->flush()) {
 		return false;
 	}
 	return true;
@@ -4034,7 +3959,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t l_nb_comp;
 	opj_image_t *l_image = nullptr;
 
@@ -4044,7 +3969,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* preconditions*/
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	l_nb_comp = l_image->numcomps;
@@ -4056,7 +3981,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	if (p_header_size != 2 + l_comp_room) {
-		event_msg(p_manager, EVT_ERROR, "Error reading RGN marker\n");
+		GROK_ERROR( "Error reading RGN marker\n");
 		return false;
 	}
 
@@ -4071,7 +3996,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* testcase 3635.pdf.asan.77.2930 */
 	if (l_comp_no >= l_nb_comp) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"bad component number in RGN (%d when there are only %d)\n",
 				l_comp_no, l_nb_comp);
 		return false;
@@ -4095,9 +4020,8 @@ static float j2k_get_default_stride(tcp_t *p_tcp) {
 	return 0;
 }
 
-static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
-	(void) p_manager;
+static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream) {
+	
 	cp_t *l_cp = nullptr;
 	opj_image_t *l_image = nullptr;
 	tcp_t *l_tcp = nullptr;
@@ -4109,7 +4033,7 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream,
 	float (*l_tp_stride_func)(tcp_t*) = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_cp = &(p_j2k->m_cp);
@@ -4223,12 +4147,11 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
-	(void) p_manager;
+static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream) {
+	
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	p_j2k->cstr_index->main_head_end = p_stream->tell();
@@ -4236,8 +4159,7 @@ static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	simple_mcc_decorrelation_data_t *l_mcc_record;
 	mct_data_t *l_mct_record;
@@ -4245,9 +4167,9 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
-	if (!j2k_write_cbd(p_j2k, p_stream, p_manager)) {
+	if (!j2k_write_cbd(p_j2k, p_stream)) {
 		return false;
 	}
 
@@ -4256,7 +4178,7 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
 
 	for (i = 0; i < l_tcp->m_nb_mct_records; ++i) {
 
-		if (!j2k_write_mct_record(l_mct_record, p_stream, p_manager)) {
+		if (!j2k_write_mct_record(l_mct_record, p_stream)) {
 			return false;
 		}
 
@@ -4267,32 +4189,31 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream,
 
 	for (i = 0; i < l_tcp->m_nb_mcc_records; ++i) {
 
-		if (!j2k_write_mcc_record(l_mcc_record, p_stream, p_manager)) {
+		if (!j2k_write_mcc_record(l_mcc_record, p_stream)) {
 			return false;
 		}
 
 		++l_mcc_record;
 	}
 
-	if (!j2k_write_mco(p_j2k, p_stream, p_manager)) {
+	if (!j2k_write_mco(p_j2k, p_stream)) {
 		return false;
 	}
 
 	return true;
 }
 
-static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	for (compno = 1; compno < p_j2k->m_private_image->numcomps; ++compno) {
 		/* cod is first component of first tile */
 		if (!j2k_compare_coc(p_j2k, 0, compno)) {
-			if (!j2k_write_coc(p_j2k, compno, p_stream, p_manager)) {
+			if (!j2k_write_coc(p_j2k, compno, p_stream)) {
 				return false;
 			}
 		}
@@ -4301,18 +4222,17 @@ static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	for (compno = 1; compno < p_j2k->m_private_image->numcomps; ++compno) {
 		/* qcd is first component of first tile */
 		if (!j2k_compare_qcc(p_j2k, 0, compno)) {
-			if (!j2k_write_qcc(p_j2k, compno, p_stream, p_manager)) {
+			if (!j2k_write_qcc(p_j2k, compno, p_stream)) {
 				return false;
 			}
 		}
@@ -4320,13 +4240,12 @@ static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
 	const tccp_t *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_tccp = p_j2k->m_cp.tcps->tccps;
@@ -4335,7 +4254,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream,
 		if (l_tccp->roishift) {
 
 			if (!j2k_write_rgn(p_j2k, 0, compno,
-					p_j2k->m_private_image->numcomps, p_stream, p_manager)) {
+					p_j2k->m_private_image->numcomps, p_stream)) {
 				return false;
 			}
 		}
@@ -4346,13 +4265,12 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
-	(void) p_manager;
+static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream) {
+	
 	opj_codestream_index_t *l_cstr_index = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_cstr_index = p_j2k->cstr_index;
@@ -4369,24 +4287,23 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream,
 }
 
 static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
-		uint32_t *output_marker, event_mgr_t *p_manager) {
+		uint32_t *output_marker) {
 	uint32_t l_unknown_marker;
 	const opj_dec_memory_marker_handler_t *l_marker_handler;
 	uint32_t l_size_unk = 2;
 
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
-	event_msg(p_manager, EVT_WARNING, "Unknown marker 0x%04x\n",
+	GROK_WARN( "Unknown marker 0x%04x\n",
 			*output_marker);
 
 	for (;;) {
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-				p_manager) != 2) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
@@ -4401,7 +4318,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 
 			if (!(p_j2k->m_specific_param.m_decoder.m_state
 					& l_marker_handler->states)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Marker is not compliant with its position\n");
 				return false;
 			} else {
@@ -4413,7 +4330,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 								(uint32_t) p_stream->tell() - l_size_unk,
 								l_size_unk);
 						if (res == false) {
-							event_msg(p_manager, EVT_ERROR,
+							GROK_ERROR(
 									"Not enough memory to add mh marker\n");
 							return false;
 						}
@@ -4430,27 +4347,26 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream) {
 	uint32_t l_mct_size;
 	uint32_t l_tmp;
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_mct_size = 10 + p_mct_record->m_data_size;
 
 	/* MCT */
-	if (!p_stream->write_short(J2K_MS_MCT, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_MCT)) {
 		return false;
 	}
 
 	/* Lmct */
-	if (!p_stream->write_short((uint16_t) (l_mct_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_mct_size - 2))) {
 		return false;
 	}
 
 	/* Zmct */
-	if (!p_stream->write_short(0, p_manager)) {
+	if (!p_stream->write_short(0)) {
 		return false;
 	}
 
@@ -4458,17 +4374,16 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream,
 	l_tmp = (p_mct_record->m_index & 0xff) | (p_mct_record->m_array_type << 8)
 			| (p_mct_record->m_element_type << 10);
 
-	if (!p_stream->write_short((uint16_t) l_tmp, p_manager)) {
+	if (!p_stream->write_short((uint16_t) l_tmp)) {
 		return false;
 	}
 
 	/* Ymct */
-	if (!p_stream->write_short(0, p_manager)) {
+	if (!p_stream->write_short(0)) {
 		return false;
 	}
 
-	if (!p_stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size,
-			p_manager)) {
+	if (!p_stream->write_bytes(p_mct_record->m_data, p_mct_record->m_data_size)) {
 		return false;
 	}
 	return true;
@@ -4483,7 +4398,7 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t i;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_tmp;
@@ -4496,7 +4411,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker\n");
 		return false;
 	}
 
@@ -4505,13 +4420,13 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_tmp, 2);
 	p_header_data += 2;
 	if (l_tmp != 0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge mct data within multiple MCT records\n");
 		return true;
 	}
 
 	if (p_header_size <= 6) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker\n");
 		return false;
 	}
 
@@ -4543,7 +4458,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_tcp->m_mct_records = nullptr;
 				l_tcp->m_nb_max_mct_records = 0;
 				l_tcp->m_nb_mct_records = 0;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to read MCT marker\n");
 				return false;
 			}
@@ -4592,19 +4507,19 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_tmp, 2);
 	p_header_data += 2;
 	if (l_tmp != 0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge multiple MCT markers\n");
 		return true;
 	}
 	if (p_header_size < 6) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCT markers\n");
+		GROK_ERROR( "Error reading MCT markers\n");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - 6);
 
 	l_mct_data->m_data = (uint8_t*) grok_malloc(p_header_size);
 	if (!l_mct_data->m_data) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker\n");
 		return false;
 	}
 	memcpy(l_mct_data->m_data, p_header_data, p_header_size);
@@ -4616,14 +4531,14 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 }
 
 static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
+		GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_mcc_size;
 	uint32_t l_nb_bytes_for_comp;
 	uint32_t l_mask;
 	uint32_t l_tmcc;
 
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	if (p_mcc_record->m_nb_comps > 255) {
@@ -4637,75 +4552,73 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
 	l_mcc_size = p_mcc_record->m_nb_comps * 2 * l_nb_bytes_for_comp + 19;
 
 	/* MCC */
-	if (!p_stream->write_short(J2K_MS_MCC, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_MCC)) {
 		return false;
 	}
 
 	/* Lmcc */
-	if (!p_stream->write_short((uint16_t) (l_mcc_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_mcc_size - 2))) {
 		return false;
 	}
 
 	/* first marker */
 	/* Zmcc */
-	if (!p_stream->write_short(0, p_manager)) {
+	if (!p_stream->write_short(0)) {
 		return false;
 	}
 
 	/* Imcc -> no need for other values, take the first */
-	if (!p_stream->write_byte((uint8_t) p_mcc_record->m_index, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) p_mcc_record->m_index)) {
 		return false;
 	}
 
 	/* only one marker atm */
 	/* Ymcc */
-	if (!p_stream->write_short(0, p_manager)) {
+	if (!p_stream->write_short(0)) {
 		return false;
 	}
 
 	/* Qmcc -> number of collections -> 1 */
-	if (!p_stream->write_short(1, p_manager)) {
+	if (!p_stream->write_short(1)) {
 		return false;
 	}
 
 	/* Xmcci type of component transformation -> array based decorrelation */
-	if (!p_stream->write_byte(0x1, p_manager)) {
+	if (!p_stream->write_byte(0x1)) {
 		return false;
 	}
 
 	/* Nmcci number of input components involved and size for each component offset = 8 bits */
-	if (!p_stream->write_short((uint16_t) (p_mcc_record->m_nb_comps | l_mask),
-			p_manager)) {
+	if (!p_stream->write_short((uint16_t) (p_mcc_record->m_nb_comps | l_mask))) {
 		return false;
 	}
 
 	for (i = 0; i < p_mcc_record->m_nb_comps; ++i) {
 		/* Cmccij Component offset*/
 		if (l_nb_bytes_for_comp == 2) {
-			if (!p_stream->write_short((uint16_t) i, p_manager)) {
+			if (!p_stream->write_short((uint16_t) i)) {
 				return false;
 			}
 		} else {
-			if (!p_stream->write_byte((uint8_t) i, p_manager)) {
+			if (!p_stream->write_byte((uint8_t) i)) {
 				return false;
 			}
 		}
 	}
 
 	/* Mmcci number of output components involved and size for each component offset = 8 bits */
-	if (!p_stream->write_short((uint16_t) (p_mcc_record->m_nb_comps | l_mask),
-			p_manager)) {
+	if (!p_stream->write_short((uint16_t) (p_mcc_record->m_nb_comps | l_mask))) {
 		return false;
 	}
 
 	for (i = 0; i < p_mcc_record->m_nb_comps; ++i) {
 		/* Wmccij Component offset*/
 		if (l_nb_bytes_for_comp == 2) {
-			if (!p_stream->write_short((uint16_t) i, p_manager)) {
+			if (!p_stream->write_short((uint16_t) i)) {
 				return false;
 			}
 		} else {
-			if (!p_stream->write_byte((uint8_t) i, p_manager)) {
+			if (!p_stream->write_byte((uint8_t) i)) {
 				return false;
 			}
 		}
@@ -4722,14 +4635,14 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
 	}
 
 	/* Tmcci : use MCT defined as number 1 and irreversible array based. */
-	if (!p_stream->write_24(l_tmcc, p_manager)) {
+	if (!p_stream->write_24(l_tmcc)) {
 		return false;
 	}
 	return true;
 }
 
 static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t i, j;
 	uint32_t l_tmp;
 	uint32_t l_indix;
@@ -4742,12 +4655,12 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 2) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker\n");
 		return false;
 	}
 
@@ -4756,13 +4669,13 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_tmp, 2);
 	p_header_data += 2;
 	if (l_tmp != 0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge multiple data spanning\n");
 		return true;
 	}
 
 	if (p_header_size < 7) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker\n");
 		return false;
 	}
 
@@ -4795,7 +4708,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_tcp->m_mcc_records = nullptr;
 				l_tcp->m_nb_max_mcc_records = 0;
 				l_tcp->m_nb_mcc_records = 0;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to read MCC marker\n");
 				return false;
 			}
@@ -4816,7 +4729,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_tmp, 2);
 	p_header_data += 2;
 	if (l_tmp != 0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge multiple data spanning\n");
 		return true;
 	}
@@ -4826,7 +4739,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 
 	if (l_nb_collections > 1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge multiple collections\n");
 		return true;
 	}
@@ -4834,7 +4747,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	for (i = 0; i < l_nb_collections; ++i) {
 		if (p_header_size < 3) {
-			event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker\n");
 			return false;
 		}
 
@@ -4842,7 +4755,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		++p_header_data;
 
 		if (l_tmp != 1) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Cannot take in charge collections other than array decorrelation\n");
 			return true;
 		}
@@ -4857,7 +4770,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		if (p_header_size
 				< (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 2)) {
-			event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker\n");
 			return false;
 		}
 
@@ -4869,7 +4782,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			p_header_data += l_nb_bytes_by_comp;
 
 			if (l_tmp != j) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"Cannot take in charge collections with indix shuffle\n");
 				return true;
 			}
@@ -4882,14 +4795,14 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_nb_comps &= 0x7fff;
 
 		if (l_nb_comps != l_mcc_record->m_nb_comps) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Cannot take in charge collections without same number of indixes\n");
 			return true;
 		}
 
 		if (p_header_size
 				< (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 3)) {
-			event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker\n");
 			return false;
 		}
 
@@ -4901,7 +4814,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			p_header_data += l_nb_bytes_by_comp;
 
 			if (l_tmp != j) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"Cannot take in charge collections with indix shuffle\n");
 				return true;
 			}
@@ -4926,7 +4839,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 
 			if (l_mcc_record->m_decorrelation_array == nullptr) {
-				event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+				GROK_ERROR( "Error reading MCC marker\n");
 				return false;
 			}
 		}
@@ -4943,14 +4856,14 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 
 			if (l_mcc_record->m_offset_array == nullptr) {
-				event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+				GROK_ERROR( "Error reading MCC marker\n");
 				return false;
 			}
 		}
 	}
 
 	if (p_header_size != 0) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker\n");
 		return false;
 	}
 
@@ -4962,39 +4875,38 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_mco_size;
 	tcp_t *l_tcp = nullptr;
 	simple_mcc_decorrelation_data_t *l_mcc_record;
 	uint32_t i;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 	l_mco_size = 5 + l_tcp->m_nb_mcc_records;
 
 	/* MCO */
-	if (!p_stream->write_short(J2K_MS_MCO, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_MCO)) {
 		return false;
 	}
 
 	/* Lmco */
-	if (!p_stream->write_short((uint16_t) (l_mco_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_mco_size - 2))) {
 		return false;
 	}
 
 	/* Nmco : only one transform stage*/
-	if (!p_stream->write_byte((uint8_t) l_tcp->m_nb_mcc_records, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tcp->m_nb_mcc_records)) {
 		return false;
 	}
 
 	l_mcc_record = l_tcp->m_mcc_records;
 	for (i = 0; i < l_tcp->m_nb_mcc_records; ++i) {
 		/* Imco -> use the mcc indicated by 1*/
-		if (!p_stream->write_byte((uint8_t) l_mcc_record->m_index, p_manager)) {
+		if (!p_stream->write_byte((uint8_t) l_mcc_record->m_index)) {
 			return false;
 		}
 		++l_mcc_record;
@@ -5011,7 +4923,7 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t l_tmp, i;
 	uint32_t l_nb_stages;
 	tcp_t *l_tcp;
@@ -5020,13 +4932,13 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 1) {
-		event_msg(p_manager, EVT_ERROR, "Error reading MCO marker\n");
+		GROK_ERROR( "Error reading MCO marker\n");
 		return false;
 	}
 	/* Nmco : only one transform stage*/
@@ -5034,13 +4946,13 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 	++p_header_data;
 
 	if (l_nb_stages > 1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Cannot take in charge multiple transformation stages.\n");
 		return true;
 	}
 
 	if (p_header_size != l_nb_stages + 1) {
-		event_msg(p_manager, EVT_WARNING, "Error reading MCO marker\n");
+		GROK_WARN( "Error reading MCO marker\n");
 		return false;
 	}
 
@@ -5152,32 +5064,31 @@ static bool j2k_add_mct(tcp_t *p_tcp, opj_image_t *p_image, uint32_t p_index) {
 	return true;
 }
 
-static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_cbd_size;
 	opj_image_t *l_image = nullptr;
 	opj_image_comp_t *l_comp = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_image = p_j2k->m_private_image;
 	l_cbd_size = 6 + p_j2k->m_private_image->numcomps;
 
 	/* CBD */
-	if (!p_stream->write_short(J2K_MS_CBD, p_manager)) {
+	if (!p_stream->write_short(J2K_MS_CBD)) {
 		return false;
 	}
 
 	/* L_CBD */
-	if (!p_stream->write_short((uint16_t) (l_cbd_size - 2), p_manager)) {
+	if (!p_stream->write_short((uint16_t) (l_cbd_size - 2))) {
 		return false;
 	}
 
 	/* Ncbd */
-	if (!p_stream->write_short((uint16_t) l_image->numcomps, p_manager)) {
+	if (!p_stream->write_short((uint16_t) l_image->numcomps)) {
 		return false;
 	}
 
@@ -5186,8 +5097,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream,
 	for (i = 0; i < l_image->numcomps; ++i) {
 		/* Component bit depth */
 		if (!p_stream->write_byte(
-				(uint8_t) ((l_comp->sgnd << 7) | (l_comp->prec - 1)),
-				p_manager)) {
+				(uint8_t) ((l_comp->sgnd << 7) | (l_comp->prec - 1)))) {
 			return false;
 		}
 		++l_comp;
@@ -5203,7 +5113,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_manager               the user event manager.
  */
 static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
-		uint16_t p_header_size, event_mgr_t *p_manager) {
+		uint16_t p_header_size) {
 	uint32_t l_nb_comp, l_num_comp;
 	uint32_t l_comp_def;
 	uint32_t i;
@@ -5211,12 +5121,12 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_num_comp = p_j2k->m_private_image->numcomps;
 
 	if (p_header_size != (p_j2k->m_private_image->numcomps + 2)) {
-		event_msg(p_manager, EVT_ERROR, "Crror reading CBD marker\n");
+		GROK_ERROR( "Crror reading CBD marker\n");
 		return false;
 	}
 	/* Ncbd */
@@ -5224,7 +5134,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 
 	if (l_nb_comp != l_num_comp) {
-		event_msg(p_manager, EVT_ERROR, "Crror reading CBD marker\n");
+		GROK_ERROR( "Crror reading CBD marker\n");
 		return false;
 	}
 
@@ -5304,7 +5214,7 @@ static uint32_t j2k_initialise_4K_poc(opj_poc_t *POC, uint32_t numres) {
 }
 
 static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
-		opj_image_t *image, event_mgr_t *p_manager) {
+		opj_image_t *image) {
 	/* Configure cinema parameters */
 	uint32_t i;
 
@@ -5342,7 +5252,7 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 
 	/* Number of layers */
 	if (parameters->tcp_numlayers > 1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"1 single quality layer"
 						"-> Number of layers forced to 1 (rather than %d)\n"
@@ -5358,7 +5268,7 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 	switch (parameters->rsiz) {
 	case OPJ_PROFILE_CINEMA_2K:
 		if (parameters->numresolution > 6) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Number of decomposition levels <= 5\n"
 							"-> Number of decomposition levels forced to 5 (rather than %d)\n",
@@ -5368,14 +5278,14 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 		break;
 	case OPJ_PROFILE_CINEMA_4K:
 		if (parameters->numresolution < 2) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
 							"-> Number of decomposition levels forced to 1 (rather than %d)\n",
 					parameters->numresolution + 1);
 			parameters->numresolution = 1;
 		} else if (parameters->numresolution > 7) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
 							"-> Number of decomposition levels forced to 6 (rather than %d)\n",
@@ -5411,12 +5321,12 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 	if (parameters->max_cs_size == 0) {
 		/* No rate has been introduced for code stream, so 24 fps is assumed */
 		parameters->max_cs_size = OPJ_CINEMA_24_CS;
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
 						"As no rate has been given for entire code stream, this limit will be used.\n");
 	} else if (parameters->max_cs_size > OPJ_CINEMA_24_CS) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
 						"The specified rate exceeds this limit, so rate will be forced to 1302083 bytes.\n");
@@ -5426,12 +5336,12 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 	if (parameters->max_comp_size == 0) {
 		/* No rate has been introduced for each component, so 24 fps is assumed */
 		parameters->max_comp_size = OPJ_CINEMA_24_COMP;
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
 						"As no rate has been given, this limit will be used.\n");
 	} else if (parameters->max_comp_size > OPJ_CINEMA_24_COMP) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
 						"The specified rate exceeds this limit, so rate will be forced to 1041666 bytes.\n");
@@ -5445,13 +5355,12 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 
 }
 
-static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
-		event_mgr_t *p_manager) {
+static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz) {
 	uint32_t i;
 
 	/* Number of components */
 	if (image->numcomps != 3) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 						"3 components"
 						"-> Number of components of input image (%d) is not compliant\n"
@@ -5466,7 +5375,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
 			char signed_str[] = "signed";
 			char unsigned_str[] = "unsigned";
 			char *tmp_str = image->comps[i].sgnd ? signed_str : unsigned_str;
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Precision of each component shall be 12 bits unsigned"
 							"-> At least component %d of input image (%d bits, %s) is not compliant\n"
@@ -5480,7 +5389,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
 	switch (rsiz) {
 	case OPJ_PROFILE_CINEMA_2K:
 		if (((image->comps[0].w > 2048) | (image->comps[0].h > 1080))) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"width <= 2048 and height <= 1080\n"
 							"-> Input image size %d x %d is not compliant\n"
@@ -5491,7 +5400,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
 		break;
 	case OPJ_PROFILE_CINEMA_4K:
 		if (((image->comps[0].w > 4096) | (image->comps[0].h > 2160))) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"width <= 4096 and height <= 2160\n"
 							"-> Image size %d x %d is not compliant\n"
@@ -5508,7 +5417,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz,
 }
 
 bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
-		opj_image_t *image, event_mgr_t *p_manager) {
+		opj_image_t *image) {
 	uint32_t i, j, tileno, numpocs_tile;
 	cp_t *cp = nullptr;
 
@@ -5518,24 +5427,24 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 	//sanity check on image
 	if (image->numcomps < 1 || image->numcomps > max_num_components) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid number of components specified while setting up JP2 encoder\n");
 		return false;
 	}
 	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid input image dimensions found while setting up JP2 encoder\n");
 		return false;
 	}
 	for (i = 0; i < image->numcomps; ++i) {
 		auto comp = image->comps + i;
 		if (comp->w == 0 || comp->h == 0) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Invalid input image component dimensions found while setting up JP2 encoder\n");
 			return false;
 		}
 		if (comp->prec == 0) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Invalid component precision of 0 found while setting up JP2 encoder\n");
 			return false;
 		}
@@ -5543,7 +5452,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 	if ((parameters->numresolution == 0)
 			|| (parameters->numresolution > OPJ_J2K_MAXRLVLS)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid number of resolutions : %d not in range [1,%d]\n",
 				parameters->numresolution, OPJ_J2K_MAXRLVLS);
 		return false;
@@ -5578,7 +5487,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			}
 		}
 		if (cap) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"The desired maximum codestream size has limited\n"
 							"at least one of the desired quality layers\n");
 		}
@@ -5589,18 +5498,18 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 	if (OPJ_IS_CINEMA(parameters->rsiz)) {
 		if ((parameters->rsiz == OPJ_PROFILE_CINEMA_S2K)
 				|| (parameters->rsiz == OPJ_PROFILE_CINEMA_S4K)) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 Scalable Digital Cinema profiles not supported\n");
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		} else {
-			if (j2k_is_cinema_compliant(image, parameters->rsiz, p_manager)) {
-				j2k_set_cinema_parameters(parameters, image, p_manager);
+			if (j2k_is_cinema_compliant(image, parameters->rsiz)) {
+				j2k_set_cinema_parameters(parameters, image);
 			} else {
 				parameters->rsiz = OPJ_PROFILE_NONE;
 			}
 		}
 	} else if (OPJ_IS_STORAGE(parameters->rsiz)) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"JPEG 2000 Long Term Storage profile not supported\n");
 		parameters->rsiz = OPJ_PROFILE_NONE;
 	} else if (OPJ_IS_BROADCAST(parameters->rsiz)) {
@@ -5613,13 +5522,13 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		uint16_t profile = parameters->rsiz & 0xFF00;
 		if (profile == OPJ_PROFILE_BC_MULTI_R) {
 			if (parameters->irreversible) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"JPEG 2000 Broadcast profile; multi-tile reversible: forcing irreversible flag to false\n");
 				parameters->irreversible = 0;
 			}
 		} else {
 			if (!parameters->irreversible) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"JPEG 2000 Broadcast profile: forcing irreversible flag to true\n");
 				parameters->irreversible = 1;
 			}
@@ -5627,7 +5536,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		// sanity check on levels
 		auto level = parameters->rsiz & 0xF;
 		if (level > maxMainLevel) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 Broadcast profile: invalid level %d\n", level);
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		}
@@ -5638,13 +5547,13 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				|| (profile == OPJ_PROFILE_IMF_4K_R)
 				|| (profile == OPJ_PROFILE_IMF_8K_R)) {
 			if (parameters->irreversible) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"JPEG 2000 IMF profile; forcing irreversible flag to false\n");
 				parameters->irreversible = 0;
 			}
 		} else {
 			if (!parameters->irreversible) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"JPEG 2000 IMF profile: forcing irreversible flag to true\n");
 				parameters->irreversible = 1;
 			}
@@ -5652,7 +5561,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		//sanity check on main and sub levels
 		auto main_level = parameters->rsiz & 0xF;
 		if (main_level > maxMainLevel) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 IMF profile: invalid main-level %d\n",
 					main_level);
 			parameters->rsiz = OPJ_PROFILE_NONE;
@@ -5665,20 +5574,20 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			invalidSubLevel = invalidSubLevel || (sub_level > 1);
 		}
 		if (invalidSubLevel) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 IMF profile: invalid sub-level %d\n", sub_level);
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		}
 	} else if (OPJ_IS_PART2(parameters->rsiz)) {
 		if (parameters->rsiz == ((OPJ_PROFILE_PART2) | (OPJ_EXTENSION_NONE))) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"JPEG 2000 Part-2 profile defined\n"
 							"but no Part-2 extension enabled.\n"
 							"Profile set to NONE.\n");
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		} else if (parameters->rsiz
 				!= ((OPJ_PROFILE_PART2) | (OPJ_EXTENSION_MCT))) {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Unsupported Part-2 extension enabled\n"
 							"Profile set to NONE.\n");
 			parameters->rsiz = OPJ_PROFILE_NONE;
@@ -5689,8 +5598,8 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		/* initialisation of POC */
 		if (!j2k_check_poc_val(parameters->POC, parameters->numpocs,
 				parameters->numresolution, image->numcomps,
-				parameters->tcp_numlayers, p_manager)) {
-			event_msg(p_manager, EVT_ERROR, "Failed to initialize POC\n");
+				parameters->tcp_numlayers)) {
+			GROK_ERROR( "Failed to initialize POC\n");
 			return false;
 		}
 	}
@@ -5727,18 +5636,18 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		for (size_t i = 0; i < parameters->cp_num_comments; ++i) {
 			cp->comment_len[i] = parameters->cp_comment_len[i];
 			if (!cp->comment_len[i]) {
-				event_msg(p_manager, EVT_WARNING, "Empty comment. Ignoring\n");
+				GROK_WARN( "Empty comment. Ignoring\n");
 				continue;
 			}
 			if (cp->comment_len[i] > OPJ_MAX_COMMENT_LENGTH) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"Comment length %s is greater than maximum comment length %d. Ignoring\n",
 						cp->comment_len[i], OPJ_MAX_COMMENT_LENGTH);
 				continue;
 			}
 			cp->comment[i] = (char*) opj_buffer_new(cp->comment_len[i]);
 			if (!cp->comment[i]) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate copy of comment string\n");
 				return false;
 			}
@@ -5755,7 +5664,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 		cp->comment[0] = (char*) opj_buffer_new(clen + strlen(version) + 1);
 		if (!cp->comment[0]) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to allocate comment string\n");
 			return false;
 		}
@@ -5790,7 +5699,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 	/* ---------------------------- */
 	cp->tcps = (tcp_t*) grok_calloc(cp->tw * cp->th, sizeof(tcp_t));
 	if (!cp->tcps) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to allocate tile coding parameters\n");
 		return false;
 	}
@@ -5841,7 +5750,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				}
 			}
 			if (numpocs_tile == 0) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Problem with specified progression order changes\n");
 				return false;
 			}
@@ -5852,7 +5761,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 		tcp->tccps = (tccp_t*) grok_calloc(image->numcomps, sizeof(tccp_t));
 		if (!tcp->tccps) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to allocate tile component coding parameters\n");
 			return false;
 		}
@@ -5865,7 +5774,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 					+ lMctSize);
 
 			if (!lTmpBuf) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate temp buffer\n");
 				return false;
 			}
@@ -5875,7 +5784,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			if (!tcp->m_mct_coding_matrix) {
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate encoder MCT coding matrix \n");
 				return false;
 			}
@@ -5886,7 +5795,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			if (!tcp->m_mct_decoding_matrix) {
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate encoder MCT decoding matrix \n");
 				return false;
 			}
@@ -5894,7 +5803,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 					image->numcomps) == false) {
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Failed to inverse encoder MCT decoding matrix \n");
 				return false;
 			}
@@ -5904,7 +5813,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			if (!tcp->mct_norms) {
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to allocate encoder MCT norms \n");
 				return false;
 			}
@@ -5919,7 +5828,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 			if (j2k_setup_mct_encoding(tcp, image) == false) {
 				/* free will be handled by j2k_destroy */
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Failed to setup j2k mct encoding\n");
 				return false;
 			}
@@ -5929,7 +5838,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 						|| (image->comps[0].dx != image->comps[2].dx)
 						|| (image->comps[0].dy != image->comps[1].dy)
 						|| (image->comps[0].dy != image->comps[2].dy)) {
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"Cannot perform MCT on components with different sizes. Disabling MCT.\n");
 					tcp->mct = 0;
 				}
@@ -6036,7 +5945,7 @@ static bool j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t type,
 			cstr_index->marker = nullptr;
 			cstr_index->maxmarknum = 0;
 			cstr_index->marknum = 0;
-			/* event_msg(p_manager, EVT_ERROR, "Not enough memory to add mh marker\n"); */
+			/* GROK_ERROR( "Not enough memory to add mh marker\n"); */
 			return false;
 		}
 		cstr_index->marker = new_marker;
@@ -6071,7 +5980,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
 			cstr_index->tile_index[tileno].marker = nullptr;
 			cstr_index->tile_index[tileno].maxmarknum = 0;
 			cstr_index->tile_index[tileno].marknum = 0;
-			/* event_msg(p_manager, EVT_ERROR, "Not enough memory to add tl marker\n"); */
+			/* GROK_ERROR( "Not enough memory to add tl marker\n"); */
 			return false;
 		}
 		cstr_index->tile_index[tileno].marker = new_marker;
@@ -6104,21 +6013,19 @@ static bool j2k_add_tlmarker(uint32_t tileno,
  * -----------------------------------------------------------------------
  */
 
-bool j2k_end_decompress(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+bool j2k_end_decompress(j2k_t *p_j2k, GrokStream *p_stream) {
 	(void) p_j2k;
 	(void) p_stream;
-	(void) p_manager;
+	
 	return true;
 }
 
 bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
-		opj_header_info_t *header_info, opj_image_t **p_image,
-		event_mgr_t *p_manager) {
+		opj_header_info_t *header_info, opj_image_t **p_image) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* create an empty image header */
 	p_j2k->m_private_image = opj_image_create0();
@@ -6127,28 +6034,28 @@ bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
 	}
 
 	/* customization of the validation */
-	if (!j2k_setup_decoding_validation(p_j2k, p_manager)) {
+	if (!j2k_setup_decoding_validation(p_j2k)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
 	}
 
 	/* validation of the parameters codec */
-	if (!j2k_exec(p_j2k, p_j2k->m_validation_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_validation_list, p_stream)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
 	}
 
 	/* customization of the encoding */
-	if (!j2k_setup_header_reading(p_j2k, p_manager)) {
+	if (!j2k_setup_header_reading(p_j2k)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
 	}
 
 	/* read header */
-	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
@@ -6210,37 +6117,36 @@ bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
 	return true;
 }
 
-static bool j2k_setup_header_reading(j2k_t *p_j2k, event_mgr_t *p_manager) {
+static bool j2k_setup_header_reading(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_read_header_procedure, p_manager)) {
+			(procedure) j2k_read_header_procedure)) {
 		return false;
 	}
 
 	/* DEVELOPER CORNER, add your custom procedures */
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_copy_default_tcp_and_create_tcd, p_manager)) {
+			(procedure) j2k_copy_default_tcp_and_create_tcd)) {
 		return false;
 	}
 
 	return true;
 }
 
-static bool j2k_setup_decoding_validation(j2k_t *p_j2k,
-		event_mgr_t *p_manager) {
+static bool j2k_setup_decoding_validation(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_build_decoder, p_manager)) {
+			(procedure) j2k_build_decoder)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_decoding_validation, p_manager)) {
+			(procedure) j2k_decoding_validation)) {
 		return false;
 	}
 
@@ -6248,16 +6154,15 @@ static bool j2k_setup_decoding_validation(j2k_t *p_j2k,
 	return true;
 }
 
-static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
-	(void) p_manager;
+	
 	bool l_is_valid = true;
 	uint32_t i, j;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if ((p_j2k->m_cp.rsiz & 0x8200) == 0x8200) {
 		uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
@@ -6307,7 +6212,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
-				/* event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+				/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
 				return false;
 			}
 			p_tcp->m_mct_records = new_mct_records;
@@ -6354,7 +6259,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
-			/* event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+			/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
 			return false;
 		}
 		p_tcp->m_mct_records = new_mct_records;
@@ -6424,7 +6329,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;
-			/* event_msg(p_manager, EVT_ERROR, "Not enough memory to setup mct encoding\n"); */
+			/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
 			return false;
 		}
 		p_tcp->m_mcc_records = new_mcc_records;
@@ -6446,34 +6351,31 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 	return true;
 }
 
-static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream) {
 	/* add here initialization of cp
 	 copy paste of setup_decoder */
 	(void) p_j2k;
 	(void) p_stream;
-	(void) p_manager;
+	
 	return true;
 }
 
-static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream) {
 	/* add here initialization of cp
 	 copy paste of setup_encoder */
 	(void) p_j2k;
 	(void) p_stream;
-	(void) p_manager;
+	
 	return true;
 }
 
-static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	bool l_is_valid = true;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* STATE checking */
 	/* make sure the state is at 0 */
@@ -6489,20 +6391,20 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
 	/* ISO 15444-1:2004 states between 1 & 33 (decomposition levels between 0 -> 32) */
 	if ((p_j2k->m_cp.tcps->tccps->numresolutions == 0)
 			|| (p_j2k->m_cp.tcps->tccps->numresolutions > OPJ_J2K_MAXRLVLS)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Invalid number of resolutions : %d not in range [1,%d]\n",
 				p_j2k->m_cp.tcps->tccps->numresolutions, OPJ_J2K_MAXRLVLS);
 		return false;
 	}
 
 	if (p_j2k->m_cp.tdx == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Tile x dimension must be greater than zero \n");
 		return false;
 	}
 
 	if (p_j2k->m_cp.tdy == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Tile y dimension must be greater than zero \n");
 		return false;
 	}
@@ -6511,16 +6413,15 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
 	return l_is_valid;
 }
 
-static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
-	(void) p_manager;
+static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
+	
 	(void) p_stream;
 	bool l_is_valid = true;
 
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* STATE checking */
 	/* make sure the state is at 0 */
@@ -6538,8 +6439,7 @@ static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream,
 	return l_is_valid;
 }
 
-static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_current_marker;
 	uint32_t l_marker_size;
 	const opj_dec_memory_marker_handler_t *l_marker_handler = nullptr;
@@ -6549,21 +6449,20 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/*  We enter in the main header */
 	p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_MHSOC;
 
 	/* Try to read the SOC marker, the codestream must begin with SOC marker */
-	if (!j2k_read_soc(p_j2k, p_stream, p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Expected a SOC marker \n");
+	if (!j2k_read_soc(p_j2k, p_stream)) {
+		GROK_ERROR( "Expected a SOC marker \n");
 		return false;
 	}
 
 	/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-	if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-			p_manager) != 2) {
-		event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+	if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+		GROK_ERROR( "Stream too short\n");
 		return false;
 	}
 
@@ -6576,7 +6475,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 
 		/* Check if the current marker ID is valid */
 		if (l_current_marker < 0xff00) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"A marker ID was expected (0xff--) instead of %.8x\n",
 					l_current_marker);
 			return false;
@@ -6587,8 +6486,8 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 
 		/* Manage case where marker is unknown */
 		if (l_marker_handler->id == J2K_MS_UNK) {
-			if (!j2k_read_unk(p_j2k, p_stream, &l_current_marker, p_manager)) {
-				event_msg(p_manager, EVT_ERROR,
+			if (!j2k_read_unk(p_j2k, p_stream, &l_current_marker)) {
+				GROK_ERROR(
 						"Unknown marker have been detected and generated error.\n");
 				return false;
 			}
@@ -6616,15 +6515,14 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 		/* Check if the marker is known and if it is the right place to find it */
 		if (!(p_j2k->m_specific_param.m_decoder.m_state
 				& l_marker_handler->states)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Marker is not compliant with its position\n");
 			return false;
 		}
 
 		/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-				p_manager) != 2) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
@@ -6634,7 +6532,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 
 		/* Check marker size (does not include marker ID but includes marker size) */
 		if (l_marker_size < 2) {
-			event_msg(p_manager, EVT_ERROR, "Inconsistent marker size\n");
+			GROK_ERROR( "Inconsistent marker size\n");
 			return false;
 		}
 
@@ -6650,7 +6548,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 				grok_free(p_j2k->m_specific_param.m_decoder.m_header_data);
 				p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
 				p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to read header\n");
 				return false;
 			}
@@ -6661,16 +6559,15 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 
 		/* Try to read the rest of the marker segment from stream and copy them into the buffer */
 		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
-				l_marker_size, p_manager) != l_marker_size) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+				l_marker_size) != l_marker_size) {
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
 		/* Read the marker segment with the correct marker handler */
 		if (!(*(l_marker_handler->handler))(p_j2k,
-				p_j2k->m_specific_param.m_decoder.m_header_data, (uint16_t)l_marker_size,
-				p_manager)) {
-			event_msg(p_manager, EVT_ERROR,
+				p_j2k->m_specific_param.m_decoder.m_header_data, (uint16_t)l_marker_size)) {
+			GROK_ERROR(
 					"Marker handler function failed to read the marker segment\n");
 			return false;
 		}
@@ -6681,16 +6578,15 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 					== j2k_add_mhmarker(p_j2k->cstr_index, l_marker_handler->id,
 							(uint32_t) p_stream->tell() - l_marker_size - 4,
 							l_marker_size + 4)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to add mh marker\n");
 				return false;
 			}
 		}
 
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-				p_manager) != 2) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
@@ -6699,26 +6595,26 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 				&l_current_marker, 2);
 	}
 	if (l_has_siz == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"required SIZ marker not found in main header\n");
 		return false;
 	}
 	if (l_has_cod == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"required COD marker not found in main header\n");
 		return false;
 	}
 	if (l_has_qcd == 0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"required QCD marker not found in main header\n");
 		return false;
 	}
 
-	if (!j2k_merge_ppm(&(p_j2k->m_cp), p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Failed to merge PPM data\n");
+	if (!j2k_merge_ppm(&(p_j2k->m_cp))) {
+		GROK_ERROR( "Failed to merge PPM data\n");
 		return false;
 	}
-	// event_msg(p_manager, EVT_INFO, "Main header has been correctly decoded.\n");
+	// event_msg( EVT_INFO, "Main header has been correctly decoded.\n");
 	if (p_j2k->cstr_index) {
 		/* Position of the last element if the main header */
 		p_j2k->cstr_index->main_head_end = (uint32_t) p_stream->tell() - 2;
@@ -6731,8 +6627,8 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream,
 }
 
 static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
-	bool (**l_procedure)(j2k_t*, GrokStream*, event_mgr_t*) = nullptr;
+		GrokStream *p_stream) {
+	bool (**l_procedure)(j2k_t*, GrokStream*) = nullptr;
 	bool l_result = true;
 	uint32_t l_nb_proc, i;
 
@@ -6740,15 +6636,15 @@ static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
 	assert(p_procedure_list != nullptr);
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_nb_proc = procedure_list_get_nb_procedures(p_procedure_list);
 	l_procedure =
-			(bool (**)(j2k_t*, GrokStream*, event_mgr_t*)) procedure_list_get_first_procedure(
+			(bool (**)(j2k_t*, GrokStream*)) procedure_list_get_first_procedure(
 					p_procedure_list);
 
 	for (i = 0; i < l_nb_proc; ++i) {
-		l_result = l_result && ((*l_procedure)(p_j2k, p_stream, p_manager));
+		l_result = l_result && ((*l_procedure)(p_j2k, p_stream));
 		++l_procedure;
 	}
 
@@ -6759,8 +6655,8 @@ static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
 
 /* FIXME DOC*/
 static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
-		GrokStream *p_stream, event_mgr_t *p_manager) {
-	(void) p_manager;
+		GrokStream *p_stream) {
+	
 	(void) p_stream;
 	tcp_t *l_tcp = nullptr;
 	tcp_t *l_default_tcp = nullptr;
@@ -6777,7 +6673,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_image = p_j2k->m_private_image;
 	l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
@@ -6901,7 +6797,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	if (!tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp), p_j2k->numThreads)) {
 		tcd_destroy(p_j2k->m_tcd);
 		p_j2k->m_tcd = nullptr;
-		event_msg(p_manager, EVT_ERROR, "Cannot decode tile, memory error\n");
+		GROK_ERROR( "Cannot decode tile, memory error\n");
 		return false;
 	}
 
@@ -7126,7 +7022,7 @@ static void j2k_cp_destroy(cp_t *p_cp) {
 }
 
 static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
-		uint32_t tile_no, bool *p_correction_needed, event_mgr_t *p_manager) {
+		uint32_t tile_no, bool *p_correction_needed) {
 	uint8_t l_header_data[10];
 	int64_t l_stream_pos_backup;
 	uint32_t l_current_marker;
@@ -7150,9 +7046,9 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 
 	for (;;) {
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-		if (p_stream->read(l_header_data, 2, p_manager) != 2) {
+		if (p_stream->read(l_header_data, 2) != 2) {
 			/* assume all is OK */
-			if (!p_stream->seek(l_stream_pos_backup, p_manager)) {
+			if (!p_stream->seek(l_stream_pos_backup)) {
 				return false;
 			}
 			return true;
@@ -7163,15 +7059,15 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 
 		if (l_current_marker != J2K_MS_SOT) {
 			/* assume all is OK */
-			if (!p_stream->seek(l_stream_pos_backup, p_manager)) {
+			if (!p_stream->seek(l_stream_pos_backup)) {
 				return false;
 			}
 			return true;
 		}
 
 		/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-		if (p_stream->read(l_header_data, 2, p_manager) != 2) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+		if (p_stream->read(l_header_data, 2) != 2) {
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
@@ -7180,19 +7076,19 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 
 		/* Check marker size for SOT Marker */
 		if (l_marker_size != 10) {
-			event_msg(p_manager, EVT_ERROR, "Inconsistent marker size\n");
+			GROK_ERROR( "Inconsistent marker size\n");
 			return false;
 		}
 		l_marker_size -= 2;
 
-		if (p_stream->read(l_header_data, l_marker_size, p_manager)
+		if (p_stream->read(l_header_data, l_marker_size)
 				!= l_marker_size) {
-			event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+			GROK_ERROR( "Stream too short\n");
 			return false;
 		}
 
 		if (!j2k_get_sot_values(l_header_data, l_marker_size, &l_tile_no,
-				&l_tot_len, &l_current_part, &l_num_parts, p_manager)) {
+				&l_tot_len, &l_current_part, &l_num_parts)) {
 			return false;
 		}
 
@@ -7204,16 +7100,16 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 		if ((l_tot_len == 0U) || (l_tot_len < 14U)) {
 			/* last SOT until EOC or invalid Psot value */
 			/* assume all is OK */
-			if (!p_stream->seek(l_stream_pos_backup, p_manager)) {
+			if (!p_stream->seek(l_stream_pos_backup)) {
 				return false;
 			}
 			return true;
 		}
 		l_tot_len -= 12U;
 		/* look for next SOT marker */
-		if (!p_stream->skip((int64_t) (l_tot_len), p_manager)) {
+		if (!p_stream->skip((int64_t) (l_tot_len))) {
 			/* assume all is OK */
-			if (!p_stream->seek(l_stream_pos_backup, p_manager)) {
+			if (!p_stream->seek(l_stream_pos_backup)) {
 				return false;
 			}
 			return true;
@@ -7225,7 +7121,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 		*p_correction_needed = true;
 	}
 
-	if (!p_stream->seek(l_stream_pos_backup, p_manager)) {
+	if (!p_stream->seek(l_stream_pos_backup)) {
 		return false;
 	}
 	return true;
@@ -7234,7 +7130,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, GrokStream *p_stream, event_mgr_t *p_manager) {
+		bool *p_go_on, GrokStream *p_stream) {
 	uint32_t l_current_marker = J2K_MS_SOT;
 	uint32_t l_marker_size;
 	const opj_dec_memory_marker_handler_t *l_marker_handler = nullptr;
@@ -7242,7 +7138,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* Reach the End Of Codestream ?*/
 	if (p_j2k->m_specific_param.m_decoder.m_state == J2K_DEC_STATE_EOC) {
@@ -7268,8 +7164,8 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 			/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
-					2, p_manager) != 2) {
-				event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+					2) != 2) {
+				GROK_ERROR( "Stream too short\n");
 				return false;
 			}
 
@@ -7279,7 +7175,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 			/* Check marker size (does not include marker ID but includes marker size) */
 			if (l_marker_size < 2) {
-				event_msg(p_manager, EVT_ERROR, "Inconsistent marker size\n");
+				GROK_ERROR( "Inconsistent marker size\n");
 				return false;
 			}
 
@@ -7297,7 +7193,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			/* Check if the marker is known and if it is the right place to find it */
 			if (!(p_j2k->m_specific_param.m_decoder.m_state
 					& l_marker_handler->states)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Marker is not compliant with its position\n");
 				return false;
 			}
@@ -7311,7 +7207,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				/* Check enough bytes left in stream before allocation */
 				if ((int64_t) l_marker_size
 						> p_stream->get_number_byte_left()) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Marker size inconsistent with stream length\n");
 					return false;
 				}
@@ -7322,7 +7218,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 					grok_free(p_j2k->m_specific_param.m_decoder.m_header_data);
 					p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
 					p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Not enough memory to read header\n");
 					return false;
 				}
@@ -7334,22 +7230,22 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 			/* Try to read the rest of the marker segment from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
-					l_marker_size, p_manager) != l_marker_size) {
-				event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+					l_marker_size) != l_marker_size) {
+				GROK_ERROR( "Stream too short\n");
 				return false;
 			}
 
 			if (!l_marker_handler->handler) {
 				/* See issue #175 */
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not sure how that happened.\n");
 				return false;
 			}
 			/* Read the marker segment with the correct marker handler */
 			if (!(*(l_marker_handler->handler))(p_j2k,
 					p_j2k->m_specific_param.m_decoder.m_header_data,
-					(uint16_t)l_marker_size, p_manager)) {
-				event_msg(p_manager, EVT_ERROR,
+					(uint16_t)l_marker_size)) {
+				GROK_ERROR(
 						"Fail to read the current marker segment (%#x)\n",
 						l_current_marker);
 				return false;
@@ -7362,7 +7258,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 								p_j2k->cstr_index, l_marker_handler->id,
 								(uint32_t) p_stream->tell() - l_marker_size - 4,
 								l_marker_size + 4)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Not enough memory to add tl marker\n");
 					return false;
 				}
@@ -7382,18 +7278,16 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			if (p_j2k->m_specific_param.m_decoder.m_skip_data) {
 				// Skip the rest of the tile part header
 				if (!p_stream->skip(
-						p_j2k->m_specific_param.m_decoder.tile_part_data_length,
-						p_manager)) {
-					event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+						p_j2k->m_specific_param.m_decoder.tile_part_data_length)) {
+					GROK_ERROR( "Stream too short\n");
 					return false;
 				}
 				l_current_marker = J2K_MS_SOD; //We force current marker to equal SOD
 			} else {
 				// Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
 				if (p_stream->read(
-						p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-						p_manager) != 2) {
-					event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+					GROK_ERROR( "Stream too short\n");
 					return false;
 				}
 				// Read 2 bytes from the buffer as the new marker ID
@@ -7411,7 +7305,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 		/* If we didn't skip data before, we need to read the SOD marker*/
 		if (!p_j2k->m_specific_param.m_decoder.m_skip_data) {
 			/* Try to read the SOD marker and skip data ? FIXME */
-			if (!j2k_read_sod(p_j2k, p_stream, p_manager)) {
+			if (!j2k_read_sod(p_j2k, p_stream)) {
 				return false;
 			}
 			if (p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data
@@ -7422,9 +7316,8 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				p_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction_checked =
 						1;
 				if (!j2k_need_nb_tile_parts_correction(p_stream,
-						p_j2k->m_current_tile_number, &l_correction_needed,
-						p_manager)) {
-					event_msg(p_manager, EVT_ERROR,
+						p_j2k->m_current_tile_number, &l_correction_needed)) {
+					GROK_ERROR(
 							"j2k_apply_nb_tile_parts_correction error\n");
 					return false;
 				}
@@ -7441,16 +7334,15 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 							p_j2k->m_cp.tcps[l_tile_no].m_nb_tile_parts += 1;
 						}
 					}
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"Non conformant codestream TPsot==TNsot.\n");
 				}
 			}
 			if (!p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
 				/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 				if (p_stream->read(
-						p_j2k->m_specific_param.m_decoder.m_header_data, 2,
-						p_manager) != 2) {
-					event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+					GROK_ERROR( "Stream too short\n");
 					return false;
 				}
 
@@ -7467,8 +7359,8 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 			/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
-					2, p_manager) != 2) {
-				event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+					2) != 2) {
+				GROK_ERROR( "Stream too short\n");
 				return false;
 			}
 			/* Read 2 bytes from buffer as the new marker ID */
@@ -7498,7 +7390,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				maxTileDecompositions = decomps;
 		}
 		if ((l_tcp->main_qcd_numStepSizes < 3 * maxTileDecompositions + 1)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"From Main QCD marker, "
 							"number of step sizes (%d) is less than 3* (tile decompositions) + 1, where tile decompositions = %d \n",
 					l_tcp->main_qcd_numStepSizes, maxTileDecompositions);
@@ -7531,7 +7423,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 					maxTileDecompositions = decomps;
 			}
 			if ((qcd_comp->numStepSizes < 3 * maxTileDecompositions + 1)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"From Tile QCD marker, "
 								"number of step sizes (%d) is less than 3* (tile decompositions) + 1, where tile decompositions = %d \n",
 						qcd_comp->numStepSizes, maxTileDecompositions);
@@ -7564,14 +7456,13 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 		}
 	}
 
-	if (!j2k_merge_ppt(p_j2k->m_cp.tcps + p_j2k->m_current_tile_number,
-			p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Failed to merge PPT data\n");
+	if (!j2k_merge_ppt(p_j2k->m_cp.tcps + p_j2k->m_current_tile_number)) {
+		GROK_ERROR( "Failed to merge PPT data\n");
 		return false;
 	}
 	if (!tcd_init_decode_tile(p_j2k->m_tcd, p_j2k->m_output_image,
-			p_j2k->m_current_tile_number, p_manager)) {
-		event_msg(p_manager, EVT_ERROR, "Cannot decode tile %d\n",
+			p_j2k->m_current_tile_number)) {
+		GROK_ERROR( "Cannot decode tile %d\n",
 				p_j2k->m_current_tile_number);
 		return false;
 	}
@@ -7588,14 +7479,14 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 }
 
 bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager) {
+		uint64_t p_data_size, GrokStream *p_stream) {
 	uint32_t l_current_marker;
 	uint8_t l_data[2];
 	tcp_t *l_tcp;
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!(p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_DATA)
 			|| (p_tile_index != p_j2k->m_current_tile_number)) {
@@ -7608,11 +7499,10 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 		return false;
 	}
 
-	if (!tcd_decode_tile(p_j2k->m_tcd, l_tcp->m_tile_data, p_tile_index,
-			p_manager)) {
+	if (!tcd_decode_tile(p_j2k->m_tcd, l_tcp->m_tile_data, p_tile_index)) {
 		j2k_tcp_destroy(l_tcp);
 		p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
-		event_msg(p_manager, EVT_ERROR, "Failed to decode.\n");
+		GROK_ERROR( "Failed to decode.\n");
 		return false;
 	}
 
@@ -7689,8 +7579,8 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 		if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
 
 			// not enough data for another marker : fail decode
-			if (p_stream->read(l_data, 2, p_manager) != 2) {
-				event_msg(p_manager, EVT_ERROR, "Stream too short\n");
+			if (p_stream->read(l_data, 2) != 2) {
+				GROK_ERROR( "Stream too short\n");
 				return false;
 			}
 
@@ -7711,11 +7601,11 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 				if (bytesLeft == 0) {
 					p_j2k->m_specific_param.m_decoder.m_state =
 							J2K_DEC_STATE_NEOC;
-					event_msg(p_manager, EVT_WARNING,
+					GROK_WARN(
 							"Stream does not end with EOC\n");
 					return true;
 				}
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"Decode tile: expected EOC or SOT but found unknown \"marker\" %x. \n",
 						l_current_marker);
 				throw DecodeUnknownMarkerAtEndOfTileException();
@@ -7732,8 +7622,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 
  */
 static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
-		opj_image_t *p_output_image, bool clearOutputOnInit,
-		event_mgr_t *p_manager) {
+		opj_image_t *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
 	opj_image_t *image_src = p_tcd->image;
 
@@ -7744,7 +7633,7 @@ static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
 		opj_image_comp_t *img_comp_dest = p_output_image->comps + i;
 
 		if (img_comp_dest->w * img_comp_dest->h == 0) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Output image has invalid dimensions %d x %d\n",
 					img_comp_dest->w, img_comp_dest->h);
 			return false;
@@ -7985,8 +7874,7 @@ static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
 }
 
 bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
-		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y,
-		event_mgr_t *p_manager) {
+		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y) {
 	cp_t *l_cp = &(p_j2k->m_cp);
 	opj_image_t *l_image = p_j2k->m_private_image;
 
@@ -7996,13 +7884,13 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 
 	/* Check if we have read the main header */
 	if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Need to decode the main header before setting decode area");
 		return false;
 	}
 
 	if (!p_start_x && !p_start_y && !p_end_x && !p_end_y) {
-		//event_msg(p_manager, EVT_INFO, "No decoded area parameters, set the decoded area to the whole image\n");
+		//event_msg( EVT_INFO, "No decoded area parameters, set the decoded area to the whole image\n");
 
 		p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
 		p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
@@ -8017,12 +7905,12 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 
 	/* Left */
 	if (p_start_x > l_image->x1) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
 				p_start_x, l_image->x1);
 		return false;
 	} else if (p_start_x < l_image->x0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
 				p_start_x, l_image->x0);
 		p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
@@ -8035,12 +7923,12 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 
 	/* Up */
 	if (p_start_y > l_image->y1) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
 				p_start_y, l_image->y1);
 		return false;
 	} else if (p_start_y < l_image->y0) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
 				p_start_y, l_image->y0);
 		p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
@@ -8055,12 +7943,12 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 	assert(p_end_x > 0);
 	assert(p_end_y > 0);
 	if (p_end_x < l_image->x0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n",
 				p_end_x, l_image->x0);
 		return false;
 	} else if (p_end_x > l_image->x1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
 				p_end_x, l_image->x1);
 		p_j2k->m_specific_param.m_decoder.m_end_tile_x = l_cp->tw;
@@ -8077,13 +7965,13 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 
 	/* Bottom */
 	if (p_end_y < l_image->y0) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n",
 				p_end_y, l_image->y0);
 		return false;
 	}
 	if (p_end_y > l_image->y1) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n",
 				p_end_y, l_image->y1);
 		p_j2k->m_specific_param.m_decoder.m_end_tile_y = l_cp->th;
@@ -8118,7 +8006,7 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 		uint32_t l_x0 = uint_ceildivpow2(l_img_comp->x0,
 				l_img_comp->decodeScaleFactor);
 		if (l_x1 < l_x0) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
 					it_comp, (int32_t) l_x1 - l_x0);
 			return false;
@@ -8130,7 +8018,7 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 		uint32_t l_y0 = uint_ceildivpow2(l_img_comp->y0,
 				l_img_comp->decodeScaleFactor);
 		if (l_y1 < l_y0) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
 					it_comp, (int32_t) l_y1 - l_y0);
 			return false;
@@ -8290,14 +8178,14 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
 }
 
 static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
-		uint32_t p_comp_no, GrokStream *p_stream, event_mgr_t *p_manager) {
+		uint32_t p_comp_no, GrokStream *p_stream) {
 	uint32_t i;
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	tccp_t *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_cp = &(p_j2k->m_cp);
 	l_tcp = &l_cp->tcps[p_tile_no];
@@ -8308,28 +8196,27 @@ static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
 	assert(p_comp_no < (p_j2k->m_private_image->numcomps));
 
 	/* SPcoc (D) */
-	if (!p_stream->write_byte((uint8_t) (l_tccp->numresolutions - 1),
-			p_manager)) {
+	if (!p_stream->write_byte((uint8_t) (l_tccp->numresolutions - 1))) {
 		return false;
 	}
 
 	/* SPcoc (E) */
-	if (!p_stream->write_byte((uint8_t) (l_tccp->cblkw - 2), p_manager)) {
+	if (!p_stream->write_byte((uint8_t) (l_tccp->cblkw - 2))) {
 		return false;
 	}
 
 	/* SPcoc (F) */
-	if (!p_stream->write_byte((uint8_t) (l_tccp->cblkh - 2), p_manager)) {
+	if (!p_stream->write_byte((uint8_t) (l_tccp->cblkh - 2))) {
 		return false;
 	}
 
 	/* SPcoc (G) */
-	if (!p_stream->write_byte((uint8_t) l_tccp->mode_switch, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tccp->mode_switch)) {
 		return false;
 	}
 
 	/* SPcoc (H) */
-	if (!p_stream->write_byte((uint8_t) l_tccp->qmfbid, p_manager)) {
+	if (!p_stream->write_byte((uint8_t) l_tccp->qmfbid)) {
 		return false;
 	}
 
@@ -8337,8 +8224,7 @@ static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
 		for (i = 0; i < l_tccp->numresolutions; ++i) {
 			/* SPcoc (I_i) */
 			if (!p_stream->write_byte(
-					(uint8_t) (l_tccp->prcw[i] + (l_tccp->prch[i] << 4)),
-					p_manager)) {
+					(uint8_t) (l_tccp->prcw[i] + (l_tccp->prch[i] << 4)))) {
 				return false;
 			}
 		}
@@ -8348,8 +8234,7 @@ static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
 }
 
 static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
-		uint8_t *p_header_data, uint16_t *p_header_size,
-		event_mgr_t *p_manager) {
+		uint8_t *p_header_data, uint16_t *p_header_size) {
 	uint32_t i, l_tmp;
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
@@ -8357,7 +8242,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	uint8_t *l_current_ptr = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_header_data != nullptr);
 
 	l_cp = &(p_j2k->m_cp);
@@ -8371,14 +8256,14 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 
 	/* make sure room is sufficient */
 	if (*p_header_size < 5) {
-		event_msg(p_manager, EVT_ERROR, "Error reading SPCod SPCoc element\n");
+		GROK_ERROR( "Error reading SPCod SPCoc element\n");
 		return false;
 	}
 	/* SPcox (D) */
 	grok_read_bytes(l_current_ptr, &l_tccp->numresolutions, 1);
 	++l_tccp->numresolutions; /* tccp->numresolutions = read() + 1 */
 	if (l_tccp->numresolutions > OPJ_J2K_MAXRLVLS) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Number of resolutions %d is greater than maximum allowed number %d\n",
 				l_tccp->numresolutions, OPJ_J2K_MAXRLVLS);
 		return false;
@@ -8387,7 +8272,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 
 	/* If user wants to remove more resolutions than the codestream contains, return error */
 	if (l_cp->m_specific_param.m_dec.m_reduce >= l_tccp->numresolutions) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error decoding component %d.\nThe number of resolutions to remove is higher than the number "
 						"of resolutions of this component\nModify the cp_reduce parameter.\n\n",
 				compno);
@@ -8405,7 +8290,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 
 	if ((l_tccp->cblkw > 10) || (l_tccp->cblkh > 10)
 			|| ((l_tccp->cblkw + l_tccp->cblkh) > 12)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n");
 		return false;
 	}
@@ -8414,7 +8299,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	grok_read_bytes(l_current_ptr, &l_tccp->mode_switch, 1);
 	++l_current_ptr;
 	if (l_tccp->mode_switch & 0xC0U) { /* 2 msb are reserved, assume we can't read */
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Error reading SPCod SPCoc element, Invalid code-block style found\n");
 		return false;
 	}
@@ -8427,7 +8312,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	/* use custom precinct size ? */
 	if (l_tccp->csty & J2K_CCP_CSTY_PRT) {
 		if (*p_header_size < l_tccp->numresolutions) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Error reading SPCod SPCoc element\n");
 			return false;
 		}
@@ -8438,7 +8323,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 			++l_current_ptr;
 			/* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
 			if ((i != 0) && (((l_tmp & 0xf) == 0) || ((l_tmp >> 4) == 0))) {
-				event_msg(p_manager, EVT_ERROR, "Invalid precinct size\n");
+				GROK_ERROR( "Invalid precinct size\n");
 				return false;
 			}
 			l_tccp->prcw[i] = l_tmp & 0xf;
@@ -8561,7 +8446,7 @@ static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 }
 
 static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
-		uint32_t p_comp_no, GrokStream *p_stream, event_mgr_t *p_manager) {
+		uint32_t p_comp_no, GrokStream *p_stream) {
 	uint32_t l_band_no, l_num_bands;
 	uint32_t l_expn, l_mant;
 
@@ -8570,7 +8455,7 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 	tccp_t *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	l_cp = &(p_j2k->m_cp);
 	l_tcp = &l_cp->tcps[p_tile_no];
@@ -8588,15 +8473,14 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 
 		/* Sqcx */
 		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)),
-				p_manager)) {
+				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
 			return false;
 		}
 
 		for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
 			l_expn = l_tccp->stepsizes[l_band_no].expn;
 			/* SPqcx_i */
-			if (!p_stream->write_byte((uint8_t) (l_expn << 3), p_manager)) {
+			if (!p_stream->write_byte((uint8_t) (l_expn << 3))) {
 				return false;
 			}
 		}
@@ -8604,8 +8488,7 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 
 		/* Sqcx */
 		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)),
-				p_manager)) {
+				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
 			return false;
 		}
 
@@ -8614,8 +8497,7 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 			l_mant = l_tccp->stepsizes[l_band_no].mant;
 
 			/* SPqcx_i */
-			if (!p_stream->write_short((uint16_t) ((l_expn << 11) + l_mant),
-					p_manager)) {
+			if (!p_stream->write_short((uint16_t) ((l_expn << 11) + l_mant))) {
 				return false;
 			}
 		}
@@ -8624,14 +8506,13 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
 }
 
 static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
-		uint8_t *p_header_data, uint16_t *p_header_size,
-		event_mgr_t *p_manager) {
+		uint8_t *p_header_data, uint16_t *p_header_size) {
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_header_data != nullptr);
 	assert(p_comp_no < p_j2k->m_private_image->numcomps);
 	if (*p_header_size < 1) {
-		event_msg(p_manager, EVT_ERROR, "Error reading SQcd or SQcc element\n");
+		GROK_ERROR( "Error reading SQcd or SQcc element\n");
 		return false;
 	}
 	bool ignore = false;
@@ -8667,7 +8548,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 					(l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
 							(*p_header_size) : (*p_header_size) / 2;
 			if (l_tccp->numStepSizes > OPJ_J2K_MAXBANDS) {
-				event_msg(p_manager, EVT_WARNING,
+				GROK_WARN(
 						"While reading QCD or QCC marker segment, "
 								"number of step sizes (%d) is greater than OPJ_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
 								"OPJ_J2K_MAXBANDS (%d) and skip the rest.\n",
@@ -8692,7 +8573,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 			}
 		}
 		if (*p_header_size < l_tccp->numStepSizes) {
-			event_msg(p_manager, EVT_ERROR, "Error reading SQcd_SQcc marker\n");
+			GROK_ERROR( "Error reading SQcd_SQcc marker\n");
 			return false;
 		}
 		*p_header_size = (uint16_t)(*p_header_size - l_tccp->numStepSizes);
@@ -8710,7 +8591,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 			}
 		}
 		if (*p_header_size < 2 * l_tccp->numStepSizes) {
-			event_msg(p_manager, EVT_ERROR, "Error reading SQcd_SQcc marker\n");
+			GROK_ERROR( "Error reading SQcd_SQcc marker\n");
 			return false;
 		}
 		*p_header_size = (uint16_t)(*p_header_size - 2 * l_tccp->numStepSizes);
@@ -9252,8 +9133,7 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles) {
 	return copy_tile_data;
 }
 
-static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
 	bool l_go_on = true;
 	uint32_t l_current_tile_no = 0;
 	uint64_t l_data_size = 0, l_max_data_size = 0;
@@ -9265,7 +9145,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 	if (j2k_needs_copy_tile_data(p_j2k, num_tiles_to_decode)) {
 		l_current_data = (uint8_t*) grok_malloc(1);
 		if (!l_current_data) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to decode tiles\n");
 			return false;
 		}
@@ -9279,7 +9159,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 		l_tile_x0 = l_tile_y0 = l_tile_x1 = l_tile_y1 = 0;
 		if (!j2k_read_tile_header(p_j2k, &l_current_tile_no, &l_data_size,
 				&l_tile_x0, &l_tile_y0, &l_tile_x1, &l_tile_y1, &l_nb_comps,
-				&l_go_on, p_stream, p_manager)) {
+				&l_go_on, p_stream)) {
 			if (l_current_data)
 				grok_free(l_current_data);
 			return false;
@@ -9294,7 +9174,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 					l_current_data, l_data_size);
 			if (!l_new_current_data) {
 				grok_free(l_current_data);
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to decode tile %d/%d\n",
 						l_current_tile_no + 1, num_tiles_to_decode);
 				return false;
@@ -9305,36 +9185,35 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 
 		try {
 			if (!j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data,
-					l_data_size, p_stream, p_manager)) {
+					l_data_size, p_stream)) {
 				if (l_current_data)
 					grok_free(l_current_data);
-				event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n",
+				GROK_ERROR( "Failed to decode tile %d/%d\n",
 						l_current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// only worry about exception if we have more tiles to decode
 			if (nr_tiles < num_tiles_to_decode - 1) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Stream too short, expected SOT\n");
 				if (l_current_data)
 					grok_free(l_current_data);
-				event_msg(p_manager, EVT_ERROR, "Failed to decode tile %d/%d\n",
+				GROK_ERROR( "Failed to decode tile %d/%d\n",
 						l_current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
 		}
-		//event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
+		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
 
 		/* copy from current data to output image, if necessary */
 		if (l_current_data) {
 			if (!j2k_copy_decoded_tile_to_output_image(p_j2k->m_tcd,
-					l_current_data, p_j2k->m_output_image, clearOutputOnInit,
-					p_manager)) {
+					l_current_data, p_j2k->m_output_image, clearOutputOnInit)) {
 				grok_free(l_current_data);
 				return false;
 			}
-			// event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
+			// event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
 		}
 
 		num_tiles_decoded++;
@@ -9350,10 +9229,10 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 	}
 
 	if (num_tiles_decoded == 0) {
-		event_msg(p_manager, EVT_ERROR, "No tiles were decoded. Exiting\n");
+		GROK_ERROR( "No tiles were decoded. Exiting\n");
 		return false;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Only %d out of %d tiles were decoded\n", num_tiles_decoded,
 				num_tiles_to_decode);
 		return true;
@@ -9364,13 +9243,13 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream,
 /**
  * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_decoding(j2k_t *p_j2k, event_mgr_t *p_manager) {
+static bool j2k_setup_decoding(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_decode_tiles, p_manager)) {
+			(procedure) j2k_decode_tiles)) {
 		return false;
 	}
 	/* DEVELOPER CORNER, add your custom procedures */
@@ -9380,8 +9259,7 @@ static bool j2k_setup_decoding(j2k_t *p_j2k, event_mgr_t *p_manager) {
 /*
  * Read and decode one tile.
  */
-static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 	bool l_go_on = true;
 	uint32_t l_current_tile_no;
 	uint32_t l_tile_no_to_dec;
@@ -9393,7 +9271,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 	if (j2k_needs_copy_tile_data(p_j2k, 1)) {
 		l_current_data = (uint8_t*) grok_malloc(1);
 		if (!l_current_data) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to decode tiles\n");
 			return false;
 		}
@@ -9417,8 +9295,8 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 				 *  so move to the last SOT read */
 				if (!(p_stream->seek(
 						p_j2k->m_specific_param.m_decoder.m_last_sot_read_pos
-								+ 2, p_manager))) {
-					event_msg(p_manager, EVT_ERROR,
+								+ 2))) {
+					GROK_ERROR(
 							"Problem with seek function\n");
 					if (l_current_data)
 						grok_free(l_current_data);
@@ -9427,8 +9305,8 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 			} else {
 				if (!(p_stream->seek(
 						p_j2k->cstr_index->tile_index[l_tile_no_to_dec].tp_index[0].start_pos
-								+ 2, p_manager))) {
-					event_msg(p_manager, EVT_ERROR,
+								+ 2))) {
+					GROK_ERROR(
 							"Problem with seek function\n");
 					if (l_current_data)
 						grok_free(l_current_data);
@@ -9444,7 +9322,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 	for (;;) {
 		if (!j2k_read_tile_header(p_j2k, &l_current_tile_no, &l_data_size,
 				&l_tile_x0, &l_tile_y0, &l_tile_x1, &l_tile_y1, &l_nb_comps,
-				&l_go_on, p_stream, p_manager)) {
+				&l_go_on, p_stream)) {
 			if (l_current_data)
 				grok_free(l_current_data);
 			return false;
@@ -9460,7 +9338,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 			if (!l_new_current_data) {
 				grok_free(l_current_data);
 				l_current_data = nullptr;
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Not enough memory to decode tile %d/%d\n",
 						l_current_tile_no + 1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 				return false;
@@ -9471,7 +9349,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 
 		try {
 			if (!j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data,
-					l_data_size, p_stream, p_manager)) {
+					l_data_size, p_stream)) {
 				if (l_current_data)
 					grok_free(l_current_data);
 				return false;
@@ -9479,28 +9357,27 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// suppress exception
 		}
-		//event_msg(p_manager, EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
 		if (l_current_data) {
 			if (!j2k_copy_decoded_tile_to_output_image(p_j2k->m_tcd,
-					l_current_data, p_j2k->m_output_image, false, p_manager)) {
+					l_current_data, p_j2k->m_output_image, false)) {
 				grok_free(l_current_data);
 				return false;
 			}
 		}
-		//event_msg(p_manager, EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no+1);
+		//event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no+1);
 		if (l_current_tile_no == l_tile_no_to_dec) {
 			/* move into the codestream to the first SOT (FIXME or not move?)*/
-			if (!(p_stream->seek(p_j2k->cstr_index->main_head_end + 2,
-					p_manager))) {
-				event_msg(p_manager, EVT_ERROR, "Problem with seek function\n");
+			if (!(p_stream->seek(p_j2k->cstr_index->main_head_end + 2))) {
+				GROK_ERROR( "Problem with seek function\n");
 				if (l_current_data)
 					grok_free(l_current_data);
 				return false;
 			}
 			break;
 		} else {
-			event_msg(p_manager, EVT_WARNING,
+			GROK_WARN(
 					"Tile read, decoded and updated is not the desired one (%d vs %d).\n",
 					l_current_tile_no + 1, l_tile_no_to_dec + 1);
 		}
@@ -9514,13 +9391,13 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream,
 /**
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_decoding_tile(j2k_t *p_j2k, event_mgr_t *p_manager) {
+static bool j2k_setup_decoding_tile(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_decode_one_tile, p_manager)) {
+			(procedure) j2k_decode_one_tile)) {
 		return false;
 	}
 	/* DEVELOPER CORNER, add your custom procedures */
@@ -9528,7 +9405,7 @@ static bool j2k_setup_decoding_tile(j2k_t *p_j2k, event_mgr_t *p_manager) {
 }
 
 bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		opj_image_t *p_image, event_mgr_t *p_manager) {
+		opj_image_t *p_image) {
 	if (!p_image)
 		return false;
 
@@ -9539,12 +9416,12 @@ bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	opj_copy_image_header(p_image, p_j2k->m_output_image);
 
 	/* customization of the decoding */
-	if (!j2k_setup_decoding(p_j2k, p_manager))
+	if (!j2k_setup_decoding(p_j2k))
 		return false;
 	p_j2k->m_tcd->current_plugin_tile = tile;
 
 	/* Decode the codestream */
-	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
@@ -9555,21 +9432,20 @@ bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	return true;
 }
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
-		event_mgr_t *p_manager, uint32_t tile_index) {
+bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index) {
 	uint32_t compno;
 	uint32_t l_tile_x, l_tile_y;
 	opj_image_comp_t *l_img_comp;
 	rect_t original_image_rect, tile_rect, overlap_rect;
 
 	if (!p_image) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"We need an image previously created.\n");
 		return false;
 	}
 
 	if ( /*(tile_index < 0) &&*/(tile_index >= p_j2k->m_cp.tw * p_j2k->m_cp.th)) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Tile index provided by the user is incorrect %d (max = %d) \n",
 				tile_index, (p_j2k->m_cp.tw * p_j2k->m_cp.th) - 1);
 		return false;
@@ -9609,7 +9485,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
 		p_image->x1 = (uint32_t) overlap_rect.x1;
 		p_image->y1 = (uint32_t) overlap_rect.y1;
 	} else {
-		event_msg(p_manager, EVT_WARNING,
+		GROK_WARN(
 				"Decode region <%d,%d,%d,%d> does not overlap requested tile %d. Ignoring.\n",
 				original_image_rect.x0, original_image_rect.y0,
 				original_image_rect.x1, original_image_rect.y1, tile_index);
@@ -9659,11 +9535,11 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
 	}
 
 	/* customization of the decoding */
-	if (!j2k_setup_decoding_tile(p_j2k, p_manager))
+	if (!j2k_setup_decoding_tile(p_j2k))
 		return false;
 
 	/* Decode the codestream */
-	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream)) {
 		opj_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
@@ -9675,8 +9551,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image,
 	return true;
 }
 
-bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor,
-		event_mgr_t *p_manager) {
+bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor) {
 	uint32_t it_comp;
 
 	p_j2k->m_cp.m_specific_param.m_dec.m_reduce = res_factor;
@@ -9691,7 +9566,7 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor,
 						uint32_t max_res =
 								p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[it_comp].numresolutions;
 						if (res_factor >= max_res) {
-							event_msg(p_manager, EVT_ERROR,
+							GROK_ERROR(
 									"Resolution factor is greater than the maximum resolution in the component.\n");
 							return false;
 						}
@@ -9707,8 +9582,7 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor,
 	return false;
 }
 
-bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 	uint32_t i, j;
 	uint32_t l_nb_tiles;
 	uint64_t l_max_tile_size = 0;
@@ -9719,7 +9593,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	p_tcd = p_j2k->m_tcd;
 	p_tcd->current_plugin_tile = tile;
@@ -9737,7 +9611,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 #endif
 	}
 	for (i = 0; i < l_nb_tiles; ++i) {
-		if (!j2k_pre_write_tile(p_j2k, i, p_manager)) {
+		if (!j2k_pre_write_tile(p_j2k, i)) {
 			if (l_current_data)
 				grok_free(l_current_data);
 			return false;
@@ -9752,7 +9626,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 				l_tilec->buf->owns_data = false;
 			} else {
 				if (!tile_buf_alloc_component_data_encode(l_tilec->buf)) {
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Error allocating tile component data.");
 					if (l_current_data) {
 						grok_free(l_current_data);
@@ -9770,7 +9644,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 					if (l_current_data) {
 						grok_free(l_current_data);
 					}
-					event_msg(p_manager, EVT_ERROR,
+					GROK_ERROR(
 							"Not enough memory to encode all tiles\n");
 					return false;
 				}
@@ -9786,14 +9660,14 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 			/* now copy this data into the tile component */
 			if (!tcd_copy_tile_data(p_j2k->m_tcd, l_current_data,
 					l_current_tile_size)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Size mismatch between tile data and sent data.");
 				grok_free(l_current_data);
 				return false;
 			}
 		}
 
-		if (!j2k_post_write_tile(p_j2k, p_stream, p_manager)) {
+		if (!j2k_post_write_tile(p_j2k, p_stream)) {
 			if (l_current_data) {
 				grok_free(l_current_data);
 			}
@@ -9806,29 +9680,28 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	return true;
 }
 
-bool j2k_end_compress(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+bool j2k_end_compress(j2k_t *p_j2k, GrokStream *p_stream) {
 	/* customization of the encoding */
-	if (!j2k_setup_end_compress(p_j2k, p_manager)) {
+	if (!j2k_setup_end_compress(p_j2k)) {
 		return false;
 	}
 
-	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream)) {
 		return false;
 	}
 	return true;
 }
 
 bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
-		opj_image_t *p_image, event_mgr_t *p_manager) {
+		opj_image_t *p_image) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	p_j2k->m_private_image = opj_image_create0();
 	if (!p_j2k->m_private_image) {
-		event_msg(p_manager, EVT_ERROR, "Failed to allocate image header.");
+		GROK_ERROR( "Failed to allocate image header.");
 		return false;
 	}
 	opj_copy_image_header(p_image, p_j2k->m_private_image);
@@ -9847,43 +9720,41 @@ bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
 	}
 
 	/* customization of the validation */
-	if (!j2k_setup_encoding_validation(p_j2k, p_manager)) {
+	if (!j2k_setup_encoding_validation(p_j2k)) {
 		return false;
 	}
 
 	/* validation of the parameters codec */
-	if (!j2k_exec(p_j2k, p_j2k->m_validation_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_validation_list, p_stream)) {
 		return false;
 	}
 
 	/* customization of the encoding */
-	if (!j2k_setup_header_writing(p_j2k, p_manager)) {
+	if (!j2k_setup_header_writing(p_j2k)) {
 		return false;
 	}
 
 	/* write header */
-	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream, p_manager)) {
+	if (!j2k_exec(p_j2k, p_j2k->m_procedure_list, p_stream)) {
 		return false;
 	}
 
 	return true;
 }
 
-static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t p_tile_index,
-		event_mgr_t *p_manager) {
+static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t p_tile_index) {
 	if (p_tile_index != p_j2k->m_current_tile_number) {
-		event_msg(p_manager, EVT_ERROR, "The given tile index does not match.");
+		GROK_ERROR( "The given tile index does not match.");
 		return false;
 	}
-	//event_msg(p_manager, EVT_INFO, "tile number %d / %d\n", p_j2k->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.th);
+	//event_msg( EVT_INFO, "tile number %d / %d\n", p_j2k->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.th);
 	p_j2k->m_specific_param.m_encoder.m_current_tile_part_number = 0;
 	p_j2k->m_tcd->cur_totnum_tp =
 			p_j2k->m_cp.tcps[p_tile_index].m_nb_tile_parts;
 	p_j2k->m_specific_param.m_encoder.m_current_poc_tile_part_number = 0;
 
 	/* initialisation before tile encoding  */
-	if (!tcd_init_encode_tile(p_j2k->m_tcd, p_j2k->m_current_tile_number,
-			p_manager)) {
+	if (!tcd_init_encode_tile(p_j2k->m_tcd, p_j2k->m_current_tile_number)) {
 		return false;
 	}
 
@@ -9997,8 +9868,7 @@ static void j2k_get_tile_data(tcd_t *p_tcd, uint8_t *p_data) {
 	}
 }
 
-static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint64_t l_nb_bytes_written;
 	uint64_t l_tile_size = 0;
 	uint64_t l_available_data;
@@ -10028,128 +9898,127 @@ static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream,
 	l_available_data = l_tile_size;
 	l_nb_bytes_written = 0;
 	if (!j2k_write_first_tile_part(p_j2k, &l_nb_bytes_written, l_available_data,
-			p_stream, p_manager)) {
+			p_stream)) {
 		return false;
 	}
 	l_available_data -= l_nb_bytes_written;
 	l_nb_bytes_written = 0;
 	if (!j2k_write_all_tile_parts(p_j2k, &l_nb_bytes_written, l_available_data,
-			p_stream, p_manager)) {
+			p_stream)) {
 		return false;
 	}
 	++p_j2k->m_current_tile_number;
 	return true;
 }
 
-static bool j2k_setup_end_compress(j2k_t *p_j2k, event_mgr_t *p_manager) {
+static bool j2k_setup_end_compress(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	/* DEVELOPER CORNER, insert your custom procedures */
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_eoc, p_manager)) {
+			(procedure) j2k_write_eoc)) {
 		return false;
 	}
 
 	if (OPJ_IS_CINEMA(p_j2k->m_cp.rsiz)) {
 		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_updated_tlm, p_manager)) {
+				(procedure) j2k_write_updated_tlm)) {
 			return false;
 		}
 	}
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_epc, p_manager)) {
+			(procedure) j2k_write_epc)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_end_encoding, p_manager)) {
+			(procedure) j2k_end_encoding)) {
 		return false;
 	}
 	return true;
 }
 
-static bool j2k_setup_encoding_validation(j2k_t *p_j2k,
-		event_mgr_t *p_manager) {
+static bool j2k_setup_encoding_validation(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_build_encoder, p_manager)) {
+			(procedure) j2k_build_encoder)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_encoding_validation, p_manager)) {
+			(procedure) j2k_encoding_validation)) {
 		return false;
 	}
 
 	/* DEVELOPER CORNER, add your custom validation procedure */
 	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_mct_validation, p_manager)) {
+			(procedure) j2k_mct_validation)) {
 		return false;
 	}
 
 	return true;
 }
 
-static bool j2k_setup_header_writing(j2k_t *p_j2k, event_mgr_t *p_manager) {
+static bool j2k_setup_header_writing(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_init_info, p_manager)) {
+			(procedure) j2k_init_info)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_soc, p_manager)) {
+			(procedure) j2k_write_soc)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_siz, p_manager)) {
+			(procedure) j2k_write_siz)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_cod, p_manager)) {
+			(procedure) j2k_write_cod)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_qcd, p_manager)) {
+			(procedure) j2k_write_qcd)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_all_coc, p_manager)) {
+			(procedure) j2k_write_all_coc)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_all_qcc, p_manager)) {
+			(procedure) j2k_write_all_qcc)) {
 		return false;
 	}
 
 	if (OPJ_IS_CINEMA(p_j2k->m_cp.rsiz)) {
 		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_tlm, p_manager)) {
+				(procedure) j2k_write_tlm)) {
 			return false;
 		}
 
 		if (p_j2k->m_cp.rsiz == OPJ_PROFILE_CINEMA_4K) {
 			if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-					(procedure) j2k_write_poc, p_manager)) {
+					(procedure) j2k_write_poc)) {
 				return false;
 			}
 		}
 	}
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_regions, p_manager)) {
+			(procedure) j2k_write_regions)) {
 		return false;
 	}
 
 	if (p_j2k->m_cp.num_comments) {
 		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_com, p_manager)) {
+				(procedure) j2k_write_com)) {
 			return false;
 		}
 	}
@@ -10158,7 +10027,7 @@ static bool j2k_setup_header_writing(j2k_t *p_j2k, event_mgr_t *p_manager) {
 	if (OPJ_IS_PART2(p_j2k->m_cp.rsiz)
 			&& (p_j2k->m_cp.rsiz & OPJ_EXTENSION_MCT)) {
 		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_mct_data_group, p_manager)) {
+				(procedure) j2k_write_mct_data_group)) {
 			return false;
 		}
 	}
@@ -10166,17 +10035,17 @@ static bool j2k_setup_header_writing(j2k_t *p_j2k, event_mgr_t *p_manager) {
 
 	if (p_j2k->cstr_index) {
 		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_get_end_header, p_manager)) {
+				(procedure) j2k_get_end_header)) {
 			return false;
 		}
 	}
 
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_create_tcd, p_manager)) {
+			(procedure) j2k_create_tcd)) {
 		return false;
 	}
 	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_update_rates, p_manager)) {
+			(procedure) j2k_update_rates)) {
 		return false;
 	}
 
@@ -10184,8 +10053,7 @@ static bool j2k_setup_header_writing(j2k_t *p_j2k, event_mgr_t *p_manager) {
 }
 
 static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
-		uint64_t p_total_data_size, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+		uint64_t p_total_data_size, GrokStream *p_stream) {
 	uint64_t l_nb_bytes_written = 0;
 	uint64_t l_current_nb_bytes_written;
 
@@ -10206,7 +10074,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 	l_current_nb_bytes_written = 0;
 	uint64_t psot_location = 0;
 	if (!j2k_write_sot(p_j2k, p_stream, &psot_location,
-			&l_current_nb_bytes_written, p_manager)) {
+			&l_current_nb_bytes_written)) {
 		return false;
 	}
 	l_nb_bytes_written += l_current_nb_bytes_written;
@@ -10216,7 +10084,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 		if (l_cp->tcps[p_j2k->m_current_tile_number].numpocs) {
 			l_current_nb_bytes_written = 0;
 			if (!j2k_write_poc_in_memory(p_j2k, p_stream,
-					&l_current_nb_bytes_written, p_manager))
+					&l_current_nb_bytes_written))
 				return false;
 			l_nb_bytes_written += l_current_nb_bytes_written;
 			p_total_data_size -= l_current_nb_bytes_written;
@@ -10225,7 +10093,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 
 	l_current_nb_bytes_written = 0;
 	if (!j2k_write_sod(p_j2k, l_tcd, &l_current_nb_bytes_written,
-			p_total_data_size, p_stream, p_manager)) {
+			p_total_data_size, p_stream)) {
 		return false;
 	}
 	l_nb_bytes_written += l_current_nb_bytes_written;
@@ -10235,11 +10103,11 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 	/* Writing Psot in SOT marker */
 	/* PSOT */
 	auto currentLocation = p_stream->tell();
-	p_stream->seek(psot_location, p_manager);
-	if (!p_stream->write_int((uint32_t) l_nb_bytes_written, p_manager)) {
+	p_stream->seek(psot_location);
+	if (!p_stream->write_int((uint32_t) l_nb_bytes_written)) {
 		return false;
 	}
-	p_stream->seek(currentLocation, p_manager);
+	p_stream->seek(currentLocation);
 	if (OPJ_IS_CINEMA(l_cp->rsiz)) {
 		j2k_update_tlm(p_j2k, (uint32_t) l_nb_bytes_written);
 	}
@@ -10247,8 +10115,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 }
 
 static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
-		uint64_t p_total_data_size, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+		uint64_t p_total_data_size, GrokStream *p_stream) {
 	uint32_t tilepartno = 0;
 	uint64_t l_nb_bytes_written = 0;
 	uint64_t l_current_nb_bytes_written;
@@ -10277,7 +10144,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 
 		uint64_t psot_location = 0;
 		if (!j2k_write_sot(p_j2k, p_stream, &psot_location,
-				&l_current_nb_bytes_written, p_manager)) {
+				&l_current_nb_bytes_written)) {
 			return false;
 		}
 		l_nb_bytes_written += l_current_nb_bytes_written;
@@ -10286,7 +10153,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 
 		l_current_nb_bytes_written = 0;
 		if (!j2k_write_sod(p_j2k, l_tcd, &l_current_nb_bytes_written,
-				p_total_data_size, p_stream, p_manager)) {
+				p_total_data_size, p_stream)) {
 			return false;
 		}
 		l_nb_bytes_written += l_current_nb_bytes_written;
@@ -10296,11 +10163,11 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 		/* Writing Psot in SOT marker */
 		/* PSOT */
 		auto currentLocation = p_stream->tell();
-		p_stream->seek(psot_location, p_manager);
-		if (!p_stream->write_int(l_part_tile_size, p_manager)) {
+		p_stream->seek(psot_location);
+		if (!p_stream->write_int(l_part_tile_size)) {
 			return false;
 		}
-		p_stream->seek(currentLocation, p_manager);
+		p_stream->seek(currentLocation);
 		if (OPJ_IS_CINEMA(l_cp->rsiz)) {
 			j2k_update_tlm(p_j2k, l_part_tile_size);
 		}
@@ -10320,7 +10187,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 			l_part_tile_size = 0;
 			uint64_t psot_location = 0;
 			if (!j2k_write_sot(p_j2k, p_stream, &psot_location,
-					&l_current_nb_bytes_written, p_manager)) {
+					&l_current_nb_bytes_written)) {
 				return false;
 			}
 
@@ -10330,7 +10197,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 
 			l_current_nb_bytes_written = 0;
 			if (!j2k_write_sod(p_j2k, l_tcd, &l_current_nb_bytes_written,
-					p_total_data_size, p_stream, p_manager)) {
+					p_total_data_size, p_stream)) {
 				return false;
 			}
 
@@ -10341,11 +10208,11 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 			/* Writing Psot in SOT marker */
 			/* PSOT */
 			auto currentLocation = p_stream->tell();
-			p_stream->seek(psot_location, p_manager);
-			if (!p_stream->write_int(l_part_tile_size, p_manager)) {
+			p_stream->seek(psot_location);
+			if (!p_stream->write_int(l_part_tile_size)) {
 				return false;
 			}
-			p_stream->seek(currentLocation, p_manager);
+			p_stream->seek(currentLocation);
 
 			if (OPJ_IS_CINEMA(l_cp->rsiz)) {
 				j2k_update_tlm(p_j2k, l_part_tile_size);
@@ -10357,40 +10224,38 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 	return true;
 }
 
-static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_tlm_size;
 	int64_t l_tlm_position, l_current_position;
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	l_tlm_size = 5 * p_j2k->m_specific_param.m_encoder.m_total_tile_parts;
 	l_tlm_position = 6 + p_j2k->m_specific_param.m_encoder.m_tlm_start;
 	l_current_position = p_stream->tell();
 
-	if (!p_stream->seek(l_tlm_position, p_manager)) {
+	if (!p_stream->seek(l_tlm_position)) {
 		return false;
 	}
 	if (p_stream->write_bytes(
 			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer,
-			l_tlm_size, p_manager) != l_tlm_size) {
+			l_tlm_size) != l_tlm_size) {
 		return false;
 	}
-	if (!p_stream->seek(l_current_position, p_manager)) {
+	if (!p_stream->seek(l_current_position)) {
 		return false;
 	}
 	return true;
 }
 
-static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
-	(void) p_manager;
+	
 
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	tcd_destroy(p_j2k->m_tcd);
@@ -10404,15 +10269,14 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 	return j2k_calculate_tp(&p_j2k->m_cp,
 			&p_j2k->m_specific_param.m_encoder.m_total_tile_parts,
-			p_j2k->m_private_image, p_manager);
+			p_j2k->m_private_image);
 }
 
 /**
@@ -10422,18 +10286,17 @@ static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_j2k                   J2K codec.
  * @param       p_manager               the user event manager.
  */
-static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream,
-		event_mgr_t *p_manager) {
+static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	(void) p_stream;
 	assert(p_j2k != nullptr);
-	assert(p_manager != nullptr);
+	
 	assert(p_stream != nullptr);
 
 	p_j2k->m_tcd = tcd_create(false);
 
 	if (!p_j2k->m_tcd) {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Not enough memory to create Tile Coder\n");
 		return false;
 	}
@@ -10449,9 +10312,9 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream,
 }
 
 bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream, event_mgr_t *p_manager) {
-	if (!j2k_pre_write_tile(p_j2k, p_tile_index, p_manager)) {
-		event_msg(p_manager, EVT_ERROR,
+		uint64_t p_data_size, GrokStream *p_stream) {
+	if (!j2k_pre_write_tile(p_j2k, p_tile_index)) {
+		GROK_ERROR(
 				"Error while j2k_pre_write_tile with tile index = %d\n",
 				p_tile_index);
 		return false;
@@ -10462,7 +10325,7 @@ bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 			tcd_tilecomp_t *l_tilec = p_j2k->m_tcd->tile->comps + j;
 
 			if (!tile_buf_alloc_component_data_encode(l_tilec->buf)) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"Error allocating tile component data.");
 				return false;
 			}
@@ -10470,12 +10333,12 @@ bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 
 		/* now copy data into the tile component */
 		if (!tcd_copy_tile_data(p_j2k->m_tcd, p_data, p_data_size)) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Size mismatch between tile data and sent data.");
 			return false;
 		}
-		if (!j2k_post_write_tile(p_j2k, p_stream, p_manager)) {
-			event_msg(p_manager, EVT_ERROR,
+		if (!j2k_post_write_tile(p_j2k, p_stream)) {
+			GROK_ERROR(
 					"Error while j2k_post_write_tile with tile index = %d\n",
 					p_tile_index);
 			return false;

@@ -86,9 +86,9 @@ void procedure_list_destroy(procedure_list_t *p_list) {
 }
 
 bool procedure_list_add_procedure(procedure_list_t *p_validation_list,
-		procedure p_procedure, event_mgr_t *p_manager) {
+		procedure p_procedure) {
 
-	assert(p_manager != nullptr);
+	
 
 	if (p_validation_list->m_nb_max_procedures
 			== p_validation_list->m_nb_procedures) {
@@ -102,7 +102,7 @@ bool procedure_list_add_procedure(procedure_list_t *p_validation_list,
 			grok_free(p_validation_list->m_procedures);
 			p_validation_list->m_nb_max_procedures = 0;
 			p_validation_list->m_nb_procedures = 0;
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Not enough memory to add a new validation procedure\n");
 			return false;
 		} else {

@@ -90,7 +90,7 @@ public:
 	 @param numleafsv Height of the array of leafs of the tree
 	 @return a new tag tree if successful, returns nullptr otherwise
 	 */
-	TagTree(uint64_t numleafsh, uint64_t numleafsv, event_mgr_t *manager);
+	TagTree(uint64_t numleafsh, uint64_t numleafsv);
 	~TagTree();
 
 	/**
@@ -101,8 +101,7 @@ public:
 	 * @param p_manager       the event manager
 	 * @return	true if successful, false otherwise
 	 */
-	bool init(uint64_t p_num_leafs_h, uint64_t p_num_leafs_v,
-			event_mgr_t *p_manager);
+	bool init(uint64_t p_num_leafs_h, uint64_t p_num_leafs_v);
 
 	/**
 	 Reset a tag tree (set all leaves to 0)

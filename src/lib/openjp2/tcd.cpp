@@ -68,7 +68,7 @@ namespace grk {
  */
 static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 		opj_image_t *output_image, bool isEncoder, float fraction,
-		size_t sizeof_block, event_mgr_t *manager);
+		size_t sizeof_block);
 
 /**
  * Deallocates the decoding data of the given precinct.
@@ -87,13 +87,13 @@ static void tcd_code_block_enc_deallocate(tcd_precinct_t *p_precinct);
 static void tcd_free_tile(tcd_t *tcd);
 
 static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
-		uint64_t *p_data_read, event_mgr_t *p_manager);
+		uint64_t *p_data_read);
 
-static bool tcd_t1_decode(tcd_t *p_tcd, event_mgr_t *p_manager);
+static bool tcd_t1_decode(tcd_t *p_tcd);
 
 static bool tcd_dwt_decode(tcd_t *p_tcd);
 
-static bool tcd_mct_decode(tcd_t *p_tcd, event_mgr_t *p_manager);
+static bool tcd_mct_decode(tcd_t *p_tcd);
 
 static bool tcd_dc_level_shift_decode(tcd_t *p_tcd);
 
@@ -107,10 +107,10 @@ static bool tcd_t1_encode(tcd_t *p_tcd);
 
 static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t p_max_dest_size,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager);
+		opj_codestream_info_t *p_cstr_info);
 
 static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager);
+		opj_codestream_info_t *p_cstr_info);
 
 static bool tcd_layer_needs_rate_control(uint32_t layno, tcp_t *tcd_tcp,
 		encoding_param_t *enc_params);
@@ -120,13 +120,13 @@ static bool tcd_make_single_lossless_layer(tcd_t *tcd);
 static void tcd_makelayer_final(tcd_t *tcd, uint32_t layno);
 
 static bool tcd_pcrd_bisect_simple(tcd_t *tcd, uint64_t *p_data_written,
-		uint64_t len, event_mgr_t *p_manager);
+		uint64_t len);
 
 static void tcd_make_layer_simple(tcd_t *tcd, uint32_t layno, double thresh,
 		bool final);
 
 static bool tcd_pcrd_bisect_feasible(tcd_t *tcd, uint64_t *p_data_written,
-		uint64_t len, event_mgr_t *p_manager);
+		uint64_t len);
 
 static void tcd_makelayer_feasible(tcd_t *tcd, uint32_t layno, uint16_t thresh,
 		bool final);
@@ -277,7 +277,7 @@ void tcd_makelayer_feasible(tcd_t *tcd, uint32_t layno, uint16_t thresh,
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
 bool tcd_pcrd_bisect_feasible(tcd_t *tcd, uint64_t *p_data_written,
-		uint64_t len, event_mgr_t *p_manager) {
+		uint64_t len) {
 
 	bool single_lossless = tcd_make_single_lossless_layer(tcd);
 	double cumdisto[100];
@@ -391,7 +391,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd, uint64_t *p_data_written,
 				} else {
 					if (!t2_encode_packets_simulate(t2, tcd->tcd_tileno,
 							tcd_tile, layno + 1, p_data_written, maxlen,
-							tcd->tp_pos, p_manager)) {
+							tcd->tp_pos)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -420,8 +420,7 @@ bool tcd_pcrd_bisect_feasible(tcd_t *tcd, uint64_t *p_data_written,
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-bool tcd_pcrd_bisect_simple(tcd_t *tcd, uint64_t *p_data_written, uint64_t len,
-		event_mgr_t *p_manager) {
+bool tcd_pcrd_bisect_simple(tcd_t *tcd, uint64_t *p_data_written, uint64_t len) {
 	uint32_t compno, resno, bandno, precno, cblkno, layno;
 	uint32_t passno;
 	double cumdisto[100];
@@ -561,7 +560,7 @@ bool tcd_pcrd_bisect_simple(tcd_t *tcd, uint64_t *p_data_written, uint64_t len,
 				} else {
 					if (!t2_encode_packets_simulate(t2, tcd->tcd_tileno,
 							tcd_tile, layno + 1, p_data_written, maxlen,
-							tcd->tp_pos, p_manager)) {
+							tcd->tp_pos)) {
 						lowerBound = thresh;
 						continue;
 					}
@@ -813,7 +812,7 @@ void tcd_destroy(tcd_t *tcd) {
 
 static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 		opj_image_t *output_image, bool isEncoder, float fraction,
-		size_t sizeof_block, event_mgr_t *manager) {
+		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
 	uint32_t compno, resno, bandno, precno;
 	tcp_t *l_tcp = nullptr;
@@ -864,20 +863,20 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	l_tile->x0 = std::max<uint32_t>(l_tx0, l_image->x0);
 	l_tile->x1 = std::min<uint32_t>(uint_adds(l_tx0, l_cp->tdx), l_image->x1);
 	if (l_tile->x1 <= l_tile->x0) {
-		event_msg(manager, EVT_ERROR, "Tile x coordinates are not valid\n");
+		GROK_ERROR( "Tile x coordinates are not valid\n");
 		return false;
 	}
 	l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
 	l_tile->y0 = std::max<uint32_t>(l_ty0, l_image->y0);
 	l_tile->y1 = std::min<uint32_t>(uint_adds(l_ty0, l_cp->tdy), l_image->y1);
 	if (l_tile->y1 <= l_tile->y0) {
-		event_msg(manager, EVT_ERROR, "Tile y coordinates are not valid\n");
+		GROK_ERROR( "Tile y coordinates are not valid\n");
 		return false;
 	}
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (l_tccp->numresolutions == 0) {
-		event_msg(manager, EVT_ERROR,
+		GROK_ERROR(
 				"tiles require at least one resolution\n");
 		return false;
 	}
@@ -965,7 +964,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 			/*fprintf(stderr, "\t\t\tres_pw=%d, res_ph=%d\n", l_res->pw, l_res->ph );*/
 
 			if (mult_will_overflow(l_res->pw, l_res->ph)) {
-				event_msg(manager, EVT_ERROR,
+				GROK_ERROR(
 						"l_nb_precincts calculation would overflow \n");
 				return false;
 			}
@@ -973,7 +972,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 
 			if (mult_will_overflow(l_nb_precincts,
 					(uint32_t) sizeof(tcd_precinct_t))) {
-				event_msg(manager, EVT_ERROR,
+				GROK_ERROR(
 						"l_nb_precinct_size calculation would overflow \n");
 				return false;
 			}
@@ -1126,7 +1125,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 							grok_free(l_current_precinct->cblks.blocks);
 							l_current_precinct->cblks.blocks = nullptr;
 							l_current_precinct->block_size = 0;
-							event_msg(manager, EVT_ERROR,
+							GROK_ERROR(
 									"Not enough memory for current precinct codeblock element\n");
 							return false;
 						}
@@ -1141,7 +1140,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 						l_current_precinct->block_size = l_nb_code_blocks_size;
 					}
 
-					l_current_precinct->initTagTrees(manager);
+					l_current_precinct->initTagTrees();
 
 					for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
 						uint32_t cblkxstart = tlcblkxstart
@@ -1222,7 +1221,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	if (!isEncoder) {
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(p_tcd->current_plugin_tile, l_tile)) {
-				manager->warning_handler("plugin tile differs from opj tile",
+				GROK_WARN("plugin tile differs from opj tile",
 						nullptr);
 			}
 		}
@@ -1230,16 +1229,15 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	return true;
 }
 
-bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no,
-		event_mgr_t *p_manager) {
+bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no) {
 	return tcd_init_tile(p_tcd, p_tile_no, nullptr, true, 1.0F,
-			sizeof(tcd_cblk_enc_t), p_manager);
+			sizeof(tcd_cblk_enc_t));
 }
 
 bool tcd_init_decode_tile(tcd_t *p_tcd, opj_image_t *output_image,
-		uint32_t p_tile_no, event_mgr_t *p_manager) {
+		uint32_t p_tile_no) {
 	return tcd_init_tile(p_tcd, p_tile_no, output_image, false, 0.5F,
-			sizeof(tcd_cblk_dec_t), p_manager);
+			sizeof(tcd_cblk_dec_t));
 
 }
 
@@ -1278,7 +1276,7 @@ uint64_t tcd_get_decoded_tile_size(tcd_t *p_tcd) {
 
 bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t p_max_length,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager) {
+		opj_codestream_info_t *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
 	if (p_tcd->cur_tp_num == 0) {
 
@@ -1307,7 +1305,7 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 									* (size_t) p_cstr_info->numlayers
 									* l_num_packs, sizeof(opj_packet_info_t));
 			if (!p_cstr_info->tile[p_tile_no].packet) {
-				event_msg(p_manager, EVT_ERROR,
+				GROK_ERROR(
 						"tcd_encode_tile: Out of memory error when allocating packet memory\n");
 				return false;
 			}
@@ -1340,8 +1338,7 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 				return false;
 			}
 		}
-		if (!tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info,
-				p_manager)) {
+		if (!tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info)) {
 			return false;
 		}
 	}
@@ -1349,14 +1346,13 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 		p_cstr_info->index_write = 1;
 	}
 	if (!tcd_t2_encode(p_tcd, p_stream, p_data_written, p_max_length,
-			p_cstr_info, p_manager)) {
+			p_cstr_info)) {
 		return false;
 	}
 	return true;
 }
 
-bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no,
-		event_mgr_t *p_manager) {
+bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no) {
 	p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
 
 	bool doT2 = !p_tcd->current_plugin_tile
@@ -1370,16 +1366,15 @@ bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no,
 
 	if (doT2) {
 		uint64_t l_data_read = 0;
-		if (!tcd_t2_decode(p_tcd, p_tile_no, src_buf, &l_data_read,
-				p_manager)) {
+		if (!tcd_t2_decode(p_tcd, p_tile_no, src_buf, &l_data_read)) {
 			return false;
 		}
 		// synch plugin with T2 data
-		decode_synch_plugin_with_host(p_tcd, p_manager);
+		decode_synch_plugin_with_host(p_tcd);
 	}
 
 	if (doT1) {
-		if (!tcd_t1_decode(p_tcd, p_manager)) {
+		if (!tcd_t1_decode(p_tcd)) {
 			return false;
 		}
 	}
@@ -1389,7 +1384,7 @@ bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no,
 		if (!tcd_dwt_decode(p_tcd)) {
 			return false;
 		}
-		if (!tcd_mct_decode(p_tcd, p_manager)) {
+		if (!tcd_mct_decode(p_tcd)) {
 			return false;
 		}
 		if (!tcd_dc_level_shift_decode(p_tcd)) {
@@ -1586,7 +1581,7 @@ static void tcd_free_tile(tcd_t *p_tcd) {
 }
 
 static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
-		uint64_t *p_data_read, event_mgr_t *p_manager) {
+		uint64_t *p_data_read) {
 	t2_t *l_t2;
 
 	l_t2 = t2_create(p_tcd->image, p_tcd->cp);
@@ -1594,8 +1589,7 @@ static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
 		return false;
 	}
 
-	if (!t2_decode_packets(l_t2, p_tile_no, p_tcd->tile, src_buf, p_data_read,
-			p_manager)) {
+	if (!t2_decode_packets(l_t2, p_tile_no, p_tcd->tile, src_buf, p_data_read)) {
 		t2_destroy(l_t2);
 		return false;
 	}
@@ -1605,7 +1599,7 @@ static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
 	return true;
 }
 
-static bool tcd_t1_decode(tcd_t *p_tcd, event_mgr_t *p_manager) {
+static bool tcd_t1_decode(tcd_t *p_tcd) {
 	uint32_t compno;
 	tcd_tile_t *l_tile = p_tcd->tile;
 	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
@@ -1613,8 +1607,7 @@ static bool tcd_t1_decode(tcd_t *p_tcd, event_mgr_t *p_manager) {
 	std::vector<decodeBlockInfo*> blocks;
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 	for (compno = 0; compno < l_tile->numcomps; ++compno) {
-		if (!t1_wrap->prepareDecodeCodeblocks(l_tile_comp, l_tccp, &blocks,
-				p_manager)) {
+		if (!t1_wrap->prepareDecodeCodeblocks(l_tile_comp, l_tccp, &blocks)) {
 			return false;
 		}
 		++l_tile_comp;
@@ -1662,7 +1655,7 @@ static bool tcd_dwt_decode(tcd_t *p_tcd) {
 
 	return rc;
 }
-static bool tcd_mct_decode(tcd_t *p_tcd, event_mgr_t *p_manager) {
+static bool tcd_mct_decode(tcd_t *p_tcd) {
 	tcd_tile_t *l_tile = p_tcd->tile;
 	tcp_t *l_tcp = p_tcd->tcp;
 	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
@@ -1685,7 +1678,7 @@ static bool tcd_mct_decode(tcd_t *p_tcd, event_mgr_t *p_manager) {
 				|| (l_tile->comps[2].x1 - l_tile->comps[2].x0)
 						* (l_tile->comps[2].y1 - l_tile->comps[2].y0)
 						< l_samples) {
-			event_msg(p_manager, EVT_ERROR,
+			GROK_ERROR(
 					"Tiles don't all have the same dimension. Skip the MCT step.\n");
 			return false;
 		} else if (l_tcp->mct == 2) {
@@ -1739,7 +1732,7 @@ static bool tcd_mct_decode(tcd_t *p_tcd, event_mgr_t *p_manager) {
 			}
 		}
 	} else {
-		event_msg(p_manager, EVT_ERROR,
+		GROK_ERROR(
 				"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",
 				l_tile->numcomps);
 	}
@@ -2052,7 +2045,7 @@ static bool tcd_t1_encode(tcd_t *p_tcd) {
 
 static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t p_max_dest_size,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager) {
+		opj_codestream_info_t *p_cstr_info) {
 	t2_t *l_t2;
 
 	l_t2 = t2_create(p_tcd->image, p_tcd->cp);
@@ -2093,7 +2086,7 @@ static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 					decodePrec->cw = prec->cw;
 					decodePrec->ch = prec->ch;
 					if (prec->cblks.enc && prec->cw && prec->ch) {
-						decodePrec->initTagTrees(p_manager);
+						decodePrec->initTagTrees();
 						decodePrec->cblks.dec = new tcd_cblk_dec_t[decodePrec->cw * decodePrec->ch];
 						for (uint32_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
 							auto cblk = prec->cblks.enc + cblkno;
@@ -2113,8 +2106,7 @@ static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 
 	if (!t2_encode_packets(l_t2, p_tcd->tcd_tileno, p_tcd->tile,
 			p_tcd->tcp->numlayers, p_stream, p_data_written, p_max_dest_size,
-			p_cstr_info, p_tcd->tp_num, p_tcd->tp_pos, p_tcd->cur_pino,
-			p_manager)) {
+			p_cstr_info, p_tcd->tp_num, p_tcd->tp_pos, p_tcd->cur_pino)) {
 		t2_destroy(l_t2);
 		return false;
 	}
@@ -2146,7 +2138,7 @@ static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 }
 
 static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
-		opj_codestream_info_t *p_cstr_info, event_mgr_t *p_manager) {
+		opj_codestream_info_t *p_cstr_info) {
 	cp_t *l_cp = p_tcd->cp;
 	uint64_t l_nb_written = 0;
 
@@ -2159,20 +2151,17 @@ static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
 		// rate control by rate/distortion or fixed quality
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size,
-					p_manager)) {
+			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
 		case 1:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size,
-					p_manager)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
 		default:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size,
-					p_manager)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
 				return false;
 			}
 			break;
@@ -2400,20 +2389,20 @@ void tcd_precinct_t::deleteTagTrees() {
 	imsbtree = nullptr;
 }
 
-void tcd_precinct_t::initTagTrees(event_mgr_t *manager) {
+void tcd_precinct_t::initTagTrees() {
 
 	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
 	// no need for inclusion and msb tag trees
 	if (cw > 0 && ch > 0) {
 		if (!incltree) {
 			try {
-				incltree = new TagTree(cw, ch, manager);
+				incltree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				event_msg(manager, EVT_WARNING, "No incltree created.\n");
+				GROK_WARN( "No incltree created.\n");
 			}
 		} else {
-			if (!incltree->init(cw, ch, manager)) {
-				event_msg(manager, EVT_WARNING,
+			if (!incltree->init(cw, ch)) {
+				GROK_WARN(
 						"Failed to re-initialize incltree.\n");
 				delete incltree;
 				incltree = nullptr;
@@ -2422,13 +2411,13 @@ void tcd_precinct_t::initTagTrees(event_mgr_t *manager) {
 
 		if (!imsbtree) {
 			try {
-				imsbtree = new TagTree(cw, ch, manager);
+				imsbtree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				event_msg(manager, EVT_WARNING, "No imsbtree created.\n");
+				GROK_WARN( "No imsbtree created.\n");
 			}
 		} else {
-			if (!imsbtree->init(cw, ch, manager)) {
-				event_msg(manager, EVT_WARNING,
+			if (!imsbtree->init(cw, ch)) {
+				GROK_WARN(
 						"Failed to re-initialize imsbtree.\n");
 				delete imsbtree;
 				imsbtree = nullptr;

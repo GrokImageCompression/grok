@@ -96,10 +96,10 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp, tcd_tile_t *tile,
 }
 
 bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
-		std::vector<decodeBlockInfo*> *blocks, event_mgr_t *p_manager) {
+		std::vector<decodeBlockInfo*> *blocks) {
 	uint32_t resno, bandno, precno;
 	if (!tile_buf_alloc_component_data_decode(tilec->buf)) {
-		event_msg(p_manager, EVT_ERROR, "Not enough memory for tile data\n");
+		GROK_ERROR( "Not enough memory for tile data\n");
 		return false;
 	}
 
