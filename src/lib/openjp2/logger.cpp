@@ -53,27 +53,15 @@
 
 namespace grk {
 
-const uint32_t EVT_ERROR = 1;	/**< Error event type */
-const uint32_t EVT_WARNING= 2;	/**< Warning event type */
-const uint32_t EVT_INFO	= 4;	/**< Debug event type */
+logger logger::m_logger;
 
-
-/**
- * Default callback function.
- * Do nothing.
- */
-static void default_callback(const char *msg, void *client_data) {
-	ARG_NOT_USED(msg);
-	ARG_NOT_USED(client_data);
-}
-
-event_mgr_t::event_mgr_t() : m_error_data(nullptr), m_warning_data(nullptr), m_info_data(nullptr),
-		        error_handler(default_callback), warning_handler(default_callback), info_handler(default_callback)
+logger::logger() : m_error_data(nullptr), m_warning_data(nullptr), m_info_data(nullptr),
+		        error_handler(nullptr), warning_handler(nullptr), info_handler(nullptr)
 {}
 
 
 template <typename ... Args>
-bool log(opj_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+void log(opj_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
 {
     const int message_size = 512;
 	if ((format != nullptr)) {
@@ -84,31 +72,30 @@ bool log(opj_msg_callback msg_handler, void *l_data, char const * const format, 
 		/* output the message to the user program */
 		msg_handler(message, l_data);
 	}
-	return true;
 }
 
-bool GROK_INFO(const char *fmt,	...){
+void GROK_INFO(const char *fmt,	...){
+	if (!logger::m_logger.info_handler)
+		return;
 	va_list arg;
 	va_start(arg, fmt);
-	bool rc =
-			log(codec_private_t::m_event_mgr.info_handler, codec_private_t::m_event_mgr.m_info_data, fmt, arg);
+	log(logger::m_logger.info_handler, logger::m_logger.m_info_data, fmt, arg);
 	va_end(arg);
-	return rc;
 }
-bool GROK_WARN(const char *fmt,	...){
+void GROK_WARN(const char *fmt,	...){
+	if (!logger::m_logger.warning_handler)
+		return;
 	va_list arg;
 	va_start(arg, fmt);
-	bool rc =
-			log(codec_private_t::m_event_mgr.warning_handler, codec_private_t::m_event_mgr.m_warning_data, fmt, arg);
+	log(logger::m_logger.warning_handler, logger::m_logger.m_warning_data, fmt, arg);
 	va_end(arg);
-	return rc;
 }
-bool GROK_ERROR(const char *fmt,...){
+void GROK_ERROR(const char *fmt,...){
+	if (!logger::m_logger.error_handler)
+		return;
 	va_list arg;
 	va_start(arg, fmt);
-	bool rc =
-			log(codec_private_t::m_event_mgr.error_handler, codec_private_t::m_event_mgr.m_error_data, fmt, arg);
+	log(logger::m_logger.error_handler, logger::m_logger.m_error_data, fmt, arg);
 	va_end(arg);
-	return rc;
 }
 }

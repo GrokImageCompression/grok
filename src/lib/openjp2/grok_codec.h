@@ -127,8 +127,6 @@ struct codec_private_t {
 	} m_codec_data;
 	/** FIXME DOC*/
 	void *m_codec;
-	/** Event handler */
-	static event_mgr_t m_event_mgr;
 	/** Flag to indicate if the codec is used to decode or encode*/
 	bool is_decompressor;
 	void (*opj_dump_codec)(void *p_codec, int32_t info_flag,
