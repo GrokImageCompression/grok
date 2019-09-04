@@ -325,11 +325,8 @@ bool OPJ_CALLCONV opj_read_header_ex(opj_stream_t *p_stream,
 	}
 	return false;
 }
-bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec, opj_stream_t *p_stream,
-		opj_image_t *p_image) {
-	return opj_decode_ex(p_codec, nullptr, p_stream, p_image);
-}
-bool OPJ_CALLCONV opj_decode_ex(opj_codec_t *p_codec, grok_plugin_tile_t *tile,
+
+bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec, grok_plugin_tile_t *tile,
 		opj_stream_t *p_stream, opj_image_t *p_image) {
 	if (p_codec && p_stream) {
 		codec_private_t *l_codec = (codec_private_t*) p_codec;

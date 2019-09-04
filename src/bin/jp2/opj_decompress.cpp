@@ -1540,7 +1540,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
-		if (!(opj_decode_ex(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
+		if (!(opj_decode(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
 			spdlog::error( "opj_decompress: failed to decode image!\n");
 			failed = 1;
 			goto cleanup;
