@@ -81,7 +81,6 @@ bool OPJ_CALLCONV opj_initialize(const char *plugin_path, uint32_t numthreads) {
 		info.plugin_path = plugin_path;
 		is_plugin_initialized = grok_plugin_load(info);
 	}
-	set_default_event_handler();
 	return is_plugin_initialized;
 }
 

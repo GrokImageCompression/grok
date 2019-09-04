@@ -62,8 +62,7 @@ opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts,
 		image->comps = (opj_image_comp_t*) grk::grok_calloc(1,
 				image->numcomps * sizeof(opj_image_comp_t));
 		if (!image->comps) {
-			/* TODO replace with event manager, breaks API */
-			/* fprintf(stderr,"Unable to allocate memory for image.\n"); */
+			grk::GROK_ERROR("Unable to allocate memory for image.\n");
 			opj_image_destroy(image);
 			return nullptr;
 		}
@@ -79,8 +78,7 @@ opj_image_t* OPJ_CALLCONV opj_image_create(uint32_t numcmpts,
 			comp->prec = cmptparms[compno].prec;
 			comp->sgnd = cmptparms[compno].sgnd;
 			if (!opj_image_single_component_data_alloc(comp)) {
-				/* TODO replace with event manager, breaks API */
-				/* fprintf(stderr,"Unable to allocate memory for image.\n"); */
+				grk::GROK_ERROR("Unable to allocate memory for image.\n");
 				opj_image_destroy(image);
 				return nullptr;
 			}

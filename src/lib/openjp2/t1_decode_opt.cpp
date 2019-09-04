@@ -85,7 +85,7 @@ bool t1_decode_opt::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 		dataPtr = (int32_t*) grok_aligned_malloc(
 				cblkw * cblkh * sizeof(int32_t));
 		if (!dataPtr) {
-			/* FIXME event manager error callback */
+			GROK_ERROR("Out of memory");
 			return false;
 		}
 	}

@@ -88,7 +88,7 @@ bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 	if (!data) {
 		data = (uint32_t*) grok_aligned_malloc(cblkw * cblkh * sizeof(int32_t));
 		if (!data) {
-			/* FIXME event manager error callback */
+			GROK_ERROR("Out of memory");
 			return false;
 		}
 	}

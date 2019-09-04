@@ -139,7 +139,7 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 									(max_resolution(res, numResolutions))
 											* sizeof(dwt_v4_t));
 							if (!h.wavelet) {
-								/* FIXME event manager error callback */
+								GROK_ERROR("out of memory");
 								rc++;
 								goto cleanup;
 							}
@@ -502,7 +502,7 @@ bool dwt97::encode(tcd_tilecomp_t *tilec) {
 			* sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
-		/* FIXME event manager error callback */
+		GROK_ERROR("dwt97 encode: overflow");
 		return false;
 	}
 	bj = (int32_t*) grok_malloc(l_data_size);
@@ -637,7 +637,7 @@ bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 									buffer_h.dataSize * sizeof(float));
 
 							if (!buffer_h.data) {
-								/* FIXME event manager error callback */
+								GROK_ERROR("out of memory");
 								success = false;
 								return;
 

@@ -88,7 +88,7 @@ bool t1::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 		flags = (flag_opt_t*) grok_aligned_malloc(
 				flagssize * sizeof(flag_opt_t));
 		if (!flags) {
-			/* FIXME event manager error callback */
+			GROK_ERROR("Out of memory");
 			return false;
 		}
 	}

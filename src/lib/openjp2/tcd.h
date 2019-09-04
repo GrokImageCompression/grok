@@ -376,7 +376,6 @@ bool tcd_init(tcd_t *p_tcd, opj_image_t *p_image, cp_t *p_cp,
  * @param	output_image output image - stores the decode region of interest
  * @param	p_tile_no	the index of the tile received in sequence. This not necessarily lead to the
  * tile at index p_tile_no.
- * @param p_manager the event manager.
  *
  * @return	true if the remaining data is sufficient.
  */
@@ -409,7 +408,6 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
  @param len Length of source buffer
  @param tileno Number that identifies one of the tiles to be decoded
  @param cstr_info  FIXME DOC
- @param manager the event manager.
  */
 bool tcd_decode_tile(tcd_t *tcd, seg_buf_t *src_buf, uint32_t tileno);
 
@@ -429,7 +427,6 @@ uint64_t tcd_get_encoded_tile_size(tcd_t *p_tcd);
  *
  * @param	p_tcd		TCD handle.
  * @param	p_tile_no	current tile index to encode.
- * @param p_manager the event manager.
  *
  * @return true if the encoding values could be set (false otherwise).
  */
