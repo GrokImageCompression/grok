@@ -1495,23 +1495,12 @@ typedef struct grok_plugin_tile {
  * Decode an image from a JPEG-2000 codestream
  *
  * @param p_decompressor 	decompressor handle
- * @param p_stream			Input buffer stream
- * @param p_image 			the decoded image
- * @return 					true if success, otherwise false
- * */
-OPJ_API bool OPJ_CALLCONV opj_decode(opj_codec_t *p_decompressor,
-		opj_stream_t *p_stream, opj_image_t *p_image);
-
-/**
- * Decode an image from a JPEG-2000 codestream
- *
- * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
  * @param p_stream			Input buffer stream
  * @param p_image 			the decoded image
  * @return 					true if success, otherwise false
  * */
-OPJ_API bool OPJ_CALLCONV opj_decode_ex(opj_codec_t *p_decompressor,
+OPJ_API bool OPJ_CALLCONV opj_decode(opj_codec_t *p_decompressor,
 		grok_plugin_tile_t *tile, opj_stream_t *p_stream, opj_image_t *p_image);
 
 /**

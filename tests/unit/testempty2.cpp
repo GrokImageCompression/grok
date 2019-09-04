@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
         bSuccess = opj_read_header(l_stream, d_codec,&image);
         assert( bSuccess );
 
-        bSuccess = opj_decode(l_codec, l_stream, image);
+        bSuccess = opj_decode(l_codec, nullptr, l_stream, image);
         assert( bSuccess );
 
         bSuccess = opj_end_decompress(l_codec, l_stream);
