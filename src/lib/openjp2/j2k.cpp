@@ -135,7 +135,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   the jpeg2000 codec to validate.
  * @param       p_stream                the input stream to validate.
- * @param       p_manager               the user event manager.
+
  *
  * @return true if the parameters are correct.
  */
@@ -146,7 +146,7 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   the jpeg2000 codec to validate.
  * @param       p_stream                                the input stream to validate.
- * @param       p_manager               the user event manager.
+
  *
  * @return true if the parameters are correct.
  */
@@ -175,7 +175,7 @@ static bool j2k_setup_end_compress(j2k_t *p_j2k);
  *
  * @param       p_j2k                   the jpeg2000 codec to validate.
  * @param       p_stream                                the input stream to validate.
- * @param       p_manager               the user event manager.
+
  *
  * @return true if the parameters are correct.
  */
@@ -195,7 +195,7 @@ static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                           J2K codec.
  * @param       p_stream                        the stream to write data to.
- * @param       p_manager                   the user event manager.
+ 
  */
 static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -205,7 +205,6 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec to execute the procedures on.
  * @param       p_procedure_list        the list of procedures to execute
  * @param       p_stream                the stream to execute the procedures on.
- * @param       p_manager               the user manager.
  *
  * @return      true                            if all the procedures were successfully executed.
  */
@@ -217,7 +216,7 @@ static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -227,7 +226,7 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 		GrokStream *p_stream);
@@ -283,7 +282,7 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t p_tile_no,
  * @param       p_tile_no       tile index
  * @param       p_comp_no       the component number to output.
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  *
  * @return FIXME DOC
  */
@@ -308,7 +307,7 @@ static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t p_tile_no,
  * @param       compno          FIXME DOC
  * @param       p_header_data   the data contained in the COM box.
  * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 		uint8_t *p_header_data, uint16_t *p_header_size);
@@ -345,7 +344,7 @@ static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
  * @param       p_tile_no               the tile to output.
  * @param       p_comp_no               the component number to output.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  *
  */
 static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t p_tile_no,
@@ -364,7 +363,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t p_tile_part_size);
  * @param       compno          the component number to output.
  * @param       p_header_data   the data buffer.
  * @param       p_header_size   pointer to the size of the data buffer, it is changed by the function.
- * @param       p_manager       the user event manager.
+
  *
  */
 static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t compno,
@@ -413,7 +412,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -430,7 +429,7 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -438,7 +437,7 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream);
  * Reads a SOC marker (Start of Codestream)
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_stream        XXX needs data
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -447,7 +446,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k           J2K codec.
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -456,7 +455,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_header_data   the data contained in the SIZ box.
  * @param       p_header_size   the size of the data contained in the SIZ marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -466,7 +465,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k           J2K codec.
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -475,7 +474,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_header_data   the data contained in the COM box.
  * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -484,7 +483,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k           J2K codec.
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -494,7 +493,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the COD box.
  * @param       p_header_size   the size of the data contained in the COD marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -517,7 +516,7 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t p_first_comp_no,
  * @param       p_j2k       J2K codec.
  * @param       p_comp_no   the index of the component to output.
  * @param       p_stream    the stream to write data to.
- * @param       p_manager   the user event manager.
+ 
  */
 static bool j2k_write_coc(j2k_t *p_j2k, uint32_t p_comp_no,
 		GrokStream *p_stream);
@@ -528,7 +527,7 @@ static bool j2k_write_coc(j2k_t *p_j2k, uint32_t p_comp_no,
  * @param       p_j2k       J2K codec.
  * @param       p_comp_no   the index of the component to output.
  * @param       p_stream    the stream to write data to.
- * @param       p_manager   the user event manager.
+ 
  */
 static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
 		GrokStream *p_stream);
@@ -546,7 +545,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k);
  * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the COC box.
  * @param       p_header_size   the size of the data contained in the COC marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -556,7 +555,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -566,7 +565,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCD box.
  * @param       p_header_size   the size of the data contained in the QCD marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -589,7 +588,7 @@ static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t p_first_comp_no,
  * @param       p_j2k                   J2K codec.
  * @param       p_comp_no       the index of the component to output.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t p_comp_no,
 		GrokStream *p_stream);
@@ -600,7 +599,7 @@ static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t p_comp_no,
  * @param       p_j2k           J2K codec.
  * @param       p_comp_no       the index of the component to output.
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t p_comp_no,
 		GrokStream *p_stream);
@@ -615,7 +614,7 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCC box.
  * @param       p_header_size   the size of the data contained in the QCC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -627,7 +626,7 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream);
 /**
@@ -636,7 +635,7 @@ static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k          J2K codec.
  * @param       p_stream       the stream to write data to.
  * @param       p_data_written number of bytes written
- * @param       p_manager      the user event manager.
+ 
  */
 static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
 		uint64_t *p_data_written);
@@ -651,7 +650,7 @@ static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -674,7 +673,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -684,7 +683,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -694,7 +693,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -704,7 +703,7 @@ static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -714,7 +713,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the PLT box.
  * @param       p_header_size   the size of the data contained in the PLT marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -725,7 +724,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 
 static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
@@ -735,7 +734,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * Merges all PPM markers read (Packed headers, main header)
  *
  * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
+ 
  */
 static bool j2k_merge_ppm(cp_t *p_cp);
 
@@ -745,7 +744,7 @@ static bool j2k_merge_ppm(cp_t *p_cp);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the PPT box.
  * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -754,7 +753,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * Merges all PPT markers read (Packed headers, tile-part header)
  *
  * @param       p_tcp   the tile.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_merge_ppt(tcp_t *p_tcp);
 
@@ -763,7 +762,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -774,7 +773,7 @@ static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream         the stream to write data to.
  * @param       psot_location    PSOT location
  * @param       p_data_written   number of bytes written
- * @param       p_manager        the user event manager.
+ 
  */
 static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
 		uint64_t *psot_location, uint64_t *p_data_written);
@@ -790,7 +789,7 @@ static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_tot_len       Psot.
  * @param       p_current_part  TPsot.
  * @param       p_num_parts     TNsot.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
 		uint32_t *p_tile_no, uint32_t *p_tot_len, uint32_t *p_current_part,
@@ -801,7 +800,7 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
  * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the SOT marker.
  * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -813,7 +812,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_data_written      number of bytes written
  * @param       p_total_data_size   total data size
  * @param       p_stream            the stream to write data to.
- * @param       p_manager           the user event manager.
+ 
  */
 static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 		uint64_t *p_data_written, uint64_t p_total_data_size,
@@ -824,7 +823,7 @@ static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
  *
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_stream                FIXME DOC
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -857,7 +856,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t p_tile_part_size) {
  * @param       nb_comps                the number of components
  * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
 		uint32_t nb_comps, GrokStream *p_stream);
@@ -868,7 +867,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t p_tile_no, uint32_t p_comp_no,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -878,7 +877,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -887,7 +886,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -896,7 +895,7 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -927,7 +926,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_stream                the stream object to read from.
  * @param       output_marker           FIXME DOC
- * @param       p_manager               the user event manager.
+
  *
  * @return      true                    if the marker could be deduced.
  */
@@ -939,7 +938,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
  *
  * @param       p_mct_record    FIXME DOC
  * @param       p_stream        the stream to write data to.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream);
 
@@ -949,7 +948,7 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream)
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the MCT box.
  * @param       p_header_size   the size of the data contained in the MCT marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -959,7 +958,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_mcc_record            FIXME DOC
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
 		GrokStream *p_stream);
@@ -970,7 +969,7 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the MCC box.
  * @param       p_header_size   the size of the data contained in the MCC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -980,7 +979,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                           J2K codec.
  * @param       p_stream                                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -990,7 +989,7 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the MCO box.
  * @param       p_header_size   the size of the data contained in the MCO marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -1029,7 +1028,7 @@ static void j2k_write_float_to_float64(const void *p_src_data,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1038,7 +1037,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                           J2K codec.
  * @param       p_stream                                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1048,7 +1047,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_data   the data contained in the CBD box.
  * @param       p_header_size   the size of the data contained in the CBD marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size);
@@ -1058,7 +1057,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1067,7 +1066,7 @@ static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1076,7 +1075,7 @@ static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1085,7 +1084,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @param       p_j2k                   J2K codec.
  * @param       p_stream                the stream to write data to.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -1098,7 +1097,7 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_nb_resolutions        the number of resolutions.
  * @param       numcomps                the number of components
  * @param       numlayers               the number of layers.
- * @param       p_manager               the user event manager.
+
  *
  * @return      true if the pocs are valid.
  */
@@ -1123,7 +1122,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno);
  * @param       cp                      the coding parameters for the image.
  * @param       p_nb_tiles      pointer that will hold the number of tile parts.
  * @param       image           the image to encode.
- * @param       p_manager       the user event manager.
+
  *
  * @return true if the function was successful, false else.
  */
@@ -1152,7 +1151,7 @@ static bool j2k_is_cinema_compliant(opj_image_t *image, uint16_t rsiz);
  * @param       p_stream            the stream to read data from.
  * @param       tile_no             tile number we're looking for.
  * @param       p_correction_needed output value. if true, non conformant codestream needs TNsot correction.
- * @param       p_manager       the user event manager.
+
  *
  * @return true if the function was successful, false else.
  */
@@ -1576,7 +1575,7 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream) {
  * Reads a SOC marker (Start of Codestream)
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_stream        FIXME DOC
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint8_t l_data[2];
@@ -1721,7 +1720,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_header_data   the data contained in the SIZ box.
  * @param       p_header_size   the size of the data contained in the SIZ marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2050,7 +2049,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_j2k           the jpeg2000 file codec.
  * @param       p_header_data   the data contained in the COM box.
  * @param       p_header_size   the size of the data contained in the COM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2163,7 +2162,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_header_data   the data contained in the COD box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the COD marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2358,7 +2357,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
  * @param       p_header_data   the data contained in the COC box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the COC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2439,7 +2438,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCD box.
  * @param       p_header_size   the size of the data contained in the QCD marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2547,7 +2546,7 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k) {
  * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_data   the data contained in the QCC box.
  * @param       p_header_size   the size of the data contained in the QCC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2773,7 +2772,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k) {
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2857,7 +2856,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2891,7 +2890,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -2950,7 +2949,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the TLM marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -3007,7 +3006,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_header_data   the data contained in the PLT box.
  * @param       p_j2k           the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the PLT marker.
- * @param       p_manager       the user event manager.
+
  */
 static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -3055,7 +3054,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 
 static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
@@ -3133,7 +3132,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * Merges all PPM markers read (Packed headers, main header)
  *
  * @param       p_cp      main coding parameters.
- * @param       p_manager the user event manager.
+ 
  */
 static bool j2k_merge_ppm(cp_t *p_cp) {
 	uint32_t i, l_ppm_data_size, l_N_ppm_remaining;
@@ -3274,7 +3273,7 @@ static bool j2k_merge_ppm(cp_t *p_cp) {
  * @param       p_header_data   the data contained in the PPT box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the PPT marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -3358,7 +3357,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * Merges all PPT markers read (Packed packet headers, tile-part header)
  *
  * @param       p_tcp   the tile.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_merge_ppt(tcp_t *p_tcp) {
 	uint32_t i, l_ppt_data_size;
@@ -3959,7 +3958,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the POC marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -4398,7 +4397,7 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream)
  * @param       p_header_data   the data contained in the MCT box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the MCT marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -4923,7 +4922,7 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_header_data   the data contained in the MCO box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the MCO marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -5113,7 +5112,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_header_data   the data contained in the CBD box.
  * @param       p_j2k                   the jpeg2000 codec.
  * @param       p_header_size   the size of the data contained in the CBD marker.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t p_header_size) {
@@ -8030,7 +8029,7 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
 
 		l_img_comp++;
 	}
-	//event_msg( p_manager, EVT_INFO,"Setting decoding area to %d,%d,%d,%d\n",
+	//GROK_INFO("Setting decoding area to %d,%d,%d,%d\n",
 	//               p_image->x0, p_image->y0, p_image->x1, p_image->y1);
 	return true;
 }
@@ -10292,7 +10291,7 @@ static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream) {
  *
  * @param       p_stream                the stream to write data to.
  * @param       p_j2k                   J2K codec.
- * @param       p_manager               the user event manager.
+
  */
 static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 

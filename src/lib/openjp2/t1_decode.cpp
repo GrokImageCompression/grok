@@ -524,7 +524,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 	if (!dataPtr) {
 		dataPtr = (int32_t*) grok_aligned_malloc(w * h * sizeof(int32_t));
 		if (!dataPtr) {
-			/* FIXME event manager error callback */
+			GROK_ERROR("Out of memory");
 			return false;
 		}
 	}
@@ -534,7 +534,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 		grok_aligned_free(flags);
 	flags = (flag_t*) grok_aligned_malloc(new_flagssize * sizeof(flag_t));
 	if (!flags) {
-		/* FIXME event manager error callback */
+		GROK_ERROR("Out of memory");
 		return false;
 	}
 	initBuffers(w, h);

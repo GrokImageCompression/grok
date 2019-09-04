@@ -152,7 +152,7 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 			* sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
-		/* FIXME event manager error callback */
+		GROK_ERROR("dwt53 encode: overflow");
 		return false;
 	}
 	bj = (int32_t*) grok_malloc(l_data_size);

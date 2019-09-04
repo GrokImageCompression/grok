@@ -67,6 +67,11 @@ static void default_callback(const char *msg, void *client_data) {
 	ARG_NOT_USED(client_data);
 }
 
+event_mgr_t::event_mgr_t() : m_error_data(nullptr), m_warning_data(nullptr), m_info_data(nullptr),
+		        error_handler(default_callback), warning_handler(default_callback), info_handler(default_callback)
+{}
+
+
 template <typename ... Args>
 bool log(opj_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
 {
@@ -106,14 +111,4 @@ bool GROK_ERROR(const char *fmt,...){
 	va_end(arg);
 	return rc;
 }
-
-void set_default_event_handler() {
-	codec_private_t::m_event_mgr.m_error_data = nullptr;
-	codec_private_t::m_event_mgr.m_warning_data = nullptr;
-	codec_private_t::m_event_mgr.m_info_data = nullptr;
-	codec_private_t::m_event_mgr.error_handler = default_callback;
-	codec_private_t::m_event_mgr.info_handler = default_callback;
-	codec_private_t::m_event_mgr.warning_handler = default_callback;
-}
-
 }

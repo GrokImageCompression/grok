@@ -54,6 +54,9 @@
 namespace grk {
 
 struct event_mgr_t {
+
+	event_mgr_t();
+
 	/** Data to call the event manager with */
 	void *m_error_data;
 	/** Data to call the event manager with */
@@ -73,15 +76,6 @@ bool GROK_INFO(const char *fmt,	...);
 bool GROK_WARN(const char *fmt,	...);
 bool GROK_ERROR(const char *fmt,...);
 
-/* ----------------------------------------------------------------------- */
 
-/**
- * Set the event manager with the default callback function for the 3 levels.
- */
-void set_default_event_handler();
-
-/*@}*/
-
-/*@}*/
 
 }

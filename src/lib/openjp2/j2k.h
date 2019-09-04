@@ -559,7 +559,7 @@ bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream);
  * @param p_stream the stream to read data from.
  * @param p_j2k the jpeg2000 codec.
  * @param p_image FIXME DOC
- * @param p_manager the user event manager.
+ 
  *
  * @return true if the box is valid.
  */
@@ -587,7 +587,7 @@ void j2k_destroy_cstr_index(opj_codestream_index_t *p_cstr_ind);
  * @param p_data       FIXME DOC
  * @param p_data_size  FIXME DOC
  * @param	p_stream			the stream to write data to.
- * @param	p_manager	the user event manager.
+ 
  */
 bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 		uint64_t p_data_size, GrokStream *p_stream);
@@ -604,7 +604,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
  * @param	p_nb_comps FIXME DOC
  * @param	p_go_on FIXME DOC
  * @param	p_stream			the stream to write data to.
- * @param	p_manager	the user event manager.
+ 
  */
 bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
@@ -620,7 +620,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
  * @param	p_start_y		the up position of the rectangle to decode (in image coordinates).
  * @param	p_end_x			the right position of the rectangle to decode (in image coordinates).
  * @param	p_end_y			the bottom position of the rectangle to decode (in image coordinates).
- * @param	p_manager		the user event manager
+ 
  *
  * @return	true			if the area could be set.
  */
@@ -687,7 +687,7 @@ opj_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k);
  * @param j2k J2K decompressor handle
  * @param p_stream  FIXME DOC
  * @param p_image   FIXME DOC
- * @param p_manager FIXME DOC
+
  * @return FIXME DOC
  */
 bool j2k_decode(j2k_t *j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
@@ -704,7 +704,7 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
  * @param p_data FIXME DOC
  * @param p_data_size FIXME DOC
  * @param	p_stream			the stream to write data to.
- * @param	p_manager	the user event manager.
+ 
  */
 bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 		uint64_t p_data_size, GrokStream *p_stream);
@@ -720,7 +720,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio);
  * @param	p_j2k		the jpeg2000 codec.
  * @param	p_stream			the stream object.
  * @param	p_image FIXME DOC
- * @param	p_manager	the user event manager.
+ 
  *
  * @return true if the codec is valid.
  */

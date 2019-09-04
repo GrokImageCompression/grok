@@ -76,7 +76,7 @@ namespace grk {
  * @param	p_image_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
  * @param	p_image_header_size			the size of the image header
- * @param	p_manager					the user event manager.
+ 
  *
  * @return	true if the image header is valid, false else.
  */
@@ -99,7 +99,7 @@ static uint8_t* jp2_write_ihdr(jp2_t *jp2, uint32_t *p_nb_bytes_written);
  * @param	jp2					jpeg2000 file codec.
  * @param	p_xml_data			pointer to actual data (already read from file)
  * @param	p_xml_size			size of the xml data
- * @param	p_manager			user event manager.
+ 
  *
  * @return	true if the image header is valid, false else.
  */
@@ -134,7 +134,7 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, jp2_buffer_t *buffer,
  * @param	jp2					jpeg2000 file codec.
  * @param	p_header_data		pointer to actual data (already read from file)
  * @param	p_header_data_size	size of data
- * @param	p_manager			user event manager.
+ 
  *
  * @return	true if the image header is valid, false else.
  */
@@ -147,7 +147,7 @@ static bool jp2_read_uuid(jp2_t *jp2, uint8_t *p_header_data,
  * @param	p_resolution_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
  * @param	p_resolution_size			the size of the image header
- * @param	p_manager					the user event manager.
+ 
  *
  * @return	true if the image header is valid, false else.
  */
@@ -180,7 +180,7 @@ static uint8_t* jp2_write_bpcc(jp2_t *jp2, uint32_t *p_nb_bytes_written);
  * @param	p_bpc_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
  * @param	p_bpc_header_size			the size of the bpc header
- * @param	p_manager					the user event manager.
+ 
  *
  * @return	true if the bpc header is valid, false else.
  */
@@ -217,7 +217,7 @@ static uint8_t* jp2_write_colr(jp2_t *jp2, uint32_t *p_nb_bytes_written);
  *
  * @param	cio			the stream to write data to.
  * @param	jp2			the jpeg2000 file codec.
- * @param	p_manager	the user event manager.
+ 
  *
  * @return	true if writing was successful.
  */
@@ -229,7 +229,7 @@ static bool jp2_write_ftyp(jp2_t *jp2, GrokStream *cio);
  * @param	p_header_data	the data contained in the FTYP box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the FTYP box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the FTYP box is valid.
  */
@@ -244,7 +244,7 @@ static bool jp2_skip_jp2c(jp2_t *jp2, GrokStream *cio);
  * @param	p_header_data	the data contained in the file header box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the file header box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
@@ -256,7 +256,7 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
  *
  * @param  jp2      the jpeg2000 file codec.
  * @param  stream      the stream to write data to.
- * @param  p_manager  user event manager.
+ 
  *
  * @return true if writing was successful.
  */
@@ -269,7 +269,7 @@ static bool jp2_write_uuids(jp2_t *jp2, GrokStream *stream);
  *
  * @param	cio			the stream to write data to.
  * @param	jp2			the jpeg2000 file codec.
- * @param	p_manager	user event manager.
+ 
  *
  * @return true if writing was successful.
  */
@@ -281,7 +281,7 @@ static bool jp2_write_jp2c(jp2_t *jp2, GrokStream *cio);
  * @param	p_header_data	the data contained in the signature box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the signature box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the file signature box is valid.
  */
@@ -293,7 +293,7 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
  *
  * @param cio the stream to write data to.
  * @param	jp2			the jpeg2000 file codec.
- * @param p_manager the user event manager.
+ 
  *
  * @return true if writing was successful.
  */
@@ -314,7 +314,6 @@ static void jp2_free_pclr(jp2_color_t *color);
  * @param jp2 JP2 handle
  * @param p_pclr_header_data    FIXME DOC
  * @param p_pclr_header_size    FIXME DOC
- * @param p_manager
  *
  * @return true if successful, returns false otherwise
  */
@@ -327,7 +326,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
  * @param jp2                 JP2 handle
  * @param p_cmap_header_data  FIXME DOC
  * @param p_cmap_header_size  FIXME DOC
- * @param p_manager           FIXME DOC
+
  *
  * @return true if successful, returns false otherwise
  */
@@ -341,7 +340,7 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
  * @param	p_colr_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
  * @param	p_colr_header_size			the size of the color header
- * @param	p_manager					the user event manager.
+ 
  *
  * @return	true if the bpc header is valid, false else.
  */
@@ -369,7 +368,7 @@ static bool jp2_setup_end_header_reading(jp2_t *jp2);
  *
  * @param jp2 the jpeg2000 file header structure.
  * @param stream the stream to read data from.
- * @param p_manager the user event manager.
+ 
  *
  * @return true if the box is valid.
  */
@@ -381,7 +380,6 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream);
  * @param	p_procedure_list	the list of procedures to execute
  * @param	jp2					the jpeg2000 file codec to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
- * @param	p_manager			the user manager.
  *
  * @return	true				if all the procedures were successfully executed.
  */
@@ -394,7 +392,7 @@ static bool jp2_exec(jp2_t *jp2, procedure_list_t *p_procedure_list,
  * @param	cio						the input stream to read data from.
  * @param	box						the box structure to fill.
  * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
- * @param	p_manager				user event manager.
+ 
  *
  * @return	true if the box is recognized, false otherwise
  */
@@ -451,7 +449,6 @@ static const jp2_header_handler_t jp2_img_header[] = {
  * @param	p_data					the character string to read data from.
  * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
  * @param	p_box_max_size			the maximum number of bytes in the box.
- * @param	p_manager         FIXME DOC
  *
  * @return	true if the box is recognized, false otherwise
  */
@@ -2694,7 +2691,6 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
  * @param	p_procedure_list	the list of procedures to execute
  * @param	jp2					the jpeg2000 file codec to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
- * @param	p_manager			the user manager.
  *
  * @return	true				if all the procedures were successfully executed.
  */
@@ -2798,7 +2794,7 @@ static const jp2_header_handler_t* jp2_img_find_handler(uint32_t p_id) {
  * @param	p_header_data	the data contained in the signature box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the signature box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the file signature box is valid.
  */
@@ -2843,7 +2839,7 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
  * @param	p_header_data	the data contained in the FTYP box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the FTYP box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the FTYP box is valid.
  */
@@ -2924,7 +2920,7 @@ static bool jp2_skip_jp2c(jp2_t *jp2, GrokStream *stream) {
  * @param	p_header_data	the data contained in the file header box.
  * @param	jp2				the jpeg2000 file codec.
  * @param	p_header_size	the size of the data contained in the file header box.
- * @param	p_manager		the user event manager.
+ .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
