@@ -68,7 +68,6 @@
 using namespace grk;
 
 enki::TaskScheduler Scheduler::g_TS;
-event_mgr_t codec_private_t::m_event_mgr;
 
 static bool is_plugin_initialized = false;
 bool OPJ_CALLCONV opj_initialize(const char *plugin_path, uint32_t numthreads) {
@@ -99,8 +98,8 @@ bool OPJ_CALLCONV opj_set_info_handler(opj_codec_t *p_codec,
 		return false;
 	}
 
-	codec_private_t::m_event_mgr.info_handler = p_callback;
-	codec_private_t::m_event_mgr.m_info_data = p_user_data;
+	logger::m_logger.info_handler = p_callback;
+	logger::m_logger.m_info_data = p_user_data;
 
 	return true;
 }
@@ -110,8 +109,8 @@ bool OPJ_CALLCONV opj_set_warning_handler(opj_codec_t *p_codec,
 	if (!l_codec) {
 		return false;
 	}
-	codec_private_t::m_event_mgr.warning_handler = p_callback;
-	codec_private_t::m_event_mgr.m_warning_data = p_user_data;
+	logger::m_logger.warning_handler = p_callback;
+	logger::m_logger.m_warning_data = p_user_data;
 	return true;
 }
 bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t *p_codec,
@@ -120,8 +119,8 @@ bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t *p_codec,
 	if (!l_codec) {
 		return false;
 	}
-	codec_private_t::m_event_mgr.error_handler = p_callback;
-	codec_private_t::m_event_mgr.m_error_data = p_user_data;
+	logger::m_logger.error_handler = p_callback;
+	logger::m_logger.m_error_data = p_user_data;
 	return true;
 }
 /* ---------------------------------------------------------------------- */

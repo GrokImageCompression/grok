@@ -299,7 +299,7 @@ typedef enum CODEC_FORMAT {
 
 /*
  ==========================================================
- event manager typedef definitions
+ logger typedef definitions
  ==========================================================
  */
 
@@ -1312,7 +1312,7 @@ OPJ_API opj_stream_t* OPJ_CALLCONV opj_stream_create_mapped_file_read_stream(
 
 /*
  ========================================
- event manager functions definitions
+ logger functions definitions
  ========================================
  */
 /**

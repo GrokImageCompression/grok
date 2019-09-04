@@ -53,15 +53,15 @@
 
 namespace grk {
 
-struct event_mgr_t {
+struct logger {
 
-	event_mgr_t();
+	logger();
 
-	/** Data to call the event manager with */
+	/** Data to call the logger with */
 	void *m_error_data;
-	/** Data to call the event manager with */
+	/** Data to call the logger with */
 	void *m_warning_data;
-	/** Data to call the event manager with */
+	/** Data to call the logget with */
 	void *m_info_data;
 	/** Error message callback if available, nullptr otherwise */
 	opj_msg_callback error_handler;
@@ -69,12 +69,14 @@ struct event_mgr_t {
 	opj_msg_callback warning_handler;
 	/** Debug message callback if available, nullptr otherwise */
 	opj_msg_callback info_handler;
+
+	static logger m_logger;
 };
 
 
-bool GROK_INFO(const char *fmt,	...);
-bool GROK_WARN(const char *fmt,	...);
-bool GROK_ERROR(const char *fmt,...);
+void GROK_INFO(const char *fmt,	...);
+void GROK_WARN(const char *fmt,	...);
+void GROK_ERROR(const char *fmt,...);
 
 
 
