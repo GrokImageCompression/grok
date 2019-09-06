@@ -443,11 +443,11 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
 		fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
-		return 1;
+		goto beach;
 	}
 
 	if (!sanityCheckOnImage(image, image->numcomps)) {
-		return -1;
+		goto beach;
 	}
 
 	for (i = 0; i < image->numcomps - 1; i++) {
@@ -456,10 +456,9 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 				|| (image->comps[0].prec != image->comps[i + 1].prec)
 				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
-			grk::safe_fclose(fdest);
 			fprintf(stderr,
 					"[ERROR] Unable to create a tga file with such J2K image charateristics.");
-			return 1;
+			goto beach;
 		}
 	}
 
@@ -555,8 +554,9 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 		}
 	}
 	fails = 0;
-	beach: if (!grk::safe_fclose(fdest))
-		fails = 1;
+	beach:
+		if (!grk::safe_fclose(fdest))
+			fails = 1;
 	return fails;
 }
 
