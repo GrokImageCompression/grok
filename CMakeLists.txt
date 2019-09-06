@@ -181,6 +181,8 @@ if(CMAKE_COMPILER_IS_GNUCC)
   set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} -Wall -Wextra -Wconversion -Wunused-parameter)
 endif()
 
+find_package(SSE)
+
 #-----------------------------------------------------------------------------
 # opj_config.h generation (1/2)
 
