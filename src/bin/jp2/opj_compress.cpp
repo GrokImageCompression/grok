@@ -102,6 +102,7 @@ using namespace grk;
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
 #include "spdlog/spdlog.h"
+#include <chrono>  // for high_resolution_clock
 
 
 using namespace TCLAP;
@@ -1368,33 +1369,6 @@ static int parse_cmdline_encoder_ex(int argc,
 
     return 0;
 }
-
-/* -------------------------------------------------------------------------- */
-
-double grok_clock(void) {
-#ifdef _WIN32
-	/* _WIN32: use QueryPerformance (very accurate) */
-    LARGE_INTEGER freq , t ;
-    /* freq is the clock speed of the CPU */
-    QueryPerformanceFrequency(&freq) ;
-	/* cout << "freq = " << ((double) freq.QuadPart) << endl; */
-    /* t is the high resolution performance counter (see MSDN) */
-    QueryPerformanceCounter ( & t ) ;
-    return freq.QuadPart ? ( t.QuadPart /(double) freq.QuadPart ) : 0 ;
-#else
-	/* Unix or Linux: use resource usage */
-    struct rusage t;
-    double procTime;
-    /* (1) Get the rusage data structure at this moment (man getrusage) */
-    getrusage(0,&t);
-    /* (2) What is the elapsed time ? - CPU time = User time + System time */
-	/* (2a) Get the seconds */
-    procTime = (double)(t.ru_utime.tv_sec + t.ru_stime.tv_sec);
-    /* (2b) More precisely! Get the microseconds part ! */
-    return ( procTime + (double)(t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6 ) ;
-#endif
-}
-
 struct CompressInitParams {
 	CompressInitParams() : initialized(false) {
 		
@@ -1494,7 +1468,7 @@ int main(int argc, char **argv) {
 		//cache certain settings
 		auto tcp_mct = initParams.parameters.tcp_mct;
 		auto rateControlAlgorithm = initParams.parameters.rateControlAlgorithm;
-		double t = grok_clock();
+		auto start = std::chrono::high_resolution_clock::now();
 
 		if (!initParams.img_fol.set_imgdir) {
 			auto rc = compress("",
@@ -1527,9 +1501,11 @@ int main(int argc, char **argv) {
 			}
 			closedir(dir);
 		}
-		t = grok_clock() - t;
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
+
 		if (initParams.parameters.verbose && num_compressed_files) {
-			fprintf(stdout, "encode time: %d ms \n", (int)((t * 1000.0) / (double)num_compressed_files));
+			std::cout << "encode time: " << (elapsed.count() * 1000)/ (double)num_compressed_files << " ms\n";
 		}
 	} catch (std::bad_alloc& ba){
 		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;
