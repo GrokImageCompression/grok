@@ -1623,11 +1623,6 @@ static bool tcd_dwt_decode(tcd_t *p_tcd) {
 	tcd_tile_t *l_tile = p_tcd->tile;
 	int64_t compno = 0;
 	bool rc = true;
-#ifdef _OPENMP
-    #pragma omp parallel default(none) private(compno) shared(p_tcd, l_tile, rc)
-    {
-        #pragma omp for
-#endif
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; compno++) {
 		tcd_tilecomp_t *l_tile_comp = l_tile->comps + compno;
 		tccp_t *l_tccp = p_tcd->tcp->tccps + compno;
@@ -1647,10 +1642,6 @@ static bool tcd_dwt_decode(tcd_t *p_tcd) {
 				continue;
 			}
 		}
-#ifdef _OPENMP
-        }
-#endif
-
 	}
 
 	return rc;
@@ -1742,13 +1733,6 @@ static bool tcd_mct_decode(tcd_t *p_tcd) {
 
 static bool tcd_dc_level_shift_decode(tcd_t *p_tcd) {
 	uint32_t compno = 0;
-
-#ifdef _OPENMP
-#pragma omp parallel default(none) private(compno) shared(p_tcd)
-	{
-#pragma omp for
-#endif
-
 	for (compno = 0; compno < p_tcd->tile->numcomps; compno++) {
 		int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
@@ -1808,11 +1792,6 @@ static bool tcd_dc_level_shift_decode(tcd_t *p_tcd) {
 			}
 		}
 	}
-
-#ifdef _OPENMP
-	}
-#endif
-
 	return true;
 }
 
@@ -1988,11 +1967,6 @@ bool tcd_dwt_encode(tcd_t *p_tcd) {
 	tcd_tile_t *l_tile = p_tcd->tile;
 	int64_t compno = 0;
 	bool rc = true;
-#ifdef _OPENMP
-    #pragma omp parallel default(none) private(compno) shared(p_tcd, l_tile, rc)
-    {
-        #pragma omp for
-#endif
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; ++compno) {
 		tcd_tilecomp_t *tile_comp = p_tcd->tile->comps + compno;
 		tccp_t *l_tccp = p_tcd->tcp->tccps + compno;
@@ -2010,10 +1984,6 @@ bool tcd_dwt_encode(tcd_t *p_tcd) {
 			}
 		}
 	}
-#ifdef _OPENMP
-    }
-#endif
-
 	return rc;
 }
 
