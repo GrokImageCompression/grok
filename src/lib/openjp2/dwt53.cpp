@@ -155,10 +155,12 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 		GROK_ERROR("dwt53 encode: overflow");
 		return false;
 	}
+	if (!l_data_size)
+		return false;
 	bj = (int32_t*) grok_malloc(l_data_size);
 	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
 	/* in that case, so do not error out */
-	if (l_data_size != 0 && !bj) {
+	if (!bj) {
 		return false;
 	}
 
