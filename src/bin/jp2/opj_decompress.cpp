@@ -105,6 +105,7 @@ using namespace grk;
 #include "tclap/CmdLine.h"
 #include "common.h"
 #include "spdlog/spdlog.h"
+#include <chrono>  // for high_resolution_clock
 
 using namespace TCLAP;
 using namespace std;
@@ -768,35 +769,6 @@ int parse_cmdline_decoder(int argc,
     }
     return 0;
 }
-
-double grok_clock(void)
-{
-#ifdef _WIN32
-    /* _WIN32: use QueryPerformance (very accurate) */
-    LARGE_INTEGER freq , t ;
-    /* freq is the clock speed of the CPU */
-    QueryPerformanceFrequency(&freq) ;
-    /* cout << "freq = " << ((double) freq.QuadPart) << endl; */
-    /* t is the high resolution performance counter (see MSDN) */
-    QueryPerformanceCounter ( & t ) ;
-    return freq.QuadPart ? ((double)t.QuadPart / (double)freq.QuadPart) : 0;
-#else
-    /* Unix or Linux: use resource usage */
-    struct rusage t;
-    double procTime;
-    /* (1) Get the rusage data structure at this moment (man getrusage) */
-    getrusage(0,&t);
-    /* (2) What is the elapsed time ? - CPU time = User time + System time */
-    /* (2a) Get the seconds */
-    procTime = (double)(t.ru_utime.tv_sec + t.ru_stime.tv_sec);
-    /* (2b) More precisely! Get the microseconds part ! */
-    return ( procTime + (double)(t.ru_utime.tv_usec + t.ru_stime.tv_usec) * 1e-6 ) ;
-#endif
-}
-
-/* -------------------------------------------------------------------------- */
-
-
 static void set_default_parameters(opj_decompress_parameters* parameters)
 {
     if (parameters) {
@@ -1125,7 +1097,6 @@ int decode(const char* fileName, DecompressInitParams *initParams) {
 
 int main(int argc, char **argv){
 	int rc = EXIT_SUCCESS;
-	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 	DecompressInitParams initParams;
 	try {
@@ -1144,7 +1115,7 @@ int main(int argc, char **argv){
 			rc = EXIT_SUCCESS;
 			goto cleanup;
 		}
-		t_cumulative = grok_clock();
+		auto start = std::chrono::high_resolution_clock::now();
 		if (!initParams.img_fol.set_imgdir) {
 			if (!decode("", &initParams)) {
 				rc = EXIT_FAILURE;
@@ -1168,9 +1139,10 @@ int main(int argc, char **argv){
 			}
 			closedir(dir);
 		}
-		t_cumulative = grok_clock() - t_cumulative;
+		auto finish = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double> elapsed = finish - start;
 		if (initParams.parameters.verbose && num_decompressed_images) {
-			spdlog::info("decode time: {} ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
+			std::cout << "decode time: " << (elapsed.count() * 1000)/ (double)num_decompressed_images << " ms\n";
 		}
 	} catch (std::bad_alloc& ba){
 		spdlog::error("Out of memory. Exiting.");
@@ -1189,9 +1161,10 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	int32_t num_images=0, imageno = 0;
 	dircnt_t *dirptr = nullptr;
 	int32_t success = 0;
-	double t_cumulative = 0;
 	uint32_t num_decompressed_images = 0;
 	bool isBatch = false;
+	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
+	std::chrono::duration<double> elapsed;
 
 #ifdef GROK_HAVE_LIBLCMS
 	cmsSetLogErrorHandler(MycmsLogErrorHandlerFunction);
@@ -1304,7 +1277,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		}
 	}
 
-	t_cumulative = grok_clock();
+	start = std::chrono::high_resolution_clock::now();
 
 	/*Decoding image one by one*/
 	for (imageno = 0; imageno < num_images; imageno++) {
@@ -1321,9 +1294,10 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		num_decompressed_images++;
 
 	}
-	t_cumulative = grok_clock() - t_cumulative;
+	finish = std::chrono::high_resolution_clock::now();
+	elapsed = finish - start;
 	if (initParams->parameters.verbose && num_decompressed_images && success == 0) {
-		spdlog::info("decode time: {} ms \n", (int)((t_cumulative * 1000) / num_decompressed_images));
+		std::cout << "Encode time: " << (elapsed.count() * 1000)/ (double)num_decompressed_images << " ms\n";
 	}
 cleanup:
 	if (dirptr) {
