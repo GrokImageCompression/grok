@@ -110,7 +110,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_common.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/BlockingQueue.h
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.h
