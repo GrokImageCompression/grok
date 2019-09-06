@@ -17,8 +17,6 @@
 
 #pragma once
 
-#include "BlockingQueue.h"
-#include <atomic>
 #include <thread>
 
 namespace grk {
@@ -26,19 +24,20 @@ namespace grk {
 class T1Encoder {
 public:
 	T1Encoder(tcp_t *tcp, tcd_tile_t *tile, uint16_t encodeMaxCblkW,
-			uint16_t encodeMaxCblkH, size_t numThreads, bool needsRateControl);
+			uint16_t encodeMaxCblkH, bool needsRateControl);
 	~T1Encoder();
 	bool encode(std::vector<encodeBlockInfo*> *blocks);
 
 private:
-	void encode(size_t threadId);
+	void encode(size_t threadId, uint64_t maxBlocks);
 
 	tcd_tile_t *tile;
 	std::vector<t1_interface*> threadStructs;
-
-	BlockingQueue<encodeBlockInfo*> encodeQueue;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
+	mutable std::mutex block_mutex;
+	encodeBlockInfo** encodeBlocks;
+	uint64_t blockCount;
 
 };
 

@@ -19,7 +19,6 @@
 #include <string>
 #include <vector>
 #include <thread>
-#include "BlockingQueue.h"
 
 namespace grk {
 
@@ -28,15 +27,18 @@ class t1_interface;
 
 class T1Decoder {
 public:
-	T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh, size_t numThreads);
+	T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh);
 	~T1Decoder();
 	bool decode(std::vector<decodeBlockInfo*> *blocks);
 
 private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	BlockingQueue<decodeBlockInfo*> decodeQueue;
 	std::vector<t1_interface*> threadStructs;
 	std::atomic_bool success;
+
+	mutable std::mutex block_mutex;
+	decodeBlockInfo** decodeBlocks;
+	uint64_t blockCount;
 };
 
 }

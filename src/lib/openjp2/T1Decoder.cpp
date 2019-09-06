@@ -15,23 +15,21 @@
  *
  */
 #include "grok_includes.h"
-#include "ThreadPool.h"
-
 #include "t1_factory.h"
 #include "T1Decoder.h"
 
 namespace grk {
 
-T1Decoder::T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh,
-		size_t numThreads) :
-		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)), codeblock_height(
-				(uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)) {
-	for (auto i = 0U; i < numThreads; ++i) {
+T1Decoder::T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh) :
+		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
+		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
+		decodeBlocks(nullptr),
+		blockCount(0){
+	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
 		threadStructs.push_back(
 				t1_factory::get_t1(false, tcp, codeblock_width,
 						codeblock_height));
 	}
-
 }
 
 T1Decoder::~T1Decoder() {
@@ -41,41 +39,44 @@ T1Decoder::~T1Decoder() {
 }
 
 bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
-	if (!blocks)
-		return false;
-	decodeQueue.push_no_lock(blocks);
-	blocks->clear();
+	if (!blocks || !blocks->size())
+		return true;;
 #ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
 #endif
-
+	auto maxBlocks = blocks->size();
+	decodeBlocks = new decodeBlockInfo*[maxBlocks];
+	for (uint64_t i = 0; i < maxBlocks; ++i) {
+		decodeBlocks[i] = blocks->operator[](i);
+	}
 	success = true;
-	enki::TaskSet task((uint32_t) decodeQueue.size(),
-			[this](enki::TaskSetPartition range, uint32_t threadnum) {
+	enki::TaskSet task((uint32_t) maxBlocks,
+			[this, maxBlocks](enki::TaskSetPartition range, uint32_t threadnum) {
 				for (auto i = range.start; i < range.end; ++i) {
-					if (!success)
-						break;
-					decodeBlockInfo *block = nullptr;
-					auto impl = threadStructs[threadnum];
-					if (decodeQueue.tryPop(block)) {
-						if (!impl->decode(block)) {
-							success = false;
-							delete block;
-							break;
-						}
-						impl->postDecode(block);
+					uint64_t index=0;
+					std::unique_lock<std::mutex> lk(block_mutex);
+					index = blockCount++;
+					lk.unlock();
+					if (index >= maxBlocks)
+						return;
+					decodeBlockInfo *block = decodeBlocks[index];
+					if (!success){
 						delete block;
+						return;
 					}
+					auto impl = threadStructs[threadnum];
+					if (!impl->decode(block)) {
+						success = false;
+						delete block;
+						return;
+					}
+					impl->postDecode(block);
+					delete block;
 				}
 			});
-
 	Scheduler::g_TS.AddTaskSetToPipe(&task);
 	Scheduler::g_TS.WaitforTask(&task);
 
-	decodeBlockInfo *block = nullptr;
-	while (decodeQueue.tryPop(block)) {
-		delete block;
-	}
 	return success;
 }
 

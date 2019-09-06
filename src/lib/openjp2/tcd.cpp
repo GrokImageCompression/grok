@@ -1616,7 +1616,7 @@ static bool tcd_t1_decode(tcd_t *p_tcd) {
 	// !!! assume that code block dimensions do not change over components
 	return t1_wrap->decodeCodeblocks(p_tcd->tcp,
 			(uint16_t) p_tcd->tcp->tccps->cblkw,
-			(uint16_t) p_tcd->tcp->tccps->cblkh, &blocks, p_tcd->numThreads);
+			(uint16_t) p_tcd->tcp->tccps->cblkh, &blocks);
 }
 
 static bool tcd_dwt_decode(tcd_t *p_tcd) {
@@ -2038,8 +2038,7 @@ static bool tcd_t1_encode(tcd_t *p_tcd) {
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 
 	return t1_wrap->encodeCodeblocks(l_tcp, p_tcd->tile, l_mct_norms,
-			l_mct_numcomps, p_tcd->numThreads,
-			tcd_needs_rate_control(p_tcd->tcp,
+			l_mct_numcomps, tcd_needs_rate_control(p_tcd->tcp,
 					&p_tcd->cp->m_specific_param.m_enc));
 }
 
