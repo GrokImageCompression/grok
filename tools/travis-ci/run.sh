@@ -25,11 +25,6 @@ function opjpath ()
 	fi
 }
 
-if [ "${GROK_CI_CC:-}" != "" ]; then
-    export CC=${GROK_CI_CC}
-    echo "Using ${CC}"
-fi
-
 if [ "${GROK_CI_CXX:-}" != "" ]; then
     export CXX=${GROK_CI_CXX}
     echo "Using ${CXX}"
@@ -67,9 +62,9 @@ if [ "${TRAVIS_OS_NAME:-}" == "" ]; then
 		TRAVIS_OS_NAME=osx
 	elif uname -s | grep -i Linux &> /dev/null; then
 		TRAVIS_OS_NAME=linux
-		if [ "${CC:-}" == "" ]; then
-			# default to gcc
-			export CC=gcc
+		if [ "${CXX:-}" == "" ]; then
+			# default to g++
+			export CXX=g++
 		fi
 	elif uname -s | grep -i CYGWIN &> /dev/null; then
 		TRAVIS_OS_NAME=windows
@@ -85,49 +80,47 @@ fi
 
 if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 	GROK_OS_NAME=$(sw_vers -productName | tr -d ' ')$(sw_vers -productVersion | sed 's/\([^0-9]*\.[0-9]*\).*/\1/')
-	GROK_CC_VERSION=$(xcodebuild -version | grep -i xcode)
-	GROK_CC_VERSION=xcode${GROK_CC_VERSION:6}
+	GROK_CXX_VERSION=$(xcodebuild -version | grep -i xcode)
+	GROK_CXX_VERSION=xcode${GROK_CXX_VERSION:6}
 elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 	GROK_OS_NAME=linux
 	if which lsb_release > /dev/null; then
 		GROK_OS_NAME=$(lsb_release -si)$(lsb_release -sr | sed 's/\([^0-9]*\.[0-9]*\).*/\1/')
 	fi
-	sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-5 /usr/bin/gcc
-	gcc --version
-	sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+	sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-8 /usr/bin/g++
 	g++ --version
-	if [ -z "${CC##*gcc*}" ]; then
-		GROK_CC_VERSION=$(${CC} --version | head -1 | sed 's/.*\ \([0-9.]*[0-9]\)/\1/')
-		if [ -z "${CC##*mingw*}" ]; then
-			GROK_CC_VERSION=mingw${GROK_CC_VERSION}
+	if [ -z "${CXX##*g++*}" ]; then
+		GROK_CXX_VERSION=$(${CXX} --version | head -1 | sed 's/.*\ \([0-9.]*[0-9]\)/\1/')
+		if [ -z "${CXX##*mingw*}" ]; then
+			GROK_CXX_VERSION=mingw${GROK_CXX_VERSION}
 			# disable testing for now
 			export GROK_CI_SKIP_TESTS=1
 		else
-			GROK_CC_VERSION=gcc${GROK_CC_VERSION}
+			GROK_CXX_VERSION=g++${GROK_CXX_VERSION}
 		fi
 	elif [ -z "${CC##*clang*}" ]; then
-		GROK_CC_VERSION=clang$(${CC} --version | grep version | sed 's/.*version \([^0-9.]*[0-9.]*\).*/\1/')
+		GROK_CXX_VERSION=clang$(${CXX} --version | grep version | sed 's/.*version \([^0-9.]*[0-9.]*\).*/\1/')
 	else
-		echo "Compiler not supported: ${CC}"; exit 1
+		echo "Compiler not supported: ${CXX}"; exit 1
 	fi
 elif [ "${TRAVIS_OS_NAME}" == "windows" ]; then
 	GROK_OS_NAME=windows
 	if which cl > /dev/null; then
 		GROK_CL_VERSION=$(cl 2>&1 | grep Version | sed 's/.*Version \([0-9]*\).*/\1/')
 		if [ ${GROK_CL_VERSION} -eq 19 ]; then
-			GROK_CC_VERSION=vs2015
+			GROK_CXX_VERSION=vs2015
 		elif [ ${GROK_CL_VERSION} -eq 18 ]; then
-			GROK_CC_VERSION=vs2013
+			GROK_CXX_VERSION=vs2013
 		elif [ ${GROK_CL_VERSION} -eq 17 ]; then
-			GROK_CC_VERSION=vs2012
+			GROK_CXX_VERSION=vs2012
 		elif [ ${GROK_CL_VERSION} -eq 16 ]; then
-			GROK_CC_VERSION=vs2010
+			GROK_CXX_VERSION=vs2010
 		elif [ ${GROK_CL_VERSION} -eq 15 ]; then
-			GROK_CC_VERSION=vs2008
+			GROK_CXX_VERSION=vs2008
 		elif [ ${GROK_CL_VERSION} -eq 14 ]; then
-			GROK_CC_VERSION=vs2005
+			GROK_CXX_VERSION=vs2005
 		else
-			GROK_CC_VERSION=vs????
+			GROK_CXX_VERSION=vs????
 		fi
 	fi
 else
@@ -152,8 +145,8 @@ if [ "${TRAVIS_BRANCH:-}" == "" ]; then
 	fi
 fi
 
-GROK_BUILDNAME=${GROK_OS_NAME}-${GROK_CC_VERSION}-${GROK_CI_ARCH}-${TRAVIS_BRANCH}
-GROK_BUILDNAME_TEST=${GROK_OS_NAME}-${GROK_CC_VERSION}-${GROK_CI_ARCH}
+GROK_BUILDNAME=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${GROK_CI_ARCH}-${TRAVIS_BRANCH}
+GROK_BUILDNAME_TEST=${GROK_OS_NAME}-${GROK_CXX_VERSION}-${GROK_CI_ARCH}
 if [ "${TRAVIS_PULL_REQUEST:-}" != "false" ] && [ "${TRAVIS_PULL_REQUEST:-}" != "" ]; then
 	GROK_BUILDNAME=${GROK_BUILDNAME}-pr${TRAVIS_PULL_REQUEST}
 elif [ "${APPVEYOR_PULL_REQUEST_NUMBER:-}" != "" ]; then
