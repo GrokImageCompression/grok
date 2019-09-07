@@ -863,21 +863,21 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	l_tile->x0 = std::max<uint32_t>(l_tx0, l_image->x0);
 	l_tile->x1 = std::min<uint32_t>(uint_adds(l_tx0, l_cp->tdx), l_image->x1);
 	if (l_tile->x1 <= l_tile->x0) {
-		GROK_ERROR( "Tile x coordinates are not valid\n");
+		GROK_ERROR( "Tile x coordinates are not valid");
 		return false;
 	}
 	l_ty0 = l_cp->ty0 + q * l_cp->tdy; /* can't be greater than l_image->y1 so won't overflow */
 	l_tile->y0 = std::max<uint32_t>(l_ty0, l_image->y0);
 	l_tile->y1 = std::min<uint32_t>(uint_adds(l_ty0, l_cp->tdy), l_image->y1);
 	if (l_tile->y1 <= l_tile->y0) {
-		GROK_ERROR( "Tile y coordinates are not valid\n");
+		GROK_ERROR( "Tile y coordinates are not valid");
 		return false;
 	}
 
 	/* testcase 1888.pdf.asan.35.988 */
 	if (l_tccp->numresolutions == 0) {
 		GROK_ERROR(
-				"tiles require at least one resolution\n");
+				"tiles require at least one resolution");
 		return false;
 	}
 	/*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", l_tile->x0, l_tile->y0,l_tile->x1,l_tile->y1);*/
@@ -965,7 +965,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 
 			if (mult_will_overflow(l_res->pw, l_res->ph)) {
 				GROK_ERROR(
-						"l_nb_precincts calculation would overflow \n");
+						"l_nb_precincts calculation would overflow ");
 				return false;
 			}
 			l_nb_precincts = l_res->pw * l_res->ph;
@@ -973,7 +973,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 			if (mult_will_overflow(l_nb_precincts,
 					(uint32_t) sizeof(tcd_precinct_t))) {
 				GROK_ERROR(
-						"l_nb_precinct_size calculation would overflow \n");
+						"l_nb_precinct_size calculation would overflow ");
 				return false;
 			}
 			if (resno == 0) {
@@ -1126,7 +1126,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 							l_current_precinct->cblks.blocks = nullptr;
 							l_current_precinct->block_size = 0;
 							GROK_ERROR(
-									"Not enough memory for current precinct codeblock element\n");
+									"Not enough memory for current precinct codeblock element");
 							return false;
 						}
 						l_current_precinct->cblks.blocks = new_blocks;
@@ -1306,7 +1306,7 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 									* l_num_packs, sizeof(opj_packet_info_t));
 			if (!p_cstr_info->tile[p_tile_no].packet) {
 				GROK_ERROR(
-						"tcd_encode_tile: Out of memory error when allocating packet memory\n");
+						"tcd_encode_tile: Out of memory error when allocating packet memory");
 				return false;
 			}
 		}
@@ -1670,7 +1670,7 @@ static bool tcd_mct_decode(tcd_t *p_tcd) {
 						* (l_tile->comps[2].y1 - l_tile->comps[2].y0)
 						< l_samples) {
 			GROK_ERROR(
-					"Tiles don't all have the same dimension. Skip the MCT step.\n");
+					"Tiles don't all have the same dimension. Skip the MCT step.");
 			return false;
 		} else if (l_tcp->mct == 2) {
 			uint8_t **l_data;
@@ -2367,12 +2367,12 @@ void tcd_precinct_t::initTagTrees() {
 			try {
 				incltree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				GROK_WARN( "No incltree created.\n");
+				GROK_WARN( "No incltree created.");
 			}
 		} else {
 			if (!incltree->init(cw, ch)) {
 				GROK_WARN(
-						"Failed to re-initialize incltree.\n");
+						"Failed to re-initialize incltree.");
 				delete incltree;
 				incltree = nullptr;
 			}
@@ -2382,12 +2382,12 @@ void tcd_precinct_t::initTagTrees() {
 			try {
 				imsbtree = new TagTree(cw, ch);
 			} catch (std::exception &e) {
-				GROK_WARN( "No imsbtree created.\n");
+				GROK_WARN( "No imsbtree created.");
 			}
 		} else {
 			if (!imsbtree->init(cw, ch)) {
 				GROK_WARN(
-						"Failed to re-initialize imsbtree.\n");
+						"Failed to re-initialize imsbtree.");
 				delete imsbtree;
 				imsbtree = nullptr;
 			}

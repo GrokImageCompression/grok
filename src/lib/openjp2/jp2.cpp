@@ -544,12 +544,12 @@ static bool jp2_read_ihdr(jp2_t *jp2, uint8_t *p_image_header_data,
 
 	if (jp2->comps != nullptr) {
 		GROK_WARN(
-				"Ignoring ihdr box. First ihdr box already read\n");
+				"Ignoring ihdr box. First ihdr box already read");
 		return true;
 	}
 
 	if (p_image_header_size != 14) {
-		GROK_ERROR( "Bad image header box (bad size)\n");
+		GROK_ERROR( "Bad image header box (bad size)");
 		return false;
 	}
 
@@ -571,7 +571,7 @@ static bool jp2_read_ihdr(jp2_t *jp2, uint8_t *p_image_header_data,
 	jp2->comps = (jp2_comps_t*) grok_calloc(jp2->numcomps, sizeof(jp2_comps_t));
 	if (jp2->comps == 0) {
 		GROK_ERROR(
-				"Not enough memory to handle image header (ihdr)\n");
+				"Not enough memory to handle image header (ihdr)");
 		return false;
 	}
 
@@ -807,7 +807,7 @@ static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
 	uint32_t num_boxes = p_resolution_size / OPJ_RESOLUTION_BOX_SIZE;
 	if (num_boxes == 0 || num_boxes > 2
 			|| (p_resolution_size % OPJ_RESOLUTION_BOX_SIZE)) {
-		GROK_ERROR( "Bad resolution box (bad size)\n");
+		GROK_ERROR( "Bad resolution box (bad size)");
 		return false;
 	}
 
@@ -1010,7 +1010,7 @@ static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
 
 	/* and length is relevant */
 	if (p_bpc_header_size != jp2->numcomps) {
-		GROK_ERROR( "Bad BPCC header box (bad size)\n");
+		GROK_ERROR( "Bad BPCC header box (bad size)");
 		return false;
 	}
 
@@ -1206,7 +1206,7 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
 			}
 			if (i == n) {
 				GROK_ERROR(
-						"Incomplete channel definitions.\n");
+						"Incomplete channel definitions.");
 				return false;
 			}
 			--nr_channels;
@@ -1234,14 +1234,14 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
 
 		pcol_usage = (bool*) grok_calloc(nr_channels, sizeof(bool));
 		if (!pcol_usage) {
-			GROK_ERROR( "Unexpected OOM.\n");
+			GROK_ERROR( "Unexpected OOM.");
 			return false;
 		}
 		/* verify that no component is targeted more than once */
 		for (i = 0; i < nr_channels; i++) {
 			uint16_t pcol = cmap[i].pcol;
 			if (cmap[i].mtyp != 0 && cmap[i].mtyp != 1) {
-				GROK_ERROR( "Unexpected MTYP value.\n");
+				GROK_ERROR( "Unexpected MTYP value.");
 				is_sane = false;
 				goto cleanup;
 			}
@@ -1253,14 +1253,14 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
 				goto cleanup;
 			} else if (pcol_usage[pcol] && cmap[i].mtyp == 1) {
 				GROK_ERROR(
-						"Component %d is mapped twice.\n", pcol);
+						"Component %d is mapped twice.", pcol);
 				is_sane = false;
 				goto cleanup;
 			} else if (cmap[i].mtyp == 0 && cmap[i].pcol != 0) {
 				/* I.5.3.5 PCOL: If the value of the MTYP field for this channel is 0, then
 				 * the value of this field shall be 0. */
 				GROK_ERROR(
-						"Direct use at #%d however pcol=%d.\n", i, pcol);
+						"Direct use at #%d however pcol=%d.", i, pcol);
 				is_sane = false;
 				goto cleanup;
 			} else
@@ -1270,7 +1270,7 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
 		for (i = 0; i < nr_channels; i++) {
 			if (!pcol_usage[i] && cmap[i].mtyp != 0) {
 				GROK_ERROR(
-						"Component %d doesn't have a mapping.\n", i);
+						"Component %d doesn't have a mapping.", i);
 				is_sane = false;
 				goto cleanup;
 			}
@@ -1336,7 +1336,7 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 			nr_channels * sizeof(opj_image_comp_t));
 	if (!new_comps) {
 		GROK_ERROR(
-				"Memory allocation failure in opj_jp2_apply_pclr().\n");
+				"Memory allocation failure in opj_jp2_apply_pclr().");
 		return false;
 	}
 	for (i = 0; i < nr_channels; ++i) {
@@ -1362,7 +1362,7 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 			}
 			grok_free(new_comps);
 			GROK_ERROR(
-					"Memory allocation failure in opj_jp2_apply_pclr().\n");
+					"Memory allocation failure in opj_jp2_apply_pclr().");
 			return false;
 		}
 		new_comps[i].prec = channel_size[i];
@@ -1441,7 +1441,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 	nr_entries = (uint16_t) l_value;
 	if ((nr_entries == 0U) || (nr_entries > 1024U)) {
 		GROK_ERROR(
-				"Invalid PCLR box. Reports %d entries\n", (int) nr_entries);
+				"Invalid PCLR box. Reports %d entries", (int) nr_entries);
 		return false;
 	}
 
@@ -1450,7 +1450,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 	nr_channels = (uint16_t) l_value;
 	if (nr_channels == 0U) {
 		GROK_ERROR(
-				"Invalid PCLR box. Reports 0 palette columns\n");
+				"Invalid PCLR box. Reports 0 palette columns");
 		return false;
 	}
 
@@ -1532,7 +1532,7 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	/* Need nr_channels: */
 	if (jp2->color.jp2_pclr == nullptr) {
 		GROK_ERROR(
-				"Need to read a PCLR box before the CMAP box.\n");
+				"Need to read a PCLR box before the CMAP box.");
 		return false;
 	}
 
@@ -1540,13 +1540,13 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	 * inside a JP2 Header box' :
 	 */
 	if (jp2->color.jp2_pclr->cmap) {
-		GROK_ERROR( "Only one CMAP box is allowed.\n");
+		GROK_ERROR( "Only one CMAP box is allowed.");
 		return false;
 	}
 
 	nr_channels = jp2->color.jp2_pclr->nr_channels;
 	if (p_cmap_header_size < (uint32_t) nr_channels * 4) {
-		GROK_ERROR( "Insufficient data for CMAP box.\n");
+		GROK_ERROR( "Insufficient data for CMAP box.");
 		return false;
 	}
 
@@ -1654,7 +1654,7 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		return false;
 
 	if (p_cdef_header_size < 2) {
-		GROK_ERROR( "CDEF box: Insufficient data.\n");
+		GROK_ERROR( "CDEF box: Insufficient data.");
 		return false;
 	}
 
@@ -1663,12 +1663,12 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 
 	if ((uint16_t) l_value == 0) { /* szukw000: FIXME */
 		GROK_ERROR(
-				"CDEF box: Number of channel description is equal to zero.\n");
+				"CDEF box: Number of channel description is equal to zero.");
 		return false;
 	}
 
 	if (p_cdef_header_size < 2 + (uint32_t) (uint16_t) l_value * 6) {
-		GROK_ERROR( "CDEF box: Insufficient data.\n");
+		GROK_ERROR( "CDEF box: Insufficient data.");
 		return false;
 	}
 
@@ -1739,7 +1739,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 	
 
 	if (p_colr_header_size < 3) {
-		GROK_ERROR( "Bad COLR header box (bad size)\n");
+		GROK_ERROR( "Bad COLR header box (bad size)");
 		return false;
 	}
 
@@ -1748,7 +1748,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 	 */
 	if (jp2->color.jp2_has_colour_specification_box) {
 		GROK_WARN(
-				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.\n");
+				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
 		p_colr_header_data += p_colr_header_size;
 		return true;
 	}
@@ -1765,7 +1765,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 	if (jp2->meth == 1) {
 		if (p_colr_header_size < 7) {
 			GROK_ERROR(
-					"Bad COLR header box (bad size: %d)\n", p_colr_header_size);
+					"Bad COLR header box (bad size: %d)", p_colr_header_size);
 			return false;
 		}
 		grok_read_bytes(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
@@ -1774,7 +1774,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 		if ((p_colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
 			GROK_WARN(
-					"Bad COLR header box (bad size: %d)\n", p_colr_header_size);
+					"Bad COLR header box (bad size: %d)", p_colr_header_size);
 		}
 
 		if (jp2->enumcs == 14) { /* CIELab */
@@ -1785,7 +1785,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 					(nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
 			if (cielab == nullptr) {
 				GROK_ERROR(
-						"Not enough memory for cielab\n");
+						"Not enough memory for cielab");
 				return false;
 			}
 			cielab[0] = 14; /* enumcs */
@@ -1830,7 +1830,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 		uint32_t icc_len = (uint32_t) (p_colr_header_size - 3);
 		if (icc_len == 0) {
 			GROK_ERROR(
-					"ICC profile buffer length equals zero\n");
+					"ICC profile buffer length equals zero");
 			return false;
 		}
 		jp2->color.icc_profile_buf = opj_buffer_new((size_t) icc_len);
@@ -1856,7 +1856,7 @@ bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	/* J2K decoding */
 	if (!j2k_decode(jp2->j2k, tile, p_stream, p_image)) {
 		GROK_ERROR(
-				"Failed to decode the codestream in the JP2 file\n");
+				"Failed to decode the codestream in the JP2 file");
 		return false;
 	}
 
@@ -1981,7 +1981,7 @@ static bool jp2_write_jp2h(jp2_t *jp2, GrokStream *stream) {
 				&(l_current_writer->m_size));
 		if (l_current_writer->m_data == nullptr) {
 			GROK_ERROR(
-					"Not enough memory to hold JP2 Header data\n");
+					"Not enough memory to hold JP2 Header data");
 			l_result = false;
 			break;
 		}
@@ -2003,12 +2003,12 @@ static bool jp2_write_jp2h(jp2_t *jp2, GrokStream *stream) {
 	/* write super box size */
 	if (!stream->write_int(l_jp2h_size)) {
 		GROK_ERROR(
-				"Stream error while writing JP2 Header box\n");
+				"Stream error while writing JP2 Header box");
 		l_result = false;
 	}
 	if (!stream->write_int(JP2_JP2H)) {
 		GROK_ERROR(
-				"Stream error while writing JP2 Header box\n");
+				"Stream error while writing JP2 Header box");
 		l_result = false;
 	}
 
@@ -2019,7 +2019,7 @@ static bool jp2_write_jp2h(jp2_t *jp2, GrokStream *stream) {
 					l_current_writer->m_size)
 					!= l_current_writer->m_size) {
 				GROK_ERROR(
-						"Stream error while writing JP2 Header box\n");
+						"Stream error while writing JP2 Header box");
 				l_result = false;
 				break;
 			}
@@ -2100,7 +2100,7 @@ static bool jp2_write_ftyp(jp2_t *jp2, GrokStream *cio) {
 
 	end: if (!l_result)
 		GROK_ERROR(
-				"Error while writing ftyp data to stream\n");
+				"Error while writing ftyp data to stream");
 	return l_result;
 }
 
@@ -2112,7 +2112,7 @@ static bool jp2_write_jp2c(jp2_t *jp2, GrokStream *cio) {
 
 	uint64_t j2k_codestream_exit = cio->tell();
 	if (!cio->seek(jp2->j2k_codestream_offset)) {
-		GROK_ERROR( "Failed to seek in the stream.\n");
+		GROK_ERROR( "Failed to seek in the stream.");
 		return false;
 	}
 
@@ -2140,7 +2140,7 @@ static bool jp2_write_jp2c(jp2_t *jp2, GrokStream *cio) {
 		}
 	}
 	if (!cio->seek(j2k_codestream_exit)) {
-		GROK_ERROR( "Failed to seek in the stream.\n");
+		GROK_ERROR( "Failed to seek in the stream.");
 		return false;
 	}
 
@@ -2212,7 +2212,7 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
 	jp2->cl = (uint32_t*) grok_malloc(jp2->numcl * sizeof(uint32_t));
 	if (!jp2->cl) {
 		GROK_ERROR(
-				"Not enough memory when setup the JP2 encoder\n");
+				"Not enough memory when setup the JP2 encoder");
 		return false;
 	}
 	jp2->cl[0] = JP2_JP2; /* CL0 : JP2 */
@@ -2223,7 +2223,7 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
 			jp2->numcomps * sizeof(jp2_comps_t));
 	if (!jp2->comps) {
 		GROK_ERROR(
-				"Not enough memory when setup the JP2 encoder\n");
+				"Not enough memory when setup the JP2 encoder");
 		/* Memory of jp2->cl will be freed by jp2_destroy */
 		return false;
 	}
@@ -2326,25 +2326,25 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
 		}
 		if (alpha_count == 0U) {
 			GROK_WARN(
-					"Alpha channel specified but unknown enumcs. No cdef box will be created.\n");
+					"Alpha channel specified but unknown enumcs. No cdef box will be created.");
 		} else if (image->numcomps < (color_channels + 1)) {
 			GROK_WARN(
-					"Alpha channel specified but not enough image components for an automatic cdef box creation.\n");
+					"Alpha channel specified but not enough image components for an automatic cdef box creation.");
 			alpha_count = 0U;
 		} else if ((uint32_t) alpha_channel < color_channels) {
 			GROK_WARN(
-					"Alpha channel position conflicts with color channel. No cdef box will be created.\n");
+					"Alpha channel position conflicts with color channel. No cdef box will be created.");
 			alpha_count = 0U;
 		}
 	} else if (alpha_count > 1) {
 		GROK_WARN(
-				"Multiple alpha channels specified. No cdef box will be created.\n");
+				"Multiple alpha channels specified. No cdef box will be created.");
 	}
 	if (alpha_count == 1U) { /* if here, we know what we can do */
 		jp2->color.jp2_cdef = (jp2_cdef_t*) grok_malloc(sizeof(jp2_cdef_t));
 		if (!jp2->color.jp2_cdef) {
 			GROK_ERROR(
-					"Not enough memory to setup the JP2 encoder\n");
+					"Not enough memory to setup the JP2 encoder");
 			return false;
 		}
 		/* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
@@ -2354,7 +2354,7 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
 		if (!jp2->color.jp2_cdef->info) {
 			/* memory will be freed by jp2_destroy */
 			GROK_ERROR(
-					"Not enough memory to setup the JP2 encoder\n");
+					"Not enough memory to setup the JP2 encoder");
 			return false;
 		}
 		jp2->color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
@@ -2552,7 +2552,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 
 	if (l_current_data == nullptr) {
 		GROK_ERROR(
-				"Not enough memory to handle jpeg2000 file header\n");
+				"Not enough memory to handle jpeg2000 file header");
 		return false;
 	}
 
@@ -2564,13 +2564,13 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 				grok_free(l_current_data);
 				return true;
 			} else {
-				GROK_ERROR( "bad placed jpeg codestream\n");
+				GROK_ERROR( "bad placed jpeg codestream");
 				grok_free(l_current_data);
 				return false;
 			}
 		} else if (box.length == 0) {
 			GROK_ERROR(
-					"Cannot handle box of undefined sizes\n");
+					"Cannot handle box of undefined sizes");
 			grok_free(l_current_data);
 			return false;
 		}
@@ -2606,7 +2606,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 					jp2->jp2_state |= JP2_STATE_UNKNOWN;
 					if (!stream->skip(l_current_data_size)) {
 						GROK_WARN(
-								"Problem with skipping JPEG2000 box, stream error\n");
+								"Problem with skipping JPEG2000 box, stream error");
 						grok_free(l_current_data);
 						// ignore error and return true if code stream box has already been read
 						// (we don't worry about any boxes after code stream)
@@ -2634,7 +2634,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 				if (!new_current_data) {
 					grok_free(l_current_data);
 					GROK_ERROR(
-							"Not enough memory to handle jpeg2000 box\n");
+							"Not enough memory to handle jpeg2000 box");
 					return false;
 				}
 				l_current_data = new_current_data;
@@ -2645,7 +2645,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 					l_current_data_size);
 			if (l_nb_bytes_read != l_current_data_size) {
 				GROK_ERROR(
-						"Problem with reading JPEG2000 box, stream error\n");
+						"Problem with reading JPEG2000 box, stream error");
 				grok_free(l_current_data);
 				return false;
 			}
@@ -2658,20 +2658,20 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 		} else {
 			if (!(jp2->jp2_state & JP2_STATE_SIGNATURE)) {
 				GROK_ERROR(
-						"Malformed JP2 file format: first box must be JPEG 2000 signature box\n");
+						"Malformed JP2 file format: first box must be JPEG 2000 signature box");
 				grok_free(l_current_data);
 				return false;
 			}
 			if (!(jp2->jp2_state & JP2_STATE_FILE_TYPE)) {
 				GROK_ERROR(
-						"Malformed JP2 file format: second box must be file type box\n");
+						"Malformed JP2 file format: second box must be file type box");
 				grok_free(l_current_data);
 				return false;
 			}
 			jp2->jp2_state |= JP2_STATE_UNKNOWN;
 			if (!stream->skip(l_current_data_size)) {
 				GROK_WARN(
-						"Problem with skipping JPEG2000 box, stream error\n");
+						"Problem with skipping JPEG2000 box, stream error");
 				grok_free(l_current_data);
 				// ignore error and return true if code stream box has already been read
 				// (we don't worry about any boxes after code stream)
@@ -2810,13 +2810,13 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
 
 	if (jp2->jp2_state != JP2_STATE_NONE) {
 		GROK_ERROR(
-				"The signature box must be the first box in the file.\n");
+				"The signature box must be the first box in the file.");
 		return false;
 	}
 
 	/* assure length of data is correct (4 -> magic number) */
 	if (p_header_size != 4) {
-		GROK_ERROR( "Error with JP signature Box size\n");
+		GROK_ERROR( "Error with JP signature Box size");
 		return false;
 	}
 
@@ -2824,7 +2824,7 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &l_magic_number, 4);
 	if (l_magic_number != 0x0d0a870a) {
 		GROK_ERROR(
-				"Error with JP Signature : bad magic number\n");
+				"Error with JP Signature : bad magic number");
 		return false;
 	}
 
@@ -2853,13 +2853,13 @@ static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
 
 	if (jp2->jp2_state != JP2_STATE_SIGNATURE) {
 		GROK_ERROR(
-				"The ftyp box must be the second box in the file.\n");
+				"The ftyp box must be the second box in the file.");
 		return false;
 	}
 
 	/* assure length of data is correct */
 	if (p_header_size < 8) {
-		GROK_ERROR( "Error with FTYP signature Box size\n");
+		GROK_ERROR( "Error with FTYP signature Box size");
 		return false;
 	}
 
@@ -2873,7 +2873,7 @@ static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
 
 	/* the number of remaining bytes should be a multiple of 4 */
 	if ((l_remaining_bytes & 0x3) != 0) {
-		GROK_ERROR( "Error with FTYP signature Box size\n");
+		GROK_ERROR( "Error with FTYP signature Box size");
 		return false;
 	}
 
@@ -2883,7 +2883,7 @@ static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
 		jp2->cl = (uint32_t*) grok_calloc(jp2->numcl, sizeof(uint32_t));
 		if (jp2->cl == nullptr) {
 			GROK_ERROR(
-					"Not enough memory with FTYP Box\n");
+					"Not enough memory with FTYP Box");
 			return false;
 		}
 	}
@@ -2938,7 +2938,7 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 	/* make sure the box is well placed */
 	if ((jp2->jp2_state & JP2_STATE_FILE_TYPE) != JP2_STATE_FILE_TYPE) {
 		GROK_ERROR(
-				"The  box must be the first box in the file.\n");
+				"The  box must be the first box in the file.");
 		return false;
 	}
 
@@ -2950,13 +2950,13 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 
 		if (!jp2_read_boxhdr_char(&box, p_header_data, &l_box_size, header_size)) {
 			GROK_ERROR(
-					"Stream error while reading JP2 Header box\n");
+					"Stream error while reading JP2 Header box");
 			return false;
 		}
 
 		if (box.length > (uint64_t) header_size) {
 			GROK_ERROR(
-					"Stream error while reading JP2 Header box: box length is inconsistent.\n");
+					"Stream error while reading JP2 Header box: box length is inconsistent.");
 			return false;
 		}
 
@@ -2980,14 +2980,14 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 		p_header_data += l_current_data_size;
 		header_size -= box.length;
 		if (header_size < 0) {
-			GROK_ERROR( "Error reading JP2 header box\n");
+			GROK_ERROR( "Error reading JP2 header box");
 			return false;
 		}
 	}
 
 	if (l_has_ihdr == 0) {
 		GROK_ERROR(
-				"Stream error while reading JP2 Header box: no 'ihdr' box.\n");
+				"Stream error while reading JP2 Header box: no 'ihdr' box.");
 		return false;
 	}
 
@@ -3005,7 +3005,7 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 
 	if (p_box_max_size < 8) {
 		GROK_ERROR(
-				"Cannot handle box of less than 8 bytes\n");
+				"Cannot handle box of less than 8 bytes");
 		return false;
 	}
 
@@ -3024,7 +3024,7 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 	if (box->length == 1) {
 		if (p_box_max_size < 16) {
 			GROK_ERROR(
-					"Cannot handle XL box of less than 16 bytes\n");
+					"Cannot handle XL box of less than 16 bytes");
 			return false;
 		}
 
@@ -3034,16 +3034,16 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 
 		if (box->length == 0) {
 			GROK_ERROR(
-					"Cannot handle box of undefined sizes\n");
+					"Cannot handle box of undefined sizes");
 			return false;
 		}
 	} else if (box->length == 0) {
 		GROK_ERROR(
-				"Cannot handle box of undefined sizes\n");
+				"Cannot handle box of undefined sizes");
 		return false;
 	}
 	if (box->length < *p_number_bytes_read) {
-		GROK_ERROR( "Box length is inconsistent.\n");
+		GROK_ERROR( "Box length is inconsistent.");
 		return false;
 	}
 	return true;
@@ -3273,11 +3273,11 @@ bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint
 		return false;
 
 	GROK_WARN(
-			"JP2 box which are after the codestream will not be read by this function.\n");
+			"JP2 box which are after the codestream will not be read by this function.");
 
 	if (!j2k_get_tile(p_jp2->j2k, p_stream, p_image, tile_index)) {
 		GROK_ERROR(
-				"Failed to decode the codestream in the JP2 file\n");
+				"Failed to decode the codestream in the JP2 file");
 		return false;
 	}
 

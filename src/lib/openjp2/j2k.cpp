@@ -1439,7 +1439,7 @@ static bool j2k_check_poc_val(const opj_poc_t *p_pocs, uint32_t p_nb_pocs,
 
 	if (loss) {
 		GROK_ERROR(
-				"Missing packets possible loss of data\n");
+				"Missing packets possible loss of data");
 	}
 	delete[] packet_array;
 	return !loss;
@@ -1608,7 +1608,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 				== j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC,
 						p_j2k->cstr_index->main_head_start, 2)) {
 			GROK_ERROR(
-					"Not enough memory to add mh marker\n");
+					"Not enough memory to add mh marker");
 			return false;
 		}
 	}
@@ -1744,7 +1744,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* minimum size == 39 - 3 (= minimum component parameter) */
 	if (p_header_size < 36) {
-		GROK_ERROR( "Error with SIZ marker size\n");
+		GROK_ERROR( "Error with SIZ marker size");
 		return false;
 	}
 
@@ -1752,7 +1752,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_nb_comp = l_remaining_size / 3;
 	l_nb_comp_remain = l_remaining_size % 3;
 	if (l_nb_comp_remain != 0) {
-		GROK_ERROR( "Error with SIZ marker size\n");
+		GROK_ERROR( "Error with SIZ marker size");
 		return false;
 	}
 
@@ -1772,7 +1772,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 		if ((profile > OPJ_PROFILE_CINEMA_LTS)
 				&& !OPJ_IS_BROADCAST(profile) && !OPJ_IS_IMF(profile)) {
 			GROK_ERROR(
-					"Non-compliant Rsiz value 0x%x in SIZ marker\n", l_tmp);
+					"Non-compliant Rsiz value 0x%x in SIZ marker", l_tmp);
 			return false;
 		}
 	}
@@ -1836,7 +1836,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	if ((l_cp->tx0 > l_image->x0) || (l_cp->ty0 > l_image->y0)
 			|| (l_tx1 <= l_image->x0) || (l_ty1 <= l_image->y0)) {
 		GROK_ERROR(
-				"Error with SIZ marker: illegal tile offset\n");
+				"Error with SIZ marker: illegal tile offset");
 		return false;
 	}
 
@@ -1855,7 +1855,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (l_image->comps == nullptr) {
 		l_image->numcomps = 0;
 		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker\n");
+				"Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 
@@ -1938,7 +1938,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_cp->tcps = (tcp_t*) grok_calloc(l_nb_tiles, sizeof(tcp_t));
 	if (l_cp->tcps == nullptr) {
 		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker\n");
+				"Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 
@@ -1946,7 +1946,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 			(tccp_t*) grok_calloc(l_image->numcomps, sizeof(tccp_t));
 	if (p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps == nullptr) {
 		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker\n");
+				"Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 
@@ -1956,7 +1956,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records) {
 		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker\n");
+				"Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mct_records =
@@ -1969,7 +1969,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records) {
 		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker\n");
+				"Not enough memory to take in charge SIZ marker");
 		return false;
 	}
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_nb_max_mcc_records =
@@ -1989,7 +1989,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 				sizeof(tccp_t));
 		if (l_current_tile_param->tccps == nullptr) {
 			GROK_ERROR(
-					"Not enough memory to take in charge SIZ marker\n");
+					"Not enough memory to take in charge SIZ marker");
 			return false;
 		}
 
@@ -2012,7 +2012,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream) {
 		const char *l_comment = p_j2k->m_cp.comment[i];
 		uint16_t l_comment_size = p_j2k->m_cp.comment_len[i];
 		if (!l_comment_size) {
-			GROK_WARN( "Empty comment. Ignoring\n");
+			GROK_WARN( "Empty comment. Ignoring");
 			continue;
 		}
 		if (l_comment_size > OPJ_MAX_COMMENT_LENGTH) {
@@ -2060,11 +2060,11 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	assert(p_header_size != 0);
 
 	if (p_header_size < 2) {
-		GROK_ERROR( "j2k_read_com: Corrupt COM segment \n");
+		GROK_ERROR( "j2k_read_com: Corrupt COM segment ");
 		return false;
 	} else if (p_header_size == 2) {
 		GROK_WARN(
-				"j2k_read_com: Empty COM segment. Ignoring \n");
+				"j2k_read_com: Empty COM segment. Ignoring ");
 		return true;
 	}
 	if (p_j2k->m_cp.num_comments == OPJ_NUM_COMMENTS_SUPPORTED) {
@@ -2080,7 +2080,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_j2k->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if (commentType > 1) {
 		GROK_WARN(
-				"j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values\n");
+				"j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values");
 	}
 
 	p_header_data += 2;
@@ -2092,7 +2092,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 			commentSizeToAlloc);
 	if (!p_j2k->m_cp.comment[numComments]) {
 		GROK_ERROR(
-				"j2k_read_com: Out of memory when allocating memory for comment \n");
+				"j2k_read_com: Out of memory when allocating memory for comment ");
 		return false;
 	}
 	memcpy(p_j2k->m_cp.comment[numComments], p_header_data, commentSize);
@@ -2150,7 +2150,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream) {
 	}
 
 	if (!j2k_write_SPCod_SPCoc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream)) {
-		GROK_ERROR( "Error writing COD marker\n");
+		GROK_ERROR( "Error writing COD marker");
 		return false;
 	}
 
@@ -2193,7 +2193,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* Make sure room is sufficient */
 	if (p_header_size < 5) {
-		GROK_ERROR( "Error reading COD marker\n");
+		GROK_ERROR( "Error reading COD marker");
 		return false;
 	}
 
@@ -2203,7 +2203,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	if ((l_tcp->csty
 			& ~(uint32_t) (J2K_CP_CSTY_PRT | J2K_CP_CSTY_SOP | J2K_CP_CSTY_EPH))
 			!= 0U) {
-		GROK_ERROR( "Unknown Scod value in COD marker\n");
+		GROK_ERROR( "Unknown Scod value in COD marker");
 		return false;
 	}
 	grok_read_bytes(p_header_data, &l_tmp, 1); /* SGcod (A) */
@@ -2212,7 +2212,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* Make sure progression order is valid */
 	if (l_tcp->prg > OPJ_CPRL) {
 		GROK_ERROR(
-				"Unknown progression order in COD marker\n");
+				"Unknown progression order in COD marker");
 		l_tcp->prg = OPJ_PROG_UNKNOWN;
 	}
 	grok_read_bytes(p_header_data, &l_tcp->numlayers, 2); /* SGcod (B) */
@@ -2244,12 +2244,12 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	if (!j2k_read_SPCod_SPCoc(p_j2k, 0, p_header_data, &p_header_size)) {
-		GROK_ERROR( "Error reading COD marker\n");
+		GROK_ERROR( "Error reading COD marker");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		GROK_ERROR( "Error reading COD marker\n");
+		GROK_ERROR( "Error reading COD marker");
 		return false;
 	}
 
@@ -2377,7 +2377,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* make sure room is sufficient*/
 	if (p_header_size < l_comp_room + 1) {
-		GROK_ERROR( "Error reading COC marker\n");
+		GROK_ERROR( "Error reading COC marker");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - (l_comp_room + 1));
@@ -2386,7 +2386,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += l_comp_room;
 	if (l_comp_no >= l_image->numcomps) {
 		GROK_ERROR(
-				"Error reading COC marker (bad number of components)\n");
+				"Error reading COC marker (bad number of components)");
 		return false;
 	}
 
@@ -2394,12 +2394,12 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 	++p_header_data;
 
 	if (!j2k_read_SPCod_SPCoc(p_j2k, l_comp_no, p_header_data, &p_header_size)) {
-		GROK_ERROR( "Error reading COC marker\n");
+		GROK_ERROR( "Error reading COC marker");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		GROK_ERROR( "Error reading COC marker\n");
+		GROK_ERROR( "Error reading COC marker");
 		return false;
 	}
 	return true;
@@ -2426,7 +2426,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream) {
 	}
 
 	if (!j2k_write_SQcd_SQcc(p_j2k, p_j2k->m_current_tile_number, 0, p_stream)) {
-		GROK_ERROR( "Error writing QCD marker\n");
+		GROK_ERROR( "Error writing QCD marker");
 		return false;
 	}
 
@@ -2447,11 +2447,11 @@ static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
 	assert(p_j2k != nullptr);
 	
 	if (!j2k_read_SQcd_SQcc(false, p_j2k, 0, p_header_data, &p_header_size)) {
-		GROK_ERROR( "Error reading QCD marker\n");
+		GROK_ERROR( "Error reading QCD marker");
 		return false;
 	}
 	if (p_header_size != 0) {
-		GROK_ERROR( "Error reading QCD marker\n");
+		GROK_ERROR( "Error reading QCD marker");
 		return false;
 	}
 
@@ -2560,7 +2560,7 @@ static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_num_comp <= 256) {
 		if (p_header_size < 1) {
-			GROK_ERROR( "Error reading QCC marker\n");
+			GROK_ERROR( "Error reading QCC marker");
 			return false;
 		}
 		grok_read_bytes(p_header_data, &l_comp_no, 1);
@@ -2568,7 +2568,7 @@ static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 		--p_header_size;
 	} else {
 		if (p_header_size < 2) {
-			GROK_ERROR( "Error reading QCC marker\n");
+			GROK_ERROR( "Error reading QCC marker");
 			return false;
 		}
 		grok_read_bytes(p_header_data, &l_comp_no, 2);
@@ -2585,12 +2585,12 @@ static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (!j2k_read_SQcd_SQcc(true, p_j2k, l_comp_no, p_header_data,
 			&p_header_size)) {
-		GROK_ERROR( "Error reading QCC marker\n");
+		GROK_ERROR( "Error reading QCC marker");
 		return false;
 	}
 
 	if (p_header_size != 0) {
-		GROK_ERROR( "Error reading QCC marker\n");
+		GROK_ERROR( "Error reading QCC marker");
 		return false;
 	}
 
@@ -2800,7 +2800,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_current_poc_remaining = p_header_size % l_chunk_size;
 
 	if ((l_current_poc_nb <= 0) || (l_current_poc_remaining != 0)) {
-		GROK_ERROR( "Error reading POC marker\n");
+		GROK_ERROR( "Error reading POC marker");
 		return false;
 	}
 
@@ -2809,7 +2809,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_current_poc_nb += l_old_poc_nb;
 
 	if (l_current_poc_nb >= 32) {
-		GROK_ERROR( "Too many POCs %d\n", l_current_poc_nb);
+		GROK_ERROR( "Too many POCs %d", l_current_poc_nb);
 		return false;
 	}
 	assert(l_current_poc_nb < 32);
@@ -2869,7 +2869,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_nb_comp = p_j2k->m_private_image->numcomps;
 
 	if (p_header_size != l_nb_comp * 4) {
-		GROK_ERROR( "Error reading CRG marker\n");
+		GROK_ERROR( "Error reading CRG marker");
 		return false;
 	}
 	uint32_t l_Xcrg_i, l_Ycrg_i;
@@ -2903,7 +2903,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 	
 
 	if (p_header_size < 2) {
-		GROK_ERROR( "Error reading TLM marker\n");
+		GROK_ERROR( "Error reading TLM marker");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - 2);
@@ -2915,7 +2915,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	// 0x70 ==  1110000
 	if ((L & ~0x70) != 0) {
-		GROK_ERROR( "Illegal L value in TLM marker\n");
+		GROK_ERROR( "Illegal L value in TLM marker");
 		return false;
 	}
 
@@ -2926,7 +2926,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	l_quotient = l_Ptlm_size + L_iT;
 	if (p_header_size % l_quotient != 0) {
-		GROK_ERROR( "Error reading TLM marker\n");
+		GROK_ERROR( "Error reading TLM marker");
 		return false;
 	}
 
@@ -2961,7 +2961,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_Zplm, l_Nplm, l_tmp, l_packet_len = 0, i;
 	int64_t header_size = p_header_size;
 	if (header_size < 1) {
-		GROK_ERROR( "Error reading PLM marker\n");
+		GROK_ERROR( "Error reading PLM marker");
 		return false;
 	}
 
@@ -2976,7 +2976,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 		++p_header_data;
 		header_size -= (1 + l_Nplm);
 		if (header_size < 0) {
-			GROK_ERROR( "Error reading PLM marker\n");
+			GROK_ERROR( "Error reading PLM marker");
 			return false;
 		}
 		for (i = 0; i < l_Nplm; ++i) {
@@ -2993,7 +2993,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 		}
 		if (l_packet_len != 0) {
-			GROK_ERROR( "Error reading PLM marker\n");
+			GROK_ERROR( "Error reading PLM marker");
 			return false;
 		}
 	}
@@ -3016,7 +3016,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 	
 
 	if (p_header_size < 1) {
-		GROK_ERROR( "Error reading PLT marker\n");
+		GROK_ERROR( "Error reading PLT marker");
 		return false;
 	}
 
@@ -3042,7 +3042,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 		}
 	}
 	if (l_packet_len != 0) {
-		GROK_ERROR( "Error reading PLT marker\n");
+		GROK_ERROR( "Error reading PLT marker");
 		return false;
 	}
 	return true;
@@ -3068,7 +3068,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* We need to have the Z_ppm element + 1 byte of Nppm/Ippm at minimum */
 	if (p_header_size < 2) {
-		GROK_ERROR( "Error reading PPM marker\n");
+		GROK_ERROR( "Error reading PPM marker");
 		return false;
 	}
 
@@ -3088,7 +3088,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_cp->ppm_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
 		if (l_cp->ppm_markers == nullptr) {
 			GROK_ERROR(
-					"Not enough memory to read PPM marker\n");
+					"Not enough memory to read PPM marker");
 			return false;
 		}
 		l_cp->ppm_markers_count = l_newCount;
@@ -3100,7 +3100,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on l_cp destruction */
 			GROK_ERROR(
-					"Not enough memory to read PPM marker\n");
+					"Not enough memory to read PPM marker");
 			return false;
 		}
 		l_cp->ppm_markers = new_ppm_markers;
@@ -3111,7 +3111,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_cp->ppm_markers[l_Z_ppm].m_data != nullptr) {
 		/* clean up to be done on l_cp destruction */
-		GROK_ERROR( "Zppm %u already read\n", l_Z_ppm);
+		GROK_ERROR( "Zppm %u already read", l_Z_ppm);
 		return false;
 	}
 
@@ -3119,7 +3119,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (l_cp->ppm_markers[l_Z_ppm].m_data == nullptr) {
 		/* clean up to be done on l_cp destruction */
 		GROK_ERROR(
-				"Not enough memory to read PPM marker\n");
+				"Not enough memory to read PPM marker");
 		return false;
 	}
 	l_cp->ppm_markers[l_Z_ppm].m_data_size = p_header_size;
@@ -3168,7 +3168,7 @@ static bool j2k_merge_ppm(cp_t *p_cp) {
 					if (l_data_size < 4U) {
 						/* clean up to be done on l_cp destruction */
 						GROK_ERROR(
-								"Not enough bytes to read Nppm\n");
+								"Not enough bytes to read Nppm");
 						return false;
 					}
 					grok_read_bytes(l_data, &l_N_ppm, 4);
@@ -3190,14 +3190,14 @@ static bool j2k_merge_ppm(cp_t *p_cp) {
 
 	if (l_N_ppm_remaining != 0U) {
 		/* clean up to be done on l_cp destruction */
-		GROK_ERROR( "Corrupted PPM markers\n");
+		GROK_ERROR( "Corrupted PPM markers");
 		return false;
 	}
 
 	p_cp->ppm_buffer = (uint8_t*) grok_malloc(l_ppm_data_size);
 	if (p_cp->ppm_buffer == nullptr) {
 		GROK_ERROR(
-				"Not enough memory to read PPM marker\n");
+				"Not enough memory to read PPM marker");
 		return false;
 	}
 	p_cp->ppm_len = l_ppm_data_size;
@@ -3229,7 +3229,7 @@ static bool j2k_merge_ppm(cp_t *p_cp) {
 					if (l_data_size < 4U) {
 						/* clean up to be done on l_cp destruction */
 						GROK_ERROR(
-								"Not enough bytes to read Nppm\n");
+								"Not enough bytes to read Nppm");
 						return false;
 					}
 					grok_read_bytes(l_data, &l_N_ppm, 4);
@@ -3287,14 +3287,14 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	/* We need to have the Z_ppt element + 1 byte of Ippt at minimum */
 	if (p_header_size < 2) {
-		GROK_ERROR( "Error reading PPT marker\n");
+		GROK_ERROR( "Error reading PPT marker");
 		return false;
 	}
 
 	l_cp = &(p_j2k->m_cp);
 	if (l_cp->ppm) {
 		GROK_ERROR(
-				"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).\n");
+				"Error reading PPT marker: packet header have been previously found in the main header (PPM marker).");
 		return false;
 	}
 
@@ -3314,7 +3314,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_tcp->ppt_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
 		if (l_tcp->ppt_markers == nullptr) {
 			GROK_ERROR(
-					"Not enough memory to read PPT marker\n");
+					"Not enough memory to read PPT marker");
 			return false;
 		}
 		l_tcp->ppt_markers_count = l_newCount;
@@ -3326,7 +3326,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		if (new_ppt_markers == nullptr) {
 			/* clean up to be done on l_tcp destruction */
 			GROK_ERROR(
-					"Not enough memory to read PPT marker\n");
+					"Not enough memory to read PPT marker");
 			return false;
 		}
 		l_tcp->ppt_markers = new_ppt_markers;
@@ -3337,7 +3337,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_tcp->ppt_markers[l_Z_ppt].m_data != nullptr) {
 		/* clean up to be done on l_tcp destruction */
-		GROK_ERROR( "Zppt %u already read\n", l_Z_ppt);
+		GROK_ERROR( "Zppt %u already read", l_Z_ppt);
 		return false;
 	}
 
@@ -3345,7 +3345,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (l_tcp->ppt_markers[l_Z_ppt].m_data == nullptr) {
 		/* clean up to be done on l_tcp destruction */
 		GROK_ERROR(
-				"Not enough memory to read PPT marker\n");
+				"Not enough memory to read PPT marker");
 		return false;
 	}
 	l_tcp->ppt_markers[l_Z_ppt].m_data_size = p_header_size;
@@ -3370,7 +3370,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp) {
 		return true;
 	}
 	if (p_tcp->ppt_buffer != nullptr) {
-		GROK_ERROR( "multiple calls to j2k_merge_ppt()\n");
+		GROK_ERROR( "multiple calls to j2k_merge_ppt()");
 		return false;
 	}
 
@@ -3382,7 +3382,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp) {
 	p_tcp->ppt_buffer = (uint8_t*) grok_malloc(l_ppt_data_size);
 	if (p_tcp->ppt_buffer == nullptr) {
 		GROK_ERROR(
-				"Not enough memory to read PPT marker\n");
+				"Not enough memory to read PPT marker");
 		return false;
 	}
 	p_tcp->ppt_len = l_ppt_data_size;
@@ -3501,7 +3501,7 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t p_header_size,
 
 	/* Size of this marker is fixed = 12 (we have already read marker and its size)*/
 	if (p_header_size != 8) {
-		GROK_ERROR( "Error reading SOT marker\n");
+		GROK_ERROR( "Error reading SOT marker");
 		return false;
 	}
 	/* Isot */
@@ -3534,7 +3534,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (!j2k_get_sot_values(p_header_data, p_header_size,
 			&(p_j2k->m_current_tile_number), &l_tot_len, &l_current_part,
 			&l_num_parts)) {
-		GROK_ERROR( "Error reading SOT marker\n");
+		GROK_ERROR( "Error reading SOT marker");
 		return false;
 	}
 
@@ -3573,7 +3573,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	if ((l_tot_len != 0) && (l_tot_len < 14)) {
 		if (l_tot_len == 12) { /* special case for the PHR data which are read by kakadu*/
 			GROK_WARN(
-					"Empty SOT marker detected: Psot=%d.\n", l_tot_len);
+					"Empty SOT marker detected: Psot=%d.", l_tot_len);
 		} else {
 			GROK_ERROR(
 					"Psot value is not correct regards to the JPEG2000 norm: %d.\n",
@@ -3682,7 +3682,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 								sizeof(opj_tp_index_t));
 				if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
 					GROK_ERROR(
-							"Not enough memory to read SOT marker. Tile index allocation failed\n");
+							"Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
 				}
 			} else {
@@ -3696,7 +3696,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
 							nullptr;
 					GROK_ERROR(
-							"Not enough memory to read SOT marker. Tile index allocation failed\n");
+							"Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
 				}
 				p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
@@ -3716,7 +3716,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 								0;
 						GROK_ERROR(
-								"Not enough memory to read SOT marker. Tile index allocation failed\n");
+								"Not enough memory to read SOT marker. Tile index allocation failed");
 						return false;
 					}
 				}
@@ -3739,7 +3739,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 								0;
 						GROK_ERROR(
-								"Not enough memory to read SOT marker. Tile index allocation failed\n");
+								"Not enough memory to read SOT marker. Tile index allocation failed");
 						return false;
 					}
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
@@ -3787,7 +3787,7 @@ static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 	}
 	if (!tcd_encode_tile(p_tile_coder, p_j2k->m_current_tile_number, p_stream,
 			p_data_written, l_remaining_data, l_cstr_info)) {
-		GROK_ERROR( "Cannot encode tile\n");
+		GROK_ERROR( "Cannot encode tile");
 		return false;
 	}
 
@@ -3843,7 +3843,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 						(uint32_t) (p_j2k->m_specific_param.m_decoder.tile_part_data_length
 								+ 2))) {
 			GROK_ERROR(
-					"Not enough memory to add tl marker\n");
+					"Not enough memory to add tl marker");
 			return false;
 		}
 
@@ -3862,7 +3862,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 				buff = new uint8_t[len];
 			} catch (std::bad_alloc &ex) {
 				GROK_ERROR(
-						"Not enough memory to allocate segment\n");
+						"Not enough memory to allocate segment");
 				return false;
 			}
 		} else {
@@ -3983,7 +3983,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	if (p_header_size != 2 + l_comp_room) {
-		GROK_ERROR( "Error reading RGN marker\n");
+		GROK_ERROR( "Error reading RGN marker");
 		return false;
 	}
 
@@ -4305,7 +4305,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 	for (;;) {
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
 		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -4321,7 +4321,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 			if (!(p_j2k->m_specific_param.m_decoder.m_state
 					& l_marker_handler->states)) {
 				GROK_ERROR(
-						"Marker is not compliant with its position\n");
+						"Marker is not compliant with its position");
 				return false;
 			} else {
 				if (l_marker_handler->id != J2K_MS_UNK) {
@@ -4333,7 +4333,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 								l_size_unk);
 						if (res == false) {
 							GROK_ERROR(
-									"Not enough memory to add mh marker\n");
+									"Not enough memory to add mh marker");
 							return false;
 						}
 					}
@@ -4413,7 +4413,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 2) {
-		GROK_ERROR( "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker");
 		return false;
 	}
 
@@ -4423,12 +4423,12 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 	if (l_tmp != 0) {
 		GROK_WARN(
-				"Cannot take in charge mct data within multiple MCT records\n");
+				"Cannot take in charge mct data within multiple MCT records");
 		return true;
 	}
 
 	if (p_header_size <= 6) {
-		GROK_ERROR( "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker");
 		return false;
 	}
 
@@ -4461,7 +4461,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_tcp->m_nb_max_mct_records = 0;
 				l_tcp->m_nb_mct_records = 0;
 				GROK_ERROR(
-						"Not enough memory to read MCT marker\n");
+						"Not enough memory to read MCT marker");
 				return false;
 			}
 
@@ -4510,18 +4510,18 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 	if (l_tmp != 0) {
 		GROK_WARN(
-				"Cannot take in charge multiple MCT markers\n");
+				"Cannot take in charge multiple MCT markers");
 		return true;
 	}
 	if (p_header_size < 6) {
-		GROK_ERROR( "Error reading MCT markers\n");
+		GROK_ERROR( "Error reading MCT markers");
 		return false;
 	}
 	p_header_size = (uint16_t)(p_header_size - 6);
 
 	l_mct_data->m_data = (uint8_t*) grok_malloc(p_header_size);
 	if (!l_mct_data->m_data) {
-		GROK_ERROR( "Error reading MCT marker\n");
+		GROK_ERROR( "Error reading MCT marker");
 		return false;
 	}
 	memcpy(l_mct_data->m_data, p_header_data, p_header_size);
@@ -4662,7 +4662,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 2) {
-		GROK_ERROR( "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker");
 		return false;
 	}
 
@@ -4672,12 +4672,12 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 	if (l_tmp != 0) {
 		GROK_WARN(
-				"Cannot take in charge multiple data spanning\n");
+				"Cannot take in charge multiple data spanning");
 		return true;
 	}
 
 	if (p_header_size < 7) {
-		GROK_ERROR( "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker");
 		return false;
 	}
 
@@ -4711,7 +4711,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 				l_tcp->m_nb_max_mcc_records = 0;
 				l_tcp->m_nb_mcc_records = 0;
 				GROK_ERROR(
-						"Not enough memory to read MCC marker\n");
+						"Not enough memory to read MCC marker");
 				return false;
 			}
 			l_tcp->m_mcc_records = new_mcc_records;
@@ -4732,7 +4732,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 	if (l_tmp != 0) {
 		GROK_WARN(
-				"Cannot take in charge multiple data spanning\n");
+				"Cannot take in charge multiple data spanning");
 		return true;
 	}
 
@@ -4742,14 +4742,14 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_nb_collections > 1) {
 		GROK_WARN(
-				"Cannot take in charge multiple collections\n");
+				"Cannot take in charge multiple collections");
 		return true;
 	}
 	p_header_size = (uint16_t)(p_header_size - 7);
 
 	for (i = 0; i < l_nb_collections; ++i) {
 		if (p_header_size < 3) {
-			GROK_ERROR( "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker");
 			return false;
 		}
 
@@ -4758,7 +4758,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		if (l_tmp != 1) {
 			GROK_WARN(
-					"Cannot take in charge collections other than array decorrelation\n");
+					"Cannot take in charge collections other than array decorrelation");
 			return true;
 		}
 
@@ -4772,7 +4772,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		if (p_header_size
 				< (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 2)) {
-			GROK_ERROR( "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker");
 			return false;
 		}
 
@@ -4785,7 +4785,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 			if (l_tmp != j) {
 				GROK_WARN(
-						"Cannot take in charge collections with indix shuffle\n");
+						"Cannot take in charge collections with indix shuffle");
 				return true;
 			}
 		}
@@ -4798,13 +4798,13 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 		if (l_nb_comps != l_mcc_record->m_nb_comps) {
 			GROK_WARN(
-					"Cannot take in charge collections without same number of indixes\n");
+					"Cannot take in charge collections without same number of indixes");
 			return true;
 		}
 
 		if (p_header_size
 				< (l_nb_bytes_by_comp * l_mcc_record->m_nb_comps + 3)) {
-			GROK_ERROR( "Error reading MCC marker\n");
+			GROK_ERROR( "Error reading MCC marker");
 			return false;
 		}
 
@@ -4817,7 +4817,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 
 			if (l_tmp != j) {
 				GROK_WARN(
-						"Cannot take in charge collections with indix shuffle\n");
+						"Cannot take in charge collections with indix shuffle");
 				return true;
 			}
 		}
@@ -4841,7 +4841,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 
 			if (l_mcc_record->m_decorrelation_array == nullptr) {
-				GROK_ERROR( "Error reading MCC marker\n");
+				GROK_ERROR( "Error reading MCC marker");
 				return false;
 			}
 		}
@@ -4858,14 +4858,14 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			}
 
 			if (l_mcc_record->m_offset_array == nullptr) {
-				GROK_ERROR( "Error reading MCC marker\n");
+				GROK_ERROR( "Error reading MCC marker");
 				return false;
 			}
 		}
 	}
 
 	if (p_header_size != 0) {
-		GROK_ERROR( "Error reading MCC marker\n");
+		GROK_ERROR( "Error reading MCC marker");
 		return false;
 	}
 
@@ -4940,7 +4940,7 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_tcp = j2k_get_tcp(p_j2k);
 
 	if (p_header_size < 1) {
-		GROK_ERROR( "Error reading MCO marker\n");
+		GROK_ERROR( "Error reading MCO marker");
 		return false;
 	}
 	/* Nmco : only one transform stage*/
@@ -4949,12 +4949,12 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	if (l_nb_stages > 1) {
 		GROK_WARN(
-				"Cannot take in charge multiple transformation stages.\n");
+				"Cannot take in charge multiple transformation stages.");
 		return true;
 	}
 
 	if (p_header_size != l_nb_stages + 1) {
-		GROK_WARN( "Error reading MCO marker\n");
+		GROK_WARN( "Error reading MCO marker");
 		return false;
 	}
 
@@ -5128,7 +5128,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 	l_num_comp = p_j2k->m_private_image->numcomps;
 
 	if (p_header_size != (p_j2k->m_private_image->numcomps + 2)) {
-		GROK_ERROR( "Crror reading CBD marker\n");
+		GROK_ERROR( "Crror reading CBD marker");
 		return false;
 	}
 	/* Ncbd */
@@ -5136,7 +5136,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 	p_header_data += 2;
 
 	if (l_nb_comp != l_num_comp) {
-		GROK_ERROR( "Crror reading CBD marker\n");
+		GROK_ERROR( "Crror reading CBD marker");
 		return false;
 	}
 
@@ -5430,24 +5430,24 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 	//sanity check on image
 	if (image->numcomps < 1 || image->numcomps > max_num_components) {
 		GROK_ERROR(
-				"Invalid number of components specified while setting up JP2 encoder\n");
+				"Invalid number of components specified while setting up JP2 encoder");
 		return false;
 	}
 	if ((image->x1 < image->x0) || (image->y1 < image->y0)) {
 		GROK_ERROR(
-				"Invalid input image dimensions found while setting up JP2 encoder\n");
+				"Invalid input image dimensions found while setting up JP2 encoder");
 		return false;
 	}
 	for (i = 0; i < image->numcomps; ++i) {
 		auto comp = image->comps + i;
 		if (comp->w == 0 || comp->h == 0) {
 			GROK_ERROR(
-					"Invalid input image component dimensions found while setting up JP2 encoder\n");
+					"Invalid input image component dimensions found while setting up JP2 encoder");
 			return false;
 		}
 		if (comp->prec == 0) {
 			GROK_ERROR(
-					"Invalid component precision of 0 found while setting up JP2 encoder\n");
+					"Invalid component precision of 0 found while setting up JP2 encoder");
 			return false;
 		}
 	}
@@ -5501,7 +5501,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		if ((parameters->rsiz == OPJ_PROFILE_CINEMA_S2K)
 				|| (parameters->rsiz == OPJ_PROFILE_CINEMA_S4K)) {
 			GROK_WARN(
-					"JPEG 2000 Scalable Digital Cinema profiles not supported\n");
+					"JPEG 2000 Scalable Digital Cinema profiles not supported");
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		} else {
 			if (j2k_is_cinema_compliant(image, parameters->rsiz)) {
@@ -5512,7 +5512,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		}
 	} else if (OPJ_IS_STORAGE(parameters->rsiz)) {
 		GROK_WARN(
-				"JPEG 2000 Long Term Storage profile not supported\n");
+				"JPEG 2000 Long Term Storage profile not supported");
 		parameters->rsiz = OPJ_PROFILE_NONE;
 	} else if (OPJ_IS_BROADCAST(parameters->rsiz)) {
 		// Todo: sanity check on tiling (must be done for each frame)
@@ -5525,13 +5525,13 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		if (profile == OPJ_PROFILE_BC_MULTI_R) {
 			if (parameters->irreversible) {
 				GROK_WARN(
-						"JPEG 2000 Broadcast profile; multi-tile reversible: forcing irreversible flag to false\n");
+						"JPEG 2000 Broadcast profile; multi-tile reversible: forcing irreversible flag to false");
 				parameters->irreversible = 0;
 			}
 		} else {
 			if (!parameters->irreversible) {
 				GROK_WARN(
-						"JPEG 2000 Broadcast profile: forcing irreversible flag to true\n");
+						"JPEG 2000 Broadcast profile: forcing irreversible flag to true");
 				parameters->irreversible = 1;
 			}
 		}
@@ -5539,7 +5539,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		auto level = parameters->rsiz & 0xF;
 		if (level > maxMainLevel) {
 			GROK_WARN(
-					"JPEG 2000 Broadcast profile: invalid level %d\n", level);
+					"JPEG 2000 Broadcast profile: invalid level %d", level);
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		}
 	} else if (OPJ_IS_IMF(parameters->rsiz)) {
@@ -5550,13 +5550,13 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				|| (profile == OPJ_PROFILE_IMF_8K_R)) {
 			if (parameters->irreversible) {
 				GROK_WARN(
-						"JPEG 2000 IMF profile; forcing irreversible flag to false\n");
+						"JPEG 2000 IMF profile; forcing irreversible flag to false");
 				parameters->irreversible = 0;
 			}
 		} else {
 			if (!parameters->irreversible) {
 				GROK_WARN(
-						"JPEG 2000 IMF profile: forcing irreversible flag to true\n");
+						"JPEG 2000 IMF profile: forcing irreversible flag to true");
 				parameters->irreversible = 1;
 			}
 		}
@@ -5577,7 +5577,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		}
 		if (invalidSubLevel) {
 			GROK_WARN(
-					"JPEG 2000 IMF profile: invalid sub-level %d\n", sub_level);
+					"JPEG 2000 IMF profile: invalid sub-level %d", sub_level);
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		}
 	} else if (OPJ_IS_PART2(parameters->rsiz)) {
@@ -5601,7 +5601,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		if (!j2k_check_poc_val(parameters->POC, parameters->numpocs,
 				parameters->numresolution, image->numcomps,
 				parameters->tcp_numlayers)) {
-			GROK_ERROR( "Failed to initialize POC\n");
+			GROK_ERROR( "Failed to initialize POC");
 			return false;
 		}
 	}
@@ -5638,7 +5638,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		for (size_t i = 0; i < parameters->cp_num_comments; ++i) {
 			cp->comment_len[i] = parameters->cp_comment_len[i];
 			if (!cp->comment_len[i]) {
-				GROK_WARN( "Empty comment. Ignoring\n");
+				GROK_WARN( "Empty comment. Ignoring");
 				continue;
 			}
 			if (cp->comment_len[i] > OPJ_MAX_COMMENT_LENGTH) {
@@ -5650,7 +5650,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			cp->comment[i] = (char*) opj_buffer_new(cp->comment_len[i]);
 			if (!cp->comment[i]) {
 				GROK_ERROR(
-						"Not enough memory to allocate copy of comment string\n");
+						"Not enough memory to allocate copy of comment string");
 				return false;
 			}
 			memcpy(cp->comment[i], parameters->cp_comment[i],
@@ -5667,7 +5667,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		cp->comment[0] = (char*) opj_buffer_new(clen + strlen(version) + 1);
 		if (!cp->comment[0]) {
 			GROK_ERROR(
-					"Not enough memory to allocate comment string\n");
+					"Not enough memory to allocate comment string");
 			return false;
 		}
 		sprintf(cp->comment[0], "%s%s", comment, version);
@@ -5702,7 +5702,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 	cp->tcps = (tcp_t*) grok_calloc(cp->tw * cp->th, sizeof(tcp_t));
 	if (!cp->tcps) {
 		GROK_ERROR(
-				"Not enough memory to allocate tile coding parameters\n");
+				"Not enough memory to allocate tile coding parameters");
 		return false;
 	}
 
@@ -5753,7 +5753,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			}
 			if (numpocs_tile == 0) {
 				GROK_ERROR(
-						"Problem with specified progression order changes\n");
+						"Problem with specified progression order changes");
 				return false;
 			}
 			tcp->numpocs = numpocs_tile - 1;
@@ -5764,7 +5764,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		tcp->tccps = (tccp_t*) grok_calloc(image->numcomps, sizeof(tccp_t));
 		if (!tcp->tccps) {
 			GROK_ERROR(
-					"Not enough memory to allocate tile component coding parameters\n");
+					"Not enough memory to allocate tile component coding parameters");
 			return false;
 		}
 		if (parameters->mct_data) {
@@ -5777,7 +5777,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 
 			if (!lTmpBuf) {
 				GROK_ERROR(
-						"Not enough memory to allocate temp buffer\n");
+						"Not enough memory to allocate temp buffer");
 				return false;
 			}
 
@@ -5787,7 +5787,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
-						"Not enough memory to allocate encoder MCT coding matrix \n");
+						"Not enough memory to allocate encoder MCT coding matrix ");
 				return false;
 			}
 			memcpy(tcp->m_mct_coding_matrix, parameters->mct_data, lMctSize);
@@ -5798,7 +5798,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
-						"Not enough memory to allocate encoder MCT decoding matrix \n");
+						"Not enough memory to allocate encoder MCT decoding matrix ");
 				return false;
 			}
 			if (matrix_inversion_f(lTmpBuf, (tcp->m_mct_decoding_matrix),
@@ -5806,7 +5806,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
-						"Failed to inverse encoder MCT decoding matrix \n");
+						"Failed to inverse encoder MCT decoding matrix ");
 				return false;
 			}
 
@@ -5816,7 +5816,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 				grok_free(lTmpBuf);
 				lTmpBuf = nullptr;
 				GROK_ERROR(
-						"Not enough memory to allocate encoder MCT norms \n");
+						"Not enough memory to allocate encoder MCT norms ");
 				return false;
 			}
 			opj_calculate_norms(tcp->mct_norms, image->numcomps,
@@ -5831,7 +5831,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			if (j2k_setup_mct_encoding(tcp, image) == false) {
 				/* free will be handled by j2k_destroy */
 				GROK_ERROR(
-						"Failed to setup j2k mct encoding\n");
+						"Failed to setup j2k mct encoding");
 				return false;
 			}
 		} else {
@@ -5841,7 +5841,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 						|| (image->comps[0].dy != image->comps[1].dy)
 						|| (image->comps[0].dy != image->comps[2].dy)) {
 					GROK_WARN(
-							"Cannot perform MCT on components with different sizes. Disabling MCT.\n");
+							"Cannot perform MCT on components with different sizes. Disabling MCT.");
 					tcp->mct = 0;
 				}
 			}
@@ -6401,13 +6401,13 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	if (p_j2k->m_cp.tdx == 0) {
 		GROK_ERROR(
-				"Tile x dimension must be greater than zero \n");
+				"Tile x dimension must be greater than zero ");
 		return false;
 	}
 
 	if (p_j2k->m_cp.tdy == 0) {
 		GROK_ERROR(
-				"Tile y dimension must be greater than zero \n");
+				"Tile y dimension must be greater than zero ");
 		return false;
 	}
 
@@ -6458,13 +6458,13 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	/* Try to read the SOC marker, the codestream must begin with SOC marker */
 	if (!j2k_read_soc(p_j2k, p_stream)) {
-		GROK_ERROR( "Expected a SOC marker \n");
+		GROK_ERROR( "Expected a SOC marker ");
 		return false;
 	}
 
 	/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 	if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-		GROK_ERROR( "Stream too short\n");
+		GROK_ERROR( "Stream too short");
 		return false;
 	}
 
@@ -6490,7 +6490,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 		if (l_marker_handler->id == J2K_MS_UNK) {
 			if (!j2k_read_unk(p_j2k, p_stream, &l_current_marker)) {
 				GROK_ERROR(
-						"Unknown marker have been detected and generated error.\n");
+						"Unknown marker have been detected and generated error.");
 				return false;
 			}
 
@@ -6518,13 +6518,13 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 		if (!(p_j2k->m_specific_param.m_decoder.m_state
 				& l_marker_handler->states)) {
 			GROK_ERROR(
-					"Marker is not compliant with its position\n");
+					"Marker is not compliant with its position");
 			return false;
 		}
 
 		/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
 		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -6534,7 +6534,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 
 		/* Check marker size (does not include marker ID but includes marker size) */
 		if (l_marker_size < 2) {
-			GROK_ERROR( "Inconsistent marker size\n");
+			GROK_ERROR( "Inconsistent marker size");
 			return false;
 		}
 
@@ -6551,7 +6551,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 				p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
 				p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
 				GROK_ERROR(
-						"Not enough memory to read header\n");
+						"Not enough memory to read header");
 				return false;
 			}
 			p_j2k->m_specific_param.m_decoder.m_header_data = new_header_data;
@@ -6562,7 +6562,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 		/* Try to read the rest of the marker segment from stream and copy them into the buffer */
 		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
 				l_marker_size) != l_marker_size) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -6570,7 +6570,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 		if (!(*(l_marker_handler->handler))(p_j2k,
 				p_j2k->m_specific_param.m_decoder.m_header_data, (uint16_t)l_marker_size)) {
 			GROK_ERROR(
-					"Marker handler function failed to read the marker segment\n");
+					"Marker handler function failed to read the marker segment");
 			return false;
 		}
 
@@ -6581,14 +6581,14 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 							(uint32_t) p_stream->tell() - l_marker_size - 4,
 							l_marker_size + 4)) {
 				GROK_ERROR(
-						"Not enough memory to add mh marker\n");
+						"Not enough memory to add mh marker");
 				return false;
 			}
 		}
 
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -6598,22 +6598,22 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 	}
 	if (l_has_siz == 0) {
 		GROK_ERROR(
-				"required SIZ marker not found in main header\n");
+				"required SIZ marker not found in main header");
 		return false;
 	}
 	if (l_has_cod == 0) {
 		GROK_ERROR(
-				"required COD marker not found in main header\n");
+				"required COD marker not found in main header");
 		return false;
 	}
 	if (l_has_qcd == 0) {
 		GROK_ERROR(
-				"required QCD marker not found in main header\n");
+				"required QCD marker not found in main header");
 		return false;
 	}
 
 	if (!j2k_merge_ppm(&(p_j2k->m_cp))) {
-		GROK_ERROR( "Failed to merge PPM data\n");
+		GROK_ERROR( "Failed to merge PPM data");
 		return false;
 	}
 	// event_msg( EVT_INFO, "Main header has been correctly decoded.\n");
@@ -6799,7 +6799,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	if (!tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp), p_j2k->numThreads)) {
 		tcd_destroy(p_j2k->m_tcd);
 		p_j2k->m_tcd = nullptr;
-		GROK_ERROR( "Cannot decode tile, memory error\n");
+		GROK_ERROR( "Cannot decode tile, memory error");
 		return false;
 	}
 
@@ -7069,7 +7069,7 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 
 		/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
 		if (p_stream->read(l_header_data, 2) != 2) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -7078,14 +7078,14 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 
 		/* Check marker size for SOT Marker */
 		if (l_marker_size != 10) {
-			GROK_ERROR( "Inconsistent marker size\n");
+			GROK_ERROR( "Inconsistent marker size");
 			return false;
 		}
 		l_marker_size -= 2;
 
 		if (p_stream->read(l_header_data, l_marker_size)
 				!= l_marker_size) {
-			GROK_ERROR( "Stream too short\n");
+			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
@@ -7167,7 +7167,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
 					2) != 2) {
-				GROK_ERROR( "Stream too short\n");
+				GROK_ERROR( "Stream too short");
 				return false;
 			}
 
@@ -7177,7 +7177,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 
 			/* Check marker size (does not include marker ID but includes marker size) */
 			if (l_marker_size < 2) {
-				GROK_ERROR( "Inconsistent marker size\n");
+				GROK_ERROR( "Inconsistent marker size");
 				return false;
 			}
 
@@ -7196,7 +7196,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			if (!(p_j2k->m_specific_param.m_decoder.m_state
 					& l_marker_handler->states)) {
 				GROK_ERROR(
-						"Marker is not compliant with its position\n");
+						"Marker is not compliant with its position");
 				return false;
 			}
 			/* FIXME manage case of unknown marker as in the main header ? */
@@ -7210,7 +7210,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				if ((int64_t) l_marker_size
 						> p_stream->get_number_byte_left()) {
 					GROK_ERROR(
-							"Marker size inconsistent with stream length\n");
+							"Marker size inconsistent with stream length");
 					return false;
 				}
 				new_header_data = (uint8_t*) grok_realloc(
@@ -7221,7 +7221,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 					p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
 					p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
 					GROK_ERROR(
-							"Not enough memory to read header\n");
+							"Not enough memory to read header");
 					return false;
 				}
 				p_j2k->m_specific_param.m_decoder.m_header_data =
@@ -7233,14 +7233,14 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			/* Try to read the rest of the marker segment from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
 					l_marker_size) != l_marker_size) {
-				GROK_ERROR( "Stream too short\n");
+				GROK_ERROR( "Stream too short");
 				return false;
 			}
 
 			if (!l_marker_handler->handler) {
 				/* See issue #175 */
 				GROK_ERROR(
-						"Not sure how that happened.\n");
+						"Not sure how that happened.");
 				return false;
 			}
 			/* Read the marker segment with the correct marker handler */
@@ -7261,7 +7261,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 								(uint32_t) p_stream->tell() - l_marker_size - 4,
 								l_marker_size + 4)) {
 					GROK_ERROR(
-							"Not enough memory to add tl marker\n");
+							"Not enough memory to add tl marker");
 					return false;
 				}
 			}
@@ -7281,7 +7281,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				// Skip the rest of the tile part header
 				if (!p_stream->skip(
 						p_j2k->m_specific_param.m_decoder.tile_part_data_length)) {
-					GROK_ERROR( "Stream too short\n");
+					GROK_ERROR( "Stream too short");
 					return false;
 				}
 				l_current_marker = J2K_MS_SOD; //We force current marker to equal SOD
@@ -7289,7 +7289,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				// Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
 				if (p_stream->read(
 						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-					GROK_ERROR( "Stream too short\n");
+					GROK_ERROR( "Stream too short");
 					return false;
 				}
 				// Read 2 bytes from the buffer as the new marker ID
@@ -7320,7 +7320,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 				if (!j2k_need_nb_tile_parts_correction(p_stream,
 						p_j2k->m_current_tile_number, &l_correction_needed)) {
 					GROK_ERROR(
-							"j2k_apply_nb_tile_parts_correction error\n");
+							"j2k_apply_nb_tile_parts_correction error");
 					return false;
 				}
 				if (l_correction_needed) {
@@ -7337,14 +7337,14 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 						}
 					}
 					GROK_WARN(
-							"Non conformant codestream TPsot==TNsot.\n");
+							"Non conformant codestream TPsot==TNsot.");
 				}
 			}
 			if (!p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
 				/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 				if (p_stream->read(
 						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-					GROK_ERROR( "Stream too short\n");
+					GROK_ERROR( "Stream too short");
 					return false;
 				}
 
@@ -7362,7 +7362,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 			/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
 					2) != 2) {
-				GROK_ERROR( "Stream too short\n");
+				GROK_ERROR( "Stream too short");
 				return false;
 			}
 			/* Read 2 bytes from buffer as the new marker ID */
@@ -7459,7 +7459,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
 	}
 
 	if (!j2k_merge_ppt(p_j2k->m_cp.tcps + p_j2k->m_current_tile_number)) {
-		GROK_ERROR( "Failed to merge PPT data\n");
+		GROK_ERROR( "Failed to merge PPT data");
 		return false;
 	}
 	if (!tcd_init_decode_tile(p_j2k->m_tcd, p_j2k->m_output_image,
@@ -7504,7 +7504,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 	if (!tcd_decode_tile(p_j2k->m_tcd, l_tcp->m_tile_data, p_tile_index)) {
 		j2k_tcp_destroy(l_tcp);
 		p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
-		GROK_ERROR( "Failed to decode.\n");
+		GROK_ERROR( "Failed to decode.");
 		return false;
 	}
 
@@ -7582,7 +7582,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 
 			// not enough data for another marker : fail decode
 			if (p_stream->read(l_data, 2) != 2) {
-				GROK_ERROR( "Stream too short\n");
+				GROK_ERROR( "Stream too short");
 				return false;
 			}
 
@@ -7604,7 +7604,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
 					p_j2k->m_specific_param.m_decoder.m_state =
 							J2K_DEC_STATE_NEOC;
 					GROK_WARN(
-							"Stream does not end with EOC\n");
+							"Stream does not end with EOC");
 					return true;
 				}
 				GROK_WARN(
@@ -8258,7 +8258,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 
 	/* make sure room is sufficient */
 	if (*p_header_size < 5) {
-		GROK_ERROR( "Error reading SPCod SPCoc element\n");
+		GROK_ERROR( "Error reading SPCod SPCoc element");
 		return false;
 	}
 	/* SPcox (D) */
@@ -8293,7 +8293,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	if ((l_tccp->cblkw > 10) || (l_tccp->cblkh > 10)
 			|| ((l_tccp->cblkw + l_tccp->cblkh) > 12)) {
 		GROK_ERROR(
-				"Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination\n");
+				"Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination");
 		return false;
 	}
 
@@ -8302,7 +8302,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	++l_current_ptr;
 	if (l_tccp->mode_switch & 0xC0U) { /* 2 msb are reserved, assume we can't read */
 		GROK_ERROR(
-				"Error reading SPCod SPCoc element, Invalid code-block style found\n");
+				"Error reading SPCod SPCoc element, Invalid code-block style found");
 		return false;
 	}
 	/* SPcoc (H) */
@@ -8320,7 +8320,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	if (l_tccp->csty & J2K_CCP_CSTY_PRT) {
 		if (*p_header_size < l_tccp->numresolutions) {
 			GROK_ERROR(
-					"Error reading SPCod SPCoc element\n");
+					"Error reading SPCod SPCoc element");
 			return false;
 		}
 
@@ -8330,7 +8330,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 			++l_current_ptr;
 			/* Precinct exponent 0 is only allowed for lowest resolution level (Table A.21) */
 			if ((i != 0) && (((l_tmp & 0xf) == 0) || ((l_tmp >> 4) == 0))) {
-				GROK_ERROR( "Invalid precinct size\n");
+				GROK_ERROR( "Invalid precinct size");
 				return false;
 			}
 			l_tccp->prcw[i] = l_tmp & 0xf;
@@ -8519,7 +8519,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 	assert(p_header_data != nullptr);
 	assert(p_comp_no < p_j2k->m_private_image->numcomps);
 	if (*p_header_size < 1) {
-		GROK_ERROR( "Error reading SQcd or SQcc element\n");
+		GROK_ERROR( "Error reading SQcd or SQcc element");
 		return false;
 	}
 	bool ignore = false;
@@ -8580,7 +8580,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 			}
 		}
 		if (*p_header_size < l_tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker\n");
+			GROK_ERROR( "Error reading SQcd_SQcc marker");
 			return false;
 		}
 		*p_header_size = (uint16_t)(*p_header_size - l_tccp->numStepSizes);
@@ -8598,7 +8598,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t p_comp_no,
 			}
 		}
 		if (*p_header_size < 2 * l_tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker\n");
+			GROK_ERROR( "Error reading SQcd_SQcc marker");
 			return false;
 		}
 		*p_header_size = (uint16_t)(*p_header_size - 2 * l_tccp->numStepSizes);
@@ -9153,7 +9153,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
 		l_current_data = (uint8_t*) grok_malloc(1);
 		if (!l_current_data) {
 			GROK_ERROR(
-					"Not enough memory to decode tiles\n");
+					"Not enough memory to decode tiles");
 			return false;
 		}
 		l_max_data_size = 1;
@@ -9203,7 +9203,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
 			// only worry about exception if we have more tiles to decode
 			if (nr_tiles < num_tiles_to_decode - 1) {
 				GROK_ERROR(
-						"Stream too short, expected SOT\n");
+						"Stream too short, expected SOT");
 				if (l_current_data)
 					grok_free(l_current_data);
 				GROK_ERROR( "Failed to decode tile %d/%d\n",
@@ -9236,7 +9236,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
 	}
 
 	if (num_tiles_decoded == 0) {
-		GROK_ERROR( "No tiles were decoded. Exiting\n");
+		GROK_ERROR( "No tiles were decoded. Exiting");
 		return false;
 	} else if (num_tiles_decoded < num_tiles_to_decode) {
 		GROK_WARN(
@@ -9279,7 +9279,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 		l_current_data = (uint8_t*) grok_malloc(1);
 		if (!l_current_data) {
 			GROK_ERROR(
-					"Not enough memory to decode tiles\n");
+					"Not enough memory to decode tiles");
 			return false;
 		}
 		l_max_data_size = 1;
@@ -9304,7 +9304,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 						p_j2k->m_specific_param.m_decoder.m_last_sot_read_pos
 								+ 2))) {
 					GROK_ERROR(
-							"Problem with seek function\n");
+							"Problem with seek function");
 					if (l_current_data)
 						grok_free(l_current_data);
 					return false;
@@ -9314,7 +9314,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 						p_j2k->cstr_index->tile_index[l_tile_no_to_dec].tp_index[0].start_pos
 								+ 2))) {
 					GROK_ERROR(
-							"Problem with seek function\n");
+							"Problem with seek function");
 					if (l_current_data)
 						grok_free(l_current_data);
 					return false;
@@ -9377,7 +9377,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 		if (l_current_tile_no == l_tile_no_to_dec) {
 			/* move into the codestream to the first SOT (FIXME or not move?)*/
 			if (!(p_stream->seek(p_j2k->cstr_index->main_head_end + 2))) {
-				GROK_ERROR( "Problem with seek function\n");
+				GROK_ERROR( "Problem with seek function");
 				if (l_current_data)
 					grok_free(l_current_data);
 				return false;
@@ -9447,7 +9447,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, opj_image_t *p_image, uint
 
 	if (!p_image) {
 		GROK_ERROR(
-				"We need an image previously created.\n");
+				"We need an image previously created.");
 		return false;
 	}
 
@@ -9574,7 +9574,7 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor) {
 								p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps[it_comp].numresolutions;
 						if (res_factor >= max_res) {
 							GROK_ERROR(
-									"Resolution factor is greater than the maximum resolution in the component.\n");
+									"Resolution factor is greater than the maximum resolution in the component.");
 							return false;
 						}
 						p_j2k->m_private_image->comps[it_comp].decodeScaleFactor =
@@ -9652,7 +9652,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 						grok_free(l_current_data);
 					}
 					GROK_ERROR(
-							"Not enough memory to encode all tiles\n");
+							"Not enough memory to encode all tiles");
 					return false;
 				}
 				l_current_data = l_new_current_data;
@@ -10304,7 +10304,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	if (!p_j2k->m_tcd) {
 		GROK_ERROR(
-				"Not enough memory to create Tile Coder\n");
+				"Not enough memory to create Tile Coder");
 		return false;
 	}
 

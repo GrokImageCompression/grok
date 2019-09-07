@@ -326,7 +326,7 @@ bool GrokStream::flush() {
 
 		if (l_current_write_nb_bytes == (size_t) -1) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
-			GROK_ERROR( "Error on writing stream!\n");
+			GROK_ERROR( "Error on writing stream!");
 			return false;
 		}
 		m_buffer_current_ptr += l_current_write_nb_bytes;

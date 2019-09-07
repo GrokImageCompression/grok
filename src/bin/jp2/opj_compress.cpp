@@ -1505,7 +1505,7 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (initParams.parameters.verbose && num_compressed_files) {
-			std::cout << "encode time: " << (elapsed.count() * 1000)/ (double)num_compressed_files << " ms\n";
+			spdlog::info( "encode time: ms\n",(elapsed.count() * 1000)/ (double)num_compressed_files);
 		}
 	} catch (std::bad_alloc& ba){
 		std::cerr << "[ERROR]: Out of memory. Exiting." << std::endl;

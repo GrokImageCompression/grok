@@ -241,7 +241,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 	if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 		pi_destroy(l_pi, l_nb_pocs);
 		GROK_ERROR(
-				"t2_encode_packets: Unknown progression order\n");
+				"t2_encode_packets: Unknown progression order");
 		return false;
 	}
 	while (pi_next(l_current_pi)) {
@@ -325,7 +325,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 			if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 				pi_destroy(l_pi, l_nb_pocs);
 				GROK_ERROR(
-						"t2_decode_packets_simulate: Unknown progression order\n");
+						"t2_decode_packets_simulate: Unknown progression order");
 				return false;
 			}
 			while (pi_next(l_current_pi)) {
@@ -400,7 +400,7 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 		if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 			pi_destroy(l_pi, l_nb_pocs);
 			GROK_ERROR(
-					"t2_decode_packets: Unknown progression order\n");
+					"t2_decode_packets: Unknown progression order");
 			return false;
 		}
 		while (pi_next(l_current_pi)) {
@@ -540,7 +540,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				continue;
 			tcd_precinct_t *l_prc = &l_band->precincts[p_pi->precno];
 			if (!(p_pi->precno < (l_band->numPrecincts))) {
-				GROK_ERROR( "Invalid precinct\n");
+				GROK_ERROR( "Invalid precinct");
 				return false;
 			}
 			if (l_prc->incltree)
@@ -559,9 +559,9 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
 		if (p_max_length < 6) {
 			GROK_WARN(
-					"Not enough space for expected SOP marker\n");
+					"Not enough space for expected SOP marker");
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
-			GROK_WARN( "Expected SOP marker\n");
+			GROK_WARN( "Expected SOP marker");
 		} else {
 			active_src += 6;
 		}
@@ -601,7 +601,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	if (*l_modified_length_ptr) {
 		if (!l_bio->read(&l_present, 1)) {
 			GROK_ERROR(
-					"t2_read_packet_header: failed to read `present` bit \n");
+					"t2_read_packet_header: failed to read `present` bit ");
 			return false;
 		}
 	}
@@ -616,10 +616,10 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			if ((*l_modified_length_ptr
 					- (size_t) (l_header_data - *l_header_data_start)) < 2U) {
 				GROK_WARN(
-						"Not enough space for expected EPH marker\n");
+						"Not enough space for expected EPH marker");
 			} else if ((*l_header_data) != 0xff
 					|| (*(l_header_data + 1) != 0x92)) {
-				GROK_WARN( "Expected EPH marker\n");
+				GROK_WARN( "Expected EPH marker");
 			} else {
 				l_header_data += 2;
 			}
@@ -652,7 +652,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				if (!l_prc->incltree->decodeValue(l_bio.get(), cblkno,
 						p_pi->layno + 1, &value)) {
 					GROK_ERROR(
-							"t2_read_packet_header: failed to read `inclusion` bit \n");
+							"t2_read_packet_header: failed to read `inclusion` bit ");
 					return false;
 				}
 				if (value != tag_tree_uninitialized_node_value
@@ -670,7 +670,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 					msg +=
 							"mis-interpretation of the standard.  The problem may also occur as a result of\n";
 					msg += "a corrupted code-stream\n";
-					GROK_WARN( "%s\n", msg.c_str());
+					GROK_WARN( "%s", msg.c_str());
 
 				}
 #ifdef DEBUG_LOSSLESS_T2
@@ -682,7 +682,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			else {
 				if (!l_bio->read(&l_included, 1)) {
 					GROK_ERROR(
-							"t2_read_packet_header: failed to read `inclusion` bit \n");
+							"t2_read_packet_header: failed to read `inclusion` bit ");
 					return false;
 				}
 
@@ -715,7 +715,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 
 				if (!rc) {
 					GROK_ERROR(
-							"Failed to decode zero-bitplane tag tree \n");
+							"Failed to decode zero-bitplane tag tree ");
 					return false;
 				}
 
@@ -740,12 +740,12 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			/* number of coding passes */
 			if (!t2_getnumpasses(l_bio.get(), &l_cblk->numPassesInPacket)) {
 				GROK_ERROR(
-						"t2_read_packet_header: failed to read numpasses.\n");
+						"t2_read_packet_header: failed to read numpasses.");
 				return false;
 			}
 			if (!t2_getcommacode(l_bio.get(), &l_increment)) {
 				GROK_ERROR(
-						"t2_read_packet_header: failed to read length indicator increment.\n");
+						"t2_read_packet_header: failed to read length indicator increment.");
 				return false;
 			}
 
@@ -779,14 +779,14 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 						+ uint_floorlog2(l_seg->numPassesInPacket);
 				if (bits_to_read > 32) {
 					GROK_ERROR(
-							"t2_read_packet_header: too many bits in segment length \n");
+							"t2_read_packet_header: too many bits in segment length ");
 					return false;
 				}
 				if (!l_bio->read(&l_seg->newlen,
 						l_cblk->numlenbits
 								+ uint_floorlog2(l_seg->numPassesInPacket))) {
 					GROK_WARN(
-							"t2_read_packet_header: failed to read segment length \n");
+							"t2_read_packet_header: failed to read segment length ");
 				}
 #ifdef DEBUG_LOSSLESS_T2
 				l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->newlen,
@@ -810,7 +810,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	}
 
 	if (!l_bio->inalign()) {
-		GROK_ERROR( "Unable to read packet header\n");
+		GROK_ERROR( "Unable to read packet header");
 		return false;
 	}
 
@@ -821,9 +821,9 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 		if ((*l_modified_length_ptr
 				- (uint32_t) (l_header_data - *l_header_data_start)) < 2U) {
 			GROK_WARN(
-					"Not enough space for expected EPH marker\n");
+					"Not enough space for expected EPH marker");
 		} else if ((*l_header_data) != 0xff || (*(l_header_data + 1) != 0x92)) {
-			GROK_WARN( "Expected EPH marker\n");
+			GROK_WARN( "Expected EPH marker");
 		} else {
 			l_header_data += 2;
 		}
@@ -1094,7 +1094,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 
 	if (!bio->flush()) {
 		GROK_ERROR(
-				"t2_encode_packet: Bit IO flush failed while encoding packet\n");
+				"t2_encode_packet: Bit IO flush failed while encoding packet");
 		return false;
 	}
 
