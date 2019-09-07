@@ -405,7 +405,6 @@ static void sycc420_to_rgb(opj_image_t *img)
 void color_sycc_to_rgb(opj_image_t *img)
 {
     if(img->numcomps < 3) {
-        img->color_space = OPJ_CLRSPC_GRAY;
         spdlog::warn("color_sycc_to_rgb: number of components %d is less than 3."
         		" Unable to convert\n", img->numcomps);
         return;
