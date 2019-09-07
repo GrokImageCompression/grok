@@ -294,7 +294,7 @@ bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,
 		codec_private_t *l_codec = (codec_private_t*) p_codec;
 		if (!l_codec->is_decompressor) {
 			GROK_ERROR(
-					"Codec provided to the opj_setup_decoder function is not a decompressor handler.\n");
+					"Codec provided to the opj_setup_decoder function is not a decompressor handler.");
 			return false;
 		}
 		l_codec->m_codec_data.m_decompression.setup_decoder(l_codec->m_codec,
@@ -315,7 +315,7 @@ bool OPJ_CALLCONV opj_read_header_ex(opj_stream_t *p_stream,
 		GrokStream *l_stream = (GrokStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			GROK_ERROR(
-					"Codec provided to the grok_read_header function is not a decompressor handler.\n");
+					"Codec provided to the grok_read_header function is not a decompressor handler.");
 			return false;
 		}
 

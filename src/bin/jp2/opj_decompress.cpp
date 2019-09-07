@@ -1142,7 +1142,7 @@ int main(int argc, char **argv){
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 		if (initParams.parameters.verbose && num_decompressed_images) {
-			std::cout << "decode time: " << (elapsed.count() * 1000)/ (double)num_decompressed_images << " ms\n";
+			spdlog::info( "decode time: %f ms\n",(elapsed.count() * 1000)/ (double)num_decompressed_images);
 		}
 	} catch (std::bad_alloc& ba){
 		spdlog::error("Out of memory. Exiting.");
@@ -1297,7 +1297,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
 	if (initParams->parameters.verbose && num_decompressed_images && success == 0) {
-		std::cout << "Encode time: " << (elapsed.count() * 1000)/ (double)num_decompressed_images << " ms\n";
+		spdlog::info("decode time: %f ms\n", (elapsed.count() * 1000)/ (double)num_decompressed_images);
 	}
 cleanup:
 	if (dirptr) {

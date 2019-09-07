@@ -103,7 +103,7 @@ bool procedure_list_add_procedure(procedure_list_t *p_validation_list,
 			p_validation_list->m_nb_max_procedures = 0;
 			p_validation_list->m_nb_procedures = 0;
 			GROK_ERROR(
-					"Not enough memory to add a new validation procedure\n");
+					"Not enough memory to add a new validation procedure");
 			return false;
 		} else {
 			p_validation_list->m_procedures = new_procedures;
