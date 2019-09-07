@@ -43,8 +43,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-extern "C" {
-
 #include "opj_config.h"
 
 #include <stdio.h>
@@ -62,7 +60,7 @@ extern "C" {
 
 #include "openjpeg.h"
 #include "format_defs.h"
-}
+#include "spdlog/spdlog.h"
 
 /* -------------------------------------------------------------------------- */
 static int get_file_format(const char *filename)
@@ -93,7 +91,7 @@ sample error callback expecting a FILE* client object
 static void error_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stderr, "[ERROR] %s", msg);
+    spdlog::error("%s", msg);
 }
 /**
 sample warning callback expecting a FILE* client object
@@ -101,7 +99,7 @@ sample warning callback expecting a FILE* client object
 static void warning_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[WARNING] %s", msg);
+    spdlog::warn("%s", msg);
 }
 /**
 sample debug callback expecting no client object
@@ -109,7 +107,7 @@ sample debug callback expecting no client object
 static void info_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[INFO] %s", msg);
+    spdlog::info("%s", msg);
 }
 
 
@@ -222,13 +220,13 @@ int main(int argc, char **argv)
 
     l_stream = opj_stream_create_default_file_stream(parameters.infile,1);
     if (!l_stream) {
-        fprintf(stderr, "[ERROR] failed to create the stream from the file %s\n", parameters.infile);
+        spdlog::error("failed to create the stream from the file %s\n", parameters.infile);
         return EXIT_FAILURE;
     }
 
     /* Setup the decoder decoding parameters using user parameters */
     if ( !opj_setup_decoder(l_codec, &parameters) ) {
-        fprintf(stderr, "[ERROR] j2k_dump: failed to setup the decoder\n");
+        spdlog::error("j2k_dump: failed to setup the decoder");
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
         return EXIT_FAILURE;
@@ -236,7 +234,7 @@ int main(int argc, char **argv)
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
     if(! opj_read_header(l_stream, l_codec, &image)) {
-        fprintf(stderr, "[ERROR] j2k_to_image: failed to read the header\n");
+        spdlog::error("j2k_to_image: failed to read the header");
         opj_stream_destroy(l_stream);
         opj_destroy_codec(l_codec);
         opj_image_destroy(image);
@@ -256,7 +254,7 @@ int main(int argc, char **argv)
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \
 	if(!opj_get_decoded_tile(l_codec, l_stream, image, tile_index )){ \
-		fprintf(stderr, "[ERROR] j2k_to_image: failed to decode tile %d\n", tile_index); \
+		spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
 		opj_stream_destroy(l_stream); \
 		opj_destroy_cstr_info(&cstr_info); \
 		opj_destroy_codec(l_codec); \
@@ -265,7 +263,7 @@ int main(int argc, char **argv)
 	} \
   for(index = 0; index < image->numcomps; ++index) { \
     if( image->comps[index].data == nullptr ){ \
-    	fprintf(stderr, "[ERROR] j2k_to_image: failed to decode tile %d\n", tile_index); \
+    	spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
 		opj_stream_destroy(l_stream); \
 		opj_destroy_cstr_info(&cstr_info); \
 		opj_destroy_codec(l_codec); \

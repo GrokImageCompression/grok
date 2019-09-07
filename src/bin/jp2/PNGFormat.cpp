@@ -75,6 +75,7 @@
 #include <cassert>
 #include <locale>
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 #define PNG_MAGIC "\x89PNG\x0d\x0a\x1a\x0a"
 #define MAGIC_SIZE 8
@@ -86,8 +87,8 @@ static void png_warning_fn(png_structp png_ptr,
 						 png_const_charp warning_message) {
 	(void)png_ptr;
 	if (pngWarningHandlerVerbose) {
-		fprintf(stderr, "libpng warning: %s", warning_message);
-		fprintf(stderr, "\n");
+		spdlog::error("libpng warning: {}", warning_message);
+		spdlog::error("");
 	}
 }
 
@@ -154,14 +155,14 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	}
 	else {
 		if ((local_info.reader = fopen(read_idf, "rb")) == nullptr) {
-			fprintf(stderr, "[ERROR] pngtoimage: can not open %s\n", read_idf);
+			spdlog::error("pngtoimage: can not open {}\n", read_idf);
 			return nullptr;
 		}
 	}
 
 	if (fread(sigbuf, 1, MAGIC_SIZE, local_info.reader) != MAGIC_SIZE
 		|| memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
-		fprintf(stderr, "[ERROR] pngtoimage: %s is no valid PNG file\n", read_idf);
+		spdlog::error("pngtoimage: {} is no valid PNG file\n", read_idf);
 		goto beach;
 	}
 
@@ -242,7 +243,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		nr_comp = 4;
 		break;
 	default:
-		fprintf(stderr, "[ERROR] pngtoimage: colortype %d is not supported\n", color_type);
+		spdlog::error("pngtoimage: colortype {} is not supported\n", color_type);
 		goto beach;
 	}
 
@@ -263,20 +264,20 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		cvtXXTo32s = convert_16u32s_C1R;
 		break;
 	default:
-		fprintf(stderr, "[ERROR] pngtoimage: bit depth %d is not supported\n", bit_depth);
+		spdlog::error("pngtoimage: bit depth {} is not supported\n", bit_depth);
 		goto beach;
 	}
 
 
 	local_info.rows = (uint8_t**)calloc(height, sizeof(uint8_t*));
 	if (local_info.rows == nullptr) {
-		fprintf(stderr, "[ERROR] pngtoimage: out of memory\n");
+		spdlog::error("pngtoimage: out of memory");
 		goto beach;
 	}
 	for (i = 0; i < height; ++i) {
 		local_info.rows[i] = (uint8_t*)malloc(png_get_rowbytes(local_info.png, info));
 		if (!local_info.rows[i]) {
-			fprintf(stderr, "[ERROR] pngtoimage: out of memory\n");
+			spdlog::error("pngtoimage: out of memory");
 			goto beach;
 		}
 	}
@@ -330,11 +331,11 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	}
 
 	if (params->verbose && png_get_valid(local_info.png, info, PNG_INFO_gAMA)) {
-		fprintf(stdout, "[WARNING]  input PNG contains gamma value; this will not be stored in compressed image.\n");
+		spdlog::warn("input PNG contains gamma value; this will not be stored in compressed image.");
 	}
 
 	if (params->verbose &&  png_get_valid(local_info.png, info, PNG_INFO_cHRM)) {
-		fprintf(stdout, "[WARNING]  input PNG contains chroma information which will not be stored in compressed image.\n");
+		spdlog::warn("input PNG contains chroma information which will not be stored in compressed image.");
 	}
 
 	/*
@@ -344,7 +345,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	}
 	double wpx, wpy, rx, ry, gx, gy, bx, by; // white point and primaries
 	if (png_get_cHRM(png, info, &wpx, &wpy, &rx, &ry, &gx, &gy, &bx, &by)) 	{
-	fprintf(stdout, "[WARNING]  input PNG contains chroma information which will not be stored in compressed image.\n");
+	fprintf(stdout, "[WARNING]  input PNG contains chroma information which will not be stored in compressed image.");
 	}
 	*/
 		
@@ -382,7 +383,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		}
 		else {
 			if (params->verbose) {
-				fprintf(stdout, "[WARNING]  input PNG contains resolution information in unknown units. Ignoring\n");
+				spdlog::warn("input PNG contains resolution information in unknown units. Ignoring");
 			}
 		}
 	}
@@ -489,8 +490,8 @@ static int imagetopng(opj_image_t * image,
 		planes[i] = image->comps[i].data;
 	}
 	if (i != nr_comp) {
-		fprintf(stderr, "[ERROR] imagetopng: All components shall have the same subsampling, same bit depth, same sign.\n");
-		fprintf(stderr, "\tAborting\n");
+		spdlog::error("imagetopng: All components shall have the same subsampling, same bit depth, same sign.");
+		spdlog::error("\tAborting");
 		return 1;
 	}
 	if (prec > 8 && prec < 16) {
@@ -518,7 +519,7 @@ static int imagetopng(opj_image_t * image,
 	}
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
-		fprintf(stderr, "[ERROR] imagetopng: can not create %s\n\twrong bit_depth %d\n", write_idf, prec);
+		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}\n", write_idf, prec);
 		return local_info.fails;
 	}
 	if (local_info.writeToStdout) {
@@ -665,17 +666,17 @@ static int imagetopng(opj_image_t * image,
 		png_row_size = png_get_rowbytes(local_info.png, info);
 		rowStride = ((size_t)image->comps[0].w * (size_t)nr_comp * (size_t)prec + 7U) / 8U;
 		if (rowStride != (size_t)png_row_size) {
-			fprintf(stderr, "[ERROR] Invalid PNG row size\n");
+			spdlog::error("Invalid PNG row size");
 			goto beach;
 		}
 		local_info.row_buf = (png_bytep)malloc(png_row_size);
 		if (local_info.row_buf == nullptr) {
-			fprintf(stderr, "[ERROR] Can't allocate memory for PNG row\n");
+			spdlog::error("Can't allocate memory for PNG row");
 			goto beach;
 		}
 		local_info.buffer32s = (int32_t*)malloc((size_t)image->comps[0].w * (size_t)nr_comp * sizeof(int32_t));
 		if (local_info.buffer32s == nullptr) {
-			fprintf(stderr, "[ERROR] Can't allocate memory for interleaved 32s row\n");
+			spdlog::error("Can't allocate memory for interleaved 32s row");
 			goto beach;
 		}
 	}

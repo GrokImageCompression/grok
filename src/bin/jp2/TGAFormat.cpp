@@ -61,6 +61,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 #ifdef INFORMATION_ONLY
  /* TGA header definition. */
@@ -109,8 +110,7 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 		return false;
 
 	if (fread(tga, TGA_HEADER_SIZE, 1, fp) != 1) {
-		fprintf(stderr,
-				"[ERROR] fread return a number of element different from the expected.\n");
+		spdlog::error(" fread return a number of element different from the expected.");
 		return false;
 	}
 	id_len = tga[0];
@@ -137,12 +137,11 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	if (id_len) {
 		unsigned char *id = (unsigned char*) malloc(id_len);
 		if (!id) {
-			fprintf(stderr, "[ERROR] tga_readheader: out of memory out\n");
+			spdlog::error("tga_readheader: out of memory out");
 			return false;
 		}
 		if (!fread(id, id_len, 1, fp)) {
-			fprintf(stderr,
-					"[ERROR] fread return a number of element different from the expected.\n");
+			spdlog::error(" fread return a number of element different from the expected.");
 			free(id);
 			return false;
 		}
@@ -153,8 +152,7 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	 // Note :-  9 - RLE encoded palettized.
 	 //	  	   10 - RLE encoded RGB. */
 	if (image_type > 8) {
-		fprintf(stderr,
-				"[ERROR] Sorry, compressed tga files are not currently supported.\n");
+		spdlog::error(" Sorry, compressed tga files are not currently supported.");
 		return false;
 	}
 
@@ -164,7 +162,7 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	palette_size = cmap_len * (cmap_entry_size / 8);
 
 	if (palette_size > 0) {
-		fprintf(stderr, "[ERROR] File contains a palette - not yet supported.");
+		spdlog::error("File contains a palette - not yet supported.");
 		if (fseek(fp, palette_size, SEEK_CUR))
 			return false;
 	}
@@ -194,7 +192,7 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	if (bits_per_pixel < 256)
 		pixel_depth = (unsigned char) bits_per_pixel;
 	else {
-		fprintf(stderr, "[ERROR] Wrong bits per pixel inside tga_header");
+		spdlog::error("Wrong bits per pixel inside tga_header");
 		return 0;
 	}
 	uc0 = 0;
@@ -255,7 +253,8 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 
 	return 1;
 
-	fails: fputs("\nwrite_tgaheader: write ERROR\n", stderr);
+	fails:
+		spdlog::error("\nwrite_tgaheader: write ERROR");
 	return 0;
 }
 
@@ -274,7 +273,7 @@ static opj_image_t* tgatoimage(const char *filename,
 
 	f = fopen(filename, "rb");
 	if (!f) {
-		fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
+		spdlog::error("Failed to open {} for reading !!\n", filename);
 		return 0;
 	}
 
@@ -353,22 +352,19 @@ static opj_image_t* tgatoimage(const char *filename,
 				unsigned char r, g, b;
 
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
@@ -383,29 +379,25 @@ static opj_image_t* tgatoimage(const char *filename,
 			for (x = 0; x < image_width; x++) {
 				unsigned char r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&a, 1, 1, f)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					grk::safe_fclose(f);
 					return nullptr;
@@ -418,7 +410,7 @@ static opj_image_t* tgatoimage(const char *filename,
 				index++;
 			}
 		} else {
-			fprintf(stderr, "Currently unsupported bit depth : %s\n", filename);
+			spdlog::error("Currently unsupported bit depth : {}\n", filename);
 		}
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
@@ -442,7 +434,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
-		fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
+		spdlog::error("failed to open {} for writing\n", outfile);
 		goto beach;
 	}
 
@@ -456,8 +448,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 				|| (image->comps[0].prec != image->comps[i + 1].prec)
 				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
-			fprintf(stderr,
-					"[ERROR] Unable to create a tga file with such J2K image charateristics.");
+			spdlog::error(" Unable to create a tga file with such J2K image charateristics.");
 			goto beach;
 		}
 	}
@@ -508,7 +499,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "failed to write 1 byte for %s\n", outfile);
+				spdlog::error("failed to write 1 byte for {}\n", outfile);
 				goto beach;
 			}
 			if (g > 255.)
@@ -519,7 +510,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+				spdlog::error("failed to write 1 byte for {}\n",
 						outfile);
 				goto beach;
 			}
@@ -531,7 +522,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+				spdlog::error("failed to write 1 byte for {}\n",
 						outfile);
 				goto beach;
 			}
@@ -546,7 +537,7 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+					spdlog::error("failed to write 1 byte for {}\n",
 							outfile);
 					goto beach;
 				}

@@ -59,6 +59,7 @@
 #include "format_defs.h"
 #include "convert.h"
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 #ifdef GROK_HAVE_LIBPNG
 #include "PNGFormat.h"
@@ -236,7 +237,7 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
 		PNMFormat pnm(false);
         image_read = pnm.decode(filenameComponentPGX, &parameters);
         if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
-            fprintf(stderr, "[ERROR] Unable to load ppm file: %s\n", filenameComponentPGX);
+            spdlog::error("Unable to load ppm file: %s\n", filenameComponentPGX);
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
 			goto cleanup;
@@ -315,7 +316,7 @@ static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX
 	image_read = png.decode(filename, &parameters);
 #endif
 	if (!image_read) {
-		fprintf(stderr, "[ERROR] Unable to load PNG file\n");
+		spdlog::error("Unable to load PNG file");
 		return nullptr;
 	}
 
@@ -351,7 +352,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     image_read = tif.decode(filename, &parameters);
 #endif
     if (!image_read) {
-        fprintf(stderr, "[ERROR] Unable to load TIF file\n");
+        spdlog::error("Unable to load TIF file");
         return nullptr;
     }
 
@@ -406,7 +407,7 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
 		PGXFormat pgx;
         image_read = pgx.decode(filenameComponentPGX, &parameters);
 		if (!image_read || !image_read->comps || !image_read->comps->h || !image_read->comps->w) {
-            fprintf(stderr, "[ERROR] Unable to load pgx file\n");
+            spdlog::error("Unable to load pgx file");
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
 			goto cleanup;
@@ -641,7 +642,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 		}
 
 		if (param->nbcomp == 0) {
-			fprintf(stderr, "[ERROR] Need to indicate the number of components !\n");
+			spdlog::error("Need to indicate the number of components !");
 			return 1;
 		}
 		/* else */
@@ -649,7 +650,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 			param->tabMSEvalues = parseToleranceValues(MSElistvalues, param->nbcomp);
 			param->tabPEAKvalues = parseToleranceValues(PEAKlistvalues, param->nbcomp);
 			if ((param->tabMSEvalues == nullptr) || (param->tabPEAKvalues == nullptr)) {
-				fprintf(stderr, "[ERROR] MSE and PEAK values are not correct (respectively need %d values)\n", param->nbcomp);
+				spdlog::error("MSE and PEAK values are not correct (respectively need %d values)\n", param->nbcomp);
 				return 1;
 			}
 		}
@@ -730,16 +731,16 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
 				assert(param->separator_test[0] == 0);
 			}
 			else {
-				fprintf(stderr, "[ERROR] If number of components is > 1, we need separator\n");
+				spdlog::error("If number of components is > 1, we need separator");
 				return 1;
 			}
 		}
 		if ((param->nr_flag) && (flagP || flagM)) {
-			fprintf(stderr, "[ERROR] Non-regression flag cannot be used if PEAK or MSE tolerance is specified.\n");
+			spdlog::error("Non-regression flag cannot be used if PEAK or MSE tolerance is specified.");
 			return 1;
 		}
 		if ((!param->nr_flag) && (!flagP || !flagM)) {
-			fprintf(stdout, "Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.\n");
+			fprintf(stdout, "Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.");
 			param->nr_flag = 1;
 		}
 	}

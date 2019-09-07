@@ -72,6 +72,7 @@
 #include "color.h"
 #include <cassert>
 #include <memory>
+#include "spdlog/spdlog.h"
 
 
 
@@ -1145,7 +1146,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	tif = TIFFOpen(filename, "r");
 	if (!tif) {
-		fprintf(stderr, "[ERROR] tiftoimage:Failed to open %s for reading\n", filename);
+		spdlog::error("tiftoimage:Failed to open {} for reading\n", filename);
 		return 0;
 	}
 
@@ -1173,19 +1174,19 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 
 	// 1. sanity checks
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
-		fprintf(stderr, "[ERROR] tiftoimage: Unsupported sample format %d\n"
+		spdlog::error("tiftoimage: Unsupported sample format {}\n"
 			"\tAborting.\n", tiSf);
 		success = false;
 		goto cleanup;
 	}
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
-		fprintf(stderr, "[ERROR] tiftoimage: Bad value for samples per pixel == %hu.\n"
+		spdlog::error("tiftoimage: Bad value for samples per pixel == %hu.\n"
 			"\tAborting.\n", tiSpp);
 		success = false;
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad values for Bits == %d.\n"
+		spdlog::error("tiftoimage: Bad values for Bits == {}.\n"
 			"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
 		success = false;
 		goto cleanup;
@@ -1195,14 +1196,14 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 			tiPhoto != PHOTOMETRIC_RGB &&
 			tiPhoto != PHOTOMETRIC_ICCLAB &&
 			tiPhoto != PHOTOMETRIC_CIELAB) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad color format %d.\n"
+		spdlog::error("tiftoimage: Bad color format {}.\n"
 			"\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
-		fprintf(stderr, "\tAborting\n");
+		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
 	}
 	if (tiWidth == 0 || tiHeight == 0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad values for width(%u) "
+		spdlog::error("tiftoimage: Bad values for width(%u) "
 			"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
 		success = false;
 		goto cleanup;
@@ -1214,8 +1215,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
-			fprintf(stdout, "WARNING:\n"
-				"Input image bitdepth is %d bits\n"
+			spdlog::warn("Input image bitdepth is {} bits\n"
 				"TIF conversion has automatically rescaled to 12-bits\n"
 				"to comply with cinema profiles.\n",
 				tiBps);
@@ -1241,8 +1241,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		numcomps+=3;
 		if (tiSpp != 3){
 			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-					"Input image is in CIE colour space but samples per pixel = %d\n",
+				spdlog::warn("Input image is in CIE colour space but samples per pixel = {}\n",
 					tiSpp);
 		}
 		break;
@@ -1257,22 +1256,20 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	if (tiPhoto == PHOTOMETRIC_CIELAB){
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)){
 			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-						"Input image is in CIE colour space but sample format is unsigned int\n");
+				spdlog::warn("Input image is in CIE colour space but sample format is unsigned int");
 		}
 		isSigned = true;
 	} else if (tiPhoto == PHOTOMETRIC_ICCLAB){
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)){
 			if (parameters->verbose)
-				fprintf(stdout, "WARNING:\n"
-						"Input image is in ICC CIE colour space but sample format is signed int\n");
+				spdlog::warn("Input image is in ICC CIE colour space but sample format is signed int");
 		}
 		isSigned = false;
 	}
 
 	if (isSigned) {
 		if (PHOTOMETRIC_MINISWHITE || tiBps != 8){
-			fprintf(stderr, "[ERROR] tiftoimage: only non-inverted 8-bit signed images are supported\n");
+			spdlog::error("tiftoimage: only non-inverted 8-bit signed images are supported");
 			success = false;
 			goto cleanup;
 		}
@@ -1296,8 +1293,8 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
 		image->x0 + (w - 1) * subsampling_dx + 1;
 	if (image->x1 <= image->x0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->x1(%d) vs. "
-			"image->x0(%d)\n\tAborting.\n", image->x1, image->x0);
+		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
+			"image->x0({})\n\tAborting.\n", image->x1, image->x0);
 		success = false;
 		goto cleanup;
 	}
@@ -1305,8 +1302,8 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	image->y1 = !image->y0 ? (h - 1) * subsampling_dy + 1 :
 		image->y0 + (h - 1) * subsampling_dy + 1;
 	if (image->y1 <= image->y0) {
-		fprintf(stderr, "[ERROR] tiftoimage: Bad value for image->y1(%d) vs. "
-			"image->y0(%d)\n\tAborting.\n", image->y1, image->y0);
+		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
+			"image->y0({})\n\tAborting.\n", image->y1, image->y0);
 		success = false;
 		goto cleanup;
 	}
@@ -1487,7 +1484,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
-				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
+				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
 					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
 				success = false;
 				goto local_cleanup;
@@ -1560,7 +1557,7 @@ static bool readTiffPixelsSigned(TIFF *tif,
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
-				fprintf(stderr, "[ERROR] tiftoimage: Bad value for ssize(%lld) "
+				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
 					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
 				success = false;
 				goto local_cleanup;
@@ -1608,8 +1605,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 
 	if (image->color_space == OPJ_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
-			fprintf(stderr, "[ERROR] imagetotif: CMYK images shall be composed of at least 4 planes.\n");
-			fprintf(stderr, "\tAborting\n");
+			spdlog::error("imagetotif: CMYK images shall be composed of at least 4 planes.");
+			spdlog::error("\tAborting");
 			return 1;
 		}
 		tiPhoto = PHOTOMETRIC_SEPARATED;
@@ -1636,7 +1633,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	uint32_t bps = image->comps[0].prec;
 	uint32_t tif_bps = bps;
 	if (bps == 0) {
-		fprintf(stderr, "[ERROR] imagetotif: image precision is zero.\n");
+		spdlog::error("imagetotif: image precision is zero.");
 		success = false;
 		goto cleanup;
 	}
@@ -1668,8 +1665,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
-		fprintf(stderr, "[ERROR] imagetotif: All components shall have the same subsampling, same bit depth.\n");
-		fprintf(stderr, "\tAborting\n");
+		spdlog::error("imagetotif: All components shall have the same subsampling, same bit depth.");
+		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
 	}
@@ -1680,8 +1677,8 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 		bps = 0;
 	if (bps == 0)
 	{
-		fprintf(stderr, "[ERROR] imagetotif: Bits=%d, Only 1 to 16 bits implemented\n", bps);
-		fprintf(stderr, "\tAborting\n");
+		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented\n", bps);
+		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
 	}
@@ -1742,7 +1739,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	// TIFF assumes that alpha channels occur as last channels in image.
 	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
 		if (verbose)
-			fprintf(stdout, "WARNING: TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set\n");
+			spdlog::warn("TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set");
 		numAlphaChannels = 0;
 	}
 	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
@@ -1754,7 +1751,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 
 	tif = TIFFOpen(outfile, "wb");
 	if (!tif) {
-		fprintf(stderr, "[ERROR] imagetotif:failed to open %s for writing\n", outfile);
+		spdlog::error("imagetotif:failed to open {} for writing\n", outfile);
 		success = false;
 		goto cleanup;
 	}
@@ -1828,7 +1825,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	strip_size = TIFFStripSize(tif);
 	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
 	if (rowStride != strip_size) {
-		fprintf(stderr, "[ERROR] Invalid TIFF strip size\n");
+		spdlog::error("Invalid TIFF strip size");
 		success = false;
 		goto cleanup;
 	}

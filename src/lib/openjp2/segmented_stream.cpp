@@ -60,7 +60,7 @@ size_t seg_buf_t::read(void *p_buffer, size_t nb_bytes) {
 	bytes_remaining_in_file = data_len - (size_t) get_global_offset();
 	if (nb_bytes > bytes_remaining_in_file) {
 #ifdef DEBUG_SEG_BUF
-        printf("[WARNING]  attempt to read past end of segmented buffer\n");
+        GROK_WARN("attempt to read past end of segmented buffer");
 #endif
 		nb_bytes = bytes_remaining_in_file;
 	}
@@ -98,7 +98,7 @@ int64_t seg_buf_t::skip(int64_t nb_bytes)
 
     if (nb_bytes + get_global_offset()> (int64_t)data_len) {
 #ifdef DEBUG_SEG_BUF
-        printf("[WARNING]  attempt to skip past end of segmented buffer\n");
+        GROK_WARN("attempt to skip past end of segmented buffer");
 #endif
         return nb_bytes;
     }
@@ -272,7 +272,7 @@ void buf_t::incr_offset(uint64_t off) {
 	/*  we allow the offset to move to one location beyond end of buffer segment*/
 	if (offset + off > (uint64_t) len) {
 #ifdef DEBUG_SEG_BUF
-        printf("[WARNING]  attempt to increment buffer offset out of bounds\n");
+       GROK_WARN("attempt to increment buffer offset out of bounds");
 #endif
 		offset = (uint64_t) len;
 	}

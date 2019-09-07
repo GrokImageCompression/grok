@@ -61,6 +61,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 // `MBED` in big endian format
 const uint32_t BMP_ICC_PROFILE_EMBEDDED = 0x4d424544;
@@ -100,10 +101,10 @@ typedef struct {
 	uint32_t biReserved;         /* Reserved */
 } OPJ_BITMAPINFOHEADER;
 
-template<typename T> bool get_int(FILE* IN, T* val) {
+template<typename T> bool get_int(FILE* INPUT, T* val) {
 	T rc = 0;
 	for (size_t i = 0; i < sizeof(T) << 3; i += 8) {
-		int temp = getc(IN);
+		int temp = getc(INPUT);
 		if (temp == EOF)
 			return false;
 		rc |= (T)(temp << i);
@@ -309,28 +310,28 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 	}
 	return image;
 }
-static bool bmp_read_file_header(FILE* IN, OPJ_BITMAPFILEHEADER* header){
-	if (!get_int(IN, &header->bfType))
+static bool bmp_read_file_header(FILE* INPUT, OPJ_BITMAPFILEHEADER* header){
+	if (!get_int(INPUT, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
-		fprintf(stderr, "[ERROR] not a BMP file!\n");
+		spdlog::error("not a BMP file!");
 		return false;
 	}
-	if (!get_int(IN, &header->bfSize))
+	if (!get_int(INPUT, &header->bfSize))
 		return false;
-	if (!get_int(IN, &header->bfReserved1))
+	if (!get_int(INPUT, &header->bfReserved1))
 		return false;
-	if (!get_int(IN, &header->bfReserved2))
+	if (!get_int(INPUT, &header->bfReserved2))
 		return false;
-	if (!get_int(IN, &header->bfOffBits))
+	if (!get_int(INPUT, &header->bfOffBits))
 		return false;
 	return true;
 }
-static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header){
+static bool bmp_read_info_header(FILE* INPUT, OPJ_BITMAPINFOHEADER* header){
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
-	if (!get_int(IN,&header->biSize))
+	if (!get_int(INPUT,&header->biSize))
 		return false;
 
 	switch (header->biSize) {
@@ -342,79 +343,79 @@ static bool bmp_read_info_header(FILE* IN, OPJ_BITMAPINFOHEADER* header){
 	case 124U: /* BITMAPV5HEADER */
 		break;
 	default:
-		fprintf(stderr, "[ERROR] unknown BMP header size %d\n", header->biSize);
+		spdlog::error("unknown BMP header size {}\n", header->biSize);
 		return false;
 	}
-	if (!get_int(IN, &header->biWidth))
+	if (!get_int(INPUT, &header->biWidth))
 		return false;
-	if (!get_int(IN, &header->biHeight))
+	if (!get_int(INPUT, &header->biHeight))
 		return false;
-	if (!get_int(IN, &header->biPlanes))
+	if (!get_int(INPUT, &header->biPlanes))
 		return false;
-	if (!get_int(IN, &header->biBitCount))
+	if (!get_int(INPUT, &header->biBitCount))
 		return false;
 	if (header->biSize >= 40U) {
-		if (!get_int(IN, &header->biCompression))
+		if (!get_int(INPUT, &header->biCompression))
 			return false;
-		if (!get_int(IN, &header->biSizeImage))
+		if (!get_int(INPUT, &header->biSizeImage))
 			return false;
-		if (!get_int(IN, &header->biXpelsPerMeter))
+		if (!get_int(INPUT, &header->biXpelsPerMeter))
 			return false;
-		if (!get_int(IN, &header->biYpelsPerMeter))
+		if (!get_int(INPUT, &header->biYpelsPerMeter))
 			return false;
-		if (!get_int(IN, &header->biClrUsed))
+		if (!get_int(INPUT, &header->biClrUsed))
 			return false;
-		if (!get_int(IN, &header->biClrImportant))
+		if (!get_int(INPUT, &header->biClrImportant))
 			return false;
 	}
 	if (header->biSize >= 56U) {
-		if (!get_int(IN, &header->biRedMask))
+		if (!get_int(INPUT, &header->biRedMask))
 			return false;
-		if (!get_int(IN, &header->biGreenMask))
+		if (!get_int(INPUT, &header->biGreenMask))
 			return false;
-		if (!get_int(IN, &header->biBlueMask))
+		if (!get_int(INPUT, &header->biBlueMask))
 			return false;
-		if (!get_int(IN, &header->biAlphaMask))
+		if (!get_int(INPUT, &header->biAlphaMask))
 			return false;
 	}
 	if (header->biSize >= 108U) {
-		if (!get_int(IN, &header->biColorSpaceType))
+		if (!get_int(INPUT, &header->biColorSpaceType))
 			return false;
-		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP), IN) != sizeof(header->biColorSpaceEP)) {
-			fprintf(stderr, "[ERROR] can't  read BMP header\n");
+		if (fread(&(header->biColorSpaceEP), 1U, sizeof(header->biColorSpaceEP), INPUT) != sizeof(header->biColorSpaceEP)) {
+			spdlog::error("can't  read BMP header");
 			return false;
 		}
-		if (!get_int(IN, &header->biRedGamma))
+		if (!get_int(INPUT, &header->biRedGamma))
 			return false;
-		if (!get_int(IN, &header->biGreenGamma))
+		if (!get_int(INPUT, &header->biGreenGamma))
 			return false;
-		if (!get_int(IN, &header->biBlueGamma))
+		if (!get_int(INPUT, &header->biBlueGamma))
 			return false;
 	}
 	if (header->biSize >= 124U) {
-		if (!get_int(IN, &header->biIntent))
+		if (!get_int(INPUT, &header->biIntent))
 			return false;
-		if (!get_int(IN, &header->biIccProfileData))
+		if (!get_int(INPUT, &header->biIccProfileData))
 			return false;
-		if (!get_int(IN, &header->biIccProfileSize))
+		if (!get_int(INPUT, &header->biIccProfileSize))
 			return false;
-		if (!get_int(IN, &header->biReserved))
+		if (!get_int(INPUT, &header->biReserved))
 			return false;
 	}
 	return true;
 }
 
-static bool bmp_read_raw_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
+static bool bmp_read_raw_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
 	(void)(width);
-	if (fread(pData, sizeof(uint8_t), stride * height, IN) != (stride * height)) {
-		fprintf(stderr, "[ERROR] fread return a number of element different from the expected.\n");
+	if (fread(pData, sizeof(uint8_t), stride * height, INPUT) != (stride * height)) {
+		spdlog::error("fread return a number of element different from the expected.");
 		return false;
 	}
 	return true;
 }
 
-static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
+static bool bmp_read_rle8_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
 	uint32_t x, y, written;
 	uint8_t *pix;
@@ -425,12 +426,12 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 
 	x = y = written = 0U;
 	while (y < height) {
-		int c = getc(IN);
+		int c = getc(INPUT);
 		if (c == EOF)
 			return false;
 		if (c) {
 			int j;
-			int temp = getc(IN);
+			int temp = getc(INPUT);
 			if (temp == EOF)
 				return false;
 			uint8_t c1 = (uint8_t)temp;
@@ -440,7 +441,7 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			}
 		}
 		else {
-			c = getc(IN);
+			c = getc(INPUT);
 			if (c == EOF)
 				return false;
 			if (c == 0x00) { /* EOL */
@@ -452,11 +453,11 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 				break;
 			}
 			else if (c == 0x02) { /* MOVE by dxdy */
-				c = getc(IN);
+				c = getc(INPUT);
 				if (c == EOF)
 					return false;
 				x += (uint32_t)c;
-				c = getc(IN);
+				c = getc(INPUT);
 				if (c == EOF)
 					return false;
 				y += (uint32_t)c;
@@ -465,7 +466,7 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			else { /* 03 .. 255 */
 				int j;
 				for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
-					int temp = getc(IN);
+					int temp = getc(INPUT);
 					if (temp == EOF)
 						return false;
 					uint8_t c1 = (uint8_t)temp;
@@ -473,19 +474,19 @@ static bool bmp_read_rle8_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 					written++;
 				}
 				if ((uint32_t)c & 1U) { /* skip padding byte */
-					if (getc(IN) == EOF)
+					if (getc(INPUT) == EOF)
 						return false;
 				}
 			}
 		}
 	}/* while() */
 	if (written != width*height){
-		fprintf(stderr, "[ERROR] Number of pixels written does not match specified image dimensions.\n");
+		spdlog::error("Number of pixels written does not match specified image dimensions.");
 		return false;
 	}
 	return true;
 }
-static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
+static bool bmp_read_rle4_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uint32_t width, uint32_t height)
 {
 	uint32_t x, y;
 	uint8_t *pix;
@@ -495,13 +496,13 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 	pix = pData;
 	x = y = 0U;
 	while (y < height) {
-		int c = getc(IN);
+		int c = getc(INPUT);
 		if (c == EOF) 
 			break;
 
 		if (c) {/* encoded mode */
 			int j;
-			int temp = getc(IN);
+			int temp = getc(INPUT);
 			if (temp == EOF)
 				return false;
 			uint8_t c1 = (uint8_t)temp;
@@ -511,7 +512,7 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 			}
 		}
 		else { /* absolute mode */
-			c = getc(IN);
+			c = getc(INPUT);
 			if (c == EOF) 
 				break;
 
@@ -524,13 +525,13 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 				break;
 			}
 			else if (c == 0x02) { /* MOVE by dxdy */
-				int temp = getc(IN);
+				int temp = getc(INPUT);
 				if (temp == EOF)
 					return false;
 				c = (uint8_t)temp;
 				x += (uint32_t)c;
 
-				temp = getc(IN);
+				temp = getc(INPUT);
 				if (temp == EOF)
 					return false;
 				c = (uint8_t)temp;
@@ -543,7 +544,7 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 
 				for (j = 0; (j < c) && (x < width) && ((size_t)pix < (size_t)beyond); j++, x++, pix++) {
 					if ((j & 1) == 0) {
-						int temp = getc(IN);
+						int temp = getc(INPUT);
 						if (temp == EOF)
 							return false;
 						c1 = (uint8_t)temp;
@@ -551,7 +552,7 @@ static bool bmp_read_rle4_data(FILE* IN, uint8_t* pData, uint32_t stride, uint32
 					*pix = (uint8_t)((j & 1) ? (c1 & 0x0fU) : ((c1 >> 4) & 0x0fU));
 				}
 				if (((c & 3) == 1) || ((c & 3) == 2)) { /* skip padding byte */
-					if (getc(IN) == EOF)
+					if (getc(INPUT) == EOF)
 						return false;
 				}
 			}
@@ -567,7 +568,7 @@ static opj_image_t* bmptoimage(const char *filename,
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
 	opj_image_t * image = nullptr;
-	FILE *IN = nullptr;
+	FILE *INPUT = nullptr;
 	OPJ_BITMAPFILEHEADER File_h;
 	OPJ_BITMAPINFOHEADER Info_h;
 	uint32_t i, palette_len, numcmpts = 1U;
@@ -582,23 +583,23 @@ static opj_image_t* bmptoimage(const char *filename,
 	if (readFromStdin) {
 		if (!grok_set_binary_mode(stdin))
 			return nullptr;
-		IN = stdin;
+		INPUT = stdin;
 	}
 	else {
-		IN = fopen(filename, "rb");
-		if (!IN) {
-			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
+		INPUT = fopen(filename, "rb");
+		if (!INPUT) {
+			spdlog::error("Failed to open {} for reading !!\n", filename);
 			return nullptr;
 		}
 	}
 
-	if (!bmp_read_file_header(IN, &File_h)) 
+	if (!bmp_read_file_header(INPUT, &File_h)) 
 		goto cleanup;
 	//cache location of beginning of info header
-	beginningOfInfoHeader = ftell(IN);
+	beginningOfInfoHeader = ftell(INPUT);
 	if (beginningOfInfoHeader == -1)
 		goto cleanup;
-	if (!bmp_read_info_header(IN, &Info_h)) 
+	if (!bmp_read_info_header(INPUT, &Info_h)) 
 		goto cleanup;
 	/* Load palette */
 	if (Info_h.biBitCount <= 8U) {
@@ -616,19 +617,19 @@ static opj_image_t* bmptoimage(const char *filename,
 		if (palette_len > 0U) {
 			uint8_t has_color = 0U;
 			for (i = 0U; i < palette_len; i++) {
-				int temp = getc(IN);
+				int temp = getc(INPUT);
 				if (temp == EOF) 
 					goto cleanup;
 				lut_B[i] = (uint8_t)temp;
-				temp = getc(IN);
+				temp = getc(INPUT);
 				if (temp == EOF) 
 					goto cleanup;
 				lut_G[i] = (uint8_t)temp;
-				temp = getc(IN);
+				temp = getc(INPUT);
 				if (temp == EOF) 
 					goto cleanup;
 				lut_R[i] = (uint8_t)temp;
-				temp = getc(IN); /* padding */
+				temp = getc(INPUT); /* padding */
 				if (temp == EOF) 
 					goto cleanup;
 				has_color |= (lut_B[i] ^ lut_G[i]) | (lut_G[i] ^ lut_R[i]);
@@ -663,27 +664,27 @@ static opj_image_t* bmptoimage(const char *filename,
 	if (pData == nullptr) 
 		goto cleanup;
 	/* Place the cursor at the beginning of the image information */
-	if (fseek(IN, 0, SEEK_SET))
+	if (fseek(INPUT, 0, SEEK_SET))
 		goto cleanup;
-	if (fseek(IN, (long)File_h.bfOffBits, SEEK_SET))
+	if (fseek(INPUT, (long)File_h.bfOffBits, SEEK_SET))
 		goto cleanup;
 
 	switch (Info_h.biCompression) {
 	case 0:
 	case 3:
 		/* read raw data */
-		l_result = bmp_read_raw_data(IN, pData, stride, Info_h.biWidth, Info_h.biHeight);
+		l_result = bmp_read_raw_data(INPUT, pData, stride, Info_h.biWidth, Info_h.biHeight);
 		break;
 	case 1:
 		/* read rle8 data */
-		l_result = bmp_read_rle8_data(IN, pData, stride, Info_h.biWidth, Info_h.biHeight);
+		l_result = bmp_read_rle8_data(INPUT, pData, stride, Info_h.biWidth, Info_h.biHeight);
 		break;
 	case 2:
 		/* read rle4 data */
-		l_result = bmp_read_rle4_data(IN, pData, stride, Info_h.biWidth, Info_h.biHeight);
+		l_result = bmp_read_rle4_data(INPUT, pData, stride, Info_h.biWidth, Info_h.biHeight);
 		break;
 	default:
-		fprintf(stderr, "[ERROR] Unsupported BMP compression\n");
+		spdlog::error("Unsupported BMP compression");
 		l_result = false;
 		break;
 	}
@@ -713,12 +714,12 @@ static opj_image_t* bmptoimage(const char *filename,
 		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
 
 		//read in ICC profile
-		if (fseek(IN, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET)){
+		if (fseek(INPUT, beginningOfInfoHeader + Info_h.biIccProfileData, SEEK_SET)){
 			goto cleanup;
 		}
 		//allocate buffer
 		image->icc_profile_buf = opj_buffer_new(Info_h.biIccProfileSize);
-		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, IN);
+		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, INPUT);
 		if (bytesRead != Info_h.biIccProfileSize){
 		    opj_buffer_delete(image->icc_profile_buf);
 		    image->icc_profile_buf = nullptr;
@@ -770,13 +771,13 @@ static opj_image_t* bmptoimage(const char *filename,
 	else {
 		opj_image_destroy(image);
 		image = nullptr;
-		fprintf(stderr, "Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [%d]\n", Info_h.biBitCount);
+		spdlog::error("Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [{}]\n", Info_h.biBitCount);
 	}
 cleanup:
 	if (pData)
 		free(pData);
-	if (!readFromStdin && IN){
-		if (!grk::safe_fclose(IN)){
+	if (!readFromStdin && INPUT){
+		if (!grk::safe_fclose(INPUT)){
 			opj_image_destroy(image);
 			image = nullptr;
 		}
@@ -804,17 +805,17 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 		goto cleanup;
 	}
 	if (image->numcomps != 1 && image->numcomps != 3) {
-		fprintf(stderr, "[ERROR] Unsupported number of components: %d\n", image->numcomps);
+		spdlog::error("Unsupported number of components: {}\n", image->numcomps);
 		goto cleanup;
 	}
 	if (isSubsampled(image)) {
-		fprintf(stderr, "[ERROR] Sub-sampled images not supported");
+		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
 
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
-			fprintf(stderr, "[ERROR] Unsupported precision: %d for component %d\n", image->comps[i].prec, i);
+			spdlog::error("Unsupported precision: {} for component {}\n", image->comps[i].prec, i);
 			goto cleanup;
 		}
 	}
@@ -826,7 +827,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 	else {
 		fdest = fopen(outfile, "wb");
 		if (!fdest) {
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
+			spdlog::error("failed to open {} for writing\n", outfile);
 			goto cleanup;
 		}
 	}
@@ -877,21 +878,21 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 		if (image->comps[0].prec > 8) {
 			adjustR = (int)image->comps[0].prec - 8;
 			if (verbose)
-				printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
+				spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits", image->comps[0].prec);
 		}
 		else
 			adjustR = 0;
 		if (image->comps[1].prec > 8) {
 			adjustG = (int)image->comps[1].prec - 8;
 			if (verbose)
-				printf("BMP CONVERSION: Truncating component 1 from %d bits to 8 bits\n", image->comps[1].prec);
+				spdlog::warn("BMP CONVERSION: Truncating component 1 from {} bits to 8 bits", image->comps[1].prec);
 		}
 		else
 			adjustG = 0;
 		if (image->comps[2].prec > 8) {
 			adjustB = (int)image->comps[2].prec - 8;
 			if (verbose)
-				printf("BMP CONVERSION: Truncating component 2 from %d bits to 8 bits\n", image->comps[2].prec);
+				spdlog::warn("BMP CONVERSION: Truncating component 2 from {} bits to 8 bits", image->comps[2].prec);
 		}
 		else
 			adjustB = 0;
@@ -992,7 +993,7 @@ static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
 		if (image->comps[0].prec > 8) {
 			adjustR = (int)image->comps[0].prec - 8;
 			if (verbose)
-				printf("BMP CONVERSION: Truncating component 0 from %d bits to 8 bits\n", image->comps[0].prec);
+				spdlog::warn("BMP CONVERSION: Truncating component 0 from {} bits to 8 bits", image->comps[0].prec);
 		}
 		else
 			adjustR = 0;

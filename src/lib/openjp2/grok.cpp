@@ -625,7 +625,7 @@ void OPJ_CALLCONV opj_dump_codec(opj_codec_t *p_codec, int32_t info_flag,
 		return;
 	}
 	/* TODO return error */
-	/* fprintf(stderr, "[ERROR] Input parameter of the dump_codec function are incorrect.\n"); */
+	GROK_ERROR("Input parameter of the dump_codec function are incorrect.");
 	return;
 }
 opj_codestream_info_v2_t* OPJ_CALLCONV opj_get_cstr_info(opj_codec_t *p_codec) {

@@ -70,12 +70,12 @@
 #include <cstring>
 #include "common.h"
 #include <cassert>
+#include "spdlog/spdlog.h"
 
 static unsigned char readuchar(FILE *f) {
 	unsigned char c1;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR] fread return a number of element different from the expected.\n");
+		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
 	}
 	return c1;
@@ -84,13 +84,11 @@ static unsigned char readuchar(FILE *f) {
 static unsigned short readushort(FILE *f, int bigendian) {
 	unsigned char c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR]  fread return a number of element different from the expected.\n");
+		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR]  fread return a number of element different from the expected.\n");
+		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (bigendian)
@@ -102,23 +100,19 @@ static unsigned short readushort(FILE *f, int bigendian) {
 static unsigned int readuint(FILE *f, int bigendian) {
 	unsigned char c1, c2, c3, c4;
 	if (!fread(&c1, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR] fread return a number of element different from the expected.\n");
+		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR] fread return a number of element different from the expected.\n");
+		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c3, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR]  fread return a number of element different from the expected.\n");
+		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c4, 1, 1, f)) {
-		fprintf(stderr,
-				"[ERROR] fread return a number of element different from the expected.\n");
+		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (bigendian)
@@ -153,7 +147,7 @@ static opj_image_t* pgxtoimage(const char *filename,
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
-		fprintf(stderr, "[ERROR] Failed to open %s for reading !\n", filename);
+		spdlog::error("Failed to open {} for reading !\n", filename);
 		return nullptr;
 	}
 
@@ -161,8 +155,7 @@ static opj_image_t* pgxtoimage(const char *filename,
 		goto cleanup;
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
-		fprintf(stderr,
-				"[ERROR] Failed to read the right number of element from the fscanf() function!\n");
+		spdlog::error(" Failed to read the right number of element from the fscanf() function!");
 		goto cleanup;
 	}
 
@@ -182,7 +175,7 @@ static opj_image_t* pgxtoimage(const char *filename,
 	} else if (endian2 == 'M' && endian1 == 'L') {
 		bigendian = 0;
 	} else {
-		fprintf(stderr, "[ERROR] Bad pgx header, please check input file\n");
+		spdlog::error("Bad pgx header, please check input file");
 		goto cleanup;
 	}
 
@@ -293,19 +286,16 @@ static int imagetopgx(opj_image_t *image, const char *outfile) {
 		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
-			fprintf(stderr,
-					"[ERROR] imagetopgx: output file name size larger than 4096.\n");
+			spdlog::error(" imagetopgx: output file name size larger than 4096.");
 			goto beach;
 		}
 		if (olen < 4) {
-			fprintf(stderr,
-					"[ERROR] imagetopgx: output file name size less than 4.\n");
+			spdlog::error(" imagetopgx: output file name size less than 4.");
 			goto beach;
 		}
 		const size_t dotpos = olen - 4;
 		if (outfile[dotpos] != '.') {
-			fprintf(stderr,
-					"[ERROR] pgx was recognized but there was no dot at expected position .\n");
+			spdlog::error(" pgx was recognized but there was no dot at expected position .");
 			goto beach;
 		}
 		//copy root outfile name to "name"
@@ -315,7 +305,7 @@ static int imagetopgx(opj_image_t *image, const char *outfile) {
 		fdest = fopen(bname, "wb");
 		if (!fdest) {
 
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n", bname);
+			spdlog::error("failed to open {} for writing\n", bname);
 			goto beach;
 		}
 
@@ -343,7 +333,7 @@ static int imagetopgx(opj_image_t *image, const char *outfile) {
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
-					fprintf(stderr, "[ERROR] failed to write 1 byte for %s\n",
+					spdlog::error("failed to write 1 byte for {}\n",
 							bname);
 					goto beach;
 				}
