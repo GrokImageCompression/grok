@@ -583,20 +583,20 @@ void j2k_destroy_cstr_index(opj_codestream_index_t *p_cstr_ind);
 /**
  * Decode tile data.
  * @param	p_j2k		the jpeg2000 codec.
- * @param	p_tile_index
+ * @param	tile_index
  * @param p_data       FIXME DOC
- * @param p_data_size  FIXME DOC
+ * @param data_size  FIXME DOC
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream);
+bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+		uint64_t data_size, GrokStream *p_stream);
 
 /**
  * Reads a tile header.
  * @param	p_j2k		the jpeg2000 codec.
- * @param	p_tile_index FIXME DOC
- * @param	p_data_size FIXME DOC
+ * @param	tile_index FIXME DOC
+ * @param	data_size FIXME DOC
  * @param	p_tile_x0 FIXME DOC
  * @param	p_tile_y0 FIXME DOC
  * @param	p_tile_x1 FIXME DOC
@@ -606,8 +606,8 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
-		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
+bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
+		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream);
 
@@ -616,16 +616,16 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *p_tile_index,
  *
  * @param	p_j2k			the jpeg2000 codec.
  * @param	p_image     FIXME DOC
- * @param	p_start_x		the left position of the rectangle to decode (in image coordinates).
- * @param	p_start_y		the up position of the rectangle to decode (in image coordinates).
- * @param	p_end_x			the right position of the rectangle to decode (in image coordinates).
- * @param	p_end_y			the bottom position of the rectangle to decode (in image coordinates).
+ * @param	start_x		the left position of the rectangle to decode (in image coordinates).
+ * @param	start_y		the up position of the rectangle to decode (in image coordinates).
+ * @param	end_x			the right position of the rectangle to decode (in image coordinates).
+ * @param	end_y			the bottom position of the rectangle to decode (in image coordinates).
  
  *
  * @return	true			if the area could be set.
  */
-bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t p_start_x,
-		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y);
+bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t start_x,
+		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
  * Creates a J2K decompression structure.
@@ -700,14 +700,14 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
 /**
  * Writes a tile.
  * @param	p_j2k		the jpeg2000 codec.
- * @param p_tile_index FIXME DOC
+ * @param tile_index FIXME DOC
  * @param p_data FIXME DOC
- * @param p_data_size FIXME DOC
+ * @param data_size FIXME DOC
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_write_tile(j2k_t *p_j2k, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream);
+bool j2k_write_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+		uint64_t data_size, GrokStream *p_stream);
 
 /**
  * Encodes an image into a JPEG-2000 codestream

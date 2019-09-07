@@ -96,11 +96,11 @@ public:
 	/**
 	 * Reinitialises a tag tree
 	 *
-	 * @param	p_num_leafs_h		the width of the array of leafs of the tree
-	 * @param	p_num_leafs_v		the height of the array of leafs of the tree
+	 * @param	num_leafs_h		the width of the array of leafs of the tree
+	 * @param	num_leafs_v		the height of the array of leafs of the tree
 	 * @return	true if successful, false otherwise
 	 */
-	bool init(uint64_t p_num_leafs_h, uint64_t p_num_leafs_v);
+	bool init(uint64_t num_leafs_h, uint64_t num_leafs_v);
 
 	/**
 	 Reset a tag tree (set all leaves to 0)

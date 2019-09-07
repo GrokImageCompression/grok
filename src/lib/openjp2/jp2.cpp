@@ -75,13 +75,13 @@ namespace grk {
  *
  * @param	p_image_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
- * @param	p_image_header_size			the size of the image header
+ * @param	image_header_size			the size of the image header
  
  *
  * @return	true if the image header is valid, false else.
  */
 static bool jp2_read_ihdr(jp2_t *jp2, uint8_t *p_image_header_data,
-		uint32_t p_image_header_size);
+		uint32_t image_header_size);
 
 /**
  * Writes the Image Header box - Image Header box.
@@ -98,12 +98,12 @@ static uint8_t* jp2_write_ihdr(jp2_t *jp2, uint32_t *p_nb_bytes_written);
  *
  * @param	jp2					jpeg2000 file codec.
  * @param	p_xml_data			pointer to actual data (already read from file)
- * @param	p_xml_size			size of the xml data
+ * @param	xml_size			size of the xml data
  
  *
  * @return	true if the image header is valid, false else.
  */
-static bool jp2_read_xml(jp2_t *jp2, uint8_t *p_xml_data, uint32_t p_xml_size);
+static bool jp2_read_xml(jp2_t *jp2, uint8_t *p_xml_data, uint32_t xml_size);
 
 /**
  * Write XML box
@@ -139,20 +139,20 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, jp2_buffer_t *buffer,
  * @return	true if the image header is valid, false else.
  */
 static bool jp2_read_uuid(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_data_size);
+		uint32_t header_data_size);
 
 /**
  * Reads a Resolution box
  *
  * @param	p_resolution_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
- * @param	p_resolution_size			the size of the image header
+ * @param	resolution_size			the size of the image header
  
  *
  * @return	true if the image header is valid, false else.
  */
 static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
-		uint32_t p_resolution_size);
+		uint32_t resolution_size);
 
 /**
  * Writes the Resolution box
@@ -179,16 +179,16 @@ static uint8_t* jp2_write_bpcc(jp2_t *jp2, uint32_t *p_nb_bytes_written);
  *
  * @param	p_bpc_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
- * @param	p_bpc_header_size			the size of the bpc header
+ * @param	bpc_header_size			the size of the bpc header
  
  *
  * @return	true if the bpc header is valid, false else.
  */
 static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
-		uint32_t p_bpc_header_size);
+		uint32_t bpc_header_size);
 
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
-		uint32_t p_cdef_header_size);
+		uint32_t cdef_header_size);
 
 static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color);
 
@@ -228,13 +228,13 @@ static bool jp2_write_ftyp(jp2_t *jp2, GrokStream *cio);
  *
  * @param	p_header_data	the data contained in the FTYP box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the FTYP box.
+ * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
  * @return true if the FTYP box is valid.
  */
 static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size);
+		uint32_t header_size);
 
 static bool jp2_skip_jp2c(jp2_t *jp2, GrokStream *cio);
 
@@ -243,13 +243,13 @@ static bool jp2_skip_jp2c(jp2_t *jp2, GrokStream *cio);
  *
  * @param	p_header_data	the data contained in the file header box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the file header box.
+ * @param	header_size	the size of the data contained in the file header box.
  .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
 static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size);
+		uint32_t header_size);
 
 /**
  * Writes the Jpeg2000 file Header box - JP2 Header box (warning, this is a super box).
@@ -280,13 +280,13 @@ static bool jp2_write_jp2c(jp2_t *jp2, GrokStream *cio);
  *
  * @param	p_header_data	the data contained in the signature box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the signature box.
+ * @param	header_size	the size of the data contained in the signature box.
  .
  *
  * @return true if the file signature box is valid.
  */
 static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size);
+		uint32_t header_size);
 
 /**
  * Writes a jpeg2000 file signature box.
@@ -313,39 +313,39 @@ static void jp2_free_pclr(jp2_color_t *color);
  *
  * @param jp2 JP2 handle
  * @param p_pclr_header_data    FIXME DOC
- * @param p_pclr_header_size    FIXME DOC
+ * @param pclr_header_size    FIXME DOC
  *
  * @return true if successful, returns false otherwise
  */
 static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
-		uint32_t p_pclr_header_size);
+		uint32_t pclr_header_size);
 
 /**
  * Collect component mapping data
  *
  * @param jp2                 JP2 handle
  * @param p_cmap_header_data  FIXME DOC
- * @param p_cmap_header_size  FIXME DOC
+ * @param cmap_header_size  FIXME DOC
 
  *
  * @return true if successful, returns false otherwise
  */
 
 static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
-		uint32_t p_cmap_header_size);
+		uint32_t cmap_header_size);
 
 /**
  * Reads the Color Specification box.
  *
  * @param	p_colr_header_data			pointer to actual data (already read from file)
  * @param	jp2							the jpeg2000 file codec.
- * @param	p_colr_header_size			the size of the color header
+ * @param	colr_header_size			the size of the color header
  
  *
  * @return	true if the bpc header is valid, false else.
  */
 static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
-		uint32_t p_colr_header_size);
+		uint32_t colr_header_size);
 
 /*@}*/
 
@@ -415,20 +415,20 @@ static bool jp2_default_validation(jp2_t *jp2, GrokStream *cio);
 /**
  * Finds the image execution function related to the given box id.
  *
- * @param	p_id	the id of the handler to fetch.
+ * @param	id	the id of the handler to fetch.
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const jp2_header_handler_t* jp2_img_find_handler(uint32_t p_id);
+static const jp2_header_handler_t* jp2_img_find_handler(uint32_t id);
 
 /**
  * Finds the execution function related to the given box id.
  *
- * @param	p_id	the id of the handler to fetch.
+ * @param	id	the id of the handler to fetch.
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const jp2_header_handler_t* jp2_find_handler(uint32_t p_id);
+static const jp2_header_handler_t* jp2_find_handler(uint32_t id);
 
 static const jp2_header_handler_t jp2_header[] = { { JP2_JP, jp2_read_jp }, {
 		JP2_FTYP, jp2_read_ftyp }, { JP2_JP2H, jp2_read_jp2h }, { JP2_XML,
@@ -536,7 +536,7 @@ static void jp2_write_url(opj_cio_t *cio, char *Idx_file)
 #endif
 
 static bool jp2_read_ihdr(jp2_t *jp2, uint8_t *p_image_header_data,
-		uint32_t p_image_header_size) {
+		uint32_t image_header_size) {
 
 	assert(p_image_header_data != nullptr);
 	assert(jp2 != nullptr);
@@ -548,7 +548,7 @@ static bool jp2_read_ihdr(jp2_t *jp2, uint8_t *p_image_header_data,
 		return true;
 	}
 
-	if (p_image_header_size != 14) {
+	if (image_header_size != 14) {
 		GROK_ERROR( "Bad image header box (bad size)");
 		return false;
 	}
@@ -712,18 +712,18 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, jp2_buffer_t *buffer,
 	return l_data;
 }
 
-static bool jp2_read_xml(jp2_t *jp2, uint8_t *p_xml_data, uint32_t p_xml_size) {
+static bool jp2_read_xml(jp2_t *jp2, uint8_t *p_xml_data, uint32_t xml_size) {
 
 	
-	if (!p_xml_data || !p_xml_size) {
+	if (!p_xml_data || !xml_size) {
 		return false;
 	}
-	jp2->xml.alloc(p_xml_size);
+	jp2->xml.alloc(xml_size);
 	if (!jp2->xml.buffer) {
 		jp2->xml.len = 0;
 		return false;
 	}
-	memcpy(jp2->xml.buffer, p_xml_data, p_xml_size);
+	memcpy(jp2->xml.buffer, p_xml_data, xml_size);
 	return true;
 }
 
@@ -733,8 +733,8 @@ static uint8_t* jp2_write_xml(jp2_t *jp2, uint32_t *p_nb_bytes_written) {
 }
 
 static bool jp2_read_uuid(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size) {
-	if (!p_header_data || !p_header_size || p_header_size < 16) {
+		uint32_t header_size) {
+	if (!p_header_data || !header_size || header_size < 16) {
 		return false;
 	}
 
@@ -747,7 +747,7 @@ static bool jp2_read_uuid(jp2_t *jp2, uint8_t *p_header_data,
 	auto uuid = jp2->uuids + jp2->numUuids;
 	memcpy(uuid->uuid, p_header_data, 16);
 	p_header_data += 16;
-	if (uuid->alloc(p_header_size - 16)) {
+	if (uuid->alloc(header_size - 16)) {
 		memcpy(uuid->buffer, p_header_data, uuid->len);
 		jp2->numUuids++;
 		return true;
@@ -799,19 +799,19 @@ static bool jp2_read_res_box(uint32_t *id, uint32_t *num, uint32_t *den,
 }
 
 static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
-		uint32_t p_resolution_size) {
+		uint32_t resolution_size) {
 	assert(p_resolution_data != nullptr);
 	assert(jp2 != nullptr);
 	
 
-	uint32_t num_boxes = p_resolution_size / OPJ_RESOLUTION_BOX_SIZE;
+	uint32_t num_boxes = resolution_size / OPJ_RESOLUTION_BOX_SIZE;
 	if (num_boxes == 0 || num_boxes > 2
-			|| (p_resolution_size % OPJ_RESOLUTION_BOX_SIZE)) {
+			|| (resolution_size % OPJ_RESOLUTION_BOX_SIZE)) {
 		GROK_ERROR( "Bad resolution box (bad size)");
 		return false;
 	}
 
-	while (p_resolution_size > 0) {
+	while (resolution_size > 0) {
 
 		uint32_t id;
 		uint32_t num[2];
@@ -839,7 +839,7 @@ static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
 			res[i] = calc_res((uint16_t) num[i], (uint16_t) den[i],
 					(uint8_t) exponent[i]);
 
-		p_resolution_size -= OPJ_RESOLUTION_BOX_SIZE;
+		resolution_size -= OPJ_RESOLUTION_BOX_SIZE;
 	}
 	return true;
 }
@@ -995,7 +995,7 @@ static uint8_t* jp2_write_bpcc(jp2_t *jp2, uint32_t *p_nb_bytes_written) {
 }
 
 static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
-		uint32_t p_bpc_header_size) {
+		uint32_t bpc_header_size) {
 	uint32_t i;
 
 	assert(p_bpc_header_data != nullptr);
@@ -1009,7 +1009,7 @@ static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
 	}
 
 	/* and length is relevant */
-	if (p_bpc_header_size != jp2->numcomps) {
+	if (bpc_header_size != jp2->numcomps) {
 		GROK_ERROR( "Bad BPCC header box (bad size)");
 		return false;
 	}
@@ -1416,7 +1416,7 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 }/* apply_pclr() */
 
 static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
-		uint32_t p_pclr_header_size) {
+		uint32_t pclr_header_size) {
 	jp2_pclr_t *jp2_pclr;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
@@ -1428,12 +1428,12 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 	assert(p_pclr_header_data != nullptr);
 	assert(jp2 != nullptr);
 	
-	(void) p_pclr_header_size;
+	(void) pclr_header_size;
 
 	if (jp2->color.jp2_pclr)
 		return false;
 
-	if (p_pclr_header_size < 3)
+	if (pclr_header_size < 3)
 		return false;
 
 	grok_read_bytes(p_pclr_header_data, &l_value, 2); /* NE */
@@ -1454,7 +1454,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 		return false;
 	}
 
-	if (p_pclr_header_size < 3 + (uint32_t) nr_channels)
+	if (pclr_header_size < 3 + (uint32_t) nr_channels)
 		return false;
 
 	entries = (uint32_t*) grok_malloc(
@@ -1504,7 +1504,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 
 			if (bytes_to_read > sizeof(uint32_t))
 				bytes_to_read = sizeof(uint32_t);
-			if ((ptrdiff_t) p_pclr_header_size
+			if ((ptrdiff_t) pclr_header_size
 					< (ptrdiff_t) (p_pclr_header_data - orig_header_data)
 							+ (ptrdiff_t) bytes_to_read)
 				return false;
@@ -1520,7 +1520,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 }
 
 static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
-		uint32_t p_cmap_header_size) {
+		uint32_t cmap_header_size) {
 	jp2_cmap_comp_t *cmap;
 	uint8_t i, nr_channels;
 	uint32_t l_value;
@@ -1545,7 +1545,7 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	}
 
 	nr_channels = jp2->color.jp2_pclr->nr_channels;
-	if (p_cmap_header_size < (uint32_t) nr_channels * 4) {
+	if (cmap_header_size < (uint32_t) nr_channels * 4) {
 		GROK_ERROR( "Insufficient data for CMAP box.");
 		return false;
 	}
@@ -1638,7 +1638,7 @@ static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color) {
 }/* jp2_apply_cdef() */
 
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
-		uint32_t p_cdef_header_size) {
+		uint32_t cdef_header_size) {
 	jp2_cdef_info_t *cdef_info;
 	uint16_t i;
 	uint32_t l_value;
@@ -1646,14 +1646,14 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 	assert(jp2 != nullptr);
 	assert(p_cdef_header_data != nullptr);
 	
-	(void) p_cdef_header_size;
+	(void) cdef_header_size;
 
 	/* Part 1, I.5.3.6: 'The shall be at most one Channel Definition box
 	 * inside a JP2 Header box.'*/
 	if (jp2->color.jp2_cdef)
 		return false;
 
-	if (p_cdef_header_size < 2) {
+	if (cdef_header_size < 2) {
 		GROK_ERROR( "CDEF box: Insufficient data.");
 		return false;
 	}
@@ -1667,7 +1667,7 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		return false;
 	}
 
-	if (p_cdef_header_size < 2 + (uint32_t) (uint16_t) l_value * 6) {
+	if (cdef_header_size < 2 + (uint32_t) (uint16_t) l_value * 6) {
 		GROK_ERROR( "CDEF box: Insufficient data.");
 		return false;
 	}
@@ -1733,12 +1733,12 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 }
 
 static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
-		uint32_t p_colr_header_size) {
+		uint32_t colr_header_size) {
 	assert(jp2 != nullptr);
 	assert(p_colr_header_data != nullptr);
 	
 
-	if (p_colr_header_size < 3) {
+	if (colr_header_size < 3) {
 		GROK_ERROR( "Bad COLR header box (bad size)");
 		return false;
 	}
@@ -1749,7 +1749,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 	if (jp2->color.jp2_has_colour_specification_box) {
 		GROK_WARN(
 				"A conforming JP2 reader shall ignore all colour specification boxes after the first, so we ignore this one.");
-		p_colr_header_data += p_colr_header_size;
+		p_colr_header_data += colr_header_size;
 		return true;
 	}
 
@@ -1763,23 +1763,23 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 	++p_colr_header_data;
 
 	if (jp2->meth == 1) {
-		if (p_colr_header_size < 7) {
+		if (colr_header_size < 7) {
 			GROK_ERROR(
-					"Bad COLR header box (bad size: %d)", p_colr_header_size);
+					"Bad COLR header box (bad size: %d)", colr_header_size);
 			return false;
 		}
 		grok_read_bytes(p_colr_header_data, &jp2->enumcs, 4); /* EnumCS */
 		p_colr_header_data += 4;
 
-		if ((p_colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
+		if ((colr_header_size > 7) && (jp2->enumcs != 14)) { /* handled below for CIELab) */
 			/* testcase Altona_Technical_v20_x4.pdf */
 			GROK_WARN(
-					"Bad COLR header box (bad size: %d)", p_colr_header_size);
+					"Bad COLR header box (bad size: %d)", colr_header_size);
 		}
 
 		if (jp2->enumcs == 14) { /* CIELab */
 			uint32_t *cielab;
-			bool nonDefaultLab = p_colr_header_size == 35;
+			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
 			cielab = (uint32_t*) opj_buffer_new(
 					(nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
@@ -1791,7 +1791,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 			cielab[0] = 14; /* enumcs */
 			cielab[1] = OPJ_DEFAULT_CIELAB_SPACE;
 
-			if (p_colr_header_size == 35) {
+			if (colr_header_size == 35) {
 				uint32_t rl, ol, ra, oa, rb, ob, il;
 				grok_read_bytes(p_colr_header_data, &rl, 4);
 				p_colr_header_data += 4;
@@ -1816,10 +1816,10 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 				cielab[5] = oa;
 				cielab[7] = ob;
 				cielab[8] = il;
-			} else if (p_colr_header_size != 7) {
+			} else if (colr_header_size != 7) {
 				GROK_WARN(
 						"Bad COLR header box (CIELab, bad size: %d)\n",
-						p_colr_header_size);
+						colr_header_size);
 			}
 			jp2->color.icc_profile_buf = (uint8_t*) cielab;
 			jp2->color.icc_profile_len = 0;
@@ -1827,7 +1827,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 		jp2->color.jp2_has_colour_specification_box = 1;
 	} else if (jp2->meth == 2) {
 		/* ICC profile */
-		uint32_t icc_len = (uint32_t) (p_colr_header_size - 3);
+		uint32_t icc_len = (uint32_t) (colr_header_size - 3);
 		if (icc_len == 0) {
 			GROK_ERROR(
 					"ICC profile buffer length equals zero");
@@ -2760,10 +2760,10 @@ bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, opj_image_t *p_image) {
 	return j2k_start_compress(jp2->j2k, stream, p_image);
 }
 
-static const jp2_header_handler_t* jp2_find_handler(uint32_t p_id) {
+static const jp2_header_handler_t* jp2_find_handler(uint32_t id) {
 	auto l_handler_size = sizeof(jp2_header) / sizeof(jp2_header_handler_t);
 	for (uint32_t i = 0; i < l_handler_size; ++i) {
-		if (jp2_header[i].id == p_id) {
+		if (jp2_header[i].id == id) {
 			return &jp2_header[i];
 		}
 	}
@@ -2773,14 +2773,14 @@ static const jp2_header_handler_t* jp2_find_handler(uint32_t p_id) {
 /**
  * Finds the image execution function related to the given box id.
  *
- * @param	p_id	the id of the handler to fetch.
+ * @param	id	the id of the handler to fetch.
  *
  * @return	the given handler or nullptr if it could not be found.
  */
-static const jp2_header_handler_t* jp2_img_find_handler(uint32_t p_id) {
+static const jp2_header_handler_t* jp2_img_find_handler(uint32_t id) {
 	auto l_handler_size = sizeof(jp2_img_header) / sizeof(jp2_header_handler_t);
 	for (uint32_t i = 0; i < l_handler_size; ++i) {
-		if (jp2_img_header[i].id == p_id) {
+		if (jp2_img_header[i].id == id) {
 			return &jp2_img_header[i];
 		}
 	}
@@ -2793,13 +2793,13 @@ static const jp2_header_handler_t* jp2_img_find_handler(uint32_t p_id) {
  *
  * @param	p_header_data	the data contained in the signature box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the signature box.
+ * @param	header_size	the size of the data contained in the signature box.
  .
  *
  * @return true if the file signature box is valid.
  */
 static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size)
+		uint32_t header_size)
 
 		{
 	uint32_t l_magic_number;
@@ -2815,7 +2815,7 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
 	}
 
 	/* assure length of data is correct (4 -> magic number) */
-	if (p_header_size != 4) {
+	if (header_size != 4) {
 		GROK_ERROR( "Error with JP signature Box size");
 		return false;
 	}
@@ -2838,13 +2838,13 @@ static bool jp2_read_jp(jp2_t *jp2, uint8_t *p_header_data,
  *
  * @param	p_header_data	the data contained in the FTYP box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the FTYP box.
+ * @param	header_size	the size of the data contained in the FTYP box.
  .
  *
  * @return true if the FTYP box is valid.
  */
 static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size) {
+		uint32_t header_size) {
 	uint32_t i, l_remaining_bytes;
 
 	assert(p_header_data != nullptr);
@@ -2858,7 +2858,7 @@ static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
 	}
 
 	/* assure length of data is correct */
-	if (p_header_size < 8) {
+	if (header_size < 8) {
 		GROK_ERROR( "Error with FTYP signature Box size");
 		return false;
 	}
@@ -2869,7 +2869,7 @@ static bool jp2_read_ftyp(jp2_t *jp2, uint8_t *p_header_data,
 	grok_read_bytes(p_header_data, &jp2->minversion, 4); /* MinV */
 	p_header_data += 4;
 
-	l_remaining_bytes = p_header_size - 8;
+	l_remaining_bytes = header_size - 8;
 
 	/* the number of remaining bytes should be a multiple of 4 */
 	if ((l_remaining_bytes & 0x3) != 0) {
@@ -2919,13 +2919,13 @@ static bool jp2_skip_jp2c(jp2_t *jp2, GrokStream *stream) {
  *
  * @param	p_header_data	the data contained in the file header box.
  * @param	jp2				the jpeg2000 file codec.
- * @param	p_header_size	the size of the data contained in the file header box.
+ * @param	header_size	the size of the data contained in the file header box.
  .
  *
  * @return true if the JP2 Header box was successfully recognized.
  */
 static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
-		uint32_t p_header_size) {
+		uint32_t hdr_size) {
 	uint32_t l_box_size = 0, l_current_data_size = 0;
 	jp2_box_t box;
 	const jp2_header_handler_t *l_current_handler;
@@ -2944,7 +2944,8 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 
 	jp2->jp2_img_state = JP2_IMG_STATE_NONE;
 
-	int64_t header_size = p_header_size;
+	int64_t header_size = hdr_size;
+
 	/* iterate while remaining data */
 	while (header_size > 0) {
 
@@ -3179,28 +3180,28 @@ static bool jp2_setup_header_reading(jp2_t *jp2) {
 	return true;
 }
 
-bool jp2_read_tile_header(jp2_t *p_jp2, uint32_t *p_tile_index,
-		uint64_t *p_data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
+bool jp2_read_tile_header(jp2_t *p_jp2, uint32_t *tile_index,
+		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream) {
-	return j2k_read_tile_header(p_jp2->j2k, p_tile_index, p_data_size,
+	return j2k_read_tile_header(p_jp2->j2k, tile_index, data_size,
 			p_tile_x0, p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_go_on,
 			p_stream);
 }
 
-bool jp2_write_tile(jp2_t *p_jp2, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream)
+bool jp2_write_tile(jp2_t *p_jp2, uint32_t tile_index, uint8_t *p_data,
+		uint64_t data_size, GrokStream *p_stream)
 
 		{
-	return j2k_write_tile(p_jp2->j2k, p_tile_index, p_data, p_data_size,
+	return j2k_write_tile(p_jp2->j2k, tile_index, p_data, data_size,
 			p_stream);
 }
 
-bool jp2_decode_tile(jp2_t *p_jp2, uint32_t p_tile_index, uint8_t *p_data,
-		uint64_t p_data_size, GrokStream *p_stream) {
+bool jp2_decode_tile(jp2_t *p_jp2, uint32_t tile_index, uint8_t *p_data,
+		uint64_t data_size, GrokStream *p_stream) {
 	bool rc = false;
 	try {
-		rc = j2k_decode_tile(p_jp2->j2k, p_tile_index, p_data, p_data_size,
+		rc = j2k_decode_tile(p_jp2->j2k, tile_index, p_data, data_size,
 				p_stream);
 	} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 		//suppress exception
@@ -3262,10 +3263,10 @@ void jp2_destroy(jp2_t *jp2) {
 	}
 }
 
-bool jp2_set_decode_area(jp2_t *p_jp2, opj_image_t *p_image, uint32_t p_start_x,
-		uint32_t p_start_y, uint32_t p_end_x, uint32_t p_end_y) {
-	return j2k_set_decode_area(p_jp2->j2k, p_image, p_start_x, p_start_y,
-			p_end_x, p_end_y);
+bool jp2_set_decode_area(jp2_t *p_jp2, opj_image_t *p_image, uint32_t start_x,
+		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
+	return j2k_set_decode_area(p_jp2->j2k, p_image, start_x, start_y,
+			end_x, end_y);
 }
 
 bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index) {

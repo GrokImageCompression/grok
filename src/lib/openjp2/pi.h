@@ -147,10 +147,10 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *image, cp_t *cp,
  *
  * @param	p_image		the image being encoded.
  * @param	p_cp		the coding parameters.
- * @param	p_tile_no	index of the tile being encoded.
+ * @param	tile_no	index of the tile being encoded.
  */
 void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
-		uint32_t p_tile_no);
+		uint32_t tile_no);
 
 /**
  Modify the packet iterator for enabling tile part generation
@@ -178,9 +178,9 @@ pi_iterator_t* pi_create_decode(opj_image_t *image, cp_t *cp, uint32_t tileno);
  * Destroys a packet iterator array.
  *
  * @param	p_pi			the packet iterator array to destroy.
- * @param	p_nb_elements	the number of elements in the array.
+ * @param	nb_elements	the number of elements in the array.
  */
-void pi_destroy(pi_iterator_t *p_pi, uint32_t p_nb_elements);
+void pi_destroy(pi_iterator_t *p_pi, uint32_t nb_elements);
 
 /**
  Modify the packet iterator to point to the next packet

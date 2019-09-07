@@ -135,7 +135,7 @@ static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 		seg_buf_t *src_buf, uint64_t *p_data_read);
 
 static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		uint64_t *p_data_read, uint64_t p_max_length);
+		uint64_t *p_data_read, uint64_t max_length);
 
 /**
  @param cblk
@@ -218,26 +218,26 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses) {
 
 /* ----------------------------------------------------------------------- */
 
-bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
-		uint32_t p_maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t p_max_len, opj_codestream_info_t *cstr_info, uint32_t p_tp_num,
-		uint32_t p_tp_pos, uint32_t p_pino) {
+bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
+		uint32_t max_layers, GrokStream *p_stream, uint64_t *p_data_written,
+		uint64_t max_len, opj_codestream_info_t *cstr_info, uint32_t tp_num,
+		uint32_t tp_pos, uint32_t pino) {
 	uint64_t l_nb_bytes = 0;
 	pi_iterator_t *l_pi = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
 	opj_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
-	tcp_t *l_tcp = &l_cp->tcps[p_tile_no];
+	tcp_t *l_tcp = &l_cp->tcps[tile_no];
 	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 
-	l_pi = pi_initialise_encode(l_image, l_cp, p_tile_no, FINAL_PASS);
+	l_pi = pi_initialise_encode(l_image, l_cp, tile_no, FINAL_PASS);
 	if (!l_pi) {
 		return false;
 	}
-	pi_init_encode(l_pi, l_cp, p_tile_no, p_pino, p_tp_num, p_tp_pos,
+	pi_init_encode(l_pi, l_cp, tile_no, pino, tp_num, tp_pos,
 			FINAL_PASS);
 
-	l_current_pi = &l_pi[p_pino];
+	l_current_pi = &l_pi[pino];
 	if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
 		pi_destroy(l_pi, l_nb_pocs);
 		GROK_ERROR(
@@ -245,22 +245,22 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 		return false;
 	}
 	while (pi_next(l_current_pi)) {
-		if (l_current_pi->layno < p_maxlayers) {
+		if (l_current_pi->layno < max_layers) {
 			l_nb_bytes = 0;
 
-			if (!t2_encode_packet(p_tile_no, p_tile, l_tcp, l_current_pi,
-					p_stream, &l_nb_bytes, p_max_len, cstr_info)) {
+			if (!t2_encode_packet(tile_no, p_tile, l_tcp, l_current_pi,
+					p_stream, &l_nb_bytes, max_len, cstr_info)) {
 				pi_destroy(l_pi, l_nb_pocs);
 				return false;
 			}
 
-			p_max_len -= l_nb_bytes;
+			max_len -= l_nb_bytes;
 			*p_data_written += l_nb_bytes;
 
 			/* INDEX >> */
 			if (cstr_info) {
 				if (cstr_info->index_write) {
-					opj_tile_info_t *info_TL = &cstr_info->tile[p_tile_no];
+					opj_tile_info_t *info_TL = &cstr_info->tile[tile_no];
 					opj_packet_info_t *info_PK =
 							&info_TL->packet[cstr_info->packno];
 					if (!cstr_info->packno) {
@@ -290,12 +290,12 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
 	return true;
 }
 
-bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
-		tcd_tile_t *p_tile, uint32_t p_maxlayers, uint64_t *p_data_written,
-		uint64_t p_max_len, uint32_t p_tp_pos) {
+bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t tile_no,
+		tcd_tile_t *p_tile, uint32_t max_layers, uint64_t *p_data_written,
+		uint64_t max_len, uint32_t tp_pos) {
 	opj_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
-	tcp_t *l_tcp = l_cp->tcps + p_tile_no;
+	tcp_t *l_tcp = l_cp->tcps + tile_no;
 	uint32_t pocno = (l_cp->rsiz == OPJ_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t l_max_comp =
 			l_cp->m_specific_param.m_enc.m_max_comp_size > 0 ?
@@ -305,7 +305,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 	if (!p_data_written)
 		return false;
 
-	pi_iterator_t *l_pi = pi_initialise_encode(l_image, l_cp, p_tile_no,
+	pi_iterator_t *l_pi = pi_initialise_encode(l_image, l_cp, tile_no,
 			THRESH_CALC);
 	if (!l_pi) {
 		return false;
@@ -319,7 +319,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
 			uint32_t l_tp_num = compno;
-			pi_init_encode(l_pi, l_cp, p_tile_no, poc, l_tp_num, p_tp_pos,
+			pi_init_encode(l_pi, l_cp, tile_no, poc, l_tp_num, tp_pos,
 					THRESH_CALC);
 
 			if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
@@ -329,16 +329,16 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t p_tile_no,
 				return false;
 			}
 			while (pi_next(l_current_pi)) {
-				if (l_current_pi->layno < p_maxlayers) {
+				if (l_current_pi->layno < max_layers) {
 					uint64_t bytesInPacket = 0;
 					if (!t2_encode_packet_simulate(p_tile, l_tcp, l_current_pi,
-							&bytesInPacket, p_max_len)) {
+							&bytesInPacket, max_len)) {
 						pi_destroy(l_pi, l_nb_pocs);
 						return false;
 					}
 
 					l_comp_len += bytesInPacket;
-					p_max_len -= bytesInPacket;
+					max_len -= bytesInPacket;
 					*p_data_written += bytesInPacket;
 				}
 			}
@@ -369,20 +369,20 @@ static void opj_null_jas_fprintf(FILE *file, const char *format, ...) {
 #define JAS_FPRINTF opj_null_jas_fprintf
 #endif
 
-bool t2_decode_packets(t2_t *p_t2, uint32_t p_tile_no, tcd_tile_t *p_tile,
+bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 		seg_buf_t *src_buf, uint64_t *p_data_read) {
 	pi_iterator_t *l_pi = nullptr;
 	uint32_t pino;
 	opj_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
-	tcp_t *l_tcp = p_t2->cp->tcps + p_tile_no;
+	tcp_t *l_tcp = p_t2->cp->tcps + tile_no;
 	uint64_t l_nb_bytes_read;
 	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 	pi_iterator_t *l_current_pi = nullptr;
 	opj_image_comp_t *l_img_comp = nullptr;
 
 	/* create a packet iterator */
-	l_pi = pi_create_decode(l_image, l_cp, p_tile_no);
+	l_pi = pi_create_decode(l_image, l_cp, tile_no);
 	if (!l_pi) {
 		return false;
 	}
@@ -527,7 +527,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 
 		{
 	uint8_t *p_src_data = src_buf->get_global_ptr();
-	uint64_t p_max_length = src_buf->data_len - src_buf->get_global_offset();
+	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	uint64_t l_nb_code_blocks = 0;
 	uint8_t *active_src = p_src_data;
 	cp_t *l_cp = p_t2->cp;
@@ -557,7 +557,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 
 	/* SOP markers */
 	if (p_tcp->csty & J2K_CP_CSTY_SOP) {
-		if (p_max_length < 6) {
+		if (max_length < 6) {
 			GROK_WARN(
 					"Not enough space for expected SOP marker");
 		} else if ((*active_src) != 0xff || (*(active_src + 1) != 0x91)) {
@@ -591,7 +591,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 		l_header_data_start = &(active_src);
 		l_header_data = *l_header_data_start;
 		l_remaining_length =
-				(size_t) (p_src_data + p_max_length - l_header_data);
+				(size_t) (p_src_data + max_length - l_header_data);
 		l_modified_length_ptr = &(l_remaining_length);
 	}
 
@@ -1562,7 +1562,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
 	uint64_t l_nb_total_bytes_read = 0;
-	uint64_t p_max_length = (uint64_t) src_buf->get_cur_seg_len();
+	uint64_t max_length = (uint64_t) src_buf->get_cur_seg_len();
 
 	*p_data_read = 0;
 
@@ -1573,7 +1573,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 	}
 
 	l_nb_total_bytes_read += l_nb_bytes_read;
-	p_max_length -= l_nb_bytes_read;
+	max_length -= l_nb_bytes_read;
 
 	/* we should read data for the packet */
 	if (l_read_data) {
@@ -1581,7 +1581,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 
 		if (!t2_skip_packet_data(
 				&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
-				&l_nb_bytes_read, p_max_length)) {
+				&l_nb_bytes_read, max_length)) {
 			return false;
 		}
 		src_buf->incr_cur_seg_offset(l_nb_bytes_read);
@@ -1593,7 +1593,7 @@ static bool t2_skip_packet(t2_t *p_t2, tcd_tile_t *p_tile, tcp_t *p_tcp,
 }
 
 static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
-		uint64_t *p_data_read, uint64_t p_max_length) {
+		uint64_t *p_data_read, uint64_t max_length) {
 	uint32_t bandno;
 	uint64_t l_nb_code_blocks, cblkno;
 	tcd_cblk_dec_t *l_cblk = nullptr;
@@ -1635,10 +1635,10 @@ static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 			do {
 				/* Check possible overflow then size */
 				if (((*p_data_read + l_seg->newlen) < (*p_data_read))
-						|| ((*p_data_read + l_seg->newlen) > p_max_length)) {
+						|| ((*p_data_read + l_seg->newlen) > max_length)) {
 					GROK_ERROR(
 							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
-							l_seg->newlen, p_max_length, cblkno, p_pi->precno,
+							l_seg->newlen, max_length, cblkno, p_pi->precno,
 							bandno, p_pi->resno, p_pi->compno);
 					return false;
 				}

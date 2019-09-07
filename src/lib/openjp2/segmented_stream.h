@@ -87,7 +87,7 @@ struct seg_buf_t {
 
 	void increment(void);
 
-	size_t read(void *p_buffer, size_t p_nb_bytes);
+	size_t read(void *p_buffer, size_t nb_bytes);
 
 	buf_t* add_segment(uint8_t *buf, size_t len, bool ownsData);
 	void add_segment(buf_t *seg);

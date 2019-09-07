@@ -70,15 +70,15 @@ struct codec_private_t {
 					GrokStream *p_cio, opj_image_t *p_image);
 
 			/** FIXME DOC */
-			bool (*read_tile_header)(void *p_codec, uint32_t *p_tile_index,
-					uint64_t *p_data_size, uint32_t *p_tile_x0,
+			bool (*read_tile_header)(void *p_codec, uint32_t *tile_index,
+					uint64_t *data_size, uint32_t *p_tile_x0,
 					uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 					uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 					bool *p_should_go_on, GrokStream *p_cio);
 
 			/** FIXME DOC */
-			bool (*decode_tile_data)(void *p_codec, uint32_t p_tile_index,
-					uint8_t *p_data, uint64_t p_data_size, GrokStream *p_cio);
+			bool (*decode_tile_data)(void *p_codec, uint32_t tile_index,
+					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
 
 			/** Reading function used after codestream if necessary */
 			bool (*end_decompress)(void *p_codec, GrokStream *cio);
@@ -91,8 +91,8 @@ struct codec_private_t {
 
 			/** Set decode area function handler */
 			bool (*set_decode_area)(void *p_codec, opj_image_t *p_image,
-					uint32_t p_start_x, uint32_t p_end_x, uint32_t p_start_y,
-					uint32_t p_end_y);
+					uint32_t start_x, uint32_t end_x, uint32_t start_y,
+					uint32_t end_y);
 
 			/** Get tile function */
 			bool (*get_decoded_tile)(void *p_codec, GrokStream *p_cio,
@@ -114,8 +114,8 @@ struct codec_private_t {
 			bool (*encode)(void *p_codec, grok_plugin_tile_t*,
 					GrokStream *p_cio);
 
-			bool (*write_tile)(void *p_codec, uint32_t p_tile_index,
-					uint8_t *p_data, uint64_t p_data_size, GrokStream *p_cio);
+			bool (*write_tile)(void *p_codec, uint32_t tile_index,
+					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
 
 			bool (*end_compress)(void *p_codec, GrokStream *p_cio);
 

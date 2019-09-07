@@ -40,12 +40,12 @@ static void grok_free_buffer_info(void *user_data) {
 		delete data;
 }
 
-static size_t zero_copy_read_from_buffer(void **p_buffer, size_t p_nb_bytes,
+static size_t zero_copy_read_from_buffer(void **p_buffer, size_t nb_bytes,
 		buf_info_t *p_source_buffer) {
 	size_t l_nb_read = 0;
 
-	if (((size_t) p_source_buffer->off + p_nb_bytes) < p_source_buffer->len) {
-		l_nb_read = p_nb_bytes;
+	if (((size_t) p_source_buffer->off + nb_bytes) < p_source_buffer->len) {
+		l_nb_read = nb_bytes;
 	}
 
 	*p_buffer = p_source_buffer->buf + p_source_buffer->off;
@@ -54,12 +54,12 @@ static size_t zero_copy_read_from_buffer(void **p_buffer, size_t p_nb_bytes,
 	return l_nb_read ? l_nb_read : ((size_t) -1);
 }
 
-static size_t grok_read_from_buffer(void *p_buffer, size_t p_nb_bytes,
+static size_t grok_read_from_buffer(void *p_buffer, size_t nb_bytes,
 		buf_info_t *p_source_buffer) {
 	size_t l_nb_read;
 
-	if ((size_t) p_source_buffer->off + p_nb_bytes < p_source_buffer->len) {
-		l_nb_read = p_nb_bytes;
+	if ((size_t) p_source_buffer->off + nb_bytes < p_source_buffer->len) {
+		l_nb_read = nb_bytes;
 	} else {
 		l_nb_read = (p_source_buffer->len - (size_t) p_source_buffer->off);
 	}
@@ -72,22 +72,22 @@ static size_t grok_read_from_buffer(void *p_buffer, size_t p_nb_bytes,
 	return l_nb_read ? l_nb_read : ((size_t) -1);
 }
 
-static size_t grok_write_to_buffer(void *p_buffer, size_t p_nb_bytes,
+static size_t grok_write_to_buffer(void *p_buffer, size_t nb_bytes,
 		buf_info_t *p_source_buffer) {
-	if (p_source_buffer->off + p_nb_bytes >= p_source_buffer->len) {
+	if (p_source_buffer->off + nb_bytes >= p_source_buffer->len) {
 		return 0;
 	}
-	if (p_nb_bytes) {
+	if (nb_bytes) {
 		memcpy(p_source_buffer->buf + (size_t) p_source_buffer->off, p_buffer,
-				p_nb_bytes);
-		p_source_buffer->off += (int64_t) p_nb_bytes;
+				nb_bytes);
+		p_source_buffer->off += (int64_t) nb_bytes;
 	}
-	return p_nb_bytes;
+	return nb_bytes;
 }
 
-static bool seek_from_buffer(uint64_t p_nb_bytes, buf_info_t *p_source_buffer) {
-	if ((size_t) p_nb_bytes < p_source_buffer->len) {
-		p_source_buffer->off = p_nb_bytes;
+static bool seek_from_buffer(uint64_t nb_bytes, buf_info_t *p_source_buffer) {
+	if ((size_t) nb_bytes < p_source_buffer->len) {
+		p_source_buffer->off = nb_bytes;
 	} else {
 		p_source_buffer->off = p_source_buffer->len;
 	}

@@ -66,7 +66,7 @@ namespace grk {
 /**
  * Initializes tile coding/decoding
  */
-static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
+static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t tile_no,
 		opj_image_t *output_image, bool isEncoder, float fraction,
 		size_t sizeof_block);
 
@@ -86,7 +86,7 @@ static void tcd_code_block_enc_deallocate(tcd_precinct_t *p_precinct);
  */
 static void tcd_free_tile(tcd_t *tcd);
 
-static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
+static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t tile_no, seg_buf_t *src_buf,
 		uint64_t *p_data_read);
 
 static bool tcd_t1_decode(tcd_t *p_tcd);
@@ -106,10 +106,10 @@ static bool tcd_dwt_encode(tcd_t *p_tcd);
 static bool tcd_t1_encode(tcd_t *p_tcd);
 
 static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
-		uint64_t *p_data_written, uint64_t p_max_dest_size,
+		uint64_t *p_data_written, uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info);
 
-static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
+static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info);
 
 static bool tcd_layer_needs_rate_control(uint32_t layno, tcp_t *tcd_tcp,
@@ -810,7 +810,7 @@ void tcd_destroy(tcd_t *tcd) {
 
 /* ----------------------------------------------------------------------- */
 
-static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
+static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t tile_no,
 		opj_image_t *output_image, bool isEncoder, float fraction,
 		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
@@ -844,7 +844,7 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	uint32_t state = grok_plugin_get_debug_state();
 
 	l_cp = p_tcd->cp;
-	l_tcp = &(l_cp->tcps[p_tile_no]);
+	l_tcp = &(l_cp->tcps[tile_no]);
 	l_tile = p_tcd->tile;
 	l_tccp = l_tcp->tccps;
 	l_tilec = l_tile->comps;
@@ -854,8 +854,8 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	if (l_tcp->m_tile_data)
 		l_tcp->m_tile_data->rewind();
 
-	p = p_tile_no % l_cp->tw; /* tile coordinates */
-	q = p_tile_no / l_cp->tw;
+	p = tile_no % l_cp->tw; /* tile coordinates */
+	q = tile_no / l_cp->tw;
 	/*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
 
 	/* 4 borders of the tile rescale on the image if necessary */
@@ -1229,14 +1229,14 @@ static inline bool tcd_init_tile(tcd_t *p_tcd, uint32_t p_tile_no,
 	return true;
 }
 
-bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no) {
-	return tcd_init_tile(p_tcd, p_tile_no, nullptr, true, 1.0F,
+bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t tile_no) {
+	return tcd_init_tile(p_tcd, tile_no, nullptr, true, 1.0F,
 			sizeof(tcd_cblk_enc_t));
 }
 
 bool tcd_init_decode_tile(tcd_t *p_tcd, opj_image_t *output_image,
-		uint32_t p_tile_no) {
-	return tcd_init_tile(p_tcd, p_tile_no, output_image, false, 0.5F,
+		uint32_t tile_no) {
+	return tcd_init_tile(p_tcd, tile_no, output_image, false, 0.5F,
 			sizeof(tcd_cblk_dec_t));
 
 }
@@ -1274,14 +1274,14 @@ uint64_t tcd_get_decoded_tile_size(tcd_t *p_tcd) {
 	return l_data_size;
 }
 
-bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
-		uint64_t *p_data_written, uint64_t p_max_length,
+bool tcd_encode_tile(tcd_t *p_tcd, uint32_t tile_no, GrokStream *p_stream,
+		uint64_t *p_data_written, uint64_t max_length,
 		opj_codestream_info_t *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
 	if (p_tcd->cur_tp_num == 0) {
 
-		p_tcd->tcd_tileno = p_tile_no;
-		p_tcd->tcp = &p_tcd->cp->tcps[p_tile_no];
+		p_tcd->tcd_tileno = tile_no;
+		p_tcd->tcp = &p_tcd->cp->tcps[tile_no];
 
 		if (p_cstr_info) {
 			uint32_t l_num_packs = 0;
@@ -1292,19 +1292,19 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 			for (i = 0; i < l_tilec_idx->numresolutions; i++) {
 				tcd_resolution_t *l_res_idx = &l_tilec_idx->resolutions[i];
 
-				p_cstr_info->tile[p_tile_no].pw[i] = (int) l_res_idx->pw;
-				p_cstr_info->tile[p_tile_no].ph[i] = (int) l_res_idx->ph;
+				p_cstr_info->tile[tile_no].pw[i] = (int) l_res_idx->pw;
+				p_cstr_info->tile[tile_no].ph[i] = (int) l_res_idx->ph;
 
 				l_num_packs += l_res_idx->pw * l_res_idx->ph;
-				p_cstr_info->tile[p_tile_no].pdx[i] = (int) l_tccp->prcw[i];
-				p_cstr_info->tile[p_tile_no].pdy[i] = (int) l_tccp->prch[i];
+				p_cstr_info->tile[tile_no].pdx[i] = (int) l_tccp->prcw[i];
+				p_cstr_info->tile[tile_no].pdy[i] = (int) l_tccp->prch[i];
 			}
-			p_cstr_info->tile[p_tile_no].packet =
+			p_cstr_info->tile[tile_no].packet =
 					(opj_packet_info_t*) grok_calloc(
 							(size_t) p_cstr_info->numcomps
 									* (size_t) p_cstr_info->numlayers
 									* l_num_packs, sizeof(opj_packet_info_t));
-			if (!p_cstr_info->tile[p_tile_no].packet) {
+			if (!p_cstr_info->tile[tile_no].packet) {
 				GROK_ERROR(
 						"tcd_encode_tile: Out of memory error when allocating packet memory");
 				return false;
@@ -1338,22 +1338,22 @@ bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
 				return false;
 			}
 		}
-		if (!tcd_rate_allocate_encode(p_tcd, p_max_length, p_cstr_info)) {
+		if (!tcd_rate_allocate_encode(p_tcd, max_length, p_cstr_info)) {
 			return false;
 		}
 	}
 	if (p_cstr_info) {
 		p_cstr_info->index_write = 1;
 	}
-	if (!tcd_t2_encode(p_tcd, p_stream, p_data_written, p_max_length,
+	if (!tcd_t2_encode(p_tcd, p_stream, p_data_written, max_length,
 			p_cstr_info)) {
 		return false;
 	}
 	return true;
 }
 
-bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no) {
-	p_tcd->tcp = p_tcd->cp->tcps + p_tile_no;
+bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t tile_no) {
+	p_tcd->tcp = p_tcd->cp->tcps + tile_no;
 
 	bool doT2 = !p_tcd->current_plugin_tile
 			|| (p_tcd->current_plugin_tile->decode_flags & GROK_DECODE_T2);
@@ -1366,7 +1366,7 @@ bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no) {
 
 	if (doT2) {
 		uint64_t l_data_read = 0;
-		if (!tcd_t2_decode(p_tcd, p_tile_no, src_buf, &l_data_read)) {
+		if (!tcd_t2_decode(p_tcd, tile_no, src_buf, &l_data_read)) {
 			return false;
 		}
 		// synch plugin with T2 data
@@ -1416,7 +1416,7 @@ bool tcd_decode_tile(tcd_t *p_tcd, seg_buf_t *src_buf, uint32_t p_tile_no) {
 
  */
 bool tcd_update_tile_data(tcd_t *p_tcd, uint8_t *p_dest,
-		uint64_t p_dest_length) {
+		uint64_t dest_length) {
 	uint32_t i, j, k;
 	opj_image_comp_t *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
@@ -1424,7 +1424,7 @@ bool tcd_update_tile_data(tcd_t *p_tcd, uint8_t *p_dest,
 	uint32_t l_size_comp;
 	uint32_t l_stride, l_width, l_height;
 	uint64_t l_data_size = tcd_get_decoded_tile_size(p_tcd);
-	if (l_data_size > p_dest_length) {
+	if (l_data_size > dest_length) {
 		return false;
 	}
 
@@ -1580,7 +1580,7 @@ static void tcd_free_tile(tcd_t *p_tcd) {
 	p_tcd->tile = nullptr;
 }
 
-static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
+static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t tile_no, seg_buf_t *src_buf,
 		uint64_t *p_data_read) {
 	t2_t *l_t2;
 
@@ -1589,7 +1589,7 @@ static bool tcd_t2_decode(tcd_t *p_tcd, uint32_t p_tile_no, seg_buf_t *src_buf,
 		return false;
 	}
 
-	if (!t2_decode_packets(l_t2, p_tile_no, p_tcd->tile, src_buf, p_data_read)) {
+	if (!t2_decode_packets(l_t2, tile_no, p_tcd->tile, src_buf, p_data_read)) {
 		t2_destroy(l_t2);
 		return false;
 	}
@@ -2013,7 +2013,7 @@ static bool tcd_t1_encode(tcd_t *p_tcd) {
 }
 
 static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
-		uint64_t *p_data_written, uint64_t p_max_dest_size,
+		uint64_t *p_data_written, uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info) {
 	t2_t *l_t2;
 
@@ -2074,7 +2074,7 @@ static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 #endif
 
 	if (!t2_encode_packets(l_t2, p_tcd->tcd_tileno, p_tcd->tile,
-			p_tcd->tcp->numlayers, p_stream, p_data_written, p_max_dest_size,
+			p_tcd->tcp->numlayers, p_stream, p_data_written, max_dest_size,
 			p_cstr_info, p_tcd->tp_num, p_tcd->tp_pos, p_tcd->cur_pino)) {
 		t2_destroy(l_t2);
 		return false;
@@ -2106,7 +2106,7 @@ static bool tcd_t2_encode(tcd_t *p_tcd, GrokStream *p_stream,
 	return true;
 }
 
-static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
+static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info) {
 	cp_t *l_cp = p_tcd->cp;
 	uint64_t l_nb_written = 0;
@@ -2120,17 +2120,17 @@ static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
 		// rate control by rate/distortion or fixed quality
 		switch (l_cp->m_specific_param.m_enc.rateControlAlgorithm) {
 		case 0:
-			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_simple(p_tcd, &l_nb_written, max_dest_size)) {
 				return false;
 			}
 			break;
 		case 1:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, max_dest_size)) {
 				return false;
 			}
 			break;
 		default:
-			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, p_max_dest_size)) {
+			if (!tcd_pcrd_bisect_feasible(p_tcd, &l_nb_written, max_dest_size)) {
 				return false;
 			}
 			break;
@@ -2142,14 +2142,14 @@ static bool tcd_rate_allocate_encode(tcd_t *p_tcd, uint64_t p_max_dest_size,
 	return true;
 }
 
-bool tcd_copy_tile_data(tcd_t *p_tcd, uint8_t *p_src, uint64_t p_src_length) {
+bool tcd_copy_tile_data(tcd_t *p_tcd, uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
 	opj_image_comp_t *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
 	uint32_t l_size_comp, l_remaining;
 	uint64_t l_nb_elem;
 	uint64_t l_data_size = tcd_get_encoded_tile_size(p_tcd);
-	if (!p_tcd || !p_src || (l_data_size != p_src_length)) {
+	if (!p_tcd || !p_src || (l_data_size != src_length)) {
 		return false;
 	}
 

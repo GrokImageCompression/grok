@@ -125,9 +125,9 @@ bool OPJ_CALLCONV opj_set_error_handler(opj_codec_t *p_codec,
 }
 /* ---------------------------------------------------------------------- */
 
-static size_t grok_read_from_file(void *p_buffer, size_t p_nb_bytes,
+static size_t grok_read_from_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
-	size_t l_nb_read = fread(p_buffer, 1, p_nb_bytes, p_file);
+	size_t l_nb_read = fread(p_buffer, 1, nb_bytes, p_file);
 	return l_nb_read ? l_nb_read : (size_t) -1;
 }
 
@@ -137,12 +137,12 @@ static uint64_t opj_get_data_length_from_file(FILE *p_file) {
 	GROK_FSEEK(p_file, 0, SEEK_SET);
 	return (uint64_t) file_length;
 }
-static size_t grok_write_from_file(void *p_buffer, size_t p_nb_bytes,
+static size_t grok_write_from_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
-	return fwrite(p_buffer, 1, p_nb_bytes, p_file);
+	return fwrite(p_buffer, 1, nb_bytes, p_file);
 }
-static bool grok_seek_from_file(int64_t p_nb_bytes, FILE *p_user_data) {
-	return GROK_FSEEK(p_user_data, p_nb_bytes, SEEK_SET) ? false : true;
+static bool grok_seek_from_file(int64_t nb_bytes, FILE *p_user_data) {
+	return GROK_FSEEK(p_user_data, nb_bytes, SEEK_SET) ? false : true;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -339,38 +339,38 @@ bool OPJ_CALLCONV opj_decode(opj_codec_t *p_codec, grok_plugin_tile_t *tile,
 	return false;
 }
 bool OPJ_CALLCONV opj_set_decode_area(opj_codec_t *p_codec,
-		opj_image_t *p_image, uint32_t p_start_x, uint32_t p_start_y,
-		uint32_t p_end_x, uint32_t p_end_y) {
+		opj_image_t *p_image, uint32_t start_x, uint32_t start_y,
+		uint32_t end_x, uint32_t end_y) {
 	if (p_codec) {
 		codec_private_t *l_codec = (codec_private_t*) p_codec;
 		if (!l_codec->is_decompressor) {
 			return false;
 		}
 		return l_codec->m_codec_data.m_decompression.set_decode_area(
-				l_codec->m_codec, p_image, p_start_x, p_start_y, p_end_x,
-				p_end_y);
+				l_codec->m_codec, p_image, start_x, start_y, end_x,
+				end_y);
 	}
 	return false;
 }
 bool OPJ_CALLCONV opj_read_tile_header(opj_codec_t *p_codec,
-		opj_stream_t *p_stream, uint32_t *p_tile_index, uint64_t *p_data_size,
+		opj_stream_t *p_stream, uint32_t *tile_index, uint64_t *data_size,
 		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on) {
-	if (p_codec && p_stream && p_data_size && p_tile_index) {
+	if (p_codec && p_stream && data_size && tile_index) {
 		codec_private_t *l_codec = (codec_private_t*) p_codec;
 		GrokStream *l_stream = (GrokStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return false;
 		}
 		return l_codec->m_codec_data.m_decompression.read_tile_header(
-				l_codec->m_codec, p_tile_index, p_data_size, p_tile_x0,
+				l_codec->m_codec, tile_index, data_size, p_tile_x0,
 				p_tile_y0, p_tile_x1, p_tile_y1, p_nb_comps, p_should_go_on,
 				l_stream);
 	}
 	return false;
 }
 bool OPJ_CALLCONV opj_decode_tile_data(opj_codec_t *p_codec,
-		uint32_t p_tile_index, uint8_t *p_data, uint64_t p_data_size,
+		uint32_t tile_index, uint8_t *p_data, uint64_t data_size,
 		opj_stream_t *p_stream) {
 	if (p_codec && p_data && p_stream) {
 		codec_private_t *l_codec = (codec_private_t*) p_codec;
@@ -381,7 +381,7 @@ bool OPJ_CALLCONV opj_decode_tile_data(opj_codec_t *p_codec,
 		}
 
 		return l_codec->m_codec_data.m_decompression.decode_tile_data(
-				l_codec->m_codec, p_tile_index, p_data, p_data_size, l_stream);
+				l_codec->m_codec, tile_index, p_data, data_size, l_stream);
 	}
 	return false;
 }
@@ -586,8 +586,8 @@ bool OPJ_CALLCONV opj_set_MCT(opj_cparameters_t *parameters,
 			l_dc_shift_size);
 	return true;
 }
-bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec, uint32_t p_tile_index,
-		uint8_t *p_data, uint64_t p_data_size, opj_stream_t *p_stream) {
+bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec, uint32_t tile_index,
+		uint8_t *p_data, uint64_t data_size, opj_stream_t *p_stream) {
 	if (p_codec && p_stream && p_data) {
 		codec_private_t *l_codec = (codec_private_t*) p_codec;
 		GrokStream *l_stream = (GrokStream*) p_stream;
@@ -595,7 +595,7 @@ bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec, uint32_t p_tile_index,
 			return false;
 		}
 		return l_codec->m_codec_data.m_compression.write_tile(l_codec->m_codec,
-				p_tile_index, p_data, p_data_size, l_stream	);
+				tile_index, p_data, data_size, l_stream	);
 	}
 	return false;
 }
