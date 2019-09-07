@@ -28,9 +28,6 @@
 		#ifndef __AVX2__
 			#define __AVX2__
 		#endif
-		#ifndef __SSE4_1__
-			#define __SSE4_1__
-		#endif
 	#elif defined(AVX_FOUND)
 		#ifndef __AVX__
 			#define __AVX__
