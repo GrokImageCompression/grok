@@ -129,11 +129,11 @@ TagTree::~TagTree() {
 /**
  * Reinitialises a tag tree from an existing one.
  *
- * @param       p_num_leafs_h           the width of the array of leafs of the tree
- * @param       p_num_leafs_v           the height of the array of leafs of the tree
+ * @param       num_leafs_h           the width of the array of leafs of the tree
+ * @param       num_leafs_v           the height of the array of leafs of the tree
  * @return      a new tag tree if successful, nullptr otherwise
  */
-bool TagTree::init(uint64_t p_num_leafs_h, uint64_t p_num_leafs_v) {
+bool TagTree::init(uint64_t num_leafs_h, uint64_t num_leafs_v) {
 	
 	int64_t l_nplh[32];
 	int64_t l_nplv[32];
@@ -146,13 +146,13 @@ bool TagTree::init(uint64_t p_num_leafs_h, uint64_t p_num_leafs_v) {
 	uint64_t n;
 	uint64_t l_node_size;
 
-	if ((numleafsh != p_num_leafs_h) || (numleafsv != p_num_leafs_v)) {
-		numleafsh = p_num_leafs_h;
-		numleafsv = p_num_leafs_v;
+	if ((numleafsh != num_leafs_h) || (numleafsv != num_leafs_v)) {
+		numleafsh = num_leafs_h;
+		numleafsv = num_leafs_v;
 
 		l_num_levels = 0;
-		l_nplh[0] = (int64_t) p_num_leafs_h;
-		l_nplv[0] = (int64_t) p_num_leafs_v;
+		l_nplh[0] = (int64_t) num_leafs_h;
+		l_nplv[0] = (int64_t) num_leafs_v;
 		numnodes = 0;
 		do {
 			n = (uint64_t) (l_nplh[l_num_levels] * l_nplv[l_num_levels]);

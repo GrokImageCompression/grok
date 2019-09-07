@@ -735,25 +735,25 @@ typedef void *opj_codec_t;
 /*
  * Callback function prototype for read function
  */
-typedef size_t (*opj_stream_read_fn)(void *p_buffer, size_t p_nb_bytes,
+typedef size_t (*opj_stream_read_fn)(void *p_buffer, size_t nb_bytes,
 		void *p_user_data);
 
 /*
  * Callback function prototype for zero copy read function
  */
 typedef size_t (*opj_stream_zero_copy_read_fn)(void **p_buffer,
-		size_t p_nb_bytes, void *p_user_data);
+		size_t nb_bytes, void *p_user_data);
 
 /*
  * Callback function prototype for write function
  */
-typedef size_t (*opj_stream_write_fn)(void *p_buffer, size_t p_nb_bytes,
+typedef size_t (*opj_stream_write_fn)(void *p_buffer, size_t nb_bytes,
 		void *p_user_data);
 
 /*
  * Callback function prototype for (absolute) seek function.
  */
-typedef bool (*opj_stream_seek_fn)(uint64_t p_nb_bytes, void *p_user_data);
+typedef bool (*opj_stream_seek_fn)(uint64_t nb_bytes, void *p_user_data);
 
 /*
  * Callback function prototype for free user data function
@@ -1419,16 +1419,16 @@ OPJ_API bool OPJ_CALLCONV opj_read_header_ex(opj_stream_t *p_stream,
  *
  * @param	p_codec			the jpeg2000 codec.
  * @param	p_image         the decoded image previously set by opj_read_header
- * @param	p_start_x		the left position of the rectangle to decode (in image coordinates).
- * @param	p_end_x			the right position of the rectangle to decode (in image coordinates).
- * @param	p_start_y		the up position of the rectangle to decode (in image coordinates).
- * @param	p_end_y			the bottom position of the rectangle to decode (in image coordinates).
+ * @param	start_x		the left position of the rectangle to decode (in image coordinates).
+ * @param	end_x			the right position of the rectangle to decode (in image coordinates).
+ * @param	start_y		the up position of the rectangle to decode (in image coordinates).
+ * @param	end_y			the bottom position of the rectangle to decode (in image coordinates).
  *
  * @return	true			if the area could be set.
  */
 OPJ_API bool OPJ_CALLCONV opj_set_decode_area(opj_codec_t *p_codec,
-		opj_image_t *p_image, uint32_t p_start_x, uint32_t p_start_y,
-		uint32_t p_end_x, uint32_t p_end_y);
+		opj_image_t *p_image, uint32_t start_x, uint32_t start_y,
+		uint32_t end_x, uint32_t end_y);
 
 ////////////////////////////////////////////////
 // Structs to pass data between grok and plugin
@@ -1530,16 +1530,16 @@ OPJ_API bool OPJ_CALLCONV opj_set_decoded_resolution_factor(
  * Writes a tile with the given data.
  *
  * @param	p_codec		        the jpeg2000 codec.
- * @param	p_tile_index		the index of the tile to write. At the moment, the tiles must be written from 0 to n-1 in sequence.
+ * @param	tile_index		the index of the tile to write. At the moment, the tiles must be written from 0 to n-1 in sequence.
  * @param	p_data				pointer to the data to write. Data is arranged in sequence, data_comp0, then data_comp1, then ... NO INTERLEAVING should be set.
- * @param	p_data_size			this value os used to make sure the data being written is correct. The size must be equal to the sum for each component of
+ * @param	data_size			this value os used to make sure the data being written is correct. The size must be equal to the sum for each component of
  *                              tile_width * tile_height * component_size. component_size can be 1,2 or 4 bytes, depending on the precision of the given component.
  * @param	p_stream			the stream to write data to.
  *
  * @return	true if the data could be written.
  */
 OPJ_API bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec,
-		uint32_t p_tile_index, uint8_t *p_data, uint64_t p_data_size,
+		uint32_t tile_index, uint8_t *p_data, uint64_t data_size,
 		opj_stream_t *p_stream);
 
 /**
@@ -1547,8 +1547,8 @@ OPJ_API bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec,
  * The user may need to refer to the image got by opj_read_header to understand the size being taken by the tile.
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_tile_index	pointer to a value that will hold the index of the tile being decoded, in case of success.
- * @param	p_data_size		pointer to a value that will hold the maximum size of the decoded data, in case of success. In case
+ * @param	tile_index	pointer to a value that will hold the index of the tile being decoded, in case of success.
+ * @param	data_size		pointer to a value that will hold the maximum size of the decoded data, in case of success. In case
  *							of truncated codestreams, the actual number of bytes decoded may be lower. The computation of the size is the same
  *							as depicted in opj_write_tile.
  * @param	p_tile_x0		pointer to a value that will hold the x0 pos of the tile (in the image).
@@ -1563,7 +1563,7 @@ OPJ_API bool OPJ_CALLCONV opj_write_tile(opj_codec_t *p_codec,
  *							returning false may be the result of a shortage of memory or an internal error.
  */
 OPJ_API bool OPJ_CALLCONV opj_read_tile_header(opj_codec_t *p_codec,
-		opj_stream_t *p_stream, uint32_t *p_tile_index, uint64_t *p_data_size,
+		opj_stream_t *p_stream, uint32_t *tile_index, uint64_t *data_size,
 		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on);
 
@@ -1572,15 +1572,15 @@ OPJ_API bool OPJ_CALLCONV opj_read_tile_header(opj_codec_t *p_codec,
  * The user may need to refer to the image got by opj_read_header to understand the size being taken by the tile.
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_tile_index	the index of the tile being decoded, this should be the value set by opj_read_tile_header.
+ * @param	tile_index	the index of the tile being decoded, this should be the value set by opj_read_tile_header.
  * @param	p_data			pointer to a memory block that will hold the decoded data.
- * @param	p_data_size		size of p_data. p_data_size should be bigger or equal to the value set by opj_read_tile_header.
+ * @param	data_size		size of p_data. data_size should be bigger or equal to the value set by opj_read_tile_header.
  * @param	p_stream		the stream to decode.
  *
  * @return	true			if the data could be decoded.
  */
 OPJ_API bool OPJ_CALLCONV opj_decode_tile_data(opj_codec_t *p_codec,
-		uint32_t p_tile_index, uint8_t *p_data, uint64_t p_data_size,
+		uint32_t tile_index, uint8_t *p_data, uint64_t data_size,
 		opj_stream_t *p_stream);
 
 /* COMPRESSION FUNCTIONS*/

@@ -374,13 +374,13 @@ bool tcd_init(tcd_t *p_tcd, opj_image_t *p_image, cp_t *p_cp,
  *
  * @param	p_tcd		the tile decoder.
  * @param	output_image output image - stores the decode region of interest
- * @param	p_tile_no	the index of the tile received in sequence. This not necessarily lead to the
- * tile at index p_tile_no.
+ * @param	tile_no	the index of the tile received in sequence. This not necessarily lead to the
+ * tile at index tile_no.
  *
  * @return	true if the remaining data is sufficient.
  */
 bool tcd_init_decode_tile(tcd_t *p_tcd, opj_image_t *output_image,
-		uint32_t p_tile_no);
+		uint32_t tile_no);
 
 /**
  * Gets the maximum tile size that will be taken by the tile once decoded.
@@ -390,15 +390,15 @@ uint64_t tcd_get_decoded_tile_size(tcd_t *p_tcd);
 /**
  * Encodes a tile from the raw image into the given buffer.
  * @param	p_tcd			Tile Coder handle
- * @param	p_tile_no		Index of the tile to encode.
+ * @param	tile_no		Index of the tile to encode.
  * @param	p_dest			Destination buffer
  * @param	p_data_written	pointer to an int that is incremented by the number of bytes really written on p_dest
  * @param	p_len			Maximum length of the destination buffer
  * @param	p_cstr_info		Codestream information structure
  * @return  true if the coding is successful.
  */
-bool tcd_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no, GrokStream *p_stream,
-		uint64_t *p_data_written, uint64_t p_len,
+bool tcd_encode_tile(tcd_t *p_tcd, uint32_t tile_no, GrokStream *p_stream,
+		uint64_t *p_data_written, uint64_t len,
 		opj_codestream_info_t *p_cstr_info);
 
 /**
@@ -415,7 +415,7 @@ bool tcd_decode_tile(tcd_t *tcd, seg_buf_t *src_buf, uint32_t tileno);
  * Copies tile data from the system onto the given memory block.
  */
 bool tcd_update_tile_data(tcd_t *p_tcd, uint8_t *p_dest,
-		uint64_t p_dest_length);
+		uint64_t dest_length);
 
 /**
  *
@@ -426,16 +426,16 @@ uint64_t tcd_get_encoded_tile_size(tcd_t *p_tcd);
  * Initialize the tile coder and may reuse some meory.
  *
  * @param	p_tcd		TCD handle.
- * @param	p_tile_no	current tile index to encode.
+ * @param	tile_no	current tile index to encode.
  *
  * @return true if the encoding values could be set (false otherwise).
  */
-bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t p_tile_no);
+bool tcd_init_encode_tile(tcd_t *p_tcd, uint32_t tile_no);
 
 /**
  * Copies tile data from the given memory block onto the system.
  */
-bool tcd_copy_tile_data(tcd_t *p_tcd, uint8_t *p_src, uint64_t p_src_length);
+bool tcd_copy_tile_data(tcd_t *p_tcd, uint8_t *p_src, uint64_t src_length);
 
 /**
  * Allocates tile component data

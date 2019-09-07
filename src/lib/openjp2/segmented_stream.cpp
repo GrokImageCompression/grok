@@ -46,27 +46,27 @@ void seg_buf_t::increment() {
 	}
 }
 
-size_t seg_buf_t::read(void *p_buffer, size_t p_nb_bytes) {
+size_t seg_buf_t::read(void *p_buffer, size_t nb_bytes) {
 	size_t bytes_in_current_segment;
 	size_t bytes_to_read;
 	size_t total_bytes_read;
 	size_t bytes_left_to_read;
 	size_t bytes_remaining_in_file;
 
-	if (p_buffer == nullptr || p_nb_bytes == 0)
+	if (p_buffer == nullptr || nb_bytes == 0)
 		return 0;
 
 	/*don't try to read more bytes than are available */
 	bytes_remaining_in_file = data_len - (size_t) get_global_offset();
-	if (p_nb_bytes > bytes_remaining_in_file) {
+	if (nb_bytes > bytes_remaining_in_file) {
 #ifdef DEBUG_SEG_BUF
         printf("[WARNING]  attempt to read past end of segmented buffer\n");
 #endif
-		p_nb_bytes = bytes_remaining_in_file;
+		nb_bytes = bytes_remaining_in_file;
 	}
 
 	total_bytes_read = 0;
-	bytes_left_to_read = p_nb_bytes;
+	bytes_left_to_read = nb_bytes;
 	while (bytes_left_to_read > 0 && cur_seg_id < segments.size()) {
 		buf_t *cur_seg = segments[cur_seg_id];
 		bytes_in_current_segment = (cur_seg->len - (size_t) cur_seg->offset);
@@ -88,25 +88,25 @@ size_t seg_buf_t::read(void *p_buffer, size_t p_nb_bytes) {
 
 /* Disable this method for now, since it is not needed at the moment */
 #if 0
-int64_t seg_buf_t::skip(int64_t p_nb_bytes)
+int64_t seg_buf_t::skip(int64_t nb_bytes)
 {
     size_t bytes_in_current_segment;
     size_t bytes_remaining;
 
     if (!seg_buf)
-        return p_nb_bytes;
+        return nb_bytes;
 
-    if (p_nb_bytes + get_global_offset()> (int64_t)data_len) {
+    if (nb_bytes + get_global_offset()> (int64_t)data_len) {
 #ifdef DEBUG_SEG_BUF
         printf("[WARNING]  attempt to skip past end of segmented buffer\n");
 #endif
-        return p_nb_bytes;
+        return nb_bytes;
     }
 
-    if (p_nb_bytes == 0)
+    if (nb_bytes == 0)
         return 0;
 
-    bytes_remaining = (size_t)p_nb_bytes;
+    bytes_remaining = (size_t)nb_bytes;
     while (cur_seg_id < segments.size && bytes_remaining > 0) {
 
         buf_t* cur_seg = (buf_t*)opj_vec_get(&segments, cur_seg_id);
@@ -121,10 +121,10 @@ int64_t seg_buf_t::skip(int64_t p_nb_bytes)
             cur_seg = (buf_t*)opj_vec_get(&segments, cur_seg_id);
         } else { /* bingo! we found the segment */
             incr_cur_seg_offset(seg_buf, bytes_remaining);
-            return p_nb_bytes;
+            return nb_bytes;
         }
     }
-    return p_nb_bytes;
+    return nb_bytes;
 }
 #endif
 buf_t* seg_buf_t::add_segment(uint8_t *buf, size_t len, bool ownsData) {

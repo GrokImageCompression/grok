@@ -128,7 +128,7 @@ double mct_getnorm_real(uint32_t compno);
  @return false if function encounter a problem, true otherwise
  */
 bool mct_encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
-		uint32_t p_nb_comp, uint32_t is_signed);
+		uint32_t nb_comp, uint32_t is_signed);
 /**
  FIXME DOC
  @param pDecodingData    MCT data
@@ -147,7 +147,7 @@ bool mct_decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
  @param pMatrix          components
  @return
  */
-void opj_calculate_norms(double *pNorms, uint32_t p_nb_comps, float *pMatrix);
+void opj_calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
 /**
  FIXME DOC
  */

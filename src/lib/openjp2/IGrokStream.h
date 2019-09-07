@@ -23,10 +23,10 @@ struct IGrokStream {
 	virtual ~IGrokStream() {
 	}
 
-	virtual bool write_byte(uint8_t p_value)=0;
-	virtual bool write_short(uint16_t p_value) = 0;
-	virtual bool write_24(uint32_t p_value)=0;
-	virtual bool write_int(uint32_t p_value) = 0;
+	virtual bool write_byte(uint8_t value)=0;
+	virtual bool write_short(uint16_t value) = 0;
+	virtual bool write_24(uint32_t value)=0;
+	virtual bool write_int(uint32_t value) = 0;
 
 	/**
 	 * Writes some bytes to the stream.
