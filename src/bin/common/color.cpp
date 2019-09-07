@@ -63,6 +63,7 @@
 #include "opj_apps_config.h"
 #include "openjpeg.h"
 #include "color.h"
+#include "spdlog/spdlog.h"
 
 #ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>
@@ -405,6 +406,8 @@ void color_sycc_to_rgb(opj_image_t *img)
 {
     if(img->numcomps < 3) {
         img->color_space = OPJ_CLRSPC_GRAY;
+        spdlog::warn("color_sycc_to_rgb: number of components %d is less than 3."
+        		" Unable to convert\n", img->numcomps);
         return;
     }
 
@@ -430,7 +433,11 @@ void color_sycc_to_rgb(opj_image_t *img)
               && (img->comps[2].dy == 1)) { /* no sub-sample */
         sycc444_to_rgb(img);
     } else {
-        fprintf(stderr,"[ERROR] %s:%d:color_sycc_to_rgb\n\tCAN NOT CONVERT\n", __FILE__,__LINE__);
+        spdlog::warn("color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
+        		" Unable to convert.\n",
+				img->comps[0].dx, img->comps[0].dy,
+				img->comps[1].dx, img->comps[1].dy,
+				img->comps[2].dx, img->comps[2].dy );
         return;
     }
     img->color_space = OPJ_CLRSPC_SRGB;
