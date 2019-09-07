@@ -34,6 +34,7 @@
 #include <cassert>
 #include "iccjpeg.h"
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;    /* "public" fields */
@@ -162,7 +163,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 
 	planes[0] = image->comps[0].data;
 	if (bps == 0) {
-		fprintf(stderr, "[ERROR] imagetojpeg: image precision is zero.\n");
+		spdlog::error("imagetojpeg: image precision is zero.");
 		info.success = false;
 		goto cleanup;
 	}
@@ -191,8 +192,8 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
-		fprintf(stderr, "[ERROR] imagetojpeg: All components shall have the same subsampling, same bit depth.\n");
-		fprintf(stderr, "\tAborting\n");
+		spdlog::error("imagetojpeg: All components shall have the same subsampling, same bit depth.");
+		spdlog::error("\tAborting");
 		info.success = false;
 		goto cleanup;
 	}
@@ -206,7 +207,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 		cvt32sToTif = convert_32sXXu_C1R_LUT[bps];
 		break;
 	default:
-		fprintf(stderr, "[ERROR] imagetojpeg: Unsupported precision %d.\n", bps);
+		spdlog::error("imagetojpeg: Unsupported precision {}.\n", bps);
 		info.success = false;
 		goto cleanup;
 		break;
@@ -223,7 +224,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	// We assume that alpha channels occur as last channels in image.
 	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
 		if (verbose)
-			fprintf(stdout, "WARNING: PNG requires that alpha channels occur as last channels in image.\n");
+			spdlog::warn("PNG requires that alpha channels occur as last channels in image.");
 		numAlphaChannels = 0;
 	}
 	info.buffer = new uint8_t[width * numcomps];
@@ -259,7 +260,7 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	}
 	else {
 		if ((info.outfile = fopen(filename, "wb")) == nullptr) {
-			fprintf(stderr, "[ERROR] can't open %s\n", filename);
+			spdlog::error("can't open {}\n", filename);
 			info.success = false;
 			goto cleanup;
 		}
@@ -424,7 +425,7 @@ static opj_image_t* jpegtoimage(const char *filename,
 	}
 	else {
 		if ((imageInfo.infile = fopen(filename, "rb")) == nullptr) {
-			fprintf(stderr, "[ERROR] can't open %s\n", filename);
+			spdlog::error("can't open {}\n", filename);
 			return 0;
 		}
 	}
@@ -475,7 +476,7 @@ static opj_image_t* jpegtoimage(const char *filename,
 
 	bps = cinfo.data_precision;
 	if (bps != 8) {
-		fprintf(stderr, "[ERROR] jpegtoimage: Unsupported image precision %d\n", bps);
+		spdlog::error("jpegtoimage: Unsupported image precision {}\n", bps);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -519,8 +520,8 @@ static opj_image_t* jpegtoimage(const char *filename,
 	imageInfo.image->x1 = !imageInfo.image->x0 ? (w - 1) * 1 + 1 :
 		imageInfo.image->x0 + (w - 1) * 1 + 1;
 	if (imageInfo.image->x1 <= imageInfo.image->x0) {
-		fprintf(stderr, "[ERROR] jpegtoimage: Bad value for image->x1(%d) vs. "
-			"image->x0(%d)\n\tAborting.\n", imageInfo.image->x1, imageInfo.image->x0);
+		spdlog::error("jpegtoimage: Bad value for image->x1({}) vs. "
+			"image->x0({})\n\tAborting.\n", imageInfo.image->x1, imageInfo.image->x0);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -530,8 +531,8 @@ static opj_image_t* jpegtoimage(const char *filename,
 		imageInfo.image->y0 + (h - 1) * 1 + 1;
 
 	if (imageInfo.image->y1 <= imageInfo.image->y0) {
-		fprintf(stderr, "[ERROR] jpegtoimage: Bad value for image->y1(%d) vs. "
-			"image->y0(%d)\n\tAborting.\n", imageInfo.image->y1, imageInfo.image->y0);
+		spdlog::error("jpegtoimage: Bad value for image->y1({}) vs. "
+			"image->y0({})\n\tAborting.\n", imageInfo.image->y1, imageInfo.image->y0);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -601,7 +602,7 @@ cleanup:
 	*/
 	if (jerr.pub.num_warnings != 0) {
 		if (parameters->verbose)
-			fprintf(stdout, "[WARNING] JPEG library reported %d of corrupt data warnings", (int)jerr.pub.num_warnings);
+			spdlog::warn("JPEG library reported {} of corrupt data warnings", (int)jerr.pub.num_warnings);
 	}
 	
 	if (!imageInfo.success) {

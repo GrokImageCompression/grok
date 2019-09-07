@@ -150,7 +150,7 @@ static int get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        spdlog::error("Could not open Folder %s\n",imgdirpath);
+        spdlog::error("Could not open Folder {}\n",imgdirpath);
         return 0;
     }
 
@@ -174,7 +174,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        spdlog::error("Could not open Folder %s\n",imgdirpath);
+        spdlog::error("Could not open Folder {}\n",imgdirpath);
         return 1;
     } 
 	
@@ -217,7 +217,7 @@ static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_d
     char *temp_p, temp1[OPJ_PATH_LEN]="";
 
     strcpy(image_filename,dirptr->filename[imageno]);
-    spdlog::info("File Number %d \"%s\"\n",imageno,image_filename);
+    spdlog::info("File Number {} \"{}\"",imageno,image_filename);
     parameters->decod_format = get_file_format(image_filename);
     if (parameters->decod_format == UNKNOWN_FORMAT)
         return 1;
@@ -280,7 +280,7 @@ static int infile_format(const char *fname)
 
     s = fname + strlen(fname) - 4;
     spdlog::error("The extension of this file is incorrect.\n"
-            "FOUND %s. SHOULD BE %s\n", s, magic_s);
+            "FOUND {}. SHOULD BE {}\n", s, magic_s);
     return magic_format;
 }
 /* -------------------------------------------------------------------------- */
@@ -311,13 +311,13 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
             case JP2_CFMT:
                 break;
             default:
-                spdlog::error("Unknown input file format: %s \n"
+                spdlog::error("Unknown input file format: {} \n"
                         "        Known file formats are *.j2k, *.jp2 or *.jpc\n",
                         infile);
                 return 1;
             }
             if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
-            	spdlog::error("Path is too long\n");
+            	spdlog::error("Path is too long");
                 return 1;
             }
         }
@@ -327,7 +327,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 
         case 'o': {   /* output file */
             if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile), grok_optarg) != 0) {
-            	spdlog::error("Path is too long\n");
+            	spdlog::error("Path is too long");
                 return 1;
             }
         }
@@ -363,7 +363,7 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
 
         /* ----------------------------------------------------- */
         default:
-            spdlog::warn("An invalid option has been ignored.\n");
+            spdlog::warn("An invalid option has been ignored.");
             break;
         }
     } while(c != -1);
@@ -371,24 +371,24 @@ static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *param
     /* check for possible errors */
     if(img_fol->set_imgdir) {
         if(!(parameters->infile[0]==0)) {
-        	spdlog::error("options -ImgDir and -i cannot be used together.\n");
+        	spdlog::error("options -ImgDir and -i cannot be used together.");
             return 1;
         }
         if(!img_fol->set_out_format) {
-        	spdlog::error("When -ImgDir is used, -OutFor <FORMAT> must be used.\n");
+        	spdlog::error("When -ImgDir is used, -OutFor <FORMAT> must be used.");
         	spdlog::error("Only one format allowed.\n"
-                    "Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.\n");
+                    "Valid format are PGM, PPM, PNM, PGX, BMP, TIF, RAW and TGA.");
             return 1;
         }
         if(!(parameters->outfile[0] == 0)) {
-        	spdlog::error("options -ImgDir and -o cannot be used together\n");
+        	spdlog::error("options -ImgDir and -o cannot be used together");
             return 1;
         }
     } else {
         if(parameters->infile[0] == 0) {
-        	spdlog::error("Required parameter is missing\n");
-        	spdlog::error("Example: %s -i image.j2k\n",argv[0]);
-        	spdlog::error("Help: %s -h\n",argv[0]);
+        	spdlog::error("Required parameter is missing");
+        	spdlog::error("Example: {} -i image.j2k\n",argv[0]);
+        	spdlog::error("Help: {} -h\n",argv[0]);
             return 1;
         }
     }
@@ -430,15 +430,6 @@ static void info_callback(const char *msg, void *client_data)
 /* -------------------------------------------------------------------------- */
 int main(int argc, char *argv[])
 {
-
-#ifndef NDEBUG
-	std::string out;
-	for (int i = 0; i < argc; ++i) {
-		out += std::string(" ") + argv[i];
-	}
-	printf("%s\n",out.c_str());
-#endif
-
     FILE *fout = nullptr;
 
     opj_dparameters_t parameters;			/* Decompression parameters */
@@ -473,7 +464,7 @@ int main(int argc, char *argv[])
         int it_image;
         num_images=get_num_images(img_fol.imgdirpath);
 		if (num_images == 0) {
-			spdlog::error("Folder is empty\n");
+			spdlog::error("Folder is empty");
 			rc =  EXIT_FAILURE;
 			goto cleanup;
 		}
@@ -508,7 +499,7 @@ int main(int argc, char *argv[])
     if (parameters.outfile[0] != 0) {
         fout = fopen(parameters.outfile,"w");
         if (!fout) {
-            spdlog::error("failed to open %s for writing\n", parameters.outfile);
+            spdlog::error("failed to open {} for writing\n", parameters.outfile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -528,7 +519,7 @@ int main(int argc, char *argv[])
 
         l_stream = opj_stream_create_default_file_stream(parameters.infile,1);
         if (!l_stream) {
-        	spdlog::error("failed to create the stream from the file %s\n",parameters.infile);
+        	spdlog::error("failed to create the stream from the file {}\n",parameters.infile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
@@ -560,14 +551,14 @@ int main(int argc, char *argv[])
 
         /* Setup the decoder decoding parameters using user parameters */
         if ( !opj_setup_decoder(l_codec, &parameters) ) {
-        	spdlog::error("opj_dump: failed to setup the decoder\n");
+        	spdlog::error("opj_dump: failed to setup the decoder");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
         if(! opj_read_header(l_stream, l_codec,&image)) {
-            spdlog::error("opj_dump: failed to read the header\n");
+            spdlog::error("opj_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }

@@ -47,7 +47,6 @@
 /* warning : in order to be effective, Grok must have been built with profiling enabled !! */
 /*#define _PROFILE*/
 
-extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -72,7 +71,8 @@ extern "C" {
 
 #include "openjpeg.h"
 #include "format_defs.h"
-}
+#include "spdlog/spdlog.h"
+
 
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
@@ -156,7 +156,7 @@ static int infile_format(const char *fname)
 static void error_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stderr, "[ERROR] %s", msg);
+    spdlog::error("%s", msg);
 }
 /**
   sample warning debug callback expecting no client object
@@ -164,7 +164,7 @@ static void error_callback(const char *msg, void *client_data)
 static void warning_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[WARNING] %s", msg);
+    spdlog::warn("%s", msg);
 }
 /**
   sample debug callback expecting no client object
@@ -172,7 +172,7 @@ static void warning_callback(const char *msg, void *client_data)
 static void info_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[INFO] %s", msg);
+    spdlog::info("%s", msg);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -251,7 +251,7 @@ int main (int argc, char *argv[])
     opj_initialize(nullptr,0);
     l_stream = opj_stream_create_default_file_stream(input_file,true);
     if (!l_stream) {
-        fprintf(stderr, "[ERROR] failed to create the stream from the file\n");
+        spdlog::error("failed to create the stream from the file\n");
         goto beach;
     }
 
@@ -284,7 +284,7 @@ int main (int argc, char *argv[])
         break;
     }
     default: {
-        fprintf(stderr, "[ERROR] Not a valid JPEG2000 file!\n");
+        spdlog::error("Not a valid JPEG2000 file!\n");
         goto beach;
         break;
     }
@@ -297,13 +297,13 @@ int main (int argc, char *argv[])
 
     /* Setup the decoder decoding parameters using user parameters */
     if (! opj_setup_decoder(l_codec, &l_param)) {
-        fprintf(stderr, "[ERROR] j2k_dump: failed to setup the decoder\n");
+        spdlog::error("j2k_dump: failed to setup the decoder\n");
         goto beach;
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
     if (! opj_read_header(l_stream, l_codec,&l_image)) {
-        fprintf(stderr, "[ERROR] j2k_to_image: failed to read the header\n");
+        spdlog::error("j2k_to_image: failed to read the header\n");
         goto beach;
     }
 

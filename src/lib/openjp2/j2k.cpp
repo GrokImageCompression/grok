@@ -3586,7 +3586,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	/* Ref A.4.2: Psot may equal zero if it is the last tile-part of the codestream.*/
 	if (!l_tot_len) {
 		//GROK_WARN( "Psot value of the current tile-part is equal to zero; "
-		//              "we assume it is the last tile-part of the codestream.\n");
+		//              "we assume it is the last tile-part of the codestream.");
 		p_j2k->m_specific_param.m_decoder.m_last_tile_part = 1;
 	}
 
@@ -5327,12 +5327,12 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
-						"As no rate has been given for entire code stream, this limit will be used.\n");
+						"As no rate has been given for entire code stream, this limit will be used.");
 	} else if (parameters->max_cs_size > OPJ_CINEMA_24_CS) {
 		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1302083 compressed bytes @ 24fps for code stream.\n"
-						"The specified rate exceeds this limit, so rate will be forced to 1302083 bytes.\n");
+						"The specified rate exceeds this limit, so rate will be forced to 1302083 bytes.");
 		parameters->max_cs_size = OPJ_CINEMA_24_CS;
 	}
 
@@ -5342,12 +5342,12 @@ static void j2k_set_cinema_parameters(opj_cparameters_t *parameters,
 		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
-						"As no rate has been given, this limit will be used.\n");
+						"As no rate has been given, this limit will be used.");
 	} else if (parameters->max_comp_size > OPJ_CINEMA_24_COMP) {
 		GROK_WARN(
 				"JPEG 2000 profiles 3 and 4 (2k and 4k digital cinema) require:\n"
 						"Maximum 1041666 compressed bytes @ 24fps per component.\n"
-						"The specified rate exceeds this limit, so rate will be forced to 1041666 bytes.\n");
+						"The specified rate exceeds this limit, so rate will be forced to 1041666 bytes.");
 		parameters->max_comp_size = OPJ_CINEMA_24_COMP;
 	}
 
@@ -5492,7 +5492,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		if (cap) {
 			GROK_WARN(
 					"The desired maximum codestream size has limited\n"
-							"at least one of the desired quality layers\n");
+							"at least one of the desired quality layers");
 		}
 	}
 
@@ -5586,13 +5586,13 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 			GROK_WARN(
 					"JPEG 2000 Part-2 profile defined\n"
 							"but no Part-2 extension enabled.\n"
-							"Profile set to NONE.\n");
+							"Profile set to NONE.");
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		} else if (parameters->rsiz
 				!= ((OPJ_PROFILE_PART2) | (OPJ_EXTENSION_MCT))) {
 			GROK_WARN(
 					"Unsupported Part-2 extension enabled\n"
-							"Profile set to NONE.\n");
+							"Profile set to NONE.");
 			parameters->rsiz = OPJ_PROFILE_NONE;
 		}
 	}
@@ -5948,7 +5948,7 @@ static bool j2k_add_mhmarker(opj_codestream_index_t *cstr_index, uint32_t type,
 			cstr_index->marker = nullptr;
 			cstr_index->maxmarknum = 0;
 			cstr_index->marknum = 0;
-			/* GROK_ERROR( "Not enough memory to add mh marker\n"); */
+			/* GROK_ERROR( "Not enough memory to add mh marker"); */
 			return false;
 		}
 		cstr_index->marker = new_marker;
@@ -5983,7 +5983,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
 			cstr_index->tile_index[tileno].marker = nullptr;
 			cstr_index->tile_index[tileno].maxmarknum = 0;
 			cstr_index->tile_index[tileno].marknum = 0;
-			/* GROK_ERROR( "Not enough memory to add tl marker\n"); */
+			/* GROK_ERROR( "Not enough memory to add tl marker"); */
 			return false;
 		}
 		cstr_index->tile_index[tileno].marker = new_marker;
@@ -6215,7 +6215,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
-				/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
+				/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
 				return false;
 			}
 			p_tcp->m_mct_records = new_mct_records;
@@ -6262,7 +6262,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
-			/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
+			/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
 			return false;
 		}
 		p_tcp->m_mct_records = new_mct_records;
@@ -6332,7 +6332,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, opj_image_t *p_image) {
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;
-			/* GROK_ERROR( "Not enough memory to setup mct encoding\n"); */
+			/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
 			return false;
 		}
 		p_tcp->m_mcc_records = new_mcc_records;
@@ -6617,7 +6617,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 		GROK_ERROR( "Failed to merge PPM data");
 		return false;
 	}
-	// event_msg( EVT_INFO, "Main header has been correctly decoded.\n");
+	// event_msg( EVT_INFO, "Main header has been correctly decoded.");
 	if (p_j2k->cstr_index) {
 		/* Position of the last element if the main header */
 		p_j2k->cstr_index->main_head_end = (uint32_t) p_stream->tell() - 2;
@@ -7893,7 +7893,7 @@ bool j2k_set_decode_area(j2k_t *p_j2k, opj_image_t *p_image, uint32_t start_x,
 	}
 
 	if (!start_x && !start_y && !end_x && !end_y) {
-		//event_msg( EVT_INFO, "No decoded area parameters, set the decoded area to the whole image\n");
+		//event_msg( EVT_INFO, "No decoded area parameters, set the decoded area to the whole image");
 
 		p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
 		p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;

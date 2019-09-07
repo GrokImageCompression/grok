@@ -61,6 +61,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 struct pnm_header {
 	int width, height, maxval, depth, format;
@@ -135,17 +136,17 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	char line[256];
 
 	if (fgets(line, 250, reader) == nullptr) {
-		fprintf(stderr, "[ERROR]  fgets return a nullptr value\n");
+		spdlog::error(" fgets return a nullptr value");
 		return;
 	}
 
 	if (line[0] != 'P') {
-		fprintf(stderr, "[ERROR] read_pnm_header:PNM:magic P missing\n");
+		spdlog::error("read_pnm_header:PNM:magic P missing");
 		return;
 	}
 	format = atoi(line + 1);
 	if (format < 1 || format > 7) {
-		fprintf(stderr, "[ERROR] read_pnm_header:magic format %d invalid\n",
+		spdlog::error("read_pnm_header:magic format {} invalid\n",
 				format);
 		return;
 	}
@@ -229,12 +230,11 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 					ttype = 1;
 					continue;
 				}
-				fprintf(stderr,
-						"[ERROR] read_pnm_header:unknown P7 TUPLTYPE %s\n",
+				spdlog::error(" read_pnm_header:unknown P7 TUPLTYPE %s\n",
 						type);
 				return;
 			}
-			fprintf(stderr, "[ERROR] read_pnm_header:unknown P7 idf %s\n", idf);
+			spdlog::error("read_pnm_header:unknown P7 idf {}\n", idf);
 			return;
 		} /* if(format == 7) */
 
@@ -273,7 +273,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 
 	if (format == 7) {
 		if (!end) {
-			fprintf(stderr, "[ERROR] read_pnm_header:P7 without ENDHDR\n");
+			spdlog::error("read_pnm_header:P7 without ENDHDR");
 			return;
 		}
 		if (ph->depth < 1 || ph->depth > 4)
@@ -337,7 +337,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 	uint64_t area = 0;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		fprintf(stderr, "[ERROR] pnmtoimage:Failed to open %s for reading!\n",
+		spdlog::error("pnmtoimage:Failed to open {} for reading!\n",
 				filename);
 		return nullptr;
 	}
@@ -415,8 +415,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1) {
 					if (parameters->verbose)
-						fprintf(stdout,
-								"[WARNING] fscanf return a number of element different from the expected.\n");
+						spdlog::warn("fscanf return a number of element different from the expected.");
 				}
 
 				image->comps[compno].data[i] = (int32_t) (index * 255)
@@ -432,8 +431,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
-					fprintf(stderr,
-							"[ERROR] fread return a number of element different from the expected.\n");
+					spdlog::error(" fread return a number of element different from the expected.");
 					opj_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
@@ -442,8 +440,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 					image->comps[compno].data[i] = c0;
 				} else {
 					if (!fread(&c1, 1, 1, fp))
-						fprintf(stderr,
-								"[ERROR] fread return a number of element different from the expected.\n");
+						spdlog::error(" fread return a number of element different from the expected.");
 					/* netpbm: */
 					image->comps[compno].data[i] = ((c0 << 8) | c1);
 				}
@@ -454,8 +451,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 			unsigned int index;
 			if (fscanf(fp, "%u", &index) != 1) {
 				if (parameters->verbose)
-					fprintf(stdout,
-							"[WARNING] fscanf return a number of element different from the expected.\n");
+					spdlog::warn("fscanf return a number of element different from the expected.");
 			}
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
@@ -472,7 +468,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 					bit = 7;
 					int c = getc(fp);
 					if (c == EOF) {
-						fprintf(stderr, "[ERROR] pnmtoimage reached EOF.\n");
+						spdlog::error("pnmtoimage reached EOF.");
 						opj_image_destroy(image);
 						image = nullptr;
 						goto cleanup;
@@ -488,8 +484,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 		unsigned char uc;
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
-				fprintf(stderr,
-						"[ERROR] fread return a number of element different from the expected.\n");
+				spdlog::error(" fread return a number of element different from the expected.");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
@@ -520,8 +515,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 	alpha = nullptr;
 
 	if ((prec = (int) image->comps[0].prec) > 16) {
-		fprintf(stderr,
-				"[ERROR] %s:%d:imagetopnm\n\tprecision %d is larger than 16"
+		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
 						"\n\t: refused.\n", __FILE__, __LINE__, prec);
 		rc = 1;
 		goto cleanup;
@@ -558,7 +552,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 		fdest = fopen(outfile, "wb");
 
 		if (!fdest) {
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n", outfile);
+			spdlog::error("failed to open {} for writing\n", outfile);
 			rc = 1;
 			goto cleanup;
 		}
@@ -737,13 +731,13 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 	/* YUV or MONO: */
 	if (image->numcomps > ncomp) {
 		if (verbose) {
-			fprintf(stdout, "WARNING -> [PGM file] Only the first component\n");
-			fprintf(stdout, "           is written to the file\n");
+			spdlog::warn("-> [PGM file] Only the first component"
+					" is written to the file");
 		}
 	}
 	destname = (char*) malloc(strlen(outfile) + 8);
 	if (!destname) {
-		fprintf(stderr, "[ERROR] imagetopnm: out of memory\n");
+		spdlog::error("imagetopnm: out of memory");
 		rc = 1;
 		goto cleanup;
 	}
@@ -753,8 +747,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			/*sprintf(destname, "%d.%s", compno, outfile);*/
 			const size_t olen = strlen(outfile);
 			if (olen < 4) {
-				fprintf(stderr,
-						"[ERROR] imagetopnm: output file name size less than 4.\n");
+				spdlog::error(" imagetopnm: output file name size less than 4.");
 				goto cleanup;
 			}
 			const size_t dotpos = olen - 4;
@@ -766,7 +759,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 
 		fdest = fopen(destname, "wb");
 		if (!fdest) {
-			fprintf(stderr, "[ERROR] failed to open %s for writing\n",
+			spdlog::error("failed to open {} for writing\n",
 					destname);
 			rc = 1;
 			goto cleanup;

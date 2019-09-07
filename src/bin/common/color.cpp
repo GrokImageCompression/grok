@@ -69,6 +69,8 @@
 #include <lcms2.h>
 #endif
 
+//#define DEBUG_PROFILE
+
 static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
@@ -111,7 +113,7 @@ static bool all_components_equal_subsampling(opj_image_t *image) {
 		}
 	}
 	if (i != image->numcomps) {
-		fprintf(stderr, "[ERROR] Color conversion: all components must have the same subsampling.\n");
+		spdlog::error("Color conversion: all components must have the same subsampling.");
 		return false;
 	}
 	return true;
@@ -405,8 +407,8 @@ static void sycc420_to_rgb(opj_image_t *img)
 void color_sycc_to_rgb(opj_image_t *img)
 {
     if(img->numcomps < 3) {
-        spdlog::warn("color_sycc_to_rgb: number of components %d is less than 3."
-        		" Unable to convert\n", img->numcomps);
+        spdlog::warn("color_sycc_to_rgb: number of components {} is less than 3."
+        		" Unable to convert", img->numcomps);
         return;
     }
 
@@ -433,7 +435,7 @@ void color_sycc_to_rgb(opj_image_t *img)
         sycc444_to_rgb(img);
     } else {
         spdlog::warn("color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
-        		" Unable to convert.\n",
+        		" Unable to convert.",
 				img->comps[0].dx, img->comps[0].dy,
 				img->comps[1].dx, img->comps[1].dy,
 				img->comps[2].dx, img->comps[2].dy );
@@ -528,8 +530,8 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
         image->color_space = OPJ_CLRSPC_SRGB;
     } else {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"[ERROR] %s:%d: color_apply_icc_profile\n\tICC Profile has unknown "
-                "output colorspace(%#x)(%c%c%c%c)\n\tICC Profile ignored.\n",
+        spdlog::error("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
+                "output colorspace(%#x)({}{}{}{})\n\tICC Profile ignored.",
                 __FILE__,__LINE__,out_space,
                 (out_space>>24) & 0xff,(out_space>>16) & 0xff,
                 (out_space>>8) & 0xff, out_space & 0xff);
@@ -538,13 +540,13 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
     }
 
 #ifdef DEBUG_PROFILE
-    fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tchannels(%d) prec(%d) w(%d) h(%d)"
-            "\n\tprofile: in(%p) out(%p)\n",__FILE__,__LINE__,image->numcomps,prec,
+    spdlog::error("{}:{}:color_apply_icc_profile\n\tchannels({}) prec({}) w({}) h({})"
+            "\n\tprofile: in({}) out({})",__FILE__,__LINE__,image->numcomps,prec,
             max_w,max_h, (void*)in_prof,(void*)out_prof);
 
-    fprintf(stderr,"[ERROR] \trender_intent (%u)\n\t"
-            "color_space: in(%#x)(%c%c%c%c)   out:(%#x)(%c%c%c%c)\n\t"
-            "       type: in(%u)              out:(%u)\n",
+    spdlog::error("\trender_intent ({})\n\t"
+            "color_space: in({})({}{}{}{})   out:({})({}{}{}{})\n\t"
+            "       type: in({})              out:({})",
             intent,
             in_space,
             (in_space>>24) & 0xff,(in_space>>16) & 0xff,
@@ -572,8 +574,8 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 
     if(transform == nullptr) {
 #ifdef DEBUG_PROFILE
-        fprintf(stderr,"[ERROR] %s:%d:color_apply_icc_profile\n\tcmsCreateTransform failed. "
-                "ICC Profile ignored.\n",__FILE__,__LINE__);
+        spdlog::error("{}:{}:color_apply_icc_profile\n\tcmsCreateTransform failed. "
+                "ICC Profile ignored.",__FILE__,__LINE__);
 #endif
         image->color_space = oldspace;
         return;
@@ -744,7 +746,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     // sanity checks
     if(numcomps != 3) {
 		if (verbose)
-			fprintf(stdout,"[WARNING] %s:%d:\n\tnumcomps %d not handled. Quitting.\n",
+			spdlog::warn("{}:{}:\n\tnumcomps {} not handled. Quitting.",
                 __FILE__,__LINE__,numcomps);
         return;
     }
@@ -754,7 +756,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     enumcs = row[0];
 	if (enumcs != 14) { /* CIELab */
 		if (verbose)
-			fprintf(stdout, "[WARNING] %s:%d:\n\tenumCS %d not handled. Ignoring.\n", __FILE__, __LINE__, enumcs);
+			spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__, __LINE__, enumcs);
 		return;
 	}
 
@@ -819,7 +821,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 		break;
 	default:
 		if (verbose)
-			fprintf(stdout, "[WARNING] Unrecognized illuminant in CIELab colour space. Setting to default Daylight50\n");
+			spdlog::warn("Unrecognized illuminant {} in CIELab colour space. Setting to default Daylight50", illuminant);
 		illuminant = OPJ_CIE_D50;
 		break;
 	}

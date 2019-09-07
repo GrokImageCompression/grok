@@ -120,7 +120,7 @@ int parse_DA_values(bool verbose,
 	// region must be specified by 4 values exactly
 	if (it != 4) {
 		if (verbose)
-			fprintf(stdout, "[WARNING] Decode region must be specified by exactly four coordinates. Ignoring specified region\n");
+			spdlog::warn("Decode region must be specified by exactly four coordinates. Ignoring specified region.");
 		return EXIT_FAILURE;
 
 	}
@@ -131,7 +131,7 @@ int parse_DA_values(bool verbose,
 		values[2] < 0 ||
 		values[3] < 0)) {
 		if (verbose)
-			fprintf(stdout, "[WARNING] Decode region cannot contain negative values. Ignoring specified region (%d,%d,%d,%d).\n",
+			spdlog::warn("Decode region cannot contain negative values. Ignoring specified region ({},{},{},{}).",
 				values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
@@ -255,7 +255,7 @@ int get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        fprintf(stderr,"[ERROR] Could not open Folder %s\n",imgdirpath);
+        spdlog::error("Could not open Folder {}\n",imgdirpath);
         return 0;
     }
 

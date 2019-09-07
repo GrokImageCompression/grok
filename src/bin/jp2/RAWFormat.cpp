@@ -61,6 +61,7 @@
 #include "RAWFormat.h"
 #include "convert.h"
 #include "common.h"
+#include "spdlog/spdlog.h"
 
 bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
@@ -107,12 +108,12 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	bool success = true;
 
 	if (!(raw_cp->width && raw_cp->height && raw_cp->numcomps && raw_cp->prec)) {
-		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
-		fprintf(stderr, "Please use the Format option -F:\n");
-		fprintf(stderr, "-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>\n");
-		fprintf(stderr, "If subsampling is omitted, 1x1 is assumed for all components\n");
-		fprintf(stderr, "Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2\n");
-		fprintf(stderr, "         for raw 512x512 image with 4:2:0 subsampling\n");
+		spdlog::error("invalid raw image parameters");
+		spdlog::error("Please use the Format option -F:");
+		spdlog::error("-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>");
+		spdlog::error("If subsampling is omitted, 1x1 is assumed for all components");
+		spdlog::error("Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
+		spdlog::error("         for raw 512x512 image with 4:2:0 subsampling");
 		return nullptr;
 	}
 
@@ -124,7 +125,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	else {
 		f = fopen(filename, "rb");
 		if (!f) {
-			fprintf(stderr, "[ERROR] Failed to open %s for reading !!\n", filename);
+			spdlog::error("Failed to open {} for reading !!\n", filename);
 			success = false;
 			goto cleanup;
 		}
@@ -146,7 +147,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	h = raw_cp->height;
 	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
 	if (!cmptparm) {
-		fprintf(stderr, "[ERROR] Failed to allocate image components parameters !!\n");
+		spdlog::error("Failed to allocate image components parameters !!");
 		success = false;
 		goto cleanup;
 	}
@@ -182,7 +183,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 			else
 				rc = read<uint8_t>(f, big_endian, ptr,nloop);
 			if (!rc){
-				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
+				spdlog::error("Error reading raw file. End of file probably reached.");
 				success = false;
 				goto cleanup;
 			}
@@ -198,21 +199,21 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 			else
 				rc = read<uint16_t>(f, big_endian, ptr,nloop);
 			if (!rc){
-				fprintf(stderr, "[ERROR] Error reading raw file. End of file probably reached.\n");
+				spdlog::error("Error reading raw file. End of file probably reached.");
 				success = false;
 				goto cleanup;
 			}
 		}
 	}
 	else {
-		fprintf(stderr, "[ERROR] Grok cannot encode raw components with bit depth higher than 16 bits.\n");
+		spdlog::error("Grok cannot encode raw components with bit depth higher than 16 bits.");
 		success = false;
 		goto cleanup;
 	}
 
 	if (fread(&ch, 1, 1, f)) {
 		if (parameters->verbose)
-			fprintf(stdout, "[WARNING] End of raw file not reached... processing anyway\n");
+			spdlog::warn("End of raw file not reached... processing anyway");
 	}
 cleanup:
 	if (f && !readFromStdin){
@@ -272,7 +273,7 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 	unsigned int compno, numcomps;
 	int fails;
 	if ((image->numcomps * image->x1 * image->y1) == 0) {
-		fprintf(stderr, "[ERROR] invalid raw image parameters\n");
+		spdlog::error("invalid raw image parameters");
 		return 1;
 	}
 
@@ -297,7 +298,7 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 		}
 	}
 	if (compno != numcomps) {
-		fprintf(stderr, "[ERROR] imagetoraw_common: All components shall have the same subsampling, same bit depth, same sign.\n");
+		spdlog::error("imagetoraw_common: All components shall have the same subsampling, same bit depth, same sign.");
 		return 1;
 	}
 
@@ -309,18 +310,18 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 	else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			fprintf(stderr, "[ERROR] Failed to open %s for writing !!\n", outfile);
+			spdlog::error("Failed to open {} for writing !!\n", outfile);
 			return 1;
 		}
 	}
 
 	fails = 1;
 	if (verbose)
-		fprintf(stdout, "Raw image characteristics: %d components\n", image->numcomps);
+		spdlog::info("Raw image characteristics: {} components\n", image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
 		if (verbose)
-			fprintf(stdout, "Component %u characteristics: %dx%dx%d %s\n", compno, image->comps[compno].w,
+			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", compno, image->comps[compno].w,
 				image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
 
 		auto w = image->comps[compno].w;
@@ -339,7 +340,7 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 			else
 				rc = write<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
 			if (!rc)
-				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
+				spdlog::error("failed to write bytes for {}\n", outfile);
 		}
 		else if (prec <= 16) {
 			if (sgnd)
@@ -347,14 +348,14 @@ int RAWFormat::imagetoraw(opj_image_t * image,
 			else
 				rc = write<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
 			if (!rc)
-				fprintf(stderr, "[ERROR] failed to write bytes for %s\n", outfile);
+				spdlog::error("failed to write bytes for {}\n", outfile);
 		}
 		else if (image->comps[compno].prec <= 32) {
-			fprintf(stderr, "[ERROR] More than 16 bits per component no handled yet\n");
+			spdlog::error("More than 16 bits per component no handled yet");
 			goto beach;
 		}
 		else {
-			fprintf(stderr, "[ERROR] invalid precision: %d\n", image->comps[compno].prec);
+			spdlog::error("invalid precision: {}\n", image->comps[compno].prec);
 			goto beach;
 		}
 	}

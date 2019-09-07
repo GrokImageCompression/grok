@@ -51,7 +51,7 @@ void decode_synch_plugin_with_host(tcd_t *tcd) {
 							// sanity check
 							if (cblk->numSegments != 1) {
 								GROK_INFO(
-										"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.\n");
+										"Plugin does not handle code blocks with multiple segments. Image will be decoded on CPU.");
 								throw PluginDecodeUnsupportedException();
 							}
 							auto maxPasses = 3
@@ -155,13 +155,12 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
-				printf(
-						"[WARNING]  ojp band step size %f differs from plugin step size %f\n",
+				GROK_WARN("ojp band step size {} differs from plugin step size {}",
 						band->stepsize, plugin_band->stepsize);
 			}
 			if (cblk->num_passes_encoded != plugin_cblk->numPasses)
-				printf(
-						"[WARNING]  OPJ total number of passes (%d) differs from plugin total number of passes (%d) : component=%d, res=%d, band=%d, block=%d\n",
+				GROK_WARN("OPJ total number of passes ({}) differs from "
+						"plugin total number of passes ({}) : component={}, res={}, band={}, block={}",
 						cblk->num_passes_encoded,
 						(uint32_t) plugin_cblk->numPasses, compno, resno,
 						bandno, cblkno);
@@ -187,16 +186,14 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 			if (cblk->num_passes_encoded > 0) {
 				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
 				if (totalRatePlugin != totalRate) {
-					printf(
-							"[WARNING]  opj rate %d differs from plugin rate %d\n",
+					GROK_WARN("opj rate {} differs from plugin rate {}",
 							totalRate, totalRatePlugin);
 				}
 			}
 
 			for (uint32_t p = 0; p < totalRate; ++p) {
 				if (cblk->data[p] != plugin_cblk->compressedData[p]) {
-					printf(
-							"[WARNING]  data differs at position=%d, component=%d, res=%d, band=%d, block=%d, opj rate =%d, plugin rate=%d\n",
+					GROK_WARN("data differs at position={}, component={}, res={}, band={}, block={}, opj rate ={}, plugin rate={}",
 							p, compno, resno, bandno, cblkno, totalRate,
 							totalRatePlugin);
 					goodData = false;
@@ -214,8 +211,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 			if (cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0
 					|| cblk->x1 != plugin_cblk->x1
 					|| cblk->y1 != plugin_cblk->y1) {
-				printf(
-						"[ERROR] plugin code block bounding box differs from OPJ code block");
+			    GROK_ERROR("plugin code block bounding box differs from OPJ code block");
 			}
 		}
 
@@ -232,8 +228,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 							pass->distortiondec
 									- pluginPass->distortionDecrease)
 							/ fabs(pass->distortiondec) > 0.01) {
-						printf(
-								"[WARNING]  distortion decrease for pass %d differs between plugin and OPJ:  plugin: %f, OPJ : %f\n",
+						GROK_WARN("distortion decrease for pass {} differs between plugin and OPJ:  plugin: {}, OPJ : {}",
 								passno, pluginPass->distortionDecrease,
 								pass->distortiondec);
 					}
@@ -252,8 +247,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 
 			if (state & GROK_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
-					printf(
-							"[WARNING]  plugin rate %d differs from OPJ rate %d\n",
+					GROK_WARN("plugin rate {} differs from OPJ rate {}\n",
 							pluginRate, pass->rate);
 				}
 			}

@@ -42,19 +42,14 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
-
-
-extern "C" {
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
-
+#include "spdlog/spdlog.h"
 #include "grok_getopt.h"
-}
+
 
 #include <string>
 
@@ -98,7 +93,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizemembasefile = strlen(grok_optarg) + 1;
             param->base_filename = (char*) malloc(sizemembasefile);
 			if (!param->base_filename) {
-				fprintf(stderr, "[ERROR] Out of memory\n");
+				spdlog::error("Out of memory");
 				return 1;
 			}
             strcpy(param->base_filename, grok_optarg);
@@ -108,7 +103,7 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             sizememtestfile = strlen(grok_optarg) + 1;
             param->test_filename = (char*) malloc(sizememtestfile);
 			if (!param->test_filename) {
-				fprintf(stderr, "[ERROR] Out of memory\n");
+				spdlog::error("Out of memory");
 				return 1;
 			}
             strcpy(param->test_filename, grok_optarg);
@@ -116,18 +111,18 @@ static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
             break;
         case '?':
             if ( (grok_optopt == 'b') || (grok_optopt == 't') )
-                fprintf(stderr, "[ERROR] Option -%c requires an argument.\n", grok_optopt);
-            else if (isprint(grok_optopt)) fprintf(stderr, "[ERROR] Unknown option `-%c'.\n", grok_optopt);
-            else fprintf(stderr, "[ERROR] Unknown option character `\\x%x'.\n", grok_optopt);
+                spdlog::error("Option -%c requires an argument.\n", grok_optopt);
+            else if (isprint(grok_optopt)) spdlog::error("Unknown option `-%c'.\n", grok_optopt);
+            else spdlog::error("Unknown option character `\\x%x'.\n", grok_optopt);
             return 1;
         default:
-            fprintf(stdout, "[WARNING] this option is not valid \"-%c %s\"\n", c, grok_optarg);
+            spdlog::warn("this option is not valid \"-{} {}\" ", c, grok_optarg);
             break;
         }
 
     if (grok_optind != argc) {
         for (index = grok_optind; index < argc; index++)
-            fprintf(stderr,"[ERROR] Non-option argument %s\n", argv[index]);
+            spdlog::error("Non-option argument {}", argv[index]);
         return 1;
     }
 
@@ -189,11 +184,11 @@ int main(int argc, char **argv)
     int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
     assert( nbase != 511 && ntest != 511 );
         if( nbase != 1 || ntest != 1 ) {
-            fprintf(stderr, "[ERROR] could not parse line from files\n" );
+            spdlog::error("could not parse line from files\n" );
             goto cleanup;
         }
         if( strcmp( strbase, strtest ) != 0 ) {
-            fprintf(stderr,"[ERROR] <%s> vs. <%s>\n", strbase, strtest);
+            spdlog::error("<{}> vs. <{}>\n", strbase, strtest);
             goto cleanup;
         }
     }

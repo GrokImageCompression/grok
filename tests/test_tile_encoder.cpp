@@ -42,7 +42,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-extern "C" {
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -52,7 +51,8 @@ extern "C" {
 #include "openjpeg.h"
 #include "stdlib.h"
 #include <stdbool.h>
-}
+#include "spdlog/spdlog.h"
+
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -61,7 +61,7 @@ sample error debug callback expecting no client object
 static void error_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stderr, "[ERROR] %s", msg);
+    spdlog::error("%s", msg);
 }
 /**
 sample warning debug callback expecting no client object
@@ -69,7 +69,7 @@ sample warning debug callback expecting no client object
 static void warning_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[WARNING] %s", msg);
+    spdlog::warn("%s", msg);
 }
 /**
 sample debug callback expecting no client object
@@ -77,7 +77,7 @@ sample debug callback expecting no client object
 static void info_callback(const char *msg, void *client_data)
 {
     (void)client_data;
-    fprintf(stdout, "[INFO] %s", msg);
+    spdlog::info("%s", msg);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -283,34 +283,34 @@ int main (int argc, char *argv[])
     l_image->color_space = OPJ_CLRSPC_SRGB;
 
     if (! opj_setup_encoder(l_codec,&l_param,l_image)) {
-        fprintf(stderr, "[ERROR] test_tile_encoder: failed to setup the codec!\n");
+        spdlog::error("test_tile_encoder: failed to setup the codec!\n");
 		rc = 1;
 		goto cleanup;
     }
 
     l_stream = opj_stream_create_default_file_stream(output_file, false);
     if (! l_stream) {
-        fprintf(stderr, "[ERROR] test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
+        spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
 		rc = 1;
 		goto cleanup;
     }
 
     if (! opj_start_compress(l_codec,l_image,l_stream)) {
-        fprintf(stderr, "[ERROR] test_tile_encoder: failed to start compress!\n");
+        spdlog::error("test_tile_encoder: failed to start compress!\n");
 		rc = 1;
 		goto cleanup;
     }
 
     for (i=0; i<l_nb_tiles; ++i) {
         if (! opj_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
-            fprintf(stderr, "[ERROR] test_tile_encoder: failed to write the tile %d!\n",i);
+            spdlog::error("test_tile_encoder: failed to write the tile %d!\n",i);
 			rc = 1;
 			goto cleanup;
         }
     }
 
     if (! opj_end_compress(l_codec,l_stream)) {
-        fprintf(stderr, "[ERROR] test_tile_encoder: failed to end compress!\n");
+        spdlog::error("test_tile_encoder: failed to end compress!\n");
 		rc = 1;
 		goto cleanup;
     }

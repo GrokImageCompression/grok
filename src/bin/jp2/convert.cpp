@@ -65,12 +65,11 @@
 #include <fcntl.h>
 #endif
 
-extern "C" {
 
 #include "openjpeg.h"
 #include "convert.h"
+#include "spdlog/spdlog.h"
 
-}
 
 bool grok_set_binary_mode(FILE* file) {
 #ifdef _WIN32
@@ -558,7 +557,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			fprintf(stderr, "[ERROR] null data for component %d\n",i);
+			spdlog::error("null data for component {}\n",i);
 			return false;
 		}
 	}
@@ -567,7 +566,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].w != image->comps[0].w ||
 					image->comps[i].h != image->comps[0].h) {
-			fprintf(stderr, "[ERROR] Dimensions of component %d differ from dimensions of component 0\n", i);
+			spdlog::error("Dimensions of component {} differ from dimensions of component 0\n", i);
 			return false;
 		}
 	}
@@ -575,7 +574,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	// check that all components have same precision
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].prec != image->comps[0].prec ) {
-			fprintf(stderr, "[ERROR] precision of component %d differ from precision of component 0\n", i);
+			spdlog::error("precision of component {} differ from precision of component 0\n", i);
 			return false;
 		}
 	}
@@ -583,7 +582,7 @@ bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps) {
 	// check that all components have same sign
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].sgnd != image->comps[0].sgnd) {
-			fprintf(stderr, "[ERROR] signedness of component %d differ from signedness of component 0\n", i);
+			spdlog::error("signedness of component {} differ from signedness of component 0\n", i);
 			return false;
 		}
 	}

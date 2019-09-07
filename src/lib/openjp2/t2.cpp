@@ -1345,7 +1345,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 			}
 		}
 		else {
-			printf("t2_encode_packet: decode packet failed\n");
+			GROK_ERROR("t2_encode_packet: decode packet failed");
 		}
 #endif
 	return true;
