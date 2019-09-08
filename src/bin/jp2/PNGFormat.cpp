@@ -341,11 +341,11 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	/*
 	double fileGamma = 0.0;
 	if (png_get_gAMA(png, info, &fileGamma)) {
-	fprintf(stdout, "[WARNING]  input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
+	spdlog::warn("input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
 	}
 	double wpx, wpy, rx, ry, gx, gy, bx, by; // white point and primaries
 	if (png_get_cHRM(png, info, &wpx, &wpy, &rx, &ry, &gx, &gy, &bx, &by)) 	{
-	fprintf(stdout, "[WARNING]  input PNG contains chroma information which will not be stored in compressed image.");
+	spdlog::warn("input PNG contains chroma information which will not be stored in compressed image.");
 	}
 	*/
 		

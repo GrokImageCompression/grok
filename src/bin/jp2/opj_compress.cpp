@@ -708,8 +708,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->decod_format = get_file_format(infile);
 			if (parameters->verbose &&
 				!isDecodedFormatSupported(parameters->decod_format)){
-				fprintf(stdout,
-					" Ignoring unknown input file format: %s \n"
+				 spdlog::warn(" Ignoring unknown input file format: %s \n"
 					"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
 					infile);
 			}
@@ -1504,7 +1503,7 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (num_compressed_files) {
-			spdlog::info( "encode time: ms\n",(elapsed.count() * 1000)/ (double)num_compressed_files);
+			spdlog::info( "encode time: {} ms\n",(elapsed.count() * 1000)/ (double)num_compressed_files);
 		}
 	} catch (std::bad_alloc& ba){
 		spdlog::error(" Out of memory. Exiting.");
