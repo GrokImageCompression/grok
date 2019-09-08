@@ -1141,7 +1141,7 @@ int main(int argc, char **argv){
 		}
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
-		if (initParams.parameters.verbose && num_decompressed_images) {
+		if (num_decompressed_images) {
 			spdlog::info( "decode time: %f ms\n",(elapsed.count() * 1000)/ (double)num_decompressed_images);
 		}
 	} catch (std::bad_alloc& ba){
@@ -1178,6 +1178,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		return EXIT_FAILURE;
 	}
 
+	if (!initParams->parameters.verbose)
+		spdlog::set_level(spdlog::level::level_enum::err);
+
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
 #endif
@@ -1191,7 +1194,6 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 		success = 1;
 		goto cleanup;
 	}
-
 	// create codec
 	grok_plugin_init_info_t initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
@@ -1286,7 +1288,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	}
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
-	if (initParams->parameters.verbose && num_decompressed_images && success == 0) {
+	if (num_decompressed_images && success == 0) {
 		spdlog::info("decode time: %f ms\n", (elapsed.count() * 1000)/ (double)num_decompressed_images);
 	}
 cleanup:

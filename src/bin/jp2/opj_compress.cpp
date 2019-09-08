@@ -1503,7 +1503,7 @@ int main(int argc, char **argv) {
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 
-		if (initParams.parameters.verbose && num_compressed_files) {
+		if (num_compressed_files) {
 			spdlog::info( "encode time: ms\n",(elapsed.count() * 1000)/ (double)num_compressed_files);
 		}
 	} catch (std::bad_alloc& ba){
@@ -1903,6 +1903,8 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 		success =  1;
 		goto cleanup;
 	}
+	if (!initParams->parameters.verbose)
+		spdlog::set_level(spdlog::level::level_enum::err);
 
 #ifdef GROK_HAVE_LIBTIFF
 	tiffSetErrorAndWarningHandlers(initParams->parameters.verbose);
