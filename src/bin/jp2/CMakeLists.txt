@@ -34,6 +34,7 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_string.h
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog.cpp
   )
 
 if(GROK_HAVE_LIBTIFF)
@@ -69,6 +70,8 @@ if(WIN32)
     add_definitions(-DOPJ_STATIC)
   endif()
 endif()
+
+add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # Loop over all executables:
 foreach(exe opj_decompress opj_compress opj_dump)

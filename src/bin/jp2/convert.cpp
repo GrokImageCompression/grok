@@ -68,7 +68,7 @@
 
 #include "openjpeg.h"
 #include "convert.h"
-#include "spdlog/spdlog.h"
+#include "common.h"
 
 
 bool grok_set_binary_mode(FILE* file) {

@@ -61,7 +61,6 @@
 #include "RAWFormat.h"
 #include "convert.h"
 #include "common.h"
-#include "spdlog/spdlog.h"
 
 bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;

@@ -34,7 +34,6 @@
 #include <cassert>
 #include "iccjpeg.h"
 #include "common.h"
-#include "spdlog/spdlog.h"
 
 struct my_error_mgr {
 	struct jpeg_error_mgr pub;    /* "public" fields */

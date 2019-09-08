@@ -63,7 +63,8 @@
 #include "opj_apps_config.h"
 #include "openjpeg.h"
 #include "color.h"
-#include "spdlog/spdlog.h"
+#include "common.h"
+
 
 #ifdef GROK_HAVE_LIBLCMS
 #include <lcms2.h>

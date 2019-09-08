@@ -101,7 +101,6 @@ using namespace grk;
 #include <sstream>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-#include "spdlog/spdlog.h"
 #include <chrono>  // for high_resolution_clock
 
 

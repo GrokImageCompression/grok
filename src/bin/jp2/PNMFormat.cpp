@@ -61,7 +61,6 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
-#include "spdlog/spdlog.h"
 
 struct pnm_header {
 	int width, height, maxval, depth, format;

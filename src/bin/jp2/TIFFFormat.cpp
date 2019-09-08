@@ -72,7 +72,7 @@
 #include "color.h"
 #include <cassert>
 #include <memory>
-#include "spdlog/spdlog.h"
+
 
 
 

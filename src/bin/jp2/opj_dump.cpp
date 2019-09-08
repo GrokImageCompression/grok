@@ -78,7 +78,7 @@
 #include "grok_string.h"
 
 #include <string>
-#include "spdlog/spdlog.h"
+#include "common.h"
 
 
 typedef struct dircnt {
