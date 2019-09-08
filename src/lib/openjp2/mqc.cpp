@@ -314,7 +314,7 @@ static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
 	return d;
 }
 static void mqc_bytein(mqc_t *const mqc) {
-	uint8_t nextByte = (mqc->bp + 1 < mqc->end) ? *(mqc->bp + 1) : 0xFF;
+	uint8_t nextByte = mqc->bp[1];
 	if (mqc->currentByteIs0xFF) {
 		if (nextByte > 0x8F) {
 			// found termination marker - synthesize 1's in C register and do not increment bp
@@ -323,7 +323,7 @@ static void mqc_bytein(mqc_t *const mqc) {
 		} else {
 			// bit stuff next byte and add to C register
 			mqc->bp++;
-			mqc->C += nextByte << 1;
+			mqc->C += (uint32_t)nextByte << 1;
 			mqc->COUNT = 7;
 		}
 	} else {
@@ -332,7 +332,7 @@ static void mqc_bytein(mqc_t *const mqc) {
 		mqc->C += nextByte;
 		mqc->COUNT = 8;
 	}
-	mqc->currentByteIs0xFF = nextByte == 0xFF;
+	mqc->currentByteIs0xFF = (nextByte == 0xFF);
 }
 static inline void mqc_renormd(mqc_t *const mqc) {
 	do {
@@ -637,7 +637,6 @@ void mqc_segmark_enc(mqc_t *mqc) {
 void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len) {
 	mqc_setcurctx(mqc, 0);
 	mqc->start = bp;
-	mqc->end = bp + len;
 	mqc->bp = bp;
 	uint8_t currentByte = (len > 0) ? *mqc->bp : 0xFF;
 	mqc->currentByteIs0xFF = currentByte == 0xFF;

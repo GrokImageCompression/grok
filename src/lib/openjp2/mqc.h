@@ -137,7 +137,6 @@ struct mqc_t {
 	uint8_t *bp;
 	bool currentByteIs0xFF;
 	uint8_t *start;
-	uint8_t *end;
 	mqc_state_t *ctxs[MQC_NUMCTXS];
 	mqc_state_t **curctx;
 	plugin_debug_mqc_t debug_mqc;
