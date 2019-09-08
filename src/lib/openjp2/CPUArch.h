@@ -24,7 +24,6 @@
 	#include <intrin.h>
 #else
 	#include <x86intrin.h>
-#ifndef GROK_CI_DISABLE_SIMD
 	#ifdef AVX2_FOUND
 		#ifndef __AVX2__
 			#define __AVX2__
@@ -42,7 +41,6 @@
 			#define __SSE3__
 		#endif
 	#endif
-#endif
 #endif
 
 #if defined(__GNUC__)
