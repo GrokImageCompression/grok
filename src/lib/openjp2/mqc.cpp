@@ -96,8 +96,7 @@ static void mqc_setbits(mqc_t *mqc);
  @param msb The MSB of the new state of the context
  @param prob Number that identifies the probability of the symbols for the new state of the context
  */
-static void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb,
-		int32_t prob);
+static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t msb,uint8_t prob);
 
 /**
  FIXME DOC
@@ -236,49 +235,7 @@ static void mqc_byteout(mqc_t *mqc) {
 		}
 	}
 }
-/*
- static void mqc_renorme(mqc_t *mqc) {
- do {
- mqc->A = (uint16_t)(mqc->A << 1);
- mqc->C = (mqc->C << 1);
- mqc->COUNT--;
- if (mqc->COUNT == 0) {
- mqc_byteout(mqc);
- }
- } while (mqc->A < A_MIN);
- }
- static void mqc_codemps(mqc_t *mqc) {
- auto curctx = *mqc->curctx;
- auto qeval = curctx->qeval;
- mqc->A = (uint16_t)(mqc->A - qeval);
- if (mqc->A < A_MIN) {
- if (mqc->A < qeval) {
- mqc->A = qeval;
- }
- else {
- mqc->C += qeval;
- }
- *mqc->curctx = curctx->nmps;
- mqc_renorme(mqc);
- }
- else {
- mqc->C += qeval;
- }
- }
- static void mqc_codelps(mqc_t *mqc) {
- auto curctx = *mqc->curctx;
- auto qeval = curctx->qeval;
- mqc->A = (uint16_t)(mqc->A - qeval);
- if (mqc->A < qeval) {
- mqc->C += qeval;
- }
- else {
- mqc->A = qeval;
- }
- *mqc->curctx = curctx->nlps;
- mqc_renorme(mqc);
- }
- */
+
 static void mqc_setbits(mqc_t *mqc) {
 	uint32_t tempc = mqc->C + mqc->A;
 	mqc->C |= 0xffff;
@@ -683,8 +640,8 @@ void mqc_resetstates(mqc_t *mqc) {
 	mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
-void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb, int32_t prob) {
-	mqc->ctxs[ctxno] = &mqc_states[msb + (uint32_t) (prob << 1)];
+void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t msb, uint8_t prob) {
+	mqc->ctxs[ctxno] = &mqc_states[msb + (prob << 1)];
 }
 
 }
