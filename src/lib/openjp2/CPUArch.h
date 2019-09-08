@@ -24,23 +24,6 @@
 	#include <intrin.h>
 #else
 	#include <x86intrin.h>
-	#ifdef AVX2_FOUND
-		#ifndef __AVX2__
-			#define __AVX2__
-		#endif
-	#elif defined(AVX_FOUND)
-		#ifndef __AVX__
-			#define __AVX__
-		#endif
-	#elif defined(SSE4_1_FOUND)
-		#ifndef __SSE4_1__
-			#define __SSE4_1__
-		#endif
-	#elif defined(SSE3_FOUND)
-		#ifndef __SSE3__
-			#define __SSE3__
-		#endif
-	#endif
 #endif
 
 #if defined(__GNUC__)
