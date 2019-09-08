@@ -78,7 +78,7 @@
 #include <cstring>
 #include <condition_variable>
 using namespace std::chrono_literals;
-#include "spdlog/spdlog.h"
+
 
 namespace grk {
 

@@ -61,7 +61,7 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
-#include "spdlog/spdlog.h"
+
 
 #ifdef INFORMATION_ONLY
  /* TGA header definition. */

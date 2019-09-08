@@ -70,7 +70,6 @@
 #include <cstring>
 #include "common.h"
 #include <cassert>
-#include "spdlog/spdlog.h"
 
 static unsigned char readuchar(FILE *f) {
 	unsigned char c1;

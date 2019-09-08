@@ -55,6 +55,8 @@
 
 #pragma once
 
+#include "spdlog/spdlog.h"
+
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
