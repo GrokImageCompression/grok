@@ -550,8 +550,10 @@ int parse_cmdline_decoder(int argc,
 		// process
 		if (inputFileArg.isSet()) {
 			const char *infile = inputFileArg.getValue().c_str();
-			if (!jpeg2000_file_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format))
+			if (!jpeg2000_file_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format)){
+				spdlog::error("Unable to open file {} for decoding.", infile);
 				return 1;
+			}
 			switch (parameters->decod_format) {
 			case J2K_CFMT:
 				break;
