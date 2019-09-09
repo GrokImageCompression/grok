@@ -62,10 +62,8 @@ namespace grk {
 //#define PLUGIN_DEBUG_ENCODE
 
 const unsigned int totalNumContextStates = 47 * 2;
-
 #define MQC_NUMCTXS 19
 
-const uint16_t A_MIN = 0x8000;
 
 struct raw_t {
 	/** temporary buffer where bits are coded or decoded */
@@ -183,11 +181,7 @@ void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno);
  @param d The symbol to be encoded (0 or 1)
  */
 void mqc_encode(mqc_t *mqc, uint8_t d);
-/**
- Flush the encoder, so that all remaining data is written
- @param mqc MQC handle
- */
-void mqc_flush(mqc_t *mqc);
+
 
 void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush);
 
@@ -206,22 +200,13 @@ void mqc_bypass_init_enc(mqc_t *mqc);
  @param d The symbol to be encoded (0 or 1)
  */
 void mqc_bypass_enc(mqc_t *mqc, uint8_t d);
-/**
- BYPASS mode switch, flush operation
- <h2>Not fully implemented and tested !!</h2>
- @param mqc MQC handle
- */
-void mqc_bypass_flush_enc(mqc_t *mqc);
+
 /**
  RESTART mode switch (TERMALL) reinitialisation
  @param mqc MQC handle
  */
 void mqc_restart_init_enc(mqc_t *mqc);
-/**
- ERTERM mode switch (PTERM)
- @param mqc MQC handle
- */
-void mqc_flush_erterm(mqc_t *mqc);
+
 /**
  SEGMARK mode switch (SEGSYM)
  @param mqc MQC handle
