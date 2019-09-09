@@ -85,7 +85,8 @@ bool OPJ_CALLCONV opj_initialize(const char *plugin_path, uint32_t numthreads) {
 
 OPJ_API void OPJ_CALLCONV opj_deinitialize() {
 	grok_plugin_cleanup();
-	Scheduler::g_TS.WaitforAllAndShutdown();
+	if (Scheduler::g_TS.GetNumTaskThreads() > 0)
+		Scheduler::g_TS.WaitforAllAndShutdown();
 }
 
 /* ---------------------------------------------------------------------- */
