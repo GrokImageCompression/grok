@@ -398,13 +398,13 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 					|| l_current_pi->resno >= tilec->minimum_num_resolutions;
 
 			l_img_comp = l_image->comps + l_current_pi->compno;
-
-			GROK_ERROR(
+/*
+			GROK_INFO(
 					"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n\n",
 					l_current_pi->poc.prg1, l_current_pi->compno,
 					l_current_pi->resno, l_current_pi->precno,
 					l_current_pi->layno);
-
+*/
 			if (!skip_layer_or_res) {
 				tcd_resolution_t *res = tilec->resolutions
 						+ l_current_pi->resno;
@@ -592,7 +592,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			return false;
 		}
 	}
-	GROK_ERROR("present=%d \n", l_present);
+	//GROK_INFO("present=%d \n", l_present);
 	if (!l_present) {
 		if (!l_bio->inalign())
 			return false;
@@ -681,7 +681,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 			/* if cblk not included */
 			if (!l_included) {
 				l_cblk->numPassesInPacket = 0;
-				GROK_ERROR("included=%d \n", l_included);
+				//GROK_INFO("included=%d \n", l_included);
 				continue;
 			}
 
@@ -779,10 +779,12 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->newlen,
 								l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket)));
 #endif
-				GROK_ERROR(
+				/*
+				GROK_INFO(
 						"included=%d numPassesInPacket=%d increment=%d len=%d \n",
 						l_included, l_seg->numPassesInPacket, l_increment,
 						l_seg->newlen);
+						*/
 				numPassesInPacket -=
 						(int32_t) l_cblk->segs[l_segno].numPassesInPacket;
 				if (numPassesInPacket > 0) {
@@ -817,8 +819,8 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 	}
 
 	auto l_header_length = (size_t) (l_header_data - *l_header_data_start);
-	GROK_ERROR("hdrlen=%d \n", l_header_length);
-	GROK_ERROR("packet body\n");
+	//GROK_INFO("hdrlen=%d \n", l_header_length);
+	//GROK_INFO("packet body\n");
 	*l_modified_length_ptr -= l_header_length;
 	*l_header_data_start += l_header_length;
 
