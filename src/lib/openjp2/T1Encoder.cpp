@@ -26,7 +26,7 @@ T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile, uint16_t encodeMaxCblkW,
 		tile(tile),
 		needsRateControl(needsRateControl),
 		encodeBlocks(nullptr),
-		blockCount(0)
+		blockCount(-1)
 {
 #ifdef DEBUG_LOSSLESS_T1
 	numThreads = 1;
@@ -43,11 +43,7 @@ T1Encoder::~T1Encoder() {
 }
 void T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
-	uint64_t index=0;
-	std::unique_lock<std::mutex> lk(block_mutex);
-	index = blockCount++;
-	lk.unlock();
-
+	uint64_t index = ++blockCount;
 	if (index >= maxBlocks)
 		return;
 	encodeBlockInfo *block = encodeBlocks[index];

@@ -37,7 +37,7 @@ private:
 	bool needsRateControl;
 	mutable std::mutex block_mutex;
 	encodeBlockInfo** encodeBlocks;
-	uint64_t blockCount;
+	std::atomic<int64_t> blockCount;
 
 };
 
