@@ -36,9 +36,8 @@ private:
 	std::vector<t1_interface*> threadStructs;
 	std::atomic_bool success;
 
-	mutable std::mutex block_mutex;
 	decodeBlockInfo** decodeBlocks;
-	uint64_t blockCount;
+	std::atomic<int64_t> blockCount;
 };
 
 }

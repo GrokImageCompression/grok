@@ -24,7 +24,7 @@ T1Decoder::T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
 		decodeBlocks(nullptr),
-		blockCount(0){
+		blockCount(-1){
 	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
 		threadStructs.push_back(
 				t1_factory::get_t1(false, tcp, codeblock_width,
@@ -53,10 +53,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 	enki::TaskSet task((uint32_t) maxBlocks,
 			[this, maxBlocks](enki::TaskSetPartition range, uint32_t threadnum) {
 				for (auto i = range.start; i < range.end; ++i) {
-					uint64_t index=0;
-					std::unique_lock<std::mutex> lk(block_mutex);
-					index = blockCount++;
-					lk.unlock();
+					uint64_t index = ++blockCount;
 					if (index >= maxBlocks)
 						return;
 					decodeBlockInfo *block = decodeBlocks[index];
