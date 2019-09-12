@@ -59,6 +59,8 @@
  */
 
 #pragma once
+
+#include <vector>
 namespace grk {
 
 /**
@@ -473,11 +475,14 @@ struct j2k_enc_t {
 
 };
 
+struct j2k_t;
+typedef bool (*j2k_procedure)(j2k_t *j2k, GrokStream*);
+
 struct tcd_t;
 /**
  JPEG-2000 codestream reader/writer
  */
-typedef struct j2k {
+struct j2k_t {
 	/* J2K codestream is decoded*/
 	bool m_is_decoder;
 
@@ -497,10 +502,10 @@ typedef struct j2k {
 	cp_t m_cp;
 
 	/** the list of procedures to exec **/
-	procedure_list_t *m_procedure_list;
+	std::vector<j2k_procedure> *m_procedure_list;
 
 	/** the list of validation procedures to follow to make sure the code is valid **/
-	procedure_list_t *m_validation_list;
+	std::vector<j2k_procedure> *m_validation_list;
 
 	/** helper used to write the index file */
 	opj_codestream_index_t *cstr_index;
@@ -513,7 +518,7 @@ typedef struct j2k {
 
 	uint32_t numThreads;
 
-} j2k_t;
+};
 
 /** @name Exported functions */
 /*@{*/

@@ -76,6 +76,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iostream>
+#include <vector>
 
 /* Avoid compile-time warning because parameter is not used */
 #define ARG_NOT_USED(x) (void)(x)
@@ -181,7 +182,6 @@ static inline long grok_lrintf(float f) {
 #include "mem_stream.h"
 #include "grok_malloc.h"
 #include "logger.h"
-#include "function_list.h"
 #include "vector.h"
 #include "util.h"
 #include "grok_exceptions.h"

@@ -208,7 +208,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @return      true                            if all the procedures were successfully executed.
  */
-static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
+static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *p_procedure_list,
 		GrokStream *p_stream);
 
 /**
@@ -5181,18 +5181,10 @@ j2k_t* j2k_create_compress(void) {
 	l_j2k->m_cp.m_is_decoder = 0;
 
 	/* validation list creation*/
-	l_j2k->m_validation_list = procedure_list_create();
-	if (!l_j2k->m_validation_list) {
-		j2k_destroy(l_j2k);
-		return nullptr;
-	}
+	l_j2k->m_validation_list = new std::vector<j2k_procedure>();
 
 	/* execution list creation*/
-	l_j2k->m_procedure_list = procedure_list_create();
-	if (!l_j2k->m_procedure_list) {
-		j2k_destroy(l_j2k);
-		return nullptr;
-	}
+	l_j2k->m_procedure_list = new std::vector<j2k_procedure>();
 
 	return l_j2k;
 }
@@ -6124,17 +6116,9 @@ static bool j2k_setup_header_reading(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
-
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_read_header_procedure)) {
-		return false;
-	}
-
-	/* DEVELOPER CORNER, add your custom procedures */
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_copy_default_tcp_and_create_tcd)) {
-		return false;
-	}
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_read_header_procedure);
+	// custom procedures here
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_copy_default_tcp_and_create_tcd);
 
 	return true;
 }
@@ -6143,17 +6127,9 @@ static bool j2k_setup_decoding_validation(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
+	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_build_decoder);
+	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_decoding_validation);
 
-	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_build_decoder)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_decoding_validation)) {
-		return false;
-	}
-
-	/* DEVELOPER CORNER, add your custom validation procedure */
 	return true;
 }
 
@@ -6629,30 +6605,20 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_exec(j2k_t *p_j2k, procedure_list_t *p_procedure_list,
+static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *procs,
 		GrokStream *p_stream) {
-	bool (**l_procedure)(j2k_t*, GrokStream*) = nullptr;
 	bool l_result = true;
-	uint32_t l_nb_proc, i;
 
-	/* preconditions*/
-	assert(p_procedure_list != nullptr);
+	assert(procs != nullptr);
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
 	
-
-	l_nb_proc = procedure_list_get_nb_procedures(p_procedure_list);
-	l_procedure =
-			(bool (**)(j2k_t*, GrokStream*)) procedure_list_get_first_procedure(
-					p_procedure_list);
-
-	for (i = 0; i < l_nb_proc; ++i) {
-		l_result = l_result && ((*l_procedure)(p_j2k, p_stream));
-		++l_procedure;
+	for (auto it = procs->begin(); it != procs->end(); ++it){
+		auto p = (bool (*)(j2k_t *j2k, GrokStream*))*it;
+		l_result = l_result && (p)(p_j2k, p_stream);
 	}
+	procs->clear();
 
-	/* and clear the procedure list at the end.*/
-	procedure_list_clear(p_procedure_list);
 	return l_result;
 }
 
@@ -6853,11 +6819,11 @@ void j2k_destroy(j2k_t *p_j2k) {
 	j2k_cp_destroy(&(p_j2k->m_cp));
 	memset(&(p_j2k->m_cp), 0, sizeof(cp_t));
 
-	procedure_list_destroy(p_j2k->m_procedure_list);
+	delete p_j2k->m_procedure_list;
 	p_j2k->m_procedure_list = nullptr;
 
-	procedure_list_destroy(p_j2k->m_validation_list);
-	p_j2k->m_procedure_list = nullptr;
+	delete p_j2k->m_validation_list;
+	p_j2k->m_validation_list = nullptr;
 
 	j2k_destroy_cstr_index(p_j2k->cstr_index);
 	p_j2k->cstr_index = nullptr;
@@ -8075,18 +8041,10 @@ j2k_t* j2k_create_decompress(void) {
 	}
 
 	/* validation list creation */
-	l_j2k->m_validation_list = procedure_list_create();
-	if (!l_j2k->m_validation_list) {
-		j2k_destroy(l_j2k);
-		return nullptr;
-	}
+	l_j2k->m_validation_list = new std::vector<j2k_procedure>();
 
 	/* execution list creation */
-	l_j2k->m_procedure_list = procedure_list_create();
-	if (!l_j2k->m_procedure_list) {
-		j2k_destroy(l_j2k);
-		return nullptr;
-	}
+	l_j2k->m_procedure_list = new std::vector<j2k_procedure>();
 
 	return l_j2k;
 }
@@ -9255,12 +9213,9 @@ static bool j2k_setup_decoding(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decode_tiles);
+	// custom procedures here
 
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_decode_tiles)) {
-		return false;
-	}
-	/* DEVELOPER CORNER, add your custom procedures */
 	return true;
 }
 
@@ -9402,13 +9357,9 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 static bool j2k_setup_decoding_tile(j2k_t *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decode_one_tile);
+	//custom procedures here
 
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_decode_one_tile)) {
-		return false;
-	}
-	/* DEVELOPER CORNER, add your custom procedures */
 	return true;
 }
 
@@ -9923,28 +9874,13 @@ static bool j2k_setup_end_compress(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_eoc);
+	if (OPJ_IS_CINEMA(p_j2k->m_cp.rsiz))
+		p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_updated_tlm);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_epc);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_end_encoding);
+	//custom procedures here
 
-	/* DEVELOPER CORNER, insert your custom procedures */
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_eoc)) {
-		return false;
-	}
-
-	if (OPJ_IS_CINEMA(p_j2k->m_cp.rsiz)) {
-		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_updated_tlm)) {
-			return false;
-		}
-	}
-
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_epc)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_end_encoding)) {
-		return false;
-	}
 	return true;
 }
 
@@ -9952,21 +9888,10 @@ static bool j2k_setup_encoding_validation(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
-
-	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_build_encoder)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_encoding_validation)) {
-		return false;
-	}
-
-	/* DEVELOPER CORNER, add your custom validation procedure */
-	if (!procedure_list_add_procedure(p_j2k->m_validation_list,
-			(procedure) j2k_mct_validation)) {
-		return false;
-	}
+	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_build_encoder);
+	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_encoding_validation);
+	//custom validation here
+	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_mct_validation);
 
 	return true;
 }
@@ -9975,87 +9900,35 @@ static bool j2k_setup_header_writing(j2k_t *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_init_info);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_soc);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_siz);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_cod);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_qcd);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_all_coc);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_all_qcc);
 
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_init_info)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_soc)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_siz)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_cod)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_qcd)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_all_coc)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_all_qcc)) {
-		return false;
-	}
 
 	if (OPJ_IS_CINEMA(p_j2k->m_cp.rsiz)) {
-		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_tlm)) {
-			return false;
-		}
-
+		p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_tlm);
 		if (p_j2k->m_cp.rsiz == OPJ_PROFILE_CINEMA_4K) {
-			if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-					(procedure) j2k_write_poc)) {
-				return false;
-			}
+			p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_poc);
 		}
 	}
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_regions);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_com);
+	//begin custom procedures
 
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_write_regions)) {
-		return false;
-	}
-
-	if (p_j2k->m_cp.num_comments) {
-		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_com)) {
-			return false;
-		}
-	}
-
-	/* DEVELOPER CORNER, insert your custom procedures */
 	if (OPJ_IS_PART2(p_j2k->m_cp.rsiz)
 			&& (p_j2k->m_cp.rsiz & OPJ_EXTENSION_MCT)) {
-		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_write_mct_data_group)) {
-			return false;
-		}
+		p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_mct_data_group);
 	}
-	/* End of Developer Corner */
-
+	//end custom procedures
 	if (p_j2k->cstr_index) {
-		if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-				(procedure) j2k_get_end_header)) {
-			return false;
-		}
+		p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_get_end_header);
 	}
-
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_create_tcd)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(p_j2k->m_procedure_list,
-			(procedure) j2k_update_rates)) {
-		return false;
-	}
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_create_tcd);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_update_rates);
 
 	return true;
 }
@@ -10271,7 +10144,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	if (p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer) {
 		grok_free(p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer);
-		p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = 0;
+		p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer = nullptr;
 		p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current = 0;
 	}
 	return true;

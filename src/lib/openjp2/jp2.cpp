@@ -383,7 +383,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream);
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(jp2_t *jp2, procedure_list_t *p_procedure_list,
+static bool jp2_exec(jp2_t *jp2, std::vector<jp2_procedure> *p_procedure_list,
 		GrokStream *stream);
 
 /**
@@ -2467,12 +2467,9 @@ static bool jp2_setup_end_header_writing(jp2_t *jp2) {
 
 	assert(jp2 != nullptr);
 	
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2c);
+	//custom procedures here
 
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_write_jp2c)) {
-		return false;
-	}
-	/* DEVELOPER CORNER, add your custom procedures */
 	return true;
 }
 
@@ -2480,12 +2477,8 @@ static bool jp2_setup_end_header_reading(jp2_t *jp2) {
 
 	assert(jp2 != nullptr);
 	
-
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_read_header_procedure)) {
-		return false;
-	}
-	/* DEVELOPER CORNER, add your custom procedures */
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+	//custom procedures here
 
 	return true;
 }
@@ -2688,37 +2681,26 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 /**
  * Executes the given procedures on the given codec.
  *
- * @param	p_procedure_list	the list of procedures to execute
+ * @param	procs	the list of procedures to execute
  * @param	jp2					the jpeg2000 file codec to execute the procedures on.
  * @param	stream					the stream to execute the procedures on.
  *
  * @return	true				if all the procedures were successfully executed.
  */
-static bool jp2_exec(jp2_t *jp2, procedure_list_t *p_procedure_list,
-		GrokStream *stream)
-
-		{
-	bool (**l_procedure)(jp2_t *jp2, GrokStream*) = nullptr;
+static bool jp2_exec(jp2_t *jp2, std::vector<jp2_procedure> *procs,
+		GrokStream *stream)	{
 	bool l_result = true;
-	uint32_t l_nb_proc, i;
 
-	assert(p_procedure_list != nullptr);
+	assert(procs);
 	assert(jp2 != nullptr);
 	assert(stream != nullptr);
 	
-
-	l_nb_proc = procedure_list_get_nb_procedures(p_procedure_list);
-	l_procedure =
-			(bool (**)(jp2_t *jp2, GrokStream*)) procedure_list_get_first_procedure(
-					p_procedure_list);
-
-	for (i = 0; i < l_nb_proc; ++i) {
-		l_result = l_result && (*l_procedure)(jp2, stream);
-		++l_procedure;
+	for (auto it = procs->begin(); it != procs->end(); ++it){
+		auto p = (jp2_procedure)*it;
+		l_result = l_result && (p)(jp2, stream);
 	}
+	procs->clear();
 
-	/* and clear the procedure list at the end. */
-	procedure_list_clear(p_procedure_list);
 	return l_result;
 }
 
@@ -3111,13 +3093,7 @@ bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
 static bool jp2_setup_encoding_validation(jp2_t *jp2) {
 
 	assert(jp2 != nullptr);
-	
-
-	if (!procedure_list_add_procedure(jp2->m_validation_list,
-			(procedure) jp2_default_validation)) {
-		return false;
-	}
-	/* DEVELOPER CORNER, add your custom validation procedure */
+	jp2->m_validation_list->push_back((jp2_procedure) jp2_default_validation);
 
 	return true;
 }
@@ -3138,29 +3114,12 @@ static bool jp2_setup_header_writing(jp2_t *jp2) {
 
 	assert(jp2 != nullptr);
 	
-
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_write_jp)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_write_ftyp)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_write_jp2h)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_write_uuids)) {
-		return false;
-	}
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_skip_jp2c)) {
-		return false;
-	}
-
-	/* DEVELOPER CORNER, insert your custom procedures */
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp);
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_ftyp);
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_jp2h);
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_write_uuids);
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_skip_jp2c);
+	//custom procedures here
 
 	return true;
 }
@@ -3169,13 +3128,8 @@ static bool jp2_setup_header_reading(jp2_t *jp2) {
 
 	assert(jp2 != nullptr);
 	
-
-	if (!procedure_list_add_procedure(jp2->m_procedure_list,
-			(procedure) jp2_read_header_procedure)) {
-		return false;
-	}
-
-	/* DEVELOPER CORNER, add your custom procedures */
+	jp2->m_procedure_list->push_back((jp2_procedure) jp2_read_header_procedure);
+	//custom procedures here
 
 	return true;
 }
@@ -3243,12 +3197,12 @@ void jp2_destroy(jp2_t *jp2) {
 		jp2_free_pclr(&jp2->color);
 
 		if (jp2->m_validation_list) {
-			procedure_list_destroy(jp2->m_validation_list);
+			delete jp2->m_validation_list;
 			jp2->m_validation_list = nullptr;
 		}
 
 		if (jp2->m_procedure_list) {
-			procedure_list_destroy(jp2->m_procedure_list);
+			delete jp2->m_procedure_list;
 			jp2->m_procedure_list = nullptr;
 		}
 
@@ -3352,19 +3306,8 @@ jp2_t* jp2_create(bool p_is_decoder) {
 		jp2->color.jp2_pclr = nullptr;
 		jp2->color.jp2_has_colour_specification_box = 0;
 
-		/* validation list creation */
-		jp2->m_validation_list = procedure_list_create();
-		if (!jp2->m_validation_list) {
-			jp2_destroy(jp2);
-			return nullptr;
-		}
-
-		/* execution list creation */
-		jp2->m_procedure_list = procedure_list_create();
-		if (!jp2->m_procedure_list) {
-			jp2_destroy(jp2);
-			return nullptr;
-		}
+		jp2->m_validation_list = new std::vector<jp2_procedure>();
+		jp2->m_procedure_list = new std::vector<jp2_procedure>();
 	}
 
 	return jp2;
