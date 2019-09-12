@@ -97,8 +97,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tgt.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/function_list.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/function_list.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_codec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_intmath.h

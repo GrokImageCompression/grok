@@ -155,6 +155,9 @@ struct jp2_uuid_t: public jp2_buffer_t {
 	uint8_t uuid[16];
 };
 
+struct jp2_t;
+typedef bool (*jp2_procedure)(jp2_t *jp2, GrokStream*);
+
 /**
  JPEG-2000 file format reader/writer
  */
@@ -162,9 +165,9 @@ struct jp2_t {
 	/** handle to the J2K codec  */
 	j2k_t *j2k;
 	/** list of validation procedures */
-	procedure_list_t *m_validation_list;
+	std::vector<jp2_procedure> *m_validation_list;
 	/** list of execution procedures */
-	procedure_list_t *m_procedure_list;
+	std::vector<jp2_procedure> *m_procedure_list;
 
 	/* width of image */
 	uint32_t w;
