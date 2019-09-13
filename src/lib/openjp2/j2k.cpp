@@ -3786,7 +3786,7 @@ static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
 			l_cstr_info->packno = 0;
 		}
 	}
-	if (!tcd_encode_tile(p_tile_coder, p_j2k->m_current_tile_number, p_stream,
+	if (!p_tile_coder->encode_tile(p_j2k->m_current_tile_number, p_stream,
 			p_data_written, l_remaining_data, l_cstr_info)) {
 		GROK_ERROR( "Cannot encode tile");
 		return false;
@@ -6758,13 +6758,11 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	}
 
 	/* Create the current tile decoder*/
-	p_j2k->m_tcd = tcd_create(true);
-	if (!p_j2k->m_tcd) {
-		return false;
-	}
+	p_j2k->m_tcd = new tcd_t();
+	p_j2k->m_tcd->m_is_decoder = true;
 
-	if (!tcd_init(p_j2k->m_tcd, l_image, &(p_j2k->m_cp), p_j2k->numThreads)) {
-		tcd_destroy(p_j2k->m_tcd);
+	if (!p_j2k->m_tcd->init(l_image, &(p_j2k->m_cp), p_j2k->numThreads)) {
+		delete p_j2k->m_tcd;
 		p_j2k->m_tcd = nullptr;
 		GROK_ERROR( "Cannot decode tile, memory error");
 		return false;
@@ -6814,7 +6812,7 @@ void j2k_destroy(j2k_t *p_j2k) {
 		}
 	}
 
-	tcd_destroy(p_j2k->m_tcd);
+	delete p_j2k->m_tcd;
 
 	j2k_cp_destroy(&(p_j2k->m_cp));
 	memset(&(p_j2k->m_cp), 0, sizeof(cp_t));
@@ -7429,7 +7427,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 		GROK_ERROR( "Failed to merge PPT data");
 		return false;
 	}
-	if (!tcd_init_decode_tile(p_j2k->m_tcd, p_j2k->m_output_image,
+	if (!p_j2k->m_tcd->init_decode_tile( p_j2k->m_output_image,
 			p_j2k->m_current_tile_number)) {
 		GROK_ERROR( "Cannot decode tile %d\n",
 				p_j2k->m_current_tile_number);
@@ -7437,7 +7435,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 	}
 	*tile_index = p_j2k->m_current_tile_number;
 	*p_go_on = true;
-	*data_size = tcd_get_decoded_tile_size(p_j2k->m_tcd);
+	*data_size = p_j2k->m_tcd->get_decoded_tile_size();
 	*p_tile_x0 = p_j2k->m_tcd->tile->x0;
 	*p_tile_y0 = p_j2k->m_tcd->tile->y0;
 	*p_tile_x1 = p_j2k->m_tcd->tile->x1;
@@ -7468,7 +7466,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		return false;
 	}
 
-	if (!tcd_decode_tile(p_j2k->m_tcd, l_tcp->m_tile_data, tile_index)) {
+	if (!p_j2k->m_tcd->decode_tile(l_tcp->m_tile_data, tile_index)) {
 		j2k_tcp_destroy(l_tcp);
 		p_j2k->m_specific_param.m_decoder.m_state |= J2K_DEC_STATE_ERR;
 		GROK_ERROR( "Failed to decode.");
@@ -7483,7 +7481,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		 Otherwise, simply copy tile data pointer to output image
 		 */
 		if (p_data) {
-			if (!tcd_update_tile_data(p_j2k->m_tcd, p_data, data_size)) {
+			if (!p_j2k->m_tcd->update_tile_data(p_data, data_size)) {
 				return false;
 			}
 		} else {
@@ -9594,7 +9592,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 				}
 			}
 		}
-		l_current_tile_size = tcd_get_encoded_tile_size(p_j2k->m_tcd);
+		l_current_tile_size = p_tcd->get_encoded_tile_size();
 		if (!l_reuse_data) {
 			if (l_current_tile_size > l_max_tile_size) {
 				uint8_t *l_new_current_data = (uint8_t*) grok_realloc(
@@ -9617,7 +9615,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 			j2k_get_tile_data(p_j2k->m_tcd, l_current_data);
 
 			/* now copy this data into the tile component */
-			if (!tcd_copy_tile_data(p_j2k->m_tcd, l_current_data,
+			if (!p_j2k->m_tcd->copy_tile_data( l_current_data,
 					l_current_tile_size)) {
 				GROK_ERROR(
 						"Size mismatch between tile data and sent data.");
@@ -9713,7 +9711,7 @@ static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index) {
 	p_j2k->m_specific_param.m_encoder.m_current_poc_tile_part_number = 0;
 
 	/* initialisation before tile encoding  */
-	if (!tcd_init_encode_tile(p_j2k->m_tcd, p_j2k->m_current_tile_number)) {
+	if (!p_j2k->m_tcd->init_encode_tile(p_j2k->m_current_tile_number)) {
 		return false;
 	}
 
@@ -10139,7 +10137,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream) {
 	
 	assert(p_stream != nullptr);
 
-	tcd_destroy(p_j2k->m_tcd);
+	delete p_j2k->m_tcd;
 	p_j2k->m_tcd = nullptr;
 
 	if (p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_buffer) {
@@ -10174,7 +10172,8 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 	
 	assert(p_stream != nullptr);
 
-	p_j2k->m_tcd = tcd_create(false);
+	p_j2k->m_tcd = new tcd_t();
+	p_j2k->m_tcd->m_is_decoder = false;
 
 	if (!p_j2k->m_tcd) {
 		GROK_ERROR(
@@ -10182,9 +10181,9 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 		return false;
 	}
 
-	if (!tcd_init(p_j2k->m_tcd, p_j2k->m_private_image, &p_j2k->m_cp,
+	if (!p_j2k->m_tcd->init( p_j2k->m_private_image, &p_j2k->m_cp,
 			p_j2k->numThreads)) {
-		tcd_destroy(p_j2k->m_tcd);
+		delete p_j2k->m_tcd;
 		p_j2k->m_tcd = nullptr;
 		return false;
 	}
@@ -10213,7 +10212,7 @@ bool j2k_write_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		}
 
 		/* now copy data into the tile component */
-		if (!tcd_copy_tile_data(p_j2k->m_tcd, p_data, data_size)) {
+		if (!p_j2k->m_tcd->copy_tile_data(p_data, data_size)) {
 			GROK_ERROR(
 					"Size mismatch between tile data and sent data.");
 			return false;
