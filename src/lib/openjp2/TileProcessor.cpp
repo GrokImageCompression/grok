@@ -74,17 +74,17 @@ namespace grk {
  It is possible to have some lossy layers and the last layer for sure lossless
 
  */
-bool tcd_t::layer_needs_rate_control(uint32_t layno, tcp_t *tcd_tcp,
-		encoding_param_t *enc_params) {
+bool TileProcessor::layer_needs_rate_control(uint32_t layno) {
 
-	return ((enc_params->m_disto_alloc == 1) && (tcd_tcp->rates[layno] > 0.0))
+	auto enc_params = &cp->m_specific_param.m_enc;
+	return ((enc_params->m_disto_alloc == 1) && (tcp->rates[layno] > 0.0))
 			|| ((enc_params->m_fixed_quality == 1)
-					&& (tcd_tcp->distoratio[layno] > 0.0f));
+					&& (tcp->distoratio[layno] > 0.0f));
 }
 
-bool tcd_t::needs_rate_control(tcp_t *tcd_tcp, encoding_param_t *enc_params) {
-	for (uint32_t i = 0; i < tcd_tcp->numlayers; ++i) {
-		if (layer_needs_rate_control(i, tcd_tcp, enc_params))
+bool TileProcessor::needs_rate_control() {
+	for (uint32_t i = 0; i < tcp->numlayers; ++i) {
+		if (layer_needs_rate_control(i))
 			return true;
 	}
 	return false;
@@ -92,17 +92,16 @@ bool tcd_t::needs_rate_control(tcp_t *tcd_tcp, encoding_param_t *enc_params) {
 
 // lossless in the sense that no code passes are removed; it mays still be a lossless layer
 // due to irreversible DWT and quantization
-bool tcd_t::make_single_lossless_layer() {
+bool TileProcessor::make_single_lossless_layer() {
 	if (tcp->numlayers == 1
-			&& !layer_needs_rate_control(0, tcp,
-					&cp->m_specific_param.m_enc)) {
+			&& !layer_needs_rate_control(0)) {
 		makelayer_final(0);
 		return true;
 	}
 	return false;
 }
 
-void tcd_t::makelayer_feasible(uint32_t layno, uint16_t thresh,
+void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		bool final) {
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
@@ -192,7 +191,7 @@ void tcd_t::makelayer_feasible(uint32_t layno, uint16_t thresh,
 /*
  Hybrid rate control using bisect algorithm with optimal truncation points
  */
-bool tcd_t::pcrd_bisect_feasible(uint64_t *p_data_written,
+bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 		uint64_t len) {
 
 	bool single_lossless = make_single_lossless_layer();
@@ -275,8 +274,7 @@ bool tcd_t::pcrd_bisect_feasible(uint64_t *p_data_written,
 		// thresh from previous iteration - starts off uninitialized
 		// used to bail out if difference with current thresh is small enough
 		uint32_t prevthresh = 0;
-		if (layer_needs_rate_control(layno, tcd_tcp,
-				&cp->m_specific_param.m_enc)) {
+		if (layer_needs_rate_control(layno)) {
 			t2_t *t2 = t2_create(image, cp);
 			if (t2 == nullptr) {
 				return false;
@@ -335,7 +333,7 @@ bool tcd_t::pcrd_bisect_feasible(uint64_t *p_data_written,
 /*
  Simple bisect algorithm to calculate optimal layer truncation points
  */
-bool tcd_t::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
+bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 	uint32_t compno, resno, bandno, precno, cblkno, layno;
 	uint32_t passno;
 	double cumdisto[100];
@@ -425,8 +423,7 @@ bool tcd_t::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 
 	double upperBound = max_slope;
 	for (layno = 0; layno < tcd_tcp->numlayers; layno++) {
-		if (layer_needs_rate_control(layno, tcd_tcp,
-				&cp->m_specific_param.m_enc)) {
+		if (layer_needs_rate_control(layno)) {
 			double lowerBound = min_slope;
 			uint64_t maxlen =
 					tcd_tcp->rates[layno] > 0.0f ?
@@ -512,7 +509,7 @@ static void prepareBlockForFirstLayer(tcd_cblk_enc_t *cblk) {
 /*
  Form layer for bisect rate control algorithm
  */
-void tcd_t::make_layer_simple(uint32_t layno, double thresh,
+void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 		bool final) {
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
@@ -619,7 +616,7 @@ void tcd_t::make_layer_simple(uint32_t layno, double thresh,
 }
 
 // Add all remaining passes to this layer
-void tcd_t::makelayer_final(uint32_t layno) {
+void TileProcessor::makelayer_final(uint32_t layno) {
 	uint32_t compno, resno, bandno, precno, cblkno;
 	tcd_tile_t *tcd_tile = tile;
 	tcd_tile->distolayer[layno] = 0;
@@ -690,8 +687,7 @@ void tcd_t::makelayer_final(uint32_t layno) {
 		}
 	}
 }
-bool tcd_t::init(opj_image_t *p_image, cp_t *p_cp,
-		uint32_t numThreads) {
+bool TileProcessor::init(opj_image_t *p_image, cp_t *p_cp) {
 	this->image = p_image;
 	this->cp = p_cp;
 
@@ -708,14 +704,13 @@ bool tcd_t::init(opj_image_t *p_image, cp_t *p_cp,
 
 	tile->numcomps = p_image->numcomps;
 	tp_pos = p_cp->m_specific_param.m_enc.m_tp_pos;
-	this->numThreads = numThreads;
 	return true;
 }
 
 
 /* ----------------------------------------------------------------------- */
 
-inline bool tcd_t::init_tile(uint32_t tile_no,
+inline bool TileProcessor::init_tile(uint32_t tile_no,
 		opj_image_t *output_image, bool isEncoder, float fraction,
 		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
@@ -1134,12 +1129,12 @@ inline bool tcd_t::init_tile(uint32_t tile_no,
 	return true;
 }
 
-bool tcd_t::init_encode_tile(uint32_t tile_no) {
+bool TileProcessor::init_encode_tile(uint32_t tile_no) {
 	return init_tile(tile_no, nullptr, true, 1.0F,
 			sizeof(tcd_cblk_enc_t));
 }
 
-bool tcd_t::init_decode_tile(opj_image_t *output_image,
+bool TileProcessor::init_decode_tile(opj_image_t *output_image,
 		uint32_t tile_no) {
 	return init_tile(tile_no, output_image, false, 0.5F,
 			sizeof(tcd_cblk_dec_t));
@@ -1150,7 +1145,7 @@ bool tcd_t::init_decode_tile(opj_image_t *output_image,
  Get size of tile data, summed over all components, reflecting actual precision of data.
  opj_image_t always stores data in 32 bit format.
  */
-uint64_t tcd_t::get_decoded_tile_size() {
+uint64_t TileProcessor::get_decoded_tile_size() {
 	uint32_t i;
 	uint64_t l_data_size = 0;
 	opj_image_comp_t *l_img_comp = nullptr;
@@ -1179,7 +1174,7 @@ uint64_t tcd_t::get_decoded_tile_size() {
 	return l_data_size;
 }
 
-bool tcd_t::encode_tile(uint32_t tile_no, GrokStream *p_stream,
+bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		opj_codestream_info_t *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
@@ -1257,7 +1252,7 @@ bool tcd_t::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 	return true;
 }
 
-bool tcd_t::decode_tile(seg_buf_t *src_buf, uint32_t tile_no) {
+bool TileProcessor::decode_tile(seg_buf_t *src_buf, uint32_t tile_no) {
 	tcp = cp->tcps + tile_no;
 
 	bool doT2 = !current_plugin_tile
@@ -1320,7 +1315,7 @@ bool tcd_t::decode_tile(seg_buf_t *src_buf, uint32_t tile_no) {
  If we are decoding all resolutions, then this step is not necessary ??
 
  */
-bool tcd_t::update_tile_data(uint8_t *p_dest,
+bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		uint64_t dest_length) {
 	uint32_t i, j, k;
 	opj_image_comp_t *l_img_comp = nullptr;
@@ -1420,7 +1415,7 @@ bool tcd_t::update_tile_data(uint8_t *p_dest,
 	return true;
 }
 
-void tcd_t::free_tile() {
+void TileProcessor::free_tile() {
 	uint32_t compno, resno, bandno, precno;
 	tcd_tile_t *l_tile = nullptr;
 	tcd_tilecomp_t *l_tile_comp = nullptr;
@@ -1479,7 +1474,7 @@ void tcd_t::free_tile() {
 	tile = nullptr;
 }
 
-bool tcd_t::t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
+bool TileProcessor::t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
 		uint64_t *p_data_read) {
 	t2_t *l_t2;
 
@@ -1498,7 +1493,7 @@ bool tcd_t::t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
 	return true;
 }
 
-bool tcd_t::t1_decode() {
+bool TileProcessor::t1_decode() {
 	uint32_t compno;
 	tcd_tile_t *l_tile = tile;
 	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
@@ -1518,7 +1513,7 @@ bool tcd_t::t1_decode() {
 			(uint16_t) tcp->tccps->cblkh, &blocks);
 }
 
-bool tcd_t::dwt_decode() {
+bool TileProcessor::dwt_decode() {
 	tcd_tile_t *l_tile = tile;
 	int64_t compno = 0;
 	bool rc = true;
@@ -1529,14 +1524,14 @@ bool tcd_t::dwt_decode() {
 		if (l_tccp->qmfbid == 1) {
 			dwt53 dwt;
 			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					numThreads)) {
+					Scheduler::g_TS.GetNumTaskThreads())) {
 				rc = false;
 				continue;
 			}
 		} else {
 			dwt97 dwt;
 			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					numThreads)) {
+					Scheduler::g_TS.GetNumTaskThreads())) {
 				rc = false;
 				continue;
 			}
@@ -1545,7 +1540,7 @@ bool tcd_t::dwt_decode() {
 
 	return rc;
 }
-bool tcd_t::mct_decode() {
+bool TileProcessor::mct_decode() {
 	tcd_tile_t *l_tile = tile;
 	tcp_t *l_tcp = tcp;
 	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
@@ -1630,7 +1625,7 @@ bool tcd_t::mct_decode() {
 	return true;
 }
 
-bool tcd_t::dc_level_shift_decode() {
+bool TileProcessor::dc_level_shift_decode() {
 	uint32_t compno = 0;
 	for (compno = 0; compno < tile->numcomps; compno++) {
 		int32_t l_min = INT32_MAX, l_max = INT32_MIN;
@@ -1697,7 +1692,7 @@ bool tcd_t::dc_level_shift_decode() {
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void tcd_t::code_block_dec_deallocate(tcd_precinct_t *p_precinct) {
+void TileProcessor::code_block_dec_deallocate(tcd_precinct_t *p_precinct) {
 	uint64_t cblkno, l_nb_code_blocks;
 	tcd_cblk_dec_t *l_code_block = p_precinct->cblks.dec;
 	if (l_code_block) {
@@ -1721,7 +1716,7 @@ void tcd_t::code_block_dec_deallocate(tcd_precinct_t *p_precinct) {
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void tcd_t::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
+void TileProcessor::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
 	uint64_t cblkno, l_nb_code_blocks;
 	tcd_cblk_enc_t *l_code_block = p_precinct->cblks.enc;
 	if (l_code_block) {
@@ -1735,7 +1730,7 @@ void tcd_t::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
 	}
 }
 
-uint64_t tcd_t::get_encoded_tile_size() {
+uint64_t TileProcessor::get_encoded_tile_size() {
 	uint32_t i = 0;
 	opj_image_comp_t *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
@@ -1765,7 +1760,7 @@ uint64_t tcd_t::get_encoded_tile_size() {
 	return l_data_size;
 }
 
-bool tcd_t::dc_level_shift_encode() {
+bool TileProcessor::dc_level_shift_encode() {
 	uint32_t compno;
 	tcd_tilecomp_t *l_tile_comp = nullptr;
 	tccp_t *l_tccp = nullptr;
@@ -1805,7 +1800,7 @@ bool tcd_t::dc_level_shift_encode() {
 	return true;
 }
 
-bool tcd_t::mct_encode() {
+bool TileProcessor::mct_encode() {
 	tcd_tile_t *l_tile = tile;
 	tcd_tilecomp_t *l_tile_comp = tile->comps;
 	uint64_t samples = (uint64_t) (l_tile_comp->x1 - l_tile_comp->x0)
@@ -1862,7 +1857,7 @@ bool tcd_t::mct_encode() {
 	return true;
 }
 
-bool tcd_t::dwt_encode() {
+bool TileProcessor::dwt_encode() {
 	tcd_tile_t *l_tile = tile;
 	int64_t compno = 0;
 	bool rc = true;
@@ -1886,7 +1881,7 @@ bool tcd_t::dwt_encode() {
 	return rc;
 }
 
-bool tcd_t::t1_encode() {
+bool TileProcessor::t1_encode() {
 	const double *l_mct_norms;
 	uint32_t l_mct_numcomps = 0U;
 	tcp_t *l_tcp = tcp;
@@ -1907,11 +1902,10 @@ bool tcd_t::t1_encode() {
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 
 	return t1_wrap->encodeCodeblocks(l_tcp, tile, l_mct_norms,
-			l_mct_numcomps, needs_rate_control(tcp,
-					&cp->m_specific_param.m_enc));
+			l_mct_numcomps, needs_rate_control());
 }
 
-bool tcd_t::t2_encode(GrokStream *p_stream,
+bool TileProcessor::t2_encode(GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info) {
 	t2_t *l_t2;
@@ -2005,7 +1999,7 @@ bool tcd_t::t2_encode(GrokStream *p_stream,
 	return true;
 }
 
-bool  tcd_t::rate_allocate_encode(uint64_t max_dest_size,
+bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
 		opj_codestream_info_t *p_cstr_info) {
 	cp_t *l_cp = cp;
 	uint64_t l_nb_written = 0;
@@ -2041,7 +2035,7 @@ bool  tcd_t::rate_allocate_encode(uint64_t max_dest_size,
 	return true;
 }
 
-bool tcd_t::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
+bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
 	opj_image_comp_t *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;

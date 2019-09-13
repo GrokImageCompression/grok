@@ -198,7 +198,7 @@ static inline long grok_lrintf(float f) {
 #include "tile_buf.h"
 #include "pi.h"
 #include "tgt.h"
-#include "tcd.h"
+#include "TileProcessor.h"
 #include "dwt_interface.h"
 #include "dwt.h"
 #include "dwt53.h"

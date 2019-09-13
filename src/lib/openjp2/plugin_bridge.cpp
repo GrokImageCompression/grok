@@ -22,7 +22,7 @@ namespace grk {
 
 // Performed after T2, just before plugin decode is triggered
 // note: only support single segment at the moment
-void decode_synch_plugin_with_host(tcd_t *tcd) {
+void decode_synch_plugin_with_host(TileProcessor *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
 		auto tcd_tile = tcd->tile;
 		for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -142,7 +142,7 @@ bool tile_equals(grok_plugin_tile_t *plugin_tile, tcd_tile_t *p_tile) {
 	return true;
 }
 
-void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
+void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
 		uint32_t bandno, uint32_t precno, uint32_t cblkno, tcd_band_t *band,
 		tcd_cblk_enc_t *cblk, uint32_t *numPix) {
 
@@ -221,8 +221,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 			grok_plugin_pass_t *pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
-			if (tcd->needs_rate_control(tcd->tcp,
-					&tcd->cp->m_specific_param.m_enc)) {
+			if (tcd->needs_rate_control()) {
 				if (state & GROK_PLUGIN_STATE_DEBUG) {
 					if (fabs(
 							pass->distortiondec
@@ -260,7 +259,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 }
 
 // set context stream for debugging purposes
-void set_context_stream(tcd_t *p_tcd) {
+void set_context_stream(TileProcessor *p_tcd) {
 	for (uint32_t compno = 0; compno < p_tcd->tile->numcomps; compno++) {
 		tcd_tilecomp_t *tilec = p_tcd->tile->comps + compno;
 		tilec->numpix = 0;

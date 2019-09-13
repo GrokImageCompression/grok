@@ -285,7 +285,6 @@ void OPJ_CALLCONV opj_set_default_decoder_parameters(
 		opj_dparameters_t *parameters) {
 	if (parameters) {
 		memset(parameters, 0, sizeof(opj_dparameters_t));
-		parameters->numThreads = hardware_concurrency();
 	}
 }
 bool OPJ_CALLCONV opj_setup_decoder(opj_codec_t *p_codec,

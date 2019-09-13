@@ -478,7 +478,7 @@ struct j2k_enc_t {
 struct j2k_t;
 typedef bool (*j2k_procedure)(j2k_t *j2k, GrokStream*);
 
-struct tcd_t;
+struct TileProcessor;
 /**
  JPEG-2000 codestream reader/writer
  */
@@ -514,9 +514,7 @@ struct j2k_t {
 	uint32_t m_current_tile_number;
 
 	/** the current tile coder/decoder **/
-	tcd_t *m_tcd;
-
-	uint32_t numThreads;
+	TileProcessor *m_tcd;
 
 };
 
