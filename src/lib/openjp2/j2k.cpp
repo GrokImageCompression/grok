@@ -383,7 +383,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream);
 
 static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index);
 
-static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
+static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
 		opj_image_t *p_output_image, bool clearOutputOnInit);
 
 static void get_tile_dimensions(opj_image_t *l_image, tcd_tilecomp_t *l_tilec,
@@ -391,7 +391,7 @@ static void get_tile_dimensions(opj_image_t *l_image, tcd_tilecomp_t *l_tilec,
 		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
 		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
-static void j2k_get_tile_data(tcd_t *p_tcd, uint8_t *p_data);
+static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data);
 
 static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream);
 
@@ -814,7 +814,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream            the stream to write data to.
  
  */
-static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
+static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		GrokStream *p_stream);
 
@@ -3754,7 +3754,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_sod(j2k_t *p_j2k, tcd_t *p_tile_coder,
+static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		GrokStream *p_stream) {
 	opj_codestream_info_t *l_cstr_info = nullptr;
@@ -5163,7 +5163,6 @@ void j2k_setup_decoder(void *j2k_void, opj_dparameters_t *parameters) {
 	if (j2k && parameters) {
 		j2k->m_cp.m_specific_param.m_dec.m_layer = parameters->cp_layer;
 		j2k->m_cp.m_specific_param.m_dec.m_reduce = parameters->cp_reduce;
-		j2k->numThreads = parameters->numThreads;
 	}
 }
 
@@ -5920,7 +5919,6 @@ bool j2k_setup_encoder(j2k_t *p_j2k, opj_cparameters_t *parameters,
 		grok_free(parameters->mct_data);
 		parameters->mct_data = nullptr;
 	}
-	p_j2k->numThreads = parameters->numThreads;
 	return true;
 }
 
@@ -6758,10 +6756,9 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	}
 
 	/* Create the current tile decoder*/
-	p_j2k->m_tcd = new tcd_t();
-	p_j2k->m_tcd->m_is_decoder = true;
+	p_j2k->m_tcd = new TileProcessor(true);
 
-	if (!p_j2k->m_tcd->init(l_image, &(p_j2k->m_cp), p_j2k->numThreads)) {
+	if (!p_j2k->m_tcd->init(l_image, &(p_j2k->m_cp))) {
 		delete p_j2k->m_tcd;
 		p_j2k->m_tcd = nullptr;
 		GROK_ERROR( "Cannot decode tile, memory error");
@@ -7588,7 +7585,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
  This method copies a sub-region of this region into p_output_image (which stores data in 32 bit precision)
 
  */
-static bool j2k_copy_decoded_tile_to_output_image(tcd_t *p_tcd, uint8_t *p_data,
+static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
 		opj_image_t *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
 	opj_image_t *image_src = p_tcd->image;
@@ -9546,7 +9543,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 	uint64_t l_current_tile_size;
 	uint8_t *l_current_data = nullptr;
 	bool l_reuse_data = false;
-	tcd_t *p_tcd = nullptr;
+	TileProcessor *p_tcd = nullptr;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -9744,7 +9741,7 @@ static void get_tile_dimensions(opj_image_t *l_image, tcd_tilecomp_t *l_tilec,
 			+ (uint64_t) (l_tilec->y0 - *l_offset_y) * *l_image_width;
 }
 
-static void j2k_get_tile_data(tcd_t *p_tcd, uint8_t *p_data) {
+static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {
 	uint32_t i, j, k = 0;
 
 	for (i = 0; i < p_tcd->image->numcomps; ++i) {
@@ -9936,7 +9933,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 	uint64_t l_nb_bytes_written = 0;
 	uint64_t l_current_nb_bytes_written;
 
-	tcd_t *l_tcd = nullptr;
+	TileProcessor *l_tcd = nullptr;
 	cp_t *l_cp = nullptr;
 
 	l_tcd = p_j2k->m_tcd;
@@ -10003,7 +10000,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 	uint32_t pino;
 
 	tcp_t *l_tcp = nullptr;
-	tcd_t *l_tcd = nullptr;
+	TileProcessor *l_tcd = nullptr;
 	cp_t *l_cp = nullptr;
 
 	l_tcd = p_j2k->m_tcd;
@@ -10172,8 +10169,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 	
 	assert(p_stream != nullptr);
 
-	p_j2k->m_tcd = new tcd_t();
-	p_j2k->m_tcd->m_is_decoder = false;
+	p_j2k->m_tcd = new TileProcessor(false);
 
 	if (!p_j2k->m_tcd) {
 		GROK_ERROR(
@@ -10181,8 +10177,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 		return false;
 	}
 
-	if (!p_j2k->m_tcd->init( p_j2k->m_private_image, &p_j2k->m_cp,
-			p_j2k->numThreads)) {
+	if (!p_j2k->m_tcd->init( p_j2k->m_private_image, &p_j2k->m_cp)) {
 		delete p_j2k->m_tcd;
 		p_j2k->m_tcd = nullptr;
 		return false;

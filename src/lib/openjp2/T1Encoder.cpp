@@ -28,9 +28,6 @@ T1Encoder::T1Encoder(tcp_t *tcp, tcd_tile_t *tile, uint16_t encodeMaxCblkW,
 		encodeBlocks(nullptr),
 		blockCount(-1)
 {
-#ifdef DEBUG_LOSSLESS_T1
-	numThreads = 1;
-#endif
 	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
 		threadStructs.push_back(
 				t1_factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));

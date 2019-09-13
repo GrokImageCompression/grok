@@ -319,36 +319,33 @@ bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 /**
  Tile coder/decoder
  */
-struct tcd_t {
+struct TileProcessor {
 
-	tcd_t() : tp_pos(0),
+	TileProcessor(bool isDecoder) : tp_pos(0),
 			  tp_num(0),
 			  cur_tp_num(0),
 			  cur_totnum_tp(0),
 			  cur_pino(0),
 			  tile(nullptr),
 			  image(nullptr),
+			  current_plugin_tile(nullptr),
 			  cp(nullptr),
 			  tcp(nullptr),
 			  tcd_tileno(0),
-			  m_is_decoder(0),
-			  current_plugin_tile(nullptr),
-			  numThreads(0)
+			  m_is_decoder(isDecoder)
 	{}
 
-	~tcd_t(){
+	~TileProcessor(){
 		free_tile();
 	}
 
 	/**
 	 * Initialize the tile coder and may reuse some memory.
 	 * @param	p_image		raw image.
-	 * @param	p_cp		coding parameters.
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init(opj_image_t *p_image, cp_t *p_cp,
-			uint32_t numThreads);
+	bool init(opj_image_t *p_image, cp_t *p_cp);
 
 	/**
 	 * Allocates memory for decoding a specific tile.
@@ -395,9 +392,7 @@ struct tcd_t {
 	bool update_tile_data(uint8_t *p_dest,
 			uint64_t dest_length);
 
-	/**
-	 *
-	 */
+
 	uint64_t get_encoded_tile_size();
 
 	/**
@@ -414,13 +409,8 @@ struct tcd_t {
 	 */
 	bool copy_tile_data(uint8_t *p_src, uint64_t src_length);
 
-	/**
-	 * Allocates tile component data
-	 *
-	 *
-	 */
 
-	bool needs_rate_control(tcp_t *tcp, encoding_param_t *enc_params);
+	bool needs_rate_control();
 
 
 	/** Position of the tile part flag in progression order*/
@@ -437,6 +427,9 @@ struct tcd_t {
 	tcd_tile_t *tile;
 	/** image header */
 	opj_image_t *image;
+	grok_plugin_tile_t *current_plugin_tile;
+
+private:
 	/** coding parameters */
 	cp_t *cp;
 	/** coding/decoding parameters common to all tiles */
@@ -444,11 +437,7 @@ struct tcd_t {
 	/** current encoded tile (not used for decode) */
 	uint32_t tcd_tileno;
 	/** indicate if the tcd is a decoder. */
-	uint32_t m_is_decoder :1;
-	grok_plugin_tile_t *current_plugin_tile;
-	uint32_t numThreads;
-
-private :
+	bool m_is_decoder;
 
 	/**
 	 * Initializes tile coding/decoding
@@ -469,7 +458,6 @@ private :
 
 	/**
 	 Free the memory allocated for encoding
-	 @param tcd TCD handle
 	 */
 	 void free_tile();
 
@@ -499,8 +487,7 @@ private :
 	 bool rate_allocate_encode(uint64_t max_dest_size,
 			opj_codestream_info_t *p_cstr_info);
 
-	 bool layer_needs_rate_control(uint32_t layno, tcp_t *tcp,
-			encoding_param_t *enc_params);
+	 bool layer_needs_rate_control(uint32_t layno);
 
 	 bool make_single_lossless_layer();
 
@@ -518,9 +505,6 @@ private :
 	 void makelayer_feasible(uint32_t layno, uint16_t thresh,
 			bool final);
 
-
 };
-
-
 
 }

@@ -41,9 +41,6 @@ T1Decoder::~T1Decoder() {
 bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;;
-#ifdef DEBUG_LOSSLESS_T1
-	numThreads = 1;
-#endif
 	auto maxBlocks = blocks->size();
 	decodeBlocks = new decodeBlockInfo*[maxBlocks];
 	for (uint64_t i = 0; i < maxBlocks; ++i) {

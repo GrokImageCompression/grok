@@ -33,16 +33,16 @@
 
 namespace grk {
 
-void decode_synch_plugin_with_host(tcd_t *tcd);
+void decode_synch_plugin_with_host(TileProcessor *tcd);
 
-void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
+void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,
 		uint32_t bandno, uint32_t precno, uint32_t cblkno, tcd_band_t *band,
 		tcd_cblk_enc_t *cblk, uint32_t *numPix);
 
 bool tile_equals(grok_plugin_tile_t *plugin_tile, tcd_tile_t *p_tile);
 
 // set context stream for debugging purposes
-void set_context_stream(tcd_t *p_tcd);
+void set_context_stream(TileProcessor *p_tcd);
 
 void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d);
 
