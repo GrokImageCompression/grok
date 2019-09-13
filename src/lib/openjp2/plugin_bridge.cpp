@@ -221,7 +221,7 @@ void encode_synch_with_plugin(tcd_t *tcd, uint32_t compno, uint32_t resno,
 			grok_plugin_pass_t *pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
-			if (tcd_needs_rate_control(tcd->tcp,
+			if (tcd->needs_rate_control(tcd->tcp,
 					&tcd->cp->m_specific_param.m_enc)) {
 				if (state & GROK_PLUGIN_STATE_DEBUG) {
 					if (fabs(
