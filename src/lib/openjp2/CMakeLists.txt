@@ -186,7 +186,7 @@ install(FILES openjpeg.h
 if(BUILD_DOC)
 # install man page of the library
 install(
-  FILES       ${GROK_SOURCE_DIR}/doc/man/man3/libopenjp2.3
+  FILES       ${GROK_SOURCE_DIR}/doc/man/man3/libgrok.3
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man3)
 endif()
 

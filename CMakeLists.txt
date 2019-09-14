@@ -22,8 +22,8 @@ if(NOT GROK_NAMESPACE)
 endif()
 # In all cases:
 #string(TOLOWER ${GROK_NAMESPACE} GROK_LIBRARY_NAME)
-set(GROK_LIBRARY_NAME openjp2)
-set(GROK_PLUGIN_NAME openjp2_plugin)
+set(GROK_LIBRARY_NAME grok)
+set(GROK_PLUGIN_NAME grok_plugin)
 
 project(${GROK_NAMESPACE} )
 
@@ -100,7 +100,7 @@ include(GNUInstallDirs)
 option(BUILD_DOC "Build the HTML documentation (with doxygen if available)." OFF)
 
 string(TOLOWER ${PROJECT_NAME} projectname)
-set(GROK_INSTALL_SUBDIR "openjpeg-2.3")
+set(GROK_INSTALL_SUBDIR "grok-${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}")
 
 if(NOT GROK_INSTALL_PACKAGE_DIR)
   set(GROK_INSTALL_PACKAGE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${GROK_INSTALL_SUBDIR}")
@@ -293,9 +293,9 @@ else()
   option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
 if(BUILD_PKGCONFIG_FILES)
-   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libopenjp2.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc @ONLY)
-  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc DESTINATION
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libgrok.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc @ONLY)
+  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
 #
 
