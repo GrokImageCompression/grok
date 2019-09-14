@@ -61,7 +61,7 @@ logger::logger() : m_error_data(nullptr), m_warning_data(nullptr), m_info_data(n
 
 
 template <typename ... Args>
-void log(opj_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
 {
     const int message_size = 512;
 	if ((format != nullptr)) {

@@ -55,7 +55,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "BMPFormat.h"
 #include "convert.h"
@@ -71,7 +71,7 @@ typedef struct {
 	uint16_t bfReserved1; /* Reserved : 0            */
 	uint16_t bfReserved2; /* Reserved : 0            */
 	uint32_t bfOffBits;   /* Offset                  */
-} OPJ_BITMAPFILEHEADER;
+} GRK_BITMAPFILEHEADER;
 
 typedef struct {
 	uint32_t biSize;             /* Size of the structure in bytes */
@@ -98,7 +98,7 @@ typedef struct {
 	uint32_t biIccProfileData;   /* ICC profile data */
 	uint32_t biIccProfileSize;   /* ICC profile size */
 	uint32_t biReserved;         /* Reserved */
-} OPJ_BITMAPINFOHEADER;
+} GRK_BITMAPINFOHEADER;
 
 template<typename T> bool get_int(FILE* INPUT, T* val) {
 	T rc = 0;
@@ -112,7 +112,7 @@ template<typename T> bool get_int(FILE* INPUT, T* val) {
 	return true;
 }
 
-static void opj_applyLUT8u_8u32s_C1R(
+static void grk_applyLUT8u_8u32s_C1R(
 	uint8_t const* pSrc, int32_t srcStride,
 	int32_t* pDst, int32_t dstStride,
 	uint8_t const* pLUT,
@@ -127,7 +127,7 @@ static void opj_applyLUT8u_8u32s_C1R(
 	}
 }
 
-static void opj_applyLUT8u_8u32s_C1P3R(
+static void grk_applyLUT8u_8u32s_C1P3R(
 	uint8_t const* pSrc, int32_t srcStride,
 	int32_t* const* pDst, int32_t const* pDstStride,
 	uint8_t const* const* pLUT,
@@ -153,7 +153,7 @@ static void opj_applyLUT8u_8u32s_C1P3R(
 		pB += pDstStride[2];
 	}
 }
-static void bmp24toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image){
+static void bmp24toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image){
 	int index;
 	uint32_t width, height;
 	const uint8_t *pSrc = nullptr;
@@ -191,7 +191,7 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t* shift, uint32_t
 	*shift = l_shift;
 	*prec = l_prec;
 }
-static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
+static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
 	uint32_t width, height;
@@ -239,7 +239,7 @@ static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 		pSrc -= stride;
 	}
 }
-static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
+static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
 	uint32_t width, height;
@@ -284,7 +284,7 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, opj_image_t*
 		pSrc -= stride;
 	}
 }
-static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image_t* image, uint8_t const* const* pLUT)
+static grk_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint8_t const* const* pLUT)
 {
 	uint32_t width, height;
 	const uint8_t *pSrc = nullptr;
@@ -293,7 +293,7 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 	height = image->comps[0].h;
 	pSrc = pData + (height - 1U) * stride;
 	if (image->numcomps == 1U) {
-		opj_applyLUT8u_8u32s_C1R(pSrc, -(int32_t)stride, image->comps[0].data, (int32_t)width, pLUT[0], width, height);
+		grk_applyLUT8u_8u32s_C1R(pSrc, -(int32_t)stride, image->comps[0].data, (int32_t)width, pLUT[0], width, height);
 	}
 	else {
 		int32_t* pDst[3];
@@ -305,11 +305,11 @@ static opj_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, opj_image
 		pDstStride[0] = (int32_t)width;
 		pDstStride[1] = (int32_t)width;
 		pDstStride[2] = (int32_t)width;
-		opj_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t)stride, pDst, pDstStride, pLUT, width, height);
+		grk_applyLUT8u_8u32s_C1P3R(pSrc, -(int32_t)stride, pDst, pDstStride, pLUT, width, height);
 	}
 	return image;
 }
-static bool bmp_read_file_header(FILE* INPUT, OPJ_BITMAPFILEHEADER* header){
+static bool bmp_read_file_header(FILE* INPUT, GRK_BITMAPFILEHEADER* header){
 	if (!get_int(INPUT, &header->bfType))
 		return false;
 	if (header->bfType != 19778) {
@@ -326,7 +326,7 @@ static bool bmp_read_file_header(FILE* INPUT, OPJ_BITMAPFILEHEADER* header){
 		return false;
 	return true;
 }
-static bool bmp_read_info_header(FILE* INPUT, OPJ_BITMAPINFOHEADER* header){
+static bool bmp_read_info_header(FILE* INPUT, GRK_BITMAPINFOHEADER* header){
 	memset(header, 0, sizeof(*header));
 	/* INFO HEADER */
 	/* ------------- */
@@ -559,17 +559,17 @@ static bool bmp_read_rle4_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uin
 	}  /* while(y < height) */
 	return true;
 }
-static opj_image_t* bmptoimage(const char *filename, 
-								opj_cparameters_t *parameters)
+static grk_image_t* bmptoimage(const char *filename, 
+								grk_cparameters_t *parameters)
 {
 	bool readFromStdin = grk::useStdio(filename);
-	opj_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
+	grk_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
-	opj_image_t * image = nullptr;
+	grk_image_t * image = nullptr;
 	FILE *INPUT = nullptr;
-	OPJ_BITMAPFILEHEADER File_h;
-	OPJ_BITMAPINFOHEADER Info_h;
+	GRK_BITMAPFILEHEADER File_h;
+	GRK_BITMAPINFOHEADER Info_h;
 	uint32_t i, palette_len, numcmpts = 1U;
 	bool l_result = false;
 	uint8_t* pData = nullptr;
@@ -702,12 +702,12 @@ static opj_image_t* bmptoimage(const char *filename,
 		cmptparm[i].h = Info_h.biHeight;
 	}
 
-	image = opj_image_create(numcmpts, &cmptparm[0], (numcmpts == 1U) ? OPJ_CLRSPC_GRAY : OPJ_CLRSPC_SRGB);
+	image = grk_image_create(numcmpts, &cmptparm[0], (numcmpts == 1U) ? GRK_CLRSPC_GRAY : GRK_CLRSPC_SRGB);
 	if (!image) {
 		goto cleanup;
 	}
 	// ICC profile
-	if (Info_h.biSize == sizeof(OPJ_BITMAPINFOHEADER) &&
+	if (Info_h.biSize == sizeof(GRK_BITMAPINFOHEADER) &&
 		Info_h.biColorSpaceType == BMP_ICC_PROFILE_EMBEDDED &&
 		Info_h.biIccProfileSize &&
 		Info_h.biIccProfileSize < grk::maxICCProfileBufferLen) {
@@ -717,15 +717,15 @@ static opj_image_t* bmptoimage(const char *filename,
 			goto cleanup;
 		}
 		//allocate buffer
-		image->icc_profile_buf = opj_buffer_new(Info_h.biIccProfileSize);
+		image->icc_profile_buf = grk_buffer_new(Info_h.biIccProfileSize);
 		size_t bytesRead = fread(image->icc_profile_buf, 1, Info_h.biIccProfileSize, INPUT);
 		if (bytesRead != Info_h.biIccProfileSize){
-		    opj_buffer_delete(image->icc_profile_buf);
+		    grk_buffer_delete(image->icc_profile_buf);
 		    image->icc_profile_buf = nullptr;
 			goto cleanup;
 		}
 		image->icc_profile_len = Info_h.biIccProfileSize;
-		image->color_space = OPJ_CLRSPC_ICC;
+		image->color_space = GRK_CLRSPC_ICC;
 	}
 	if (numcmpts == 4U) {
 		image->comps[3].alpha = 1;
@@ -768,7 +768,7 @@ static opj_image_t* bmptoimage(const char *filename,
 		bmpmask16toimage(pData, stride, image, Info_h.biRedMask, Info_h.biGreenMask, Info_h.biBlueMask, Info_h.biAlphaMask);
 	}
 	else {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 		spdlog::error("Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [{}]\n", Info_h.biBitCount);
 	}
@@ -777,7 +777,7 @@ cleanup:
 		free(pData);
 	if (!readFromStdin && INPUT){
 		if (!grk::safe_fclose(INPUT)){
-			opj_image_destroy(image);
+			grk_image_destroy(image);
 			image = nullptr;
 		}
 	}
@@ -791,7 +791,7 @@ static bool write_short(FILE* fdest, uint16_t val) {
 	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
 	return (rc == sizeof(val));
 }
-static int imagetobmp(opj_image_t * image, const char *outfile, bool verbose){
+static int imagetobmp(grk_image_t * image, const char *outfile, bool verbose){
 	bool writeToStdout = grk::useStdio(outfile);
 	uint32_t w, h;
 	int32_t pad;
@@ -1040,10 +1040,10 @@ cleanup:
 }
 
 
-bool BMPFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool BMPFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	return imagetobmp(image, filename, verbose) ? false : true;
 }
-opj_image_t*  BMPFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+grk_image_t*  BMPFormat::decode(const char* filename, grk_cparameters_t *parameters) {
 	return bmptoimage(filename, parameters);
 }

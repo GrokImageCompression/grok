@@ -42,7 +42,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#define USE_OPJ_DEPRECATED
+#define USE_GRK_DEPRECATED
 /* set this macro to enable profiling for the given test */
 /* warning : in order to be effective, Grok must have been built with profiling enabled !! */
 /*#define _PROFILE*/
@@ -179,10 +179,10 @@ static void info_callback(const char *msg, void *client_data)
 
 int main (int argc, char *argv[])
 {
-    opj_dparameters_t l_param;
-    opj_codec_t * l_codec;
-    opj_image_t * l_image;
-    opj_stream_t * l_stream;
+    grk_dparameters_t l_param;
+    grk_codec_t * l_codec;
+    grk_image_t * l_image;
+    grk_stream_t * l_stream;
     uint64_t l_data_size=0;
     uint64_t l_max_data_size = 1000;
     uint32_t l_tile_index;
@@ -248,15 +248,15 @@ int main (int argc, char *argv[])
     if (! l_data)
         goto beach;
 
-    opj_initialize(nullptr,0);
-    l_stream = opj_stream_create_default_file_stream(input_file,true);
+    grk_initialize(nullptr,0);
+    l_stream = grk_stream_create_default_file_stream(input_file,true);
     if (!l_stream) {
         spdlog::error("failed to create the stream from the file\n");
         goto beach;
     }
 
     /* Set the default decoding parameters */
-    opj_set_default_decoder_parameters(&l_param);
+    grk_set_default_decoder_parameters(&l_param);
 
     /* */
     l_param.decod_format = infile_format(input_file);
@@ -269,18 +269,18 @@ int main (int argc, char *argv[])
     l_param.cp_reduce = 0;
 
     /* to decode only a part of the image data */
-    /*opj_restrict_decoding(&l_param,0,0,1000,1000);*/
+    /*grk_restrict_decoding(&l_param,0,0,1000,1000);*/
 
 
     switch(l_param.decod_format) {
     case J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
-        l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+        l_codec = grk_create_decompress(GRK_CODEC_J2K);
         break;
     }
     case JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
-        l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+        l_codec = grk_create_decompress(GRK_CODEC_JP2);
         break;
     }
     default: {
@@ -291,30 +291,30 @@ int main (int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback,nullptr);
-    opj_set_warning_handler(l_codec, warning_callback,nullptr);
-    opj_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(l_codec, info_callback,nullptr);
+    grk_set_warning_handler(l_codec, warning_callback,nullptr);
+    grk_set_error_handler(l_codec, error_callback,nullptr);
 
     /* Setup the decoder decoding parameters using user parameters */
-    if (! opj_setup_decoder(l_codec, &l_param)) {
+    if (! grk_setup_decoder(l_codec, &l_param)) {
         spdlog::error("j2k_dump: failed to setup the decoder\n");
         goto beach;
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if (! opj_read_header(l_stream, l_codec,&l_image)) {
+    if (! grk_read_header(l_stream, l_codec,&l_image)) {
         spdlog::error("j2k_to_image: failed to read the header\n");
         goto beach;
     }
 
-    if (!opj_set_decode_area(l_codec, l_image, da_x0, da_y0,da_x1, da_y1)) {
+    if (!grk_set_decode_area(l_codec, l_image, da_x0, da_y0,da_x1, da_y1)) {
         fprintf(stderr,	"[ERROR] j2k_to_image: failed to set the decoded area\n");
         goto beach;
     }
 
 
     while (l_go_on) {
-        if (! opj_read_tile_header( l_codec,
+        if (! grk_read_tile_header( l_codec,
                                     l_stream,
                                     &l_tile_index,
                                     &l_data_size,
@@ -335,26 +335,26 @@ int main (int argc, char *argv[])
                 l_max_data_size = l_data_size;
             }
 
-            if (! opj_decode_tile_data(l_codec,l_tile_index,l_data,l_data_size,l_stream))
+            if (! grk_decode_tile_data(l_codec,l_tile_index,l_data,l_data_size,l_stream))
             	goto beach;
             /** now should inspect image to know the reduction factor and then how to behave with data */
         }
     }
 
-    if (! opj_end_decompress(l_codec,l_stream))
+    if (! grk_end_decompress(l_codec,l_stream))
         goto beach;
 
     rc = EXIT_SUCCESS;
-    opj_deinitialize();
+    grk_deinitialize();
 
 beach:
 	free(l_data);
 	if (l_stream)
-		opj_stream_destroy(l_stream);
+		grk_stream_destroy(l_stream);
 	if (l_codec)
-		opj_destroy_codec(l_codec);
+		grk_destroy_codec(l_codec);
 	if (l_image)
-		opj_image_destroy(l_image);
+		grk_image_destroy(l_image);
 
     return rc;
 }

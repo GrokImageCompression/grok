@@ -60,8 +60,8 @@
 class IImageFormat {
 public:
 	virtual ~IImageFormat() {}
-	virtual bool encode(opj_image_t* image, std::string filename , int compressionParam, bool verbose)=0;
-	virtual opj_image_t* decode(std::string filename , opj_cparameters_t *parameters)=0;
+	virtual bool encode(grk_image_t* image, std::string filename , int compressionParam, bool verbose)=0;
+	virtual grk_image_t* decode(std::string filename , grk_cparameters_t *parameters)=0;
 
 
 };

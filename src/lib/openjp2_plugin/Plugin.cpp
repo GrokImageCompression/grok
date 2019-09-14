@@ -61,7 +61,7 @@ extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info_t initInfo) {
 // Encoder Interface Implementation
 ////////////////////////////////////
 
-extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameters,
+extern "C"  PLUGIN_API int32_t plugin_encode(grk_cparameters_t* encode_parameters,
 											grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
 	grk::plugin_encode_user_callback_info_t dummy;
 	dummy.error_code = 0;
@@ -70,7 +70,7 @@ extern "C"  PLUGIN_API int32_t plugin_encode(opj_cparameters_t* encode_parameter
 
 extern "C"  PLUGIN_API int32_t plugin_batch_encode(const char* input_dir,
 													const char* output_dir,
-													opj_cparameters_t* encode_parameters,
+													grk_cparameters_t* encode_parameters,
 													grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
 	return -1;
 }
@@ -89,14 +89,14 @@ extern "C"  PLUGIN_API void plugin_stop_batch_encode(void) {
 // Decoder Interface Implementation
 ////////////////////////////////////
 
-extern "C"  PLUGIN_API int32_t plugin_decode(opj_decompress_parameters* decode_parameters,
+extern "C"  PLUGIN_API int32_t plugin_decode(grk_decompress_parameters* decode_parameters,
 											grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
 	return -1;
 }
 
 extern "C"  PLUGIN_API int32_t plugin_init_batch_decode(const char* input_dir,
 													const char* output_dir,
-													opj_decompress_parameters* decode_parameters,
+													grk_decompress_parameters* decode_parameters,
 													grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
 
 	return -1;

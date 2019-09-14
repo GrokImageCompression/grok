@@ -16,7 +16,7 @@
 */
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "JPEGFormat.h"
 #include "convert.h"
@@ -77,7 +77,7 @@ struct imageToJpegInfo {
 };
 
 
-static int imagetojpeg(opj_image_t* image, const char *filename, int compressionParam, bool verbose)
+static int imagetojpeg(grk_image_t* image, const char *filename, int compressionParam, bool verbose)
 {
 	if (!image)
 		return 1;
@@ -127,19 +127,19 @@ static int imagetojpeg(opj_image_t* image, const char *filename, int compression
 	JDIMENSION image_height = image->y1 - image->y0;      /* input image height */
 
 	switch (image->color_space) {
-	case OPJ_CLRSPC_SRGB: 		/**< sRGB */
+	case GRK_CLRSPC_SRGB: 		/**< sRGB */
 		info.color_space = JCS_RGB;
 		break;
-	case OPJ_CLRSPC_GRAY: 		/**< grayscale */
+	case GRK_CLRSPC_GRAY: 		/**< grayscale */
 		info.color_space = JCS_GRAYSCALE;
 		break;
-	case OPJ_CLRSPC_SYCC:		/**< YUV */
+	case GRK_CLRSPC_SYCC:		/**< YUV */
 		info.color_space = JCS_YCbCr;
 		break;
-	case OPJ_CLRSPC_EYCC:        /**< e-YCC */
+	case GRK_CLRSPC_EYCC:        /**< e-YCC */
 		info.color_space = JCS_YCCK;
 		break;
-	case OPJ_CLRSPC_CMYK:        /**< CMYK */
+	case GRK_CLRSPC_CMYK:        /**< CMYK */
 		info.color_space = JCS_CMYK;
 		break;
 	default:
@@ -377,13 +377,13 @@ struct jpegToImageInfo {
 
 	FILE *infile;
 	bool readFromStdin;
-	opj_image_t *image;
+	grk_image_t *image;
 	bool success;
 	int32_t* buffer32s;
 };
 
-static opj_image_t* jpegtoimage(const char *filename, 
-								opj_cparameters_t *parameters)
+static grk_image_t* jpegtoimage(const char *filename, 
+								grk_cparameters_t *parameters)
 {
 	jpegToImageInfo imageInfo;
 	imageInfo.readFromStdin = grk::useStdio(filename);
@@ -392,8 +392,8 @@ static opj_image_t* jpegtoimage(const char *filename,
 	JDIMENSION w = 0, h = 0;
 	int bps = 0, numcomps = 0;
 	convert_XXx32s_C1R cvtJpegTo32s;
-	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
-	opj_image_cmptparm_t cmptparm[3]; /* mono or RGB */
+	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
+	grk_image_cmptparm_t cmptparm[3]; /* mono or RGB */
 	convert_32s_CXPX cvtCxToPx;
 	JOCTET *icc_data_ptr = nullptr;
 	unsigned int icc_data_len = 0;
@@ -484,13 +484,13 @@ static opj_image_t* jpegtoimage(const char *filename,
 	w = cinfo.image_width;
 	h = cinfo.image_height;
 	cvtJpegTo32s = convert_XXu32s_C1R_LUT[bps];
-	memset(&cmptparm[0], 0, 3 * sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_cmptparm_t));
 	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
 
 	if (cinfo.output_components == 3)
-		color_space = OPJ_CLRSPC_SRGB;
+		color_space = GRK_CLRSPC_SRGB;
 	else
-		color_space = OPJ_CLRSPC_GRAY;
+		color_space = GRK_CLRSPC_GRAY;
 
 	for (int j = 0; j < cinfo.output_components; j++) {
 		cmptparm[j].prec = bps;
@@ -500,13 +500,13 @@ static opj_image_t* jpegtoimage(const char *filename,
 		cmptparm[j].h = h;
 	}
 
-	imageInfo.image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	imageInfo.image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	if (!imageInfo.image) {
 		imageInfo.success = false;
 		goto cleanup;
 	}
 	if (icc_data_ptr && icc_data_len) {
-		imageInfo.image->icc_profile_buf = opj_buffer_new(icc_data_len);
+		imageInfo.image->icc_profile_buf = grk_buffer_new(icc_data_len);
 		memcpy(imageInfo.image->icc_profile_buf, icc_data_ptr, icc_data_len);
 		imageInfo.image->icc_profile_len = icc_data_len;
 		icc_data_len = 0;
@@ -605,7 +605,7 @@ cleanup:
 	}
 	
 	if (!imageInfo.success) {
-		opj_image_destroy(imageInfo.image);
+		grk_image_destroy(imageInfo.image);
 		imageInfo.image = nullptr;
 	}
 	/* After finish_decompress, we can close the input file.
@@ -615,17 +615,17 @@ cleanup:
 	*/
 	if (imageInfo.infile && !imageInfo.readFromStdin){
 		if (!grk::safe_fclose(imageInfo.infile)){
-			opj_image_destroy(imageInfo.image);
+			grk_image_destroy(imageInfo.image);
 			imageInfo.image = nullptr;
 		}
 	}
 	return imageInfo.image;
 }/* jpegtoimage() */
 
-bool JPEGFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool JPEGFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	return imagetojpeg(image, filename, compressionParam, verbose) ? false : true;
 }
-opj_image_t*  JPEGFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+grk_image_t*  JPEGFormat::decode(const char* filename, grk_cparameters_t *parameters) {
 	return jpegtoimage(filename, parameters);
 }
 

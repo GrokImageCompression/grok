@@ -56,17 +56,17 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "RAWFormat.h"
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool RAWFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	return imagetoraw(image, filename, bigEndian,verbose) ? true : false;
 }
-opj_image_t* RAWFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+grk_image_t* RAWFormat::decode(const char* filename, grk_cparameters_t *parameters) {
 	return rawtoimage(filename, parameters, bigEndian);
 }
 
@@ -89,8 +89,8 @@ template<typename T> static bool read(FILE *rawFile, bool big_endian,
 	return true;
 }
 
-opj_image_t* RAWFormat::rawtoimage(const char *filename,
-										opj_cparameters_t *parameters,
+grk_image_t* RAWFormat::rawtoimage(const char *filename,
+										grk_cparameters_t *parameters,
 										bool big_endian)
 {
 	bool readFromStdin = grk::useStdio(filename);
@@ -100,9 +100,9 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 
 	FILE *f = nullptr;
 	uint32_t i, compno, numcomps, w, h;
-	OPJ_COLOR_SPACE color_space;
-	opj_image_cmptparm_t *cmptparm;
-	opj_image_t * image = nullptr;
+	GRK_COLOR_SPACE color_space;
+	grk_image_cmptparm_t *cmptparm;
+	grk_image_t * image = nullptr;
 	unsigned short ch;
 	bool success = true;
 
@@ -131,20 +131,20 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 	}
 	numcomps = raw_cp->numcomps;
 	if (numcomps == 1) {
-		color_space = OPJ_CLRSPC_GRAY;
+		color_space = GRK_CLRSPC_GRAY;
 	}
 	else if ((numcomps >= 3) && (parameters->tcp_mct == 0)) {
-		color_space = OPJ_CLRSPC_SYCC;
+		color_space = GRK_CLRSPC_SYCC;
 	}
 	else if ((numcomps >= 3) && (parameters->tcp_mct != 2)) {
-		color_space = OPJ_CLRSPC_SRGB;
+		color_space = GRK_CLRSPC_SRGB;
 	}
 	else {
-		color_space = OPJ_CLRSPC_UNKNOWN;
+		color_space = GRK_CLRSPC_UNKNOWN;
 	}
 	w = raw_cp->width;
 	h = raw_cp->height;
-	cmptparm = (opj_image_cmptparm_t*)calloc(numcomps, sizeof(opj_image_cmptparm_t));
+	cmptparm = (grk_image_cmptparm_t*)calloc(numcomps, sizeof(grk_image_cmptparm_t));
 	if (!cmptparm) {
 		spdlog::error("Failed to allocate image components parameters !!");
 		success = false;
@@ -160,7 +160,7 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 		cmptparm[i].h = h;
 	}
 	/* create the image */
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	free(cmptparm);
 	if (!image) {
 		success = false;
@@ -217,12 +217,12 @@ opj_image_t* RAWFormat::rawtoimage(const char *filename,
 cleanup:
 	if (f && !readFromStdin){
 		if (!grk::safe_fclose(f)){
-			opj_image_destroy(image);
+			grk_image_destroy(image);
 			image = nullptr;
 		}
 	}
 	if (!success){
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
@@ -262,7 +262,7 @@ template<typename T> static bool write(FILE *rawFile, bool big_endian,
 	return true;
 }
 
-int RAWFormat::imagetoraw(opj_image_t * image, 
+int RAWFormat::imagetoraw(grk_image_t * image, 
 							const char *outfile,
 							bool big_endian,
 							bool verbose)

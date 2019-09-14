@@ -109,7 +109,7 @@ int64_t seg_buf_t::skip(int64_t nb_bytes)
     bytes_remaining = (size_t)nb_bytes;
     while (cur_seg_id < segments.size && bytes_remaining > 0) {
 
-        buf_t* cur_seg = (buf_t*)opj_vec_get(&segments, cur_seg_id);
+        buf_t* cur_seg = (buf_t*)grk_vec_get(&segments, cur_seg_id);
         bytes_in_current_segment = 	(size_t)(cur_seg->len -cur_seg->offset);
 
         /* hoover up all the bytes in this segment, and move to the next one */
@@ -118,7 +118,7 @@ int64_t seg_buf_t::skip(int64_t nb_bytes)
             incr_cur_seg_offset(seg_buf, bytes_in_current_segment);
 
             bytes_remaining	-= bytes_in_current_segment;
-            cur_seg = (buf_t*)opj_vec_get(&segments, cur_seg_id);
+            cur_seg = (buf_t*)grk_vec_get(&segments, cur_seg_id);
         } else { /* bingo! we found the segment */
             incr_cur_seg_offset(seg_buf, bytes_remaining);
             return nb_bytes;

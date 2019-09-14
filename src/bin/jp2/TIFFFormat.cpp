@@ -57,7 +57,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "TIFFFormat.h"
 #include "convert.h"
@@ -98,13 +98,13 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 }
 
 static bool readTiffPixelsUnsigned(TIFF *tif,
-							opj_image_comp_t *comps,
+							grk_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
 							uint16_t tiPhoto);
 static bool readTiffPixelsSigned(TIFF *tif,
-							opj_image_comp_t *comps,
+							grk_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1127,20 +1127,20 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
 * CINEMA                 : 12 bit precision
 */
-static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *parameters)
+static grk_image_t* tiftoimage(const char *filename, grk_cparameters_t *parameters)
 {
 	TIFF *tif;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
-	OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_UNKNOWN;
-	opj_image_cmptparm_t cmptparm[4];
-	opj_image_t *image = nullptr;
+	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
+	grk_image_cmptparm_t cmptparm[4];
+	grk_image_t *image = nullptr;
 	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
 	uint32_t tiWidth = 0, tiHeight = 0;
-	bool is_cinema = OPJ_IS_CINEMA(parameters->rsiz);
+	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
 	bool success = true;
 	bool isCIE = false;
 
@@ -1212,7 +1212,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm_t));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
 			spdlog::warn("Input image bitdepth is {} bits\n"
@@ -1226,18 +1226,18 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 	numcomps = extrasamples;
 	switch (tiPhoto){
 	case PHOTOMETRIC_RGB:
-		color_space = OPJ_CLRSPC_SRGB;
+		color_space = GRK_CLRSPC_SRGB;
 		numcomps+=3;
 		break;
 	case PHOTOMETRIC_MINISBLACK:
 	case PHOTOMETRIC_MINISWHITE:
-		color_space = OPJ_CLRSPC_GRAY;
+		color_space = GRK_CLRSPC_GRAY;
 		numcomps++;
 		break;
 	case PHOTOMETRIC_CIELAB:
 	case PHOTOMETRIC_ICCLAB:
 		isCIE = true;
-		color_space = OPJ_CLRSPC_DEFAULT_CIE;
+		color_space = GRK_CLRSPC_DEFAULT_CIE;
 		numcomps+=3;
 		if (tiSpp != 3){
 			if (parameters->verbose)
@@ -1283,7 +1283,7 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		cmptparm[j].w = w;
 		cmptparm[j].h = h;
 	}
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	if (!image) {
 		success = false;
 		goto cleanup;
@@ -1343,10 +1343,10 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
 							icclen > 0 &&
 							icclen < grk::maxICCProfileBufferLen) {
-			image->icc_profile_buf = opj_buffer_new(icclen);
+			image->icc_profile_buf = grk_buffer_new(icclen);
 			memcpy(image->icc_profile_buf, iccbuf, icclen);
 			image->icc_profile_len = icclen;
-			image->color_space = OPJ_CLRSPC_ICC;
+			image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
     // 7. extract IPTC meta-data
@@ -1356,13 +1356,13 @@ static opj_image_t* tiftoimage(const char *filename, opj_cparameters_t *paramete
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
 		image->iptc_len = iptc_len * 4;
-		image->iptc_buf = opj_buffer_new(iptc_len);
+		image->iptc_buf = grk_buffer_new(iptc_len);
 		memcpy(image->iptc_buf, iptc_buf, iptc_len);
 	}
 	// 8. extract XML meta-data
 	if (TIFFGetField(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
 		image->xmp_len = xmp_len;
-		image->xmp_buf = opj_buffer_new(xmp_len);
+		image->xmp_buf = grk_buffer_new(xmp_len);
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
 
@@ -1384,14 +1384,14 @@ cleanup:
 		return image;
 	}
 	if (image)
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 
 	return nullptr;
 }/* tiftoimage() */
 
 
 static bool readTiffPixelsUnsigned(TIFF *tif,
-							opj_image_comp_t *comps,
+							grk_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1477,7 +1477,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		planes[j] = comps[j].data;
 	}
 	do {
-		opj_image_comp_t *comp = comps + currentPlane;
+		grk_image_comp_t *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
 		uint32_t height = (int)comp->h;
 		/* Read the Image components */
@@ -1512,7 +1512,7 @@ local_cleanup:
 }
 
 static bool readTiffPixelsSigned(TIFF *tif,
-							opj_image_comp_t *comps,
+							grk_image_comp_t *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1550,7 +1550,7 @@ static bool readTiffPixelsSigned(TIFF *tif,
 		planes[j] = comps[j].data;
 	}
 	do {
-		opj_image_comp_t *comp = comps + currentPlane;
+		grk_image_comp_t *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
 		uint32_t height = (int)comp->h;
 		/* Read the Image components */
@@ -1586,7 +1586,7 @@ local_cleanup:
 }
 
 
-static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compression, bool verbose)
+static int imagetotif(grk_image_t * image, const char *outfile, uint32_t compression, bool verbose)
 {
 	int tiPhoto;
 	TIFF *tif = nullptr;
@@ -1603,7 +1603,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
 
-	if (image->color_space == OPJ_CLRSPC_CMYK) {
+	if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
 			spdlog::error("imagetotif: CMYK images shall be composed of at least 4 planes.");
 			spdlog::error("\tAborting");
@@ -1623,7 +1623,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	else {
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
-	if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE)
+	if (image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE)
 		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
 
 	uint32_t width = image->comps[0].w;
@@ -1772,7 +1772,7 @@ static int imagetotif(opj_image_t * image, const char *outfile, uint32_t compres
 	}
 
 	if (image->icc_profile_buf) {
-		if (image->color_space == OPJ_CLRSPC_ICC)
+		if (image->color_space == GRK_CLRSPC_ICC)
 			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
 	}
 
@@ -1857,10 +1857,10 @@ cleanup:
 }/* imagetotif() */
 
 
-bool TIFFFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool TIFFFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
 }
-opj_image_t*  TIFFFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+grk_image_t*  TIFFFormat::decode(const char* filename, grk_cparameters_t *parameters) {
 	return tiftoimage(filename, parameters);
 }
 

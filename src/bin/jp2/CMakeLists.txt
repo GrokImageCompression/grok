@@ -65,9 +65,9 @@ include_directories(
 
 if(WIN32)
   if(BUILD_SHARED_LIBS)
-    add_definitions(-DOPJ_EXPORTS)
+    add_definitions(-DGRK_EXPORTS)
   else()
-    add_definitions(-DOPJ_STATIC)
+    add_definitions(-DGRK_STATIC)
   endif()
 endif()
 

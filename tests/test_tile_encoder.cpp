@@ -85,11 +85,11 @@ static void info_callback(const char *msg, void *client_data)
 #define NUM_COMPS_MAX 4
 int main (int argc, char *argv[])
 {
-    opj_cparameters_t l_param;
-    opj_codec_t * l_codec=nullptr;
-    opj_image_t * l_image = nullptr;
-    opj_image_cmptparm_t l_params [NUM_COMPS_MAX];
-    opj_stream_t * l_stream = nullptr;
+    grk_cparameters_t l_param;
+    grk_codec_t * l_codec=nullptr;
+    grk_image_t * l_image = nullptr;
+    grk_image_cmptparm_t l_params [NUM_COMPS_MAX];
+    grk_stream_t * l_stream = nullptr;
     uint32_t l_nb_tiles=0;
     uint64_t l_data_size=0;
     size_t len=0;
@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
     };
 #endif
 
-    opj_image_cmptparm_t * l_current_param_ptr=nullptr;
+    grk_image_cmptparm_t * l_current_param_ptr=nullptr;
     uint32_t i;
     uint8_t *l_data=nullptr;
 
@@ -120,7 +120,7 @@ int main (int argc, char *argv[])
 	uint32_t irreversible;
     const char* output_file;
 
-    opj_initialize(nullptr,0);
+    grk_initialize(nullptr,0);
 
     /* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
     if( argc == 9 ) {
@@ -163,7 +163,7 @@ int main (int argc, char *argv[])
         l_data[i] = (uint8_t)i; /*rand();*/
     }
 
-    opj_set_default_encoder_parameters(&l_param);
+    grk_set_default_encoder_parameters(&l_param);
     /** you may here add custom encoding parameters */
     /* rate specifications */
     /** number of quality layers in the stream */
@@ -187,8 +187,8 @@ int main (int argc, char *argv[])
     /* use irreversible encoding ?*/
     l_param.irreversible = irreversible;
 
-    /* do not bother with mct, the rsiz is set when calling opj_set_MCT*/
-    /*l_param.cp_rsiz = OPJ_STD_RSIZ;*/
+    /* do not bother with mct, the rsiz is set when calling grk_set_MCT*/
+    /*l_param.cp_rsiz = GRK_STD_RSIZ;*/
 
     /* no cinema */
     /*l_param.cp_cinema = 0;*/
@@ -216,8 +216,8 @@ int main (int argc, char *argv[])
     l_param.numresolution = 6;
 
     /** progression order to use*/
-    /** OPJ_LRCP, OPJ_RLCP, OPJ_RPCL, PCRL, CPRL */
-    l_param.prog_order = OPJ_LRCP;
+    /** GRK_LRCP, GRK_RLCP, GRK_RPCL, PCRL, CPRL */
+    l_param.prog_order = GRK_LRCP;
 
     /** no "region" of interest, more precisely component */
     /* l_param.roi_compno = -1; */
@@ -229,7 +229,7 @@ int main (int argc, char *argv[])
 
     /* if we are using mct */
 #ifdef USING_MCT
-    opj_set_MCT(&l_param,l_mct,l_offsets,NUM_COMPS);
+    grk_set_MCT(&l_param,l_mct,l_offsets,NUM_COMPS);
 #endif
 
 
@@ -256,9 +256,9 @@ int main (int argc, char *argv[])
     /* should we do j2k or jp2 ?*/
     len = strlen( output_file );
     if( strcmp( output_file + len - 4, ".jp2" ) == 0 ) {
-        l_codec = opj_create_compress(OPJ_CODEC_JP2);
+        l_codec = grk_create_compress(GRK_CODEC_JP2);
     } else {
-        l_codec = opj_create_compress(OPJ_CODEC_J2K);
+        l_codec = grk_create_compress(GRK_CODEC_J2K);
     }
     if (!l_codec) {
 		rc = 1;
@@ -266,11 +266,11 @@ int main (int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback,nullptr);
-    opj_set_warning_handler(l_codec, warning_callback,nullptr);
-    opj_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(l_codec, info_callback,nullptr);
+    grk_set_warning_handler(l_codec, warning_callback,nullptr);
+    grk_set_error_handler(l_codec, error_callback,nullptr);
 
-    l_image = opj_image_tile_create(num_comps,l_params,OPJ_CLRSPC_SRGB);
+    l_image = grk_image_tile_create(num_comps,l_params,GRK_CLRSPC_SRGB);
     if (! l_image) {
 		rc = 1;
 		goto cleanup;
@@ -280,36 +280,36 @@ int main (int argc, char *argv[])
     l_image->y0 = 0;
     l_image->x1 = image_width;
     l_image->y1 = image_height;
-    l_image->color_space = OPJ_CLRSPC_SRGB;
+    l_image->color_space = GRK_CLRSPC_SRGB;
 
-    if (! opj_setup_encoder(l_codec,&l_param,l_image)) {
+    if (! grk_setup_encoder(l_codec,&l_param,l_image)) {
         spdlog::error("test_tile_encoder: failed to setup the codec!\n");
 		rc = 1;
 		goto cleanup;
     }
 
-    l_stream = opj_stream_create_default_file_stream(output_file, false);
+    l_stream = grk_stream_create_default_file_stream(output_file, false);
     if (! l_stream) {
         spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
 		rc = 1;
 		goto cleanup;
     }
 
-    if (! opj_start_compress(l_codec,l_image,l_stream)) {
+    if (! grk_start_compress(l_codec,l_image,l_stream)) {
         spdlog::error("test_tile_encoder: failed to start compress!\n");
 		rc = 1;
 		goto cleanup;
     }
 
     for (i=0; i<l_nb_tiles; ++i) {
-        if (! opj_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
+        if (! grk_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
             spdlog::error("test_tile_encoder: failed to write the tile %d!\n",i);
 			rc = 1;
 			goto cleanup;
         }
     }
 
-    if (! opj_end_compress(l_codec,l_stream)) {
+    if (! grk_end_compress(l_codec,l_stream)) {
         spdlog::error("test_tile_encoder: failed to end compress!\n");
 		rc = 1;
 		goto cleanup;
@@ -317,18 +317,18 @@ int main (int argc, char *argv[])
 
 cleanup:
 	if (l_stream)
-		opj_stream_destroy(l_stream);
+		grk_stream_destroy(l_stream);
 	if (l_codec)
-		opj_destroy_codec(l_codec);
+		grk_destroy_codec(l_codec);
 	if (l_image)
-		opj_image_destroy(l_image);
+		grk_image_destroy(l_image);
 
 	if (l_data)
 		free(l_data);
 
     /* Print profiling*/
     /*PROFPRINT();*/
-	opj_deinitialize();
+	grk_deinitialize();
 
     return rc;
 }

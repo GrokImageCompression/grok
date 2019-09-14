@@ -37,8 +37,8 @@ def Usage():
     print('Usage: perf_test.py [-kakadu] [-i filelist.csv] [-o out.csv] [-q]')
     sys.exit(1)
 
-opj_decompress_path = 'grk_decompress'
-opj_compress_path = 'grk_compress'
+grk_decompress_path = 'grk_decompress'
+grk_compress_path = 'grk_compress'
 kdu_expand_path = 'kdu_expand'
 kdu_compress_path = 'kdu_compress'
 
@@ -97,14 +97,14 @@ for line in open(in_filename, 'rt').readlines()[1:]:
         else:
             env = os.environ
             if num_threads > 1:
-                env['OPJ_NUM_THREADS'] = str(num_threads)
+                env['GRK_NUM_THREADS'] = str(num_threads)
             else:
-                env['OPJ_NUM_THREADS'] = '0'
+                env['GRK_NUM_THREADS'] = '0'
             if command == 'DECOMPRESS':
-                args = [opj_decompress_path,
+                args = [grk_decompress_path,
                         '-i', filename, '-o', 'out_perf_test.pgm']
             elif command == 'COMPRESS':
-                args = [opj_compress_path,
+                args = [grk_compress_path,
                         '-i', filename, '-o', 'out_perf_test.jp2']
             else:
                 assert False, command

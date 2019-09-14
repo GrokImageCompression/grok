@@ -63,7 +63,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "PGXFormat.h"
 #include "convert.h"
@@ -122,14 +122,14 @@ static unsigned int readuint(FILE *f, int bigendian) {
 				+ (unsigned int) (c2 << 8) + c1;
 }
 
-static opj_image_t* pgxtoimage(const char *filename,
-		opj_cparameters_t *parameters) {
+static grk_image_t* pgxtoimage(const char *filename,
+		grk_cparameters_t *parameters) {
 	FILE *f = nullptr;
 	uint32_t w, h, prec, numcomps, max;
 	uint64_t i, area;
-	OPJ_COLOR_SPACE color_space;
-	opj_image_cmptparm_t cmptparm; /* maximum of 1 component  */
-	opj_image_t *image = nullptr;
+	GRK_COLOR_SPACE color_space;
+	grk_image_cmptparm_t cmptparm; /* maximum of 1 component  */
+	grk_image_t *image = nullptr;
 	int adjustS, ushift, dshift, force8;
 	int c;
 	char endian1, endian2, sign;
@@ -137,12 +137,12 @@ static opj_image_t* pgxtoimage(const char *filename,
 
 	char temp[32];
 	uint32_t bigendian;
-	opj_image_comp_t *comp = nullptr;
+	grk_image_comp_t *comp = nullptr;
 
 	numcomps = 1;
-	color_space = OPJ_CLRSPC_GRAY;
+	color_space = GRK_CLRSPC_GRAY;
 
-	memset(&cmptparm, 0, sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm, 0, sizeof(grk_image_cmptparm_t));
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
@@ -218,7 +218,7 @@ static opj_image_t* pgxtoimage(const char *filename,
 	cmptparm.dy = parameters->subsampling_dy;
 
 	/* create the image */
-	image = opj_image_create(numcomps, &cmptparm, color_space);
+	image = grk_image_create(numcomps, &cmptparm, color_space);
 	if (!image) {
 		goto cleanup;
 	}
@@ -266,19 +266,19 @@ static opj_image_t* pgxtoimage(const char *filename,
 		comp->data[i] = v;
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }
 
-static int imagetopgx(opj_image_t *image, const char *outfile) {
+static int imagetopgx(grk_image_t *image, const char *outfile) {
 	uint32_t w, h;
 	int j, fails = 1;
 	unsigned int compno;
 	FILE *fdest = nullptr;
 	for (compno = 0; compno < image->numcomps; compno++) {
-		opj_image_comp_t *comp = &image->comps[compno];
+		grk_image_comp_t *comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
@@ -351,13 +351,13 @@ static int imagetopgx(opj_image_t *image, const char *outfile) {
 	return fails;
 }
 
-bool PGXFormat::encode(opj_image_t *image, const char *filename,
+bool PGXFormat::encode(grk_image_t *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetopgx(image, filename) ? false : true;
 }
-opj_image_t* PGXFormat::decode(const char *filename,
-		opj_cparameters_t *parameters) {
+grk_image_t* PGXFormat::decode(const char *filename,
+		grk_cparameters_t *parameters) {
 	return pgxtoimage(filename, parameters);
 }

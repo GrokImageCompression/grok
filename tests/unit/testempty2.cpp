@@ -78,29 +78,29 @@ void info_callback(const char *msg, void *v)
 
 int main(int argc, char *argv[])
 {
-    const char * v = opj_version();
+    const char * v = grk_version();
 
-    const OPJ_COLOR_SPACE color_space = OPJ_CLRSPC_GRAY;
+    const GRK_COLOR_SPACE color_space = GRK_CLRSPC_GRAY;
     unsigned int numcomps = 1;
     unsigned int i;
     unsigned int image_width = 256;
     unsigned int image_height = 256;
 
-    opj_cparameters_t parameters;
+    grk_cparameters_t parameters;
 
     unsigned int subsampling_dx;
     unsigned int subsampling_dy;
     const char outputfile[] = "testempty2.j2k";
 
-    opj_image_cmptparm_t cmptparm;
-    opj_image_t *image;
-    opj_codec_t* l_codec = nullptr;
+    grk_image_cmptparm_t cmptparm;
+    grk_image_t *image;
+    grk_codec_t* l_codec = nullptr;
     bool bSuccess;
-    opj_stream_t *l_stream = nullptr;
+    grk_stream_t *l_stream = nullptr;
     (void)argc;
     (void)argv;
 
-    opj_set_default_encoder_parameters(&parameters);
+    grk_set_default_encoder_parameters(&parameters);
     parameters.cod_format = J2K_CFMT;
     puts(v);
     subsampling_dx = (unsigned int)parameters.subsampling_dx;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     cmptparm.h = image_height;
     strncpy(parameters.outfile, outputfile, sizeof(parameters.outfile)-1);
 
-    image = opj_image_create(numcomps, &cmptparm, color_space);
+    image = grk_image_create(numcomps, &cmptparm, color_space);
     assert( image );
 
     for (i = 0; i < image_width * image_height; i++) {
@@ -124,76 +124,76 @@ int main(int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback,nullptr);
-    opj_set_warning_handler(l_codec, warning_callback,nullptr);
-    opj_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(l_codec, info_callback,nullptr);
+    grk_set_warning_handler(l_codec, warning_callback,nullptr);
+    grk_set_error_handler(l_codec, error_callback,nullptr);
 
-    l_codec = opj_create_compress(OPJ_CODEC_J2K);
-    opj_set_info_handler(l_codec, info_callback,nullptr);
-    opj_set_warning_handler(l_codec, warning_callback,nullptr);
-    opj_set_error_handler(l_codec, error_callback,nullptr);
+    l_codec = grk_create_compress(GRK_CODEC_J2K);
+    grk_set_info_handler(l_codec, info_callback,nullptr);
+    grk_set_warning_handler(l_codec, warning_callback,nullptr);
+    grk_set_error_handler(l_codec, error_callback,nullptr);
 
-    opj_setup_encoder(l_codec, &parameters, image);
+    grk_setup_encoder(l_codec, &parameters, image);
 
-    l_stream = opj_stream_create_default_file_stream(parameters.outfile,false);
+    l_stream = grk_stream_create_default_file_stream(parameters.outfile,false);
     if( !l_stream ) {
         fprintf( stderr, "Something went wrong during creation of stream\n" );
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(image);
-        opj_stream_destroy(l_stream);
+        grk_destroy_codec(l_codec);
+        grk_image_destroy(image);
+        grk_stream_destroy(l_stream);
         return 1;
     }
     assert(l_stream);
-    bSuccess = opj_start_compress(l_codec,image,l_stream);
+    bSuccess = grk_start_compress(l_codec,image,l_stream);
     if( !bSuccess ) {
-        opj_stream_destroy(l_stream);
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(image);
+        grk_stream_destroy(l_stream);
+        grk_destroy_codec(l_codec);
+        grk_image_destroy(image);
         return 0;
     }
 
     assert( bSuccess );
-    bSuccess = opj_encode(l_codec, l_stream);
+    bSuccess = grk_encode(l_codec, l_stream);
     assert( bSuccess );
-    bSuccess = opj_end_compress(l_codec, l_stream);
+    bSuccess = grk_end_compress(l_codec, l_stream);
     assert( bSuccess );
 
-    opj_stream_destroy(l_stream);
+    grk_stream_destroy(l_stream);
 
-    opj_destroy_codec(l_codec);
-    opj_image_destroy(image);
+    grk_destroy_codec(l_codec);
+    grk_image_destroy(image);
 
 
     /* read back the generated file */
     {
-        opj_codec_t* d_codec = nullptr;
-        opj_dparameters_t dparameters;
+        grk_codec_t* d_codec = nullptr;
+        grk_dparameters_t dparameters;
 
-        d_codec = opj_create_decompress(OPJ_CODEC_J2K);
-        opj_set_info_handler(d_codec, info_callback,nullptr);
-        opj_set_warning_handler(d_codec, warning_callback,nullptr);
-        opj_set_error_handler(d_codec, error_callback,nullptr);
+        d_codec = grk_create_decompress(GRK_CODEC_J2K);
+        grk_set_info_handler(d_codec, info_callback,nullptr);
+        grk_set_warning_handler(d_codec, warning_callback,nullptr);
+        grk_set_error_handler(d_codec, error_callback,nullptr);
 
-        bSuccess = opj_setup_decoder(d_codec, &dparameters);
+        bSuccess = grk_setup_decoder(d_codec, &dparameters);
         assert( bSuccess );
 
-        l_stream = opj_stream_create_default_file_stream(outputfile,1);
+        l_stream = grk_stream_create_default_file_stream(outputfile,1);
         assert( l_stream );
 
-        bSuccess = opj_read_header(l_stream, d_codec,&image);
+        bSuccess = grk_read_header(l_stream, d_codec,&image);
         assert( bSuccess );
 
-        bSuccess = opj_decode(l_codec, nullptr, l_stream, image);
+        bSuccess = grk_decode(l_codec, nullptr, l_stream, image);
         assert( bSuccess );
 
-        bSuccess = opj_end_decompress(l_codec, l_stream);
+        bSuccess = grk_end_decompress(l_codec, l_stream);
         assert( bSuccess );
 
-        opj_stream_destroy(l_stream);
+        grk_stream_destroy(l_stream);
 
-        opj_destroy_codec(d_codec);
+        grk_destroy_codec(d_codec);
 
-        opj_image_destroy(image);
+        grk_image_destroy(image);
     }
 
     puts( "end" );

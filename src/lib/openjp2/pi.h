@@ -113,7 +113,7 @@ struct pi_iterator_t {
 	/** 0 if the first packet */
 	bool first;
 	/** progression order change information */
-	opj_poc_t poc;
+	grk_poc_t poc;
 	/** number of components in the image */
 	uint32_t numcomps;
 	/** Components*/
@@ -139,7 +139,7 @@ struct pi_iterator_t {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-pi_iterator_t* pi_initialise_encode(const opj_image_t *image, cp_t *cp,
+pi_iterator_t* pi_initialise_encode(const grk_image_t *image, cp_t *cp,
 		uint32_t tileno, J2K_T2_MODE t2_mode);
 
 /**
@@ -149,7 +149,7 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *image, cp_t *cp,
  * @param	p_cp		the coding parameters.
  * @param	tile_no	index of the tile being encoded.
  */
-void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
+void pi_update_encoding_parameters(const grk_image_t *p_image, cp_t *p_cp,
 		uint32_t tile_no);
 
 /**
@@ -173,7 +173,7 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-pi_iterator_t* pi_create_decode(opj_image_t *image, cp_t *cp, uint32_t tileno);
+pi_iterator_t* pi_create_decode(grk_image_t *image, cp_t *cp, uint32_t tileno);
 /**
  * Destroys a packet iterator array.
  *

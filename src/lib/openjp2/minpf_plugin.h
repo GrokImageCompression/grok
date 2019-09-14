@@ -56,10 +56,10 @@ typedef int32_t (*minpf_exit_func)();
 typedef minpf_exit_func (*minpf_post_load_func)(const char *pluginPath,
 		const minpf_platform_services*);
 
-#if defined(OPJ_STATIC) || !defined(_WIN32)
+#if defined(GRK_STATIC) || !defined(_WIN32)
 /* http://gcc.gnu.org/wiki/Visibility */
 #	if __GNUC__ >= 4
-#		if defined(OPJ_STATIC) /* static library uses "hidden" */
+#		if defined(GRK_STATIC) /* static library uses "hidden" */
 #			define PLUGIN_API    __attribute__ ((visibility ("hidden")))
 #		else
 #			define PLUGIN_API    __attribute__ ((visibility ("default")))
@@ -70,12 +70,12 @@ typedef minpf_exit_func (*minpf_post_load_func)(const char *pluginPath,
 #		define PLUGIN_LOCAL
 #	endif
 #else
-#	if defined(OPJ_EXPORTS) || defined(DLL_EXPORT)
+#	if defined(GRK_EXPORTS) || defined(DLL_EXPORT)
 #		define PLUGIN_API __declspec(dllexport)
 #	else
 #		define PLUGIN_API __declspec(dllimport)
-#	endif /* OPJ_EXPORTS */
-#endif /* !OPJ_STATIC || !_WIN32 */
+#	endif /* GRK_EXPORTS */
+#endif /* !GRK_STATIC || !_WIN32 */
 
 extern "C" PLUGIN_API minpf_exit_func minpf_init_plugin(const char *pluginPath,
 		const minpf_platform_services *params);

@@ -20,7 +20,7 @@
 #include "iccjpeg.h"
 #include <stdlib.h>			/* define malloc() */
 
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 
 #ifndef GROK_HAVE_LIBJPEG
 # error GROK_HAVE_LIBJPEG_NOT_DEFINED

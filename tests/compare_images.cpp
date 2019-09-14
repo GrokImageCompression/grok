@@ -50,7 +50,7 @@
 #include <ctype.h>
 #include <assert.h>
 
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok_getopt.h"
 
 #include "grok.h"
@@ -193,13 +193,13 @@ static char* createMultiComponentsFilename(const char* inFilename, const int ind
 /*******************************************************************************
  *
  *******************************************************************************/
-static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX, const char *separator)
+static grk_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX, const char *separator)
 {
     int it_file=0;
-    opj_image_t* image_read = nullptr;
-    opj_image_t* image = nullptr;
-    opj_cparameters_t parameters;
-    opj_image_cmptparm_t* param_image_read=nullptr;
+    grk_image_t* image_read = nullptr;
+    grk_image_t* image = nullptr;
+    grk_cparameters_t parameters;
+    grk_image_cmptparm_t* param_image_read=nullptr;
     int** data = nullptr;
 
     /* If separator is empty => nb file to read is equal to one*/
@@ -210,12 +210,12 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
 		return nullptr;
 
     /* set encoding parameters to default values */
-    opj_set_default_encoder_parameters(&parameters);
+    grk_set_default_encoder_parameters(&parameters);
     parameters.decod_format = PXM_DFMT;
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
-    param_image_read = (opj_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
+    param_image_read = (grk_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(grk_image_cmptparm_t));
 	if (!param_image_read)
 		goto cleanup;
     data = (int**)calloc((size_t)nbFilenamePGX, sizeof(*data));
@@ -257,7 +257,7 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
         data[it_file] = (int*)malloc(param_image_read[it_file].h * param_image_read[it_file].w * sizeof(int));
 		if (!data[it_file]) {
 			if (image_read)
-				opj_image_destroy(image_read);
+				grk_image_destroy(image_read);
 			if (filenameComponentPGX)
 				free(filenameComponentPGX);
 			goto cleanup;
@@ -266,12 +266,12 @@ static opj_image_t* readImageFromFilePPM(const char* filename, int nbFilenamePGX
 
         /* Free memory*/
 		if (image_read)
-			opj_image_destroy(image_read);
+			grk_image_destroy(image_read);
 		if (filenameComponentPGX)
 			free(filenameComponentPGX);
     }
 
-    image = opj_image_create((uint32_t)nbFilenamePGX, param_image_read, OPJ_CLRSPC_UNSPECIFIED);
+    image = grk_image_create((uint32_t)nbFilenamePGX, param_image_read, GRK_CLRSPC_UNSPECIFIED);
 	if (!image || !image->comps)
 		goto cleanup;
     for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
@@ -297,17 +297,17 @@ cleanup:
     return image;
 }
 
-static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX, const char *separator)
+static grk_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX, const char *separator)
 {
-	opj_image_t* image_read = nullptr;
-	opj_cparameters_t parameters;
+	grk_image_t* image_read = nullptr;
+	grk_cparameters_t parameters;
 	(void)nbFilenamePGX;
 	(void)separator;
 
 	if (strlen(separator) != 0) return nullptr;
 
 	/* set encoding parameters to default values */
-	opj_set_default_encoder_parameters(&parameters);
+	grk_set_default_encoder_parameters(&parameters);
 	parameters.decod_format = TIF_DFMT;
 	strcpy(parameters.infile, filename);
 
@@ -323,10 +323,10 @@ static opj_image_t* readImageFromFilePNG(const char* filename, int nbFilenamePGX
 	return image_read;
 }
 
-static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX, const char *separator)
+static grk_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX, const char *separator)
 {
-    opj_image_t* image_read = nullptr;
-    opj_cparameters_t parameters;
+    grk_image_t* image_read = nullptr;
+    grk_cparameters_t parameters;
     (void)nbFilenamePGX;
     (void)separator;
 
@@ -343,7 +343,7 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     if ( strlen(separator) != 0 ) return nullptr;
 
     /* set encoding parameters to default values */
-    opj_set_default_encoder_parameters(&parameters);
+    grk_set_default_encoder_parameters(&parameters);
     parameters.decod_format = TIF_DFMT;
     strcpy(parameters.infile, filename);
 
@@ -359,13 +359,13 @@ static opj_image_t* readImageFromFileTIF(const char* filename, int nbFilenamePGX
     return image_read;
 }
 
-static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX, const char *separator)
+static grk_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX, const char *separator)
 {
     int it_file;
-    opj_image_t* image_read = nullptr;
-    opj_image_t* image = nullptr;
-    opj_cparameters_t parameters;
-    opj_image_cmptparm_t* param_image_read=nullptr;
+    grk_image_t* image_read = nullptr;
+    grk_image_t* image = nullptr;
+    grk_cparameters_t parameters;
+    grk_image_cmptparm_t* param_image_read=nullptr;
     int** data=nullptr;
 
     /* If separator is empty => nb file to read is equal to one*/
@@ -376,12 +376,12 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
 		return nullptr;
 
     /* set encoding parameters to default values */
-    opj_set_default_encoder_parameters(&parameters);
+    grk_set_default_encoder_parameters(&parameters);
     parameters.decod_format = PGX_DFMT;
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
-    param_image_read = (opj_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(opj_image_cmptparm_t));
+    param_image_read = (grk_image_cmptparm_t*)malloc((size_t)nbFilenamePGX * sizeof(grk_image_cmptparm_t));
 	if (!param_image_read)
 		goto cleanup;
     data = (int**)calloc((size_t)nbFilenamePGX,sizeof(*data));
@@ -430,11 +430,11 @@ static opj_image_t* readImageFromFilePGX(const char* filename, int nbFilenamePGX
         memcpy(data[it_file], image_read->comps->data, image_read->comps->h * image_read->comps->w * sizeof(int));
 
         /* Free memory*/
-        opj_image_destroy(image_read);
+        grk_image_destroy(image_read);
         free(filenameComponentPGX);
     }
 
-    image = opj_image_create((uint32_t)nbFilenamePGX, param_image_read, OPJ_CLRSPC_UNSPECIFIED);
+    image = grk_image_create((uint32_t)nbFilenamePGX, param_image_read, GRK_CLRSPC_UNSPECIFIED);
 	if (!image || !image->comps)
 		goto cleanup;
     for (it_file = 0; it_file < nbFilenamePGX; it_file++) {
@@ -462,10 +462,10 @@ cleanup:
 /*******************************************************************************
  *
  *******************************************************************************/
-static int imageToPNG(const opj_image_t* image, const char* filename, int num_comp_select)
+static int imageToPNG(const grk_image_t* image, const char* filename, int num_comp_select)
 {
-    opj_image_cmptparm_t param_image_write;
-    opj_image_t* image_write = nullptr;
+    grk_image_cmptparm_t param_image_write;
+    grk_image_t* image_write = nullptr;
 
     param_image_write.x0 = 0;
     param_image_write.y0 = 0;
@@ -476,12 +476,12 @@ static int imageToPNG(const opj_image_t* image, const char* filename, int num_co
     param_image_write.prec = image->comps[num_comp_select].prec;
     param_image_write.sgnd = image->comps[num_comp_select].sgnd;
 
-    image_write = opj_image_create(1u, &param_image_write, OPJ_CLRSPC_GRAY);
+    image_write = grk_image_create(1u, &param_image_write, GRK_CLRSPC_GRAY);
     memcpy(image_write->comps->data, image->comps[num_comp_select].data, param_image_write.h * param_image_write.w * sizeof(int));
 	PNGFormat png;
     png.encode(image_write, filename, DECOMPRESS_COMPRESSION_LEVEL_DEFAULT, true);
 
-    opj_image_destroy(image_write);
+    grk_image_destroy(image_write);
 
     return EXIT_SUCCESS;
 }
@@ -777,8 +777,8 @@ int main(int argc, char **argv)
     int32_t nbPixelDiff = 0;
     double sumDiff = 0.0;
     /* Structures to store image parameters and data*/
-    opj_image_t *imageBase = nullptr, *imageTest = nullptr, *imageDiff = nullptr;
-    opj_image_cmptparm_t* param_image_diff = nullptr;
+    grk_image_t *imageBase = nullptr, *imageTest = nullptr, *imageDiff = nullptr;
+    grk_image_cmptparm_t* param_image_diff = nullptr;
     int decod_format;
 
     /* Get parameters from command line*/
@@ -875,7 +875,7 @@ int main(int argc, char **argv)
     /*----------DIFF IMAGE--------*/
 
     /* Allocate memory*/
-    param_image_diff = (opj_image_cmptparm_t*)malloc( imageBase->numcomps * sizeof(opj_image_cmptparm_t));
+    param_image_diff = (grk_image_cmptparm_t*)malloc( imageBase->numcomps * sizeof(grk_image_cmptparm_t));
 
     /* Comparison of header parameters*/
     printf("Step 1 -> Header comparison\n");
@@ -935,7 +935,7 @@ int main(int argc, char **argv)
 
     }
 
-    imageDiff = opj_image_create(imageBase->numcomps, param_image_diff, OPJ_CLRSPC_UNSPECIFIED);
+    imageDiff = grk_image_create(imageBase->numcomps, param_image_diff, GRK_CLRSPC_UNSPECIFIED);
     /* Free memory*/
     free(param_image_diff);
     param_image_diff = nullptr;
@@ -1082,11 +1082,11 @@ cleanup:
     if (param_image_diff)
 		free(param_image_diff);
     if (imageBase)
-		opj_image_destroy(imageBase);
+		grk_image_destroy(imageBase);
 	if (imageTest)
-		opj_image_destroy(imageTest);
+		grk_image_destroy(imageTest);
 	if (imageDiff)
-		opj_image_destroy(imageDiff);
+		grk_image_destroy(imageDiff);
 
 	if (filenamePNGbase)
 		free(filenamePNGbase);

@@ -5,9 +5,9 @@
 /* OpenJPEG Versioning                                                      */
 
 /* Version number. */
-#define OPJ_VERSION_MAJOR @GROK_VERSION_MAJOR@
-#define OPJ_VERSION_MINOR @GROK_VERSION_MINOR@
-#define OPJ_VERSION_BUILD @GROK_VERSION_BUILD@
+#define GRK_VERSION_MAJOR @GROK_VERSION_MAJOR@
+#define GRK_VERSION_MINOR @GROK_VERSION_MINOR@
+#define GRK_VERSION_BUILD @GROK_VERSION_BUILD@
 
 #define GROK_PLUGIN_NAME  	"@GROK_PLUGIN_NAME@" 
 #define AVX2_FOUND  		"@AVX2_FOUND@"

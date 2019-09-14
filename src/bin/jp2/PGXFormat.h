@@ -20,7 +20,7 @@
 class PGXFormat {
 public:
 	virtual ~PGXFormat() {}
-	bool encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose);
-	opj_image_t* decode(const char* filename, opj_cparameters_t *parameters);
+	bool encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose);
+	grk_image_t* decode(const char* filename, grk_cparameters_t *parameters);
 };
 

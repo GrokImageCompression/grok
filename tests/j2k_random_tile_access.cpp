@@ -167,11 +167,11 @@ static int infile_format(const char *fname)
 int main(int argc, char **argv)
 {
     uint32_t index;
-    opj_dparameters_t parameters;			/* decompression parameters */
-    opj_image_t* image = nullptr;
-    opj_stream_t *l_stream = nullptr;				/* Stream */
-    opj_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
-    opj_codestream_info_v2_t* cstr_info = nullptr;
+    grk_dparameters_t parameters;			/* decompression parameters */
+    grk_image_t* image = nullptr;
+    grk_stream_t *l_stream = nullptr;				/* Stream */
+    grk_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
+    grk_codestream_info_v2_t* cstr_info = nullptr;
 
     /* Index of corner tiles */
     uint32_t tile_ul = 0;
@@ -185,9 +185,9 @@ int main(int argc, char **argv)
     }
 
     /* Set decoding parameters to default values */
-    opj_set_default_decoder_parameters(&parameters);
+    grk_set_default_decoder_parameters(&parameters);
 
-    strncpy(parameters.infile, argv[1], OPJ_PATH_LEN - 1);
+    strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
 
     /* decode the JPEG2000 stream */
@@ -197,12 +197,12 @@ int main(int argc, char **argv)
     switch(parameters.decod_format) {
     case J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
-        l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+        l_codec = grk_create_decompress(GRK_CODEC_J2K);
         break;
     }
     case JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
-        l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+        l_codec = grk_create_decompress(GRK_CODEC_JP2);
         break;
     }
     default:
@@ -211,38 +211,38 @@ int main(int argc, char **argv)
                 parameters.infile);
         return EXIT_FAILURE;
     }
-    opj_initialize(nullptr,0);
+    grk_initialize(nullptr,0);
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback,nullptr);
-    opj_set_warning_handler(l_codec, warning_callback,nullptr);
-    opj_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(l_codec, info_callback,nullptr);
+    grk_set_warning_handler(l_codec, warning_callback,nullptr);
+    grk_set_error_handler(l_codec, error_callback,nullptr);
 
-    l_stream = opj_stream_create_default_file_stream(parameters.infile,1);
+    l_stream = grk_stream_create_default_file_stream(parameters.infile,1);
     if (!l_stream) {
         spdlog::error("failed to create the stream from the file %s\n", parameters.infile);
         return EXIT_FAILURE;
     }
 
     /* Setup the decoder decoding parameters using user parameters */
-    if ( !opj_setup_decoder(l_codec, &parameters) ) {
+    if ( !grk_setup_decoder(l_codec, &parameters) ) {
         spdlog::error("j2k_dump: failed to setup the decoder");
-        opj_stream_destroy(l_stream);
-        opj_destroy_codec(l_codec);
+        grk_stream_destroy(l_stream);
+        grk_destroy_codec(l_codec);
         return EXIT_FAILURE;
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if(! opj_read_header(l_stream, l_codec, &image)) {
+    if(! grk_read_header(l_stream, l_codec, &image)) {
         spdlog::error("j2k_to_image: failed to read the header");
-        opj_stream_destroy(l_stream);
-        opj_destroy_codec(l_codec);
-        opj_image_destroy(image);
+        grk_stream_destroy(l_stream);
+        grk_destroy_codec(l_codec);
+        grk_image_destroy(image);
         return EXIT_FAILURE;
     }
 
     /* Extract some info from the code stream */
-    cstr_info = opj_get_cstr_info(l_codec);
+    cstr_info = grk_get_cstr_info(l_codec);
 
     fprintf(stdout, "The file contains %dx%d tiles\n", cstr_info->tw, cstr_info->th);
 
@@ -253,21 +253,21 @@ int main(int argc, char **argv)
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \
-	if(!opj_get_decoded_tile(l_codec, l_stream, image, tile_index )){ \
+	if(!grk_get_decoded_tile(l_codec, l_stream, image, tile_index )){ \
 		spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
-		opj_stream_destroy(l_stream); \
-		opj_destroy_cstr_info(&cstr_info); \
-		opj_destroy_codec(l_codec); \
-		opj_image_destroy(image); \
+		grk_stream_destroy(l_stream); \
+		grk_destroy_cstr_info(&cstr_info); \
+		grk_destroy_codec(l_codec); \
+		grk_image_destroy(image); \
 		return EXIT_FAILURE; \
 	} \
   for(index = 0; index < image->numcomps; ++index) { \
     if( image->comps[index].data == nullptr ){ \
     	spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
-		opj_stream_destroy(l_stream); \
-		opj_destroy_cstr_info(&cstr_info); \
-		opj_destroy_codec(l_codec); \
-		opj_image_destroy(image); \
+		grk_stream_destroy(l_stream); \
+		grk_destroy_cstr_info(&cstr_info); \
+		grk_destroy_codec(l_codec); \
+		grk_image_destroy(image); \
         return EXIT_FAILURE; \
         } \
   } \
@@ -281,18 +281,18 @@ int main(int argc, char **argv)
     TEST_TILE(tile_lr)
 
     /* Close the byte stream */
-    opj_stream_destroy(l_stream);
+    grk_stream_destroy(l_stream);
 
     /* Destroy code stream info */
-    opj_destroy_cstr_info(&cstr_info);
+    grk_destroy_cstr_info(&cstr_info);
 
     /* Free remaining structures */
-    opj_destroy_codec(l_codec);
+    grk_destroy_codec(l_codec);
 
     /* Free image data structure */
-    opj_image_destroy(image);
+    grk_image_destroy(image);
 
-    opj_deinitialize();
+    grk_deinitialize();
 
     return EXIT_SUCCESS;
 }

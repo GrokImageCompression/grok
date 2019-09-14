@@ -23,7 +23,7 @@ set(GROK_PLUGIN_SRCS
 
 # Build the library
 if(WIN32)
-    add_definitions(-DOPJ_EXPORTS)
+    add_definitions(-DGRK_EXPORTS)
 endif()
 add_library(${GROK_PLUGIN_NAME} ${GROK_PLUGIN_SRCS})
 
