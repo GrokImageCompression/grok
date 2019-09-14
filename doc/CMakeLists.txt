@@ -34,7 +34,7 @@ if(DOXYGEN_FOUND)
 
   # install HTML documentation (install png files too):
   install(DIRECTORY ${CMAKE_BINARY_DIR}/doc/html
-    DESTINATION share/doc
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}
   )
 else()
   message(STATUS "Doxygen not found, we cannot generate the documentation")
