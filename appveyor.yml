@@ -23,7 +23,7 @@ deploy:
   description: 'Grok $(appveyor_repo_tag_name) has been released.'
   provider: GitHub
   auth_token:
-    secure: FtYzcjnMCkJfBzRwxQCQWuojEbJm3+N0L+tVRTzJc2B0ZlcWQE8ph0xbrRAjfJJy
+    secure: wBy109xKkI+vEJvY+IFO3ULME+NZJKqhxqZMUpTMJRHWhO1DsntmXefWV2t45wyF
   artifact: /.*\.zip/            # upload all zip packages to release assets
   draft: false
   prerelease: false
