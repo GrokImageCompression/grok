@@ -95,7 +95,7 @@ foreach(exe opj_decompress opj_compress opj_dump)
   # Install exe
   install(TARGETS ${exe}
     EXPORT GrokTargets
-    DESTINATION ${GROK_INSTALL_BIN_DIR} COMPONENT Applications
+    DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Applications
   )
   if(GROK_USE_DSYMUTIL)
     add_custom_command(TARGET ${exe} POST_BUILD
@@ -111,6 +111,6 @@ install(
   FILES       ${GROK_SOURCE_DIR}/doc/man/man1/opj_compress.1
               ${GROK_SOURCE_DIR}/doc/man/man1/opj_decompress.1
               ${GROK_SOURCE_DIR}/doc/man/man1/opj_dump.1
-  DESTINATION ${GROK_INSTALL_MAN_DIR}/man1)
+  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 #
 endif()

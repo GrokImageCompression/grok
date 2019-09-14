@@ -95,52 +95,19 @@ endif()
 
 # --------------------------------------------------------------------------
 # Install directories
+include(GNUInstallDirs)
 # Build DOCUMENTATION (not in ALL target and only if Doxygen is found)
 option(BUILD_DOC "Build the HTML documentation (with doxygen if available)." OFF)
 
 string(TOLOWER ${PROJECT_NAME} projectname)
-#drop in replacement for openjpeg
 set(GROK_INSTALL_SUBDIR "openjpeg-2.3")
 
-if(NOT GROK_INSTALL_BIN_DIR)
-  set(GROK_INSTALL_BIN_DIR "bin")
-endif()
-
-if(NOT GROK_INSTALL_LIB_DIR)
-  set(GROK_INSTALL_LIB_DIR "lib")
-endif()
-
-if(NOT GROK_INSTALL_SHARE_DIR)
-  set(GROK_INSTALL_SHARE_DIR "share")
-endif()
-
-if(NOT GROK_INSTALL_DATA_DIR)
-  set(GROK_INSTALL_DATA_DIR "${GROK_INSTALL_SHARE_DIR}/${GROK_INSTALL_SUBDIR}")
-endif()
-
-if(NOT GROK_INSTALL_INCLUDE_DIR)
-  set(GROK_INSTALL_INCLUDE_DIR "include/${GROK_INSTALL_SUBDIR}")
-endif()
-
-if(BUILD_DOC)
-if(NOT GROK_INSTALL_MAN_DIR)
-  set(GROK_INSTALL_MAN_DIR "share/man/")
-endif()
-
-if(NOT GROK_INSTALL_DOC_DIR)
-  set(GROK_INSTALL_DOC_DIR "share/doc/${GROK_INSTALL_SUBDIR}")
-endif()
-endif()
-
 if(NOT GROK_INSTALL_PACKAGE_DIR)
-  # We could install *.cmake files in share/ however those files contains
-  # hardcoded path to libraries on a multi-arch system (fedora/debian) those
-  # path will be different (lib/i386-linux-gnu vs lib/x86_64-linux-gnu)
-  set(GROK_INSTALL_PACKAGE_DIR "${GROK_INSTALL_LIB_DIR}/${GROK_INSTALL_SUBDIR}")
+  set(GROK_INSTALL_PACKAGE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${GROK_INSTALL_SUBDIR}")
 endif()
 
 if (APPLE)
-	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/${GROK_INSTALL_LIB_DIR}")
+	list(APPEND GROK_LIBRARY_PROPERTIES INSTALL_NAME_DIR "${CMAKE_INSTALL_FULL_LIBDIR}")
 	option(GROK_USE_DSYMUTIL "Call dsymutil on binaries after build." OFF)
 endif()
 
@@ -309,10 +276,10 @@ install( FILES ${GROK_BINARY_DIR}/GrokConfig.cmake
 # install CHANGES and LICENSE
 if(BUILD_DOC)
 if(EXISTS ${GROK_SOURCE_DIR}/CHANGES)
-  install(FILES CHANGES DESTINATION ${GROK_INSTALL_DOC_DIR})
+  install(FILES CHANGES DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()
 
-install(FILES LICENSE DESTINATION ${GROK_INSTALL_DOC_DIR})
+install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 endif()
 
 include (cmake/GrokCPack.cmake)
@@ -326,11 +293,10 @@ else()
   option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
 if(BUILD_PKGCONFIG_FILES)
-  # install in lib and not share (see multi-arch note above)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libopenjp2.pc.cmake.in
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libopenjp2.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libopenjp2.pc DESTINATION
-    ${GROK_INSTALL_LIB_DIR}/pkgconfig )
+    ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
 #
 
 endif()
