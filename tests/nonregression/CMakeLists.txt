@@ -22,7 +22,7 @@ find_package(JPYLYZER)
 # GENERATION OF THE TEST SUITE (DUMP)
 # Dump all files with the selected extension inside the input directory
 
-# technically opj_dump should simply parse these one, since syntax is ok.
+# technically grk_dump should simply parse these one, since syntax is ok.
 set(BLACKLIST_JPEG2000_TMP
     2539.pdf.SIGFPE.706.1712.jp2
     0290cb77c5df21828fa74cf2ab2c84d8.SIGFPE.d25.31.jp2
@@ -109,7 +109,7 @@ foreach(INPUT_FILENAME ${OPJ_DATA_NR_LIST})
 
   # Dump the input image
   add_test(NAME NR-${INPUT_FILENAME_NAME}-dump
-           COMMAND opj_dump
+           COMMAND grk_dump
   	       -i ${INPUT_FILENAME}
   	       -o ${TEMP}/${INPUT_FILENAME_NAME}.txt
   	       -v
@@ -210,9 +210,9 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
     string(REGEX MATCH "^!" FAILED_TEST_FOUND ${EXE_NAME})
 
     if (FAILED_TEST_FOUND)
-      # Manage the different cases with the failed sign to remove the first argument which must be opj_compress
+      # Manage the different cases with the failed sign to remove the first argument which must be grk_compress
       set(FAILED_TEST_FOUND_1 0)
-      string(REGEX MATCH "^!opj_compress$|^!opj_decompress$" FAILED_TEST_FOUND_1 ${EXE_NAME})
+      string(REGEX MATCH "^!grk_compress$|^!grk_decompress$" FAILED_TEST_FOUND_1 ${EXE_NAME})
 
       if (FAILED_TEST_FOUND_1)
 
@@ -222,7 +222,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
         set(FAILED_TEST_FOUND_2 0)
         list(GET CMD_ARG_LIST 1 EXE_NAME)
-        string(REGEX MATCH "^opj_compress$|^opj_decompress$" FAILED_TEST_FOUND_2 ${EXE_NAME})
+        string(REGEX MATCH "^grk_compress$|^grk_decompress$" FAILED_TEST_FOUND_2 ${EXE_NAME})
 
         if (FAILED_TEST_FOUND_2)
 
@@ -231,22 +231,22 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
         else ()
 
-          message( FATAL_ERROR "${EXE_NAME} is not the right executable name to encode file (try to use opj_compress or opj_decompress)")
+          message( FATAL_ERROR "${EXE_NAME} is not the right executable name to encode file (try to use grk_compress or grk_decompress)")
 
         endif ()
       endif ()
 
     else ()
-      # Check if the first argument is equal to opj_compress
-      string(REGEX MATCH "^opj_compress$|^opj_decompress$" EXE_NAME_FOUND ${EXE_NAME})
+      # Check if the first argument is equal to grk_compress
+      string(REGEX MATCH "^grk_compress$|^grk_decompress$" EXE_NAME_FOUND ${EXE_NAME})
 
       if(EXE_NAME_FOUND)
 
-        string(REGEX MATCH "opj_compress" ENC_TEST_FOUND ${EXE_NAME})
+        string(REGEX MATCH "grk_compress" ENC_TEST_FOUND ${EXE_NAME})
 
       else()
 
-        message( FATAL_ERROR "${EXE_NAME} is not the right executable name to encode file (try to use opj_compress)")
+        message( FATAL_ERROR "${EXE_NAME} is not the right executable name to encode file (try to use grk_compress)")
 
       endif()
 
@@ -295,7 +295,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
         # Encode an image into the jpeg2000 format
         add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-encode
-          COMMAND opj_compress
+          COMMAND grk_compress
           ${CMD_ARG_LIST_2}
         )
 
@@ -305,7 +305,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
           # Dump the encoding file
           add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-dump
-            COMMAND opj_dump
+            COMMAND grk_dump
             -i ${OUTPUT_FILENAME}
             -o ${OUTPUT_FILENAME}-ENC-${IT_TEST_ENC}.txt
           )
@@ -369,7 +369,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
             # can we compare with the input image ?
             if (${INPUT_FILENAME_NAME} MATCHES "\\.tif$")
               add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-lossless-decode
-                COMMAND opj_decompress -i ${OUTPUT_FILENAME} -o ${OUTPUT_FILENAME}.lossless.tif
+                COMMAND grk_decompress -i ${OUTPUT_FILENAME} -o ${OUTPUT_FILENAME}.lossless.tif
                 )
               set_tests_properties(NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-lossless-decode PROPERTIES
                 DEPENDS NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-encode
@@ -394,7 +394,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
       # Decode the input image
       add_test(NAME NR-DEC-${INPUT_FILENAME_NAME}-${IT_TEST_DEC}-decode
-        COMMAND opj_decompress
+        COMMAND grk_decompress
         ${CMD_ARG_LIST_2}
       )
 

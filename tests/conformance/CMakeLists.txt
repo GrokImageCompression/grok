@@ -52,7 +52,7 @@ set(COMMENTCODEVAR FALSE)
 #    #r = 0
 
 #    add_test(ETS-C0P0-${filenameInput}-r0-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}-r0.pgx
 #        -r 0
@@ -87,7 +87,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    #r = 1
 #    add_test(ETS-C0P0-${filenameInput}-r1-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}-r1.pgx
 #        -r 1
@@ -123,7 +123,7 @@ set(COMMENTCODEVAR FALSE)
 #  else()
 
 #    add_test(ETS-C0P0-${filenameInput}-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}.pgx
 #        -r ${ResFactor}
@@ -191,7 +191,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    #r = 0
 #    add_test(ETS-C0P1-${filenameInput}-r0-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}-r0.pgx
 #        -r 0
@@ -226,7 +226,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    #r = 3
 #    add_test(ETS-C0P1-${filenameInput}-r3-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}-r3.pgx
 #        -r 3
@@ -262,7 +262,7 @@ set(COMMENTCODEVAR FALSE)
 #  else()
 
 #    add_test(ETS-C0P1-${filenameInput}-decode
-#        ${EXECUTABLE_OUTPUT_PATH}/opj_decompress
+#        ${EXECUTABLE_OUTPUT_PATH}/grk_decompress
 #        -i ${INPUT_CONF}/${filenameInput}
 #        -o ${TEMP}/c0${filenameInput}.pgx
 #        -r ${ResFactor}
@@ -328,7 +328,7 @@ foreach(numFileC1P0 RANGE 1 16)
   list(GET C1P0_MSE_list ${numFileC1P0}  MSE_limit)
 
   add_test(NAME ETS-C1P0-${filenameInput}-decode
-      COMMAND opj_decompress
+      COMMAND grk_decompress
       -i ${INPUT_CONF}/${filenameInput}
       -o ${TEMP}/c1${filenameInput}.pgx
       -r ${ResFactor}
@@ -385,7 +385,7 @@ foreach(numFileC1P1 RANGE 1 7)
   list(GET C1P1_MSE_list ${numFileC1P1}  MSE_limit)
 
   add_test(NAME ETS-C1P1-${filenameInput}-decode
-      COMMAND opj_decompress
+      COMMAND grk_decompress
       -i ${INPUT_CONF}/${filenameInput}
       -o ${TEMP}/c1${filenameInput}.pgx
       -r 0
@@ -436,7 +436,7 @@ foreach(numFileJP2 RANGE 1 9)
   set( filenameRef   jp2_${numFileJP2}.tif )
 
   add_test(NAME ETS-JP2-${filenameInput}-decode
-    COMMAND opj_decompress
+    COMMAND grk_decompress
     -i ${INPUT_CONF}/${filenameInput}
     -o ${TEMP}/${filenameInput}.tif
     -p 8S
@@ -517,7 +517,7 @@ foreach(kdu_file ${kdu_j2k_conf_files})
   endif()
 
   add_test(NAME ETS-KDU-${filenameInput}-decode
-    COMMAND opj_decompress
+    COMMAND grk_decompress
     -i ${INPUT_CONF}/${filenameInput}
     -o ${TEMP}/${filenameInput}.ppm
     ${kdu_test_args}
@@ -578,7 +578,7 @@ foreach(r_file ${richter_jp2_conf_files})
   set( filenameRef   "${r_file}.ppm" )
 
   add_test(NAME ETS-RIC-${filenameInput}-decode
-    COMMAND opj_decompress
+    COMMAND grk_decompress
     -i ${INPUT_CONF}/${filenameInput}
     -o ${TEMP}/${filenameInput}.ppm
   )
@@ -632,7 +632,7 @@ foreach(numFileP0 RANGE 1 16)
 
 
   add_test(NAME NR-${filenameInput}-dump
-      COMMAND opj_dump
+      COMMAND grk_dump
      -i ${INPUT_CONF}/${filenameInput}
      -o ${TEMP}/${filenameInput}.txt
      )
@@ -661,7 +661,7 @@ foreach(numFileP1 RANGE 1 7)
   get_filename_component(filenameInputSub ${filenameInput} NAME_WE)
 
   add_test(NAME NR-${filenameInput}-dump
-      COMMAND opj_dump
+      COMMAND grk_dump
      -i ${INPUT_CONF}/${filenameInput}
      -o ${TEMP}/${filenameInput}.txt
      )
@@ -690,7 +690,7 @@ foreach(numFileJP2 RANGE 1 9)
   get_filename_component(filenameInputSub ${filenameInput} NAME_WE)
 
   add_test(NAME NR-${filenameInput}-dump
-      COMMAND opj_dump
+      COMMAND grk_dump
      -i ${INPUT_CONF}/${filenameInput}
      -o ${TEMP}/${filenameInput}.txt
      )

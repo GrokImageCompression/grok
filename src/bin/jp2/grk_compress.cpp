@@ -175,7 +175,7 @@ static void info_callback(const char *msg, void *client_data)
 
 static void encode_help_display(void)
 {
-    fprintf(stdout,"\nThis is the opj_compress utility from the Grok project.\n"
+    fprintf(stdout,"\nThis is the grk_compress utility from the Grok project.\n"
             "It compresses various image formats with the JPEG 2000 algorithm.\n"
             "It has been compiled against openjp2 library v%s.\n\n",opj_version());
 
@@ -1696,14 +1696,14 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	if (inMemoryCompression) {
 		auto fp = fopen(info->input_file_name, "rb");
 		if (!fp) {
-			spdlog::error("opj_compress: unable to open file {} for reading", info->input_file_name);
+			spdlog::error("grk_compress: unable to open file {} for reading", info->input_file_name);
 			bSuccess = false;
 			goto cleanup;
 		}
 
 		auto rc = fseek(fp, 0, SEEK_END);
 		if (rc == -1) {
-			spdlog::error("opj_compress: unable to seek on file {}", info->input_file_name);
+			spdlog::error("grk_compress: unable to seek on file {}", info->input_file_name);
 			if (fp)
 				fclose(fp);
 			bSuccess = false;
