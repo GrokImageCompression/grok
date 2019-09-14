@@ -365,12 +365,12 @@ if [ "${GROK_CI_PROFILE:-}" == "1" ]; then
     cmake "-DCMAKE_C_FLAGS=-pg -O3" -DCMAKE_EXE_LINKER_FLAGS=-pg -DCMAKE_SHARED_LINKER_FLAGS=-pg -DBUILD_SHARED_LIBS=OFF ..
     make -j3
     cd ..
-    build_gprof/bin/opj_decompress -i data/input/nonregression/kodak_2layers_lrcp.j2c -o out.tif > /dev/null
+    build_gprof/bin/grk_decompress -i data/input/nonregression/kodak_2layers_lrcp.j2c -o out.tif > /dev/null
     echo "Most CPU consuming functions:"
-    gprof build_gprof/bin/opj_decompress gmon.out | head || true
+    gprof build_gprof/bin/grk_decompress gmon.out | head || true
 
     rm -f massif.out.*
-    valgrind --tool=massif build/bin/opj_decompress -i data/input/nonregression/kodak_2layers_lrcp.j2c -o out.tif >/dev/null 2>/dev/null
+    valgrind --tool=massif build/bin/grk_decompress -i data/input/nonregression/kodak_2layers_lrcp.j2c -o out.tif >/dev/null 2>/dev/null
     echo ""
     echo "Memory consumption profile:"
     python tests/profiling/filter_massif_output.py massif.out.*

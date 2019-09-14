@@ -37,8 +37,8 @@ def Usage():
     print('Usage: perf_test.py [-kakadu] [-i filelist.csv] [-o out.csv] [-q]')
     sys.exit(1)
 
-opj_decompress_path = 'opj_decompress'
-opj_compress_path = 'opj_compress'
+opj_decompress_path = 'grk_decompress'
+opj_compress_path = 'grk_compress'
 kdu_expand_path = 'kdu_expand'
 kdu_compress_path = 'kdu_compress'
 

@@ -74,7 +74,7 @@ endif()
 add_definitions(-DSPDLOG_COMPILED_LIB)
 
 # Loop over all executables:
-foreach(exe opj_decompress opj_compress opj_dump)
+foreach(exe grk_decompress grk_compress grk_dump)
   add_executable(${exe} ${exe}.cpp ${common_SRCS})
   if(${CMAKE_VERSION} VERSION_GREATER "2.8.11")
     target_compile_options(${exe} PRIVATE ${GROK_COMPILE_OPTIONS})
@@ -108,9 +108,9 @@ endforeach()
 if(BUILD_DOC)
 # Install man pages
 install(
-  FILES       ${GROK_SOURCE_DIR}/doc/man/man1/opj_compress.1
-              ${GROK_SOURCE_DIR}/doc/man/man1/opj_decompress.1
-              ${GROK_SOURCE_DIR}/doc/man/man1/opj_dump.1
+  FILES       ${GROK_SOURCE_DIR}/doc/man/man1/grk_compress.1
+              ${GROK_SOURCE_DIR}/doc/man/man1/grk_decompress.1
+              ${GROK_SOURCE_DIR}/doc/man/man1/grk_dump.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 #
 endif()
