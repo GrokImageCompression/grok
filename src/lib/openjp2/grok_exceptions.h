@@ -25,4 +25,9 @@ class DecodeUnknownMarkerAtEndOfTileException: public std::exception {
 
 };
 
+//exceptions
+class PluginDecodeUnsupportedException: public std::exception {
+};
+
+
 }
