@@ -107,17 +107,17 @@ typedef struct img_folder {
 static int get_num_images(char *imgdirpath);
 static int load_images(dircnt_t *dirptr, char *imgdirpath);
 static int get_file_format(const char *filename);
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_dparameters_t *parameters);
+static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, grk_dparameters_t *parameters);
 static int infile_format(const char *fname);
 
-static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *parameters,img_fol_t *img_fol);
+static int parse_cmdline_decoder(int argc, char **argv, grk_dparameters_t *parameters,img_fol_t *img_fol);
 
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void)
 {
-    fprintf(stdout,"\nThis is the opj_dump utility from the Grok project.\n"
+    fprintf(stdout,"\nThis is the grk_dump utility from the Grok project.\n"
             "It dumps JPEG 2000 codestream info to stdout or a given file.\n"
-            "It has been compiled against openjp2 library v%s.\n\n",opj_version());
+            "It has been compiled against openjp2 library v%s.\n\n",grk_version());
 
     fprintf(stdout,"Parameters:\n");
     fprintf(stdout,"-----------\n");
@@ -211,10 +211,10 @@ static int get_file_format(const char *filename)
 }
 
 /* -------------------------------------------------------------------------- */
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, opj_dparameters_t *parameters)
+static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, grk_dparameters_t *parameters)
 {
-    char image_filename[OPJ_PATH_LEN], infilename[3*OPJ_PATH_LEN],outfilename[3*OPJ_PATH_LEN],temp_ofname[OPJ_PATH_LEN];
-    char *temp_p, temp1[OPJ_PATH_LEN]="";
+    char image_filename[GRK_PATH_LEN], infilename[3*GRK_PATH_LEN],outfilename[3*GRK_PATH_LEN],temp_ofname[GRK_PATH_LEN];
+    char *temp_p, temp1[GRK_PATH_LEN]="";
 
     strcpy(image_filename,dirptr->filename[imageno]);
     spdlog::info("File Number {} \"{}\"",imageno,image_filename);
@@ -288,7 +288,7 @@ static int infile_format(const char *fname)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parse_cmdline_decoder(int argc, char **argv, opj_dparameters_t *parameters,img_fol_t *img_fol)
+static int parse_cmdline_decoder(int argc, char **argv, grk_dparameters_t *parameters,img_fol_t *img_fol)
 {
     int totlen, c;
     grok_option_t long_option[]= {
@@ -425,33 +425,33 @@ static void info_callback(const char *msg, void *client_data)
 
 /* -------------------------------------------------------------------------- */
 /**
- * OPJ_DUMP MAIN
+ * GRK_DUMP MAIN
  */
 /* -------------------------------------------------------------------------- */
 int main(int argc, char *argv[])
 {
     FILE *fout = nullptr;
 
-    opj_dparameters_t parameters;			/* Decompression parameters */
-    opj_image_t* image = nullptr;					/* Image structure */
-    opj_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
-    opj_stream_t *l_stream = nullptr;				/* Stream */
-    opj_codestream_info_v2_t* cstr_info = nullptr;
-    opj_codestream_index_t* cstr_index = nullptr;
+    grk_dparameters_t parameters;			/* Decompression parameters */
+    grk_image_t* image = nullptr;					/* Image structure */
+    grk_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
+    grk_stream_t *l_stream = nullptr;				/* Stream */
+    grk_codestream_info_v2_t* cstr_info = nullptr;
+    grk_codestream_index_t* cstr_index = nullptr;
 
     int32_t num_images, imageno;
     img_fol_t img_fol;
     dircnt_t *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 
-    opj_initialize(nullptr,0);
+    grk_initialize(nullptr,0);
 
     /* Set decoding parameters to default values */
-    opj_set_default_decoder_parameters(&parameters);
+    grk_set_default_decoder_parameters(&parameters);
 
     /* Initialize img_fol */
     memset(&img_fol,0,sizeof(img_fol_t));
-    img_fol.flag = OPJ_IMG_INFO | OPJ_J2K_MH_INFO | OPJ_J2K_MH_IND;
+    img_fol.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
 
     /* Parse input and get user encoding parameters */
     if(parse_cmdline_decoder(argc, argv, &parameters,&img_fol) == 1) {
@@ -471,7 +471,7 @@ int main(int argc, char *argv[])
 
         dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
         if(dirptr) {
-            dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
+            dirptr->filename_buf = (char*)malloc((size_t)num_images*GRK_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
 			if (!dirptr->filename_buf) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
 				goto cleanup;
 			}
             for(it_image=0; it_image<num_images; it_image++) {
-                dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+                dirptr->filename[it_image] = dirptr->filename_buf + it_image*GRK_PATH_LEN;
             }
         }
         if(load_images(dirptr,img_fol.imgdirpath)==1) {
@@ -517,7 +517,7 @@ int main(int argc, char *argv[])
         /* Read the input file and put it in memory */
         /* ---------------------------------------- */
 
-        l_stream = opj_stream_create_default_file_stream(parameters.infile,1);
+        l_stream = grk_stream_create_default_file_stream(parameters.infile,1);
         if (!l_stream) {
         	spdlog::error("failed to create the stream from the file {}\n",parameters.infile);
 			rc = EXIT_FAILURE;
@@ -530,68 +530,68 @@ int main(int argc, char *argv[])
         switch(parameters.decod_format) {
         case J2K_CFMT: {	/* JPEG-2000 codestream */
             /* Get a decoder handle */
-            l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+            l_codec = grk_create_decompress(GRK_CODEC_J2K);
             break;
         }
         case JP2_CFMT: {	/* JPEG 2000 compressed image data */
             /* Get a decoder handle */
-            l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+            l_codec = grk_create_decompress(GRK_CODEC_JP2);
             break;
         }
         default:
-            opj_stream_destroy(l_stream);
+            grk_stream_destroy(l_stream);
 			l_stream = nullptr;
             continue;
         }
 
         /* catch events using our callbacks and give a local context */
-        opj_set_info_handler(l_codec, info_callback,nullptr);
-        opj_set_warning_handler(l_codec, warning_callback,nullptr);
-        opj_set_error_handler(l_codec, error_callback,nullptr);
+        grk_set_info_handler(l_codec, info_callback,nullptr);
+        grk_set_warning_handler(l_codec, warning_callback,nullptr);
+        grk_set_error_handler(l_codec, error_callback,nullptr);
 
         /* Setup the decoder decoding parameters using user parameters */
-        if ( !opj_setup_decoder(l_codec, &parameters) ) {
-        	spdlog::error("opj_dump: failed to setup the decoder");
+        if ( !grk_setup_decoder(l_codec, &parameters) ) {
+        	spdlog::error("grk_dump: failed to setup the decoder");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
-        if(! opj_read_header(l_stream, l_codec,&image)) {
-            spdlog::error("opj_dump: failed to read the header");
+        if(! grk_read_header(l_stream, l_codec,&image)) {
+            spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;
         }
 
-        opj_dump_codec(l_codec, img_fol.flag, fout );
+        grk_dump_codec(l_codec, img_fol.flag, fout );
 
-        cstr_info = opj_get_cstr_info(l_codec);
+        cstr_info = grk_get_cstr_info(l_codec);
 
-        cstr_index = opj_get_cstr_index(l_codec);
+        cstr_index = grk_get_cstr_index(l_codec);
 
         /* close the byte stream */
 		if (l_stream) {
-			opj_stream_destroy(l_stream);
+			grk_stream_destroy(l_stream);
 			l_stream = nullptr;
 		}
 
         /* free remaining structures */
         if (l_codec) {
-            opj_destroy_codec(l_codec);
+            grk_destroy_codec(l_codec);
 			l_codec = nullptr;
         }
 
         /* destroy the image header */
 		if (image) {
-			opj_image_destroy(image);
+			grk_image_destroy(image);
 			image = nullptr;
 		}
 
         /* destroy the codestream index */
-        opj_destroy_cstr_index(&cstr_index);
+        grk_destroy_cstr_index(&cstr_index);
 
         /* destroy the codestream info */
-        opj_destroy_cstr_info(&cstr_info);
+        grk_destroy_cstr_info(&cstr_info);
 
     }
 
@@ -606,21 +606,21 @@ cleanup:
 
 	/* close the byte stream */
 	if (l_stream)
-		opj_stream_destroy(l_stream);
+		grk_stream_destroy(l_stream);
 
 	/* free remaining structures */
 	if (l_codec) {
-		opj_destroy_codec(l_codec);
+		grk_destroy_codec(l_codec);
 	}
 
 	/* destroy the image header */
 	if (image)
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 
     if (fout)
 		fclose(fout);
 
-    opj_deinitialize();
+    grk_deinitialize();
 
     return rc;
 }

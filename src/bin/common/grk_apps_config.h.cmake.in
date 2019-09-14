@@ -1,6 +1,6 @@
 #include "grk_config_private.h"
 
-/* create opj_apps_config.h for CMake */
+/* create grk_apps_config.h for CMake */
 
 #cmakedefine GROK_HAVE_LIBPNG @HAVE_LIBPNG@
 #cmakedefine GROK_HAVE_LIBTIFF @HAVE_LIBTIFF@

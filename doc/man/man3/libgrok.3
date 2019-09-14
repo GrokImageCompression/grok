@@ -57,75 +57,75 @@ a library for reading and writing JPEG2000 image files.
 .B YUV: imagetoyuv() \fR/\fB yuvtoimage() \fR(MJ2) 
 .P
 .SS READ
-.B opj_set_default_decoder_parameters(opj_dparameters_t *\fIparams\fB);
+.B grk_set_default_decoder_parameters(grk_dparameters_t *\fIparams\fB);
 .P
-.B opj_dinfo_t *opj_create_decompress(OPJ_CODEC_FORMAT \fIformat\fB);
+.B grk_dinfo_t *grk_create_decompress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
-.B opj_event_mgr_t *opj_set_event_mgr(opj_common_ptr \fIinfo\fB, opj_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
+.B grk_event_mgr_t *grk_set_event_mgr(grk_common_ptr \fIinfo\fB, grk_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void opj_setup_decoder(opj_dinfo_t *\fIdinfo\fB, opj_dparameters_t * \fIparams\fB);
+.B void grk_setup_decoder(grk_dinfo_t *\fIdinfo\fB, grk_dparameters_t * \fIparams\fB);
 .P
-.B opj_cio_t *opj_cio_open(opj_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
+.B grk_cio_t *grk_cio_open(grk_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
 .P
-.B opj_image_t *opj_decode(opj_dinfo_t *\fIdinfo\fB, opj_cio_t *\fIcio\fB);
+.B grk_image_t *grk_decode(grk_dinfo_t *\fIdinfo\fB, grk_cio_t *\fIcio\fB);
 .P
-.B void opj_cio_close(opj_cio_t *\fIcio\fB);
+.B void grk_cio_close(grk_cio_t *\fIcio\fB);
 .P
-.B void opj_destroy_decompress(opj_dinfo_t *\fIdinfo\fB);
+.B void grk_destroy_decompress(grk_dinfo_t *\fIdinfo\fB);
 .P
-.B void opj_image_destroy(opj_image_t *\fIimage\fB);
+.B void grk_image_destroy(grk_image_t *\fIimage\fB);
 .P
 .SS WRITE
-.B void opj_set_default_encoder_parameters(opj_cparameters_t *\fIparams\fB);
+.B void grk_set_default_encoder_parameters(grk_cparameters_t *\fIparams\fB);
 .P
 /*
-.B opj_image_t *FORMATtoimage(const char *\fIfname\fB, opj_cparameters_t *\fIparams\fB);
+.B grk_image_t *FORMATtoimage(const char *\fIfname\fB, grk_cparameters_t *\fIparams\fB);
 .P
 */
 .br
-.B opj_cinfo_t* opj_create_compress(OPJ_CODEC_FORMAT \fIformat\fB);
+.B grk_cinfo_t* grk_create_compress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
-.B opj_event_mgr_t *opj_set_event_mgr(opj_common_ptr \fIinfo\fB, opj_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
+.B grk_event_mgr_t *grk_set_event_mgr(grk_common_ptr \fIinfo\fB, grk_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void opj_setup_encoder(opj_cinfo_t *\fIcinfo\fB, opj_cparameters_t *\fIparams\fB, opj_image_t *\fIimage\fB);
+.B void grk_setup_encoder(grk_cinfo_t *\fIcinfo\fB, grk_cparameters_t *\fIparams\fB, grk_image_t *\fIimage\fB);
 .P
-.B opj_cio_t *opj_cio_open(opj_common_ptr \fIcinfo\fB, \fINULL\fB, \fI0\fB);
+.B grk_cio_t *grk_cio_open(grk_common_ptr \fIcinfo\fB, \fINULL\fB, \fI0\fB);
 .P
-.B  bool opj_encode(opj_cinfo_t *\fIcinfo\fB, opj_cio_t *\fIcio\fB, opj_image_t *\fIimage\fB, char *\fIindex\fB);
+.B  bool grk_encode(grk_cinfo_t *\fIcinfo\fB, grk_cio_t *\fIcio\fB, grk_image_t *\fIimage\fB, char *\fIindex\fB);
 .P
-.B void opj_cio_close(opj_cio_t *\fIcio\fB);
+.B void grk_cio_close(grk_cio_t *\fIcio\fB);
 .P
-.B void opj_destroy_compress(opj_cinfo_t *\fIcinfo\fB);
+.B void grk_destroy_compress(grk_cinfo_t *\fIcinfo\fB);
 .P
-.B void opj_image_destroy(opj_image_t *\fIimage\fB);
+.B void grk_image_destroy(grk_image_t *\fIimage\fB);
 .P
 .SS GENERAL
 .P
-.B void opj_image_create(int \fInumcmpts\fB, opj_image_cmptparm_t *\fIcmptparms\fB, OPJ_COLOR_SPACE \fIclrspc\fB);
+.B void grk_image_create(int \fInumcmpts\fB, grk_image_cmptparm_t *\fIcmptparms\fB, GRK_COLOR_SPACE \fIclrspc\fB);
 .P
-.B int cio_tell(opj_cio_t *\fIcio\fB);
+.B int cio_tell(grk_cio_t *\fIcio\fB);
 .P
-.B void cio_seek(opj_cio_t *\fIcio\fB, int \fIpos\fB);
+.B void cio_seek(grk_cio_t *\fIcio\fB, int \fIpos\fB);
 .P
-.B opj_image_t *opj_decode_with_info(opj_dinfo_t *\fIdinfo\fB, opj_cio_t *\fIcio\fB, opj_codestream_info_t *\fIcstr_info\fB);
+.B grk_image_t *grk_decode_with_info(grk_dinfo_t *\fIdinfo\fB, grk_cio_t *\fIcio\fB, grk_codestream_info_t *\fIcstr_info\fB);
 .P
-.B bool opj_encode_with_info(opj_cinfo_t *\fIcinfo\fB, opj_cio_t *\fIcio\fB, opj_image_t *\fIimage\fB, opj_codestream_info_t *\fIcstr_info\fB);
+.B bool grk_encode_with_info(grk_cinfo_t *\fIcinfo\fB, grk_cio_t *\fIcio\fB, grk_image_t *\fIimage\fB, grk_codestream_info_t *\fIcstr_info\fB);
 .P
-.B void opj_destroy_cstr_info(opj_codestream_info_t *\fIcstr_info\fB);
+.B void grk_destroy_cstr_info(grk_codestream_info_t *\fIcstr_info\fB);
 .P
-.B const char *opj_version(\fIvoid\fB);
+.B const char *grk_version(\fIvoid\fB);
 .P
-.SH OPJ_CODEC_FORMAT
+.SH GRK_CODEC_FORMAT
 .P
 .B CODEC_J2K\fR or \fBCODEC_JPT\fR or \fBCODEC_JP2
 .P
-.SH OPJ_COLOR_SPACE
+.SH GRK_COLOR_SPACE
 .P
 .B CLRSPC_UNKNOWN\fR or \fBCLRSPC_UNSPECIFIED\fR or \fBCLRSPC_SRGB\fR or \fBCLRSPC_GRAY\fR or \fBCLRSPC_SYCC
 .P
 .SH DECOMPRESSION PARAMETERS
 .p
-typedef struct opj_dparameters 
+typedef struct grk_dparameters 
 .br
 {
     /*
@@ -149,10 +149,10 @@ typedef struct opj_dparameters
 
     /*command line encoder parameters (not used inside the library) */
     /* input file name */
-    \fBchar\fR infile[OPJ_PATH_LEN];
+    \fBchar\fR infile[GRK_PATH_LEN];
     /* output file name */
-    \fBchar\fR outfile[OPJ_PATH_LEN];
-    /* input file format: see OPJ_CODEC_FORMAT */
+    \fBchar\fR outfile[GRK_PATH_LEN];
+    /* input file format: see GRK_CODEC_FORMAT */
     \fBint\fR decod_format;
     /* output file format */
     \fBint\fR cod_format;
@@ -173,13 +173,13 @@ typedef struct opj_dparameters
     if == NO_LIMITATION, the entire codestream is decoded;
     if == LIMIT_TO_MAIN_HEADER, only the main header is decoded;
     */
-    \fBOPJ_LIMIT_DECODING\fR cp_limit_decoding;
+    \fBGRK_LIMIT_DECODING\fR cp_limit_decoding;
 .br
-} opj_dparameters_t;
+} grk_dparameters_t;
 
 .SH COMPRESSION PARAMETERS
 .P
-typedef struct opj_cparameters 
+typedef struct grk_cparameters 
 .br
 {
     /* size of tile: tile_size_on = false (not in argument) 
@@ -207,9 +207,9 @@ typedef struct opj_cparameters
     \fBint\fR csty;
     /* progression order:
        PROG_UNKNOWN, LRCP(default), RLCP, RPCL, PCRL, CPRL */
-    \fBOPJ_PROG_ORDER\fR prog_order;
+    \fBGRK_PROG_ORDER\fR prog_order;
     /* progression order changes */
-    \fBopj_poc_t\fR POC[32];
+    \fBgrk_poc_t\fR POC[32];
     /* number of progression order changes (POC), default: 0 */
     \fBint\fR numpocs;
     /* number of layers */
@@ -242,15 +242,15 @@ typedef struct opj_cparameters
 
     /*command line encoder parameters (not used inside the library) */
     /* input file name */
-    \fBchar\fR infile[OPJ_PATH_LEN];
+    \fBchar\fR infile[GRK_PATH_LEN];
     /* output file name */
-    \fBchar\fR outfile[OPJ_PATH_LEN];
+    \fBchar\fR outfile[GRK_PATH_LEN];
     /* DEPRECATED. Index generation is now handeld with the 
-        opj_encode_with_info() function. Set to NULL */
+        grk_encode_with_info() function. Set to NULL */
     \fBint\fR index_on;
     /* DEPRECATED. Index generation is now handeld with the 
-        opj_encode_with_info() function. Set to NULL */
-    \fBchar\fR index[OPJ_PATH_LEN];
+        grk_encode_with_info() function. Set to NULL */
+    \fBchar\fR index[GRK_PATH_LEN];
     /* subimage encoding: origin image offset in x direction */
     \fBint\fR image_offset_x0;
     /* subimage encoding: origin image offset in y direction */
@@ -261,7 +261,7 @@ typedef struct opj_cparameters
     \fBint\fR subsampling_dy;
     /* input file format */
     \fBint\fR decod_format;
-    /* output file format: see OPJ_CODEC_FORMAT */
+    /* output file format: see GRK_CODEC_FORMAT */
     \fBint\fR cod_format;
 
     /*JPWL encoding parameters */
@@ -294,12 +294,12 @@ typedef struct opj_cparameters
 
     /* Digital Cinema compliance: OFF-not compliant, 
        CINEMA2K_24, CINEMA2K_48, CINEMA4K_24 */
-    \fBOPJ_CINEMA_MODE\fR cp_cinema;
+    \fBGRK_CINEMA_MODE\fR cp_cinema;
     /* Maximum rate for each component. 
         If == 0, component size limitation is not considered */
     \fBint\fR max_comp_size;
     /* Profile name*/
-    \fBOPJ_RSIZ_CAPABILITIES\fR cp_rsiz;
+    \fBGRK_RSIZ_CAPABILITIES\fR cp_rsiz;
     /* Tile part generation*/
     \fBchar\fR tp_on;
     /* Flag for Tile part generation*/
@@ -307,7 +307,7 @@ typedef struct opj_cparameters
     /* MCT (multiple component transform) */
     \fBchar\fR tcp_mct;
 .br
-} opj_cparameters_t;
+} grk_cparameters_t;
 
 
 '\".SH OPTIONS

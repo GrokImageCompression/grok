@@ -1,7 +1,7 @@
 /* create grk_config_private.h for CMake */
 #cmakedefine GROK_HAVE_INTTYPES_H 	@GROK_HAVE_INTTYPES_H@
 
-#define OPJ_PACKAGE_VERSION "@PACKAGE_VERSION@"
+#define GRK_PACKAGE_VERSION "@PACKAGE_VERSION@"
 
 /* Not used by openjp2*/
 /*#cmakedefine HAVE_MEMORY_H @HAVE_MEMORY_H@*/

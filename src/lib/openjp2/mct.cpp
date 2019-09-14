@@ -87,7 +87,7 @@ double mct_getnorm(uint32_t compno) {
 double mct_getnorm_real(uint32_t compno) {
 	return mct_norms_real[compno];
 }
-void opj_calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
+void grk_calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 	uint32_t i, j, lIndex;
 	float lCurrentValue;
 	double *lNorms = (double*) pNorms;

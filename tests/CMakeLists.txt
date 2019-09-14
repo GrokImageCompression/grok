@@ -10,7 +10,7 @@ ENDIF(MSVC)
 
 include_directories(
   ${GROK_BINARY_DIR}/src/lib/openjp2 # grk_config.h
-  ${GROK_BINARY_DIR}/src/bin/common # opj_apps_config.h
+  ${GROK_BINARY_DIR}/src/bin/common # grk_apps_config.h
   ${GROK_SOURCE_DIR}/src/lib/openjp2
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
@@ -24,9 +24,9 @@ include_directories(
 
  if(WIN32)
   if(BUILD_SHARED_LIBS)
-    add_definitions(-DOPJ_EXPORTS)
+    add_definitions(-DGRK_EXPORTS)
   else()
-    add_definitions(-DOPJ_STATIC)
+    add_definitions(-DGRK_STATIC)
   endif()
 endif()
 

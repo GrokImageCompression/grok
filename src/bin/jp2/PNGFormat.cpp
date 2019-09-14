@@ -57,7 +57,7 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "PNGFormat.h"
 #include "convert.h"
@@ -112,21 +112,21 @@ struct pngToImageInfo {
 		row32s(nullptr),
 		image(nullptr),
 		readFromStdin(false),
-		colorSpace(OPJ_CLRSPC_UNKNOWN)
+		colorSpace(GRK_CLRSPC_UNKNOWN)
 	{}
 
 	png_structp  png;
 	FILE *reader;
 	uint8_t** rows;
 	int32_t* row32s;
-	opj_image_t *image;
+	grk_image_t *image;
 	bool readFromStdin;
-	OPJ_COLOR_SPACE colorSpace;
+	GRK_COLOR_SPACE colorSpace;
 };
 
 
-static opj_image_t *pngtoimage(const char *read_idf, 
-								opj_cparameters_t * params)
+static grk_image_t *pngtoimage(const char *read_idf, 
+								grk_cparameters_t * params)
 {
 	pngToImageInfo local_info;
 	png_infop    info = nullptr;
@@ -135,7 +135,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 	png_uint_32  width = 0U, height = 0U;
 	int color_type;
 	local_info.readFromStdin = grk::useStdio(read_idf);
-	opj_image_cmptparm_t cmptparm[4];
+	grk_image_cmptparm_t cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
 	convert_XXx32s_C1R cvtXXTo32s = nullptr;
@@ -221,7 +221,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 
 	if (png_get_sRGB(local_info.png, info, &srgbIntent)) {
 		if (srgbIntent >= 0 && srgbIntent <= 3)
-			local_info.colorSpace = OPJ_CLRSPC_SRGB;
+			local_info.colorSpace = GRK_CLRSPC_SRGB;
 	}
 
 
@@ -246,8 +246,8 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		goto beach;
 	}
 
-	if (local_info.colorSpace == OPJ_CLRSPC_UNKNOWN)
-		local_info.colorSpace = (nr_comp > 2U) ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
+	if (local_info.colorSpace == GRK_CLRSPC_UNKNOWN)
+		local_info.colorSpace = (nr_comp > 2U) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
 
 	cvtCxToPx = convert_32s_CXPX_LUT[nr_comp];
 	bit_depth = png_get_bit_depth(local_info.png, info);
@@ -294,7 +294,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 		cmptparm[i].h = height;
 	}
 
-	local_info.image = opj_image_create(nr_comp, &cmptparm[0], local_info.colorSpace);
+	local_info.image = grk_image_create(nr_comp, &cmptparm[0], local_info.colorSpace);
 	if (local_info.image == nullptr)
 		goto beach;
 	local_info.image->x0 = params->image_offset_x0;
@@ -322,10 +322,10 @@ static opj_image_t *pngtoimage(const char *read_idf,
 			&Compression,
 			&ProfileData,
 			&ProfileLen) == PNG_INFO_iCCP) {
-			local_info.image->icc_profile_buf = opj_buffer_new(ProfileLen);
+			local_info.image->icc_profile_buf = grk_buffer_new(ProfileLen);
 			memcpy(local_info.image->icc_profile_buf, ProfileData, ProfileLen);
 			local_info.image->icc_profile_len = ProfileLen;
-			local_info.image->color_space = OPJ_CLRSPC_ICC;
+			local_info.image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
 
@@ -364,7 +364,7 @@ static opj_image_t *pngtoimage(const char *read_idf,
 			else if (!strcmp(key, "XML:com.adobe.xmp")) {
 				if (text_ptr[i].text_length) {
 					local_info.image->xmp_len = text_ptr[i].text_length;
-					local_info.image->xmp_buf = opj_buffer_new(local_info.image->xmp_len);
+					local_info.image->xmp_buf = grk_buffer_new(local_info.image->xmp_len);
 					memcpy(local_info.image->xmp_buf, text_ptr[i].text, local_info.image->xmp_len);
 				}
 			}
@@ -414,7 +414,7 @@ beach:
 		png_destroy_read_struct(&local_info.png, &info, nullptr);
 	if (!local_info.readFromStdin &&  local_info.reader){
 		if (!grk::safe_fclose(local_info.reader)){
-			opj_image_destroy(local_info.image);
+			grk_image_destroy(local_info.image);
 			local_info.image = nullptr;
 		}
 	}
@@ -445,12 +445,12 @@ struct imageToPngInfo {
 	FILE * volatile writer;
 	png_bytep volatile row_buf;
 	int32_t* volatile buffer32s;
-	opj_image_t *image;
+	grk_image_t *image;
 	bool writeToStdout;
 	volatile int fails;
 };
 
-static int imagetopng(opj_image_t * image, 
+static int imagetopng(grk_image_t * image, 
 					const char *write_idf,
 					int32_t compressionLevel,
 					bool verbose)
@@ -743,10 +743,10 @@ beach:
 }/* imagetopng() */
 
 
-bool PNGFormat::encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool PNGFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
 	(void)verbose;
 	return imagetopng(image, filename, compressionParam,verbose) ? false : true;
 }
-opj_image_t*  PNGFormat::decode(const char* filename, opj_cparameters_t *parameters) {
+grk_image_t*  PNGFormat::decode(const char* filename, grk_cparameters_t *parameters) {
 	return pngtoimage(filename, parameters);
 }

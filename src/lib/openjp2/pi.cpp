@@ -148,7 +148,7 @@ static void pi_update_encode_not_poc(cp_t *p_cp, uint32_t num_comps,
  * @param	dx_min			pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min			pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
-static void opj_get_encoding_parameters(const opj_image_t *p_image,
+static void grk_get_encoding_parameters(const grk_image_t *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res);
@@ -173,7 +173,7 @@ static void opj_get_encoding_parameters(const opj_image_t *p_image,
  * @param	dy_min		pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  * @param	p_resolutions	pointer to an area corresponding to the one described above.
  */
-static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
+static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
@@ -186,7 +186,7 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
  * @param	p_cp		the coding parameters.
  * @param	tileno	the index of the tile from which creating the packet iterator.
  */
-static pi_iterator_t* pi_create(const opj_image_t *p_image, const cp_t *p_cp,
+static pi_iterator_t* pi_create(const grk_image_t *p_image, const cp_t *p_cp,
 		uint32_t tileno);
 /**
  * FIXME DOC
@@ -381,7 +381,7 @@ static bool pi_next_rpcl(pi_iterator_t *pi) {
 					}
 					res = &comp->resolutions[pi->resno];
 					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= OPJ_J2K_MAXRLVLS)
+					if (levelno >= GRK_J2K_MAXRLVLS)
 						continue;
 					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
 							((uint64_t) comp->dx << levelno));
@@ -479,7 +479,7 @@ static bool pi_next_pcrl(pi_iterator_t *pi) {
 					uint32_t prci, prcj;
 					res = &comp->resolutions[pi->resno];
 					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= OPJ_J2K_MAXRLVLS)
+					if (levelno >= GRK_J2K_MAXRLVLS)
 						continue;
 					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
 							((uint64_t) comp->dx << levelno));
@@ -580,7 +580,7 @@ static bool pi_next_cprl(pi_iterator_t *pi) {
 					int32_t prci, prcj;
 					res = &comp->resolutions[pi->resno];
 					levelno = comp->numresolutions - 1 - pi->resno;
-					if (levelno >= OPJ_J2K_MAXRLVLS)
+					if (levelno >= GRK_J2K_MAXRLVLS)
 						continue;
 					trx0 = ceildiv<uint64_t>((uint64_t) pi->tx0,
 							((uint64_t) comp->dx << levelno));
@@ -643,7 +643,7 @@ static bool pi_next_cprl(pi_iterator_t *pi) {
 	return false;
 }
 
-static void opj_get_encoding_parameters(const opj_image_t *p_image,
+static void grk_get_encoding_parameters(const grk_image_t *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res) {
@@ -652,7 +652,7 @@ static void opj_get_encoding_parameters(const opj_image_t *p_image,
 	/* pointers */
 	const tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
-	const opj_image_comp_t *l_img_comp = nullptr;
+	const grk_image_comp_t *l_img_comp = nullptr;
 
 	/* position in x and y of tile */
 	uint32_t p, q;
@@ -752,7 +752,7 @@ static void opj_get_encoding_parameters(const opj_image_t *p_image,
 	}
 }
 
-static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
+static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
@@ -763,7 +763,7 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
 	/* pointers*/
 	const tcp_t *tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
-	const opj_image_comp_t *l_img_comp = nullptr;
+	const grk_image_comp_t *l_img_comp = nullptr;
 
 	/* to store l_dx, l_dy, w and h for each resolution and component.*/
 	uint32_t *lResolutionPtr;
@@ -870,7 +870,7 @@ static void opj_get_all_encoding_parameters(const opj_image_t *p_image,
 	}
 }
 
-static pi_iterator_t* pi_create(const opj_image_t *image, const cp_t *cp,
+static pi_iterator_t* pi_create(const grk_image_t *image, const cp_t *cp,
 		uint32_t tileno) {
 	/* loop*/
 	uint32_t pino, compno;
@@ -940,7 +940,7 @@ static void pi_update_encode_poc_and_final(cp_t *p_cp, uint32_t tileno,
 	/* tile coding parameter*/
 	tcp_t *l_tcp = nullptr;
 	/* current poc being updated*/
-	opj_poc_t *l_current_poc = nullptr;
+	grk_poc_t *l_current_poc = nullptr;
 
 	/* number of pocs*/
 	uint32_t l_poc_bound;
@@ -1013,7 +1013,7 @@ static void pi_update_encode_not_poc(cp_t *p_cp, uint32_t num_comps,
 	/* tile coding parameter*/
 	tcp_t *l_tcp = nullptr;
 	/* current poc being updated*/
-	opj_poc_t *l_current_poc = nullptr;
+	grk_poc_t *l_current_poc = nullptr;
 	/* number of pocs*/
 	uint32_t l_poc_bound;
 
@@ -1060,7 +1060,7 @@ static void pi_update_decode_poc(pi_iterator_t *p_pi, tcp_t *p_tcp,
 	uint32_t l_bound;
 
 	pi_iterator_t *l_current_pi = nullptr;
-	opj_poc_t *l_current_poc = 0;
+	grk_poc_t *l_current_poc = 0;
 
 	ARG_NOT_USED(max_res);
 
@@ -1127,7 +1127,7 @@ static bool pi_check_next_level(int32_t pos, cp_t *cp, uint32_t tileno,
 		uint32_t pino, const char *prog) {
 	uint32_t i;
 	tcp_t *tcps = &cp->tcps[tileno];
-	opj_poc_t *tcp = &tcps->pocs[pino];
+	grk_poc_t *tcp = &tcps->pocs[pino];
 
 	if (pos >= 0) {
 		for (i = pos; pos >= 0; i--) {
@@ -1167,8 +1167,8 @@ static bool pi_check_next_level(int32_t pos, cp_t *cp, uint32_t tileno,
 				break;
 			case 'P':
 				switch (tcp->prg) {
-				case OPJ_LRCP: /* fall through */
-				case OPJ_RLCP:
+				case GRK_LRCP: /* fall through */
+				case GRK_RLCP:
 					if (tcp->prc_t == tcp->prcE) {
 						if (pi_check_next_level(i - 1, cp, tileno, pino,
 								prog)) {
@@ -1209,7 +1209,7 @@ static bool pi_check_next_level(int32_t pos, cp_t *cp, uint32_t tileno,
  Packet iterator interface
  ==========================================================
  */
-pi_iterator_t* pi_create_decode(opj_image_t *p_image, cp_t *p_cp,
+pi_iterator_t* pi_create_decode(grk_image_t *p_image, cp_t *p_cp,
 		uint32_t tile_no) {
 	/* loop */
 	uint32_t pino;
@@ -1233,7 +1233,7 @@ pi_iterator_t* pi_create_decode(opj_image_t *p_image, cp_t *p_cp,
 	tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
 	pi_comp_t *l_current_comp = nullptr;
-	opj_image_comp_t *l_img_comp = nullptr;
+	grk_image_comp_t *l_img_comp = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
 	uint32_t *l_encoding_value_ptr = nullptr;
 
@@ -1246,7 +1246,7 @@ pi_iterator_t* pi_create_decode(opj_image_t *p_image, cp_t *p_cp,
 	l_tcp = &p_cp->tcps[tile_no];
 	l_bound = l_tcp->numpocs + 1;
 
-	l_data_stride = 4 * OPJ_J2K_MAXRLVLS;
+	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
 	l_tmp_data = (uint32_t*) grok_malloc(
 			l_data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!l_tmp_data) {
@@ -1273,7 +1273,7 @@ pi_iterator_t* pi_create_decode(opj_image_t *p_image, cp_t *p_cp,
 		l_encoding_value_ptr += l_data_stride;
 	}
 	/* get encoding parameters */
-	opj_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
+	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
 			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res,
 			l_tmp_ptr);
 
@@ -1390,7 +1390,7 @@ pi_iterator_t* pi_create_decode(opj_image_t *p_image, cp_t *p_cp,
 	return l_pi;
 }
 
-pi_iterator_t* pi_initialise_encode(const opj_image_t *p_image, cp_t *p_cp,
+pi_iterator_t* pi_initialise_encode(const grk_image_t *p_image, cp_t *p_cp,
 		uint32_t tile_no, J2K_T2_MODE p_t2_mode) {
 	/* loop*/
 	uint32_t pino;
@@ -1414,7 +1414,7 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *p_image, cp_t *p_cp,
 	tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
 	pi_comp_t *l_current_comp = nullptr;
-	opj_image_comp_t *l_img_comp = nullptr;
+	grk_image_comp_t *l_img_comp = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
 	uint32_t *l_encoding_value_ptr = nullptr;
 
@@ -1427,7 +1427,7 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *p_image, cp_t *p_cp,
 	l_tcp = &p_cp->tcps[tile_no];
 	l_bound = l_tcp->numpocs + 1;
 
-	l_data_stride = 4 * OPJ_J2K_MAXRLVLS;
+	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
 	l_tmp_data = (uint32_t*) grok_malloc(
 			l_data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!l_tmp_data) {
@@ -1456,7 +1456,7 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *p_image, cp_t *p_cp,
 	}
 
 	/* get encoding parameters*/
-	opj_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
+	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
 			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res,
 			l_tmp_ptr);
 
@@ -1564,7 +1564,7 @@ pi_iterator_t* pi_initialise_encode(const opj_image_t *p_image, cp_t *p_cp,
 	grok_free(l_tmp_ptr);
 	l_tmp_ptr = nullptr;
 
-	if (l_tcp->POC && (OPJ_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS)) {
+	if (l_tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS)) {
 		pi_update_encode_poc_and_final(p_cp, tile_no, l_tx0, l_tx1, l_ty0,
 				l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min);
 	} else {
@@ -1581,7 +1581,7 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 	int32_t i;
 	uint32_t incr_top = 1, resetX = 0;
 	tcp_t *tcps = &cp->tcps[tileno];
-	opj_poc_t *tcp = &tcps->pocs[pino];
+	grk_poc_t *tcp = &tcps->pocs[pino];
 
 	prog = j2k_convert_progression_order(tcp->prg);
 
@@ -1589,8 +1589,8 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 	pi[pino].poc.prg = tcp->prg;
 
 	if (!(cp->m_specific_param.m_enc.m_tp_on
-			&& ((!OPJ_IS_CINEMA(cp->rsiz) && (t2_mode == FINAL_PASS))
-					|| OPJ_IS_CINEMA(cp->rsiz)))) {
+			&& ((!GRK_IS_CINEMA(cp->rsiz) && (t2_mode == FINAL_PASS))
+					|| GRK_IS_CINEMA(cp->rsiz)))) {
 		pi[pino].poc.resno0 = tcp->resS;
 		pi[pino].poc.resno1 = tcp->resE;
 		pi[pino].poc.compno0 = tcp->compS;
@@ -1620,8 +1620,8 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 				break;
 			case 'P':
 				switch (tcp->prg) {
-				case OPJ_LRCP:
-				case OPJ_RLCP:
+				case GRK_LRCP:
+				case GRK_RLCP:
 					pi[pino].poc.precno0 = tcp->prcS;
 					pi[pino].poc.precno1 = tcp->prcE;
 					break;
@@ -1659,8 +1659,8 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 					break;
 				case 'P':
 					switch (tcp->prg) {
-					case OPJ_LRCP:
-					case OPJ_RLCP:
+					case GRK_LRCP:
+					case GRK_RLCP:
 						tcp->prc_t = tcp->prcS;
 						pi[pino].poc.precno0 = tcp->prc_t;
 						pi[pino].poc.precno1 = tcp->prc_t + 1;
@@ -1700,8 +1700,8 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 					break;
 				case 'P':
 					switch (tcp->prg) {
-					case OPJ_LRCP:
-					case OPJ_RLCP:
+					case GRK_LRCP:
+					case GRK_RLCP:
 						pi[pino].poc.precno0 = tcp->prc_t - 1;
 						pi[pino].poc.precno1 = tcp->prc_t;
 						break;
@@ -1777,8 +1777,8 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 						break;
 					case 'P':
 						switch (tcp->prg) {
-						case OPJ_LRCP:
-						case OPJ_RLCP:
+						case GRK_LRCP:
+						case GRK_RLCP:
 							if (tcp->prc_t == tcp->prcE) {
 								if (pi_check_next_level(i - 1, cp, tileno, pino,
 										prog)) {
@@ -1874,7 +1874,7 @@ void pi_destroy(pi_iterator_t *p_pi, uint32_t nb_elements) {
 	}
 }
 
-void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
+void pi_update_encoding_parameters(const grk_image_t *p_image, cp_t *p_cp,
 		uint32_t tile_no) {
 	/* encoding parameters to set */
 	uint32_t l_max_res;
@@ -1892,7 +1892,7 @@ void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
 	l_tcp = &(p_cp->tcps[tile_no]);
 
 	/* get encoding parameters */
-	opj_get_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
+	grk_get_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
 			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res);
 
 	if (l_tcp->POC) {
@@ -1906,17 +1906,17 @@ void pi_update_encoding_parameters(const opj_image_t *p_image, cp_t *p_cp,
 
 bool pi_next(pi_iterator_t *pi) {
 	switch (pi->poc.prg) {
-	case OPJ_LRCP:
+	case GRK_LRCP:
 		return pi_next_lrcp(pi);
-	case OPJ_RLCP:
+	case GRK_RLCP:
 		return pi_next_rlcp(pi);
-	case OPJ_RPCL:
+	case GRK_RPCL:
 		return pi_next_rpcl(pi);
-	case OPJ_PCRL:
+	case GRK_PCRL:
 		return pi_next_pcrl(pi);
-	case OPJ_CPRL:
+	case GRK_CPRL:
 		return pi_next_cprl(pi);
-	case OPJ_PROG_UNKNOWN:
+	case GRK_PROG_UNKNOWN:
 		return false;
 	}
 

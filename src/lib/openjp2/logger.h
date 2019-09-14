@@ -64,11 +64,11 @@ struct logger {
 	/** Data to call the logget with */
 	void *m_info_data;
 	/** Error message callback if available, nullptr otherwise */
-	opj_msg_callback error_handler;
+	grk_msg_callback error_handler;
 	/** Warning message callback if available, nullptr otherwise */
-	opj_msg_callback warning_handler;
+	grk_msg_callback warning_handler;
 	/** Debug message callback if available, nullptr otherwise */
-	opj_msg_callback info_handler;
+	grk_msg_callback info_handler;
 
 	static logger m_logger;
 };

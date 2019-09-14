@@ -77,7 +77,7 @@
 #include "common.h"
 using namespace grk;
 
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
@@ -177,7 +177,7 @@ static void encode_help_display(void)
 {
     fprintf(stdout,"\nThis is the grk_compress utility from the Grok project.\n"
             "It compresses various image formats with the JPEG 2000 algorithm.\n"
-            "It has been compiled against openjp2 library v%s.\n\n",opj_version());
+            "It has been compiled against openjp2 library v%s.\n\n",grk_version());
 
     fprintf(stdout,"Default encoding options:\n");
     fprintf(stdout,"-------------------------\n");
@@ -360,25 +360,25 @@ static void encode_help_display(void)
     fprintf(stdout,"\n");
 }
 
-static OPJ_PROG_ORDER give_progression(const char progression[4])
+static GRK_PROG_ORDER give_progression(const char progression[4])
 {
     if(strncmp(progression, "LRCP", 4) == 0) {
-        return OPJ_LRCP;
+        return GRK_LRCP;
     }
     if(strncmp(progression, "RLCP", 4) == 0) {
-        return OPJ_RLCP;
+        return GRK_RLCP;
     }
     if(strncmp(progression, "RPCL", 4) == 0) {
-        return OPJ_RPCL;
+        return GRK_RPCL;
     }
     if(strncmp(progression, "PCRL", 4) == 0) {
-        return OPJ_PCRL;
+        return GRK_PCRL;
     }
     if(strncmp(progression, "CPRL", 4) == 0) {
-        return OPJ_CPRL;
+        return GRK_CPRL;
     }
 
-    return OPJ_PROG_UNKNOWN;
+    return GRK_PROG_UNKNOWN;
 }
 
 static int load_images(dircnt_t *dirptr, char *imgdirpath)
@@ -407,7 +407,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 static char get_next_file(std::string image_filename,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
-							opj_cparameters_t *parameters){
+							grk_cparameters_t *parameters){
 
 	if (parameters->verbose)
 		spdlog::info("File \"{}\"\n", image_filename.c_str());
@@ -467,19 +467,19 @@ public:
 
 /* ------------------------------------------------------------------------------------ */
 
-static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, opj_cparameters_t *parameters) {
+static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, grk_cparameters_t *parameters) {
 	bool isValid = true;
 	if (arg->isSet()) {
 		int fps = arg->getValue();
 		if (fps == 24) {
 			parameters->rsiz = profile;
-			parameters->max_comp_size = OPJ_CINEMA_24_COMP;
-			parameters->max_cs_size = OPJ_CINEMA_24_CS;
+			parameters->max_comp_size = GRK_CINEMA_24_COMP;
+			parameters->max_cs_size = GRK_CINEMA_24_CS;
 		}
 		else if (fps == 48) {
 			parameters->rsiz = profile;
-			parameters->max_comp_size = OPJ_CINEMA_48_COMP;
-			parameters->max_cs_size = OPJ_CINEMA_48_CS;
+			parameters->max_comp_size = GRK_CINEMA_48_COMP;
+			parameters->max_cs_size = GRK_CINEMA_48_CS;
 		}
 		else {
 			isValid = false;
@@ -491,7 +491,7 @@ static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, opj_cparamete
 }
 static int parse_cmdline_encoder_ex(int argc, 
 									char **argv,
-									opj_cparameters_t *parameters,
+									grk_cparameters_t *parameters,
 									img_fol_t *img_fol,
 									img_fol_t *out_fol,
 									char *indexfilename,
@@ -502,7 +502,7 @@ static int parse_cmdline_encoder_ex(int argc,
 	try {
 
 		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', opj_version());
+		CmdLine cmd("Command description message", ' ', grk_version());
 
 		// set the output
 		GrokOutput output;
@@ -1030,7 +1030,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (pocArg.isSet()) {
 			uint32_t numpocs = 0;		/* number of progression order change (POC) default 0 */
-			opj_poc_t *POC = nullptr;	/* POC : used in case of Progression order change */
+			grk_poc_t *POC = nullptr;	/* POC : used in case of Progression order change */
 
 			char *s = (char*)pocArg.getValue().c_str();
 			POC = parameters->POC;
@@ -1084,7 +1084,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 		if (cinema2KArg.isSet()) {
-			if (!checkCinema(&cinema2KArg, OPJ_PROFILE_CINEMA_2K, parameters)) {
+			if (!checkCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters)) {
 				return 1;
 			}
 			if (parameters->verbose) {
@@ -1093,7 +1093,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 		if (cinema4KArg.isSet()) {
-			if (!checkCinema(&cinema4KArg, OPJ_PROFILE_CINEMA_4K, parameters)) {
+			if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K, parameters)) {
 				return 1;
 			}
 			if (parameters->verbose) {
@@ -1220,7 +1220,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 
 			/* TODO should not be here ! */
-			opj_set_MCT(parameters, lSpace, (int *)(lSpace + lMctComp), (uint32_t)lNbComp);
+			grk_set_MCT(parameters, lSpace, (int *)(lSpace + lMctComp), (uint32_t)lNbComp);
 
 			/* Free memory*/
 			free(lSpace);
@@ -1249,19 +1249,19 @@ static int parse_cmdline_encoder_ex(int argc,
 			while (getline(f, s, '|')) {
 				if (s.empty())
 					continue;
-				if (s.length() > OPJ_MAX_COMMENT_LENGTH){
-					spdlog::warn(" Comment length {} is greater than maximum comment length {}. Ignoring\n",(uint32_t)s.length(), OPJ_MAX_COMMENT_LENGTH);
+				if (s.length() > GRK_MAX_COMMENT_LENGTH){
+					spdlog::warn(" Comment length {} is greater than maximum comment length {}. Ignoring\n",(uint32_t)s.length(), GRK_MAX_COMMENT_LENGTH);
 					continue;
 				}
 				size_t count = parameters->cp_num_comments;
-				if (count == OPJ_NUM_COMMENTS_SUPPORTED) {
+				if (count == GRK_NUM_COMMENTS_SUPPORTED) {
 					spdlog::warn(
-							" Grok encoder is limited to {} comments. Ignoring subsequent comments.\n", OPJ_NUM_COMMENTS_SUPPORTED);
+							" Grok encoder is limited to {} comments. Ignoring subsequent comments.\n", GRK_NUM_COMMENTS_SUPPORTED);
 					break;
 				}
 				// ISO Latin comment
 				parameters->cp_is_binary_comment[count] = false;
-				parameters->cp_comment[count] =	(char*)opj_buffer_new(s.length());
+				parameters->cp_comment[count] =	(char*)grk_buffer_new(s.length());
 				memcpy(parameters->cp_comment[count],s.c_str(), s.length());
 				parameters->cp_comment_len[count] = (uint16_t)s.length();
 				parameters->cp_num_comments++;
@@ -1382,7 +1382,7 @@ struct CompressInitParams {
 	~CompressInitParams() {
 		for (size_t i = 0; i < parameters.cp_num_comments; ++i) {
 			if (parameters.cp_comment[i])
-				opj_buffer_delete((uint8_t*)parameters.cp_comment[i]);
+				grk_buffer_delete((uint8_t*)parameters.cp_comment[i]);
 		}
 		if (parameters.raw_cp.comps)
 			free(parameters.raw_cp.comps);
@@ -1394,10 +1394,10 @@ struct CompressInitParams {
 	}
 	bool initialized;
 
-	opj_cparameters_t parameters;	/* compression parameters */
+	grk_cparameters_t parameters;	/* compression parameters */
 
-	char indexfilename[OPJ_PATH_LEN];	/* index file name */
-	char plugin_path[OPJ_PATH_LEN];
+	char indexfilename[GRK_PATH_LEN];	/* index file name */
+	char plugin_path[GRK_PATH_LEN];
 
 	img_fol_t img_fol;
 	img_fol_t out_fol;
@@ -1442,7 +1442,7 @@ static int compress(std::string image_filename,
 
 /* -------------------------------------------------------------------------- */
 /**
- * OPJ_COMPRESS MAIN
+ * GRK_COMPRESS MAIN
  */
 /* -------------------------------------------------------------------------- */
 int main(int argc, char **argv) {
@@ -1510,7 +1510,7 @@ int main(int argc, char **argv) {
 		goto cleanup;
 	}
 cleanup:
-	opj_deinitialize();
+	grk_deinitialize();
 	return success;
 
 }
@@ -1519,13 +1519,13 @@ cleanup:
 img_fol_t img_fol_plugin, out_fol_plugin;
 
 static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info) {
-	opj_cparameters_t* parameters = info->encoder_parameters;
+	grk_cparameters_t* parameters = info->encoder_parameters;
 	bool bSuccess = true;
-	opj_stream_t *l_stream = nullptr;
-	opj_codec_t* l_codec = nullptr;
-	opj_image_t *image = info->image;
-	char  outfile[3 * OPJ_PATH_LEN];
-	char  temp_ofname[OPJ_PATH_LEN];
+	grk_stream_t *l_stream = nullptr;
+	grk_codec_t* l_codec = nullptr;
+	grk_image_t *image = info->image;
+	char  outfile[3 * GRK_PATH_LEN];
+	char  temp_ofname[GRK_PATH_LEN];
 
 	uint32_t l_nb_tiles = 4;
 	bool bUseTiles = false;
@@ -1765,13 +1765,13 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	case J2K_CFMT:	/* JPEG-2000 codestream */
 	{
 		/* Get a decoder handle */
-		l_codec = opj_create_compress(OPJ_CODEC_J2K);
+		l_codec = grk_create_compress(GRK_CODEC_J2K);
 		break;
 	}
 	case JP2_CFMT:	/* JPEG 2000 compressed image data */
 	{
 		/* Get a decoder handle */
-		l_codec = opj_create_compress(OPJ_CODEC_JP2);
+		l_codec = grk_create_compress(GRK_CODEC_JP2);
 		break;
 	}
 	default:
@@ -1781,25 +1781,25 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 
 	/* catch events using our callbacks and give a local context */
 	if (parameters->verbose) {
-		opj_set_info_handler(l_codec, info_callback, nullptr);
-		opj_set_warning_handler(l_codec, warning_callback, nullptr);
+		grk_set_info_handler(l_codec, info_callback, nullptr);
+		grk_set_warning_handler(l_codec, warning_callback, nullptr);
 	}
-	opj_set_error_handler(l_codec, error_callback, nullptr);
+	grk_set_error_handler(l_codec, error_callback, nullptr);
 
-	if (!opj_setup_encoder(l_codec, parameters, image)) {
-		spdlog::error( "failed to encode image: opj_setup_encoder");
+	if (!grk_setup_encoder(l_codec, parameters, image)) {
+		spdlog::error( "failed to encode image: grk_setup_encoder");
 		bSuccess = false;
 		goto cleanup;
 	}
 	if (info->compressBuffer) {
 		// let stream clean up compress buffer
-		l_stream = opj_stream_create_buffer_stream(info->compressBuffer, 
+		l_stream = grk_stream_create_buffer_stream(info->compressBuffer, 
 													info->compressBufferLen, 
 													true,
 													false);
 	}
 	else {
-		l_stream = opj_stream_create_default_file_stream(outfile, false);
+		l_stream = grk_stream_create_default_file_stream(outfile, false);
 	}
 	if (!l_stream) {
 		spdlog::error( "failed to create stream");
@@ -1808,9 +1808,9 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 
 	/* encode the image */
-	bSuccess = opj_start_compress(l_codec, image, l_stream);
+	bSuccess = grk_start_compress(l_codec, image, l_stream);
 	if (!bSuccess) {
-		spdlog::error( "failed to encode image: opj_start_compress");
+		spdlog::error( "failed to encode image: grk_start_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1820,7 +1820,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		l_data = (uint8_t*)calloc(1, l_data_size);
 		assert(l_data);
 		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
-			if (!opj_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
+			if (!grk_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
 				spdlog::error("test_tile_encoder: failed to write the tile {}!\n", i);
 				bSuccess = false;
 				goto cleanup;
@@ -1829,16 +1829,16 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		free(l_data);
 	}
 	else {
-		bSuccess = bSuccess && opj_encode_with_plugin(l_codec, info->tile, l_stream);
+		bSuccess = bSuccess && grk_encode_with_plugin(l_codec, info->tile, l_stream);
 		if (!bSuccess) {
-			spdlog::error( "failed to encode image: opj_encode");
+			spdlog::error( "failed to encode image: grk_encode");
 			bSuccess = false;
 			goto cleanup;
 		}
 	}
-	bSuccess = bSuccess && opj_end_compress(l_codec, l_stream);
+	bSuccess = bSuccess && grk_end_compress(l_codec, l_stream);
 	if (!bSuccess) {
-		spdlog::error( "failed to encode image: opj_end_compress");
+		spdlog::error( "failed to encode image: grk_end_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -1848,7 +1848,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 			spdlog::error("Buffer compress: failed to open file {} for writing\n", outfile);
 		}
 		else {
-			auto len = opj_stream_get_write_buffer_stream_length(l_stream);
+			auto len = grk_stream_get_write_buffer_stream_length(l_stream);
 			size_t written = fwrite(info->compressBuffer, 1,len, fp);
 			if (written != len) {
 				spdlog::error("Buffer compress: only {} bytes written out of {} total\n", len, written);
@@ -1859,11 +1859,11 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 	}
 cleanup:
 	if (l_stream)
-		opj_stream_destroy(l_stream);
+		grk_stream_destroy(l_stream);
 	if (l_codec)
-		opj_destroy_codec(l_codec);
+		grk_destroy_codec(l_codec);
 	if (createdImage)
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image");
 		if (parameters->outfile[0])
@@ -1881,7 +1881,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	uint32_t num_images, imageno;
 
 	/* set encoding parameters to default values */
-	opj_set_default_encoder_parameters(&initParams->parameters);
+	grk_set_default_encoder_parameters(&initParams->parameters);
 
 	bool isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
 	uint32_t state = grok_plugin_get_debug_state();
@@ -1911,7 +1911,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!opj_initialize(initParams->plugin_path, initParams->parameters.numThreads)) {
+	if (!grk_initialize(initParams->plugin_path, initParams->parameters.numThreads)) {
 		success =  1;
 		goto cleanup;
 	}
@@ -1963,7 +1963,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 				goto cleanup;
 			}
 			if (dirptr) {
-				dirptr->filename_buf = (char*)malloc(num_images*OPJ_PATH_LEN*sizeof(char));	
+				dirptr->filename_buf = (char*)malloc(num_images*GRK_PATH_LEN*sizeof(char));	
 				if (!dirptr->filename_buf) {
 					success = 1;
 					goto cleanup;
@@ -1974,7 +1974,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 					goto cleanup;
 				}
 				for (uint32_t i = 0; i<num_images; i++) {
-					dirptr->filename[i] = dirptr->filename_buf + i*OPJ_PATH_LEN;
+					dirptr->filename[i] = dirptr->filename_buf + i*GRK_PATH_LEN;
 				}
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {

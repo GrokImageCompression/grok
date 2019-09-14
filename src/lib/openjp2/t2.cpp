@@ -91,7 +91,7 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses);
  */
 static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 		pi_iterator_t *pi, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t len, opj_codestream_info_t *cstr_info);
+		uint64_t len, grk_codestream_info_t *cstr_info);
 
 /**
  Encode a packet of a tile to a destination buffer
@@ -220,12 +220,12 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses) {
 
 bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 		uint32_t max_layers, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t max_len, opj_codestream_info_t *cstr_info, uint32_t tp_num,
+		uint64_t max_len, grk_codestream_info_t *cstr_info, uint32_t tp_num,
 		uint32_t tp_pos, uint32_t pino) {
 	uint64_t l_nb_bytes = 0;
 	pi_iterator_t *l_pi = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
-	opj_image_t *l_image = p_t2->image;
+	grk_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
 	tcp_t *l_tcp = &l_cp->tcps[tile_no];
 	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
@@ -238,7 +238,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 			FINAL_PASS);
 
 	l_current_pi = &l_pi[pino];
-	if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
+	if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 		pi_destroy(l_pi, l_nb_pocs);
 		GROK_ERROR(
 				"t2_encode_packets: Unknown progression order");
@@ -260,8 +260,8 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 			/* INDEX >> */
 			if (cstr_info) {
 				if (cstr_info->index_write) {
-					opj_tile_info_t *info_TL = &cstr_info->tile[tile_no];
-					opj_packet_info_t *info_PK =
+					grk_tile_info_t *info_TL = &cstr_info->tile[tile_no];
+					grk_packet_info_t *info_PK =
 							&info_TL->packet[cstr_info->packno];
 					if (!cstr_info->packno) {
 						info_PK->start_pos = info_TL->end_header + 1;
@@ -293,10 +293,10 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t tile_no,
 		tcd_tile_t *p_tile, uint32_t max_layers, uint64_t *p_data_written,
 		uint64_t max_len, uint32_t tp_pos) {
-	opj_image_t *l_image = p_t2->image;
+	grk_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
 	tcp_t *l_tcp = l_cp->tcps + tile_no;
-	uint32_t pocno = (l_cp->rsiz == OPJ_PROFILE_CINEMA_4K) ? 2 : 1;
+	uint32_t pocno = (l_cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t l_max_comp =
 			l_cp->m_specific_param.m_enc.m_max_comp_size > 0 ?
 					l_image->numcomps : 1;
@@ -322,7 +322,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t tile_no,
 			pi_init_encode(l_pi, l_cp, tile_no, poc, l_tp_num, tp_pos,
 					THRESH_CALC);
 
-			if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
+			if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 				pi_destroy(l_pi, l_nb_pocs);
 				GROK_ERROR(
 						"t2_decode_packets_simulate: Unknown progression order");
@@ -360,13 +360,13 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 		seg_buf_t *src_buf, uint64_t *p_data_read) {
 	pi_iterator_t *l_pi = nullptr;
 	uint32_t pino;
-	opj_image_t *l_image = p_t2->image;
+	grk_image_t *l_image = p_t2->image;
 	cp_t *l_cp = p_t2->cp;
 	tcp_t *l_tcp = p_t2->cp->tcps + tile_no;
 	uint64_t l_nb_bytes_read;
 	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 	pi_iterator_t *l_current_pi = nullptr;
-	opj_image_comp_t *l_img_comp = nullptr;
+	grk_image_comp_t *l_img_comp = nullptr;
 
 	/* create a packet iterator */
 	l_pi = pi_create_decode(l_image, l_cp, tile_no);
@@ -384,7 +384,7 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
 		 * and no l_img_comp->resno_decoded are computed
 		 */
 
-		if (l_current_pi->poc.prg == OPJ_PROG_UNKNOWN) {
+		if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(l_pi, l_nb_pocs);
 			GROK_ERROR(
 					"t2_decode_packets: Unknown progression order");
@@ -466,7 +466,7 @@ bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, tcd_tile_t *p_tile,
  * @param       p_cp            Image coding parameters.
  * @return              a new T2 handle if successful, nullptr otherwise.
  */
-t2_t* t2_create(opj_image_t *p_image, cp_t *p_cp) {
+t2_t* t2_create(grk_image_t *p_image, cp_t *p_cp) {
 	/* create the t2 structure */
 	t2_t *l_t2 = (t2_t*) grok_calloc(1, sizeof(t2_t));
 	if (!l_t2) {
@@ -716,7 +716,7 @@ static bool t2_read_packet_header(t2_t *p_t2, tcd_resolution_t *l_res,
 				}
 				// BIBO analysis gives upper limit on number of bit planes
 				if (l_cblk->numbps
-						> max_precision_jpeg_2000 + OPJ_J2K_MAXRLVLS * 5) {
+						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
 					GROK_WARN(
 							"Number of bit planes %u is impossibly large.\n",
 							l_cblk->numbps);
@@ -906,7 +906,7 @@ static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 
 static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 		pi_iterator_t *pi, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t num_bytes_available, opj_codestream_info_t *cstr_info) {
+		uint64_t num_bytes_available, grk_codestream_info_t *cstr_info) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
@@ -1107,7 +1107,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 	/* End of packet header position. Currently only represents the distance to start of packet
 	 Will be updated later by incrementing with packet start value*/
 	//if (cstr_info && cstr_info->index_write) {
-	//	opj_packet_info_t *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
+	//	grk_packet_info_t *info_PK = &cstr_info->tile[tileno].packet[cstr_info->packno];
 	//	info_PK->end_ph_pos = (int64_t)(active_dest - dest);
 	//}
 	/* INDEX >> */
@@ -1147,7 +1147,7 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 			}
 			cblk->num_passes_included_in_current_layer += cblk_layer->numpasses;
 			if (cstr_info && cstr_info->index_write) {
-				opj_packet_info_t *info_PK =
+				grk_packet_info_t *info_PK =
 						&cstr_info->tile[tileno].packet[cstr_info->packno];
 				info_PK->disto += cblk_layer->disto;
 				if (cstr_info->D_max < info_PK->disto) {

@@ -82,9 +82,9 @@ extern "C" {
 	bool grok_set_binary_mode(FILE* file);
 
 	/* Component precision clipping */
-	void clip_component(opj_image_comp_t* component, uint32_t precision);
+	void clip_component(grk_image_comp_t* component, uint32_t precision);
 	/* Component precision scaling */
-	void scale_component(opj_image_comp_t* component, uint32_t precision);
+	void scale_component(grk_image_comp_t* component, uint32_t precision);
 
 	/* planar / interleaved conversions */
 	typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
@@ -96,8 +96,8 @@ extern "C" {
 	extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
 	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
 	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
-	bool sanityCheckOnImage(opj_image_t* image, uint32_t numcomps);
-	bool isSubsampled(opj_image_t* image);
+	bool sanityCheckOnImage(grk_image_t* image, uint32_t numcomps);
+	bool isSubsampled(grk_image_t* image);
 }
 
 

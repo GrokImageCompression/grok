@@ -55,7 +55,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "PNMFormat.h"
 #include "convert.h"
@@ -322,16 +322,16 @@ static int has_prec(int val) {
 	return 16;
 }
 
-static opj_image_t* pnmtoimage(const char *filename,
-		opj_cparameters_t *parameters) {
+static grk_image_t* pnmtoimage(const char *filename,
+		grk_cparameters_t *parameters) {
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
 
 	FILE *fp = nullptr;
 	uint32_t compno, numcomps, w, h, prec, format;
-	OPJ_COLOR_SPACE color_space;
-	opj_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
-	opj_image_t *image = nullptr;
+	GRK_COLOR_SPACE color_space;
+	grk_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
+	grk_image_t *image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
 
@@ -370,9 +370,9 @@ static opj_image_t* pnmtoimage(const char *filename,
 		goto cleanup;
 	}
 	if (numcomps < 3)
-		color_space = OPJ_CLRSPC_GRAY;/* GRAY, GRAYA */
+		color_space = GRK_CLRSPC_GRAY;/* GRAY, GRAYA */
 	else
-		color_space = OPJ_CLRSPC_SRGB;/* RGB, RGBA */
+		color_space = GRK_CLRSPC_SRGB;/* RGB, RGBA */
 
 	prec = has_prec(header_info.maxval);
 
@@ -385,7 +385,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
-	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof(grk_image_cmptparm_t));
 
 	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
@@ -395,7 +395,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 		cmptparm[i].w = w;
 		cmptparm[i].h = h;
 	}
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	if (!image) {
 		goto cleanup;
 	}
@@ -431,7 +431,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
@@ -468,7 +468,7 @@ static opj_image_t* pnmtoimage(const char *filename,
 					int c = getc(fp);
 					if (c == EOF) {
 						spdlog::error("pnmtoimage reached EOF.");
-						opj_image_destroy(image);
+						grk_image_destroy(image);
 						image = nullptr;
 						goto cleanup;
 					}
@@ -488,13 +488,13 @@ static opj_image_t* pnmtoimage(const char *filename,
 		}
 	}
 	cleanup: if (!grk::safe_fclose(fp)) {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
+static int imagetopnm(grk_image_t *image, const char *outfile, bool force_split,
 		bool verbose) {
 	int *red = nullptr;
 	int *green = nullptr;
@@ -574,14 +574,14 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 			const char *tt = (triple ? "RGB_ALPHA" : "GRAYSCALE_ALPHA");
 
 			fprintf(fdest, "P7\n# Grok-%s\nWIDTH %d\nHEIGHT %d\nDEPTH %u\n"
-					"MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", opj_version(), wr, hr,
+					"MAXVAL %d\nTUPLTYPE %s\nENDHDR\n", grk_version(), wr, hr,
 					ncomp, max, tt);
 			alpha = image->comps[ncomp - 1].data;
 			adjustA = (
 					image->comps[ncomp - 1].sgnd ?
 							1 << (image->comps[ncomp - 1].prec - 1) : 0);
 		} else {
-			fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n", opj_version(), wr, hr,
+			fprintf(fdest, "P6\n# Grok-%s\n%d %d\n%d\n", grk_version(), wr, hr,
 					max);
 			adjustA = 0;
 		}
@@ -768,7 +768,7 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 		prec = (int) image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
-		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n", opj_version(), wr, hr, max);
+		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n", grk_version(), wr, hr, max);
 
 		red = image->comps[compno].data;
 		if (!red) {
@@ -856,14 +856,14 @@ static int imagetopnm(opj_image_t *image, const char *outfile, bool force_split,
 	return rc;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(opj_image_t *image, const char *filename,
+bool PNMFormat::encode(grk_image_t *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetopnm(image, filename, forceSplit, verbose) ? false : true;
 }
-opj_image_t* PNMFormat::decode(const char *filename,
-		opj_cparameters_t *parameters) {
+grk_image_t* PNMFormat::decode(const char *filename,
+		grk_cparameters_t *parameters) {
 	return pnmtoimage(filename, parameters);
 }
 

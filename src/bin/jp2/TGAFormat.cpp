@@ -55,7 +55,7 @@
  */
 #include <cstdio>
 #include <cstdlib>
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "TGAFormat.h"
 #include "convert.h"
@@ -258,16 +258,16 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	return 0;
 }
 
-static opj_image_t* tgatoimage(const char *filename,
-		opj_cparameters_t *parameters) {
+static grk_image_t* tgatoimage(const char *filename,
+		grk_cparameters_t *parameters) {
 	FILE *f;
-	opj_image_t *image;
+	grk_image_t *image;
 	unsigned int image_width, image_height, pixel_bit_depth;
 	unsigned int x, y;
 	int flip_image = 0;
-	opj_image_cmptparm_t cmptparm[4]; /* maximum 4 components */
+	grk_image_cmptparm_t cmptparm[4]; /* maximum 4 components */
 	uint32_t numcomps;
-	OPJ_COLOR_SPACE color_space;
+	GRK_COLOR_SPACE color_space;
 	uint32_t subsampling_dx, subsampling_dy;
 	uint32_t i;
 
@@ -290,16 +290,16 @@ static opj_image_t* tgatoimage(const char *filename,
 	}
 
 	/* initialize image components */
-	memset(&cmptparm[0], 0, 4 * sizeof(opj_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm_t));
 	//bool mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
 	bool save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); // Mono with alpha, or RGB with alpha
 	/*if (mono) {
-	 color_space = OPJ_CLRSPC_GRAY;
+	 color_space = GRK_CLRSPC_GRAY;
 	 numcomps = save_alpha ? 2 : 1;
 	 }
 	 else*/{
 		numcomps = save_alpha ? 4 : 3;
-		color_space = OPJ_CLRSPC_SRGB;
+		color_space = GRK_CLRSPC_SRGB;
 	}
 
 	subsampling_dx = parameters->subsampling_dx;
@@ -315,13 +315,13 @@ static opj_image_t* tgatoimage(const char *filename,
 	}
 
 	/* create the image */
-	image = opj_image_create(numcomps, &cmptparm[0], color_space);
+	image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	if (!image) {
 		grk::safe_fclose(f);
 		return nullptr;
 	}
 	if (!sanityCheckOnImage(image, numcomps)) {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 		goto cleanup;
 	}
@@ -353,19 +353,19 @@ static opj_image_t* tgatoimage(const char *filename,
 
 				if (!fread(&b, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
@@ -380,25 +380,25 @@ static opj_image_t* tgatoimage(const char *filename,
 				unsigned char r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&a, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
-					opj_image_destroy(image);
+					grk_image_destroy(image);
 					grk::safe_fclose(f);
 					return nullptr;
 				}
@@ -414,13 +414,13 @@ static opj_image_t* tgatoimage(const char *filename,
 		}
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		image = nullptr;
 	}
 	return image;
 }
 
-static int imagetotga(opj_image_t *image, const char *outfile) {
+static int imagetotga(grk_image_t *image, const char *outfile) {
 	int width = 0, height = 0, bpp = 0, x = 0, y = 0;
 	bool write_alpha = false;
 	unsigned int i;
@@ -551,13 +551,13 @@ static int imagetotga(opj_image_t *image, const char *outfile) {
 	return fails;
 }
 
-bool TGAFormat::encode(opj_image_t *image, const char *filename,
+bool TGAFormat::encode(grk_image_t *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetotga(image, filename) ? false : true;
 }
-opj_image_t* TGAFormat::decode(const char *filename,
-		opj_cparameters_t *parameters) {
+grk_image_t* TGAFormat::decode(const char *filename,
+		grk_cparameters_t *parameters) {
 	return tgatoimage(filename, parameters);
 }

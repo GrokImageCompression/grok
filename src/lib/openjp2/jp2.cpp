@@ -62,13 +62,13 @@ namespace grk {
 /** @defgroup JP2 JP2 - JPEG-2000 file format reader/writer */
 /*@{*/
 
-#define OPJ_BOX_SIZE	1024
-#define OPJ_RESOLUTION_BOX_SIZE (4+4+10)
+#define GRK_BOX_SIZE	1024
+#define GRK_RESOLUTION_BOX_SIZE (4+4+10)
 
 /** @name Local static functions */
 /*@{*/
 
-/*static void jp2_write_url(opj_cio_t *cio, char *Idx_file);*/
+/*static void jp2_write_url(grk_cio_t *cio, char *Idx_file);*/
 
 /**
  * Reads a IHDR box - Image Header box
@@ -190,7 +190,7 @@ static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size);
 
-static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color);
+static void jp2_apply_cdef(grk_image_t *image, jp2_color_t *color);
 
 /**
  * Writes the Channel Definition box.
@@ -304,7 +304,7 @@ static bool jp2_write_jp(jp2_t *jp2, GrokStream *cio);
  @param color Collector for profile, cdef and pclr data
  @param image
  */
-static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color);
+static bool jp2_apply_pclr(grk_image_t *image, jp2_color_t *color);
 
 static void jp2_free_pclr(jp2_color_t *color);
 
@@ -511,7 +511,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 }
 
 #if 0
-static void jp2_write_url(opj_cio_t *cio, char *Idx_file)
+static void jp2_write_url(grk_cio_t *cio, char *Idx_file)
 {
     uint32_t i;
     jp2_box_t box;
@@ -804,9 +804,9 @@ static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
 	assert(jp2 != nullptr);
 	
 
-	uint32_t num_boxes = resolution_size / OPJ_RESOLUTION_BOX_SIZE;
+	uint32_t num_boxes = resolution_size / GRK_RESOLUTION_BOX_SIZE;
 	if (num_boxes == 0 || num_boxes > 2
-			|| (resolution_size % OPJ_RESOLUTION_BOX_SIZE)) {
+			|| (resolution_size % GRK_RESOLUTION_BOX_SIZE)) {
 		GROK_ERROR( "Bad resolution box (bad size)");
 		return false;
 	}
@@ -839,7 +839,7 @@ static bool jp2_read_res(jp2_t *jp2, uint8_t *p_resolution_data,
 			res[i] = calc_res((uint16_t) num[i], (uint16_t) den[i],
 					(uint8_t) exponent[i]);
 
-		resolution_size -= OPJ_RESOLUTION_BOX_SIZE;
+		resolution_size -= GRK_RESOLUTION_BOX_SIZE;
 	}
 	return true;
 }
@@ -877,7 +877,7 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		uint8_t **l_current_res_ptr) {
 
 	/* write box size */
-	grok_write_bytes(*l_current_res_ptr, OPJ_RESOLUTION_BOX_SIZE, 4);
+	grok_write_bytes(*l_current_res_ptr, GRK_RESOLUTION_BOX_SIZE, 4);
 	*l_current_res_ptr += 4;
 
 	/* Box ID */
@@ -925,9 +925,9 @@ static uint8_t* jp2_write_res(jp2_t *jp2, uint32_t *p_nb_bytes_written) {
 	bool storeDisplay = jp2->display_resolution[0] > 0
 			&& jp2->display_resolution[1] > 0;
 
-	uint32_t size = (4 + 4) + OPJ_RESOLUTION_BOX_SIZE;
+	uint32_t size = (4 + 4) + GRK_RESOLUTION_BOX_SIZE;
 	if (storeCapture && storeDisplay) {
-		size += OPJ_RESOLUTION_BOX_SIZE;
+		size += GRK_RESOLUTION_BOX_SIZE;
 	}
 
 	l_res_data = (uint8_t*) grok_calloc(1, size);
@@ -1163,7 +1163,7 @@ static void jp2_free_pclr(jp2_color_t *color) {
 	}
 }
 
-static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
+static bool jp2_check_color(grk_image_t *image, jp2_color_t *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
@@ -1304,8 +1304,8 @@ static bool jp2_check_color(opj_image_t *image, jp2_color_t *color) {
 	return true;
 }
 
-static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
-	opj_image_comp_t *old_comps, *new_comps;
+static bool jp2_apply_pclr(grk_image_t *image, jp2_color_t *color) {
+	grk_image_comp_t *old_comps, *new_comps;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
 	jp2_cmap_comp_t *cmap;
@@ -1325,18 +1325,18 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 		cmp = cmap[i].cmp;
 		if (image->comps[cmp].data == nullptr) {
 			GROK_ERROR(
-					"image->comps[%d].data == nullptr in opj_jp2_apply_pclr().\n",
+					"image->comps[%d].data == nullptr in grk_jp2_apply_pclr().\n",
 					i);
 			return false;
 		}
 	}
 
 	old_comps = image->comps;
-	new_comps = (opj_image_comp_t*) grok_malloc(
-			nr_channels * sizeof(opj_image_comp_t));
+	new_comps = (grk_image_comp_t*) grok_malloc(
+			nr_channels * sizeof(grk_image_comp_t));
 	if (!new_comps) {
 		GROK_ERROR(
-				"Memory allocation failure in opj_jp2_apply_pclr().");
+				"Memory allocation failure in grk_jp2_apply_pclr().");
 		return false;
 	}
 	for (i = 0; i < nr_channels; ++i) {
@@ -1355,14 +1355,14 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 		}
 
 		/* Palette mapping: */
-		if (!opj_image_single_component_data_alloc(new_comps + i)) {
+		if (!grk_image_single_component_data_alloc(new_comps + i)) {
 			while (i > 0) {
 				--i;
 				grok_aligned_free(new_comps[i].data);
 			}
 			grok_free(new_comps);
 			GROK_ERROR(
-					"Memory allocation failure in opj_jp2_apply_pclr().");
+					"Memory allocation failure in grk_jp2_apply_pclr().");
 			return false;
 		}
 		new_comps[i].prec = channel_size[i];
@@ -1406,7 +1406,7 @@ static bool jp2_apply_pclr(opj_image_t *image, jp2_color_t *color) {
 
 	max = image->numcomps;
 	for (i = 0; i < max; ++i) {
-		opj_image_single_component_data_free(old_comps + i);
+		grk_image_single_component_data_free(old_comps + i);
 	}
 	grok_free(old_comps);
 	image->comps = new_comps;
@@ -1574,7 +1574,7 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	return true;
 }
 
-static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color) {
+static void jp2_apply_cdef(grk_image_t *image, jp2_color_t *color) {
 	jp2_cdef_info_t *info;
 	uint16_t i, n, cn, asoc, acn;
 
@@ -1607,13 +1607,13 @@ static void jp2_apply_cdef(opj_image_t *image, jp2_color_t *color) {
 
 		/* Swap only if color channel */
 		if ((cn != acn) && (info[i].typ == 0)) {
-			opj_image_comp_t saved;
+			grk_image_comp_t saved;
 			uint16_t j;
 
-			memcpy(&saved, &image->comps[cn], sizeof(opj_image_comp_t));
+			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp_t));
 			memcpy(&image->comps[cn], &image->comps[acn],
-					sizeof(opj_image_comp_t));
-			memcpy(&image->comps[acn], &saved, sizeof(opj_image_comp_t));
+					sizeof(grk_image_comp_t));
+			memcpy(&image->comps[acn], &saved, sizeof(grk_image_comp_t));
 
 			/* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
 			for (j = (uint16_t) (i + 1U); j < n; ++j) {
@@ -1781,7 +1781,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 			uint32_t *cielab;
 			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
-			cielab = (uint32_t*) opj_buffer_new(
+			cielab = (uint32_t*) grk_buffer_new(
 					(nonDefaultLab ? 9 : 2) * sizeof(uint32_t));
 			if (cielab == nullptr) {
 				GROK_ERROR(
@@ -1789,7 +1789,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 				return false;
 			}
 			cielab[0] = 14; /* enumcs */
-			cielab[1] = OPJ_DEFAULT_CIELAB_SPACE;
+			cielab[1] = GRK_DEFAULT_CIELAB_SPACE;
 
 			if (colr_header_size == 35) {
 				uint32_t rl, ol, ra, oa, rb, ob, il;
@@ -1808,7 +1808,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 				grok_read_bytes(p_colr_header_data, &il, 4);
 				p_colr_header_data += 4;
 
-				cielab[1] = OPJ_CUSTOM_CIELAB_SPACE;
+				cielab[1] = GRK_CUSTOM_CIELAB_SPACE;
 				cielab[2] = rl;
 				cielab[4] = ra;
 				cielab[6] = rb;
@@ -1833,7 +1833,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 					"ICC profile buffer length equals zero");
 			return false;
 		}
-		jp2->color.icc_profile_buf = opj_buffer_new((size_t) icc_len);
+		jp2->color.icc_profile_buf = grk_buffer_new((size_t) icc_len);
 		memcpy(jp2->color.icc_profile_buf, p_colr_header_data, icc_len);
 		jp2->color.icc_profile_len = icc_len;
 		jp2->color.jp2_has_colour_specification_box = 1;
@@ -1849,7 +1849,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 }
 
 bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		opj_image_t *p_image) {
+		grk_image_t *p_image) {
 	if (!p_image)
 		return false;
 
@@ -1867,38 +1867,38 @@ bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	/* Set Image Color Space */
 	switch (jp2->enumcs) {
 	case 12:
-		p_image->color_space = OPJ_CLRSPC_CMYK;
+		p_image->color_space = GRK_CLRSPC_CMYK;
 		break;
 	case 14:
 		if (jp2->color.icc_profile_buf) {
 			if (((uint32_t*) jp2->color.icc_profile_buf)[1]
-					== OPJ_DEFAULT_CIELAB_SPACE)
-				p_image->color_space = OPJ_CLRSPC_DEFAULT_CIE;
+					== GRK_DEFAULT_CIELAB_SPACE)
+				p_image->color_space = GRK_CLRSPC_DEFAULT_CIE;
 			else
-				p_image->color_space = OPJ_CLRSPC_CUSTOM_CIE;
+				p_image->color_space = GRK_CLRSPC_CUSTOM_CIE;
 		} else {
 			GROK_ERROR( "n");
 			return false;
 		}
 		break;
 	case 16:
-		p_image->color_space = OPJ_CLRSPC_SRGB;
+		p_image->color_space = GRK_CLRSPC_SRGB;
 		break;
 	case 17:
-		p_image->color_space = OPJ_CLRSPC_GRAY;
+		p_image->color_space = GRK_CLRSPC_GRAY;
 		break;
 	case 18:
-		p_image->color_space = OPJ_CLRSPC_SYCC;
+		p_image->color_space = GRK_CLRSPC_SYCC;
 		break;
 	case 24:
-		p_image->color_space = OPJ_CLRSPC_EYCC;
+		p_image->color_space = GRK_CLRSPC_EYCC;
 		break;
 	default:
-		p_image->color_space = OPJ_CLRSPC_UNKNOWN;
+		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 		break;
 	}
 	if (jp2->meth == 2 && jp2->color.icc_profile_buf) {
-		p_image->color_space = OPJ_CLRSPC_ICC;
+		p_image->color_space = GRK_CLRSPC_ICC;
 	}
 
 	if (jp2->color.jp2_pclr) {
@@ -2169,7 +2169,7 @@ static bool jp2_write_jp(jp2_t *jp2, GrokStream *cio) {
 /* JP2 decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters) {
+void jp2_setup_decoder(void *jp2_void, grk_dparameters_t *parameters) {
 	jp2_t *jp2 = (jp2_t*) jp2_void;
 	/* setup the J2K codec */
 	j2k_setup_decoder(jp2->j2k, parameters);
@@ -2183,8 +2183,8 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters) {
 /* JP2 encoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
-		opj_image_t *image) {
+bool jp2_setup_encoder(jp2_t *jp2, grk_cparameters_t *parameters,
+		grk_image_t *image) {
 	uint32_t i;
 	uint32_t depth_0;
 	uint32_t sign;
@@ -2250,31 +2250,31 @@ bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
 	}
 
 	/* Colour Specification box */
-	if (image->color_space == OPJ_CLRSPC_ICC) {
+	if (image->color_space == GRK_CLRSPC_ICC) {
 		jp2->meth = 2;
 		jp2->enumcs = 0;
 		if (image->icc_profile_buf) {
 			// clean up existing icc profile in jp2 struct
 			if (jp2->color.icc_profile_buf) {
-				opj_buffer_delete(jp2->color.icc_profile_buf);
+				grk_buffer_delete(jp2->color.icc_profile_buf);
 				jp2->color.icc_profile_buf = nullptr;
 			}
 			// copy icc profile from image to jp2 struct
 			jp2->color.icc_profile_len = image->icc_profile_len;
-			jp2->color.icc_profile_buf = opj_buffer_new(
+			jp2->color.icc_profile_buf = grk_buffer_new(
 					jp2->color.icc_profile_len);
 			memcpy(jp2->color.icc_profile_buf, image->icc_profile_buf,
 					jp2->color.icc_profile_len);
 		}
 	} else {
 		jp2->meth = 1;
-		if (image->color_space == OPJ_CLRSPC_DEFAULT_CIE)
+		if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
 			jp2->enumcs = 14;
-		else if (image->color_space == OPJ_CLRSPC_SRGB)
+		else if (image->color_space == GRK_CLRSPC_SRGB)
 			jp2->enumcs = 16; /* sRGB as defined by IEC 61966-2-1 */
-		else if (image->color_space == OPJ_CLRSPC_GRAY)
+		else if (image->color_space == GRK_CLRSPC_GRAY)
 			jp2->enumcs = 17; /* greyscale */
-		else if (image->color_space == OPJ_CLRSPC_SYCC)
+		else if (image->color_space == GRK_CLRSPC_SYCC)
 			jp2->enumcs = 18; /* YUV */
 	}
 
@@ -2533,7 +2533,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 	uint32_t l_nb_bytes_read;
 	const jp2_header_handler_t *l_current_handler;
 	const jp2_header_handler_t *l_current_handler_misplaced;
-	uint32_t l_last_data_size = OPJ_BOX_SIZE;
+	uint32_t l_last_data_size = GRK_BOX_SIZE;
 	uint32_t l_current_data_size;
 	uint8_t *l_current_data = nullptr;
 
@@ -2704,7 +2704,7 @@ static bool jp2_exec(jp2_t *jp2, std::vector<jp2_procedure> *procs,
 	return l_result;
 }
 
-bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, opj_image_t *p_image) {
+bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, grk_image_t *p_image) {
 	if (!p_image)
 		return false;
 	assert(jp2 != nullptr);
@@ -3033,7 +3033,7 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 }
 
 bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
-		opj_header_info_t *header_info, opj_image_t **p_image) {
+		grk_header_info_t *header_info, grk_image_t **p_image) {
 
 	assert(jp2 != nullptr);
 	assert(p_stream != nullptr);
@@ -3180,7 +3180,7 @@ void jp2_destroy(jp2_t *jp2) {
 		}
 
 		if (jp2->color.icc_profile_buf) {
-			opj_buffer_delete(jp2->color.icc_profile_buf);
+			grk_buffer_delete(jp2->color.icc_profile_buf);
 			jp2->color.icc_profile_buf = nullptr;
 		}
 
@@ -3217,13 +3217,13 @@ void jp2_destroy(jp2_t *jp2) {
 	}
 }
 
-bool jp2_set_decode_area(jp2_t *p_jp2, opj_image_t *p_image, uint32_t start_x,
+bool jp2_set_decode_area(jp2_t *p_jp2, grk_image_t *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 	return j2k_set_decode_area(p_jp2->j2k, p_image, start_x, start_y,
 			end_x, end_y);
 }
 
-bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index) {
+bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, grk_image_t *p_image, uint32_t tile_index) {
 	if (!p_image)
 		return false;
 
@@ -3242,17 +3242,17 @@ bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint
 
 	/* Set Image Color Space */
 	if (p_jp2->enumcs == 16)
-		p_image->color_space = OPJ_CLRSPC_SRGB;
+		p_image->color_space = GRK_CLRSPC_SRGB;
 	else if (p_jp2->enumcs == 17)
-		p_image->color_space = OPJ_CLRSPC_GRAY;
+		p_image->color_space = GRK_CLRSPC_GRAY;
 	else if (p_jp2->enumcs == 18)
-		p_image->color_space = OPJ_CLRSPC_SYCC;
+		p_image->color_space = GRK_CLRSPC_SYCC;
 	else if (p_jp2->enumcs == 24)
-		p_image->color_space = OPJ_CLRSPC_EYCC;
+		p_image->color_space = GRK_CLRSPC_EYCC;
 	else if (p_jp2->enumcs == 12)
-		p_image->color_space = OPJ_CLRSPC_CMYK;
+		p_image->color_space = GRK_CLRSPC_CMYK;
 	else
-		p_image->color_space = OPJ_CLRSPC_UNKNOWN;
+		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 
 	if (p_jp2->color.jp2_pclr) {
 		/* Part 1, I.5.3.4: Either both or none : */
@@ -3320,11 +3320,11 @@ void jp2_dump(jp2_t *p_jp2, int32_t flag, FILE *out_stream) {
 	j2k_dump(p_jp2->j2k, flag, out_stream);
 }
 
-opj_codestream_index_t* jp2_get_cstr_index(jp2_t *p_jp2) {
+grk_codestream_index_t* jp2_get_cstr_index(jp2_t *p_jp2) {
 	return j2k_get_cstr_index(p_jp2->j2k);
 }
 
-opj_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2) {
+grk_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2) {
 	return j2k_get_cstr_info(p_jp2->j2k);
 }
 

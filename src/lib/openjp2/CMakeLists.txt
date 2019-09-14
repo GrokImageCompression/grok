@@ -133,20 +133,20 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/LockLessMultiReadPipe.h
 )
 
-option(OPJ_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
-if(OPJ_DISABLE_TPSOT_FIX)
-  add_definitions(-DOPJ_DISABLE_TPSOT_FIX)
+option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
+if(GRK_DISABLE_TPSOT_FIX)
+  add_definitions(-DGRK_DISABLE_TPSOT_FIX)
 endif()
 
 # Build the library
 if (BUILD_PLUGIN_LOADER)
-    add_definitions(-DOPJ_BUILD_PLUGIN_LOADER)
+    add_definitions(-DGRK_BUILD_PLUGIN_LOADER)
 endif()
 if(WIN32)
   if(BUILD_SHARED_LIBS)
-    add_definitions(-DOPJ_EXPORTS)
+    add_definitions(-DGRK_EXPORTS)
   else()
-    add_definitions(-DOPJ_STATIC)
+    add_definitions(-DGRK_STATIC)
   endif()
   add_library(${GROK_LIBRARY_NAME} ${GROK_SRCS})
   set(INSTALL_LIBS ${GROK_LIBRARY_NAME})

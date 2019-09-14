@@ -140,7 +140,7 @@ bool BitIO::write(uint32_t v, uint32_t n) {
 
 bool BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n > 0 && n <= 32);
-#ifdef OPJ_UBSAN_BUILD
+#ifdef GRK_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
 	/* Add this assert only for ubsan build. */
 	/* This is the condition for overflow not to occur below which is needed because of GROK_NOSANITIZE */

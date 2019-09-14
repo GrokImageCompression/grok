@@ -47,7 +47,7 @@ namespace grk {
 
 bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
 		char *fullPath, size_t fullPathLen) {
-#ifdef OPJ_BUILD_PLUGIN_LOADER
+#ifdef GRK_BUILD_PLUGIN_LOADER
 	if (!path || !addr || !fullPath || !fullPathLen) {
 		return false;
 	}
@@ -85,7 +85,7 @@ bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
 }
 
 bool minpf_unload_dynamic_library(minpf_dynamic_library *library) {
-#ifdef OPJ_BUILD_PLUGIN_LOADER
+#ifdef GRK_BUILD_PLUGIN_LOADER
 	if (!library)
 		return true;
 	bool rc = false;
@@ -106,7 +106,7 @@ bool minpf_unload_dynamic_library(minpf_dynamic_library *library) {
 minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
 		char *error) {
 	(void) error;
-#ifdef OPJ_BUILD_PLUGIN_LOADER
+#ifdef GRK_BUILD_PLUGIN_LOADER
     minpf_dynamic_library* lib = nullptr;
 	dynamic_handle_t handle = nullptr;
 
@@ -148,7 +148,7 @@ minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
 }
 
 void* minpf_get_symbol(minpf_dynamic_library *library, const char *symbol) {
-#ifdef OPJ_BUILD_PLUGIN_LOADER
+#ifdef GRK_BUILD_PLUGIN_LOADER
     if (!library || !library->handle)
         return nullptr;
 

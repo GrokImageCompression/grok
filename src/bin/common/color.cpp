@@ -60,7 +60,7 @@
 #include <assert.h>
 
 
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 #include "grok.h"
 #include "color.h"
 #include "common.h"
@@ -72,18 +72,18 @@
 
 //#define DEBUG_PROFILE
 
-static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
+static grk_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
 		return nullptr;
 
-    opj_image_cmptparm_t* cmptparms = (opj_image_cmptparm_t*)calloc(numcmpts, sizeof(opj_image_cmptparm_t));
+    grk_image_cmptparm_t* cmptparms = (grk_image_cmptparm_t*)calloc(numcmpts, sizeof(grk_image_cmptparm_t));
 	if (!cmptparms)
 		return nullptr;
-    opj_image_t* img = nullptr;
+    grk_image_t* img = nullptr;
     uint32_t compno=0U;
     for (compno = 0U; compno < numcmpts; ++compno) {
-        memset(cmptparms + compno, 0, sizeof(opj_image_cmptparm_t));
+        memset(cmptparms + compno, 0, sizeof(grk_image_cmptparm_t));
         cmptparms[compno].dx = 1;
         cmptparms[compno].dy = 1;
         cmptparms[compno].w = w;
@@ -93,14 +93,14 @@ static opj_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uin
         cmptparms[compno].prec = prec;
         cmptparms[compno].sgnd = 0U;
     }
-    img = opj_image_create(numcmpts, (opj_image_cmptparm_t *)cmptparms, OPJ_CLRSPC_SRGB);
+    img = grk_image_create(numcmpts, (grk_image_cmptparm_t *)cmptparms, GRK_CLRSPC_SRGB);
     free(cmptparms);
     return img;
 
 }
 
 
-static bool all_components_equal_subsampling(opj_image_t *image) {
+static bool all_components_equal_subsampling(grk_image_t *image) {
 	if (image->numcomps == 0)
 		return true;
 
@@ -156,13 +156,13 @@ static void sycc_to_rgb(int offset, int upb, int y, int cb, int cr,
     *out_b = b;
 }
 
-static void sycc444_to_rgb(opj_image_t *img)
+static void sycc444_to_rgb(grk_image_t *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b;
 	const int *y, *cb, *cr;
 	size_t maxw, maxh, max, i;
 	int offset, upb;
-	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -185,7 +185,7 @@ static void sycc444_to_rgb(opj_image_t *img)
 	new_image->comps[1].data = nullptr;
 	new_image->comps[2].data = nullptr;
 
-	opj_image_destroy(new_image);
+	grk_image_destroy(new_image);
 	new_image = nullptr;
 	
 	for (i = 0U; i < max; ++i)
@@ -193,19 +193,19 @@ static void sycc444_to_rgb(opj_image_t *img)
 		sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
 		++y; ++cb; ++cr; ++r; ++g; ++b;
 	}
-	opj_image_all_components_data_free(img);
+	grk_image_all_components_data_free(img);
 	img->comps[0].data = d0;
 	img->comps[0].owns_data = true;
 	img->comps[1].data = d1;
 	img->comps[1].owns_data = true;
 	img->comps[2].data = d2;
 	img->comps[2].owns_data = true;
-	img->color_space = OPJ_CLRSPC_SRGB;
+	img->color_space = GRK_CLRSPC_SRGB;
 	return;
 }/* sycc444_to_rgb() */
 
 
-static void sycc422_to_rgb(opj_image_t *img)
+static void sycc422_to_rgb(grk_image_t *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b;
 	const int *y, *cb, *cr;
@@ -213,7 +213,7 @@ static void sycc422_to_rgb(opj_image_t *img)
 	int offset, upb;
 	size_t i;
 
-	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -235,7 +235,7 @@ static void sycc422_to_rgb(opj_image_t *img)
 	new_image->comps[1].data = nullptr;
 	new_image->comps[2].data = nullptr;
 
-	opj_image_destroy(new_image);
+	grk_image_destroy(new_image);
 	new_image = nullptr;
 
 
@@ -264,7 +264,7 @@ static void sycc422_to_rgb(opj_image_t *img)
 			++y; ++r; ++g; ++b; ++cb; ++cr;
 		}
 	}
-	opj_image_all_components_data_free(img);
+	grk_image_all_components_data_free(img);
 
 	img->comps[0].data = d0;
 	img->comps[0].owns_data = true;
@@ -277,20 +277,20 @@ static void sycc422_to_rgb(opj_image_t *img)
 	img->comps[1].h = img->comps[2].h = img->comps[0].h;
 	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
 	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
-	img->color_space = OPJ_CLRSPC_SRGB;
+	img->color_space = GRK_CLRSPC_SRGB;
 	return;
 
 }/* sycc422_to_rgb() */
 
 
-static void sycc420_to_rgb(opj_image_t *img)
+static void sycc420_to_rgb(grk_image_t *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
 	const int *y, *cb, *cr, *ny;
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
 	int offset, upb;
 	size_t i;
-	opj_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -312,7 +312,7 @@ static void sycc420_to_rgb(opj_image_t *img)
 	new_image->comps[1].data = nullptr;
 	new_image->comps[2].data = nullptr;
 
-	opj_image_destroy(new_image);
+	grk_image_destroy(new_image);
 	new_image = nullptr;
 
 	/* if img->x0 is odd, then first column shall use Cb/Cr = 0 */
@@ -388,7 +388,7 @@ static void sycc420_to_rgb(opj_image_t *img)
 		}
 	}
 
-	opj_image_all_components_data_free(img);
+	grk_image_all_components_data_free(img);
 	img->comps[0].data = d0;
 	img->comps[0].owns_data = true;
 	img->comps[1].data = d1;
@@ -400,12 +400,12 @@ static void sycc420_to_rgb(opj_image_t *img)
 	img->comps[1].h = img->comps[2].h = img->comps[0].h;
 	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
 	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
-	img->color_space = OPJ_CLRSPC_SRGB;
+	img->color_space = GRK_CLRSPC_SRGB;
 	return;
 
 }/* sycc420_to_rgb() */
 
-void color_sycc_to_rgb(opj_image_t *img)
+void color_sycc_to_rgb(grk_image_t *img)
 {
     if(img->numcomps < 3) {
         spdlog::warn("color_sycc_to_rgb: number of components {} is less than 3."
@@ -442,14 +442,14 @@ void color_sycc_to_rgb(opj_image_t *img)
 				img->comps[2].dx, img->comps[2].dy );
         return;
     }
-    img->color_space = OPJ_CLRSPC_SRGB;
+    img->color_space = GRK_CLRSPC_SRGB;
 
 }/* color_sycc_to_rgb() */
 
 #if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
+void color_apply_icc_profile(grk_image_t *image, bool forceRGB, bool verbose)
 {
 	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
@@ -459,8 +459,8 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 	cmsHPROFILE out_prof=nullptr;
     cmsUInt32Number in_type, out_type, nr_samples;
     int prec, i, max, max_w, max_h;
-    OPJ_COLOR_SPACE oldspace;
-    opj_image_t* new_image = nullptr;
+    GRK_COLOR_SPACE oldspace;
+    grk_image_t* new_image = nullptr;
 	(void)verbose;
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
@@ -515,20 +515,20 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
             out_type = TYPE_RGB_16;
         }
         out_prof = cmsCreate_sRGBProfile();
-        image->color_space = OPJ_CLRSPC_SRGB;
+        image->color_space = GRK_CLRSPC_SRGB;
     } else if(out_space == cmsSigGrayData) { /* enumCS 17 */
         in_type = TYPE_GRAY_8;
         out_type = TYPE_RGB_8;
         out_prof = cmsCreate_sRGBProfile();
 		if (forceRGB)
-			image->color_space = OPJ_CLRSPC_SRGB;
+			image->color_space = GRK_CLRSPC_SRGB;
 		else 
-			image->color_space = OPJ_CLRSPC_GRAY;
+			image->color_space = GRK_CLRSPC_GRAY;
     } else if(out_space == cmsSigYCbCrData) { /* enumCS 18 */
         in_type = TYPE_YCbCr_16;
         out_type = TYPE_RGB_16;
         out_prof = cmsCreate_sRGBProfile();
-        image->color_space = OPJ_CLRSPC_SRGB;
+        image->color_space = GRK_CLRSPC_SRGB;
     } else {
 #ifdef DEBUG_PROFILE
         spdlog::error("{}:{}: color_apply_icc_profile\n\tICC Profile has unknown "
@@ -666,7 +666,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
 
         max = max_w * max_h;
         nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
-		opj_image_comp_t *comps = (opj_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(opj_image_comp_t));
+		grk_image_comp_t *comps = (grk_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(grk_image_comp_t));
 		if (!comps)
 			goto cleanup;
 		image->comps = comps;
@@ -701,7 +701,7 @@ void color_apply_icc_profile(opj_image_t *image, bool forceRGB, bool verbose)
         new_image->comps[0].data= nullptr;
         new_image->comps[1].data = nullptr;
 
-        opj_image_destroy(new_image);
+        grk_image_destroy(new_image);
         new_image = nullptr;
 
 		if (forceRGB)
@@ -740,7 +740,7 @@ cleanup:
 }/* color_apply_icc_profile() */
 
 // transform LAB colour space to sRGB @ 16 bit precision
-void color_cielab_to_rgb(opj_image_t *image,bool verbose){
+void color_cielab_to_rgb(grk_image_t *image,bool verbose){
     uint32_t *row;
     int enumcs, numcomps;
     numcomps = (int)image->numcomps;
@@ -762,10 +762,10 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 	}
 
 	bool defaultType = true;
-    image->color_space = OPJ_CLRSPC_SRGB;
-	uint32_t illuminant = OPJ_CIE_D50;
+    image->color_space = GRK_CLRSPC_SRGB;
+	uint32_t illuminant = GRK_CIE_D50;
 	cmsCIExyY WhitePoint;
-	defaultType = row[1] == OPJ_DEFAULT_CIELAB_SPACE;
+	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
     int *L, *a, *b, *red, *green, *blue;
     int *src0, *src1, *src2, *dst0, *dst1, *dst2;
 	// range, offset and precision for L,a and b coordinates
@@ -773,7 +773,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     double minL, maxL, mina, maxa, minb, maxb;
     unsigned int i, max;
     cmsUInt16Number RGB[3];
-    opj_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
+    grk_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
 	if (!new_image)
 		return;
     prec_L = (double)image->comps[0].prec;
@@ -797,38 +797,38 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 		illuminant = row[8];
     }
 	switch (illuminant) {
-	case OPJ_CIE_D50:
+	case GRK_CIE_D50:
 		break;
-	case OPJ_CIE_D65:
+	case GRK_CIE_D65:
 		cmsWhitePointFromTemp(&WhitePoint, 6504);
 		break;
-	case OPJ_CIE_D75:
+	case GRK_CIE_D75:
 		cmsWhitePointFromTemp(&WhitePoint, 7500);
 		break;
-	case OPJ_CIE_SA:
+	case GRK_CIE_SA:
 		cmsWhitePointFromTemp(&WhitePoint, 2856);
 		break;
-	case OPJ_CIE_SC:
+	case GRK_CIE_SC:
 		cmsWhitePointFromTemp(&WhitePoint, 6774);
 		break;
-	case OPJ_CIE_F2:
+	case GRK_CIE_F2:
 		cmsWhitePointFromTemp(&WhitePoint, 4100);
 		break;
-	case OPJ_CIE_F7:
+	case GRK_CIE_F7:
 		cmsWhitePointFromTemp(&WhitePoint, 6500);
 		break;
-	case OPJ_CIE_F11:
+	case GRK_CIE_F11:
 		cmsWhitePointFromTemp(&WhitePoint, 4000);
 		break;
 	default:
 		if (verbose)
 			spdlog::warn("Unrecognized illuminant {} in CIELab colour space. Setting to default Daylight50", illuminant);
-		illuminant = OPJ_CIE_D50;
+		illuminant = GRK_CIE_D50;
 		break;
 	}
 
 	// Lab input profile
-	cmsHPROFILE in = cmsCreateLab4Profile(illuminant == OPJ_CIE_D50 ? nullptr : &WhitePoint);
+	cmsHPROFILE in = cmsCreateLab4Profile(illuminant == GRK_CIE_D50 ? nullptr : &WhitePoint);
 	// sRGB output profile
 	cmsHPROFILE out = cmsCreate_sRGBProfile();
 	cmsHTRANSFORM transform =
@@ -837,7 +837,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 	cmsCloseProfile(in);
 	cmsCloseProfile(out);
 	if (transform == nullptr) {
-		opj_image_destroy(new_image);
+		grk_image_destroy(new_image);
 		return;
 	}
 
@@ -855,7 +855,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
     new_image->comps[1].data=nullptr;
     new_image->comps[2].data=nullptr;
 
-    opj_image_destroy(new_image);
+    grk_image_destroy(new_image);
     new_image = nullptr;
 
     minL = -(r_L * o_L) / (pow(2, prec_L) - 1);
@@ -883,7 +883,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
         *blue++		= RGB[2];
     }
     cmsDeleteTransform(transform);
-    opj_image_all_components_data_free(image);
+    grk_image_all_components_data_free(image);
 	image->comps[0].data = dst0;
 	image->comps[0].owns_data = true;
 	image->comps[1].data = dst1;
@@ -891,7 +891,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 	image->comps[2].data = dst2;
 	image->comps[2].owns_data = true;
 
-    image->color_space = OPJ_CLRSPC_SRGB;
+    image->color_space = GRK_CLRSPC_SRGB;
     image->comps[0].prec = 16;
     image->comps[1].prec = 16;
     image->comps[2].prec = 16;
@@ -902,7 +902,7 @@ void color_cielab_to_rgb(opj_image_t *image,bool verbose){
 #endif /* GROK_HAVE_LIBLCMS */
 
 
-int color_cmyk_to_rgb(opj_image_t *image)
+int color_cmyk_to_rgb(grk_image_t *image)
 {
     float C, M, Y, K;
     float sC, sM, sY, sK;
@@ -942,12 +942,12 @@ int color_cmyk_to_rgb(opj_image_t *image)
         image->comps[2].data[i] = (int)(255.0F * Y * K); /* B */
     }
 
-    opj_image_single_component_data_free(image->comps + 3);
+    grk_image_single_component_data_free(image->comps + 3);
     image->comps[0].prec = 8;
     image->comps[1].prec = 8;
     image->comps[2].prec = 8;
     image->numcomps -= 1;
-    image->color_space = OPJ_CLRSPC_SRGB;
+    image->color_space = GRK_CLRSPC_SRGB;
 
     for (i = 3; i < image->numcomps; ++i) {
         memcpy(&(image->comps[i]), &(image->comps[i+1]), sizeof(image->comps[i]));
@@ -957,7 +957,7 @@ int color_cmyk_to_rgb(opj_image_t *image)
 
 }/* color_cmyk_to_rgb() */
 
-int color_esycc_to_rgb(opj_image_t *image)
+int color_esycc_to_rgb(grk_image_t *image)
 {
     int y, cb, cr, sign1, sign2, val;
 	uint32_t w, h;
@@ -1009,7 +1009,7 @@ int color_esycc_to_rgb(opj_image_t *image)
         else if(val < 0) val = 0;
         image->comps[2].data[i] = val;
     }
-    image->color_space = OPJ_CLRSPC_SRGB;
+    image->color_space = GRK_CLRSPC_SRGB;
 	return 0;
 
 }/* color_esycc_to_rgb() */

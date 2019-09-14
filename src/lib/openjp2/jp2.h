@@ -244,7 +244,7 @@ struct jp2_img_header_writer_handler_t {
  @param jp2 JP2 decompressor handle
  @param parameters decompression parameters
  */
-void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
+void jp2_setup_decoder(void *jp2_void, grk_dparameters_t *parameters);
 
 /**
  * Decode an image from a JPEG-2000 file stream
@@ -256,7 +256,7 @@ void jp2_setup_decoder(void *jp2_void, opj_dparameters_t *parameters);
  * @return a decoded image if successful, returns nullptr otherwise
  */
 bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		opj_image_t *p_image);
+		grk_image_t *p_image);
 
 /**
  * Setup the encoder parameters using the current image and using user parameters.
@@ -268,8 +268,8 @@ bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
 
  * @return true if successful, false otherwise
  */
-bool jp2_setup_encoder(jp2_t *jp2, opj_cparameters_t *parameters,
-		opj_image_t *image);
+bool jp2_setup_encoder(jp2_t *jp2, grk_cparameters_t *parameters,
+		grk_image_t *image);
 
 /**
  Encode an image into a JPEG-2000 file stream
@@ -289,7 +289,7 @@ bool jp2_encode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *stream);
  *
  * @return true if the codec is valid.
  */
-bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, opj_image_t *p_image);
+bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, grk_image_t *p_image);
 
 /**
  * Ends the compression procedures and possibly add data to be read after the
@@ -316,7 +316,7 @@ bool jp2_end_decompress(jp2_t *jp2, GrokStream *cio);
  * @return true if the box is valid.
  */
 bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
-		opj_header_info_t *header_info, opj_image_t **p_image);
+		grk_header_info_t *header_info, grk_image_t **p_image);
 
 /**
  * Reads a tile header.
@@ -389,13 +389,13 @@ void jp2_destroy(jp2_t *jp2);
  *
  * @return  true      if the area could be set.
  */
-bool jp2_set_decode_area(jp2_t *p_jp2, opj_image_t *p_image, uint32_t start_x,
+bool jp2_set_decode_area(jp2_t *p_jp2, grk_image_t *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
  *
  */
-bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, opj_image_t *p_image, uint32_t tile_index);
+bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, grk_image_t *p_image, uint32_t tile_index);
 
 /**
  *
@@ -419,7 +419,7 @@ void jp2_dump(jp2_t *p_jp2, int32_t flag, FILE *out_stream);
  *
  *@return  the codestream information extract from the jpg2000 codec
  */
-opj_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2);
+grk_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2);
 
 /**
  * Get the codestream index from a JPEG2000 codec.
@@ -428,7 +428,7 @@ opj_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2);
  *
  *@return  the codestream index extract from the jpg2000 codec
  */
-opj_codestream_index_t* jp2_get_cstr_index(jp2_t *p_jp2);
+grk_codestream_index_t* jp2_get_cstr_index(jp2_t *p_jp2);
 
 /*@}*/
 

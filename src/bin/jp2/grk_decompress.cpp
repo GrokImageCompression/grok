@@ -58,7 +58,7 @@
 
 
 
-#include "opj_apps_config.h"
+#include "grk_apps_config.h"
 
 #ifdef _WIN32
 #include "../common/windirent.h"
@@ -110,14 +110,14 @@ using namespace TCLAP;
 using namespace std;
 
 int load_images(dircnt_t *dirptr, char *imgdirpath);
-static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, opj_decompress_parameters *parameters);
+static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, grk_decompress_parameters *parameters);
 static int parse_cmdline_decoder(int argc,
 							char **argv,
-							opj_decompress_parameters *parameters,
+							grk_decompress_parameters *parameters,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
 							char* plugin_path);
-static opj_image_t* convert_gray_to_rgb(opj_image_t* original);
+static grk_image_t* convert_gray_to_rgb(grk_image_t* original);
 
 
 void exit_func() {
@@ -188,7 +188,7 @@ static void decode_help_display(void)
 {
     fprintf(stdout,"\nThis is the grk_decompress utility from the Grok project.\n"
             "It decompresses JPEG 2000 codestreams to various image formats.\n"
-            "It has been compiled against openjp2 library v%s.\n\n",opj_version());
+            "It has been compiled against openjp2 library v%s.\n\n",grk_version());
 
     fprintf(stdout,"Parameters:\n"
             "-----------\n"
@@ -259,7 +259,7 @@ static void decode_help_display(void)
 
 /* -------------------------------------------------------------------------- */
 
-static bool parse_precision(const char* option, opj_decompress_parameters* parameters)
+static bool parse_precision(const char* option, grk_decompress_parameters* parameters)
 {
     const char* l_remaining = option;
     bool l_result = true;
@@ -308,7 +308,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
 
             if (parameters->precision == nullptr) {
                 /* first one */
-                parameters->precision = (opj_precision *)malloc(sizeof(opj_precision));
+                parameters->precision = (grk_precision *)malloc(sizeof(grk_precision));
                 if (parameters->precision == nullptr) {
                     spdlog::error("Could not allocate memory for precision option");
                     l_result = false;
@@ -316,7 +316,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                 }
             } else {
                 uint32_t l_new_size = parameters->nb_precision + 1U;
-                opj_precision* l_new;
+                grk_precision* l_new;
 
                 if (l_new_size == 0U) {
                     spdlog::error("Could not allocate memory for precision option");
@@ -324,7 +324,7 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
                     break;
                 }
 
-                l_new = (opj_precision *)realloc(parameters->precision, l_new_size * sizeof(opj_precision));
+                l_new = (grk_precision *)realloc(parameters->precision, l_new_size * sizeof(grk_precision));
                 if (l_new == nullptr) {
                     spdlog::error("Could not allocate memory for precision option");
                     l_result = false;
@@ -336,10 +336,10 @@ static bool parse_precision(const char* option, opj_decompress_parameters* param
             parameters->precision[parameters->nb_precision].prec = (uint32_t)prec;
             switch (mode) {
             case 'C':
-                parameters->precision[parameters->nb_precision].mode = OPJ_PREC_MODE_CLIP;
+                parameters->precision[parameters->nb_precision].mode = GRK_PREC_MODE_CLIP;
                 break;
             case 'S':
-                parameters->precision[parameters->nb_precision].mode = OPJ_PREC_MODE_SCALE;
+                parameters->precision[parameters->nb_precision].mode = GRK_PREC_MODE_SCALE;
                 break;
             default:
                 break;
@@ -392,7 +392,7 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 char get_next_file(std::string image_filename,
 					img_fol_t *img_fol,
 					img_fol_t* out_fol,
-					opj_decompress_parameters *parameters) {
+					grk_decompress_parameters *parameters) {
 	if (parameters->verbose)
 		spdlog::info("File Number \"{}\"\n", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath + std::string(get_path_separator()) + image_filename;
@@ -434,7 +434,7 @@ public:
 /* -------------------------------------------------------------------------- */
 int parse_cmdline_decoder(int argc, 
 							char **argv,
-							opj_decompress_parameters *parameters,
+							grk_decompress_parameters *parameters,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
 							char* plugin_path)
@@ -442,7 +442,7 @@ int parse_cmdline_decoder(int argc,
 	try {
 
 		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', opj_version());
+		CmdLine cmd("Command description message", ' ', grk_version());
 		
 		// set the output
 		GrokOutput output;
@@ -770,17 +770,17 @@ int parse_cmdline_decoder(int argc,
     }
     return 0;
 }
-static void set_default_parameters(opj_decompress_parameters* parameters)
+static void set_default_parameters(grk_decompress_parameters* parameters)
 {
     if (parameters) {
-        memset(parameters, 0, sizeof(opj_decompress_parameters));
+        memset(parameters, 0, sizeof(grk_decompress_parameters));
 
         /* default decoding parameters (command line specific) */
         parameters->decod_format = UNKNOWN_FORMAT;
         parameters->cod_format = UNKNOWN_FORMAT;
 
         /* default decoding parameters (core) */
-        opj_set_default_decoder_parameters(&(parameters->core));
+        grk_set_default_decoder_parameters(&(parameters->core));
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
@@ -788,7 +788,7 @@ static void set_default_parameters(opj_decompress_parameters* parameters)
 
 }
 
-static void destroy_parameters(opj_decompress_parameters* parameters)
+static void destroy_parameters(grk_decompress_parameters* parameters)
 {
     if (parameters) {
         if (parameters->precision) {
@@ -800,18 +800,18 @@ static void destroy_parameters(opj_decompress_parameters* parameters)
 
 /* -------------------------------------------------------------------------- */
 
-static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
+static grk_image_t* convert_gray_to_rgb(grk_image_t* original)
 {
 	if (original->numcomps == 0)
 		return nullptr;
     uint32_t compno;
-    opj_image_t* l_new_image = nullptr;
-    opj_image_cmptparm_t* l_new_components = nullptr;
+    grk_image_t* l_new_image = nullptr;
+    grk_image_cmptparm_t* l_new_components = nullptr;
 
-    l_new_components = (opj_image_cmptparm_t*)malloc((original->numcomps + 2U) * sizeof(opj_image_cmptparm_t));
+    l_new_components = (grk_image_cmptparm_t*)malloc((original->numcomps + 2U) * sizeof(grk_image_cmptparm_t));
     if (l_new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for RGB image!");
-        opj_image_destroy(original);
+        grk_image_destroy(original);
         return nullptr;
     }
 
@@ -835,11 +835,11 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
         l_new_components[compno+2U].y0   = original->comps[compno].y0;
     }
 
-    l_new_image = opj_image_create(original->numcomps + 2U, l_new_components, OPJ_CLRSPC_SRGB);
+    l_new_image = grk_image_create(original->numcomps + 2U, l_new_components, GRK_CLRSPC_SRGB);
     free(l_new_components);
     if (l_new_image == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for RGB image!");
-        opj_image_destroy(original);
+        grk_image_destroy(original);
         return nullptr;
     }
 
@@ -862,16 +862,16 @@ static opj_image_t* convert_gray_to_rgb(opj_image_t* original)
         l_new_image->comps[compno+2U].resno_decoded = original->comps[compno].resno_decoded;
         memcpy(l_new_image->comps[compno+2U].data, original->comps[compno].data, original->comps[compno].w * original->comps[compno].h * sizeof(int32_t));
     }
-    opj_image_destroy(original);
+    grk_image_destroy(original);
     return l_new_image;
 }
 
 /* -------------------------------------------------------------------------- */
 
-static opj_image_t* upsample_image_components(opj_image_t* original)
+static grk_image_t* upsample_image_components(grk_image_t* original)
 {
-    opj_image_t* l_new_image = nullptr;
-    opj_image_cmptparm_t* l_new_components = nullptr;
+    grk_image_t* l_new_image = nullptr;
+    grk_image_cmptparm_t* l_new_components = nullptr;
     bool l_upsample_need = false;
     uint32_t compno;
 
@@ -883,7 +883,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
 			return nullptr;
         if (original->comps[compno].decodeScaleFactor > 0U) {
             spdlog::error( "grk_decompress: -upsample not supported with reduction");
-            opj_image_destroy(original);
+            grk_image_destroy(original);
             return nullptr;
         }
         if ((original->comps[compno].dx > 1U) || (original->comps[compno].dy > 1U)) {
@@ -895,16 +895,16 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
         return original;
     }
     /* Upsample is needed */
-    l_new_components = (opj_image_cmptparm_t*)malloc(original->numcomps * sizeof(opj_image_cmptparm_t));
+    l_new_components = (grk_image_cmptparm_t*)malloc(original->numcomps * sizeof(grk_image_cmptparm_t));
     if (l_new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for upsampled components!");
-        opj_image_destroy(original);
+        grk_image_destroy(original);
         return nullptr;
     }
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-        opj_image_cmptparm_t* l_new_cmp = &(l_new_components[compno]);
-        opj_image_comp_t*     l_org_cmp = &(original->comps[compno]);
+        grk_image_cmptparm_t* l_new_cmp = &(l_new_components[compno]);
+        grk_image_comp_t*     l_org_cmp = &(original->comps[compno]);
 
         l_new_cmp->prec = l_org_cmp->prec;
         l_new_cmp->sgnd = l_org_cmp->sgnd;
@@ -924,11 +924,11 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
         }
     }
 
-    l_new_image = opj_image_create(original->numcomps, l_new_components, original->color_space);
+    l_new_image = grk_image_create(original->numcomps, l_new_components, original->color_space);
     free(l_new_components);
     if (l_new_image == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for upsampled components!");
-        opj_image_destroy(original);
+        grk_image_destroy(original);
         return nullptr;
     }
 
@@ -938,8 +938,8 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
     l_new_image->y1 = original->y1;
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-        opj_image_comp_t* l_new_cmp = &(l_new_image->comps[compno]);
-        opj_image_comp_t* l_org_cmp = &(original->comps[compno]);
+        grk_image_comp_t* l_new_cmp = &(l_new_image->comps[compno]);
+        grk_image_comp_t* l_org_cmp = &(original->comps[compno]);
 
         l_new_cmp->decodeScaleFactor        = l_org_cmp->decodeScaleFactor;
         l_new_cmp->alpha         = l_org_cmp->alpha;
@@ -956,8 +956,8 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
             yoff = l_org_cmp->dy * l_org_cmp->y0 -  original->y0;
             if ((xoff >= l_org_cmp->dx) || (yoff >= l_org_cmp->dy)) {
                 spdlog::error( "grk_decompress: Invalid image/component parameters found when upsampling");
-                opj_image_destroy(original);
-                opj_image_destroy(l_new_image);
+                grk_image_destroy(original);
+                grk_image_destroy(l_new_image);
                 return nullptr;
             }
 
@@ -1025,7 +1025,7 @@ static opj_image_t* upsample_image_components(opj_image_t* original)
             memcpy(l_new_cmp->data, l_org_cmp->data, l_org_cmp->w * l_org_cmp->h * sizeof(int32_t));
         }
     }
-    opj_image_destroy(original);
+    grk_image_destroy(original);
     return l_new_image;
 }
 
@@ -1055,8 +1055,8 @@ struct DecompressInitParams {
 	}
 	bool initialized;
 
-	opj_decompress_parameters parameters;	/* compression parameters */
-	char plugin_path[OPJ_PATH_LEN];
+	grk_decompress_parameters parameters;	/* compression parameters */
+	char plugin_path[GRK_PATH_LEN];
 
 	img_fol_t img_fol;
 	img_fol_t out_fol;
@@ -1152,7 +1152,7 @@ int main(int argc, char **argv){
 	}
 cleanup:
 	destroy_parameters(&initParams.parameters);
-	opj_deinitialize();
+	grk_deinitialize();
 	return rc;
 }
 
@@ -1191,7 +1191,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!opj_initialize(initParams->plugin_path, initParams->parameters.core.numThreads)) {
+	if (!grk_initialize(initParams->plugin_path, initParams->parameters.core.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}
@@ -1245,7 +1245,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 			}
 			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
 			if (dirptr) {
-				dirptr->filename_buf = (char*)malloc((size_t)num_images*OPJ_PATH_LEN);	/* Stores at max 10 image file names*/
+				dirptr->filename_buf = (char*)malloc((size_t)num_images*GRK_PATH_LEN);	/* Stores at max 10 image file names*/
 				if (!dirptr->filename_buf) {
 					success = 1;
 					goto cleanup;
@@ -1257,7 +1257,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 				}
 
 				for (int it_image = 0; it_image < num_images; it_image++) {
-					dirptr->filename[it_image] = dirptr->filename_buf + it_image*OPJ_PATH_LEN;
+					dirptr->filename[it_image] = dirptr->filename_buf + it_image*GRK_PATH_LEN;
 				}
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
@@ -1312,13 +1312,13 @@ int decode_callback(grok_plugin_decode_callback_info_t* info) {
 	}
 	if (info->decode_flags & GROK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
-			opj_stream_destroy(info->l_stream);
+			grk_stream_destroy(info->l_stream);
 		info->l_stream = nullptr;
 		if (info->l_codec)
-			opj_destroy_codec(info->l_codec);
+			grk_destroy_codec(info->l_codec);
 		info->l_codec = nullptr;
 		if (info->image && !info->plugin_owns_image) {
-			opj_image_destroy(info->image);
+			grk_image_destroy(info->image);
 			info->image = nullptr;
 		}
 		rc = 0;
@@ -1388,13 +1388,13 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 				failed = 1;
 				goto cleanup;
 			}
-			info->l_stream = opj_stream_create_buffer_stream(buffer, lengthOfFile,true, true);
+			info->l_stream = grk_stream_create_buffer_stream(buffer, lengthOfFile,true, true);
 		}
 		else  if (isMappedFile) {
-			info->l_stream = opj_stream_create_mapped_file_read_stream(infile);
+			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
 		} else {
 			// use file stream 
-			info->l_stream = opj_stream_create_default_file_stream(infile, true);
+			info->l_stream = grk_stream_create_default_file_stream(infile, true);
 		}
 	}
 
@@ -1409,12 +1409,12 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		switch (decod_format) {
 		case J2K_CFMT: {	/* JPEG-2000 codestream */
 							/* Get a decoder handle */
-			info->l_codec = opj_create_decompress(OPJ_CODEC_J2K);
+			info->l_codec = grk_create_decompress(GRK_CODEC_J2K);
 			break;
 		}
 		case JP2_CFMT: {	/* JPEG 2000 compressed image data */
 							/* Get a decoder handle */
-			info->l_codec = opj_create_decompress(OPJ_CODEC_JP2);
+			info->l_codec = grk_create_decompress(GRK_CODEC_JP2);
 			break;
 		}
 		default:
@@ -1423,12 +1423,12 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 		}
 		/* catch events using our callbacks and give a local context */
 		if (parameters->verbose) {
-			opj_set_info_handler(info->l_codec, info_callback, nullptr);
-			opj_set_warning_handler(info->l_codec, warning_callback, nullptr);
+			grk_set_info_handler(info->l_codec, info_callback, nullptr);
+			grk_set_warning_handler(info->l_codec, warning_callback, nullptr);
 		}
-		opj_set_error_handler(info->l_codec, error_callback, nullptr);
+		grk_set_error_handler(info->l_codec, error_callback, nullptr);
 
-		if (!opj_setup_decoder(info->l_codec, &(parameters->core))) {
+		if (!grk_setup_decoder(info->l_codec, &(parameters->core))) {
 			spdlog::error( "grk_decompress: failed to setup the decoder");
 			failed = 1;
 			goto cleanup;
@@ -1438,7 +1438,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	// 2. read header
 	if (info->decode_flags & GROK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
-		if (!opj_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
+		if (!grk_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error( "grk_decompress: failed to read the header");
 			failed = 1;
 			goto cleanup;
@@ -1490,13 +1490,13 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 
 	/* Uncomment to set number of resolutions to be decoded */
 	/*
-	if (!opj_set_decoded_resolution_factor(info->l_codec, 0)) {
+	if (!grk_set_decoded_resolution_factor(info->l_codec, 0)) {
 		spdlog::error( "grk_decompress: failed to set the resolution factor tile!");
 		return -1;
 	}
 	*/
 
-	if (!opj_set_decode_area(info->l_codec, info->image, parameters->DA_x0,
+	if (!grk_set_decode_area(info->l_codec, info->image, parameters->DA_x0,
 		parameters->DA_y0,
 		parameters->DA_x1,
 		parameters->DA_y1)) {
@@ -1507,7 +1507,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
-		if (!(opj_decode(info->l_codec,info->tile, info->l_stream, info->image) && opj_end_decompress(info->l_codec, info->l_stream))) {
+		if (!(grk_decode(info->l_codec,info->tile, info->l_stream, info->image) && grk_end_decompress(info->l_codec, info->l_stream))) {
 			spdlog::error( "grk_decompress: failed to decode image!");
 			failed = 1;
 			goto cleanup;
@@ -1515,7 +1515,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	}
 	// or, decode one particular tile
 	else {
-		if (!opj_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
+		if (!grk_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
 			spdlog::error( "grk_decompress: failed to decode tile!");
 			failed = 1;
 			goto cleanup;
@@ -1527,14 +1527,14 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 
 cleanup:
 	if (info->l_stream)
-		opj_stream_destroy(info->l_stream);
+		grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
 	if (info->l_codec)
-		opj_destroy_codec(info->l_codec);
+		grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
 	if (failed) {
 		if (info->image)
-			opj_image_destroy(info->image);
+			grk_image_destroy(info->image);
 		info->image = nullptr;
 	}
 	return failed;
@@ -1548,11 +1548,11 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 		return -1;
 	int failed = 0;
 	bool canStoreICC = false;
-	opj_decompress_parameters* parameters = info->decoder_parameters;
-	opj_image_t* image = info->image;
+	grk_decompress_parameters* parameters = info->decoder_parameters;
+	grk_image_t* image = info->image;
 	bool canStoreCIE = (info->decoder_parameters->cod_format == TIF_DFMT) &&
-			(image->color_space == OPJ_CLRSPC_DEFAULT_CIE);
-	bool isCIE = image->color_space == OPJ_CLRSPC_DEFAULT_CIE || image->color_space == OPJ_CLRSPC_CUSTOM_CIE;
+			(image->color_space == GRK_CLRSPC_DEFAULT_CIE);
+	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE;
 	const char* infile =
 		info->decoder_parameters->infile[0] ?
 		info->decoder_parameters->infile :
@@ -1565,24 +1565,24 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	GROK_SUPPORTED_FILE_FORMAT cod_format =
 			(GROK_SUPPORTED_FILE_FORMAT)(info->cod_format != UNKNOWN_FORMAT ? info->cod_format : parameters->cod_format);
 
-	if (image->color_space != OPJ_CLRSPC_SYCC
+	if (image->color_space != GRK_CLRSPC_SYCC
 		&& image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
 		&& image->comps[1].dx != 1)
-		image->color_space = OPJ_CLRSPC_SYCC;
+		image->color_space = GRK_CLRSPC_SYCC;
 	else if (image->numcomps <= 2)
-		image->color_space = OPJ_CLRSPC_GRAY;
+		image->color_space = GRK_CLRSPC_GRAY;
 
-	if (image->color_space == OPJ_CLRSPC_SYCC) {
+	if (image->color_space == GRK_CLRSPC_SYCC) {
 		color_sycc_to_rgb(image);
 	}
-	else if ((image->color_space == OPJ_CLRSPC_CMYK) && (parameters->cod_format != TIF_DFMT)) {
+	else if ((image->color_space == GRK_CLRSPC_CMYK) && (parameters->cod_format != TIF_DFMT)) {
 		if (color_cmyk_to_rgb(image)) {
 			spdlog::error( "grk_decompress: CMYK to RGB colour conversion failed !");
 			failed = 1;
 			goto cleanup;
 		}
 	}
-	else if (image->color_space == OPJ_CLRSPC_EYCC) {
+	else if (image->color_space == GRK_CLRSPC_EYCC) {
 		if (color_esycc_to_rgb(image)) {
 			spdlog::error( "grk_decompress: eSYCC to RGB colour conversion failed !");
 			failed = 1;
@@ -1643,7 +1643,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			}
 		}
 		if ((isCIE && !canStoreCIE)|| info->decoder_parameters->force_rgb || (!isCIE && !canStoreICC)) {
-			opj_buffer_delete(image->icc_profile_buf);
+			grk_buffer_delete(image->icc_profile_buf);
 			image->icc_profile_buf = nullptr;
 			image->icc_profile_len = 0;
 		}
@@ -1668,10 +1668,10 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 			}
 
 			switch (parameters->precision[precno].mode) {
-			case OPJ_PREC_MODE_CLIP:
+			case GRK_PREC_MODE_CLIP:
 				clip_component(&(image->comps[compno]), prec);
 				break;
-			case OPJ_PREC_MODE_SCALE:
+			case GRK_PREC_MODE_SCALE:
 				scale_component(&(image->comps[compno]), prec);
 				break;
 			default:
@@ -1695,14 +1695,14 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	/* ---------------- */
 	if (parameters->force_rgb) {
 		switch (image->color_space) {
-		case OPJ_CLRSPC_SRGB:
+		case GRK_CLRSPC_SRGB:
 			break;
-		case OPJ_CLRSPC_GRAY:
+		case GRK_CLRSPC_GRAY:
 			image = convert_gray_to_rgb(image);
 			break;
 		default:
 			spdlog::error( "grk_decompress: don't know how to convert image to RGB colorspace!");
-			opj_image_destroy(image);
+			grk_image_destroy(image);
 			image = nullptr;
 			failed = 1;
 			goto cleanup;
@@ -1820,13 +1820,13 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	}
 cleanup:
 	if (info->l_stream)
-		opj_stream_destroy(info->l_stream);
+		grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;
 	if (info->l_codec)
-		opj_destroy_codec(info->l_codec);
+		grk_destroy_codec(info->l_codec);
 	info->l_codec = nullptr;
 	if (image && !info->plugin_owns_image) {
-		opj_image_destroy(image);
+		grk_image_destroy(image);
 		info->image = nullptr;
 	}
 	if (failed) {

@@ -22,12 +22,12 @@ class RAWFormat {
 public:
 	RAWFormat(bool isBig) : bigEndian(isBig) {}
 	virtual ~RAWFormat() {}
-	bool encode(opj_image_t* image, const char* filename, int compressionParam, bool verbose);
-	opj_image_t* decode(const char* filename, opj_cparameters_t *parameters);
+	bool encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose);
+	grk_image_t* decode(const char* filename, grk_cparameters_t *parameters);
 private:
 	bool bigEndian;
-	opj_image_t* rawtoimage(const char *filename, opj_cparameters_t *parameters, bool big_endian);
-	int imagetoraw(opj_image_t * image, 
+	grk_image_t* rawtoimage(const char *filename, grk_cparameters_t *parameters, bool big_endian);
+	int imagetoraw(grk_image_t * image, 
 					const char *outfile,
 					bool big_endian, 
 					bool verbose);

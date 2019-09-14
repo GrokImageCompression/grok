@@ -147,7 +147,7 @@ bool mct_decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
  @param pMatrix          components
  @return
  */
-void opj_calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
+void grk_calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
 /**
  FIXME DOC
  */

@@ -86,7 +86,7 @@ struct GrokStream: public IGrokStream {
 	 * when destroying the stream. If pointer is nullptr the function is not
 	 * called and the m_user_data is not freed (even if non-nullptr).
 	 */
-	opj_stream_free_user_data_fn m_free_user_data_fn;
+	grk_stream_free_user_data_fn m_free_user_data_fn;
 
 	/**
 	 * User data length.
@@ -97,22 +97,22 @@ struct GrokStream: public IGrokStream {
 	/**
 	 * Pointer to actual read function (nullptr at the initialization of the cio).
 	 */
-	opj_stream_read_fn m_read_fn;
+	grk_stream_read_fn m_read_fn;
 
 	/**
 	 * Pointer to actual zero copy read function (nullptr at the initialization of the cio).
 	 */
-	opj_stream_zero_copy_read_fn m_zero_copy_read_fn;
+	grk_stream_zero_copy_read_fn m_zero_copy_read_fn;
 
 	/**
 	 * Pointer to actual write function (nullptr at the initialization of the cio.
 	 */
-	opj_stream_write_fn m_write_fn;
+	grk_stream_write_fn m_write_fn;
 
 	/**
 	 * Pointer to actual seek function (if available).
 	 */
-	opj_stream_seek_fn m_seek_fn;
+	grk_stream_seek_fn m_seek_fn;
 
 	/**
 	 * Flags to tell the status of the stream.
