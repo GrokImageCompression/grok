@@ -17,7 +17,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "opj_apps_config.h"
-#include "openjpeg.h"
+#include "grok.h"
 #include "JPEGFormat.h"
 #include "convert.h"
 #include <cstring>

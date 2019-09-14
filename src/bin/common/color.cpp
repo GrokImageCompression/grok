@@ -61,7 +61,7 @@
 
 
 #include "opj_apps_config.h"
-#include "openjpeg.h"
+#include "grok.h"
 #include "color.h"
 #include "common.h"
 

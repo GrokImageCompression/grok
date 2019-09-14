@@ -80,7 +80,7 @@
 #include "common.h"
 using namespace grk;
 
-#include "openjpeg.h"
+#include "grok.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"

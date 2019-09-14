@@ -54,5 +54,5 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "opj_apps_config.h"
-#include "openjpeg.h"
+#include "grok.h"
 #include "convert.h"

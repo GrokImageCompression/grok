@@ -47,8 +47,8 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "opj_config.h"
-#include "openjpeg.h"
+#include "grk_config.h"
+#include "grok.h"
 #include "stdlib.h"
 #include <stdbool.h>
 #include "spdlog/spdlog.h"

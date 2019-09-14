@@ -56,7 +56,7 @@
  */
 #pragma once
 
-#include "opj_config_private.h"
+#include "grk_config_private.h"
 #include "IBitIO.h"
 #include "IGrokStream.h"
 

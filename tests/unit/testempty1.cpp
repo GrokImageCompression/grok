@@ -46,8 +46,8 @@ extern "C" {
 #include <string.h>
 #include <stdio.h>
 
-#include "opj_config.h"
-#include "openjpeg.h"
+#include "grk_config.h"
+#include "grok.h"
 }
 
 #define J2K_CFMT 0

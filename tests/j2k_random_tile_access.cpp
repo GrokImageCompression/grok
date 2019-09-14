@@ -43,7 +43,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_config.h"
+#include "grk_config.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -58,7 +58,7 @@
 #define _strnicmp strncasecmp
 #endif /* _WIN32 */
 
-#include "openjpeg.h"
+#include "grok.h"
 #include "format_defs.h"
 #include "spdlog/spdlog.h"
 

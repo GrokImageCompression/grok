@@ -58,7 +58,7 @@
 #include <stdlib.h>
 #endif
 
-#include "opj_config.h"
+#include "grk_config.h"
 #include <stdlib.h>
 
 #ifdef _WIN32
@@ -69,7 +69,7 @@
 #include <strings.h>
 #endif /* _WIN32 */
 
-#include "openjpeg.h"
+#include "grok.h"
 #include "format_defs.h"
 #include "spdlog/spdlog.h"
 

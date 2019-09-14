@@ -1,4 +1,4 @@
-/* create opj_config.h for CMake */
+/* create grk_config.h for CMake */
 #cmakedefine GROK_HAVE_STDINT_H 		@GROK_HAVE_STDINT_H@
 
 /*--------------------------------------------------------------------------*/

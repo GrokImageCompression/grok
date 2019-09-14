@@ -54,7 +54,7 @@
  * This must be included before any system headers,
  * since they can react to macro defined there
  */
-#include "opj_config_private.h"
+#include "grk_config_private.h"
 
 /*
  ==========================================================
@@ -114,7 +114,6 @@
 
 #include "minpf_plugin_manager.h"
 #include "plugin_interface.h"
-#include "grok.h"
 
 /*
  ==========================================================
