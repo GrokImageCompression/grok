@@ -33,6 +33,11 @@
 
 namespace grk {
 
+
+//exceptions
+class PluginDecodeUnsupportedException: public std::exception {
+};
+
 void decode_synch_plugin_with_host(TileProcessor *tcd);
 
 void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resno,

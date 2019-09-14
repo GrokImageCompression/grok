@@ -63,6 +63,18 @@
 #include <vector>
 namespace grk {
 
+// 64 Giga Pixels
+const uint64_t max_tile_area = 67108864000;
+const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
+const uint32_t max_precision_jpeg_2000 = 38; // maximum number of magnitude bits, according to ISO standard
+const uint32_t max_num_components = 16384;	// maximum allowed number components
+
+const uint32_t default_numbers_segments = 10;
+const uint32_t stream_chunk_size = 0x100000;
+const uint32_t default_header_size = 1000;
+const uint32_t default_number_mcc_records = 10;
+const uint32_t default_number_mct_records = 10;
+
 /**
  @file j2k.h
  @brief The JPEG-2000 Codestream Reader/Writer (J2K)

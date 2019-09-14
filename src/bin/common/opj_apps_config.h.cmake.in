@@ -1,4 +1,4 @@
-#include "opj_config_private.h"
+#include "grk_config_private.h"
 
 /* create opj_apps_config.h for CMake */
 

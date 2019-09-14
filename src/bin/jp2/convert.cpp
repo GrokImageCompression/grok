@@ -66,7 +66,7 @@
 #endif
 
 
-#include "openjpeg.h"
+#include "grok.h"
 #include "convert.h"
 #include "common.h"
 

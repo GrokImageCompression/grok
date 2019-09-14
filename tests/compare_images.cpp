@@ -53,7 +53,7 @@
 #include "opj_apps_config.h"
 #include "grok_getopt.h"
 
-#include "openjpeg.h"
+#include "grok.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
 #include "format_defs.h"

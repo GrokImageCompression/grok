@@ -78,7 +78,7 @@
 using namespace grk;
 
 #include "opj_apps_config.h"
-#include "openjpeg.h"
+#include "grok.h"
 #include "RAWFormat.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"

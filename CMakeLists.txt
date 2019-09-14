@@ -151,7 +151,7 @@ endif()
 find_package(SSE)
 
 #-----------------------------------------------------------------------------
-# opj_config.h generation (1/2)
+# grk_config.h generation (1/2)
 
 # Option Choose whether to use static runtime
 include(ucm)
@@ -219,16 +219,16 @@ if(BUILD_CODEC)
 endif ()
 
 #-----------------------------------------------------------------------------
-# opj_config.h generation (2/2)
+# grk_config.h generation (2/2)
 configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/opj_config.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/opj_config.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/grk_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/grk_config.h
  @ONLY
  )
 
  configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/opj_config_private.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/opj_config_private.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/grk_config_private.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/grk_config_private.h
  @ONLY
  )
 

@@ -15,7 +15,7 @@
  *
  */
 
-#include "openjpeg.h"
+#include "grok.h"
 #include <cstring>
 #include "minpf_plugin.h"
 #include <string>

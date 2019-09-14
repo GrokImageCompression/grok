@@ -20,11 +20,11 @@ IF(AVX2_FOUND)
 ENDIF()
 ENDIF(UNIX)
 
-install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/opj_config.h
+install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/grk_config.h
  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers)
 
 include_directories(
-  ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/openjp2 # opj_config.h and opj_config_private.h
+  ${${GROK_NAMESPACE}_BINARY_DIR}/src/lib/openjp2 # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/include
@@ -61,7 +61,7 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/openjpeg.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
   ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.cpp
@@ -179,7 +179,7 @@ install(TARGETS ${INSTALL_LIBS}
 )
 
 # Install includes files
-install(FILES openjpeg.h 
+install(FILES grok.h 
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${GROK_INSTALL_SUBDIR} COMPONENT Headers
 )
 

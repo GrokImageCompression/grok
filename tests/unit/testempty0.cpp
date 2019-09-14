@@ -16,7 +16,7 @@
 *
 */
 
-#include "openjpeg.h"
+#include "grok.h"
 
 int main(int argc, char **argv)
 {
