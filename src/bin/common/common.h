@@ -105,6 +105,7 @@ GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
 const char* get_path_separator();
 char * get_file_name(char *name);
 int get_num_images(char *imgdirpath);
+char* actual_path(const char* outfile);
 
 #define CLAMP(x,a,b) (x < a) ? a : (x > b ? b : x)
 
