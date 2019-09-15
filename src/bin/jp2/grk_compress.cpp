@@ -1867,7 +1867,7 @@ cleanup:
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image");
 		if (parameters->outfile[0])
-			remove(parameters->outfile);
+			remove(actual_path(parameters->outfile));
 	}
 	return bSuccess;
 }

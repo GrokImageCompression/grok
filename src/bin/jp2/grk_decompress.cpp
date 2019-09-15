@@ -75,6 +75,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #endif /* _WIN32 */
 
 #include "common.h"
@@ -1831,7 +1832,7 @@ cleanup:
 	}
 	if (failed) {
 		if (outfile)
-			(void)remove(outfile); /* ignore return value */
+			(void)remove(actual_path(outfile)); /* ignore return value */
 	}
 	return failed;
 }
