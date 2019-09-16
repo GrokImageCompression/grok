@@ -271,7 +271,7 @@ int get_num_images(char *imgdirpath)
 
 char* actual_path(const char* outfile){
 #ifdef _WIN32
-	return outfile;
+	return (char*)outfile;
 #else
 	char *actualpath = realpath(outfile, NULL);
 	if (actualpath != nullptr)
