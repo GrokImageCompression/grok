@@ -118,8 +118,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp, int32_t *datap,
 				mqc_setcurctx(mqc, getSignCodingContext(lu));
 				uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
 				*datap = v ? -oneplushalf : oneplushalf;
-				updateFlags(flagsp, ci3, v, flags_stride,
-						(ci3 == 0) && (mode_switch & J2K_CCP_CBLKSTY_VSC));
+				updateFlags(flagsp, ci3, v, flags_stride,0);
 			}
 			/* set propagation pass bit for this location */
 			*flagsp |= T1_PI_CURRENT << ci3;
@@ -173,7 +172,6 @@ inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp, int32_t *datap,
 			mqc_setcurctx(mqc, getMRPContext(shift_flags));
 			uint8_t v = mqc_decode(mqc);
 			*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
-
 			/* flip magnitude refinement bit*/
 			*flagsp |= T1_MU_CURRENT << ci3;
 		}
@@ -206,7 +204,6 @@ void t1_decode_opt::refpass(int32_t bpno) {
 			++d;
 		}
 	}
-
 }
 
 void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
@@ -247,8 +244,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
 			mqc_setcurctx(mqc, getSignCodingContext(lu));
 			uint8_t v = mqc_decode(mqc) ^ getSPByte(lu);
 			*datap = v ? -oneplushalf : oneplushalf;
-			updateFlags(flagsp, ci3, v, flags_stride,
-					(mode_switch & J2K_CCP_CBLKSTY_VSC) && (ci3 == 0));
+			updateFlags(flagsp, ci3, v, flags_stride,0);
 		}
 		*flagsp &= ~(T1_PI_0 << ci3);
 		datap += w;
@@ -280,26 +276,11 @@ void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient,
 					orient, oneplushalf, agg, runlen, k, mode_switch);
 		}
 	}
-
 	if (k < h) {
 		for (uint32_t i = 0; i < w; ++i) {
 			clnpass_step(FLAGS_ADDRESS(i, k), dataPtr + (k * w) + i, orient,
 					oneplushalf, 0, 0, k, mode_switch);
 		}
-	}
-
-	if (mode_switch & J2K_CCP_CBLKSTY_SEGSYM) {
-		uint8_t v = 0;
-		mqc_setcurctx(mqc, T1_CTXNO_UNI);
-		v = mqc_decode(mqc);
-		v = (uint8_t) (v << 1) | mqc_decode(mqc);
-		v = (uint8_t) (v << 1) | mqc_decode(mqc);
-		v = (uint8_t) (v << 1) | mqc_decode(mqc);
-		/*
-		 if (v!=0xa) {
-		 GROK_WARN( "Bad segmentation symbol %x", v);
-		 }
-		 */
 	}
 }
 bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
@@ -318,50 +299,20 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
 		uint32_t synthOffset = seg->dataindex + seg->len;
 		uint16_t stash = *((uint16_t*) (compressed_block + synthOffset));
 		*((uint16_t*) (compressed_block + synthOffset)) = synthBytes;
-		uint8_t type =
-				((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
-						&& (passtype < 2)
-						&& (mode_switch & J2K_CCP_CBLKSTY_LAZY)) ?
-						T1_TYPE_RAW : T1_TYPE_MQ;
-		if (type == T1_TYPE_RAW) {
-			raw_init_dec(raw, compressed_block + seg->dataindex, seg->len);
-		} else {
-			mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
-		}
+		mqc_init_dec(mqc, compressed_block + seg->dataindex, seg->len);
 		for (uint32_t passno = 0;
 				(passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
 			case 0:
-				if (type == T1_TYPE_RAW) {
-					//sigpass_raw(bpno_plus_one, mode_switch);
-				} else {
-					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
-						//sigpass_vsc(bpno_plus_one, orient);
-					} else {
-						sigpass(bpno_plus_one, orient, mode_switch);
-					}
-				}
+				sigpass(bpno_plus_one, orient, mode_switch);
 				break;
 			case 1:
-				if (type == T1_TYPE_RAW) {
-					//refpass_raw(bpno_plus_one, mode_switch);
-				} else {
-					if (mode_switch & J2K_CCP_CBLKSTY_VSC) {
-						//refpass_vsc(bpno_plus_one);
-					} else {
-						refpass(bpno_plus_one);
-					}
-				}
+				refpass(bpno_plus_one);
 				break;
 			case 2:
 				clnpass(bpno_plus_one, orient, mode_switch);
 				break;
 			}
-
-			if ((mode_switch & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ) {
-				mqc_resetstates(mqc);
-			}
-
 			if (++passtype == 3) {
 				passtype = 0;
 				bpno_plus_one--;

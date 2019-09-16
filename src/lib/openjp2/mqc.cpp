@@ -115,10 +115,9 @@ static void mqc_setbits(mqc_t *mqc);
  Set the state of a particular context
  @param mqc MQC handle
  @param ctxno Number that identifies the context
- @param msb The MSB of the new state of the context
  @param prob Number that identifies the probability of the symbols for the new state of the context
  */
-static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t msb,uint8_t prob);
+static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t prob);
 
 /**
  FIXME DOC
@@ -146,80 +145,106 @@ static inline void mqc_renormd(mqc_t *const mqc);
 
 /*@}*/
 
+
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-mqc_state_t mqc_states[totalNumContextStates] = { { 0x5601, 0, &mqc_states[2],
-		&mqc_states[3] }, { 0x5601, 1, &mqc_states[3], &mqc_states[2] }, {
-		0x3401, 0, &mqc_states[4], &mqc_states[12] }, { 0x3401, 1,
-		&mqc_states[5], &mqc_states[13] }, { 0x1801, 0, &mqc_states[6],
-		&mqc_states[18] }, { 0x1801, 1, &mqc_states[7], &mqc_states[19] }, {
-		0x0ac1, 0, &mqc_states[8], &mqc_states[24] }, { 0x0ac1, 1,
-		&mqc_states[9], &mqc_states[25] }, { 0x0521, 0, &mqc_states[10],
-		&mqc_states[58] }, { 0x0521, 1, &mqc_states[11], &mqc_states[59] }, {
-		0x0221, 0, &mqc_states[76], &mqc_states[66] }, { 0x0221, 1,
-		&mqc_states[77], &mqc_states[67] }, { 0x5601, 0, &mqc_states[14],
-		&mqc_states[13] }, { 0x5601, 1, &mqc_states[15], &mqc_states[12] }, {
-		0x5401, 0, &mqc_states[16], &mqc_states[28] }, { 0x5401, 1,
-		&mqc_states[17], &mqc_states[29] }, { 0x4801, 0, &mqc_states[18],
-		&mqc_states[28] }, { 0x4801, 1, &mqc_states[19], &mqc_states[29] }, {
-		0x3801, 0, &mqc_states[20], &mqc_states[28] }, { 0x3801, 1,
-		&mqc_states[21], &mqc_states[29] }, { 0x3001, 0, &mqc_states[22],
-		&mqc_states[34] }, { 0x3001, 1, &mqc_states[23], &mqc_states[35] }, {
-		0x2401, 0, &mqc_states[24], &mqc_states[36] }, { 0x2401, 1,
-		&mqc_states[25], &mqc_states[37] }, { 0x1c01, 0, &mqc_states[26],
-		&mqc_states[40] }, { 0x1c01, 1, &mqc_states[27], &mqc_states[41] }, {
-		0x1601, 0, &mqc_states[58], &mqc_states[42] }, { 0x1601, 1,
-		&mqc_states[59], &mqc_states[43] }, { 0x5601, 0, &mqc_states[30],
-		&mqc_states[29] }, { 0x5601, 1, &mqc_states[31], &mqc_states[28] }, {
-		0x5401, 0, &mqc_states[32], &mqc_states[28] }, { 0x5401, 1,
-		&mqc_states[33], &mqc_states[29] }, { 0x5101, 0, &mqc_states[34],
-		&mqc_states[30] }, { 0x5101, 1, &mqc_states[35], &mqc_states[31] }, {
-		0x4801, 0, &mqc_states[36], &mqc_states[32] }, { 0x4801, 1,
-		&mqc_states[37], &mqc_states[33] }, { 0x3801, 0, &mqc_states[38],
-		&mqc_states[34] }, { 0x3801, 1, &mqc_states[39], &mqc_states[35] }, {
-		0x3401, 0, &mqc_states[40], &mqc_states[36] }, { 0x3401, 1,
-		&mqc_states[41], &mqc_states[37] }, { 0x3001, 0, &mqc_states[42],
-		&mqc_states[38] }, { 0x3001, 1, &mqc_states[43], &mqc_states[39] }, {
-		0x2801, 0, &mqc_states[44], &mqc_states[38] }, { 0x2801, 1,
-		&mqc_states[45], &mqc_states[39] }, { 0x2401, 0, &mqc_states[46],
-		&mqc_states[40] }, { 0x2401, 1, &mqc_states[47], &mqc_states[41] }, {
-		0x2201, 0, &mqc_states[48], &mqc_states[42] }, { 0x2201, 1,
-		&mqc_states[49], &mqc_states[43] }, { 0x1c01, 0, &mqc_states[50],
-		&mqc_states[44] }, { 0x1c01, 1, &mqc_states[51], &mqc_states[45] }, {
-		0x1801, 0, &mqc_states[52], &mqc_states[46] }, { 0x1801, 1,
-		&mqc_states[53], &mqc_states[47] }, { 0x1601, 0, &mqc_states[54],
-		&mqc_states[48] }, { 0x1601, 1, &mqc_states[55], &mqc_states[49] }, {
-		0x1401, 0, &mqc_states[56], &mqc_states[50] }, { 0x1401, 1,
-		&mqc_states[57], &mqc_states[51] }, { 0x1201, 0, &mqc_states[58],
-		&mqc_states[52] }, { 0x1201, 1, &mqc_states[59], &mqc_states[53] }, {
-		0x1101, 0, &mqc_states[60], &mqc_states[54] }, { 0x1101, 1,
-		&mqc_states[61], &mqc_states[55] }, { 0x0ac1, 0, &mqc_states[62],
-		&mqc_states[56] }, { 0x0ac1, 1, &mqc_states[63], &mqc_states[57] }, {
-		0x09c1, 0, &mqc_states[64], &mqc_states[58] }, { 0x09c1, 1,
-		&mqc_states[65], &mqc_states[59] }, { 0x08a1, 0, &mqc_states[66],
-		&mqc_states[60] }, { 0x08a1, 1, &mqc_states[67], &mqc_states[61] }, {
-		0x0521, 0, &mqc_states[68], &mqc_states[62] }, { 0x0521, 1,
-		&mqc_states[69], &mqc_states[63] }, { 0x0441, 0, &mqc_states[70],
-		&mqc_states[64] }, { 0x0441, 1, &mqc_states[71], &mqc_states[65] }, {
-		0x02a1, 0, &mqc_states[72], &mqc_states[66] }, { 0x02a1, 1,
-		&mqc_states[73], &mqc_states[67] }, { 0x0221, 0, &mqc_states[74],
-		&mqc_states[68] }, { 0x0221, 1, &mqc_states[75], &mqc_states[69] }, {
-		0x0141, 0, &mqc_states[76], &mqc_states[70] }, { 0x0141, 1,
-		&mqc_states[77], &mqc_states[71] }, { 0x0111, 0, &mqc_states[78],
-		&mqc_states[72] }, { 0x0111, 1, &mqc_states[79], &mqc_states[73] }, {
-		0x0085, 0, &mqc_states[80], &mqc_states[74] }, { 0x0085, 1,
-		&mqc_states[81], &mqc_states[75] }, { 0x0049, 0, &mqc_states[82],
-		&mqc_states[76] }, { 0x0049, 1, &mqc_states[83], &mqc_states[77] }, {
-		0x0025, 0, &mqc_states[84], &mqc_states[78] }, { 0x0025, 1,
-		&mqc_states[85], &mqc_states[79] }, { 0x0015, 0, &mqc_states[86],
-		&mqc_states[80] }, { 0x0015, 1, &mqc_states[87], &mqc_states[81] }, {
-		0x0009, 0, &mqc_states[88], &mqc_states[82] }, { 0x0009, 1,
-		&mqc_states[89], &mqc_states[83] }, { 0x0005, 0, &mqc_states[90],
-		&mqc_states[84] }, { 0x0005, 1, &mqc_states[91], &mqc_states[85] }, {
-		0x0001, 0, &mqc_states[90], &mqc_states[86] }, { 0x0001, 1,
-		&mqc_states[91], &mqc_states[87] }, { 0x5601, 0, &mqc_states[92],
-		&mqc_states[92] }, { 0x5601, 1, &mqc_states[93], &mqc_states[93] }, };
+mqc_state_t mqc_states[totalNumContextStates] = {
+		{ 0x5601,  2,3 },
+		{ 0x5601 |  HIGH_BIT, 3, 2 },
+		{ 0x3401,  4, 12 },
+		{ 0x3401 | HIGH_BIT, 5, 13 },
+		{ 0x1801,  6, 18 },
+		{ 0x1801 | HIGH_BIT, 7, 19 },
+		{ 0x0ac1,  8, 24 },
+		{ 0x0ac1 | HIGH_BIT, 9, 25 },
+		{ 0x0521,  10, 58 },
+		{ 0x0521 | HIGH_BIT, 11, 59 },
+		{ 0x0221,  76, 66 },
+		{ 0x0221 | HIGH_BIT, 77, 67 },
+		{ 0x5601,  14, 13 },
+		{ 0x5601 | HIGH_BIT, 15, 12 },
+		{ 0x5401,  16, 28 },
+		{ 0x5401 | HIGH_BIT, 17, 29 },
+		{ 0x4801,  18, 28 },
+		{ 0x4801 | HIGH_BIT, 19, 29 },
+		{ 0x3801,  20, 28 },
+		{ 0x3801 | HIGH_BIT, 21, 29 },
+		{ 0x3001,  22, 34 },
+		{ 0x3001 | HIGH_BIT, 23, 35 },
+		{ 0x2401,  24, 36 },
+		{ 0x2401 | HIGH_BIT, 25, 37 },
+		{ 0x1c01,  26, 40 },
+		{ 0x1c01 | HIGH_BIT, 27, 41 },
+		{ 0x1601,  58, 42 },
+		{ 0x1601 | HIGH_BIT, 59, 43 },
+		{ 0x5601,  30, 29 },
+		{ 0x5601 | HIGH_BIT, 31, 28 },
+		{ 0x5401,  32, 28 },
+		{ 0x5401 | HIGH_BIT, 33, 29 },
+		{ 0x5101,  34, 30 },
+		{ 0x5101 | HIGH_BIT, 35, 31 },
+		{ 0x4801,  36, 32 },
+		{ 0x4801 | HIGH_BIT, 37, 33 },
+		{ 0x3801,  38, 34 },
+		{ 0x3801 | HIGH_BIT, 39, 35 },
+		{ 0x3401,  40, 36 },
+		{ 0x3401 | HIGH_BIT, 41, 37 },
+		{ 0x3001,  42, 38 },
+		{ 0x3001 | HIGH_BIT, 43, 39 },
+		{ 0x2801,  44, 38 },
+		{ 0x2801 | HIGH_BIT, 45, 39 },
+		{ 0x2401,  46, 40 },
+		{ 0x2401 | HIGH_BIT, 47, 41 },
+		{ 0x2201,  48, 42 },
+		{ 0x2201 | HIGH_BIT, 49, 43 },
+		{ 0x1c01,  50, 44 },
+		{ 0x1c01 | HIGH_BIT, 51, 45 },
+		{ 0x1801,  52, 46 },
+		{ 0x1801 | HIGH_BIT, 53, 47 },
+		{ 0x1601,  54, 48 },
+		{ 0x1601 | HIGH_BIT, 55, 49 },
+		{ 0x1401,  56, 50 },
+		{ 0x1401 | HIGH_BIT, 57, 51 },
+		{ 0x1201,  58, 52 },
+		{ 0x1201 | HIGH_BIT, 59, 53 },
+		{ 0x1101,  60, 54 },
+		{ 0x1101 | HIGH_BIT, 61, 55 },
+		{ 0x0ac1,  62, 56 },
+		{ 0x0ac1 | HIGH_BIT, 63, 57 },
+		{ 0x09c1,  64, 58 },
+		{ 0x09c1 | HIGH_BIT, 65, 59 },
+		{ 0x08a1,  66, 60 },
+		{ 0x08a1 | HIGH_BIT, 67, 61 },
+		{ 0x0521,  68, 62 },
+		{ 0x0521 | HIGH_BIT, 69, 63 },
+		{ 0x0441,  70, 64 },
+		{ 0x0441 | HIGH_BIT, 71, 65 },
+		{ 0x02a1,  72, 66 },
+		{ 0x02a1 | HIGH_BIT, 73, 67 },
+		{ 0x0221,  74, 68 },
+		{ 0x0221 | HIGH_BIT, 75, 69 },
+		{ 0x0141,  76, 70 },
+		{ 0x0141 | HIGH_BIT, 77, 71 },
+		{ 0x0111,  78, 72 },
+		{ 0x0111 | HIGH_BIT, 79, 73 },
+		{ 0x0085,  80, 74 },
+		{ 0x0085 | HIGH_BIT, 81, 75 },
+		{ 0x0049,  82, 76 },
+		{ 0x0049 | HIGH_BIT, 83, 77 },
+		{ 0x0025,  84, 78 },
+		{ 0x0025 | HIGH_BIT, 85, 79 },
+		{ 0x0015,  86, 80 },
+		{ 0x0015 | HIGH_BIT, 87, 81 },
+		{ 0x0009,  88, 82 },
+		{ 0x0009 | HIGH_BIT, 89, 83 },
+		{ 0x0005,  90, 84 },
+		{ 0x0005 | HIGH_BIT, 91, 85 },
+		{ 0x0001,  90, 86 },
+		{ 0x0001 | HIGH_BIT, 91, 87 },
+		{ 0x5601,  92, 92 },
+		{ 0x5601 | HIGH_BIT, 93, 93 }
+};
 
 /*
  ==========================================================
@@ -284,28 +309,28 @@ static void mqc_setbits(mqc_t *mqc) {
 }
 static inline uint8_t mqc_mpsexchange(mqc_t *const mqc) {
 	uint8_t d;
-	auto curctx = *mqc->curctx;
-	if (mqc->A < curctx->qeval) {
-		d = (uint8_t) (1 - curctx->mps);
-		*mqc->curctx = curctx->nlps;
+	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	if (mqc->A < (curctx->qeval & PROB_MASK)) {
+		d = (uint8_t) ((curctx->qeval>>MPS_SHIFT)^1);
+		mqc->ctxs[mqc->curctx] = curctx->nlps;
 	} else {
-		d = curctx->mps;
-		*mqc->curctx = curctx->nmps;
+		d = (uint8_t)(curctx->qeval>>MPS_SHIFT);
+		mqc->ctxs[mqc->curctx] = curctx->nmps;
 	}
 	return d;
 }
 static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
 	uint8_t d;
-	auto curctx = *mqc->curctx;
-	auto qeval = curctx->qeval;
+	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
 	if (mqc->A < qeval) {
 		mqc->A = qeval;
-		d = curctx->mps;
-		*mqc->curctx = curctx->nmps;
+		d = (uint8_t)(curctx->qeval>>MPS_SHIFT);
+		mqc->ctxs[mqc->curctx] = curctx->nmps;
 	} else {
 		mqc->A = qeval;
-		d = (uint8_t) (1 - curctx->mps);
-		*mqc->curctx = curctx->nlps;
+		d = (uint8_t) ((curctx->qeval>>MPS_SHIFT)^1);
+		mqc->ctxs[mqc->curctx] = curctx->nlps;
 	}
 	return d;
 }
@@ -369,8 +394,8 @@ static void mqc_bypass_flush_enc(mqc_t *mqc) {
 	}
 }
 
-static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t msb, uint8_t prob) {
-	mqc->ctxs[ctxno] = &mqc_states[msb + (prob << 1)];
+static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t prob) {
+	mqc->ctxs[ctxno] = (uint8_t)((prob << 1));
 }
 
 /*
@@ -417,7 +442,7 @@ void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
 		mqc->debug_mqc.context_number = ctxno;
 	}
 #endif
-	mqc->curctx = &mqc->ctxs[(uint32_t) ctxno];
+	mqc->curctx = ctxno;
 }
 mqc_t* mqc_create(void) {
 	return (mqc_t*) grok_calloc(1, sizeof(mqc_t));
@@ -459,10 +484,10 @@ void mqc_encode(mqc_t *mqc, uint8_t d) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
 #endif
-	auto curctx = *mqc->curctx;
-	if (curctx->mps == d) {
+	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	if ((curctx->qeval>>MPS_SHIFT)== d) {
 		//BEGIN codemps
-		auto qeval = curctx->qeval;
+		auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
 		mqc->A = (uint16_t) (mqc->A - qeval);
 		if (mqc->A < A_MIN) {
 			if (mqc->A < qeval) {
@@ -470,7 +495,7 @@ void mqc_encode(mqc_t *mqc, uint8_t d) {
 			} else {
 				mqc->C += qeval;
 			}
-			*mqc->curctx = curctx->nmps;
+			mqc->ctxs[mqc->curctx] = curctx->nmps;
 			//BEGIN renorme
 			do {
 				mqc->A = (uint16_t) (mqc->A << 1);
@@ -516,14 +541,14 @@ void mqc_encode(mqc_t *mqc, uint8_t d) {
 		//END codemps
 	} else {
 		//BEGIN codelps
-		auto qeval = curctx->qeval;
+		auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
 		mqc->A = (uint16_t) (mqc->A - qeval);
 		if (mqc->A < qeval) {
 			mqc->C += qeval;
 		} else {
 			mqc->A = qeval;
 		}
-		*mqc->curctx = curctx->nlps;
+		mqc->ctxs[mqc->curctx] = curctx->nlps;
 		//BEGIN renorme
 		do {
 			mqc->A = (uint16_t) (mqc->A << 1);
@@ -638,10 +663,10 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len) {
 	mqc->Q_SUM = 0;
 }
 uint8_t mqc_decode(mqc_t *const mqc) {
-	uint32_t Q_SUM = (uint16_t) (mqc->Q_SUM + (*mqc->curctx)->qeval);
+	uint32_t Q_SUM = (uint16_t) (mqc->Q_SUM + ((mqc_states + mqc->ctxs[mqc->curctx])->qeval & PROB_MASK) );
 	if (mqc->MIN_A_C >= (uint16_t) Q_SUM) {
 		mqc->Q_SUM = (uint16_t) Q_SUM;
-		return (*mqc->curctx)->mps;
+		return (uint8_t)((mqc_states + mqc->ctxs[mqc->curctx])->qeval >> MPS_SHIFT);
 	}
 	mqc->A = (uint16_t) (mqc->A - Q_SUM);
 	Q_SUM <<= 8;
@@ -665,11 +690,11 @@ uint8_t mqc_decode(mqc_t *const mqc) {
 void mqc_resetstates(mqc_t *mqc) {
 	uint32_t i;
 	for (i = 0; i < MQC_NUMCTXS; i++) {
-		mqc->ctxs[i] = mqc_states;
+		mqc->ctxs[i] = 0;
 	}
-	mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-	mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-	mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
+	mqc_setstate(mqc, T1_CTXNO_UNI, 46);
+	mqc_setstate(mqc, T1_CTXNO_AGG, 3);
+	mqc_setstate(mqc, T1_CTXNO_ZC, 4);
 }
 
 

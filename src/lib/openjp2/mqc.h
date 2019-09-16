@@ -64,12 +64,16 @@ namespace grk {
 const unsigned int totalNumContextStates = 47 * 2;
 #define MQC_NUMCTXS 19
 
+const uint16_t HIGH_BIT  = 0x8000;
+const uint16_t PROB_MASK = 0x7FFF;
+const uint16_t MPS_SHIFT = 15;
+
 
 struct raw_t {
 	/** temporary buffer where bits are coded or decoded */
 	uint8_t C;
 	/** number of bits already read or free to write */
-	uint32_t COUNT;
+	uint8_t COUNT;
 	/** maximum length to decode */
 	uint32_t lenmax;
 	/** length decoded */
@@ -115,13 +119,12 @@ uint8_t raw_decode(raw_t *raw);
  */
 struct mqc_state_t {
 	/** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
+	/* High bit == most probable symbol */
 	uint16_t qeval;
-	/** the Most Probable Symbol (0 or 1) */
-	uint8_t mps;
-	/** next state if the next encoded symbol is the MPS */
-	mqc_state_t *nmps;
-	/** next state if the next encoded symbol is the LPS */
-	mqc_state_t *nlps;
+	/** next state (index into mqc_states) if the next encoded symbol is the MPS */
+	uint8_t nmps;
+	/** next state (index into mqc_states) if the next encoded symbol is the LPS */
+	uint8_t nlps;
 };
 
 extern mqc_state_t mqc_states[totalNumContextStates];
@@ -133,11 +136,15 @@ struct mqc_t {
 	uint16_t Q_SUM;
 	uint8_t COUNT;
 	uint8_t *bp;
-	bool currentByteIs0xFF;
+	uint8_t currentByteIs0xFF;
 	uint8_t *start;
-	mqc_state_t *ctxs[MQC_NUMCTXS];
-	mqc_state_t **curctx;
+	// indexes into mqc_states array
+	uint8_t ctxs[MQC_NUMCTXS];
+	// index into ctxs
+	uint8_t curctx;
+#ifdef DEBUG_MQC
 	plugin_debug_mqc_t debug_mqc;
+#endif
 };
 
 /**
