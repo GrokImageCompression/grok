@@ -85,15 +85,14 @@ private:
 	bool allocateBuffers(uint16_t w, uint16_t h);
 	void initBuffers(uint16_t w, uint16_t h);
 	inline void sigpass_step(flag_opt_t *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t maxci3, uint32_t mode_switch);
-	void sigpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
+			int32_t oneplushalf, uint32_t maxci3);
+	void sigpass(int32_t bpno, uint8_t orient);
 	void refpass(int32_t bpno);
 	inline void refpass_step(flag_opt_t *flagsp, int32_t *datap,
 			int32_t poshalf, uint32_t maxci3);
 	void clnpass_step(flag_opt_t *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t agg, uint32_t runlen, uint32_t y,
-			uint32_t mode_switch);
-	void clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
+			int32_t oneplushalf, uint32_t agg, uint32_t runlen, uint32_t y);
+	void clnpass(int32_t bpno, uint8_t orient);
 };
 
 }

@@ -105,8 +105,7 @@ void t1_decode_opt::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 }
 
 inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp, int32_t *datap,
-		uint8_t orient, int32_t oneplushalf, uint32_t maxci3,
-		uint32_t mode_switch) {
+		uint8_t orient, int32_t oneplushalf, uint32_t maxci3) {
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
 		flag_opt_t const shift_flags = *flagsp >> ci3;
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U
@@ -127,8 +126,7 @@ inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp, int32_t *datap,
 	}
 }
 
-void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient,
-		uint32_t mode_switch) {
+void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient) {
 	int32_t one, half, oneplushalf;
 	uint32_t i, k;
 	one = 1 << bpno;
@@ -142,7 +140,7 @@ void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient,
 	for (k = 0; k < (h & ~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
 			if (*f) {
-				sigpass_step(f, d, orient, oneplushalf, 12, mode_switch);
+				sigpass_step(f, d, orient, oneplushalf, 12);
 			}
 			++f;
 			++d;
@@ -153,8 +151,7 @@ void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient,
 	if (k < h) {
 		for (i = 0; i < w; ++i) {
 			if (*f) {
-				sigpass_step(f, d, orient, oneplushalf, (h - k) * 3,
-						mode_switch);
+				sigpass_step(f, d, orient, oneplushalf, (h - k) * 3);
 			}
 			++f;
 			++d;
@@ -208,7 +205,7 @@ void t1_decode_opt::refpass(int32_t bpno) {
 
 void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
 		uint8_t orient, int32_t oneplushalf, uint32_t agg, uint32_t runlen,
-		uint32_t y, uint32_t mode_switch) {
+		uint32_t y) {
 
 	const uint32_t check = (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13
 			| T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
@@ -250,8 +247,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
 		datap += w;
 	}
 }
-void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient,
-		uint32_t mode_switch) {
+void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient) {
 	int32_t one, half, oneplushalf;
 	one = 1 << bpno;
 	half = one >> 1;
@@ -273,18 +269,19 @@ void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient,
 				runlen = 0;
 			}
 			clnpass_step(FLAGS_ADDRESS(i, k), dataPtr + ((k + runlen) * w) + i,
-					orient, oneplushalf, agg, runlen, k, mode_switch);
+					orient, oneplushalf, agg, runlen, k);
 		}
 	}
 	if (k < h) {
 		for (uint32_t i = 0; i < w; ++i) {
 			clnpass_step(FLAGS_ADDRESS(i, k), dataPtr + (k * w) + i, orient,
-					oneplushalf, 0, 0, k, mode_switch);
+					oneplushalf, 0, 0, k);
 		}
 	}
 }
 bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
 		uint32_t mode_switch) {
+	(void)mode_switch;
 	initBuffers((uint16_t) (cblk->x1 - cblk->x0),
 			(uint16_t) (cblk->y1 - cblk->y0));
 	if (!cblk->seg_buffers.get_len())
@@ -304,13 +301,13 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
 				(passno < seg->numpasses) && (bpno_plus_one >= 1); ++passno) {
 			switch (passtype) {
 			case 0:
-				sigpass(bpno_plus_one, orient, mode_switch);
+				sigpass(bpno_plus_one, orient);
 				break;
 			case 1:
 				refpass(bpno_plus_one);
 				break;
 			case 2:
-				clnpass(bpno_plus_one, orient, mode_switch);
+				clnpass(bpno_plus_one, orient);
 				break;
 			}
 			if (++passtype == 3) {

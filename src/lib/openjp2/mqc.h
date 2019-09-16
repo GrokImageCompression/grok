@@ -127,7 +127,7 @@ struct mqc_state_t {
 	uint8_t nlps;
 };
 
-extern mqc_state_t mqc_states[totalNumContextStates];
+extern const mqc_state_t mqc_states[totalNumContextStates];
 
 struct mqc_t {
 	uint32_t C;

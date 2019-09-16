@@ -149,7 +149,7 @@ static inline void mqc_renormd(mqc_t *const mqc);
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-mqc_state_t mqc_states[totalNumContextStates] = {
+const mqc_state_t mqc_states[] = {
 		{ 0x5601,  2,3 },
 		{ 0x5601 |  HIGH_BIT, 3, 2 },
 		{ 0x3401,  4, 12 },
@@ -309,7 +309,7 @@ static void mqc_setbits(mqc_t *mqc) {
 }
 static inline uint8_t mqc_mpsexchange(mqc_t *const mqc) {
 	uint8_t d;
-	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	if (mqc->A < (curctx->qeval & PROB_MASK)) {
 		d = (uint8_t) ((curctx->qeval>>MPS_SHIFT)^1);
 		mqc->ctxs[mqc->curctx] = curctx->nlps;
@@ -321,7 +321,7 @@ static inline uint8_t mqc_mpsexchange(mqc_t *const mqc) {
 }
 static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
 	uint8_t d;
-	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
 	if (mqc->A < qeval) {
 		mqc->A = qeval;
@@ -356,6 +356,31 @@ static void mqc_bytein(mqc_t *const mqc) {
 	mqc->currentByteIs0xFF = (nextByte == 0xFF);
 }
 static inline void mqc_renormd(mqc_t *const mqc) {
+#ifdef __AVX2__
+  	if (mqc->COUNT == 0)
+		mqc_bytein(mqc);
+  	// count leading zeros for 16-bit mqc->A
+#ifdef _MSC_VER
+ 	uint8_t NS = (uint8_t)__lzcnt16( mqc->A );
+#else
+	uint8_t NS = (uint8_t)__builtin_clz((uint32_t)mqc->A << 16);
+#endif
+	mqc->A = (uint16_t)( mqc->A << NS);
+	if (mqc->COUNT <= NS){
+		mqc->C = mqc->C << mqc->COUNT;
+		NS = (uint8_t)(NS - mqc->COUNT);
+		mqc_bytein(mqc);
+		if (mqc->COUNT <= NS){
+			mqc->C = mqc->C << mqc->COUNT;
+			NS = (uint8_t)(NS - mqc->COUNT);
+			mqc_bytein(mqc);
+		}
+	}
+	if (NS){
+		mqc->C = mqc->C << NS;
+		mqc->COUNT = (uint8_t)(mqc->COUNT - NS);
+	}
+#else
 	do {
 		if (mqc->COUNT == 0) {
 			mqc_bytein(mqc);
@@ -364,6 +389,7 @@ static inline void mqc_renormd(mqc_t *const mqc) {
 		mqc->C = (mqc->C << 1);
 		mqc->COUNT--;
 	} while (mqc->A < A_MIN);
+#endif
 }
 
 static void mqc_flush(mqc_t *mqc) {
@@ -484,7 +510,7 @@ void mqc_encode(mqc_t *mqc, uint8_t d) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
 #endif
-	auto curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	if ((curctx->qeval>>MPS_SHIFT)== d) {
 		//BEGIN codemps
 		auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
