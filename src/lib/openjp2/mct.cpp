@@ -196,8 +196,22 @@ void mct_decode(int32_t *restrict chan0, int32_t *restrict chan1,
 	size_t i = 0;
 	const size_t len = n;
 #ifdef __SSE2__
-	for (i = 0; i < (len & ~3U); i += 4) {
-		mct_rev_sse2(chan0,chan1,chan2,i);
+    const size_t chunkSize = 1 << 12;
+	if (n > chunkSize) {
+		uint64_t chunks = n >> 12;
+		enki::TaskSet task((uint32_t) chunks,
+				[chan0,chan1,chan2](enki::TaskSetPartition range, uint32_t threadnum) {
+			ARG_NOT_USED(threadnum);
+			for (auto i = range.start; i < range.end; ++i) {
+				uint64_t begin = (uint64_t)i << 12;
+				for (auto j = begin; j < begin+chunkSize; j+=4 ){
+					mct_rev_sse2(chan0,chan1,chan2,j);
+				}
+			}
+		});
+		Scheduler::g_TS.AddTaskSetToPipe(&task);
+		Scheduler::g_TS.WaitforTask(&task);
+		i = chunks << 12;
 	}
 #endif
 	for (; i < len; ++i) {
@@ -236,114 +250,131 @@ void mct_encode_real(
     const __m128i bv = _mm_set1_epi32(666);
     const __m128i mulround = _mm_shuffle_epi32(_mm_cvtsi32_si128(4096), _MM_SHUFFLE(1, 0, 1, 0));
 
-    for(i = 0; i < (len & ~3U); i += 4) {
-        __m128i lo, hi;
-        __m128i y, u, v;
-        __m128i r = _mm_load_si128((const __m128i *)&(chan0[i]));
-        __m128i g = _mm_load_si128((const __m128i *)&(chan1[i]));
-        __m128i b = _mm_load_si128((const __m128i *)&(chan2[i]));
+    const size_t chunkSize = 1 << 12;
+	if (n > chunkSize) {
+		uint64_t chunks = n >> 12;
+		enki::TaskSet task((uint32_t) chunks,
+				[chan0,chan1,chan2,
+				 ry,gy,by,ru,gu,gv,bv,
+				 mulround](enki::TaskSetPartition range, uint32_t threadnum) {
+			ARG_NOT_USED(threadnum);
+			for (auto i = range.start; i < range.end; ++i) {
+				uint64_t begin = (uint64_t)i << 12;
+				for (auto j = begin; j < begin+chunkSize; j+=4 ){
+			        __m128i lo, hi;
+			        __m128i y, u, v;
+			        __m128i r = _mm_load_si128((const __m128i *)&(chan0[j]));
+			        __m128i g = _mm_load_si128((const __m128i *)&(chan1[j]));
+			        __m128i b = _mm_load_si128((const __m128i *)&(chan2[j]));
 
-        lo = r;
-        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, ry);
-        hi = _mm_mul_epi32(hi, ry);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        y = _mm_blend_epi16(lo, hi, 0xCC);
+			        lo = r;
+			        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, ry);
+			        hi = _mm_mul_epi32(hi, ry);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        y = _mm_blend_epi16(lo, hi, 0xCC);
 
-        lo = g;
-        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, gy);
-        hi = _mm_mul_epi32(hi, gy);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
+			        lo = g;
+			        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, gy);
+			        hi = _mm_mul_epi32(hi, gy);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
 
-        lo = b;
-        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, by);
-        hi = _mm_mul_epi32(hi, by);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
-        _mm_store_si128((__m128i *)&(chan0[i]), y);
+			        lo = b;
+			        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, by);
+			        hi = _mm_mul_epi32(hi, by);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
+			        _mm_store_si128((__m128i *)&(chan0[j]), y);
 
-        /*lo = b;
-        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, mulround);
-        hi = _mm_mul_epi32(hi, mulround);*/
-        lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 2, 0)));
-        hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 3, 1)));
-        lo = _mm_slli_epi64(lo, 12);
-        hi = _mm_slli_epi64(hi, 12);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        u = _mm_blend_epi16(lo, hi, 0xCC);
+			        /*lo = b;
+			        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, mulround);
+			        hi = _mm_mul_epi32(hi, mulround);*/
+			        lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 2, 0)));
+			        hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 3, 1)));
+			        lo = _mm_slli_epi64(lo, 12);
+			        hi = _mm_slli_epi64(hi, 12);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        u = _mm_blend_epi16(lo, hi, 0xCC);
 
-        lo = r;
-        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, ru);
-        hi = _mm_mul_epi32(hi, ru);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
+			        lo = r;
+			        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, ru);
+			        hi = _mm_mul_epi32(hi, ru);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
 
-        lo = g;
-        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, gu);
-        hi = _mm_mul_epi32(hi, gu);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
-        _mm_store_si128((__m128i *)&(chan1[i]), u);
+			        lo = g;
+			        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, gu);
+			        hi = _mm_mul_epi32(hi, gu);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
+			        _mm_store_si128((__m128i *)&(chan1[j]), u);
 
-        /*lo = r;
-        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, mulround);
-        hi = _mm_mul_epi32(hi, mulround);*/
-        lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 2, 0)));
-        hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 3, 1)));
-        lo = _mm_slli_epi64(lo, 12);
-        hi = _mm_slli_epi64(hi, 12);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        v = _mm_blend_epi16(lo, hi, 0xCC);
+			        /*lo = r;
+			        hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, mulround);
+			        hi = _mm_mul_epi32(hi, mulround);*/
+			        lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 2, 0)));
+			        hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 3, 1)));
+			        lo = _mm_slli_epi64(lo, 12);
+			        hi = _mm_slli_epi64(hi, 12);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        v = _mm_blend_epi16(lo, hi, 0xCC);
 
-        lo = g;
-        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, gv);
-        hi = _mm_mul_epi32(hi, gv);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
+			        lo = g;
+			        hi = _mm_shuffle_epi32(g, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, gv);
+			        hi = _mm_mul_epi32(hi, gv);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
 
-        lo = b;
-        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-        lo = _mm_mul_epi32(lo, bv);
-        hi = _mm_mul_epi32(hi, bv);
-        lo = _mm_add_epi64(lo, mulround);
-        hi = _mm_add_epi64(hi, mulround);
-        lo = _mm_srli_epi64(lo, 13);
-        hi = _mm_slli_epi64(hi, 32-13);
-        v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
-        _mm_store_si128((__m128i *)&(chan2[i]), v);
-    }
+			        lo = b;
+			        hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
+			        lo = _mm_mul_epi32(lo, bv);
+			        hi = _mm_mul_epi32(hi, bv);
+			        lo = _mm_add_epi64(lo, mulround);
+			        hi = _mm_add_epi64(hi, mulround);
+			        lo = _mm_srli_epi64(lo, 13);
+			        hi = _mm_slli_epi64(hi, 32-13);
+			        v = _mm_sub_epi32(v, _mm_blend_epi16(lo, hi, 0xCC));
+			        _mm_store_si128((__m128i *)&(chan2[j]), v);
+
+				}
+			}
+		});
+		Scheduler::g_TS.AddTaskSetToPipe(&task);
+		Scheduler::g_TS.WaitforTask(&task);
+		i = chunks << 12;
+	}
 #endif
     for(; i < len; ++i) {
         int32_t r = chan0[i];
@@ -370,41 +401,53 @@ void mct_decode_real(float *restrict c0, float *restrict c1, float *restrict c2,
 	vgu = _mm_set1_ps(0.34413f);
 	vgv = _mm_set1_ps(0.71414f);
 	vbu = _mm_set1_ps(1.772f);
-	for (i = 0; i < (n >> 3); ++i) {
-		__m128 vy, vu, vv;
-		__m128 vr, vg, vb;
 
-		vy = _mm_load_ps(c0);
-		vu = _mm_load_ps(c1);
-		vv = _mm_load_ps(c2);
-		vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
-		vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
-				_mm_mul_ps(vv, vgv));
-		vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
-		_mm_store_ps(c0, vr);
-		_mm_store_ps(c1, vg);
-		_mm_store_ps(c2, vb);
-		c0 += 4;
-		c1 += 4;
-		c2 += 4;
+	const size_t chunkSize = 1 << 12;
+	if (n > chunkSize) {
+		uint64_t chunks = n >> 12;
+		enki::TaskSet task((uint32_t) chunks,
+				[c0,c1,c2,vrv,vgu,vgv,vbu](enki::TaskSetPartition range, uint32_t threadnum) {
+			ARG_NOT_USED(threadnum);
+			for (auto i = range.start; i < range.end; ++i) {
+				uint64_t begin = (uint64_t)i << 12;
+				for (auto j = begin; j < begin+chunkSize;){
+					__m128 vy, vu, vv;
+					__m128 vr, vg, vb;
 
-		vy = _mm_load_ps(c0);
-		vu = _mm_load_ps(c1);
-		vv = _mm_load_ps(c2);
-		vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
-		vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
-				_mm_mul_ps(vv, vgv));
-		vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
-		_mm_store_ps(c0, vr);
-		_mm_store_ps(c1, vg);
-		_mm_store_ps(c2, vb);
-		c0 += 4;
-		c1 += 4;
-		c2 += 4;
+					vy = _mm_load_ps(c0 + j);
+					vu = _mm_load_ps(c1 + j);
+					vv = _mm_load_ps(c2 + j);
+					vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
+					vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
+							_mm_mul_ps(vv, vgv));
+					vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
+					_mm_store_ps(c0 + j, vr);
+					_mm_store_ps(c1 + j, vg);
+					_mm_store_ps(c2 + j, vb);
+
+					j+=4;
+
+					vy = _mm_load_ps(c0+j);
+					vu = _mm_load_ps(c1+j);
+					vv = _mm_load_ps(c2+j);
+					vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
+					vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
+							_mm_mul_ps(vv, vgv));
+					vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
+					_mm_store_ps(c0+j, vr);
+					_mm_store_ps(c1+j, vg);
+					_mm_store_ps(c2+j, vb);
+
+					j +=4;
+				}
+			}
+		});
+		Scheduler::g_TS.AddTaskSetToPipe(&task);
+		Scheduler::g_TS.WaitforTask(&task);
+		i = chunkSize * chunks;
 	}
-	n &= 7;
 #endif
-	for (i = 0; i < n; ++i) {
+	for (; i < n; ++i) {
 		float y = c0[i];
 		float u = c1[i];
 		float v = c2[i];
