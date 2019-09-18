@@ -138,10 +138,10 @@ struct mqc_t {
 	uint8_t *bp;
 	uint8_t currentByteIs0xFF;
 	uint8_t *start;
-	// indexes into mqc_states array
-	uint8_t ctxs[MQC_NUMCTXS];
 	// index into ctxs
 	uint8_t curctx;
+	// indexes into mqc_states array
+	uint8_t ctxs[MQC_NUMCTXS];
 #ifdef DEBUG_MQC
 	plugin_debug_mqc_t debug_mqc;
 #endif
