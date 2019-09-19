@@ -127,14 +127,13 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								&decode_dwt_calling_barrier, threadId,
 								numThreads]() {
 							auto numResolutions = numres;
-							v4dwt_t h;
-							v4dwt_t v;
 							tcd_resolution_t *res = tilec->resolutions;
 
 							uint32_t rw = (res->x1 - res->x0); /* width of the resolution level computed */
 							uint32_t rh = (res->y1 - res->y0); /* height of the resolution level computed */
-							uint32_t w = (tilec->x1 - tilec->x0);
+							uint32_t stride = (tilec->x1 - tilec->x0);
 
+							v4dwt_t h;
 							h.wavelet = (dwt_v4_t*) grok_aligned_malloc(
 									(max_resolution(res, numResolutions))
 											* sizeof(dwt_v4_t));
@@ -143,58 +142,59 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								rc++;
 								goto cleanup;
 							}
+							v4dwt_t v;
 							v.wavelet = h.wavelet;
 							while (--numResolutions) {
 								float *restrict aj = tileBuf
-										+ ((w << 2) * threadId);
+										+ ((stride << 2) * threadId);
 								uint64_t bufsize = (uint64_t) (tilec->x1
 										- tilec->x0) * (tilec->y1 - tilec->y0)
-										- (threadId * (w << 2));
+										- (threadId * (stride << 2));
 
 								h.s_n = rw;
 								v.s_n = rh;
 
 								++res;
 
-								rw = (res->x1 - res->x0);// width of the resolution level computed
-								rh = (res->y1 - res->y0);// height of the resolution level computed
+								rw = (res->x1 - res->x0); // width of the resolution level computed
+								rh = (res->y1 - res->y0); // height of the resolution level computed
 
 								h.d_n = (uint32_t) (rw - h.s_n);
 								h.cas = res->x0 & 1;
 								int32_t j;
 								for (j = (int32_t) rh - (threadId << 2); j > 3;
 										j -= (numThreads << 2)) {
-									v4dwt_interleave_h(&h, aj, w,
+									v4dwt_interleave_h(&h, aj, stride,
 											(uint32_t) bufsize);
 									v4dwt_decode(&h);
 
 									for (int32_t k = (int32_t) rw; k-- > 0;) {
 										aj[(uint32_t) k] = h.wavelet[k].f[0];
-										aj[(uint32_t) k + w] =
+										aj[(uint32_t) k + stride] =
 												h.wavelet[k].f[1];
-										aj[(uint32_t) k + (w << 1)] =
+										aj[(uint32_t) k + (stride << 1)] =
 												h.wavelet[k].f[2];
-										aj[(uint32_t) k + w * 3] =
+										aj[(uint32_t) k + stride * 3] =
 												h.wavelet[k].f[3];
 									}
 
-									aj += (w << 2) * numThreads;
-									bufsize -= (w << 2) * numThreads;
+									aj += (stride << 2) * numThreads;
+									bufsize -= (stride << 2) * numThreads;
 								}
 								decode_dwt_barrier.arrive_and_wait();
 
 								if (j > 0) {
-									v4dwt_interleave_h(&h, aj, w,
+									v4dwt_interleave_h(&h, aj, stride,
 											(uint32_t) bufsize);
 									v4dwt_decode(&h);
 									for (int32_t k = (int32_t) rw; k-- > 0;) {
 										switch (j) {
 										case 3:
-											aj[k + (int32_t) (w << 1)] =
+											aj[k + (int32_t) (stride << 1)] =
 													h.wavelet[k].f[2];
 											// fall through
 										case 2:
-											aj[k + (int32_t) w] =
+											aj[k + (int32_t) stride] =
 													h.wavelet[k].f[1];
 											// fall through
 										case 1:
@@ -214,22 +214,22 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								aj = tileBuf + (threadId << 2);
 								for (j = (int32_t) rw - (threadId << 2); j > 3;
 										j -= (numThreads << 2)) {
-									v4dwt_interleave_v(&v, aj, w, 4);
+									v4dwt_interleave_v(&v, aj, stride, 4);
 									v4dwt_decode(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
-										memcpy(&aj[k * w], &v.wavelet[k],
+										memcpy(&aj[k * stride], &v.wavelet[k],
 												4 * sizeof(float));
 									}
 									aj += (numThreads << 2);
 								}
 
 								if (j > 0) {
-									v4dwt_interleave_v(&v, aj, w, j);
+									v4dwt_interleave_v(&v, aj, stride, j);
 									v4dwt_decode(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
-										memcpy(&aj[k * w], &v.wavelet[k],
+										memcpy(&aj[k * stride], &v.wavelet[k],
 												(size_t) j * sizeof(float));
 									}
 								}
@@ -478,71 +478,61 @@ void dwt97::v4dwt_decode(v4dwt_t *restrict dwt) {
 /* Forward 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 bool dwt97::encode(tcd_tilecomp_t *tilec) {
-	int32_t i;
-	int32_t *a = nullptr;
-	int32_t *aj = nullptr;
-	int32_t *bj = nullptr;
-	uint32_t w, l;
+	if (tilec->numresolutions == 1U)
+		return true;
 
-	uint32_t rw; /* width of the resolution level computed   */
-	uint32_t rh; /* height of the resolution level computed  */
-	size_t l_data_size;
-
-	tcd_resolution_t *l_cur_res = 0;
-	tcd_resolution_t *l_last_res = 0;
-
-	w = tilec->x1 - tilec->x0;
-	l = tilec->numresolutions - 1;
-	a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-
-	l_cur_res = tilec->resolutions + l;
-	l_last_res = l_cur_res - 1;
-
-	l_data_size = max_resolution(tilec->resolutions, tilec->numresolutions)
-			* sizeof(int32_t);
+	size_t l_data_size = max_resolution(tilec->resolutions,
+			tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
-		GROK_ERROR("dwt97 encode: overflow");
+		GROK_ERROR("dwt53 encode: overflow");
 		return false;
 	}
-	bj = (int32_t*) grok_malloc(l_data_size);
-	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
-	/* in that case, so do not error out */
-	if (l_data_size != 0 && !bj) {
+	if (!l_data_size)
 		return false;
-	}
-	i = l;
 
-	while (i--) {
-		uint32_t rw1; /* width of the resolution level once lower than computed one                                       */
-		uint32_t rh1; /* height of the resolution level once lower than computed one                                      */
-		uint8_t cas_col; /* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		uint8_t cas_row; /* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		uint32_t d_n, s_n;
+	uint32_t stride = tilec->x1 - tilec->x0;
+	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
+	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
-		rw = l_cur_res->x1 - l_cur_res->x0;
-		rh = l_cur_res->y1 - l_cur_res->y0;
-		rw1 = l_last_res->x1 - l_last_res->x0;
-		rh1 = l_last_res->y1 - l_last_res->y0;
+	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
+	tcd_resolution_t *l_last_res = l_cur_res - 1;
 
-		cas_row = l_cur_res->x0 & 1;
-		cas_col = l_cur_res->y0 & 1;
+	int32_t *bj = (int32_t*) grok_malloc(l_data_size);
+	if (!bj)
+		return false;
+	while (num_decomps--) {
 
-		s_n = rh1;
-		d_n = rh - rh1;
+		/* width of the resolution level computed   */
+		uint32_t rw = l_cur_res->x1 - l_cur_res->x0;
+		/* height of the resolution level computed  */
+		uint32_t rh = l_cur_res->y1 - l_cur_res->y0;
+		// width of the resolution level once lower than computed one
+		uint32_t rw1 = l_last_res->x1 - l_last_res->x0;
+		//height of the resolution level once lower than computed one
+		uint32_t rh1 = l_last_res->y1 - l_last_res->y0;
+
+		/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
+		uint8_t cas_row = l_cur_res->x0 & 1;
+		/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
+		uint8_t cas_col = l_cur_res->y0 & 1;
+
+		uint32_t s_n = rh1;
+		uint32_t d_n = rh - rh1;
+
 		for (uint32_t j = 0; j < rw; ++j) {
-			aj = a + j;
+			int32_t *aj = a + j;
 			for (uint32_t k = 0; k < rh; ++k) {
-				bj[k] = aj[k * w];
+				bj[k] = aj[k * stride];
 			}
 			encode_line(bj, d_n, s_n, cas_col);
-			deinterleave_v(bj, aj, d_n, s_n, w, cas_col);
+			deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 		}
 		s_n = rw1;
 		d_n = rw - rw1;
 
 		for (uint32_t j = 0; j < rh; j++) {
-			aj = a + j * w;
+			int32_t *aj = a + j * stride;
 			for (uint32_t k = 0; k < rw; k++)
 				bj[k] = aj[k];
 			encode_line(bj, d_n, s_n, cas_row);
@@ -559,36 +549,36 @@ bool dwt97::encode(tcd_tilecomp_t *tilec) {
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
 void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
-	int32_t i;
+	;
 	if (!cas) {
 		if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
-			for (i = 0; i < d_n; i++)
+			for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i)-= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i) += int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i) = int_fix_mul(GROK_D(i), 5039);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_S(i) = int_fix_mul(GROK_S(i), 6659);
 			}
 		}
 		else {
 			if ((s_n > 0) || (d_n > 1)) { /* NEW :  CASE ONE ELEMENT */
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12994);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) -= int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) += int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 7233);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) += int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) = int_fix_mul(GROK_S(i), 5039);
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) = int_fix_mul(GROK_D(i), 6659);
 			}
 		}

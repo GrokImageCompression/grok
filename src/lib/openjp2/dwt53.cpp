@@ -119,25 +119,25 @@ namespace grk {
  @param tilec Tile component information (current tile)
  */
 bool dwt53::encode(tcd_tilecomp_t *tilec) {
-	uint32_t k;
-	int32_t *a = nullptr;
-	int32_t *aj = nullptr;
-	int32_t *bj = nullptr;
-	uint32_t w;
+	if (tilec->numresolutions == 1U)
+		return true;
 
-	uint32_t rw; /* width of the resolution level computed   */
-	uint32_t rh; /* height of the resolution level computed  */
-	size_t l_data_size;
+	size_t l_data_size = max_resolution(tilec->resolutions,
+			tilec->numresolutions) * sizeof(int32_t);
+	/* overflow check */
+	if (l_data_size > SIZE_MAX) {
+		GROK_ERROR("dwt53 encode: overflow");
+		return false;
+	}
+	if (!l_data_size)
+		return false;
 
-	tcd_resolution_t *l_cur_res = 0;
-	tcd_resolution_t *l_last_res = 0;
-
-	w = tilec->x1 - tilec->x0;
+	uint32_t stride = tilec->x1 - tilec->x0;
 	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
-	a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
 
-	l_cur_res = tilec->resolutions + num_decomps;
-	l_last_res = l_cur_res - 1;
+	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
+	tcd_resolution_t *l_last_res = l_cur_res - 1;
 
 #ifdef DEBUG_LOSSLESS_DWT
 	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
@@ -148,54 +148,42 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 
 #endif
 
-	l_data_size = max_resolution(tilec->resolutions, tilec->numresolutions)
-			* sizeof(int32_t);
-	/* overflow check */
-	if (l_data_size > SIZE_MAX) {
-		GROK_ERROR("dwt53 encode: overflow");
+	int32_t *bj = (int32_t*) grok_malloc(l_data_size);
+	if (!bj)
 		return false;
-	}
-	if (!l_data_size)
-		return false;
-	bj = (int32_t*) grok_malloc(l_data_size);
-	/* l_data_size is equal to 0 when numresolutions == 1 but bj is not used */
-	/* in that case, so do not error out */
-	if (!bj) {
-		return false;
-	}
-
 	while (num_decomps--) {
-		uint32_t rw1; /* width of the resolution level once lower than computed one                                       */
-		uint32_t rh1; /* height of the resolution level once lower than computed one                                      */
-		uint8_t cas_col; /* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		uint8_t cas_row; /* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		uint32_t d_n, s_n;
 
-		rw = l_cur_res->x1 - l_cur_res->x0;
-		rh = l_cur_res->y1 - l_cur_res->y0;
-		rw1 = l_last_res->x1 - l_last_res->x0;
-		rh1 = l_last_res->y1 - l_last_res->y0;
+		/* width of the resolution level computed   */
+		uint32_t rw = l_cur_res->x1 - l_cur_res->x0;
+		/* height of the resolution level computed  */
+		uint32_t rh = l_cur_res->y1 - l_cur_res->y0;
+		// width of the resolution level once lower than computed one
+		uint32_t rw1 = l_last_res->x1 - l_last_res->x0;
+		//height of the resolution level once lower than computed one
+		uint32_t rh1 = l_last_res->y1 - l_last_res->y0;
 
-		cas_row = l_cur_res->x0 & 1;
-		cas_col = l_cur_res->y0 & 1;
+		/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
+		uint8_t cas_row = l_cur_res->x0 & 1;
+		/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
+		uint8_t cas_col = l_cur_res->y0 & 1;
 
-		s_n = rh1;
-		d_n = rh - rh1;
+		uint32_t s_n = rh1;
+		uint32_t d_n = rh - rh1;
 
 		for (uint32_t j = 0; j < rw; ++j) {
-			aj = a + j;
-			for (k = 0; k < rh; ++k) {
-				bj[k] = aj[k * w];
+			int32_t *aj = a + j;
+			for (uint32_t k = 0; k < rh; ++k) {
+				bj[k] = aj[k * stride];
 			}
 			encode_line(bj, d_n, s_n, cas_col);
-			deinterleave_v(bj, aj, d_n, s_n, w, cas_col);
+			deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 		}
 		s_n = rw1;
 		d_n = rw - rw1;
 
 		for (uint32_t j = 0; j < rh; j++) {
-			aj = a + j * w;
-			for (k = 0; k < rw; k++)
+			int32_t *aj = a + j * stride;
+			for (uint32_t k = 0; k < rw; k++)
 				bj[k] = aj[k];
 			encode_line(bj, d_n, s_n, cas_row);
 			deinterleave_h(bj, aj, d_n, s_n, cas_row);
@@ -227,23 +215,21 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 /* Forward 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
 void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
-	int32_t i;
-
 	if (!cas) {
 		if ((d_n > 0) || (s_n > 1)) {
-			for (i = 0; i < d_n; i++)
+			for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i)-= (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_S(i) += (GROK_D_(i - 1) + GROK_D_(i) + 2) >> 2;
 			}
 		}
 		else {
 			if (!s_n && d_n == 1) /* NEW :  CASE ONE ELEMENT */
-			GROK_S(0) *= 2;
+			GROK_S(0) <<= 1;
 			else {
-				for (i = 0; i < d_n; i++)
+				for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) -= (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
-				for (i = 0; i < s_n; i++)
+				for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) += (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
 			}
 		}
@@ -257,7 +243,6 @@ void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
 	 */
 bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 		uint32_t numThreads) {
-
 	if (numres == 1U) {
 		return true;
 	}
@@ -277,15 +262,13 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 								&decode_dwt_calling_barrier, threadId,
 								numThreads, this]() {
 							auto numResolutions = numres;
-							dwt_t h;
-							dwt_t v;
-
 							tcd_resolution_t *tr = tilec->resolutions;
 
 							uint32_t rw = (tr->x1 - tr->x0); /* width of the resolution level computed */
 							uint32_t rh = (tr->y1 - tr->y0); /* height of the resolution level computed */
+							uint32_t stride = (tilec->x1 - tilec->x0);
 
-							uint32_t w = (tilec->x1 - tilec->x0);
+							dwt_t h;
 							h.mem = (int32_t*) grok_aligned_malloc(
 									max_resolution(tr, numResolutions)
 											* sizeof(int32_t));
@@ -293,7 +276,7 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 								rc++;
 								goto cleanup;
 							}
-
+							dwt_t v;
 							v.mem = h.mem;
 
 							while (--numResolutions) {
@@ -311,9 +294,9 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 
 								for (uint32_t j = threadId; j < rh; j +=
 										numThreads) {
-									interleave_h(&h, &tiledp[j * w]);
+									interleave_h(&h, &tiledp[j * stride]);
 									decode_line(&h);
-									memcpy(&tiledp[j * w], h.mem,
+									memcpy(&tiledp[j * stride], h.mem,
 											rw * sizeof(int32_t));
 								}
 
@@ -324,10 +307,11 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 
 								for (uint32_t j = threadId; j < rw; j +=
 										numThreads) {
-									interleave_v(&v, &tiledp[j], (int32_t) w);
+									interleave_v(&v, &tiledp[j],
+											(int32_t) stride);
 									decode_line(&v);
 									for (uint32_t k = 0; k < rh; ++k) {
-										tiledp[k * w + j] = v.mem[k];
+										tiledp[k * stride + j] = v.mem[k];
 									}
 								}
 								decode_dwt_barrier.arrive_and_wait();
@@ -367,7 +351,7 @@ void dwt53::decode_line(dwt_t *v) {
 		}
 		else {
 			if (!s_n && d_n == 1)
-			GROK_S(0) /= 2;
+			GROK_S(0) >>= 1;
 			else {
 				for (i = 0; i < s_n; i++)
 				GROK_D(i) -= (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
