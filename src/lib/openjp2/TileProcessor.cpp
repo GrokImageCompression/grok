@@ -491,10 +491,9 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 			// upper bound for next layer will equal lowerBound for previous layer, minus one
 			upperBound = lowerBound - 1;
 		} else {
-			//todo: shouldn't need rate-distortion slope calculations to make this last layer
-			make_layer_simple(layno, 0, true);
+			makelayer_final(layno);
+			// this has to be the last layer, so return
 			assert(layno == tcd_tcp->numlayers - 1);
-			// this has to be the last layer, so return 
 			return true;
 		}
 	}
