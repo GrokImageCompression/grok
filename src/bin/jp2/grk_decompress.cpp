@@ -118,7 +118,7 @@ static int parse_cmdline_decoder(int argc,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
 							char* plugin_path);
-static grk_image_t* convert_gray_to_rgb(grk_image_t* original);
+static grk_image *  convert_gray_to_rgb(grk_image *  original);
 
 
 void exit_func() {
@@ -801,15 +801,15 @@ static void destroy_parameters(grk_decompress_parameters* parameters)
 
 /* -------------------------------------------------------------------------- */
 
-static grk_image_t* convert_gray_to_rgb(grk_image_t* original)
+static grk_image *  convert_gray_to_rgb(grk_image *  original)
 {
 	if (original->numcomps == 0)
 		return nullptr;
     uint32_t compno;
-    grk_image_t* l_new_image = nullptr;
-    grk_image_cmptparm_t* l_new_components = nullptr;
+    grk_image *  l_new_image = nullptr;
+     grk_image_cmptparm  *  l_new_components = nullptr;
 
-    l_new_components = (grk_image_cmptparm_t*)malloc((original->numcomps + 2U) * sizeof(grk_image_cmptparm_t));
+    l_new_components = ( grk_image_cmptparm  * )malloc((original->numcomps + 2U) * sizeof( grk_image_cmptparm) );
     if (l_new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for RGB image!");
         grk_image_destroy(original);
@@ -869,10 +869,10 @@ static grk_image_t* convert_gray_to_rgb(grk_image_t* original)
 
 /* -------------------------------------------------------------------------- */
 
-static grk_image_t* upsample_image_components(grk_image_t* original)
+static grk_image *  upsample_image_components(grk_image *  original)
 {
-    grk_image_t* l_new_image = nullptr;
-    grk_image_cmptparm_t* l_new_components = nullptr;
+    grk_image *  l_new_image = nullptr;
+     grk_image_cmptparm  *  l_new_components = nullptr;
     bool l_upsample_need = false;
     uint32_t compno;
 
@@ -896,7 +896,7 @@ static grk_image_t* upsample_image_components(grk_image_t* original)
         return original;
     }
     /* Upsample is needed */
-    l_new_components = (grk_image_cmptparm_t*)malloc(original->numcomps * sizeof(grk_image_cmptparm_t));
+    l_new_components = ( grk_image_cmptparm  * )malloc(original->numcomps * sizeof( grk_image_cmptparm) );
     if (l_new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for upsampled components!");
         grk_image_destroy(original);
@@ -904,8 +904,8 @@ static grk_image_t* upsample_image_components(grk_image_t* original)
     }
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-        grk_image_cmptparm_t* l_new_cmp = &(l_new_components[compno]);
-        grk_image_comp_t*     l_org_cmp = &(original->comps[compno]);
+         grk_image_cmptparm  *  l_new_cmp = &(l_new_components[compno]);
+         grk_image_comp  *      l_org_cmp = &(original->comps[compno]);
 
         l_new_cmp->prec = l_org_cmp->prec;
         l_new_cmp->sgnd = l_org_cmp->sgnd;
@@ -939,8 +939,8 @@ static grk_image_t* upsample_image_components(grk_image_t* original)
     l_new_image->y1 = original->y1;
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-        grk_image_comp_t* l_new_cmp = &(l_new_image->comps[compno]);
-        grk_image_comp_t* l_org_cmp = &(original->comps[compno]);
+         grk_image_comp  *  l_new_cmp = &(l_new_image->comps[compno]);
+         grk_image_comp  *  l_org_cmp = &(original->comps[compno]);
 
         l_new_cmp->decodeScaleFactor        = l_org_cmp->decodeScaleFactor;
         l_new_cmp->alpha         = l_org_cmp->alpha;
@@ -1550,7 +1550,7 @@ int post_decode(grok_plugin_decode_callback_info_t* info) {
 	int failed = 0;
 	bool canStoreICC = false;
 	grk_decompress_parameters* parameters = info->decoder_parameters;
-	grk_image_t* image = info->image;
+	grk_image *  image = info->image;
 	bool canStoreCIE = (info->decoder_parameters->cod_format == TIF_DFMT) &&
 			(image->color_space == GRK_CLRSPC_DEFAULT_CIE);
 	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE;

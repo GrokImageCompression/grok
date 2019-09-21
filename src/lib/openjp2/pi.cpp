@@ -148,7 +148,7 @@ static void pi_update_encode_not_poc(cp_t *p_cp, uint32_t num_comps,
  * @param	dx_min			pointer that will hold the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min			pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
-static void grk_get_encoding_parameters(const grk_image_t *p_image,
+static void grk_get_encoding_parameters(const grk_image *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res);
@@ -173,7 +173,7 @@ static void grk_get_encoding_parameters(const grk_image_t *p_image,
  * @param	dy_min		pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  * @param	p_resolutions	pointer to an area corresponding to the one described above.
  */
-static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
+static void grk_get_all_encoding_parameters(const grk_image *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
@@ -186,7 +186,7 @@ static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
  * @param	p_cp		the coding parameters.
  * @param	tileno	the index of the tile from which creating the packet iterator.
  */
-static pi_iterator_t* pi_create(const grk_image_t *p_image, const cp_t *p_cp,
+static pi_iterator_t* pi_create(const grk_image *p_image, const cp_t *p_cp,
 		uint32_t tileno);
 /**
  * FIXME DOC
@@ -643,7 +643,7 @@ static bool pi_next_cprl(pi_iterator_t *pi) {
 	return false;
 }
 
-static void grk_get_encoding_parameters(const grk_image_t *p_image,
+static void grk_get_encoding_parameters(const grk_image *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res) {
@@ -652,7 +652,7 @@ static void grk_get_encoding_parameters(const grk_image_t *p_image,
 	/* pointers */
 	const tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
-	const grk_image_comp_t *l_img_comp = nullptr;
+	const  grk_image_comp  *l_img_comp = nullptr;
 
 	/* position in x and y of tile */
 	uint32_t p, q;
@@ -752,7 +752,7 @@ static void grk_get_encoding_parameters(const grk_image_t *p_image,
 	}
 }
 
-static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
+static void grk_get_all_encoding_parameters(const grk_image *p_image,
 		const cp_t *p_cp, uint32_t tileno, uint32_t *tx0, uint32_t *tx1,
 		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
@@ -763,7 +763,7 @@ static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
 	/* pointers*/
 	const tcp_t *tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
-	const grk_image_comp_t *l_img_comp = nullptr;
+	const  grk_image_comp  *l_img_comp = nullptr;
 
 	/* to store l_dx, l_dy, w and h for each resolution and component.*/
 	uint32_t *lResolutionPtr;
@@ -870,7 +870,7 @@ static void grk_get_all_encoding_parameters(const grk_image_t *p_image,
 	}
 }
 
-static pi_iterator_t* pi_create(const grk_image_t *image, const cp_t *cp,
+static pi_iterator_t* pi_create(const grk_image *image, const cp_t *cp,
 		uint32_t tileno) {
 	/* loop*/
 	uint32_t pino, compno;
@@ -940,7 +940,7 @@ static void pi_update_encode_poc_and_final(cp_t *p_cp, uint32_t tileno,
 	/* tile coding parameter*/
 	tcp_t *l_tcp = nullptr;
 	/* current poc being updated*/
-	grk_poc_t *l_current_poc = nullptr;
+	 grk_poc  *l_current_poc = nullptr;
 
 	/* number of pocs*/
 	uint32_t l_poc_bound;
@@ -1013,7 +1013,7 @@ static void pi_update_encode_not_poc(cp_t *p_cp, uint32_t num_comps,
 	/* tile coding parameter*/
 	tcp_t *l_tcp = nullptr;
 	/* current poc being updated*/
-	grk_poc_t *l_current_poc = nullptr;
+	 grk_poc  *l_current_poc = nullptr;
 	/* number of pocs*/
 	uint32_t l_poc_bound;
 
@@ -1060,7 +1060,7 @@ static void pi_update_decode_poc(pi_iterator_t *p_pi, tcp_t *p_tcp,
 	uint32_t l_bound;
 
 	pi_iterator_t *l_current_pi = nullptr;
-	grk_poc_t *l_current_poc = 0;
+	 grk_poc  *l_current_poc = 0;
 
 	ARG_NOT_USED(max_res);
 
@@ -1127,7 +1127,7 @@ static bool pi_check_next_level(int32_t pos, cp_t *cp, uint32_t tileno,
 		uint32_t pino, const char *prog) {
 	uint32_t i;
 	tcp_t *tcps = &cp->tcps[tileno];
-	grk_poc_t *tcp = &tcps->pocs[pino];
+	 grk_poc  *tcp = &tcps->pocs[pino];
 
 	if (pos >= 0) {
 		for (i = pos; pos >= 0; i--) {
@@ -1209,7 +1209,7 @@ static bool pi_check_next_level(int32_t pos, cp_t *cp, uint32_t tileno,
  Packet iterator interface
  ==========================================================
  */
-pi_iterator_t* pi_create_decode(grk_image_t *p_image, cp_t *p_cp,
+pi_iterator_t* pi_create_decode(grk_image *p_image, cp_t *p_cp,
 		uint32_t tile_no) {
 	/* loop */
 	uint32_t pino;
@@ -1233,7 +1233,7 @@ pi_iterator_t* pi_create_decode(grk_image_t *p_image, cp_t *p_cp,
 	tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
 	pi_comp_t *l_current_comp = nullptr;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
 	uint32_t *l_encoding_value_ptr = nullptr;
 
@@ -1390,7 +1390,7 @@ pi_iterator_t* pi_create_decode(grk_image_t *p_image, cp_t *p_cp,
 	return l_pi;
 }
 
-pi_iterator_t* pi_initialise_encode(const grk_image_t *p_image, cp_t *p_cp,
+pi_iterator_t* pi_initialise_encode(const grk_image *p_image, cp_t *p_cp,
 		uint32_t tile_no, J2K_T2_MODE p_t2_mode) {
 	/* loop*/
 	uint32_t pino;
@@ -1414,7 +1414,7 @@ pi_iterator_t* pi_initialise_encode(const grk_image_t *p_image, cp_t *p_cp,
 	tcp_t *l_tcp = nullptr;
 	const tccp_t *l_tccp = nullptr;
 	pi_comp_t *l_current_comp = nullptr;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	pi_iterator_t *l_current_pi = nullptr;
 	uint32_t *l_encoding_value_ptr = nullptr;
 
@@ -1581,7 +1581,7 @@ void pi_init_encode(pi_iterator_t *pi, cp_t *cp, uint32_t tileno, uint32_t pino,
 	int32_t i;
 	uint32_t incr_top = 1, resetX = 0;
 	tcp_t *tcps = &cp->tcps[tileno];
-	grk_poc_t *tcp = &tcps->pocs[pino];
+	 grk_poc  *tcp = &tcps->pocs[pino];
 
 	prog = j2k_convert_progression_order(tcp->prg);
 
@@ -1874,7 +1874,7 @@ void pi_destroy(pi_iterator_t *p_pi, uint32_t nb_elements) {
 	}
 }
 
-void pi_update_encoding_parameters(const grk_image_t *p_image, cp_t *p_cp,
+void pi_update_encoding_parameters(const grk_image *p_image, cp_t *p_cp,
 		uint32_t tile_no) {
 	/* encoding parameters to set */
 	uint32_t l_max_res;

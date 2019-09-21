@@ -62,11 +62,11 @@
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool RAWFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	return imagetoraw(image, filename, bigEndian,verbose) ? true : false;
 }
-grk_image_t* RAWFormat::decode(const char* filename, grk_cparameters_t *parameters) {
+grk_image *  RAWFormat::decode(const char* filename,  grk_cparameters  *parameters) {
 	return rawtoimage(filename, parameters, bigEndian);
 }
 
@@ -89,8 +89,8 @@ template<typename T> static bool read(FILE *rawFile, bool big_endian,
 	return true;
 }
 
-grk_image_t* RAWFormat::rawtoimage(const char *filename,
-										grk_cparameters_t *parameters,
+grk_image *  RAWFormat::rawtoimage(const char *filename,
+										 grk_cparameters  *parameters,
 										bool big_endian)
 {
 	bool readFromStdin = grk::useStdio(filename);
@@ -101,8 +101,8 @@ grk_image_t* RAWFormat::rawtoimage(const char *filename,
 	FILE *f = nullptr;
 	uint32_t i, compno, numcomps, w, h;
 	GRK_COLOR_SPACE color_space;
-	grk_image_cmptparm_t *cmptparm;
-	grk_image_t * image = nullptr;
+	 grk_image_cmptparm  *cmptparm;
+	grk_image * image = nullptr;
 	unsigned short ch;
 	bool success = true;
 
@@ -144,7 +144,7 @@ grk_image_t* RAWFormat::rawtoimage(const char *filename,
 	}
 	w = raw_cp->width;
 	h = raw_cp->height;
-	cmptparm = (grk_image_cmptparm_t*)calloc(numcomps, sizeof(grk_image_cmptparm_t));
+	cmptparm = ( grk_image_cmptparm  * )calloc(numcomps, sizeof( grk_image_cmptparm) );
 	if (!cmptparm) {
 		spdlog::error("Failed to allocate image components parameters !!");
 		success = false;
@@ -262,7 +262,7 @@ template<typename T> static bool write(FILE *rawFile, bool big_endian,
 	return true;
 }
 
-int RAWFormat::imagetoraw(grk_image_t * image, 
+int RAWFormat::imagetoraw(grk_image * image, 
 							const char *outfile,
 							bool big_endian,
 							bool verbose)

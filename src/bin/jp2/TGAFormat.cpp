@@ -258,14 +258,14 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	return 0;
 }
 
-static grk_image_t* tgatoimage(const char *filename,
-		grk_cparameters_t *parameters) {
+static grk_image *  tgatoimage(const char *filename,
+		 grk_cparameters  *parameters) {
 	FILE *f;
-	grk_image_t *image;
+	grk_image *image;
 	unsigned int image_width, image_height, pixel_bit_depth;
 	unsigned int x, y;
 	int flip_image = 0;
-	grk_image_cmptparm_t cmptparm[4]; /* maximum 4 components */
+	 grk_image_cmptparm  cmptparm[4]; /* maximum 4 components */
 	uint32_t numcomps;
 	GRK_COLOR_SPACE color_space;
 	uint32_t subsampling_dx, subsampling_dy;
@@ -290,7 +290,7 @@ static grk_image_t* tgatoimage(const char *filename,
 	}
 
 	/* initialize image components */
-	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 4 * sizeof( grk_image_cmptparm) );
 	//bool mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
 	bool save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); // Mono with alpha, or RGB with alpha
 	/*if (mono) {
@@ -420,7 +420,7 @@ static grk_image_t* tgatoimage(const char *filename,
 	return image;
 }
 
-static int imagetotga(grk_image_t *image, const char *outfile) {
+static int imagetotga(grk_image *image, const char *outfile) {
 	int width = 0, height = 0, bpp = 0, x = 0, y = 0;
 	bool write_alpha = false;
 	unsigned int i;
@@ -551,13 +551,13 @@ static int imagetotga(grk_image_t *image, const char *outfile) {
 	return fails;
 }
 
-bool TGAFormat::encode(grk_image_t *image, const char *filename,
+bool TGAFormat::encode(grk_image *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetotga(image, filename) ? false : true;
 }
-grk_image_t* TGAFormat::decode(const char *filename,
-		grk_cparameters_t *parameters) {
+grk_image *  TGAFormat::decode(const char *filename,
+		 grk_cparameters  *parameters) {
 	return tgatoimage(filename, parameters);
 }

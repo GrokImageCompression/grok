@@ -85,16 +85,16 @@ int main(int argc, char *argv[])
     unsigned int image_width = 256;
     unsigned int image_height = 256;
 
-    grk_cparameters_t parameters;
+     grk_cparameters  parameters;
 
     unsigned int subsampling_dx = 0;
     unsigned int subsampling_dy = 0;
 
-    grk_image_cmptparm_t cmptparm;
-    grk_image_t *image;
-    grk_codec_t* l_codec = nullptr;
+     grk_image_cmptparm  cmptparm;
+    grk_image *image;
+     grk_codec  *  l_codec = nullptr;
     bool bSuccess;
-    grk_stream_t *l_stream = nullptr;
+     grk_stream  *l_stream = nullptr;
     (void)argc;
     (void)argv;
 

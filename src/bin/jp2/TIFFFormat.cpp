@@ -98,13 +98,13 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 }
 
 static bool readTiffPixelsUnsigned(TIFF *tif,
-							grk_image_comp_t *comps,
+							 grk_image_comp  *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
 							uint16_t tiPhoto);
 static bool readTiffPixelsSigned(TIFF *tif,
-							grk_image_comp_t *comps,
+							 grk_image_comp  *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1127,14 +1127,14 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
 * CINEMA                 : 12 bit precision
 */
-static grk_image_t* tiftoimage(const char *filename, grk_cparameters_t *parameters)
+static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *parameters)
 {
 	TIFF *tif;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm_t cmptparm[4];
-	grk_image_t *image = nullptr;
+	 grk_image_cmptparm  cmptparm[4];
+	grk_image *image = nullptr;
 	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
 	bool hasTiSf = false;
 	short tiResUnit = 0;
@@ -1212,7 +1212,7 @@ static grk_image_t* tiftoimage(const char *filename, grk_cparameters_t *paramete
 	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 4 * sizeof( grk_image_cmptparm) );
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
 			spdlog::warn("Input image bitdepth is {} bits\n"
@@ -1391,7 +1391,7 @@ cleanup:
 
 
 static bool readTiffPixelsUnsigned(TIFF *tif,
-							grk_image_comp_t *comps,
+							 grk_image_comp  *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1477,7 +1477,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		planes[j] = comps[j].data;
 	}
 	do {
-		grk_image_comp_t *comp = comps + currentPlane;
+		 grk_image_comp  *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
 		uint32_t height = (int)comp->h;
 		/* Read the Image components */
@@ -1512,7 +1512,7 @@ local_cleanup:
 }
 
 static bool readTiffPixelsSigned(TIFF *tif,
-							grk_image_comp_t *comps,
+							 grk_image_comp  *comps,
 							uint32_t numcomps,
 							uint16_t tiSpp,
 							uint16_t tiPC,
@@ -1550,7 +1550,7 @@ static bool readTiffPixelsSigned(TIFF *tif,
 		planes[j] = comps[j].data;
 	}
 	do {
-		grk_image_comp_t *comp = comps + currentPlane;
+		 grk_image_comp  *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
 		uint32_t height = (int)comp->h;
 		/* Read the Image components */
@@ -1586,7 +1586,7 @@ local_cleanup:
 }
 
 
-static int imagetotif(grk_image_t * image, const char *outfile, uint32_t compression, bool verbose)
+static int imagetotif(grk_image * image, const char *outfile, uint32_t compression, bool verbose)
 {
 	int tiPhoto;
 	TIFF *tif = nullptr;
@@ -1857,10 +1857,10 @@ cleanup:
 }/* imagetotif() */
 
 
-bool TIFFFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool TIFFFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
 	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
 }
-grk_image_t*  TIFFFormat::decode(const char* filename, grk_cparameters_t *parameters) {
+grk_image *   TIFFFormat::decode(const char* filename,  grk_cparameters  *parameters) {
 	return tiftoimage(filename, parameters);
 }
 

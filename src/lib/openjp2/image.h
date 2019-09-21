@@ -57,7 +57,6 @@ namespace grk {
  The functions in IMAGE.C have for goal to realize operations on images.
  */
 
-struct grk_image;
 struct cp_t;
 
 /** @defgroup IMAGE IMAGE - Implementation of operations on images */
@@ -68,7 +67,7 @@ struct cp_t;
  *
  * @return returns an empty image if successful, returns nullptr otherwise
  */
-grk_image_t* grk_image_create0(void);
+grk_image *  grk_image_create0(void);
 
 /**
  * Updates the components characteristics of the image from the coding parameters.
@@ -76,10 +75,10 @@ grk_image_t* grk_image_create0(void);
  * @param p_image_header		the image header to update.
  * @param p_cp					the coding parameters from which to update the image.
  */
-void grk_image_comp_header_update(grk_image_t *p_image, const cp_t *p_cp);
+void grk_image_comp_header_update(grk_image *p_image, const cp_t *p_cp);
 
-void grk_copy_image_header(const grk_image_t *p_image_src,
-		grk_image_t *p_image_dest);
+void grk_copy_image_header(const grk_image *p_image_src,
+		grk_image *p_image_dest);
 
 /*@}*/
 

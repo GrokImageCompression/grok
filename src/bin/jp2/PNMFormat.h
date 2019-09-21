@@ -22,8 +22,8 @@ class PNMFormat {
 public:
 	PNMFormat(bool split) : forceSplit(split) {}
 	virtual ~PNMFormat()  {}
-	bool encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose);
-	grk_image_t* decode(const char* filename, grk_cparameters_t *parameters);
+	bool encode(grk_image *  image, const char* filename, int compressionParam, bool verbose);
+	grk_image *  decode(const char* filename,  grk_cparameters  *parameters);
 private:
 	bool forceSplit;
 

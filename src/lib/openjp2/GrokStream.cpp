@@ -510,18 +510,18 @@ void grok_read_double(const uint8_t *p_buffer, double *value) {
 	grok_read<double>(p_buffer, value, sizeof(double));
 }
 }
-grk_stream_t* GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
+ grk_stream  *  GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
 		bool l_is_input) {
-	return (grk_stream_t*) (new grk::GrokStream(p_buffer_size, l_is_input));
+	return ( grk_stream  * ) (new grk::GrokStream(p_buffer_size, l_is_input));
 }
-grk_stream_t* GRK_CALLCONV grk_stream_default_create(bool l_is_input) {
+ grk_stream  *  GRK_CALLCONV grk_stream_default_create(bool l_is_input) {
 	return grk_stream_create(grk::stream_chunk_size, l_is_input);
 }
-void GRK_CALLCONV grk_stream_destroy(grk_stream_t *p_stream) {
+void GRK_CALLCONV grk_stream_destroy( grk_stream  *p_stream) {
 	auto stream = (grk::GrokStream*) (p_stream);
 	delete stream;
 }
-void GRK_CALLCONV grk_stream_set_read_function(grk_stream_t *p_stream,
+void GRK_CALLCONV grk_stream_set_read_function( grk_stream  *p_stream,
 		grk_stream_read_fn p_function) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
@@ -529,7 +529,7 @@ void GRK_CALLCONV grk_stream_set_read_function(grk_stream_t *p_stream,
 	}
 	l_stream->m_read_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream_t *p_stream,
+void GRK_CALLCONV grk_stream_set_zero_copy_read_function( grk_stream  *p_stream,
 		grk_stream_zero_copy_read_fn p_function) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
@@ -537,7 +537,7 @@ void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream_t *p_stream,
 	}
 	l_stream->m_zero_copy_read_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_seek_function(grk_stream_t *p_stream,
+void GRK_CALLCONV grk_stream_set_seek_function( grk_stream  *p_stream,
 		grk_stream_seek_fn p_function) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if (!l_stream) {
@@ -545,7 +545,7 @@ void GRK_CALLCONV grk_stream_set_seek_function(grk_stream_t *p_stream,
 	}
 	l_stream->m_seek_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_write_function(grk_stream_t *p_stream,
+void GRK_CALLCONV grk_stream_set_write_function( grk_stream  *p_stream,
 		grk_stream_write_fn p_function) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_OUTPUT))) {
@@ -554,7 +554,7 @@ void GRK_CALLCONV grk_stream_set_write_function(grk_stream_t *p_stream,
 	l_stream->m_write_fn = p_function;
 }
 
-void GRK_CALLCONV grk_stream_set_user_data(grk_stream_t *p_stream, void *p_data,
+void GRK_CALLCONV grk_stream_set_user_data( grk_stream  *p_stream, void *p_data,
 		grk_stream_free_user_data_fn p_function) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if (!l_stream)
@@ -562,7 +562,7 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream_t *p_stream, void *p_data,
 	l_stream->m_user_data = p_data;
 	l_stream->m_free_user_data_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream_t *p_stream,
+void GRK_CALLCONV grk_stream_set_user_data_length( grk_stream  *p_stream,
 		uint64_t data_length) {
 	auto l_stream = (grk::GrokStream*) p_stream;
 	if (!l_stream)

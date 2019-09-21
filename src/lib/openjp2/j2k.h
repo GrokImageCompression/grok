@@ -275,7 +275,7 @@ struct tcp_t {
 	/** number of progression order changes */
 	uint32_t numpocs;
 	/** progression order changes */
-	grk_poc_t pocs[32];
+	 grk_poc  pocs[32];
 
 	/** number of ppt markers (reserved size) */
 	uint32_t ppt_markers_count;
@@ -505,10 +505,10 @@ struct j2k_t {
 	} m_specific_param;
 
 	/** pointer to the internal/private encoded / decoded image */
-	grk_image_t *m_private_image;
+	grk_image *m_private_image;
 
 	/* pointer to the output image (decoded)*/
-	grk_image_t *m_output_image;
+	grk_image *m_output_image;
 
 	/** Coding parameters */
 	cp_t m_cp;
@@ -520,7 +520,7 @@ struct j2k_t {
 	std::vector<j2k_procedure> *m_validation_list;
 
 	/** helper used to write the index file */
-	grk_codestream_index_t *cstr_index;
+	 grk_codestream_index  *cstr_index;
 
 	/** number of the tile currently concern by coding/decoding */
 	uint32_t m_current_tile_number;
@@ -540,7 +540,7 @@ struct j2k_t {
  @param j2k J2K decompressor handle
  @param parameters decompression parameters
  */
-void j2k_setup_decoder(void *j2k_void, grk_dparameters_t *parameters);
+void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters);
 
 /**
  * Creates a J2K compression structure
@@ -549,8 +549,8 @@ void j2k_setup_decoder(void *j2k_void, grk_dparameters_t *parameters);
  */
 j2k_t* j2k_create_compress(void);
 
-bool j2k_setup_encoder(j2k_t *p_j2k, grk_cparameters_t *parameters,
-		grk_image_t *image);
+bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
+		grk_image *image);
 
 /**
  Converts an enum type progression order to string type
@@ -579,7 +579,7 @@ bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream);
  * @return true if the box is valid.
  */
 bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
-		grk_header_info_t *header_info, grk_image_t **p_image);
+		 grk_header_info  *header_info, grk_image **p_image);
 
 /**
  * Destroys a jpeg2000 codec.
@@ -593,7 +593,7 @@ void j2k_destroy(j2k_t *p_j2k);
  *
  * @param	p_cstr_ind	the codestream index parameter to destroy.
  */
-void j2k_destroy_cstr_index(grk_codestream_index_t *p_cstr_ind);
+void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
 
 /**
  * Decode tile data.
@@ -639,7 +639,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
  *
  * @return	true			if the area could be set.
  */
-bool j2k_set_decode_area(j2k_t *p_j2k, grk_image_t *p_image, uint32_t start_x,
+bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
@@ -666,7 +666,7 @@ void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream);
  *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
  *@param out_stream			output stream where dump the elements.
  */
-void j2k_dump_image_header(grk_image_t *image, bool dev_dump_flag,
+void j2k_dump_image_header(grk_image *image, bool dev_dump_flag,
 		FILE *out_stream);
 
 /**
@@ -676,7 +676,7 @@ void j2k_dump_image_header(grk_image_t *image, bool dev_dump_flag,
  *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
  *@param out_stream			output stream where dump the elements.
  */
-void j2k_dump_image_comp_header(grk_image_comp_t *comp, bool dev_dump_flag,
+void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 		FILE *out_stream);
 
 /**
@@ -686,7 +686,7 @@ void j2k_dump_image_comp_header(grk_image_comp_t *comp, bool dev_dump_flag,
  *
  *@return	the codestream information extract from the jpg2000 codec
  */
-grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k);
+ grk_codestream_info_v2  *  j2k_get_cstr_info(j2k_t *p_j2k);
 
 /**
  * Get the codestream index from a JPEG2000 codec.
@@ -695,7 +695,7 @@ grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k);
  *
  *@return	the codestream index extract from the jpg2000 codec
  */
-grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k);
+ grk_codestream_index  *  j2k_get_cstr_index(j2k_t *p_j2k);
 
 /**
  * Decode an image from a JPEG-2000 codestream
@@ -706,9 +706,9 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k);
  * @return FIXME DOC
  */
 bool j2k_decode(j2k_t *j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		grk_image_t *p_image);
+		grk_image *p_image);
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image_t *p_image, uint32_t tile_index);
+bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index);
 
 bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
 
@@ -740,7 +740,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio);
  * @return true if the codec is valid.
  */
 bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
-		grk_image_t *p_image);
+		grk_image *p_image);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
@@ -748,6 +748,6 @@ bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
  */
 bool j2k_end_compress(j2k_t *p_j2k, GrokStream *cio);
 
-bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image_t *p_image);
+bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image);
 
 }

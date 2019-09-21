@@ -73,7 +73,7 @@ namespace grk {
 struct t2_t {
 
 	/** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
-	grk_image_t *image;
+	grk_image *image;
 	/** pointer to the image coding parameters */
 	cp_t *cp;
 };
@@ -98,7 +98,7 @@ struct t2_t {
  */
 bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
 		uint32_t maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
-		uint64_t len, grk_codestream_info_t *cstr_info, uint32_t tpnum,
+		uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
 		uint32_t tppos, uint32_t pino);
 
 /**
@@ -137,7 +137,7 @@ bool t2_decode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
  * @param	p_cp		Image coding parameters.
  * @return		a new T2 handle if successful, nullptr otherwise.
  */
-t2_t* t2_create(grk_image_t *p_image, cp_t *p_cp);
+t2_t* t2_create(grk_image *p_image, cp_t *p_cp);
 
 /**
  Destroy a T2 handle

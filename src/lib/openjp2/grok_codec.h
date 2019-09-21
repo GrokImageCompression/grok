@@ -63,11 +63,11 @@ struct codec_private_t {
 		struct decompression {
 			/** Main header reading function handler */
 			bool (*read_header)(GrokStream *cio, void *p_codec,
-					grk_header_info_t *header_info, grk_image_t **p_image);
+					 grk_header_info  *header_info, grk_image **p_image);
 
 			/** Decoding function */
 			bool (*decode)(void *p_codec, grok_plugin_tile_t *tile,
-					GrokStream *p_cio, grk_image_t *p_image);
+					GrokStream *p_cio, grk_image *p_image);
 
 			/** FIXME DOC */
 			bool (*read_tile_header)(void *p_codec, uint32_t *tile_index,
@@ -87,16 +87,16 @@ struct codec_private_t {
 			void (*destroy)(void *p_codec);
 
 			/** Setup decoder function handler */
-			void (*setup_decoder)(void *p_codec, grk_dparameters_t *p_param);
+			void (*setup_decoder)(void *p_codec,  grk_dparameters  *p_param);
 
 			/** Set decode area function handler */
-			bool (*set_decode_area)(void *p_codec, grk_image_t *p_image,
+			bool (*set_decode_area)(void *p_codec, grk_image *p_image,
 					uint32_t start_x, uint32_t end_x, uint32_t start_y,
 					uint32_t end_y);
 
 			/** Get tile function */
 			bool (*get_decoded_tile)(void *p_codec, GrokStream *p_cio,
-					grk_image_t *p_image,
+					grk_image *p_image,
 					uint32_t tile_index);
 
 			/** Set the decoded resolution factor */
@@ -109,7 +109,7 @@ struct codec_private_t {
 		 */
 		struct compression {
 			bool (*start_compress)(void *p_codec, GrokStream *cio,
-					grk_image_t *p_image);
+					grk_image *p_image);
 
 			bool (*encode)(void *p_codec, grok_plugin_tile_t*,
 					GrokStream *p_cio);
@@ -121,8 +121,8 @@ struct codec_private_t {
 
 			void (*destroy)(void *p_codec);
 
-			bool (*setup_encoder)(void *p_codec, grk_cparameters_t *p_param,
-					grk_image_t *p_image);
+			bool (*setup_encoder)(void *p_codec,  grk_cparameters  *p_param,
+					grk_image *p_image);
 		} m_compression;
 	} m_codec_data;
 	/** FIXME DOC*/
@@ -131,8 +131,8 @@ struct codec_private_t {
 	bool is_decompressor;
 	void (*grk_dump_codec)(void *p_codec, int32_t info_flag,
 			FILE *output_stream);
-	grk_codestream_info_v2_t* (*get_codec_info)(void *p_codec);
-	grk_codestream_index_t* (*grk_get_codec_index)(void *p_codec);
+	 grk_codestream_info_v2  *  (*get_codec_info)(void *p_codec);
+	 grk_codestream_index  *  (*grk_get_codec_index)(void *p_codec);
 };
 
 }

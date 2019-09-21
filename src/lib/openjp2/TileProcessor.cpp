@@ -686,7 +686,7 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		}
 	}
 }
-bool TileProcessor::init(grk_image_t *p_image, cp_t *p_cp) {
+bool TileProcessor::init(grk_image *p_image, cp_t *p_cp) {
 	this->image = p_image;
 	this->cp = p_cp;
 
@@ -710,7 +710,7 @@ bool TileProcessor::init(grk_image_t *p_image, cp_t *p_cp) {
 /* ----------------------------------------------------------------------- */
 
 inline bool TileProcessor::init_tile(uint32_t tile_no,
-		grk_image_t *output_image, bool isEncoder, float fraction,
+		grk_image *output_image, bool isEncoder, float fraction,
 		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
 	uint32_t compno, resno, bandno, precno;
@@ -719,12 +719,12 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 	tcd_tile_t *l_tile = nullptr;
 	tccp_t *l_tccp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
-	grk_image_comp_t *l_image_comp = nullptr;
+	 grk_image_comp  *l_image_comp = nullptr;
 	tcd_resolution_t *l_res = nullptr;
 	tcd_band_t *l_band = nullptr;
 	stepsize_t *l_step_size = nullptr;
 	tcd_precinct_t *l_current_precinct = nullptr;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	uint32_t p, q;
 	uint32_t l_level_no;
 	uint32_t l_pdx, l_pdy;
@@ -1133,7 +1133,7 @@ bool TileProcessor::init_encode_tile(uint32_t tile_no) {
 			sizeof(tcd_cblk_enc_t));
 }
 
-bool TileProcessor::init_decode_tile(grk_image_t *output_image,
+bool TileProcessor::init_decode_tile(grk_image *output_image,
 		uint32_t tile_no) {
 	return init_tile(tile_no, output_image, false, 0.5F,
 			sizeof(tcd_cblk_dec_t));
@@ -1142,12 +1142,12 @@ bool TileProcessor::init_decode_tile(grk_image_t *output_image,
 
 /*
  Get size of tile data, summed over all components, reflecting actual precision of data.
- grk_image_t always stores data in 32 bit format.
+ grk_image always stores data in 32 bit format.
  */
 uint64_t TileProcessor::get_decoded_tile_size() {
 	uint32_t i;
 	uint64_t l_data_size = 0;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tile_comp = nullptr;
 	tcd_resolution_t *l_res = nullptr;
 	uint32_t l_size_comp;
@@ -1175,7 +1175,7 @@ uint64_t TileProcessor::get_decoded_tile_size() {
 
 bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
-		grk_codestream_info_t *p_cstr_info) {
+		 grk_codestream_info  *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
 	if (cur_tp_num == 0) {
 
@@ -1199,10 +1199,10 @@ bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 				p_cstr_info->tile[tile_no].pdy[i] = (int) l_tccp->prch[i];
 			}
 			p_cstr_info->tile[tile_no].packet =
-					(grk_packet_info_t*) grok_calloc(
+					( grk_packet_info  * ) grok_calloc(
 							(size_t) p_cstr_info->numcomps
 									* (size_t) p_cstr_info->numlayers
-									* l_num_packs, sizeof(grk_packet_info_t));
+									* l_num_packs, sizeof( grk_packet_info) );
 			if (!p_cstr_info->tile[tile_no].packet) {
 				GROK_ERROR(
 						"tcd_encode_tile: Out of memory error when allocating packet memory");
@@ -1317,7 +1317,7 @@ bool TileProcessor::decode_tile(seg_buf_t *src_buf, uint32_t tile_no) {
 bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		uint64_t dest_length) {
 	uint32_t i, j, k;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
 	tcd_resolution_t *l_res;
 	uint32_t l_size_comp;
@@ -1519,7 +1519,7 @@ bool TileProcessor::dwt_decode() {
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; compno++) {
 		tcd_tilecomp_t *l_tile_comp = l_tile->comps + compno;
 		tccp_t *l_tccp = tcp->tccps + compno;
-		grk_image_comp_t *l_img_comp = image->comps + compno;
+		 grk_image_comp  *l_img_comp = image->comps + compno;
 		if (l_tccp->qmfbid == 1) {
 			dwt53 dwt;
 			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
@@ -1631,7 +1631,7 @@ bool TileProcessor::dc_level_shift_decode() {
 
 		tcd_tilecomp_t *l_tile_comp = tile->comps + compno;
 		tccp_t *l_tccp = tcp->tccps + compno;
-		grk_image_comp_t *l_img_comp = image->comps + compno;
+		 grk_image_comp  *l_img_comp = image->comps + compno;
 
 		uint32_t scaledTileX0 = uint_ceildivpow2(
 				(uint32_t) l_tile_comp->buf->tile_dim.x0,
@@ -1731,7 +1731,7 @@ void TileProcessor::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
 
 uint64_t TileProcessor::get_encoded_tile_size() {
 	uint32_t i = 0;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
 	uint32_t l_size_comp, l_remaining;
 	uint64_t l_data_size = 0;
@@ -1763,7 +1763,7 @@ bool TileProcessor::dc_level_shift_encode() {
 	uint32_t compno;
 	tcd_tilecomp_t *l_tile_comp = nullptr;
 	tccp_t *l_tccp = nullptr;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcd_tile_t *l_tile;
 	uint64_t l_nb_elem, i;
 	int32_t *l_current_ptr;
@@ -1906,7 +1906,7 @@ bool TileProcessor::t1_encode() {
 
 bool TileProcessor::t2_encode(GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_dest_size,
-		grk_codestream_info_t *p_cstr_info) {
+		 grk_codestream_info  *p_cstr_info) {
 	t2_t *l_t2;
 
 	l_t2 = t2_create(image, cp);
@@ -1999,7 +1999,7 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 }
 
 bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
-		grk_codestream_info_t *p_cstr_info) {
+		 grk_codestream_info  *p_cstr_info) {
 	cp_t *l_cp = cp;
 	uint64_t l_nb_written = 0;
 
@@ -2036,7 +2036,7 @@ bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
 
 bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcd_tilecomp_t *l_tilec = nullptr;
 	uint32_t l_size_comp, l_remaining;
 	uint64_t l_nb_elem;

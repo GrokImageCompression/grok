@@ -77,7 +77,7 @@ struct imageToJpegInfo {
 };
 
 
-static int imagetojpeg(grk_image_t* image, const char *filename, int compressionParam, bool verbose)
+static int imagetojpeg(grk_image *  image, const char *filename, int compressionParam, bool verbose)
 {
 	if (!image)
 		return 1;
@@ -377,13 +377,13 @@ struct jpegToImageInfo {
 
 	FILE *infile;
 	bool readFromStdin;
-	grk_image_t *image;
+	grk_image *image;
 	bool success;
 	int32_t* buffer32s;
 };
 
-static grk_image_t* jpegtoimage(const char *filename, 
-								grk_cparameters_t *parameters)
+static grk_image *  jpegtoimage(const char *filename, 
+								 grk_cparameters  *parameters)
 {
 	jpegToImageInfo imageInfo;
 	imageInfo.readFromStdin = grk::useStdio(filename);
@@ -393,7 +393,7 @@ static grk_image_t* jpegtoimage(const char *filename,
 	int bps = 0, numcomps = 0;
 	convert_XXx32s_C1R cvtJpegTo32s;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm_t cmptparm[3]; /* mono or RGB */
+	 grk_image_cmptparm  cmptparm[3]; /* mono or RGB */
 	convert_32s_CXPX cvtCxToPx;
 	JOCTET *icc_data_ptr = nullptr;
 	unsigned int icc_data_len = 0;
@@ -484,7 +484,7 @@ static grk_image_t* jpegtoimage(const char *filename,
 	w = cinfo.image_width;
 	h = cinfo.image_height;
 	cvtJpegTo32s = convert_XXu32s_C1R_LUT[bps];
-	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_cmptparm_t));
+	memset(&cmptparm[0], 0, 3 * sizeof( grk_image_cmptparm) );
 	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
 
 	if (cinfo.output_components == 3)
@@ -622,10 +622,10 @@ cleanup:
 	return imageInfo.image;
 }/* jpegtoimage() */
 
-bool JPEGFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool JPEGFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
 	return imagetojpeg(image, filename, compressionParam, verbose) ? false : true;
 }
-grk_image_t*  JPEGFormat::decode(const char* filename, grk_cparameters_t *parameters) {
+grk_image *   JPEGFormat::decode(const char* filename,  grk_cparameters  *parameters) {
 	return jpegtoimage(filename, parameters);
 }
 

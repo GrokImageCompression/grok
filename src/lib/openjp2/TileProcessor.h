@@ -314,7 +314,7 @@ struct tcd_tile_t {
 
 bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 		bool irreversible, uint32_t cblkw, uint32_t cblkh,
-		grk_image_t *output_image, uint32_t dx, uint32_t dy);
+		grk_image *output_image, uint32_t dx, uint32_t dy);
 
 /**
  Tile coder/decoder
@@ -345,7 +345,7 @@ struct TileProcessor {
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init(grk_image_t *p_image, cp_t *p_cp);
+	bool init(grk_image *p_image, cp_t *p_cp);
 
 	/**
 	 * Allocates memory for decoding a specific tile.
@@ -356,7 +356,7 @@ struct TileProcessor {
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	bool init_decode_tile(grk_image_t *output_image,
+	bool init_decode_tile(grk_image *output_image,
 			uint32_t tile_no);
 
 	/**
@@ -375,7 +375,7 @@ struct TileProcessor {
 	 */
 	bool encode_tile(uint32_t tile_no, GrokStream *p_stream,
 			uint64_t *p_data_written, uint64_t len,
-			grk_codestream_info_t *p_cstr_info);
+			 grk_codestream_info  *p_cstr_info);
 
 	/**
 	 Decode a tile from a buffer into a raw image
@@ -426,7 +426,7 @@ struct TileProcessor {
 	/** info on image tile */
 	tcd_tile_t *tile;
 	/** image header */
-	grk_image_t *image;
+	grk_image *image;
 	grok_plugin_tile_t *current_plugin_tile;
 
 private:
@@ -443,7 +443,7 @@ private:
 	 * Initializes tile coding/decoding
 	 */
 	 inline bool init_tile(uint32_t tile_no,
-			grk_image_t *output_image, bool isEncoder, float fraction,
+			grk_image *output_image, bool isEncoder, float fraction,
 			size_t sizeof_block);
 
 	/**
@@ -482,10 +482,10 @@ private:
 
 	 bool t2_encode(GrokStream *p_stream,
 			uint64_t *p_data_written, uint64_t max_dest_size,
-			grk_codestream_info_t *p_cstr_info);
+			 grk_codestream_info  *p_cstr_info);
 
 	 bool rate_allocate_encode(uint64_t max_dest_size,
-			grk_codestream_info_t *p_cstr_info);
+			 grk_codestream_info  *p_cstr_info);
 
 	 bool layer_needs_rate_control(uint32_t layno);
 
