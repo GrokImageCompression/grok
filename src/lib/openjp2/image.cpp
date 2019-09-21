@@ -114,43 +114,6 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 	}
 }
 
-grk_image *  GRK_CALLCONV grk_imageile_create(uint32_t numcmpts,
-		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc) {
-	uint32_t compno;
-	grk_image *image = nullptr;
-
-	image = (grk_image * ) grk::grok_calloc(1, sizeof(grk_image));
-	if (image) {
-
-		image->color_space = clrspc;
-		image->numcomps = numcmpts;
-
-		/* allocate memory for the per-component information */
-		image->comps = ( grk_image_comp  * ) grk::grok_calloc(image->numcomps,
-				sizeof( grk_image_comp) );
-		if (!image->comps) {
-			grk_image_destroy(image);
-			return nullptr;
-		}
-
-		/* create the individual image components */
-		for (compno = 0; compno < numcmpts; compno++) {
-			 grk_image_comp  *comp = &image->comps[compno];
-			comp->dx = cmptparms[compno].dx;
-			comp->dy = cmptparms[compno].dy;
-			comp->w = cmptparms[compno].w;
-			comp->h = cmptparms[compno].h;
-			comp->x0 = cmptparms[compno].x0;
-			comp->y0 = cmptparms[compno].y0;
-			comp->prec = cmptparms[compno].prec;
-			comp->sgnd = cmptparms[compno].sgnd;
-			comp->data = 0;
-		}
-	}
-
-	return image;
-}
-
 namespace grk {
 
 grk_image *  grk_image_create0(void) {

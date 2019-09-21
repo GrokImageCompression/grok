@@ -881,7 +881,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				wrong = true;
 			}
 			if (!wrong) {
-				raw_cparameters_t* raw_cp = &parameters->raw_cp;
+				grk_raw_cparameters* raw_cp = &parameters->raw_cp;
 				int compno;
 				int lastdx = 1;
 				int lastdy = 1;
@@ -890,7 +890,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				raw_cp->numcomps = ncomp;
 				raw_cp->prec = bitdepth;
 				raw_cp->sgnd = raw_signed;
-				raw_cp->comps = (raw_comp_cparameters_t*)malloc(((uint32_t)(ncomp)) * sizeof(raw_comp_cparameters_t));
+				raw_cp->comps = (grk_raw_comp_cparameters*)malloc(((uint32_t)(ncomp)) * sizeof(grk_raw_comp_cparameters));
 				if (raw_cp->comps == nullptr) {
 					free(substr1);
 					return 1;

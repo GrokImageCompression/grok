@@ -347,17 +347,17 @@ typedef struct _grk_poc {
 
 /**@name RAW component encoding parameters */
 /*@{*/
-typedef struct raw_comp_cparameters {
+typedef struct _grk_raw_comp_cparameters {
 	/** subsampling in X direction */
 	uint32_t dx;
 	/** subsampling in Y direction */
 	uint32_t dy;
 	/*@}*/
-} raw_comp_cparameters_t;
+} grk_raw_comp_cparameters;
 
 /**@name RAW image encoding parameters */
 /*@{*/
-typedef struct raw_cparameters {
+typedef struct _grk_raw_cparameters {
 	/** width of the raw image */
 	uint32_t width;
 	/** height of the raw image */
@@ -369,9 +369,9 @@ typedef struct raw_cparameters {
 	/** signed/unsigned raw image */
 	bool sgnd;
 	/** raw components parameters */
-	raw_comp_cparameters_t *comps;
+	grk_raw_comp_cparameters *comps;
 	/*@}*/
-} raw_cparameters_t;
+} grk_raw_cparameters;
 
 /**
  * Compression parameters
@@ -448,7 +448,7 @@ typedef struct _grk_cparameters {
 	uint32_t decod_format;
 	/** output file format*/
 	uint32_t cod_format;
-	raw_cparameters_t raw_cp;
+	grk_raw_cparameters raw_cp;
 	/**
 	 * Maximum size (in bytes) for each component.
 	 * If == 0, component size limitation is not considered
@@ -496,50 +496,50 @@ typedef struct _grk_cparameters {
 /**
  Channel description: channel index, type, association
  */
-typedef struct jp2_cdef_info {
+typedef struct _grk_jp2_cdef_info {
 	uint16_t cn;
 	uint16_t typ;
 	uint16_t asoc;
-} jp2_cdef_info_t;
+} grk_jp2_cdef_info;
 
 /**
  Channel descriptions and number of descriptions
  */
-typedef struct jp2_cdef {
-	jp2_cdef_info_t *info;
+typedef struct _grk_jp2_cdef {
+	grk_jp2_cdef_info *info;
 	uint16_t n;
-} jp2_cdef_t;
+} grk_jp2_cdef;
 
 /**
  Component mappings: channel index, mapping type, palette index
  */
-typedef struct jp2_cmap_comp {
+typedef struct _grk_jp2_cmap_comp {
 	uint16_t cmp;
 	uint8_t mtyp, pcol;
-} jp2_cmap_comp_t;
+} grk_jp2_cmap_comp;
 
 /**
  Palette data: table entries, palette columns
  */
-typedef struct jp2_pclr {
+typedef struct _grk_jp2_pclr {
 	uint32_t *entries;
 	uint8_t *channel_sign;
 	uint8_t *channel_size;
-	jp2_cmap_comp_t *cmap;
+	grk_jp2_cmap_comp *cmap;
 	uint16_t nr_entries;
 	uint8_t nr_channels;
-} jp2_pclr_t;
+} grk_jp2_pclr;
 
 /**
  Struct for ICC profile, palette, component mapping, channel description
  */
-typedef struct jp2_color {
+typedef struct _grk_jp2_color {
 	uint8_t *icc_profile_buf;
 	uint32_t icc_profile_len;
-	jp2_cdef_t *jp2_cdef;
-	jp2_pclr_t *jp2_pclr;
+	grk_jp2_cdef *jp2_cdef;
+	grk_jp2_pclr *jp2_pclr;
 	uint8_t jp2_has_colour_specification_box;
-} jp2_color_t;
+} grk_jp2_color;
 
 typedef struct _grk_header_info {
 	/** initial code block width, default to 64 */
@@ -594,7 +594,7 @@ typedef struct _grk_header_info {
 	// icc profile information etc.
 	// note: the contents of this struct will remain valid
 	// until the codec is destroyed
-	jp2_color_t color;
+	grk_jp2_color color;
 	// note: xml_data will remain valid
 	// until codec is destroyed
 	uint8_t *xml_data;
@@ -1168,18 +1168,6 @@ GRK_API grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
  * @param image         image to be destroyed
  */
 GRK_API void GRK_CALLCONV grk_image_destroy(grk_image *image);
-
-/**
- * Creates an image without allocating memory for the image (used in the new version of the library).
- *
- * @param	numcmpts    the number of components
- * @param	cmptparms   the components parameters
- * @param	clrspc      the image color space
- *
- * @return	a new image structure if successful, nullptr otherwise.
- */
-GRK_API grk_image *  GRK_CALLCONV grk_imageile_create(uint32_t numcmpts,
-		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc);
 
 GRK_API void GRK_CALLCONV grk_image_all_components_data_free(
 		grk_image *image);
