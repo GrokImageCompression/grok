@@ -107,10 +107,10 @@ typedef struct img_folder {
 static int get_num_images(char *imgdirpath);
 static int load_images(dircnt_t *dirptr, char *imgdirpath);
 static int get_file_format(const char *filename);
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, grk_dparameters_t *parameters);
+static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters);
 static int infile_format(const char *fname);
 
-static int parse_cmdline_decoder(int argc, char **argv, grk_dparameters_t *parameters,img_fol_t *img_fol);
+static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol);
 
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void)
@@ -211,7 +211,7 @@ static int get_file_format(const char *filename)
 }
 
 /* -------------------------------------------------------------------------- */
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol, grk_dparameters_t *parameters)
+static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters)
 {
     char image_filename[GRK_PATH_LEN], infilename[3*GRK_PATH_LEN],outfilename[3*GRK_PATH_LEN],temp_ofname[GRK_PATH_LEN];
     char *temp_p, temp1[GRK_PATH_LEN]="";
@@ -288,7 +288,7 @@ static int infile_format(const char *fname)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parse_cmdline_decoder(int argc, char **argv, grk_dparameters_t *parameters,img_fol_t *img_fol)
+static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol)
 {
     int totlen, c;
     grok_option_t long_option[]= {
@@ -432,12 +432,12 @@ int main(int argc, char *argv[])
 {
     FILE *fout = nullptr;
 
-    grk_dparameters_t parameters;			/* Decompression parameters */
-    grk_image_t* image = nullptr;					/* Image structure */
-    grk_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
-    grk_stream_t *l_stream = nullptr;				/* Stream */
-    grk_codestream_info_v2_t* cstr_info = nullptr;
-    grk_codestream_index_t* cstr_index = nullptr;
+     grk_dparameters  parameters;			/* Decompression parameters */
+    grk_image *  image = nullptr;					/* Image structure */
+     grk_codec  *  l_codec = nullptr;				/* Handle to a decompressor */
+     grk_stream  *l_stream = nullptr;				/* Stream */
+     grk_codestream_info_v2  *  cstr_info = nullptr;
+     grk_codestream_index  *  cstr_index = nullptr;
 
     int32_t num_images, imageno;
     img_fol_t img_fol;

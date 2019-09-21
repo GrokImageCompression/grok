@@ -21,7 +21,7 @@ namespace grk {
 
 bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 		bool irreversible, uint32_t cblkw, uint32_t cblkh,
-		grk_image_t *output_image, uint32_t dx, uint32_t dy) {
+		grk_image *output_image, uint32_t dx, uint32_t dy) {
 	int32_t resno = 0;
 	rect_t component_output_rect;
 	tile_buf_component_t *comp = nullptr;

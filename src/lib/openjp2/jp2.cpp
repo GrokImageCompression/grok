@@ -68,7 +68,7 @@ namespace grk {
 /** @name Local static functions */
 /*@{*/
 
-/*static void jp2_write_url(grk_cio_t *cio, char *Idx_file);*/
+/*static void jp2_write_url( grk_cio  *cio, char *Idx_file);*/
 
 /**
  * Reads a IHDR box - Image Header box
@@ -190,7 +190,7 @@ static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size);
 
-static void jp2_apply_cdef(grk_image_t *image, jp2_color_t *color);
+static void jp2_apply_cdef(grk_image *image, jp2_color_t *color);
 
 /**
  * Writes the Channel Definition box.
@@ -304,7 +304,7 @@ static bool jp2_write_jp(jp2_t *jp2, GrokStream *cio);
  @param color Collector for profile, cdef and pclr data
  @param image
  */
-static bool jp2_apply_pclr(grk_image_t *image, jp2_color_t *color);
+static bool jp2_apply_pclr(grk_image *image, jp2_color_t *color);
 
 static void jp2_free_pclr(jp2_color_t *color);
 
@@ -511,7 +511,7 @@ static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 }
 
 #if 0
-static void jp2_write_url(grk_cio_t *cio, char *Idx_file)
+static void jp2_write_url( grk_cio  *cio, char *Idx_file)
 {
     uint32_t i;
     jp2_box_t box;
@@ -1163,7 +1163,7 @@ static void jp2_free_pclr(jp2_color_t *color) {
 	}
 }
 
-static bool jp2_check_color(grk_image_t *image, jp2_color_t *color) {
+static bool jp2_check_color(grk_image *image, jp2_color_t *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
@@ -1304,8 +1304,8 @@ static bool jp2_check_color(grk_image_t *image, jp2_color_t *color) {
 	return true;
 }
 
-static bool jp2_apply_pclr(grk_image_t *image, jp2_color_t *color) {
-	grk_image_comp_t *old_comps, *new_comps;
+static bool jp2_apply_pclr(grk_image *image, jp2_color_t *color) {
+	 grk_image_comp  *old_comps, *new_comps;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
 	jp2_cmap_comp_t *cmap;
@@ -1332,8 +1332,8 @@ static bool jp2_apply_pclr(grk_image_t *image, jp2_color_t *color) {
 	}
 
 	old_comps = image->comps;
-	new_comps = (grk_image_comp_t*) grok_malloc(
-			nr_channels * sizeof(grk_image_comp_t));
+	new_comps = ( grk_image_comp  * ) grok_malloc(
+			nr_channels * sizeof( grk_image_comp) );
 	if (!new_comps) {
 		GROK_ERROR(
 				"Memory allocation failure in grk_jp2_apply_pclr().");
@@ -1574,7 +1574,7 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	return true;
 }
 
-static void jp2_apply_cdef(grk_image_t *image, jp2_color_t *color) {
+static void jp2_apply_cdef(grk_image *image, jp2_color_t *color) {
 	jp2_cdef_info_t *info;
 	uint16_t i, n, cn, asoc, acn;
 
@@ -1607,13 +1607,13 @@ static void jp2_apply_cdef(grk_image_t *image, jp2_color_t *color) {
 
 		/* Swap only if color channel */
 		if ((cn != acn) && (info[i].typ == 0)) {
-			grk_image_comp_t saved;
+			 grk_image_comp  saved;
 			uint16_t j;
 
-			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp_t));
+			memcpy(&saved, &image->comps[cn], sizeof( grk_image_comp) );
 			memcpy(&image->comps[cn], &image->comps[acn],
-					sizeof(grk_image_comp_t));
-			memcpy(&image->comps[acn], &saved, sizeof(grk_image_comp_t));
+					sizeof( grk_image_comp) );
+			memcpy(&image->comps[acn], &saved, sizeof( grk_image_comp) );
 
 			/* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
 			for (j = (uint16_t) (i + 1U); j < n; ++j) {
@@ -1849,7 +1849,7 @@ static bool jp2_read_colr(jp2_t *jp2, uint8_t *p_colr_header_data,
 }
 
 bool jp2_decode(jp2_t *jp2, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		grk_image_t *p_image) {
+		grk_image *p_image) {
 	if (!p_image)
 		return false;
 
@@ -2169,7 +2169,7 @@ static bool jp2_write_jp(jp2_t *jp2, GrokStream *cio) {
 /* JP2 decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void jp2_setup_decoder(void *jp2_void, grk_dparameters_t *parameters) {
+void jp2_setup_decoder(void *jp2_void,  grk_dparameters  *parameters) {
 	jp2_t *jp2 = (jp2_t*) jp2_void;
 	/* setup the J2K codec */
 	j2k_setup_decoder(jp2->j2k, parameters);
@@ -2183,8 +2183,8 @@ void jp2_setup_decoder(void *jp2_void, grk_dparameters_t *parameters) {
 /* JP2 encoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-bool jp2_setup_encoder(jp2_t *jp2, grk_cparameters_t *parameters,
-		grk_image_t *image) {
+bool jp2_setup_encoder(jp2_t *jp2,  grk_cparameters  *parameters,
+		grk_image *image) {
 	uint32_t i;
 	uint32_t depth_0;
 	uint32_t sign;
@@ -2704,7 +2704,7 @@ static bool jp2_exec(jp2_t *jp2, std::vector<jp2_procedure> *procs,
 	return l_result;
 }
 
-bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, grk_image_t *p_image) {
+bool jp2_start_compress(jp2_t *jp2, GrokStream *stream, grk_image *p_image) {
 	if (!p_image)
 		return false;
 	assert(jp2 != nullptr);
@@ -3033,7 +3033,7 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 }
 
 bool jp2_read_header(GrokStream *p_stream, jp2_t *jp2,
-		grk_header_info_t *header_info, grk_image_t **p_image) {
+		 grk_header_info  *header_info, grk_image **p_image) {
 
 	assert(jp2 != nullptr);
 	assert(p_stream != nullptr);
@@ -3217,13 +3217,13 @@ void jp2_destroy(jp2_t *jp2) {
 	}
 }
 
-bool jp2_set_decode_area(jp2_t *p_jp2, grk_image_t *p_image, uint32_t start_x,
+bool jp2_set_decode_area(jp2_t *p_jp2, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 	return j2k_set_decode_area(p_jp2->j2k, p_image, start_x, start_y,
 			end_x, end_y);
 }
 
-bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, grk_image_t *p_image, uint32_t tile_index) {
+bool jp2_get_tile(jp2_t *p_jp2, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index) {
 	if (!p_image)
 		return false;
 
@@ -3320,11 +3320,11 @@ void jp2_dump(jp2_t *p_jp2, int32_t flag, FILE *out_stream) {
 	j2k_dump(p_jp2->j2k, flag, out_stream);
 }
 
-grk_codestream_index_t* jp2_get_cstr_index(jp2_t *p_jp2) {
+ grk_codestream_index  *  jp2_get_cstr_index(jp2_t *p_jp2) {
 	return j2k_get_cstr_index(p_jp2->j2k);
 }
 
-grk_codestream_info_v2_t* jp2_get_cstr_info(jp2_t *p_jp2) {
+ grk_codestream_info_v2  *  jp2_get_cstr_info(jp2_t *p_jp2) {
 	return j2k_get_cstr_info(p_jp2->j2k);
 }
 

@@ -179,10 +179,10 @@ static void info_callback(const char *msg, void *client_data)
 
 int main (int argc, char *argv[])
 {
-    grk_dparameters_t l_param;
-    grk_codec_t * l_codec;
-    grk_image_t * l_image;
-    grk_stream_t * l_stream;
+     grk_dparameters  l_param;
+     grk_codec  * l_codec;
+    grk_image * l_image;
+     grk_stream  * l_stream;
     uint64_t l_data_size=0;
     uint64_t l_max_data_size = 1000;
     uint32_t l_tile_index;

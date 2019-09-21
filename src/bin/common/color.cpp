@@ -72,18 +72,18 @@
 
 //#define DEBUG_PROFILE
 
-static grk_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
+static grk_image *   image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uint32_t prec)
 {
 	if (!numcmpts)
 		return nullptr;
 
-    grk_image_cmptparm_t* cmptparms = (grk_image_cmptparm_t*)calloc(numcmpts, sizeof(grk_image_cmptparm_t));
+     grk_image_cmptparm  *  cmptparms = ( grk_image_cmptparm  * )calloc(numcmpts, sizeof( grk_image_cmptparm) );
 	if (!cmptparms)
 		return nullptr;
-    grk_image_t* img = nullptr;
+    grk_image *  img = nullptr;
     uint32_t compno=0U;
     for (compno = 0U; compno < numcmpts; ++compno) {
-        memset(cmptparms + compno, 0, sizeof(grk_image_cmptparm_t));
+        memset(cmptparms + compno, 0, sizeof( grk_image_cmptparm) );
         cmptparms[compno].dx = 1;
         cmptparms[compno].dy = 1;
         cmptparms[compno].w = w;
@@ -93,14 +93,14 @@ static grk_image_t*  image_create(uint32_t numcmpts, uint32_t w, uint32_t h, uin
         cmptparms[compno].prec = prec;
         cmptparms[compno].sgnd = 0U;
     }
-    img = grk_image_create(numcmpts, (grk_image_cmptparm_t *)cmptparms, GRK_CLRSPC_SRGB);
+    img = grk_image_create(numcmpts, ( grk_image_cmptparm  *)cmptparms, GRK_CLRSPC_SRGB);
     free(cmptparms);
     return img;
 
 }
 
 
-static bool all_components_equal_subsampling(grk_image_t *image) {
+static bool all_components_equal_subsampling(grk_image *image) {
 	if (image->numcomps == 0)
 		return true;
 
@@ -156,13 +156,13 @@ static void sycc_to_rgb(int offset, int upb, int y, int cb, int cr,
     *out_b = b;
 }
 
-static void sycc444_to_rgb(grk_image_t *img)
+static void sycc444_to_rgb(grk_image *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b;
 	const int *y, *cb, *cr;
 	size_t maxw, maxh, max, i;
 	int offset, upb;
-	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image *  new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -205,7 +205,7 @@ static void sycc444_to_rgb(grk_image_t *img)
 }/* sycc444_to_rgb() */
 
 
-static void sycc422_to_rgb(grk_image_t *img)
+static void sycc422_to_rgb(grk_image *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b;
 	const int *y, *cb, *cr;
@@ -213,7 +213,7 @@ static void sycc422_to_rgb(grk_image_t *img)
 	int offset, upb;
 	size_t i;
 
-	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image *  new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -283,14 +283,14 @@ static void sycc422_to_rgb(grk_image_t *img)
 }/* sycc422_to_rgb() */
 
 
-static void sycc420_to_rgb(grk_image_t *img)
+static void sycc420_to_rgb(grk_image *img)
 {
 	int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
 	const int *y, *cb, *cr, *ny;
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
 	int offset, upb;
 	size_t i;
-	grk_image_t* new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
+	grk_image *  new_image = image_create(3, img->comps[0].w, img->comps[0].h, img->comps[0].prec);
 	if (!new_image)
 		return;
 
@@ -405,7 +405,7 @@ static void sycc420_to_rgb(grk_image_t *img)
 
 }/* sycc420_to_rgb() */
 
-void color_sycc_to_rgb(grk_image_t *img)
+void color_sycc_to_rgb(grk_image *img)
 {
     if(img->numcomps < 3) {
         spdlog::warn("color_sycc_to_rgb: number of components {} is less than 3."
@@ -449,7 +449,7 @@ void color_sycc_to_rgb(grk_image_t *img)
 #if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_icc_profile(grk_image_t *image, bool forceRGB, bool verbose)
+void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
 {
 	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
@@ -460,7 +460,7 @@ void color_apply_icc_profile(grk_image_t *image, bool forceRGB, bool verbose)
     cmsUInt32Number in_type, out_type, nr_samples;
     int prec, i, max, max_w, max_h;
     GRK_COLOR_SPACE oldspace;
-    grk_image_t* new_image = nullptr;
+    grk_image *  new_image = nullptr;
 	(void)verbose;
 	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
 		return;
@@ -666,7 +666,7 @@ void color_apply_icc_profile(grk_image_t *image, bool forceRGB, bool verbose)
 
         max = max_w * max_h;
         nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
-		grk_image_comp_t *comps = (grk_image_comp_t*)realloc(image->comps, (image->numcomps + 2) * sizeof(grk_image_comp_t));
+		 grk_image_comp  *comps = ( grk_image_comp  * )realloc(image->comps, (image->numcomps + 2) * sizeof( grk_image_comp) );
 		if (!comps)
 			goto cleanup;
 		image->comps = comps;
@@ -740,7 +740,7 @@ cleanup:
 }/* color_apply_icc_profile() */
 
 // transform LAB colour space to sRGB @ 16 bit precision
-void color_cielab_to_rgb(grk_image_t *image,bool verbose){
+void color_cielab_to_rgb(grk_image *image,bool verbose){
     uint32_t *row;
     int enumcs, numcomps;
     numcomps = (int)image->numcomps;
@@ -773,7 +773,7 @@ void color_cielab_to_rgb(grk_image_t *image,bool verbose){
     double minL, maxL, mina, maxa, minb, maxb;
     unsigned int i, max;
     cmsUInt16Number RGB[3];
-    grk_image_t* new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
+    grk_image *  new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
 	if (!new_image)
 		return;
     prec_L = (double)image->comps[0].prec;
@@ -902,7 +902,7 @@ void color_cielab_to_rgb(grk_image_t *image,bool verbose){
 #endif /* GROK_HAVE_LIBLCMS */
 
 
-int color_cmyk_to_rgb(grk_image_t *image)
+int color_cmyk_to_rgb(grk_image *image)
 {
     float C, M, Y, K;
     float sC, sM, sY, sK;
@@ -957,7 +957,7 @@ int color_cmyk_to_rgb(grk_image_t *image)
 
 }/* color_cmyk_to_rgb() */
 
-int color_esycc_to_rgb(grk_image_t *image)
+int color_esycc_to_rgb(grk_image *image)
 {
     int y, cb, cr, sign1, sign2, val;
 	uint32_t w, h;

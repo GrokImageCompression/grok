@@ -42,10 +42,10 @@ struct buf_info_t {
 	bool ownsBuffer;
 };
 
-grk_stream_t* create_buffer_stream(uint8_t *buf, size_t len, bool ownsBuffer,
+ grk_stream  *  create_buffer_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool p_is_read_stream);
-size_t get_buffer_stream_offset(grk_stream_t *stream);
+size_t get_buffer_stream_offset( grk_stream  *stream);
 
-grk_stream_t* create_mapped_file_read_stream(const char *fname);
+ grk_stream  *  create_mapped_file_read_stream(const char *fname);
 
 }

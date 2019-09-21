@@ -122,14 +122,14 @@ static unsigned int readuint(FILE *f, int bigendian) {
 				+ (unsigned int) (c2 << 8) + c1;
 }
 
-static grk_image_t* pgxtoimage(const char *filename,
-		grk_cparameters_t *parameters) {
+static grk_image *  pgxtoimage(const char *filename,
+		 grk_cparameters  *parameters) {
 	FILE *f = nullptr;
 	uint32_t w, h, prec, numcomps, max;
 	uint64_t i, area;
 	GRK_COLOR_SPACE color_space;
-	grk_image_cmptparm_t cmptparm; /* maximum of 1 component  */
-	grk_image_t *image = nullptr;
+	 grk_image_cmptparm  cmptparm; /* maximum of 1 component  */
+	grk_image *image = nullptr;
 	int adjustS, ushift, dshift, force8;
 	int c;
 	char endian1, endian2, sign;
@@ -137,12 +137,12 @@ static grk_image_t* pgxtoimage(const char *filename,
 
 	char temp[32];
 	uint32_t bigendian;
-	grk_image_comp_t *comp = nullptr;
+	 grk_image_comp  *comp = nullptr;
 
 	numcomps = 1;
 	color_space = GRK_CLRSPC_GRAY;
 
-	memset(&cmptparm, 0, sizeof(grk_image_cmptparm_t));
+	memset(&cmptparm, 0, sizeof( grk_image_cmptparm) );
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
@@ -272,13 +272,13 @@ static grk_image_t* pgxtoimage(const char *filename,
 	return image;
 }
 
-static int imagetopgx(grk_image_t *image, const char *outfile) {
+static int imagetopgx(grk_image *image, const char *outfile) {
 	uint32_t w, h;
 	int j, fails = 1;
 	unsigned int compno;
 	FILE *fdest = nullptr;
 	for (compno = 0; compno < image->numcomps; compno++) {
-		grk_image_comp_t *comp = &image->comps[compno];
+		 grk_image_comp  *comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
@@ -351,13 +351,13 @@ static int imagetopgx(grk_image_t *image, const char *outfile) {
 	return fails;
 }
 
-bool PGXFormat::encode(grk_image_t *image, const char *filename,
+bool PGXFormat::encode(grk_image *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetopgx(image, filename) ? false : true;
 }
-grk_image_t* PGXFormat::decode(const char *filename,
-		grk_cparameters_t *parameters) {
+grk_image *  PGXFormat::decode(const char *filename,
+		 grk_cparameters  *parameters) {
 	return pgxtoimage(filename, parameters);
 }

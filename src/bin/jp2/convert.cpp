@@ -81,7 +81,7 @@ bool grok_set_binary_mode(FILE* file) {
 }
 
 /* Component precision scaling */
-void clip_component(grk_image_comp_t* component, uint32_t precision)
+void clip_component( grk_image_comp  *  component, uint32_t precision)
 {
     size_t i;
     size_t len;
@@ -115,7 +115,7 @@ void clip_component(grk_image_comp_t* component, uint32_t precision)
 }
 
 /* Component precision scaling */
-static void scale_component_up(grk_image_comp_t* component, uint32_t precision)
+static void scale_component_up( grk_image_comp  *  component, uint32_t precision)
 {
     size_t i, len;
 
@@ -137,7 +137,7 @@ static void scale_component_up(grk_image_comp_t* component, uint32_t precision)
     }
     component->prec = precision;
 }
-void scale_component(grk_image_comp_t* component, uint32_t precision)
+void scale_component( grk_image_comp  *  component, uint32_t precision)
 {
     int shift;
     size_t i, len;
@@ -550,7 +550,7 @@ const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9] = {
     convert_32s8u_C1R
 };
 
-bool sanityCheckOnImage(grk_image_t* image, uint32_t numcomps) {
+bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps) {
 	if (numcomps == 0)
 		return false;
 
@@ -591,7 +591,7 @@ bool sanityCheckOnImage(grk_image_t* image, uint32_t numcomps) {
 
 }
 
-bool isSubsampled(grk_image_t* image) {
+bool isSubsampled(grk_image *  image) {
 	if (!image)
 		return false;
 	for (uint32_t i = 0; i < image->numcomps; ++i) {

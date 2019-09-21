@@ -119,14 +119,14 @@ struct pngToImageInfo {
 	FILE *reader;
 	uint8_t** rows;
 	int32_t* row32s;
-	grk_image_t *image;
+	grk_image *image;
 	bool readFromStdin;
 	GRK_COLOR_SPACE colorSpace;
 };
 
 
-static grk_image_t *pngtoimage(const char *read_idf, 
-								grk_cparameters_t * params)
+static grk_image *pngtoimage(const char *read_idf, 
+								 grk_cparameters  * params)
 {
 	pngToImageInfo local_info;
 	png_infop    info = nullptr;
@@ -135,7 +135,7 @@ static grk_image_t *pngtoimage(const char *read_idf,
 	png_uint_32  width = 0U, height = 0U;
 	int color_type;
 	local_info.readFromStdin = grk::useStdio(read_idf);
-	grk_image_cmptparm_t cmptparm[4];
+	 grk_image_cmptparm  cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
 	convert_XXx32s_C1R cvtXXTo32s = nullptr;
@@ -445,12 +445,12 @@ struct imageToPngInfo {
 	FILE * volatile writer;
 	png_bytep volatile row_buf;
 	int32_t* volatile buffer32s;
-	grk_image_t *image;
+	grk_image *image;
 	bool writeToStdout;
 	volatile int fails;
 };
 
-static int imagetopng(grk_image_t * image, 
+static int imagetopng(grk_image * image, 
 					const char *write_idf,
 					int32_t compressionLevel,
 					bool verbose)
@@ -743,10 +743,10 @@ beach:
 }/* imagetopng() */
 
 
-bool PNGFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool PNGFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
 	(void)verbose;
 	return imagetopng(image, filename, compressionParam,verbose) ? false : true;
 }
-grk_image_t*  PNGFormat::decode(const char* filename, grk_cparameters_t *parameters) {
+grk_image *   PNGFormat::decode(const char* filename,  grk_cparameters  *parameters) {
 	return pngtoimage(filename, parameters);
 }

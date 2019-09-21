@@ -322,16 +322,16 @@ static int has_prec(int val) {
 	return 16;
 }
 
-static grk_image_t* pnmtoimage(const char *filename,
-		grk_cparameters_t *parameters) {
+static grk_image *  pnmtoimage(const char *filename,
+		 grk_cparameters  *parameters) {
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
 
 	FILE *fp = nullptr;
 	uint32_t compno, numcomps, w, h, prec, format;
 	GRK_COLOR_SPACE color_space;
-	grk_image_cmptparm_t cmptparm[4]; /* RGBA: max. 4 components */
-	grk_image_t *image = nullptr;
+	 grk_image_cmptparm  cmptparm[4]; /* RGBA: max. 4 components */
+	grk_image *image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
 
@@ -385,7 +385,7 @@ static grk_image_t* pnmtoimage(const char *filename,
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
-	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof(grk_image_cmptparm_t));
+	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof( grk_image_cmptparm) );
 
 	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
@@ -494,7 +494,7 @@ static grk_image_t* pnmtoimage(const char *filename,
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(grk_image_t *image, const char *outfile, bool force_split,
+static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		bool verbose) {
 	int *red = nullptr;
 	int *green = nullptr;
@@ -856,14 +856,14 @@ static int imagetopnm(grk_image_t *image, const char *outfile, bool force_split,
 	return rc;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(grk_image_t *image, const char *filename,
+bool PNMFormat::encode(grk_image *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
 	return imagetopnm(image, filename, forceSplit, verbose) ? false : true;
 }
-grk_image_t* PNMFormat::decode(const char *filename,
-		grk_cparameters_t *parameters) {
+grk_image *  PNMFormat::decode(const char *filename,
+		 grk_cparameters  *parameters) {
 	return pnmtoimage(filename, parameters);
 }
 

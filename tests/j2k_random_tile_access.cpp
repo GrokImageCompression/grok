@@ -167,11 +167,11 @@ static int infile_format(const char *fname)
 int main(int argc, char **argv)
 {
     uint32_t index;
-    grk_dparameters_t parameters;			/* decompression parameters */
-    grk_image_t* image = nullptr;
-    grk_stream_t *l_stream = nullptr;				/* Stream */
-    grk_codec_t* l_codec = nullptr;				/* Handle to a decompressor */
-    grk_codestream_info_v2_t* cstr_info = nullptr;
+     grk_dparameters  parameters;			/* decompression parameters */
+    grk_image *  image = nullptr;
+     grk_stream  *l_stream = nullptr;				/* Stream */
+     grk_codec  *  l_codec = nullptr;				/* Handle to a decompressor */
+     grk_codestream_info_v2  *  cstr_info = nullptr;
 
     /* Index of corner tiles */
     uint32_t tile_ul = 0;

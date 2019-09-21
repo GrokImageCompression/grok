@@ -94,7 +94,7 @@ static bool seek_from_buffer(uint64_t nb_bytes, buf_info_t *p_source_buffer) {
 	return true;
 }
 
-static void set_up_buffer_stream(grk_stream_t *l_stream, size_t len,
+static void set_up_buffer_stream( grk_stream  *l_stream, size_t len,
 		bool p_is_read_stream) {
 	grk_stream_set_user_data_length(l_stream, len);
 
@@ -110,7 +110,7 @@ static void set_up_buffer_stream(grk_stream_t *l_stream, size_t len,
 			(grk_stream_seek_fn) seek_from_buffer);
 }
 
-size_t get_buffer_stream_offset(grk_stream_t *stream) {
+size_t get_buffer_stream_offset( grk_stream  *stream) {
 	if (!stream)
 		return 0;
 	GrokStream *private_stream = (GrokStream*) stream;
@@ -120,19 +120,19 @@ size_t get_buffer_stream_offset(grk_stream_t *stream) {
 	return buf->off;
 }
 
-grk_stream_t* create_buffer_stream(uint8_t *buf, size_t len, bool ownsBuffer,
+ grk_stream  *  create_buffer_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool p_is_read_stream) {
 	if (!buf || !len) {
 		return nullptr;
 	}
 	GrokStream *l_stream = new GrokStream(buf, len, p_is_read_stream);
 	auto p_source_buffer = new buf_info_t(buf, 0, len, ownsBuffer);
-	grk_stream_set_user_data((grk_stream_t*) l_stream, p_source_buffer,
+	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
 			grok_free_buffer_info);
-	set_up_buffer_stream((grk_stream_t*) l_stream, p_source_buffer->len,
+	set_up_buffer_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
 			p_is_read_stream);
 
-	return (grk_stream_t*) l_stream;
+	return ( grk_stream  * ) l_stream;
 }
 
 int32_t get_file_open_mode(const char *mode) {
@@ -318,8 +318,8 @@ static void mem_map_free(void *user_data) {
 /*
  Currently, only read streams are supported for memory mapped files.
  */
-grk_stream_t* create_mapped_file_read_stream(const char *fname) {
-	grk_stream_t *l_stream = nullptr;
+ grk_stream  *  create_mapped_file_read_stream(const char *fname) {
+	 grk_stream  *l_stream = nullptr;
 	buf_info_t *buffer_info = nullptr;
 	void *mapped_view = nullptr;
 	bool p_is_read_stream = true;

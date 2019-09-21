@@ -49,18 +49,18 @@
 
 #include "grok_includes.h"
 
-grk_image_t* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
-		grk_image_cmptparm_t *cmptparms, GRK_COLOR_SPACE clrspc) {
+grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
+		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc) {
 	uint32_t compno;
-	grk_image_t *image = nullptr;
+	grk_image *image = nullptr;
 
-	image = (grk_image_t*) grk::grok_calloc(1, sizeof(grk_image_t));
+	image = (grk_image * ) grk::grok_calloc(1, sizeof(grk_image));
 	if (image) {
 		image->color_space = clrspc;
 		image->numcomps = numcmpts;
 		/* allocate memory for the per-component information */
-		image->comps = (grk_image_comp_t*) grk::grok_calloc(1,
-				image->numcomps * sizeof(grk_image_comp_t));
+		image->comps = ( grk_image_comp  * ) grk::grok_calloc(1,
+				image->numcomps * sizeof( grk_image_comp) );
 		if (!image->comps) {
 			grk::GROK_ERROR("Unable to allocate memory for image.");
 			grk_image_destroy(image);
@@ -68,7 +68,7 @@ grk_image_t* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 		}
 		/* create the individual image components */
 		for (compno = 0; compno < numcmpts; compno++) {
-			grk_image_comp_t *comp = &image->comps[compno];
+			 grk_image_comp  *comp = &image->comps[compno];
 			comp->dx = cmptparms[compno].dx;
 			comp->dy = cmptparms[compno].dy;
 			comp->w = cmptparms[compno].w;
@@ -88,7 +88,7 @@ grk_image_t* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 	return image;
 }
 
-void GRK_CALLCONV grk_image_destroy(grk_image_t *image) {
+void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 	if (image) {
 		if (image->comps) {
 			grk_image_all_components_data_free(image);
@@ -114,20 +114,20 @@ void GRK_CALLCONV grk_image_destroy(grk_image_t *image) {
 	}
 }
 
-grk_image_t* GRK_CALLCONV grk_image_tile_create(uint32_t numcmpts,
-		grk_image_cmptparm_t *cmptparms, GRK_COLOR_SPACE clrspc) {
+grk_image *  GRK_CALLCONV grk_imageile_create(uint32_t numcmpts,
+		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc) {
 	uint32_t compno;
-	grk_image_t *image = nullptr;
+	grk_image *image = nullptr;
 
-	image = (grk_image_t*) grk::grok_calloc(1, sizeof(grk_image_t));
+	image = (grk_image * ) grk::grok_calloc(1, sizeof(grk_image));
 	if (image) {
 
 		image->color_space = clrspc;
 		image->numcomps = numcmpts;
 
 		/* allocate memory for the per-component information */
-		image->comps = (grk_image_comp_t*) grk::grok_calloc(image->numcomps,
-				sizeof(grk_image_comp_t));
+		image->comps = ( grk_image_comp  * ) grk::grok_calloc(image->numcomps,
+				sizeof( grk_image_comp) );
 		if (!image->comps) {
 			grk_image_destroy(image);
 			return nullptr;
@@ -135,7 +135,7 @@ grk_image_t* GRK_CALLCONV grk_image_tile_create(uint32_t numcmpts,
 
 		/* create the individual image components */
 		for (compno = 0; compno < numcmpts; compno++) {
-			grk_image_comp_t *comp = &image->comps[compno];
+			 grk_image_comp  *comp = &image->comps[compno];
 			comp->dx = cmptparms[compno].dx;
 			comp->dy = cmptparms[compno].dy;
 			comp->w = cmptparms[compno].w;
@@ -153,8 +153,8 @@ grk_image_t* GRK_CALLCONV grk_image_tile_create(uint32_t numcmpts,
 
 namespace grk {
 
-grk_image_t* grk_image_create0(void) {
-	return (grk_image_t*) grok_calloc(1, sizeof(grk_image_t));
+grk_image *  grk_image_create0(void) {
+	return (grk_image * ) grok_calloc(1, sizeof(grk_image));
 }
 
 /**
@@ -163,12 +163,12 @@ grk_image_t* grk_image_create0(void) {
  * @param p_image_header	the image header to update.
  * @param p_cp				the coding parameters from which to update the image.
  */
-void grk_image_comp_header_update(grk_image_t *p_image_header,
+void grk_image_comp_header_update(grk_image *p_image_header,
 		const cp_t *p_cp) {
 	uint32_t i, l_width, l_height;
 	uint32_t l_x0, l_y0, l_x1, l_y1;
 	uint32_t l_comp_x0, l_comp_y0, l_comp_x1, l_comp_y1;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 
 	l_x0 = std::max<uint32_t>(p_cp->tx0, p_image_header->x0);
 	l_y0 = std::max<uint32_t>(p_cp->ty0, p_image_header->y0);
@@ -203,8 +203,8 @@ void grk_image_comp_header_update(grk_image_t *p_image_header,
  * @param	p_image_dest	the dest image
  *
  */
-void grk_copy_image_header(const grk_image_t *p_image_src,
-		grk_image_t *p_image_dest) {
+void grk_copy_image_header(const grk_image *p_image_src,
+		grk_image *p_image_dest) {
 	uint32_t compno;
 
 	assert(p_image_src != nullptr);
@@ -223,8 +223,8 @@ void grk_copy_image_header(const grk_image_t *p_image_src,
 
 	p_image_dest->numcomps = p_image_src->numcomps;
 
-	p_image_dest->comps = (grk_image_comp_t*) grok_malloc(
-			p_image_dest->numcomps * sizeof(grk_image_comp_t));
+	p_image_dest->comps = ( grk_image_comp  * ) grok_malloc(
+			p_image_dest->numcomps * sizeof( grk_image_comp) );
 	if (!p_image_dest->comps) {
 		p_image_dest->comps = nullptr;
 		p_image_dest->numcomps = 0;
@@ -233,7 +233,7 @@ void grk_copy_image_header(const grk_image_t *p_image_src,
 
 	for (compno = 0; compno < p_image_dest->numcomps; compno++) {
 		memcpy(&(p_image_dest->comps[compno]), &(p_image_src->comps[compno]),
-				sizeof(grk_image_comp_t));
+				sizeof( grk_image_comp) );
 		p_image_dest->comps[compno].data = nullptr;
 	}
 

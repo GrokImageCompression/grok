@@ -407,7 +407,7 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 static char get_next_file(std::string image_filename,
 							img_fol_t *img_fol,
 							img_fol_t *out_fol,
-							grk_cparameters_t *parameters){
+							 grk_cparameters  *parameters){
 
 	if (parameters->verbose)
 		spdlog::info("File \"{}\"\n", image_filename.c_str());
@@ -467,7 +467,7 @@ public:
 
 /* ------------------------------------------------------------------------------------ */
 
-static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, grk_cparameters_t *parameters) {
+static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile,  grk_cparameters  *parameters) {
 	bool isValid = true;
 	if (arg->isSet()) {
 		int fps = arg->getValue();
@@ -491,7 +491,7 @@ static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile, grk_cparamete
 }
 static int parse_cmdline_encoder_ex(int argc, 
 									char **argv,
-									grk_cparameters_t *parameters,
+									 grk_cparameters  *parameters,
 									img_fol_t *img_fol,
 									img_fol_t *out_fol,
 									char *indexfilename,
@@ -1030,7 +1030,7 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (pocArg.isSet()) {
 			uint32_t numpocs = 0;		/* number of progression order change (POC) default 0 */
-			grk_poc_t *POC = nullptr;	/* POC : used in case of Progression order change */
+			 grk_poc  *POC = nullptr;	/* POC : used in case of Progression order change */
 
 			char *s = (char*)pocArg.getValue().c_str();
 			POC = parameters->POC;
@@ -1394,7 +1394,7 @@ struct CompressInitParams {
 	}
 	bool initialized;
 
-	grk_cparameters_t parameters;	/* compression parameters */
+	 grk_cparameters  parameters;	/* compression parameters */
 
 	char indexfilename[GRK_PATH_LEN];	/* index file name */
 	char plugin_path[GRK_PATH_LEN];
@@ -1519,11 +1519,11 @@ cleanup:
 img_fol_t img_fol_plugin, out_fol_plugin;
 
 static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info) {
-	grk_cparameters_t* parameters = info->encoder_parameters;
+	 grk_cparameters  *  parameters = info->encoder_parameters;
 	bool bSuccess = true;
-	grk_stream_t *l_stream = nullptr;
-	grk_codec_t* l_codec = nullptr;
-	grk_image_t *image = info->image;
+	 grk_stream  *l_stream = nullptr;
+	 grk_codec  *  l_codec = nullptr;
+	grk_image *image = info->image;
 	char  outfile[3 * GRK_PATH_LEN];
 	char  temp_ofname[GRK_PATH_LEN];
 

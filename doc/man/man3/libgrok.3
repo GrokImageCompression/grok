@@ -57,61 +57,61 @@ a library for reading and writing JPEG2000 image files.
 .B YUV: imagetoyuv() \fR/\fB yuvtoimage() \fR(MJ2) 
 .P
 .SS READ
-.B grk_set_default_decoder_parameters(grk_dparameters_t *\fIparams\fB);
+.B grk_set_default_decoder_parameters( grk_dparameters  *\fIparams\fB);
 .P
-.B grk_dinfo_t *grk_create_decompress(GRK_CODEC_FORMAT \fIformat\fB);
+.B  grk_dinfo  *grk_create_decompress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
-.B grk_event_mgr_t *grk_set_event_mgr(grk_common_ptr \fIinfo\fB, grk_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
+.B  grk_event_mgr  *grk_set_event_mgr(grk_common_ptr \fIinfo\fB,  grk_event_mgr  *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void grk_setup_decoder(grk_dinfo_t *\fIdinfo\fB, grk_dparameters_t * \fIparams\fB);
+.B void grk_setup_decoder( grk_dinfo  *\fIdinfo\fB,  grk_dparameters  * \fIparams\fB);
 .P
-.B grk_cio_t *grk_cio_open(grk_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
+.B  grk_cio  *grk_cio_open(grk_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
 .P
-.B grk_image_t *grk_decode(grk_dinfo_t *\fIdinfo\fB, grk_cio_t *\fIcio\fB);
+.B grk_image *grk_decode( grk_dinfo  *\fIdinfo\fB,  grk_cio  *\fIcio\fB);
 .P
-.B void grk_cio_close(grk_cio_t *\fIcio\fB);
+.B void grk_cio_close( grk_cio  *\fIcio\fB);
 .P
-.B void grk_destroy_decompress(grk_dinfo_t *\fIdinfo\fB);
+.B void grk_destroy_decompress( grk_dinfo  *\fIdinfo\fB);
 .P
-.B void grk_image_destroy(grk_image_t *\fIimage\fB);
+.B void grk_image_destroy(grk_image *\fIimage\fB);
 .P
 .SS WRITE
-.B void grk_set_default_encoder_parameters(grk_cparameters_t *\fIparams\fB);
+.B void grk_set_default_encoder_parameters( grk_cparameters  *\fIparams\fB);
 .P
 /*
-.B grk_image_t *FORMATtoimage(const char *\fIfname\fB, grk_cparameters_t *\fIparams\fB);
+.B grk_image *FORMATtoimage(const char *\fIfname\fB,  grk_cparameters  *\fIparams\fB);
 .P
 */
 .br
-.B grk_cinfo_t* grk_create_compress(GRK_CODEC_FORMAT \fIformat\fB);
+.B  grk_cinfo  *  grk_create_compress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
-.B grk_event_mgr_t *grk_set_event_mgr(grk_common_ptr \fIinfo\fB, grk_event_mgr_t *\fIevent_mgr\fB, void *\fIcontext\fB);
+.B  grk_event_mgr  *grk_set_event_mgr(grk_common_ptr \fIinfo\fB,  grk_event_mgr  *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void grk_setup_encoder(grk_cinfo_t *\fIcinfo\fB, grk_cparameters_t *\fIparams\fB, grk_image_t *\fIimage\fB);
+.B void grk_setup_encoder( grk_cinfo  *\fIcinfo\fB,  grk_cparameters  *\fIparams\fB, grk_image *\fIimage\fB);
 .P
-.B grk_cio_t *grk_cio_open(grk_common_ptr \fIcinfo\fB, \fINULL\fB, \fI0\fB);
+.B  grk_cio  *grk_cio_open(grk_common_ptr \fIcinfo\fB, \fINULL\fB, \fI0\fB);
 .P
-.B  bool grk_encode(grk_cinfo_t *\fIcinfo\fB, grk_cio_t *\fIcio\fB, grk_image_t *\fIimage\fB, char *\fIindex\fB);
+.B  bool grk_encode( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB, char *\fIindex\fB);
 .P
-.B void grk_cio_close(grk_cio_t *\fIcio\fB);
+.B void grk_cio_close( grk_cio  *\fIcio\fB);
 .P
-.B void grk_destroy_compress(grk_cinfo_t *\fIcinfo\fB);
+.B void grk_destroy_compress( grk_cinfo  *\fIcinfo\fB);
 .P
-.B void grk_image_destroy(grk_image_t *\fIimage\fB);
+.B void grk_image_destroy(grk_image *\fIimage\fB);
 .P
 .SS GENERAL
 .P
-.B void grk_image_create(int \fInumcmpts\fB, grk_image_cmptparm_t *\fIcmptparms\fB, GRK_COLOR_SPACE \fIclrspc\fB);
+.B void grk_image_create(int \fInumcmpts\fB,  grk_image_cmptparm  *\fIcmptparms\fB, GRK_COLOR_SPACE \fIclrspc\fB);
 .P
-.B int cio_tell(grk_cio_t *\fIcio\fB);
+.B int cio_tell( grk_cio  *\fIcio\fB);
 .P
-.B void cio_seek(grk_cio_t *\fIcio\fB, int \fIpos\fB);
+.B void cio_seek( grk_cio  *\fIcio\fB, int \fIpos\fB);
 .P
-.B grk_image_t *grk_decode_with_info(grk_dinfo_t *\fIdinfo\fB, grk_cio_t *\fIcio\fB, grk_codestream_info_t *\fIcstr_info\fB);
+.B grk_image *grk_decode_with_info( grk_dinfo  *\fIdinfo\fB,  grk_cio  *\fIcio\fB,  grk_codestream_info  *\fIcstr_info\fB);
 .P
-.B bool grk_encode_with_info(grk_cinfo_t *\fIcinfo\fB, grk_cio_t *\fIcio\fB, grk_image_t *\fIimage\fB, grk_codestream_info_t *\fIcstr_info\fB);
+.B bool grk_encode_with_info( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB,  grk_codestream_info  *\fIcstr_info\fB);
 .P
-.B void grk_destroy_cstr_info(grk_codestream_info_t *\fIcstr_info\fB);
+.B void grk_destroy_cstr_info( grk_codestream_info  *\fIcstr_info\fB);
 .P
 .B const char *grk_version(\fIvoid\fB);
 .P
@@ -175,7 +175,7 @@ typedef struct grk_dparameters
     */
     \fBGRK_LIMIT_DECODING\fR cp_limit_decoding;
 .br
-} grk_dparameters_t;
+}  grk_dparameters; 
 
 .SH COMPRESSION PARAMETERS
 .P
@@ -209,7 +209,7 @@ typedef struct grk_cparameters
        PROG_UNKNOWN, LRCP(default), RLCP, RPCL, PCRL, CPRL */
     \fBGRK_PROG_ORDER\fR prog_order;
     /* progression order changes */
-    \fBgrk_poc_t\fR POC[32];
+    \fB grk_poc\ fR POC[32];
     /* number of progression order changes (POC), default: 0 */
     \fBint\fR numpocs;
     /* number of layers */
@@ -307,7 +307,7 @@ typedef struct grk_cparameters
     /* MCT (multiple component transform) */
     \fBchar\fR tcp_mct;
 .br
-} grk_cparameters_t;
+}  grk_cparameters; 
 
 
 '\".SH OPTIONS

@@ -85,11 +85,11 @@ static void info_callback(const char *msg, void *client_data)
 #define NUM_COMPS_MAX 4
 int main (int argc, char *argv[])
 {
-    grk_cparameters_t l_param;
-    grk_codec_t * l_codec=nullptr;
-    grk_image_t * l_image = nullptr;
-    grk_image_cmptparm_t l_params [NUM_COMPS_MAX];
-    grk_stream_t * l_stream = nullptr;
+     grk_cparameters  l_param;
+     grk_codec  * l_codec=nullptr;
+    grk_image * l_image = nullptr;
+     grk_image_cmptparm  l_params [NUM_COMPS_MAX];
+     grk_stream  * l_stream = nullptr;
     uint32_t l_nb_tiles=0;
     uint64_t l_data_size=0;
     size_t len=0;
@@ -107,7 +107,7 @@ int main (int argc, char *argv[])
     };
 #endif
 
-    grk_image_cmptparm_t * l_current_param_ptr=nullptr;
+     grk_image_cmptparm  * l_current_param_ptr=nullptr;
     uint32_t i;
     uint8_t *l_data=nullptr;
 
@@ -270,7 +270,7 @@ int main (int argc, char *argv[])
     grk_set_warning_handler(l_codec, warning_callback,nullptr);
     grk_set_error_handler(l_codec, error_callback,nullptr);
 
-    l_image = grk_image_tile_create(num_comps,l_params,GRK_CLRSPC_SRGB);
+    l_image = grk_imageile_create(num_comps,l_params,GRK_CLRSPC_SRGB);
     if (! l_image) {
 		rc = 1;
 		goto cleanup;

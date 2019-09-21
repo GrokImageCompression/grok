@@ -57,8 +57,8 @@ struct plugin_encode_user_callback_info_t {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
-	grk_cparameters_t *encoder_parameters;
-	grk_image_t *image;
+	 grk_cparameters  *encoder_parameters;
+	grk_image *image;
 	grok_plugin_tile_t *tile;
 	int32_t error_code;
 };
@@ -68,11 +68,11 @@ typedef void (*PLUGIN_ENCODE_USER_CALLBACK)(
 
 typedef bool (*PLUGIN_INIT)(grok_plugin_init_info_t initInfo);
 
-typedef int32_t (*PLUGIN_ENCODE)(grk_cparameters_t *encoding_parameters,
+typedef int32_t (*PLUGIN_ENCODE)( grk_cparameters  *encoding_parameters,
 		PLUGIN_ENCODE_USER_CALLBACK callback);
 
 typedef int32_t (*PLUGIN_BATCH_ENCODE)(const char *input_dir,
-		const char *output_dir, grk_cparameters_t *encoding_parameters,
+		const char *output_dir,  grk_cparameters  *encoding_parameters,
 		PLUGIN_ENCODE_USER_CALLBACK userCallback);
 
 typedef void (*PLUGIN_STOP_BATCH_ENCODE)(void);
@@ -105,11 +105,11 @@ struct PluginDecodeCallbackInfo {
 	int decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	int cod_format;
-	grk_stream_t *l_stream;
-	grk_codec_t *l_codec;
+	 grk_stream  *l_stream;
+	 grk_codec  *l_codec;
 	grk_decompress_parameters *decoder_parameters;
-	grk_header_info_t header_info;
-	grk_image_t *image;
+	 grk_header_info  header_info;
+	grk_image *image;
 	bool plugin_owns_image;
 	grok_plugin_tile_t *tile;
 	int32_t error_code;

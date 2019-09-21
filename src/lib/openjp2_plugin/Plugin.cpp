@@ -61,7 +61,7 @@ extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info_t initInfo) {
 // Encoder Interface Implementation
 ////////////////////////////////////
 
-extern "C"  PLUGIN_API int32_t plugin_encode(grk_cparameters_t* encode_parameters,
+extern "C"  PLUGIN_API int32_t plugin_encode( grk_cparameters  *  encode_parameters,
 											grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
 	grk::plugin_encode_user_callback_info_t dummy;
 	dummy.error_code = 0;
@@ -70,7 +70,7 @@ extern "C"  PLUGIN_API int32_t plugin_encode(grk_cparameters_t* encode_parameter
 
 extern "C"  PLUGIN_API int32_t plugin_batch_encode(const char* input_dir,
 													const char* output_dir,
-													grk_cparameters_t* encode_parameters,
+													 grk_cparameters  *  encode_parameters,
 													grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
 	return -1;
 }

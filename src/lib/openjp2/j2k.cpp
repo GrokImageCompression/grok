@@ -77,20 +77,33 @@ tcp_t::tcp_t() :
 				nullptr), mct_norms(nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(
 				nullptr), m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(
 				0), m_mcc_records(nullptr), m_nb_mcc_records(0), m_nb_max_mcc_records(
-				0), cod(0), ppt(0), POC(0)
+				0), cod(0), ppt(0), POC(0),
+				main_qcd_numStepSizes(0),
+				main_qcd_qntsty(0)
 
 {
 
 	for (auto i = 0; i < 100; ++i)
-		rates[i] = 0;
+		rates[i] = 0.0;
 
 	for (auto i = 0; i < 100; ++i)
 		distoratio[i] = 0;
 
 	for (auto i = 0; i < 32; ++i)
-		memset(pocs + i, 0, sizeof(grk_poc_t));
+		memset(pocs + i, 0, sizeof( grk_poc) );
 
 }
+
+struct  grk_dec_memory_marker_handler  {
+	/** marker value */
+	uint32_t id;
+	/** value of the state when the marker can appear */
+	uint32_t states;
+	/** action linked to the marker */
+	bool (*handler)(j2k_t *p_j2k, uint8_t *p_header_data,
+			uint16_t header_size);
+} ;
+
 
 /** @name Local static functions */
 /*@{*/
@@ -103,15 +116,15 @@ static bool j2k_fromTileHeader(j2k_t *p_j2k) {
  Transfer data from src to dest for each component, and null out src data.
  Assumption:  src and dest have the same number of components
  */
-static void j2k_transfer_image_data(grk_image_t *src, grk_image_t *dest) {
+static void j2k_transfer_image_data(grk_image *src, grk_image *dest) {
 	uint32_t compno;
 	if (!src || !dest || !src->comps || !dest->comps
 			|| src->numcomps != dest->numcomps)
 		return;
 
 	for (compno = 0; compno < src->numcomps; compno++) {
-		grk_image_comp_t *src_comp = src->comps + compno;
-		grk_image_comp_t *dest_comp = dest->comps + compno;
+		 grk_image_comp  *src_comp = src->comps + compno;
+		 grk_image_comp  *dest_comp = dest->comps + compno;
 		dest_comp->resno_decoded = src_comp->resno_decoded;
 		grk_image_single_component_data_free(dest_comp);
 		dest_comp->data = src_comp->data;
@@ -238,7 +251,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
  *
  * @return      the handler associated with the id.
  */
-static const struct grk_dec_memory_marker_handler* j2k_get_marker_handler(
+static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 		uint32_t id);
 
 /**
@@ -384,10 +397,10 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream);
 static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index);
 
 static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
-		grk_image_t *p_output_image, bool clearOutputOnInit);
+		grk_image *p_output_image, bool clearOutputOnInit);
 
-static void get_tile_dimensions(grk_image_t *l_image, tcd_tilecomp_t *l_tilec,
-		grk_image_comp_t *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
+static void get_tile_dimensions(grk_image *l_image, tcd_tilecomp_t *l_tilec,
+		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
 		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
 		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
@@ -906,7 +919,7 @@ static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream);
  @param pos          byte offset of marker segment
  @param len          length of marker segment
  */
-static bool j2k_add_mhmarker(grk_codestream_index_t *cstr_index, uint32_t type,
+static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
 		int64_t pos, uint32_t len);
 /**
  Add tile header marker information
@@ -917,7 +930,7 @@ static bool j2k_add_mhmarker(grk_codestream_index_t *cstr_index, uint32_t type,
  @param len          length of marker segment
  */
 static bool j2k_add_tlmarker(uint32_t tileno,
-		grk_codestream_index_t *cstr_index, uint32_t type, int64_t pos,
+		 grk_codestream_index  *cstr_index, uint32_t type, int64_t pos,
 		uint32_t len);
 
 /**
@@ -994,7 +1007,7 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
 static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
-static bool j2k_add_mct(tcp_t *p_tcp, grk_image_t *p_image, uint32_t index);
+static bool j2k_add_mct(tcp_t *p_tcp, grk_image *p_image, uint32_t index);
 
 static void j2k_read_int16_to_float(const void *p_src_data, void *p_dest_data,
 		uint32_t nb_elem);
@@ -1101,7 +1114,7 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @return      true if the pocs are valid.
  */
-static bool j2k_check_poc_val(const grk_poc_t *p_pocs, uint32_t nb_pocs,
+static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
 		uint32_t nb_resolutions, uint32_t numcomps, uint32_t numlayers);
 
 /**
@@ -1126,24 +1139,24 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno);
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image_t *image);
+static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image *image);
 
 static void j2k_dump_MH_info(j2k_t *p_j2k, FILE *out_stream);
 
 static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream);
 
-static grk_codestream_index_t* j2k_create_cstr_index(void);
+static  grk_codestream_index  *  j2k_create_cstr_index(void);
 
 static float j2k_get_tp_stride(tcp_t *p_tcp);
 
 static float j2k_get_default_stride(tcp_t *p_tcp);
 
-static uint32_t j2k_initialise_4K_poc(grk_poc_t *POC, uint32_t numres);
+static uint32_t j2k_initialise_4K_poc( grk_poc  *POC, uint32_t numres);
 
-static void j2k_set_cinema_parameters(grk_cparameters_t *parameters,
-		grk_image_t *image);
+static void j2k_set_cinema_parameters( grk_cparameters  *parameters,
+		grk_image *image);
 
-static bool j2k_is_cinema_compliant(grk_image_t *image, uint16_t rsiz);
+static bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz);
 
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
@@ -1192,17 +1205,7 @@ static const j2k_mct_function j2k_mct_write_functions_from_float[] = {
 		j2k_write_float_to_int16, j2k_write_float_to_int32,
 		j2k_write_float_to_float, j2k_write_float_to_float64 };
 
-typedef struct grk_dec_memory_marker_handler {
-	/** marker value */
-	uint32_t id;
-	/** value of the state when the marker can appear */
-	uint32_t states;
-	/** action linked to the marker */
-	bool (*handler)(j2k_t *p_j2k, uint8_t *p_header_data,
-			uint16_t header_size);
-} grk_dec_memory_marker_handler_t;
-
-static const grk_dec_memory_marker_handler_t j2k_memory_marker_handler_tab[] = {
+static const  grk_dec_memory_marker_handler  j2k_memory_marker_handler_tab[] = {
 		{ J2K_MS_SOT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPHSOT, j2k_read_sot },
 		{ J2K_MS_COD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_cod },
 		{ J2K_MS_COC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_coc },
@@ -1381,7 +1384,7 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
 	return po->str_prog;
 }
 
-static bool j2k_check_poc_val(const grk_poc_t *p_pocs, uint32_t nb_pocs,
+static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
 		uint32_t nb_resolutions, uint32_t num_comps, uint32_t num_layers) {
 	uint32_t *packet_array;
 	uint32_t index, resno, compno, layno;
@@ -1452,7 +1455,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno) {
 	int32_t i;
 	uint32_t tpnum = 1;
 	tcp_t *tcp = nullptr;
-	grk_poc_t *l_current_poc = nullptr;
+	 grk_poc  *l_current_poc = nullptr;
 
 	/*  preconditions */
 	assert(tileno < (cp->tw * cp->th));
@@ -1501,7 +1504,7 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno) {
 	return tpnum;
 }
 
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image_t *image) {
+static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image *image) {
 	uint32_t pino, tileno;
 	uint32_t l_nb_tiles;
 	tcp_t *tcp;
@@ -1519,7 +1522,7 @@ static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image_t *image)
 	/* INDEX >> */
 	/* TODO mergeV2: check this part which use cstr_info */
 	/*if (p_j2k->cstr_info) {
-	 grk_tile_info_t * l_info_tile_ptr = p_j2k->cstr_info->tile;
+	  grk_tile_info  * l_info_tile_ptr = p_j2k->cstr_info->tile;
 	 for (tileno = 0; tileno < l_nb_tiles; ++tileno) {
 	 uint32_t cur_totnum_tp = 0;
 	 pi_update_encoding_parameters(image,cp,tileno);
@@ -1530,11 +1533,11 @@ static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image_t *image)
 	 cur_totnum_tp += tp_num;
 	 }
 	 tcp->m_nb_tile_parts = cur_totnum_tp;
-	 l_info_tile_ptr->tp = (grk_tp_info_t *) grok_malloc(cur_totnum_tp * sizeof(grk_tp_info_t));
+	 l_info_tile_ptr->tp = ( grk_tp_info  *) grok_malloc(cur_totnum_tp * sizeof( grk_tp_info) );
 	 if (l_info_tile_ptr->tp == nullptr) {
 	 return false;
 	 }
-	 memset(l_info_tile_ptr->tp,0,cur_totnum_tp * sizeof(grk_tp_info_t));
+	 memset(l_info_tile_ptr->tp,0,cur_totnum_tp * sizeof( grk_tp_info) );
 	 l_info_tile_ptr->num_tps = cur_totnum_tp;
 	 ++l_info_tile_ptr;
 	 ++tcp;
@@ -1618,9 +1621,9 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_size_len;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	cp_t *cp = nullptr;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
@@ -1730,9 +1733,9 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_remaining_size;
 	uint32_t l_nb_tiles;
 	uint32_t l_tmp, l_tx1, l_ty1;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	cp_t *l_cp = nullptr;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 	tcp_t *l_current_tile_param = nullptr;
 
 	assert(p_j2k != nullptr);
@@ -1850,8 +1853,8 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* Allocate the resulting image components */
-	l_image->comps = (grk_image_comp_t*) grok_calloc(l_image->numcomps,
-			sizeof(grk_image_comp_t));
+	l_image->comps = ( grk_image_comp  * ) grok_calloc(l_image->numcomps,
+			sizeof( grk_image_comp) );
 	if (l_image->comps == nullptr) {
 		l_image->numcomps = 0;
 		GROK_ERROR(
@@ -2171,7 +2174,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_tmp;
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
@@ -2291,7 +2294,7 @@ static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
 	cp_t *l_cp = nullptr;
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_coc_size;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	uint32_t l_comp_room;
 
 	assert(p_j2k != nullptr);
@@ -2362,7 +2365,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
 static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	tcp_t *l_tcp = nullptr;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	uint32_t l_comp_room;
 	uint32_t l_comp_no;
 
@@ -2623,10 +2626,10 @@ static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
 	uint32_t i;
 	uint32_t l_nb_comp;
 	uint32_t l_nb_poc;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	tcp_t *l_tcp = nullptr;
 	tccp_t *l_tccp = nullptr;
-	grk_poc_t *l_current_poc = nullptr;
+	 grk_poc  *l_current_poc = nullptr;
 	uint32_t l_poc_room;
 
 	assert(p_j2k != nullptr);
@@ -2777,12 +2780,12 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k) {
 static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t i, l_nb_comp, l_tmp;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
 	uint32_t l_chunk_size, l_comp_room;
 
 	tcp_t *l_tcp = nullptr;
-	grk_poc_t *l_current_poc = nullptr;
+	 grk_poc  *l_current_poc = nullptr;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
@@ -3679,18 +3682,18 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 
 			if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
 				p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
-						(grk_tp_index_t*) grok_calloc(l_num_parts,
-								sizeof(grk_tp_index_t));
+						( grk_tp_index  * ) grok_calloc(l_num_parts,
+								sizeof( grk_tp_index) );
 				if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
 					GROK_ERROR(
 							"Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
 				}
 			} else {
-				grk_tp_index_t *new_tp_index =
-						(grk_tp_index_t*) grok_realloc(
+				 grk_tp_index  *new_tp_index =
+						( grk_tp_index  * ) grok_realloc(
 								p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index,
-								l_num_parts * sizeof(grk_tp_index_t));
+								l_num_parts * sizeof( grk_tp_index) );
 				if (!new_tp_index) {
 					grok_free(
 							p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index);
@@ -3710,9 +3713,9 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 							10;
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
-							(grk_tp_index_t*) grok_calloc(
+							( grk_tp_index  * ) grok_calloc(
 									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps,
-									sizeof(grk_tp_index_t));
+									sizeof( grk_tp_index) );
 					if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
 						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 								0;
@@ -3724,14 +3727,14 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 
 				if (l_current_part
 						>= p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps) {
-					grk_tp_index_t *new_tp_index;
+					 grk_tp_index  *new_tp_index;
 					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
 							l_current_part + 1;
 					new_tp_index =
-							(grk_tp_index_t*) grok_realloc(
+							( grk_tp_index  * ) grok_realloc(
 									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index,
 									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps
-											* sizeof(grk_tp_index_t));
+											* sizeof( grk_tp_index) );
 					if (!new_tp_index) {
 						grok_free(
 								p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index);
@@ -3757,7 +3760,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		GrokStream *p_stream) {
-	grk_codestream_info_t *l_cstr_info = nullptr;
+	 grk_codestream_info  *l_cstr_info = nullptr;
 	uint64_t l_remaining_data;
 
 	assert(p_j2k != nullptr);
@@ -3825,7 +3828,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 		}
 	}
 	/* Index */
-	grk_codestream_index_t *l_cstr_index = p_j2k->cstr_index;
+	 grk_codestream_index  *l_cstr_index = p_j2k->cstr_index;
 	if (l_cstr_index) {
 		int64_t l_current_pos = p_stream->tell() - 2;
 
@@ -3964,7 +3967,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream) {
 static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_nb_comp;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 
 	tcp_t *l_tcp = nullptr;
 	uint32_t l_comp_room, l_comp_no, l_roi_sty;
@@ -4026,7 +4029,7 @@ static float j2k_get_default_stride(tcp_t *p_tcp) {
 static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream) {
 	
 	cp_t *l_cp = nullptr;
-	grk_image_t *l_image = nullptr;
+	grk_image *l_image = nullptr;
 	tcp_t *l_tcp = nullptr;
 
 	uint32_t i, j, k;
@@ -4270,7 +4273,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream) {
 
 static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream) {
 	
-	grk_codestream_index_t *l_cstr_index = nullptr;
+	 grk_codestream_index  *l_cstr_index = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -4292,7 +4295,7 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream) {
 static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 		uint32_t *output_marker) {
 	uint32_t l_unknown_marker;
-	const grk_dec_memory_marker_handler_t *l_marker_handler;
+	const  grk_dec_memory_marker_handler  *l_marker_handler;
 	uint32_t l_size_unk = 2;
 
 	/* preconditions*/
@@ -4931,7 +4934,7 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_nb_stages;
 	tcp_t *l_tcp;
 	tccp_t *l_tccp;
-	grk_image_t *l_image;
+	grk_image *l_image;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
@@ -4983,7 +4986,7 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_add_mct(tcp_t *p_tcp, grk_image_t *p_image, uint32_t index) {
+static bool j2k_add_mct(tcp_t *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
 	simple_mcc_decorrelation_data_t *l_mcc_record;
 	mct_data_t *l_deco_array, *l_offset_array;
@@ -5070,8 +5073,8 @@ static bool j2k_add_mct(tcp_t *p_tcp, grk_image_t *p_image, uint32_t index) {
 static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_cbd_size;
-	grk_image_t *l_image = nullptr;
-	grk_image_comp_t *l_comp = nullptr;
+	grk_image *l_image = nullptr;
+	 grk_image_comp  *l_comp = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -5120,7 +5123,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_nb_comp, l_num_comp;
 	uint32_t l_comp_def;
 	uint32_t i;
-	grk_image_comp_t *l_comp = nullptr;
+	 grk_image_comp  *l_comp = nullptr;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
@@ -5158,7 +5161,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 /* J2K decoder interface                                             */
 /* ----------------------------------------------------------------------- */
 
-void j2k_setup_decoder(void *j2k_void, grk_dparameters_t *parameters) {
+void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters) {
 	j2k_t *j2k = (j2k_t*) j2k_void;
 	if (j2k && parameters) {
 		j2k->m_cp.m_specific_param.m_dec.m_layer = parameters->cp_layer;
@@ -5188,7 +5191,7 @@ j2k_t* j2k_create_compress(void) {
 	return l_j2k;
 }
 
-static uint32_t j2k_initialise_4K_poc(grk_poc_t *POC, uint32_t numres) {
+static uint32_t j2k_initialise_4K_poc( grk_poc  *POC, uint32_t numres) {
 	assert(numres > 0);
 	POC[0].tile = 1;
 	POC[0].resno0 = 0;
@@ -5207,8 +5210,8 @@ static uint32_t j2k_initialise_4K_poc(grk_poc_t *POC, uint32_t numres) {
 	return 2;
 }
 
-static void j2k_set_cinema_parameters(grk_cparameters_t *parameters,
-		grk_image_t *image) {
+static void j2k_set_cinema_parameters( grk_cparameters  *parameters,
+		grk_image *image) {
 	/* Configure cinema parameters */
 	uint32_t i;
 
@@ -5349,7 +5352,7 @@ static void j2k_set_cinema_parameters(grk_cparameters_t *parameters,
 
 }
 
-static bool j2k_is_cinema_compliant(grk_image_t *image, uint16_t rsiz) {
+static bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	uint32_t i;
 
 	/* Number of components */
@@ -5410,8 +5413,8 @@ static bool j2k_is_cinema_compliant(grk_image_t *image, uint16_t rsiz) {
 	return true;
 }
 
-bool j2k_setup_encoder(j2k_t *p_j2k, grk_cparameters_t *parameters,
-		grk_image_t *image) {
+bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
+		grk_image *image) {
 	uint32_t i, j, tileno, numpocs_tile;
 	cp_t *cp = nullptr;
 
@@ -5730,7 +5733,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, grk_cparameters_t *parameters,
 			tcp->POC = 1;
 			for (i = 0; i < parameters->numpocs; i++) {
 				if (tileno + 1 == parameters->POC[i].tile) {
-					grk_poc_t *tcp_poc = &tcp->pocs[numpocs_tile];
+					 grk_poc  *tcp_poc = &tcp->pocs[numpocs_tile];
 
 					tcp_poc->resno0 = parameters->POC[numpocs_tile].resno0;
 					tcp_poc->compno0 = parameters->POC[numpocs_tile].compno0;
@@ -5839,7 +5842,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k, grk_cparameters_t *parameters,
 			}
 			for (i = 0; i < image->numcomps; i++) {
 				tccp_t *tccp = tcp->tccps + i;
-				grk_image_comp_t *l_comp = image->comps + i;
+				 grk_image_comp  *l_comp = image->comps + i;
 				if (!l_comp->sgnd) {
 					tccp->m_dc_level_shift = 1 << (l_comp->prec - 1);
 				}
@@ -5922,17 +5925,17 @@ bool j2k_setup_encoder(j2k_t *p_j2k, grk_cparameters_t *parameters,
 	return true;
 }
 
-static bool j2k_add_mhmarker(grk_codestream_index_t *cstr_index, uint32_t type,
+static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
 		int64_t pos, uint32_t len) {
 	assert(cstr_index != nullptr);
 
 	/* expand the list? */
 	if ((cstr_index->marknum + 1) > cstr_index->maxmarknum) {
-		grk_marker_info_t *new_marker;
+		 grk_marker_info  *new_marker;
 		cstr_index->maxmarknum = (uint32_t) (100
 				+ (float) cstr_index->maxmarknum);
-		new_marker = (grk_marker_info_t*) grok_realloc(cstr_index->marker,
-				cstr_index->maxmarknum * sizeof(grk_marker_info_t));
+		new_marker = ( grk_marker_info  * ) grok_realloc(cstr_index->marker,
+				cstr_index->maxmarknum * sizeof( grk_marker_info) );
 		if (!new_marker) {
 			grok_free(cstr_index->marker);
 			cstr_index->marker = nullptr;
@@ -5953,7 +5956,7 @@ static bool j2k_add_mhmarker(grk_codestream_index_t *cstr_index, uint32_t type,
 }
 
 static bool j2k_add_tlmarker(uint32_t tileno,
-		grk_codestream_index_t *cstr_index, uint32_t type, int64_t pos,
+		 grk_codestream_index  *cstr_index, uint32_t type, int64_t pos,
 		uint32_t len) {
 	assert(cstr_index != nullptr);
 	assert(cstr_index->tile_index != nullptr);
@@ -5961,13 +5964,13 @@ static bool j2k_add_tlmarker(uint32_t tileno,
 	/* expand the list? */
 	if ((cstr_index->tile_index[tileno].marknum + 1)
 			> cstr_index->tile_index[tileno].maxmarknum) {
-		grk_marker_info_t *new_marker;
+		 grk_marker_info  *new_marker;
 		cstr_index->tile_index[tileno].maxmarknum = (uint32_t) (100
 				+ (float) cstr_index->tile_index[tileno].maxmarknum);
-		new_marker = (grk_marker_info_t*) grok_realloc(
+		new_marker = ( grk_marker_info  * ) grok_realloc(
 				cstr_index->tile_index[tileno].marker,
 				cstr_index->tile_index[tileno].maxmarknum
-						* sizeof(grk_marker_info_t));
+						* sizeof( grk_marker_info) );
 		if (!new_marker) {
 			grok_free(cstr_index->tile_index[tileno].marker);
 			cstr_index->tile_index[tileno].marker = nullptr;
@@ -6014,7 +6017,7 @@ bool j2k_end_decompress(j2k_t *p_j2k, GrokStream *p_stream) {
 }
 
 bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
-		grk_header_info_t *header_info, grk_image_t **p_image) {
+		 grk_header_info  *header_info, grk_image **p_image) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -6162,7 +6165,7 @@ static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	return l_is_valid;
 }
 
-bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image_t *p_image) {
+bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 	uint32_t i;
 	uint32_t l_indix = 1;
 	mct_data_t *l_mct_deco_data = nullptr, *l_mct_offset_data = nullptr;
@@ -6419,7 +6422,7 @@ static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 	uint32_t l_current_marker;
 	uint32_t l_marker_size;
-	const grk_dec_memory_marker_handler_t *l_marker_handler = nullptr;
+	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
 	bool l_has_siz = 0;
 	bool l_has_cod = 0;
 	bool l_has_qcd = 0;
@@ -6632,7 +6635,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	tccp_t *l_current_tccp = nullptr;
 	uint32_t l_tccp_size;
 	uint32_t l_mct_size;
-	grk_image_t *l_image;
+	grk_image *l_image;
 	uint32_t l_mcc_records_size, l_mct_records_size;
 	mct_data_t *l_src_mct_rec, *l_dest_mct_rec;
 	simple_mcc_decorrelation_data_t *l_src_mcc_rec, *l_dest_mcc_rec;
@@ -6768,9 +6771,9 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	return true;
 }
 
-static const grk_dec_memory_marker_handler_t* j2k_get_marker_handler(
+static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 		uint32_t id) {
-	const grk_dec_memory_marker_handler_t *e;
+	const  grk_dec_memory_marker_handler  *e;
 	for (e = j2k_memory_marker_handler_tab; e->id != 0; ++e) {
 		if (e->id == id) {
 			break; /* we find a handler corresponding to the marker ID*/
@@ -6832,7 +6835,7 @@ void j2k_destroy(j2k_t *p_j2k) {
 	grok_free(p_j2k);
 }
 
-void j2k_destroy_cstr_index(grk_codestream_index_t *p_cstr_ind) {
+void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 	if (p_cstr_ind) {
 
 		if (p_cstr_ind->marker) {
@@ -7097,7 +7100,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 		bool *p_go_on, GrokStream *p_stream) {
 	uint32_t l_current_marker = J2K_MS_SOT;
 	uint32_t l_marker_size;
-	const grk_dec_memory_marker_handler_t *l_marker_handler = nullptr;
+	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
 	tcp_t *l_tcp = nullptr;
 
 	assert(p_stream != nullptr);
@@ -7489,7 +7492,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 				uint32_t l_size_comp = 0;
 				uint32_t i, j;
 				tcd_tilecomp_t *tilec = p_j2k->m_tcd->tile->comps + compno;
-				grk_image_comp_t *comp = p_j2k->m_output_image->comps + compno;
+				 grk_image_comp  *comp = p_j2k->m_output_image->comps + compno;
 
 				//transfer memory from tile component to output image
 				comp->data = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
@@ -7586,15 +7589,15 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 
  */
 static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
-		grk_image_t *p_output_image, bool clearOutputOnInit) {
+		grk_image *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
-	grk_image_t *image_src = p_tcd->image;
+	grk_image *image_src = p_tcd->image;
 
 	for (i = 0; i < image_src->numcomps; i++) {
 
 		tcd_tilecomp_t *tilec = p_tcd->tile->comps + i;
-		grk_image_comp_t *img_comp_src = image_src->comps + i;
-		grk_image_comp_t *img_comp_dest = p_output_image->comps + i;
+		 grk_image_comp  *img_comp_src = image_src->comps + i;
+		 grk_image_comp  *img_comp_dest = p_output_image->comps + i;
 
 		if (img_comp_dest->w * img_comp_dest->h == 0) {
 			GROK_ERROR(
@@ -7837,14 +7840,14 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 	return true;
 }
 
-bool j2k_set_decode_area(j2k_t *p_j2k, grk_image_t *p_image, uint32_t start_x,
+bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 	cp_t *l_cp = &(p_j2k->m_cp);
-	grk_image_t *l_image = p_j2k->m_private_image;
+	grk_image *l_image = p_j2k->m_private_image;
 
 	uint32_t it_comp;
 	uint32_t l_comp_x1, l_comp_y1;
-	grk_image_comp_t *l_img_comp = nullptr;
+	 grk_image_comp  *l_img_comp = nullptr;
 
 	/* Check if we have read the main header */
 	if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) {
@@ -8044,16 +8047,16 @@ j2k_t* j2k_create_decompress(void) {
 	return l_j2k;
 }
 
-static grk_codestream_index_t* j2k_create_cstr_index(void) {
-	grk_codestream_index_t *cstr_index = (grk_codestream_index_t*) grok_calloc(
-			1, sizeof(grk_codestream_index_t));
+static  grk_codestream_index  *  j2k_create_cstr_index(void) {
+	 grk_codestream_index  *cstr_index = ( grk_codestream_index  * ) grok_calloc(
+			1, sizeof( grk_codestream_index) );
 	if (!cstr_index)
 		return nullptr;
 
 	cstr_index->maxmarknum = 100;
 	cstr_index->marknum = 0;
-	cstr_index->marker = (grk_marker_info_t*) grok_calloc(
-			cstr_index->maxmarknum, sizeof(grk_marker_info_t));
+	cstr_index->marker = ( grk_marker_info  * ) grok_calloc(
+			cstr_index->maxmarknum, sizeof( grk_marker_info) );
 	if (!cstr_index->marker) {
 		grok_free(cstr_index);
 		return nullptr;
@@ -8678,7 +8681,7 @@ void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream) {
 }
 
 static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream) {
-	grk_codestream_index_t *cstr_index = p_j2k->cstr_index;
+	 grk_codestream_index  *cstr_index = p_j2k->cstr_index;
 	uint32_t it_marker, it_tile, it_tile_part;
 
 	fprintf(out_stream, "Codestream index from main header: {\n");
@@ -8782,7 +8785,7 @@ static void j2k_dump_MH_info(j2k_t *p_j2k, FILE *out_stream) {
 	fprintf(out_stream, "}\n");
 }
 
-void j2k_dump_image_header(grk_image_t *img_header, bool dev_dump_flag,
+void j2k_dump_image_header(grk_image *img_header, bool dev_dump_flag,
 		FILE *out_stream) {
 	char tab[2];
 
@@ -8814,7 +8817,7 @@ void j2k_dump_image_header(grk_image_t *img_header, bool dev_dump_flag,
 	fprintf(out_stream, "}\n");
 }
 
-void j2k_dump_image_comp_header(grk_image_comp_t *comp_header,
+void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		bool dev_dump_flag, FILE *out_stream) {
 	char tab[3];
 
@@ -8836,13 +8839,13 @@ void j2k_dump_image_comp_header(grk_image_comp_t *comp_header,
 		fprintf(out_stream, "}\n");
 }
 
-grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k) {
+ grk_codestream_info_v2  *  j2k_get_cstr_info(j2k_t *p_j2k) {
 	uint32_t compno;
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
 	tcp_t *l_default_tile;
-	grk_codestream_info_v2_t *cstr_info =
-			(grk_codestream_info_v2_t*) grok_calloc(1,
-					sizeof(grk_codestream_info_v2_t));
+	 grk_codestream_info_v2  *cstr_info =
+			( grk_codestream_info_v2  * ) grok_calloc(1,
+					sizeof( grk_codestream_info_v2) );
 	if (!cstr_info)
 		return nullptr;
 
@@ -8864,8 +8867,8 @@ grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k) {
 	cstr_info->m_default_tile_info.numlayers = l_default_tile->numlayers;
 	cstr_info->m_default_tile_info.mct = l_default_tile->mct;
 
-	cstr_info->m_default_tile_info.tccp_info = (grk_tccp_info_t*) grok_calloc(
-			cstr_info->nbcomps, sizeof(grk_tccp_info_t));
+	cstr_info->m_default_tile_info.tccp_info = ( grk_tccp_info  * ) grok_calloc(
+			cstr_info->nbcomps, sizeof( grk_tccp_info) );
 	if (!cstr_info->m_default_tile_info.tccp_info) {
 		grk_destroy_cstr_info(&cstr_info);
 		return nullptr;
@@ -8873,7 +8876,7 @@ grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k) {
 
 	for (compno = 0; compno < numcomps; compno++) {
 		tccp_t *l_tccp = &(l_default_tile->tccps[compno]);
-		grk_tccp_info_t *l_tccp_info =
+		 grk_tccp_info  *l_tccp_info =
 				&(cstr_info->m_default_tile_info.tccp_info[compno]);
 		uint32_t bandno, numbands;
 
@@ -8912,10 +8915,10 @@ grk_codestream_info_v2_t* j2k_get_cstr_info(j2k_t *p_j2k) {
 	return cstr_info;
 }
 
-grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
-	grk_codestream_index_t *l_cstr_index =
-			(grk_codestream_index_t*) grok_calloc(1,
-					sizeof(grk_codestream_index_t));
+ grk_codestream_index  *  j2k_get_cstr_index(j2k_t *p_j2k) {
+	 grk_codestream_index  *l_cstr_index =
+			( grk_codestream_index  * ) grok_calloc(1,
+					sizeof( grk_codestream_index) );
 	if (!l_cstr_index)
 		return nullptr;
 
@@ -8924,8 +8927,8 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 	l_cstr_index->codestream_size = p_j2k->cstr_index->codestream_size;
 
 	l_cstr_index->marknum = p_j2k->cstr_index->marknum;
-	l_cstr_index->marker = (grk_marker_info_t*) grok_malloc(
-			l_cstr_index->marknum * sizeof(grk_marker_info_t));
+	l_cstr_index->marker = ( grk_marker_info  * ) grok_malloc(
+			l_cstr_index->marknum * sizeof( grk_marker_info) );
 	if (!l_cstr_index->marker) {
 		grok_free(l_cstr_index);
 		return nullptr;
@@ -8933,15 +8936,15 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 
 	if (p_j2k->cstr_index->marker)
 		memcpy(l_cstr_index->marker, p_j2k->cstr_index->marker,
-				l_cstr_index->marknum * sizeof(grk_marker_info_t));
+				l_cstr_index->marknum * sizeof( grk_marker_info) );
 	else {
 		grok_free(l_cstr_index->marker);
 		l_cstr_index->marker = nullptr;
 	}
 
 	l_cstr_index->nb_of_tiles = p_j2k->cstr_index->nb_of_tiles;
-	l_cstr_index->tile_index = (grk_tile_index_t*) grok_calloc(
-			l_cstr_index->nb_of_tiles, sizeof(grk_tile_index_t));
+	l_cstr_index->tile_index = ( grk_tile_index  * ) grok_calloc(
+			l_cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!l_cstr_index->tile_index) {
 		grok_free(l_cstr_index->marker);
 		grok_free(l_cstr_index);
@@ -8960,9 +8963,9 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 					p_j2k->cstr_index->tile_index[it_tile].marknum;
 
 			l_cstr_index->tile_index[it_tile].marker =
-					(grk_marker_info_t*) grok_malloc(
+					( grk_marker_info  * ) grok_malloc(
 							l_cstr_index->tile_index[it_tile].marknum
-									* sizeof(grk_marker_info_t));
+									* sizeof( grk_marker_info) );
 
 			if (!l_cstr_index->tile_index[it_tile].marker) {
 				uint32_t it_tile_free;
@@ -8981,7 +8984,7 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 				memcpy(l_cstr_index->tile_index[it_tile].marker,
 						p_j2k->cstr_index->tile_index[it_tile].marker,
 						l_cstr_index->tile_index[it_tile].marknum
-								* sizeof(grk_marker_info_t));
+								* sizeof( grk_marker_info) );
 			else {
 				grok_free(l_cstr_index->tile_index[it_tile].marker);
 				l_cstr_index->tile_index[it_tile].marker = nullptr;
@@ -8992,9 +8995,9 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 					p_j2k->cstr_index->tile_index[it_tile].nb_tps;
 
 			l_cstr_index->tile_index[it_tile].tp_index =
-					(grk_tp_index_t*) grok_malloc(
+					( grk_tp_index  * ) grok_malloc(
 							l_cstr_index->tile_index[it_tile].nb_tps
-									* sizeof(grk_tp_index_t));
+									* sizeof( grk_tp_index) );
 
 			if (!l_cstr_index->tile_index[it_tile].tp_index) {
 				uint32_t it_tile_free;
@@ -9014,7 +9017,7 @@ grk_codestream_index_t* j2k_get_cstr_index(j2k_t *p_j2k) {
 				memcpy(l_cstr_index->tile_index[it_tile].tp_index,
 						p_j2k->cstr_index->tile_index[it_tile].tp_index,
 						l_cstr_index->tile_index[it_tile].nb_tps
-								* sizeof(grk_tp_index_t));
+								* sizeof( grk_tp_index) );
 			} else {
 				grok_free(l_cstr_index->tile_index[it_tile].tp_index);
 				l_cstr_index->tile_index[it_tile].tp_index = nullptr;
@@ -9033,8 +9036,8 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k) {
 	uint32_t it_tile = 0;
 
 	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
-	p_j2k->cstr_index->tile_index = (grk_tile_index_t*) grok_calloc(
-			p_j2k->cstr_index->nb_of_tiles, sizeof(grk_tile_index_t));
+	p_j2k->cstr_index->tile_index = ( grk_tile_index  * ) grok_calloc(
+			p_j2k->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!p_j2k->cstr_index->tile_index)
 		return false;
 
@@ -9042,9 +9045,9 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k) {
 		p_j2k->cstr_index->tile_index[it_tile].maxmarknum = 100;
 		p_j2k->cstr_index->tile_index[it_tile].marknum = 0;
 		p_j2k->cstr_index->tile_index[it_tile].marker =
-				(grk_marker_info_t*) grok_calloc(
+				( grk_marker_info  * ) grok_calloc(
 						p_j2k->cstr_index->tile_index[it_tile].maxmarknum,
-						sizeof(grk_marker_info_t));
+						sizeof( grk_marker_info) );
 		if (!p_j2k->cstr_index->tile_index[it_tile].marker)
 			return false;
 	}
@@ -9073,7 +9076,7 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles) {
 	if (!copy_tile_data) {
 
 		for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
-			grk_image_comp_t *dest_comp = p_j2k->m_output_image->comps + i;
+			 grk_image_comp  *dest_comp = p_j2k->m_output_image->comps + i;
 			uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,
 					dest_comp->decodeScaleFactor);
 			uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,
@@ -9081,7 +9084,7 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles) {
 			uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
 			uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
 
-			grk_image_comp_t *src_comp = p_j2k->m_tcd->image->comps + i;
+			 grk_image_comp  *src_comp = p_j2k->m_tcd->image->comps + i;
 
 			if (src_comp->x0 != l_x0_dest || src_comp->y0 != l_y0_dest
 					|| src_comp->w != (l_x1_dest - l_x0_dest)
@@ -9359,7 +9362,7 @@ static bool j2k_setup_decoding_tile(j2k_t *p_j2k) {
 }
 
 bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
-		grk_image_t *p_image) {
+		grk_image *p_image) {
 	if (!p_image)
 		return false;
 
@@ -9386,10 +9389,10 @@ bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	return true;
 }
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image_t *p_image, uint32_t tile_index) {
+bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index) {
 	uint32_t compno;
 	uint32_t l_tile_x, l_tile_y;
-	grk_image_comp_t *l_img_comp;
+	 grk_image_comp  *l_img_comp;
 	rect_t original_image_rect, tile_rect, overlap_rect;
 
 	if (!p_image) {
@@ -9557,7 +9560,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 		l_reuse_data = true;
 #ifdef __SSE__
 		for (j = 0; j < p_j2k->m_tcd->image->numcomps; ++j) {
-			grk_image_comp_t *l_img_comp = p_tcd->image->comps + j;
+			 grk_image_comp  *l_img_comp = p_tcd->image->comps + j;
 			if (((size_t) l_img_comp->data & 0xFU) != 0U) { /* tile data shall be aligned on 16 bytes */
 				l_reuse_data = false;
 			}
@@ -9647,7 +9650,7 @@ bool j2k_end_compress(j2k_t *p_j2k, GrokStream *p_stream) {
 }
 
 bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
-		grk_image_t *p_image) {
+		grk_image *p_image) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -9715,8 +9718,8 @@ static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index) {
 	return true;
 }
 
-static void get_tile_dimensions(grk_image_t *l_image, tcd_tilecomp_t *l_tilec,
-		grk_image_comp_t *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
+static void get_tile_dimensions(grk_image *l_image, tcd_tilecomp_t *l_tilec,
+		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
 		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
 		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset) {
 	uint32_t l_remaining;
@@ -9745,10 +9748,10 @@ static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {
 	uint32_t i, j, k = 0;
 
 	for (i = 0; i < p_tcd->image->numcomps; ++i) {
-		grk_image_t *l_image = p_tcd->image;
+		grk_image *l_image = p_tcd->image;
 		int32_t *l_src_ptr;
 		tcd_tilecomp_t *l_tilec = p_tcd->tile->comps + i;
-		grk_image_comp_t *l_img_comp = l_image->comps + i;
+		 grk_image_comp  *l_img_comp = l_image->comps + i;
 		uint32_t l_size_comp, l_width, l_height, l_offset_x, l_offset_y,
 				l_image_width, l_stride;
 		uint64_t l_tile_offset;

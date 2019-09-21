@@ -86,17 +86,17 @@ int main(int argc, char *argv[])
     unsigned int image_width = 256;
     unsigned int image_height = 256;
 
-    grk_cparameters_t parameters;
+     grk_cparameters  parameters;
 
     unsigned int subsampling_dx;
     unsigned int subsampling_dy;
     const char outputfile[] = "testempty2.j2k";
 
-    grk_image_cmptparm_t cmptparm;
-    grk_image_t *image;
-    grk_codec_t* l_codec = nullptr;
+     grk_image_cmptparm  cmptparm;
+    grk_image *image;
+     grk_codec  *  l_codec = nullptr;
     bool bSuccess;
-    grk_stream_t *l_stream = nullptr;
+     grk_stream  *l_stream = nullptr;
     (void)argc;
     (void)argv;
 
@@ -166,8 +166,8 @@ int main(int argc, char *argv[])
 
     /* read back the generated file */
     {
-        grk_codec_t* d_codec = nullptr;
-        grk_dparameters_t dparameters;
+         grk_codec  *  d_codec = nullptr;
+         grk_dparameters  dparameters;
 
         d_codec = grk_create_decompress(GRK_CODEC_J2K);
         grk_set_info_handler(d_codec, info_callback,nullptr);

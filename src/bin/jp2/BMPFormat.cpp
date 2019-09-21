@@ -153,7 +153,7 @@ static void grk_applyLUT8u_8u32s_C1P3R(
 		pB += pDstStride[2];
 	}
 }
-static void bmp24toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image){
+static void bmp24toimage(const uint8_t* pData, uint32_t stride, grk_image *  image){
 	int index;
 	uint32_t width, height;
 	const uint8_t *pSrc = nullptr;
@@ -191,7 +191,7 @@ static void bmp_mask_get_shift_and_prec(uint32_t mask, uint32_t* shift, uint32_t
 	*shift = l_shift;
 	*prec = l_prec;
 }
-static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
+static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, grk_image *  image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
 	uint32_t width, height;
@@ -239,7 +239,7 @@ static void bmpmask32toimage(const uint8_t* pData, uint32_t stride, grk_image_t*
 		pSrc -= stride;
 	}
 }
-static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
+static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, grk_image *  image, uint32_t redMask, uint32_t greenMask, uint32_t blueMask, uint32_t alphaMask)
 {
 	int index;
 	uint32_t width, height;
@@ -284,7 +284,7 @@ static void bmpmask16toimage(const uint8_t* pData, uint32_t stride, grk_image_t*
 		pSrc -= stride;
 	}
 }
-static grk_image_t* bmp8toimage(const uint8_t* pData, uint32_t stride, grk_image_t* image, uint8_t const* const* pLUT)
+static grk_image *  bmp8toimage(const uint8_t* pData, uint32_t stride, grk_image *  image, uint8_t const* const* pLUT)
 {
 	uint32_t width, height;
 	const uint8_t *pSrc = nullptr;
@@ -559,14 +559,14 @@ static bool bmp_read_rle4_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uin
 	}  /* while(y < height) */
 	return true;
 }
-static grk_image_t* bmptoimage(const char *filename, 
-								grk_cparameters_t *parameters)
+static grk_image *  bmptoimage(const char *filename, 
+								 grk_cparameters  *parameters)
 {
 	bool readFromStdin = grk::useStdio(filename);
-	grk_image_cmptparm_t cmptparm[4];	/* maximum of 4 components */
+	 grk_image_cmptparm  cmptparm[4];	/* maximum of 4 components */
 	uint8_t lut_R[256], lut_G[256], lut_B[256];
 	uint8_t const* pLUT[3];
-	grk_image_t * image = nullptr;
+	grk_image * image = nullptr;
 	FILE *INPUT = nullptr;
 	GRK_BITMAPFILEHEADER File_h;
 	GRK_BITMAPINFOHEADER Info_h;
@@ -791,7 +791,7 @@ static bool write_short(FILE* fdest, uint16_t val) {
 	int rc = fprintf(fdest, "%c%c", val & 0xff, (val >> 8) & 0xff);
 	return (rc == sizeof(val));
 }
-static int imagetobmp(grk_image_t * image, const char *outfile, bool verbose){
+static int imagetobmp(grk_image * image, const char *outfile, bool verbose){
 	bool writeToStdout = grk::useStdio(outfile);
 	uint32_t w, h;
 	int32_t pad;
@@ -1040,10 +1040,10 @@ cleanup:
 }
 
 
-bool BMPFormat::encode(grk_image_t* image, const char* filename, int compressionParam, bool verbose) {
+bool BMPFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
 	(void)compressionParam;
 	return imagetobmp(image, filename, verbose) ? false : true;
 }
-grk_image_t*  BMPFormat::decode(const char* filename, grk_cparameters_t *parameters) {
+grk_image *   BMPFormat::decode(const char* filename,  grk_cparameters  *parameters) {
 	return bmptoimage(filename, parameters);
 }
