@@ -485,12 +485,15 @@ bool dwt97::encode(tcd_tilecomp_t *tilec) {
 			tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
-		GROK_ERROR("dwt53 encode: overflow");
+		GROK_ERROR("dwt97 encode: overflow");
 		return false;
 	}
 	if (!l_data_size)
 		return false;
 
+	bool rc = true;
+	uint32_t rw,rh,rw1,rh1;
+	uint8_t cas_row,cas_col;
 	uint32_t stride = tilec->x1 - tilec->x0;
 	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
 	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
@@ -498,51 +501,92 @@ bool dwt97::encode(tcd_tilecomp_t *tilec) {
 	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
 	tcd_resolution_t *l_last_res = l_cur_res - 1;
 
-	int32_t *bj = (int32_t*) grok_malloc(l_data_size);
-	if (!bj)
-		return false;
-	while (num_decomps--) {
+	int32_t **bj_array = new int32_t*[Scheduler::g_TS.GetNumTaskThreads()];
+	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
+		bj_array[i] = nullptr;
+	}
+	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
+		bj_array[i] = (int32_t*) grok_malloc(l_data_size);
+		if (!bj_array[i]){
+			rc = false;
+			goto cleanup;
+		}
+	}
+
+	for (int32_t i = 0; i < num_decomps; ++i) {
 
 		/* width of the resolution level computed   */
-		uint32_t rw = l_cur_res->x1 - l_cur_res->x0;
+		rw = l_cur_res->x1 - l_cur_res->x0;
 		/* height of the resolution level computed  */
-		uint32_t rh = l_cur_res->y1 - l_cur_res->y0;
+		rh = l_cur_res->y1 - l_cur_res->y0;
 		// width of the resolution level once lower than computed one
-		uint32_t rw1 = l_last_res->x1 - l_last_res->x0;
+		rw1 = l_last_res->x1 - l_last_res->x0;
 		//height of the resolution level once lower than computed one
-		uint32_t rh1 = l_last_res->y1 - l_last_res->y0;
+		rh1 = l_last_res->y1 - l_last_res->y0;
 
 		/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		uint8_t cas_row = l_cur_res->x0 & 1;
+		cas_row = l_cur_res->x0 & 1;
 		/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		uint8_t cas_col = l_cur_res->y0 & 1;
+		cas_col = l_cur_res->y0 & 1;
 
-		uint32_t s_n = rh1;
-		uint32_t d_n = rh - rh1;
+		// transform vertical
+		if (rw) {
+			const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / Scheduler::g_TS.GetNumTaskThreads()));
+			const uint32_t s_n = rh1;
+			const uint32_t d_n = rh - rh1;
+			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
+					[this,bj_array,a,
+					 stride, rw,rh,
+					 d_n, s_n, cas_col,
+					 linesPerThreadV](enki::TaskSetPartition range, uint32_t threadnum) {
 
-		for (uint32_t j = 0; j < rw; ++j) {
-			int32_t *aj = a + j;
-			for (uint32_t k = 0; k < rh; ++k) {
-				bj[k] = aj[k * stride];
-			}
-			encode_line(bj, d_n, s_n, cas_col);
-			deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
+				for (auto m = range.start * linesPerThreadV;
+						m < std::min<uint32_t>((range.end)*linesPerThreadV, rw); ++m) {
+					int32_t *bj = bj_array[threadnum];
+					int32_t *aj = a + m;
+					for (uint32_t k = 0; k < rh; ++k) {
+						bj[k] = aj[k * stride];
+					}
+					encode_line(bj, d_n, s_n, cas_col);
+					deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
+				}
+
+			});
+			Scheduler::g_TS.AddTaskSetToPipe(&task);
+			Scheduler::g_TS.WaitforTask(&task);
 		}
-		s_n = rw1;
-		d_n = rw - rw1;
 
-		for (uint32_t j = 0; j < rh; j++) {
-			int32_t *aj = a + j * stride;
-			for (uint32_t k = 0; k < rw; k++)
-				bj[k] = aj[k];
-			encode_line(bj, d_n, s_n, cas_row);
-			deinterleave_h(bj, aj, d_n, s_n, cas_row);
+		// transform horizontal
+		if (rh){
+			const uint32_t s_n = rw1;
+			const uint32_t d_n = rw - rw1;
+			const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / Scheduler::g_TS.GetNumTaskThreads());
+			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
+								[this,bj_array,a,
+								 stride, rw,rh,
+								 d_n, s_n, cas_row,
+								 linesPerThreadH](enki::TaskSetPartition range, uint32_t threadnum) {
+
+				for (auto m = range.start * linesPerThreadH;
+						m < std::min<uint32_t>((range.end)*linesPerThreadH, rh); ++m) {
+					int32_t *bj = bj_array[threadnum];
+					int32_t *aj = a + m * stride;
+					memcpy(bj,aj,rw << 2);
+					encode_line(bj, d_n, s_n, cas_row);
+					deinterleave_h(bj, aj, d_n, s_n, cas_row);
+				}
+			});
+			Scheduler::g_TS.AddTaskSetToPipe(&task);
+			Scheduler::g_TS.WaitforTask(&task);
 		}
 		l_cur_res = l_last_res;
-		--l_last_res;
+		l_last_res--;
 	}
-	grok_free(bj);
-	return true;
+cleanup:
+	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i)
+		grok_aligned_free(bj_array[i]);
+	delete[] bj_array;
+	return rc;
 }
 
 /* <summary>                             */
