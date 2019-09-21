@@ -177,7 +177,7 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 		bj_array[i] = nullptr;
 	}
 	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
-		bj_array[i] = (int32_t*) grok_malloc(l_data_size);
+		bj_array[i] = (int32_t*)grok_aligned_malloc(l_data_size);
 		if (!bj_array[i]){
 			rc = false;
 			goto cleanup;
