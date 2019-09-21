@@ -113,6 +113,36 @@ namespace grk {
 #define GROK_SS_(i) ((i)<0?GROK_S(0):((i)>=d_n?GROK_S(d_n-1):GROK_S(i)))
 #define GROK_DD_(i) ((i)<0?GROK_D(0):((i)>=s_n?GROK_D(s_n-1):GROK_D(i)))
 
+// before DWT
+#ifdef DEBUG_LOSSLESS_DWT
+	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
+	int32_t rh_full = l_cur_res->y1 - l_cur_res->y0;
+	int32_t* before = new int32_t[rw_full * rh_full];
+	memcpy(before, a, rw_full * rh_full * sizeof(int32_t));
+	int32_t* after = new int32_t[rw_full * rh_full];
+
+#endif
+
+// after DWT
+#ifdef DEBUG_LOSSLESS_DWT
+	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
+	dwt53 dwt;
+	dwt.decode(tilec, tilec->numresolutions, 8);
+	for (int m = 0; m < rw_full; ++m) {
+		for (int p = 0; p < rh_full; ++p) {
+			auto expected = a[m + p * rw_full];
+			auto actual = before[m + p * rw_full];
+			if (expected != actual) {
+				printf("(%d, %d); expected %d, got %d\n", m, p, expected, actual);
+			}
+		}
+	}
+	memcpy(a, after, rw_full * rh_full * sizeof(int32_t));
+	delete[] before;
+	delete[] after;
+#endif
+
+
 /**
  Forward wavelet transform in 2-D.
  Apply a reversible DWT transform to a component of an image.
@@ -139,14 +169,7 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
 	tcd_resolution_t *l_last_res = l_cur_res - 1;
 
-#ifdef DEBUG_LOSSLESS_DWT
-	int32_t rw_full = l_cur_res->x1 - l_cur_res->x0;
-	int32_t rh_full = l_cur_res->y1 - l_cur_res->y0;
-	int32_t* before = new int32_t[rw_full * rh_full];
-	memcpy(before, a, rw_full * rh_full * sizeof(int32_t));
-	int32_t* after = new int32_t[rw_full * rh_full];
 
-#endif
 
 	int32_t *bj = (int32_t*) grok_malloc(l_data_size);
 	if (!bj)
@@ -183,32 +206,15 @@ bool dwt53::encode(tcd_tilecomp_t *tilec) {
 
 		for (uint32_t j = 0; j < rh; j++) {
 			int32_t *aj = a + j * stride;
-			for (uint32_t k = 0; k < rw; k++)
-				bj[k] = aj[k];
+			memcpy(bj,aj,rw << 2);
 			encode_line(bj, d_n, s_n, cas_row);
 			deinterleave_h(bj, aj, d_n, s_n, cas_row);
 		}
 		l_cur_res = l_last_res;
-		--l_last_res;
+		l_last_res--;
 	}
-	grok_free(bj);
-#ifdef DEBUG_LOSSLESS_DWT
-	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
-	dwt53 dwt;
-	dwt.decode(tilec, tilec->numresolutions, 8);
-	for (int m = 0; m < rw_full; ++m) {
-		for (int p = 0; p < rh_full; ++p) {
-			auto expected = a[m + p * rw_full];
-			auto actual = before[m + p * rw_full];
-			if (expected != actual) {
-				printf("(%d, %d); expected %d, got %d\n", m, p, expected, actual);
-			}
-		}
-	}
-	memcpy(a, after, rw_full * rh_full * sizeof(int32_t));
-	delete[] before;
-	delete[] after;
-#endif
+	grok_aligned_free(bj);
+
 	return true;
 }
 /* <summary>                            */
