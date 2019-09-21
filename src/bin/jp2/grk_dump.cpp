@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
-        if(! grk_read_header(l_stream, l_codec,&image)) {
+        if(! grk_read_header(l_stream, l_codec,nullptr, &image)) {
             spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;

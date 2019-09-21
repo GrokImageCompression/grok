@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
         l_stream = grk_stream_create_default_file_stream(outputfile,1);
         assert( l_stream );
 
-        bSuccess = grk_read_header(l_stream, d_codec,&image);
+        bSuccess = grk_read_header(l_stream, d_codec,nullptr, &image);
         assert( bSuccess );
 
         bSuccess = grk_decode(l_codec, nullptr, l_stream, image);

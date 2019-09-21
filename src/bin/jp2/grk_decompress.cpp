@@ -1439,7 +1439,7 @@ int pre_decode(grok_plugin_decode_callback_info_t* info) {
 	// 2. read header
 	if (info->decode_flags & GROK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
-		if (!grk_read_header_ex(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
+		if (!grk_read_header(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error( "grk_decompress: failed to read the header");
 			failed = 1;
 			goto cleanup;

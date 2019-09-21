@@ -302,11 +302,7 @@ bool GRK_CALLCONV grk_setup_decoder(grk_codec_t *p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_read_header(grk_stream_t *p_stream, grk_codec_t *p_codec,
-		grk_image_t **p_image) {
-	return grk_read_header_ex(p_stream, p_codec, nullptr, p_image);
-}
-bool GRK_CALLCONV grk_read_header_ex(grk_stream_t *p_stream,
+bool GRK_CALLCONV grk_read_header(grk_stream_t *p_stream,
 		grk_codec_t *p_codec, grk_header_info_t *header_info,
 		grk_image_t **p_image) {
 	if (p_codec && p_stream) {
