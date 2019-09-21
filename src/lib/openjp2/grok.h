@@ -1388,17 +1388,6 @@ GRK_API void GRK_CALLCONV grk_set_default_decoder_parameters(
  */
 GRK_API bool GRK_CALLCONV grk_setup_decoder(grk_codec_t *p_codec,
 		grk_dparameters_t *parameters);
-/**
- * Decodes an image header.
- *
- * @param	p_stream		the jpeg2000 stream.
- * @param	p_codec			the jpeg2000 codec to read.
- * @param	p_image			the image structure initialized with the characteristics of encoded image.
- *
- * @return true				if the main header of the codestream and the JP2 header is correctly read.
- */
-GRK_API bool GRK_CALLCONV grk_read_header(grk_stream_t *p_stream,
-		grk_codec_t *p_codec, grk_image_t **p_image);
 
 /**
  * Decodes an image header (extended version).
@@ -1410,7 +1399,7 @@ GRK_API bool GRK_CALLCONV grk_read_header(grk_stream_t *p_stream,
  *								of encoded image.
  * @return true				if the main header of the codestream and the JP2 header is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header_ex(grk_stream_t *p_stream,
+GRK_API bool GRK_CALLCONV grk_read_header(grk_stream_t *p_stream,
 		grk_codec_t *p_codec, grk_header_info_t *header_info,
 		grk_image_t **p_image);
 
