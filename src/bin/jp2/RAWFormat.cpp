@@ -94,7 +94,7 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 										bool big_endian)
 {
 	bool readFromStdin = grk::useStdio(filename);
-	raw_cparameters_t *raw_cp = &parameters->raw_cp;
+	grk_raw_cparameters *raw_cp = &parameters->raw_cp;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 

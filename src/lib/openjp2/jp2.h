@@ -197,7 +197,7 @@ struct jp2_t {
 	bool needs_xl_jp2c_box_length;
 	uint32_t jp2_state;
 	uint32_t jp2_img_state;
-	jp2_color_t color;
+	grk_jp2_color color;
 
 	bool has_capture_resolution;
 	double capture_resolution[2];

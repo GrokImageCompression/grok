@@ -190,7 +190,7 @@ static bool jp2_read_bpcc(jp2_t *jp2, uint8_t *p_bpc_header_data,
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size);
 
-static void jp2_apply_cdef(grk_image *image, jp2_color_t *color);
+static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color);
 
 /**
  * Writes the Channel Definition box.
@@ -304,9 +304,9 @@ static bool jp2_write_jp(jp2_t *jp2, GrokStream *cio);
  @param color Collector for profile, cdef and pclr data
  @param image
  */
-static bool jp2_apply_pclr(grk_image *image, jp2_color_t *color);
+static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color);
 
-static void jp2_free_pclr(jp2_color_t *color);
+static void jp2_free_pclr(grk_jp2_color *color);
 
 /**
  * Collect palette data
@@ -1141,7 +1141,7 @@ static uint8_t* jp2_write_colr(jp2_t *jp2, uint32_t *p_nb_bytes_written) {
 	return l_colr_data;
 }
 
-static void jp2_free_pclr(jp2_color_t *color) {
+static void jp2_free_pclr(grk_jp2_color *color) {
 	if (color) {
 		if (color->jp2_pclr) {
 			if (color->jp2_pclr->channel_sign) {
@@ -1163,12 +1163,12 @@ static void jp2_free_pclr(jp2_color_t *color) {
 	}
 }
 
-static bool jp2_check_color(grk_image *image, jp2_color_t *color) {
+static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 	uint16_t i;
 
 	/* testcase 4149.pdf.SIGSEGV.cf7.3501 */
 	if (color->jp2_cdef) {
-		jp2_cdef_info_t *info = color->jp2_cdef->info;
+		grk_jp2_cdef_info *info = color->jp2_cdef->info;
 		uint16_t n = color->jp2_cdef->n;
 		uint32_t nr_channels = image->numcomps; /* FIXME image->numcomps == jp2->numcomps before color is applied ??? */
 
@@ -1217,7 +1217,7 @@ static bool jp2_check_color(grk_image *image, jp2_color_t *color) {
 	 66ea31acbb0f23a2bbc91f64d69a03f5_signal_sigsegv_13937c0_7030_5725.pdf */
 	if (color->jp2_pclr && color->jp2_pclr->cmap) {
 		uint16_t nr_channels = color->jp2_pclr->nr_channels;
-		jp2_cmap_comp_t *cmap = color->jp2_pclr->cmap;
+		grk_jp2_cmap_comp *cmap = color->jp2_pclr->cmap;
 		bool *pcol_usage = nullptr;
 		bool is_sane = true;
 
@@ -1304,11 +1304,11 @@ static bool jp2_check_color(grk_image *image, jp2_color_t *color) {
 	return true;
 }
 
-static bool jp2_apply_pclr(grk_image *image, jp2_color_t *color) {
+static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 	 grk_image_comp  *old_comps, *new_comps;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
-	jp2_cmap_comp_t *cmap;
+	grk_jp2_cmap_comp *cmap;
 	int32_t *src, *dst;
 	uint32_t j, max;
 	uint16_t i, nr_channels, cmp, pcol;
@@ -1417,7 +1417,7 @@ static bool jp2_apply_pclr(grk_image *image, jp2_color_t *color) {
 
 static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 		uint32_t pclr_header_size) {
-	jp2_pclr_t *jp2_pclr;
+	grk_jp2_pclr *jp2_pclr;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
 	uint16_t nr_entries, nr_channels;
@@ -1473,7 +1473,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 		return false;
 	}
 
-	jp2_pclr = (jp2_pclr_t*) grok_malloc(sizeof(jp2_pclr_t));
+	jp2_pclr = (grk_jp2_pclr*) grok_malloc(sizeof(grk_jp2_pclr));
 	if (!jp2_pclr) {
 		grok_free(entries);
 		grok_free(channel_size);
@@ -1521,7 +1521,7 @@ static bool jp2_read_pclr(jp2_t *jp2, uint8_t *p_pclr_header_data,
 
 static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 		uint32_t cmap_header_size) {
-	jp2_cmap_comp_t *cmap;
+	grk_jp2_cmap_comp *cmap;
 	uint8_t i, nr_channels;
 	uint32_t l_value;
 
@@ -1550,8 +1550,8 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 		return false;
 	}
 
-	cmap = (jp2_cmap_comp_t*) grok_malloc(
-			nr_channels * sizeof(jp2_cmap_comp_t));
+	cmap = (grk_jp2_cmap_comp*) grok_malloc(
+			nr_channels * sizeof(grk_jp2_cmap_comp));
 	if (!cmap)
 		return false;
 
@@ -1574,8 +1574,8 @@ static bool jp2_read_cmap(jp2_t *jp2, uint8_t *p_cmap_header_data,
 	return true;
 }
 
-static void jp2_apply_cdef(grk_image *image, jp2_color_t *color) {
-	jp2_cdef_info_t *info;
+static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
+	grk_jp2_cdef_info *info;
 	uint16_t i, n, cn, asoc, acn;
 
 	info = color->jp2_cdef->info;
@@ -1639,7 +1639,7 @@ static void jp2_apply_cdef(grk_image *image, jp2_color_t *color) {
 
 static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		uint32_t cdef_header_size) {
-	jp2_cdef_info_t *cdef_info;
+	grk_jp2_cdef_info *cdef_info;
 	uint16_t i;
 	uint32_t l_value;
 
@@ -1672,12 +1672,12 @@ static bool jp2_read_cdef(jp2_t *jp2, uint8_t *p_cdef_header_data,
 		return false;
 	}
 
-	cdef_info = (jp2_cdef_info_t*) grok_malloc(
-			l_value * sizeof(jp2_cdef_info_t));
+	cdef_info = (grk_jp2_cdef_info*) grok_malloc(
+			l_value * sizeof(grk_jp2_cdef_info));
 	if (!cdef_info)
 		return false;
 
-	jp2->color.jp2_cdef = (jp2_cdef_t*) grok_malloc(sizeof(jp2_cdef_t));
+	jp2->color.jp2_cdef = (grk_jp2_cdef*) grok_malloc(sizeof(grk_jp2_cdef));
 	if (!jp2->color.jp2_cdef) {
 		grok_free(cdef_info);
 		return false;
@@ -2341,7 +2341,7 @@ bool jp2_setup_encoder(jp2_t *jp2,  grk_cparameters  *parameters,
 				"Multiple alpha channels specified. No cdef box will be created.");
 	}
 	if (alpha_count == 1U) { /* if here, we know what we can do */
-		jp2->color.jp2_cdef = (jp2_cdef_t*) grok_malloc(sizeof(jp2_cdef_t));
+		jp2->color.jp2_cdef = (grk_jp2_cdef*) grok_malloc(sizeof(grk_jp2_cdef));
 		if (!jp2->color.jp2_cdef) {
 			GROK_ERROR(
 					"Not enough memory to setup the JP2 encoder");
@@ -2349,8 +2349,8 @@ bool jp2_setup_encoder(jp2_t *jp2,  grk_cparameters  *parameters,
 		}
 		/* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
 		/* in which case jp2->color.jp2_cdef->info will be nullptr => valid for destruction */
-		jp2->color.jp2_cdef->info = (jp2_cdef_info_t*) grok_malloc(
-				image->numcomps * sizeof(jp2_cdef_info_t));
+		jp2->color.jp2_cdef->info = (grk_jp2_cdef_info*) grok_malloc(
+				image->numcomps * sizeof(grk_jp2_cdef_info));
 		if (!jp2->color.jp2_cdef->info) {
 			/* memory will be freed by jp2_destroy */
 			GROK_ERROR(
