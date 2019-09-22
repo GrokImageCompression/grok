@@ -387,16 +387,16 @@ static bool jp2_exec(jp2_t *jp2, std::vector<jp2_procedure> *p_procedure_list,
 		GrokStream *stream);
 
 /**
- * Reads a box header. The box is the way data is packed inside a jpeg2000 file structure.
+ * Reads a box header.
  *
  * @param	cio						the input stream to read data from.
  * @param	box						the box structure to fill.
- * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
+ * @param	p_number_bytes_read		number of bytes read from the stream
  
  *
  * @return	true if the box is recognized, false otherwise
  */
-static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
+static bool jp2_read_box_hdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 		GrokStream *cio);
 
 /**
@@ -443,17 +443,17 @@ static const jp2_header_handler_t jp2_img_header[] = {
 };
 
 /**
- * Reads a box header. The box is the way data is packed inside a jpeg2000 file structure. Data is read from a character string
+ * Reads a box header.
  *
  * @param	box						the box structure to fill.
  * @param	p_data					the character string to read data from.
- * @param	p_number_bytes_read		pointer to an int that will store the number of bytes read from the stream (should usually be 2).
+ * @param	p_number_bytes_read		number of bytes read from the stream
  * @param	p_box_max_size			the maximum number of bytes in the box.
  *
  * @return	true if the box is recognized, false otherwise
  */
-static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
-		uint32_t *p_number_bytes_read, int64_t p_box_max_size);
+static bool jp2_read_box(jp2_box_t *box, uint8_t *p_data,
+		uint32_t *p_number_bytes_read, uint64_t p_box_max_size);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
@@ -467,8 +467,16 @@ static bool jp2_setup_decoding_validation(jp2_t *jp2);
  */
 static bool jp2_setup_header_reading(jp2_t *jp2);
 
-/* ----------------------------------------------------------------------- */
-static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
+/***
+ * Read box length and type only
+ *
+ *
+ * returns: true if box header was read successfully, otherwise false
+ * throw:   CorruptJP2BoxException if box is corrupt
+ * Note: box length is never 0
+ *
+ */
+static bool jp2_read_box_hdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 		GrokStream *cio) {
 	uint8_t l_data_header[8];
 
@@ -478,7 +486,8 @@ static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 	
 
 	*p_number_bytes_read = (uint32_t) cio->read(l_data_header, 8);
-	if (*p_number_bytes_read != 8) {
+	// we reached EOS
+	if (*p_number_bytes_read < 8) {
 		return false;
 	}
 
@@ -489,25 +498,26 @@ static bool jp2_read_boxhdr(jp2_box_t *box, uint32_t *p_number_bytes_read,
 	grok_read_bytes(l_data_header + 4, &(box->type), 4);
 
 	if (box->length == 0) { /* last box */
-		const int64_t bleft = cio->get_number_byte_left();
-		box->length = bleft + 8U;
-		assert(box->length == (uint64_t )(bleft + 8));
+		box->length = cio->get_number_byte_left() + 8U;
 		return true;
 	}
 
 	/* read XL  */
 	if (box->length == 1) {
 		uint32_t l_nb_bytes_read = (uint32_t) cio->read(l_data_header, 8);
-		if (l_nb_bytes_read != 8) {
-			if (l_nb_bytes_read > 0) {
-				*p_number_bytes_read += l_nb_bytes_read;
-			}
+		// we reached EOS
+		if (l_nb_bytes_read < 8) {
 			return false;
 		}
 		grok_read_64(l_data_header, &box->length, 8);
 		*p_number_bytes_read += l_nb_bytes_read;
 	}
-	return true;
+	if (box->length < *p_number_bytes_read) {
+		GROK_ERROR( "invalid box size %" PRIu64 " (%x)\n",
+				box->length, box->type);
+		throw CorruptJP2BoxException();
+	}
+	return  true;
 }
 
 #if 0
@@ -2533,51 +2543,40 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 	uint32_t l_nb_bytes_read;
 	const jp2_header_handler_t *l_current_handler;
 	const jp2_header_handler_t *l_current_handler_misplaced;
-	uint32_t l_last_data_size = GRK_BOX_SIZE;
+	uint64_t l_last_data_size = GRK_BOX_SIZE;
 	uint32_t l_current_data_size;
 	uint8_t *l_current_data = nullptr;
 
 	assert(stream != nullptr);
 	assert(jp2 != nullptr);
+	bool rc = true;
 	
 
 	l_current_data = (uint8_t*) grok_calloc(1, l_last_data_size);
-
-	if (l_current_data == nullptr) {
+	if (!l_current_data) {
 		GROK_ERROR(
 				"Not enough memory to handle jpeg2000 file header");
 		return false;
 	}
 
-	while (jp2_read_boxhdr(&box, &l_nb_bytes_read, stream)) {
+	try {
+	while (jp2_read_box_hdr(&box, &l_nb_bytes_read, stream)) {
 		/* is it the codestream box ? */
 		if (box.type == JP2_JP2C) {
 			if (jp2->jp2_state & JP2_STATE_HEADER) {
 				jp2->jp2_state |= JP2_STATE_CODESTREAM;
-				grok_free(l_current_data);
-				return true;
+				rc =  true;
+				goto cleanup;
 			} else {
 				GROK_ERROR( "bad placed jpeg codestream");
-				grok_free(l_current_data);
-				return false;
+				rc =  false;
+				goto cleanup;
 			}
-		} else if (box.length == 0) {
-			GROK_ERROR(
-					"Cannot handle box of undefined sizes");
-			grok_free(l_current_data);
-			return false;
-		}
-		/* testcase 1851.pdf.SIGSEGV.ce9.948 */
-		else if (box.length < l_nb_bytes_read) {
-			GROK_ERROR( "invalid box size %d (%x)\n",
-					box.length, box.type);
-			grok_free(l_current_data);
-			return false;
 		}
 
 		l_current_handler = jp2_find_handler(box.type);
 		l_current_handler_misplaced = jp2_img_find_handler(box.type);
-		l_current_data_size = (uint32_t) (box.length - l_nb_bytes_read);
+		l_current_data_size = (uint64_t) (box.length - l_nb_bytes_read);
 
 		if ((l_current_handler != nullptr)
 				|| (l_current_handler_misplaced != nullptr)) {
@@ -2600,35 +2599,38 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 					if (!stream->skip(l_current_data_size)) {
 						GROK_WARN(
 								"Problem with skipping JPEG2000 box, stream error");
-						grok_free(l_current_data);
 						// ignore error and return true if code stream box has already been read
 						// (we don't worry about any boxes after code stream)
-						return jp2->jp2_state & JP2_STATE_CODESTREAM ?
+						rc =  jp2->jp2_state & JP2_STATE_CODESTREAM ?
 								true : false;
+						goto cleanup;
 					}
 					continue;
 				}
 			}
-			if ((int64_t) l_current_data_size
+			if (l_current_data_size
 					> stream->get_number_byte_left()) {
 				/* do not even try to malloc if we can't read */
 				GROK_ERROR(
-						"Invalid box size %d for box '%c%c%c%c'. Need %d bytes, %d bytes remaining \n",
-						box.length, (uint8_t) (box.type >> 24),
-						(uint8_t) (box.type >> 16), (uint8_t) (box.type >> 8),
-						(uint8_t) (box.type >> 0), l_current_data_size,
-						(uint32_t) stream->get_number_byte_left());
-				grok_free(l_current_data);
-				return false;
+						"Invalid box size %" PRIu64 " for box '%c%c%c%c'. Need %d bytes, %" PRIu64 " bytes remaining \n",
+						box.length,
+						(uint8_t) (box.type >> 24),
+						(uint8_t) (box.type >> 16),
+						(uint8_t) (box.type >> 8),
+						(uint8_t) (box.type >> 0),
+						l_current_data_size,
+						stream->get_number_byte_left());
+				rc =  false;
+				goto cleanup;
 			}
 			if (l_current_data_size > l_last_data_size) {
 				uint8_t *new_current_data = (uint8_t*) grok_realloc(
 						l_current_data, l_current_data_size);
 				if (!new_current_data) {
-					grok_free(l_current_data);
 					GROK_ERROR(
 							"Not enough memory to handle jpeg2000 box");
-					return false;
+					rc =  false;
+					goto cleanup;
 				}
 				l_current_data = new_current_data;
 				l_last_data_size = l_current_data_size;
@@ -2639,43 +2641,46 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 			if (l_nb_bytes_read != l_current_data_size) {
 				GROK_ERROR(
 						"Problem with reading JPEG2000 box, stream error");
-				grok_free(l_current_data);
-				return false;
+				rc =  false;
+				goto cleanup;
 			}
 
 			if (!l_current_handler->handler(jp2, l_current_data,
 					l_current_data_size)) {
-				grok_free(l_current_data);
-				return false;
+				rc =  false;
+				goto cleanup;
 			}
 		} else {
 			if (!(jp2->jp2_state & JP2_STATE_SIGNATURE)) {
 				GROK_ERROR(
 						"Malformed JP2 file format: first box must be JPEG 2000 signature box");
-				grok_free(l_current_data);
-				return false;
+				rc =  false;
+				goto cleanup;
 			}
 			if (!(jp2->jp2_state & JP2_STATE_FILE_TYPE)) {
 				GROK_ERROR(
 						"Malformed JP2 file format: second box must be file type box");
-				grok_free(l_current_data);
-				return false;
+				rc =  false;
+				goto cleanup;
+
 			}
 			jp2->jp2_state |= JP2_STATE_UNKNOWN;
 			if (!stream->skip(l_current_data_size)) {
 				GROK_WARN(
 						"Problem with skipping JPEG2000 box, stream error");
-				grok_free(l_current_data);
 				// ignore error and return true if code stream box has already been read
 				// (we don't worry about any boxes after code stream)
-				return jp2->jp2_state & JP2_STATE_CODESTREAM ? true : false;
+				rc =  jp2->jp2_state & JP2_STATE_CODESTREAM ? true : false;
+				goto cleanup;
 			}
 		}
 	}
-
+	} catch (CorruptJP2BoxException &ex){
+		rc = false;
+	}
+cleanup:
 	grok_free(l_current_data);
-
-	return true;
+	return rc;
 }
 
 /**
@@ -2926,20 +2931,14 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 
 	jp2->jp2_img_state = JP2_IMG_STATE_NONE;
 
-	int64_t header_size = hdr_size;
+	uint64_t header_size = hdr_size;
 
 	/* iterate while remaining data */
-	while (header_size > 0) {
+	while (header_size) {
 
-		if (!jp2_read_boxhdr_char(&box, p_header_data, &l_box_size, header_size)) {
+		if (!jp2_read_box(&box, p_header_data, &l_box_size, header_size)) {
 			GROK_ERROR(
 					"Stream error while reading JP2 Header box");
-			return false;
-		}
-
-		if (box.length > (uint64_t) header_size) {
-			GROK_ERROR(
-					"Stream error while reading JP2 Header box: box length is inconsistent.");
 			return false;
 		}
 
@@ -2979,8 +2978,8 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 	return true;
 }
 
-static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
-		uint32_t *p_number_bytes_read, int64_t p_box_max_size) {
+static bool jp2_read_box(jp2_box_t *box, uint8_t *p_data,
+		uint32_t *p_number_bytes_read, uint64_t p_box_max_size) {
 	assert(p_data != nullptr);
 	assert(box != nullptr);
 	assert(p_number_bytes_read != nullptr);
@@ -3027,6 +3026,11 @@ static bool jp2_read_boxhdr_char(jp2_box_t *box, uint8_t *p_data,
 	}
 	if (box->length < *p_number_bytes_read) {
 		GROK_ERROR( "Box length is inconsistent.");
+		return false;
+	}
+	if (box->length >  p_box_max_size) {
+		GROK_ERROR(
+				"Stream error while reading JP2 Header box: box length is inconsistent.");
 		return false;
 	}
 	return true;
