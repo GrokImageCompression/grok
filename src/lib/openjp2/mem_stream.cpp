@@ -51,7 +51,7 @@ static size_t zero_copy_read_from_buffer(void **p_buffer, size_t nb_bytes,
 	*p_buffer = p_source_buffer->buf + p_source_buffer->off;
 	p_source_buffer->off += (int64_t) l_nb_read;
 
-	return l_nb_read ? l_nb_read : ((size_t) -1);
+	return l_nb_read;
 }
 
 static size_t grok_read_from_buffer(void *p_buffer, size_t nb_bytes,
@@ -69,7 +69,7 @@ static size_t grok_read_from_buffer(void *p_buffer, size_t nb_bytes,
 				l_nb_read);
 	p_source_buffer->off += (int64_t) l_nb_read;
 
-	return l_nb_read ? l_nb_read : ((size_t) -1);
+	return l_nb_read;
 }
 
 static size_t grok_write_to_buffer(void *p_buffer, size_t nb_bytes,

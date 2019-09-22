@@ -128,7 +128,7 @@ bool GRK_CALLCONV grk_set_error_handler( grk_codec  *p_codec,
 static size_t grok_read_from_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
 	size_t l_nb_read = fread(p_buffer, 1, nb_bytes, p_file);
-	return l_nb_read ? l_nb_read : (size_t) -1;
+	return l_nb_read;
 }
 
 static uint64_t grk_get_data_length_from_file(FILE *p_file) {
