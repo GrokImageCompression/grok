@@ -2576,7 +2576,7 @@ static bool jp2_read_header_procedure(jp2_t *jp2, GrokStream *stream) {
 
 		l_current_handler = jp2_find_handler(box.type);
 		l_current_handler_misplaced = jp2_img_find_handler(box.type);
-		l_current_data_size = (uint64_t) (box.length - l_nb_bytes_read);
+		l_current_data_size = (uint32_t) (box.length - l_nb_bytes_read);
 
 		if ((l_current_handler != nullptr)
 				|| (l_current_handler_misplaced != nullptr)) {
@@ -2931,7 +2931,7 @@ static bool jp2_read_jp2h(jp2_t *jp2, uint8_t *p_header_data,
 
 	jp2->jp2_img_state = JP2_IMG_STATE_NONE;
 
-	uint64_t header_size = hdr_size;
+	int64_t header_size = hdr_size;
 
 	/* iterate while remaining data */
 	while (header_size) {

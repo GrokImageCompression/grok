@@ -887,7 +887,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				int lastdy = 1;
 				raw_cp->width = width;
 				raw_cp->height = height;
-				raw_cp->numcomps = ncomp;
+				raw_cp->numcomps = (uint16_t)ncomp;
 				raw_cp->prec = bitdepth;
 				raw_cp->sgnd = raw_signed;
 				raw_cp->comps = (grk_raw_comp_cparameters*)malloc(((uint32_t)(ncomp)) * sizeof(grk_raw_comp_cparameters));
