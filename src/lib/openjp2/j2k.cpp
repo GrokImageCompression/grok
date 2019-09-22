@@ -3842,7 +3842,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 						+ 2;
 
 		if (!j2k_add_tlmarker(p_j2k->m_current_tile_number, l_cstr_index,
-				J2K_MS_SOD, l_current_pos,2)) {
+				J2K_MS_SOD, l_current_pos,0)) {
 			GROK_ERROR("Not enough memory to add tl marker");
 			return false;
 		}
@@ -5972,7 +5972,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
 			cstr_index->tile_index[tileno].marker = nullptr;
 			cstr_index->tile_index[tileno].maxmarknum = 0;
 			cstr_index->tile_index[tileno].marknum = 0;
-			/* GROK_ERROR( "Not enough memory to add tl marker"); */
+			GROK_ERROR( "Not enough memory to add tl marker");
 			return false;
 		}
 		cstr_index->tile_index[tileno].marker = new_marker;
