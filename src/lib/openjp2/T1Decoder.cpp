@@ -70,7 +70,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 			});
 	Scheduler::g_TS.AddTaskSetToPipe(&task);
 	Scheduler::g_TS.WaitforTask(&task);
-
+	delete[] decodeBlocks;
 	return success;
 }
 
