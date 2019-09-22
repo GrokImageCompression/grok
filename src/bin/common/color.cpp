@@ -104,7 +104,7 @@ static bool all_components_equal_subsampling(grk_image *image) {
 	if (image->numcomps == 0)
 		return true;
 
-	uint32_t i;
+	uint16_t i;
 	for (i = 1U; i < image->numcomps; ++i) {
 		if (image->comps[0].dx != image->comps[i].dx) {
 			break;

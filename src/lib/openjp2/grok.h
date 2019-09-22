@@ -363,7 +363,7 @@ typedef struct _grk_raw_cparameters {
 	/** height of the raw image */
 	uint32_t height;
 	/** number of components of the raw image */
-	uint32_t numcomps;
+	uint16_t numcomps;
 	/** bit depth of the raw image */
 	uint32_t prec;
 	/** signed/unsigned raw image */
@@ -723,14 +723,6 @@ typedef void * grk_codec;
  I/O stream typedef definitions
  ==========================================================
  */
-
-/**
- * Stream open flags.
- * */
-/** The stream was opened for reading. */
-#define GRK_STREAM_READ	true
-/** The stream was opened for writing. */
-#define GRK_STREAM_WRITE false
 
 /*
  * Callback function prototype for read function
