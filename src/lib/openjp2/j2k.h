@@ -432,7 +432,7 @@ struct j2k_dec_t {
 	uint8_t *m_header_data;
 	uint32_t m_header_data_size;
 	// tile part data length
-	uint64_t tile_part_data_length;
+	uint32_t tile_part_data_length;
 	/** Only tile indices in the correct range will be decoded.*/
 	uint32_t m_start_tile_x;
 	uint32_t m_start_tile_y;
@@ -442,7 +442,7 @@ struct j2k_dec_t {
 	/** Index of the tile to decode (used in get_tile); initialized to -1 */
 	int32_t m_tile_ind_to_dec;
 	/** Position of the last SOT marker read */
-	int64_t m_last_sot_read_pos;
+	uint64_t m_last_sot_read_pos;
 
 	/**
 	 * Indicate that the current tile-part is assumed to be the last tile part of the codestream.

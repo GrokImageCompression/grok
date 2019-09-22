@@ -867,11 +867,11 @@ typedef struct _grk_image_comptparm {
  * */
 typedef struct _grk_packet_info {
 	/** packet start position (including SOP marker if it exists) */
-	int64_t start_pos;
+	uint64_t start_pos;
 	/** end of packet header position (including EPH marker if it exists)*/
-	int64_t end_ph_pos;
+	uint64_t end_ph_pos;
 	/** packet end position */
-	int64_t end_pos;
+	uint64_t end_pos;
 	/** packet distortion */
 	double disto;
 }  grk_packet_info; 
@@ -893,11 +893,11 @@ typedef struct _grk_marker_info {
  */
 typedef struct _grk_tp_info {
 	/** start position of tile part */
-	uint32_t tp_start_pos;
+	uint64_t tp_start_pos;
 	/** end position of tile part header */
-	uint32_t tp_end_header;
+	uint64_t tp_end_header;
 	/** end position of tile part */
-	uint32_t tp_end_pos;
+	uint64_t tp_end_pos;
 	/** start packet of tile part */
 	uint32_t tp_start_pack;
 	/** number of packets of tile part */
@@ -913,11 +913,11 @@ typedef struct _grk_tile_info {
 	/** number of tile */
 	uint32_t tileno;
 	/** start position */
-	uint32_t start_pos;
+	uint64_t start_pos;
 	/** end position of the header */
-	uint32_t end_header;
+	uint64_t end_header;
 	/** end position */
-	uint32_t end_pos;
+	uint64_t end_pos;
 	/** precinct number for each resolution level (width) */
 	uint32_t pw[GRK_J2K_MAXRLVLS];
 	/** precinct number for each resolution level (height) */
@@ -1075,11 +1075,11 @@ typedef struct _grk_codestream_info_v2 {
  */
 typedef struct _grk_tp_index {
 	/** start position */
-	int64_t start_pos;
+	uint64_t start_pos;
 	/** end position of the header */
-	int64_t end_header;
+	uint64_t end_header;
 	/** end position */
-	int64_t end_pos;
+	uint64_t end_pos;
 }  grk_tp_index; 
 
 /**

@@ -70,17 +70,36 @@ const uint16_t maxSubLevel = 9;
 /*@{*/
 
 tcp_t::tcp_t() :
-		csty(0), prg(GRK_PROG_UNKNOWN), numlayers(0), num_layers_to_decode(0), mct(
-				0), numpocs(0), ppt_markers_count(0), ppt_markers(nullptr), ppt_data(
-				nullptr), ppt_buffer(nullptr), ppt_data_size(0), ppt_len(0), tccps(
-				nullptr), m_current_tile_part_number(-1), m_nb_tile_parts(0), m_tile_data(
-				nullptr), mct_norms(nullptr), m_mct_decoding_matrix(nullptr), m_mct_coding_matrix(
-				nullptr), m_mct_records(nullptr), m_nb_mct_records(0), m_nb_max_mct_records(
-				0), m_mcc_records(nullptr), m_nb_mcc_records(0), m_nb_max_mcc_records(
-				0), cod(0), ppt(0), POC(0),
+				csty(0),
+				prg(GRK_PROG_UNKNOWN),
+				numlayers(0),
+				num_layers_to_decode(0),
+				mct(0),
+				numpocs(0),
+				ppt_markers_count(0),
+				ppt_markers(nullptr),
+				ppt_data(nullptr),
+				ppt_buffer(nullptr),
+				ppt_data_size(0),
+				ppt_len(0),
+				main_qcd_qntsty(0),
 				main_qcd_numStepSizes(0),
-				main_qcd_qntsty(0)
-
+				tccps(nullptr),
+				m_current_tile_part_number(-1),
+				m_nb_tile_parts(0),
+				m_tile_data(nullptr),
+				mct_norms(nullptr),
+				m_mct_decoding_matrix(nullptr),
+				m_mct_coding_matrix(nullptr),
+				m_mct_records(nullptr),
+				m_nb_mct_records(0),
+				m_nb_max_mct_records(0),
+				m_mcc_records(nullptr),
+				m_nb_mcc_records(0),
+				m_nb_max_mcc_records(0),
+				cod(0),
+				ppt(0),
+				POC(0)
 {
 
 	for (auto i = 0; i < 100; ++i)
@@ -920,7 +939,7 @@ static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream);
  @param len          length of marker segment
  */
 static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
-		int64_t pos, uint32_t len);
+		uint64_t pos, uint32_t len);
 /**
  Add tile header marker information
  @param tileno       tile index number
@@ -930,7 +949,7 @@ static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
  @param len          length of marker segment
  */
 static bool j2k_add_tlmarker(uint32_t tileno,
-		 grk_codestream_index  *cstr_index, uint32_t type, int64_t pos,
+		 grk_codestream_index  *cstr_index, uint32_t type, uint64_t pos,
 		uint32_t len);
 
 /**
@@ -1607,8 +1626,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 		//event_msg( EVT_INFO, "Start to read j2k main header (%d).\n", p_j2k->cstr_index->main_head_start);
 
 		/* Add the marker to the codestream index*/
-		if (false
-				== j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC,
+		if (!j2k_add_mhmarker(p_j2k->cstr_index, J2K_MS_SOC,
 						p_j2k->cstr_index->main_head_start, 2)) {
 			GROK_ERROR(
 					"Not enough memory to add mh marker");
@@ -3807,7 +3825,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 	tcp_t *l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 	if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
 		p_j2k->m_specific_param.m_decoder.tile_part_data_length =
-				(uint64_t) (p_stream->get_number_byte_left() - 2);
+				(uint32_t) (p_stream->get_number_byte_left() - 2);
 	} else {
 		if (p_j2k->m_specific_param.m_decoder.tile_part_data_length >= 2)
 			p_j2k->m_specific_param.m_decoder.tile_part_data_length -= 2;
@@ -3824,7 +3842,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 
 			// sanitize tile_part_data_length
 			p_j2k->m_specific_param.m_decoder.tile_part_data_length =
-					bytesLeftInStream;
+					(uint32_t)bytesLeftInStream;
 		}
 	}
 	/* Index */
@@ -4329,7 +4347,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 					if (p_j2k->cstr_index && l_marker_handler->id != J2K_MS_SOT) {
 						bool res = j2k_add_mhmarker(p_j2k->cstr_index,
 								J2K_MS_UNK,
-								(uint32_t) p_stream->tell() - l_size_unk,
+								p_stream->tell() - l_size_unk,
 								l_size_unk);
 						if (res == false) {
 							GROK_ERROR(
@@ -5922,7 +5940,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 }
 
 static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
-		int64_t pos, uint32_t len) {
+		uint64_t pos, uint32_t len) {
 	assert(cstr_index != nullptr);
 
 	/* expand the list? */
@@ -5952,7 +5970,7 @@ static bool j2k_add_mhmarker( grk_codestream_index  *cstr_index, uint32_t type,
 }
 
 static bool j2k_add_tlmarker(uint32_t tileno,
-		 grk_codestream_index  *cstr_index, uint32_t type, int64_t pos,
+		 grk_codestream_index  *cstr_index, uint32_t type, uint64_t pos,
 		uint32_t len) {
 	assert(cstr_index != nullptr);
 	assert(cstr_index->tile_index != nullptr);
@@ -5982,7 +6000,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
 	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].type =
 			(uint16_t) type;
 	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].pos =
-			(uint64_t) pos;
+			pos;
 	cstr_index->tile_index[tileno].marker[cstr_index->tile_index[tileno].marknum].len =
 			(uint32_t) len;
 	cstr_index->tile_index[tileno].marknum++;
@@ -6550,9 +6568,8 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 
 		if (p_j2k->cstr_index) {
 			/* Add the marker to the codestream index*/
-			if (false
-					== j2k_add_mhmarker(p_j2k->cstr_index, l_marker_handler->id,
-							(uint32_t) p_stream->tell() - l_marker_size - 4,
+			if (!j2k_add_mhmarker(p_j2k->cstr_index, l_marker_handler->id,
+							p_stream->tell() - l_marker_size - 4,
 							l_marker_size + 4)) {
 				GROK_ERROR(
 						"Not enough memory to add mh marker");
@@ -7216,8 +7233,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 
 			if (p_j2k->cstr_index) {
 				/* Add the marker to the codestream index*/
-				if (false
-						== j2k_add_tlmarker(p_j2k->m_current_tile_number,
+				if (!j2k_add_tlmarker(p_j2k->m_current_tile_number,
 								p_j2k->cstr_index, l_marker_handler->id,
 								(uint32_t) p_stream->tell() - l_marker_size - 4,
 								l_marker_size + 4)) {
@@ -7229,7 +7245,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 
 			// Cache position of last SOT marker read
 			if (l_marker_handler->id == J2K_MS_SOT) {
-				uint32_t sot_pos = (uint32_t) p_stream->tell() - l_marker_size
+				uint64_t sot_pos = p_stream->tell() - l_marker_size
 						- 4;
 				if (sot_pos
 						> p_j2k->m_specific_param.m_decoder.m_last_sot_read_pos) {
