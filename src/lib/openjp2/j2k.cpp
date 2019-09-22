@@ -7168,7 +7168,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 				uint8_t *new_header_data = nullptr;
 				/* If we are here, this means we consider this marker as known & we will read it */
 				/* Check enough bytes left in stream before allocation */
-				if ((int64_t) l_marker_size
+				if (l_marker_size
 						> p_stream->get_number_byte_left()) {
 					GROK_ERROR(
 							"Marker size inconsistent with stream length");

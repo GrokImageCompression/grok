@@ -173,7 +173,7 @@ struct GrokStream: public IGrokStream {
 	 * Get the number of bytes left before the end of the stream
 	 * @return		Number of bytes left before the end of the stream.
 	 */
-	int64_t get_number_byte_left(void);
+	uint64_t get_number_byte_left(void);
 
 	/**
 	 * Seeks a number of bytes from the stream.
