@@ -136,7 +136,7 @@ size_t GrokStream::read(uint8_t *p_buffer, size_t p_size) {
 		m_stream_offset += m_bytes_in_buffer;
 		m_buffer_current_ptr += m_bytes_in_buffer;
 		invalidate_buffer();
-		return l_read_nb_bytes ? l_read_nb_bytes : (size_t) -1;
+		return l_read_nb_bytes;
 	}
 	// 3. read remaining bytes in buffer 
 	if (m_bytes_in_buffer) {
@@ -156,10 +156,10 @@ size_t GrokStream::read(uint8_t *p_buffer, size_t p_size) {
 		for (;;) {
 			m_bytes_in_buffer = m_read_fn(m_buffer, m_buffer_size, m_user_data);
 			// i) end of stream
-			if (m_bytes_in_buffer == (size_t) -1) {
+			if (m_bytes_in_buffer == 0) {
 				invalidate_buffer();
 				m_status |= GROK_STREAM_STATUS_END;
-				return l_read_nb_bytes ? l_read_nb_bytes : (size_t) -1;
+				return l_read_nb_bytes;
 			}
 			// ii) or not enough data
 			else if (m_bytes_in_buffer < p_size) {
@@ -190,9 +190,9 @@ size_t GrokStream::read(uint8_t *p_buffer, size_t p_size) {
 	else {
 		auto bytes_read = m_read_fn(p_buffer, p_size, m_user_data);
 		// i) end of stream
-		if (bytes_read == (size_t) -1) {
+		if (bytes_read == 0) {
 			m_status |= GROK_STREAM_STATUS_END;
-			return (size_t) -1;
+			return 0;
 		}
 		// ii) or we have read the exact amount requested
 		else {
@@ -209,9 +209,9 @@ size_t GrokStream::read_data_zero_copy(uint8_t **p_buffer, size_t p_size) {
 	size_t l_read_nb_bytes = m_zero_copy_read_fn((void**) p_buffer, p_size,
 			m_user_data);
 
-	if (l_read_nb_bytes == (size_t) -1) {
+	if (l_read_nb_bytes == 0) {
 		m_status |= GROK_STREAM_STATUS_END;
-		return (size_t) -1;
+		return 0;
 	} else {
 		m_stream_offset += l_read_nb_bytes;
 		return l_read_nb_bytes;
@@ -264,7 +264,7 @@ size_t GrokStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 		return 0;
 
 	if (m_status & GROK_STREAM_STATUS_ERROR) {
-		return (size_t) -1;
+		return 0;
 	}
 	// handle case where there is no internal buffer (buffer stream)
 	if (isBufferStream) {
@@ -297,7 +297,7 @@ size_t GrokStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 			p_size -= l_remaining_bytes;
 		}
 		if (!flush()) {
-			return (size_t) -1;
+			return 0;
 		}
 	}
 	return l_write_nb_bytes;
@@ -324,7 +324,7 @@ bool GrokStream::flush() {
 		l_current_write_nb_bytes = m_write_fn(m_buffer_current_ptr,
 				m_bytes_in_buffer, m_user_data);
 
-		if (l_current_write_nb_bytes == (size_t) -1) {
+		if (l_current_write_nb_bytes != m_bytes_in_buffer) {
 			m_status |= GROK_STREAM_STATUS_ERROR;
 			GROK_ERROR( "Error on writing stream!");
 			return false;
