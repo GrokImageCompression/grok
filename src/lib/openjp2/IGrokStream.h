@@ -61,7 +61,7 @@ struct IGrokStream {
 	 * Get the number of bytes left before the end of the stream
 	 * @return		Number of bytes left before the end of the stream.
 	 */
-	virtual int64_t get_number_byte_left(void)= 0;
+	virtual uint64_t get_number_byte_left(void)= 0;
 
 	/**
 	 * Skips a number of bytes from the stream.
