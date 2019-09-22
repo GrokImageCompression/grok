@@ -3815,7 +3815,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 	if (p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
 		auto bytesLeftInStream = p_stream->get_number_byte_left();
 		// check that there are enough bytes in stream to fill tile data
-		if ((int64_t) p_j2k->m_specific_param.m_decoder.tile_part_data_length
+		if (p_j2k->m_specific_param.m_decoder.tile_part_data_length
 				> bytesLeftInStream) {
 			GROK_WARN(
 					"Tile part length size %lld inconsistent with stream length %lld\n",
@@ -8692,20 +8692,11 @@ static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream) {
 
 	if (cstr_index->marker) {
 		for (it_marker = 0; it_marker < cstr_index->marknum; it_marker++) {
-
-#if (defined(__GNUC__) &&  (__GNUC__ < 5 ))
-			fprintf(out_stream, "\t\t type=%#x, pos=%lld, len=%d\n",
-				cstr_index->marker[it_marker].type,
-				(int64_t)cstr_index->marker[it_marker].pos,
-				cstr_index->marker[it_marker].len);
-
-#else
-			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIi64", len=%d\n",
+			fprintf(out_stream, "\t\t type=%#x, pos=%" PRIu64", len=%d\n",
 					cstr_index->marker[it_marker].type,
 					cstr_index->marker[it_marker].pos,
 					cstr_index->marker[it_marker].len);
 
-#endif
 		}
 	}
 

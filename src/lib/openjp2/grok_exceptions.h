@@ -21,13 +21,9 @@
 
 namespace grk {
 
-class DecodeUnknownMarkerAtEndOfTileException: public std::exception {
+class DecodeUnknownMarkerAtEndOfTileException: public std::exception {};
 
-};
+class PluginDecodeUnsupportedException: public std::exception {};
 
-//exceptions
-class PluginDecodeUnsupportedException: public std::exception {
-};
-
-
+class CorruptJP2BoxException: public std::exception {};
 }
