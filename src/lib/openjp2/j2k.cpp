@@ -3841,13 +3841,9 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 						+ p_j2k->m_specific_param.m_decoder.tile_part_data_length
 						+ 2;
 
-		if (false
-				== j2k_add_tlmarker(p_j2k->m_current_tile_number, l_cstr_index,
-				J2K_MS_SOD, l_current_pos,
-						(uint32_t) (p_j2k->m_specific_param.m_decoder.tile_part_data_length
-								+ 2))) {
-			GROK_ERROR(
-					"Not enough memory to add tl marker");
+		if (!j2k_add_tlmarker(p_j2k->m_current_tile_number, l_cstr_index,
+				J2K_MS_SOD, l_current_pos,2)) {
+			GROK_ERROR("Not enough memory to add tl marker");
 			return false;
 		}
 
