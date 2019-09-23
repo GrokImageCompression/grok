@@ -504,7 +504,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 	uint64_t i;
 	unsigned int compno, ncomp;
 	int adjustR, adjustG, adjustB, adjustA;
-	int fails, two, want_gray, has_alpha, triple;
+	int two, want_gray, has_alpha, triple;
 	int prec, v;
 	FILE *fdest = nullptr;
 	const char *tmp = outfile;
@@ -520,11 +520,11 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		goto cleanup;
 	}
 	two = has_alpha = 0;
-	fails = 1;
 	ncomp = image->numcomps;
 
 	if (!sanityCheckOnImage(image, ncomp)) {
-		return fails;
+		rc = 1;
+		goto cleanup;
 	}
 
 	while (*tmp)
@@ -549,7 +549,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 					))) {
 		fdest = fopen(outfile, "wb");
-
 		if (!fdest) {
 			spdlog::error("failed to open {} for writing\n", outfile);
 			rc = 1;
@@ -660,8 +659,10 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}
 				if (outCount) {
 					size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
-					if (res != outCount)
+					if (res != outCount){
 						rc = 1;
+						goto cleanup;
+					}
 				}
 			}
 		} else {
@@ -721,8 +722,10 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
-				if (res != outCount)
+				if (res != outCount){
 					rc = 1;
+					goto cleanup;
+				}
 			}
 		}
 	}
@@ -756,7 +759,8 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		} else
 			sprintf(destname, "%s", outfile);
 
-		fdest = fopen(destname, "wb");
+		if (!fdest)
+			fdest = fopen(destname, "wb");
 		if (!fdest) {
 			spdlog::error("failed to open {} for writing\n",
 					destname);
