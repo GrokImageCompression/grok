@@ -135,7 +135,7 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 
 							v4dwt_t h;
 							h.wavelet = (dwt_v4_t*) grok_aligned_malloc(
-									(max_resolution(res, numResolutions))
+									(dwt_utils::max_resolution(res, numResolutions))
 											* sizeof(dwt_v4_t));
 							if (!h.wavelet) {
 								GROK_ERROR("out of memory");
@@ -465,172 +465,56 @@ void dwt97::v4dwt_decode(v4dwt_t *restrict dwt) {
 	v4dwt_decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_alpha));
 #else
-	v4dwt_decode_step1(dwt->wavelet + a, dwt->s_n, dwt_K);
-	v4dwt_decode_step1(dwt->wavelet + b, dwt->d_n, dwt_c13318);
-	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
-	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
-	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
-	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
+	v4dwt_decode_step1(dwt_utils->wavelet + a, dwt_utils->s_n, dwt_K);
+	v4dwt_decode_step1(dwt_utils->wavelet + b, dwt_utils->d_n, dwt_c13318);
+	v4dwt_decode_step2(dwt_utils->wavelet + b, dwt_utils->wavelet + a + 1, dwt_utils->s_n, std::min<uint32_t>(dwt_utils->s_n, dwt_utils->d_n - a), dwt_delta);
+	v4dwt_decode_step2(dwt_utils->wavelet + a, dwt_utils->wavelet + b + 1, dwt_utils->d_n, std::min<uint32_t>(dwt_utils->d_n, dwt_utils->s_n - b), dwt_gamma);
+	v4dwt_decode_step2(dwt_utils->wavelet + b, dwt_utils->wavelet + a + 1, dwt_utils->s_n, std::min<uint32_t>(dwt_utils->s_n, dwt_utils->d_n - a), dwt_beta);
+	v4dwt_decode_step2(dwt_utils->wavelet + a, dwt_utils->wavelet + b + 1, dwt_utils->d_n, std::min<uint32_t>(dwt_utils->d_n, dwt_utils->s_n - b), dwt_alpha);
 #endif
-}
-
-/* <summary>                             */
-/* Forward 9-7 wavelet transform in 2-D. */
-/* </summary>                            */
-bool dwt97::encode(tcd_tilecomp_t *tilec) {
-	if (tilec->numresolutions == 1U)
-		return true;
-
-	size_t l_data_size = max_resolution(tilec->resolutions,
-			tilec->numresolutions) * sizeof(int32_t);
-	/* overflow check */
-	if (l_data_size > SIZE_MAX) {
-		GROK_ERROR("dwt97 encode: overflow");
-		return false;
-	}
-	if (!l_data_size)
-		return false;
-
-	bool rc = true;
-	uint32_t rw,rh,rw1,rh1;
-	uint8_t cas_row,cas_col;
-	uint32_t stride = tilec->x1 - tilec->x0;
-	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
-	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-
-	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
-	tcd_resolution_t *l_last_res = l_cur_res - 1;
-
-	int32_t **bj_array = new int32_t*[Scheduler::g_TS.GetNumTaskThreads()];
-	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
-		bj_array[i] = nullptr;
-	}
-	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
-		bj_array[i] = (int32_t*) grok_aligned_malloc(l_data_size);
-		if (!bj_array[i]){
-			rc = false;
-			goto cleanup;
-		}
-	}
-
-	for (int32_t i = 0; i < num_decomps; ++i) {
-
-		/* width of the resolution level computed   */
-		rw = l_cur_res->x1 - l_cur_res->x0;
-		/* height of the resolution level computed  */
-		rh = l_cur_res->y1 - l_cur_res->y0;
-		// width of the resolution level once lower than computed one
-		rw1 = l_last_res->x1 - l_last_res->x0;
-		//height of the resolution level once lower than computed one
-		rh1 = l_last_res->y1 - l_last_res->y0;
-
-		/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		cas_row = l_cur_res->x0 & 1;
-		/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		cas_col = l_cur_res->y0 & 1;
-
-		// transform vertical
-		if (rw) {
-			const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / Scheduler::g_TS.GetNumTaskThreads()));
-			const uint32_t s_n = rh1;
-			const uint32_t d_n = rh - rh1;
-			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
-					[this,bj_array,a,
-					 stride, rw,rh,
-					 d_n, s_n, cas_col,
-					 linesPerThreadV](enki::TaskSetPartition range, uint32_t threadnum) {
-
-				for (auto m = range.start * linesPerThreadV;
-						m < std::min<uint32_t>((range.end)*linesPerThreadV, rw); ++m) {
-					int32_t *bj = bj_array[threadnum];
-					int32_t *aj = a + m;
-					for (uint32_t k = 0; k < rh; ++k) {
-						bj[k] = aj[k * stride];
-					}
-					encode_line(bj, d_n, s_n, cas_col);
-					deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
-				}
-
-			});
-			Scheduler::g_TS.AddTaskSetToPipe(&task);
-			Scheduler::g_TS.WaitforTask(&task);
-		}
-
-		// transform horizontal
-		if (rh){
-			const uint32_t s_n = rw1;
-			const uint32_t d_n = rw - rw1;
-			const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / Scheduler::g_TS.GetNumTaskThreads());
-			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
-								[this,bj_array,a,
-								 stride, rw,rh,
-								 d_n, s_n, cas_row,
-								 linesPerThreadH](enki::TaskSetPartition range, uint32_t threadnum) {
-
-				for (auto m = range.start * linesPerThreadH;
-						m < std::min<uint32_t>((range.end)*linesPerThreadH, rh); ++m) {
-					int32_t *bj = bj_array[threadnum];
-					int32_t *aj = a + m * stride;
-					memcpy(bj,aj,rw << 2);
-					encode_line(bj, d_n, s_n, cas_row);
-					deinterleave_h(bj, aj, d_n, s_n, cas_row);
-				}
-			});
-			Scheduler::g_TS.AddTaskSetToPipe(&task);
-			Scheduler::g_TS.WaitforTask(&task);
-		}
-		l_cur_res = l_last_res;
-		l_last_res--;
-	}
-cleanup:
-	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i)
-		grok_aligned_free(bj_array[i]);
-	delete[] bj_array;
-	return rc;
 }
 
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
 void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
-	;
 	if (!cas) {
-		if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
+	  if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
+		for (int32_t i = 0; i < d_n; i++)
+			GROK_D(i)-= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
+		for (int32_t i = 0; i < s_n; i++)
+			GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
+		for (int32_t i = 0; i < d_n; i++)
+			GROK_D(i) += int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
+		for (int32_t i = 0; i < s_n; i++)
+			GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
+		for (int32_t i = 0; i < d_n; i++)
+			GROK_D(i) = int_fix_mul(GROK_D(i), 5039);
+		for (int32_t i = 0; i < s_n; i++)
+			GROK_S(i) = int_fix_mul(GROK_S(i), 6659);
+	  }
+	}
+	else {
+		if ((s_n > 0) || (d_n > 1)) { /* NEW :  CASE ONE ELEMENT */
 			for (int32_t i = 0; i < d_n; i++)
-				GROK_D(i)-= int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 12994);
-				for (int32_t i = 0; i < s_n; i++)
-				GROK_S(i) -= int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 434);
-				for (int32_t i = 0; i < d_n; i++)
-				GROK_D(i) += int_fix_mul(GROK_S_(i) + GROK_S_(i + 1), 7233);
-				for (int32_t i = 0; i < s_n; i++)
-				GROK_S(i) += int_fix_mul(GROK_D_(i - 1) + GROK_D_(i), 3633);
-				for (int32_t i = 0; i < d_n; i++)
-				GROK_D(i) = int_fix_mul(GROK_D(i), 5039);
-				for (int32_t i = 0; i < s_n; i++)
-				GROK_S(i) = int_fix_mul(GROK_S(i), 6659);
-			}
-		}
-		else {
-			if ((s_n > 0) || (d_n > 1)) { /* NEW :  CASE ONE ELEMENT */
-				for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) -= int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 12994);
-				for (int32_t i = 0; i < s_n; i++)
+			for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) -= int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 434);
-				for (int32_t i = 0; i < d_n; i++)
+			for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) += int_fix_mul(GROK_DD_(i) + GROK_DD_(i - 1), 7233);
-				for (int32_t i = 0; i < s_n; i++)
+			for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) += int_fix_mul(GROK_SS_(i) + GROK_SS_(i + 1), 3633);
-				for (int32_t i = 0; i < d_n; i++)
+			for (int32_t i = 0; i < d_n; i++)
 				GROK_S(i) = int_fix_mul(GROK_S(i), 5039);
-				for (int32_t i = 0; i < s_n; i++)
+			for (int32_t i = 0; i < s_n; i++)
 				GROK_D(i) = int_fix_mul(GROK_D(i), 6659);
-			}
 		}
 	}
+}
 
-	/* <summary>                             */
-	/* Inverse 9-7 data transform in 2-D. */
-	/* </summary>                            */
+/* <summary>                             */
+/* Inverse 9-7 data transform in 2-D. */
+/* </summary>                            */
 bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {

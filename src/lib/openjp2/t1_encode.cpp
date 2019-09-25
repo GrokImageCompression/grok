@@ -318,9 +318,9 @@ double t1_encode::getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 		w1 = mct_norms[compno];
 	}
 	if (qmfbid == 1) {
-		w2 = dwt_getnorm(level, orient);
+		w2 = dwt_utils::getnorm(level, orient);
 	} else { /* if (qmfbid == 0) */
-		w2 = dwt_getnorm_real(level, orient);
+		w2 = dwt_utils::getnorm_real(level, orient);
 	}
 	wmsedec = w1 * w2 * stepsize * (double) ((size_t) 1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;

@@ -58,6 +58,8 @@
 #include "grok_includes.h"
 #include "Tier1.h"
 #include <memory>
+#include "Wavelet.h"
+
 
 namespace grk {
 
@@ -823,9 +825,9 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 		l_res = l_tilec->resolutions;
 		l_step_size = l_tccp->stepsizes;
 		if (l_tccp->qmfbid == 0) {
-			l_gain_ptr = &dwt_getgain_real;
+			l_gain_ptr = &dwt_utils::getgain_real;
 		} else {
-			l_gain_ptr = &dwt_getgain;
+			l_gain_ptr = &dwt_utils::getgain;
 		}
 		/*fprintf(stderr, "\tlevel_no=%d\n",l_level_no);*/
 
@@ -1864,13 +1866,13 @@ bool TileProcessor::dwt_encode() {
 		tcd_tilecomp_t *tile_comp = tile->comps + compno;
 		tccp_t *l_tccp = tcp->tccps + compno;
 		if (l_tccp->qmfbid == 1) {
-			dwt53 dwt;
+			Wavelet<dwt53> dwt;
 			if (!dwt.encode(tile_comp)) {
 				rc = false;
 				continue;
 			}
 		} else if (l_tccp->qmfbid == 0) {
-			dwt97 dwt;
+			Wavelet<dwt97> dwt;
 			if (!dwt.encode(tile_comp)) {
 				rc = false;
 				continue;

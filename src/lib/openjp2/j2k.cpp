@@ -5929,7 +5929,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 					tccp->prch[j] = 15;
 				}
 			}
-			dwt_calc_explicit_stepsizes(tccp, image->comps[i].prec);
+			dwt_utils::calc_explicit_stepsizes(tccp, image->comps[i].prec);
 		}
 	}
 	if (parameters->mct_data) {
