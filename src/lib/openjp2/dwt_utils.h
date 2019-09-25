@@ -57,6 +57,8 @@
 
 namespace grk {
 
+struct tcd_tilecomp_t;
+
 struct dwt_t {
 	int32_t *mem;
 	uint32_t d_n;
@@ -64,47 +66,49 @@ struct dwt_t {
 	uint8_t cas;
 };
 
-class dwt: public dwt_interface {
+class dwt_utils {
 public:
-	virtual ~dwt() {
-	}
-protected:uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
-	void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+	/**
+	 Get the gain of a subband for the reversible 5-3 DWT.
+	 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
+	 @return 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
+	 */
+	static uint32_t getgain(uint8_t orient);
+	/**
+	 Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
+	 @param level Level of the wavelet function
+	 @param orient Band of the wavelet function
+	 @return the norm of the wavelet function
+	 */
+	static double getnorm(uint32_t level, uint8_t orient);
+	/**
+	 Get the gain of a subband for the irreversible 9-7 DWT.
+	 @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
+	 @return the gain of the 9-7 wavelet transform
+	 */
+	static uint32_t getgain_real(uint8_t orient);
+	/**
+	 Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
+	 @param level Level of the wavelet function
+	 @param orient Band of the wavelet function
+	 @return the norm of the 9-7 wavelet
+	 */
+	static double getnorm_real(uint32_t level, uint8_t orient);
+	/**
+	 Explicit calculation of the Quantization Stepsizes
+	 @param tccp Tile-component coding parameters
+	 @param prec Precint analyzed
+	 */
+	static void calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec);
+
+	static void encode_stepsize(int32_t stepsize, int32_t numbps,
+			stepsize_t *bandno_stepsize);
+
+	static uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
+	static void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 			int32_t x, int32_t cas);
-	void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+	static void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 			int32_t cas);
 };
 
-/**
- Get the gain of a subband for the reversible 5-3 DWT.
- @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
- @return 0 if orient = 0, returns 1 if orient = 1 or 2, returns 2 otherwise
- */
-uint32_t dwt_getgain(uint8_t orient);
-/**
- Get the norm of a wavelet function of a subband at a specified level for the reversible 5-3 DWT.
- @param level Level of the wavelet function
- @param orient Band of the wavelet function
- @return the norm of the wavelet function
- */
-double dwt_getnorm(uint32_t level, uint8_t orient);
-/**
- Get the gain of a subband for the irreversible 9-7 DWT.
- @param orient Number that identifies the subband (0->LL, 1->HL, 2->LH, 3->HH)
- @return the gain of the 9-7 wavelet transform
- */
-uint32_t dwt_getgain_real(uint8_t orient);
-/**
- Get the norm of a wavelet function of a subband at a specified level for the irreversible 9-7 DWT
- @param level Level of the wavelet function
- @param orient Band of the wavelet function
- @return the norm of the 9-7 wavelet
- */
-double dwt_getnorm_real(uint32_t level, uint8_t orient);
-/**
- Explicit calculation of the Quantization Stepsizes
- @param tccp Tile-component coding parameters
- @param prec Precint analyzed
- */
-void dwt_calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec);
 }

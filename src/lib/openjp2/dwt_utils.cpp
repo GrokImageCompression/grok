@@ -65,7 +65,7 @@ namespace grk {
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-uint32_t dwt::max_resolution(tcd_resolution_t *restrict r, uint32_t i) {
+uint32_t dwt_utils::max_resolution(tcd_resolution_t *restrict r, uint32_t i) {
 	uint32_t mr = 0;
 	uint32_t w;
 	while (--i) {
@@ -81,7 +81,7 @@ uint32_t dwt::max_resolution(tcd_resolution_t *restrict r, uint32_t i) {
 /* <summary>                             */
 /* Forward lazy transform (vertical).    */
 /* </summary>                            */
-void dwt::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+void dwt_utils::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 		int32_t x, int32_t cas) {
 	int32_t i = s_n;
 	int32_t *l_dest = b;
@@ -107,7 +107,7 @@ void dwt::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 /* <summary>			                 */
 /* Forward lazy transform (horizontal).  */
 /* </summary>                            */
-void dwt::deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+void dwt_utils::deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 		int32_t cas) {
 	int32_t i;
 	int32_t *l_dest = b;
@@ -127,16 +127,11 @@ void dwt::deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 	}
 }
 
-/*
- Explicit calculation of the Quantization Stepsizes
- */
-static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps,
-		stepsize_t *bandno_stepsize);
 
 /* <summary>                                                              */
 /* This table contains the norms of the 5-3 wavelets for different bands. */
 /* </summary>                                                             */
-static const double dwt_norms[4][10] = { { 1.000, 1.500, 2.750, 5.375, 10.68,
+const double dwt_norms[4][10] = { { 1.000, 1.500, 2.750, 5.375, 10.68,
 		21.34, 42.67, 85.33, 170.7, 341.3 }, { 1.038, 1.592, 2.919, 5.703,
 		11.33, 22.64, 45.25, 90.48, 180.9 }, { 1.038, 1.592, 2.919, 5.703,
 		11.33, 22.64, 45.25, 90.48, 180.9 }, { .7186, .9218, 1.586, 3.043,
@@ -145,13 +140,16 @@ static const double dwt_norms[4][10] = { { 1.000, 1.500, 2.750, 5.375, 10.68,
 /* <summary>                                                              */
 /* This table contains the norms of the 9-7 wavelets for different bands. */
 /* </summary>                                                             */
-static const double dwt_norms_real[4][10] = { { 1.000, 1.965, 4.177, 8.403,
+const double dwt_norms_real[4][10] = { { 1.000, 1.965, 4.177, 8.403,
 		16.90, 33.84, 67.69, 135.3, 270.6, 540.9 }, { 2.022, 3.989, 8.355,
 		17.04, 34.27, 68.63, 137.3, 274.6, 549.0 }, { 2.022, 3.989, 8.355,
 		17.04, 34.27, 68.63, 137.3, 274.6, 549.0 }, { 2.080, 3.865, 8.307,
 		17.18, 34.71, 69.59, 139.3, 278.6, 557.2 } };
 
-static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps,
+/*
+ Explicit calculation of the Quantization Stepsizes
+ */
+void dwt_utils::encode_stepsize(int32_t stepsize, int32_t numbps,
 		stepsize_t *bandno_stepsize) {
 	int32_t p, n;
 	p = int_floorlog2(stepsize) - 13;
@@ -163,7 +161,7 @@ static void dwt_encode_stepsize(int32_t stepsize, int32_t numbps,
 /* <summary>                          */
 /* Get gain of 5-3 wavelet transform. */
 /* </summary>                         */
-uint32_t dwt_getgain(uint8_t orient) {
+uint32_t dwt_utils::getgain(uint8_t orient) {
 	if (orient == 0)
 		return 0;
 	if (orient == 1 || orient == 2)
@@ -174,14 +172,14 @@ uint32_t dwt_getgain(uint8_t orient) {
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
-double dwt_getnorm(uint32_t level, uint8_t orient) {
+double dwt_utils::getnorm(uint32_t level, uint8_t orient) {
 	return dwt_norms[orient][level];
 }
 
 /* <summary>                          */
 /* Get gain of 9-7 wavelet transform. */
 /* </summary>                         */
-uint32_t dwt_getgain_real(uint8_t orient) {
+uint32_t dwt_utils::getgain_real(uint8_t orient) {
 	(void) orient;
 	return 0;
 }
@@ -189,11 +187,11 @@ uint32_t dwt_getgain_real(uint8_t orient) {
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
-double dwt_getnorm_real(uint32_t level, uint8_t orient) {
+double dwt_utils::getnorm_real(uint32_t level, uint8_t orient) {
 	return dwt_norms_real[orient][level];
 }
 
-void dwt_calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec) {
+void dwt_utils::calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec) {
 	uint32_t numbands, bandno;
 	numbands = 3 * tccp->numresolutions - 2;
 	for (bandno = 0; bandno < numbands; bandno++) {
@@ -214,7 +212,7 @@ void dwt_calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec) {
 			double norm = dwt_norms_real[orient][level];
 			stepsize = (double) ((uint64_t) 1 << gain) / norm;
 		}
-		dwt_encode_stepsize((int32_t) floor(stepsize * 8192.0),
+		dwt_utils::encode_stepsize((int32_t) floor(stepsize * 8192.0),
 				(int32_t) (prec + gain), &tccp->stepsizes[bandno]);
 	}
 }

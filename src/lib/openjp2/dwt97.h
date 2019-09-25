@@ -90,15 +90,8 @@ struct dwt97_t {
 
 struct tcd_tilecomp_t;
 
-class dwt97: public dwt {
+class dwt97 {
 public:
-	/**
-	 Forward wavelet transform in 2-D.
-	 Apply a reversible DWT transform to a component of an image.
-	 @param tilec Tile component information (current tile)
-	 */
-	bool encode(tcd_tilecomp_t *tilec);
-
 	/**
 	 Inverse wavelet transform in 2-D.
 	 Apply a reversible inverse DWT transform to a component of an image.
@@ -118,13 +111,13 @@ public:
 	bool region_decode(tcd_tilecomp_t* restrict tilec,
 			uint32_t numres,
 			uint32_t numThreads);
-
-private:
-
 	/**
 	 Forward 9-7 wavelet transform in 1-D
 	 */
 	void encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas);
+
+private:
+
 
 	/* <summary>                             */
 	/* Inverse 9-7 wavelet transform in 1-D. */

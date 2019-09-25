@@ -60,7 +60,7 @@
 namespace grk {
 
 struct tcd_tilecomp_t;
-class dwt;
+class dwt_utils;
 
 struct dwt53_t {
 	int32_t *data;
@@ -72,15 +72,8 @@ struct dwt53_t {
 	uint8_t odd_top_left_bit;
 };
 
-class dwt53: public dwt {
+class dwt53 {
 public:
-	/**
-	 Forward wavelet transform in 2-D.
-	 Apply a reversible DWT transform to a component of an image.
-	 @param tilec Tile component information (current tile)
-	 */
-	bool encode(tcd_tilecomp_t *tilec);
-
 	/**
 	 Inverse wavelet transform in 2-D.
 	 Apply a reversible inverse DWT transform to a component of an image.
@@ -98,11 +91,13 @@ public:
 	bool region_decode(tcd_tilecomp_t *tilec, uint32_t numres,
 			uint32_t numThreads);
 
-private:
 	void encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas);
+private:
 	void decode_line(dwt_t *v);
 	void interleave_v(dwt_t *v, int32_t *a, int32_t x);
 	void interleave_h(dwt_t *h, int32_t *a);
+
+
 	void region_decode_1d(dwt53_t *buffer);
 	/**
 	 Inverse lazy transform (horizontal)
