@@ -114,19 +114,17 @@ public:
 	/**
 	 Forward 9-7 wavelet transform in 1-D
 	 */
-	void encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas);
-
-private:
-
+	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
 
 	/* <summary>                             */
 	/* Inverse 9-7 wavelet transform in 1-D. */
 	/* </summary>                            */
-	void v4dwt_decode(v4dwt_t* restrict dwt);
+	void decode_line(v4dwt_t* restrict dwt);
 
-	void v4dwt_interleave_h(v4dwt_t* restrict w, float* restrict a, uint32_t x, uint32_t size);
+	void interleave_h(v4dwt_t* restrict w, float* restrict a, uint32_t x, uint32_t size);
 
-	void v4dwt_interleave_v(v4dwt_t* restrict v, float* restrict a, uint32_t x, uint32_t nb_elts_read);
+	void interleave_v(v4dwt_t* restrict v, float* restrict a, uint32_t x, uint32_t nb_elts_read);
+private:
 
 	/* <summary>                             */
 	/* Inverse 9-7 data transform in 1-D. */

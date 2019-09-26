@@ -92,15 +92,15 @@ static const float dwt_c13318 = 1.625732422f;
  *****************************************************************************************/
 
 #ifdef __SSE__
-static void v4dwt_decode_step1_sse(dwt_v4_t *w, uint32_t count, const __m128 c);
+static void decode_step1_sse(dwt_v4_t *w, uint32_t count, const __m128 c);
 
-static void v4dwt_decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
+static void decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
 		uint32_t m, __m128 c);
 
 #else
-static void v4dwt_decode_step1(dwt_v4_t* w, uint32_t count, const float c);
+static void decode_step1(dwt_v4_t* w, uint32_t count, const float c);
 
-static void v4dwt_decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c);
+static void decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c);
 
 #endif
 
@@ -164,9 +164,9 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								int32_t j;
 								for (j = (int32_t) rh - (threadId << 2); j > 3;
 										j -= (numThreads << 2)) {
-									v4dwt_interleave_h(&h, aj, stride,
+									interleave_h(&h, aj, stride,
 											(uint32_t) bufsize);
-									v4dwt_decode(&h);
+									decode_line(&h);
 
 									for (int32_t k = (int32_t) rw; k-- > 0;) {
 										aj[(uint32_t) k] = h.wavelet[k].f[0];
@@ -184,9 +184,9 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								decode_dwt_barrier.arrive_and_wait();
 
 								if (j > 0) {
-									v4dwt_interleave_h(&h, aj, stride,
+									interleave_h(&h, aj, stride,
 											(uint32_t) bufsize);
-									v4dwt_decode(&h);
+									decode_line(&h);
 									for (int32_t k = (int32_t) rw; k-- > 0;) {
 										switch (j) {
 										case 3:
@@ -214,8 +214,8 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								aj = tileBuf + (threadId << 2);
 								for (j = (int32_t) rw - (threadId << 2); j > 3;
 										j -= (numThreads << 2)) {
-									v4dwt_interleave_v(&v, aj, stride, 4);
-									v4dwt_decode(&v);
+									interleave_v(&v, aj, stride, 4);
+									decode_line(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
 										memcpy(&aj[k * stride], &v.wavelet[k],
@@ -225,8 +225,8 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								}
 
 								if (j > 0) {
-									v4dwt_interleave_v(&v, aj, stride, j);
-									v4dwt_decode(&v);
+									interleave_v(&v, aj, stride, j);
+									decode_line(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
 										memcpy(&aj[k * stride], &v.wavelet[k],
@@ -249,25 +249,25 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 	return rc == 0 ? true : false;
 }
 
-void dwt97::v4dwt_interleave_h(v4dwt_t *restrict w, float *restrict a,
-		uint32_t x, uint32_t size) {
+void dwt97::interleave_h(v4dwt_t *restrict w, float *restrict a,
+		uint32_t stride, uint32_t size) {
 	float *restrict bi = (float*) (w->wavelet + w->cas);
 	uint32_t count = w->s_n;
 	uint32_t i, k;
 	for (k = 0; k < 2; ++k) {
-		if (count + 3 * x < size) {
+		if (count + 3 * stride < size) {
 			/* Fast code path */
 			for (i = 0; i < count; ++i) {
 				uint32_t j = i;
 				uint32_t ct = i << 3;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				ct++;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				ct++;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				ct++;
 				bi[ct] = a[j];
 			}
@@ -277,17 +277,17 @@ void dwt97::v4dwt_interleave_h(v4dwt_t *restrict w, float *restrict a,
 				uint32_t j = i;
 				uint32_t ct = i << 3;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				if (j >= size)
 					continue;
 				ct++;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				if (j >= size)
 					continue;
 				ct++;
 				bi[ct] = a[j];
-				j += x;
+				j += stride;
 				if (j >= size)
 					continue;
 				ct++;
@@ -302,23 +302,23 @@ void dwt97::v4dwt_interleave_h(v4dwt_t *restrict w, float *restrict a,
 	}
 }
 
-void dwt97::v4dwt_interleave_v(v4dwt_t *restrict v, float *restrict a,
-		uint32_t x, uint32_t nb_elts_read) {
+void dwt97::interleave_v(v4dwt_t *restrict v, float *restrict a,
+		uint32_t stride, uint32_t nb_elts_read) {
 	dwt_v4_t *restrict bi = v->wavelet + v->cas;
 	size_t nb_elt_bytes = (size_t) nb_elts_read * sizeof(float);
 	for (uint32_t i = 0; i < v->s_n; ++i) {
-		memcpy(&bi[i << 1], &a[i * x], nb_elt_bytes);
+		memcpy(&bi[i << 1], &a[i * stride], nb_elt_bytes);
 	}
-	a += v->s_n * x;
+	a += v->s_n * stride;
 	bi = v->wavelet + 1 - v->cas;
 	for (uint32_t i = 0; i < v->d_n; ++i) {
-		memcpy(&bi[i << 1], &a[i * x], nb_elt_bytes);
+		memcpy(&bi[i << 1], &a[i * stride], nb_elt_bytes);
 	}
 }
 
 #ifdef __SSE__
 
-static void v4dwt_decode_step1_sse(dwt_v4_t *w, uint32_t count,
+static void decode_step1_sse(dwt_v4_t *w, uint32_t count,
 		const __m128 c) {
 	__m128* restrict vw = (__m128*) w;
 	uint32_t i;
@@ -340,7 +340,7 @@ static void v4dwt_decode_step1_sse(dwt_v4_t *w, uint32_t count,
 	}
 }
 
-static void v4dwt_decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
+static void decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
 		uint32_t m, __m128 c) {
 	__m128* restrict vl = (__m128*) l;
 	__m128* restrict vw = (__m128*) w;
@@ -369,7 +369,7 @@ static void v4dwt_decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
 
 #else
 
-static void v4dwt_decode_step1(dwt_v4_t* w, uint32_t count, const float c){
+static void decode_step1(dwt_v4_t* w, uint32_t count, const float c){
 	float* restrict fw = (float*)w;
 	for (uint32_t i = 0; i < count; ++i) {
 		auto ct = i << 3;
@@ -386,7 +386,7 @@ static void v4dwt_decode_step1(dwt_v4_t* w, uint32_t count, const float c){
 		fw[ct] = tmp1 * c;
 	}
 }
-static void v4dwt_decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c){
+static void decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c){
 	float* fl = (float*)l;
 	float* fw = (float*)w;
 	uint32_t i;
@@ -438,7 +438,7 @@ static void v4dwt_decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-void dwt97::v4dwt_decode(v4dwt_t *restrict dwt) {
+void dwt97::decode_line(v4dwt_t *restrict dwt) {
 	uint8_t a, b;
 	if (dwt->cas == 0) {
 		if (!((dwt->d_n > 0) || (dwt->s_n > 1))) {
@@ -454,30 +454,30 @@ void dwt97::v4dwt_decode(v4dwt_t *restrict dwt) {
 		b = 0;
 	}
 #ifdef __SSE__
-	v4dwt_decode_step1_sse(dwt->wavelet + a, dwt->s_n, _mm_set1_ps(dwt_K));
-	v4dwt_decode_step1_sse(dwt->wavelet + b, dwt->d_n, _mm_set1_ps(dwt_c13318));
-	v4dwt_decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
+	decode_step1_sse(dwt->wavelet + a, dwt->s_n, _mm_set1_ps(dwt_K));
+	decode_step1_sse(dwt->wavelet + b, dwt->d_n, _mm_set1_ps(dwt_c13318));
+	decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
 			std::min<uint32_t>(dwt->s_n, dwt->d_n - a), _mm_set1_ps(dwt_delta));
-	v4dwt_decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
+	decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_gamma));
-	v4dwt_decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
+	decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
 			std::min<uint32_t>(dwt->s_n, dwt->d_n - a), _mm_set1_ps(dwt_beta));
-	v4dwt_decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
+	decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_alpha));
 #else
-	v4dwt_decode_step1(dwt->wavelet + a, dwt->s_n, dwt_K);
-	v4dwt_decode_step1(dwt->wavelet + b, dwt->d_n, dwt_c13318);
-	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
-	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
-	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
-	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
+	decode_step1(dwt->wavelet + a, dwt->s_n, dwt_K);
+	decode_step1(dwt->wavelet + b, dwt->d_n, dwt_c13318);
+	decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
+	decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
+	decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
+	decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
 #endif
 }
 
 /* <summary>                             */
 /* Forward 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-void dwt97::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
+void dwt97::encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas) {
 	if (!cas) {
 	  if ((d_n > 0) || (s_n > 1)) { /* NEW :  CASE ONE ELEMENT */
 		for (int32_t i = 0; i < d_n; i++)

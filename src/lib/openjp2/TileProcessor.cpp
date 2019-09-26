@@ -58,8 +58,8 @@
 #include "grok_includes.h"
 #include "Tier1.h"
 #include <memory>
-#include "Wavelet.h"
-
+#include "WaveletForward.h"
+#include "WaveletInverse.h"
 
 namespace grk {
 
@@ -1866,14 +1866,14 @@ bool TileProcessor::dwt_encode() {
 		tcd_tilecomp_t *tile_comp = tile->comps + compno;
 		tccp_t *l_tccp = tcp->tccps + compno;
 		if (l_tccp->qmfbid == 1) {
-			Wavelet<dwt53> dwt;
-			if (!dwt.encode(tile_comp)) {
+			WaveletForward<dwt53> dwt;
+			if (!dwt.run(tile_comp)) {
 				rc = false;
 				continue;
 			}
 		} else if (l_tccp->qmfbid == 0) {
-			Wavelet<dwt97> dwt;
-			if (!dwt.encode(tile_comp)) {
+			WaveletForward<dwt97> dwt;
+			if (!dwt.run(tile_comp)) {
 				rc = false;
 				continue;
 			}
