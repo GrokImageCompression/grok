@@ -21,7 +21,7 @@
 
 namespace grk {
 
-template <typename DWT> class Wavelet
+template <typename DWT> class WaveletForward
 {
 
 public:
@@ -29,16 +29,7 @@ public:
 	 Forward wavelet transform in 2-D.
 	 @param tilec Tile component information (current tile)
 	 */
-	bool encode(tcd_tilecomp_t *tilec);
-
-	/**
-	 Inverse wavelet transform in 2-D.
-	 @param tilec Tile component information (current tile)
-	 @param numres Number of resolution levels to decode
-	 */
-	bool decode(tcd_tilecomp_t *tilec, uint32_t numres, uint32_t numThreads);
-
-
+	bool run(tcd_tilecomp_t *tilec);
 };
 
 
@@ -46,7 +37,7 @@ public:
  Forward wavelet transform in 2-D.
  @param tilec Tile component information (current tile)
  */
-template <typename DWT> bool Wavelet<DWT>::encode(tcd_tilecomp_t *tilec){
+template <typename DWT> bool WaveletForward<DWT>::run(tcd_tilecomp_t *tilec){
 	if (tilec->numresolutions == 1U)
 		return true;
 
@@ -61,13 +52,13 @@ template <typename DWT> bool Wavelet<DWT>::encode(tcd_tilecomp_t *tilec){
 		return false;
 
 	bool rc = true;
-	uint32_t rw,rh,rw1,rh1;
+	uint32_t rw,rh,rw_next,rh_next;
 	uint8_t cas_row,cas_col;
 	uint32_t stride = tilec->x1 - tilec->x0;
 	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
 	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-	tcd_resolution_t *l_cur_res = tilec->resolutions + num_decomps;
-	tcd_resolution_t *l_last_res = l_cur_res - 1;
+	tcd_resolution_t *cur_res = tilec->resolutions + num_decomps;
+	tcd_resolution_t *next_res = cur_res - 1;
 
 	int32_t **bj_array = new int32_t*[Scheduler::g_TS.GetNumTaskThreads()];
 	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){
@@ -84,24 +75,24 @@ template <typename DWT> bool Wavelet<DWT>::encode(tcd_tilecomp_t *tilec){
 	for (int32_t i = 0; i < num_decomps; ++i) {
 
 		/* width of the resolution level computed   */
-		rw = l_cur_res->x1 - l_cur_res->x0;
+		rw = cur_res->x1 - cur_res->x0;
 		/* height of the resolution level computed  */
-		rh = l_cur_res->y1 - l_cur_res->y0;
-		// width of the resolution level once lower than computed one
-		rw1 = l_last_res->x1 - l_last_res->x0;
-		//height of the resolution level once lower than computed one
-		rh1 = l_last_res->y1 - l_last_res->y0;
+		rh = cur_res->y1 - cur_res->y0;
+		// width of the next resolution level
+		rw_next = next_res->x1 - next_res->x0;
+		//height of the next resolution level
+		rh_next = next_res->y1 - next_res->y0;
 
 		/* 0 = non inversion on horizontal filtering 1 = inversion between low-pass and high-pass filtering */
-		cas_row = l_cur_res->x0 & 1;
+		cas_row = cur_res->x0 & 1;
 		/* 0 = non inversion on vertical filtering 1 = inversion between low-pass and high-pass filtering   */
-		cas_col = l_cur_res->y0 & 1;
+		cas_col = cur_res->y0 & 1;
 
 		// transform vertical
 		if (rw) {
 			const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / Scheduler::g_TS.GetNumTaskThreads()));
-			const uint32_t s_n = rh1;
-			const uint32_t d_n = rh - rh1;
+			const uint32_t s_n = rh_next;
+			const uint32_t d_n = rh - rh_next;
 			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
 					[bj_array,a,
 					 stride, rw,rh,
@@ -128,8 +119,8 @@ template <typename DWT> bool Wavelet<DWT>::encode(tcd_tilecomp_t *tilec){
 
 		// transform horizontal
 		if (rh){
-			const uint32_t s_n = rw1;
-			const uint32_t d_n = rw - rw1;
+			const uint32_t s_n = rw_next;
+			const uint32_t d_n = rw - rw_next;
 			const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / Scheduler::g_TS.GetNumTaskThreads());
 			enki::TaskSet task(Scheduler::g_TS.GetNumTaskThreads(),
 								[bj_array,a,
@@ -150,8 +141,8 @@ template <typename DWT> bool Wavelet<DWT>::encode(tcd_tilecomp_t *tilec){
 			Scheduler::g_TS.AddTaskSetToPipe(&task);
 			Scheduler::g_TS.WaitforTask(&task);
 		}
-		l_cur_res = l_last_res;
-		l_last_res--;
+		cur_res = next_res;
+		next_res--;
 	}
 cleanup:
 	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i)
@@ -159,16 +150,5 @@ cleanup:
 	delete[] bj_array;
 	return rc;
 }
-
-/**
- Inverse wavelet transform in 2-D.
- @param tilec Tile component information (current tile)
- @param numres Number of resolution levels to decode
- */
-template <typename DWT> bool Wavelet<DWT>::decode(tcd_tilecomp_t *tilec, uint32_t numres, uint32_t numThreads){
-
-}
-
-
 
 }

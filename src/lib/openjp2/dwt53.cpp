@@ -266,7 +266,7 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-void dwt53::decode_line(dwt_t *v) {
+void dwt53::decode_line(dwt_t* restrict v) {
 	int32_t *a = v->mem;
 	int32_t d_n = (int32_t) v->d_n;
 	int32_t s_n = (int32_t) v->s_n;
@@ -294,10 +294,10 @@ void dwt53::decode_line(dwt_t *v) {
 
 	}
 
-	/* <summary>                             */
-	/* Inverse lazy transform (vertical).    */
-	/* </summary>                            */
-void dwt53::interleave_v(dwt_t *v, int32_t *a, int32_t x) {
+/* <summary>                             */
+/* Inverse lazy transform (vertical).    */
+/* </summary>                            */
+void dwt53::interleave_v(dwt_t* restrict v, int32_t* restrict a, int32_t x) {
 	int32_t *ai = a;
 	int32_t *bi = v->mem + v->cas;
 	int32_t i = (int32_t) v->s_n;
@@ -319,7 +319,7 @@ void dwt53::interleave_v(dwt_t *v, int32_t *a, int32_t x) {
 /* <summary>                             */
 /* Inverse lazy transform (horizontal).  */
 /* </summary>                            */
-void dwt53::interleave_h(dwt_t *h, int32_t *a) {
+void dwt53::interleave_h(dwt_t* restrict h, int32_t* restrict a) {
 	int32_t *ai = a;
 	int32_t *bi = h->mem + h->cas;
 	int32_t i = (int32_t) h->s_n;
