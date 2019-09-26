@@ -465,12 +465,12 @@ void dwt97::v4dwt_decode(v4dwt_t *restrict dwt) {
 	v4dwt_decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_alpha));
 #else
-	v4dwt_decode_step1(dwt_utils->wavelet + a, dwt_utils->s_n, dwt_K);
-	v4dwt_decode_step1(dwt_utils->wavelet + b, dwt_utils->d_n, dwt_c13318);
-	v4dwt_decode_step2(dwt_utils->wavelet + b, dwt_utils->wavelet + a + 1, dwt_utils->s_n, std::min<uint32_t>(dwt_utils->s_n, dwt_utils->d_n - a), dwt_delta);
-	v4dwt_decode_step2(dwt_utils->wavelet + a, dwt_utils->wavelet + b + 1, dwt_utils->d_n, std::min<uint32_t>(dwt_utils->d_n, dwt_utils->s_n - b), dwt_gamma);
-	v4dwt_decode_step2(dwt_utils->wavelet + b, dwt_utils->wavelet + a + 1, dwt_utils->s_n, std::min<uint32_t>(dwt_utils->s_n, dwt_utils->d_n - a), dwt_beta);
-	v4dwt_decode_step2(dwt_utils->wavelet + a, dwt_utils->wavelet + b + 1, dwt_utils->d_n, std::min<uint32_t>(dwt_utils->d_n, dwt_utils->s_n - b), dwt_alpha);
+	v4dwt_decode_step1(dwt->wavelet + a, dwt->s_n, dwt_K);
+	v4dwt_decode_step1(dwt->wavelet + b, dwt->d_n, dwt_c13318);
+	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
+	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
+	v4dwt_decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
+	v4dwt_decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
 #endif
 }
 
