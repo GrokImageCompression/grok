@@ -18,6 +18,7 @@
 #pragma once
 
 #include "grok_includes.h"
+#include <cmath>
 
 namespace grk {
 
