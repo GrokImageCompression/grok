@@ -1127,6 +1127,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 			}
 		}
 	}
+	tile->packno = 0;
 	return true;
 }
 

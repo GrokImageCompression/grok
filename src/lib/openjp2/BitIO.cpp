@@ -168,7 +168,7 @@ bool BitIO::flush() {
 }
 
 bool BitIO::inalign() {
-	if ((buf & 0xff) == 0xff) {
+	if (buf == 0xff) {
 		if (!bytein()) {
 			return false;
 		}

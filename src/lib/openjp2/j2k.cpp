@@ -3801,6 +3801,7 @@ static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
 	p_tile_coder->cur_tp_num =
 			p_j2k->m_specific_param.m_encoder.m_current_tile_part_number;
 
+	/* set packno to zero when writing the first tile part */
 	if (p_j2k->m_specific_param.m_encoder.m_current_tile_part_number == 0) {
 		p_tile_coder->tile->packno = 0;
 		if (l_cstr_info) {
