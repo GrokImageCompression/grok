@@ -720,7 +720,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  tcd_tile_t *p_tile,
 				}
 				// BIBO analysis gives upper limit on number of bit planes
 				if (l_cblk->numbps
-						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
+						> l_cblk->numbps + p_tile->comps[p_pi->compno].numresolutions * 5) {
 					GROK_WARN(
 							"Number of bit planes %u is impossibly large.\n",
 							l_cblk->numbps);
