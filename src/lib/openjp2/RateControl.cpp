@@ -28,7 +28,7 @@ namespace grk {
  of convex hull algorithm.
 
  */
-void RateControl::convexHull(tcd_pass_t *pass, uint32_t numPasses) {
+void RateControl::convexHull(grk_tcd_pass *pass, uint32_t numPasses) {
 
 	double *slope_cache = new double[numPasses];
 

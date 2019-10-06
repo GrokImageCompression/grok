@@ -29,7 +29,7 @@ public:
 	 Inverse wavelet transform in 2-D.
 	 @param tilec Tile component information (current tile)
 	 */
-	bool run(tcd_tilecomp_t *tilec, uint32_t numres);
+	bool run(grk_tcd_tilecomp *tilec, uint32_t numres);
 };
 
 
@@ -37,7 +37,7 @@ public:
  Inverse wavelet transform in 2-D.
  @param tilec Tile component information (current tile)
  */
-template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(tcd_tilecomp_t *tilec, uint32_t numres){
+template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(grk_tcd_tilecomp *tilec, uint32_t numres){
 	if (tilec->numresolutions == 1U)
 		return true;
 
@@ -57,8 +57,8 @@ template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(tcd_til
 	uint32_t stride = tilec->x1 - tilec->x0;
 	int32_t num_decomps = (int32_t) tilec->numresolutions - 1;
 	int32_t *a = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
-	tcd_resolution_t *cur_res = tilec->resolutions;
-	tcd_resolution_t *next_res = cur_res + 1;
+	grk_tcd_resolution *cur_res = tilec->resolutions;
+	grk_tcd_resolution *next_res = cur_res + 1;
 
 	int32_t **bj_array = new int32_t*[Scheduler::g_TS.GetNumTaskThreads()];
 	for (uint32_t i = 0; i < Scheduler::g_TS.GetNumTaskThreads(); ++i){

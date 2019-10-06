@@ -54,7 +54,7 @@ namespace grk {
 /**
  * Main codec handler used for compression or decompression.
  */
-struct codec_private_t {
+struct grk_codec_private {
 	/** FIXME DOC */
 	union {
 		/**
@@ -66,7 +66,7 @@ struct codec_private_t {
 					 grk_header_info  *header_info, grk_image **p_image);
 
 			/** Decoding function */
-			bool (*decode)(void *p_codec, grok_plugin_tile_t *tile,
+			bool (*decode)(void *p_codec, grk_plugin_tile *tile,
 					GrokStream *p_cio, grk_image *p_image);
 
 			/** FIXME DOC */
@@ -111,7 +111,7 @@ struct codec_private_t {
 			bool (*start_compress)(void *p_codec, GrokStream *cio,
 					grk_image *p_image);
 
-			bool (*encode)(void *p_codec, grok_plugin_tile_t*,
+			bool (*encode)(void *p_codec, grk_plugin_tile*,
 					GrokStream *p_cio);
 
 			bool (*write_tile)(void *p_codec, uint32_t tile_index,

@@ -21,7 +21,7 @@ namespace grk {
 class RateInfo {
 public:
 	RateInfo();
-	void synch(tcd_cblk_enc_t *cblk);
+	void synch(grk_tcd_cblk_enc *cblk);
 
 	uint16_t getMinimumThresh();
 

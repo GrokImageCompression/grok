@@ -20,7 +20,7 @@
 
 namespace grk {
 
-t1_interface* t1_factory::get_t1(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW,
+t1_interface* t1_factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH) {
 	return new t1_impl(isEncoder, tcp, maxCblkW, maxCblkH);
 }

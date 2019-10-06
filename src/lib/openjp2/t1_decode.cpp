@@ -548,7 +548,7 @@ void t1_decode::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 	if (dataPtr)
 		memset(dataPtr, 0, w * h * sizeof(int32_t));
 }
-bool t1_decode::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
+bool t1_decode::decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
 		uint32_t mode_switch) {
 	initBuffers((uint16_t) (cblk->x1 - cblk->x0),
 			(uint16_t) (cblk->y1 - cblk->y0));
@@ -560,7 +560,7 @@ bool t1_decode::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
 	uint32_t passtype = 2;
 	mqc_resetstates(mqc);
 	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
-		tcd_seg_t *seg = &cblk->segs[segno];
+		grk_tcd_seg *seg = &cblk->segs[segno];
 		uint32_t synthOffset = seg->dataindex + seg->len;
 		uint16_t stash = *((uint16_t*) (compressed_block + synthOffset));
 		*((uint16_t*) (compressed_block + synthOffset)) = 0xFFFF;

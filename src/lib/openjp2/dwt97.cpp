@@ -70,10 +70,10 @@ namespace grk {
 #define GROK_SS_(i) ((i)<0?GROK_S(0):((i)>=d_n?GROK_S(d_n-1):GROK_S(i)))
 #define GROK_DD_(i) ((i)<0?GROK_D(0):((i)>=s_n?GROK_D(s_n-1):GROK_D(i)))
 
-int64_t dwt97_t::bufferShiftEven() {
+int64_t grk_dwt97::bufferShiftEven() {
 	return -interleaved_offset + odd_top_left_bit;
 }
-int64_t dwt97_t::bufferShiftOdd() {
+int64_t grk_dwt97::bufferShiftOdd() {
 	return -interleaved_offset + (odd_top_left_bit ^ 1);
 }
 
@@ -92,22 +92,22 @@ static const float dwt_c13318 = 1.625732422f;
  *****************************************************************************************/
 
 #ifdef __SSE__
-static void decode_step1_sse(dwt_v4_t *w, uint32_t count, const __m128 c);
+static void decode_step1_sse(grk_dwt_4vec *w, uint32_t count, const __m128 c);
 
-static void decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
+static void decode_step2_sse(grk_dwt_4vec *l, grk_dwt_4vec *w, uint32_t k,
 		uint32_t m, __m128 c);
 
 #else
-static void decode_step1(dwt_v4_t* w, uint32_t count, const float c);
+static void decode_step1(grk_dwt_4vec* w, uint32_t count, const float c);
 
-static void decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c);
+static void decode_step2(grk_dwt_4vec* l, grk_dwt_4vec* w, uint32_t k, uint32_t m, float c);
 
 #endif
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
-bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
+bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
@@ -127,22 +127,22 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								&decode_dwt_calling_barrier, threadId,
 								numThreads]() {
 							auto numResolutions = numres;
-							tcd_resolution_t *res = tilec->resolutions;
+							grk_tcd_resolution *res = tilec->resolutions;
 
 							uint32_t rw = (res->x1 - res->x0); /* width of the resolution level computed */
 							uint32_t rh = (res->y1 - res->y0); /* height of the resolution level computed */
 							uint32_t stride = (tilec->x1 - tilec->x0);
 
-							v4dwt_t h;
-							h.wavelet = (dwt_v4_t*) grok_aligned_malloc(
+							grk_dwt97_info h;
+							h.wavelet = (grk_dwt_4vec*) grok_aligned_malloc(
 									(dwt_utils::max_resolution(res, numResolutions))
-											* sizeof(dwt_v4_t));
+											* sizeof(grk_dwt_4vec));
 							if (!h.wavelet) {
 								GROK_ERROR("out of memory");
 								rc++;
 								goto cleanup;
 							}
-							v4dwt_t v;
+							grk_dwt97_info v;
 							v.wavelet = h.wavelet;
 							while (--numResolutions) {
 								float *restrict aj = tileBuf
@@ -249,7 +249,7 @@ bool dwt97::decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 	return rc == 0 ? true : false;
 }
 
-void dwt97::interleave_h(v4dwt_t *restrict w, float *restrict a,
+void dwt97::interleave_h(grk_dwt97_info *restrict w, float *restrict a,
 		uint32_t stride, uint32_t size) {
 	float *restrict bi = (float*) (w->wavelet + w->cas);
 	uint32_t count = w->s_n;
@@ -302,9 +302,9 @@ void dwt97::interleave_h(v4dwt_t *restrict w, float *restrict a,
 	}
 }
 
-void dwt97::interleave_v(v4dwt_t *restrict v, float *restrict a,
+void dwt97::interleave_v(grk_dwt97_info *restrict v, float *restrict a,
 		uint32_t stride, uint32_t nb_elts_read) {
-	dwt_v4_t *restrict bi = v->wavelet + v->cas;
+	grk_dwt_4vec *restrict bi = v->wavelet + v->cas;
 	size_t nb_elt_bytes = (size_t) nb_elts_read * sizeof(float);
 	for (uint32_t i = 0; i < v->s_n; ++i) {
 		memcpy(&bi[i << 1], &a[i * stride], nb_elt_bytes);
@@ -318,7 +318,7 @@ void dwt97::interleave_v(v4dwt_t *restrict v, float *restrict a,
 
 #ifdef __SSE__
 
-static void decode_step1_sse(dwt_v4_t *w, uint32_t count,
+static void decode_step1_sse(grk_dwt_4vec *w, uint32_t count,
 		const __m128 c) {
 	__m128* restrict vw = (__m128*) w;
 	uint32_t i;
@@ -340,7 +340,7 @@ static void decode_step1_sse(dwt_v4_t *w, uint32_t count,
 	}
 }
 
-static void decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
+static void decode_step2_sse(grk_dwt_4vec *l, grk_dwt_4vec *w, uint32_t k,
 		uint32_t m, __m128 c) {
 	__m128* restrict vl = (__m128*) l;
 	__m128* restrict vw = (__m128*) w;
@@ -369,7 +369,7 @@ static void decode_step2_sse(dwt_v4_t *l, dwt_v4_t *w, uint32_t k,
 
 #else
 
-static void decode_step1(dwt_v4_t* w, uint32_t count, const float c){
+static void decode_step1(grk_dwt_4vec* w, uint32_t count, const float c){
 	float* restrict fw = (float*)w;
 	for (uint32_t i = 0; i < count; ++i) {
 		auto ct = i << 3;
@@ -386,7 +386,7 @@ static void decode_step1(dwt_v4_t* w, uint32_t count, const float c){
 		fw[ct] = tmp1 * c;
 	}
 }
-static void decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float c){
+static void decode_step2(grk_dwt_4vec* l, grk_dwt_4vec* w, uint32_t k, uint32_t m, float c){
 	float* fl = (float*)l;
 	float* fw = (float*)w;
 	uint32_t i;
@@ -438,7 +438,7 @@ static void decode_step2(dwt_v4_t* l, dwt_v4_t* w, uint32_t k, uint32_t m, float
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-void dwt97::decode_line(v4dwt_t *restrict dwt) {
+void dwt97::decode_line(grk_dwt97_info *restrict dwt) {
 	uint8_t a, b;
 	if (dwt->cas == 0) {
 		if (!((dwt->d_n > 0) || (dwt->s_n > 1))) {
@@ -515,7 +515,7 @@ void dwt97::encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t c
 /* <summary>                             */
 /* Inverse 9-7 data transform in 2-D. */
 /* </summary>                            */
-bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
+bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
@@ -535,10 +535,10 @@ bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 								numThreads, &success]() {
 
 							auto numResolutions = numres;
-							dwt97_t buffer_h;
-							dwt97_t buffer_v;
+							grk_dwt97 buffer_h;
+							grk_dwt97 buffer_v;
 
-							tcd_resolution_t *res = tilec->resolutions;
+							grk_tcd_resolution *res = tilec->resolutions;
 							uint32_t resno = 1;
 
 							/* start with lowest resolution */
@@ -551,7 +551,7 @@ bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 							buffer_h.dataSize =
 									(tile_buf_get_interleaved_upper_bound(
 											tilec->buf) + 5) * 4;
-							buffer_h.data = (coeff97_t*) grok_aligned_malloc(
+							buffer_h.data = (grk_coeff97*) grok_aligned_malloc(
 									buffer_h.dataSize * sizeof(float));
 
 							if (!buffer_h.data) {
@@ -565,7 +565,7 @@ bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 							while (--numResolutions) {
 
 								int64_t j = 0;
-								pt_t interleaved_h, interleaved_v;
+								grk_pt interleaved_h, interleaved_v;
 
 								/* start with the first resolution, and work upwards*/
 
@@ -779,7 +779,7 @@ bool dwt97::region_decode(tcd_tilecomp_t *restrict tilec, uint32_t numres,
 	return success;
 }
 
-void dwt97::region_interleave_h(dwt97_t *restrict buffer,
+void dwt97::region_interleave_h(grk_dwt97 *restrict buffer,
 		float *restrict tile_data, size_t stride, size_t size) {
 
 	int64_t bufferShift = buffer->bufferShiftEven();
@@ -844,9 +844,9 @@ void dwt97::region_interleave_h(dwt97_t *restrict buffer,
 	}
 }
 
-void dwt97::region_interleave_v(dwt97_t *restrict buffer,
+void dwt97::region_interleave_v(grk_dwt97 *restrict buffer,
 		float *restrict tile_data, size_t stride, size_t nb_elts_read) {
-	coeff97_t *restrict buffer_data_ptr = buffer->data
+	grk_coeff97 *restrict buffer_data_ptr = buffer->data
 			- buffer->interleaved_offset + buffer->odd_top_left_bit;
 	auto count_low = buffer->range_even.x;
 	auto count_high = buffer->range_even.y;
@@ -869,7 +869,7 @@ void dwt97::region_interleave_v(dwt97_t *restrict buffer,
 	}
 }
 
-void dwt97::region_decode_scale(coeff97_t *buffer, pt_t range,
+void dwt97::region_decode_scale(grk_coeff97 *buffer, grk_pt range,
 		const float scale) {
 	float *restrict fw = ((float*) buffer);
 	auto count_low = range.x;
@@ -883,7 +883,7 @@ void dwt97::region_decode_scale(coeff97_t *buffer, pt_t range,
 	}
 }
 
-void dwt97::region_decode_lift(coeff97_t *l, coeff97_t *w, pt_t range,
+void dwt97::region_decode_lift(grk_coeff97 *l, grk_coeff97 *w, grk_pt range,
 		int64_t maximum, float scale) {
 	float *fl = (float*) l;
 	float *fw = (float*) w;
@@ -923,7 +923,7 @@ void dwt97::region_decode_lift(coeff97_t *l, coeff97_t *w, pt_t range,
 /* <summary>                             */
 /* Inverse 9-7 data transform in 1-D. */
 /* </summary>                            */
-void dwt97::region_decode(dwt97_t *restrict dwt) {
+void dwt97::region_decode(grk_dwt97 *restrict dwt) {
 	/* either 0 or 1 */
 	uint8_t odd_top_left_bit = dwt->odd_top_left_bit;
 	uint8_t even_top_left_bit = odd_top_left_bit ^ 1;

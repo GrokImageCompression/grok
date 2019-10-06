@@ -20,12 +20,12 @@
 
 namespace grk {
 
-struct min_buf_t;
+struct grk_min_buf;
 
 struct grok_vec_t {
 	grok_vec_t();
 	bool init();
-	bool push_back(min_buf_t* value);
+	bool push_back(grk_min_buf* value);
 	void* get(size_t index);
 	int32_t size();
 	void* back();
@@ -50,7 +50,7 @@ struct grok_vec_t {
 
 
 
-	std::vector<min_buf_t*>* data;
+	std::vector<grk_min_buf*>* data;
 };
 
 

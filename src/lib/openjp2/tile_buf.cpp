@@ -19,27 +19,27 @@
 
 namespace grk {
 
-bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
+bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
 		bool irreversible, uint32_t cblkw, uint32_t cblkh,
 		grk_image *output_image, uint32_t dx, uint32_t dy) {
 	int32_t resno = 0;
-	rect_t component_output_rect;
-	tile_buf_component_t *comp = nullptr;
+	grk_rect component_output_rect;
+	grk_tile_buf_component *comp = nullptr;
 
 	if (!tilec)
 		return false;
 
 	/* create region component struct*/
-	comp = new tile_buf_component_t();
+	comp = new grk_tile_buf_component();
 	if (!comp) {
 		return false;
 	}
 	comp->data = nullptr;
 
-	comp->tile_dim = rect_t(tilec->x0, tilec->y0, tilec->x1, tilec->y1);
+	comp->tile_dim = grk_rect(tilec->x0, tilec->y0, tilec->x1, tilec->y1);
 
 	if (output_image) {
-		comp->dim = rect_t(ceildiv<uint32_t>(output_image->x0, dx),
+		comp->dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
 				ceildiv<uint32_t>(output_image->y0, dy),
 				ceildiv<uint32_t>(output_image->x1, dx),
 				ceildiv<uint32_t>(output_image->y1, dy));
@@ -63,9 +63,9 @@ bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 	/* fill resolutions vector */
 	for (resno = (int32_t) (tilec->numresolutions - 1); resno >= 0; --resno) {
 		uint32_t bandno;
-		tcd_resolution_t *tcd_res = tilec->resolutions + resno;
-		tile_buf_resolution_t *res = (tile_buf_resolution_t*) grok_calloc(1,
-				sizeof(tile_buf_resolution_t));
+		grk_tcd_resolution *tcd_res = tilec->resolutions + resno;
+		grk_tile_buf_resolution *res = (grk_tile_buf_resolution*) grok_calloc(1,
+				sizeof(grk_tile_buf_resolution));
 		if (!res) {
 			tile_buf_destroy_component(comp);
 			return false;
@@ -77,15 +77,15 @@ bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 		res->origin.y = tcd_res->y0;
 
 		for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
-			tcd_band_t *band = tcd_res->bands + bandno;
-			rect_t band_rect;
-			band_rect = rect_t(band->x0, band->y0, band->x1, band->y1);
+			grk_tcd_band *band = tcd_res->bands + bandno;
+			grk_rect band_rect;
+			band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
 			res->band_region[bandno].dim = component_output_rect;
 			if (resno > 0) {
 
 				/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band  */
-				pt_t shift;
+				grk_pt shift;
 				shift.x = band->bandno & 1;
 				shift.y = band->bandno & 2;
 
@@ -115,13 +115,13 @@ bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
 	return true;
 }
 
-bool tile_buf_is_decode_region(tile_buf_component_t *buf) {
+bool tile_buf_is_decode_region(grk_tile_buf_component *buf) {
 	if (!buf)
 		return false;
 	return !buf->dim.are_equal(&buf->tile_dim);
 }
 
-int32_t* tile_buf_get_ptr(tile_buf_component_t *buf, uint32_t resno,
+int32_t* tile_buf_get_ptr(grk_tile_buf_component *buf, uint32_t resno,
 		uint32_t bandno, uint32_t offsetx, uint32_t offsety) {
 	(void) resno;
 	(void) bandno;
@@ -130,7 +130,7 @@ int32_t* tile_buf_get_ptr(tile_buf_component_t *buf, uint32_t resno,
 
 }
 
-bool tile_buf_alloc_component_data_encode(tile_buf_component_t *buf) {
+bool tile_buf_alloc_component_data_encode(grk_tile_buf_component *buf) {
 	if (!buf)
 		return false;
 
@@ -160,7 +160,7 @@ bool tile_buf_alloc_component_data_encode(tile_buf_component_t *buf) {
 	return true;
 }
 
-bool tile_buf_alloc_component_data_decode(tile_buf_component_t *buf) {
+bool tile_buf_alloc_component_data_decode(grk_tile_buf_component *buf) {
 	if (!buf)
 		return false;
 
@@ -179,7 +179,7 @@ bool tile_buf_alloc_component_data_decode(tile_buf_component_t *buf) {
 	return true;
 }
 
-void tile_buf_destroy_component(tile_buf_component_t *comp) {
+void tile_buf_destroy_component(grk_tile_buf_component *comp) {
 	if (!comp)
 		return;
 	if (comp->data && comp->owns_data)
@@ -194,11 +194,11 @@ void tile_buf_destroy_component(tile_buf_component_t *comp) {
 	delete comp;
 }
 
-bool tile_buf_hit_test(tile_buf_component_t *comp, rect_t *rect) {
+bool tile_buf_hit_test(grk_tile_buf_component *comp, grk_rect *rect) {
 	if (!comp || !rect)
 		return false;
 	for (auto &res : comp->resolutions) {
-		rect_t dummy;
+		grk_rect dummy;
 		uint32_t j;
 		for (j = 0; j < res->num_bands; ++j) {
 			if ((res->band_region + j)->dim.clip(rect, &dummy))
@@ -208,13 +208,13 @@ bool tile_buf_hit_test(tile_buf_component_t *comp, rect_t *rect) {
 	return false;
 }
 
-pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t *comp,
+grk_pt tile_buf_get_uninterleaved_range(grk_tile_buf_component *comp,
 		uint32_t resno, bool is_even, bool is_horizontal) {
-	pt_t rc;
-	tile_buf_resolution_t *res = nullptr;
-	tile_buf_resolution_t *prev_res = nullptr;
-	tile_buf_band_t *band = nullptr;
-	memset(&rc, 0, sizeof(pt_t));
+	grk_pt rc;
+	grk_tile_buf_resolution *res = nullptr;
+	grk_tile_buf_resolution *prev_res = nullptr;
+	grk_tile_buf_band *band = nullptr;
+	memset(&rc, 0, sizeof(grk_pt));
 	if (!comp)
 		return rc;
 
@@ -265,13 +265,13 @@ pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t *comp,
 
 }
 
-pt_t tile_buf_get_interleaved_range(tile_buf_component_t *comp, uint32_t resno,
+grk_pt tile_buf_get_interleaved_range(grk_tile_buf_component *comp, uint32_t resno,
 		bool is_horizontal) {
-	pt_t rc;
-	pt_t even;
-	pt_t odd;
-	tile_buf_resolution_t *res = nullptr;
-	memset(&rc, 0, sizeof(pt_t));
+	grk_pt rc;
+	grk_pt even;
+	grk_pt odd;
+	grk_tile_buf_resolution *res = nullptr;
+	memset(&rc, 0, sizeof(grk_pt));
 	if (!comp)
 		return rc;
 
@@ -292,13 +292,13 @@ pt_t tile_buf_get_interleaved_range(tile_buf_component_t *comp, uint32_t resno,
 	return rc;
 }
 
-int64_t tile_buf_get_interleaved_upper_bound(tile_buf_component_t *comp) {
+int64_t tile_buf_get_interleaved_upper_bound(grk_tile_buf_component *comp) {
 	if (!comp || comp->resolutions.empty()) {
 		return 0;
 	}
-	pt_t horizontal = tile_buf_get_interleaved_range(comp,
+	grk_pt horizontal = tile_buf_get_interleaved_range(comp,
 			(uint32_t) comp->resolutions.size() - 1, true);
-	pt_t vertical = tile_buf_get_interleaved_range(comp,
+	grk_pt vertical = tile_buf_get_interleaved_range(comp,
 			(uint32_t) comp->resolutions.size() - 1, false);
 
 	return std::max<int64_t>(horizontal.y, vertical.y);

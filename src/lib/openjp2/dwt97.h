@@ -61,10 +61,10 @@ namespace grk {
 
 typedef union {
 	float f[4];
-} dwt_v4_t;
+} grk_dwt_4vec;
 
-struct v4dwt_t {
-	dwt_v4_t *wavelet;
+struct grk_dwt97_info {
+	grk_dwt_4vec *wavelet;
 	uint32_t d_n;
 	uint32_t s_n;
 	uint8_t cas;
@@ -73,22 +73,22 @@ struct v4dwt_t {
 /* process four coefficients at a time*/
 typedef union {
 	float f[4];
-} coeff97_t;
+} grk_coeff97;
 
-struct dwt97_t {
+struct grk_dwt97 {
 	int64_t bufferShiftEven();
 	int64_t bufferShiftOdd();
-	coeff97_t *data;
-	size_t dataSize; // number of floats (four per coeff97_t struct)
+	grk_coeff97 *data;
+	size_t dataSize; // number of floats (four per grk_coeff97 struct)
 	uint32_t d_n;
 	uint32_t s_n;
-	pt_t range_even;
-	pt_t range_odd;
+	grk_pt range_even;
+	grk_pt range_odd;
 	int64_t interleaved_offset;
 	uint8_t odd_top_left_bit;
 };
 
-struct tcd_tilecomp_t;
+struct grk_tcd_tilecomp;
 
 class dwt97 {
 public:
@@ -98,7 +98,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool decode(tcd_tilecomp_t* restrict tilec,
+	bool decode(grk_tcd_tilecomp* restrict tilec,
 			uint32_t numres,
 			uint32_t numThreads);
 
@@ -108,7 +108,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool region_decode(tcd_tilecomp_t* restrict tilec,
+	bool region_decode(grk_tcd_tilecomp* restrict tilec,
 			uint32_t numres,
 			uint32_t numThreads);
 	/**
@@ -119,31 +119,31 @@ public:
 	/* <summary>                             */
 	/* Inverse 9-7 wavelet transform in 1-D. */
 	/* </summary>                            */
-	void decode_line(v4dwt_t* restrict dwt);
+	void decode_line(grk_dwt97_info* restrict dwt);
 
-	void interleave_h(v4dwt_t* restrict w, float* restrict a, uint32_t x, uint32_t size);
+	void interleave_h(grk_dwt97_info* restrict w, float* restrict a, uint32_t x, uint32_t size);
 
-	void interleave_v(v4dwt_t* restrict v, float* restrict a, uint32_t x, uint32_t nb_elts_read);
+	void interleave_v(grk_dwt97_info* restrict v, float* restrict a, uint32_t x, uint32_t nb_elts_read);
 private:
 
 	/* <summary>                             */
 	/* Inverse 9-7 data transform in 1-D. */
 	/* </summary>                            */
-	void region_decode(dwt97_t* restrict dwt);
+	void region_decode(grk_dwt97* restrict dwt);
 
-	void region_interleave_h(dwt97_t* restrict w,
+	void region_interleave_h(grk_dwt97* restrict w,
 			float* restrict tile_data,
 			size_t stride,
 			size_t size);
 
-	void region_interleave_v(dwt97_t* restrict buffer_v,
+	void region_interleave_v(grk_dwt97* restrict buffer_v,
 			float* restrict tile_data,
 			size_t stride,
 			size_t nb_elts_read);
 
-	void region_decode_scale(coeff97_t *w, pt_t range, const float scale);
+	void region_decode_scale(grk_coeff97 *w, grk_pt range, const float scale);
 
-	static void region_decode_lift(coeff97_t *l, coeff97_t *w, pt_t range,
+	static void region_decode_lift(grk_coeff97 *l, grk_coeff97 *w, grk_pt range,
 			int64_t max, float scale);
 
 };

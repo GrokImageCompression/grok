@@ -107,21 +107,21 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 		bool final) {
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
-	tcd_tile_t *tcd_tile = tile;
+	grk_tcd_tile *tcd_tile = tile;
 	tcd_tile->distolayer[layno] = 0;
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
+		grk_tcd_tilecomp *tilec = tcd_tile->comps + compno;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
-			tcd_resolution_t *res = tilec->resolutions + resno;
+			grk_tcd_resolution *res = tilec->resolutions + resno;
 			for (bandno = 0; bandno < res->numbands; bandno++) {
-				tcd_band_t *band = res->bands + bandno;
+				grk_tcd_band *band = res->bands + bandno;
 
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
-					tcd_precinct_t *prc = band->precincts + precno;
+					grk_tcd_precinct *prc = band->precincts + precno;
 
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
-						tcd_layer_t *layer = cblk->layers + layno;
+						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
+						grk_tcd_layer *layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 
 						if (layno == 0) {
@@ -134,7 +134,7 @@ void TileProcessor::makelayer_feasible(uint32_t layno, uint16_t thresh,
 						for (passno =
 								cblk->num_passes_included_in_previous_layers;
 								passno < cblk->num_passes_encoded; passno++) {
-							tcd_pass_t *pass = &cblk->passes[passno];
+							grk_tcd_pass *pass = &cblk->passes[passno];
 
 							//truncate or include feasible, otherwise ignore
 							if (pass->slope) {
@@ -201,29 +201,29 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 	const double K = 1;
 	double maxSE = 0;
 
-	tcd_tile_t *tcd_tile = tile;
-	tcp_t *tcd_tcp = tcp;
+	grk_tcd_tile *tcd_tile = tile;
+	grk_tcp *tcd_tcp = tcp;
 
 	tcd_tile->numpix = 0;
 	uint32_t state = grok_plugin_get_debug_state();
 
 	RateInfo rateInfo;
 	for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+		grk_tcd_tilecomp *tilec = &tcd_tile->comps[compno];
 		tilec->numpix = 0;
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
-			tcd_resolution_t *res = &tilec->resolutions[resno];
+			grk_tcd_resolution *res = &tilec->resolutions[resno];
 
 			for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
-				tcd_band_t *band = &res->bands[bandno];
+				grk_tcd_band *band = &res->bands[bandno];
 
 				for (uint32_t precno = 0; precno < res->pw * res->ph;
 						precno++) {
-					tcd_precinct_t *prc = &band->precincts[precno];
+					grk_tcd_precinct *prc = &band->precincts[precno];
 
 					for (uint32_t cblkno = 0; cblkno < prc->cw * prc->ch;
 							cblkno++) {
-						tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+						grk_tcd_cblk_enc *cblk = &prc->cblks.enc[cblkno];
 
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
@@ -342,8 +342,8 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 	const double K = 1;
 	double maxSE = 0;
 
-	tcd_tile_t *tcd_tile = tile;
-	tcp_t *tcd_tcp = tcp;
+	grk_tcd_tile *tcd_tile = tile;
+	grk_tcp *tcd_tcp = tcp;
 
 	double min_slope = DBL_MAX;
 	double max_slope = -1;
@@ -354,16 +354,16 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 	bool single_lossless = make_single_lossless_layer();
 
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = &tcd_tile->comps[compno];
+		grk_tcd_tilecomp *tilec = &tcd_tile->comps[compno];
 		tilec->numpix = 0;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
-			tcd_resolution_t *res = &tilec->resolutions[resno];
+			grk_tcd_resolution *res = &tilec->resolutions[resno];
 			for (bandno = 0; bandno < res->numbands; bandno++) {
-				tcd_band_t *band = &res->bands[bandno];
+				grk_tcd_band *band = &res->bands[bandno];
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
-					tcd_precinct_t *prc = &band->precincts[precno];
+					grk_tcd_precinct *prc = &band->precincts[precno];
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
+						grk_tcd_cblk_enc *cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
 						if (!(state & GROK_PLUGIN_STATE_PRE_TR1)) {
@@ -374,7 +374,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 						if (!single_lossless) {
 							for (passno = 0; passno < cblk->num_passes_encoded;
 									passno++) {
-								tcd_pass_t *pass = &cblk->passes[passno];
+								grk_tcd_pass *pass = &cblk->passes[passno];
 								int32_t dr;
 								double dd, rdslope;
 
@@ -501,7 +501,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 	}
 	return true;
 }
-static void prepareBlockForFirstLayer(tcd_cblk_enc_t *cblk) {
+static void prepareBlockForFirstLayer(grk_tcd_cblk_enc *cblk) {
 	cblk->num_passes_included_in_previous_layers = 0;
 	cblk->num_passes_included_in_current_layer = 0;
 	cblk->numlenbits = 0;
@@ -514,19 +514,19 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 		bool final) {
 	uint32_t compno, resno, bandno, precno, cblkno;
 	uint32_t passno;
-	tcd_tile_t *tcd_tile = tile;
+	grk_tcd_tile *tcd_tile = tile;
 	tcd_tile->distolayer[layno] = 0;
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
+		grk_tcd_tilecomp *tilec = tcd_tile->comps + compno;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
-			tcd_resolution_t *res = tilec->resolutions + resno;
+			grk_tcd_resolution *res = tilec->resolutions + resno;
 			for (bandno = 0; bandno < res->numbands; bandno++) {
-				tcd_band_t *band = res->bands + bandno;
+				grk_tcd_band *band = res->bands + bandno;
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
-					tcd_precinct_t *prc = band->precincts + precno;
+					grk_tcd_precinct *prc = band->precincts + precno;
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
-						tcd_layer_t *layer = cblk->layers + layno;
+						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
+						grk_tcd_layer *layer = cblk->layers + layno;
 						uint32_t cumulative_included_passes_in_block;
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
@@ -543,7 +543,7 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 									passno++) {
 								uint32_t dr;
 								double dd;
-								tcd_pass_t *pass = &cblk->passes[passno];
+								grk_tcd_pass *pass = &cblk->passes[passno];
 								if (cumulative_included_passes_in_block == 0) {
 									dr = pass->rate;
 									dd = pass->distortiondec;
@@ -619,20 +619,20 @@ void TileProcessor::make_layer_simple(uint32_t layno, double thresh,
 // Add all remaining passes to this layer
 void TileProcessor::makelayer_final(uint32_t layno) {
 	uint32_t compno, resno, bandno, precno, cblkno;
-	tcd_tile_t *tcd_tile = tile;
+	grk_tcd_tile *tcd_tile = tile;
 	tcd_tile->distolayer[layno] = 0;
 
 	for (compno = 0; compno < tcd_tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = tcd_tile->comps + compno;
+		grk_tcd_tilecomp *tilec = tcd_tile->comps + compno;
 		for (resno = 0; resno < tilec->numresolutions; resno++) {
-			tcd_resolution_t *res = tilec->resolutions + resno;
+			grk_tcd_resolution *res = tilec->resolutions + resno;
 			for (bandno = 0; bandno < res->numbands; bandno++) {
-				tcd_band_t *band = res->bands + bandno;
+				grk_tcd_band *band = res->bands + bandno;
 				for (precno = 0; precno < res->pw * res->ph; precno++) {
-					tcd_precinct_t *prc = band->precincts + precno;
+					grk_tcd_precinct *prc = band->precincts + precno;
 					for (cblkno = 0; cblkno < prc->cw * prc->ch; cblkno++) {
-						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
-						tcd_layer_t *layer = cblk->layers + layno;
+						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
+						grk_tcd_layer *layer = cblk->layers + layno;
 						if (layno == 0) {
 							prepareBlockForFirstLayer(cblk);
 						}
@@ -688,17 +688,17 @@ void TileProcessor::makelayer_final(uint32_t layno) {
 		}
 	}
 }
-bool TileProcessor::init(grk_image *p_image, cp_t *p_cp) {
+bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 	this->image = p_image;
 	this->cp = p_cp;
 
-	tile = (tcd_tile_t*) grok_calloc(1, sizeof(tcd_tile_t));
+	tile = (grk_tcd_tile*) grok_calloc(1, sizeof(grk_tcd_tile));
 	if (!tile) {
 		return false;
 	}
 
-	tile->comps = (tcd_tilecomp_t*) grok_calloc(p_image->numcomps,
-			sizeof(tcd_tilecomp_t));
+	tile->comps = (grk_tcd_tilecomp*) grok_calloc(p_image->numcomps,
+			sizeof(grk_tcd_tilecomp));
 	if (!tile->comps) {
 		return false;
 	}
@@ -716,16 +716,16 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
 	uint32_t compno, resno, bandno, precno;
-	tcp_t *l_tcp = nullptr;
-	cp_t *l_cp = nullptr;
-	tcd_tile_t *l_tile = nullptr;
-	tccp_t *l_tccp = nullptr;
-	tcd_tilecomp_t *l_tilec = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcd_tile *l_tile = nullptr;
+	grk_tccp *l_tccp = nullptr;
+	grk_tcd_tilecomp *l_tilec = nullptr;
 	 grk_image_comp  *l_image_comp = nullptr;
-	tcd_resolution_t *l_res = nullptr;
-	tcd_band_t *l_band = nullptr;
-	stepsize_t *l_step_size = nullptr;
-	tcd_precinct_t *l_current_precinct = nullptr;
+	grk_tcd_resolution *l_res = nullptr;
+	grk_tcd_band *l_band = nullptr;
+	grk_stepsize *l_step_size = nullptr;
+	grk_tcd_precinct *l_current_precinct = nullptr;
 	grk_image *l_image = nullptr;
 	uint32_t p, q;
 	uint32_t l_level_no;
@@ -808,11 +808,11 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 					- l_cp->m_specific_param.m_dec.m_reduce;
 		}
 		if (l_tilec->resolutions == nullptr) {
-			l_tilec->resolutions = new tcd_resolution_t[numresolutions];
+			l_tilec->resolutions = new grk_tcd_resolution[numresolutions];
 			l_tilec->numAllocatedResolutions = numresolutions;
 		} else if (numresolutions > l_tilec->numAllocatedResolutions) {
-			tcd_resolution_t *new_resolutions =
-					new tcd_resolution_t[numresolutions];
+			grk_tcd_resolution *new_resolutions =
+					new grk_tcd_resolution[numresolutions];
 			for (uint32_t i = 0; i < l_tilec->numresolutions; ++i) {
 				new_resolutions[i] = l_tilec->resolutions[i];
 			}
@@ -872,7 +872,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 			l_nb_precincts = l_res->pw * l_res->ph;
 
 			if (mult_will_overflow(l_nb_precincts,
-					(uint32_t) sizeof(tcd_precinct_t))) {
+					(uint32_t) sizeof(grk_tcd_precinct))) {
 				GROK_ERROR(
 						"l_nb_precinct_size calculation would overflow ");
 				return false;
@@ -944,11 +944,11 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 										- 1);
 
 				if (!l_band->precincts && (l_nb_precincts > 0U)) {
-					l_band->precincts = new tcd_precinct_t[l_nb_precincts];
+					l_band->precincts = new grk_tcd_precinct[l_nb_precincts];
 					l_band->numAllocatedPrecincts = l_nb_precincts;
 				} else if (l_band->numAllocatedPrecincts < l_nb_precincts) {
-					tcd_precinct_t *new_precincts =
-							new tcd_precinct_t[l_nb_precincts];
+					grk_tcd_precinct *new_precincts =
+							new grk_tcd_precinct[l_nb_precincts];
 					for (size_t i = 0; i < l_band->numAllocatedPrecincts; ++i) {
 						new_precincts[i] = l_band->precincts[i];
 					}
@@ -1012,7 +1012,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 						if (!l_current_precinct->cblks.blocks) {
 							return false;
 						}
-						/*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (tcd_cblk_dec_t): %d\n",l_nb_code_blocks_size);*/
+						/*fprintf(stderr, "\t\t\t\tAllocate cblks of a precinct (grk_tcd_cblk_dec): %d\n",l_nb_code_blocks_size);*/
 						memset(l_current_precinct->cblks.blocks, 0,
 								l_nb_code_blocks_size);
 
@@ -1031,7 +1031,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 							return false;
 						}
 						l_current_precinct->cblks.blocks = new_blocks;
-						/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (tcd_cblk_dec_t): from %d to %d\n",l_current_precinct->block_size, l_nb_code_blocks_size);     */
+						/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (grk_tcd_cblk_dec): from %d to %d\n",l_current_precinct->block_size, l_nb_code_blocks_size);     */
 
 						memset(
 								((uint8_t*) l_current_precinct->cblks.blocks)
@@ -1054,7 +1054,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 						uint32_t cblkyend = cblkystart + (1 << cblkheightexpn);
 
 						if (isEncoder) {
-							tcd_cblk_enc_t *l_code_block =
+							grk_tcd_cblk_enc *l_code_block =
 									l_current_precinct->cblks.enc + cblkno;
 
 							if (!l_code_block->alloc()) {
@@ -1078,7 +1078,7 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 								}
 							}
 						} else {
-							tcd_cblk_dec_t *l_code_block =
+							grk_tcd_cblk_dec *l_code_block =
 									l_current_precinct->cblks.dec + cblkno;
 							if (!current_plugin_tile
 									|| (state & GROK_PLUGIN_STATE_DEBUG)) {
@@ -1133,13 +1133,13 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 
 bool TileProcessor::init_encode_tile(uint32_t tile_no) {
 	return init_tile(tile_no, nullptr, true, 1.0F,
-			sizeof(tcd_cblk_enc_t));
+			sizeof(grk_tcd_cblk_enc));
 }
 
 bool TileProcessor::init_decode_tile(grk_image *output_image,
 		uint32_t tile_no) {
 	return init_tile(tile_no, output_image, false, 0.5F,
-			sizeof(tcd_cblk_dec_t));
+			sizeof(grk_tcd_cblk_dec));
 
 }
 
@@ -1151,8 +1151,8 @@ uint64_t TileProcessor::get_decoded_tile_size() {
 	uint32_t i;
 	uint64_t l_data_size = 0;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcd_tilecomp_t *l_tile_comp = nullptr;
-	tcd_resolution_t *l_res = nullptr;
+	grk_tcd_tilecomp *l_tile_comp = nullptr;
+	grk_tcd_resolution *l_res = nullptr;
 	uint32_t l_size_comp;
 
 	l_tile_comp = tile->comps;
@@ -1188,11 +1188,11 @@ bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 		if (p_cstr_info) {
 			uint32_t l_num_packs = 0;
 			uint32_t i;
-			tcd_tilecomp_t *l_tilec_idx = &tile->comps[0]; /* based on component 0 */
-			tccp_t *l_tccp = tcp->tccps; /* based on component 0 */
+			grk_tcd_tilecomp *l_tilec_idx = &tile->comps[0]; /* based on component 0 */
+			grk_tccp *l_tccp = tcp->tccps; /* based on component 0 */
 
 			for (i = 0; i < l_tilec_idx->numresolutions; i++) {
-				tcd_resolution_t *l_res_idx = &l_tilec_idx->resolutions[i];
+				grk_tcd_resolution *l_res_idx = &l_tilec_idx->resolutions[i];
 
 				p_cstr_info->tile[tile_no].pw[i] = (int) l_res_idx->pw;
 				p_cstr_info->tile[tile_no].ph[i] = (int) l_res_idx->ph;
@@ -1254,7 +1254,7 @@ bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 	return true;
 }
 
-bool TileProcessor::decode_tile(seg_buf_t *src_buf, uint32_t tile_no) {
+bool TileProcessor::decode_tile(grk_seg_buf *src_buf, uint32_t tile_no) {
 	tcp = cp->tcps + tile_no;
 
 	bool doT2 = !current_plugin_tile
@@ -1321,8 +1321,8 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		uint64_t dest_length) {
 	uint32_t i, j, k;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcd_tilecomp_t *l_tilec = nullptr;
-	tcd_resolution_t *l_res;
+	grk_tcd_tilecomp *l_tilec = nullptr;
+	grk_tcd_resolution *l_res;
 	uint32_t l_size_comp;
 	uint32_t l_stride, l_width, l_height;
 	uint64_t l_data_size = get_decoded_tile_size();
@@ -1419,11 +1419,11 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 
 void TileProcessor::free_tile() {
 	uint32_t compno, resno, bandno, precno;
-	tcd_tile_t *l_tile = nullptr;
-	tcd_tilecomp_t *l_tile_comp = nullptr;
-	tcd_resolution_t *l_res = nullptr;
-	tcd_band_t *l_band = nullptr;
-	tcd_precinct_t *l_precinct = nullptr;
+	grk_tcd_tile *l_tile = nullptr;
+	grk_tcd_tilecomp *l_tile_comp = nullptr;
+	grk_tcd_resolution *l_res = nullptr;
+	grk_tcd_band *l_band = nullptr;
+	grk_tcd_precinct *l_precinct = nullptr;
 	size_t l_nb_resolutions;
 
 	if (!tile) {
@@ -1476,7 +1476,7 @@ void TileProcessor::free_tile() {
 	tile = nullptr;
 }
 
-bool TileProcessor::t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
+bool TileProcessor::t2_decode(uint32_t tile_no, grk_seg_buf *src_buf,
 		uint64_t *p_data_read) {
 	t2_t *l_t2;
 
@@ -1497,9 +1497,9 @@ bool TileProcessor::t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
 
 bool TileProcessor::t1_decode() {
 	uint32_t compno;
-	tcd_tile_t *l_tile = tile;
-	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
-	tccp_t *l_tccp = tcp->tccps;
+	grk_tcd_tile *l_tile = tile;
+	grk_tcd_tilecomp *l_tile_comp = l_tile->comps;
+	grk_tccp *l_tccp = tcp->tccps;
 	std::vector<decodeBlockInfo*> blocks;
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 	for (compno = 0; compno < l_tile->numcomps; ++compno) {
@@ -1516,12 +1516,12 @@ bool TileProcessor::t1_decode() {
 }
 
 bool TileProcessor::dwt_decode() {
-	tcd_tile_t *l_tile = tile;
+	grk_tcd_tile *l_tile = tile;
 	int64_t compno = 0;
 	bool rc = true;
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; compno++) {
-		tcd_tilecomp_t *l_tile_comp = l_tile->comps + compno;
-		tccp_t *l_tccp = tcp->tccps + compno;
+		grk_tcd_tilecomp *l_tile_comp = l_tile->comps + compno;
+		grk_tccp *l_tccp = tcp->tccps + compno;
 		 grk_image_comp  *l_img_comp = image->comps + compno;
 		if (l_tccp->qmfbid == 1) {
 			dwt53 dwt;
@@ -1543,9 +1543,9 @@ bool TileProcessor::dwt_decode() {
 	return rc;
 }
 bool TileProcessor::mct_decode() {
-	tcd_tile_t *l_tile = tile;
-	tcp_t *l_tcp = tcp;
-	tcd_tilecomp_t *l_tile_comp = l_tile->comps;
+	grk_tcd_tile *l_tile = tile;
+	grk_tcp *l_tcp = tcp;
+	grk_tcd_tilecomp *l_tile_comp = l_tile->comps;
 	uint64_t l_samples, i;
 
 	if (!l_tcp->mct) {
@@ -1632,8 +1632,8 @@ bool TileProcessor::dc_level_shift_decode() {
 	for (compno = 0; compno < tile->numcomps; compno++) {
 		int32_t l_min = INT32_MAX, l_max = INT32_MIN;
 
-		tcd_tilecomp_t *l_tile_comp = tile->comps + compno;
-		tccp_t *l_tccp = tcp->tccps + compno;
+		grk_tcd_tilecomp *l_tile_comp = tile->comps + compno;
+		grk_tccp *l_tccp = tcp->tccps + compno;
 		 grk_image_comp  *l_img_comp = image->comps + compno;
 
 		uint32_t scaledTileX0 = uint_ceildivpow2(
@@ -1694,16 +1694,16 @@ bool TileProcessor::dc_level_shift_decode() {
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void TileProcessor::code_block_dec_deallocate(tcd_precinct_t *p_precinct) {
+void TileProcessor::code_block_dec_deallocate(grk_tcd_precinct *p_precinct) {
 	uint64_t cblkno, l_nb_code_blocks;
-	tcd_cblk_dec_t *l_code_block = p_precinct->cblks.dec;
+	grk_tcd_cblk_dec *l_code_block = p_precinct->cblks.dec;
 	if (l_code_block) {
 		/*fprintf(stderr,"deallocate codeblock:{\n");*/
 		/*fprintf(stderr,"\t x0=%d, y0=%d, x1=%d, y1=%d\n",l_code_block->x0, l_code_block->y0, l_code_block->x1, l_code_block->y1);*/
 		/*fprintf(stderr,"\t numbps=%d, numlenbits=%d, len=%d, numPassesInPacket=%d, real_num_segs=%d, numSegmentsAllocated=%d\n ",
 		 l_code_block->numbps, l_code_block->numlenbits, l_code_block->len, l_code_block->numPassesInPacket, l_code_block->numSegments, l_code_block->numSegmentsAllocated );*/
 
-		l_nb_code_blocks = p_precinct->block_size / sizeof(tcd_cblk_dec_t);
+		l_nb_code_blocks = p_precinct->block_size / sizeof(grk_tcd_cblk_dec);
 		/*fprintf(stderr,"nb_code_blocks =%d\t}\n", l_nb_code_blocks);*/
 
 		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
@@ -1718,11 +1718,11 @@ void TileProcessor::code_block_dec_deallocate(tcd_precinct_t *p_precinct) {
 /**
  * Deallocates the encoding data of the given precinct.
  */
-void TileProcessor::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
+void TileProcessor::code_block_enc_deallocate(grk_tcd_precinct *p_precinct) {
 	uint64_t cblkno, l_nb_code_blocks;
-	tcd_cblk_enc_t *l_code_block = p_precinct->cblks.enc;
+	grk_tcd_cblk_enc *l_code_block = p_precinct->cblks.enc;
 	if (l_code_block) {
-		l_nb_code_blocks = p_precinct->block_size / sizeof(tcd_cblk_enc_t);
+		l_nb_code_blocks = p_precinct->block_size / sizeof(grk_tcd_cblk_enc);
 		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
 			l_code_block->cleanup();
 			++l_code_block;
@@ -1735,7 +1735,7 @@ void TileProcessor::code_block_enc_deallocate(tcd_precinct_t *p_precinct) {
 uint64_t TileProcessor::get_encoded_tile_size() {
 	uint32_t i = 0;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcd_tilecomp_t *l_tilec = nullptr;
+	grk_tcd_tilecomp *l_tilec = nullptr;
 	uint32_t l_size_comp, l_remaining;
 	uint64_t l_data_size = 0;
 
@@ -1764,10 +1764,10 @@ uint64_t TileProcessor::get_encoded_tile_size() {
 
 bool TileProcessor::dc_level_shift_encode() {
 	uint32_t compno;
-	tcd_tilecomp_t *l_tile_comp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_tcd_tilecomp *l_tile_comp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcd_tile_t *l_tile;
+	grk_tcd_tile *l_tile;
 	uint64_t l_nb_elem, i;
 	int32_t *l_current_ptr;
 
@@ -1803,13 +1803,13 @@ bool TileProcessor::dc_level_shift_encode() {
 }
 
 bool TileProcessor::mct_encode() {
-	tcd_tile_t *l_tile = tile;
-	tcd_tilecomp_t *l_tile_comp = tile->comps;
+	grk_tcd_tile *l_tile = tile;
+	grk_tcd_tilecomp *l_tile_comp = tile->comps;
 	uint64_t samples = (uint64_t) (l_tile_comp->x1 - l_tile_comp->x0)
 			* (l_tile_comp->y1 - l_tile_comp->y0);
 	uint32_t i;
 	uint8_t **l_data = nullptr;
-	tcp_t *l_tcp = tcp;
+	grk_tcp *l_tcp = tcp;
 
 	if (!tcp->mct) {
 		return true;
@@ -1860,12 +1860,12 @@ bool TileProcessor::mct_encode() {
 }
 
 bool TileProcessor::dwt_encode() {
-	tcd_tile_t *l_tile = tile;
+	grk_tcd_tile *l_tile = tile;
 	int64_t compno = 0;
 	bool rc = true;
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; ++compno) {
-		tcd_tilecomp_t *tile_comp = tile->comps + compno;
-		tccp_t *l_tccp = tcp->tccps + compno;
+		grk_tcd_tilecomp *tile_comp = tile->comps + compno;
+		grk_tccp *l_tccp = tcp->tccps + compno;
 		if (l_tccp->qmfbid == 1) {
 			WaveletForward<dwt53> dwt;
 			if (!dwt.run(tile_comp)) {
@@ -1886,7 +1886,7 @@ bool TileProcessor::dwt_encode() {
 bool TileProcessor::t1_encode() {
 	const double *l_mct_norms;
 	uint32_t l_mct_numcomps = 0U;
-	tcp_t *l_tcp = tcp;
+	grk_tcp *l_tcp = tcp;
 
 	if (l_tcp->mct == 1) {
 		l_mct_numcomps = 3U;
@@ -1918,8 +1918,8 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 	}
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
-		tcd_tilecomp_t *tilec = &p_tile->comps[compno];
-		tilec->round_trip_resolutions = new tcd_resolution_t[tilec->numresolutions];
+		grk_tcd_tilecomp *tilec = &p_tile->comps[compno];
+		tilec->round_trip_resolutions = new grk_tcd_resolution[tilec->numresolutions];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto res = tilec->resolutions + resno;
 			auto roundRes = tilec->round_trip_resolutions + resno;
@@ -1942,8 +1942,8 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 				auto decodeBand = roundRes->bands + bandno;
 				if (!band->numPrecincts)
 					continue;
-				decodeBand->precincts = new tcd_precinct_t[band->numPrecincts];
-				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(tcd_precinct_t));
+				decodeBand->precincts = new grk_tcd_precinct[band->numPrecincts];
+				decodeBand->precincts_data_size = (uint32_t)(band->numPrecincts * sizeof(grk_tcd_precinct));
 				for (size_t precno = 0; precno < band->numPrecincts; ++precno) {
 					auto prec = band->precincts + precno;
 					auto decodePrec = decodeBand->precincts + precno;
@@ -1951,7 +1951,7 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 					decodePrec->ch = prec->ch;
 					if (prec->cblks.enc && prec->cw && prec->ch) {
 						decodePrec->initTagTrees();
-						decodePrec->cblks.dec = new tcd_cblk_dec_t[decodePrec->cw * decodePrec->ch];
+						decodePrec->cblks.dec = new grk_tcd_cblk_dec[decodePrec->cw * decodePrec->ch];
 						for (uint32_t cblkno = 0; cblkno < decodePrec->cw * decodePrec->ch; ++cblkno) {
 							auto cblk = prec->cblks.enc + cblkno;
 							auto decodeCblk = decodePrec->cblks.dec + cblkno;
@@ -1979,7 +1979,7 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
-		tcd_tilecomp_t *tilec = &p_tile->comps[compno];
+		grk_tcd_tilecomp *tilec = &p_tile->comps[compno];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto roundRes = tilec->round_trip_resolutions + resno;
 			for (uint32_t bandno = 0; bandno < roundRes->numbands; ++bandno) {
@@ -2003,7 +2003,7 @@ bool TileProcessor::t2_encode(GrokStream *p_stream,
 
 bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
 		 grk_codestream_info  *p_cstr_info) {
-	cp_t *l_cp = cp;
+	grk_coding_parameters *l_cp = cp;
 	uint64_t l_nb_written = 0;
 
 	if (p_cstr_info) {
@@ -2040,7 +2040,7 @@ bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
 bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcd_tilecomp_t *l_tilec = nullptr;
+	grk_tcd_tilecomp *l_tilec = nullptr;
 	uint32_t l_size_comp, l_remaining;
 	uint64_t l_nb_elem;
 	uint64_t l_data_size = get_encoded_tile_size();
@@ -2119,25 +2119,25 @@ bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 	return true;
 }
 
-tcd_cblk_enc_t::~tcd_cblk_enc_t() {
+grk_tcd_cblk_enc::~grk_tcd_cblk_enc() {
 	cleanup();
 }
-bool tcd_cblk_enc_t::alloc() {
+bool grk_tcd_cblk_enc::alloc() {
 	if (!layers) {
 		/* no memset since data */
-		layers = (tcd_layer_t*) grok_calloc(100, sizeof(tcd_layer_t));
+		layers = (grk_tcd_layer*) grok_calloc(100, sizeof(grk_tcd_layer));
 		if (!layers) {
 			return false;
 		}
 	}
 	if (!passes) {
-		passes = (tcd_pass_t*) grok_calloc(100, sizeof(tcd_pass_t));
+		passes = (grk_tcd_pass*) grok_calloc(100, sizeof(grk_tcd_pass));
 		if (!passes) {
 			return false;
 		}
 	}
 #ifdef DEBUG_LOSSLESS_T2
-	packet_length_info = new std::vector<packet_length_info_t>();
+	packet_length_info = new std::vector<grk_packet_length_info>();
 #endif
 	return true;
 }
@@ -2148,7 +2148,7 @@ bool tcd_cblk_enc_t::alloc() {
  * This is done so that we can safely initialize the MQ coder pointer to data-1,
  * without risk of accessing uninitialized memory.
  */
-bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize) {
+bool grk_tcd_cblk_enc::alloc_data(size_t nominalBlockSize) {
 	uint32_t l_data_size = (uint32_t) (nominalBlockSize * sizeof(uint32_t));
 	if (l_data_size > data_size) {
 		if (owns_data && actualData) {
@@ -2162,7 +2162,7 @@ bool tcd_cblk_enc_t::alloc_data(size_t nominalBlockSize) {
 	return true;
 }
 
-void tcd_cblk_enc_t::cleanup() {
+void grk_tcd_cblk_enc::cleanup() {
 	if (owns_data && actualData) {
 		delete[] actualData;
 		actualData = nullptr;
@@ -2185,13 +2185,13 @@ void tcd_cblk_enc_t::cleanup() {
 #endif
 }
 
-bool tcd_cblk_dec_t::alloc() {
+bool grk_tcd_cblk_dec::alloc() {
 	if (!segs) {
-		segs = new tcd_seg_t[default_numbers_segments];
+		segs = new grk_tcd_seg[default_numbers_segments];
 		if (!segs) {
 			return false;
 		}
-		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(tcd_seg_t));*/
+		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(grk_tcd_seg));*/
 
 		numSegmentsAllocated = default_numbers_segments;
 
@@ -2199,11 +2199,11 @@ bool tcd_cblk_dec_t::alloc() {
 		/*fprintf(stderr, "numSegmentsAllocated of code_block->data = %d\n", p_code_block->numSegmentsAllocated);*/
 
 #ifdef DEBUG_LOSSLESS_T2
-		packet_length_info = new std::vector<packet_length_info_t>();
+		packet_length_info = new std::vector<grk_packet_length_info>();
 #endif
 	} else {
 		/* sanitize */
-		tcd_seg_t *l_segs = segs;
+		grk_tcd_seg *l_segs = segs;
 		uint32_t l_current_max_segs = numSegmentsAllocated;
 
 		/* Note: since seg_buffers simply holds references to another data buffer,
@@ -2216,7 +2216,7 @@ bool tcd_cblk_dec_t::alloc() {
 	return true;
 }
 
-void tcd_cblk_dec_t::init() {
+void grk_tcd_cblk_dec::init() {
 	data = nullptr;
 	dataSize = 0;
 	segs = nullptr;
@@ -2234,7 +2234,7 @@ void tcd_cblk_dec_t::init() {
 	numSegmentsAllocated = 0;
 }
 
-void tcd_cblk_dec_t::cleanup() {
+void grk_tcd_cblk_dec::cleanup() {
 	seg_buffers.cleanup();
 	delete[] segs;
 	segs = nullptr;
@@ -2244,7 +2244,7 @@ void tcd_cblk_dec_t::cleanup() {
 #endif
 }
 
-void tcd_precinct_t::deleteTagTrees() {
+void grk_tcd_precinct::deleteTagTrees() {
 	if (incltree)
 		delete incltree;
 	incltree = nullptr;
@@ -2253,7 +2253,7 @@ void tcd_precinct_t::deleteTagTrees() {
 	imsbtree = nullptr;
 }
 
-void tcd_precinct_t::initTagTrees() {
+void grk_tcd_precinct::initTagTrees() {
 
 	// if l_current_precinct->cw == 0 or l_current_precinct->ch == 0, then the precinct has no code blocks, therefore 
 	// no need for inclusion and msb tag trees

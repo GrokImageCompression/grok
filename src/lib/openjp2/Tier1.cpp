@@ -21,7 +21,7 @@
 
 namespace grk {
 
-bool Tier1::encodeCodeblocks(tcp_t *tcp, tcd_tile_t *tile,
+bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 		const double *mct_norms, uint32_t mct_numcomps,	bool doRateControl) {
 
 	uint32_t compno, resno, bandno, precno;
@@ -31,34 +31,34 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp, tcd_tile_t *tile,
 	uint16_t maxCblkH = 0;
 
 	for (compno = 0; compno < tile->numcomps; ++compno) {
-		tcd_tilecomp_t *tilec = &tile->comps[compno];
-		tccp_t *tccp = &tcp->tccps[compno];
+		grk_tcd_tilecomp *tilec = &tile->comps[compno];
+		grk_tccp *tccp = &tcp->tccps[compno];
 		for (resno = 0; resno < tilec->numresolutions; ++resno) {
-			tcd_resolution_t *res = &tilec->resolutions[resno];
+			grk_tcd_resolution *res = &tilec->resolutions[resno];
 
 			for (bandno = 0; bandno < res->numbands; ++bandno) {
-				tcd_band_t *restrict band = &res->bands[bandno];
+				grk_tcd_band *restrict band = &res->bands[bandno];
 				int32_t bandconst = 8192 * 8192
 						/ ((int32_t) floor(band->stepsize * 8192));
 
 				for (precno = 0; precno < res->pw * res->ph; ++precno) {
-					tcd_precinct_t *prc = &band->precincts[precno];
+					grk_tcd_precinct *prc = &band->precincts[precno];
 					int32_t cblkno;
 					int32_t bandOdd = band->bandno & 1;
 					int32_t bandModTwo = band->bandno & 2;
 
 					for (cblkno = 0; cblkno < (int32_t) (prc->cw * prc->ch);
 							++cblkno) {
-						tcd_cblk_enc_t *cblk = prc->cblks.enc + cblkno;
+						grk_tcd_cblk_enc *cblk = prc->cblks.enc + cblkno;
 						int32_t x = cblk->x0 - band->x0;
 						int32_t y = cblk->y0 - band->y0;
 						if (bandOdd) {
-							tcd_resolution_t *pres = &tilec->resolutions[resno
+							grk_tcd_resolution *pres = &tilec->resolutions[resno
 									- 1];
 							x += pres->x1 - pres->x0;
 						}
 						if (bandModTwo) {
-							tcd_resolution_t *pres = &tilec->resolutions[resno
+							grk_tcd_resolution *pres = &tilec->resolutions[resno
 									- 1];
 							y += pres->y1 - pres->y0;
 						}
@@ -94,7 +94,7 @@ bool Tier1::encodeCodeblocks(tcp_t *tcp, tcd_tile_t *tile,
 	return encoder.encode(&blocks);
 }
 
-bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
+bool Tier1::prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
 	uint32_t resno, bandno, precno;
 	if (!tile_buf_alloc_component_data_decode(tilec->buf)) {
@@ -103,26 +103,26 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
 	}
 
 	for (resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
-		tcd_resolution_t *res = &tilec->resolutions[resno];
+		grk_tcd_resolution *res = &tilec->resolutions[resno];
 
 		for (bandno = 0; bandno < res->numbands; ++bandno) {
-			tcd_band_t *restrict band = &res->bands[bandno];
+			grk_tcd_band *restrict band = &res->bands[bandno];
 
 			for (precno = 0; precno < res->pw * res->ph; ++precno) {
-				tcd_precinct_t *precinct = &band->precincts[precno];
+				grk_tcd_precinct *precinct = &band->precincts[precno];
 				int32_t cblkno;
 				for (cblkno = 0;
 						cblkno < (int32_t) (precinct->cw * precinct->ch);
 						++cblkno) {
-					rect_t cblk_rect;
-					tcd_cblk_dec_t *cblk = &precinct->cblks.dec[cblkno];
+					grk_rect cblk_rect;
+					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];
 					int32_t x, y; /* relative code block offset */
 					/* get code block offset relative to band*/
 					x = cblk->x0;
 					y = cblk->y0;
 
 					/* check if block overlaps with decode region */
-					cblk_rect = rect_t(x, y, x + (1 << tccp->cblkw),
+					cblk_rect = grk_rect(x, y, x + (1 << tccp->cblkw),
 							y + (1 << tccp->cblkh));
 					if (!tile_buf_hit_test(tilec->buf, &cblk_rect))
 						continue;
@@ -132,11 +132,11 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
 
 					/* add band offset relative to previous resolution */
 					if (band->bandno & 1) {
-						tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
+						grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
 						x += pres->x1 - pres->x0;
 					}
 					if (band->bandno & 2) {
-						tcd_resolution_t *pres = &tilec->resolutions[resno - 1];
+						grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
 						y += pres->y1 - pres->y0;
 					}
 
@@ -162,7 +162,7 @@ bool Tier1::prepareDecodeCodeblocks(tcd_tilecomp_t *tilec, tccp_t *tccp,
 	return true;
 }
 
-bool Tier1::decodeCodeblocks(tcp_t *tcp, uint16_t blockw, uint16_t blockh,
+bool Tier1::decodeCodeblocks(grk_tcp *tcp, uint16_t blockw, uint16_t blockh,
 		std::vector<decodeBlockInfo*> *blocks) {
 	T1Decoder decoder(tcp, blockw, blockh);
 	return decoder.decode(blocks);

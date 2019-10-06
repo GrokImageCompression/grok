@@ -85,8 +85,8 @@ bool t1::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 		auto flags_stride = cblkw + 2;
 		auto flags_height = (cblkh + 3U) >> 2;
 		auto flagssize = flags_stride * (flags_height + 2);
-		flags = (flag_opt_t*) grok_aligned_malloc(
-				flagssize * sizeof(flag_opt_t));
+		flags = (flag_opt*) grok_aligned_malloc(
+				flagssize * sizeof(flag_opt));
 		if (!flags) {
 			GROK_ERROR("Out of memory");
 			return false;
@@ -106,13 +106,13 @@ void t1::initBuffers(uint16_t w, uint16_t h) {
 	flags_stride = (uint16_t) (w + 2);
 	auto flags_height = (h + 3U) >> 2;
 	auto flagssize = flags_stride * (flags_height + 2);
-	memset(flags, 0, flagssize * sizeof(flag_opt_t));
+	memset(flags, 0, flagssize * sizeof(flag_opt));
 
 	// handle last stripe if its height is less than 4
-	flag_opt_t *p = flags;
+	flag_opt *p = flags;
 	unsigned char lastHeight = h & 3;
 	if (lastHeight) {
-		flag_opt_t v = T1_PI_3 | ((lastHeight <= 2) << T1_PI_2_I)
+		flag_opt v = T1_PI_3 | ((lastHeight <= 2) << T1_PI_2_I)
 				| ((lastHeight == 1) << T1_PI_1_I);
 		p = flags + ((flags_height) * flags_stride);
 		for (uint32_t x = 0; x < flags_stride; ++x) {
@@ -173,7 +173,7 @@ uint8_t t1::getMRPContext(uint32_t f) {
 uint8_t t1::getSPByte(uint32_t lu) {
 	return lut_spb_opt[lu];
 }
-void t1::updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s,
+void t1::updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
 		uint32_t stride, uint8_t vsc) {
 	/* update current flag */
 	flagsp[-1] |= T1_SIGMA_5 << (ci3);
@@ -181,14 +181,14 @@ void t1::updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s,
 	flagsp[1] |= T1_SIGMA_3 << (ci3);
 	/* update north flag if we are at top of column and VSC is false */
 	if (((ci3) == 0U) & ((vsc) == 0U)) {
-		flag_opt_t *north = flagsp - (stride);
+		flag_opt *north = flagsp - (stride);
 		*north |= ((s) << T1_CHI_5_I) | T1_SIGMA_16;
 		north[-1] |= T1_SIGMA_17;
 		north[1] |= T1_SIGMA_15;
 	}
 	/* update south flag*/
 	if (ci3 == 9u) {
-		flag_opt_t *south = (flagsp) + (stride);
+		flag_opt *south = (flagsp) + (stride);
 		*south |= ((s) << T1_CHI_0_I) | T1_SIGMA_1;
 		south[-1] |= T1_SIGMA_2;
 		south[1] |= T1_SIGMA_0;

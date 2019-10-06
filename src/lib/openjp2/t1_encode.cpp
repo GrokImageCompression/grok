@@ -105,7 +105,7 @@ void t1_encode::initBuffers(uint16_t w, uint16_t h) {
 	if (data)
 		memset(data, 0, w * h * sizeof(int32_t));
 }
-void t1_encode::sigpass_step(flag_opt_t *flagsp, uint32_t *datap,
+void t1_encode::sigpass_step(flag_opt *flagsp, uint32_t *datap,
 		uint8_t orient, int32_t bpno, int32_t one, int32_t *nmsedec,
 		uint8_t type, uint32_t mode_switch) {
 	uint8_t v;
@@ -113,7 +113,7 @@ void t1_encode::sigpass_step(flag_opt_t *flagsp, uint32_t *datap,
 		return; /* Nothing to do for any of the 4 data points */
 	}
 	for (uint32_t ci3 = 0U; ci3 < 12U; ci3 += 3) {
-		flag_opt_t const shift_flags = *flagsp >> ci3;
+		flag_opt const shift_flags = *flagsp >> ci3;
 		/* if location is not significant, has not been coded in significance pass, and is in preferred neighbourhood,
 		 then code in this pass: */
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U
@@ -154,7 +154,7 @@ void t1_encode::sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
 	int32_t const one = (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
-	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
+	flag_opt *f = FLAGS_ADDRESS(0, 0);
 	uint32_t *d = data;
 
 	if (nmsedec)
@@ -170,7 +170,7 @@ void t1_encode::sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
 		f += flag_row_extra;
 	}
 }
-void t1_encode::refpass_step(flag_opt_t *flagsp, uint32_t *datap, int32_t bpno,
+void t1_encode::refpass_step(flag_opt *flagsp, uint32_t *datap, int32_t bpno,
 		int32_t one, int32_t *nmsedec, uint8_t type) {
 	uint8_t v;
 	if ((*flagsp & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
@@ -206,7 +206,7 @@ void t1_encode::refpass_step(flag_opt_t *flagsp, uint32_t *datap, int32_t bpno,
 void t1_encode::refpass(int32_t bpno, int32_t *nmsedec, uint8_t type) {
 	uint32_t i, k;
 	const int32_t one = (bpno + T1_NMSEDEC_FRACBITS);
-	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
+	flag_opt *f = FLAGS_ADDRESS(0, 0);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
 	uint32_t *d = data;
@@ -223,7 +223,7 @@ void t1_encode::refpass(int32_t bpno, int32_t *nmsedec, uint8_t type) {
 		d += data_row_extra;
 	}
 }
-void t1_encode::clnpass_step(flag_opt_t *flagsp, uint32_t *datap,
+void t1_encode::clnpass_step(flag_opt *flagsp, uint32_t *datap,
 		uint8_t orient, int32_t bpno, int32_t one, int32_t *nmsedec,
 		uint32_t agg, uint32_t runlen, uint32_t y, uint32_t mode_switch) {
 	uint8_t v;
@@ -246,7 +246,7 @@ void t1_encode::clnpass_step(flag_opt_t *flagsp, uint32_t *datap,
 	runlen *= 3;
 	lim = 4U < (h - y) ? 12U : 3 * (h - y);
 	for (uint32_t ci3 = runlen; ci3 < lim; ci3 += 3) {
-		flag_opt_t shift_flags;
+		flag_opt shift_flags;
 		if ((agg != 0) && (ci3 == runlen)) {
 			goto LABEL_PARTIAL;
 		}
@@ -341,7 +341,7 @@ int16_t t1_encode::getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 	return lut_nmsedec_ref0[x & ((1 << T1_NMSEDEC_BITS) - 1)];
 }
 
-double t1_encode::encode_cblk(tcd_cblk_enc_t *cblk, uint8_t orient,
+double t1_encode::encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient,
 		uint32_t compno, uint32_t level, uint32_t qmfbid, double stepsize,
 		uint32_t mode_switch, uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps, uint32_t max, bool doRateControl) {
@@ -378,7 +378,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t *cblk, uint8_t orient,
 	bool LAZY = (mode_switch & J2K_CCP_CBLKSTY_LAZY);
 
 	for (passno = 0; bpno >= 0; ++passno) {
-		tcd_pass_t *pass = &cblk->passes[passno];
+		grk_tcd_pass *pass = &cblk->passes[passno];
 		uint8_t type = T1_TYPE_MQ;
 		if (LAZY && (bpno < ((int32_t) (cblk->numbps) - 4)) && (passtype < 2))
 			type = T1_TYPE_RAW;
@@ -477,7 +477,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t *cblk, uint8_t orient,
 		}
 	}
 
-	tcd_pass_t *finalPass = &cblk->passes[passno - 1];
+	grk_tcd_pass *finalPass = &cblk->passes[passno - 1];
 	if (!finalPass->term) {
 		mqc_big_flush(mqc, mode_switch, false);
 	}
@@ -494,7 +494,7 @@ double t1_encode::encode_cblk(tcd_cblk_enc_t *cblk, uint8_t orient,
 				// find next term pass
 				for (uint32_t k = passno + 1; k < cblk->num_passes_encoded;
 						++k) {
-					tcd_pass_t *nextTerm = cblk->passes + k;
+					grk_tcd_pass *nextTerm = cblk->passes + k;
 					if (nextTerm->term) {
 						// this rate is correct, since it has been flushed
 						auto nextRate = nextTerm->rate;
@@ -538,7 +538,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
-void t1_encode::preEncode(encodeBlockInfo *block, tcd_tile_t *tile,
+void t1_encode::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &max) {
 	auto state = grok_plugin_get_debug_state();
 	//1. prepare low-level encode

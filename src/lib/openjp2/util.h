@@ -30,20 +30,20 @@ inline bool mult_will_overflow(uint32_t a, uint32_t b) {
 
 uint32_t hardware_concurrency();
 
-struct pt_t {
+struct grk_pt {
     int64_t x;
     int64_t y;
 
 };
 
-struct rect_t {
+struct grk_rect {
 	int64_t x0;
     int64_t y0;
     int64_t x1;
     int64_t y1;
 
-	rect_t();
-	rect_t(int64_t x0, int64_t y0, int64_t x1, int64_t y1);
+	grk_rect();
+	grk_rect(int64_t x0, int64_t y0, int64_t x1, int64_t y1);
 
 
 	/* valid if x0 <= x1 && y0 <= y1. Can include degenerate rectangles: line and point*/
@@ -53,9 +53,9 @@ struct rect_t {
 
 	bool is_non_degenerate(void);
 
-	bool are_equal(rect_t* r2);
+	bool are_equal(grk_rect* r2);
 
-	bool clip( rect_t* r2, rect_t* result);
+	bool clip( grk_rect* r2, grk_rect* result);
 
 	void ceildivpow2( uint32_t power);
 
@@ -65,7 +65,7 @@ struct rect_t {
 
 	void subsample(uint32_t dx, uint32_t dy);
 
-	void pan(pt_t* shift);
+	void pan(grk_pt* shift);
 
 	void print(void);
 
@@ -73,13 +73,13 @@ struct rect_t {
 };
 
 
-struct buf_t {
-	buf_t() : buf_t(nullptr,0,false) {}
-	buf_t(uint8_t *buffer, size_t length, bool ownsData) : buf(buffer),
+struct grk_buf {
+	grk_buf() : grk_buf(nullptr,0,false) {}
+	grk_buf(uint8_t *buffer, size_t length, bool ownsData) : buf(buffer),
 		offset(0),
 		len(length),
 		owns_data(ownsData) {}
-	~buf_t();
+	~grk_buf();
 	void incr_offset(uint64_t off);
 
     uint8_t *buf;		/* internal array*/

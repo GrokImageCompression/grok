@@ -24,11 +24,11 @@ namespace grk {
  Smart wrapper to low level C array
  */
 
-struct min_buf_t {
-	min_buf_t() :
+struct grk_min_buf {
+	grk_min_buf() :
 			buf(nullptr), len(0) {
 	}
-	min_buf_t(uint8_t *buffer, uint16_t length) :
+	grk_min_buf(uint8_t *buffer, uint16_t length) :
 			buf(buffer), len(length) {
 	}
 	uint8_t *buf; /* internal array*/
@@ -41,9 +41,9 @@ struct min_buf_t {
  contiguous buffer.
 
  */
-struct seg_buf_t {
-	seg_buf_t();
-	~seg_buf_t();
+struct grk_seg_buf {
+	grk_seg_buf();
+	~grk_seg_buf();
 
 	/*
 	 Wrap existing array and add to the back of the segmented buffer.
@@ -89,8 +89,8 @@ struct seg_buf_t {
 
 	size_t read(void *p_buffer, size_t nb_bytes);
 
-	buf_t* add_segment(uint8_t *buf, size_t len, bool ownsData);
-	void add_segment(buf_t *seg);
+	grk_buf* add_segment(uint8_t *buf, size_t len, bool ownsData);
+	void add_segment(grk_buf *seg);
 
 	/*
 	 Copy all segments, in sequence, into contiguous array
@@ -110,7 +110,7 @@ struct seg_buf_t {
 
 	size_t data_len; /* total length of all segments*/
 	size_t cur_seg_id; /* current index into segments vector */
-	std::vector<buf_t*> segments;
+	std::vector<grk_buf*> segments;
 };
 
 }

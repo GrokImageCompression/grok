@@ -59,15 +59,15 @@
 
 namespace grk {
 
-struct tcd_tilecomp_t;
+struct grk_tcd_tilecomp;
 class dwt_utils;
 
-struct dwt53_t {
+struct grk_dwt53 {
 	int32_t *data;
 	int64_t d_n;
 	int64_t s_n;
-	pt_t range_even;
-	pt_t range_odd;
+	grk_pt range_even;
+	grk_pt range_odd;
 	int64_t interleaved_offset;
 	uint8_t odd_top_left_bit;
 };
@@ -80,7 +80,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool decode(tcd_tilecomp_t *tilec, uint32_t numres, uint32_t numThreads);
+	bool decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads);
 
 	/**
 	 Inverse wavelet transform in 2-D.
@@ -88,7 +88,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool region_decode(tcd_tilecomp_t *tilec, uint32_t numres,
+	bool region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 			uint32_t numThreads);
 
 	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
@@ -98,15 +98,15 @@ public:
 	void interleave_h(dwt_t* restrict h, int32_t* restrict a);
 private:
 
-	void region_decode_1d(dwt53_t *buffer);
+	void region_decode_1d(grk_dwt53 *buffer);
 	/**
 	 Inverse lazy transform (horizontal)
 	 */
-	void region_interleave_h(dwt53_t *buffer_h, int32_t *tile_data);
+	void region_interleave_h(grk_dwt53 *buffer_h, int32_t *tile_data);
 	/**
 	 Inverse lazy transform (vertical)
 	 */
-	void region_interleave_v(dwt53_t *buffer_v, int32_t *tile_data,
+	void region_interleave_v(grk_dwt53 *buffer_v, int32_t *tile_data,
 			size_t stride);
 
 };

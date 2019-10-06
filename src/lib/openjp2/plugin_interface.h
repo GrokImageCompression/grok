@@ -59,7 +59,7 @@ struct plugin_encode_user_callback_info_t {
 	const char *output_file_name;
 	 grk_cparameters  *encoder_parameters;
 	grk_image *image;
-	grok_plugin_tile_t *tile;
+	grk_plugin_tile *tile;
 	int32_t error_code;
 };
 
@@ -111,7 +111,7 @@ struct PluginDecodeCallbackInfo {
 	 grk_header_info  header_info;
 	grk_image *image;
 	bool plugin_owns_image;
-	grok_plugin_tile_t *tile;
+	grk_plugin_tile *tile;
 	int32_t error_code;
 	uint32_t decode_flags;
 };

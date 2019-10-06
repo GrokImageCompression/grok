@@ -79,7 +79,7 @@ public:
 	 @param roishift Region of interest shifting value
 	 @param mode_switch encode mode switch
 	 */
-	bool decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient, uint32_t mode_switch)
+	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t mode_switch)
 			override;
 	void postDecode(decodeBlockInfo *block) override;
 private:

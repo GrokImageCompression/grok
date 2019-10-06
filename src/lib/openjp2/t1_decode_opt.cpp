@@ -104,10 +104,10 @@ void t1_decode_opt::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 
 }
 
-inline void t1_decode_opt::sigpass_step(flag_opt_t *flagsp, int32_t *datap,
+inline void t1_decode_opt::sigpass_step(flag_opt *flagsp, int32_t *datap,
 		uint8_t orient, int32_t oneplushalf, uint32_t maxci3) {
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
-		flag_opt_t const shift_flags = *flagsp >> ci3;
+		flag_opt const shift_flags = *flagsp >> ci3;
 		if ((shift_flags & (T1_SIGMA_CURRENT | T1_PI_CURRENT)) == 0U
 				&& (shift_flags & T1_SIGMA_NEIGHBOURS) != 0U) {
 			mqc_setcurctx(mqc, getZeroCodingContext(shift_flags, orient));
@@ -135,7 +135,7 @@ void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient) {
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
 
-	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
+	flag_opt *f = FLAGS_ADDRESS(0, 0);
 	int32_t *d = dataPtr;
 	for (k = 0; k < (h & ~3U); k += 4) {
 		for (i = 0; i < w; ++i) {
@@ -158,7 +158,7 @@ void t1_decode_opt::sigpass(int32_t bpno, uint8_t orient) {
 		}
 	}
 }
-inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp, int32_t *datap,
+inline void t1_decode_opt::refpass_step(flag_opt *flagsp, int32_t *datap,
 		int32_t poshalf, uint32_t maxci3) {
 
 	for (uint32_t ci3 = 0U; ci3 < maxci3; ci3 += 3) {
@@ -178,7 +178,7 @@ inline void t1_decode_opt::refpass_step(flag_opt_t *flagsp, int32_t *datap,
 void t1_decode_opt::refpass(int32_t bpno) {
 	int32_t one = 1 << bpno;
 	int32_t poshalf = one >> 1;
-	flag_opt_t *f = FLAGS_ADDRESS(0, 0);
+	flag_opt *f = FLAGS_ADDRESS(0, 0);
 	uint32_t const flag_row_extra = flags_stride - w;
 	uint32_t const data_row_extra = (w << 2) - w;
 	int32_t *d = dataPtr;
@@ -203,7 +203,7 @@ void t1_decode_opt::refpass(int32_t bpno) {
 	}
 }
 
-void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
+void t1_decode_opt::clnpass_step(flag_opt *flagsp, int32_t *datap,
 		uint8_t orient, int32_t oneplushalf, uint32_t agg, uint32_t runlen,
 		uint32_t y) {
 
@@ -223,7 +223,7 @@ void t1_decode_opt::clnpass_step(flag_opt_t *flagsp, int32_t *datap,
 	}
 	runlen *= 3;
 	uint32_t lim = 4U < (h - y) ? 12U : 3 * (h - y);
-	flag_opt_t shift_flags;
+	flag_opt shift_flags;
 	for (uint32_t ci3 = runlen; ci3 < lim; ci3 += 3) {
 		uint8_t signCoding = 0;
 		if ((agg != 0) && (ci3 == runlen)) {
@@ -279,7 +279,7 @@ void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient) {
 		}
 	}
 }
-bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
+bool t1_decode_opt::decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
 		uint32_t mode_switch) {
 	(void)mode_switch;
 	initBuffers((uint16_t) (cblk->x1 - cblk->x0),
@@ -292,7 +292,7 @@ bool t1_decode_opt::decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
 	uint32_t passtype = 2;
 	mqc_resetstates(mqc);
 	for (uint32_t segno = 0; segno < cblk->numSegments; ++segno) {
-		tcd_seg_t *seg = &cblk->segs[segno];
+		grk_tcd_seg *seg = &cblk->segs[segno];
 		uint32_t synthOffset = seg->dataindex + seg->len;
 		uint16_t stash = *((uint16_t*) (compressed_block + synthOffset));
 		*((uint16_t*) (compressed_block + synthOffset)) = synthBytes;

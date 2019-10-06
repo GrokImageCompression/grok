@@ -61,8 +61,8 @@
 namespace grk {
 
 // code segment (code block can be encoded into multiple segments)
-struct tcd_seg_t {
-	tcd_seg_t() {
+struct grk_tcd_seg {
+	grk_tcd_seg() {
 		clear();
 	}
 	void clear() {
@@ -81,14 +81,14 @@ struct tcd_seg_t {
 	uint32_t numBytesInPacket;      // number of bytes contributed by current packet
 };
 
-struct packet_length_info_t {
-	packet_length_info_t(uint32_t mylength, uint32_t bits) :
+struct grk_packet_length_info {
+	grk_packet_length_info(uint32_t mylength, uint32_t bits) :
 			len(mylength), len_bits(bits) {
 	}
-	packet_length_info_t() :
+	grk_packet_length_info() :
 			len(0), len_bits(0) {
 	}
-	bool operator==(packet_length_info_t &rhs) const {
+	bool operator==(grk_packet_length_info &rhs) const {
 		return (rhs.len == len && rhs.len_bits == len_bits);
 	}
 	uint32_t len;
@@ -96,8 +96,8 @@ struct packet_length_info_t {
 };
 
 // encoding/decoding pass
-struct tcd_pass_t {
-	tcd_pass_t() :
+struct grk_tcd_pass {
+	grk_tcd_pass() :
 			rate(0), distortiondec(0), len(0), term(0), slope(0) {
 	}
 	uint16_t rate;
@@ -108,8 +108,8 @@ struct tcd_pass_t {
 };
 
 //quality layer
-struct tcd_layer_t {
-	tcd_layer_t() :
+struct grk_tcd_layer {
+	grk_tcd_layer() :
 			numpasses(0), len(0), disto(0), data(nullptr) {
 	}
 	uint32_t numpasses; /* Number of passes in the layer */
@@ -121,8 +121,8 @@ struct tcd_layer_t {
 const uint8_t cblk_compressed_data_pad_left = 1;
 
 // encoder code block
-struct tcd_cblk_enc_t {
-	tcd_cblk_enc_t() :
+struct grk_tcd_cblk_enc {
+	grk_tcd_cblk_enc() :
 			actualData(nullptr), data(nullptr), data_size(0), owns_data(false), layers(
 					nullptr), passes(nullptr), x0(0), y0(0), x1(0), y1(0), numbps(
 					0), numlenbits(0), num_passes_included_in_current_layer(0), num_passes_included_in_previous_layers(
@@ -133,7 +133,7 @@ struct tcd_cblk_enc_t {
 #endif
 					contextStream(nullptr) {
 	}
-	~tcd_cblk_enc_t();
+	~grk_tcd_cblk_enc();
 	bool alloc();
 	bool alloc_data(size_t nominalBlockSize);
 	void cleanup();
@@ -141,8 +141,8 @@ struct tcd_cblk_enc_t {
 	uint8_t *data; /* data buffer*/
 	uint32_t data_size; /* size of allocated data buffer */
 	bool owns_data;	// true if code block manages data buffer, otherwise false
-	tcd_layer_t *layers;
-	tcd_pass_t *passes;
+	grk_tcd_layer *layers;
+	grk_tcd_pass *passes;
 	uint32_t x0, y0, x1, y1; /* dimension of the code block : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numbps;
 	uint32_t numlenbits;
@@ -152,17 +152,17 @@ struct tcd_cblk_enc_t {
 	uint32_t *contextStream;
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
-	std::vector<packet_length_info_t>* packet_length_info;
+	std::vector<grk_packet_length_info>* packet_length_info;
 #endif
 };
 
 //decoder code block
-struct tcd_cblk_dec_t {
-	tcd_cblk_dec_t() {
+struct grk_tcd_cblk_dec {
+	grk_tcd_cblk_dec() {
 		init();
 	}
 
-	tcd_cblk_dec_t(const tcd_cblk_enc_t &rhs) :
+	grk_tcd_cblk_dec(const grk_tcd_cblk_enc &rhs) :
 			data(nullptr), dataSize(0), segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
 					rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
 					rhs.numlenbits), numPassesInPacket(0), numSegments(0),
@@ -181,7 +181,7 @@ struct tcd_cblk_dec_t {
 	uint8_t *data;					// pointer to plugin data.
 	uint32_t dataSize; /* size of data buffer */
 	grok_vec_t seg_buffers;
-	tcd_seg_t *segs; /* information on segments */
+	grk_tcd_seg *segs; /* information on segments */
 	uint32_t x0, y0, x1, y1; /* position: left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numbps;
 	uint32_t numlenbits;
@@ -190,20 +190,20 @@ struct tcd_cblk_dec_t {
 	uint32_t numSegmentsAllocated; // number of segments allocated for segs array
 #ifdef DEBUG_LOSSLESS_T2
 	uint32_t included;
-	std::vector<packet_length_info_t>* packet_length_info;
+	std::vector<grk_packet_length_info>* packet_length_info;
 #endif
 
 };
 
 // precinct
-struct tcd_precinct_t {
-	tcd_precinct_t() :
+struct grk_tcd_precinct {
+	grk_tcd_precinct() :
 			x0(0), y0(0), x1(0), y1(0), cw(0), ch(0), block_size(0), incltree(
 					nullptr), imsbtree(nullptr) {
 		cblks.blocks = nullptr;
 	}
 
-	tcd_precinct_t(tcd_precinct_t &rhs) :
+	grk_tcd_precinct(grk_tcd_precinct &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), cw(rhs.cw), ch(
 					rhs.ch), block_size(rhs.block_size), incltree(rhs.incltree), imsbtree(
 					rhs.imsbtree) {
@@ -233,8 +233,8 @@ struct tcd_precinct_t {
 	uint32_t x0, y0, x1, y1; /* dimension of the precinct : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t cw, ch; /* number of precinct in width and height */
 	union { /* code-blocks information */
-		tcd_cblk_enc_t *enc;
-		tcd_cblk_dec_t *dec;
+		grk_tcd_cblk_enc *enc;
+		grk_tcd_cblk_dec *dec;
 		void *blocks;
 	} cblks;
 	uint64_t block_size; /* size taken by cblks (in bytes) */
@@ -243,13 +243,13 @@ struct tcd_precinct_t {
 };
 
 // band
-struct tcd_band_t {
-	tcd_band_t() :
+struct grk_tcd_band {
+	grk_tcd_band() :
 			x0(0), y0(0), x1(0), y1(0), bandno(0), precincts(nullptr), numPrecincts(
 					0), numAllocatedPrecincts(0), numbps(0), stepsize(0) {
 	}
 
-	tcd_band_t(const tcd_band_t &rhs) :
+	grk_tcd_band(const grk_tcd_band &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), bandno(rhs.bandno), precincts(
 					nullptr), numPrecincts(rhs.numPrecincts), numAllocatedPrecincts(
 					rhs.numAllocatedPrecincts), numbps(rhs.numbps), stepsize(
@@ -260,7 +260,7 @@ struct tcd_band_t {
 	}
 	uint32_t x0, y0, x1, y1; /* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t bandno;
-	tcd_precinct_t *precincts; /* precinct information */
+	grk_tcd_precinct *precincts; /* precinct information */
 	size_t numPrecincts;
 	size_t numAllocatedPrecincts;
 	uint32_t numbps;
@@ -268,11 +268,11 @@ struct tcd_band_t {
 };
 
 // resolution
-struct tcd_resolution_t {
-	tcd_resolution_t() :
+struct grk_tcd_resolution {
+	grk_tcd_resolution() :
 			x0(0), y0(0), x1(0), y1(0), pw(0), ph(0), numbands(0) {
 	}
-	tcd_resolution_t(const tcd_resolution_t &rhs) :
+	grk_tcd_resolution(const grk_tcd_resolution &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), pw(rhs.pw), ph(
 					rhs.ph), numbands(rhs.numbands)
 
@@ -283,28 +283,28 @@ struct tcd_resolution_t {
 	uint32_t x0, y0, x1, y1; /* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
-	tcd_band_t bands[3]; /* subband information */
+	grk_tcd_band bands[3]; /* subband information */
 };
 
 // tile component
-struct tcd_tilecomp_t {
+struct grk_tcd_tilecomp {
 	uint32_t x0, y0, x1, y1; /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
 	uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
-	tcd_resolution_t *resolutions; /* resolutions information */
+	grk_tcd_resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
-	tcd_resolution_t* round_trip_resolutions;  /* round trip resolution information */
+	grk_tcd_resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
 	uint64_t numpix;
-	tile_buf_component_t *buf;
+	grk_tile_buf_component *buf;
 };
 
 // tile
-struct tcd_tile_t {
+struct grk_tcd_tile {
 	uint32_t x0, y0, x1, y1; /* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numcomps; /* number of components in tile */
-	tcd_tilecomp_t *comps; /* Components information */
+	grk_tcd_tilecomp *comps; /* Components information */
 	uint64_t numpix;
 	double distotile;
 	double distolayer[100];
@@ -312,7 +312,7 @@ struct tcd_tile_t {
 };
 
 
-bool tile_buf_create_component(tcd_tilecomp_t *tilec, bool isEncoder,
+bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
 		bool irreversible, uint32_t cblkw, uint32_t cblkh,
 		grk_image *output_image, uint32_t dx, uint32_t dy);
 
@@ -345,7 +345,7 @@ struct TileProcessor {
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init(grk_image *p_image, cp_t *p_cp);
+	bool init(grk_image *p_image, grk_coding_parameters *p_cp);
 
 	/**
 	 * Allocates memory for decoding a specific tile.
@@ -384,7 +384,7 @@ struct TileProcessor {
 	 @param tileno Number that identifies one of the tiles to be decoded
 	 @param cstr_info  FIXME DOC
 	 */
-	bool decode_tile(seg_buf_t *src_buf, uint32_t tileno);
+	bool decode_tile(grk_seg_buf *src_buf, uint32_t tileno);
 
 	/**
 	 * Copies tile data from the system onto the given memory block.
@@ -424,16 +424,16 @@ struct TileProcessor {
 	/** Current packet iterator number */
 	uint32_t cur_pino;
 	/** info on image tile */
-	tcd_tile_t *tile;
+	grk_tcd_tile *tile;
 	/** image header */
 	grk_image *image;
-	grok_plugin_tile_t *current_plugin_tile;
+	grk_plugin_tile *current_plugin_tile;
 
 private:
 	/** coding parameters */
-	cp_t *cp;
+	grk_coding_parameters *cp;
 	/** coding/decoding parameters common to all tiles */
-	tcp_t *tcp;
+	grk_tcp *tcp;
 	/** current encoded tile (not used for decode) */
 	uint32_t tcd_tileno;
 	/** indicate if the tcd is a decoder. */
@@ -449,19 +449,19 @@ private:
 	/**
 	 * Deallocates the decoding data of the given precinct.
 	 */
-	 void code_block_dec_deallocate(tcd_precinct_t *p_precinct);
+	 void code_block_dec_deallocate(grk_tcd_precinct *p_precinct);
 
 	/**
 	 * Deallocates the encoding data of the given precinct.
 	 */
-	 void code_block_enc_deallocate(tcd_precinct_t *p_precinct);
+	 void code_block_enc_deallocate(grk_tcd_precinct *p_precinct);
 
 	/**
 	 Free the memory allocated for encoding
 	 */
 	 void free_tile();
 
-	 bool t2_decode(uint32_t tile_no, seg_buf_t *src_buf,
+	 bool t2_decode(uint32_t tile_no, grk_seg_buf *src_buf,
 			uint64_t *p_data_read);
 
 	 bool t1_decode();
