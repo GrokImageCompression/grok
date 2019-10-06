@@ -75,7 +75,7 @@ struct t2_t {
 	/** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
 	grk_image *image;
 	/** pointer to the image coding parameters */
-	cp_t *cp;
+	grk_coding_parameters *cp;
 };
 
 /** @name Exported functions */
@@ -96,7 +96,7 @@ struct t2_t {
  @param tppos            The position of the tile part flag in the progression order
  @param pino             FIXME DOC
  */
-bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
+bool t2_encode_packets(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
 		uint32_t maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
 		uint32_t tppos, uint32_t pino);
@@ -111,7 +111,7 @@ bool t2_encode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
  @param len              the length of the destination buffer
  @param tppos            The position of the tile part flag in the progression order
  */
-bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
+bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
 		uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
 		uint32_t tppos);
 
@@ -127,8 +127,8 @@ bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
 
  @return FIXME DOC
  */
-bool t2_decode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
-		seg_buf_t *src_buf, uint64_t *p_data_read);
+bool t2_decode_packets(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
+		grk_seg_buf *src_buf, uint64_t *p_data_read);
 
 /**
  * Creates a Tier 2 handle
@@ -137,7 +137,7 @@ bool t2_decode_packets(t2_t *t2, uint32_t tileno, tcd_tile_t *tile,
  * @param	p_cp		Image coding parameters.
  * @return		a new T2 handle if successful, nullptr otherwise.
  */
-t2_t* t2_create(grk_image *p_image, cp_t *p_cp);
+t2_t* t2_create(grk_image *p_image, grk_coding_parameters *p_cp);
 
 /**
  Destroy a T2 handle

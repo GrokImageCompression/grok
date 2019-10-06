@@ -20,7 +20,7 @@
 
 namespace grk {
 
-T1Decoder::T1Decoder(tcp_t *tcp, uint16_t blockw, uint16_t blockh) :
+T1Decoder::T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
 		decodeBlocks(nullptr),

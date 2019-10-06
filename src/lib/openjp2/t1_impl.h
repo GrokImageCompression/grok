@@ -24,15 +24,15 @@
 
 namespace grk {
 
-struct tcp_t;
+struct grk_tcp;
 
 class t1_impl: public t1_interface {
 public:
-	t1_impl(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
+	t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
 	virtual ~t1_impl();
 
-	void preEncode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t &max);
-	double encode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t max,
+	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
+	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 			bool doRateControl);
 
 	bool decode(decodeBlockInfo *block);

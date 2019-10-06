@@ -30,28 +30,28 @@ static inline int64_t int64_ceildiv(int64_t a, int64_t b) {
 	return (a + b - 1) / b;
 }
 
-void rect_t::print(void) {
+void grk_rect::print(void) {
 	std::cout << "[" << x0 << "," << y0 << "," << x1 << "," << y1 << "]"
 			<< std::endl;
 }
 
-rect_t::rect_t(void) :
+grk_rect::grk_rect(void) :
 		x0(0), y0(0), x1(0), y1(0) {
 }
 
-rect_t::rect_t(int64_t x0, int64_t y0, int64_t x1, int64_t y1) :
+grk_rect::grk_rect(int64_t x0, int64_t y0, int64_t x1, int64_t y1) :
 		x0(x0), y0(y0), x1(x1), y1(y1) {
 }
 
-bool rect_t::is_valid(void) {
+bool grk_rect::is_valid(void) {
 	return x0 <= x1 && y0 <= y1;
 }
 
-bool rect_t::is_non_degenerate(void) {
+bool grk_rect::is_non_degenerate(void) {
 	return x0 < x1 && y0 < y1;
 }
 
-bool rect_t::are_equal(rect_t *r2) {
+bool grk_rect::are_equal(grk_rect *r2) {
 
 	if (!r2)
 		return false;
@@ -59,9 +59,9 @@ bool rect_t::are_equal(rect_t *r2) {
 	return x0 == r2->x0 && y0 == r2->y0 && x1 == r2->x1 && y1 == r2->y1;
 }
 
-bool rect_t::clip(rect_t *r2, rect_t *result) {
+bool grk_rect::clip(grk_rect *r2, grk_rect *result) {
 	bool rc;
-	rect_t temp;
+	grk_rect temp;
 
 	if (!r2 || !result)
 		return false;
@@ -79,7 +79,7 @@ bool rect_t::clip(rect_t *r2, rect_t *result) {
 	return rc;
 }
 
-void rect_t::ceildivpow2(uint32_t power) {
+void grk_rect::ceildivpow2(uint32_t power) {
 	x0 = int64_ceildivpow2(x0, power);
 	y0 = int64_ceildivpow2(y0, power);
 	x1 = int64_ceildivpow2(x1, power);
@@ -87,29 +87,29 @@ void rect_t::ceildivpow2(uint32_t power) {
 
 }
 
-int64_t rect_t::get_area(void) {
+int64_t grk_rect::get_area(void) {
 	return (x1 - x0) * (y1 - y0);
 }
 
-void rect_t::pan(pt_t *shift) {
+void grk_rect::pan(grk_pt *shift) {
 	x0 += shift->x;
 	y0 += shift->y;
 	x1 += shift->x;
 	y1 += shift->y;
 }
 
-void rect_t::subsample(uint32_t dx, uint32_t dy) {
+void grk_rect::subsample(uint32_t dx, uint32_t dy) {
 	x0 = int64_ceildiv(x0, (int64_t) dx);
 	y0 = int64_ceildiv(y0, (int64_t) dy);
 	x1 = int64_ceildiv(x1, (int64_t) dx);
 	y1 = int64_ceildiv(y1, (int64_t) dy);
 }
 
-void rect_t::grow(int64_t boundary) {
+void grk_rect::grow(int64_t boundary) {
 	grow2(boundary, boundary);
 }
 
-void rect_t::grow2(int64_t boundaryx, int64_t boundaryy) {
+void grk_rect::grow2(int64_t boundaryx, int64_t boundaryy) {
 
 	x0 -= boundaryx;
 	y0 -= boundaryy;

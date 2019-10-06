@@ -83,14 +83,14 @@ public:
 	 @param roishift Region of interest shifting value
 	 @param mode_switch Code-block style
 	 */
-	virtual bool decode_cblk(tcd_cblk_dec_t *cblk, uint8_t orient,
+	virtual bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
 			uint32_t mode_switch)=0;
 	virtual void postDecode(decodeBlockInfo *block)=0;
 
 	int32_t *dataPtr;
 
 protected:
-	bool allocCompressed(tcd_cblk_dec_t *cblk);
+	bool allocCompressed(grk_tcd_cblk_dec *cblk);
 	uint8_t *compressed_block;
 	size_t compressed_block_size;
 	mqc_t *mqc;

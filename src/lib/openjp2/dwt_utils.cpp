@@ -65,7 +65,7 @@ namespace grk {
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-uint32_t dwt_utils::max_resolution(tcd_resolution_t *restrict r, uint32_t i) {
+uint32_t dwt_utils::max_resolution(grk_tcd_resolution *restrict r, uint32_t i) {
 	uint32_t mr = 0;
 	uint32_t w;
 	while (--i) {
@@ -150,7 +150,7 @@ const double dwt_norms_real[4][10] = { { 1.000, 1.965, 4.177, 8.403,
  Explicit calculation of the Quantization Stepsizes
  */
 void dwt_utils::encode_stepsize(int32_t stepsize, int32_t numbps,
-		stepsize_t *bandno_stepsize) {
+		grk_stepsize *bandno_stepsize) {
 	int32_t p, n;
 	p = int_floorlog2(stepsize) - 13;
 	n = 11 - int_floorlog2(stepsize);
@@ -191,7 +191,7 @@ double dwt_utils::getnorm_real(uint32_t level, uint8_t orient) {
 	return dwt_norms_real[orient][level];
 }
 
-void dwt_utils::calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec) {
+void dwt_utils::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
 	uint32_t numbands, bandno;
 	numbands = 3 * tccp->numresolutions - 2;
 	for (bandno = 0; bandno < numbands; bandno++) {

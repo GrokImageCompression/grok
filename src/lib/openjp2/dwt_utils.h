@@ -57,7 +57,7 @@
 
 namespace grk {
 
-struct tcd_tilecomp_t;
+struct grk_tcd_tilecomp;
 
 struct dwt_t {
 	int32_t *mem;
@@ -99,12 +99,12 @@ public:
 	 @param tccp Tile-component coding parameters
 	 @param prec Precint analyzed
 	 */
-	static void calc_explicit_stepsizes(tccp_t *tccp, uint32_t prec);
+	static void calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec);
 
 	static void encode_stepsize(int32_t stepsize, int32_t numbps,
-			stepsize_t *bandno_stepsize);
+			grk_stepsize *bandno_stepsize);
 
-	static uint32_t max_resolution(tcd_resolution_t* restrict r, uint32_t i);
+	static uint32_t max_resolution(grk_tcd_resolution* restrict r, uint32_t i);
 	static void deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 			int32_t x, int32_t cas);
 	static void deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,

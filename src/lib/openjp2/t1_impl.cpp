@@ -23,7 +23,7 @@
 
 namespace grk {
 
-t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW,
+t1_impl::t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH) :
 		t1_decoder(nullptr), t1_encoder(nullptr) {
 	(void) tcp;
@@ -33,7 +33,7 @@ t1_impl::t1_impl(bool isEncoder, tcp_t *tcp, uint16_t maxCblkW,
 			throw std::exception();
 		}
 	} else {
-		tccp_t *tccp = &tcp->tccps[0];
+		grk_tccp *tccp = &tcp->tccps[0];
 		if (!tccp->mode_switch)
 			t1_decoder = new t1_decode_opt(maxCblkW, maxCblkH);
 		else
@@ -44,11 +44,11 @@ t1_impl::~t1_impl() {
 	delete t1_decoder;
 	delete t1_encoder;
 }
-void t1_impl::preEncode(encodeBlockInfo *block, tcd_tile_t *tile,
+void t1_impl::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &max) {
 	t1_encoder->preEncode(block, tile, max);
 }
-double t1_impl::encode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t max,
+double t1_impl::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 		bool doRateControl) {
 	double dist = t1_encoder->encode_cblk(block->cblk, (uint8_t) block->bandno,
 			block->compno,
@@ -58,7 +58,7 @@ double t1_impl::encode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t max,
 #ifdef DEBUG_LOSSLESS_T1
 		t1_decode* t1Decode = new t1_decode(t1_encoder->w, t1_encoder->h);
 
-		tcd_cblk_dec_t* cblkDecode = new tcd_cblk_dec_t();
+		grk_tcd_cblk_dec* cblkDecode = new grk_tcd_cblk_dec();
 		cblkDecode->data = nullptr;
 		cblkDecode->segs = nullptr;
 		if (!cblkDecode->alloc()) {
@@ -70,7 +70,7 @@ double t1_impl::encode(encodeBlockInfo *block, tcd_tile_t *tile, uint32_t max,
 		cblkDecode->y1 = block->cblk->y1;
 		cblkDecode->numbps = block->cblk->numbps;
 		cblkDecode->numSegments = 1;
-		memset(cblkDecode->segs, 0, sizeof(tcd_seg_t));
+		memset(cblkDecode->segs, 0, sizeof(grk_tcd_seg));
 		auto seg = cblkDecode->segs;
 		seg->numpasses = block->cblk->num_passes_encoded;
 		auto rate = seg->numpasses ? block->cblk->passes[seg->numpasses - 1].rate : 0;

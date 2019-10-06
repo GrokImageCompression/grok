@@ -181,7 +181,7 @@ enum J2K_T2_MODE {
 /**
  * Quantization stepsize
  */
-struct stepsize_t {
+struct grk_stepsize {
 	/** exponent */
 	uint32_t expn;
 	/** mantissa */
@@ -191,7 +191,7 @@ struct stepsize_t {
 /**
  Tile-component coding parameters
  */
-struct tccp_t {
+struct grk_tccp {
 	/** coding style */
 	uint32_t csty;
 	/** number of resolutions */
@@ -211,7 +211,7 @@ struct tccp_t {
 	/** quantisation style */
 	uint32_t qntsty;
 	/** stepsizes used for quantization */
-	stepsize_t stepsizes[GRK_J2K_MAXBANDS];
+	grk_stepsize stepsizes[GRK_J2K_MAXBANDS];
 	// number of step sizes read from QCC marker
 	uint32_t numStepSizes;
 	/** number of guard bits */
@@ -229,7 +229,7 @@ struct tccp_t {
 /**
  * FIXME DOC
  */
-struct mct_data_t {
+struct grk_mct_data {
 	J2K_MCT_ELEMENT_TYPE m_element_type;
 	J2K_MCT_ARRAY_TYPE m_array_type;
 	uint32_t m_index;
@@ -240,16 +240,16 @@ struct mct_data_t {
 /**
  * FIXME DOC
  */
-struct simple_mcc_decorrelation_data_t {
+struct grk_simple_mcc_decorrelation_data {
 	uint32_t m_index;
 	uint32_t m_nb_comps;
-	mct_data_t *m_decorrelation_array;
-	mct_data_t *m_offset_array;
+	grk_mct_data *m_decorrelation_array;
+	grk_mct_data *m_offset_array;
 	uint32_t m_is_irreversible :1;
 }
 ;
 
-struct ppx_t {
+struct grk_ppx {
 	uint8_t *m_data; /* m_data == nullptr => Zppx not read yet */
 	uint32_t m_data_size;
 };
@@ -259,8 +259,8 @@ struct ppx_t {
  this structure is used to store coding/decoding parameters common to all
  tiles (information like COD, COC in main header)
  */
-struct tcp_t {
-	tcp_t();
+struct grk_tcp {
+	grk_tcp();
 
 	/** coding style */
 	uint32_t csty;
@@ -281,7 +281,7 @@ struct tcp_t {
 	/** number of ppt markers (reserved size) */
 	uint32_t ppt_markers_count;
 	/** ppt markers data (table indexed by Zppt) */
-	ppx_t *ppt_markers;
+	grk_ppx *ppt_markers;
 
 	/** packet header store there for future use in t2_decode_packet */
 	uint8_t *ppt_data;
@@ -298,14 +298,14 @@ struct tcp_t {
 	// number of step sizes as read from main QCD marker
 	uint32_t main_qcd_numStepSizes;
 	/** tile-component coding parameters */
-	tccp_t *tccps;
+	grk_tccp *tccps;
 	// current tile part number (-1 if not yet initialized
 	int32_t m_current_tile_part_number;
 
 	/** number of tile parts for the tile. */
 	uint32_t m_nb_tile_parts;
 
-	seg_buf_t *m_tile_data;
+	grk_seg_buf *m_tile_data;
 
 	/** encoding norms */
 	double *mct_norms;
@@ -314,13 +314,13 @@ struct tcp_t {
 	/** the mct coding matrix */
 	float *m_mct_coding_matrix;
 	/** mct records */
-	mct_data_t *m_mct_records;
+	grk_mct_data *m_mct_records;
 	/** the number of mct records. */
 	uint32_t m_nb_mct_records;
 	/** the max number of mct records. */
 	uint32_t m_nb_max_mct_records;
 	/** mcc records */
-	simple_mcc_decorrelation_data_t *m_mcc_records;
+	grk_simple_mcc_decorrelation_data *m_mcc_records;
 	/** the number of mct records. */
 	uint32_t m_nb_mcc_records;
 	/** the max number of mct records. */
@@ -335,7 +335,7 @@ struct tcp_t {
 	uint32_t POC :1;
 };
 
-struct encoding_param_t {
+struct grk_encoding_param {
 	/** Maximum rate for each component. If == 0, component size limitation is not considered */
 	size_t m_max_comp_size;
 	/** Position of tile part flag in progression order*/
@@ -352,7 +352,7 @@ struct encoding_param_t {
 	uint32_t rateControlAlgorithm;
 };
 
-struct decoding_param_t {
+struct grk_decoding_param {
 	/** if != 0, then original dimension divided by 2^(reduce); if == 0 or not used, image is decoded to the full resolution */
 	uint32_t m_reduce;
 	/** if != 0, then only the first "layer" layers are decoded; if == 0 or not used, all the quality layers are decoded */
@@ -362,7 +362,7 @@ struct decoding_param_t {
 /**
  * Coding parameters
  */
-struct cp_t {
+struct grk_coding_parameters {
 	/** Rsiz*/
 	uint16_t rsiz;
 	/** XTOsiz */
@@ -386,7 +386,7 @@ struct cp_t {
 	/** number of ppm markers (reserved size) */
 	uint32_t ppm_markers_count;
 	/** ppm markers data (table indexed by Zppm) */
-	ppx_t *ppm_markers;
+	grk_ppx *ppm_markers;
 
 	/** packet header store there for future use in t2_decode_packet */
 	uint8_t *ppm_data;
@@ -409,11 +409,11 @@ struct cp_t {
 	int32_t ppm_previous;
 
 	/** tile coding parameters */
-	tcp_t *tcps;
+	grk_tcp *tcps;
 
 	union {
-		decoding_param_t m_dec;
-		encoding_param_t m_enc;
+		grk_decoding_param m_dec;
+		grk_encoding_param m_enc;
 	} m_specific_param;
 
 	/******** FLAGS *********/
@@ -424,12 +424,12 @@ struct cp_t {
 
 };
 
-struct j2k_dec_t {
+struct grk_j2k_dec {
 	/** Decoder state: used to indicate in which part of the codestream the decoder is (main header, tile header, end) */
 	uint32_t m_state;
 
 	//store decoding parameters common to all tiles (information like COD, COC in main header)
-	tcp_t *m_default_tcp;
+	grk_tcp *m_default_tcp;
 	uint8_t *m_header_data;
 	uint32_t m_header_data_size;
 	// tile part data length
@@ -461,7 +461,7 @@ struct j2k_dec_t {
 
 };
 
-struct j2k_enc_t {
+struct grk_j2k_enc {
 	/** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
 	uint32_t m_current_poc_tile_part_number; /* tp_num */
 
@@ -488,21 +488,21 @@ struct j2k_enc_t {
 
 };
 
-struct j2k_t;
-typedef bool (*j2k_procedure)(j2k_t *j2k, GrokStream*);
+struct grk_j2k;
+typedef bool (*j2k_procedure)(grk_j2k *j2k, GrokStream*);
 
 struct TileProcessor;
 /**
  JPEG-2000 codestream reader/writer
  */
-struct j2k_t {
+struct grk_j2k {
 	/* J2K codestream is decoded*/
 	bool m_is_decoder;
 
 	/* FIXME DOC*/
 	union {
-		j2k_dec_t m_decoder;
-		j2k_enc_t m_encoder;
+		grk_j2k_dec m_decoder;
+		grk_j2k_enc m_encoder;
 	} m_specific_param;
 
 	/** pointer to the internal/private encoded / decoded image */
@@ -512,7 +512,7 @@ struct j2k_t {
 	grk_image *m_output_image;
 
 	/** Coding parameters */
-	cp_t m_cp;
+	grk_coding_parameters m_cp;
 
 	/** the list of procedures to exec **/
 	std::vector<j2k_procedure> *m_procedure_list;
@@ -548,9 +548,9 @@ void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters);
  *
  * @return a handle to a J2K compressor if successful, returns nullptr otherwise
  */
-j2k_t* j2k_create_compress(void);
+grk_j2k* j2k_create_compress(void);
 
-bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
+bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		grk_image *image);
 
 /**
@@ -567,7 +567,7 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
  * Ends the decompression procedures and possibiliy add data to be read after the
  * codestream.
  */
-bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream);
+bool j2k_end_decompress(grk_j2k *j2k, GrokStream *p_stream);
 
 /**
  * Reads a jpeg2000 codestream header structure.
@@ -579,7 +579,7 @@ bool j2k_end_decompress(j2k_t *j2k, GrokStream *p_stream);
  *
  * @return true if the box is valid.
  */
-bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
+bool j2k_read_header(GrokStream *p_stream, grk_j2k *p_j2k,
 		 grk_header_info  *header_info, grk_image **p_image);
 
 /**
@@ -587,7 +587,7 @@ bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
  *
  * @param	p_j2k	the jpeg20000 structure to destroy.
  */
-void j2k_destroy(j2k_t *p_j2k);
+void j2k_destroy(grk_j2k *p_j2k);
 
 /**
  * Destroys a codestream index structure.
@@ -605,7 +605,7 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_decode_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**
@@ -622,7 +622,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
+bool j2k_read_tile_header(grk_j2k *p_j2k, uint32_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream);
@@ -640,7 +640,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
  *
  * @return	true			if the area could be set.
  */
-bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
+bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
@@ -648,7 +648,7 @@ bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
  *
  * @return a handle to a J2K decompressor if successful, nullptr otherwise.
  */
-j2k_t* j2k_create_decompress(void);
+grk_j2k* j2k_create_decompress(void);
 
 /**
  * Dump some elements from the J2K decompression structure .
@@ -658,7 +658,7 @@ j2k_t* j2k_create_decompress(void);
  *@param out_stream			output stream where dump the elements.
  *
  */
-void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream);
+void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream);
 
 /**
  * Dump an image header structure.
@@ -687,7 +687,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  *
  *@return	the codestream information extract from the jpg2000 codec
  */
- grk_codestream_info_v2  *  j2k_get_cstr_info(j2k_t *p_j2k);
+ grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k);
 
 /**
  * Get the codestream index from a JPEG2000 codec.
@@ -696,7 +696,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  *
  *@return	the codestream index extract from the jpg2000 codec
  */
- grk_codestream_index  *  j2k_get_cstr_index(j2k_t *p_j2k);
+ grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k);
 
 /**
  * Decode an image from a JPEG-2000 codestream
@@ -706,12 +706,12 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 
  * @return FIXME DOC
  */
-bool j2k_decode(j2k_t *j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
+bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, GrokStream *p_stream,
 		grk_image *p_image);
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index);
+bool j2k_get_tile(grk_j2k *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index);
 
-bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
+bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
 
 /**
  * Writes a tile.
@@ -722,13 +722,13 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor);
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_write_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_write_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**
  * Encodes an image into a JPEG-2000 codestream
  */
-bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio);
+bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *cio);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
@@ -740,15 +740,15 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *cio);
  *
  * @return true if the codec is valid.
  */
-bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
+bool j2k_start_compress(grk_j2k *p_j2k, GrokStream *p_stream,
 		grk_image *p_image);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
  * codestream.
  */
-bool j2k_end_compress(j2k_t *p_j2k, GrokStream *cio);
+bool j2k_end_compress(grk_j2k *p_j2k, GrokStream *cio);
 
-bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image);
+bool j2k_setup_mct_encoding(grk_tcp *p_tcp, grk_image *p_image);
 
 }

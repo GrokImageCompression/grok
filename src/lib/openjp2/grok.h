@@ -1454,11 +1454,11 @@ typedef struct grok_plugin_tile_component {
 #define GROK_PLUGIN_DECODE_CLEAN  (1 << 4)
 #define GROK_DECODE_ALL		(GROK_PLUGIN_DECODE_CLEAN | GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
 
-typedef struct grok_plugin_tile {
+typedef struct grk_plugin_tile {
 	uint32_t decode_flags;
 	size_t numComponents;
 	grok_plugin_tile_component_t **tileComponents;
-} grok_plugin_tile_t;
+} grk_plugin_tile;
 
 /**
  * Decode an image from a JPEG-2000 codestream
@@ -1470,7 +1470,7 @@ typedef struct grok_plugin_tile {
  * @return 					true if success, otherwise false
  * */
 GRK_API bool GRK_CALLCONV grk_decode( grk_codec  *p_decompressor,
-		grok_plugin_tile_t *tile,  grk_stream  *p_stream, grk_image *p_image);
+		grk_plugin_tile *tile,  grk_stream  *p_stream, grk_image *p_image);
 
 /**
  * Get the decoded tile from the codec
@@ -1629,7 +1629,7 @@ GRK_API bool GRK_CALLCONV grk_encode( grk_codec  *p_codec,
  * @return 				Returns true if successful, returns false otherwise
  */
 GRK_API bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_codec,
-		grok_plugin_tile_t *tile,  grk_stream  *p_stream);
+		grk_plugin_tile *tile,  grk_stream  *p_stream);
 
 /*
  ==========================================================
@@ -1752,7 +1752,7 @@ typedef struct grok_plugin_encode_user_callback_info {
 	const char *output_file_name;
 	 grk_cparameters  *encoder_parameters;
 	grk_image *image;
-	grok_plugin_tile_t *tile;
+	grk_plugin_tile *tile;
 	uint8_t *compressBuffer;
 	size_t compressBufferLen;
 	unsigned int error_code;
@@ -1795,7 +1795,7 @@ typedef struct grok_plugin_decode_callback_info {
 	grk_decompress_parameters *decoder_parameters;
 	grk_image *image;
 	bool plugin_owns_image;
-	grok_plugin_tile_t *tile;
+	grk_plugin_tile *tile;
 	unsigned int error_code;
 	uint32_t decode_flags;
 } grok_plugin_decode_callback_info_t;

@@ -69,7 +69,7 @@ const uint16_t maxSubLevel = 9;
 /** @defgroup J2K J2K - JPEG-2000 codestream reader/writer */
 /*@{*/
 
-tcp_t::tcp_t() :
+grk_tcp::grk_tcp() :
 				csty(0),
 				prg(GRK_PROG_UNKNOWN),
 				numlayers(0),
@@ -119,7 +119,7 @@ struct  grk_dec_memory_marker_handler  {
 	/** value of the state when the marker can appear */
 	uint32_t states;
 	/** action linked to the marker */
-	bool (*handler)(j2k_t *p_j2k, uint8_t *p_header_data,
+	bool (*handler)(grk_j2k *p_j2k, uint8_t *p_header_data,
 			uint16_t header_size);
 } ;
 
@@ -127,7 +127,7 @@ struct  grk_dec_memory_marker_handler  {
 /** @name Local static functions */
 /*@{*/
 
-static bool j2k_fromTileHeader(j2k_t *p_j2k) {
+static bool j2k_fromTileHeader(grk_j2k *p_j2k) {
 	return (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
 }
 
@@ -155,12 +155,12 @@ static void j2k_transfer_image_data(grk_image *src, grk_image *dest) {
 /**
  * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_header_reading(j2k_t *p_j2k);
+static bool j2k_setup_header_reading(grk_j2k *p_j2k);
 
 /**
  * The read header procedure.
  */
-static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_read_header_procedure(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * The default encoding validation procedure without any extension.
@@ -171,7 +171,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_encoding_validation(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * The default decoding validation procedure without any extension.
@@ -182,25 +182,25 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_decoding_validation(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_encoding_validation(j2k_t *p_j2k);
+static bool j2k_setup_encoding_validation(grk_j2k *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_decoding_validation(j2k_t *p_j2k);
+static bool j2k_setup_decoding_validation(grk_j2k *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_setup_end_compress(j2k_t *p_j2k);
+static bool j2k_setup_end_compress(grk_j2k *p_j2k);
 
 /**
  * The mct encoding validation procedure.
@@ -211,16 +211,16 @@ static bool j2k_setup_end_compress(j2k_t *p_j2k);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_mct_validation(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Builds the tcd decoder to use to decode tile.
  */
-static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_build_decoder(grk_j2k *p_j2k, GrokStream *p_stream);
 /**
  * Builds the tcd encoder to use to encode tile.
  */
-static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_build_encoder(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Creates a tile-coder decoder.
@@ -229,7 +229,7 @@ static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                        the stream to write data to.
  
  */
-static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_create_tcd(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Executes the given procedures on the given codec.
@@ -240,7 +240,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream);
  *
  * @return      true                            if all the procedures were successfully executed.
  */
-static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *p_procedure_list,
+static bool j2k_exec(grk_j2k *p_j2k, std::vector<j2k_procedure> *p_procedure_list,
 		GrokStream *p_stream);
 
 /**
@@ -250,7 +250,7 @@ static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *p_procedure_list,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_update_rates(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Copies the decoding tile parameters onto all the tile parameters.
@@ -260,7 +260,7 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
+static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 		GrokStream *p_stream);
 
 /**
@@ -278,21 +278,21 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
  *
  * @param       p_tcp           the tile coding parameter to destroy.
  */
-static void j2k_tcp_destroy(tcp_t *p_tcp);
+static void j2k_tcp_destroy(grk_tcp *p_tcp);
 
 /**
  * Destroys the data inside a tile coding parameter structure.
  *
  * @param       p_tcp           the tile coding parameter which contain data to destroy.
  */
-static void j2k_tcp_data_destroy(tcp_t *p_tcp);
+static void j2k_tcp_data_destroy(grk_tcp *p_tcp);
 
 /**
  * Destroys a coding parameter structure.
  *
  * @param       p_cp            the coding parameter to destroy.
  */
-static void j2k_cp_destroy(cp_t *p_cp);
+static void j2k_cp_destroy(grk_coding_parameters *p_cp);
 
 /**
  * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
@@ -304,7 +304,7 @@ static void j2k_cp_destroy(cp_t *p_cp);
  *
  * @return true if SPCdod are equals.
  */
-static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_compare_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no);
 
 /**
@@ -318,7 +318,7 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
  *
  * @return FIXME DOC
  */
-static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_write_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no, GrokStream *p_stream);
 
 /**
@@ -330,7 +330,7 @@ static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
  *
  * @return      the number of bytes taken by the SPCod element.
  */
-static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t tile_no,
+static uint32_t j2k_get_SPCod_SPCoc_size(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no);
 
 /**
@@ -341,7 +341,7 @@ static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t tile_no,
  * @param       header_size   the size of the data contained in the COM marker.
 
  */
-static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
+static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
 /**
@@ -353,7 +353,7 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
  *
  * @return      the number of bytes taken by the SPCod element.
  */
-static uint32_t j2k_get_SQcd_SQcc_size(j2k_t *p_j2k, uint32_t tile_no,
+static uint32_t j2k_get_SQcd_SQcc_size(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no);
 
 /**
@@ -366,7 +366,7 @@ static uint32_t j2k_get_SQcd_SQcc_size(j2k_t *p_j2k, uint32_t tile_no,
  *
  * @return true if equals.
  */
-static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_compare_SQcd_SQcc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no);
 
 /**
@@ -379,13 +379,13 @@ static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
 
  *
  */
-static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_write_SQcd_SQcc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no, GrokStream *p_stream);
 
 /**
  * Updates the Tile Length Marker.
  */
-static void j2k_update_tlm(j2k_t *p_j2k, uint32_t tile_part_size);
+static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size);
 
 /**
  * Reads a SQcd or SQcc element, i.e. the quantization values of a band in the QCD or QCC.
@@ -398,7 +398,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t tile_part_size);
 
  *
  */
-static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t compno,
+static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size);
 
 /**
@@ -406,37 +406,37 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t compno,
  *
  * @param               p_j2k           the J2k codec.
  */
-static void j2k_copy_tile_component_parameters(j2k_t *p_j2k);
+static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k);
 
 /**
  * Reads the tiles.
  */
-static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_decode_tiles(grk_j2k *p_j2k, GrokStream *p_stream);
 
-static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index);
+static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint32_t tile_index);
 
 static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
 		grk_image *p_output_image, bool clearOutputOnInit);
 
-static void get_tile_dimensions(grk_image *l_image, tcd_tilecomp_t *l_tilec,
+static void get_tile_dimensions(grk_image *l_image, grk_tcd_tilecomp *l_tilec,
 		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
 		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
 		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
 static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data);
 
-static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_post_write_tile(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Sets up the procedures to do on writing header.
  * Developers wanting to extend the library can add their own writing procedures.
  */
-static bool j2k_setup_header_writing(j2k_t *p_j2k);
+static bool j2k_setup_header_writing(grk_j2k *p_j2k);
 
-static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
+static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *p_data_written,
 		uint64_t total_data_size, GrokStream *p_stream);
 
-static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
+static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
 		uint64_t total_data_size, GrokStream *p_stream);
 
 /**
@@ -446,9 +446,9 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_get_end_header(grk_j2k *p_j2k, GrokStream *p_stream);
 
-static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
+static bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k);
 
 /*
  * -----------------------------------------------------------------------
@@ -463,7 +463,7 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k);
  * @param       p_stream                        the stream to write data to.
 
  */
-static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_soc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a SOC marker (Start of Codestream)
@@ -471,7 +471,7 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream        XXX needs data
 
  */
-static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_read_soc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the SIZ marker (image and tile size)
@@ -480,7 +480,7 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream        the stream to write data to.
 
  */
-static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_siz(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a SIZ marker (image and tile size)
@@ -489,7 +489,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the SIZ marker.
 
  */
-static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -499,7 +499,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream        the stream to write data to.
 
  */
-static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_com(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a COM marker (comments)
@@ -508,7 +508,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the COM marker.
 
  */
-static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_com(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Writes the COD marker (Coding style default)
@@ -517,7 +517,7 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream        the stream to write data to.
 
  */
-static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_cod(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a COD marker (Coding Style defaults)
@@ -527,7 +527,7 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the COD marker.
 
  */
-static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -539,7 +539,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @return      true if equals
  */
-static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t first_comp_no,
+static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
@@ -550,7 +550,7 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t first_comp_no,
  * @param       p_stream    the stream to write data to.
  
  */
-static bool j2k_write_coc(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream);
 
 /**
@@ -561,7 +561,7 @@ static bool j2k_write_coc(j2k_t *p_j2k, uint32_t comp_no,
  * @param       p_stream    the stream to write data to.
  
  */
-static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_coc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream);
 
 /**
@@ -569,7 +569,7 @@ static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k);
+static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k);
 
 /**
  * Reads a COC marker (Coding Style Component)
@@ -579,7 +579,7 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k);
  * @param       header_size   the size of the data contained in the COC marker.
 
  */
-static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_coc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -589,7 +589,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_qcd(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a QCD marker (Quantization defaults)
@@ -599,7 +599,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the QCD marker.
 
  */
-static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_qcd(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -611,7 +611,7 @@ static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
  *
  * @return true if equals.
  */
-static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t first_comp_no,
+static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
 		uint32_t second_comp_no);
 
 /**
@@ -622,7 +622,7 @@ static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t first_comp_no,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_qcc(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream);
 
 /**
@@ -633,13 +633,13 @@ static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t comp_no,
  * @param       p_stream        the stream to write data to.
 
  */
-static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_qcc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream);
 
 /**
  * Gets the maximum size taken by a qcc.
  */
-static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k);
+static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k);
 
 /**
  * Reads a QCC marker (Quantization component)
@@ -648,7 +648,7 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k);
  * @param       header_size   the size of the data contained in the QCC marker.
 
  */
-static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_qcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
@@ -660,7 +660,7 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_poc(grk_j2k *p_j2k, GrokStream *p_stream);
 /**
  * Writes the POC marker (Progression Order Change)
  *
@@ -669,12 +669,12 @@ static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_data_written number of bytes written
  
  */
-static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_write_poc_in_memory(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint64_t *p_data_written);
 /**
  * Gets the maximum size taken by the writing of a POC.
  */
-static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k);
+static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k);
 
 /**
  * Reads a POC marker (Progression Order Change)
@@ -684,20 +684,20 @@ static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k);
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
-static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
  * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
  */
-static uint32_t j2k_get_max_toc_size(j2k_t *p_j2k);
+static uint32_t j2k_get_max_toc_size(grk_j2k *p_j2k);
 
 /**
  * Gets the maximum size taken by the headers of the SOT.
  *
  * @param       p_j2k   the jpeg2000 codec to use.
  */
-static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k);
+static uint64_t j2k_get_specific_header_sizes(grk_j2k *p_j2k);
 
 /**
  * Reads a CRG marker (Component registration)
@@ -707,7 +707,7 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k);
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_crg(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Reads a TLM marker (Tile Length Marker)
@@ -717,7 +717,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -727,7 +727,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_updated_tlm(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a PLM marker (Packet length, main header marker)
@@ -737,7 +737,7 @@ static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Reads a PLT marker (Packet length, tile-part header)
@@ -747,7 +747,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the PLT marker.
 
  */
-static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -759,7 +759,7 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 
  */
 
-static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -768,7 +768,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
  
  */
-static bool j2k_merge_ppm(cp_t *p_cp);
+static bool j2k_merge_ppm(grk_coding_parameters *p_cp);
 
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
@@ -778,7 +778,7 @@ static bool j2k_merge_ppm(cp_t *p_cp);
  * @param       header_size   the size of the data contained in the PPT marker.
 
  */
-static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_ppt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -787,7 +787,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
 
  */
-static bool j2k_merge_ppt(tcp_t *p_tcp);
+static bool j2k_merge_ppt(grk_tcp *p_tcp);
 
 /**
  * Writes the TLM marker (Tile Length Marker)
@@ -796,7 +796,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_tlm(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the SOT marker (Start of tile-part)
@@ -807,7 +807,7 @@ static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_data_written   number of bytes written
  
  */
-static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_write_sot(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint64_t *psot_location, uint64_t *p_data_written);
 
 /**
@@ -834,7 +834,7 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t header_size,
  * @param       header_size   the size of the data contained in the PPT marker.
 
  */
-static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 /**
  * Writes the SOD marker (Start of data)
@@ -846,7 +846,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream            the stream to write data to.
  
  */
-static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
+static bool j2k_write_sod(grk_j2k *p_j2k, TileProcessor *p_tile_coder,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		GrokStream *p_stream);
 
@@ -857,16 +857,16 @@ static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
  * @param       p_stream                FIXME DOC
 
  */
-static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_read_sod(grk_j2k *p_j2k, GrokStream *p_stream);
 
-static tcp_t* j2k_get_tcp(j2k_t *p_j2k) {
+static grk_tcp* j2k_get_tcp(grk_j2k *p_j2k) {
 	auto l_cp = &(p_j2k->m_cp);
 	return (j2k_fromTileHeader(p_j2k)) ?
 			l_cp->tcps + p_j2k->m_current_tile_number :
 			p_j2k->m_specific_param.m_decoder.m_default_tcp;
 }
 
-static void j2k_update_tlm(j2k_t *p_j2k, uint32_t tile_part_size) {
+static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) {
 	/* PSOT */
 	grok_write_bytes(
 			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,
@@ -890,7 +890,7 @@ static void j2k_update_tlm(j2k_t *p_j2k, uint32_t tile_part_size) {
  * @param       p_j2k                   J2K codec.
 
  */
-static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t tile_no, uint32_t comp_no,
+static bool j2k_write_rgn(grk_j2k *p_j2k, uint32_t tile_no, uint32_t comp_no,
 		uint32_t nb_comps, GrokStream *p_stream);
 
 /**
@@ -901,7 +901,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t tile_no, uint32_t comp_no,
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
-static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_rgn(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -911,7 +911,7 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_eoc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the CBD-MCT-MCC-MCO markers (Multi components transform)
@@ -920,7 +920,7 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                        the stream to write data to.
 
  */
-static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_mct_data_group(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Inits the Info
@@ -929,7 +929,7 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_init_info(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  Add main header marker information
@@ -962,7 +962,7 @@ static bool j2k_add_tlmarker(uint32_t tileno,
  *
  * @return      true                    if the marker could be deduced.
  */
-static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_read_unk(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint32_t *output_marker);
 
 /**
@@ -972,7 +972,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
  * @param       p_stream        the stream to write data to.
 
  */
-static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream);
+static bool j2k_write_mct_record(grk_mct_data *p_mct_record, GrokStream *p_stream);
 
 /**
  * Reads a MCT marker (Multiple Component Transform)
@@ -982,7 +982,7 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream)
  * @param       header_size   the size of the data contained in the MCT marker.
 
  */
-static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mct(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -992,7 +992,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
+static bool j2k_write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
 		GrokStream *p_stream);
 
 /**
@@ -1003,7 +1003,7 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
  * @param       header_size   the size of the data contained in the MCC marker.
 
  */
-static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -1013,7 +1013,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                                the stream to write data to.
 
  */
-static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_mco(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
@@ -1023,10 +1023,10 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the MCO marker.
 
  */
-static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
-static bool j2k_add_mct(tcp_t *p_tcp, grk_image *p_image, uint32_t index);
+static bool j2k_add_mct(grk_tcp *p_tcp, grk_image *p_image, uint32_t index);
 
 static void j2k_read_int16_to_float(const void *p_src_data, void *p_dest_data,
 		uint32_t nb_elem);
@@ -1062,7 +1062,7 @@ static void j2k_write_float_to_float64(const void *p_src_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_end_encoding(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes the CBD marker (Component bit depth definition)
@@ -1071,7 +1071,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                                the stream to write data to.
 
  */
-static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_cbd(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Reads a CBD marker (Component bit depth definition)
@@ -1081,7 +1081,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       header_size   the size of the data contained in the CBD marker.
 
  */
-static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_cbd(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
@@ -1091,7 +1091,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_all_coc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes QCC marker for each component.
@@ -1100,7 +1100,7 @@ static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_all_qcc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes regions of interests.
@@ -1109,7 +1109,7 @@ static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_regions(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Writes EPC ????
@@ -1118,7 +1118,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream);
  * @param       p_stream                the stream to write data to.
 
  */
-static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream);
+static bool j2k_write_epc(grk_j2k *p_j2k, GrokStream *p_stream);
 
 /**
  * Checks the progression order changes values. Tells of the poc given as input are valid.
@@ -1145,7 +1145,7 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
  *
  * @return              the number of tile parts.
  */
-static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno);
+static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint32_t tileno);
 
 /**
  * Calculates the total number of tile parts needed by the encoder to
@@ -1158,17 +1158,17 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno);
  *
  * @return true if the function was successful, false else.
  */
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image *image);
+static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tiles, grk_image *image);
 
-static void j2k_dump_MH_info(j2k_t *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream);
 
-static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream);
+static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream);
 
 static  grk_codestream_index  *  j2k_create_cstr_index(void);
 
-static float j2k_get_tp_stride(tcp_t *p_tcp);
+static float j2k_get_tp_stride(grk_tcp *p_tcp);
 
-static float j2k_get_default_stride(tcp_t *p_tcp);
+static float j2k_get_default_stride(grk_tcp *p_tcp);
 
 static uint32_t j2k_initialise_4K_poc( grk_poc  *POC, uint32_t numres);
 
@@ -1469,11 +1469,11 @@ static bool j2k_check_poc_val(const  grk_poc  *p_pocs, uint32_t nb_pocs,
 
 /* ----------------------------------------------------------------------- */
 
-static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno) {
+static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint32_t tileno) {
 	const char *prog = nullptr;
 	int32_t i;
 	uint32_t tpnum = 1;
-	tcp_t *tcp = nullptr;
+	grk_tcp *tcp = nullptr;
 	 grk_poc  *l_current_poc = nullptr;
 
 	/*  preconditions */
@@ -1523,10 +1523,10 @@ static uint32_t j2k_get_num_tp(cp_t *cp, uint32_t pino, uint32_t tileno) {
 	return tpnum;
 }
 
-static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image *image) {
+static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tiles, grk_image *image) {
 	uint32_t pino, tileno;
 	uint32_t l_nb_tiles;
-	tcp_t *tcp;
+	grk_tcp *tcp;
 	
 
 	assert(p_nb_tiles != nullptr);
@@ -1585,7 +1585,7 @@ static bool j2k_calculate_tp(cp_t *cp, uint32_t *p_nb_tiles, grk_image *image) {
 	return true;
 }
 
-static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_soc(grk_j2k *p_j2k, GrokStream *p_stream) {
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
 	
@@ -1599,7 +1599,7 @@ static bool j2k_write_soc(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_stream        FIXME DOC
 
  */
-static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_read_soc(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint8_t l_data[2];
 	uint32_t l_marker;
 
@@ -1636,11 +1636,11 @@ static bool j2k_read_soc(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_siz(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_size_len;
 	grk_image *l_image = nullptr;
-	cp_t *cp = nullptr;
+	grk_coding_parameters *cp = nullptr;
 	 grk_image_comp  *l_img_comp = nullptr;
 
 	assert(p_stream != nullptr);
@@ -1743,7 +1743,7 @@ static bool j2k_write_siz(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the SIZ marker.
 
  */
-static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t i;
 	uint32_t l_nb_comp;
@@ -1752,9 +1752,9 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	uint32_t l_nb_tiles;
 	uint32_t l_tmp, l_tx1, l_ty1;
 	grk_image *l_image = nullptr;
-	cp_t *l_cp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
 	 grk_image_comp  *l_img_comp = nullptr;
-	tcp_t *l_current_tile_param = nullptr;
+	grk_tcp *l_current_tile_param = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -1956,7 +1956,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* memory allocations */
-	l_cp->tcps = (tcp_t*) grok_calloc(l_nb_tiles, sizeof(tcp_t));
+	l_cp->tcps = (grk_tcp*) grok_calloc(l_nb_tiles, sizeof(grk_tcp));
 	if (l_cp->tcps == nullptr) {
 		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker");
@@ -1964,7 +1964,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps =
-			(tccp_t*) grok_calloc(l_image->numcomps, sizeof(tccp_t));
+			(grk_tccp*) grok_calloc(l_image->numcomps, sizeof(grk_tccp));
 	if (p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps == nullptr) {
 		GROK_ERROR(
 				"Not enough memory to take in charge SIZ marker");
@@ -1972,8 +1972,8 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	}
 
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records =
-			(mct_data_t*) grok_calloc(default_number_mct_records,
-					sizeof(mct_data_t));
+			(grk_mct_data*) grok_calloc(default_number_mct_records,
+					sizeof(grk_mct_data));
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mct_records) {
 		GROK_ERROR(
@@ -1984,9 +1984,9 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 			default_number_mct_records;
 
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records =
-			(simple_mcc_decorrelation_data_t*) grok_calloc(
+			(grk_simple_mcc_decorrelation_data*) grok_calloc(
 					default_number_mcc_records,
-					sizeof(simple_mcc_decorrelation_data_t));
+					sizeof(grk_simple_mcc_decorrelation_data));
 
 	if (!p_j2k->m_specific_param.m_decoder.m_default_tcp->m_mcc_records) {
 		GROK_ERROR(
@@ -2006,8 +2006,8 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 
 	l_current_tile_param = l_cp->tcps;
 	for (i = 0; i < l_nb_tiles; ++i) {
-		l_current_tile_param->tccps = (tccp_t*) grok_calloc(l_image->numcomps,
-				sizeof(tccp_t));
+		l_current_tile_param->tccps = (grk_tccp*) grok_calloc(l_image->numcomps,
+				sizeof(grk_tccp));
 		if (l_current_tile_param->tccps == nullptr) {
 			GROK_ERROR(
 					"Not enough memory to take in charge SIZ marker");
@@ -2023,7 +2023,7 @@ static bool j2k_read_siz(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_com(grk_j2k *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -2072,7 +2072,7 @@ static bool j2k_write_com(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the COM marker.
 
  */
-static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_com(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 
 	assert(p_j2k != nullptr);
@@ -2126,9 +2126,9 @@ static bool j2k_read_com(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+static bool j2k_write_cod(grk_j2k *p_j2k, GrokStream *p_stream) {
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_code_size;
 
 	assert(p_j2k != nullptr);
@@ -2185,13 +2185,13 @@ static bool j2k_write_cod(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the COD marker.
 
  */
-static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	/* loop */
 	uint32_t i;
 	uint32_t l_tmp;
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	grk_image *l_image = nullptr;
 
 	assert(p_header_data != nullptr);
@@ -2280,7 +2280,7 @@ static bool j2k_read_cod(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_coc(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_coc(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
 	
@@ -2289,10 +2289,10 @@ static bool j2k_write_coc(j2k_t *p_j2k, uint32_t comp_no,
 
 }
 
-static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t first_comp_no,
+static bool j2k_compare_coc(grk_j2k *p_j2k, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 
 	assert(p_j2k != nullptr);
 
@@ -2307,10 +2307,10 @@ static bool j2k_compare_coc(j2k_t *p_j2k, uint32_t first_comp_no,
 			first_comp_no, second_comp_no);
 }
 
-static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_coc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_coc_size;
 	grk_image *l_image = nullptr;
 	uint32_t l_comp_room;
@@ -2355,7 +2355,7 @@ static bool j2k_write_coc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
 			p_stream);
 }
 
-static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
+static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k) {
 	uint32_t i, j;
 	uint32_t l_nb_comp;
 	uint32_t l_nb_tiles;
@@ -2380,9 +2380,9 @@ static uint32_t j2k_get_max_coc_size(j2k_t *p_j2k) {
  * @param       header_size   the size of the data contained in the COC marker.
 
  */
-static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_coc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	grk_image *l_image = nullptr;
 	uint32_t l_comp_room;
 	uint32_t l_comp_no;
@@ -2426,7 +2426,7 @@ static bool j2k_read_coc(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_qcd(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t l_qcd_size;
 
 	assert(p_j2k != nullptr);
@@ -2461,7 +2461,7 @@ static bool j2k_write_qcd(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the QCD marker.
 
  */
-static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_qcd(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 
 	assert(p_header_data != nullptr);
@@ -2493,14 +2493,14 @@ static bool j2k_read_qcd(j2k_t *p_j2k, uint8_t *p_header_data,
 		if (!ignore) {
 			l_target_tccp->qntsty = l_ref_tccp->qntsty;
 			l_target_tccp->numgbits = l_ref_tccp->numgbits;
-			auto l_size = GRK_J2K_MAXBANDS * sizeof(stepsize_t);
+			auto l_size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
 			memcpy(l_target_tccp->stepsizes, l_ref_tccp->stepsizes, l_size);
 		}
 	}
 	return true;
 }
 
-static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_qcc(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
 	
@@ -2509,13 +2509,13 @@ static bool j2k_write_qcc(j2k_t *p_j2k, uint32_t comp_no,
 	return j2k_write_qcc_in_memory(p_j2k, comp_no, p_stream);
 }
 
-static bool j2k_compare_qcc(j2k_t *p_j2k, uint32_t first_comp_no,
+static bool j2k_compare_qcc(grk_j2k *p_j2k, uint32_t first_comp_no,
 		uint32_t second_comp_no) {
 	return j2k_compare_SQcd_SQcc(p_j2k, p_j2k->m_current_tile_number,
 			first_comp_no, second_comp_no);
 }
 
-static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_write_qcc_in_memory(grk_j2k *p_j2k, uint32_t comp_no,
 		GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
 	
@@ -2558,7 +2558,7 @@ static bool j2k_write_qcc_in_memory(j2k_t *p_j2k, uint32_t comp_no,
 			p_stream);
 }
 
-static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k) {
+static uint32_t j2k_get_max_qcc_size(grk_j2k *p_j2k) {
 	return j2k_get_max_coc_size(p_j2k);
 }
 
@@ -2569,7 +2569,7 @@ static uint32_t j2k_get_max_qcc_size(j2k_t *p_j2k) {
  * @param       header_size   the size of the data contained in the QCC marker.
 
  */
-static bool j2k_read_qcc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_qcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_num_comp, l_comp_no;
 
@@ -2628,7 +2628,7 @@ static uint16_t getPocSize(uint32_t l_nb_comp, uint32_t l_nb_poc) {
 	return (uint16_t) (4 + (5 + 2 * l_poc_room) * l_nb_poc);
 }
 
-static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_poc(grk_j2k *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
 	
@@ -2638,15 +2638,15 @@ static bool j2k_write_poc(j2k_t *p_j2k, GrokStream *p_stream) {
 	return j2k_write_poc_in_memory(p_j2k, p_stream, &data_written);
 }
 
-static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_write_poc_in_memory(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint64_t *p_data_written) {
 	
 	uint32_t i;
 	uint32_t l_nb_comp;
 	uint32_t l_nb_poc;
 	grk_image *l_image = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 	 grk_poc  *l_current_poc = nullptr;
 	uint32_t l_poc_room;
 
@@ -2727,8 +2727,8 @@ static bool j2k_write_poc_in_memory(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k) {
-	tcp_t *l_tcp = nullptr;
+static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k) {
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_nb_tiles = 0;
 	uint32_t l_max_poc = 0;
 	uint32_t i;
@@ -2746,11 +2746,11 @@ static uint32_t j2k_get_max_poc_size(j2k_t *p_j2k) {
 	return 4 + 9 * l_max_poc;
 }
 
-static uint32_t j2k_get_max_toc_size(j2k_t *p_j2k) {
+static uint32_t j2k_get_max_toc_size(grk_j2k *p_j2k) {
 	uint32_t i;
 	uint32_t l_nb_tiles;
 	uint32_t l_max = 0;
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 
 	l_tcp = p_j2k->m_cp.tcps;
 	l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
@@ -2764,7 +2764,7 @@ static uint32_t j2k_get_max_toc_size(j2k_t *p_j2k) {
 	return 12 * l_max;
 }
 
-static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k) {
+static uint64_t j2k_get_specific_header_sizes(grk_j2k *p_j2k) {
 	uint64_t l_nb_bytes = 0;
 	uint32_t l_nb_comps;
 	uint32_t l_coc_bytes, l_qcc_bytes;
@@ -2795,14 +2795,14 @@ static uint64_t j2k_get_specific_header_sizes(j2k_t *p_j2k) {
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
-static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t i, l_nb_comp, l_tmp;
 	grk_image *l_image = nullptr;
 	uint32_t l_old_poc_nb, l_current_poc_nb, l_current_poc_remaining;
 	uint32_t l_chunk_size, l_comp_room;
 
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	 grk_poc  *l_current_poc = nullptr;
 
 	assert(p_header_data != nullptr);
@@ -2879,7 +2879,7 @@ static bool j2k_read_poc(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_crg(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_nb_comp;
 
@@ -2913,7 +2913,7 @@ static bool j2k_read_crg(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	(void) p_j2k;
 	uint32_t i_TLM, L;
@@ -2972,7 +2972,7 @@ static bool j2k_read_tlm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
-static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t hdr_size) {
 	(void) p_j2k;
 
@@ -3030,7 +3030,7 @@ static bool j2k_read_plm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       header_size   the size of the data contained in the PLT marker.
 
  */
-static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	(void) p_j2k;
 	assert(p_header_data != nullptr);
@@ -3079,9 +3079,9 @@ static bool j2k_read_plt(j2k_t *p_j2k, uint8_t *p_header_data,
 
  */
 
-static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_ppm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	cp_t *l_cp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
 	uint32_t l_Z_ppm;
 
 	assert(p_header_data != nullptr);
@@ -3107,7 +3107,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint32_t l_newCount = l_Z_ppm + 1U; /* can't overflow, l_Z_ppm is UINT8 */
 		assert(l_cp->ppm_markers_count == 0U);
 
-		l_cp->ppm_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
+		l_cp->ppm_markers = (grk_ppx*) grok_calloc(l_newCount, sizeof(grk_ppx));
 		if (l_cp->ppm_markers == nullptr) {
 			GROK_ERROR(
 					"Not enough memory to read PPM marker");
@@ -3116,9 +3116,9 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_cp->ppm_markers_count = l_newCount;
 	} else if (l_cp->ppm_markers_count <= l_Z_ppm) {
 		uint32_t l_newCount = l_Z_ppm + 1U; /* can't overflow, l_Z_ppm is UINT8 */
-		ppx_t *new_ppm_markers;
-		new_ppm_markers = (ppx_t*) grok_realloc(l_cp->ppm_markers,
-				l_newCount * sizeof(ppx_t));
+		grk_ppx *new_ppm_markers;
+		new_ppm_markers = (grk_ppx*) grok_realloc(l_cp->ppm_markers,
+				l_newCount * sizeof(grk_ppx));
 		if (new_ppm_markers == nullptr) {
 			/* clean up to be done on l_cp destruction */
 			GROK_ERROR(
@@ -3127,7 +3127,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
 		}
 		l_cp->ppm_markers = new_ppm_markers;
 		memset(l_cp->ppm_markers + l_cp->ppm_markers_count, 0,
-				(l_newCount - l_cp->ppm_markers_count) * sizeof(ppx_t));
+				(l_newCount - l_cp->ppm_markers_count) * sizeof(grk_ppx));
 		l_cp->ppm_markers_count = l_newCount;
 	}
 
@@ -3156,7 +3156,7 @@ static bool j2k_read_ppm(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_cp      main coding parameters.
  
  */
-static bool j2k_merge_ppm(cp_t *p_cp) {
+static bool j2k_merge_ppm(grk_coding_parameters *p_cp) {
 	uint32_t i, l_ppm_data_size, l_N_ppm_remaining;
 
 	assert(p_cp != nullptr);
@@ -3297,10 +3297,10 @@ static bool j2k_merge_ppm(cp_t *p_cp) {
  * @param       header_size   the size of the data contained in the PPT marker.
 
  */
-static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_ppt(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_Z_ppt;
 
 	assert(p_header_data != nullptr);
@@ -3333,7 +3333,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		uint32_t l_newCount = l_Z_ppt + 1U; /* can't overflow, l_Z_ppt is UINT8 */
 		assert(l_tcp->ppt_markers_count == 0U);
 
-		l_tcp->ppt_markers = (ppx_t*) grok_calloc(l_newCount, sizeof(ppx_t));
+		l_tcp->ppt_markers = (grk_ppx*) grok_calloc(l_newCount, sizeof(grk_ppx));
 		if (l_tcp->ppt_markers == nullptr) {
 			GROK_ERROR(
 					"Not enough memory to read PPT marker");
@@ -3342,9 +3342,9 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		l_tcp->ppt_markers_count = l_newCount;
 	} else if (l_tcp->ppt_markers_count <= l_Z_ppt) {
 		uint32_t l_newCount = l_Z_ppt + 1U; /* can't overflow, l_Z_ppt is UINT8 */
-		ppx_t *new_ppt_markers;
-		new_ppt_markers = (ppx_t*) grok_realloc(l_tcp->ppt_markers,
-				l_newCount * sizeof(ppx_t));
+		grk_ppx *new_ppt_markers;
+		new_ppt_markers = (grk_ppx*) grok_realloc(l_tcp->ppt_markers,
+				l_newCount * sizeof(grk_ppx));
 		if (new_ppt_markers == nullptr) {
 			/* clean up to be done on l_tcp destruction */
 			GROK_ERROR(
@@ -3353,7 +3353,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
 		}
 		l_tcp->ppt_markers = new_ppt_markers;
 		memset(l_tcp->ppt_markers + l_tcp->ppt_markers_count, 0,
-				(l_newCount - l_tcp->ppt_markers_count) * sizeof(ppx_t));
+				(l_newCount - l_tcp->ppt_markers_count) * sizeof(grk_ppx));
 		l_tcp->ppt_markers_count = l_newCount;
 	}
 
@@ -3381,7 +3381,7 @@ static bool j2k_read_ppt(j2k_t *p_j2k, uint8_t *p_header_data,
  * @param       p_tcp   the tile.
 
  */
-static bool j2k_merge_ppt(tcp_t *p_tcp) {
+static bool j2k_merge_ppt(grk_tcp *p_tcp) {
 	uint32_t i, l_ppt_data_size;
 
 	assert(p_tcp != nullptr);
@@ -3431,7 +3431,7 @@ static bool j2k_merge_ppt(tcp_t *p_tcp) {
 	return true;
 }
 
-static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_tlm(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t l_tlm_size;
 
 	assert(p_j2k != nullptr);
@@ -3471,7 +3471,7 @@ static bool j2k_write_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_sot(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_write_sot(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint64_t *psot_location, uint64_t *p_data_written) {
 	assert(p_j2k != nullptr);
 	
@@ -3541,10 +3541,10 @@ static bool j2k_get_sot_values(uint8_t *p_header_data, uint32_t header_size,
 	return true;
 }
 
-static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_tot_len = 0;
 	uint32_t l_num_parts = 0;
 	uint32_t l_current_part;
@@ -3775,7 +3775,7 @@ static bool j2k_read_sot(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
+static bool j2k_write_sod(grk_j2k *p_j2k, TileProcessor *p_tile_coder,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		GrokStream *p_stream) {
 	 grk_codestream_info  *l_cstr_info = nullptr;
@@ -3817,13 +3817,13 @@ static bool j2k_write_sod(j2k_t *p_j2k, TileProcessor *p_tile_coder,
 	return true;
 }
 
-static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_read_sod(grk_j2k *p_j2k, GrokStream *p_stream) {
 	assert(p_j2k != nullptr);
 	
 	assert(p_stream != nullptr);
 
 	// note: we subtract 2 to account for SOD marker
-	tcp_t *l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
+	grk_tcp *l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
 	if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
 		p_j2k->m_specific_param.m_decoder.tile_part_data_length =
 				(uint32_t) (p_stream->get_number_byte_left() - 2);
@@ -3871,7 +3871,7 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 	size_t l_current_read_size = 0;
 	if (p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
 		if (!l_tcp->m_tile_data)
-			l_tcp->m_tile_data = new seg_buf_t();
+			l_tcp->m_tile_data = new grk_seg_buf();
 
 		auto len = p_j2k->m_specific_param.m_decoder.tile_part_data_length;
 		uint8_t *buff = nullptr;
@@ -3900,12 +3900,12 @@ static bool j2k_read_sod(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t tile_no, uint32_t comp_no,
+static bool j2k_write_rgn(grk_j2k *p_j2k, uint32_t tile_no, uint32_t comp_no,
 		uint32_t nb_comps, GrokStream *p_stream) {
 	uint32_t l_rgn_size;
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 	uint32_t l_comp_room;
 
 	assert(p_j2k != nullptr);
@@ -3956,7 +3956,7 @@ static bool j2k_write_rgn(j2k_t *p_j2k, uint32_t tile_no, uint32_t comp_no,
 	return true;
 }
 
-static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_eoc(grk_j2k *p_j2k, GrokStream *p_stream) {
 
 	assert(p_j2k != nullptr);
 	
@@ -3979,12 +3979,12 @@ static bool j2k_write_eoc(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
-static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_rgn(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_nb_comp;
 	grk_image *l_image = nullptr;
 
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_comp_room, l_comp_no, l_roi_sty;
 
 	/* preconditions*/
@@ -4032,26 +4032,26 @@ static bool j2k_read_rgn(j2k_t *p_j2k, uint8_t *p_header_data,
 
 }
 
-static float j2k_get_tp_stride(tcp_t *p_tcp) {
+static float j2k_get_tp_stride(grk_tcp *p_tcp) {
 	return (float) ((p_tcp->m_nb_tile_parts - 1) * 14);
 }
 
-static float j2k_get_default_stride(tcp_t *p_tcp) {
+static float j2k_get_default_stride(grk_tcp *p_tcp) {
 	(void) p_tcp;
 	return 0;
 }
 
-static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_update_rates(grk_j2k *p_j2k, GrokStream *p_stream) {
 	
-	cp_t *l_cp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
 	grk_image *l_image = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 
 	uint32_t i, j, k;
 	double *l_rates = 0;
 	uint32_t l_bits_empty, l_size_pixel;
 	uint32_t l_last_res;
-	float (*l_tp_stride_func)(tcp_t*) = nullptr;
+	float (*l_tp_stride_func)(grk_tcp*) = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -4168,7 +4168,7 @@ static bool j2k_update_rates(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_get_end_header(grk_j2k *p_j2k, GrokStream *p_stream) {
 	
 
 	assert(p_j2k != nullptr);
@@ -4180,11 +4180,11 @@ static bool j2k_get_end_header(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_mct_data_group(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
-	simple_mcc_decorrelation_data_t *l_mcc_record;
-	mct_data_t *l_mct_record;
-	tcp_t *l_tcp;
+	grk_simple_mcc_decorrelation_data *l_mcc_record;
+	grk_mct_data *l_mct_record;
+	grk_tcp *l_tcp;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -4224,7 +4224,7 @@ static bool j2k_write_mct_data_group(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_all_coc(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
 
 	assert(p_j2k != nullptr);
@@ -4243,7 +4243,7 @@ static bool j2k_write_all_coc(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_all_qcc(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
 
 	assert(p_j2k != nullptr);
@@ -4261,9 +4261,9 @@ static bool j2k_write_all_qcc(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_regions(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t compno;
-	const tccp_t *l_tccp = nullptr;
+	const grk_tccp *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -4286,7 +4286,7 @@ static bool j2k_write_regions(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_epc(grk_j2k *p_j2k, GrokStream *p_stream) {
 	
 	 grk_codestream_index  *l_cstr_index = nullptr;
 
@@ -4307,7 +4307,7 @@ static bool j2k_write_epc(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
+static bool j2k_read_unk(grk_j2k *p_j2k, GrokStream *p_stream,
 		uint32_t *output_marker) {
 	uint32_t l_unknown_marker;
 	const  grk_dec_memory_marker_handler  *l_marker_handler;
@@ -4368,7 +4368,7 @@ static bool j2k_read_unk(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream) {
+static bool j2k_write_mct_record(grk_mct_data *p_mct_record, GrokStream *p_stream) {
 	uint32_t l_mct_size;
 	uint32_t l_tmp;
 	
@@ -4418,13 +4418,13 @@ static bool j2k_write_mct_record(mct_data_t *p_mct_record, GrokStream *p_stream)
  * @param       header_size   the size of the data contained in the MCT marker.
 
  */
-static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mct(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t i;
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	uint32_t l_tmp;
 	uint32_t l_indix;
-	mct_data_t *l_mct_data;
+	grk_mct_data *l_mct_data;
 
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
@@ -4469,11 +4469,11 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	// NOT FOUND
 	if (i == l_tcp->m_nb_mct_records) {
 		if (l_tcp->m_nb_mct_records == l_tcp->m_nb_max_mct_records) {
-			mct_data_t *new_mct_records;
+			grk_mct_data *new_mct_records;
 			l_tcp->m_nb_max_mct_records += default_number_mct_records;
 
-			new_mct_records = (mct_data_t*) grok_realloc(l_tcp->m_mct_records,
-					l_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
+			new_mct_records = (grk_mct_data*) grok_realloc(l_tcp->m_mct_records,
+					l_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 			if (!new_mct_records) {
 				grok_free(l_tcp->m_mct_records);
 				l_tcp->m_mct_records = nullptr;
@@ -4488,7 +4488,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 			 * to point to the new addresses */
 			if (new_mct_records != l_tcp->m_mct_records) {
 				for (i = 0; i < l_tcp->m_nb_mcc_records; ++i) {
-					simple_mcc_decorrelation_data_t *l_mcc_record =
+					grk_simple_mcc_decorrelation_data *l_mcc_record =
 							&(l_tcp->m_mcc_records[i]);
 					if (l_mcc_record->m_decorrelation_array) {
 						l_mcc_record->m_decorrelation_array = new_mct_records
@@ -4507,7 +4507,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 			l_mct_data = l_tcp->m_mct_records + l_tcp->m_nb_mct_records;
 			memset(l_mct_data, 0,
 					(l_tcp->m_nb_max_mct_records - l_tcp->m_nb_mct_records)
-							* sizeof(mct_data_t));
+							* sizeof(grk_mct_data));
 		}
 
 		l_mct_data = l_tcp->m_mct_records + l_tcp->m_nb_mct_records;
@@ -4551,7 +4551,7 @@ static bool j2k_read_mct(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
+static bool j2k_write_mcc_record(grk_simple_mcc_decorrelation_data *p_mcc_record,
 		GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_mcc_size;
@@ -4662,14 +4662,14 @@ static bool j2k_write_mcc_record(simple_mcc_decorrelation_data_t *p_mcc_record,
 	return true;
 }
 
-static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t i, j;
 	uint32_t l_tmp;
 	uint32_t l_indix;
-	tcp_t *l_tcp;
-	simple_mcc_decorrelation_data_t *l_mcc_record;
-	mct_data_t *l_mct_data;
+	grk_tcp *l_tcp;
+	grk_simple_mcc_decorrelation_data *l_mcc_record;
+	grk_mct_data *l_mct_data;
 	uint32_t l_nb_collections;
 	uint32_t l_nb_comps;
 	uint32_t l_nb_bytes_by_comp;
@@ -4717,13 +4717,13 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	if (i == l_tcp->m_nb_mcc_records) {
 		// resize l_tcp->m_nb_mcc_records if necessary
 		if (l_tcp->m_nb_mcc_records == l_tcp->m_nb_max_mcc_records) {
-			simple_mcc_decorrelation_data_t *new_mcc_records;
+			grk_simple_mcc_decorrelation_data *new_mcc_records;
 			l_tcp->m_nb_max_mcc_records += default_number_mcc_records;
 
-			new_mcc_records = (simple_mcc_decorrelation_data_t*) grok_realloc(
+			new_mcc_records = (grk_simple_mcc_decorrelation_data*) grok_realloc(
 					l_tcp->m_mcc_records,
 					l_tcp->m_nb_max_mcc_records
-							* sizeof(simple_mcc_decorrelation_data_t));
+							* sizeof(grk_simple_mcc_decorrelation_data));
 			if (!new_mcc_records) {
 				grok_free(l_tcp->m_mcc_records);
 				l_tcp->m_mcc_records = nullptr;
@@ -4737,7 +4737,7 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 			l_mcc_record = l_tcp->m_mcc_records + l_tcp->m_nb_mcc_records;
 			memset(l_mcc_record, 0,
 					(l_tcp->m_nb_max_mcc_records - l_tcp->m_nb_mcc_records)
-							* sizeof(simple_mcc_decorrelation_data_t));
+							* sizeof(grk_simple_mcc_decorrelation_data));
 		}
 		// set pointer to prospective new mcc record
 		l_mcc_record = l_tcp->m_mcc_records + l_tcp->m_nb_mcc_records;
@@ -4896,10 +4896,10 @@ static bool j2k_read_mcc(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_mco(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t l_mco_size;
-	tcp_t *l_tcp = nullptr;
-	simple_mcc_decorrelation_data_t *l_mcc_record;
+	grk_tcp *l_tcp = nullptr;
+	grk_simple_mcc_decorrelation_data *l_mcc_record;
 	uint32_t i;
 
 	assert(p_j2k != nullptr);
@@ -4943,12 +4943,12 @@ static bool j2k_write_mco(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the MCO marker.
 
  */
-static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_tmp, i;
 	uint32_t l_nb_stages;
-	tcp_t *l_tcp;
-	tccp_t *l_tccp;
+	grk_tcp *l_tcp;
+	grk_tccp *l_tccp;
 	grk_image *l_image;
 
 	assert(p_header_data != nullptr);
@@ -5001,14 +5001,14 @@ static bool j2k_read_mco(j2k_t *p_j2k, uint8_t *p_header_data,
 	return true;
 }
 
-static bool j2k_add_mct(tcp_t *p_tcp, grk_image *p_image, uint32_t index) {
+static bool j2k_add_mct(grk_tcp *p_tcp, grk_image *p_image, uint32_t index) {
 	uint32_t i;
-	simple_mcc_decorrelation_data_t *l_mcc_record;
-	mct_data_t *l_deco_array, *l_offset_array;
+	grk_simple_mcc_decorrelation_data *l_mcc_record;
+	grk_mct_data *l_deco_array, *l_offset_array;
 	uint32_t l_data_size, l_mct_size, l_offset_size;
 	uint32_t l_nb_elem;
 	uint32_t *l_offset_data, *l_current_offset_data;
-	tccp_t *l_tccp;
+	grk_tccp *l_tccp;
 
 	assert(p_tcp != nullptr);
 
@@ -5085,7 +5085,7 @@ static bool j2k_add_mct(tcp_t *p_tcp, grk_image *p_image, uint32_t index) {
 	return true;
 }
 
-static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_cbd(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t i;
 	uint32_t l_cbd_size;
 	grk_image *l_image = nullptr;
@@ -5133,7 +5133,7 @@ static bool j2k_write_cbd(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       header_size   the size of the data contained in the CBD marker.
 
  */
-static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
+static bool j2k_read_cbd(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size) {
 	uint32_t l_nb_comp, l_num_comp;
 	uint32_t l_comp_def;
@@ -5177,7 +5177,7 @@ static bool j2k_read_cbd(j2k_t *p_j2k, uint8_t *p_header_data,
 /* ----------------------------------------------------------------------- */
 
 void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters) {
-	j2k_t *j2k = (j2k_t*) j2k_void;
+	grk_j2k *j2k = (grk_j2k*) j2k_void;
 	if (j2k && parameters) {
 		j2k->m_cp.m_specific_param.m_dec.m_layer = parameters->cp_layer;
 		j2k->m_cp.m_specific_param.m_dec.m_reduce = parameters->cp_reduce;
@@ -5188,8 +5188,8 @@ void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters) {
 /* J2K encoder interface                                                       */
 /* ----------------------------------------------------------------------- */
 
-j2k_t* j2k_create_compress(void) {
-	j2k_t *l_j2k = (j2k_t*) grok_calloc(1, sizeof(j2k_t));
+grk_j2k* j2k_create_compress(void) {
+	grk_j2k *l_j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
 	if (!l_j2k) {
 		return nullptr;
 	}
@@ -5428,10 +5428,10 @@ static bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	return true;
 }
 
-bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
+bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		grk_image *image) {
 	uint32_t i, j, tileno, numpocs_tile;
-	cp_t *cp = nullptr;
+	grk_coding_parameters *cp = nullptr;
 
 	if (!p_j2k || !parameters || !image) {
 		return false;
@@ -5709,7 +5709,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 
 	/* initialize multiple tiles */
 	/* ---------------------------- */
-	cp->tcps = (tcp_t*) grok_calloc(cp->tw * cp->th, sizeof(tcp_t));
+	cp->tcps = (grk_tcp*) grok_calloc(cp->tw * cp->th, sizeof(grk_tcp));
 	if (!cp->tcps) {
 		GROK_ERROR(
 				"Not enough memory to allocate tile coding parameters");
@@ -5717,7 +5717,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 	}
 
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
-		tcp_t *tcp = &cp->tcps[tileno];
+		grk_tcp *tcp = &cp->tcps[tileno];
 		tcp->numlayers = parameters->tcp_numlayers;
 
 		for (j = 0; j < tcp->numlayers; j++) {
@@ -5771,7 +5771,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 			tcp->numpocs = 0;
 		}
 
-		tcp->tccps = (tccp_t*) grok_calloc(image->numcomps, sizeof(tccp_t));
+		tcp->tccps = (grk_tccp*) grok_calloc(image->numcomps, sizeof(grk_tccp));
 		if (!tcp->tccps) {
 			GROK_ERROR(
 					"Not enough memory to allocate tile component coding parameters");
@@ -5834,7 +5834,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 			grok_free(lTmpBuf);
 
 			for (i = 0; i < image->numcomps; i++) {
-				tccp_t *tccp = &tcp->tccps[i];
+				grk_tccp *tccp = &tcp->tccps[i];
 				tccp->m_dc_level_shift = l_dc_shift[i];
 			}
 
@@ -5856,7 +5856,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 				}
 			}
 			for (i = 0; i < image->numcomps; i++) {
-				tccp_t *tccp = tcp->tccps + i;
+				grk_tccp *tccp = tcp->tccps + i;
 				 grk_image_comp  *l_comp = image->comps + i;
 				if (!l_comp->sgnd) {
 					tccp->m_dc_level_shift = 1 << (l_comp->prec - 1);
@@ -5865,7 +5865,7 @@ bool j2k_setup_encoder(j2k_t *p_j2k,  grk_cparameters  *parameters,
 		}
 
 		for (i = 0; i < image->numcomps; i++) {
-			tccp_t *tccp = &tcp->tccps[i];
+			grk_tccp *tccp = &tcp->tccps[i];
 
 			tccp->csty = parameters->csty & 0x01; /* 0 => one precinct || 1 => custom precinct  */
 			tccp->numresolutions = parameters->numresolution;
@@ -6024,14 +6024,14 @@ static bool j2k_add_tlmarker(uint32_t tileno,
  * -----------------------------------------------------------------------
  */
 
-bool j2k_end_decompress(j2k_t *p_j2k, GrokStream *p_stream) {
+bool j2k_end_decompress(grk_j2k *p_j2k, GrokStream *p_stream) {
 	(void) p_j2k;
 	(void) p_stream;
 	
 	return true;
 }
 
-bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
+bool j2k_read_header(GrokStream *p_stream, grk_j2k *p_j2k,
 		 grk_header_info  *header_info, grk_image **p_image) {
 
 	assert(p_j2k != nullptr);
@@ -6073,9 +6073,9 @@ bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
 	}
 
 	if (header_info) {
-		cp_t *l_cp = nullptr;
-		tcp_t *l_tcp = nullptr;
-		tccp_t *l_tccp = nullptr;
+		grk_coding_parameters *l_cp = nullptr;
+		grk_tcp *l_tcp = nullptr;
+		grk_tccp *l_tccp = nullptr;
 
 		l_cp = &(p_j2k->m_cp);
 		l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
@@ -6128,7 +6128,7 @@ bool j2k_read_header(GrokStream *p_stream, j2k_t *p_j2k,
 	return true;
 }
 
-static bool j2k_setup_header_reading(j2k_t *p_j2k) {
+static bool j2k_setup_header_reading(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
@@ -6139,7 +6139,7 @@ static bool j2k_setup_header_reading(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_setup_decoding_validation(j2k_t *p_j2k) {
+static bool j2k_setup_decoding_validation(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
@@ -6149,7 +6149,7 @@ static bool j2k_setup_decoding_validation(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_mct_validation(grk_j2k *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	
 	bool l_is_valid = true;
@@ -6161,11 +6161,11 @@ static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 
 	if ((p_j2k->m_cp.rsiz & 0x8200) == 0x8200) {
 		uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
-		tcp_t *l_tcp = p_j2k->m_cp.tcps;
+		grk_tcp *l_tcp = p_j2k->m_cp.tcps;
 
 		for (i = 0; i < l_nb_tiles; ++i) {
 			if (l_tcp->mct == 2) {
-				tccp_t *l_tccp = l_tcp->tccps;
+				grk_tccp *l_tccp = l_tcp->tccps;
 				l_is_valid &= (l_tcp->m_mct_coding_matrix != nullptr);
 
 				for (j = 0; j < p_j2k->m_private_image->numcomps; ++j) {
@@ -6180,14 +6180,14 @@ static bool j2k_mct_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	return l_is_valid;
 }
 
-bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
+bool j2k_setup_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 	uint32_t i;
 	uint32_t l_indix = 1;
-	mct_data_t *l_mct_deco_data = nullptr, *l_mct_offset_data = nullptr;
-	simple_mcc_decorrelation_data_t *l_mcc_data;
+	grk_mct_data *l_mct_deco_data = nullptr, *l_mct_offset_data = nullptr;
+	grk_simple_mcc_decorrelation_data *l_mcc_data;
 	uint32_t l_mct_size, l_nb_elem;
 	float *l_data, *l_current_data;
-	tccp_t *l_tccp;
+	grk_tccp *l_tccp;
 
 	assert(p_tcp != nullptr);
 
@@ -6197,11 +6197,11 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 
 	if (p_tcp->m_mct_decoding_matrix) {
 		if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
-			mct_data_t *new_mct_records;
+			grk_mct_data *new_mct_records;
 			p_tcp->m_nb_max_mct_records += default_number_mct_records;
 
-			new_mct_records = (mct_data_t*) grok_realloc(p_tcp->m_mct_records,
-					p_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
+			new_mct_records = (grk_mct_data*) grok_realloc(p_tcp->m_mct_records,
+					p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 			if (!new_mct_records) {
 				grok_free(p_tcp->m_mct_records);
 				p_tcp->m_mct_records = nullptr;
@@ -6215,7 +6215,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 
 			memset(l_mct_deco_data, 0,
 					(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
-							* sizeof(mct_data_t));
+							* sizeof(grk_mct_data));
 		}
 		l_mct_deco_data = p_tcp->m_mct_records + p_tcp->m_nb_mct_records;
 
@@ -6245,10 +6245,10 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 	}
 
 	if (p_tcp->m_nb_mct_records == p_tcp->m_nb_max_mct_records) {
-		mct_data_t *new_mct_records;
+		grk_mct_data *new_mct_records;
 		p_tcp->m_nb_max_mct_records += default_number_mct_records;
-		new_mct_records = (mct_data_t*) grok_realloc(p_tcp->m_mct_records,
-				p_tcp->m_nb_max_mct_records * sizeof(mct_data_t));
+		new_mct_records = (grk_mct_data*) grok_realloc(p_tcp->m_mct_records,
+				p_tcp->m_nb_max_mct_records * sizeof(grk_mct_data));
 		if (!new_mct_records) {
 			grok_free(p_tcp->m_mct_records);
 			p_tcp->m_mct_records = nullptr;
@@ -6262,7 +6262,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 
 		memset(l_mct_offset_data, 0,
 				(p_tcp->m_nb_max_mct_records - p_tcp->m_nb_mct_records)
-						* sizeof(mct_data_t));
+						* sizeof(grk_mct_data));
 
 		if (l_mct_deco_data) {
 			l_mct_deco_data = l_mct_offset_data - 1;
@@ -6313,12 +6313,12 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 	++p_tcp->m_nb_mct_records;
 
 	if (p_tcp->m_nb_mcc_records == p_tcp->m_nb_max_mcc_records) {
-		simple_mcc_decorrelation_data_t *new_mcc_records;
+		grk_simple_mcc_decorrelation_data *new_mcc_records;
 		p_tcp->m_nb_max_mcc_records += default_number_mct_records;
-		new_mcc_records = (simple_mcc_decorrelation_data_t*) grok_realloc(
+		new_mcc_records = (grk_simple_mcc_decorrelation_data*) grok_realloc(
 				p_tcp->m_mcc_records,
 				p_tcp->m_nb_max_mcc_records
-						* sizeof(simple_mcc_decorrelation_data_t));
+						* sizeof(grk_simple_mcc_decorrelation_data));
 		if (!new_mcc_records) {
 			grok_free(p_tcp->m_mcc_records);
 			p_tcp->m_mcc_records = nullptr;
@@ -6331,7 +6331,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 		l_mcc_data = p_tcp->m_mcc_records + p_tcp->m_nb_mcc_records;
 		memset(l_mcc_data, 0,
 				(p_tcp->m_nb_max_mcc_records - p_tcp->m_nb_mcc_records)
-						* sizeof(simple_mcc_decorrelation_data_t));
+						* sizeof(grk_simple_mcc_decorrelation_data));
 
 	}
 
@@ -6346,7 +6346,7 @@ bool j2k_setup_mct_encoding(tcp_t *p_tcp, grk_image *p_image) {
 	return true;
 }
 
-static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_build_decoder(grk_j2k *p_j2k, GrokStream *p_stream) {
 	/* add here initialization of cp
 	 copy paste of setup_decoder */
 	(void) p_j2k;
@@ -6355,7 +6355,7 @@ static bool j2k_build_decoder(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_build_encoder(grk_j2k *p_j2k, GrokStream *p_stream) {
 	/* add here initialization of cp
 	 copy paste of setup_encoder */
 	(void) p_j2k;
@@ -6364,7 +6364,7 @@ static bool j2k_build_encoder(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_encoding_validation(grk_j2k *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	bool l_is_valid = true;
 
@@ -6408,7 +6408,7 @@ static bool j2k_encoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	return l_is_valid;
 }
 
-static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_decoding_validation(grk_j2k *p_j2k, GrokStream *p_stream) {
 	
 	(void) p_stream;
 	bool l_is_valid = true;
@@ -6434,7 +6434,7 @@ static bool j2k_decoding_validation(j2k_t *p_j2k, GrokStream *p_stream) {
 	return l_is_valid;
 }
 
-static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_read_header_procedure(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t l_current_marker;
 	uint32_t l_marker_size;
 	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
@@ -6620,7 +6620,7 @@ static bool j2k_read_header_procedure(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *procs,
+static bool j2k_exec(grk_j2k *p_j2k, std::vector<j2k_procedure> *procs,
 		GrokStream *p_stream) {
 	bool l_result = true;
 
@@ -6629,7 +6629,7 @@ static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *procs,
 	assert(p_stream != nullptr);
 	
 	for (auto it = procs->begin(); it != procs->end(); ++it){
-		auto p = (bool (*)(j2k_t *j2k, GrokStream*))*it;
+		auto p = (bool (*)(grk_j2k *j2k, GrokStream*))*it;
 		l_result = l_result && (p)(p_j2k, p_stream);
 	}
 	procs->clear();
@@ -6638,21 +6638,21 @@ static bool j2k_exec(j2k_t *p_j2k, std::vector<j2k_procedure> *procs,
 }
 
 /* FIXME DOC*/
-static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
+static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 		GrokStream *p_stream) {
 	
 	(void) p_stream;
-	tcp_t *l_tcp = nullptr;
-	tcp_t *l_default_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tcp *l_default_tcp = nullptr;
 	uint32_t l_nb_tiles;
 	uint32_t i, j;
-	tccp_t *l_current_tccp = nullptr;
+	grk_tccp *l_current_tccp = nullptr;
 	uint32_t l_tccp_size;
 	uint32_t l_mct_size;
 	grk_image *l_image;
 	uint32_t l_mcc_records_size, l_mct_records_size;
-	mct_data_t *l_src_mct_rec, *l_dest_mct_rec;
-	simple_mcc_decorrelation_data_t *l_src_mcc_rec, *l_dest_mcc_rec;
+	grk_mct_data *l_src_mct_rec, *l_dest_mct_rec;
+	grk_simple_mcc_decorrelation_data *l_src_mcc_rec, *l_dest_mcc_rec;
 	uint32_t l_offset;
 
 	assert(p_j2k != nullptr);
@@ -6662,7 +6662,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 	l_image = p_j2k->m_private_image;
 	l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 	l_tcp = p_j2k->m_cp.tcps;
-	l_tccp_size = l_image->numcomps * (uint32_t) sizeof(tccp_t);
+	l_tccp_size = l_image->numcomps * (uint32_t) sizeof(grk_tccp);
 	l_default_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
 	l_mct_size = l_image->numcomps * l_image->numcomps
 			* (uint32_t) sizeof(float);
@@ -6672,7 +6672,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 		/* keep the tile-compo coding parameters pointer of the current tile coding parameters*/
 		l_current_tccp = l_tcp->tccps;
 		/*Copy default coding parameters into the current tile coding parameters*/
-		memcpy(l_tcp, l_default_tcp, sizeof(tcp_t));
+		memcpy(l_tcp, l_default_tcp, sizeof(grk_tcp));
 		/* Initialize some values of the current tile coding parameters*/
 		l_tcp->cod = 0;
 		l_tcp->ppt = 0;
@@ -6698,8 +6698,8 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 
 		/* Get the mct_record of the dflt_tile_cp and copy them into the current tile cp*/
 		l_mct_records_size = l_default_tcp->m_nb_max_mct_records
-				* (uint32_t) sizeof(mct_data_t);
-		l_tcp->m_mct_records = (mct_data_t*) grok_malloc(l_mct_records_size);
+				* (uint32_t) sizeof(grk_mct_data);
+		l_tcp->m_mct_records = (grk_mct_data*) grok_malloc(l_mct_records_size);
 		if (!l_tcp->m_mct_records) {
 			return false;
 		}
@@ -6731,8 +6731,8 @@ static bool j2k_copy_default_tcp_and_create_tcd(j2k_t *p_j2k,
 
 		/* Get the mcc_record of the dflt_tile_cp and copy them into the current tile cp*/
 		l_mcc_records_size = l_default_tcp->m_nb_max_mcc_records
-				* (uint32_t) sizeof(simple_mcc_decorrelation_data_t);
-		l_tcp->m_mcc_records = (simple_mcc_decorrelation_data_t*) grok_malloc(
+				* (uint32_t) sizeof(grk_simple_mcc_decorrelation_data);
+		l_tcp->m_mcc_records = (grk_simple_mcc_decorrelation_data*) grok_malloc(
 				l_mcc_records_size);
 		if (!l_tcp->m_mcc_records) {
 			return false;
@@ -6796,7 +6796,7 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
 	return e;
 }
 
-void j2k_destroy(j2k_t *p_j2k) {
+void j2k_destroy(grk_j2k *p_j2k) {
 	if (p_j2k == nullptr) {
 		return;
 	}
@@ -6829,7 +6829,7 @@ void j2k_destroy(j2k_t *p_j2k) {
 	delete p_j2k->m_tileProcessor;
 
 	j2k_cp_destroy(&(p_j2k->m_cp));
-	memset(&(p_j2k->m_cp), 0, sizeof(cp_t));
+	memset(&(p_j2k->m_cp), 0, sizeof(grk_coding_parameters));
 
 	delete p_j2k->m_procedure_list;
 	p_j2k->m_procedure_list = nullptr;
@@ -6887,7 +6887,7 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind) {
 	}
 }
 
-static void j2k_tcp_destroy(tcp_t *p_tcp) {
+static void j2k_tcp_destroy(grk_tcp *p_tcp) {
 	if (p_tcp == nullptr) {
 		return;
 	}
@@ -6932,7 +6932,7 @@ static void j2k_tcp_destroy(tcp_t *p_tcp) {
 	}
 
 	if (p_tcp->m_mct_records) {
-		mct_data_t *l_mct_data = p_tcp->m_mct_records;
+		grk_mct_data *l_mct_data = p_tcp->m_mct_records;
 		uint32_t i;
 
 		for (i = 0; i < p_tcp->m_nb_mct_records; ++i) {
@@ -6957,14 +6957,14 @@ static void j2k_tcp_destroy(tcp_t *p_tcp) {
 
 }
 
-static void j2k_tcp_data_destroy(tcp_t *p_tcp) {
+static void j2k_tcp_data_destroy(grk_tcp *p_tcp) {
 	delete p_tcp->m_tile_data;
 	p_tcp->m_tile_data = nullptr;
 }
 
-static void j2k_cp_destroy(cp_t *p_cp) {
+static void j2k_cp_destroy(grk_coding_parameters *p_cp) {
 	uint32_t l_nb_tiles;
-	tcp_t *l_current_tile = nullptr;
+	grk_tcp *l_current_tile = nullptr;
 
 	if (p_cp == nullptr) {
 		return;
@@ -7108,14 +7108,14 @@ static bool j2k_need_nb_tile_parts_correction(GrokStream *p_stream,
 	return true;
 }
 
-bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
+bool j2k_read_tile_header(grk_j2k *p_j2k, uint32_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream) {
 	uint32_t l_current_marker = J2K_MS_SOT;
 	uint32_t l_marker_size;
 	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
@@ -7378,7 +7378,7 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 		}
 
 		//2. Check Tile QCD
-		tccp_t *qcd_comp = nullptr;
+		grk_tccp *qcd_comp = nullptr;
 		for (uint32_t k = 0; k < numComps; ++k) {
 			auto l_tccp = l_tcp->tccps + k;
 			if (l_tccp->fromTileHeader && !l_tccp->fromQCC) {
@@ -7458,11 +7458,11 @@ bool j2k_read_tile_header(j2k_t *p_j2k, uint32_t *tile_index,
 	return true;
 }
 
-bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_decode_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream) {
 	uint32_t l_current_marker;
 	uint8_t l_data[2];
-	tcp_t *l_tcp;
+	grk_tcp *l_tcp;
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
@@ -7504,7 +7504,7 @@ bool j2k_decode_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 					compno++) {
 				uint32_t l_size_comp = 0;
 				uint32_t i, j;
-				tcd_tilecomp_t *tilec = p_j2k->m_tileProcessor->tile->comps + compno;
+				grk_tcd_tilecomp *tilec = p_j2k->m_tileProcessor->tile->comps + compno;
 				 grk_image_comp  *comp = p_j2k->m_output_image->comps + compno;
 
 				//transfer memory from tile component to output image
@@ -7608,7 +7608,7 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 
 	for (i = 0; i < image_src->numcomps; i++) {
 
-		tcd_tilecomp_t *tilec = p_tcd->tile->comps + i;
+		grk_tcd_tilecomp *tilec = p_tcd->tile->comps + i;
 		 grk_image_comp  *img_comp_src = image_src->comps + i;
 		 grk_image_comp  *img_comp_dest = p_output_image->comps + i;
 
@@ -7636,7 +7636,7 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 		/*-----*/
 		/* Compute the precision of the output buffer */
 		uint32_t size_comp = (img_comp_src->prec + 7) >> 3;
-		tcd_resolution_t *res = tilec->resolutions
+		grk_tcd_resolution *res = tilec->resolutions
 				+ img_comp_src->resno_decoded;
 
 		if (size_comp == 3) {
@@ -7853,9 +7853,9 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 	return true;
 }
 
-bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
+bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	cp_t *l_cp = &(p_j2k->m_cp);
+	grk_coding_parameters *l_cp = &(p_j2k->m_cp);
 	grk_image *l_image = p_j2k->m_private_image;
 
 	uint32_t it_comp;
@@ -8012,8 +8012,8 @@ bool j2k_set_decode_area(j2k_t *p_j2k, grk_image *p_image, uint32_t start_x,
 	return true;
 }
 
-j2k_t* j2k_create_decompress(void) {
-	j2k_t *l_j2k = (j2k_t*) grok_calloc(1, sizeof(j2k_t));
+grk_j2k* j2k_create_decompress(void) {
+	grk_j2k *l_j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
 	if (!l_j2k) {
 		return nullptr;
 	}
@@ -8025,7 +8025,7 @@ j2k_t* j2k_create_decompress(void) {
     l_j2k->m_specific_param.m_decoder.m_nb_tile_parts_correction_checked = 1;
 #endif
 
-	l_j2k->m_specific_param.m_decoder.m_default_tcp = new tcp_t();
+	l_j2k->m_specific_param.m_decoder.m_default_tcp = new grk_tcp();
 	if (!l_j2k->m_specific_param.m_decoder.m_default_tcp) {
 		j2k_destroy(l_j2k);
 		return nullptr;
@@ -8080,11 +8080,11 @@ static  grk_codestream_index  *  j2k_create_cstr_index(void) {
 	return cstr_index;
 }
 
-static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t tile_no,
+static uint32_t j2k_get_SPCod_SPCoc_size(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
 
@@ -8103,13 +8103,13 @@ static uint32_t j2k_get_SPCod_SPCoc_size(j2k_t *p_j2k, uint32_t tile_no,
 	}
 }
 
-static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_compare_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
 	uint32_t i;
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp0 = nullptr;
-	tccp_t *l_tccp1 = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp0 = nullptr;
+	grk_tccp *l_tccp1 = nullptr;
 
 	assert(p_j2k != nullptr);
 
@@ -8149,12 +8149,12 @@ static bool j2k_compare_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
 	return true;
 }
 
-static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_write_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no, GrokStream *p_stream) {
 	uint32_t i;
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -8205,12 +8205,12 @@ static bool j2k_write_SPCod_SPCoc(j2k_t *p_j2k, uint32_t tile_no,
 	return true;
 }
 
-static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
+static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 		uint8_t *p_header_data, uint16_t *header_size) {
 	uint32_t i, l_tmp;
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 	uint8_t *l_current_ptr = nullptr;
 
 	assert(p_j2k != nullptr);
@@ -8319,11 +8319,11 @@ static bool j2k_read_SPCod_SPCoc(j2k_t *p_j2k, uint32_t compno,
 	return true;
 }
 
-static void j2k_copy_tile_component_parameters(j2k_t *p_j2k) {
+static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k) {
 	/* loop */
 	uint32_t i;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_ref_tccp = nullptr, *l_copied_tccp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_ref_tccp = nullptr, *l_copied_tccp = nullptr;
 	uint32_t l_prc_size;
 
 	assert(p_j2k != nullptr);
@@ -8346,13 +8346,13 @@ static void j2k_copy_tile_component_parameters(j2k_t *p_j2k) {
 	}
 }
 
-static uint32_t j2k_get_SQcd_SQcc_size(j2k_t *p_j2k, uint32_t tile_no,
+static uint32_t j2k_get_SQcd_SQcc_size(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no) {
 	uint32_t l_num_bands;
 
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
 
@@ -8375,12 +8375,12 @@ static uint32_t j2k_get_SQcd_SQcc_size(j2k_t *p_j2k, uint32_t tile_no,
 	}
 }
 
-static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_compare_SQcd_SQcc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp0 = nullptr;
-	tccp_t *l_tccp1 = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp0 = nullptr;
+	grk_tccp *l_tccp1 = nullptr;
 	uint32_t l_band_no, l_num_bands;
 
 	assert(p_j2k != nullptr);
@@ -8422,14 +8422,14 @@ static bool j2k_compare_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
 	return true;
 }
 
-static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
+static bool j2k_write_SQcd_SQcc(grk_j2k *p_j2k, uint32_t tile_no,
 		uint32_t comp_no, GrokStream *p_stream) {
 	uint32_t l_band_no, l_num_bands;
 	uint32_t l_expn, l_mant;
 
-	cp_t *l_cp = nullptr;
-	tcp_t *l_tcp = nullptr;
-	tccp_t *l_tccp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
+	grk_tcp *l_tcp = nullptr;
+	grk_tccp *l_tccp = nullptr;
 
 	assert(p_j2k != nullptr);
 	
@@ -8482,7 +8482,7 @@ static bool j2k_write_SQcd_SQcc(j2k_t *p_j2k, uint32_t tile_no,
 	return true;
 }
 
-static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t comp_no,
+static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
 	assert(p_j2k != nullptr);
 	
@@ -8589,7 +8589,7 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, j2k_t *p_j2k, uint32_t comp_no,
 	}
 	return true;
 }
-static void j2k_dump_tile_info(tcp_t *l_default_tile, uint32_t numcomps,
+static void j2k_dump_tile_info(grk_tcp *l_default_tile, uint32_t numcomps,
 		FILE *out_stream) {
 	if (l_default_tile) {
 		uint32_t compno;
@@ -8601,7 +8601,7 @@ static void j2k_dump_tile_info(tcp_t *l_default_tile, uint32_t numcomps,
 		fprintf(out_stream, "\t\t mct=%x\n", l_default_tile->mct);
 
 		for (compno = 0; compno < numcomps; compno++) {
-			tccp_t *l_tccp = &(l_default_tile->tccps[compno]);
+			grk_tccp *l_tccp = &(l_default_tile->tccps[compno]);
 			uint32_t resno;
 			uint32_t bandno, numbands;
 
@@ -8644,7 +8644,7 @@ static void j2k_dump_tile_info(tcp_t *l_default_tile, uint32_t numcomps,
 	}
 }
 
-void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream) {
+void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 	/* Check if the flag is compatible with j2k file*/
 	if ((flag & GRK_JP2_INFO) || (flag & GRK_JP2_IND)) {
 		fprintf(out_stream, "Wrong flag\n");
@@ -8666,7 +8666,7 @@ void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream) {
 	if (flag & GRK_J2K_TCH_INFO) {
 		uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 		uint32_t i;
-		tcp_t *l_tcp = p_j2k->m_cp.tcps;
+		grk_tcp *l_tcp = p_j2k->m_cp.tcps;
 		if (p_j2k->m_private_image) {
 			for (i = 0; i < l_nb_tiles; ++i) {
 				j2k_dump_tile_info(l_tcp, p_j2k->m_private_image->numcomps,
@@ -8693,7 +8693,7 @@ void j2k_dump(j2k_t *p_j2k, int32_t flag, FILE *out_stream) {
 
 }
 
-static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream) {
+static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream) {
 	 grk_codestream_index  *cstr_index = p_j2k->cstr_index;
 	uint32_t it_marker, it_tile, it_tile_part;
 
@@ -8775,7 +8775,7 @@ static void j2k_dump_MH_index(j2k_t *p_j2k, FILE *out_stream) {
 	fprintf(out_stream, "}\n");
 }
 
-static void j2k_dump_MH_info(j2k_t *p_j2k, FILE *out_stream) {
+static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream) {
 
 	fprintf(out_stream, "Codestream info from main header: {\n");
 
@@ -8843,10 +8843,10 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 		fprintf(out_stream, "}\n");
 }
 
- grk_codestream_info_v2  *  j2k_get_cstr_info(j2k_t *p_j2k) {
+ grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k) {
 	uint32_t compno;
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
-	tcp_t *l_default_tile;
+	grk_tcp *l_default_tile;
 	 grk_codestream_info_v2  *cstr_info =
 			( grk_codestream_info_v2  * ) grok_calloc(1,
 					sizeof( grk_codestream_info_v2) );
@@ -8879,7 +8879,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	}
 
 	for (compno = 0; compno < numcomps; compno++) {
-		tccp_t *l_tccp = &(l_default_tile->tccps[compno]);
+		grk_tccp *l_tccp = &(l_default_tile->tccps[compno]);
 		 grk_tccp_info  *l_tccp_info =
 				&(cstr_info->m_default_tile_info.tccp_info[compno]);
 		uint32_t bandno, numbands;
@@ -8919,7 +8919,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return cstr_info;
 }
 
- grk_codestream_index  *  j2k_get_cstr_index(j2k_t *p_j2k) {
+ grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k) {
 	 grk_codestream_index  *l_cstr_index =
 			( grk_codestream_index  * ) grok_calloc(1,
 					sizeof( grk_codestream_index) );
@@ -9036,7 +9036,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	return l_cstr_index;
 }
 
-static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k) {
+static bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 	uint32_t it_tile = 0;
 
 	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
@@ -9058,7 +9058,7 @@ static bool j2k_allocate_tile_element_cstr_index(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles) {
+static bool j2k_needs_copy_tile_data(grk_j2k *p_j2k, uint32_t num_tiles) {
 
 	/* If we only have one tile, check the following:
 
@@ -9101,7 +9101,7 @@ static bool j2k_needs_copy_tile_data(j2k_t *p_j2k, uint32_t num_tiles) {
 	return copy_tile_data;
 }
 
-static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_decode_tiles(grk_j2k *p_j2k, GrokStream *p_stream) {
 	bool l_go_on = true;
 	uint32_t l_current_tile_no = 0;
 	uint64_t l_data_size = 0, l_max_data_size = 0;
@@ -9211,7 +9211,7 @@ static bool j2k_decode_tiles(j2k_t *p_j2k, GrokStream *p_stream) {
 /**
  * Sets up the procedures to do on decoding data. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_decoding(j2k_t *p_j2k) {
+static bool j2k_setup_decoding(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	
@@ -9224,7 +9224,7 @@ static bool j2k_setup_decoding(j2k_t *p_j2k) {
 /*
  * Read and decode one tile.
  */
-static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_decode_one_tile(grk_j2k *p_j2k, GrokStream *p_stream) {
 	bool l_go_on = true;
 	uint32_t l_current_tile_no;
 	uint32_t l_tile_no_to_dec;
@@ -9356,7 +9356,7 @@ static bool j2k_decode_one_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 /**
  * Sets up the procedures to do on decoding one tile. Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_setup_decoding_tile(j2k_t *p_j2k) {
+static bool j2k_setup_decoding_tile(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decode_one_tile);
@@ -9365,7 +9365,7 @@ static bool j2k_setup_decoding_tile(j2k_t *p_j2k) {
 	return true;
 }
 
-bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
+bool j2k_decode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *p_stream,
 		grk_image *p_image) {
 	if (!p_image)
 		return false;
@@ -9393,11 +9393,11 @@ bool j2k_decode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream,
 	return true;
 }
 
-bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index) {
+bool j2k_get_tile(grk_j2k *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index) {
 	uint32_t compno;
 	uint32_t l_tile_x, l_tile_y;
 	 grk_image_comp  *l_img_comp;
-	rect_t original_image_rect, tile_rect, overlap_rect;
+	grk_rect original_image_rect, tile_rect, overlap_rect;
 
 	if (!p_image) {
 		GROK_ERROR(
@@ -9416,7 +9416,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32
 	l_tile_x = tile_index % p_j2k->m_cp.tw;
 	l_tile_y = tile_index / p_j2k->m_cp.tw;
 
-	original_image_rect = rect_t(p_image->x0, p_image->y0, p_image->x1,
+	original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
 			p_image->y1);
 
 	p_image->x0 = l_tile_x * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
@@ -9512,7 +9512,7 @@ bool j2k_get_tile(j2k_t *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32
 	return true;
 }
 
-bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor) {
+bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor) {
 	uint32_t it_comp;
 
 	p_j2k->m_cp.m_specific_param.m_dec.m_reduce = res_factor;
@@ -9543,7 +9543,7 @@ bool j2k_set_decoded_resolution_factor(j2k_t *p_j2k, uint32_t res_factor) {
 	return false;
 }
 
-bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
+bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *p_stream) {
 	uint32_t i, j;
 	uint32_t l_nb_tiles;
 	uint64_t l_max_tile_size = 0;
@@ -9581,7 +9581,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 		/* if we only have one tile, then simply set tile component data equal to image component data */
 		/* otherwise, allocate the data */
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			tcd_tilecomp_t *l_tilec = p_tcd->tile->comps + j;
+			grk_tcd_tilecomp *l_tilec = p_tcd->tile->comps + j;
 			if (l_reuse_data) {
 				l_tilec->buf->data = (p_tcd->image->comps + j)->data;
 				l_tilec->buf->owns_data = false;
@@ -9641,7 +9641,7 @@ bool j2k_encode(j2k_t *p_j2k, grok_plugin_tile_t *tile, GrokStream *p_stream) {
 	return true;
 }
 
-bool j2k_end_compress(j2k_t *p_j2k, GrokStream *p_stream) {
+bool j2k_end_compress(grk_j2k *p_j2k, GrokStream *p_stream) {
 	/* customization of the encoding */
 	if (!j2k_setup_end_compress(p_j2k)) {
 		return false;
@@ -9653,7 +9653,7 @@ bool j2k_end_compress(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
+bool j2k_start_compress(grk_j2k *p_j2k, GrokStream *p_stream,
 		grk_image *p_image) {
 
 	assert(p_j2k != nullptr);
@@ -9703,7 +9703,7 @@ bool j2k_start_compress(j2k_t *p_j2k, GrokStream *p_stream,
 	return true;
 }
 
-static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index) {
+static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint32_t tile_index) {
 	if (tile_index != p_j2k->m_current_tile_number) {
 		GROK_ERROR( "The given tile index does not match.");
 		return false;
@@ -9722,7 +9722,7 @@ static bool j2k_pre_write_tile(j2k_t *p_j2k, uint32_t tile_index) {
 	return true;
 }
 
-static void get_tile_dimensions(grk_image *l_image, tcd_tilecomp_t *l_tilec,
+static void get_tile_dimensions(grk_image *l_image, grk_tcd_tilecomp *l_tilec,
 		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
 		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
 		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset) {
@@ -9754,7 +9754,7 @@ static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {
 	for (i = 0; i < p_tcd->image->numcomps; ++i) {
 		grk_image *l_image = p_tcd->image;
 		int32_t *l_src_ptr;
-		tcd_tilecomp_t *l_tilec = p_tcd->tile->comps + i;
+		grk_tcd_tilecomp *l_tilec = p_tcd->tile->comps + i;
 		 grk_image_comp  *l_img_comp = l_image->comps + i;
 		uint32_t l_size_comp, l_width, l_height, l_offset_x, l_offset_y,
 				l_image_width, l_stride;
@@ -9829,7 +9829,7 @@ static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {
 	}
 }
 
-static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_post_write_tile(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint64_t l_nb_bytes_written;
 	uint64_t l_tile_size = 0;
 	uint64_t l_available_data;
@@ -9872,7 +9872,7 @@ static bool j2k_post_write_tile(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_setup_end_compress(j2k_t *p_j2k) {
+static bool j2k_setup_end_compress(grk_j2k *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
@@ -9886,7 +9886,7 @@ static bool j2k_setup_end_compress(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_setup_encoding_validation(j2k_t *p_j2k) {
+static bool j2k_setup_encoding_validation(grk_j2k *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
@@ -9898,7 +9898,7 @@ static bool j2k_setup_encoding_validation(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_setup_header_writing(j2k_t *p_j2k) {
+static bool j2k_setup_header_writing(grk_j2k *p_j2k) {
 
 	assert(p_j2k != nullptr);
 	
@@ -9935,13 +9935,13 @@ static bool j2k_setup_header_writing(j2k_t *p_j2k) {
 	return true;
 }
 
-static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
+static bool j2k_write_first_tile_part(grk_j2k *p_j2k, uint64_t *p_data_written,
 		uint64_t total_data_size, GrokStream *p_stream) {
 	uint64_t l_nb_bytes_written = 0;
 	uint64_t l_current_nb_bytes_written;
 
 	TileProcessor *l_tcd = nullptr;
-	cp_t *l_cp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
 
 	l_tcd = p_j2k->m_tileProcessor;
 	l_cp = &(p_j2k->m_cp);
@@ -9997,7 +9997,7 @@ static bool j2k_write_first_tile_part(j2k_t *p_j2k, uint64_t *p_data_written,
 	return true;
 }
 
-static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
+static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
 		uint64_t total_data_size, GrokStream *p_stream) {
 	uint32_t tilepartno = 0;
 	uint64_t l_nb_bytes_written = 0;
@@ -10006,9 +10006,9 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 	uint32_t tot_num_tp;
 	uint32_t pino;
 
-	tcp_t *l_tcp = nullptr;
+	grk_tcp *l_tcp = nullptr;
 	TileProcessor *l_tcd = nullptr;
-	cp_t *l_cp = nullptr;
+	grk_coding_parameters *l_cp = nullptr;
 
 	l_tcd = p_j2k->m_tileProcessor;
 	l_cp = &(p_j2k->m_cp);
@@ -10107,7 +10107,7 @@ static bool j2k_write_all_tile_parts(j2k_t *p_j2k, uint64_t *p_data_written,
 	return true;
 }
 
-static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_write_updated_tlm(grk_j2k *p_j2k, GrokStream *p_stream) {
 	uint32_t l_tlm_size;
 	int64_t l_tlm_position, l_current_position;
 
@@ -10133,7 +10133,7 @@ static bool j2k_write_updated_tlm(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_end_encoding(grk_j2k *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	
 
@@ -10152,7 +10152,7 @@ static bool j2k_end_encoding(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_init_info(grk_j2k *p_j2k, GrokStream *p_stream) {
 	(void) p_stream;
 	assert(p_j2k != nullptr);
 	
@@ -10169,7 +10169,7 @@ static bool j2k_init_info(j2k_t *p_j2k, GrokStream *p_stream) {
  * @param       p_j2k                   J2K codec.
 
  */
-static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
+static bool j2k_create_tcd(grk_j2k *p_j2k, GrokStream *p_stream) {
 
 	(void) p_stream;
 	assert(p_j2k != nullptr);
@@ -10193,7 +10193,7 @@ static bool j2k_create_tcd(j2k_t *p_j2k, GrokStream *p_stream) {
 	return true;
 }
 
-bool j2k_write_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_write_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream) {
 	if (!j2k_pre_write_tile(p_j2k, tile_index)) {
 		GROK_ERROR(
@@ -10204,7 +10204,7 @@ bool j2k_write_tile(j2k_t *p_j2k, uint32_t tile_index, uint8_t *p_data,
 		uint32_t j;
 		/* Allocate data */
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			tcd_tilecomp_t *l_tilec = p_j2k->m_tileProcessor->tile->comps + j;
+			grk_tcd_tilecomp *l_tilec = p_j2k->m_tileProcessor->tile->comps + j;
 
 			if (!tile_buf_alloc_component_data_encode(l_tilec->buf)) {
 				GROK_ERROR(

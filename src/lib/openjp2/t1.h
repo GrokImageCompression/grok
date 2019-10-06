@@ -201,7 +201,7 @@ namespace grk {
 
 #define FLAGS_ADDRESS(x, y) (flags + ((x) + 1 + (((y) >> 2) + 1) * flags_stride))
 
-typedef uint32_t flag_opt_t;
+typedef uint32_t flag_opt;
 
 class t1 {
 public:
@@ -213,10 +213,10 @@ protected:
 	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
 	void initBuffers(uint16_t w, uint16_t h);
 
-	flag_opt_t *flags;
+	flag_opt *flags;
 	uint16_t flags_stride;
 
-	void updateFlags(flag_opt_t *flagsp, uint32_t ci3, uint32_t s,
+	void updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
 			uint32_t stride, uint8_t vsc);
 
 	uint8_t getZeroCodingContext(uint32_t f, uint8_t orient);

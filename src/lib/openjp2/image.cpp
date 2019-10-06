@@ -127,7 +127,7 @@ grk_image *  grk_image_create0(void) {
  * @param p_cp				the coding parameters from which to update the image.
  */
 void grk_image_comp_header_update(grk_image *p_image_header,
-		const cp_t *p_cp) {
+		const grk_coding_parameters *p_cp) {
 	uint32_t i, l_width, l_height;
 	uint32_t l_x0, l_y0, l_x1, l_y1;
 	uint32_t l_comp_x0, l_comp_y0, l_comp_x1, l_comp_y1;

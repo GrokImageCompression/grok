@@ -31,56 +31,56 @@ namespace grk {
 
  */
 
-struct tile_buf_band_t {
-	rect_t dim; /* coordinates of sub-band region (canvas coordinates)  */
-	rect_t data_dim; /* coordinates of sub-band data region, (tile coordinates ) */
+struct grk_tile_buf_band {
+	grk_rect dim; /* coordinates of sub-band region (canvas coordinates)  */
+	grk_rect data_dim; /* coordinates of sub-band data region, (tile coordinates ) */
 };
 
-struct tile_buf_resolution_t {
-	tile_buf_band_t band_region[3];
+struct grk_tile_buf_resolution {
+	grk_tile_buf_band band_region[3];
 	uint32_t num_bands;
-	pt_t origin; /* resolution origin, in canvas coordinates */
-	pt_t bounds; /* full width and height of resolution */
+	grk_pt origin; /* resolution origin, in canvas coordinates */
+	grk_pt bounds; /* full width and height of resolution */
 };
 
-struct tile_buf_component_t {
-	std::vector<tile_buf_resolution_t*> resolutions;
+struct grk_tile_buf_component {
+	std::vector<grk_tile_buf_resolution*> resolutions;
 	int32_t *data;
 	uint64_t data_size_needed; /* we may either need to allocate this amount of data,
 	 or re-use image data and ignore this value */
 	uint64_t data_size; /* size of the data of the component */
 	bool owns_data; /* true if tile buffer manages its data array, false otherwise */
 
-	rect_t dim; /* canvas coordinates of region */
-	rect_t tile_dim; /* canvas coordinates of tile */
+	grk_rect dim; /* canvas coordinates of region */
+	grk_rect tile_dim; /* canvas coordinates of tile */
 
 };
 
 /* offsets are in canvas coordinate system*/
-int32_t* tile_buf_get_ptr(tile_buf_component_t *buf, uint32_t resno,
+int32_t* tile_buf_get_ptr(grk_tile_buf_component *buf, uint32_t resno,
 		uint32_t bandno, uint32_t offsetx, uint32_t offsety);
 
-bool tile_buf_alloc_component_data_decode(tile_buf_component_t *buf);
+bool tile_buf_alloc_component_data_decode(grk_tile_buf_component *buf);
 
-bool tile_buf_alloc_component_data_encode(tile_buf_component_t *buf);
+bool tile_buf_alloc_component_data_encode(grk_tile_buf_component *buf);
 
-bool tile_buf_is_decode_region(tile_buf_component_t *buf);
+bool tile_buf_is_decode_region(grk_tile_buf_component *buf);
 
-void tile_buf_destroy_component(tile_buf_component_t *comp);
+void tile_buf_destroy_component(grk_tile_buf_component *comp);
 
 /* Check if rect overlaps with region.
  rect coordinates must be stored in canvas coordinates
  */
-bool tile_buf_hit_test(tile_buf_component_t *comp, rect_t *rect);
+bool tile_buf_hit_test(grk_tile_buf_component *comp, grk_rect *rect);
 
 /* sub-band coordinates */
-pt_t tile_buf_get_uninterleaved_range(tile_buf_component_t *comp,
+grk_pt tile_buf_get_uninterleaved_range(grk_tile_buf_component *comp,
 		uint32_t resno, bool is_even, bool is_horizontal);
 
 /* resolution coordinates */
-pt_t tile_buf_get_interleaved_range(tile_buf_component_t *comp, uint32_t resno,
+grk_pt tile_buf_get_interleaved_range(grk_tile_buf_component *comp, uint32_t resno,
 		bool is_horizontal);
 
-int64_t tile_buf_get_interleaved_upper_bound(tile_buf_component_t *comp);
+int64_t tile_buf_get_interleaved_upper_bound(grk_tile_buf_component *comp);
 
 }

@@ -173,7 +173,7 @@ void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
+bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
@@ -194,7 +194,7 @@ bool dwt53::decode(tcd_tilecomp_t *tilec, uint32_t numres,
 								&decode_dwt_calling_barrier, threadId,
 								numThreads, this]() {
 							auto numResolutions = numres;
-							tcd_resolution_t *tr = tilec->resolutions;
+							grk_tcd_resolution *tr = tilec->resolutions;
 
 							uint32_t rw = (tr->x1 - tr->x0); /* width of the resolution level computed */
 							uint32_t rh = (tr->y1 - tr->y0); /* height of the resolution level computed */
@@ -336,7 +336,7 @@ void dwt53::interleave_h(dwt_t* restrict h, int32_t* restrict a) {
 	}
 }
 
-void dwt53::region_decode_1d(dwt53_t *buffer) {
+void dwt53::region_decode_1d(grk_dwt53 *buffer) {
 	int32_t *a = buffer->data - buffer->interleaved_offset;
 	auto d_n = buffer->d_n;
 	auto s_n = buffer->s_n;
@@ -368,7 +368,7 @@ void dwt53::region_decode_1d(dwt53_t *buffer) {
 	/* <summary>                             */
 	/* Inverse lazy transform (horizontal).  */
 	/* </summary>                            */
-void dwt53::region_interleave_h(dwt53_t *buffer_h, int32_t *tile_data) {
+void dwt53::region_interleave_h(grk_dwt53 *buffer_h, int32_t *tile_data) {
 	int32_t *tile_data_ptr = tile_data;
 	int32_t *buffer_data_ptr = buffer_h->data - buffer_h->interleaved_offset
 			+ buffer_h->odd_top_left_bit;
@@ -387,7 +387,7 @@ void dwt53::region_interleave_h(dwt53_t *buffer_h, int32_t *tile_data) {
 /* <summary>                             */
 /* Inverse lazy transform (vertical).    */
 /* </summary>                            */
-void dwt53::region_interleave_v(dwt53_t *buffer_v, int32_t *tile_data,
+void dwt53::region_interleave_v(grk_dwt53 *buffer_v, int32_t *tile_data,
 		size_t stride) {
 	int32_t *tile_data_ptr = tile_data;
 	int32_t *buffer_data_ptr = buffer_v->data - buffer_v->interleaved_offset
@@ -408,7 +408,7 @@ void dwt53::region_interleave_v(dwt53_t *buffer_v, int32_t *tile_data,
 /* <summary>                            */
 /* Inverse 5-3 data transform in 2-D. */
 /* </summary>                           */
-bool dwt53::region_decode(tcd_tilecomp_t *tilec, uint32_t numres,
+bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
@@ -427,10 +427,10 @@ bool dwt53::region_decode(tcd_tilecomp_t *tilec, uint32_t numres,
 								&decode_dwt_calling_barrier, threadId,
 								numThreads, &success]() {
 							auto numResolutions = numres;
-							dwt53_t buffer_h;
-							dwt53_t buffer_v;
+							grk_dwt53 buffer_h;
+							grk_dwt53 buffer_v;
 
-							tcd_resolution_t *tr = tilec->resolutions;
+							grk_tcd_resolution *tr = tilec->resolutions;
 
 							uint32_t res_width = (tr->x1 - tr->x0); /* width of the resolution level computed */
 							uint32_t res_height = (tr->y1 - tr->y0); /* height of the resolution level computed */
@@ -467,10 +467,10 @@ bool dwt53::region_decode(tcd_tilecomp_t *tilec, uint32_t numres,
 												tilec->buf, resno, false,
 												false);
 
-								pt_t interleaved_h =
+								grk_pt interleaved_h =
 										tile_buf_get_interleaved_range(
 												tilec->buf, resno, true);
-								pt_t interleaved_v =
+								grk_pt interleaved_v =
 										tile_buf_get_interleaved_range(
 												tilec->buf, resno, false);
 
