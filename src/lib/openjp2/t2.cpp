@@ -760,12 +760,27 @@ static bool t2_read_packet_header(t2_t *p_t2,  tcd_tile_t *p_tile,
 					}
 				}
 			}
-			auto numPassesInPacket = (int32_t) l_cblk->numPassesInPacket;
+			auto blockPassesInPacket = (int32_t) l_cblk->numPassesInPacket;
 			do {
 				auto l_seg = l_cblk->segs + l_segno;
-				l_seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
-						(int32_t) (l_seg->maxpasses - l_seg->numpasses),
-						numPassesInPacket);
+				/* sanity check when there is no mode switch */
+				if (l_seg->maxpasses == max_passes_per_segment){
+				    if (blockPassesInPacket > (int32_t)max_passes_per_segment) {
+				        GROK_WARN("Number of code block passes (%d) in packet is suspiciously large.", blockPassesInPacket);
+				        // ToDO - we are truncating the number of passes at an arbitrary value of
+				        // max_passes_per_segment. We should probably either skip the rest of this
+				        // block, if possible, or do further sanity check on packet
+		            l_seg->numPassesInPacket = max_passes_per_segment;
+				    } else {
+				        l_seg->numPassesInPacket = blockPassesInPacket;
+				    }
+
+				} else {
+				    assert(l_seg->maxpasses >= l_seg->numpasses);
+            l_seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
+                (int32_t) (l_seg->maxpasses - l_seg->numpasses),
+                blockPassesInPacket);
+				}
 				uint32_t bits_to_read = l_cblk->numlenbits
 						+ uint_floorlog2(l_seg->numPassesInPacket);
 				if (bits_to_read > 32) {
@@ -787,15 +802,15 @@ static bool t2_read_packet_header(t2_t *p_t2,  tcd_tile_t *p_tile,
 						l_included, l_seg->numPassesInPacket, l_increment,
 						l_seg->newlen);
 						*/
-				numPassesInPacket -=	(int32_t) l_seg->numPassesInPacket;
-				if (numPassesInPacket > 0) {
+				blockPassesInPacket -=	(int32_t) l_seg->numPassesInPacket;
+				if (blockPassesInPacket > 0) {
 					++l_segno;
 					if (!t2_init_seg(l_cblk, l_segno,
 							p_tcp->tccps[p_pi->compno].mode_switch, false)) {
 						return false;
 					}
 				}
-			} while (numPassesInPacket > 0);
+			} while (blockPassesInPacket > 0);
 		}
 	}
 
@@ -1683,7 +1698,7 @@ static bool t2_init_seg(tcd_cblk_dec_t *cblk, uint32_t index,
 							2 : 1;
 		}
 	} else {
-		seg->maxpasses = 109;
+		seg->maxpasses = max_passes_per_segment;
 	}
 
 	return true;
