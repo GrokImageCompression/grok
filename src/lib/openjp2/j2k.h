@@ -526,7 +526,7 @@ struct j2k_t {
 	uint32_t m_current_tile_number;
 
 	/** the current tile coder/decoder **/
-	TileProcessor *m_tcd;
+	TileProcessor *m_tileProcessor;
 
 };
 

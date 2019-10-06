@@ -259,9 +259,9 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 }
 
 // set context stream for debugging purposes
-void set_context_stream(TileProcessor *p_tcd) {
-	for (uint32_t compno = 0; compno < p_tcd->tile->numcomps; compno++) {
-		tcd_tilecomp_t *tilec = p_tcd->tile->comps + compno;
+void set_context_stream(TileProcessor *p_tileProcessor) {
+	for (uint32_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++) {
+		tcd_tilecomp_t *tilec = p_tileProcessor->tile->comps + compno;
 		tilec->numpix = 0;
 
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {
@@ -278,10 +278,10 @@ void set_context_stream(TileProcessor *p_tcd) {
 							cblkno++) {
 						tcd_cblk_enc_t *cblk = &prc->cblks.enc[cblkno];
 
-						if (p_tcd->current_plugin_tile
-								&& p_tcd->current_plugin_tile->tileComponents) {
+						if (p_tileProcessor->current_plugin_tile
+								&& p_tileProcessor->current_plugin_tile->tileComponents) {
 							grok_plugin_tile_component_t *comp =
-									p_tcd->current_plugin_tile->tileComponents[compno];
+									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
 								grok_plugin_band_t *plugin_band =
 										comp->resolutions[resno]->bands[bandno];
