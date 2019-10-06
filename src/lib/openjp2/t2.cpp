@@ -763,25 +763,23 @@ static bool t2_read_packet_header(t2_t *p_t2,  tcd_tile_t *p_tile,
 			auto numPassesInPacket = (int32_t) l_cblk->numPassesInPacket;
 			do {
 				auto l_seg = l_cblk->segs + l_segno;
-				l_seg->packetNumpasses = (uint32_t) std::min<int32_t>(
+				l_seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
 						(int32_t) (l_seg->maxpasses - l_seg->numpasses),
 						numPassesInPacket);
 				uint32_t bits_to_read = l_cblk->numlenbits
-						+ uint_floorlog2(l_seg->packetNumpasses);
+						+ uint_floorlog2(l_seg->numPassesInPacket);
 				if (bits_to_read > 32) {
 					GROK_ERROR(
 							"t2_read_packet_header: too many bits in segment length ");
 					return false;
 				}
-				if (!l_bio->read(&l_seg->packetLength,
-						l_cblk->numlenbits
-								+ uint_floorlog2(l_seg->packetNumpasses))) {
+				if (!l_bio->read(&l_seg->numBytesInPacket,bits_to_read)) {
 					GROK_WARN(
 							"t2_read_packet_header: failed to read segment length ");
 				}
 #ifdef DEBUG_LOSSLESS_T2
-				l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->packetLength,
-								l_cblk->numlenbits + uint_floorlog2(l_seg->packetNumpasses)));
+				l_cblk->packet_length_info->push_back(packet_length_info_t(l_seg->numBytesInPacket,
+								l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket)));
 #endif
 				/*
 				GROK_INFO(
@@ -789,7 +787,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  tcd_tile_t *p_tile,
 						l_included, l_seg->numPassesInPacket, l_increment,
 						l_seg->newlen);
 						*/
-				numPassesInPacket -=	(int32_t) l_seg->packetNumpasses;
+				numPassesInPacket -=	(int32_t) l_seg->numPassesInPacket;
 				if (numPassesInPacket > 0) {
 					++l_segno;
 					if (!t2_init_seg(l_cblk, l_segno,
@@ -871,28 +869,28 @@ static bool t2_read_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 				size_t offset = (size_t) src_buf->get_global_offset();
 				size_t len = src_buf->data_len;
 				// Check possible overflow on segment length
-				if (((offset + l_seg->packetLength) > len)) {
+				if (((offset + l_seg->numBytesInPacket) > len)) {
 					GROK_ERROR(
 							"read packet data: segment offset (%u) plus segment length %u is greater than total length \nof all segments (%u) for codeblock %d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)\n",
-							offset, l_seg->packetLength, len, cblkno, p_pi->layno,
+							offset, l_seg->numBytesInPacket, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
-					//return false;
+					return false;
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (l_seg->numpasses == 0) {
 					l_seg->dataindex = l_cblk->dataSize;
 				}
 				// only add segment to seg_buffers if length is greater than zero
-				if (l_seg->packetLength) {
+				if (l_seg->numBytesInPacket) {
 					l_cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
-							(uint16_t) l_seg->packetLength);
-					*(p_data_read) += l_seg->packetLength;
-					src_buf->incr_cur_seg_offset(l_seg->packetLength);
-					l_cblk->dataSize += l_seg->packetLength;
-					l_seg->len += l_seg->packetLength;
+							(uint16_t) l_seg->numBytesInPacket);
+					*(p_data_read) += l_seg->numBytesInPacket;
+					src_buf->incr_cur_seg_offset(l_seg->numBytesInPacket);
+					l_cblk->dataSize += l_seg->numBytesInPacket;
+					l_seg->len += l_seg->numBytesInPacket;
 				}
-				l_seg->numpasses += l_seg->packetNumpasses;
-				numPassesInPacket -= l_seg->packetNumpasses;
+				l_seg->numpasses += l_seg->numPassesInPacket;
+				numPassesInPacket -= l_seg->numPassesInPacket;
 				if (numPassesInPacket > 0) {
 					++l_seg;
 					++l_cblk->numSegments;
@@ -1204,9 +1202,9 @@ static bool t2_encode_packet(uint32_t tileno, tcd_tile_t *tile, tcp_t *tcp,
 
 						// compare number of passes
 						auto roundTripCblk = roundTripPrec->cblks.dec + cblkno;
-						if (roundTripCblk->packetNumpasses != layer->numpasses) {
+						if (roundTripCblk->numPassesInPacket != layer->numpasses) {
 							printf("t2_encode_packet: round trip layer numpasses %d differs from original num passes %d at layer %d, component %d, band %d, precinct %d, resolution %d\n",
-								roundTripCblk->packetNumpasses,
+								roundTripCblk->numPassesInPacket,
 								layer->numpasses,
 								layno,
 								compno,
@@ -1627,21 +1625,21 @@ static bool t2_skip_packet_data(tcd_resolution_t *l_res, pi_iterator_t *p_pi,
 			uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
 			do {
 				/* Check possible overflow then size */
-				if (((*p_data_read + l_seg->packetLength) < (*p_data_read))
-						|| ((*p_data_read + l_seg->packetLength) > max_length)) {
+				if (((*p_data_read + l_seg->numBytesInPacket) < (*p_data_read))
+						|| ((*p_data_read + l_seg->numBytesInPacket) > max_length)) {
 					GROK_ERROR(
 							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
-							l_seg->packetLength, max_length, cblkno, p_pi->precno,
+							l_seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
 							bandno, p_pi->resno, p_pi->compno);
 					return false;
 				}
 
 				GROK_ERROR( "p_data_read (%d) newlen (%d) \n",
-						*p_data_read, l_seg->packetLength);
-				*(p_data_read) += l_seg->packetLength;
+						*p_data_read, l_seg->numBytesInPacket);
+				*(p_data_read) += l_seg->numBytesInPacket;
 
-				l_seg->numpasses += l_seg->packetNumpasses;
-				numPassesInPacket -= l_seg->packetNumpasses;
+				l_seg->numpasses += l_seg->numPassesInPacket;
+				numPassesInPacket -= l_seg->numPassesInPacket;
 				if (numPassesInPacket > 0) {
 					++l_seg;
 					++l_cblk->numSegments;

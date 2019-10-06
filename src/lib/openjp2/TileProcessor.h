@@ -70,15 +70,15 @@ struct tcd_seg_t {
 		numpasses = 0;
 		len = 0;
 		maxpasses = 0;
-		packetNumpasses = 0;
-		packetLength = 0;
+		numPassesInPacket = 0;
+		numBytesInPacket = 0;
 	}
 	uint32_t dataindex;		      // segment data offset in contiguous memory block
 	uint32_t numpasses;		    	// number of passes in segment
 	uint32_t len;               // total length of segment
 	uint32_t maxpasses;			  	// maximum number of passes in segment
-	uint32_t packetNumpasses;	  // number of passes contributed by current packet
-	uint32_t packetLength;      // number of bytes contributed by current packet
+	uint32_t numPassesInPacket;	  // number of passes contributed by current packet
+	uint32_t numBytesInPacket;      // number of bytes contributed by current packet
 };
 
 struct packet_length_info_t {

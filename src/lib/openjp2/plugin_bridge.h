@@ -42,7 +42,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 bool tile_equals(grok_plugin_tile_t *plugin_tile, tcd_tile_t *p_tile);
 
 // set context stream for debugging purposes
-void set_context_stream(TileProcessor *p_tcd);
+void set_context_stream(TileProcessor *p_tileProcessor);
 
 void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d);
 
