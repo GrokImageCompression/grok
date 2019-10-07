@@ -185,7 +185,7 @@ int main (int argc, char *argv[])
      grk_stream  * l_stream;
     uint64_t l_data_size=0;
     uint64_t l_max_data_size = 1000;
-    uint32_t l_tile_index;
+    uint16_t l_tile_index;
     uint8_t * l_data = (uint8_t *) malloc(1000);
     bool l_go_on = true;
     uint32_t l_nb_comps=0 ;

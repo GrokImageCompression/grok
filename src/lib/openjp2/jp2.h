@@ -332,7 +332,7 @@ bool jp2_read_header(GrokStream *p_stream, grk_jp2 *jp2,
  * @param  p_stream      the stream to write data to.
  
  */
-bool jp2_read_tile_header(grk_jp2 *p_jp2, uint32_t *tile_index,
+bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream);
@@ -347,7 +347,7 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint32_t *tile_index,
  * @param  p_stream      the stream to write data to.
  
  */
-bool jp2_write_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
+bool jp2_write_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**
@@ -361,7 +361,7 @@ bool jp2_write_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
  *
  * @return FIXME DOC
  */
-bool jp2_decode_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
+bool jp2_decode_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**
@@ -395,7 +395,7 @@ bool jp2_set_decode_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
 /**
  *
  */
-bool jp2_get_tile(grk_jp2 *p_jp2, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index);
+bool jp2_get_tile(grk_jp2 *p_jp2, GrokStream *p_stream, grk_image *p_image, uint16_t tile_index);
 
 /**
  *

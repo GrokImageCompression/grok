@@ -3138,7 +3138,7 @@ static bool jp2_setup_header_reading(grk_jp2 *jp2) {
 	return true;
 }
 
-bool jp2_read_tile_header(grk_jp2 *p_jp2, uint32_t *tile_index,
+bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream) {
@@ -3147,7 +3147,7 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint32_t *tile_index,
 			p_stream);
 }
 
-bool jp2_write_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
+bool jp2_write_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream)
 
 		{
@@ -3155,7 +3155,7 @@ bool jp2_write_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
 			p_stream);
 }
 
-bool jp2_decode_tile(grk_jp2 *p_jp2, uint32_t tile_index, uint8_t *p_data,
+bool jp2_decode_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream) {
 	bool rc = false;
 	try {
@@ -3227,7 +3227,7 @@ bool jp2_set_decode_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
 			end_x, end_y);
 }
 
-bool jp2_get_tile(grk_jp2 *p_jp2, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index) {
+bool jp2_get_tile(grk_jp2 *p_jp2, GrokStream *p_stream, grk_image *p_image, uint16_t tile_index) {
 	if (!p_image)
 		return false;
 
@@ -3278,6 +3278,7 @@ bool jp2_get_tile(grk_jp2 *p_jp2, GrokStream *p_stream, grk_image *p_image, uint
 		p_image->icc_profile_len = p_jp2->color.icc_profile_len;
 		p_jp2->color.icc_profile_buf = nullptr;
 		p_jp2->color.icc_profile_len = 0;
+		p_image->color_space = GRK_CLRSPC_ICC;
 	}
 
 	return true;

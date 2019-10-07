@@ -652,7 +652,7 @@ typedef struct _grk_dparameters {
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decoded tile*/
-	uint32_t tile_index;
+	uint16_t tile_index;
 	/** Nb of tile to decode */
 	uint32_t nb_tile_to_decode;
 	uint32_t flags;
@@ -694,7 +694,7 @@ typedef struct _grk_decompress_params {
 	/** Verbose mode */
 	bool m_verbose;
 	/** tile number of the decoded tile*/
-	uint32_t tile_index;
+	uint16_t tile_index;
 	/** Nb of tile to decode */
 	uint32_t nb_tile_to_decode;
 	grk_precision *precision;
@@ -911,7 +911,7 @@ typedef struct _grk_tile_info {
 	/** value of thresh for each layer by tile cfr. Marcela   */
 	double *thresh;
 	/** number of tile */
-	uint32_t tileno;
+	uint16_t tileno;
 	/** start position */
 	uint64_t start_pos;
 	/** end position of the header */
@@ -1031,7 +1031,7 @@ typedef struct _grk_tccp_info {
  */
 typedef struct _grk_tile_v2_info {
 	/** number (index) of tile */
-	uint32_t tileno;
+	uint16_t tileno;
 	/** coding style */
 	uint32_t csty;
 	/** progression order */
@@ -1087,7 +1087,7 @@ typedef struct _grk_tp_index {
  */
 typedef struct _grk_tile_index {
 	/** tile index */
-	uint32_t tileno;
+	uint16_t tileno;
 	/** number of tile parts */
 	uint32_t nb_tps;
 	/** current nb of tile part (allocated)*/
@@ -1483,7 +1483,7 @@ GRK_API bool GRK_CALLCONV grk_decode( grk_codec  *p_decompressor,
  * @return					true if success, otherwise false
  */
 GRK_API bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
-		 grk_stream  *p_stream, grk_image *p_image, uint32_t tile_index);
+		 grk_stream  *p_stream, grk_image *p_image, uint16_t tile_index);
 
 /**
  * Set the resolution factor of the decoded image
@@ -1508,7 +1508,7 @@ GRK_API bool GRK_CALLCONV grk_set_decoded_resolution_factor(
  * @return	true if the data could be written.
  */
 GRK_API bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec,
-		uint32_t tile_index, uint8_t *p_data, uint64_t data_size,
+		uint16_t tile_index, uint8_t *p_data, uint64_t data_size,
 		 grk_stream  *p_stream);
 
 /**
@@ -1532,7 +1532,7 @@ GRK_API bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec,
  *							returning false may be the result of a shortage of memory or an internal error.
  */
 GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
-		 grk_stream  *p_stream, uint32_t *tile_index, uint64_t *data_size,
+		 grk_stream  *p_stream, uint16_t *tile_index, uint64_t *data_size,
 		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on);
 
@@ -1549,7 +1549,7 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
  * @return	true			if the data could be decoded.
  */
 GRK_API bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
-		uint32_t tile_index, uint8_t *p_data, uint64_t data_size,
+		uint16_t tile_index, uint8_t *p_data, uint64_t data_size,
 		 grk_stream  *p_stream);
 
 /* COMPRESSION FUNCTIONS*/

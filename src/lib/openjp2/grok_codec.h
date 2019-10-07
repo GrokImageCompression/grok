@@ -70,14 +70,14 @@ struct grk_codec_private {
 					GrokStream *p_cio, grk_image *p_image);
 
 			/** FIXME DOC */
-			bool (*read_tile_header)(void *p_codec, uint32_t *tile_index,
+			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
 					uint64_t *data_size, uint32_t *p_tile_x0,
 					uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 					uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 					bool *p_should_go_on, GrokStream *p_cio);
 
 			/** FIXME DOC */
-			bool (*decode_tile_data)(void *p_codec, uint32_t tile_index,
+			bool (*decode_tile_data)(void *p_codec, uint16_t tile_index,
 					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
 
 			/** Reading function used after codestream if necessary */
@@ -97,7 +97,7 @@ struct grk_codec_private {
 			/** Get tile function */
 			bool (*get_decoded_tile)(void *p_codec, GrokStream *p_cio,
 					grk_image *p_image,
-					uint32_t tile_index);
+					uint16_t tile_index);
 
 			/** Set the decoded resolution factor */
 			bool (*set_decoded_resolution_factor)(void *p_codec,
@@ -114,7 +114,7 @@ struct grk_codec_private {
 			bool (*encode)(void *p_codec, grk_plugin_tile*,
 					GrokStream *p_cio);
 
-			bool (*write_tile)(void *p_codec, uint32_t tile_index,
+			bool (*write_tile)(void *p_codec, uint16_t tile_index,
 					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
 
 			bool (*end_compress)(void *p_codec, GrokStream *p_cio);

@@ -357,7 +357,7 @@ struct TileProcessor {
 	 * @return	true if the remaining data is sufficient.
 	 */
 	bool init_decode_tile(grk_image *output_image,
-			uint32_t tile_no);
+			uint16_t tile_no);
 
 	/**
 	 * Gets the maximum tile size that will be taken by the tile once decoded.
@@ -373,7 +373,7 @@ struct TileProcessor {
 	 * @param	p_cstr_info		Codestream information structure
 	 * @return  true if the coding is successful.
 	 */
-	bool encode_tile(uint32_t tile_no, GrokStream *p_stream,
+	bool encode_tile(uint16_t tile_no, GrokStream *p_stream,
 			uint64_t *p_data_written, uint64_t len,
 			 grk_codestream_info  *p_cstr_info);
 
@@ -384,7 +384,7 @@ struct TileProcessor {
 	 @param tileno Number that identifies one of the tiles to be decoded
 	 @param cstr_info  FIXME DOC
 	 */
-	bool decode_tile(grk_seg_buf *src_buf, uint32_t tileno);
+	bool decode_tile(grk_seg_buf *src_buf, uint16_t tileno);
 
 	/**
 	 * Copies tile data from the system onto the given memory block.
@@ -402,7 +402,7 @@ struct TileProcessor {
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init_encode_tile(uint32_t tile_no);
+	bool init_encode_tile(uint16_t tile_no);
 
 	/**
 	 * Copies tile data from the given memory block onto the system.
@@ -416,11 +416,11 @@ struct TileProcessor {
 	/** Position of the tile part flag in progression order*/
 	uint32_t tp_pos;
 	/** Tile part number*/
-	uint32_t tp_num;
+	uint8_t tp_num;
 	/** Current tile part number*/
-	uint32_t cur_tp_num;
+	uint8_t cur_tp_num;
 	/** Total number of tile parts of the current tile*/
-	uint32_t cur_totnum_tp;
+	uint8_t cur_totnum_tp;
 	/** Current packet iterator number */
 	uint32_t cur_pino;
 	/** info on image tile */
@@ -435,14 +435,14 @@ private:
 	/** coding/decoding parameters common to all tiles */
 	grk_tcp *tcp;
 	/** current encoded tile (not used for decode) */
-	uint32_t tcd_tileno;
+	uint16_t tcd_tileno;
 	/** indicate if the tcd is a decoder. */
 	bool m_is_decoder;
 
 	/**
 	 * Initializes tile coding/decoding
 	 */
-	 inline bool init_tile(uint32_t tile_no,
+	 inline bool init_tile(uint16_t tile_no,
 			grk_image *output_image, bool isEncoder, float fraction,
 			size_t sizeof_block);
 
@@ -461,7 +461,7 @@ private:
 	 */
 	 void free_tile();
 
-	 bool t2_decode(uint32_t tile_no, grk_seg_buf *src_buf,
+	 bool t2_decode(uint16_t tile_no, grk_seg_buf *src_buf,
 			uint64_t *p_data_read);
 
 	 bool t1_decode();
