@@ -1819,7 +1819,7 @@ static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* in
 		uint64_t l_data_size = 512 * 512 * 3;
 		l_data = (uint8_t*)calloc(1, l_data_size);
 		assert(l_data);
-		for (uint32_t i = 0; i<l_nb_tiles; ++i) {
+		for (uint16_t i = 0; i<l_nb_tiles; ++i) {
 			if (!grk_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
 				spdlog::error("test_tile_encoder: failed to write the tile {}!\n", i);
 				bSuccess = false;

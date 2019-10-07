@@ -711,7 +711,7 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 
 /* ----------------------------------------------------------------------- */
 
-inline bool TileProcessor::init_tile(uint32_t tile_no,
+inline bool TileProcessor::init_tile(uint16_t tile_no,
 		grk_image *output_image, bool isEncoder, float fraction,
 		size_t sizeof_block) {
 	uint32_t (*l_gain_ptr)(uint8_t) = nullptr;
@@ -1131,13 +1131,13 @@ inline bool TileProcessor::init_tile(uint32_t tile_no,
 	return true;
 }
 
-bool TileProcessor::init_encode_tile(uint32_t tile_no) {
+bool TileProcessor::init_encode_tile(uint16_t tile_no) {
 	return init_tile(tile_no, nullptr, true, 1.0F,
 			sizeof(grk_tcd_cblk_enc));
 }
 
 bool TileProcessor::init_decode_tile(grk_image *output_image,
-		uint32_t tile_no) {
+		uint16_t tile_no) {
 	return init_tile(tile_no, output_image, false, 0.5F,
 			sizeof(grk_tcd_cblk_dec));
 
@@ -1176,7 +1176,7 @@ uint64_t TileProcessor::get_decoded_tile_size() {
 	return l_data_size;
 }
 
-bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
+bool TileProcessor::encode_tile(uint16_t tile_no, GrokStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
@@ -1254,7 +1254,7 @@ bool TileProcessor::encode_tile(uint32_t tile_no, GrokStream *p_stream,
 	return true;
 }
 
-bool TileProcessor::decode_tile(grk_seg_buf *src_buf, uint32_t tile_no) {
+bool TileProcessor::decode_tile(grk_seg_buf *src_buf, uint16_t tile_no) {
 	tcp = cp->tcps + tile_no;
 
 	bool doT2 = !current_plugin_tile
@@ -1476,7 +1476,7 @@ void TileProcessor::free_tile() {
 	tile = nullptr;
 }
 
-bool TileProcessor::t2_decode(uint32_t tile_no, grk_seg_buf *src_buf,
+bool TileProcessor::t2_decode(uint16_t tile_no, grk_seg_buf *src_buf,
 		uint64_t *p_data_read) {
 	t2_t *l_t2;
 

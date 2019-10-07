@@ -96,7 +96,7 @@ struct t2_t {
  @param tppos            The position of the tile part flag in the progression order
  @param pino             FIXME DOC
  */
-bool t2_encode_packets(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
+bool t2_encode_packets(t2_t *t2, uint16_t tileno, grk_tcd_tile *tile,
 		uint32_t maxlayers, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
 		uint32_t tppos, uint32_t pino);
@@ -111,7 +111,7 @@ bool t2_encode_packets(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
  @param len              the length of the destination buffer
  @param tppos            The position of the tile part flag in the progression order
  */
-bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
+bool t2_encode_packets_simulate(t2_t *t2, uint16_t tileno, grk_tcd_tile *tile,
 		uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
 		uint32_t tppos);
 
@@ -127,7 +127,7 @@ bool t2_encode_packets_simulate(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
 
  @return FIXME DOC
  */
-bool t2_decode_packets(t2_t *t2, uint32_t tileno, grk_tcd_tile *tile,
+bool t2_decode_packets(t2_t *t2, uint16_t tileno, grk_tcd_tile *tile,
 		grk_seg_buf *src_buf, uint64_t *p_data_read);
 
 /**

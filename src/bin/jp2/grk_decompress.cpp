@@ -676,7 +676,7 @@ int parse_cmdline_decoder(int argc,
 			parameters->core.cp_layer = layerArg.getValue();
 		}
 		if (tileArg.isSet()) {
-			parameters->tile_index = tileArg.getValue();
+			parameters->tile_index = (uint16_t)tileArg.getValue();
 			parameters->nb_tile_to_decode = 1;
 		}
 		if (precisionArg.isSet()) {

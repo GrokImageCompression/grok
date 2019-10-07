@@ -89,7 +89,7 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses);
  @param cstr_info Codestream information structure
  @return
  */
-static bool t2_encode_packet(uint32_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
+static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		grk_pi_iterator *pi, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t len,  grk_codestream_info  *cstr_info);
 
@@ -218,7 +218,7 @@ static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses) {
 
 /* ----------------------------------------------------------------------- */
 
-bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, grk_tcd_tile *p_tile,
+bool t2_encode_packets(t2_t *p_t2, uint16_t tile_no, grk_tcd_tile *p_tile,
 		uint32_t max_layers, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t max_len,  grk_codestream_info  *cstr_info, uint32_t tp_num,
 		uint32_t tp_pos, uint32_t pino) {
@@ -290,7 +290,7 @@ bool t2_encode_packets(t2_t *p_t2, uint32_t tile_no, grk_tcd_tile *p_tile,
 	return true;
 }
 
-bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t tile_no,
+bool t2_encode_packets_simulate(t2_t *p_t2, uint16_t tile_no,
 		grk_tcd_tile *p_tile, uint32_t max_layers, uint64_t *p_data_written,
 		uint64_t max_len, uint32_t tp_pos) {
 	grk_image *l_image = p_t2->image;
@@ -356,7 +356,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint32_t tile_no,
 	pi_destroy(l_pi, l_nb_pocs);
 	return true;
 }
-bool t2_decode_packets(t2_t *p_t2, uint32_t tile_no, grk_tcd_tile *p_tile,
+bool t2_decode_packets(t2_t *p_t2, uint16_t tile_no, grk_tcd_tile *p_tile,
 		grk_seg_buf *src_buf, uint64_t *p_data_read) {
 	grk_pi_iterator *l_pi = nullptr;
 	uint32_t pino;
@@ -920,7 +920,7 @@ static bool t2_read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 }
 //--------------------------------------------------------------------------------------------------
 
-static bool t2_encode_packet(uint32_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
+static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		grk_pi_iterator *pi, GrokStream *p_stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
 	uint32_t compno = pi->compno;

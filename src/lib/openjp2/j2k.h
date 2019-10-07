@@ -61,6 +61,8 @@
 #pragma once
 
 #include <vector>
+#include <map>
+
 namespace grk {
 
 // 64 Giga Pixels
@@ -300,10 +302,10 @@ struct grk_tcp {
 	/** tile-component coding parameters */
 	grk_tccp *tccps;
 	// current tile part number (-1 if not yet initialized
-	int32_t m_current_tile_part_number;
+	int16_t m_current_tile_part_number;
 
 	/** number of tile parts for the tile. */
-	uint32_t m_nb_tile_parts;
+	uint8_t m_nb_tile_parts;
 
 	grk_seg_buf *m_tile_data;
 
@@ -357,6 +359,39 @@ struct grk_decoding_param {
 	uint32_t m_reduce;
 	/** if != 0, then only the first "layer" layers are decoded; if == 0 or not used, all the quality layers are decoded */
 	uint32_t m_layer;
+};
+
+struct grk_tl_info {
+    grk_tl_info() : tile_number(0),
+                    has_tile_number(false),
+                    length(0){}
+    grk_tl_info(uint32_t len) : tile_number(0),
+                                has_tile_number(false),
+                                length(len){}
+    grk_tl_info(uint16_t tileno, uint32_t len) : tile_number(tileno),
+                                                has_tile_number(true),
+                                                length(len){}
+    uint16_t tile_number;
+    bool has_tile_number;
+    uint32_t length;
+
+};
+
+typedef std::vector<grk_tl_info> TL_INFO_VEC;
+typedef std::map<uint8_t, TL_INFO_VEC> TL_MAP;
+struct grk_tl_marker {
+    TL_MAP tile_part_lengths;
+};
+
+struct grk_pl_info {
+    grk_pl_info() : length(0){}
+    grk_pl_info(uint32_t len) : length(len){}
+    uint32_t length;
+};
+typedef std::vector<grk_pl_info> PL_INFO_VEC;
+typedef std::map<uint8_t, PL_INFO_VEC> PL_MAP;
+struct grk_pl_marker{
+    PL_MAP packet_lengths;
 };
 
 /**
@@ -422,6 +457,11 @@ struct grk_coding_parameters {
 	/** tells if the parameter is a coding or decoding one */
 	uint32_t m_is_decoder :1;
 
+	grk_pl_marker *pl_marker;
+	grk_tl_marker *tl_marker;
+
+	void destroy();
+
 };
 
 struct grk_j2k_dec {
@@ -457,16 +497,16 @@ struct grk_j2k_dec {
 	uint32_t m_skip_data :1;
 	/** TNsot correction : see issue 254 **/
 	uint32_t m_nb_tile_parts_correction_checked :1;
-	uint32_t m_nb_tile_parts_correction :1;
+	uint8_t m_nb_tile_parts_correction :1;
 
 };
 
 struct grk_j2k_enc {
 	/** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
-	uint32_t m_current_poc_tile_part_number; /* tp_num */
+	uint8_t m_current_poc_tile_part_number; /* tp_num */
 
 	/** Tile part number currently coding, taking into account POC. m_current_tile_part_number holds the total number of tile parts while encoding the last tile part.*/
-	uint32_t m_current_tile_part_number; /*cur_tp_num */
+	uint8_t m_current_tile_part_number; /*cur_tp_num */
 
 	/**
 	 locate the start position of the TLM marker
@@ -524,7 +564,7 @@ struct grk_j2k {
 	 grk_codestream_index  *cstr_index;
 
 	/** number of the tile currently concern by coding/decoding */
-	uint32_t m_current_tile_number;
+	uint16_t m_current_tile_number;
 
 	/** the current tile coder/decoder **/
 	TileProcessor *m_tileProcessor;
@@ -605,7 +645,7 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_decode_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**
@@ -622,7 +662,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_read_tile_header(grk_j2k *p_j2k, uint32_t *tile_index,
+bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream);
@@ -709,7 +749,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, GrokStream *p_stream,
 		grk_image *p_image);
 
-bool j2k_get_tile(grk_j2k *p_j2k, GrokStream *p_stream, grk_image *p_image, uint32_t tile_index);
+bool j2k_get_tile(grk_j2k *p_j2k, GrokStream *p_stream, grk_image *p_image, uint16_t tile_index);
 
 bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
 
@@ -722,7 +762,7 @@ bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
  * @param	p_stream			the stream to write data to.
  
  */
-bool j2k_write_tile(grk_j2k *p_j2k, uint32_t tile_index, uint8_t *p_data,
+bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream);
 
 /**

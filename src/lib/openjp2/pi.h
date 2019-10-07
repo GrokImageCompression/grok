@@ -140,7 +140,7 @@ struct grk_pi_iterator {
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
 grk_pi_iterator* pi_initialise_encode(const grk_image *image, grk_coding_parameters *cp,
-		uint32_t tileno, J2K_T2_MODE t2_mode);
+		uint16_t tileno, J2K_T2_MODE t2_mode);
 
 /**
  * Updates the encoding parameters of the codec.
@@ -150,7 +150,7 @@ grk_pi_iterator* pi_initialise_encode(const grk_image *image, grk_coding_paramet
  * @param	tile_no	index of the tile being encoded.
  */
 void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_parameters *p_cp,
-		uint32_t tile_no);
+		uint16_t tile_no);
 
 /**
  Modify the packet iterator for enabling tile part generation
@@ -162,7 +162,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_paramete
  @param tppos The position of the tile part flag in the progression order
  @param t2_mode FIXME DOC
  */
-void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint32_t tileno, uint32_t pino,
+void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode);
 
 /**
@@ -173,7 +173,7 @@ void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint32_t til
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-grk_pi_iterator* pi_create_decode(grk_image *image, grk_coding_parameters *cp, uint32_t tileno);
+grk_pi_iterator* pi_create_decode(grk_image *image, grk_coding_parameters *cp, uint16_t tileno);
 /**
  * Destroys a packet iterator array.
  *
