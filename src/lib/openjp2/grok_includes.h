@@ -178,6 +178,7 @@ static inline long grok_lrintf(float f) {
 #	pragma intrinsic(__emul)
 #endif
 
+#include "ThreadPool.h"
 #include "mem_stream.h"
 #include "grok_malloc.h"
 #include "logger.h"
@@ -208,5 +209,4 @@ static inline long grok_lrintf(float f) {
 #include "grok_codec.h"
 #include "RateControl.h"
 #include "RateInfo.h"
-#include "ThreadPool.h"
 #include "grok_codec.h"
