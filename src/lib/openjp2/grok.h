@@ -1403,13 +1403,13 @@ GRK_API bool GRK_CALLCONV grk_set_decode_area( grk_codec  *p_codec,
 // Structs to pass data between grok and plugin
 /////////////////////////////////////////////////
 
-typedef struct grok_plugin_pass {
+typedef struct _grk_plugin_pass {
 	double distortionDecrease; //distortion decrease up to and including this pass
 	size_t rate;    // rate up to and including this pass
 	size_t length;	//stream length for this pass
-} grok_plugin_pass_t;
+} grk_plugin_pass;
 
-typedef struct grok_plugin_code_block {
+typedef struct _grk_plugin_code_block {
 	/////////////////////////
 	// debug info
 	uint32_t x0, y0, x1, y1;
@@ -1420,32 +1420,32 @@ typedef struct grok_plugin_code_block {
 	size_t compressedDataLength;
 	size_t numBitPlanes;
 	size_t numPasses;
-	grok_plugin_pass_t passes[67];
+	grk_plugin_pass passes[67];
 	unsigned int sortedIndex;
-} grok_plugin_code_block_t;
+} grk_plugin_code_block;
 
-typedef struct grok_plugin_precinct {
+typedef struct _grk_plugin_precinct {
 	size_t numBlocks;
-	grok_plugin_code_block_t **blocks;
-} grok_plugin_precinct_t;
+	grk_plugin_code_block **blocks;
+} grk_plugin_precinct;
 
-typedef struct grok_plugin_band {
+typedef struct _grk_plugin_band {
 	size_t orient;
 	size_t numPrecincts;
-	grok_plugin_precinct_t **precincts;
+	grk_plugin_precinct **precincts;
 	float stepsize;
-} grok_plugin_band_t;
+} grk_plugin_band;
 
-typedef struct grok_plugin_resolution {
+typedef struct _grk_plugin_resolution {
 	size_t level;
 	size_t numBands;
-	grok_plugin_band_t **bands;
-} grok_plugin_resolution_t;
+	grk_plugin_band **bands;
+} grk_plugin_resolution;
 
-typedef struct grok_plugin_tile_component {
+typedef struct grk_plugin_tile_component {
 	size_t numResolutions;
-	grok_plugin_resolution_t **resolutions;
-} grok_plugin_tile_component_t;
+	grk_plugin_resolution **resolutions;
+} grk_plugin_tile_component;
 
 #define GROK_DECODE_HEADER	(1 << 0)
 #define GROK_DECODE_T2		(1 << 1)
@@ -1454,10 +1454,10 @@ typedef struct grok_plugin_tile_component {
 #define GROK_PLUGIN_DECODE_CLEAN  (1 << 4)
 #define GROK_DECODE_ALL		(GROK_PLUGIN_DECODE_CLEAN | GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
 
-typedef struct grk_plugin_tile {
+typedef struct _grk_plugin_tile {
 	uint32_t decode_flags;
 	size_t numComponents;
-	grok_plugin_tile_component_t **tileComponents;
+	grk_plugin_tile_component **tileComponents;
 } grk_plugin_tile;
 
 /**

@@ -64,7 +64,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 								throw PluginDecodeUnsupportedException();
 							}
 
-							grok_plugin_code_block_t *plugin_cblk =
+							grk_plugin_code_block *plugin_cblk =
 									plugin_prc->blocks[cblkno];
 
 							// copy segments into plugin codeblock buffer, and point host code block data
@@ -99,26 +99,26 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 		return false;
 	for (uint32_t compno = 0; compno < p_tile->numcomps; ++compno) {
 		grk_tcd_tilecomp *tilecomp = p_tile->comps + compno;
-		grok_plugin_tile_component_t *plugin_tilecomp =
+		grk_plugin_tile_component *plugin_tilecomp =
 				plugin_tile->tileComponents[compno];
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
 			return false;
 		for (uint32_t resno = 0; resno < tilecomp->numresolutions; ++resno) {
 			grk_tcd_resolution *resolution = tilecomp->resolutions + resno;
-			grok_plugin_resolution_t *plugin_resolution =
+			grk_plugin_resolution *plugin_resolution =
 					plugin_tilecomp->resolutions[resno];
 			if (resolution->numbands != plugin_resolution->numBands)
 				return false;
 			for (uint32_t bandno = 0; bandno < resolution->numbands; ++bandno) {
 				grk_tcd_band *band = resolution->bands + bandno;
-				grok_plugin_band_t *plugin_band =
+				grk_plugin_band *plugin_band =
 						plugin_resolution->bands[bandno];
 				size_t num_precincts = band->numPrecincts;
 				if (num_precincts != plugin_band->numPrecincts)
 					return false;
 				for (size_t precno = 0; precno < num_precincts; ++precno) {
 					grk_tcd_precinct *precinct = band->precincts + precno;
-					grok_plugin_precinct_t *plugin_precinct =
+					grk_plugin_precinct *plugin_precinct =
 							plugin_band->precincts[precno];
 					if (precinct->ch * precinct->cw
 							!= plugin_precinct->numBlocks) {
@@ -127,7 +127,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 					for (uint32_t cblkno = 0;
 							cblkno < precinct->ch * precinct->cw; ++cblkno) {
 						grk_tcd_cblk_dec *cblk = precinct->cblks.dec + cblkno;
-						grok_plugin_code_block_t *plugin_cblk =
+						grk_plugin_code_block *plugin_cblk =
 								plugin_precinct->blocks[cblkno];
 						if (cblk->x0 != plugin_cblk->x0
 								|| cblk->x1 != plugin_cblk->x1
@@ -147,10 +147,10 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		grk_tcd_cblk_enc *cblk, uint32_t *numPix) {
 
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {
-		grok_plugin_band_t *plugin_band =
+		grk_plugin_band *plugin_band =
 				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
-		grok_plugin_precinct_t *precinct = plugin_band->precincts[precno];
-		grok_plugin_code_block_t *plugin_cblk = precinct->blocks[cblkno];
+		grk_plugin_precinct *precinct = plugin_band->precincts[precno];
+		grk_plugin_code_block *plugin_cblk = precinct->blocks[cblkno];
 		uint32_t state = grok_plugin_get_debug_state();
 
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
@@ -218,7 +218,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		uint16_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
 			grk_tcd_pass *pass = cblk->passes + passno;
-			grok_plugin_pass_t *pluginPass = plugin_cblk->passes + passno;
+			grk_plugin_pass *pluginPass = plugin_cblk->passes + passno;
 
 			// synch distortion, if applicable
 			if (tcd->needs_rate_control()) {
@@ -280,14 +280,14 @@ void set_context_stream(TileProcessor *p_tileProcessor) {
 
 						if (p_tileProcessor->current_plugin_tile
 								&& p_tileProcessor->current_plugin_tile->tileComponents) {
-							grok_plugin_tile_component_t *comp =
+							grk_plugin_tile_component *comp =
 									p_tileProcessor->current_plugin_tile->tileComponents[compno];
 							if (resno < comp->numResolutions) {
-								grok_plugin_band_t *plugin_band =
+								grk_plugin_band *plugin_band =
 										comp->resolutions[resno]->bands[bandno];
-								grok_plugin_precinct_t *precinct =
+								grk_plugin_precinct *precinct =
 										plugin_band->precincts[precno];
-								grok_plugin_code_block_t *plugin_cblk =
+								grk_plugin_code_block *plugin_cblk =
 										precinct->blocks[cblkno];
 								cblk->contextStream =
 										plugin_cblk->contextStream;
