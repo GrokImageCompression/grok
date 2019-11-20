@@ -66,8 +66,8 @@ namespace grk {
 const uint16_t numSynthBytes = 2;
 const uint16_t synthBytes = 0xFFFF;
 
-struct mqc_t;
-struct raw_t;
+struct grk_mqc;
+struct grk_raw;
 class t1;
 
 class t1_decode_base: public t1 {
@@ -93,8 +93,8 @@ protected:
 	bool allocCompressed(grk_tcd_cblk_dec *cblk);
 	uint8_t *compressed_block;
 	size_t compressed_block_size;
-	mqc_t *mqc;
-	raw_t *raw;
+	grk_mqc *mqc;
+	grk_raw *raw;
 
 };
 

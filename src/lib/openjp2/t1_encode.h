@@ -73,7 +73,7 @@ public:
 			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
 	uint32_t *data;
 private:
-	mqc_t *mqc;
+	grk_mqc *mqc;
 	/**
 	 Encode significant pass
 	 */

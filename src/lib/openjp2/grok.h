@@ -1756,10 +1756,10 @@ typedef struct grok_plugin_encode_user_callback_info {
 	uint8_t *compressBuffer;
 	size_t compressBufferLen;
 	unsigned int error_code;
-} grok_plugin_encode_user_callback_info_t;
+} grk_plugin_encode_user_callback_info;
 
 typedef bool (*GROK_PLUGIN_ENCODE_USER_CALLBACK)(
-		grok_plugin_encode_user_callback_info_t *info);
+		grk_plugin_encode_user_callback_info *info);
 
 GRK_API int32_t GRK_CALLCONV grok_plugin_encode(
 		 grk_cparameters  *encode_parameters,
@@ -1780,7 +1780,7 @@ GRK_API void GRK_CALLCONV grok_plugin_stop_batch_encode(void);
 typedef int (*GROK_INIT_DECODERS)( grk_header_info  *header_info,
 		grk_image *image);
 
-typedef struct grok_plugin_decode_callback_info {
+typedef struct _grk_plugin_decode_callback_info {
 	size_t deviceId;
 	GROK_INIT_DECODERS init_decoders_func;
 	const char *input_file_name;
@@ -1798,10 +1798,10 @@ typedef struct grok_plugin_decode_callback_info {
 	grk_plugin_tile *tile;
 	unsigned int error_code;
 	uint32_t decode_flags;
-} grok_plugin_decode_callback_info_t;
+} grk_plugin_decode_callback_info;
 
 typedef int32_t (*grok_plugin_decode_callback)(
-		grok_plugin_decode_callback_info_t *info);
+		grk_plugin_decode_callback_info *info);
 
 GRK_API int32_t GRK_CALLCONV grok_plugin_decode(
 		grk_decompress_parameters *decode_parameters,

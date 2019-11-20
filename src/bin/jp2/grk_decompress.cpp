@@ -110,13 +110,13 @@ using namespace grk;
 using namespace TCLAP;
 using namespace std;
 
-int load_images(dircnt_t *dirptr, char *imgdirpath);
-static char get_next_file(std::string file_name, img_fol_t *img_fol, img_fol_t* out_fol, grk_decompress_parameters *parameters);
+int load_images(grk_dircnt *dirptr, char *imgdirpath);
+static char get_next_file(std::string file_name, grk_img_fol *img_fol, grk_img_fol* out_fol, grk_decompress_parameters *parameters);
 static int parse_cmdline_decoder(int argc,
 							char **argv,
 							grk_decompress_parameters *parameters,
-							img_fol_t *img_fol,
-							img_fol_t *out_fol,
+							grk_img_fol *img_fol,
+							grk_img_fol *out_fol,
 							char* plugin_path);
 static grk_image *  convert_gray_to_rgb(grk_image *  original);
 
@@ -364,7 +364,7 @@ static bool parse_precision(const char* option, grk_decompress_parameters* param
 
 
 /* -------------------------------------------------------------------------- */
-int load_images(dircnt_t *dirptr, char *imgdirpath)
+int load_images(grk_dircnt *dirptr, char *imgdirpath)
 {
     DIR *dir;
     struct dirent* content;
@@ -391,8 +391,8 @@ int load_images(dircnt_t *dirptr, char *imgdirpath)
 
 /* -------------------------------------------------------------------------- */
 char get_next_file(std::string image_filename,
-					img_fol_t *img_fol,
-					img_fol_t* out_fol,
+					grk_img_fol *img_fol,
+					grk_img_fol* out_fol,
 					grk_decompress_parameters *parameters) {
 	if (parameters->verbose)
 		spdlog::info("File Number \"{}\"\n", image_filename.c_str());
@@ -436,8 +436,8 @@ public:
 int parse_cmdline_decoder(int argc, 
 							char **argv,
 							grk_decompress_parameters *parameters,
-							img_fol_t *img_fol,
-							img_fol_t *out_fol,
+							grk_img_fol *img_fol,
+							grk_img_fol *out_fol,
 							char* plugin_path)
 {
 	try {
@@ -1059,14 +1059,14 @@ struct DecompressInitParams {
 	grk_decompress_parameters parameters;	/* compression parameters */
 	char plugin_path[GRK_PATH_LEN];
 
-	img_fol_t img_fol;
-	img_fol_t out_fol;
+	grk_img_fol img_fol;
+	grk_img_fol out_fol;
 
 };
 
-static int decode_callback(grok_plugin_decode_callback_info_t* info);
-static int pre_decode(grok_plugin_decode_callback_info_t* info);
-static int post_decode(grok_plugin_decode_callback_info_t* info);
+static int decode_callback(grk_plugin_decode_callback_info* info);
+static int pre_decode(grk_plugin_decode_callback_info* info);
+static int post_decode(grk_plugin_decode_callback_info* info);
 static int plugin_main(int argc, char **argv, DecompressInitParams* initParams);
 
 
@@ -1080,8 +1080,8 @@ int decode(const char* fileName, DecompressInitParams *initParams) {
 		}
 	}
 
-	grok_plugin_decode_callback_info_t info;
-	memset(&info, 0, sizeof(grok_plugin_decode_callback_info_t));
+	grk_plugin_decode_callback_info info;
+	memset(&info, 0, sizeof(grk_plugin_decode_callback_info));
 	info.decod_format = UNKNOWN_FORMAT;
 	info.cod_format = UNKNOWN_FORMAT;
 	info.decode_flags = GROK_DECODE_ALL;
@@ -1161,7 +1161,7 @@ cleanup:
 int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 {
 	int32_t num_images=0, imageno = 0;
-	dircnt_t *dirptr = nullptr;
+	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_decompressed_images = 0;
 	bool isBatch = false;
@@ -1244,7 +1244,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 				success = 1;
 				goto cleanup;
 			}
-			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			dirptr = (grk_dircnt*)malloc(sizeof(grk_dircnt));
 			if (dirptr) {
 				dirptr->filename_buf = (char*)malloc((size_t)num_images*GRK_PATH_LEN);	/* Stores at max 10 image file names*/
 				if (!dirptr->filename_buf) {
@@ -1304,7 +1304,7 @@ cleanup:
 	return success;
 }
 
-int decode_callback(grok_plugin_decode_callback_info_t* info) {
+int decode_callback(grk_plugin_decode_callback_info* info) {
 	int rc = -1;
 	// GROK_DECODE_T1 flag specifies full decode on CPU, so
 	// we don't need to initialize the decoder in this case
@@ -1338,7 +1338,7 @@ int decode_callback(grok_plugin_decode_callback_info_t* info) {
 }
 
 // return: 0 for success, non-zero for failure
-int pre_decode(grok_plugin_decode_callback_info_t* info) {
+int pre_decode(grk_plugin_decode_callback_info* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
@@ -1544,7 +1544,7 @@ cleanup:
 /*
 Post-process decompressed image and store in selected image format
 */
-int post_decode(grok_plugin_decode_callback_info_t* info) {
+int post_decode(grk_plugin_decode_callback_info* info) {
 	if (!info)
 		return -1;
 	int failed = 0;

@@ -69,43 +69,43 @@ namespace grk {
 
 #define T1_SGN (T1_SGN_N|T1_SGN_E|T1_SGN_S|T1_SGN_W)
 
-const flag_t T1_SIG = 0x1000;
-const flag_t T1_REFINE = 0x2000;
-const flag_t T1_VISIT = 0x4000;
+const grk_flag T1_SIG = 0x1000;
+const grk_flag T1_REFINE = 0x2000;
+const grk_flag T1_VISIT = 0x4000;
 
 #define MACRO_t1_flags(x,y) flags[((x)*(flags_stride))+(y)]
 
 /**
  Tier-1 coding (coding of code-block coefficients)
  */
-static inline uint8_t t1_getctxno_zc(flag_t f, uint8_t orient);
-static inline uint8_t t1_getctxno_sc(flag_t f);
-static inline uint8_t t1_getctxno_mag(flag_t f);
-static inline uint8_t t1_getspb(flag_t f);
+static inline uint8_t t1_getctxno_zc(grk_flag f, uint8_t orient);
+static inline uint8_t t1_getctxno_sc(grk_flag f);
+static inline uint8_t t1_getctxno_mag(grk_flag f);
+static inline uint8_t t1_getspb(grk_flag f);
 
-static uint8_t t1_getctxno_zc(flag_t f, uint8_t orient) {
+static uint8_t t1_getctxno_zc(grk_flag f, uint8_t orient) {
 	return lut_ctxno_zc[(orient << 8) | (f & T1_SIG_OTH)];
 }
 
-static inline uint8_t t1_getctxno_sc(flag_t f) {
+static inline uint8_t t1_getctxno_sc(grk_flag f) {
 	return lut_ctxno_sc[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 }
 
-static inline uint8_t t1_getctxno_mag(flag_t f) {
+static inline uint8_t t1_getctxno_mag(grk_flag f) {
 	uint8_t tmp1 = (f & T1_SIG_OTH) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG;
 	uint8_t tmp2 = (f & T1_REFINE) ? T1_CTXNO_MAG + 2 : tmp1;
 	return (tmp2);
 }
 
-static inline uint8_t t1_getspb(flag_t f) {
+static inline uint8_t t1_getspb(grk_flag f) {
 	return lut_spb[(f & (T1_SIG_PRIM | T1_SGN)) >> 4];
 }
 
-void t1_decode::updateflags(flag_t *flagsp, uint32_t s, uint32_t stride) {
-	flag_t *np = flagsp - stride;
-	flag_t *sp = flagsp + stride;
+void t1_decode::updateflags(grk_flag *flagsp, uint32_t s, uint32_t stride) {
+	grk_flag *np = flagsp - stride;
+	grk_flag *sp = flagsp + stride;
 
-	static const flag_t mod[] = {
+	static const grk_flag mod[] = {
 	T1_SIG_S, T1_SIG_S | T1_SGN_S,
 	T1_SIG_E, T1_SIG_E | T1_SGN_E,
 	T1_SIG_W, T1_SIG_W | T1_SGN_W,
@@ -135,9 +135,9 @@ t1_decode::~t1_decode() {
 		grok_aligned_free(flags);
 }
 
-inline void t1_decode::sigpass_step(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::sigpass_step(grk_flag *flagsp, int32_t *datap,
 		uint8_t orient, int32_t oneplushalf) {
-	flag_t flag = *flagsp;
+	grk_flag flag = *flagsp;
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
@@ -154,14 +154,14 @@ void t1_decode::sigpass(int32_t bpno, uint8_t orient) {
 	int32_t one, half, oneplushalf;
 	uint32_t i, j, k;
 	int32_t *data1 = dataPtr;
-	flag_t *flags1 = &flags[1];
+	grk_flag *flags1 = &flags[1];
 	one = 1 << bpno;
 	half = one >> 1;
 	oneplushalf = one | half;
 	for (k = 0; k < (h & ~3u); k += 4) {
 		for (i = 0; i < w; ++i) {
 			int32_t *data2 = data1 + i;
-			flag_t *flags2 = flags1 + i;
+			grk_flag *flags2 = flags1 + i;
 			flags2 += flags_stride;
 			sigpass_step(flags2, data2, orient, oneplushalf);
 			data2 += w;
@@ -180,7 +180,7 @@ void t1_decode::sigpass(int32_t bpno, uint8_t orient) {
 	}
 	for (i = 0; i < w; ++i) {
 		int32_t *data2 = data1 + i;
-		flag_t *flags2 = flags1 + i;
+		grk_flag *flags2 = flags1 + i;
 		for (j = k; j < h; ++j) {
 			flags2 += flags_stride;
 			sigpass_step(flags2, data2, orient, oneplushalf);
@@ -188,11 +188,11 @@ void t1_decode::sigpass(int32_t bpno, uint8_t orient) {
 		}
 	}
 }
-inline void t1_decode::sigpass_step_raw(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::sigpass_step_raw(grk_flag *flagsp, int32_t *datap,
 		int32_t oneplushalf, bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag =
-			vsc ? (flag_t) ((*flagsp)
+	grk_flag flag =
+			vsc ? (grk_flag) ((*flagsp)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) :
 					(*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
@@ -222,11 +222,11 @@ void t1_decode::sigpass_raw(int32_t bpno, uint32_t mode_switch) {
 		}
 	}
 }
-inline void t1_decode::refpass_step_raw(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::refpass_step_raw(grk_flag *flagsp, int32_t *datap,
 		int32_t poshalf, bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag =
-			vsc ? (flag_t) ((*flagsp)
+	grk_flag flag =
+			vsc ? (grk_flag) ((*flagsp)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) :
 					(*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
@@ -253,11 +253,11 @@ void t1_decode::refpass_raw(int32_t bpno, uint32_t mode_switch) {
 		}
 	}
 }
-inline void t1_decode::sigpass_step_vsc(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::sigpass_step_vsc(grk_flag *flagsp, int32_t *datap,
 		uint8_t orient, int32_t oneplushalf, bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag =
-			vsc ? (flag_t) ((*flagsp)
+	grk_flag flag =
+			vsc ? (grk_flag) ((*flagsp)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) :
 					(*flagsp);
 	if ((flag & T1_SIG_OTH) && !(flag & (T1_SIG))) {
@@ -288,9 +288,9 @@ void t1_decode::sigpass_vsc(int32_t bpno, uint8_t orient) {
 		}
 	}
 }
-inline void t1_decode::refpass_step(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::refpass_step(grk_flag *flagsp, int32_t *datap,
 		int32_t poshalf) {
-	flag_t flag = *flagsp;
+	grk_flag flag = *flagsp;
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
 		mqc_setcurctx(mqc, t1_getctxno_mag(flag));
 		uint8_t v = mqc_decode(mqc);
@@ -302,13 +302,13 @@ void t1_decode::refpass(int32_t bpno) {
 	int32_t one, poshalf;
 	uint32_t i, j, k;
 	int32_t *data1 = dataPtr;
-	flag_t *flags1 = &flags[1];
+	grk_flag *flags1 = &flags[1];
 	one = 1 << bpno;
 	poshalf = one >> 1;
 	for (k = 0; k < (h & ~3u); k += 4) {
 		for (i = 0; i < w; ++i) {
 			int32_t *data2 = data1 + i;
-			flag_t *flags2 = flags1 + i;
+			grk_flag *flags2 = flags1 + i;
 			flags2 += flags_stride;
 			refpass_step(flags2, data2, poshalf);
 			data2 += w;
@@ -327,7 +327,7 @@ void t1_decode::refpass(int32_t bpno) {
 	}
 	for (i = 0; i < w; ++i) {
 		int32_t *data2 = data1 + i;
-		flag_t *flags2 = flags1 + i;
+		grk_flag *flags2 = flags1 + i;
 		for (j = k; j < h; ++j) {
 			flags2 += flags_stride;
 			refpass_step(flags2, data2, poshalf);
@@ -335,11 +335,11 @@ void t1_decode::refpass(int32_t bpno) {
 		}
 	}
 }
-inline void t1_decode::refpass_step_vsc(flag_t *flagsp, int32_t *datap,
+inline void t1_decode::refpass_step_vsc(grk_flag *flagsp, int32_t *datap,
 		int32_t poshalf, bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag =
-			vsc ? (flag_t) ((*flagsp)
+	grk_flag flag =
+			vsc ? (grk_flag) ((*flagsp)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) :
 					(*flagsp);
 	if ((flag & (T1_SIG | T1_VISIT)) == T1_SIG) {
@@ -362,19 +362,19 @@ void t1_decode::refpass_vsc(int32_t bpno) {
 		}
 	}
 }
-void t1_decode::clnpass_step_partial(flag_t *flagsp, int32_t *datap,
+void t1_decode::clnpass_step_partial(grk_flag *flagsp, int32_t *datap,
 		int32_t oneplushalf) {
-	flag_t flag = *flagsp;
+	grk_flag flag = *flagsp;
 	mqc_setcurctx(mqc, t1_getctxno_sc(flag));
 	uint8_t v = mqc_decode(mqc) ^ t1_getspb(flag);
 	*datap = v ? -oneplushalf : oneplushalf;
 	updateflags(flagsp, (uint32_t) v, flags_stride);
-	*flagsp &= (flag_t) ~T1_VISIT;
+	*flagsp &= (grk_flag) ~T1_VISIT;
 }
 
-void t1_decode::clnpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
+void t1_decode::clnpass_step(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 		int32_t oneplushalf) {
-	flag_t flag = *flagsp;
+	grk_flag flag = *flagsp;
 	if (!(flag & (T1_SIG | T1_VISIT))) {
 		mqc_setcurctx(mqc, t1_getctxno_zc(flag, orient));
 		if (mqc_decode(mqc)) {
@@ -384,14 +384,14 @@ void t1_decode::clnpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
 			updateflags(flagsp, (uint32_t) v, flags_stride);
 		}
 	}
-	*flagsp &= (flag_t) ~T1_VISIT;
+	*flagsp &= (grk_flag) ~T1_VISIT;
 }
 
-void t1_decode::clnpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
+void t1_decode::clnpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 		int32_t oneplushalf, int32_t partial, bool vsc) {
 	// ignore locations in next stripe when VSC flag is set
-	flag_t flag =
-			vsc ? (flag_t) ((*flagsp)
+	grk_flag flag =
+			vsc ? (grk_flag) ((*flagsp)
 							& (~(T1_SIG_S | T1_SIG_SE | T1_SIG_SW | T1_SGN_S))) :
 					(*flagsp);
 	if (partial) {
@@ -406,7 +406,7 @@ void t1_decode::clnpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
 			updateflags(flagsp, (uint32_t) v, flags_stride);
 		}
 	}
-	*flagsp &= (flag_t) ~T1_VISIT;
+	*flagsp &= (grk_flag) ~T1_VISIT;
 }
 
 void t1_decode::clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch) {
@@ -449,11 +449,11 @@ void t1_decode::clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch) {
 		}
 	} else {
 		int32_t *data1 = dataPtr;
-		flag_t *flags1 = &flags[1];
+		grk_flag *flags1 = &flags[1];
 		for (k = 0; k < (h & ~3u); k += 4) {
 			for (i = 0; i < w; ++i) {
 				int32_t *data2 = data1 + i;
-				flag_t *flags2 = flags1 + i;
+				grk_flag *flags2 = flags1 + i;
 				int32_t agg = !((MACRO_t1_flags(1 + k, 1 + i)|
 				MACRO_t1_flags(1 + k + 1, 1 + i) |
 				MACRO_t1_flags(1 + k + 2, 1 + i) |
@@ -497,7 +497,7 @@ void t1_decode::clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch) {
 		}
 		for (i = 0; i < w; ++i) {
 			int32_t *data2 = data1 + i;
-			flag_t *flags2 = flags1 + i;
+			grk_flag *flags2 = flags1 + i;
 			for (j = k; j < h; ++j) {
 				flags2 += flags_stride;
 				clnpass_step(flags2, data2, orient, oneplushalf);
@@ -532,7 +532,7 @@ bool t1_decode::allocateBuffers(uint16_t w, uint16_t h) {
 	uint32_t new_flagssize = flags_stride * (h + 2);
 	if (flags)
 		grok_aligned_free(flags);
-	flags = (flag_t*) grok_aligned_malloc(new_flagssize * sizeof(flag_t));
+	flags = (grk_flag*) grok_aligned_malloc(new_flagssize * sizeof(grk_flag));
 	if (!flags) {
 		GROK_ERROR("Out of memory");
 		return false;
@@ -544,7 +544,7 @@ void t1_decode::initBuffers(uint16_t cblkw, uint16_t cblkh) {
 	w = cblkw;
 	h = cblkh;
 	flags_stride = (uint16_t) (w + 2);
-	memset(flags, 0, flags_stride * (h + 2) * sizeof(flag_t));
+	memset(flags, 0, flags_stride * (h + 2) * sizeof(grk_flag));
 	if (dataPtr)
 		memset(dataPtr, 0, w * h * sizeof(int32_t));
 }

@@ -59,7 +59,7 @@ namespace grk {
 
 struct grk_tcd_tilecomp;
 
-struct dwt_t {
+struct grk_dwt {
 	int32_t *mem;
 	uint32_t d_n;
 	uint32_t s_n;

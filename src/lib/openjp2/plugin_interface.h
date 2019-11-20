@@ -31,7 +31,7 @@ namespace grk {
 #define DEBUG_CONTEXT_CACHE_SIZE 3
 
 // debugging variables
-struct plugin_debug_mqc_t {
+struct grk_plugin_debug_mqc {
 	uint32_t debug_state;
 	uint8_t context_number;
 	uint32_t *contextStream;
@@ -45,15 +45,15 @@ struct plugin_debug_mqc_t {
 
 typedef uint32_t (*PLUGIN_GET_DEBUG_STATE)(void);
 
-typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(plugin_debug_mqc_t *mqc, uint32_t d);
+typedef void (*PLUGIN_DEBUG_MQC_NEXT_CXD)(grk_plugin_debug_mqc *mqc, uint32_t d);
 
-typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(plugin_debug_mqc_t *mqc);
+typedef void (*PLUGIN_DEBUG_MQC_NEXT_PLANE)(grk_plugin_debug_mqc *mqc);
 
 /////////////////////
 // encoder interface
 /////////////////////
 
-struct plugin_encode_user_callback_info_t {
+struct plugin_encode_user_callback_info {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
@@ -64,7 +64,7 @@ struct plugin_encode_user_callback_info_t {
 };
 
 typedef void (*PLUGIN_ENCODE_USER_CALLBACK)(
-		plugin_encode_user_callback_info_t *info);
+		plugin_encode_user_callback_info *info);
 
 typedef bool (*PLUGIN_INIT)(grok_plugin_init_info_t initInfo);
 

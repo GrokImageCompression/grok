@@ -72,14 +72,14 @@ const size_t maxICCProfileBufferLen = 10000000;
 
 int batch_sleep(int val);
 
-struct dircnt_t {
+struct grk_dircnt {
 	/** Buffer for holding images read from Directory*/
 	char *filename_buf;
 	/** Pointer to the buffer*/
 	char **filename;
 } ;
 
-struct img_fol_t {
+struct grk_img_fol {
 	/** The directory path of the folder containing input images*/
 	char *imgdirpath;
 	/** Output format*/

@@ -107,7 +107,7 @@ using namespace grk;
 using namespace TCLAP;
 using namespace std;
 
-static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info);
+static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info);
 
 void exit_func() {
 	grok_plugin_stop_batch_encode();
@@ -381,7 +381,7 @@ static GRK_PROG_ORDER give_progression(const char progression[4])
     return GRK_PROG_UNKNOWN;
 }
 
-static int load_images(dircnt_t *dirptr, char *imgdirpath)
+static int load_images(grk_dircnt *dirptr, char *imgdirpath)
 {
     /*Reading the input images from given input directory*/
 
@@ -405,8 +405,8 @@ static int load_images(dircnt_t *dirptr, char *imgdirpath)
 }
 
 static char get_next_file(std::string image_filename,
-							img_fol_t *img_fol,
-							img_fol_t *out_fol,
+							grk_img_fol *img_fol,
+							grk_img_fol *out_fol,
 							 grk_cparameters  *parameters){
 
 	if (parameters->verbose)
@@ -492,8 +492,8 @@ static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile,  grk_cparamet
 static int parse_cmdline_encoder_ex(int argc, 
 									char **argv,
 									 grk_cparameters  *parameters,
-									img_fol_t *img_fol,
-									img_fol_t *out_fol,
+									grk_img_fol *img_fol,
+									grk_img_fol *out_fol,
 									char *indexfilename,
 									size_t indexfilename_size,
 									char* plugin_path) {
@@ -1399,8 +1399,8 @@ struct CompressInitParams {
 	char indexfilename[GRK_PATH_LEN];	/* index file name */
 	char plugin_path[GRK_PATH_LEN];
 
-	img_fol_t img_fol;
-	img_fol_t out_fol;
+	grk_img_fol img_fol;
+	grk_img_fol out_fol;
 
 };
 
@@ -1428,8 +1428,8 @@ static int compress(std::string image_filename,
 			return 2;
 		}
 	}
-	grok_plugin_encode_user_callback_info_t callbackInfo;
-	memset(&callbackInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
+	grk_plugin_encode_user_callback_info callbackInfo;
+	memset(&callbackInfo, 0, sizeof(grk_plugin_encode_user_callback_info));
 	callbackInfo.encoder_parameters = &initParams->parameters;
 	callbackInfo.image = nullptr;
 	callbackInfo.output_file_name = initParams->parameters.outfile;
@@ -1516,9 +1516,9 @@ cleanup:
 }
 
 
-img_fol_t img_fol_plugin, out_fol_plugin;
+grk_img_fol img_fol_plugin, out_fol_plugin;
 
-static bool plugin_compress_callback(grok_plugin_encode_user_callback_info_t* info) {
+static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info) {
 	 grk_cparameters  *  parameters = info->encoder_parameters;
 	bool bSuccess = true;
 	 grk_stream  *l_stream = nullptr;
@@ -1876,7 +1876,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	if (!initParams)
 		return 1;
 
-	dircnt_t *dirptr = nullptr;
+	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_images, imageno;
 
@@ -1957,7 +1957,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 			num_images = get_num_images(initParams->img_fol.imgdirpath);
 			if (!num_images)
 				goto cleanup;
-			dirptr = (dircnt_t*)malloc(sizeof(dircnt_t));
+			dirptr = (grk_dircnt*)malloc(sizeof(grk_dircnt));
 			if (!dirptr) {
 				success = 1;
 				goto cleanup;

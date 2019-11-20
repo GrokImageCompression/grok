@@ -200,7 +200,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 							uint32_t rh = (tr->y1 - tr->y0); /* height of the resolution level computed */
 							uint32_t stride = (tilec->x1 - tilec->x0);
 
-							dwt_t h;
+							grk_dwt h;
 							h.mem = (int32_t*) grok_aligned_malloc(
 									dwt_utils::max_resolution(tr, numResolutions)
 											* sizeof(int32_t));
@@ -208,7 +208,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 								rc++;
 								goto cleanup;
 							}
-							dwt_t v;
+							grk_dwt v;
 							v.mem = h.mem;
 
 							while (--numResolutions) {
@@ -266,7 +266,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 1-D. */
 /* </summary>                           */
-void dwt53::decode_line(dwt_t* restrict v) {
+void dwt53::decode_line(grk_dwt* restrict v) {
 	int32_t *a = v->mem;
 	int32_t d_n = (int32_t) v->d_n;
 	int32_t s_n = (int32_t) v->s_n;
@@ -297,7 +297,7 @@ void dwt53::decode_line(dwt_t* restrict v) {
 /* <summary>                             */
 /* Inverse lazy transform (vertical).    */
 /* </summary>                            */
-void dwt53::interleave_v(dwt_t* restrict v, int32_t* restrict a, int32_t x) {
+void dwt53::interleave_v(grk_dwt* restrict v, int32_t* restrict a, int32_t x) {
 	int32_t *ai = a;
 	int32_t *bi = v->mem + v->cas;
 	int32_t i = (int32_t) v->s_n;
@@ -319,7 +319,7 @@ void dwt53::interleave_v(dwt_t* restrict v, int32_t* restrict a, int32_t x) {
 /* <summary>                             */
 /* Inverse lazy transform (horizontal).  */
 /* </summary>                            */
-void dwt53::interleave_h(dwt_t* restrict h, int32_t* restrict a) {
+void dwt53::interleave_h(grk_dwt* restrict h, int32_t* restrict a) {
 	int32_t *ai = a;
 	int32_t *bi = h->mem + h->cas;
 	int32_t i = (int32_t) h->s_n;

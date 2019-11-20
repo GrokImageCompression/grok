@@ -69,7 +69,7 @@ const uint16_t PROB_MASK = 0x7FFF;
 const uint16_t MPS_SHIFT = 15;
 
 
-struct raw_t {
+struct grk_raw {
 	/** temporary buffer where bits are coded or decoded */
 	uint8_t C;
 	/** number of bits already read or free to write */
@@ -89,25 +89,25 @@ struct raw_t {
  Create a new RAW handle
  @return a new RAW handle if successful, returns nullptr otherwise
  */
-raw_t* raw_create(void);
+grk_raw* raw_create(void);
 /**
  Destroy a previously created RAW handle
  @param raw RAW handle to destroy
  */
-void raw_destroy(raw_t *raw);
+void raw_destroy(grk_raw *raw);
 /**
  Initialize the decoder
  @param raw RAW handle
  @param bp Pointer to the start of the buffer from which the bytes will be read
  @param len Length of the input buffer
  */
-void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len);
+void raw_init_dec(grk_raw *raw, uint8_t *bp, uint32_t len);
 /**
  Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
  @param raw RAW handle
  @return the decoded symbol (0 or 1)
  */
-uint8_t raw_decode(raw_t *raw);
+uint8_t raw_decode(grk_raw *raw);
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -117,7 +117,7 @@ uint8_t raw_decode(raw_t *raw);
 /**
  This struct defines the state of a context.
  */
-struct mqc_state_t {
+struct grk_mqc_state {
 	/** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
 	/* High bit == most probable symbol */
 	uint16_t qeval;
@@ -127,9 +127,9 @@ struct mqc_state_t {
 	uint8_t nlps;
 };
 
-extern const mqc_state_t mqc_states[totalNumContextStates];
+extern const grk_mqc_state mqc_states[totalNumContextStates];
 
-struct mqc_t {
+struct grk_mqc {
 	uint32_t C;
 	uint16_t A;
 	uint16_t MIN_A_C;
@@ -143,7 +143,7 @@ struct mqc_t {
 	// indexes into mqc_states array
 	uint8_t ctxs[MQC_NUMCTXS];
 #ifdef DEBUG_MQC
-	plugin_debug_mqc_t debug_mqc;
+	grk_plugin_debug_mqc debug_mqc;
 #endif
 };
 
@@ -151,46 +151,46 @@ struct mqc_t {
  Create a new MQC handle
  @return a new MQC handle if successful, returns nullptr otherwise
  */
-mqc_t* mqc_create(void);
+grk_mqc* mqc_create(void);
 /**
  Destroy a previously created MQC handle
  @param mqc MQC handle to destroy
  */
-void mqc_destroy(mqc_t *mqc);
+void mqc_destroy(grk_mqc *mqc);
 /**
  Return the number of bytes written/read since initialisation
  @param mqc MQC handle
  @return the number of bytes already encoded
  */
-int32_t mqc_numbytes(mqc_t *mqc);
+int32_t mqc_numbytes(grk_mqc *mqc);
 /**
  Reset the states of all the context of the coder/decoder
  (each context is set to a state where 0 and 1 are more or less equiprobable)
  @param mqc MQC handle
  */
-void mqc_resetstates(mqc_t *mqc);
+void mqc_resetstates(grk_mqc *mqc);
 
 /**
  Initialize the encoder
  @param mqc MQC handle
  @param bp Pointer to the start of the buffer where the bytes will be written
  */
-void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
+void mqc_init_enc(grk_mqc *mqc, uint8_t *bp);
 /**
  Set the current context used for coding/decoding
  @param mqc MQC handle
  @param ctxno Number that identifies the context
  */
-void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno);
+void mqc_setcurctx(grk_mqc *mqc, uint8_t ctxno);
 /**
  Encode a symbol using the MQ-coder
  @param mqc MQC handle
  @param d The symbol to be encoded (0 or 1)
  */
-void mqc_encode(mqc_t *mqc, uint8_t d);
+void mqc_encode(grk_mqc *mqc, uint8_t d);
 
 
-void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush);
+void mqc_big_flush(grk_mqc *mqc, uint32_t mode_switch, bool bypassFlush);
 
 /**
  BYPASS mode switch, initialization operation.
@@ -198,7 +198,7 @@ void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush);
  <h2>Not fully implemented and tested !!</h2>
  @param mqc MQC handle
  */
-void mqc_bypass_init_enc(mqc_t *mqc);
+void mqc_bypass_init_enc(grk_mqc *mqc);
 /**
  BYPASS mode switch, coding operation.
  JPEG 2000 p 505.
@@ -206,32 +206,32 @@ void mqc_bypass_init_enc(mqc_t *mqc);
  @param mqc MQC handle
  @param d The symbol to be encoded (0 or 1)
  */
-void mqc_bypass_enc(mqc_t *mqc, uint8_t d);
+void mqc_bypass_enc(grk_mqc *mqc, uint8_t d);
 
 /**
  RESTART mode switch (TERMALL) reinitialisation
  @param mqc MQC handle
  */
-void mqc_restart_init_enc(mqc_t *mqc);
+void mqc_restart_init_enc(grk_mqc *mqc);
 
 /**
  SEGMARK mode switch (SEGSYM)
  @param mqc MQC handle
  */
-void mqc_segmark_enc(mqc_t *mqc);
+void mqc_segmark_enc(grk_mqc *mqc);
 /**
  Initialize the decoder
  @param mqc MQC handle
  @param bp Pointer to the start of the buffer from which the bytes will be read
  @param len Length of the input buffer
  */
-void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len);
+void mqc_init_dec(grk_mqc *mqc, uint8_t *bp, uint32_t len);
 /**
  Decode a symbol
  @param mqc MQC handle
  @return the decoded symbol (0 or 1)
  */
-uint8_t mqc_decode(mqc_t *const mqc);
+uint8_t mqc_decode(grk_mqc *const mqc);
 
 }
 

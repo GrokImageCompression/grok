@@ -60,8 +60,8 @@
 
 namespace grk {
 
-struct mqc_t;
-struct raw_t;
+struct grk_mqc;
+struct grk_raw;
 
 class t1_decode_base;
 

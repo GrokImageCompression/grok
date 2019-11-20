@@ -60,10 +60,10 @@
 
 namespace grk {
 
-typedef uint16_t flag_t;
+typedef uint16_t grk_flag;
 
-struct mqc_t;
-struct raw_t;
+struct grk_mqc;
+struct grk_raw;
 
 class t1_decode_base;
 
@@ -83,16 +83,16 @@ public:
 			override;
 	void postDecode(decodeBlockInfo *block) override;
 private:
-	flag_t *flags;
+	grk_flag *flags;
 	uint16_t flags_stride;
 
 	bool allocateBuffers(uint16_t w, uint16_t h);
 	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step_raw(flag_t *flagsp, int32_t *datap,
+	inline void sigpass_step_raw(grk_flag *flagsp, int32_t *datap,
 			int32_t oneplushalf, bool vsc);
-	inline void sigpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
+	inline void sigpass_step(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf);
-	inline void sigpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
+	inline void sigpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf, bool vsc);
 	void sigpass_raw(int32_t bpno, uint32_t mode_switch);
 	void sigpass(int32_t bpno, uint8_t orient);
@@ -101,21 +101,21 @@ private:
 	void refpass_raw(int32_t bpno, uint32_t mode_switch);
 	void refpass(int32_t bpno);
 	void refpass_vsc(int32_t bpno);
-	inline void refpass_step_raw(flag_t *flagsp, int32_t *datap,
+	inline void refpass_step_raw(grk_flag *flagsp, int32_t *datap,
 			int32_t poshalf, bool vsc);
-	inline void refpass_step(flag_t *flagsp, int32_t *datap, int32_t poshalf);
-	inline void refpass_step_vsc(flag_t *flagsp, int32_t *datap,
+	inline void refpass_step(grk_flag *flagsp, int32_t *datap, int32_t poshalf);
+	inline void refpass_step_vsc(grk_flag *flagsp, int32_t *datap,
 			int32_t poshalf, bool vsc);
 
-	void clnpass_step_partial(flag_t *flagsp, int32_t *datap,
+	void clnpass_step_partial(grk_flag *flagsp, int32_t *datap,
 			int32_t oneplushalf);
-	void clnpass_step(flag_t *flagsp, int32_t *datap, uint8_t orient,
+	void clnpass_step(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf);
-	void clnpass_step_vsc(flag_t *flagsp, int32_t *datap, uint8_t orient,
+	void clnpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf, int32_t partial, bool vsc);
 	void clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
 
-	void updateflags(flag_t *flagsp, uint32_t s, uint32_t stride);
+	void updateflags(grk_flag *flagsp, uint32_t s, uint32_t stride);
 };
 
 }

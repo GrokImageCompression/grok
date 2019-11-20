@@ -19,21 +19,21 @@
 
 namespace grk {
 
-grok_vec_t::grok_vec_t() :
+grk_vec::grk_vec() :
 		data(nullptr) {
 }
 
-bool grok_vec_t::init() {
+bool grk_vec::init() {
 	if (data)
 		return true;
 	data = new std::vector<grk_min_buf*>();
 	return data ? true : false;
 }
-bool grok_vec_t::push_back(grk_min_buf *value) {
+bool grk_vec::push_back(grk_min_buf *value) {
 	data->push_back(value);
 	return true;
 }
-void* grok_vec_t::get(size_t index) {
+void* grk_vec::get(size_t index) {
 	if (!data)
 		return nullptr;
 	assert(index < data->size());
@@ -42,17 +42,17 @@ void* grok_vec_t::get(size_t index) {
 	}
 	return data->operator[](index);
 }
-int32_t grok_vec_t::size() {
+int32_t grk_vec::size() {
 	if (!data)
 		return 0;
 	return (int32_t) data->size();
 }
-void* grok_vec_t::back() {
+void* grk_vec::back() {
 	if (!data)
 		return nullptr;
 	return data->back();
 }
-void grok_vec_t::cleanup() {
+void grk_vec::cleanup() {
 	if (!data)
 		return;
 	for (auto it = data->begin(); it != data->end(); ++it) {
@@ -63,7 +63,7 @@ void grok_vec_t::cleanup() {
 	data = nullptr;
 }
 
-bool grok_vec_t::copy_to_contiguous_buffer(uint8_t *buffer) {
+bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 	if (!buffer) {
 		return false;
 	}
@@ -76,7 +76,7 @@ bool grok_vec_t::copy_to_contiguous_buffer(uint8_t *buffer) {
 	}
 	return true;
 }
-bool grok_vec_t::push_back(uint8_t *buf, uint16_t len) {
+bool grk_vec::push_back(uint8_t *buf, uint16_t len) {
 	if (!buf || !len)
 		return false;
 
@@ -91,7 +91,7 @@ bool grok_vec_t::push_back(uint8_t *buf, uint16_t len) {
 	return true;
 }
 
-uint16_t grok_vec_t::get_len(void) {
+uint16_t grk_vec::get_len(void) {
 	uint16_t len = 0;
 	if (!data)
 		return 0;

@@ -861,10 +861,10 @@ GROK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
 
 /* wrapper for user's encode callback */
 void grok_plugin_internal_encode_callback(
-		plugin_encode_user_callback_info_t *info) {
+		plugin_encode_user_callback_info *info) {
 	/* set code block data etc on code object */
-	grok_plugin_encode_user_callback_info_t opjInfo;
-	memset(&opjInfo, 0, sizeof(grok_plugin_encode_user_callback_info_t));
+	grk_plugin_encode_user_callback_info opjInfo;
+	memset(&opjInfo, 0, sizeof(grk_plugin_encode_user_callback_info));
 	opjInfo.input_file_name = info->input_file_name;
 	opjInfo.outputFileNameIsRelative = info->outputFileNameIsRelative;
 	opjInfo.output_file_name = info->output_file_name;
@@ -959,8 +959,8 @@ grok_plugin_decode_callback decodeCallback = 0;
 int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 	int32_t rc = -1;
 	/* set code block data etc on code object */
-	grok_plugin_decode_callback_info_t grokInfo;
-	memset(&grokInfo, 0, sizeof(grok_plugin_decode_callback_info_t));
+	grk_plugin_decode_callback_info grokInfo;
+	memset(&grokInfo, 0, sizeof(grk_plugin_decode_callback_info));
 	grokInfo.init_decoders_func = info->init_decoders_func;
 	grokInfo.input_file_name =
 			info->inputFile.empty() ? nullptr : info->inputFile.c_str();

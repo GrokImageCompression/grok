@@ -22,7 +22,7 @@
 
 extern "C" {
 
-struct grok_option_t {
+struct grk_option {
 	const char *name;
 	int has_arg;
 	int *flag;
@@ -41,7 +41,7 @@ extern char *grok_optarg;
 
 extern int grok_getopt(int nargc, char *const *nargv, const char *ostr);
 extern int grok_getopt_long(int argc, char * const argv[], const char *optstring,
-	const grok_option_t *longopts, int totlen);
+	const grk_option *longopts, int totlen);
 
 }
 
