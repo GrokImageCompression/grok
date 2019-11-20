@@ -93,9 +93,9 @@ public:
 
 	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
 
-	void decode_line(dwt_t* restrict v);
-	void interleave_v(dwt_t* restrict v, int32_t* restrict a, int32_t x);
-	void interleave_h(dwt_t* restrict h, int32_t* restrict a);
+	void decode_line(grk_dwt* restrict v);
+	void interleave_v(grk_dwt* restrict v, int32_t* restrict a, int32_t x);
+	void interleave_h(grk_dwt* restrict h, int32_t* restrict a);
 private:
 
 	void region_decode_1d(grk_dwt53 *buffer);

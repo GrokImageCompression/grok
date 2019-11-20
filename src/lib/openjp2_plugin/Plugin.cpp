@@ -63,7 +63,7 @@ extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info_t initInfo) {
 
 extern "C"  PLUGIN_API int32_t plugin_encode( grk_cparameters  *  encode_parameters,
 											grk::PLUGIN_ENCODE_USER_CALLBACK userCallback) {
-	grk::plugin_encode_user_callback_info_t dummy;
+	grk::plugin_encode_user_callback_info dummy;
 	dummy.error_code = 0;
 	return -1;
 }
@@ -118,11 +118,11 @@ extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
 	return GROK_PLUGIN_STATE_NO_DEBUG;
 }
 
-extern "C"  PLUGIN_API void plugin_debug_next_cxd(grk::plugin_debug_mqc_t *mqc, uint32_t d) {
+extern "C"  PLUGIN_API void plugin_debug_next_cxd(grk::grk_plugin_debug_mqc *mqc, uint32_t d) {
 
 }
 
-extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(grk::plugin_debug_mqc_t *mqc) {
+extern "C"  PLUGIN_API void plugin_debug_mqc_next_plane(grk::grk_plugin_debug_mqc *mqc) {
 
 }
 

@@ -306,7 +306,7 @@ static const char *plugin_debug_mqc_next_plane_method_name =
 		"plugin_debug_mqc_next_plane";
 
 // Debug: these methods wrap plugin methods for parsing a context stream
-void mqc_next_plane(plugin_debug_mqc_t *mqc) {
+void mqc_next_plane(grk_plugin_debug_mqc *mqc) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_DEBUG_MQC_NEXT_PLANE func = nullptr;
 	mgr = minpf_get_plugin_manager();
@@ -320,7 +320,7 @@ void mqc_next_plane(plugin_debug_mqc_t *mqc) {
 	}
 }
 
-void nextCXD(plugin_debug_mqc_t *mqc, uint32_t d) {
+void nextCXD(grk_plugin_debug_mqc *mqc, uint32_t d) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_DEBUG_MQC_NEXT_CXD func = nullptr;
 	mgr = minpf_get_plugin_manager();

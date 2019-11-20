@@ -81,12 +81,12 @@
 #include "common.h"
 
 
-typedef struct dircnt {
+typedef struct _dircnt {
     /** Buffer for holding images read from Directory*/
     char *filename_buf;
     /** Pointer to the buffer*/
     char **filename;
-} dircnt_t;
+} dircnt;
 
 
 typedef struct img_folder {
@@ -105,9 +105,9 @@ typedef struct img_folder {
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
 static int get_num_images(char *imgdirpath);
-static int load_images(dircnt_t *dirptr, char *imgdirpath);
+static int load_images(dircnt *dirptr, char *imgdirpath);
 static int get_file_format(const char *filename);
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters);
+static char get_next_file(int imageno,dircnt *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters);
 static int infile_format(const char *fname);
 
 static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol);
@@ -164,7 +164,7 @@ static int get_num_images(char *imgdirpath)
 }
 
 /* -------------------------------------------------------------------------- */
-static int load_images(dircnt_t *dirptr, char *imgdirpath)
+static int load_images(dircnt *dirptr, char *imgdirpath)
 {
     DIR *dir;
     struct dirent* content;
@@ -211,7 +211,7 @@ static int get_file_format(const char *filename)
 }
 
 /* -------------------------------------------------------------------------- */
-static char get_next_file(int imageno,dircnt_t *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters)
+static char get_next_file(int imageno,dircnt *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters)
 {
     char image_filename[GRK_PATH_LEN], infilename[3*GRK_PATH_LEN],outfilename[3*GRK_PATH_LEN],temp_ofname[GRK_PATH_LEN];
     char *temp_p, temp1[GRK_PATH_LEN]="";
@@ -291,7 +291,7 @@ static int infile_format(const char *fname)
 static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol)
 {
     int totlen, c;
-    grok_option_t long_option[]= {
+    grk_option long_option[]= {
         {"ImgDir",REQ_ARG, nullptr ,'y'}
     };
     const char optlist[] = "i:o:f:hv";
@@ -441,7 +441,7 @@ int main(int argc, char *argv[])
 
     int32_t num_images, imageno;
     img_fol_t img_fol;
-    dircnt_t *dirptr = nullptr;
+    dircnt *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 
     grk_initialize(nullptr,0);
@@ -469,7 +469,7 @@ int main(int argc, char *argv[])
 			goto cleanup;
 		}
 
-        dirptr=(dircnt_t*)malloc(sizeof(dircnt_t));
+        dirptr=(dircnt*)malloc(sizeof(dircnt));
         if(dirptr) {
             dirptr->filename_buf = (char*)malloc((size_t)num_images*GRK_PATH_LEN*sizeof(char));	/* Stores at max 10 image file names*/
 			if (!dirptr->filename_buf) {

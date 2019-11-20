@@ -69,7 +69,7 @@ const uint16_t A_MIN = 0x8000;
  ERTERM mode switch (PTERM)
  @param mqc MQC handle
  */
-static void mqc_flush_erterm(mqc_t *mqc);
+static void mqc_flush_erterm(grk_mqc *mqc);
 
 
 /**
@@ -77,20 +77,20 @@ static void mqc_flush_erterm(mqc_t *mqc);
  <h2>Not fully implemented and tested !!</h2>
  @param mqc MQC handle
  */
-static void mqc_bypass_flush_enc(mqc_t *mqc);
+static void mqc_bypass_flush_enc(grk_mqc *mqc);
 
 /**
  Flush the encoder, so that all remaining data is written
  @param mqc MQC handle
  */
-static void mqc_flush(mqc_t *mqc);
+static void mqc_flush(grk_mqc *mqc);
 
 /**
  Output a byte, doing bit-stuffing if necessary.
  After a 0xff byte, the next byte must be smaller than 0x90.
  @param mqc MQC handle
  */
-static void mqc_byteout(mqc_t *mqc);
+static void mqc_byteout(grk_mqc *mqc);
 /**
  Renormalize mqc->A and mqc->C while encoding, so that mqc->A stays between 0x8000 and 0x10000
  @param mqc MQC handle
@@ -110,37 +110,37 @@ static void mqc_byteout(mqc_t *mqc);
  Fill mqc->C with 1's for flushing
  @param mqc MQC handle
  */
-static void mqc_setbits(mqc_t *mqc);
+static void mqc_setbits(grk_mqc *mqc);
 /**
  Set the state of a particular context
  @param mqc MQC handle
  @param ctxno Number that identifies the context
  @param prob Number that identifies the probability of the symbols for the new state of the context
  */
-static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t prob);
+static void mqc_setstate(grk_mqc *mqc, uint8_t ctxno, uint8_t prob);
 
 /**
  FIXME DOC
  @param mqc MQC handle
  @return
  */
-static inline uint8_t mqc_mpsexchange(mqc_t *const mqc);
+static inline uint8_t mqc_mpsexchange(grk_mqc *const mqc);
 /**
  FIXME DOC
  @param mqc MQC handle
  @return
  */
-static inline uint8_t mqc_lpsexchange(mqc_t *const mqc);
+static inline uint8_t mqc_lpsexchange(grk_mqc *const mqc);
 /**
  Input a byte
  @param mqc MQC handle
  */
-static inline void mqc_bytein(mqc_t *const mqc);
+static inline void mqc_bytein(grk_mqc *const mqc);
 /**
  Renormalize mqc->A and mqc->C while decoding
  @param mqc MQC handle
  */
-static inline void mqc_renormd(mqc_t *const mqc);
+static inline void mqc_renormd(grk_mqc *const mqc);
 /*@}*/
 
 /*@}*/
@@ -149,7 +149,7 @@ static inline void mqc_renormd(mqc_t *const mqc);
 /* <summary> */
 /* This array defines all the possible states for a context. */
 /* </summary> */
-const mqc_state_t mqc_states[] = {
+const grk_mqc_state mqc_states[] = {
 		{ 0x5601,  2,3 },
 		{ 0x5601 |  HIGH_BIT, 3, 2 },
 		{ 0x3401,  4, 12 },
@@ -254,7 +254,7 @@ const mqc_state_t mqc_states[] = {
 
 // easy MQ codeword termination
 // See Taubman and Marcellin p 496 for details
-static void mqc_flush_erterm(mqc_t *mqc) {
+static void mqc_flush_erterm(grk_mqc *mqc) {
 	int32_t n = (int32_t) (27 - 15 - mqc->COUNT);
 	mqc->C <<= mqc->COUNT;
 	while (n > 0) {
@@ -269,7 +269,7 @@ static void mqc_flush_erterm(mqc_t *mqc) {
 	}
 }
 
-static void mqc_byteout(mqc_t *mqc) {
+static void mqc_byteout(grk_mqc *mqc) {
 	assert(mqc->bp >= mqc->start - 1);
 	if (*mqc->bp == 0xff) {
 		mqc->bp++;
@@ -300,16 +300,16 @@ static void mqc_byteout(mqc_t *mqc) {
 	}
 }
 
-static void mqc_setbits(mqc_t *mqc) {
+static void mqc_setbits(grk_mqc *mqc) {
 	uint32_t tempc = mqc->C + mqc->A;
 	mqc->C |= 0xffff;
 	if (mqc->C >= tempc) {
 		mqc->C -= A_MIN;
 	}
 }
-static inline uint8_t mqc_mpsexchange(mqc_t *const mqc) {
+static inline uint8_t mqc_mpsexchange(grk_mqc *const mqc) {
 	uint8_t d;
-	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const grk_mqc_state *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	if (mqc->A < (curctx->qeval & PROB_MASK)) {
 		d = (uint8_t) ((curctx->qeval>>MPS_SHIFT)^1);
 		mqc->ctxs[mqc->curctx] = curctx->nlps;
@@ -319,9 +319,9 @@ static inline uint8_t mqc_mpsexchange(mqc_t *const mqc) {
 	}
 	return d;
 }
-static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
+static inline uint8_t mqc_lpsexchange(grk_mqc *const mqc) {
 	uint8_t d;
-	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const grk_mqc_state *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
 	if (mqc->A < qeval) {
 		mqc->A = qeval;
@@ -334,7 +334,7 @@ static inline uint8_t mqc_lpsexchange(mqc_t *const mqc) {
 	}
 	return d;
 }
-static void mqc_bytein(mqc_t *const mqc) {
+static void mqc_bytein(grk_mqc *const mqc) {
 	uint8_t nextByte = mqc->bp[1];
 	if (mqc->currentByteIs0xFF) {
 		if (nextByte > 0x8F) {
@@ -355,7 +355,7 @@ static void mqc_bytein(mqc_t *const mqc) {
 	}
 	mqc->currentByteIs0xFF = (nextByte == 0xFF);
 }
-static inline void mqc_renormd(mqc_t *const mqc) {
+static inline void mqc_renormd(grk_mqc *const mqc) {
 #ifdef __AVX2__
   	if (mqc->COUNT == 0)
 		mqc_bytein(mqc);
@@ -392,7 +392,7 @@ static inline void mqc_renormd(mqc_t *const mqc) {
 #endif
 }
 
-static void mqc_flush(mqc_t *mqc) {
+static void mqc_flush(grk_mqc *mqc) {
 	mqc_setbits(mqc);
 	mqc->C <<= mqc->COUNT;
 	mqc_byteout(mqc);
@@ -403,7 +403,7 @@ static void mqc_flush(mqc_t *mqc) {
 		mqc->bp++;
 	}
 }
-static void mqc_bypass_flush_enc(mqc_t *mqc) {
+static void mqc_bypass_flush_enc(grk_mqc *mqc) {
 	assert(mqc->bp >= mqc->start - 1);
 	uint8_t bit_padding = 0;
 	if (mqc->COUNT != 8) {
@@ -420,7 +420,7 @@ static void mqc_bypass_flush_enc(mqc_t *mqc) {
 	}
 }
 
-static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t prob) {
+static void mqc_setstate(grk_mqc *mqc, uint8_t ctxno, uint8_t prob) {
 	mqc->ctxs[ctxno] = (uint8_t)((prob << 1));
 }
 
@@ -430,23 +430,23 @@ static void mqc_setstate(mqc_t *mqc, uint8_t ctxno, uint8_t prob) {
  ==========================================================
  */
 
-raw_t* raw_create(void) {
-	raw_t *raw = (raw_t*) grok_malloc(sizeof(raw_t));
+grk_raw* raw_create(void) {
+	grk_raw *raw = (grk_raw*) grok_malloc(sizeof(grk_raw));
 	return raw;
 }
-void raw_destroy(raw_t *raw) {
+void raw_destroy(grk_raw *raw) {
 	if (raw) {
 		grok_free(raw);
 	}
 }
-void raw_init_dec(raw_t *raw, uint8_t *bp, uint32_t len) {
+void raw_init_dec(grk_raw *raw, uint8_t *bp, uint32_t len) {
 	raw->start = bp;
 	raw->lenmax = len;
 	raw->len = 0;
 	raw->C = 0;
 	raw->COUNT = 0;
 }
-uint8_t raw_decode(raw_t *raw) {
+uint8_t raw_decode(grk_raw *raw) {
 	if (raw->COUNT == 0) {
 		raw->COUNT = 8;
 		if (raw->len == raw->lenmax) {
@@ -462,7 +462,7 @@ uint8_t raw_decode(raw_t *raw) {
 	raw->COUNT--;
 	return ((uint32_t) raw->C >> raw->COUNT) & 0x01;
 }
-void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
+void mqc_setcurctx(grk_mqc *mqc, uint8_t ctxno) {
 #ifdef PLUGIN_DEBUG_ENCODE
 	if (mqc->debug_mqc.debug_state & GROK_PLUGIN_STATE_DEBUG) {
 		mqc->debug_mqc.context_number = ctxno;
@@ -470,22 +470,22 @@ void mqc_setcurctx(mqc_t *mqc, uint8_t ctxno) {
 #endif
 	mqc->curctx = ctxno;
 }
-mqc_t* mqc_create(void) {
-	return (mqc_t*) grok_calloc(1, sizeof(mqc_t));
+grk_mqc* mqc_create(void) {
+	return (grk_mqc*) grok_calloc(1, sizeof(grk_mqc));
 }
-void mqc_destroy(mqc_t *mqc) {
+void mqc_destroy(grk_mqc *mqc) {
 	if (mqc) {
 		grok_free(mqc);
 	}
 }
 // beware: always outputs ONE LESS than actual number of encoded bytes, until after flush is called.
 // After flush, the result returned is correct.
-int32_t mqc_numbytes(mqc_t *mqc) {
+int32_t mqc_numbytes(grk_mqc *mqc) {
 	ptrdiff_t diff = mqc->bp - mqc->start;
 	assert(diff >= -1);
 	return (int32_t) diff;
 }
-void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
+void mqc_init_enc(grk_mqc *mqc, uint8_t *bp) {
 	mqc_resetstates(mqc);
 	mqc_setcurctx(mqc, 0);
 	mqc->A = A_MIN;
@@ -503,14 +503,14 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp) {
 	}
 #endif
 }
-void mqc_encode(mqc_t *mqc, uint8_t d) {
+void mqc_encode(grk_mqc *mqc, uint8_t d) {
 #ifdef PLUGIN_DEBUG_ENCODE
 	if ((mqc->debug_mqc.debug_state  & GROK_PLUGIN_STATE_DEBUG) &&
 		!(mqc->debug_mqc.debug_state & GROK_PLUGIN_STATE_PRE_TR1)) {
 		nextCXD(&mqc->debug_mqc, d);
 	}
 #endif
-	const mqc_state_t *curctx = mqc_states + mqc->ctxs[mqc->curctx];
+	const grk_mqc_state *curctx = mqc_states + mqc->ctxs[mqc->curctx];
 	if ((curctx->qeval>>MPS_SHIFT)== d) {
 		//BEGIN codemps
 		auto qeval = (uint16_t)(curctx->qeval & PROB_MASK);
@@ -618,7 +618,7 @@ void mqc_encode(mqc_t *mqc, uint8_t d) {
 	}
 }
 
-void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush) {
+void mqc_big_flush(grk_mqc *mqc, uint32_t mode_switch, bool bypassFlush) {
 	if (bypassFlush) {
 		mqc_bypass_flush_enc(mqc);
 	}
@@ -629,7 +629,7 @@ void mqc_big_flush(mqc_t *mqc, uint32_t mode_switch, bool bypassFlush) {
 		mqc_flush(mqc);
 }
 
-void mqc_bypass_init_enc(mqc_t *mqc) {
+void mqc_bypass_init_enc(grk_mqc *mqc) {
 	mqc->C = 0;
 	mqc->COUNT = 8;
 	//note: mqc->bp is guaranteed to be greater than mqc->start, since we have already performed
@@ -639,7 +639,7 @@ void mqc_bypass_init_enc(mqc_t *mqc) {
 		mqc->COUNT = 7;
 	}
 }
-void mqc_bypass_enc(mqc_t *mqc, uint8_t d) {
+void mqc_bypass_enc(grk_mqc *mqc, uint8_t d) {
 	mqc->COUNT--;
 	mqc->C += (uint32_t) d << mqc->COUNT;
 	if (mqc->COUNT == 0) {
@@ -655,7 +655,7 @@ void mqc_bypass_enc(mqc_t *mqc, uint8_t d) {
 	}
 }
 
-void mqc_restart_init_enc(mqc_t *mqc) {
+void mqc_restart_init_enc(grk_mqc *mqc) {
 	mqc_setcurctx(mqc, 0);
 	mqc->A = A_MIN;
 	mqc->C = 0;
@@ -668,13 +668,13 @@ void mqc_restart_init_enc(mqc_t *mqc) {
 	}
 }
 
-void mqc_segmark_enc(mqc_t *mqc) {
+void mqc_segmark_enc(grk_mqc *mqc) {
 	mqc_setcurctx(mqc, 18);
 	for (uint8_t i = 1; i < 5; i++) {
 		mqc_encode(mqc, i & 1);
 	}
 }
-void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len) {
+void mqc_init_dec(grk_mqc *mqc, uint8_t *bp, uint32_t len) {
 	mqc_setcurctx(mqc, 0);
 	mqc->start = bp;
 	mqc->bp = bp;
@@ -688,7 +688,7 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len) {
 	mqc->MIN_A_C = 0;
 	mqc->Q_SUM = 0;
 }
-uint8_t mqc_decode(mqc_t *const mqc) {
+uint8_t mqc_decode(grk_mqc *const mqc) {
 	uint32_t Q_SUM = (uint16_t) (mqc->Q_SUM + ((mqc_states + mqc->ctxs[mqc->curctx])->qeval & PROB_MASK) );
 	if (mqc->MIN_A_C >= (uint16_t) Q_SUM) {
 		mqc->Q_SUM = (uint16_t) Q_SUM;
@@ -713,7 +713,7 @@ uint8_t mqc_decode(mqc_t *const mqc) {
 	return d;
 }
 
-void mqc_resetstates(mqc_t *mqc) {
+void mqc_resetstates(grk_mqc *mqc) {
 	uint32_t i;
 	for (i = 0; i < MQC_NUMCTXS; i++) {
 		mqc->ctxs[i] = 0;

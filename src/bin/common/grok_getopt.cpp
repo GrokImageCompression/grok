@@ -132,7 +132,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
 
 
 int grok_getopt_long(int argc, char * const argv[], const char *optstring,
-                    const grok_option_t *longopts, int totlen)
+                    const grk_option *longopts, int totlen)
 {
     static int lastidx,lastofs;
     const char *tmp;
@@ -162,7 +162,7 @@ again:
 
     if (argv[grok_optind][0]=='-') {	/* long option */
         char* arg=argv[grok_optind]+1;
-        const grok_option_t* o;
+        const grk_option* o;
         o=longopts;
         len=sizeof(longopts[0]);
 

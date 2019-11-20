@@ -22,8 +22,8 @@ namespace grk {
 
 struct grk_min_buf;
 
-struct grok_vec_t {
-	grok_vec_t();
+struct grk_vec {
+	grk_vec();
 	bool init();
 	bool push_back(grk_min_buf* value);
 	void* get(size_t index);

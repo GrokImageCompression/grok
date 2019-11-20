@@ -180,7 +180,7 @@ struct grk_tcd_cblk_dec {
 	void cleanup();
 	uint8_t *data;					// pointer to plugin data.
 	uint32_t dataSize; /* size of data buffer */
-	grok_vec_t seg_buffers;
+	grk_vec seg_buffers;
 	grk_tcd_seg *segs; /* information on segments */
 	uint32_t x0, y0, x1, y1; /* position: left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numbps;
