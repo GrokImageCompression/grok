@@ -497,7 +497,7 @@ static bool bmp_read_rle4_data(FILE* INPUT, uint8_t* pData, uint32_t stride, uin
 	while (y < height) {
 		int c = getc(INPUT);
 		if (c == EOF) 
-			break;
+			return false;
 
 		if (c) {/* encoded mode */
 			int j;
