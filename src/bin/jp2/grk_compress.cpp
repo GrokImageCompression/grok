@@ -1110,14 +1110,8 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 
-		if (modeArg.isSet()) {
-			int value = modeArg.getValue();
-			for (uint32_t i = 0; i <= 5; i++) {
-				int cache = value & (1 << i);
-				if (cache)
-					parameters->mode |= (1 << i);
-			}
-		}
+		if (modeArg.isSet())
+			parameters->mode_switch = modeArg.getValue() & 0X3F;
 
 		if (captureResArg.isSet()) {
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,
