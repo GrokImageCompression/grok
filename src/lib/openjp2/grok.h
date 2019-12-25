@@ -397,7 +397,7 @@ typedef struct _grk_cparameters {
 	bool cp_is_binary_comment[GRK_NUM_COMMENTS_SUPPORTED];
 	size_t cp_num_comments;
 	/** csty : coding style */
-	uint32_t csty;
+	uint8_t csty;
 	/** progression order (default GRK_LRCP) */
 	GRK_PROG_ORDER prog_order;
 	/** progression order changes */
@@ -417,7 +417,7 @@ typedef struct _grk_cparameters {
 	/** initial code block height, default to 64 */
 	uint32_t cblockh_init;
 	/** mode switch */
-	uint32_t mode;
+	uint8_t mode_switch;
 	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
 	uint32_t irreversible;
 	/** region of interest: affected component in [0..3]; -1 indicates no ROI */
@@ -558,7 +558,7 @@ typedef struct _grk_header_info {
 	// coding style can be specified in main header COD segment,
 	// tile header COD segment, and tile component COC segment.
 	// !!! Assume that coding style does not vary across tile components !!!
-	uint32_t csty;
+	uint8_t csty;
 	// mode switch is specified in main header COD segment, and can
 	// be overridden in a tile header. !!! Assume that mode does
 	// not vary across tiles !!!
@@ -999,7 +999,7 @@ typedef struct _grk_tccp_info {
 	/** component index */
 	uint32_t compno;
 	/** coding style */
-	uint32_t csty;
+	uint8_t csty;
 	/** number of resolutions */
 	uint32_t numresolutions;
 	/** code-blocks width */
@@ -1007,17 +1007,17 @@ typedef struct _grk_tccp_info {
 	/** code-blocks height */
 	uint32_t cblkh;
 	/** code block mode */
-	uint32_t mode_switch;
+	uint8_t mode_switch;
 	/** discrete wavelet transform identifier */
-	uint32_t qmfbid;
+	uint8_t qmfbid;
 	/** quantisation style */
-	uint32_t qntsty;
+	uint8_t qntsty;
 	/** stepsizes used for quantization */
 	uint32_t stepsizes_mant[GRK_J2K_MAXBANDS];
 	/** stepsizes used for quantization */
 	uint32_t stepsizes_expn[GRK_J2K_MAXBANDS];
 	/** number of guard bits */
-	uint32_t numgbits;
+	uint8_t numgbits;
 	/** Region Of Interest shift */
 	uint32_t roishift;
 	/** precinct width */

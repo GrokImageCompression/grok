@@ -195,7 +195,7 @@ struct grk_stepsize {
  */
 struct grk_tccp {
 	/** coding style */
-	uint32_t csty;
+	uint8_t csty;
 	/** number of resolutions */
 	uint32_t numresolutions;
 	/** log2(code-blocks width) */
@@ -211,13 +211,13 @@ struct grk_tccp {
 	// true if quantization marker was read from tile header
 	bool fromTileHeader;
 	/** quantisation style */
-	uint32_t qntsty;
+	uint8_t qntsty;
 	/** stepsizes used for quantization */
 	grk_stepsize stepsizes[GRK_J2K_MAXBANDS];
 	// number of step sizes read from QCC marker
-	uint32_t numStepSizes;
+	uint8_t numStepSizes;
 	/** number of guard bits */
-	uint32_t numgbits;
+	uint8_t numgbits;
 	/** Region Of Interest shift */
 	uint32_t roishift;
 	/** precinct width (power of 2 exponent) */
