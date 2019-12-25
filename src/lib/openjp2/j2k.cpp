@@ -2405,7 +2405,7 @@ static bool j2k_read_coc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 
-	grok_read_bytes(p_header_data, &l_tcp->tccps[l_comp_no].csty, 1); /* Scoc */
+	grok_read_8(p_header_data, &l_tcp->tccps[l_comp_no].csty); /* Scoc */
 	++p_header_data;
 
 	if (!j2k_read_SPCod_SPCoc(p_j2k, l_comp_no, p_header_data, &header_size)) {
@@ -5260,7 +5260,7 @@ static void j2k_set_cinema_parameters( grk_cparameters  *parameters,
 	parameters->cblockh_init = 32;
 
 	/* Codeblock style: no mode switch enabled */
-	parameters->mode = 0;
+	parameters->mode_switch = 0;
 
 	/* No ROI */
 	parameters->roi_compno = -1;
@@ -5881,7 +5881,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 			tccp->numresolutions = parameters->numresolution;
 			tccp->cblkw = int_floorlog2(parameters->cblockw_init);
 			tccp->cblkh = int_floorlog2(parameters->cblockh_init);
-			tccp->mode_switch = parameters->mode;
+			tccp->mode_switch = parameters->mode_switch;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
 			tccp->qntsty =
 					parameters->irreversible ?
@@ -8523,20 +8523,20 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 	auto l_current_ptr = p_header_data;
 	grok_read_bytes(l_current_ptr, &l_tmp, 1);
 	++l_current_ptr;
-	auto qntsty = l_tmp & 0x1f;
+	uint8_t qntsty = l_tmp & 0x1f;
 	if (!ignore) {
 		l_tccp->fromQCC = fromQCC;
 		l_tccp->fromTileHeader = fromTileHeader;
 		l_tccp->qntsty = qntsty;
 		if (mainQCD)
 			l_tcp->main_qcd_qntsty = l_tccp->qntsty;
-		l_tccp->numgbits = l_tmp >> 5;
+		l_tccp->numgbits = (uint8_t)(l_tmp >> 5);
 		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
 			l_tccp->numStepSizes = 1;
 		} else {
 			l_tccp->numStepSizes =
 					(l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
-							(*header_size) : (*header_size) / 2;
+							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
 			if (l_tccp->numStepSizes > GRK_J2K_MAXBANDS) {
 				GROK_WARN(
 						"While reading QCD or QCC marker segment, "
