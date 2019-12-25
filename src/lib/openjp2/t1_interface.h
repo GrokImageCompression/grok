@@ -58,8 +58,8 @@ struct encodeBlockInfo {
 	uint32_t cblkno;
 	int32_t bandconst;
 	float stepsize;
-	uint32_t mode_switch;
-	uint32_t qmfbid;
+	uint8_t mode_switch;
+	uint8_t qmfbid;
 	uint32_t x, y; /* relative code block offset */
 	const double *mct_norms;
 #ifdef DEBUG_LOSSLESS_T1

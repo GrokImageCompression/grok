@@ -342,8 +342,8 @@ int16_t t1_encode::getnmsedec_ref(uint32_t x, uint32_t bitpos) {
 }
 
 double t1_encode::encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient,
-		uint32_t compno, uint32_t level, uint32_t qmfbid, double stepsize,
-		uint32_t mode_switch, uint32_t numcomps, const double *mct_norms,
+		uint32_t compno, uint32_t level, uint8_t qmfbid, double stepsize,
+		uint8_t mode_switch, uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps, uint32_t max, bool doRateControl) {
 	double cumwmsedec = 0.0;
 

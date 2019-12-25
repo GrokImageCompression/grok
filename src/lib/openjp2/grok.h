@@ -562,7 +562,7 @@ typedef struct _grk_header_info {
 	// mode switch is specified in main header COD segment, and can
 	// be overridden in a tile header. !!! Assume that mode does
 	// not vary across tiles !!!
-	uint32_t mode_switch;
+	uint8_t mode_switch;
 	/** initial precinct width */
 	uint32_t prcw_init[GRK_J2K_MAXRLVLS];
 	/** initial precinct height */
