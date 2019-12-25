@@ -25,7 +25,7 @@ namespace grk {
 struct decodeBlockInfo {
 	decodeBlockInfo() :
 			tilec(nullptr), tiledp(nullptr), cblk(nullptr), resno(0), bandno(0), stepsize(
-					0), roishift(0), mode_switch(0), qmfbid(0), x(0), y(0) {
+					0), roishift(0), cblk_sty(0), qmfbid(0), x(0), y(0) {
 	}
 	grk_tcd_tilecomp *tilec;
 	int32_t *tiledp;
@@ -34,7 +34,7 @@ struct decodeBlockInfo {
 	uint32_t bandno;
 	float stepsize;
 	uint32_t roishift;
-	uint32_t mode_switch;
+	uint32_t cblk_sty;
 	uint32_t qmfbid;
 	uint32_t x, y; /* relative code block offset */
 };
@@ -42,7 +42,7 @@ struct decodeBlockInfo {
 struct encodeBlockInfo {
 	encodeBlockInfo() :
 			tiledp(nullptr), cblk(nullptr), compno(0), resno(0), bandno(0), precno(
-					0), cblkno(0), bandconst(0), stepsize(0), mode_switch(0), qmfbid(
+					0), cblkno(0), bandconst(0), stepsize(0), cblk_sty(0), qmfbid(
 					0), x(0), y(0), mct_norms(nullptr),
 #ifdef DEBUG_LOSSLESS_T1
 		unencodedData(nullptr),
@@ -58,7 +58,7 @@ struct encodeBlockInfo {
 	uint32_t cblkno;
 	int32_t bandconst;
 	float stepsize;
-	uint8_t mode_switch;
+	uint8_t cblk_sty;
 	uint8_t qmfbid;
 	uint32_t x, y; /* relative code block offset */
 	const double *mct_norms;

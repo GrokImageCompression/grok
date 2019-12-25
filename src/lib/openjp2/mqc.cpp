@@ -618,12 +618,12 @@ void mqc_encode(grk_mqc *mqc, uint8_t d) {
 	}
 }
 
-void mqc_big_flush(grk_mqc *mqc, uint32_t mode_switch, bool bypassFlush) {
+void mqc_big_flush(grk_mqc *mqc, uint32_t cblk_sty, bool bypassFlush) {
 	if (bypassFlush) {
 		mqc_bypass_flush_enc(mqc);
 	}
 	/* Code switch "ERTERM" (i.e. PTERM) */
-	else if (mode_switch & J2K_CCP_CBLKSTY_PTERM)
+	else if (cblk_sty & J2K_CCP_CBLKSTY_PTERM)
 		mqc_flush_erterm(mqc);
 	else
 		mqc_flush(mqc);

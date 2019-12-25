@@ -417,7 +417,7 @@ typedef struct _grk_cparameters {
 	/** initial code block height, default to 64 */
 	uint32_t cblockh_init;
 	/** mode switch */
-	uint8_t mode_switch;
+	uint8_t cblk_sty;
 	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
 	uint32_t irreversible;
 	/** region of interest: affected component in [0..3]; -1 indicates no ROI */
@@ -562,7 +562,7 @@ typedef struct _grk_header_info {
 	// mode switch is specified in main header COD segment, and can
 	// be overridden in a tile header. !!! Assume that mode does
 	// not vary across tiles !!!
-	uint8_t mode_switch;
+	uint8_t cblk_sty;
 	/** initial precinct width */
 	uint32_t prcw_init[GRK_J2K_MAXRLVLS];
 	/** initial precinct height */
@@ -1007,7 +1007,7 @@ typedef struct _grk_tccp_info {
 	/** code-blocks height */
 	uint32_t cblkh;
 	/** code block mode */
-	uint8_t mode_switch;
+	uint8_t cblk_sty;
 	/** discrete wavelet transform identifier */
 	uint8_t qmfbid;
 	/** quantisation style */

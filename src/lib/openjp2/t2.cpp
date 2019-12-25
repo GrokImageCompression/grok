@@ -140,11 +140,11 @@ static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 /**
  @param cblk
  @param index
- @param mode_switch
+ @param cblk_sty
  @param first
  */
 static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-		uint8_t mode_switch, bool first);
+		uint8_t cblk_sty, bool first);
 
 /*@}*/
 
@@ -746,7 +746,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 
 			if (!l_cblk->numSegments) {
 				if (!t2_init_seg(l_cblk, l_segno,
-						p_tcp->tccps[p_pi->compno].mode_switch, true)) {
+						p_tcp->tccps[p_pi->compno].cblk_sty, true)) {
 					return false;
 				}
 			} else {
@@ -755,7 +755,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 						== l_cblk->segs[l_segno].maxpasses) {
 					++l_segno;
 					if (!t2_init_seg(l_cblk, l_segno,
-							p_tcp->tccps[p_pi->compno].mode_switch, false)) {
+							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
 				}
@@ -806,7 +806,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 				if (blockPassesInPacket > 0) {
 					++l_segno;
 					if (!t2_init_seg(l_cblk, l_segno,
-							p_tcp->tccps[p_pi->compno].mode_switch, false)) {
+							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
 				}
@@ -1668,7 +1668,7 @@ static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 }
 
 static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-		uint8_t mode_switch, bool first) {
+		uint8_t cblk_sty, bool first) {
 	grk_tcd_seg *seg = nullptr;
 	uint32_t l_nb_segs = index + 1;
 
@@ -1686,9 +1686,9 @@ static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 	seg = &cblk->segs[index];
 	seg->clear();
 
-	if (mode_switch & J2K_CCP_CBLKSTY_TERMALL) {
+	if (cblk_sty & J2K_CCP_CBLKSTY_TERMALL) {
 		seg->maxpasses = 1;
-	} else if (mode_switch & J2K_CCP_CBLKSTY_LAZY) {
+	} else if (cblk_sty & J2K_CCP_CBLKSTY_LAZY) {
 		if (first) {
 			seg->maxpasses = 10;
 		} else {

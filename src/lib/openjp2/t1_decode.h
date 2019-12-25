@@ -77,9 +77,9 @@ public:
 	 @param cblk Code-block coding parameters
 	 @param orient
 	 @param roishift Region of interest shifting value
-	 @param mode_switch encode mode switch
+	 @param cblk_sty encode mode switch
 	 */
-	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t mode_switch)
+	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
 			override;
 	void postDecode(decodeBlockInfo *block) override;
 private:
@@ -94,11 +94,11 @@ private:
 			int32_t oneplushalf);
 	inline void sigpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf, bool vsc);
-	void sigpass_raw(int32_t bpno, uint32_t mode_switch);
+	void sigpass_raw(int32_t bpno, uint32_t cblk_sty);
 	void sigpass(int32_t bpno, uint8_t orient);
 	void sigpass_vsc(int32_t bpno, uint8_t orient);
 
-	void refpass_raw(int32_t bpno, uint32_t mode_switch);
+	void refpass_raw(int32_t bpno, uint32_t cblk_sty);
 	void refpass(int32_t bpno);
 	void refpass_vsc(int32_t bpno);
 	inline void refpass_step_raw(grk_flag *flagsp, int32_t *datap,
@@ -113,7 +113,7 @@ private:
 			int32_t oneplushalf);
 	void clnpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
 			int32_t oneplushalf, int32_t partial, bool vsc);
-	void clnpass(int32_t bpno, uint8_t orient, uint32_t mode_switch);
+	void clnpass(int32_t bpno, uint8_t orient, uint32_t cblk_sty);
 
 	void updateflags(grk_flag *flagsp, uint32_t s, uint32_t stride);
 };

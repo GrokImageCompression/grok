@@ -203,7 +203,7 @@ struct grk_tccp {
 	/** log2(code-blocks height) */
 	uint32_t cblkh;
 	/** code-block mode */
-	uint8_t mode_switch;
+	uint8_t cblk_sty;
 	/** discrete wavelet transform identifier */
 	uint8_t qmfbid;
 	// true if quantization marker was read from QCC otherwise false

@@ -69,7 +69,7 @@ public:
 	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
 	double encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient, uint32_t compno,
 			uint32_t level, uint8_t qmfbid, double stepsize,
-			uint8_t mode_switch, uint32_t numcomps, const double *mct_norms,
+			uint8_t cblk_sty, uint32_t numcomps, const double *mct_norms,
 			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
 	uint32_t *data;
 private:
@@ -79,13 +79,13 @@ private:
 	 */
 	void sigpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
 			int32_t bpno, int32_t one, int32_t *nmsedec, uint8_t type,
-			uint32_t mode_switch);
+			uint32_t cblk_sty);
 
 	/**
 	 Encode significant pass
 	 */
 	void sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec, uint8_t type,
-			uint32_t mode_switch);
+			uint32_t cblk_sty);
 
 	/**
 	 Encode refinement pass
@@ -103,13 +103,13 @@ private:
 	 */
 	void clnpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
 			int32_t bpno, int32_t one, int32_t *nmsedec, uint32_t agg,
-			uint32_t runlen, uint32_t y, uint32_t mode_switch);
+			uint32_t runlen, uint32_t y, uint32_t cblk_sty);
 
 	/**
 	 Encode clean-up pass
 	 */
 	void clnpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
-			uint32_t mode_switch);
+			uint32_t cblk_sty);
 
 	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 			uint8_t orient, int32_t bpno, uint32_t qmfbid, double stepsize,
