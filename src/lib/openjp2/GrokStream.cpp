@@ -465,6 +465,9 @@ void grok_write_bytes(uint8_t *p_buffer, uint32_t value,
 		uint32_t nb_bytes) {
 	grok_write<uint32_t>(p_buffer, value, nb_bytes);
 }
+void grok_write_8(uint8_t *p_buffer, uint8_t value) {
+	*(p_buffer++) = value;
+}
 
 void grok_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes) {
 	grok_write<uint64_t>(p_buffer, value, nb_bytes);
@@ -498,6 +501,9 @@ template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
 void grok_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 		uint32_t nb_bytes) {
 	grok_read<uint32_t>(p_buffer, value, nb_bytes);
+}
+void grok_read_8(const uint8_t *p_buffer, uint8_t *value) {
+	*value = *(p_buffer++);
 }
 void grok_read_64(const uint8_t *p_buffer, uint64_t *value,
 		uint32_t nb_bytes) {
