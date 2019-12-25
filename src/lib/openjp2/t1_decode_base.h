@@ -81,10 +81,10 @@ public:
 	 @param cblk Code-block coding parameters
 	 @param orient
 	 @param roishift Region of interest shifting value
-	 @param mode_switch Code-block style
+	 @param cblk_sty Code-block style
 	 */
 	virtual bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
-			uint32_t mode_switch)=0;
+			uint32_t cblk_sty)=0;
 	virtual void postDecode(decodeBlockInfo *block)=0;
 
 	int32_t *dataPtr;

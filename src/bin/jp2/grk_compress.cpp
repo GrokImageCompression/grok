@@ -640,7 +640,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Image offset in reference grid coordinates",
 			false, "", "string", cmd);
 
-		ValueArg<uint32_t> modeArg("M", "Mode",
+		ValueArg<uint32_t> cblkSty("M", "Mode",
 			"Mode",
 			false, 0, "unsigned integer", cmd);
 
@@ -1110,8 +1110,8 @@ static int parse_cmdline_encoder_ex(int argc,
 			}
 		}
 
-		if (modeArg.isSet())
-			parameters->mode_switch = modeArg.getValue() & 0X3F;
+		if (cblkSty.isSet())
+			parameters->cblk_sty = cblkSty.getValue() & 0X3F;
 
 		if (captureResArg.isSet()) {
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,

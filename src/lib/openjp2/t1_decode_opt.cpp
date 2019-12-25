@@ -280,8 +280,8 @@ void t1_decode_opt::clnpass(int32_t bpno, uint8_t orient) {
 	}
 }
 bool t1_decode_opt::decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
-		uint32_t mode_switch) {
-	(void)mode_switch;
+		uint32_t cblk_sty) {
+	(void)cblk_sty;
 	initBuffers((uint16_t) (cblk->x1 - cblk->x0),
 			(uint16_t) (cblk->y1 - cblk->y0));
 	if (!cblk->seg_buffers.get_len())

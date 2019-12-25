@@ -34,7 +34,7 @@ t1_impl::t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		}
 	} else {
 		grk_tccp *tccp = &tcp->tccps[0];
-		if (!tccp->mode_switch)
+		if (!tccp->cblk_sty)
 			t1_decoder = new t1_decode_opt(maxCblkW, maxCblkH);
 		else
 			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
@@ -53,7 +53,7 @@ double t1_impl::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 	double dist = t1_encoder->encode_cblk(block->cblk, (uint8_t) block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
-			block->qmfbid, block->stepsize, block->mode_switch, tile->numcomps,
+			block->qmfbid, block->stepsize, block->cblk_sty, tile->numcomps,
 			block->mct_norms, block->mct_numcomps, max, doRateControl);
 #ifdef DEBUG_LOSSLESS_T1
 		t1_decode* t1Decode = new t1_decode(t1_encoder->w, t1_encoder->h);
@@ -104,7 +104,7 @@ double t1_impl::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 }
 bool t1_impl::decode(decodeBlockInfo *block) {
 	return t1_decoder->decode_cblk(block->cblk, (uint8_t) block->bandno,
-			block->mode_switch);
+			block->cblk_sty);
 }
 
 void t1_impl::postDecode(decodeBlockInfo *block) {

@@ -190,7 +190,7 @@ void mqc_setcurctx(grk_mqc *mqc, uint8_t ctxno);
 void mqc_encode(grk_mqc *mqc, uint8_t d);
 
 
-void mqc_big_flush(grk_mqc *mqc, uint32_t mode_switch, bool bypassFlush);
+void mqc_big_flush(grk_mqc *mqc, uint32_t cblk_sty, bool bypassFlush);
 
 /**
  BYPASS mode switch, initialization operation.

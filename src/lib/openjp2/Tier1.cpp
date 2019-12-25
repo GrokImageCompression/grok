@@ -71,7 +71,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 						block->compno = compno;
 						block->bandno = band->bandno;
 						block->cblk = cblk;
-						block->mode_switch = tccp->mode_switch;
+						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;
 						block->resno = resno;
 						block->bandconst = bandconst;
@@ -143,7 +143,7 @@ bool Tier1::prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
 					auto block = new decodeBlockInfo();
 					block->bandno = band->bandno;
 					block->cblk = cblk;
-					block->mode_switch = tccp->mode_switch;
+					block->cblk_sty = tccp->cblk_sty;
 					block->qmfbid = tccp->qmfbid;
 					block->resno = resno;
 					block->roishift = tccp->roishift;

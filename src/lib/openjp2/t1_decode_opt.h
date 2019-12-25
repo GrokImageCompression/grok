@@ -76,9 +76,9 @@ public:
 	 @param cblk Code-block coding parameters
 	 @param orient
 	 @param roishift Region of interest shifting value
-	 @param mode_switch Code-block style
+	 @param cblk_sty Code-block style
 	 */
-	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t mode_switch)
+	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
 			override;
 	void postDecode(decodeBlockInfo *block) override;
 private:
