@@ -8196,7 +8196,7 @@ static bool j2k_write_SPCod_SPCoc(grk_j2k *p_j2k, uint16_t tile_no,
 	}
 
 	/* SPcoc (G) */
-	if (!p_stream->write_byte((uint8_t) l_tccp->mode_switch)) {
+	if (!p_stream->write_byte(l_tccp->mode_switch)) {
 		return false;
 	}
 
@@ -8281,7 +8281,7 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	}
 
 	/* SPcoc (G) */
-	grok_read_bytes(l_current_ptr, &l_tccp->mode_switch, 1);
+	grok_read_8(l_current_ptr, &l_tccp->mode_switch);
 	++l_current_ptr;
 	if (l_tccp->mode_switch & 0xC0U) { /* 2 msb are reserved, assume we can't read */
 		GROK_ERROR(
@@ -8289,7 +8289,7 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 		return false;
 	}
 	/* SPcoc (H) */
-	grok_read_bytes(l_current_ptr, &l_tccp->qmfbid, 1);
+	grok_read_8(l_current_ptr, &l_tccp->qmfbid);
 	if (l_tccp->qmfbid > 1){
 		GROK_ERROR("Invalid qmfbid : %d. Should be either 0 or 1", l_tccp->qmfbid);
 		return false;

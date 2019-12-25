@@ -144,7 +144,7 @@ static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
  @param first
  */
 static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-		uint32_t mode_switch, bool first);
+		uint8_t mode_switch, bool first);
 
 /*@}*/
 
@@ -1668,7 +1668,7 @@ static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 }
 
 static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-		uint32_t mode_switch, bool first) {
+		uint8_t mode_switch, bool first) {
 	grk_tcd_seg *seg = nullptr;
 	uint32_t l_nb_segs = index + 1;
 

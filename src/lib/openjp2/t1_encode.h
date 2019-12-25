@@ -68,8 +68,8 @@ public:
 	void initBuffers(uint16_t w, uint16_t h);
 	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
 	double encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient, uint32_t compno,
-			uint32_t level, uint32_t qmfbid, double stepsize,
-			uint32_t mode_switch, uint32_t numcomps, const double *mct_norms,
+			uint32_t level, uint8_t qmfbid, double stepsize,
+			uint8_t mode_switch, uint32_t numcomps, const double *mct_norms,
 			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
 	uint32_t *data;
 private:
