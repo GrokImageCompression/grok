@@ -2094,7 +2094,7 @@ static bool j2k_read_com(grk_j2k *p_j2k, uint8_t *p_header_data,
 	p_j2k->m_cp.isBinaryComment[numComments] = (commentType == 0);
 	if (commentType > 1) {
 		GROK_WARN(
-				"j2k_read_com: Unrecognized comment type. Assuming IS 8859-15:1999 (Latin) values");
+				"j2k_read_com: Unrecognized comment type 0x%x. Assuming IS 8859-15:1999 (Latin) values", commentType);
 	}
 
 	p_header_data += 2;
