@@ -29,9 +29,6 @@
 #include "tiffiop.h"
 #include <stdio.h>
 
-#define TIFF_SIZE_T_MAX ((size_t) ~ ((size_t)0))
-#define TIFF_TMSIZE_T_MAX (tmsize_t)(TIFF_SIZE_T_MAX >> 1)
-
 int TIFFFillStrip(TIFF* tif, uint32 strip);
 int TIFFFillTile(TIFF* tif, uint32 tile);
 static int TIFFStartStrip(TIFF* tif, uint32 strip);
@@ -49,6 +46,8 @@ TIFFReadRawTile1(TIFF* tif, uint32 tile, void* buf, tmsize_t size, const char* m
 #define THRESHOLD_MULTIPLIER 10
 #define MAX_THRESHOLD (THRESHOLD_MULTIPLIER * THRESHOLD_MULTIPLIER * THRESHOLD_MULTIPLIER * INITIAL_THRESHOLD)
 
+#define TIFF_INT64_MAX ((((int64)0x7FFFFFFF) << 32) | 0xFFFFFFFF)
+
 /* Read 'size' bytes in tif_rawdata buffer starting at offset 'rawdata_offset'
  * Returns 1 in case of success, 0 otherwise. */
 static int TIFFReadAndRealloc( TIFF* tif, tmsize_t size,
@@ -60,6 +59,22 @@ static int TIFFReadAndRealloc( TIFF* tif, tmsize_t size,
         tmsize_t threshold = INITIAL_THRESHOLD;
 #endif
         tmsize_t already_read = 0;
+
+
+#if SIZEOF_SIZE_T != 8
+        /* On 32 bit processes, if the request is large enough, check against */
+        /* file size */
+        if( size > 1000 * 1000 * 1000 )
+        {
+            uint64 filesize = TIFFGetFileSize(tif);
+            if( (uint64)size >= filesize )
+            {
+                TIFFErrorExt(tif->tif_clientdata, module,
+                             "Chunk size requested is larger than file size.");
+                return 0;
+            }
+        }
+#endif
 
         /* On 64 bit processes, read first a maximum of 1 MB, then 10 MB, etc */
         /* so as to avoid allocating too much memory in case the file is too */
@@ -708,7 +723,7 @@ TIFFReadRawStrip(TIFF* tif, uint32 strip, void* buf, tmsize_t size)
 {
 	static const char module[] = "TIFFReadRawStrip";
 	TIFFDirectory *td = &tif->tif_dir;
-	uint64 bytecount;
+	uint64 bytecount64;
 	tmsize_t bytecountm;
 
 	if (!TIFFCheckRead(tif, 0))
@@ -726,29 +741,21 @@ TIFFReadRawStrip(TIFF* tif, uint32 strip, void* buf, tmsize_t size)
 		    "Compression scheme does not support access to raw uncompressed data");
 		return ((tmsize_t)(-1));
 	}
-	bytecount = TIFFGetStrileByteCount(tif, strip);
-	if ((int64)bytecount <= 0) {
-#if defined(__WIN32__) && (defined(_MSC_VER) || defined(__MINGW32__))
-		TIFFErrorExt(tif->tif_clientdata, module,
-			     "%I64u: Invalid strip byte count, strip %lu",
-			     (unsigned __int64) bytecount,
-			     (unsigned long) strip);
-#else
-		TIFFErrorExt(tif->tif_clientdata, module,
-			     "%llu: Invalid strip byte count, strip %lu",
-			     (unsigned long long) bytecount,
-			     (unsigned long) strip);
-#endif
-		return ((tmsize_t)(-1));
-	}
-	bytecountm = (tmsize_t)bytecount;
-	if ((uint64)bytecountm!=bytecount) {
-		TIFFErrorExt(tif->tif_clientdata, module, "Integer overflow");
-		return ((tmsize_t)(-1));
-	}
-	if (size != (tmsize_t)(-1) && size < bytecountm)
+	bytecount64 = TIFFGetStrileByteCount(tif, strip);
+	if (size != (tmsize_t)(-1) && (uint64)size <= bytecount64)
 		bytecountm = size;
+	else
+		bytecountm = _TIFFCastUInt64ToSSize(tif, bytecount64, module);
+	if( bytecountm == 0 ) {
+		return ((tmsize_t)(-1));
+	}
 	return (TIFFReadRawStrip1(tif, strip, buf, bytecountm, module));
+}
+
+TIFF_NOSANITIZE_UNSIGNED_INT_OVERFLOW
+static uint64 NoSantizeSubUInt64(uint64 a, uint64 b)
+{
+    return a - b;
 }
 
 /*
@@ -764,7 +771,7 @@ TIFFFillStrip(TIFF* tif, uint32 strip)
 	if ((tif->tif_flags&TIFF_NOREADRAW)==0)
 	{
 		uint64 bytecount = TIFFGetStrileByteCount(tif, strip);
-		if ((int64)bytecount <= 0) {
+		if( bytecount == 0 || bytecount > (uint64)TIFF_INT64_MAX ) {
 #if defined(__WIN32__) && (defined(_MSC_VER) || defined(__MINGW32__))
 			TIFFErrorExt(tif->tif_clientdata, module,
 				"Invalid strip byte count %I64u, strip %lu",
@@ -791,7 +798,7 @@ TIFFFillStrip(TIFF* tif, uint32 strip)
 			    (bytecount - 4096) / 10 > (uint64)stripsize  )
 			{
 				uint64 newbytecount = (uint64)stripsize * 10 + 4096;
-				if( (int64)newbytecount >= 0 )
+				if( newbytecount == 0 || newbytecount > (uint64)TIFF_INT64_MAX )
 				{
 #if defined(__WIN32__) && (defined(_MSC_VER) || defined(__MINGW32__))
 					TIFFWarningExt(tif->tif_clientdata, module,
@@ -834,7 +841,7 @@ TIFFFillStrip(TIFF* tif, uint32 strip)
 					"Read error on strip %lu; "
 					"got %I64u bytes, expected %I64u",
 					(unsigned long) strip,
-					(unsigned __int64) tif->tif_size - TIFFGetStrileOffset(tif, strip),
+					(unsigned __int64) NoSantizeSubUInt64(tif->tif_size, TIFFGetStrileOffset(tif, strip)),
 					(unsigned __int64) bytecount);
 #else
 				TIFFErrorExt(tif->tif_clientdata, module,
@@ -842,7 +849,7 @@ TIFFFillStrip(TIFF* tif, uint32 strip)
 					"Read error on strip %lu; "
 					"got %llu bytes, expected %llu",
 					(unsigned long) strip,
-					(unsigned long long) tif->tif_size - TIFFGetStrileOffset(tif, strip),
+					(unsigned long long) NoSantizeSubUInt64(tif->tif_size, TIFFGetStrileOffset(tif, strip)),
 					(unsigned long long) bytecount);
 #endif
 				tif->tif_curstrip = NOSTRIP;
@@ -1179,12 +1186,11 @@ TIFFReadRawTile(TIFF* tif, uint32 tile, void* buf, tmsize_t size)
 		return ((tmsize_t)(-1));
 	}
 	bytecount64 = TIFFGetStrileByteCount(tif, tile);
-	if (size != (tmsize_t)(-1) && (uint64)size < bytecount64)
-		bytecount64 = (uint64)size;
-	bytecountm = (tmsize_t)bytecount64;
-	if ((uint64)bytecountm!=bytecount64)
-	{
-		TIFFErrorExt(tif->tif_clientdata,module,"Integer overflow");
+	if (size != (tmsize_t)(-1) && (uint64)size <= bytecount64)
+		bytecountm = size;
+	else
+		bytecountm = _TIFFCastUInt64ToSSize(tif, bytecount64, module);
+	if( bytecountm == 0 ) {
 		return ((tmsize_t)(-1));
 	}
 	return (TIFFReadRawTile1(tif, tile, buf, bytecountm, module));
@@ -1203,7 +1209,7 @@ TIFFFillTile(TIFF* tif, uint32 tile)
 	if ((tif->tif_flags&TIFF_NOREADRAW)==0)
 	{
 		uint64 bytecount = TIFFGetStrileByteCount(tif, tile);
-		if ((int64)bytecount <= 0) {
+		if( bytecount == 0 || bytecount > (uint64)TIFF_INT64_MAX ) {
 #if defined(__WIN32__) && (defined(_MSC_VER) || defined(__MINGW32__))
 			TIFFErrorExt(tif->tif_clientdata, module,
 				"%I64u: Invalid tile byte count, tile %lu",
@@ -1230,7 +1236,7 @@ TIFFFillTile(TIFF* tif, uint32 tile)
 			    (bytecount - 4096) / 10 > (uint64)stripsize  )
 			{
 				uint64 newbytecount = (uint64)stripsize * 10 + 4096;
-				if( (int64)newbytecount >= 0 )
+				if( newbytecount == 0 || newbytecount > (uint64)TIFF_INT64_MAX )
 				{
 #if defined(__WIN32__) && (defined(_MSC_VER) || defined(__MINGW32__))
 					TIFFWarningExt(tif->tif_clientdata, module,
