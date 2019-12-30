@@ -87,10 +87,8 @@ extern "C" {
 #		else
 #			define GRK_API    __attribute__ ((visibility ("default")))
 #		endif
-#		define GRK_LOCAL  __attribute__ ((visibility ("hidden")))
 #	else
 #		define GRK_API
-#		define GRK_LOCAL
 #	endif
 #	define GRK_CALLCONV
 #else
