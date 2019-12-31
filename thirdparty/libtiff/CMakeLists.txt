@@ -1,4 +1,4 @@
-#    Copyright (C) 2016-2019 Grok Image Compression Inc.
+#    Copyright (C) 2016-2020 Grok Image Compression Inc.
 #
 #    This source code is free software: you can redistribute it and/or  modify
 #    it under the terms of the GNU Affero General Public License, version 3,
@@ -16,7 +16,7 @@
 #    This source code incorporates work covered by the following copyright and
 #    permission notice:
 #
-# Copyright © 2015 Open Microscopy Environment / University of Dundee
+# Copyright ï¿½ 2015 Open Microscopy Environment / University of Dundee
 # Written by Roger Leigh <rleigh@codelibre.net>
 #
 # Permission to use, copy, modify, distribute, and sell this software and
