@@ -26,7 +26,7 @@ get_filename_component(SELF_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 if(EXISTS ${SELF_DIR}/GrokTargets.cmake)
   # This is an install tree
   include(${SELF_DIR}/GrokTargets.cmake)
-  get_filename_component(GROK_INCLUDE_ROOT "${SELF_DIR}/../../@CMAKE_INSTALL_INCLUDEDIR@" ABSOLUTE)
+  get_filename_component(GROK_INCLUDE_ROOT "${SELF_DIR}/../../../@CMAKE_INSTALL_INCLUDEDIR@" ABSOLUTE)
   set(GROK_INCLUDE_DIRS ${GROK_INCLUDE_ROOT})
 
 else()
