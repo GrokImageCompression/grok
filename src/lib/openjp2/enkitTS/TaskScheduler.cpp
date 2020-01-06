@@ -496,7 +496,7 @@ void TaskScheduler::WaitForTaskCompletion( const ICompletable* pCompletable_, ui
     ThreadState prevThreadState = m_pThreadDataStore[threadNum_].threadState.load( std::memory_order_relaxed );
     m_pThreadDataStore[threadNum_].threadState.store( THREAD_STATE_WAIT_TASK_COMPLETION, std::memory_order_seq_cst );
 
-    if( pCompletable_->GetIsComplete() )
+    if( pCompletable_->GetIsComplete() || HaveTasks( threadNum_ ) )
     {
         m_NumThreadsWaitingForTaskCompletion.fetch_sub( 1, std::memory_order_release );
     }
@@ -708,18 +708,17 @@ void    TaskScheduler::WaitforTask( const ICompletable* pCompletable_, enki::Tas
                     spinCount = 0; // reset spin as ran a task
                     break;
                 }
-                if( spinCount > gc_SpinCount )
-                {
-                    WaitForTaskCompletion( pCompletable_, threadNum );
-                    spinCount = 0;
-                }
-                else
-                {
-                    uint32_t spinBackoffCount = spinCount * gc_SpinBackOffMulitplier;
-                    SpinWait( spinBackoffCount );
-                }
             }
-
+            if( spinCount > gc_SpinCount )
+            {
+                WaitForTaskCompletion( pCompletable_, threadNum );
+                spinCount = 0;
+            }
+            else
+            {
+                uint32_t spinBackoffCount = spinCount * gc_SpinBackOffMulitplier;
+                SpinWait( spinBackoffCount );
+            }
         }
         SafeCallback( m_Config.profilerCallbacks.waitForTaskCompleteStop, threadNum );
     }
@@ -758,6 +757,7 @@ void TaskScheduler::WaitforAll()
     while( bHaveTasks || numOtherThreadsRunning )
     {
         bHaveTasks = TryRunTask( threadNum, hintPipeToCheck_io );
+        ++spinCount;
         if( bHaveTasks )
         {
             spinCount = 0; // reset spin as ran a task
@@ -774,10 +774,15 @@ void TaskScheduler::WaitforAll()
                 {
                     dummyWaitTask.threadNum = ( dummyWaitTask.threadNum + 1 ) % m_NumThreads;
                 }
-            } while( countThreadsToCheck && m_pThreadDataStore[ dummyWaitTask.threadNum ].threadState != THREAD_STATE_RUNNING );
+                ThreadState state = m_pThreadDataStore[ dummyWaitTask.threadNum ].threadState.load( std::memory_order_acquire );
+                if( state == THREAD_STATE_RUNNING || state == THREAD_STATE_WAIT_TASK_COMPLETION )
+                {
+                    break;
+                }
+            } while( countThreadsToCheck );
             assert( dummyWaitTask.threadNum != threadNum );
             AddPinnedTask( &dummyWaitTask );
-            WaitForTaskCompletion( &dummyWaitTask, threadNum );
+            WaitforTask( &dummyWaitTask );
             spinCount = 0;
         }
         else
