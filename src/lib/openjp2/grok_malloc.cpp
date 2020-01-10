@@ -51,9 +51,11 @@
 #define GROK_SKIP_POISON
 #include "grok_includes.h"
 
-#if defined(GROK_HAVE_MALLOC_H) && defined(GROK_HAVE_MEMALIGN)
-# include <malloc.h>
+// OSX is missing C++11 aligned_alloc (stdlib.h version)
+#if defined(__APPLE__)
+#undef GROK_HAVE_ALIGNED_ALLOC
 #endif
+
 
 #ifndef SIZE_MAX
 # define SIZE_MAX ((size_t) -1)
