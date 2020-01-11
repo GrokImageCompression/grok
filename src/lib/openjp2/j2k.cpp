@@ -8322,11 +8322,6 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	/* SPcoc (G) */
 	grok_read_8(l_current_ptr, &l_tccp->cblk_sty);
 	++l_current_ptr;
-	if (l_tccp->cblk_sty & 0xC0U) { /* 2 msb are reserved, assume we can't read */
-		GROK_ERROR(
-				"Error reading SPCod SPCoc element, Invalid code-block style found");
-		return false;
-	}
 	/* SPcoc (H) */
 	grok_read_8(l_current_ptr, &l_tccp->qmfbid);
 	if (l_tccp->qmfbid > 1){
