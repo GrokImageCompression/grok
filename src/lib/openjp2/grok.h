@@ -557,8 +557,8 @@ typedef struct _grk_header_info {
 	// tile header COD segment, and tile component COC segment.
 	// !!! Assume that coding style does not vary across tile components !!!
 	uint8_t csty;
-	// mode switch is specified in main header COD segment, and can
-	// be overridden in a tile header. !!! Assume that mode does
+	// code block style is specified in main header COD segment, and can
+	// be overridden in a tile header. !!! Assume that style does
 	// not vary across tiles !!!
 	uint8_t cblk_sty;
 	/** initial precinct width */

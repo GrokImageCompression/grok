@@ -110,6 +110,7 @@ const uint32_t default_number_mct_records = 10;
 #define J2K_MS_SOT 0xff90	/**< SOT marker value */
 #define J2K_MS_SOD 0xff93	/**< SOD marker value */
 #define J2K_MS_EOC 0xffd9	/**< EOC marker value */
+#define J2K_MS_CAP 0xff50	/**< CAP marker value */
 #define J2K_MS_SIZ 0xff51	/**< SIZ marker value */
 #define J2K_MS_COD 0xff52	/**< COD marker value */
 #define J2K_MS_COC 0xff53	/**< COC marker value */
@@ -400,6 +401,10 @@ struct grk_pl_marker{
 struct grk_coding_parameters {
 	/** Rsiz*/
 	uint16_t rsiz;
+	/* Pcap */
+	uint32_t pcap;
+	/* Ccap */
+	uint16_t ccap;
 	/** XTOsiz */
 	uint32_t tx0;
 	/** YTOsiz */

@@ -486,6 +486,16 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
+ * Reads a CAP marker
+ * @param       p_j2k           the jpeg2000 file codec.
+ * @param       p_header_data   the data contained in the SIZ box.
+ * @param       header_size   the size of the data contained in the SIZ marker.
+
+ */
+static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
+		uint16_t header_size);
+
+/**
  * Writes the COM marker (comment)
  *
  * @param       p_j2k           J2K codec.
@@ -1224,20 +1234,22 @@ static const  grk_dec_memory_marker_handler  j2k_memory_marker_handler_tab[] = {
 		{ J2K_MS_RGN, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_rgn },
 		{ J2K_MS_QCD, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcd },
 		{ J2K_MS_QCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_qcc },
-		{ J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc }, {
-				J2K_MS_SIZ, J2K_DEC_STATE_MHSIZ, j2k_read_siz }, { J2K_MS_TLM,
-				J2K_DEC_STATE_MH, j2k_read_tlm }, { J2K_MS_PLM,
-				J2K_DEC_STATE_MH, j2k_read_plm }, { J2K_MS_PLT,
-				J2K_DEC_STATE_TPH, j2k_read_plt }, { J2K_MS_PPM,
-				J2K_DEC_STATE_MH, j2k_read_ppm }, { J2K_MS_PPT,
-				J2K_DEC_STATE_TPH, j2k_read_ppt }, { J2K_MS_SOP, 0, 0 }, {
-				J2K_MS_CRG, J2K_DEC_STATE_MH, j2k_read_crg }, { J2K_MS_COM,
-				J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com },
-		{ J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct }, {
-				J2K_MS_CBD, J2K_DEC_STATE_MH, j2k_read_cbd }, { J2K_MS_MCC,
-				J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc },
+		{ J2K_MS_POC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_poc },
+		{J2K_MS_SIZ, J2K_DEC_STATE_MHSIZ, j2k_read_siz },
+		{J2K_MS_CAP, J2K_DEC_STATE_MH, j2k_read_cap },
+		{J2K_MS_TLM, J2K_DEC_STATE_MH, j2k_read_tlm },
+		{J2K_MS_PLM, J2K_DEC_STATE_MH, j2k_read_plm },
+		{J2K_MS_PLT, J2K_DEC_STATE_TPH, j2k_read_plt },
+		{J2K_MS_PPM, J2K_DEC_STATE_MH, j2k_read_ppm },
+		{J2K_MS_PPT, J2K_DEC_STATE_TPH, j2k_read_ppt },
+		{J2K_MS_SOP, 0, 0 },
+		{J2K_MS_CRG, J2K_DEC_STATE_MH, j2k_read_crg },
+		{J2K_MS_COM, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_com },
+		{J2K_MS_MCT, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mct },
+		{J2K_MS_CBD, J2K_DEC_STATE_MH, j2k_read_cbd },
+		{J2K_MS_MCC, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mcc },
 		{ J2K_MS_MCO, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, j2k_read_mco }, {
-				J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
+		J2K_MS_UNK, J2K_DEC_STATE_MH | J2K_DEC_STATE_TPH, 0 }/*j2k_read_unk is directly used*/
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1726,6 +1738,33 @@ static bool j2k_write_siz(grk_j2k *p_j2k, GrokStream *p_stream) {
 		}
 		++l_img_comp;
 	}
+	return true;
+}
+
+/**
+ * Reads a CAP marker
+ * @param       p_j2k           the jpeg2000 file codec.
+ * @param       p_header_data   the data contained in the SIZ box.
+ * @param       header_size   the size of the data contained in the SIZ marker.
+
+ */
+static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
+		uint16_t header_size) {
+
+	grk_coding_parameters *l_cp = &(p_j2k->m_cp);
+
+	if (header_size < 6) {
+		GROK_ERROR( "Error with SIZ marker size");
+		return false;
+	}
+
+	uint32_t l_tmp;
+	grok_read_bytes(p_header_data, &l_tmp, 4); /* Pcap */
+	l_cp->pcap = l_tmp;
+
+	grok_read_bytes(p_header_data, &l_tmp, 2); /* Ccap */
+	l_cp->ccap = (uint16_t)l_tmp;
+
 	return true;
 }
 
