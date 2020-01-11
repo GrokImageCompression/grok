@@ -75,6 +75,9 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 		return nullptr;
 	}
 
+	// make new_size a multiple of alignment
+	size = ((size + alignment - 1)/alignment) * alignment;
+
 #if defined(GROK_HAVE_ALIGNED_ALLOC)
 	ptr = aligned_alloc(alignment, size);
 #elif defined(GROK_HAVE_POSIX_MEMALIGN)
@@ -139,6 +142,9 @@ static inline void* grok_aligned_realloc_n(void *ptr, size_t alignment,
 	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
 		return nullptr;
 	}
+
+	// make new_size a multiple of alignment
+	new_size = ((new_size + alignment - 1)/alignment) * alignment;
 
 	/* no portable aligned realloc */
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
