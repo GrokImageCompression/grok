@@ -59,16 +59,17 @@
 
 // tier 1 interface
 #include "mqc.h"
-#include "t1.h"
+#include "t1_base.h"
 #include "t1_opt_luts.h"
 
 namespace grk {
+namespace t1_part1 {
 
-t1::t1() :
+t1_base::t1_base() :
 		w(0), h(0), flags(nullptr), flags_stride(0) {
 }
 
-t1::~t1() {
+t1_base::~t1_base() {
 	if (flags) {
 		grok_aligned_free(flags);
 	}
@@ -80,7 +81,7 @@ t1::~t1() {
  @param cblkh	maximum height of code block
 
  */
-bool t1::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
+bool t1_base::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
 	if (!flags) {
 		auto flags_stride = cblkw + 2;
 		auto flags_height = (cblkh + 3U) >> 2;
@@ -100,7 +101,7 @@ bool t1::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
  @param w	width of code block
  @param h	height of code block
  */
-void t1::initBuffers(uint16_t w, uint16_t h) {
+void t1_base::initBuffers(uint16_t w, uint16_t h) {
 	this->w = w;
 	this->h = h;
 	flags_stride = (uint16_t) (w + 2);
@@ -133,10 +134,10 @@ void t1::initBuffers(uint16_t w, uint16_t h) {
 	}
 	////////////////////////////////////////////////////////////////////////////
 }
-uint8_t t1::getZeroCodingContext(uint32_t f, uint8_t orient) {
+uint8_t t1_base::getZeroCodingContext(uint32_t f, uint8_t orient) {
 	return lut_ctxno_zc_opt[(orient << 9) | (f & T1_SIGMA_NEIGHBOURS)];
 }
-uint32_t t1::getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX,
+uint32_t t1_base::getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX,
 		uint32_t nfX, uint32_t ci3) {
 	/*
 	 0 pfX T1_CHI_CURRENT           T1_LUT_CTXNO_SGN_W
@@ -161,19 +162,19 @@ uint32_t t1::getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX,
 	lu |= (fX >> (T1_CHI_2_I - 6U + ci3)) & (1U << 6);
 	return lu;
 }
-uint8_t t1::getSignCodingContext(uint32_t lu) {
+uint8_t t1_base::getSignCodingContext(uint32_t lu) {
 	return lut_ctxno_sc_opt[lu];
 }
-uint8_t t1::getMRPContext(uint32_t f) {
+uint8_t t1_base::getMRPContext(uint32_t f) {
 	return (f & T1_MU_CURRENT) ?
 			(T1_CTXNO_MAG + 2) :
 			((f & T1_SIGMA_NEIGHBOURS) ? T1_CTXNO_MAG + 1 : T1_CTXNO_MAG);
 }
 
-uint8_t t1::getSPByte(uint32_t lu) {
+uint8_t t1_base::getSPByte(uint32_t lu) {
 	return lut_spb_opt[lu];
 }
-void t1::updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
+void t1_base::updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
 		uint32_t stride, uint8_t vsc) {
 	/* update current flag */
 	flagsp[-1] |= T1_SIGMA_5 << (ci3);
@@ -194,6 +195,6 @@ void t1::updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
 		south[1] |= T1_SIGMA_0;
 	}
 }
-
+}
 }
 

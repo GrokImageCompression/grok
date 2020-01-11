@@ -28,6 +28,9 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_ht
 )
 # Defines the source code for the library
 set(GROK_SRCS
@@ -71,25 +74,27 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mqc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_factory.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_factory.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_impl.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_opt_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_base.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_opt.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode_opt.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_decode.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_encode.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_encode.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/mqc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/mqc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Factory.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1Factory.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/T1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_ht/T1HT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_ht/T1HT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/T1Part1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/T1Part1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_opt_luts.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_luts.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_base.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_base.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_opt.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_opt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_encode.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_encode.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp

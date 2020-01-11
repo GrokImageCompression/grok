@@ -62,6 +62,7 @@
 #include "mqc.h"
 
 namespace grk {
+namespace t1_part1 {
 
 const uint16_t A_MIN = 0x8000;
 
@@ -723,7 +724,7 @@ void mqc_resetstates(grk_mqc *mqc) {
 	mqc_setstate(mqc, T1_CTXNO_ZC, 4);
 }
 
-
+}
 
 }
 

@@ -15,15 +15,16 @@
  *
  */
 #include "testing.h"
-#include "t1_impl.h"
+#include "T1Part1.h"
 #include "mqc.h"
 #include "t1_decode.h"
 #include "t1_decode_opt.h"
 #include "t1_encode.h"
 
 namespace grk {
+namespace t1_part1{
 
-t1_impl::t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
+T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH) :
 		t1_decoder(nullptr), t1_encoder(nullptr) {
 	(void) tcp;
@@ -40,15 +41,15 @@ t1_impl::t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
 	}
 }
-t1_impl::~t1_impl() {
+T1Part1::~T1Part1() {
 	delete t1_decoder;
 	delete t1_encoder;
 }
-void t1_impl::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
+void T1Part1::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &max) {
 	t1_encoder->preEncode(block, tile, max);
 }
-double t1_impl::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 		bool doRateControl) {
 	double dist = t1_encoder->encode_cblk(block->cblk, (uint8_t) block->bandno,
 			block->compno,
@@ -102,13 +103,13 @@ double t1_impl::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 #endif
 	return dist;
 }
-bool t1_impl::decode(decodeBlockInfo *block) {
+bool T1Part1::decode(decodeBlockInfo *block) {
 	return t1_decoder->decode_cblk(block->cblk, (uint8_t) block->bandno,
 			block->cblk_sty);
 }
 
-void t1_impl::postDecode(decodeBlockInfo *block) {
+void T1Part1::postDecode(decodeBlockInfo *block) {
 	t1_decoder->postDecode(block);
 }
-
+}
 }

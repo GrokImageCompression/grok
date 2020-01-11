@@ -15,7 +15,7 @@
  *
  */
 #include "grok_includes.h"
-#include "t1_factory.h"
+#include "T1Factory.h"
 #include "T1Decoder.h"
 
 namespace grk {
@@ -27,7 +27,7 @@ T1Decoder::T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh) :
 		blockCount(-1){
 	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
 		threadStructs.push_back(
-				t1_factory::get_t1(false, tcp, codeblock_width,
+				T1Factory::get_t1(false, tcp, codeblock_width,
 						codeblock_height));
 	}
 }

@@ -62,6 +62,7 @@
 #include "T1Encoder.h"
 
 namespace grk {
+namespace t1_part1 {
 
 t1_decode_opt::t1_decode_opt(uint16_t code_block_width,
 		uint16_t code_block_height) :
@@ -79,7 +80,7 @@ t1_decode_opt::~t1_decode_opt() {
 
  */
 bool t1_decode_opt::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
-	if (!t1::allocateBuffers(cblkw, cblkh))
+	if (!t1_base::allocateBuffers(cblkw, cblkh))
 		return false;
 	if (!dataPtr) {
 		dataPtr = (int32_t*) grok_aligned_malloc(
@@ -98,7 +99,7 @@ bool t1_decode_opt::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
  @param h	height of code block
  */
 void t1_decode_opt::initBuffers(uint16_t cblkw, uint16_t cblkh) {
-	t1::initBuffers(cblkw, cblkh);
+	t1_base::initBuffers(cblkw, cblkh);
 	if (dataPtr)
 		memset(dataPtr, 0, cblkw * cblkh * sizeof(int32_t));
 
@@ -365,6 +366,6 @@ void t1_decode_opt::postDecode(decodeBlockInfo *block) {
 		}
 	}
 }
-
+}
 }
 

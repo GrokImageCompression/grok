@@ -29,7 +29,6 @@
  * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
- * Copyright (c) 2007, Callum Lerwick <seg@haxxed.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -53,70 +52,72 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include "grok_includes.h"
-
-// tier 1 interface
-#include "mqc.h"
-#include "t1.h"
-#include "t1_decode_base.h"
-#include "T1Encoder.h"
+#pragma once
+#include <vector>
+#include "testing.h"
+#include "Tier1.h"
+#include "t1_base.h"
 
 namespace grk {
+namespace t1_part1 {
 
-t1_decode_base::t1_decode_base(uint16_t code_block_width,
-		uint16_t code_block_height) :
-		dataPtr(nullptr), compressed_block(nullptr), compressed_block_size(0), mqc(
-				nullptr), raw(nullptr) {
-	mqc = mqc_create();
-	if (!mqc) {
-		throw std::exception();
-	}
-	raw = raw_create();
-	if (!raw) {
-		throw std::exception();
-	}
-	if (code_block_width > 0 && code_block_height > 0) {
-		compressed_block = (uint8_t*) grok_malloc(
-				(size_t) code_block_width * (size_t) code_block_height);
-		if (!compressed_block) {
-			throw std::exception();
-		}
-		compressed_block_size = (size_t) (code_block_width * code_block_height);
-	}
+typedef uint16_t grk_flag;
+
+struct grk_mqc;
+struct grk_raw;
+
+class t1_decode_base;
+
+class t1_decode: public t1_decode_base {
+public:
+	t1_decode(uint16_t code_block_width, uint16_t code_block_height);
+	~t1_decode();
+	/**
+	 Decode 1 code-block
+	 @param t1 T1 handle
+	 @param cblk Code-block coding parameters
+	 @param orient
+	 @param roishift Region of interest shifting value
+	 @param cblk_sty encode mode switch
+	 */
+	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
+			override;
+	void postDecode(decodeBlockInfo *block) override;
+private:
+	grk_flag *flags;
+	uint16_t flags_stride;
+
+	bool allocateBuffers(uint16_t w, uint16_t h);
+	void initBuffers(uint16_t w, uint16_t h);
+	inline void sigpass_step_raw(grk_flag *flagsp, int32_t *datap,
+			int32_t oneplushalf, bool vsc);
+	inline void sigpass_step(grk_flag *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf);
+	inline void sigpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, bool vsc);
+	void sigpass_raw(int32_t bpno, uint32_t cblk_sty);
+	void sigpass(int32_t bpno, uint8_t orient);
+	void sigpass_vsc(int32_t bpno, uint8_t orient);
+
+	void refpass_raw(int32_t bpno, uint32_t cblk_sty);
+	void refpass(int32_t bpno);
+	void refpass_vsc(int32_t bpno);
+	inline void refpass_step_raw(grk_flag *flagsp, int32_t *datap,
+			int32_t poshalf, bool vsc);
+	inline void refpass_step(grk_flag *flagsp, int32_t *datap, int32_t poshalf);
+	inline void refpass_step_vsc(grk_flag *flagsp, int32_t *datap,
+			int32_t poshalf, bool vsc);
+
+	void clnpass_step_partial(grk_flag *flagsp, int32_t *datap,
+			int32_t oneplushalf);
+	void clnpass_step(grk_flag *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf);
+	void clnpass_step_vsc(grk_flag *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, int32_t partial, bool vsc);
+	void clnpass(int32_t bpno, uint8_t orient, uint32_t cblk_sty);
+
+	void updateflags(grk_flag *flagsp, uint32_t s, uint32_t stride);
+};
 }
-t1_decode_base::~t1_decode_base() {
-	mqc_destroy(mqc);
-	raw_destroy(raw);
-	if (compressed_block)
-		grok_free(compressed_block);
-
-	if (dataPtr)
-		grok_aligned_free(dataPtr);
-}
-
-bool t1_decode_base::allocCompressed(grk_tcd_cblk_dec *cblk) {
-	/* block should have been allocated on creation of t1*/
-	if (!compressed_block)
-		return false;
-	auto min_buf_vec = &cblk->seg_buffers;
-	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + numSynthBytes);
-	if (compressed_block_size < total_seg_len) {
-		uint8_t *new_block = (uint8_t*) grok_realloc(compressed_block,
-				total_seg_len);
-		if (!new_block)
-			return false;
-		compressed_block = new_block;
-		compressed_block_size = total_seg_len;
-	}
-	size_t offset = 0;
-	// note: min_buf_vec only contains segments of non-zero length
-	for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
-		grk_min_buf *seg = (grk_min_buf*) min_buf_vec->get(i);
-		memcpy(compressed_block + offset, seg->buf, seg->len);
-		offset += seg->len;
-	}
-	return true;
-}
-
 }
 

@@ -16,25 +16,35 @@
  */
 
 #pragma once
-
-#include "grok_includes.h"
-#include <vector>
+#include "t1_decode_base.h"
+#include "t1_decode.h"
+#include "t1_encode.h"
+#include "t1_decode_opt.h"
 #include "T1.h"
 
 namespace grk {
 
-class Tier1 {
+struct grk_tcp;
+
+namespace t1_part1 {
+
+
+class T1Part1: public T1 {
 public:
+	T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
+	virtual ~T1Part1();
 
-	bool encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile, const double *mct_norms,
-			uint32_t mct_numcomps, bool doRateControl);
+	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
+	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+			bool doRateControl);
 
-	bool prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
-			std::vector<decodeBlockInfo*> *blocks);
+	bool decode(decodeBlockInfo *block);
+	void postDecode(decodeBlockInfo *block);
 
-	bool decodeCodeblocks(grk_tcp *tcp, uint16_t blockw, uint16_t blockh,
-			std::vector<decodeBlockInfo*> *blocks);
+private:
+	t1_decode_base *t1_decoder;
+	t1_encode *t1_encoder;
 
 };
-
+}
 }

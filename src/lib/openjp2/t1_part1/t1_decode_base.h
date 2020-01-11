@@ -56,19 +56,25 @@
 #include <vector>
 #include "testing.h"
 #include "Tier1.h"
-#include "t1.h"
+#include "t1_base.h"
 
 namespace grk {
+namespace t1_part1 {
+
+// two bytes 0xFF 0xFF are synthesized at the end of each code block compressed buffer
+// to simulate "end of compressed stream" marker. This allows code to avoid checking
+// for end of compressed stream by length
+const uint16_t numSynthBytes = 2;
+const uint16_t synthBytes = 0xFFFF;
 
 struct grk_mqc;
 struct grk_raw;
+class t1_base;
 
-class t1_decode_base;
-
-class t1_decode_opt: public t1_decode_base {
+class t1_decode_base: public t1_base {
 public:
-	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
-	~t1_decode_opt();
+	t1_decode_base(uint16_t code_block_width, uint16_t code_block_height);
+	virtual ~t1_decode_base();
 
 	/**
 	 Decode 1 code-block
@@ -78,22 +84,20 @@ public:
 	 @param roishift Region of interest shifting value
 	 @param cblk_sty Code-block style
 	 */
-	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
-			override;
-	void postDecode(decodeBlockInfo *block) override;
-private:
-	bool allocateBuffers(uint16_t w, uint16_t h);
-	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t maxci3);
-	void sigpass(int32_t bpno, uint8_t orient);
-	void refpass(int32_t bpno);
-	inline void refpass_step(flag_opt *flagsp, int32_t *datap,
-			int32_t poshalf, uint32_t maxci3);
-	void clnpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t agg, uint32_t runlen, uint32_t y);
-	void clnpass(int32_t bpno, uint8_t orient);
-};
+	virtual bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
+			uint32_t cblk_sty)=0;
+	virtual void postDecode(decodeBlockInfo *block)=0;
 
+	int32_t *dataPtr;
+
+protected:
+	bool allocCompressed(grk_tcd_cblk_dec *cblk);
+	uint8_t *compressed_block;
+	size_t compressed_block_size;
+	grk_mqc *mqc;
+	grk_raw *raw;
+
+};
+}
 }
 

@@ -32,7 +32,7 @@ private:
 	void encode(size_t threadId, uint64_t maxBlocks);
 
 	grk_tcd_tile *tile;
-	std::vector<t1_interface*> threadStructs;
+	std::vector<T1*> threadStructs;
 	mutable std::mutex distortion_mutex;
 	bool needsRateControl;
 	mutable std::mutex block_mutex;

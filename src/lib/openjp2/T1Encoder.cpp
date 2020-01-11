@@ -16,7 +16,7 @@
  */
 
 #include "grok_includes.h"
-#include "t1_factory.h"
+#include "T1Factory.h"
 #include "T1Encoder.h"
 
 namespace grk {
@@ -30,7 +30,7 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 {
 	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
 		threadStructs.push_back(
-				t1_factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
+				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 T1Encoder::~T1Encoder() {

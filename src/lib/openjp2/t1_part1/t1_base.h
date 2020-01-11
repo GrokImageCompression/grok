@@ -58,6 +58,7 @@
 #include "Tier1.h"
 
 namespace grk {
+namespace t1_part1 {
 
 #define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
 #define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
@@ -203,10 +204,10 @@ namespace grk {
 
 typedef uint32_t flag_opt;
 
-class t1 {
+class t1_base {
 public:
-	t1();
-	virtual ~t1();
+	t1_base();
+	virtual ~t1_base();
 	uint16_t w;
 	uint16_t h;
 protected:
@@ -227,6 +228,6 @@ protected:
 			uint32_t nfX, uint32_t ci3);
 
 };
-
+}
 }
 

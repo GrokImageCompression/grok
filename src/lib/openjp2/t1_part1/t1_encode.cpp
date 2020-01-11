@@ -56,11 +56,12 @@
  */
 #include "grok_includes.h"
 #include "mqc.h"
-#include "t1.h"
+#include "t1_base.h"
 #include "t1_encode.h"
 #include "t1_luts.h"
 
 namespace grk {
+namespace t1_part1 {
 
 t1_encode::t1_encode() :
 		data(nullptr), mqc(nullptr) {
@@ -83,7 +84,7 @@ t1_encode::~t1_encode() {
 
  */
 bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
-	if (!t1::allocateBuffers(cblkw, cblkh))
+	if (!t1_base::allocateBuffers(cblkw, cblkh))
 		return false;
 	if (!data) {
 		data = (uint32_t*) grok_aligned_malloc(cblkw * cblkh * sizeof(int32_t));
@@ -101,7 +102,7 @@ bool t1_encode::allocateBuffers(uint16_t cblkw, uint16_t cblkh) {
  @param h	height of code block
  */
 void t1_encode::initBuffers(uint16_t w, uint16_t h) {
-	t1::initBuffers(w, h);
+	t1_base::initBuffers(w, h);
 	if (data)
 		memset(data, 0, w * h * sizeof(int32_t));
 }
@@ -603,5 +604,5 @@ void t1_encode::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		}
 	}
 }
-
+}
 }

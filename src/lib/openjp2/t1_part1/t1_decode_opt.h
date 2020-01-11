@@ -53,71 +53,48 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
+#include <vector>
+#include "testing.h"
+#include "Tier1.h"
+#include "t1_base.h"
+
 namespace grk {
+namespace t1_part1 {
 
-class t1;
+struct grk_mqc;
+struct grk_raw;
 
-/**
- Tier-1 coding (coding of code-block coefficients)
- */
-class t1_encode: public t1 {
+class t1_decode_base;
+
+class t1_decode_opt: public t1_decode_base {
 public:
-	t1_encode();
-	~t1_encode();
-	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
-	void initBuffers(uint16_t w, uint16_t h);
-	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
-	double encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient, uint32_t compno,
-			uint32_t level, uint8_t qmfbid, double stepsize,
-			uint8_t cblk_sty, uint32_t numcomps, const double *mct_norms,
-			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
-	uint32_t *data;
+	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
+	~t1_decode_opt();
+
+	/**
+	 Decode 1 code-block
+	 @param t1 T1 handle
+	 @param cblk Code-block coding parameters
+	 @param orient
+	 @param roishift Region of interest shifting value
+	 @param cblk_sty Code-block style
+	 */
+	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
+			override;
+	void postDecode(decodeBlockInfo *block) override;
 private:
-	grk_mqc *mqc;
-	/**
-	 Encode significant pass
-	 */
-	void sigpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
-			int32_t bpno, int32_t one, int32_t *nmsedec, uint8_t type,
-			uint32_t cblk_sty);
-
-	/**
-	 Encode significant pass
-	 */
-	void sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec, uint8_t type,
-			uint32_t cblk_sty);
-
-	/**
-	 Encode refinement pass
-	 */
-	void refpass_step(flag_opt *flagsp, uint32_t *datap, int32_t bpno,
-			int32_t one, int32_t *nmsedec, uint8_t type);
-
-	/**
-	 Encode refinement pass
-	 */
-	void refpass(int32_t bpno, int32_t *nmsedec, uint8_t type);
-
-	/**
-	 Encode clean-up pass
-	 */
-	void clnpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
-			int32_t bpno, int32_t one, int32_t *nmsedec, uint32_t agg,
-			uint32_t runlen, uint32_t y, uint32_t cblk_sty);
-
-	/**
-	 Encode clean-up pass
-	 */
-	void clnpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
-			uint32_t cblk_sty);
-
-	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
-			uint8_t orient, int32_t bpno, uint32_t qmfbid, double stepsize,
-			uint32_t numcomps, const double *mct_norms, uint32_t mct_numcomps);
-
-	int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
-	int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
+	bool allocateBuffers(uint16_t w, uint16_t h);
+	void initBuffers(uint16_t w, uint16_t h);
+	inline void sigpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, uint32_t maxci3);
+	void sigpass(int32_t bpno, uint8_t orient);
+	void refpass(int32_t bpno);
+	inline void refpass_step(flag_opt *flagsp, int32_t *datap,
+			int32_t poshalf, uint32_t maxci3);
+	void clnpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
+			int32_t oneplushalf, uint32_t agg, uint32_t runlen, uint32_t y);
+	void clnpass(int32_t bpno, uint8_t orient);
 };
-
+}
 }
 

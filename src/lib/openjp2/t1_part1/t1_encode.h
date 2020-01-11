@@ -53,50 +53,72 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #pragma once
-#include <vector>
-#include "testing.h"
-#include "Tier1.h"
-#include "t1.h"
-
 namespace grk {
+namespace t1_part1 {
 
-// two bytes 0xFF 0xFF are synthesized at the end of each code block compressed buffer
-// to simulate "end of compressed stream" marker. This allows code to avoid checking
-// for end of compressed stream by length
-const uint16_t numSynthBytes = 2;
-const uint16_t synthBytes = 0xFFFF;
+class t1_base;
 
-struct grk_mqc;
-struct grk_raw;
-class t1;
-
-class t1_decode_base: public t1 {
+/**
+ Tier-1 coding (coding of code-block coefficients)
+ */
+class t1_encode: public t1_base {
 public:
-	t1_decode_base(uint16_t code_block_width, uint16_t code_block_height);
-	virtual ~t1_decode_base();
+	t1_encode();
+	~t1_encode();
+	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
+	void initBuffers(uint16_t w, uint16_t h);
+	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
+	double encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient, uint32_t compno,
+			uint32_t level, uint8_t qmfbid, double stepsize,
+			uint8_t cblk_sty, uint32_t numcomps, const double *mct_norms,
+			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
+	uint32_t *data;
+private:
+	grk_mqc *mqc;
+	/**
+	 Encode significant pass
+	 */
+	void sigpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
+			int32_t bpno, int32_t one, int32_t *nmsedec, uint8_t type,
+			uint32_t cblk_sty);
 
 	/**
-	 Decode 1 code-block
-	 @param t1 T1 handle
-	 @param cblk Code-block coding parameters
-	 @param orient
-	 @param roishift Region of interest shifting value
-	 @param cblk_sty Code-block style
+	 Encode significant pass
 	 */
-	virtual bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient,
-			uint32_t cblk_sty)=0;
-	virtual void postDecode(decodeBlockInfo *block)=0;
+	void sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec, uint8_t type,
+			uint32_t cblk_sty);
 
-	int32_t *dataPtr;
+	/**
+	 Encode refinement pass
+	 */
+	void refpass_step(flag_opt *flagsp, uint32_t *datap, int32_t bpno,
+			int32_t one, int32_t *nmsedec, uint8_t type);
 
-protected:
-	bool allocCompressed(grk_tcd_cblk_dec *cblk);
-	uint8_t *compressed_block;
-	size_t compressed_block_size;
-	grk_mqc *mqc;
-	grk_raw *raw;
+	/**
+	 Encode refinement pass
+	 */
+	void refpass(int32_t bpno, int32_t *nmsedec, uint8_t type);
 
+	/**
+	 Encode clean-up pass
+	 */
+	void clnpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
+			int32_t bpno, int32_t one, int32_t *nmsedec, uint32_t agg,
+			uint32_t runlen, uint32_t y, uint32_t cblk_sty);
+
+	/**
+	 Encode clean-up pass
+	 */
+	void clnpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
+			uint32_t cblk_sty);
+
+	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
+			uint8_t orient, int32_t bpno, uint32_t qmfbid, double stepsize,
+			uint32_t numcomps, const double *mct_norms, uint32_t mct_numcomps);
+
+	int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
+	int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
 };
-
+}
 }
 

@@ -15,26 +15,15 @@
  *
  */
 
-#pragma once
-
-#include "grok_includes.h"
-#include <vector>
-#include "T1.h"
+#include "T1Factory.h"
+#include "T1Part1.h"
+#include "T1HT.h"
 
 namespace grk {
 
-class Tier1 {
-public:
-
-	bool encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile, const double *mct_norms,
-			uint32_t mct_numcomps, bool doRateControl);
-
-	bool prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
-			std::vector<decodeBlockInfo*> *blocks);
-
-	bool decodeCodeblocks(grk_tcp *tcp, uint16_t blockw, uint16_t blockh,
-			std::vector<decodeBlockInfo*> *blocks);
-
-};
+T1* T1Factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
+		uint16_t maxCblkH) {
+	return new t1_part1::T1Part1(isEncoder, tcp, maxCblkW, maxCblkH);
+}
 
 }

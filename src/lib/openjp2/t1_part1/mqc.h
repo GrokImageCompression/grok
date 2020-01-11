@@ -56,6 +56,7 @@
 
 #pragma once
 namespace grk {
+namespace t1_part1 {
 
 // the next line must be uncommented in order to support debugging 
 // for plugin encode
@@ -234,4 +235,4 @@ void mqc_init_dec(grk_mqc *mqc, uint8_t *bp, uint32_t len);
 uint8_t mqc_decode(grk_mqc *const mqc);
 
 }
-
+}

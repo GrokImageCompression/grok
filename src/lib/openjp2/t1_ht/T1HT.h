@@ -15,14 +15,30 @@
  *
  */
 
-#include "t1_factory.h"
-#include "t1_impl.h"
+#pragma once
+#include "T1.h"
 
 namespace grk {
 
-t1_interface* t1_factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
-		uint16_t maxCblkH) {
-	return new t1_impl(isEncoder, tcp, maxCblkW, maxCblkH);
-}
+struct grk_tcp;
 
+namespace t1_ht {
+
+
+class T1HT: public T1 {
+public:
+	T1HT(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
+	virtual ~T1HT();
+
+	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
+	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+			bool doRateControl);
+
+	bool decode(decodeBlockInfo *block);
+	void postDecode(decodeBlockInfo *block);
+
+private:
+
+};
+}
 }

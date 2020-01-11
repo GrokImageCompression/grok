@@ -14,34 +14,35 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-
-#pragma once
-#include "t1_decode_base.h"
-#include "t1_decode.h"
-#include "t1_encode.h"
-#include "t1_decode_opt.h"
-#include "t1_interface.h"
+#include "testing.h"
+#include "T1HT.h"
 
 namespace grk {
+namespace t1_ht {
 
-struct grk_tcp;
+T1HT::T1HT(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
+		uint16_t maxCblkH)  {
+	(void) tcp;
+	if (isEncoder) {
+	} else {
+	}
+}
+T1HT::~T1HT() {
 
-class t1_impl: public t1_interface {
-public:
-	t1_impl(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
-	virtual ~t1_impl();
+}
+void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
+		uint32_t &max) {
+}
+double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+		bool doRateControl) {
+  return 0;
+}
+bool T1HT::decode(decodeBlockInfo *block) {
+	return false;
+}
 
-	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
-	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
-			bool doRateControl);
+void T1HT::postDecode(decodeBlockInfo *block) {
 
-	bool decode(decodeBlockInfo *block);
-	void postDecode(decodeBlockInfo *block);
-
-private:
-	t1_decode_base *t1_decoder;
-	t1_encode *t1_encoder;
-
-};
-
+}
+}
 }
