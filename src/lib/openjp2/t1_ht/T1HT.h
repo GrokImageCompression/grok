@@ -16,7 +16,7 @@
  */
 
 #pragma once
-#include "T1.h"
+#include "T1Interface.h"
 
 namespace grk {
 
@@ -25,7 +25,7 @@ struct grk_tcp;
 namespace t1_ht {
 
 
-class T1HT: public T1 {
+class T1HT: public T1Interface {
 public:
 	T1HT(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
 	virtual ~T1HT();

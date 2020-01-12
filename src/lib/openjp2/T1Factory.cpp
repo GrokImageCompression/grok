@@ -21,7 +21,7 @@
 
 namespace grk {
 
-T1* T1Factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
+T1Interface* T1Factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH) {
 	return new t1_part1::T1Part1(isEncoder, tcp, maxCblkW, maxCblkH);
 }

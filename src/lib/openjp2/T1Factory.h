@@ -17,13 +17,13 @@
 
 #pragma once
 
-#include "T1.h"
+#include "T1Interface.h"
 
 namespace grk {
 
 class T1Factory {
 public:
-	static T1* get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
+	static T1Interface* get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 			uint16_t maxCblkH);
 
 };

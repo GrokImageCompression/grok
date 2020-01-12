@@ -20,7 +20,7 @@
 #include "t1_decode.h"
 #include "t1_encode.h"
 #include "t1_decode_opt.h"
-#include "T1.h"
+#include "T1Interface.h"
 
 namespace grk {
 
@@ -29,7 +29,7 @@ struct grk_tcp;
 namespace t1_part1 {
 
 
-class T1Part1: public T1 {
+class T1Part1: public T1Interface {
 public:
 	T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
 	virtual ~T1Part1();

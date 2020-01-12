@@ -23,7 +23,7 @@
 namespace grk {
 
 struct decodeBlockInfo;
-class T1;
+class T1Interface;
 
 class T1Decoder {
 public:
@@ -33,7 +33,7 @@ public:
 
 private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block
-	std::vector<T1*> threadStructs;
+	std::vector<T1Interface*> threadStructs;
 	std::atomic_bool success;
 
 	decodeBlockInfo** decodeBlocks;

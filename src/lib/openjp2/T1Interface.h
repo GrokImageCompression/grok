@@ -68,9 +68,9 @@ struct encodeBlockInfo {
 	uint32_t mct_numcomps;
 };
 
-class T1 {
+class T1Interface {
 public:
-	virtual ~T1() {
+	virtual ~T1Interface() {
 	}
 
 	virtual void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,

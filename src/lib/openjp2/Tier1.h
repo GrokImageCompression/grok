@@ -19,7 +19,7 @@
 
 #include "grok_includes.h"
 #include <vector>
-#include "T1.h"
+#include "T1Interface.h"
 
 namespace grk {
 
