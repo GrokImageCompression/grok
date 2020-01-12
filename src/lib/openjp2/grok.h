@@ -245,7 +245,7 @@ defined with this macro as being exported.
 /**
  * Progression order
  * */
-typedef enum PROG_ORDER {
+typedef enum _GRK_PROG_ORDER {
 	GRK_PROG_UNKNOWN = -1, /**< place-holder */
 	GRK_LRCP = 0, /**< layer-resolution-component-precinct order */
 	GRK_RLCP = 1, /**< resolution-layer-component-precinct order */
@@ -270,7 +270,7 @@ typedef enum PROG_ORDER {
 #define GRK_CIE_F7   ((uint32_t) 0x00004637)
 #define GRK_CIE_F11   ((uint32_t) 0x00463131)
 
-typedef enum COLOR_SPACE {
+typedef enum _GRK_COLOR_SPACE {
 	GRK_CLRSPC_UNKNOWN = 0, /**< not supported by the library */
 	GRK_CLRSPC_UNSPECIFIED = 1, /**< not specified in the codestream */
 	GRK_CLRSPC_SRGB = 2, /**< sRGB */
@@ -286,7 +286,7 @@ typedef enum COLOR_SPACE {
 /**
  * Supported codec
  */
-typedef enum CODEC_FORMAT {
+typedef enum _GRK_CODEC_FORMAT {
 	GRK_CODEC_UNKNOWN = -1, /**< place-holder */
 	GRK_CODEC_J2K = 0, /**< JPEG-2000 codestream : read/write */
 	GRK_CODEC_JP2 = 2 /**< JP2 file format : read/write */
