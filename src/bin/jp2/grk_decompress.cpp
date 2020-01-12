@@ -1102,7 +1102,7 @@ int main(int argc, char **argv){
 	uint32_t num_decompressed_images = 0;
 	DecompressInitParams initParams;
 	try {
-		// try to encode with plugin
+		// try to d with plugin
 		int plugin_rc = plugin_main(argc, argv, &initParams);
 
 		// return immediately if either 
@@ -1118,28 +1118,30 @@ int main(int argc, char **argv){
 			goto cleanup;
 		}
 		auto start = std::chrono::high_resolution_clock::now();
-		if (!initParams.img_fol.set_imgdir) {
-			if (!decode("", &initParams)) {
-				rc = EXIT_FAILURE;
-				goto cleanup;
+		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
+			if (!initParams.img_fol.set_imgdir) {
+				if (!decode("", &initParams)) {
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+				num_decompressed_images++;
 			}
-			num_decompressed_images++;
-		}
-		else {
-			auto dir = opendir(initParams.img_fol.imgdirpath);
-			if (!dir) {
-				spdlog::error( "Could not open Folder {}\n", initParams.img_fol.imgdirpath);
-				rc = EXIT_FAILURE;
-				goto cleanup;
+			else {
+				auto dir = opendir(initParams.img_fol.imgdirpath);
+				if (!dir) {
+					spdlog::error( "Could not open Folder {}\n", initParams.img_fol.imgdirpath);
+					rc = EXIT_FAILURE;
+					goto cleanup;
+				}
+				struct dirent* content = nullptr;
+				while ((content = readdir(dir)) != nullptr) {
+					if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
+						continue;
+					if (decode(content->d_name, &initParams) == 1)
+						num_decompressed_images++;
+				}
+				closedir(dir);
 			}
-			struct dirent* content = nullptr;
-			while ((content = readdir(dir)) != nullptr) {
-				if (strcmp(".", content->d_name) == 0 || strcmp("..", content->d_name) == 0)
-					continue;
-				if (decode(content->d_name, &initParams) == 1)
-					num_decompressed_images++;
-			}
-			closedir(dir);
 		}
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
