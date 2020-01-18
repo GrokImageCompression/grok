@@ -4,14 +4,14 @@
 #pragma once
 
 #ifndef SPDLOG_HEADER_ONLY
-#include "spdlog/sinks/rotating_file_sink.h"
+#include <spdlog/sinks/rotating_file_sink.h>
 #endif
 
-#include "spdlog/common.h"
+#include <spdlog/common.h>
 
-#include "spdlog/details/file_helper.h"
-#include "spdlog/details/null_mutex.h"
-#include "spdlog/fmt/fmt.h"
+#include <spdlog/details/file_helper.h>
+#include <spdlog/details/null_mutex.h>
+#include <spdlog/fmt/fmt.h>
 
 #include <cerrno>
 #include <chrono>
@@ -43,18 +43,14 @@ SPDLOG_INLINE rotating_file_sink<Mutex>::rotating_file_sink(
 template<typename Mutex>
 SPDLOG_INLINE filename_t rotating_file_sink<Mutex>::calc_filename(const filename_t &filename, std::size_t index)
 {
-    typename std::conditional<std::is_same<filename_t::value_type, char>::value, memory_buf_t, fmt::wmemory_buffer>::type w;
-    if (index != 0u)
+    if (index == 0u)
     {
-        filename_t basename, ext;
-        std::tie(basename, ext) = details::file_helper::split_by_extension(filename);
-        fmt::format_to(w, SPDLOG_FILENAME_T("{}.{}{}"), basename, index, ext);
+        return filename;
     }
-    else
-    {
-        fmt::format_to(w, SPDLOG_FILENAME_T("{}"), filename);
-    }
-    return fmt::to_string(w);
+
+    filename_t basename, ext;
+    std::tie(basename, ext) = details::file_helper::split_by_extension(filename);
+    return fmt::format(SPDLOG_FILENAME_T("{}.{}{}"), basename, index, ext);
 }
 
 template<typename Mutex>
@@ -92,11 +88,12 @@ template<typename Mutex>
 SPDLOG_INLINE void rotating_file_sink<Mutex>::rotate_()
 {
     using details::os::filename_to_str;
+    using details::os::path_exists;
     file_helper_.close();
     for (auto i = max_files_; i > 0; --i)
     {
         filename_t src = calc_filename(base_filename_, i - 1);
-        if (!details::file_helper::file_exists(src))
+        if (!path_exists(src))
         {
             continue;
         }

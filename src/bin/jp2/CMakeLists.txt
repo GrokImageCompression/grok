@@ -34,7 +34,13 @@ set(common_SRCS
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.h
   ${GROK_SOURCE_DIR}/src/bin/common/grok_string.h
-  ${GROK_SOURCE_DIR}/src/bin/common/spdlog.cpp
+  
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/spdlog.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/color_sinks.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/stdout_sinks.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/fmt.cpp
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/async.cpp     
+  ${GROK_SOURCE_DIR}/src/bin/common/spdlog/file_sinks.cpp    
   )
 
 if(GROK_HAVE_LIBTIFF)
@@ -81,7 +87,7 @@ foreach(exe grk_decompress grk_compress grk_dump)
   endif()
   target_link_libraries(${exe} ${GROK_LIBRARY_NAME}
     ${PNG_LIBNAME} ${TIFF_LIBNAME} ${LCMS_LIBNAME}  ${JPEG_LIBNAME} ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT}
-    )
+     )
 
 	
 
