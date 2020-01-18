@@ -40,6 +40,47 @@
 
 #include "opj_includes.h"
 
+
+/**
+ Get the maximum of two integers
+ @return Returns a if a > b else b
+ */
+static INLINE int32_t opj_int_max(int32_t a, int32_t b)
+{
+	return (a > b) ? a : b;
+}
+
+/**
+ Get the maximum of two integers
+ @return Returns a if a > b else b
+ */
+static INLINE uint32_t opj_uint_max(uint32_t a, uint32_t b)
+{
+	return (a > b) ? a : b;
+}
+
+/**
+ @return Get absolute value of integer
+ */
+static INLINE int32_t opj_int_abs(int32_t a)
+{
+	return a < 0 ? -a : a;
+}
+
+/**
+ Get logarithm of an integer and round downwards
+ @return Returns log2(a)
+ */
+static INLINE int32_t opj_int_floorlog2(int32_t a)
+{
+	int32_t l;
+	for (l = 0; a > 1; l++) {
+		a >>= 1;
+	}
+	return l;
+}
+
+
 #include "t1_luts.h"
 #define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y / 4) + 1) * (t1->w+2)])
 #define opj_t1_setcurctx(curctx, ctxno)  curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]

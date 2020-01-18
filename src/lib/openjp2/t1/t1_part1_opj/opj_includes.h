@@ -12,7 +12,6 @@
 
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
-#include "opj_intmath.h"
 
 
 /* Are restricted pointers available? (C99) */
