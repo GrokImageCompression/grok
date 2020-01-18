@@ -30,6 +30,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/include
   ${GROK_SOURCE_DIR}/src/lib/openjp2
   ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj
   ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_ht
 )
 # Defines the source code for the library
@@ -137,6 +138,12 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/TaskScheduler.h
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/TaskScheduler.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/LockLessMultiReadPipe.h
+  
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/t1.c
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/mqc.c
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/opj_malloc.c
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/utils.c            
+  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/T1Part1OPJ.cpp    
 )
 
 option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)

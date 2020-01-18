@@ -15,16 +15,38 @@
  *
  */
 
-#include "T1Factory.h"
+#pragma once
+#include "stdint.h"
+#include "testing.h"
+#include "Tier1.h"
+#include "TileProcessor.h"
+#include "T1Interface.h"
 #include "T1Part1.h"
-#include "T1Part1OPJ.h"
-#include "T1HT.h"
+
+extern "C" {
+#include "opj_includes.h"
+#include "t1.h"
+}
+
 
 namespace grk {
 
-T1Interface* T1Factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
-		uint16_t maxCblkH) {
-	return new t1_part1::T1Part1OPJ(isEncoder, tcp, maxCblkW, maxCblkH);
-}
+namespace t1_part1 {
 
+class T1Part1OPJ: public T1Interface {
+public:
+	T1Part1OPJ(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW, uint16_t maxCblkH);
+	virtual ~T1Part1OPJ();
+
+	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
+	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+			bool doRateControl);
+
+	bool decode(decodeBlockInfo *block);
+	void postDecode(decodeBlockInfo *block);
+
+private:
+	opj_t1_t *t1;
+};
+}
 }
