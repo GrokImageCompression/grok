@@ -40,7 +40,7 @@
  Get the minimum of two integers
  @return Returns a if a < b else b
  */
-static INLINE OPJ_INT32 opj_int_min(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_min(int32_t a, int32_t b)
 {
 	return a < b ? a : b;
 }
@@ -49,7 +49,7 @@ static INLINE OPJ_INT32 opj_int_min(OPJ_INT32 a, OPJ_INT32 b)
  Get the minimum of two integers
  @return Returns a if a < b else b
  */
-static INLINE OPJ_UINT32 opj_uint_min(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_min(uint32_t a, uint32_t b)
 {
 	return a < b ? a : b;
 }
@@ -58,7 +58,7 @@ static INLINE OPJ_UINT32 opj_uint_min(OPJ_UINT32 a, OPJ_UINT32 b)
  Get the maximum of two integers
  @return Returns a if a > b else b
  */
-static INLINE OPJ_INT32 opj_int_max(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_max(int32_t a, int32_t b)
 {
 	return (a > b) ? a : b;
 }
@@ -67,7 +67,7 @@ static INLINE OPJ_INT32 opj_int_max(OPJ_INT32 a, OPJ_INT32 b)
  Get the maximum of two integers
  @return Returns a if a > b else b
  */
-static INLINE OPJ_UINT32 opj_uint_max(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_max(uint32_t a, uint32_t b)
 {
 	return (a > b) ? a : b;
 }
@@ -76,17 +76,17 @@ static INLINE OPJ_UINT32 opj_uint_max(OPJ_UINT32 a, OPJ_UINT32 b)
  Get the saturated sum of two unsigned integers
  @return Returns saturated sum of a+b
  */
-static INLINE OPJ_UINT32 opj_uint_adds(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_adds(uint32_t a, uint32_t b)
 {
-	OPJ_UINT64 sum = (OPJ_UINT64)a + (OPJ_UINT64)b;
-	return (OPJ_UINT32)(-(OPJ_INT32)(sum >> 32)) | (OPJ_UINT32)sum;
+	uint64_t sum = (uint64_t)a + (uint64_t)b;
+	return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t)sum;
 }
 
 /**
  Get the saturated difference of two unsigned integers
  @return Returns saturated sum of a-b
  */
-static INLINE OPJ_UINT32 opj_uint_subs(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_subs(uint32_t a, uint32_t b)
 {
 	return (a >= b) ? a - b : 0;
 }
@@ -100,8 +100,8 @@ static INLINE OPJ_UINT32 opj_uint_subs(OPJ_UINT32 a, OPJ_UINT32 b)
  <li>Returns min if (a < min)
  </ul>
  */
-static INLINE OPJ_INT32 opj_int_clamp(OPJ_INT32 a, OPJ_INT32 min,
-		OPJ_INT32 max)
+static INLINE int32_t opj_int_clamp(int32_t a, int32_t min,
+		int32_t max)
 {
 	if (a < min) {
 		return min;
@@ -121,8 +121,8 @@ static INLINE OPJ_INT32 opj_int_clamp(OPJ_INT32 a, OPJ_INT32 min,
  <li>Returns min if (a < min)
  </ul>
  */
-static INLINE OPJ_INT64 opj_int64_clamp(OPJ_INT64 a, OPJ_INT64 min,
-		OPJ_INT64 max)
+static INLINE int64_t int64_t_clamp(int64_t a, int64_t min,
+		int64_t max)
 {
 	if (a < min) {
 		return min;
@@ -136,7 +136,7 @@ static INLINE OPJ_INT64 opj_int64_clamp(OPJ_INT64 a, OPJ_INT64 min,
 /**
  @return Get absolute value of integer
  */
-static INLINE OPJ_INT32 opj_int_abs(OPJ_INT32 a)
+static INLINE int32_t opj_int_abs(int32_t a)
 {
 	return a < 0 ? -a : a;
 }
@@ -144,54 +144,54 @@ static INLINE OPJ_INT32 opj_int_abs(OPJ_INT32 a)
  Divide an integer and round upwards
  @return Returns a divided by b
  */
-static INLINE OPJ_INT32 opj_int_ceildiv(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_ceildiv(int32_t a, int32_t b)
 {
 	assert(b);
-	return (OPJ_INT32)(((OPJ_INT64)a + b - 1) / b);
+	return (int32_t)(((int64_t)a + b - 1) / b);
 }
 
 /**
  Divide an integer and round upwards
  @return Returns a divided by b
  */
-static INLINE OPJ_UINT32 opj_uint_ceildiv(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_ceildiv(uint32_t a, uint32_t b)
 {
 	assert(b);
-	return (OPJ_UINT32)(((OPJ_UINT64)a + b - 1) / b);
+	return (uint32_t)(((uint64_t)a + b - 1) / b);
 }
 
 /**
  Divide an integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static INLINE OPJ_INT32 opj_int_ceildivpow2(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_ceildivpow2(int32_t a, int32_t b)
 {
-	return (OPJ_INT32)((a + ((OPJ_INT64)1 << b) - 1) >> b);
+	return (int32_t)((a + ((int64_t)1 << b) - 1) >> b);
 }
 
 /**
  Divide a 64bits integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static INLINE OPJ_INT32 opj_int64_ceildivpow2(OPJ_INT64 a, OPJ_INT32 b)
+static INLINE int32_t int64_t_ceildivpow2(int64_t a, int32_t b)
 {
-	return (OPJ_INT32)((a + ((OPJ_INT64)1 << b) - 1) >> b);
+	return (int32_t)((a + ((int64_t)1 << b) - 1) >> b);
 }
 
 /**
  Divide an integer by a power of 2 and round upwards
  @return Returns a divided by 2^b
  */
-static INLINE OPJ_UINT32 opj_uint_ceildivpow2(OPJ_UINT32 a, OPJ_UINT32 b)
+static INLINE uint32_t opj_uint_ceildivpow2(uint32_t a, uint32_t b)
 {
-	return (OPJ_UINT32)((a + ((OPJ_UINT64)1U << b) - 1U) >> b);
+	return (uint32_t)((a + ((uint64_t)1U << b) - 1U) >> b);
 }
 
 /**
  Divide an integer by a power of 2 and round downwards
  @return Returns a divided by 2^b
  */
-static INLINE OPJ_INT32 opj_int_floordivpow2(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_floordivpow2(int32_t a, int32_t b)
 {
 	return a >> b;
 }
@@ -199,9 +199,9 @@ static INLINE OPJ_INT32 opj_int_floordivpow2(OPJ_INT32 a, OPJ_INT32 b)
  Get logarithm of an integer and round downwards
  @return Returns log2(a)
  */
-static INLINE OPJ_INT32 opj_int_floorlog2(OPJ_INT32 a)
+static INLINE int32_t opj_int_floorlog2(int32_t a)
 {
-	OPJ_INT32 l;
+	int32_t l;
 	for (l = 0; a > 1; l++) {
 		a >>= 1;
 	}
@@ -211,9 +211,9 @@ static INLINE OPJ_INT32 opj_int_floorlog2(OPJ_INT32 a)
  Get logarithm of an integer and round downwards
  @return Returns log2(a)
  */
-static INLINE OPJ_UINT32 opj_uint_floorlog2(OPJ_UINT32 a)
+static INLINE uint32_t opj_uint_floorlog2(uint32_t a)
 {
-	OPJ_UINT32 l;
+	uint32_t l;
 	for (l = 0; a > 1; ++l) {
 		a >>= 1;
 	}
@@ -226,31 +226,31 @@ static INLINE OPJ_UINT32 opj_uint_floorlog2(OPJ_UINT32 a)
  @param b
  @return Returns a * b
  */
-static INLINE OPJ_INT32 opj_int_fix_mul(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_fix_mul(int32_t a, int32_t b)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-    OPJ_INT64 temp = __emul(a, b);
+    int64_t temp = __emul(a, b);
 #else
-	OPJ_INT64 temp = (OPJ_INT64) a * (OPJ_INT64) b;
+	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;
-	assert((temp >> 13) <= (OPJ_INT64)0x7FFFFFFF);
-	assert((temp >> 13) >= (-(OPJ_INT64)0x7FFFFFFF - (OPJ_INT64)1));
-	return (OPJ_INT32)(temp >> 13);
+	assert((temp >> 13) <= (int64_t)0x7FFFFFFF);
+	assert((temp >> 13) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t)(temp >> 13);
 }
 
-static INLINE OPJ_INT32 opj_int_fix_mul_t1(OPJ_INT32 a, OPJ_INT32 b)
+static INLINE int32_t opj_int_fix_mul_t1(int32_t a, int32_t b)
 {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
-    OPJ_INT64 temp = __emul(a, b);
+    int64_t temp = __emul(a, b);
 #else
-	OPJ_INT64 temp = (OPJ_INT64) a * (OPJ_INT64) b;
+	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;
-	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (OPJ_INT64)0x7FFFFFFF);
-	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(OPJ_INT64)0x7FFFFFFF -
-					(OPJ_INT64)1));
-	return (OPJ_INT32)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF -
+					(int64_t)1));
+	return (int32_t)(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
 #endif /* OPJ_INTMATH_H */

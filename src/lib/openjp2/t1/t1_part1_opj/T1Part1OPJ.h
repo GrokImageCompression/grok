@@ -22,11 +22,9 @@
 #include "TileProcessor.h"
 #include "T1Interface.h"
 #include "T1Part1.h"
-
-extern "C" {
 #include "opj_includes.h"
 #include "t1.h"
-}
+
 
 
 namespace grk {

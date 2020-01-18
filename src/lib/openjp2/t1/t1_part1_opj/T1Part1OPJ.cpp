@@ -27,7 +27,7 @@ T1Part1OPJ::T1Part1OPJ(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 	t1 = opj_t1_create(isEncoder);
 	if (!isEncoder) {
 	   t1->cblkdatabuffersize = maxCblkW * maxCblkH * sizeof(int32_t);
-	   t1->cblkdatabuffer = (OPJ_BYTE*)grok_malloc(t1->cblkdatabuffersize);
+	   t1->cblkdatabuffer = (uint8_t*)grok_malloc(t1->cblkdatabuffersize);
    }
 }
 T1Part1OPJ::~T1Part1OPJ() {
@@ -106,7 +106,7 @@ double T1Part1OPJ::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty, tile->numcomps,
-			block->mct_norms, block->mct_numcomps);
+			block->mct_norms, block->mct_numcomps, doRateControl);
 
 	cblk->num_passes_encoded = cblkopj.totalpasses;
 	cblk->numbps = cblkopj.numbps;
@@ -118,6 +118,10 @@ double T1Part1OPJ::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		passgrk->rate = passopj->rate;
 		passgrk->term = passopj->term;
 	}
+
+	opj_t1_code_block_enc_deallocate(&cblkopj);
+	cblkopj.data = nullptr;
+
  	return disto;
 }
 
@@ -145,7 +149,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
-	t1->mustuse_cblkdatabuffer = OPJ_FALSE;
+	t1->mustuse_cblkdatabuffer = false;
 	opj_tcd_seg_data_chunk_t chunk;
 	chunk.len = t1->cblkdatabuffersize;
 	chunk.data = t1->cblkdatabuffer;
@@ -180,9 +184,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
     				block->bandno,
 					block->roishift,
 					block->cblk_sty,
-					nullptr,
-					nullptr,
-					OPJ_FALSE);
+					false);
 
 	delete[] segs;
 	return ret;

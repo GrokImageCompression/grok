@@ -28,10 +28,13 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/include
-  ${GROK_SOURCE_DIR}/src/lib/openjp2
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_ht
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht
 )
 # Defines the source code for the library
 set(GROK_SRCS
@@ -42,14 +45,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/GrokStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GrokStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/IGrokStream.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/WaveletForward.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/WaveletInverse.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt_utils.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt53.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt53.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt97.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/dwt97.h
   ${CMAKE_CURRENT_SOURCE_DIR}/logger.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/logger.h
   ${CMAKE_CURRENT_SOURCE_DIR}/image.cpp
@@ -73,29 +68,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/Tier1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/mqc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/mqc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Factory.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Factory.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_ht/T1HT.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_ht/T1HT.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/T1Part1.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/T1Part1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_opt_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_base.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_base.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_opt.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode_opt.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_decode.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_encode.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1_part1/t1_encode.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp
@@ -118,10 +90,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_common.h
   ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Decoder.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T1Encoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ThreadPool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.cpp
@@ -139,11 +107,49 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/TaskScheduler.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/LockLessMultiReadPipe.h
   
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/t1.c
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/mqc.c
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/opj_malloc.c
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/utils.c            
-  ${GROK_SOURCE_DIR}/src/lib/openjp2/t1_part1_opj/T1Part1OPJ.cpp    
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletInverse.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt53.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt53.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.h
+  
+  
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/Tier1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/Tier1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_opt_luts.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_luts.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_base.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_base.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_opt.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_opt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode.cpp  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_encode.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_encode.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/t1.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/mqc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/T1Part1OPJ.cpp    
 )
 
 option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)

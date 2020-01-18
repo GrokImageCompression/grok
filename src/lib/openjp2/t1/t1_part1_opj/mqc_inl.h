@@ -71,9 +71,9 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
-static INLINE OPJ_UINT32 opj_mqc_raw_decode(opj_mqc_t *mqc)
+static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
 {
-    OPJ_UINT32 d;
+    uint32_t d;
     if (mqc->ct == 0) {
         /* Given opj_mqc_raw_init_dec() we know that at some point we will */
         /* have a 0xFF 0xFF artificial marker */
@@ -93,7 +93,7 @@ static INLINE OPJ_UINT32 opj_mqc_raw_decode(opj_mqc_t *mqc)
         }
     }
     mqc->ct--;
-    d = ((OPJ_UINT32)mqc->c >> mqc->ct) & 0x01U;
+    d = ((uint32_t)mqc->c >> mqc->ct) & 0x01U;
 
     return d;
 }
@@ -101,7 +101,7 @@ static INLINE OPJ_UINT32 opj_mqc_raw_decode(opj_mqc_t *mqc)
 
 #define opj_mqc_bytein_macro(mqc, c, ct) \
 { \
-        OPJ_UINT32 l_c;  \
+        uint32_t l_c;  \
         /* Given opj_mqc_init_dec() we know that at some point we will */ \
         /* have a 0xFF 0xFF artificial marker */ \
         l_c = *(mqc->bp + 1); \
@@ -158,9 +158,9 @@ static INLINE OPJ_UINT32 opj_mqc_raw_decode(opj_mqc_t *mqc)
 
 #define DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
         register const opj_mqc_state_t **curctx = mqc->curctx; \
-        register OPJ_UINT32 c = mqc->c; \
-        register OPJ_UINT32 a = mqc->a; \
-        register OPJ_UINT32 ct = mqc->ct
+        register uint32_t c = mqc->c; \
+        register uint32_t a = mqc->a; \
+        register uint32_t ct = mqc->ct
 
 #define UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
         mqc->curctx = curctx; \
@@ -186,7 +186,7 @@ Renormalize mqc->a and mqc->c while decoding
 
 /**
 Decode a symbol
-@param d OPJ_UINT32 value where to store the decoded symbol
+@param d uint32_t value where to store the decoded symbol
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1) in d
 */

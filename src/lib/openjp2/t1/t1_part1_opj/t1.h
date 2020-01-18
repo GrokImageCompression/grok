@@ -165,14 +165,14 @@
 /* ----------------------------------------------------------------------- */
 
 /** Flags for 4 consecutive rows of a column */
-typedef OPJ_UINT32 opj_flag_t;
+typedef uint32_t opj_flag_t;
 
 typedef struct opj_t1 {
 
 	/** MQC component */
 	opj_mqc_t mqc;
 
-	OPJ_INT32 *data;
+	int32_t *data;
 	/** Flags used by decoder and encoder.
 	 * Such that flags[1+0] is for state of col=0,row=0..3,
 	 flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
@@ -180,42 +180,41 @@ typedef struct opj_t1 {
 	 as done in the various decoding steps. */
 	opj_flag_t *flags;
 
-	OPJ_UINT32 w;
-	OPJ_UINT32 h;
-	OPJ_UINT32 datasize;
-	OPJ_UINT32 flagssize;
-	OPJ_UINT32 data_stride;
+	uint32_t w;
+	uint32_t h;
+	uint32_t datasize;
+	uint32_t flagssize;
+	uint32_t data_stride;
 	bool encoder;
 
 	/* Thre 3 variables below are only used by the decoder */
 	/* set to TRUE in multithreaded context */
 	bool mustuse_cblkdatabuffer;
 	/* Temporary buffer to concatenate all chunks of a codebock */
-	OPJ_BYTE *cblkdatabuffer;
+	uint8_t *cblkdatabuffer;
 	/* Maximum size available in cblkdatabuffer */
-	OPJ_UINT32 cblkdatabuffersize;
+	uint32_t cblkdatabuffersize;
 } opj_t1_t;
 
 bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
-		OPJ_UINT32 orient, OPJ_UINT32 roishift, OPJ_UINT32 cblksty,
-		opj_event_mgr_t *p_manager, opj_mutex_t *p_manager_mutex,
+		uint32_t orient, uint32_t roishift, uint32_t cblksty,
 		bool check_pterm);
 
-void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, OPJ_UINT32 roishift,
-		uint32_t qmfbid, float stepsize, OPJ_INT32 *tilec_data,
-		OPJ_INT32 tile_w, OPJ_INT32 tile_h);
+void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
+		uint32_t qmfbid, float stepsize, int32_t *tilec_data,
+		int32_t tile_w, int32_t tile_h);
 
 void opj_t1_code_block_enc_deallocate(opj_tcd_cblk_enc_t *
         p_code_block);
 
-bool opj_t1_allocate_buffers(opj_t1_t *t1, OPJ_UINT32 w,
-		OPJ_UINT32 h);
+bool opj_t1_allocate_buffers(opj_t1_t *t1, uint32_t w,
+		uint32_t h);
 
-OPJ_FLOAT64 opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
-		OPJ_UINT32 orient, OPJ_UINT32 compno, OPJ_UINT32 level,
-		OPJ_UINT32 qmfbid, OPJ_FLOAT64 stepsize, OPJ_UINT32 cblksty,
-		OPJ_UINT32 numcomps, const OPJ_FLOAT64 *mct_norms,
-		OPJ_UINT32 mct_numcomps);
+double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
+		uint32_t orient, uint32_t compno, uint32_t level,
+		uint32_t qmfbid, double stepsize, uint32_t cblksty,
+		uint32_t numcomps, const double *mct_norms,
+		uint32_t mct_numcomps, bool doRateControl);
 
 opj_t1_t* opj_t1_create(bool isEncoder);
 void opj_t1_destroy(opj_t1_t *p_t1);
