@@ -1596,12 +1596,19 @@ OPJ_FLOAT64 opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 			pass->rate = opj_mqc_numbytes(mqc);
 		} else {
 			/* Non terminated pass */
+			// correction term is used for non-terminated passes, to ensure that maximal bits are
+			// extracted from the partial segment when code block is truncated at this pass
+			// See page 498 of Taubman and Marcellin for more details
+			// note: we add 1 because rates for non-terminated passes are based on mqc_numbytes(mqc),
+			// which is always 1 less than actual rate
 			OPJ_UINT32 rate_extra_bytes;
 			if (type == T1_TYPE_RAW) {
 				rate_extra_bytes = opj_mqc_bypass_get_extra_bytes(mqc,
 						(cblksty & J2K_CCP_CBLKSTY_PTERM));
 			} else {
-				rate_extra_bytes = 3;
+				rate_extra_bytes = 4+1;
+				if (mqc->ct < 5)
+					rate_extra_bytes++;
 			}
 			pass->term = 0;
 			pass->rate = opj_mqc_numbytes(mqc) + rate_extra_bytes;
