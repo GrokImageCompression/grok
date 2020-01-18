@@ -171,6 +171,7 @@ bool tile_buf_alloc_component_data_decode(grk_tile_buf_component *buf) {
 			if (!buf->data) {
 				return false;
 			}
+			memset(buf->data, 0, area * sizeof(int32_t));
 		}
 		buf->data_size = area * sizeof(int32_t);
 		buf->data_size_needed = buf->data_size;
