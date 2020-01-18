@@ -323,7 +323,7 @@ void opj_mqc_bypass_enc(opj_mqc_t *mqc, uint32_t d)
 uint32_t opj_mqc_bypass_get_extra_bytes(opj_mqc_t *mqc, bool erterm)
 {
     return (mqc->ct < 7 ||
-            (mqc->ct == 7 && (erterm || mqc->bp[-1] != 0xff))) ? 1 : 0;
+            (mqc->ct == 7 && (erterm || mqc->bp[-1] != 0xff))) ? (1 + 1) : (0 + 1);
 }
 
 void opj_mqc_bypass_flush_enc(opj_mqc_t *mqc, bool erterm)
