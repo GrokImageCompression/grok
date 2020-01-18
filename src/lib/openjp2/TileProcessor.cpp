@@ -2144,7 +2144,7 @@ bool grk_tcd_cblk_enc::alloc() {
 
 /**
  * Allocates data memory for an encoding code block.
- * We actually allocate 1 more bytes than specified, and then offset data by +1.
+ * We actually allocate 2 more bytes than specified, and then offset data by +2.
  * This is done so that we can safely initialize the MQ coder pointer to data-1,
  * without risk of accessing uninitialized memory.
  */
@@ -2155,6 +2155,9 @@ bool grk_tcd_cblk_enc::alloc_data(size_t nominalBlockSize) {
 			delete[] actualData;
 		}
 		actualData = new uint8_t[l_data_size + cblk_compressed_data_pad_left];
+		actualData[0]=0;
+		actualData[1]=0;
+
 		data = actualData + cblk_compressed_data_pad_left;
 		data_size = l_data_size;
 		owns_data = true;

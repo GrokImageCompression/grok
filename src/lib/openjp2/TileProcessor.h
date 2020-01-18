@@ -118,7 +118,7 @@ struct grk_tcd_layer {
 	uint8_t *data; /* data buffer (points to code block data) */
 };
 
-const uint8_t cblk_compressed_data_pad_left = 1;
+const uint8_t cblk_compressed_data_pad_left = 2;
 
 // encoder code block
 struct grk_tcd_cblk_enc {
