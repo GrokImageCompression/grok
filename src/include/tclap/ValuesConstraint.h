@@ -1,3 +1,5 @@
+// -*- Mode: c++; c-basic-offset: 4; tab-width: 4; -*-
+
 
 
 /****************************************************************************** 
@@ -5,6 +7,7 @@
  *  file:  ValuesConstraint.h
  * 
  *  Copyright (c) 2005, Michael E. Smoot
+ *  Copyright (c) 2017, Google LLC
  *  All rights reserved.
  * 
  *  See the file COPYING in the top directory of this distribution for
@@ -48,7 +51,7 @@ class ValuesConstraint : public Constraint<T>
 		 * Constructor. 
 		 * \param allowed - vector of allowed values. 
 		 */
-		ValuesConstraint(std::vector<T>& allowed);	
+		ValuesConstraint(std::vector<T>const& allowed);
 
 		/**
 		 * Virtual destructor.
@@ -87,7 +90,7 @@ class ValuesConstraint : public Constraint<T>
 };
 
 template<class T>
-ValuesConstraint<T>::ValuesConstraint(std::vector<T>& allowed)
+ValuesConstraint<T>::ValuesConstraint(std::vector<T> const& allowed)
 : _allowed(allowed),
   _typeDesc("")
 { 
