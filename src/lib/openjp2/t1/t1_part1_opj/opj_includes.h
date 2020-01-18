@@ -13,11 +13,6 @@
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
-
-/* Are restricted pointers available? (C99) */
-#if (__STDC_VERSION__ >= 199901L)
-#define OPJ_RESTRICT restrict
-#else
 /* Not a C99 compiler */
 #if defined(__GNUC__)
 #define OPJ_RESTRICT __restrict__
@@ -31,7 +26,7 @@
 #else
 #define OPJ_RESTRICT /* restrict */
 #endif
-#endif
+
 
 
 /* Type to use for bit-fields in internal headers */
