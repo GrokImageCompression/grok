@@ -106,22 +106,7 @@ elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 elif [ "${TRAVIS_OS_NAME}" == "windows" ]; then
 	GROK_OS_NAME=windows
 	if which cl > /dev/null; then
-		GROK_CL_VERSION=$(cl 2>&1 | grep Version | sed 's/.*Version \([0-9]*\).*/\1/')
-		if [ ${GROK_CL_VERSION} -eq 19 ]; then
-			GROK_CXX_VERSION=vs2015
-		elif [ ${GROK_CL_VERSION} -eq 18 ]; then
-			GROK_CXX_VERSION=vs2013
-		elif [ ${GROK_CL_VERSION} -eq 17 ]; then
-			GROK_CXX_VERSION=vs2012
-		elif [ ${GROK_CL_VERSION} -eq 16 ]; then
-			GROK_CXX_VERSION=vs2010
-		elif [ ${GROK_CL_VERSION} -eq 15 ]; then
-			GROK_CXX_VERSION=vs2008
-		elif [ ${GROK_CL_VERSION} -eq 14 ]; then
-			GROK_CXX_VERSION=vs2005
-		else
-			GROK_CXX_VERSION=vs????
-		fi
+		GROK_CXX_VERSION=msvc$(cl 2>&1 | grep Version | sed -nre 's/^[^0-9]*(([0-9]+\.)*[0-9]+).*/\1/p')
 	fi
 else
 	echo "OS not supported: ${TRAVIS_OS_NAME}"; exit 1
