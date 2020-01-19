@@ -103,10 +103,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.h
   ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/TaskScheduler.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/TaskScheduler.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/enkitTS/LockLessMultiReadPipe.h
-  
   
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletInverse.h
@@ -117,9 +113,7 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.h
   
-  
-  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
+   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.cpp

@@ -1526,14 +1526,14 @@ bool TileProcessor::dwt_decode() {
 		if (l_tccp->qmfbid == 1) {
 			dwt53 dwt;
 			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					Scheduler::g_TS.GetNumTaskThreads())) {
+					hardware_concurrency())) {
 				rc = false;
 				continue;
 			}
 		} else {
 			dwt97 dwt;
 			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					Scheduler::g_TS.GetNumTaskThreads())) {
+					hardware_concurrency())) {
 				rc = false;
 				continue;
 			}

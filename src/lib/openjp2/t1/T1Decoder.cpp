@@ -23,9 +23,8 @@ namespace grk {
 T1Decoder::T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
-		decodeBlocks(nullptr),
-		blockCount(-1){
-	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
+		decodeBlocks(nullptr){
+	for (auto i = 0U; i < hardware_concurrency(); ++i) {
 		threadStructs.push_back(
 				T1Factory::get_t1(false, tcp, codeblock_width,
 						codeblock_height));
@@ -47,29 +46,32 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 		decodeBlocks[i] = blocks->operator[](i);
 	}
 	success = true;
-	enki::TaskSet task((uint32_t) maxBlocks,
-			[this, maxBlocks](enki::TaskSetPartition range, uint32_t threadnum) {
-				for (auto i = range.start; i < range.end; ++i) {
-					uint64_t index = ++blockCount;
-					if (index >= maxBlocks)
-						return;
-					decodeBlockInfo *block = decodeBlocks[index];
-					if (!success){
-						delete block;
-						return;
-					}
-					auto impl = threadStructs[threadnum];
-					if (!impl->decode(block)) {
-						success = false;
-						delete block;
-						return;
-					}
-					impl->postDecode(block);
+    std::vector< std::future<int> > results;
+    for(int i = 0; i < maxBlocks; ++i) {
+    	uint64_t index = i;
+        results.emplace_back(
+            Scheduler::g_tp->enqueue([this, maxBlocks,index] {
+                auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
+				decodeBlockInfo *block = decodeBlocks[index];
+				if (!success){
 					delete block;
+					return 0;
 				}
-			});
-	Scheduler::g_TS.AddTaskSetToPipe(&task);
-	Scheduler::g_TS.WaitforTask(&task);
+				auto impl = threadStructs[threadnum];
+				if (!impl->decode(block)) {
+					success = false;
+					delete block;
+					return 0;
+				}
+				impl->postDecode(block);
+				delete block;
+                return 0;
+            })
+        );
+    }
+    for(auto && result: results){
+        result.get();
+    }
 	delete[] decodeBlocks;
 	return success;
 }

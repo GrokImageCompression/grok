@@ -28,7 +28,7 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 		encodeBlocks(nullptr),
 		blockCount(-1)
 {
-	for (auto i = 0U; i < Scheduler::g_TS.GetNumTaskThreads(); ++i) {
+	for (auto i = 0U; i < hardware_concurrency(); ++i) {
 		threadStructs.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
@@ -64,16 +64,21 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
 		encodeBlocks[i] = blocks->operator[](i);
 	}
 	blocks->clear();
-	enki::TaskSet task((uint32_t) maxBlocks,
-			[this,maxBlocks](enki::TaskSetPartition range, uint32_t threadnum) {
-				for (auto i = range.start; i < range.end; ++i)
-					encode(threadnum, maxBlocks);
-			});
-
-	Scheduler::g_TS.AddTaskSetToPipe(&task);
-	Scheduler::g_TS.WaitforTask(&task);
+    std::vector< std::future<int> > results;
+    for(size_t i = 0; i < maxBlocks; ++i) {
+    	uint64_t index = i;
+        results.emplace_back(
+            Scheduler::g_tp->enqueue([this, maxBlocks,index] {
+                auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
+                encode(threadnum, maxBlocks);
+                return 0;
+            })
+        );
+    }
+    for(auto && result: results){
+        result.get();
+    }
 	delete[] encodeBlocks;
-
 	return true;
 }
 

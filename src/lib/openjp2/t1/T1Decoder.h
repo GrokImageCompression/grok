@@ -37,7 +37,6 @@ private:
 	std::atomic_bool success;
 
 	decodeBlockInfo** decodeBlocks;
-	std::atomic<int64_t> blockCount;
 };
 
 }

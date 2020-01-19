@@ -16,13 +16,12 @@
  */
 
 #pragma once
-#include "enkitTS/TaskScheduler.h"
+#include "ThreadPool.hpp"
 
 namespace grk {
 
 struct Scheduler {
-
-	static enki::TaskScheduler g_TS;
+	static ThreadPool* g_tp;
 };
 
 }

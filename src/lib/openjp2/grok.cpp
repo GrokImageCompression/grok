@@ -67,14 +67,11 @@
 #include "grok_includes.h"
 using namespace grk;
 
-enki::TaskScheduler Scheduler::g_TS;
+ThreadPool* Scheduler::g_tp = nullptr;
 
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
-	if (!numthreads)
-		Scheduler::g_TS.Initialize();
-	else
-		Scheduler::g_TS.Initialize(numthreads);
+	Scheduler::g_tp = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
 	if (!is_plugin_initialized) {
 		grok_plugin_load_info_t info;
 		info.plugin_path = plugin_path;
@@ -85,7 +82,8 @@ bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
 
 GRK_API void GRK_CALLCONV grk_deinitialize() {
 	grok_plugin_cleanup();
-	Scheduler::g_TS.WaitforAllAndShutdown();
+	delete Scheduler::g_tp;
+	Scheduler::g_tp = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
