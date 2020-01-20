@@ -64,7 +64,7 @@ typedef union {
 } grk_dwt_4vec;
 
 struct grk_dwt97_info {
-	grk_dwt_4vec *wavelet;
+	grk_dwt_4vec *mem;
 	uint32_t d_n;
 	uint32_t s_n;
 	uint8_t cas;

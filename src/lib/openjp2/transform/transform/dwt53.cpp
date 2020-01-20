@@ -151,30 +151,31 @@ void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
 		if ((d_n > 0) || (s_n > 1)) {
 			for (int32_t i = 0; i < d_n; i++)
 				GROK_D(i)-= (GROK_S_(i) + GROK_S_(i + 1)) >> 1;
-				for (int32_t i = 0; i < s_n; i++)
+			for (int32_t i = 0; i < s_n; i++)
 				GROK_S(i) += (GROK_D_(i - 1) + GROK_D_(i) + 2) >> 2;
-			}
-		}
-		else {
-			if (!s_n && d_n == 1) /* NEW :  CASE ONE ELEMENT */
-			GROK_S(0) <<= 1;
-			else {
-				for (int32_t i = 0; i < d_n; i++)
-				GROK_S(i) -= (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
-				for (int32_t i = 0; i < s_n; i++)
-				GROK_D(i) += (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
-			}
 		}
 	}
+	else {
+		if (!s_n && d_n == 1) /* NEW :  CASE ONE ELEMENT */
+			GROK_S(0) <<= 1;
+		else {
+			for (int32_t i = 0; i < d_n; i++)
+				GROK_S(i) -= (GROK_DD_(i) + GROK_DD_(i - 1)) >> 1;
+			for (int32_t i = 0; i < s_n; i++)
+				GROK_D(i) += (GROK_SS_(i) + GROK_SS_(i + 1) + 2) >> 2;
+		}
+	}
+}
 
-	/**
-	 Inverse wavelet transform in 2-D.
-	 Apply a reversible inverse DWT transform to a component of an image.
-	 @param tilec Tile component information (current tile)
-	 @param numres Number of resolution levels to decode
-	 */
-bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
-		uint32_t numThreads) {
+/**
+ Inverse wavelet transform in 2-D.
+ Apply a reversible inverse DWT transform to a component of an image.
+ @param tilec Tile component information (current tile)
+ @param numres Number of resolution levels to decode
+ */
+typedef int32_t T;
+typedef grk_dwt STR;
+bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
 	}
@@ -200,15 +201,15 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 							uint32_t rh = (tr->y1 - tr->y0); /* height of the resolution level computed */
 							uint32_t stride = (tilec->x1 - tilec->x0);
 
-							grk_dwt h;
-							h.mem = (int32_t*) grok_aligned_malloc(
+							STR h;
+							h.mem = (T*) grok_aligned_malloc(
 									dwt_utils::max_resolution(tr, numResolutions)
-											* sizeof(int32_t));
+											* sizeof(T));
 							if (!h.mem) {
 								rc++;
 								goto cleanup;
 							}
-							grk_dwt v;
+							STR v;
 							v.mem = h.mem;
 
 							while (--numResolutions) {
@@ -221,29 +222,35 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 								rw = (tr->x1 - tr->x0);
 								rh = (tr->y1 - tr->y0);
 
-								h.d_n = (int32_t) (rw - h.s_n);
-								h.cas = tr->x0 & 1;
+								if (rh) {
+									const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / hardware_concurrency());
 
-								for (uint32_t j = threadId; j < rh; j +=
-										numThreads) {
-									interleave_h(&h, &tiledp[j * stride]);
-									decode_line(&h);
-									memcpy(&tiledp[j * stride], h.mem,
-											rw * sizeof(int32_t));
+									h.d_n = (int32_t) (rw - h.s_n);
+									h.cas = tr->x0 & 1;
+
+									for (auto j = threadId * linesPerThreadH;
+											j < std::min<uint32_t>((threadId+1)*linesPerThreadH, rh); ++j) {
+										interleave_h(&h, &tiledp[j * stride]);
+										decode_line(&h);
+										memcpy(&tiledp[j * stride], h.mem,
+												rw * sizeof(T));
+									}
 								}
-
-								v.d_n = (int32_t) (rh - v.s_n);
-								v.cas = tr->y0 & 1;
-
 								decode_dwt_barrier.arrive_and_wait();
 
-								for (uint32_t j = threadId; j < rw; j +=
-										numThreads) {
-									interleave_v(&v, &tiledp[j],
-											(int32_t) stride);
-									decode_line(&v);
-									for (uint32_t k = 0; k < rh; ++k) {
-										tiledp[k * stride + j] = v.mem[k];
+								if (rw) {
+									v.d_n = (int32_t) (rh - v.s_n);
+									v.cas = tr->y0 & 1;
+									const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / hardware_concurrency()));
+
+									for (auto j = threadId * linesPerThreadV;
+											j < std::min<uint32_t>((threadId+1)*linesPerThreadV, rw); ++j) {
+										interleave_v(&v, &tiledp[j],
+												(int32_t) stride);
+										decode_line(&v);
+										for (uint32_t k = 0; k < rh; ++k) {
+											tiledp[k * stride + j] = v.mem[k];
+										}
 									}
 								}
 								decode_dwt_barrier.arrive_and_wait();

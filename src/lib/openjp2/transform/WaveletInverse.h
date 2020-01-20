@@ -21,7 +21,7 @@
 
 namespace grk {
 
-template <typename DWT, typename str> class WaveletInverse
+template <typename DWT, typename T, typename STR> class WaveletInverse
 {
 
 public:
@@ -37,12 +37,12 @@ public:
  Inverse wavelet transform in 2-D.
  @param tilec Tile component information (current tile)
  */
-template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(grk_tcd_tilecomp *tilec, uint32_t numres){
+template <typename DWT, typename T, typename STR> bool WaveletInverse<DWT,T,STR>::run(grk_tcd_tilecomp *tilec, uint32_t numres){
 	if (tilec->numresolutions == 1U)
 		return true;
 
 	size_t l_data_size = dwt_utils::max_resolution(tilec->resolutions,
-			numres) * sizeof(int32_t);
+			numres) * sizeof(T);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
 		GROK_ERROR("Wavelet encode: overflow");
@@ -60,12 +60,12 @@ template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(grk_tcd
 	grk_tcd_resolution *cur_res = tilec->resolutions;
 	grk_tcd_resolution *next_res = cur_res + 1;
 
-	int32_t **bj_array = new int32_t*[hardware_concurrency()];
+	T **bj_array = new T*[hardware_concurrency()];
 	for (uint32_t i = 0; i < hardware_concurrency(); ++i){
 		bj_array[i] = nullptr;
 	}
 	for (uint32_t i = 0; i < hardware_concurrency(); ++i){
-		bj_array[i] = (int32_t*)grok_aligned_malloc(l_data_size);
+		bj_array[i] = (T*)grok_aligned_malloc(l_data_size);
 		if (!bj_array[i]){
 			rc = false;
 			goto cleanup;
@@ -105,8 +105,8 @@ template <typename DWT, typename str> bool WaveletInverse<DWT, str>::run(grk_tcd
 					DWT wavelet;
 					for (auto m = index * linesPerThreadH;
 							m < std::min<uint32_t>((index+1)*linesPerThreadH, rh); ++m) {
-						int32_t *bj = bj_array[index];
-						int32_t *aj = a + m * stride;
+						T *bj = bj_array[index];
+						T *aj = a + m * stride;
 						memcpy(bj,aj,rw << 2);
 						wavelet.interleave_h(bj, aj, d_n, s_n, cas_row);
 						wavelet.decode_line(bj, d_n, s_n, cas_row);

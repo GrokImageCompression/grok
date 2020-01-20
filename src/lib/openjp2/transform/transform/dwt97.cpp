@@ -106,7 +106,11 @@ static void decode_step2(grk_dwt_4vec* l, grk_dwt_4vec* w, uint32_t k, uint32_t 
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 2-D. */
-/* </summary>                            */
+/* </summary>
+ *                           */
+typedef grk_dwt_4vec T;
+typedef float TT;
+typedef grk_dwt97_info STR;
 bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
@@ -133,19 +137,19 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 							uint32_t rh = (res->y1 - res->y0); /* height of the resolution level computed */
 							uint32_t stride = (tilec->x1 - tilec->x0);
 
-							grk_dwt97_info h;
-							h.wavelet = (grk_dwt_4vec*) grok_aligned_malloc(
+							STR h;
+							h.mem = (T*) grok_aligned_malloc(
 									(dwt_utils::max_resolution(res, numResolutions))
-											* sizeof(grk_dwt_4vec));
-							if (!h.wavelet) {
+											* sizeof(T));
+							if (!h.mem) {
 								GROK_ERROR("out of memory");
 								rc++;
 								goto cleanup;
 							}
-							grk_dwt97_info v;
-							v.wavelet = h.wavelet;
+							STR v;
+							v.mem = h.mem;
 							while (--numResolutions) {
-								float *restrict aj = tileBuf
+								TT *restrict aj = tileBuf
 										+ ((stride << 2) * threadId);
 								uint64_t bufsize = (uint64_t) (tilec->x1
 										- tilec->x0) * (tilec->y1 - tilec->y0)
@@ -169,13 +173,13 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 									decode_line(&h);
 
 									for (int32_t k = (int32_t) rw; k-- > 0;) {
-										aj[(uint32_t) k] = h.wavelet[k].f[0];
+										aj[(uint32_t) k] = h.mem[k].f[0];
 										aj[(uint32_t) k + stride] =
-												h.wavelet[k].f[1];
+												h.mem[k].f[1];
 										aj[(uint32_t) k + (stride << 1)] =
-												h.wavelet[k].f[2];
+												h.mem[k].f[2];
 										aj[(uint32_t) k + stride * 3] =
-												h.wavelet[k].f[3];
+												h.mem[k].f[3];
 									}
 
 									aj += (stride << 2) * numThreads;
@@ -191,14 +195,14 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 										switch (j) {
 										case 3:
 											aj[k + (int32_t) (stride << 1)] =
-													h.wavelet[k].f[2];
+													h.mem[k].f[2];
 											// fall through
 										case 2:
 											aj[k + (int32_t) stride] =
-													h.wavelet[k].f[1];
+													h.mem[k].f[1];
 											// fall through
 										case 1:
-											aj[k] = h.wavelet[k].f[0];
+											aj[k] = h.mem[k].f[0];
 											// fall through
 										}
 									}
@@ -218,8 +222,8 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 									decode_line(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
-										memcpy(&aj[k * stride], &v.wavelet[k],
-												4 * sizeof(float));
+										memcpy(&aj[k * stride], &v.mem[k],
+												sizeof(T));
 									}
 									aj += (numThreads << 2);
 								}
@@ -229,15 +233,15 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 									decode_line(&v);
 
 									for (uint32_t k = 0; k < rh; ++k) {
-										memcpy(&aj[k * stride], &v.wavelet[k],
-												(size_t) j * sizeof(float));
+										memcpy(&aj[k * stride], &v.mem[k],
+												(size_t) j * sizeof(TT));
 									}
 								}
 
 								decode_dwt_barrier.arrive_and_wait();
 							}
-							cleanup: if (h.wavelet)
-								grok_aligned_free(h.wavelet);
+							cleanup: if (h.mem)
+								grok_aligned_free(h.mem);
 							decode_dwt_calling_barrier.arrive_and_wait();
 
 						}));
@@ -251,7 +255,7 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 
 void dwt97::interleave_h(grk_dwt97_info *restrict w, float *restrict a,
 		uint32_t stride, uint32_t size) {
-	float *restrict bi = (float*) (w->wavelet + w->cas);
+	float *restrict bi = (float*) (w->mem + w->cas);
 	uint32_t count = w->s_n;
 	uint32_t i, k;
 	for (k = 0; k < 2; ++k) {
@@ -295,7 +299,7 @@ void dwt97::interleave_h(grk_dwt97_info *restrict w, float *restrict a,
 			}
 		}
 
-		bi = (float*) (w->wavelet + 1 - w->cas);
+		bi = (float*) (w->mem + 1 - w->cas);
 		a += w->s_n;
 		size -= w->s_n;
 		count = w->d_n;
@@ -304,13 +308,13 @@ void dwt97::interleave_h(grk_dwt97_info *restrict w, float *restrict a,
 
 void dwt97::interleave_v(grk_dwt97_info *restrict v, float *restrict a,
 		uint32_t stride, uint32_t nb_elts_read) {
-	grk_dwt_4vec *restrict bi = v->wavelet + v->cas;
+	grk_dwt_4vec *restrict bi = v->mem + v->cas;
 	size_t nb_elt_bytes = (size_t) nb_elts_read * sizeof(float);
 	for (uint32_t i = 0; i < v->s_n; ++i) {
 		memcpy(&bi[i << 1], &a[i * stride], nb_elt_bytes);
 	}
 	a += v->s_n * stride;
-	bi = v->wavelet + 1 - v->cas;
+	bi = v->mem + 1 - v->cas;
 	for (uint32_t i = 0; i < v->d_n; ++i) {
 		memcpy(&bi[i << 1], &a[i * stride], nb_elt_bytes);
 	}
@@ -454,23 +458,23 @@ void dwt97::decode_line(grk_dwt97_info *restrict dwt) {
 		b = 0;
 	}
 #ifdef __SSE__
-	decode_step1_sse(dwt->wavelet + a, dwt->s_n, _mm_set1_ps(dwt_K));
-	decode_step1_sse(dwt->wavelet + b, dwt->d_n, _mm_set1_ps(dwt_c13318));
-	decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
+	decode_step1_sse(dwt->mem + a, dwt->s_n, _mm_set1_ps(dwt_K));
+	decode_step1_sse(dwt->mem + b, dwt->d_n, _mm_set1_ps(dwt_c13318));
+	decode_step2_sse(dwt->mem + b, dwt->mem + a + 1, dwt->s_n,
 			std::min<uint32_t>(dwt->s_n, dwt->d_n - a), _mm_set1_ps(dwt_delta));
-	decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
+	decode_step2_sse(dwt->mem + a, dwt->mem + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_gamma));
-	decode_step2_sse(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n,
+	decode_step2_sse(dwt->mem + b, dwt->mem + a + 1, dwt->s_n,
 			std::min<uint32_t>(dwt->s_n, dwt->d_n - a), _mm_set1_ps(dwt_beta));
-	decode_step2_sse(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n,
+	decode_step2_sse(dwt->mem + a, dwt->mem + b + 1, dwt->d_n,
 			std::min<uint32_t>(dwt->d_n, dwt->s_n - b), _mm_set1_ps(dwt_alpha));
 #else
-	decode_step1(dwt->wavelet + a, dwt->s_n, dwt_K);
-	decode_step1(dwt->wavelet + b, dwt->d_n, dwt_c13318);
-	decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
-	decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
-	decode_step2(dwt->wavelet + b, dwt->wavelet + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
-	decode_step2(dwt->wavelet + a, dwt->wavelet + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
+	decode_step1(dwt->mem + a, dwt->s_n, dwt_K);
+	decode_step1(dwt->mem + b, dwt->d_n, dwt_c13318);
+	decode_step2(dwt->mem + b, dwt->mem + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_delta);
+	decode_step2(dwt->mem + a, dwt->mem + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_gamma);
+	decode_step2(dwt->mem + b, dwt->mem + a + 1, dwt->s_n, std::min<uint32_t>(dwt->s_n, dwt->d_n - a), dwt_beta);
+	decode_step2(dwt->mem + a, dwt->mem + b + 1, dwt->d_n, std::min<uint32_t>(dwt->d_n, dwt->s_n - b), dwt_alpha);
 #endif
 }
 
