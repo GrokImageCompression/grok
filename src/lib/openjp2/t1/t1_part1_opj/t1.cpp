@@ -1646,6 +1646,7 @@ static bool opj_t1_code_block_enc_allocate(opj_tcd_cblk_enc_t *
 }
 
 double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
+		uint32_t max,
 		uint32_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		uint32_t numcomps, const double *mct_norms,
@@ -1672,15 +1673,6 @@ double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 #endif
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
-
-	uint32_t max = 0;
-	for (i = 0; i < t1->w; ++i) {
-		for (j = 0; j < t1->h; ++j) {
-			int32_t tmp = abs(t1->data[i + j * t1->data_stride]);
-			max = opj_int_max(max, tmp);
-		}
-	}
-
 	cblk->numbps = max ? (uint32_t) ((opj_int_floorlog2(max) + 1) -
 	T1_NMSEDEC_FRACBITS) :
 							0;

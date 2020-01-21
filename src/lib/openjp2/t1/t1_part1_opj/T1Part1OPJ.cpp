@@ -17,6 +17,8 @@
 #include "T1Part1OPJ.h"
 #include "testing.h"
 #include "grok_malloc.h"
+#include <algorithm>
+#include <cmath>
 
 namespace grk {
 namespace t1_part1{
@@ -58,11 +60,13 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
+	max = 0;
 	if (block->qmfbid == 1) {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
-				tiledp[tileIndex] = (block->tiledp[tileIndex] *= (1
-						<< T1_NMSEDEC_FRACBITS));
+				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
+				max = std::max((uint32_t)abs(temp), max);
+				tiledp[tileIndex] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -71,7 +75,9 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	} else {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
-				tiledp[tileIndex] = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+				max = std::max((uint32_t)abs(temp), max);
+				tiledp[tileIndex] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -102,7 +108,7 @@ double T1Part1OPJ::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	cblkopj.data = cblk->data;
 	cblkopj.data_size = cblk->data_size;
 
-	auto disto = opj_t1_encode_cblk(t1, &cblkopj, block->bandno,
+	auto disto = opj_t1_encode_cblk(t1, &cblkopj, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty, tile->numcomps,

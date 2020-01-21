@@ -107,6 +107,7 @@ bool opj_t1_allocate_buffers(opj_t1_t *t1, uint32_t w,
 		uint32_t h);
 
 double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
+		uint32_t max,
 		uint32_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		uint32_t numcomps, const double *mct_norms,
