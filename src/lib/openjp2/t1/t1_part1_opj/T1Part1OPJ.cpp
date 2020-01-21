@@ -55,6 +55,9 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	auto tilec = tile;
 	auto w = cblk->x1 - cblk->x0;
 	auto h = cblk->y1 - cblk->y0;
+	if (!opj_t1_allocate_buffers(t1, w,h))
+		return;
+	t1->data_stride = w;
 	uint32_t tile_width = (tilec->x1 - tilec->x0);
 	auto tileLineAdvance = tile_width - w;
 	auto tiledp = block->tiledp;
@@ -66,7 +69,7 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
 				max = std::max((uint32_t)abs(temp), max);
-				tiledp[tileIndex] = temp;
+				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
@@ -77,24 +80,17 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
 				max = std::max((uint32_t)abs(temp), max);
-				tiledp[tileIndex] = temp;
+				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
 			}
 			tileIndex += tileLineAdvance;
 		}
 	}
-
 }
 double T1Part1OPJ::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
-	if (!opj_t1_allocate_buffers(t1, cblk->x1 - cblk->x0, cblk->y1 - cblk->y0))
-		return 0;
-
-	t1->data = block->tiledp;
-	t1->data_stride = tile->x1 - tile->x0;
-
 	opj_tcd_cblk_enc_t cblkopj;
 	memset(&cblkopj, 0, sizeof(opj_tcd_cblk_enc_t));
 

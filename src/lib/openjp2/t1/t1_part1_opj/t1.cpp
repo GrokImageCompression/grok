@@ -1221,24 +1221,23 @@ bool opj_t1_allocate_buffers(opj_t1_t *t1, uint32_t w,
 	assert(w * h <= 4096);
 
 	/* encoder uses tile buffer, so no need to allocate */
-	if (!t1->encoder) {
-		uint32_t datasize = w * h;
+	uint32_t datasize = w * h;
 
-		if (datasize > t1->datasize) {
-			grk::grok_aligned_free(t1->data);
-			t1->data = (int32_t*) grk::grok_aligned_malloc(
-					datasize * sizeof(int32_t));
-			if (!t1->data) {
-				/* FIXME event manager error callback */
-				return false;
-			}
-			t1->datasize = datasize;
+	if (datasize > t1->datasize) {
+		grk::grok_aligned_free(t1->data);
+		t1->data = (int32_t*) grk::grok_aligned_malloc(
+				datasize * sizeof(int32_t));
+		if (!t1->data) {
+			/* FIXME event manager error callback */
+			return false;
 		}
-		/* memset first arg is declared to never be null by gcc */
-		if (t1->data != NULL) {
-			memset(t1->data, 0, datasize * sizeof(int32_t));
-		}
+		t1->datasize = datasize;
 	}
+	/* memset first arg is declared to never be null by gcc */
+	if (t1->data && !t1->encoder) {
+		memset(t1->data, 0, datasize * sizeof(int32_t));
+	}
+
 
 	flags_stride = w + 2U; /* can't be 0U */
 
@@ -1314,8 +1313,7 @@ void opj_t1_destroy(opj_t1_t *p_t1) {
 		return;
 	}
 
-	/* encoder uses tile buffer, so no need to free */
-	if (!p_t1->encoder && p_t1->data) {
+	if (p_t1->data) {
 		grk::grok_aligned_free(p_t1->data);
 		p_t1->data = 00;
 	}
