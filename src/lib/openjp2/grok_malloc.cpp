@@ -237,7 +237,7 @@ void* grok_aligned_realloc(void *ptr, size_t size) {
 }
 
 void grok_aligned_free(void *ptr) {
-#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_MEMALIGN)
+#if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
     _aligned_free( ptr );
