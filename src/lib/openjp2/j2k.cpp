@@ -3603,24 +3603,25 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	
 
 	if (!j2k_get_sot_values(p_header_data, header_size,
-			&(p_j2k->m_current_tile_number), &l_tot_len, &l_current_part,
+			&p_j2k->m_current_tile_number, &l_tot_len, &l_current_part,
 			&l_num_parts)) {
 		GROK_ERROR( "Error reading SOT marker");
 		return false;
 	}
+	auto tile_number = p_j2k->m_current_tile_number;
 
 	l_cp = &(p_j2k->m_cp);
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
-	if (p_j2k->m_current_tile_number >= l_cp->tw * l_cp->th) {
+	if (tile_number >= l_cp->tw * l_cp->th) {
 		GROK_ERROR( "Invalid tile number %d\n",
-				p_j2k->m_current_tile_number);
+				tile_number);
 		return false;
 	}
 
-	l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
-	l_tile_x = p_j2k->m_current_tile_number % l_cp->tw;
-	l_tile_y = p_j2k->m_current_tile_number / l_cp->tw;
+	l_tcp = &l_cp->tcps[tile_number];
+	l_tile_x = tile_number % l_cp->tw;
+	l_tile_y = tile_number / l_cp->tw;
 
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
@@ -3631,7 +3632,7 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	if (l_tcp->m_current_tile_part_number + 1 != (int32_t) l_current_part) {
 		GROK_ERROR(
 				"Invalid tile part index for tile number %d. "
-						"Got %d, expected %d\n", p_j2k->m_current_tile_number,
+						"Got %d, expected %d\n", tile_number,
 				l_current_part, l_tcp->m_current_tile_part_number + 1);
 		return false;
 	}
@@ -3729,29 +3730,29 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	} else {
 		assert(p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec >= 0);
 		p_j2k->m_specific_param.m_decoder.m_skip_data =
-				(p_j2k->m_current_tile_number
+				(tile_number
 						!= (uint32_t) p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec);
 	}
 
 	/* Index */
 	if (p_j2k->cstr_index) {
 		assert(p_j2k->cstr_index->tile_index != nullptr);
-		p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tileno =
-				p_j2k->m_current_tile_number;
-		p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_tpsno =
+		p_j2k->cstr_index->tile_index[tile_number].tileno =
+				tile_number;
+		p_j2k->cstr_index->tile_index[tile_number].current_tpsno =
 				l_current_part;
 
 		if (l_num_parts != 0) {
-			p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].nb_tps =
+			p_j2k->cstr_index->tile_index[tile_number].nb_tps =
 					l_num_parts;
-			p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
+			p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
 					l_num_parts;
 
-			if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
-				p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+			if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
+				p_j2k->cstr_index->tile_index[tile_number].tp_index =
 						( grk_tp_index  * ) grok_calloc(l_num_parts,
 								sizeof( grk_tp_index) );
-				if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
+				if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
 					GROK_ERROR(
 							"Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
@@ -3759,32 +3760,32 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 			} else {
 				 grk_tp_index  *new_tp_index =
 						( grk_tp_index  * ) grok_realloc(
-								p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index,
+								p_j2k->cstr_index->tile_index[tile_number].tp_index,
 								l_num_parts * sizeof( grk_tp_index) );
 				if (!new_tp_index) {
 					grok_free(
-							p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index);
-					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+							p_j2k->cstr_index->tile_index[tile_number].tp_index);
+					p_j2k->cstr_index->tile_index[tile_number].tp_index =
 							nullptr;
 					GROK_ERROR(
 							"Not enough memory to read SOT marker. Tile index allocation failed");
 					return false;
 				}
-				p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+				p_j2k->cstr_index->tile_index[tile_number].tp_index =
 						new_tp_index;
 			}
 		} else {
-			/*if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index)*/{
+			/*if (!p_j2k->cstr_index->tile_index[tile_number].tp_index)*/{
 
-				if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
-					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
+				if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
+					p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
 							10;
-					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+					p_j2k->cstr_index->tile_index[tile_number].tp_index =
 							( grk_tp_index  * ) grok_calloc(
-									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps,
+									p_j2k->cstr_index->tile_index[tile_number].current_nb_tps,
 									sizeof( grk_tp_index) );
-					if (!p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index) {
-						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
+					if (!p_j2k->cstr_index->tile_index[tile_number].tp_index) {
+						p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
 								0;
 						GROK_ERROR(
 								"Not enough memory to read SOT marker. Tile index allocation failed");
@@ -3793,27 +3794,27 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 				}
 
 				if (l_current_part
-						>= p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps) {
+						>= p_j2k->cstr_index->tile_index[tile_number].current_nb_tps) {
 					 grk_tp_index  *new_tp_index;
-					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
+					p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
 							l_current_part + 1;
 					new_tp_index =
 							( grk_tp_index  * ) grok_realloc(
-									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index,
-									p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps
+									p_j2k->cstr_index->tile_index[tile_number].tp_index,
+									p_j2k->cstr_index->tile_index[tile_number].current_nb_tps
 											* sizeof( grk_tp_index) );
 					if (!new_tp_index) {
 						grok_free(
-								p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index);
-						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+								p_j2k->cstr_index->tile_index[tile_number].tp_index);
+						p_j2k->cstr_index->tile_index[tile_number].tp_index =
 								nullptr;
-						p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].current_nb_tps =
+						p_j2k->cstr_index->tile_index[tile_number].current_nb_tps =
 								0;
 						GROK_ERROR(
 								"Not enough memory to read SOT marker. Tile index allocation failed");
 						return false;
 					}
-					p_j2k->cstr_index->tile_index[p_j2k->m_current_tile_number].tp_index =
+					p_j2k->cstr_index->tile_index[tile_number].tp_index =
 							new_tp_index;
 				}
 			}
