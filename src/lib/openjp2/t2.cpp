@@ -718,12 +718,13 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 				} else {
 					l_cblk->numbps = l_band->numbps - K_msbs;
 				}
-				// BIBO analysis gives upper limit on number of bit planes
+				// BIBO analysis gives sanity check on number of bit planes
 				if (l_cblk->numbps
 						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
 					GROK_WARN(
 							"Number of bit planes %u is impossibly large.\n",
 							l_cblk->numbps);
+					return false;
 				}
 				l_cblk->numlenbits = 3;
 			}
