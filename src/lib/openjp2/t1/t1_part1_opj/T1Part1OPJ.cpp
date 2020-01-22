@@ -18,7 +18,6 @@
 #include "testing.h"
 #include "grok_malloc.h"
 #include <algorithm>
-#include <cmath>
 
 namespace grk {
 namespace t1_part1{

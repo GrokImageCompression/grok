@@ -102,6 +102,7 @@
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
+#include <cmath>
 
 namespace grk {
 
