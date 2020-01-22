@@ -4063,6 +4063,9 @@ static bool j2k_read_rgn(grk_j2k *p_j2k, uint8_t *p_header_data,
 	p_header_data += l_comp_room;
 	/* Srgn */
 	grok_read_bytes(p_header_data, &l_roi_sty, 1);
+	if (l_roi_sty != 0){
+		GROK_WARN("RGN marker RS value of %d is not supported by JPEG 2000 Part 1", l_roi_sty);
+	}
 	++p_header_data;
 
 	/* testcase 3635.pdf.asan.77.2930 */
@@ -4501,7 +4504,8 @@ static bool j2k_read_mct(grk_j2k *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 
-	/* Imct -> no need for other values, take the first, type is double with decorrelation x0000 1101 0000 0000*/
+	/* Imct -> no need for other values, take the first,
+	 * type is double with decorrelation x0000 1101 0000 0000*/
 	grok_read_bytes(p_header_data, &l_tmp, 2); /* Imct */
 	p_header_data += 2;
 
@@ -4867,7 +4871,7 @@ static bool j2k_read_mcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 		if (l_nb_comps != l_mcc_record->m_nb_comps) {
 			GROK_WARN(
-					"Cannot take in charge collections without same number of indixes");
+					"Cannot take in charge collections without same number of indices");
 			return true;
 		}
 

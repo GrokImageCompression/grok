@@ -470,10 +470,12 @@ struct grk_coding_parameters {
 };
 
 struct grk_j2k_dec {
-	/** Decoder state: used to indicate in which part of the codestream the decoder is (main header, tile header, end) */
+	/** Decoder state: used to indicate in which part of the codestream
+	 *  the decoder is (main header, tile header, end) */
 	uint32_t m_state;
 
-	//store decoding parameters common to all tiles (information like COD, COC in main header)
+	//store decoding parameters common to all tiles (information
+	// like COD, COC and RGN in main header)
 	grk_tcp *m_default_tcp;
 	uint8_t *m_header_data;
 	uint32_t m_header_data_size;
@@ -510,12 +512,15 @@ struct grk_j2k_enc {
 	/** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
 	uint8_t m_current_poc_tile_part_number; /* tp_num */
 
-	/** Tile part number currently coding, taking into account POC. m_current_tile_part_number holds the total number of tile parts while encoding the last tile part.*/
+	/** Tile part number currently coding, taking into account POC.
+	 *  m_current_tile_part_number holds the total number of tile parts
+	 *   while encoding the last tile part.*/
 	uint8_t m_current_tile_part_number; /*cur_tp_num */
 
 	/**
 	 locate the start position of the TLM marker
-	 after encoding the tilepart, a jump (in j2k_write_sod) is done to the TLM marker to store the value of its length.
+	 after encoding the tilepart, a jump (in j2k_write_sod) is done
+	 to the TLM marker to store the value of its length.
 	 */
 	int64_t m_tlm_start;
 	/**
