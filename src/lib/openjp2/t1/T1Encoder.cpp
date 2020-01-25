@@ -28,7 +28,7 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 		encodeBlocks(nullptr),
 		blockCount(-1)
 {
-	for (auto i = 0U; i < hardware_concurrency(); ++i) {
+	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
 		threadStructs.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}

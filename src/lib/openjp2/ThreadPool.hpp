@@ -25,7 +25,7 @@ public:
     		return id_map[id];
     	return -1;
     }
-    int num_threads(){return thread_count+1;}
+    size_t num_threads(){return m_num_threads;}
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
@@ -39,11 +39,12 @@ private:
 
     std::map<std::thread::id, int> id_map;
     std::atomic<int> thread_count;
+    size_t m_num_threads;
 };
  
 // the constructor just launches some amount of workers
 inline ThreadPool::ThreadPool(size_t threads)
-    :   stop(false), thread_count(-1)
+    :   stop(false), thread_count(-1), m_num_threads(threads)
 {
     for(size_t i = 0;i<threads;++i)
         workers.emplace_back(
