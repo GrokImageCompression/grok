@@ -165,7 +165,7 @@ sample error callback expecting a FILE* client object
 static void error_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	spdlog::error(msg);
+	spdlog::default_logger()->error(msg);
 }
 /**
 sample warning callback expecting a FILE* client object
@@ -173,7 +173,7 @@ sample warning callback expecting a FILE* client object
 static void warning_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	spdlog::warn(msg);
+	spdlog::default_logger()->warn(msg);
 }
 /**
 sample debug callback expecting no client object
@@ -181,7 +181,7 @@ sample debug callback expecting no client object
 static void info_callback(const char *msg, void *client_data)
 {
 	(void)client_data;
-	spdlog::info(msg);
+	spdlog::default_logger()->info(msg);
 }
 
 
