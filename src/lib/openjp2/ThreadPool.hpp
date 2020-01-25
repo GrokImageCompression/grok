@@ -25,6 +25,7 @@ public:
     		return id_map[id];
     	return -1;
     }
+    int num_threads(){return thread_count+1;}
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
