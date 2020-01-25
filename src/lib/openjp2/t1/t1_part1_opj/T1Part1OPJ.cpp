@@ -18,6 +18,7 @@
 #include "testing.h"
 #include "grok_malloc.h"
 #include <algorithm>
+using namespace std;
 
 namespace grk {
 namespace t1_part1{
@@ -49,7 +50,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 }
 
 void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
-		uint32_t &max) {
+		uint32_t &maximum) {
 	auto cblk = block->cblk;
 	auto tilec = tile;
 	auto w = cblk->x1 - cblk->x0;
@@ -62,12 +63,12 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
 	uint32_t cblk_index = 0;
-	max = 0;
+	maximum = 0;
 	if (block->qmfbid == 1) {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
-				max = std::max((uint32_t)abs(temp), max);
+				maximum = max((uint32_t)abs(temp), maximum);
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;
@@ -78,7 +79,7 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
-				max = std::max((uint32_t)abs(temp), max);
+				maximum = max((uint32_t)abs(temp), maximum);
 				t1->data[cblk_index] = temp;
 				tileIndex++;
 				cblk_index++;

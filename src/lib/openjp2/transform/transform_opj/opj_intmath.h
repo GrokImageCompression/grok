@@ -36,6 +36,11 @@
  */
 #ifndef OPJ_INTMATH_H
 #define OPJ_INTMATH_H
+
+#ifdef WIN32
+	#include <intrin.h>
+#endif
+
 /**
 @file opj_intmath.h
 @brief Implementation of operations on integers (INT)
