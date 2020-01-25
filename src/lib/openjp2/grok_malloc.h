@@ -90,6 +90,8 @@ void* grok_calloc(size_t numOfElements, size_t sizeOfElements);
 void* grok_aligned_malloc(size_t size);
 void* grok_aligned_realloc(void *ptr, size_t size);
 void grok_aligned_free(void *ptr);
+void *grok_aligned_32_malloc(size_t size);
+void * grok_aligned_32_realloc(void *ptr, size_t size);
 
 /**
  Reallocate memory blocks.
