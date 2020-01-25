@@ -31,6 +31,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/transform
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj
@@ -103,9 +104,16 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
   ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.h
   ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.cpp
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/sparse_array.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/sparse_array.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/dwt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/dwt.h
   
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletInverse.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/WaveletForward.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt53.cpp

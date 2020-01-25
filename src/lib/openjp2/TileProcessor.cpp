@@ -1542,20 +1542,10 @@ bool TileProcessor::dwt_decode() {
 		grk_tcd_tilecomp *l_tile_comp = l_tile->comps + compno;
 		grk_tccp *l_tccp = tcp->tccps + compno;
 		 grk_image_comp  *l_img_comp = image->comps + compno;
-		if (l_tccp->qmfbid == 1) {
-			dwt53 dwt;
-			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					hardware_concurrency())) {
-				rc = false;
-				continue;
-			}
-		} else {
-			dwt97 dwt;
-			if (!dwt.decode(l_tile_comp, l_img_comp->resno_decoded + 1,
-					hardware_concurrency())) {
-				rc = false;
-				continue;
-			}
+		 if (!Wavelet::decode(this, l_tile_comp, l_img_comp->resno_decoded + 1,l_tccp->qmfbid)) {
+			rc = false;
+			continue;
+
 		}
 	}
 
@@ -1901,18 +1891,10 @@ bool TileProcessor::dwt_encode() {
 	for (compno = 0; compno < (int64_t) l_tile->numcomps; ++compno) {
 		grk_tcd_tilecomp *tile_comp = tile->comps + compno;
 		grk_tccp *l_tccp = tcp->tccps + compno;
-		if (l_tccp->qmfbid == 1) {
-			WaveletForward<dwt53> dwt;
-			if (!dwt.run(tile_comp)) {
-				rc = false;
-				continue;
-			}
-		} else if (l_tccp->qmfbid == 0) {
-			WaveletForward<dwt97> dwt;
-			if (!dwt.run(tile_comp)) {
-				rc = false;
-				continue;
-			}
+		if (!Wavelet::encode(tile_comp, l_tccp->qmfbid)) {
+			rc = false;
+			continue;
+
 		}
 	}
 	return rc;

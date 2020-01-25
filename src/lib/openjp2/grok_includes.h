@@ -199,9 +199,8 @@ static inline long grok_lrintf(float f) {
 #include "pi.h"
 #include "tgt.h"
 #include "TileProcessor.h"
+#include <Wavelet.h>
 #include "dwt_utils.h"
-#include "dwt53.h"
-#include "dwt97.h"
 #include "t2.h"
 #include "mct.h"
 #include "grok_intmath.h"
