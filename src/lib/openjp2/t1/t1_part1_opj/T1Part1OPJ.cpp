@@ -115,8 +115,8 @@ double T1Part1OPJ::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		auto passopj = cblkopj.passes + i;
 		auto passgrk = cblk->passes + i;
 		passgrk->distortiondec = passopj->distortiondec;
-		passgrk->len = passopj->len;
-		passgrk->rate = passopj->rate;
+		passgrk->len = (uint16_t)passopj->len;
+		passgrk->rate = (uint16_t)passopj->rate;
 		passgrk->term = passopj->term;
 	}
 
@@ -203,10 +203,6 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
 	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
-	auto tileW = block->tilec->x1 - block->tilec->x0;
-	auto tileH = block->tilec->y1 - block->tilec->y0;
-	assert(cblkopj.x1 <= tileW);
-	assert(cblkopj.y1 <= tileH);
     post_decode(t1,
     		&cblkopj,
 			block->roishift,

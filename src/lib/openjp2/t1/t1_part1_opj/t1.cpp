@@ -1351,14 +1351,15 @@ void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 		uint32_t qmfbid, float stepsize, int32_t *tilec_data,
 		int32_t tile_w, int32_t tile_h) {
 
+	(void)tile_h;
 	int32_t *datap = t1->data;
-	int32_t cblk_w = cblk->x1 - cblk->x0;
-	int32_t cblk_h = cblk->y1 - cblk->y0;
+	uint16_t cblk_w = (uint16_t)(cblk->x1 - cblk->x0);
+	uint16_t cblk_h = (uint16_t)(cblk->y1 - cblk->y0);
 
 	if (roishift) {
 		if (roishift >= 31) {
-			for (int j = 0; j < cblk_h; ++j) {
-				for (int i = 0; i < cblk_w; ++i) {
+			for (uint16_t j = 0; j < cblk_h; ++j) {
+				for (uint16_t i = 0; i < cblk_w; ++i) {
 					datap[(j * cblk_w) + i] = 0;
 				}
 			}
@@ -1380,7 +1381,7 @@ void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 	if (qmfbid == 1) {
 		int32_t *OPJ_RESTRICT tiledp = tilec_data;
 		for (int j = 0; j < cblk_h; ++j) {
-			auto i = 0;
+			uint32_t i = 0;
 			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
 				int32_t tmp0 = datap[(j * cblk_w) + i + 0U];
 				int32_t tmp1 = datap[(j * cblk_w) + i + 1U];
@@ -1664,7 +1665,6 @@ double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 	int32_t bpno;
 	uint32_t passtype;
 	int32_t nmsedec = 0;
-	uint32_t i, j;
 	uint8_t type = T1_TYPE_MQ;
 	double tempwmsedec;
 
