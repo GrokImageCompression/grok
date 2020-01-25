@@ -274,7 +274,9 @@ struct grk_tcd_resolution {
 	}
 	grk_tcd_resolution(const grk_tcd_resolution &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), pw(rhs.pw), ph(
-					rhs.ph), numbands(rhs.numbands)
+					rhs.ph), numbands(rhs.numbands),
+					win_x0(0), win_y0(0),
+					win_x1(0), win_y1(0)
 
 	{
 		for (int i = 0; i < 3; ++i)
@@ -284,11 +286,37 @@ struct grk_tcd_resolution {
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
 	grk_tcd_band bands[3]; /* subband information */
+
+    /* dimension of the resolution limited to window of interest.
+     *  Only valid if tcd->whole_tile_decoding is set */
+	uint32_t win_x0;
+	uint32_t win_y0;
+	uint32_t win_x1;
+	uint32_t win_y1;
+
 };
 
 // tile component
 struct grk_tcd_tilecomp {
-	uint32_t x0, y0, x1, y1; /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
+	uint32_t width();
+	uint32_t height();
+	uint64_t area();
+	uint64_t size();
+	void finalizeCoordinates();
+	uint32_t X0(){
+		return x0;
+	}
+	uint32_t X1(){
+		return x1;
+	}
+	uint32_t Y0(){
+		return y0;
+	}
+	uint32_t Y1(){
+		return y1;
+	}
+
+
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
 	uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
@@ -298,6 +326,20 @@ struct grk_tcd_tilecomp {
 #endif
 	uint64_t numpix;
 	grk_tile_buf_component *buf;
+
+    /** data of the component limited to window of interest.
+     *  Only valid for decoding and if tcd->whole_tile_decoding is NOT set (so exclusive of data member) */
+	int32_t *data_win;
+    /* dimension of the component limited to window of interest.
+     * Only valid for decoding and  if tcd->whole_tile_decoding is NOT set */
+    uint32_t win_x0;
+    uint32_t win_y0;
+    uint32_t win_x1;
+    uint32_t win_y1;
+    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    bool   whole_tile_decoding;
+private:
+	uint32_t x0, y0, x1, y1; /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
 };
 
 // tile
@@ -329,6 +371,11 @@ struct TileProcessor {
 			  tile(nullptr),
 			  image(nullptr),
 			  current_plugin_tile(nullptr),
+			  win_x0(0),
+			  win_y0(0),
+			  win_x1(0),
+			  win_y1(0),
+			  whole_tile_decoding(true),
 			  cp(nullptr),
 			  tcp(nullptr),
 			  tcd_tileno(0),
@@ -428,6 +475,14 @@ struct TileProcessor {
 	/** image header */
 	grk_image *image;
 	grk_plugin_tile *current_plugin_tile;
+
+    /** Coordinates of the window of interest, in grid reference space */
+    uint32_t win_x0;
+    uint32_t win_y0;
+    uint32_t win_x1;
+    uint32_t win_y1;
+    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    bool   whole_tile_decoding;
 
 private:
 	/** coding parameters */

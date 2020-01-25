@@ -641,7 +641,7 @@ void t1_decode::postDecode(decodeBlockInfo *block) {
 	}
 
 	//dequantization
-	uint32_t tile_width = block->tilec->x1 - block->tilec->x0;
+	uint32_t tile_width = block->tilec->width();
 	if (block->qmfbid == 1) {
 		int32_t *restrict tile_data = block->tiledp;
 		for (auto j = 0U; j < h; ++j) {

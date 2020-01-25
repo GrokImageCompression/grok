@@ -547,7 +547,7 @@ void t1_encode::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	initBuffers((uint16_t) (block->cblk->x1 - block->cblk->x0),
 			(uint16_t) (block->cblk->y1 - block->cblk->y0));
 
-	uint32_t tile_width = (tilec->x1 - tilec->x0);
+	uint32_t tile_width = tilec->width();
 	auto tileLineAdvance = tile_width - w;
 	auto tiledp = block->tiledp;
 #ifdef DEBUG_LOSSLESS_T1

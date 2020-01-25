@@ -64,8 +64,6 @@ bool tile_buf_alloc_component_data_decode(grk_tile_buf_component *buf);
 
 bool tile_buf_alloc_component_data_encode(grk_tile_buf_component *buf);
 
-bool tile_buf_is_decode_region(grk_tile_buf_component *buf);
-
 void tile_buf_destroy_component(grk_tile_buf_component *comp);
 
 /* Check if rect overlaps with region.

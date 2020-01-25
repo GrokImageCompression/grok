@@ -59,6 +59,8 @@ struct grk_rect {
 
 	void ceildivpow2( uint32_t power);
 
+	void mulpow2(uint32_t power);
+
 	void grow(int64_t boundary);
 
 	void grow2(int64_t boundaryx, int64_t boundaryy);

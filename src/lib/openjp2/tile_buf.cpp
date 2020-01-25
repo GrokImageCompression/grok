@@ -36,13 +36,17 @@ bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
 	}
 	comp->data = nullptr;
 
-	comp->tile_dim = grk_rect(tilec->x0, tilec->y0, tilec->x1, tilec->y1);
+	comp->tile_dim = grk_rect(tilec->X0(), tilec->Y0(), tilec->X1(), tilec->Y1());
 
 	if (output_image) {
 		comp->dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
 				ceildiv<uint32_t>(output_image->y0, dy),
 				ceildiv<uint32_t>(output_image->x1, dx),
 				ceildiv<uint32_t>(output_image->y1, dy));
+
+		if (tilec->whole_tile_decoding)
+			comp->dim.ceildivpow2(tilec->numresolutions - tilec->minimum_num_resolutions);
+
 
 		/* clip output image to tile */
 		comp->tile_dim.clip(&comp->dim, &comp->dim);
@@ -113,12 +117,6 @@ bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
 	tilec->buf = comp;
 
 	return true;
-}
-
-bool tile_buf_is_decode_region(grk_tile_buf_component *buf) {
-	if (!buf)
-		return false;
-	return !buf->dim.are_equal(&buf->tile_dim);
 }
 
 int32_t* tile_buf_get_ptr(grk_tile_buf_component *buf, uint32_t resno,

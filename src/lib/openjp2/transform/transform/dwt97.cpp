@@ -60,6 +60,7 @@
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
+#include "dwt97.h"
 
 namespace grk {
 
@@ -116,7 +117,7 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 	if (numres == 1U) {
 		return true;
 	}
-	if (tile_buf_is_decode_region(tilec->buf))
+	if (!tilec->whole_tile_decoding)
 		return region_decode(tilec, numres, numThreads);
 
 	int rc = 0;
@@ -135,7 +136,7 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 
 							uint32_t rw = (res->x1 - res->x0); /* width of the resolution level computed */
 							uint32_t rh = (res->y1 - res->y0); /* height of the resolution level computed */
-							uint32_t stride = (tilec->x1 - tilec->x0);
+							uint32_t stride = tilec->width();
 
 							STR h;
 							h.mem = (T*) grok_aligned_malloc(
@@ -151,8 +152,7 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 							while (--numResolutions) {
 								TT *restrict aj = tileBuf
 										+ ((stride << 2) * threadId);
-								uint64_t bufsize = (uint64_t) (tilec->x1
-										- tilec->x0) * (tilec->y1 - tilec->y0)
+								uint64_t bufsize = tilec->area()
 										- (threadId * (stride << 2));
 
 								h.s_n = rw;
@@ -549,7 +549,7 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 							uint32_t res_width = (res->x1 - res->x0); /* width of the resolution level computed */
 							uint32_t res_height = (res->y1 - res->y0); /* height of the resolution level computed */
 
-							uint32_t tile_width = (tilec->x1 - tilec->x0);
+							uint32_t tile_width = tilec->width();
 
 							// add 4 for boundary, plus one for parity
 							buffer_h.dataSize =
@@ -612,7 +612,7 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 												* (buffer_v.range_even.x
 														+ (threadId << 2));
 								auto bufsize = tile_width
-										* (tilec->y1 - tilec->y0
+										* (tilec->height()
 												- buffer_v.range_even.x
 												- (threadId << 2));
 
@@ -674,7 +674,7 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 														+ buffer_v.range_odd.x
 														+ (threadId << 2));
 								bufsize = tile_width
-										* (tilec->y1 - tilec->y0 - buffer_v.s_n
+										* (tilec->height() - buffer_v.s_n
 												- buffer_v.range_odd.x
 												- (threadId << 2));
 

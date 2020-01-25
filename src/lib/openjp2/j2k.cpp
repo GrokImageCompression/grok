@@ -7914,6 +7914,8 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 	grk_coding_parameters *l_cp = &(p_j2k->m_cp);
 	grk_image *l_image = p_j2k->m_private_image;
+	auto tp = p_j2k->m_tileProcessor;
+	auto decoder = &p_j2k->m_specific_param.m_decoder;
 
 	uint32_t it_comp;
 	uint32_t l_comp_x1, l_comp_y1;
@@ -7929,10 +7931,10 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 	if (!start_x && !start_y && !end_x && !end_y) {
 		//event_msg( EVT_INFO, "No decoded area parameters, set the decoded area to the whole image");
 
-		p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
-		p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x = l_cp->tw;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y = l_cp->th;
+		decoder->m_start_tile_x = 0;
+		decoder->m_start_tile_y = 0;
+		decoder->m_end_tile_x = l_cp->tw;
+		decoder->m_end_tile_y = l_cp->th;
 
 		return true;
 	}
@@ -7950,10 +7952,10 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		GROK_WARN(
 				"Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
 				start_x, l_image->x0);
-		p_j2k->m_specific_param.m_decoder.m_start_tile_x = 0;
+		decoder->m_start_tile_x = 0;
 		p_image->x0 = l_image->x0;
 	} else {
-		p_j2k->m_specific_param.m_decoder.m_start_tile_x = (start_x
+		decoder->m_start_tile_x = (start_x
 				- l_cp->tx0) / l_cp->tdx;
 		p_image->x0 = start_x;
 	}
@@ -7968,10 +7970,10 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		GROK_WARN(
 				"Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
 				start_y, l_image->y0);
-		p_j2k->m_specific_param.m_decoder.m_start_tile_y = 0;
+		decoder->m_start_tile_y = 0;
 		p_image->y0 = l_image->y0;
 	} else {
-		p_j2k->m_specific_param.m_decoder.m_start_tile_y = (start_y
+		decoder->m_start_tile_y = (start_y
 				- l_cp->ty0) / l_cp->tdy;
 		p_image->y0 = start_y;
 	}
@@ -7988,14 +7990,14 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		GROK_WARN(
 				"Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
 				end_x, l_image->x1);
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x = l_cp->tw;
+		decoder->m_end_tile_x = l_cp->tw;
 		p_image->x1 = l_image->x1;
 	} else {
 		// avoid divide by zero
 		if (l_cp->tdx == 0) {
 			return false;
 		}
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x = ceildiv<uint32_t>(
+		decoder->m_end_tile_x = ceildiv<uint32_t>(
 				end_x - l_cp->tx0, l_cp->tdx);
 		p_image->x1 = end_x;
 	}
@@ -8011,20 +8013,25 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		GROK_WARN(
 				"Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n",
 				end_y, l_image->y1);
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y = l_cp->th;
+		decoder->m_end_tile_y = l_cp->th;
 		p_image->y1 = l_image->y1;
 	} else {
 		// avoid divide by zero
 		if (l_cp->tdy == 0) {
 			return false;
 		}
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y = ceildiv<uint32_t>(
+		decoder->m_end_tile_y = ceildiv<uint32_t>(
 				end_y - l_cp->ty0, l_cp->tdy);
 		p_image->y1 = end_y;
 	}
 	/* ----- */
 
-	p_j2k->m_specific_param.m_decoder.m_discard_tiles = 1;
+	decoder->m_discard_tiles = 1;
+	tp->whole_tile_decoding = false;
+	tp->win_x0 = start_x;
+	tp->win_y0 = start_y;
+	tp->win_x1 = end_x;
+	tp->win_y1 = end_y;
 
 	l_img_comp = p_image->comps;
 	for (it_comp = 0; it_comp < p_image->numcomps; ++it_comp) {
@@ -9790,15 +9797,15 @@ static void get_tile_dimensions(grk_image *l_image, grk_tcd_tilecomp *l_tilec,
 		*l_size_comp = 4;
 	}
 
-	*l_width = (l_tilec->x1 - l_tilec->x0);
-	*l_height = (l_tilec->y1 - l_tilec->y0);
+	*l_width = l_tilec->width();
+	*l_height = l_tilec->height();
 	*l_offset_x = ceildiv<uint32_t>(l_image->x0, l_img_comp->dx);
 	*l_offset_y = ceildiv<uint32_t>(l_image->y0, l_img_comp->dy);
 	*l_image_width = ceildiv<uint32_t>(l_image->x1 - l_image->x0,
 			l_img_comp->dx);
 	*l_stride = *l_image_width - *l_width;
-	*l_tile_offset = (l_tilec->x0 - *l_offset_x)
-			+ (uint64_t) (l_tilec->y0 - *l_offset_y) * *l_image_width;
+	*l_tile_offset = (l_tilec->X0() - *l_offset_x)
+			+ (uint64_t) (l_tilec->Y0() - *l_offset_y) * *l_image_width;
 }
 
 static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {

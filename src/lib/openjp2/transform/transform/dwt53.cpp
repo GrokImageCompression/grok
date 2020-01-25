@@ -103,6 +103,7 @@
 #include <atomic>
 #include "testing.h"
 #include <cmath>
+#include "dwt53.h"
 
 namespace grk {
 
@@ -180,7 +181,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads
 	if (numres == 1U) {
 		return true;
 	}
-	if (tile_buf_is_decode_region(tilec->buf))
+	if (!tilec->whole_tile_decoding)
 		return region_decode(tilec, numres, numThreads);
 
 	std::vector<std::thread> dwtWorkers;
@@ -200,7 +201,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads
 
 							uint32_t rw = (tr->x1 - tr->x0); /* width of the resolution level computed */
 							uint32_t rh = (tr->y1 - tr->y0); /* height of the resolution level computed */
-							uint32_t stride = (tilec->x1 - tilec->x0);
+							uint32_t stride = tilec->width();
 
 							STR h;
 							h.mem = (T*) grok_aligned_malloc(
@@ -443,7 +444,7 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 							uint32_t res_width = (tr->x1 - tr->x0); /* width of the resolution level computed */
 							uint32_t res_height = (tr->y1 - tr->y0); /* height of the resolution level computed */
 
-							uint32_t w = (tilec->x1 - tilec->x0);
+							uint32_t w = tilec->width();
 							int32_t resno = 1;
 
 							// add 2 for boundary, plus one for parity

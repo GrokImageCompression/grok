@@ -87,6 +87,16 @@ void grk_rect::ceildivpow2(uint32_t power) {
 
 }
 
+void grk_rect::mulpow2(uint32_t power) {
+	if (power == 0)
+		return;
+	x0 *= 1 << power;
+	y0 *= 1 << power;
+	x1 *= 1 << power;
+	y1 *= 1 << power;
+
+}
+
 int64_t grk_rect::get_area(void) {
 	return (x1 - x0) * (y1 - y0);
 }

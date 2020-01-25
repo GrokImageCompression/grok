@@ -57,7 +57,7 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	if (!opj_t1_allocate_buffers(t1, w,h))
 		return;
 	t1->data_stride = w;
-	uint32_t tile_width = (tilec->x1 - tilec->x0);
+	uint32_t tile_width = (tile->comps + block->compno)->width();
 	auto tileLineAdvance = tile_width - w;
 	auto tiledp = block->tiledp;
 	uint32_t tileIndex = 0;
@@ -209,8 +209,8 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 			block->qmfbid,
 			block->stepsize,
 			block->tiledp,
-			block->tilec->x1 - block->tilec->x0,
-			block->tilec->y1 - block->tilec->y0
+			block->tilec->width(),
+			block->tilec->height()
 			);
 }
 }
