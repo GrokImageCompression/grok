@@ -37,8 +37,9 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include "grok.h"
 #include "opj_includes.h"
+#include "logger.h"
 
 #define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
@@ -1544,31 +1545,15 @@ bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
 
 	if (check_pterm) {
 		if (mqc->bp + 2 < mqc->end) {
-			/*
-			 if (p_manager_mutex) {
-			 opj_mutex_lock(p_manager_mutex);
-			 }
-			 opj_event_msg(p_manager, EVT_WARNING,
+			 grk::GROK_WARN(
 			 "PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
 			 (int)(mqc->end - mqc->bp) - 2,
 			 (int)(mqc->bp - mqc->start),
 			 (int)(mqc->end - mqc->start));
-			 if (p_manager_mutex) {
-			 opj_mutex_unlock(p_manager_mutex);
-			 }
-			 */
 		} else if (mqc->end_of_byte_stream_counter > 2) {
-			/*
-			 if (p_manager_mutex) {
-			 opj_mutex_lock(p_manager_mutex);
-			 }
-			 opj_event_msg(p_manager, EVT_WARNING,
+			 grk::GROK_WARN(
 			 "PTERM check failure: %d synthetized 0xFF markers read\n",
 			 mqc->end_of_byte_stream_counter);
-			 if (p_manager_mutex) {
-			 opj_mutex_unlock(p_manager_mutex);
-			 }
-			 */
 		}
 	}
 
