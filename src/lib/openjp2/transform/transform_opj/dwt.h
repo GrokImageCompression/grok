@@ -40,21 +40,6 @@
 
 namespace grk {
 
-/* Not a C99 compiler */
-#if defined(__GNUC__)
-#define OPJ_RESTRICT __restrict__
-
-/*
-  vc14 (2015) outputs wrong results.
-  Need to check OPJ_RESTRICT usage (or a bug in vc14)
-    #elif defined(_MSC_VER) && (_MSC_VER >= 1400)
-        #define OPJ_RESTRICT __restrict
-*/
-#else
-#define OPJ_RESTRICT /* restrict */
-#endif
-
-
 /**
 Inverse 5-3 wavelet transform in 2-D.
 Apply a reversible inverse DWT transform to a component of an image.
@@ -63,7 +48,7 @@ Apply a reversible inverse DWT transform to a component of an image.
 @param numres Number of resolution levels to decode
 */
 bool opj_dwt_decode(TileProcessor *p_tcd,
-                        grk_tcd_tilecomp* OPJ_RESTRICT tilec,
+                        grk_tcd_tilecomp* restrict tilec,
                         uint32_t numres);
 
 /**
@@ -74,7 +59,7 @@ Apply an irreversible inverse DWT transform to a component of an image.
 @param numres Number of resolution levels to decode
 */
 bool opj_dwt_decode_real(TileProcessor *p_tcd,
-                             grk_tcd_tilecomp* OPJ_RESTRICT tilec,
+                             grk_tcd_tilecomp* restrict tilec,
 							 uint32_t numres);
 
 }

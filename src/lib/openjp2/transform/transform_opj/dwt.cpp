@@ -55,11 +55,8 @@
 #include <immintrin.h>
 #endif
 
-#if defined(__GNUC__)
-#pragma GCC poison malloc calloc realloc free
-#endif
-
 #include "grok_includes.h"
+
 #include "sparse_array.h"
 #include "dwt.h"
 
@@ -133,21 +130,21 @@ static OPJ_BOOL opj_dwt_decode_partial_tile(
     OPJ_UINT32 numres);
 
 
-static OPJ_UINT32 opj_dwt_max_resolution(grk_tcd_resolution* OPJ_RESTRICT r,
+static OPJ_UINT32 opj_dwt_max_resolution(grk_tcd_resolution* restrict r,
         OPJ_UINT32 i);
 
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_v4dwt_decode(opj_v4dwt_t* OPJ_RESTRICT dwt);
+static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt);
 
-static void opj_v4dwt_interleave_h(opj_v4dwt_t* OPJ_RESTRICT dwt,
-                                   OPJ_FLOAT32* OPJ_RESTRICT a,
+static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict dwt,
+                                   OPJ_FLOAT32* restrict a,
                                    OPJ_UINT32 width,
                                    OPJ_UINT32 remaining_height);
 
-static void opj_v4dwt_interleave_v(opj_v4dwt_t* OPJ_RESTRICT dwt,
-                                   OPJ_FLOAT32* OPJ_RESTRICT a,
+static void opj_v4dwt_interleave_v(opj_v4dwt_t* restrict dwt,
+                                   OPJ_FLOAT32* restrict a,
                                    OPJ_UINT32 width,
                                    OPJ_UINT32 nb_elts_read);
 
@@ -927,7 +924,7 @@ bool opj_dwt_decode(TileProcessor *p_tcd, grk_tcd_tilecomp* tilec,
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-static OPJ_UINT32 opj_dwt_max_resolution(grk_tcd_resolution* OPJ_RESTRICT r,
+static OPJ_UINT32 opj_dwt_max_resolution(grk_tcd_resolution* restrict r,
         OPJ_UINT32 i)
 {
     OPJ_UINT32 mr   = 0;
@@ -948,7 +945,7 @@ typedef struct {
     opj_dwt_t h;
     OPJ_UINT32 rw;
     OPJ_UINT32 w;
-    OPJ_INT32 * OPJ_RESTRICT tiledp;
+    OPJ_INT32 * restrict tiledp;
     OPJ_UINT32 min_j;
     OPJ_UINT32 max_j;
 } opj_dwd_decode_h_job_t;
@@ -971,7 +968,7 @@ typedef struct {
     opj_dwt_t v;
     OPJ_UINT32 rh;
     OPJ_UINT32 w;
-    OPJ_INT32 * OPJ_RESTRICT tiledp;
+    OPJ_INT32 * restrict tiledp;
     OPJ_UINT32 min_j;
     OPJ_UINT32 max_j;
 } opj_dwd_decode_v_job_t;
@@ -1040,7 +1037,7 @@ static OPJ_BOOL opj_dwt_decode_tile( grk_tcd_tilecomp* tilec, OPJ_UINT32 numres)
     v.mem = h.mem;
 
     while (--numres) {
-        OPJ_INT32 * OPJ_RESTRICT tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+        OPJ_INT32 * restrict tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
         OPJ_UINT32 j;
 
         ++tr;
@@ -1799,12 +1796,12 @@ static OPJ_BOOL opj_dwt_decode_partial_tile(
     return OPJ_TRUE;
 }
 
-static void opj_v4dwt_interleave_h(opj_v4dwt_t* OPJ_RESTRICT dwt,
-                                   OPJ_FLOAT32* OPJ_RESTRICT a,
+static void opj_v4dwt_interleave_h(opj_v4dwt_t* restrict dwt,
+                                   OPJ_FLOAT32* restrict a,
                                    OPJ_UINT32 width,
                                    OPJ_UINT32 remaining_height)
 {
-    OPJ_FLOAT32* OPJ_RESTRICT bi = (OPJ_FLOAT32*)(dwt->wavelet + dwt->cas);
+    OPJ_FLOAT32* restrict bi = (OPJ_FLOAT32*)(dwt->wavelet + dwt->cas);
     OPJ_UINT32 i, k;
     OPJ_UINT32 x0 = dwt->win_l_x0;
     OPJ_UINT32 x1 = dwt->win_l_x1;
@@ -1879,12 +1876,12 @@ static void opj_v4dwt_interleave_partial_h(opj_v4dwt_t* dwt,
     }
 }
 
-static void opj_v4dwt_interleave_v(opj_v4dwt_t* OPJ_RESTRICT dwt,
-                                   OPJ_FLOAT32* OPJ_RESTRICT a,
+static void opj_v4dwt_interleave_v(opj_v4dwt_t* restrict dwt,
+                                   OPJ_FLOAT32* restrict a,
                                    OPJ_UINT32 width,
                                    OPJ_UINT32 nb_elts_read)
 {
-    opj_v4_t* OPJ_RESTRICT bi = dwt->wavelet + dwt->cas;
+    opj_v4_t* restrict bi = dwt->wavelet + dwt->cas;
     OPJ_UINT32 i;
 
     for (i = dwt->win_l_x0; i < dwt->win_l_x1; ++i) {
@@ -1901,7 +1898,7 @@ static void opj_v4dwt_interleave_v(opj_v4dwt_t* OPJ_RESTRICT dwt,
     }
 }
 
-static void opj_v4dwt_interleave_partial_v(opj_v4dwt_t* OPJ_RESTRICT dwt,
+static void opj_v4dwt_interleave_partial_v(opj_v4dwt_t* restrict dwt,
         opj_sparse_array_int32_t* sa,
         OPJ_UINT32 sa_col,
         OPJ_UINT32 nb_elts_read)
@@ -1929,7 +1926,7 @@ static void opj_v4dwt_decode_step1_sse(opj_v4_t* w,
                                        OPJ_UINT32 end,
                                        const __m128 c)
 {
-    __m128* OPJ_RESTRICT vw = (__m128*) w;
+    __m128* restrict vw = (__m128*) w;
     OPJ_UINT32 i;
     /* 4x unrolled loop */
     vw += 2 * start;
@@ -1954,8 +1951,8 @@ static void opj_v4dwt_decode_step2_sse(opj_v4_t* l, opj_v4_t* w,
                                        OPJ_UINT32 m,
                                        __m128 c)
 {
-    __m128* OPJ_RESTRICT vl = (__m128*) l;
-    __m128* OPJ_RESTRICT vw = (__m128*) w;
+    __m128* restrict vl = (__m128*) l;
+    __m128* restrict vw = (__m128*) w;
     OPJ_UINT32 i;
     OPJ_UINT32 imax = opj_uint_min(end, m);
     __m128 tmp1, tmp2, tmp3;
@@ -2009,7 +2006,7 @@ static void opj_v4dwt_decode_step1(opj_v4_t* w,
                                    OPJ_UINT32 end,
                                    const OPJ_FLOAT32 c)
 {
-    OPJ_FLOAT32* OPJ_RESTRICT fw = (OPJ_FLOAT32*) w;
+    OPJ_FLOAT32* restrict fw = (OPJ_FLOAT32*) w;
     OPJ_UINT32 i;
     for (i = start; i < end; ++i) {
         OPJ_FLOAT32 tmp1 = fw[i * 8    ];
@@ -2072,7 +2069,7 @@ static void opj_v4dwt_decode_step2(opj_v4_t* l, opj_v4_t* w,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void opj_v4dwt_decode(opj_v4dwt_t* OPJ_RESTRICT dwt)
+static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 {
     OPJ_INT32 a, b;
     if (dwt->cas == 0) {
@@ -2138,7 +2135,7 @@ static void opj_v4dwt_decode(opj_v4dwt_t* OPJ_RESTRICT dwt)
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 static
-OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* OPJ_RESTRICT tilec,
+OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* restrict tilec,
                                 OPJ_UINT32 numres)
 {
     opj_v4dwt_t h;
@@ -2181,7 +2178,7 @@ OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* OPJ_RESTRICT tilec,
     v.wavelet = h.wavelet;
 
     while (--numres) {
-        OPJ_FLOAT32 * OPJ_RESTRICT aj = (OPJ_FLOAT32*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+        OPJ_FLOAT32 * restrict aj = (OPJ_FLOAT32*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
         OPJ_UINT32 j;
 
         h.sn = (OPJ_INT32)rw;
@@ -2274,7 +2271,7 @@ OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* OPJ_RESTRICT tilec,
 }
 
 static
-OPJ_BOOL opj_dwt_decode_partial_97(grk_tcd_tilecomp* OPJ_RESTRICT tilec,
+OPJ_BOOL opj_dwt_decode_partial_97(grk_tcd_tilecomp* restrict tilec,
                                    OPJ_UINT32 numres)
 {
     opj_sparse_array_int32_t* sa;
@@ -2516,7 +2513,7 @@ OPJ_BOOL opj_dwt_decode_partial_97(grk_tcd_tilecomp* OPJ_RESTRICT tilec,
 
 
 bool opj_dwt_decode_real(TileProcessor *p_tcd,
-                             grk_tcd_tilecomp* OPJ_RESTRICT tilec,
+                             grk_tcd_tilecomp* restrict tilec,
                              uint32_t numres)
 {
     if (p_tcd->whole_tile_decoding) {
