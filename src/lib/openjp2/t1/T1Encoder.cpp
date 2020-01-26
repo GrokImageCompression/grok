@@ -38,11 +38,11 @@ T1Encoder::~T1Encoder() {
 		delete t;
 	}
 }
-void T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
+bool T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
 	uint64_t index = ++blockCount;
 	if (index >= maxBlocks)
-		return;
+		return false;
 	encodeBlockInfo *block = encodeBlocks[index];
 	uint32_t max = 0;
 	impl->preEncode(block, tile, max);
@@ -52,6 +52,7 @@ void T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 		tile->distotile += dist;
 	}
 	delete block;
+	return true;
 
 }
 bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
@@ -65,12 +66,13 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
 	}
 	blocks->clear();
     std::vector< std::future<int> > results;
-    for(size_t i = 0; i < maxBlocks; ++i) {
-    	uint64_t index = i;
-        results.emplace_back(
-            Scheduler::g_tp->enqueue([this, maxBlocks,index] {
+    for(size_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+          results.emplace_back(
+            Scheduler::g_tp->enqueue([this, maxBlocks] {
                 auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
-                encode(threadnum, maxBlocks);
+                while(encode(threadnum, maxBlocks)){
+
+                }
                 return 0;
             })
         );

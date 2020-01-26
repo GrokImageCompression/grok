@@ -29,7 +29,7 @@ public:
 	bool encode(std::vector<encodeBlockInfo*> *blocks);
 
 private:
-	void encode(size_t threadId, uint64_t maxBlocks);
+	bool encode(size_t threadId, uint64_t maxBlocks);
 
 	grk_tcd_tile *tile;
 	std::vector<T1Interface*> threadStructs;

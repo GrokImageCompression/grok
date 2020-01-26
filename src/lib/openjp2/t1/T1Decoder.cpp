@@ -17,6 +17,7 @@
 #include "grok_includes.h"
 #include "T1Factory.h"
 #include "T1Decoder.h"
+#include <atomic>
 
 namespace grk {
 
@@ -45,26 +46,31 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 	for (uint64_t i = 0; i < maxBlocks; ++i) {
 		decodeBlocks[i] = blocks->operator[](i);
 	}
+	std::atomic<int> blockCount(-1);
 	success = true;
     std::vector< std::future<int> > results;
-    for(int i = 0; i < maxBlocks; ++i) {
-    	uint64_t index = i;
+    for(size_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
         results.emplace_back(
-            Scheduler::g_tp->enqueue([this, maxBlocks,index] {
+            Scheduler::g_tp->enqueue([this, maxBlocks, &blockCount] {
                 auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
-				decodeBlockInfo *block = decodeBlocks[index];
-				if (!success){
+                while (true) {
+                	uint64_t index = ++blockCount;
+                	if (index >= maxBlocks)
+                		break;
+					decodeBlockInfo *block = decodeBlocks[index];
+					if (!success){
+						delete block;
+						return 0;
+					}
+					auto impl = threadStructs[threadnum];
+					if (!impl->decode(block)) {
+						success = false;
+						delete block;
+						return 0;
+					}
+					impl->postDecode(block);
 					delete block;
-					return 0;
-				}
-				auto impl = threadStructs[threadnum];
-				if (!impl->decode(block)) {
-					success = false;
-					delete block;
-					return 0;
-				}
-				impl->postDecode(block);
-				delete block;
+                }
                 return 0;
             })
         );
