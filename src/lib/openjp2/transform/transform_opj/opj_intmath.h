@@ -37,8 +37,10 @@
 #ifndef OPJ_INTMATH_H
 #define OPJ_INTMATH_H
 
-#ifdef WIN32
-	#include <intrin.h>
+/* MSVC x86 is really bad at doing int64 = int32 * int32 on its own. Use intrinsic. */
+#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
+#	include <intrin.h>
+#	pragma intrinsic(__emul)
 #endif
 
 /**
