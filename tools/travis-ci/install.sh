@@ -56,15 +56,14 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	echo "Cloning grok-test-data from ${GROK_DATA_BRANCH} branch"
 	git clone --depth=1 --branch=${GROK_DATA_BRANCH} git://github.com/GrokImageCompression/grok-test-data.git data
 
+    pip install --user six
+
 	# We need jpylyzer for the test suite
-    JPYLYZER_VERSION="1.17.0"    
+    JPYLYZER_VERSION="2.0.0"    
 	echo "Retrieving jpylyzer"
 	if [ "${APPVEYOR:-}" == "True" ]; then
-		wget -q http://dl.bintray.com/openplanets/opf-windows/jpylyzer_${JPYLYZER_VERSION}_win32.zip
-		mkdir jpylyzer
-		cd jpylyzer
-		cmake -E tar -xzf ../jpylyzer_${JPYLYZER_VERSION}_win32.zip
-		cd ..
+		wget -q https://github.com/openpreserve/jpylyzer/releases/download/2.0.0/jpylyzer_${JPYLYZER_VERSION}_win32.zip
+		cmake -E tar -xzf jpylyzer_${JPYLYZER_VERSION}_win32.zip
 	else
 		wget -qO - https://github.com/openpreserve/jpylyzer/archive/${JPYLYZER_VERSION}.tar.gz | tar -xz
 		mv jpylyzer-${JPYLYZER_VERSION}/jpylyzer ./
