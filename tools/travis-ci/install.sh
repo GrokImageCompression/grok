@@ -79,9 +79,9 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	if [ "${GROK_NONCOMMERCIAL:-}" == "1" ]; then
 		if [ "${TRAVIS_OS_NAME:-}" == "linux" ] || uname -s | grep -i Linux &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827.zip
-			cmake -E tar -xzf KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827.zip
-			mv KDU7A2_Demo_Apps_for_Ubuntu-x86-64_170827 kdu
+			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Linux-x86-64_200113.zip
+			cmake -E tar -xzf KDU802_Demo_Apps_for_Linux-x86-64_200113.zip
+			mv KDU802_Demo_Apps_for_Linux-x86-64_200113 kdu
 		elif [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 			echo "Retrieving Kakadu"
 			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_OSX1011_170827.zip
@@ -99,13 +99,13 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 			install_name_tool -change /usr/local/lib/libkdu_v7AR.dylib ${PWD}/libkdu_v7AR.dylib kdu_expand
 		elif [ "${APPVEYOR:-}" == "True" ] || uname -s | grep -i MINGW &> /dev/null || uname -s | grep -i CYGWIN &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_Win32_170827.zip
-			cmake -E tar -xzf KDU7A2_Demo_Apps_for_Win32_170827.zip
-			msiexec /i KDU7A2_Demo_Apps_for_Win32_170827.msi /quiet /qn /norestart
+			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Win64_200113.msi_.zip
+			cmake -E tar -xzf KDU802_Demo_Apps_for_Win64_200113.msi_.zip
+			msiexec /i KDU802_Demo_Apps_for_Win64_200113.msi /quiet /qn /norestart
 			if [ -d "C:/Program Files/Kakadu" ]; then
-				cp -r "C:/Program Files/Kakadu" ./kdu
+				cp -r "C:/Program Files/Kakadu/Kakadu Demo-Apps" ./kdu
 			else
-				cp -r "C:/Program Files (x86)/Kakadu" ./kdu
+				cp -r "C:/Program Files (x86)/Kakadu/Kakadu Demo-Apps" ./kdu
 			fi
 		fi
 	fi
