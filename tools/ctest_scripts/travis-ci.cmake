@@ -16,11 +16,11 @@ endif()
 if("$ENV{TRAVIS_OS_NAME}" STREQUAL "windows")
 	set( CTEST_CMAKE_GENERATOR "NMake Makefiles")
 	set( CTEST_BUILD_COMMAND   "nmake" )
-	set( JPYLYZER_EXT          "exe"  )
+	set( JPYLYZER_BIN          "jpylyzer.exe"  )
 else()
 	set( CTEST_CMAKE_GENERATOR "Unix Makefiles")   # Always makefile in travis-ci environment
 	set( CCFLAGS_WARNING "-Wall -Wextra -Wconversion -Wno-unused-parameter -Wdeclaration-after-statement -Werror=declaration-after-statement")
-	set( JPYLYZER_EXT          "py"  )
+	set( JPYLYZER_BIN          "cli.py"  )
 endif()
 
 if ("$ENV{GROK_BUILD_CONFIGURATION}" STREQUAL "")
@@ -120,7 +120,7 @@ BUILD_THIRDPARTY:BOOL=TRUE
 GROK_DATA_ROOT:PATH=$ENV{PWD}/data
 
 # jpylyzer is available with on GitHub: https://github.com/openpreserve/jpylyzer
-JPYLYZER_EXECUTABLE=$ENV{PWD}/jpylyzer/jpylyzer.${JPYLYZER_EXT}
+JPYLYZER_EXECUTABLE=$ENV{PWD}/jpylyzer/${JPYLYZER_BIN}
 
 # Enable astyle
 WITH_ASTYLE:BOOL=${BUILD_ASTYLE}

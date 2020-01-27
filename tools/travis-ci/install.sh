@@ -66,8 +66,8 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 		cmake -E tar -xzf jpylyzer_${JPYLYZER_VERSION}_win32.zip
 	else
 		wget -qO - https://github.com/openpreserve/jpylyzer/archive/${JPYLYZER_VERSION}.tar.gz | tar -xz
-		mv jpylyzer-${JPYLYZER_VERSION}/jpylyzer ./
-		chmod +x jpylyzer/jpylyzer.py
+		mv jpylyzer-${JPYLYZER_VERSION} jpylyzer
+		chmod +x jpylyzer/cli.py
 	fi
 
 	# When GROK_NONCOMMERCIAL=1, kakadu trial binaries are used for testing. Here's the copyright notice from kakadu:
