@@ -214,7 +214,7 @@ endif()
 if(BUILD_LUTS_GENERATOR)
 # internal utility to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
-add_executable(t1_generate_luts t1_generate_luts.cpp)
+add_executable(t1_generate_luts ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/t1_generate_luts.cpp)
   if(UNIX)
     target_link_libraries(t1_generate_luts)
   endif()
