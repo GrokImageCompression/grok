@@ -7630,10 +7630,10 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		// if EOC marker has not been read yet, then try to read the next marker (should be EOC or SOT)
 		if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
 
-			// not enough data for another marker : fail decode
+			// not enough data for another marker
 			if (p_stream->read(l_data, 2) != 2) {
-				GROK_ERROR( "Stream too short");
-				return false;
+				GROK_WARN( "j2k_decode_tile: Not enough data to read another marker. Tile may be truncated.");
+				return true;
 			}
 
 			// read marker
