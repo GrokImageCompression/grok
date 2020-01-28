@@ -83,19 +83,19 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 			mv KDU802_Demo_Apps_for_Linux-x86-64_200113 kdu
 		elif [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
 			echo "Retrieving Kakadu"
-			wget -q http://kakadusoftware.com/wp-content/uploads/2014/06/KDU7A2_Demo_Apps_for_OSX1011_170827.zip
-			cmake -E tar -xzf KDU7A2_Demo_Apps_for_OSX1011_170827.zip
+			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_MacOS_200113.dmg_.zip
+			cmake -E tar -xzf KDU802_Demo_Apps_for_MacOS_200113.dmg_.zip
 			wget -q http://downloads.sourceforge.net/project/catacombae/HFSExplorer/0.23/hfsexplorer-0.23-bin.zip
 			mkdir hfsexplorer && cmake -E chdir hfsexplorer tar -xzf ../hfsexplorer-0.23-bin.zip
-			./hfsexplorer/bin/unhfs.sh -o ./ -fsroot KDU7A2_Demo_Apps_for_OSX_170827.pkg  KDU7A2_Demo_Apps_for_OSX1011_170827.dmg
-			pkgutil --expand KDU7A2_Demo_Apps_for_OSX_170827.pkg ./kdu
+			./hfsexplorer/bin/unhfs.sh -o ./ -fsroot KDU802_Demo_Apps_for_MacOS_200113.pkg  KDU802_Demo_Apps_for_MacOS_200113.dmg
+			pkgutil --expand KDU802_Demo_Apps_for_MacOS_200113.pkg ./kdu
 			cd kdu
-			cat libkduv7ar.pkg/Payload | gzip -d | cpio -id
+			cat libkduv8ar.pkg/Payload | gzip -d | cpio -id
 			cat kduexpand.pkg/Payload | gzip -d | cpio -id
 			cat kducompress.pkg/Payload | gzip -d | cpio -id
-			install_name_tool -id ${PWD}/libkdu_v7AR.dylib libkdu_v7AR.dylib 
-			install_name_tool -change /usr/local/lib/libkdu_v7AR.dylib ${PWD}/libkdu_v7AR.dylib kdu_compress
-			install_name_tool -change /usr/local/lib/libkdu_v7AR.dylib ${PWD}/libkdu_v7AR.dylib kdu_expand
+			install_name_tool -id ${PWD}/libkdu_v8AR.dylib libkdu_v8AR.dylib 
+			install_name_tool -change /usr/local/lib/libkdu_v8AR.dylib ${PWD}/libkdu_v8AR.dylib kdu_compress
+			install_name_tool -change /usr/local/lib/libkdu_v8AR.dylib ${PWD}/libkdu_v8AR.dylib kdu_expand
 		elif [ "${APPVEYOR:-}" == "True" ] || uname -s | grep -i MINGW &> /dev/null || uname -s | grep -i CYGWIN &> /dev/null; then
 			echo "Retrieving Kakadu"
 			wget -q https://kakadusoftware.com/wp-content/uploads/2014/06/KDU802_Demo_Apps_for_Win64_200113.msi_.zip
