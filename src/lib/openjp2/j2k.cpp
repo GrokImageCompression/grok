@@ -6535,9 +6535,10 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, GrokStream *p_stream) {
 
 		/* Manage case where marker is unknown */
 		if (l_marker_handler->id == J2K_MS_UNK) {
+			GROK_WARN("Unknown marker 0x%02x detected.",l_marker_handler->id );
 			if (!j2k_read_unk(p_j2k, p_stream, &l_current_marker)) {
 				GROK_ERROR(
-						"Unknown marker have been detected and generated error.");
+						"Unable to read unknown marker 0x%02x.", l_marker_handler->id);
 				return false;
 			}
 
@@ -7169,7 +7170,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream) {
 	uint32_t l_current_marker = J2K_MS_SOT;
-	uint32_t l_marker_size;
+	uint32_t l_marker_size = 0;
 	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
 	grk_tcp *l_tcp = nullptr;
 
@@ -7196,6 +7197,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 
 			if (p_stream->get_number_byte_left() == 0) {
 				p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_NEOC;
+				GROK_WARN("Missing EOC marker");
 				break;
 			}
 
@@ -7234,7 +7236,6 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 						"Marker is not compliant with its position");
 				return false;
 			}
-			/* FIXME manage case of unknown marker as in the main header ? */
 
 			/* Check if the marker size is compatible with the header data size */
 			if (l_marker_size
@@ -7320,15 +7321,29 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 				}
 				l_current_marker = J2K_MS_SOD; //We force current marker to equal SOD
 			} else {
-				// Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
-				if (p_stream->read(
-						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
-					GROK_ERROR( "Stream too short");
-					return false;
+				while (true) {
+					// Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
+					if (p_stream->read(
+							p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+						GROK_ERROR( "Stream too short");
+						return false;
+					}
+					// Read 2 bytes from the buffer as the new marker ID
+					grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+							&l_current_marker, 2);
+
+					/* Manage case where marker is unknown */
+					if (l_current_marker == J2K_MS_UNK) {
+						GROK_WARN("Unknown marker 0x%02x detected.",l_current_marker );
+						if (!j2k_read_unk(p_j2k, p_stream, &l_current_marker)) {
+							GROK_ERROR(
+									"Unable to read unknown marker 0x%02x.", l_current_marker);
+							return false;
+						}
+						continue;
+					}
+					break;
 				}
-				// Read 2 bytes from the buffer as the new marker ID
-				grok_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
-						&l_current_marker, 2);
 			}
 		}
 
