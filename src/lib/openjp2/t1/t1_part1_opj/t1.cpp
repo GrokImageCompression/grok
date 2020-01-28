@@ -62,23 +62,6 @@
 #define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
 
-/**
- Get the maximum of two integers
- @return Returns a if a > b else b
- */
-static INLINE int32_t opj_int_max(int32_t a, int32_t b)
-{
-	return (a > b) ? a : b;
-}
-
-/**
- Get the maximum of two integers
- @return Returns a if a > b else b
- */
-static INLINE uint32_t opj_uint_max(uint32_t a, uint32_t b)
-{
-	return (a > b) ? a : b;
-}
 
 /**
  @return Get absolute value of integer

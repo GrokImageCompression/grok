@@ -950,20 +950,6 @@ typedef struct {
     OPJ_UINT32 max_j;
 } opj_dwd_decode_h_job_t;
 
-static void opj_dwt_decode_h_func(void* user_data)
-{
-    OPJ_UINT32 j;
-    opj_dwd_decode_h_job_t* job;
-
-    job = (opj_dwd_decode_h_job_t*)user_data;
-    for (j = job->min_j; j < job->max_j; j++) {
-        opj_idwt53_h(&job->h, &job->tiledp[j * job->w]);
-    }
-
-    grok_aligned_free(job->h.mem);
-    grok_free(job);
-}
-
 typedef struct {
     opj_dwt_t v;
     OPJ_UINT32 rh;
@@ -972,26 +958,6 @@ typedef struct {
     OPJ_UINT32 min_j;
     OPJ_UINT32 max_j;
 } opj_dwd_decode_v_job_t;
-
-static void opj_dwt_decode_v_func(void* user_data)
-{
-    OPJ_UINT32 j;
-    opj_dwd_decode_v_job_t* job;
-
-    job = (opj_dwd_decode_v_job_t*)user_data;
-    for (j = job->min_j; j + PARALLEL_COLS_53 <= job->max_j;
-            j += PARALLEL_COLS_53) {
-        opj_idwt53_v(&job->v, &job->tiledp[j], (OPJ_SIZE_T)job->w,
-                     PARALLEL_COLS_53);
-    }
-    if (j < job->max_j)
-        opj_idwt53_v(&job->v, &job->tiledp[j], (OPJ_SIZE_T)job->w,
-                     (OPJ_INT32)(job->max_j - j));
-
-    grok_aligned_free(job->v.mem);
-    grok_free(job);
-}
-
 
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
