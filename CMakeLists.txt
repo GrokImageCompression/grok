@@ -33,7 +33,7 @@ include_regular_expression("^.*$")
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
 set(GROK_VERSION_MAJOR 3)
-set(GROK_VERSION_MINOR 0)
+set(GROK_VERSION_MINOR 1)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
@@ -43,13 +43,8 @@ set(PACKAGE_VERSION
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
 # two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
-#   2.0   |  6
-#   2.0.1 |  6
-#   2.1   |  7
-#   2.1.1 |  7
-#   2.2.0 |  8
-#   2.3.0 |  8
 #   3.0.0 |  9
+#   3.1.0 |  9
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
