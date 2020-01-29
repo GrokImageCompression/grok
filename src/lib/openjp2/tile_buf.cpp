@@ -44,7 +44,7 @@ bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
 				ceildiv<uint32_t>(output_image->x1, dx),
 				ceildiv<uint32_t>(output_image->y1, dy));
 
-		if (tilec->whole_tile_decoding)
+		if (!isEncoder && tilec->whole_tile_decoding)
 			comp->dim.ceildivpow2(tilec->numresolutions - tilec->minimum_num_resolutions);
 
 

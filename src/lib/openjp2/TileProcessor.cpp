@@ -720,9 +720,9 @@ uint64_t grk_tcd_tilecomp::size(){
 uint64_t grk_tcd_tilecomp::area(){
 	return (uint64_t)width() * height() ;
 }
-void grk_tcd_tilecomp::finalizeCoordinates(){
+void grk_tcd_tilecomp::finalizeCoordinates(bool isEncoder){
 	auto highestRes =
-			whole_tile_decoding ? minimum_num_resolutions : numresolutions;
+			(whole_tile_decoding && !isEncoder) ? minimum_num_resolutions : numresolutions;
 	auto res =  resolutions + highestRes - 1;
 	x0 = res->x0;
 	x1 = res->x1;
@@ -1123,7 +1123,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			} /* bandno */
 			++l_res;
 		} /* resno */
-		l_tilec->finalizeCoordinates();
+		l_tilec->finalizeCoordinates(isEncoder);
 		if (!tile_buf_create_component(l_tilec, isEncoder,
 				l_tccp->qmfbid ? false : true, 1 << l_tccp->cblkw,
 				1 << l_tccp->cblkh, output_image, l_image_comp->dx,

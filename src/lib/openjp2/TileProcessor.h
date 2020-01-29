@@ -302,7 +302,7 @@ struct grk_tcd_tilecomp {
 	uint32_t height();
 	uint64_t area();
 	uint64_t size();
-	void finalizeCoordinates();
+	void finalizeCoordinates(bool isEncoder);
 	uint32_t X0(){
 		return x0;
 	}
