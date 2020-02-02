@@ -870,8 +870,19 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 			l_tl_prc_x_start = uint_floordivpow2(l_res->x0, l_pdx) << l_pdx;
 			l_tl_prc_y_start = uint_floordivpow2(l_res->y0, l_pdy) << l_pdy;
-			l_br_prc_x_end = uint_ceildivpow2(l_res->x1, l_pdx) << l_pdx;
-			l_br_prc_y_end = uint_ceildivpow2(l_res->y1, l_pdy) << l_pdy;
+			uint64_t temp = (uint64_t)uint_ceildivpow2(l_res->x1, l_pdx) << l_pdx;
+			if (temp > UINT_MAX){
+				GROK_ERROR("Resolution x1 value %d must be less than 2^32", temp);
+				return false;
+			}
+			l_br_prc_x_end = (uint32_t)temp;
+			temp = (uint64_t)uint_ceildivpow2(l_res->y1, l_pdy) << l_pdy;
+			if (temp > UINT_MAX){
+				GROK_ERROR("Resolution y1 value %d must be less than 2^32", temp);
+				return false;
+			}
+			l_br_prc_y_end = (uint32_t)temp;
+
 			/*fprintf(stderr, "\t\t\tprc_x_start=%d, prc_y_start=%d, br_prc_x_end=%d, br_prc_y_end=%d \n", l_tl_prc_x_start, l_tl_prc_y_start, l_br_prc_x_end ,l_br_prc_y_end );*/
 
 			l_res->pw =
