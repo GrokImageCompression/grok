@@ -1958,9 +1958,9 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 				l_cp->tw, l_cp->th);
 		return false;
 	}
-	if (l_cp->tw > 65535 / l_cp->th) {
+	if (l_cp->tw * l_cp->th > max_num_tiles) {
 		GROK_ERROR(
-				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of 65535 tiles\n",
+				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %d tiles\n",max_num_tiles,
 				l_cp->tw, l_cp->th);
 		return false;
 	}
@@ -4135,20 +4135,20 @@ static bool j2k_update_rates(grk_j2k *p_j2k, GrokStream *p_stream) {
 					/ l_tcp->numlayers;
 
 			/* 4 borders of the tile rescale on the image if necessary */
-			auto l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx),
+			uint32_t l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx),
 					l_image->x0);
-			auto l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy),
+			uint32_t l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy),
 					l_image->y0);
-			auto l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx),
+			uint32_t l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx),
 					l_image->x1);
-			auto l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy),
+			uint32_t l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy),
 					l_image->y1);
-			auto numTilePixels = (uint64_t) (l_x1 - l_x0) * (l_y1 - l_y0);
+			uint64_t numTilePixels = (uint64_t) (l_x1 - l_x0) * (l_y1 - l_y0);
 
 			l_rates = l_tcp->rates;
 			for (k = 0; k < l_tcp->numlayers; ++k) {
 				if (*l_rates > 0.0f) {
-					*l_rates = ((((double) l_size_pixel * numTilePixels))
+					*l_rates = (((static_cast<double>( l_size_pixel) * numTilePixels))
 							/ ((*l_rates) * l_bits_empty)) - l_offset;
 				}
 				++l_rates;
@@ -4162,16 +4162,16 @@ static bool j2k_update_rates(grk_j2k *p_j2k, GrokStream *p_stream) {
 		for (j = 0; j < l_cp->tw; ++j) {
 			l_rates = l_tcp->rates;
 			/* 4 borders of the tile rescale on the image if necessary */
-			auto l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx),
+			uint32_t l_x0 = std::max<uint32_t>((l_cp->tx0 + j * l_cp->tdx),
 					l_image->x0);
-			auto l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy),
+			uint32_t l_y0 = std::max<uint32_t>((l_cp->ty0 + i * l_cp->tdy),
 					l_image->y0);
-			auto l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx),
+			uint32_t l_x1 = std::min<uint32_t>((l_cp->tx0 + (j + 1) * l_cp->tdx),
 					l_image->x1);
-			auto l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy),
+			uint32_t l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy),
 					l_image->y1);
-			auto numTilePixels = (uint64_t) (l_x1 - l_x0) * (l_y1 - l_y0);
-			auto sot_adjust = (numTilePixels * header_size)
+			uint64_t numTilePixels = (uint64_t) (l_x1 - l_x0) * (l_y1 - l_y0);
+			double sot_adjust = (double)(numTilePixels * header_size)
 					/ ((uint64_t) width * height);
 
 			if (*l_rates > 0.0) {
@@ -9620,7 +9620,7 @@ bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor) {
 bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *p_stream) {
 	uint16_t i;
 	uint32_t j;
-	uint16_t l_nb_tiles;
+	uint32_t l_nb_tiles;
 	uint64_t l_max_tile_size = 0;
 	uint64_t l_current_tile_size;
 	uint8_t *l_current_data = nullptr;
@@ -9634,7 +9634,12 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *p_stream) {
 	p_tcd = p_j2k->m_tileProcessor;
 	p_tcd->current_plugin_tile = tile;
 
-	l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	l_nb_tiles = (uint32_t)p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	if (l_nb_tiles > max_num_tiles){
+		GROK_ERROR("Number of tiles %d is greater the %d max tiles "
+				"allowed by the standard.", l_nb_tiles,max_num_tiles );
+		return false;
+	}
 	if (l_nb_tiles == 1) {
 		l_reuse_data = true;
 #ifdef __SSE__

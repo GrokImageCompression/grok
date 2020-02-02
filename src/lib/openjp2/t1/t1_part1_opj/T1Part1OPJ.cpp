@@ -28,7 +28,7 @@ T1Part1OPJ::T1Part1OPJ(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 	(void) tcp;
 	t1 = opj_t1_create(isEncoder);
 	if (!isEncoder) {
-	   t1->cblkdatabuffersize = maxCblkW * maxCblkH * sizeof(int32_t);
+	   t1->cblkdatabuffersize = (uint32_t)maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
 	   t1->cblkdatabuffer = (uint8_t*)grok_malloc(t1->cblkdatabuffersize);
    }
 }
@@ -52,7 +52,6 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &maximum) {
 	auto cblk = block->cblk;
-	auto tilec = tile;
 	auto w = cblk->x1 - cblk->x0;
 	auto h = cblk->y1 - cblk->y0;
 	if (!opj_t1_allocate_buffers(t1, w,h))
@@ -168,7 +167,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 	assert(cblk->y1 - cblk->y0 > 0);
 	cblkopj.real_num_segs = cblk->numSegments;
 	auto segs = new opj_tcd_seg_t[cblk->numSegments];
-	for (int i = 0; i < cblk->numSegments; ++i){
+	for (uint32_t i = 0; i < cblk->numSegments; ++i){
 		auto sopj = segs + i;
 		memset(sopj, 0, sizeof(opj_tcd_seg_t));
 		auto sgrk = cblk->segs + i;

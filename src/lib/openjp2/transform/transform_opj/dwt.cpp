@@ -978,12 +978,10 @@ static OPJ_BOOL opj_dwt_decode_tile( grk_tcd_tilecomp* tilec, OPJ_UINT32 numres)
                                                                1].x1 -
                                 tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
     OPJ_SIZE_T h_mem_size;
-    int num_threads;
-
     if (numres == 1U) {
         return OPJ_TRUE;
     }
-    num_threads = Scheduler::g_tp->num_threads();
+    size_t num_threads = Scheduler::g_tp->num_threads();
     h_mem_size = opj_dwt_max_resolution(tr, numres);
     /* overflow check */
     if (h_mem_size > (SIZE_MAX / PARALLEL_COLS_53 / sizeof(OPJ_INT32))) {

@@ -109,7 +109,7 @@ bool BitIO::putbit(uint8_t b) {
 			return false;
 	}
 	ct--;
-	buf = static_cast<uint8_t>(buf | ((uint32_t) b << ct));
+	buf = static_cast<uint8_t>(buf | (b << ct));
 	return true;
 }
 

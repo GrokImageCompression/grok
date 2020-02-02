@@ -851,7 +851,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 
 		for (resno = 0; resno < l_tilec->numresolutions; ++resno) {
 			/*fprintf(stderr, "\t\tresno = %d/%d\n", resno, l_tilec->numresolutions);*/
-			uint32_t tlcbgxstart, tlcbgystart /*, brcbgxend, brcbgyend*/;
+			uint32_t tlcbgxstart, tlcbgystart;
 			uint32_t cbgwidthexpn, cbgheightexpn;
 			uint32_t cblkwidthexpn, cblkheightexpn;
 
@@ -898,8 +898,6 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			if (resno == 0) {
 				tlcbgxstart = l_tl_prc_x_start;
 				tlcbgystart = l_tl_prc_y_start;
-				/*brcbgxend = l_br_prc_x_end;*/
-				/* brcbgyend = l_br_prc_y_end;*/
 				cbgwidthexpn = l_pdx;
 				cbgheightexpn = l_pdy;
 				l_res->numbands = 1;
@@ -1648,13 +1646,13 @@ bool TileProcessor::dc_level_shift_decode() {
 		 grk_image_comp  *l_img_comp = image->comps + compno;
 
 		if (this->whole_tile_decoding) {
-			scaledTileX0 = l_tile_comp->buf->tile_dim.x0;
-			scaledTileY0 =  l_tile_comp->buf->tile_dim.y0;
+			scaledTileX0 = (uint32_t)l_tile_comp->buf->tile_dim.x0;
+			scaledTileY0 =  (uint32_t)l_tile_comp->buf->tile_dim.y0;
 
-			x0 = l_tile_comp->buf->dim.x0- scaledTileX0;
-			y0 = l_tile_comp->buf->dim.y0 - scaledTileY0;
-			x1 = l_tile_comp->buf->dim.x1 - scaledTileX0;
-			y1 = l_tile_comp->buf->dim.y1 - scaledTileY0;
+			x0 = (uint32_t)(l_tile_comp->buf->dim.x0- scaledTileX0);
+			y0 = (uint32_t)(l_tile_comp->buf->dim.y0 - scaledTileY0);
+			x1 = (uint32_t)(l_tile_comp->buf->dim.x1 - scaledTileX0);
+			y1 = (uint32_t)(l_tile_comp->buf->dim.y1 - scaledTileY0);
 
 
 		} else {

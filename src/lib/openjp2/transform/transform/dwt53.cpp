@@ -243,7 +243,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads
 								if (rw) {
 									v.d_n = (int32_t) (rh - v.s_n);
 									v.cas = tr->y0 & 1;
-									const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / Scheduler::g_tp->num_threads()));
+									const uint32_t linesPerThreadV = static_cast<uint32_t>((std::ceil((float)rw / Scheduler::g_tp->num_threads())));
 
 									for (auto j = threadId * linesPerThreadV;
 											j < std::min<uint32_t>((threadId+1)*linesPerThreadV, rw); ++j) {

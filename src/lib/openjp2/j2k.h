@@ -65,13 +65,17 @@
 
 namespace grk {
 
-// 64 Giga Pixels
-const uint64_t max_tile_area = 67108864000;
-const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
+// limits defined in JPEG 2000 standard
 const uint32_t max_precision_jpeg_2000 = 38; // maximum number of magnitude bits, according to ISO standard
 const uint32_t max_num_components = 16384;	// maximum allowed number components
 const uint32_t max_passes_per_segment = (max_precision_jpeg_2000-1) * 3 +1;
+const uint32_t max_num_tiles = 65535;
+const uint32_t max_num_tile_parts_per_tile = 256;
+const uint32_t max_num_tile_parts = max_num_tiles * max_num_tile_parts_per_tile;
 
+// limits in Grok library
+const uint64_t max_tile_area = 67108864000;
+const uint32_t max_supported_precision = 16; // maximum supported precision for Grok library
 const uint32_t default_numbers_segments = 10;
 const uint32_t stream_chunk_size = 0x100000;
 const uint32_t default_header_size = 1000;

@@ -91,19 +91,19 @@ template <typename DWT> bool WaveletForward<DWT>::run(grk_tcd_tilecomp *tilec){
 
 		// transform vertical
 		if (rw) {
-			const uint32_t linesPerThreadV = (uint32_t)(std::ceil((float)rw / hardware_concurrency()));
+			const uint32_t linesPerThreadV = static_cast<uint32_t>(std::ceil((float)rw / hardware_concurrency()));
 			const uint32_t s_n = rh_next;
 			const uint32_t d_n = rh - rh_next;
 			std::vector< std::future<int> > results;
 			for(size_t i = 0; i < hardware_concurrency(); ++i) {
-				uint64_t index = i;
+				uint32_t index = i;
 				results.emplace_back(
 					Scheduler::g_tp->enqueue([this, index, bj_array,a,
 												 stride, rw,rh,
 												 d_n, s_n, cas_col,
 												 linesPerThreadV] {
 						DWT wavelet;
-						for (auto m = index * linesPerThreadV;
+						for (uint32_t m = index * linesPerThreadV;
 								m < std::min<uint32_t>((index+1)*linesPerThreadV, rw); ++m) {
 							int32_t *bj = bj_array[index];
 							int32_t *aj = a + m;
@@ -126,10 +126,10 @@ template <typename DWT> bool WaveletForward<DWT>::run(grk_tcd_tilecomp *tilec){
 		if (rh){
 			const uint32_t s_n = rw_next;
 			const uint32_t d_n = rw - rw_next;
-			const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / hardware_concurrency());
+			const uint32_t linesPerThreadH = static_cast<uint32_t>(std::ceil((float)rh / hardware_concurrency()));
 			std::vector< std::future<int> > results;
 			for(size_t i = 0; i < hardware_concurrency(); ++i) {
-				uint64_t index = i;
+				size_t index = i;
 				results.emplace_back(
 					Scheduler::g_tp->enqueue([this, index, bj_array,a,
 												 stride, rw,rh,

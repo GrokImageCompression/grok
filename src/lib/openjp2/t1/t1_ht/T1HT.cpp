@@ -23,6 +23,8 @@ namespace t1_ht {
 T1HT::T1HT(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH)  {
 	(void) tcp;
+	(void)maxCblkW;
+	(void)maxCblkH;
 	if (isEncoder) {
 	} else {
 	}
@@ -32,17 +34,25 @@ T1HT::~T1HT() {
 }
 void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &max) {
+	(void)block;
+	(void)tile;
+	(void)max;
 }
 double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 		bool doRateControl) {
+	(void)block;
+	(void)tile;
+	(void)max;
+	(void)doRateControl;
   return 0;
 }
 bool T1HT::decode(decodeBlockInfo *block) {
+	(void)block;
 	return false;
 }
 
 void T1HT::postDecode(decodeBlockInfo *block) {
-
+  (void)block;
 }
 }
 }

@@ -272,16 +272,7 @@ struct grk_tcd_resolution {
 	grk_tcd_resolution() :
 			x0(0), y0(0), x1(0), y1(0), pw(0), ph(0), numbands(0) {
 	}
-	grk_tcd_resolution(const grk_tcd_resolution &rhs) :
-			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), pw(rhs.pw), ph(
-					rhs.ph), numbands(rhs.numbands),
-					win_x0(0), win_y0(0),
-					win_x1(0), win_y1(0)
 
-	{
-		for (int i = 0; i < 3; ++i)
-			bands[i] = rhs.bands[i];
-	}
 	uint32_t x0, y0, x1, y1; /* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
