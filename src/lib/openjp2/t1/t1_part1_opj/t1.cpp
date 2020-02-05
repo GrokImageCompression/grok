@@ -1336,47 +1336,7 @@ bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
 	opj_mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
 	opj_mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 
-	/* Even if we have a single chunk, in multi-threaded decoding */
-	/* the insertion of our synthetic marker might potentially override */
-	/* valid codestream of other codeblocks decoded in parallel. */
-	if (cblk->numchunks > 1 || t1->mustuse_cblkdatabuffer) {
-		uint32_t i;
-		uint32_t cblk_len;
-
-		/* Compute whole codeblock length from chunk lengths */
-		cblk_len = 0;
-		for (i = 0; i < cblk->numchunks; i++) {
-			cblk_len += cblk->chunks[i].len;
-		}
-
-		/* Allocate temporary memory if needed */
-		if (cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA > t1->cblkdatabuffersize) {
-			cblkdata = (uint8_t*) grk::grok_realloc(t1->cblkdatabuffer,
-					cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA);
-			if (cblkdata == NULL) {
-				return false;
-			}
-			t1->cblkdatabuffer = cblkdata;
-			memset(t1->cblkdatabuffer + cblk_len, 0,
-					OPJ_COMMON_CBLK_DATA_EXTRA);
-			t1->cblkdatabuffersize = cblk_len + OPJ_COMMON_CBLK_DATA_EXTRA;
-		}
-
-		/* Concatenate all chunks */
-		cblkdata = t1->cblkdatabuffer;
-		cblk_len = 0;
-		for (i = 0; i < cblk->numchunks; i++) {
-			memcpy(cblkdata + cblk_len, cblk->chunks[i].data,
-					cblk->chunks[i].len);
-			cblk_len += cblk->chunks[i].len;
-		}
-	} else if (cblk->numchunks == 1) {
-		cblkdata = cblk->chunks[0].data;
-	} else {
-		/* Not sure if that can happen in practice, but avoid Coverity to */
-		/* think we will dereference a null cblkdta pointer */
-		return true;
-	}
+	cblkdata = cblk->chunks[0].data;
 
 	/* For subtile decoding, directly decode in the decoded_data buffer of */
 	/* the code-block. Hack t1->data to point to it, and restore it later */

@@ -150,7 +150,6 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}
-	t1->mustuse_cblkdatabuffer = false;
 	opj_tcd_seg_data_chunk_t chunk;
 	chunk.len = t1->cblkdatabuffersize;
 	chunk.data = t1->cblkdatabuffer;
