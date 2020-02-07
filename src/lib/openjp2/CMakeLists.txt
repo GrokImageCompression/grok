@@ -65,8 +65,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/segmented_stream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/ChunkBuffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ChunkBuffer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tile_buf.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp

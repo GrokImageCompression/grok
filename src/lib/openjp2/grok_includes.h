@@ -185,7 +185,7 @@ static inline long grok_lrintf(float f) {
 #include "vector.h"
 #include "util.h"
 #include "grok_exceptions.h"
-#include "segmented_stream.h"
+#include "ChunkBuffer.h"
 #include "BitIO.h"
 #include "GrokStream.h"
 #include "EncodedTileData.h"
