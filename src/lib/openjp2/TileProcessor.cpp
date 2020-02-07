@@ -1204,7 +1204,7 @@ uint64_t TileProcessor::get_decoded_tile_size() {
 	return l_data_size;
 }
 
-bool TileProcessor::encode_tile(uint16_t tile_no, GrokStream *p_stream,
+bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
@@ -1933,7 +1933,7 @@ bool TileProcessor::t1_encode() {
 			l_mct_numcomps, needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(GrokStream *p_stream,
+bool TileProcessor::t2_encode(BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_dest_size,
 		 grk_codestream_info  *p_cstr_info) {
 	t2_t *l_t2;

@@ -543,7 +543,7 @@ struct grk_j2k_enc {
 };
 
 struct grk_j2k;
-typedef bool (*j2k_procedure)(grk_j2k *j2k, GrokStream*);
+typedef bool (*j2k_procedure)(grk_j2k *j2k, BufferedStream*);
 
 struct TileProcessor;
 /**
@@ -621,7 +621,7 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
  * Ends the decompression procedures and possibiliy add data to be read after the
  * codestream.
  */
-bool j2k_end_decompress(grk_j2k *j2k, GrokStream *p_stream);
+bool j2k_end_decompress(grk_j2k *j2k, BufferedStream *p_stream);
 
 /**
  * Reads a jpeg2000 codestream header structure.
@@ -633,7 +633,7 @@ bool j2k_end_decompress(grk_j2k *j2k, GrokStream *p_stream);
  *
  * @return true if the box is valid.
  */
-bool j2k_read_header(GrokStream *p_stream, grk_j2k *p_j2k,
+bool j2k_read_header(BufferedStream *p_stream, grk_j2k *p_j2k,
 		 grk_header_info  *header_info, grk_image **p_image);
 
 /**
@@ -660,7 +660,7 @@ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
  
  */
 bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, GrokStream *p_stream);
+		uint64_t data_size, BufferedStream *p_stream);
 
 /**
  * Reads a tile header.
@@ -679,7 +679,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, GrokStream *p_stream);
+		bool *p_go_on, BufferedStream *p_stream);
 
 /**
  * Sets the given area to be decoded. This function should be called right after grok_read_header and before any tile header reading.
@@ -760,10 +760,10 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 
  * @return FIXME DOC
  */
-bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, GrokStream *p_stream,
+bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *p_stream,
 		grk_image *p_image);
 
-bool j2k_get_tile(grk_j2k *p_j2k, GrokStream *p_stream, grk_image *p_image, uint16_t tile_index);
+bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, uint16_t tile_index);
 
 bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
 
@@ -777,12 +777,12 @@ bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
  
  */
 bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, GrokStream *p_stream);
+		uint64_t data_size, BufferedStream *p_stream);
 
 /**
  * Encodes an image into a JPEG-2000 codestream
  */
-bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *cio);
+bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *cio);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
@@ -794,14 +794,14 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *cio);
  *
  * @return true if the codec is valid.
  */
-bool j2k_start_compress(grk_j2k *p_j2k, GrokStream *p_stream,
+bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *p_stream,
 		grk_image *p_image);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
  * codestream.
  */
-bool j2k_end_compress(grk_j2k *p_j2k, GrokStream *cio);
+bool j2k_end_compress(grk_j2k *p_j2k, BufferedStream *cio);
 
 bool j2k_setup_mct_encoding(grk_tcp *p_tcp, grk_image *p_image);
 

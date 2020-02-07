@@ -58,7 +58,7 @@
 
 #include "grk_config_private.h"
 #include "IBitIO.h"
-#include "IGrokStream.h"
+#include "IBufferedStream.h"
 
 namespace grk {
 
@@ -70,11 +70,11 @@ namespace grk {
 /**
  Byte input-output stream.
  */
-struct GrokStream: public IGrokStream {
+struct BufferedStream: public IBufferedStream {
 
-	GrokStream(size_t p_buffer_size, bool l_is_input);
-	GrokStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input);
-	~GrokStream();
+	BufferedStream(size_t p_buffer_size, bool l_is_input);
+	BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input);
+	~BufferedStream();
 
 	/**
 	 * user-supplied data

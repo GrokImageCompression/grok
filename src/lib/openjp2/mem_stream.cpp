@@ -113,7 +113,7 @@ static void set_up_mem_stream( grk_stream  *l_stream, size_t len,
 size_t get_mem_stream_offset( grk_stream  *stream) {
 	if (!stream)
 		return 0;
-	auto private_stream = (GrokStream*) stream;
+	auto private_stream = (BufferedStream*) stream;
 	if (!private_stream->m_user_data)
 		return 0;
 	auto buf = (buf_info_t*) private_stream->m_user_data;
@@ -125,7 +125,7 @@ size_t get_mem_stream_offset( grk_stream  *stream) {
 	if (!buf || !len) {
 		return nullptr;
 	}
-	auto l_stream = new GrokStream(buf, len, p_is_read_stream);
+	auto l_stream = new BufferedStream(buf, len, p_is_read_stream);
 	auto p_source_buffer = new buf_info_t(buf, 0, len, ownsBuffer);
 	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
 			free_mem);

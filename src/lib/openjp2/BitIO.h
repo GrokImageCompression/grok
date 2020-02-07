@@ -56,7 +56,7 @@
 #pragma once
 
 #include "IBitIO.h"
-#include "IGrokStream.h"
+#include "IBufferedStream.h"
 
 namespace grk {
 
@@ -68,7 +68,7 @@ class BitIO: public IBitIO {
 public:
 
 	BitIO(uint8_t *bp, uint64_t len, bool isEncoder);
-	BitIO(IGrokStream *stream, bool isEncoder);
+	BitIO(IBufferedStream *stream, bool isEncoder);
 
 	/*
 	 Number of bytes written.
@@ -127,7 +127,7 @@ private:
 
 	bool is_encoder;
 
-	IGrokStream *stream;
+	IBufferedStream *stream;
 
 	/*
 	 Write a bit

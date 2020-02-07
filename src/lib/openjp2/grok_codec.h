@@ -62,26 +62,26 @@ struct grk_codec_private {
 		 */
 		struct decompression {
 			/** Main header reading function handler */
-			bool (*read_header)(GrokStream *cio, void *p_codec,
+			bool (*read_header)(BufferedStream *cio, void *p_codec,
 					 grk_header_info  *header_info, grk_image **p_image);
 
 			/** Decoding function */
 			bool (*decode)(void *p_codec, grk_plugin_tile *tile,
-					GrokStream *p_cio, grk_image *p_image);
+					BufferedStream *p_cio, grk_image *p_image);
 
 			/** FIXME DOC */
 			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
 					uint64_t *data_size, uint32_t *p_tile_x0,
 					uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 					uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-					bool *p_should_go_on, GrokStream *p_cio);
+					bool *p_should_go_on, BufferedStream *p_cio);
 
 			/** FIXME DOC */
 			bool (*decode_tile_data)(void *p_codec, uint16_t tile_index,
-					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
+					uint8_t *p_data, uint64_t data_size, BufferedStream *p_cio);
 
 			/** Reading function used after codestream if necessary */
-			bool (*end_decompress)(void *p_codec, GrokStream *cio);
+			bool (*end_decompress)(void *p_codec, BufferedStream *cio);
 
 			/** Codec destroy function handler */
 			void (*destroy)(void *p_codec);
@@ -95,7 +95,7 @@ struct grk_codec_private {
 					uint32_t end_y);
 
 			/** Get tile function */
-			bool (*get_decoded_tile)(void *p_codec, GrokStream *p_cio,
+			bool (*get_decoded_tile)(void *p_codec, BufferedStream *p_cio,
 					grk_image *p_image,
 					uint16_t tile_index);
 
@@ -108,16 +108,16 @@ struct grk_codec_private {
 		 * Compression handler. FIXME DOC
 		 */
 		struct compression {
-			bool (*start_compress)(void *p_codec, GrokStream *cio,
+			bool (*start_compress)(void *p_codec, BufferedStream *cio,
 					grk_image *p_image);
 
 			bool (*encode)(void *p_codec, grk_plugin_tile*,
-					GrokStream *p_cio);
+					BufferedStream *p_cio);
 
 			bool (*write_tile)(void *p_codec, uint16_t tile_index,
-					uint8_t *p_data, uint64_t data_size, GrokStream *p_cio);
+					uint8_t *p_data, uint64_t data_size, BufferedStream *p_cio);
 
-			bool (*end_compress)(void *p_codec, GrokStream *p_cio);
+			bool (*end_compress)(void *p_codec, BufferedStream *p_cio);
 
 			void (*destroy)(void *p_codec);
 

@@ -18,9 +18,9 @@
 
 namespace grk {
 
-struct IGrokStream {
+struct IBufferedStream {
 
-	virtual ~IGrokStream() {
+	virtual ~IBufferedStream() {
 	}
 
 	virtual bool write_byte(uint8_t value)=0;

@@ -187,7 +187,7 @@ static inline long grok_lrintf(float f) {
 #include "grok_exceptions.h"
 #include "ChunkBuffer.h"
 #include "BitIO.h"
-#include "GrokStream.h"
+#include "BufferedStream.h"
 #include "EncodedTileData.h"
 
 #include "image.h"
@@ -197,7 +197,7 @@ static inline long grok_lrintf(float f) {
 #include "BitIO.h"
 #include "TileBuffer.h"
 #include "pi.h"
-#include "tgt.h"
+#include <TagTree.h>e.h>
 #include "TileProcessor.h"
 #include <Wavelet.h>
 #include "dwt_utils.h"

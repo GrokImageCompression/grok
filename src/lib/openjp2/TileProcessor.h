@@ -409,7 +409,7 @@ struct TileProcessor {
 	 * @param	p_cstr_info		Codestream information structure
 	 * @return  true if the coding is successful.
 	 */
-	bool encode_tile(uint16_t tile_no, GrokStream *p_stream,
+	bool encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 			uint64_t *p_data_written, uint64_t len,
 			 grk_codestream_info  *p_cstr_info);
 
@@ -524,7 +524,7 @@ private:
 
 	 bool t1_encode();
 
-	 bool t2_encode(GrokStream *p_stream,
+	 bool t2_encode(BufferedStream *p_stream,
 			uint64_t *p_data_written, uint64_t max_dest_size,
 			 grk_codestream_info  *p_cstr_info);
 

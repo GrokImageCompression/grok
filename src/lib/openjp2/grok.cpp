@@ -195,13 +195,13 @@ const char* GRK_CALLCONV grk_version(void) {
 				( grk_codestream_index  *  (*)(void*)) j2k_get_cstr_index;
 
 		l_codec->m_codec_data.m_decompression.decode =
-				(bool (*)(void*, grk_plugin_tile*, GrokStream*, grk_image * )) j2k_decode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*, grk_image * )) j2k_decode;
 
 		l_codec->m_codec_data.m_decompression.end_decompress = (bool (*)(void*,
-				GrokStream*)) j2k_end_decompress;
+				BufferedStream*)) j2k_end_decompress;
 
 		l_codec->m_codec_data.m_decompression.read_header = (bool (*)(
-				GrokStream*, void*,  grk_header_info  *header_info,
+				BufferedStream*, void*,  grk_header_info  *header_info,
 				grk_image * *)) j2k_read_header;
 
 		l_codec->m_codec_data.m_decompression.destroy =
@@ -212,16 +212,16 @@ const char* GRK_CALLCONV grk_version(void) {
 
 		l_codec->m_codec_data.m_decompression.read_tile_header =
 				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
-						uint32_t*, uint32_t*, uint32_t*, bool*, GrokStream*)) j2k_read_tile_header;
+						uint32_t*, uint32_t*, uint32_t*, bool*, BufferedStream*)) j2k_read_tile_header;
 
 		l_codec->m_codec_data.m_decompression.decode_tile_data =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, GrokStream*)) j2k_decode_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_decode_tile;
 
 		l_codec->m_codec_data.m_decompression.set_decode_area = (bool (*)(void*,
 				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) j2k_set_decode_area;
 
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
-				void *p_codec, GrokStream *p_cio, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
+				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
 
 		l_codec->m_codec_data.m_decompression.set_decoded_resolution_factor =
 				(bool (*)(void *p_codec, uint32_t res_factor)) j2k_set_decoded_resolution_factor;
@@ -241,17 +241,17 @@ const char* GRK_CALLCONV grk_version(void) {
 		l_codec->grk_get_codec_index =
 				( grk_codestream_index  *  (*)(void*)) jp2_get_cstr_index;
 		l_codec->m_codec_data.m_decompression.decode =
-				(bool (*)(void*, grk_plugin_tile*, GrokStream*, grk_image * )) jp2_decode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*, grk_image * )) jp2_decode;
 		l_codec->m_codec_data.m_decompression.end_decompress = (bool (*)(void*,
-				GrokStream*)) jp2_end_decompress;
+				BufferedStream*)) jp2_end_decompress;
 		l_codec->m_codec_data.m_decompression.read_header = (bool (*)(
-				GrokStream*, void*,  grk_header_info  *header_info,
+				BufferedStream*, void*,  grk_header_info  *header_info,
 				grk_image * *)) jp2_read_header;
 		l_codec->m_codec_data.m_decompression.read_tile_header =
 				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
-						uint32_t*, uint32_t*, uint32_t*, bool*, GrokStream*)) jp2_read_tile_header;
+						uint32_t*, uint32_t*, uint32_t*, bool*, BufferedStream*)) jp2_read_tile_header;
 		l_codec->m_codec_data.m_decompression.decode_tile_data =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, GrokStream*)) jp2_decode_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_decode_tile;
 
 		l_codec->m_codec_data.m_decompression.destroy =
 				(void (*)(void*)) jp2_destroy;
@@ -261,7 +261,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) jp2_set_decode_area;
 
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
-				void *p_codec, GrokStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
+				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
 
 		l_codec->m_codec_data.m_decompression.set_decoded_resolution_factor =
 				(bool (*)(void *p_codec, uint32_t res_factor)) jp2_set_decoded_resolution_factor;
@@ -305,7 +305,7 @@ bool GRK_CALLCONV grk_read_header( grk_stream  *p_stream,
 		grk_image **p_image) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			GROK_ERROR(
 					"Codec provided to the grok_read_header function is not a decompressor handler.");
@@ -322,7 +322,7 @@ bool GRK_CALLCONV grk_decode( grk_codec  *p_codec, grk_plugin_tile *tile,
 		 grk_stream  *p_stream, grk_image *p_image) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return false;
 		}
@@ -351,7 +351,7 @@ bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
 		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on) {
 	if (p_codec && p_stream && data_size && tile_index) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return false;
 		}
@@ -367,7 +367,7 @@ bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
 		 grk_stream  *p_stream) {
 	if (p_codec && p_data && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 
 		if (!l_codec->is_decompressor) {
 			return false;
@@ -382,7 +382,7 @@ bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
 		 grk_stream  *p_stream, grk_image *p_image, uint16_t tile_index) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 
 		if (!l_codec->is_decompressor) {
 			return false;
@@ -418,13 +418,13 @@ bool GRK_CALLCONV grk_set_decoded_resolution_factor( grk_codec  *p_codec,
 	switch (p_format) {
 	case GRK_CODEC_J2K:
 		l_codec->m_codec_data.m_compression.encode =
-				(bool (*)(void*, grk_plugin_tile*, GrokStream*)) j2k_encode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*)) j2k_encode;
 		l_codec->m_codec_data.m_compression.end_compress = (bool (*)(void*,
-				GrokStream*)) j2k_end_compress;
+				BufferedStream*)) j2k_end_compress;
 		l_codec->m_codec_data.m_compression.start_compress =
-				(bool (*)(void*, GrokStream*, grk_image * )) j2k_start_compress;
+				(bool (*)(void*, BufferedStream*, grk_image * )) j2k_start_compress;
 		l_codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, GrokStream*)) j2k_write_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_write_tile;
 		l_codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) j2k_destroy;
 		l_codec->m_codec_data.m_compression.setup_encoder =
@@ -438,13 +438,13 @@ bool GRK_CALLCONV grk_set_decoded_resolution_factor( grk_codec  *p_codec,
 	case GRK_CODEC_JP2:
 		/* get a JP2 decoder handle */
 		l_codec->m_codec_data.m_compression.encode =
-				(bool (*)(void*, grk_plugin_tile*, GrokStream*)) jp2_encode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*)) jp2_encode;
 		l_codec->m_codec_data.m_compression.end_compress = (bool (*)(void*,
-				GrokStream*)) jp2_end_compress;
+				BufferedStream*)) jp2_end_compress;
 		l_codec->m_codec_data.m_compression.start_compress = (bool (*)(void*,
-				GrokStream*, grk_image * )) jp2_start_compress;
+				BufferedStream*, grk_image * )) jp2_start_compress;
 		l_codec->m_codec_data.m_compression.write_tile =
-				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, GrokStream*)) jp2_write_tile;
+				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_write_tile;
 		l_codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) jp2_destroy;
 		l_codec->m_codec_data.m_compression.setup_encoder =
@@ -505,7 +505,7 @@ bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec, grk_image *p_image,
 		 grk_stream  *p_stream) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return l_codec->m_codec_data.m_compression.start_compress(
 					l_codec->m_codec, l_stream, p_image	);
@@ -520,7 +520,7 @@ bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_info,
 		grk_plugin_tile *tile,  grk_stream  *p_stream) {
 	if (p_info && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_info;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return l_codec->m_codec_data.m_compression.encode(l_codec->m_codec,
 					tile, l_stream);
@@ -532,7 +532,7 @@ bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec,
 		 grk_stream  *p_stream) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return l_codec->m_codec_data.m_compression.end_compress(
 					l_codec->m_codec, l_stream);
@@ -544,7 +544,7 @@ bool GRK_CALLCONV grk_end_decompress( grk_codec  *p_codec,
 		 grk_stream  *p_stream) {
 	if (p_codec && p_stream) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (!l_codec->is_decompressor) {
 			return false;
 		}
@@ -583,7 +583,7 @@ bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec, uint16_t tile_index,
 		uint8_t *p_data, uint64_t data_size,  grk_stream  *p_stream) {
 	if (p_codec && p_stream && p_data) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-		GrokStream *l_stream = (GrokStream*) p_stream;
+		BufferedStream *l_stream = (BufferedStream*) p_stream;
 		if (l_codec->is_decompressor) {
 			return false;
 		}
