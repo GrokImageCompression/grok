@@ -1133,7 +1133,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			++l_res;
 		} /* resno */
 		l_tilec->finalizeCoordinates(isEncoder);
-		if (!tile_buf_create_component(l_tilec, isEncoder,
+		if (!l_tilec->create_component(isEncoder,
 				l_tccp->qmfbid ? false : true, 1 << l_tccp->cblkw,
 				1 << l_tccp->cblkh, output_image, l_image_comp->dx,
 				l_image_comp->dy)) {
@@ -1375,7 +1375,7 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		switch (l_size_comp) {
 		case 1: {
 			char *l_dest_ptr = (char*) p_dest;
-			const int32_t *l_src_ptr = tile_buf_get_ptr(l_tilec->buf, 0, 0, 0,
+			const int32_t *l_src_ptr = l_tilec->buf->get_ptr( 0, 0, 0,
 					0);
 
 			if (l_img_comp->sgnd) {
@@ -1398,7 +1398,7 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		}
 			break;
 		case 2: {
-			const int32_t *l_src_ptr = tile_buf_get_ptr(l_tilec->buf, 0, 0, 0,
+			const int32_t *l_src_ptr = l_tilec->buf->get_ptr( 0, 0, 0,
 					0);
 			int16_t *l_dest_ptr = (int16_t*) p_dest;
 
@@ -1424,7 +1424,7 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 			break;
 		case 4: {
 			int32_t *l_dest_ptr = (int32_t*) p_dest;
-			int32_t *l_src_ptr = tile_buf_get_ptr(l_tilec->buf, 0, 0, 0, 0);
+			int32_t *l_src_ptr = l_tilec->buf->get_ptr( 0, 0, 0, 0);
 
 			for (j = 0; j < l_height; ++j) {
 				for (k = 0; k < l_width; ++k) {
@@ -1494,7 +1494,7 @@ void TileProcessor::free_tile() {
 			delete[] l_tile_comp->resolutions;
 			l_tile_comp->resolutions = nullptr;
 		}
-		tile_buf_destroy_component(l_tile_comp->buf);
+		delete l_tile_comp->buf;
 		l_tile_comp->buf = nullptr;
 		++l_tile_comp;
 	}
@@ -1595,7 +1595,7 @@ bool TileProcessor::mct_decode() {
 			}
 
 			for (i = 0; i < l_tile->numcomps; ++i) {
-				l_data[i] = (uint8_t*) tile_buf_get_ptr(l_tile_comp->buf, 0, 0,
+				l_data[i] = (uint8_t*) l_tile_comp->buf->get_ptr( 0, 0,
 						0, 0);
 				++l_tile_comp;
 			}
@@ -1617,17 +1617,17 @@ bool TileProcessor::mct_decode() {
 			grok_free(l_data);
 		} else {
 			if (l_tcp->tccps->qmfbid == 1) {
-				grk::mct_decode(tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0, 0),
-						tile_buf_get_ptr(l_tile->comps[1].buf, 0, 0, 0, 0),
-						tile_buf_get_ptr(l_tile->comps[2].buf, 0, 0, 0, 0),
+				grk::mct_decode(l_tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+						l_tile->comps[1].buf->get_ptr(0, 0, 0, 0),
+						l_tile->comps[2].buf->get_ptr(0, 0, 0, 0),
 						l_samples);
 			} else {
 				grk::mct_decode_real(
-						(float*) tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0,
+						(float*) l_tile->comps[0].buf->get_ptr( 0, 0, 0,
 								0),
-						(float*) tile_buf_get_ptr(l_tile->comps[1].buf, 0, 0, 0,
+						(float*) l_tile->comps[1].buf->get_ptr(0, 0, 0,
 								0),
-						(float*) tile_buf_get_ptr(l_tile->comps[2].buf, 0, 0, 0,
+						(float*) l_tile->comps[2].buf->get_ptr( 0, 0, 0,
 								0), l_samples);
 			}
 		}
@@ -1699,7 +1699,7 @@ bool TileProcessor::dc_level_shift_decode() {
 			l_max = (1 << l_img_comp->prec) - 1;
 		}
 
-		int32_t *l_current_ptr = tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0, 0);
+		int32_t *l_current_ptr = l_tile_comp->buf->get_ptr( 0, 0, 0, 0);
 		l_current_ptr += x0 + y0 * l_tile_comp->width();
 
 		if (l_tccp->qmfbid == 1) {
@@ -1813,7 +1813,7 @@ bool TileProcessor::dc_level_shift_encode() {
 	l_img_comp = image->comps;
 
 	for (compno = 0; compno < l_tile->numcomps; compno++) {
-		l_current_ptr = tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0, 0);
+		l_current_ptr = l_tile_comp->buf->get_ptr( 0, 0, 0, 0);
 		l_nb_elem = l_tile_comp->area();
 
 		if (l_tccp->qmfbid == 1) {
@@ -1860,7 +1860,7 @@ bool TileProcessor::mct_encode() {
 		}
 
 		for (i = 0; i < l_tile->numcomps; ++i) {
-			l_data[i] = (uint8_t*) tile_buf_get_ptr(l_tile_comp->buf, 0, 0, 0,
+			l_data[i] = (uint8_t*) l_tile_comp->buf->get_ptr( 0, 0, 0,
 					0);
 			++l_tile_comp;
 		}
@@ -1881,13 +1881,13 @@ bool TileProcessor::mct_encode() {
 
 		grok_free(l_data);
 	} else if (l_tcp->tccps->qmfbid == 0) {
-		grk::mct_encode_real(tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0, 0),
-				tile_buf_get_ptr(l_tile->comps[1].buf, 0, 0, 0, 0),
-				tile_buf_get_ptr(l_tile->comps[2].buf, 0, 0, 0, 0), samples);
+		grk::mct_encode_real(l_tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+				l_tile->comps[1].buf->get_ptr( 0, 0, 0, 0),
+				l_tile->comps[2].buf->get_ptr( 0, 0, 0, 0), samples);
 	} else {
-		grk::mct_encode(tile_buf_get_ptr(l_tile->comps[0].buf, 0, 0, 0, 0),
-				tile_buf_get_ptr(l_tile->comps[1].buf, 0, 0, 0, 0),
-				tile_buf_get_ptr(l_tile->comps[2].buf, 0, 0, 0, 0), samples);
+		grk::mct_encode(l_tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+				l_tile->comps[1].buf->get_ptr(0, 0, 0, 0),
+				l_tile->comps[2].buf->get_ptr(0, 0, 0, 0), samples);
 	}
 
 	return true;
@@ -2317,5 +2317,105 @@ void grk_tcd_precinct::initTagTrees() {
 		}
 	}
 }
+
+
+bool grk_tcd_tilecomp::create_component(bool isEncoder,
+		bool irreversible, uint32_t cblkw, uint32_t cblkh,
+		grk_image *output_image, uint32_t dx, uint32_t dy) {
+	int32_t resno = 0;
+	grk_rect component_output_rect;
+	TileBuffer *comp = nullptr;
+
+	/* create region component struct*/
+	comp = new TileBuffer();
+	if (!comp) {
+		return false;
+	}
+	comp->data = nullptr;
+
+	comp->tile_dim = grk_rect(X0(), Y0(), X1(), Y1());
+
+	if (output_image) {
+		comp->dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
+				ceildiv<uint32_t>(output_image->y0, dy),
+				ceildiv<uint32_t>(output_image->x1, dx),
+				ceildiv<uint32_t>(output_image->y1, dy));
+
+		if (!isEncoder && whole_tile_decoding)
+			comp->dim.ceildivpow2(numresolutions - minimum_num_resolutions);
+
+
+		/* clip output image to tile */
+		comp->tile_dim.clip(&comp->dim, &comp->dim);
+
+	} else {
+		comp->dim = comp->tile_dim;
+	}
+
+	/* for encode, we don't need to allocate resolutions */
+	if (isEncoder) {
+		delete buf;
+		buf = comp;
+		return true;
+	}
+
+	component_output_rect = comp->dim;
+
+	/* fill resolutions vector */
+	for (resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
+		uint32_t bandno;
+		grk_tcd_resolution *tcd_res = resolutions + resno;
+		TileBufferResolution *res = (TileBufferResolution*) grok_calloc(1,
+				sizeof(TileBufferResolution));
+		if (!res) {
+			delete comp;
+			return false;
+		}
+
+		res->bounds.x = tcd_res->x1 - tcd_res->x0;
+		res->bounds.y = tcd_res->y1 - tcd_res->y0;
+		res->origin.x = tcd_res->x0;
+		res->origin.y = tcd_res->y0;
+
+		for (bandno = 0; bandno < tcd_res->numbands; ++bandno) {
+			grk_tcd_band *band = tcd_res->bands + bandno;
+			grk_rect band_rect;
+			band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
+
+			res->band_region[bandno].dim = component_output_rect;
+			if (resno > 0) {
+
+				/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band  */
+				grk_pt shift;
+				shift.x = band->bandno & 1;
+				shift.y = band->bandno & 2;
+
+				res->band_region[bandno].dim.pan(&shift);
+				res->band_region[bandno].dim.ceildivpow2(1);
+
+				// boundary padding. These numbers are slightly larger than they theoretically should be,
+				// but we want to make sure that we don't have bugs at the region boundaries
+				res->band_region[bandno].dim.grow(irreversible ? 5 : 3);
+
+			}
+
+			/* add code block padding around region */
+			(res->band_region + bandno)->data_dim =
+					(res->band_region + bandno)->dim;
+			(res->band_region + bandno)->data_dim.grow2(cblkw, cblkh);
+
+		}
+		component_output_rect = res->band_region[0].dim;
+		res->num_bands = tcd_res->numbands;
+		comp->resolutions.push_back(res);
+	}
+
+	delete buf;
+	buf = comp;
+
+	return true;
+}
+
+
 }
 

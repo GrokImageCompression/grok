@@ -31,20 +31,30 @@ namespace grk {
 
  */
 
-struct grk_tile_buf_band {
+struct TileBufferBand {
 	grk_rect dim; /* coordinates of sub-band region (canvas coordinates)  */
 	grk_rect data_dim; /* coordinates of sub-band data region, (tile coordinates ) */
 };
 
-struct grk_tile_buf_resolution {
-	grk_tile_buf_band band_region[3];
+struct TileBufferResolution {
+	TileBufferBand band_region[3];
 	uint32_t num_bands;
 	grk_pt origin; /* resolution origin, in canvas coordinates */
 	grk_pt bounds; /* full width and height of resolution */
 };
 
-struct grk_tile_buf_component {
-	std::vector<grk_tile_buf_resolution*> resolutions;
+struct TileBuffer {
+	~TileBuffer();
+
+	int32_t* get_ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety);
+	bool alloc_component_data_encode();
+	bool alloc_component_data_decode();
+	bool hit_test(grk_rect *rect);
+	grk_pt get_uninterleaved_range(	uint32_t resno, bool is_even, bool is_horizontal);
+	grk_pt get_interleaved_range(uint32_t resno,bool is_horizontal) ;
+	int64_t get_interleaved_upper_bound();
+
+	std::vector<TileBufferResolution*> resolutions;
 	int32_t *data;
 	uint64_t data_size_needed; /* we may either need to allocate this amount of data,
 	 or re-use image data and ignore this value */
@@ -56,29 +66,9 @@ struct grk_tile_buf_component {
 
 };
 
-/* offsets are in canvas coordinate system*/
-int32_t* tile_buf_get_ptr(grk_tile_buf_component *buf, uint32_t resno,
-		uint32_t bandno, uint32_t offsetx, uint32_t offsety);
+bool alloc_component_data_decode(TileBuffer *buf);
 
-bool tile_buf_alloc_component_data_decode(grk_tile_buf_component *buf);
+bool alloc_component_data_encode(TileBuffer *buf);
 
-bool tile_buf_alloc_component_data_encode(grk_tile_buf_component *buf);
-
-void tile_buf_destroy_component(grk_tile_buf_component *comp);
-
-/* Check if rect overlaps with region.
- rect coordinates must be stored in canvas coordinates
- */
-bool tile_buf_hit_test(grk_tile_buf_component *comp, grk_rect *rect);
-
-/* sub-band coordinates */
-grk_pt tile_buf_get_uninterleaved_range(grk_tile_buf_component *comp,
-		uint32_t resno, bool is_even, bool is_horizontal);
-
-/* resolution coordinates */
-grk_pt tile_buf_get_interleaved_range(grk_tile_buf_component *comp, uint32_t resno,
-		bool is_horizontal);
-
-int64_t tile_buf_get_interleaved_upper_bound(grk_tile_buf_component *comp);
 
 }

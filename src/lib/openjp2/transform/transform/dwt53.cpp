@@ -186,7 +186,7 @@ bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads
 
 	std::vector<std::thread> dwtWorkers;
 	int rc = 0;
-	auto tileBuf = (int32_t*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = (int32_t*) tilec->buf->get_ptr( 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 
@@ -424,7 +424,7 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 	}
 
 	int rc = 0;
-	auto tileBuf = (int32_t*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = (int32_t*) tilec->buf->get_ptr( 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
@@ -449,8 +449,7 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 
 							// add 2 for boundary, plus one for parity
 							auto bufferDataSize =
-									tile_buf_get_interleaved_upper_bound(
-											tilec->buf) + 3;
+									tilec->buf->get_interleaved_upper_bound() + 3;
 							buffer_h.data = (int32_t*) grok_aligned_malloc(
 									bufferDataSize * sizeof(int32_t));
 							if (!buffer_h.data) {
@@ -463,25 +462,25 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 							while (--numResolutions) {
 								/* start with the first resolution, and work upwards*/
 								buffer_h.range_even =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, true, true);
+										tilec->buf->get_uninterleaved_range(
+												resno, true, true);
 								buffer_h.range_odd =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, false, true);
+										tilec->buf->get_uninterleaved_range(
+												 resno, false, true);
 								buffer_v.range_even =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, true, false);
+										tilec->buf->get_uninterleaved_range(
+												 resno, true, false);
 								buffer_v.range_odd =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, false,
+										tilec->buf->get_uninterleaved_range(
+												 resno, false,
 												false);
 
 								grk_pt interleaved_h =
-										tile_buf_get_interleaved_range(
-												tilec->buf, resno, true);
+										tilec->buf->get_interleaved_range(
+												resno, true);
 								grk_pt interleaved_v =
-										tile_buf_get_interleaved_range(
-												tilec->buf, resno, false);
+										tilec->buf->get_interleaved_range(
+												resno, false);
 
 								buffer_h.s_n = res_width;
 								buffer_v.s_n = res_height;
@@ -499,8 +498,8 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 										0, interleaved_h.x - 2);
 
 								/* first do horizontal interleave */
-								int32_t *restrict tiledp = tile_buf_get_ptr(
-										tilec->buf, 0, 0, 0, 0)
+								int32_t *restrict tiledp = tilec->buf->get_ptr(
+										 0, 0, 0, 0)
 										+ (buffer_v.range_even.x + threadId)
 												* w;
 								for (auto j = threadId;
@@ -519,7 +518,7 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 								}
 								decode_dwt_barrier.arrive_and_wait();
 
-								tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0,
+								tiledp = tilec->buf->get_ptr( 0, 0, 0,
 										0)
 										+ (buffer_v.s_n + buffer_v.range_odd.x
 												+ threadId) * w;
@@ -543,7 +542,7 @@ bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
 								buffer_v.odd_top_left_bit = tr->y0 & 1;
 
 								// next do vertical interleave
-								tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0,
+								tiledp = tilec->buf->get_ptr( 0, 0, 0,
 										0) + interleaved_h.x + threadId;
 								for (auto j = threadId;
 										j < interleaved_h.y - interleaved_h.x;

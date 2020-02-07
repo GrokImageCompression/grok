@@ -195,7 +195,7 @@ static inline long grok_lrintf(float f) {
 #include "j2k.h"
 #include "jp2.h"
 #include "BitIO.h"
-#include "tile_buf.h"
+#include "TileBuffer.h"
 #include "pi.h"
 #include "tgt.h"
 #include "TileProcessor.h"

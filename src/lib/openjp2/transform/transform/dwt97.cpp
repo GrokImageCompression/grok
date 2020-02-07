@@ -121,7 +121,7 @@ bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 		return region_decode(tilec, numres, numThreads);
 
 	int rc = 0;
-	auto tileBuf = (float*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
 	std::vector<std::thread> dwtWorkers;
@@ -525,7 +525,7 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 		return true;
 	}
 	int rc = 0;
-	auto tileBuf = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+	auto tileBuf = tilec->buf->get_ptr( 0, 0, 0, 0);
 
 	Barrier decode_dwt_barrier(numThreads);
 	Barrier decode_dwt_calling_barrier(numThreads + 1);
@@ -553,8 +553,7 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 
 							// add 4 for boundary, plus one for parity
 							buffer_h.dataSize =
-									(tile_buf_get_interleaved_upper_bound(
-											tilec->buf) + 5) * 4;
+									(tilec->buf->get_interleaved_upper_bound() + 5) * 4;
 							buffer_h.data = (grk_coeff97*) grok_aligned_malloc(
 									buffer_h.dataSize * sizeof(float));
 
@@ -577,23 +576,23 @@ bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
 								buffer_v.s_n = res_height;
 
 								buffer_h.range_even =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, true, true);
+										tilec->buf->get_uninterleaved_range(
+												resno, true, true);
 								buffer_h.range_odd =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, false, true);
+										tilec->buf->get_uninterleaved_range(
+												resno, false, true);
 								buffer_v.range_even =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, true, false);
+										tilec->buf->get_uninterleaved_range(
+												resno, true, false);
 								buffer_v.range_odd =
-										tile_buf_get_uninterleaved_range(
-												tilec->buf, resno, false,
+										tilec->buf->get_uninterleaved_range(
+												 resno, false,
 												false);
 
-								interleaved_h = tile_buf_get_interleaved_range(
-										tilec->buf, resno, true);
-								interleaved_v = tile_buf_get_interleaved_range(
-										tilec->buf, resno, false);
+								interleaved_h = tilec->buf->get_interleaved_range(
+										resno, true);
+								interleaved_v = tilec->buf->get_interleaved_range(
+										resno, false);
 
 								++res;
 

@@ -1001,7 +1001,7 @@ static OPJ_BOOL opj_dwt_decode_tile( grk_tcd_tilecomp* tilec, OPJ_UINT32 numres)
     v.mem = h.mem;
 
     while (--numres) {
-        OPJ_INT32 * restrict tiledp = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+        OPJ_INT32 * restrict tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
         OPJ_UINT32 j;
 
         ++tr;
@@ -2142,7 +2142,7 @@ OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* restrict tilec,
     v.wavelet = h.wavelet;
 
     while (--numres) {
-        OPJ_FLOAT32 * restrict aj = (OPJ_FLOAT32*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+        OPJ_FLOAT32 * restrict aj = (OPJ_FLOAT32*) tilec->buf->get_ptr( 0, 0, 0, 0);
         OPJ_UINT32 j;
 
         h.sn = (OPJ_INT32)rw;
@@ -2202,7 +2202,7 @@ OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* restrict tilec,
         v.win_h_x0 = 0;
         v.win_h_x1 = (OPJ_UINT32)v.dn;
 
-        aj = (OPJ_FLOAT32*) tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+        aj = (OPJ_FLOAT32*) tilec->buf->get_ptr( 0, 0, 0, 0);
         for (j = rw; j > 3; j -= 4) {
             OPJ_UINT32 k;
 

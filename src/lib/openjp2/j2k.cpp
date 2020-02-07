@@ -7577,7 +7577,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 				auto comp = p_j2k->m_output_image->comps + compno;
 
 				//transfer memory from tile component to output image
-				comp->data = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
+				comp->data = tilec->buf->get_ptr( 0, 0, 0, 0);
 				comp->owns_data = tilec->buf->owns_data;
 				tilec->buf->data = nullptr;
 				tilec->buf->owns_data = false;
@@ -9665,7 +9665,7 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, GrokStream *p_stream) {
 				l_tilec->buf->data = (p_tcd->image->comps + j)->data;
 				l_tilec->buf->owns_data = false;
 			} else {
-				if (!tile_buf_alloc_component_data_encode(l_tilec->buf)) {
+				if (!l_tilec->buf->alloc_component_data_encode()) {
 					GROK_ERROR(
 							"Error allocating tile component data.");
 					if (l_current_data) {
@@ -10298,7 +10298,7 @@ bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
 			grk_tcd_tilecomp *l_tilec = p_j2k->m_tileProcessor->tile->comps + j;
 
-			if (!tile_buf_alloc_component_data_encode(l_tilec->buf)) {
+			if (!l_tilec->buf->alloc_component_data_encode()) {
 				GROK_ERROR(
 						"Error allocating tile component data.");
 				return false;

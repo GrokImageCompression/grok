@@ -80,7 +80,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 						block->y = y;
 						block->mct_norms = mct_norms;
 						block->mct_numcomps = mct_numcomps;
-						block->tiledp = tile_buf_get_ptr(tilec->buf, resno,
+						block->tiledp = tilec->buf->get_ptr( resno,
 								bandno, (uint32_t) x, (uint32_t) y);
 						blocks.push_back(block);
 
@@ -97,7 +97,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 bool Tier1::prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
 		std::vector<decodeBlockInfo*> *blocks) {
 	uint32_t resno, bandno, precno;
-	if (!tile_buf_alloc_component_data_decode(tilec->buf)) {
+	if (!tilec->buf->alloc_component_data_decode()) {
 		GROK_ERROR( "Not enough memory for tile data");
 		return false;
 	}
@@ -124,7 +124,7 @@ bool Tier1::prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
 					/* check if block overlaps with decode region */
 					cblk_rect = grk_rect(x, y, x + (1 << tccp->cblkw),
 							y + (1 << tccp->cblkh));
-					if (!tile_buf_hit_test(tilec->buf, &cblk_rect))
+					if (!tilec->buf->hit_test(&cblk_rect))
 						continue;
 
 					x -= band->x0;
@@ -151,7 +151,7 @@ bool Tier1::prepareDecodeCodeblocks(grk_tcd_tilecomp *tilec, grk_tccp *tccp,
 					block->tilec = tilec;
 					block->x = x;
 					block->y = y;
-					block->tiledp = tile_buf_get_ptr(tilec->buf, resno, bandno,
+					block->tiledp = tilec->buf->get_ptr( resno, bandno,
 							(uint32_t) x, (uint32_t) y);
 					blocks->push_back(block);
 

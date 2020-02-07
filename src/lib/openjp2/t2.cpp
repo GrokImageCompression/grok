@@ -324,7 +324,7 @@ bool t2_decode_packets(t2_t *p_t2, uint16_t tile_no, grk_tcd_tile *p_tile,
 						auto prec = band->precincts + precno;
 						auto prec_rect = grk_rect(prec->x0, prec->y0, prec->x1,
 								prec->y1);
-						if (tile_buf_hit_test(tilec->buf, &prec_rect)) {
+						if (tilec->buf->hit_test( &prec_rect)) {
 							skip_precinct = false;
 							break;
 						}

@@ -307,6 +307,9 @@ struct grk_tcd_tilecomp {
 		return y1;
 	}
 
+	bool create_component(bool isEncoder,
+			bool irreversible, uint32_t cblkw, uint32_t cblkh,
+			grk_image *output_image, uint32_t dx, uint32_t dy);
 
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
@@ -316,7 +319,7 @@ struct grk_tcd_tilecomp {
 	grk_tcd_resolution* round_trip_resolutions;  /* round trip resolution information */
 #endif
 	uint64_t numpix;
-	grk_tile_buf_component *buf;
+	TileBuffer *buf;
 
     /** data of the component limited to window of interest.
      *  Only valid for decoding and if tcd->whole_tile_decoding is NOT set (so exclusive of data member) */
@@ -343,11 +346,6 @@ struct grk_tcd_tile {
 	double distolayer[100];
 	uint64_t packno; /* packet number */
 };
-
-
-bool tile_buf_create_component(grk_tcd_tilecomp *tilec, bool isEncoder,
-		bool irreversible, uint32_t cblkw, uint32_t cblkh,
-		grk_image *output_image, uint32_t dx, uint32_t dy);
 
 /**
  Tile coder/decoder
