@@ -1282,7 +1282,7 @@ bool TileProcessor::encode_tile(uint16_t tile_no, GrokStream *p_stream,
 	return true;
 }
 
-bool TileProcessor::decode_tile(grk_seg_buf *src_buf, uint16_t tile_no) {
+bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	tcp = cp->tcps + tile_no;
 
 	bool doT2 = !current_plugin_tile
@@ -1504,7 +1504,7 @@ void TileProcessor::free_tile() {
 	tile = nullptr;
 }
 
-bool TileProcessor::t2_decode(uint16_t tile_no, grk_seg_buf *src_buf,
+bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	t2_t *l_t2;
 

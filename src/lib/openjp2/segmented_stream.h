@@ -20,15 +20,15 @@
 #pragma once
 namespace grk {
 
-/*  Segmented Buffer Interface
+/*  ChunkBuffer
 
- A segmented buffer stores a list of buffers, or segments, but can be treated as one single
+ Store a list of buffers, or chunks, which can be treated as one single
  contiguous buffer.
 
  */
-struct grk_seg_buf {
-	grk_seg_buf();
-	~grk_seg_buf();
+struct ChunkBuffer {
+	ChunkBuffer();
+	~ChunkBuffer();
 
 	/*
 	 Wrap existing array and add to the back of the segmented buffer.
@@ -41,19 +41,19 @@ struct grk_seg_buf {
 	bool alloc_and_push_back(size_t len);
 
 	/*
-	 Increment offset of current segment
+	 Increment offset of current chunk
 	 */
-	void incr_cur_seg_offset(uint64_t offset);
+	void incr_cur_chunk_offset(uint64_t offset);
 
 	/*
-	 Get length of current segment
+	 Get length of current chunk
 	 */
-	size_t get_cur_seg_len(void);
+	size_t get_cur_chunk_len(void);
 
 	/*
-	 Get offset of current segment
+	 Get offset of current chunk
 	 */
-	int64_t get_cur_seg_offset(void);
+	int64_t get_cur_chunk_offset(void);
 
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current pointer
@@ -66,16 +66,18 @@ struct grk_seg_buf {
 	int64_t get_global_offset(void);
 
 	/*
-	 Reset all offsets to zero, and set current segment to beginning of list
+	 Reset all offsets to zero, and set current chunk to beginning of list
 	 */
 	void rewind(void);
+
+	int64_t skip(int64_t nb_bytes);
 
 	void increment(void);
 
 	size_t read(void *p_buffer, size_t nb_bytes);
 
-	grk_buf* add_segment(uint8_t *buf, size_t len, bool ownsData);
-	void add_segment(grk_buf *seg);
+	grk_buf* add_chunk(uint8_t *buf, size_t len, bool ownsData);
+	void add_chunk(grk_buf *seg);
 
 	/*
 	 Copy all segments, in sequence, into contiguous array
@@ -93,9 +95,9 @@ struct grk_seg_buf {
 	 */
 	bool zero_copy_read(uint8_t **ptr, size_t chunk_len);
 
-	size_t data_len; /* total length of all segments*/
-	size_t cur_seg_id; /* current index into segments vector */
-	std::vector<grk_buf*> segments;
+	size_t data_len; /* total length of all chunks*/
+	size_t cur_chunk_id; /* current index into chunk vector */
+	std::vector<grk_buf*> chunks;
 };
 
 }

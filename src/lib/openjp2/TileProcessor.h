@@ -422,7 +422,7 @@ struct TileProcessor {
 	 @param tileno Number that identifies one of the tiles to be decoded
 	 @param cstr_info  FIXME DOC
 	 */
-	bool decode_tile(grk_seg_buf *src_buf, uint16_t tileno);
+	bool decode_tile(ChunkBuffer *src_buf, uint16_t tileno);
 
 	/**
 	 * Copies tile data from the system onto the given memory block.
@@ -507,7 +507,7 @@ private:
 	 */
 	 void free_tile();
 
-	 bool t2_decode(uint16_t tile_no, grk_seg_buf *src_buf,
+	 bool t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
 
 	 bool t1_decode();

@@ -111,17 +111,17 @@ static bool t2_encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
  @return  FIXME DOC
  */
 static bool t2_decode_packet(t2_t *t2, grk_tcd_tile *p_tile, grk_tcp *tcp,
-		grk_pi_iterator *pi, grk_seg_buf *src_buf, uint64_t *data_read);
+		grk_pi_iterator *pi, ChunkBuffer *src_buf, uint64_t *data_read);
 
 static bool t2_skip_packet(t2_t *p_t2, grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, grk_seg_buf *src_buf, uint64_t *p_data_read);
+		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 static bool t2_read_packet_header(t2_t *p_t2, grk_tcd_tile *p_tile,
 		grk_tcp *p_tcp, grk_pi_iterator *p_pi, bool *p_is_data_present,
-		grk_seg_buf *src_buf, uint64_t *p_data_read);
+		ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 static bool t2_read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
-		grk_seg_buf *src_buf, uint64_t *p_data_read);
+		ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 		uint64_t *p_data_read, uint64_t max_length);
@@ -272,7 +272,7 @@ bool t2_encode_packets_simulate(t2_t *p_t2, uint16_t tile_no,
 	return true;
 }
 bool t2_decode_packets(t2_t *p_t2, uint16_t tile_no, grk_tcd_tile *p_tile,
-		grk_seg_buf *src_buf, uint64_t *p_data_read) {
+		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 
 	auto l_image = p_t2->image;
 	auto l_cp = p_t2->cp;
@@ -384,7 +384,7 @@ void t2_destroy(t2_t *t2) {
 }
 
 static bool t2_decode_packet(t2_t *p_t2, grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, grk_seg_buf *src_buf, uint64_t *p_data_read) {
+		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
     auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
@@ -411,7 +411,7 @@ static bool t2_decode_packet(t2_t *p_t2, grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 
 static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 		grk_tcp *p_tcp, grk_pi_iterator *p_pi, bool *p_is_data_present,
-		grk_seg_buf *src_buf, uint64_t *p_data_read)		{
+		ChunkBuffer *src_buf, uint64_t *p_data_read)		{
 
 	auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_global_ptr();
@@ -524,7 +524,7 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 
 		*p_is_data_present = false;
 		*p_data_read = (size_t) (active_src - p_src_data);
-		src_buf->incr_cur_seg_offset(*p_data_read);
+		src_buf->incr_cur_chunk_offset(*p_data_read);
 		return true;
 	}
 	for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
@@ -745,13 +745,13 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 
 	*p_is_data_present = true;
 	*p_data_read = (uint32_t) (active_src - p_src_data);
-	src_buf->incr_cur_seg_offset(*p_data_read);
+	src_buf->incr_cur_chunk_offset(*p_data_read);
 
 	return true;
 }
 
 static bool t2_read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
-		grk_seg_buf *src_buf, uint64_t *p_data_read) {
+		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	uint32_t bandno;
 	uint64_t cblkno;
 	auto l_band = l_res->bands;
@@ -804,7 +804,7 @@ static bool t2_read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 					l_cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
 							(uint16_t) l_seg->numBytesInPacket);
 					*(p_data_read) += l_seg->numBytesInPacket;
-					src_buf->incr_cur_seg_offset(l_seg->numBytesInPacket);
+					src_buf->incr_cur_chunk_offset(l_seg->numBytesInPacket);
 					l_cblk->dataSize += l_seg->numBytesInPacket;
 					l_seg->len += l_seg->numBytesInPacket;
 				}
@@ -1085,7 +1085,7 @@ static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		auto originalDataBytes = *p_data_written - numHeaderBytes;
 		auto roundRes = &tilec->round_trip_resolutions[resno];
 		size_t l_nb_bytes_read = 0;
-		auto src_buf = std::unique_ptr<grk_seg_buf>(new grk_seg_buf());
+		auto src_buf = std::unique_ptr<ChunkBuffer>(new ChunkBuffer());
 		seg_buf_push_back(src_buf.get(), dest, *p_data_written);
 
 		bool rc = true;
@@ -1468,11 +1468,11 @@ static bool t2_encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 	return true;
 }
 static bool t2_skip_packet(t2_t *p_t2, grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, grk_seg_buf *src_buf, uint64_t *p_data_read) {
+		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
 	uint64_t l_nb_total_bytes_read = 0;
-	uint64_t max_length = (uint64_t) src_buf->get_cur_seg_len();
+	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
 
 	*p_data_read = 0;
 
@@ -1494,7 +1494,7 @@ static bool t2_skip_packet(t2_t *p_t2, grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 				&l_nb_bytes_read, max_length)) {
 			return false;
 		}
-		src_buf->incr_cur_seg_offset(l_nb_bytes_read);
+		src_buf->incr_cur_chunk_offset(l_nb_bytes_read);
 		l_nb_total_bytes_read += l_nb_bytes_read;
 	}
 	*p_data_read = l_nb_total_bytes_read;

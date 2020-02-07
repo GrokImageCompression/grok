@@ -312,7 +312,7 @@ struct grk_tcp {
 	/** number of tile parts for the tile. */
 	uint8_t m_nb_tile_parts;
 
-	grk_seg_buf *m_tile_data;
+	ChunkBuffer *m_tile_data;
 
 	/** encoding norms */
 	double *mct_norms;

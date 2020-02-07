@@ -3921,7 +3921,7 @@ static bool j2k_read_sod(grk_j2k *p_j2k, GrokStream *p_stream) {
 	size_t l_current_read_size = 0;
 	if (p_j2k->m_specific_param.m_decoder.tile_part_data_length) {
 		if (!l_tcp->m_tile_data)
-			l_tcp->m_tile_data = new grk_seg_buf();
+			l_tcp->m_tile_data = new ChunkBuffer();
 
 		auto len = p_j2k->m_specific_param.m_decoder.tile_part_data_length;
 		uint8_t *buff = nullptr;
@@ -3938,7 +3938,7 @@ static bool j2k_read_sod(grk_j2k *p_j2k, GrokStream *p_stream) {
 			buff = p_stream->getCurrentPtr();
 		}
 		l_current_read_size = p_stream->read(zeroCopy ? nullptr : buff, len);
-		l_tcp->m_tile_data->add_segment(buff, len, !zeroCopy);
+		l_tcp->m_tile_data->add_chunk(buff, len, !zeroCopy);
 
 	}
 	if (l_current_read_size

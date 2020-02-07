@@ -128,7 +128,7 @@ bool t2_encode_packets_simulate(t2_t *t2, uint16_t tileno, grk_tcd_tile *tile,
  @return FIXME DOC
  */
 bool t2_decode_packets(t2_t *t2, uint16_t tileno, grk_tcd_tile *tile,
-		grk_seg_buf *src_buf, uint64_t *p_data_read);
+		ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 /**
  * Creates a Tier 2 handle
