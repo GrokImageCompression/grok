@@ -7169,6 +7169,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
 		bool *p_go_on, GrokStream *p_stream) {
+
 	uint32_t l_current_marker = J2K_MS_SOT;
 	uint32_t l_marker_size = 0;
 	const  grk_dec_memory_marker_handler  *l_marker_handler = nullptr;
@@ -7532,9 +7533,6 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 
 bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, GrokStream *p_stream) {
-	uint32_t l_current_marker;
-	uint8_t l_data[2];
-	grk_tcp *l_tcp;
 
 	assert(p_stream != nullptr);
 	assert(p_j2k != nullptr);
@@ -7545,7 +7543,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		return false;
 	}
 
-	l_tcp = p_j2k->m_cp.tcps + tile_index;
+	auto l_tcp = p_j2k->m_cp.tcps + tile_index;
 	if (!l_tcp->m_tile_data) {
 		j2k_tcp_destroy(l_tcp);
 		return false;
@@ -7575,9 +7573,8 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 			for (compno = 0; compno < p_j2k->m_output_image->numcomps;
 					compno++) {
 				uint32_t l_size_comp = 0;
-				uint32_t i, j;
-				grk_tcd_tilecomp *tilec = p_j2k->m_tileProcessor->tile->comps + compno;
-				 grk_image_comp  *comp = p_j2k->m_output_image->comps + compno;
+				auto tilec = p_j2k->m_tileProcessor->tile->comps + compno;
+				auto comp = p_j2k->m_output_image->comps + compno;
 
 				//transfer memory from tile component to output image
 				comp->data = tile_buf_get_ptr(tilec->buf, 0, 0, 0, 0);
@@ -7592,8 +7589,8 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 				//cast and mask in unsigned case, to avoid sign extension
 				l_size_comp = (comp->prec + 7) >> 3;
 				if (l_size_comp <= 2) {
-					for (j = 0; j < comp->h; ++j) {
-						for (i = 0; i < comp->w; ++i) {
+					for (uint32_t j = 0; j < comp->h; ++j) {
+						for (uint32_t i = 0; i < comp->w; ++i) {
 							if (l_size_comp == 1)
 								comp->data[i + j * comp->w] =
 										comp->sgnd ?
@@ -7606,14 +7603,11 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 												comp->data[i + j * comp->w] :
 												(int16_t) comp->data[i
 														+ j * comp->w] & 0xFFFF;
-
 						}
 					}
 				}
-
 			}
 		}
-
 		/* we only destroy the data, which will be re-read in read_tile_header*/
 		j2k_tcp_data_destroy(l_tcp);
 
@@ -7626,44 +7620,52 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 						== J2K_DEC_STATE_NEOC) {
 			return true;
 		}
-
 		// if EOC marker has not been read yet, then try to read the next marker (should be EOC or SOT)
 		if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_EOC) {
 
+			uint8_t l_data[2];
 			// not enough data for another marker
 			if (p_stream->read(l_data, 2) != 2) {
-				GROK_WARN( "j2k_decode_tile: Not enough data to read another marker. Tile may be truncated.");
+				GROK_WARN("j2k_decode_tile: Not enough data to read another marker. Tile may be truncated.");
 				return true;
 			}
 
+			uint32_t l_current_marker=0;
 			// read marker
 			grok_read_bytes(l_data, &l_current_marker, 2);
 
-			// we found the EOC marker - set state accordingly and return true - can ignore all data after EOC
-			if (l_current_marker == J2K_MS_EOC) {
+			switch(l_current_marker){
+			// we found the EOC marker - set state accordingly and return true;
+			// we can ignore all data after EOC
+			case J2K_MS_EOC:
 				p_j2k->m_current_tile_number = 0;
 				p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_EOC;
 				return true;
-			}
-
-			// if we get here, we expect an SOT marker......
-			if (l_current_marker != J2K_MS_SOT) {
+				break;
+			// start of another tile
+			case J2K_MS_SOT:
+				return true;
+				break;
+			default:
+				{
 				auto bytesLeft = p_stream->get_number_byte_left();
 				// no bytes left - file ends without EOC marker
 				if (bytesLeft == 0) {
 					p_j2k->m_specific_param.m_decoder.m_state =
 							J2K_DEC_STATE_NEOC;
-					GROK_WARN(
-							"Stream does not end with EOC");
+					GROK_WARN("Stream does not end with EOC");
 					return true;
 				}
-				GROK_WARN(
-						"Decode tile: expected EOC or SOT but found unknown \"marker\" %x. \n",
+				GROK_WARN("Decode tile: expected EOC or SOT "
+						"but found unknown \"marker\" %x. \n",
 						l_current_marker);
 				throw DecodeUnknownMarkerAtEndOfTileException();
+				}
+				break;
 			}
 		}
 	}
+
 	return true;
 }
 
@@ -7676,13 +7678,13 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
 		grk_image *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
-	grk_image *image_src = p_tcd->image;
+	auto image_src = p_tcd->image;
 
 	for (i = 0; i < image_src->numcomps; i++) {
 
-		grk_tcd_tilecomp *tilec = p_tcd->tile->comps + i;
-		 grk_image_comp  *img_comp_src = image_src->comps + i;
-		 grk_image_comp  *img_comp_dest = p_output_image->comps + i;
+		auto tilec = p_tcd->tile->comps + i;
+		auto img_comp_src = image_src->comps + i;
+		auto img_comp_dest = p_output_image->comps + i;
 
 		if (img_comp_dest->w * img_comp_dest->h == 0) {
 			GROK_ERROR(
@@ -7708,8 +7710,7 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 		/*-----*/
 		/* Compute the precision of the output buffer */
 		uint32_t size_comp = (img_comp_src->prec + 7) >> 3;
-		grk_tcd_resolution *res = tilec->resolutions
-				+ img_comp_src->resno_decoded;
+		auto res = tilec->resolutions + img_comp_src->resno_decoded;
 
 		if (size_comp == 3) {
 			size_comp = 4;
@@ -7869,7 +7870,6 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 					src_ind += line_offset_src;
 				}
 			}
-
 			src_ind += end_offset_src; /* Move to the end of this component-part of the input buffer */
 			p_data = (uint8_t*) (src_ptr + src_ind); /* Keep the current position for the next component-part */
 		}
@@ -7892,18 +7892,16 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 						img_comp_dest->data[dest_ind++] = src_ptr[src_ind++]
 								& 0xffff;
 					}
-
 					dest_ind += line_offset_dest;
 					src_ind += line_offset_src;
 				}
 			}
-
 			src_ind += end_offset_src;
 			p_data = (uint8_t*) (src_ptr + src_ind);
 		}
 			break;
 		case 4: {
-			int32_t *src_ptr = (int32_t*) p_data;
+			auto src_ptr = (int32_t*) p_data;
 
 			for (j = 0; j < height_dest; ++j) {
 				for (k = 0; k < width_dest; ++k) {
@@ -7927,14 +7925,15 @@ static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t 
 
 bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	grk_coding_parameters *l_cp = &(p_j2k->m_cp);
-	grk_image *l_image = p_j2k->m_private_image;
+
+	auto l_cp = &(p_j2k->m_cp);
+	auto l_image = p_j2k->m_private_image;
 	auto tp = p_j2k->m_tileProcessor;
 	auto decoder = &p_j2k->m_specific_param.m_decoder;
 
 	uint32_t it_comp;
 	uint32_t l_comp_x1, l_comp_y1;
-	 grk_image_comp  *l_img_comp = nullptr;
+
 
 	/* Check if we have read the main header */
 	if (p_j2k->m_specific_param.m_decoder.m_state != J2K_DEC_STATE_TPHSOT) {
@@ -7959,13 +7958,14 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 
 	/* Left */
 	if (start_x > l_image->x1) {
-		GROK_ERROR(
-				"Left position of the decoded area (region_x0=%d) is outside the image area (Xsiz=%d).\n",
+		GROK_ERROR("Left position of the decoded area (region_x0=%d)"
+				" is outside the image area (Xsiz=%d).\n",
 				start_x, l_image->x1);
 		return false;
 	} else if (start_x < l_image->x0) {
 		GROK_WARN(
-				"Left position of the decoded area (region_x0=%d) is outside the image area (XOsiz=%d).\n",
+				"Left position of the decoded area (region_x0=%d)"
+				" is outside the image area (XOsiz=%d).\n",
 				start_x, l_image->x0);
 		decoder->m_start_tile_x = 0;
 		p_image->x0 = l_image->x0;
@@ -7978,12 +7978,14 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 	/* Up */
 	if (start_y > l_image->y1) {
 		GROK_ERROR(
-				"Up position of the decoded area (region_y0=%d) is outside the image area (Ysiz=%d).\n",
+				"Up position of the decoded area (region_y0=%d)"
+				" is outside the image area (Ysiz=%d).\n",
 				start_y, l_image->y1);
 		return false;
 	} else if (start_y < l_image->y0) {
 		GROK_WARN(
-				"Up position of the decoded area (region_y0=%d) is outside the image area (YOsiz=%d).\n",
+				"Up position of the decoded area (region_y0=%d)"
+				" is outside the image area (YOsiz=%d).\n",
 				start_y, l_image->y0);
 		decoder->m_start_tile_y = 0;
 		p_image->y0 = l_image->y0;
@@ -7998,12 +8000,14 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 	assert(end_y > 0);
 	if (end_x < l_image->x0) {
 		GROK_ERROR(
-				"Right position of the decoded area (region_x1=%d) is outside the image area (XOsiz=%d).\n",
+				"Right position of the decoded area (region_x1=%d)"
+				" is outside the image area (XOsiz=%d).\n",
 				end_x, l_image->x0);
 		return false;
 	} else if (end_x > l_image->x1) {
 		GROK_WARN(
-				"Right position of the decoded area (region_x1=%d) is outside the image area (Xsiz=%d).\n",
+				"Right position of the decoded area (region_x1=%d)"
+				" is outside the image area (Xsiz=%d).\n",
 				end_x, l_image->x1);
 		decoder->m_end_tile_x = l_cp->tw;
 		p_image->x1 = l_image->x1;
@@ -8020,13 +8024,15 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 	/* Bottom */
 	if (end_y < l_image->y0) {
 		GROK_ERROR(
-				"Bottom position of the decoded area (region_y1=%d) is outside the image area (YOsiz=%d).\n",
+				"Bottom position of the decoded area (region_y1=%d)"
+				" is outside the image area (YOsiz=%d).\n",
 				end_y, l_image->y0);
 		return false;
 	}
 	if (end_y > l_image->y1) {
 		GROK_WARN(
-				"Bottom position of the decoded area (region_y1=%d) is outside the image area (Ysiz=%d).\n",
+				"Bottom position of the decoded area (region_y1=%d)"
+				" is outside the image area (Ysiz=%d).\n",
 				end_y, l_image->y1);
 		decoder->m_end_tile_y = l_cp->th;
 		p_image->y1 = l_image->y1;
@@ -8048,7 +8054,7 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 	tp->win_x1 = end_x;
 	tp->win_y1 = end_y;
 
-	l_img_comp = p_image->comps;
+	auto l_img_comp = p_image->comps;
 	for (it_comp = 0; it_comp < p_image->numcomps; ++it_comp) {
 		// avoid divide by zero
 		if (l_img_comp->dx == 0 || l_img_comp->dy == 0) {
@@ -8066,7 +8072,8 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 				l_img_comp->decodeScaleFactor);
 		if (l_x1 < l_x0) {
 			GROK_ERROR(
-					"Size x of the decoded component image is incorrect (comp[%d].w=%d).\n",
+					"Size x of the decoded component image"
+					" is incorrect (comp[%d].w=%d).\n",
 					it_comp, (int32_t) l_x1 - l_x0);
 			return false;
 		}
@@ -8078,7 +8085,8 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 				l_img_comp->decodeScaleFactor);
 		if (l_y1 < l_y0) {
 			GROK_ERROR(
-					"Size y of the decoded component image is incorrect (comp[%d].h=%d).\n",
+					"Size y of the decoded component image"
+					" is incorrect (comp[%d].h=%d).\n",
 					it_comp, (int32_t) l_y1 - l_y0);
 			return false;
 		}
@@ -8315,7 +8323,8 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	++l_tccp->numresolutions; /* tccp->numresolutions = read() + 1 */
 	if (l_tccp->numresolutions > GRK_J2K_MAXRLVLS) {
 		GROK_ERROR(
-				"Number of resolutions %d is greater than maximum allowed number %d\n",
+				"Number of resolutions %d is greater than"
+				" maximum allowed number %d\n",
 				l_tccp->numresolutions, GRK_J2K_MAXRLVLS);
 		return false;
 	}
@@ -8324,8 +8333,10 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	/* If user wants to remove more resolutions than the codestream contains, return error */
 	if (l_cp->m_specific_param.m_dec.m_reduce >= l_tccp->numresolutions) {
 		GROK_ERROR(
-				"Error decoding component %d.\nThe number of resolutions to remove is higher than the number "
-						"of resolutions of this component\nModify the cp_reduce parameter.\n\n",
+				"Error decoding component %d.\nThe number of resolutions"
+				" to remove is higher than the number "
+				"of resolutions of this component\n"
+				"Modify the cp_reduce parameter.\n\n",
 				compno);
 		p_j2k->m_specific_param.m_decoder.m_state |= 0x8000;/* FIXME J2K_DEC_STATE_ERR;*/
 		return false;
@@ -8342,7 +8353,8 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	if ((l_tccp->cblkw > 10) || (l_tccp->cblkh > 10)
 			|| ((l_tccp->cblkw + l_tccp->cblkh) > 12)) {
 		GROK_ERROR(
-				"Error reading SPCod SPCoc element, Invalid cblkw/cblkh combination");
+				"Error reading SPCod SPCoc element,"
+				" Invalid cblkw/cblkh combination");
 		return false;
 	}
 
@@ -8352,7 +8364,8 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	/* SPcoc (H) */
 	grok_read_8(l_current_ptr, &l_tccp->qmfbid);
 	if (l_tccp->qmfbid > 1){
-		GROK_ERROR("Invalid qmfbid : %d. Should be either 0 or 1", l_tccp->qmfbid);
+		GROK_ERROR("Invalid qmfbid : %d. "
+				"Should be either 0 or 1", l_tccp->qmfbid);
 		return false;
 	}
 
@@ -8601,7 +8614,9 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 			if (l_tccp->numStepSizes > GRK_J2K_MAXBANDS) {
 				GROK_WARN(
 						"While reading QCD or QCC marker segment, "
-								"number of step sizes (%d) is greater than GRK_J2K_MAXBANDS (%d). So, we limit the number of elements stored to "
+								"number of step sizes (%d) is greater"
+								" than GRK_J2K_MAXBANDS (%d). "
+								"So, we limit the number of elements stored to "
 								"GRK_J2K_MAXBANDS (%d) and skip the rest.\n",
 						l_tccp->numStepSizes, GRK_J2K_MAXBANDS,
 						GRK_J2K_MAXBANDS);
