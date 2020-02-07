@@ -26,10 +26,10 @@ grk_vec::grk_vec() :
 bool grk_vec::init() {
 	if (data)
 		return true;
-	data = new std::vector<grk_min_buf*>();
+	data = new std::vector<grk_buf*>();
 	return data ? true : false;
 }
-bool grk_vec::push_back(grk_min_buf *value) {
+bool grk_vec::push_back(grk_buf *value) {
 	data->push_back(value);
 	return true;
 }
@@ -69,7 +69,7 @@ bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 	}
 	size_t offset = 0;
 	for (int32_t i = 0; i < size(); ++i) {
-		grk_min_buf *seg = (grk_min_buf*) get(i);
+		grk_buf *seg = (grk_buf*) get(i);
 		if (seg->len)
 			memcpy(buffer + offset, seg->buf, seg->len);
 		offset += seg->len;
@@ -83,7 +83,7 @@ bool grk_vec::push_back(uint8_t *buf, uint16_t len) {
 	if (!data) {
 		init();
 	}
-	grk_min_buf *seg = new grk_min_buf(buf, len);
+	grk_buf *seg = new grk_buf(buf, len, false);
 	if (!push_back(seg)) {
 		delete seg;
 		return false;
@@ -96,7 +96,7 @@ uint16_t grk_vec::get_len(void) {
 	if (!data)
 		return 0;
 	for (int32_t i = 0; i < size(); ++i) {
-		grk_min_buf *seg = (grk_min_buf*) get(i);
+		grk_buf *seg = (grk_buf*) get(i);
 		if (seg)
 			len = static_cast<uint16_t>((uint32_t) len + seg->len);
 	}

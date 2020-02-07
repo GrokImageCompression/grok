@@ -146,7 +146,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 	size_t offset = 0;
 	// note: min_buf_vec only contains segments of non-zero length
 	for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
-		grk_min_buf *seg = (grk_min_buf*) min_buf_vec->get(i);
+		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
 	}

@@ -20,21 +20,6 @@
 #pragma once
 namespace grk {
 
-/*
- Smart wrapper to low level C array
- */
-
-struct grk_min_buf {
-	grk_min_buf() :
-			buf(nullptr), len(0) {
-	}
-	grk_min_buf(uint8_t *buffer, uint16_t length) :
-			buf(buffer), len(length) {
-	}
-	uint8_t *buf; /* internal array*/
-	uint16_t len; /* length of array */
-};
-
 /*  Segmented Buffer Interface
 
  A segmented buffer stores a list of buffers, or segments, but can be treated as one single
