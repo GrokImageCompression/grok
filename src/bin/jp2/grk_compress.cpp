@@ -1787,7 +1787,7 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 	}
 	if (info->compressBuffer) {
 		// let stream clean up compress buffer
-		l_stream = grk_stream_create_buffer_stream(info->compressBuffer, 
+		l_stream = grk_stream_create_mem_stream(info->compressBuffer, 
 													info->compressBufferLen, 
 													true,
 													false);
@@ -1842,7 +1842,7 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 			spdlog::error("Buffer compress: failed to open file {} for writing\n", outfile);
 		}
 		else {
-			auto len = grk_stream_get_write_buffer_stream_length(l_stream);
+			auto len = grk_stream_get_write_mem_stream_length(l_stream);
 			size_t written = fwrite(info->compressBuffer, 1,len, fp);
 			if (written != len) {
 				spdlog::error("Buffer compress: only {} bytes written out of {} total\n", len, written);

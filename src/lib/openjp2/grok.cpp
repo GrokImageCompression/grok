@@ -707,15 +707,15 @@ static void grok_free_file(void *p_user_data) {
 	return l_stream;
 }
 /* ---------------------------------------------------------------------- */
-GRK_API size_t GRK_CALLCONV grk_stream_get_write_buffer_stream_length(
+GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
 		 grk_stream  *stream) {
 	if (!stream)
 		return 0;
-	return get_buffer_stream_offset(stream);
+	return get_mem_stream_offset(stream);
 }
- grk_stream  *  GRK_CALLCONV grk_stream_create_buffer_stream(uint8_t *buf,
+ grk_stream  *  GRK_CALLCONV grk_stream_create_mem_stream(uint8_t *buf,
 		size_t len, bool ownsBuffer, bool p_is_read_stream) {
-	return create_buffer_stream(buf, len, ownsBuffer, p_is_read_stream);
+	return create_mem_stream(buf, len, ownsBuffer, p_is_read_stream);
 }
  grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
 		const char *fname) {

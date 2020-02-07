@@ -34,13 +34,13 @@
 
 namespace grk {
 
-static void grok_free_buffer_info(void *user_data) {
+static void free_mem(void *user_data) {
 	auto data = (buf_info_t*) user_data;
 	if (data)
 		delete data;
 }
 
-static size_t zero_copy_read_from_buffer(void **p_buffer, size_t nb_bytes,
+static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 		buf_info_t *p_source_buffer) {
 	size_t l_nb_read = 0;
 
@@ -54,7 +54,7 @@ static size_t zero_copy_read_from_buffer(void **p_buffer, size_t nb_bytes,
 	return l_nb_read;
 }
 
-static size_t grok_read_from_buffer(void *p_buffer, size_t nb_bytes,
+static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 		buf_info_t *p_source_buffer) {
 	size_t l_nb_read;
 
@@ -72,70 +72,70 @@ static size_t grok_read_from_buffer(void *p_buffer, size_t nb_bytes,
 	return l_nb_read;
 }
 
-static size_t grok_write_to_buffer(void *p_buffer, size_t nb_bytes,
-		buf_info_t *p_source_buffer) {
-	if (p_source_buffer->off + nb_bytes >= p_source_buffer->len) {
+static size_t write_to_mem(void *dest, size_t nb_bytes,
+		buf_info_t *src) {
+	if (src->off + nb_bytes >= src->len) {
 		return 0;
 	}
 	if (nb_bytes) {
-		memcpy(p_source_buffer->buf + (size_t) p_source_buffer->off, p_buffer,
+		memcpy(src->buf + (size_t) src->off, dest,
 				nb_bytes);
-		p_source_buffer->off += (int64_t) nb_bytes;
+		src->off += (int64_t) nb_bytes;
 	}
 	return nb_bytes;
 }
 
-static bool seek_from_buffer(uint64_t nb_bytes, buf_info_t *p_source_buffer) {
-	if ((size_t) nb_bytes < p_source_buffer->len) {
-		p_source_buffer->off = nb_bytes;
+static bool seek_from_mem(uint64_t nb_bytes, buf_info_t *src) {
+	if ((size_t) nb_bytes < src->len) {
+		src->off = nb_bytes;
 	} else {
-		p_source_buffer->off = p_source_buffer->len;
+		src->off = src->len;
 	}
 	return true;
 }
 
-static void set_up_buffer_stream( grk_stream  *l_stream, size_t len,
+static void set_up_mem_stream( grk_stream  *l_stream, size_t len,
 		bool p_is_read_stream) {
 	grk_stream_set_user_data_length(l_stream, len);
 
 	if (p_is_read_stream) {
 		grk_stream_set_read_function(l_stream,
-				(grk_stream_read_fn) grok_read_from_buffer);
+				(grk_stream_read_fn) read_from_mem);
 		grk_stream_set_zero_copy_read_function(l_stream,
-				(grk_stream_zero_copy_read_fn) zero_copy_read_from_buffer);
+				(grk_stream_zero_copy_read_fn) zero_copy_read_from_mem);
 	} else
 		grk_stream_set_write_function(l_stream,
-				(grk_stream_write_fn) grok_write_to_buffer);
+				(grk_stream_write_fn) write_to_mem);
 	grk_stream_set_seek_function(l_stream,
-			(grk_stream_seek_fn) seek_from_buffer);
+			(grk_stream_seek_fn) seek_from_mem);
 }
 
-size_t get_buffer_stream_offset( grk_stream  *stream) {
+size_t get_mem_stream_offset( grk_stream  *stream) {
 	if (!stream)
 		return 0;
-	GrokStream *private_stream = (GrokStream*) stream;
+	auto private_stream = (GrokStream*) stream;
 	if (!private_stream->m_user_data)
 		return 0;
-	buf_info_t *buf = (buf_info_t*) private_stream->m_user_data;
+	auto buf = (buf_info_t*) private_stream->m_user_data;
 	return buf->off;
 }
 
- grk_stream  *  create_buffer_stream(uint8_t *buf, size_t len, bool ownsBuffer,
+ grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool p_is_read_stream) {
 	if (!buf || !len) {
 		return nullptr;
 	}
-	GrokStream *l_stream = new GrokStream(buf, len, p_is_read_stream);
+	auto l_stream = new GrokStream(buf, len, p_is_read_stream);
 	auto p_source_buffer = new buf_info_t(buf, 0, len, ownsBuffer);
 	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
-			grok_free_buffer_info);
-	set_up_buffer_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
+			free_mem);
+	set_up_mem_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
 			p_is_read_stream);
 
 	return ( grk_stream  * ) l_stream;
 }
 
-int32_t get_file_open_mode(const char *mode) {
+static int32_t get_file_open_mode(const char *mode) {
 	int32_t m = -1;
 	switch (mode[0]) {
 	case 'r':
@@ -350,7 +350,7 @@ static void mem_map_free(void *user_data) {
 
 	grk_stream_set_user_data(l_stream, buffer_info,
 			(grk_stream_free_user_data_fn) mem_map_free);
-	set_up_buffer_stream(l_stream, buffer_info->len, p_is_read_stream);
+	set_up_mem_stream(l_stream, buffer_info->len, p_is_read_stream);
 
 	return l_stream;
 }

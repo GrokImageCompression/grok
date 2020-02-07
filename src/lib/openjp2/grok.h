@@ -1279,10 +1279,10 @@ GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_file_stream(
  *						responsibility to delete the buffer
  * @param p_is_read_stream  whether the stream is a read stream (true) or not (false)
  */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_buffer_stream(uint8_t *buf,
+GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mem_stream(uint8_t *buf,
 		size_t buffer_len, bool ownsBuffer, bool p_is_read_stream);
 
-GRK_API size_t GRK_CALLCONV grk_stream_get_write_buffer_stream_length(
+GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
 		 grk_stream  * );
 
 GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(

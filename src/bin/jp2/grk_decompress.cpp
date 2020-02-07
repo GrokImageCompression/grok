@@ -1391,7 +1391,7 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 				failed = 1;
 				goto cleanup;
 			}
-			info->l_stream = grk_stream_create_buffer_stream(buffer, lengthOfFile,true, true);
+			info->l_stream = grk_stream_create_mem_stream(buffer, lengthOfFile,true, true);
 		}
 		else  if (isMappedFile) {
 			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
