@@ -9148,46 +9148,30 @@ static bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 }
 
 static bool j2k_needs_copy_tile_data(grk_j2k *p_j2k, uint32_t num_tiles) {
-
-	/* If we only have one tile, check the following:
-
-	 1) Check if each output image component's dimensions match
-	 destination image component dimensions. It they don't, then set copy_tile_data to true
-	 and break.
-
-	 2) Check if we are not decoding all resolutions. If we are not, set copy_tile_data to true
-	 and break;
-
-	 */
-
-	if (p_j2k->m_cp.m_specific_param.m_dec.m_reduce != 0)
+	if (num_tiles > 1)
 		return true;
-	/* single tile, RGB images only*/
-	bool copy_tile_data = (num_tiles > 1);
-	uint32_t i = 0;
 
-	if (!copy_tile_data) {
+	/* If we only have one tile, check if output image component dimensions match
+	 destination image component dimensions. Return true if this is not true for
+	 one component.
+	*/
+	for (uint32_t i = 0; i < p_j2k->m_output_image->numcomps; i++) {
+		auto dest_comp = p_j2k->m_output_image->comps + i;
+		uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,
+				dest_comp->decodeScaleFactor);
+		uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,
+				dest_comp->decodeScaleFactor);
+		uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
+		uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
 
-		for (i = 0; i < p_j2k->m_output_image->numcomps; i++) {
-			 grk_image_comp  *dest_comp = p_j2k->m_output_image->comps + i;
-			uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,
-					dest_comp->decodeScaleFactor);
-			uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,
-					dest_comp->decodeScaleFactor);
-			uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
-			uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
-
-			 grk_image_comp  *src_comp = p_j2k->m_tileProcessor->image->comps + i;
-
-			if (src_comp->x0 != l_x0_dest || src_comp->y0 != l_y0_dest
-					|| src_comp->w != (l_x1_dest - l_x0_dest)
-					|| src_comp->h != (l_y1_dest - l_y0_dest)) {
-				copy_tile_data = true;
-				break;
-			}
+		auto src_comp = p_j2k->m_tileProcessor->image->comps + i;
+		if (src_comp->x0 != l_x0_dest || src_comp->y0 != l_y0_dest
+				|| src_comp->w != (l_x1_dest - l_x0_dest)
+				|| src_comp->h != (l_y1_dest - l_y0_dest)) {
+			return true;
 		}
 	}
-	return copy_tile_data;
+	return false;
 }
 
 static bool j2k_decode_tiles(grk_j2k *p_j2k, GrokStream *p_stream) {
