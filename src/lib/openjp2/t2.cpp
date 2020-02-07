@@ -66,17 +66,6 @@ namespace grk {
 /** @name Local static functions */
 /*@{*/
 
-static void t2_putcommacode(BitIO *bio, int32_t n);
-
-static bool t2_getcommacode(BitIO *bio, uint32_t *n);
-/**
- Variable length code for signaling delta Zil (truncation point)
- @param bio  Bit Input/Output component
- @param n    delta Zil
- */
-static void t2_putnumpasses(BitIO *bio, uint32_t n);
-static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses);
-
 /**
  Encode a packet of a tile to a destination buffer
  @param tileno Number of the tile encoded
@@ -146,76 +135,6 @@ static bool t2_skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi
 static bool t2_init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 		uint8_t cblk_sty, bool first);
 
-/*@}*/
-
-/*@}*/
-
-/* ----------------------------------------------------------------------- */
-
-static void t2_putcommacode(BitIO *bio, int32_t n) {
-	while (--n >= 0) {
-		bio->write(1, 1);
-	}
-	bio->write(0, 1);
-}
-
-static bool t2_getcommacode(BitIO *bio, uint32_t *n) {
-	*n = 0;
-	uint32_t temp;
-	bool rc = true;
-	while ((rc = bio->read(&temp, 1)) && temp) {
-		++*n;
-	}
-	return rc;
-}
-
-static void t2_putnumpasses(BitIO *bio, uint32_t n) {
-	if (n == 1) {
-		bio->write(0, 1);
-	} else if (n == 2) {
-		bio->write(2, 2);
-	} else if (n <= 5) {
-		bio->write(0xc | (n - 3), 4);
-	} else if (n <= 36) {
-		bio->write(0x1e0 | (n - 6), 9);
-	} else if (n <= 164) {
-		bio->write(0xff80 | (n - 37), 16);
-	}
-}
-
-static bool t2_getnumpasses(BitIO *bio, uint32_t *numpasses) {
-	uint32_t n = 0;
-	if (!bio->read(&n, 1))
-		return false;
-	if (!n) {
-		*numpasses = 1;
-		return true;
-	}
-	if (!bio->read(&n, 1))
-		return false;
-	if (!n) {
-		*numpasses = 2;
-		return true;
-	}
-	if (!bio->read(&n, 2))
-		return false;
-	if (n != 3) {
-		*numpasses = n + 3;
-		return true;
-	}
-	if (!bio->read(&n, 5))
-		return false;
-	if (n != 31) {
-		*numpasses = n + 6;
-		return true;
-	}
-	if (!bio->read(&n, 7))
-		return false;
-	*numpasses = n + 37;
-	return true;
-}
-
-/* ----------------------------------------------------------------------- */
 
 bool t2_encode_packets(t2_t *p_t2, uint16_t tile_no, grk_tcd_tile *p_tile,
 		uint32_t max_layers, GrokStream *p_stream, uint64_t *p_data_written,
@@ -713,12 +632,12 @@ static bool t2_read_packet_header(t2_t *p_t2,  grk_tcd_tile *p_tile,
 			}
 
 			/* number of coding passes */
-			if (!t2_getnumpasses(l_bio.get(), &l_cblk->numPassesInPacket)) {
+			if (!l_bio->getnumpasses(&l_cblk->numPassesInPacket)) {
 				GROK_ERROR(
 						"t2_read_packet_header: failed to read numpasses.");
 				return false;
 			}
-			if (!t2_getcommacode(l_bio.get(), &l_increment)) {
+			if (!l_bio->getcommacode(&l_increment)) {
 				GROK_ERROR(
 						"t2_read_packet_header: failed to read length indicator increment.");
 				return false;
@@ -1030,7 +949,7 @@ static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 						tag_tree_uninitialized_node_value);
 			}
 			/* number of coding passes included */
-			t2_putnumpasses(bio.get(), layer->numpasses);
+			bio->putnumpasses(layer->numpasses);
 			uint32_t l_nb_passes = cblk->num_passes_included_in_current_layer
 					+ layer->numpasses;
 			auto pass = cblk->passes
@@ -1053,7 +972,7 @@ static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 				}
 				++pass;
 			}
-			t2_putcommacode(bio.get(), (int32_t) increment);
+			bio->putcommacode((int32_t) increment);
 
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;
@@ -1444,7 +1363,7 @@ static bool t2_encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 			}
 
 			/* number of coding passes included */
-			t2_putnumpasses(bio.get(), layer->numpasses);
+			bio->putnumpasses(layer->numpasses);
 			l_nb_passes = cblk->num_passes_included_in_current_layer
 					+ layer->numpasses;
 			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
@@ -1470,7 +1389,7 @@ static bool t2_encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 
 				++pass;
 			}
-			t2_putcommacode(bio.get(), (int32_t) increment);
+			bio->putcommacode((int32_t) increment);
 
 			/* computation of the new Length indicator */
 			cblk->numlenbits += increment;

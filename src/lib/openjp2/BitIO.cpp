@@ -176,4 +176,71 @@ bool BitIO::inalign() {
 	ct = 0;
 	return true;
 }
+
+void BitIO::putcommacode(int32_t n) {
+	while (--n >= 0) {
+		write(1, 1);
+	}
+	write(0, 1);
+}
+
+bool BitIO::getcommacode(uint32_t *n) {
+	*n = 0;
+	uint32_t temp;
+	bool rc = true;
+	while ((rc = read(&temp, 1)) && temp) {
+		++*n;
+	}
+	return rc;
+}
+
+void BitIO::putnumpasses(uint32_t n) {
+	if (n == 1) {
+		write(0, 1);
+	} else if (n == 2) {
+		write(2, 2);
+	} else if (n <= 5) {
+		write(0xc | (n - 3), 4);
+	} else if (n <= 36) {
+		write(0x1e0 | (n - 6), 9);
+	} else if (n <= 164) {
+		write(0xff80 | (n - 37), 16);
+	}
+}
+
+bool BitIO::getnumpasses(uint32_t *numpasses) {
+	uint32_t n = 0;
+	if (!read(&n, 1))
+		return false;
+	if (!n) {
+		*numpasses = 1;
+		return true;
+	}
+	if (!read(&n, 1))
+		return false;
+	if (!n) {
+		*numpasses = 2;
+		return true;
+	}
+	if (!read(&n, 2))
+		return false;
+	if (n != 3) {
+		*numpasses = n + 3;
+		return true;
+	}
+	if (!read(&n, 5))
+		return false;
+	if (n != 31) {
+		*numpasses = n + 6;
+		return true;
+	}
+	if (!read(&n, 7))
+		return false;
+	*numpasses = n + 37;
+	return true;
+}
+
+
+
+
 }

@@ -103,6 +103,11 @@ public:
 		sim_out = doSimulate;
 	}
 
+	void putcommacode(int32_t n);
+	bool getcommacode(uint32_t *n);
+	void putnumpasses(uint32_t n);
+	bool getnumpasses(uint32_t *numpasses);
+
 private:
 
 	/* pointer to the start of the buffer */
