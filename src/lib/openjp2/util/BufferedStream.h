@@ -72,7 +72,6 @@ namespace grk {
  */
 struct BufferedStream: public IBufferedStream {
 
-	BufferedStream(size_t p_buffer_size, bool l_is_input);
 	BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input);
 	~BufferedStream();
 
@@ -246,7 +245,6 @@ private:
 
 	// number of bytes read/written from the beginning of the stream
 	uint64_t m_stream_offset;
-
 
 	bool isMemStream;
 };

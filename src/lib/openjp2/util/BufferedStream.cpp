@@ -63,25 +63,9 @@ template<typename TYPE> void grok_write(uint8_t *p_buffer, TYPE value,
 template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
-//file stream / memory mapped file stream (p_buffer_size == 0)
-BufferedStream::BufferedStream(size_t p_buffer_size, bool l_is_input) :
-				m_user_data(nullptr),
-				m_free_user_data_fn(nullptr),
-				m_user_data_length(	0),
-				m_read_fn(nullptr),
-				m_zero_copy_read_fn(nullptr),
-				m_write_fn(	nullptr),
-				m_seek_fn(nullptr),
-				m_status(l_is_input ? GROK_STREAM_STATUS_INPUT : GROK_STREAM_STATUS_OUTPUT),
-				m_buf(nullptr),
-				m_stream_offset(0),
-				m_buffered_bytes(0),
-				m_read_bytes_seekable(0),
-				isMemStream(false) {
-
-	m_buf =
-			new grk_buf(p_buffer_size ? new uint8_t[p_buffer_size] : nullptr, p_buffer_size,false);
-}
+//1. file stream -        buffer == nullptr && p_buffer_size > 0
+//2. memory mapped file - buffer == nullptr && p_buffer_size == 0
+//3. memory stream -      buffer != nullptr && p_buffer_size > 0
 //memory stream
 BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input) :
 				m_user_data(nullptr),
@@ -92,11 +76,19 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_
 				m_write_fn(	nullptr),
 				m_seek_fn(nullptr),
 				m_status(l_is_input ? GROK_STREAM_STATUS_INPUT : GROK_STREAM_STATUS_OUTPUT),
-				m_buf(new grk_buf(buffer, p_buffer_size,false)),
-				m_stream_offset(0),
+				m_buf(nullptr),
 				m_buffered_bytes(0),
 				m_read_bytes_seekable(0),
-				isMemStream(true) {
+				m_stream_offset(0),
+				isMemStream(buffer != nullptr) {
+
+	   uint8_t *cache_buffer = nullptr;
+	   if (buffer)
+		   cache_buffer = buffer;
+	   else if (p_buffer_size)
+		   cache_buffer =  new uint8_t[p_buffer_size];
+		m_buf =
+			new grk_buf(cache_buffer, p_buffer_size,false);
 }
 
 BufferedStream::~BufferedStream() {
@@ -494,7 +486,7 @@ void grok_read_double(const uint8_t *p_buffer, double *value) {
 }
  grk_stream  *  GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
 		bool l_is_input) {
-	return ( grk_stream  * ) (new grk::BufferedStream(p_buffer_size, l_is_input));
+	return ( grk_stream  * ) (new grk::BufferedStream(nullptr,p_buffer_size, l_is_input));
 }
  grk_stream  *  GRK_CALLCONV grk_stream_default_create(bool l_is_input) {
 	return grk_stream_create(grk::stream_chunk_size, l_is_input);
