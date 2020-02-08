@@ -274,10 +274,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 		// used to bail out if difference with current thresh is small enough
 		uint32_t prevthresh = 0;
 		if (layer_needs_rate_control(layno)) {
-			t2_t *t2 = t2_create(image, cp);
-			if (t2 == nullptr) {
-				return false;
-			}
+			auto t2 = new T2(image, cp);
 			double distotarget = tcd_tile->distotile
 					- ((K * maxSE)
 							/ pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
@@ -301,7 +298,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2_encode_packets_simulate(t2, tcd_tileno,
+					if (!t2->encode_packets_simulate(tcd_tileno,
 							tcd_tile, layno + 1, p_data_written, maxlen,
 							tp_pos)) {
 						lowerBound = thresh;
@@ -312,7 +309,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 			}
 			// choose conservative value for goodthresh
 			goodthresh = upperBound;
-			t2_destroy(t2);
+			delete t2;
 
 			makelayer_feasible(layno, (uint16_t) goodthresh, true);
 			cumdisto[layno] =
@@ -442,10 +439,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 					- ((K * maxSE)
 							/ pow(10.0, tcd_tcp->distoratio[layno] / 10.0));
 
-			t2_t *t2 = t2_create(image, cp);
-			if (t2 == nullptr) {
-				return false;
-			}
+			auto t2 = new T2(image, cp);
 			double thresh;
 			for (uint32_t i = 0; i < 128; ++i) {
 				thresh =
@@ -468,7 +462,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 					}
 					lowerBound = thresh;
 				} else {
-					if (!t2_encode_packets_simulate(t2, tcd_tileno,
+					if (!t2->encode_packets_simulate(tcd_tileno,
 							tcd_tile, layno + 1, p_data_written, maxlen,
 							tp_pos)) {
 						lowerBound = thresh;
@@ -479,7 +473,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 			}
 			// choose conservative value for goodthresh
 			goodthresh = (upperBound == -1) ? thresh : upperBound;
-			t2_destroy(t2);
+			delete t2;
 
 			make_layer_simple(layno, goodthresh, true);
 			cumdisto[layno] =
@@ -1482,19 +1476,13 @@ void TileProcessor::free_tile() {
 
 bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
-	t2_t *l_t2;
+	auto l_t2 = new T2(image, cp);
 
-	l_t2 = t2_create(image, cp);
-	if (l_t2 == nullptr) {
+	if (!l_t2->decode_packets(tile_no, tile, src_buf, p_data_read)) {
+		delete l_t2;
 		return false;
 	}
-
-	if (!t2_decode_packets(l_t2, tile_no, tile, src_buf, p_data_read)) {
-		t2_destroy(l_t2);
-		return false;
-	}
-
-	t2_destroy(l_t2);
+	delete l_t2;
 
 	return true;
 }
@@ -1905,12 +1893,8 @@ bool TileProcessor::t1_encode() {
 bool TileProcessor::t2_encode(BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_dest_size,
 		 grk_codestream_info  *p_cstr_info) {
-	t2_t *l_t2;
 
-	l_t2 = t2_create(image, cp);
-	if (l_t2 == nullptr) {
-		return false;
-	}
+	auto l_t2 = new T2(image, cp);
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
@@ -1963,14 +1947,14 @@ bool TileProcessor::t2_encode(BufferedStream *p_stream,
 	}
 #endif
 
-	if (!t2_encode_packets(l_t2, tcd_tileno, tile,
+	if (!l_t2->encode_packets(tcd_tileno, tile,
 			tcp->numlayers, p_stream, p_data_written, max_dest_size,
 			p_cstr_info, tp_num, tp_pos, cur_pino)) {
-		t2_destroy(l_t2);
+		delete l_t2;
 		return false;
 	}
 
-	t2_destroy(l_t2);
+	delete l_t2;
 
 #ifdef DEBUG_LOSSLESS_T2
 	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
