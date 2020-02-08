@@ -154,14 +154,12 @@ void ChunkBuffer::rewind(void) {
 	cur_chunk_id = 0;
 }
 bool ChunkBuffer::push_back(uint8_t *buf, size_t len) {
-	grk_buf *chunk = nullptr;
 	if (!buf || !len) {
 		return false;
 	}
-	chunk = add_chunk(buf, len, false);
+	auto chunk = add_chunk(buf, len, false);
 	if (!chunk)
 		return false;
-	chunk->owns_data = false;
 	return true;
 }
 
@@ -171,12 +169,11 @@ bool ChunkBuffer::alloc_and_push_back(size_t len) {
 	if (!len)
 		return false;
 	buf = new uint8_t[len];
-	chunk = add_chunk(buf, len, false);
+	chunk = add_chunk(buf, len, true);
 	if (!chunk) {
 		delete[] buf;
 		return false;
 	}
-	chunk->owns_data = true;
 	return true;
 }
 
@@ -250,24 +247,6 @@ int64_t ChunkBuffer::get_global_offset(void) {
 		offset += (int64_t) chunk->len;
 	}
 	return offset + get_cur_chunk_offset();
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-
-grk_buf::~grk_buf() {
-	if (buf && owns_data)
-		delete[] buf;
-}
-
-void grk_buf::incr_offset(uint64_t off) {
-	/*  we allow the offset to move to one location beyond end of buffer segment*/
-	if (offset + off > (uint64_t) len) {
-#ifdef DEBUG_SEG_BUF
-       GROK_WARN("attempt to increment buffer offset out of bounds");
-#endif
-		offset = (uint64_t) len;
-	}
-	offset += off;
 }
 
 }

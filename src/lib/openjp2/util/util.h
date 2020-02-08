@@ -83,6 +83,7 @@ struct grk_buf {
 		owns_data(ownsData) {}
 	~grk_buf();
 	void incr_offset(uint64_t off);
+	uint8_t* curr_ptr();
 
     uint8_t *buf;		/* internal array*/
     uint64_t offset;	/* current offset into array */

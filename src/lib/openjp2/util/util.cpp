@@ -141,4 +141,27 @@ uint32_t hardware_concurrency() {
 	return ret;
 }
 
+
+grk_buf::~grk_buf() {
+	if (buf && owns_data)
+		delete[] buf;
+}
+
+void grk_buf::incr_offset(uint64_t off) {
+	/*  we allow the offset to move to one location beyond end of buffer segment*/
+	if (offset + off > (uint64_t) len) {
+#ifdef DEBUG_SEG_BUF
+       GROK_WARN("attempt to increment buffer offset out of bounds");
+#endif
+		offset = (uint64_t) len;
+	}
+	offset += off;
+}
+
+uint8_t* grk_buf::curr_ptr(){
+	if (!buf)
+		return nullptr;
+	return buf + offset;
+}
+
 }

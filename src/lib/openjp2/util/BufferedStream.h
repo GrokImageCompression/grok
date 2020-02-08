@@ -56,7 +56,7 @@
  */
 #pragma once
 
-#include <util/IBufferedStream.h>
+#include <IBufferedStream.h>
 #include "grk_config_private.h"
 #include "IBitIO.h"
 
@@ -189,10 +189,10 @@ struct BufferedStream: public IBufferedStream {
 	bool has_seek();
 
 	bool supportsZeroCopy() {
-		return isBufferStream && (m_status & GROK_STREAM_STATUS_INPUT);
+		return isMemStream && (m_status & GROK_STREAM_STATUS_INPUT);
 	}
 	uint8_t* getCurrentPtr() {
-		return m_buffer_current_ptr;
+		return m_buf->curr_ptr();
 	}
 
 private:
@@ -234,28 +234,21 @@ private:
 	void invalidate_buffer();
 
 	///////////////////////////////////////////////////////////////////
-	// data stored from the stream if read from, or slated for write.
-	// (does not change) 
-	uint8_t *m_buffer;
+	grk_buf *m_buf;
 
-	// size of m_buffer.
-	// (does not change) 
-	size_t m_buffer_size;
-	///////////////////////////////////////////////////////////////////
+	// number of bytes read in, or slated for write
+	size_t m_bufered_bytes;
+
+	// number of seekable bytes in buffer. This will equal the number of bytes
+	// read in the last media read, always <= m_buffer_size
+	size_t m_read_bytes_seekable;
+
 
 	// number of bytes read/written from the beginning of the stream
 	uint64_t m_stream_offset;
 
-	// current pointer for reading from buffer or writing to buffer
-	uint8_t *m_buffer_current_ptr;
 
-	// number of bytes read in, or slated for write
-	size_t m_bytes_in_buffer;
-
-	// number of bytes read into buffer. This will be <= m_buffer_size
-	size_t m_read_bytes_chunk;
-
-	bool isBufferStream;
+	bool isMemStream;
 };
 
 /**
