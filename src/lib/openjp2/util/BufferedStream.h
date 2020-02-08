@@ -327,4 +327,18 @@ void grok_read_float(const uint8_t *p_buffer, float *value);
  */
 void grok_write_float(uint8_t *p_buffer, float value);
 
+template<typename TYPE> void grok_write(uint8_t *p_buffer, TYPE value,
+		uint32_t nb_bytes) {
+#if defined(GROK_BIG_ENDIAN)
+	const uint8_t * l_data_ptr = ((const uint8_t *)&value) + sizeof(TYPE) - nb_bytes;
+	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
+	memcpy(p_buffer, l_data_ptr, nb_bytes);
+#else
+	const uint8_t *l_data_ptr = ((const uint8_t*) &value) + nb_bytes - 1;
+	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
+	for (uint32_t i = 0; i < nb_bytes; ++i) {
+		*(p_buffer++) = *(l_data_ptr--);
+	}
+#endif
+}
 }

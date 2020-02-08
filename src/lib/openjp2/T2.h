@@ -159,7 +159,6 @@ private:
 
 	/**
 	 Decode a packet of a tile from a source buffer
-	 @param t2 T2 handle
 	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity

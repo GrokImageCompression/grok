@@ -735,8 +735,8 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
 	uint32_t layno = pi->layno;
-	TileComponent *tilec = &tile->comps[compno];
-	grk_tcd_resolution *res = &tilec->resolutions[resno];
+	auto tilec = &tile->comps[compno];
+	auto res = &tilec->resolutions[resno];
 	uint64_t numHeaderBytes = 0;
 	size_t streamBytes = 0;
 	if (p_stream)
@@ -1379,7 +1379,6 @@ bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
 
 	*p_data_read = 0;
-
 	if (!read_packet_header(p_tile, p_tcp, p_pi,
 			&l_read_data, src_buf, &l_nb_bytes_read)) {
 		return false;
@@ -1392,8 +1391,7 @@ bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 	if (l_read_data) {
 		l_nb_bytes_read = 0;
 
-		if (!T2::skip_packet_data(
-				&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
+		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
 				&l_nb_bytes_read, max_length)) {
 			return false;
 		}
@@ -1409,6 +1407,7 @@ bool T2::skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	uint32_t bandno;
 	uint64_t l_nb_code_blocks, cblkno;
+
 	*p_data_read = 0;
 	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
 		auto l_band = l_res->bands + bandno;
