@@ -56,9 +56,9 @@
  */
 #pragma once
 
+#include <util/IBufferedStream.h>
 #include "grk_config_private.h"
 #include "IBitIO.h"
-#include "IBufferedStream.h"
 
 namespace grk {
 

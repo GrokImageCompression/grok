@@ -16,34 +16,33 @@
  */
 
 #pragma once
-#include <map>
-#include <stdint.h>
+#include <plugin/minpf_common.h>
+#ifdef _WIN32
+#include <Windows.h>
+#else
+#include <dlfcn.h>
+#endif
 
-#include "minpf_dynamic_library.h"
+#ifdef _WIN32
+typedef HMODULE dynamic_handle_t;
+#else
+typedef void *dynamic_handle_t;
+#endif
 
 namespace grk {
 
-#define MINPF_MAX_PLUGINS 32
+struct minpf_dynamic_library {
 
-typedef struct minpf_plugin_manager {
+	char path[MINPF_MAX_PATH_LEN];
+	dynamic_handle_t handle;
 
-	minpf_dynamic_library *dynamic_libraries[MINPF_MAX_PLUGINS];
-	size_t num_libraries;
+};
 
-	minpf_exit_func exit_functions[MINPF_MAX_PLUGINS];
-	size_t num_exit_functions;
-
-	minpf_platform_services platformServices;
-
-	std::map<const char*, minpf_register_params*> *plugins;
-
-} minpf_plugin_manager;
-
-minpf_plugin_manager* minpf_get_plugin_manager(void);
-void minpf_cleanup_plugin_manager(void);
-
-int32_t minpf_load_from_dir(const char *dir, minpf_invoke_service_func func);
-int32_t minpf_load_from_path(const char *path, minpf_invoke_service_func func);
-const char* minpf_get_dynamic_library_extension(void);
+minpf_dynamic_library* minpf_load_dynamic_library(const char *path,
+		char *error);
+bool minpf_unload_dynamic_library(minpf_dynamic_library *library);
+void* minpf_get_symbol(minpf_dynamic_library *library, const char *symbol);
+bool minpf_get_full_path(const char *path, void *addr, dynamic_handle_t handle,
+		char *fullPath, size_t fullPathLen);
 
 }

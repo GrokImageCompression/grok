@@ -14,8 +14,8 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "minpf_plugin_manager.h"
-#include "minpf_plugin.h"
+#include <plugin/minpf_plugin.h>
+#include <plugin/minpf_plugin_manager.h>
 #include <stdio.h>
 #include <cstring>
 

@@ -29,6 +29,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/include
   ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/transform
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj
@@ -36,18 +37,46 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht
+  ${CMAKE_CURRENT_SOURCE_DIR}/util
 )
 # Defines the source code for the library
 set(GROK_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/Barrier.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/Barrier.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/logger.h  
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/mem_stream.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_intmath.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_malloc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_malloc.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/util.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/util.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/vector.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/vector.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/ThreadPool.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.h
+  
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin_manager.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin_manager.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_common.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_plugin.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_interface.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.cpp
+  
+  
+    
   ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/IBitIO.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/BufferedStream.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/BufferedStream.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/IBufferedStream.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/logger.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/logger.h
   ${CMAKE_CURRENT_SOURCE_DIR}/image.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/image.h
   ${CMAKE_CURRENT_SOURCE_DIR}/invert.cpp
@@ -56,8 +85,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/j2k.h
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/jp2.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mem_stream.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mem_stream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
@@ -65,8 +92,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ChunkBuffer.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/ChunkBuffer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t2.cpp
@@ -75,35 +100,14 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/util.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_codec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_intmath.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_malloc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_malloc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/vector.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/vector.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_dynamic_library.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin_manager.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_common.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/minpf_plugin.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/plugin_interface.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/ThreadPool.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/plugin_bridge.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/testing.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/EncodedTileData.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/CPUArch.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp

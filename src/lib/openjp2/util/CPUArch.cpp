@@ -55,7 +55,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "CPUArch.h"
+#include <util/CPUArch.h>
 
 
 #ifdef WIN32

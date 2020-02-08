@@ -14,40 +14,14 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#include "grok_includes.h"
+
+#pragma once
+#include <util/ThreadPool.hpp>
 
 namespace grk {
 
-EncodedTileData::~EncodedTileData() {
-	dealloc();
-}
-
-void EncodedTileData::dealloc() {
-	delete[] data;
-	data = nullptr;
-	size = 0;
-	offset = 0;
-}
-
-void EncodedTileData::alloc(uint64_t len) {
-	if (!len)
-		return;
-	if (!data) {
-		data = new uint8_t[len];
-		size = len;
-	} else if (len > size) {
-		auto temp = new uint8_t[len];
-		memcpy(temp, data, size);
-		delete[] data;
-		data = temp;
-		size = len;
-	}
-}
-
-void EncodedTileData::grow() {
-	if (!data)
-		return;
-	alloc(size + 32768);
-}
+struct Scheduler {
+	static ThreadPool* g_tp;
+};
 
 }

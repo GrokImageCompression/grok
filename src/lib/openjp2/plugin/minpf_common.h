@@ -1,4 +1,4 @@
-/*
+/**
  *    Copyright (C) 2016-2020 Grok Image Compression Inc.
  *
  *    This source code is free software: you can redistribute it and/or  modify
@@ -16,12 +16,17 @@
  */
 
 #pragma once
-#include "ThreadPool.hpp"
 
-namespace grk {
+#include <cstdlib>
+#include <cstdint>
 
-struct Scheduler {
-	static ThreadPool* g_tp;
-};
+#ifdef _WIN32
+#define MINPF_FILE_SEPARATOR   "\\"
+#else
+#define MINPF_FILE_SEPARATOR   "/"
+#endif
 
-}
+#define MINPF_MAX_PATH_LEN 4096
+
+#include <plugin/minpf_plugin.h>
+

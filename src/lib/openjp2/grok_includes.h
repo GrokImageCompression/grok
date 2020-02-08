@@ -188,8 +188,6 @@ static inline long grok_lrintf(float f) {
 #include "ChunkBuffer.h"
 #include "BitIO.h"
 #include "BufferedStream.h"
-#include "EncodedTileData.h"
-
 #include "image.h"
 #include "invert.h"
 #include "j2k.h"

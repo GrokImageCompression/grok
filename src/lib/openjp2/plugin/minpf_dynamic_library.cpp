@@ -15,7 +15,7 @@
  *
  */
 
-#include "minpf_dynamic_library.h"
+#include <plugin/minpf_dynamic_library.h>
 #include <stdio.h>
 #include <cstring>
 

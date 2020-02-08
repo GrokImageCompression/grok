@@ -16,7 +16,6 @@
  */
 
 #include "grok_includes.h"
-#include "plugin_bridge.h"
 
 namespace grk {
 

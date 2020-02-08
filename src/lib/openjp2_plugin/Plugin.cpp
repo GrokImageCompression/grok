@@ -11,8 +11,8 @@
 *    GNU Affero General Public License for more details.
 */
 
-#include "plugin_interface.h"
 #include "Plugin.h"
+#include <plugin/plugin_interface.h>
 
 static const char* PluginId = "SamplePlugin";
 
