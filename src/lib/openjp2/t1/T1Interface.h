@@ -27,7 +27,7 @@ struct decodeBlockInfo {
 			tilec(nullptr), tiledp(nullptr), cblk(nullptr), resno(0), bandno(0), stepsize(
 					0), roishift(0), cblk_sty(0), qmfbid(0), x(0), y(0) {
 	}
-	grk_tcd_tilecomp *tilec;
+	TileComponent *tilec;
 	int32_t *tiledp;
 	grk_tcd_cblk_dec *cblk;
 	uint32_t resno;

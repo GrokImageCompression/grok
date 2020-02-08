@@ -112,7 +112,7 @@ static void decode_step2(grk_dwt_4vec* l, grk_dwt_4vec* w, uint32_t k, uint32_t 
 typedef grk_dwt_4vec T;
 typedef float TT;
 typedef grk_dwt97_info STR;
-bool dwt97::decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
+bool dwt97::decode(TileComponent *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
@@ -519,7 +519,7 @@ void dwt97::encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t c
 /* <summary>                             */
 /* Inverse 9-7 data transform in 2-D. */
 /* </summary>                            */
-bool dwt97::region_decode(grk_tcd_tilecomp *restrict tilec, uint32_t numres,
+bool dwt97::region_decode(TileComponent *restrict tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;

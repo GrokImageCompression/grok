@@ -57,7 +57,7 @@
 
 namespace grk {
 
-struct grk_tcd_tilecomp;
+struct TileComponent;
 
 struct grk_dwt {
 	int32_t *mem;

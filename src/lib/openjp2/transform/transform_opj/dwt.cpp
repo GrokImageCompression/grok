@@ -123,10 +123,10 @@ typedef void (*DWT1DFN)(const opj_dwt_t* v);
 /**
 Inverse wavelet transform in 2-D.
 */
-static OPJ_BOOL opj_dwt_decode_tile(grk_tcd_tilecomp* tilec, OPJ_UINT32 i);
+static OPJ_BOOL opj_dwt_decode_tile(TileComponent* tilec, OPJ_UINT32 i);
 
 static OPJ_BOOL opj_dwt_decode_partial_tile(
-    grk_tcd_tilecomp* tilec,
+    TileComponent* tilec,
     OPJ_UINT32 numres);
 
 
@@ -911,7 +911,7 @@ static void opj_idwt53_v(const opj_dwt_t *dwt,
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
 /* </summary>                           */
-bool opj_dwt_decode(TileProcessor *p_tcd, grk_tcd_tilecomp* tilec,
+bool opj_dwt_decode(TileProcessor *p_tcd, TileComponent* tilec,
                         uint32_t numres)
 {
     if (p_tcd->whole_tile_decoding) {
@@ -962,7 +962,7 @@ typedef struct {
 /* <summary>                            */
 /* Inverse wavelet transform in 2-D.    */
 /* </summary>                           */
-static OPJ_BOOL opj_dwt_decode_tile( grk_tcd_tilecomp* tilec, OPJ_UINT32 numres)
+static OPJ_BOOL opj_dwt_decode_tile( TileComponent* tilec, OPJ_UINT32 numres)
 {
     opj_dwt_t h;
     opj_dwt_t v;
@@ -1403,7 +1403,7 @@ static void opj_dwt_decode_partial_1_parallel(OPJ_INT32 *a,
     }
 }
 
-static void opj_dwt_get_band_coordinates(grk_tcd_tilecomp* tilec,
+static void opj_dwt_get_band_coordinates(TileComponent* tilec,
         OPJ_UINT32 resno,
         OPJ_UINT32 bandno,
         OPJ_UINT32 tcx0,
@@ -1457,7 +1457,7 @@ static void opj_dwt_segment_grow(OPJ_UINT32 filter_width,
 
 
 static opj_sparse_array_int32_t* opj_dwt_init_sparse_array(
-    grk_tcd_tilecomp* tilec,
+    TileComponent* tilec,
     OPJ_UINT32 numres)
 {
     grk_tcd_resolution* tr_max = &(tilec->resolutions[numres - 1]);
@@ -1515,7 +1515,7 @@ static opj_sparse_array_int32_t* opj_dwt_init_sparse_array(
 
 
 static OPJ_BOOL opj_dwt_decode_partial_tile(
-    grk_tcd_tilecomp* tilec,
+    TileComponent* tilec,
     OPJ_UINT32 numres)
 {
     opj_sparse_array_int32_t* sa;
@@ -2099,7 +2099,7 @@ static void opj_v4dwt_decode(opj_v4dwt_t* restrict dwt)
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 static
-OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* restrict tilec,
+OPJ_BOOL opj_dwt_decode_tile_97(TileComponent* restrict tilec,
                                 OPJ_UINT32 numres)
 {
     opj_v4dwt_t h;
@@ -2235,7 +2235,7 @@ OPJ_BOOL opj_dwt_decode_tile_97(grk_tcd_tilecomp* restrict tilec,
 }
 
 static
-OPJ_BOOL opj_dwt_decode_partial_97(grk_tcd_tilecomp* restrict tilec,
+OPJ_BOOL opj_dwt_decode_partial_97(TileComponent* restrict tilec,
                                    OPJ_UINT32 numres)
 {
     opj_sparse_array_int32_t* sa;
@@ -2477,7 +2477,7 @@ OPJ_BOOL opj_dwt_decode_partial_97(grk_tcd_tilecomp* restrict tilec,
 
 
 bool opj_dwt_decode_real(TileProcessor *p_tcd,
-                             grk_tcd_tilecomp* restrict tilec,
+                             TileComponent* restrict tilec,
                              uint32_t numres)
 {
     if (p_tcd->whole_tile_decoding) {

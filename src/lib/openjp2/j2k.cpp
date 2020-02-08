@@ -411,11 +411,6 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index);
 static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
 		grk_image *p_output_image, bool clearOutputOnInit);
 
-static void get_tile_dimensions(grk_image *l_image, grk_tcd_tilecomp *l_tilec,
-		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
-		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
-		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
-
 static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data);
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *p_stream);
@@ -9660,7 +9655,7 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *p_stream)
 		/* if we only have one tile, then simply set tile component data equal to image component data */
 		/* otherwise, allocate the data */
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			grk_tcd_tilecomp *l_tilec = p_tcd->tile->comps + j;
+			TileComponent *l_tilec = p_tcd->tile->comps + j;
 			if (l_reuse_data) {
 				l_tilec->buf->data = (p_tcd->image->comps + j)->data;
 				l_tilec->buf->owns_data = false;
@@ -9801,45 +9796,19 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 	return true;
 }
 
-static void get_tile_dimensions(grk_image *l_image, grk_tcd_tilecomp *l_tilec,
-		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
-		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
-		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset) {
-	uint32_t l_remaining;
-	*l_size_comp = l_img_comp->prec >> 3; /* (/8) */
-	l_remaining = l_img_comp->prec & 7; /* (%8) */
-	if (l_remaining) {
-		*l_size_comp += 1;
-	}
-
-	if (*l_size_comp == 3) {
-		*l_size_comp = 4;
-	}
-
-	*l_width = l_tilec->width();
-	*l_height = l_tilec->height();
-	*l_offset_x = ceildiv<uint32_t>(l_image->x0, l_img_comp->dx);
-	*l_offset_y = ceildiv<uint32_t>(l_image->y0, l_img_comp->dy);
-	*l_image_width = ceildiv<uint32_t>(l_image->x1 - l_image->x0,
-			l_img_comp->dx);
-	*l_stride = *l_image_width - *l_width;
-	*l_tile_offset = (l_tilec->X0() - *l_offset_x)
-			+ (uint64_t) (l_tilec->Y0() - *l_offset_y) * *l_image_width;
-}
-
 static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data) {
 	uint32_t i, j, k = 0;
 
 	for (i = 0; i < p_tcd->image->numcomps; ++i) {
 		grk_image *l_image = p_tcd->image;
 		int32_t *l_src_ptr;
-		grk_tcd_tilecomp *l_tilec = p_tcd->tile->comps + i;
+		TileComponent *l_tilec = p_tcd->tile->comps + i;
 		 grk_image_comp  *l_img_comp = l_image->comps + i;
 		uint32_t l_size_comp, l_width, l_height, l_offset_x, l_offset_y,
 				l_image_width, l_stride;
 		uint64_t l_tile_offset;
 
-		get_tile_dimensions(l_image, l_tilec, l_img_comp, &l_size_comp,
+		l_tilec->get_dimensions(l_image, l_img_comp, &l_size_comp,
 				&l_width, &l_height, &l_offset_x, &l_offset_y, &l_image_width,
 				&l_stride, &l_tile_offset);
 
@@ -10296,7 +10265,7 @@ bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		uint32_t j;
 		/* Allocate data */
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			grk_tcd_tilecomp *l_tilec = p_j2k->m_tileProcessor->tile->comps + j;
+			TileComponent *l_tilec = p_j2k->m_tileProcessor->tile->comps + j;
 
 			if (!l_tilec->buf->alloc_component_data_encode()) {
 				GROK_ERROR(

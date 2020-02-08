@@ -197,7 +197,7 @@ static inline long grok_lrintf(float f) {
 #include "BitIO.h"
 #include "TileBuffer.h"
 #include "pi.h"
-#include <TagTree.h>e.h>
+#include "TagTree.h"
 #include "TileProcessor.h"
 #include <Wavelet.h>
 #include "dwt_utils.h"

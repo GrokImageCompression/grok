@@ -88,7 +88,7 @@ struct grk_dwt97 {
 	uint8_t odd_top_left_bit;
 };
 
-struct grk_tcd_tilecomp;
+struct TileComponent;
 
 class dwt97 {
 public:
@@ -98,7 +98,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool decode(grk_tcd_tilecomp* restrict tilec,
+	bool decode(TileComponent* restrict tilec,
 			uint32_t numres,
 			uint32_t numThreads);
 
@@ -108,7 +108,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool region_decode(grk_tcd_tilecomp* restrict tilec,
+	bool region_decode(TileComponent* restrict tilec,
 			uint32_t numres,
 			uint32_t numThreads);
 	/**

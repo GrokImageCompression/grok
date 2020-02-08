@@ -98,7 +98,7 @@ bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
 	if (plugin_tile->numComponents != p_tile->numcomps)
 		return false;
 	for (uint32_t compno = 0; compno < p_tile->numcomps; ++compno) {
-		grk_tcd_tilecomp *tilecomp = p_tile->comps + compno;
+		TileComponent *tilecomp = p_tile->comps + compno;
 		grk_plugin_tile_component *plugin_tilecomp =
 				plugin_tile->tileComponents[compno];
 		if (tilecomp->numresolutions != plugin_tilecomp->numResolutions)
@@ -261,7 +261,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 // set context stream for debugging purposes
 void set_context_stream(TileProcessor *p_tileProcessor) {
 	for (uint32_t compno = 0; compno < p_tileProcessor->tile->numcomps; compno++) {
-		grk_tcd_tilecomp *tilec = p_tileProcessor->tile->comps + compno;
+		TileComponent *tilec = p_tileProcessor->tile->comps + compno;
 		tilec->numpix = 0;
 
 		for (uint32_t resno = 0; resno < tilec->numresolutions; resno++) {

@@ -177,7 +177,7 @@ void dwt53::encode_line(int32_t *a, int32_t d_n, int32_t s_n, uint8_t cas) {
  */
 typedef int32_t T;
 typedef grk_dwt STR;
-bool dwt53::decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads) {
+bool dwt53::decode(TileComponent *tilec, uint32_t numres, uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;
 	}
@@ -417,7 +417,7 @@ void dwt53::region_interleave_v(grk_dwt53 *buffer_v, int32_t *tile_data,
 /* <summary>                            */
 /* Inverse 5-3 data transform in 2-D. */
 /* </summary>                           */
-bool dwt53::region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
+bool dwt53::region_decode(TileComponent *tilec, uint32_t numres,
 		uint32_t numThreads) {
 	if (numres == 1U) {
 		return true;

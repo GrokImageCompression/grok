@@ -30,7 +30,7 @@ public:
 	 Forward wavelet transform in 2-D.
 	 @param tilec Tile component information (current tile)
 	 */
-	bool run(grk_tcd_tilecomp *tilec);
+	bool run(TileComponent *tilec);
 };
 
 
@@ -38,7 +38,7 @@ public:
  Forward wavelet transform in 2-D.
  @param tilec Tile component information (current tile)
  */
-template <typename DWT> bool WaveletForward<DWT>::run(grk_tcd_tilecomp *tilec){
+template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	if (tilec->numresolutions == 1U)
 		return true;
 

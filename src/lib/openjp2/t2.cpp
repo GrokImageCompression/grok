@@ -831,7 +831,7 @@ static bool t2_encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
 	uint32_t layno = pi->layno;
-	grk_tcd_tilecomp *tilec = &tile->comps[compno];
+	TileComponent *tilec = &tile->comps[compno];
 	grk_tcd_resolution *res = &tilec->resolutions[resno];
 	uint64_t numHeaderBytes = 0;
 	size_t streamBytes = 0;
@@ -1274,7 +1274,7 @@ static bool t2_encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 	grk_tcd_cblk_enc *cblk = nullptr;
 	grk_tcd_pass *pass = nullptr;
 
-	grk_tcd_tilecomp *tilec = tile->comps + compno;
+	TileComponent *tilec = tile->comps + compno;
 	grk_tcd_resolution *res = tilec->resolutions + resno;
 	uint64_t packet_bytes_written = 0;
 

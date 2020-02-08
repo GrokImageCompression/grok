@@ -59,7 +59,7 @@
 
 namespace grk {
 
-struct grk_tcd_tilecomp;
+struct TileComponent;
 class dwt_utils;
 
 struct grk_dwt53 {
@@ -80,7 +80,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool decode(grk_tcd_tilecomp *tilec, uint32_t numres, uint32_t numThreads);
+	bool decode(TileComponent *tilec, uint32_t numres, uint32_t numThreads);
 
 	/**
 	 Inverse wavelet transform in 2-D.
@@ -88,7 +88,7 @@ public:
 	 @param tilec Tile component information (current tile)
 	 @param numres Number of resolution levels to decode
 	 */
-	bool region_decode(grk_tcd_tilecomp *tilec, uint32_t numres,
+	bool region_decode(TileComponent *tilec, uint32_t numres,
 			uint32_t numThreads);
 
 	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);

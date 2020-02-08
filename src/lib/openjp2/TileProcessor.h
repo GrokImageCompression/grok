@@ -288,26 +288,18 @@ struct grk_tcd_resolution {
 };
 
 // tile component
-struct grk_tcd_tilecomp {
+struct TileComponent {
 	uint32_t width();
 	uint32_t height();
 	uint64_t area();
 	uint64_t size();
 	void finalizeCoordinates(bool isEncoder);
-	uint32_t X0(){
-		return x0;
-	}
-	uint32_t X1(){
-		return x1;
-	}
-	uint32_t Y0(){
-		return y0;
-	}
-	uint32_t Y1(){
-		return y1;
-	}
+	void get_dimensions(grk_image *l_image, grk_image_comp  *l_img_comp,
+			uint32_t *l_size_comp, uint32_t *l_width,
+			uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
+			uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
-	bool create_component(bool isEncoder,
+	bool create_buffer(bool isEncoder,
 			bool irreversible, uint32_t cblkw, uint32_t cblkh,
 			grk_image *output_image, uint32_t dx, uint32_t dy);
 
@@ -340,7 +332,7 @@ private:
 struct grk_tcd_tile {
 	uint32_t x0, y0, x1, y1; /* dimension of the tile : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t numcomps; /* number of components in tile */
-	grk_tcd_tilecomp *comps; /* Components information */
+	TileComponent *comps; /* Components information */
 	uint64_t numpix;
 	double distotile;
 	double distolayer[100];
