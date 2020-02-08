@@ -63,7 +63,7 @@ template<typename TYPE> void grok_write(uint8_t *p_buffer, TYPE value,
 template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
-//file stream
+//file stream / memory mapped file stream (p_buffer_size == 0)
 BufferedStream::BufferedStream(size_t p_buffer_size, bool l_is_input) :
 				m_user_data(nullptr),
 				m_free_user_data_fn(nullptr),
@@ -79,9 +79,8 @@ BufferedStream::BufferedStream(size_t p_buffer_size, bool l_is_input) :
 				m_read_bytes_seekable(0),
 				isMemStream(false) {
 
-	if (p_buffer_size) {
-		m_buf = new grk_buf(new uint8_t[p_buffer_size], p_buffer_size,false);
-	}
+	m_buf =
+			new grk_buf(p_buffer_size ? new uint8_t[p_buffer_size] : nullptr, p_buffer_size,false);
 }
 //memory stream
 BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input) :
