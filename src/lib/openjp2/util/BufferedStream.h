@@ -237,7 +237,7 @@ private:
 	grk_buf *m_buf;
 
 	// number of bytes read in, or slated for write
-	size_t m_bufered_bytes;
+	size_t m_buffered_bytes;
 
 	// number of seekable bytes in buffer. This will equal the number of bytes
 	// read in the last media read, always <= m_buffer_size
