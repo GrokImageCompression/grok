@@ -134,7 +134,6 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		if (p_buffer && m_bufered_bytes)
 			memcpy(p_buffer, m_buf->curr_ptr(), m_bufered_bytes);
 		m_stream_offset += m_bufered_bytes;
-		m_buf->incr_offset(m_bufered_bytes);
 		invalidate_buffer();
 		return l_read_nb_bytes;
 	}
@@ -147,6 +146,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		}
 		p_size -= m_bufered_bytes;
 		m_stream_offset += m_bufered_bytes;
+		m_bufered_bytes = 0;
 	}
 
 	//4. read from media
@@ -154,7 +154,7 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 	//a) very first memory buffer "read", or buffered file read
 	if (m_buf->buf) {
 		while(true) {
-			m_bufered_bytes = m_read_fn(m_buf->buf, m_buf->len, m_user_data);
+			m_bufered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
 			// i) end of stream
 			if (m_bufered_bytes == 0) {
 				invalidate_buffer();
@@ -340,9 +340,8 @@ bool BufferedStream::flush() {
 void BufferedStream::invalidate_buffer() {
 	m_buf->offset = 0;
 	m_bufered_bytes = 0;
-	if (m_status & GROK_STREAM_STATUS_INPUT) {
+	if (m_status & GROK_STREAM_STATUS_INPUT)
 		m_read_bytes_seekable = 0;
-	}
 }
 
 bool BufferedStream::read_skip(int64_t p_size) {

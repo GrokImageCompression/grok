@@ -164,4 +164,14 @@ uint8_t* grk_buf::curr_ptr(){
 	return buf + offset;
 }
 
+void grk_buf::grow(){
+	if (!owns_data)
+		return;
+	auto temp = new uint8_t[len*2];
+	memcpy(temp, buf, len);
+	len *=2;
+	delete buf;
+	buf = temp;
+}
+
 }
