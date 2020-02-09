@@ -64,7 +64,6 @@ template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
 //1. file stream -        buffer == nullptr && p_buffer_size > 0
-//2. memory mapped file - buffer == nullptr && p_buffer_size == 0
 //3. memory stream -      buffer != nullptr && p_buffer_size > 0
 //memory stream
 BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input) :
@@ -82,13 +81,10 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_
 				m_stream_offset(0),
 				isMemStream(buffer != nullptr) {
 
-	   uint8_t *cache_buffer = nullptr;
-	   if (buffer)
-		   cache_buffer = buffer;
-	   else if (p_buffer_size)
-		   cache_buffer =  new uint8_t[p_buffer_size];
 		m_buf =
-			new grk_buf(cache_buffer, p_buffer_size,false);
+			new grk_buf((!buffer && p_buffer_size) ? new uint8_t[p_buffer_size] : buffer,
+						p_buffer_size,
+						buffer == nullptr);
 }
 
 BufferedStream::~BufferedStream() {

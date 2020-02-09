@@ -319,35 +319,25 @@ static void mem_map_free(void *user_data) {
  Currently, only read streams are supported for memory mapped files.
  */
  grk_stream  *  create_mapped_file_read_stream(const char *fname) {
-	 grk_stream  *l_stream = nullptr;
-	buf_info_t *buffer_info = nullptr;
-	void *mapped_view = nullptr;
 	bool p_is_read_stream = true;
 
 	grok_handle_t fd = open_fd(fname, p_is_read_stream ? "r" : "w");
 	if (fd == (grok_handle_t) -1)
 		return nullptr;
 
-	buffer_info = new buf_info_t();
+	auto buffer_info = new buf_info_t();
 	buffer_info->fd = fd;
 	buffer_info->len = (size_t) size_proc(fd);
-
-	l_stream = grk_stream_create(0, p_is_read_stream);
-	if (!l_stream) {
-		mem_map_free(buffer_info);
-		return nullptr;
-	}
-
-	mapped_view = grok_map(fd, buffer_info->len);
+	auto mapped_view = grok_map(fd, buffer_info->len);
 	if (!mapped_view) {
-		grk_stream_destroy(l_stream);
 		mem_map_free(buffer_info);
 		return nullptr;
 	}
-
 	buffer_info->buf = (uint8_t*) mapped_view;
 	buffer_info->off = 0;
 
+	// now treat mapped file like any other memory stream
+	auto l_stream = (grk_stream*)(new BufferedStream(buffer_info->buf, buffer_info->len, p_is_read_stream));
 	grk_stream_set_user_data(l_stream, buffer_info,
 			(grk_stream_free_user_data_fn) mem_map_free);
 	set_up_mem_stream(l_stream, buffer_info->len, p_is_read_stream);

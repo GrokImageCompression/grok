@@ -1339,6 +1339,9 @@ int decode_callback(grk_plugin_decode_callback_info* info) {
 	return rc;
 }
 
+enum grk_stream_type {GRK_FILE_STREAM,
+							GRK_MAPPED_FILE_STREAM };
+
 // return: 0 for success, non-zero for failure
 int pre_decode(grk_plugin_decode_callback_info* info) {
 	if (!info)
@@ -1347,63 +1350,29 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	auto parameters = info->decoder_parameters;
 	if (!parameters)
 		return 1;
-	uint8_t* buffer = nullptr;
 	auto infile = info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format = info->decod_format != UNKNOWN_FORMAT ? info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
 		// toggle only one of the two booleans below
-		bool isBufferStream = false;
-		bool isMappedFile = false;
-		if (isBufferStream) {
-			auto fp = fopen(parameters->infile, "rb");
-			if (!fp) {
-				spdlog::error( "grk_decompress: unable to open file {} for reading", infile);
-				failed = 1;
-				goto cleanup;
-			}
-
-			auto rc = fseek(fp, 0, SEEK_END);
-			if (rc == -1) {
-				spdlog::error( "grk_decompress: unable to seek on file {}", infile);
-				fclose(fp);
-				failed = 1;
-				goto cleanup;
-			}
-			auto lengthOfFile = ftell(fp);
-			if (lengthOfFile <= 0) {
-				spdlog::error( "grk_decompress: Zero or negative length for file {}", parameters->infile);
-				fclose(fp);
-				failed = 1;
-				goto cleanup;
-			}
-			rewind(fp);
-			buffer = new uint8_t[lengthOfFile];
-			size_t bytesRead = fread(buffer, 1, lengthOfFile, fp);
-			if (!grk::safe_fclose(fp)) {
-				spdlog::error( "Error closing file ");
-				failed = 1;
-				goto cleanup;
-			}
-
-			if (bytesRead != (size_t)lengthOfFile) {
-				spdlog::error( "grk_decompress: Unable to read full length of file {}", parameters->infile);
-				failed = 1;
-				goto cleanup;
-			}
-			info->l_stream = grk_stream_create_mem_stream(buffer, lengthOfFile,true, true);
-		}
-		else  if (isMappedFile) {
+		auto stream_type = GRK_MAPPED_FILE_STREAM;
+		switch(stream_type){
+		case GRK_MAPPED_FILE_STREAM:
 			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
-		} else {
-			// use file stream 
+			break;
+		case GRK_FILE_STREAM:
+			// use file stream
 			info->l_stream = grk_stream_create_default_file_stream(infile, true);
+			break;
+		default:
+			spdlog::error( "Unrecognized stream type %d. Exiting", stream_type);
+			failed = 1;
+			goto cleanup;
+			break;
 		}
 	}
-
-
 	if (!info->l_stream) {
-		spdlog::error( "failed to create the stream from the file {}\n", infile);
+		spdlog::error( "failed to create the stream from the file {}", infile);
 		failed = 1;
 		goto cleanup;
 	}
