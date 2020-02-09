@@ -177,7 +177,7 @@ static void encode_help_display(void)
 {
     fprintf(stdout,"\nThis is the grk_compress utility from the Grok project.\n"
             "It compresses various image formats with the JPEG 2000 algorithm.\n"
-            "It has been compiled against openjp2 library v%s.\n\n",grk_version());
+            "It has been compiled against Grok library v%s.\n\n",grk_version());
 
     fprintf(stdout,"Default encoding options:\n");
     fprintf(stdout,"-------------------------\n");
