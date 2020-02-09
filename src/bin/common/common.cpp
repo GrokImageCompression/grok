@@ -227,7 +227,7 @@ bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
     }
 
     s = fname + (strlen(fname) > 4 ? strlen(fname) - 4 : 0);
-    spdlog::warn("The extension of this file is incorrect.\n FOUND {}. SHOULD BE {}\n", s, magic_s);
+    spdlog::warn("The extension of this file is incorrect.\n Found {}. Should be {}\n", s, magic_s);
     *fmt = magic_format;
     return true;
 }

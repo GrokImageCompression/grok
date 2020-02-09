@@ -135,7 +135,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	char line[256];
 
 	if (fgets(line, 250, reader) == nullptr) {
-		spdlog::error(" fgets return a nullptr value");
+		spdlog::error(" fgets returned nullptr");
 		return;
 	}
 
@@ -145,7 +145,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	}
 	format = atoi(line + 1);
 	if (format < 1 || format > 7) {
-		spdlog::error("read_pnm_header:magic format {} invalid\n",
+		spdlog::error("read_pnm_header:magic format {} invalid",
 				format);
 		return;
 	}
@@ -153,19 +153,17 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	ttype = end = 0;
 
 	while (fgets(line, 250, reader)) {
-		char *s;
 		int allow_null = 0;
-
-		if (*line == '#')
+		if (*line == '#' || *line == '\n')
 			continue;
 
-		s = line;
-
+		char *s = line;
 		if (format == 7) {
 			s = skip_idf(s, idf);
-
-			if (s == nullptr || *s == 0)
+			if (!s || *s == 0){
+				spdlog::error("Skip idf returned null");
 				return;
+			}
 
 			if (strcmp(idf, "ENDHDR") == 0) {
 				end = 1;
@@ -173,36 +171,45 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "WIDTH") == 0) {
 				s = skip_int(s, &ph->width);
-				if (s == nullptr || *s == 0 || ph->width < 0)
+				if (!s || *s == 0 || ph->width < 0){
+					spdlog::error("Invalid width");
 					return;
+				}
 
 				continue;
 			}
 			if (strcmp(idf, "HEIGHT") == 0) {
 				s = skip_int(s, &ph->height);
-				if (s == nullptr || *s == 0 || ph->height < 0)
+				if (!s || *s == 0 || ph->height < 0){
+					spdlog::error("Invalid height");
 					return;
+				}
 
 				continue;
 			}
 			if (strcmp(idf, "DEPTH") == 0) {
 				s = skip_int(s, &ph->depth);
-				if (s == nullptr || *s == 0 || ph->depth < 0)
+				if (!s || *s == 0 || ph->depth < 0){
+					spdlog::error("Invalid depth");
 					return;
+				}
 
 				continue;
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
-				if (s == nullptr || *s == 0 || ph->maxval < 0)
+				if (!s || *s == 0 || ph->maxval < 0){
+					spdlog::error("Invalid max val");
 					return;
-
+				}
 				continue;
 			}
 			if (strcmp(idf, "TUPLTYPE") == 0) {
 				s = skip_idf(s, type);
-				if (s == nullptr || *s == 0)
+				if (!s || *s == 0){
+					spdlog::error("Skip idf returned null");
 					return;
+				}
 
 				if (strcmp(type, "BLACKANDWHITE") == 0) {
 					ph->bw = 1;
@@ -240,16 +247,20 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		/* Here format is in range [1,6] */
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
-			if ((s == nullptr) || (*s == 0) || (ph->width < 1))
+			if ((!s) || (*s == 0) || (ph->width < 1)){
+				spdlog::error("Invalid width {}", (s && *s != 0) ? ph->width : -1);
 				return;
+			}
 			allow_null = 1;
 		}
 		if (ph->height == 0) {
 			s = skip_int(s, &ph->height);
 			if ((s == nullptr) && allow_null)
 				continue;
-			if ((s == nullptr) || (*s == 0) || (ph->height < 1))
+			if (!s || (*s == 0) || (ph->height < 1)){
+				spdlog::error("Invalid height {}", (s && *s != 0) ? ph->height : -1);
 				return;
+			}
 			if (format == 1 || format == 4) {
 				break;
 			}
@@ -257,26 +268,32 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		}
 		/* here, format is in P2, P3, P5, P6 */
 		s = skip_int(s, &ph->maxval);
-		if ((s == nullptr) && allow_null)
+		if (!s && allow_null)
 			continue;
-		if ((s == nullptr) || (*s == 0))
+		if (!s || (*s == 0))
 			return;
 		break;
 	}/* while(fgets( ) */
 	if (format == 2 || format == 3 || format > 4) {
-		if (ph->maxval < 1 || ph->maxval > 65535)
+		if (ph->maxval < 1 || ph->maxval > 65535){
+			spdlog::error("Invalid max value {}", ph->maxval);
 			return;
+		}
 	}
-	if (ph->width < 1 || ph->height < 1)
+	if (ph->width < 1 || ph->height < 1){
+		spdlog::error("Invalid width or height");
 		return;
+	}
 
 	if (format == 7) {
 		if (!end) {
 			spdlog::error("read_pnm_header:P7 without ENDHDR");
 			return;
 		}
-		if (ph->depth < 1 || ph->depth > 4)
+		if (ph->depth < 1 || ph->depth > 4){
+			spdlog::error("Invalid depth {}", ph->depth);
 			return;
+		}
 
 		if (ttype)
 			ph->ok = 1;
@@ -343,6 +360,7 @@ static grk_image *  pnmtoimage(const char *filename,
 	memset(&header_info, 0, sizeof(struct pnm_header));
 	read_pnm_header(fp, &header_info);
 	if (!header_info.ok) {
+		spdlog::error("Invalid PNM header");
 		goto cleanup;
 	}
 	format = header_info.format;

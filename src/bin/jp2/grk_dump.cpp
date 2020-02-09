@@ -280,7 +280,7 @@ static int infile_format(const char *fname)
 
     s = fname + strlen(fname) - 4;
     spdlog::error("The extension of this file is incorrect.\n"
-            "FOUND {}. SHOULD BE {}\n", s, magic_s);
+            "Found {};  should be {}\n", s, magic_s);
     return magic_format;
 }
 /* -------------------------------------------------------------------------- */

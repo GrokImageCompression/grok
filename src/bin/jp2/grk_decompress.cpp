@@ -245,7 +245,7 @@ static void decode_help_display(void)
             "    If 'C' is specified (default), values are clipped.\n"
             "    If 'S' is specified, values are scaled.\n"
             "    A 0 value can be specified (meaning original bit depth).\n");
-    fprintf(stdout,"  [-f | -force-rg]b\n"
+    fprintf(stdout,"  [-f | -force-rgb]\n"
             "    Force output image colorspace to RGB\n"
 			"  [-u | -upsample]\n"
             "    components will be upsampled to image size\n"
