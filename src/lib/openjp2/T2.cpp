@@ -726,6 +726,137 @@ bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 	}
 	return true;
 }
+bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
+		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
+	bool l_read_data;
+	uint64_t l_nb_bytes_read = 0;
+	uint64_t l_nb_total_bytes_read = 0;
+	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
+
+	*p_data_read = 0;
+	if (!read_packet_header(p_tile, p_tcp, p_pi,
+			&l_read_data, src_buf, &l_nb_bytes_read)) {
+		return false;
+	}
+
+	l_nb_total_bytes_read += l_nb_bytes_read;
+	max_length -= l_nb_bytes_read;
+
+	/* we should read data for the packet */
+	if (l_read_data) {
+		l_nb_bytes_read = 0;
+
+		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
+				&l_nb_bytes_read, max_length)) {
+			return false;
+		}
+		src_buf->incr_cur_chunk_offset(l_nb_bytes_read);
+		l_nb_total_bytes_read += l_nb_bytes_read;
+	}
+	*p_data_read = l_nb_total_bytes_read;
+
+	return true;
+}
+
+bool T2::skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
+		uint64_t *p_data_read, uint64_t max_length) {
+	uint32_t bandno;
+	uint64_t l_nb_code_blocks, cblkno;
+
+	*p_data_read = 0;
+	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
+		auto l_band = l_res->bands + bandno;
+		if (l_band->isEmpty())
+			continue;
+
+		auto l_prc = &l_band->precincts[p_pi->precno];
+		l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
+		auto l_cblk = l_prc->cblks.dec;
+		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
+			grk_tcd_seg *l_seg = nullptr;
+
+			if (!l_cblk->numPassesInPacket) {
+				/* nothing to do */
+				++l_cblk;
+				continue;
+			}
+
+			if (!l_cblk->numSegments) {
+				l_seg = l_cblk->segs;
+				++l_cblk->numSegments;
+				l_cblk->dataSize = 0;
+			} else {
+				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
+				if (l_seg->numpasses == l_seg->maxpasses) {
+					++l_seg;
+					++l_cblk->numSegments;
+				}
+			}
+			uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
+			do {
+				/* Check possible overflow then size */
+				if (((*p_data_read + l_seg->numBytesInPacket) < (*p_data_read))
+						|| ((*p_data_read + l_seg->numBytesInPacket) > max_length)) {
+					GROK_ERROR(
+							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+							l_seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
+							bandno, p_pi->resno, p_pi->compno);
+					return false;
+				}
+
+				//GROK_INFO( "skip packet: p_data_read = %d, bytes in packet =  %d \n",
+				//		*p_data_read, l_seg->numBytesInPacket);
+				*(p_data_read) += l_seg->numBytesInPacket;
+				l_seg->numpasses += l_seg->numPassesInPacket;
+				numPassesInPacket -= l_seg->numPassesInPacket;
+				if (numPassesInPacket > 0) {
+					++l_seg;
+					++l_cblk->numSegments;
+				}
+			} while (numPassesInPacket > 0);
+
+			++l_cblk;
+		}
+	}
+	return true;
+}
+
+bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
+		uint8_t cblk_sty, bool first) {
+	uint32_t l_nb_segs = index + 1;
+
+	if (l_nb_segs > cblk->numSegmentsAllocated) {
+		auto new_segs = new grk_tcd_seg[cblk->numSegmentsAllocated
+				+ cblk->numSegmentsAllocated];
+		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
+			new_segs[i] = cblk->segs[i];
+		cblk->numSegmentsAllocated += default_numbers_segments;
+		if (cblk->segs)
+			delete[] cblk->segs;
+		cblk->segs = new_segs;
+	}
+
+	auto seg = &cblk->segs[index];
+	seg->clear();
+
+	if (cblk_sty & J2K_CCP_CBLKSTY_TERMALL) {
+		seg->maxpasses = 1;
+	} else if (cblk_sty & J2K_CCP_CBLKSTY_LAZY) {
+		if (first) {
+			seg->maxpasses = 10;
+		} else {
+			auto last_seg = seg - 1;
+			seg->maxpasses =
+					((last_seg->maxpasses == 1) || (last_seg->maxpasses == 10)) ?
+							2 : 1;
+		}
+	} else {
+		seg->maxpasses = max_passes_per_segment;
+	}
+
+	return true;
+}
+
 //--------------------------------------------------------------------------------------------------
 
 bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
@@ -1368,137 +1499,6 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 		++band;
 	}
 	*p_data_written += packet_bytes_written;
-
-	return true;
-}
-bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
-	bool l_read_data;
-	uint64_t l_nb_bytes_read = 0;
-	uint64_t l_nb_total_bytes_read = 0;
-	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
-
-	*p_data_read = 0;
-	if (!read_packet_header(p_tile, p_tcp, p_pi,
-			&l_read_data, src_buf, &l_nb_bytes_read)) {
-		return false;
-	}
-
-	l_nb_total_bytes_read += l_nb_bytes_read;
-	max_length -= l_nb_bytes_read;
-
-	/* we should read data for the packet */
-	if (l_read_data) {
-		l_nb_bytes_read = 0;
-
-		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
-				&l_nb_bytes_read, max_length)) {
-			return false;
-		}
-		src_buf->incr_cur_chunk_offset(l_nb_bytes_read);
-		l_nb_total_bytes_read += l_nb_bytes_read;
-	}
-	*p_data_read = l_nb_total_bytes_read;
-
-	return true;
-}
-
-bool T2::skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
-		uint64_t *p_data_read, uint64_t max_length) {
-	uint32_t bandno;
-	uint64_t l_nb_code_blocks, cblkno;
-
-	*p_data_read = 0;
-	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
-		auto l_band = l_res->bands + bandno;
-		if (l_band->isEmpty())
-			continue;
-
-		auto l_prc = &l_band->precincts[p_pi->precno];
-		l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
-		auto l_cblk = l_prc->cblks.dec;
-		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-			grk_tcd_seg *l_seg = nullptr;
-
-			if (!l_cblk->numPassesInPacket) {
-				/* nothing to do */
-				++l_cblk;
-				continue;
-			}
-
-			if (!l_cblk->numSegments) {
-				l_seg = l_cblk->segs;
-				++l_cblk->numSegments;
-				l_cblk->dataSize = 0;
-			} else {
-				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
-				if (l_seg->numpasses == l_seg->maxpasses) {
-					++l_seg;
-					++l_cblk->numSegments;
-				}
-			}
-			uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
-			do {
-				/* Check possible overflow then size */
-				if (((*p_data_read + l_seg->numBytesInPacket) < (*p_data_read))
-						|| ((*p_data_read + l_seg->numBytesInPacket) > max_length)) {
-					GROK_ERROR(
-							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
-							l_seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
-							bandno, p_pi->resno, p_pi->compno);
-					return false;
-				}
-
-				GROK_ERROR( "p_data_read (%d) newlen (%d) \n",
-						*p_data_read, l_seg->numBytesInPacket);
-				*(p_data_read) += l_seg->numBytesInPacket;
-
-				l_seg->numpasses += l_seg->numPassesInPacket;
-				numPassesInPacket -= l_seg->numPassesInPacket;
-				if (numPassesInPacket > 0) {
-					++l_seg;
-					++l_cblk->numSegments;
-				}
-			} while (numPassesInPacket > 0);
-
-			++l_cblk;
-		}
-	}
-	return true;
-}
-
-bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-		uint8_t cblk_sty, bool first) {
-	uint32_t l_nb_segs = index + 1;
-
-	if (l_nb_segs > cblk->numSegmentsAllocated) {
-		auto new_segs = new grk_tcd_seg[cblk->numSegmentsAllocated
-				+ cblk->numSegmentsAllocated];
-		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
-			new_segs[i] = cblk->segs[i];
-		cblk->numSegmentsAllocated += default_numbers_segments;
-		if (cblk->segs)
-			delete[] cblk->segs;
-		cblk->segs = new_segs;
-	}
-
-	auto seg = &cblk->segs[index];
-	seg->clear();
-
-	if (cblk_sty & J2K_CCP_CBLKSTY_TERMALL) {
-		seg->maxpasses = 1;
-	} else if (cblk_sty & J2K_CCP_CBLKSTY_LAZY) {
-		if (first) {
-			seg->maxpasses = 10;
-		} else {
-			auto last_seg = seg - 1;
-			seg->maxpasses =
-					((last_seg->maxpasses == 1) || (last_seg->maxpasses == 10)) ?
-							2 : 1;
-		}
-	} else {
-		seg->maxpasses = max_passes_per_segment;
-	}
 
 	return true;
 }

@@ -465,7 +465,6 @@ int parse_cmdline_decoder(int argc,
 								"Upsample", cmd);
 		SwitchArg splitPnmArg("s", "split-pnm",
 								"Split PNM", cmd);
-
 		ValueArg<string> pluginPathArg("g", "PluginPath",
 										"Plugin path", 
 										false, "", "string",cmd);
@@ -541,7 +540,6 @@ int parse_cmdline_decoder(int argc,
 		if (splitPnmArg.isSet()) {
 			parameters->split_pnm = true;
 		}
-
 		if (compressionArg.isSet()) {
 			parameters->compression = compressionArg.getValue();
 		}
@@ -684,7 +682,7 @@ int parse_cmdline_decoder(int argc,
 				return 1;
 		}
 		if (numThreadsArg.isSet()) {
-			parameters->core.numThreads = numThreadsArg.getValue();
+			parameters->numThreads = numThreadsArg.getValue();
 		}
 
 		if (decodeRegionArg.isSet()) {
@@ -1194,7 +1192,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams* initParams)
 	initParams->initialized = true;
 
 	// loads plugin but does not actually create codec
-	if (!grk_initialize(initParams->plugin_path, initParams->parameters.core.numThreads)) {
+	if (!grk_initialize(initParams->plugin_path, initParams->parameters.numThreads)) {
 		success = 1;
 		goto cleanup;
 	}
@@ -1354,22 +1352,8 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	int decod_format = info->decod_format != UNKNOWN_FORMAT ? info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
-		// toggle only one of the two booleans below
-		auto stream_type = GRK_MAPPED_FILE_STREAM;
-		switch(stream_type){
-		case GRK_MAPPED_FILE_STREAM:
-			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
-			break;
-		case GRK_FILE_STREAM:
-			// use file stream
-			info->l_stream = grk_stream_create_default_file_stream(infile, true);
-			break;
-		default:
-			spdlog::error( "Unrecognized stream type %d. Exiting", stream_type);
-			failed = 1;
-			goto cleanup;
-			break;
-		}
+		info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
+		//info->l_stream = grk_stream_create_default_file_stream(infile, true);
 	}
 	if (!info->l_stream) {
 		spdlog::error( "failed to create the stream from the file {}", infile);

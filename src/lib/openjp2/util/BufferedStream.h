@@ -188,7 +188,7 @@ struct BufferedStream: public IBufferedStream {
 	bool has_seek();
 
 	bool supportsZeroCopy() {
-		return isMemStream && (m_status & GROK_STREAM_STATUS_INPUT);
+		return isMemStream() && (m_status & GROK_STREAM_STATUS_INPUT);
 	}
 	uint8_t* getCurrentPtr() {
 		return m_buf->curr_ptr();
@@ -232,6 +232,8 @@ private:
 	template<typename TYPE> bool write(TYPE value, uint8_t numBytes);
 	void invalidate_buffer();
 
+	bool isMemStream();
+
 	///////////////////////////////////////////////////////////////////
 	grk_buf *m_buf;
 
@@ -246,7 +248,6 @@ private:
 	// number of bytes read/written from the beginning of the stream
 	uint64_t m_stream_offset;
 
-	bool isMemStream;
 };
 
 /**

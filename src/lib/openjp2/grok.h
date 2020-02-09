@@ -654,7 +654,6 @@ typedef struct _grk_dparameters {
 	/** Nb of tile to decode */
 	uint32_t nb_tile_to_decode;
 	uint32_t flags;
-	uint32_t numThreads;
 }  grk_dparameters; 
 
 typedef enum grk_prec_mode {
@@ -706,12 +705,15 @@ typedef struct _grk_decompress_params {
 	/* serialize xml metadata to disk */
 	bool serialize_xml;
 	uint32_t compression;
-	int32_t compressionLevel; // compression "quality". Meaning of "quality" depends on file format we are writing to
+	// compression "quality". Meaning of "quality" depends
+	// on file format we are writing to
+	int32_t compressionLevel;
 	int32_t deviceId;
 	uint32_t duration; //seconds
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
 	bool verbose;
+	uint32_t numThreads;
 } grk_decompress_parameters;
 
 typedef void * grk_codec; 

@@ -78,8 +78,7 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_
 				m_buf(nullptr),
 				m_buffered_bytes(0),
 				m_read_bytes_seekable(0),
-				m_stream_offset(0),
-				isMemStream(buffer != nullptr) {
+				m_stream_offset(0){
 
 		m_buf =
 			new grk_buf((!buffer && p_buffer_size) ? new uint8_t[p_buffer_size] : buffer,
@@ -227,7 +226,7 @@ template<typename TYPE> bool BufferedStream::write(TYPE value, uint8_t numBytes)
 		return false;
 
 	// handle case where there is no internal buffer (buffer stream)
-	if (isMemStream) {
+	if (isMemStream()) {
 		// skip first to make sure that we are not at the end of the stream
 		if (!m_seek_fn(m_stream_offset + numBytes, m_user_data))
 			return false;
@@ -254,7 +253,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 		return 0;
 	}
 	// handle case where there is no internal buffer (buffer stream)
-	if (isMemStream) {
+	if (isMemStream()) {
 		/* we should do an actual write on the media */
 		auto l_current_write_nb_bytes = m_write_fn((uint8_t*) p_buffer, p_size,
 				m_user_data);
@@ -291,7 +290,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 }
 void BufferedStream::write_increment(size_t p_size) {
 	m_buf->incr_offset(p_size);
-	if (!isMemStream)
+	if (!isMemStream())
 		m_buffered_bytes += p_size;
 	else
 		assert(m_buffered_bytes == 0);
@@ -300,7 +299,7 @@ void BufferedStream::write_increment(size_t p_size) {
 
 // force write of any remaining bytes from double buffer
 bool BufferedStream::flush() {
-	if (isMemStream) {
+	if (isMemStream()) {
 		return true;
 	}
 	/* the number of bytes written on the media. */
@@ -410,7 +409,7 @@ bool BufferedStream::write_seek(uint64_t offset) {
 	} else {
 		m_stream_offset = offset;
 	}
-	if (isMemStream)
+	if (isMemStream())
 		m_buf->offset = offset;
 	return true;
 }
@@ -423,6 +422,10 @@ bool BufferedStream::seek(uint64_t offset) {
 }
 bool BufferedStream::has_seek(void) {
 	return m_seek_fn != nullptr;
+}
+
+bool BufferedStream::isMemStream(){
+	return !m_buf->owns_data;
 }
 
 void grok_write_bytes(uint8_t *p_buffer, uint32_t value,
