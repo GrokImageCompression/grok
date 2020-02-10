@@ -30,7 +30,7 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 {
 	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
 		threadStructs.push_back(
-				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
+				T1Factory::get_t1(true, nullptr,tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 T1Encoder::~T1Encoder() {

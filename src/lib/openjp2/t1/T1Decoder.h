@@ -27,7 +27,7 @@ class T1Interface;
 
 class T1Decoder {
 public:
-	T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh);
+	T1Decoder(grk_coding_parameters *cp, grk_tcp *tcp, uint16_t blockw, uint16_t blockh);
 	~T1Decoder();
 	bool decode(std::vector<decodeBlockInfo*> *blocks);
 

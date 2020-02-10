@@ -24,9 +24,19 @@ namespace grk {
 
 struct decodeBlockInfo {
 	decodeBlockInfo() :
-			tilec(nullptr), tiledp(nullptr), cblk(nullptr), resno(0), bandno(0), stepsize(
-					0), roishift(0), cblk_sty(0), qmfbid(0), x(0), y(0) {
-	}
+			tilec(nullptr),
+			tiledp(nullptr),
+			cblk(nullptr),
+			resno(0),
+			bandno(0),
+			stepsize(0),
+			roishift(0),
+			cblk_sty(0),
+			qmfbid(0),
+			x(0),
+			y(0),
+			k_msbs(0)
+	{	}
 	TileComponent *tilec;
 	int32_t *tiledp;
 	grk_tcd_cblk_dec *cblk;
@@ -36,7 +46,10 @@ struct decodeBlockInfo {
 	uint32_t roishift;
 	uint32_t cblk_sty;
 	uint32_t qmfbid;
-	uint32_t x, y; /* relative code block offset */
+	/* relative code block offset */
+	uint32_t x;
+	uint32_t y;
+	uint8_t k_msbs;
 };
 
 struct encodeBlockInfo {

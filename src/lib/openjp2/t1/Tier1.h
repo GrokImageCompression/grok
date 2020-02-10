@@ -32,8 +32,11 @@ public:
 	bool prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 			std::vector<decodeBlockInfo*> *blocks);
 
-	bool decodeCodeblocks(grk_tcp *tcp, uint16_t blockw, uint16_t blockh,
-			std::vector<decodeBlockInfo*> *blocks);
+	bool decodeCodeblocks(grk_coding_parameters *cp,
+							grk_tcp *tcp,
+							uint16_t blockw,
+							uint16_t blockh,
+							std::vector<decodeBlockInfo*> *blocks);
 
 };
 

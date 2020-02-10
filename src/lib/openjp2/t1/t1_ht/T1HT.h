@@ -17,6 +17,13 @@
 
 #pragma once
 #include "T1Interface.h"
+#include "stdint.h"
+#include "testing.h"
+#include "Tier1.h"
+#include "TileProcessor.h"
+#include "T1Interface.h"
+#include "T1Part1.h"
+#include "opj_includes.h"
 
 namespace grk {
 
@@ -38,7 +45,9 @@ public:
 	void postDecode(decodeBlockInfo *block);
 
 private:
-
+	uint8_t *coded_data;
+	uint32_t coded_data_size;
+	int32_t *decoded_data;
 };
 }
 }

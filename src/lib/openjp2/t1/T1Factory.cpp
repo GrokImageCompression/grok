@@ -22,9 +22,15 @@
 
 namespace grk {
 
-T1Interface* T1Factory::get_t1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
-		uint16_t maxCblkH) {
-	return new t1_part1::T1Part1OPJ(isEncoder, tcp, maxCblkW, maxCblkH);
+T1Interface* T1Factory::get_t1(bool isEncoder,
+								grk_coding_parameters *cp,
+								grk_tcp *tcp,
+								uint16_t maxCblkW,
+								uint16_t maxCblkH) {
+	if (cp && cp->ccap)
+		return new t1_ht::T1HT(isEncoder, tcp, maxCblkW, maxCblkH);
+	else
+		return new t1_part1::T1Part1OPJ(isEncoder, tcp, maxCblkW, maxCblkH);
 }
 
 }

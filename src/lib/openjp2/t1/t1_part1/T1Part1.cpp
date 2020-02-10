@@ -27,7 +27,6 @@ namespace t1_part1{
 T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 		uint16_t maxCblkH) :
 		t1_decoder(nullptr), t1_encoder(nullptr) {
-	(void) tcp;
 	if (isEncoder) {
 		t1_encoder = new t1_encode();
 		if (!t1_encoder->allocateBuffers(maxCblkW, maxCblkH)) {

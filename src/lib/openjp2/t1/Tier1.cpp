@@ -153,6 +153,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 					block->y = y;
 					block->tiledp = tilec->buf->get_ptr( resno, bandno,
 							(uint32_t) x, (uint32_t) y);
+					block->k_msbs = band->numbps - cblk->numbps;
 					blocks->push_back(block);
 
 				}
@@ -162,9 +163,11 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 	return true;
 }
 
-bool Tier1::decodeCodeblocks(grk_tcp *tcp, uint16_t blockw, uint16_t blockh,
-		std::vector<decodeBlockInfo*> *blocks) {
-	T1Decoder decoder(tcp, blockw, blockh);
+bool Tier1::decodeCodeblocks(grk_coding_parameters *cp,
+							grk_tcp *tcp,
+		                    uint16_t blockw, uint16_t blockh,
+		                    std::vector<decodeBlockInfo*> *blocks) {
+	T1Decoder decoder(cp, tcp, blockw, blockh);
 	return decoder.decode(blocks);
 }
 

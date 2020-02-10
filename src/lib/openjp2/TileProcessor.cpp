@@ -1502,7 +1502,8 @@ bool TileProcessor::t1_decode() {
 		++l_tccp;
 	}
 	// !!! assume that code block dimensions do not change over components
-	return t1_wrap->decodeCodeblocks(tcp,
+	return t1_wrap->decodeCodeblocks(this->cp,
+			tcp,
 			(uint16_t) tcp->tccps->cblkw,
 			(uint16_t) tcp->tccps->cblkh, &blocks);
 }

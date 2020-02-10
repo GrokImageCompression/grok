@@ -21,13 +21,16 @@
 
 namespace grk {
 
-T1Decoder::T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh) :
+T1Decoder::T1Decoder(grk_coding_parameters *cp,
+					grk_tcp *tcp,
+					uint16_t blockw,
+					uint16_t blockh) :
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
 		decodeBlocks(nullptr){
 	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
 		threadStructs.push_back(
-				T1Factory::get_t1(false, tcp, codeblock_width,
+				T1Factory::get_t1(false, cp, tcp, codeblock_width,
 						codeblock_height));
 	}
 }

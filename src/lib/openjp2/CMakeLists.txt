@@ -37,6 +37,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others
   ${CMAKE_CURRENT_SOURCE_DIR}/util
 )
 # Defines the source code for the library
@@ -125,7 +128,7 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.h
   
-   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Encoder.cpp
@@ -134,11 +137,29 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Factory.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Interface.h
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_decoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_encoder.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/ojph_block_encoder.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/table0.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding/table1.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_arch.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_arg.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_base.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_defs.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_mem.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_message.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_params.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_mem.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_message.cpp
+
   
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/T1HT.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_opt_luts.h
