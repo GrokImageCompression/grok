@@ -114,10 +114,7 @@ fi
 
 if [ "${GROK_CI_ARCH:-}" == "" ]; then
 	echo "Guessing build architecture"
-	MACHINE_ARCH=$(uname -m)
-	if [ "${MACHINE_ARCH}" == "x86_64" ]; then
-		export GROK_CI_ARCH=x86_64
-	fi
+	GROK_CI_ARCH=$(uname -m)
 	echo "${GROK_CI_ARCH}"
 fi
 
