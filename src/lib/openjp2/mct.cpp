@@ -105,7 +105,7 @@ void grk_calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
 		lNorms[i] = sqrt(lNorms[i]);
 	}
 }
-
+#ifdef __SSE2__
 static inline void mct_fwd_sse2(int32_t *restrict chan0,
 								int32_t *restrict chan1,
 								int32_t *restrict chan2,
@@ -125,6 +125,24 @@ static inline void mct_fwd_sse2(int32_t *restrict chan0,
 	_mm_store_si128((__m128i*) &chan1[ind], u);
 	_mm_store_si128((__m128i*) &chan2[ind], v);
 }
+static inline void mct_rev_sse2(int32_t *restrict chan0,
+								int32_t *restrict chan1,
+								int32_t *restrict chan2,
+								uint64_t ind)
+{
+	__m128i r, g, b;
+	__m128i y = _mm_load_si128((const __m128i*) &(chan0[ind]));
+	__m128i u = _mm_load_si128((const __m128i*) &(chan1[ind]));
+	__m128i v = _mm_load_si128((const __m128i*) &(chan2[ind]));
+	g = y;
+	g = _mm_sub_epi32(g, _mm_srai_epi32(_mm_add_epi32(u, v), 2));
+	r = _mm_add_epi32(v, g);
+	b = _mm_add_epi32(u, g);
+	_mm_store_si128((__m128i*) &(chan0[ind]), r);
+	_mm_store_si128((__m128i*) &(chan1[ind]), g);
+	_mm_store_si128((__m128i*) &(chan2[ind]), b);
+}
+#endif
 
 /* <summary> */
 /* Forward reversible MCT. */
@@ -174,23 +192,6 @@ void mct_encode(int32_t *restrict chan0, int32_t *restrict chan1,
 	}
 }
 
-static inline void mct_rev_sse2(int32_t *restrict chan0,
-								int32_t *restrict chan1,
-								int32_t *restrict chan2,
-								uint64_t ind)
-{
-	__m128i r, g, b;
-	__m128i y = _mm_load_si128((const __m128i*) &(chan0[ind]));
-	__m128i u = _mm_load_si128((const __m128i*) &(chan1[ind]));
-	__m128i v = _mm_load_si128((const __m128i*) &(chan2[ind]));
-	g = y;
-	g = _mm_sub_epi32(g, _mm_srai_epi32(_mm_add_epi32(u, v), 2));
-	r = _mm_add_epi32(v, g);
-	b = _mm_add_epi32(u, g);
-	_mm_store_si128((__m128i*) &(chan0[ind]), r);
-	_mm_store_si128((__m128i*) &(chan1[ind]), g);
-	_mm_store_si128((__m128i*) &(chan2[ind]), b);
-}
 
 /* <summary> */
 /* Inverse reversible MCT. */

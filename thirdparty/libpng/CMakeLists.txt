@@ -12,10 +12,9 @@ if(PNG_HARDWARE_OPTIMIZATIONS)
 # set definitions and sources for arm
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" OR
   CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
-  set(PNG_ARM_NEON_POSSIBLE_VALUES check on off)
-  set(PNG_ARM_NEON "check" CACHE STRING "Enable ARM NEON optimizations:
-     check: (default) use internal checking code;
-     off: disable the optimizations;
+  set(PNG_ARM_NEON_POSSIBLE_VALUES on off)
+  set(PNG_ARM_NEON "off" CACHE STRING "Enable ARM NEON optimizations:
+     off: (default) disable the optimizations;
      on: turn on unconditionally.")
   set_property(CACHE PNG_ARM_NEON PROPERTY STRINGS
      ${PNG_ARM_NEON_POSSIBLE_VALUES})
@@ -32,8 +31,6 @@ if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" OR
 
     if(${PNG_ARM_NEON} STREQUAL "on")
       add_definitions(-DPNG_ARM_NEON_OPT=2)
-    elseif(${PNG_ARM_NEON} STREQUAL "check")
-      add_definitions(-DPNG_ARM_NEON_CHECK_SUPPORTED)
     endif()
   else()
     add_definitions(-DPNG_ARM_NEON_OPT=0)
@@ -89,7 +86,7 @@ set(libpng_sources
     ${libpng_intel_sources}
  )
     
-file(GLOB HDRS *.h)
+file(GLOB libpng_hdrs *.h)
 set(EXT_HDRS
  ${GROK_SOURCE_DIR}/thirdparty/include/zlib.h
  ${GROK_SOURCE_DIR}/thirdparty/include/zconf.h
@@ -100,7 +97,7 @@ set(EXT_HDRS
 #
 set(LIBTARGET "png")
 #
-add_library(${LIBTARGET} STATIC ${libpng_sources} ${HDRS} ${EXT_HDRS})
+add_library(${LIBTARGET} STATIC ${libpng_sources} ${libpng_hdrs} ${EXT_HDRS})
 #
 if(MSVC)
   set_target_properties(${LIBTARGET} PROPERTIES PREFIX "lib")

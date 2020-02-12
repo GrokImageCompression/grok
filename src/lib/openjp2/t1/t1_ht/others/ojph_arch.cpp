@@ -49,6 +49,7 @@ namespace ojph {
   // how-to-detect-knl-instruction-support
   bool run_cpuid(uint32_t eax, uint32_t ecx, uint32_t* abcd)
   {
+#ifndef __aarch64__
   #ifdef OJPH_COMPILER_MSVC
     __cpuidex((int *)abcd, eax, ecx);
   #else
@@ -63,11 +64,15 @@ namespace ojph {
     abcd[0] = eax; abcd[1] = ebx; abcd[2] = ecx; abcd[3] = edx;
   #endif
     return true;
+#else
+    return false;
+#endif
   }
 
   ////////////////////////////////////////////////////////////////////////////
   uint64_t read_xcr(uint32_t index)
   {
+#ifndef __aarch64__
   #ifdef OJPH_COMPILER_MSVC
     return _xgetbv(index);
   #else
@@ -75,6 +80,9 @@ namespace ojph {
     __asm__ ( "xgetbv" : "=a" (eax), "=d" (edx) : "c" (index) );
     return ((uint64_t)edx << 32) | eax;
   #endif
+#else
+  return 0;
+#endif
   }
 
   /////////////////////////////////////////////////////////////////////////////
