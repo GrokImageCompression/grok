@@ -35,8 +35,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OPJ_DWT_H
-#define OPJ_DWT_H
+#pragma once
 
 namespace grk {
 
@@ -47,7 +46,7 @@ Apply a reversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode(TileProcessor *p_tcd,
+bool dwt_decode(TileProcessor *p_tcd,
                         TileComponent* restrict tilec,
                         uint32_t numres);
 
@@ -58,11 +57,8 @@ Apply an irreversible inverse DWT transform to a component of an image.
 @param tilec Tile component information (current tile)
 @param numres Number of resolution levels to decode
 */
-bool opj_dwt_decode_real(TileProcessor *p_tcd,
+bool dwt_decode_real(TileProcessor *p_tcd,
                              TileComponent* restrict tilec,
 							 uint32_t numres);
 
 }
-
-
-#endif /* OPJ_DWT_H */

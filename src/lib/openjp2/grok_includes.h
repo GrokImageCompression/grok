@@ -178,6 +178,8 @@ static inline long grok_lrintf(float f) {
 #	pragma intrinsic(__emul)
 #endif
 
+#define GRK_UNUSED(x) (void)x
+
 #include "ThreadPool.h"
 #include "mem_stream.h"
 #include "grok_malloc.h"

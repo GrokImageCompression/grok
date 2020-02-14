@@ -57,6 +57,16 @@
 
 namespace grk {
 
+
+/**
+ Get the saturated difference of two unsigned integers
+ @return Returns saturated sum of a-b
+ */
+static inline uint32_t uint_subs(uint32_t a, uint32_t b)
+{
+    return (a >= b) ? a - b : 0;
+}
+
 /**
  Get the saturated sum of two unsigned integers
  @param  a integer

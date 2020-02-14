@@ -48,7 +48,7 @@ be used. If blocks are too small, the book-keeping costs of blocks will raise.
 /*@{*/
 
 /** Opaque type for sparse arrays that contain int32 values */
-typedef struct opj_sparse_array_int32 opj_sparse_array_int32_t;
+typedef struct sparse_array_int32 sparse_array_int32_t;
 
 /** Creates a new sparse array.
  * @param width total width of the array.
@@ -57,15 +57,15 @@ typedef struct opj_sparse_array_int32 opj_sparse_array_int32_t;
  * @param block_height height of a block.
  * @return a new sparse array instance, or NULL in case of failure.
  */
-opj_sparse_array_int32_t* opj_sparse_array_int32_create(OPJ_UINT32 width,
-        OPJ_UINT32 height,
-        OPJ_UINT32 block_width,
-        OPJ_UINT32 block_height);
+sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
+        uint32_t height,
+        uint32_t block_width,
+        uint32_t block_height);
 
 /** Frees a sparse array.
  * @param sa sparse array instance.
  */
-void opj_sparse_array_int32_free(opj_sparse_array_int32_t* sa);
+void sparse_array_int32_free(sparse_array_int32_t* sa);
 
 /** Returns whether region bounds are valid (non empty and within array bounds)
  * @param sa sparse array instance.
@@ -73,18 +73,18 @@ void opj_sparse_array_int32_free(opj_sparse_array_int32_t* sa);
  * @param y0 top x coordinate of the region.
  * @param x1 right x coordinate (not included) of the region. Must be greater than x0.
  * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
- * @return OPJ_TRUE or OPJ_FALSE.
+ * @return true or false.
  */
-OPJ_BOOL opj_sparse_array_is_region_valid(const opj_sparse_array_int32_t* sa,
-        OPJ_UINT32 x0,
-        OPJ_UINT32 y0,
-        OPJ_UINT32 x1,
-        OPJ_UINT32 y1);
+bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
+        uint32_t x0,
+        uint32_t y0,
+        uint32_t x1,
+        uint32_t y1);
 
 /** Read the content of a rectangular region of the sparse array into a
  * user buffer.
  *
- * Regions not written with opj_sparse_array_int32_write() are read as 0.
+ * Regions not written with sparse_array_int32_write() are read as 0.
  *
  * @param sa sparse array instance.
  * @param x0 left x coordinate of the region to read in the sparse array.
@@ -94,18 +94,18 @@ OPJ_BOOL opj_sparse_array_is_region_valid(const opj_sparse_array_int32_t* sa,
  * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
  * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
  * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
- * @param forgiving if set to TRUE and the region is invalid, OPJ_TRUE will still be returned.
- * @return OPJ_TRUE in case of success.
+ * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+ * @return true in case of success.
  */
-OPJ_BOOL opj_sparse_array_int32_read(const opj_sparse_array_int32_t* sa,
-                                     OPJ_UINT32 x0,
-                                     OPJ_UINT32 y0,
-                                     OPJ_UINT32 x1,
-                                     OPJ_UINT32 y1,
-                                     OPJ_INT32* dest,
-                                     OPJ_UINT32 dest_col_stride,
-                                     OPJ_UINT32 dest_line_stride,
-                                     OPJ_BOOL forgiving);
+bool sparse_array_int32_read(const sparse_array_int32_t* sa,
+                                     uint32_t x0,
+                                     uint32_t y0,
+                                     uint32_t x1,
+                                     uint32_t y1,
+                                     int32_t* dest,
+                                     uint32_t dest_col_stride,
+                                     uint32_t dest_line_stride,
+                                     bool forgiving);
 
 
 /** Write the content of a rectangular region into the sparse array from a
@@ -121,18 +121,18 @@ OPJ_BOOL opj_sparse_array_int32_read(const opj_sparse_array_int32_t* sa,
  * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
  * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
  * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
- * @param forgiving if set to TRUE and the region is invalid, OPJ_TRUE will still be returned.
- * @return OPJ_TRUE in case of success.
+ * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+ * @return true in case of success.
  */
-OPJ_BOOL opj_sparse_array_int32_write(opj_sparse_array_int32_t* sa,
-                                      OPJ_UINT32 x0,
-                                      OPJ_UINT32 y0,
-                                      OPJ_UINT32 x1,
-                                      OPJ_UINT32 y1,
-                                      const OPJ_INT32* src,
-                                      OPJ_UINT32 src_col_stride,
-                                      OPJ_UINT32 src_line_stride,
-                                      OPJ_BOOL forgiving);
+bool sparse_array_int32_write(sparse_array_int32_t* sa,
+                                      uint32_t x0,
+                                      uint32_t y0,
+                                      uint32_t x1,
+                                      uint32_t y1,
+                                      const int32_t* src,
+                                      uint32_t src_col_stride,
+                                      uint32_t src_line_stride,
+                                      bool forgiving);
 
 /*@}*/
 
