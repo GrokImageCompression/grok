@@ -1529,8 +1529,8 @@ void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t til
 	pi[pino].poc.prg = tcp->prg;
 
 	if (!(cp->m_specific_param.m_enc.m_tp_on
-			&& ((!GRK_IS_CINEMA(cp->rsiz) && (t2_mode == FINAL_PASS))
-					|| GRK_IS_CINEMA(cp->rsiz)))) {
+			&& ( (!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz) && (t2_mode == FINAL_PASS))
+					|| GRK_IS_CINEMA(cp->rsiz) ||  GRK_IS_IMF(cp->rsiz)))) {
 		pi[pino].poc.resno0 = tcp->resS;
 		pi[pino].poc.resno1 = tcp->resE;
 		pi[pino].poc.compno0 = tcp->compS;

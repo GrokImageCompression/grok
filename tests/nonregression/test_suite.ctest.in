@@ -172,6 +172,13 @@ grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_bypass_vs
 # issue 92
 grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_issue_92.j2k -r 700,53.8246894469852,38.6958466880406,27.8193625692756,20,1 -c [256,256],[256,256],[128,128],[128,128],[128,128],[128,128] -p RPCL -n 6 -t 1024,1024 -b 64,64 -SOP -EPH -M 1
 
+grk_compress_no_raw -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K.j2k -IMF 2K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K.j2k -IMF 4K
+grk_compress_no_raw -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K.j2k -IMF 8K
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/X_4_2K_24_185_CBR_WB_000.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_2K_R.j2k -IMF 2K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_4K_R.j2k -IMF 4K_R
+grk_compress_no_raw_lossless -i @INPUT_NR_PATH@/ElephantDream_4K.tif -o @TEMP_PATH@/X_4_2K_24_185_CBR_WB_000_IMF_8K_R.j2k -IMF 8K_R
+
 # DECODER TEST SUITE
 grk_decompress -i  @INPUT_NR_PATH@/Bretagne2.j2k -o @TEMP_PATH@/Bretagne2.j2k.pgx
 grk_decompress -i  @INPUT_NR_PATH@/_00042.j2k -o @TEMP_PATH@/_00042.j2k.pgx

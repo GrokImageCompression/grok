@@ -65,6 +65,12 @@
 
 namespace grk {
 
+
+const uint32_t  GRK_COMP_PARAM_DEFAULT_CBLOCKW  =      64;
+const uint32_t  GRK_COMP_PARAM_DEFAULT_CBLOCKH  =      64;
+const GRK_PROG_ORDER  GRK_COMP_PARAM_DEFAULT_PROG_ORDER   =  GRK_LRCP;
+const uint32_t  GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION =  6;
+
 // limits defined in JPEG 2000 standard
 const uint32_t max_precision_jpeg_2000 = 38; // maximum number of magnitude bits, according to ISO standard
 const uint32_t max_num_components = 16384;	// maximum allowed number components

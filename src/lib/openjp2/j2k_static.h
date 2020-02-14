@@ -1034,6 +1034,13 @@ static void j2k_set_cinema_parameters( grk_cparameters  *parameters,
 
 static bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz);
 
+static void j2k_set_imf_parameters(grk_cparameters *parameters,
+		grk_image *image);
+
+static bool j2k_is_imf_compliant(grk_cparameters *parameters,
+		grk_image *image);
+
+
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
  *

@@ -339,6 +339,13 @@ static void encode_help_display(void)
     fprintf(stdout,"    Digital Cinema 4K profile compliant codestream.\n");
 	fprintf(stdout, "	Need to specify the frames per second.\n");
 	fprintf(stdout, "    Only 24 or 48 fps are currently allowed.\n");
+    fprintf(stdout, "-IMF <PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS]\n");
+    fprintf(stdout, "    Interoperable Master Format compliant codestream.\n");
+    fprintf(stdout, "    <PROFILE>=2K, 4K, 8K, 2K_R, 4K_R or 8K_R.\n");
+    fprintf(stdout, "    X >= 0 and X <= 11.\n");
+    fprintf(stdout, "    Y >= 0 and Y <= 9.\n");
+    fprintf(stdout,
+            "    framerate > 0 may be specified to enhance checks and set maximum bit rate when Y > 0.\n");
     fprintf(stdout,"[-C|-Comment] <comment>\n");
     fprintf(stdout,"    Add <comment> in the comment marker segment.\n");
 	fprintf(stdout, "[-Q|-CaptureRes] <capture resolution X,capture resolution Y>\n");
@@ -473,11 +480,13 @@ static bool checkCinema(ValueArg<uint32_t>* arg, uint16_t profile,  grk_cparamet
 		int fps = arg->getValue();
 		if (fps == 24) {
 			parameters->rsiz = profile;
+			parameters->framerate = 24;
 			parameters->max_comp_size = GRK_CINEMA_24_COMP;
 			parameters->max_cs_size = GRK_CINEMA_24_CS;
 		}
 		else if (fps == 48) {
 			parameters->rsiz = profile;
+			parameters->framerate = 48;
 			parameters->max_comp_size = GRK_CINEMA_48_COMP;
 			parameters->max_cs_size = GRK_CINEMA_48_CS;
 		}
@@ -529,7 +538,9 @@ static int parse_cmdline_encoder_ex(int argc,
 		ValueArg<uint32_t> cinema4KArg("x", "cinema4K",
 									"Digital cinema 2K profile",
 									false, 24, "unsigned integer", cmd);
-
+		ValueArg<string> IMFArg("z", "IMF",
+									"IMF profile",
+									false, "", "string", cmd);
 		ValueArg<string> imgDirArg("y", "ImgDir",
 									"Image directory",
 									false, "", "string", cmd);
@@ -655,7 +666,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			"MCT input file",
 			false, "", "string", cmd);
 
-		ValueArg<uint32_t> durationArg("z", "Duration",
+		ValueArg<uint32_t> durationArg("J", "Duration",
 			"Duration in seconds",
 			false, 0, "unsigned integer", cmd);
 
@@ -1101,9 +1112,103 @@ static int parse_cmdline_encoder_ex(int argc,
 					"Other options specified may be overridden");
 			}
 		}
+		if (IMFArg.isSet()){
+			int mainlevel = 0;
+			int sublevel = 0;
+			int profile = 0;
+			int framerate = 0;
+			const char* msg =
+				"Wrong value for -IMF. Should be "
+				"<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
+				"of 2K/4K/8K/2K_R/4K_R/8K_R.\n";
+			char* arg = (char*)IMFArg.getValue().c_str();
+			char* comma;
+
+			comma = strstr(arg, ",mainlevel=");
+			if (comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1) {
+				spdlog::error( "%s", msg);
+				return 1;
+			}
+
+			comma = strstr(arg, ",sublevel=");
+			if (comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1) {
+				spdlog::error("%s", msg);
+				return 1;
+			}
+
+			comma = strstr(arg, ",framerate=");
+			if (comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1) {
+				spdlog::error("%s", msg);
+				return 1;
+			}
+
+			comma = strchr(arg, ',');
+			if (comma != NULL) {
+				*comma = 0;
+			}
+
+			if (strcmp(arg, "2K") == 0) {
+				profile = GRK_PROFILE_IMF_2K;
+			} else if (strcmp(arg, "4K") == 0) {
+				profile = GRK_PROFILE_IMF_4K;
+			} else if (strcmp(arg, "8K") == 0) {
+				profile = GRK_PROFILE_IMF_8K;
+			} else if (strcmp(arg, "2K_R") == 0) {
+				profile = GRK_PROFILE_IMF_2K_R;
+			} else if (strcmp(arg, "4K_R") == 0) {
+				profile = GRK_PROFILE_IMF_4K_R;
+			} else if (strcmp(arg, "8K_R") == 0) {
+				profile = GRK_PROFILE_IMF_8K_R;
+			} else {
+				spdlog::error("%s", msg);
+				return 1;
+			}
+
+			if (!(mainlevel >= 0 && mainlevel <= 15)) {
+				/* Voluntarily rough validation. More fine grained done in library */
+				spdlog::error("Invalid mainlevel value.\n");
+				return 1;
+			}
+			if (!(sublevel >= 0 && sublevel <= 15)) {
+				/* Voluntarily rough validation. More fine grained done in library */
+				spdlog::error("Invalid sublevel value.\n");
+				return 1;
+			}
+			parameters->rsiz = (uint16_t)(profile | (sublevel << 4) | mainlevel);
+
+			if (parameters->verbose) {
+				spdlog::info("IMF profile activated\n"
+						"Other options specified could be overridden\n");
+			}
+
+			parameters->framerate = framerate;
+			if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
+				const int limitMBitsSec[] = {
+					0,
+					GRK_IMF_SUBLEVEL_1_MBITSSEC,
+					GRK_IMF_SUBLEVEL_2_MBITSSEC,
+					GRK_IMF_SUBLEVEL_3_MBITSSEC,
+					GRK_IMF_SUBLEVEL_4_MBITSSEC,
+					GRK_IMF_SUBLEVEL_5_MBITSSEC,
+					GRK_IMF_SUBLEVEL_6_MBITSSEC,
+					GRK_IMF_SUBLEVEL_7_MBITSSEC,
+					GRK_IMF_SUBLEVEL_8_MBITSSEC,
+					GRK_IMF_SUBLEVEL_9_MBITSSEC
+				};
+				parameters->max_cs_size = limitMBitsSec[sublevel] * (1000 * 1000 / 8) /
+										  framerate;
+				if (parameters->verbose) {
+					spdlog::info( "Setting max codestream size to %d bytes.\n",
+						parameters->max_cs_size);
+				}
+			}
+
+		}
 		if (rsizArg.isSet()) {
 			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
 				warning_callback( "  Cinema profile set - RSIZ parameter ignored.\n",nullptr);
+			} else if (IMFArg.isSet()){
+				warning_callback( "  IMF profile set - RSIZ parameter ignored.\n",nullptr);
 			}
 			else {
 				parameters->rsiz = rsizArg.getValue();
@@ -1754,6 +1859,41 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 	if (parameters->rateControlAlgorithm == 255) {
 		parameters->rateControlAlgorithm = 0;
 	}
+
+    if (GRK_IS_IMF(parameters->rsiz) && parameters->framerate > 0) {
+        const int mainlevel = GRK_GET_IMF_MAINLEVEL(parameters->rsiz);
+        if (mainlevel > 0 && mainlevel <= GRK_IMF_MAINLEVEL_MAX) {
+            const int limitMSamplesSec[] = {
+                0,
+                GRK_IMF_MAINLEVEL_1_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_2_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_3_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_4_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_5_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_6_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_7_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_8_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_9_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_10_MSAMPLESEC,
+                GRK_IMF_MAINLEVEL_11_MSAMPLESEC
+            };
+            uint32_t avgcomponents = image->numcomps;
+            double msamplespersec;
+            if (image->numcomps == 3 &&
+                    image->comps[1].dx == 2 &&
+                    image->comps[1].dy == 2) {
+                avgcomponents = 2;
+            }
+            msamplespersec = (double)image->x1 * image->y1 * avgcomponents * parameters->framerate /
+                             1e6;
+            if (msamplespersec > limitMSamplesSec[mainlevel]) {
+                fprintf(stderr,
+                        "Warning: MSamples/sec is %f, whereas limit is %d.\n",
+                        msamplespersec,
+                        limitMSamplesSec[mainlevel]);
+            }
+        }
+    }
 
 	switch (parameters->cod_format) {
 	case J2K_CFMT:	/* JPEG-2000 codestream */
