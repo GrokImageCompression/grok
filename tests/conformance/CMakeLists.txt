@@ -74,7 +74,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P0-${filenameInput}-r0-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRefSub}-r0.pgx
+#        -b ${BASELINE_NR}/${filenameRefSub}-r0.pgx
 #        -t ${TEMP}/c0${filenameInput}-r0.pgx
 #        -n ${nbComponents}
 #        -d
@@ -109,7 +109,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P0-${filenameInput}-r1-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRefSub}-r1.pgx
+#        -b ${BASELINE_NR}/${filenameRefSub}-r1.pgx
 #        -t ${TEMP}/c0${filenameInput}-r1.pgx
 #        -n ${nbComponents}
 #        -d
@@ -145,7 +145,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P0-${filenameInput}-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRef}
+#        -b ${BASELINE_NR}/${filenameRef}
 #        -t ${TEMP}/c0${filenameInput}.pgx
 #        -n ${nbComponents}
 #        -d
@@ -213,7 +213,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P1-${filenameInput}-r0-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRefSub}-r0.pgx
+#        -b ${BASELINE_NR}/${filenameRefSub}-r0.pgx
 #        -t ${TEMP}/c0${filenameInput}-r0.pgx
 #        -n ${nbComponents}
 #        -d
@@ -248,7 +248,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P1-${filenameInput}-r3-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRefSub}-r3.pgx
+#        -b ${BASELINE_NR}/${filenameRefSub}-r3.pgx
 #        -t ${TEMP}/c0${filenameInput}-r3.pgx
 #        -n ${nbComponents}
 #        -d
@@ -284,7 +284,7 @@ set(COMMENTCODEVAR FALSE)
 
 #    add_test(NR-C0P1-${filenameInput}-compare2base
 #        ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#        -b ${BASELINE_NR}/opj_${filenameRef}
+#        -b ${BASELINE_NR}/${filenameRef}
 #        -t ${TEMP}/c0${filenameInput}.pgx
 #        -n ${nbComponents}
 #        -d
@@ -350,7 +350,7 @@ foreach(numFileC1P0 RANGE 1 16)
 
   add_test(NAME NR-C1P0-${filenameInput}-compare2base
       COMMAND compare_images
-     -b ${BASELINE_NR}/opj_${filenameRef}
+     -b ${BASELINE_NR}/${filenameRef}
      -t ${TEMP}/c1${filenameInput}.pgx
      -n ${nbComponents}
      -d
@@ -407,7 +407,7 @@ foreach(numFileC1P1 RANGE 1 7)
 
   add_test(NAME NR-C1P1-${filenameInput}-compare2base
       COMMAND compare_images
-     -b ${BASELINE_NR}/opj_${filenameRef}
+     -b ${BASELINE_NR}/${filenameRef}
      -t ${TEMP}/c1${filenameInput}.pgx
      -n ${nbComponents}
      -d
@@ -459,7 +459,7 @@ foreach(numFileJP2 RANGE 1 9)
 
   add_test(NAME NR-JP2-${filenameInput}-compare2base
     COMMAND compare_images
-    -b ${BASELINE_NR}/opj_${filenameRef}
+    -b ${BASELINE_NR}/${filenameRef}
     -t ${TEMP}/${filenameInput}.tif
     -n 3
     -d
@@ -545,7 +545,7 @@ foreach(kdu_file ${kdu_j2k_conf_files})
 
   add_test(NAME NR-KDU-${filenameInput}-compare2base
     COMMAND compare_images
-    -b ${BASELINE_NR}/opj_${filenameRef}
+    -b ${BASELINE_NR}/${filenameRef}
     -t ${TEMP}/${filenameInput}.ppm
     ${kdu_test_args}
     -d
@@ -600,7 +600,7 @@ foreach(r_file ${richter_jp2_conf_files})
 
   add_test(NAME NR-RIC-${filenameInput}-compare2base
     COMMAND compare_images
-    -b ${BASELINE_NR}/opj_${filenameRef}
+    -b ${BASELINE_NR}/${filenameRef}
     -t ${TEMP}/${filenameInput}.ppm
     ${ric_test_args}
     -d
@@ -639,7 +639,7 @@ foreach(numFileP0 RANGE 1 16)
 
   add_test(NAME NR-${filenameInput}-compare_dump2base
       COMMAND compare_dump_files
-     -b ${BASELINE_NR}/opj_v2_${filenameRefSub}.txt
+     -b ${BASELINE_NR}/${filenameRefSub}.txt
      -t ${TEMP}/${filenameInput}.txt
      )
 
@@ -668,7 +668,7 @@ foreach(numFileP1 RANGE 1 7)
 
   add_test(NAME NR-${filenameInput}-compare_dump2base
       COMMAND compare_dump_files
-     -b ${BASELINE_NR}/opj_v2_${filenameInputSub}.txt
+     -b ${BASELINE_NR}/${filenameInputSub}.txt
      -t ${TEMP}/${filenameInput}.txt
      )
 
@@ -697,7 +697,7 @@ foreach(numFileJP2 RANGE 1 9)
 
   add_test(NAME NR-${filenameInput}-compare_dump2base
       COMMAND compare_dump_files
-     -b ${BASELINE_NR}/opj_v2_${filenameInputSub}.txt
+     -b ${BASELINE_NR}/${filenameInputSub}.txt
      -t ${TEMP}/${filenameInput}.txt
      )
 

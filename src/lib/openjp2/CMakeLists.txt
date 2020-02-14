@@ -103,7 +103,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_codec.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.h
   ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.cpp

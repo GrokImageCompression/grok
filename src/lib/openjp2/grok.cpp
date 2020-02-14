@@ -67,6 +67,92 @@
 #include "grok_includes.h"
 using namespace grk;
 
+/**
+ * Main codec handler used for compression or decompression.
+ */
+struct grk_codec_private {
+	/** FIXME DOC */
+	union {
+		/**
+		 * Decompression handler.
+		 */
+		struct decompression {
+			/** Main header reading function handler */
+			bool (*read_header)(BufferedStream *cio, void *p_codec,
+					 grk_header_info  *header_info, grk_image **p_image);
+
+			/** Decoding function */
+			bool (*decode)(void *p_codec, grk_plugin_tile *tile,
+					BufferedStream *p_cio, grk_image *p_image);
+
+			/** FIXME DOC */
+			bool (*read_tile_header)(void *p_codec, uint16_t *tile_index,
+					uint64_t *data_size, uint32_t *p_tile_x0,
+					uint32_t *p_tile_y0, uint32_t *p_tile_x1,
+					uint32_t *p_tile_y1, uint32_t *p_nb_comps,
+					bool *p_should_go_on, BufferedStream *p_cio);
+
+			/** FIXME DOC */
+			bool (*decode_tile_data)(void *p_codec, uint16_t tile_index,
+					uint8_t *p_data, uint64_t data_size, BufferedStream *p_cio);
+
+			/** Reading function used after codestream if necessary */
+			bool (*end_decompress)(void *p_codec, BufferedStream *cio);
+
+			/** Codec destroy function handler */
+			void (*destroy)(void *p_codec);
+
+			/** Setup decoder function handler */
+			void (*setup_decoder)(void *p_codec,  grk_dparameters  *p_param);
+
+			/** Set decode area function handler */
+			bool (*set_decode_area)(void *p_codec, grk_image *p_image,
+					uint32_t start_x, uint32_t end_x, uint32_t start_y,
+					uint32_t end_y);
+
+			/** Get tile function */
+			bool (*get_decoded_tile)(void *p_codec, BufferedStream *p_cio,
+					grk_image *p_image,
+					uint16_t tile_index);
+
+			/** Set the decoded resolution factor */
+			bool (*set_decoded_resolution_factor)(void *p_codec,
+					uint32_t res_factor);
+		} m_decompression;
+
+		/**
+		 * Compression handler. FIXME DOC
+		 */
+		struct compression {
+			bool (*start_compress)(void *p_codec, BufferedStream *cio,
+					grk_image *p_image);
+
+			bool (*encode)(void *p_codec, grk_plugin_tile*,
+					BufferedStream *p_cio);
+
+			bool (*write_tile)(void *p_codec, uint16_t tile_index,
+					uint8_t *p_data, uint64_t data_size, BufferedStream *p_cio);
+
+			bool (*end_compress)(void *p_codec, BufferedStream *p_cio);
+
+			void (*destroy)(void *p_codec);
+
+			bool (*setup_encoder)(void *p_codec,  grk_cparameters  *p_param,
+					grk_image *p_image);
+		} m_compression;
+	} m_codec_data;
+	/** FIXME DOC*/
+	void *m_codec;
+	/** Flag to indicate if the codec is used to decode or encode*/
+	bool is_decompressor;
+	void (*grk_dump_codec)(void *p_codec, int32_t info_flag,
+			FILE *output_stream);
+	 grk_codestream_info_v2  *  (*get_codec_info)(void *p_codec);
+	 grk_codestream_index  *  (*grk_get_codec_index)(void *p_codec);
+};
+
+
+
 ThreadPool* Scheduler::g_tp = nullptr;
 
 static bool is_plugin_initialized = false;

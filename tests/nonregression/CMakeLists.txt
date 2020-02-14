@@ -67,7 +67,7 @@ set(BLACKLIST_JPEG2000
     broken2.jp2
     broken3.jp2
     broken4.jp2
-    gdal_fuzzer_assert_in_opj_j2k_read_SQcd_SQcc.patch.jp2	
+    gdal_fuzzer_assert_in_j2k_read_SQcd_SQcc.patch.jp2	
     gdal_fuzzer_check_comp_dx_dy.jp2
     gdal_fuzzer_check_number_of_tiles.jp2
     gdal_fuzzer_unchecked_numresolutions.jp2
@@ -90,7 +90,7 @@ set(BLACKLIST_JPEG2000
     issue413.jp2 #kdu_jp2info ok
    )
 
-file(GLOB_RECURSE OPJ_DATA_NR_LIST
+file(GLOB_RECURSE DATA_NR_LIST
      "${INPUT_NR}/*.j2k"
      "${INPUT_NR}/*.j2c"
      "${INPUT_NR}/*.jp2"
@@ -98,7 +98,7 @@ file(GLOB_RECURSE OPJ_DATA_NR_LIST
      #"${INPUT_NR}/*.jpx"
      )
 
-foreach(INPUT_FILENAME ${OPJ_DATA_NR_LIST})
+foreach(INPUT_FILENAME ${DATA_NR_LIST})
   get_filename_component(INPUT_FILENAME_NAME ${INPUT_FILENAME} NAME)
   #get_filename_component(INPUT_FILENAME_NAME_WE ${INPUT_FILENAME_NAME} NAME_WE)
   # cannot use longest extension function, since some name contains multiples
@@ -124,7 +124,7 @@ foreach(INPUT_FILENAME ${OPJ_DATA_NR_LIST})
     # Compare the dump output with the baseline
     add_test(NAME NR-${INPUT_FILENAME_NAME}-compare_dump2base
   	        COMMAND compare_dump_files
-            -b ${BASELINE_NR}/opj_v2_${INPUT_FILENAME_NAME_WE}.txt
+            -b ${BASELINE_NR}/${INPUT_FILENAME_NAME_WE}.txt
             -t ${TEMP}/${INPUT_FILENAME_NAME}.txt
             )
 
@@ -147,7 +147,7 @@ configure_file("test_suite.ctest.in"
                @ONLY)
 
 # Read the file into a list
-file(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/test_suite.ctest OPJ_TEST_CMD_LINE_LIST)
+file(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/test_suite.ctest TEST_CMD_LINE_LIST)
 
 # Try to find and configure and read another test suite file
 file(GLOB TEST_SUITE_FILES *.ctest.in)
@@ -166,9 +166,9 @@ if (TEST_SUITE_FILES)
                      "${CMAKE_CURRENT_BINARY_DIR}/${TEST_SUITE_FILE_SUB}.ctest"
                      @ONLY)
       # Read the additional file into a list
-      file(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${TEST_SUITE_FILE_SUB}.ctest OPJ_TEST_CMD_LINE_LIST_TEMP)
+      file(STRINGS ${CMAKE_CURRENT_BINARY_DIR}/${TEST_SUITE_FILE_SUB}.ctest TEST_CMD_LINE_LIST_TEMP)
       # Append the list of command
-      set(OPJ_TEST_CMD_LINE_LIST ${OPJ_TEST_CMD_LINE_LIST} ${OPJ_TEST_CMD_LINE_LIST_TEMP})
+      set(TEST_CMD_LINE_LIST ${TEST_CMD_LINE_LIST} ${TEST_CMD_LINE_LIST_TEMP})
 
     endif()
 
@@ -185,12 +185,12 @@ set(nonregression_filenames_used)
 # Parse the command line found in the file(s)
 set(IT_TEST_ENC 0)
 set(IT_TEST_DEC 0)
-foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
+foreach(TEST_CMD_LINE ${TEST_CMD_LINE_LIST})
 
   set(IGNORE_LINE_FOUND 0)
 
   # Replace space by ; to generate a list
-  string(REPLACE " " ";" CMD_ARG_LIST ${OPJ_TEST_CMD_LINE})
+  string(REPLACE " " ";" CMD_ARG_LIST ${TEST_CMD_LINE})
 
   # Check if the first argument begin by the comment sign
   list(GET CMD_ARG_LIST 0 EXE_NAME)
@@ -201,7 +201,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 
   if(IGNORE_LINE_FOUND OR NOT EXE_NAME)
 
-    #message( STATUS "Current line is ignored: ${OPJ_TEST_CMD_LINE}")
+    #message( STATUS "Current line is ignored: ${TEST_CMD_LINE}")
 
   else()
 
@@ -318,7 +318,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
           # Compare the dump file with the baseline
           add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-compare_dump2base
             COMMAND compare_dump_files
-            -b ${BASELINE_NR}/opj_v2_${OUTPUT_FILENAME_NAME_WE}-ENC-${IT_TEST_ENC}.txt
+            -b ${BASELINE_NR}/${OUTPUT_FILENAME_NAME_WE}-ENC-${IT_TEST_ENC}.txt
             -t ${OUTPUT_FILENAME}-ENC-${IT_TEST_ENC}.txt
           )
 
@@ -343,7 +343,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
                 # Compare the decoding file with baseline generated from the kdu_expand and baseline.j2k
                 add_test(NAME NR-ENC-${INPUT_FILENAME_NAME}-${IT_TEST_ENC}-compare_dec-ref-out2base
                 COMMAND compare_raw_files
-                -b ${BASELINE_NR}/opj_${OUTPUT_FILENAME_NAME_WE}-ENC-${IT_TEST_ENC}.raw
+                -b ${BASELINE_NR}/${OUTPUT_FILENAME_NAME_WE}-ENC-${IT_TEST_ENC}.raw
                 -t ${OUTPUT_FILENAME}.raw
                 )
 
@@ -422,7 +422,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 # can output png diff files if necessary
 #  add_test(NR-${filename}-compare2base
 #      ${EXECUTABLE_OUTPUT_PATH}/compare_images
-#     -b ${BASELINE_NR}/opj_${filenameRef}
+#     -b ${BASELINE_NR}/${filenameRef}
 #     -t ${TEMP}/${filename}.pgx
 #     -n ${nbComponents}
 #     -d
@@ -442,7 +442,7 @@ foreach(OPJ_TEST_CMD_LINE ${OPJ_TEST_CMD_LINE_LIST})
 endforeach()
 
 set(existing_filenames)
-foreach(f ${OPJ_DATA_NR_LIST})
+foreach(f ${DATA_NR_LIST})
   get_filename_component(ff ${f} NAME)
   list(APPEND existing_filenames ${ff})
 endforeach()

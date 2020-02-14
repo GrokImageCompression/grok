@@ -203,7 +203,5 @@ static inline long grok_lrintf(float f) {
 #include "mct.h"
 #include "grok_intmath.h"
 #include "plugin_bridge.h"
-#include "grok_codec.h"
 #include "RateControl.h"
 #include "RateInfo.h"
-#include "grok_codec.h"
