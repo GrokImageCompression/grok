@@ -64,18 +64,6 @@ macro(GROK_TEST_LARGE_FILES VARIABLE)
                 set(_LARGEFILE_SOURCE 1)
             endif()
         endif()
-
-
-        #if(NOT FILE64_OK)
-        #    # now check for Windows stuff
-        #    try_compile(FILE64_OK "${PROJECT_BINARY_DIR}"
-        #                "${PROJECT_SOURCE_DIR}/cmake/TestWindowsFSeek.c")
-        #    if(FILE64_OK)
-        #        message(STATUS "Checking for 64-bit off_t - present with _fseeki64")
-        #        set(HAVE__FSEEKI64 1)
-        #    endif()
-        #endif()
-
         if(NOT FILE64_OK)
             message(STATUS "Checking for 64-bit off_t - not present")
         endif()
