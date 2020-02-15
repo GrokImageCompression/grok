@@ -120,10 +120,11 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 					/* get code block offset relative to band*/
 					x = cblk->x0;
 					y = cblk->y0;
+					int64_t w = cblk->x1 - cblk->x0;
+					int64_t h = cblk->y1 - cblk->y0;
 
 					/* check if block overlaps with decode region */
-					cblk_rect = grk_rect(x, y, x + (1 << tccp->cblkw),
-							y + (1 << tccp->cblkh));
+					cblk_rect = grk_rect(x, y, x + w,y + h);
 					if (!tilec->buf->hit_test(&cblk_rect))
 						continue;
 
