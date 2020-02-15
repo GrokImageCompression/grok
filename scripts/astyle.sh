@@ -14,7 +14,7 @@
 #                                                                         #
 ###########################################################################
 
-for ASTYLE in ${OPJSTYLE} $(dirname $0)/opjstyle $(dirname $0)/RelWithDebInfo/opjstyle
+for ASTYLE in ${GRKSTYLE} $(dirname $0)/grkstyle $(dirname $0)/RelWithDebInfo/grkstyle
 do
 	if type -p $ASTYLE >/dev/null; then
 		break
@@ -23,7 +23,7 @@ do
 done
 
 if [ -z "$ASTYLE" ]; then
-	echo "opjstyle not found - please enable WITH_ASTYLE in cmake and build it" >&2
+	echo "grkstyle not found - please enable WITH_ASTYLE in cmake and build it" >&2
 	exit 1	
 fi
 

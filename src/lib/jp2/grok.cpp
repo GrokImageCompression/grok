@@ -947,16 +947,16 @@ GROK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
 void grok_plugin_internal_encode_callback(
 		plugin_encode_user_callback_info *info) {
 	/* set code block data etc on code object */
-	grk_plugin_encode_user_callback_info opjInfo;
-	memset(&opjInfo, 0, sizeof(grk_plugin_encode_user_callback_info));
-	opjInfo.input_file_name = info->input_file_name;
-	opjInfo.outputFileNameIsRelative = info->outputFileNameIsRelative;
-	opjInfo.output_file_name = info->output_file_name;
-	opjInfo.encoder_parameters = ( grk_cparameters  * ) info->encoder_parameters;
-	opjInfo.image = (grk_image * ) info->image;
-	opjInfo.tile = (grk_plugin_tile*) info->tile;
+	grk_plugin_encode_user_callback_info grk_info;
+	memset(&grk_info, 0, sizeof(grk_plugin_encode_user_callback_info));
+	grk_info.input_file_name = info->input_file_name;
+	grk_info.outputFileNameIsRelative = info->outputFileNameIsRelative;
+	grk_info.output_file_name = info->output_file_name;
+	grk_info.encoder_parameters = ( grk_cparameters  * ) info->encoder_parameters;
+	grk_info.image = (grk_image * ) info->image;
+	grk_info.tile = (grk_plugin_tile*) info->tile;
 	if (userEncodeCallback)
-		userEncodeCallback(&opjInfo);
+		userEncodeCallback(&grk_info);
 }
 int32_t GRK_CALLCONV grok_plugin_encode( grk_cparameters  *encode_parameters,
 		GROK_PLUGIN_ENCODE_USER_CALLBACK callback) {

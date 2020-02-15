@@ -59,12 +59,12 @@ if(EXISTS "${CMAKE_ROOT}/Modules/CPack.cmake")
     endif()
   endif()
 
-  set(CPACK_BUNDLE_NAME "OpenJPEG ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
+  set(CPACK_BUNDLE_NAME "Grok ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}")
   if(APPLE)
     configure_file(${CMAKE_ROOT}/Templates/AppleInfo.plist
-      ${CMAKE_CURRENT_BINARY_DIR}/opj.plist)
+      ${CMAKE_CURRENT_BINARY_DIR}/grk.plist)
     set(CPACK_BUNDLE_PLIST
-      ${CMAKE_CURRENT_BINARY_DIR}/opj.plist)
+      ${CMAKE_CURRENT_BINARY_DIR}/grk.plist)
     #include(BundleUtilities)
   endif()
 

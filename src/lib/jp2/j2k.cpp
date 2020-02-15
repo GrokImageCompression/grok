@@ -4390,7 +4390,7 @@ static void j2k_set_imf_parameters(grk_cparameters *parameters, grk_image *image
     const uint16_t rsiz = parameters->rsiz;
     const uint16_t profile = GRK_GET_IMF_PROFILE(rsiz);
 
-    /* Override defaults set by opj_set_default_encoder_parameters */
+    /* Override defaults set by set_default_encoder_parameters */
     if (parameters->cblockw_init == GRK_COMP_PARAM_DEFAULT_CBLOCKW &&
             parameters->cblockh_init == GRK_COMP_PARAM_DEFAULT_CBLOCKH) {
         parameters->cblockw_init = 32;

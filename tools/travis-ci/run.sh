@@ -16,7 +16,7 @@ set -o nounset   ## set -u : exit the script if you try to use an uninitialised 
 set -o errexit   ## set -e : exit the script if any statement returns a non-true return value
 set -o pipefail  ## Fail on error in pipe
 
-function opjpath ()
+function grkpath ()
 {
 	if [ "${GROK_CI_IS_CYGWIN:-}" == "1" ]; then
 		cygpath $1 "$2"
@@ -163,8 +163,8 @@ cmake --version
 export TRAVIS_OS_NAME=${TRAVIS_OS_NAME}
 export GROK_SITE=${GROK_SITE}
 export GROK_BUILDNAME=${GROK_BUILDNAME}
-export GROK_SOURCE_DIR=$(opjpath -m ${GROK_SOURCE_DIR})
-export GROK_BINARY_DIR=$(opjpath -m ${PWD}/build)
+export GROK_SOURCE_DIR=$(grkpath -m ${GROK_SOURCE_DIR})
+export GROK_BINARY_DIR=$(grkpath -m ${PWD}/build)
 export GROK_BUILD_CONFIGURATION=${GROK_CI_BUILD_CONFIGURATION}
 export GROK_DO_SUBMIT=${GROK_DO_SUBMIT}
 
@@ -178,7 +178,7 @@ set +x
 
 
 if [ "${GROK_CI_CHECK_STYLE:-}" == "1" ]; then
-    export OPJSTYLE=${PWD}/scripts/opjstyle
+    export GRKSTYLE=${PWD}/scripts/grkstyle
     export PATH=${HOME}/.local/bin:${PATH}
     scripts/verify-indentation.sh
 fi
@@ -265,11 +265,11 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 			awk -F: '{ print $2 }' ${GROK_FAILEDTEST_LOG} > failures.txt
 			while read FAILEDTEST; do
 				# Start with common errors
-				if grep -x "${FAILEDTEST}" $(opjpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-all.txt > /dev/null; then
+				if grep -x "${FAILEDTEST}" $(grkpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-all.txt > /dev/null; then
 					continue
 				fi
-				if [ -f $(opjpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-${GROK_BUILDNAME_TEST}.txt ]; then
-					if grep -x "${FAILEDTEST}" $(opjpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-${GROK_BUILDNAME_TEST}.txt > /dev/null; then
+				if [ -f $(grkpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-${GROK_BUILDNAME_TEST}.txt ]; then
+					if grep -x "${FAILEDTEST}" $(grkpath -u ${GROK_SOURCE_DIR})/tools/travis-ci/knownfailures-${GROK_BUILDNAME_TEST}.txt > /dev/null; then
 						continue
 					fi
 				fi
@@ -316,11 +316,11 @@ if [ "${GROK_CI_PERF_TESTS:-}" == "1" ]; then
     if [ "${TRAVIS_PULL_REQUEST:-false}" == "false" ]; then
         REF_VERSION=v2.1.2
     fi
-    if [ ! -d ref_opj ]; then
-        git clone https://github.com/GrokImageCompression/grok ref_opj
+    if [ ! -d ref_grk ]; then
+        git clone https://github.com/GrokImageCompression/grok ref_grk
     fi
     echo "Building reference version (${REF_VERSION})"
-    cd ref_opj
+    cd ref_grk
     git checkout ${REF_VERSION}
     mkdir -p build
     cd build
@@ -329,9 +329,9 @@ if [ "${GROK_CI_PERF_TESTS:-}" == "1" ]; then
     cd ../..
     cd tests/performance
     echo "Running performance tests on ${REF_VERSION} version (dry-run)"
-    PATH=../../ref_opj/build/bin:$PATH python ./perf_test.py
+    PATH=../../ref_grk/build/bin:$PATH python ./perf_test.py
     echo "Running performance tests on ${REF_VERSION} version"
-    PATH=../../ref_opj/build/bin:$PATH python ./perf_test.py -o /tmp/ref.csv
+    PATH=../../ref_grk/build/bin:$PATH python ./perf_test.py -o /tmp/ref.csv
     echo "Comparing current version with ${REF_VERSION} version"
     # we should normally set GROK_CI_RESULT=1 in case of failure, but
     # this is too unreliable

@@ -169,11 +169,11 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		*numPix = (uint32_t) plugin_cblk->numPix;
 
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
-			uint32_t opjNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
-			if (plugin_cblk->numPix != opjNumPix)
+			uint32_t grkNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
+			if (plugin_cblk->numPix != grkNumPix)
 				printf(
 						"[WARNING]  ojp numPix %d differs from plugin numPix %d\n",
-						opjNumPix, (uint32_t) plugin_cblk->numPix);
+						grkNumPix, (uint32_t) plugin_cblk->numPix);
 		}
 
 		bool goodData = true;

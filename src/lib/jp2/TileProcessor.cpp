@@ -1131,7 +1131,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 	if (!isEncoder) {
 		if (state & GROK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(current_plugin_tile, l_tile)) {
-				GROK_WARN("plugin tile differs from opj tile",
+				GROK_WARN("plugin tile differs from grok tile",
 						nullptr);
 			}
 		}
@@ -1223,7 +1223,7 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 		}
 
 		// When debugging the encoder, we do all of T1 up to and including DWT in the plugin, and pass this in as image data.
-		// This way, both OPJ and plugin start with same inputs for context formation and MQ coding.
+		// This way, both Grok and plugin start with same inputs for context formation and MQ coding.
 		bool debugEncode = state & GROK_PLUGIN_STATE_DEBUG;
 		bool debugMCT = (state & GROK_PLUGIN_STATE_MCT_ONLY) ? true : false;
 
