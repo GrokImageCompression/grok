@@ -1500,9 +1500,7 @@ static sparse_array_int32_t* dwt_init_sparse_array(
                 grk_tcd_precinct* precinct = &band->precincts[precno];
                 for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
                     grk_tcd_cblk_dec* cblk = &precinct->cblks.dec[cblkno];
-                    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    int32_t *decoded_data = NULL;
-                    if (/*cblk->*/decoded_data != NULL) {
+                    if (cblk->uncompressedData != NULL) {
                         uint32_t x = (uint32_t)(cblk->x0 - band->x0);
                         uint32_t y = (uint32_t)(cblk->y0 - band->y0);
                         uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
@@ -1519,7 +1517,7 @@ static sparse_array_int32_t* dwt_init_sparse_array(
 
                         if (!sparse_array_int32_write(sa, x, y,
                                                           x + cblk_w, y + cblk_h,
-                                                          /*cblk->*/decoded_data,
+														  cblk->uncompressedData,
                                                           1, cblk_w, true)) {
                             sparse_array_int32_free(sa);
                             return NULL;

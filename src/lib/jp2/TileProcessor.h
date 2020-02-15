@@ -163,7 +163,7 @@ struct grk_tcd_cblk_dec {
 	}
 
 	grk_tcd_cblk_dec(const grk_tcd_cblk_enc &rhs) :
-			data(nullptr), dataSize(0), segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
+					segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
 					rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
 					rhs.numlenbits), numPassesInPacket(0), numSegments(0),
 #ifdef DEBUG_LOSSLESS_T2
@@ -178,8 +178,8 @@ struct grk_tcd_cblk_dec {
 	void init();
 	bool alloc();
 	void cleanup();
-	uint8_t *data;					// pointer to plugin data.
-	uint32_t dataSize; /* size of data buffer */
+	grk_buf compressedData;
+	int32_t *uncompressedData;
 	grk_vec seg_buffers;
 	grk_tcd_seg *segs; /* information on segments */
 	uint32_t x0, y0, x1, y1; /* position: left upper corner (x0, y0) right low corner (x1,y1) */

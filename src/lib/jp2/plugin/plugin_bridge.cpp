@@ -72,11 +72,11 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 									cblk->seg_buffers.get_len();
 							cblk->seg_buffers.copy_to_contiguous_buffer(
 									plugin_cblk->compressedData);
-							cblk->data = plugin_cblk->compressedData;
-							cblk->dataSize =
-									(uint32_t) plugin_cblk->compressedDataLength;
-
-							plugin_cblk->numBitPlanes = cblk->numbps;
+							cblk->compressedData =
+									grk_buf(plugin_cblk->compressedData,
+											(size_t) plugin_cblk->compressedDataLength,
+											false);
+								plugin_cblk->numBitPlanes = cblk->numbps;
 							plugin_cblk->numPasses = cblk->segs[0].numpasses;
 						}
 					}

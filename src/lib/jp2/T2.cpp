@@ -675,7 +675,7 @@ bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 			if (!l_cblk->numSegments) {
 				l_seg = l_cblk->segs;
 				++l_cblk->numSegments;
-				l_cblk->dataSize = 0;
+				l_cblk->compressedData.len = 0;
 			} else {
 				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
 				if (l_seg->numpasses == l_seg->maxpasses) {
@@ -701,7 +701,7 @@ bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 				}
 				//initialize dataindex to current contiguous size of code block
 				if (l_seg->numpasses == 0) {
-					l_seg->dataindex = l_cblk->dataSize;
+					l_seg->dataindex = (uint32_t)l_cblk->compressedData.len;
 				}
 				// only add segment to seg_buffers if length is greater than zero
 				if (l_seg->numBytesInPacket) {
@@ -709,7 +709,7 @@ bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 							(uint16_t) l_seg->numBytesInPacket);
 					*(p_data_read) += l_seg->numBytesInPacket;
 					src_buf->incr_cur_chunk_offset(l_seg->numBytesInPacket);
-					l_cblk->dataSize += l_seg->numBytesInPacket;
+					l_cblk->compressedData.len += l_seg->numBytesInPacket;
 					l_seg->len += l_seg->numBytesInPacket;
 				}
 				l_seg->numpasses += l_seg->numPassesInPacket;
@@ -784,7 +784,7 @@ bool T2::skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 			if (!l_cblk->numSegments) {
 				l_seg = l_cblk->segs;
 				++l_cblk->numSegments;
-				l_cblk->dataSize = 0;
+				l_cblk->compressedData.len = 0;
 			} else {
 				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
 				if (l_seg->numpasses == l_seg->maxpasses) {

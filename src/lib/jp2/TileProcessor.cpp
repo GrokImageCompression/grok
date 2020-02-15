@@ -1422,18 +1422,13 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 
 void TileProcessor::free_tile() {
 	uint32_t compno, resno, bandno, precno;
-	size_t l_nb_resolutions;
-
 	if (!tile) {
 		return;
 	}
-
-
 	auto l_tile = tile;
 	if (!l_tile) {
 		return;
 	}
-
 	auto l_tile_comp = l_tile->comps;
 	for (compno = 0; compno < l_tile->numcomps; ++compno) {
 		auto l_res = l_tile_comp->resolutions;
@@ -2168,9 +2163,6 @@ void grk_tcd_cblk_enc::cleanup() {
 bool grk_tcd_cblk_dec::alloc() {
 	if (!segs) {
 		segs = new grk_tcd_seg[default_numbers_segments];
-		if (!segs) {
-			return false;
-		}
 		/*fprintf(stderr, "Allocate %d elements of code_block->data\n", default_numbers_segments * sizeof(grk_tcd_seg));*/
 
 		numSegmentsAllocated = default_numbers_segments;
@@ -2197,8 +2189,7 @@ bool grk_tcd_cblk_dec::alloc() {
 }
 
 void grk_tcd_cblk_dec::init() {
-	data = nullptr;
-	dataSize = 0;
+	compressedData = grk_buf();
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;
@@ -2225,11 +2216,9 @@ void grk_tcd_cblk_dec::cleanup() {
 }
 
 void grk_tcd_precinct::deleteTagTrees() {
-	if (incltree)
-		delete incltree;
+	delete incltree;
 	incltree = nullptr;
-	if (imsbtree)
-		delete imsbtree;
+	delete imsbtree;
 	imsbtree = nullptr;
 }
 

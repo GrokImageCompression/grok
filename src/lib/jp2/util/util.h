@@ -84,9 +84,8 @@ struct grk_buf {
 	~grk_buf();
 	void incr_offset(uint64_t off);
 	uint8_t* curr_ptr();
-	void grow();
 
-    uint8_t *buf;		/* internal array*/
+	uint8_t *buf;		/* internal array*/
     uint64_t offset;	/* current offset into array */
     size_t len;		/* length of array */
     bool owns_data;	/* true if buffer manages the buf array */
