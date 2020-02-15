@@ -2339,17 +2339,19 @@ bool TileComponent::create_buffer(bool isEncoder,
 				res->band_region[bandno].dim = component_output_rect;
 				if (resno > 0) {
 
-					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band  */
+					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band
+					 * see Chapter 11 of Taubman and Marcellin for more details
+					 * */
 					grk_pt shift;
-					shift.x = band->bandno & 1;
-					shift.y = band->bandno & 2;
+					shift.x = -(int64_t)(band->bandno & 1);
+					shift.y = -(int64_t)((band->bandno & 2)>>1);
 
 					res->band_region[bandno].dim.pan(&shift);
 					res->band_region[bandno].dim.ceildivpow2(1);
 
-					// boundary padding. These numbers are slightly larger than they theoretically should be,
+					// boundary padding. This number is slightly larger than it should be theoretically,
 					// but we want to make sure that we don't have bugs at the region boundaries
-					res->band_region[bandno].dim.grow(irreversible ? 5 : 3);
+					res->band_region[bandno].dim.grow(4);
 
 				}
 
