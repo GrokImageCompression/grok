@@ -86,14 +86,12 @@ bool TileBuffer::alloc_component_data_decode() {
 }
 
 
-bool TileBuffer::hit_test(grk_rect *rect) {
-	if (!rect)
-		return false;
+bool TileBuffer::hit_test(grk_rect &rect) {
 	for (auto &res : resolutions) {
 		grk_rect dummy;
 		uint32_t j;
 		for (j = 0; j < res->num_bands; ++j) {
-			if ((res->band_region + j)->dim.clip(rect, &dummy))
+			if ((res->band_region + j)->canvas_coords.clip(rect, &dummy))
 				return true;
 		}
 	}
@@ -124,11 +122,11 @@ grk_pt TileBuffer::get_uninterleaved_range(	uint32_t resno, bool is_even, bool i
 	}
 
 	if (is_horizontal) {
-		rc.x = band->dim.x0 - prev_res->origin.x;
-		rc.y = band->dim.x1 - prev_res->origin.x;
+		rc.x = band->canvas_coords.x0 - prev_res->origin.x;
+		rc.y = band->canvas_coords.x1 - prev_res->origin.x;
 	} else {
-		rc.x = band->dim.y0 - prev_res->origin.y;
-		rc.y = band->dim.y1 - prev_res->origin.y;
+		rc.x = band->canvas_coords.y0 - prev_res->origin.y;
+		rc.y = band->canvas_coords.y1 - prev_res->origin.y;
 	}
 
 	/* clip */

@@ -59,18 +59,18 @@ bool grk_rect::are_equal(grk_rect *r2) {
 	return x0 == r2->x0 && y0 == r2->y0 && x1 == r2->x1 && y1 == r2->y1;
 }
 
-bool grk_rect::clip(grk_rect *r2, grk_rect *result) {
+bool grk_rect::clip(grk_rect &r2, grk_rect *result) {
 	bool rc;
 	grk_rect temp;
 
-	if (!r2 || !result)
+	if (!result)
 		return false;
 
-	temp.x0 = MAX(x0, r2->x0);
-	temp.y0 = MAX(y0, r2->y0);
+	temp.x0 = MAX(x0, r2.x0);
+	temp.y0 = MAX(y0, r2.y0);
 
-	temp.x1 = MIN(x1, r2->x1);
-	temp.y1 = MIN(y1, r2->y1);
+	temp.x1 = MIN(x1, r2.x1);
+	temp.y1 = MIN(y1, r2.y1);
 
 	rc = temp.is_valid();
 

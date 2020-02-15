@@ -258,7 +258,9 @@ struct grk_tcd_band {
 	bool isEmpty() {
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
 	}
-	uint32_t x0, y0, x1, y1; /* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
+	/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
+	uint32_t x0, y0, x1, y1;
+	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
 	uint32_t bandno;
 	grk_tcd_precinct *precincts; /* precinct information */
 	size_t numPrecincts;

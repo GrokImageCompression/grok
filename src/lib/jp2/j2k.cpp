@@ -8898,7 +8898,7 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	tile_rect.y1 = p_image->y1;
 
 	if (original_image_rect.is_non_degenerate() && tile_rect.is_non_degenerate()
-			&& original_image_rect.clip(&tile_rect, &overlap_rect)
+			&& original_image_rect.clip(tile_rect, &overlap_rect)
 			&& overlap_rect.is_non_degenerate()) {
 		p_image->x0 = (uint32_t) overlap_rect.x0;
 		p_image->y0 = (uint32_t) overlap_rect.y0;

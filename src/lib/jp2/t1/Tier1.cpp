@@ -125,7 +125,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 
 					/* check if block overlaps with decode region */
 					cblk_rect = grk_rect(x, y, x + w,y + h);
-					if (!tilec->buf->hit_test(&cblk_rect))
+					if (!tilec->buf->hit_test(cblk_rect))
 						continue;
 
 					x -= band->x0;

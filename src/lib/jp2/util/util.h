@@ -55,7 +55,7 @@ struct grk_rect {
 
 	bool are_equal(grk_rect* r2);
 
-	bool clip( grk_rect* r2, grk_rect* result);
+	bool clip( grk_rect& r2, grk_rect* result);
 
 	void ceildivpow2( uint32_t power);
 

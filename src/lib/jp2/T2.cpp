@@ -249,7 +249,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						auto prec = band->precincts + precno;
 						auto prec_rect = grk_rect(prec->x0, prec->y0, prec->x1,
 								prec->y1);
-						if (tilec->buf->hit_test( &prec_rect)) {
+						if (tilec->buf->hit_test( prec_rect)) {
 							skip_precinct = false;
 							break;
 						}

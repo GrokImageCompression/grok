@@ -32,8 +32,7 @@ namespace grk {
  */
 
 struct TileBufferBand {
-	grk_rect dim; /* coordinates of sub-band region (canvas coordinates)  */
-	grk_rect data_dim; /* coordinates of sub-band data region, (tile coordinates ) */
+	grk_rect canvas_coords; /* coordinates of sub-band region (canvas coordinates)  */
 };
 
 struct TileBufferResolution {
@@ -49,7 +48,7 @@ struct TileBuffer {
 	int32_t* get_ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety);
 	bool alloc_component_data_encode();
 	bool alloc_component_data_decode();
-	bool hit_test(grk_rect *rect);
+	bool hit_test(grk_rect &rect);
 	grk_pt get_uninterleaved_range(	uint32_t resno, bool is_even, bool is_horizontal);
 	grk_pt get_interleaved_range(uint32_t resno,bool is_horizontal) ;
 	int64_t get_interleaved_upper_bound();

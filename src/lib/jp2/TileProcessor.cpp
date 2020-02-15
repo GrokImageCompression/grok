@@ -2305,7 +2305,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 
 
 		/* clip output image to tile */
-		new_buffer->tile_dim.clip(&new_buffer->dim, &new_buffer->dim);
+		new_buffer->tile_dim.clip(new_buffer->dim, &new_buffer->dim);
 
 	} else {
 		new_buffer->dim = new_buffer->tile_dim;
@@ -2313,9 +2313,8 @@ bool TileComponent::create_buffer(bool isEncoder,
 
 	/* for encode, we don't need to allocate resolutions */
 	if (!isEncoder) {
-		auto component_output_rect = new_buffer->dim;
-
 		/* fill resolutions vector */
+		TileBufferResolution *prev_res = nullptr;
 		for (resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			uint32_t bandno;
 			grk_tcd_resolution *tcd_res = resolutions + resno;
@@ -2336,7 +2335,8 @@ bool TileComponent::create_buffer(bool isEncoder,
 				grk_rect band_rect;
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
-				res->band_region[bandno].dim = component_output_rect;
+				res->band_region[bandno].canvas_coords =
+						prev_res ? prev_res->band_region[bandno].canvas_coords : new_buffer->dim;
 				if (resno > 0) {
 
 					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band
@@ -2344,26 +2344,20 @@ bool TileComponent::create_buffer(bool isEncoder,
 					 * */
 					grk_pt shift;
 					shift.x = -(int64_t)(band->bandno & 1);
-					shift.y = -(int64_t)((band->bandno & 2)>>1);
+					shift.y = -(int64_t)(band->bandno >> 1);
 
-					res->band_region[bandno].dim.pan(&shift);
-					res->band_region[bandno].dim.ceildivpow2(1);
+					res->band_region[bandno].canvas_coords.pan(&shift);
+					res->band_region[bandno].canvas_coords.ceildivpow2(1);
 
 					// boundary padding. This number is slightly larger than it should be theoretically,
 					// but we want to make sure that we don't have bugs at the region boundaries
-					res->band_region[bandno].dim.grow(4);
+					res->band_region[bandno].canvas_coords.grow(4);
 
 				}
-
-				/* add code block padding around region */
-				(res->band_region + bandno)->data_dim =
-						(res->band_region + bandno)->dim;
-				(res->band_region + bandno)->data_dim.grow2(cblkw, cblkh);
-
 			}
-			component_output_rect = res->band_region[0].dim;
 			res->num_bands = tcd_res->numbands;
 			new_buffer->resolutions.push_back(res);
+			prev_res = res;
 		}
 	}
 	delete buf;
