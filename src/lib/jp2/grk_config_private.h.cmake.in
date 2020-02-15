@@ -3,7 +3,7 @@
 
 #define GRK_PACKAGE_VERSION "@PACKAGE_VERSION@"
 
-/* Not used by openjp2*/
+/* Not used by jp2*/
 /*#cmakedefine HAVE_MEMORY_H @HAVE_MEMORY_H@*/
 /*#cmakedefine HAVE_STDLIB_H @HAVE_STDLIB_H@*/
 /*#cmakedefine HAVE_STRINGS_H @HAVE_STRINGS_H@*/

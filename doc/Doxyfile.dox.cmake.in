@@ -97,7 +97,7 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = @GROK_SOURCE_DIR@/src/lib/openjp2 \
+INPUT                  = @GROK_SOURCE_DIR@/src/lib/jp2 \
                          @GROK_SOURCE_DIR@/src/lib/openjpip \
                          @GROK_BINARY_DIR@/doc
 INPUT_ENCODING         = UTF-8

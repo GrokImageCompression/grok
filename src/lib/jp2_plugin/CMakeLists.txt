@@ -8,10 +8,10 @@ IF(MSVC)
 ENDIF(MSVC)
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/openjp2_plugin
-  ${GROK_BINARY_DIR}/src/lib/openjp2 # grk_config.h and grk_config_private.h
+  ${GROK_BINARY_DIR}/src/lib/jp2_plugin
+  ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h and grk_config_private.h
   ${GROK_SOURCE_DIR}/src/bin/jp2
-  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/lib/jp2
 )
 
 

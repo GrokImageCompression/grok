@@ -1,5 +1,5 @@
 # source code for Grok project:
 # Part 1 & 2:
-add_subdirectory(openjp2)
-add_subdirectory(openjp2_plugin)
+add_subdirectory(jp2)
+add_subdirectory(jp2_plugin)
 

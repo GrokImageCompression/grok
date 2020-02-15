@@ -9,9 +9,9 @@ ENDIF(MSVC)
 
 
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/openjp2 # grk_config.h
+  ${GROK_BINARY_DIR}/src/lib/jp2 # grk_config.h
   ${GROK_BINARY_DIR}/src/bin/common # grk_apps_config.h
-  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/lib/jp2
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/include

@@ -217,14 +217,14 @@ endif ()
 #-----------------------------------------------------------------------------
 # grk_config.h generation (2/2)
 configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/grk_config.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/grk_config.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/grk_config.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/jp2/grk_config.h
  @ONLY
  )
 
  configure_file(
- ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/grk_config_private.h.cmake.in
- ${CMAKE_CURRENT_BINARY_DIR}/src/lib/openjp2/grk_config_private.h
+ ${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/grk_config_private.h.cmake.in
+ ${CMAKE_CURRENT_BINARY_DIR}/src/lib/jp2/grk_config_private.h
  @ONLY
  )
 
@@ -289,7 +289,7 @@ else()
   option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
 if(BUILD_PKGCONFIG_FILES)
-   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/openjp2/libgrok.pc.cmake.in
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrok.pc.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )

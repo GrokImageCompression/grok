@@ -57,9 +57,9 @@ endif()
 
 # Headers file are located here:
 include_directories(
-  ${GROK_BINARY_DIR}/src/lib/openjp2 
+  ${GROK_BINARY_DIR}/src/lib/jp2 
   ${GROK_BINARY_DIR}/src/bin/common 
-  ${GROK_SOURCE_DIR}/src/lib/openjp2
+  ${GROK_SOURCE_DIR}/src/lib/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
   ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
