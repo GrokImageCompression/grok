@@ -326,7 +326,6 @@ struct TileComponent {
     uint32_t win_y1;
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
-private:
 	uint32_t x0, y0, x1, y1; /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
 };
 
@@ -459,7 +458,7 @@ struct TileProcessor {
 	grk_image *image;
 	grk_plugin_tile *current_plugin_tile;
 
-    /** Coordinates of the window of interest, in grid reference space */
+    /** Coordinates of the window of interest, in canvas coordinate space */
     uint32_t win_x0;
     uint32_t win_y0;
     uint32_t win_x1;
@@ -501,6 +500,8 @@ private:
 
 	 bool t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint64_t *p_data_read);
+
+	 bool is_whole_tilecomp_decoding( uint32_t compno);
 
 	 bool t1_decode();
 

@@ -59,6 +59,8 @@
 #include "Tier1.h"
 #include <memory>
 #include "WaveletForward.h"
+#include <algorithm>
+using namespace std;
 
 namespace grk {
 
@@ -791,7 +793,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			return false;
 		}
 		l_image_comp->resno_decoded = 0;
-		/* border of each l_tile component (global) */
+		/* border of each l_tile component in tile coordinates */
 		auto x0 = ceildiv<uint32_t>(l_tile->x0, l_image_comp->dx);
 		auto y0 = ceildiv<uint32_t>(l_tile->y0, l_image_comp->dy);
 		auto x1 = ceildiv<uint32_t>(l_tile->x1, l_image_comp->dx);
@@ -805,7 +807,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 			l_tilec->minimum_num_resolutions = numresolutions
 					- l_cp->m_specific_param.m_dec.m_reduce;
 		}
-		if (l_tilec->resolutions == nullptr) {
+		if (!l_tilec->resolutions) {
 			l_tilec->resolutions = new grk_tcd_resolution[numresolutions];
 			l_tilec->numAllocatedResolutions = numresolutions;
 		} else if (numresolutions > l_tilec->numAllocatedResolutions) {
@@ -1260,8 +1262,102 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 	return true;
 }
 
+/** Returns whether a tile component should be fully decoded,
+ * taking into account win_* members.
+ *
+ * @param compno Component number
+ * @return true if the tile component should be fully decoded
+ */
+bool TileProcessor::is_whole_tilecomp_decoding( uint32_t compno)
+{
+    auto tilec = tile->comps + compno;
+    auto image_comp = image->comps + compno;
+    /* Compute the intersection of the area of interest, expressed in tile coordinates */
+    /* with the tile coordinates */
+    uint32_t tcx0 = max<uint32_t>(
+                          (uint32_t)tilec->x0,
+                          ceildiv<uint32_t>(win_x0, image_comp->dx));
+    uint32_t tcy0 = max<uint32_t>(
+                          (uint32_t)tilec->y0,
+						  ceildiv<uint32_t>(win_y0, image_comp->dy));
+    uint32_t tcx1 = min<uint32_t>(
+                          (uint32_t)tilec->x1,
+						  ceildiv<uint32_t>(win_x1, image_comp->dx));
+    uint32_t tcy1 = min<uint32_t>(
+                          (uint32_t)tilec->y1,
+						  ceildiv<uint32_t>(win_y1, image_comp->dy));
+
+    uint32_t shift = tilec->numresolutions - tilec->minimum_num_resolutions;
+    /* Tolerate small margin within the reduced resolution factor to consider if */
+    /* the whole tile path must be taken */
+    return (tcx0 >= (uint32_t)tilec->x0 &&
+            tcy0 >= (uint32_t)tilec->y0 &&
+            tcx1 <= (uint32_t)tilec->x1 &&
+            tcy1 <= (uint32_t)tilec->y1 &&
+            (shift >= 32 ||
+             (((tcx0 - (uint32_t)tilec->x0) >> shift) == 0 &&
+              ((tcy0 - (uint32_t)tilec->y0) >> shift) == 0 &&
+              (((uint32_t)tilec->x1 - tcx1) >> shift) == 0 &&
+              (((uint32_t)tilec->y1 - tcy1) >> shift) == 0)));
+}
+
 bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	tcp = cp->tcps + tile_no;
+
+	// optimization for regions that are close to largest decoded resolution
+	// (currently breaks tests, so disabled)
+	/*
+    for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+		if (!is_whole_tilecomp_decoding(compno)) {
+			whole_tile_decoding = false;
+			break;
+		}
+	}
+	*/
+    if (!whole_tile_decoding) {
+	  /* Compute restricted tile-component and tile-resolution coordinates */
+	  /* of the window of interest */
+	  for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+		  uint32_t resno;
+		  auto tilec = tile->comps + compno;
+		  auto image_comp = image->comps + compno;
+
+		  /* Compute the intersection of the area of interest, expressed in tile coordinates */
+		  /* with the tile coordinates */
+		  tilec->win_x0 = max<uint32_t>(
+							  (uint32_t)tilec->x0,
+							  ceildiv<uint32_t>(win_x0, image_comp->dx));
+		  tilec->win_y0 = max<uint32_t>(
+							  (uint32_t)tilec->y0,
+							  ceildiv<uint32_t>(win_y0, image_comp->dy));
+		  tilec->win_x1 = min<uint32_t>(
+							  (uint32_t)tilec->x1,
+							  ceildiv<uint32_t>(win_x1, image_comp->dx));
+		  tilec->win_y1 = min<uint32_t>(
+							  (uint32_t)tilec->y1,
+							  ceildiv<uint32_t>(win_y1, image_comp->dy));
+		  if (tilec->win_x1 < tilec->win_x0 ||
+				  tilec->win_y1 < tilec->win_y0) {
+			  /* We should not normally go there. The circumstance is when */
+			  /* the tile coordinates do not intersect the area of interest */
+			  /* Upper level logic should not even try to decode that tile */
+			  GROK_ERROR("Invalid tilec->win_xxx values\n");
+			  return false;
+		  }
+
+		  for (resno = 0; resno < tilec->numresolutions; ++resno) {
+			  auto res = tilec->resolutions + resno;
+			  res->win_x0 = uint_ceildivpow2(tilec->win_x0,
+												 tilec->numresolutions - 1 - resno);
+			  res->win_y0 = uint_ceildivpow2(tilec->win_y0,
+												 tilec->numresolutions - 1 - resno);
+			  res->win_x1 = uint_ceildivpow2(tilec->win_x1,
+												 tilec->numresolutions - 1 - resno);
+			  res->win_y1 = uint_ceildivpow2(tilec->win_y1,
+												 tilec->numresolutions - 1 - resno);
+		  }
+	  }
+    }
 
 	bool doT2 = !current_plugin_tile
 			|| (current_plugin_tile->decode_flags & GROK_DECODE_T2);
