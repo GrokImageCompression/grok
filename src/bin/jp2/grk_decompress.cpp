@@ -535,7 +535,10 @@ int parse_cmdline_decoder(int argc,
 			parameters->force_rgb = true;
 		}
 		if (upsampleArg.isSet()) {
-			parameters->upsample = true;
+			if (reduceArg.isSet())
+				spdlog::warn("Cannot upsample when reduce argument set. Ignoring");
+			else
+				parameters->upsample = true;
 		}
 		if (splitPnmArg.isSet()) {
 			parameters->split_pnm = true;
@@ -880,11 +883,6 @@ static grk_image *  upsample_image_components(grk_image *  original)
     for (compno = 0U; compno < original->numcomps; ++compno) {
 		if (!(original->comps+compno))
 			return nullptr;
-        if (original->comps[compno].decodeScaleFactor > 0U) {
-            spdlog::error( "grk_decompress: -upsample not supported with reduction");
-            grk_image_destroy(original);
-            return nullptr;
-        }
         if ((original->comps[compno].dx > 1U) || (original->comps[compno].dy > 1U)) {
             l_upsample_need = true;
             break;

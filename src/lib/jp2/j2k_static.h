@@ -1,16 +1,40 @@
 #pragma once
 
+namespace grk {
+
+struct  grk_dec_memory_marker_handler  {
+	/** marker value */
+	uint32_t id;
+	/** value of the state when the marker can appear */
+	uint32_t states;
+	/** action linked to the marker */
+	bool (*handler)(grk_j2k *p_j2k, uint8_t *p_header_data,
+			uint16_t header_size);
+} ;
+
+
+struct j2k_prog_order_t {
+	GRK_PROG_ORDER enum_prog;
+	char str_prog[5];
+};
+
+static j2k_prog_order_t j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
+		GRK_LRCP, "LRCP" }, { GRK_PCRL, "PCRL" }, { GRK_RLCP, "RLCP" }, {
+		GRK_RPCL, "RPCL" }, { (GRK_PROG_ORDER) -1, "" } };
+
+/**
+ * FIXME DOC
+ */
+static const uint32_t MCT_ELEMENT_SIZE[] = { 2, 4, 4, 8 };
+
+typedef void (*j2k_mct_function)(const void *p_src_data, void *p_dest_data,
+		uint32_t nb_elem);
 
 /** @name Local static functions */
 /*@{*/
 
 static bool j2k_fromTileHeader(grk_j2k *p_j2k);
 
-/**
- Transfer data from src to dest for each component, and null out src data.
- Assumption:  src and dest have the same number of components
- */
-static void j2k_transfer_image_data(grk_image *src, grk_image *dest);
 /**
  * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
@@ -73,15 +97,6 @@ static bool j2k_setup_end_compress(grk_j2k *p_j2k);
 static bool j2k_mct_validation(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 /**
- * Builds the tcd decoder to use to decode tile.
- */
-static bool j2k_build_decoder(grk_j2k *p_j2k, BufferedStream *p_stream);
-/**
- * Builds the tcd encoder to use to encode tile.
- */
-static bool j2k_build_encoder(grk_j2k *p_j2k, BufferedStream *p_stream);
-
-/**
  * Creates a tile-coder decoder.
  *
  * @param       p_j2k                           J2K codec.
@@ -138,13 +153,6 @@ static const  grk_dec_memory_marker_handler  *  j2k_get_marker_handler(
  * @param       p_tcp           the tile coding parameter to destroy.
  */
 static void j2k_tcp_destroy(grk_tcp *p_tcp);
-
-/**
- * Destroys the data inside a tile coding parameter structure.
- *
- * @param       p_tcp           the tile coding parameter which contain data to destroy.
- */
-static void j2k_tcp_data_destroy(grk_tcp *p_tcp);
 
 /**
  * Compare 2 a SPCod/ SPCoc elements, i.e. the coding style of a given component of a tile.
@@ -267,11 +275,6 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index);
 
-static bool j2k_copy_decoded_tile_to_output_image(TileProcessor *p_tcd, uint8_t *p_data,
-		grk_image *p_output_image, bool clearOutputOnInit);
-
-static void j2k_get_tile_data(TileProcessor *p_tcd, uint8_t *p_data);
-
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 /**
@@ -295,7 +298,6 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
  */
 static bool j2k_get_end_header(grk_j2k *p_j2k, BufferedStream *p_stream);
 
-static bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k);
 
 /*
  * -----------------------------------------------------------------------
@@ -1017,12 +1019,6 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint16_
  */
 static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tile_parts, grk_image *image);
 
-static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream);
-
-static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream);
-
-static  grk_codestream_index  *  j2k_create_cstr_index(void);
-
 static float j2k_get_tp_stride(grk_tcp *p_tcp);
 
 static float j2k_get_default_stride(grk_tcp *p_tcp);
@@ -1053,3 +1049,4 @@ static bool j2k_is_imf_compliant(grk_cparameters *parameters,
  */
 static bool j2k_need_nb_tile_parts_correction(BufferedStream *p_stream,
 		uint16_t tile_no, bool *p_correction_needed);
+}

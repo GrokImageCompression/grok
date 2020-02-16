@@ -349,7 +349,8 @@ struct grk_tcp {
 };
 
 struct grk_encoding_param {
-	/** Maximum rate for each component. If == 0, component size limitation is not considered */
+	/** Maximum rate for each component.
+	 * If == 0, component size limitation is not considered */
 	size_t m_max_comp_size;
 	/** Position of tile part flag in progression order*/
 	uint32_t m_tp_pos;
@@ -464,7 +465,7 @@ struct grk_coding_parameters {
 	union {
 		grk_decoding_param m_dec;
 		grk_encoding_param m_enc;
-	} m_specific_param;
+	} m_coding_param;
 
 	/******** FLAGS *********/
 	/** if ppm == 1 --> there was a PPM marker*/
@@ -650,13 +651,6 @@ bool j2k_read_header(BufferedStream *p_stream, grk_j2k *p_j2k,
 void j2k_destroy(grk_j2k *p_j2k);
 
 /**
- * Destroys a codestream index structure.
- *
- * @param	p_cstr_ind	the codestream index parameter to destroy.
- */
-void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
-
-/**
  * Decode tile data.
  * @param	p_j2k		the jpeg2000 codec.
  * @param	tile_index
@@ -709,54 +703,6 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
  * @return a handle to a J2K decompressor if successful, nullptr otherwise.
  */
 grk_j2k* j2k_create_decompress(void);
-
-/**
- * Dump some elements from the J2K decompression structure .
- *
- *@param p_j2k				the jpeg2000 codec.
- *@param flag				flag to describe what elements are dumped.
- *@param out_stream			output stream where dump the elements.
- *
- */
-void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream);
-
-/**
- * Dump an image header structure.
- *
- *@param image			the image header to dump.
- *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
- *@param out_stream			output stream where dump the elements.
- */
-void j2k_dump_image_header(grk_image *image, bool dev_dump_flag,
-		FILE *out_stream);
-
-/**
- * Dump a component image header structure.
- *
- *@param comp		the component image header to dump.
- *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
- *@param out_stream			output stream where dump the elements.
- */
-void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
-		FILE *out_stream);
-
-/**
- * Get the codestream info from a JPEG2000 codec.
- *
- *@param	p_j2k				the component image header to dump.
- *
- *@return	the codestream information extract from the jpg2000 codec
- */
- grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k);
-
-/**
- * Get the codestream index from a JPEG2000 codec.
- *
- *@param	p_j2k				the component image header to dump.
- *
- *@return	the codestream index extract from the jpg2000 codec
- */
- grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k);
 
 /**
  * Decode an image from a JPEG-2000 codestream

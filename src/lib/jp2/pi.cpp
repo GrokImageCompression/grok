@@ -1408,7 +1408,7 @@ grk_pi_iterator* pi_initialise_encode(const grk_image *p_image, grk_coding_param
 	l_step_l = l_max_res * l_step_r;
 
 	/* set values for first packet iterator*/
-	l_pi->tp_on = (uint8_t) p_cp->m_specific_param.m_enc.m_tp_on;
+	l_pi->tp_on = (uint8_t) p_cp->m_coding_param.m_enc.m_tp_on;
 	auto l_current_pi = l_pi;
 
 	/* memory allocation for include*/
@@ -1528,7 +1528,7 @@ void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t til
 	pi[pino].first = 1;
 	pi[pino].poc.prg = tcp->prg;
 
-	if (!(cp->m_specific_param.m_enc.m_tp_on
+	if (!(cp->m_coding_param.m_enc.m_tp_on
 			&& ( (!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz) && (t2_mode == FINAL_PASS))
 					|| GRK_IS_CINEMA(cp->rsiz) ||  GRK_IS_IMF(cp->rsiz)))) {
 		pi[pino].poc.resno0 = tcp->resS;

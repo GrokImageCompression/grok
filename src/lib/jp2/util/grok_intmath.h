@@ -91,6 +91,30 @@ static inline int32_t int_clamp(int32_t a, int32_t min, int32_t max) {
 		return max;
 	return a;
 }
+
+/**
+Clamp an integer inside an interval
+@return
+<ul>
+<li>Returns a if (min < a < max)
+<li>Returns max if (a > max)
+<li>Returns min if (a < min)
+</ul>
+*/
+static inline int64_t int64_clamp(int64_t a, int64_t min,
+		int64_t max)
+{
+    if (a < min) {
+        return min;
+    }
+    if (a > max) {
+        return max;
+    }
+    return a;
+}
+
+
+
 /**
  Divide an integer by another integer and round upwards
  @param  a integer of type T
@@ -127,6 +151,15 @@ static inline uint32_t uint64_ceildivpow2(uint64_t a, uint32_t b) {
  */
 static inline uint32_t uint_ceildivpow2(uint32_t a, uint32_t b) {
 	return (uint32_t)((a + ((uint64_t) 1U << b) - 1U) >> b);
+}
+/**
+ Divide an integer by a power of 2 and round upwards
+ @param  a unsigned integer
+ @param  b power of two
+ @return a divided by 2^b
+ */
+static inline int32_t int_ceildivpow2(int32_t a, int32_t b) {
+	return (int32_t)((a + ((int64_t) 1 << b) - 1) >> b);
 }
 /**
  Divide an integer by a power of 2 and round downwards

@@ -1318,15 +1318,7 @@ bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
 
 	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
 	if (bpno_plus_one >= 31) {
-		//if (p_manager_mutex) {
-		//    opj_mutex_lock(p_manager_mutex);
-		//}
-		//opj_event_msg(p_manager, EVT_WARNING,
-		//              "opj_t1_decode_cblk(): unsupported bpno_plus_one = %d >= 31\n",
-		//             bpno_plus_one);
-		//if (p_manager_mutex) {
-		//    opj_mutex_unlock(p_manager_mutex);
-		//}
+		grk::GROK_ERROR("unsupported bpno_plus_one = %d >= 31\n", bpno_plus_one);
 		return false;
 	}
 	passtype = 2;

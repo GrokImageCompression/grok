@@ -163,6 +163,7 @@ struct grk_tcd_cblk_dec {
 	}
 
 	grk_tcd_cblk_dec(const grk_tcd_cblk_enc &rhs) :
+					uncompressedData(nullptr),
 					segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
 					rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
 					rhs.numlenbits), numPassesInPacket(0), numSegments(0),
@@ -170,7 +171,8 @@ struct grk_tcd_cblk_dec {
 														 included(false),
 														packet_length_info(nullptr),
 #endif
-					numSegmentsAllocated(0) {
+					numSegmentsAllocated(0),
+					decoded_data(nullptr){
 	}
 	/**
 	 * Allocates memory for a decoding code block (but not data)
@@ -192,6 +194,8 @@ struct grk_tcd_cblk_dec {
 	uint32_t included;
 	std::vector<grk_packet_length_info>* packet_length_info;
 #endif
+    /* Decoded code-block. Only used for subtile decoding. Otherwise tilec->data is directly updated */
+    int32_t* decoded_data;
 
 };
 
@@ -440,6 +444,13 @@ struct TileProcessor {
 
 
 	bool needs_rate_control();
+
+	bool copy_decoded_tile_to_output_image(uint8_t *p_data,
+			grk_image *p_output_image, bool clearOutputOnInit);
+
+	void get_tile_data(uint8_t *p_data);
+
+	bool needs_copy_tile_data(grk_image *output_image, uint32_t num_tiles);
 
 
 	/** Position of the tile part flag in progression order*/

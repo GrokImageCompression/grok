@@ -193,6 +193,7 @@ static inline long grok_lrintf(float f) {
 #include "image.h"
 #include "invert.h"
 #include "j2k.h"
+#include "j2k_dump.h"
 #include "jp2.h"
 #include "BitIO.h"
 #include "TileBuffer.h"

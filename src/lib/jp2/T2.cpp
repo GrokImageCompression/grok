@@ -108,7 +108,7 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						info_PK->start_pos = info_TL->end_header + 1;
 					} else {
 						info_PK->start_pos =
-								((l_cp->m_specific_param.m_enc.m_tp_on
+								((l_cp->m_coding_param.m_enc.m_tp_on
 										| l_tcp->POC) && info_PK->start_pos) ?
 										info_PK->start_pos :
 										info_TL->packet[cstr_info->packno - 1].end_pos
@@ -139,7 +139,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no,
 	auto l_tcp = l_cp->tcps + tile_no;
 	uint32_t pocno = (l_cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t l_max_comp =
-			l_cp->m_specific_param.m_enc.m_max_comp_size > 0 ?
+			l_cp->m_coding_param.m_enc.m_max_comp_size > 0 ?
 					l_image->numcomps : 1;
 	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
 
@@ -183,8 +183,8 @@ bool T2::encode_packets_simulate(uint16_t tile_no,
 				}
 			}
 
-			if (l_cp->m_specific_param.m_enc.m_max_comp_size) {
-				if (l_comp_len > l_cp->m_specific_param.m_enc.m_max_comp_size) {
+			if (l_cp->m_coding_param.m_enc.m_max_comp_size) {
+				if (l_comp_len > l_cp->m_coding_param.m_enc.m_max_comp_size) {
 					pi_destroy(l_pi, l_nb_pocs);
 					return false;
 				}

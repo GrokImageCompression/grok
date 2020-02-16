@@ -22,7 +22,18 @@
  * party and contributor rights, including patent rights, and no such rights
  * are granted under this license.
  *
+ * Copyright (c) 2002-2014, Universite catholique de Louvain (UCL), Belgium
+ * Copyright (c) 2002-2014, Professor Benoit Macq
+ * Copyright (c) 2001-2003, David Janssens
+ * Copyright (c) 2002-2003, Yannick Verschueren
+ * Copyright (c) 2003-2007, Francois-Olivier Devaux
+ * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
+ * Copyright (c) 2006-2007, Parvatha Elangovan
+ * Copyright (c) 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
+ * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
+ * Copyright (c) 2012, CS Systemes d'Information, France
+ *
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -48,46 +59,71 @@
  */
 
 #pragma once
+
+#include <vector>
+#include <map>
+
 namespace grk {
 
-/**
- @file image.h
- @brief Implementation of operations on images (IMAGE)
-
- The functions in IMAGE.C have for goal to realize operations on images.
- */
-
-struct grk_coding_parameters;
-
-/** @defgroup IMAGE IMAGE - Implementation of operations on images */
-/*@{*/
 
 /**
- * Create an empty image
+ * Dump some elements from the J2K decompression structure .
  *
- * @return returns an empty image if successful, returns nullptr otherwise
- */
-grk_image *  grk_image_create0(void);
-
-/**
- * Updates the components characteristics of the image from the coding parameters.
+ *@param p_j2k				the jpeg2000 codec.
+ *@param flag				flag to describe what elements are dumped.
+ *@param out_stream			output stream where dump the elements.
  *
- * @param p_image_header		the image header to update.
- * @param p_cp					the coding parameters from which to update the image.
  */
-void grk_image_comp_header_update(grk_image *p_image, const grk_coding_parameters *p_cp);
-
-void grk_copy_image_header(const grk_image *p_image_src,
-		grk_image *p_image_dest);
-
-bool update_image_dimensions(grk_image* p_image, uint32_t reduce);
+void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream);
 
 /**
- Transfer data from src to dest for each component, and null out src data.
- Assumption:  src and dest have the same number of components
+ * Dump an image header structure.
+ *
+ *@param image			the image header to dump.
+ *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
+ *@param out_stream			output stream where dump the elements.
  */
-void transfer_image_data(grk_image *src, grk_image *dest);
+void j2k_dump_image_header(grk_image *image, bool dev_dump_flag,
+		FILE *out_stream);
 
-/*@}*/
+/**
+ * Dump a component image header structure.
+ *
+ *@param comp		the component image header to dump.
+ *@param dev_dump_flag		flag to describe if we are in the case of this function is use outside j2k_dump function
+ *@param out_stream			output stream where dump the elements.
+ */
+void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
+		FILE *out_stream);
+
+/**
+ * Get the codestream info from a JPEG2000 codec.
+ *
+ *@param	p_j2k				the component image header to dump.
+ *
+ *@return	the codestream information extract from the jpg2000 codec
+ */
+ grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k);
+
+/**
+ * Get the codestream index from a JPEG2000 codec.
+ *
+ *@param	p_j2k				the component image header to dump.
+ *
+ *@return	the codestream index extract from the jpg2000 codec
+ */
+ grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k);
+
+ grk_codestream_index  *  j2k_create_cstr_index(void);
+
+ bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k);
+
+ /**
+  * Destroys a codestream index structure.
+  *
+  * @param	p_cstr_ind	the codestream index parameter to destroy.
+  */
+ void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
+
 
 }
