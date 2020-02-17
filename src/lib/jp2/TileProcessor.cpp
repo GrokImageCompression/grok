@@ -1795,21 +1795,20 @@ bool TileProcessor::dc_level_shift_decode() {
 
 
 		} else {
+			auto reduce = cp->m_coding_param.m_dec.m_reduce;
 			scaledTileX0 = uint_ceildivpow2(
-					(uint32_t) l_tile_comp->buf->tile_dim.x0,
-					l_img_comp->decodeScaleFactor);
+					(uint32_t) l_tile_comp->buf->tile_dim.x0,reduce);
 			scaledTileY0 = uint_ceildivpow2(
-					(uint32_t) l_tile_comp->buf->tile_dim.y0,
-					l_img_comp->decodeScaleFactor);
+					(uint32_t) l_tile_comp->buf->tile_dim.y0,reduce);
 
 			x0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.x0,
-					l_img_comp->decodeScaleFactor) - scaledTileX0);
+					reduce) - scaledTileX0);
 			y0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.y0,
-					l_img_comp->decodeScaleFactor) - scaledTileY0);
+					reduce) - scaledTileY0);
 			x1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.x1,
-					l_img_comp->decodeScaleFactor) - scaledTileX0);
+					reduce) - scaledTileX0);
 			y1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.y1,
-					l_img_comp->decodeScaleFactor) - scaledTileY0);
+					reduce) - scaledTileY0);
 		}
 
 
@@ -2189,12 +2188,11 @@ bool TileProcessor::needs_copy_tile_data(grk_image* output_image, uint32_t num_t
 	 destination image component dimensions. Return true if this is not true for
 	 one component.
 	*/
+	auto reduce = cp->m_coding_param.m_dec.m_reduce;
 	for (uint32_t i = 0; i < output_image->numcomps; i++) {
 		auto dest_comp = output_image->comps + i;
-		uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,
-				dest_comp->decodeScaleFactor);
-		uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,
-				dest_comp->decodeScaleFactor);
+		uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,reduce);
+		uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,reduce);
 		uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
 		uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
 
@@ -2218,7 +2216,7 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 		grk_image *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
 	auto image_src = image;
-
+	auto reduce = cp->m_coding_param.m_dec.m_reduce;
 	for (i = 0; i < image_src->numcomps; i++) {
 
 		auto tilec = tile->comps + i;
@@ -2266,16 +2264,14 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 		uint32_t height_src = (res->y1 - res->y0);
 
 		/* Border of the current output component. (x0_dest,y0_dest) corresponds to origin of dest buffer */
-		uint32_t x0_dest = uint_ceildivpow2(img_comp_dest->x0,
-				img_comp_dest->decodeScaleFactor);
-		uint32_t y0_dest = uint_ceildivpow2(img_comp_dest->y0,
-				img_comp_dest->decodeScaleFactor);
+		uint32_t x0_dest = uint_ceildivpow2(img_comp_dest->x0,	reduce);
+		uint32_t y0_dest = uint_ceildivpow2(img_comp_dest->y0,	reduce);
 		uint32_t x1_dest = x0_dest + img_comp_dest->w; /* can't overflow given that image->x1 is uint32 */
 		uint32_t y1_dest = y0_dest + img_comp_dest->h;
 
 		/*if (i == 0) {
 		 fprintf(stdout, "DEST: x0_dest=%d, x1_dest=%d, y0_dest=%d, y1_dest=%d (%d)\n",
-		 x0_dest, x1_dest, y0_dest, y1_dest, img_comp_dest->decodeScaleFactor );
+		 x0_dest, x1_dest, y0_dest, y1_dest, reduce );
 		 }*/
 
 		/*-----*/

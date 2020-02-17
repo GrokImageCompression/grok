@@ -850,7 +850,6 @@ static grk_image *  convert_gray_to_rgb(grk_image *  original)
     l_new_image->y0 = original->y0;
     l_new_image->y1 = original->y1;
 
-    l_new_image->comps[0].decodeScaleFactor        = l_new_image->comps[1].decodeScaleFactor        = l_new_image->comps[2].decodeScaleFactor        = original->comps[0].decodeScaleFactor;
     l_new_image->comps[0].alpha         = l_new_image->comps[1].alpha         = l_new_image->comps[2].alpha         = original->comps[0].alpha;
     l_new_image->comps[0].resno_decoded = l_new_image->comps[1].resno_decoded = l_new_image->comps[2].resno_decoded = original->comps[0].resno_decoded;
 
@@ -859,7 +858,6 @@ static grk_image *  convert_gray_to_rgb(grk_image *  original)
     memcpy(l_new_image->comps[2].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
 
     for(compno = 1U; compno < original->numcomps; ++compno) {
-        l_new_image->comps[compno+2U].decodeScaleFactor        = original->comps[compno].decodeScaleFactor;
         l_new_image->comps[compno+2U].alpha         = original->comps[compno].alpha;
         l_new_image->comps[compno+2U].resno_decoded = original->comps[compno].resno_decoded;
         memcpy(l_new_image->comps[compno+2U].data, original->comps[compno].data, original->comps[compno].w * original->comps[compno].h * sizeof(int32_t));
@@ -938,7 +936,6 @@ static grk_image *  upsample_image_components(grk_image *  original)
          grk_image_comp  *  l_new_cmp = &(l_new_image->comps[compno]);
          grk_image_comp  *  l_org_cmp = &(original->comps[compno]);
 
-        l_new_cmp->decodeScaleFactor        = l_org_cmp->decodeScaleFactor;
         l_new_cmp->alpha         = l_org_cmp->alpha;
         l_new_cmp->resno_decoded = l_org_cmp->resno_decoded;
 

@@ -1684,25 +1684,19 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	}
 
 	l_img_comp = p_image->comps;
+	auto reduce = p_j2k->m_cp.m_coding_param.m_dec.m_reduce;
 	for (compno = 0; compno < p_image->numcomps; ++compno) {
 		uint32_t l_comp_x1, l_comp_y1;
-
-		l_img_comp->decodeScaleFactor =
-				p_j2k->m_private_image->comps[compno].decodeScaleFactor;
 
 		l_img_comp->x0 = ceildiv<uint32_t>(p_image->x0, l_img_comp->dx);
 		l_img_comp->y0 = ceildiv<uint32_t>(p_image->y0, l_img_comp->dy);
 		l_comp_x1 = ceildiv<uint32_t>(p_image->x1, l_img_comp->dx);
 		l_comp_y1 = ceildiv<uint32_t>(p_image->y1, l_img_comp->dy);
 
-		l_img_comp->w = (uint_ceildivpow2(l_comp_x1,
-				l_img_comp->decodeScaleFactor)
-				- uint_ceildivpow2(l_img_comp->x0,
-						l_img_comp->decodeScaleFactor));
-		l_img_comp->h = (uint_ceildivpow2(l_comp_y1,
-				l_img_comp->decodeScaleFactor)
-				- uint_ceildivpow2(l_img_comp->y0,
-						l_img_comp->decodeScaleFactor));
+		l_img_comp->w = (uint_ceildivpow2(l_comp_x1,reduce)
+				- uint_ceildivpow2(l_img_comp->x0,	reduce));
+		l_img_comp->h = (uint_ceildivpow2(l_comp_y1,reduce)
+				- uint_ceildivpow2(l_img_comp->y0,	reduce));
 
 		l_img_comp++;
 	}
@@ -1757,7 +1751,6 @@ bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor) {
 					"maximum resolution in the component.");
 			return false;
 		}
-		image->comps[comp].decodeScaleFactor =	res_factor;
 	}
 	return true;
 }
@@ -4677,7 +4670,6 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 			return false;
 		}
 		l_img_comp->resno_decoded = 0; /* number of resolution decoded */
-		l_img_comp->decodeScaleFactor = l_cp->m_coding_param.m_dec.m_reduce; /* reducing factor per component */
 		++l_img_comp;
 	}
 
