@@ -2739,18 +2739,21 @@ void TileComponent::get_dimensions(grk_image *l_image,
 bool TileComponent::create_buffer(bool isEncoder,
 		bool irreversible, uint32_t cblkw, uint32_t cblkh,
 		grk_image *output_image, uint32_t dx, uint32_t dy) {
-	int32_t resno = 0;
 	auto new_buffer = new TileBuffer();
 	new_buffer->data = nullptr;
 	new_buffer->tile_dim = grk_rect(x0, y0, x1, y1);
+	grk_rect unreduced_tile_dims = grk_rect(x0, y0, x1, y1);
 
 	if (output_image) {
+		// tile coordinates
 		new_buffer->dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
 				ceildiv<uint32_t>(output_image->y0, dy),
 				ceildiv<uint32_t>(output_image->x1, dx),
 				ceildiv<uint32_t>(output_image->y1, dy));
 
-		if (!isEncoder && whole_tile_decoding)
+		unreduced_tile_dims = new_buffer->dim;
+
+		if (whole_tile_decoding)
 			new_buffer->dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 
@@ -2765,7 +2768,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 	if (!isEncoder) {
 		/* fill resolutions vector */
 		TileBufferResolution *prev_res = nullptr;
-		for (resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
+		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			uint32_t bandno;
 			grk_tcd_resolution *tcd_res = resolutions + resno;
 			TileBufferResolution *res = (TileBufferResolution*) grok_calloc(1,
@@ -2786,7 +2789,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
 				res->band_region[bandno].canvas_coords =
-						prev_res ? prev_res->band_region[bandno].canvas_coords : new_buffer->dim;
+						prev_res ? prev_res->band_region[bandno].canvas_coords : unreduced_tile_dims;
 				if (resno > 0) {
 
 					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band

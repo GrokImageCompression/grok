@@ -249,7 +249,12 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						auto prec = band->precincts + precno;
 						auto prec_rect = grk_rect(prec->x0, prec->y0, prec->x1,
 								prec->y1);
-						if (tilec->buf->hit_test( prec_rect)) {
+						grk_rect dummy;
+						auto tile_res =
+								tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - l_current_pi->resno];
+						bool clip =
+								(tile_res->band_region + bandno)->canvas_coords.clip(prec_rect, &dummy);
+						if (clip) {
 							skip_precinct = false;
 							break;
 						}
