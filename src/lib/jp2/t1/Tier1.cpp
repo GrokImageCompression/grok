@@ -125,7 +125,12 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 
 					/* check if block overlaps with decode region */
 					cblk_rect = grk_rect(x, y, x + w,y + h);
-					if (!tilec->buf->hit_test(cblk_rect))
+					grk_rect dummy;
+					auto tile_res =
+							tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - resno];
+					bool clip =
+							(tile_res->band_region + bandno)->canvas_coords.clip(cblk_rect, &dummy);
+					if (!clip)
 						continue;
 
 					x -= band->x0;

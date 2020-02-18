@@ -85,19 +85,6 @@ bool TileBuffer::alloc_component_data_decode() {
 	return true;
 }
 
-
-bool TileBuffer::hit_test(grk_rect &rect) {
-	for (auto &res : resolutions) {
-		grk_rect dummy;
-		uint32_t j;
-		for (j = 0; j < res->num_bands; ++j) {
-			if ((res->band_region + j)->canvas_coords.clip(rect, &dummy))
-				return true;
-		}
-	}
-	return false;
-}
-
 grk_pt TileBuffer::get_uninterleaved_range(	uint32_t resno, bool is_even, bool is_horizontal) {
 	grk_pt rc;
 	TileBufferResolution *res = nullptr;
