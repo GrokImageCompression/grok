@@ -1500,7 +1500,7 @@ static sparse_array_int32_t* dwt_init_sparse_array(
                 grk_tcd_precinct* precinct = &band->precincts[precno];
                 for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
                     grk_tcd_cblk_dec* cblk = &precinct->cblks.dec[cblkno];
-                    if (cblk->uncompressedData != NULL) {
+                    if (cblk->decoded_data != NULL) {
                         uint32_t x = (uint32_t)(cblk->x0 - band->x0);
                         uint32_t y = (uint32_t)(cblk->y0 - band->y0);
                         uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
@@ -1517,7 +1517,7 @@ static sparse_array_int32_t* dwt_init_sparse_array(
 
                         if (!sparse_array_int32_write(sa, x, y,
                                                           x + cblk_w, y + cblk_h,
-														  cblk->uncompressedData,
+														  cblk->decoded_data,
                                                           1, cblk_w, true)) {
                             sparse_array_int32_free(sa);
                             return NULL;
@@ -1556,10 +1556,12 @@ static bool dwt_decode_partial_tile(
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
-    uint32_t win_tcx0 = tilec->win_x0;
-    uint32_t win_tcy0 = tilec->win_y0;
-    uint32_t win_tcx1 = tilec->win_x1;
-    uint32_t win_tcy1 = tilec->win_y1;
+    auto dim = tilec->buf->unreduced_image_dim;
+
+    uint32_t win_tcx0 = dim.x0;
+    uint32_t win_tcy0 = dim.y0;
+    uint32_t win_tcx1 = dim.x1;
+    uint32_t win_tcy1 = dim.y1;
 
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
         return true;
@@ -1576,7 +1578,7 @@ static bool dwt_decode_partial_tile(
                        tr_max->win_y0 - (uint32_t)tr_max->y0,
                        tr_max->win_x1 - (uint32_t)tr_max->x0,
                        tr_max->win_y1 - (uint32_t)tr_max->y0,
-                       tilec->data_win,
+                       tilec->buf->get_ptr(0,0,0,0),
                        1, tr_max->win_x1 - tr_max->win_x0,
                        true);
         assert(ret);
@@ -1768,7 +1770,7 @@ static bool dwt_decode_partial_tile(
                        tr_max->win_y0 - (uint32_t)tr_max->y0,
                        tr_max->win_x1 - (uint32_t)tr_max->x0,
                        tr_max->win_y1 - (uint32_t)tr_max->y0,
-                       tilec->data_win,
+					   tilec->buf->get_ptr(0,0,0,0),
                        1, tr_max->win_x1 - tr_max->win_x0,
                        true);
         assert(ret);
@@ -2277,10 +2279,12 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
-    uint32_t win_tcx0 = tilec->win_x0;
-    uint32_t win_tcy0 = tilec->win_y0;
-    uint32_t win_tcx1 = tilec->win_x1;
-    uint32_t win_tcy1 = tilec->win_y1;
+    auto dim = tilec->buf->unreduced_image_dim;
+
+    uint32_t win_tcx0 = dim.x0;
+    uint32_t win_tcy0 = dim.y0;
+    uint32_t win_tcx1 = dim.x1;
+    uint32_t win_tcy1 = dim.y1;
 
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
         return true;
@@ -2297,7 +2301,7 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
                        tr_max->win_y0 - (uint32_t)tr_max->y0,
                        tr_max->win_x1 - (uint32_t)tr_max->x0,
                        tr_max->win_y1 - (uint32_t)tr_max->y0,
-                       tilec->data_win,
+					   tilec->buf->get_ptr(0,0,0,0),
                        1, tr_max->win_x1 - tr_max->win_x0,
                        true);
         assert(ret);
@@ -2481,7 +2485,7 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
                        tr_max->win_y0 - (uint32_t)tr_max->y0,
                        tr_max->win_x1 - (uint32_t)tr_max->x0,
                        tr_max->win_y1 - (uint32_t)tr_max->y0,
-                       tilec->data_win,
+					   tilec->buf->get_ptr(0,0,0,0),
                        1, tr_max->win_x1 - tr_max->win_x0,
                        true);
         assert(ret);

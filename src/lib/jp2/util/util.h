@@ -49,7 +49,10 @@ struct grk_rect {
 	/* valid if x0 <= x1 && y0 <= y1. Can include degenerate rectangles: line and point*/
 	bool is_valid(void);
 
-	int64_t get_area(void);
+	int64_t area(void);
+
+	int64_t width();
+	int64_t height();
 
 	bool is_non_degenerate(void);
 

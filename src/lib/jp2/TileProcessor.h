@@ -163,7 +163,6 @@ struct grk_tcd_cblk_dec {
 	}
 
 	grk_tcd_cblk_dec(const grk_tcd_cblk_enc &rhs) :
-					uncompressedData(nullptr),
 					segs(nullptr), x0(rhs.x0), y0(rhs.y0), x1(
 					rhs.x1), y1(rhs.y1), numbps(rhs.numbps), numlenbits(
 					rhs.numlenbits), numPassesInPacket(0), numSegments(0),
@@ -181,7 +180,6 @@ struct grk_tcd_cblk_dec {
 	bool alloc();
 	void cleanup();
 	grk_buf compressedData;
-	int32_t *uncompressedData;
 	grk_vec seg_buffers;
 	grk_tcd_seg *segs; /* information on segments */
 	uint32_t x0, y0, x1, y1; /* position: left upper corner (x0, y0) right low corner (x1,y1) */
@@ -307,7 +305,7 @@ struct TileComponent {
 			uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
 	bool create_buffer(bool isEncoder,
-			bool irreversible, uint32_t cblkw, uint32_t cblkh,
+			bool irreversible,
 			grk_image *output_image, uint32_t dx, uint32_t dy);
 
 	uint32_t numresolutions; /* number of resolutions level */
@@ -319,23 +317,11 @@ struct TileComponent {
 #endif
 	uint64_t numpix;
 	TileBuffer *buf;
-
-    /** data of the component limited to window of interest.
-     *  Only valid for decoding and if tcd->whole_tile_decoding is NOT set (so exclusive of data member) */
-	int32_t *data_win;
-    /* dimension of the component limited to window of interest.
-     * Only valid for decoding and  if tcd->whole_tile_decoding is NOT set */
-    uint32_t win_x0;
-    uint32_t win_y0;
-    uint32_t win_x1;
-    uint32_t win_y1;
-    /** Only valid for decoding. Whether the whole tile is decoded,
-     *  or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
 
-    /* dimension of component in un-reduced tile coordinates
-     * */
+    /* reduced tile coordinates */
 	uint32_t x0, y0, x1, y1;
+	grk_rect unreduced_tile_dim;
 };
 
 // tile
@@ -362,10 +348,6 @@ struct TileProcessor {
 			  tile(nullptr),
 			  image(nullptr),
 			  current_plugin_tile(nullptr),
-			  win_x0(0),
-			  win_y0(0),
-			  win_x1(0),
-			  win_y1(0),
 			  whole_tile_decoding(true),
 			  cp(nullptr),
 			  tcp(nullptr),
@@ -474,11 +456,6 @@ struct TileProcessor {
 	grk_image *image;
 	grk_plugin_tile *current_plugin_tile;
 
-    /** Coordinates of the window of interest, in canvas coordinate space */
-    uint32_t win_x0;
-    uint32_t win_y0;
-    uint32_t win_x1;
-    uint32_t win_y1;
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
 

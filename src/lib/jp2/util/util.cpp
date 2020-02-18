@@ -97,8 +97,15 @@ void grk_rect::mulpow2(uint32_t power) {
 
 }
 
-int64_t grk_rect::get_area(void) {
+int64_t grk_rect::area(void) {
 	return (x1 - x0) * (y1 - y0);
+}
+
+int64_t grk_rect::width(){
+	return x1 - x0;
+}
+int64_t grk_rect::height(){
+	return y1 - y0;
 }
 
 void grk_rect::pan(grk_pt *shift) {

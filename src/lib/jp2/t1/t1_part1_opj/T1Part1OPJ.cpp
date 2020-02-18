@@ -14,6 +14,7 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include "grok_includes.h"
 #include "T1Part1OPJ.h"
 #include "testing.h"
 #include "grok_malloc.h"
@@ -178,6 +179,22 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 	// and opj uses subtracted value
 	cblkopj.numbps = cblk->numbps - block->roishift;
 
+
+	if (SPARSE_REGION && !block->tilec->whole_tile_decoding){
+		auto cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
+        auto cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+        auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
+
+        if (cblkopj.decoded_data)
+        	grok_aligned_free(cblkopj.decoded_data);
+        cblkopj.decoded_data = (int32_t*)grok_aligned_malloc(data_size);
+        if (!cblkopj.decoded_data){
+            GROK_ERROR("Unable to allocate cblk data");
+           	return false;
+        }
+        memset(cblkopj.decoded_data, 0, data_size);
+	}
+
     ret =
     		opj_t1_decode_cblk(t1,
     				&cblkopj,
@@ -186,6 +203,10 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 					block->cblk_sty,
 					false);
 
+    if (SPARSE_REGION && !block->tilec->whole_tile_decoding){
+		cblk->decoded_data = cblkopj.decoded_data;
+		cblkopj.decoded_data = nullptr;
+    }
 	delete[] segs;
 	return ret;
 }
@@ -202,6 +223,7 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
 	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	cblkopj.decoded_data = block->cblk->decoded_data;
     post_decode(t1,
     		&cblkopj,
 			block->roishift,
@@ -209,7 +231,8 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 			block->stepsize,
 			block->tiledp,
 			block->tilec->width(),
-			block->tilec->height()
+			block->tilec->height(),
+			block->tilec->whole_tile_decoding
 			);
 }
 }

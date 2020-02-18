@@ -44,7 +44,7 @@ struct TileBuffer {
 
 	int32_t* get_ptr(uint32_t resno,uint32_t bandno, uint32_t offsetx, uint32_t offsety);
 	bool alloc_component_data_encode();
-	bool alloc_component_data_decode(bool whole_tile);
+	bool alloc_component_data_decode();
 	grk_pt get_uninterleaved_range(	uint32_t resno, bool is_even, bool is_horizontal);
 	grk_pt get_interleaved_range(uint32_t resno,bool is_horizontal) ;
 	int64_t get_interleaved_upper_bound();
@@ -57,8 +57,20 @@ struct TileBuffer {
 	uint64_t data_size; /* size of the data of the component */
 	bool owns_data; /* true if tile buffer manages its data array, false otherwise */
 
-	grk_rect image_dim; /* reduced tile coordinates of region */
-	grk_rect tile_dim; /* reduced tile coordinates of tile */
+	// unreduced coordinates of region
+	grk_rect unreduced_image_dim;
+
+	 /* tile coordinates of region -
+	  * reduced if (SPARSE_REGION || whole_tile_decoding) */
+	grk_rect reduced_image_dim;
+
+	 /* tile coordinates of tile -
+	  * reduced if (SPARSE_REGION || whole_tile_decoding)  */
+	grk_rect reduced_tile_dim;
+
+	/* unreduced coordinates of tile */
+	grk_rect unreduced_tile_dim;
+
 
 };
 

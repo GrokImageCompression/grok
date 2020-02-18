@@ -1282,11 +1282,6 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 
 	decoder->m_discard_tiles = 1;
 	tp->whole_tile_decoding = false;
-	tp->win_x0 = start_x;
-	tp->win_y0 = start_y;
-	tp->win_x1 = end_x;
-	tp->win_y1 = end_y;
-
 	if (!update_image_dimensions(p_image, l_cp->m_coding_param.m_dec.m_reduce))
 		return false;
 

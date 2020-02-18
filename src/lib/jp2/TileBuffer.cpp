@@ -36,8 +36,9 @@ int32_t* TileBuffer::get_ptr(uint32_t resno,
 		uint32_t bandno, uint32_t offsetx, uint32_t offsety) {
 	(void) resno;
 	(void) bandno;
+	auto dims = SPARSE_REGION ? reduced_image_dim : reduced_tile_dim;
 	return data + (uint64_t) offsetx
-			+ (uint64_t) offsety * (tile_dim.x1 - tile_dim.x0);
+			+ (uint64_t) offsety * (dims.x1 - dims.x0);
 }
 
 
@@ -68,9 +69,9 @@ bool TileBuffer::alloc_component_data_encode() {
 	return true;
 }
 
-bool TileBuffer::alloc_component_data_decode(bool whole_tile) {
+bool TileBuffer::alloc_component_data_decode() {
 	if (!data) {
-		int64_t area = tile_dim.get_area();
+		int64_t area = SPARSE_REGION ? reduced_image_dim.area() : reduced_tile_dim.area();
 		if (area) {
 			data = (int32_t*) grok_aligned_malloc(area * sizeof(int32_t));
 			if (!data) {

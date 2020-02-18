@@ -50,6 +50,8 @@
  */
 #pragma once
 
+const bool SPARSE_REGION = true;
+
 /*
  * This must be included before any system headers,
  * since they can react to macro defined there

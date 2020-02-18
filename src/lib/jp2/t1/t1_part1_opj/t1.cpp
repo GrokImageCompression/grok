@@ -55,6 +55,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+#include "grok_includes.h"
 #include "grok.h"
 #include "opj_includes.h"
 #include "logger.h"
@@ -1229,29 +1230,39 @@ void opj_t1_destroy(opj_t1_t *p_t1) {
 
 void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 		uint32_t qmfbid, float stepsize, int32_t *tilec_data,
-		int32_t tile_w, int32_t tile_h) {
+		int32_t tile_w, int32_t tile_h, bool whole_tile_decoding) {
 
 	(void)tile_h;
-	int32_t *datap = t1->data;
+
+	int32_t *src = t1->data;
+	int32_t *dest = tilec_data;
+	int32_t dest_width = tile_w;
 	uint16_t cblk_w = (uint16_t)(cblk->x1 - cblk->x0);
 	uint16_t cblk_h = (uint16_t)(cblk->y1 - cblk->y0);
+
+	if (SPARSE_REGION && !whole_tile_decoding){
+		src = cblk->decoded_data;
+		dest = src;
+		dest_width = cblk_w;
+	}
+
 
 	if (roishift) {
 		if (roishift >= 31) {
 			for (uint16_t j = 0; j < cblk_h; ++j) {
 				for (uint16_t i = 0; i < cblk_w; ++i) {
-					datap[(j * cblk_w) + i] = 0;
+					src[(j * cblk_w) + i] = 0;
 				}
 			}
 		} else {
 			int32_t thresh = 1 << roishift;
 			for (int j = 0; j < cblk_h; ++j) {
 				for (int i = 0; i < cblk_w; ++i) {
-					int32_t val = datap[(j * cblk_w) + i];
+					int32_t val = src[(j * cblk_w) + i];
 					int32_t mag = abs(val);
 					if (mag >= thresh) {
 						mag >>= roishift;
-						datap[(j * cblk_w) + i] = val < 0 ? -mag : mag;
+						src[(j * cblk_w) + i] = val < 0 ? -mag : mag;
 					}
 				}
 			}
@@ -1259,39 +1270,39 @@ void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 	}
 
 	if (qmfbid == 1) {
-		int32_t *OPJ_RESTRICT tiledp = tilec_data;
+		int32_t *OPJ_RESTRICT tiledp = dest;
 		for (int j = 0; j < cblk_h; ++j) {
 			uint32_t i = 0;
 			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-				int32_t tmp0 = datap[(j * cblk_w) + i + 0U];
-				int32_t tmp1 = datap[(j * cblk_w) + i + 1U];
-				int32_t tmp2 = datap[(j * cblk_w) + i + 2U];
-				int32_t tmp3 = datap[(j * cblk_w) + i + 3U];
-				((int32_t*) tiledp)[(j * (size_t) tile_w) + i + 0U] = tmp0
+				int32_t tmp0 = src[(j * cblk_w) + i + 0U];
+				int32_t tmp1 = src[(j * cblk_w) + i + 1U];
+				int32_t tmp2 = src[(j * cblk_w) + i + 2U];
+				int32_t tmp3 = src[(j * cblk_w) + i + 3U];
+				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 0U] = tmp0
 						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) tile_w) + i + 1U] = tmp1
+				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 1U] = tmp1
 						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) tile_w) + i + 2U] = tmp2
+				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 2U] = tmp2
 						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) tile_w) + i + 3U] = tmp3
+				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 3U] = tmp3
 						/ 2;
 			}
 			for (; i < cblk_w; ++i) {
-				int32_t tmp = datap[(j * cblk_w) + i];
-				((int32_t*) tiledp)[(j * (size_t) tile_w) + i] = tmp / 2;
+				int32_t tmp = src[(j * cblk_w) + i];
+				((int32_t*) tiledp)[(j * (size_t) dest_width) + i] = tmp / 2;
 			}
 		}
-	} else { /* if (tccp->qmfbid == 0) */
-		float *OPJ_RESTRICT tiledp = (float*) tilec_data;
+	} else {
+		float *OPJ_RESTRICT tiledp = (float*) dest;
 		for (int j = 0; j < cblk_h; ++j) {
 			float *OPJ_RESTRICT tiledp2 = tiledp;
 			for (int i = 0; i < cblk_w; ++i) {
-				float tmp = (float) (*datap) * stepsize;
+				float tmp = (float) (*src) * stepsize;
 				*tiledp2 = tmp;
-				datap++;
+				src++;
 				tiledp2++;
 			}
-			tiledp += tile_w;
+			tiledp += dest_width;
 		}
 	}
 }
