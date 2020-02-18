@@ -279,7 +279,8 @@ struct grk_tcd_resolution {
 			x0(0), y0(0), x1(0), y1(0), pw(0), ph(0), numbands(0) {
 	}
 
-	uint32_t x0, y0, x1, y1; /* dimension of the resolution level : left upper corner (x0, y0) right low corner (x1,y1) */
+	/* dimension of the resolution level in tile coordinates */
+	uint32_t x0, y0, x1, y1;
 	uint32_t pw, ph;
 	uint32_t numbands; /* number sub-band for the resolution level */
 	grk_tcd_band bands[3]; /* subband information */
@@ -328,9 +329,13 @@ struct TileComponent {
     uint32_t win_y0;
     uint32_t win_x1;
     uint32_t win_y1;
-    /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
+    /** Only valid for decoding. Whether the whole tile is decoded,
+     *  or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
-	uint32_t x0, y0, x1, y1; /* dimension of component : left upper corner (x0, y0) right low corner (x1,y1) */
+
+    /* dimension of component in un-reduced tile coordinates
+     * */
+	uint32_t x0, y0, x1, y1;
 };
 
 // tile

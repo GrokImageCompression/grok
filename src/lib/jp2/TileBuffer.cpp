@@ -68,7 +68,7 @@ bool TileBuffer::alloc_component_data_encode() {
 	return true;
 }
 
-bool TileBuffer::alloc_component_data_decode() {
+bool TileBuffer::alloc_component_data_decode(bool whole_tile) {
 	if (!data) {
 		int64_t area = tile_dim.get_area();
 		if (area) {
@@ -89,7 +89,7 @@ grk_pt TileBuffer::get_uninterleaved_range(	uint32_t resno, bool is_even, bool i
 	grk_pt rc;
 	TileBufferResolution *res = nullptr;
 	TileBufferResolution *prev_res = nullptr;
-	TileBufferBand *band = nullptr;
+	grk_rect *band = nullptr;
 	memset(&rc, 0, sizeof(grk_pt));
 
 	res = resolutions[resolutions.size() - 1 - resno];
@@ -109,11 +109,11 @@ grk_pt TileBuffer::get_uninterleaved_range(	uint32_t resno, bool is_even, bool i
 	}
 
 	if (is_horizontal) {
-		rc.x = band->canvas_coords.x0 - prev_res->origin.x;
-		rc.y = band->canvas_coords.x1 - prev_res->origin.x;
+		rc.x = band->x0 - prev_res->origin.x;
+		rc.y = band->x1 - prev_res->origin.x;
 	} else {
-		rc.x = band->canvas_coords.y0 - prev_res->origin.y;
-		rc.y = band->canvas_coords.y1 - prev_res->origin.y;
+		rc.x = band->y0 - prev_res->origin.y;
+		rc.y = band->y1 - prev_res->origin.y;
 	}
 
 	/* clip */

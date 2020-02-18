@@ -924,7 +924,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 					/* x0b = 1 if bandno = 1 or 3 */
 					l_x0b = l_band->bandno & 1;
 					/* y0b = 1 if bandno = 2 or 3 */
-					l_y0b = (int32_t) ((l_band->bandno) >> 1);
+					l_y0b = (uint32_t) ((l_band->bandno) >> 1);
 					/* l_band border (global) */
 					l_band->x0 = uint64_ceildivpow2(
 							x0 - ((uint64_t) l_x0b << l_level_no),
@@ -1043,8 +1043,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 						l_current_precinct->cblks.blocks = new_blocks;
 						/*fprintf(stderr, "\t\t\t\tReallocate cblks of a precinct (grk_tcd_cblk_dec): from %d to %d\n",l_current_precinct->block_size, l_nb_code_blocks_size);     */
 
-						memset(
-								((uint8_t*) l_current_precinct->cblks.blocks)
+						memset(	((uint8_t*) l_current_precinct->cblks.blocks)
 										+ l_current_precinct->block_size, 0,
 								l_nb_code_blocks_size
 										- l_current_precinct->block_size);
@@ -1788,10 +1787,10 @@ bool TileProcessor::dc_level_shift_decode() {
 			scaledTileX0 = (uint32_t)l_tile_comp->buf->tile_dim.x0;
 			scaledTileY0 =  (uint32_t)l_tile_comp->buf->tile_dim.y0;
 
-			x0 = (uint32_t)(l_tile_comp->buf->dim.x0- scaledTileX0);
-			y0 = (uint32_t)(l_tile_comp->buf->dim.y0 - scaledTileY0);
-			x1 = (uint32_t)(l_tile_comp->buf->dim.x1 - scaledTileX0);
-			y1 = (uint32_t)(l_tile_comp->buf->dim.y1 - scaledTileY0);
+			x0 = (uint32_t)(l_tile_comp->buf->image_dim.x0- scaledTileX0);
+			y0 = (uint32_t)(l_tile_comp->buf->image_dim.y0 - scaledTileY0);
+			x1 = (uint32_t)(l_tile_comp->buf->image_dim.x1 - scaledTileX0);
+			y1 = (uint32_t)(l_tile_comp->buf->image_dim.y1 - scaledTileY0);
 
 
 		} else {
@@ -1801,13 +1800,13 @@ bool TileProcessor::dc_level_shift_decode() {
 			scaledTileY0 = uint_ceildivpow2(
 					(uint32_t) l_tile_comp->buf->tile_dim.y0,reduce);
 
-			x0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.x0,
+			x0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->image_dim.x0,
 					reduce) - scaledTileX0);
-			y0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.y0,
+			y0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->image_dim.y0,
 					reduce) - scaledTileY0);
-			x1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.x1,
+			x1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->image_dim.x1,
 					reduce) - scaledTileX0);
-			y1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->dim.y1,
+			y1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->image_dim.y1,
 					reduce) - scaledTileY0);
 		}
 
@@ -2742,22 +2741,18 @@ bool TileComponent::create_buffer(bool isEncoder,
 
 	if (output_image) {
 		// tile coordinates
-		new_buffer->dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
-				ceildiv<uint32_t>(output_image->y0, dy),
-				ceildiv<uint32_t>(output_image->x1, dx),
-				ceildiv<uint32_t>(output_image->y1, dy));
+		new_buffer->image_dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
+									ceildiv<uint32_t>(output_image->y0, dy),
+									ceildiv<uint32_t>(output_image->x1, dx),
+									ceildiv<uint32_t>(output_image->y1, dy));
 
-		unreduced_tile_dims = new_buffer->dim;
+		unreduced_tile_dims = new_buffer->image_dim;
 
 		if (whole_tile_decoding)
-			new_buffer->dim.ceildivpow2(numresolutions - minimum_num_resolutions);
-
+			new_buffer->image_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 		/* clip output image to tile */
-		new_buffer->tile_dim.clip(new_buffer->dim, &new_buffer->dim);
-
-	} else {
-		new_buffer->dim = new_buffer->tile_dim;
+		new_buffer->tile_dim.clip(new_buffer->image_dim, &new_buffer->image_dim);
 	}
 
 	/* for encode, we don't need to allocate resolutions */
@@ -2784,8 +2779,8 @@ bool TileComponent::create_buffer(bool isEncoder,
 				grk_rect band_rect;
 				band_rect = grk_rect(band->x0, band->y0, band->x1, band->y1);
 
-				res->band_region[bandno].canvas_coords =
-						prev_res ? prev_res->band_region[bandno].canvas_coords : unreduced_tile_dims;
+				res->band_region[bandno] =
+						prev_res ? prev_res->band_region[bandno] : unreduced_tile_dims;
 				if (resno > 0) {
 
 					/*For next level down, E' = ceil((E-b)/2) where b in {0,1} identifies band
@@ -2795,12 +2790,12 @@ bool TileComponent::create_buffer(bool isEncoder,
 					shift.x = -(int64_t)(band->bandno & 1);
 					shift.y = -(int64_t)(band->bandno >> 1);
 
-					res->band_region[bandno].canvas_coords.pan(&shift);
-					res->band_region[bandno].canvas_coords.ceildivpow2(1);
+					res->band_region[bandno].pan(&shift);
+					res->band_region[bandno].ceildivpow2(1);
 
 					// boundary padding. This number is slightly larger than it should be theoretically,
 					// but we want to make sure that we don't have bugs at the region boundaries
-					res->band_region[bandno].canvas_coords.grow(4);
+					res->band_region[bandno].grow(4);
 
 				}
 			}
