@@ -716,7 +716,7 @@ uint64_t TileComponent::area(){
 }
 void TileComponent::finalizeCoordinates(bool isEncoder){
 	auto highestRes =
-			(!isEncoder && (SPARSE_REGION || whole_tile_decoding)) ?
+			(!isEncoder) ?
 								minimum_num_resolutions : numresolutions;
 	auto res =  resolutions + highestRes - 1;
 	x0 = res->x0;
@@ -1176,16 +1176,9 @@ uint64_t TileProcessor::get_decoded_tile_size() {
 			l_size_comp = 4;
 		}
 
-		if (SPARSE_REGION) {
-			auto area = l_tile_comp->buf->reduced_image_dim.area();
-			l_data_size += l_size_comp * area;
-		}
-		else {
-			auto l_res = l_tile_comp->resolutions + l_tile_comp->minimum_num_resolutions
-					- 1;
-			l_data_size += l_size_comp * (uint64_t) (l_res->x1 - l_res->x0)
-					* (l_res->y1 - l_res->y0);
-		}
+		auto area = l_tile_comp->buf->reduced_image_dim.area();
+		l_data_size += l_size_comp * area;
+
 		++l_img_comp;
 		++l_tile_comp;
 	}
@@ -1326,7 +1319,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 		}
 	}
 	*/
-    if (!whole_tile_decoding && SPARSE_REGION) {
+    if (!whole_tile_decoding) {
 	  /* Compute restricted tile-component and tile-resolution coordinates */
 	  /* of the window of interest */
 	  for (uint32_t compno = 0; compno < image->numcomps; compno++) {
@@ -1448,15 +1441,9 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 
 		uint32_t l_stride = 0, l_width = 0, l_height = 0;
 
-		if (SPARSE_REGION) {
-			l_width = l_tilec->buf->reduced_image_dim.width();
-			l_height = l_tilec->buf->reduced_image_dim.height();
-		} else {
-			auto l_res = l_tilec->resolutions + l_img_comp->resno_decoded;
-			l_width = (l_res->x1 - l_res->x0);
-			l_height = (l_res->y1 - l_res->y0);
-			l_stride = l_tilec->width() - l_width;
-		}
+		l_width = l_tilec->buf->reduced_image_dim.width();
+		l_height = l_tilec->buf->reduced_image_dim.height();
+
 		const int32_t *l_src_ptr = l_tilec->buf->get_ptr( 0, 0, 0,0);
 
 		if (l_size_comp == 3) {
@@ -1716,7 +1703,7 @@ bool TileProcessor::mct_decode() {
 	}
 
 	uint64_t image_samples  = l_tile_comp->buf->reduced_image_dim.area();
-	uint64_t l_samples = SPARSE_REGION ? image_samples : l_tile_comp->area();
+	uint64_t l_samples = image_samples;
 
 	if (l_tile->numcomps >= 3) {
 		/* testcase 1336.pdf.asan.47.376 */
@@ -1800,41 +1787,12 @@ bool TileProcessor::dc_level_shift_decode() {
 		uint32_t l_stride = 0;
 
 		int32_t *l_current_ptr = l_tile_comp->buf->get_ptr( 0, 0, 0, 0);
-		if (SPARSE_REGION){
-				x0 = 0;
-				y0 = 0;
-				x1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.width());
-				y1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.height());
-		 } else {
-			if (this->whole_tile_decoding) {
-				// for whole tile decoding, tile_dim is already scaled
-				uint32_t scaledTileX0 = (uint32_t)l_tile_comp->buf->reduced_tile_dim.x0;
-				uint32_t scaledTileY0 =  (uint32_t)l_tile_comp->buf->reduced_tile_dim.y0;
 
-				x0 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.x0- scaledTileX0);
-				y0 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.y0 - scaledTileY0);
-				x1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.x1 - scaledTileX0);
-				y1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.y1 - scaledTileY0);
+		x0 = 0;
+		y0 = 0;
+		x1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.width());
+		y1 = (uint32_t)(l_tile_comp->buf->reduced_image_dim.height());
 
-			} else {
-				auto reduce = cp->m_coding_param.m_dec.m_reduce;
-				uint32_t scaledTileX0 = uint_ceildivpow2(
-						(uint32_t) l_tile_comp->buf->reduced_tile_dim.x0,reduce);
-				uint32_t scaledTileY0 = uint_ceildivpow2(
-						(uint32_t) l_tile_comp->buf->reduced_tile_dim.y0,reduce);
-
-				x0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->reduced_image_dim.x0,
-						reduce) - scaledTileX0);
-				y0 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->reduced_image_dim.y0,
-						reduce) - scaledTileY0);
-				x1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->reduced_image_dim.x1,
-						reduce) - scaledTileX0);
-				y1 = (uint_ceildivpow2((uint32_t) l_tile_comp->buf->reduced_image_dim.y1,
-						reduce) - scaledTileY0);
-			}
-			l_current_ptr += x0 + y0 * l_tile_comp->width();
-			l_stride = l_tile_comp->width() - (x1 - x0);
-		 }
 		assert(x1 >= x0);
 		assert(l_tile_comp->width() >= (x1 - x0));
 
@@ -2199,32 +2157,8 @@ bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
 
 
 bool TileProcessor::needs_copy_tile_data(grk_image* output_image, uint32_t num_tiles) {
-	if (num_tiles > 1)
-		return true;
+	return  (num_tiles > 1);
 
-	if (SPARSE_REGION)
-		return false;
-
-	/* If we only have one tile, check if output image component dimensions match
-	 destination image component dimensions. Return true if this is not true for
-	 one component.
-	*/
-	auto reduce = cp->m_coding_param.m_dec.m_reduce;
-	for (uint32_t i = 0; i < output_image->numcomps; i++) {
-		auto dest_comp = output_image->comps + i;
-		uint32_t l_x0_dest = uint_ceildivpow2(dest_comp->x0,reduce);
-		uint32_t l_y0_dest = uint_ceildivpow2(dest_comp->y0,reduce);
-		uint32_t l_x1_dest = l_x0_dest + dest_comp->w; /* can't overflow given that image->x1 is uint32 */
-		uint32_t l_y1_dest = l_y0_dest + dest_comp->h;
-
-		auto src_comp = image->comps + i;
-		if (src_comp->x0 != l_x0_dest || src_comp->y0 != l_y0_dest
-				|| src_comp->w != (l_x1_dest - l_x0_dest)
-				|| src_comp->h != (l_y1_dest - l_y0_dest)) {
-			return true;
-		}
-	}
-	return false;
 }
 
 /*
@@ -2286,13 +2220,7 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 		 res->x0, res->x1, res->y0, res->y1);
 		 }*/
 
-		grk_rect src_dim;
-		if (SPARSE_REGION){
-			src_dim = tilec->buf->reduced_image_dim;
-		} else {
-			auto res = tilec->resolutions + img_comp_src->resno_decoded;
-			src_dim = grk_rect(res->x0, res->y0, res->x1, res->y1);
-		}
+		grk_rect src_dim = tilec->buf->reduced_image_dim;
 
 		uint32_t width_src = (uint32_t)src_dim.width();
 		uint32_t height_src = (uint32_t)src_dim.height();
@@ -2773,8 +2701,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 	new_buffer->reduced_tile_dim = grk_rect(x0, y0, x1, y1);
 	new_buffer->reduced_image_dim = new_buffer->reduced_tile_dim;
 	new_buffer->unreduced_tile_dim = unreduced_tile_dim;
-	grk_rect max_image_dim = SPARSE_REGION ?
-									unreduced_tile_dim : grk_rect(x0, y0, x1, y1);
+	grk_rect max_image_dim = unreduced_tile_dim ;
 
 	if (output_image) {
 		// tile coordinates
@@ -2787,8 +2714,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 
 		max_image_dim = new_buffer->reduced_image_dim;
 
-		if (whole_tile_decoding || SPARSE_REGION)
-			new_buffer->reduced_image_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
+		new_buffer->reduced_image_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 		/* clip output image to tile */
 		new_buffer->reduced_tile_dim.clip(new_buffer->reduced_image_dim, &new_buffer->reduced_image_dim);

@@ -1240,7 +1240,7 @@ void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 	uint16_t cblk_w = (uint16_t)(cblk->x1 - cblk->x0);
 	uint16_t cblk_h = (uint16_t)(cblk->y1 - cblk->y0);
 
-	if (SPARSE_REGION && !whole_tile_decoding){
+	if (!whole_tile_decoding){
 		src = cblk->decoded_data;
 		dest = src;
 		dest_width = cblk_w;

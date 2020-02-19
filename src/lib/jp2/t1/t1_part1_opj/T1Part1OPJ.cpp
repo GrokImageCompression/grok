@@ -180,7 +180,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 	cblkopj.numbps = cblk->numbps - block->roishift;
 
 
-	if (SPARSE_REGION && !block->tilec->whole_tile_decoding){
+	if (!block->tilec->whole_tile_decoding){
 		auto cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
         auto cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
         auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
@@ -203,7 +203,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 					block->cblk_sty,
 					false);
 
-    if (SPARSE_REGION && !block->tilec->whole_tile_decoding){
+    if (!block->tilec->whole_tile_decoding){
 		cblk->decoded_data = cblkopj.decoded_data;
 		cblkopj.decoded_data = nullptr;
     }

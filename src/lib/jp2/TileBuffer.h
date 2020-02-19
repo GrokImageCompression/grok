@@ -60,12 +60,10 @@ struct TileBuffer {
 	// unreduced coordinates of region
 	grk_rect unreduced_image_dim;
 
-	 /* tile coordinates of region -
-	  * reduced if (SPARSE_REGION || whole_tile_decoding) */
+	 /* reduced tile coordinates of region  */
 	grk_rect reduced_image_dim;
 
-	 /* tile coordinates of tile -
-	  * reduced if (SPARSE_REGION || whole_tile_decoding)  */
+	 /* reduced tile coordinates of tile */
 	grk_rect reduced_tile_dim;
 
 	/* unreduced coordinates of tile */
