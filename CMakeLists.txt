@@ -45,11 +45,12 @@ set(PACKAGE_VERSION
 # version | soversion
 #   3.0.0 |  9
 #   3.1.0 |  9
+#   4.0.0 |  10
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 9)
+  set(GROK_SOVERSION 10)
 endif(NOT GROK_SOVERSION)
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
