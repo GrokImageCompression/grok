@@ -22,19 +22,6 @@ matrix:
         - ubuntu-toolchain-r-test
         packages:
         - g++-8
-  - os: linux
-    arch: arm64
-    dist: trusty
-    sudo: required
-    compiler: g++
-    env: GROK_CI_BUILD_CONFIGURATION=Release
-
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
-        - g++-8
 
 install:
 - "./tools/travis-ci/install.sh"
