@@ -53,6 +53,9 @@ if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 	if [ ${GROK_DATA_HAS_BRANCH} -eq 0 ]; then
 		GROK_DATA_BRANCH=master #default to master
 	fi
+	if [ "${TRAVIS_OS_NAME:-}" == "osx" ] || uname -s | grep -i Darwin &> /dev/null; then
+		GROK_DATA_BRANCH=osx
+	fi
 	echo "Cloning grok-test-data from ${GROK_DATA_BRANCH} branch"
 	git clone --depth=1 --branch=${GROK_DATA_BRANCH} git://github.com/GrokImageCompression/grok-test-data.git data
 
