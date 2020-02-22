@@ -293,7 +293,7 @@ T2::T2(grk_image *p_image, grk_coding_parameters *p_cp) : image(p_image), cp(p_c
 }
 
 bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
+		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
     auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
@@ -319,7 +319,7 @@ bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 }
 
 bool T2::read_packet_header(grk_tcd_tile *p_tile,
-		grk_tcp *p_tcp, grk_pi_iterator *p_pi, bool *p_is_data_present,
+		grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
 		ChunkBuffer *src_buf, uint64_t *p_data_read)		{
 
 	auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
@@ -659,7 +659,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	return true;
 }
 
-bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
+bool T2::read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	uint32_t bandno;
 	uint64_t cblkno;
@@ -732,7 +732,7 @@ bool T2::read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
 	return true;
 }
 bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-		grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
+		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	bool l_read_data;
 	uint64_t l_nb_bytes_read = 0;
 	uint64_t l_nb_total_bytes_read = 0;
@@ -763,7 +763,7 @@ bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 	return true;
 }
 
-bool T2::skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
+bool T2::skip_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	uint32_t bandno;
 	uint64_t l_nb_code_blocks, cblkno;
@@ -865,7 +865,7 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 //--------------------------------------------------------------------------------------------------
 
 bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
-		grk_pi_iterator *pi, BufferedStream *p_stream, uint64_t *p_data_written,
+		PacketIter *pi, BufferedStream *p_stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
@@ -1302,7 +1302,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 }
 
 bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
-		grk_pi_iterator *pi, uint64_t *p_data_written, uint64_t length) {
+		PacketIter *pi, uint64_t *p_data_written, uint64_t length) {
 	uint32_t bandno, cblkno;
 	uint64_t l_nb_bytes;
 	uint32_t compno = pi->compno;

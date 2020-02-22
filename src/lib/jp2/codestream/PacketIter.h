@@ -89,7 +89,7 @@ struct grk_pi_comp {
 /**
  Packet iterator
  */
-struct grk_pi_iterator {
+struct PacketIter {
 	/** Enabling Tile part generation*/
 	uint8_t tp_on;
 	/** precise if the packet has been already used (useful for progression order change) */
@@ -139,7 +139,7 @@ struct grk_pi_iterator {
  *
  * @return	a list of packet iterator that points to the first packet of the tile (not true).
  */
-grk_pi_iterator* pi_initialise_encode(const grk_image *image, grk_coding_parameters *cp,
+PacketIter* pi_initialise_encode(const grk_image *image, grk_coding_parameters *cp,
 		uint16_t tileno, J2K_T2_MODE t2_mode);
 
 /**
@@ -162,7 +162,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_paramete
  @param tppos The position of the tile part flag in the progression order
  @param t2_mode FIXME DOC
  */
-void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
+void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode);
 
 /**
@@ -173,21 +173,21 @@ void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t til
  @return a packet iterator that points to the first packet of the tile
  @see pi_destroy
  */
-grk_pi_iterator* pi_create_decode(grk_image *image, grk_coding_parameters *cp, uint16_t tileno);
+PacketIter* pi_create_decode(grk_image *image, grk_coding_parameters *cp, uint16_t tileno);
 /**
  * Destroys a packet iterator array.
  *
  * @param	p_pi			the packet iterator array to destroy.
  * @param	nb_elements	the number of elements in the array.
  */
-void pi_destroy(grk_pi_iterator *p_pi, uint32_t nb_elements);
+void pi_destroy(PacketIter *p_pi, uint32_t nb_elements);
 
 /**
  Modify the packet iterator to point to the next packet
  @param pi Packet iterator to modify
  @return false if pi pointed to the last packet or else returns true
  */
-bool pi_next(grk_pi_iterator *pi);
+bool pi_next(PacketIter *pi);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

@@ -1023,19 +1023,6 @@ static float j2k_get_tp_stride(grk_tcp *p_tcp);
 
 static float j2k_get_default_stride(grk_tcp *p_tcp);
 
-static uint32_t j2k_initialise_4K_poc( grk_poc  *POC, uint32_t numres);
-
-static void j2k_set_cinema_parameters( grk_cparameters  *parameters,
-		grk_image *image);
-
-static bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz);
-
-static void j2k_set_imf_parameters(grk_cparameters *parameters,
-		grk_image *image);
-
-static bool j2k_is_imf_compliant(grk_cparameters *parameters,
-		grk_image *image);
-
 
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.

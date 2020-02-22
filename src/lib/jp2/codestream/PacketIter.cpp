@@ -69,31 +69,31 @@ namespace grk {
  @param pi packet iterator to modify
  @return returns false if pi pointed to the last packet or else returns true
  */
-static bool pi_next_lrcp(grk_pi_iterator *pi);
+static bool pi_next_lrcp(PacketIter *pi);
 /**
  Get next packet in resolution-layer-component-precinct order.
  @param pi packet iterator to modify
  @return returns false if pi pointed to the last packet or else returns true
  */
-static bool pi_next_rlcp(grk_pi_iterator *pi);
+static bool pi_next_rlcp(PacketIter *pi);
 /**
  Get next packet in resolution-precinct-component-layer order.
  @param pi packet iterator to modify
  @return returns false if pi pointed to the last packet or else returns true
  */
-static bool pi_next_rpcl(grk_pi_iterator *pi);
+static bool pi_next_rpcl(PacketIter *pi);
 /**
  Get next packet in precinct-component-resolution-layer order.
  @param pi packet iterator to modify
  @return returns false if pi pointed to the last packet or else returns true
  */
-static bool pi_next_pcrl(grk_pi_iterator *pi);
+static bool pi_next_pcrl(PacketIter *pi);
 /**
  Get next packet in component-precinct-resolution-layer order.
  @param pi packet iterator to modify
  @return returns false if pi pointed to the last packet or else returns true
  */
-static bool pi_next_cprl(grk_pi_iterator *pi);
+static bool pi_next_cprl(PacketIter *pi);
 
 /**
  * Updates the coding parameters if the encoding is used with Progression order changes and final (or cinema parameters are used).
@@ -186,17 +186,17 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
  * @param	p_cp		the coding parameters.
  * @param	tileno	the index of the tile from which creating the packet iterator.
  */
-static grk_pi_iterator* pi_create(const grk_image *p_image, const grk_coding_parameters *p_cp,
+static PacketIter* pi_create(const grk_image *p_image, const grk_coding_parameters *p_cp,
 		uint16_t tileno);
 /**
  * FIXME DOC
  */
-static void pi_update_decode_not_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_not_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res);
 /**
  * FIXME DOC
  */
-static void pi_update_decode_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res);
 
 /**
@@ -205,8 +205,8 @@ static void pi_update_decode_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
 static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t tileno,
 		uint32_t pino, const char *prog);
 
-static void update_pi_dxy(grk_pi_iterator *pi);
-static void update_pi_dxy_for_comp(grk_pi_iterator *pi, grk_pi_comp *comp);
+static void update_pi_dxy(PacketIter *pi);
+static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp);
 
 /*@}*/
 
@@ -217,7 +217,7 @@ static void update_pi_dxy_for_comp(grk_pi_iterator *pi, grk_pi_comp *comp);
  local functions
  ==========================================================
  */
-static void update_pi_dxy_for_comp(grk_pi_iterator *pi, grk_pi_comp *comp) {
+static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp) {
 	for (uint32_t resno = 0; resno < comp->numresolutions; resno++) {
 		auto res = &comp->resolutions[resno];
 		uint64_t dx = comp->dx
@@ -240,7 +240,7 @@ static void update_pi_dxy_for_comp(grk_pi_iterator *pi, grk_pi_comp *comp) {
 		}
 	}
 }
-static void update_pi_dxy(grk_pi_iterator *pi) {
+static void update_pi_dxy(PacketIter *pi) {
 	pi->first = 0;
 	pi->dx = 0;
 	pi->dy = 0;
@@ -249,7 +249,7 @@ static void update_pi_dxy(grk_pi_iterator *pi) {
 	}
 }
 
-static bool pi_next_lrcp(grk_pi_iterator *pi) {
+static bool pi_next_lrcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint32_t index = 0;
@@ -301,7 +301,7 @@ static bool pi_next_lrcp(grk_pi_iterator *pi) {
 	return false;
 }
 
-static bool pi_next_rlcp(grk_pi_iterator *pi) {
+static bool pi_next_rlcp(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint32_t index = 0;
@@ -347,7 +347,7 @@ static bool pi_next_rlcp(grk_pi_iterator *pi) {
 	return false;
 }
 
-static bool pi_next_rpcl(grk_pi_iterator *pi) {
+static bool pi_next_rpcl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint32_t index = 0;
@@ -444,7 +444,7 @@ static bool pi_next_rpcl(grk_pi_iterator *pi) {
 	return false;
 }
 
-static bool pi_next_pcrl(grk_pi_iterator *pi) {
+static bool pi_next_pcrl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint32_t index = 0;
@@ -542,7 +542,7 @@ static bool pi_next_pcrl(grk_pi_iterator *pi) {
 	return false;
 }
 
-static bool pi_next_cprl(grk_pi_iterator *pi) {
+static bool pi_next_cprl(PacketIter *pi) {
 	grk_pi_comp *comp = nullptr;
 	grk_pi_resolution *res = nullptr;
 	uint32_t index = 0;
@@ -856,7 +856,7 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	}
 }
 
-static grk_pi_iterator* pi_create(const grk_image *image, const grk_coding_parameters *cp,
+static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters *cp,
 		uint16_t tileno) {
 	/* loop*/
 	uint32_t pino, compno;
@@ -873,7 +873,7 @@ static grk_pi_iterator* pi_create(const grk_image *image, const grk_coding_param
 	l_poc_bound = tcp->numpocs + 1;
 
 	/* memory allocations*/
-	auto l_pi = (grk_pi_iterator*) grok_calloc((l_poc_bound), sizeof(grk_pi_iterator));
+	auto l_pi = (PacketIter*) grok_calloc((l_poc_bound), sizeof(PacketIter));
 	if (!l_pi) {
 		return nullptr;
 	}
@@ -1019,7 +1019,7 @@ static void pi_update_encode_not_poc(grk_coding_parameters *p_cp, uint32_t num_c
 	}
 }
 
-static void pi_update_decode_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res) {
 	/* loop*/
 	uint32_t pino;
@@ -1055,7 +1055,7 @@ static void pi_update_decode_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
 	}
 }
 
-static void pi_update_decode_not_poc(grk_pi_iterator *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_not_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res) {
 	/* loop*/
 	uint32_t pino;
@@ -1171,7 +1171,7 @@ static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t
  Packet iterator interface
  ==========================================================
  */
-grk_pi_iterator* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
+PacketIter* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
 		uint16_t tile_no) {
 	/* loop */
 	uint32_t pino;
@@ -1341,7 +1341,7 @@ grk_pi_iterator* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_c
 	return l_pi;
 }
 
-grk_pi_iterator* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters *p_cp,
+PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters *p_cp,
 		uint16_t tile_no, J2K_T2_MODE p_t2_mode) {
 	/* loop*/
 	uint32_t pino;
@@ -1516,7 +1516,7 @@ grk_pi_iterator* pi_initialise_encode(const grk_image *p_image, grk_coding_param
 	return l_pi;
 }
 
-void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
+void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
 
 	int32_t i;
@@ -1786,7 +1786,7 @@ void pi_init_encode(grk_pi_iterator *pi, grk_coding_parameters *cp, uint16_t til
 	}
 }
 
-void pi_destroy(grk_pi_iterator *p_pi, uint32_t nb_elements) {
+void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
 	uint32_t compno, pino;
 	auto l_current_pi = p_pi;
 	if (p_pi) {
@@ -1841,7 +1841,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_paramete
 	}
 }
 
-bool pi_next(grk_pi_iterator *pi) {
+bool pi_next(PacketIter *pi) {
 	switch (pi->poc.prg) {
 	case GRK_LRCP:
 		return pi_next_lrcp(pi);

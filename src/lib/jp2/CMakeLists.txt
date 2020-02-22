@@ -41,6 +41,9 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others
   ${CMAKE_CURRENT_SOURCE_DIR}/util
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2
 )
 # Defines the source code for the library
 set(GROK_SRCS
@@ -64,6 +67,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ThreadPool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_exceptions.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/testing.h
   
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/minpf_dynamic_library.h
@@ -74,44 +79,46 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_interface.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.h
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin/plugin_bridge.cpp
+      
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/IBitIO.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_profile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_profile.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_dump.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_dump.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/jp2.h  
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.h  
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.h
+
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.h
   
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/T2.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateControl.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateControl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateInfo.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/t2/RateInfo.cpp
+
   
-    
-  ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/BitIO.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/IBitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/image.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/image.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/invert.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/invert.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/j2k_dump.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/j2k_dump.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/j2k.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/j2k.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/jp2.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/mct.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/pi.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/pi.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/T2.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/T2.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/TagTree.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/RateControl.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/RateInfo.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/testing.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/grok_exceptions.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp

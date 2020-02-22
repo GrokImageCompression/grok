@@ -139,7 +139,7 @@ private:
 	 @return
 	 */
 	bool encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
-			grk_pi_iterator *pi, BufferedStream *p_stream, uint64_t *p_data_written,
+			PacketIter *pi, BufferedStream *p_stream, uint64_t *p_data_written,
 			uint64_t len,  grk_codestream_info  *cstr_info);
 
 	/**
@@ -155,7 +155,7 @@ private:
 	 @return
 	 */
 	bool encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
-			grk_pi_iterator *pi, uint64_t *p_data_written, uint64_t len);
+			PacketIter *pi, uint64_t *p_data_written, uint64_t len);
 
 	/**
 	 Decode a packet of a tile from a source buffer
@@ -170,19 +170,19 @@ private:
 	 @return  FIXME DOC
 	 */
 	bool decode_packet(grk_tcd_tile *p_tile, grk_tcp *tcp,
-			grk_pi_iterator *pi, ChunkBuffer *src_buf, uint64_t *data_read);
+			PacketIter *pi, ChunkBuffer *src_buf, uint64_t *data_read);
 
 	bool skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
-			grk_pi_iterator *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read);
+			PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 	bool read_packet_header(grk_tcd_tile *p_tile,
-			grk_tcp *p_tcp, grk_pi_iterator *p_pi, bool *p_is_data_present,
+			grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
 			ChunkBuffer *src_buf, uint64_t *p_data_read);
 
-	bool read_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
+	bool read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
 			ChunkBuffer *src_buf, uint64_t *p_data_read);
 
-	bool skip_packet_data(grk_tcd_resolution *l_res, grk_pi_iterator *p_pi,
+	bool skip_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
 			uint64_t *p_data_read, uint64_t max_length);
 
 	/**
