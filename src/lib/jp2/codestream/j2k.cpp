@@ -3676,10 +3676,20 @@ static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 	uint32_t l_tmp;
 	grok_read_bytes(p_header_data, &l_tmp, 4); /* Pcap */
-	l_cp->pcap = l_tmp;
-
-	grok_read_bytes(p_header_data, &l_tmp, 2); /* Ccap */
-	l_cp->ccap = (uint16_t)l_tmp;
+	bool validPcap = true;
+    if (l_tmp & 0xFFFDFFFF){
+      GROK_WARN("Pcap in CAP marker has unsupported options.");
+    }
+    if ((l_tmp & 0x00020000) == 0) {
+    	GROK_WARN("Pcap in CAP marker should have its 15th MSB set. "
+        " Ignoring CAP.");
+        validPcap = false;
+    }
+    if (validPcap){
+    	l_cp->pcap = l_tmp;
+    	grok_read_bytes(p_header_data, &l_tmp, 2); /* Ccap */
+    	l_cp->ccap = (uint16_t)l_tmp;
+    }
 
 	return true;
 }
