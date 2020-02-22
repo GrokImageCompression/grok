@@ -71,6 +71,36 @@ Main available cmake flags:
   Note : JPEG2000 test files are can be cloned here `https://github.com/GrokImageCompression/grok-test-data.git`
   
   If `-DGROK_DATA_ROOT:PATH` option is omitted, test files will be automatically searched in `${CMAKE_SOURCE_DIR}/../grok-test-data`
+  
+  
+### CPU Specific Optimizations
+
+For Intel and AMD processors, Grok implements optimizations using the SSE4.1
+instruction set (example: 9x7 inverse MCT transform) and the AVX2
+instruction set (example: 5x3 inverse discrete wavelet transform).
+Currently, those optimizations are only available if Grok is built to
+use those instruction sets,  and the resulting binary will only run
+on compatible CPUs.
+
+With gcc/clang, it is possible to enable those instruction sets
+with the following commands:
+
+```
+cmake -DCMAKE_CXX_FLAGS="-O3 -msse4.1 -DNDEBUG" ..
+```
+
+```
+cmake -DCMAKE_CXX_FLAGS="-O3 -mavx2 -DNDEBUG" ..
+```
+
+(AVX2 implies SSE4.1)
+
+Or if the binary is dedicated to run on the machine where it has
+been compiled :
+
+```
+cmake -DCMAKE_CXX_FLAGS="-O3 -march=native -DNDEBUG" ..
+```
 
 
 ## OSX
