@@ -59,6 +59,7 @@
 #include "grok.h"
 #include "opj_includes.h"
 #include "logger.h"
+#include "dwt_utils.h"
 
 #define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
@@ -124,40 +125,6 @@ static double opj_t1_getwmsedec(int32_t nmsedec, uint32_t compno,
 		uint32_t level, uint32_t orient, int32_t bpno, uint32_t qmfbid,
 		double stepsize, uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps);
-
-
-/* <summary>                */
-/* Get norm of 5-3 wavelet. */
-/* </summary>               */
-double opj_dwt_getnorm(uint32_t level, uint32_t orient)
-{
-    /* FIXME ! This is just a band-aid to avoid a buffer overflow */
-    /* but the array should really be extended up to 33 resolution levels */
-    /* See https://github.com/uclouvain/openjpeg/issues/493 */
-    if (orient == 0 && level >= 10) {
-        level = 9;
-    } else if (orient > 0 && level >= 9) {
-        level = 8;
-    }
-    return opj_dwt_norms[orient][level];
-}
-
-
-/* <summary>                */
-/* Get norm of 9-7 wavelet. */
-/* </summary>               */
-double opj_dwt_getnorm_real(uint32_t level, uint32_t orient)
-{
-    /* FIXME ! This is just a band-aid to avoid a buffer overflow */
-    /* but the array should really be extended up to 33 resolution levels */
-    /* See https://github.com/uclouvain/openjpeg/issues/493 */
-    if (orient == 0 && level >= 10) {
-        level = 9;
-    } else if (orient > 0 && level >= 9) {
-        level = 8;
-    }
-    return opj_dwt_norms_real[orient][level];
-}
 
 
 static INLINE uint8_t opj_t1_getctxno_zc(opj_mqc_t *mqc, uint32_t f) {
@@ -1098,9 +1065,9 @@ static double opj_t1_getwmsedec(int32_t nmsedec, uint32_t compno,
 	}
 
 	if (qmfbid == 1) {
-		w2 = opj_dwt_getnorm(level, orient);
+		w2 = grk::dwt_utils::getnorm(level, orient);
 	} else { /* if (qmfbid == 0) */
-		w2 = opj_dwt_getnorm_real(level, orient);
+		w2 = grk::dwt_utils::getnorm_real(level, orient);
 	}
 
 	wmsedec = w1 * w2 * stepsize * (1 << bpno);

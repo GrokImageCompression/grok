@@ -425,7 +425,7 @@ typedef struct _grk_cparameters {
 	uint32_t cblockw_init;
 	/** initial code block height, default to 64 */
 	uint32_t cblockh_init;
-	/** mode switch */
+	/** code block style */
 	uint8_t cblk_sty;
 	/** 1 : use the irreversible DWT 9-7, 0 :
 	 *  use lossless compression (default) */

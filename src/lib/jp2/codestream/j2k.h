@@ -88,26 +88,16 @@ const uint32_t default_header_size = 1000;
 const uint32_t default_number_mcc_records = 10;
 const uint32_t default_number_mct_records = 10;
 
-/**
- @file j2k.h
- @brief The JPEG-2000 Codestream Reader/Writer (J2K)
-
- The functions in J2K.C have for goal to read/write the several parts of the codestream: markers and data.
- */
-
-/** @defgroup J2K J2K - JPEG-2000 codestream reader/writer */
-/*@{*/
-
 #define J2K_CP_CSTY_PRT 0x01
 #define J2K_CP_CSTY_SOP 0x02
 #define J2K_CP_CSTY_EPH 0x04
 #define J2K_CCP_CSTY_PRT 0x01
-#define J2K_CCP_CBLKSTY_LAZY 0x01     /**< Selective arithmetic coding bypass */
-#define J2K_CCP_CBLKSTY_RESET 0x02    /**< Reset context probabilities on coding pass boundaries */
+#define J2K_CCP_CBLKSTY_LAZY    0x01  /**< Selective arithmetic coding bypass */
+#define J2K_CCP_CBLKSTY_RESET   0x02  /**< Reset context probabilities on coding pass boundaries */
 #define J2K_CCP_CBLKSTY_TERMALL 0x04  /**< Termination on each coding pass */
-#define J2K_CCP_CBLKSTY_VSC 0x08      /**< Vertically stripe causal context */
-#define J2K_CCP_CBLKSTY_PTERM 0x10    /**< Predictable termination */
-#define J2K_CCP_CBLKSTY_SEGSYM 0x20   /**< Segmentation symbols are used */
+#define J2K_CCP_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
+#define J2K_CCP_CBLKSTY_PTERM   0x10  /**< Predictable termination */
+#define J2K_CCP_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
 #define J2K_CCP_QNTSTY_NOQNT 0
 #define J2K_CCP_QNTSTY_SIQNT 1
 #define J2K_CCP_QNTSTY_SEQNT 2

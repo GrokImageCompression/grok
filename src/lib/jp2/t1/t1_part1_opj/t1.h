@@ -206,9 +206,6 @@ typedef struct opj_t1 {
 	uint32_t data_stride;
 	bool encoder;
 
-	/* Thre 3 variables below are only used by the decoder */
-	/* set to TRUE in multithreaded context */
-	bool mustuse_cblkdatabuffer;
 	/* Temporary buffer to concatenate all chunks of a codebock */
 	uint8_t *cblkdatabuffer;
 	/* Maximum size available in cblkdatabuffer */
