@@ -58,6 +58,79 @@
 namespace grk {
 
 
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
+/* population count
+ *
+ */
+static inline uint32_t popcount(uint32_t val)
+{
+#ifdef _MSC_VER
+  return __popcnt(val);
+#elif (defined __GNUC__)
+  return __builtin_popcount(val);
+#else
+  val -= ((val >> 1) & 0x55555555);
+  val = (((val >> 2) & 0x33333333) + (val & 0x33333333));
+  val = (((val >> 4) + val) & 0x0f0f0f0f);
+  val += (val >> 8);
+  val += (val >> 16);
+  return val & 0x0000003f;
+#endif
+}
+
+/*
+ * Leading zero count
+ */
+#ifdef _MSC_VER
+#pragma intrinsic(_BitScanReverse)
+#endif
+static inline uint32_t lzcount(uint32_t val)
+{
+#ifdef _MSC_VER
+  unsigned long result = 0;
+  _BitScanReverse(&result, val);
+  return (uint32_t)(31 ^ result);
+#elif (defined __GNUC__)
+  return __builtin_clz(val);
+#else
+  val |= (val >> 1);
+  val |= (val >> 2);
+  val |= (val >> 4);
+  val |= (val >> 8);
+  val |= (val >> 16);
+  return 32 - population_count(val);
+#endif
+}
+
+/*
+ * Trailing zero count
+ */
+#ifdef _MSC_VER
+#pragma intrinsic(_BitScanForward)
+#endif
+static inline uint32_t tzcount(uint32_t val)
+{
+#ifdef _MSC_VER
+  unsigned long result = 0;
+  _BitScanForward(&result, val);
+  return (uint32_t)(31 ^ result);
+#elif (defined __GNUC__)
+  return __builtin_ctz(val);
+#else
+  val |= (val << 1);
+  val |= (val << 2);
+  val |= (val << 4);
+  val |= (val << 8);
+  val |= (val << 16);
+  return 32 - popount(val);
+#endif
+}
+
+
+
 /**
  Get the saturated difference of two unsigned integers
  @return Returns saturated sum of a-b
