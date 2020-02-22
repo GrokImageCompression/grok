@@ -1602,6 +1602,7 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
+	int32_t adjust = (image->comps[0].sgnd && image->comps[0].prec < 8) ? 1 << (image->comps[0].prec - 1) : 0;
 
 	if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
@@ -1836,7 +1837,7 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	}
 
 	for (i = 0; i < image->comps[0].h; ++i) {
-		cvtPxToCx(planes, buffer32s, (size_t)width,0);
+		cvtPxToCx(planes, buffer32s, (size_t)width,adjust);
 		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
 		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
 		planes[0] += width;

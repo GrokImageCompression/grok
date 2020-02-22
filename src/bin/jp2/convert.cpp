@@ -574,7 +574,7 @@ bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps) {
 	// check that all components have same precision
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].prec != image->comps[0].prec ) {
-			spdlog::error("precision of component {} differ from precision of component 0\n", i);
+			spdlog::error("precision of component {} differs from precision of component 0\n", i);
 			return false;
 		}
 	}
@@ -582,7 +582,7 @@ bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps) {
 	// check that all components have same sign
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].sgnd != image->comps[0].sgnd) {
-			spdlog::error("signedness of component {} differ from signedness of component 0\n", i);
+			spdlog::error("signedness of component {} differs from signedness of component 0\n", i);
 			return false;
 		}
 	}
