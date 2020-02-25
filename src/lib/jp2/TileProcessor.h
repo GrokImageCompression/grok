@@ -171,7 +171,7 @@ struct grk_tcd_cblk_dec {
 														packet_length_info(nullptr),
 #endif
 					numSegmentsAllocated(0),
-					decoded_data(nullptr){
+					unencoded_data(nullptr){
 	}
 	/**
 	 * Allocates memory for a decoding code block (but not data)
@@ -193,7 +193,7 @@ struct grk_tcd_cblk_dec {
 	std::vector<grk_packet_length_info>* packet_length_info;
 #endif
     /* Decoded code-block. Only used for subtile decoding. Otherwise tilec->data is directly updated */
-    int32_t* decoded_data;
+    int32_t* unencoded_data;
 
 };
 
@@ -205,17 +205,6 @@ struct grk_tcd_precinct {
 		cblks.blocks = nullptr;
 	}
 
-	grk_tcd_precinct(grk_tcd_precinct &rhs) :
-			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), cw(rhs.cw), ch(
-					rhs.ch), block_size(rhs.block_size), incltree(rhs.incltree), imsbtree(
-					rhs.imsbtree) {
-		cblks.blocks = rhs.cblks.blocks;
-		rhs.cblks.blocks = nullptr;
-		rhs.block_size = 0;
-		rhs.incltree = nullptr;
-		rhs.imsbtree = nullptr;
-
-	}
 	void initTagTrees();
 	void deleteTagTrees();
 
@@ -263,7 +252,7 @@ struct grk_tcd_band {
 	/* dimension of the subband : left upper corner (x0, y0) right low corner (x1,y1) */
 	uint32_t x0, y0, x1, y1;
 	// 0 for first band of lowest resolution, otherwise equal to 1,2 or 3
-	uint32_t bandno;
+	uint8_t bandno;
 	grk_tcd_precinct *precincts; /* precinct information */
 	size_t numPrecincts;
 	size_t numAllocatedPrecincts;
@@ -305,8 +294,9 @@ struct TileComponent {
 			uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
 
 	bool create_buffer(bool isEncoder,
-			bool irreversible,
-			grk_image *output_image, uint32_t dx, uint32_t dy);
+						grk_image *output_image,
+						uint32_t dx,
+						uint32_t dy);
 
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
@@ -436,8 +426,6 @@ struct TileProcessor {
 			grk_image *p_output_image, bool clearOutputOnInit);
 
 	void get_tile_data(uint8_t *p_data);
-
-	bool needs_copy_tile_data(grk_image *output_image, uint32_t num_tiles);
 
 
 	/** Position of the tile part flag in progression order*/

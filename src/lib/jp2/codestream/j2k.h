@@ -92,15 +92,9 @@ const uint32_t default_number_mct_records = 10;
 #define J2K_CP_CSTY_SOP 0x02
 #define J2K_CP_CSTY_EPH 0x04
 #define J2K_CCP_CSTY_PRT 0x01
-#define J2K_CCP_CBLKSTY_LAZY    0x01  /**< Selective arithmetic coding bypass */
-#define J2K_CCP_CBLKSTY_RESET   0x02  /**< Reset context probabilities on coding pass boundaries */
-#define J2K_CCP_CBLKSTY_TERMALL 0x04  /**< Termination on each coding pass */
-#define J2K_CCP_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
-#define J2K_CCP_CBLKSTY_PTERM   0x10  /**< Predictable termination */
-#define J2K_CCP_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
-#define J2K_CCP_QNTSTY_NOQNT 0
-#define J2K_CCP_QNTSTY_SIQNT 1
-#define J2K_CCP_QNTSTY_SEQNT 2
+#define J2K_CCP_QNTSTY_NOQNT 0 // no quantization
+#define J2K_CCP_QNTSTY_SIQNT 1 // derived quantization
+#define J2K_CCP_QNTSTY_SEQNT 2 // expounded quantization
 
 #define GRK_J2K_DEFAULT_CBLK_DATA_SIZE 8192
 
@@ -181,15 +175,6 @@ enum J2K_T2_MODE {
 	FINAL_PASS = 1 /** Function called in Tier 2 process*/
 };
 
-/**
- * Quantization stepsize
- */
-struct grk_stepsize {
-	/** exponent */
-	uint32_t expn;
-	/** mantissa */
-	uint32_t mant;
-};
 
 /**
  Tile-component coding parameters
@@ -203,6 +188,9 @@ struct grk_tccp {
 	uint32_t cblkw;
 	/** log2(code-blocks height) */
 	uint32_t cblkh;
+
+	Quantizer quant;
+
 	/** code-block mode */
 	uint8_t cblk_sty;
 	/** discrete wavelet transform identifier */
@@ -336,6 +324,8 @@ struct grk_tcp {
 	uint32_t ppt :1;
 	/** indicates if a POC marker has been used O:NO, 1:YES */
 	uint32_t POC :1;
+
+	bool isHT;
 };
 
 struct grk_encoding_param {
@@ -547,6 +537,12 @@ struct TileProcessor;
  JPEG-2000 codestream reader/writer
  */
 struct grk_j2k {
+
+
+	bool decodingTilePartHeader() ;
+	grk_tcp* get_current_decode_tcp();
+
+
 	/* J2K codestream is decoded*/
 	bool m_is_decoder;
 

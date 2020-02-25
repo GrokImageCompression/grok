@@ -204,7 +204,7 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 					false);
 
     if (!block->tilec->whole_tile_decoding){
-		cblk->decoded_data = cblkopj.decoded_data;
+		cblk->unencoded_data = cblkopj.decoded_data;
 		cblkopj.decoded_data = nullptr;
     }
 	delete[] segs;
@@ -223,7 +223,7 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
 	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
-	cblkopj.decoded_data = block->cblk->decoded_data;
+	cblkopj.decoded_data = block->cblk->unencoded_data;
     post_decode(t1,
     		&cblkopj,
 			block->roishift,

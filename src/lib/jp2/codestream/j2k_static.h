@@ -30,11 +30,6 @@ static const uint32_t MCT_ELEMENT_SIZE[] = { 2, 4, 4, 8 };
 typedef void (*j2k_mct_function)(const void *p_src_data, void *p_dest_data,
 		uint32_t nb_elem);
 
-/** @name Local static functions */
-/*@{*/
-
-static bool j2k_fromTileHeader(grk_j2k *p_j2k);
-
 /**
  * Sets up the procedures to do on reading header. Developers wanting to extend the library can add their own reading procedures.
  */
@@ -350,6 +345,16 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
  */
 static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
+
+
+/**
+ * Writes the CAP marker
+ *
+ * @param       p_j2k           J2K codec.
+ * @param       p_stream        the stream to write data to.
+
+ */
+static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 /**
  * Writes the COM marker (comment)
@@ -717,13 +722,6 @@ static bool j2k_write_sod(grk_j2k *p_j2k, TileProcessor *p_tile_coder,
 
  */
 static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *p_stream);
-
-static grk_tcp* j2k_get_tcp(grk_j2k *p_j2k) {
-	auto l_cp = &(p_j2k->m_cp);
-	return (j2k_fromTileHeader(p_j2k)) ?
-			l_cp->tcps + p_j2k->m_current_tile_number :
-			p_j2k->m_specific_param.m_decoder.m_default_tcp;
-}
 
 static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) {
 	/* PSOT */

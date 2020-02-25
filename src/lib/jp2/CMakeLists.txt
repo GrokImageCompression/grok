@@ -95,6 +95,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/PacketIter.h  
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
 
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h

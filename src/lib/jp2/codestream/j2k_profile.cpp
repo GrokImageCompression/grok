@@ -372,8 +372,8 @@ void j2k_set_imf_parameters(grk_cparameters *parameters, grk_image *image)
             image->x0 == 0 &&
             image->y0 == 0) {
         const int max_NL = j2k_get_imf_max_NL(parameters, image);
-        if (max_NL >= 0 && parameters->numresolution > max_NL) {
-            parameters->numresolution = max_NL + 1;
+        if (max_NL >= 0 && parameters->numresolution > (uint32_t)max_NL) {
+            parameters->numresolution = (uint32_t)(max_NL + 1);
         }
 
         /* Note: below is generic logic */
@@ -400,9 +400,8 @@ void j2k_set_imf_parameters(grk_cparameters *parameters, grk_image *image)
             parameters->prcw_init[0] = 128;
             parameters->prch_init[0] = 128;
         } else {
-            int i;
             parameters->res_spec = parameters->numresolution - 1;
-            for (i = 0; i < parameters->res_spec; i++) {
+            for (uint32_t i = 0; i < parameters->res_spec; i++) {
                 parameters->prcw_init[i] = 256;
                 parameters->prch_init[i] = 256;
             }
@@ -819,8 +818,7 @@ bool j2k_is_imf_compliant(grk_cparameters *parameters,
             ret = false;
         }
     } else {
-        int i;
-        for (i = 0; i < parameters->res_spec; i++) {
+        for (uint32_t i = 0; i < parameters->res_spec; i++) {
             if (parameters->prcw_init[i] != 256 ||
                     parameters->prch_init[i] != 256) {
                 GROK_WARN(

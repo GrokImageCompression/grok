@@ -114,6 +114,16 @@ extern "C" {
 #define GRK_JP2_INFO		128	/**< JP2 file information */
 #define GRK_JP2_IND			256	/**< JP2 file index */
 
+#define J2K_CCP_CBLKSTY_LAZY    0x01  /**< Selective arithmetic coding bypass */
+#define J2K_CCP_CBLKSTY_RESET   0x02  /**< Reset context probabilities on coding pass boundaries */
+#define J2K_CCP_CBLKSTY_TERMALL 0x04  /**< Termination on each coding pass */
+#define J2K_CCP_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
+#define J2K_CCP_CBLKSTY_PTERM   0x10  /**< Predictable termination */
+#define J2K_CCP_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
+#define GRK_CBLKSTY_HT      		0x40  /**< high throughput block coding */
+                                          /** note: this flag is not part of the standard */
+
+
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
  *
@@ -427,6 +437,8 @@ typedef struct _grk_cparameters {
 	uint32_t cblockh_init;
 	/** code block style */
 	uint8_t cblk_sty;
+	/* flag for high throughput */
+	bool isHT;
 	/** 1 : use the irreversible DWT 9-7, 0 :
 	 *  use lossless compression (default) */
 	uint32_t irreversible;

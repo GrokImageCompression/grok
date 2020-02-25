@@ -61,7 +61,18 @@
 #include "grok_includes.h"
 #include "j2k_static.h"
 
+
 namespace grk {
+
+
+bool grk_j2k::decodingTilePartHeader() {
+	return (m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
+}
+grk_tcp* grk_j2k::get_current_decode_tcp() {
+	return (decodingTilePartHeader()) ?
+			m_cp.tcps + m_current_tile_number :
+				m_specific_param.m_decoder.m_default_tcp;
+}
 
 
 static const j2k_mct_function j2k_mct_read_functions_to_float[] = {
@@ -475,7 +486,7 @@ bool j2k_read_header(BufferedStream *p_stream, grk_j2k *p_j2k,
 		grk_tccp *l_tccp = nullptr;
 
 		l_cp = &(p_j2k->m_cp);
-		l_tcp = &l_cp->tcps[p_j2k->m_current_tile_number];
+		l_tcp = p_j2k->get_current_decode_tcp();
 		l_tccp = &l_tcp->tccps[0];
 
 		header_info->cblockw_init = 1 << l_tccp->cblkw;
@@ -909,7 +920,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 	}
 	// do QCD marker quantization step size sanity check
 	// see page 553 of Taubman and Marcellin for more details on this check
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	if (l_tcp->main_qcd_qntsty != J2K_CCP_QNTSTY_SIQNT) {
 		auto numComps = p_j2k->m_private_image->numcomps;
 		//1. Check main QCD
@@ -1342,7 +1353,8 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	uint32_t nr_tiles = 0;
 	uint32_t num_tiles_to_decode = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 	bool clearOutputOnInit = false;
-	if (p_j2k->m_tileProcessor->needs_copy_tile_data(p_j2k->m_output_image, num_tiles_to_decode)) {
+	// if number of tiles is greater than 1, then we need to copy tile data
+	if (num_tiles_to_decode > 1) {
 		l_current_data = (uint8_t*) grok_malloc(1);
 		if (!l_current_data) {
 			GROK_ERROR(
@@ -1451,16 +1463,6 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	uint32_t l_tile_x0, l_tile_y0, l_tile_x1, l_tile_y1;
 	uint32_t l_nb_comps;
 	uint8_t *l_current_data = nullptr;
-
-	if (p_j2k->m_tileProcessor->needs_copy_tile_data(p_j2k->m_output_image, 1)) {
-		l_current_data = (uint8_t*) grok_malloc(1);
-		if (!l_current_data) {
-			GROK_ERROR(
-					"Not enough memory to decode tiles");
-			return false;
-		}
-		l_max_data_size = 1;
-	}
 
 	/*Allocate and initialize some elements of codestream index if not already done*/
 	if (!p_j2k->cstr_index->tile_index) {
@@ -2133,13 +2135,13 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 	/* ---------------------------- */
 	cp->tcps = (grk_tcp*) grok_calloc(cp->tw * cp->th, sizeof(grk_tcp));
 	if (!cp->tcps) {
-		GROK_ERROR(
-				"Not enough memory to allocate tile coding parameters");
+		GROK_ERROR("Not enough memory to allocate tile coding parameters");
 		return false;
 	}
 
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
 		grk_tcp *tcp = &cp->tcps[tileno];
+		tcp->isHT = parameters->isHT;
 		tcp->numlayers = parameters->tcp_numlayers;
 
 		for (j = 0; j < tcp->numlayers; j++) {
@@ -2299,7 +2301,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 			tccp->qntsty =
 					parameters->irreversible ?
 							J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
-			tccp->numgbits = 2;
+			tccp->numgbits = parameters->isHT ? 1 : 2;
 
 			if ((int32_t) i == parameters->roi_compno) {
 				tccp->roishift = parameters->roi_shift;
@@ -2353,7 +2355,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 					tccp->prch[j] = 15;
 				}
 			}
-			dwt_utils::calc_explicit_stepsizes(tccp, image->comps[i].prec);
+			Quantizer::calc_explicit_stepsizes(tccp, image->comps[i].prec);
 		}
 	}
 	if (parameters->mct_data) {
@@ -2695,6 +2697,8 @@ static bool j2k_setup_header_writing(grk_j2k *p_j2k) {
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_init_info);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_soc);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_siz);
+	if (p_j2k->m_cp.tcps[0].isHT)
+	  p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_cap);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_cod);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_qcd);
 	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_write_all_coc);
@@ -3238,8 +3242,8 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *p_stream) {
 			l_rates = l_tcp->rates;
 			for (k = 0; k < l_tcp->numlayers; ++k) {
 				if (*l_rates > 0.0f) {
-					*l_rates = (((static_cast<double>( l_size_pixel) * numTilePixels))
-							/ ((*l_rates) * l_bits_empty)) - l_offset;
+					*l_rates = ((((double)l_size_pixel * (double)numTilePixels))
+							/ ((double)*l_rates * (double)l_bits_empty)) - l_offset;
 				}
 				++l_rates;
 			}
@@ -3261,8 +3265,8 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *p_stream) {
 			uint32_t l_y1 = std::min<uint32_t>((l_cp->ty0 + (i + 1) * l_cp->tdy),
 					l_image->y1);
 			uint64_t numTilePixels = (uint64_t) (l_x1 - l_x0) * (l_y1 - l_y0);
-			double sot_adjust = (double)(numTilePixels * header_size)
-					/ ((uint64_t) width * height);
+			double sot_adjust = ((double)numTilePixels * (double)header_size)
+					/ ((double) width * height);
 
 			if (*l_rates > 0.0) {
 				*l_rates -= sot_adjust;
@@ -3435,15 +3439,6 @@ static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tile_part
 	}
 	return true;
 }
-
-
-/** @name Local static functions */
-/*@{*/
-
-static bool j2k_fromTileHeader(grk_j2k *p_j2k) {
-	return (p_j2k->m_specific_param.m_decoder.m_state & J2K_DEC_STATE_TPH);
-}
-
 
 template<typename S, typename D> void j2k_write(const void *p_src_data,
 		void *p_dest_data, uint32_t nb_elem) {
@@ -3691,6 +3686,70 @@ static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
     	l_cp->ccap = (uint16_t)l_tmp;
     }
 
+	return true;
+}
+
+
+static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream) {
+	assert(p_j2k != nullptr);
+	assert(p_stream != nullptr);
+#if 0
+	auto l_cp = &(p_j2k->m_cp);
+	auto l_tcp = &l_cp->tcps[0];
+	auto l_tccp0 = &l_tcp->tccps[0];
+
+	l_tcp->qcd.check_validity(l_tccp0->numresolutions-1,
+			          l_tccp0->qmfbid == 1,
+					  p_j2k->m_private_image->comps[0].prec,
+					  false,
+					  false);
+
+    //marker size excluding header
+    uint16_t Lcap = 8;
+
+    uint32_t Pcap = 0x00020000; //for jph, Pcap^15 must be set, the 15th MSB
+    uint16_t Ccap[32]; //a maximum of 32
+    memset(Ccap, 0, sizeof(Ccap));
+
+    bool reversible = l_tccp0->qmfbid == 1;
+    if (reversible)
+	  Ccap[0] &= 0xFFDF;
+	else
+	  Ccap[0] |= 0x0020;
+	Ccap[0] &= 0xFFE0;
+
+	int Bp = 0;
+	int B = l_tcp->qcd.get_MAGBp();
+	if (B <= 8)
+	  Bp = 0;
+	else if (B < 28)
+	  Bp = B - 8;
+	else if (B < 48)
+	  Bp = 13 + (B >> 2);
+	else
+	  Bp = 31;
+	Ccap[0] |= Bp;
+
+	/* CAP */
+	if (!p_stream->write_short(J2K_MS_CAP)) {
+		return false;
+	}
+
+	/* L_CAP */
+	if (!p_stream->write_short(Lcap)) {
+		return false;
+	}
+
+	/* PCAP */
+	if (!p_stream->write_int(Pcap)) {
+		return false;
+	}
+
+	/* CCAP */
+	if (!p_stream->write_short(Ccap[0])) {
+		return false;
+	}
+#endif
 	return true;
 }
 
@@ -4133,7 +4192,7 @@ static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k) {
 
 	assert(p_j2k != nullptr);
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	auto l_ref_tccp = &l_tcp->tccps[0];
 	auto l_copied_tccp = l_ref_tccp + 1;
 	l_prc_size = l_ref_tccp->numresolutions * (uint32_t) sizeof(uint32_t);
@@ -4169,7 +4228,7 @@ static bool j2k_read_cod(grk_j2k *p_j2k, uint8_t *p_header_data,
 	auto l_cp = &(p_j2k->m_cp);
 
 	/* If we are in the first tile-part header of the current tile */
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 
 	/* Only one COD per tile */
 	if (l_tcp->cod) {
@@ -4353,7 +4412,7 @@ static bool j2k_read_coc(grk_j2k *p_j2k, uint8_t *p_header_data,
 	assert(p_j2k != nullptr);
 	
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	auto l_image = p_j2k->m_private_image;
 
 	l_comp_room = l_image->numcomps <= 256 ? 1 : 2;
@@ -4438,24 +4497,11 @@ static bool j2k_read_qcd(grk_j2k *p_j2k, uint8_t *p_header_data,
 
 	// Apply the quantization parameters to the other components
 	// of the current tile or m_default_tcp
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	auto l_ref_tccp = l_tcp->tccps;
 	for (uint32_t i = 1; i < p_j2k->m_private_image->numcomps; ++i) {
 		auto l_target_tccp = l_ref_tccp + i;
-		// respect the QCD/QCC scoping rules
-		bool ignore = false;
-		if (l_target_tccp->fromQCC) {
-			if (!l_ref_tccp->fromTileHeader
-					|| (l_ref_tccp->fromTileHeader
-							&& l_target_tccp->fromTileHeader))
-				ignore = true;
-		}
-		if (!ignore) {
-			l_target_tccp->qntsty = l_ref_tccp->qntsty;
-			l_target_tccp->numgbits = l_ref_tccp->numgbits;
-			auto l_size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
-			memcpy(l_target_tccp->stepsizes, l_ref_tccp->stepsizes, l_size);
-		}
+		l_target_tccp->quant.apply_quant(l_ref_tccp, l_target_tccp);
 	}
 	return true;
 }
@@ -4768,7 +4814,7 @@ static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	l_old_poc_nb = l_tcp->POC ? l_tcp->numpocs + 1 : 0;
 	l_current_poc_nb += l_old_poc_nb;
 
@@ -5768,7 +5814,7 @@ static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	assert(p_stream != nullptr);
 
 	// note: we subtract 2 to account for SOD marker
-	grk_tcp *l_tcp = &(p_j2k->m_cp.tcps[p_j2k->m_current_tile_number]);
+	grk_tcp *l_tcp = p_j2k->get_current_decode_tcp();
 	if (p_j2k->m_specific_param.m_decoder.m_last_tile_part) {
 		p_j2k->m_specific_param.m_decoder.tile_part_data_length =
 				(uint32_t) (p_stream->get_number_byte_left() - 2);
@@ -5939,7 +5985,7 @@ static bool j2k_read_rgn(grk_j2k *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 
 	/* Crgn */
 	grok_read_bytes(p_header_data, &l_comp_no, l_comp_room);
@@ -6206,7 +6252,7 @@ static bool j2k_read_mct(grk_j2k *p_j2k, uint8_t *p_header_data,
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 
 	if (header_size < 2) {
 		GROK_ERROR( "Error reading MCT marker");
@@ -6453,7 +6499,7 @@ static bool j2k_read_mcc(grk_j2k *p_j2k, uint8_t *p_header_data,
 	assert(p_j2k != nullptr);
 	
 
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 
 	if (header_size < 2) {
 		GROK_ERROR( "Error reading MCC marker");
@@ -6724,7 +6770,7 @@ static bool j2k_read_mco(grk_j2k *p_j2k, uint8_t *p_header_data,
 	
 
 	auto l_image = p_j2k->m_private_image;
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 
 	if (header_size < 1) {
 		GROK_ERROR( "Error reading MCO marker");
@@ -7335,7 +7381,7 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	assert(compno < p_j2k->m_private_image->numcomps);
 
 	auto l_cp = &(p_j2k->m_cp);
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	auto l_tccp = &l_tcp->tccps[compno];
 	auto l_current_ptr = p_header_data;
 
@@ -7440,18 +7486,7 @@ static uint32_t j2k_get_SQcd_SQcc_size(grk_j2k *p_j2k, uint16_t tile_no,
 	auto l_tcp = &l_cp->tcps[tile_no];
 	auto l_tccp = &l_tcp->tccps[comp_no];
 
-	assert(tile_no < l_cp->tw * l_cp->th);
-	assert(comp_no < p_j2k->m_private_image->numcomps);
-
-	uint32_t l_num_bands =
-			(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (l_tccp->numresolutions * 3 - 2);
-
-	if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-		return 1 + l_num_bands;
-	} else {
-		return 1 + 2 * l_num_bands;
-	}
+	return l_tccp->quant.get_SQcd_SQcc_size(p_j2k,tile_no,comp_no);
 }
 
 static bool j2k_compare_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
@@ -7461,38 +7496,8 @@ static bool j2k_compare_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 	auto l_cp = &(p_j2k->m_cp);
 	auto l_tcp = &l_cp->tcps[tile_no];
 	auto l_tccp0 = &l_tcp->tccps[first_comp_no];
-	auto l_tccp1 = &l_tcp->tccps[second_comp_no];
 
-	if (l_tccp0->qntsty != l_tccp1->qntsty) {
-		return false;
-	}
-	if (l_tccp0->numgbits != l_tccp1->numgbits) {
-		return false;
-	}
-	uint32_t l_band_no, l_num_bands;
-	if (l_tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-		l_num_bands = 1U;
-	} else {
-		l_num_bands = l_tccp0->numresolutions * 3U - 2U;
-		if (l_num_bands != (l_tccp1->numresolutions * 3U - 2U)) {
-			return false;
-		}
-	}
-	for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-		if (l_tccp0->stepsizes[l_band_no].expn
-				!= l_tccp1->stepsizes[l_band_no].expn) {
-			return false;
-		}
-	}
-	if (l_tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT) {
-		for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			if (l_tccp0->stepsizes[l_band_no].mant
-					!= l_tccp1->stepsizes[l_band_no].mant) {
-				return false;
-			}
-		}
-	}
-	return true;
+	return l_tccp0->quant.compare_SQcd_SQcc(p_j2k,tile_no,first_comp_no,second_comp_no);
 }
 
 static bool j2k_write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
@@ -7502,158 +7507,17 @@ static bool j2k_write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 	auto l_cp = &(p_j2k->m_cp);
 	auto l_tcp = &l_cp->tcps[tile_no];
 	auto l_tccp = &l_tcp->tccps[comp_no];
-
-	assert(tile_no < l_cp->tw * l_cp->th);
-	assert(comp_no < p_j2k->m_private_image->numcomps);
-
-	uint32_t l_num_bands =
-			(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (l_tccp->numresolutions * 3 - 2);
-
-	if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-
-		/* Sqcx */
-		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
-			return false;
-		}
-		uint32_t l_expn, l_mant;
-		for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			l_expn = l_tccp->stepsizes[l_band_no].expn;
-			/* SPqcx_i */
-			if (!p_stream->write_byte((uint8_t) (l_expn << 3))) {
-				return false;
-			}
-		}
-	} else {
-
-		/* Sqcx */
-		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
-			return false;
-		}
-		uint32_t l_expn, l_mant;
-		for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			l_expn = l_tccp->stepsizes[l_band_no].expn;
-			l_mant = l_tccp->stepsizes[l_band_no].mant;
-
-			/* SPqcx_i */
-			if (!p_stream->write_short((uint16_t) ((l_expn << 11) + l_mant))) {
-				return false;
-			}
-		}
-	}
-	return true;
+	return l_tccp->quant.write_SQcd_SQcc(p_j2k,tile_no,comp_no,p_stream);
 }
 
 static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		uint8_t *p_header_data, uint16_t *header_size) {
 	assert(p_j2k != nullptr);
-	
 	assert(p_header_data != nullptr);
 	assert(comp_no < p_j2k->m_private_image->numcomps);
-	if (*header_size < 1) {
-		GROK_ERROR( "Error reading SQcd or SQcc element");
-		return false;
-	}
-	bool ignore = false;
-	bool fromTileHeader = j2k_fromTileHeader(p_j2k);
-	bool mainQCD = !fromQCC && !fromTileHeader;
-	// scoping rules
-	auto l_tcp = j2k_get_tcp(p_j2k);
+	auto l_tcp = p_j2k->get_current_decode_tcp();
 	auto l_tccp = l_tcp->tccps + comp_no;
-	if ((!fromTileHeader && !fromQCC) && l_tccp->fromQCC)
-		ignore = true;
-	if ((fromTileHeader && !fromQCC)
-			&& (l_tccp->fromTileHeader && l_tccp->fromQCC))
-		ignore = true;
-	////////////////////////////////////////////////////////////////////////
-	*header_size = (uint16_t)(*header_size - 1);
-	/* Sqcx */
-	uint32_t l_tmp = 0;
-	auto l_current_ptr = p_header_data;
-	grok_read_bytes(l_current_ptr, &l_tmp, 1);
-	++l_current_ptr;
-	uint8_t qntsty = l_tmp & 0x1f;
-	if (!ignore) {
-		l_tccp->fromQCC = fromQCC;
-		l_tccp->fromTileHeader = fromTileHeader;
-		l_tccp->qntsty = qntsty;
-		if (mainQCD)
-			l_tcp->main_qcd_qntsty = l_tccp->qntsty;
-		l_tccp->numgbits = (uint8_t)(l_tmp >> 5);
-		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-			l_tccp->numStepSizes = 1;
-		} else {
-			l_tccp->numStepSizes =
-					(l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
-							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
-			if (l_tccp->numStepSizes > GRK_J2K_MAXBANDS) {
-				GROK_WARN(
-						"While reading QCD or QCC marker segment, "
-								"number of step sizes (%d) is greater"
-								" than GRK_J2K_MAXBANDS (%d). "
-								"So, we limit the number of elements stored to "
-								"GRK_J2K_MAXBANDS (%d) and skip the rest.\n",
-						l_tccp->numStepSizes, GRK_J2K_MAXBANDS,
-						GRK_J2K_MAXBANDS);
-			}
-		}
-		if (mainQCD)
-			l_tcp->main_qcd_numStepSizes = l_tccp->numStepSizes;
-	}
-	if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
-		for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes;
-				l_band_no++) {
-			/* SPqcx_i */
-			grok_read_bytes(l_current_ptr, &l_tmp, 1);
-			++l_current_ptr;
-			if (!ignore) {
-				if (l_band_no < GRK_J2K_MAXBANDS) {
-					l_tccp->stepsizes[l_band_no].expn = l_tmp >> 3;
-					l_tccp->stepsizes[l_band_no].mant = 0;
-				}
-			}
-		}
-		if (*header_size < l_tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker");
-			return false;
-		}
-		*header_size = (uint16_t)(*header_size - l_tccp->numStepSizes);
-	} else {
-		for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes;
-				l_band_no++) {
-			/* SPqcx_i */
-			grok_read_bytes(l_current_ptr, &l_tmp, 2);
-			l_current_ptr += 2;
-			if (!ignore) {
-				if (l_band_no < GRK_J2K_MAXBANDS) {
-					l_tccp->stepsizes[l_band_no].expn = l_tmp >> 11;
-					l_tccp->stepsizes[l_band_no].mant = l_tmp & 0x7ff;
-				}
-			}
-		}
-		if (*header_size < 2 * l_tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker");
-			return false;
-		}
-		*header_size = (uint16_t)(*header_size - 2 * l_tccp->numStepSizes);
-	}
-	/* if scalar derived, then compute other stepsizes */
-	if (!ignore) {
-		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-			for (uint32_t l_band_no = 1; l_band_no < GRK_J2K_MAXBANDS;
-					l_band_no++) {
-				uint32_t bandDividedBy3 = (l_band_no - 1) / 3;
-				l_tccp->stepsizes[l_band_no].expn = 0;
-				if (l_tccp->stepsizes[0].expn > bandDividedBy3)
-					l_tccp->stepsizes[l_band_no].expn =
-							l_tccp->stepsizes[0].expn - bandDividedBy3;
-				l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
-			}
-		}
-	}
-	return true;
+	return l_tccp->quant.read_SQcd_SQcc(fromQCC,p_j2k, comp_no, p_header_data, header_size);
 }
 
 /*******************
