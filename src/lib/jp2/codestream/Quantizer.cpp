@@ -13,7 +13,10 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 	auto offset = (resno == 0) ? 0 : 3*resno - 2;
 	if (tcp->isHT) {
 		band->numbps = tcp->qcd.get_Kmax(resno, band->bandno) - 1;
-		band->stepsize = tcp->qcd.u8_SPqcd[offset + bandno];
+		if (tccp->qmfbid == 1)
+			band->stepsize = tcp->qcd.u8_SPqcd[offset + bandno];
+		else
+			band->stepsize = tcp->qcd.u16_SPqcd[offset + bandno];
 	} else {
 		uint32_t gain = 0;
 		if (tccp->qmfbid == 1) {

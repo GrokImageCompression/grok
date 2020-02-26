@@ -2143,6 +2143,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		if (tcp->isHT) {
+			tcp->qcd = param_qcd();
 			tcp->qcd.check_validity(parameters->numresolution-1,
 									parameters->irreversible == 0,
 									image->comps[0].prec,
@@ -2367,8 +2368,13 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 				uint32_t numbands = 3 * tccp->numresolutions - 2;
 				for (uint32_t bn = 0; bn < numbands; bn++) {
 					auto step = tccp->stepsizes + bn;
-					step->expn = (uint8_t)(tcp->qcd.u8_SPqcd[bn] >> 3);
-					step->mant = 0;
+					if (parameters->irreversible){
+						step->expn = (uint8_t)(tcp->qcd.u16_SPqcd[bn] >> 11);
+						step->mant = (uint16_t)(tcp->qcd.u16_SPqcd[bn] & 0x7FF);
+					} else {
+						step->expn = (uint8_t)(tcp->qcd.u8_SPqcd[bn] >> 3);
+						step->mant = 0;
+					}
 				}
 			}
 		}
