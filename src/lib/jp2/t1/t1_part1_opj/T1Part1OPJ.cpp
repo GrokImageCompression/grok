@@ -37,6 +37,12 @@ T1Part1OPJ::~T1Part1OPJ() {
 	opj_t1_destroy( t1);
 }
 
+/**
+ Multiply two fixed-point numbers.
+ @param  a 13-bit precision fixed point number
+ @param  b 11-bit precision fixed point number
+ @return a * b in T1_NMSEDEC_FRACBITS-bit precision fixed point
+ */
 static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
 	int64_t temp = __emul(a, b);
@@ -44,10 +50,11 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;
-	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
-	assert(
-			(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
-	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
+	assert((temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)))
+			<= (int64_t)0x7FFFFFFF);
+	assert(	(temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)))
+			>= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t) (temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)) );
 }
 
 void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,

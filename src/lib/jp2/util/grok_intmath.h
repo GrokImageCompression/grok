@@ -204,7 +204,7 @@ static inline uint32_t uint_floorlog2(uint32_t a) {
  Multiply two fixed-point numbers.
  @param  a N-bit precision fixed point number
  @param  b 13-bit precision fixed point number
- @return a * b
+ @return a * b in N-bit precision fixed point
  */
 static inline int32_t int_fix_mul(int32_t a, int32_t b) {
 #if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
@@ -213,10 +213,10 @@ static inline int32_t int_fix_mul(int32_t a, int32_t b) {
 	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;	//round by adding "0.5" in 13-bit fixed point
-	assert((temp >> 13) <= (int64_t) 0x7FFFFFFF);
-	assert((temp >> 13) >= (-(int64_t) 0x7FFFFFFF - (int64_t) 1));
+	assert((temp / (1 << 13)) <= INT_MAX);
+	assert((temp / (1 << 13)) >= INT_MIN);
 
-	// return to N-bit precision
-	return (int32_t)(temp >> 13);
+	// return in N-bit precision
+	return (int32_t)(temp / (1 << 13));
 }
 }
