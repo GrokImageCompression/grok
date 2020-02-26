@@ -122,7 +122,7 @@ static bool opj_t1_code_block_enc_allocate(opj_tcd_cblk_enc_t *
         p_code_block);
 
 static double opj_t1_getwmsedec(int32_t nmsedec, uint32_t compno,
-		uint32_t level, uint32_t orient, int32_t bpno, uint32_t qmfbid,
+		uint32_t level, uint8_t orient, int32_t bpno, uint32_t qmfbid,
 		double stepsize, uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps);
 
@@ -1054,7 +1054,7 @@ static void opj_t1_dec_clnpass(opj_t1_t *t1, int32_t bpno, int32_t cblksty) {
 
 /** mod fixed_quality */
 static double opj_t1_getwmsedec(int32_t nmsedec, uint32_t compno,
-		uint32_t level, uint32_t orient, int32_t bpno, uint32_t qmfbid,
+		uint32_t level, uint8_t orient, int32_t bpno, uint32_t qmfbid,
 		double stepsize, uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps) {
 	double w1 = 1, w2, wmsedec;
@@ -1208,7 +1208,7 @@ void post_decode(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk, uint32_t roishift,
 	uint16_t cblk_h = (uint16_t)(cblk->y1 - cblk->y0);
 
 	if (!whole_tile_decoding){
-		src = cblk->decoded_data;
+		src = cblk->unencoded_data;
 		dest = src;
 		dest_width = cblk_w;
 	}
@@ -1308,11 +1308,11 @@ bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
 
 	cblkdata = cblk->chunks[0].data;
 
-	/* For subtile decoding, directly decode in the decoded_data buffer of */
+	/* For subtile decoding, directly decode in the unencoded_data buffer of */
 	/* the code-block. Hack t1->data to point to it, and restore it later */
-	if (cblk->decoded_data) {
+	if (cblk->unencoded_data) {
 		original_t1_data = t1->data;
-		t1->data = cblk->decoded_data;
+		t1->data = cblk->unencoded_data;
 	}
 
 	for (segno = 0; segno < cblk->real_num_segs; ++segno) {
@@ -1387,7 +1387,7 @@ bool opj_t1_decode_cblk(opj_t1_t *t1, opj_tcd_cblk_dec_t *cblk,
 	}
 
 	/* Restore original t1->data is needed */
-	if (cblk->decoded_data) {
+	if (cblk->unencoded_data) {
 		t1->data = original_t1_data;
 	}
 
@@ -1459,7 +1459,7 @@ static bool opj_t1_code_block_enc_allocate(opj_tcd_cblk_enc_t *
 
 double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 		uint32_t max,
-		uint32_t orient, uint32_t compno, uint32_t level,
+		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps, bool doRateControl) {

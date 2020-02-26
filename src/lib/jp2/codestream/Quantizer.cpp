@@ -9,31 +9,32 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 							grk_tccp *tccp,
 							uint32_t image_precision,
 							float fraction){
-	uint32_t gain = 0;
-	if (tccp->qmfbid == 1) {
-		if (band->bandno == 0)
-			gain = 0;
-		else if (band->bandno < 3)
-			gain = 1;
-		else
-			gain = 2;
-	}
-	uint32_t numbps = image_precision + gain;
-	auto offset = (resno == 0) ? 0 : 3*resno - 2;
-	auto step_size = tccp->stepsizes + offset + bandno;
-	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
-			* pow(2.0, (int32_t) (numbps - step_size->expn))))
-			* fraction;
 
-	// see Taubman + Marcellin - Equation 10.22
-	band->numbps = tccp->roishift
-			+ std::max<int32_t>(0,
-					(int32_t) (step_size->expn + tccp->numgbits)
-							- 1);
+	auto offset = (resno == 0) ? 0 : 3*resno - 2;
 	if (tcp->isHT) {
-		auto bno = (resno == 0 && bandno == 0) ? 0 : bandno+1;
-		//auto k_msbs = tcp->qcd.get_Kmax(resno, bno) - 1;
-		//band->numbps = k_msbs;
+		band->numbps = tcp->qcd.get_Kmax(resno, band->bandno) - 1;
+		band->stepsize = tcp->qcd.u8_SPqcd[offset + bandno];
+	} else {
+		uint32_t gain = 0;
+		if (tccp->qmfbid == 1) {
+			if (band->bandno == 0)
+				gain = 0;
+			else if (band->bandno < 3)
+				gain = 1;
+			else
+				gain = 2;
+		}
+		uint32_t numbps = image_precision + gain;
+		auto step_size = tccp->stepsizes + offset + bandno;
+		band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
+				* pow(2.0, (int32_t) (numbps - step_size->expn))))
+				* fraction;
+
+		// see Taubman + Marcellin - Equation 10.22
+		band->numbps = tccp->roishift
+				+ std::max<int32_t>(0,
+						(int32_t) (step_size->expn + tccp->numgbits)
+								- 1);
 	}
 }
 
@@ -54,16 +55,13 @@ void Quantizer::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
 	uint32_t numbands, bandno;
 	numbands = 3 * tccp->numresolutions - 2;
 	for (bandno = 0; bandno < numbands; bandno++) {
-		double stepsize;
-
 		uint32_t resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
 		uint8_t orient = (bandno == 0) ? 0 : (uint8_t)((bandno - 1) % 3 + 1);
 		uint32_t level = tccp->numresolutions - 1 - resno;
 		uint32_t gain =	(tccp->qmfbid == 0) ? 	0 :
 				((orient == 0) ? 	0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
-		if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-			stepsize = 1.0;
-		} else {
+		double stepsize = 1.0;
+		if (tccp->qntsty != J2K_CCP_QNTSTY_NOQNT) {
 			double norm = dwt_utils::getnorm_real(level,orient);
 			stepsize = (double) ((uint64_t) 1 << gain) / norm;
 		}

@@ -146,42 +146,14 @@ const double dwt_norms_real[4][10] = { { 1.000, 1.965, 4.177, 8.403,
 		17.04, 34.27, 68.63, 137.3, 274.6, 549.0 }, { 2.080, 3.865, 8.307,
 		17.18, 34.71, 69.59, 139.3, 278.6, 557.2 } };
 
-/*
- Explicit calculation of the Quantization Stepsizes
- */
-void dwt_utils::encode_stepsize(int32_t stepsize, int32_t numbps,
-		grk_stepsize *bandno_stepsize) {
-	int32_t p, n;
-	p = int_floorlog2(stepsize) - 13;
-	n = 11 - int_floorlog2(stepsize);
-	bandno_stepsize->mant = (n < 0 ? stepsize >> -n : stepsize << n) & 0x7ff;
-	bandno_stepsize->expn = numbps - p;
-}
 
-/* <summary>                          */
-/* Get gain of 5-3 wavelet transform. */
-/* </summary>                         */
-uint32_t dwt_utils::getgain(uint8_t orient) {
-	if (orient == 0)
-		return 0;
-	if (orient == 1 || orient == 2)
-		return 1;
-	return 2;
-}
+
 
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
 double dwt_utils::getnorm(uint32_t level, uint8_t orient) {
 	return dwt_norms[orient][level];
-}
-
-/* <summary>                          */
-/* Get gain of 9-7 wavelet transform. */
-/* </summary>                         */
-uint32_t dwt_utils::getgain_real(uint8_t orient) {
-	(void) orient;
-	return 0;
 }
 
 /* <summary>                */
@@ -191,30 +163,6 @@ double dwt_utils::getnorm_real(uint32_t level, uint8_t orient) {
 	return dwt_norms_real[orient][level];
 }
 
-void dwt_utils::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
-	uint32_t numbands, bandno;
-	numbands = 3 * tccp->numresolutions - 2;
-	for (bandno = 0; bandno < numbands; bandno++) {
-		double stepsize;
-		uint32_t resno, level, orient, gain;
 
-		resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
-		orient = (bandno == 0) ? 0 : ((bandno - 1) % 3 + 1);
-		level = tccp->numresolutions - 1 - resno;
-		gain =
-				(tccp->qmfbid == 0) ?
-						0 :
-						((orient == 0) ?
-								0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
-		if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-			stepsize = 1.0;
-		} else {
-			double norm = dwt_norms_real[orient][level];
-			stepsize = (double) ((uint64_t) 1 << gain) / norm;
-		}
-		dwt_utils::encode_stepsize((int32_t) floor(stepsize * 8192.0),
-				(int32_t) (prec + gain), &tccp->stepsizes[bandno]);
-	}
-}
 
 }

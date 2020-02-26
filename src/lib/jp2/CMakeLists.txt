@@ -97,6 +97,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/TagTree.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h
@@ -162,8 +164,7 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_defs.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_mem.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_message.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_params.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
+   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_mem.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_message.cpp
 

@@ -2140,8 +2140,15 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 	}
 
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
-		grk_tcp *tcp = &cp->tcps[tileno];
+		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
+		if (tcp->isHT) {
+			tcp->qcd.check_validity(parameters->numresolution-1,
+									parameters->irreversible == 0,
+									image->comps[0].prec,
+									tcp->mct > 0,
+									image->comps[0].sgnd);
+		}
 		tcp->numlayers = parameters->tcp_numlayers;
 
 		for (j = 0; j < tcp->numlayers; j++) {
@@ -2356,6 +2363,14 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 				}
 			}
 			Quantizer::calc_explicit_stepsizes(tccp, image->comps[i].prec);
+			if (tcp->isHT) {
+				uint32_t numbands = 3 * tccp->numresolutions - 2;
+				for (uint32_t bn = 0; bn < numbands; bn++) {
+					auto step = tccp->stepsizes + bn;
+					step->expn = (uint8_t)(tcp->qcd.u8_SPqcd[bn] >> 3);
+					step->mant = 0;
+				}
+			}
 		}
 	}
 	if (parameters->mct_data) {
@@ -3693,16 +3708,10 @@ static bool j2k_read_cap(grk_j2k *p_j2k, uint8_t *p_header_data,
 static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
-#if 0
+
 	auto l_cp = &(p_j2k->m_cp);
 	auto l_tcp = &l_cp->tcps[0];
 	auto l_tccp0 = &l_tcp->tccps[0];
-
-	l_tcp->qcd.check_validity(l_tccp0->numresolutions-1,
-			          l_tccp0->qmfbid == 1,
-					  p_j2k->m_private_image->comps[0].prec,
-					  false,
-					  false);
 
     //marker size excluding header
     uint16_t Lcap = 8;
@@ -3749,7 +3758,6 @@ static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	if (!p_stream->write_short(Ccap[0])) {
 		return false;
 	}
-#endif
 	return true;
 }
 
@@ -7594,7 +7602,8 @@ grk_tcp::grk_tcp() :
 				m_nb_max_mcc_records(0),
 				cod(0),
 				ppt(0),
-				POC(0)
+				POC(0),
+				isHT(false)
 {
 	for (auto i = 0; i < 100; ++i)
 		rates[i] = 0.0;

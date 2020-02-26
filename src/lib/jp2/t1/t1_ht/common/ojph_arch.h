@@ -41,6 +41,9 @@
 
 #include <cstdio>
 #include <cstdint>
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES // for C++
+#endif
 #include <cmath>
 
 #include "ojph_defs.h"

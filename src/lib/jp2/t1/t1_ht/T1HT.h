@@ -23,7 +23,6 @@
 #include "TileProcessor.h"
 #include "T1Interface.h"
 #include "T1Part1.h"
-#include "opj_includes.h"
 
 namespace grk {
 
@@ -45,9 +44,13 @@ public:
 	void postDecode(decodeBlockInfo *block);
 
 private:
-	uint8_t *coded_data;
 	uint32_t coded_data_size;
-	int32_t *decoded_data;
+	uint8_t *coded_data;
+	uint32_t unencoded_data_size;
+	int32_t *unencoded_data;
+
+    mem_fixed_allocator *allocator;
+    mem_elastic_allocator *elastic_alloc;
 };
 }
 }

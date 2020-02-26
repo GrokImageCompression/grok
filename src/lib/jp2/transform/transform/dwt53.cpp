@@ -98,11 +98,11 @@
  */
 
 #include "CPUArch.h"
+#include "grok_includes.h"
 #include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
-#include <cmath>
 #include "dwt53.h"
 
 namespace grk {
@@ -225,7 +225,7 @@ bool dwt53::decode(TileComponent *tilec, uint32_t numres, uint32_t numThreads) {
 								rh = (tr->y1 - tr->y0);
 
 								if (rh) {
-									const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / Scheduler::g_tp->num_threads());
+									const uint32_t linesPerThreadH = (uint32_t)std::ceil((float)rh / (float)Scheduler::g_tp->num_threads());
 
 									h.d_n = (int32_t) (rw - h.s_n);
 									h.cas = tr->x0 & 1;
@@ -243,7 +243,7 @@ bool dwt53::decode(TileComponent *tilec, uint32_t numres, uint32_t numThreads) {
 								if (rw) {
 									v.d_n = (int32_t) (rh - v.s_n);
 									v.cas = tr->y0 & 1;
-									const uint32_t linesPerThreadV = static_cast<uint32_t>((std::ceil((float)rw / Scheduler::g_tp->num_threads())));
+									const uint32_t linesPerThreadV = static_cast<uint32_t>((std::ceil((float)rw / (float)Scheduler::g_tp->num_threads())));
 
 									for (auto j = threadId * linesPerThreadV;
 											j < std::min<uint32_t>((threadId+1)*linesPerThreadV, rw); ++j) {

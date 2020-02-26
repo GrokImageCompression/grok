@@ -1094,129 +1094,144 @@ static int parse_cmdline_encoder_ex(int argc,
 				out_fol->set_imgdir = true;
 			}
 		}
-		if (cinema2KArg.isSet()) {
-			if (!checkCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters)) {
-				return 1;
-			}
-			if (parameters->verbose) {
-				spdlog::warn("CINEMA 2K profile activated\n"
-					"Other options specified may be overridden");
+		if (cblkSty.isSet()){
+			parameters->cblk_sty = cblkSty.getValue() & 0X7F;
+			if (parameters->cblk_sty & GRK_CBLKSTY_HT){
+				if (parameters->cblk_sty != GRK_CBLKSTY_HT){
+					spdlog::error("High throughput encoding mode cannot be combined"
+							" with any other block mode switches. Ignoring mode switch");
+				} else {
+					parameters->isHT = true;
+				}
+				parameters->cblk_sty = 0;
+
 			}
 		}
-		if (cinema4KArg.isSet()) {
-			if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K, parameters)) {
-				return 1;
-			}
-			if (parameters->verbose) {
-				spdlog::warn(" CINEMA 4K profile activated\n"
-					"Other options specified may be overridden");
-			}
-		}
-		if (IMFArg.isSet()){
-			int mainlevel = 0;
-			int sublevel = 0;
-			int profile = 0;
-			int framerate = 0;
-			const char* msg =
-				"Wrong value for -IMF. Should be "
-				"<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
-				"of 2K/4K/8K/2K_R/4K_R/8K_R.\n";
-			char* arg = (char*)IMFArg.getValue().c_str();
-			char* comma;
-
-			comma = strstr(arg, ",mainlevel=");
-			if (comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1) {
-				spdlog::error( "%s", msg);
-				return 1;
-			}
-
-			comma = strstr(arg, ",sublevel=");
-			if (comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1) {
-				spdlog::error("%s", msg);
-				return 1;
-			}
-
-			comma = strstr(arg, ",framerate=");
-			if (comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1) {
-				spdlog::error("%s", msg);
-				return 1;
-			}
-
-			comma = strchr(arg, ',');
-			if (comma != NULL) {
-				*comma = 0;
-			}
-
-			if (strcmp(arg, "2K") == 0) {
-				profile = GRK_PROFILE_IMF_2K;
-			} else if (strcmp(arg, "4K") == 0) {
-				profile = GRK_PROFILE_IMF_4K;
-			} else if (strcmp(arg, "8K") == 0) {
-				profile = GRK_PROFILE_IMF_8K;
-			} else if (strcmp(arg, "2K_R") == 0) {
-				profile = GRK_PROFILE_IMF_2K_R;
-			} else if (strcmp(arg, "4K_R") == 0) {
-				profile = GRK_PROFILE_IMF_4K_R;
-			} else if (strcmp(arg, "8K_R") == 0) {
-				profile = GRK_PROFILE_IMF_8K_R;
-			} else {
-				spdlog::error("%s", msg);
-				return 1;
-			}
-
-			if (!(mainlevel >= 0 && mainlevel <= 15)) {
-				/* Voluntarily rough validation. More fine grained done in library */
-				spdlog::error("Invalid mainlevel value.\n");
-				return 1;
-			}
-			if (!(sublevel >= 0 && sublevel <= 15)) {
-				/* Voluntarily rough validation. More fine grained done in library */
-				spdlog::error("Invalid sublevel value.\n");
-				return 1;
-			}
-			parameters->rsiz = (uint16_t)(profile | (sublevel << 4) | mainlevel);
-
-			if (parameters->verbose) {
-				spdlog::info("IMF profile activated\n"
-						"Other options specified could be overridden\n");
-			}
-
-			parameters->framerate = framerate;
-			if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
-				const int limitMBitsSec[] = {
-					0,
-					GRK_IMF_SUBLEVEL_1_MBITSSEC,
-					GRK_IMF_SUBLEVEL_2_MBITSSEC,
-					GRK_IMF_SUBLEVEL_3_MBITSSEC,
-					GRK_IMF_SUBLEVEL_4_MBITSSEC,
-					GRK_IMF_SUBLEVEL_5_MBITSSEC,
-					GRK_IMF_SUBLEVEL_6_MBITSSEC,
-					GRK_IMF_SUBLEVEL_7_MBITSSEC,
-					GRK_IMF_SUBLEVEL_8_MBITSSEC,
-					GRK_IMF_SUBLEVEL_9_MBITSSEC
-				};
-				parameters->max_cs_size = limitMBitsSec[sublevel] * (1000 * 1000 / 8) /
-										  framerate;
+		// profiles
+		if (!parameters->isHT) {
+			if (cinema2KArg.isSet()) {
+				if (!checkCinema(&cinema2KArg, GRK_PROFILE_CINEMA_2K, parameters)) {
+					return 1;
+				}
 				if (parameters->verbose) {
-					spdlog::info( "Setting max codestream size to %d bytes.\n",
-						parameters->max_cs_size);
+					spdlog::warn("CINEMA 2K profile activated\n"
+						"Other options specified may be overridden");
 				}
 			}
-
-		}
-		if (rsizArg.isSet()) {
-			if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
-				warning_callback( "  Cinema profile set - RSIZ parameter ignored.\n",nullptr);
-			} else if (IMFArg.isSet()){
-				warning_callback( "  IMF profile set - RSIZ parameter ignored.\n",nullptr);
+			if (cinema4KArg.isSet()) {
+				if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K, parameters)) {
+					return 1;
+				}
+				if (parameters->verbose) {
+					spdlog::warn(" CINEMA 4K profile activated\n"
+						"Other options specified may be overridden");
+				}
 			}
-			else {
-				parameters->rsiz = rsizArg.getValue();
-			}
-		}
+			if (IMFArg.isSet()){
+				int mainlevel = 0;
+				int sublevel = 0;
+				int profile = 0;
+				int framerate = 0;
+				const char* msg =
+					"Wrong value for -IMF. Should be "
+					"<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
+					"of 2K/4K/8K/2K_R/4K_R/8K_R.\n";
+				char* arg = (char*)IMFArg.getValue().c_str();
+				char* comma;
 
-		if (cblkSty.isSet())
-			parameters->cblk_sty = cblkSty.getValue() & 0X3F;
+				comma = strstr(arg, ",mainlevel=");
+				if (comma && sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1) {
+					spdlog::error( "%s", msg);
+					return 1;
+				}
+
+				comma = strstr(arg, ",sublevel=");
+				if (comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1) {
+					spdlog::error("%s", msg);
+					return 1;
+				}
+
+				comma = strstr(arg, ",framerate=");
+				if (comma && sscanf(comma + 1, "framerate=%d", &framerate) != 1) {
+					spdlog::error("%s", msg);
+					return 1;
+				}
+
+				comma = strchr(arg, ',');
+				if (comma != NULL) {
+					*comma = 0;
+				}
+
+				if (strcmp(arg, "2K") == 0) {
+					profile = GRK_PROFILE_IMF_2K;
+				} else if (strcmp(arg, "4K") == 0) {
+					profile = GRK_PROFILE_IMF_4K;
+				} else if (strcmp(arg, "8K") == 0) {
+					profile = GRK_PROFILE_IMF_8K;
+				} else if (strcmp(arg, "2K_R") == 0) {
+					profile = GRK_PROFILE_IMF_2K_R;
+				} else if (strcmp(arg, "4K_R") == 0) {
+					profile = GRK_PROFILE_IMF_4K_R;
+				} else if (strcmp(arg, "8K_R") == 0) {
+					profile = GRK_PROFILE_IMF_8K_R;
+				} else {
+					spdlog::error("%s", msg);
+					return 1;
+				}
+
+				if (!(mainlevel >= 0 && mainlevel <= 15)) {
+					/* Voluntarily rough validation. More fine grained done in library */
+					spdlog::error("Invalid mainlevel value.\n");
+					return 1;
+				}
+				if (!(sublevel >= 0 && sublevel <= 15)) {
+					/* Voluntarily rough validation. More fine grained done in library */
+					spdlog::error("Invalid sublevel value.\n");
+					return 1;
+				}
+				parameters->rsiz = (uint16_t)(profile | (sublevel << 4) | mainlevel);
+
+				if (parameters->verbose) {
+					spdlog::info("IMF profile activated\n"
+							"Other options specified could be overridden\n");
+				}
+
+				parameters->framerate = framerate;
+				if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
+					const int limitMBitsSec[] = {
+						0,
+						GRK_IMF_SUBLEVEL_1_MBITSSEC,
+						GRK_IMF_SUBLEVEL_2_MBITSSEC,
+						GRK_IMF_SUBLEVEL_3_MBITSSEC,
+						GRK_IMF_SUBLEVEL_4_MBITSSEC,
+						GRK_IMF_SUBLEVEL_5_MBITSSEC,
+						GRK_IMF_SUBLEVEL_6_MBITSSEC,
+						GRK_IMF_SUBLEVEL_7_MBITSSEC,
+						GRK_IMF_SUBLEVEL_8_MBITSSEC,
+						GRK_IMF_SUBLEVEL_9_MBITSSEC
+					};
+					parameters->max_cs_size = limitMBitsSec[sublevel] * (1000 * 1000 / 8) /
+											  framerate;
+					if (parameters->verbose) {
+						spdlog::info( "Setting max codestream size to %d bytes.\n",
+							parameters->max_cs_size);
+					}
+				}
+
+			}
+			if (rsizArg.isSet()) {
+				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
+					warning_callback( "  Cinema profile set - RSIZ parameter ignored.\n",nullptr);
+				} else if (IMFArg.isSet()){
+					warning_callback( "  IMF profile set - RSIZ parameter ignored.\n",nullptr);
+				}
+				else {
+					parameters->rsiz = rsizArg.getValue();
+				}
+			}
+		} else {
+			parameters->rsiz = 0x4000; //for jph, bit 14 of Rsiz is 1
+		}
 
 		if (captureResArg.isSet()) {
 			if (sscanf(captureResArg.getValue().c_str(), "%lf,%lf", parameters->capture_resolution,

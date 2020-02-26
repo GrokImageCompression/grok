@@ -21,8 +21,12 @@
 
 namespace grk {
 
-bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
-		const double *mct_norms, uint32_t mct_numcomps,	bool doRateControl) {
+bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
+							grk_tcp *tcp,
+							grk_tcd_tile *tile,
+							const double *mct_norms,
+							uint32_t mct_numcomps,
+							bool doRateControl) {
 
 	uint32_t compno, resno, bandno, precno;
 	tile->distotile = 0;
@@ -82,6 +86,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 						block->mct_numcomps = mct_numcomps;
 						block->tiledp = tilec->buf->get_ptr( resno,
 								bandno, (uint32_t) x, (uint32_t) y);
+						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 						blocks.push_back(block);
 
 					}
@@ -90,7 +95,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp, grk_tcd_tile *tile,
 		}
 	}
 
-	T1Encoder encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
+	T1Encoder encoder(cp, tcp, tile, maxCblkW, maxCblkH, doRateControl);
 	return encoder.encode(&blocks);
 }
 
@@ -159,7 +164,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 					block->y = y;
 					block->tiledp = tilec->buf->get_ptr( resno, bandno,
 							(uint32_t) x, (uint32_t) y);
-					block->k_msbs = band->numbps - cblk->numbps;
+					block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
 					blocks->push_back(block);
 
 				}

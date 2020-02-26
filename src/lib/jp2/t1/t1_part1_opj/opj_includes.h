@@ -103,7 +103,7 @@ typedef struct opj_tcd_cblk_dec {
     uint32_t numchunks;           /* Number of valid chunks items */
     uint32_t numchunksalloc;      /* Number of chunks item allocated */
     /* Decoded code-block. Only used for subtile decoding. Otherwise tilec->data is directly updated */
-    int32_t* decoded_data;
+    int32_t* unencoded_data;
 } opj_tcd_cblk_dec_t;
 
 

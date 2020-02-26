@@ -185,14 +185,14 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
         auto cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
         auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
 
-        if (cblkopj.decoded_data)
-        	grok_aligned_free(cblkopj.decoded_data);
-        cblkopj.decoded_data = (int32_t*)grok_aligned_malloc(data_size);
-        if (!cblkopj.decoded_data){
+        if (cblkopj.unencoded_data)
+        	grok_aligned_free(cblkopj.unencoded_data);
+        cblkopj.unencoded_data = (int32_t*)grok_aligned_malloc(data_size);
+        if (!cblkopj.unencoded_data){
             GROK_ERROR("Unable to allocate cblk data");
            	return false;
         }
-        memset(cblkopj.decoded_data, 0, data_size);
+        memset(cblkopj.unencoded_data, 0, data_size);
 	}
 
     ret =
@@ -204,8 +204,8 @@ bool T1Part1OPJ::decode(decodeBlockInfo *block) {
 					false);
 
     if (!block->tilec->whole_tile_decoding){
-		cblk->unencoded_data = cblkopj.decoded_data;
-		cblkopj.decoded_data = nullptr;
+		cblk->unencoded_data = cblkopj.unencoded_data;
+		cblkopj.unencoded_data = nullptr;
     }
 	delete[] segs;
 	return ret;
@@ -223,7 +223,7 @@ void T1Part1OPJ::postDecode(decodeBlockInfo *block) {
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
 	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
-	cblkopj.decoded_data = block->cblk->unencoded_data;
+	cblkopj.unencoded_data = block->cblk->unencoded_data;
     post_decode(t1,
     		&cblkopj,
 			block->roishift,

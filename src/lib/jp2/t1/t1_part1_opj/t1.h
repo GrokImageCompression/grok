@@ -57,6 +57,8 @@
 #ifndef OPJ_T1_H
 #define OPJ_T1_H
 
+#include "t1_flags.h"
+
 #define T1_NMSEDEC_BITS 7
 
 #define T1_NUMCTXS_ZC  9
@@ -116,24 +118,9 @@ typedef uint32_t opj_flag_t;
 #define T1_SIGMA_16 (1U << 16)
 #define T1_SIGMA_17 (1U << 17)
 
-#define T1_CHI_0    (1U << 18)
-#define T1_CHI_0_I  18
-#define T1_CHI_1    (1U << 19)
-#define T1_CHI_1_I  19
-#define T1_MU_0     (1U << 20)
-#define T1_PI_0     (1U << 21)
-#define T1_CHI_2    (1U << 22)
-#define T1_CHI_2_I  22
-#define T1_MU_1     (1U << 23)
-#define T1_PI_1     (1U << 24)
-#define T1_CHI_3    (1U << 25)
-#define T1_MU_2     (1U << 26)
-#define T1_PI_2     (1U << 27)
-#define T1_CHI_4    (1U << 28)
-#define T1_MU_3     (1U << 29)
-#define T1_PI_3     (1U << 30)
-#define T1_CHI_5    (1U << 31)
-#define T1_CHI_5_I  31
+
+
+
 
 /** As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
  *  indicate the significance state of the west neighbour of data point zero
@@ -228,7 +215,7 @@ bool opj_t1_allocate_buffers(opj_t1_t *t1, uint32_t w,
 
 double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 		uint32_t max,
-		uint32_t orient, uint32_t compno, uint32_t level,
+		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps, bool doRateControl);

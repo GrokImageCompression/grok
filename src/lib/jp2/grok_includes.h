@@ -65,7 +65,10 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <string>
-#include <math.h>
+#ifdef _MSC_VER
+#define _USE_MATH_DEFINES // for C++
+#endif
+#include <cmath>
 #include <float.h>
 #include <time.h>
 #include <stdio.h>

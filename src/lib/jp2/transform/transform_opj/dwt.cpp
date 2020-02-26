@@ -1558,10 +1558,10 @@ static bool dwt_decode_partial_tile(
     /* with the tile coordinates */
     auto dim = tilec->buf->unreduced_image_dim;
 
-    uint32_t win_tcx0 = dim.x0;
-    uint32_t win_tcy0 = dim.y0;
-    uint32_t win_tcx1 = dim.x1;
-    uint32_t win_tcy1 = dim.y1;
+    uint32_t win_tcx0 = (uint32_t)dim.x0;
+    uint32_t win_tcy0 = (uint32_t)dim.y0;
+    uint32_t win_tcx1 = (uint32_t)dim.x1;
+    uint32_t win_tcy1 = (uint32_t)dim.y1;
 
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
         return true;
@@ -2281,10 +2281,10 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
     /* with the tile coordinates */
     auto dim = tilec->buf->unreduced_image_dim;
 
-    uint32_t win_tcx0 = dim.x0;
-    uint32_t win_tcy0 = dim.y0;
-    uint32_t win_tcx1 = dim.x1;
-    uint32_t win_tcy1 = dim.y1;
+    uint32_t win_tcx0 = (uint32_t)dim.x0;
+    uint32_t win_tcy0 = (uint32_t)dim.y0;
+    uint32_t win_tcx1 = (uint32_t)dim.x1;
+    uint32_t win_tcy1 = (uint32_t)dim.y1;
 
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
         return true;

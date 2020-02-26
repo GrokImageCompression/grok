@@ -62,6 +62,7 @@
 
 #include <vector>
 #include <map>
+#include "HTParams.h"
 
 namespace grk {
 
@@ -326,6 +327,7 @@ struct grk_tcp {
 	uint32_t POC :1;
 
 	bool isHT;
+	param_qcd qcd;
 };
 
 struct grk_encoding_param {

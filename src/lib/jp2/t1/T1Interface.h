@@ -53,20 +53,32 @@ struct decodeBlockInfo {
 };
 
 struct encodeBlockInfo {
-	encodeBlockInfo() :
-			tiledp(nullptr), cblk(nullptr), compno(0), resno(0), bandno(0), precno(
-					0), cblkno(0), bandconst(0), stepsize(0), cblk_sty(0), qmfbid(
-					0), x(0), y(0), mct_norms(nullptr),
+	encodeBlockInfo() :	tiledp(nullptr),
+			            cblk(nullptr),
+						compno(0),
+						resno(0),
+						bandno(0),
+						precno(0),
+						cblkno(0),
+						bandconst(0),
+						stepsize(0),
+						cblk_sty(0),
+						qmfbid(0),
+						x(0),
+						y(0),
+						mct_norms(nullptr),
 #ifdef DEBUG_LOSSLESS_T1
 		unencodedData(nullptr),
 #endif
-					mct_numcomps(0) {
+					mct_numcomps(0),
+					k_msbs(0)
+	{
 	}
 	int32_t *tiledp;
 	grk_tcd_cblk_enc *cblk;
 	uint32_t compno;
 	uint32_t resno;
-	uint32_t bandno;
+	uint8_t bandno;
 	uint32_t precno;
 	uint32_t cblkno;
 	int32_t bandconst;
@@ -79,6 +91,7 @@ struct encodeBlockInfo {
 	int32_t* unencodedData;
 #endif
 	uint32_t mct_numcomps;
+	uint8_t k_msbs;
 };
 
 class T1Interface {
