@@ -1484,9 +1484,14 @@ double opj_t1_encode_cblk(opj_t1_t *t1, opj_tcd_cblk_enc_t *cblk,
 #endif
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
-	cblk->numbps = max ? (uint32_t) ((opj_int_floorlog2(max) + 1) -
-	T1_NMSEDEC_FRACBITS) :
-							0;
+	cblk->numbps = 0;
+	if (max){
+		uint32_t temp = (uint32_t)opj_int_floorlog2(max) + 1;
+		if (temp <= T1_NMSEDEC_FRACBITS)
+			cblk->numbps = 0;
+		else
+			cblk->numbps = temp - T1_NMSEDEC_FRACBITS;
+	}
 	if (cblk->numbps == 0) {
 		cblk->totalpasses = 0;
 		return 0;

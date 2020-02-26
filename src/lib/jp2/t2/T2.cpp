@@ -921,6 +921,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			for (uint32_t cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
 				auto cblk = prc->cblks.enc + cblkno;
 				cblk->num_passes_included_in_current_layer = 0;
+				assert (band->numbps >= cblk->numbps);
 				prc->imsbtree->setvalue(cblkno,
 						band->numbps - (int32_t) cblk->numbps);
 			}
