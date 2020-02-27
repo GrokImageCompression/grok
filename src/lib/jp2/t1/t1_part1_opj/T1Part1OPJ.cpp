@@ -50,11 +50,10 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
 	temp += 4096;
-	assert((temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)))
-			<= (int64_t)0x7FFFFFFF);
-	assert(	(temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)))
-			>= (-(int64_t)0x7FFFFFFF - (int64_t)1));
-	return (int32_t) (temp / (1 << (13 + 11 - T1_NMSEDEC_FRACBITS)) );
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
+	assert(
+			(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
 }
 
 void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
