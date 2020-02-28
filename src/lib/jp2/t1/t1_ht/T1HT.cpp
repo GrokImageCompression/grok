@@ -86,13 +86,12 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = block->tiledp[tileIndex];
-				int32_t t = (int32_t)((float)temp / block->stepsize);
+				int32_t t = (int32_t)((float)temp * block->bandconst_ht);
 				int32_t val = t >= 0 ? t : -t;
-				maximum = max((uint32_t)t, maximum);
+				maximum = max((uint32_t)val, maximum);
 				int32_t sign = t >= 0 ? 0 : 0x80000000;
 				int32_t res = sign | val;
 				unencoded_data[cblk_index] = res;
-				maximum = max(maximum, (uint32_t)res);
 				tileIndex++;
 				cblk_index++;
 			}

@@ -44,6 +44,13 @@ bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
 				grk_tcd_band *restrict band = &res->bands[bandno];
 				int32_t bandconst = 8192 * 8192
 						/ ((int32_t) floor(band->stepsize * 8192));
+				float bandconst_ht = 0;
+				if (tcp->isHT && tccp->qmfbid == 0){
+			        float d = tcp->qcd.irrev_get_delta(resno, band->bandno);
+			        d /= (float)(1u << (31 - tcp->qcd.get_Kmax(resno, band->bandno)));
+			        bandconst_ht = (1.0f/d);
+
+				}
 
 				for (precno = 0; precno < res->pw * res->ph; ++precno) {
 					grk_tcd_precinct *prc = &band->precincts[precno];
@@ -79,6 +86,7 @@ bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
 						block->qmfbid = tccp->qmfbid;
 						block->resno = resno;
 						block->bandconst = bandconst;
+						block->bandconst_ht = bandconst_ht;
 						block->stepsize = band->stepsize;
 						block->x = x;
 						block->y = y;
