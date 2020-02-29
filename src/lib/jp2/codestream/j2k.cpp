@@ -2133,17 +2133,11 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 
 	/* initialize multiple tiles */
 	/* ---------------------------- */
-	cp->tcps = (grk_tcp*) grok_calloc(cp->tw * cp->th, sizeof(grk_tcp));
-	if (!cp->tcps) {
-		GROK_ERROR("Not enough memory to allocate tile coding parameters");
-		return false;
-	}
-
+	cp->tcps = new grk_tcp[cp->tw * cp->th];
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		if (tcp->isHT) {
-			tcp->qcd = param_qcd();
 			tcp->qcd.check_validity(parameters->numresolution-1,
 									parameters->irreversible == 0,
 									image->comps[0].prec,
@@ -3983,13 +3977,7 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* memory allocations */
-	l_cp->tcps = (grk_tcp*) grok_calloc(l_nb_tiles, sizeof(grk_tcp));
-	if (l_cp->tcps == nullptr) {
-		GROK_ERROR(
-				"Not enough memory to take in charge SIZ marker");
-		return false;
-	}
-
+	l_cp->tcps = new grk_tcp[l_nb_tiles];
 	p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps =
 			(grk_tccp*) grok_calloc(l_image->numcomps, sizeof(grk_tccp));
 	if (p_j2k->m_specific_param.m_decoder.m_default_tcp->tccps == nullptr) {
@@ -7551,7 +7539,7 @@ void grk_coding_parameters::destroy() {
 			j2k_tcp_destroy(l_current_tile);
 			++l_current_tile;
 		}
-		grok_free(tcps);
+		delete[] tcps;
 		tcps = nullptr;
 	}
 	if (ppm_markers != nullptr) {
