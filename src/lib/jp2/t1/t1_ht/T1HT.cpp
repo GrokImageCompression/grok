@@ -67,8 +67,8 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	maximum = 0;
 
 	//convert to sign-magnitude
-	int32_t shift = 31 - (block->k_msbs + 1);
 	if (block->qmfbid == 1) {
+		int32_t shift = 31 - (block->k_msbs + 1);
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = block->tiledp[tileIndex];
@@ -86,7 +86,7 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = block->tiledp[tileIndex];
-				int32_t t = (int32_t)((float)temp * block->bandconst_ht);
+				int32_t t = (int32_t)((float)temp * block->inv_step_ht);
 				int32_t val = t >= 0 ? t : -t;
 				maximum = max((uint32_t)val, maximum);
 				int32_t sign = t >= 0 ? 0 : 0x80000000;
@@ -199,9 +199,9 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 		t1_data = unencoded_data;
 	}
 */
-	int32_t shift = 31 - (block->k_msbs + 1);
 	uint32_t tile_width = block->tilec->width();
 	if (block->qmfbid == 1) {
+		int32_t shift = 31 - (block->k_msbs + 1);
 		int32_t *restrict tile_data = block->tiledp;
 		for (auto j = 0U; j < h; ++j) {
 			int32_t *restrict tile_row_data = tile_data;
@@ -214,13 +214,12 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 			tile_data += tile_width;
 		}
 	} else {
-		float *restrict tile_data = (float*) block->tiledp;
+		int32_t *restrict tile_data = block->tiledp;
 		for (auto j = 0U; j < h; ++j) {
-			float *restrict tile_row_data = tile_data;
+			float *restrict tile_row_data = (float*)tile_data;
 			for (auto i = 0U; i < w; ++i) {
-			   int32_t temp = *t1_data;
-		       float val = (float)(temp & 0x7FFFFFFF) * block->stepsize;
-		       tile_row_data[i] = (temp & 0x80000000) ? -val : val;
+		       float val = (((*t1_data & 0x7FFFFFFF) * block->stepsize));
+		       tile_row_data[i] = (*t1_data & 0x80000000) ? -val : val;
 			   t1_data++;
 			}
 			tile_data += tile_width;

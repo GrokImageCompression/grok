@@ -60,8 +60,8 @@ struct encodeBlockInfo {
 						bandno(0),
 						precno(0),
 						cblkno(0),
-						bandconst(0),
-						bandconst_ht(0),
+						inv_step(0),
+						inv_step_ht(0),
 						stepsize(0),
 						cblk_sty(0),
 						qmfbid(0),
@@ -83,8 +83,8 @@ struct encodeBlockInfo {
 	uint32_t precno;
 	uint32_t cblkno;
 	// inverse step size in 13 bit fixed point
-	int32_t bandconst;
-	float bandconst_ht;
+	int32_t inv_step;
+	float inv_step_ht;
 	float stepsize;
 	uint8_t cblk_sty;
 	uint8_t qmfbid;

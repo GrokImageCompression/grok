@@ -32,20 +32,10 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 					(int32_t) (step_size->expn + tccp->numgbits)
 							- 1);
 
+	if (tcp->isHT && fraction == 0.5 && tccp->qmfbid == 0)
+		// 31 - K_max == 30 - band->numbps
+		band->stepsize /=(float)(1u << (30 - band->numbps));
 }
-
-/*
- Explicit calculation of the Quantization Stepsizes
- */
-void Quantizer::encode_stepsize(int32_t stepsize, int32_t numbps,
-		grk_stepsize *bandno_stepsize) {
-	int32_t p, n;
-	p = int_floorlog2(stepsize) - 13;
-	n = 11 - int_floorlog2(stepsize);
-	bandno_stepsize->mant = (uint16_t)((n < 0 ? stepsize >> -n : stepsize << n) & 0x7ff);
-	bandno_stepsize->expn = (uint8_t)(numbps - p);
-}
-
 
 void Quantizer::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
 	uint32_t numbands, bandno;
@@ -61,8 +51,14 @@ void Quantizer::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
 			double norm = dwt_utils::getnorm_real(level,orient);
 			stepsize = (double) ((uint64_t) 1 << gain) / norm;
 		}
-		Quantizer::encode_stepsize((int32_t) floor(stepsize * 8192.0),
-				(int32_t) (prec + gain), &tccp->stepsizes[bandno]);
+		int32_t stepsize_fp = (int32_t) floor(stepsize * 8192.0);
+		int32_t numbps = (int32_t) (prec + gain);
+		int32_t p, n;
+		p = int_floorlog2(stepsize_fp) - 13;
+		n = 11 - int_floorlog2(stepsize_fp);
+		grk_stepsize *bandno_stepsize = tccp->stepsizes + bandno;
+		bandno_stepsize->mant = (uint16_t)((n < 0 ? stepsize_fp >> -n : stepsize_fp << n) & 0x7ff);
+		bandno_stepsize->expn = (uint8_t)(numbps - p);
 	}
 }
 
@@ -283,8 +279,8 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		}
 		*header_size = (uint16_t)(*header_size - 2 * l_tccp->numStepSizes);
 	}
-	/* if scalar derived, then compute other stepsizes */
 	if (!ignore) {
+		/* if scalar derived, then compute other stepsizes */
 		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
 			for (uint32_t l_band_no = 1; l_band_no < GRK_J2K_MAXBANDS;
 					l_band_no++) {
@@ -295,6 +291,16 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 							(uint8_t)(l_tccp->stepsizes[0].expn - bandDividedBy3);
 				l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
 			}
+		}
+		if (p_j2k->m_cp.ccap){
+			l_tcp->isHT = true;
+			l_tcp->qcd.generate(l_tccp->numgbits,
+							l_tccp->numresolutions-1,
+							l_tccp->qmfbid == 1,
+							p_j2k->m_private_image->comps[0].prec,
+							l_tcp->mct > 0,
+							p_j2k->m_private_image->comps[0].sgnd);
+			l_tcp->qcd.push(l_tccp->stepsizes, l_tccp->qmfbid == 1);
 		}
 	}
 	return true;

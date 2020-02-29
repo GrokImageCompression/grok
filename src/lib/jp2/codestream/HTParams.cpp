@@ -147,11 +147,55 @@ const float bibo_gains::gain_5x3_h[34] = { 2.0000e+00f, 2.5000e+00f,
   2.8671e+00f, 2.8671e+00f };
 
 
+void param_qcd::pull(grk_stepsize* stepptr, bool reversible){
+	uint32_t numbands = 3 * (num_decomps + 1) - 2;
+	for (uint32_t bn = 0; bn < numbands; bn++) {
+		auto step = stepptr + bn;
+		if (reversible){
+			step->expn = (uint8_t)(u8_SPqcd[bn] >> 3);
+			step->mant = 0;
+		} else {
+			step->expn = (uint8_t)(u16_SPqcd[bn] >> 11);
+			step->mant = (uint16_t)(u16_SPqcd[bn] & 0x7FF);
+		}
+	}
+}
+void param_qcd::push(grk_stepsize* stepptr, bool reversible){
+	uint32_t numbands = 3 * (num_decomps + 1) - 2;
+	for (uint32_t bn = 0; bn < numbands; bn++) {
+		auto step = stepptr + bn;
+		if (reversible){
+			u8_SPqcd[bn] = (step->expn << 3);
+		} else {
+			u16_SPqcd[bn] = (((uint16_t)step->expn) << 11) + step->mant;
+		}
+	}
+}
+
+void param_qcd::generate(uint8_t guard_bits,
+		  	  	  int decomps,bool is_reversible,
+		  	  	  int max_bit_depth, bool color_transform, bool is_signed )
+{
+	num_decomps =decomps;
+    Sqcd = guard_bits << 5;
+    if (!is_reversible)
+    	Sqcd |= 0x2;
+	if (is_reversible)
+	{
+	  set_rev_quant(max_bit_depth, color_transform);
+	}
+	else
+	{
+	  if (base_delta == -1.0f)
+		base_delta = 1.0f /
+		  (float)(1 << (max_bit_depth + is_signed));
+	  set_irrev_quant();
+	 }
+}
+
 void param_qcd::set_rev_quant(int bit_depth,
 							  bool is_employing_color_transform)
 {
-  int guard_bits = 1;
-  Sqcd = guard_bits << 5; //one guard bit, and no quantization
   int B = bit_depth;
   B += is_employing_color_transform ? 1 : 0; //1 bit for RCT
   int s = 0;
@@ -173,8 +217,6 @@ void param_qcd::set_rev_quant(int bit_depth,
 //////////////////////////////////////////////////////////////////////////
 void param_qcd::set_irrev_quant()
 {
-  int guard_bits = 1;
-  Sqcd = (guard_bits<<5)|0x2;//one guard bit, scalar quantization
   int s = 0;
   float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
   float delta_b = base_delta / (gain_l * gain_l);
@@ -248,15 +290,12 @@ float param_qcd::irrev_get_delta(int resolution, int subband) const
   assert((resolution == 0 && subband == 0) ||
 		 (resolution <= num_decomps && subband > 0 && subband<4));
   assert((Sqcd & 0x1F) == 2);
-  float arr[] = { 1.0f, 2.0f, 2.0f, 4.0f };
-
+  float gain[] = { 1.0f, 2.0f, 2.0f, 4.0f };
   int idx = max(resolution - 1, 0) * 3 + subband;
-  int eps = u16_SPqcd[idx] >> 11;
-  float mantissa;
-  mantissa = ((u16_SPqcd[idx] & 0x7FF) | 0x800) * arr[subband];
-  mantissa /= (float)(1 << 11);
-  mantissa /= (float)(1u << eps);
-  return mantissa;
+  int exp = u16_SPqcd[idx] >> 11;
+
+  return (float) (((1.0 + (u16_SPqcd[idx] & 0x7FF)/ 2048.0)
+			* pow(2.0, (int32_t) (gain[subband] - exp))));
 }
 
 //////////////////////////////////////////////////////////////////////////

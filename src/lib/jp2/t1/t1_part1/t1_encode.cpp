@@ -588,7 +588,7 @@ void t1_encode::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 				if (!(state & GROK_PLUGIN_STATE_DEBUG)
 						|| ((state & GROK_PLUGIN_STATE_PRE_TR1)
 								&& !(state & GROK_PLUGIN_STATE_DWT_QUANTIZATION))) {
-					tmp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+					tmp = int_fix_mul_t1(tiledp[tileIndex], block->inv_step);
 				} else {
 					tmp = tiledp[tileIndex];
 				}

@@ -84,7 +84,7 @@ void T1Part1OPJ::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	} else {
 		for (auto j = 0U; j < h; ++j) {
 			for (auto i = 0U; i < w; ++i) {
-				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->bandconst);
+				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->inv_step);
 				maximum = max((uint32_t)abs(temp), maximum);
 				t1->data[cblk_index] = temp;
 				tileIndex++;

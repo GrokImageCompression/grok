@@ -61,22 +61,9 @@ public:
   void set_rev_quant(int bit_depth, bool is_employing_color_transform);
   void set_irrev_quant();
 
-  void check_validity(int decomps,bool is_reversible,
-		  	  	  int max_bit_depth, bool color_transform, bool is_signed )
-  {
-	num_decomps =decomps;
-	if (is_reversible)
-	{
-	  set_rev_quant(max_bit_depth, color_transform);
-	}
-	else
-	{
-	  if (base_delta == -1.0f)
-		base_delta = 1.0f /
-		  (float)(1 << (max_bit_depth + is_signed));
-	  set_irrev_quant();
-	 }
-  }
+  void generate(uint8_t guard_bits,
+		  	  	  int decomps,bool is_reversible,
+		  	  	  int max_bit_depth, bool color_transform, bool is_signed );
 
   int get_num_guard_bits() const;
   int get_MAGBp() const;
@@ -84,6 +71,10 @@ public:
   int rev_get_num_bits(int resolution, int subband) const;
   float irrev_get_delta(int resolution, int subband) const;
 
+  void pull(grk_stepsize* stepptr, bool reversible);
+  void push(grk_stepsize* stepptr, bool reversible);
+
+private:
   uint16_t Lqcd;
   uint8_t Sqcd;
   union

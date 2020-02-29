@@ -2131,18 +2131,18 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		cp->m_coding_param.m_enc.m_tp_on = 1;
 	}
 
-	/* initialize multiple tiles */
-	/* ---------------------------- */
+    uint8_t numgbits = parameters->isHT ? 1 : 2;
 	cp->tcps = new grk_tcp[cp->tw * cp->th];
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		if (tcp->isHT) {
-			tcp->qcd.check_validity(parameters->numresolution-1,
-									parameters->irreversible == 0,
-									image->comps[0].prec,
-									tcp->mct > 0,
-									image->comps[0].sgnd);
+			tcp->qcd.generate(numgbits,
+							parameters->numresolution-1,
+							parameters->irreversible == 0,
+							image->comps[0].prec,
+							tcp->mct > 0,
+							image->comps[0].sgnd);
 		}
 		tcp->numlayers = parameters->tcp_numlayers;
 
@@ -2303,7 +2303,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 			tccp->qntsty =
 					parameters->irreversible ?
 							J2K_CCP_QNTSTY_SEQNT : J2K_CCP_QNTSTY_NOQNT;
-			tccp->numgbits = parameters->isHT ? 1 : 2;
+			tccp->numgbits = numgbits;
 
 			if ((int32_t) i == parameters->roi_compno) {
 				tccp->roishift = parameters->roi_shift;
@@ -2357,20 +2357,10 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 					tccp->prch[j] = 15;
 				}
 			}
-			Quantizer::calc_explicit_stepsizes(tccp, image->comps[i].prec);
-			if (tcp->isHT) {
-				uint32_t numbands = 3 * tccp->numresolutions - 2;
-				for (uint32_t bn = 0; bn < numbands; bn++) {
-					auto step = tccp->stepsizes + bn;
-					if (parameters->irreversible){
-						step->expn = (uint8_t)(tcp->qcd.u16_SPqcd[bn] >> 11);
-						step->mant = (uint16_t)(tcp->qcd.u16_SPqcd[bn] & 0x7FF);
-					} else {
-						step->expn = (uint8_t)(tcp->qcd.u8_SPqcd[bn] >> 3);
-						step->mant = 0;
-					}
-				}
-			}
+			if (tcp->isHT)
+				tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
+			else
+				Quantizer::calc_explicit_stepsizes(tccp, image->comps[i].prec);
 		}
 	}
 	if (parameters->mct_data) {
