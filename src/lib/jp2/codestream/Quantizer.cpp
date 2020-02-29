@@ -109,33 +109,21 @@ bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 			(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
 					1 : (l_tccp->numresolutions * 3 - 2);
 
-	if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-
-		/* Sqcx */
-		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
-			return false;
-		}
-		for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			uint32_t l_expn = l_tccp->stepsizes[l_band_no].expn;
-			/* SPqcx_i */
-			if (!p_stream->write_byte((uint8_t) (l_expn << 3))) {
+	/* Sqcx */
+	if (!p_stream->write_byte(
+			(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
+		return false;
+	}
+	/* SPqcx_i */
+	for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
+		uint32_t expn = l_tccp->stepsizes[l_band_no].expn;
+		uint32_t mant = l_tccp->stepsizes[l_band_no].mant;
+		if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
+			if (!p_stream->write_byte((uint8_t) (expn << 3))) {
 				return false;
 			}
-		}
-	} else {
-
-		/* Sqcx */
-		if (!p_stream->write_byte(
-				(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
-			return false;
-		}
-		for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			uint32_t l_expn = l_tccp->stepsizes[l_band_no].expn;
-			uint32_t l_mant = l_tccp->stepsizes[l_band_no].mant;
-
-			/* SPqcx_i */
-			if (!p_stream->write_short((uint16_t) ((l_expn << 11) + l_mant))) {
+		} else {
+			if (!p_stream->write_short((uint16_t) ((expn << 11) + mant))) {
 				return false;
 			}
 		}
