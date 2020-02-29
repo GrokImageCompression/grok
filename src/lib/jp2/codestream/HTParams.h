@@ -53,6 +53,8 @@ public:
 			  num_decomps(0),
 			  base_delta(-1.0f)
   {
+	memset(u8_SPqcd, 0, 97);
+	memset(u16_SPqcd, 0, 97*sizeof(short));
   }
 
   void set_delta(float delta) { base_delta = delta; }

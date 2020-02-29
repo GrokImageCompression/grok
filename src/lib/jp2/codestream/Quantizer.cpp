@@ -10,35 +10,28 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 							uint32_t image_precision,
 							float fraction){
 
-	auto offset = (resno == 0) ? 0 : 3*resno - 2;
-	if (tcp->isHT) {
-		band->numbps = tcp->qcd.get_Kmax(resno, band->bandno) - 1;
-		if (tccp->qmfbid == 1)
-			band->stepsize = tcp->qcd.u8_SPqcd[offset + bandno];
+	uint32_t gain = 0;
+	if (tccp->qmfbid == 1) {
+		if (band->bandno == 0)
+			gain = 0;
+		else if (band->bandno < 3)
+			gain = 1;
 		else
-			band->stepsize = tcp->qcd.u16_SPqcd[offset + bandno];
-	} else {
-		uint32_t gain = 0;
-		if (tccp->qmfbid == 1) {
-			if (band->bandno == 0)
-				gain = 0;
-			else if (band->bandno < 3)
-				gain = 1;
-			else
-				gain = 2;
-		}
-		uint32_t numbps = image_precision + gain;
-		auto step_size = tccp->stepsizes + offset + bandno;
-		band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
-				* pow(2.0, (int32_t) (numbps - step_size->expn))))
-				* fraction;
-
-		// see Taubman + Marcellin - Equation 10.22
-		band->numbps = tccp->roishift
-				+ std::max<int32_t>(0,
-						(int32_t) (step_size->expn + tccp->numgbits)
-								- 1);
+			gain = 2;
 	}
+	uint32_t numbps = image_precision + gain;
+	auto offset = (resno == 0) ? 0 : 3*resno - 2;
+	auto step_size = tccp->stepsizes + offset + bandno;
+	band->stepsize = (float) (((1.0 + step_size->mant / 2048.0)
+			* pow(2.0, (int32_t) (numbps - step_size->expn))))
+			* fraction;
+
+	// see Taubman + Marcellin - Equation 10.22
+	band->numbps = tccp->roishift
+			+ std::max<int32_t>(0,
+					(int32_t) (step_size->expn + tccp->numgbits)
+							- 1);
+
 }
 
 /*
