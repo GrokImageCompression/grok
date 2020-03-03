@@ -49,7 +49,7 @@ static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
 #else
 	int64_t temp = (int64_t) a * (int64_t) b;
 #endif
-	temp += 4096;
+	temp += 1<<(13 + 11 - T1_NMSEDEC_FRACBITS - 1);
 	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
 	assert(
 			(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
