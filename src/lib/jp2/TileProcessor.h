@@ -237,14 +237,14 @@ struct grk_tcd_precinct {
 struct grk_tcd_band {
 	grk_tcd_band() :
 			x0(0), y0(0), x1(0), y1(0), bandno(0), precincts(nullptr), numPrecincts(
-					0), numAllocatedPrecincts(0), numbps(0), stepsize(0) {
+					0), numAllocatedPrecincts(0), numbps(0), stepsize(0), inv_step(0) {
 	}
 
 	grk_tcd_band(const grk_tcd_band &rhs) :
 			x0(rhs.x0), y0(rhs.y0), x1(rhs.x1), y1(rhs.y1), bandno(rhs.bandno), precincts(
 					nullptr), numPrecincts(rhs.numPrecincts), numAllocatedPrecincts(
 					rhs.numAllocatedPrecincts), numbps(rhs.numbps), stepsize(
-					rhs.stepsize) {
+					rhs.stepsize), inv_step(rhs.inv_step) {
 	}
 	bool isEmpty() {
 		return ((x1 - x0 == 0) || (y1 - y0 == 0));
@@ -258,6 +258,9 @@ struct grk_tcd_band {
 	size_t numAllocatedPrecincts;
 	uint32_t numbps;
 	float stepsize;
+	// inverse step size in 13 bit fixed point
+	int32_t inv_step;
+
 };
 
 // resolution

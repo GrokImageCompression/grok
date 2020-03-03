@@ -31,10 +31,16 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 			+ std::max<int32_t>(0,
 					(int32_t) (step_size->expn + tccp->numgbits)
 							- 1);
+	band->inv_step = 8192 * 8192
+					/ ((int32_t) floor(band->stepsize * 8192));
 
-	if (tcp->isHT && fraction == 0.5 && tccp->qmfbid == 0)
-		// 31 - K_max == 30 - band->numbps
-		band->stepsize /=(float)(1u << (30 - band->numbps));
+	if (tcp->isHT){
+		 // decode
+		 if (fraction == 0.5 && tccp->qmfbid == 0) {
+			 // 31 - K_max == 30 - band->numbps
+			 band->stepsize /=(float)(1u << (30 - band->numbps));
+		 }
+	}
 }
 
 void Quantizer::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {

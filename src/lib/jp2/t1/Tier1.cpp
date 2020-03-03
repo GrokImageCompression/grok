@@ -42,8 +42,6 @@ bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
 
 			for (bandno = 0; bandno < res->numbands; ++bandno) {
 				auto band = &res->bands[bandno];
-				int32_t inv_step = 8192 * 8192
-						/ ((int32_t) floor(band->stepsize * 8192));
 				for (precno = 0; precno < res->pw * res->ph; ++precno) {
 					grk_tcd_precinct *prc = &band->precincts[precno];
 					int32_t cblkno;
@@ -77,7 +75,8 @@ bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
 						block->cblk_sty = tccp->cblk_sty;
 						block->qmfbid = tccp->qmfbid;
 						block->resno = resno;
-						block->inv_step = inv_step;
+						block->inv_step = band->inv_step;
+						block->inv_step_ht = 1.0f/band->stepsize;
 						block->stepsize = band->stepsize;
 						block->x = x;
 						block->y = y;
