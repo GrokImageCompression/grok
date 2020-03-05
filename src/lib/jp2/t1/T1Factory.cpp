@@ -1,3 +1,4 @@
+
 /*
  *    Copyright (C) 2016-2020 Grok Image Compression Inc.
  *
@@ -23,8 +24,7 @@ using namespace ojph;
 using namespace ojph::local;
 
 #include "T1Factory.h"
-#include "T1Part1.h"
-#include "T1Part1OPJ.h"
+#include <T1Part1.h>
 #include "T1HT.h"
 
 namespace grk {
@@ -38,7 +38,7 @@ T1Interface* T1Factory::get_t1(bool isEncoder,
 	if (isHT)
 		return new t1_ht::T1HT(isEncoder, tcp, maxCblkW, maxCblkH);
 	else
-		return new t1_part1::T1Part1OPJ(isEncoder, tcp, maxCblkW, maxCblkH);
+		return new t1_part1::T1Part1(isEncoder, tcp, maxCblkW, maxCblkH);
 }
 
 }

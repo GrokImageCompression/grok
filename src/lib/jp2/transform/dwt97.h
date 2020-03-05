@@ -52,73 +52,51 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #pragma once
+
+#include <stdint.h>
+
 namespace grk {
-namespace t1_part1 {
 
-class t1_base;
+typedef union {
+	float f[4];
+} grk_dwt_4vec;
 
-/**
- Tier-1 coding (coding of code-block coefficients)
- */
-class t1_encode: public t1_base {
+struct grk_dwt97_info {
+	grk_dwt_4vec *mem;
+	uint32_t d_n;
+	uint32_t s_n;
+	uint8_t cas;
+};
+
+/* process four coefficients at a time*/
+typedef union {
+	float f[4];
+} grk_coeff97;
+
+struct grk_dwt97 {
+	int64_t bufferShiftEven();
+	int64_t bufferShiftOdd();
+	grk_coeff97 *data;
+	size_t dataSize; // number of floats (four per grk_coeff97 struct)
+	uint32_t d_n;
+	uint32_t s_n;
+	grk_pt range_even;
+	grk_pt range_odd;
+	int64_t interleaved_offset;
+	uint8_t odd_top_left_bit;
+};
+
+struct TileComponent;
+
+class dwt97 {
 public:
-	t1_encode();
-	~t1_encode();
-	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
-	void initBuffers(uint16_t w, uint16_t h);
-	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
-	double encode_cblk(grk_tcd_cblk_enc *cblk, uint8_t orient, uint32_t compno,
-			uint32_t level, uint8_t qmfbid, double stepsize,
-			uint8_t cblk_sty, uint32_t numcomps, const double *mct_norms,
-			uint32_t mct_numcomps, uint32_t max, bool doRateControl);
-	uint32_t *data;
-private:
-	grk_mqc *mqc;
-	/**
-	 Encode significant pass
-	 */
-	void sigpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
-			int32_t bpno, int32_t one, int32_t *nmsedec, uint8_t type,
-			uint32_t cblk_sty);
 
 	/**
-	 Encode significant pass
+	 Forward 9-7 wavelet transform in 1-D
 	 */
-	void sigpass(int32_t bpno, uint8_t orient, int32_t *nmsedec, uint8_t type,
-			uint32_t cblk_sty);
+	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
 
-	/**
-	 Encode refinement pass
-	 */
-	void refpass_step(flag_opt *flagsp, uint32_t *datap, int32_t bpno,
-			int32_t one, int32_t *nmsedec, uint8_t type);
-
-	/**
-	 Encode refinement pass
-	 */
-	void refpass(int32_t bpno, int32_t *nmsedec, uint8_t type);
-
-	/**
-	 Encode clean-up pass
-	 */
-	void clnpass_step(flag_opt *flagsp, uint32_t *datap, uint8_t orient,
-			int32_t bpno, int32_t one, int32_t *nmsedec, uint32_t agg,
-			uint32_t runlen, uint32_t y, uint32_t cblk_sty);
-
-	/**
-	 Encode clean-up pass
-	 */
-	void clnpass(int32_t bpno, uint8_t orient, int32_t *nmsedec,
-			uint32_t cblk_sty);
-
-	double getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
-			uint8_t orient, int32_t bpno, uint32_t qmfbid, double stepsize,
-			uint32_t numcomps, const double *mct_norms, uint32_t mct_numcomps);
-
-	int16_t getnmsedec_sig(uint32_t x, uint32_t bitpos);
-	int16_t getnmsedec_ref(uint32_t x, uint32_t bitpos);
 };
 }
-}
-

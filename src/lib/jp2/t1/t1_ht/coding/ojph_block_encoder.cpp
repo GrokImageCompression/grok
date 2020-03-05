@@ -884,7 +884,8 @@ namespace ojph {
             lep[0] = ojph_max(lep[0], e_q[5]); lep++;
             max_e = ojph_max(lep[0], lep[1]) - 1;
             lep[0] = e_q[7];
-            lcxp[0] |= (rho[1] & 2) >> 1; lcxp++;
+            lcxp[0] |= (rho[1] & 2) >> 1;
+            lcxp++;
             c_q0 = lcxp[0] + (lcxp[1] << 2);
             lcxp[0] = (rho[1] & 8) >> 3;
             ui16 tuple1 = vlc_tbl1[(c_q1 << 8) + (rho[1] << 4) + eps1];

@@ -52,49 +52,31 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #pragma once
-#include <vector>
-#include "testing.h"
-#include "Tier1.h"
-#include "t1_base.h"
+
+#include <stdint.h>
 
 namespace grk {
-namespace t1_part1 {
 
-struct grk_mqc;
-struct grk_raw;
+struct TileComponent;
+class dwt_utils;
 
-class t1_decode_base;
-
-class t1_decode_opt: public t1_decode_base {
-public:
-	t1_decode_opt(uint16_t code_block_width, uint16_t code_block_height);
-	~t1_decode_opt();
-
-	/**
-	 Decode 1 code-block
-	 @param t1 T1 handle
-	 @param cblk Code-block coding parameters
-	 @param orient
-	 @param roishift Region of interest shifting value
-	 @param cblk_sty Code-block style
-	 */
-	bool decode_cblk(grk_tcd_cblk_dec *cblk, uint8_t orient, uint32_t cblk_sty)
-			override;
-	void postDecode(decodeBlockInfo *block) override;
-private:
-	bool allocateBuffers(uint16_t w, uint16_t h);
-	void initBuffers(uint16_t w, uint16_t h);
-	inline void sigpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t maxci3);
-	void sigpass(int32_t bpno, uint8_t orient);
-	void refpass(int32_t bpno);
-	inline void refpass_step(flag_opt *flagsp, int32_t *datap,
-			int32_t poshalf, uint32_t maxci3);
-	void clnpass_step(flag_opt *flagsp, int32_t *datap, uint8_t orient,
-			int32_t oneplushalf, uint32_t agg, uint32_t runlen, uint32_t y);
-	void clnpass(int32_t bpno, uint8_t orient);
+struct grk_dwt53 {
+	int32_t *data;
+	int64_t d_n;
+	int64_t s_n;
+	grk_pt range_even;
+	grk_pt range_odd;
+	int64_t interleaved_offset;
+	uint8_t odd_top_left_bit;
 };
-}
-}
 
+class dwt53 {
+public:
+	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
+
+
+};
+
+}

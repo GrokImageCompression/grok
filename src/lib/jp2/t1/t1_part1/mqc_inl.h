@@ -54,11 +54,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OPJ_MQC_INL_H
-#define OPJ_MQC_INL_H
+#pragma once
 
-/* For internal use of opj_mqc_decode_macro() */
-#define opj_mqc_mpsexchange_macro(d, curctx, a) \
+/* For internal use of mqc_decode_macro() */
+#define mqc_mpsexchange_macro(d, curctx, a) \
 { \
     if (a < (*curctx)->qeval) { \
         d = !((*curctx)->mps); \
@@ -69,8 +68,8 @@
     } \
 }
 
-/* For internal use of opj_mqc_decode_macro() */
-#define opj_mqc_lpsexchange_macro(d, curctx, a) \
+/* For internal use of mqc_decode_macro() */
+#define mqc_lpsexchange_macro(d, curctx, a) \
 { \
     if (a < (*curctx)->qeval) { \
         a = (*curctx)->qeval; \
@@ -89,11 +88,11 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
-static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
+static INLINE uint32_t mqc_raw_decode(mqc_t *mqc)
 {
     uint32_t d;
     if (mqc->ct == 0) {
-        /* Given opj_mqc_raw_init_dec() we know that at some point we will */
+        /* Given mqc_raw_init_dec() we know that at some point we will */
         /* have a 0xFF 0xFF artificial marker */
         if (mqc->c == 0xff) {
             if (*mqc->bp  > 0x8f) {
@@ -117,10 +116,10 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
 }
 
 
-#define opj_mqc_bytein_macro(mqc, c, ct) \
+#define mqc_bytein_macro(mqc, c, ct) \
 { \
         uint32_t l_c;  \
-        /* Given opj_mqc_init_dec() we know that at some point we will */ \
+        /* Given mqc_init_dec() we know that at some point we will */ \
         /* have a 0xFF 0xFF artificial marker */ \
         l_c = *(mqc->bp + 1); \
         if (*mqc->bp == 0xff) { \
@@ -140,12 +139,12 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
         } \
 }
 
-/* For internal use of opj_mqc_decode_macro() */
-#define opj_mqc_renormd_macro(mqc, a, c, ct) \
+/* For internal use of mqc_decode_macro() */
+#define mqc_renormd_macro(mqc, a, c, ct) \
 { \
     do { \
         if (ct == 0) { \
-            opj_mqc_bytein_macro(mqc, c, ct); \
+            mqc_bytein_macro(mqc, c, ct); \
         } \
         a <<= 1; \
         c <<= 1; \
@@ -153,7 +152,7 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
     } while (a < 0x8000); \
 }
 
-#define opj_mqc_decode_macro(d, mqc, curctx, a, c, ct) \
+#define mqc_decode_macro(d, mqc, curctx, a, c, ct) \
 { \
     /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */ \
     /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */ \
@@ -161,13 +160,13 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
     /* improvement. See https://github.com/uclouvain/openjpeg/issues/921 */ \
     a -= (*curctx)->qeval;  \
     if ((c >> 16) < (*curctx)->qeval) {  \
-        opj_mqc_lpsexchange_macro(d, curctx, a);  \
-        opj_mqc_renormd_macro(mqc, a, c, ct);  \
+        mqc_lpsexchange_macro(d, curctx, a);  \
+        mqc_renormd_macro(mqc, a, c, ct);  \
     } else {  \
         c -= (*curctx)->qeval << 16;  \
         if ((a & 0x8000) == 0) { \
-            opj_mqc_mpsexchange_macro(d, curctx, a); \
-            opj_mqc_renormd_macro(mqc, a, c, ct); \
+            mqc_mpsexchange_macro(d, curctx, a); \
+            mqc_renormd_macro(mqc, a, c, ct); \
         } else { \
             d = (*curctx)->mps; \
         } \
@@ -175,7 +174,7 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
 }
 
 #define DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
-        register const opj_mqc_state_t **curctx = mqc->curctx; \
+        register const mqc_state_t **curctx = mqc->curctx; \
         register uint32_t c = mqc->c; \
         register uint32_t a = mqc->a; \
         register uint32_t ct = mqc->ct
@@ -190,17 +189,17 @@ static INLINE uint32_t opj_mqc_raw_decode(opj_mqc_t *mqc)
 Input a byte
 @param mqc MQC handle
 */
-static INLINE void opj_mqc_bytein(opj_mqc_t *const mqc)
+static INLINE void mqc_bytein(mqc_t *const mqc)
 {
-    opj_mqc_bytein_macro(mqc, mqc->c, mqc->ct);
+    mqc_bytein_macro(mqc, mqc->c, mqc->ct);
 }
 
 /**
 Renormalize mqc->a and mqc->c while decoding
 @param mqc MQC handle
 */
-#define opj_mqc_renormd(mqc) \
-    opj_mqc_renormd_macro(mqc, mqc->a, mqc->c, mqc->ct)
+#define mqc_renormd(mqc) \
+    mqc_renormd_macro(mqc, mqc->a, mqc->c, mqc->ct)
 
 /**
 Decode a symbol
@@ -208,7 +207,7 @@ Decode a symbol
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1) in d
 */
-#define opj_mqc_decode(d, mqc) \
-    opj_mqc_decode_macro(d, mqc, mqc->curctx, mqc->a, mqc->c, mqc->ct)
+#define mqc_decode(d, mqc) \
+    mqc_decode_macro(d, mqc, mqc->curctx, mqc->a, mqc->c, mqc->ct)
 
-#endif /* OPJ_MQC_INL_H */
+

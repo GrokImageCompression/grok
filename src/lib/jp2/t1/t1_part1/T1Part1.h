@@ -16,18 +16,19 @@
  */
 
 #pragma once
-#include "t1_decode_base.h"
-#include "t1_decode.h"
-#include "t1_encode.h"
-#include "t1_decode_opt.h"
+#include "stdint.h"
+#include "testing.h"
+#include "Tier1.h"
+#include "TileProcessor.h"
 #include "T1Interface.h"
+#include "opj_includes.h"
+#include "t1.h"
+
+
 
 namespace grk {
 
-struct grk_tcp;
-
 namespace t1_part1 {
-
 
 class T1Part1: public T1Interface {
 public:
@@ -42,9 +43,7 @@ public:
 	void postDecode(decodeBlockInfo *block);
 
 private:
-	t1_decode_base *t1_decoder;
-	t1_encode *t1_encoder;
-
+	t1_t *t1;
 };
 }
 }

@@ -29,7 +29,7 @@ using namespace ojph::local;
 #include "grok_malloc.h"
 #include <algorithm>
 using namespace std;
-#include "t1_decode_base.h"
+
 
 namespace grk {
 namespace t1_ht {

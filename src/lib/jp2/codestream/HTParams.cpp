@@ -165,9 +165,9 @@ void param_qcd::push(grk_stepsize* stepptr, bool reversible){
 	for (uint32_t bn = 0; bn < numbands; bn++) {
 		auto step = stepptr + bn;
 		if (reversible){
-			u8_SPqcd[bn] = (step->expn << 3);
+			u8_SPqcd[bn] = (uint8_t)(step->expn << 3);
 		} else {
-			u16_SPqcd[bn] = (((uint16_t)step->expn) << 11) + step->mant;
+			u16_SPqcd[bn] = (uint16_t)((uint32_t)step->expn << 11) + step->mant;
 		}
 	}
 }
@@ -177,9 +177,10 @@ void param_qcd::generate(uint8_t guard_bits,
 		  	  	  int max_bit_depth, bool color_transform, bool is_signed )
 {
 	num_decomps =decomps;
-    Sqcd = guard_bits << 5;
-    if (!is_reversible)
+    Sqcd = (uint8_t)(guard_bits << 5);
+    if (!is_reversible){
     	Sqcd |= 0x2;
+    }
 	if (is_reversible)
 	{
 	  set_rev_quant(max_bit_depth, color_transform);
@@ -201,16 +202,16 @@ void param_qcd::set_rev_quant(int bit_depth,
   int s = 0;
   float bibo_l = bibo_gains::get_bibo_gain_l(num_decomps, true);
   int X = (int) ceil(log(bibo_l*bibo_l)/M_LN2/0.9f);//David's code uses 0.9
-  u8_SPqcd[s++] = (B + X) << 3;
+  u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
   for (int d = num_decomps - 1; d >= 0; --d)
   {
 	float bibo_l = bibo_gains::get_bibo_gain_l(d + 1, true);
 	float bibo_h = bibo_gains::get_bibo_gain_h(d, true);
 	X = (int) ceil(log(bibo_h*bibo_l)/M_LN2/0.9f);
-	u8_SPqcd[s++] = (B + X) << 3;
-	u8_SPqcd[s++] = (B + X) << 3;
+	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
+	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	X = (int) ceil(log(bibo_h*bibo_h)/M_LN2/0.9f);
-	u8_SPqcd[s++] = (B + X) << 3;
+	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
   }
 }
 
@@ -230,7 +231,7 @@ void param_qcd::set_irrev_quant()
   // but that should not happen in reality
   mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
   mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
-  u16_SPqcd[s++] = (exp << 11) | mantissa;
+  u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
   for (int d = num_decomps - 1; d >= 0; --d)
   {
 	float gain_l = sqrt_energy_gains::get_gain_l(d + 1, false);
@@ -243,8 +244,8 @@ void param_qcd::set_irrev_quant()
 	{ exp++; delta_b *= 2.0f; }
 	mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
-	u16_SPqcd[s++] = (exp << 11) | mantissa;
-	u16_SPqcd[s++] = (exp << 11) | mantissa;
+	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
+	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 
 	delta_b = base_delta / (gain_h * gain_h);
 
@@ -253,7 +254,7 @@ void param_qcd::set_irrev_quant()
 	{ exp++; delta_b *= 2.0f; }
 	mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
-	u16_SPqcd[s++] = (exp << 11) | mantissa;
+	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
   }
 }
 

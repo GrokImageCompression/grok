@@ -29,6 +29,8 @@
  * Copyright (c) 2003-2007, Francois-Olivier Devaux
  * Copyright (c) 2003-2014, Antonin Descampe
  * Copyright (c) 2005, Herve Drolon, FreeImage Team
+ * Copyright (c) 2012, Carl Hetherington
+ * Copyright (c) 2017, IntoPIX SA <support@intopix.com>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -52,68 +54,49 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#pragma once
-#include <vector>
-#include "testing.h"
-#include "Tier1.h"
+#ifndef t1_H
+#define t1_H
 
-namespace grk {
-namespace t1_part1 {
+#include "t1_flags.h"
 
-#define T1_SIG_NE 0x0001	/**< Context orientation : North-East direction */
-#define T1_SIG_SE 0x0002	/**< Context orientation : South-East direction */
-#define T1_SIG_SW 0x0004	/**< Context orientation : South-West direction */
-#define T1_SIG_NW 0x0008	/**< Context orientation : North-West direction */
-#define T1_SIG_N 0x0010		/**< Context orientation : North direction */
-#define T1_SIG_E 0x0020		/**< Context orientation : East direction */
-#define T1_SIG_S 0x0040		/**< Context orientation : South direction */
-#define T1_SIG_W 0x0080		/**< Context orientation : West direction */
+#define T1_NMSEDEC_BITS 7
 
-#define T1_SGN_N 0x0100
-#define T1_SGN_E 0x0200
-#define T1_SGN_S 0x0400
-#define T1_SGN_W 0x0800
-
-#define T1_NUMCTXS_ZC 9
-#define T1_NUMCTXS_SC 5
+#define T1_NUMCTXS_ZC  9
+#define T1_NUMCTXS_SC  5
 #define T1_NUMCTXS_MAG 3
 #define T1_NUMCTXS_AGG 1
 #define T1_NUMCTXS_UNI 1
 
-#define T1_CTXNO_ZC 0
-#define T1_CTXNO_SC (T1_CTXNO_ZC+T1_NUMCTXS_ZC)
+#define T1_CTXNO_ZC  0
+#define T1_CTXNO_SC  (T1_CTXNO_ZC+T1_NUMCTXS_ZC)
 #define T1_CTXNO_MAG (T1_CTXNO_SC+T1_NUMCTXS_SC)
 #define T1_CTXNO_AGG (T1_CTXNO_MAG+T1_NUMCTXS_MAG)
 #define T1_CTXNO_UNI (T1_CTXNO_AGG+T1_NUMCTXS_AGG)
-#define T1_NUMCTXS (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
+#define T1_NUMCTXS   (T1_CTXNO_UNI+T1_NUMCTXS_UNI)
 
-#define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
-#define T1_TYPE_MQ 0	/**< Normal coding using entropy coder */
-#define T1_TYPE_RAW 1	/**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
 
-#include "t1_flags.h"
+/** Flags for 4 consecutive rows of a column */
+typedef uint32_t opj_flag_t;
 
-/*********************/
-/*   STATE FLAGS     */
-/*********************/
 
+/* BEGINNING of flags that apply to opj_flag_t */
 /** We hold the state of individual data points for the T1 encoder using
  *  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
  *  to the 4-point-high columns that the data is processed in.
- *  These #defines declare the layout of a 32-bit flags word.
+ *
+ *  These \#defines declare the layout of a 32-bit flags word.
+ *
  *  This is currently done for encoding only.
+ *  The values must NOT be changed, otherwise this is going to break a lot of
+ *  assumptions.
  */
 
-/* T1_SIGMA_XXX is significance flag for stripe column and neighbouring locations: 18 locations in total
- *  As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
- *  indicate the significance state of the west neighbour of data point zero
- *  of our four, the point itself, and its east neighbour respectively.
- *  Many of the bits are arranged so that given a flags word, you can
- *  look at the values for the data point 0, then shift the flags
- *  word right by 3 bits and look at the same bit positions to see the
- *  values for data point 1.
+/* SIGMA: significance state (3 cols x 6 rows)
+ * CHI:   state for negative sample value (1 col x 6 rows)
+ * MU:    state for visited in refinement pass (1 col x 4 rows)
+ * PI:    state for visited in significance pass (1 col * 4 rows)
  */
 
 #define T1_SIGMA_0  (1U << 0)
@@ -136,14 +119,25 @@ namespace t1_part1 {
 #define T1_SIGMA_17 (1U << 17)
 
 
-/**The #defines below are convenience flags; say you have a flags word
+
+
+
+/** As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
+ *  indicate the significance state of the west neighbour of data point zero
+ *  of our four, the point itself, and its east neighbour respectively.
+ *  Many of the bits are arranged so that given a flags word, you can
+ *  look at the values for the data point 0, then shift the flags
+ *  word right by 3 bits and look at the same bit positions to see the
+ *  values for data point 1.
+ *
+ *  The \#defines below help a bit with this; say you have a flags word
  *  f, you can do things like
  *
- *  (f & T1_SIGMA_CURRENT)
+ *  (f & T1_SIGMA_THIS)
  *
  *  to see the significance bit of data point 0, then do
  *
- *  ((f >> 3) & T1_SIGMA_CURRENT)
+ *  ((f >> 3) & T1_SIGMA_THIS)
  *
  *  to see the significance bit of data point 1.
  */
@@ -152,17 +146,18 @@ namespace t1_part1 {
 #define T1_SIGMA_N    T1_SIGMA_1
 #define T1_SIGMA_NE   T1_SIGMA_2
 #define T1_SIGMA_W    T1_SIGMA_3
-#define T1_SIGMA_CURRENT T1_SIGMA_4
+#define T1_SIGMA_THIS T1_SIGMA_4
 #define T1_SIGMA_E    T1_SIGMA_5
 #define T1_SIGMA_SW   T1_SIGMA_6
 #define T1_SIGMA_S    T1_SIGMA_7
 #define T1_SIGMA_SE   T1_SIGMA_8
 #define T1_SIGMA_NEIGHBOURS (T1_SIGMA_NW | T1_SIGMA_N | T1_SIGMA_NE | T1_SIGMA_W | T1_SIGMA_E | T1_SIGMA_SW | T1_SIGMA_S | T1_SIGMA_SE)
 
-#define T1_CHI_CURRENT   T1_CHI_1
-#define T1_CHI_CURRENT_I T1_CHI_1_I
-#define T1_MU_CURRENT    T1_MU_0
-#define T1_PI_CURRENT    T1_PI_0
+#define T1_CHI_THIS   T1_CHI_1
+#define T1_CHI_THIS_I T1_CHI_1_I
+#define T1_MU_THIS    T1_MU_0
+#define T1_PI_THIS    T1_PI_0
+#define T1_CHI_S      T1_CHI_2
 
 #define T1_LUT_SGN_W (1U << 0)
 #define T1_LUT_SIG_N (1U << 1)
@@ -173,37 +168,59 @@ namespace t1_part1 {
 #define T1_LUT_SGN_S (1U << 6)
 #define T1_LUT_SIG_S (1U << 7)
 
-// sign bit is stored at this location in 32 bit coefficient
-#define T1_DATA_SIGN_BIT_INDEX 31
 
-#define FLAGS_ADDRESS(x, y) (flags + ((x) + 1 + (((y) >> 2) + 1) * flags_stride))
+/* END of flags that apply to opj_flag_t */
 
-typedef uint32_t flag_opt;
+/* ----------------------------------------------------------------------- */
 
-class t1_base {
-public:
-	t1_base();
-	virtual ~t1_base();
-	uint16_t w;
-	uint16_t h;
-protected:
-	bool allocateBuffers(uint16_t cblkw, uint16_t cblkh);
-	void initBuffers(uint16_t w, uint16_t h);
+typedef struct t1 {
 
-	flag_opt *flags;
-	uint16_t flags_stride;
+	/** MQC component */
+	mqc_t mqc;
 
-	void updateFlags(flag_opt *flagsp, uint32_t ci3, uint32_t s,
-			uint32_t stride, uint8_t vsc);
+	int32_t *data;
+	/** Flags used by decoder and encoder.
+	 * Such that flags[1+0] is for state of col=0,row=0..3,
+	 flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
+	 This array avoids too much cache trashing when processing by 4 vertical samples
+	 as done in the various decoding steps. */
+	opj_flag_t *flags;
 
-	uint8_t getZeroCodingContext(uint32_t f, uint8_t orient);
-	uint8_t getMRPContext(uint32_t f);
-	uint8_t getSignCodingContext(uint32_t lu);
-	uint8_t getSPByte(uint32_t lu);
-	uint32_t getSignCodingOrSPPByteIndex(uint32_t fX, uint32_t pfX,
-			uint32_t nfX, uint32_t ci3);
+	uint32_t w;
+	uint32_t h;
+	uint32_t datasize;
+	uint32_t flagssize;
+	uint32_t data_stride;
+	bool encoder;
 
-};
-}
-}
+	/* Temporary buffer to concatenate all chunks of a codebock */
+	uint8_t *cblkdatabuffer;
+	/* Maximum size available in cblkdatabuffer */
+	uint32_t cblkdatabuffersize;
+} t1_t;
 
+bool t1_decode_cblk(t1_t *t1, tcd_cblk_dec_t *cblk,
+		uint32_t orient, uint32_t roishift, uint32_t cblksty,
+		bool check_pterm);
+
+void post_decode(t1_t *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
+		uint32_t qmfbid, float stepsize, int32_t *tilec_data,
+		int32_t tile_w, int32_t tile_h, bool whole_tile_decoding);
+
+void t1_code_block_enc_deallocate(tcd_cblk_enc_t *
+        p_code_block);
+
+bool t1_allocate_buffers(t1_t *t1, uint32_t w,
+		uint32_t h);
+
+double t1_encode_cblk(t1_t *t1, tcd_cblk_enc_t *cblk,
+		uint32_t max,
+		uint8_t orient, uint32_t compno, uint32_t level,
+		uint32_t qmfbid, double stepsize, uint32_t cblksty,
+		uint32_t numcomps, const double *mct_norms,
+		uint32_t mct_numcomps, bool doRateControl);
+
+t1_t* t1_create(bool isEncoder);
+void t1_destroy(t1_t *p_t1);
+
+#endif /* t1_H */

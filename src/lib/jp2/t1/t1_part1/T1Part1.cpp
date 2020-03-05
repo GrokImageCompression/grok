@@ -14,101 +14,232 @@
  *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
+#include <T1Part1.h>
+#include "grok_includes.h"
 #include "testing.h"
-#include "T1Part1.h"
-#include "mqc.h"
-#include "t1_decode.h"
-#include "t1_decode_opt.h"
-#include "t1_encode.h"
+#include "grok_malloc.h"
+#include <algorithm>
+using namespace std;
 
 namespace grk {
 namespace t1_part1{
 
 T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
-		uint16_t maxCblkH) :
-		t1_decoder(nullptr), t1_encoder(nullptr) {
-	if (isEncoder) {
-		t1_encoder = new t1_encode();
-		if (!t1_encoder->allocateBuffers(maxCblkW, maxCblkH)) {
-			throw std::exception();
-		}
-	} else {
-		grk_tccp *tccp = &tcp->tccps[0];
-		if (!tccp->cblk_sty)
-			t1_decoder = new t1_decode_opt(maxCblkW, maxCblkH);
-		else
-			t1_decoder = new t1_decode(maxCblkW, maxCblkH);
-	}
+		uint16_t maxCblkH) : t1(nullptr){
+	(void) tcp;
+	t1 = t1_create(isEncoder);
+	if (!isEncoder) {
+	   t1->cblkdatabuffersize = (uint32_t)maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
+	   t1->cblkdatabuffer = (uint8_t*)grok_malloc(t1->cblkdatabuffersize);
+   }
 }
 T1Part1::~T1Part1() {
-	delete t1_decoder;
-	delete t1_encoder;
+	t1_destroy( t1);
 }
+
+/**
+ Multiply two fixed-point numbers.
+ @param  a 13-bit precision fixed point number
+ @param  b 11-bit precision fixed point number
+ @return a * b in T1_NMSEDEC_FRACBITS-bit precision fixed point
+ */
+static inline int32_t int_fix_mul_t1(int32_t a, int32_t b) {
+#if defined(_MSC_VER) && (_MSC_VER >= 1400) && !defined(__INTEL_COMPILER) && defined(_M_IX86)
+	int64_t temp = __emul(a, b);
+#else
+	int64_t temp = (int64_t) a * (int64_t) b;
+#endif
+	temp += 1<<(13 + 11 - T1_NMSEDEC_FRACBITS - 1);
+	assert((temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) <= (int64_t)0x7FFFFFFF);
+	assert(
+			(temp >> (13 + 11 - T1_NMSEDEC_FRACBITS)) >= (-(int64_t)0x7FFFFFFF - (int64_t)1));
+	return (int32_t) (temp >> (13 + 11 - T1_NMSEDEC_FRACBITS));
+}
+
 void T1Part1::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
-		uint32_t &max) {
-	t1_encoder->preEncode(block, tile, max);
+		uint32_t &maximum) {
+	auto cblk = block->cblk;
+	auto w = cblk->x1 - cblk->x0;
+	auto h = cblk->y1 - cblk->y0;
+	if (!t1_allocate_buffers(t1, w,h))
+		return;
+	t1->data_stride = w;
+	uint32_t tile_width = (tile->comps + block->compno)->width();
+	auto tileLineAdvance = tile_width - w;
+	auto tiledp = block->tiledp;
+	uint32_t tileIndex = 0;
+	uint32_t cblk_index = 0;
+	maximum = 0;
+	if (block->qmfbid == 1) {
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+				int32_t temp = (block->tiledp[tileIndex] *= (1<< T1_NMSEDEC_FRACBITS));
+				maximum = max((uint32_t)abs(temp), maximum);
+				t1->data[cblk_index] = temp;
+				tileIndex++;
+				cblk_index++;
+			}
+			tileIndex += tileLineAdvance;
+		}
+	} else {
+		for (auto j = 0U; j < h; ++j) {
+			for (auto i = 0U; i < w; ++i) {
+				int32_t temp = int_fix_mul_t1(tiledp[tileIndex], block->inv_step);
+				maximum = max((uint32_t)abs(temp), maximum);
+				t1->data[cblk_index] = temp;
+				tileIndex++;
+				cblk_index++;
+			}
+			tileIndex += tileLineAdvance;
+		}
+	}
 }
-double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
-		bool doRateControl) {
-	double dist = t1_encoder->encode_cblk(block->cblk, (uint8_t) block->bandno,
+double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
+		uint32_t max, bool doRateControl) {
+	auto cblk = block->cblk;
+	tcd_cblk_enc_t cblkopj;
+	memset(&cblkopj, 0, sizeof(tcd_cblk_enc_t));
+
+	cblkopj.x0 = block->x;
+	cblkopj.y0 = block->y;
+	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	assert(cblk->x1 - cblk->x0 > 0);
+	assert(cblk->y1 - cblk->y0 > 0);
+
+	cblkopj.data = cblk->data;
+	cblkopj.data_size = cblk->data_size;
+
+	auto disto = t1_encode_cblk(t1, &cblkopj, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
 			block->qmfbid, block->stepsize, block->cblk_sty, tile->numcomps,
-			block->mct_norms, block->mct_numcomps, max, doRateControl);
-#ifdef DEBUG_LOSSLESS_T1
-		t1_decode* t1Decode = new t1_decode(t1_encoder->w, t1_encoder->h);
+			block->mct_norms, block->mct_numcomps, doRateControl);
 
-		grk_tcd_cblk_dec* cblkDecode = new grk_tcd_cblk_dec();
-		cblkDecode->data = nullptr;
-		cblkDecode->segs = nullptr;
-		if (!cblkDecode->alloc()) {
-			return dist;
-		}
-		cblkDecode->x0 = block->cblk->x0;
-		cblkDecode->x1 = block->cblk->x1;
-		cblkDecode->y0 = block->cblk->y0;
-		cblkDecode->y1 = block->cblk->y1;
-		cblkDecode->numbps = block->cblk->numbps;
-		cblkDecode->numSegments = 1;
-		memset(cblkDecode->segs, 0, sizeof(grk_tcd_seg));
-		auto seg = cblkDecode->segs;
-		seg->numpasses = block->cblk->num_passes_encoded;
-		auto rate = seg->numpasses ? block->cblk->passes[seg->numpasses - 1].rate : 0;
-		seg->len = rate;
-		seg->dataindex = 0;
-		min_buf_vec_push_back(&cblkDecode->seg_buffers, block->cblk->data, (uint16_t)rate);
-		//decode
-		t1Decode->decode_cblk(cblkDecode, block->bandno, 0, 0);
+	cblk->num_passes_encoded = cblkopj.totalpasses;
+	cblk->numbps = cblkopj.numbps;
+	for (uint32_t i = 0; i < cblk->num_passes_encoded; ++i) {
+		auto passopj = cblkopj.passes + i;
+		auto passgrk = cblk->passes + i;
+		passgrk->distortiondec = passopj->distortiondec;
+		passgrk->len = (uint16_t)passopj->len;
+		passgrk->rate = (uint16_t)passopj->rate;
+		passgrk->term = passopj->term;
+	}
 
-		//compare
-		auto index = 0;
-		for (uint32_t j = 0; j < t1_encoder->h; ++j) {
-			for (uint32_t i = 0; i < t1_encoder->w; ++i) {
-				auto valBefore = block->unencodedData[index];
-				auto valAfter = t1Decode->data[index] / 2;
-				if (valAfter != valBefore) {
-					printf("T1 encode @ block location (%d,%d); original data=%x, round trip data=%x\n", i, j, valBefore, valAfter);
-				}
-				index++;
-			}
-		}
+	t1_code_block_enc_deallocate(&cblkopj);
+	cblkopj.data = nullptr;
 
-		delete t1Decode;
-		// the next line triggers an exception, so commented out at the moment
-		//grok_free(cblkDecode->segs);
-		delete cblkDecode;
-		delete[] block->unencodedData;
-		block->unencodedData = nullptr;
-#endif
-	return dist;
+ 	return disto;
 }
+
 bool T1Part1::decode(decodeBlockInfo *block) {
-	return t1_decoder->decode_cblk(block->cblk, (uint8_t) block->bandno,
-			block->cblk_sty);
+	auto cblk = block->cblk;
+	bool ret;
+
+  	if (!cblk->seg_buffers.get_len())
+		return true;
+
+	auto min_buf_vec = &cblk->seg_buffers;
+	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + OPJ_COMMON_CBLK_DATA_EXTRA);
+	if (t1->cblkdatabuffersize < total_seg_len) {
+		uint8_t *new_block = (uint8_t*) grok_realloc(t1->cblkdatabuffer,
+				total_seg_len);
+		if (!new_block)
+			return false;
+		t1->cblkdatabuffer = new_block;
+		t1->cblkdatabuffersize = total_seg_len;
+	}
+	size_t offset = 0;
+	// note: min_buf_vec only contains segments of non-zero length
+	for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
+		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
+		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
+		offset += seg->len;
+	}
+	tcd_seg_data_chunk_t chunk;
+	chunk.len = t1->cblkdatabuffersize;
+	chunk.data = t1->cblkdatabuffer;
+
+	tcd_cblk_dec_t cblkopj;
+	memset(&cblkopj, 0, sizeof(tcd_cblk_dec_t));
+	cblkopj.numchunks = 1;
+	cblkopj.chunks = &chunk;
+	cblkopj.x0 = block->x;
+	cblkopj.y0 = block->y;
+	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	assert(cblk->x1 - cblk->x0 > 0);
+	assert(cblk->y1 - cblk->y0 > 0);
+	cblkopj.real_num_segs = cblk->numSegments;
+	auto segs = new tcd_seg_t[cblk->numSegments];
+	for (uint32_t i = 0; i < cblk->numSegments; ++i){
+		auto sopj = segs + i;
+		memset(sopj, 0, sizeof(tcd_seg_t));
+		auto sgrk = cblk->segs + i;
+		sopj->len = sgrk->len;
+		sopj->real_num_passes = sgrk->numpasses;
+	}
+	cblkopj.segs = segs;
+	// subtract roishift as it was added when packet was parsed
+	// and opj uses subtracted value
+	cblkopj.numbps = cblk->numbps - block->roishift;
+
+
+	if (!block->tilec->whole_tile_decoding){
+		auto cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
+        auto cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+        auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
+
+        if (cblkopj.unencoded_data)
+        	grok_aligned_free(cblkopj.unencoded_data);
+        cblkopj.unencoded_data = (int32_t*)grok_aligned_malloc(data_size);
+        if (!cblkopj.unencoded_data){
+            GROK_ERROR("Unable to allocate cblk data");
+           	return false;
+        }
+        memset(cblkopj.unencoded_data, 0, data_size);
+	}
+
+    ret =
+    		t1_decode_cblk(t1,
+    				&cblkopj,
+    				block->bandno,
+					block->roishift,
+					block->cblk_sty,
+					false);
+
+    if (!block->tilec->whole_tile_decoding){
+		cblk->unencoded_data = cblkopj.unencoded_data;
+		cblkopj.unencoded_data = nullptr;
+    }
+	delete[] segs;
+	return ret;
 }
 
 void T1Part1::postDecode(decodeBlockInfo *block) {
-	t1_decoder->postDecode(block);
+
+	auto cblk = block->cblk;
+	if (!cblk->seg_buffers.get_len())
+		return;
+
+	tcd_cblk_dec_t cblkopj;
+	memset(&cblkopj, 0, sizeof(tcd_cblk_dec_t));
+	cblkopj.x0 = block->x;
+	cblkopj.y0 = block->y;
+	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
+	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
+	cblkopj.unencoded_data = block->cblk->unencoded_data;
+    post_decode(t1,
+    		&cblkopj,
+			block->roishift,
+			block->qmfbid,
+			block->stepsize,
+			block->tiledp,
+			block->tilec->width(),
+			block->tilec->height(),
+			block->tilec->whole_tile_decoding
+			);
 }
 }
 }

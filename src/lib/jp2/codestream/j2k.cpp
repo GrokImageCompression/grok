@@ -3727,7 +3727,7 @@ static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	  Bp = 13 + (B >> 2);
 	else
 	  Bp = 31;
-	Ccap[0] |= Bp;
+	Ccap[0] = (uint16_t)(Ccap[0] | Bp);
 
 	/* CAP */
 	if (!p_stream->write_short(J2K_MS_CAP)) {

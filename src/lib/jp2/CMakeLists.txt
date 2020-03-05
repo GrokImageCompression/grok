@@ -31,11 +31,8 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/plugin
   ${CMAKE_CURRENT_SOURCE_DIR}/transform
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj
   ${CMAKE_CURRENT_SOURCE_DIR}/t1
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/coding
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common
@@ -126,19 +123,17 @@ set(GROK_SRCS
 
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.h
   ${CMAKE_CURRENT_SOURCE_DIR}/transform/Wavelet.cpp
-
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/sparse_array.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/sparse_array.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/dwt.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform_opj/dwt.h
-  
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/WaveletForward.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt_utils.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt53.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt53.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/transform/transform/dwt97.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/sparse_array.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/sparse_array.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/WaveletForward.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt_utils.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt_utils.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt53.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt53.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/transform/dwt97.h
   
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/T1Decoder.cpp
@@ -164,30 +159,14 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_defs.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_mem.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/common/ojph_message.h
-   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_arch.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_mem.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_message.cpp
 
-  
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_opt_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_luts.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_base.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_base.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_base.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_opt.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode_opt.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode.cpp  
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_decode.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_encode.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_encode.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/t1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/mqc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/T1Part1OPJ.cpp    
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h    
 )
 
 option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
@@ -250,7 +229,7 @@ endif()
 if(BUILD_LUTS_GENERATOR)
 # internal utility to generate t1_luts.h (part of the jp2 lib)
 # no need to install:
-add_executable(t1_generate_luts ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1_opj/t1_generate_luts.cpp)
+add_executable(t1_generate_luts ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1_generate_luts.cpp)
   if(UNIX)
     target_link_libraries(t1_generate_luts)
   endif()
