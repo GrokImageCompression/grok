@@ -66,6 +66,7 @@ extern "C" {
 #include "grk_config.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 
 #ifdef __GNUC__
