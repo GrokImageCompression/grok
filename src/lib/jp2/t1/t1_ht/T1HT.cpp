@@ -110,7 +110,7 @@ double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum
 	int32_t shift = 31 - (block->k_msbs + 1);
 	auto cblk = block->cblk;
 	cblk->numbps = 0;
-	if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
+	//if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
 	{
 		uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
 		uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
