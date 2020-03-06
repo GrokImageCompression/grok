@@ -121,9 +121,11 @@ extern "C" {
 #define J2K_CCP_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
 #define J2K_CCP_CBLKSTY_PTERM   0x10  /**< Predictable termination */
 #define J2K_CCP_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT      		0x40  /**< high throughput block coding */
-                                          /** note: this flag is not part of the standard */
+#define GRK_CBLKSTY_HT      	0x40  /**< high throughput block coding */
+                                      /** note: this flag is not part of the standard */
 
+//for JPH, bit 14 of RSIZ must be set to 1
+#define GRK_JPH_RSIZ_FLAG       0x4000
 
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)

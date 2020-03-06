@@ -1230,7 +1230,7 @@ static int parse_cmdline_encoder_ex(int argc,
 				}
 			}
 		} else {
-			parameters->rsiz = 0x4000; //for jph, bit 14 of Rsiz is 1
+			parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
 		}
 
 		if (captureResArg.isSet()) {

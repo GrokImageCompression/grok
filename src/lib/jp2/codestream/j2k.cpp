@@ -1925,6 +1925,9 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 
 	/* Manage profiles and applications and set RSIZ */
 	/* set cinema parameters if required */
+	if (parameters->isHT){
+		parameters->rsiz |= GRK_JPH_RSIZ_FLAG;
+	}
 	if (GRK_IS_CINEMA(parameters->rsiz)) {
 		if ((parameters->rsiz == GRK_PROFILE_CINEMA_S2K)
 				|| (parameters->rsiz == GRK_PROFILE_CINEMA_S4K)) {
