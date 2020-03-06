@@ -34,7 +34,7 @@ T1Interface* T1Factory::get_t1(bool isEncoder,
 								grk_tcp *tcp,
 								uint16_t maxCblkW,
 								uint16_t maxCblkH) {
-	bool isHT = cp->ccap || tcp->isHT;
+	bool isHT = tcp->isHT;
 	if (isHT)
 		return new t1_ht::T1HT(isEncoder, tcp, maxCblkW, maxCblkH);
 	else
