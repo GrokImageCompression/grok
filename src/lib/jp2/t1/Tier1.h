@@ -26,8 +26,7 @@ namespace grk {
 class Tier1 {
 public:
 
-	bool encodeCodeblocks(grk_coding_parameters *cp,
-							grk_tcp *tcp,
+	bool encodeCodeblocks(	grk_tcp *tcp,
 							grk_tcd_tile *tile,
 							const double *mct_norms,
 			uint32_t mct_numcomps, bool doRateControl);
@@ -35,8 +34,7 @@ public:
 	bool prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 			std::vector<decodeBlockInfo*> *blocks);
 
-	bool decodeCodeblocks(grk_coding_parameters *cp,
-							grk_tcp *tcp,
+	bool decodeCodeblocks(	grk_tcp *tcp,
 							uint16_t blockw,
 							uint16_t blockh,
 							std::vector<decodeBlockInfo*> *blocks);

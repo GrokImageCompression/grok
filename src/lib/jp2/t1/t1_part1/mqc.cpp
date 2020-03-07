@@ -54,9 +54,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "opj_includes.h"
+#include "t1_common.h"
 
 #include <assert.h>
+
+namespace grk {
 
 static void mqc_byteout(mqc_t *mqc);
 static void mqc_renorme(mqc_t *mqc);
@@ -442,14 +444,14 @@ static void mqc_init_dec_common(mqc_t *mqc,
 {
     (void)extra_writable_bytes;
 
-    assert(extra_writable_bytes >= OPJ_COMMON_CBLK_DATA_EXTRA);
+    assert(extra_writable_bytes >= GRK_FAKE_MARKER_BYTES);
     mqc->start = bp;
     mqc->end = bp + len;
     /* Insert an artificial 0xFF 0xFF marker at end of the code block */
     /* data so that the bytein routines stop on it. This saves us comparing */
     /* the bp and end pointers */
     /* But before inserting it, backup th bytes we will overwrite */
-    memcpy(mqc->backup, mqc->end, OPJ_COMMON_CBLK_DATA_EXTRA);
+    memcpy(mqc->backup, mqc->end, GRK_FAKE_MARKER_BYTES);
     mqc->end[0] = 0xFF;
     mqc->end[1] = 0xFF;
     mqc->bp = bp;
@@ -488,7 +490,7 @@ void mqc_raw_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len,
 void opq_mqc_finish_dec(mqc_t *mqc)
 {
     /* Restore the bytes overwritten by mqc_init_dec_common() */
-    memcpy(mqc->end, mqc->backup, OPJ_COMMON_CBLK_DATA_EXTRA);
+    memcpy(mqc->end, mqc->backup, GRK_FAKE_MARKER_BYTES);
 }
 
 void mqc_resetstates(mqc_t *mqc)
@@ -503,4 +505,6 @@ void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb,
                       int32_t prob)
 {
     mqc->ctxs[ctxno] = &mqc_states[msb + (uint32_t)(prob << 1)];
+}
+
 }

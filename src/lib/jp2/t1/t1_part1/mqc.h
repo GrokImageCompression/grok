@@ -54,10 +54,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef mqc_H
-#define mqc_H
+#pragma once
 
-#include "opj_common.h"
+#include <t1_common.h>
+namespace grk {
+
 typedef struct mqc_state {
     /** the probability of the Least Probable Symbol (0.75->0x8000, 1.5->0xffff) */
     uint32_t qeval;
@@ -92,7 +93,7 @@ typedef struct mqc {
     /* lut_ctxno_zc shifted by (1 << 9) * bandno */
     const uint8_t* lut_ctxno_zc_orient;
     /** Original value of the 2 bytes at end[0] and end[1] */
-    uint8_t backup[OPJ_COMMON_CBLK_DATA_EXTRA];
+    uint8_t backup[GRK_FAKE_MARKER_BYTES];
 } mqc_t;
 
 #include "mqc_inl.h"
@@ -165,4 +166,5 @@ mqc_raw_init_dec()
 @param mqc MQC handle
 */
 void opq_mqc_finish_dec(mqc_t *mqc);
-#endif /* mqc_H */
+
+}

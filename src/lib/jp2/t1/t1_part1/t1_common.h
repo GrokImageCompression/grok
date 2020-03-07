@@ -1,4 +1,25 @@
+/*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+*/
+
+
 #pragma once
+
+
+#define GRK_FAKE_MARKER_BYTES   2    /**< Margin for a fake FFFF marker */
 
 #include "grok.h"
 #include <stdbool.h>
@@ -7,24 +28,26 @@
 #include <math.h>
 #include <assert.h>
 #include <string.h>
+#include <t1_common.h>
 #include "grok_malloc.h"
-#include "opj_common.h"
 #include "mqc.h"
+
+namespace grk {
 
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
 /* Not a C99 compiler */
 #if defined(__GNUC__)
-#define OPJ_RESTRICT __restrict__
+#define GRK_RESTRICT __restrict__
 #else
-#define OPJ_RESTRICT /* restrict */
+#define GRK_RESTRICT /* restrict */
 #endif
 
 
 
 /* Type to use for bit-fields in internal headers */
-typedef unsigned int OPJ_BITFIELD;
+typedef unsigned int GRK_BITFIELD;
 
 
 /**
@@ -34,7 +57,7 @@ typedef struct tcd_pass {
     uint32_t rate;
     double distortiondec;
     uint32_t len;
-    OPJ_BITFIELD term : 1;
+    GRK_BITFIELD term : 1;
 } tcd_pass_t;
 
 /**
@@ -106,5 +129,6 @@ typedef struct tcd_cblk_dec {
     int32_t* unencoded_data;
 } tcd_cblk_dec_t;
 
+}
 
 #include "t1.h"

@@ -141,7 +141,7 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 		return true;
 
 	auto min_buf_vec = &cblk->seg_buffers;
-	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + OPJ_COMMON_CBLK_DATA_EXTRA);
+	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + GRK_FAKE_MARKER_BYTES);
 	if (t1->cblkdatabuffersize < total_seg_len) {
 		uint8_t *new_block = (uint8_t*) grok_realloc(t1->cblkdatabuffer,
 				total_seg_len);

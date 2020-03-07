@@ -21,7 +21,7 @@
 #include "Tier1.h"
 #include "TileProcessor.h"
 #include "T1Interface.h"
-#include "opj_includes.h"
+#include "t1_common.h"
 #include "t1.h"
 
 

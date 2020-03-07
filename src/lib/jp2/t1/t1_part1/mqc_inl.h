@@ -56,6 +56,7 @@
 
 #pragma once
 
+
 /* For internal use of mqc_decode_macro() */
 #define mqc_mpsexchange_macro(d, curctx, a) \
 { \
@@ -209,5 +210,4 @@ Decode a symbol
 */
 #define mqc_decode(d, mqc) \
     mqc_decode_macro(d, mqc, mqc->curctx, mqc->a, mqc->c, mqc->ct)
-
 

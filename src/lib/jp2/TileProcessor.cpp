@@ -1641,8 +1641,7 @@ bool TileProcessor::t1_decode() {
 		++l_tccp;
 	}
 	// !!! assume that code block dimensions do not change over components
-	return t1_wrap->decodeCodeblocks(this->m_cp,
-			m_tcp,
+	return t1_wrap->decodeCodeblocks(m_tcp,
 			(uint16_t) m_tcp->tccps->cblkw,
 			(uint16_t) m_tcp->tccps->cblkh, &blocks);
 }
@@ -1983,7 +1982,7 @@ bool TileProcessor::t1_encode() {
 
 	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
 
-	return t1_wrap->encodeCodeblocks(m_cp, l_tcp, tile, l_mct_norms,
+	return t1_wrap->encodeCodeblocks(l_tcp, tile, l_mct_norms,
 			l_mct_numcomps, needs_rate_control());
 }
 

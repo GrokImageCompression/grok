@@ -21,8 +21,7 @@
 
 namespace grk {
 
-bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
-							grk_tcp *tcp,
+bool Tier1::encodeCodeblocks(grk_tcp *tcp,
 							grk_tcd_tile *tile,
 							const double *mct_norms,
 							uint32_t mct_numcomps,
@@ -93,7 +92,7 @@ bool Tier1::encodeCodeblocks(grk_coding_parameters *cp,
 		}
 	}
 
-	T1Encoder encoder(cp, tcp, tile, maxCblkW, maxCblkH, doRateControl);
+	T1Encoder encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
 	return encoder.encode(&blocks);
 }
 
@@ -172,11 +171,10 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 	return true;
 }
 
-bool Tier1::decodeCodeblocks(grk_coding_parameters *cp,
-							grk_tcp *tcp,
+bool Tier1::decodeCodeblocks(grk_tcp *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<decodeBlockInfo*> *blocks) {
-	T1Decoder decoder(cp, tcp, blockw, blockh);
+	T1Decoder decoder(tcp, blockw, blockh);
 	return decoder.decode(blocks);
 }
 

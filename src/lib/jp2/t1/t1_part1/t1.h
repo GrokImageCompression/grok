@@ -54,10 +54,11 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef t1_H
-#define t1_H
+#pragma once
 
 #include "t1_flags.h"
+
+namespace grk {
 
 #define T1_NMSEDEC_BITS 7
 
@@ -223,4 +224,4 @@ double t1_encode_cblk(t1_t *t1, tcd_cblk_enc_t *cblk,
 t1_t* t1_create(bool isEncoder);
 void t1_destroy(t1_t *p_t1);
 
-#endif /* t1_H */
+}

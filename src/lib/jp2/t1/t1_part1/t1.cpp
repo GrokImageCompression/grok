@@ -57,9 +57,11 @@
  */
 #include "grok_includes.h"
 #include "grok.h"
-#include "opj_includes.h"
+#include "t1_common.h"
 #include "logger.h"
 #include "dwt_utils.h"
+
+namespace grk {
 
 #define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format in codestream (mode switch RAW)*/
@@ -1237,7 +1239,7 @@ void post_decode(t1_t *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
 	}
 
 	if (qmfbid == 1) {
-		int32_t *OPJ_RESTRICT tiledp = dest;
+		int32_t *GRK_RESTRICT tiledp = dest;
 		for (int j = 0; j < cblk_h; ++j) {
 			uint32_t i = 0;
 			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
@@ -1260,9 +1262,9 @@ void post_decode(t1_t *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
 			}
 		}
 	} else {
-		float *OPJ_RESTRICT tiledp = (float*) dest;
+		float *GRK_RESTRICT tiledp = (float*) dest;
 		for (int j = 0; j < cblk_h; ++j) {
-			float *OPJ_RESTRICT tiledp2 = tiledp;
+			float *GRK_RESTRICT tiledp2 = tiledp;
 			for (int i = 0; i < cblk_w; ++i) {
 				float tmp = (float) (*src) * stepsize;
 				*tiledp2 = tmp;
@@ -1325,10 +1327,10 @@ bool t1_decode_cblk(t1_t *t1, tcd_cblk_dec_t *cblk,
 
 		if (type == T1_TYPE_RAW) {
 			mqc_raw_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			OPJ_COMMON_CBLK_DATA_EXTRA);
+			GRK_FAKE_MARKER_BYTES);
 		} else {
 			mqc_init_dec(mqc, cblkdata + cblkdataindex, seg->len,
-			OPJ_COMMON_CBLK_DATA_EXTRA);
+			GRK_FAKE_MARKER_BYTES);
 		}
 		cblkdataindex += seg->len;
 
@@ -1632,4 +1634,6 @@ double t1_encode_cblk(t1_t *t1, tcd_cblk_enc_t *cblk,
 #endif
 
     return cumwmsedec;
+}
+
 }

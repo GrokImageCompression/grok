@@ -21,7 +21,7 @@
 
 namespace grk {
 
-T1Encoder::T1Encoder(grk_coding_parameters *cp, grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
+T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 		uint16_t encodeMaxCblkH, bool needsRateControl) :
 		tile(tile),
 		needsRateControl(needsRateControl),
@@ -30,7 +30,7 @@ T1Encoder::T1Encoder(grk_coding_parameters *cp, grk_tcp *tcp, grk_tcd_tile *tile
 {
 	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
 		threadStructs.push_back(
-				T1Factory::get_t1(true, cp,tcp, encodeMaxCblkW, encodeMaxCblkH));
+				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
 }
 T1Encoder::~T1Encoder() {
