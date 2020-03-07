@@ -1072,7 +1072,7 @@ static int parse_cmdline_encoder_ex(int argc,
 		}
 
 		if (irreversibleArg.isSet()) {
-			parameters->irreversible = 1;
+			parameters->irreversible = true;
 		}
 
 		if (pluginPathArg.isSet()) {
@@ -1930,10 +1930,10 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 
 	/* catch events using our callbacks and give a local context */
 	if (parameters->verbose) {
-		grk_set_info_handler(l_codec, info_callback, nullptr);
-		grk_set_warning_handler(l_codec, warning_callback, nullptr);
+		grk_set_info_handler(info_callback, nullptr);
+		grk_set_warning_handler(warning_callback, nullptr);
 	}
-	grk_set_error_handler(l_codec, error_callback, nullptr);
+	grk_set_error_handler(error_callback, nullptr);
 
 	if (!grk_setup_encoder(l_codec, parameters, image)) {
 		spdlog::error( "failed to encode image: grk_setup_encoder");
@@ -1948,7 +1948,7 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 													false);
 	}
 	else {
-		l_stream = grk_stream_create_default_file_stream(outfile, false);
+		l_stream = grk_stream_create_file_stream(outfile,32*1024*1024, false);
 	}
 	if (!l_stream) {
 		spdlog::error( "failed to create stream");

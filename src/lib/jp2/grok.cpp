@@ -175,34 +175,21 @@ GRK_API void GRK_CALLCONV grk_deinitialize() {
 /* ---------------------------------------------------------------------- */
 /* Functions to set the message handlers */
 
-bool GRK_CALLCONV grk_set_info_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data) {
-	grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-	if (!l_codec) {
-		return false;
-	}
-
+bool GRK_CALLCONV grk_set_info_handler( grk_msg_callback p_callback,
+		void *p_user_data) {
 	logger::m_logger.info_handler = p_callback;
 	logger::m_logger.m_info_data = p_user_data;
 
 	return true;
 }
-bool GRK_CALLCONV grk_set_warning_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data) {
-	grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-	if (!l_codec) {
-		return false;
-	}
+bool GRK_CALLCONV grk_set_warning_handler( 	grk_msg_callback p_callback,
+		void *p_user_data) {
 	logger::m_logger.warning_handler = p_callback;
 	logger::m_logger.m_warning_data = p_user_data;
 	return true;
 }
-bool GRK_CALLCONV grk_set_error_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data) {
-	grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-	if (!l_codec) {
-		return false;
-	}
+bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
+		void *p_user_data) {
 	logger::m_logger.error_handler = p_callback;
 	logger::m_logger.m_error_data = p_user_data;
 	return true;
@@ -652,7 +639,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 	} else {
 		parameters->rsiz = ((GRK_PROFILE_PART2) | (GRK_EXTENSION_MCT));
 	}
-	parameters->irreversible = 1;
+	parameters->irreversible = true;
 
 	/* use array based MCT */
 	parameters->tcp_mct = 2;
@@ -750,11 +737,6 @@ static void grok_free_file(void *p_user_data) {
 		fclose((FILE*) p_user_data);
 }
 
- grk_stream  *  GRK_CALLCONV grk_stream_create_default_file_stream(
-		const char *fname, bool p_is_read_stream) {
-	return grk_stream_create_file_stream(fname, stream_chunk_size,
-			p_is_read_stream);
-}
  grk_stream  *  GRK_CALLCONV grk_stream_create_file_stream(const char *fname,
 		size_t p_size, bool p_is_read_stream) {
 	bool stdin_stdout = !fname || !fname[0];

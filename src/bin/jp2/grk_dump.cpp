@@ -446,6 +446,10 @@ int main(int argc, char *argv[])
 
     grk_initialize(nullptr,0);
 
+    grk_set_info_handler(info_callback,nullptr);
+    grk_set_warning_handler(warning_callback,nullptr);
+    grk_set_error_handler(error_callback,nullptr);
+
     /* Set decoding parameters to default values */
     grk_set_default_decoder_parameters(&parameters);
 
@@ -517,7 +521,7 @@ int main(int argc, char *argv[])
         /* Read the input file and put it in memory */
         /* ---------------------------------------- */
 
-        l_stream = grk_stream_create_default_file_stream(parameters.infile,1);
+        l_stream = grk_stream_create_file_stream(parameters.infile,1024*1024, 1);
         if (!l_stream) {
         	spdlog::error("failed to create the stream from the file {}\n",parameters.infile);
 			rc = EXIT_FAILURE;
@@ -543,11 +547,6 @@ int main(int argc, char *argv[])
 			l_stream = nullptr;
             continue;
         }
-
-        /* catch events using our callbacks and give a local context */
-        grk_set_info_handler(l_codec, info_callback,nullptr);
-        grk_set_warning_handler(l_codec, warning_callback,nullptr);
-        grk_set_error_handler(l_codec, error_callback,nullptr);
 
         /* Setup the decoder decoding parameters using user parameters */
         if ( !grk_setup_decoder(l_codec, &parameters) ) {

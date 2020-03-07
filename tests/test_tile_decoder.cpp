@@ -249,7 +249,7 @@ int main (int argc, char *argv[])
         goto beach;
 
     grk_initialize(nullptr,0);
-    l_stream = grk_stream_create_default_file_stream(input_file,true);
+    l_stream = grk_stream_create_file_stream(input_file, 1024*1024,true);
     if (!l_stream) {
         spdlog::error("failed to create the stream from the file\n");
         goto beach;
@@ -291,9 +291,9 @@ int main (int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    grk_set_info_handler(l_codec, info_callback,nullptr);
-    grk_set_warning_handler(l_codec, warning_callback,nullptr);
-    grk_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(info_callback,nullptr);
+    grk_set_warning_handler(warning_callback,nullptr);
+    grk_set_error_handler(error_callback,nullptr);
 
     /* Setup the decoder decoding parameters using user parameters */
     if (! grk_setup_decoder(l_codec, &l_param)) {

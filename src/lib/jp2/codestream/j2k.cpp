@@ -1957,13 +1957,13 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 			if (parameters->irreversible) {
 				GROK_WARN(
 						"JPEG 2000 Broadcast profile; multi-tile reversible: forcing irreversible flag to false");
-				parameters->irreversible = 0;
+				parameters->irreversible = false;
 			}
 		} else {
 			if (!parameters->irreversible) {
 				GROK_WARN(
 						"JPEG 2000 Broadcast profile: forcing irreversible flag to true");
-				parameters->irreversible = 1;
+				parameters->irreversible = true;
 			}
 		}
 		// sanity check on levels
@@ -1982,13 +1982,13 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 			if (parameters->irreversible) {
 				GROK_WARN(
 						"JPEG 2000 IMF profile; forcing irreversible flag to false");
-				parameters->irreversible = 0;
+				parameters->irreversible = false;
 			}
 		} else {
 			if (!parameters->irreversible) {
 				GROK_WARN(
 						"JPEG 2000 IMF profile: forcing irreversible flag to true");
-				parameters->irreversible = 1;
+				parameters->irreversible = true;
 			}
 		}
 		//sanity check on main and sub levels
@@ -2142,7 +2142,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		if (tcp->isHT) {
 			tcp->qcd.generate(numgbits,
 							parameters->numresolution-1,
-							parameters->irreversible == 0,
+							!parameters->irreversible,
 							image->comps[0].prec,
 							tcp->mct > 0,
 							image->comps[0].sgnd);

@@ -121,7 +121,7 @@ void j2k_set_cinema_parameters( grk_cparameters  *parameters,
 	parameters->subsampling_dy = 1;
 
 	/* 9-7 transform */
-	parameters->irreversible = 1;
+	parameters->irreversible = true;
 
 	/* Number of layers */
 	if (parameters->tcp_numlayers > 1) {
@@ -364,7 +364,7 @@ void j2k_set_imf_parameters(grk_cparameters *parameters, grk_image *image)
             profile == GRK_PROFILE_IMF_4K ||
             profile == GRK_PROFILE_IMF_8K) {
         /* 9-7 transform */
-        parameters->irreversible = 1;
+        parameters->irreversible = true;
     }
 
     /* Adjust the number of resolutions if set to its defaults */
@@ -660,7 +660,7 @@ bool j2k_is_imf_compliant(grk_cparameters *parameters,
             profile == GRK_PROFILE_IMF_4K ||
             profile == GRK_PROFILE_IMF_8K) {
         /* Expect 9-7 transform */
-        if (parameters->irreversible != 1) {
+        if (!parameters->irreversible) {
         	GROK_WARN(    "IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n"
                           "-> Compression parameters set it to reversible.\n"
                           "-> Non-IMF codestream will be generated\n");
@@ -668,7 +668,7 @@ bool j2k_is_imf_compliant(grk_cparameters *parameters,
         }
     } else {
         /* Expect 5-3 transform */
-        if (parameters->irreversible != 0) {
+        if (parameters->irreversible) {
         	GROK_WARN(    "IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n"
                           "-> Compression parameters set it to irreversible.\n"
                           "-> Non-IMF codestream will be generated\n");

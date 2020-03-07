@@ -116,7 +116,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     grk_codec* pCodec = grk_create_decompress(eCodecFormat);
     grk_set_info_handler(pCodec, InfoCallback, NULL);
     grk_set_warning_handler(pCodec, WarningCallback, NULL);
-    grk_set_error_handler(pCodec, ErrorCallback, NULL);
+    grk_set_error_handler(ErrorCallback, NULL);
 
     grk_dparameters parameters;
     grk_set_default_decoder_parameters(&parameters);

@@ -124,18 +124,14 @@ int main(int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    grk_set_info_handler(l_codec, info_callback,nullptr);
-    grk_set_warning_handler(l_codec, warning_callback,nullptr);
-    grk_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(info_callback,nullptr);
+    grk_set_warning_handler(warning_callback,nullptr);
+    grk_set_error_handler(error_callback,nullptr);
 
     l_codec = grk_create_compress(GRK_CODEC_J2K);
-    grk_set_info_handler(l_codec, info_callback,nullptr);
-    grk_set_warning_handler(l_codec, warning_callback,nullptr);
-    grk_set_error_handler(l_codec, error_callback,nullptr);
-
     grk_setup_encoder(l_codec, &parameters, image);
 
-    l_stream = grk_stream_create_default_file_stream(parameters.outfile,false);
+    l_stream = grk_stream_create_file_stream(parameters.outfile, 1024*1024, false);
     if( !l_stream ) {
         fprintf( stderr, "Something went wrong during creation of stream\n" );
         grk_destroy_codec(l_codec);
@@ -169,15 +165,10 @@ int main(int argc, char *argv[])
          grk_codec  *  d_codec = nullptr;
          grk_dparameters  dparameters;
 
-        d_codec = grk_create_decompress(GRK_CODEC_J2K);
-        grk_set_info_handler(d_codec, info_callback,nullptr);
-        grk_set_warning_handler(d_codec, warning_callback,nullptr);
-        grk_set_error_handler(d_codec, error_callback,nullptr);
-
-        bSuccess = grk_setup_decoder(d_codec, &dparameters);
+         bSuccess = grk_setup_decoder(d_codec, &dparameters);
         assert( bSuccess );
 
-        l_stream = grk_stream_create_default_file_stream(outputfile,1);
+        l_stream = grk_stream_create_file_stream(outputfile,1024*1024, 1);
         assert( l_stream );
 
         bSuccess = grk_read_header(l_stream, d_codec,nullptr, &image);

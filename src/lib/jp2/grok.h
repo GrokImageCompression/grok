@@ -444,7 +444,7 @@ typedef struct _grk_cparameters {
 	bool isHT;
 	/** 1 : use the irreversible DWT 9-7, 0 :
 	 *  use lossless compression (default) */
-	uint32_t irreversible;
+	bool irreversible;
 	/** region of interest: affected component in [0..3];
 	 *  -1 indicates no ROI */
 	int32_t roi_compno;
@@ -1218,17 +1218,6 @@ GRK_API void GRK_CALLCONV grk_buffer_delete(uint8_t *buffer);
  */
 
 /**
- * Creates an abstract stream. This function does nothing excep
-  allocating memory and initializing the abstract stream.
- *
- * @param	p_is_input		if set to true then the stream will be
- *  an input stream, an output stream else.
- *
- * @return	a stream object.
- */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_default_create(bool p_is_input);
-
-/**
  * Creates an abstract stream. This function does nothing except
  *  allocating memory and initializing the abstract stream.
  *
@@ -1302,14 +1291,6 @@ GRK_API void GRK_CALLCONV grk_stream_set_user_data( grk_stream  *p_stream,
 GRK_API void GRK_CALLCONV grk_stream_set_user_data_length(
 		 grk_stream  *p_stream, uint64_t data_length);
 
-/**
- * Create a stream from a file identified with its filename with default parameters (helper function)
- * @param fname             the filename of the file to stream
- * @param p_is_read_stream  whether the stream is a read stream (true) or not (false)
- */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_default_file_stream(
-		const char *fname, bool p_is_read_stream);
-
 /** Create a stream from a file identified with its filename with a specific buffer size
  * @param fname             the filename of the file to stream
  * @param p_buffer_size     size of the chunk used to stream
@@ -1341,28 +1322,25 @@ GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
  */
 /**
  * Set the info handler used by Grok.
- * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_info_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_info_handler( grk_msg_callback p_callback,
+		void *p_user_data);
 /**
  * Set the warning handler used by Grok.
- * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_warning_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_warning_handler( 	grk_msg_callback p_callback,
+		void *p_user_data);
 /**
  * Set the error handler used by Grok.
- * @param p_codec       the codec previously initialise
  * @param p_callback    the callback function which will be used
  * @param p_user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_error_handler( grk_codec  *p_codec,
-		grk_msg_callback p_callback, void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
+		void *p_user_data);
 
 /*
  ===============================

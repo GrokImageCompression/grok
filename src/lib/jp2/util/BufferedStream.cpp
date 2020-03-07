@@ -487,9 +487,6 @@ void grok_read_double(const uint8_t *p_buffer, double *value) {
 		bool l_is_input) {
 	return ( grk_stream  * ) (new grk::BufferedStream(nullptr,p_buffer_size, l_is_input));
 }
- grk_stream  *  GRK_CALLCONV grk_stream_default_create(bool l_is_input) {
-	return grk_stream_create(grk::stream_chunk_size, l_is_input);
-}
 void GRK_CALLCONV grk_stream_destroy( grk_stream  *p_stream) {
 	auto stream = (grk::BufferedStream*) (p_stream);
 	delete stream;

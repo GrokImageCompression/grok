@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
 	uint32_t tile_width;
 	uint32_t tile_height;
 	uint32_t comp_prec;
-	uint32_t irreversible;
+	bool irreversible;
     const char* output_file;
 
     grk_initialize(nullptr,0);
@@ -266,9 +266,9 @@ int main (int argc, char *argv[])
     }
 
     /* catch events using our callbacks and give a local context */
-    grk_set_info_handler(l_codec, info_callback,nullptr);
-    grk_set_warning_handler(l_codec, warning_callback,nullptr);
-    grk_set_error_handler(l_codec, error_callback,nullptr);
+    grk_set_info_handler(info_callback,nullptr);
+    grk_set_warning_handler(warning_callback,nullptr);
+    grk_set_error_handler(error_callback,nullptr);
 
     l_image = grk_image_create(num_comps,l_params,GRK_CLRSPC_SRGB);
     if (! l_image) {
@@ -288,7 +288,7 @@ int main (int argc, char *argv[])
 		goto cleanup;
     }
 
-    l_stream = grk_stream_create_default_file_stream(output_file, false);
+    l_stream = grk_stream_create_file_stream(output_file, 1024*1024,false);
     if (! l_stream) {
         spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
 		rc = 1;

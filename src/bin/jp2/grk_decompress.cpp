@@ -1348,7 +1348,6 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	//1. initialize
 	if (!info->l_stream) {
 		info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
-		//info->l_stream = grk_stream_create_default_file_stream(infile, true);
 	}
 	if (!info->l_stream) {
 		spdlog::error( "failed to create the stream from the file {}", infile);
@@ -1374,10 +1373,10 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 		}
 		/* catch events using our callbacks and give a local context */
 		if (parameters->verbose) {
-			grk_set_info_handler(info->l_codec, info_callback, nullptr);
-			grk_set_warning_handler(info->l_codec, warning_callback, nullptr);
+			grk_set_info_handler(info_callback, nullptr);
+			grk_set_warning_handler(warning_callback, nullptr);
 		}
-		grk_set_error_handler(info->l_codec, error_callback, nullptr);
+		grk_set_error_handler(error_callback, nullptr);
 
 		if (!grk_setup_decoder(info->l_codec, &(parameters->core))) {
 			spdlog::error( "grk_decompress: failed to setup the decoder");
