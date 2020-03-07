@@ -253,12 +253,21 @@ int main (int argc, char *argv[])
         ++l_current_param_ptr;
     }
 
+
+    l_stream = grk_stream_create_file_stream(output_file, 1024*1024,false);
+    if (! l_stream) {
+        spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
+		rc = 1;
+		goto cleanup;
+    }
+
+
     /* should we do j2k or jp2 ?*/
     len = strlen( output_file );
     if( strcmp( output_file + len - 4, ".jp2" ) == 0 ) {
-        l_codec = grk_create_compress(GRK_CODEC_JP2);
+        l_codec = grk_create_compress(GRK_CODEC_JP2, l_stream);
     } else {
-        l_codec = grk_create_compress(GRK_CODEC_J2K);
+        l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
     }
     if (!l_codec) {
 		rc = 1;
@@ -287,29 +296,21 @@ int main (int argc, char *argv[])
 		rc = 1;
 		goto cleanup;
     }
-
-    l_stream = grk_stream_create_file_stream(output_file, 1024*1024,false);
-    if (! l_stream) {
-        spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
-		rc = 1;
-		goto cleanup;
-    }
-
-    if (! grk_start_compress(l_codec,l_image,l_stream)) {
+    if (! grk_start_compress(l_codec,l_image)) {
         spdlog::error("test_tile_encoder: failed to start compress!\n");
 		rc = 1;
 		goto cleanup;
     }
 
     for (i=0; i<l_nb_tiles; ++i) {
-        if (! grk_write_tile(l_codec,i,l_data,l_data_size,l_stream)) {
+        if (! grk_write_tile(l_codec,i,l_data,l_data_size)) {
             spdlog::error("test_tile_encoder: failed to write the tile %d!\n",i);
 			rc = 1;
 			goto cleanup;
         }
     }
 
-    if (! grk_end_compress(l_codec,l_stream)) {
+    if (! grk_end_compress(l_codec)) {
         spdlog::error("test_tile_encoder: failed to end compress!\n");
 		rc = 1;
 		goto cleanup;

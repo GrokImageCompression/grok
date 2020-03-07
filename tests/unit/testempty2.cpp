@@ -128,9 +128,6 @@ int main(int argc, char *argv[])
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    l_codec = grk_create_compress(GRK_CODEC_J2K);
-    grk_setup_encoder(l_codec, &parameters, image);
-
     l_stream = grk_stream_create_file_stream(parameters.outfile, 1024*1024, false);
     if( !l_stream ) {
         fprintf( stderr, "Something went wrong during creation of stream\n" );
@@ -139,8 +136,13 @@ int main(int argc, char *argv[])
         grk_stream_destroy(l_stream);
         return 1;
     }
+
+    l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
+    grk_setup_encoder(l_codec, &parameters, image);
+
+
     assert(l_stream);
-    bSuccess = grk_start_compress(l_codec,image,l_stream);
+    bSuccess = grk_start_compress(l_codec,image);
     if( !bSuccess ) {
         grk_stream_destroy(l_stream);
         grk_destroy_codec(l_codec);
@@ -149,9 +151,9 @@ int main(int argc, char *argv[])
     }
 
     assert( bSuccess );
-    bSuccess = grk_encode(l_codec, l_stream);
+    bSuccess = grk_encode(l_codec);
     assert( bSuccess );
-    bSuccess = grk_end_compress(l_codec, l_stream);
+    bSuccess = grk_end_compress(l_codec);
     assert( bSuccess );
 
     grk_stream_destroy(l_stream);
@@ -171,13 +173,13 @@ int main(int argc, char *argv[])
         l_stream = grk_stream_create_file_stream(outputfile,1024*1024, 1);
         assert( l_stream );
 
-        bSuccess = grk_read_header(l_stream, d_codec,nullptr, &image);
+        bSuccess = grk_read_header(d_codec,nullptr, &image);
         assert( bSuccess );
 
-        bSuccess = grk_decode(l_codec, nullptr, l_stream, image);
+        bSuccess = grk_decode(l_codec, nullptr, image);
         assert( bSuccess );
 
-        bSuccess = grk_end_decompress(l_codec, l_stream);
+        bSuccess = grk_end_decompress(l_codec);
         assert( bSuccess );
 
         grk_stream_destroy(l_stream);

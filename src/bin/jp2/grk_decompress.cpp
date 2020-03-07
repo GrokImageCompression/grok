@@ -1359,12 +1359,12 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 		switch (decod_format) {
 		case J2K_CFMT: {	/* JPEG-2000 codestream */
 							/* Get a decoder handle */
-			info->l_codec = grk_create_decompress(GRK_CODEC_J2K);
+			info->l_codec = grk_create_decompress(GRK_CODEC_J2K, info->l_stream);
 			break;
 		}
 		case JP2_CFMT: {	/* JPEG 2000 compressed image data */
 							/* Get a decoder handle */
-			info->l_codec = grk_create_decompress(GRK_CODEC_JP2);
+			info->l_codec = grk_create_decompress(GRK_CODEC_JP2, info->l_stream);
 			break;
 		}
 		default:
@@ -1388,7 +1388,7 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	// 2. read header
 	if (info->decode_flags & GROK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
-		if (!grk_read_header(info->l_stream, info->l_codec, &info->header_info, &info->image)) {
+		if (!grk_read_header( info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error( "grk_decompress: failed to read the header");
 			failed = 1;
 			goto cleanup;
@@ -1457,7 +1457,7 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
-		if (!(grk_decode(info->l_codec,info->tile, info->l_stream, info->image) && grk_end_decompress(info->l_codec, info->l_stream))) {
+		if (!(grk_decode(info->l_codec,info->tile, info->image) && grk_end_decompress(info->l_codec))) {
 			spdlog::error( "grk_decompress: failed to decode image!");
 			failed = 1;
 			goto cleanup;
@@ -1465,7 +1465,7 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	}
 	// or, decode one particular tile
 	else {
-		if (!grk_get_decoded_tile(info->l_codec, info->l_stream, info->image, parameters->tile_index)) {
+		if (!grk_get_decoded_tile(info->l_codec, info->image, parameters->tile_index)) {
 			spdlog::error( "grk_decompress: failed to decode tile!");
 			failed = 1;
 			goto cleanup;

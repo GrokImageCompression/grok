@@ -275,12 +275,12 @@ int main (int argc, char *argv[])
     switch(l_param.decod_format) {
     case J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_J2K);
+        l_codec = grk_create_decompress(GRK_CODEC_J2K,l_stream);
         break;
     }
     case JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_JP2);
+        l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
         break;
     }
     default: {
@@ -302,7 +302,7 @@ int main (int argc, char *argv[])
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if (! grk_read_header(l_stream, l_codec,nullptr,&l_image)) {
+    if (! grk_read_header(l_codec,nullptr,&l_image)) {
         spdlog::error("j2k_to_image: failed to read the header\n");
         goto beach;
     }
@@ -315,7 +315,6 @@ int main (int argc, char *argv[])
 
     while (l_go_on) {
         if (! grk_read_tile_header( l_codec,
-                                    l_stream,
                                     &l_tile_index,
                                     &l_data_size,
                                     &l_current_tile_x0,
@@ -335,13 +334,13 @@ int main (int argc, char *argv[])
                 l_max_data_size = l_data_size;
             }
 
-            if (! grk_decode_tile_data(l_codec,l_tile_index,l_data,l_data_size,l_stream))
+            if (! grk_decode_tile_data(l_codec,l_tile_index,l_data,l_data_size))
             	goto beach;
             /** now should inspect image to know the reduction factor and then how to behave with data */
         }
     }
 
-    if (! grk_end_decompress(l_codec,l_stream))
+    if (! grk_end_decompress(l_codec))
         goto beach;
 
     rc = EXIT_SUCCESS;

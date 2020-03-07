@@ -1167,6 +1167,69 @@ typedef struct _grk_codestream_index {
 }  grk_codestream_index; 
 /* -----------------------------------------------------------> */
 
+
+
+////////////////////////////////////////////////
+// Structs to pass data between grok and plugin
+/////////////////////////////////////////////////
+
+typedef struct _grk_plugin_pass {
+	double distortionDecrease; //distortion decrease up to and including this pass
+	size_t rate;    // rate up to and including this pass
+	size_t length;	//stream length for this pass
+} grk_plugin_pass;
+
+typedef struct _grk_plugin_code_block {
+	/////////////////////////
+	// debug info
+	uint32_t x0, y0, x1, y1;
+	unsigned int *contextStream;
+	///////////////////////////
+	size_t numPix;
+	unsigned char *compressedData;
+	size_t compressedDataLength;
+	size_t numBitPlanes;
+	size_t numPasses;
+	grk_plugin_pass passes[67];
+	unsigned int sortedIndex;
+} grk_plugin_code_block;
+
+typedef struct _grk_plugin_precinct {
+	size_t numBlocks;
+	grk_plugin_code_block **blocks;
+} grk_plugin_precinct;
+
+typedef struct _grk_plugin_band {
+	size_t orient;
+	size_t numPrecincts;
+	grk_plugin_precinct **precincts;
+	float stepsize;
+} grk_plugin_band;
+
+typedef struct _grk_plugin_resolution {
+	size_t level;
+	size_t numBands;
+	grk_plugin_band **bands;
+} grk_plugin_resolution;
+
+typedef struct grk_plugin_tile_component {
+	size_t numResolutions;
+	grk_plugin_resolution **resolutions;
+} grk_plugin_tile_component;
+
+#define GROK_DECODE_HEADER	(1 << 0)
+#define GROK_DECODE_T2		(1 << 1)
+#define GROK_DECODE_T1		(1 << 2)
+#define GROK_DECODE_POST_T1	(1 << 3)
+#define GROK_PLUGIN_DECODE_CLEAN  (1 << 4)
+#define GROK_DECODE_ALL		(GROK_PLUGIN_DECODE_CLEAN | GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
+
+typedef struct _grk_plugin_tile {
+	uint32_t decode_flags;
+	size_t numComponents;
+	grk_plugin_tile_component **tileComponents;
+} grk_plugin_tile;
+
 // version
 GRK_API const char* GRK_CALLCONV grk_version(void);
 //initialize library
@@ -1351,11 +1414,12 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
 /**
  * Creates a J2K/JP2 decompression structure
  * @param format 		Decoder to select
+ * @param	p_stream	the jpeg2000 stream.
  *
  * @return a handle to a decompressor if successful, returns nullptr otherwise
  * */
 GRK_API  grk_codec  *  GRK_CALLCONV grk_create_decompress(
-		GRK_CODEC_FORMAT format);
+		GRK_CODEC_FORMAT format, grk_stream  *p_stream);
 
 /**
  * Destroy a decompressor handle
@@ -1367,17 +1431,15 @@ GRK_API void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec);
 /**
  * End compression
  * @param	p_codec			the JPEG2000 codec
- * @param	p_stream		the JPEG2000 stream.
  */
-GRK_API bool GRK_CALLCONV grk_end_decompress( grk_codec  *p_codec,
-		 grk_stream  *p_stream);
+GRK_API bool GRK_CALLCONV grk_end_decompress( grk_codec  *p_codec);
 
 /**
  * Set decoding parameters to default values
  * @param parameters Decompression parameters
  */
 GRK_API void GRK_CALLCONV grk_set_default_decoder_parameters(
-		 grk_dparameters  *parameters);
+		grk_dparameters  *parameters);
 
 /**
  * Setup the decoder with decompression parameters provided by the user and with the message handler
@@ -1392,9 +1454,8 @@ GRK_API bool GRK_CALLCONV grk_setup_decoder( grk_codec  *p_codec,
 		 grk_dparameters  *parameters);
 
 /**
- * Decodes an image header (extended version).
+ * Decodes an image header
  *
- * @param	p_stream			the jpeg2000 stream.
  * @param	p_codec				the jpeg2000 codec to read.
  * @param	header_info			information read from jpeg 2000 header.
  * @param	p_image				the image structure initialized with the characteristics
@@ -1402,8 +1463,8 @@ GRK_API bool GRK_CALLCONV grk_setup_decoder( grk_codec  *p_codec,
  * @return true				if the main header of the codestream and the JP2 header
  * 							 is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header( grk_stream  *p_stream,
-		 grk_codec  *p_codec,  grk_header_info  *header_info,
+GRK_API bool GRK_CALLCONV grk_read_header( grk_codec  *p_codec,
+		grk_header_info  *header_info,
 		grk_image **p_image);
 
 /**
@@ -1423,91 +1484,29 @@ GRK_API bool GRK_CALLCONV grk_set_decode_area( grk_codec  *p_codec,
 		grk_image *p_image, uint32_t start_x, uint32_t start_y,
 		uint32_t end_x, uint32_t end_y);
 
-////////////////////////////////////////////////
-// Structs to pass data between grok and plugin
-/////////////////////////////////////////////////
-
-typedef struct _grk_plugin_pass {
-	double distortionDecrease; //distortion decrease up to and including this pass
-	size_t rate;    // rate up to and including this pass
-	size_t length;	//stream length for this pass
-} grk_plugin_pass;
-
-typedef struct _grk_plugin_code_block {
-	/////////////////////////
-	// debug info
-	uint32_t x0, y0, x1, y1;
-	unsigned int *contextStream;
-	///////////////////////////
-	size_t numPix;
-	unsigned char *compressedData;
-	size_t compressedDataLength;
-	size_t numBitPlanes;
-	size_t numPasses;
-	grk_plugin_pass passes[67];
-	unsigned int sortedIndex;
-} grk_plugin_code_block;
-
-typedef struct _grk_plugin_precinct {
-	size_t numBlocks;
-	grk_plugin_code_block **blocks;
-} grk_plugin_precinct;
-
-typedef struct _grk_plugin_band {
-	size_t orient;
-	size_t numPrecincts;
-	grk_plugin_precinct **precincts;
-	float stepsize;
-} grk_plugin_band;
-
-typedef struct _grk_plugin_resolution {
-	size_t level;
-	size_t numBands;
-	grk_plugin_band **bands;
-} grk_plugin_resolution;
-
-typedef struct grk_plugin_tile_component {
-	size_t numResolutions;
-	grk_plugin_resolution **resolutions;
-} grk_plugin_tile_component;
-
-#define GROK_DECODE_HEADER	(1 << 0)
-#define GROK_DECODE_T2		(1 << 1)
-#define GROK_DECODE_T1		(1 << 2)
-#define GROK_DECODE_POST_T1	(1 << 3)
-#define GROK_PLUGIN_DECODE_CLEAN  (1 << 4)
-#define GROK_DECODE_ALL		(GROK_PLUGIN_DECODE_CLEAN | GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
-
-typedef struct _grk_plugin_tile {
-	uint32_t decode_flags;
-	size_t numComponents;
-	grk_plugin_tile_component **tileComponents;
-} grk_plugin_tile;
 
 /**
  * Decode an image from a JPEG-2000 codestream
  *
  * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
- * @param p_stream			Input buffer stream
  * @param p_image 			the decoded image
  * @return 					true if success, otherwise false
  * */
 GRK_API bool GRK_CALLCONV grk_decode( grk_codec  *p_decompressor,
-		grk_plugin_tile *tile,  grk_stream  *p_stream, grk_image *p_image);
+		grk_plugin_tile *tile, grk_image *p_image);
 
 /**
  * Get the decoded tile from the codec
  *
  * @param	p_codec			the jpeg2000 codec.
- * @param	p_stream		input stream
  * @param	p_image			output image
  * @param	tile_index		index of the tile which will be decode
  *
  * @return					true if success, otherwise false
  */
 GRK_API bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
-		 grk_stream  *p_stream, grk_image *p_image, uint16_t tile_index);
+		 grk_image *p_image, uint16_t tile_index);
 
 /**
  * Set the resolution factor of the decoded image
@@ -1534,13 +1533,11 @@ GRK_API bool GRK_CALLCONV grk_set_decoded_resolution_factor(
  *                          tile_width * tile_height * component_size.
  *                          component_size can be 1,2 or 4 bytes, depending on
  *                          the precision of the given component.
- * @param	p_stream		the stream to write data to.
  *
  * @return	true if the data could be written.
  */
 GRK_API bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec,
-		uint16_t tile_index, uint8_t *p_data, uint64_t data_size,
-		 grk_stream  *p_stream);
+		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
 
 /**
  * Reads a tile header. This function is compulsory and allows one
@@ -1570,7 +1567,7 @@ GRK_API bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec,
  *							or an internal error.
  */
 GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
-		 grk_stream  *p_stream, uint16_t *tile_index, uint64_t *data_size,
+		uint16_t *tile_index, uint64_t *data_size,
 		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
 		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on);
 
@@ -1586,22 +1583,23 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
  * @param	p_data			pointer to a memory block that will hold the decoded data.
  * @param	data_size		size of p_data. data_size should be bigger or equal to
  * 							the value set by grk_read_tile_header.
- * @param	p_stream		the stream to decode.
  *
  * @return	true			if the data could be decoded.
  */
 GRK_API bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
-		uint16_t tile_index, uint8_t *p_data, uint64_t data_size,
-		 grk_stream  *p_stream);
+		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
 
 /* COMPRESSION FUNCTIONS*/
 
 /**
  * Creates a J2K/JP2 compression structure
  * @param 	format 		Coder to select
- * @return 				Returns a handle to a compressor if successful, returns nullptr otherwise
+ * @param	p_stream	the jpeg2000 stream.
+ * @return 				Returns a handle to a compressor if successful,
+ * 						returns nullptr otherwise
  */
-GRK_API  grk_codec  *  GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format);
+GRK_API  grk_codec  *  GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
+		grk_stream  *p_stream);
 
 /**
  Set encoding parameters to default values, that means :
@@ -1639,39 +1637,33 @@ GRK_API bool GRK_CALLCONV grk_setup_encoder( grk_codec  *p_codec,
  * Start to compress the current image.
  * @param p_codec 		Compressor handle
  * @param image 	    Input filled image
- * @param p_stream 		Input stream
  */
 GRK_API bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec,
-		grk_image *p_image,  grk_stream  *p_stream);
+		grk_image *p_image);
 
 /**
  * End to compress the current image.
  * @param p_codec 		Compressor handle
- * @param p_stream 		Input stream
  */
-GRK_API bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec,
-		 grk_stream  *p_stream);
+GRK_API bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec);
 
 /**
  * Encode an image into a JPEG-2000 codestream
  * @param p_codec 		compressor handle
- * @param p_stream 		Output buffer stream
  *
  * @return 				Returns true if successful, returns false otherwise
  */
-GRK_API bool GRK_CALLCONV grk_encode( grk_codec  *p_codec,
-		 grk_stream  *p_stream);
+GRK_API bool GRK_CALLCONV grk_encode( grk_codec  *p_codec);
 
 /**
  * Encode an image into a JPEG-2000 codestream using plugin
  * @param p_codec 		compressor handle
  * @param tile			plugin tile
- * @param p_stream 		Output buffer stream
  *
  * @return 				Returns true if successful, returns false otherwise
  */
 GRK_API bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_codec,
-		grk_plugin_tile *tile,  grk_stream  *p_stream);
+		grk_plugin_tile *tile);
 
 /*
  ==========================================================

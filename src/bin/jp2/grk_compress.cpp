@@ -1910,17 +1910,33 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
         }
     }
 
+	if (info->compressBuffer) {
+		// let stream clean up compress buffer
+		l_stream = grk_stream_create_mem_stream(info->compressBuffer,
+													info->compressBufferLen,
+													true,
+													false);
+	}
+	else {
+		l_stream = grk_stream_create_file_stream(outfile,32*1024*1024, false);
+	}
+	if (!l_stream) {
+		spdlog::error( "failed to create stream");
+		bSuccess = false;
+		goto cleanup;
+	}
+
 	switch (parameters->cod_format) {
 	case J2K_CFMT:	/* JPEG-2000 codestream */
 	{
 		/* Get a decoder handle */
-		l_codec = grk_create_compress(GRK_CODEC_J2K);
+		l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
 		break;
 	}
 	case JP2_CFMT:	/* JPEG 2000 compressed image data */
 	{
 		/* Get a decoder handle */
-		l_codec = grk_create_compress(GRK_CODEC_JP2);
+		l_codec = grk_create_compress(GRK_CODEC_JP2, l_stream);
 		break;
 	}
 	default:
@@ -1940,24 +1956,9 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 		bSuccess = false;
 		goto cleanup;
 	}
-	if (info->compressBuffer) {
-		// let stream clean up compress buffer
-		l_stream = grk_stream_create_mem_stream(info->compressBuffer, 
-													info->compressBufferLen, 
-													true,
-													false);
-	}
-	else {
-		l_stream = grk_stream_create_file_stream(outfile,32*1024*1024, false);
-	}
-	if (!l_stream) {
-		spdlog::error( "failed to create stream");
-		bSuccess = false;
-		goto cleanup;
-	}
 
 	/* encode the image */
-	bSuccess = grk_start_compress(l_codec, image, l_stream);
+	bSuccess = grk_start_compress(l_codec, image);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_start_compress");
 		bSuccess = false;
@@ -1969,7 +1970,7 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 		l_data = (uint8_t*)calloc(1, l_data_size);
 		assert(l_data);
 		for (uint16_t i = 0; i<l_nb_tiles; ++i) {
-			if (!grk_write_tile(l_codec, i, l_data, l_data_size, l_stream)) {
+			if (!grk_write_tile(l_codec, i, l_data, l_data_size)) {
 				spdlog::error("test_tile_encoder: failed to write the tile {}!\n", i);
 				bSuccess = false;
 				goto cleanup;
@@ -1978,14 +1979,14 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 		free(l_data);
 	}
 	else {
-		bSuccess = bSuccess && grk_encode_with_plugin(l_codec, info->tile, l_stream);
+		bSuccess = bSuccess && grk_encode_with_plugin(l_codec, info->tile);
 		if (!bSuccess) {
 			spdlog::error( "failed to encode image: grk_encode");
 			bSuccess = false;
 			goto cleanup;
 		}
 	}
-	bSuccess = bSuccess && grk_end_compress(l_codec, l_stream);
+	bSuccess = bSuccess && grk_end_compress(l_codec);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_end_compress");
 		bSuccess = false;

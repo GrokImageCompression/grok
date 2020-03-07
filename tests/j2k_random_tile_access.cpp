@@ -194,15 +194,22 @@ int main(int argc, char **argv)
     /* -------------------------- */
     parameters.decod_format = infile_format(parameters.infile);
 
+    l_stream = grk_stream_create_file_stream(parameters.infile,1024*1024, 1);
+    if (!l_stream) {
+        spdlog::error("failed to create the stream from the file %s\n", parameters.infile);
+        return EXIT_FAILURE;
+    }
+
+
     switch(parameters.decod_format) {
     case J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_J2K);
+        l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
         break;
     }
     case JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_JP2);
+        l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
         break;
     }
     default:
@@ -218,12 +225,6 @@ int main(int argc, char **argv)
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    l_stream = grk_stream_create_file_stream(parameters.infile,1024*1024, 1);
-    if (!l_stream) {
-        spdlog::error("failed to create the stream from the file %s\n", parameters.infile);
-        return EXIT_FAILURE;
-    }
-
     /* Setup the decoder decoding parameters using user parameters */
     if ( !grk_setup_decoder(l_codec, &parameters) ) {
         spdlog::error("j2k_dump: failed to setup the decoder");
@@ -233,7 +234,7 @@ int main(int argc, char **argv)
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if(! grk_read_header(l_stream, l_codec,nullptr, &image)) {
+    if(! grk_read_header(l_codec,nullptr, &image)) {
         spdlog::error("j2k_to_image: failed to read the header");
         grk_stream_destroy(l_stream);
         grk_destroy_codec(l_codec);
@@ -253,7 +254,7 @@ int main(int argc, char **argv)
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \
-	if(!grk_get_decoded_tile(l_codec, l_stream, image, tile_index )){ \
+	if(!grk_get_decoded_tile(l_codec, image, tile_index )){ \
 		spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
 		grk_stream_destroy(l_stream); \
 		grk_destroy_cstr_info(&cstr_info); \

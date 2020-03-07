@@ -534,12 +534,12 @@ int main(int argc, char *argv[])
         switch(parameters.decod_format) {
         case J2K_CFMT: {	/* JPEG-2000 codestream */
             /* Get a decoder handle */
-            l_codec = grk_create_decompress(GRK_CODEC_J2K);
+            l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
             break;
         }
         case JP2_CFMT: {	/* JPEG 2000 compressed image data */
             /* Get a decoder handle */
-            l_codec = grk_create_decompress(GRK_CODEC_JP2);
+            l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
             break;
         }
         default:
@@ -556,7 +556,7 @@ int main(int argc, char *argv[])
         }
 
         /* Read the main header of the codestream and if necessary the JP2 boxes*/
-        if(! grk_read_header(l_stream, l_codec,nullptr, &image)) {
+        if(! grk_read_header(l_codec,nullptr, &image)) {
             spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
 			goto cleanup;
