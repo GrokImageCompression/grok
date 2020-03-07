@@ -24,14 +24,14 @@ namespace grk {
 typedef int32_t grok_handle_t;
 #endif
 
-struct buf_info_t {
-	buf_info_t() :
-			buf_info_t(nullptr, 0, 0, false) {
+struct buf_info {
+	buf_info() :
+			buf_info(nullptr, 0, 0, false) {
 	}
-	buf_info_t(uint8_t *buffer, int64_t offset, size_t length, bool owns) :
+	buf_info(uint8_t *buffer, int64_t offset, size_t length, bool owns) :
 			buf(buffer), off(offset), len(length), fd(0), ownsBuffer(owns) {
 	}
-	~buf_info_t() {
+	~buf_info() {
 		if (ownsBuffer)
 			delete[] buf;
 	}

@@ -100,7 +100,7 @@ namespace grk {
 /** @name Local data structures */
 /*@{*/
 
-typedef struct dwt_local {
+typedef struct _dwt_data {
     int32_t* mem;
     int32_t dn;   /* number of elements in high pass band */
     int32_t sn;   /* number of elements in low pass band */
@@ -109,10 +109,10 @@ typedef struct dwt_local {
 
 typedef union {
     float f[4];
-} v4_t;
+} v4_data;
 
-typedef struct v4dwt_local {
-    v4_t*   wavelet ;
+typedef struct _v4dwt_data {
+    v4_data*   wavelet ;
     int32_t       dn ;  /* number of elements in high pass band */
     int32_t       sn ;  /* number of elements in low pass band */
     int32_t       cas ; /* 0 = start on even coord, 1 = start on odd coord */
@@ -120,7 +120,7 @@ typedef struct v4dwt_local {
     uint32_t      win_l_x1; /* end coord in low pass band */
     uint32_t      win_h_x0; /* start coord in high pass band */
     uint32_t      win_h_x1; /* end coord in high pass band */
-} v4dwt_t ;
+} v4dwt_data ;
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -156,36 +156,36 @@ static uint32_t dwt_max_resolution(grk_tcd_resolution* restrict r,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void v4dwt_decode(v4dwt_t* restrict dwt);
+static void v4dwt_decode(v4dwt_data* restrict dwt);
 
-static void v4dwt_interleave_h(v4dwt_t* restrict dwt,
+static void v4dwt_interleave_h(v4dwt_data* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t remaining_height);
 
-static void v4dwt_interleave_v(v4dwt_t* restrict dwt,
+static void v4dwt_interleave_v(v4dwt_data* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t nb_elts_read);
 
 #ifdef __SSE__
-static void v4dwt_decode_step1_sse(v4_t* w,
+static void v4dwt_decode_step1_sse(v4_data* w,
                                        uint32_t start,
                                        uint32_t end,
                                        const __m128 c);
 
-static void v4dwt_decode_step2_sse(v4_t* l, v4_t* w,
+static void v4dwt_decode_step2_sse(v4_data* l, v4_data* w,
                                        uint32_t start,
                                        uint32_t end,
                                        uint32_t m, __m128 c);
 
 #else
-static void v4dwt_decode_step1(v4_t* w,
+static void v4dwt_decode_step1(v4_data* w,
                                    uint32_t start,
                                    uint32_t end,
                                    const float c);
 
-static void v4dwt_decode_step2(v4_t* l, v4_t* w,
+static void v4dwt_decode_step2(v4_data* l, v4_data* w,
                                    uint32_t start,
                                    uint32_t end,
                                    uint32_t m,
@@ -1780,7 +1780,7 @@ static bool dwt_decode_partial_tile(
     return true;
 }
 
-static void v4dwt_interleave_h(v4dwt_t* restrict dwt,
+static void v4dwt_interleave_h(v4dwt_data* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t remaining_height)
@@ -1834,7 +1834,7 @@ static void v4dwt_interleave_h(v4dwt_t* restrict dwt,
     }
 }
 
-static void v4dwt_interleave_partial_h(v4dwt_t* dwt,
+static void v4dwt_interleave_partial_h(v4dwt_data* dwt,
         sparse_array_int32_t* sa,
         uint32_t sa_line,
         uint32_t remaining_height)
@@ -1860,12 +1860,12 @@ static void v4dwt_interleave_partial_h(v4dwt_t* dwt,
     }
 }
 
-static void v4dwt_interleave_v(v4dwt_t* restrict dwt,
+static void v4dwt_interleave_v(v4dwt_data* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t nb_elts_read)
 {
-    v4_t* restrict bi = dwt->wavelet + dwt->cas;
+    v4_data* restrict bi = dwt->wavelet + dwt->cas;
     uint32_t i;
 
     for (i = dwt->win_l_x0; i < dwt->win_l_x1; ++i) {
@@ -1882,7 +1882,7 @@ static void v4dwt_interleave_v(v4dwt_t* restrict dwt,
     }
 }
 
-static void v4dwt_interleave_partial_v(v4dwt_t* restrict dwt,
+static void v4dwt_interleave_partial_v(v4dwt_data* restrict dwt,
         sparse_array_int32_t* sa,
         uint32_t sa_col,
         uint32_t nb_elts_read)
@@ -1905,7 +1905,7 @@ static void v4dwt_interleave_partial_v(v4dwt_t* restrict dwt,
 
 #ifdef __SSE__
 
-static void v4dwt_decode_step1_sse(v4_t* w,
+static void v4dwt_decode_step1_sse(v4_data* w,
                                        uint32_t start,
                                        uint32_t end,
                                        const __m128 c)
@@ -1929,7 +1929,7 @@ static void v4dwt_decode_step1_sse(v4_t* w,
     }
 }
 
-static void v4dwt_decode_step2_sse(v4_t* l, v4_t* w,
+static void v4dwt_decode_step2_sse(v4_data* l, v4_data* w,
                                        uint32_t start,
                                        uint32_t end,
                                        uint32_t m,
@@ -1985,7 +1985,7 @@ static void v4dwt_decode_step2_sse(v4_t* l, v4_t* w,
 
 #else
 
-static void v4dwt_decode_step1(v4_t* w,
+static void v4dwt_decode_step1(v4_data* w,
                                    uint32_t start,
                                    uint32_t end,
                                    const float c)
@@ -2004,7 +2004,7 @@ static void v4dwt_decode_step1(v4_t* w,
     }
 }
 
-static void v4dwt_decode_step2(v4_t* l, v4_t* w,
+static void v4dwt_decode_step2(v4_data* l, v4_data* w,
                                    uint32_t start,
                                    uint32_t end,
                                    uint32_t m,
@@ -2053,7 +2053,7 @@ static void v4dwt_decode_step2(v4_t* l, v4_t* w,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void v4dwt_decode(v4dwt_t* restrict dwt)
+static void v4dwt_decode(v4dwt_data* restrict dwt)
 {
     int32_t a, b;
     if (dwt->cas == 0) {
@@ -2122,8 +2122,8 @@ static
 bool dwt_decode_tile_97(TileComponent* restrict tilec,
                                 uint32_t numres)
 {
-    v4dwt_t h;
-    v4dwt_t v;
+    v4dwt_data h;
+    v4dwt_data v;
 
     if (numres == 1U) {
         return true;
@@ -2150,11 +2150,11 @@ bool dwt_decode_tile_97(TileComponent* restrict tilec,
     }
     l_data_size += 5U;
     /* overflow check */
-    if (l_data_size > (SIZE_MAX / sizeof(v4_t))) {
+    if (l_data_size > (SIZE_MAX / sizeof(v4_data))) {
         /* FIXME event manager error callback */
         return false;
     }
-    h.wavelet = (v4_t*) grok_aligned_malloc(l_data_size * sizeof(v4_t));
+    h.wavelet = (v4_data*) grok_aligned_malloc(l_data_size * sizeof(v4_data));
     if (!h.wavelet) {
         /* FIXME event manager error callback */
         return false;
@@ -2259,8 +2259,8 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
                                    uint32_t numres)
 {
     sparse_array_int32_t* sa;
-    v4dwt_t h;
-    v4dwt_t v;
+    v4dwt_data h;
+    v4dwt_data v;
     uint32_t resno;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
@@ -2319,12 +2319,12 @@ bool dwt_decode_partial_97(TileComponent* restrict tilec,
     }
     l_data_size += 5U;
     /* overflow check */
-    if (l_data_size > (SIZE_MAX / sizeof(v4_t))) {
+    if (l_data_size > (SIZE_MAX / sizeof(v4_data))) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);
         return false;
     }
-    h.wavelet = (v4_t*) grok_aligned_malloc(l_data_size * sizeof(v4_t));
+    h.wavelet = (v4_data*) grok_aligned_malloc(l_data_size * sizeof(v4_data));
     if (!h.wavelet) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);

@@ -66,7 +66,7 @@ struct plugin_encode_user_callback_info {
 typedef void (*PLUGIN_ENCODE_USER_CALLBACK)(
 		plugin_encode_user_callback_info *info);
 
-typedef bool (*PLUGIN_INIT)(grok_plugin_init_info_t initInfo);
+typedef bool (*PLUGIN_INIT)(grok_plugin_init_info initInfo);
 
 typedef int32_t (*PLUGIN_ENCODE)( grk_cparameters  *encoding_parameters,
 		PLUGIN_ENCODE_USER_CALLBACK callback);

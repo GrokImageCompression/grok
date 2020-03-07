@@ -35,13 +35,13 @@
 namespace grk {
 
 static void free_mem(void *user_data) {
-	auto data = (buf_info_t*) user_data;
+	auto data = (buf_info*) user_data;
 	if (data)
 		delete data;
 }
 
 static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
-		buf_info_t *p_source_buffer) {
+		buf_info *p_source_buffer) {
 	size_t l_nb_read = 0;
 
 	if (((size_t) p_source_buffer->off + nb_bytes) < p_source_buffer->len) {
@@ -55,7 +55,7 @@ static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 }
 
 static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
-		buf_info_t *p_source_buffer) {
+		buf_info *p_source_buffer) {
 	size_t l_nb_read;
 
 	if ((size_t) p_source_buffer->off + nb_bytes < p_source_buffer->len) {
@@ -73,7 +73,7 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 }
 
 static size_t write_to_mem(void *dest, size_t nb_bytes,
-		buf_info_t *src) {
+		buf_info *src) {
 	if (src->off + nb_bytes >= src->len) {
 		return 0;
 	}
@@ -85,7 +85,7 @@ static size_t write_to_mem(void *dest, size_t nb_bytes,
 	return nb_bytes;
 }
 
-static bool seek_from_mem(uint64_t nb_bytes, buf_info_t *src) {
+static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
 	if ((size_t) nb_bytes < src->len) {
 		src->off = nb_bytes;
 	} else {
@@ -116,7 +116,7 @@ size_t get_mem_stream_offset( grk_stream  *stream) {
 	auto private_stream = (BufferedStream*) stream;
 	if (!private_stream->m_user_data)
 		return 0;
-	auto buf = (buf_info_t*) private_stream->m_user_data;
+	auto buf = (buf_info*) private_stream->m_user_data;
 	return buf->off;
 }
 
@@ -126,7 +126,7 @@ size_t get_mem_stream_offset( grk_stream  *stream) {
 		return nullptr;
 	}
 	auto l_stream = new BufferedStream(buf, len, p_is_read_stream);
-	auto p_source_buffer = new buf_info_t(buf, 0, len, ownsBuffer);
+	auto p_source_buffer = new buf_info(buf, 0, len, ownsBuffer);
 	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
 			free_mem);
 	set_up_mem_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
@@ -308,7 +308,7 @@ static int32_t close_fd(grok_handle_t fd) {
 
 static void mem_map_free(void *user_data) {
 	if (user_data) {
-		buf_info_t *buffer_info = (buf_info_t*) user_data;
+		buf_info *buffer_info = (buf_info*) user_data;
 		unmap(buffer_info->buf, buffer_info->len);
 		close_fd(buffer_info->fd);
 		delete buffer_info;
@@ -325,7 +325,7 @@ static void mem_map_free(void *user_data) {
 	if (fd == (grok_handle_t) -1)
 		return nullptr;
 
-	auto buffer_info = new buf_info_t();
+	auto buffer_info = new buf_info();
 	buffer_info->fd = fd;
 	buffer_info->len = (size_t) size_proc(fd);
 	auto mapped_view = grok_map(fd, buffer_info->len);

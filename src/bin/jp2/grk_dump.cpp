@@ -89,7 +89,7 @@ typedef struct _dircnt {
 } dircnt;
 
 
-typedef struct img_folder {
+typedef struct _img_folder {
     /** The directory path of the folder containing input images*/
     char *imgdirpath;
     /** Output format*/
@@ -100,17 +100,17 @@ typedef struct img_folder {
     bool set_out_format;
 
     int flag;
-} img_fol_t;
+} img_fol;
 
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
 static int get_num_images(char *imgdirpath);
 static int load_images(dircnt *dirptr, char *imgdirpath);
 static int get_file_format(const char *filename);
-static char get_next_file(int imageno,dircnt *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters);
+static char get_next_file(int imageno,dircnt *dirptr,img_fol *img_fol,  grk_dparameters  *parameters);
 static int infile_format(const char *fname);
 
-static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol);
+static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol *img_fol);
 
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void)
@@ -211,7 +211,7 @@ static int get_file_format(const char *filename)
 }
 
 /* -------------------------------------------------------------------------- */
-static char get_next_file(int imageno,dircnt *dirptr,img_fol_t *img_fol,  grk_dparameters  *parameters)
+static char get_next_file(int imageno,dircnt *dirptr,img_fol *img_fol,  grk_dparameters  *parameters)
 {
     char image_filename[GRK_PATH_LEN], infilename[3*GRK_PATH_LEN],outfilename[3*GRK_PATH_LEN],temp_ofname[GRK_PATH_LEN];
     char *temp_p, temp1[GRK_PATH_LEN]="";
@@ -288,7 +288,7 @@ static int infile_format(const char *fname)
  * Parse the command line
  */
 /* -------------------------------------------------------------------------- */
-static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol_t *img_fol)
+static int parse_cmdline_decoder(int argc, char **argv,  grk_dparameters  *parameters,img_fol *img_fol)
 {
     int totlen, c;
     grk_option long_option[]= {
@@ -440,7 +440,7 @@ int main(int argc, char *argv[])
      grk_codestream_index  *  cstr_index = nullptr;
 
     int32_t num_images, imageno;
-    img_fol_t img_fol;
+    img_fol img_fol;
     dircnt *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
 
@@ -454,7 +454,7 @@ int main(int argc, char *argv[])
     grk_set_default_decoder_parameters(&parameters);
 
     /* Initialize img_fol */
-    memset(&img_fol,0,sizeof(img_fol_t));
+    memset(&img_fol,0,sizeof(img_fol));
     img_fol.flag = GRK_IMG_INFO | GRK_J2K_MH_INFO | GRK_J2K_MH_IND;
 
     /* Parse input and get user encoding parameters */

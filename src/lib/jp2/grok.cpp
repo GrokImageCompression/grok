@@ -157,7 +157,7 @@ static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
 	Scheduler::g_tp = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
 	if (!is_plugin_initialized) {
-		grok_plugin_load_info_t info;
+		grok_plugin_load_info info;
 		info.plugin_path = plugin_path;
 		is_plugin_initialized = grok_plugin_load(info);
 	}
@@ -837,7 +837,7 @@ static const char* get_path_separator() {
 }
 
 bool pluginLoaded = false;
-bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info_t info) {
+bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info info) {
 	if (!info.plugin_path)
 		return false;
 
@@ -885,7 +885,7 @@ void GRK_CALLCONV grok_plugin_cleanup(void) {
 	minpf_cleanup_plugin_manager();
 	pluginLoaded = false;
 }
-GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo) {
+GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info initInfo) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_INIT func = nullptr;
 	if (!pluginLoaded)

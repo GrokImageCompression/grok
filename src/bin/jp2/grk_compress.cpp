@@ -2070,7 +2070,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams* initParams) {
 	out_fol_plugin = initParams->out_fol;
 
 	// create codec
-	grok_plugin_init_info_t initInfo;
+	grok_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
 	if (!grok_plugin_init(initInfo)) {

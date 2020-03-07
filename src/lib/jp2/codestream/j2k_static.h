@@ -13,12 +13,12 @@ struct  grk_dec_memory_marker_handler  {
 } ;
 
 
-struct j2k_prog_order_t {
+struct j2k_prog_order {
 	GRK_PROG_ORDER enum_prog;
 	char str_prog[5];
 };
 
-static j2k_prog_order_t j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
+static j2k_prog_order j2k_prog_order_list[] = { { GRK_CPRL, "CPRL" }, {
 		GRK_LRCP, "LRCP" }, { GRK_PCRL, "PCRL" }, { GRK_RLCP, "RLCP" }, {
 		GRK_RPCL, "RPCL" }, { (GRK_PROG_ORDER) -1, "" } };
 

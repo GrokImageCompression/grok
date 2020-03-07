@@ -53,7 +53,7 @@ extern "C" PLUGIN_API grk::minpf_exit_func minpf_post_load_plugin(const char* pl
 // Initialization
 //////////////////////////////////
 
-extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info_t initInfo) {
+extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info initInfo) {
 	return false;
 }
 

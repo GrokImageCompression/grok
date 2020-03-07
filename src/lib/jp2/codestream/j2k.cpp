@@ -3359,7 +3359,7 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint16_
 }
 
 char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order) {
-	j2k_prog_order_t *po;
+	j2k_prog_order *po;
 	for (po = j2k_prog_order_list; po->enum_prog != -1; po++) {
 		if (po->enum_prog == prg_order) {
 			return (char*) po->str_prog;

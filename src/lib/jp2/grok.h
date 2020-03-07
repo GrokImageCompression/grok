@@ -1730,11 +1730,11 @@ GRK_API bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
  Plugin management
  */
 
-typedef struct grok_plugin_load_info {
+typedef struct _grok_plugin_load_info {
 	const char *plugin_path;
-} grok_plugin_load_info_t;
+} grok_plugin_load_info;
 
-GRK_API bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info_t info);
+GRK_API bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info info);
 
 GRK_API void GRK_CALLCONV grok_plugin_cleanup(void);
 
@@ -1764,12 +1764,12 @@ GRK_API uint32_t GRK_CALLCONV grok_plugin_get_debug_state();
  Plugin encoding
  */
 
-typedef struct grok_plugin_init_info {
+typedef struct _grok_plugin_init_info {
 	int32_t deviceId;
 	bool verbose;
-} grok_plugin_init_info_t;
+} grok_plugin_init_info;
 
-GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info_t initInfo);
+GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info initInfo);
 
 typedef struct grok_plugin_encode_user_callback_info {
 	const char *input_file_name;
