@@ -433,12 +433,12 @@ static void t1_dec_sigpass_raw(t1_t *t1, int32_t bpno,
 { \
         int32_t one, half, oneplushalf; \
         uint32_t i, j, k; \
-        register int32_t *data = t1->data; \
-        register opj_flag_t *flagsp = &t1->flags[(flags_stride) + 1]; \
+         int32_t *data = t1->data; \
+         opj_flag_t *flagsp = &t1->flags[(flags_stride) + 1]; \
         const uint32_t l_w = w; \
         mqc_t* mqc = &(t1->mqc); \
         DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
-        register uint32_t v; \
+         uint32_t v; \
         one = 1 << bpno; \
         half = one >> 1; \
         oneplushalf = one | half; \
@@ -681,12 +681,12 @@ static void t1_dec_refpass_raw(t1_t *t1, int32_t bpno) {
 { \
         int32_t one, poshalf; \
         uint32_t i, j, k; \
-        register int32_t *data = t1->data; \
-        register opj_flag_t *flagsp = &t1->flags[flags_stride + 1]; \
+         int32_t *data = t1->data; \
+         opj_flag_t *flagsp = &t1->flags[flags_stride + 1]; \
         const uint32_t l_w = w; \
         mqc_t* mqc = &(t1->mqc); \
         DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
-        register uint32_t v; \
+         uint32_t v; \
         one = 1 << bpno; \
         poshalf = one >> 1; \
         for (k = 0; k < (h & ~3u); k += 4, data += 3*l_w, flagsp += 2) { \
@@ -917,10 +917,10 @@ static void t1_enc_clnpass(t1_t *t1, int32_t bpno, int32_t *nmsedec,
     uint32_t i, j, k; \
     const uint32_t l_w = w; \
     mqc_t* mqc = &(t1->mqc); \
-    register int32_t *data = t1->data; \
-    register opj_flag_t *flagsp = &t1->flags[flags_stride + 1]; \
+     int32_t *data = t1->data; \
+     opj_flag_t *flagsp = &t1->flags[flags_stride + 1]; \
     DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
-    register uint32_t v; \
+     uint32_t v; \
     one = 1 << bpno; \
     half = one >> 1; \
     oneplushalf = one | half; \
