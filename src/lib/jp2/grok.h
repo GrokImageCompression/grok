@@ -576,7 +576,7 @@ typedef struct _grk_header_info {
 	/** initial code block height, default to 64 */
 	uint32_t cblockh_init;
 	/** 1 : use the irreversible DWT 9-7, 0 : use lossless compression (default) */
-	uint32_t irreversible;
+	bool irreversible;
 	/** multi-component transform identifier */
 	uint32_t mct;
 	/** RSIZ value
