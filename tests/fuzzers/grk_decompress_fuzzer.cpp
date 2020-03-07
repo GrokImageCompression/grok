@@ -101,7 +101,6 @@ static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
 
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
-
     GRK_CODEC_FORMAT eCodecFormat;
     if (len >= sizeof(jpc_header) &&
             memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
@@ -113,16 +112,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
         return 0;
     }
 
-    grk_codec* pCodec = grk_create_decompress(eCodecFormat);
-    grk_set_info_handler(pCodec, InfoCallback, NULL);
-    grk_set_warning_handler(pCodec, WarningCallback, NULL);
-    grk_set_error_handler(ErrorCallback, NULL);
-
-    grk_dparameters parameters;
-    grk_set_default_decoder_parameters(&parameters);
-
-    grk_setup_decoder(pCodec, &parameters);
-
     grk_stream *pStream = grk_stream_create(1024, true);
     MemFile memFile;
     memFile.pabyData = buf;
@@ -133,8 +122,18 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     grk_stream_set_seek_function(pStream, SeekCallback);
     grk_stream_set_user_data(pStream, &memFile, NULL);
 
+
+    grk_codec* pCodec = grk_create_decompress(eCodecFormat, pStream);
+    grk_set_info_handler(pCodec, InfoCallback, NULL);
+    grk_set_warning_handler(pCodec, WarningCallback, NULL);
+    grk_set_error_handler(ErrorCallback, NULL);
+
+    grk_dparameters parameters;
+    grk_set_default_decoder_parameters(&parameters);
+
+    grk_setup_decoder(pCodec, &parameters);
     grk_image * psImage = NULL;
-    if (!grk_read_header(pStream, pCodec, &psImage, nullptr)) {
+    if (!grk_read_header(pCodec, &psImage, nullptr)) {
         grk_destroy_codec(pCodec);
         grk_stream_destroy(pStream);
         grk_image_destroy(psImage);
@@ -187,12 +186,12 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
                             psImage->x0, psImage->y0,
                             psImage->x0 + width_to_read,
                             psImage->y0 + height_to_read)) {
-        if (grk_decode(pCodec, nullptr, pStream, psImage)) {
+        if (grk_decode(pCodec, nullptr, psImage)) {
             //printf("success\n");
         }
     }
 
-    grk_end_decompress(pCodec, pStream);
+    grk_end_decompress(pCodec);
     grk_stream_destroy(pStream);
     grk_destroy_codec(pCodec);
     grk_image_destroy(psImage);
