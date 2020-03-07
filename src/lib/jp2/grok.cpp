@@ -115,9 +115,6 @@ struct grk_codec_private {
 					grk_image *p_image,
 					uint16_t tile_index);
 
-			/** Set the decoded resolution factor */
-			bool (*set_decoded_resolution_factor)(void *p_codec,
-					uint32_t res_factor);
 		} m_decompression;
 
 		/**
@@ -299,9 +296,6 @@ const char* GRK_CALLCONV grk_version(void) {
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
 				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
 
-		l_codec->m_codec_data.m_decompression.set_decoded_resolution_factor =
-				(bool (*)(void *p_codec, uint32_t res_factor)) j2k_set_decoded_resolution_factor;
-
 		l_codec->m_codec = j2k_create_decompress();
 
 		if (!l_codec->m_codec) {
@@ -338,10 +332,6 @@ const char* GRK_CALLCONV grk_version(void) {
 
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
 				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;
-
-		l_codec->m_codec_data.m_decompression.set_decoded_resolution_factor =
-				(bool (*)(void *p_codec, uint32_t res_factor)) jp2_set_decoded_resolution_factor;
-
 		l_codec->m_codec = jp2_create(true);
 		if (!l_codec->m_codec) {
 			grok_free(l_codec);
@@ -468,15 +458,6 @@ bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
 				tile_index);
 	}
 	return false;
-}
-bool GRK_CALLCONV grk_set_decoded_resolution_factor( grk_codec  *p_codec,
-		uint32_t res_factor) {
-	grk_codec_private *l_codec = (grk_codec_private*) p_codec;
-	if (!l_codec) {
-		return false;
-	}
-	return l_codec->m_codec_data.m_decompression.set_decoded_resolution_factor(
-			l_codec->m_codec, res_factor);
 }
 
 /* ---------------------------------------------------------------------- */

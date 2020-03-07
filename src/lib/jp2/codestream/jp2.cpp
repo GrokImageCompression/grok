@@ -3333,8 +3333,4 @@ void jp2_dump(grk_jp2 *p_jp2, int32_t flag, FILE *out_stream) {
 	return j2k_get_cstr_info(p_jp2->j2k);
 }
 
-bool jp2_set_decoded_resolution_factor(grk_jp2 *p_jp2, uint32_t res_factor) {
-	return j2k_set_decoded_resolution_factor(p_jp2->j2k, res_factor);
-}
-
 }

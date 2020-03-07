@@ -398,11 +398,6 @@ bool jp2_set_decode_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
 bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image, uint16_t tile_index);
 
 /**
- *
- */
-bool jp2_set_decoded_resolution_factor(grk_jp2 *p_jp2, uint32_t res_factor);
-
-/**
  * Dump some elements from the JP2 decompression structure .
  *
  *@param p_jp2        the jp2 codec.

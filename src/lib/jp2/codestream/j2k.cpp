@@ -1728,24 +1728,6 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	return true;
 }
 
-bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor) {
-	auto image = p_j2k->m_private_image;
-	auto tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
-
-	if (!image || !image->comps ||  !tcp ||	!tcp->tccps )
-		return false;
-	p_j2k->m_cp.m_coding_param.m_dec.m_reduce = res_factor;
-	for (uint32_t comp = 0;	comp < image->numcomps; comp++) {
-		if (res_factor >=	tcp->tccps[comp].numresolutions) {
-			GROK_ERROR(
-					"Resolution factor is greater than the "
-					"maximum resolution in the component.");
-			return false;
-		}
-	}
-	return true;
-}
-
 static void j2k_tcp_destroy(grk_tcp *p_tcp) {
 	if (p_tcp == nullptr) {
 		return;

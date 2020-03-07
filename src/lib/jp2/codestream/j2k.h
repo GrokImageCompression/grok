@@ -704,7 +704,6 @@ bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *p_stream,
 
 bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, uint16_t tile_index);
 
-bool j2k_set_decoded_resolution_factor(grk_j2k *p_j2k, uint32_t res_factor);
 
 /**
  * Writes a tile.

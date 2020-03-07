@@ -1438,14 +1438,6 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 		}
 	}
 
-	/* Uncomment to set number of resolutions to be decoded */
-	/*
-	if (!grk_set_decoded_resolution_factor(info->l_codec, 0)) {
-		spdlog::error( "grk_decompress: failed to set the resolution factor tile!");
-		return -1;
-	}
-	*/
-
 	if (!grk_set_decode_area(info->l_codec, info->image, parameters->DA_x0,
 		parameters->DA_y0,
 		parameters->DA_x1,

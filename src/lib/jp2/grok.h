@@ -1509,16 +1509,6 @@ GRK_API bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
 		 grk_image *p_image, uint16_t tile_index);
 
 /**
- * Set the resolution factor of the decoded image
- * @param	p_codec			the jpeg2000 codec.
- * @param	res_factor		resolution factor to set
- *
- * @return					true if success, otherwise false
- */
-GRK_API bool GRK_CALLCONV grk_set_decoded_resolution_factor(
-		 grk_codec  *p_codec, uint32_t res_factor);
-
-/**
  * Writes a tile with the given data.
  *
  * @param	p_codec		    the jpeg2000 codec.
