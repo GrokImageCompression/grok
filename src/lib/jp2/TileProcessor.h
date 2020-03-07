@@ -342,9 +342,9 @@ struct TileProcessor {
 			  image(nullptr),
 			  current_plugin_tile(nullptr),
 			  whole_tile_decoding(true),
-			  cp(nullptr),
-			  tcp(nullptr),
-			  tcd_tileno(0),
+			  m_cp(nullptr),
+			  m_tcp(nullptr),
+			  m_tileno(0),
 			  m_is_decoder(isDecoder)
 	{}
 
@@ -452,11 +452,11 @@ struct TileProcessor {
 
 private:
 	/** coding parameters */
-	grk_coding_parameters *cp;
+	grk_coding_parameters *m_cp;
 	/** coding/decoding parameters common to all tiles */
-	grk_tcp *tcp;
+	grk_tcp *m_tcp;
 	/** current encoded tile (not used for decode) */
-	uint16_t tcd_tileno;
+	uint16_t m_tileno;
 	/** indicate if the tcd is a decoder. */
 	bool m_is_decoder;
 
