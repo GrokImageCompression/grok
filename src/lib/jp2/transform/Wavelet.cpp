@@ -29,9 +29,9 @@ bool Wavelet::decode(TileProcessor *p_tcd,  TileComponent* tilec,
                              uint32_t numres, uint8_t qmfbid){
 
 	if (qmfbid == 1) {
-		return dwt_decode(p_tcd,tilec,numres);
+		return decode_53(p_tcd,tilec,numres);
 	} else if (qmfbid == 0) {
-		return dwt_decode_real(p_tcd,tilec,numres);
+		return decode_97(p_tcd,tilec,numres);
 	}
 	return false;
 }
