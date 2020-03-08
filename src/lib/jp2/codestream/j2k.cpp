@@ -1067,7 +1067,6 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 			uint32_t compno = 0;
 			for (compno = 0; compno < p_j2k->m_output_image->numcomps;
 					compno++) {
-				uint32_t l_size_comp = 0;
 				auto tilec = p_j2k->m_tileProcessor->tile->comps + compno;
 				auto comp = p_j2k->m_output_image->comps + compno;
 
@@ -1079,28 +1078,6 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 
 				comp->resno_decoded =
 						p_j2k->m_tileProcessor->image->comps[compno].resno_decoded;
-
-				/* now sanitize data */
-				//cast and mask in unsigned case, to avoid sign extension
-				l_size_comp = (comp->prec + 7) >> 3;
-				if (l_size_comp <= 2) {
-					for (uint32_t j = 0; j < comp->h; ++j) {
-						for (uint32_t i = 0; i < comp->w; ++i) {
-							if (l_size_comp == 1)
-								comp->data[i + j * comp->w] =
-										comp->sgnd ?
-												comp->data[i + j * comp->w] :
-												(char) comp->data[i
-														+ j * comp->w] & 0xFF;
-							else
-								comp->data[i + j * comp->w] =
-										comp->sgnd ?
-												comp->data[i + j * comp->w] :
-												(int16_t) comp->data[i
-														+ j * comp->w] & 0xFFFF;
-						}
-					}
-				}
 			}
 		}
 		/* we only destroy the data, which will be re-read in read_tile_header*/
