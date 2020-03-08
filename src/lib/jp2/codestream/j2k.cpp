@@ -1018,7 +1018,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 	}
 	*tile_index = p_j2k->m_current_tile_number;
 	*p_go_on = true;
-	*data_size = p_j2k->m_tileProcessor->get_decoded_tile_size();
+	*data_size = p_j2k->m_tileProcessor->get_tile_size(true);
 	*p_tile_x0 = p_j2k->m_tileProcessor->tile->x0;
 	*p_tile_y0 = p_j2k->m_tileProcessor->tile->y0;
 	*p_tile_x1 = p_j2k->m_tileProcessor->tile->x1;
@@ -1273,112 +1273,112 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 }
 
 grk_j2k* j2k_create_decompress(void) {
-	grk_j2k *l_j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
-	if (!l_j2k) {
+	grk_j2k *j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
+	if (!j2k) {
 		return nullptr;
 	}
 
-	l_j2k->m_is_decoder = 1;
-	l_j2k->m_cp.m_is_decoder = 1;
+	j2k->m_is_decoder = 1;
+	j2k->m_cp.m_is_decoder = 1;
 
 #ifdef GRK_DISABLE_TPSOT_FIX
-    l_j2k->m_coding_param.m_decoder.m_nb_tile_parts_correction_checked = 1;
+    j2k->m_coding_param.m_decoder.m_nb_tile_parts_correction_checked = 1;
 #endif
 
-	l_j2k->m_specific_param.m_decoder.m_default_tcp = new grk_tcp();
-	if (!l_j2k->m_specific_param.m_decoder.m_default_tcp) {
-		j2k_destroy(l_j2k);
+	j2k->m_specific_param.m_decoder.m_default_tcp = new grk_tcp();
+	if (!j2k->m_specific_param.m_decoder.m_default_tcp) {
+		j2k_destroy(j2k);
 		return nullptr;
 	}
 
-	l_j2k->m_specific_param.m_decoder.m_header_data = (uint8_t*) grok_calloc(1,
+	j2k->m_specific_param.m_decoder.m_header_data = (uint8_t*) grok_calloc(1,
 			default_header_size);
-	if (!l_j2k->m_specific_param.m_decoder.m_header_data) {
-		j2k_destroy(l_j2k);
+	if (!j2k->m_specific_param.m_decoder.m_header_data) {
+		j2k_destroy(j2k);
 		return nullptr;
 	}
 
-	l_j2k->m_specific_param.m_decoder.m_header_data_size = default_header_size;
+	j2k->m_specific_param.m_decoder.m_header_data_size = default_header_size;
 
-	l_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = -1;
+	j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = -1;
 
-	l_j2k->m_specific_param.m_decoder.m_last_sot_read_pos = 0;
+	j2k->m_specific_param.m_decoder.m_last_sot_read_pos = 0;
 
 	/* codestream index creation */
-	l_j2k->cstr_index = j2k_create_cstr_index();
-	if (!l_j2k->cstr_index) {
-		j2k_destroy(l_j2k);
+	j2k->cstr_index = j2k_create_cstr_index();
+	if (!j2k->cstr_index) {
+		j2k_destroy(j2k);
 		return nullptr;
 	}
 
 	/* validation list creation */
-	l_j2k->m_validation_list = new std::vector<j2k_procedure>();
+	j2k->m_validation_list = new std::vector<j2k_procedure>();
 
 	/* execution list creation */
-	l_j2k->m_procedure_list = new std::vector<j2k_procedure>();
+	j2k->m_procedure_list = new std::vector<j2k_procedure>();
 
-	return l_j2k;
+	return j2k;
 }
 
 
 static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
-	bool l_go_on = true;
-	uint16_t l_current_tile_no = 0;
-	uint64_t l_data_size = 0, l_max_data_size = 0;
-	uint32_t l_nb_comps = 0;
-	uint8_t *l_current_data = nullptr;
+	bool go_on = true;
+	uint16_t current_tile_no = 0;
+	uint64_t data_size = 0, max_data_size = 0;
+	uint32_t nb_comps = 0;
+	uint8_t *current_data = nullptr;
 	uint32_t nr_tiles = 0;
 	uint32_t num_tiles_to_decode = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 	bool clearOutputOnInit = false;
 	// if number of tiles is greater than 1, then we need to copy tile data
 	if (num_tiles_to_decode > 1) {
-		l_current_data = (uint8_t*) grok_malloc(1);
-		if (!l_current_data) {
+		current_data = (uint8_t*) grok_malloc(1);
+		if (!current_data) {
 			GROK_ERROR(
 					"Not enough memory to decode tiles");
 			return false;
 		}
-		l_max_data_size = 1;
+		max_data_size = 1;
 		clearOutputOnInit = num_tiles_to_decode > 1;
 	}
 	uint32_t num_tiles_decoded = 0;
 
 	for (nr_tiles = 0; nr_tiles < num_tiles_to_decode; nr_tiles++) {
-		uint32_t l_tile_x0, l_tile_y0, l_tile_x1, l_tile_y1;
-		l_tile_x0 = l_tile_y0 = l_tile_x1 = l_tile_y1 = 0;
-		if (!j2k_read_tile_header(p_j2k, &l_current_tile_no, &l_data_size,
-				&l_tile_x0, &l_tile_y0, &l_tile_x1, &l_tile_y1, &l_nb_comps,
-				&l_go_on, p_stream)) {
-			if (l_current_data)
-				grok_free(l_current_data);
+		uint32_t tile_x0, tile_y0, tile_x1, tile_y1;
+		tile_x0 = tile_y0 = tile_x1 = tile_y1 = 0;
+		if (!j2k_read_tile_header(p_j2k, &current_tile_no, &data_size,
+				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps,
+				&go_on, p_stream)) {
+			if (current_data)
+				grok_free(current_data);
 			return false;
 		}
 
-		if (!l_go_on) {
+		if (!go_on) {
 			break;
 		}
 
-		if (l_current_data && (l_data_size > l_max_data_size)) {
-			uint8_t *l_new_current_data = (uint8_t*) grok_realloc(
-					l_current_data, l_data_size);
-			if (!l_new_current_data) {
-				grok_free(l_current_data);
+		if (current_data && (data_size > max_data_size)) {
+			uint8_t *new_current_data = (uint8_t*) grok_realloc(
+					current_data, data_size);
+			if (!new_current_data) {
+				grok_free(current_data);
 				GROK_ERROR(
 						"Not enough memory to decode tile %d/%d\n",
-						l_current_tile_no + 1, num_tiles_to_decode);
+						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
-			l_current_data = l_new_current_data;
-			l_max_data_size = l_data_size;
+			current_data = new_current_data;
+			max_data_size = data_size;
 		}
 
 		try {
-			if (!j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data,
-					l_data_size, p_stream)) {
-				if (l_current_data)
-					grok_free(l_current_data);
+			if (!j2k_decode_tile(p_j2k, current_tile_no, current_data,
+					data_size, p_stream)) {
+				if (current_data)
+					grok_free(current_data);
 				GROK_ERROR( "Failed to decode tile %d/%d\n",
-						l_current_tile_no + 1, num_tiles_to_decode);
+						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
@@ -1386,23 +1386,23 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
 			if (nr_tiles < num_tiles_to_decode - 1) {
 				GROK_ERROR(
 						"Stream too short, expected SOT");
-				if (l_current_data)
-					grok_free(l_current_data);
+				if (current_data)
+					grok_free(current_data);
 				GROK_ERROR( "Failed to decode tile %d/%d\n",
-						l_current_tile_no + 1, num_tiles_to_decode);
+						current_tile_no + 1, num_tiles_to_decode);
 				return false;
 			}
 		}
-		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no +1, num_tiles_to_decode);
+		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", current_tile_no +1, num_tiles_to_decode);
 
 		/* copy from current data to output image, if necessary */
-		if (l_current_data) {
+		if (current_data) {
 			if (!p_j2k->m_tileProcessor->copy_decoded_tile_to_output_image(
-					l_current_data, p_j2k->m_output_image, clearOutputOnInit)) {
-				grok_free(l_current_data);
+					current_data, p_j2k->m_output_image, clearOutputOnInit)) {
+				grok_free(current_data);
 				return false;
 			}
-			// event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no + 1);
+			// event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", current_tile_no + 1);
 		}
 
 		num_tiles_decoded++;
@@ -1413,8 +1413,8 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
 			break;
 	}
 
-	if (l_current_data) {
-		grok_free(l_current_data);
+	if (current_data) {
+		grok_free(current_data);
 	}
 
 	if (num_tiles_decoded == 0) {
@@ -1433,27 +1433,27 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
  * Read and decode one tile.
  */
 static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
-	bool l_go_on = true;
-	uint16_t l_current_tile_no;
-	uint32_t l_tile_no_to_dec;
-	uint64_t l_data_size = 0, l_max_data_size = 0;
-	uint32_t l_tile_x0, l_tile_y0, l_tile_x1, l_tile_y1;
-	uint32_t l_nb_comps;
-	uint8_t *l_current_data = nullptr;
+	bool go_on = true;
+	uint16_t current_tile_no;
+	uint32_t tile_no_to_dec;
+	uint64_t data_size = 0, max_data_size = 0;
+	uint32_t tile_x0, tile_y0, tile_x1, tile_y1;
+	uint32_t nb_comps;
+	uint8_t *current_data = nullptr;
 
 	/*Allocate and initialize some elements of codestream index if not already done*/
 	if (!p_j2k->cstr_index->tile_index) {
 		if (!j2k_allocate_tile_element_cstr_index(p_j2k)) {
-			if (l_current_data)
-				grok_free(l_current_data);
+			if (current_data)
+				grok_free(current_data);
 			return false;
 		}
 	}
 	/* Move into the codestream to the first SOT used to decode the desired tile */
-	l_tile_no_to_dec = p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec;
+	tile_no_to_dec = p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec;
 	if (p_j2k->cstr_index->tile_index)
 		if (p_j2k->cstr_index->tile_index->tp_index) {
-			if (!p_j2k->cstr_index->tile_index[l_tile_no_to_dec].nb_tps) {
+			if (!p_j2k->cstr_index->tile_index[tile_no_to_dec].nb_tps) {
 				/* the index for this tile has not been built,
 				 *  so move to the last SOT read */
 				if (!(p_stream->seek(
@@ -1461,18 +1461,18 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 								+ 2))) {
 					GROK_ERROR(
 							"Problem with seek function");
-					if (l_current_data)
-						grok_free(l_current_data);
+					if (current_data)
+						grok_free(current_data);
 					return false;
 				}
 			} else {
 				if (!(p_stream->seek(
-						p_j2k->cstr_index->tile_index[l_tile_no_to_dec].tp_index[0].start_pos
+						p_j2k->cstr_index->tile_index[tile_no_to_dec].tp_index[0].start_pos
 								+ 2))) {
 					GROK_ERROR(
 							"Problem with seek function");
-					if (l_current_data)
-						grok_free(l_current_data);
+					if (current_data)
+						grok_free(current_data);
 					return false;
 				}
 			}
@@ -1483,71 +1483,71 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 		}
 
 	for (;;) {
-		if (!j2k_read_tile_header(p_j2k, &l_current_tile_no, &l_data_size,
-				&l_tile_x0, &l_tile_y0, &l_tile_x1, &l_tile_y1, &l_nb_comps,
-				&l_go_on, p_stream)) {
-			if (l_current_data)
-				grok_free(l_current_data);
+		if (!j2k_read_tile_header(p_j2k, &current_tile_no, &data_size,
+				&tile_x0, &tile_y0, &tile_x1, &tile_y1, &nb_comps,
+				&go_on, p_stream)) {
+			if (current_data)
+				grok_free(current_data);
 			return false;
 		}
 
-		if (!l_go_on) {
+		if (!go_on) {
 			break;
 		}
 
-		if (l_current_data && l_data_size > l_max_data_size) {
-			uint8_t *l_new_current_data = (uint8_t*) grok_realloc(
-					l_current_data, l_data_size);
-			if (!l_new_current_data) {
-				grok_free(l_current_data);
-				l_current_data = nullptr;
+		if (current_data && data_size > max_data_size) {
+			uint8_t *new_current_data = (uint8_t*) grok_realloc(
+					current_data, data_size);
+			if (!new_current_data) {
+				grok_free(current_data);
+				current_data = nullptr;
 				GROK_ERROR(
 						"Not enough memory to decode tile %d/%d\n",
-						l_current_tile_no + 1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+						current_tile_no + 1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 				return false;
 			}
-			l_current_data = l_new_current_data;
-			l_max_data_size = l_data_size;
+			current_data = new_current_data;
+			max_data_size = data_size;
 		}
 
 		try {
-			if (!j2k_decode_tile(p_j2k, l_current_tile_no, l_current_data,
-					l_data_size, p_stream)) {
-				if (l_current_data)
-					grok_free(l_current_data);
+			if (!j2k_decode_tile(p_j2k, current_tile_no, current_data,
+					data_size, p_stream)) {
+				if (current_data)
+					grok_free(current_data);
 				return false;
 			}
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// suppress exception
 		}
-		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", l_current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.\n", current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
 
-		if (l_current_data) {
+		if (current_data) {
 			if (!p_j2k->m_tileProcessor->copy_decoded_tile_to_output_image(
-					l_current_data, p_j2k->m_output_image, false)) {
-				grok_free(l_current_data);
+					current_data, p_j2k->m_output_image, false)) {
+				grok_free(current_data);
 				return false;
 			}
 		}
-		//event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", l_current_tile_no+1);
-		if (l_current_tile_no == l_tile_no_to_dec) {
+		//event_msg( EVT_INFO, "Image data has been updated with tile %d.\n\n", current_tile_no+1);
+		if (current_tile_no == tile_no_to_dec) {
 			/* move into the codestream to the first SOT (FIXME or not move?)*/
 			if (!(p_stream->seek(p_j2k->cstr_index->main_head_end + 2))) {
 				GROK_ERROR( "Problem with seek function");
-				if (l_current_data)
-					grok_free(l_current_data);
+				if (current_data)
+					grok_free(current_data);
 				return false;
 			}
 			break;
 		} else {
 			GROK_WARN(
 					"Tile read, decoded and updated is not the desired one (%d vs %d).\n",
-					l_current_tile_no + 1, l_tile_no_to_dec + 1);
+					current_tile_no + 1, tile_no_to_dec + 1);
 		}
 
 	}
-	if (l_current_data)
-		grok_free(l_current_data);
+	if (current_data)
+		grok_free(current_data);
 	return true;
 }
 
@@ -1594,9 +1594,9 @@ bool j2k_decode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *p_stream,
 
 bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, uint16_t tile_index) {
 	uint32_t compno;
-	uint32_t l_tile_x, l_tile_y;
-	 grk_image_comp  *l_img_comp;
-	grk_rect original_image_rect, tile_rect, overlap_rect;
+	uint32_t tile_x, tile_y;
+	 grk_image_comp  *img_comp;
+	grk_rect originaimage_rect, tile_rect, overlap_rect;
 
 	if (!p_image) {
 		GROK_ERROR(
@@ -1612,23 +1612,23 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	}
 
 	/* Compute the dimension of the desired tile*/
-	l_tile_x = tile_index % p_j2k->m_cp.tw;
-	l_tile_y = tile_index / p_j2k->m_cp.tw;
+	tile_x = tile_index % p_j2k->m_cp.tw;
+	tile_y = tile_index / p_j2k->m_cp.tw;
 
-	original_image_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
+	originaimage_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
 			p_image->y1);
 
-	p_image->x0 = l_tile_x * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
+	p_image->x0 = tile_x * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
 	if (p_image->x0 < p_j2k->m_private_image->x0)
 		p_image->x0 = p_j2k->m_private_image->x0;
-	p_image->x1 = (l_tile_x + 1) * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
+	p_image->x1 = (tile_x + 1) * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
 	if (p_image->x1 > p_j2k->m_private_image->x1)
 		p_image->x1 = p_j2k->m_private_image->x1;
 
-	p_image->y0 = l_tile_y * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
+	p_image->y0 = tile_y * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
 	if (p_image->y0 < p_j2k->m_private_image->y0)
 		p_image->y0 = p_j2k->m_private_image->y0;
-	p_image->y1 = (l_tile_y + 1) * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
+	p_image->y1 = (tile_y + 1) * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
 	if (p_image->y1 > p_j2k->m_private_image->y1)
 		p_image->y1 = p_j2k->m_private_image->y1;
 
@@ -1637,8 +1637,8 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	tile_rect.x1 = p_image->x1;
 	tile_rect.y1 = p_image->y1;
 
-	if (original_image_rect.is_non_degenerate() && tile_rect.is_non_degenerate()
-			&& original_image_rect.clip(tile_rect, &overlap_rect)
+	if (originaimage_rect.is_non_degenerate() && tile_rect.is_non_degenerate()
+			&& originaimage_rect.clip(tile_rect, &overlap_rect)
 			&& overlap_rect.is_non_degenerate()) {
 		p_image->x0 = (uint32_t) overlap_rect.x0;
 		p_image->y0 = (uint32_t) overlap_rect.y0;
@@ -1647,26 +1647,26 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	} else {
 		GROK_WARN(
 				"Decode region <%d,%d,%d,%d> does not overlap requested tile %d. Ignoring.\n",
-				original_image_rect.x0, original_image_rect.y0,
-				original_image_rect.x1, original_image_rect.y1, tile_index);
+				originaimage_rect.x0, originaimage_rect.y0,
+				originaimage_rect.x1, originaimage_rect.y1, tile_index);
 	}
 
-	l_img_comp = p_image->comps;
+	img_comp = p_image->comps;
 	auto reduce = p_j2k->m_cp.m_coding_param.m_dec.m_reduce;
 	for (compno = 0; compno < p_image->numcomps; ++compno) {
-		uint32_t l_comp_x1, l_comp_y1;
+		uint32_t comp_x1, comp_y1;
 
-		l_img_comp->x0 = ceildiv<uint32_t>(p_image->x0, l_img_comp->dx);
-		l_img_comp->y0 = ceildiv<uint32_t>(p_image->y0, l_img_comp->dy);
-		l_comp_x1 = ceildiv<uint32_t>(p_image->x1, l_img_comp->dx);
-		l_comp_y1 = ceildiv<uint32_t>(p_image->y1, l_img_comp->dy);
+		img_comp->x0 = ceildiv<uint32_t>(p_image->x0, img_comp->dx);
+		img_comp->y0 = ceildiv<uint32_t>(p_image->y0, img_comp->dy);
+		comp_x1 = ceildiv<uint32_t>(p_image->x1, img_comp->dx);
+		comp_y1 = ceildiv<uint32_t>(p_image->y1, img_comp->dy);
 
-		l_img_comp->w = (uint_ceildivpow2(l_comp_x1,reduce)
-				- uint_ceildivpow2(l_img_comp->x0,	reduce));
-		l_img_comp->h = (uint_ceildivpow2(l_comp_y1,reduce)
-				- uint_ceildivpow2(l_img_comp->y0,	reduce));
+		img_comp->w = (uint_ceildivpow2(comp_x1,reduce)
+				- uint_ceildivpow2(img_comp->x0,	reduce));
+		img_comp->h = (uint_ceildivpow2(comp_y1,reduce)
+				- uint_ceildivpow2(img_comp->y0,	reduce));
 
-		l_img_comp++;
+		img_comp++;
 	}
 
 	/* Destroy the previous output image*/
@@ -1683,8 +1683,8 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, 
 	p_j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = (int32_t) tile_index;
 
 	// reset tile part numbers, in case we are re-using the same codec object from previous decode
-	uint32_t l_nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
-	for (uint32_t i = 0; i < l_nb_tiles; ++i) {
+	uint32_t nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	for (uint32_t i = 0; i < nb_tiles; ++i) {
 		p_j2k->m_cp.tcps[i].m_current_tile_part_number = -1;
 	}
 
@@ -1781,21 +1781,21 @@ static void j2k_tcp_destroy(grk_tcp *p_tcp) {
  ***********************************************/
 
 grk_j2k* j2k_create_compress(void) {
-	grk_j2k *l_j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
-	if (!l_j2k) {
+	grk_j2k *j2k = (grk_j2k*) grok_calloc(1, sizeof(grk_j2k));
+	if (!j2k) {
 		return nullptr;
 	}
 
-	l_j2k->m_is_decoder = 0;
-	l_j2k->m_cp.m_is_decoder = 0;
+	j2k->m_is_decoder = 0;
+	j2k->m_cp.m_is_decoder = 0;
 
 	/* validation list creation*/
-	l_j2k->m_validation_list = new std::vector<j2k_procedure>();
+	j2k->m_validation_list = new std::vector<j2k_procedure>();
 
 	/* execution list creation*/
-	l_j2k->m_procedure_list = new std::vector<j2k_procedure>();
+	j2k->m_procedure_list = new std::vector<j2k_procedure>();
 
-	return l_j2k;
+	return j2k;
 }
 
 bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
@@ -2336,102 +2336,55 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *p_stream) {
 	uint16_t i;
 	uint32_t j;
-	uint32_t l_nb_tiles;
-	uint64_t l_max_tile_size = 0;
-	uint64_t l_current_tile_size;
-	uint8_t *l_current_data = nullptr;
-	bool l_reuse_data = false;
+	bool transfer_image_to_tile = false;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
 
-
 	auto p_tcd = p_j2k->m_tileProcessor;
 	p_tcd->current_plugin_tile = tile;
 
-	l_nb_tiles = (uint32_t)p_j2k->m_cp.th * p_j2k->m_cp.tw;
-	if (l_nb_tiles > max_num_tiles){
+	uint32_t nb_tiles = (uint32_t)p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	if (nb_tiles > max_num_tiles){
 		GROK_ERROR("Number of tiles %d is greater the %d max tiles "
-				"allowed by the standard.", l_nb_tiles,max_num_tiles );
+				"allowed by the standard.", nb_tiles,max_num_tiles );
 		return false;
 	}
-	if (l_nb_tiles == 1) {
-		l_reuse_data = true;
+	if (nb_tiles == 1) {
+		transfer_image_to_tile = true;
 #ifdef __SSE__
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			 grk_image_comp  *l_img_comp = p_tcd->image->comps + j;
-			if (((size_t) l_img_comp->data & 0xFU) != 0U) { /* tile data shall be aligned on 16 bytes */
-				l_reuse_data = false;
-			}
+			 grk_image_comp  *img_comp = p_tcd->image->comps + j;
+			 /* tile data shall be aligned on 16 bytes */
+			if (((size_t) img_comp->data & 0xFU) != 0U)
+				transfer_image_to_tile = false;
 		}
 #endif
 	}
-	for (i = 0; i < l_nb_tiles; ++i) {
+	for (i = 0; i < nb_tiles; ++i) {
 		if (!j2k_pre_write_tile(p_j2k, i)) {
-			if (l_current_data)
-				grok_free(l_current_data);
 			return false;
 		}
 
-		/* if we only have one tile, then simply set tile component data equal to image component data */
-		/* otherwise, allocate the data */
+		/* if we only have one tile, then simply set tile component data equal to
+		 * image component data. Otherwise, allocate tile data and copy */
 		for (j = 0; j < p_j2k->m_tileProcessor->image->numcomps; ++j) {
-			TileComponent *l_tilec = p_tcd->tile->comps + j;
-			if (l_reuse_data) {
-				l_tilec->buf->data = (p_tcd->image->comps + j)->data;
-				l_tilec->buf->owns_data = false;
+			auto tilec = p_tcd->tile->comps + j;
+			if (transfer_image_to_tile) {
+				tilec->buf->data = (p_tcd->image->comps + j)->data;
+				tilec->buf->owns_data = false;
 			} else {
-				if (!l_tilec->buf->alloc_component_data_encode()) {
+				if (!tilec->buf->alloc_component_data_encode()) {
 					GROK_ERROR(
 							"Error allocating tile component data.");
-					if (l_current_data) {
-						grok_free(l_current_data);
-					}
 					return false;
 				}
 			}
 		}
-		l_current_tile_size = p_tcd->get_encoded_tile_size();
-		if (!l_reuse_data) {
-			if (l_current_tile_size > l_max_tile_size) {
-				uint8_t *l_new_current_data = (uint8_t*) grok_realloc(
-						l_current_data, l_current_tile_size);
-				if (!l_new_current_data) {
-					if (l_current_data) {
-						grok_free(l_current_data);
-					}
-					GROK_ERROR(
-							"Not enough memory to encode all tiles");
-					return false;
-				}
-				l_current_data = l_new_current_data;
-				l_max_tile_size = l_current_tile_size;
-			}
-
-			/* copy image data (32 bit) to l_current_data as contiguous, all-component, zero offset buffer */
-			/* 32 bit components @ 8 bit precision get converted to 8 bit */
-			/* 32 bit components @ 16 bit precision get converted to 16 bit */
-			p_j2k->m_tileProcessor->get_tile_data(l_current_data);
-
-			/* now copy this data into the tile component */
-			if (!p_j2k->m_tileProcessor->copy_tile_data( l_current_data,
-					l_current_tile_size)) {
-				GROK_ERROR(
-						"Size mismatch between tile data and sent data.");
-				grok_free(l_current_data);
-				return false;
-			}
-		}
-
-		if (!j2k_post_write_tile(p_j2k, p_stream)) {
-			if (l_current_data) {
-				grok_free(l_current_data);
-			}
+		if (!transfer_image_to_tile)
+			p_j2k->m_tileProcessor->copy_image_to_tile();
+		if (!j2k_post_write_tile(p_j2k, p_stream))
 			return false;
-		}
-	}
-	if (l_current_data) {
-		grok_free(l_current_data);
 	}
 	return true;
 }
@@ -2517,41 +2470,37 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 }
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
-	uint64_t l_nb_bytes_written;
-	uint64_t l_tile_size = 0;
-	uint64_t l_available_data;
+	auto cp = &(p_j2k->m_cp);
+	auto image = p_j2k->m_private_image;
+	auto img_comp = image->comps;
+	uint64_t tile_size = 0;
 
-	auto l_cp = &(p_j2k->m_cp);
-	auto l_image = p_j2k->m_private_image;
-	auto l_img_comp = l_image->comps;
-	l_tile_size = 0;
-
-	for (uint32_t i = 0; i < l_image->numcomps; ++i) {
-		l_tile_size += (uint64_t) ceildiv<uint32_t>(l_cp->tdx, l_img_comp->dx)
-				* ceildiv<uint32_t>(l_cp->tdy, l_img_comp->dy)
-				* l_img_comp->prec;
-		++l_img_comp;
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		tile_size += (uint64_t) ceildiv<uint32_t>(cp->tdx, img_comp->dx)
+				* ceildiv<uint32_t>(cp->tdy, img_comp->dy)
+				* img_comp->prec;
+		++img_comp;
 	}
 
-	l_tile_size = (uint64_t) ((double) (l_tile_size) * 0.1625); /* 1.3/8 = 0.1625 */
-	l_tile_size += j2k_get_specific_header_sizes(p_j2k);
+	tile_size = (uint64_t) ((double) (tile_size) * 0.1625); /* 1.3/8 = 0.1625 */
+	tile_size += j2k_get_specific_header_sizes(p_j2k);
 
 	// ToDo: use better estimate of signaling overhead for packets,
 	// to avoid hard-coding this lower bound on tile buffer size
 
 	// allocate at least 256 bytes per component
-	if (l_tile_size < 256 * l_image->numcomps)
-		l_tile_size = 256 * l_image->numcomps;
+	if (tile_size < 256 * image->numcomps)
+		tile_size = 256 * image->numcomps;
 
-	l_available_data = l_tile_size;
-	l_nb_bytes_written = 0;
-	if (!j2k_write_first_tile_part(p_j2k, &l_nb_bytes_written, l_available_data,
+	uint64_t available_data = tile_size;
+	uint64_t nb_bytes_written=0;
+	if (!j2k_write_first_tile_part(p_j2k, &nb_bytes_written, available_data,
 			p_stream)) {
 		return false;
 	}
-	l_available_data -= l_nb_bytes_written;
-	l_nb_bytes_written = 0;
-	if (!j2k_write_all_tile_parts(p_j2k, &l_nb_bytes_written, l_available_data,
+	available_data -= nb_bytes_written;
+	nb_bytes_written = 0;
+	if (!j2k_write_all_tile_parts(p_j2k, &nb_bytes_written, available_data,
 			p_stream)) {
 		return false;
 	}
@@ -3134,7 +3083,7 @@ bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		}
 
 		/* now copy data into the tile component */
-		if (!p_j2k->m_tileProcessor->copy_tile_data(p_data, data_size)) {
+		if (!p_j2k->m_tileProcessor->copy_image_data_to_tile(p_data, data_size)) {
 			GROK_ERROR(
 					"Size mismatch between tile data and sent data.");
 			return false;

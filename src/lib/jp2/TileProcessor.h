@@ -373,11 +373,6 @@ struct TileProcessor {
 			uint16_t tile_no);
 
 	/**
-	 * Gets the maximum tile size that will be taken by the tile once decoded.
-	 */
-	uint64_t get_decoded_tile_size();
-
-	/**
 	 * Encodes a tile from the raw image into the given buffer.
 	 * @param	tile_no		Index of the tile to encode.
 	 * @param	p_dest			Destination buffer
@@ -406,7 +401,7 @@ struct TileProcessor {
 			uint64_t dest_length);
 
 
-	uint64_t get_encoded_tile_size();
+	uint64_t get_tile_size(bool reduced);
 
 	/**
 	 * Initialize the tile coder and may reuse some meory.
@@ -420,7 +415,7 @@ struct TileProcessor {
 	/**
 	 * Copies tile data from the given memory block onto the system.
 	 */
-	bool copy_tile_data(uint8_t *p_src, uint64_t src_length);
+	bool copy_image_data_to_tile(uint8_t *p_src, uint64_t src_length);
 
 
 	bool needs_rate_control();
@@ -428,7 +423,7 @@ struct TileProcessor {
 	bool copy_decoded_tile_to_output_image(uint8_t *p_data,
 			grk_image *p_output_image, bool clearOutputOnInit);
 
-	void get_tile_data(uint8_t *p_data);
+	void copy_image_to_tile();
 
 
 	/** Position of the tile part flag in progression order*/

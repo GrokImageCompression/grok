@@ -1135,35 +1135,6 @@ bool TileProcessor::init_decode_tile(grk_image *output_image,
 
 }
 
-/*
- Get size of tile data, summed over all components, reflecting actual precision of data.
- grk_image always stores data in 32 bit format.
- */
-uint64_t TileProcessor::get_decoded_tile_size() {
-	uint32_t i;
-	uint64_t l_data_size = 0;
-	uint32_t l_size_comp;
-
-	auto l_tile_comp = tile->comps;
-	auto l_img_comp = image->comps;
-
-	for (i = 0; i < image->numcomps; ++i) {
-		l_size_comp = (l_img_comp->prec + 7) >> 3;
-
-		if (l_size_comp == 3) {
-			l_size_comp = 4;
-		}
-
-		auto area = l_tile_comp->buf->reduced_image_dim.area();
-		l_data_size += l_size_comp * area;
-
-		++l_img_comp;
-		++l_tile_comp;
-	}
-
-	return l_data_size;
-}
-
 bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
@@ -1404,7 +1375,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		uint64_t dest_length) {
 	uint32_t i, j, k;
-	uint64_t l_data_size = get_decoded_tile_size();
+	uint64_t l_data_size = get_tile_size(true);
 	if (l_data_size > dest_length) {
 		return false;
 	}
@@ -1533,13 +1504,12 @@ void TileProcessor::free_tile() {
 	tile = nullptr;
 }
 
-void TileProcessor::get_tile_data(uint8_t *p_data) {
+void TileProcessor::copy_image_to_tile() {
 	uint32_t i, j, k = 0;
 
 	for (i = 0; i < image->numcomps; ++i) {
-		int32_t *src_ptr;
-		TileComponent *tilec = tile->comps + i;
-		 grk_image_comp  *img_comp = image->comps + i;
+		auto tilec = tile->comps + i;
+		auto img_comp = image->comps + i;
 		uint32_t size_comp, width, height, offset_x, offset_y,
 				image_width, stride;
 		uint64_t tile_offset;
@@ -1547,68 +1517,12 @@ void TileProcessor::get_tile_data(uint8_t *p_data) {
 		tilec->get_dimensions(image, img_comp, &size_comp,
 				&width, &height, &offset_x, &offset_y, &image_width,
 				&stride, &tile_offset);
-
-		src_ptr = img_comp->data + tile_offset;
-
-		switch (size_comp) {
-		case 1: {
-			int8_t *dest_ptr = (int8_t*) p_data;
-			if (img_comp->sgnd) {
-				for (j = 0; j < height; ++j) {
-					for (k = 0; k < width; ++k) {
-						*(dest_ptr) = (int8_t) (*src_ptr);
-						++dest_ptr;
-						++src_ptr;
-					}
-					src_ptr += stride;
-				}
-			} else {
-				for (j = 0; j < height; ++j) {
-					for (k = 0; k < width; ++k) {
-						*(dest_ptr) = (int8_t) ((*src_ptr) & 0xff);
-						++dest_ptr;
-						++src_ptr;
-					}
-					src_ptr += stride;
-				}
-			}
-
-			p_data = (uint8_t*) dest_ptr;
-		}
-			break;
-		case 2: {
-			int16_t *dest_ptr = (int16_t*) p_data;
-			if (img_comp->sgnd) {
-				for (j = 0; j < height; ++j) {
-					for (k = 0; k < width; ++k) {
-						*(dest_ptr++) = (int16_t) (*(src_ptr++));
-					}
-					src_ptr += stride;
-				}
-			} else {
-				for (j = 0; j < height; ++j) {
-					for (k = 0; k < width; ++k) {
-						*(dest_ptr++) = (int16_t) ((*(src_ptr++)) & 0xffff);
-					}
-					src_ptr += stride;
-				}
-			}
-
-			p_data = (uint8_t*) dest_ptr;
-		}
-			break;
-		case 4: {
-			int32_t *dest_ptr = (int32_t*) p_data;
-			for (j = 0; j < height; ++j) {
-				for (k = 0; k < width; ++k) {
-					*(dest_ptr++) = *(src_ptr++);
-				}
-				src_ptr += stride;
-			}
-
-			p_data = (uint8_t*) dest_ptr;
-		}
-			break;
+		auto src_ptr = img_comp->data + tile_offset;
+		int32_t *dest_ptr = tilec->buf->data;
+		for (j = 0; j < height; ++j) {
+			memcpy(dest_ptr,src_ptr,width*sizeof(int32_t));
+			src_ptr += stride + width;
+			dest_ptr += width;
 		}
 	}
 }
@@ -1838,26 +1752,14 @@ void TileProcessor::code_block_enc_deallocate(grk_tcd_precinct *p_precinct) {
 	}
 }
 
-uint64_t TileProcessor::get_encoded_tile_size() {
-	uint32_t i = 0;
-	uint32_t size_comp, remaining;
+uint64_t TileProcessor::get_tile_size(bool reduced) {
 	uint64_t data_size = 0;
-
 	auto tilec = tile->comps;
 	auto img_comp = image->comps;
-	for (i = 0; i < image->numcomps; ++i) {
-		size_comp = img_comp->prec >> 3; /*(/ 8)*/
-		remaining = img_comp->prec & 7; /* (%8) */
-
-		if (remaining) {
-			++size_comp;
-		}
-
-		if (size_comp == 3) {
-			size_comp = 4;
-		}
-
-		data_size += size_comp * tilec->area();
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		uint32_t size_comp = (img_comp->prec + 7) >> 3; /*(/ 8)*/
+		data_size += size_comp *
+				(reduced ? tilec->buf->reduced_image_dim.area() : tilec->area());
 		++img_comp;
 		++tilec;
 	}
@@ -2365,11 +2267,11 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 	return true;
 }
 
-bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
+bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
 	uint32_t size_comp, remaining;
 	uint64_t nb_elem;
-	uint64_t data_size = get_encoded_tile_size();
+	uint64_t data_size = get_tile_size(false);
 	if (!p_src || (data_size != src_length)) {
 		return false;
 	}
@@ -2377,62 +2279,41 @@ bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 	auto tilec = tile->comps;
 	auto img_comp = image->comps;
 	for (i = 0; i < image->numcomps; ++i) {
-		size_comp = img_comp->prec >> 3; /*(/ 8)*/
-		remaining = img_comp->prec & 7; /* (%8) */
+		size_comp = (img_comp->prec + 7) >> 3; /*(/ 8)*/
 		nb_elem = tilec->area();
-
-		if (remaining) {
-			++size_comp;
-		}
-
-		if (size_comp == 3) {
-			size_comp = 4;
-		}
-
 		switch (size_comp) {
 		case 1: {
-			int8_t *src_ptr = (int8_t*) p_src;
 			int32_t *dest_ptr = tilec->buf->data;
-
 			if (img_comp->sgnd) {
+				int8_t *src_ptr = (int8_t*) p_src;
 				for (j = 0; j < nb_elem; ++j) {
-					*(dest_ptr++) = (int32_t) (*(src_ptr++));
+					*dest_ptr++ = *src_ptr++;
 				}
+				p_src = (uint8_t*) src_ptr;
 			} else {
+				uint8_t *src_ptr = (uint8_t*) p_src;
 				for (j = 0; j < nb_elem; ++j) {
-					*(dest_ptr++) = (*(src_ptr++)) & 0xff;
+					*dest_ptr++ = *src_ptr++;
 				}
+				p_src = src_ptr;
 			}
-
-			p_src = (uint8_t*) src_ptr;
 		}
 			break;
 		case 2: {
 			int32_t *dest_ptr = tilec->buf->data;
-			int16_t *src_ptr = (int16_t*) p_src;
-
 			if (img_comp->sgnd) {
+				int16_t *src_ptr = (int16_t*) p_src;
 				for (j = 0; j < nb_elem; ++j) {
-					*(dest_ptr++) = (int32_t) (*(src_ptr++));
+					*dest_ptr++ = *src_ptr++;
 				}
+				p_src = (uint8_t*) src_ptr;
 			} else {
+				uint16_t *src_ptr = (uint16_t*) p_src;
 				for (j = 0; j < nb_elem; ++j) {
-					*(dest_ptr++) = (*(src_ptr++)) & 0xffff;
+					*dest_ptr++ = *src_ptr++;
 				}
+				p_src = (uint8_t*) src_ptr;
 			}
-
-			p_src = (uint8_t*) src_ptr;
-		}
-			break;
-		case 4: {
-			int32_t *src_ptr = (int32_t*) p_src;
-			int32_t *dest_ptr = tilec->buf->data;
-
-			for (j = 0; j < nb_elem; ++j) {
-				*(dest_ptr++) = (int32_t) (*(src_ptr++));
-			}
-
-			p_src = (uint8_t*) src_ptr;
 		}
 			break;
 		}
@@ -2616,30 +2497,26 @@ void grk_tcd_precinct::initTagTrees() {
 }
 
 
-void TileComponent::get_dimensions(grk_image *l_image,
-		 grk_image_comp  *l_img_comp, uint32_t *l_size_comp, uint32_t *l_width,
-		uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
-		uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset) {
-	uint32_t l_remaining;
-	*l_size_comp = l_img_comp->prec >> 3; /* (/8) */
-	l_remaining = l_img_comp->prec & 7; /* (%8) */
-	if (l_remaining) {
-		*l_size_comp += 1;
-	}
-
-	if (*l_size_comp == 3) {
-		*l_size_comp = 4;
-	}
-
-	*l_width = width();
-	*l_height = height();
-	*l_offset_x = ceildiv<uint32_t>(l_image->x0, l_img_comp->dx);
-	*l_offset_y = ceildiv<uint32_t>(l_image->y0, l_img_comp->dy);
-	*l_image_width = ceildiv<uint32_t>(l_image->x1 - l_image->x0,
-			l_img_comp->dx);
-	*l_stride = *l_image_width - *l_width;
-	*l_tile_offset = (x0 - *l_offset_x)
-			+ (uint64_t) (y0 - *l_offset_y) * *l_image_width;
+void TileComponent::get_dimensions(grk_image *image,
+		 	 	 	 	 	 	 grk_image_comp  *img_comp,
+								 uint32_t *size_comp,
+								 uint32_t *w,
+								 uint32_t *h,
+								 uint32_t *offset_x,
+								 uint32_t *offset_y,
+								 uint32_t *image_width,
+								 uint32_t *stride,
+								 uint64_t *tile_offset) {
+	*size_comp = (img_comp->prec + 7) >> 3; /* (/8) */
+	*w = width();
+	*h = height();
+	*offset_x = ceildiv<uint32_t>(image->x0, img_comp->dx);
+	*offset_y = ceildiv<uint32_t>(image->y0, img_comp->dy);
+	*image_width = ceildiv<uint32_t>(image->x1 - image->x0,
+			img_comp->dx);
+	*stride = *image_width - *w;
+	*tile_offset = (x0 - *offset_x)
+			+ (uint64_t) (y0 - *offset_y) * *image_width;
 }
 
 bool TileComponent::create_buffer(bool isEncoder,
