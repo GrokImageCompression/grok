@@ -1428,18 +1428,18 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 
 		switch (size_comp) {
 		case 1: {
-			char *dest_ptr = (char*) p_dest;
+			int8_t *dest_ptr = (int8_t*) p_dest;
 			if (img_comp->sgnd) {
 				for (j = 0; j < height; ++j) {
 					for (k = 0; k < width; ++k) {
-						*(dest_ptr++) = (char) (*(src_ptr++));
+						*(dest_ptr++) = (int8_t) (*(src_ptr++));
 					}
 					src_ptr += stride;
 				}
 			} else {
 				for (j = 0; j < height; ++j) {
 					for (k = 0; k < width; ++k) {
-						*(dest_ptr++) = (char) ((*(src_ptr++)) & 0xff);
+						*(dest_ptr++) = (int8_t) ((*(src_ptr++)) & 0xff);
 					}
 					src_ptr += stride;
 				}
@@ -1552,11 +1552,11 @@ void TileProcessor::get_tile_data(uint8_t *p_data) {
 
 		switch (size_comp) {
 		case 1: {
-			char *dest_ptr = (char*) p_data;
+			int8_t *dest_ptr = (int8_t*) p_data;
 			if (img_comp->sgnd) {
 				for (j = 0; j < height; ++j) {
 					for (k = 0; k < width; ++k) {
-						*(dest_ptr) = (char) (*src_ptr);
+						*(dest_ptr) = (int8_t) (*src_ptr);
 						++dest_ptr;
 						++src_ptr;
 					}
@@ -1565,7 +1565,7 @@ void TileProcessor::get_tile_data(uint8_t *p_data) {
 			} else {
 				for (j = 0; j < height; ++j) {
 					for (k = 0; k < width; ++k) {
-						*(dest_ptr) = (char) ((*src_ptr) & 0xff);
+						*(dest_ptr) = (int8_t) ((*src_ptr) & 0xff);
 						++dest_ptr;
 						++src_ptr;
 					}
@@ -2290,7 +2290,7 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 
 		switch (size_comp) {
 		case 1: {
-			char *src_ptr = (char*) p_data;
+			int8_t *src_ptr = (int8_t*) p_data;
 			if (img_comp_src->sgnd) {
 				for (j = 0; j < height_dest; ++j) {
 					for (k = 0; k < width_dest; ++k) {
@@ -2391,7 +2391,7 @@ bool TileProcessor::copy_tile_data(uint8_t *p_src, uint64_t src_length) {
 
 		switch (size_comp) {
 		case 1: {
-			char *src_ptr = (char*) p_src;
+			int8_t *src_ptr = (int8_t*) p_src;
 			int32_t *dest_ptr = tilec->buf->data;
 
 			if (img_comp->sgnd) {
