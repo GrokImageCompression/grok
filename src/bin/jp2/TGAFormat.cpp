@@ -66,15 +66,15 @@
 #ifdef INFORMATION_ONLY
  /* TGA header definition. */
 struct tga_header {
-	unsigned char   id_length;              /* Image id field length    */
-	unsigned char   colour_map_type;        /* Colour map type          */
-	unsigned char   image_type;             /* Image type               */
+	uint8_t   id_length;              /* Image id field length    */
+	uint8_t   colour_map_type;        /* Colour map type          */
+	uint8_t   image_type;             /* Image type               */
 											/*
 											** Colour map specification
 											*/
 	unsigned short  colour_map_index;       /* First entry index        */
 	unsigned short  colour_map_length;      /* Colour map length        */
-	unsigned char   colour_map_entry_size;  /* Colour map entry size    */
+	uint8_t   colour_map_entry_size;  /* Colour map entry size    */
 											/*
 											** Image specification
 											*/
@@ -82,12 +82,12 @@ struct tga_header {
 	unsigned short  y_origin;               /* u origin of image        */
 	unsigned short  image_width;            /* Image width              */
 	unsigned short  image_height;           /* Image height             */
-	unsigned char   pixel_depth;            /* Pixel depth              */
-	unsigned char   image_desc;             /* Image descriptor         */
+	uint8_t   pixel_depth;            /* Pixel depth              */
+	uint8_t   image_desc;             /* Image descriptor         */
 };
 #endif /* INFORMATION_ONLY */
 
-static unsigned short get_ushort(const unsigned char *data) {
+static unsigned short get_ushort(const uint8_t *data) {
 	unsigned short val = *(const unsigned short*) data;
 #ifdef GROK_BIG_ENDIAN
 	val = ((val & 0xffU) << 8) | (val >> 8);
@@ -100,9 +100,9 @@ static unsigned short get_ushort(const unsigned char *data) {
 static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 		unsigned int *width, unsigned int *height, int *flip_image) {
 	int palette_size;
-	unsigned char tga[TGA_HEADER_SIZE];
-	unsigned char id_len, /*cmap_type,*/image_type;
-	unsigned char pixel_depth, image_desc;
+	uint8_t tga[TGA_HEADER_SIZE];
+	uint8_t id_len, /*cmap_type,*/image_type;
+	uint8_t pixel_depth, image_desc;
 	unsigned short /*cmap_index,*/cmap_len, cmap_entry_size;
 	unsigned short /*x_origin, y_origin,*/image_w, image_h;
 
@@ -135,7 +135,7 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 
 	/* Ignore tga identifier, if present ... */
 	if (id_len) {
-		unsigned char *id = (unsigned char*) malloc(id_len);
+		uint8_t *id = (uint8_t*) malloc(id_len);
 		if (!id) {
 			spdlog::error("tga_readheader: out of memory out");
 			return false;
@@ -181,8 +181,8 @@ static inline uint16_t swap16(uint16_t x)
 static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 		bool flip_image) {
 	uint16_t image_w, image_h, us0;
-	unsigned char uc0, image_type;
-	unsigned char pixel_depth, image_desc;
+	uint8_t uc0, image_type;
+	uint8_t pixel_depth, image_desc;
 
 	if (!bits_per_pixel || !width || !height)
 		return 0;
@@ -190,7 +190,7 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 	pixel_depth = 0;
 
 	if (bits_per_pixel < 256)
-		pixel_depth = (unsigned char) bits_per_pixel;
+		pixel_depth = (uint8_t) bits_per_pixel;
 	else {
 		spdlog::error("Wrong bits per pixel inside tga_header");
 		return 0;
@@ -349,7 +349,7 @@ static grk_image *  tgatoimage(const char *filename,
 
 		if (numcomps == 3) {
 			for (x = 0; x < image_width; x++) {
-				unsigned char r, g, b;
+				uint8_t r, g, b;
 
 				if (!fread(&b, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
@@ -377,7 +377,7 @@ static grk_image *  tgatoimage(const char *filename,
 			}
 		} else if (numcomps == 4) {
 			for (x = 0; x < image_width; x++) {
-				unsigned char r, g, b, a;
+				uint8_t r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
 					spdlog::error(" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
@@ -427,7 +427,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 	int adjustR = 0, adjustG = 0, adjustB = 0, fails = 1;
 	unsigned int alpha_channel;
 	float r, g, b, a;
-	unsigned char value;
+	uint8_t value;
 	float scale = 0;
 	FILE *fdest = nullptr;
 	size_t res = 0;
@@ -495,7 +495,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 				b = 255.;
 			else if (b < 0.)
 				b = 0.;
-			value = (unsigned char) (b * scale);
+			value = (uint8_t) (b * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
@@ -506,7 +506,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 				g = 255.;
 			else if (g < 0.)
 				g = 0.;
-			value = (unsigned char) (g * scale);
+			value = (uint8_t) (g * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
@@ -518,7 +518,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 				r = 255.;
 			else if (r < 0.)
 				r = 0.;
-			value = (unsigned char) (r * scale);
+			value = (uint8_t) (r * scale);
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
@@ -533,7 +533,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 					a = 255.;
 				else if (a < 0.)
 					a = 0.;
-				value = (unsigned char) (a * scale);
+				value = (uint8_t) (a * scale);
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {

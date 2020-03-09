@@ -1186,7 +1186,7 @@ typedef struct _grk_plugin_code_block {
 	unsigned int *contextStream;
 	///////////////////////////
 	size_t numPix;
-	unsigned char *compressedData;
+	uint8_t *compressedData;
 	size_t compressedDataLength;
 	size_t numBitPlanes;
 	size_t numPasses;
@@ -1509,19 +1509,21 @@ GRK_API bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
 		 grk_image *p_image, uint16_t tile_index);
 
 /**
- * Writes a tile with the given data.
+ * Writes uncompressed data to a tile from a buffer.
+ * This method should be called right after grk_start_compress,
+ * and before grk_end_compress.
  *
  * @param	p_codec		    the jpeg2000 codec.
  * @param	tile_index		the index of the tile to write. At the moment,
  * 							the tiles must be written from 0 to n-1 in sequence.
- * @param	p_data			pointer to the data to write. Data is arranged
- *  						in sequence, data_comp0, then data_comp1, then ...
- *  						NO INTERLEAVING should be set.
- * @param	data_size		this value os used to make sure the data
+ * @param	p_data			pointer to the data to write. Data is arranged in planar
+ *  						sequence, data_comp0, data_comp1 etc,
+ *  						The data should NOT BE INTERLEAVED.
+ * @param	data_size		this value is used to ensure the data
  * 							being written is correct. The size must be
  * 							equal to the sum for each component of
  *                          tile_width * tile_height * component_size.
- *                          component_size can be 1,2 or 4 bytes, depending on
+ *                          component_size can be 1 or 2 bytes, depending on
  *                          the precision of the given component.
  *
  * @return	true if the data could be written.
@@ -1564,7 +1566,7 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
 /**
  * Reads a tile data. This function is compulsory and allows one to
  * decode tile data. grk_read_tile_header should be called before.
- * The user may need to refer to the image got by grk_read_header
+ * The user may need to refer to the image returned by grk_read_header
  * to understand the size being taken by the tile.
  *
  * @param	p_codec			the jpeg2000 codec.

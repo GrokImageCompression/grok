@@ -584,14 +584,14 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
     if(image->numcomps > 2) { /* RGB, RGBA */
         if( prec <= 8 ) {
 			int *r=nullptr, *g=nullptr, *b=nullptr;
-            unsigned char *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
+            uint8_t *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
             max = max_w * max_h;
-            nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
-            in = inbuf = (unsigned char*)malloc(nr_samples);
+            nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
+            in = inbuf = (uint8_t*)malloc(nr_samples);
 			if (!in) {
 				goto cleanup;
 			}
-            out = outbuf = (unsigned char*)malloc(nr_samples);
+            out = outbuf = (uint8_t*)malloc(nr_samples);
 			if (!out) {
 				free(inbuf);
 				goto cleanup;
@@ -602,9 +602,9 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
             b = image->comps[2].data;
 
             for(i = 0; i < max; ++i) {
-                *in++ = (unsigned char)*r++;
-                *in++ = (unsigned char)*g++;
-                *in++ = (unsigned char)*b++;
+                *in++ = (uint8_t)*r++;
+                *in++ = (uint8_t)*g++;
+                *in++ = (uint8_t)*b++;
             }
 
             cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
@@ -662,19 +662,19 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
 		int *r = nullptr;
 		int *g = nullptr;
 		int *b = nullptr;
-        unsigned char *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
+        uint8_t *in=nullptr, *inbuf = nullptr, *out=nullptr, *outbuf = nullptr;
 
         max = max_w * max_h;
-        nr_samples = max * 3 * (cmsUInt32Number)sizeof(unsigned char);
+        nr_samples = max * 3 * (cmsUInt32Number)sizeof(uint8_t);
 		 grk_image_comp  *comps = ( grk_image_comp  * )realloc(image->comps, (image->numcomps + 2) * sizeof( grk_image_comp) );
 		if (!comps)
 			goto cleanup;
 		image->comps = comps;
 
-        in = inbuf = (unsigned char*)malloc(nr_samples);
+        in = inbuf = (uint8_t*)malloc(nr_samples);
 		if (!in)
 			goto cleanup;
-        out = outbuf = (unsigned char*)malloc(nr_samples);
+        out = outbuf = (uint8_t*)malloc(nr_samples);
 		if (!out) {
 			free(inbuf);
 			goto cleanup;
@@ -709,7 +709,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
 
         r = image->comps[0].data;
         for(i = 0; i < max; ++i) {
-            *in++ = (unsigned char)*r++;
+            *in++ = (uint8_t)*r++;
         }
         cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number)max);
 

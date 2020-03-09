@@ -251,7 +251,7 @@ static int infile_format(const char *fname)
     FILE *reader;
     const char *s, *magic_s;
     int ext_format, magic_format;
-    unsigned char buf[12];
+    uint8_t buf[12];
     size_t l_nb_read;
 
     reader = fopen(fname, "rb");

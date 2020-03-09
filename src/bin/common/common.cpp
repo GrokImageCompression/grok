@@ -192,7 +192,7 @@ bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
     FILE *reader;
     const char *s, *magic_s;
     GROK_SUPPORTED_FILE_FORMAT ext_format = UNKNOWN_FORMAT, magic_format = UNKNOWN_FORMAT;
-    unsigned char buf[12];
+    uint8_t buf[12];
     size_t l_nb_read;
 
     reader = fopen(fname, "rb");

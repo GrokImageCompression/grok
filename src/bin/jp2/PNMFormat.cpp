@@ -443,7 +443,7 @@ static grk_image *  pnmtoimage(const char *filename,
 			|| ((format == 7)
 					&& (header_info.gray || header_info.graya || header_info.rgb
 							|| header_info.rgba))) { /* binary pixmap */
-		unsigned char c0, c1, one;
+		uint8_t c0, c1, one;
 		one = (prec < 9);
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
@@ -475,7 +475,7 @@ static grk_image *  pnmtoimage(const char *filename,
 	} else if (format == 4) {
 		uint32_t x, y;
 		int8_t bit;
-		unsigned char uc;
+		uint8_t uc;
 		uint64_t i = 0;
 		for (y = 0; y < h; ++y) {
 			bit = -1;
@@ -490,7 +490,7 @@ static grk_image *  pnmtoimage(const char *filename,
 						image = nullptr;
 						goto cleanup;
 					}
-					uc = (unsigned char) c;
+					uc = (uint8_t) c;
 				}
 				image->comps[0].data[i] = (((uc >> bit) & 1) ? 0 : 255);
 				--bit;
@@ -498,7 +498,7 @@ static grk_image *  pnmtoimage(const char *filename,
 			}
 		}
 	} else if ((format == 7 && header_info.bw)) { /*MONO*/
-		unsigned char uc;
+		uint8_t uc;
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
 				spdlog::error(" fread return a number of element different from the expected.");

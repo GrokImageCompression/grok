@@ -71,8 +71,8 @@
 #include "common.h"
 #include <cassert>
 
-static unsigned char readuchar(FILE *f) {
-	unsigned char c1;
+static uint8_t readuchar(FILE *f) {
+	uint8_t c1;
 	if (!fread(&c1, 1, 1, f)) {
 		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
@@ -81,7 +81,7 @@ static unsigned char readuchar(FILE *f) {
 }
 
 static unsigned short readushort(FILE *f, int bigendian) {
-	unsigned char c1, c2;
+	uint8_t c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
 		spdlog::error("  fread return a number of element different from the expected.");
 		return 0;
@@ -97,7 +97,7 @@ static unsigned short readushort(FILE *f, int bigendian) {
 }
 
 static unsigned int readuint(FILE *f, int bigendian) {
-	unsigned char c1, c2, c3, c4;
+	uint8_t c1, c2, c3, c4;
 	if (!fread(&c1, 1, 1, f)) {
 		spdlog::error(" fread return a number of element different from the expected.");
 		return 0;
@@ -237,7 +237,7 @@ static grk_image *  pgxtoimage(const char *filename,
 		if (force8) {
 			v = readuchar(f) + adjustS;
 			v = (v << ushift) + (v >> dshift);
-			comp->data[i] = (unsigned char) v;
+			comp->data[i] = (uint8_t) v;
 			if (v > max)
 				max = v;
 			continue;
@@ -328,7 +328,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 
 			for (j = nbytes - 1; j >= 0; j--) {
 				int v = (int) (val >> (j * 8));
-				unsigned char byte = (unsigned char) v;
+				uint8_t byte = (uint8_t) v;
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
