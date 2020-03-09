@@ -124,8 +124,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 
 
     grk_codec* pCodec = grk_create_decompress(eCodecFormat, pStream);
-    grk_set_info_handler(pCodec, InfoCallback, NULL);
-    grk_set_warning_handler(pCodec, WarningCallback, NULL);
+    grk_set_info_handler(InfoCallback, NULL);
+    grk_set_warning_handler(WarningCallback, NULL);
     grk_set_error_handler(ErrorCallback, NULL);
 
     grk_dparameters parameters;
@@ -133,7 +133,8 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 
     grk_setup_decoder(pCodec, &parameters);
     grk_image * psImage = NULL;
-    if (!grk_read_header(pCodec, &psImage, nullptr)) {
+    grk_header_info  header_info;
+    if (!grk_read_header(pCodec, &header_info, &psImage)) {
         grk_destroy_codec(pCodec);
         grk_stream_destroy(pStream);
         grk_image_destroy(psImage);
