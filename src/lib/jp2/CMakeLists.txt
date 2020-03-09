@@ -44,6 +44,8 @@ include_directories(
 )
 # Defines the source code for the library
 set(GROK_SRCS
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/test_sparse_array.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/util/bench_dwt.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h
@@ -259,3 +261,14 @@ if(GROK_USE_DSYMUTIL)
     DEPENDS ${GROK_LIBRARY_NAME})
   endif()
 endif()
+
+if(BUILD_UNIT_TESTS)
+    add_executable(bench_dwt bench_dwt.cpp)
+    if(UNIX)
+        target_link_libraries(bench_dwt m ${GROK_LIBRARY_NAME})
+    endif()
+    add_executable(test_sparse_array test_sparse_array.cpp)
+    if(UNIX)
+        target_link_libraries(test_sparse_array m ${GROK_LIBRARY_NAME})
+    endif()
+endif(BUILD_UNIT_TESTS)

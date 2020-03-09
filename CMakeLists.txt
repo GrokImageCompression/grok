@@ -202,6 +202,7 @@ check_symbol_exists(memalign malloc.h GROK_HAVE_MEMALIGN)
 # Build Library
 add_subdirectory(src/lib)
 option(BUILD_LUTS_GENERATOR "Build utility to generate t1_luts.h" OFF)
+option(BUILD_UNIT_TESTS "Build unit tests (bench_dwt, test_sparse_array, etc..)" OFF)
 
 #-----------------------------------------------------------------------------
 # Build Applications
