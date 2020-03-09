@@ -44,7 +44,6 @@ include_directories(
 )
 # Defines the source code for the library
 set(GROK_SRCS
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/Barrier.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/BufferedStream.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/IBufferedStream.h

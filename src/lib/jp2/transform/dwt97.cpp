@@ -56,7 +56,6 @@
  */
 
 #include "CPUArch.h"
-#include "Barrier.h"
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
