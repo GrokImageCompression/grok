@@ -17,7 +17,6 @@ if [ "$CXX" == "" ]; then
     exit 1
 fi
 
-SRC_DIR=$(dirname $0)/../..
 
 build_fuzzer()
 {
@@ -26,9 +25,9 @@ build_fuzzer()
     shift
     shift
     echo "Building fuzzer $fuzzerName"
-    $CXX $CXXFLAGS -std=c++11 -I$SRC_DIR/src/lib/grok -I$SRC_DIR/build/src/lib/grok \
+    $CXX $CXXFLAGS -std=c++11 -I$SRC/grok/src/lib/jp2 -I$SRC/grok/build/src/lib/jp2 \
         $sourceFilename $* -o $OUT/$fuzzerName \
-        $LIB_FUZZING_ENGINE $SRC_DIR/build/bin/libgrok.a -lm -lpthread
+        $LIB_FUZZING_ENGINE $SRC/grok/build/bin/libgrok.a -lm -lpthread
 }
 
 fuzzerFiles=$(dirname $0)/*.cpp
