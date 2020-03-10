@@ -38,10 +38,6 @@ static const char folder_sep = '\\';
 SPDLOG_CONSTEXPR static const char folder_sep = '/';
 #endif
 
-#ifdef SPDLOG_PREVENT_CHILD_FD
-void prevent_child_fd(FILE *f);
-#endif
-
 // fopen_s on non windows for writing
 bool fopen_s(FILE **fp, const filename_t &filename, const filename_t &mode);
 
@@ -101,6 +97,10 @@ filename_t dir_name(filename_t path);
 // Create a dir from the given path.
 // Return true if succeeded or if this dir already exists.
 bool create_dir(filename_t path);
+
+// non thread safe, cross platform getenv/getenv_s
+// return empty string if field not found
+std::string getenv(const char *field);
 
 } // namespace os
 } // namespace details
