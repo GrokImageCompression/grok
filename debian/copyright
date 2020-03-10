@@ -1,5 +1,5 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: grok
+Upstream-Name: grok-jpeg2000
 Upstream-Contact: boxerab@gmail.com
 Source: https://github.com/GrokImageCompression/grok
 Files-Excluded: thirdparty/astyle scripts
