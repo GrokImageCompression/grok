@@ -1640,9 +1640,6 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 	grk_image *image = info->image;
 	char  outfile[3 * GRK_PATH_LEN];
 	char  temp_ofname[GRK_PATH_LEN];
-
-	uint32_t l_nb_tiles = 4;
-	bool bUseTiles = false;
 	bool createdImage = false;
 	bool inMemoryCompression = false;
 
@@ -1964,28 +1961,14 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 		bSuccess = false;
 		goto cleanup;
 	}
-	if (bSuccess && bUseTiles) {
-		uint8_t *l_data;
-		uint64_t l_data_size = 512 * 512 * 3;
-		l_data = (uint8_t*)calloc(1, l_data_size);
-		assert(l_data);
-		for (uint16_t i = 0; i<l_nb_tiles; ++i) {
-			if (!grk_write_tile(l_codec, i, l_data, l_data_size)) {
-				spdlog::error("test_tile_encoder: failed to write the tile {}!\n", i);
-				bSuccess = false;
-				goto cleanup;
-			}
-		}
-		free(l_data);
+
+	bSuccess = grk_encode_with_plugin(l_codec, info->tile);
+	if (!bSuccess) {
+		spdlog::error( "failed to encode image: grk_encode");
+		bSuccess = false;
+		goto cleanup;
 	}
-	else {
-		bSuccess = bSuccess && grk_encode_with_plugin(l_codec, info->tile);
-		if (!bSuccess) {
-			spdlog::error( "failed to encode image: grk_encode");
-			bSuccess = false;
-			goto cleanup;
-		}
-	}
+
 	bSuccess = bSuccess && grk_end_compress(l_codec);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_end_compress");
