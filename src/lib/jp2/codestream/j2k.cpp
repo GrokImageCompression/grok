@@ -6046,7 +6046,7 @@ static bool j2k_read_unk(grk_j2k *p_j2k, BufferedStream *p_stream,
 	
 	assert(p_stream != nullptr);
 
-	GROK_WARN( "Unknown marker 0x%04x\n",
+	GROK_WARN( "Unknown marker 0x%02x\n",
 			*output_marker);
 
 	for (;;) {
