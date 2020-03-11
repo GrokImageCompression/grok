@@ -552,20 +552,27 @@ int parse_cmdline_decoder(int argc,
 		// process
 		if (inputFileArg.isSet()) {
 			const char *infile = inputFileArg.getValue().c_str();
-			if (!jpeg2000_file_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format)){
-				spdlog::error("Unable to open file {} for decoding.", infile);
-				return 1;
-			}
-			switch (parameters->decod_format) {
-			case J2K_CFMT:
-				break;
-			case JP2_CFMT:
-				break;
-			default:
-				spdlog::error("Unknown input file format: {} \n"
-					"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
-					infile);
-				return 1;
+			// for debugging purposes, set to false
+			bool checkFile = true;
+
+			if (checkFile) {
+				if (!jpeg2000_file_format(infile,(GROK_SUPPORTED_FILE_FORMAT*)&parameters->decod_format)){
+					spdlog::error("Unable to open file {} for decoding.", infile);
+					return 1;
+				}
+				switch (parameters->decod_format) {
+				case J2K_CFMT:
+					break;
+				case JP2_CFMT:
+					break;
+				default:
+					spdlog::error("Unknown input file format: {} \n"
+						"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
+						infile);
+					return 1;
+				}
+			} else {
+				parameters->decod_format = J2K_CFMT;
 			}
 			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile), infile) != 0) {
 				spdlog::error( "Path is too long");
