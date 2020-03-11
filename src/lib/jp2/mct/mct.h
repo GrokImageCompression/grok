@@ -58,6 +58,10 @@
 #pragma once
 namespace grk {
 
+class mct {
+
+public:
+
 /**
  @file mct.h
  @brief Implementation of a multi-component transforms (MCT)
@@ -72,90 +76,84 @@ namespace grk {
 /** @name Exported functions */
 /*@{*/
 /* ----------------------------------------------------------------------- */
-/**
- Apply a reversible multi-component transform to an image
- @param c0 Samples for red component
- @param c1 Samples for green component
- @param c2 Samples blue component
- @param n Number of samples for each component
- */
-void mct_encode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
-/**
- Apply a reversible multi-component inverse transform to an image
- @param c0 Samples for luminance component
- @param c1 Samples for red chrominance component
- @param c2 Samples for blue chrominance component
- @param n Number of samples for each component
- */
-void mct_decode(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
-/**
- Get norm of the basis function used for the reversible multi-component transform
- @param compno Number of the component (0->Y, 1->U, 2->V)
- @return
- */
-double mct_getnorm(uint32_t compno);
+	/**
+	 Apply a reversible multi-component transform to an image
+	 @param c0 Samples for red component
+	 @param c1 Samples for green component
+	 @param c2 Samples blue component
+	 @param n Number of samples for each component
+	 */
+	static void encode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+	/**
+	 Apply a reversible multi-component inverse transform to an image
+	 @param c0 Samples for luminance component
+	 @param c1 Samples for red chrominance component
+	 @param c2 Samples for blue chrominance component
+	 @param n Number of samples for each component
+	 */
+	static void decode_rev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
 
-/**
- Apply an irreversible multi-component transform to an image
- @param c0 Samples for red component
- @param c1 Samples for green component
- @param c2 Samples blue component
- @param n Number of samples for each component
- */
-void mct_encode_real(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
-/**
- Apply an irreversible multi-component inverse transform to an image
- @param c0 Samples for luminance component
- @param c1 Samples for red chrominance component
- @param c2 Samples for blue chrominance component
- @param n Number of samples for each component
- */
-void mct_decode_real(float *c0, float *c1, float *c2, uint64_t n);
-/**
- Get norm of the basis function used for the irreversible multi-component transform
- @param compno Number of the component (0->Y, 1->U, 2->V)
- @return
- */
-double mct_getnorm_real(uint32_t compno);
+	/**
+	 FIXME DOC
+	 */
+	static const double* get_norms_rev(void);
 
-/**
- FIXME DOC
- @param p_coding_data    MCT data
- @param n                size of components
- @param p_data           components
- @param p_nb_comp        nb of components (i.e. size of p_data)
- @param is_signed        tells if the data is signed
- @return false if function encounter a problem, true otherwise
- */
-bool mct_encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
-		uint32_t nb_comp, uint32_t is_signed);
-/**
- FIXME DOC
- @param pDecodingData    MCT data
- @param n                size of components
- @param pData            components
- @param pNbComp          nb of components (i.e. size of p_data)
- @param isSigned         tells if the data is signed
- @return false if function encounter a problem, true otherwise
- */
-bool mct_decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
-		uint32_t pNbComp, uint32_t isSigned);
-/**
- FIXME DOC
- @param pNorms           MCT data
- @param p_nb_comps       size of components
- @param pMatrix          components
- @return
- */
-void grk_calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
-/**
- FIXME DOC
- */
-const double* mct_get_mct_norms(void);
-/**
- FIXME DOC
- */
-const double* mct_get_mct_norms_real(void);
+
+	/**
+	 Apply an irreversible multi-component transform to an image
+	 @param c0 Samples for red component
+	 @param c1 Samples for green component
+	 @param c2 Samples blue component
+	 @param n Number of samples for each component
+	 */
+	static void encode_irrev(int32_t *c0, int32_t *c1, int32_t *c2, uint64_t n);
+	/**
+	 Apply an irreversible multi-component inverse transform to an image
+	 @param c0 Samples for luminance component
+	 @param c1 Samples for red chrominance component
+	 @param c2 Samples for blue chrominance component
+	 @param n Number of samples for each component
+	 */
+	static void decode_irrev(float *c0, float *c1, float *c2, uint64_t n);
+
+	/**
+	 FIXME DOC
+	 */
+	static const double* get_norms_irrev(void);
+
+	/**
+	 FIXME DOC
+	 @param p_coding_data    MCT data
+	 @param n                size of components
+	 @param p_data           components
+	 @param p_nb_comp        nb of components (i.e. size of p_data)
+	 @param is_signed        tells if the data is signed
+	 @return false if function encounter a problem, true otherwise
+	 */
+	static bool encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
+			uint32_t nb_comp, uint32_t is_signed);
+	/**
+	 FIXME DOC
+	 @param pDecodingData    MCT data
+	 @param n                size of components
+	 @param pData            components
+	 @param pNbComp          nb of components (i.e. size of p_data)
+	 @param isSigned         tells if the data is signed
+	 @return false if function encounter a problem, true otherwise
+	 */
+	static bool decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
+			uint32_t pNbComp, uint32_t isSigned);
+	/**
+	 FIXME DOC
+	 @param pNorms           MCT data
+	 @param p_nb_comps       size of components
+	 @param pMatrix          components
+	 @return
+	 */
+	static void calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
+
+};
+
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

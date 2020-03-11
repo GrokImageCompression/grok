@@ -1613,7 +1613,7 @@ bool TileProcessor::mct_decode() {
 				++tile_comp;
 			}
 
-			if (!mct_decode_custom(/* MCT data */
+			if (!mct::decode_custom(/* MCT data */
 			(uint8_t*) m_tcp->m_mct_decoding_matrix,
 			/* size of components */
 			samples,
@@ -1630,12 +1630,12 @@ bool TileProcessor::mct_decode() {
 			grok_free(data);
 		} else {
 			if (m_tcp->tccps->qmfbid == 1) {
-				grk::mct_decode(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+				mct::decode_rev(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
 						tile->comps[1].buf->get_ptr(0, 0, 0, 0),
 						tile->comps[2].buf->get_ptr(0, 0, 0, 0),
 						samples);
 			} else {
-				grk::mct_decode_real(
+				mct::decode_irrev(
 						(float*) tile->comps[0].buf->get_ptr( 0, 0, 0,
 								0),
 						(float*) tile->comps[1].buf->get_ptr(0, 0, 0,
@@ -1819,7 +1819,7 @@ bool TileProcessor::mct_encode() {
 			++tile_comp;
 		}
 
-		if (!mct_encode_custom(/* MCT data */
+		if (!mct::encode_custom(/* MCT data */
 		(uint8_t*) m_tcp->m_mct_coding_matrix,
 		/* size of components */
 		samples,
@@ -1835,11 +1835,11 @@ bool TileProcessor::mct_encode() {
 
 		grok_free(data);
 	} else if (m_tcp->tccps->qmfbid == 0) {
-		grk::mct_encode_real(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+		mct::encode_irrev(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
 				tile->comps[1].buf->get_ptr( 0, 0, 0, 0),
 				tile->comps[2].buf->get_ptr( 0, 0, 0, 0), samples);
 	} else {
-		grk::mct_encode(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
+		mct::encode_rev(tile->comps[0].buf->get_ptr( 0, 0, 0, 0),
 				tile->comps[1].buf->get_ptr(0, 0, 0, 0),
 				tile->comps[2].buf->get_ptr(0, 0, 0, 0), samples);
 	}
@@ -1871,9 +1871,9 @@ bool TileProcessor::t1_encode() {
 		l_mct_numcomps = 3U;
 		/* irreversible encoding */
 		if (l_tcp->tccps->qmfbid == 0) {
-			l_mct_norms = mct_get_mct_norms_real();
+			l_mct_norms = mct::get_norms_irrev();
 		} else {
-			l_mct_norms = mct_get_mct_norms();
+			l_mct_norms = mct::get_norms_rev();
 		}
 	} else {
 		l_mct_numcomps = image->numcomps;

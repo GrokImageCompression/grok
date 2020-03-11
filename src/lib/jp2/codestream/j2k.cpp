@@ -2217,7 +2217,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 						"Not enough memory to allocate encoder MCT norms ");
 				return false;
 			}
-			grk_calculate_norms(tcp->mct_norms, image->numcomps,
+			mct::calculate_norms(tcp->mct_norms, image->numcomps,
 					tcp->m_mct_decoding_matrix);
 			grok_free(lTmpBuf);
 

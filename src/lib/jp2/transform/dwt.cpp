@@ -834,7 +834,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     /* since for the vertical pass */
     /* we process PARALLEL_COLS_53 columns at a time */
     h_mem_size *= PARALLEL_COLS_53 * sizeof(int32_t);
-    h.mem = (int32_t*)grok_aligned_32_malloc(h_mem_size);
+    h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
     if (! h.mem) {
         /* FIXME event manager error callback */
         return false;
@@ -881,7 +881,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                 if (j == (num_jobs - 1U)) {  /* this will take care of the overflow */
                     job->max_j = rh;
                 }
-                job->h.mem = (int32_t*)grok_aligned_32_malloc(h_mem_size);
+                job->h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
                 if (!job->h.mem) {
                     /* FIXME event manager error callback */
                     //thread_pool_wait_completion(tp, 0);
@@ -937,7 +937,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                 if (j == (num_jobs - 1U)) {  /* this will take care of the overflow */
                     job->max_j = rw;
                 }
-                job->v.mem = (int32_t*)grok_aligned_32_malloc(h_mem_size);
+                job->v.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
                 if (!job->v.mem) {
                     /* FIXME event manager error callback */
                     //thread_pool_wait_completion(tp, 0);
@@ -1409,7 +1409,7 @@ static bool decode_partial_tile_53(
     }
 
     h_mem_size *= 4 * sizeof(int32_t);
-    h.mem = (int32_t*)grok_aligned_32_malloc(h_mem_size);
+    h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
     if (! h.mem) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);

@@ -56,113 +56,60 @@
  */
 
 #include "CPUArch.h"
+#include "grok_includes.h"
 
 namespace grk {
 
 /* <summary> */
 /* This table contains the norms of the basis function of the reversible MCT. */
 /* </summary> */
-static const double mct_norms[3] = { 1.732, .8292, .8292 };
+static const double mct_norms_rev[3] = { 1.732, .8292, .8292 };
 
 /* <summary> */
 /* This table contains the norms of the basis function of the irreversible MCT. */
 /* </summary> */
-static const double mct_norms_real[3] = { 1.732, 1.805, 1.573 };
+static const double mct_norms_irrev[3] = { 1.732, 1.805, 1.573 };
 
-const double* mct_get_mct_norms() {
-	return mct_norms;
+const double* mct::get_norms_rev() {
+	return mct_norms_rev;
 }
-const double* mct_get_mct_norms_real() {
-	return mct_norms_real;
+const double* mct::get_norms_irrev() {
+	return mct_norms_irrev;
 }
-/* <summary> */
-/* Get norm of basis function of reversible MCT. */
-/* </summary> */
-double mct_getnorm(uint32_t compno) {
-	return mct_norms[compno];
-}
-/* <summary> */
-/* Get norm of basis function of irreversible MCT. */
-/* </summary> */
-double mct_getnorm_real(uint32_t compno) {
-	return mct_norms_real[compno];
-}
-void grk_calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
-	uint32_t i, j, lIndex;
-	float lCurrentValue;
-	double *lNorms = (double*) pNorms;
-	float *lMatrix = (float*) pMatrix;
 
-	for (i = 0; i < pNbComps; ++i) {
-		lNorms[i] = 0;
-		lIndex = i;
-
-		for (j = 0; j < pNbComps; ++j) {
-			lCurrentValue = lMatrix[lIndex];
-			lIndex += pNbComps;
-			lNorms[i] += lCurrentValue * lCurrentValue;
-		}
-		lNorms[i] = sqrt(lNorms[i]);
-	}
-}
-#ifdef __SSE2__
-static inline void mct_fwd_sse2(int32_t *restrict chan0,
-								int32_t *restrict chan1,
-								int32_t *restrict chan2,
-								uint64_t ind)
-{
-	__m128i y, u, v;
-	__m128i r = _mm_load_si128((const __m128i*) &chan0[ind]);
-	__m128i g = _mm_load_si128((const __m128i*) &chan1[ind]);
-	__m128i b = _mm_load_si128((const __m128i*) &chan2[ind]);
-	y = _mm_add_epi32(g, g);
-	y = _mm_add_epi32(y, b);
-	y = _mm_add_epi32(y, r);
-	y = _mm_srai_epi32(y, 2);
-	u = _mm_sub_epi32(b, g);
-	v = _mm_sub_epi32(r, g);
-	_mm_store_si128((__m128i*) &chan0[ind], y);
-	_mm_store_si128((__m128i*) &chan1[ind], u);
-	_mm_store_si128((__m128i*) &chan2[ind], v);
-}
-static inline void mct_rev_sse2(int32_t *restrict chan0,
-								int32_t *restrict chan1,
-								int32_t *restrict chan2,
-								uint64_t ind)
-{
-	__m128i r, g, b;
-	__m128i y = _mm_load_si128((const __m128i*) &(chan0[ind]));
-	__m128i u = _mm_load_si128((const __m128i*) &(chan1[ind]));
-	__m128i v = _mm_load_si128((const __m128i*) &(chan2[ind]));
-	g = y;
-	g = _mm_sub_epi32(g, _mm_srai_epi32(_mm_add_epi32(u, v), 2));
-	r = _mm_add_epi32(v, g);
-	b = _mm_add_epi32(u, g);
-	_mm_store_si128((__m128i*) &(chan0[ind]), r);
-	_mm_store_si128((__m128i*) &(chan1[ind]), g);
-	_mm_store_si128((__m128i*) &(chan2[ind]), b);
-}
-#endif
 
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void mct_encode(int32_t *restrict chan0, int32_t *restrict chan1,
+void mct::encode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 		int32_t *restrict chan2, uint64_t n) {
 	size_t i = 0;
 
-#ifdef __SSE2__
-    const size_t chunkSize = 1 << 12;
-	if (n > chunkSize) {
-		uint64_t chunks = n >> 12;
+#ifdef __AVX2__
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 8
+    chunkSize = (chunkSize/8) * 8;
+	if (chunkSize > 8) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < chunks; ++i) {
+	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chan0,chan1,chan2] {
-	        		uint64_t begin = (uint64_t)index << 12;
-					for (auto j = begin; j < begin+chunkSize; j+=4 ){
-						mct_fwd_sse2(chan0,chan1,chan2,j);
+	            Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2] {
+	        		uint64_t begin = (uint64_t)index * chunkSize;
+					for (auto j = begin; j < begin+chunkSize; j+=8 ){
+						__m256i y, u, v;
+						__m256i r = _mm256_load_si256((const __m256i*) &chan0[j]);
+						__m256i g = _mm256_load_si256((const __m256i*) &chan1[j]);
+						__m256i b = _mm256_load_si256((const __m256i*) &chan2[j]);
+						y = _mm256_add_epi32(g, g);
+						y = _mm256_add_epi32(y, b);
+						y = _mm256_add_epi32(y, r);
+						y = _mm256_srai_epi32(y, 2);
+						u = _mm256_sub_epi32(b, g);
+						v = _mm256_sub_epi32(r, g);
+						_mm256_store_si256((__m256i*) &chan0[j], y);
+						_mm256_store_si256((__m256i*) &chan1[j], u);
+						_mm256_store_si256((__m256i*) &chan2[j], v);
 					}
 	                return 0;
 	            })
@@ -171,12 +118,42 @@ void mct_encode(int32_t *restrict chan0, int32_t *restrict chan1,
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunks << 12;
+		i = chunkSize * Scheduler::g_tp->num_threads();
 	}
-	else {
-		for (; i < (n & ~3); i += 4) {
-			mct_fwd_sse2(chan0,chan1,chan2,i);
-		}
+#elif __SSE2__
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 4
+    chunkSize = (chunkSize/4) * 4;
+	if (chunkSize > 4) {
+	    std::vector< std::future<int> > results;
+	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+	    	uint64_t index = i;
+	        results.emplace_back(
+	            Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2] {
+	        		uint64_t begin = (uint64_t)index * chunkSize;
+					for (auto j = begin; j < begin+chunkSize; j+=4 ){
+						__m128i y, u, v;
+						__m128i r = _mm_load_si128((const __m128i*) &chan0[j]);
+						__m128i g = _mm_load_si128((const __m128i*) &chan1[j]);
+						__m128i b = _mm_load_si128((const __m128i*) &chan2[j]);
+						y = _mm_add_epi32(g, g);
+						y = _mm_add_epi32(y, b);
+						y = _mm_add_epi32(y, r);
+						y = _mm_srai_epi32(y, 2);
+						u = _mm_sub_epi32(b, g);
+						v = _mm_sub_epi32(r, g);
+						_mm_store_si128((__m128i*) &chan0[j], y);
+						_mm_store_si128((__m128i*) &chan1[j], u);
+						_mm_store_si128((__m128i*) &chan2[j], v);
+					}
+	                return 0;
+	            })
+	        );
+	    }
+	    for(auto && result: results){
+	        result.get();
+	    }
+		i = chunkSize * Scheduler::g_tp->num_threads();
 	}
 #endif
 	for (; i < n; ++i) {
@@ -192,39 +169,83 @@ void mct_encode(int32_t *restrict chan0, int32_t *restrict chan1,
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
 
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct_decode(int32_t *restrict chan0, int32_t *restrict chan1,
+void mct::decode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 		int32_t *restrict chan2, uint64_t n) {
 	size_t i = 0;
-	const size_t len = n;
-#ifdef __SSE2__
-    const size_t chunkSize = 1 << 12;
-	if (n > chunkSize) {
-		uint64_t chunks = n >> 12;
-
+#ifdef __AVX2__
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 8
+    chunkSize = (chunkSize/8) * 8;
+	if (chunkSize > 8) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < chunks; ++i) {
+	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chan0,chan1,chan2] {
-	        	uint64_t begin = (uint64_t)index << 12;
-				for (auto j = begin; j < begin+chunkSize; j+=4 ){
-					mct_rev_sse2(chan0,chan1,chan2,j);
-				}
-                return 0;
+	            Scheduler::g_tp->enqueue([index, chunkSize,chan0,chan1,chan2] {
+					uint64_t begin = (uint64_t)index * chunkSize;
+					for (auto j = begin; j < begin+chunkSize; j+=8 ){
+						__m256i r, g, b;
+						__m256i y = _mm256_load_si256((const __m256i*) &(chan0[j]));
+						__m256i u = _mm256_load_si256((const __m256i*) &(chan1[j]));
+						__m256i v = _mm256_load_si256((const __m256i*) &(chan2[j]));
+						g = y;
+						g = _mm256_sub_epi32(g, _mm256_srai_epi32(_mm256_add_epi32(u, v), 2));
+						r = _mm256_add_epi32(v, g);
+						b = _mm256_add_epi32(u, g);
+						_mm256_store_si256((__m256i*) &(chan0[j]), r);
+						_mm256_store_si256((__m256i*) &(chan1[j]), g);
+						_mm256_store_si256((__m256i*) &(chan2[j]), b);
+					}
+					return 0;
 	            })
 	        );
 	    }
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunks << 12;
+		i = chunkSize * Scheduler::g_tp->num_threads();
+	}
+
+#elif __SSE2__
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 4
+    chunkSize = (chunkSize/4) * 4;
+	if (chunkSize > 4) {
+	    std::vector< std::future<int> > results;
+	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+	    	uint64_t index = i;
+	        results.emplace_back(
+	            Scheduler::g_tp->enqueue([index, chunkSize,chan0,chan1,chan2] {
+					uint64_t begin = (uint64_t)index * chunkSize;
+					for (auto j = begin; j < begin+chunkSize; j+=4 ){
+						__m128i r, g, b;
+						__m128i y = _mm_load_si128((const __m128i*) &(chan0[j]));
+						__m128i u = _mm_load_si128((const __m128i*) &(chan1[j]));
+						__m128i v = _mm_load_si128((const __m128i*) &(chan2[j]));
+						g = y;
+						g = _mm_sub_epi32(g, _mm_srai_epi32(_mm_add_epi32(u, v), 2));
+						r = _mm_add_epi32(v, g);
+						b = _mm_add_epi32(u, g);
+						_mm_store_si128((__m128i*) &(chan0[j]), r);
+						_mm_store_si128((__m128i*) &(chan1[j]), g);
+						_mm_store_si128((__m128i*) &(chan2[j]), b);
+					}
+					return 0;
+	            })
+	        );
+	    }
+	    for(auto && result: results){
+	        result.get();
+	    }
+		i = chunkSize * Scheduler::g_tp->num_threads();
 	}
 #endif
-	for (; i < len; ++i) {
+	for (; i < n; ++i) {
 		int32_t y = chan0[i];
 		int32_t u = chan1[i];
 		int32_t v = chan2[i];
@@ -239,40 +260,36 @@ void mct_decode(int32_t *restrict chan0, int32_t *restrict chan1,
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct_encode_real(
-    int32_t* restrict chan0,
-    int32_t* restrict chan1,
-    int32_t* restrict chan2,
-    uint64_t n)
+void mct::encode_irrev( int32_t* restrict chan0,
+						int32_t* restrict chan1,
+						int32_t* restrict chan2,
+						uint64_t n)
 {
     size_t i = 0;
-    const size_t len = n;
 #ifdef __SSE4_1__
     const __m128i ry = _mm_set1_epi32(2449);
     const __m128i gy = _mm_set1_epi32(4809);
     const __m128i by = _mm_set1_epi32(934);
-
     const __m128i ru = _mm_set1_epi32(1382);
     const __m128i gu = _mm_set1_epi32(2714);
-    /* const __m128i bu = _mm_set1_epi32(4096); */
-    /* const __m128i rv = _mm_set1_epi32(4096); */
     const __m128i gv = _mm_set1_epi32(3430);
     const __m128i bv = _mm_set1_epi32(666);
     const __m128i mulround = _mm_shuffle_epi32(_mm_cvtsi32_si128(4096), _MM_SHUFFLE(1, 0, 1, 0));
 
-    const size_t chunkSize = 1 << 12;
-	if (n > chunkSize) {
-		uint64_t chunks = n >> 12;
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 4
+    chunkSize = (chunkSize/4) * 4;
+	if (chunkSize > 4) {
 
 		std::vector< std::future<int> > results;
-		for(size_t k = 0; k < chunks; ++k) {
+		for(size_t k = 0; k < Scheduler::g_tp->num_threads(); ++k) {
 			uint64_t index = k;
 			results.emplace_back(
-				Scheduler::g_tp->enqueue([index, chan0,chan1,chan2,
+				Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2,
 											 ry,gy,by,ru,gu,gv,bv,
 											 mulround] {
 
-				uint64_t begin = (uint64_t)index << 12;
+				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j+=4 ){
 					__m128i lo, hi;
 					__m128i y, u, v;
@@ -311,10 +328,6 @@ void mct_encode_real(
 					y = _mm_add_epi32(y, _mm_blend_epi16(lo, hi, 0xCC));
 					_mm_store_si128((__m128i *)&(chan0[j]), y);
 
-					/*lo = b;
-					hi = _mm_shuffle_epi32(b, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, mulround);
-					hi = _mm_mul_epi32(hi, mulround);*/
 					lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 2, 0)));
 					hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(b, _MM_SHUFFLE(3, 2, 3, 1)));
 					lo = _mm_slli_epi64(lo, 12);
@@ -346,10 +359,6 @@ void mct_encode_real(
 					u = _mm_sub_epi32(u, _mm_blend_epi16(lo, hi, 0xCC));
 					_mm_store_si128((__m128i *)&(chan1[j]), u);
 
-					/*lo = r;
-					hi = _mm_shuffle_epi32(r, _MM_SHUFFLE(3, 3, 1, 1));
-					lo = _mm_mul_epi32(lo, mulround);
-					hi = _mm_mul_epi32(hi, mulround);*/
 					lo = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 2, 0)));
 					hi = _mm_cvtepi32_epi64(_mm_shuffle_epi32(r, _MM_SHUFFLE(3, 2, 3, 1)));
 					lo = _mm_slli_epi64(lo, 12);
@@ -389,15 +398,10 @@ void mct_encode_real(
 		for(auto && result: results){
 			result.get();
 		}
-		i = chunks << 12;
-	}
-	else {
-		for (; i < (n & ~3); i += 4) {
-			mct_fwd_sse2(chan0,chan1,chan2,i);
-		}
+		i = Scheduler::g_tp->num_threads() * chunkSize;
 	}
 #endif
-    for(; i < len; ++i) {
+    for(; i < n; ++i) {
         int32_t r = chan0[i];
         int32_t g = chan1[i];
         int32_t b = chan2[i];
@@ -413,26 +417,65 @@ void mct_encode_real(
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct_decode_real(float *restrict c0, float *restrict c1, float *restrict c2,
+void mct::decode_irrev(float *restrict c0, float *restrict c1, float *restrict c2,
 		uint64_t n) {
 	uint64_t i = 0;
-#ifdef __SSE__
+#ifdef __AVX2__
+	size_t chunkSize = n / Scheduler::g_tp->num_threads();
+	//ensure it is divisible by 8
+	chunkSize = (chunkSize/8) * 8;
+	if (chunkSize > 8) {
+		std::vector< std::future<int> > results;
+		for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+			uint64_t index = i;
+			results.emplace_back(
+				Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2] {
+				const __m256 vrv = _mm256_set1_ps(1.402f);
+				const __m256 vgu = _mm256_set1_ps(0.34413f);
+				const __m256 vgv = _mm256_set1_ps(0.71414f);
+				const __m256 vbu = _mm256_set1_ps(1.772f);
+				uint64_t begin = (uint64_t)index * chunkSize;
+				for (auto j = begin; j < begin+chunkSize; j +=8){
+					__m256 vy, vu, vv;
+					__m256 vr, vg, vb;
+
+					vy = _mm256_load_ps(c0 + j);
+					vu = _mm256_load_ps(c1 + j);
+					vv = _mm256_load_ps(c2 + j);
+					vr = _mm256_add_ps(vy, _mm256_mul_ps(vv, vrv));
+					vg = _mm256_sub_ps(_mm256_sub_ps(vy, _mm256_mul_ps(vu, vgu)),
+							_mm256_mul_ps(vv, vgv));
+					vb = _mm256_add_ps(vy, _mm256_mul_ps(vu, vbu));
+					_mm256_store_ps(c0 + j, vr);
+					_mm256_store_ps(c1 + j, vg);
+					_mm256_store_ps(c2 + j, vb);
+				}
+				return 0;
+				})
+			);
+		}
+		for(auto && result: results){
+			result.get();
+		}
+		i = chunkSize * Scheduler::g_tp->num_threads();
+	}
+#elif __SSE__
 	__m128 vrv, vgu, vgv, vbu;
 	vrv = _mm_set1_ps(1.402f);
 	vgu = _mm_set1_ps(0.34413f);
 	vgv = _mm_set1_ps(0.71414f);
 	vbu = _mm_set1_ps(1.772f);
 
-	const size_t chunkSize = 1 << 12;
-	if (n > chunkSize) {
-		uint64_t chunks = n >> 12;
-
+    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    //ensure it is divisible by 8
+    chunkSize = (chunkSize/8) * 8;
+	if (chunkSize > 8) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < chunks; ++i) {
+	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, c0,c1,c2,vrv,vgu,vgv,vbu] {
-				uint64_t begin = (uint64_t)index << 12;
+	            Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2,vrv,vgu,vgv,vbu] {
+				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize;){
 					__m128 vy, vu, vv;
 					__m128 vr, vg, vb;
@@ -470,7 +513,7 @@ void mct_decode_real(float *restrict c0, float *restrict c1, float *restrict c2,
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunkSize * chunks;
+		i = chunkSize * Scheduler::g_tp->num_threads();
 	}
 #endif
 	for (; i < n; ++i) {
@@ -486,7 +529,29 @@ void mct_decode_real(float *restrict c0, float *restrict c1, float *restrict c2,
 	}
 }
 
-bool mct_encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
+//////////////////////////////////////////////////////////////////////////////
+
+
+void mct::calculate_norms(double *pNorms, uint32_t pNbComps, float *pMatrix) {
+	uint32_t i, j, lIndex;
+	float lCurrentValue;
+	double *lNorms = (double*) pNorms;
+	float *lMatrix = (float*) pMatrix;
+
+	for (i = 0; i < pNbComps; ++i) {
+		lNorms[i] = 0;
+		lIndex = i;
+
+		for (j = 0; j < pNbComps; ++j) {
+			lCurrentValue = lMatrix[lIndex];
+			lIndex += pNbComps;
+			lNorms[i] += lCurrentValue * lCurrentValue;
+		}
+		lNorms[i] = sqrt(lNorms[i]);
+	}
+}
+
+bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
 	float *lMct = (float*) pCodingdata;
 	uint64_t i;
@@ -534,7 +599,7 @@ bool mct_encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 	return true;
 }
 
-bool mct_decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
+bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 		uint32_t pNbComp, uint32_t isSigned) {
 	float *lMct;
 	uint64_t i;

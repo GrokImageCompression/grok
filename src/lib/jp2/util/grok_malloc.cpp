@@ -230,20 +230,12 @@ void* grok_calloc(size_t num, size_t size) {
 }
 
 void* grok_aligned_malloc(size_t size) {
-	return grk_aligned_alloc_n(16U, size);
+	return grk_aligned_alloc_n(32U, size);
 }
 void* grok_aligned_realloc(void *ptr, size_t size) {
-	return grok_aligned_realloc_n(ptr, 16U, size);
+	return grok_aligned_realloc_n(ptr, 32U, size);
 }
 
-void *grok_aligned_32_malloc(size_t size)
-{
-    return grk_aligned_alloc_n(32U, size);
-}
-void * grok_aligned_32_realloc(void *ptr, size_t size)
-{
-    return grok_aligned_realloc_n(ptr, 32U, size);
-}
 
 void grok_aligned_free(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
