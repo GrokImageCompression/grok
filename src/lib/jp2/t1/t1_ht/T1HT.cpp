@@ -51,6 +51,8 @@ T1HT::T1HT(bool isEncoder,
 T1HT::~T1HT() {
    delete[] coded_data;
    delete[] unencoded_data;
+   delete allocator;
+   delete elastic_alloc;
 }
 void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t &maximum) {
