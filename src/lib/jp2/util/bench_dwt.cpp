@@ -57,6 +57,10 @@
 #include <sys/times.h>
 #endif /* _WIN32 */
 
+#include <chrono>  // for high_resolution_clock
+
+using namespace grk;
+
 namespace grk {
 
 int32_t getValue(uint32_t i)
@@ -79,6 +83,8 @@ void init_tilec(TileComponent * l_tilec,
     l_tilec->y0 = y0;
     l_tilec->x1 = x1;
     l_tilec->y1 = y1;
+    l_tilec->create_buffer(false,nullptr,1,1);
+
     nValues = (size_t)(l_tilec->x1 - l_tilec->x0) *
               (size_t)(l_tilec->y1 - l_tilec->y0);
     l_tilec->buf->data = (int32_t*) grok_malloc(sizeof(int32_t) * nValues);
@@ -86,6 +92,7 @@ void init_tilec(TileComponent * l_tilec,
         l_tilec->buf->data[i] = getValue((uint32_t)i);
     }
     l_tilec->numresolutions = numresolutions;
+    l_tilec->minimum_num_resolutions = numresolutions;
     l_tilec->resolutions = (grk_tcd_resolution*) grok_calloc(
                                l_tilec->numresolutions,
                                sizeof(grk_tcd_resolution));
@@ -123,36 +130,12 @@ void usage(void)
     exit(1);
 }
 
-
-double grk_clock(void)
-{
-#ifdef _WIN32
-    /* _WIN32: use QueryPerformance (very accurate) */
-    LARGE_INTEGER freq, t ;
-    /* freq is the clock speed of the CPU */
-    QueryPerformanceFrequency(&freq) ;
-    /* cout << "freq = " << ((double) freq.QuadPart) << endl; */
-    /* t is the high resolution performance counter (see MSDN) */
-    QueryPerformanceCounter(& t) ;
-    return freq.QuadPart ? (t.QuadPart / (double) freq.QuadPart) : 0 ;
-#else
-    /* Unix or Linux: use resource usage */
-    struct rusage t;
-    double procTime;
-    /* (1) Get the rusage data structure at this moment (man getrusage) */
-    getrusage(0, &t);
-    /* (2) What is the elapsed time ? - CPU time = User time + System time */
-    /* (2a) Get the seconds */
-    procTime = (double)(t.ru_utime.tv_sec + t.ru_stime.tv_sec);
-    /* (2b) More precisely! Get the microseconds part ! */
-    return (procTime + (double)(t.ru_utime.tv_usec + t.ru_stime.tv_usec) *
-            1e-6) ;
-#endif
 }
+
+
 
 int main(int argc, char** argv)
 {
-	grk_initialize(nullptr,0);
     int num_threads = 0;
     TileProcessor tcd(true);
     grk_image tcd_image;
@@ -164,7 +147,6 @@ int main(int argc, char** argv)
     bool display = false;
     bool check = false;
     int32_t size = 16384 - 1;
-    double start, stop;
     uint32_t offset_x = ((uint32_t)size + 1) / 2 - 1;
     uint32_t offset_y = ((uint32_t)size + 1) / 2 - 1;
     uint32_t num_resolutions = 6;
@@ -198,6 +180,8 @@ int main(int argc, char** argv)
         }
     }
 
+   grk_initialize(nullptr,num_threads);
+
    init_tilec(&tilec, (int32_t)offset_x, (int32_t)offset_y,
                (int32_t)offset_x + size, (int32_t)offset_y + size,
                num_resolutions);
@@ -205,8 +189,8 @@ int main(int argc, char** argv)
     if (display) {
         printf("Before\n");
         k = 0;
-        for (j = 0; j < tilec.y1 - tilec.y0; j++) {
-            for (i = 0; i < tilec.x1 - tilec.x0; i++) {
+        for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+            for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
                 printf("%d ", tilec.buf->data[k]);
                 k ++;
             }
@@ -214,13 +198,8 @@ int main(int argc, char** argv)
         }
     }
 
-    //tcd.win_x0 = (uint32_t)tilec.x0;
-    //tcd.win_y0 = (uint32_t)tilec.y0;
-    //tcd.win_x1 = (uint32_t)tilec.x1;
-    //tcd.win_y1 = (uint32_t)tilec.y1;
     tcd.image = &tcd_image;
     memset(&tcd_image, 0, sizeof(tcd_image));
-    //tcd_image.tiles = &tcd_tile;
     memset(&tcd_tile, 0, sizeof(tcd_tile));
     tcd_tile.x0 = tilec.x0;
     tcd_tile.y0 = tilec.y0;
@@ -236,17 +215,22 @@ int main(int argc, char** argv)
     image_comp.dx = 1;
     image_comp.dy = 1;
 
-    start = grk_clock();
+
+	std::chrono::time_point<std::chrono::high_resolution_clock> start, finish;
+	std::chrono::duration<double> elapsed;
+
+	start = std::chrono::high_resolution_clock::now();
     decode_53(&tcd, &tilec, tilec.numresolutions);
-    stop = grk_clock();
-    printf("time for dwt_decode: %.03f s\n", stop - start);
+	finish = std::chrono::high_resolution_clock::now();
+	elapsed = finish - start;
+    printf("time for dwt_decode: %.03f ms\n", elapsed.count()*1000);
 
     if (display || check) {
         if (display) {
             printf("After IDWT\n");
             k = 0;
-            for (j = 0; j < tilec.y1 - tilec.y0; j++) {
-                for (i = 0; i < tilec.x1 - tilec.x0; i++) {
+            for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+                for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
                     printf("%d ", tilec.buf->data[k]);
                     k ++;
                 }
@@ -258,8 +242,8 @@ int main(int argc, char** argv)
         if (display) {
             printf("After FDWT\n");
             k = 0;
-            for (j = 0; j < tilec.y1 - tilec.y0; j++) {
-                for (i = 0; i < tilec.x1 - tilec.x0; i++) {
+            for (j = 0; j < (int32_t)(tilec.y1 - tilec.y0); j++) {
+                for (i = 0; i < (int32_t)(tilec.x1 - tilec.x0); i++) {
                     printf("%d ", tilec.buf->data[k]);
                     k ++;
                 }
@@ -286,4 +270,4 @@ int main(int argc, char** argv)
     return 0;
 }
 
-}
+

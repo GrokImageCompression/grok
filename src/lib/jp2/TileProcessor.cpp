@@ -696,6 +696,23 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 	return true;
 }
 
+TileComponent::TileComponent() :numresolutions(0),
+								numAllocatedResolutions(0),
+								minimum_num_resolutions(0),
+								resolutions(nullptr),
+						#ifdef DEBUG_LOSSLESS_T2
+								round_trip_resolutions(nullptr),
+						#endif
+							   numpix(0),
+							   buf(nullptr),
+							   whole_tile_decoding(true),
+							   x0(0),
+							   y0(0),
+							   x1(0),
+							   y1(0)
+{
+
+}
 
 uint32_t TileComponent::width(){
 	return (uint32_t) (x1 - x0);

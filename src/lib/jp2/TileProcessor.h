@@ -286,6 +286,7 @@ struct grk_tcd_resolution {
 
 // tile component
 struct TileComponent {
+	TileComponent();
 	uint32_t width();
 	uint32_t height();
 	uint64_t area();
