@@ -220,7 +220,7 @@ int main(int argc, char** argv)
 	std::chrono::duration<double> elapsed;
 
 	start = std::chrono::high_resolution_clock::now();
-    decode_53(&tcd, &tilec, tilec.numresolutions);
+    decode_97(&tcd, &tilec, tilec.numresolutions);
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
     printf("time for dwt_decode: %.03f ms\n", elapsed.count()*1000);

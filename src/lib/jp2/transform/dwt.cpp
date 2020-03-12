@@ -57,21 +57,7 @@
  */
 
 #include <assert.h>
-
-#define GRK_SKIP_POISON
-#ifdef __SSE__
-#include <xmmintrin.h>
-#endif
-#ifdef __SSE2__
-#include <emmintrin.h>
-#endif
-#ifdef __SSSE3__
-#include <tmmintrin.h>
-#endif
-#ifdef __AVX2__
-#include <immintrin.h>
-#endif
-
+#include "simd.h"
 #include "grok_includes.h"
 
 #include "sparse_array.h"
@@ -85,14 +71,6 @@ namespace grk {
 
 #define GRK_WS(i) v->mem[(i)*2]
 #define GRK_WD(i) v->mem[(1+(i)*2)]
-
-#ifdef __AVX2__
-/** Number of int32 values in a AVX2 register */
-#define VREG_INT_COUNT       8
-#else
-/** Number of int32 values in a SSE2 register */
-#define VREG_INT_COUNT       4
-#endif
 
 /** Number of columns that we can process in parallel in the vertical pass */
 #define PARALLEL_COLS_53     (2*VREG_INT_COUNT)
@@ -345,28 +323,6 @@ static void decode_h_53(const dwt_data_53 *dwt,
 
 #if (defined(__SSE2__) || defined(__AVX2__))
 
-/* Convenience macros to improve the readability of the formulas */
-#if __AVX2__
-#define VREG        __m256i
-#define LOAD_CST(x) _mm256_set1_epi32(x)
-#define LOAD(x)     _mm256_load_si256((const VREG*)(x))
-#define LOADU(x)    _mm256_loadu_si256((const VREG*)(x))
-#define STORE(x,y)  _mm256_store_si256((VREG*)(x),(y))
-#define STOREU(x,y) _mm256_storeu_si256((VREG*)(x),(y))
-#define ADD(x,y)    _mm256_add_epi32((x),(y))
-#define SUB(x,y)    _mm256_sub_epi32((x),(y))
-#define SAR(x,y)    _mm256_srai_epi32((x),(y))
-#else
-#define VREG        __m128i
-#define LOAD_CST(x) _mm_set1_epi32(x)
-#define LOAD(x)     _mm_load_si128((const VREG*)(x))
-#define LOADU(x)    _mm_loadu_si128((const VREG*)(x))
-#define STORE(x,y)  _mm_store_si128((VREG*)(x),(y))
-#define STOREU(x,y) _mm_storeu_si128((VREG*)(x),(y))
-#define ADD(x,y)    _mm_add_epi32((x),(y))
-#define SUB(x,y)    _mm_sub_epi32((x),(y))
-#define SAR(x,y)    _mm_srai_epi32((x),(y))
-#endif
 #define ADD3(x,y,z) ADD(ADD(x,y),z)
 
 static
@@ -1918,29 +1874,19 @@ static void decode_step_97(dwt_data_97* restrict dwt)
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 static
-bool decode_tile_97(TileComponent* restrict tilec,
-                                uint32_t numres){
-    dwt_data_97 h;
-    dwt_data_97 v;
-
-    if (numres == 1U) {
+bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
+    if (numres == 1U)
         return true;
-    }
 
     grk_tcd_resolution* res = tilec->resolutions;
+    /* width of the resolution level computed */
+    uint32_t rw = (uint32_t)(res->x1 - res->x0);
+    /* height of the resolution level computed */
+    uint32_t rh = (uint32_t)(res->y1 - res->y0);
+    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
+                            tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
 
-    uint32_t rw = (uint32_t)(res->x1 -
-                                 res->x0);    /* width of the resolution level computed */
-    uint32_t rh = (uint32_t)(res->y1 -
-                                 res->y0);    /* height of the resolution level computed */
-
-    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions -
-                                                               1].x1 -
-                                tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
-
-    size_t l_data_size;
-
-    l_data_size = max_resolution(res, numres);
+    size_t l_data_size = max_resolution(res, numres);
     /* overflow check */
     if (l_data_size > (SIZE_MAX - 5U)) {
         /* FIXME event manager error callback */
@@ -1952,54 +1898,45 @@ bool decode_tile_97(TileComponent* restrict tilec,
         /* FIXME event manager error callback */
         return false;
     }
+    dwt_data_97 h;
+    dwt_data_97 v;
     h.wavelet = (v4_data*) grok_aligned_malloc(l_data_size * sizeof(v4_data));
     if (!h.wavelet) {
         /* FIXME event manager error callback */
         return false;
     }
     v.wavelet = h.wavelet;
-
     while (--numres) {
-        float * restrict aj = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        uint32_t j;
-
         h.sn = (int32_t)rw;
         v.sn = (int32_t)rh;
-
         ++res;
-
-        rw = (uint32_t)(res->x1 -
-                          res->x0);   /* width of the resolution level computed */
-        rh = (uint32_t)(res->y1 -
-                          res->y0);   /* height of the resolution level computed */
-
+        /* width of the resolution level computed */
+        rw = (uint32_t)(res->x1 -  res->x0);
+        /* height of the resolution level computed */
+        rh = (uint32_t)(res->y1 -  res->y0);
         h.dn = (int32_t)(rw - (uint32_t)h.sn);
         h.cas = res->x0 % 2;
-
         h.win_l_x0 = 0;
         h.win_l_x1 = (uint32_t)h.sn;
         h.win_h_x0 = 0;
         h.win_h_x1 = (uint32_t)h.dn;
+        uint32_t j;
+        float * restrict aj = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         for (j = 0; j + 3 < rh; j += 4) {
-            uint32_t k;
             interleave_h_97(&h, aj, w, rh - j);
             decode_step_97(&h);
-
-            for (k = 0; k < rw; k++) {
-                aj[k      ] = h.wavelet[k].f[0];
-                aj[k + (size_t)w  ] = h.wavelet[k].f[1];
-                aj[k + (size_t)w * 2] = h.wavelet[k].f[2];
-                aj[k + (size_t)w * 3] = h.wavelet[k].f[3];
+            for (uint32_t k = 0; k < rw; k++) {
+                aj[k      ] 			= h.wavelet[k].f[0];
+                aj[k + (size_t)w  ] 	= h.wavelet[k].f[1];
+                aj[k + (size_t)w * 2] 	= h.wavelet[k].f[2];
+                aj[k + (size_t)w * 3] 	= h.wavelet[k].f[3];
             }
-
             aj += w * 4;
         }
-
         if (j < rh) {
-            uint32_t k;
             interleave_h_97(&h, aj, w, rh - j);
             decode_step_97(&h);
-            for (k = 0; k < rw; k++) {
+            for (uint32_t k = 0; k < rw; k++) {
                 switch (rh - j) {
                 case 3:
                     aj[k + (size_t)w * 2] = h.wavelet[k].f[2];
@@ -2012,39 +1949,26 @@ bool decode_tile_97(TileComponent* restrict tilec,
                 }
             }
         }
-
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
+        v.dn = (int32_t)(rh - v.sn);
         v.cas = res->y0 % 2;
         v.win_l_x0 = 0;
         v.win_l_x1 = (uint32_t)v.sn;
         v.win_h_x0 = 0;
         v.win_h_x1 = (uint32_t)v.dn;
-
         aj = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         for (j = rw; j > 3; j -= 4) {
-            uint32_t k;
-
             interleave_v_97(&v, aj, w, 4);
             decode_step_97(&v);
-
-            for (k = 0; k < rh; ++k) {
+            for (uint32_t k = 0; k < rh; ++k)
                 memcpy(&aj[k * (size_t)w], &v.wavelet[k], 4 * sizeof(float));
-            }
-            aj += 4;
+             aj += 4;
         }
-
         if (rw & 0x03) {
-            uint32_t k;
-
             j = rw & 0x03;
-
             interleave_v_97(&v, aj, w, j);
             decode_step_97(&v);
-
-            for (k = 0; k < rh; ++k) {
-                memcpy(&aj[k * (size_t)w], &v.wavelet[k],
-                       (size_t)j * sizeof(float));
-            }
+            for (uint32_t k = 0; k < rh; ++k)
+                memcpy(&aj[k * (size_t)w], &v.wavelet[k],(size_t)j * sizeof(float));
         }
     }
     grok_aligned_free(h.wavelet);

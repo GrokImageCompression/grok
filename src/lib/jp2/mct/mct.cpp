@@ -56,6 +56,7 @@
  */
 
 #include "CPUArch.h"
+#include "simd.h"
 #include "grok_includes.h"
 
 namespace grk {
@@ -85,66 +86,31 @@ void mct::encode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 		int32_t *restrict chan2, uint64_t n) {
 	size_t i = 0;
 
-#ifdef __AVX2__
+#if (defined(__SSE2__) || defined(__AVX2__))
     size_t chunkSize = n / Scheduler::g_tp->num_threads();
-    //ensure it is divisible by 8
-    chunkSize = (chunkSize/8) * 8;
-	if (chunkSize > 8) {
+    //ensure it is divisible by VREG_INT_COUNT
+    chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
 	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
 	            Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2] {
 	        		uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=8 ){
-						__m256i y, u, v;
-						__m256i r = _mm256_load_si256((const __m256i*) &chan0[j]);
-						__m256i g = _mm256_load_si256((const __m256i*) &chan1[j]);
-						__m256i b = _mm256_load_si256((const __m256i*) &chan2[j]);
-						y = _mm256_add_epi32(g, g);
-						y = _mm256_add_epi32(y, b);
-						y = _mm256_add_epi32(y, r);
-						y = _mm256_srai_epi32(y, 2);
-						u = _mm256_sub_epi32(b, g);
-						v = _mm256_sub_epi32(r, g);
-						_mm256_store_si256((__m256i*) &chan0[j], y);
-						_mm256_store_si256((__m256i*) &chan1[j], u);
-						_mm256_store_si256((__m256i*) &chan2[j], v);
-					}
-	                return 0;
-	            })
-	        );
-	    }
-	    for(auto && result: results){
-	        result.get();
-	    }
-		i = chunkSize * Scheduler::g_tp->num_threads();
-	}
-#elif __SSE2__
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
-    //ensure it is divisible by 4
-    chunkSize = (chunkSize/4) * 4;
-	if (chunkSize > 4) {
-	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
-	    	uint64_t index = i;
-	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2] {
-	        		uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=4 ){
-						__m128i y, u, v;
-						__m128i r = _mm_load_si128((const __m128i*) &chan0[j]);
-						__m128i g = _mm_load_si128((const __m128i*) &chan1[j]);
-						__m128i b = _mm_load_si128((const __m128i*) &chan2[j]);
-						y = _mm_add_epi32(g, g);
-						y = _mm_add_epi32(y, b);
-						y = _mm_add_epi32(y, r);
-						y = _mm_srai_epi32(y, 2);
-						u = _mm_sub_epi32(b, g);
-						v = _mm_sub_epi32(r, g);
-						_mm_store_si128((__m128i*) &chan0[j], y);
-						_mm_store_si128((__m128i*) &chan1[j], u);
-						_mm_store_si128((__m128i*) &chan2[j], v);
+					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+						VREG y, u, v;
+						VREG r = LOAD((const VREG*) &chan0[j]);
+						VREG g = LOAD((const VREG*) &chan1[j]);
+						VREG b = LOAD((const VREG*) &chan2[j]);
+						y = ADD(g, g);
+						y = ADD(y, b);
+						y = ADD(y, r);
+						y = SAR(y, 2);
+						u = SUB(b, g);
+						v = SUB(r, g);
+						STORE((VREG*) &chan0[j], y);
+						STORE((VREG*) &chan1[j], u);
+						STORE((VREG*) &chan2[j], v);
 					}
 	                return 0;
 	            })
@@ -177,63 +143,29 @@ void mct::encode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 void mct::decode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 		int32_t *restrict chan2, uint64_t n) {
 	size_t i = 0;
-#ifdef __AVX2__
+#if (defined(__SSE2__) || defined(__AVX2__))
     size_t chunkSize = n / Scheduler::g_tp->num_threads();
-    //ensure it is divisible by 8
-    chunkSize = (chunkSize/8) * 8;
-	if (chunkSize > 8) {
+    //ensure it is divisible by VREG_INT_COUNT
+    chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
 	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
 	            Scheduler::g_tp->enqueue([index, chunkSize,chan0,chan1,chan2] {
 					uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=8 ){
-						__m256i r, g, b;
-						__m256i y = _mm256_load_si256((const __m256i*) &(chan0[j]));
-						__m256i u = _mm256_load_si256((const __m256i*) &(chan1[j]));
-						__m256i v = _mm256_load_si256((const __m256i*) &(chan2[j]));
+					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
+						VREG r, g, b;
+						VREG y = LOAD((const VREG*) &(chan0[j]));
+						VREG u = LOAD((const VREG*) &(chan1[j]));
+						VREG v = LOAD((const VREG*) &(chan2[j]));
 						g = y;
-						g = _mm256_sub_epi32(g, _mm256_srai_epi32(_mm256_add_epi32(u, v), 2));
-						r = _mm256_add_epi32(v, g);
-						b = _mm256_add_epi32(u, g);
-						_mm256_store_si256((__m256i*) &(chan0[j]), r);
-						_mm256_store_si256((__m256i*) &(chan1[j]), g);
-						_mm256_store_si256((__m256i*) &(chan2[j]), b);
-					}
-					return 0;
-	            })
-	        );
-	    }
-	    for(auto && result: results){
-	        result.get();
-	    }
-		i = chunkSize * Scheduler::g_tp->num_threads();
-	}
-
-#elif __SSE2__
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
-    //ensure it is divisible by 4
-    chunkSize = (chunkSize/4) * 4;
-	if (chunkSize > 4) {
-	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
-	    	uint64_t index = i;
-	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chunkSize,chan0,chan1,chan2] {
-					uint64_t begin = (uint64_t)index * chunkSize;
-					for (auto j = begin; j < begin+chunkSize; j+=4 ){
-						__m128i r, g, b;
-						__m128i y = _mm_load_si128((const __m128i*) &(chan0[j]));
-						__m128i u = _mm_load_si128((const __m128i*) &(chan1[j]));
-						__m128i v = _mm_load_si128((const __m128i*) &(chan2[j]));
-						g = y;
-						g = _mm_sub_epi32(g, _mm_srai_epi32(_mm_add_epi32(u, v), 2));
-						r = _mm_add_epi32(v, g);
-						b = _mm_add_epi32(u, g);
-						_mm_store_si128((__m128i*) &(chan0[j]), r);
-						_mm_store_si128((__m128i*) &(chan1[j]), g);
-						_mm_store_si128((__m128i*) &(chan2[j]), b);
+						g = SUB(g, SAR(ADD(u, v), 2));
+						r = ADD(v, g);
+						b = ADD(u, g);
+						STORE((VREG*) &(chan0[j]), r);
+						STORE((VREG*) &(chan1[j]), g);
+						STORE((VREG*) &(chan2[j]), b);
 					}
 					return 0;
 	            })
@@ -420,35 +352,34 @@ void mct::encode_irrev( int32_t* restrict chan0,
 void mct::decode_irrev(float *restrict c0, float *restrict c1, float *restrict c2,
 		uint64_t n) {
 	uint64_t i = 0;
-#ifdef __AVX2__
+#if (defined(__SSE2__) || defined(__AVX2__))
 	size_t chunkSize = n / Scheduler::g_tp->num_threads();
-	//ensure it is divisible by 8
-	chunkSize = (chunkSize/8) * 8;
-	if (chunkSize > 8) {
+	//ensure it is divisible by VREG_INT_COUNT
+	chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
+	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
 		for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
 			uint64_t index = i;
 			results.emplace_back(
 				Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2] {
-				const __m256 vrv = _mm256_set1_ps(1.402f);
-				const __m256 vgu = _mm256_set1_ps(0.34413f);
-				const __m256 vgv = _mm256_set1_ps(0.71414f);
-				const __m256 vbu = _mm256_set1_ps(1.772f);
+				const VREGF vrv = SETF(1.402f);
+				const VREGF vgu = SETF(0.34413f);
+				const VREGF vgv = SETF(0.71414f);
+				const VREGF vbu = SETF(1.772f);
 				uint64_t begin = (uint64_t)index * chunkSize;
-				for (auto j = begin; j < begin+chunkSize; j +=8){
-					__m256 vy, vu, vv;
-					__m256 vr, vg, vb;
+				for (auto j = begin; j < begin+chunkSize; j +=VREG_INT_COUNT){
+					VREGF vy, vu, vv;
+					VREGF vr, vg, vb;
 
-					vy = _mm256_load_ps(c0 + j);
-					vu = _mm256_load_ps(c1 + j);
-					vv = _mm256_load_ps(c2 + j);
-					vr = _mm256_add_ps(vy, _mm256_mul_ps(vv, vrv));
-					vg = _mm256_sub_ps(_mm256_sub_ps(vy, _mm256_mul_ps(vu, vgu)),
-							_mm256_mul_ps(vv, vgv));
-					vb = _mm256_add_ps(vy, _mm256_mul_ps(vu, vbu));
-					_mm256_store_ps(c0 + j, vr);
-					_mm256_store_ps(c1 + j, vg);
-					_mm256_store_ps(c2 + j, vb);
+					vy = LOADF(c0 + j);
+					vu = LOADF(c1 + j);
+					vv = LOADF(c2 + j);
+					vr = ADDF(vy, MULF(vv, vrv));
+					vg = SUBF(SUBF(vy, MULF(vu, vgu)),MULF(vv, vgv));
+					vb = ADDF(vy, MULF(vu, vbu));
+					STOREF(c0 + j, vr);
+					STOREF(c1 + j, vg);
+					STOREF(c2 + j, vb);
 				}
 				return 0;
 				})
@@ -457,62 +388,6 @@ void mct::decode_irrev(float *restrict c0, float *restrict c1, float *restrict c
 		for(auto && result: results){
 			result.get();
 		}
-		i = chunkSize * Scheduler::g_tp->num_threads();
-	}
-#elif __SSE__
-	__m128 vrv, vgu, vgv, vbu;
-	vrv = _mm_set1_ps(1.402f);
-	vgu = _mm_set1_ps(0.34413f);
-	vgv = _mm_set1_ps(0.71414f);
-	vbu = _mm_set1_ps(1.772f);
-
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
-    //ensure it is divisible by 8
-    chunkSize = (chunkSize/8) * 8;
-	if (chunkSize > 8) {
-	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
-	    	uint64_t index = i;
-	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2,vrv,vgu,vgv,vbu] {
-				uint64_t begin = (uint64_t)index * chunkSize;
-				for (auto j = begin; j < begin+chunkSize;){
-					__m128 vy, vu, vv;
-					__m128 vr, vg, vb;
-
-					vy = _mm_load_ps(c0 + j);
-					vu = _mm_load_ps(c1 + j);
-					vv = _mm_load_ps(c2 + j);
-					vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
-					vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
-							_mm_mul_ps(vv, vgv));
-					vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
-					_mm_store_ps(c0 + j, vr);
-					_mm_store_ps(c1 + j, vg);
-					_mm_store_ps(c2 + j, vb);
-
-					j+=4;
-
-					vy = _mm_load_ps(c0+j);
-					vu = _mm_load_ps(c1+j);
-					vv = _mm_load_ps(c2+j);
-					vr = _mm_add_ps(vy, _mm_mul_ps(vv, vrv));
-					vg = _mm_sub_ps(_mm_sub_ps(vy, _mm_mul_ps(vu, vgu)),
-							_mm_mul_ps(vv, vgv));
-					vb = _mm_add_ps(vy, _mm_mul_ps(vu, vbu));
-					_mm_store_ps(c0+j, vr);
-					_mm_store_ps(c1+j, vg);
-					_mm_store_ps(c2+j, vb);
-
-					j +=4;
-				}
-                return 0;
-	            })
-	        );
-	    }
-	    for(auto && result: results){
-	        result.get();
-	    }
 		i = chunkSize * Scheduler::g_tp->num_threads();
 	}
 #endif
