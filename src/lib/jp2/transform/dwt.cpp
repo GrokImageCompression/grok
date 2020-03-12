@@ -73,7 +73,7 @@ namespace grk {
 #define GRK_WD(i) v->mem[(1+(i)*2)]
 
 /** Number of columns that we can process in parallel in the vertical pass */
-#define PARALLEL_COLS_53     (2*VREG_INT_COUNT)
+#define PLL_COLS_53     (2*VREG_INT_COUNT)
 
 /** @name Local data structures */
 /*@{*/
@@ -85,18 +85,19 @@ struct dwt_data_53 {
     int32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
 } ;
 
-struct decode_h_job_53{
-    dwt_data_53 h;
-    uint32_t rw;
-    uint32_t w;
-    int32_t * restrict tiledp;
-    uint32_t min_j;
-    uint32_t max_j;
-} ;
+template <typename T> struct decode_job{
+	decode_job( T data,
+					uint32_t w,
+					int32_t * restrict tiledp,
+					uint32_t min_j,
+					uint32_t max_j) : data(data),
+									w(w),
+									tiledp(tiledp),
+									min_j(min_j),
+									max_j(max_j)
+	{}
 
-struct decode_v_job_53{
-    dwt_data_53 v;
-    uint32_t rh;
+    T data;
     uint32_t w;
     int32_t * restrict tiledp;
     uint32_t min_j;
@@ -338,9 +339,9 @@ void decode_v_final_memcpy_53(int32_t* tiledp_col,
            would do but would be a tiny bit slower.
            We can take here advantage of our knowledge of alignment */
         STOREU(&tiledp_col[(size_t)i * stride + 0],
-               LOAD(&tmp[PARALLEL_COLS_53 * i + 0]));
+               LOAD(&tmp[PLL_COLS_53 * i + 0]));
         STOREU(&tiledp_col[(size_t)i * stride + VREG_INT_COUNT],
-               LOAD(&tmp[PARALLEL_COLS_53 * i + VREG_INT_COUNT]));
+               LOAD(&tmp[PLL_COLS_53 * i + VREG_INT_COUNT]));
     }
 }
 
@@ -362,10 +363,10 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 
     assert(len > 1);
 #if __AVX2__
-    assert(PARALLEL_COLS_53 == 16);
+    assert(PLL_COLS_53 == 16);
     assert(VREG_INT_COUNT == 8);
 #else
-    assert(PARALLEL_COLS_53 == 8);
+    assert(PLL_COLS_53 == 8);
     assert(VREG_INT_COUNT == 4);
 #endif
 
@@ -399,41 +400,41 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
         s0n_0 = SUB(s1n_0, SAR(ADD3(d1c_0, d1n_0, two), 2));
         s0n_1 = SUB(s1n_1, SAR(ADD3(d1c_1, d1n_1, two), 2));
 
-        STORE(tmp + PARALLEL_COLS_53 * (i + 0), s0c_0);
-        STORE(tmp + PARALLEL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
+        STORE(tmp + PLL_COLS_53 * (i + 0), s0c_0);
+        STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
 
         /* d1c + ((s0c + s0n) >> 1) */
-        STORE(tmp + PARALLEL_COLS_53 * (i + 1) + 0,
+        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,
               ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
-        STORE(tmp + PARALLEL_COLS_53 * (i + 1) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,
               ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
     }
 
-    STORE(tmp + PARALLEL_COLS_53 * (i + 0) + 0, s0n_0);
-    STORE(tmp + PARALLEL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0n_1);
+    STORE(tmp + PLL_COLS_53 * (i + 0) + 0, s0n_0);
+    STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0n_1);
 
     if (len & 1) {
         VREG tmp_len_minus_1;
         s1n_0 = LOADU(in_even + (size_t)((len - 1) / 2) * stride);
         /* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
         tmp_len_minus_1 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1), tmp_len_minus_1);
+        STORE(tmp + PLL_COLS_53 * (len - 1), tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PARALLEL_COLS_53 * (len - 2),
+        STORE(tmp + PLL_COLS_53 * (len - 2),
               ADD(d1n_0, SAR(ADD(s0n_0, tmp_len_minus_1), 1)));
 
         s1n_1 = LOADU(in_even + (size_t)((len - 1) / 2) * stride + VREG_INT_COUNT);
         /* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
         tmp_len_minus_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
               tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PARALLEL_COLS_53 * (len - 2) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT,
               ADD(d1n_1, SAR(ADD(s0n_1, tmp_len_minus_1), 1)));
     } else {
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + 0,
+        STORE(tmp + PLL_COLS_53 * (len - 1) + 0,
               ADD(d1n_0, s0n_0));
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
               ADD(d1n_1, s0n_1));
     }
     decode_v_final_memcpy_53(tiledp_col, tmp, len, stride);
@@ -460,10 +461,10 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
 
     assert(len > 2);
 #if __AVX2__
-    assert(PARALLEL_COLS_53 == 16);
+    assert(PLL_COLS_53 == 16);
     assert(VREG_INT_COUNT == 8);
 #else
-    assert(PARALLEL_COLS_53 == 8);
+    assert(PLL_COLS_53 == 8);
     assert(VREG_INT_COUNT == 4);
 #endif
 
@@ -476,13 +477,13 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
     dc_0 = SUB(LOADU(in_odd + 0),
                SAR(ADD3(LOADU(in_even + 0), s1_0, two), 2));
-    STORE(tmp + PARALLEL_COLS_53 * 0, ADD(LOADU(in_even + 0), dc_0));
+    STORE(tmp + PLL_COLS_53 * 0, ADD(LOADU(in_even + 0), dc_0));
 
     s1_1 = LOADU(in_even + stride + VREG_INT_COUNT);
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
     dc_1 = SUB(LOADU(in_odd + VREG_INT_COUNT),
                SAR(ADD3(LOADU(in_even + VREG_INT_COUNT), s1_1, two), 2));
-    STORE(tmp + PARALLEL_COLS_53 * 0 + VREG_INT_COUNT,
+    STORE(tmp + PLL_COLS_53 * 0 + VREG_INT_COUNT,
           ADD(LOADU(in_even + VREG_INT_COUNT), dc_1));
 
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
@@ -496,13 +497,13 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
         dn_1 = SUB(LOADU(in_odd + j * stride + VREG_INT_COUNT),
                    SAR(ADD3(s1_1, s2_1, two), 2));
 
-        STORE(tmp + PARALLEL_COLS_53 * i, dc_0);
-        STORE(tmp + PARALLEL_COLS_53 * i + VREG_INT_COUNT, dc_1);
+        STORE(tmp + PLL_COLS_53 * i, dc_0);
+        STORE(tmp + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
 
         /* tmp[i + 1] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PARALLEL_COLS_53 * (i + 1) + 0,
+        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,
               ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PARALLEL_COLS_53 * (i + 1) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,
               ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
         dc_0 = dn_0;
@@ -510,8 +511,8 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
         dc_1 = dn_1;
         s1_1 = s2_1;
     }
-    STORE(tmp + PARALLEL_COLS_53 * i, dc_0);
-    STORE(tmp + PARALLEL_COLS_53 * i + VREG_INT_COUNT, dc_1);
+    STORE(tmp + PLL_COLS_53 * i, dc_0);
+    STORE(tmp + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
 
     if (!(len & 1)) {
         /*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
@@ -521,16 +522,16 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
                    SAR(ADD3(s1_1, s1_1, two), 2));
 
         /* tmp[len - 2] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PARALLEL_COLS_53 * (len - 2) + 0,
+        STORE(tmp + PLL_COLS_53 * (len - 2) + 0,
               ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PARALLEL_COLS_53 * (len - 2) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT,
               ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + 0, dn_0);
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + VREG_INT_COUNT, dn_1);
+        STORE(tmp + PLL_COLS_53 * (len - 1) + 0, dn_0);
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, dn_1);
     } else {
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + 0, ADD(s1_0, dc_0));
-        STORE(tmp + PARALLEL_COLS_53 * (len - 1) + VREG_INT_COUNT,
+        STORE(tmp + PLL_COLS_53 * (len - 1) + 0, ADD(s1_0, dc_0));
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
               ADD(s1_1, dc_1));
     }
     decode_v_final_memcpy_53(tiledp_col, tmp, len, stride);
@@ -657,7 +658,7 @@ static void decode_v_53(const dwt_data_53 *dwt,
         /* If len == 1, unmodified value */
 
 #if (defined(__SSE2__) || defined(__AVX2__))
-        if (len > 1 && nb_cols == PARALLEL_COLS_53) {
+        if (len > 1 && nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
             decode_v_cas0_mcols_SSE2_OR_AVX2_53(dwt->mem, sn, len, tiledp_col, stride);
@@ -700,7 +701,7 @@ static void decode_v_53(const dwt_data_53 *dwt,
         }
 
 #if (defined(__SSE2__) || defined(__AVX2__))
-        if (len > 2 && nb_cols == PARALLEL_COLS_53) {
+        if (len > 2 && nb_cols == PLL_COLS_53) {
             /* Same as below general case, except that thanks to SSE2/AVX2 */
             /* we can efficiently process 8/16 columns in parallel */
             decode_v_cas1_mcols_SSE2_OR_AVX2_53(dwt->mem, sn, len, tiledp_col, stride);
@@ -762,46 +763,41 @@ static uint32_t max_resolution(grk_tcd_resolution* restrict r,
 /* Inverse wavelet transform in 2-D.    */
 /* </summary>                           */
 static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
-    dwt_data_53 h;
-    dwt_data_53 v;
+    if (numres == 1U)
+        return true;
 
-    grk_tcd_resolution* tr = tilec->resolutions;
+    auto tr = tilec->resolutions;
 
     /* width of the resolution level computed */
     uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
     /* height of the resolution level computed */
     uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
 
-    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions -
-                                                               1].x1 -
+    uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
                                 tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
-    size_t h_mem_size;
-    if (numres == 1U) {
-        return true;
-    }
+
     size_t num_threads = Scheduler::g_tp->num_threads();
-    h_mem_size = max_resolution(tr, numres);
+    size_t h_mem_size = max_resolution(tr, numres);
     /* overflow check */
-    if (h_mem_size > (SIZE_MAX / PARALLEL_COLS_53 / sizeof(int32_t))) {
-        /* FIXME event manager error callback */
+    if (h_mem_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
+        GROK_ERROR("Overflow");
         return false;
     }
-    /* We need PARALLEL_COLS_53 times the height of the array, */
+    /* We need PLL_COLS_53 times the height of the array, */
     /* since for the vertical pass */
-    /* we process PARALLEL_COLS_53 columns at a time */
-    h_mem_size *= PARALLEL_COLS_53 * sizeof(int32_t);
+    /* we process PLL_COLS_53 columns at a time */
+    dwt_data_53 h;
+    h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
     h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
     if (! h.mem) {
-        /* FIXME event manager error callback */
+        GROK_ERROR("Out of memory");
         return false;
     }
-
+    dwt_data_53 v;
     v.mem = h.mem;
-
+    bool rc = true;
+    int32_t * restrict tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
     while (--numres) {
-        int32_t * restrict tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
-        uint32_t j;
-
         ++tr;
         h.sn = (int32_t)rw;
         v.sn = (int32_t)rh;
@@ -813,120 +809,87 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
         h.cas = tr->x0 % 2;
 
         if (num_threads <= 1 || rh <= 1) {
-            for (j = 0; j < rh; ++j) {
+            for (uint32_t j = 0; j < rh; ++j)
                 decode_h_53(&h, &tiledp[(size_t)j * w]);
-            }
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
-            uint32_t step_j;
-
-            if (rh < num_jobs) {
+            if (rh < num_jobs)
                 num_jobs = rh;
-            }
-            step_j = (rh / num_jobs);
-
+            uint32_t step_j = (rh / num_jobs);
 			std::vector< std::future<int> > results;
-			for(j = 0; j < num_jobs; ++j) {
-                decode_h_job_53 *job = new decode_h_job_53();
-                job->h = h;
-                job->rw = rw;
-                job->w = w;
-                job->tiledp = tiledp;
-                job->min_j = j * step_j;
-                job->max_j = (j + 1U) * step_j; /* this can overflow */
-                if (j == (num_jobs - 1U)) {  /* this will take care of the overflow */
-                    job->max_j = rh;
-                }
-                job->h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-                if (!job->h.mem) {
-                    /* FIXME event manager error callback */
-                    //thread_pool_wait_completion(tp, 0);
+			for(uint32_t j = 0; j < num_jobs; ++j) {
+               auto job = new decode_job<dwt_data_53>(h,
+											w,
+											tiledp,
+											j * step_j,
+											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
+                job->data.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
+                if (!job->data.mem) {
+                    GROK_ERROR("Out of memory");
                     grok_aligned_free(h.mem);
                     return false;
                 }
-
 				results.emplace_back(
 					Scheduler::g_tp->enqueue([job] {
-					    for (uint32_t j = job->min_j; j < job->max_j; j++) {
-					        decode_h_53(&job->h, &job->tiledp[j * job->w]);
-					    }
-					    grok_aligned_free(job->h.mem);
+					    for (uint32_t j = job->min_j; j < job->max_j; j++)
+					        decode_h_53(&job->data, &job->tiledp[j * job->w]);
+					    grok_aligned_free(job->data.mem);
 					    delete job;
 						return 0;
 					})
 				);
 			}
-			for(auto && result: results){
+			for(auto && result: results)
 				result.get();
-			}
         }
 
         v.dn = (int32_t)(rh - (uint32_t)v.sn);
         v.cas = tr->y0 % 2;
 
         if (num_threads <= 1 || rw <= 1) {
-            for (j = 0; j + PARALLEL_COLS_53 <= rw;
-                    j += PARALLEL_COLS_53) {
-                decode_v_53(&v, &tiledp[j], (size_t)w, PARALLEL_COLS_53);
-            }
-            if (j < rw) {
+            uint32_t j;
+            for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53)
+                decode_v_53(&v, &tiledp[j], (size_t)w, PLL_COLS_53);
+            if (j < rw)
                 decode_v_53(&v, &tiledp[j], (size_t)w, (int32_t)(rw - j));
-            }
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
-            uint32_t step_j;
-
-            if (rw < num_jobs) {
+            if (rw < num_jobs)
                 num_jobs = rw;
-            }
-            step_j = (rw / num_jobs);
-
+            uint32_t step_j = (rw / num_jobs);
 			std::vector< std::future<int> > results;
-            for (j = 0; j < num_jobs; j++) {
-                decode_v_job_53 *job = new decode_v_job_53();
-                job->v = v;
-                job->rh = rh;
-                job->w = w;
-                job->tiledp = tiledp;
-                job->min_j = j * step_j;
-                job->max_j = (j + 1U) * step_j; /* this can overflow */
-                if (j == (num_jobs - 1U)) {  /* this will take care of the overflow */
-                    job->max_j = rw;
-                }
-                job->v.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-                if (!job->v.mem) {
-                    /* FIXME event manager error callback */
-                    //thread_pool_wait_completion(tp, 0);
+            for (uint32_t j = 0; j < num_jobs; j++) {
+                auto job = new decode_job<dwt_data_53>(v,
+											w,
+											tiledp,
+											j * step_j,
+											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
+                job->data.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
+                if (!job->data.mem) {
+                    GROK_ERROR("Out of memory");
                     grok_aligned_free(v.mem);
                     return false;
                 }
-
 				results.emplace_back(
 					Scheduler::g_tp->enqueue([job] {
 						uint32_t j;
-						for (j = job->min_j; j + PARALLEL_COLS_53 <= job->max_j;
-								j += PARALLEL_COLS_53) {
-							decode_v_53(&job->v, &job->tiledp[j], (size_t)job->w,
-										 PARALLEL_COLS_53);
-						}
+						for (j = job->min_j; j + PLL_COLS_53 <= job->max_j;	j += PLL_COLS_53)
+							decode_v_53(&job->data, &job->tiledp[j], (size_t)job->w, PLL_COLS_53);
 						if (j < job->max_j)
-							decode_v_53(&job->v, &job->tiledp[j], (size_t)job->w,
-										 (int32_t)(job->max_j - j));
-
-						grok_aligned_free(job->v.mem);
+							decode_v_53(&job->data, &job->tiledp[j], (size_t)job->w, (int32_t)(job->max_j - j));
+						grok_aligned_free(job->data.mem);
 						delete job;
 					return 0;
 					})
 				);
             }
-			for(auto && result: results){
+			for(auto && result: results)
 				result.get();
-			}
         }
     }
     grok_aligned_free(h.mem);
 
-    return true;
+    return rc;
 }
 
 static void interleave_partial_h_53(int32_t *dest,
@@ -1921,31 +1884,31 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
         h.win_h_x0 = 0;
         h.win_h_x1 = (uint32_t)h.dn;
         uint32_t j;
-        float * restrict aj = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
+        float * restrict tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         for (j = 0; j + 3 < rh; j += 4) {
-            interleave_h_97(&h, aj, w, rh - j);
+            interleave_h_97(&h, tiledp, w, rh - j);
             decode_step_97(&h);
             for (uint32_t k = 0; k < rw; k++) {
-                aj[k      ] 			= h.wavelet[k].f[0];
-                aj[k + (size_t)w  ] 	= h.wavelet[k].f[1];
-                aj[k + (size_t)w * 2] 	= h.wavelet[k].f[2];
-                aj[k + (size_t)w * 3] 	= h.wavelet[k].f[3];
+                tiledp[k      ] 			= h.wavelet[k].f[0];
+                tiledp[k + (size_t)w  ] 	= h.wavelet[k].f[1];
+                tiledp[k + (size_t)w * 2] 	= h.wavelet[k].f[2];
+                tiledp[k + (size_t)w * 3] 	= h.wavelet[k].f[3];
             }
-            aj += w * 4;
+            tiledp += w * 4;
         }
         if (j < rh) {
-            interleave_h_97(&h, aj, w, rh - j);
+            interleave_h_97(&h, tiledp, w, rh - j);
             decode_step_97(&h);
             for (uint32_t k = 0; k < rw; k++) {
                 switch (rh - j) {
                 case 3:
-                    aj[k + (size_t)w * 2] = h.wavelet[k].f[2];
+                    tiledp[k + (size_t)w * 2] = h.wavelet[k].f[2];
                 /* FALLTHRU */
                 case 2:
-                    aj[k + (size_t)w  ] = h.wavelet[k].f[1];
+                    tiledp[k + (size_t)w  ] = h.wavelet[k].f[1];
                 /* FALLTHRU */
                 case 1:
-                    aj[k] = h.wavelet[k].f[0];
+                    tiledp[k] = h.wavelet[k].f[0];
                 }
             }
         }
@@ -1955,20 +1918,20 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
         v.win_l_x1 = (uint32_t)v.sn;
         v.win_h_x0 = 0;
         v.win_h_x1 = (uint32_t)v.dn;
-        aj = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
+        tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         for (j = rw; j > 3; j -= 4) {
-            interleave_v_97(&v, aj, w, 4);
+            interleave_v_97(&v, tiledp, w, 4);
             decode_step_97(&v);
             for (uint32_t k = 0; k < rh; ++k)
-                memcpy(&aj[k * (size_t)w], &v.wavelet[k], 4 * sizeof(float));
-             aj += 4;
+                memcpy(&tiledp[k * (size_t)w], &v.wavelet[k], 4 * sizeof(float));
+             tiledp += 4;
         }
         if (rw & 0x03) {
             j = rw & 0x03;
-            interleave_v_97(&v, aj, w, j);
+            interleave_v_97(&v, tiledp, w, j);
             decode_step_97(&v);
             for (uint32_t k = 0; k < rh; ++k)
-                memcpy(&aj[k * (size_t)w], &v.wavelet[k],(size_t)j * sizeof(float));
+                memcpy(&tiledp[k * (size_t)w], &v.wavelet[k],(size_t)j * sizeof(float));
         }
     }
     grok_aligned_free(h.wavelet);
