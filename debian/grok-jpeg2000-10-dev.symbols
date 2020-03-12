@@ -1,23 +1,29 @@
 libgrok.so.10 libgrok-10 #MINVER#
+ grk_buffer_delete@Base 4.2.0-0
+ grk_buffer_new@Base 4.2.0-0
  grk_create_compress@Base 4.2.0
  grk_create_decompress@Base 4.2.0
  grk_decode@Base 4.2.0
  grk_decode_tile_data@Base 4.2.0
+ grk_deinitialize@Base 4.2.0-0
  grk_destroy_codec@Base 4.2.0
  grk_destroy_cstr_index@Base 4.2.0
  grk_destroy_cstr_info@Base 4.2.0
  grk_dump_codec@Base 4.2.0
  grk_encode@Base 4.2.0
+ grk_encode_with_plugin@Base 4.2.0-0
  grk_end_compress@Base 4.2.0
  grk_end_decompress@Base 4.2.0
  grk_get_cstr_index@Base 4.2.0
  grk_get_cstr_info@Base 4.2.0
  grk_get_decoded_tile@Base 4.2.0
+ grk_image_all_components_data_free@Base 4.2.0-0
  grk_image_create@Base 4.2.0
- grk_image_data_alloc@Base 2.2.0
- grk_image_data_free@Base 2.2.0
  grk_image_destroy@Base 4.2.0
+ grk_image_single_component_data_alloc@Base 4.2.0-0
+ grk_image_single_component_data_free@Base 4.2.0-0
  grk_image_tile_create@Base 4.2.0
+ grk_initialize@Base 4.2.0-0
  grk_read_header@Base 4.2.0
  grk_read_tile_header@Base 4.2.0
  grk_set_MCT@Base 4.2.0
@@ -35,13 +41,29 @@ libgrok.so.10 libgrok-10 #MINVER#
  grk_stream_create@Base 4.2.0
  grk_stream_create_default_file_stream@Base 4.2.0
  grk_stream_create_file_stream@Base 4.2.0
+ grk_stream_create_mapped_file_read_stream@Base 4.2.0-0
+ grk_stream_create_mem_stream@Base 4.2.0-0
  grk_stream_default_create@Base 4.2.0
  grk_stream_destroy@Base 4.2.0
+ grk_stream_get_write_mem_stream_length@Base 4.2.0-0
  grk_stream_set_read_function@Base 4.2.0
  grk_stream_set_seek_function@Base 4.2.0
  grk_stream_set_skip_function@Base 4.2.0
  grk_stream_set_user_data@Base 4.2.0
  grk_stream_set_user_data_length@Base 4.2.0
  grk_stream_set_write_function@Base 4.2.0
+ grk_stream_set_zero_copy_read_function@Base 4.2.0-0
  grk_version@Base 4.2.0
  grk_write_tile@Base 4.2.0
+ grok_plugin_batch_decode@Base 4.2.0-0
+ grok_plugin_batch_encode@Base 4.2.0-0
+ grok_plugin_cleanup@Base 4.2.0-0
+ grok_plugin_decode@Base 4.2.0-0
+ grok_plugin_encode@Base 4.2.0-0
+ grok_plugin_get_debug_state@Base 4.2.0-0
+ grok_plugin_init@Base 4.2.0-0
+ grok_plugin_init_batch_decode@Base 4.2.0-0
+ grok_plugin_is_batch_complete@Base 4.2.0-0
+ grok_plugin_load@Base 4.2.0-0
+ grok_plugin_stop_batch_decode@Base 4.2.0-0
+ grok_plugin_stop_batch_encode@Base 4.2.0-0

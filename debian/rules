@@ -4,11 +4,10 @@
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 
 # as per upstream request:
-export DEB_CFLAGS_MAINT_APPEND = -fvisibility=hidden
+export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
 
 %:
-	dh $@ --parallel --with apache2 $(DH_ADDONS)
-build binary %-indep: DH_ADDONS=--with=javahelper
+	dh $@ --parallel
 
 CMAKE_EXTRA_FLAGS += -DCMAKE_SKIP_RPATH=ON \
   -DCMAKE_BUILD_TYPE:STRING=None \
@@ -23,23 +22,23 @@ override_dh_auto_configure:
 	dh_auto_configure -- $(CMAKE_EXTRA_FLAGS)
 
 SOVERSION=10
-pkg_lib = libgrok-jpeg2000-$(SOVERSION)
-pkg_dev = libgrok-jpeg2000-$(SOVERSION)-dev
-pkg_bin = libgrok-jpeg2000-tools
+pkg_lib = grok-jpeg2000-$(SOVERSION)
+pkg_dev = grok-jpeg2000-$(SOVERSION)-dev
+pkg_bin = grok-jpeg2000-tools
 
 override_dh_install:
 	# annoying cmake-fatal-error export stuff:
-	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/grok-4.2/GrokTargets*.cmake
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-4.2/GrokTargets*.cmake
 	# install grk_dump/compress/decompress:
 	dh_install -p$(pkg_bin) --autodest usr/share/man/man1/*.1
 	# lib
 	dh_install -p$(pkg_lib) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrok.so.*
 	# dev:
 	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrok.so
-	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/grok-4.2/*.cmake
+	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-4.2/*.cmake
 	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/*.pc
 	dh_install -p$(pkg_dev) --autodest usr/include/grok-4.2
-	dh_install --list-missing
+	dh_missing --list-missing
 
 CURVER := $(shell dpkg-parsechangelog | grep ^Version | awk '{print $$2}' | cut -d- -f1 | cut -d+ -f1)
 
