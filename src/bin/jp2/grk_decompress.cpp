@@ -1347,6 +1347,7 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	if (!info)
 		return 1;
 	int failed = 0;
+	bool useMemoryBuffer = false;
 	auto parameters = info->decoder_parameters;
 	if (!parameters)
 		return 1;
@@ -1354,6 +1355,27 @@ int pre_decode(grk_plugin_decode_callback_info* info) {
 	int decod_format = info->decod_format != UNKNOWN_FORMAT ? info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
+		if (useMemoryBuffer){
+		  // Reading value from file
+		  auto in = fopen(infile, "r");
+		  if (in) {
+			  fseek(in, 0L, SEEK_END);
+			  size_t sz = ftell(in);
+			  rewind(in);
+			  auto memoryBuffer = new uint8_t[sz];
+			  size_t ret =  fread(memoryBuffer, 1, sz, in);
+			  fclose(in);
+			  if (ret == sz)
+				  info->l_stream = grk_stream_create_mem_stream(memoryBuffer, sz, true, true);
+			  else {
+				  failed = 1;
+				  goto cleanup;
+			  }
+		  } else {
+			  failed = 1;
+			  goto cleanup;
+		  }
+		}
 		info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
 	}
 	if (!info->l_stream) {
@@ -1486,6 +1508,7 @@ cleanup:
 			grk_image_destroy(info->image);
 		info->image = nullptr;
 	}
+
 	return failed;
 }
 
