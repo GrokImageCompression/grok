@@ -680,12 +680,12 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 	image = p_image;
 	m_cp = p_cp;
 
-	tile = (grk_tcd_tile*) grok_calloc(1, sizeof(grk_tcd_tile));
+	tile = (grk_tcd_tile*) grk_calloc(1, sizeof(grk_tcd_tile));
 	if (!tile) {
 		return false;
 	}
 
-	tile->comps = (TileComponent*) grok_calloc(p_image->numcomps,
+	tile->comps = (TileComponent*) grk_calloc(p_image->numcomps,
 			sizeof(TileComponent));
 	if (!tile->comps) {
 		return false;
@@ -1017,7 +1017,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 
 					if (!current_precinct->cblks.blocks
 							&& (nb_code_blocks > 0U)) {
-						current_precinct->cblks.blocks = grok_malloc(
+						current_precinct->cblks.blocks = grk_malloc(
 								nb_code_blocks_size);
 						if (!current_precinct->cblks.blocks) {
 							return false;
@@ -1029,7 +1029,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 						current_precinct->block_size = nb_code_blocks_size;
 					} else if (nb_code_blocks_size
 							> current_precinct->block_size) {
-						void *new_blocks = grok_realloc(
+						void *new_blocks = grk_realloc(
 								current_precinct->cblks.blocks,
 								nb_code_blocks_size);
 						if (!new_blocks) {
@@ -1176,7 +1176,7 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 				p_cstr_info->tile[tile_no].pdy[i] = (int) tccp->prch[i];
 			}
 			p_cstr_info->tile[tile_no].packet =
-					( grk_packet_info  * ) grok_calloc(
+					( grk_packet_info  * ) grk_calloc(
 							(size_t) p_cstr_info->numcomps
 									* (size_t) p_cstr_info->numlayers
 									* num_packs, sizeof( grk_packet_info) );
@@ -1618,7 +1618,7 @@ bool TileProcessor::mct_decode() {
 				return true;
 			}
 
-			data = (uint8_t**) grok_malloc(
+			data = (uint8_t**) grk_malloc(
 					tile->numcomps * sizeof(uint8_t*));
 			if (!data) {
 				return false;
@@ -1827,7 +1827,7 @@ bool TileProcessor::mct_encode() {
 	if (m_tcp->mct == 2) {
 		if (!m_tcp->m_mct_coding_matrix)
 			return true;
-		auto data = (uint8_t**) grok_malloc(tile->numcomps * sizeof(uint8_t*));
+		auto data = (uint8_t**) grk_malloc(tile->numcomps * sizeof(uint8_t*));
 		if (!data)
 			return false;
 		for (i = 0; i < tile->numcomps; ++i) {
@@ -2348,13 +2348,13 @@ grk_tcd_cblk_enc::~grk_tcd_cblk_enc() {
 bool grk_tcd_cblk_enc::alloc() {
 	if (!layers) {
 		/* no memset since data */
-		layers = (grk_tcd_layer*) grok_calloc(100, sizeof(grk_tcd_layer));
+		layers = (grk_tcd_layer*) grk_calloc(100, sizeof(grk_tcd_layer));
 		if (!layers) {
 			return false;
 		}
 	}
 	if (!passes) {
-		passes = (grk_tcd_pass*) grok_calloc(100, sizeof(grk_tcd_pass));
+		passes = (grk_tcd_pass*) grk_calloc(100, sizeof(grk_tcd_pass));
 		if (!passes) {
 			return false;
 		}
@@ -2441,7 +2441,7 @@ bool grk_tcd_cblk_dec::alloc() {
 
 void grk_tcd_cblk_dec::init() {
 	compressedData = grk_buf();
-	grok_aligned_free(unencoded_data);
+	grk_aligned_free(unencoded_data);
 	unencoded_data = nullptr;
 	segs = nullptr;
 	x0 = 0;
@@ -2466,7 +2466,7 @@ void grk_tcd_cblk_dec::cleanup() {
 	delete packet_length_info;
 	packet_length_info = nullptr;
 #endif
-	grok_aligned_free(unencoded_data);
+	grk_aligned_free(unencoded_data);
 }
 
 void grk_tcd_precinct::deleteTagTrees() {
@@ -2573,7 +2573,7 @@ bool TileComponent::create_buffer(bool isEncoder,
 		for (int32_t resno = (int32_t) (max_num_res - 1); resno >= 0; --resno) {
 			uint32_t bandno;
 			grk_tcd_resolution *tcd_res = resolutions + resno;
-			TileBufferResolution *res = (TileBufferResolution*) grok_calloc(1,
+			TileBufferResolution *res = (TileBufferResolution*) grk_calloc(1,
 					sizeof(TileBufferResolution));
 			if (!res) {
 				delete new_buffer;

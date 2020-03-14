@@ -84,7 +84,7 @@ bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
 	uint32_t *lPermutations = nullptr;
 	float *l_double_data = nullptr;
 
-	l_data = (uint8_t*) grok_malloc(l_total_size);
+	l_data = (uint8_t*) grk_malloc(l_total_size);
 	if (l_data == 0) {
 		return false;
 	}

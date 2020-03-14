@@ -873,7 +873,7 @@ static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters
 	l_poc_bound = tcp->numpocs + 1;
 
 	/* memory allocations*/
-	auto l_pi = (PacketIter*) grok_calloc((l_poc_bound), sizeof(PacketIter));
+	auto l_pi = (PacketIter*) grk_calloc((l_poc_bound), sizeof(PacketIter));
 	if (!l_pi) {
 		return nullptr;
 	}
@@ -881,7 +881,7 @@ static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters
 	auto l_current_pi = l_pi;
 	for (pino = 0; pino < l_poc_bound; ++pino) {
 
-		l_current_pi->comps = (grk_pi_comp*) grok_calloc(image->numcomps,
+		l_current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
 				sizeof(grk_pi_comp));
 		if (!l_current_pi->comps) {
 			pi_destroy(l_pi, l_poc_bound);
@@ -895,7 +895,7 @@ static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters
 
 			auto tccp = &tcp->tccps[compno];
 
-			comp->resolutions = (grk_pi_resolution*) grok_calloc(
+			comp->resolutions = (grk_pi_resolution*) grk_calloc(
 					tccp->numresolutions, sizeof(grk_pi_resolution));
 			if (!comp->resolutions) {
 				pi_destroy(l_pi, l_poc_bound);
@@ -1200,12 +1200,12 @@ PacketIter* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
 	l_bound = l_tcp->numpocs + 1;
 
 	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
-	l_tmp_data = (uint32_t*) grok_malloc(
+	l_tmp_data = (uint32_t*) grk_malloc(
 			l_data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!l_tmp_data) {
 		return nullptr;
 	}
-	l_tmp_ptr = (uint32_t**) grok_malloc(p_image->numcomps * sizeof(uint32_t*));
+	l_tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
 	if (!l_tmp_ptr) {
 		grok_free(l_tmp_data);
 		return nullptr;
@@ -1242,7 +1242,7 @@ PacketIter* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
 	/* memory allocation for include */
 	l_current_pi->include = nullptr;
 	if (l_step_l && (l_tcp->numlayers < (SIZE_MAX / l_step_l) - 1)) {
-		l_current_pi->include = (int16_t*) grok_calloc(
+		l_current_pi->include = (int16_t*) grk_calloc(
 				((size_t) l_tcp->numlayers + 1) * l_step_l, sizeof(int16_t));
 	}
 
@@ -1369,13 +1369,13 @@ PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters
 	uint32_t l_bound = l_tcp->numpocs + 1;
 
 	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
-	l_tmp_data = (uint32_t*) grok_malloc(
+	l_tmp_data = (uint32_t*) grk_malloc(
 			l_data_stride * p_image->numcomps * sizeof(uint32_t));
 	if (!l_tmp_data) {
 		return nullptr;
 	}
 
-	l_tmp_ptr = (uint32_t**) grok_malloc(p_image->numcomps * sizeof(uint32_t*));
+	l_tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
 	if (!l_tmp_ptr) {
 		grok_free(l_tmp_data);
 		return nullptr;
@@ -1412,7 +1412,7 @@ PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters
 	auto l_current_pi = l_pi;
 
 	/* memory allocation for include*/
-	l_current_pi->include = (int16_t*) grok_calloc(
+	l_current_pi->include = (int16_t*) grk_calloc(
 			(size_t) l_tcp->numlayers * l_step_l, sizeof(int16_t));
 	if (!l_current_pi->include) {
 		grok_free(l_tmp_data);

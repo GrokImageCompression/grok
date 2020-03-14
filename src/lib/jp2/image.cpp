@@ -51,12 +51,12 @@
 
 grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc) {
-	auto image = (grk_image * ) grk::grok_calloc(1, sizeof(grk_image));
+	auto image = (grk_image * ) grk::grk_calloc(1, sizeof(grk_image));
 	if (image) {
 		image->color_space = clrspc;
 		image->numcomps = numcmpts;
 		/* allocate memory for the per-component information */
-		image->comps = ( grk_image_comp  * ) grk::grok_calloc(1,
+		image->comps = ( grk_image_comp  * ) grk::grk_calloc(1,
 				image->numcomps * sizeof( grk_image_comp) );
 		if (!image->comps) {
 			grk::GROK_ERROR("Unable to allocate memory for image.");
@@ -110,7 +110,7 @@ void GRK_CALLCONV grk_image_destroy(grk_image *image) {
 namespace grk {
 
 grk_image *  grk_image_create0(void) {
-	return (grk_image * ) grok_calloc(1, sizeof(grk_image));
+	return (grk_image * ) grk_calloc(1, sizeof(grk_image));
 }
 
 /**
@@ -176,7 +176,7 @@ void grk_copy_image_header(const grk_image *p_image_src,
 		p_image_dest->comps = nullptr;
 	}
 	p_image_dest->numcomps = p_image_src->numcomps;
-	p_image_dest->comps = ( grk_image_comp  * ) grok_malloc(
+	p_image_dest->comps = ( grk_image_comp  * ) grk_malloc(
 			p_image_dest->numcomps * sizeof( grk_image_comp) );
 	if (!p_image_dest->comps) {
 		p_image_dest->comps = nullptr;

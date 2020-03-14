@@ -90,7 +90,7 @@ struct dwt_data_53 : dwt_data{
 	dwt_data_53() : mem(nullptr)
 	{}
 	bool alloc(size_t len) {
-		mem = (int32_t*)grok_aligned_malloc(len * sizeof(int32_t));
+		mem = (int32_t*)grk_aligned_malloc(len * sizeof(int32_t));
 		return mem != nullptr;
 	}
     int32_t* mem;
@@ -108,7 +108,7 @@ struct dwt_data_97 : dwt_data {
 					win_h_x1(0)
 	{}
 	bool alloc(size_t len) {
-		mem = (v4_data*)grok_aligned_malloc(len * sizeof(v4_data));
+		mem = (v4_data*)grk_aligned_malloc(len * sizeof(v4_data));
 		return mem != nullptr;
 	}
     v4_data*   	  mem ;
@@ -786,14 +786,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
                 if (!job->data.alloc(h_mem_size)) {
                     GROK_ERROR("Out of memory");
-                    grok_aligned_free(horiz.mem);
+                    grk_aligned_free(horiz.mem);
                     return false;
                 }
 				results.emplace_back(
 					Scheduler::g_tp->enqueue([job] {
 					    for (uint32_t j = job->min_j; j < job->max_j; j++)
 					        decode_h_53(&job->data, &job->tiledp[j * job->w]);
-					    grok_aligned_free(job->data.mem);
+					    grk_aligned_free(job->data.mem);
 					    delete job;
 						return 0;
 					})
@@ -833,7 +833,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
                 if (!job->data.alloc(h_mem_size)) {
                     GROK_ERROR("Out of memory");
-                    grok_aligned_free(vert.mem);
+                    grk_aligned_free(vert.mem);
                     return false;
                 }
 				results.emplace_back(
@@ -843,7 +843,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 							decode_v_53(&job->data, &job->tiledp[j], (size_t)job->w, PLL_COLS_53);
 						if (j < job->max_j)
 							decode_v_53(&job->data, &job->tiledp[j], (size_t)job->w, (int32_t)(job->max_j - j));
-						grok_aligned_free(job->data.mem);
+						grk_aligned_free(job->data.mem);
 						delete job;
 					return 0;
 					})
@@ -853,7 +853,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				result.get();
         }
     }
-    grok_aligned_free(horiz.mem);
+    grk_aligned_free(horiz.mem);
 
     return rc;
 }
@@ -1419,7 +1419,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                                                   1, 0, true)) {
                     /* FIXME event manager error callback */
                     sparse_array_int32_free(sa);
-                    grok_aligned_free(h.mem);
+                    grk_aligned_free(h.mem);
                     return false;
                 }
             }
@@ -1449,14 +1449,14 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                                               1, 4, true)) {
                 /* FIXME event manager error callback */
                 sparse_array_int32_free(sa);
-                grok_aligned_free(h.mem);
+                grk_aligned_free(h.mem);
                 return false;
             }
 
             i += nb_cols;
         }
     }
-    grok_aligned_free(h.mem);
+    grk_aligned_free(h.mem);
 	bool ret = sparse_array_int32_read(sa,
 				   tr_max->win_x0 - (uint32_t)tr_max->x0,
 				   tr_max->win_y0 - (uint32_t)tr_max->y0,
@@ -1889,7 +1889,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
-					grok_aligned_free(horiz.mem);
+					grk_aligned_free(horiz.mem);
 					return false;
 				}
 				results.emplace_back(
@@ -1924,7 +1924,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
 								}
 							}
 						}
-						grok_aligned_free(job->data.mem);
+						grk_aligned_free(job->data.mem);
 						delete job;
 						return 0;
 					})
@@ -1969,7 +1969,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
             												j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
-					grok_aligned_free(horiz.mem);
+					grk_aligned_free(horiz.mem);
 					return false;
 				}
 				results.emplace_back(
@@ -1991,7 +1991,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
 							for (uint32_t k = 0; k < rh; ++k)
 								memcpy(&tdp[k * (size_t)w], &job->data.mem[k],(size_t)j * sizeof(float));
 						}
-						grok_aligned_free(job->data.mem);
+						grk_aligned_free(job->data.mem);
 						delete job;
 						return 0;
 					})
@@ -2001,7 +2001,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
 				result.get();
         }
     }
-    grok_aligned_free(horiz.mem);
+    grk_aligned_free(horiz.mem);
 
     return true;
 }
@@ -2176,7 +2176,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
                                                   4, 1, true)) {
                     /* FIXME event manager error callback */
                     sparse_array_int32_free(sa);
-                    grok_aligned_free(horiz.mem);
+                    grk_aligned_free(horiz.mem);
                     return false;
                 }
             }
@@ -2194,7 +2194,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
                                               4, 1, true)) {
                 /* FIXME event manager error callback */
                 sparse_array_int32_free(sa);
-                grok_aligned_free(horiz.mem);
+                grk_aligned_free(horiz.mem);
                 return false;
             }
         }
@@ -2214,7 +2214,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
                                               1, 4, true)) {
                 /* FIXME event manager error callback */
                 sparse_array_int32_free(sa);
-                grok_aligned_free(horiz.mem);
+                grk_aligned_free(horiz.mem);
                 return false;
             }
         }
@@ -2230,7 +2230,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 	assert(ret);
 	GRK_UNUSED(ret);
     sparse_array_int32_free(sa);
-    grok_aligned_free(horiz.mem);
+    grk_aligned_free(horiz.mem);
 
     return true;
 }

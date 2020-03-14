@@ -130,7 +130,7 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 #endif
 	return ptr;
 }
-static inline void* grok_aligned_realloc_n(void *ptr, size_t alignment,
+static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 		size_t new_size) {
 	void *r_ptr;
 
@@ -215,13 +215,13 @@ static inline void* grok_aligned_realloc_n(void *ptr, size_t alignment,
 #endif
 	return r_ptr;
 }
-void* grok_malloc(size_t size) {
+void* grk_malloc(size_t size) {
 	if (size == 0U) { /* prevent implementation defined behavior of realloc */
 		return nullptr;
 	}
 	return malloc(size);
 }
-void* grok_calloc(size_t num, size_t size) {
+void* grk_calloc(size_t num, size_t size) {
 	if (num == 0 || size == 0) {
 		/* prevent implementation defined behavior of realloc */
 		return nullptr;
@@ -229,15 +229,15 @@ void* grok_calloc(size_t num, size_t size) {
 	return calloc(num, size);
 }
 
-void* grok_aligned_malloc(size_t size) {
+void* grk_aligned_malloc(size_t size) {
 	return grk_aligned_alloc_n(32U, size);
 }
-void* grok_aligned_realloc(void *ptr, size_t size) {
-	return grok_aligned_realloc_n(ptr, 32U, size);
+void* grk_aligned_realloc(void *ptr, size_t size) {
+	return grk_aligned_realloc_n(ptr, 32U, size);
 }
 
 
-void grok_aligned_free(void *ptr) {
+void grk_aligned_free(void *ptr) {
 #if defined(GROK_HAVE_POSIX_MEMALIGN) || defined(GROK_HAVE_ALIGNED_ALLOC) ||  defined(GROK_HAVE_MEMALIGN)
 	free(ptr);
 #elif defined(GROK_HAVE__ALIGNED_MALLOC)
@@ -250,7 +250,7 @@ void grok_aligned_free(void *ptr) {
 #endif
 }
 
-void* grok_realloc(void *ptr, size_t new_size) {
+void* grk_realloc(void *ptr, size_t new_size) {
 	if (new_size == 0U) { /* prevent implementation defined behavior of realloc */
 		return nullptr;
 	}

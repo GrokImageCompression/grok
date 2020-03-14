@@ -129,7 +129,7 @@ struct grk_jp2_buffer {
 	}
 	bool alloc(size_t length) {
 		dealloc();
-		buffer = (uint8_t*) grok_malloc(length);
+		buffer = (uint8_t*) grk_malloc(length);
 		len = length;
 		ownsData = buffer != nullptr;
 		return buffer ? true : false;

@@ -250,7 +250,7 @@ const char* GRK_CALLCONV grk_version(void) {
  grk_codec  *  GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT p_format,
 		 grk_stream  *p_stream) {
 	grk_codec_private *l_codec = nullptr;
-	l_codec = (grk_codec_private*) grok_calloc(1, sizeof(grk_codec_private));
+	l_codec = (grk_codec_private*) grk_calloc(1, sizeof(grk_codec_private));
 	if (!l_codec) {
 		return nullptr;
 	}
@@ -466,7 +466,7 @@ bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
  grk_codec  *  GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT p_format,
 		 grk_stream  *p_stream) {
 	grk_codec_private *l_codec = nullptr;
-	l_codec = (grk_codec_private*) grok_calloc(1, sizeof(grk_codec_private));
+	l_codec = (grk_codec_private*) grk_calloc(1, sizeof(grk_codec_private));
 	if (!l_codec) {
 		return nullptr;
 	}
@@ -625,7 +625,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 
 	/* use array based MCT */
 	parameters->tcp_mct = 2;
-	parameters->mct_data = grok_malloc(l_mct_total_size);
+	parameters->mct_data = grk_malloc(l_mct_total_size);
 	if (!parameters->mct_data) {
 		return false;
 	}
@@ -785,7 +785,7 @@ bool GRK_CALLCONV grk_image_single_component_data_alloc(
 	int32_t *data = nullptr;
 	if (!comp)
 		return false;
-	data = (int32_t*) grok_aligned_malloc(
+	data = (int32_t*) grk_aligned_malloc(
 			(uint64_t) comp->w * comp->h * sizeof(uint32_t));
 	if (!data)
 		return false;
@@ -797,7 +797,7 @@ bool GRK_CALLCONV grk_image_single_component_data_alloc(
 void GRK_CALLCONV grk_image_single_component_data_free( grk_image_comp  *comp) {
 	if (!comp || !comp->data || !comp->owns_data)
 		return;
-	grok_aligned_free(comp->data);
+	grk_aligned_free(comp->data);
 	comp->data = nullptr;
 	comp->owns_data = false;
 }

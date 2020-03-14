@@ -54,10 +54,10 @@
 
 namespace grk {
 /**
- @file grok_malloc.h
+ @file grk_malloc.h
  @brief Internal functions
 
- The functions in grok_malloc.h are internal utilities used for memory management.
+ The functions in grk_malloc.h are internal utilities used for memory management.
  */
 
 /** @defgroup MISC MISC - Miscellaneous internal functions */
@@ -72,7 +72,7 @@ namespace grk {
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grok_malloc(size_t size);
+void* grk_malloc(size_t size);
 
 /**
  Allocate a memory block with elements initialized to 0
@@ -80,18 +80,18 @@ void* grok_malloc(size_t size);
  @param size Bytes per block to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grok_calloc(size_t numOfElements, size_t sizeOfElements);
+void* grk_calloc(size_t numOfElements, size_t sizeOfElements);
 
 /**
  Allocate memory aligned to a 16 byte boundary
  @param size Bytes to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
-void* grok_aligned_malloc(size_t size);
-void* grok_aligned_realloc(void *ptr, size_t size);
-void grok_aligned_free(void *ptr);
-void *grok_aligned_32_malloc(size_t size);
-void * grok_aligned_32_realloc(void *ptr, size_t size);
+void* grk_aligned_malloc(size_t size);
+void* grk_aligned_realloc(void *ptr, size_t size);
+void grk_aligned_free(void *ptr);
+void *grk_aligned_32_malloc(size_t size);
+void * grk_aligned_32_realloc(void *ptr, size_t size);
 
 /**
  Reallocate memory blocks.
@@ -99,7 +99,7 @@ void * grok_aligned_32_realloc(void *ptr, size_t size);
  @param s New size in bytes
  @return a void pointer to the reallocated (and possibly moved) memory block
  */
-void* grok_realloc(void *m, size_t s);
+void* grk_realloc(void *m, size_t s);
 
 /**
  Deallocates or frees a memory block.

@@ -1093,8 +1093,8 @@ bool t1_allocate_buffers(t1_t *t1, uint32_t w,
 	uint32_t datasize = w * h;
 
 	if (datasize > t1->datasize) {
-		grk::grok_aligned_free(t1->data);
-		t1->data = (int32_t*) grk::grok_aligned_malloc(
+		grk::grk_aligned_free(t1->data);
+		t1->data = (int32_t*) grk::grk_aligned_malloc(
 				datasize * sizeof(int32_t));
 		if (!t1->data) {
 			/* FIXME event manager error callback */
@@ -1120,8 +1120,8 @@ bool t1_allocate_buffers(t1_t *t1, uint32_t w,
 
 		if (flagssize > t1->flagssize) {
 
-			grk::grok_aligned_free(t1->flags);
-			t1->flags = (opj_flag_t*) grk::grok_aligned_malloc(
+			grk::grk_aligned_free(t1->flags);
+			t1->flags = (opj_flag_t*) grk::grk_aligned_malloc(
 					flagssize * sizeof(opj_flag_t));
 			if (!t1->flags) {
 				/* FIXME event manager error callback */
@@ -1168,7 +1168,7 @@ bool t1_allocate_buffers(t1_t *t1, uint32_t w,
 t1_t* t1_create(bool isEncoder) {
 	t1_t *l_t1 = 00;
 
-	l_t1 = (t1_t*) grk::grok_calloc(1, sizeof(t1_t));
+	l_t1 = (t1_t*) grk::grk_calloc(1, sizeof(t1_t));
 	if (!l_t1) {
 		return 00;
 	}
@@ -1183,12 +1183,12 @@ void t1_destroy(t1_t *p_t1) {
 	}
 
 	if (p_t1->data) {
-		grk::grok_aligned_free(p_t1->data);
+		grk::grk_aligned_free(p_t1->data);
 		p_t1->data = 00;
 	}
 
 	if (p_t1->flags) {
-		grk::grok_aligned_free(p_t1->flags);
+		grk::grk_aligned_free(p_t1->flags);
 		p_t1->flags = 00;
 	}
 
@@ -1443,14 +1443,14 @@ static bool t1_code_block_enc_allocate(tcd_cblk_enc_t *
 {
     if (! p_code_block->layers) {
         /* no memset since data */
-        p_code_block->layers = (tcd_layer_t*) grk::grok_calloc(100,
+        p_code_block->layers = (tcd_layer_t*) grk::grk_calloc(100,
                                sizeof(tcd_layer_t));
         if (! p_code_block->layers) {
             return false;
         }
     }
     if (! p_code_block->passes) {
-        p_code_block->passes = (tcd_pass_t*) grk::grok_calloc(100,
+        p_code_block->passes = (tcd_pass_t*) grk::grk_calloc(100,
                                sizeof(tcd_pass_t));
         if (! p_code_block->passes) {
             return false;

@@ -17,7 +17,6 @@
 #include <T1Part1.h>
 #include "grok_includes.h"
 #include "testing.h"
-#include "grok_malloc.h"
 #include <algorithm>
 using namespace std;
 
@@ -30,7 +29,7 @@ T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
 	t1 = t1_create(isEncoder);
 	if (!isEncoder) {
 	   t1->cblkdatabuffersize = (uint32_t)maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
-	   t1->cblkdatabuffer = (uint8_t*)grok_malloc(t1->cblkdatabuffersize);
+	   t1->cblkdatabuffer = (uint8_t*)grk_malloc(t1->cblkdatabuffersize);
    }
 }
 T1Part1::~T1Part1() {
@@ -143,7 +142,7 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 	auto min_buf_vec = &cblk->seg_buffers;
 	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + GRK_FAKE_MARKER_BYTES);
 	if (t1->cblkdatabuffersize < total_seg_len) {
-		uint8_t *new_block = (uint8_t*) grok_realloc(t1->cblkdatabuffer,
+		uint8_t *new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
 				total_seg_len);
 		if (!new_block)
 			return false;
@@ -192,8 +191,8 @@ bool T1Part1::decode(decodeBlockInfo *block) {
         auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
 
         if (cblkopj.unencoded_data)
-        	grok_aligned_free(cblkopj.unencoded_data);
-        cblkopj.unencoded_data = (int32_t*)grok_aligned_malloc(data_size);
+        	grk_aligned_free(cblkopj.unencoded_data);
+        cblkopj.unencoded_data = (int32_t*)grk_aligned_malloc(data_size);
         if (!cblkopj.unencoded_data){
             GROK_ERROR("Unable to allocate cblk data");
            	return false;

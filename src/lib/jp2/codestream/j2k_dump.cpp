@@ -326,7 +326,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
 	grk_tcp *l_default_tile;
 	 grk_codestream_info_v2  *cstr_info =
-			( grk_codestream_info_v2  * ) grok_calloc(1,
+			( grk_codestream_info_v2  * ) grk_calloc(1,
 					sizeof( grk_codestream_info_v2) );
 	if (!cstr_info)
 		return nullptr;
@@ -349,7 +349,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	cstr_info->m_default_tile_info.numlayers = l_default_tile->numlayers;
 	cstr_info->m_default_tile_info.mct = l_default_tile->mct;
 
-	cstr_info->m_default_tile_info.tccp_info = ( grk_tccp_info  * ) grok_calloc(
+	cstr_info->m_default_tile_info.tccp_info = ( grk_tccp_info  * ) grk_calloc(
 			cstr_info->nbcomps, sizeof( grk_tccp_info) );
 	if (!cstr_info->m_default_tile_info.tccp_info) {
 		grk_destroy_cstr_info(&cstr_info);
@@ -399,7 +399,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
  grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k) {
 	 grk_codestream_index  *l_cstr_index =
-			( grk_codestream_index  * ) grok_calloc(1,
+			( grk_codestream_index  * ) grk_calloc(1,
 					sizeof( grk_codestream_index) );
 	if (!l_cstr_index)
 		return nullptr;
@@ -409,7 +409,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	l_cstr_index->codestream_size = p_j2k->cstr_index->codestream_size;
 
 	l_cstr_index->marknum = p_j2k->cstr_index->marknum;
-	l_cstr_index->marker = ( grk_marker_info  * ) grok_malloc(
+	l_cstr_index->marker = ( grk_marker_info  * ) grk_malloc(
 			l_cstr_index->marknum * sizeof( grk_marker_info) );
 	if (!l_cstr_index->marker) {
 		grok_free(l_cstr_index);
@@ -425,7 +425,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	}
 
 	l_cstr_index->nb_of_tiles = p_j2k->cstr_index->nb_of_tiles;
-	l_cstr_index->tile_index = ( grk_tile_index  * ) grok_calloc(
+	l_cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
 			l_cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!l_cstr_index->tile_index) {
 		grok_free(l_cstr_index->marker);
@@ -445,7 +445,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 					p_j2k->cstr_index->tile_index[it_tile].marknum;
 
 			l_cstr_index->tile_index[it_tile].marker =
-					( grk_marker_info  * ) grok_malloc(
+					( grk_marker_info  * ) grk_malloc(
 							l_cstr_index->tile_index[it_tile].marknum
 									* sizeof( grk_marker_info) );
 
@@ -477,7 +477,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 					p_j2k->cstr_index->tile_index[it_tile].nb_tps;
 
 			l_cstr_index->tile_index[it_tile].tp_index =
-					( grk_tp_index  * ) grok_malloc(
+					( grk_tp_index  * ) grk_malloc(
 							l_cstr_index->tile_index[it_tile].nb_tps
 									* sizeof( grk_tp_index) );
 
@@ -518,7 +518,7 @@ bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 	uint32_t it_tile = 0;
 
 	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
-	p_j2k->cstr_index->tile_index = ( grk_tile_index  * ) grok_calloc(
+	p_j2k->cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
 			p_j2k->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!p_j2k->cstr_index->tile_index)
 		return false;
@@ -527,7 +527,7 @@ bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 		p_j2k->cstr_index->tile_index[it_tile].maxmarknum = 100;
 		p_j2k->cstr_index->tile_index[it_tile].marknum = 0;
 		p_j2k->cstr_index->tile_index[it_tile].marker =
-				( grk_marker_info  * ) grok_calloc(
+				( grk_marker_info  * ) grk_calloc(
 						p_j2k->cstr_index->tile_index[it_tile].maxmarknum,
 						sizeof( grk_marker_info) );
 		if (!p_j2k->cstr_index->tile_index[it_tile].marker)
@@ -538,14 +538,14 @@ bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 
 
 grk_codestream_index  *  j2k_create_cstr_index(void) {
-	 grk_codestream_index  *cstr_index = ( grk_codestream_index  * ) grok_calloc(
+	 grk_codestream_index  *cstr_index = ( grk_codestream_index  * ) grk_calloc(
 			1, sizeof( grk_codestream_index) );
 	if (!cstr_index)
 		return nullptr;
 
 	cstr_index->maxmarknum = 100;
 	cstr_index->marknum = 0;
-	cstr_index->marker = ( grk_marker_info  * ) grok_calloc(
+	cstr_index->marker = ( grk_marker_info  * ) grk_calloc(
 			cstr_index->maxmarknum, sizeof( grk_marker_info) );
 	if (!cstr_index->marker) {
 		grok_free(cstr_index);

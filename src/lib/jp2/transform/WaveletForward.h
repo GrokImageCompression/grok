@@ -65,7 +65,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 		bj_array[i] = nullptr;
 	}
 	for (uint32_t i = 0; i < hardware_concurrency(); ++i){
-		bj_array[i] = (int32_t*)grok_aligned_malloc(l_data_size);
+		bj_array[i] = (int32_t*)grk_aligned_malloc(l_data_size);
 		if (!bj_array[i]){
 			rc = false;
 			goto cleanup;
@@ -156,7 +156,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	}
 cleanup:
 	for (uint32_t i = 0; i < hardware_concurrency(); ++i)
-		grok_aligned_free(bj_array[i]);
+		grk_aligned_free(bj_array[i]);
 	delete[] bj_array;
 	return rc;
 }

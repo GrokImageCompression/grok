@@ -441,7 +441,7 @@ bool mct::encode_custom(uint8_t *pCodingdata, uint64_t n, uint8_t **pData,
 
 	ARG_NOT_USED(isSigned);
 
-	lCurrentData = (int32_t*) grok_malloc(
+	lCurrentData = (int32_t*) grk_malloc(
 			(pNbComp + lNbMatCoeff) * sizeof(int32_t));
 	if (!lCurrentData) {
 		return false;
@@ -487,7 +487,7 @@ bool mct::decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 
 	ARG_NOT_USED(isSigned);
 
-	lCurrentData = (float*) grok_malloc(2 * pNbComp * sizeof(float));
+	lCurrentData = (float*) grk_malloc(2 * pNbComp * sizeof(float));
 	if (!lCurrentData) {
 		return false;
 	}

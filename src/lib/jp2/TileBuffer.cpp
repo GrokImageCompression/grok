@@ -21,7 +21,7 @@ namespace grk {
 
 TileBuffer::~TileBuffer(){
 	if (data && owns_data)
-		grok_aligned_free(data);
+		grk_aligned_free(data);
 	data = nullptr;
 	data_size = 0;
 	data_size_needed = 0;
@@ -46,7 +46,7 @@ bool TileBuffer::alloc_component_data_encode() {
 	if ((data == nullptr)
 			|| ((data_size_needed > data_size)
 					&& (owns_data == false))) {
-		data = (int32_t*) grok_aligned_malloc(data_size_needed);
+		data = (int32_t*) grk_aligned_malloc(data_size_needed);
 		if (!data) {
 			return false;
 		}
@@ -54,8 +54,8 @@ bool TileBuffer::alloc_component_data_encode() {
 		owns_data = true;
 	} else if (data_size_needed > data_size) {
 		/* We don't need to keep old data */
-		grok_aligned_free(data);
-		data = (int32_t*) grok_aligned_malloc(data_size_needed);
+		grk_aligned_free(data);
+		data = (int32_t*) grk_aligned_malloc(data_size_needed);
 		if (!data) {
 			data_size = 0;
 			data_size_needed = 0;
@@ -73,7 +73,7 @@ bool TileBuffer::alloc_component_data_decode() {
 	if (!data) {
 		int64_t area = reduced_image_dim.area();
 		if (area) {
-			data = (int32_t*) grok_aligned_malloc(area * sizeof(int32_t));
+			data = (int32_t*) grk_aligned_malloc(area * sizeof(int32_t));
 			if (!data) {
 				return false;
 			}

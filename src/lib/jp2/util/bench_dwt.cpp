@@ -87,13 +87,13 @@ void init_tilec(TileComponent * l_tilec,
 
     nValues = (size_t)(l_tilec->x1 - l_tilec->x0) *
               (size_t)(l_tilec->y1 - l_tilec->y0);
-    l_tilec->buf->data = (int32_t*) grok_malloc(sizeof(int32_t) * nValues);
+    l_tilec->buf->data = (int32_t*) grk_malloc(sizeof(int32_t) * nValues);
     for (i = 0; i < nValues; i++) {
         l_tilec->buf->data[i] = getValue((uint32_t)i);
     }
     l_tilec->numresolutions = numresolutions;
     l_tilec->minimum_num_resolutions = numresolutions;
-    l_tilec->resolutions = (grk_tcd_resolution*) grok_calloc(
+    l_tilec->resolutions = (grk_tcd_resolution*) grk_calloc(
                                l_tilec->numresolutions,
                                sizeof(grk_tcd_resolution));
 

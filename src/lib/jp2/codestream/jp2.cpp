@@ -578,7 +578,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 	}
 
 	/* allocate memory for components */
-	jp2->comps = (grk_jp2_comps*) grok_calloc(jp2->numcomps, sizeof(grk_jp2_comps));
+	jp2->comps = (grk_jp2_comps*) grk_calloc(jp2->numcomps, sizeof(grk_jp2_comps));
 	if (jp2->comps == 0) {
 		GROK_ERROR(
 				"Not enough memory to handle image header (ihdr)");
@@ -645,7 +645,7 @@ static uint8_t* jp2_write_ihdr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	assert(p_nb_bytes_written != nullptr);
 
 	/* default image header is 22 bytes wide */
-	l_ihdr_data = (uint8_t*) grok_calloc(1, 22);
+	l_ihdr_data = (uint8_t*) grk_calloc(1, 22);
 	if (l_ihdr_data == nullptr) {
 		return nullptr;
 	}
@@ -699,7 +699,7 @@ static uint8_t* jp2_write_buffer(uint32_t boxId, grk_jp2_buffer *buffer,
 
 	/* need 8 bytes for box plus buffer->len bytes for buffer*/
 	uint32_t total_size = 8 + (uint32_t) buffer->len;
-	auto l_data = (uint8_t*) grok_calloc(1, total_size);
+	auto l_data = (uint8_t*) grk_calloc(1, total_size);
 	if (l_data == nullptr) {
 		return nullptr;
 	}
@@ -940,7 +940,7 @@ static uint8_t* jp2_write_res(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 		size += GRK_RESOLUTION_BOX_SIZE;
 	}
 
-	l_res_data = (uint8_t*) grok_calloc(1, size);
+	l_res_data = (uint8_t*) grk_calloc(1, size);
 	if (l_res_data == nullptr) {
 		return nullptr;
 	}
@@ -978,7 +978,7 @@ static uint8_t* jp2_write_bpcc(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 	assert(jp2 != nullptr);
 	assert(p_nb_bytes_written != nullptr);
 
-	l_bpcc_data = (uint8_t*) grok_calloc(1, l_bpcc_size);
+	l_bpcc_data = (uint8_t*) grk_calloc(1, l_bpcc_size);
 	if (l_bpcc_data == nullptr) {
 		return nullptr;
 	}
@@ -1047,7 +1047,7 @@ static uint8_t* jp2_write_cdef(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 
 	l_cdef_size += 6U * jp2->color.jp2_cdef->n;
 
-	l_cdef_data = (uint8_t*) grok_malloc(l_cdef_size);
+	l_cdef_data = (uint8_t*) grk_malloc(l_cdef_size);
 	if (l_cdef_data == nullptr) {
 		return nullptr;
 	}
@@ -1107,7 +1107,7 @@ static uint8_t* jp2_write_colr(grk_jp2 *jp2, uint32_t *p_nb_bytes_written) {
 		return nullptr;
 	}
 
-	l_colr_data = (uint8_t*) grok_calloc(1, l_colr_size);
+	l_colr_data = (uint8_t*) grk_calloc(1, l_colr_size);
 	if (l_colr_data == nullptr) {
 		return nullptr;
 	}
@@ -1242,7 +1242,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 			}
 		}
 
-		pcol_usage = (bool*) grok_calloc(nr_channels, sizeof(bool));
+		pcol_usage = (bool*) grk_calloc(nr_channels, sizeof(bool));
 		if (!pcol_usage) {
 			GROK_ERROR( "Unexpected OOM.");
 			return false;
@@ -1342,7 +1342,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 	}
 
 	old_comps = image->comps;
-	new_comps = ( grk_image_comp  * ) grok_malloc(
+	new_comps = ( grk_image_comp  * ) grk_malloc(
 			nr_channels * sizeof( grk_image_comp) );
 	if (!new_comps) {
 		GROK_ERROR(
@@ -1368,7 +1368,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 		if (!grk_image_single_component_data_alloc(new_comps + i)) {
 			while (i > 0) {
 				--i;
-				grok_aligned_free(new_comps[i].data);
+				grk_aligned_free(new_comps[i].data);
 			}
 			grok_free(new_comps);
 			GROK_ERROR(
@@ -1467,23 +1467,23 @@ static bool jp2_read_pclr(grk_jp2 *jp2, uint8_t *p_pclr_header_data,
 	if (pclr_header_size < 3 + (uint32_t) nr_channels)
 		return false;
 
-	entries = (uint32_t*) grok_malloc(
+	entries = (uint32_t*) grk_malloc(
 			(size_t) nr_channels * nr_entries * sizeof(uint32_t));
 	if (!entries)
 		return false;
-	channel_size = (uint8_t*) grok_malloc(nr_channels);
+	channel_size = (uint8_t*) grk_malloc(nr_channels);
 	if (!channel_size) {
 		grok_free(entries);
 		return false;
 	}
-	channel_sign = (uint8_t*) grok_malloc(nr_channels);
+	channel_sign = (uint8_t*) grk_malloc(nr_channels);
 	if (!channel_sign) {
 		grok_free(entries);
 		grok_free(channel_size);
 		return false;
 	}
 
-	jp2_pclr = (grk_jp2_pclr*) grok_malloc(sizeof(grk_jp2_pclr));
+	jp2_pclr = (grk_jp2_pclr*) grk_malloc(sizeof(grk_jp2_pclr));
 	if (!jp2_pclr) {
 		grok_free(entries);
 		grok_free(channel_size);
@@ -1560,7 +1560,7 @@ static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
 		return false;
 	}
 
-	cmap = (grk_jp2_cmap_comp*) grok_malloc(
+	cmap = (grk_jp2_cmap_comp*) grk_malloc(
 			nr_channels * sizeof(grk_jp2_cmap_comp));
 	if (!cmap)
 		return false;
@@ -1682,12 +1682,12 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 		return false;
 	}
 
-	cdef_info = (grk_jp2_cdef_info*) grok_malloc(
+	cdef_info = (grk_jp2_cdef_info*) grk_malloc(
 			l_value * sizeof(grk_jp2_cdef_info));
 	if (!cdef_info)
 		return false;
 
-	jp2->color.jp2_cdef = (grk_jp2_cdef*) grok_malloc(sizeof(grk_jp2_cdef));
+	jp2->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
 	if (!jp2->color.jp2_cdef) {
 		grok_free(cdef_info);
 		return false;
@@ -2219,7 +2219,7 @@ bool jp2_setup_encoder(grk_jp2 *jp2,  grk_cparameters  *parameters,
 	jp2->brand = JP2_JP2; /* BR */
 	jp2->minversion = 0; /* MinV */
 	jp2->numcl = 1;
-	jp2->cl = (uint32_t*) grok_malloc(jp2->numcl * sizeof(uint32_t));
+	jp2->cl = (uint32_t*) grk_malloc(jp2->numcl * sizeof(uint32_t));
 	if (!jp2->cl) {
 		GROK_ERROR(
 				"Not enough memory when setup the JP2 encoder");
@@ -2229,7 +2229,7 @@ bool jp2_setup_encoder(grk_jp2 *jp2,  grk_cparameters  *parameters,
 
 	/* Image Header box */
 	jp2->numcomps = image->numcomps; /* NC */
-	jp2->comps = (grk_jp2_comps*) grok_malloc(
+	jp2->comps = (grk_jp2_comps*) grk_malloc(
 			jp2->numcomps * sizeof(grk_jp2_comps));
 	if (!jp2->comps) {
 		GROK_ERROR(
@@ -2351,7 +2351,7 @@ bool jp2_setup_encoder(grk_jp2 *jp2,  grk_cparameters  *parameters,
 				"Multiple alpha channels specified. No cdef box will be created.");
 	}
 	if (alpha_count == 1U) { /* if here, we know what we can do */
-		jp2->color.jp2_cdef = (grk_jp2_cdef*) grok_malloc(sizeof(grk_jp2_cdef));
+		jp2->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
 		if (!jp2->color.jp2_cdef) {
 			GROK_ERROR(
 					"Not enough memory to setup the JP2 encoder");
@@ -2359,7 +2359,7 @@ bool jp2_setup_encoder(grk_jp2 *jp2,  grk_cparameters  *parameters,
 		}
 		/* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
 		/* in which case jp2->color.jp2_cdef->info will be nullptr => valid for destruction */
-		jp2->color.jp2_cdef->info = (grk_jp2_cdef_info*) grok_malloc(
+		jp2->color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
 				image->numcomps * sizeof(grk_jp2_cdef_info));
 		if (!jp2->color.jp2_cdef->info) {
 			/* memory will be freed by jp2_destroy */
@@ -2552,7 +2552,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 	bool rc = true;
 	
 
-	l_current_data = (uint8_t*) grok_calloc(1, l_last_data_size);
+	l_current_data = (uint8_t*) grk_calloc(1, l_last_data_size);
 	if (!l_current_data) {
 		GROK_ERROR(
 				"Not enough memory to handle jpeg2000 file header");
@@ -2624,7 +2624,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 				goto cleanup;
 			}
 			if (l_current_data_size > l_last_data_size) {
-				uint8_t *new_current_data = (uint8_t*) grok_realloc(
+				uint8_t *new_current_data = (uint8_t*) grk_realloc(
 						l_current_data, l_current_data_size);
 				if (!new_current_data) {
 					GROK_ERROR(
@@ -2867,7 +2867,7 @@ static bool jp2_read_ftyp(grk_jp2 *jp2, uint8_t *p_header_data,
 	/* div by 4 */
 	jp2->numcl = l_remaining_bytes >> 2;
 	if (jp2->numcl) {
-		jp2->cl = (uint32_t*) grok_calloc(jp2->numcl, sizeof(uint32_t));
+		jp2->cl = (uint32_t*) grk_calloc(jp2->numcl, sizeof(uint32_t));
 		if (jp2->cl == nullptr) {
 			GROK_ERROR(
 					"Not enough memory with FTYP Box");
@@ -3289,7 +3289,7 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image, 
 /* ----------------------------------------------------------------------- */
 
 grk_jp2* jp2_create(bool p_is_decoder) {
-	grk_jp2 *jp2 = (grk_jp2*) grok_calloc(1, sizeof(grk_jp2));
+	grk_jp2 *jp2 = (grk_jp2*) grk_calloc(1, sizeof(grk_jp2));
 	if (jp2) {
 
 		/* create the J2K codec */

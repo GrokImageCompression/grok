@@ -81,7 +81,7 @@ sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
         return NULL;
     }
 
-    sa = (sparse_array_int32_t*) grok_calloc(1,
+    sa = (sparse_array_int32_t*) grk_calloc(1,
             sizeof(sparse_array_int32_t));
     sa->width = width;
     sa->height = height;
@@ -93,7 +93,7 @@ sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
         grok_free(sa);
         return NULL;
     }
-    sa->data_blocks = (int32_t**) grok_calloc(sizeof(int32_t*),
+    sa->data_blocks = (int32_t**) grk_calloc(sizeof(int32_t*),
                       sa->block_count_hor * sa->block_count_ver);
     if (sa->data_blocks == NULL) {
         grok_free(sa);
@@ -259,7 +259,7 @@ static bool sparse_array_int32_read_or_write(
                 }
             } else {
                 if (src_block == NULL) {
-                    src_block = (int32_t*) grok_calloc(1,
+                    src_block = (int32_t*) grk_calloc(1,
                                                         sa->block_width * sa->block_height * sizeof(int32_t));
                     if (src_block == NULL) {
                         return false;
