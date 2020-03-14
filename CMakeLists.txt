@@ -32,8 +32,8 @@ include_regular_expression("^.*$")
 
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
-set(GROK_VERSION_MAJOR 4)
-set(GROK_VERSION_MINOR 2)
+set(GROK_VERSION_MAJOR 5)
+set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
@@ -48,11 +48,12 @@ set(PACKAGE_VERSION
 #   4.0.0 |  10
 #   4.1.0 |  10
 #   4.2.0 |  10
+#   5.0.0 |  11
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 10)
+  set(GROK_SOVERSION 11)
 endif(NOT GROK_SOVERSION)
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
