@@ -124,7 +124,7 @@ void free_tilec(TileComponent * l_tilec)
 void usage(void)
 {
     printf(
-        "bench_dwt [-size value] [-check] [-display] [-num_resolutions val]\n");
+        "bench_dwt [-size value] [-check] [-display] [-num_resolutions val] [-lossy]\n");
     printf(
         "          [-offset x y] [-num_threads val]\n");
     exit(1);
@@ -146,6 +146,7 @@ int main(int argc, char** argv)
     int32_t i, j, k;
     bool display = false;
     bool check = false;
+    bool lossy = false;
     int32_t size = 16384 - 1;
     uint32_t offset_x = ((uint32_t)size + 1) / 2 - 1;
     uint32_t offset_y = ((uint32_t)size + 1) / 2 - 1;
@@ -159,6 +160,9 @@ int main(int argc, char** argv)
             check = true;
         } else if (strcmp(argv[i], "-size") == 0 && i + 1 < argc) {
             size = atoi(argv[i + 1]);
+            i ++;
+        } else if (strcmp(argv[i], "-lossy") == 0) {
+            lossy = true;
             i ++;
         } else if (strcmp(argv[i], "-num_threads") == 0 && i + 1 < argc) {
             num_threads = atoi(argv[i + 1]);
@@ -220,7 +224,10 @@ int main(int argc, char** argv)
 	std::chrono::duration<double> elapsed;
 
 	start = std::chrono::high_resolution_clock::now();
-    decode_97(&tcd, &tilec, tilec.numresolutions);
+	if (lossy)
+		decode_97(&tcd, &tilec, tilec.numresolutions);
+	else
+		decode_53(&tcd, &tilec, tilec.numresolutions);
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
     printf("time for dwt_decode: %.03f ms\n", elapsed.count()*1000);
