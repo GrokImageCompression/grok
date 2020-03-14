@@ -103,6 +103,7 @@
 #define MULF(x,y)    _mm256_mul_ps((x),(y))
 #define SUBF(x,y)     _mm256_sub_ps((x),(y))
 #define STOREF(x,y)  _mm256_store_ps((float*)(x),(y))
+#define FMA(x,y,z)   _mm256_fmadd_ps((x),(y),(z))
 #else
 #define VREG        __m128i
 #define LOAD_CST(x) _mm_set1_epi32(x)
@@ -120,6 +121,7 @@
 #define MULF(x,y)    _mm_mul_ps((x),(y))
 #define SUBF(x,y)    _mm_sub_ps((x),(y))
 #define STOREF(x,y)  _mm_store_ps((float*)(x),(y))
+#define FMA(x,y,z)   ADDF(z, MULF(x,y))
 #endif
 
 #endif
