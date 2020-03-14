@@ -78,47 +78,65 @@ namespace grk {
 /** @name Local data structures */
 /*@{*/
 
-struct dwt_data_53 {
-    int32_t* mem;
+struct dwt_data {
+	dwt_data() : dn(0), sn(0), cas(0)
+	{}
     int32_t dn;   /* number of elements in high pass band */
     int32_t sn;   /* number of elements in low pass band */
     int32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
-} ;
+};
 
-template <typename T> struct decode_job{
-	decode_job( T data,
-					uint32_t w,
-					int32_t * restrict tiledp,
-					uint32_t min_j,
-					uint32_t max_j) : data(data),
-									w(w),
-									tiledp(tiledp),
-									min_j(min_j),
-									max_j(max_j)
+struct dwt_data_53 : dwt_data{
+	dwt_data_53() : mem(nullptr)
 	{}
-
-    T data;
-    uint32_t w;
-    int32_t * restrict tiledp;
-    uint32_t min_j;
-    uint32_t max_j;
+	bool alloc(size_t len) {
+		mem = (int32_t*)grok_aligned_malloc(len * sizeof(int32_t));
+		return mem != nullptr;
+	}
+    int32_t* mem;
 } ;
-
 
 typedef union {
     float f[4];
 } v4_data;
 
-struct dwt_data_97 {
-    v4_data*   wavelet ;
-    int32_t       dn ;  /* number of elements in high pass band */
-    int32_t       sn ;  /* number of elements in low pass band */
-    int32_t       cas ; /* 0 = start on even coord, 1 = start on odd coord */
+struct dwt_data_97 : dwt_data {
+	dwt_data_97() : mem(nullptr),
+					win_l_x0(0),
+					win_l_x1(0),
+					win_h_x0(0),
+					win_h_x1(0)
+	{}
+	bool alloc(size_t len) {
+		mem = (v4_data*)grok_aligned_malloc(len * sizeof(v4_data));
+		return mem != nullptr;
+	}
+    v4_data*   	  mem ;
     uint32_t      win_l_x0; /* start coord in low pass band */
     uint32_t      win_l_x1; /* end coord in low pass band */
     uint32_t      win_h_x0; /* start coord in high pass band */
     uint32_t      win_h_x1; /* end coord in high pass band */
-}  ;
+};
+
+
+template <typename T, typename S> struct decode_job{
+	decode_job( S data,
+				uint32_t w,
+				T * restrict tiledp,
+				uint32_t min_j,
+				uint32_t max_j) : data(data),
+								w(w),
+								tiledp(tiledp),
+								min_j(min_j),
+								max_j(max_j)
+	{}
+
+    S data;
+    uint32_t w;
+    T * restrict tiledp;
+    uint32_t min_j;
+    uint32_t max_j;
+} ;
 
 static const float dwt_alpha =  1.586134342f; /*  12994 */
 static const float dwt_beta  =  0.052980118f; /*    434 */
@@ -728,31 +746,32 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     /* We need PLL_COLS_53 times the height of the array, */
     /* since for the vertical pass */
     /* we process PLL_COLS_53 columns at a time */
-    dwt_data_53 h;
+    dwt_data_53 horiz;
+    dwt_data_53 vert;
     h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
-    h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-    if (! h.mem) {
-        GROK_ERROR("Out of memory");
-        return false;
-    }
-    dwt_data_53 v;
-    v.mem = h.mem;
     bool rc = true;
     int32_t * restrict tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
     while (--numres) {
         ++tr;
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+        horiz.sn = (int32_t)rw;
+        vert.sn = (int32_t)rh;
 
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
 
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = tr->x0 % 2;
+        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.cas = tr->x0 % 2;
 
         if (num_threads <= 1 || rh <= 1) {
+        	if (!horiz.mem){
+        	    if (! horiz.alloc(h_mem_size)) {
+        	        GROK_ERROR("Out of memory");
+        	        return false;
+        	    }
+        	    vert.mem = horiz.mem;
+        	}
             for (uint32_t j = 0; j < rh; ++j)
-                decode_h_53(&h, &tiledp[(size_t)j * w]);
+                decode_h_53(&horiz, &tiledp[(size_t)j * w]);
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
             if (rh < num_jobs)
@@ -760,15 +779,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rh / num_jobs);
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-               auto job = new decode_job<dwt_data_53>(h,
+               auto job = new decode_job<int32_t, dwt_data_53>(horiz,
 											w,
 											tiledp,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
-                job->data.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-                if (!job->data.mem) {
+                if (!job->data.alloc(h_mem_size)) {
                     GROK_ERROR("Out of memory");
-                    grok_aligned_free(h.mem);
+                    grok_aligned_free(horiz.mem);
                     return false;
                 }
 				results.emplace_back(
@@ -785,15 +803,22 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				result.get();
         }
 
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = tr->y0 % 2;
+        vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
+        vert.cas = tr->y0 % 2;
 
         if (num_threads <= 1 || rw <= 1) {
+        	if (!horiz.mem){
+        	    if (! horiz.alloc(h_mem_size)) {
+        	        GROK_ERROR("Out of memory");
+        	        return false;
+        	    }
+        	    vert.mem = horiz.mem;
+        	}
             uint32_t j;
             for (j = 0; j + PLL_COLS_53 <= rw; j += PLL_COLS_53)
-                decode_v_53(&v, &tiledp[j], (size_t)w, PLL_COLS_53);
+                decode_v_53(&vert, &tiledp[j], (size_t)w, PLL_COLS_53);
             if (j < rw)
-                decode_v_53(&v, &tiledp[j], (size_t)w, (int32_t)(rw - j));
+                decode_v_53(&vert, &tiledp[j], (size_t)w, (int32_t)(rw - j));
         } else {
             uint32_t num_jobs = (uint32_t)num_threads;
             if (rw < num_jobs)
@@ -801,15 +826,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rw / num_jobs);
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
-                auto job = new decode_job<dwt_data_53>(v,
+                auto job = new decode_job<int32_t, dwt_data_53>(vert,
 											w,
 											tiledp,
 											j * step_j,
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
-                job->data.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-                if (!job->data.mem) {
+                if (!job->data.alloc(h_mem_size)) {
                     GROK_ERROR("Out of memory");
-                    grok_aligned_free(v.mem);
+                    grok_aligned_free(vert.mem);
                     return false;
                 }
 				results.emplace_back(
@@ -829,7 +853,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 				result.get();
         }
     }
-    grok_aligned_free(h.mem);
+    grok_aligned_free(horiz.mem);
 
     return rc;
 }
@@ -1266,9 +1290,8 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         return false;
     }
 
-    h_mem_size *= 4 * sizeof(int32_t);
-    h.mem = (int32_t*)grok_aligned_malloc(h_mem_size);
-    if (! h.mem) {
+    h_mem_size *= 4;
+    if (! h.alloc(h_mem_size)) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);
         return false;
@@ -1453,7 +1476,7 @@ static void interleave_h_97(dwt_data_97* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t remaining_height){
-    float* restrict bi = (float*)(dwt->wavelet + dwt->cas);
+    float* restrict bi = (float*)(dwt->mem + dwt->cas);
     uint32_t i, k;
     uint32_t x0 = dwt->win_l_x0;
     uint32_t x1 = dwt->win_l_x1;
@@ -1495,7 +1518,7 @@ static void interleave_h_97(dwt_data_97* restrict dwt,
             }
         }
 
-        bi = (float*)(dwt->wavelet + 1 - dwt->cas);
+        bi = (float*)(dwt->mem + 1 - dwt->cas);
         a += dwt->sn;
         x0 = dwt->win_h_x0;
         x1 = dwt->win_h_x1;
@@ -1513,14 +1536,14 @@ static void interleave_partial_h_97(dwt_data_97* dwt,
                                           dwt->win_l_x0, sa_line + i,
                                           dwt->win_l_x1, sa_line + i + 1,
                                           /* Nasty cast from float* to int32* */
-                                          (int32_t*)(dwt->wavelet + dwt->cas + 2 * dwt->win_l_x0) + i,
+                                          (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
                                           8, 0, true);
         assert(ret);
         ret = sparse_array_int32_read(sa,
                                           (uint32_t)dwt->sn + dwt->win_h_x0, sa_line + i,
                                           (uint32_t)dwt->sn + dwt->win_h_x1, sa_line + i + 1,
                                           /* Nasty cast from float* to int32* */
-                                          (int32_t*)(dwt->wavelet + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
+                                          (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
                                           8, 0, true);
         assert(ret);
         GRK_UNUSED(ret);
@@ -1531,7 +1554,7 @@ static void interleave_v_97(dwt_data_97* restrict dwt,
                                    float* restrict a,
                                    uint32_t width,
                                    uint32_t nb_elts_read){
-    v4_data* restrict bi = dwt->wavelet + dwt->cas;
+    v4_data* restrict bi = dwt->mem + dwt->cas;
     uint32_t i;
 
     for (i = dwt->win_l_x0; i < dwt->win_l_x1; ++i) {
@@ -1540,7 +1563,7 @@ static void interleave_v_97(dwt_data_97* restrict dwt,
     }
 
     a += (uint32_t)dwt->sn * (size_t)width;
-    bi = dwt->wavelet + 1 - dwt->cas;
+    bi = dwt->mem + 1 - dwt->cas;
 
     for (i = dwt->win_h_x0; i < dwt->win_h_x1; ++i) {
         memcpy(&bi[i * 2], &a[i * (size_t)width],
@@ -1556,13 +1579,13 @@ static void interleave_partial_v_97(dwt_data_97* restrict dwt,
     ret = sparse_array_int32_read(sa,
                                       sa_col, dwt->win_l_x0,
                                       sa_col + nb_elts_read, dwt->win_l_x1,
-                                      (int32_t*)(dwt->wavelet + dwt->cas + 2 * dwt->win_l_x0),
+                                      (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
                                       1, 8, true);
     assert(ret);
     ret = sparse_array_int32_read(sa,
                                       sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
                                       sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
-                                      (int32_t*)(dwt->wavelet + 1 - dwt->cas + 2 * dwt->win_h_x0),
+                                      (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
                                       1, 8, true);
     assert(ret);
     GRK_UNUSED(ret);
@@ -1727,44 +1750,44 @@ static void decode_step_97(dwt_data_97* restrict dwt)
         b = 0;
     }
 #ifdef __SSE__
-    decode_step1_sse_97(dwt->wavelet + a, dwt->win_l_x0, dwt->win_l_x1,
+    decode_step1_sse_97(dwt->mem + a, dwt->win_l_x0, dwt->win_l_x1,
                                _mm_set1_ps(K));
-    decode_step1_sse_97(dwt->wavelet + b, dwt->win_h_x0, dwt->win_h_x1,
+    decode_step1_sse_97(dwt->mem + b, dwt->win_h_x0, dwt->win_h_x1,
                                _mm_set1_ps(c13318));
-    decode_step2_sse_97(dwt->wavelet + b, dwt->wavelet + a + 1,
+    decode_step2_sse_97(dwt->mem + b, dwt->mem + a + 1,
                                dwt->win_l_x0, dwt->win_l_x1,
                                (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
                                _mm_set1_ps(dwt_delta));
-    decode_step2_sse_97(dwt->wavelet + a, dwt->wavelet + b + 1,
+    decode_step2_sse_97(dwt->mem + a, dwt->mem + b + 1,
                                dwt->win_h_x0, dwt->win_h_x1,
                                (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
                                _mm_set1_ps(dwt_gamma));
-    decode_step2_sse_97(dwt->wavelet + b, dwt->wavelet + a + 1,
+    decode_step2_sse_97(dwt->mem + b, dwt->mem + a + 1,
                                dwt->win_l_x0, dwt->win_l_x1,
                                (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
                                _mm_set1_ps(dwt_beta));
-    decode_step2_sse_97(dwt->wavelet + a, dwt->wavelet + b + 1,
+    decode_step2_sse_97(dwt->mem + a, dwt->mem + b + 1,
                                dwt->win_h_x0, dwt->win_h_x1,
                                (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
                                _mm_set1_ps(dwt_alpha));
 #else
-    decode_step1_97(dwt->wavelet + a, dwt->win_l_x0, dwt->win_l_x1,
+    decode_step1_97(dwt->mem + a, dwt->win_l_x0, dwt->win_l_x1,
                            K);
-    decode_step1_97(dwt->wavelet + b, dwt->win_h_x0, dwt->win_h_x1,
+    decode_step1_97(dwt->mem + b, dwt->win_h_x0, dwt->win_h_x1,
                            c13318);
-    decode_step2_97(dwt->wavelet + b, dwt->wavelet + a + 1,
+    decode_step2_97(dwt->mem + b, dwt->mem + a + 1,
                            dwt->win_l_x0, dwt->win_l_x1,
                            (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
                            dwt_delta);
-    decode_step2_97(dwt->wavelet + a, dwt->wavelet + b + 1,
+    decode_step2_97(dwt->mem + a, dwt->mem + b + 1,
                            dwt->win_h_x0, dwt->win_h_x1,
                            (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
                            dwt_gamma);
-    decode_step2_97(dwt->wavelet + b, dwt->wavelet + a + 1,
+    decode_step2_97(dwt->mem + b, dwt->mem + a + 1,
                            dwt->win_l_x0, dwt->win_l_x1,
                            (uint32_t)min<int32_t>(dwt->sn, dwt->dn - a),
                            dwt_beta);
-    decode_step2_97(dwt->wavelet + a, dwt->wavelet + b + 1,
+    decode_step2_97(dwt->mem + a, dwt->mem + b + 1,
                            dwt->win_h_x0, dwt->win_h_x1,
                            (uint32_t)min<int32_t>(dwt->dn, dwt->sn - b),
                            dwt_alpha);
@@ -1788,92 +1811,197 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
     uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
                             tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
 
-    size_t l_data_size = max_resolution(res, numres);
+    size_t data_size = max_resolution(res, numres);
     /* overflow check */
-    if (l_data_size > (SIZE_MAX - 5U)) {
+    if (data_size > (SIZE_MAX - 5U)) {
         /* FIXME event manager error callback */
         return false;
     }
-    l_data_size += 5U;
+    data_size += 5U;
     /* overflow check */
-    if (l_data_size > (SIZE_MAX / sizeof(v4_data))) {
+    if (data_size > (SIZE_MAX / sizeof(v4_data))) {
         /* FIXME event manager error callback */
         return false;
     }
-    dwt_data_97 h;
-    dwt_data_97 v;
-    h.wavelet = (v4_data*) grok_aligned_malloc(l_data_size * sizeof(v4_data));
-    if (!h.wavelet) {
+    dwt_data_97 horiz;
+    dwt_data_97 vert;
+    if (!horiz.alloc(data_size)) {
         /* FIXME event manager error callback */
         return false;
     }
-    v.wavelet = h.wavelet;
+    vert.mem = horiz.mem;
+    size_t num_threads = Scheduler::g_tp->num_threads();
     while (--numres) {
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+        horiz.sn = (int32_t)rw;
+        vert.sn = (int32_t)rh;
         ++res;
         /* width of the resolution level computed */
         rw = (uint32_t)(res->x1 -  res->x0);
         /* height of the resolution level computed */
         rh = (uint32_t)(res->y1 -  res->y0);
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = res->x0 % 2;
-        h.win_l_x0 = 0;
-        h.win_l_x1 = (uint32_t)h.sn;
-        h.win_h_x0 = 0;
-        h.win_h_x1 = (uint32_t)h.dn;
+        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.cas = res->x0 % 2;
+        horiz.win_l_x0 = 0;
+        horiz.win_l_x1 = (uint32_t)horiz.sn;
+        horiz.win_h_x0 = 0;
+        horiz.win_h_x1 = (uint32_t)horiz.dn;
         uint32_t j;
         float * restrict tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        for (j = 0; j + 3 < rh; j += 4) {
-            interleave_h_97(&h, tiledp, w, rh - j);
-            decode_step_97(&h);
-            for (uint32_t k = 0; k < rw; k++) {
-                tiledp[k      ] 			= h.wavelet[k].f[0];
-                tiledp[k + (size_t)w  ] 	= h.wavelet[k].f[1];
-                tiledp[k + (size_t)w * 2] 	= h.wavelet[k].f[2];
-                tiledp[k + (size_t)w * 3] 	= h.wavelet[k].f[3];
-            }
-            tiledp += w * 4;
+        uint32_t num_jobs = (uint32_t)num_threads;
+        if (rh < num_jobs)
+            num_jobs = rh;
+        uint32_t step_j = num_jobs ? (rh / num_jobs) : 0;
+        if (step_j < 4) {
+			for (j = 0; j + 3 < rh; j += 4) {
+				interleave_h_97(&horiz, tiledp, w, rh - j);
+				decode_step_97(&horiz);
+				for (uint32_t k = 0; k < rw; k++) {
+					tiledp[k      ] 			= horiz.mem[k].f[0];
+					tiledp[k + (size_t)w  ] 	= horiz.mem[k].f[1];
+					tiledp[k + (size_t)w * 2] 	= horiz.mem[k].f[2];
+					tiledp[k + (size_t)w * 3] 	= horiz.mem[k].f[3];
+				}
+				tiledp += w * 4;
+			}
+			if (j < rh) {
+				interleave_h_97(&horiz, tiledp, w, rh - j);
+				decode_step_97(&horiz);
+				for (uint32_t k = 0; k < rw; k++) {
+					switch (rh - j) {
+					case 3:
+						tiledp[k + (size_t)w * 2] = horiz.mem[k].f[2];
+					/* FALLTHRU */
+					case 2:
+						tiledp[k + (size_t)w  ] = horiz.mem[k].f[1];
+					/* FALLTHRU */
+					case 1:
+						tiledp[k] = horiz.mem[k].f[0];
+					}
+				}
+			}
+        } else {
+			std::vector< std::future<int> > results;
+			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto job = new decode_job<float, dwt_data_97>(horiz,
+											w,
+											tiledp,
+											j * step_j,
+											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
+				if (!job->data.alloc(data_size)) {
+					GROK_ERROR("Out of memory");
+					grok_aligned_free(horiz.mem);
+					return false;
+				}
+				results.emplace_back(
+					Scheduler::g_tp->enqueue([job,w,rw] {
+					    float* tdp = nullptr;
+					    uint32_t j;
+						for (j = job->min_j; j + 3 < job->max_j; j+=4){
+							tdp = &job->tiledp[j * job->w];
+							interleave_h_97(&job->data, tdp, w, job->max_j - j);
+							decode_step_97(&job->data);
+							for (uint32_t k = 0; k < rw; k++) {
+								tdp[k      ] 			= job->data.mem[k].f[0];
+								tdp[k + (size_t)w  ] 	= job->data.mem[k].f[1];
+								tdp[k + (size_t)w * 2] 	= job->data.mem[k].f[2];
+								tdp[k + (size_t)w * 3] 	= job->data.mem[k].f[3];
+							}
+						}
+						if (j < job->max_j) {
+							tdp += 4 * job->w;
+							interleave_h_97(&job->data, tdp, w, job->max_j - j);
+							decode_step_97(&job->data);
+							for (uint32_t k = 0; k < rw; k++) {
+								switch (job->max_j - j) {
+								case 3:
+									tdp[k + (size_t)w * 2] = job->data.mem[k].f[2];
+								/* FALLTHRU */
+								case 2:
+									tdp[k + (size_t)w  ] = job->data.mem[k].f[1];
+								/* FALLTHRU */
+								case 1:
+									tdp[k] = job->data.mem[k].f[0];
+								}
+							}
+						}
+						grok_aligned_free(job->data.mem);
+						delete job;
+						return 0;
+					})
+				);
+			}
+			for(auto && result: results)
+				result.get();
         }
-        if (j < rh) {
-            interleave_h_97(&h, tiledp, w, rh - j);
-            decode_step_97(&h);
-            for (uint32_t k = 0; k < rw; k++) {
-                switch (rh - j) {
-                case 3:
-                    tiledp[k + (size_t)w * 2] = h.wavelet[k].f[2];
-                /* FALLTHRU */
-                case 2:
-                    tiledp[k + (size_t)w  ] = h.wavelet[k].f[1];
-                /* FALLTHRU */
-                case 1:
-                    tiledp[k] = h.wavelet[k].f[0];
-                }
-            }
-        }
-        v.dn = (int32_t)(rh - v.sn);
-        v.cas = res->y0 % 2;
-        v.win_l_x0 = 0;
-        v.win_l_x1 = (uint32_t)v.sn;
-        v.win_h_x0 = 0;
-        v.win_h_x1 = (uint32_t)v.dn;
+        vert.dn = (int32_t)(rh - vert.sn);
+        vert.cas = res->y0 % 2;
+        vert.win_l_x0 = 0;
+        vert.win_l_x1 = (uint32_t)vert.sn;
+        vert.win_h_x0 = 0;
+        vert.win_h_x1 = (uint32_t)vert.dn;
         tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
-        for (j = rw; j > 3; j -= 4) {
-            interleave_v_97(&v, tiledp, w, 4);
-            decode_step_97(&v);
-            for (uint32_t k = 0; k < rh; ++k)
-                memcpy(&tiledp[k * (size_t)w], &v.wavelet[k], 4 * sizeof(float));
-             tiledp += 4;
-        }
-        if (rw & 0x03) {
-            j = rw & 0x03;
-            interleave_v_97(&v, tiledp, w, j);
-            decode_step_97(&v);
-            for (uint32_t k = 0; k < rh; ++k)
-                memcpy(&tiledp[k * (size_t)w], &v.wavelet[k],(size_t)j * sizeof(float));
+        num_jobs = (uint32_t)num_threads;
+        if (rw < num_jobs)
+            num_jobs = rw;
+        step_j = num_jobs ? (rw / num_jobs) : 0;
+        if (step_j < 4) {
+			for (j = 0; j + 3 < rw; j += 4) {
+				interleave_v_97(&vert, tiledp, w, 4);
+				decode_step_97(&vert);
+				for (uint32_t k = 0; k < rh; ++k)
+					memcpy(&tiledp[k * (size_t)w], &vert.mem[k], 4 * sizeof(float));
+				 tiledp += 4;
+			}
+			if (j < rw) {
+				j = rw & 0x03;
+				interleave_v_97(&vert, tiledp, w, j);
+				decode_step_97(&vert);
+				for (uint32_t k = 0; k < rh; ++k)
+					memcpy(&tiledp[k * (size_t)w], &vert.mem[k],(size_t)j * sizeof(float));
+			}
+        } else {
+			std::vector< std::future<int> > results;
+            for (uint32_t j = 0; j < num_jobs; j++) {
+            	auto job = new decode_job<float, dwt_data_97>(vert,
+            												w,
+            												tiledp,
+            												j * step_j,
+            												j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
+				if (!job->data.alloc(data_size)) {
+					GROK_ERROR("Out of memory");
+					grok_aligned_free(horiz.mem);
+					return false;
+				}
+				results.emplace_back(
+					Scheduler::g_tp->enqueue([job,rh] {
+						float* tdp = job->tiledp + job->min_j;
+						uint32_t w = job->w;
+						uint32_t j;
+						for (j = job->min_j; j + 3 < job->max_j; j+=4){
+							interleave_v_97(&job->data, tdp, w, 4);
+							decode_step_97(&job->data);
+							for (uint32_t k = 0; k < rh; ++k)
+								memcpy(&tdp[k * (size_t)job->w], &job->data.mem[k], 4 * sizeof(float));
+							tdp += 4;
+						}
+						if (j < job->max_j) {
+							j = job->max_j - j;
+							interleave_v_97(&job->data, tdp, w, j);
+							decode_step_97(&job->data);
+							for (uint32_t k = 0; k < rh; ++k)
+								memcpy(&tdp[k * (size_t)w], &job->data.mem[k],(size_t)j * sizeof(float));
+						}
+						grok_aligned_free(job->data.mem);
+						delete job;
+						return 0;
+					})
+				);
+            }
+			for(auto && result: results)
+				result.get();
         }
     }
-    grok_aligned_free(h.wavelet);
+    grok_aligned_free(horiz.mem);
 
     return true;
 }
@@ -1882,8 +2010,8 @@ static
 bool decode_partial_tile_97(TileComponent* restrict tilec,
                                    uint32_t numres)
 {
-    dwt_data_97 h;
-    dwt_data_97 v;
+    dwt_data_97 horiz;
+    dwt_data_97 vert;
     uint32_t resno;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
@@ -1898,7 +2026,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
     /* height of the resolution level computed */
     uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
 
-    size_t l_data_size;
+    size_t data_size;
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
@@ -1931,27 +2059,26 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         return true;
     }
 
-    l_data_size = max_resolution(tr, numres);
+    data_size = max_resolution(tr, numres);
     /* overflow check */
-    if (l_data_size > (SIZE_MAX - 5U)) {
+    if (data_size > (SIZE_MAX - 5U)) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);
         return false;
     }
-    l_data_size += 5U;
+    data_size += 5U;
     /* overflow check */
-    if (l_data_size > (SIZE_MAX / sizeof(v4_data))) {
+    if (data_size > (SIZE_MAX / sizeof(v4_data))) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);
         return false;
     }
-    h.wavelet = (v4_data*) grok_aligned_malloc(l_data_size * sizeof(v4_data));
-    if (!h.wavelet) {
+    if (!horiz.alloc(data_size)) {
         /* FIXME event manager error callback */
         sparse_array_int32_free(sa);
         return false;
     }
-    v.wavelet = h.wavelet;
+    vert.mem = horiz.mem;
 
     for (resno = 1; resno < numres; resno ++) {
         uint32_t j;
@@ -1966,17 +2093,17 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 
         ++tr;
 
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+        horiz.sn = (int32_t)rw;
+        vert.sn = (int32_t)rh;
 
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
 
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = tr->x0 % 2;
+        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.cas = tr->x0 % 2;
 
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = tr->y0 % 2;
+        vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
+        vert.cas = tr->y0 % 2;
 
         /* Get the subband coordinates for the window of interest */
         /* LL band */
@@ -2011,83 +2138,83 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         win_lh_y0 = uint_subs(win_lh_y0, tr_lh_y0);
         win_lh_y1 = uint_subs(win_lh_y1, tr_lh_y0);
 
-        segment_grow(filter_width, (uint32_t)h.sn, &win_ll_x0, &win_ll_x1);
-        segment_grow(filter_width, (uint32_t)h.dn, &win_hl_x0, &win_hl_x1);
+        segment_grow(filter_width, (uint32_t)horiz.sn, &win_ll_x0, &win_ll_x1);
+        segment_grow(filter_width, (uint32_t)horiz.dn, &win_hl_x0, &win_hl_x1);
 
-        segment_grow(filter_width, (uint32_t)v.sn, &win_ll_y0, &win_ll_y1);
-        segment_grow(filter_width, (uint32_t)v.dn, &win_lh_y0, &win_lh_y1);
+        segment_grow(filter_width, (uint32_t)vert.sn, &win_ll_y0, &win_ll_y1);
+        segment_grow(filter_width, (uint32_t)vert.dn, &win_lh_y0, &win_lh_y1);
 
         /* Compute the tile-resolution-based coordinates for the window of interest */
-        if (h.cas == 0) {
+        if (horiz.cas == 0) {
             win_tr_x0 = min<uint32_t>(2 * win_ll_x0, 2 * win_hl_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll_x1, 2 * win_hl_x1 + 1), rw);
         } else {
             win_tr_x0 = min<uint32_t>(2 * win_hl_x0, 2 * win_ll_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll_x1 + 1), rw);
         }
-        if (v.cas == 0) {
+        if (vert.cas == 0) {
             win_tr_y0 = min<uint32_t>(2 * win_ll_y0, 2 * win_lh_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll_y1, 2 * win_lh_y1 + 1), rh);
         } else {
             win_tr_y0 = min<uint32_t>(2 * win_lh_y0, 2 * win_ll_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll_y1 + 1), rh);
         }
-        h.win_l_x0 = win_ll_x0;
-        h.win_l_x1 = win_ll_x1;
-        h.win_h_x0 = win_hl_x0;
-        h.win_h_x1 = win_hl_x1;
+        horiz.win_l_x0 = win_ll_x0;
+        horiz.win_l_x1 = win_ll_x1;
+        horiz.win_h_x0 = win_hl_x0;
+        horiz.win_h_x1 = win_hl_x1;
         for (j = 0; j + 3 < rh; j += 4) {
             if ((j + 3 >= win_ll_y0 && j < win_ll_y1) ||
-                    (j + 3 >= win_lh_y0 + (uint32_t)v.sn &&
-                     j < win_lh_y1 + (uint32_t)v.sn)) {
-                interleave_partial_h_97(&h, sa, j, min<uint32_t>(4U, rh - j));
-                decode_step_97(&h);
+                    (j + 3 >= win_lh_y0 + (uint32_t)vert.sn &&
+                     j < win_lh_y1 + (uint32_t)vert.sn)) {
+                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(4U, rh - j));
+                decode_step_97(&horiz);
                 if (!sparse_array_int32_write(sa,
                                                   win_tr_x0, j,
                                                   win_tr_x1, j + 4,
-                                                  (int32_t*)&h.wavelet[win_tr_x0].f[0],
+                                                  (int32_t*)&horiz.mem[win_tr_x0].f[0],
                                                   4, 1, true)) {
                     /* FIXME event manager error callback */
                     sparse_array_int32_free(sa);
-                    grok_aligned_free(h.wavelet);
+                    grok_aligned_free(horiz.mem);
                     return false;
                 }
             }
         }
         if (j < rh &&
                 ((j + 3 >= win_ll_y0 && j < win_ll_y1) ||
-                 (j + 3 >= win_lh_y0 + (uint32_t)v.sn &&
-                  j < win_lh_y1 + (uint32_t)v.sn))) {
-            interleave_partial_h_97(&h, sa, j, rh - j);
-            decode_step_97(&h);
+                 (j + 3 >= win_lh_y0 + (uint32_t)vert.sn &&
+                  j < win_lh_y1 + (uint32_t)vert.sn))) {
+            interleave_partial_h_97(&horiz, sa, j, rh - j);
+            decode_step_97(&horiz);
             if (!sparse_array_int32_write(sa,
                                               win_tr_x0, j,
                                               win_tr_x1, rh,
-                                              (int32_t*)&h.wavelet[win_tr_x0].f[0],
+                                              (int32_t*)&horiz.mem[win_tr_x0].f[0],
                                               4, 1, true)) {
                 /* FIXME event manager error callback */
                 sparse_array_int32_free(sa);
-                grok_aligned_free(h.wavelet);
+                grok_aligned_free(horiz.mem);
                 return false;
             }
         }
-        v.win_l_x0 = win_ll_y0;
-        v.win_l_x1 = win_ll_y1;
-        v.win_h_x0 = win_lh_y0;
-        v.win_h_x1 = win_lh_y1;
+        vert.win_l_x0 = win_ll_y0;
+        vert.win_l_x1 = win_ll_y1;
+        vert.win_h_x0 = win_lh_y0;
+        vert.win_h_x1 = win_lh_y1;
         for (j = win_tr_x0; j < win_tr_x1; j += 4) {
             uint32_t nb_elts = min<uint32_t>(4U, win_tr_x1 - j);
 
-            interleave_partial_v_97(&v, sa, j, nb_elts);
-            decode_step_97(&v);
+            interleave_partial_v_97(&vert, sa, j, nb_elts);
+            decode_step_97(&vert);
             if (!sparse_array_int32_write(sa,
                                               j, win_tr_y0,
                                               j + nb_elts, win_tr_y1,
-                                              (int32_t*)&h.wavelet[win_tr_y0].f[0],
+                                              (int32_t*)&horiz.mem[win_tr_y0].f[0],
                                               1, 4, true)) {
                 /* FIXME event manager error callback */
                 sparse_array_int32_free(sa);
-                grok_aligned_free(h.wavelet);
+                grok_aligned_free(horiz.mem);
                 return false;
             }
         }
@@ -2103,7 +2230,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 	assert(ret);
 	GRK_UNUSED(ret);
     sparse_array_int32_free(sa);
-    grok_aligned_free(h.wavelet);
+    grok_aligned_free(horiz.mem);
 
     return true;
 }

@@ -362,10 +362,10 @@ void mct::decode_irrev(float *restrict c0, float *restrict c1, float *restrict c
 			uint64_t index = i;
 			results.emplace_back(
 				Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2] {
-				const VREGF vrv = SETF(1.402f);
-				const VREGF vgu = SETF(0.34413f);
-				const VREGF vgv = SETF(0.71414f);
-				const VREGF vbu = SETF(1.772f);
+				const VREGF vrv = LOAD_CST_F(1.402f);
+				const VREGF vgu = LOAD_CST_F(0.34413f);
+				const VREGF vgv = LOAD_CST_F(0.71414f);
+				const VREGF vbu = LOAD_CST_F(1.772f);
 				uint64_t begin = (uint64_t)index * chunkSize;
 				for (auto j = begin; j < begin+chunkSize; j +=VREG_INT_COUNT){
 					VREGF vy, vu, vv;
