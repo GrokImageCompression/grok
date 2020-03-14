@@ -209,24 +209,21 @@ static void  decode_h_cas0_53(int32_t* tmp,
                                const int32_t sn,
                                const int32_t len,
                                int32_t* tiledp){
-    int32_t i, j;
-    const int32_t* in_even = &tiledp[0];
-    const int32_t* in_odd = &tiledp[sn];
-
-    int32_t d1c, d1n, s1n, s0c, s0n;
-
     assert(len > 1);
 
     /* Improved version of the TWO_PASS_VERSION: */
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
-    s1n = in_even[0];
-    d1n = in_odd[0];
-    s0n = s1n - ((d1n + 1) >> 1);
+    const int32_t* in_even = tiledp;
+    const int32_t* in_odd = tiledp + sn;
+    int32_t s1n = in_even[0];
+    int32_t d1n = in_odd[0];
+    int32_t s0n = s1n - ((d1n + 1) >> 1);
 
+    int32_t i, j;
     for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
-        d1c = d1n;
-        s0c = s0n;
+    	int32_t d1c = d1n;
+    	int32_t s0c = s0n;
 
         s1n = in_even[j];
         d1n = in_odd[j];
@@ -240,7 +237,7 @@ static void  decode_h_cas0_53(int32_t* tmp,
     tmp[i] = s0n;
 
     if (len & 1) {
-        tmp[len - 1] = in_even[(len - 1) / 2] - ((d1n + 1) >> 1);
+        tmp[len - 1] = in_even[(len - 1) >> 1] - ((d1n + 1) >> 1);
         tmp[len - 2] = d1n + ((s0n + tmp[len - 1]) >> 1);
     } else {
         tmp[len - 1] = d1n + s0n;
@@ -252,26 +249,21 @@ static void  decode_h_cas1_53(int32_t* tmp,
                                const int32_t sn,
                                const int32_t len,
                                int32_t* tiledp){
-    int32_t i, j;
-    const int32_t* in_even = &tiledp[sn];
-    const int32_t* in_odd = &tiledp[0];
-    int32_t s1, s2, dc, dn;
-
     assert(len > 2);
 
     /* Improved version of the TWO_PASS_VERSION:
        Performs lifting in one single iteration. Saves memory
        accesses and explicit interleaving. */
-
-    s1 = in_even[1];
-    dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
+    const int32_t* in_even = tiledp + sn;
+    const int32_t* in_odd = tiledp;
+    int32_t s1 = in_even[1];
+    int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
-
+    int32_t i, j;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
+    	int32_t s2 = in_even[j + 1];
+    	int32_t dn = in_odd[j] - ((s1 + s2 + 2) >> 2);
 
-        s2 = in_even[j + 1];
-
-        dn = in_odd[j] - ((s1 + s2 + 2) >> 2);
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
 
@@ -282,7 +274,7 @@ static void  decode_h_cas1_53(int32_t* tmp,
     tmp[i] = dc;
 
     if (!(len & 1)) {
-        dn = in_odd[len / 2 - 1] - ((s1 + 1) >> 1);
+    	int32_t dn = in_odd[len / 2 - 1] - ((s1 + 1) >> 1);
         tmp[len - 2] = s1 + ((dn + dc) >> 1);
         tmp[len - 1] = dn;
     } else {
@@ -338,10 +330,8 @@ void decode_v_final_memcpy_53(int32_t* tiledp_col,
                     PARALLEL_COLS_53 * sizeof(int32_t))
            would do but would be a tiny bit slower.
            We can take here advantage of our knowledge of alignment */
-        STOREU(&tiledp_col[(size_t)i * stride + 0],
-               LOAD(&tmp[PLL_COLS_53 * i + 0]));
-        STOREU(&tiledp_col[(size_t)i * stride + VREG_INT_COUNT],
-               LOAD(&tmp[PLL_COLS_53 * i + VREG_INT_COUNT]));
+        STOREU(&tiledp_col[(size_t)i * stride + 0],              LOAD(&tmp[PLL_COLS_53 * i + 0]));
+        STOREU(&tiledp_col[(size_t)i * stride + VREG_INT_COUNT], LOAD(&tmp[PLL_COLS_53 * i + VREG_INT_COUNT]));
     }
 }
 
@@ -352,13 +342,8 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 												const int32_t len,
 												int32_t* tiledp_col,
 												const size_t stride){
-    const int32_t* in_even = &tiledp_col[0];
-    const int32_t* in_odd = &tiledp_col[(size_t)sn * stride];
-
     int32_t i;
     size_t j;
-    VREG d1c_0, d1n_0, s1n_0, s0c_0, s0n_0;
-    VREG d1c_1, d1n_1, s1n_1, s0c_1, s0n_1;
     const VREG two = LOAD_CST(2);
 
     assert(len > 1);
@@ -375,21 +360,23 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
     /* the temporary buffer is properly aligned */
     assert((size_t)tmp % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
 
-    s1n_0 = LOADU(in_even + 0);
-    s1n_1 = LOADU(in_even + VREG_INT_COUNT);
-    d1n_0 = LOADU(in_odd);
-    d1n_1 = LOADU(in_odd + VREG_INT_COUNT);
+    const int32_t* in_even = &tiledp_col[0];
+    const int32_t* in_odd = &tiledp_col[(size_t)sn * stride];
+    VREG s1n_0 = LOADU(in_even + 0);
+    VREG s1n_1 = LOADU(in_even + VREG_INT_COUNT);
+    VREG d1n_0 = LOADU(in_odd);
+    VREG d1n_1 = LOADU(in_odd + VREG_INT_COUNT);
 
     /* s0n = s1n - ((d1n + 1) >> 1); <==> */
     /* s0n = s1n - ((d1n + d1n + 2) >> 2); */
-    s0n_0 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
-    s0n_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
+    VREG s0n_0 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
+    VREG s0n_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
 
     for (i = 0, j = 1; i < (len - 3); i += 2, j++) {
-        d1c_0 = d1n_0;
-        s0c_0 = s0n_0;
-        d1c_1 = d1n_1;
-        s0c_1 = s0n_1;
+    	VREG d1c_0 = d1n_0;
+    	VREG s0c_0 = s0n_0;
+    	VREG d1c_1 = d1n_1;
+    	VREG s0c_1 = s0n_1;
 
         s1n_0 = LOADU(in_even + j * stride);
         s1n_1 = LOADU(in_even + j * stride + VREG_INT_COUNT);
@@ -404,10 +391,8 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
         STORE(tmp + PLL_COLS_53 * (i + 0) + VREG_INT_COUNT, s0c_1);
 
         /* d1c + ((s0c + s0n) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,
-              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,
-              ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
+        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,              ADD(d1c_0, SAR(ADD(s0c_0, s0n_0), 1)));
+        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT, ADD(d1c_1, SAR(ADD(s0c_1, s0n_1), 1)));
     }
 
     STORE(tmp + PLL_COLS_53 * (i + 0) + 0, s0n_0);
@@ -420,22 +405,18 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
         tmp_len_minus_1 = SUB(s1n_0, SAR(ADD3(d1n_0, d1n_0, two), 2));
         STORE(tmp + PLL_COLS_53 * (len - 1), tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (len - 2),
-              ADD(d1n_0, SAR(ADD(s0n_0, tmp_len_minus_1), 1)));
+        STORE(tmp + PLL_COLS_53 * (len - 2), ADD(d1n_0, SAR(ADD(s0n_0, tmp_len_minus_1), 1)));
 
         s1n_1 = LOADU(in_even + (size_t)((len - 1) / 2) * stride + VREG_INT_COUNT);
         /* tmp_len_minus_1 = s1n - ((d1n + 1) >> 1); */
         tmp_len_minus_1 = SUB(s1n_1, SAR(ADD3(d1n_1, d1n_1, two), 2));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
-              tmp_len_minus_1);
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, tmp_len_minus_1);
         /* d1n + ((s0n + tmp_len_minus_1) >> 1) */
-        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT,
-              ADD(d1n_1, SAR(ADD(s0n_1, tmp_len_minus_1), 1)));
+        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT, ADD(d1n_1, SAR(ADD(s0n_1, tmp_len_minus_1), 1)));
+
     } else {
-        STORE(tmp + PLL_COLS_53 * (len - 1) + 0,
-              ADD(d1n_0, s0n_0));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
-              ADD(d1n_1, s0n_1));
+        STORE(tmp + PLL_COLS_53 * (len - 1) + 0,              ADD(d1n_0, s0n_0));
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, ADD(d1n_1, s0n_1));
     }
     decode_v_final_memcpy_53(tiledp_col, tmp, len, stride);
 }
@@ -443,21 +424,15 @@ static void decode_v_cas0_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
 
 /** Vertical inverse 5x3 wavelet transform for 8 columns in SSE2, or
  * 16 in AVX2, when top-most pixel is on odd coordinate */
-static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
-    int32_t* tmp,
-    const int32_t sn,
-    const int32_t len,
-    int32_t* tiledp_col,
-    const size_t stride){
+static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(int32_t* tmp,
+												const int32_t sn,
+												const int32_t len,
+												int32_t* tiledp_col,
+												const size_t stride){
     int32_t i;
     size_t j;
 
-    VREG s1_0, s2_0, dc_0, dn_0;
-    VREG s1_1, s2_1, dc_1, dn_1;
     const VREG two = LOAD_CST(2);
-
-    const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
-    const int32_t* in_odd = &tiledp_col[0];
 
     assert(len > 2);
 #if __AVX2__
@@ -473,38 +448,33 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
     /* the temporary buffer is properly aligned */
     assert((size_t)tmp % (sizeof(int32_t) * VREG_INT_COUNT) == 0);
 
-    s1_0 = LOADU(in_even + stride);
+    const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
+    const int32_t* in_odd = &tiledp_col[0];
+    VREG s1_0 = LOADU(in_even + stride);
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-    dc_0 = SUB(LOADU(in_odd + 0),
-               SAR(ADD3(LOADU(in_even + 0), s1_0, two), 2));
+    VREG dc_0 = SUB(LOADU(in_odd + 0), SAR(ADD3(LOADU(in_even + 0), s1_0, two), 2));
     STORE(tmp + PLL_COLS_53 * 0, ADD(LOADU(in_even + 0), dc_0));
 
-    s1_1 = LOADU(in_even + stride + VREG_INT_COUNT);
+    VREG s1_1 = LOADU(in_even + stride + VREG_INT_COUNT);
     /* in_odd[0] - ((in_even[0] + s1 + 2) >> 2); */
-    dc_1 = SUB(LOADU(in_odd + VREG_INT_COUNT),
-               SAR(ADD3(LOADU(in_even + VREG_INT_COUNT), s1_1, two), 2));
-    STORE(tmp + PLL_COLS_53 * 0 + VREG_INT_COUNT,
-          ADD(LOADU(in_even + VREG_INT_COUNT), dc_1));
+    VREG dc_1 = SUB(LOADU(in_odd + VREG_INT_COUNT), SAR(ADD3(LOADU(in_even + VREG_INT_COUNT), s1_1, two), 2));
+    STORE(tmp + PLL_COLS_53 * 0 + VREG_INT_COUNT,   ADD(LOADU(in_even + VREG_INT_COUNT), dc_1));
 
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
 
-        s2_0 = LOADU(in_even + (j + 1) * stride);
-        s2_1 = LOADU(in_even + (j + 1) * stride + VREG_INT_COUNT);
+    	VREG s2_0 = LOADU(in_even + (j + 1) * stride);
+    	VREG s2_1 = LOADU(in_even + (j + 1) * stride + VREG_INT_COUNT);
 
         /* dn = in_odd[j * stride] - ((s1 + s2 + 2) >> 2); */
-        dn_0 = SUB(LOADU(in_odd + j * stride),
-                   SAR(ADD3(s1_0, s2_0, two), 2));
-        dn_1 = SUB(LOADU(in_odd + j * stride + VREG_INT_COUNT),
-                   SAR(ADD3(s1_1, s2_1, two), 2));
+    	VREG dn_0 = SUB(LOADU(in_odd + j * stride),                 SAR(ADD3(s1_0, s2_0, two), 2));
+    	VREG dn_1 = SUB(LOADU(in_odd + j * stride + VREG_INT_COUNT),SAR(ADD3(s1_1, s2_1, two), 2));
 
         STORE(tmp + PLL_COLS_53 * i, dc_0);
         STORE(tmp + PLL_COLS_53 * i + VREG_INT_COUNT, dc_1);
 
         /* tmp[i + 1] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,
-              ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,
-              ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
+        STORE(tmp + PLL_COLS_53 * (i + 1) + 0,             ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
+        STORE(tmp + PLL_COLS_53 * (i + 1) + VREG_INT_COUNT,ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
         dc_0 = dn_0;
         s1_0 = s2_0;
@@ -516,23 +486,18 @@ static void decode_v_cas1_mcols_SSE2_OR_AVX2_53(
 
     if (!(len & 1)) {
         /*dn = in_odd[(len / 2 - 1) * stride] - ((s1 + 1) >> 1); */
-        dn_0 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride),
-                   SAR(ADD3(s1_0, s1_0, two), 2));
-        dn_1 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride + VREG_INT_COUNT),
-                   SAR(ADD3(s1_1, s1_1, two), 2));
+    	VREG dn_0 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride),SAR(ADD3(s1_0, s1_0, two), 2));
+    	VREG dn_1 = SUB(LOADU(in_odd + (size_t)(len / 2 - 1) * stride + VREG_INT_COUNT), SAR(ADD3(s1_1, s1_1, two), 2));
 
         /* tmp[len - 2] = s1 + ((dn + dc) >> 1); */
-        STORE(tmp + PLL_COLS_53 * (len - 2) + 0,
-              ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
-        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT,
-              ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
+        STORE(tmp + PLL_COLS_53 * (len - 2) + 0, ADD(s1_0, SAR(ADD(dn_0, dc_0), 1)));
+        STORE(tmp + PLL_COLS_53 * (len - 2) + VREG_INT_COUNT, ADD(s1_1, SAR(ADD(dn_1, dc_1), 1)));
 
         STORE(tmp + PLL_COLS_53 * (len - 1) + 0, dn_0);
         STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT, dn_1);
     } else {
         STORE(tmp + PLL_COLS_53 * (len - 1) + 0, ADD(s1_0, dc_0));
-        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,
-              ADD(s1_1, dc_1));
+        STORE(tmp + PLL_COLS_53 * (len - 1) + VREG_INT_COUNT,ADD(s1_1, dc_1));
     }
     decode_v_final_memcpy_53(tiledp_col, tmp, len, stride);
 }
@@ -607,7 +572,6 @@ static void decode_v_cas1_53(int32_t* tmp,
                              int32_t* tiledp_col,
                              const size_t stride){
     int32_t i, j;
-    int32_t s1, s2, dc, dn;
     const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
     const int32_t* in_odd = &tiledp_col[0];
 
@@ -616,14 +580,14 @@ static void decode_v_cas1_53(int32_t* tmp,
     /* Performs lifting in one single iteration. Saves memory */
     /* accesses and explicit interleaving. */
 
-    s1 = in_even[stride];
-    dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
+    int32_t s1 = in_even[stride];
+    int32_t dc = in_odd[0] - ((in_even[0] + s1 + 2) >> 2);
     tmp[0] = in_even[0] + dc;
     for (i = 1, j = 1; i < (len - 2 - !(len & 1)); i += 2, j++) {
 
-        s2 = in_even[(size_t)(j + 1) * stride];
+    	int32_t s2 = in_even[(size_t)(j + 1) * stride];
 
-        dn = in_odd[(size_t)j * stride] - ((s1 + s2 + 2) >> 2);
+    	int32_t dn = in_odd[(size_t)j * stride] - ((s1 + s2 + 2) >> 2);
         tmp[i  ] = dc;
         tmp[i + 1] = s1 + ((dn + dc) >> 1);
 
@@ -632,16 +596,14 @@ static void decode_v_cas1_53(int32_t* tmp,
     }
     tmp[i] = dc;
     if (!(len & 1)) {
-        dn = in_odd[(size_t)(len / 2 - 1) * stride] - ((s1 + 1) >> 1);
+    	int32_t dn = in_odd[(size_t)(len / 2 - 1) * stride] - ((s1 + 1) >> 1);
         tmp[len - 2] = s1 + ((dn + dc) >> 1);
         tmp[len - 1] = dn;
     } else {
         tmp[len - 1] = s1 + dc;
     }
-
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; ++i)
         tiledp_col[(size_t)i * stride] = tmp[i];
-    }
 }
 
 /* <summary>                            */
@@ -666,37 +628,28 @@ static void decode_v_53(const dwt_data_53 *dwt,
         }
 #endif
         if (len > 1) {
-            int32_t c;
-            for (c = 0; c < nb_cols; c++, tiledp_col++) {
+            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 decode_v_cas0_53(dwt->mem, sn, len, tiledp_col, stride);
-            }
             return;
         }
     } else {
         if (len == 1) {
-            int32_t c;
-            for (c = 0; c < nb_cols; c++, tiledp_col++) {
+            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 tiledp_col[0] /= 2;
-            }
             return;
         }
-
-        if (len == 2) {
-            int32_t c;
+        else if (len == 2) {
             int32_t* out = dwt->mem;
-            for (c = 0; c < nb_cols; c++, tiledp_col++) {
-                int32_t i;
+            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++) {
                 const int32_t* in_even = &tiledp_col[(size_t)sn * stride];
                 const int32_t* in_odd = &tiledp_col[0];
 
                 out[1] = in_odd[0] - ((in_even[0] + 1) >> 1);
                 out[0] = in_even[0] + out[1];
 
-                for (i = 0; i < len; ++i) {
+                for (int32_t i = 0; i < len; ++i)
                     tiledp_col[(size_t)i * stride] = out[i];
-                }
             }
-
             return;
         }
 
@@ -709,22 +662,12 @@ static void decode_v_53(const dwt_data_53 *dwt,
         }
 #endif
         if (len > 2) {
-            int32_t c;
-            for (c = 0; c < nb_cols; c++, tiledp_col++) {
+            for (int32_t c = 0; c < nb_cols; c++, tiledp_col++)
                 decode_v_cas1_53(dwt->mem, sn, len, tiledp_col, stride);
-            }
             return;
         }
     }
 }
-
-/*
-==========================================================
-   DWT interface
-==========================================================
-*/
-
-
 
 /* <summary>                            */
 /* Inverse 5-3 wavelet transform in 2-D. */
@@ -742,8 +685,7 @@ bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
 /* <summary>                             */
 /* Determine maximum computed resolution level for inverse wavelet transform */
 /* </summary>                            */
-static uint32_t max_resolution(grk_tcd_resolution* restrict r,
-        uint32_t i){
+static uint32_t max_resolution(grk_tcd_resolution* restrict r, uint32_t i){
     uint32_t mr   = 0;
     uint32_t w;
     while (--i) {
@@ -893,14 +835,14 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 }
 
 static void interleave_partial_h_53(int32_t *dest,
-        int32_t cas,
-        sparse_array_int32_t* sa,
-        uint32_t sa_line,
-        uint32_t sn,
-        uint32_t win_l_x0,
-        uint32_t win_l_x1,
-        uint32_t win_h_x0,
-        uint32_t win_h_x1){
+									int32_t cas,
+									sparse_array_int32_t* sa,
+									uint32_t sa_line,
+									uint32_t sn,
+									uint32_t win_l_x0,
+									uint32_t win_l_x1,
+									uint32_t win_h_x0,
+									uint32_t win_h_x1){
     bool ret = sparse_array_int32_read(sa,
                                       win_l_x0, sa_line,
                                       win_l_x1, sa_line + 1,
@@ -918,15 +860,15 @@ static void interleave_partial_h_53(int32_t *dest,
 
 
 static void interleave_partial_v_53(int32_t *dest,
-        int32_t cas,
-        sparse_array_int32_t* sa,
-        uint32_t sa_col,
-        uint32_t nb_cols,
-        uint32_t sn,
-        uint32_t win_l_y0,
-        uint32_t win_l_y1,
-        uint32_t win_h_y0,
-        uint32_t win_h_y1){
+									int32_t cas,
+									sparse_array_int32_t* sa,
+									uint32_t sa_col,
+									uint32_t nb_cols,
+									uint32_t sn,
+									uint32_t win_l_y0,
+									uint32_t win_l_y1,
+									uint32_t win_h_y0,
+									uint32_t win_h_y1){
     bool ret = sparse_array_int32_read(sa,
                                        sa_col, win_l_y0,
                                        sa_col + nb_cols, win_l_y1,
@@ -942,12 +884,14 @@ static void interleave_partial_v_53(int32_t *dest,
     GRK_UNUSED(ret);
 }
 
-static void decode_partial_1_53(int32_t *a, int32_t dn, int32_t sn,
-                                     int32_t cas,
-                                     int32_t win_l_x0,
-                                     int32_t win_l_x1,
-                                     int32_t win_h_x0,
-                                     int32_t win_h_x1){
+static void decode_partial_1_53(int32_t *a,
+								int32_t dn,
+								int32_t sn,
+								 int32_t cas,
+								 int32_t win_l_x0,
+								 int32_t win_l_x1,
+								 int32_t win_h_x0,
+								 int32_t win_h_x1){
     int32_t i;
 
     if (!cas) {
@@ -1024,13 +968,14 @@ static void decode_partial_1_53(int32_t *a, int32_t dn, int32_t sn,
 #define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
 
 static void decode_partial_1_parallel_53(int32_t *a,
-        uint32_t nb_cols,
-        int32_t dn, int32_t sn,
-        int32_t cas,
-        int32_t win_l_x0,
-        int32_t win_l_x1,
-        int32_t win_h_x0,
-        int32_t win_h_x1){
+										uint32_t nb_cols,
+										int32_t dn,
+										int32_t sn,
+										int32_t cas,
+										int32_t win_l_x0,
+										int32_t win_l_x1,
+										int32_t win_h_x0,
+										int32_t win_h_x1){
     int32_t i;
     uint32_t off;
 
@@ -1160,16 +1105,16 @@ static void decode_partial_1_parallel_53(int32_t *a,
 }
 
 static void get_band_coordinates(TileComponent* tilec,
-        uint32_t resno,
-        uint32_t bandno,
-        uint32_t tcx0,
-        uint32_t tcy0,
-        uint32_t tcx1,
-        uint32_t tcy1,
-        uint32_t* tbx0,
-        uint32_t* tby0,
-        uint32_t* tbx1,
-        uint32_t* tby1){
+								uint32_t resno,
+								uint32_t bandno,
+								uint32_t tcx0,
+								uint32_t tcy0,
+								uint32_t tcx1,
+								uint32_t tcy1,
+								uint32_t* tbx0,
+								uint32_t* tby0,
+								uint32_t* tbx1,
+								uint32_t* tby1){
     /* Compute number of decomposition for this band. See table F-1 */
     uint32_t nb = (resno == 0) ?
                     tilec->numresolutions - 1 :
@@ -1201,25 +1146,23 @@ static void get_band_coordinates(TileComponent* tilec,
 }
 
 static void segment_grow(uint32_t filter_width,
-                                 uint32_t max_size,
-                                 uint32_t* start,
-                                 uint32_t* end){
+						 uint32_t max_size,
+						 uint32_t* start,
+						 uint32_t* end){
     *start = uint_subs(*start, filter_width);
     *end = uint_adds(*end, filter_width);
     *end = min<uint32_t>(*end, max_size);
 }
 
 
-static sparse_array_int32_t* init_sparse_array(
-    TileComponent* tilec,
-    uint32_t numres)
+static sparse_array_int32_t* init_sparse_array(	TileComponent* tilec,
+												uint32_t numres)
 {
-    grk_tcd_resolution* tr_max = &(tilec->resolutions[numres - 1]);
+    auto tr_max = &(tilec->resolutions[numres - 1]);
     uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
     uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
     uint32_t resno, bandno, precno, cblkno;
-    sparse_array_int32_t* sa = sparse_array_int32_create(
-                                       w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
+    auto sa = sparse_array_int32_create(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
     if (sa == NULL) {
         return NULL;
     }
@@ -1231,9 +1174,9 @@ static sparse_array_int32_t* init_sparse_array(
             grk_tcd_band* band = &res->bands[bandno];
 
             for (precno = 0; precno < res->pw * res->ph; ++precno) {
-                grk_tcd_precinct* precinct = &band->precincts[precno];
+                auto precinct = &band->precincts[precno];
                 for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
-                    grk_tcd_cblk_dec* cblk = &precinct->cblks.dec[cblkno];
+                    auto cblk = &precinct->cblks.dec[cblkno];
                     if (cblk->unencoded_data != NULL) {
                         uint32_t x = (uint32_t)(cblk->x0 - band->x0);
                         uint32_t y = (uint32_t)(cblk->y0 - band->y0);
@@ -1265,10 +1208,8 @@ static sparse_array_int32_t* init_sparse_array(
     return sa;
 }
 
-static bool decode_partial_tile_53(
-    TileComponent* tilec,
-    uint32_t numres){
-    sparse_array_int32_t* sa;
+static bool decode_partial_tile_53( TileComponent* tilec,
+									uint32_t numres){
     dwt_data_53 h;
     dwt_data_53 v;
     uint32_t resno;
@@ -1295,14 +1236,12 @@ static bool decode_partial_tile_53(
     uint32_t win_tcx1 = (uint32_t)dim.x1;
     uint32_t win_tcy1 = (uint32_t)dim.y1;
 
-    if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
+    if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
         return true;
-    }
 
-    sa = init_sparse_array(tilec, numres);
-    if (sa == NULL) {
+    auto sa = init_sparse_array(tilec, numres);
+    if (sa == NULL)
         return false;
-    }
 
     if (numres == 1U) {
         bool ret = sparse_array_int32_read(sa,
@@ -1385,7 +1324,7 @@ static bool decode_partial_tile_53(
         tr_hl_x0 = (uint32_t)tr->bands[0].x0;
         tr_lh_y0 = (uint32_t)tr->bands[1].y0;
 
-        /* Subtract the origin of the bands for this tile, to the subwindow */
+        /* Subtract the origin of the bands for this tile, to the sub-window */
         /* of interest band coordinates, so as to get them relative to the */
         /* tile */
         win_ll_x0 = uint_subs(win_ll_x0, tr_ll_x0);
@@ -1564,9 +1503,9 @@ static void interleave_h_97(dwt_data_97* restrict dwt,
 }
 
 static void interleave_partial_h_97(dwt_data_97* dwt,
-        sparse_array_int32_t* sa,
-        uint32_t sa_line,
-        uint32_t remaining_height){
+									sparse_array_int32_t* sa,
+									uint32_t sa_line,
+									uint32_t remaining_height){
     uint32_t i;
     for (i = 0; i < remaining_height; i++) {
         bool ret;
@@ -1610,9 +1549,9 @@ static void interleave_v_97(dwt_data_97* restrict dwt,
 }
 
 static void interleave_partial_v_97(dwt_data_97* restrict dwt,
-        sparse_array_int32_t* sa,
-        uint32_t sa_col,
-        uint32_t nb_elts_read){
+									sparse_array_int32_t* sa,
+									uint32_t sa_col,
+									uint32_t nb_elts_read){
     bool ret;
     ret = sparse_array_int32_read(sa,
                                       sa_col, dwt->win_l_x0,
@@ -1841,7 +1780,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
     if (numres == 1U)
         return true;
 
-    grk_tcd_resolution* res = tilec->resolutions;
+    auto res = tilec->resolutions;
     /* width of the resolution level computed */
     uint32_t rw = (uint32_t)(res->x1 - res->x0);
     /* height of the resolution level computed */
@@ -1943,7 +1882,6 @@ static
 bool decode_partial_tile_97(TileComponent* restrict tilec,
                                    uint32_t numres)
 {
-    sparse_array_int32_t* sa;
     dwt_data_97 h;
     dwt_data_97 v;
     uint32_t resno;
@@ -1952,13 +1890,13 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
     /* we currently use 3. */
     const uint32_t filter_width = 4U;
 
-    grk_tcd_resolution* tr = tilec->resolutions;
-    grk_tcd_resolution* tr_max = &(tilec->resolutions[numres - 1]);
+    auto tr = tilec->resolutions;
+    auto tr_max = &(tilec->resolutions[numres - 1]);
 
-    uint32_t rw = (uint32_t)(tr->x1 -
-                                 tr->x0);    /* width of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 -
-                                 tr->y0);    /* height of the resolution level computed */
+    /* width of the resolution level computed */
+    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
+    /* height of the resolution level computed */
+    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
 
     size_t l_data_size;
 
@@ -1971,14 +1909,12 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
     uint32_t win_tcx1 = (uint32_t)dim.x1;
     uint32_t win_tcy1 = (uint32_t)dim.y1;
 
-    if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1) {
+    if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
         return true;
-    }
 
-    sa = init_sparse_array(tilec, numres);
-    if (sa == NULL) {
+    auto sa = init_sparse_array(tilec, numres);
+    if (sa == NULL)
         return false;
-    }
 
     if (numres == 1U) {
         bool ret = sparse_array_int32_read(sa,
@@ -2173,8 +2109,8 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 }
 
 bool decode_97(TileProcessor *p_tcd,
-                             TileComponent* restrict tilec,
-                             uint32_t numres){
+                TileComponent* restrict tilec,
+                uint32_t numres){
     if (p_tcd->whole_tile_decoding) {
         return decode_tile_97(tilec, numres);
     } else {
