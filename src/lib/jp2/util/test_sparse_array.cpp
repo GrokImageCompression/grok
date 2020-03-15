@@ -59,7 +59,7 @@ int main()
     uint32_t i, j, w, h;
     int32_t buffer[ 99 * 101 ];
     bool ret;
-    sparse_array_t* sa;
+    sparse_array* sa;
 
     sa = sparse_array_create(0, 1, 1, 1);
     assert(sa == NULL);

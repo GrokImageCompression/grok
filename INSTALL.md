@@ -105,7 +105,7 @@ cmake -DCMAKE_CXX_FLAGS="-O3 -march=native -DNDEBUG" ..
 
 ## OSX
 
-OSX builds are configured similiar to Unix builds.
+OSX builds are configured similar to Unix builds.
 
 The xcode project files can be generated using:
 

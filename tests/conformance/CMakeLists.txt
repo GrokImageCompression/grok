@@ -617,7 +617,7 @@ endforeach()
 
 #--------------------------------------------------------------------------
 # Tests about dump of profile 0 file
-# try to dump image and codestream informations into a file
+# try to dump image and codestream information into a file
 # non regression comparison this file to the baseline
 
 foreach(numFileP0 RANGE 1 16)
@@ -651,7 +651,7 @@ endforeach()
 
 #--------------------------------------------------------------------------
 # Tests about dump of profile 1 file
-# try to dump image and codestream informations into a file
+# try to dump image and codestream information into a file
 # non regression comparison this file to the baseline
 
 foreach(numFileP1 RANGE 1 7)
@@ -680,7 +680,7 @@ endforeach()
 
 #--------------------------------------------------------------------------
 # Tests about dump of JP2 file
-# try to dump image and codestream informations into a file
+# try to dump image and codestream information into a file
 # non regression comparison this file to the baseline
 
 foreach(numFileJP2 RANGE 1 9)

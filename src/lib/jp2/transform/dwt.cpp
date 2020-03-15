@@ -838,7 +838,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
 
 static void interleave_partial_h_53(int32_t *dest,
 									int32_t cas,
-									sparse_array_t* sa,
+									sparse_array* sa,
 									uint32_t sa_line,
 									uint32_t sn,
 									uint32_t win_l_x0,
@@ -863,7 +863,7 @@ static void interleave_partial_h_53(int32_t *dest,
 
 static void interleave_partial_v_53(int32_t *dest,
 									int32_t cas,
-									sparse_array_t* sa,
+									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_cols,
 									uint32_t sn,
@@ -1157,7 +1157,7 @@ static void segment_grow(uint32_t filter_width,
 }
 
 
-static sparse_array_t* init_sparse_array(	TileComponent* tilec,
+static sparse_array* init_sparse_array(	TileComponent* tilec,
 												uint32_t numres)
 {
     auto tr_max = &(tilec->resolutions[numres - 1]);
@@ -1504,7 +1504,7 @@ static void interleave_h_97(dwt_data_97* restrict dwt,
 }
 
 static void interleave_partial_h_97(dwt_data_97* dwt,
-									sparse_array_t* sa,
+									sparse_array* sa,
 									uint32_t sa_line,
 									uint32_t remaining_height){
     uint32_t i;
@@ -1550,7 +1550,7 @@ static void interleave_v_97(dwt_data_97* restrict dwt,
 }
 
 static void interleave_partial_v_97(dwt_data_97* restrict dwt,
-									sparse_array_t* sa,
+									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
     bool ret;
