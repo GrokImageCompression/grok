@@ -101,24 +101,30 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 	if (!p_size)
 		return 0;
 	size_t l_read_nb_bytes = 0;
-	//1. if stream is at end, then return immediately
-	if (m_status & GROK_STREAM_STATUS_END)
-		return 0;
-	// 2. if we have enough bytes in buffer, then read from buffer and return
+	// 1. if we have enough bytes in buffer, then read from buffer and return
 	if (p_size <= m_buffered_bytes) {
 		assert(m_buf->curr_ptr() >= m_buf->buf);
 		if (p_buffer)
 			memcpy(p_buffer, m_buf->curr_ptr(), p_size);
 
 		m_buf->incr_offset(p_size);
+		assert(m_buf->curr_ptr() >= m_buf->buf);
 		m_buffered_bytes -= p_size;
 		l_read_nb_bytes += p_size;
 		m_stream_offset += p_size;
 		return l_read_nb_bytes;
 	}
+	//2. if stream is at end, then read remaining bytes in buffer and return
+	if (m_status & GROK_STREAM_STATUS_END) {
+		l_read_nb_bytes += m_buffered_bytes;
+		if (p_buffer && m_buffered_bytes)
+			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
+		m_stream_offset += m_buffered_bytes;
+		invalidate_buffer();
+		return l_read_nb_bytes;
+	}
 	// 3. read remaining bytes in buffer 
 	if (m_buffered_bytes) {
-		assert(m_buf->curr_ptr() >= m_buf->buf);
 		l_read_nb_bytes += m_buffered_bytes;
 		if (p_buffer) {
 			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
@@ -127,42 +133,62 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		p_size -= m_buffered_bytes;
 		m_stream_offset += m_buffered_bytes;
 		m_buffered_bytes = 0;
-		return l_read_nb_bytes;
 	}
 
 	//4. read from media
 	invalidate_buffer();
-	//a) first and only memory buffer "read"
-	m_buffered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
-	// i) end of stream
-	if (m_buffered_bytes == 0) {
-		invalidate_buffer();
-		m_status |= GROK_STREAM_STATUS_END;
-	}
-	// ii) or not enough data
-	else if (m_buffered_bytes < p_size) {
-		l_read_nb_bytes += m_buffered_bytes;
-		if (p_buffer) {
-			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
-			p_buffer += m_buffered_bytes;
+	//a) very first memory buffer "read", or buffered file read
+	if (m_buf->buf) {
+		while(true) {
+			m_buffered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
+			// i) end of stream
+			if (m_buffered_bytes == 0) {
+				invalidate_buffer();
+				m_status |= GROK_STREAM_STATUS_END;
+				return l_read_nb_bytes;
+			}
+			// ii) or not enough data
+			else if (m_buffered_bytes < p_size) {
+				l_read_nb_bytes += m_buffered_bytes;
+				if (p_buffer) {
+					memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
+					p_buffer += m_buffered_bytes;
+				}
+				p_size -= m_buffered_bytes;
+				m_stream_offset += m_buffered_bytes;
+				invalidate_buffer();
+			}
+			// iii) or we have read the exact amount requested
+			else {
+				m_read_bytes_seekable = m_buffered_bytes;
+				l_read_nb_bytes += p_size;
+				if (p_buffer && p_size)
+					memcpy(p_buffer, m_buf->curr_ptr(), p_size);
+				m_buf->incr_offset(p_size);
+				assert(m_buf->curr_ptr() >= m_buf->buf);
+				m_buffered_bytes -= p_size;
+				m_stream_offset += p_size;
+				return l_read_nb_bytes;
+			}
 		}
-		p_size -= m_buffered_bytes;
-		m_stream_offset += m_buffered_bytes;
-		invalidate_buffer();
-		m_status |= GROK_STREAM_STATUS_END;
 	}
-	// iii) or we have enough
+	// b) copy to dest buffer (memory mapped file)
 	else {
-		m_read_bytes_seekable = m_buffered_bytes;
-		l_read_nb_bytes += p_size;
-		if (p_buffer && p_size)
-			memcpy(p_buffer, m_buf->curr_ptr(), p_size);
-		m_buf->incr_offset(p_size);
-		assert(m_buf->curr_ptr() >= m_buf->buf);
-		m_buffered_bytes -= p_size;
-		m_stream_offset += p_size;
+		auto bytes_read = m_read_fn(p_buffer, p_size, m_user_data);
+		// i) end of stream
+		if (bytes_read == 0) {
+			m_status |= GROK_STREAM_STATUS_END;
+			return 0;
+		}
+		// ii) or we have read the exact amount requested
+		else {
+			if (p_buffer)
+				p_buffer += bytes_read;
+			m_stream_offset += bytes_read;
+			return bytes_read;
+		}
 	}
-	return l_read_nb_bytes;
+	return 0;
 }
 size_t BufferedStream::read_data_zero_copy(uint8_t **p_buffer, size_t p_size) {
 	
