@@ -42,21 +42,25 @@ static void free_mem(void *user_data) {
 
 static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 		buf_info *p_source_buffer) {
-	size_t l_nb_read = 0;
+	size_t nb_read = 0;
 
 	if (((size_t) p_source_buffer->off + nb_bytes) < p_source_buffer->len) {
-		l_nb_read = nb_bytes;
+		nb_read = nb_bytes;
 	}
 
 	*p_buffer = p_source_buffer->buf + p_source_buffer->off;
-	p_source_buffer->off += (int64_t) l_nb_read;
+	assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
+	p_source_buffer->off += (int64_t) nb_read;
 
-	return l_nb_read;
+	return nb_read;
 }
 
 static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 		buf_info *p_source_buffer) {
 	size_t nb_read;
+
+	if (!p_buffer)
+		return 0;
 
 	if ((size_t) p_source_buffer->off + nb_bytes < p_source_buffer->len) {
 		nb_read = nb_bytes;
@@ -65,6 +69,7 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 	}
 
 	if (nb_read) {
+	  assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
       // (don't copy buffer into itself)
       if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
         memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off,
