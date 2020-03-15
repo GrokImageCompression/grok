@@ -57,7 +57,7 @@ using namespace std;
 
 using namespace grk;
 
-struct sparse_array_int32 {
+struct sparse_array {
     uint32_t width;
     uint32_t height;
     uint32_t block_width;
@@ -67,12 +67,12 @@ struct sparse_array_int32 {
     int32_t** data_blocks;
 };
 
-sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
+sparse_array_t* sparse_array_create(uint32_t width,
         uint32_t height,
         uint32_t block_width,
         uint32_t block_height)
 {
-    sparse_array_int32_t* sa;
+    sparse_array_t* sa;
 
     if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
         return NULL;
@@ -81,8 +81,8 @@ sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
         return NULL;
     }
 
-    sa = (sparse_array_int32_t*) grk_calloc(1,
-            sizeof(sparse_array_int32_t));
+    sa = (sparse_array_t*) grk_calloc(1,
+            sizeof(sparse_array_t));
     sa->width = width;
     sa->height = height;
     sa->block_width = block_width;
@@ -103,7 +103,7 @@ sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
     return sa;
 }
 
-void sparse_array_int32_free(sparse_array_int32_t* sa)
+void sparse_array_free(sparse_array_t* sa)
 {
     if (sa) {
         uint32_t i;
@@ -117,7 +117,7 @@ void sparse_array_int32_free(sparse_array_int32_t* sa)
     }
 }
 
-bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
+bool sparse_array_is_region_valid(const sparse_array_t* sa,
         uint32_t x0,
         uint32_t y0,
         uint32_t x1,
@@ -127,8 +127,8 @@ bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
              y0 >= sa->height || y1 <= y0 || y1 > sa->height);
 }
 
-static bool sparse_array_int32_read_or_write(
-    const sparse_array_int32_t* sa,
+static bool sparse_array_read_or_write(
+    const sparse_array_t* sa,
     uint32_t x0,
     uint32_t y0,
     uint32_t x1,
@@ -333,7 +333,7 @@ static bool sparse_array_int32_read_or_write(
     return true;
 }
 
-bool sparse_array_int32_read(const sparse_array_int32_t* sa,
+bool sparse_array_read(const sparse_array_t* sa,
                                      uint32_t x0,
                                      uint32_t y0,
                                      uint32_t x1,
@@ -343,8 +343,8 @@ bool sparse_array_int32_read(const sparse_array_int32_t* sa,
                                      uint32_t dest_line_stride,
                                      bool forgiving)
 {
-    return sparse_array_int32_read_or_write(
-               (sparse_array_int32_t*)sa, x0, y0, x1, y1,
+    return sparse_array_read_or_write(
+               (sparse_array_t*)sa, x0, y0, x1, y1,
                dest,
                dest_col_stride,
                dest_line_stride,
@@ -352,7 +352,7 @@ bool sparse_array_int32_read(const sparse_array_int32_t* sa,
                true);
 }
 
-bool sparse_array_int32_write(sparse_array_int32_t* sa,
+bool sparse_array_write(sparse_array_t* sa,
                                       uint32_t x0,
                                       uint32_t y0,
                                       uint32_t x1,
@@ -362,7 +362,7 @@ bool sparse_array_int32_write(sparse_array_int32_t* sa,
                                       uint32_t src_line_stride,
                                       bool forgiving)
 {
-    return sparse_array_int32_read_or_write(sa, x0, y0, x1, y1,
+    return sparse_array_read_or_write(sa, x0, y0, x1, y1,
             (int32_t*)src,
             src_col_stride,
             src_line_stride,

@@ -66,7 +66,7 @@ be used. If blocks are too small, the book-keeping costs of blocks will raise.
 /*@{*/
 
 /** Opaque type for sparse arrays that contain int32 values */
-typedef struct sparse_array_int32 sparse_array_int32_t;
+typedef struct sparse_array sparse_array_t;
 
 /** Creates a new sparse array.
  * @param width total width of the array.
@@ -75,7 +75,7 @@ typedef struct sparse_array_int32 sparse_array_int32_t;
  * @param block_height height of a block.
  * @return a new sparse array instance, or NULL in case of failure.
  */
-sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
+sparse_array_t* sparse_array_create(uint32_t width,
         uint32_t height,
         uint32_t block_width,
         uint32_t block_height);
@@ -83,7 +83,7 @@ sparse_array_int32_t* sparse_array_int32_create(uint32_t width,
 /** Frees a sparse array.
  * @param sa sparse array instance.
  */
-void sparse_array_int32_free(sparse_array_int32_t* sa);
+void sparse_array_free(sparse_array_t* sa);
 
 /** Returns whether region bounds are valid (non empty and within array bounds)
  * @param sa sparse array instance.
@@ -93,7 +93,7 @@ void sparse_array_int32_free(sparse_array_int32_t* sa);
  * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
  * @return true or false.
  */
-bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
+bool sparse_array_is_region_valid(const sparse_array_t* sa,
         uint32_t x0,
         uint32_t y0,
         uint32_t x1,
@@ -102,7 +102,7 @@ bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
 /** Read the content of a rectangular region of the sparse array into a
  * user buffer.
  *
- * Regions not written with sparse_array_int32_write() are read as 0.
+ * Regions not written with sparse_array_write() are read as 0.
  *
  * @param sa sparse array instance.
  * @param x0 left x coordinate of the region to read in the sparse array.
@@ -115,7 +115,7 @@ bool sparse_array_is_region_valid(const sparse_array_int32_t* sa,
  * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
  * @return true in case of success.
  */
-bool sparse_array_int32_read(const sparse_array_int32_t* sa,
+bool sparse_array_read(const sparse_array_t* sa,
                                      uint32_t x0,
                                      uint32_t y0,
                                      uint32_t x1,
@@ -142,7 +142,7 @@ bool sparse_array_int32_read(const sparse_array_int32_t* sa,
  * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
  * @return true in case of success.
  */
-bool sparse_array_int32_write(sparse_array_int32_t* sa,
+bool sparse_array_write(sparse_array_t* sa,
                                       uint32_t x0,
                                       uint32_t y0,
                                       uint32_t x1,

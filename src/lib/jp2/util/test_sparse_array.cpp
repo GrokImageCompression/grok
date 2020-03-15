@@ -59,69 +59,69 @@ int main()
     uint32_t i, j, w, h;
     int32_t buffer[ 99 * 101 ];
     bool ret;
-    sparse_array_int32_t* sa;
+    sparse_array_t* sa;
 
-    sa = sparse_array_int32_create(0, 1, 1, 1);
+    sa = sparse_array_create(0, 1, 1, 1);
     assert(sa == NULL);
-    sparse_array_int32_free(sa);
+    sparse_array_free(sa);
 
-    sa = sparse_array_int32_create(1, 0, 1, 1);
-    assert(sa == NULL);
-
-    sa = sparse_array_int32_create(1, 1, 0, 1);
+    sa = sparse_array_create(1, 0, 1, 1);
     assert(sa == NULL);
 
-    sa = sparse_array_int32_create(1, 1, 1, 0);
+    sa = sparse_array_create(1, 1, 0, 1);
     assert(sa == NULL);
 
-    sa = sparse_array_int32_create(99, 101, ~0U, ~0U);
+    sa = sparse_array_create(1, 1, 1, 0);
     assert(sa == NULL);
 
-    sa = sparse_array_int32_create(99, 101, 15, 17);
-    sparse_array_int32_free(sa);
+    sa = sparse_array_create(99, 101, ~0U, ~0U);
+    assert(sa == NULL);
 
-    sa = sparse_array_int32_create(99, 101, 15, 17);
-    ret = sparse_array_int32_read(sa, 0, 0, 0, 1, buffer, 1, 1, false);
+    sa = sparse_array_create(99, 101, 15, 17);
+    sparse_array_free(sa);
+
+    sa = sparse_array_create(99, 101, 15, 17);
+    ret = sparse_array_read(sa, 0, 0, 0, 1, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 0, 0, 1, 0, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 0, 0, 1, 0, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 0, 0, 100, 1, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 0, 0, 100, 1, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 0, 0, 1, 102, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 0, 0, 1, 102, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 1, 0, 0, 1, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 1, 0, 0, 1, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 0, 1, 1, 0, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 0, 1, 1, 0, buffer, 1, 1, false);
     assert(!ret);
-    ret = sparse_array_int32_read(sa, 99, 101, 99, 101, buffer, 1, 1,
+    ret = sparse_array_read(sa, 99, 101, 99, 101, buffer, 1, 1,
                                       false);
     assert(!ret);
 
     buffer[0] = 1;
-    ret = sparse_array_int32_read(sa, 0, 0, 1, 1, buffer, 1, 1, false);
+    ret = sparse_array_read(sa, 0, 0, 1, 1, buffer, 1, 1, false);
     assert(ret);
     assert(buffer[0] == 0);
 
     memset(buffer, 0xFF, sizeof(buffer));
-    ret = sparse_array_int32_read(sa, 0, 0, 99, 101, buffer, 1, 99, false);
+    ret = sparse_array_read(sa, 0, 0, 99, 101, buffer, 1, 99, false);
     assert(ret);
     for (i = 0; i < 99 * 101; i++) {
         assert(buffer[i] == 0);
     }
 
     buffer[0] = 1;
-    ret = sparse_array_int32_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+    ret = sparse_array_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
                                        false);
     assert(ret);
 
     buffer[0] = 2;
-    ret = sparse_array_int32_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+    ret = sparse_array_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
                                        false);
     assert(ret);
 
     buffer[0] = 0;
     buffer[1] = 0xFF;
-    ret = sparse_array_int32_read(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+    ret = sparse_array_read(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
                                       false);
     assert(ret);
     assert(buffer[0] == 2);
@@ -130,7 +130,7 @@ int main()
     buffer[0] = 0xFF;
     buffer[1] = 0xFF;
     buffer[2] = 0xFF;
-    ret = sparse_array_int32_read(sa, 4, 5, 4 + 1, 5 + 2, buffer, 0, 1,
+    ret = sparse_array_read(sa, 4, 5, 4 + 1, 5 + 2, buffer, 0, 1,
                                       false);
     assert(ret);
     assert(buffer[0] == 2);
@@ -138,13 +138,13 @@ int main()
     assert(buffer[2] == 0xFF);
 
     buffer[0] = 3;
-    ret = sparse_array_int32_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 0, 1,
+    ret = sparse_array_write(sa, 4, 5, 4 + 1, 5 + 1, buffer, 0, 1,
                                        false);
     assert(ret);
 
     buffer[0] = 0;
     buffer[1] = 0xFF;
-    ret = sparse_array_int32_read(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
+    ret = sparse_array_read(sa, 4, 5, 4 + 1, 5 + 1, buffer, 1, 1,
                                       false);
     assert(ret);
     assert(buffer[0] == 3);
@@ -153,7 +153,7 @@ int main()
     w = 15 + 1;
     h = 17 + 1;
     memset(buffer, 0xFF, sizeof(buffer));
-    ret = sparse_array_int32_read(sa, 2, 1, 2 + w, 1 + h, buffer, 1, w,
+    ret = sparse_array_read(sa, 2, 1, 2 + w, 1 + h, buffer, 1, w,
                                       false);
     assert(ret);
     for (j = 0; j < h; j++) {
@@ -166,12 +166,12 @@ int main()
         }
     }
 
-    sparse_array_int32_free(sa);
+    sparse_array_free(sa);
 
 
-    sa = sparse_array_int32_create(99, 101, 15, 17);
+    sa = sparse_array_create(99, 101, 15, 17);
     memset(buffer, 0xFF, sizeof(buffer));
-    ret = sparse_array_int32_read(sa, 0, 0, 2, 1, buffer, 2, 4, false);
+    ret = sparse_array_read(sa, 0, 0, 2, 1, buffer, 2, 4, false);
     assert(ret);
     assert(buffer[0] == 0);
     assert(buffer[1] == -1);
@@ -179,17 +179,17 @@ int main()
 
     buffer[0] = 1;
     buffer[2] = 3;
-    ret = sparse_array_int32_write(sa, 0, 0, 2, 1, buffer, 2, 4, false);
+    ret = sparse_array_write(sa, 0, 0, 2, 1, buffer, 2, 4, false);
     assert(ret);
 
     memset(buffer, 0xFF, sizeof(buffer));
-    ret = sparse_array_int32_read(sa, 0, 0, 2, 1, buffer, 2, 4, false);
+    ret = sparse_array_read(sa, 0, 0, 2, 1, buffer, 2, 4, false);
     assert(ret);
     assert(buffer[0] == 1);
     assert(buffer[1] == -1);
     assert(buffer[2] == 3);
 
-    sparse_array_int32_free(sa);
+    sparse_array_free(sa);
 
     return 0;
 }
