@@ -75,9 +75,6 @@ sparse_array_t* sparse_array_create(uint32_t width,
     if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
         return NULL;
     }
-    if (block_width > ((uint32_t)~0U) / block_height / sizeof(int32_t)) {
-        return NULL;
-    }
 
     auto sa = (sparse_array_t*) grk_calloc(1,sizeof(sparse_array_t));
     sa->width = width;
@@ -86,11 +83,7 @@ sparse_array_t* sparse_array_create(uint32_t width,
     sa->block_height = block_height;
     sa->block_count_hor = ceildiv<uint32_t>(width, block_width);
     sa->block_count_ver = ceildiv<uint32_t>(height, block_height);
-    if (sa->block_count_hor > ((uint32_t)~0U) / sa->block_count_ver) {
-        grok_free(sa);
-        return NULL;
-    }
-    sa->data_blocks = (int32_t**) grk_calloc(sa->block_count_hor * sa->block_count_ver,sizeof(int32_t*));
+    sa->data_blocks = (int32_t**) grk_calloc((uint64_t)sa->block_count_hor * sa->block_count_ver,sizeof(int32_t*));
     if (sa->data_blocks == NULL) {
     	GROK_ERROR("Out of memory");
         grok_free(sa);
@@ -103,7 +96,7 @@ sparse_array_t* sparse_array_create(uint32_t width,
 void sparse_array_free(sparse_array_t* sa)
 {
     if (sa) {
-        for (uint32_t i = 0; i < sa->block_count_hor * sa->block_count_ver; i++) {
+        for (uint32_t i = 0; i < (uint64_t)sa->block_count_hor * sa->block_count_ver; i++) {
             if (sa->data_blocks[i]) {
                 grok_free(sa->data_blocks[i]);
             }
@@ -123,28 +116,24 @@ bool sparse_array_is_region_valid(const sparse_array_t* sa,
              y0 >= sa->height || y1 <= y0 || y1 > sa->height);
 }
 
-static bool sparse_array_read_or_write(
-    const sparse_array_t* sa,
-    uint32_t x0,
-    uint32_t y0,
-    uint32_t x1,
-    uint32_t y1,
-    int32_t* buf,
-    uint32_t buf_col_stride,
-    uint32_t buf_line_stride,
-    bool forgiving,
-    bool is_read_op)
-{
-    uint32_t y;
+static bool sparse_array_read_or_write(const sparse_array_t* sa,
+										uint32_t x0,
+										uint32_t y0,
+										uint32_t x1,
+										uint32_t y1,
+										int32_t* buf,
+										uint32_t buf_col_stride,
+										uint32_t buf_line_stride,
+										bool forgiving,
+										bool is_read_op){
     uint32_t y_incr = 0;
     const uint32_t block_width = sa->block_width;
 
-    if (!sparse_array_is_region_valid(sa, x0, y0, x1, y1)) {
+    if (!sparse_array_is_region_valid(sa, x0, y0, x1, y1))
         return forgiving;
-    }
 
     uint32_t block_y = y0 / sa->block_height;
-    for (y = y0; y < y1; block_y ++, y += y_incr) {
+    for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
         uint32_t x, block_x;
         uint32_t x_incr = 0;
         y_incr = (y == y0) ? sa->block_height - (y0 % sa->block_height) :
@@ -156,9 +145,9 @@ static bool sparse_array_read_or_write(
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
             uint32_t block_x_offset = block_width - x_incr;
             x_incr = min<uint32_t>(x_incr, x1 - x);
-            auto src_block = sa->data_blocks[block_y * sa->block_count_hor + block_x];
+            auto src_block = sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x];
             if (is_read_op) {
-                if (src_block == NULL) {
+                if (src_block == NULL) { // if block is NULL, then zero out destination
                     if (buf_col_stride == 1) {
                         auto dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
                                               (x - x0) * buf_col_stride;
@@ -176,8 +165,8 @@ static bool sparse_array_read_or_write(
                         }
                     }
                 } else {
-                    const int32_t* restrict src_ptr = src_block + block_y_offset *
-                                                            (size_t)block_width + block_x_offset;
+                    const int32_t* restrict src_ptr = src_block + (uint64_t)block_y_offset *
+                                                            block_width + block_x_offset;
                     if (buf_col_stride == 1) {
                         int32_t* restrict dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
                                                            +
@@ -216,9 +205,8 @@ static bool sparse_array_read_or_write(
                                 dest_ptr[(k + 2) * buf_col_stride] = src_ptr[k + 2];
                                 dest_ptr[(k + 3) * buf_col_stride] = src_ptr[k + 3];
                             }
-                            for (; k < x_incr; k++) {
+                            for (; k < x_incr; k++)
                                 dest_ptr[k * buf_col_stride] = src_ptr[k];
-                            }
                         } else if (x_incr >= 8 && buf_col_stride == 8) {
                             for (uint32_t j = 0; j < y_incr; j++) {
                                 uint32_t k;
@@ -228,9 +216,8 @@ static bool sparse_array_read_or_write(
                                     dest_ptr[(k + 2) * buf_col_stride] = src_ptr[k + 2];
                                     dest_ptr[(k + 3) * buf_col_stride] = src_ptr[k + 3];
                                 }
-                                for (; k < x_incr; k++) {
+                                for (; k < x_incr; k++)
                                     dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                }
                                 dest_ptr += buf_line_stride;
                                 src_ptr  += block_width;
                             }
@@ -247,18 +234,18 @@ static bool sparse_array_read_or_write(
                 }
             } else {
                 if (src_block == NULL) {
-                    src_block = (int32_t*) grk_calloc(sa->block_width * sa->block_height,
+                    src_block = (int32_t*) grk_calloc((uint64_t)sa->block_width * sa->block_height,
                                                          sizeof(int32_t));
                     if (src_block == NULL) {
                     	GROK_ERROR("Out of memory");
                         return false;
                     }
-                    sa->data_blocks[block_y * sa->block_count_hor + block_x] = src_block;
+                    sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x] = src_block;
                 }
 
                 if (buf_col_stride == 1) {
-                    int32_t* restrict dest_ptr = src_block + block_y_offset *
-                                                       (size_t)block_width + block_x_offset;
+                    int32_t* restrict dest_ptr = src_block + (uint64_t)block_y_offset *
+                                                       	   	   	   block_width + block_x_offset;
                     const int32_t* restrict src_ptr = buf + (y - y0) *
                                                             (size_t)buf_line_stride + (x - x0) * buf_col_stride;
                     if (x_incr == 4) {
@@ -278,8 +265,8 @@ static bool sparse_array_read_or_write(
                         }
                     }
                 } else {
-                    int32_t* restrict dest_ptr = src_block + block_y_offset *
-                                                       (size_t)block_width + block_x_offset;
+                    int32_t* restrict dest_ptr = src_block + (uint64_t)block_y_offset *
+                                                                  block_width + block_x_offset;
                     const int32_t* restrict src_ptr = buf + (y - y0) *
                                                             (size_t)buf_line_stride + (x - x0) * buf_col_stride;
                     if (x_incr == 1) {

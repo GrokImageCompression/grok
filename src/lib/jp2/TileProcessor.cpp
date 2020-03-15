@@ -1522,7 +1522,7 @@ void TileProcessor::free_tile() {
 }
 
 void TileProcessor::copy_image_to_tile() {
-	uint32_t i, j, k = 0;
+	uint32_t i, j;
 
 	for (i = 0; i < image->numcomps; ++i) {
 		auto tilec = tile->comps + i;
@@ -2286,7 +2286,7 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 
 bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src, uint64_t src_length) {
 	uint64_t i, j;
-	uint32_t size_comp, remaining;
+	uint32_t size_comp;
 	uint64_t nb_elem;
 	uint64_t data_size = get_tile_size(false);
 	if (!p_src || (data_size != src_length)) {
