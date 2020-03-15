@@ -72,8 +72,6 @@ sparse_array_t* sparse_array_create(uint32_t width,
         uint32_t block_width,
         uint32_t block_height)
 {
-    sparse_array_t* sa;
-
     if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
         return NULL;
     }
@@ -81,8 +79,7 @@ sparse_array_t* sparse_array_create(uint32_t width,
         return NULL;
     }
 
-    sa = (sparse_array_t*) grk_calloc(1,
-            sizeof(sparse_array_t));
+    auto sa = (sparse_array_t*) grk_calloc(1,sizeof(sparse_array_t));
     sa->width = width;
     sa->height = height;
     sa->block_width = block_width;
@@ -93,9 +90,9 @@ sparse_array_t* sparse_array_create(uint32_t width,
         grok_free(sa);
         return NULL;
     }
-    sa->data_blocks = (int32_t**) grk_calloc(sizeof(int32_t*),
-                      sa->block_count_hor * sa->block_count_ver);
+    sa->data_blocks = (int32_t**) grk_calloc(sa->block_count_hor * sa->block_count_ver,sizeof(int32_t*));
     if (sa->data_blocks == NULL) {
+    	GROK_ERROR("Out of memory");
         grok_free(sa);
         return NULL;
     }
@@ -106,8 +103,7 @@ sparse_array_t* sparse_array_create(uint32_t width,
 void sparse_array_free(sparse_array_t* sa)
 {
     if (sa) {
-        uint32_t i;
-        for (i = 0; i < sa->block_count_hor * sa->block_count_ver; i++) {
+        for (uint32_t i = 0; i < sa->block_count_hor * sa->block_count_ver; i++) {
             if (sa->data_blocks[i]) {
                 grok_free(sa->data_blocks[i]);
             }
@@ -139,7 +135,7 @@ static bool sparse_array_read_or_write(
     bool forgiving,
     bool is_read_op)
 {
-    uint32_t y, block_y;
+    uint32_t y;
     uint32_t y_incr = 0;
     const uint32_t block_width = sa->block_width;
 
@@ -147,41 +143,35 @@ static bool sparse_array_read_or_write(
         return forgiving;
     }
 
-    block_y = y0 / sa->block_height;
+    uint32_t block_y = y0 / sa->block_height;
     for (y = y0; y < y1; block_y ++, y += y_incr) {
         uint32_t x, block_x;
         uint32_t x_incr = 0;
-        uint32_t block_y_offset;
         y_incr = (y == y0) ? sa->block_height - (y0 % sa->block_height) :
                  sa->block_height;
-        block_y_offset = sa->block_height - y_incr;
+        uint32_t block_y_offset = sa->block_height - y_incr;
         y_incr = min<uint32_t>(y_incr, y1 - y);
         block_x = x0 / block_width;
         for (x = x0; x < x1; block_x ++, x += x_incr) {
-            uint32_t j;
-            uint32_t block_x_offset;
-            int32_t* src_block;
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
-            block_x_offset = block_width - x_incr;
+            uint32_t block_x_offset = block_width - x_incr;
             x_incr = min<uint32_t>(x_incr, x1 - x);
-            src_block = sa->data_blocks[block_y * sa->block_count_hor + block_x];
+            auto src_block = sa->data_blocks[block_y * sa->block_count_hor + block_x];
             if (is_read_op) {
                 if (src_block == NULL) {
                     if (buf_col_stride == 1) {
-                        int32_t* dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
+                        auto dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
                                               (x - x0) * buf_col_stride;
-                        for (j = 0; j < y_incr; j++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
                             memset(dest_ptr, 0, sizeof(int32_t) * x_incr);
                             dest_ptr += buf_line_stride;
                         }
                     } else {
-                        int32_t* dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
+                        auto dest_ptr = buf + (y - y0) * (size_t)buf_line_stride +
                                               (x - x0) * buf_col_stride;
-                        for (j = 0; j < y_incr; j++) {
-                            uint32_t k;
-                            for (k = 0; k < x_incr; k++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
+                            for (uint32_t k = 0; k < x_incr; k++)
                                 dest_ptr[k * buf_col_stride] = 0;
-                            }
                             dest_ptr += buf_line_stride;
                         }
                     }
@@ -196,16 +186,16 @@ static bool sparse_array_read_or_write(
                             /* Same code as general branch, but the compiler */
                             /* can have an efficient memcpy() */
                             (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
-                            for (j = 0; j < y_incr; j++) {
+                            for (uint32_t j = 0; j < y_incr; j++) {
                                 memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                                 dest_ptr += buf_line_stride;
-                                src_ptr += block_width;
+                                src_ptr  += block_width;
                             }
                         } else {
-                            for (j = 0; j < y_incr; j++) {
+                            for (uint32_t j = 0; j < y_incr; j++) {
                                 memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                                 dest_ptr += buf_line_stride;
-                                src_ptr += block_width;
+                                src_ptr  += block_width;
                             }
                         }
                     } else {
@@ -213,10 +203,10 @@ static bool sparse_array_read_or_write(
                                                            +
                                                            (x - x0) * buf_col_stride;
                         if (x_incr == 1) {
-                            for (j = 0; j < y_incr; j++) {
+                            for (uint32_t j = 0; j < y_incr; j++) {
                                 *dest_ptr = *src_ptr;
                                 dest_ptr += buf_line_stride;
-                                src_ptr += block_width;
+                                src_ptr  += block_width;
                             }
                         } else if (y_incr == 1 && buf_col_stride == 2) {
                             uint32_t k;
@@ -230,7 +220,7 @@ static bool sparse_array_read_or_write(
                                 dest_ptr[k * buf_col_stride] = src_ptr[k];
                             }
                         } else if (x_incr >= 8 && buf_col_stride == 8) {
-                            for (j = 0; j < y_incr; j++) {
+                            for (uint32_t j = 0; j < y_incr; j++) {
                                 uint32_t k;
                                 for (k = 0; k < (x_incr & ~3U); k += 4) {
                                     dest_ptr[k * buf_col_stride] = src_ptr[k];
@@ -242,26 +232,25 @@ static bool sparse_array_read_or_write(
                                     dest_ptr[k * buf_col_stride] = src_ptr[k];
                                 }
                                 dest_ptr += buf_line_stride;
-                                src_ptr += block_width;
+                                src_ptr  += block_width;
                             }
                         } else {
                             /* General case */
-                            for (j = 0; j < y_incr; j++) {
-                                uint32_t k;
-                                for (k = 0; k < x_incr; k++) {
+                            for (uint32_t j = 0; j < y_incr; j++) {
+                                for (uint32_t k = 0; k < x_incr; k++)
                                     dest_ptr[k * buf_col_stride] = src_ptr[k];
-                                }
                                 dest_ptr += buf_line_stride;
-                                src_ptr += block_width;
+                                src_ptr  += block_width;
                             }
                         }
                     }
                 }
             } else {
                 if (src_block == NULL) {
-                    src_block = (int32_t*) grk_calloc(1,
-                                                        sa->block_width * sa->block_height * sizeof(int32_t));
+                    src_block = (int32_t*) grk_calloc(sa->block_width * sa->block_height,
+                                                         sizeof(int32_t));
                     if (src_block == NULL) {
+                    	GROK_ERROR("Out of memory");
                         return false;
                     }
                     sa->data_blocks[block_y * sa->block_count_hor + block_x] = src_block;
@@ -276,16 +265,16 @@ static bool sparse_array_read_or_write(
                         /* Same code as general branch, but the compiler */
                         /* can have an efficient memcpy() */
                         (void)(x_incr); /* trick to silent cppcheck duplicateBranch warning */
-                        for (j = 0; j < y_incr; j++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
                             memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                             dest_ptr += block_width;
-                            src_ptr += buf_line_stride;
+                            src_ptr  += buf_line_stride;
                         }
                     } else {
-                        for (j = 0; j < y_incr; j++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
                             memcpy(dest_ptr, src_ptr, sizeof(int32_t) * x_incr);
                             dest_ptr += block_width;
-                            src_ptr += buf_line_stride;
+                            src_ptr  += buf_line_stride;
                         }
                     }
                 } else {
@@ -294,13 +283,13 @@ static bool sparse_array_read_or_write(
                     const int32_t* restrict src_ptr = buf + (y - y0) *
                                                             (size_t)buf_line_stride + (x - x0) * buf_col_stride;
                     if (x_incr == 1) {
-                        for (j = 0; j < y_incr; j++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
                             *dest_ptr = *src_ptr;
-                            src_ptr += buf_line_stride;
+                            src_ptr  += buf_line_stride;
                             dest_ptr += block_width;
                         }
                     } else if (x_incr >= 8 && buf_col_stride == 8) {
-                        for (j = 0; j < y_incr; j++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
                             uint32_t k;
                             for (k = 0; k < (x_incr & ~3U); k += 4) {
                                 dest_ptr[k] = src_ptr[k * buf_col_stride];
@@ -308,20 +297,17 @@ static bool sparse_array_read_or_write(
                                 dest_ptr[k + 2] = src_ptr[(k + 2) * buf_col_stride];
                                 dest_ptr[k + 3] = src_ptr[(k + 3) * buf_col_stride];
                             }
-                            for (; k < x_incr; k++) {
+                            for (; k < x_incr; k++)
                                 dest_ptr[k] = src_ptr[k * buf_col_stride];
-                            }
-                            src_ptr += buf_line_stride;
+                            src_ptr  += buf_line_stride;
                             dest_ptr += block_width;
                         }
                     } else {
                         /* General case */
-                        for (j = 0; j < y_incr; j++) {
-                            uint32_t k;
-                            for (k = 0; k < x_incr; k++) {
+                        for (uint32_t j = 0; j < y_incr; j++) {
+                            for (uint32_t k = 0; k < x_incr; k++)
                                 dest_ptr[k] = src_ptr[k * buf_col_stride];
-                            }
-                            src_ptr += buf_line_stride;
+                            src_ptr  += buf_line_stride;
                             dest_ptr += block_width;
                         }
                     }

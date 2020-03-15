@@ -54,12 +54,12 @@
 @brief Sparse array management
 
 The functions in this file manage sparse arrays. Sparse arrays are arrays with
-potential big dimensions, but with very few samples actually set. Such sparse
-arrays require allocating a low amount of memory, by just allocating memory
+potentially large dimensions, but with very few samples actually set. Such sparse
+arrays require allocating a small amount of memory, by just allocating memory
 for blocks of the array that are set. The minimum memory allocation unit is a
 a block. There is a trade-off to pick up an appropriate dimension for blocks.
 If it is too big, and pixels set are far from each other, too much memory will
-be used. If blocks are too small, the book-keeping costs of blocks will raise.
+be used. If blocks are too small, the book-keeping costs of blocks will rise.
 */
 
 /** @defgroup SPARSE_ARRAY SPARSE ARRAYS - Sparse arrays */
@@ -76,9 +76,9 @@ typedef struct sparse_array sparse_array_t;
  * @return a new sparse array instance, or NULL in case of failure.
  */
 sparse_array_t* sparse_array_create(uint32_t width,
-        uint32_t height,
-        uint32_t block_width,
-        uint32_t block_height);
+									uint32_t height,
+									uint32_t block_width,
+									uint32_t block_height);
 
 /** Frees a sparse array.
  * @param sa sparse array instance.
@@ -94,10 +94,10 @@ void sparse_array_free(sparse_array_t* sa);
  * @return true or false.
  */
 bool sparse_array_is_region_valid(const sparse_array_t* sa,
-        uint32_t x0,
-        uint32_t y0,
-        uint32_t x1,
-        uint32_t y1);
+									uint32_t x0,
+									uint32_t y0,
+									uint32_t x1,
+									uint32_t y1);
 
 /** Read the content of a rectangular region of the sparse array into a
  * user buffer.
