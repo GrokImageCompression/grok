@@ -378,7 +378,7 @@ grk_jp2* jp2_create(bool p_is_decoder);
 void jp2_destroy(grk_jp2 *jp2);
 
 /**
- * Sets the given area to be decoded. This function should be called right after grok_read_header and before any tile header reading.
+ * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
  *
  * @param  p_jp2      the jpeg2000 codec.
  * @param  p_image     FIXME DOC

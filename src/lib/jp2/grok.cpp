@@ -194,7 +194,7 @@ bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
 }
 /* ---------------------------------------------------------------------- */
 
-static size_t grok_read_from_file(void *p_buffer, size_t nb_bytes,
+static size_t grk_read_from_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
 	size_t l_nb_read = fread(p_buffer, 1, nb_bytes, p_file);
 	return l_nb_read;
@@ -206,7 +206,7 @@ static uint64_t grk_get_data_length_from_file(FILE *p_file) {
 	GROK_FSEEK(p_file, 0, SEEK_SET);
 	return (uint64_t) file_length;
 }
-static size_t grok_write_from_file(void *p_buffer, size_t nb_bytes,
+static size_t grk_write_from_file(void *p_buffer, size_t nb_bytes,
 		FILE *p_file) {
 	return fwrite(p_buffer, 1, nb_bytes, p_file);
 }
@@ -374,7 +374,7 @@ bool GRK_CALLCONV grk_read_header(
 		BufferedStream *l_stream = (BufferedStream*) l_codec->m_stream;
 		if (!l_codec->is_decompressor) {
 			GROK_ERROR(
-					"Codec provided to the grok_read_header function is not a decompressor handler.");
+					"Codec provided to the grk_read_header function is not a decompressor handler.");
 			return false;
 		}
 
@@ -749,9 +749,9 @@ static void grok_free_file(void *p_user_data) {
 		grk_stream_set_user_data_length(l_stream,
 				grk_get_data_length_from_file(p_file));
 	grk_stream_set_read_function(l_stream,
-			(grk_stream_read_fn) grok_read_from_file);
+			(grk_stream_read_fn) grk_read_from_file);
 	grk_stream_set_write_function(l_stream,
-			(grk_stream_write_fn) grok_write_from_file);
+			(grk_stream_write_fn) grk_write_from_file);
 	grk_stream_set_seek_function(l_stream,
 			(grk_stream_seek_fn) grok_seek_from_file);
 	return l_stream;

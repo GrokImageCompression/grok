@@ -785,13 +785,13 @@ static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) {
 	/* PSOT */
-	grok_write_bytes(
+	grk_write_bytes(
 			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,
 			p_j2k->m_current_tile_number, 1);
 	++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
 
 	/* PSOT */
-	grok_write_bytes(
+	grk_write_bytes(
 			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,
 			tile_part_size, 4);
 	p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current += 4;

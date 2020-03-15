@@ -669,7 +669,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		bool *p_go_on, BufferedStream *p_stream);
 
 /**
- * Sets the given area to be decoded. This function should be called right after grok_read_header and before any tile header reading.
+ * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
  *
  * @param	p_j2k			the jpeg2000 codec.
  * @param	p_image     FIXME DOC

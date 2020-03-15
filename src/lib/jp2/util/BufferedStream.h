@@ -256,7 +256,7 @@ private:
  * @param value		the value to write
  * @param nb_bytes	the number of bytes to write
  */
-void grok_write_bytes(uint8_t *p_buffer, uint32_t value, uint32_t nb_bytes);
+void grk_write_bytes(uint8_t *p_buffer, uint32_t value, uint32_t nb_bytes);
 
 /**
  * Reads some bytes from the given data buffer
@@ -264,7 +264,7 @@ void grok_write_bytes(uint8_t *p_buffer, uint32_t value, uint32_t nb_bytes);
  * @param value		pointer to the value that will store the data.
  * @param nb_bytes	the nb bytes to read.
  */
-void grok_read_bytes(const uint8_t *p_buffer, uint32_t *value,
+void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 		uint32_t nb_bytes);
 
 /**
@@ -272,14 +272,14 @@ void grok_read_bytes(const uint8_t *p_buffer, uint32_t *value,
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
  */
-void grok_write_8(uint8_t *p_buffer, uint8_t value);
+void grk_write_8(uint8_t *p_buffer, uint8_t value);
 
 /**
  * Reads a byte form the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
-void grok_read_8(const uint8_t *p_buffer, uint8_t *value);
+void grk_read_8(const uint8_t *p_buffer, uint8_t *value);
 
 
 /**
@@ -288,7 +288,7 @@ void grok_read_8(const uint8_t *p_buffer, uint8_t *value);
  * @param value		the value to write
  * @param nb_bytes	the number of bytes to write
  */
-void grok_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes);
+void grk_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes);
 
 /**
  * Reads some bytes from the given data buffer
@@ -296,37 +296,37 @@ void grok_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes);
  * @param value		pointer to the value that will store the data.
  * @param nb_bytes	the nb bytes to read.
  */
-void grok_read_64(const uint8_t *p_buffer, uint64_t *value,
+void grk_read_64(const uint8_t *p_buffer, uint64_t *value,
 		uint32_t nb_bytes);
 /**
  * Write some bytes to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
  */
-void grok_write_double(uint8_t *p_buffer, double value);
+void grk_write_double(uint8_t *p_buffer, double value);
 
 /**
  * Reads some bytes from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
-void grok_read_double(const uint8_t *p_buffer, double *value);
+void grk_read_double(const uint8_t *p_buffer, double *value);
 
 /**
  * Reads some bytes from the given data buffer
  * @param p_buffer		pointer the data buffer to read data from.
  * @param value		pointer to the value that will store the data.
  */
-void grok_read_float(const uint8_t *p_buffer, float *value);
+void grk_read_float(const uint8_t *p_buffer, float *value);
 
 /**
  * Write some bytes to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
  * @param value		the value to write
  */
-void grok_write_float(uint8_t *p_buffer, float value);
+void grk_write_float(uint8_t *p_buffer, float value);
 
-template<typename TYPE> void grok_write(uint8_t *p_buffer, TYPE value,
+template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 		uint32_t nb_bytes) {
 #if defined(GROK_BIG_ENDIAN)
 	const uint8_t * l_data_ptr = ((const uint8_t *)&value) + sizeof(TYPE) - nb_bytes;

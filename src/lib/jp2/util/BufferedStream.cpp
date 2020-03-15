@@ -58,9 +58,9 @@
 #include "grok_includes.h"
 namespace grk {
 
-template<typename TYPE> void grok_write(uint8_t *p_buffer, TYPE value,
+template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 		uint32_t nb_bytes);
-template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
+template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
 //1. file stream -        buffer == nullptr && p_buffer_size > 0
@@ -215,7 +215,7 @@ template<typename TYPE> bool BufferedStream::write(TYPE value, uint8_t numBytes)
 		// skip first to make sure that we are not at the end of the stream
 		if (!m_seek_fn(m_stream_offset + numBytes, m_user_data))
 			return false;
-		grok_write(m_buf->curr_ptr(), value, numBytes);
+		grk_write(m_buf->curr_ptr(), value, numBytes);
 		write_increment(numBytes);
 		return true;
 	}
@@ -225,7 +225,7 @@ template<typename TYPE> bool BufferedStream::write(TYPE value, uint8_t numBytes)
 			return false;
 		}
 	}
-	grok_write(m_buf->curr_ptr(), value, numBytes);
+	grk_write(m_buf->curr_ptr(), value, numBytes);
 	write_increment(numBytes);
 	return true;
 }
@@ -413,27 +413,27 @@ bool BufferedStream::isMemStream(){
 	return !m_buf->owns_data;
 }
 
-void grok_write_bytes(uint8_t *p_buffer, uint32_t value,
+void grk_write_bytes(uint8_t *p_buffer, uint32_t value,
 		uint32_t nb_bytes) {
-	grok_write<uint32_t>(p_buffer, value, nb_bytes);
+	grk_write<uint32_t>(p_buffer, value, nb_bytes);
 }
-void grok_write_8(uint8_t *p_buffer, uint8_t value) {
+void grk_write_8(uint8_t *p_buffer, uint8_t value) {
 	*(p_buffer++) = value;
 }
 
-void grok_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes) {
-	grok_write<uint64_t>(p_buffer, value, nb_bytes);
+void grk_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes) {
+	grk_write<uint64_t>(p_buffer, value, nb_bytes);
 }
 
-void grok_write_float(uint8_t *p_buffer, float value) {
-	grok_write<float>(p_buffer, value, sizeof(float));
+void grk_write_float(uint8_t *p_buffer, float value) {
+	grk_write<float>(p_buffer, value, sizeof(float));
 }
 
-void grok_write_double(uint8_t *p_buffer, double value) {
-	grok_write<double>(p_buffer, value, sizeof(double));
+void grk_write_double(uint8_t *p_buffer, double value) {
+	grk_write<double>(p_buffer, value, sizeof(double));
 }
 
-template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
+template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes) {
 #if defined(GROK_BIG_ENDIAN)
 	uint8_t * l_data_ptr = ((uint8_t *)value);
@@ -450,22 +450,22 @@ template<typename TYPE> void grok_read(const uint8_t *p_buffer, TYPE *value,
 #endif
 }
 
-void grok_read_bytes(const uint8_t *p_buffer, uint32_t *value,
+void grk_read_bytes(const uint8_t *p_buffer, uint32_t *value,
 		uint32_t nb_bytes) {
-	grok_read<uint32_t>(p_buffer, value, nb_bytes);
+	grk_read<uint32_t>(p_buffer, value, nb_bytes);
 }
-void grok_read_8(const uint8_t *p_buffer, uint8_t *value) {
+void grk_read_8(const uint8_t *p_buffer, uint8_t *value) {
 	*value = *(p_buffer++);
 }
-void grok_read_64(const uint8_t *p_buffer, uint64_t *value,
+void grk_read_64(const uint8_t *p_buffer, uint64_t *value,
 		uint32_t nb_bytes) {
-	grok_read<uint64_t>(p_buffer, value, nb_bytes);
+	grk_read<uint64_t>(p_buffer, value, nb_bytes);
 }
-void grok_read_float(const uint8_t *p_buffer, float *value) {
-	grok_read<float>(p_buffer, value, sizeof(float));
+void grk_read_float(const uint8_t *p_buffer, float *value) {
+	grk_read<float>(p_buffer, value, sizeof(float));
 }
-void grok_read_double(const uint8_t *p_buffer, double *value) {
-	grok_read<double>(p_buffer, value, sizeof(double));
+void grk_read_double(const uint8_t *p_buffer, double *value) {
+	grk_read<double>(p_buffer, value, sizeof(double));
 }
 }
  grk_stream  *  GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
