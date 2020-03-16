@@ -200,6 +200,11 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 
 #endif
 
+static sparse_array* init_sparse_array(	TileComponent* tilec,
+												uint32_t numres);
+static sparse_array* init_sparse_array_alloc(TileComponent* tilec,
+												uint32_t numres);
+
 /*@}*/
 
 /*@}*/
@@ -1156,30 +1161,79 @@ static void segment_grow(uint32_t filter_width,
     *end = min<uint32_t>(*end, max_size);
 }
 
+static sparse_array* init_sparse_array_alloc(	TileComponent* tilec,
+												uint32_t numres){
+    auto tr_max = &(tilec->resolutions[numres - 1]);
+	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
+	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
+	uint32_t resno, bandno, precno, cblkno;
+	auto sa = sparse_array_create(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
+	if (!sa)
+		return nullptr;
+
+	for (resno = 0; resno < numres; ++resno) {
+		auto res = &tilec->resolutions[resno];
+
+		for (bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = &res->bands[bandno];
+
+			for (precno = 0; precno < res->pw * res->ph; ++precno) {
+				auto precinct = &band->precincts[precno];
+
+				for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
+					auto cblk = &precinct->cblks.dec[cblkno];
+
+					if (cblk->unencoded_data != nullptr) {
+						uint32_t x = (uint32_t)(cblk->x0 - band->x0);
+						uint32_t y = (uint32_t)(cblk->y0 - band->y0);
+						uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
+						uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+
+						if (band->bandno & 1) {
+							grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
+							x += (uint32_t)(pres->x1 - pres->x0);
+						}
+						if (band->bandno & 2) {
+							grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
+							y += (uint32_t)(pres->y1 - pres->y0);
+						}
+
+						if (!sparse_array_alloc(sa,
+												x,
+												y,
+												x + cblk_w,
+												y + cblk_h)) {
+							sparse_array_free(sa);
+							return nullptr;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return sa;
+}
 
 static sparse_array* init_sparse_array(	TileComponent* tilec,
-												uint32_t numres)
-{
-    auto tr_max = &(tilec->resolutions[numres - 1]);
-    uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
-    uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
-    uint32_t resno, bandno, precno, cblkno;
-    auto sa = sparse_array_create(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
-    if (sa == NULL) {
-        return NULL;
-    }
+												uint32_t numres){
+    auto sa = init_sparse_array_alloc(tilec, numres);
 
-    for (resno = 0; resno < numres; ++resno) {
-        grk_tcd_resolution* res = &tilec->resolutions[resno];
+    if (sa == nullptr)
+        return nullptr;
+    for (uint32_t resno = 0; resno < numres; ++resno) {
+        auto res = &tilec->resolutions[resno];
 
-        for (bandno = 0; bandno < res->numbands; ++bandno) {
-            grk_tcd_band* band = &res->bands[bandno];
+        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+            auto band = &res->bands[bandno];
 
-            for (precno = 0; precno < res->pw * res->ph; ++precno) {
+            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
                 auto precinct = &band->precincts[precno];
-                for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
+
+                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
                     auto cblk = &precinct->cblks.dec[cblkno];
-                    if (cblk->unencoded_data != NULL) {
+
+                    if (cblk->unencoded_data != nullptr) {
                         uint32_t x = (uint32_t)(cblk->x0 - band->x0);
                         uint32_t y = (uint32_t)(cblk->y0 - band->y0);
                         uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
@@ -1194,12 +1248,17 @@ static sparse_array* init_sparse_array(	TileComponent* tilec,
                             y += (uint32_t)(pres->y1 - pres->y0);
                         }
 
-                        if (!sparse_array_write(sa, x, y,
-                                                          x + cblk_w, y + cblk_h,
-														  cblk->unencoded_data,
-                                                          1, cblk_w, true)) {
+                        if (!sparse_array_write(sa,
+												  x,
+												  y,
+												  x + cblk_w,
+												  y + cblk_h,
+												  cblk->unencoded_data,
+												  1,
+												  cblk_w,
+												  true)) {
                             sparse_array_free(sa);
-                            return NULL;
+                            return nullptr;
                         }
                     }
                 }
@@ -1222,12 +1281,11 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     grk_tcd_resolution* tr = tilec->resolutions;
     grk_tcd_resolution* tr_max = &(tilec->resolutions[numres - 1]);
 
-    uint32_t rw = (uint32_t)(tr->x1 -
-                                 tr->x0);  /* width of the resolution level computed */
-    uint32_t rh = (uint32_t)(tr->y1 -
-                                 tr->y0);  /* height of the resolution level computed */
+    /* width of the resolution level computed */
+    uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
 
-    size_t h_mem_size;
+    /* height of the resolution level computed */
+    uint32_t rh = (uint32_t)(tr->y1 - tr->y0);
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
@@ -1242,24 +1300,24 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         return true;
 
     auto sa = init_sparse_array(tilec, numres);
-    if (sa == NULL)
+    if (!sa)
         return false;
 
     if (numres == 1U) {
         bool ret = sparse_array_read(sa,
-                       tr_max->win_x0 - (uint32_t)tr_max->x0,
-                       tr_max->win_y0 - (uint32_t)tr_max->y0,
-                       tr_max->win_x1 - (uint32_t)tr_max->x0,
-                       tr_max->win_y1 - (uint32_t)tr_max->y0,
-                       tilec->buf->get_ptr(0,0,0,0),
-                       1, tr_max->win_x1 - tr_max->win_x0,
-                       true);
+									   tr_max->win_x0 - (uint32_t)tr_max->x0,
+									   tr_max->win_y0 - (uint32_t)tr_max->y0,
+									   tr_max->win_x1 - (uint32_t)tr_max->x0,
+									   tr_max->win_y1 - (uint32_t)tr_max->y0,
+									   tilec->buf->get_ptr(0,0,0,0),
+									   1, tr_max->win_x1 - tr_max->win_x0,
+									   true);
         assert(ret);
         GRK_UNUSED(ret);
         sparse_array_free(sa);
         return true;
     }
-    h_mem_size = dwt_utils::max_resolution(tr, numres);
+    size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
     /* overflow check */
     /* in vertical pass, we process 4 columns at a time */
     if (h_mem_size > (SIZE_MAX / (4 * sizeof(int32_t)))) {
@@ -1274,18 +1332,17 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         sparse_array_free(sa);
         return false;
     }
-
     v.mem = h.mem;
-
     for (resno = 1; resno < numres; resno ++) {
         uint32_t i, j;
-        /* Window of interest subband-based coordinates */
-        uint32_t win_ll_x0, win_ll_y0, win_ll_x1, win_ll_y1;
+        /* Window of interest sub-band-based coordinates */
+        uint32_t win_ll_x0, win_ll_y0;
+        uint32_t win_ll_x1, win_ll_y1;
         uint32_t win_hl_x0, win_hl_x1;
         uint32_t win_lh_y0, win_lh_y1;
         /* Window of interest tile-resolution-based coordinates */
         uint32_t win_tr_x0, win_tr_x1, win_tr_y0, win_tr_y1;
-        /* Tile-resolution subband-based coordinates */
+        /* Tile-resolution sub-band-based coordinates */
         uint32_t tr_ll_x0, tr_ll_y0, tr_hl_x0, tr_lh_y0;
 
         ++tr;
@@ -1302,7 +1359,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         v.dn = (int32_t)(rh - (uint32_t)v.sn);
         v.cas = tr->y0 % 2;
 
-        /* Get the subband coordinates for the window of interest */
+        /* Get the sub-band coordinates for the window of interest */
         /* LL band */
         get_band_coordinates(tilec, resno, 0,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
@@ -1312,12 +1369,12 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         /* HL band */
         get_band_coordinates(tilec, resno, 1,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
-                                     &win_hl_x0, NULL, &win_hl_x1, NULL);
+                                     &win_hl_x0, nullptr, &win_hl_x1, nullptr);
 
         /* LH band */
         get_band_coordinates(tilec, resno, 2,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
-                                     NULL, &win_lh_y0, NULL, &win_lh_y1);
+                                     nullptr, &win_lh_y0, nullptr, &win_lh_y1);
 
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
         tr_ll_x0 = (uint32_t)tr->bands[1].x0;
@@ -1369,12 +1426,10 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                 /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
                 /* This is less extreme than memsetting the whole buffer to 0 */
                 /* although we could potentially do better with better handling of edge conditions */
-                if (win_tr_x1 >= 1 && win_tr_x1 < rw) {
+                if (win_tr_x1 >= 1 && win_tr_x1 < rw)
                     h.mem[win_tr_x1 - 1] = 0;
-                }
-                if (win_tr_x1 < rw) {
+                if (win_tr_x1 < rw)
                     h.mem[win_tr_x1] = 0;
-                }
 
                 interleave_partial_h_53(h.mem,
                                              h.cas,
@@ -1395,7 +1450,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                                                   win_tr_x1, j + 1,
                                                   h.mem + win_tr_x0,
                                                   1, 0, true)) {
-                    /* FIXME event manager error callback */
+                    GROK_ERROR("Partial decode: unable to write to sparse array");
                     sparse_array_free(sa);
                     grk_aligned_free(h.mem);
                     return false;
@@ -1421,11 +1476,11 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                                               (int32_t)win_lh_y0,
                                               (int32_t)win_lh_y1);
             if (!sparse_array_write(sa,
-                                              i, win_tr_y0,
-                                              i + nb_cols, win_tr_y1,
-                                              v.mem + 4 * win_tr_y0,
-                                              1, 4, true)) {
-                /* FIXME event manager error callback */
+								  i, win_tr_y0,
+								  i + nb_cols, win_tr_y1,
+								  v.mem + 4 * win_tr_y0,
+								  1, 4, true)) {
+                GROK_ERROR("Partial decode: unable to write to sparse array");
                 sparse_array_free(sa);
                 grk_aligned_free(h.mem);
                 return false;
@@ -2017,7 +2072,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         return true;
 
     auto sa = init_sparse_array(tilec, numres);
-    if (sa == NULL)
+    if (sa == nullptr)
         return false;
 
     if (numres == 1U) {
@@ -2058,14 +2113,14 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 
     for (resno = 1; resno < numres; resno ++) {
         uint32_t j;
-        /* Window of interest subband-based coordinates */
+        /* Window of interest sub-band-based coordinates */
         uint32_t win_ll_x0, win_ll_y0;
         uint32_t win_ll_x1, win_ll_y1;
         uint32_t win_hl_x0, win_hl_x1;
         uint32_t win_lh_y0, win_lh_y1;
         /* Window of interest tile-resolution-based coordinates */
         uint32_t win_tr_x0, win_tr_x1, win_tr_y0, win_tr_y1;
-        /* Tile-resolution subband-based coordinates */
+        /* Tile-resolution sub-band-based coordinates */
         uint32_t tr_ll_x0, tr_ll_y0, tr_hl_x0, tr_lh_y0;
 
         ++tr;
@@ -2082,7 +2137,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
         vert.cas = tr->y0 % 2;
 
-        /* Get the subband coordinates for the window of interest */
+        /* Get the sub-band coordinates for the window of interest */
         /* LL band */
         get_band_coordinates(tilec, resno, 0,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
@@ -2091,11 +2146,11 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         /* HL band */
         get_band_coordinates(tilec, resno, 1,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
-                                     &win_hl_x0, NULL, &win_hl_x1, NULL);
+                                     &win_hl_x0, nullptr, &win_hl_x1, nullptr);
         /* LH band */
         get_band_coordinates(tilec, resno, 2,
                                      win_tcx0, win_tcy0, win_tcx1, win_tcy1,
-                                     NULL, &win_lh_y0, NULL, &win_lh_y1);
+                                     nullptr, &win_lh_y0, nullptr, &win_lh_y1);
 
         /* Beware: band index for non-LL0 resolution are 0=HL, 1=LH and 2=HH */
         tr_ll_x0 = (uint32_t)tr->bands[1].x0;
@@ -2103,7 +2158,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
         tr_hl_x0 = (uint32_t)tr->bands[0].x0;
         tr_lh_y0 = (uint32_t)tr->bands[1].y0;
 
-        /* Subtract the origin of the bands for this tile, to the subwindow */
+        /* Subtract the origin of the bands for this tile, to the sub-window */
         /* of interest band coordinates, so as to get them relative to the */
         /* tile */
         win_ll_x0 = uint_subs(win_ll_x0, tr_ll_x0);
@@ -2150,7 +2205,9 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 									  win_tr_x0, j,
 									  win_tr_x1, j + 4,
 									  (int32_t*)&horiz.mem[win_tr_x0].f[0],
-									  4, 1, true)) {
+									  4,
+									  1,
+									  true)) {
                     GROK_ERROR("sparse array write failure");
                     sparse_array_free(sa);
                     grk_aligned_free(horiz.mem);
@@ -2168,7 +2225,9 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 								  win_tr_x0, j,
 								  win_tr_x1, rh,
 								  (int32_t*)&horiz.mem[win_tr_x0].f[0],
-								  4, 1, true)) {
+								  4,
+								  1,
+								  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
                 grk_aligned_free(horiz.mem);
@@ -2185,10 +2244,12 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
             interleave_partial_v_97(&vert, sa, j, nb_elts);
             decode_step_97(&vert);
             if (!sparse_array_write(sa,
-                                              j, win_tr_y0,
-                                              j + nb_elts, win_tr_y1,
-                                              (int32_t*)&horiz.mem[win_tr_y0].f[0],
-                                              1, 4, true)) {
+									  j, win_tr_y0,
+									  j + nb_elts, win_tr_y1,
+									  (int32_t*)&horiz.mem[win_tr_y0].f[0],
+									  1,
+									  4,
+									  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
                 grk_aligned_free(horiz.mem);

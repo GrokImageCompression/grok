@@ -152,6 +152,14 @@ bool sparse_array_write(sparse_array* sa,
                                       uint32_t src_line_stride,
                                       bool forgiving);
 
+
+bool sparse_array_alloc(sparse_array* sa,
+                                      uint32_t x0,
+                                      uint32_t y0,
+                                      uint32_t x1,
+                                      uint32_t y1);
+
+
 /*@}*/
 
 #endif /* OPJ_SPARSE_ARRAY_H */
