@@ -79,10 +79,10 @@ namespace grk {
 
 
 /** Flags for 4 consecutive rows of a column */
-typedef uint32_t opj_flag_t;
+typedef uint32_t grk_flag;
 
 
-/* BEGINNING of flags that apply to opj_flag_t */
+/* BEGINNING of flags that apply to grk_flag */
 /** We hold the state of individual data points for the T1 encoder using
  *  a single 32-bit flags word to hold the state of 4 data points.  This corresponds
  *  to the 4-point-high columns that the data is processed in.
@@ -118,9 +118,6 @@ typedef uint32_t opj_flag_t;
 #define T1_SIGMA_15 (1U << 15)
 #define T1_SIGMA_16 (1U << 16)
 #define T1_SIGMA_17 (1U << 17)
-
-
-
 
 
 /** As an example, the bits T1_SIGMA_3, T1_SIGMA_4 and T1_SIGMA_5
@@ -170,11 +167,9 @@ typedef uint32_t opj_flag_t;
 #define T1_LUT_SIG_S (1U << 7)
 
 
-/* END of flags that apply to opj_flag_t */
-
 /* ----------------------------------------------------------------------- */
 
-typedef struct t1 {
+struct t1_info {
 
 	/** MQC component */
 	mqc_t mqc;
@@ -185,7 +180,7 @@ typedef struct t1 {
 	 flags[1+1] for col=1, row=0..3, flags[1+flags_stride] for col=0,row=4..7, ...
 	 This array avoids too much cache trashing when processing by 4 vertical samples
 	 as done in the various decoding steps. */
-	opj_flag_t *flags;
+	grk_flag *flags;
 
 	uint32_t w;
 	uint32_t h;
@@ -198,30 +193,26 @@ typedef struct t1 {
 	uint8_t *cblkdatabuffer;
 	/* Maximum size available in cblkdatabuffer */
 	uint32_t cblkdatabuffersize;
-} t1_t;
+};
 
-bool t1_decode_cblk(t1_t *t1, tcd_cblk_dec_t *cblk,
+bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk,
 		uint32_t orient, uint32_t roishift, uint32_t cblksty,
 		bool check_pterm);
-
-void post_decode(t1_t *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
-		uint32_t qmfbid, float stepsize, int32_t *tilec_data,
-		int32_t tile_w, int32_t tile_h, bool whole_tile_decoding);
 
 void t1_code_block_enc_deallocate(tcd_cblk_enc_t *
         p_code_block);
 
-bool t1_allocate_buffers(t1_t *t1, uint32_t w,
+bool t1_allocate_buffers(t1_info *t1, uint32_t w,
 		uint32_t h);
 
-double t1_encode_cblk(t1_t *t1, tcd_cblk_enc_t *cblk,
+double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk,
 		uint32_t max,
 		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
 		uint32_t numcomps, const double *mct_norms,
 		uint32_t mct_numcomps, bool doRateControl);
 
-t1_t* t1_create(bool isEncoder);
-void t1_destroy(t1_t *p_t1);
+t1_info* t1_create(bool isEncoder);
+void t1_destroy(t1_info *p_t1);
 
 }

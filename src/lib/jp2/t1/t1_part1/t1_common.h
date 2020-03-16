@@ -37,15 +37,6 @@ namespace grk {
 #define T1_NMSEDEC_BITS 7
 #define T1_NMSEDEC_FRACBITS (T1_NMSEDEC_BITS-1)
 
-/* Not a C99 compiler */
-#if defined(__GNUC__)
-#define GRK_RESTRICT __restrict__
-#else
-#define GRK_RESTRICT /* restrict */
-#endif
-
-
-
 /* Type to use for bit-fields in internal headers */
 typedef unsigned int GRK_BITFIELD;
 

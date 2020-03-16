@@ -125,15 +125,12 @@
  ==========================================================
  */
 
-/* Are restricted pointers available? (C99) */
-#if (__STDC_VERSION__ != 199901L)
-/* Not a C99 compiler */
-#ifdef __GNUC__
-#define restrict __restrict__
+#if defined(__GNUC__)
+#define GRK_RESTRICT __restrict__
 #else
-#define restrict /* restrict */
+#define GRK_RESTRICT /* GRK_RESTRICT */
 #endif
-#endif
+
 
 #ifdef __has_attribute
 #if __has_attribute(no_sanitize)

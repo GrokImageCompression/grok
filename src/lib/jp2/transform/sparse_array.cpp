@@ -202,10 +202,10 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
                         }
                     }
                 } else {
-                    const int32_t* restrict src_ptr = src_block + (uint64_t)block_y_offset *
+                    const int32_t* GRK_RESTRICT src_ptr = src_block + (uint64_t)block_y_offset *
                                                             block_width + block_x_offset;
                     if (buf_col_stride == 1) {
-                        int32_t* restrict dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
+                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
                                                            +
                                                            (x - x0) * buf_col_stride;
                         if (x_incr == 4) {
@@ -225,7 +225,7 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
                             }
                         }
                     } else {
-                        int32_t* restrict dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
+                        int32_t* GRK_RESTRICT dest_ptr = buf + (y - y0) * (size_t)buf_line_stride
                                                            +
                                                            (x - x0) * buf_col_stride;
                         if (x_incr == 1) {
@@ -281,9 +281,9 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
                 }
 
                 if (buf_col_stride == 1) {
-                    int32_t* restrict dest_ptr = src_block + (uint64_t)block_y_offset *
+                    int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
                                                        	   	   	   block_width + block_x_offset;
-                    const int32_t* restrict src_ptr = buf + (y - y0) *
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
                                                             (size_t)buf_line_stride + (x - x0) * buf_col_stride;
                     if (x_incr == 4) {
                         /* Same code as general branch, but the compiler */
@@ -302,9 +302,9 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
                         }
                     }
                 } else {
-                    int32_t* restrict dest_ptr = src_block + (uint64_t)block_y_offset *
+                    int32_t* GRK_RESTRICT dest_ptr = src_block + (uint64_t)block_y_offset *
                                                                   block_width + block_x_offset;
-                    const int32_t* restrict src_ptr = buf + (y - y0) *
+                    const int32_t* GRK_RESTRICT src_ptr = buf + (y - y0) *
                                                             (size_t)buf_line_stride + (x - x0) * buf_col_stride;
                     if (x_incr == 1) {
                         for (uint32_t j = 0; j < y_incr; j++) {

@@ -65,6 +65,9 @@ static void mqc_renorme(mqc_t *mqc);
 static void mqc_codemps(mqc_t *mqc);
 static void mqc_codelps(mqc_t *mqc);
 static void mqc_setbits(mqc_t *mqc);
+static void mqc_setstate(mqc_t *mqc,
+		                 uint32_t ctxno, uint32_t msb,
+                         int32_t prob);
 static const mqc_state_t mqc_states[47 * 2] = {
     {0x5601, 0, &mqc_states[2], &mqc_states[3]},
     {0x5601, 1, &mqc_states[3], &mqc_states[2]},
@@ -387,9 +390,6 @@ void mqc_bypass_flush_enc(mqc_t *mqc, bool erterm)
 void mqc_reset_enc(mqc_t *mqc)
 {
     mqc_resetstates(mqc);
-    mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-    mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-    mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 void mqc_restart_init_enc(mqc_t *mqc)
 {
@@ -499,6 +499,9 @@ void mqc_resetstates(mqc_t *mqc)
     for (i = 0; i < MQC_NUMCTXS; i++) {
         mqc->ctxs[i] = mqc_states;
     }
+	mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
+	mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
+	mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
 }
 
 void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb,

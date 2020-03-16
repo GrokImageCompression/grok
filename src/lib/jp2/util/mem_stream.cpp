@@ -165,7 +165,7 @@ static int32_t get_file_open_mode(const char *mode) {
 
 #ifdef _WIN32
 
-static uint64_t  size_proc(grok_handle_t fd)
+static uint64_t  size_proc(grk_handle fd)
 {
     ULARGE_INTEGER m;
     m.LowPart = GetFileSize(fd, &m.HighPart);
@@ -173,7 +173,7 @@ static uint64_t  size_proc(grok_handle_t fd)
 }
 
 
-static void* grok_map(grok_handle_t fd, size_t len)
+static void* grk_map(grk_handle fd, size_t len)
 {
 	(void)len;
     void* ptr = nullptr;
@@ -202,14 +202,14 @@ static int32_t unmap(void* ptr, size_t len)
     return rc;
 }
 
-static grok_handle_t open_fd(const char* fname, const char* mode)
+static grk_handle open_fd(const char* fname, const char* mode)
 {
     void*	fd = nullptr;
     int32_t m = -1;
     DWORD			dwMode = 0;
 
     if (!fname)
-        return (grok_handle_t)-1;
+        return (grk_handle)-1;
 
 
     m = get_file_open_mode(mode);
@@ -233,18 +233,18 @@ static grok_handle_t open_fd(const char* fname, const char* mode)
         return nullptr;
     }
 
-    fd = (grok_handle_t)CreateFileA(fname,
+    fd = (grk_handle)CreateFileA(fname,
                                    (m == O_RDONLY) ? GENERIC_READ : (GENERIC_READ | GENERIC_WRITE),
                                    FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, dwMode,
                                    (m == O_RDONLY) ? FILE_ATTRIBUTE_READONLY : FILE_ATTRIBUTE_NORMAL,
                                    nullptr);
     if (fd == INVALID_HANDLE_VALUE) {
-        return (grok_handle_t)-1;
+        return (grk_handle)-1;
     }
     return fd;
 }
 
-static int32_t close_fd(grok_handle_t fd)
+static int32_t close_fd(grk_handle fd)
 {
     int32_t rc = -1;
     if (fd) {
@@ -255,7 +255,7 @@ static int32_t close_fd(grok_handle_t fd)
 
 #else
 
-static uint64_t size_proc(grok_handle_t fd) {
+static uint64_t size_proc(grk_handle fd) {
 	struct stat sb;
 	if (!fd)
 		return 0;
@@ -266,7 +266,7 @@ static uint64_t size_proc(grok_handle_t fd) {
 		return ((uint64_t) sb.st_size);
 }
 
-static void* grok_map(grok_handle_t fd, size_t len) {
+static void* grk_map(grk_handle fd, size_t len) {
 	(void) len;
 	void *ptr = nullptr;
 	uint64_t size64 = 0;
@@ -285,11 +285,11 @@ static int32_t unmap(void *ptr, size_t len) {
 	return 0;
 }
 
-static grok_handle_t open_fd(const char *fname, const char *mode) {
-	grok_handle_t fd = 0;
+static grk_handle open_fd(const char *fname, const char *mode) {
+	grk_handle fd = 0;
 	int32_t m = -1;
 	if (!fname) {
-		return (grok_handle_t) -1;
+		return (grk_handle) -1;
 	}
 	m = get_file_open_mode(mode);
 	fd = open(fname, m, 0666);
@@ -301,12 +301,12 @@ static grok_handle_t open_fd(const char *fname, const char *mode) {
             printf("%s: Cannot open", fname);
         }
 #endif
-		return (grok_handle_t) -1;
+		return (grk_handle) -1;
 	}
 	return fd;
 }
 
-static int32_t close_fd(grok_handle_t fd) {
+static int32_t close_fd(grk_handle fd) {
 	if (!fd)
 		return 0;
 	return (close(fd));
@@ -329,14 +329,14 @@ static void mem_map_free(void *user_data) {
  grk_stream  *  create_mapped_file_read_stream(const char *fname) {
 	bool p_is_read_stream = true;
 
-	grok_handle_t fd = open_fd(fname, p_is_read_stream ? "r" : "w");
-	if (fd == (grok_handle_t) -1)
+	grk_handle fd = open_fd(fname, p_is_read_stream ? "r" : "w");
+	if (fd == (grk_handle) -1)
 		return nullptr;
 
 	auto buffer_info = new buf_info();
 	buffer_info->fd = fd;
 	buffer_info->len = (size_t) size_proc(fd);
-	auto mapped_view = grok_map(fd, buffer_info->len);
+	auto mapped_view = grk_map(fd, buffer_info->len);
 	if (!mapped_view) {
 		mem_map_free(buffer_info);
 		return nullptr;

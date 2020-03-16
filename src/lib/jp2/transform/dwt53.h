@@ -74,7 +74,7 @@ struct grk_dwt53 {
 
 class dwt53 {
 public:
-	void encode_line(int32_t* restrict a, int32_t d_n, int32_t s_n, uint8_t cas);
+	void encode_line(int32_t* GRK_RESTRICT a, int32_t d_n, int32_t s_n, uint8_t cas);
 
 
 };

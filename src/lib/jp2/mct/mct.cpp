@@ -82,8 +82,8 @@ const double* mct::get_norms_irrev() {
 /* <summary> */
 /* Forward reversible MCT. */
 /* </summary> */
-void mct::encode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
-		int32_t *restrict chan2, uint64_t n) {
+void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
+		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 
 #if (defined(__SSE2__) || defined(__AVX2__))
@@ -140,8 +140,8 @@ void mct::encode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 /* <summary> */
 /* Inverse reversible MCT. */
 /* </summary> */
-void mct::decode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
-		int32_t *restrict chan2, uint64_t n) {
+void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
+		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))
     size_t chunkSize = n / Scheduler::g_tp->num_threads();
@@ -192,9 +192,9 @@ void mct::decode_rev(int32_t *restrict chan0, int32_t *restrict chan1,
 /* <summary> */
 /* Forward irreversible MCT. */
 /* </summary> */
-void mct::encode_irrev( int32_t* restrict chan0,
-						int32_t* restrict chan1,
-						int32_t* restrict chan2,
+void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
+						int32_t* GRK_RESTRICT chan1,
+						int32_t* GRK_RESTRICT chan2,
 						uint64_t n)
 {
     size_t i = 0;
@@ -349,7 +349,7 @@ void mct::encode_irrev( int32_t* restrict chan0,
 /* <summary> */
 /* Inverse irreversible MCT. */
 /* </summary> */
-void mct::decode_irrev(float *restrict c0, float *restrict c1, float *restrict c2,
+void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GRK_RESTRICT c2,
 		uint64_t n) {
 	uint64_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))

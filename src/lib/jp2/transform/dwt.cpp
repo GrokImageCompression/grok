@@ -122,7 +122,7 @@ struct dwt_data_97 : dwt_data {
 template <typename T, typename S> struct decode_job{
 	decode_job( S data,
 				uint32_t w,
-				T * restrict tiledp,
+				T * GRK_RESTRICT tiledp,
 				uint32_t min_j,
 				uint32_t max_j) : data(data),
 								w(w),
@@ -133,7 +133,7 @@ template <typename T, typename S> struct decode_job{
 
     S data;
     uint32_t w;
-    T * restrict tiledp;
+    T * GRK_RESTRICT tiledp;
     uint32_t min_j;
     uint32_t max_j;
 } ;
@@ -163,15 +163,15 @@ static bool decode_partial_tile_53(
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void decode_step_97(dwt_data_97* restrict dwt);
+static void decode_step_97(dwt_data_97* GRK_RESTRICT dwt);
 
-static void interleave_h_97(dwt_data_97* restrict dwt,
-                                   float* restrict a,
+static void interleave_h_97(dwt_data_97* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t remaining_height);
 
-static void interleave_v_97(dwt_data_97* restrict dwt,
-                                   float* restrict a,
+static void interleave_v_97(dwt_data_97* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t nb_elts_read);
 
@@ -733,7 +733,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     dwt_data_53 vert;
     h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
-    int32_t * restrict tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
+    int32_t * GRK_RESTRICT tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
     while (--numres) {
         ++tr;
         horiz.sn = (int32_t)rw;
@@ -1505,11 +1505,11 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     return true;
 }
 
-static void interleave_h_97(dwt_data_97* restrict dwt,
-                                   float* restrict a,
+static void interleave_h_97(dwt_data_97* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t remaining_height){
-    float* restrict bi = (float*)(dwt->mem + dwt->cas);
+    float* GRK_RESTRICT bi = (float*)(dwt->mem + dwt->cas);
     uint32_t i, k;
     uint32_t x0 = dwt->win_l_x0;
     uint32_t x1 = dwt->win_l_x1;
@@ -1583,11 +1583,11 @@ static void interleave_partial_h_97(dwt_data_97* dwt,
     }
 }
 
-static void interleave_v_97(dwt_data_97* restrict dwt,
-                                   float* restrict a,
+static void interleave_v_97(dwt_data_97* GRK_RESTRICT dwt,
+                                   float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t nb_elts_read){
-    v4_data* restrict bi = dwt->mem + dwt->cas;
+    v4_data* GRK_RESTRICT bi = dwt->mem + dwt->cas;
     uint32_t i;
 
     for (i = dwt->win_l_x0; i < dwt->win_l_x1; ++i) {
@@ -1604,7 +1604,7 @@ static void interleave_v_97(dwt_data_97* restrict dwt,
     }
 }
 
-static void interleave_partial_v_97(dwt_data_97* restrict dwt,
+static void interleave_partial_v_97(dwt_data_97* GRK_RESTRICT dwt,
 									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
@@ -1629,7 +1629,7 @@ static void decode_step1_sse_97(v4_data* w,
                                        uint32_t start,
                                        uint32_t end,
                                        const __m128 c){
-    __m128* restrict vw = (__m128*) w;
+    __m128* GRK_RESTRICT vw = (__m128*) w;
     uint32_t i;
     /* 4x unrolled loop */
     vw += 2 * start;
@@ -1653,8 +1653,8 @@ static void decode_step2_sse_97(v4_data* l, v4_data* w,
                                        uint32_t end,
                                        uint32_t m,
                                        __m128 c){
-    __m128* restrict vl = (__m128*) l;
-    __m128* restrict vw = (__m128*) w;
+    __m128* GRK_RESTRICT vl = (__m128*) l;
+    __m128* GRK_RESTRICT vw = (__m128*) w;
     uint32_t i;
     uint32_t imax = min<uint32_t>(end, m);
     __m128 tmp1, tmp2, tmp3;
@@ -1705,7 +1705,7 @@ static void decode_step1_97(v4_data* w,
                                    uint32_t start,
                                    uint32_t end,
                                    const float c){
-    float* restrict fw = (float*) w;
+    float* GRK_RESTRICT fw = (float*) w;
     uint32_t i;
     for (i = start; i < end; ++i) {
         float tmp1 = fw[i * 8    ];
@@ -1765,7 +1765,7 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void decode_step_97(dwt_data_97* restrict dwt)
+static void decode_step_97(dwt_data_97* GRK_RESTRICT dwt)
 {
     int32_t a, b;
 
@@ -1832,7 +1832,7 @@ static void decode_step_97(dwt_data_97* restrict dwt)
 /* Inverse 9-7 wavelet transform in 2-D. */
 /* </summary>                            */
 static
-bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
+bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
     if (numres == 1U)
         return true;
 
@@ -1879,7 +1879,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
         horiz.win_h_x0 = 0;
         horiz.win_h_x1 = (uint32_t)horiz.dn;
         uint32_t j;
-        float * restrict tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
+        float * GRK_RESTRICT tiledp = (float*) tilec->buf->get_ptr( 0, 0, 0, 0);
         uint32_t num_jobs = (uint32_t)num_threads;
         if (rh < num_jobs)
             num_jobs = rh;
@@ -2040,7 +2040,7 @@ bool decode_tile_97(TileComponent* restrict tilec,uint32_t numres){
 }
 
 static
-bool decode_partial_tile_97(TileComponent* restrict tilec,
+bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
                                    uint32_t numres)
 {
     dwt_data_97 horiz;
@@ -2274,7 +2274,7 @@ bool decode_partial_tile_97(TileComponent* restrict tilec,
 }
 
 bool decode_97(TileProcessor *p_tcd,
-                TileComponent* restrict tilec,
+                TileComponent* GRK_RESTRICT tilec,
                 uint32_t numres){
     if (p_tcd->whole_tile_decoding) {
         return decode_tile_97(tilec, numres);

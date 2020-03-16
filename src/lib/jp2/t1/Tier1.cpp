@@ -108,7 +108,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 		grk_tcd_resolution *res = &tilec->resolutions[resno];
 
 		for (bandno = 0; bandno < res->numbands; ++bandno) {
-			grk_tcd_band *restrict band = &res->bands[bandno];
+			grk_tcd_band *GRK_RESTRICT band = &res->bands[bandno];
 
 			for (precno = 0; precno < res->pw * res->ph; ++precno) {
 				grk_tcd_precinct *precinct = &band->precincts[precno];

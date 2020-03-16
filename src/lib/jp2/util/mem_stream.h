@@ -19,9 +19,9 @@
 namespace grk {
 
 #ifdef _WIN32
-	typedef void* grok_handle_t;
+	typedef void* grk_handle;
 #else
-typedef int32_t grok_handle_t;
+typedef int32_t grk_handle;
 #endif
 
 struct buf_info {
@@ -38,7 +38,7 @@ struct buf_info {
 	uint8_t *buf;
 	int64_t off;
 	size_t len;
-	grok_handle_t fd;		// for file mapping
+	grk_handle fd;		// for file mapping
 	bool ownsBuffer;
 };
 

@@ -61,7 +61,7 @@
 #define mqc_mpsexchange_macro(d, curctx, a) \
 { \
     if (a < (*curctx)->qeval) { \
-        d = !((*curctx)->mps); \
+        d = (*curctx)->mps ^ 1; \
         *curctx = (*curctx)->nlps; \
     } else { \
         d = (*curctx)->mps; \
@@ -78,7 +78,7 @@
         *curctx = (*curctx)->nmps; \
     } else { \
         a = (*curctx)->qeval; \
-        d = !((*curctx)->mps); \
+        d = (*curctx)->mps ^ 1; \
         *curctx = (*curctx)->nlps; \
     } \
 }

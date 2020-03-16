@@ -99,8 +99,6 @@ typedef struct mqc {
 #include "mqc_inl.h"
 uint32_t mqc_numbytes(mqc_t *mqc);
 void mqc_resetstates(mqc_t *mqc);
-void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb,
-                      int32_t prob);
 void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
 #define mqc_setcurctx(mqc, ctxno)   (mqc)->curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
 void mqc_encode(mqc_t *mqc, uint32_t d);

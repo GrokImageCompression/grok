@@ -204,9 +204,9 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 	uint32_t tile_width = block->tilec->width();
 	if (block->qmfbid == 1) {
 		int32_t shift = 31 - (block->k_msbs + 1);
-		int32_t *restrict tile_data = block->tiledp;
+		int32_t *GRK_RESTRICT tile_data = block->tiledp;
 		for (auto j = 0U; j < h; ++j) {
-			int32_t *restrict tile_row_data = tile_data;
+			int32_t *GRK_RESTRICT tile_row_data = tile_data;
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = *t1_data;
 				int32_t val = (temp & 0x7FFFFFFF) >> shift;
@@ -216,9 +216,9 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 			tile_data += tile_width;
 		}
 	} else {
-		int32_t *restrict tile_data = block->tiledp;
+		int32_t *GRK_RESTRICT tile_data = block->tiledp;
 		for (auto j = 0U; j < h; ++j) {
-			float *restrict tile_row_data = (float*)tile_data;
+			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
 			for (auto i = 0U; i < w; ++i) {
 		       float val = (((*t1_data & 0x7FFFFFFF) * block->stepsize));
 		       tile_row_data[i] = (*t1_data & 0x80000000) ? -val : val;
