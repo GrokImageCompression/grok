@@ -96,9 +96,10 @@
 #define ADD(x,y)    _mm256_add_epi32((x),(y))
 #define SUB(x,y)    _mm256_sub_epi32((x),(y))
 #define SAR(x,y)    _mm256_srai_epi32((x),(y))
+#define MUL(x,y)    _mm256_mullo_epi32((x),(y))
 #define VREGF        __m256
 #define LOADF(x)     _mm256_load_ps((float const*)(x))
-#define LOAD_CST_F(x)      _mm256_set1_ps(x)
+#define LOAD_CST_F(x)_mm256_set1_ps(x)
 #define ADDF(x,y)    _mm256_add_ps((x),(y))
 #define MULF(x,y)    _mm256_mul_ps((x),(y))
 #define SUBF(x,y)     _mm256_sub_ps((x),(y))
@@ -112,6 +113,8 @@
 #define STOREU(x,y) _mm_storeu_si128((VREG*)(x),(y))
 #define ADD(x,y)    _mm_add_epi32((x),(y))
 #define SUB(x,y)    _mm_sub_epi32((x),(y))
+// MUL is actually only valid for SSE 4.1
+#define MUL(x,y)    _mm_mullo_epi32((x),(y))
 #define SAR(x,y)    _mm_srai_epi32((x),(y))
 #define VREGF        __m128
 #define LOADF(x)     _mm_load_ps((float const*)(x))
