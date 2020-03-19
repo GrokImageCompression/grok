@@ -78,45 +78,34 @@ namespace grk {
 /** @name Local data structures */
 /*@{*/
 
-struct dwt_data {
-	dwt_data() : dn(0), sn(0), cas(0)
+template <typename T> struct dwt_data {
+	dwt_data() : mem(nullptr),
+		         dn(0),
+				 sn(0),
+				 cas(0),
+				 win_l_x0(0),
+				 win_l_x1(0),
+				 win_h_x0(0),
+				 win_h_x1(0)
 	{}
+	bool alloc(size_t len) {
+		mem = (T*)grk_aligned_malloc(len * sizeof(T));
+		return mem != nullptr;
+	}
+    T* mem;
     int32_t dn;   /* number of elements in high pass band */
     int32_t sn;   /* number of elements in low pass band */
     int32_t cas;  /* 0 = start on even coord, 1 = start on odd coord */
-};
-
-struct dwt_data_53 : dwt_data{
-	dwt_data_53() : mem(nullptr)
-	{}
-	bool alloc(size_t len) {
-		mem = (int32_t*)grk_aligned_malloc(len * sizeof(int32_t));
-		return mem != nullptr;
-	}
-    int32_t* mem;
-} ;
-
-typedef union {
-    float f[4];
-} v4_data;
-
-struct dwt_data_97 : dwt_data {
-	dwt_data_97() : mem(nullptr),
-					win_l_x0(0),
-					win_l_x1(0),
-					win_h_x0(0),
-					win_h_x1(0)
-	{}
-	bool alloc(size_t len) {
-		mem = (v4_data*)grk_aligned_malloc(len * sizeof(v4_data));
-		return mem != nullptr;
-	}
-    v4_data*   	  mem ;
     uint32_t      win_l_x0; /* start coord in low pass band */
     uint32_t      win_l_x1; /* end coord in low pass band */
     uint32_t      win_h_x0; /* start coord in high pass band */
     uint32_t      win_h_x1; /* end coord in high pass band */
 };
+
+
+typedef union {
+    float f[4];
+} v4_data;
 
 
 template <typename T, typename S> struct decode_job{
@@ -163,14 +152,14 @@ static bool decode_partial_tile_53(
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void decode_step_97(dwt_data_97* GRK_RESTRICT dwt);
+static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt);
 
-static void interleave_h_97(dwt_data_97* GRK_RESTRICT dwt,
+static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t remaining_height);
 
-static void interleave_v_97(dwt_data_97* GRK_RESTRICT dwt,
+static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t nb_elts_read);
@@ -306,7 +295,7 @@ static void  decode_h_cas1_53(int32_t* tmp,
 /* Inverse 5-3 wavelet transform in 1-D for one row. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decode_h_53(const dwt_data_53 *dwt,
+static void decode_h_53(const dwt_data<int32_t> *dwt,
                          int32_t* tiledp)
 {
     const int32_t sn = dwt->sn;
@@ -629,7 +618,7 @@ static void decode_v_cas1_53(int32_t* tmp,
 /* Inverse vertical 5-3 wavelet transform in 1-D for several columns. */
 /* </summary>                           */
 /* Performs interleave, inverse wavelet transform and copy back to buffer */
-static void decode_v_53(const dwt_data_53 *dwt,
+static void decode_v_53(const dwt_data<int32_t> *dwt,
                          int32_t* tiledp_col,
                          size_t stride,
                          int32_t nb_cols){
@@ -729,8 +718,8 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     /* We need PLL_COLS_53 times the height of the array, */
     /* since for the vertical pass */
     /* we process PLL_COLS_53 columns at a time */
-    dwt_data_53 horiz;
-    dwt_data_53 vert;
+    dwt_data<int32_t> horiz;
+    dwt_data<int32_t> vert;
     h_mem_size *= PLL_COLS_53 * sizeof(int32_t);
     bool rc = true;
     int32_t * GRK_RESTRICT tiledp = tilec->buf->get_ptr( 0, 0, 0, 0);
@@ -762,7 +751,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rh / num_jobs);
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-               auto job = new decode_job<int32_t, dwt_data_53>(horiz,
+               auto job = new decode_job<int32_t, dwt_data<int32_t>>(horiz,
 											w,
 											tiledp,
 											j * step_j,
@@ -809,7 +798,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
             uint32_t step_j = (rw / num_jobs);
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
-                auto job = new decode_job<int32_t, dwt_data_53>(vert,
+                auto job = new decode_job<int32_t, dwt_data<int32_t>>(vert,
 											w,
 											tiledp,
 											j * step_j,
@@ -1271,8 +1260,8 @@ static sparse_array* init_sparse_array(	TileComponent* tilec,
 
 static bool decode_partial_tile_53( TileComponent* tilec,
 									uint32_t numres){
-    dwt_data_53 h;
-    dwt_data_53 v;
+	dwt_data<int32_t> h;
+	dwt_data<int32_t> v;
     uint32_t resno;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
@@ -1505,7 +1494,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     return true;
 }
 
-static void interleave_h_97(dwt_data_97* GRK_RESTRICT dwt,
+static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t remaining_height){
@@ -1558,7 +1547,7 @@ static void interleave_h_97(dwt_data_97* GRK_RESTRICT dwt,
     }
 }
 
-static void interleave_partial_h_97(dwt_data_97* dwt,
+static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
 									sparse_array* sa,
 									uint32_t sa_line,
 									uint32_t remaining_height){
@@ -1583,7 +1572,7 @@ static void interleave_partial_h_97(dwt_data_97* dwt,
     }
 }
 
-static void interleave_v_97(dwt_data_97* GRK_RESTRICT dwt,
+static void interleave_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
                                    float* GRK_RESTRICT a,
                                    uint32_t width,
                                    uint32_t nb_elts_read){
@@ -1604,7 +1593,7 @@ static void interleave_v_97(dwt_data_97* GRK_RESTRICT dwt,
     }
 }
 
-static void interleave_partial_v_97(dwt_data_97* GRK_RESTRICT dwt,
+static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 									sparse_array* sa,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
@@ -1765,7 +1754,7 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 /* <summary>                             */
 /* Inverse 9-7 wavelet transform in 1-D. */
 /* </summary>                            */
-static void decode_step_97(dwt_data_97* GRK_RESTRICT dwt)
+static void decode_step_97(dwt_data<v4_data>* GRK_RESTRICT dwt)
 {
     int32_t a, b;
 
@@ -1856,8 +1845,8 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         GROK_ERROR("data size overflow");
         return false;
     }
-    dwt_data_97 horiz;
-    dwt_data_97 vert;
+    dwt_data<v4_data> horiz;
+    dwt_data<v4_data> vert;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
         return false;
@@ -1915,7 +1904,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         } else {
 			std::vector< std::future<int> > results;
 			for(uint32_t j = 0; j < num_jobs; ++j) {
-			   auto job = new decode_job<float, dwt_data_97>(horiz,
+			   auto job = new decode_job<float, dwt_data<v4_data>>(horiz,
 											w,
 											tiledp,
 											j * step_j,
@@ -1995,7 +1984,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         } else {
 			std::vector< std::future<int> > results;
             for (uint32_t j = 0; j < num_jobs; j++) {
-            	auto job = new decode_job<float, dwt_data_97>(vert,
+            	auto job = new decode_job<float, dwt_data<v4_data>>(vert,
             												w,
             												tiledp,
             												j * step_j,
@@ -2043,8 +2032,8 @@ static
 bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
                                    uint32_t numres)
 {
-    dwt_data_97 horiz;
-    dwt_data_97 vert;
+	dwt_data<v4_data> horiz;
+	dwt_data<v4_data> vert;
     uint32_t resno;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
