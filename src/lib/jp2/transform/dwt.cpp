@@ -1237,6 +1237,8 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
     const uint32_t filter_width = 2U;
+    const uint32_t HORIZ_BAND_WIDTH = 1;
+    const uint32_t VERT_BAND_WIDTH = 4;
 
 	dwt_data<int32_t> horiz;
 	dwt_data<int32_t> vert;
@@ -1375,9 +1377,10 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
-        for (j = 0; j < rh; ++j) {
-            if ((j >= win_ll_y0 && j < win_ll_y1) ||
-                    (j >= win_lh_y0 + (uint32_t)vert.sn && j < win_lh_y1 + (uint32_t)vert.sn)) {
+        for (j = 0; j + HORIZ_BAND_WIDTH-1 < rh; j += HORIZ_BAND_WIDTH) {
+            if ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
+                    (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+                     j < win_lh_y1 + (uint32_t)vert.sn)) {
 
                 /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
                 /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
@@ -1395,9 +1398,9 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 									  win_tr_x0,
 									  j,
 									  win_tr_x1,
-									  j + 1,
+									  j + HORIZ_BAND_WIDTH,
 									  horiz.mem + win_tr_x0,
-									  1,
+									  HORIZ_BAND_WIDTH,
 									  1,
 									  true)) {
                     GROK_ERROR("Partial decode: unable to write to sparse array");
@@ -1413,7 +1416,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
         for (i = win_tr_x0; i < win_tr_x1;) {
-            uint32_t nb_cols = min<uint32_t>(4U, win_tr_x1 - i);
+            uint32_t nb_cols = min<uint32_t>(VERT_BAND_WIDTH, win_tr_x1 - i);
             interleave_partial_v_53(&vert, sa, i, nb_cols);
             decode_partial_1_parallel_53(&vert, nb_cols);
             if (!sparse_array_write(sa,
@@ -1421,9 +1424,9 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 								  win_tr_y0,
 								  i + nb_cols,
 								  win_tr_y1,
-								  vert.mem + 4 * win_tr_y0,
+								  vert.mem + VERT_BAND_WIDTH * win_tr_y0,
 								  1,
-								  4,
+								  VERT_BAND_WIDTH,
 								  true)) {
                 GROK_ERROR("Partial decode: unable to write to sparse array");
                 sparse_array_free(sa);
@@ -1992,8 +1995,8 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
     /* we currently use 3. */
     const uint32_t filter_width = 4U;
-    const uint32_t SKIP_H = 4;
-    const uint32_t SKIP_V = 4;
+    const uint32_t HORIZ_BAND_WIDTH = 4;
+    const uint32_t VERT_BAND_WIDTH = 4;
 
 	dwt_data<v4_data> horiz;
 	dwt_data<v4_data> vert;
@@ -2128,9 +2131,9 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
-        for (j = 0; j + SKIP_H-1 < rh; j += SKIP_H) {
-            if ((j + SKIP_H-1 >= win_ll_y0 && j < win_ll_y1) ||
-                    (j + SKIP_H-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+        for (j = 0; j + HORIZ_BAND_WIDTH-1 < rh; j += HORIZ_BAND_WIDTH) {
+            if ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
+                    (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                      j < win_lh_y1 + (uint32_t)vert.sn)) {
 
                 /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
@@ -2143,15 +2146,15 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
                 if (win_tr_x1 < rw)
                     horiz.mem[win_tr_x1] = {0,0,0,0};
 
-                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(SKIP_H, rh - j));
+                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(HORIZ_BAND_WIDTH, rh - j));
                 decode_step_97(&horiz);
                 if (!sparse_array_write(sa,
 									  win_tr_x0,
 									  j,
 									  win_tr_x1,
-									  j + SKIP_H,
+									  j + HORIZ_BAND_WIDTH,
 									  (int32_t*)&horiz.mem[win_tr_x0],
-									  SKIP_H,
+									  HORIZ_BAND_WIDTH,
 									  1,
 									  true)) {
                     GROK_ERROR("sparse array write failure");
@@ -2162,8 +2165,8 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
             }
         }
         if (j < rh &&
-                ((j + SKIP_H-1 >= win_ll_y0 && j < win_ll_y1) ||
-                 (j + SKIP_H-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+                ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
+                 (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                   j < win_lh_y1 + (uint32_t)vert.sn))) {
             interleave_partial_h_97(&horiz, sa, j, rh - j);
             decode_step_97(&horiz);
@@ -2173,7 +2176,7 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
 								  win_tr_x1,
 								  rh,
 								  (int32_t*)&horiz.mem[win_tr_x0],
-								  SKIP_H,
+								  HORIZ_BAND_WIDTH,
 								  1,
 								  true)) {
                 GROK_ERROR("Sparse array write failure");
@@ -2186,8 +2189,8 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
-        for (j = win_tr_x0; j < win_tr_x1; j += SKIP_V) {
-            uint32_t nb_elts = min<uint32_t>(SKIP_V, win_tr_x1 - j);
+        for (j = win_tr_x0; j < win_tr_x1; j += VERT_BAND_WIDTH) {
+            uint32_t nb_elts = min<uint32_t>(VERT_BAND_WIDTH, win_tr_x1 - j);
 
             interleave_partial_v_97(&vert, sa, j, nb_elts);
             decode_step_97(&vert);
@@ -2198,7 +2201,7 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
 									  win_tr_y1,
 									  (int32_t*)&horiz.mem[win_tr_y0],
 									  1,
-									  SKIP_V,
+									  VERT_BAND_WIDTH,
 									  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
