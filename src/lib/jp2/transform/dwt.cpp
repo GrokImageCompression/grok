@@ -984,8 +984,7 @@ static void decode_partial_1_53(dwt_data<int32_t> *horiz){
 #define GRK_SS__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
 #define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
 
-static void decode_partial_1_parallel_53(dwt_data<int32_t> *vert,
-										uint32_t nb_cols){
+static void decode_partial_1_parallel_53(dwt_data<int32_t> *vert){
     int32_t i;
     uint32_t off;
     int32_t *a = vert->mem;
@@ -997,7 +996,6 @@ static void decode_partial_1_parallel_53(dwt_data<int32_t> *vert,
 	int32_t win_h_x0 = vert->win_h_x0;
 	int32_t win_h_x1 = vert->win_h_x1;
 
-    (void)nb_cols;
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
@@ -1237,8 +1235,10 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
     const uint32_t filter_width = 2U;
-    const uint32_t HORIZ_BAND_WIDTH = 1;
-    const uint32_t VERT_BAND_WIDTH = 4;
+    const uint32_t HORIZ_STEP_WIDTH = 1;
+    const uint32_t HORIZ_STEP_HEIGHT = 1;
+    const uint32_t VERT_STEP_WIDTH = 4;
+    const uint32_t VERT_STEP_HEIGHT = 4;
 
 	dwt_data<int32_t> horiz;
 	dwt_data<int32_t> vert;
@@ -1290,7 +1290,6 @@ static bool decode_partial_tile_53( TileComponent* tilec,
     }
     vert.mem = horiz.mem;
     for (uint32_t resno = 1; resno < numres; resno ++) {
-        uint32_t i, j;
         /* Window of interest sub-band-based coordinates */
         uint32_t win_ll_x0, win_ll_y0;
         uint32_t win_ll_x1, win_ll_y1;
@@ -1377,9 +1376,10 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
-        for (j = 0; j + HORIZ_BAND_WIDTH-1 < rh; j += HORIZ_BAND_WIDTH) {
-            if ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
-                    (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+        uint32_t j;
+        for (j = 0; j + HORIZ_STEP_WIDTH-1 < rh; j += HORIZ_STEP_WIDTH) {
+            if ((j + HORIZ_STEP_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
+                    (j + HORIZ_STEP_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                      j < win_lh_y1 + (uint32_t)vert.sn)) {
 
                 /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
@@ -1398,9 +1398,9 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 									  win_tr_x0,
 									  j,
 									  win_tr_x1,
-									  j + HORIZ_BAND_WIDTH,
+									  j + HORIZ_STEP_HEIGHT,
 									  horiz.mem + win_tr_x0,
-									  HORIZ_BAND_WIDTH,
+									  HORIZ_STEP_WIDTH,
 									  1,
 									  true)) {
                     GROK_ERROR("Partial decode: unable to write to sparse array");
@@ -1410,31 +1410,51 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                 }
             }
         }
+        if (j < rh &&
+                ((j + HORIZ_STEP_HEIGHT-1 >= win_ll_y0 && j < win_ll_y1) ||
+                 (j + HORIZ_STEP_HEIGHT-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+                  j < win_lh_y1 + (uint32_t)vert.sn))) {
+
+            interleave_partial_h_53(&horiz,  sa, rh - j);
+		    decode_partial_1_53(&horiz);
+		    if (!sparse_array_write(sa,
+							  win_tr_x0,
+							  j,
+							  win_tr_x1,
+							  rh,
+							  horiz.mem + win_tr_x0,
+							  HORIZ_STEP_WIDTH,
+							  1,
+							  true)) {
+			   GROK_ERROR("Partial decode: unable to write to sparse array");
+			   sparse_array_free(sa);
+			   horiz.release();
+			   return false;
+		   }
+        }
 
         vert.win_l_x0 = win_ll_y0;
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
-        for (i = win_tr_x0; i < win_tr_x1;) {
-            uint32_t nb_cols = min<uint32_t>(VERT_BAND_WIDTH, win_tr_x1 - i);
-            interleave_partial_v_53(&vert, sa, i, nb_cols);
-            decode_partial_1_parallel_53(&vert, nb_cols);
+        for (uint32_t j = win_tr_x0; j < win_tr_x1; j += VERT_STEP_WIDTH) {
+            uint32_t nb_cols = min<uint32_t>(VERT_STEP_WIDTH, win_tr_x1 - j);
+            interleave_partial_v_53(&vert, sa, j, nb_cols);
+            decode_partial_1_parallel_53(&vert);
             if (!sparse_array_write(sa,
-								  i,
+								  j,
 								  win_tr_y0,
-								  i + nb_cols,
+								  j + nb_cols,
 								  win_tr_y1,
-								  vert.mem + VERT_BAND_WIDTH * win_tr_y0,
+								  (int32_t*)vert.mem + VERT_STEP_HEIGHT * win_tr_y0,
 								  1,
-								  VERT_BAND_WIDTH,
+								  VERT_STEP_HEIGHT,
 								  true)) {
                 GROK_ERROR("Partial decode: unable to write to sparse array");
                 sparse_array_free(sa);
                 horiz.release();
                 return false;
             }
-
-            i += nb_cols;
         }
     }
 	bool ret = sparse_array_read(sa,
@@ -1509,20 +1529,24 @@ static void interleave_h_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
 									sparse_array* sa,
 									uint32_t sa_line,
-									uint32_t remaining_height){
+									uint32_t num_rows){
     uint32_t i;
-    for (i = 0; i < remaining_height; i++) {
+    for (i = 0; i < num_rows; i++) {
         bool ret;
         ret = sparse_array_read(sa,
-							  dwt->win_l_x0, sa_line + i,
-							  dwt->win_l_x1, sa_line + i + 1,
+							  dwt->win_l_x0,
+							  sa_line + i,
+							  dwt->win_l_x1,
+							  sa_line + i + 1,
 							  /* Nasty cast from float* to int32* */
 							  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
 							  8, 0, true);
         assert(ret);
         ret = sparse_array_read(sa,
-							  (uint32_t)dwt->sn + dwt->win_h_x0, sa_line + i,
-							  (uint32_t)dwt->sn + dwt->win_h_x1, sa_line + i + 1,
+							  (uint32_t)dwt->sn + dwt->win_h_x0,
+							  sa_line + i,
+							  (uint32_t)dwt->sn + dwt->win_h_x1,
+							  sa_line + i + 1,
 							  /* Nasty cast from float* to int32* */
 							  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
 							  8, 0, true);
@@ -1995,8 +2019,10 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
     /* we currently use 3. */
     const uint32_t filter_width = 4U;
-    const uint32_t HORIZ_BAND_WIDTH = 4;
-    const uint32_t VERT_BAND_WIDTH = 4;
+    const uint32_t HORIZ_STEP_WIDTH = 4;
+    const uint32_t HORIZ_STEP_HEIGHT = 4;
+    const uint32_t VERT_STEP_WIDTH = 4;
+    const uint32_t VERT_STEP_HEIGHT = 4;
 
 	dwt_data<v4_data> horiz;
 	dwt_data<v4_data> vert;
@@ -2131,9 +2157,9 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
-        for (j = 0; j + HORIZ_BAND_WIDTH-1 < rh; j += HORIZ_BAND_WIDTH) {
-            if ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
-                    (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+        for (j = 0; j + HORIZ_STEP_HEIGHT-1 < rh; j += HORIZ_STEP_HEIGHT) {
+            if ((j + HORIZ_STEP_HEIGHT-1 >= win_ll_y0 && j < win_ll_y1) ||
+                    (j + HORIZ_STEP_HEIGHT-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                      j < win_lh_y1 + (uint32_t)vert.sn)) {
 
                 /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
@@ -2146,15 +2172,15 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
                 if (win_tr_x1 < rw)
                     horiz.mem[win_tr_x1] = {0,0,0,0};
 
-                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(HORIZ_BAND_WIDTH, rh - j));
+                interleave_partial_h_97(&horiz, sa, j,HORIZ_STEP_HEIGHT);
                 decode_step_97(&horiz);
                 if (!sparse_array_write(sa,
 									  win_tr_x0,
 									  j,
 									  win_tr_x1,
-									  j + HORIZ_BAND_WIDTH,
-									  (int32_t*)&horiz.mem[win_tr_x0],
-									  HORIZ_BAND_WIDTH,
+									  j + HORIZ_STEP_HEIGHT,
+									  (int32_t*)(horiz.mem + win_tr_x0),
+									  HORIZ_STEP_WIDTH,
 									  1,
 									  true)) {
                     GROK_ERROR("sparse array write failure");
@@ -2165,8 +2191,8 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
             }
         }
         if (j < rh &&
-                ((j + HORIZ_BAND_WIDTH-1 >= win_ll_y0 && j < win_ll_y1) ||
-                 (j + HORIZ_BAND_WIDTH-1 >= win_lh_y0 + (uint32_t)vert.sn &&
+                ((j + HORIZ_STEP_HEIGHT-1 >= win_ll_y0 && j < win_ll_y1) ||
+                 (j + HORIZ_STEP_HEIGHT-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                   j < win_lh_y1 + (uint32_t)vert.sn))) {
             interleave_partial_h_97(&horiz, sa, j, rh - j);
             decode_step_97(&horiz);
@@ -2175,8 +2201,8 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
 								  j,
 								  win_tr_x1,
 								  rh,
-								  (int32_t*)&horiz.mem[win_tr_x0],
-								  HORIZ_BAND_WIDTH,
+								  (int32_t*)(horiz.mem + win_tr_x0),
+								  HORIZ_STEP_WIDTH,
 								  1,
 								  true)) {
                 GROK_ERROR("Sparse array write failure");
@@ -2189,19 +2215,19 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
-        for (j = win_tr_x0; j < win_tr_x1; j += VERT_BAND_WIDTH) {
-            uint32_t nb_elts = min<uint32_t>(VERT_BAND_WIDTH, win_tr_x1 - j);
+        for (j = win_tr_x0; j < win_tr_x1; j += VERT_STEP_WIDTH) {
+            uint32_t nb_cols = min<uint32_t>(VERT_STEP_WIDTH, win_tr_x1 - j);
 
-            interleave_partial_v_97(&vert, sa, j, nb_elts);
+            interleave_partial_v_97(&vert, sa, j, nb_cols);
             decode_step_97(&vert);
             if (!sparse_array_write(sa,
 									  j,
 									  win_tr_y0,
-									  j + nb_elts,
+									  j + nb_cols,
 									  win_tr_y1,
-									  (int32_t*)&horiz.mem[win_tr_y0],
+									  (int32_t*)vert.mem + VERT_STEP_HEIGHT * win_tr_y0,
 									  1,
-									  VERT_BAND_WIDTH,
+									  VERT_STEP_HEIGHT,
 									  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
