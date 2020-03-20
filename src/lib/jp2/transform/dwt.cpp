@@ -1398,7 +1398,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 									  j + 1,
 									  horiz.mem + win_tr_x0,
 									  1,
-									  0,
+									  1,
 									  true)) {
                     GROK_ERROR("Partial decode: unable to write to sparse array");
                     sparse_array_free(sa);
