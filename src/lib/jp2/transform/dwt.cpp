@@ -89,8 +89,25 @@ template <typename T> struct dwt_data {
 				 win_h_x1(0)
 	{}
 	bool alloc(size_t len) {
+	    /* overflow check */
+		// add 10 just to be sure to we are safe from
+		// segment growth overflow
+	    if (len > (SIZE_MAX - 10U)) {
+	        GROK_ERROR("data size overflow");
+	        return false;
+	    }
+	    len += 10U;
+	    /* overflow check */
+	    if (len > (SIZE_MAX / sizeof(T))) {
+	        GROK_ERROR("data size overflow");
+	        return false;
+	    }
 		mem = (T*)grk_aligned_malloc(len * sizeof(T));
 		return mem != nullptr;
+	}
+	void release(){
+		grk_aligned_free(mem);
+		mem = nullptr;
 	}
     T* mem;
     int32_t dn;   /* number of elements in high pass band */
@@ -190,8 +207,6 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 #endif
 
 static sparse_array* init_sparse_array(	TileComponent* tilec,
-												uint32_t numres);
-static sparse_array* init_sparse_array_alloc(TileComponent* tilec,
 												uint32_t numres);
 
 /*@}*/
@@ -830,15 +845,18 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     return rc;
 }
 
-static void interleave_partial_h_53(int32_t *dest,
-									int32_t cas,
+static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 									sparse_array* sa,
-									uint32_t sa_line,
-									uint32_t sn,
-									uint32_t win_l_x0,
-									uint32_t win_l_x1,
-									uint32_t win_h_x0,
-									uint32_t win_h_x1){
+									uint32_t sa_line)	{
+
+	int32_t *dest = dwt->mem;
+	int32_t cas = dwt->cas;
+	uint32_t sn = dwt->sn;
+	uint32_t win_l_x0 = dwt->win_l_x0;
+	uint32_t win_l_x1 = dwt->win_l_x1;
+	uint32_t win_h_x0 = dwt->win_h_x0;
+	uint32_t win_h_x1 = dwt->win_h_x1;
+
     bool ret = sparse_array_read(sa,
                                       win_l_x0, sa_line,
                                       win_l_x1, sa_line + 1,
@@ -855,16 +873,18 @@ static void interleave_partial_h_53(int32_t *dest,
 }
 
 
-static void interleave_partial_v_53(int32_t *dest,
-									int32_t cas,
+static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 									sparse_array* sa,
 									uint32_t sa_col,
-									uint32_t nb_cols,
-									uint32_t sn,
-									uint32_t win_l_y0,
-									uint32_t win_l_y1,
-									uint32_t win_h_y0,
-									uint32_t win_h_y1){
+									uint32_t nb_cols){
+	int32_t *dest = vert->mem;
+	int32_t cas = vert->cas;
+	uint32_t sn = vert->sn;
+	uint32_t win_l_y0 = vert->win_l_x0;
+	uint32_t win_l_y1 = vert->win_l_x1;
+	uint32_t win_h_y0 = vert->win_h_x0;
+	uint32_t win_h_y1 = vert->win_h_x1;
+
     bool ret = sparse_array_read(sa,
                                        sa_col, win_l_y0,
                                        sa_col + nb_cols, win_l_y1,
@@ -880,15 +900,16 @@ static void interleave_partial_v_53(int32_t *dest,
     GRK_UNUSED(ret);
 }
 
-static void decode_partial_1_53(int32_t *a,
-								int32_t dn,
-								int32_t sn,
-								 int32_t cas,
-								 int32_t win_l_x0,
-								 int32_t win_l_x1,
-								 int32_t win_h_x0,
-								 int32_t win_h_x1){
+static void decode_partial_1_53(dwt_data<int32_t> *horiz){
     int32_t i;
+    int32_t *a = horiz->mem;
+	int32_t dn = horiz->dn;
+	int32_t sn = horiz->sn;
+	 int32_t cas = horiz->cas;
+	 int32_t win_l_x0 = horiz->win_l_x0;
+	 int32_t win_l_x1 = horiz->win_l_x1;
+	 int32_t win_h_x0 = horiz->win_h_x0;
+	 int32_t win_h_x1 = horiz->win_h_x1;
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
@@ -963,17 +984,18 @@ static void decode_partial_1_53(int32_t *a,
 #define GRK_SS__off(i,off) ((i)<0?GRK_S_off(0,off):((i)>=dn?GRK_S_off(dn-1,off):GRK_S_off(i,off)))
 #define GRK_DD__off(i,off) ((i)<0?GRK_D_off(0,off):((i)>=sn?GRK_D_off(sn-1,off):GRK_D_off(i,off)))
 
-static void decode_partial_1_parallel_53(int32_t *a,
-										uint32_t nb_cols,
-										int32_t dn,
-										int32_t sn,
-										int32_t cas,
-										int32_t win_l_x0,
-										int32_t win_l_x1,
-										int32_t win_h_x0,
-										int32_t win_h_x1){
+static void decode_partial_1_parallel_53(dwt_data<int32_t> *vert,
+										uint32_t nb_cols){
     int32_t i;
     uint32_t off;
+    int32_t *a = vert->mem;
+	int32_t dn = vert->dn;
+	int32_t sn = vert->sn;
+	int32_t cas = vert->cas;
+	int32_t win_l_x0 = vert->win_l_x0;
+	int32_t win_l_x1 = vert->win_l_x1;
+	int32_t win_h_x0 = vert->win_h_x0;
+	int32_t win_h_x1 = vert->win_h_x1;
 
     (void)nb_cols;
 
@@ -1150,63 +1172,14 @@ static void segment_grow(uint32_t filter_width,
     *end = min<uint32_t>(*end, max_size);
 }
 
-static sparse_array* init_sparse_array_alloc(	TileComponent* tilec,
+static sparse_array* init_sparse_array(	TileComponent* tilec,
 												uint32_t numres){
     auto tr_max = &(tilec->resolutions[numres - 1]);
 	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
 	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
-	uint32_t resno, bandno, precno, cblkno;
 	auto sa = sparse_array_create(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
 	if (!sa)
 		return nullptr;
-
-	for (resno = 0; resno < numres; ++resno) {
-		auto res = &tilec->resolutions[resno];
-
-		for (bandno = 0; bandno < res->numbands; ++bandno) {
-			auto band = &res->bands[bandno];
-
-			for (precno = 0; precno < res->pw * res->ph; ++precno) {
-				auto precinct = &band->precincts[precno];
-
-				for (cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
-					auto cblk = &precinct->cblks.dec[cblkno];
-
-					if (cblk->unencoded_data != nullptr) {
-						uint32_t x = (uint32_t)(cblk->x0 - band->x0);
-						uint32_t y = (uint32_t)(cblk->y0 - band->y0);
-						uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
-						uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
-
-						if (band->bandno & 1) {
-							grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-							x += (uint32_t)(pres->x1 - pres->x0);
-						}
-						if (band->bandno & 2) {
-							grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-							y += (uint32_t)(pres->y1 - pres->y0);
-						}
-
-						if (!sparse_array_alloc(sa,
-												x,
-												y,
-												x + cblk_w,
-												y + cblk_h)) {
-							sparse_array_free(sa);
-							return nullptr;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	return sa;
-}
-
-static sparse_array* init_sparse_array(	TileComponent* tilec,
-												uint32_t numres){
-    auto sa = init_sparse_array_alloc(tilec, numres);
 
     if (sa == nullptr)
         return nullptr;
@@ -1260,15 +1233,16 @@ static sparse_array* init_sparse_array(	TileComponent* tilec,
 
 static bool decode_partial_tile_53( TileComponent* tilec,
 									uint32_t numres){
-	dwt_data<int32_t> h;
-	dwt_data<int32_t> v;
-    uint32_t resno;
+
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. */
     const uint32_t filter_width = 2U;
 
-    grk_tcd_resolution* tr = tilec->resolutions;
-    grk_tcd_resolution* tr_max = &(tilec->resolutions[numres - 1]);
+	dwt_data<int32_t> horiz;
+	dwt_data<int32_t> vert;
+
+    auto tr = tilec->resolutions;
+    auto tr_max = &(tilec->resolutions[numres - 1]);
 
     /* width of the resolution level computed */
     uint32_t rw = (uint32_t)(tr->x1 - tr->x0);
@@ -1306,23 +1280,14 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         sparse_array_free(sa);
         return true;
     }
-    size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
-    /* overflow check */
-    /* in vertical pass, we process 4 columns at a time */
-    if (h_mem_size > (SIZE_MAX / (4 * sizeof(int32_t)))) {
-        GROK_ERROR("Overflow");
-        sparse_array_free(sa);
-        return false;
-    }
 
-    h_mem_size *= 4;
-    if (! h.alloc(h_mem_size)) {
+    if (! horiz.alloc(dwt_utils::max_resolution(tr, numres))) {
         GROK_ERROR("Out of memory");
         sparse_array_free(sa);
         return false;
     }
-    v.mem = h.mem;
-    for (resno = 1; resno < numres; resno ++) {
+    vert.mem = horiz.mem;
+    for (uint32_t resno = 1; resno < numres; resno ++) {
         uint32_t i, j;
         /* Window of interest sub-band-based coordinates */
         uint32_t win_ll_x0, win_ll_y0;
@@ -1336,17 +1301,17 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 
         ++tr;
 
-        h.sn = (int32_t)rw;
-        v.sn = (int32_t)rh;
+        horiz.sn = (int32_t)rw;
+        vert.sn = (int32_t)rh;
 
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
 
-        h.dn = (int32_t)(rw - (uint32_t)h.sn);
-        h.cas = tr->x0 % 2;
+        horiz.dn = (int32_t)(rw - (uint32_t)horiz.sn);
+        horiz.cas = tr->x0 % 2;
 
-        v.dn = (int32_t)(rh - (uint32_t)v.sn);
-        v.cas = tr->y0 % 2;
+        vert.dn = (int32_t)(rh - (uint32_t)vert.sn);
+        vert.cas = tr->y0 % 2;
 
         /* Get the sub-band coordinates for the window of interest */
         /* LL band */
@@ -1383,14 +1348,14 @@ static bool decode_partial_tile_53( TileComponent* tilec,
         win_lh_y0 = uint_subs(win_lh_y0, tr_lh_y0);
         win_lh_y1 = uint_subs(win_lh_y1, tr_lh_y0);
 
-        segment_grow(filter_width, (uint32_t)h.sn, &win_ll_x0, &win_ll_x1);
-        segment_grow(filter_width, (uint32_t)h.dn, &win_hl_x0, &win_hl_x1);
+        segment_grow(filter_width, (uint32_t)horiz.sn, &win_ll_x0, &win_ll_x1);
+        segment_grow(filter_width, (uint32_t)horiz.dn, &win_hl_x0, &win_hl_x1);
 
-        segment_grow(filter_width, (uint32_t)v.sn, &win_ll_y0, &win_ll_y1);
-        segment_grow(filter_width, (uint32_t)v.dn, &win_lh_y0, &win_lh_y1);
+        segment_grow(filter_width, (uint32_t)vert.sn, &win_ll_y0, &win_ll_y1);
+        segment_grow(filter_width, (uint32_t)vert.dn, &win_lh_y0, &win_lh_y1);
 
         /* Compute the tile-resolution-based coordinates for the window of interest */
-        if (h.cas == 0) {
+        if (horiz.cas == 0) {
             win_tr_x0 = min<uint32_t>(2 * win_ll_x0, 2 * win_hl_x0 + 1);
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_ll_x1, 2 * win_hl_x1 + 1), rw);
         } else {
@@ -1398,7 +1363,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
             win_tr_x1 = min<uint32_t>(max<uint32_t>(2 * win_hl_x1, 2 * win_ll_x1 + 1), rw);
         }
 
-        if (v.cas == 0) {
+        if (vert.cas == 0) {
             win_tr_y0 = min<uint32_t>(2 * win_ll_y0, 2 * win_lh_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_ll_y1, 2 * win_lh_y1 + 1), rh);
         } else {
@@ -1406,9 +1371,13 @@ static bool decode_partial_tile_53( TileComponent* tilec,
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll_y1 + 1), rh);
         }
 
+        horiz.win_l_x0 = win_ll_x0;
+        horiz.win_l_x1 = win_ll_x1;
+        horiz.win_h_x0 = win_hl_x0;
+        horiz.win_h_x1 = win_hl_x1;
         for (j = 0; j < rh; ++j) {
             if ((j >= win_ll_y0 && j < win_ll_y1) ||
-                    (j >= win_lh_y0 + (uint32_t)v.sn && j < win_lh_y1 + (uint32_t)v.sn)) {
+                    (j >= win_lh_y0 + (uint32_t)vert.sn && j < win_lh_y1 + (uint32_t)vert.sn)) {
 
                 /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
                 /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
@@ -1416,69 +1385,55 @@ static bool decode_partial_tile_53( TileComponent* tilec,
                 /* This is less extreme than memsetting the whole buffer to 0 */
                 /* although we could potentially do better with better handling of edge conditions */
                 if (win_tr_x1 >= 1 && win_tr_x1 < rw)
-                    h.mem[win_tr_x1 - 1] = 0;
+                    horiz.mem[win_tr_x1 - 1] = 0;
                 if (win_tr_x1 < rw)
-                    h.mem[win_tr_x1] = 0;
+                    horiz.mem[win_tr_x1] = 0;
 
-                interleave_partial_h_53(h.mem,
-                                             h.cas,
-                                             sa,
-                                             j,
-                                             (uint32_t)h.sn,
-                                             win_ll_x0,
-                                             win_ll_x1,
-                                             win_hl_x0,
-                                             win_hl_x1);
-                decode_partial_1_53(h.mem, h.dn, h.sn, h.cas,
-                                         (int32_t)win_ll_x0,
-                                         (int32_t)win_ll_x1,
-                                         (int32_t)win_hl_x0,
-                                         (int32_t)win_hl_x1);
+                interleave_partial_h_53(&horiz,  sa, j);
+                decode_partial_1_53(&horiz);
                 if (!sparse_array_write(sa,
-                                                  win_tr_x0, j,
-                                                  win_tr_x1, j + 1,
-                                                  h.mem + win_tr_x0,
-                                                  1, 0, true)) {
+									  win_tr_x0,
+									  j,
+									  win_tr_x1,
+									  j + 1,
+									  horiz.mem + win_tr_x0,
+									  1,
+									  0,
+									  true)) {
                     GROK_ERROR("Partial decode: unable to write to sparse array");
                     sparse_array_free(sa);
-                    grk_aligned_free(h.mem);
+                    horiz.release();
                     return false;
                 }
             }
         }
 
+        vert.win_l_x0 = win_ll_y0;
+        vert.win_l_x1 = win_ll_y1;
+        vert.win_h_x0 = win_lh_y0;
+        vert.win_h_x1 = win_lh_y1;
         for (i = win_tr_x0; i < win_tr_x1;) {
             uint32_t nb_cols = min<uint32_t>(4U, win_tr_x1 - i);
-            interleave_partial_v_53(v.mem,
-                                         v.cas,
-                                         sa,
-                                         i,
-                                         nb_cols,
-                                         (uint32_t)v.sn,
-                                         win_ll_y0,
-                                         win_ll_y1,
-                                         win_lh_y0,
-                                         win_lh_y1);
-            decode_partial_1_parallel_53(v.mem, nb_cols, v.dn, v.sn, v.cas,
-                                              (int32_t)win_ll_y0,
-                                              (int32_t)win_ll_y1,
-                                              (int32_t)win_lh_y0,
-                                              (int32_t)win_lh_y1);
+            interleave_partial_v_53(&vert, sa, i, nb_cols);
+            decode_partial_1_parallel_53(&vert, nb_cols);
             if (!sparse_array_write(sa,
-								  i, win_tr_y0,
-								  i + nb_cols, win_tr_y1,
-								  v.mem + 4 * win_tr_y0,
-								  1, 4, true)) {
+								  i,
+								  win_tr_y0,
+								  i + nb_cols,
+								  win_tr_y1,
+								  vert.mem + 4 * win_tr_y0,
+								  1,
+								  4,
+								  true)) {
                 GROK_ERROR("Partial decode: unable to write to sparse array");
                 sparse_array_free(sa);
-                grk_aligned_free(h.mem);
+                horiz.release();
                 return false;
             }
 
             i += nb_cols;
         }
     }
-    grk_aligned_free(h.mem);
 	bool ret = sparse_array_read(sa,
 				   tr_max->win_x0 - (uint32_t)tr_max->x0,
 				   tr_max->win_y0 - (uint32_t)tr_max->y0,
@@ -1490,6 +1445,7 @@ static bool decode_partial_tile_53( TileComponent* tilec,
 	assert(ret);
 	GRK_UNUSED(ret);
     sparse_array_free(sa);
+    horiz.release();
 
     return true;
 }
@@ -1911,7 +1867,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 											j < (num_jobs - 1U) ? (j + 1U) * step_j : rh);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
-					grk_aligned_free(horiz.mem);
+					horiz.release();
 					return false;
 				}
 				results.emplace_back(
@@ -1946,7 +1902,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 								}
 							}
 						}
-						grk_aligned_free(job->data.mem);
+						job->data.release();
 						delete job;
 						return 0;
 					})
@@ -1991,7 +1947,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
             												j < (num_jobs - 1U) ? (j + 1U) * step_j : rw);
 				if (!job->data.alloc(data_size)) {
 					GROK_ERROR("Out of memory");
-					grk_aligned_free(horiz.mem);
+					horiz.release();
 					return false;
 				}
 				results.emplace_back(
@@ -2013,7 +1969,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 							for (uint32_t k = 0; k < rh; ++k)
 								memcpy(&tdp[k * (size_t)w], &job->data.mem[k],(size_t)j * sizeof(float));
 						}
-						grk_aligned_free(job->data.mem);
+						job->data.release();
 						delete job;
 						return 0;
 					})
@@ -2023,7 +1979,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 				result.get();
         }
     }
-    grk_aligned_free(horiz.mem);
+    horiz.release();
 
     return true;
 }
@@ -2032,13 +1988,16 @@ static
 bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
                                    uint32_t numres)
 {
-	dwt_data<v4_data> horiz;
-	dwt_data<v4_data> vert;
-    uint32_t resno;
     /* This value matches the maximum left/right extension given in tables */
     /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
     /* we currently use 3. */
     const uint32_t filter_width = 4U;
+    const uint32_t SKIP_H = 4;
+    const uint32_t SKIP_V = 4;
+
+	dwt_data<v4_data> horiz;
+	dwt_data<v4_data> vert;
+    uint32_t resno;
 
     auto tr = tilec->resolutions;
     auto tr_max = &(tilec->resolutions[numres - 1]);
@@ -2079,21 +2038,7 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         return true;
     }
 
-    size_t data_size = dwt_utils::max_resolution(tr, numres);
-    /* overflow check */
-    if (data_size > (SIZE_MAX - 5U)) {
-        GROK_ERROR("data size overflow");
-        sparse_array_free(sa);
-        return false;
-    }
-    data_size += 5U;
-    /* overflow check */
-    if (data_size > (SIZE_MAX / sizeof(v4_data))) {
-        GROK_ERROR("data size overflow");
-        sparse_array_free(sa);
-        return false;
-    }
-    if (!horiz.alloc(data_size)) {
+    if (!horiz.alloc(dwt_utils::max_resolution(tr, numres))) {
         GROK_ERROR("Out of memory");
         sparse_array_free(sa);
         return false;
@@ -2112,11 +2057,10 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         /* Tile-resolution sub-band-based coordinates */
         uint32_t tr_ll_x0, tr_ll_y0, tr_hl_x0, tr_lh_y0;
 
-        ++tr;
-
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
 
+        ++tr;
         rw = (uint32_t)(tr->x1 - tr->x0);
         rh = (uint32_t)(tr->y1 - tr->y0);
 
@@ -2184,42 +2128,57 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         horiz.win_l_x1 = win_ll_x1;
         horiz.win_h_x0 = win_hl_x0;
         horiz.win_h_x1 = win_hl_x1;
-        for (j = 0; j + 3 < rh; j += 4) {
-            if ((j + 3 >= win_ll_y0 && j < win_ll_y1) ||
-                    (j + 3 >= win_lh_y0 + (uint32_t)vert.sn &&
+        for (j = 0; j + SKIP_H-1 < rh; j += SKIP_H) {
+            if ((j + SKIP_H-1 >= win_ll_y0 && j < win_ll_y1) ||
+                    (j + SKIP_H-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                      j < win_lh_y1 + (uint32_t)vert.sn)) {
-                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(4U, rh - j));
+
+                /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
+                /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
+                /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
+                /* This is less extreme than memsetting the whole buffer to 0 */
+                /* although we could potentially do better with better handling of edge conditions */
+                if (win_tr_x1 >= 1 && win_tr_x1 < rw)
+                    horiz.mem[win_tr_x1 - 1] = {0,0,0,0};
+                if (win_tr_x1 < rw)
+                    horiz.mem[win_tr_x1] = {0,0,0,0};
+
+                interleave_partial_h_97(&horiz, sa, j, min<uint32_t>(SKIP_H, rh - j));
                 decode_step_97(&horiz);
                 if (!sparse_array_write(sa,
-									  win_tr_x0, j,
-									  win_tr_x1, j + 4,
-									  (int32_t*)&horiz.mem[win_tr_x0].f[0],
-									  4,
+									  win_tr_x0,
+									  j,
+									  win_tr_x1,
+									  j + SKIP_H,
+									  (int32_t*)&horiz.mem[win_tr_x0],
+									  SKIP_H,
 									  1,
 									  true)) {
                     GROK_ERROR("sparse array write failure");
                     sparse_array_free(sa);
-                    grk_aligned_free(horiz.mem);
+                    horiz.release();
                     return false;
                 }
             }
         }
         if (j < rh &&
-                ((j + 3 >= win_ll_y0 && j < win_ll_y1) ||
-                 (j + 3 >= win_lh_y0 + (uint32_t)vert.sn &&
+                ((j + SKIP_H-1 >= win_ll_y0 && j < win_ll_y1) ||
+                 (j + SKIP_H-1 >= win_lh_y0 + (uint32_t)vert.sn &&
                   j < win_lh_y1 + (uint32_t)vert.sn))) {
             interleave_partial_h_97(&horiz, sa, j, rh - j);
             decode_step_97(&horiz);
             if (!sparse_array_write(sa,
-								  win_tr_x0, j,
-								  win_tr_x1, rh,
-								  (int32_t*)&horiz.mem[win_tr_x0].f[0],
-								  4,
+								  win_tr_x0,
+								  j,
+								  win_tr_x1,
+								  rh,
+								  (int32_t*)&horiz.mem[win_tr_x0],
+								  SKIP_H,
 								  1,
 								  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
-                grk_aligned_free(horiz.mem);
+                horiz.release();
                 return false;
             }
         }
@@ -2227,37 +2186,42 @@ bool decode_partial_tile_97(TileComponent* GRK_RESTRICT tilec,
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
-        for (j = win_tr_x0; j < win_tr_x1; j += 4) {
-            uint32_t nb_elts = min<uint32_t>(4U, win_tr_x1 - j);
+        for (j = win_tr_x0; j < win_tr_x1; j += SKIP_V) {
+            uint32_t nb_elts = min<uint32_t>(SKIP_V, win_tr_x1 - j);
 
             interleave_partial_v_97(&vert, sa, j, nb_elts);
             decode_step_97(&vert);
             if (!sparse_array_write(sa,
-									  j, win_tr_y0,
-									  j + nb_elts, win_tr_y1,
-									  (int32_t*)&horiz.mem[win_tr_y0].f[0],
+									  j,
+									  win_tr_y0,
+									  j + nb_elts,
+									  win_tr_y1,
+									  (int32_t*)&horiz.mem[win_tr_y0],
 									  1,
-									  4,
+									  SKIP_V,
 									  true)) {
                 GROK_ERROR("Sparse array write failure");
                 sparse_array_free(sa);
-                grk_aligned_free(horiz.mem);
+                horiz.release();
                 return false;
             }
         }
     }
+
+    //final read into tile buffer
 	bool ret = sparse_array_read(sa,
 							   tr_max->win_x0 - (uint32_t)tr_max->x0,
 							   tr_max->win_y0 - (uint32_t)tr_max->y0,
 							   tr_max->win_x1 - (uint32_t)tr_max->x0,
 							   tr_max->win_y1 - (uint32_t)tr_max->y0,
 							   tilec->buf->get_ptr(0,0,0,0),
-							   1, tr_max->win_x1 - tr_max->win_x0,
+							   1,
+							   tr_max->win_x1 - tr_max->win_x0,
 							   true);
 	assert(ret);
 	GRK_UNUSED(ret);
     sparse_array_free(sa);
-    grk_aligned_free(horiz.mem);
+    horiz.release();
 
     return true;
 }
