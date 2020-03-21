@@ -1934,7 +1934,9 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         return true;
     }
 
-    size_t data_size = dwt_utils::max_resolution(tr, numres);
+    // in 53 vertical pass, we process 4 vertical columns at a time
+    const uint32_t data_multiplier = (sizeof(T) == 4) ? 4 : 1;
+    size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
         sparse_array_free(sa);
