@@ -52,100 +52,81 @@
 #include <cassert>
 #include "grok_includes.h"
 #include "sparse_array.h"
+#include <exception>
 
 using namespace std;
 
 using namespace grk;
 
-struct sparse_array {
-    uint32_t width;
-    uint32_t height;
-    uint32_t block_width;
-    uint32_t block_height;
-    uint32_t block_count_hor;
-    uint32_t block_count_ver;
-    int32_t** data_blocks;
-};
 
-sparse_array* sparse_array_create(uint32_t width,
-        uint32_t height,
-        uint32_t block_width,
-        uint32_t block_height)
+sparse_array::sparse_array(uint32_t width,
+							uint32_t height,
+							uint32_t block_width,
+							uint32_t block_height) :
+									width(width),
+									height(height),
+									block_width(block_width),
+									block_height(block_height)
 {
     if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
-        return NULL;
+    	throw new std::exception();
     }
-
-    auto sa = (sparse_array*) grk_calloc(1,sizeof(sparse_array));
-    sa->width = width;
-    sa->height = height;
-    sa->block_width = block_width;
-    sa->block_height = block_height;
-    sa->block_count_hor = ceildiv<uint32_t>(width, block_width);
-    sa->block_count_ver = ceildiv<uint32_t>(height, block_height);
-    sa->data_blocks = (int32_t**) grk_calloc((uint64_t)sa->block_count_hor * sa->block_count_ver,sizeof(int32_t*));
-    if (sa->data_blocks == NULL) {
+    block_count_hor = ceildiv<uint32_t>(width, block_width);
+    block_count_ver = ceildiv<uint32_t>(height, block_height);
+    data_blocks = (int32_t**) grk_calloc((uint64_t)block_count_hor * block_count_ver,sizeof(int32_t*));
+    if (data_blocks == NULL) {
     	GROK_ERROR("Out of memory");
-        grok_free(sa);
-        return NULL;
+    	throw new std::exception();
     }
-
-    return sa;
 }
 
-void sparse_array_free(sparse_array* sa)
+sparse_array::~sparse_array()
 {
-    if (sa) {
-        for (uint32_t i = 0; i < (uint64_t)sa->block_count_hor * sa->block_count_ver; i++) {
-            if (sa->data_blocks[i]) {
-                grok_free(sa->data_blocks[i]);
-            }
-        }
-        grok_free(sa->data_blocks);
-        grok_free(sa);
-    }
+	for (uint32_t i = 0; i < (uint64_t)block_count_hor * block_count_ver; i++) {
+		if (data_blocks[i]) {
+			grok_free(data_blocks[i]);
+		}
+	}
+	grok_free(data_blocks);
 }
 
-bool sparse_array_is_region_valid(const sparse_array* sa,
+bool sparse_array::is_region_valid(
         uint32_t x0,
         uint32_t y0,
         uint32_t x1,
         uint32_t y1)
 {
-    return !(x0 >= sa->width || x1 <= x0 || x1 > sa->width ||
-             y0 >= sa->height || y1 <= y0 || y1 > sa->height);
+    return !(x0 >= width || x1 <= x0 || x1 > width ||
+             y0 >= height || y1 <= y0 || y1 > height);
 }
-bool sparse_array_alloc(sparse_array* sa,
-                                      uint32_t x0,
+bool sparse_array::alloc(             uint32_t x0,
                                       uint32_t y0,
                                       uint32_t x1,
                                       uint32_t y1){
     uint32_t y_incr = 0;
-    const uint32_t block_width = sa->block_width;
-
-    if (!sparse_array_is_region_valid(sa, x0, y0, x1, y1))
+    if (!sparse_array::is_region_valid(x0, y0, x1, y1))
         return true;
 
-    uint32_t block_y = y0 / sa->block_height;
+    uint32_t block_y = y0 / block_height;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
         uint32_t x, block_x;
         uint32_t x_incr = 0;
-        y_incr = (y == y0) ? sa->block_height - (y0 % sa->block_height) :
-                 sa->block_height;
+        y_incr = (y == y0) ? block_height - (y0 % block_height) :
+                 block_height;
         y_incr = min<uint32_t>(y_incr, y1 - y);
         block_x = x0 / block_width;
         for (x = x0; x < x1; block_x ++, x += x_incr) {
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
             x_incr = min<uint32_t>(x_incr, x1 - x);
-            auto src_block = sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x];
+            auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
 			if (src_block == NULL) {
-				src_block = (int32_t*) grk_calloc((uint64_t)sa->block_width * sa->block_height,
+				src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
 													 sizeof(int32_t));
 				if (src_block == NULL) {
 					GROK_ERROR("Out of memory");
 					return false;
 				}
-				sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x] = src_block;
+				data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;
 			}
         }
     }
@@ -153,8 +134,7 @@ bool sparse_array_alloc(sparse_array* sa,
     return true;
 }
 
-static bool sparse_array_read_or_write(const sparse_array* sa,
-										uint32_t x0,
+bool sparse_array::read_or_write(uint32_t x0,
 										uint32_t y0,
 										uint32_t x1,
 										uint32_t y1,
@@ -164,25 +144,23 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
 										bool forgiving,
 										bool is_read_op){
     uint32_t y_incr = 0;
-    const uint32_t block_width = sa->block_width;
-
-    if (!sparse_array_is_region_valid(sa, x0, y0, x1, y1))
+    if (!is_region_valid(x0, y0, x1, y1))
         return forgiving;
 
-    uint32_t block_y = y0 / sa->block_height;
+    uint32_t block_y = y0 / block_height;
     for (uint32_t y = y0; y < y1; block_y ++, y += y_incr) {
         uint32_t x, block_x;
         uint32_t x_incr = 0;
-        y_incr = (y == y0) ? sa->block_height - (y0 % sa->block_height) :
-                 sa->block_height;
-        uint32_t block_y_offset = sa->block_height - y_incr;
+        y_incr = (y == y0) ? block_height - (y0 % block_height) :
+                 block_height;
+        uint32_t block_y_offset = block_height - y_incr;
         y_incr = min<uint32_t>(y_incr, y1 - y);
         block_x = x0 / block_width;
         for (x = x0; x < x1; block_x ++, x += x_incr) {
             x_incr = (x == x0) ? block_width - (x0 % block_width) : block_width;
             uint32_t block_x_offset = block_width - x_incr;
             x_incr = min<uint32_t>(x_incr, x1 - x);
-            auto src_block = sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x];
+            auto src_block = data_blocks[(uint64_t)block_y * block_count_hor + block_x];
             if (is_read_op) {
                 if (src_block == NULL) { // if block is NULL, then zero out destination
                     if (buf_col_stride == 1) {
@@ -273,13 +251,13 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
             	//all blocks should be allocated first before read/write is called
                 assert(src_block);
                 if (src_block == NULL) {
-                    src_block = (int32_t*) grk_calloc((uint64_t)sa->block_width * sa->block_height,
+                    src_block = (int32_t*) grk_calloc((uint64_t)block_width * block_height,
                                                          sizeof(int32_t));
                     if (src_block == NULL) {
                     	GROK_ERROR("Out of memory");
                         return false;
                     }
-                    sa->data_blocks[(uint64_t)block_y * sa->block_count_hor + block_x] = src_block;
+                    data_blocks[(uint64_t)block_y * block_count_hor + block_x] = src_block;
                 }
 
                 if (buf_col_stride == 1) {
@@ -345,36 +323,33 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
     return true;
 }
 
-bool sparse_array_read(const sparse_array* sa,
-                                     uint32_t x0,
-                                     uint32_t y0,
-                                     uint32_t x1,
-                                     uint32_t y1,
-                                     int32_t* dest,
-                                     uint32_t dest_col_stride,
-                                     uint32_t dest_line_stride,
-                                     bool forgiving)
+bool sparse_array::read(uint32_t x0,
+						 uint32_t y0,
+						 uint32_t x1,
+						 uint32_t y1,
+						 int32_t* dest,
+						 uint32_t dest_col_stride,
+						 uint32_t dest_line_stride,
+						 bool forgiving)
 {
-    return sparse_array_read_or_write(
-               (sparse_array*)sa, x0, y0, x1, y1,
-               dest,
-               dest_col_stride,
-               dest_line_stride,
-               forgiving,
-               true);
+    return read_or_write( x0, y0, x1, y1,
+						   dest,
+						   dest_col_stride,
+						   dest_line_stride,
+						   forgiving,
+						   true);
 }
 
-bool sparse_array_write(sparse_array* sa,
-                                      uint32_t x0,
-                                      uint32_t y0,
-                                      uint32_t x1,
-                                      uint32_t y1,
-                                      const int32_t* src,
-                                      uint32_t src_col_stride,
-                                      uint32_t src_line_stride,
-                                      bool forgiving)
+bool sparse_array::write(uint32_t x0,
+					  uint32_t y0,
+					  uint32_t x1,
+					  uint32_t y1,
+					  const int32_t* src,
+					  uint32_t src_col_stride,
+					  uint32_t src_line_stride,
+					  bool forgiving)
 {
-    return sparse_array_read_or_write(sa, x0, y0, x1, y1,
+    return read_or_write(x0, y0, x1, y1,
             (int32_t*)src,
             src_col_stride,
             src_line_stride,

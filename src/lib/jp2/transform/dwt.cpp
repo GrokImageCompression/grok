@@ -875,17 +875,15 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 	uint32_t win_h_x0 = dwt->win_h_x0;
 	uint32_t win_h_x1 = dwt->win_h_x1;
 
-    bool ret = sparse_array_read(sa,
-                                      win_l_x0, sa_line,
-                                      win_l_x1, sa_line + 1,
-                                      dest + cas + 2 * win_l_x0,
-                                      2, 0, true);
+    bool ret = sa->read( win_l_x0, sa_line,
+					  win_l_x1, sa_line + 1,
+					  dest + cas + 2 * win_l_x0,
+					  2, 0, true);
     assert(ret);
-    ret = sparse_array_read(sa,
-                                      sn + win_h_x0, sa_line,
-                                      sn + win_h_x1, sa_line + 1,
-                                      dest + 1 - cas + 2 * win_h_x0,
-                                      2, 0, true);
+    ret = sa->read(sn + win_h_x0, sa_line,
+				  sn + win_h_x1, sa_line + 1,
+				  dest + 1 - cas + 2 * win_h_x0,
+				  2, 0, true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -903,17 +901,15 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 	uint32_t win_h_y0 = vert->win_h_x0;
 	uint32_t win_h_y1 = vert->win_h_x1;
 
-    bool ret = sparse_array_read(sa,
-                                       sa_col, win_l_y0,
-                                       sa_col + nb_cols, win_l_y1,
-                                       dest + cas * 4 + 2 * 4 * win_l_y0,
-                                       1, 2 * 4, true);
+    bool ret = sa->read(sa_col, win_l_y0,
+					   sa_col + nb_cols, win_l_y1,
+					   dest + cas * 4 + 2 * 4 * win_l_y0,
+					   1, 2 * 4, true);
     assert(ret);
-    ret = sparse_array_read(sa,
-                                      sa_col, sn + win_h_y0,
-                                      sa_col + nb_cols, sn + win_h_y1,
-                                      dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
-                                      1, 2 * 4, true);
+    ret = sa->read( sa_col, sn + win_h_y0,
+					  sa_col + nb_cols, sn + win_h_y1,
+					  dest + (1 - cas) * 4 + 2 * 4 * win_h_y0,
+					  1, 2 * 4, true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1194,12 +1190,7 @@ static sparse_array* alloc_sparse_array(TileComponent* tilec,
     auto tr_max = &(tilec->resolutions[numres - 1]);
 	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
 	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
-	auto sa = sparse_array_create(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
-	if (!sa)
-		return nullptr;
-
-    if (sa == nullptr)
-        return nullptr;
+	auto sa = new sparse_array(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
     for (uint32_t resno = 0; resno < numres; ++resno) {
         auto res = &tilec->resolutions[resno];
 
@@ -1227,12 +1218,11 @@ static sparse_array* alloc_sparse_array(TileComponent* tilec,
                             y += (uint32_t)(pres->y1 - pres->y0);
                         }
 
-                        if (!sparse_array_alloc(sa,
-												  x,
-												  y,
-												  x + cblk_w,
-												  y + cblk_h)) {
-                            sparse_array_free(sa);
+                        if (!sa->alloc(x,
+									  y,
+									  x + cblk_w,
+									  y + cblk_h)) {
+                            delete sa;
                             return nullptr;
                         }
                     }
@@ -1276,16 +1266,15 @@ static bool init_sparse_array(	sparse_array* sa,
                             y += (uint32_t)(pres->y1 - pres->y0);
                         }
 
-                        if (!sparse_array_write(sa,
-												  x,
-												  y,
-												  x + cblk_w,
-												  y + cblk_h,
-												  cblk->unencoded_data,
-												  1,
-												  cblk_w,
-												  true)) {
-                            sparse_array_free(sa);
+                        if (!sa->write(x,
+									  y,
+									  x + cblk_w,
+									  y + cblk_h,
+									  cblk->unencoded_data,
+									  1,
+									  cblk_w,
+									  true)) {
+                            delete sa;
                             return false;
                         }
                     }
@@ -1394,23 +1383,21 @@ static void interleave_partial_h_97(dwt_data<v4_data>* dwt,
     uint32_t i;
     for (i = 0; i < num_rows; i++) {
         bool ret;
-        ret = sparse_array_read(sa,
-							  dwt->win_l_x0,
-							  sa_line + i,
-							  dwt->win_l_x1,
-							  sa_line + i + 1,
-							  /* Nasty cast from float* to int32* */
-							  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
-							  8, 0, true);
+        ret = sa->read(dwt->win_l_x0,
+					  sa_line + i,
+					  dwt->win_l_x1,
+					  sa_line + i + 1,
+					  /* Nasty cast from float* to int32* */
+					  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0) + i,
+					  8, 0, true);
         assert(ret);
-        ret = sparse_array_read(sa,
-							  (uint32_t)dwt->sn + dwt->win_h_x0,
-							  sa_line + i,
-							  (uint32_t)dwt->sn + dwt->win_h_x1,
-							  sa_line + i + 1,
-							  /* Nasty cast from float* to int32* */
-							  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
-							  8, 0, true);
+        ret = sa->read((uint32_t)dwt->sn + dwt->win_h_x0,
+					  sa_line + i,
+					  (uint32_t)dwt->sn + dwt->win_h_x1,
+					  sa_line + i + 1,
+					  /* Nasty cast from float* to int32* */
+					  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0) + i,
+					  8, 0, true);
         assert(ret);
         GRK_UNUSED(ret);
     }
@@ -1441,17 +1428,15 @@ static void interleave_partial_v_97(dwt_data<v4_data>* GRK_RESTRICT dwt,
 									uint32_t sa_col,
 									uint32_t nb_elts_read){
     bool ret;
-    ret = sparse_array_read(sa,
-						  sa_col, dwt->win_l_x0,
-						  sa_col + nb_elts_read, dwt->win_l_x1,
-						  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
-						  1, 8, true);
+    ret = sa->read(sa_col, dwt->win_l_x0,
+				  sa_col + nb_elts_read, dwt->win_l_x1,
+				  (int32_t*)(dwt->mem + dwt->cas + 2 * dwt->win_l_x0),
+				  1, 8, true);
     assert(ret);
-    ret = sparse_array_read(sa,
-						  sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
-						  sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
-						  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
-						  1, 8, true);
+    ret = sa->read(sa_col, (uint32_t)dwt->sn + dwt->win_h_x0,
+				  sa_col + nb_elts_read, (uint32_t)dwt->sn + dwt->win_h_x1,
+				  (int32_t*)(dwt->mem + 1 - dwt->cas + 2 * dwt->win_h_x0),
+				  1, 8, true);
     assert(ret);
     GRK_UNUSED(ret);
 }
@@ -1920,8 +1905,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     	return false;
 
     if (numres == 1U) {
-        bool ret = sparse_array_read(sa,
-                       tr_max->win_x0 - (uint32_t)tr_max->x0,
+        bool ret = sa->read(tr_max->win_x0 - (uint32_t)tr_max->x0,
                        tr_max->win_y0 - (uint32_t)tr_max->y0,
                        tr_max->win_x1 - (uint32_t)tr_max->x0,
                        tr_max->win_y1 - (uint32_t)tr_max->y0,
@@ -1930,7 +1914,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
                        true);
         assert(ret);
         GRK_UNUSED(ret);
-        sparse_array_free(sa);
+        delete sa;
         return true;
     }
 
@@ -1939,7 +1923,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
-        sparse_array_free(sa);
+        delete sa;
         return false;
     }
     vert.mem = horiz.mem;
@@ -2037,21 +2021,19 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         						};
 
         // allocate all sparse array blocks in advance
-        if (!sparse_array_alloc(sa,
-								  win_tr_x0,
-								  win_tr_y0,
-								  win_tr_x1,
-								  win_tr_y1)) {
-			 sparse_array_free(sa);
+        if (!sa->alloc(win_tr_x0,
+					  win_tr_y0,
+					  win_tr_x1,
+					  win_tr_y1)) {
+			 delete sa;
 			 return false;
 		 }
 		for (uint32_t k = 0; k < 2; ++k) {
-			 if (!sparse_array_alloc(sa,
-									  win_tr_x0,
-									  bounds[k][0],
-									  win_tr_x1,
-									  bounds[k][1])) {
-				 sparse_array_free(sa);
+			 if (!sa->alloc(win_tr_x0,
+						  bounds[k][0],
+						  win_tr_x1,
+						  bounds[k][1])) {
+				 delete sa;
 				 return false;
 			 }
 		}
@@ -2080,17 +2062,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
 				 decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
 				 decoder.decode_h(&horiz);
-				 if (!sparse_array_write(sa,
-									  win_tr_x0,
-									  j,
-									  win_tr_x1,
-									  j + HORIZ_STEP,
-									  (int32_t*)(horiz.mem + win_tr_x0),
-									  HORIZ_STEP,
-									  1,
-									  true)) {
+				 if (!sa->write( win_tr_x0,
+								  j,
+								  win_tr_x1,
+								  j + HORIZ_STEP,
+								  (int32_t*)(horiz.mem + win_tr_x0),
+								  HORIZ_STEP,
+								  1,
+								  true)) {
 					 GROK_ERROR("sparse array write failure");
-					 sparse_array_free(sa);
+					 delete sa;
 					 horiz.release();
 					 return false;
 				 }
@@ -2098,17 +2079,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			 if (j < bounds[k][1] ) {
 				 decoder.interleave_partial_h(&horiz, sa, j, bounds[k][1] - j);
 				 decoder.decode_h(&horiz);
-				 if (!sparse_array_write(sa,
-									  win_tr_x0,
-									  j,
-									  win_tr_x1,
-									  bounds[k][1],
-									  (int32_t*)(horiz.mem + win_tr_x0),
-									  HORIZ_STEP,
-									  1,
-									  true)) {
+				 if (!sa->write( win_tr_x0,
+								  j,
+								  win_tr_x1,
+								  bounds[k][1],
+								  (int32_t*)(horiz.mem + win_tr_x0),
+								  HORIZ_STEP,
+								  1,
+								  true)) {
 					 GROK_ERROR("Sparse array write failure");
-					 sparse_array_free(sa);
+					 delete sa;
 					 horiz.release();
 					 return false;
 				 }
@@ -2132,17 +2112,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
 						 decoder.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
 						 decoder.decode_h(&job->data);
-						 if (!sparse_array_write(sa,
-											  win_tr_x0,
-											  j,
-											  win_tr_x1,
-											  j + HORIZ_STEP,
-											  (int32_t*)(job->data.mem + win_tr_x0),
-											  HORIZ_STEP,
-											  1,
-											  true)) {
+						 if (!sa->write( win_tr_x0,
+										  j,
+										  win_tr_x1,
+										  j + HORIZ_STEP,
+										  (int32_t*)(job->data.mem + win_tr_x0),
+										  HORIZ_STEP,
+										  1,
+										  true)) {
 							 GROK_ERROR("sparse array write failure");
-							 sparse_array_free(sa);
+							 delete sa;
 							 job->data.release();
 							 return 0;
 						 }
@@ -2150,17 +2129,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					 if (j < job->max_j ) {
 						 decoder.interleave_partial_h(&job->data, sa, j, job->max_j - j);
 						 decoder.decode_h(&job->data);
-						 if (!sparse_array_write(sa,
-											  win_tr_x0,
-											  j,
-											  win_tr_x1,
-											  job->max_j,
-											  (int32_t*)(job->data.mem + win_tr_x0),
-											  HORIZ_STEP,
-											  1,
-											  true)) {
+						 if (!sa->write( win_tr_x0,
+										  j,
+										  win_tr_x1,
+										  job->max_j,
+										  (int32_t*)(job->data.mem + win_tr_x0),
+										  HORIZ_STEP,
+										  1,
+										  true)) {
 							 GROK_ERROR("Sparse array write failure");
-							 sparse_array_free(sa);
+							 delete sa;
 							 job->data.release();
 							 return 0;
 						 }
@@ -2190,17 +2168,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
 				decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
 				decoder.decode_v(&vert);
-				if (!sparse_array_write(sa,
-										  j,
-										  win_tr_y0,
-										  j + VERT_STEP,
-										  win_tr_y1,
-										  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
-										  1,
-										  VERT_STEP,
-										  true)) {
+				if (!sa->write(j,
+							  win_tr_y0,
+							  j + VERT_STEP,
+							  win_tr_y1,
+							  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+							  1,
+							  VERT_STEP,
+							  true)) {
 					GROK_ERROR("Sparse array write failure");
-					sparse_array_free(sa);
+					delete sa;
 					horiz.release();
 					return false;
 				}
@@ -2208,17 +2185,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 			if (j < win_tr_x1) {
 				decoder.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
 				decoder.decode_v(&vert);
-				if (!sparse_array_write(sa,
-										  j,
-										  win_tr_y0,
-										  win_tr_x1,
-										  win_tr_y1,
-										  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
-										  1,
-										  VERT_STEP,
-										  true)) {
+				if (!sa->write( j,
+								  win_tr_y0,
+								  win_tr_x1,
+								  win_tr_y1,
+								  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+								  1,
+								  VERT_STEP,
+								  true)) {
 					GROK_ERROR("Sparse array write failure");
-					sparse_array_free(sa);
+					delete sa;
 					horiz.release();
 					return false;
 				}
@@ -2242,17 +2218,16 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
 						decoder.interleave_partial_v(&job->data, sa, j, VERT_STEP);
 						decoder.decode_v(&job->data);
-						if (!sparse_array_write(sa,
-												  j,
-												  win_tr_y0,
-												  j + VERT_STEP,
-												  win_tr_y1,
-												  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
-												  1,
-												  VERT_STEP,
-												  true)) {
+						if (!sa->write(j,
+									  win_tr_y0,
+									  j + VERT_STEP,
+									  win_tr_y1,
+									  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
+									  1,
+									  VERT_STEP,
+									  true)) {
 							GROK_ERROR("Sparse array write failure");
-							sparse_array_free(sa);
+							delete sa;
 							job->data.release();
 							return 0;
 						}
@@ -2260,8 +2235,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					 if (j <  job->max_j) {
 						decoder.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
 						decoder.decode_v(&job->data);
-						if (!sparse_array_write(sa,
-												  j,
+						if (!sa->write(			  j,
 												  win_tr_y0,
 												  job->max_j,
 												  win_tr_y1,
@@ -2270,7 +2244,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 												  VERT_STEP,
 												  true)) {
 							GROK_ERROR("Sparse array write failure");
-							sparse_array_free(sa);
+							delete sa;
 							job->data.release();
 							return 0;
 						}
@@ -2288,8 +2262,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     }
 
     //final read into tile buffer
-	bool ret = sparse_array_read(sa,
-							   tr_max->win_x0 - (uint32_t)tr_max->x0,
+	bool ret = sa->read(	   tr_max->win_x0 - (uint32_t)tr_max->x0,
 							   tr_max->win_y0 - (uint32_t)tr_max->y0,
 							   tr_max->win_x1 - (uint32_t)tr_max->x0,
 							   tr_max->win_y1 - (uint32_t)tr_max->y0,
@@ -2299,7 +2272,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 							   true);
 	assert(ret);
 	GRK_UNUSED(ret);
-    sparse_array_free(sa);
+    delete sa;
     horiz.release();
 
     return true;

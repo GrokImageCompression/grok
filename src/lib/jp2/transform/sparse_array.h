@@ -65,99 +65,125 @@ be used. If blocks are too small, the book-keeping costs of blocks will rise.
 /** @defgroup SPARSE_ARRAY SPARSE ARRAYS - Sparse arrays */
 /*@{*/
 
-/** Opaque type for sparse arrays that contain int32 values */
-struct sparse_array;
+class sparse_array {
 
-/** Creates a new sparse array.
- * @param width total width of the array.
- * @param height total height of the array
- * @param block_width width of a block.
- * @param block_height height of a block.
- * @return a new sparse array instance, or NULL in case of failure.
- */
-sparse_array* sparse_array_create(uint32_t width,
-									uint32_t height,
-									uint32_t block_width,
-									uint32_t block_height);
+public:
 
-/** Frees a sparse array.
- * @param sa sparse array instance.
- */
-void sparse_array_free(sparse_array* sa);
+	/** Creates a new sparse array.
+	 * @param width total width of the array.
+	 * @param height total height of the array
+	 * @param block_width width of a block.
+	 * @param block_height height of a block.
+	 * @return a new sparse array instance, or NULL in case of failure.
+	 */
+	sparse_array(uint32_t width,
+					uint32_t height,
+					uint32_t block_width,
+					uint32_t block_height);
 
-/** Returns whether region bounds are valid (non empty and within array bounds)
- * @param sa sparse array instance.
- * @param x0 left x coordinate of the region.
- * @param y0 top x coordinate of the region.
- * @param x1 right x coordinate (not included) of the region. Must be greater than x0.
- * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
- * @return true or false.
- */
-bool sparse_array_is_region_valid(const sparse_array* sa,
-									uint32_t x0,
-									uint32_t y0,
-									uint32_t x1,
-									uint32_t y1);
+	/** Frees a sparse array.
+	 * @param sa sparse array instance.
+	 */
+	~sparse_array();
 
-/** Read the content of a rectangular region of the sparse array into a
- * user buffer.
- *
- * Regions not written with sparse_array_write() are read as 0.
- *
- * @param sa sparse array instance.
- * @param x0 left x coordinate of the region to read in the sparse array.
- * @param y0 top x coordinate of the region to read in the sparse array.
- * @param x1 right x coordinate (not included) of the region to read in the sparse array. Must be greater than x0.
- * @param y1 bottom y coordinate (not included) of the region to read in the sparse array. Must be greater than y0.
- * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
- * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
- * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
- * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
- * @return true in case of success.
- */
-bool sparse_array_read(const sparse_array* sa,
-                                     uint32_t x0,
-                                     uint32_t y0,
-                                     uint32_t x1,
-                                     uint32_t y1,
-                                     int32_t* dest,
-                                     uint32_t dest_col_stride,
-                                     uint32_t dest_line_stride,
-                                     bool forgiving);
+	/** Read the content of a rectangular region of the sparse array into a
+	 * user buffer.
+	 *
+	 * Regions not written with write() are read as 0.
+	 *
+	 * @param x0 left x coordinate of the region to read in the sparse array.
+	 * @param y0 top x coordinate of the region to read in the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to read in the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to read in the sparse array. Must be greater than y0.
+	 * @param dest user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * dest_line_stride + (x1 - x0 - 1) * dest_col_stride + 1) bytes large.
+	 * @param dest_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param dest_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	bool read(              uint32_t x0,
+							 uint32_t y0,
+							 uint32_t x1,
+							 uint32_t y1,
+							 int32_t* dest,
+							 uint32_t dest_col_stride,
+							 uint32_t dest_line_stride,
+							 bool forgiving);
 
 
-/** Write the content of a rectangular region into the sparse array from a
- * user buffer.
- *
- * Blocks intersecting the region are allocated, if not already done.
- *
- * @param sa sparse array instance.
- * @param x0 left x coordinate of the region to write into the sparse array.
- * @param y0 top x coordinate of the region to write into the sparse array.
- * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
- * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
- * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
- * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
- * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
- * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
- * @return true in case of success.
- */
-bool sparse_array_write(sparse_array* sa,
-                                      uint32_t x0,
-                                      uint32_t y0,
-                                      uint32_t x1,
-                                      uint32_t y1,
-                                      const int32_t* src,
-                                      uint32_t src_col_stride,
-                                      uint32_t src_line_stride,
-                                      bool forgiving);
+	/** Write the content of a rectangular region into the sparse array from a
+	 * user buffer.
+	 *
+	 * Blocks intersecting the region are allocated, if not already done.
+	 *
+	 * @param x0 left x coordinate of the region to write into the sparse array.
+	 * @param y0 top x coordinate of the region to write into the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @param src user buffer to fill. Must be at least sizeof(int32) * ( (y1 - y0 - 1) * src_line_stride + (x1 - x0 - 1) * src_col_stride + 1) bytes large.
+	 * @param src_col_stride spacing (in elements, not in bytes) in x dimension between consecutive elements of the user buffer.
+	 * @param src_line_stride spacing (in elements, not in bytes) in y dimension between consecutive elements of the user buffer.
+	 * @param forgiving if set to TRUE and the region is invalid, true will still be returned.
+	 * @return true in case of success.
+	 */
+	bool write(              uint32_t x0,
+							  uint32_t y0,
+							  uint32_t x1,
+							  uint32_t y1,
+							  const int32_t* src,
+							  uint32_t src_col_stride,
+							  uint32_t src_line_stride,
+							  bool forgiving);
 
+	/** Allocate all blocks for a rectangular region into the sparse array from a
+	 * user buffer.
+	 *
+	 * Blocks intersecting the region are allocated
+	 *
+	 * @param x0 left x coordinate of the region to write into the sparse array.
+	 * @param y0 top x coordinate of the region to write into the sparse array.
+	 * @param x1 right x coordinate (not included) of the region to write into the sparse array. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region to write into the sparse array. Must be greater than y0.
+	 * @return true in case of success.
+	 */
+	bool alloc(              uint32_t x0,
+							  uint32_t y0,
+							  uint32_t x1,
+							  uint32_t y1);
 
-bool sparse_array_alloc(sparse_array* sa,
-                                      uint32_t x0,
-                                      uint32_t y0,
-                                      uint32_t x1,
-                                      uint32_t y1);
+private:
+
+	/** Returns whether region bounds are valid (non empty and within array bounds)
+	 * @param x0 left x coordinate of the region.
+	 * @param y0 top x coordinate of the region.
+	 * @param x1 right x coordinate (not included) of the region. Must be greater than x0.
+	 * @param y1 bottom y coordinate (not included) of the region. Must be greater than y0.
+	 * @return true or false.
+	 */
+	bool is_region_valid(	uint32_t x0,
+							uint32_t y0,
+							uint32_t x1,
+							uint32_t y1);
+
+	bool read_or_write(uint32_t x0,
+						uint32_t y0,
+						uint32_t x1,
+						uint32_t y1,
+						int32_t* buf,
+						uint32_t buf_col_stride,
+						uint32_t buf_line_stride,
+						bool forgiving,
+						bool is_read_op);
+
+	uint32_t width;
+    uint32_t height;
+    uint32_t block_width;
+    uint32_t block_height;
+    uint32_t block_count_hor;
+    uint32_t block_count_ver;
+    int32_t** data_blocks;
+};
+
 
 
 /*@}*/
