@@ -270,6 +270,8 @@ static bool sparse_array_read_or_write(const sparse_array* sa,
                     }
                 }
             } else {
+            	//all blocks should be allocated first before read/write is called
+                assert(src_block);
                 if (src_block == NULL) {
                     src_block = (int32_t*) grk_calloc((uint64_t)sa->block_width * sa->block_height,
                                                          sizeof(int32_t));

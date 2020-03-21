@@ -88,7 +88,22 @@ template <typename T> struct dwt_data {
 				 win_h_x0(0),
 				 win_h_x1(0)
 	{}
+
+	dwt_data(const dwt_data& rhs)
+	{
+		mem = nullptr;
+	    dn = rhs.dn;
+	    sn = rhs.sn;
+	    cas = rhs.cas;
+	    win_l_x0 = rhs.win_l_x0;
+	    win_l_x1 = rhs.win_l_x1;
+	    win_h_x0 = rhs.win_h_x0;
+	    win_h_x1 = rhs.win_h_x1;
+	}
+
 	bool alloc(size_t len) {
+		release();
+
 	    /* overflow check */
 		// add 10 just to be sure to we are safe from
 		// segment growth overflow
@@ -214,7 +229,9 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 
 #endif
 
-static sparse_array* init_sparse_array(	TileComponent* tilec,
+static sparse_array* alloc_sparse_array(TileComponent* tilec,
+												uint32_t numres);
+static bool init_sparse_array(sparse_array* a,TileComponent* tilec,
 												uint32_t numres);
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
@@ -1171,7 +1188,8 @@ static void segment_grow(uint32_t filter_width,
     *end = min<uint32_t>(*end, max_size);
 }
 
-static sparse_array* init_sparse_array(	TileComponent* tilec,
+
+static sparse_array* alloc_sparse_array(TileComponent* tilec,
 												uint32_t numres){
     auto tr_max = &(tilec->resolutions[numres - 1]);
 	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
@@ -1209,15 +1227,11 @@ static sparse_array* init_sparse_array(	TileComponent* tilec,
                             y += (uint32_t)(pres->y1 - pres->y0);
                         }
 
-                        if (!sparse_array_write(sa,
+                        if (!sparse_array_alloc(sa,
 												  x,
 												  y,
 												  x + cblk_w,
-												  y + cblk_h,
-												  cblk->unencoded_data,
-												  1,
-												  cblk_w,
-												  true)) {
+												  y + cblk_h)) {
                             sparse_array_free(sa);
                             return nullptr;
                         }
@@ -1228,6 +1242,59 @@ static sparse_array* init_sparse_array(	TileComponent* tilec,
     }
 
     return sa;
+}
+
+
+static bool init_sparse_array(	sparse_array* sa,
+									TileComponent* tilec,uint32_t numres){
+	if (!sa)
+		return false;
+    for (uint32_t resno = 0; resno < numres; ++resno) {
+        auto res = &tilec->resolutions[resno];
+
+        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+            auto band = &res->bands[bandno];
+
+            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
+                auto precinct = &band->precincts[precno];
+
+                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
+                    auto cblk = &precinct->cblks.dec[cblkno];
+
+                    if (cblk->unencoded_data != nullptr) {
+                        uint32_t x = (uint32_t)(cblk->x0 - band->x0);
+                        uint32_t y = (uint32_t)(cblk->y0 - band->y0);
+                        uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
+                        uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+
+                        if (band->bandno & 1) {
+                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
+                            x += (uint32_t)(pres->x1 - pres->x0);
+                        }
+                        if (band->bandno & 2) {
+                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
+                            y += (uint32_t)(pres->y1 - pres->y0);
+                        }
+
+                        if (!sparse_array_write(sa,
+												  x,
+												  y,
+												  x + cblk_w,
+												  y + cblk_h,
+												  cblk->unencoded_data,
+												  1,
+												  cblk_w,
+												  true)) {
+                            sparse_array_free(sa);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 
@@ -1846,9 +1913,11 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
         return true;
 
-    auto sa = init_sparse_array(tilec, numres);
-    if (sa == nullptr)
+    auto sa = alloc_sparse_array(tilec, numres);
+    if (!sa)
         return false;
+    if (!init_sparse_array(sa, tilec, numres))
+    	return false;
 
     if (numres == 1U) {
         bool ret = sparse_array_read(sa,
@@ -1865,13 +1934,15 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
         return true;
     }
 
-    if (!horiz.alloc(dwt_utils::max_resolution(tr, numres))) {
+    size_t data_size = dwt_utils::max_resolution(tr, numres);
+    if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
         sparse_array_free(sa);
         return false;
     }
     vert.mem = horiz.mem;
     D decoder;
+    size_t num_threads = Scheduler::g_tp->num_threads();
 
     for (resno = 1; resno < numres; resno ++) {
         uint32_t j;
@@ -1952,11 +2023,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
             win_tr_y0 = min<uint32_t>(2 * win_lh_y0, 2 * win_ll_y0 + 1);
             win_tr_y1 = min<uint32_t>(max<uint32_t>(2 * win_lh_y1, 2 * win_ll_y1 + 1), rh);
         }
-        horiz.win_l_x0 = win_ll_x0;
-        horiz.win_l_x1 = win_ll_x1;
-        horiz.win_h_x0 = win_hl_x0;
-        horiz.win_h_x1 = win_hl_x1;
-
         // two windows only overlap at most at the boundary
         uint32_t bounds[2][2] ={
         						{
@@ -1968,23 +2034,51 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 							      min<uint32_t>(win_lh_y1 + (uint32_t)vert.sn, rh)}
         						};
 
-        for (j = 0; j + HORIZ_STEP-1 < rh; j += HORIZ_STEP) {
-            if ((j >= bounds[0][0] && j < bounds[0][1]) ||
-            		(j >= bounds[1][0] && j < bounds[1][1])) {
+        // allocate all sparse array blocks in advance
+        if (!sparse_array_alloc(sa,
+								  win_tr_x0,
+								  win_tr_y0,
+								  win_tr_x1,
+								  win_tr_y1)) {
+			 sparse_array_free(sa);
+			 return false;
+		 }
+		for (uint32_t k = 0; k < 2; ++k) {
+			 if (!sparse_array_alloc(sa,
+									  win_tr_x0,
+									  bounds[k][0],
+									  win_tr_x1,
+									  bounds[k][1])) {
+				 sparse_array_free(sa);
+				 return false;
+			 }
+		}
 
-                /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
-                /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
-                /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
-                /* This is less extreme than memsetting the whole buffer to 0 */
-                /* although we could potentially do better with better handling of edge conditions */
-                if (win_tr_x1 >= 1 && win_tr_x1 < rw)
-                    horiz.mem[win_tr_x1 - 1] = 0;
-                if (win_tr_x1 < rw)
-                    horiz.mem[win_tr_x1] = 0;
+        horiz.win_l_x0 = win_ll_x0;
+        horiz.win_l_x1 = win_ll_x1;
+        horiz.win_h_x0 = win_hl_x0;
+        horiz.win_h_x1 = win_hl_x1;
+		for (uint32_t k = 0; k < 2; ++k) {
+	        /* Avoids dwt.c:1584:44 (in dwt_decode_partial_1): runtime error: */
+	        /* signed integer overflow: -1094795586 + -1094795586 cannot be represented in type 'int' */
+	        /* on decompress -i  ../../openjpeg/MAPA.jp2 -o out.tif -d 0,0,256,256 */
+	        /* This is less extreme than memsetting the whole buffer to 0 */
+	        /* although we could potentially do better with better handling of edge conditions */
+	        if (win_tr_x1 >= 1 && win_tr_x1 < rw)
+	            horiz.mem[win_tr_x1 - 1] = 0;
+	        if (win_tr_x1 < rw)
+	            horiz.mem[win_tr_x1] = 0;
 
-                decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
-                decoder.decode_h(&horiz);
-                if (!sparse_array_write(sa,
+			uint32_t num_jobs = (uint32_t)num_threads;
+			uint32_t num_cols = bounds[k][1] - bounds[k][0] + 1;
+			if (num_cols < num_jobs)
+				num_jobs = num_cols;
+			uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
+			if (step_j < HORIZ_STEP){
+			 for (j = bounds[k][0]; j + HORIZ_STEP-1 < bounds[k][1]; j += HORIZ_STEP) {
+				 decoder.interleave_partial_h(&horiz, sa, j,HORIZ_STEP);
+				 decoder.decode_h(&horiz);
+				 if (!sparse_array_write(sa,
 									  win_tr_x0,
 									  j,
 									  win_tr_x1,
@@ -1993,74 +2087,202 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 									  HORIZ_STEP,
 									  1,
 									  true)) {
-                    GROK_ERROR("sparse array write failure");
-                    sparse_array_free(sa);
-                    horiz.release();
-                    return false;
-                }
-            }
+					 GROK_ERROR("sparse array write failure");
+					 sparse_array_free(sa);
+					 horiz.release();
+					 return false;
+				 }
+			 }
+			 if (j < bounds[k][1] ) {
+				 decoder.interleave_partial_h(&horiz, sa, j, bounds[k][1] - j);
+				 decoder.decode_h(&horiz);
+				 if (!sparse_array_write(sa,
+									  win_tr_x0,
+									  j,
+									  win_tr_x1,
+									  bounds[k][1],
+									  (int32_t*)(horiz.mem + win_tr_x0),
+									  HORIZ_STEP,
+									  1,
+									  true)) {
+					 GROK_ERROR("Sparse array write failure");
+					 sparse_array_free(sa);
+					 horiz.release();
+					 return false;
+				 }
+			 }
+		}else{
+			std::vector< std::future<int> > results;
+			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto job = new decode_job<float, dwt_data<T>>(horiz,
+											0,
+											nullptr,
+											bounds[k][0] + j * step_j,
+											j < (num_jobs - 1U) ? bounds[k][0] + (j + 1U) * step_j : bounds[k][1]);
+				if (!job->data.alloc(data_size)) {
+					GROK_ERROR("Out of memory");
+					horiz.release();
+					return false;
+				}
+				results.emplace_back(
+					Scheduler::g_tp->enqueue([job,sa, win_tr_x0, win_tr_x1, &decoder] {
+					 uint32_t j;
+					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
+						 decoder.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
+						 decoder.decode_h(&job->data);
+						 if (!sparse_array_write(sa,
+											  win_tr_x0,
+											  j,
+											  win_tr_x1,
+											  j + HORIZ_STEP,
+											  (int32_t*)(job->data.mem + win_tr_x0),
+											  HORIZ_STEP,
+											  1,
+											  true)) {
+							 GROK_ERROR("sparse array write failure");
+							 sparse_array_free(sa);
+							 job->data.release();
+							 return 0;
+						 }
+					 }
+					 if (j < job->max_j ) {
+						 decoder.interleave_partial_h(&job->data, sa, j, job->max_j - j);
+						 decoder.decode_h(&job->data);
+						 if (!sparse_array_write(sa,
+											  win_tr_x0,
+											  j,
+											  win_tr_x1,
+											  job->max_j,
+											  (int32_t*)(job->data.mem + win_tr_x0),
+											  HORIZ_STEP,
+											  1,
+											  true)) {
+							 GROK_ERROR("Sparse array write failure");
+							 sparse_array_free(sa);
+							 job->data.release();
+							 return 0;
+						 }
+					  }
+					  job->data.release();
+					  delete job;
+					  return 0;
+					})
+				);
+			}
+			for(auto && result: results)
+				result.get();
+		   }
         }
-        if (j < rh &&
-        		((j >= bounds[0][0] && j < bounds[0][1]) ||
-        		    (j >= bounds[1][0] && j < bounds[1][1]))) {
-            decoder.interleave_partial_h(&horiz, sa, j, rh - j);
-            decoder.decode_h(&horiz);
-            if (!sparse_array_write(sa,
-								  win_tr_x0,
-								  j,
-								  win_tr_x1,
-								  rh,
-								  (int32_t*)(horiz.mem + win_tr_x0),
-								  HORIZ_STEP,
-								  1,
-								  true)) {
-                GROK_ERROR("Sparse array write failure");
-                sparse_array_free(sa);
-                horiz.release();
-                return false;
-            }
-        }
-        vert.win_l_x0 = win_ll_y0;
+
+		vert.win_l_x0 = win_ll_y0;
         vert.win_l_x1 = win_ll_y1;
         vert.win_h_x0 = win_lh_y0;
         vert.win_h_x1 = win_lh_y1;
-        for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
-            decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
-            decoder.decode_v(&vert);
-            if (!sparse_array_write(sa,
-									  j,
-									  win_tr_y0,
-									  j + VERT_STEP,
-									  win_tr_y1,
-									  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
-									  1,
-									  VERT_STEP,
-									  true)) {
-                GROK_ERROR("Sparse array write failure");
-                sparse_array_free(sa);
-                horiz.release();
-                return false;
-            }
-        }
-        if (j < win_tr_x1) {
-			decoder.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
-			decoder.decode_v(&vert);
-			if (!sparse_array_write(sa,
-									  j,
-									  win_tr_y0,
-									  win_tr_x1,
-									  win_tr_y1,
-									  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
-									  1,
-									  VERT_STEP,
-									  true)) {
-				GROK_ERROR("Sparse array write failure");
-				sparse_array_free(sa);
-				horiz.release();
-				return false;
-			}
-        }
 
+        uint32_t num_jobs = (uint32_t)num_threads;
+        uint32_t num_cols = win_tr_x1 - win_tr_x0 + 1;
+		if (num_cols < num_jobs)
+			num_jobs = num_cols;
+		uint32_t step_j = num_jobs ? ( num_cols / num_jobs) : 0;
+		if (step_j < VERT_STEP){
+			for (j = win_tr_x0; j + VERT_STEP < win_tr_x1; j += VERT_STEP) {
+				decoder.interleave_partial_v(&vert, sa, j, VERT_STEP);
+				decoder.decode_v(&vert);
+				if (!sparse_array_write(sa,
+										  j,
+										  win_tr_y0,
+										  j + VERT_STEP,
+										  win_tr_y1,
+										  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+										  1,
+										  VERT_STEP,
+										  true)) {
+					GROK_ERROR("Sparse array write failure");
+					sparse_array_free(sa);
+					horiz.release();
+					return false;
+				}
+			}
+			if (j < win_tr_x1) {
+				decoder.interleave_partial_v(&vert, sa, j, win_tr_x1 - j);
+				decoder.decode_v(&vert);
+				if (!sparse_array_write(sa,
+										  j,
+										  win_tr_y0,
+										  win_tr_x1,
+										  win_tr_y1,
+										  (int32_t*)vert.mem + VERT_STEP * win_tr_y0,
+										  1,
+										  VERT_STEP,
+										  true)) {
+					GROK_ERROR("Sparse array write failure");
+					sparse_array_free(sa);
+					horiz.release();
+					return false;
+				}
+			}
+		} else {
+			std::vector< std::future<int> > results;
+			for(uint32_t j = 0; j < num_jobs; ++j) {
+			   auto job = new decode_job<float, dwt_data<T>>(vert,
+											0,
+											nullptr,
+											win_tr_x0 + j * step_j,
+											j < (num_jobs - 1U) ? win_tr_x0 + (j + 1U) * step_j : win_tr_x1);
+				if (!job->data.alloc(data_size)) {
+					GROK_ERROR("Out of memory");
+					horiz.release();
+					return false;
+				}
+				results.emplace_back(
+					Scheduler::g_tp->enqueue([job,sa, win_tr_y0, win_tr_y1, &decoder] {
+					 uint32_t j;
+					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
+						decoder.interleave_partial_v(&job->data, sa, j, VERT_STEP);
+						decoder.decode_v(&job->data);
+						if (!sparse_array_write(sa,
+												  j,
+												  win_tr_y0,
+												  j + VERT_STEP,
+												  win_tr_y1,
+												  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
+												  1,
+												  VERT_STEP,
+												  true)) {
+							GROK_ERROR("Sparse array write failure");
+							sparse_array_free(sa);
+							job->data.release();
+							return 0;
+						}
+					 }
+					 if (j <  job->max_j) {
+						decoder.interleave_partial_v(&job->data, sa, j,  job->max_j - j);
+						decoder.decode_v(&job->data);
+						if (!sparse_array_write(sa,
+												  j,
+												  win_tr_y0,
+												  job->max_j,
+												  win_tr_y1,
+												  (int32_t*)job->data.mem + VERT_STEP * win_tr_y0,
+												  1,
+												  VERT_STEP,
+												  true)) {
+							GROK_ERROR("Sparse array write failure");
+							sparse_array_free(sa);
+							job->data.release();
+							return 0;
+						}
+					}
+
+				  job->data.release();
+				  delete job;
+				  return 0;
+				})
+				);
+			}
+			for(auto && result: results)
+				result.get();
+		}
     }
 
     //final read into tile buffer

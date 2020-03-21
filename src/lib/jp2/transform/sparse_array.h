@@ -47,8 +47,8 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OPJ_SPARSE_ARRAY_H
-#define OPJ_SPARSE_ARRAY_H
+#pragma once
+
 /**
 @file sparse_array.h
 @brief Sparse array management
@@ -162,4 +162,3 @@ bool sparse_array_alloc(sparse_array* sa,
 
 /*@}*/
 
-#endif /* OPJ_SPARSE_ARRAY_H */
