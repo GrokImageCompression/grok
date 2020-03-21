@@ -499,8 +499,55 @@ bool TileComponent::init(bool isEncoder,
 		return false;
 	}
 	buf->data_size_needed = size();
+
 	return true;
 }
+
+
+void TileComponent::alloc_sparse_array(uint32_t numres){
+    auto tr_max = &(resolutions[numres - 1]);
+	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
+	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
+	auto sa = new sparse_array(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
+    for (uint32_t resno = 0; resno < numres; ++resno) {
+        auto res = &resolutions[resno];
+
+        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+            auto band = &res->bands[bandno];
+
+            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
+                auto precinct = &band->precincts[precno];
+
+                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
+                    auto cblk = &precinct->cblks.dec[cblkno];
+					uint32_t x = (uint32_t)(cblk->x0 - band->x0);
+					uint32_t y = (uint32_t)(cblk->y0 - band->y0);
+					uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
+					uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
+
+					if (band->bandno & 1) {
+						grk_tcd_resolution* pres = &resolutions[resno - 1];
+						x += (uint32_t)(pres->x1 - pres->x0);
+					}
+					if (band->bandno & 2) {
+						grk_tcd_resolution* pres = &resolutions[resno - 1];
+						y += (uint32_t)(pres->y1 - pres->y0);
+					}
+
+					if (!sa->alloc(x,
+								  y,
+								  x + cblk_w,
+								  y + cblk_h)) {
+						delete sa;
+						throw runtime_error("unable to allocate sparse array");
+					}
+                }
+            }
+        }
+    }
+    m_sa = sa;
+}
+
 
 bool TileComponent::create_buffer(grk_image *output_image,
 									uint32_t dx,

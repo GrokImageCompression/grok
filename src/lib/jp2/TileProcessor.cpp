@@ -60,6 +60,7 @@
 #include <memory>
 #include "WaveletForward.h"
 #include <algorithm>
+#include <exception>
 using namespace std;
 
 namespace grk {
@@ -909,7 +910,6 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	  /* Compute restricted tile-component and tile-resolution coordinates */
 	  /* of the window of interest */
 	  for (uint32_t compno = 0; compno < image->numcomps; compno++) {
-		  uint32_t resno;
 		  auto tilec = tile->comps + compno;
 
 		  /* Compute the intersection of the area of interest, expressed in tile coordinates */
@@ -935,7 +935,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 			  return false;
 		  }
 
-		  for (resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
+		  for (uint32_t resno = 0; resno < tilec->minimum_num_resolutions; ++resno) {
 			  auto res = tilec->resolutions + resno;
 			  res->win_x0 = uint_ceildivpow2(win_x0,
 												 tilec->minimum_num_resolutions - 1 - resno);
@@ -949,43 +949,47 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	  }
     }
 
-
-
 	bool doT2 = !current_plugin_tile
 			|| (current_plugin_tile->decode_flags & GROK_DECODE_T2);
-
 	bool doT1 = !current_plugin_tile
 			|| (current_plugin_tile->decode_flags & GROK_DECODE_T1);
-
 	bool doPostT1 = !current_plugin_tile
 			|| (current_plugin_tile->decode_flags & GROK_DECODE_POST_T1);
 
 	if (doT2) {
 		uint64_t l_data_read = 0;
-		if (!t2_decode(tile_no, src_buf, &l_data_read)) {
+		if (!t2_decode(tile_no, src_buf, &l_data_read))
 			return false;
-		}
 		// synch plugin with T2 data
 		decode_synch_plugin_with_host(this);
 	}
 
+
+	// pre-allocate sparse array
+    if (!whole_tile_decoding) {
+	  for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+		  auto tilec = tile->comps + compno;
+		  auto img_comp = image->comps + compno;
+		  try {
+			 tilec->alloc_sparse_array(img_comp->resno_decoded + 1);
+		  } catch (runtime_error &ex){
+			  return false;
+		  }
+	  }
+    }
+
 	if (doT1) {
-		if (!t1_decode()) {
+		if (!t1_decode())
 			return false;
-		}
 	}
 
 	if (doPostT1) {
-
-		if (!dwt_decode()) {
+		if (!dwt_decode())
 			return false;
-		}
-		if (!mct_decode()) {
+		if (!mct_decode())
 			return false;
-		}
-		if (!dc_level_shift_decode()) {
+		if (!dc_level_shift_decode())
 			return false;
-		}
 	}
 	return true;
 }
@@ -1987,8 +1991,6 @@ bool grk_tcd_cblk_dec::alloc() {
 
 void grk_tcd_cblk_dec::init() {
 	compressedData = grk_buf();
-	grk_aligned_free(unencoded_data);
-	unencoded_data = nullptr;
 	segs = nullptr;
 	x0 = 0;
 	y0 = 0;
@@ -2012,7 +2014,6 @@ void grk_tcd_cblk_dec::cleanup() {
 	delete packet_length_info;
 	packet_length_info = nullptr;
 #endif
-	grk_aligned_free(unencoded_data);
 }
 
 void grk_tcd_precinct::deleteTagTrees() {

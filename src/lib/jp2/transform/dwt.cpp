@@ -227,16 +227,12 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 
 #endif
 
-static sparse_array* alloc_sparse_array(TileComponent* tilec,
-												uint32_t numres);
-static bool init_sparse_array(sparse_array* a,TileComponent* tilec,
-												uint32_t numres);
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
 /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres);
+   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa);
 
 /*@}*/
 
@@ -1183,108 +1179,6 @@ static void segment_grow(uint32_t filter_width,
 }
 
 
-static sparse_array* alloc_sparse_array(TileComponent* tilec,
-												uint32_t numres){
-    auto tr_max = &(tilec->resolutions[numres - 1]);
-	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
-	uint32_t h = (uint32_t)(tr_max->y1 - tr_max->y0);
-	auto sa = new sparse_array(w, h, min<uint32_t>(w, 64), min<uint32_t>(h, 64));
-    for (uint32_t resno = 0; resno < numres; ++resno) {
-        auto res = &tilec->resolutions[resno];
-
-        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-            auto band = &res->bands[bandno];
-
-            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
-                auto precinct = &band->precincts[precno];
-
-                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
-                    auto cblk = &precinct->cblks.dec[cblkno];
-
-                    if (cblk->unencoded_data != nullptr) {
-                        uint32_t x = (uint32_t)(cblk->x0 - band->x0);
-                        uint32_t y = (uint32_t)(cblk->y0 - band->y0);
-                        uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
-                        uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
-
-                        if (band->bandno & 1) {
-                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-                            x += (uint32_t)(pres->x1 - pres->x0);
-                        }
-                        if (band->bandno & 2) {
-                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-                            y += (uint32_t)(pres->y1 - pres->y0);
-                        }
-
-                        if (!sa->alloc(x,
-									  y,
-									  x + cblk_w,
-									  y + cblk_h)) {
-                            delete sa;
-                            return nullptr;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return sa;
-}
-
-
-static bool init_sparse_array(	sparse_array* sa,
-									TileComponent* tilec,uint32_t numres){
-	if (!sa)
-		return false;
-    for (uint32_t resno = 0; resno < numres; ++resno) {
-        auto res = &tilec->resolutions[resno];
-
-        for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
-            auto band = &res->bands[bandno];
-
-            for (uint32_t precno = 0; precno < res->pw * res->ph; ++precno) {
-                auto precinct = &band->precincts[precno];
-
-                for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
-                    auto cblk = &precinct->cblks.dec[cblkno];
-
-                    if (cblk->unencoded_data != nullptr) {
-                        uint32_t x = (uint32_t)(cblk->x0 - band->x0);
-                        uint32_t y = (uint32_t)(cblk->y0 - band->y0);
-                        uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
-                        uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
-
-                        if (band->bandno & 1) {
-                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-                            x += (uint32_t)(pres->x1 - pres->x0);
-                        }
-                        if (band->bandno & 2) {
-                            grk_tcd_resolution* pres = &tilec->resolutions[resno - 1];
-                            y += (uint32_t)(pres->y1 - pres->y0);
-                        }
-
-                        if (!sa->write(x,
-									  y,
-									  x + cblk_w,
-									  y + cblk_h,
-									  cblk->unencoded_data,
-									  1,
-									  cblk_w,
-									  true)) {
-                            delete sa;
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    return true;
-}
-
-
 class Partial53 {
 public:
 	void interleave_partial_h(dwt_data<int32_t>* dwt,
@@ -1317,7 +1211,7 @@ bool decode_53(TileProcessor *p_tcd, TileComponent* tilec,
     if (p_tcd->whole_tile_decoding) {
         return decode_tile_53(tilec,numres);
     } else {
-        return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres);
+        return decode_partial_tile<int32_t, 1, 4,2, Partial53>(tilec, numres, tilec->m_sa);
     }
 }
 
@@ -1870,7 +1764,7 @@ public:
 /* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
-   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres)
+   bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa)
 {
 	dwt_data<T> horiz;
 	dwt_data<T> vert;
@@ -1895,12 +1789,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 
     if (tr_max->x0 == tr_max->x1 || tr_max->y0 == tr_max->y1)
         return true;
-
-    auto sa = alloc_sparse_array(tilec, numres);
-    if (!sa)
-        return false;
-    if (!init_sparse_array(sa, tilec, numres))
-    	return false;
 
     if (numres == 1U) {
         bool ret = sa->read(tr_max->win_x0 - (uint32_t)tr_max->x0,
@@ -2270,7 +2158,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 							   true);
 	assert(ret);
 	GRK_UNUSED(ret);
-    delete sa;
     horiz.release();
 
     return true;
@@ -2282,7 +2169,7 @@ bool decode_97(TileProcessor *p_tcd,
     if (p_tcd->whole_tile_decoding) {
         return decode_tile_97(tilec, numres);
     } else {
-        return decode_partial_tile<v4_data,4,4,4, Partial97>(tilec, numres);
+        return decode_partial_tile<v4_data,4,4,4, Partial97>(tilec, numres, tilec->m_sa);
     }
 }
 

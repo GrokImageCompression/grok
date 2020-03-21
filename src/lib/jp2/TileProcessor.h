@@ -170,8 +170,7 @@ struct grk_tcd_cblk_dec {
 														 included(false),
 														packet_length_info(nullptr),
 #endif
-					numSegmentsAllocated(0),
-					unencoded_data(nullptr){
+					numSegmentsAllocated(0){
 	}
 	/**
 	 * Allocates memory for a decoding code block (but not data)
@@ -192,8 +191,6 @@ struct grk_tcd_cblk_dec {
 	uint32_t included;
 	std::vector<grk_packet_length_info>* packet_length_info;
 #endif
-    /* Decoded code-block. Only used for subtile decoding. Otherwise tilec->data is directly updated */
-    int32_t* unencoded_data;
 
 };
 
@@ -266,8 +263,18 @@ struct grk_tcd_band {
 // resolution
 struct grk_tcd_resolution {
 	grk_tcd_resolution() :
-			x0(0), y0(0), x1(0), y1(0), pw(0), ph(0), numbands(0) {
-	}
+			x0(0),
+			y0(0),
+			x1(0),
+			y1(0),
+			pw(0),
+			ph(0),
+			numbands(0),
+			win_x0(0),
+			win_y0(0),
+			win_x1(0),
+			win_y1(0)
+	{}
 
 	/* dimension of the resolution level in tile coordinates */
 	uint32_t x0, y0, x1, y1;

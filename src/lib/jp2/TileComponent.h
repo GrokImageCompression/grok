@@ -88,6 +88,9 @@ struct TileComponent {
 			grk_tccp* tccp,
 			grk_plugin_tile *current_plugin_tile);
 
+	 void alloc_sparse_array(uint32_t numres);
+
+
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
 	uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
@@ -116,6 +119,7 @@ private:
 	 * Deallocates the encoding data of the given precinct.
 	 */
 	 void code_block_enc_deallocate(grk_tcd_precinct *p_precinct);
+
 };
 
 }

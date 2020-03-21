@@ -45,9 +45,7 @@ public:
 private:
 	t1_info *t1;
 
-	void post_decode(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
-					uint32_t qmfbid, float stepsize, int32_t *tilec_data, int32_t tile_w,
-					int32_t tile_h, bool whole_tile_decoding);
+	void post_decode(t1_info *t1, tcd_cblk_dec_t *cblk,decodeBlockInfo *block);
 };
 }
 }

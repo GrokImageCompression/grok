@@ -1133,13 +1133,6 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 	mqc_resetstates(mqc);
 	cblkdata = cblk->chunks[0].data;
 
-	/* For subtile decoding, directly decode in the unencoded_data buffer of */
-	/* the code-block. Hack t1->data to point to it, and restore it later */
-	if (cblk->unencoded_data) {
-		original_t1_data = t1->data;
-		t1->data = cblk->unencoded_data;
-	}
-
 	for (segno = 0; segno < cblk->real_num_segs; ++segno) {
 		tcd_seg_t *seg = &cblk->segs[segno];
 
@@ -1202,10 +1195,6 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 					mqc->end_of_byte_stream_counter);
 		}
 	}
-
-	/* Restore original t1->data is needed */
-	if (cblk->unencoded_data)
-		t1->data = original_t1_data;
 
 	return true;
 }

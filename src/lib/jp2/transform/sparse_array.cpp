@@ -69,7 +69,7 @@ sparse_array::sparse_array(uint32_t width,
 									block_height(block_height)
 {
     if (width == 0 || height == 0 || block_width == 0 || block_height == 0) {
-    	throw new std::exception();
+    	throw std::runtime_error("invalid region for sparse array");
     }
     block_count_hor = ceildiv<uint32_t>(width, block_width);
     block_count_ver = ceildiv<uint32_t>(height, block_height);

@@ -184,34 +184,13 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 	// and opj uses subtracted value
 	cblkopj.numbps = cblk->numbps - block->roishift;
 
-
-	if (!block->tilec->whole_tile_decoding){
-		auto cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
-        auto cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
-        auto data_size = sizeof(int32_t) * cblk_w * cblk_h;
-
-        if (cblkopj.unencoded_data)
-        	grk_aligned_free(cblkopj.unencoded_data);
-        cblkopj.unencoded_data = (int32_t*)grk_aligned_malloc(data_size);
-        if (!cblkopj.unencoded_data){
-            GROK_ERROR("Unable to allocate cblk data");
-           	return false;
-        }
-        memset(cblkopj.unencoded_data, 0, data_size);
-	}
-
-    ret =
-    		t1_decode_cblk(t1,
+    ret =t1_decode_cblk(t1,
     				&cblkopj,
     				block->bandno,
 					block->roishift,
 					block->cblk_sty,
 					false);
 
-    if (!block->tilec->whole_tile_decoding){
-		cblk->unencoded_data = cblkopj.unencoded_data;
-		cblkopj.unencoded_data = nullptr;
-    }
 	delete[] segs;
 	return ret;
 }
@@ -228,36 +207,24 @@ void T1Part1::postDecode(decodeBlockInfo *block) {
 	cblkopj.y0 = block->y;
 	cblkopj.x1 = block->x + cblk->x1 - cblk->x0;
 	cblkopj.y1 = block->y + cblk->y1 - cblk->y0;
-	cblkopj.unencoded_data = block->cblk->unencoded_data;
     post_decode(t1,
     		&cblkopj,
-			block->roishift,
-			block->qmfbid,
-			block->stepsize,
-			block->tiledp,
-			block->tilec->width(),
-			block->tilec->height(),
-			block->tilec->whole_tile_decoding
-			);
+			block);
 }
 
-void T1Part1::post_decode(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
-				uint32_t qmfbid, float stepsize, int32_t *tilec_data, int32_t tile_w,
-				int32_t tile_h, bool whole_tile_decoding) {
-
-	(void) tile_h;
-
+void T1Part1::post_decode(t1_info *t1,
+						tcd_cblk_dec_t *cblk,
+						decodeBlockInfo *block) {
+	uint32_t roishift = block->roishift;
+	uint32_t qmfbid = block->qmfbid;
+	float stepsize = block->stepsize;
+	int32_t *tilec_data = block->tiledp;
+	int32_t tile_w = block->tilec->width();
+	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
 	auto src = t1->data;
-	auto dest = tilec_data;
 	int32_t dest_width = tile_w;
 	uint16_t cblk_w = (uint16_t) (cblk->x1 - cblk->x0);
 	uint16_t cblk_h = (uint16_t) (cblk->y1 - cblk->y0);
-
-	if (!whole_tile_decoding) {
-		src = cblk->unencoded_data;
-		dest = src;
-		dest_width = cblk_w;
-	}
 
 	if (roishift) {
 		if (roishift >= 31) {
@@ -281,41 +248,82 @@ void T1Part1::post_decode(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t roishift,
 		}
 	}
 
-	if (qmfbid == 1) {
-		int32_t *GRK_RESTRICT tiledp = dest;
-		for (int j = 0; j < cblk_h; ++j) {
-			uint32_t i = 0;
-			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
-				int32_t tmp0 = src[(j * cblk_w) + i + 0U];
-				int32_t tmp1 = src[(j * cblk_w) + i + 1U];
-				int32_t tmp2 = src[(j * cblk_w) + i + 2U];
-				int32_t tmp3 = src[(j * cblk_w) + i + 3U];
-				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 0U] = tmp0
-						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 1U] = tmp1
-						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 2U] = tmp2
-						/ 2;
-				((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 3U] = tmp3
-						/ 2;
+	if (!whole_tile_decoding) {
+    	if (qmfbid == 1) {
+    		for (int j = 0; j < cblk_h; ++j) {
+    			uint32_t i = 0;
+    			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
+    				src[(j * cblk_w) + i + 0U] /= 2;
+    				src[(j * cblk_w) + i + 1U] /= 2;
+    				src[(j * cblk_w) + i + 2U] /= 2;
+    				src[(j * cblk_w) + i + 3U] /= 2;
+    			}
+    			for (; i < cblk_w; ++i)
+    				src[(j * cblk_w) + i] /= 2;
+     		}
+    	} else {
+			float *GRK_RESTRICT tiledp = (float*) src;
+			for (int j = 0; j < cblk_h; ++j) {
+				float *GRK_RESTRICT tiledp2 = tiledp;
+				for (int i = 0; i < cblk_w; ++i) {
+					float tmp = (float) (*src) * stepsize;
+					*tiledp2 = tmp;
+					src++;
+					tiledp2++;
+				}
+				tiledp += cblk_w;
 			}
-			for (; i < cblk_w; ++i) {
-				int32_t tmp = src[(j * cblk_w) + i];
-				((int32_t*) tiledp)[(j * (size_t) dest_width) + i] = tmp / 2;
-			}
-		}
+    	}
+		// write directly from t1 to sparse array
+        if (!block->tilec->m_sa->write(block->x,
+					  block->y,
+					  block->x + cblk_w,
+					  block->y + cblk_h,
+					  t1->data,
+					  1,
+					  cblk_w,
+					  true)) {
+			  return;
+		  }
 	} else {
-		float *GRK_RESTRICT tiledp = (float*) dest;
-		for (int j = 0; j < cblk_h; ++j) {
-			float *GRK_RESTRICT tiledp2 = tiledp;
-			for (int i = 0; i < cblk_w; ++i) {
-				float tmp = (float) (*src) * stepsize;
-				*tiledp2 = tmp;
-				src++;
-				tiledp2++;
+		auto dest = tilec_data;
+		if (qmfbid == 1) {
+			int32_t *GRK_RESTRICT tiledp = dest;
+			for (int j = 0; j < cblk_h; ++j) {
+				uint32_t i = 0;
+				for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
+					int32_t tmp0 = src[(j * cblk_w) + i + 0U];
+					int32_t tmp1 = src[(j * cblk_w) + i + 1U];
+					int32_t tmp2 = src[(j * cblk_w) + i + 2U];
+					int32_t tmp3 = src[(j * cblk_w) + i + 3U];
+					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 0U] = tmp0
+							/ 2;
+					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 1U] = tmp1
+							/ 2;
+					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 2U] = tmp2
+							/ 2;
+					((int32_t*) tiledp)[(j * (size_t) dest_width) + i + 3U] = tmp3
+							/ 2;
+				}
+				for (; i < cblk_w; ++i) {
+					int32_t tmp = src[(j * cblk_w) + i];
+					((int32_t*) tiledp)[(j * (size_t) dest_width) + i] = tmp / 2;
+				}
 			}
-			tiledp += dest_width;
+		} else {
+			float *GRK_RESTRICT tiledp = (float*) dest;
+			for (int j = 0; j < cblk_h; ++j) {
+				float *GRK_RESTRICT tiledp2 = tiledp;
+				for (int i = 0; i < cblk_w; ++i) {
+					float tmp = (float) (*src) * stepsize;
+					*tiledp2 = tmp;
+					src++;
+					tiledp2++;
+				}
+				tiledp += dest_width;
+			}
 		}
+
 	}
 }
 
