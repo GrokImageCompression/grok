@@ -284,39 +284,7 @@ struct grk_tcd_resolution {
 
 };
 
-// tile component
-struct TileComponent {
-	TileComponent();
-	uint32_t width();
-	uint32_t height();
-	uint64_t area();
-	uint64_t size();
-	void finalizeCoordinates(bool isEncoder);
-	void get_dimensions(grk_image *l_image, grk_image_comp  *l_img_comp,
-			uint32_t *l_size_comp, uint32_t *l_width,
-			uint32_t *l_height, uint32_t *l_offset_x, uint32_t *l_offset_y,
-			uint32_t *l_image_width, uint32_t *l_stride, uint64_t *l_tile_offset);
-
-	bool create_buffer(bool isEncoder,
-						grk_image *output_image,
-						uint32_t dx,
-						uint32_t dy);
-
-	uint32_t numresolutions; /* number of resolutions level */
-	uint32_t numAllocatedResolutions;
-	uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
-	grk_tcd_resolution *resolutions; /* resolutions information */
-#ifdef DEBUG_LOSSLESS_T2
-	grk_tcd_resolution* round_trip_resolutions;  /* round trip resolution information */
-#endif
-	uint64_t numpix;
-	TileBuffer *buf;
-    bool   whole_tile_decoding;
-
-    /* reduced tile coordinates */
-	uint32_t x0, y0, x1, y1;
-	grk_rect unreduced_tile_dim;
-};
+struct TileComponent;
 
 // tile
 struct grk_tcd_tile {
@@ -460,18 +428,7 @@ private:
 	 * Initializes tile coding/decoding
 	 */
 	 inline bool init_tile(uint16_t tile_no,
-			grk_image *output_image, bool isEncoder, float fraction,
-			size_t sizeof_block);
-
-	/**
-	 * Deallocates the decoding data of the given precinct.
-	 */
-	 void code_block_dec_deallocate(grk_tcd_precinct *p_precinct);
-
-	/**
-	 * Deallocates the encoding data of the given precinct.
-	 */
-	 void code_block_enc_deallocate(grk_tcd_precinct *p_precinct);
+			grk_image *output_image, bool isEncoder);
 
 	/**
 	 Free the memory allocated for encoding

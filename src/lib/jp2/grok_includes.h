@@ -202,6 +202,8 @@ static inline long grok_lrintf(float f) {
 #include "TileBuffer.h"
 #include "PacketIter.h"
 #include "TagTree.h"
+#include "sparse_array.h"
+#include "TileComponent.h"
 #include "TileProcessor.h"
 #include <Wavelet.h>
 #include "dwt_utils.h"

@@ -59,8 +59,6 @@
 #include <assert.h>
 #include "simd.h"
 #include "grok_includes.h"
-
-#include "sparse_array.h"
 #include "dwt.h"
 #include <algorithm>
 

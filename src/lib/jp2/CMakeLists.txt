@@ -118,6 +118,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/grok.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileBuffer.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/TileComponent.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/TileComponent.h
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/TileProcessor.h
   ${CMAKE_CURRENT_SOURCE_DIR}/grok_includes.h

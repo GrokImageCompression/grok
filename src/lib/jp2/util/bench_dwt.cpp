@@ -83,7 +83,8 @@ void init_tilec(TileComponent * l_tilec,
     l_tilec->y0 = y0;
     l_tilec->x1 = x1;
     l_tilec->y1 = y1;
-    l_tilec->create_buffer(false,nullptr,1,1);
+    l_tilec->m_is_encoder = false;
+    l_tilec->create_buffer(nullptr,1,1);
 
     nValues = (size_t)(l_tilec->x1 - l_tilec->x0) *
               (size_t)(l_tilec->y1 - l_tilec->y0);
