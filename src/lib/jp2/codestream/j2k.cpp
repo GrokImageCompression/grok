@@ -137,10 +137,10 @@ void j2k_destroy(grk_j2k *p_j2k) {
 			p_j2k->m_specific_param.m_decoder.m_default_tcp = nullptr;
 		}
 
-		if (p_j2k->m_specific_param.m_decoder.m_header_data != nullptr) {
-			grok_free(p_j2k->m_specific_param.m_decoder.m_header_data);
-			p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
-			p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
+		if (p_j2k->m_specific_param.m_decoder.m_marker_scratch != nullptr) {
+			grok_free(p_j2k->m_specific_param.m_decoder.m_marker_scratch);
+			p_j2k->m_specific_param.m_decoder.m_marker_scratch = nullptr;
+			p_j2k->m_specific_param.m_decoder.m_marker_scratch_size = 0;
 		}
 	} else {
 
@@ -220,13 +220,13 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *p_stream) 
 	}
 
 	/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-	if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+	if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 		GROK_ERROR( "Stream too short");
 		return false;
 	}
 
 	/* Read 2 bytes as the new marker ID */
-	grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+	grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 			&l_current_marker, 2);
 
 	/* Try to read until the SOT is detected */
@@ -281,13 +281,13 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *p_stream) 
 		}
 
 		/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
 		/* read 2 bytes as the marker size */
-		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 				&l_marker_size, 2);
 
 		/* Check marker size (does not include marker ID but includes marker size) */
@@ -300,25 +300,25 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *p_stream) 
 
 		/* Check if the marker size is compatible with the header data size */
 		if (l_marker_size
-				> p_j2k->m_specific_param.m_decoder.m_header_data_size) {
+				> p_j2k->m_specific_param.m_decoder.m_marker_scratch_size) {
 			uint8_t *new_header_data = (uint8_t*) grk_realloc(
-					p_j2k->m_specific_param.m_decoder.m_header_data,
+					p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					l_marker_size);
 			if (!new_header_data) {
-				grok_free(p_j2k->m_specific_param.m_decoder.m_header_data);
-				p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
-				p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
+				grok_free(p_j2k->m_specific_param.m_decoder.m_marker_scratch);
+				p_j2k->m_specific_param.m_decoder.m_marker_scratch = nullptr;
+				p_j2k->m_specific_param.m_decoder.m_marker_scratch_size = 0;
 				GROK_ERROR(
 						"Not enough memory to read header");
 				return false;
 			}
-			p_j2k->m_specific_param.m_decoder.m_header_data = new_header_data;
-			p_j2k->m_specific_param.m_decoder.m_header_data_size =
+			p_j2k->m_specific_param.m_decoder.m_marker_scratch = new_header_data;
+			p_j2k->m_specific_param.m_decoder.m_marker_scratch_size =
 					l_marker_size;
 		}
 
 		/* Try to read the rest of the marker segment from stream and copy them into the buffer */
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 				l_marker_size) != l_marker_size) {
 			GROK_ERROR( "Stream too short");
 			return false;
@@ -326,7 +326,7 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *p_stream) 
 
 		/* Read the marker segment with the correct marker handler */
 		if (!(*(l_marker_handler->handler))(p_j2k,
-				p_j2k->m_specific_param.m_decoder.m_header_data, (uint16_t)l_marker_size)) {
+				p_j2k->m_specific_param.m_decoder.m_marker_scratch, (uint16_t)l_marker_size)) {
 			GROK_ERROR(
 					"Marker handler function failed to read the marker segment");
 			return false;
@@ -344,13 +344,13 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *p_stream) 
 		}
 
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
 		/* read 2 bytes as the new marker ID */
-		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 				&l_current_marker, 2);
 	}
 	if (l_has_siz == 0) {
@@ -700,14 +700,14 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 			}
 
 			/* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
-			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
+			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					2) != 2) {
 				GROK_ERROR( "Stream too short");
 				return false;
 			}
 
 			/* Read 2 bytes from the buffer as the marker size */
-			grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+			grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					&l_marker_size, 2);
 
 			/* Check marker size (does not include marker ID but includes marker size) */
@@ -737,7 +737,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 
 			/* Check if the marker size is compatible with the header data size */
 			if (l_marker_size
-					> p_j2k->m_specific_param.m_decoder.m_header_data_size) {
+					> p_j2k->m_specific_param.m_decoder.m_marker_scratch_size) {
 				uint8_t *new_header_data = nullptr;
 				/* If we are here, this means we consider this marker as known & we will read it */
 				/* Check enough bytes left in stream before allocation */
@@ -748,24 +748,24 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 					return false;
 				}
 				new_header_data = (uint8_t*) grk_realloc(
-						p_j2k->m_specific_param.m_decoder.m_header_data,
+						p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 						l_marker_size);
 				if (!new_header_data) {
-					grok_free(p_j2k->m_specific_param.m_decoder.m_header_data);
-					p_j2k->m_specific_param.m_decoder.m_header_data = nullptr;
-					p_j2k->m_specific_param.m_decoder.m_header_data_size = 0;
+					grok_free(p_j2k->m_specific_param.m_decoder.m_marker_scratch);
+					p_j2k->m_specific_param.m_decoder.m_marker_scratch = nullptr;
+					p_j2k->m_specific_param.m_decoder.m_marker_scratch_size = 0;
 					GROK_ERROR(
 							"Not enough memory to read header");
 					return false;
 				}
-				p_j2k->m_specific_param.m_decoder.m_header_data =
+				p_j2k->m_specific_param.m_decoder.m_marker_scratch =
 						new_header_data;
-				p_j2k->m_specific_param.m_decoder.m_header_data_size =
+				p_j2k->m_specific_param.m_decoder.m_marker_scratch_size =
 						l_marker_size;
 			}
 
 			/* Try to read the rest of the marker segment from stream and copy them into the buffer */
-			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
+			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					l_marker_size) != l_marker_size) {
 				GROK_ERROR( "Stream too short");
 				return false;
@@ -779,7 +779,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 			}
 			/* Read the marker segment with the correct marker handler */
 			if (!(*(l_marker_handler->handler))(p_j2k,
-					p_j2k->m_specific_param.m_decoder.m_header_data,
+					p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					(uint16_t)l_marker_size)) {
 				GROK_ERROR(
 						"Fail to read the current marker segment (%#x)\n",
@@ -822,12 +822,12 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 				while (true) {
 					// Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer
 					if (p_stream->read(
-							p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+							p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 						GROK_ERROR( "Stream too short");
 						return false;
 					}
 					// Read 2 bytes from the buffer as the new marker ID
-					grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+					grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 							&l_current_marker, 2);
 
 					/* Manage case where marker is unknown */
@@ -891,13 +891,13 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 			if (!p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
 				/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 				if (p_stream->read(
-						p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+						p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 					GROK_ERROR( "Stream too short");
 					return false;
 				}
 
 				/* Read 2 bytes from buffer as the new marker ID */
-				grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+				grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 						&l_current_marker, 2);
 			}
 		} else {
@@ -908,13 +908,13 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 			p_j2k->m_specific_param.m_decoder.m_state = J2K_DEC_STATE_TPHSOT;
 
 			/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
-			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data,
+			if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					2) != 2) {
 				GROK_ERROR( "Stream too short");
 				return false;
 			}
 			/* Read 2 bytes from buffer as the new marker ID */
-			grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+			grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 					&l_current_marker, 2);
 		}
 	}
@@ -1291,14 +1291,14 @@ grk_j2k* j2k_create_decompress(void) {
 		return nullptr;
 	}
 
-	j2k->m_specific_param.m_decoder.m_header_data = (uint8_t*) grk_calloc(1,
+	j2k->m_specific_param.m_decoder.m_marker_scratch = (uint8_t*) grk_calloc(1,
 			default_header_size);
-	if (!j2k->m_specific_param.m_decoder.m_header_data) {
+	if (!j2k->m_specific_param.m_decoder.m_marker_scratch) {
 		j2k_destroy(j2k);
 		return nullptr;
 	}
 
-	j2k->m_specific_param.m_decoder.m_header_data_size = default_header_size;
+	j2k->m_specific_param.m_decoder.m_marker_scratch_size = default_header_size;
 
 	j2k->m_specific_param.m_decoder.m_tile_ind_to_dec = -1;
 
@@ -6051,13 +6051,13 @@ static bool j2k_read_unk(grk_j2k *p_j2k, BufferedStream *p_stream,
 
 	for (;;) {
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
-		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_header_data, 2) != 2) {
+		if (p_stream->read(p_j2k->m_specific_param.m_decoder.m_marker_scratch, 2) != 2) {
 			GROK_ERROR( "Stream too short");
 			return false;
 		}
 
 		/* read 2 bytes as the new marker ID*/
-		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
+		grk_read_bytes(p_j2k->m_specific_param.m_decoder.m_marker_scratch,
 				&l_unknown_marker, 2);
 
 		if (!(l_unknown_marker < 0xff00)) {

@@ -469,9 +469,8 @@ struct grk_j2k_dec {
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
 	grk_tcp *m_default_tcp;
-	uint8_t *m_header_data;
-	uint32_t m_header_data_size;
-	// tile part data length
+	uint8_t *m_marker_scratch;
+	uint32_t m_marker_scratch_size;
 	uint32_t tile_part_data_length;
 	/** Only tile indices in the correct range will be decoded.*/
 	uint32_t m_start_tile_x;
