@@ -387,7 +387,7 @@ namespace ojph {
     {
       const bool debug = false;
 
-      struct vlc_src_table { int c_q, rho, u_off, e_k, e_1, cwd, cwd_len; };
+      struct vlc_src_table { uint8_t c_q, rho, u_off, e_k, e_1, cwd, cwd_len; };
       vlc_src_table tbl0[] = {
     #include "table0.h"
       };
@@ -408,8 +408,8 @@ namespace ojph {
             if (tbl0[j].cwd == (cwd & ((1 << tbl0[j].cwd_len) - 1)))
             {
               if (debug) assert(vlc_tbl0[i] == 0);
-              vlc_tbl0[i] = (tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
-                | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len;
+              vlc_tbl0[i] = (uint16_t)((tbl0[j].rho << 4) | (tbl0[j].u_off << 3)
+                | (tbl0[j].e_k << 12) | (tbl0[j].e_1 << 8) | tbl0[j].cwd_len);
             }
       }
       if (debug) memset(vlc_tbl1, 0, sizeof(vlc_tbl1)); //unnecessary
@@ -422,8 +422,8 @@ namespace ojph {
             if (tbl1[j].cwd == (cwd & ((1 << tbl1[j].cwd_len) - 1)))
             {
               if (debug) assert(vlc_tbl1[i] == 0);
-              vlc_tbl1[i] = (tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
-                | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len;
+              vlc_tbl1[i] = (uint16_t)((tbl1[j].rho << 4) | (tbl1[j].u_off << 3)
+                | (tbl1[j].e_k << 12) | (tbl1[j].e_1 << 8) | tbl1[j].cwd_len);
             }
       }
 
