@@ -275,7 +275,7 @@ const char* GRK_CALLCONV grk_version(void) {
 
 		l_codec->m_codec_data.m_decompression.read_header = (bool (*)(
 				BufferedStream*, void*,  grk_header_info  *header_info,
-				grk_image * *)) j2k_read_header;
+				grk_image **)) j2k_read_header;
 
 		l_codec->m_codec_data.m_decompression.destroy =
 				(void (*)(void*)) j2k_destroy;
@@ -316,7 +316,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				BufferedStream*)) jp2_end_decompress;
 		l_codec->m_codec_data.m_decompression.read_header = (bool (*)(
 				BufferedStream*, void*,  grk_header_info  *header_info,
-				grk_image * *)) jp2_read_header;
+				grk_image **)) jp2_read_header;
 		l_codec->m_codec_data.m_decompression.read_tile_header =
 				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
 						uint32_t*, uint32_t*, uint32_t*, bool*, BufferedStream*)) jp2_read_tile_header;

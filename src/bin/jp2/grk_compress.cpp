@@ -299,8 +299,10 @@ static void encode_help_display(void)
     fprintf(stdout,"    Mode switch.\n");
     fprintf(stdout,"    [1=BYPASS(LAZY) 2=RESET 4=RESTART(TERMALL)\n");
     fprintf(stdout,"    8=VSC 16=ERTERM(SEGTERM) 32=SEGMARK(SEGSYM)]\n");
+    fprintf(stdout,"    64=HT]\n");
     fprintf(stdout,"    Indicate multiple modes by adding their values.\n");
     fprintf(stdout,"      Example: RESTART(4) + RESET(2) + SEGMARK(32) => -M 38\n");
+    fprintf(stdout,"      Note: HT(64) for High Throughput cannot be combined with other flags\n");
     fprintf(stdout,"[-u|-TP] <R|L|C>\n");
     fprintf(stdout,"    Divide packets of every tile into tile-parts.\n");
     fprintf(stdout,"    Division is made by grouping Resolutions (R), Layers (L)\n");
@@ -1100,11 +1102,10 @@ static int parse_cmdline_encoder_ex(int argc,
 				if (parameters->cblk_sty != GRK_CBLKSTY_HT){
 					spdlog::error("High throughput encoding mode cannot be combined"
 							" with any other block mode switches. Ignoring mode switch");
+					parameters->cblk_sty = 0;
 				} else {
 					parameters->isHT = true;
 				}
-				parameters->cblk_sty = 0;
-
 			}
 		}
 		// profiles
