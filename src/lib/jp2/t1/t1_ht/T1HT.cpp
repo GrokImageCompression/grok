@@ -176,55 +176,75 @@ bool T1HT::decode(decodeBlockInfo *block) {
 
 void T1HT::postDecode(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
-	uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
-	uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
+	uint16_t cblk_w =  (uint16_t)(cblk->x1 - cblk->x0);
+	uint16_t cblk_h =  (uint16_t)(cblk->y1 - cblk->y0);
 
-	auto t1_data = unencoded_data;
+	auto src = unencoded_data;
+	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
+	auto tilec = block->tilec;
 
-	/*
 	// ROI shift
 	if (block->roishift) {
 		int32_t threshold = 1 << block->roishift;
-		for (auto j = 0U; j < h; ++j) {
-			for (auto i = 0U; i < w; ++i) {
-				auto value = *t1_data;
+		for (auto j = 0U; j < cblk_h; ++j) {
+			for (auto i = 0U; i < cblk_w; ++i) {
+				auto value = *src;
 				auto magnitude = abs(value);
 				if (magnitude >= threshold) {
 					magnitude >>= block->roishift;
 					// ((value > 0) - (value < 0)) == signum(value)
-					*t1_data = ((value > 0) - (value < 0)) * magnitude;
+					*src = ((value > 0) - (value < 0)) * magnitude;
 				}
-				t1_data++;
+				src++;
 			}
 		}
 		//reset t1_data to start of buffer
-		t1_data = unencoded_data;
+		src = unencoded_data;
 	}
-*/
-	uint32_t tile_width = block->tilec->width();
+
+	uint32_t dest_width = tilec->width();
+	int32_t *dest = block->tiledp;
+	if (!whole_tile_decoding){
+       dest_width = cblk_w;
+       dest = src;
+	}
+
 	if (block->qmfbid == 1) {
 		int32_t shift = 31 - (block->k_msbs + 1);
-		int32_t *GRK_RESTRICT tile_data = block->tiledp;
-		for (auto j = 0U; j < h; ++j) {
+		int32_t *GRK_RESTRICT tile_data = dest;
+		for (auto j = 0U; j < cblk_h; ++j) {
 			int32_t *GRK_RESTRICT tile_row_data = tile_data;
-			for (auto i = 0U; i < w; ++i) {
-				int32_t temp = *t1_data;
+			for (auto i = 0U; i < cblk_w; ++i) {
+				int32_t temp = *src;
 				int32_t val = (temp & 0x7FFFFFFF) >> shift;
 				tile_row_data[i] = (temp & 0x80000000) ? -val : val;
-				t1_data++;
+				src++;
 			}
-			tile_data += tile_width;
+			tile_data += dest_width;
 		}
 	} else {
-		int32_t *GRK_RESTRICT tile_data = block->tiledp;
-		for (auto j = 0U; j < h; ++j) {
+		int32_t *GRK_RESTRICT tile_data = dest;
+		for (auto j = 0U; j < cblk_h; ++j) {
 			float *GRK_RESTRICT tile_row_data = (float*)tile_data;
-			for (auto i = 0U; i < w; ++i) {
-		       float val = (((*t1_data & 0x7FFFFFFF) * block->stepsize));
-		       tile_row_data[i] = (*t1_data & 0x80000000) ? -val : val;
-			   t1_data++;
+			for (auto i = 0U; i < cblk_w; ++i) {
+		       float val = (((*src & 0x7FFFFFFF) * block->stepsize));
+		       tile_row_data[i] = (*src & 0x80000000) ? -val : val;
+			   src++;
 			}
-			tile_data += tile_width;
+			tile_data += dest_width;
+		}
+	}
+	if (!whole_tile_decoding){
+		// write directly from t1 to sparse array
+		if (!tilec->m_sa->write(block->x,
+							  block->y,
+							  block->x + cblk_w,
+							  block->y + cblk_h,
+							  unencoded_data,
+							  1,
+							  cblk_w,
+							  true)) {
+			  return;
 		}
 	}
 }
