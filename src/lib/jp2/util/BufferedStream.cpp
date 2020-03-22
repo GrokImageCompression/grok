@@ -63,9 +63,7 @@ template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
-//1. file stream -        buffer == nullptr && p_buffer_size > 0
-//3. memory stream -      buffer != nullptr && p_buffer_size > 0
-//memory stream
+// buffered stream
 BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input) :
 				m_user_data(nullptr),
 				m_free_user_data_fn(nullptr),
@@ -102,35 +100,40 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		return 0;
 	size_t l_read_nb_bytes = 0;
 
-  //1. if stream is at end, then return immediately
-  if (m_status & GROK_STREAM_STATUS_END)
-    return 0;
+    //1. if stream is at end, then return immediately
+    if (m_status & GROK_STREAM_STATUS_END)
+      return 0;
 	//2. if we have enough bytes in buffer, then read from buffer and return
 	if (p_size <= m_buffered_bytes) {
-		assert(m_buf->curr_ptr() >= m_buf->buf);
-		if (p_buffer)
+		if (p_buffer) {
+			assert(m_buf->curr_ptr() >= m_buf->buf);
+			assert(m_buf->curr_ptr() - m_buf->buf + p_size <= m_buf->len);
 			memcpy(p_buffer, m_buf->curr_ptr(), p_size);
-
+		}
 		m_buf->incr_offset(p_size);
-		assert(m_buf->curr_ptr() >= m_buf->buf);
 		m_buffered_bytes -= p_size;
 		l_read_nb_bytes += p_size;
 		m_stream_offset += p_size;
 		return l_read_nb_bytes;
 	}
-	//2. if stream is at end, then read remaining bytes in buffer and return
+	//3. if stream is at end, then read remaining bytes in buffer and return
 	if (m_status & GROK_STREAM_STATUS_END) {
 		l_read_nb_bytes += m_buffered_bytes;
-		if (p_buffer && m_buffered_bytes)
+		if (p_buffer && m_buffered_bytes){
+			assert(m_buf->curr_ptr() >= m_buf->buf);
+			assert(m_buf->curr_ptr() - m_buf->buf + m_buffered_bytes <= m_buf->len);
 			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
+		}
 		m_stream_offset += m_buffered_bytes;
 		invalidate_buffer();
 		return l_read_nb_bytes;
 	}
-	// 3. read remaining bytes in buffer 
+	// 4. read remaining bytes in buffer
 	if (m_buffered_bytes) {
 		l_read_nb_bytes += m_buffered_bytes;
 		if (p_buffer) {
+			assert(m_buf->curr_ptr() >= m_buf->buf);
+			assert(m_buf->curr_ptr() - m_buf->buf + m_buffered_bytes <= m_buf->len);
 			memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
 			p_buffer += m_buffered_bytes;
 		}
@@ -139,9 +142,9 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 		m_buffered_bytes = 0;
 	}
 
-	//4. read from buffer
+	//5. read from "media"
 	invalidate_buffer();
-  while(true) {
+    while(true) {
       m_buffered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
       // i) end of stream
       if (m_buffered_bytes == 0) {
@@ -153,6 +156,8 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
       else if (m_buffered_bytes < p_size) {
         l_read_nb_bytes += m_buffered_bytes;
         if (p_buffer) {
+		  assert(m_buf->curr_ptr() >= m_buf->buf);
+		  assert(m_buf->curr_ptr() - m_buf->buf + m_buffered_bytes <= m_buf->len);
           memcpy(p_buffer, m_buf->curr_ptr(), m_buffered_bytes);
           p_buffer += m_buffered_bytes;
         }
@@ -164,10 +169,12 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
       else {
         m_read_bytes_seekable = m_buffered_bytes;
         l_read_nb_bytes += p_size;
-        if (p_buffer && p_size)
+        if (p_buffer && p_size) {
+          assert(m_buf->curr_ptr() >= m_buf->buf);
+      	  assert(m_buf->curr_ptr() - m_buf->buf + p_size <= m_buf->len);
           memcpy(p_buffer, m_buf->curr_ptr(), p_size);
+        }
         m_buf->incr_offset(p_size);
-        assert(m_buf->curr_ptr() >= m_buf->buf);
         m_buffered_bytes -= p_size;
         m_stream_offset += p_size;
         return l_read_nb_bytes;
