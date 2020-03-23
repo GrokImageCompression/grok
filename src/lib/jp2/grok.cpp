@@ -155,7 +155,8 @@ ThreadPool* Scheduler::g_tp = nullptr;
 
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
-	Scheduler::g_tp = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
+	if (!Scheduler::g_tp)
+		Scheduler::g_tp = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
 	if (!is_plugin_initialized) {
 		grok_plugin_load_info info;
 		info.plugin_path = plugin_path;
