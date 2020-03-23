@@ -179,19 +179,17 @@ void j2k_destroy(grk_j2k *p_j2k) {
 
 static bool j2k_exec(grk_j2k *p_j2k, std::vector<j2k_procedure> *procs,
 		BufferedStream *p_stream) {
-	bool l_result = true;
+	bool result = true;
 
 	assert(procs != nullptr);
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
 
-	for (auto it = procs->begin(); it != procs->end(); ++it){
-		auto p = (bool (*)(grk_j2k *j2k, BufferedStream*))*it;
-		l_result = l_result && (p)(p_j2k, p_stream);
-	}
+	for (auto it = procs->begin(); it != procs->end() && result; ++it)
+		result = result && (*it)(p_j2k, p_stream);
 	procs->clear();
 
-	return l_result;
+	return result;
 }
 
 /*************************************

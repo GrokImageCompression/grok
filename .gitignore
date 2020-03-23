@@ -1,3 +1,6 @@
+ 
+obj-x86_64-linux-gnu
+debian/tmp
 
 #Ignore thumbnails created by Windows
 Thumbs.db
