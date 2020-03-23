@@ -1800,7 +1800,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
                        true);
         assert(ret);
         GRK_UNUSED(ret);
-        delete sa;
         return true;
     }
 
@@ -1809,7 +1808,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     size_t data_size = dwt_utils::max_resolution(tr, numres) * data_multiplier;
     if (!horiz.alloc(data_size)) {
         GROK_ERROR("Out of memory");
-        delete sa;
         return false;
     }
     vert.mem = horiz.mem;
@@ -1911,7 +1909,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					  win_tr_y0,
 					  win_tr_x1,
 					  win_tr_y1)) {
-			 delete sa;
 			 return false;
 		 }
 		for (uint32_t k = 0; k < 2; ++k) {
@@ -1919,7 +1916,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 						  bounds[k][0],
 						  win_tr_x1,
 						  bounds[k][1])) {
-				 delete sa;
 				 return false;
 			 }
 		}
@@ -1957,7 +1953,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  1,
 								  true)) {
 					 GROK_ERROR("sparse array write failure");
-					 delete sa;
 					 horiz.release();
 					 return false;
 				 }
@@ -1974,7 +1969,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  1,
 								  true)) {
 					 GROK_ERROR("Sparse array write failure");
-					 delete sa;
 					 horiz.release();
 					 return false;
 				 }
@@ -2007,7 +2001,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 										  1,
 										  true)) {
 							 GROK_ERROR("sparse array write failure");
-							 delete sa;
 							 job->data.release();
 							 return 0;
 						 }
@@ -2024,7 +2017,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 										  1,
 										  true)) {
 							 GROK_ERROR("Sparse array write failure");
-							 delete sa;
 							 job->data.release();
 							 return 0;
 						 }
@@ -2063,7 +2055,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 							  VERT_STEP,
 							  true)) {
 					GROK_ERROR("Sparse array write failure");
-					delete sa;
 					horiz.release();
 					return false;
 				}
@@ -2080,7 +2071,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 								  VERT_STEP,
 								  true)) {
 					GROK_ERROR("Sparse array write failure");
-					delete sa;
 					horiz.release();
 					return false;
 				}
@@ -2113,7 +2103,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 									  VERT_STEP,
 									  true)) {
 							GROK_ERROR("Sparse array write failure");
-							delete sa;
 							job->data.release();
 							return 0;
 						}
@@ -2130,7 +2119,6 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 												  VERT_STEP,
 												  true)) {
 							GROK_ERROR("Sparse array write failure");
-							delete sa;
 							job->data.release();
 							return 0;
 						}
