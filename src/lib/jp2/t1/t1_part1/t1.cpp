@@ -1113,7 +1113,6 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 	uint8_t *cblkdata = nullptr;
 	uint32_t cblkdataindex = 0;
 	uint8_t type = T1_TYPE_MQ;
-	int32_t *original_t1_data = nullptr;
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 

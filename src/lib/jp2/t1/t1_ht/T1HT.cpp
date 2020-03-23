@@ -139,7 +139,7 @@ bool T1HT::decode(decodeBlockInfo *block) {
 		return true;
 
 	auto min_buf_vec = &cblk->seg_buffers;
-	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len());
+	size_t total_seg_len = (min_buf_vec->get_len());
 	if (coded_data_size < total_seg_len) {
 		delete[] coded_data;
 		coded_data = new uint8_t[total_seg_len];

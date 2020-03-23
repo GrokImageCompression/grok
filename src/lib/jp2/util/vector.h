@@ -27,7 +27,7 @@ struct grk_vec {
 	bool init();
 	bool push_back(grk_buf* value);
 	void* get(size_t index);
-	int32_t size();
+	size_t size();
 	void* back();
 	void cleanup();
 

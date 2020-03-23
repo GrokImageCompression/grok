@@ -121,8 +121,8 @@ double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		auto passopj = cblkopj.passes + i;
 		auto passgrk = cblk->passes + i;
 		passgrk->distortiondec = passopj->distortiondec;
-		passgrk->len = (uint16_t)passopj->len;
-		passgrk->rate = (uint16_t)passopj->rate;
+		passgrk->len = passopj->len;
+		passgrk->rate = passopj->rate;
 		passgrk->term = passopj->term;
 	}
 
@@ -147,11 +147,11 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 		if (!new_block)
 			return false;
 		t1->cblkdatabuffer = new_block;
-		t1->cblkdatabuffersize = total_seg_len;
+		t1->cblkdatabuffersize = (uint32_t)total_seg_len;
 	}
 	size_t offset = 0;
 	// note: min_buf_vec only contains segments of non-zero length
-	for (uint32_t i = 0; i < min_buf_vec->size(); ++i) {
+	for (size_t i = 0; i < min_buf_vec->size(); ++i) {
 		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;

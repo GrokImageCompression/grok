@@ -42,10 +42,10 @@ void* grk_vec::get(size_t index) {
 	}
 	return data->operator[](index);
 }
-int32_t grk_vec::size() {
+size_t grk_vec::size() {
 	if (!data)
 		return 0;
-	return (int32_t) data->size();
+	return data->size();
 }
 void* grk_vec::back() {
 	if (!data)
@@ -68,7 +68,7 @@ bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 		return false;
 	}
 	size_t offset = 0;
-	for (int32_t i = 0; i < size(); ++i) {
+	for (size_t i = 0; i < size(); ++i) {
 		grk_buf *seg = (grk_buf*) get(i);
 		if (seg->len)
 			memcpy(buffer + offset, seg->buf, seg->len);
@@ -95,7 +95,7 @@ size_t grk_vec::get_len(void) {
 	size_t len = 0;
 	if (!data)
 		return 0;
-	for (int32_t i = 0; i < size(); ++i) {
+	for (size_t i = 0; i < size(); ++i) {
 		grk_buf *seg = (grk_buf*) get(i);
 		if (seg)
 			len += seg->len;

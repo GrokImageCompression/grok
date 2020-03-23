@@ -100,9 +100,9 @@ struct grk_tcd_pass {
 	grk_tcd_pass() :
 			rate(0), distortiondec(0), len(0), term(0), slope(0) {
 	}
-	uint16_t rate;
+	uint32_t rate;
 	double distortiondec;
-	uint16_t len;
+	uint32_t len;
 	uint8_t term;
 	uint16_t slope;  //ln(slope) in 8.8 fixed point
 };

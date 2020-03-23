@@ -214,7 +214,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 			}
 		}
 
-		uint16_t lastRate = 0;
+		uint32_t lastRate = 0;
 		for (uint32_t passno = 0; passno < cblk->num_passes_encoded; passno++) {
 			grk_tcd_pass *pass = cblk->passes + passno;
 			grk_plugin_pass *pluginPass = plugin_cblk->passes + passno;
