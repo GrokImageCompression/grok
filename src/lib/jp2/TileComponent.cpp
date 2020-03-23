@@ -545,6 +545,8 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
             }
         }
     }
+    if (m_sa)
+    	delete m_sa;
     m_sa = sa;
 }
 
