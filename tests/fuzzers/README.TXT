@@ -12,7 +12,9 @@ https://bugs.chromium.org/p/oss-fuzz/issues/list?q=grok
 - Simulate the build of (dummy) fuzzers like OSS Fuzz does:
 
    Preliminary steps:
-    $ cd ${ROOT_OF_GROK}
+    $ cd /tmp
+    $ git clone https://github.com/GrokImageCompression/grok
+    $ cd grok
     $ git clone --depth 1 https://github.com/GrokImageCompression/grok-test-data data
     $ mkdir build
     $ cd build
