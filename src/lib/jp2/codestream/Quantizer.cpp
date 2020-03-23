@@ -91,8 +91,7 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 			+ std::max<int32_t>(0,
 					(int32_t) (step_size->expn + tccp->numgbits)
 							- 1);
-	band->inv_step = 8192 * 8192
-					/ ((int32_t) floor(band->stepsize * 8192));
+	band->inv_step = (int32_t)(8192.0/band->stepsize + 0.5);
 
 	if (tcp->isHT){
 		 // decode
