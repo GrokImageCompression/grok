@@ -76,7 +76,7 @@ bool grk_vec::copy_to_contiguous_buffer(uint8_t *buffer) {
 	}
 	return true;
 }
-bool grk_vec::push_back(uint8_t *buf, uint16_t len) {
+bool grk_vec::push_back(uint8_t *buf, size_t len) {
 	if (!buf || !len)
 		return false;
 
@@ -91,14 +91,14 @@ bool grk_vec::push_back(uint8_t *buf, uint16_t len) {
 	return true;
 }
 
-uint16_t grk_vec::get_len(void) {
-	uint16_t len = 0;
+size_t grk_vec::get_len(void) {
+	size_t len = 0;
 	if (!data)
 		return 0;
 	for (int32_t i = 0; i < size(); ++i) {
 		grk_buf *seg = (grk_buf*) get(i);
 		if (seg)
-			len = static_cast<uint16_t>((uint32_t) len + seg->len);
+			len += seg->len;
 	}
 	return len;
 

@@ -659,168 +659,168 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	return true;
 }
 
-bool T2::read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
+bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	uint32_t bandno;
 	uint64_t cblkno;
-	auto l_band = l_res->bands;
-	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
-		auto l_prc = &l_band->precincts[p_pi->precno];
-		uint64_t l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
-		auto l_cblk = l_prc->cblks.dec;
+	auto band = res->bands;
+	for (bandno = 0; bandno < res->numbands; ++bandno) {
+		auto prc = &band->precincts[p_pi->precno];
+		uint64_t nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		auto cblk = prc->cblks.dec;
 
-		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-			grk_tcd_seg *l_seg = nullptr;
+		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+			grk_tcd_seg *seg = nullptr;
 
-			if (!l_cblk->numPassesInPacket) {
-				++l_cblk;
+			if (!cblk->numPassesInPacket) {
+				++cblk;
 				continue;
 			}
 
-			if (!l_cblk->numSegments) {
-				l_seg = l_cblk->segs;
-				++l_cblk->numSegments;
-				l_cblk->compressedData.len = 0;
+			if (!cblk->numSegments) {
+				seg = cblk->segs;
+				++cblk->numSegments;
+				cblk->compressedData.len = 0;
 			} else {
-				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
-				if (l_seg->numpasses == l_seg->maxpasses) {
-					++l_seg;
-					++l_cblk->numSegments;
+				seg = &cblk->segs[cblk->numSegments - 1];
+				if (seg->numpasses == seg->maxpasses) {
+					++seg;
+					++cblk->numSegments;
 				}
 			}
 
-			uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
+			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
 				size_t offset = (size_t) src_buf->get_global_offset();
 				size_t len = src_buf->data_len;
 				// Check possible overflow on segment length
-				if (((offset + l_seg->numBytesInPacket) > len)) {
+				if (((offset + seg->numBytesInPacket) > len)) {
 					GROK_WARN(
 							"read packet data: segment offset (%u) plus segment length %u is greater than "
 							"total length \nof all segments (%u) for codeblock "
 							"%d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)."
 							"Truncating packet data.\n",
-							offset, l_seg->numBytesInPacket, len, cblkno, p_pi->layno,
+							offset, seg->numBytesInPacket, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
-					l_seg->numBytesInPacket = (uint32_t)(len - offset);
+					seg->numBytesInPacket = (uint32_t)(len - offset);
 				}
 				//initialize dataindex to current contiguous size of code block
-				if (l_seg->numpasses == 0) {
-					l_seg->dataindex = (uint32_t)l_cblk->compressedData.len;
-				}
+				if (seg->numpasses == 0)
+					seg->dataindex = (uint32_t)cblk->compressedData.len;
+
 				// only add segment to seg_buffers if length is greater than zero
-				if (l_seg->numBytesInPacket) {
-					l_cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
-							(uint16_t) l_seg->numBytesInPacket);
-					*(p_data_read) += l_seg->numBytesInPacket;
-					src_buf->incr_cur_chunk_offset(l_seg->numBytesInPacket);
-					l_cblk->compressedData.len += l_seg->numBytesInPacket;
-					l_seg->len += l_seg->numBytesInPacket;
+				if (seg->numBytesInPacket) {
+					cblk->seg_buffers.push_back(src_buf->get_global_ptr(),
+												seg->numBytesInPacket);
+					*(p_data_read) += seg->numBytesInPacket;
+					src_buf->incr_cur_chunk_offset(seg->numBytesInPacket);
+					cblk->compressedData.len += seg->numBytesInPacket;
+					seg->len += seg->numBytesInPacket;
 				}
-				l_seg->numpasses += l_seg->numPassesInPacket;
-				numPassesInPacket -= l_seg->numPassesInPacket;
+				seg->numpasses += seg->numPassesInPacket;
+				numPassesInPacket -= seg->numPassesInPacket;
 				if (numPassesInPacket > 0) {
-					++l_seg;
-					++l_cblk->numSegments;
+					++seg;
+					++cblk->numSegments;
 				}
 			} while (numPassesInPacket > 0);
-			++l_cblk;
+			++cblk;
 		} /* next code_block */
 
-		++l_band;
+		++band;
 	}
 	return true;
 }
 bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
-	bool l_read_data;
-	uint64_t l_nb_bytes_read = 0;
-	uint64_t l_nb_total_bytes_read = 0;
+	bool read_data;
+	uint64_t nb_bytes_read = 0;
+	uint64_t nb_totabytes_read = 0;
 	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
 
 	*p_data_read = 0;
 	if (!read_packet_header(p_tile, p_tcp, p_pi,
-			&l_read_data, src_buf, &l_nb_bytes_read)) {
+			&read_data, src_buf, &nb_bytes_read)) {
 		return false;
 	}
 
-	l_nb_total_bytes_read += l_nb_bytes_read;
-	max_length -= l_nb_bytes_read;
+	nb_totabytes_read += nb_bytes_read;
+	max_length -= nb_bytes_read;
 
 	/* we should read data for the packet */
-	if (l_read_data) {
-		l_nb_bytes_read = 0;
+	if (read_data) {
+		nb_bytes_read = 0;
 
 		if (!skip_packet_data(&p_tile->comps[p_pi->compno].resolutions[p_pi->resno], p_pi,
-				&l_nb_bytes_read, max_length)) {
+				&nb_bytes_read, max_length)) {
 			return false;
 		}
-		src_buf->incr_cur_chunk_offset(l_nb_bytes_read);
-		l_nb_total_bytes_read += l_nb_bytes_read;
+		src_buf->incr_cur_chunk_offset(nb_bytes_read);
+		nb_totabytes_read += nb_bytes_read;
 	}
-	*p_data_read = l_nb_total_bytes_read;
+	*p_data_read = nb_totabytes_read;
 
 	return true;
 }
 
-bool T2::skip_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
+bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 		uint64_t *p_data_read, uint64_t max_length) {
 	uint32_t bandno;
-	uint64_t l_nb_code_blocks, cblkno;
+	uint64_t nb_code_blocks, cblkno;
 
 	*p_data_read = 0;
-	for (bandno = 0; bandno < l_res->numbands; ++bandno) {
-		auto l_band = l_res->bands + bandno;
-		if (l_band->isEmpty())
+	for (bandno = 0; bandno < res->numbands; ++bandno) {
+		auto band = res->bands + bandno;
+		if (band->isEmpty())
 			continue;
 
-		auto l_prc = &l_band->precincts[p_pi->precno];
-		l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
-		auto l_cblk = l_prc->cblks.dec;
-		for (cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-			grk_tcd_seg *l_seg = nullptr;
+		auto prc = &band->precincts[p_pi->precno];
+		nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		auto cblk = prc->cblks.dec;
+		for (cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+			grk_tcd_seg *seg = nullptr;
 
-			if (!l_cblk->numPassesInPacket) {
+			if (!cblk->numPassesInPacket) {
 				/* nothing to do */
-				++l_cblk;
+				++cblk;
 				continue;
 			}
 
-			if (!l_cblk->numSegments) {
-				l_seg = l_cblk->segs;
-				++l_cblk->numSegments;
-				l_cblk->compressedData.len = 0;
+			if (!cblk->numSegments) {
+				seg = cblk->segs;
+				++cblk->numSegments;
+				cblk->compressedData.len = 0;
 			} else {
-				l_seg = &l_cblk->segs[l_cblk->numSegments - 1];
-				if (l_seg->numpasses == l_seg->maxpasses) {
-					++l_seg;
-					++l_cblk->numSegments;
+				seg = &cblk->segs[cblk->numSegments - 1];
+				if (seg->numpasses == seg->maxpasses) {
+					++seg;
+					++cblk->numSegments;
 				}
 			}
-			uint32_t numPassesInPacket = l_cblk->numPassesInPacket;
+			uint32_t numPassesInPacket = cblk->numPassesInPacket;
 			do {
 				/* Check possible overflow then size */
-				if (((*p_data_read + l_seg->numBytesInPacket) < (*p_data_read))
-						|| ((*p_data_read + l_seg->numBytesInPacket) > max_length)) {
+				if (((*p_data_read + seg->numBytesInPacket) < (*p_data_read))
+						|| ((*p_data_read + seg->numBytesInPacket) > max_length)) {
 					GROK_ERROR(
 							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
-							l_seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
+							seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
 							bandno, p_pi->resno, p_pi->compno);
 					return false;
 				}
 
 				//GROK_INFO( "skip packet: p_data_read = %d, bytes in packet =  %d \n",
-				//		*p_data_read, l_seg->numBytesInPacket);
-				*(p_data_read) += l_seg->numBytesInPacket;
-				l_seg->numpasses += l_seg->numPassesInPacket;
-				numPassesInPacket -= l_seg->numPassesInPacket;
+				//		*p_data_read, seg->numBytesInPacket);
+				*(p_data_read) += seg->numBytesInPacket;
+				seg->numpasses += seg->numPassesInPacket;
+				numPassesInPacket -= seg->numPassesInPacket;
 				if (numPassesInPacket > 0) {
-					++l_seg;
-					++l_cblk->numSegments;
+					++seg;
+					++cblk->numSegments;
 				}
 			} while (numPassesInPacket > 0);
 
-			++l_cblk;
+			++cblk;
 		}
 	}
 	return true;

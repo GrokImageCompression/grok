@@ -39,15 +39,13 @@ struct grk_vec {
 	/*
 	Push buffer to back of min buf vector
 	*/
-	bool push_back(uint8_t* buf, uint16_t len);
+	bool push_back(uint8_t* buf, size_t len);
 
 	/*
 	Sum lengths of all buffers
 	*/
 
-	uint16_t get_len(void);
-
-
+	size_t get_len(void);
 
 
 	std::vector<grk_buf*>* data;

@@ -140,7 +140,7 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 		return true;
 
 	auto min_buf_vec = &cblk->seg_buffers;
-	uint16_t total_seg_len = (uint16_t) (min_buf_vec->get_len() + GRK_FAKE_MARKER_BYTES);
+	size_t total_seg_len = min_buf_vec->get_len() + GRK_FAKE_MARKER_BYTES;
 	if (t1->cblkdatabuffersize < total_seg_len) {
 		uint8_t *new_block = (uint8_t*) grk_realloc(t1->cblkdatabuffer,
 				total_seg_len);
@@ -151,7 +151,7 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 	}
 	size_t offset = 0;
 	// note: min_buf_vec only contains segments of non-zero length
-	for (int32_t i = 0; i < min_buf_vec->size(); ++i) {
+	for (uint32_t i = 0; i < min_buf_vec->size(); ++i) {
 		grk_buf *seg = (grk_buf*) min_buf_vec->get(i);
 		memcpy(t1->cblkdatabuffer + offset, seg->buf, seg->len);
 		offset += seg->len;
@@ -177,6 +177,7 @@ bool T1Part1::decode(decodeBlockInfo *block) {
 		memset(sopj, 0, sizeof(tcd_seg_t));
 		auto sgrk = cblk->segs + i;
 		sopj->len = sgrk->len;
+		assert(sopj->len <= total_seg_len);
 		sopj->real_num_passes = sgrk->numpasses;
 	}
 	cblkopj.segs = segs;
