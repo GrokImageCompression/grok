@@ -146,8 +146,11 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 	invalidate_buffer();
     while(true) {
       m_buffered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
+      if (m_buffered_bytes > m_buf->len){
+    	  GROK_WARN("Buffered stream: read length greater than buffer length");
+      }
       // i) end of stream
-      if (m_buffered_bytes == 0) {
+      if (m_buffered_bytes == 0 || m_buffered_bytes > m_buf->len) {
         invalidate_buffer();
         m_status |= GROK_STREAM_STATUS_END;
         return l_read_nb_bytes;
