@@ -101,7 +101,6 @@ static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
 
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
-	grk_initialize(nullptr,0);
     GRK_CODEC_FORMAT eCodecFormat;
     if (len >= sizeof(jpc_header) &&
             memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
@@ -112,7 +111,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     } else {
         return 0;
     }
-
+	grk_initialize(nullptr,0);
     grk_stream *pStream = grk_stream_create(1024, true);
     MemFile memFile;
     memFile.pabyData = buf;
@@ -140,28 +139,6 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
         goto cleanup;
     width = psImage->x1 - psImage->x0;
     height = psImage->y1 - psImage->y0;
-
-#if 0
-    // Reject too big images since that will require allocating a lot of
-    // memory
-    if (width != 0 && psImage->numcomps != 0 &&
-            (width > INT_MAX / psImage->numcomps ||
-             height > INT_MAX / (width * psImage->numcomps * sizeof(OPJ_UINT32)))) {
-        goto cleanup;
-    }
-
-    // Also reject too big tiles.
-    // TODO: remove this limitation when subtile decoding no longer imply
-    // allocation memory for whole tile
-    grk_codestream_info_v2_t* pCodeStreamInfo = grk_get_cstr_info(pCodec);
-    OPJ_UINT32 nTileW, nTileH;
-    nTileW = pCodeStreamInfo->tdx;
-    nTileH = pCodeStreamInfo->tdy;
-    grk_destroy_cstr_info(&pCodeStreamInfo);
-    if (nTileW > 2048 || nTileH > 2048) {
-        goto cleanup;
-    }
-#endif
     width_to_read = width;
     if (width_to_read > 1024)
         width_to_read = 1024;
