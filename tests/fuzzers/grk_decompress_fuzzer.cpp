@@ -101,6 +101,7 @@ static const unsigned char jp2_box_jp[] = {0x6a, 0x50, 0x20, 0x20}; /* 'jP  ' */
 
 int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
 {
+	grk_initialize(nullptr,0);
     GRK_CODEC_FORMAT eCodecFormat;
     if (len >= sizeof(jpc_header) &&
             memcmp(buf, jpc_header, sizeof(jpc_header)) == 0) {
@@ -134,15 +135,11 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     grk_setup_decoder(pCodec, &parameters);
     grk_image * psImage = NULL;
     grk_header_info  header_info;
-    if (!grk_read_header(pCodec, &header_info, &psImage)) {
-        grk_destroy_codec(pCodec);
-        grk_stream_destroy(pStream);
-        grk_image_destroy(psImage);
-        return 0;
-    }
-
-    uint32_t width = psImage->x1 - psImage->x0;
-    uint32_t height = psImage->y1 - psImage->y0;
+    uint32_t width, height,width_to_read, height_to_read;
+    if (!grk_read_header(pCodec, &header_info, &psImage))
+        goto cleanup;
+    width = psImage->x1 - psImage->x0;
+    height = psImage->y1 - psImage->y0;
 
 #if 0
     // Reject too big images since that will require allocating a lot of
@@ -150,11 +147,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     if (width != 0 && psImage->numcomps != 0 &&
             (width > INT_MAX / psImage->numcomps ||
              height > INT_MAX / (width * psImage->numcomps * sizeof(OPJ_UINT32)))) {
-        grk_stream_destroy(pStream);
-        grk_destroy_codec(pCodec);
-        grk_image_destroy(psImage);
-
-        return 0;
+        goto cleanup;
     }
 
     // Also reject too big tiles.
@@ -166,36 +159,32 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     nTileH = pCodeStreamInfo->tdy;
     grk_destroy_cstr_info(&pCodeStreamInfo);
     if (nTileW > 2048 || nTileH > 2048) {
-        grk_stream_destroy(pStream);
-        grk_destroy_codec(pCodec);
-        grk_image_destroy(psImage);
-
-        return 0;
+        goto cleanup;
     }
 #endif
-
-    uint32_t width_to_read = width;
-    if (width_to_read > 1024) {
+    width_to_read = width;
+    if (width_to_read > 1024)
         width_to_read = 1024;
-    }
-    uint32_t height_to_read = height;
-    if (height_to_read > 1024) {
+    height_to_read = height;
+    if (height_to_read > 1024)
         height_to_read = 1024;
-    }
 
-    if (grk_set_decode_area(pCodec, psImage,
-                            psImage->x0, psImage->y0,
+    if (grk_set_decode_area(pCodec,
+    						psImage,
+                            psImage->x0,
+							psImage->y0,
                             psImage->x0 + width_to_read,
                             psImage->y0 + height_to_read)) {
-        if (grk_decode(pCodec, nullptr, psImage)) {
-            //printf("success\n");
-        }
+        if (!grk_decode(pCodec, nullptr, psImage))
+        	goto cleanup;
     }
 
     grk_end_decompress(pCodec);
+cleanup:
     grk_stream_destroy(pStream);
     grk_destroy_codec(pCodec);
     grk_image_destroy(psImage);
+    grk_deinitialize();
 
     return 0;
 }
