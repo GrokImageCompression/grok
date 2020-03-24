@@ -965,27 +965,38 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	}
 
 
-	// pre-allocate sparse array
-    if (!whole_tile_decoding) {
-	  for (uint32_t compno = 0; compno < image->numcomps; compno++) {
-		  auto tilec = tile->comps + compno;
-		  auto img_comp = image->comps + compno;
-		  try {
-			 tilec->alloc_sparse_array(img_comp->resno_decoded + 1);
-		  } catch (runtime_error &ex){
-			  return false;
-		  }
-	  }
-    }
-
 	if (doT1) {
-		if (!t1_decode())
-			return false;
+		for (uint32_t compno = 0; compno < tile->numcomps; ++compno) {
+		   auto tilec = tile->comps + compno;
+		   auto img_comp = image->comps + compno;
+		   auto tccp = m_tcp->tccps + compno;
+
+		   if (!whole_tile_decoding) {
+			  try {
+				 tilec->alloc_sparse_array(img_comp->resno_decoded + 1);
+			  } catch (runtime_error &ex){
+				  return false;
+			  }
+		   }
+		    std::vector<decodeBlockInfo*> blocks;
+			auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
+			if (!t1_wrap->prepareDecodeCodeblocks(tilec, tccp, &blocks))
+				return false;
+			// !!! assume that code block dimensions do not change over components
+			if (!t1_wrap->decodeCodeblocks(m_tcp,
+					(uint16_t) m_tcp->tccps->cblkw,
+					(uint16_t) m_tcp->tccps->cblkh, &blocks))
+				return false;
+
+		  if (doPostT1)
+			  if (!Wavelet::decode(this, tilec, img_comp->resno_decoded + 1,tccp->qmfbid))
+				  return false;
+
+		  tilec->free_sparse_array();
+		}
 	}
 
 	if (doPostT1) {
-		if (!dwt_decode())
-			return false;
 		if (!mct_decode())
 			return false;
 		if (!dc_level_shift_decode())
@@ -1146,41 +1157,6 @@ bool TileProcessor::t2_decode(uint16_t tile_no, ChunkBuffer *src_buf,
 	return true;
 }
 
-bool TileProcessor::t1_decode() {
-	uint32_t compno;
-	auto tile_comp = tile->comps;
-	auto tccp = m_tcp->tccps;
-	std::vector<decodeBlockInfo*> blocks;
-	auto t1_wrap = std::unique_ptr<Tier1>(new Tier1());
-	for (compno = 0; compno < tile->numcomps; ++compno) {
-		if (!t1_wrap->prepareDecodeCodeblocks(tile_comp, tccp, &blocks)) {
-			return false;
-		}
-		++tile_comp;
-		++tccp;
-	}
-	// !!! assume that code block dimensions do not change over components
-	return t1_wrap->decodeCodeblocks(m_tcp,
-			(uint16_t) m_tcp->tccps->cblkw,
-			(uint16_t) m_tcp->tccps->cblkh, &blocks);
-}
-
-bool TileProcessor::dwt_decode() {
-	int64_t compno = 0;
-	bool rc = true;
-	for (compno = 0; compno < (int64_t) tile->numcomps; compno++) {
-		auto tile_comp = tile->comps + compno;
-		auto tccp = m_tcp->tccps + compno;
-		auto img_comp = image->comps + compno;
-		 if (!Wavelet::decode(this, tile_comp, img_comp->resno_decoded + 1,tccp->qmfbid)) {
-			rc = false;
-			continue;
-
-		}
-	}
-
-	return rc;
-}
 bool TileProcessor::mct_decode() {
 	auto tile_comp = tile->comps;
 	uint64_t i;

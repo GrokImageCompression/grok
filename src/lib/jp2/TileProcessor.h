@@ -447,10 +447,6 @@ private:
 
 	 bool is_whole_tilecomp_decoding( uint32_t compno);
 
-	 bool t1_decode();
-
-	 bool dwt_decode();
-
 	 bool mct_decode();
 
 	 bool dc_level_shift_decode();
