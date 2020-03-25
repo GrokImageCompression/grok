@@ -89,7 +89,7 @@ struct TileComponent {
 			grk_plugin_tile *current_plugin_tile);
 
 	 void alloc_sparse_array(uint32_t numres);
-	 void free_sparse_array();
+	 void release_mem();
 
 
 	uint32_t numresolutions; /* number of resolutions level */

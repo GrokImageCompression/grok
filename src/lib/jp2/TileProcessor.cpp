@@ -992,7 +992,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 			  if (!Wavelet::decode(this, tilec, img_comp->resno_decoded + 1,tccp->qmfbid))
 				  return false;
 
-		  tilec->free_sparse_array();
+		  tilec->release_mem();
 		}
 	}
 

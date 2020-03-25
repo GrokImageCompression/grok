@@ -78,6 +78,10 @@ TileComponent::TileComponent() :numresolutions(0),
 {}
 
 TileComponent::~TileComponent(){
+	release_mem();
+	delete buf;
+}
+void TileComponent::release_mem(){
 	auto res = resolutions;
 	if (res) {
 		auto nb_resolutions = numAllocatedResolutions;
@@ -105,9 +109,8 @@ TileComponent::~TileComponent(){
 		delete[] resolutions;
 		resolutions = nullptr;
 	}
-	delete buf;
-	buf = nullptr;
-	free_sparse_array();
+	delete m_sa;
+	m_sa = nullptr;
 }
 
 uint32_t TileComponent::width(){
@@ -503,10 +506,6 @@ bool TileComponent::init(bool isEncoder,
 	return true;
 }
 
-void TileComponent::free_sparse_array(){
-	delete m_sa;
-	m_sa = nullptr;
-}
 
 void TileComponent::alloc_sparse_array(uint32_t numres){
     auto tr_max = &(resolutions[numres - 1]);
