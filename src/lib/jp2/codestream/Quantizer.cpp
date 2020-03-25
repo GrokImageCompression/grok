@@ -142,8 +142,8 @@ void Quantizer::apply_quant(grk_tccp *src, grk_tccp *dest){
 	if (!ignore) {
 		dest->qntsty = src->qntsty;
 		dest->numgbits = src->numgbits;
-		auto l_size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
-		memcpy(dest->stepsizes, src->stepsizes, l_size);
+		auto size = GRK_J2K_MAXBANDS * sizeof(grk_stepsize);
+		memcpy(dest->stepsizes, src->stepsizes, size);
 	}
 }
 
@@ -152,27 +152,27 @@ bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 		uint32_t comp_no, BufferedStream *p_stream) {
 	assert(p_j2k != nullptr);
 
-	auto l_cp = &(p_j2k->m_cp);
-	auto l_tcp = &l_cp->tcps[tile_no];
-	auto l_tccp = &l_tcp->tccps[comp_no];
+	auto cp = &(p_j2k->m_cp);
+	auto tcp = &cp->tcps[tile_no];
+	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < l_cp->tw * l_cp->th);
+	assert(tile_no < cp->tw * cp->th);
 	assert(comp_no < p_j2k->m_private_image->numcomps);
 
-	uint32_t l_num_bands =
-			(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (l_tccp->numresolutions * 3 - 2);
+	uint32_t num_bands =
+			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
+					1 : (tccp->numresolutions * 3 - 2);
 
 	/* Sqcx */
 	if (!p_stream->write_byte(
-			(uint8_t) (l_tccp->qntsty + (l_tccp->numgbits << 5)))) {
+			(uint8_t) (tccp->qntsty + (tccp->numgbits << 5)))) {
 		return false;
 	}
 	/* SPqcx_i */
-	for (uint32_t l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-		uint32_t expn = l_tccp->stepsizes[l_band_no].expn;
-		uint32_t mant = l_tccp->stepsizes[l_band_no].mant;
-		if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
+	for (uint32_t band_no = 0; band_no < num_bands; ++band_no) {
+		uint32_t expn = tccp->stepsizes[band_no].expn;
+		uint32_t mant = tccp->stepsizes[band_no].mant;
+		if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
 			if (!p_stream->write_byte((uint8_t) (expn << 3))) {
 				return false;
 			}
@@ -190,21 +190,21 @@ uint32_t Quantizer::get_SQcd_SQcc_size(grk_j2k *p_j2k, uint16_t tile_no,
 		uint32_t comp_no) {
 	assert(p_j2k != nullptr);
 
-	auto l_cp = &(p_j2k->m_cp);
-	auto l_tcp = &l_cp->tcps[tile_no];
-	auto l_tccp = &l_tcp->tccps[comp_no];
+	auto cp = &(p_j2k->m_cp);
+	auto tcp = &cp->tcps[tile_no];
+	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < l_cp->tw * l_cp->th);
+	assert(tile_no < cp->tw * cp->th);
 	assert(comp_no < p_j2k->m_private_image->numcomps);
 
-	uint32_t l_num_bands =
-			(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-					1 : (l_tccp->numresolutions * 3 - 2);
+	uint32_t num_bands =
+			(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
+					1 : (tccp->numresolutions * 3 - 2);
 
-	if (l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-		return 1 + l_num_bands;
+	if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
+		return 1 + num_bands;
 	} else {
-		return 1 + 2 * l_num_bands;
+		return 1 + 2 * num_bands;
 	}
 }
 
@@ -212,36 +212,36 @@ bool Quantizer::compare_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 		uint32_t first_comp_no, uint32_t second_comp_no) {
 	assert(p_j2k != nullptr);
 
-	auto l_cp = &(p_j2k->m_cp);
-	auto l_tcp = &l_cp->tcps[tile_no];
-	auto l_tccp0 = &l_tcp->tccps[first_comp_no];
-	auto l_tccp1 = &l_tcp->tccps[second_comp_no];
+	auto cp = &(p_j2k->m_cp);
+	auto tcp = &cp->tcps[tile_no];
+	auto tccp0 = &tcp->tccps[first_comp_no];
+	auto tccp1 = &tcp->tccps[second_comp_no];
 
-	if (l_tccp0->qntsty != l_tccp1->qntsty) {
+	if (tccp0->qntsty != tccp1->qntsty) {
 		return false;
 	}
-	if (l_tccp0->numgbits != l_tccp1->numgbits) {
+	if (tccp0->numgbits != tccp1->numgbits) {
 		return false;
 	}
-	uint32_t l_band_no, l_num_bands;
-	if (l_tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-		l_num_bands = 1U;
+	uint32_t band_no, num_bands;
+	if (tccp0->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+		num_bands = 1U;
 	} else {
-		l_num_bands = l_tccp0->numresolutions * 3U - 2U;
-		if (l_num_bands != (l_tccp1->numresolutions * 3U - 2U)) {
+		num_bands = tccp0->numresolutions * 3U - 2U;
+		if (num_bands != (tccp1->numresolutions * 3U - 2U)) {
 			return false;
 		}
 	}
-	for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-		if (l_tccp0->stepsizes[l_band_no].expn
-				!= l_tccp1->stepsizes[l_band_no].expn) {
+	for (band_no = 0; band_no < num_bands; ++band_no) {
+		if (tccp0->stepsizes[band_no].expn
+				!= tccp1->stepsizes[band_no].expn) {
 			return false;
 		}
 	}
-	if (l_tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT) {
-		for (l_band_no = 0; l_band_no < l_num_bands; ++l_band_no) {
-			if (l_tccp0->stepsizes[l_band_no].mant
-					!= l_tccp1->stepsizes[l_band_no].mant) {
+	if (tccp0->qntsty != J2K_CCP_QNTSTY_NOQNT) {
+		for (band_no = 0; band_no < num_bands; ++band_no) {
+			if (tccp0->stepsizes[band_no].mant
+					!= tccp1->stepsizes[band_no].mant) {
 				return false;
 			}
 		}
@@ -258,114 +258,104 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 		GROK_ERROR( "Error reading SQcd or SQcc element");
 		return false;
 	}
-	*header_size = (uint16_t)(*header_size - 1);
 	/* Sqcx */
-	uint32_t l_tmp = 0;
-	auto l_current_ptr = p_header_data;
-	grk_read_bytes(l_current_ptr, &l_tmp, 1);
-	++l_current_ptr;
-	uint8_t qntsty = l_tmp & 0x1f;
-	// scoping rules
-	auto l_tcp = p_j2k->get_current_decode_tcp();
-	auto l_tccp = l_tcp->tccps + comp_no;
+	uint32_t tmp = 0;
+	auto current_ptr = p_header_data;
+	grk_read_bytes(current_ptr++, &tmp, 1);
+	uint8_t qntsty = tmp & 0x1f;
+	*header_size = (uint16_t)(*header_size - 1);
 
+	// scoping rules
+	auto tcp = p_j2k->get_current_decode_tcp();
+	auto tccp = tcp->tccps + comp_no;
 	bool ignore = false;
 	bool fromTileHeader = p_j2k->decodingTilePartHeader();
 	bool mainQCD = !fromQCC && !fromTileHeader;
-	if ((!fromTileHeader && !fromQCC) && l_tccp->fromQCC)
+
+	if ((!fromTileHeader && !fromQCC) && tccp->fromQCC)
 		ignore = true;
 	if ((fromTileHeader && !fromQCC)
-			&& (l_tccp->fromTileHeader && l_tccp->fromQCC))
+			&& (tccp->fromTileHeader && tccp->fromQCC))
 		ignore = true;
 	if (!ignore) {
-		l_tccp->fromQCC = fromQCC;
-		l_tccp->fromTileHeader = fromTileHeader;
-		l_tccp->qntsty = qntsty;
+		tccp->fromQCC = fromQCC;
+		tccp->fromTileHeader = fromTileHeader;
+		tccp->qntsty = qntsty;
 		if (mainQCD)
-			l_tcp->main_qcd_qntsty = l_tccp->qntsty;
-		l_tccp->numgbits = (uint8_t)(l_tmp >> 5);
-		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-			l_tccp->numStepSizes = 1;
+			tcp->main_qcd_qntsty = tccp->qntsty;
+		tccp->numgbits = (uint8_t)(tmp >> 5);
+		if (tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+			tccp->numStepSizes = 1;
 		} else {
-			l_tccp->numStepSizes =
-					(l_tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
+			tccp->numStepSizes =
+					(tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) ?
 							(uint8_t)(*header_size) : (uint8_t)((*header_size) / 2);
-			if (l_tccp->numStepSizes > GRK_J2K_MAXBANDS) {
+			if (tccp->numStepSizes > GRK_J2K_MAXBANDS) {
 				GROK_WARN(
 						"While reading QCD or QCC marker segment, "
 								"number of step sizes (%d) is greater"
 								" than GRK_J2K_MAXBANDS (%d). "
 								"So, we limit the number of elements stored to "
 								"GRK_J2K_MAXBANDS (%d) and skip the rest.\n",
-						l_tccp->numStepSizes, GRK_J2K_MAXBANDS,
+						tccp->numStepSizes, GRK_J2K_MAXBANDS,
 						GRK_J2K_MAXBANDS);
 			}
 		}
 		if (mainQCD)
-			l_tcp->main_qcd_numStepSizes = l_tccp->numStepSizes;
+			tcp->main_qcd_numStepSizes = tccp->numStepSizes;
 	}
 	if (qntsty == J2K_CCP_QNTSTY_NOQNT) {
-		for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes;
-				l_band_no++) {
+		if (*header_size < tccp->numStepSizes) {
+			GROK_ERROR( "Error reading SQcd_SQcc marker");
+			return false;
+		}
+		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
+				band_no++) {
 			/* SPqcx_i */
-			grk_read_bytes(l_current_ptr++, &l_tmp, 1);
+			grk_read_bytes(current_ptr++, &tmp, 1);
 			if (!ignore) {
-				if (l_band_no < GRK_J2K_MAXBANDS) {
+				if (band_no < GRK_J2K_MAXBANDS) {
 					//top 5 bits for exponent
-					l_tccp->stepsizes[l_band_no].expn = (uint8_t)(l_tmp >> 3);
+					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 3);
 					// mantissa = 0
-					l_tccp->stepsizes[l_band_no].mant = 0;
+					tccp->stepsizes[band_no].mant = 0;
 				}
 			}
 		}
-		if (*header_size < l_tccp->numStepSizes) {
-			GROK_ERROR( "Error reading SQcd_SQcc marker");
-			return false;
-		}
-		*header_size = (uint16_t)(*header_size - l_tccp->numStepSizes);
+		*header_size = (uint16_t)(*header_size - tccp->numStepSizes);
 	} else {
-		for (uint32_t l_band_no = 0; l_band_no < l_tccp->numStepSizes;
-				l_band_no++) {
-			/* SPqcx_i */
-			grk_read_bytes(l_current_ptr, &l_tmp, 2);
-			l_current_ptr += 2;
-			if (!ignore) {
-				if (l_band_no < GRK_J2K_MAXBANDS) {
-					// top 5 bits for exponent
-					l_tccp->stepsizes[l_band_no].expn = (uint8_t)(l_tmp >> 11);
-					// bottom 11 bits for mantissa
-					l_tccp->stepsizes[l_band_no].mant = (uint16_t)(l_tmp & 0x7ff);
-				}
-			}
-		}
-		if (*header_size < 2 * l_tccp->numStepSizes) {
+		if (*header_size < 2 * tccp->numStepSizes) {
 			GROK_ERROR( "Error reading SQcd_SQcc marker");
 			return false;
 		}
-		*header_size = (uint16_t)(*header_size - 2 * l_tccp->numStepSizes);
+		for (uint32_t band_no = 0; band_no < tccp->numStepSizes;
+				band_no++) {
+			/* SPqcx_i */
+			grk_read_bytes(current_ptr, &tmp, 2);
+			current_ptr += 2;
+			if (!ignore) {
+				if (band_no < GRK_J2K_MAXBANDS) {
+					// top 5 bits for exponent
+					tccp->stepsizes[band_no].expn = (uint8_t)(tmp >> 11);
+					// bottom 11 bits for mantissa
+					tccp->stepsizes[band_no].mant = (uint16_t)(tmp & 0x7ff);
+				}
+			}
+		}
+		*header_size = (uint16_t)(*header_size - 2 * tccp->numStepSizes);
 	}
 	if (!ignore) {
 		/* if scalar derived, then compute other stepsizes */
-		if (l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
-			for (uint32_t l_band_no = 1; l_band_no < GRK_J2K_MAXBANDS;
-					l_band_no++) {
-				uint8_t bandDividedBy3 = (uint8_t)((l_band_no - 1) / 3);
-				l_tccp->stepsizes[l_band_no].expn = 0;
-				if (l_tccp->stepsizes[0].expn > bandDividedBy3)
-					l_tccp->stepsizes[l_band_no].expn =
-							(uint8_t)(l_tccp->stepsizes[0].expn - bandDividedBy3);
-				l_tccp->stepsizes[l_band_no].mant = l_tccp->stepsizes[0].mant;
+		if (tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) {
+			for (uint32_t band_no = 1; band_no < GRK_J2K_MAXBANDS;
+					band_no++) {
+				uint8_t bandDividedBy3 = (uint8_t)((band_no - 1) / 3);
+				tccp->stepsizes[band_no].expn = 0;
+				if (tccp->stepsizes[0].expn > bandDividedBy3)
+					tccp->stepsizes[band_no].expn =
+							(uint8_t)(tccp->stepsizes[0].expn - bandDividedBy3);
+				tccp->stepsizes[band_no].mant = tccp->stepsizes[0].mant;
 			}
-		}
-		if (p_j2k->m_cp.ccap){
-			l_tcp->isHT = true;
-			l_tcp->qcd.generate(l_tccp->numgbits,
-							l_tccp->numresolutions-1,
-							l_tccp->qmfbid == 1,
-							p_j2k->m_private_image->comps[0].prec,
-							l_tcp->mct > 0,
-							p_j2k->m_private_image->comps[0].sgnd);
-			l_tcp->qcd.push(l_tccp->stepsizes, l_tccp->qmfbid == 1);
 		}
 	}
 	return true;
