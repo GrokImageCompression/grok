@@ -77,29 +77,29 @@ static void lupInvert(float *pSrcMatrix, float *pDestMatrix, uint32_t nb_compo,
  */
 bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
 		uint32_t nb_compo) {
-	uint8_t *l_data = nullptr;
-	uint32_t l_permutation_size = nb_compo * (uint32_t) sizeof(uint32_t);
-	uint32_t l_swap_size = nb_compo * (uint32_t) sizeof(float);
-	uint32_t l_total_size = l_permutation_size + 3 * l_swap_size;
+	uint8_t *data = nullptr;
+	uint32_t permutation_size = nb_compo * (uint32_t) sizeof(uint32_t);
+	uint32_t swap_size = nb_compo * (uint32_t) sizeof(float);
+	uint32_t total_size = permutation_size + 3 * swap_size;
 	uint32_t *lPermutations = nullptr;
-	float *l_double_data = nullptr;
+	float *double_data = nullptr;
 
-	l_data = (uint8_t*) grk_malloc(l_total_size);
-	if (l_data == 0) {
+ data = (uint8_t*) grk_malloc(total_size);
+	if (data == 0) {
 		return false;
 	}
-	lPermutations = (uint32_t*) l_data;
-	l_double_data = (float*) (l_data + l_permutation_size);
-	memset(lPermutations, 0, l_permutation_size);
+	lPermutations = (uint32_t*) data;
+ double_data = (float*) (data + permutation_size);
+	memset(lPermutations, 0, permutation_size);
 
-	if (!lupDecompose(pSrcMatrix, lPermutations, l_double_data, nb_compo)) {
-		grok_free(l_data);
+	if (!lupDecompose(pSrcMatrix, lPermutations, double_data, nb_compo)) {
+		grok_free(data);
 		return false;
 	}
 
-	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, l_double_data,
-			l_double_data + nb_compo, l_double_data + 2 * nb_compo);
-	grok_free(l_data);
+	lupInvert(pSrcMatrix, pDestMatrix, nb_compo, lPermutations, double_data,
+		 double_data + nb_compo, double_data + 2 * nb_compo);
+	grok_free(data);
 
 	return true;
 }

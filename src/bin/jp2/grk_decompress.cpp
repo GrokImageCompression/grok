@@ -262,8 +262,8 @@ static void decode_help_display(void)
 
 static bool parse_precision(const char* option, grk_decompress_parameters* parameters)
 {
-    const char* l_remaining = option;
-    bool l_result = true;
+    const char* remaining = option;
+    bool result = true;
 
     /* reset */
     if (parameters->precision) {
@@ -278,7 +278,7 @@ static bool parse_precision(const char* option, grk_decompress_parameters* param
         char comma;
         int count;
 
-        count = sscanf(l_remaining, "%d%c%c", &prec, &mode, &comma);
+        count = sscanf(remaining, "%d%c%c", &prec, &mode, &comma);
         if (count == 1) {
             mode = 'C';
             count++;
@@ -293,17 +293,17 @@ static bool parse_precision(const char* option, grk_decompress_parameters* param
         if (count == 3) {
             if ((prec < 1) || (prec > 32)) {
                 spdlog::error("Invalid precision {} in precision option {}\n", prec, option);
-                l_result = false;
+                result = false;
                 break;
             }
             if ((mode != 'C') && (mode != 'S')) {
                 spdlog::error("Invalid precision mode %c in precision option {}\n", mode, option);
-                l_result = false;
+                result = false;
                 break;
             }
             if (comma != ',') {
                 spdlog::error("Invalid character %c in precision option {}\n", comma, option);
-                l_result = false;
+                result = false;
                 break;
             }
 
@@ -312,26 +312,26 @@ static bool parse_precision(const char* option, grk_decompress_parameters* param
                 parameters->precision = (grk_precision *)malloc(sizeof(grk_precision));
                 if (parameters->precision == nullptr) {
                     spdlog::error("Could not allocate memory for precision option");
-                    l_result = false;
+                    result = false;
                     break;
                 }
             } else {
-                uint32_t l_new_size = parameters->nb_precision + 1U;
-                grk_precision* l_new;
+                uint32_t new_size = parameters->nb_precision + 1U;
+                grk_precision* new_prec;
 
-                if (l_new_size == 0U) {
+                if (new_size == 0U) {
                     spdlog::error("Could not allocate memory for precision option");
-                    l_result = false;
+                    result = false;
                     break;
                 }
 
-                l_new = (grk_precision *)realloc(parameters->precision, l_new_size * sizeof(grk_precision));
-                if (l_new == nullptr) {
+                new_prec = (grk_precision *)realloc(parameters->precision, new_size * sizeof(grk_precision));
+                if (new_prec == nullptr) {
                     spdlog::error("Could not allocate memory for precision option");
-                    l_result = false;
+                    result = false;
                     break;
                 }
-                parameters->precision = l_new;
+                parameters->precision = new_prec;
             }
 
             parameters->precision[parameters->nb_precision].prec = (uint32_t)prec;
@@ -347,19 +347,19 @@ static bool parse_precision(const char* option, grk_decompress_parameters* param
             }
             parameters->nb_precision++;
 
-            l_remaining = strchr(l_remaining, ',');
-            if (l_remaining == nullptr) {
+            remaining = strchr(remaining, ',');
+            if (remaining == nullptr) {
                 break;
             }
-            l_remaining += 1;
+            remaining += 1;
         } else {
             spdlog::error("Could not parse precision option {}\n", option);
-            l_result = false;
+            result = false;
             break;
         }
     }
 
-    return l_result;
+    return result;
 }
 
 
@@ -814,72 +814,72 @@ static grk_image *  convert_gray_to_rgb(grk_image *  original)
 	if (original->numcomps == 0)
 		return nullptr;
     uint32_t compno;
-    grk_image *  l_new_image = nullptr;
-     grk_image_cmptparm  *  l_new_components = nullptr;
+    grk_image *  new_image = nullptr;
+     grk_image_cmptparm  *  new_components = nullptr;
 
-    l_new_components = ( grk_image_cmptparm  * )malloc((original->numcomps + 2U) * sizeof( grk_image_cmptparm) );
-    if (l_new_components == nullptr) {
+    new_components = ( grk_image_cmptparm  * )malloc((original->numcomps + 2U) * sizeof( grk_image_cmptparm) );
+    if (new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for RGB image!");
         grk_image_destroy(original);
         return nullptr;
     }
 
-    l_new_components[0].dx   = l_new_components[1].dx   = l_new_components[2].dx   = original->comps[0].dx;
-    l_new_components[0].dy   = l_new_components[1].dy   = l_new_components[2].dy   = original->comps[0].dy;
-    l_new_components[0].h    = l_new_components[1].h    = l_new_components[2].h    = original->comps[0].h;
-    l_new_components[0].w    = l_new_components[1].w    = l_new_components[2].w    = original->comps[0].w;
-    l_new_components[0].prec = l_new_components[1].prec = l_new_components[2].prec = original->comps[0].prec;
-    l_new_components[0].sgnd = l_new_components[1].sgnd = l_new_components[2].sgnd = original->comps[0].sgnd;
-    l_new_components[0].x0   = l_new_components[1].x0   = l_new_components[2].x0   = original->comps[0].x0;
-    l_new_components[0].y0   = l_new_components[1].y0   = l_new_components[2].y0   = original->comps[0].y0;
+    new_components[0].dx   = new_components[1].dx   = new_components[2].dx   = original->comps[0].dx;
+    new_components[0].dy   = new_components[1].dy   = new_components[2].dy   = original->comps[0].dy;
+    new_components[0].h    = new_components[1].h    = new_components[2].h    = original->comps[0].h;
+    new_components[0].w    = new_components[1].w    = new_components[2].w    = original->comps[0].w;
+    new_components[0].prec = new_components[1].prec = new_components[2].prec = original->comps[0].prec;
+    new_components[0].sgnd = new_components[1].sgnd = new_components[2].sgnd = original->comps[0].sgnd;
+    new_components[0].x0   = new_components[1].x0   = new_components[2].x0   = original->comps[0].x0;
+    new_components[0].y0   = new_components[1].y0   = new_components[2].y0   = original->comps[0].y0;
 
     for(compno = 1U; compno < original->numcomps; ++compno) {
-        l_new_components[compno+2U].dx   = original->comps[compno].dx;
-        l_new_components[compno+2U].dy   = original->comps[compno].dy;
-        l_new_components[compno+2U].h    = original->comps[compno].h;
-        l_new_components[compno+2U].w    = original->comps[compno].w;
-        l_new_components[compno+2U].prec = original->comps[compno].prec;
-        l_new_components[compno+2U].sgnd = original->comps[compno].sgnd;
-        l_new_components[compno+2U].x0   = original->comps[compno].x0;
-        l_new_components[compno+2U].y0   = original->comps[compno].y0;
+        new_components[compno+2U].dx   = original->comps[compno].dx;
+        new_components[compno+2U].dy   = original->comps[compno].dy;
+        new_components[compno+2U].h    = original->comps[compno].h;
+        new_components[compno+2U].w    = original->comps[compno].w;
+        new_components[compno+2U].prec = original->comps[compno].prec;
+        new_components[compno+2U].sgnd = original->comps[compno].sgnd;
+        new_components[compno+2U].x0   = original->comps[compno].x0;
+        new_components[compno+2U].y0   = original->comps[compno].y0;
     }
 
-    l_new_image = grk_image_create(original->numcomps + 2U, l_new_components, GRK_CLRSPC_SRGB);
-    free(l_new_components);
-    if (l_new_image == nullptr) {
+    new_image = grk_image_create(original->numcomps + 2U, new_components, GRK_CLRSPC_SRGB);
+    free(new_components);
+    if (new_image == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for RGB image!");
         grk_image_destroy(original);
         return nullptr;
     }
 
-    l_new_image->x0 = original->x0;
-    l_new_image->x1 = original->x1;
-    l_new_image->y0 = original->y0;
-    l_new_image->y1 = original->y1;
+    new_image->x0 = original->x0;
+    new_image->x1 = original->x1;
+    new_image->y0 = original->y0;
+    new_image->y1 = original->y1;
 
-    l_new_image->comps[0].alpha         = l_new_image->comps[1].alpha         = l_new_image->comps[2].alpha         = original->comps[0].alpha;
-    l_new_image->comps[0].resno_decoded = l_new_image->comps[1].resno_decoded = l_new_image->comps[2].resno_decoded = original->comps[0].resno_decoded;
+    new_image->comps[0].alpha         = new_image->comps[1].alpha         = new_image->comps[2].alpha         = original->comps[0].alpha;
+    new_image->comps[0].resno_decoded = new_image->comps[1].resno_decoded = new_image->comps[2].resno_decoded = original->comps[0].resno_decoded;
 
-    memcpy(l_new_image->comps[0].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
-    memcpy(l_new_image->comps[1].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
-    memcpy(l_new_image->comps[2].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+    memcpy(new_image->comps[0].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+    memcpy(new_image->comps[1].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
+    memcpy(new_image->comps[2].data, original->comps[0].data, original->comps[0].w * original->comps[0].h * sizeof(int32_t));
 
     for(compno = 1U; compno < original->numcomps; ++compno) {
-        l_new_image->comps[compno+2U].alpha         = original->comps[compno].alpha;
-        l_new_image->comps[compno+2U].resno_decoded = original->comps[compno].resno_decoded;
-        memcpy(l_new_image->comps[compno+2U].data, original->comps[compno].data, original->comps[compno].w * original->comps[compno].h * sizeof(int32_t));
+        new_image->comps[compno+2U].alpha         = original->comps[compno].alpha;
+        new_image->comps[compno+2U].resno_decoded = original->comps[compno].resno_decoded;
+        memcpy(new_image->comps[compno+2U].data, original->comps[compno].data, original->comps[compno].w * original->comps[compno].h * sizeof(int32_t));
     }
     grk_image_destroy(original);
-    return l_new_image;
+    return new_image;
 }
 
 /* -------------------------------------------------------------------------- */
 
 static grk_image *  upsample_image_components(grk_image *  original)
 {
-    grk_image *  l_new_image = nullptr;
-     grk_image_cmptparm  *  l_new_components = nullptr;
-    bool l_upsample_need = false;
+    grk_image *  new_image = nullptr;
+     grk_image_cmptparm  *  new_components = nullptr;
+    bool upsample_need = false;
     uint32_t compno;
 
 	if (!original || !original->comps)
@@ -889,145 +889,145 @@ static grk_image *  upsample_image_components(grk_image *  original)
 		if (!(original->comps+compno))
 			return nullptr;
         if ((original->comps[compno].dx > 1U) || (original->comps[compno].dy > 1U)) {
-            l_upsample_need = true;
+            upsample_need = true;
             break;
         }
     }
-    if (!l_upsample_need) {
+    if (!upsample_need) {
         return original;
     }
     /* Upsample is needed */
-    l_new_components = ( grk_image_cmptparm  * )malloc(original->numcomps * sizeof( grk_image_cmptparm) );
-    if (l_new_components == nullptr) {
+    new_components = ( grk_image_cmptparm  * )malloc(original->numcomps * sizeof( grk_image_cmptparm) );
+    if (new_components == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for upsampled components!");
         grk_image_destroy(original);
         return nullptr;
     }
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-         grk_image_cmptparm  *  l_new_cmp = &(l_new_components[compno]);
-         grk_image_comp  *      l_org_cmp = &(original->comps[compno]);
+         grk_image_cmptparm  *  new_cmp = &(new_components[compno]);
+         grk_image_comp  *      org_cmp = &(original->comps[compno]);
 
-        l_new_cmp->prec = l_org_cmp->prec;
-        l_new_cmp->sgnd = l_org_cmp->sgnd;
-        l_new_cmp->x0   = original->x0;
-        l_new_cmp->y0   = original->y0;
-        l_new_cmp->dx   = 1;
-        l_new_cmp->dy   = 1;
-        l_new_cmp->w    = l_org_cmp->w; /* should be original->x1 - original->x0 for dx==1 */
-        l_new_cmp->h    = l_org_cmp->h; /* should be original->y1 - original->y0 for dy==0 */
+        new_cmp->prec = org_cmp->prec;
+        new_cmp->sgnd = org_cmp->sgnd;
+        new_cmp->x0   = original->x0;
+        new_cmp->y0   = original->y0;
+        new_cmp->dx   = 1;
+        new_cmp->dy   = 1;
+        new_cmp->w    = org_cmp->w; /* should be original->x1 - original->x0 for dx==1 */
+        new_cmp->h    = org_cmp->h; /* should be original->y1 - original->y0 for dy==0 */
 
-        if (l_org_cmp->dx > 1U) {
-            l_new_cmp->w = original->x1 - original->x0;
+        if (org_cmp->dx > 1U) {
+            new_cmp->w = original->x1 - original->x0;
         }
 
-        if (l_org_cmp->dy > 1U) {
-            l_new_cmp->h = original->y1 - original->y0;
+        if (org_cmp->dy > 1U) {
+            new_cmp->h = original->y1 - original->y0;
         }
     }
 
-    l_new_image = grk_image_create(original->numcomps, l_new_components, original->color_space);
-    free(l_new_components);
-    if (l_new_image == nullptr) {
+    new_image = grk_image_create(original->numcomps, new_components, original->color_space);
+    free(new_components);
+    if (new_image == nullptr) {
         spdlog::error( "grk_decompress: failed to allocate memory for upsampled components!");
         grk_image_destroy(original);
         return nullptr;
     }
 
-    l_new_image->x0 = original->x0;
-    l_new_image->x1 = original->x1;
-    l_new_image->y0 = original->y0;
-    l_new_image->y1 = original->y1;
+    new_image->x0 = original->x0;
+    new_image->x1 = original->x1;
+    new_image->y0 = original->y0;
+    new_image->y1 = original->y1;
 
     for (compno = 0U; compno < original->numcomps; ++compno) {
-         grk_image_comp  *  l_new_cmp = &(l_new_image->comps[compno]);
-         grk_image_comp  *  l_org_cmp = &(original->comps[compno]);
+         grk_image_comp  *  new_cmp = &(new_image->comps[compno]);
+         grk_image_comp  *  org_cmp = &(original->comps[compno]);
 
-        l_new_cmp->alpha         = l_org_cmp->alpha;
-        l_new_cmp->resno_decoded = l_org_cmp->resno_decoded;
+        new_cmp->alpha         = org_cmp->alpha;
+        new_cmp->resno_decoded = org_cmp->resno_decoded;
 
-        if ((l_org_cmp->dx > 1U) || (l_org_cmp->dy > 1U)) {
-            const int32_t* l_src = l_org_cmp->data;
-            int32_t*       l_dst = l_new_cmp->data;
+        if ((org_cmp->dx > 1U) || (org_cmp->dy > 1U)) {
+            const int32_t* src = org_cmp->data;
+            int32_t*       dst = new_cmp->data;
             uint32_t y;
             uint32_t xoff, yoff;
 
             /* need to take into account dx & dy */
-            xoff = l_org_cmp->dx * l_org_cmp->x0 -  original->x0;
-            yoff = l_org_cmp->dy * l_org_cmp->y0 -  original->y0;
-            if ((xoff >= l_org_cmp->dx) || (yoff >= l_org_cmp->dy)) {
+            xoff = org_cmp->dx * org_cmp->x0 -  original->x0;
+            yoff = org_cmp->dy * org_cmp->y0 -  original->y0;
+            if ((xoff >= org_cmp->dx) || (yoff >= org_cmp->dy)) {
                 spdlog::error( "grk_decompress: Invalid image/component parameters found when upsampling");
                 grk_image_destroy(original);
-                grk_image_destroy(l_new_image);
+                grk_image_destroy(new_image);
                 return nullptr;
             }
 
             for (y = 0U; y < yoff; ++y) {
-                memset(l_dst, 0U, l_new_cmp->w * sizeof(int32_t));
-                l_dst += l_new_cmp->w;
+                memset(dst, 0U, new_cmp->w * sizeof(int32_t));
+                dst += new_cmp->w;
             }
 
-            if(l_new_cmp->h > (l_org_cmp->dy - 1U)) { /* check subtraction overflow for really small images */
-                for (; y < l_new_cmp->h - (l_org_cmp->dy - 1U); y += l_org_cmp->dy) {
+            if(new_cmp->h > (org_cmp->dy - 1U)) { /* check subtraction overflow for really small images */
+                for (; y < new_cmp->h - (org_cmp->dy - 1U); y += org_cmp->dy) {
                     uint32_t x, dy;
                     uint32_t xorg;
 
                     xorg = 0U;
                     for (x = 0U; x < xoff; ++x) {
-                        l_dst[x] = 0;
+                        dst[x] = 0;
                     }
-                    if (l_new_cmp->w > (l_org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-                        for (; x < l_new_cmp->w - (l_org_cmp->dx - 1U); x += l_org_cmp->dx, ++xorg) {
+                    if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
+                        for (; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg) {
                             uint32_t dx;
-                            for (dx = 0U; dx < l_org_cmp->dx; ++dx) {
-                                l_dst[x + dx] = l_src[xorg];
+                            for (dx = 0U; dx < org_cmp->dx; ++dx) {
+                                dst[x + dx] = src[xorg];
                             }
                         }
                     }
-                    for (; x < l_new_cmp->w; ++x) {
-                        l_dst[x] = l_src[xorg];
+                    for (; x < new_cmp->w; ++x) {
+                        dst[x] = src[xorg];
                     }
-                    l_dst += l_new_cmp->w;
+                    dst += new_cmp->w;
 
-                    for (dy = 1U; dy < l_org_cmp->dy; ++dy) {
-                        memcpy(l_dst, l_dst - l_new_cmp->w, l_new_cmp->w * sizeof(int32_t));
-                        l_dst += l_new_cmp->w;
+                    for (dy = 1U; dy < org_cmp->dy; ++dy) {
+                        memcpy(dst, dst - new_cmp->w, new_cmp->w * sizeof(int32_t));
+                        dst += new_cmp->w;
                     }
-                    l_src += l_org_cmp->w;
+                    src += org_cmp->w;
                 }
             }
-            if (y < l_new_cmp->h) {
+            if (y < new_cmp->h) {
                 uint32_t x;
                 uint32_t xorg;
 
                 xorg = 0U;
                 for (x = 0U; x < xoff; ++x) {
-                    l_dst[x] = 0;
+                    dst[x] = 0;
                 }
-                if (l_new_cmp->w > (l_org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
-                    for (; x < l_new_cmp->w - (l_org_cmp->dx - 1U); x += l_org_cmp->dx, ++xorg) {
+                if (new_cmp->w > (org_cmp->dx - 1U)) { /* check subtraction overflow for really small images */
+                    for (; x < new_cmp->w - (org_cmp->dx - 1U); x += org_cmp->dx, ++xorg) {
                         uint32_t dx;
-                        for (dx = 0U; dx < l_org_cmp->dx; ++dx) {
-                            l_dst[x + dx] = l_src[xorg];
+                        for (dx = 0U; dx < org_cmp->dx; ++dx) {
+                            dst[x + dx] = src[xorg];
                         }
                     }
                 }
-                for (; x < l_new_cmp->w; ++x) {
-                    l_dst[x] = l_src[xorg];
+                for (; x < new_cmp->w; ++x) {
+                    dst[x] = src[xorg];
                 }
-                l_dst += l_new_cmp->w;
+                dst += new_cmp->w;
                 ++y;
-                for (; y < l_new_cmp->h; ++y) {
-                    memcpy(l_dst, l_dst - l_new_cmp->w, l_new_cmp->w * sizeof(int32_t));
-                    l_dst += l_new_cmp->w;
+                for (; y < new_cmp->h; ++y) {
+                    memcpy(dst, dst - new_cmp->w, new_cmp->w * sizeof(int32_t));
+                    dst += new_cmp->w;
                 }
             }
         } else {
-            memcpy(l_new_cmp->data, l_org_cmp->data, l_org_cmp->w * l_org_cmp->h * sizeof(int32_t));
+            memcpy(new_cmp->data, org_cmp->data, org_cmp->w * org_cmp->h * sizeof(int32_t));
         }
     }
     grk_image_destroy(original);
-    return l_new_image;
+    return new_image;
 }
 
 bool store_file_to_disk = true;

@@ -66,38 +66,36 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 		uint64_t max_len,  grk_codestream_info  *cstr_info, uint32_t tp_num,
 		uint32_t tp_pos, uint32_t pino) {
 
-	uint64_t l_nb_bytes = 0;
-	auto l_image = image;
-	auto l_cp = cp;
-	auto l_tcp = &l_cp->tcps[tile_no];
-	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
+	uint64_t nb_bytes = 0;
+	auto tcp = &cp->tcps[tile_no];
+	uint32_t nb_pocs = tcp->numpocs + 1;
 
-	auto l_pi = pi_initialise_encode(l_image, l_cp, tile_no, FINAL_PASS);
-	if (!l_pi) {
+	auto pi = pi_initialise_encode(image, cp, tile_no, FINAL_PASS);
+	if (!pi) {
 		return false;
 	}
-	pi_init_encode(l_pi, l_cp, tile_no, pino, tp_num, tp_pos,
+	pi_init_encode(pi, cp, tile_no, pino, tp_num, tp_pos,
 			FINAL_PASS);
 
-	auto l_current_pi = &l_pi[pino];
-	if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-		pi_destroy(l_pi, l_nb_pocs);
+	auto current_pi = &pi[pino];
+	if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+		pi_destroy(pi, nb_pocs);
 		GROK_ERROR(
 				"encode_packets: Unknown progression order");
 		return false;
 	}
-	while (pi_next(l_current_pi)) {
-		if (l_current_pi->layno < max_layers) {
-			l_nb_bytes = 0;
+	while (pi_next(current_pi)) {
+		if (current_pi->layno < max_layers) {
+		 nb_bytes = 0;
 
-			if (!encode_packet(tile_no, p_tile, l_tcp, l_current_pi,
-					p_stream, &l_nb_bytes, max_len, cstr_info)) {
-				pi_destroy(l_pi, l_nb_pocs);
+			if (!encode_packet(tile_no, p_tile, tcp, current_pi,
+					p_stream, &nb_bytes, max_len, cstr_info)) {
+				pi_destroy(pi, nb_pocs);
 				return false;
 			}
 
-			max_len -= l_nb_bytes;
-			*p_data_written += l_nb_bytes;
+			max_len -= nb_bytes;
+			*p_data_written += nb_bytes;
 
 			/* INDEX >> */
 			if (cstr_info) {
@@ -108,13 +106,13 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						info_PK->start_pos = info_TL->end_header + 1;
 					} else {
 						info_PK->start_pos =
-								((l_cp->m_coding_param.m_enc.m_tp_on
-										| l_tcp->POC) && info_PK->start_pos) ?
+								((cp->m_coding_param.m_enc.m_tp_on
+										| tcp->POC) && info_PK->start_pos) ?
 										info_PK->start_pos :
 										info_TL->packet[cstr_info->packno - 1].end_pos
 												+ 1;
 					}
-					info_PK->end_pos = info_PK->start_pos + l_nb_bytes - 1;
+					info_PK->end_pos = info_PK->start_pos + nb_bytes - 1;
 					info_PK->end_ph_pos += info_PK->start_pos - 1; /* End of packet header which now only represents the distance
 					 to start of packet is incremented by value of start of packet*/
 				}
@@ -125,7 +123,7 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 			++p_tile->packno;
 		}
 	}
-	pi_destroy(l_pi, l_nb_pocs);
+	pi_destroy(pi, nb_pocs);
 
 	return true;
 }
@@ -133,112 +131,107 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 bool T2::encode_packets_simulate(uint16_t tile_no,
 		grk_tcd_tile *p_tile, uint32_t max_layers, uint64_t *p_data_written,
 		uint64_t max_len, uint32_t tp_pos) {
-
-	auto l_image = image;
-	auto l_cp = cp;
-	auto l_tcp = l_cp->tcps + tile_no;
-	uint32_t pocno = (l_cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
-	uint32_t l_max_comp =
-			l_cp->m_coding_param.m_enc.m_max_comp_size > 0 ?
-					l_image->numcomps : 1;
-	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
+	auto tcp = cp->tcps + tile_no;
+	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
+	uint32_t max_comp =
+		 cp->m_coding_param.m_enc.m_max_comp_size > 0 ?
+				 image->numcomps : 1;
+	uint32_t nb_pocs = tcp->numpocs + 1;
 
 	if (!p_data_written)
 		return false;
 
-	auto l_pi = pi_initialise_encode(l_image, l_cp, tile_no,THRESH_CALC);
-	if (!l_pi) {
+	auto pi = pi_initialise_encode(image, cp, tile_no,THRESH_CALC);
+	if (!pi) {
 		return false;
 	}
 	*p_data_written = 0;
-	auto l_current_pi = l_pi;
+	auto current_pi = pi;
 
-	for (uint32_t compno = 0; compno < l_max_comp; ++compno) {
-		uint64_t l_comp_len = 0;
-		l_current_pi = l_pi;
+	for (uint32_t compno = 0; compno < max_comp; ++compno) {
+		uint64_t comp_len = 0;
+	 current_pi = pi;
 
 		for (uint32_t poc = 0; poc < pocno; ++poc) {
-			uint32_t l_tp_num = compno;
-			pi_init_encode(l_pi, l_cp, tile_no, poc, l_tp_num, tp_pos,
+			uint32_t tp_num = compno;
+			pi_init_encode(pi, cp, tile_no, poc, tp_num, tp_pos,
 					THRESH_CALC);
 
-			if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-				pi_destroy(l_pi, l_nb_pocs);
+			if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+				pi_destroy(pi, nb_pocs);
 				GROK_ERROR(
 						"decode_packets_simulate: Unknown progression order");
 				return false;
 			}
-			while (pi_next(l_current_pi)) {
-				if (l_current_pi->layno < max_layers) {
+			while (pi_next(current_pi)) {
+				if (current_pi->layno < max_layers) {
 					uint64_t bytesInPacket = 0;
-					if (!encode_packet_simulate(p_tile, l_tcp, l_current_pi,
+					if (!encode_packet_simulate(p_tile, tcp, current_pi,
 							&bytesInPacket, max_len)) {
-						pi_destroy(l_pi, l_nb_pocs);
+						pi_destroy(pi, nb_pocs);
 						return false;
 					}
 
-					l_comp_len += bytesInPacket;
+				 comp_len += bytesInPacket;
 					max_len -= bytesInPacket;
 					*p_data_written += bytesInPacket;
 				}
 			}
 
-			if (l_cp->m_coding_param.m_enc.m_max_comp_size) {
-				if (l_comp_len > l_cp->m_coding_param.m_enc.m_max_comp_size) {
-					pi_destroy(l_pi, l_nb_pocs);
+			if (cp->m_coding_param.m_enc.m_max_comp_size) {
+				if (comp_len > cp->m_coding_param.m_enc.m_max_comp_size) {
+					pi_destroy(pi, nb_pocs);
 					return false;
 				}
 			}
 
-			++l_current_pi;
+			++current_pi;
 		}
 	}
-	pi_destroy(l_pi, l_nb_pocs);
+	pi_destroy(pi, nb_pocs);
 	return true;
 }
 bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 
-	auto l_image = image;
-	auto l_cp = cp;
-	auto l_tcp = cp->tcps + tile_no;
-	uint32_t l_nb_pocs = l_tcp->numpocs + 1;
-	auto l_pi = pi_create_decode(l_image, l_cp, tile_no);
-	if (!l_pi)
+	auto tcp = cp->tcps + tile_no;
+	uint32_t nb_pocs = tcp->numpocs + 1;
+	auto pi = pi_create_decode(image, cp, tile_no);
+	if (!pi)
 		return false;
 
-	auto l_current_pi = l_pi;
-	for (uint32_t pino = 0; pino <= l_tcp->numpocs; ++pino) {
+	auto current_pi = pi;
+	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 
 		/* if the resolution needed is too low, one dim of the tilec could be equal to zero
 		 * and no packets are used to decode this resolution and
-		 * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
-		 * and no l_img_comp->resno_decoded are computed
+		 * current_pi->resno is always >= p_tile->comps[current_pi->compno].minimum_num_resolutions
+		 * and no img_comp->resno_decoded are computed
 		 */
 
-		if (l_current_pi->poc.prg == GRK_PROG_UNKNOWN) {
-			pi_destroy(l_pi, l_nb_pocs);
+		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
+			pi_destroy(pi, nb_pocs);
 			GROK_ERROR(
 					"decode_packets: Unknown progression order");
 			return false;
 		}
-		while (pi_next(l_current_pi)) {
+		while (pi_next(current_pi)) {
 			auto skip_precinct = false;
-			auto tilec = p_tile->comps + l_current_pi->compno;
-			auto skip_layer_or_res = l_current_pi->layno
-					>= l_tcp->num_layers_to_decode
-					|| l_current_pi->resno >= tilec->minimum_num_resolutions;
+			auto tilec = p_tile->comps + current_pi->compno;
+			auto skip_layer_or_res = current_pi->layno
+					>= tcp->num_layers_to_decode
+					|| current_pi->resno >= tilec->minimum_num_resolutions;
 
-			auto l_img_comp = l_image->comps + l_current_pi->compno;
+			auto img_comp = image->comps + current_pi->compno;
 /*
 			GROK_INFO(
 					"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n\n",
-					l_current_pi->poc.prg1, l_current_pi->compno,
-					l_current_pi->resno, l_current_pi->precno,
-					l_current_pi->layno);
+				 current_pi->poc.prg1, current_pi->compno,
+				 current_pi->resno, current_pi->precno,
+				 current_pi->layno);
 */
 			if (!skip_layer_or_res) {
-				auto res = tilec->resolutions + l_current_pi->resno;
+				auto res = tilec->resolutions + current_pi->resno;
 				skip_precinct = true;
 				for (uint32_t bandno = 0; bandno < res->numbands && skip_precinct;
 						++bandno) {
@@ -251,7 +244,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 								prec->y1);
 						grk_rect dummy;
 						auto tile_res =
-								tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - l_current_pi->resno];
+								tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - current_pi->resno];
 						bool clip =
 								(tile_res->band_region + bandno)->clip(prec_rect, &dummy);
 						if (clip) {
@@ -261,28 +254,28 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 					}
 				}
 			}
-			uint64_t l_nb_bytes_read = 0;
+			uint64_t nb_bytes_read = 0;
 			if (!skip_layer_or_res && !skip_precinct) {
-				if (!decode_packet(	p_tile, l_tcp, l_current_pi, src_buf, &l_nb_bytes_read)) {
-					pi_destroy(l_pi, l_nb_pocs);
+				if (!decode_packet(	p_tile, tcp, current_pi, src_buf, &nb_bytes_read)) {
+					pi_destroy(pi, nb_pocs);
 					return false;
 				}
 			} else {
-				if (!skip_packet(p_tile, l_tcp, l_current_pi, src_buf,
-						&l_nb_bytes_read)) {
-					pi_destroy(l_pi, l_nb_pocs);
+				if (!skip_packet(p_tile, tcp, current_pi, src_buf,
+						&nb_bytes_read)) {
+					pi_destroy(pi, nb_pocs);
 					return false;
 				}
 			}
 
 			if (!skip_layer_or_res)
-				l_img_comp->resno_decoded = std::max<uint32_t>(
-						l_current_pi->resno, l_img_comp->resno_decoded);
-			*p_data_read += l_nb_bytes_read;
+			 img_comp->resno_decoded = std::max<uint32_t>(
+					 current_pi->resno, img_comp->resno_decoded);
+			*p_data_read += nb_bytes_read;
 		}
-		++l_current_pi;
+		++current_pi;
 	}
-	pi_destroy(l_pi, l_nb_pocs);
+	pi_destroy(pi, nb_pocs);
 	return true;
 }
 
@@ -294,27 +287,27 @@ T2::T2(grk_image *p_image, grk_coding_parameters *p_cp) : image(p_image), cp(p_c
 
 bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
-    auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
-	bool l_read_data;
-	uint64_t l_nb_bytes_read = 0;
-	uint64_t l_nb_total_bytes_read = 0;
+    auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	bool read_data;
+	uint64_t nb_bytes_read = 0;
+	uint64_t nb_total_bytes_read = 0;
 	*p_data_read = 0;
 
-	if (!read_packet_header(p_tile, p_tcp, p_pi, &l_read_data, src_buf,
-			&l_nb_bytes_read)) {
+	if (!read_packet_header(p_tile, p_tcp, p_pi, &read_data, src_buf,
+			&nb_bytes_read)) {
 		return false;
 	}
-	l_nb_total_bytes_read += l_nb_bytes_read;
+ nb_total_bytes_read += nb_bytes_read;
 
 	/* we should read data for the packet */
-	if (l_read_data) {
-		l_nb_bytes_read = 0;
-		if (!read_packet_data(l_res, p_pi, src_buf, &l_nb_bytes_read)) {
+	if (read_data) {
+	 nb_bytes_read = 0;
+		if (!read_packet_data(res, p_pi, src_buf, &nb_bytes_read)) {
 			return false;
 		}
-		l_nb_total_bytes_read += l_nb_bytes_read;
+	 nb_total_bytes_read += nb_bytes_read;
 	}
-	*p_data_read = l_nb_total_bytes_read;
+	*p_data_read = nb_total_bytes_read;
 	return true;
 }
 
@@ -322,32 +315,31 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 		grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
 		ChunkBuffer *src_buf, uint64_t *p_data_read)		{
 
-	auto l_res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_global_ptr();
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
-	uint64_t l_nb_code_blocks = 0;
+	uint64_t nb_code_blocks = 0;
 	auto active_src = p_src_data;
-	auto l_cp = cp;
 
 	if (p_pi->layno == 0) {
 		/* reset tagtrees */
-		for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
-			auto l_band = l_res->bands + bandno;
-			if (l_band->isEmpty())
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+			if (band->isEmpty())
 				continue;
-			auto l_prc = &l_band->precincts[p_pi->precno];
-			if (!(p_pi->precno < (l_band->numPrecincts))) {
+			auto prc = &band->precincts[p_pi->precno];
+			if (!(p_pi->precno < (band->numPrecincts))) {
 				GROK_ERROR( "Invalid precinct");
 				return false;
 			}
-			if (l_prc->incltree)
-				l_prc->incltree->reset();
-			if (l_prc->imsbtree)
-				l_prc->imsbtree->reset();
-			l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
-			for (uint64_t cblkno = 0; cblkno < l_nb_code_blocks; ++cblkno) {
-				auto l_cblk = l_prc->cblks.dec + cblkno;
-				l_cblk->numSegments = 0;
+			if (prc->incltree)
+			 prc->incltree->reset();
+			if (prc->imsbtree)
+			 prc->imsbtree->reset();
+		 nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+			for (uint64_t cblkno = 0; cblkno < nb_code_blocks; ++cblkno) {
+				auto cblk = prc->cblks.dec + cblkno;
+			 cblk->numSegments = 0;
 			}
 		}
 	}
@@ -376,82 +368,82 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	 step 1: Read packet header in the saved structure
 	 step 2: Return to codestream for decoding
 	 */
-	uint8_t *l_header_data = nullptr;
-	uint8_t **l_header_data_start = nullptr;
-	size_t *l_modified_length_ptr = nullptr;
-	size_t l_remaining_length = 0;
-	if (l_cp->ppm == 1) { /* PPM */
-		l_header_data_start = &l_cp->ppm_data;
-		l_header_data = *l_header_data_start;
-		l_modified_length_ptr = &(l_cp->ppm_len);
+	uint8_t *header_data = nullptr;
+	uint8_t **header_data_start = nullptr;
+	size_t *modified_length_ptr = nullptr;
+	size_t remaining_length = 0;
+	if (cp->ppm == 1) { /* PPM */
+	 header_data_start = &cp->ppm_data;
+	 header_data = *header_data_start;
+	 modified_length_ptr = &(cp->ppm_len);
 
 	} else if (p_tcp->ppt == 1) { /* PPT */
-		l_header_data_start = &(p_tcp->ppt_data);
-		l_header_data = *l_header_data_start;
-		l_modified_length_ptr = &(p_tcp->ppt_len);
+	 header_data_start = &(p_tcp->ppt_data);
+	 header_data = *header_data_start;
+	 modified_length_ptr = &(p_tcp->ppt_len);
 	} else { /* Normal Case */
-		l_header_data_start = &(active_src);
-		l_header_data = *l_header_data_start;
-		l_remaining_length =
-				(size_t) (p_src_data + max_length - l_header_data);
-		l_modified_length_ptr = &(l_remaining_length);
+	 header_data_start = &(active_src);
+	 header_data = *header_data_start;
+	 remaining_length =
+				(size_t) (p_src_data + max_length - header_data);
+	 modified_length_ptr = &(remaining_length);
 	}
 
-	uint32_t l_present = 0;
-	std::unique_ptr<BitIO> l_bio(
-			new BitIO(l_header_data, *l_modified_length_ptr, false));
-	if (*l_modified_length_ptr) {
-		if (!l_bio->read(&l_present, 1)) {
+	uint32_t present = 0;
+	std::unique_ptr<BitIO> bio(
+			new BitIO(header_data, *modified_length_ptr, false));
+	if (*modified_length_ptr) {
+		if (!bio->read(&present, 1)) {
 			GROK_ERROR(
 					"read_packet_header: failed to read `present` bit ");
 			return false;
 		}
 	}
-	//GROK_INFO("present=%d \n", l_present);
-	if (!l_present) {
-		if (!l_bio->inalign())
+	//GROK_INFO("present=%d \n", present);
+	if (!present) {
+		if (!bio->inalign())
 			return false;
-		l_header_data += l_bio->numbytes();
+	 header_data += bio->numbytes();
 
 		/* EPH markers */
 		if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-			if ((*l_modified_length_ptr
-					- (size_t) (l_header_data - *l_header_data_start)) < 2U) {
+			if ((*modified_length_ptr
+					- (size_t) (header_data - *header_data_start)) < 2U) {
 				GROK_WARN(
 						"Not enough space for expected EPH marker");
-			} else if ((*l_header_data) != 0xff
-					|| (*(l_header_data + 1) != 0x92)) {
+			} else if ((*header_data) != 0xff
+					|| (*(header_data + 1) != 0x92)) {
 				GROK_WARN( "Expected EPH marker");
 			} else {
-				l_header_data += 2;
+			 header_data += 2;
 			}
 		}
 
-		auto l_header_length = (size_t) (l_header_data - *l_header_data_start);
-		*l_modified_length_ptr -= l_header_length;
-		*l_header_data_start += l_header_length;
+		auto header_length = (size_t) (header_data - *header_data_start);
+		*modified_length_ptr -= header_length;
+		*header_data_start += header_length;
 
 		*p_is_data_present = false;
 		*p_data_read = (size_t) (active_src - p_src_data);
 		src_buf->incr_cur_chunk_offset(*p_data_read);
 		return true;
 	}
-	for (uint32_t bandno = 0; bandno < l_res->numbands; ++bandno) {
-		auto l_band = l_res->bands + bandno;
-		if (l_band->isEmpty()) {
+	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+		auto band = res->bands + bandno;
+		if (band->isEmpty()) {
 			continue;
 		}
 
-		grk_tcd_precinct *l_prc = l_band->precincts + p_pi->precno;
-		l_nb_code_blocks = (uint64_t) l_prc->cw * l_prc->ch;
-		for (uint64_t cblkno = 0; cblkno < l_nb_code_blocks; cblkno++) {
-			uint32_t l_included = 0, l_increment = 0;
-			auto l_cblk = l_prc->cblks.dec + cblkno;
+		grk_tcd_precinct *prc = band->precincts + p_pi->precno;
+	 nb_code_blocks = (uint64_t) prc->cw * prc->ch;
+		for (uint64_t cblkno = 0; cblkno < nb_code_blocks; cblkno++) {
+			uint32_t included = 0, increment = 0;
+			auto cblk = prc->cblks.dec + cblkno;
 
 			/* if cblk not yet included before --> inclusion tagtree */
-			if (!l_cblk->numSegments) {
+			if (!cblk->numSegments) {
 				uint64_t value;
-				if (!l_prc->incltree->decodeValue(l_bio.get(), cblkno,
+				if (!prc->incltree->decodeValue(bio.get(), cblkno,
 						p_pi->layno + 1, &value)) {
 					GROK_ERROR(
 							"read_packet_header: failed to read `inclusion` bit ");
@@ -476,39 +468,39 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 
 				}
 #ifdef DEBUG_LOSSLESS_T2
-					l_cblk->included = value;
+				 cblk->included = value;
 #endif
-				l_included = (value <= p_pi->layno) ? 1 : 0;
+			 included = (value <= p_pi->layno) ? 1 : 0;
 			}
 			/* else one bit */
 			else {
-				if (!l_bio->read(&l_included, 1)) {
+				if (!bio->read(&included, 1)) {
 					GROK_ERROR(
 							"read_packet_header: failed to read `inclusion` bit ");
 					return false;
 				}
 
 #ifdef DEBUG_LOSSLESS_T2
-					l_cblk->included = l_included;
+				 cblk->included = included;
 #endif
 			}
 
 			/* if cblk not included */
-			if (!l_included) {
-				l_cblk->numPassesInPacket = 0;
-				//GROK_INFO("included=%d \n", l_included);
+			if (!included) {
+			 cblk->numPassesInPacket = 0;
+				//GROK_INFO("included=%d \n", included);
 				continue;
 			}
 
 			/* if cblk not yet included --> zero-bitplane tagtree */
-			if (!l_cblk->numSegments) {
+			if (!cblk->numSegments) {
 				uint32_t K_msbs = 0;
 				uint8_t value;
 				bool rc = true;
 
 				// see Taubman + Marcellin page 388
 				// loop below stops at (# of missing bit planes  + 1)
-				while ((rc = l_prc->imsbtree->decode(l_bio.get(), cblkno,
+				while ((rc = prc->imsbtree->decode(bio.get(), cblkno,
 						K_msbs, &value)) && !value) {
 					++K_msbs;
 				}
@@ -521,103 +513,103 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 					return false;
 				}
 
-				if (K_msbs > l_band->numbps) {
+				if (K_msbs > band->numbps) {
 					GROK_WARN(
 							"More missing bit planes (%d) than band bit planes (%d).\n",
-							K_msbs, l_band->numbps);
-					l_cblk->numbps = l_band->numbps;
+							K_msbs, band->numbps);
+				 cblk->numbps = band->numbps;
 				} else {
-					l_cblk->numbps = l_band->numbps - K_msbs;
+				 cblk->numbps = band->numbps - K_msbs;
 				}
 				// BIBO analysis gives sanity check on number of bit planes
-				if (l_cblk->numbps
+				if (cblk->numbps
 						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
 					GROK_WARN(
 							"Number of bit planes %u is impossibly large.\n",
-							l_cblk->numbps);
+						 cblk->numbps);
 					return false;
 				}
-				l_cblk->numlenbits = 3;
+			 cblk->numlenbits = 3;
 			}
 
 			/* number of coding passes */
-			if (!l_bio->getnumpasses(&l_cblk->numPassesInPacket)) {
+			if (!bio->getnumpasses(&cblk->numPassesInPacket)) {
 				GROK_ERROR(
 						"read_packet_header: failed to read numpasses.");
 				return false;
 			}
-			if (!l_bio->getcommacode(&l_increment)) {
+			if (!bio->getcommacode(&increment)) {
 				GROK_ERROR(
 						"read_packet_header: failed to read length indicator increment.");
 				return false;
 			}
 
 			/* length indicator increment */
-			l_cblk->numlenbits += l_increment;
-			uint32_t l_segno = 0;
+		 cblk->numlenbits += increment;
+			uint32_t segno = 0;
 
-			if (!l_cblk->numSegments) {
-				if (!T2::init_seg(l_cblk, l_segno,
+			if (!cblk->numSegments) {
+				if (!T2::init_seg(cblk, segno,
 						p_tcp->tccps[p_pi->compno].cblk_sty, true)) {
 					return false;
 				}
 			} else {
-				l_segno = l_cblk->numSegments - 1;
-				if (l_cblk->segs[l_segno].numpasses
-						== l_cblk->segs[l_segno].maxpasses) {
-					++l_segno;
-					if (!T2::init_seg(l_cblk, l_segno,
+			 segno = cblk->numSegments - 1;
+				if (cblk->segs[segno].numpasses
+						== cblk->segs[segno].maxpasses) {
+					++segno;
+					if (!T2::init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
 				}
 			}
-			auto blockPassesInPacket = (int32_t) l_cblk->numPassesInPacket;
+			auto blockPassesInPacket = (int32_t) cblk->numPassesInPacket;
 			do {
-				auto l_seg = l_cblk->segs + l_segno;
+				auto seg = cblk->segs + segno;
 				/* sanity check when there is no mode switch */
-				if (l_seg->maxpasses == max_passes_per_segment){
+				if (seg->maxpasses == max_passes_per_segment){
 				    if (blockPassesInPacket > (int32_t)max_passes_per_segment) {
 				        GROK_WARN("Number of code block passes (%d) in packet is suspiciously large.", blockPassesInPacket);
 				        // ToDO - we are truncating the number of passes at an arbitrary value of
 				        // max_passes_per_segment. We should probably either skip the rest of this
 				        // block, if possible, or do further sanity check on packet
-		            l_seg->numPassesInPacket = max_passes_per_segment;
+		            seg->numPassesInPacket = max_passes_per_segment;
 				    } else {
-				        l_seg->numPassesInPacket = blockPassesInPacket;
+				        seg->numPassesInPacket = blockPassesInPacket;
 				    }
 
 				} else {
-				    assert(l_seg->maxpasses >= l_seg->numpasses);
-            l_seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
-                (int32_t) (l_seg->maxpasses - l_seg->numpasses),
+				    assert(seg->maxpasses >= seg->numpasses);
+            seg->numPassesInPacket = (uint32_t) std::min<int32_t>(
+                (int32_t) (seg->maxpasses - seg->numpasses),
                 blockPassesInPacket);
 				}
-				uint32_t bits_to_read = l_cblk->numlenbits
-						+ uint_floorlog2(l_seg->numPassesInPacket);
+				uint32_t bits_to_read = cblk->numlenbits
+						+ uint_floorlog2(seg->numPassesInPacket);
 				if (bits_to_read > 32) {
 					GROK_ERROR(
 							"read_packet_header: too many bits in segment length ");
 					return false;
 				}
-				if (!l_bio->read(&l_seg->numBytesInPacket,bits_to_read)) {
+				if (!bio->read(&seg->numBytesInPacket,bits_to_read)) {
 					GROK_WARN(
 							"read_packet_header: failed to read segment length ");
 				}
 #ifdef DEBUG_LOSSLESS_T2
-				l_cblk->packet_length_info->push_back(grk_packet_length_info(l_seg->numBytesInPacket,
-								l_cblk->numlenbits + uint_floorlog2(l_seg->numPassesInPacket)));
+			 cblk->packet_length_info->push_back(grk_packet_length_info(seg->numBytesInPacket,
+							 cblk->numlenbits + uint_floorlog2(seg->numPassesInPacket)));
 #endif
 				/*
 				GROK_INFO(
 						"included=%d numPassesInPacket=%d increment=%d len=%d \n",
-						l_included, l_seg->numPassesInPacket, l_increment,
-						l_seg->newlen);
+					 included, seg->numPassesInPacket, increment,
+					 seg->newlen);
 						*/
-				blockPassesInPacket -=	(int32_t) l_seg->numPassesInPacket;
+				blockPassesInPacket -=	(int32_t) seg->numPassesInPacket;
 				if (blockPassesInPacket > 0) {
-					++l_segno;
-					if (!T2::init_seg(l_cblk, l_segno,
+					++segno;
+					if (!T2::init_seg(cblk, segno,
 							p_tcp->tccps[p_pi->compno].cblk_sty, false)) {
 						return false;
 					}
@@ -626,31 +618,31 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 		}
 	}
 
-	if (!l_bio->inalign()) {
+	if (!bio->inalign()) {
 		GROK_ERROR( "Unable to read packet header");
 		return false;
 	}
 
-	l_header_data += l_bio->numbytes();
+ header_data += bio->numbytes();
 
 	/* EPH markers */
 	if (p_tcp->csty & J2K_CP_CSTY_EPH) {
-		if ((*l_modified_length_ptr
-				- (uint32_t) (l_header_data - *l_header_data_start)) < 2U) {
+		if ((*modified_length_ptr
+				- (uint32_t) (header_data - *header_data_start)) < 2U) {
 			GROK_WARN(
 					"Not enough space for expected EPH marker");
-		} else if ((*l_header_data) != 0xff || (*(l_header_data + 1) != 0x92)) {
+		} else if ((*header_data) != 0xff || (*(header_data + 1) != 0x92)) {
 			GROK_WARN( "Expected EPH marker");
 		} else {
-			l_header_data += 2;
+		 header_data += 2;
 		}
 	}
 
-	auto l_header_length = (size_t) (l_header_data - *l_header_data_start);
-	//GROK_INFO("hdrlen=%d \n", l_header_length);
+	auto header_length = (size_t) (header_data - *header_data_start);
+	//GROK_INFO("hdrlen=%d \n", header_length);
 	//GROK_INFO("packet body\n");
-	*l_modified_length_ptr -= l_header_length;
-	*l_header_data_start += l_header_length;
+	*modified_length_ptr -= header_length;
+	*header_data_start += header_length;
 
 	*p_is_data_present = true;
 	*p_data_read = (uint32_t) (active_src - p_src_data);
@@ -828,9 +820,9 @@ bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 
 bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 		uint8_t cblk_sty, bool first) {
-	uint32_t l_nb_segs = index + 1;
+	uint32_t nb_segs = index + 1;
 
-	if (l_nb_segs > cblk->numSegmentsAllocated) {
+	if (nb_segs > cblk->numSegmentsAllocated) {
 		auto new_segs = new grk_tcd_seg[cblk->numSegmentsAllocated
 				+ cblk->numSegmentsAllocated];
 		for (uint32_t i = 0; i < cblk->numSegmentsAllocated; ++i)
@@ -908,9 +900,9 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		auto band = res->bands;
 		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 			auto prc = band->precincts + precno;
-			uint32_t l_nb_blocks = prc->cw * prc->ch;
+			uint32_t nb_blocks = prc->cw * prc->ch;
 
-			if (band->isEmpty() || !l_nb_blocks) {
+			if (band->isEmpty() || !nb_blocks) {
 				band++;
 				continue;
 			}
@@ -918,7 +910,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 				prc->incltree->reset();
 			if (prc->imsbtree)
 				prc->imsbtree->reset();
-			for (uint32_t cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+			for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				auto cblk = prc->cblks.enc + cblkno;
 				cblk->num_passes_included_in_current_layer = 0;
 				assert (band->numbps >= cblk->numbps);
@@ -939,15 +931,15 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	auto band = res->bands;
 	for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
 		auto prc = band->precincts + precno;
-		uint64_t l_nb_blocks = prc->cw * prc->ch;
+		uint64_t nb_blocks = prc->cw * prc->ch;
 
-		if (band->isEmpty() || !l_nb_blocks) {
+		if (band->isEmpty() || !nb_blocks) {
 			band++;
 			continue;
 		}
 
 		auto cblk = prc->cblks.enc;
-		for (uint32_t cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto layer = cblk->layers + layno;
 			if (!cblk->num_passes_included_in_current_layer
 					&& layer->numpasses) {
@@ -957,7 +949,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		}
 
 		cblk = prc->cblks.enc;
-		for (uint32_t cblkno = 0; cblkno < l_nb_blocks; cblkno++) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			auto layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
@@ -991,18 +983,18 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			}
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
-			uint32_t l_nb_passes = cblk->num_passes_included_in_current_layer
+			uint32_t nb_passes = cblk->num_passes_included_in_current_layer
 					+ layer->numpasses;
 			auto pass = cblk->passes
 					+ cblk->num_passes_included_in_current_layer;
 
 			/* computation of the increase of the length indicator and insertion in the header     */
 			for (uint32_t passno = cblk->num_passes_included_in_current_layer;
-					passno < l_nb_passes; ++passno) {
+					passno < nb_passes; ++passno) {
 				++nump;
 				len += pass->len;
 
-				if (pass->term || passno == l_nb_passes - 1) {
+				if (pass->term || passno == nb_passes - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
 							int_floorlog2((int32_t) len) + 1
@@ -1021,11 +1013,11 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
 			/* insertion of the codeword segment length */
 			for (uint32_t passno = cblk->num_passes_included_in_current_layer;
-					passno < l_nb_passes; ++passno) {
+					passno < nb_passes; ++passno) {
 				nump++;
 				len += pass->len;
 
-				if (pass->term || passno == l_nb_passes - 1) {
+				if (pass->term || passno == nb_passes - 1) {
 #ifdef DEBUG_LOSSLESS_T2
 						cblk->packet_length_info->push_back(grk_packet_length_info(len, cblk->numlenbits + (uint32_t)int_floorlog2((int32_t)nump)));
 #endif
@@ -1078,16 +1070,16 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	band = res->bands;
 	for (uint32_t bandno = 0; bandno < res->numbands; bandno++) {
 		auto prc = band->precincts + precno;
-		uint64_t l_nb_blocks = prc->cw * prc->ch;
+		uint64_t nb_blocks = prc->cw * prc->ch;
 
-		if (band->isEmpty() || !l_nb_blocks) {
+		if (band->isEmpty() || !nb_blocks) {
 			band++;
 			continue;
 		}
 
 		auto cblk = prc->cblks.enc;
 
-		for (uint32_t cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+		for (uint32_t cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			auto cblk_layer = cblk->layers + layno;
 			if (!cblk_layer->numpasses) {
 				++cblk;
@@ -1125,25 +1117,25 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 #ifdef DEBUG_LOSSLESS_T2
 		auto originalDataBytes = *p_data_written - numHeaderBytes;
 		auto roundRes = &tilec->round_trip_resolutions[resno];
-		size_t l_nb_bytes_read = 0;
+		size_t nb_bytes_read = 0;
 		auto src_buf = std::unique_ptr<ChunkBuffer>(new ChunkBuffer());
 		seg_buf_push_back(src_buf.get(), dest, *p_data_written);
 
 		bool rc = true;
-		bool l_read_data;
+		bool read_data;
 		if (!T2::read_packet_header(p_t2,
 			roundRes,
 			tcp,
 			pi,
-			&l_read_data,
+			&read_data,
 			src_buf.get(),
-			&l_nb_bytes_read)) {
+			&nb_bytes_read)) {
 			rc = false;
 		}
 		if (rc) {
 
 			// compare size of header
-			if (numHeaderBytes != l_nb_bytes_read) {
+			if (numHeaderBytes != nb_bytes_read) {
 				printf("encode_packet: round trip header bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)numHeaderBytes);
 			}
 			for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
@@ -1227,16 +1219,16 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 				}
 			}
 			/* we should read data for the packet */
-			if (l_read_data) {
-				l_nb_bytes_read = 0;
+			if (read_data) {
+			 nb_bytes_read = 0;
 				if (!T2::read_packet_data(roundRes,
 					pi,
 					src_buf.get(),
-					&l_nb_bytes_read)) {
+					&nb_bytes_read)) {
 					rc = false;
 				}
 				else {
-					if (originalDataBytes != l_nb_bytes_read) {
+					if (originalDataBytes != nb_bytes_read) {
 						printf("encode_packet: round trip data bytes %u differs from original %u\n", (uint32_t)l_nb_bytes_read, (uint32_t)originalDataBytes);
 					}
 
@@ -1305,12 +1297,12 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 		PacketIter *pi, uint64_t *p_data_written, uint64_t length) {
 	uint32_t bandno, cblkno;
-	uint64_t l_nb_bytes;
+	uint64_t nb_bytes;
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
 	uint32_t layno = pi->layno;
-	uint32_t l_nb_blocks;
+	uint32_t nb_blocks;
 	grk_tcd_band *band = nullptr;
 	grk_tcd_cblk_enc *cblk = nullptr;
 	grk_tcd_pass *pass = nullptr;
@@ -1337,8 +1329,8 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 			if (prc->imsbtree)
 				prc->imsbtree->reset();
 
-			l_nb_blocks = prc->cw * prc->ch;
-			for (cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+		 nb_blocks = prc->cw * prc->ch;
+			for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				cblk = prc->cblks.enc + cblkno;
 
 				cblk->num_passes_included_in_current_layer = 0;
@@ -1360,10 +1352,10 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 	for (bandno = 0; bandno < res->numbands; ++bandno) {
 		grk_tcd_precinct *prc = band->precincts + precno;
 
-		l_nb_blocks = prc->cw * prc->ch;
+	 nb_blocks = prc->cw * prc->ch;
 		cblk = prc->cblks.enc;
 
-		for (cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			grk_tcd_layer *layer = cblk->layers + layno;
 
 			if (!cblk->num_passes_included_in_current_layer
@@ -1375,12 +1367,12 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 		}
 
 		cblk = prc->cblks.enc;
-		for (cblkno = 0; cblkno < l_nb_blocks; cblkno++) {
+		for (cblkno = 0; cblkno < nb_blocks; cblkno++) {
 			grk_tcd_layer *layer = cblk->layers + layno;
 			uint32_t increment = 0;
 			uint32_t nump = 0;
 			uint32_t len = 0, passno;
-			uint32_t l_nb_passes;
+			uint32_t nb_passes;
 
 			/* cblk inclusion bits */
 			if (!cblk->num_passes_included_in_current_layer) {
@@ -1405,13 +1397,13 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 
 			/* number of coding passes included */
 			bio->putnumpasses(layer->numpasses);
-			l_nb_passes = cblk->num_passes_included_in_current_layer
+		 nb_passes = cblk->num_passes_included_in_current_layer
 					+ layer->numpasses;
 			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
 
 			/* computation of the increase of the length indicator and insertion in the header     */
 			for (passno = cblk->num_passes_included_in_current_layer;
-					passno < l_nb_passes; ++passno) {
+					passno < nb_passes; ++passno) {
 				++nump;
 				len += pass->len;
 
@@ -1438,7 +1430,7 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 			pass = cblk->passes + cblk->num_passes_included_in_current_layer;
 			/* insertion of the codeword segment length */
 			for (passno = cblk->num_passes_included_in_current_layer;
-					passno < l_nb_passes; ++passno) {
+					passno < nb_passes; ++passno) {
 				nump++;
 				len += pass->len;
 
@@ -1466,9 +1458,9 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 		return false;
 	}
 
-	l_nb_bytes = (uint64_t) bio->numbytes();
-	packet_bytes_written += l_nb_bytes;
-	length -= l_nb_bytes;
+ nb_bytes = (uint64_t) bio->numbytes();
+	packet_bytes_written += nb_bytes;
+	length -= nb_bytes;
 
 	/* <EPH 0xff92> */
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
@@ -1482,10 +1474,10 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 	for (bandno = 0; bandno < res->numbands; bandno++) {
 		grk_tcd_precinct *prc = band->precincts + precno;
 
-		l_nb_blocks = prc->cw * prc->ch;
+	 nb_blocks = prc->cw * prc->ch;
 		cblk = prc->cblks.enc;
 
-		for (cblkno = 0; cblkno < l_nb_blocks; ++cblkno) {
+		for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 			grk_tcd_layer *layer = cblk->layers + layno;
 
 			if (!layer->numpasses) {

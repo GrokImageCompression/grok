@@ -1266,7 +1266,7 @@ static int parse_cmdline_encoder_ex(int argc,
 			char *lCurrentPtr;
 			float *lCurrentDoublePtr;
 			float *lSpace;
-			int *l_int_ptr;
+			int *int_ptr;
 			int lNbComp = 0, lTotalComp, lMctComp, i2;
 			size_t lStrLen, lStrFread;
 
@@ -1327,10 +1327,10 @@ static int parse_cmdline_encoder_ex(int argc,
 				lCurrentPtr += lStrLen;
 			}
 
-			l_int_ptr = (int*)lCurrentDoublePtr;
+		  int_ptr = (int*)lCurrentDoublePtr;
 			for (i2 = 0; i2<lNbComp; ++i2) {
 				lStrLen = strlen(lCurrentPtr) + 1;
-				*l_int_ptr++ = atoi(lCurrentPtr);
+				*int_ptr++ = atoi(lCurrentPtr);
 				lCurrentPtr += lStrLen;
 			}
 
@@ -1636,8 +1636,8 @@ grk_img_fol img_fol_plugin, out_fol_plugin;
 static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info) {
 	 grk_cparameters  *  parameters = info->encoder_parameters;
 	bool bSuccess = true;
-	 grk_stream  *l_stream = nullptr;
-	 grk_codec  *  l_codec = nullptr;
+	grk_stream  *stream = nullptr;
+	grk_codec  *codec = nullptr;
 	grk_image *image = info->image;
 	char  outfile[3 * GRK_PATH_LEN];
 	char  temp_ofname[GRK_PATH_LEN];
@@ -1910,15 +1910,15 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 
 	if (info->compressBuffer) {
 		// let stream clean up compress buffer
-		l_stream = grk_stream_create_mem_stream(info->compressBuffer,
+	  stream = grk_stream_create_mem_stream(info->compressBuffer,
 													info->compressBufferLen,
 													true,
 													false);
 	}
 	else {
-		l_stream = grk_stream_create_file_stream(outfile,32*1024*1024, false);
+	  stream = grk_stream_create_file_stream(outfile,32*1024*1024, false);
 	}
-	if (!l_stream) {
+	if (!stream) {
 		spdlog::error( "failed to create stream");
 		bSuccess = false;
 		goto cleanup;
@@ -1928,13 +1928,13 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 	case J2K_CFMT:	/* JPEG-2000 codestream */
 	{
 		/* Get a decoder handle */
-		l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
+	  codec = grk_create_compress(GRK_CODEC_J2K,  stream);
 		break;
 	}
 	case JP2_CFMT:	/* JPEG 2000 compressed image data */
 	{
 		/* Get a decoder handle */
-		l_codec = grk_create_compress(GRK_CODEC_JP2, l_stream);
+	  codec = grk_create_compress(GRK_CODEC_JP2,  stream);
 		break;
 	}
 	default:
@@ -1949,28 +1949,28 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 	}
 	grk_set_error_handler(error_callback, nullptr);
 
-	if (!grk_setup_encoder(l_codec, parameters, image)) {
+	if (!grk_setup_encoder(codec, parameters, image)) {
 		spdlog::error( "failed to encode image: grk_setup_encoder");
 		bSuccess = false;
 		goto cleanup;
 	}
 
 	/* encode the image */
-	bSuccess = grk_start_compress(l_codec, image);
+	bSuccess = grk_start_compress(codec, image);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_start_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
 
-	bSuccess = grk_encode_with_plugin(l_codec, info->tile);
+	bSuccess = grk_encode_with_plugin(codec, info->tile);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_encode");
 		bSuccess = false;
 		goto cleanup;
 	}
 
-	bSuccess = bSuccess && grk_end_compress(l_codec);
+	bSuccess = bSuccess && grk_end_compress(codec);
 	if (!bSuccess) {
 		spdlog::error( "failed to encode image: grk_end_compress");
 		bSuccess = false;
@@ -1982,7 +1982,7 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 			spdlog::error("Buffer compress: failed to open file {} for writing\n", outfile);
 		}
 		else {
-			auto len = grk_stream_get_write_mem_stream_length(l_stream);
+			auto len = grk_stream_get_write_mem_stream_length(stream);
 			size_t written = fwrite(info->compressBuffer, 1,len, fp);
 			if (written != len) {
 				spdlog::error("Buffer compress: only {} bytes written out of {} total\n", len, written);
@@ -1992,10 +1992,10 @@ static bool plugin_compress_callback(grk_plugin_encode_user_callback_info* info)
 		}
 	}
 cleanup:
-	if (l_stream)
-		grk_stream_destroy(l_stream);
-	if (l_codec)
-		grk_destroy_codec(l_codec);
+	if (stream)
+		grk_stream_destroy(stream);
+	if (codec)
+		grk_destroy_codec(codec);
 	if (createdImage)
 		grk_image_destroy(image);
 	if (!bSuccess) {

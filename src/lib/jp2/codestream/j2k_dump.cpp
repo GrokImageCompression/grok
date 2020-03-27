@@ -67,54 +67,54 @@ static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream);
 
 static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream);
 
-static void j2k_dump_tile_info(grk_tcp *l_default_tile, uint32_t numcomps,
+static void j2k_dump_tile_info(grk_tcp *default_tile, uint32_t numcomps,
 		FILE *out_stream) {
-	if (l_default_tile) {
+	if (default_tile) {
 		uint32_t compno;
 
 		fprintf(out_stream, "\t default tile {\n");
-		fprintf(out_stream, "\t\t csty=%#x\n", l_default_tile->csty);
-		fprintf(out_stream, "\t\t prg=%#x\n", l_default_tile->prg);
-		fprintf(out_stream, "\t\t numlayers=%d\n", l_default_tile->numlayers);
-		fprintf(out_stream, "\t\t mct=%x\n", l_default_tile->mct);
+		fprintf(out_stream, "\t\t csty=%#x\n", default_tile->csty);
+		fprintf(out_stream, "\t\t prg=%#x\n", default_tile->prg);
+		fprintf(out_stream, "\t\t numlayers=%d\n", default_tile->numlayers);
+		fprintf(out_stream, "\t\t mct=%x\n", default_tile->mct);
 
 		for (compno = 0; compno < numcomps; compno++) {
-			grk_tccp *l_tccp = &(l_default_tile->tccps[compno]);
+			grk_tccp *tccp = &(default_tile->tccps[compno]);
 			uint32_t resno;
 			uint32_t bandno, numbands;
 
 			/* coding style*/
 			fprintf(out_stream, "\t\t comp %d {\n", compno);
-			fprintf(out_stream, "\t\t\t csty=%#x\n", l_tccp->csty);
+			fprintf(out_stream, "\t\t\t csty=%#x\n", tccp->csty);
 			fprintf(out_stream, "\t\t\t numresolutions=%d\n",
-					l_tccp->numresolutions);
-			fprintf(out_stream, "\t\t\t cblkw=2^%d\n", l_tccp->cblkw);
-			fprintf(out_stream, "\t\t\t cblkh=2^%d\n", l_tccp->cblkh);
-			fprintf(out_stream, "\t\t\t cblksty=%#x\n", l_tccp->cblk_sty);
-			fprintf(out_stream, "\t\t\t qmfbid=%d\n", l_tccp->qmfbid);
+				 tccp->numresolutions);
+			fprintf(out_stream, "\t\t\t cblkw=2^%d\n", tccp->cblkw);
+			fprintf(out_stream, "\t\t\t cblkh=2^%d\n", tccp->cblkh);
+			fprintf(out_stream, "\t\t\t cblksty=%#x\n", tccp->cblk_sty);
+			fprintf(out_stream, "\t\t\t qmfbid=%d\n", tccp->qmfbid);
 
 			fprintf(out_stream, "\t\t\t preccintsize (w,h)=");
-			for (resno = 0; resno < l_tccp->numresolutions; resno++) {
-				fprintf(out_stream, "(%d,%d) ", l_tccp->prcw[resno],
-						l_tccp->prch[resno]);
+			for (resno = 0; resno < tccp->numresolutions; resno++) {
+				fprintf(out_stream, "(%d,%d) ", tccp->prcw[resno],
+					 tccp->prch[resno]);
 			}
 			fprintf(out_stream, "\n");
 
 			/* quantization style*/
-			fprintf(out_stream, "\t\t\t qntsty=%d\n", l_tccp->qntsty);
-			fprintf(out_stream, "\t\t\t numgbits=%d\n", l_tccp->numgbits);
+			fprintf(out_stream, "\t\t\t qntsty=%d\n", tccp->qntsty);
+			fprintf(out_stream, "\t\t\t numgbits=%d\n", tccp->numgbits);
 			fprintf(out_stream, "\t\t\t stepsizes (m,e)=");
 			numbands =
-					(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-							1 : (int32_t) l_tccp->numresolutions * 3 - 2;
+					(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
+							1 : (int32_t) tccp->numresolutions * 3 - 2;
 			for (bandno = 0; bandno < numbands; bandno++) {
-				fprintf(out_stream, "(%d,%d) ", l_tccp->stepsizes[bandno].mant,
-						l_tccp->stepsizes[bandno].expn);
+				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandno].mant,
+					 tccp->stepsizes[bandno].expn);
 			}
 			fprintf(out_stream, "\n");
 
 			/* RGN value*/
-			fprintf(out_stream, "\t\t\t roishift=%d\n", l_tccp->roishift);
+			fprintf(out_stream, "\t\t\t roishift=%d\n", tccp->roishift);
 
 			fprintf(out_stream, "\t\t }\n");
 		} /*end of component of default tile*/
@@ -142,14 +142,14 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 	}
 	/* Dump all tile/codestream info */
 	if (flag & GRK_J2K_TCH_INFO) {
-		uint32_t l_nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+		uint32_t nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
 		uint32_t i;
-		grk_tcp *l_tcp = p_j2k->m_cp.tcps;
+		grk_tcp *tcp = p_j2k->m_cp.tcps;
 		if (p_j2k->m_private_image) {
-			for (i = 0; i < l_nb_tiles; ++i) {
-				j2k_dump_tile_info(l_tcp, p_j2k->m_private_image->numcomps,
+			for (i = 0; i < nb_tiles; ++i) {
+				j2k_dump_tile_info(tcp, p_j2k->m_private_image->numcomps,
 						out_stream);
-				++l_tcp;
+				++tcp;
 			}
 		}
 	}
@@ -200,12 +200,12 @@ static void j2k_dump_MH_index(grk_j2k *p_j2k, FILE *out_stream) {
 	if (cstr_index->tile_index) {
 
 		/* Simple test to avoid to write empty information*/
-		uint32_t l_acc_nb_of_tile_part = 0;
+		uint32_t acc_nb_of_tile_part = 0;
 		for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
-			l_acc_nb_of_tile_part += cstr_index->tile_index[it_tile].nb_tps;
+		 acc_nb_of_tile_part += cstr_index->tile_index[it_tile].nb_tps;
 		}
 
-		if (l_acc_nb_of_tile_part) {
+		if (acc_nb_of_tile_part) {
 			fprintf(out_stream, "\t Tile index: {\n");
 
 			for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
@@ -324,7 +324,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
  grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k) {
 	uint32_t compno;
 	uint32_t numcomps = p_j2k->m_private_image->numcomps;
-	grk_tcp *l_default_tile;
+	grk_tcp *default_tile;
 	 grk_codestream_info_v2  *cstr_info =
 			( grk_codestream_info_v2  * ) grk_calloc(1,
 					sizeof( grk_codestream_info_v2) );
@@ -342,12 +342,12 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
 
-	l_default_tile = p_j2k->m_specific_param.m_decoder.m_default_tcp;
+ default_tile = p_j2k->m_specific_param.m_decoder.m_default_tcp;
 
-	cstr_info->m_default_tile_info.csty = l_default_tile->csty;
-	cstr_info->m_default_tile_info.prg = l_default_tile->prg;
-	cstr_info->m_default_tile_info.numlayers = l_default_tile->numlayers;
-	cstr_info->m_default_tile_info.mct = l_default_tile->mct;
+	cstr_info->m_default_tile_info.csty = default_tile->csty;
+	cstr_info->m_default_tile_info.prg = default_tile->prg;
+	cstr_info->m_default_tile_info.numlayers = default_tile->numlayers;
+	cstr_info->m_default_tile_info.mct = default_tile->mct;
 
 	cstr_info->m_default_tile_info.tccp_info = ( grk_tccp_info  * ) grk_calloc(
 			cstr_info->nbcomps, sizeof( grk_tccp_info) );
@@ -357,161 +357,161 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 	}
 
 	for (compno = 0; compno < numcomps; compno++) {
-		grk_tccp *l_tccp = &(l_default_tile->tccps[compno]);
-		 grk_tccp_info  *l_tccp_info =
+		grk_tccp *tccp = &(default_tile->tccps[compno]);
+		 grk_tccp_info  *tccp_info =
 				&(cstr_info->m_default_tile_info.tccp_info[compno]);
 		uint32_t bandno, numbands;
 
 		/* coding style*/
-		l_tccp_info->csty = l_tccp->csty;
-		l_tccp_info->numresolutions = l_tccp->numresolutions;
-		l_tccp_info->cblkw = l_tccp->cblkw;
-		l_tccp_info->cblkh = l_tccp->cblkh;
-		l_tccp_info->cblk_sty = l_tccp->cblk_sty;
-		l_tccp_info->qmfbid = l_tccp->qmfbid;
-		if (l_tccp->numresolutions < GRK_J2K_MAXRLVLS) {
-			memcpy(l_tccp_info->prch, l_tccp->prch, l_tccp->numresolutions);
-			memcpy(l_tccp_info->prcw, l_tccp->prcw, l_tccp->numresolutions);
+	 tccp_info->csty = tccp->csty;
+	 tccp_info->numresolutions = tccp->numresolutions;
+	 tccp_info->cblkw = tccp->cblkw;
+	 tccp_info->cblkh = tccp->cblkh;
+	 tccp_info->cblk_sty = tccp->cblk_sty;
+	 tccp_info->qmfbid = tccp->qmfbid;
+		if (tccp->numresolutions < GRK_J2K_MAXRLVLS) {
+			memcpy(tccp_info->prch, tccp->prch, tccp->numresolutions);
+			memcpy(tccp_info->prcw, tccp->prcw, tccp->numresolutions);
 		}
 
 		/* quantization style*/
-		l_tccp_info->qntsty = l_tccp->qntsty;
-		l_tccp_info->numgbits = l_tccp->numgbits;
+	 tccp_info->qntsty = tccp->qntsty;
+	 tccp_info->numgbits = tccp->numgbits;
 
 		numbands =
-				(l_tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-						1 : (l_tccp->numresolutions * 3 - 2);
+				(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
+						1 : (tccp->numresolutions * 3 - 2);
 		if (numbands < GRK_J2K_MAXBANDS) {
 			for (bandno = 0; bandno < numbands; bandno++) {
-				l_tccp_info->stepsizes_mant[bandno] =
-						l_tccp->stepsizes[bandno].mant;
-				l_tccp_info->stepsizes_expn[bandno] =
-						l_tccp->stepsizes[bandno].expn;
+			 tccp_info->stepsizes_mant[bandno] =
+					 tccp->stepsizes[bandno].mant;
+			 tccp_info->stepsizes_expn[bandno] =
+					 tccp->stepsizes[bandno].expn;
 			}
 		}
 
 		/* RGN value*/
-		l_tccp_info->roishift = l_tccp->roishift;
+	 tccp_info->roishift = tccp->roishift;
 	}
 
 	return cstr_info;
 }
 
  grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k) {
-	 grk_codestream_index  *l_cstr_index =
+	 grk_codestream_index  *cstr_index =
 			( grk_codestream_index  * ) grk_calloc(1,
 					sizeof( grk_codestream_index) );
-	if (!l_cstr_index)
+	if (!cstr_index)
 		return nullptr;
 
-	l_cstr_index->main_head_start = p_j2k->cstr_index->main_head_start;
-	l_cstr_index->main_head_end = p_j2k->cstr_index->main_head_end;
-	l_cstr_index->codestream_size = p_j2k->cstr_index->codestream_size;
+ cstr_index->main_head_start = p_j2k->cstr_index->main_head_start;
+ cstr_index->main_head_end = p_j2k->cstr_index->main_head_end;
+ cstr_index->codestream_size = p_j2k->cstr_index->codestream_size;
 
-	l_cstr_index->marknum = p_j2k->cstr_index->marknum;
-	l_cstr_index->marker = ( grk_marker_info  * ) grk_malloc(
-			l_cstr_index->marknum * sizeof( grk_marker_info) );
-	if (!l_cstr_index->marker) {
-		grok_free(l_cstr_index);
+ cstr_index->marknum = p_j2k->cstr_index->marknum;
+ cstr_index->marker = ( grk_marker_info  * ) grk_malloc(
+		 cstr_index->marknum * sizeof( grk_marker_info) );
+	if (!cstr_index->marker) {
+		grok_free(cstr_index);
 		return nullptr;
 	}
 
 	if (p_j2k->cstr_index->marker)
-		memcpy(l_cstr_index->marker, p_j2k->cstr_index->marker,
-				l_cstr_index->marknum * sizeof( grk_marker_info) );
+		memcpy(cstr_index->marker, p_j2k->cstr_index->marker,
+			 cstr_index->marknum * sizeof( grk_marker_info) );
 	else {
-		grok_free(l_cstr_index->marker);
-		l_cstr_index->marker = nullptr;
+		grok_free(cstr_index->marker);
+	 cstr_index->marker = nullptr;
 	}
 
-	l_cstr_index->nb_of_tiles = p_j2k->cstr_index->nb_of_tiles;
-	l_cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
-			l_cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
-	if (!l_cstr_index->tile_index) {
-		grok_free(l_cstr_index->marker);
-		grok_free(l_cstr_index);
+ cstr_index->nb_of_tiles = p_j2k->cstr_index->nb_of_tiles;
+ cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
+		 cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
+	if (!cstr_index->tile_index) {
+		grok_free(cstr_index->marker);
+		grok_free(cstr_index);
 		return nullptr;
 	}
 
 	if (!p_j2k->cstr_index->tile_index) {
-		grok_free(l_cstr_index->tile_index);
-		l_cstr_index->tile_index = nullptr;
+		grok_free(cstr_index->tile_index);
+	 cstr_index->tile_index = nullptr;
 	} else {
 		uint32_t it_tile = 0;
-		for (it_tile = 0; it_tile < l_cstr_index->nb_of_tiles; it_tile++) {
+		for (it_tile = 0; it_tile < cstr_index->nb_of_tiles; it_tile++) {
 
 			/* Tile Marker*/
-			l_cstr_index->tile_index[it_tile].marknum =
+		 cstr_index->tile_index[it_tile].marknum =
 					p_j2k->cstr_index->tile_index[it_tile].marknum;
 
-			l_cstr_index->tile_index[it_tile].marker =
+		 cstr_index->tile_index[it_tile].marker =
 					( grk_marker_info  * ) grk_malloc(
-							l_cstr_index->tile_index[it_tile].marknum
+						 cstr_index->tile_index[it_tile].marknum
 									* sizeof( grk_marker_info) );
 
-			if (!l_cstr_index->tile_index[it_tile].marker) {
+			if (!cstr_index->tile_index[it_tile].marker) {
 				uint32_t it_tile_free;
 
 				for (it_tile_free = 0; it_tile_free < it_tile; it_tile_free++) {
-					grok_free(l_cstr_index->tile_index[it_tile_free].marker);
+					grok_free(cstr_index->tile_index[it_tile_free].marker);
 				}
 
-				grok_free(l_cstr_index->tile_index);
-				grok_free(l_cstr_index->marker);
-				grok_free(l_cstr_index);
+				grok_free(cstr_index->tile_index);
+				grok_free(cstr_index->marker);
+				grok_free(cstr_index);
 				return nullptr;
 			}
 
 			if (p_j2k->cstr_index->tile_index[it_tile].marker)
-				memcpy(l_cstr_index->tile_index[it_tile].marker,
+				memcpy(cstr_index->tile_index[it_tile].marker,
 						p_j2k->cstr_index->tile_index[it_tile].marker,
-						l_cstr_index->tile_index[it_tile].marknum
+					 cstr_index->tile_index[it_tile].marknum
 								* sizeof( grk_marker_info) );
 			else {
-				grok_free(l_cstr_index->tile_index[it_tile].marker);
-				l_cstr_index->tile_index[it_tile].marker = nullptr;
+				grok_free(cstr_index->tile_index[it_tile].marker);
+			 cstr_index->tile_index[it_tile].marker = nullptr;
 			}
 
 			/* Tile part index*/
-			l_cstr_index->tile_index[it_tile].nb_tps =
+		 cstr_index->tile_index[it_tile].nb_tps =
 					p_j2k->cstr_index->tile_index[it_tile].nb_tps;
 
-			l_cstr_index->tile_index[it_tile].tp_index =
+		 cstr_index->tile_index[it_tile].tp_index =
 					( grk_tp_index  * ) grk_malloc(
-							l_cstr_index->tile_index[it_tile].nb_tps
+						 cstr_index->tile_index[it_tile].nb_tps
 									* sizeof( grk_tp_index) );
 
-			if (!l_cstr_index->tile_index[it_tile].tp_index) {
+			if (!cstr_index->tile_index[it_tile].tp_index) {
 				uint32_t it_tile_free;
 
 				for (it_tile_free = 0; it_tile_free < it_tile; it_tile_free++) {
-					grok_free(l_cstr_index->tile_index[it_tile_free].marker);
-					grok_free(l_cstr_index->tile_index[it_tile_free].tp_index);
+					grok_free(cstr_index->tile_index[it_tile_free].marker);
+					grok_free(cstr_index->tile_index[it_tile_free].tp_index);
 				}
 
-				grok_free(l_cstr_index->tile_index);
-				grok_free(l_cstr_index->marker);
-				grok_free(l_cstr_index);
+				grok_free(cstr_index->tile_index);
+				grok_free(cstr_index->marker);
+				grok_free(cstr_index);
 				return nullptr;
 			}
 
 			if (p_j2k->cstr_index->tile_index[it_tile].tp_index) {
-				memcpy(l_cstr_index->tile_index[it_tile].tp_index,
+				memcpy(cstr_index->tile_index[it_tile].tp_index,
 						p_j2k->cstr_index->tile_index[it_tile].tp_index,
-						l_cstr_index->tile_index[it_tile].nb_tps
+					 cstr_index->tile_index[it_tile].nb_tps
 								* sizeof( grk_tp_index) );
 			} else {
-				grok_free(l_cstr_index->tile_index[it_tile].tp_index);
-				l_cstr_index->tile_index[it_tile].tp_index = nullptr;
+				grok_free(cstr_index->tile_index[it_tile].tp_index);
+			 cstr_index->tile_index[it_tile].tp_index = nullptr;
 			}
 
 			/* Packet index (NOT USED)*/
-			l_cstr_index->tile_index[it_tile].nb_packet = 0;
-			l_cstr_index->tile_index[it_tile].packet_index = nullptr;
+		 cstr_index->tile_index[it_tile].nb_packet = 0;
+		 cstr_index->tile_index[it_tile].packet_index = nullptr;
 
 		}
 	}
-	return l_cstr_index;
+	return cstr_index;
 }
 
 bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
