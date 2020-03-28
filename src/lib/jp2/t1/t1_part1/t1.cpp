@@ -73,7 +73,7 @@ namespace grk {
 #define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])
 #define t1_setcurctx(curctx, ctxno)  curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
 
-static INLINE uint8_t 	t1_getctxno_zc(mqc_t *mqc, uint32_t f);
+static INLINE uint8_t 	t1_getctxno_zc(mqcoder *mqc, uint32_t f);
 static INLINE uint32_t 	t1_getctxno_mag(uint32_t f);
 static int16_t 			t1_getnmsedec_sig(uint32_t x, uint32_t bitpos);
 static int16_t 			t1_getnmsedec_ref(uint32_t x, uint32_t bitpos);
@@ -105,10 +105,10 @@ static bool 			t1_code_block_enc_allocate(tcd_cblk_enc_t *p_code_block);
 static double 			t1_getwmsedec(int32_t nmsedec, uint32_t compno, uint32_t level,
 										uint8_t orient, int32_t bpno,
 										uint32_t qmfbid, double stepsize,
-										uint32_t numcomps, const double *mct_norms,
+										const double *mct_norms,
 										uint32_t mct_numcomps);
 
-static INLINE uint8_t 	t1_getctxno_zc(mqc_t *mqc, uint32_t f) {
+static INLINE uint8_t 	t1_getctxno_zc(mqcoder *mqc, uint32_t f) {
 	return mqc->lut_ctxno_zc_orient[(f & T1_SIGMA_NEIGHBOURS)];
 }
 
@@ -913,10 +913,9 @@ static double t1_getwmsedec(int32_t nmsedec,
 							uint32_t compno, uint32_t level,
 							uint8_t orient, int32_t bpno,
 							uint32_t qmfbid, double stepsize,
-							uint32_t numcomps, const double *mct_norms,
+							const double *mct_norms,
 							uint32_t mct_numcomps) {
 	double w1 = 1, w2, wmsedec;
-	(void) (numcomps);
 
 	if (mct_norms && (compno < mct_numcomps))
 		w1 = mct_norms[compno];
@@ -1182,7 +1181,7 @@ static bool t1_code_block_enc_allocate(tcd_cblk_enc_t *p_code_block) {
 
 double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 					uint8_t orient, uint32_t compno, uint32_t level, uint32_t qmfbid,
-					double stepsize, uint32_t cblksty, uint32_t numcomps,
+					double stepsize, uint32_t cblksty,
 					const double *mct_norms, uint32_t mct_numcomps, bool doRateControl) {
 	if (!t1_code_block_enc_allocate(cblk))
 		return 0;
@@ -1249,7 +1248,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 
 		if (doRateControl) {
 			tempwmsedec = t1_getwmsedec(nmsedec, compno, level, orient, bpno,
-					qmfbid, stepsize, numcomps, mct_norms, mct_numcomps);
+					qmfbid, stepsize, mct_norms, mct_numcomps);
 			cumwmsedec += tempwmsedec;
 			pass->distortiondec = cumwmsedec;
 		}
@@ -1296,7 +1295,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 
 		/* Code-switch "RESET" */
 		if (cblksty & J2K_CCP_CBLKSTY_RESET)
-			mqc_reset_enc(mqc);
+			mqc_resetstates(mqc);
 	}
 
 	cblk->totalpasses = passno;

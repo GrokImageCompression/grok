@@ -89,7 +89,7 @@ Decode a symbol using raw-decoder. Cfr p.506 TAUBMAN
 @param mqc MQC handle
 @return Returns the decoded symbol (0 or 1)
 */
-static INLINE uint32_t mqc_raw_decode(mqc_t *mqc)
+static INLINE uint32_t mqc_raw_decode(mqcoder *mqc)
 {
     uint32_t d;
     if (mqc->ct == 0) {
@@ -174,23 +174,13 @@ static INLINE uint32_t mqc_raw_decode(mqc_t *mqc)
     } \
 }
 
-#define DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
-         const mqc_state_t **curctx = mqc->curctx; \
-         uint32_t c = mqc->c; \
-         uint32_t a = mqc->a; \
-         uint32_t ct = mqc->ct
 
-#define UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
-        mqc->curctx = curctx; \
-        mqc->c = c; \
-        mqc->a = a; \
-        mqc->ct = ct;
 
 /**
 Input a byte
 @param mqc MQC handle
 */
-static INLINE void mqc_bytein(mqc_t *const mqc)
+static INLINE void mqc_bytein(mqcoder *const mqc)
 {
     mqc_bytein_macro(mqc, mqc->c, mqc->ct);
 }

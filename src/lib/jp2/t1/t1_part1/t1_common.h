@@ -24,7 +24,16 @@
 #include "grok.h"
 #include <stdbool.h>
 
-#include "shared.h"
+#ifndef INLINE
+#if defined(_MSC_VER)
+#define INLINE __forceinline
+#elif defined(__GNUC__)
+#define INLINE __inline__
+#else
+#define INLINE
+#endif /* defined(<Compiler>) */
+#endif /* INLINE */
+
 #include <math.h>
 #include <assert.h>
 #include <string.h>

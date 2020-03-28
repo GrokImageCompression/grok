@@ -112,7 +112,7 @@ double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
 	auto disto = t1_encode_cblk(t1, &cblkopj, max, block->bandno,
 			block->compno,
 			(tile->comps + block->compno)->numresolutions - 1 - block->resno,
-			block->qmfbid, block->stepsize, block->cblk_sty, tile->numcomps,
+			block->qmfbid, block->stepsize, block->cblk_sty,
 			block->mct_norms, block->mct_numcomps, doRateControl);
 
 	cblk->num_passes_encoded = cblkopj.totalpasses;

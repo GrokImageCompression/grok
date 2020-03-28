@@ -172,7 +172,7 @@ typedef uint32_t grk_flag;
 struct t1_info {
 
 	/** MQC component */
-	mqc_t mqc;
+	mqcoder mqc;
 
 	int32_t *data;
 	/** Flags used by decoder and encoder.
@@ -209,7 +209,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk,
 		uint32_t max,
 		uint8_t orient, uint32_t compno, uint32_t level,
 		uint32_t qmfbid, double stepsize, uint32_t cblksty,
-		uint32_t numcomps, const double *mct_norms,
+		const double *mct_norms,
 		uint32_t mct_numcomps, bool doRateControl);
 
 t1_info* t1_create(bool isEncoder);

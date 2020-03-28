@@ -167,7 +167,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_ht/others/ojph_message.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/t1.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc_enc.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/mqc_dec.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h    
 )
