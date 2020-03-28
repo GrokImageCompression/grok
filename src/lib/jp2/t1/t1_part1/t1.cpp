@@ -70,7 +70,7 @@ namespace grk {
 							in codestream (mode switch RAW)*/
 
 #include "t1_luts.h"
-#define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y / 4) + 1) * (t1->w+2)])
+#define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])
 #define t1_setcurctx(curctx, ctxno)  curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
 
 static INLINE uint8_t 	t1_getctxno_zc(mqc_t *mqc, uint32_t f);
@@ -123,17 +123,18 @@ static INLINE uint32_t t1_getctxtno_sc_or_spb_index(uint32_t fX, uint32_t pfX,
 	 7 tfX T1_SIGMA_7            T1_LUT_SIG_S
 	 */
 
-	uint32_t lu = (fX >> (ci * 3U)) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 |
+	ci *= 3;
+	uint32_t lu = (fX >> (ci)) & (T1_SIGMA_1 | T1_SIGMA_3 | T1_SIGMA_5 |
 	T1_SIGMA_7);
 
-	lu |= (pfX >> (T1_CHI_THIS_I + (ci * 3U))) & (1U << 0);
-	lu |= (nfX >> (T1_CHI_THIS_I - 2U + (ci * 3U))) & (1U << 2);
+	lu |= (pfX >> (T1_CHI_THIS_I + (ci))) & (1U << 0);
+	lu |= (nfX >> (T1_CHI_THIS_I - 2U + (ci))) & (1U << 2);
 	if (ci == 0U) {
 		lu |= (fX >> (T1_CHI_0_I - 4U)) & (1U << 4);
 	} else {
-		lu |= (fX >> (T1_CHI_1_I - 4U + ((ci - 1U) * 3U))) & (1U << 4);
+		lu |= (fX >> (T1_CHI_1_I - 4U + ((ci - 3U)))) & (1U << 4);
 	}
-	lu |= (fX >> (T1_CHI_2_I - 6U + (ci * 3U))) & (1U << 6);
+	lu |= (fX >> (T1_CHI_2_I - 6U + (ci))) & (1U << 6);
 	return lu;
 }
 
@@ -951,49 +952,44 @@ bool t1_allocate_buffers(t1_info *t1, uint32_t w, uint32_t h) {
 	flags_stride = w + 2U; /* can't be 0U */
 	flagssize = (h + 3U) / 4U + 2U;
 	flagssize *= flags_stride;
-	{
-		uint32_t x;
-		uint32_t flags_height = (h + 3U) / 4U;
+	uint32_t x;
+	uint32_t flags_height = (h + 3U) / 4U;
 
-		if (flagssize > t1->flagssize) {
+	if (flagssize > t1->flagssize) {
 
-			grk::grk_aligned_free(t1->flags);
-			t1->flags = (grk_flag*) grk::grk_aligned_malloc(
-					flagssize * sizeof(grk_flag));
-			if (!t1->flags) {
-				/* FIXME event manager error callback */
-				return false;
-			}
+		grk::grk_aligned_free(t1->flags);
+		t1->flags = (grk_flag*) grk::grk_aligned_malloc(
+				flagssize * sizeof(grk_flag));
+		if (!t1->flags) {
+			/* FIXME event manager error callback */
+			return false;
 		}
-		t1->flagssize = flagssize;
+	}
+	t1->flagssize = flagssize;
 
-		memset(t1->flags, 0, flagssize * sizeof(grk_flag));
-
-		auto p = &t1->flags[0];
+	memset(t1->flags, 0, flagssize * sizeof(grk_flag));
+	auto p = &t1->flags[0];
+	for (x = 0; x < flags_stride; ++x) {
+		/* magic value to hopefully stop any passes being interested in this entry */
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
+	p = &t1->flags[((flags_height + 1) * flags_stride)];
+	for (x = 0; x < flags_stride; ++x) {
+		/* magic value to hopefully stop any passes being interested in this entry */
+		*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
+	}
+	if (h % 4) {
+		uint32_t v = 0;
+		p = &t1->flags[((flags_height) * flags_stride)];
+		if ((h&3) == 1) {
+			v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
+		} else if ((h&3) == 2) {
+			v |= T1_PI_2 | T1_PI_3;
+		} else if ((h&3) == 3) {
+			v |= T1_PI_3;
+		}
 		for (x = 0; x < flags_stride; ++x) {
-			/* magic value to hopefully stop any passes being interested in this entry */
-			*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-		}
-
-		p = &t1->flags[((flags_height + 1) * flags_stride)];
-		for (x = 0; x < flags_stride; ++x) {
-			/* magic value to hopefully stop any passes being interested in this entry */
-			*p++ = (T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3);
-		}
-
-		if (h % 4) {
-			uint32_t v = 0;
-			p = &t1->flags[((flags_height) * flags_stride)];
-			if (h % 4 == 1) {
-				v |= T1_PI_1 | T1_PI_2 | T1_PI_3;
-			} else if (h % 4 == 2) {
-				v |= T1_PI_2 | T1_PI_3;
-			} else if (h % 4 == 3) {
-				v |= T1_PI_3;
-			}
-			for (x = 0; x < flags_stride; ++x) {
-				*p++ = v;
-			}
+			*p++ = v;
 		}
 	}
 
