@@ -214,7 +214,8 @@ static INLINE void t1_enc_sigpass_step(t1_info *t1, grk_flag *flagsp,
 			uint32_t lu = t1_getctxtno_sc_or_spb_index(*flagsp, flagsp[-1],	flagsp[1], ci);
 			uint32_t ctxt2 = t1_getctxno_sc(lu);
 			v = *datap < 0 ? 1U : 0U;
-			*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),(uint32_t) bpno);
+			if (nmsedec)
+				*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),(uint32_t) bpno);
 
 			mqc_setcurctx(mqc, ctxt2);
 			if (type == T1_TYPE_RAW) {
@@ -289,7 +290,8 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 	int32_t const one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
 	auto f = &T1_FLAGS(0, 0);
 	uint32_t const extra = 2;
-	*nmsedec = 0;
+	if (nmsedec)
+		*nmsedec = 0;
 
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
 		for (i = 0; i < t1->w; ++i) {
@@ -447,7 +449,8 @@ static INLINE void t1_enc_refpass_step(t1_info *t1, grk_flag *flagsp,
 
 	if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS) {
 		uint32_t ctxt = t1_getctxno_mag(shift_flags);
-		*nmsedec += t1_getnmsedec_ref((uint32_t) abs(*datap), (uint32_t) bpno);
+		if (nmsedec)
+			*nmsedec += t1_getnmsedec_ref((uint32_t) abs(*datap), (uint32_t) bpno);
 		v = (abs(*datap) & one) ? 1 : 0;
 		mqc_setcurctx(mqc, ctxt);
 		if (type == T1_TYPE_RAW) { /* BYPASS/LAZY MODE */
@@ -499,7 +502,8 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 	auto f = &T1_FLAGS(0, 0);
 	const uint32_t extra = 2U;
 
-	*nmsedec = 0;
+	if (nmsedec)
+		*nmsedec = 0;
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
 		for (i = 0; i < t1->w; ++i) {
 			if ((*f & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
@@ -677,7 +681,8 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
 				uint32_t lu;
 				LABEL_PARTIAL: lu = t1_getctxtno_sc_or_spb_index(*flagsp,
 						flagsp[-1], flagsp[1], ci);
-				*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),
+				if (nmsedec)
+					*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),
 						(uint32_t) bpno);
 				ctxt2 = t1_getctxno_sc(lu);
 				mqc_setcurctx(mqc, ctxt2);
@@ -736,7 +741,8 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg, runlen;
 	auto mqc = &(t1->mqc);
-	*nmsedec = 0;
+	if (nmsedec)
+	  *nmsedec = 0;
 
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
 		for (i = 0; i < t1->w; ++i) {
@@ -1188,6 +1194,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 	int32_t bpno;
 	uint32_t passtype;
 	int32_t nmsedec = 0;
+	int32_t *p_nmsdedec = doRateControl ? &nmsedec : nullptr;
 	uint8_t type = T1_TYPE_MQ;
 	double tempwmsedec;
 
@@ -1228,13 +1235,13 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 
 		switch (passtype) {
 		case 0:
-			t1_enc_sigpass(t1, bpno, &nmsedec, type, cblksty);
+			t1_enc_sigpass(t1, bpno, p_nmsdedec, type, cblksty);
 			break;
 		case 1:
-			t1_enc_refpass(t1, bpno, &nmsedec, type);
+			t1_enc_refpass(t1, bpno, p_nmsdedec, type);
 			break;
 		case 2:
-			t1_enc_clnpass(t1, bpno, &nmsedec, cblksty);
+			t1_enc_clnpass(t1, bpno,p_nmsdedec, cblksty);
 			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
 			break;
