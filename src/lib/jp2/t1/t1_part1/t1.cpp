@@ -201,11 +201,7 @@ static INLINE void t1_enc_sigpass_step(t1_info *t1, grk_flag *flagsp,
 	if ((flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci * 3U))) == 0U
 			&& (flags & (T1_SIGMA_NEIGHBOURS << (ci * 3U))) != 0U) {
 		uint32_t ctxt1 = t1_getctxno_zc(mqc, flags >> (ci * 3U));
-
 		v = (abs(*datap) & one) ? 1 : 0;
-#ifdef DEBUG_ENC_SIG
-        fprintf(stderr, "   ctxt1=%d\n", ctxt1);
-#endif
 		mqc_setcurctx(mqc, ctxt1);
 		if (type == T1_TYPE_RAW)
 			mqc_bypass_enc(mqc, v);
@@ -214,20 +210,14 @@ static INLINE void t1_enc_sigpass_step(t1_info *t1, grk_flag *flagsp,
 		if (v) {
 			uint32_t lu = t1_getctxtno_sc_or_spb_index(*flagsp, flagsp[-1],	flagsp[1], ci);
 			uint32_t ctxt2 = t1_getctxno_sc(lu);
-
 			v = *datap < 0 ? 1U : 0U;
 			*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),(uint32_t) bpno);
-#ifdef DEBUG_ENC_SIG
-            fprintf(stderr, "   ctxt2=%d\n", ctxt2);
-#endif
+
 			mqc_setcurctx(mqc, ctxt2);
 			if (type == T1_TYPE_RAW) {
 				mqc_bypass_enc(mqc, v);
 			} else {
 				uint32_t spb = t1_getspb(lu);
-#ifdef DEBUG_ENC_SIG
-                fprintf(stderr, "   spb=%d\n", spb);
-#endif
 				mqc_encode(mqc, v ^ spb);
 			}
 			t1_update_flags(flagsp, ci, v, t1->w + 2, vsc);
@@ -296,19 +286,10 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 	int32_t const one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
 	auto f = &T1_FLAGS(0, 0);
 	uint32_t const extra = 2;
-
 	*nmsedec = 0;
-#ifdef DEBUG_ENC_SIG
-    fprintf(stderr, "enc_sigpass: bpno=%d\n", bpno);
-#endif
+
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
-#ifdef DEBUG_ENC_SIG
-        fprintf(stderr, " k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_SIG
-            fprintf(stderr, " i=%d\n", i);
-#endif
 			if (*f == 0U) {
 				/* Nothing to do for any of the 4 data points */
 				f++;
@@ -333,13 +314,7 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 
 	if (k < t1->h) {
 		uint32_t j;
-#ifdef DEBUG_ENC_SIG
-        fprintf(stderr, " k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_SIG
-            fprintf(stderr, " i=%d\n", i);
-#endif
 			if (*f == 0U) {
 				/* Nothing to do for any of the 4 data points */
 				f++;
@@ -469,9 +444,6 @@ static INLINE void t1_enc_refpass_step(t1_info *t1, grk_flag *flagsp,
 		uint32_t ctxt = t1_getctxno_mag(shift_flags);
 		*nmsedec += t1_getnmsedec_ref((uint32_t) abs(*datap), (uint32_t) bpno);
 		v = (abs(*datap) & one) ? 1 : 0;
-#ifdef DEBUG_ENC_REF
-        fprintf(stderr, "  ctxt=%d\n", ctxt);
-#endif
 		mqc_setcurctx(mqc, ctxt);
 		if (type == T1_TYPE_RAW) { /* BYPASS/LAZY MODE */
 			mqc_bypass_enc(mqc, v);
@@ -484,12 +456,11 @@ static INLINE void t1_enc_refpass_step(t1_info *t1, grk_flag *flagsp,
 
 static INLINE void t1_dec_refpass_step_raw(t1_info *t1, grk_flag *flagsp,
 		int32_t *datap, int32_t poshalf, uint32_t ci) {
-	uint32_t v;
 	auto mqc = &(t1->mqc);
 
 	if ((*flagsp & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci * 3U)))
 			== (T1_SIGMA_THIS << (ci * 3U))) {
-		v = mqc_raw_decode(mqc);
+		uint32_t v = mqc_raw_decode(mqc);
 		*datap += (v ^ (*datap < 0)) ? poshalf : -poshalf;
 		*flagsp |= T1_MU_THIS << (ci * 3U);
 	}
@@ -524,17 +495,8 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 	const uint32_t extra = 2U;
 
 	*nmsedec = 0;
-#ifdef DEBUG_ENC_REF
-    fprintf(stderr, "enc_refpass: bpno=%d\n", bpno);
-#endif
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
-#ifdef DEBUG_ENC_REF
-        fprintf(stderr, " k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_REF
-            fprintf(stderr, " i=%d\n", i);
-#endif
 			if ((*f & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
 					== 0) {
 				/* none significant */
@@ -567,13 +529,7 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 
 	if (k < t1->h) {
 		uint32_t j;
-#ifdef DEBUG_ENC_REF
-        fprintf(stderr, " k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_REF
-            fprintf(stderr, " i=%d\n", i);
-#endif
 			if ((*f & (T1_SIGMA_4 | T1_SIGMA_7 | T1_SIGMA_10 | T1_SIGMA_13))
 					== 0) {
 				/* none significant */
@@ -592,7 +548,7 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 static void t1_dec_refpass_raw(t1_info *t1, int32_t bpno) {
 	int32_t one, poshalf;
 	uint32_t i, j, k;
-	int32_t *data = t1->data;
+	auto data = t1->data;
 	auto flagsp = &T1_FLAGS(0, 0);
 	const uint32_t l_w = t1->w;
 
@@ -708,9 +664,6 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
 
 		if (!(flags & ((T1_SIGMA_THIS | T1_PI_THIS) << (ci * 3U)))) {
 			ctxt1 = t1_getctxno_zc(mqc, flags >> (ci * 3U));
-#ifdef DEBUG_ENC_CLN
-            printf("   ctxt1=%d\n", ctxt1);
-#endif
 			mqc_setcurctx(mqc, ctxt1);
 			v = (abs(*datap) & one) ? 1 : 0;
 			mqc_encode(mqc, v);
@@ -722,16 +675,9 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
 				*nmsedec += t1_getnmsedec_sig((uint32_t) abs(*datap),
 						(uint32_t) bpno);
 				ctxt2 = t1_getctxno_sc(lu);
-#ifdef DEBUG_ENC_CLN
-                printf("   ctxt2=%d\n", ctxt2);
-#endif
 				mqc_setcurctx(mqc, ctxt2);
-
 				v = *datap < 0 ? 1U : 0U;
 				spb = t1_getspb(lu);
-#ifdef DEBUG_ENC_CLN
-                printf("   spb=%d\n", spb);
-#endif
 				mqc_encode(mqc, v ^ spb);
 				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
 				t1_update_flags(flagsp, ci, v, t1->w + 2U, vsc);
@@ -785,23 +731,11 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 	const int32_t one = 1 << (bpno + T1_NMSEDEC_FRACBITS);
 	uint32_t agg, runlen;
 	auto mqc = &(t1->mqc);
-
 	*nmsedec = 0;
-#ifdef DEBUG_ENC_CLN
-    printf("enc_clnpass: bpno=%d\n", bpno);
-#endif
+
 	for (k = 0; k < (t1->h & ~3U); k += 4) {
-#ifdef DEBUG_ENC_CLN
-        printf(" k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_CLN
-            printf("  i=%d\n", i);
-#endif
 			agg = !(T1_FLAGS(i, k));
-#ifdef DEBUG_ENC_CLN
-            printf("   agg=%d\n", agg);
-#endif
 			if (agg) {
 				for (runlen = 0; runlen < 4; ++runlen) {
 					if (abs(t1->data[((k + runlen) * t1->data_stride) + i])
@@ -828,14 +762,7 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 	if (k < t1->h) {
 		agg = 0;
 		runlen = 0;
-#ifdef DEBUG_ENC_CLN
-        printf(" k=%d\n", k);
-#endif
 		for (i = 0; i < t1->w; ++i) {
-#ifdef DEBUG_ENC_CLN
-            printf("  i=%d\n", i);
-            printf("   agg=%d\n", agg);
-#endif
 			t1_enc_clnpass_step(t1, &T1_FLAGS(i, k),
 					&t1->data[((k + runlen) * t1->data_stride) + i], bpno, one,
 					nmsedec, agg, runlen, t1->h - k, cblksty);
@@ -971,7 +898,6 @@ static void t1_dec_clnpass(t1_info *t1, int32_t bpno, int32_t cblksty) {
 	t1_dec_clnpass_check_segsym(t1, cblksty);
 }
 
-/** mod fixed_quality */
 static double t1_getwmsedec(int32_t nmsedec,
 							uint32_t compno, uint32_t level,
 							uint8_t orient, int32_t bpno,
@@ -1133,7 +1059,7 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 	cblkdata = cblk->chunks[0].data;
 
 	for (segno = 0; segno < cblk->real_num_segs; ++segno) {
-		tcd_seg_t *seg = &cblk->segs[segno];
+		auto seg = cblk->segs + segno;
 
 		/* BYPASS mode */
 		type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
@@ -1255,7 +1181,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 	if (!t1_code_block_enc_allocate(cblk))
 		return 0;
 
-	auto mqc = &(t1->mqc);
+	auto mqc = &t1->mqc;
 	mqc_init_enc(mqc, cblk->data);
 
 	uint32_t passno;
@@ -1264,11 +1190,6 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 	int32_t nmsedec = 0;
 	uint8_t type = T1_TYPE_MQ;
 	double tempwmsedec;
-
-#ifdef EXTRA_DEBUG
-    printf("encode_cblk(x=%d,y=%d,x1=%d,y1=%d,orient=%d,compno=%d,level=%d\n",
-           cblk->x0, cblk->y0, cblk->x1, cblk->y1, orient, compno, level);
-#endif
 
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 	cblk->numbps = 0;
@@ -1386,7 +1307,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 	}
 
 	for (passno = 0; passno < cblk->totalpasses; passno++) {
-		tcd_pass_t *pass = &cblk->passes[passno];
+		auto pass = cblk->passes + passno;
 
 		/* Prevent generation of FF as last data byte of a pass*/
 		/* For terminating passes, the flushing procedure ensured this already */
@@ -1395,23 +1316,6 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 			pass->rate--;
 		pass->len = pass->rate - (passno == 0 ? 0 : cblk->passes[passno - 1].rate);
 	}
-
-#ifdef EXTRA_DEBUG
-    printf(" len=%d\n", (cblk->totalpasses) ? mqc_numbytes(mqc) : 0);
-
-    /* Check that there not 0xff >=0x90 sequences */
-    if (cblk->totalpasses) {
-        uint32_t i;
-        uint32_t len = mqc_numbytes(mqc);
-        for (i = 1; i < len; ++i) {
-            if (cblk->data[i - 1] == 0xff && cblk->data[i] >= 0x90) {
-                printf("0xff %02x at offset %d\n", cblk->data[i], i - 1);
-                abort();
-            }
-        }
-    }
-#endif
-
 	return cumwmsedec;
 }
 
