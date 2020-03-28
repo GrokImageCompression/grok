@@ -81,9 +81,9 @@ static INLINE void 		t1_update_flags(grk_flag *flagsp, uint32_t ci, uint32_t s,
 										uint32_t stride, uint32_t vsc);
 static INLINE void 		t1_dec_sigpass_step_raw(t1_info *t1, grk_flag *flagsp,
 												int32_t *datap, int32_t oneplushalf,
-												uint32_t vsc, uint32_t row);
+												uint32_t vsc, uint32_t ci);
 static INLINE void 		t1_dec_sigpass_step_mqc(t1_info *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t oneplushalf, uint32_t row,
+												int32_t *datap, int32_t oneplushalf, uint32_t ci,
 												uint32_t flags_stride, uint32_t vsc);
 static void 			t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 										uint8_t type, uint32_t cblksty);
@@ -92,11 +92,11 @@ static void 			t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 										uint8_t type);
 static void 			t1_dec_refpass_raw(t1_info *t1, int32_t bpno);
 static INLINE void 		t1_dec_refpass_step_raw(t1_info *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t poshalf, uint32_t row);
+												int32_t *datap, int32_t poshalf, uint32_t ci);
 static INLINE void 		t1_dec_refpass_step_mqc(t1_info *t1, grk_flag *flagsp,
-												int32_t *datap, int32_t poshalf, uint32_t row);
+												int32_t *datap, int32_t poshalf, uint32_t ci);
 static void 			t1_dec_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
-											int32_t oneplushalf, uint32_t row, uint32_t vsc);
+											int32_t oneplushalf, uint32_t ci, uint32_t vsc);
 static void 			t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 										uint32_t cblksty);
 static bool 			t1_code_block_enc_allocate(tcd_cblk_enc_t *p_code_block);
@@ -314,17 +314,19 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 	}
 
 	if (k < t1->h) {
-		uint32_t j;
 		for (i = 0; i < t1->w; ++i) {
 			if (*f == 0U) {
 				/* Nothing to do for any of the 4 data points */
 				f++;
 				continue;
 			}
-			for (j = k; j < t1->h; ++j) {
-				t1_enc_sigpass_step(t1, f, &t1->data[(j * t1->data_stride) + i],
+			uint32_t j;
+			int32_t* pdata = t1->data + k* t1->data_stride + i;
+			for (j = k;	j < t1->h; 	++j) {
+				t1_enc_sigpass_step(t1, f, pdata,
 						bpno, one, nmsedec, type, j - k,
 						(j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0));
+				pdata += t1->data_stride;
 			}
 			++f;
 		}
@@ -1251,10 +1253,10 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 				if (cblksty & J2K_CCP_CBLKSTY_PTERM)
 					mqc_erterm_enc(mqc);
 				else
-					mqc_flush(mqc);
+					mqc_flush_enc(mqc);
 			}
 			pass->term = 1;
-			pass->rate = mqc_numbytes(mqc);
+			pass->rate = mqc_numbytes_enc(mqc);
 		} else {
 			/* Non terminated pass */
 			// correction term is used for non-terminated passes,
@@ -1267,7 +1269,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 			// which is always 1 less than actual rate
 			uint32_t rate_extra_bytes;
 			if (type == T1_TYPE_RAW) {
-				rate_extra_bytes = mqc_bypass_get_extra_bytes(mqc,
+				rate_extra_bytes = mqc_bypass_get_extra_bytes_enc(mqc,
 						(cblksty & J2K_CCP_CBLKSTY_PTERM));
 			} else {
 				rate_extra_bytes = 4 + 1;
@@ -1275,7 +1277,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 					rate_extra_bytes++;
 			}
 			pass->term = 0;
-			pass->rate = mqc_numbytes(mqc) + rate_extra_bytes;
+			pass->rate = mqc_numbytes_enc(mqc) + rate_extra_bytes;
 		}
 
 		if (++passtype == 3) {
@@ -1292,7 +1294,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 
 	if (cblk->totalpasses) {
 		/* Make sure that pass rates are increasing */
-		uint32_t last_pass_rate = mqc_numbytes(mqc);
+		uint32_t last_pass_rate = mqc_numbytes_enc(mqc);
 		for (passno = cblk->totalpasses; passno > 0;) {
 			tcd_pass_t *pass = &cblk->passes[--passno];
 			if (pass->rate > last_pass_rate)

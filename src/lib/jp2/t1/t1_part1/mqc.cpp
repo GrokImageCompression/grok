@@ -60,14 +60,12 @@
 
 namespace grk {
 
-static void mqc_byteout(mqc_t *mqc);
-static void mqc_renorme(mqc_t *mqc);
-static void mqc_codemps(mqc_t *mqc);
-static void mqc_codelps(mqc_t *mqc);
-static void mqc_setbits(mqc_t *mqc);
-static void mqc_setstate(mqc_t *mqc,
-		                 uint32_t ctxno, uint32_t msb,
-                         int32_t prob);
+static void mqc_byteout_enc(mqc_t *mqc);
+static void mqc_renorm_enc(mqc_t *mqc);
+static void mqc_codemps_enc(mqc_t *mqc);
+static void mqc_codelps_enc(mqc_t *mqc);
+static void mqc_setbits_enc(mqc_t *mqc);
+
 static const mqc_state_t mqc_states[47 * 2] = {
     {0x5601, 0, &mqc_states[2], &mqc_states[3]},
     {0x5601, 1, &mqc_states[3], &mqc_states[2]},
@@ -164,8 +162,10 @@ static const mqc_state_t mqc_states[47 * 2] = {
     {0x5601, 0, &mqc_states[92], &mqc_states[92]},
     {0x5601, 1, &mqc_states[93], &mqc_states[93]},
 };
-static void mqc_byteout(mqc_t *mqc)
-{
+
+/* ENCODE */
+
+static void mqc_byteout_enc(mqc_t *mqc){
     /* bp is initialized to start - 1 in mqc_init_enc() */
     /* but this is safe, see tcd_code_block_enc_allocate_data() */
     assert(mqc->bp >= mqc->start - 1);
@@ -198,65 +198,52 @@ static void mqc_byteout(mqc_t *mqc)
     }
 }
 
-static void mqc_renorme(mqc_t *mqc)
-{
+static void mqc_renorm_enc(mqc_t *mqc){
     do {
         mqc->a <<= 1;
         mqc->c <<= 1;
         mqc->ct--;
-        if (mqc->ct == 0) {
-            mqc_byteout(mqc);
-        }
+        if (mqc->ct == 0)
+            mqc_byteout_enc(mqc);
     } while ((mqc->a & 0x8000) == 0);
 }
 
-static void mqc_codemps(mqc_t *mqc)
-{
+static void mqc_codemps_enc(mqc_t *mqc){
     mqc->a -= (*mqc->curctx)->qeval;
     if ((mqc->a & 0x8000) == 0) {
-        if (mqc->a < (*mqc->curctx)->qeval) {
+        if (mqc->a < (*mqc->curctx)->qeval)
             mqc->a = (*mqc->curctx)->qeval;
-        } else {
+        else
             mqc->c += (*mqc->curctx)->qeval;
-        }
         *mqc->curctx = (*mqc->curctx)->nmps;
-        mqc_renorme(mqc);
+        mqc_renorm_enc(mqc);
     } else {
         mqc->c += (*mqc->curctx)->qeval;
     }
 }
 
-static void mqc_codelps(mqc_t *mqc)
-{
+static void mqc_codelps_enc(mqc_t *mqc){
     mqc->a -= (*mqc->curctx)->qeval;
-    if (mqc->a < (*mqc->curctx)->qeval) {
+    if (mqc->a < (*mqc->curctx)->qeval)
         mqc->c += (*mqc->curctx)->qeval;
-    } else {
+    else
         mqc->a = (*mqc->curctx)->qeval;
-    }
     *mqc->curctx = (*mqc->curctx)->nlps;
-    mqc_renorme(mqc);
+    mqc_renorm_enc(mqc);
 }
 
-static void mqc_setbits(mqc_t *mqc)
-{
+static void mqc_setbits_enc(mqc_t *mqc){
     uint32_t tempc = mqc->c + mqc->a;
     mqc->c |= 0xffff;
-    if (mqc->c >= tempc) {
+    if (mqc->c >= tempc)
         mqc->c -= 0x8000;
-    }
 }
-uint32_t mqc_numbytes(mqc_t *mqc)
-{
+uint32_t mqc_numbytes_enc(mqc_t *mqc){
     const ptrdiff_t diff = mqc->bp - mqc->start;
-#if 0
-    assert(diff <= 0xffffffff && diff >= 0);   /* UINT32_MAX */
-#endif
     return (uint32_t)diff;
 }
 
-void mqc_init_enc(mqc_t *mqc, uint8_t *bp)
-{
+void mqc_init_enc(mqc_t *mqc, uint8_t *bp){
     /* To avoid the curctx pointer to be dangling, but not strictly */
     /* required as the current context is always set before encoding */
     mqc_setcurctx(mqc, 0);
@@ -278,24 +265,21 @@ void mqc_init_enc(mqc_t *mqc, uint8_t *bp)
     mqc->end_of_byte_stream_counter = 0;
 }
 
-void mqc_encode(mqc_t *mqc, uint32_t d)
-{
-    if ((*mqc->curctx)->mps == d) {
-        mqc_codemps(mqc);
-    } else {
-        mqc_codelps(mqc);
-    }
-}
+void mqc_encode(mqc_t *mqc, uint32_t d){
+    if ((*mqc->curctx)->mps == d)
+        mqc_codemps_enc(mqc);
+    else
+        mqc_codelps_enc(mqc);
+ }
 
-void mqc_flush(mqc_t *mqc)
-{
+void mqc_flush_enc(mqc_t *mqc){
     /* C.2.9 Termination of coding (FLUSH) */
     /* Figure C.11 – FLUSH procedure */
-    mqc_setbits(mqc);
+    mqc_setbits_enc(mqc);
     mqc->c <<= mqc->ct;
-    mqc_byteout(mqc);
+    mqc_byteout_enc(mqc);
     mqc->c <<= mqc->ct;
-    mqc_byteout(mqc);
+    mqc_byteout_enc(mqc);
 
     /* It is forbidden that a coding pass ends with 0xff */
     if (*mqc->bp != 0xff) {
@@ -306,8 +290,7 @@ void mqc_flush(mqc_t *mqc)
 
 #define BYPASS_CT_INIT  0xDEADBEEF
 
-void mqc_bypass_init_enc(mqc_t *mqc)
-{
+void mqc_bypass_init_enc(mqc_t *mqc){
     /* This function is normally called after at least one mqc_flush() */
     /* which will have advance mqc->bp by at least 2 bytes beyond its */
     /* initial position */
@@ -324,33 +307,28 @@ void mqc_bypass_init_enc(mqc_t *mqc)
     assert(mqc->bp[-1] != 0xff);
 }
 
-void mqc_bypass_enc(mqc_t *mqc, uint32_t d)
-{
-    if (mqc->ct == BYPASS_CT_INIT) {
+void mqc_bypass_enc(mqc_t *mqc, uint32_t d){
+    if (mqc->ct == BYPASS_CT_INIT)
         mqc->ct = 8;
-    }
     mqc->ct--;
     mqc->c = mqc->c + (d << mqc->ct);
     if (mqc->ct == 0) {
         *mqc->bp = (uint8_t)mqc->c;
         mqc->ct = 8;
         /* If the previous byte was 0xff, make sure that the next msb is 0 */
-        if (*mqc->bp == 0xff) {
+        if (*mqc->bp == 0xff)
             mqc->ct = 7;
-        }
         mqc->bp++;
         mqc->c = 0;
     }
 }
 
-uint32_t mqc_bypass_get_extra_bytes(mqc_t *mqc, bool erterm)
-{
+uint32_t mqc_bypass_get_extra_bytes_enc(mqc_t *mqc, bool erterm){
     return (mqc->ct < 7 ||
             (mqc->ct == 7 && (erterm || mqc->bp[-1] != 0xff))) ? (1 + 1) : (0 + 1);
 }
 
-void mqc_bypass_flush_enc(mqc_t *mqc, bool erterm)
-{
+void mqc_bypass_flush_enc(mqc_t *mqc, bool erterm){
     /* Is there any bit remaining to be flushed ? */
     /* If the last output byte is 0xff, we can discard it, unless */
     /* erterm is required (I'm not completely sure why in erterm */
@@ -387,14 +365,11 @@ void mqc_bypass_flush_enc(mqc_t *mqc, bool erterm)
     assert(mqc->bp[-1] != 0xff);
 }
 
-void mqc_reset_enc(mqc_t *mqc)
-{
+void mqc_reset_enc(mqc_t *mqc){
     mqc_resetstates(mqc);
 }
-void mqc_restart_init_enc(mqc_t *mqc)
-{
+void mqc_restart_init_enc(mqc_t *mqc){
     /* <Re-init part> */
-
     /* As specified in Figure C.10 - Initialization of the encoder */
     /* (C.2.8 Initialization of the encoder (INITENC)) */
     mqc->a = 0x8000;
@@ -406,44 +381,37 @@ void mqc_restart_init_enc(mqc_t *mqc)
     mqc->bp --;
     assert(mqc->bp >= mqc->start - 1);
     assert(*mqc->bp != 0xff);
-    if (*mqc->bp == 0xff) {
+    if (*mqc->bp == 0xff)
         mqc->ct = 13;
-    }
 }
 
-void mqc_erterm_enc(mqc_t *mqc)
-{
+void mqc_erterm_enc(mqc_t *mqc){
     int32_t k = (int32_t)(11 - mqc->ct + 1);
 
     while (k > 0) {
         mqc->c <<= mqc->ct;
         mqc->ct = 0;
-        mqc_byteout(mqc);
+        mqc_byteout_enc(mqc);
         k -= (int32_t)mqc->ct;
     }
-
-    if (*mqc->bp != 0xff) {
-        mqc_byteout(mqc);
-    }
+    if (*mqc->bp != 0xff)
+        mqc_byteout_enc(mqc);
 }
 
-void mqc_segmark_enc(mqc_t *mqc)
-{
-    uint32_t i;
+void mqc_segmark_enc(mqc_t *mqc){
     mqc_setcurctx(mqc, 18);
-
-    for (i = 1; i < 5; i++) {
+    for (uint32_t i = 1; i < 5; i++)
         mqc_encode(mqc, i % 2);
-    }
 }
+
+/*   DECODE */
+
 
 static void mqc_init_dec_common(mqc_t *mqc,
                                     uint8_t *bp,
                                     uint32_t len,
-                                    uint32_t extra_writable_bytes)
-{
+                                    uint32_t extra_writable_bytes){
     (void)extra_writable_bytes;
-
     assert(extra_writable_bytes >= GRK_FAKE_MARKER_BYTES);
     mqc->start = bp;
     mqc->end = bp + len;
@@ -457,8 +425,7 @@ static void mqc_init_dec_common(mqc_t *mqc,
     mqc->bp = bp;
 }
 void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len,
-                      uint32_t extra_writable_bytes)
-{
+                      uint32_t extra_writable_bytes){
     /* Implements ISO 15444-1 C.3.5 Initialization of the decoder (INITDEC) */
     /* Note: alternate "J.1 - Initialization of the software-conventions */
     /* decoder" has been tried, but does */
@@ -467,12 +434,7 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len,
     mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
     mqc_setcurctx(mqc, 0);
     mqc->end_of_byte_stream_counter = 0;
-    if (len == 0) {
-        mqc->c = 0xff << 16;
-    } else {
-        mqc->c = (uint32_t)(*mqc->bp << 16);
-    }
-
+    mqc->c = ((len==0) ? 0xff : *mqc->bp) << 16;
     mqc_bytein(mqc);
     mqc->c <<= 7;
     mqc->ct -= 7;
@@ -480,34 +442,25 @@ void mqc_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len,
 }
 
 void mqc_raw_init_dec(mqc_t *mqc, uint8_t *bp, uint32_t len,
-                          uint32_t extra_writable_bytes)
-{
+                          uint32_t extra_writable_bytes){
     mqc_init_dec_common(mqc, bp, len, extra_writable_bytes);
     mqc->c = 0;
     mqc->ct = 0;
 }
 
-void opq_mqc_finish_dec(mqc_t *mqc)
-{
+void opq_mqc_finish_dec(mqc_t *mqc){
     /* Restore the bytes overwritten by mqc_init_dec_common() */
     memcpy(mqc->end, mqc->backup, GRK_FAKE_MARKER_BYTES);
 }
 
-void mqc_resetstates(mqc_t *mqc)
-{
-    uint32_t i;
-    for (i = 0; i < MQC_NUMCTXS; i++) {
+void mqc_resetstates(mqc_t *mqc){
+    for (uint32_t i = 0; i < MQC_NUMCTXS; i++) {
         mqc->ctxs[i] = mqc_states;
     }
-	mqc_setstate(mqc, T1_CTXNO_UNI, 0, 46);
-	mqc_setstate(mqc, T1_CTXNO_AGG, 0, 3);
-	mqc_setstate(mqc, T1_CTXNO_ZC, 0, 4);
+    mqc->ctxs[T1_CTXNO_UNI] = mqc_states + (uint32_t)(46 << 1);
+    mqc->ctxs[T1_CTXNO_AGG] = mqc_states + (uint32_t)(3 << 1);
+    mqc->ctxs[T1_CTXNO_ZC] = mqc_states + (uint32_t)(4 << 1);
 }
 
-void mqc_setstate(mqc_t *mqc, uint32_t ctxno, uint32_t msb,
-                      int32_t prob)
-{
-    mqc->ctxs[ctxno] = &mqc_states[msb + (uint32_t)(prob << 1)];
-}
 
 }

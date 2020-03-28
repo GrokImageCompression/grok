@@ -96,21 +96,26 @@ typedef struct mqc {
     uint8_t backup[GRK_FAKE_MARKER_BYTES];
 } mqc_t;
 
-#include "mqc_inl.h"
-uint32_t mqc_numbytes(mqc_t *mqc);
-void mqc_resetstates(mqc_t *mqc);
-void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
+#include <mqc_dec_inl.h>
+uint32_t mqc_numbytes_enc(mqc_t *mqc);
 #define mqc_setcurctx(mqc, ctxno)   (mqc)->curctx = &(mqc)->ctxs[(uint32_t)(ctxno)]
+void mqc_resetstates(mqc_t *mqc);
+
+/* ENCODE */
+
+void mqc_init_enc(mqc_t *mqc, uint8_t *bp);
 void mqc_encode(mqc_t *mqc, uint32_t d);
-void mqc_flush(mqc_t *mqc);
+void mqc_flush_enc(mqc_t *mqc);
 void mqc_bypass_init_enc(mqc_t *mqc);
-uint32_t mqc_bypass_get_extra_bytes(mqc_t *mqc, bool erterm);
+uint32_t mqc_bypass_get_extra_bytes_enc(mqc_t *mqc, bool erterm);
 void mqc_bypass_enc(mqc_t *mqc, uint32_t d);
 void mqc_bypass_flush_enc(mqc_t *mqc, bool erterm);
 void mqc_reset_enc(mqc_t *mqc);
 void mqc_restart_init_enc(mqc_t *mqc);
 void mqc_erterm_enc(mqc_t *mqc);
 void mqc_segmark_enc(mqc_t *mqc);
+
+/* DECODE */
 
 /**
 Initialize the decoder for MQ decoding.
