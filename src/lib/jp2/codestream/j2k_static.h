@@ -152,15 +152,6 @@ static bool j2k_setup_end_compress(grk_j2k *p_j2k);
 static bool j2k_mct_validation(grk_j2k *p_j2k, BufferedStream *p_stream);
 
 /**
- * Creates a tile-coder decoder.
- *
- * @param       p_j2k                           J2K codec.
- * @param       p_stream                        the stream to write data to.
-
- */
-static bool j2k_create_tcd(grk_j2k *p_j2k, BufferedStream *p_stream);
-
-/**
  * Executes the given procedures on the given codec.
  *
  * @param       p_j2k                   the jpeg2000 codec to execute the procedures on.
@@ -764,13 +755,12 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
  * Writes the SOD marker (Start of data)
  *
  * @param       p_j2k               J2K codec.
- * @param       p_tile_coder        tile coder
  * @param       p_data_written      number of bytes written
- * @param       total_data_size   total data size
+ * @param       total_data_size     total data size
  * @param       p_stream            the stream to write data to.
 
  */
-static bool j2k_write_sod(grk_j2k *p_j2k, TileProcessor *p_tile_coder,
+static bool j2k_write_sod(grk_j2k *p_j2k,
 		uint64_t *p_data_written, uint64_t total_data_size,
 		BufferedStream *p_stream);
 
@@ -783,19 +773,7 @@ static bool j2k_write_sod(grk_j2k *p_j2k, TileProcessor *p_tile_coder,
  */
 static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *p_stream);
 
-static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) {
-	/* PSOT */
-	grk_write_bytes(
-			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,
-			p_j2k->m_current_tile_number, 1);
-	++p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current;
-
-	/* PSOT */
-	grk_write_bytes(
-			p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current,
-			tile_part_size, 4);
-	p_j2k->m_specific_param.m_encoder.m_tlm_sot_offsets_current += 4;
-}
+static void j2k_update_tlm(grk_j2k *p_j2k, uint32_t tile_part_size) ;
 
 /**
  * Writes the RGN marker (Region Of Interest)

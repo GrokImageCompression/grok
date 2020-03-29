@@ -66,6 +66,47 @@ using namespace std;
 namespace grk {
 
 
+TileProcessor::TileProcessor(bool isDecoder) : m_tile_ind_to_dec(-1),
+									  m_current_tile_number(0),
+									  tp_pos(0),
+									  m_current_poc_tile_part_number(0),
+									  m_current_tile_part_number(-1),
+									  m_nb_tile_parts_correction_checked(0),
+									  m_nb_tile_parts_correction(0),
+									  tile_part_data_length(0),
+									  m_tlm_start(0),
+									  m_tlm_sot_offsets_buffer(nullptr),
+									  m_tlm_sot_offsets_current(nullptr),
+									  cur_totnum_tp(0),
+									  cur_pino(0),
+									  tile(nullptr),
+									  image(nullptr),
+									  current_plugin_tile(nullptr),
+									  whole_tile_decoding(true),
+									  m_marker_scratch(nullptr),
+									  m_marker_scratch_size(0),
+									  m_cp(nullptr),
+									  m_tcp(nullptr),
+									  m_tileno(0),
+									  m_is_decoder(isDecoder)
+{
+	if (isDecoder){
+		m_marker_scratch = (uint8_t*) grk_calloc(1,	default_header_size);
+		if (!m_marker_scratch)
+			throw std::runtime_error("Out of memory");
+		m_marker_scratch_size = default_header_size;
+	}
+
+
+}
+
+TileProcessor::~TileProcessor(){
+	free_tile();
+	grok_free(m_tlm_sot_offsets_buffer);
+	grok_free(m_marker_scratch);
+
+}
+
 
 /*
  if
@@ -779,7 +820,7 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
 	uint32_t state = grok_plugin_get_debug_state();
-	if (cur_tp_num == 0) {
+	if (m_current_tile_part_number == 0) {
 		m_tileno = tile_no;
 		m_tcp = &m_cp->tcps[tile_no];
 		if (p_cstr_info) {
@@ -1442,7 +1483,7 @@ bool TileProcessor::t2_encode(BufferedStream *p_stream,
 
 	if (!l_t2->encode_packets(m_tileno, tile,
 			m_tcp->numlayers, p_stream, p_data_written, max_dest_size,
-			p_cstr_info, tp_num, tp_pos, cur_pino)) {
+			p_cstr_info, m_current_poc_tile_part_number, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;
 	}

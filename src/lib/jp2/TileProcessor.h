@@ -309,24 +309,8 @@ struct grk_tcd_tile {
  */
 struct TileProcessor {
 
-	TileProcessor(bool isDecoder) : tp_pos(0),
-			  tp_num(0),
-			  cur_tp_num(0),
-			  cur_totnum_tp(0),
-			  cur_pino(0),
-			  tile(nullptr),
-			  image(nullptr),
-			  current_plugin_tile(nullptr),
-			  whole_tile_decoding(true),
-			  m_cp(nullptr),
-			  m_tcp(nullptr),
-			  m_tileno(0),
-			  m_is_decoder(isDecoder)
-	{}
-
-	~TileProcessor(){
-		free_tile();
-	}
+	TileProcessor(bool isDecoder) ;
+	~TileProcessor();
 
 	/**
 	 * Initialize the tile coder and may reuse some memory.
@@ -401,13 +385,45 @@ struct TileProcessor {
 
 	void copy_image_to_tile();
 
+	/** Index of the tile to decode (used in get_tile); initialized to -1 */
+	int32_t m_tile_ind_to_dec;
+
+	/** tile number being currently coded/decoded */
+	uint16_t m_current_tile_number;
 
 	/** Position of the tile part flag in progression order*/
 	uint32_t tp_pos;
-	/** Tile part number*/
-	uint8_t tp_num;
-	/** Current tile part number*/
-	uint8_t cur_tp_num;
+
+	/** Tile part number, regardless of poc.
+	 *  for each new poc, tp is reset to 0*/
+	uint8_t m_current_poc_tile_part_number;
+
+	/** Tile part number currently coding, taking into account POC.
+	 *  m_current_tile_part_number holds the total number of tile parts
+	 *   while encoding the last tile part.*/
+	uint8_t m_current_tile_part_number;
+
+	/** TNsot correction : see issue 254 **/
+	uint32_t m_nb_tile_parts_correction_checked :1;
+	uint8_t m_nb_tile_parts_correction :1;
+
+	uint32_t tile_part_data_length;
+
+	/**
+	 locate the start position of the TLM marker
+	 after encoding the tilepart, a jump (in j2k_write_sod) is done
+	 to the TLM marker to store the value of its length.
+	 */
+	int64_t m_tlm_start;
+	/**
+	 * Stores the sizes of the tlm.
+	 */
+	uint8_t *m_tlm_sot_offsets_buffer;
+	/**
+	 * The current offset of the tlm buffer.
+	 */
+	uint8_t *m_tlm_sot_offsets_current;
+
 	/** Total number of tile parts of the current tile*/
 	uint8_t cur_totnum_tp;
 	/** Current packet iterator number */
@@ -420,6 +436,9 @@ struct TileProcessor {
 
     /** Only valid for decoding. Whether the whole tile is decoded, or just the region in win_x0/win_y0/win_x1/win_y1 */
     bool   whole_tile_decoding;
+
+	uint8_t *m_marker_scratch;
+	uint32_t m_marker_scratch_size;
 
 private:
 	/** coding parameters */

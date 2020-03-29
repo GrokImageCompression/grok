@@ -469,17 +469,12 @@ struct grk_j2k_dec {
 	//store decoding parameters common to all tiles (information
 	// like COD, COC and RGN in main header)
 	grk_tcp *m_default_tcp;
-	uint8_t *m_marker_scratch;
-	uint32_t m_marker_scratch_size;
-	uint32_t tile_part_data_length;
 	/** Only tile indices in the correct range will be decoded.*/
-	uint32_t m_start_tile_x;
-	uint32_t m_start_tile_y;
-	uint32_t m_end_tile_x;
-	uint32_t m_end_tile_y;
+	uint32_t m_start_tile_x_index;
+	uint32_t m_start_tile_y_index;
+	uint32_t m_end_tile_x_index;
+	uint32_t m_end_tile_y_index;
 
-	/** Index of the tile to decode (used in get_tile); initialized to -1 */
-	int32_t m_tile_ind_to_dec;
 	/** Position of the last SOT marker read */
 	uint64_t m_last_sot_read_pos;
 
@@ -493,35 +488,10 @@ struct grk_j2k_dec {
 	uint32_t ready_to_decode_tile_part_data :1;
 	uint32_t m_discard_tiles :1;
 	uint32_t m_skip_data :1;
-	/** TNsot correction : see issue 254 **/
-	uint32_t m_nb_tile_parts_correction_checked :1;
-	uint8_t m_nb_tile_parts_correction :1;
 
 };
 
 struct grk_j2k_enc {
-	/** Tile part number, regardless of poc, for each new poc, tp is reset to 1*/
-	uint8_t m_current_poc_tile_part_number; /* tp_num */
-
-	/** Tile part number currently coding, taking into account POC.
-	 *  m_current_tile_part_number holds the total number of tile parts
-	 *   while encoding the last tile part.*/
-	uint8_t m_current_tile_part_number; /*cur_tp_num */
-
-	/**
-	 locate the start position of the TLM marker
-	 after encoding the tilepart, a jump (in j2k_write_sod) is done
-	 to the TLM marker to store the value of its length.
-	 */
-	int64_t m_tlm_start;
-	/**
-	 * Stores the sizes of the tlm.
-	 */
-	uint8_t *m_tlm_sot_offsets_buffer;
-	/**
-	 * The current offset of the tlm buffer.
-	 */
-	uint8_t *m_tlm_sot_offsets_current;
 
 	/** Total num of tile parts in whole image = num tiles* num tileparts in each tile*/
 	/** used in TLMmarker*/
@@ -569,9 +539,6 @@ struct grk_j2k {
 
 	/** helper used to write the index file */
 	 grk_codestream_index  *cstr_index;
-
-	/** number of the tile currently concern by coding/decoding */
-	uint16_t m_current_tile_number;
 
 	/** the current tile coder/decoder **/
 	TileProcessor *m_tileProcessor;
