@@ -361,7 +361,7 @@ static void encode_help_display(void)
 	fprintf(stdout, "    Number of repetitions, for either a single image, or a folder of images. Default is 1. 0 signifies unlimited repetitions. \n");
 	fprintf(stdout, "[-g|-PluginPath] <plugin path>\n");
 	fprintf(stdout, "    Path to T1 plugin.\n");
-	fprintf(stdout, "[-H|-NumThreads] <number of threads>\n");
+	fprintf(stdout, "[-H|-num_threads] <number of threads>\n");
 	fprintf(stdout, "    Number of threads to use for T1.\n");
 	fprintf(stdout, "[-G|-DeviceId] <device ID>\n");
 	fprintf(stdout, "    (GPU) Specify which GPU accelerator to run codec on.\n");
@@ -553,9 +553,9 @@ static int parse_cmdline_encoder_ex(int argc,
 		ValueArg<string> pluginPathArg("g", "PluginPath",
 									"Plugin path",
 									false, "", "string", cmd);
-		ValueArg<uint32_t> numThreadsArg("H", "NumThreads",
+		ValueArg<uint32_t> numThreadsArg("H", "num_threads",
 									"Number of threads",
-									false, 8, "unsigned integer", cmd);
+									false, 0, "unsigned integer", cmd);
 
 		ValueArg<int32_t> deviceIdArg("G", "DeviceId",
 			"Device ID",
@@ -639,7 +639,6 @@ static int parse_cmdline_encoder_ex(int argc,
 			"Code block dimension",
 			false, "", "string", cmd);
 
-
 		ValueArg<string> progressionOrderArg("p", "ProgressionOrder",
 			"Progression order",
 			false, "", "string", cmd);
@@ -686,33 +685,26 @@ static int parse_cmdline_encoder_ex(int argc,
 		parameters->raw_cp.width = 0;
 
 
-		if (verboseArg.isSet()) {
+		if (verboseArg.isSet())
 			parameters->verbose = verboseArg.getValue();
-		}
-		if (repetitionsArg.isSet()) {
+
+		if (repetitionsArg.isSet())
 			parameters->repeats = repetitionsArg.getValue();
-		}
 
-		if (kernelBuildOptionsArg.isSet()) {
+		if (kernelBuildOptionsArg.isSet())
 			parameters->kernelBuildOptions = kernelBuildOptionsArg.getValue();
-		}
 
-		if (rateControlAlgoArg.isSet()) {
+		if (rateControlAlgoArg.isSet())
 			parameters->rateControlAlgorithm = rateControlAlgoArg.getValue();
-		}
 
-		if (numThreadsArg.isSet()) {
+		if (numThreadsArg.isSet())
 			parameters->numThreads = numThreadsArg.getValue();
-		}
 
-		if (deviceIdArg.isSet()) {
+		if (deviceIdArg.isSet())
 			parameters->deviceId = deviceIdArg.getValue();
-		}
 
-
-		if (durationArg.isSet()) {
+		if (durationArg.isSet())
 			parameters->duration = durationArg.getValue();
-		}
 
 		if (inForArg.isSet()) {
 			auto dummy = "dummy." + inForArg.getValue();
@@ -969,9 +961,8 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		}
 
-		if (resolutionArg.isSet()) {
+		if (resolutionArg.isSet())
 			parameters->numresolution = resolutionArg.getValue();
-		}
 
 		if (precinctDimArg.isSet()){
 			char sep;
@@ -1065,17 +1056,14 @@ static int parse_cmdline_encoder_ex(int argc,
 			parameters->numpocs = numpocs;
 		}
 
-		if (sopArg.isSet()) {
+		if (sopArg.isSet())
 			parameters->csty |= 0x02;
-		}
 
-		if (ephArg.isSet()) {
+		if (ephArg.isSet())
 			parameters->csty |= 0x04;
-		}
 
-		if (irreversibleArg.isSet()) {
+		if (irreversibleArg.isSet())
 			parameters->irreversible = true;
-		}
 
 		if (pluginPathArg.isSet()) {
 			if (plugin_path)
@@ -1262,41 +1250,36 @@ static int parse_cmdline_encoder_ex(int argc,
 
 		if (customMCTArg.isSet()) {
 			char *lFilename = (char*)customMCTArg.getValue().c_str();
-			char *lMatrix;
-			char *lCurrentPtr;
-			float *lCurrentDoublePtr;
-			float *lSpace;
-			int *int_ptr;
+			char *lMatrix = nullptr;
+			char *lCurrentPtr = nullptr;
+			float *lCurrentDoublePtr = nullptr;
+			float *lSpace = nullptr;
+			int *int_ptr = nullptr;
 			int lNbComp = 0, lTotalComp, lMctComp, i2;
 			size_t lStrLen, lStrFread;
+			uint32_t rc = 1;
 
 			/* Open file */
 			FILE * lFile = fopen(lFilename, "r");
-			if (lFile == nullptr) {
-				return 1;
-			}
+			if (!lFile)
+				goto cleanup;
 
 			/* Set size of file and read its content*/
-			if (fseek(lFile, 0, SEEK_END)) {
-				fclose(lFile);
-				return 1;
-			}
+			if (fseek(lFile, 0, SEEK_END))
+				goto cleanup;
+
 			lStrLen = (size_t)ftell(lFile);
-			if (fseek(lFile, 0, SEEK_SET)) {
-				fclose(lFile);
-				return 1;
-			}
+			if (fseek(lFile, 0, SEEK_SET))
+				goto cleanup;
+
 			lMatrix = (char *)malloc(lStrLen + 1);
-			if (lMatrix == nullptr) {
-				fclose(lFile);
-				return 1;
-			}
+			if (!lMatrix)
+				goto cleanup;
 			lStrFread = fread(lMatrix, 1, lStrLen, lFile);
 			fclose(lFile);
-			if (lStrLen != lStrFread) {
-				free(lMatrix);
-				return 1;
-			}
+			lFile = nullptr;
+			if (lStrLen != lStrFread)
+				goto cleanup;
 
 			lMatrix[lStrLen] = 0;
 			lCurrentPtr = lMatrix;
@@ -1337,9 +1320,15 @@ static int parse_cmdline_encoder_ex(int argc,
 			/* TODO should not be here ! */
 			grk_set_MCT(parameters, lSpace, (int *)(lSpace + lMctComp), (uint32_t)lNbComp);
 
-			/* Free memory*/
+			rc = 0;
+		cleanup:
+		    if (!lFile) {
+		    	fclose(lFile);
+		    }
 			free(lSpace);
 			free(lMatrix);
+			if (rc)
+				return rc;
 
 		}
 

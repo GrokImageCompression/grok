@@ -216,7 +216,7 @@ static void decode_help_display(void)
 		"    Output directory where decompressed files are stored.\n");
 	fprintf(stdout, "  [-g | -PluginPath] <plugin path>\n"
 		"    Path to T1 plugin.\n");
-	fprintf(stdout, "  [-H | -NumThreads] <number of threads>\n"
+	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
 		"    Number of threads used by T1 decode.\n");
 	fprintf(stdout, "  [-c|-Compression] <compression>\n"
 		"    Compress output image data.Currently, this flag is only applicable when output format is set to `TIF`,\n"
@@ -468,9 +468,9 @@ int parse_cmdline_decoder(int argc,
 		ValueArg<string> pluginPathArg("g", "PluginPath",
 										"Plugin path", 
 										false, "", "string",cmd);
-		ValueArg<uint32_t> numThreadsArg("H", "NumThreads", 
+		ValueArg<uint32_t> numThreadsArg("H", "num_threads",
 										"Number of threads",
-										false, 8, "unsigned integer",cmd);
+										false, 0, "unsigned integer",cmd);
 		ValueArg<string> inputFileArg("i", "InputFile", 
 										"Input file", 
 										false, "", "string",cmd);

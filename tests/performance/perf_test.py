@@ -102,10 +102,14 @@ for line in open(in_filename, 'rt').readlines()[1:]:
                 env['GRK_NUM_THREADS'] = '0'
             if command == 'DECOMPRESS':
                 args = [grk_decompress_path,
-                        '-i', filename, '-o', 'out_perf_test.pgm']
+                        '-i', filename,
+                        '-num_threads', str(num_threads),
+			'-o', 'out_perf_test.pgm']
             elif command == 'COMPRESS':
                 args = [grk_compress_path,
-                        '-i', filename, '-o', 'out_perf_test.jp2']
+                        '-i', filename,
+                        '-num_threads', str(num_threads),
+			'-o', 'out_perf_test.jp2']
             else:
                 assert False, command
         p = subprocess.Popen(args,
