@@ -255,7 +255,7 @@ static INLINE void t1_dec_sigpass_step_raw(t1_info *t1, grk_flag *flagsp,
         (flags & (T1_SIGMA_NEIGHBOURS << (ci))) != 0U) { \
         uint32_t ctxt1 = t1_getctxno_zc(mqc, flags >> (ci)); \
         t1_setcurctx(curctx, ctxt1); \
-        mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+        decode_macro(v, mqc, curctx, a, c, ct); \
         if (v) { \
             uint32_t lu = t1_getctxtno_sc_or_spb_index( \
                                 flags, \
@@ -264,7 +264,7 @@ static INLINE void t1_dec_sigpass_step_raw(t1_info *t1, grk_flag *flagsp,
             uint32_t ctxt2 = t1_getctxno_sc(lu); \
             uint32_t spb = t1_getspb(lu); \
             t1_setcurctx(curctx, ctxt2); \
-            mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+            decode_macro(v, mqc, curctx, a, c, ct); \
             v = v ^ spb; \
             data[(ciorig)*data_stride] = v ? -oneplushalf : oneplushalf; \
             t1_update_flags_macro(flags, flagsp, ci, v, flags_stride, vsc); \
@@ -481,7 +481,7 @@ static INLINE void t1_dec_refpass_step_raw(t1_info *t1, grk_flag *flagsp,
             (T1_SIGMA_THIS << (ci))) { \
         uint32_t ctxt = t1_getctxno_mag(flags >> (ci)); \
         t1_setcurctx(curctx, ctxt); \
-        mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+        decode_macro(v, mqc, curctx, a, c, ct); \
         data[ciorig*data_stride] += (v ^ (data[ciorig*data_stride] < 0)) ? poshalf : -poshalf; \
         flags |= T1_MU_THIS << (ci); \
     } \
@@ -708,7 +708,7 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
             if( !partial ) { \
                 uint32_t ctxt1 = t1_getctxno_zc(mqc, flags >> (ci)); \
                 t1_setcurctx(curctx, ctxt1); \
-                mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+                decode_macro(v, mqc, curctx, a, c, ct); \
                 if( !v ) \
                     break; \
             } \
@@ -717,7 +717,7 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
                                     flags, flagsp[-1], flagsp[1], \
                                     ci); \
                 t1_setcurctx(curctx, t1_getctxno_sc(lu)); \
-                mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+                decode_macro(v, mqc, curctx, a, c, ct); \
                 v = v ^ t1_getspb(lu); \
                 data[ciorig*data_stride] = v ? -oneplushalf : oneplushalf; \
                 t1_update_flags_macro(flags, flagsp, ci, v, flags_stride, vsc); \
@@ -802,12 +802,12 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
             if (flags == 0) { \
                 uint32_t partial = true; \
                 t1_setcurctx(curctx, T1_CTXNO_AGG); \
-                mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+                decode_macro(v, mqc, curctx, a, c, ct); \
                 if (!v) \
                     continue; \
                 t1_setcurctx(curctx, T1_CTXNO_UNI); \
-                mqc_decode_macro(runlen, mqc, curctx, a, c, ct); \
-                mqc_decode_macro(v, mqc, curctx, a, c, ct); \
+                decode_macro(runlen, mqc, curctx, a, c, ct); \
+                decode_macro(v, mqc, curctx, a, c, ct); \
                 runlen = (runlen << 1) | v; \
                 switch(runlen) { \
                     case 0: \
