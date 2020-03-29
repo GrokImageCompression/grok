@@ -99,6 +99,8 @@ struct mqcoder {
     uint8_t backup[GRK_FAKE_MARKER_BYTES];
 } ;
 
+const uint32_t A_MIN = 0x8000;
+
 #include <mqc_inl.h>
 #include <mqc_dec_inl.h>
 #include <mqc_enc_inl.h>

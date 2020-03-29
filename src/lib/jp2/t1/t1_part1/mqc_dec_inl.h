@@ -142,15 +142,12 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
         a <<= 1; \
         c <<= 1; \
         ct--; \
-    } while (a < 0x8000); \
+    } while (a < A_MIN); \
 }
 
 #define decode_macro(d, mqc, curctx, a, c, ct) \
 { \
     /* Implements ISO 15444-1 C.3.2 Decoding a decision (DECODE) */ \
-    /* Note: alternate "J.2 - Decoding an MPS or an LPS in the */ \
-    /* software-conventions decoder" has been tried, but does not bring any */ \
-    /* improvement. See https://github.com/uclouvain/openjpeg/issues/921 */ \
     a -= (*curctx)->qeval;  \
     uint32_t qeval_shift = (*curctx)->qeval << 16; \
     if (c < qeval_shift) {  \
@@ -158,7 +155,7 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
         renorm_dec_macro(mqc, a, c, ct);  \
     } else {  \
         c -= qeval_shift;  \
-        if ((a & 0x8000) == 0) { \
+        if (a < A_MIN) { \
             mpsexchange_dec_macro(d, curctx, a); \
             renorm_dec_macro(mqc, a, c, ct); \
         } else { \

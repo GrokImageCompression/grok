@@ -387,7 +387,7 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
         const uint32_t l_w = w; \
         auto mqc = &(t1->mqc); \
   \
-        DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+        DOWNLOAD_MQC_VARIABLES(mqc, curctx); \
         uint32_t v; \
         one = 1 << bpno; \
         half = one >> 1; \
@@ -412,7 +412,7 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
                         } \
                 } \
         } \
-        UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+        UPLOAD_MQC_VARIABLES(mqc, curctx); \
         if( k < h ) { \
             for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
                 for (j = 0; j < h - k; ++j) { \
@@ -594,7 +594,7 @@ static void t1_dec_refpass_raw(t1_info *t1, int32_t bpno) {
         const uint32_t l_w = w; \
         auto mqc = &(t1->mqc); \
  \
-        DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+        DOWNLOAD_MQC_VARIABLES(mqc, curctx); \
         uint32_t v; \
         one = 1 << bpno; \
         poshalf = one >> 1; \
@@ -618,7 +618,7 @@ static void t1_dec_refpass_raw(t1_info *t1, int32_t bpno) {
                         } \
                 } \
         } \
-        UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+        UPLOAD_MQC_VARIABLES(mqc, curctx); \
         if( k < h ) { \
             for (i = 0; i < l_w; ++i, ++data, ++flagsp) { \
                 for (j = 0; j < h - k; ++j) { \
@@ -791,7 +791,7 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
     auto data = t1->data; \
     auto flagsp = &t1->flags[flags_stride + 1]; \
  \
-    DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+    DOWNLOAD_MQC_VARIABLES(mqc, curctx); \
     uint32_t v; \
     one = 1 << bpno; \
     half = one >> 1; \
@@ -859,7 +859,7 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
             *flagsp = flags & ~(T1_PI_0 | T1_PI_1 | T1_PI_2 | T1_PI_3); \
         } \
     } \
-    UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct); \
+    UPLOAD_MQC_VARIABLES(mqc, curctx); \
     if( k < h ) { \
         for (i = 0; i < l_w; ++i, ++flagsp, ++data) { \
             for (j = 0; j < h - k; ++j) \

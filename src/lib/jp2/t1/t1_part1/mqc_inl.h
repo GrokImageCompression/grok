@@ -56,13 +56,13 @@
 
 #pragma once
 
-#define DOWNLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
+#define DOWNLOAD_MQC_VARIABLES(mqc, curctx) \
          const mqc_state **curctx = mqc->curctx; \
          uint32_t c = mqc->c; \
          uint32_t a = mqc->a; \
          uint32_t ct = mqc->ct
 
-#define UPLOAD_MQC_VARIABLES(mqc, curctx, c, a, ct) \
+#define UPLOAD_MQC_VARIABLES(mqc, curctx) \
         mqc->curctx = curctx; \
         mqc->c = c; \
         mqc->a = a; \

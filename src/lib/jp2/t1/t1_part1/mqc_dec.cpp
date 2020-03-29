@@ -189,7 +189,7 @@ void mqc_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
     mqc_bytein_dec(mqc);
     mqc->c <<= 7;
     mqc->ct -= 7;
-    mqc->a = 0x8000;
+    mqc->a = A_MIN;
 }
 
 void mqc_raw_init_dec(mqcoder *mqc, uint8_t *bp, uint32_t len,
