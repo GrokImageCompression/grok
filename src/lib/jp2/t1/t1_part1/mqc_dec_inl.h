@@ -152,11 +152,12 @@ static INLINE uint32_t mqc_raw_decode(mqcoder *mqc){
     /* software-conventions decoder" has been tried, but does not bring any */ \
     /* improvement. See https://github.com/uclouvain/openjpeg/issues/921 */ \
     a -= (*curctx)->qeval;  \
-    if ((c >> 16) < (*curctx)->qeval) {  \
+    uint32_t qeval_shift = (*curctx)->qeval << 16; \
+    if (c < qeval_shift) {  \
         lpsexchange_dec_macro(d, curctx, a);  \
         renorm_dec_macro(mqc, a, c, ct);  \
     } else {  \
-        c -= (*curctx)->qeval << 16;  \
+        c -= qeval_shift;  \
         if ((a & 0x8000) == 0) { \
             mpsexchange_dec_macro(d, curctx, a); \
             renorm_dec_macro(mqc, a, c, ct); \
