@@ -87,15 +87,15 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	size_t i = 0;
 
 #if (defined(__SSE2__) || defined(__AVX2__))
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    size_t chunkSize = n / ThreadPool::get()->num_threads();
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+	    for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2] {
+	            ThreadPool::get()->enqueue([index, chunkSize, chan0,chan1,chan2] {
 	        		uint64_t begin = (uint64_t)index * chunkSize;
 					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
 						VREG y, u, v;
@@ -119,7 +119,7 @@ void mct::encode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunkSize * Scheduler::g_tp->num_threads();
+		i = chunkSize * ThreadPool::get()->num_threads();
 	}
 #endif
 	for (; i < n; ++i) {
@@ -144,15 +144,15 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 		int32_t *GRK_RESTRICT chan2, uint64_t n) {
 	size_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    size_t chunkSize = n / ThreadPool::get()->num_threads();
     //ensure it is divisible by VREG_INT_COUNT
     chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 	    std::vector< std::future<int> > results;
-	    for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+	    for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
 	    	uint64_t index = i;
 	        results.emplace_back(
-	            Scheduler::g_tp->enqueue([index, chunkSize,chan0,chan1,chan2] {
+	            ThreadPool::get()->enqueue([index, chunkSize,chan0,chan1,chan2] {
 					uint64_t begin = (uint64_t)index * chunkSize;
 					for (auto j = begin; j < begin+chunkSize; j+=VREG_INT_COUNT ){
 						VREG r, g, b;
@@ -174,7 +174,7 @@ void mct::decode_rev(int32_t *GRK_RESTRICT chan0, int32_t *GRK_RESTRICT chan1,
 	    for(auto && result: results){
 	        result.get();
 	    }
-		i = chunkSize * Scheduler::g_tp->num_threads();
+		i = chunkSize * ThreadPool::get()->num_threads();
 	}
 #endif
 	for (; i < n; ++i) {
@@ -208,16 +208,16 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
     const __m128i bv = _mm_set1_epi32(666);
     const __m128i mulround = _mm_shuffle_epi32(_mm_cvtsi32_si128(4096), _MM_SHUFFLE(1, 0, 1, 0));
 
-    size_t chunkSize = n / Scheduler::g_tp->num_threads();
+    size_t chunkSize = n / ThreadPool::get()->num_threads();
     //ensure it is divisible by 4
     chunkSize = (chunkSize/4) * 4;
 	if (chunkSize > 4) {
 
 		std::vector< std::future<int> > results;
-		for(size_t k = 0; k < Scheduler::g_tp->num_threads(); ++k) {
+		for(size_t k = 0; k < ThreadPool::get()->num_threads(); ++k) {
 			uint64_t index = k;
 			results.emplace_back(
-				Scheduler::g_tp->enqueue([index, chunkSize, chan0,chan1,chan2,
+				ThreadPool::get()->enqueue([index, chunkSize, chan0,chan1,chan2,
 											 ry,gy,by,ru,gu,gv,bv,
 											 mulround] {
 
@@ -330,7 +330,7 @@ void mct::encode_irrev( int32_t* GRK_RESTRICT chan0,
 		for(auto && result: results){
 			result.get();
 		}
-		i = Scheduler::g_tp->num_threads() * chunkSize;
+		i = ThreadPool::get()->num_threads() * chunkSize;
 	}
 #endif
     for(; i < n; ++i) {
@@ -353,15 +353,15 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		uint64_t n) {
 	uint64_t i = 0;
 #if (defined(__SSE2__) || defined(__AVX2__))
-	size_t chunkSize = n / Scheduler::g_tp->num_threads();
+	size_t chunkSize = n / ThreadPool::get()->num_threads();
 	//ensure it is divisible by VREG_INT_COUNT
 	chunkSize = (chunkSize/VREG_INT_COUNT) * VREG_INT_COUNT;
 	if (chunkSize > VREG_INT_COUNT) {
 		std::vector< std::future<int> > results;
-		for(uint64_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+		for(uint64_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
 			uint64_t index = i;
 			results.emplace_back(
-				Scheduler::g_tp->enqueue([index, chunkSize, c0,c1,c2] {
+				ThreadPool::get()->enqueue([index, chunkSize, c0,c1,c2] {
 				const VREGF vrv = LOAD_CST_F(1.402f);
 				const VREGF vgu = LOAD_CST_F(0.34413f);
 				const VREGF vgv = LOAD_CST_F(0.71414f);
@@ -388,7 +388,7 @@ void mct::decode_irrev(float *GRK_RESTRICT c0, float *GRK_RESTRICT c1, float *GR
 		for(auto && result: results){
 			result.get();
 		}
-		i = chunkSize * Scheduler::g_tp->num_threads();
+		i = chunkSize * ThreadPool::get()->num_threads();
 	}
 #endif
 	for (; i < n; ++i) {

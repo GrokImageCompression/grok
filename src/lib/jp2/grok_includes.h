@@ -181,7 +181,7 @@ static inline long grok_lrintf(float f) {
 
 #define GRK_UNUSED(x) (void)x
 
-#include "ThreadPool.h"
+#include "ThreadPool.hpp"
 #include "mem_stream.h"
 #include "grok_malloc.h"
 #include "logger.h"

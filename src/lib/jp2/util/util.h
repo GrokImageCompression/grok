@@ -28,8 +28,6 @@ inline bool mult_will_overflow(uint32_t a, uint32_t b) {
 	return (b && (a > UINT_MAX / b));
 }
 
-uint32_t hardware_concurrency();
-
 struct grk_pt {
     int64_t x;
     int64_t y;

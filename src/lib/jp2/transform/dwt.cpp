@@ -735,7 +735,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
     uint32_t w = (uint32_t)(tilec->resolutions[tilec->minimum_num_resolutions - 1].x1 -
                                 tilec->resolutions[tilec->minimum_num_resolutions - 1].x0);
 
-    size_t num_threads = Scheduler::g_tp->num_threads();
+    size_t num_threads = ThreadPool::get()->num_threads();
     size_t h_mem_size = dwt_utils::max_resolution(tr, numres);
     /* overflow check */
     if (h_mem_size > (SIZE_MAX / PLL_COLS_53 / sizeof(int32_t))) {
@@ -789,7 +789,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                     return false;
                 }
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job] {
+					ThreadPool::get()->enqueue([job] {
 					    for (uint32_t j = job->min_j; j < job->max_j; j++)
 					        decode_h_53(&job->data, &job->tiledp[j * job->w]);
 					    grk_aligned_free(job->data.mem);
@@ -836,7 +836,7 @@ static bool decode_tile_53( TileComponent* tilec, uint32_t numres){
                     return false;
                 }
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job] {
+					ThreadPool::get()->enqueue([job] {
 						uint32_t j;
 						for (j = job->min_j; j + PLL_COLS_53 <= job->max_j;	j += PLL_COLS_53)
 							decode_v_53(&job->data, &job->tiledp[j], (size_t)job->w, PLL_COLS_53);
@@ -1561,7 +1561,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
         return false;
     }
     vert.mem = horiz.mem;
-    size_t num_threads = Scheduler::g_tp->num_threads();
+    size_t num_threads = ThreadPool::get()->num_threads();
     while (--numres) {
         horiz.sn = (int32_t)rw;
         vert.sn = (int32_t)rh;
@@ -1624,7 +1624,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					return false;
 				}
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job,w,rw] {
+					ThreadPool::get()->enqueue([job,w,rw] {
 					    float* tdp = nullptr;
 					    uint32_t j;
 						for (j = job->min_j; j + 3 < job->max_j; j+=4){
@@ -1704,7 +1704,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 					return false;
 				}
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job,rh] {
+					ThreadPool::get()->enqueue([job,rh] {
 						float* tdp = job->tiledp + job->min_j;
 						uint32_t w = job->w;
 						uint32_t j;
@@ -1812,7 +1812,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
     }
     vert.mem = horiz.mem;
     D decoder;
-    size_t num_threads = Scheduler::g_tp->num_threads();
+    size_t num_threads = ThreadPool::get()->num_threads();
 
     for (resno = 1; resno < numres; resno ++) {
         uint32_t j;
@@ -1987,7 +1987,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					return false;
 				}
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job,sa, win_tr_x0, win_tr_x1, &decoder] {
+					ThreadPool::get()->enqueue([job,sa, win_tr_x0, win_tr_x1, &decoder] {
 					 uint32_t j;
 					 for (j = job->min_j; j + HORIZ_STEP-1 < job->max_j; j += HORIZ_STEP) {
 						 decoder.interleave_partial_h(&job->data, sa, j,HORIZ_STEP);
@@ -2089,7 +2089,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 					return false;
 				}
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([job,sa, win_tr_y0, win_tr_y1, &decoder] {
+					ThreadPool::get()->enqueue([job,sa, win_tr_y0, win_tr_y1, &decoder] {
 					 uint32_t j;
 					 for (j = job->min_j; j + VERT_STEP-1 < job->max_j; j += VERT_STEP) {
 						decoder.interleave_partial_v(&job->data, sa, j, VERT_STEP);

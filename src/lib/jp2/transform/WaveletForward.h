@@ -60,11 +60,11 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 	grk_tcd_resolution *cur_res = tilec->resolutions + num_decomps;
 	grk_tcd_resolution *next_res = cur_res - 1;
 
-	int32_t **bj_array = new int32_t*[hardware_concurrency()];
-	for (uint32_t i = 0; i < hardware_concurrency(); ++i){
+	int32_t **bj_array = new int32_t*[ThreadPool::hardware_concurrency()];
+	for (uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i){
 		bj_array[i] = nullptr;
 	}
-	for (uint32_t i = 0; i < hardware_concurrency(); ++i){
+	for (uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i){
 		bj_array[i] = (int32_t*)grk_aligned_malloc(l_data_size);
 		if (!bj_array[i]){
 			rc = false;
@@ -90,14 +90,14 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 
 		// transform vertical
 		if (rw) {
-			const uint32_t linesPerThreadV = static_cast<uint32_t>(std::ceil((float)rw / (float)hardware_concurrency()));
+			const uint32_t linesPerThreadV = static_cast<uint32_t>(std::ceil((float)rw / (float)ThreadPool::hardware_concurrency()));
 			const uint32_t s_n = rh_next;
 			const uint32_t d_n = rh - rh_next;
 			std::vector< std::future<int> > results;
-			for(uint32_t i = 0; i < hardware_concurrency(); ++i) {
+			for(uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i) {
 				uint32_t index = i;
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([this, index, bj_array,a,
+					ThreadPool::get()->enqueue([this, index, bj_array,a,
 												 stride, rw,rh,
 												 d_n, s_n, cas_col,
 												 linesPerThreadV] {
@@ -125,12 +125,12 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 		if (rh){
 			const uint32_t s_n = rw_next;
 			const uint32_t d_n = rw - rw_next;
-			const uint32_t linesPerThreadH = static_cast<uint32_t>(std::ceil((float)rh / (float)hardware_concurrency()));
+			const uint32_t linesPerThreadH = static_cast<uint32_t>(std::ceil((float)rh / (float)ThreadPool::hardware_concurrency()));
 			std::vector< std::future<int> > results;
-			for(uint32_t i = 0; i < hardware_concurrency(); ++i) {
+			for(uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i) {
 				uint32_t index = i;
 				results.emplace_back(
-					Scheduler::g_tp->enqueue([this, index, bj_array,a,
+					ThreadPool::get()->enqueue([this, index, bj_array,a,
 												 stride, rw,rh,
 												 d_n, s_n, cas_row,
 												 linesPerThreadH] {
@@ -155,7 +155,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 		next_res--;
 	}
 cleanup:
-	for (uint32_t i = 0; i < hardware_concurrency(); ++i)
+	for (uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i)
 		grk_aligned_free(bj_array[i]);
 	delete[] bj_array;
 	return rc;

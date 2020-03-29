@@ -62,7 +62,6 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/util/vector.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/CPUArch.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/util/ThreadPool.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/util/ChunkBuffer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/util/grok_exceptions.h

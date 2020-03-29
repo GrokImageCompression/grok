@@ -149,14 +149,12 @@ struct grk_codec_private {
 	 grk_codestream_index  *  (*grk_get_codec_index)(void *p_codec);
 };
 
-
-
-ThreadPool* Scheduler::g_tp = nullptr;
+ThreadPool* ThreadPool::singleton = nullptr;
+std::mutex ThreadPool::singleton_mutex;
 
 static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
-	if (!Scheduler::g_tp)
-		Scheduler::g_tp = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
+	ThreadPool::instance(numthreads);
 	if (!is_plugin_initialized) {
 		grok_plugin_load_info info;
 		info.plugin_path = plugin_path;
@@ -167,8 +165,7 @@ bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
 
 GRK_API void GRK_CALLCONV grk_deinitialize() {
 	grok_plugin_cleanup();
-	delete Scheduler::g_tp;
-	Scheduler::g_tp = nullptr;
+	ThreadPool::release();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -544,7 +541,7 @@ void GRK_CALLCONV grk_set_default_encoder_parameters(
 		parameters->cp_disto_alloc = 0;
 		parameters->cp_fixed_quality = 0;
 		if (!parameters->numThreads)
-			parameters->numThreads = hardware_concurrency();
+			parameters->numThreads = ThreadPool::hardware_concurrency();
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 	}

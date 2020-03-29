@@ -43,6 +43,34 @@ public:
     	return -1;
     }
     size_t num_threads(){return m_num_threads;}
+
+	static ThreadPool* get(){
+		return instance(0);
+	}
+	static ThreadPool* instance(uint32_t numthreads){
+		std::unique_lock<std::mutex> lock(singleton_mutex);
+		if (!singleton)
+			singleton = new ThreadPool(numthreads ? numthreads : hardware_concurrency());
+		return singleton;
+	}
+	static void release(){
+		std::unique_lock<std::mutex> lock(singleton_mutex);
+		delete singleton;
+		singleton = nullptr;
+	}
+	static uint32_t hardware_concurrency() {
+		uint32_t ret = 0;
+
+	#if _MSC_VER >= 1200 && MSC_VER <= 1910
+		SYSTEM_INFO sysinfo;
+		GetSystemInfo(&sysinfo);
+		ret = sysinfo.dwNumberOfProcessors;
+
+	#else
+		ret = std::thread::hardware_concurrency();
+	#endif
+		return ret;
+	}
 private:
     // need to keep track of threads so we can join them
     std::vector< std::thread > workers;
@@ -57,6 +85,11 @@ private:
     std::map<std::thread::id, int> id_map;
     std::atomic<int> thread_count;
     size_t m_num_threads;
+
+	static ThreadPool* singleton;
+	static std::mutex singleton_mutex;
+
+
 };
  
 // the constructor just launches some amount of workers

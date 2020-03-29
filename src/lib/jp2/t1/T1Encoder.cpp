@@ -28,7 +28,7 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
 		encodeBlocks(nullptr),
 		blockCount(-1)
 {
-	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
+	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
 		threadStructs.push_back(
 				T1Factory::get_t1(true, tcp, encodeMaxCblkW, encodeMaxCblkH));
 	}
@@ -66,10 +66,10 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
 	}
 	blocks->clear();
     std::vector< std::future<int> > results;
-    for(size_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+    for(size_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
           results.emplace_back(
-            Scheduler::g_tp->enqueue([this, maxBlocks] {
-                auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
+            ThreadPool::get()->enqueue([this, maxBlocks] {
+                auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
                 while(encode(threadnum, maxBlocks)){
 
                 }

@@ -27,7 +27,7 @@ T1Decoder::T1Decoder(grk_tcp *tcp,
 		codeblock_width((uint16_t) (blockw ? (uint32_t) 1 << blockw : 0)),
 		codeblock_height((uint16_t) (blockh ? (uint32_t) 1 << blockh : 0)),
 		decodeBlocks(nullptr){
-	for (auto i = 0U; i < Scheduler::g_tp->num_threads(); ++i) {
+	for (auto i = 0U; i < ThreadPool::get()->num_threads(); ++i) {
 		threadStructs.push_back(
 				T1Factory::get_t1(false, tcp, codeblock_width,
 						codeblock_height));
@@ -51,10 +51,10 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 	std::atomic<int> blockCount(-1);
 	success = true;
     std::vector< std::future<int> > results;
-    for(size_t i = 0; i < Scheduler::g_tp->num_threads(); ++i) {
+    for(size_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
         results.emplace_back(
-            Scheduler::g_tp->enqueue([this, maxBlocks, &blockCount] {
-                auto threadnum =  Scheduler::g_tp->thread_number(std::this_thread::get_id());
+            ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
+                auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
                 while (true) {
                 	uint64_t index = ++blockCount;
                 	if (index >= maxBlocks)
