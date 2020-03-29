@@ -445,7 +445,7 @@ static INLINE void t1_enc_refpass_step(t1_info *t1, grk_flag *flagsp,
 										uint8_t type, uint32_t ci) {
 	uint32_t v;
 	auto mqc = &(t1->mqc);
-	uint32_t const shift_flags = (*flagsp >> (ci * 3U));
+	uint32_t const shift_flags = (*flagsp >> (ci));
 
 	if ((shift_flags & (T1_SIGMA_THIS | T1_PI_THIS)) == T1_SIGMA_THIS) {
 		uint32_t ctxt = t1_getctxno_mag(shift_flags);
@@ -458,7 +458,7 @@ static INLINE void t1_enc_refpass_step(t1_info *t1, grk_flag *flagsp,
 		} else {
 			mqc_encode(mqc, v);
 		}
-		*flagsp |= T1_MU_THIS << (ci * 3U);
+		*flagsp |= T1_MU_THIS << (ci);
 	}
 }
 
@@ -524,13 +524,13 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 					nmsedec, type, 0);
 			t1_enc_refpass_step(t1, f,
 					&t1->data[((k + 1) * t1->data_stride) + i], bpno, one,
-					nmsedec, type, 1);
+					nmsedec, type, 3);
 			t1_enc_refpass_step(t1, f,
 					&t1->data[((k + 2) * t1->data_stride) + i], bpno, one,
-					nmsedec, type, 2);
+					nmsedec, type, 6);
 			t1_enc_refpass_step(t1, f,
 					&t1->data[((k + 3) * t1->data_stride) + i], bpno, one,
-					nmsedec, type, 3);
+					nmsedec, type, 9);
 			++f;
 		}
 		f += extra;
@@ -547,7 +547,7 @@ static void t1_enc_refpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 			}
 			for (j = k; j < t1->h; ++j) {
 				t1_enc_refpass_step(t1, f, &t1->data[(j * t1->data_stride) + i],
-						bpno, one, nmsedec, type, j - k);
+						bpno, one, nmsedec, type, 3*(j - k));
 			}
 			++f;
 		}
