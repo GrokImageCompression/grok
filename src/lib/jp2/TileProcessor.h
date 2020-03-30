@@ -333,6 +333,27 @@ struct TileProcessor {
 			uint16_t tile_no);
 
 	/**
+	 * Sets the given area to be decoded. This function should be called right after grk_read_header
+	 * and before any tile header reading.
+	 *
+	 * @param	p_j2k		the jpeg2000 codec.
+	 * @param	p_image     FIXME DOC
+	 * @param	start_x		the left position of the rectangle to decode (in image coordinates).
+	 * @param	start_y		the up position of the rectangle to decode (in image coordinates).
+	 * @param	end_x		the right position of the rectangle to decode (in image coordinates).
+	 * @param	end_y		the bottom position of the rectangle to decode (in image coordinates).
+
+	 *
+	 * @return	true			if the area could be set.
+	 */
+	bool set_decode_area(grk_j2k *p_j2k,
+						grk_image *p_image,
+						uint32_t start_x,
+						uint32_t start_y,
+						uint32_t end_x,
+						uint32_t end_y);
+
+	/**
 	 * Encodes a tile from the raw image into the given buffer.
 	 * @param	tile_no		Index of the tile to encode.
 	 * @param	p_dest			Destination buffer
