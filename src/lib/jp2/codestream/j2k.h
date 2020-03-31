@@ -354,38 +354,32 @@ struct grk_decoding_param {
 	uint32_t m_layer;
 };
 
+// tile part length
 struct grk_tl_info {
-    grk_tl_info() : tile_number(0),
-                    has_tile_number(false),
+    grk_tl_info() : has_tile_number(false),
+    				tile_number(0),
                     length(0){}
-    grk_tl_info(uint32_t len) : tile_number(0),
-                                has_tile_number(false),
+    grk_tl_info(uint32_t len) : has_tile_number(false),
+    	                        tile_number(0),
                                 length(len){}
-    grk_tl_info(uint16_t tileno, uint32_t len) : tile_number(tileno),
-                                                has_tile_number(true),
-                                                length(len){}
-    uint16_t tile_number;
+    grk_tl_info(uint16_t tileno, uint32_t len) : has_tile_number(true),
+    											 tile_number(tileno),
+                                                 length(len){}
     bool has_tile_number;
+    uint16_t tile_number;
     uint32_t length;
 
 };
 
 typedef std::vector<grk_tl_info> TL_INFO_VEC;
+// map of (TLM marker id) => (tile part length vector)
 typedef std::map<uint8_t, TL_INFO_VEC> TL_MAP;
-struct grk_tl_marker {
-    TL_MAP tile_part_lengths;
-};
 
-struct grk_pl_info {
-    grk_pl_info() : length(0){}
-    grk_pl_info(uint32_t len) : length(len){}
-    uint32_t length;
-};
-typedef std::vector<grk_pl_info> PL_INFO_VEC;
+
+typedef std::vector<uint32_t> PL_INFO_VEC;
+// map of (PLT/PLM marker id) => (packet length vector)
 typedef std::map<uint8_t, PL_INFO_VEC> PL_MAP;
-struct grk_pl_marker{
-    PL_MAP packet_lengths;
-};
+
 
 /**
  * Coding parameters
@@ -454,8 +448,8 @@ struct grk_coding_parameters {
 	/** tells if the parameter is a coding or decoding one */
 	uint32_t m_is_decoder :1;
 
-	grk_pl_marker *pl_marker;
-	grk_tl_marker *tl_marker;
+	PL_MAP *plm_marker;
+	TL_MAP *tlm_marker;
 
 	void destroy();
 

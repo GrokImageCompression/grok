@@ -85,6 +85,7 @@ TileProcessor::TileProcessor(bool isDecoder) : m_tile_ind_to_dec(-1),
 									  whole_tile_decoding(true),
 									  m_marker_scratch(nullptr),
 									  m_marker_scratch_size(0),
+									  plt_marker(nullptr),
 									  m_cp(nullptr),
 									  m_tcp(nullptr),
 									  m_tileno(0),
@@ -96,17 +97,14 @@ TileProcessor::TileProcessor(bool isDecoder) : m_tile_ind_to_dec(-1),
 			throw std::runtime_error("Out of memory");
 		m_marker_scratch_size = default_header_size;
 	}
-
-
 }
 
 TileProcessor::~TileProcessor(){
 	free_tile();
 	grok_free(m_tlm_sot_offsets_buffer);
 	grok_free(m_marker_scratch);
-
+	delete plt_marker;
 }
-
 
 bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 									grk_image *output_image,
