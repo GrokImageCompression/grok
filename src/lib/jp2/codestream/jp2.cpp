@@ -1315,7 +1315,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 }
 
 static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
-	 grk_image_comp  *old_comps, *new_comps;
+	grk_image_comp  *old_comps, *new_comps;
 	uint8_t *channel_size, *channel_sign;
 	uint32_t *entries;
 	grk_jp2_cmap_comp *cmap;
@@ -1415,9 +1415,8 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 	}
 
 	max = image->numcomps;
-	for (i = 0; i < max; ++i) {
+	for (i = 0; i < max; ++i)
 		grk_image_single_component_data_free(old_comps + i);
-	}
 	grok_free(old_comps);
 	image->comps = new_comps;
 	image->numcomps = nr_channels;

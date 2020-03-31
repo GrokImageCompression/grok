@@ -7014,6 +7014,9 @@ static bool j2k_read_SPCod_SPCoc(grk_j2k *p_j2k, uint32_t compno,
 	assert(p_header_data != nullptr);
 	assert(compno < p_j2k->m_private_image->numcomps);
 
+	if (compno >= p_j2k->m_private_image->numcomps)
+	    return false;
+
 	auto cp = &(p_j2k->m_cp);
 	auto tcp = p_j2k->get_current_decode_tcp();
 	auto tccp = &tcp->tccps[compno];
