@@ -344,7 +344,7 @@ if [ "${GROK_CI_PROFILE:-}" == "1" ]; then
     mkdir build_gprof
     cd build_gprof
     # We need static linking for gprof
-    cmake "-DCMAKE_C_FLAGS=-pg -O3" -DCMAKE_EXE_LINKER_FLAGS=-pg -DCMAKE_SHARED_LINKER_FLAGS=-pg -DBUILD_SHARED_LIBS=OFF ..
+    cmake "-DCMAKE_CXX_FLAGS=-pg -O3" -DCMAKE_EXE_LINKER_FLAGS=-pg -DCMAKE_SHARED_LINKER_FLAGS=-pg -DBUILD_SHARED_LIBS=OFF ..
     make -j3
     cd ..
     build_gprof/bin/grk_decompress -i data/input/nonregression/kodak_2layers_lrcp.j2c -o out.tif > /dev/null
