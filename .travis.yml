@@ -14,16 +14,16 @@ matrix:
     arch: amd64
     dist: bionic 
     sudo: required
-    compiler: g++
+    compiler: g++-9
     env: 
       - GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1 GROK_NONCOMMERCIAL=1
-      - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
+      - MATRIX_EVAL="CC=gcc-9 && CXX=g++-9"
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
         packages:
-          - g++-8
+          - g++-9
 before_install:
     - eval "${MATRIX_EVAL}"
 install:
