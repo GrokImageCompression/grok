@@ -9,6 +9,7 @@ matrix:
       homebrew:
         packages:
           - p7zip
+          - cmake
         update: true
   - os: linux
     arch: amd64
