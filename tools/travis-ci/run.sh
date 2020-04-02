@@ -84,6 +84,12 @@ if [ "${TRAVIS_OS_NAME}" == "osx" ]; then
 	GROK_CXX_VERSION=xcode${GROK_CXX_VERSION:6}
 elif [ "${TRAVIS_OS_NAME}" == "linux" ]; then
 	GROK_OS_NAME=linux
+	
+	# We need a newer version of cmake than travis-ci provides
+	wget --no-check-certificate -qO - https://cmake.org/files/v3.17/cmake-3.17.0-Linux-x86_64.tar.gz | tar -xz
+	# copy to a directory that will not changed every version
+	mv cmake-3.17.0-Linux-x86_64 cmake-install
+		
 	if which lsb_release > /dev/null; then
 		GROK_OS_NAME=$(lsb_release -si)$(lsb_release -sr | sed 's/\([^0-9]*\.[0-9]*\).*/\1/')
 	fi
@@ -174,7 +180,6 @@ fi
 # ctest will exit with various error codes depending on version.
 # ignore ctest exit code & parse this ourselves
 set +x
-
 
 
 if [ "${GROK_CI_CHECK_STYLE:-}" == "1" ]; then

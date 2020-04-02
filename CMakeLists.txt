@@ -7,7 +7,7 @@
 # For this purpose you can define a CMake var: GROK_NAMESPACE to whatever you like
 # e.g.:
 # set(GROK_NAMESPACE "FOO")
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.12)
 
 if(COMMAND CMAKE_POLICY)
   cmake_policy(SET CMP0003 NEW)

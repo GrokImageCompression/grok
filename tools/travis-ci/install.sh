@@ -30,13 +30,6 @@ function exit_handler ()
 trap exit_handler EXIT
 trap exit ERR
 
-if [ "${GROK_CI_ASAN:-}" == "1" ]; then
-	# We need a new version of cmake than travis-ci provides
-	wget --no-check-certificate -qO - https://cmake.org/files/v3.5/cmake-3.5.2-Linux-x86_64.tar.gz | tar -xz
-	# copy to a directory that will not changed every version
-	mv cmake-3.5.2-Linux-x86_64 cmake-install
-fi
-
 if [ "${GROK_CI_SKIP_TESTS:-}" != "1" ]; then
 
 	GROK_SOURCE_DIR=$(cd $(dirname $0)/../.. && pwd)
