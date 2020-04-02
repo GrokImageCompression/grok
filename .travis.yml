@@ -2,6 +2,7 @@ language: cpp
 matrix:
   include:
   - os: osx
+    osx_image: xcode10.1
     compiler: clang
     arch: amd64
     env: GROK_CI_BUILD_CONFIGURATION=Release GROK_CI_INCLUDE_IF_DEPLOY=1 GROK_NONCOMMERCIAL=1
