@@ -3156,17 +3156,13 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image,
 	if (!p_image)
 		return false;
 
-	GROK_WARN(
-			"JP2 box which are after the codestream will not be read by this function.");
-
 	if (!j2k_get_tile(p_jp2->j2k, p_stream, p_image, tile_index)) {
 		GROK_ERROR("Failed to decode the codestream in the JP2 file");
 		return false;
 	}
 
-	if (!jp2_check_color(p_image, &(p_jp2->color))) {
+	if (!jp2_check_color(p_image, &(p_jp2->color)))
 		return false;
-	}
 
 	/* Set Image Color Space */
 	if (p_jp2->enumcs == 16)
@@ -3193,9 +3189,8 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image,
 	}
 
 	/* Apply channel definitions if needed */
-	if (p_jp2->color.jp2_cdef) {
+	if (p_jp2->color.jp2_cdef)
 		jp2_apply_cdef(p_image, &(p_jp2->color));
-	}
 
 	if (p_jp2->color.icc_profile_buf) {
 		p_image->icc_profile_buf = p_jp2->color.icc_profile_buf;
