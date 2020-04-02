@@ -1,10 +1,6 @@
 include_regular_expression("^.*$")
 
-if(APPLE)
-set(CMAKE_CXX_STANDARD 14)
-else()
 set(CMAKE_CXX_STANDARD 20)
-endif(APPLE)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Threads REQUIRED)
