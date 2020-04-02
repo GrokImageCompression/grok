@@ -256,7 +256,7 @@ struct grk_tcd_band {
 	uint32_t numbps;
 	float stepsize;
 	// inverse step size in 13 bit fixed point
-	int32_t inv_step;
+	uint32_t inv_step;
 
 };
 
