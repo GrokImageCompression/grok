@@ -270,59 +270,60 @@ int RAWFormat::imagetoraw(grk_image * image,
 	bool writeToStdout = grk::useStdio(outfile);
 	FILE *rawFile = nullptr;
 	unsigned int compno, numcomps;
-	int fails;
+	int fails = 1;
 	if ((image->numcomps * image->x1 * image->y1) == 0) {
-		spdlog::error("invalid raw image parameters");
-		return 1;
+		spdlog::error("imagetoraw: invalid raw image parameters");
+		goto beach;
 	}
 
 	numcomps = image->numcomps;
-
 	if (numcomps > 4) {
+		if (verbose)
+			spdlog::warn("imagetoraw: number of components {} is "
+				"greater than 4. Truncating to 4", numcomps);
 		numcomps = 4;
 	}
 
 	for (compno = 1; compno < numcomps; ++compno) {
-		if (image->comps[0].dx != image->comps[compno].dx) {
+		if (image->comps[0].dx != image->comps[compno].dx)
 			break;
-		}
-		if (image->comps[0].dy != image->comps[compno].dy) {
+		if (image->comps[0].dy != image->comps[compno].dy)
 			break;
-		}
-		if (image->comps[0].prec != image->comps[compno].prec) {
+		if (image->comps[0].prec != image->comps[compno].prec)
 			break;
-		}
-		if (image->comps[0].sgnd != image->comps[compno].sgnd) {
+		if (image->comps[0].sgnd != image->comps[compno].sgnd)
 			break;
-		}
 	}
 	if (compno != numcomps) {
-		spdlog::error("imagetoraw_common: All components shall have the same subsampling, same bit depth, same sign.");
-		return 1;
+		spdlog::error("imagetoraw: All components shall have the same subsampling, same bit depth, same sign.");
+		goto beach;
 	}
 
 	if (writeToStdout) {
 		if (!grok_set_binary_mode(stdout))
-			return 1;
+			goto beach;
 		rawFile = stdout;
 	}
 	else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			spdlog::error("Failed to open {} for writing !!\n", outfile);
-			return 1;
+			spdlog::error("imagetoraw: Failed to open {} for writing !!\n", outfile);
+			goto beach;
 		}
 	}
-
-	fails = 1;
 	if (verbose)
-		spdlog::info("Raw image characteristics: {} components\n", image->numcomps);
+		spdlog::info("imagetoraw: raw image characteristics: {} components\n", image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
 		if (verbose)
 			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", compno, image->comps[compno].w,
 				image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
 
+		if (!image->comps[compno].data) {
+			spdlog::error("imagetotif: component {} is null.",compno);
+			spdlog::error("\tAborting");
+			goto beach;
+		}
 		auto w = image->comps[compno].w;
 		auto h = image->comps[compno].h;
 		bool sgnd = image->comps[compno].sgnd ;
@@ -339,7 +340,7 @@ int RAWFormat::imagetoraw(grk_image * image,
 			else
 				rc = write<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
 			if (!rc)
-				spdlog::error("failed to write bytes for {}\n", outfile);
+				spdlog::error("imagetoraw: failed to write bytes for {}\n", outfile);
 		}
 		else if (prec <= 16) {
 			if (sgnd)
@@ -347,14 +348,14 @@ int RAWFormat::imagetoraw(grk_image * image,
 			else
 				rc = write<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
 			if (!rc)
-				spdlog::error("failed to write bytes for {}\n", outfile);
+				spdlog::error("fimagetoraw: ailed to write bytes for {}\n", outfile);
 		}
 		else if (image->comps[compno].prec <= 32) {
-			spdlog::error("More than 16 bits per component no handled yet");
+			spdlog::error("imagetoraw: more than 16 bits per component no handled yet");
 			goto beach;
 		}
 		else {
-			spdlog::error("invalid precision: {}\n", image->comps[compno].prec);
+			spdlog::error("imagetoraw: invalid precision: {}\n", image->comps[compno].prec);
 			goto beach;
 		}
 	}

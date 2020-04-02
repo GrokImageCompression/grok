@@ -471,50 +471,50 @@ static int imagetopng(grk_image * image,
 	nr_comp = (int)image->numcomps;
 
 	if (nr_comp > 4) {
+		if (verbose)
+			spdlog::warn("imagetopng: number of components {} is "
+				"greater than 4. Truncating to 4", nr_comp);
 		nr_comp = 4;
 	}
 	for (i = 1; i < nr_comp; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
+		if (image->comps[0].dx != image->comps[i].dx)
 			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
+		if (image->comps[0].dy != image->comps[i].dy)
 			break;
-		}
-		if (image->comps[0].prec != image->comps[i].prec) {
+		if (image->comps[0].prec != image->comps[i].prec)
 			break;
-		}
-		if (image->comps[0].sgnd != image->comps[i].sgnd) {
+		if (image->comps[0].sgnd != image->comps[i].sgnd)
 			break;
-		}
 		planes[i] = image->comps[i].data;
+		if (!planes[i]){
+			spdlog::error("imagetopng: component {} is null.",i);
+			spdlog::error("\tAborting");
+			return 1;
+		}
 	}
 	if (i != nr_comp) {
-		spdlog::error("imagetopng: All components shall have the same subsampling, same bit depth, same sign.");
+		spdlog::error("imagetopng: All components shall have the same sub-sampling,"
+				" same bit depth and same sign.");
 		spdlog::error("\tAborting");
 		return 1;
 	}
 	if (prec > 8 && prec < 16) {
-		for (i = 0; i < nr_comp; ++i) {
+		for (i = 0; i < nr_comp; ++i)
 			scale_component(&(image->comps[i]), 16);
-		}
 		prec = 16;
 	}
 	else if (prec < 8 && nr_comp > 1) { /* GRAY_ALPHA, RGB, RGB_ALPHA */
-		for (i = 0; i < nr_comp; ++i) {
+		for (i = 0; i < nr_comp; ++i)
 			scale_component(&(image->comps[i]), 8);
-		}
 		prec = 8;
 	}
 	else if ((prec > 1) && (prec < 8) && ((prec == 6) || ((prec & 1) == 1))) { /* GRAY with non native precision */
-		if ((prec == 5) || (prec == 6)) {
+		if ((prec == 5) || (prec == 6))
 			prec = 8;
-		}
-		else {
+		else
 			prec++;
-		}
-		for (i = 0; i < nr_comp; ++i) {
+		for (i = 0; i < nr_comp; ++i)
 			scale_component(&(image->comps[i]), (uint32_t)prec);
-		}
 	}
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {

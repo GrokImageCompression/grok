@@ -1612,12 +1612,18 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		}
 		tiPhoto = PHOTOMETRIC_SEPARATED;
 		if (numcomps > 4U) {
-			numcomps = 4U; /* Alpha not supported */
+			if (verbose)
+				spdlog::warn("imagetotif: number of components {} is "
+					"greater than 4. Truncating to 4", numcomps);
+			numcomps = 4U;
 		}
 	}
 	else if (numcomps > 2U) {
 		tiPhoto = PHOTOMETRIC_RGB;
 		if (numcomps > 4U) {
+			if (verbose)
+				spdlog::warn("imagetotif: number of components {} is "
+					"greater than 4. Truncating to 4", numcomps);
 			numcomps = 4U;
 		}
 	}
@@ -1639,30 +1645,26 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		goto cleanup;
 	}
 
-
-
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		auto comp = image->comps[i];
 		if (!comp.data) {
+			spdlog::error("imagetotif: component {} is null.",i);
+			spdlog::error("\tAborting");
 			success = false;
 			goto cleanup;
 		}
 	}
 	uint32_t i;
 	for (i = 1U; i < numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
+		if (image->comps[0].dx != image->comps[i].dx)
 			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
+		if (image->comps[0].dy != image->comps[i].dy)
 			break;
-		}
-		if (image->comps[0].prec != image->comps[i].prec) {
+		if (image->comps[0].prec != image->comps[i].prec)
 			break;
-		}
-		if (image->comps[0].sgnd != image->comps[i].sgnd) {
+		if (image->comps[0].sgnd != image->comps[i].sgnd)
 			break;
-		}
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
@@ -1676,8 +1678,7 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	// even bits per sample
 	if (bps > 16)
 		bps = 0;
-	if (bps == 0)
-	{
+	if (bps == 0)	{
 		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented\n", bps);
 		spdlog::error("\tAborting");
 		success = false;
@@ -1748,7 +1749,6 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		success = false;
 		goto cleanup;
 	}
-
 
 	tif = TIFFOpen(outfile, "wb");
 	if (!tif) {

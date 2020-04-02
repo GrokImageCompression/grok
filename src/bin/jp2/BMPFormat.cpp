@@ -800,9 +800,8 @@ static int imagetobmp(grk_image * image, const char *outfile, bool verbose){
 	int rc = -1;
 	uint8_t* destBuff = nullptr;
 
-	if (!sanityCheckOnImage(image, image->numcomps)) {
+	if (!sanityCheckOnImage(image, image->numcomps))
 		goto cleanup;
-	}
 	if (image->numcomps != 1 && image->numcomps != 3) {
 		spdlog::error("Unsupported number of components: {}\n", image->numcomps);
 		goto cleanup;
@@ -815,6 +814,11 @@ static int imagetobmp(grk_image * image, const char *outfile, bool verbose){
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
 			spdlog::error("Unsupported precision: {} for component {}\n", image->comps[i].prec, i);
+			goto cleanup;
+		}
+		if (!image->comps[i].data) {
+			spdlog::error("imagetopng: component {} is null.",i);
+			spdlog::error("\tAborting");
 			goto cleanup;
 		}
 	}
@@ -1019,9 +1023,8 @@ static int imagetobmp(grk_image * image, const char *outfile, bool verbose){
 				destBuff[destInd++] = (uint8_t)r;
 			}
 			// pad at end of row to ensure that width is divisible by 4
-			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) {/* ADD */
+			for (pad = w % 4 ? 4 - w % 4 : 0; pad > 0; pad--) /* ADD */
 				destBuff[destInd++] = 0;
-			}
 			if (fwrite(destBuff, 1, destInd, fdest) != destInd)
 				goto cleanup;
 		}

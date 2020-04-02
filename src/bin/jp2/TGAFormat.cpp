@@ -420,7 +420,7 @@ static grk_image *  tgatoimage(const char *filename,
 	return image;
 }
 
-static int imagetotga(grk_image *image, const char *outfile) {
+static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	int width = 0, height = 0, bpp = 0, x = 0, y = 0;
 	bool write_alpha = false;
 	unsigned int i;
@@ -441,6 +441,17 @@ static int imagetotga(grk_image *image, const char *outfile) {
 	if (!sanityCheckOnImage(image, image->numcomps)) {
 		goto beach;
 	}
+	for (i = 0; i < image->numcomps; i++) {
+		if (verbose)
+			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", i, image->comps[i].w,
+				image->comps[i].h, image->comps[i].prec, image->comps[i].sgnd == 1 ? "signed" : "unsigned");
+
+		if (!image->comps[i].data) {
+			spdlog::error("imagetotga: component {} is null.",i);
+			spdlog::error("\tAborting");
+			goto beach;
+		}
+	}
 
 	for (i = 0; i < image->numcomps - 1; i++) {
 		if ((image->comps[0].dx != image->comps[i + 1].dx)
@@ -448,7 +459,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 				|| (image->comps[0].prec != image->comps[i + 1].prec)
 				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
-			spdlog::error(" Unable to create a tga file with such J2K image charateristics.");
+			spdlog::error("imagetotga: unable to create a tga file with such J2K image charateristics.");
 			goto beach;
 		}
 	}
@@ -499,7 +510,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("failed to write 1 byte for {}\n", outfile);
+				spdlog::error("imagetotga: failed to write 1 byte for {}\n", outfile);
 				goto beach;
 			}
 			if (g > 255.)
@@ -522,7 +533,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("failed to write 1 byte for {}\n",
+				spdlog::error("imagetotga: failed to write 1 byte for {}\n",
 						outfile);
 				goto beach;
 			}
@@ -537,7 +548,7 @@ static int imagetotga(grk_image *image, const char *outfile) {
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {
-					spdlog::error("failed to write 1 byte for {}\n",
+					spdlog::error("imagetotga: failed to write 1 byte for {}\n",
 							outfile);
 					goto beach;
 				}
@@ -555,7 +566,7 @@ bool TGAFormat::encode(grk_image *image, const char *filename,
 		int compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
-	return imagetotga(image, filename) ? false : true;
+	return imagetotga(image, filename, verbose) ? false : true;
 }
 grk_image *  TGAFormat::decode(const char *filename,
 		 grk_cparameters  *parameters) {

@@ -148,6 +148,8 @@ static int imagetojpeg(grk_image *  image, const char *filename, int compression
 		else if (numcomps == 1)
 			info.color_space = JCS_GRAYSCALE;
 		else {
+			spdlog::error("imagetojpeg: colour space must be "
+					"either RGB or Grayscale");
 			info.success = false;
 			goto cleanup;
 		}
@@ -155,6 +157,8 @@ static int imagetojpeg(grk_image *  image, const char *filename, int compression
 	}
 
 	if (image->numcomps > 4) {
+		spdlog::error("imagetojpeg: number of components {} "
+				"is greater than 4.",image->numcomps);
 		info.success = false;
 		goto cleanup;
 	}
@@ -171,23 +175,20 @@ static int imagetojpeg(grk_image *  image, const char *filename, int compression
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		auto comp = image->comps[i];
 		if (!comp.data) {
+			spdlog::error("imagetojpeg: component {} is null.",i);
 			info.success = false;
 			goto cleanup;
 		}
 	}
 	for (i = 1U; i < numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
+		if (image->comps[0].dx != image->comps[i].dx)
 			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
+		if (image->comps[0].dy != image->comps[i].dy)
 			break;
-		}
-		if (image->comps[0].prec != image->comps[i].prec) {
+		if (image->comps[0].prec != image->comps[i].prec)
 			break;
-		}
-		if (image->comps[0].sgnd != image->comps[i].sgnd) {
+		if (image->comps[0].sgnd != image->comps[i].sgnd)
 			break;
-		}
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
@@ -206,7 +207,7 @@ static int imagetojpeg(grk_image *  image, const char *filename, int compression
 		cvt32sToTif = convert_32sXXu_C1R_LUT[bps];
 		break;
 	default:
-		spdlog::error("imagetojpeg: Unsupported precision {}.\n", bps);
+		spdlog::error("imagetojpeg: Unsupported precision {}.", bps);
 		info.success = false;
 		goto cleanup;
 		break;
