@@ -1762,7 +1762,7 @@ int post_decode(grk_plugin_decode_callback_info* info) {
 		{
 			JPEGFormat jpeg;
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel, parameters->verbose)) {
-				spdlog::error( "Error generating png file. Outfile {} not generated\n", outfile);
+				spdlog::error( "Error generating jpeg file. Outfile {} not generated\n", outfile);
 				failed = 1;
 			}
 		}
