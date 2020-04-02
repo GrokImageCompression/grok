@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -74,7 +74,8 @@
 static uint8_t readuchar(FILE *f) {
 	uint8_t c1;
 	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error(" fread return a number of element different from the expected.");
+		spdlog::error(
+				" fread return a number of element different from the expected.");
 		return 0;
 	}
 	return c1;
@@ -83,11 +84,13 @@ static uint8_t readuchar(FILE *f) {
 static unsigned short readushort(FILE *f, int bigendian) {
 	uint8_t c1, c2;
 	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error("  fread return a number of element different from the expected.");
+		spdlog::error(
+				"  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		spdlog::error("  fread return a number of element different from the expected.");
+		spdlog::error(
+				"  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (bigendian)
@@ -99,19 +102,23 @@ static unsigned short readushort(FILE *f, int bigendian) {
 static unsigned int readuint(FILE *f, int bigendian) {
 	uint8_t c1, c2, c3, c4;
 	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error(" fread return a number of element different from the expected.");
+		spdlog::error(
+				" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c2, 1, 1, f)) {
-		spdlog::error(" fread return a number of element different from the expected.");
+		spdlog::error(
+				" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c3, 1, 1, f)) {
-		spdlog::error("  fread return a number of element different from the expected.");
+		spdlog::error(
+				"  fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (!fread(&c4, 1, 1, f)) {
-		spdlog::error(" fread return a number of element different from the expected.");
+		spdlog::error(
+				" fread return a number of element different from the expected.");
 		return 0;
 	}
 	if (bigendian)
@@ -122,13 +129,13 @@ static unsigned int readuint(FILE *f, int bigendian) {
 				+ (unsigned int) (c2 << 8) + c1;
 }
 
-static grk_image *  pgxtoimage(const char *filename,
-		 grk_cparameters  *parameters) {
+static grk_image* pgxtoimage(const char *filename,
+		grk_cparameters *parameters) {
 	FILE *f = nullptr;
 	uint32_t w, h, prec, numcomps, max;
 	uint64_t i, area;
 	GRK_COLOR_SPACE color_space;
-	 grk_image_cmptparm  cmptparm; /* maximum of 1 component  */
+	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	grk_image *image = nullptr;
 	int adjustS, ushift, dshift, force8;
 	int c;
@@ -137,12 +144,12 @@ static grk_image *  pgxtoimage(const char *filename,
 
 	char temp[32];
 	uint32_t bigendian;
-	 grk_image_comp  *comp = nullptr;
+	grk_image_comp *comp = nullptr;
 
 	numcomps = 1;
 	color_space = GRK_CLRSPC_GRAY;
 
-	memset(&cmptparm, 0, sizeof( grk_image_cmptparm) );
+	memset(&cmptparm, 0, sizeof(grk_image_cmptparm));
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
@@ -154,7 +161,8 @@ static grk_image *  pgxtoimage(const char *filename,
 		goto cleanup;
 	if (fscanf(f, "PG%31[ \t]%c%c%31[ \t+-]%d%31[ \t]%d%31[ \t]%d", temp,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
-		spdlog::error(" Failed to read the right number of element from the fscanf() function!");
+		spdlog::error(
+				" Failed to read the right number of element from the fscanf() function!");
 		goto cleanup;
 	}
 
@@ -278,14 +286,15 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 	unsigned int compno;
 	FILE *fdest = nullptr;
 	for (compno = 0; compno < image->numcomps; compno++) {
-		 grk_image_comp  *comp = &image->comps[compno];
+		grk_image_comp *comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
 		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
-			spdlog::error(" imagetopgx: output file name size larger than 4096.");
+			spdlog::error(
+					" imagetopgx: output file name size larger than 4096.");
 			goto beach;
 		}
 		if (olen < 4) {
@@ -294,7 +303,8 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 		}
 		const size_t dotpos = olen - 4;
 		if (outfile[dotpos] != '.') {
-			spdlog::error(" pgx was recognized but there was no dot at expected position .");
+			spdlog::error(
+					" pgx was recognized but there was no dot at expected position .");
 			goto beach;
 		}
 		//copy root outfile name to "name"
@@ -332,8 +342,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 				res = fwrite(&byte, 1, 1, fdest);
 
 				if (res < 1) {
-					spdlog::error("failed to write 1 byte for {}\n",
-							bname);
+					spdlog::error("failed to write 1 byte for {}\n", bname);
 					goto beach;
 				}
 			}
@@ -357,7 +366,7 @@ bool PGXFormat::encode(grk_image *image, const char *filename,
 	(void) verbose;
 	return imagetopgx(image, filename) ? false : true;
 }
-grk_image *  PGXFormat::decode(const char *filename,
-		 grk_cparameters  *parameters) {
+grk_image* PGXFormat::decode(const char *filename,
+		grk_cparameters *parameters) {
 	return pgxtoimage(filename, parameters);
 }

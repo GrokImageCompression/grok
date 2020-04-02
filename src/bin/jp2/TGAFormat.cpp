@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -61,7 +61,6 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
-
 
 #ifdef INFORMATION_ONLY
  /* TGA header definition. */
@@ -110,7 +109,8 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 		return false;
 
 	if (fread(tga, TGA_HEADER_SIZE, 1, fp) != 1) {
-		spdlog::error(" fread return a number of element different from the expected.");
+		spdlog::error(
+				" fread return a number of element different from the expected.");
 		return false;
 	}
 	id_len = tga[0];
@@ -141,7 +141,8 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 			return false;
 		}
 		if (!fread(id, id_len, 1, fp)) {
-			spdlog::error(" fread return a number of element different from the expected.");
+			spdlog::error(
+					" fread return a number of element different from the expected.");
 			free(id);
 			return false;
 		}
@@ -152,7 +153,8 @@ static bool tga_readheader(FILE *fp, unsigned int *bits_per_pixel,
 	 // Note :-  9 - RLE encoded palettized.
 	 //	  	   10 - RLE encoded RGB. */
 	if (image_type > 8) {
-		spdlog::error(" Sorry, compressed tga files are not currently supported.");
+		spdlog::error(
+				" Sorry, compressed tga files are not currently supported.");
 		return false;
 	}
 
@@ -253,19 +255,18 @@ static int tga_writeheader(FILE *fp, int bits_per_pixel, int width, int height,
 
 	return 1;
 
-	fails:
-		spdlog::error("\nwrite_tgaheader: write ERROR");
+	fails: spdlog::error("\nwrite_tgaheader: write ERROR");
 	return 0;
 }
 
-static grk_image *  tgatoimage(const char *filename,
-		 grk_cparameters  *parameters) {
+static grk_image* tgatoimage(const char *filename,
+		grk_cparameters *parameters) {
 	FILE *f;
 	grk_image *image;
 	unsigned int image_width, image_height, pixel_bit_depth;
 	unsigned int x, y;
 	int flip_image = 0;
-	 grk_image_cmptparm  cmptparm[4]; /* maximum 4 components */
+	grk_image_cmptparm cmptparm[4]; /* maximum 4 components */
 	uint32_t numcomps;
 	GRK_COLOR_SPACE color_space;
 	uint32_t subsampling_dx, subsampling_dy;
@@ -290,7 +291,7 @@ static grk_image *  tgatoimage(const char *filename,
 	}
 
 	/* initialize image components */
-	memset(&cmptparm[0], 0, 4 * sizeof( grk_image_cmptparm) );
+	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm));
 	//bool mono = (pixel_bit_depth == 8) || (pixel_bit_depth == 16);  /* Mono with & without alpha. */
 	bool save_alpha = (pixel_bit_depth == 16) || (pixel_bit_depth == 32); // Mono with alpha, or RGB with alpha
 	/*if (mono) {
@@ -352,19 +353,22 @@ static grk_image *  tgatoimage(const char *filename,
 				uint8_t r, g, b;
 
 				if (!fread(&b, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
@@ -379,25 +383,29 @@ static grk_image *  tgatoimage(const char *filename,
 			for (x = 0; x < image_width; x++) {
 				uint8_t r, g, b, a;
 				if (!fread(&b, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&g, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&r, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
 				}
 				if (!fread(&a, 1, 1, f)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					grk::safe_fclose(f);
 					return nullptr;
@@ -443,11 +451,12 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	}
 	for (i = 0; i < image->numcomps; i++) {
 		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", i, image->comps[i].w,
-				image->comps[i].h, image->comps[i].prec, image->comps[i].sgnd == 1 ? "signed" : "unsigned");
+			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", i,
+					image->comps[i].w, image->comps[i].h, image->comps[i].prec,
+					image->comps[i].sgnd == 1 ? "signed" : "unsigned");
 
 		if (!image->comps[i].data) {
-			spdlog::error("imagetotga: component {} is null.",i);
+			spdlog::error("imagetotga: component {} is null.", i);
 			spdlog::error("\tAborting");
 			goto beach;
 		}
@@ -459,7 +468,8 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 				|| (image->comps[0].prec != image->comps[i + 1].prec)
 				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
 
-			spdlog::error("imagetotga: unable to create a tga file with such J2K image charateristics.");
+			spdlog::error(
+					"imagetotga: unable to create a tga file with such J2K image charateristics.");
 			goto beach;
 		}
 	}
@@ -510,7 +520,8 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("imagetotga: failed to write 1 byte for {}\n", outfile);
+				spdlog::error("imagetotga: failed to write 1 byte for {}\n",
+						outfile);
 				goto beach;
 			}
 			if (g > 255.)
@@ -521,8 +532,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("failed to write 1 byte for {}\n",
-						outfile);
+				spdlog::error("failed to write 1 byte for {}\n", outfile);
 				goto beach;
 			}
 			if (r > 255.)
@@ -556,9 +566,8 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 		}
 	}
 	fails = 0;
-	beach:
-		if (!grk::safe_fclose(fdest))
-			fails = 1;
+	beach: if (!grk::safe_fclose(fdest))
+		fails = 1;
 	return fails;
 }
 
@@ -568,7 +577,7 @@ bool TGAFormat::encode(grk_image *image, const char *filename,
 	(void) verbose;
 	return imagetotga(image, filename, verbose) ? false : true;
 }
-grk_image *  TGAFormat::decode(const char *filename,
-		 grk_cparameters  *parameters) {
+grk_image* TGAFormat::decode(const char *filename,
+		grk_cparameters *parameters) {
 	return tgatoimage(filename, parameters);
 }

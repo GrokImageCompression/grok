@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -73,18 +73,15 @@
 #include <cassert>
 #include <memory>
 
-
-
-
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
-	(void)module;
+	(void) module;
 	vfprintf(stderr, fmt, ap);
 	fprintf(stderr, "\n");
 }
 
 void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
-	(void)module;
+	(void) module;
 	if (tiffWarningHandlerVerbose) {
 		vfprintf(stdout, fmt, ap);
 		fprintf(stdout, "\n");
@@ -97,23 +94,15 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 	TIFFSetWarningHandler(MyTiffWarningHandler);
 }
 
-static bool readTiffPixelsUnsigned(TIFF *tif,
-							 grk_image_comp  *comps,
-							uint32_t numcomps,
-							uint16_t tiSpp,
-							uint16_t tiPC,
-							uint16_t tiPhoto);
-static bool readTiffPixelsSigned(TIFF *tif,
-							 grk_image_comp  *comps,
-							uint32_t numcomps,
-							uint16_t tiSpp,
-							uint16_t tiPC,
-							uint16_t tiPhoto);
+static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto);
+static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto);
 /* -->> -->> -->> -->>
 
-TIFF IMAGE FORMAT
+ TIFF IMAGE FORMAT
 
-<<-- <<-- <<-- <<-- */
+ <<-- <<-- <<-- <<-- */
 #define PUTBITS2(s, nb) \
 	trailing <<= remaining; \
 	trailing |= (uint32_t)((s) >> (nb - remaining)); \
@@ -160,71 +149,70 @@ TIFF IMAGE FORMAT
 	dest = INV((int32_t)dst, mask,invert); \
 }
 
-static void tif_32sto3u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto3u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 << 5) | (src1 << 2) | (src2 >> 1));
-		*pDst++ = (uint8_t)((src2 << 7) | (src3 << 4) | (src4 << 1) | (src5 >> 2));
-		*pDst++ = (uint8_t)((src5 << 6) | (src6 << 3) | (src7));
+		*pDst++ = (uint8_t) ((src0 << 5) | (src1 << 2) | (src2 >> 1));
+		*pDst++ = (uint8_t) ((src2 << 7) | (src3 << 4) | (src4 << 1)
+				| (src5 >> 2));
+		*pDst++ = (uint8_t) ((src5 << 6) | (src6 << 3) | (src7));
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS((uint32_t)pSrc[i + 0], 3)
-			if (length > 1U) {
-				PUTBITS((uint32_t)pSrc[i + 1], 3)
-					if (length > 2U) {
-						PUTBITS((uint32_t)pSrc[i + 2], 3)
-							if (length > 3U) {
-								PUTBITS((uint32_t)pSrc[i + 3], 3)
-									if (length > 4U) {
-										PUTBITS((uint32_t)pSrc[i + 4], 3)
-											if (length > 5U) {
-												PUTBITS((uint32_t)pSrc[i + 5], 3)
-													if (length > 6U) {
-														PUTBITS((uint32_t)pSrc[i + 6], 3)
-													}
-											}
-									}
+		PUTBITS((uint32_t )pSrc[i + 0], 3)
+		if (length > 1U) {
+			PUTBITS((uint32_t )pSrc[i + 1], 3)
+			if (length > 2U) {
+				PUTBITS((uint32_t )pSrc[i + 2], 3)
+				if (length > 3U) {
+					PUTBITS((uint32_t )pSrc[i + 3], 3)
+					if (length > 4U) {
+						PUTBITS((uint32_t )pSrc[i + 4], 3)
+						if (length > 5U) {
+							PUTBITS((uint32_t )pSrc[i + 5], 3)
+							if (length > 6U) {
+								PUTBITS((uint32_t )pSrc[i + 6], 3)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-static void tif_32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto5u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 << 3) | (src1 >> 2));
-		*pDst++ = (uint8_t)((src1 << 6) | (src2 << 1) | (src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 1));
-		*pDst++ = (uint8_t)((src4 << 7) | (src5 << 2) | (src6 >> 3));
-		*pDst++ = (uint8_t)((src6 << 5) | (src7));
+		*pDst++ = (uint8_t) ((src0 << 3) | (src1 >> 2));
+		*pDst++ = (uint8_t) ((src1 << 6) | (src2 << 1) | (src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 1));
+		*pDst++ = (uint8_t) ((src4 << 7) | (src5 << 2) | (src6 >> 3));
+		*pDst++ = (uint8_t) ((src6 << 5) | (src7));
 
 	}
 
@@ -232,426 +220,419 @@ static void tif_32sto5u(const int32_t* pSrc, uint8_t* pDst, size_t length)
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS((uint32_t)pSrc[i + 0], 5)
-			if (length > 1U) {
-				PUTBITS((uint32_t)pSrc[i + 1], 5)
-					if (length > 2U) {
-						PUTBITS((uint32_t)pSrc[i + 2], 5)
-							if (length > 3U) {
-								PUTBITS((uint32_t)pSrc[i + 3], 5)
-									if (length > 4U) {
-										PUTBITS((uint32_t)pSrc[i + 4], 5)
-											if (length > 5U) {
-												PUTBITS((uint32_t)pSrc[i + 5], 5)
-													if (length > 6U) {
-														PUTBITS((uint32_t)pSrc[i + 6], 5)
-													}
-											}
-									}
+		PUTBITS((uint32_t )pSrc[i + 0], 5)
+		if (length > 1U) {
+			PUTBITS((uint32_t )pSrc[i + 1], 5)
+			if (length > 2U) {
+				PUTBITS((uint32_t )pSrc[i + 2], 5)
+				if (length > 3U) {
+					PUTBITS((uint32_t )pSrc[i + 3], 5)
+					if (length > 4U) {
+						PUTBITS((uint32_t )pSrc[i + 4], 5)
+						if (length > 5U) {
+							PUTBITS((uint32_t )pSrc[i + 5], 5)
+							if (length > 6U) {
+								PUTBITS((uint32_t )pSrc[i + 6], 5)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-static void tif_32sto7u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto7u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 << 1) | (src1 >> 6));
-		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 5));
-		*pDst++ = (uint8_t)((src2 << 3) | (src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 3));
-		*pDst++ = (uint8_t)((src4 << 5) | (src5 >> 2));
-		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 1));
-		*pDst++ = (uint8_t)((src6 << 7) | (src7));
+		*pDst++ = (uint8_t) ((src0 << 1) | (src1 >> 6));
+		*pDst++ = (uint8_t) ((src1 << 2) | (src2 >> 5));
+		*pDst++ = (uint8_t) ((src2 << 3) | (src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 3));
+		*pDst++ = (uint8_t) ((src4 << 5) | (src5 >> 2));
+		*pDst++ = (uint8_t) ((src5 << 6) | (src6 >> 1));
+		*pDst++ = (uint8_t) ((src6 << 7) | (src7));
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS((uint32_t)pSrc[i + 0], 7)
-			if (length > 1U) {
-				PUTBITS((uint32_t)pSrc[i + 1], 7)
-					if (length > 2U) {
-						PUTBITS((uint32_t)pSrc[i + 2], 7)
-							if (length > 3U) {
-								PUTBITS((uint32_t)pSrc[i + 3], 7)
-									if (length > 4U) {
-										PUTBITS((uint32_t)pSrc[i + 4], 7)
-											if (length > 5U) {
-												PUTBITS((uint32_t)pSrc[i + 5], 7)
-													if (length > 6U) {
-														PUTBITS((uint32_t)pSrc[i + 6], 7)
-													}
-											}
-									}
+		PUTBITS((uint32_t )pSrc[i + 0], 7)
+		if (length > 1U) {
+			PUTBITS((uint32_t )pSrc[i + 1], 7)
+			if (length > 2U) {
+				PUTBITS((uint32_t )pSrc[i + 2], 7)
+				if (length > 3U) {
+					PUTBITS((uint32_t )pSrc[i + 3], 7)
+					if (length > 4U) {
+						PUTBITS((uint32_t )pSrc[i + 4], 7)
+						if (length > 5U) {
+							PUTBITS((uint32_t )pSrc[i + 5], 7)
+							if (length > 6U) {
+								PUTBITS((uint32_t )pSrc[i + 6], 7)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-static void tif_32sto9u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto9u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 >> 1));
-		*pDst++ = (uint8_t)((src0 << 7) | (src1 >> 2));
-		*pDst++ = (uint8_t)((src1 << 6) | (src2 >> 3));
-		*pDst++ = (uint8_t)((src2 << 5) | (src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 5));
-		*pDst++ = (uint8_t)((src4 << 3) | (src5 >> 6));
-		*pDst++ = (uint8_t)((src5 << 2) | (src6 >> 7));
-		*pDst++ = (uint8_t)((src6 << 1) | (src7 >> 8));
-		*pDst++ = (uint8_t)(src7);
+		*pDst++ = (uint8_t) ((src0 >> 1));
+		*pDst++ = (uint8_t) ((src0 << 7) | (src1 >> 2));
+		*pDst++ = (uint8_t) ((src1 << 6) | (src2 >> 3));
+		*pDst++ = (uint8_t) ((src2 << 5) | (src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 5));
+		*pDst++ = (uint8_t) ((src4 << 3) | (src5 >> 6));
+		*pDst++ = (uint8_t) ((src5 << 2) | (src6 >> 7));
+		*pDst++ = (uint8_t) ((src6 << 1) | (src7 >> 8));
+		*pDst++ = (uint8_t) (src7);
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS2((uint32_t)pSrc[i + 0], 9)
-			if (length > 1U) {
-				PUTBITS2((uint32_t)pSrc[i + 1], 9)
-					if (length > 2U) {
-						PUTBITS2((uint32_t)pSrc[i + 2], 9)
-							if (length > 3U) {
-								PUTBITS2((uint32_t)pSrc[i + 3], 9)
-									if (length > 4U) {
-										PUTBITS2((uint32_t)pSrc[i + 4], 9)
-											if (length > 5U) {
-												PUTBITS2((uint32_t)pSrc[i + 5], 9)
-													if (length > 6U) {
-														PUTBITS2((uint32_t)pSrc[i + 6], 9)
-													}
-											}
-									}
+		PUTBITS2((uint32_t )pSrc[i + 0], 9)
+		if (length > 1U) {
+			PUTBITS2((uint32_t )pSrc[i + 1], 9)
+			if (length > 2U) {
+				PUTBITS2((uint32_t )pSrc[i + 2], 9)
+				if (length > 3U) {
+					PUTBITS2((uint32_t )pSrc[i + 3], 9)
+					if (length > 4U) {
+						PUTBITS2((uint32_t )pSrc[i + 4], 9)
+						if (length > 5U) {
+							PUTBITS2((uint32_t )pSrc[i + 5], 9)
+							if (length > 6U) {
+								PUTBITS2((uint32_t )pSrc[i + 6], 9)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-
-
-static void tif_32sto10u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto10u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
 
-		*pDst++ = (uint8_t)(src0 >> 2);
-		*pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
-		*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
-		*pDst++ = (uint8_t)(((src2 & 0x3FU) << 2) | (src3 >> 8));
-		*pDst++ = (uint8_t)(src3);
+		*pDst++ = (uint8_t) (src0 >> 2);
+		*pDst++ = (uint8_t) (((src0 & 0x3U) << 6) | (src1 >> 4));
+		*pDst++ = (uint8_t) (((src1 & 0xFU) << 4) | (src2 >> 6));
+		*pDst++ = (uint8_t) (((src2 & 0x3FU) << 2) | (src3 >> 8));
+		*pDst++ = (uint8_t) (src3);
 	}
 
 	if (length & 3U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
 		uint32_t src1 = 0U;
 		uint32_t src2 = 0U;
 		length = length & 3U;
 
 		if (length > 1U) {
-			src1 = (uint32_t)pSrc[i + 1];
+			src1 = (uint32_t) pSrc[i + 1];
 			if (length > 2U) {
-				src2 = (uint32_t)pSrc[i + 2];
+				src2 = (uint32_t) pSrc[i + 2];
 			}
 		}
-		*pDst++ = (uint8_t)(src0 >> 2);
-		*pDst++ = (uint8_t)(((src0 & 0x3U) << 6) | (src1 >> 4));
+		*pDst++ = (uint8_t) (src0 >> 2);
+		*pDst++ = (uint8_t) (((src0 & 0x3U) << 6) | (src1 >> 4));
 		if (length > 1U) {
-			*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 6));
+			*pDst++ = (uint8_t) (((src1 & 0xFU) << 4) | (src2 >> 6));
 			if (length > 2U) {
-				*pDst++ = (uint8_t)(((src2 & 0x3FU) << 2));
+				*pDst++ = (uint8_t) (((src2 & 0x3FU) << 2));
 			}
 		}
 	}
 }
 
-static void tif_32sto11u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto11u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 >> 3));
-		*pDst++ = (uint8_t)((src0 << 5) | (src1 >> 6));
-		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 9));
-		*pDst++ = (uint8_t)((src2 >> 1));
-		*pDst++ = (uint8_t)((src2 << 7) | (src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 7));
-		*pDst++ = (uint8_t)((src4 << 1) | (src5 >> 10));
-		*pDst++ = (uint8_t)((src5 >> 2));
-		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 5));
-		*pDst++ = (uint8_t)((src6 << 3) | (src7 >> 8));
-		*pDst++ = (uint8_t)(src7);
+		*pDst++ = (uint8_t) ((src0 >> 3));
+		*pDst++ = (uint8_t) ((src0 << 5) | (src1 >> 6));
+		*pDst++ = (uint8_t) ((src1 << 2) | (src2 >> 9));
+		*pDst++ = (uint8_t) ((src2 >> 1));
+		*pDst++ = (uint8_t) ((src2 << 7) | (src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 7));
+		*pDst++ = (uint8_t) ((src4 << 1) | (src5 >> 10));
+		*pDst++ = (uint8_t) ((src5 >> 2));
+		*pDst++ = (uint8_t) ((src5 << 6) | (src6 >> 5));
+		*pDst++ = (uint8_t) ((src6 << 3) | (src7 >> 8));
+		*pDst++ = (uint8_t) (src7);
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS2((uint32_t)pSrc[i + 0], 11)
-			if (length > 1U) {
-				PUTBITS2((uint32_t)pSrc[i + 1], 11)
-					if (length > 2U) {
-						PUTBITS2((uint32_t)pSrc[i + 2], 11)
-							if (length > 3U) {
-								PUTBITS2((uint32_t)pSrc[i + 3], 11)
-									if (length > 4U) {
-										PUTBITS2((uint32_t)pSrc[i + 4], 11)
-											if (length > 5U) {
-												PUTBITS2((uint32_t)pSrc[i + 5], 11)
-													if (length > 6U) {
-														PUTBITS2((uint32_t)pSrc[i + 6], 11)
-													}
-											}
-									}
+		PUTBITS2((uint32_t )pSrc[i + 0], 11)
+		if (length > 1U) {
+			PUTBITS2((uint32_t )pSrc[i + 1], 11)
+			if (length > 2U) {
+				PUTBITS2((uint32_t )pSrc[i + 2], 11)
+				if (length > 3U) {
+					PUTBITS2((uint32_t )pSrc[i + 3], 11)
+					if (length > 4U) {
+						PUTBITS2((uint32_t )pSrc[i + 4], 11)
+						if (length > 5U) {
+							PUTBITS2((uint32_t )pSrc[i + 5], 11)
+							if (length > 6U) {
+								PUTBITS2((uint32_t )pSrc[i + 6], 11)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
-static void tif_32sto12u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto12u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)1U); i += 2U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
+	for (i = 0; i < (length & ~(size_t) 1U); i += 2U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
 
-		*pDst++ = (uint8_t)(src0 >> 4);
-		*pDst++ = (uint8_t)(((src0 & 0xFU) << 4) | (src1 >> 8));
-		*pDst++ = (uint8_t)(src1);
+		*pDst++ = (uint8_t) (src0 >> 4);
+		*pDst++ = (uint8_t) (((src0 & 0xFU) << 4) | (src1 >> 8));
+		*pDst++ = (uint8_t) (src1);
 	}
 
 	if (length & 1U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		*pDst++ = (uint8_t)(src0 >> 4);
-		*pDst++ = (uint8_t)(((src0 & 0xFU) << 4));
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		*pDst++ = (uint8_t) (src0 >> 4);
+		*pDst++ = (uint8_t) (((src0 & 0xFU) << 4));
 	}
 }
 
-static void tif_32sto13u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto13u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 >> 5));
-		*pDst++ = (uint8_t)((src0 << 3) | (src1 >> 10));
-		*pDst++ = (uint8_t)((src1 >> 2));
-		*pDst++ = (uint8_t)((src1 << 6) | (src2 >> 7));
-		*pDst++ = (uint8_t)((src2 << 1) | (src3 >> 12));
-		*pDst++ = (uint8_t)((src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 9));
-		*pDst++ = (uint8_t)((src4 >> 1));
-		*pDst++ = (uint8_t)((src4 << 7) | (src5 >> 6));
-		*pDst++ = (uint8_t)((src5 << 2) | (src6 >> 11));
-		*pDst++ = (uint8_t)((src6 >> 3));
-		*pDst++ = (uint8_t)((src6 << 5) | (src7 >> 8));
-		*pDst++ = (uint8_t)(src7);
+		*pDst++ = (uint8_t) ((src0 >> 5));
+		*pDst++ = (uint8_t) ((src0 << 3) | (src1 >> 10));
+		*pDst++ = (uint8_t) ((src1 >> 2));
+		*pDst++ = (uint8_t) ((src1 << 6) | (src2 >> 7));
+		*pDst++ = (uint8_t) ((src2 << 1) | (src3 >> 12));
+		*pDst++ = (uint8_t) ((src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 9));
+		*pDst++ = (uint8_t) ((src4 >> 1));
+		*pDst++ = (uint8_t) ((src4 << 7) | (src5 >> 6));
+		*pDst++ = (uint8_t) ((src5 << 2) | (src6 >> 11));
+		*pDst++ = (uint8_t) ((src6 >> 3));
+		*pDst++ = (uint8_t) ((src6 << 5) | (src7 >> 8));
+		*pDst++ = (uint8_t) (src7);
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS2((uint32_t)pSrc[i + 0], 13)
-			if (length > 1U) {
-				PUTBITS2((uint32_t)pSrc[i + 1], 13)
-					if (length > 2U) {
-						PUTBITS2((uint32_t)pSrc[i + 2], 13)
-							if (length > 3U) {
-								PUTBITS2((uint32_t)pSrc[i + 3], 13)
-									if (length > 4U) {
-										PUTBITS2((uint32_t)pSrc[i + 4], 13)
-											if (length > 5U) {
-												PUTBITS2((uint32_t)pSrc[i + 5], 13)
-													if (length > 6U) {
-														PUTBITS2((uint32_t)pSrc[i + 6], 13)
-													}
-											}
-									}
+		PUTBITS2((uint32_t )pSrc[i + 0], 13)
+		if (length > 1U) {
+			PUTBITS2((uint32_t )pSrc[i + 1], 13)
+			if (length > 2U) {
+				PUTBITS2((uint32_t )pSrc[i + 2], 13)
+				if (length > 3U) {
+					PUTBITS2((uint32_t )pSrc[i + 3], 13)
+					if (length > 4U) {
+						PUTBITS2((uint32_t )pSrc[i + 4], 13)
+						if (length > 5U) {
+							PUTBITS2((uint32_t )pSrc[i + 5], 13)
+							if (length > 6U) {
+								PUTBITS2((uint32_t )pSrc[i + 6], 13)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-static void tif_32sto14u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto14u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
 
-		*pDst++ = (uint8_t)(src0 >> 6);
-		*pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
-		*pDst++ = (uint8_t)(src1 >> 4);
-		*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
-		*pDst++ = (uint8_t)(src2 >> 2);
-		*pDst++ = (uint8_t)(((src2 & 0x3U) << 6) | (src3 >> 8));
-		*pDst++ = (uint8_t)(src3);
+		*pDst++ = (uint8_t) (src0 >> 6);
+		*pDst++ = (uint8_t) (((src0 & 0x3FU) << 2) | (src1 >> 12));
+		*pDst++ = (uint8_t) (src1 >> 4);
+		*pDst++ = (uint8_t) (((src1 & 0xFU) << 4) | (src2 >> 10));
+		*pDst++ = (uint8_t) (src2 >> 2);
+		*pDst++ = (uint8_t) (((src2 & 0x3U) << 6) | (src3 >> 8));
+		*pDst++ = (uint8_t) (src3);
 	}
 
 	if (length & 3U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
 		uint32_t src1 = 0U;
 		uint32_t src2 = 0U;
 		length = length & 3U;
 
 		if (length > 1U) {
-			src1 = (uint32_t)pSrc[i + 1];
+			src1 = (uint32_t) pSrc[i + 1];
 			if (length > 2U) {
-				src2 = (uint32_t)pSrc[i + 2];
+				src2 = (uint32_t) pSrc[i + 2];
 			}
 		}
-		*pDst++ = (uint8_t)(src0 >> 6);
-		*pDst++ = (uint8_t)(((src0 & 0x3FU) << 2) | (src1 >> 12));
+		*pDst++ = (uint8_t) (src0 >> 6);
+		*pDst++ = (uint8_t) (((src0 & 0x3FU) << 2) | (src1 >> 12));
 		if (length > 1U) {
-			*pDst++ = (uint8_t)(src1 >> 4);
-			*pDst++ = (uint8_t)(((src1 & 0xFU) << 4) | (src2 >> 10));
+			*pDst++ = (uint8_t) (src1 >> 4);
+			*pDst++ = (uint8_t) (((src1 & 0xFU) << 4) | (src2 >> 10));
 			if (length > 2U) {
-				*pDst++ = (uint8_t)(src2 >> 2);
-				*pDst++ = (uint8_t)(((src2 & 0x3U) << 6));
+				*pDst++ = (uint8_t) (src2 >> 2);
+				*pDst++ = (uint8_t) (((src2 & 0x3U) << 6));
 			}
 		}
 	}
 }
 
-static void tif_32sto15u(const int32_t* pSrc, uint8_t* pDst, size_t length)
-{
+static void tif_32sto15u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 	size_t i;
 
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
-		uint32_t src0 = (uint32_t)pSrc[i + 0];
-		uint32_t src1 = (uint32_t)pSrc[i + 1];
-		uint32_t src2 = (uint32_t)pSrc[i + 2];
-		uint32_t src3 = (uint32_t)pSrc[i + 3];
-		uint32_t src4 = (uint32_t)pSrc[i + 4];
-		uint32_t src5 = (uint32_t)pSrc[i + 5];
-		uint32_t src6 = (uint32_t)pSrc[i + 6];
-		uint32_t src7 = (uint32_t)pSrc[i + 7];
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
+		uint32_t src0 = (uint32_t) pSrc[i + 0];
+		uint32_t src1 = (uint32_t) pSrc[i + 1];
+		uint32_t src2 = (uint32_t) pSrc[i + 2];
+		uint32_t src3 = (uint32_t) pSrc[i + 3];
+		uint32_t src4 = (uint32_t) pSrc[i + 4];
+		uint32_t src5 = (uint32_t) pSrc[i + 5];
+		uint32_t src6 = (uint32_t) pSrc[i + 6];
+		uint32_t src7 = (uint32_t) pSrc[i + 7];
 
-		*pDst++ = (uint8_t)((src0 >> 7));
-		*pDst++ = (uint8_t)((src0 << 1) | (src1 >> 14));
-		*pDst++ = (uint8_t)((src1 >> 6));
-		*pDst++ = (uint8_t)((src1 << 2) | (src2 >> 13));
-		*pDst++ = (uint8_t)((src2 >> 5));
-		*pDst++ = (uint8_t)((src2 << 3) | (src3 >> 12));
-		*pDst++ = (uint8_t)((src3 >> 4));
-		*pDst++ = (uint8_t)((src3 << 4) | (src4 >> 11));
-		*pDst++ = (uint8_t)((src4 >> 3));
-		*pDst++ = (uint8_t)((src4 << 5) | (src5 >> 10));
-		*pDst++ = (uint8_t)((src5 >> 2));
-		*pDst++ = (uint8_t)((src5 << 6) | (src6 >> 9));
-		*pDst++ = (uint8_t)((src6 >> 1));
-		*pDst++ = (uint8_t)((src6 << 7) | (src7 >> 8));
-		*pDst++ = (uint8_t)(src7);
+		*pDst++ = (uint8_t) ((src0 >> 7));
+		*pDst++ = (uint8_t) ((src0 << 1) | (src1 >> 14));
+		*pDst++ = (uint8_t) ((src1 >> 6));
+		*pDst++ = (uint8_t) ((src1 << 2) | (src2 >> 13));
+		*pDst++ = (uint8_t) ((src2 >> 5));
+		*pDst++ = (uint8_t) ((src2 << 3) | (src3 >> 12));
+		*pDst++ = (uint8_t) ((src3 >> 4));
+		*pDst++ = (uint8_t) ((src3 << 4) | (src4 >> 11));
+		*pDst++ = (uint8_t) ((src4 >> 3));
+		*pDst++ = (uint8_t) ((src4 << 5) | (src5 >> 10));
+		*pDst++ = (uint8_t) ((src5 >> 2));
+		*pDst++ = (uint8_t) ((src5 << 6) | (src6 >> 9));
+		*pDst++ = (uint8_t) ((src6 >> 1));
+		*pDst++ = (uint8_t) ((src6 << 7) | (src7 >> 8));
+		*pDst++ = (uint8_t) (src7);
 	}
 
 	if (length & 7U) {
 		uint32_t trailing = 0U;
 		int remaining = 8U;
 		length &= 7U;
-		PUTBITS2((uint32_t)pSrc[i + 0], 15)
-			if (length > 1U) {
-				PUTBITS2((uint32_t)pSrc[i + 1], 15)
-					if (length > 2U) {
-						PUTBITS2((uint32_t)pSrc[i + 2], 15)
-							if (length > 3U) {
-								PUTBITS2((uint32_t)pSrc[i + 3], 15)
-									if (length > 4U) {
-										PUTBITS2((uint32_t)pSrc[i + 4], 15)
-											if (length > 5U) {
-												PUTBITS2((uint32_t)pSrc[i + 5], 15)
-													if (length > 6U) {
-														PUTBITS2((uint32_t)pSrc[i + 6], 15)
-													}
-											}
-									}
+		PUTBITS2((uint32_t )pSrc[i + 0], 15)
+		if (length > 1U) {
+			PUTBITS2((uint32_t )pSrc[i + 1], 15)
+			if (length > 2U) {
+				PUTBITS2((uint32_t )pSrc[i + 2], 15)
+				if (length > 3U) {
+					PUTBITS2((uint32_t )pSrc[i + 3], 15)
+					if (length > 4U) {
+						PUTBITS2((uint32_t )pSrc[i + 4], 15)
+						if (length > 5U) {
+							PUTBITS2((uint32_t )pSrc[i + 5], 15)
+							if (length > 6U) {
+								PUTBITS2((uint32_t )pSrc[i + 6], 15)
 							}
+						}
 					}
+				}
 			}
+		}
 		FLUSHBITS()
 	}
 }
 
-static void tif_32sto16u(const int32_t* pSrc, uint16_t* pDst, size_t length)
-{
+static void tif_32sto16u(const int32_t *pSrc, uint16_t *pDst, size_t length) {
 	size_t i;
 	for (i = 0; i < length; ++i) {
-		pDst[i] = (uint16_t)pSrc[i];
+		pDst[i] = (uint16_t) pSrc[i];
 	}
 }
 
-
-static void tif_3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 >> 5)), INV_MASK_3, invert);
-		pDst[i + 1] = INV((int32_t)(((val0 & 0x1FU) >> 2)), INV_MASK_3, invert);
-		pDst[i + 2] = INV((int32_t)(((val0 & 0x3U) << 1) | (val1 >> 7)), INV_MASK_3, invert);
-		pDst[i + 3] = INV((int32_t)(((val1 & 0x7FU) >> 4)), INV_MASK_3, invert);
-		pDst[i + 4] = INV((int32_t)(((val1 & 0xFU) >> 1)), INV_MASK_3, invert);
-		pDst[i + 5] = INV((int32_t)(((val1 & 0x1U) << 2) | (val2 >> 6)), INV_MASK_3, invert);
-		pDst[i + 6] = INV((int32_t)(((val2 & 0x3FU) >> 3)), INV_MASK_3, invert);
-		pDst[i + 7] = INV((int32_t)(((val2 & 0x7U))), INV_MASK_3, invert);
+		pDst[i + 0] = INV((int32_t )((val0 >> 5)), INV_MASK_3, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x1FU) >> 2)), INV_MASK_3,
+				invert);
+		pDst[i + 2] = INV((int32_t )(((val0 & 0x3U) << 1) | (val1 >> 7)),
+				INV_MASK_3, invert);
+		pDst[i + 3] = INV((int32_t )(((val1 & 0x7FU) >> 4)), INV_MASK_3,
+				invert);
+		pDst[i + 4] = INV((int32_t )(((val1 & 0xFU) >> 1)), INV_MASK_3, invert);
+		pDst[i + 5] = INV((int32_t )(((val1 & 0x1U) << 2) | (val2 >> 6)),
+				INV_MASK_3, invert);
+		pDst[i + 6] = INV((int32_t )(((val2 & 0x3FU) >> 3)), INV_MASK_3,
+				invert);
+		pDst[i + 7] = INV((int32_t )(((val2 & 0x7U))), INV_MASK_3, invert);
 
 	}
 	if (length & 7U) {
@@ -662,44 +643,50 @@ static void tif_3uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		GETBITS(pDst[i + 0], 3, INV_MASK_3, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 3, INV_MASK_3, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 3, INV_MASK_3, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 3, INV_MASK_3, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 3, INV_MASK_3, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 3, INV_MASK_3, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 3, INV_MASK_3, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 3, INV_MASK_3, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 3, INV_MASK_3, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 3, INV_MASK_3, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 3, INV_MASK_3, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 3, INV_MASK_3, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 3, INV_MASK_3, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
-static void tif_5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_5uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
 		uint32_t val3 = *pSrc++;
 		uint32_t val4 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 >> 3)), INV_MASK_5, invert);
-		pDst[i + 1] = INV((int32_t)(((val0 & 0x7U) << 2) | (val1 >> 6)), INV_MASK_5, invert);
-		pDst[i + 2] = INV((int32_t)(((val1 & 0x3FU) >> 1)), INV_MASK_5, invert);
-		pDst[i + 3] = INV((int32_t)(((val1 & 0x1U) << 4) | (val2 >> 4)), INV_MASK_5, invert);
-		pDst[i + 4] = INV((int32_t)(((val2 & 0xFU) << 1) | (val3 >> 7)), INV_MASK_5, invert);
-		pDst[i + 5] = INV((int32_t)(((val3 & 0x7FU) >> 2)), INV_MASK_5, invert);
-		pDst[i + 6] = INV((int32_t)(((val3 & 0x3U) << 3) | (val4 >> 5)), INV_MASK_5, invert);
-		pDst[i + 7] = INV((int32_t)(((val4 & 0x1FU))), INV_MASK_5, invert);
+		pDst[i + 0] = INV((int32_t )((val0 >> 3)), INV_MASK_5, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x7U) << 2) | (val1 >> 6)),
+				INV_MASK_5, invert);
+		pDst[i + 2] = INV((int32_t )(((val1 & 0x3FU) >> 1)), INV_MASK_5,
+				invert);
+		pDst[i + 3] = INV((int32_t )(((val1 & 0x1U) << 4) | (val2 >> 4)),
+				INV_MASK_5, invert);
+		pDst[i + 4] = INV((int32_t )(((val2 & 0xFU) << 1) | (val3 >> 7)),
+				INV_MASK_5, invert);
+		pDst[i + 5] = INV((int32_t )(((val3 & 0x7FU) >> 2)), INV_MASK_5,
+				invert);
+		pDst[i + 6] = INV((int32_t )(((val3 & 0x3U) << 3) | (val4 >> 5)),
+				INV_MASK_5, invert);
+		pDst[i + 7] = INV((int32_t )(((val4 & 0x1FU))), INV_MASK_5, invert);
 
 	}
 	if (length & 7U) {
@@ -710,30 +697,30 @@ static void tif_5uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		GETBITS(pDst[i + 0], 5, INV_MASK_5, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 5, INV_MASK_5, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 5, INV_MASK_5, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 5, INV_MASK_5, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 5, INV_MASK_5, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 5, INV_MASK_5, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 5, INV_MASK_5, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 5, INV_MASK_5, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 5, INV_MASK_5, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 5, INV_MASK_5, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 5, INV_MASK_5, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 5, INV_MASK_5, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 5, INV_MASK_5, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
-static void tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_7uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -742,14 +729,20 @@ static void tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 		uint32_t val5 = *pSrc++;
 		uint32_t val6 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 >> 1)), INV_MASK_7, invert);
-		pDst[i + 1] = INV((int32_t)(((val0 & 0x1U) << 6) | (val1 >> 2)), INV_MASK_7, invert);
-		pDst[i + 2] = INV((int32_t)(((val1 & 0x3U) << 5) | (val2 >> 3)), INV_MASK_7, invert);
-		pDst[i + 3] = INV((int32_t)(((val2 & 0x7U) << 4) | (val3 >> 4)), INV_MASK_7, invert);
-		pDst[i + 4] = INV((int32_t)(((val3 & 0xFU) << 3) | (val4 >> 5)), INV_MASK_7, invert);
-		pDst[i + 5] = INV((int32_t)(((val4 & 0x1FU) << 2) | (val5 >> 6)), INV_MASK_7, invert);
-		pDst[i + 6] = INV((int32_t)(((val5 & 0x3FU) << 1) | (val6 >> 7)), INV_MASK_7, invert);
-		pDst[i + 7] = INV((int32_t)(((val6 & 0x7FU))), INV_MASK_7, invert);
+		pDst[i + 0] = INV((int32_t )((val0 >> 1)), INV_MASK_7, invert);
+		pDst[i + 1] = INV((int32_t )(((val0 & 0x1U) << 6) | (val1 >> 2)),
+				INV_MASK_7, invert);
+		pDst[i + 2] = INV((int32_t )(((val1 & 0x3U) << 5) | (val2 >> 3)),
+				INV_MASK_7, invert);
+		pDst[i + 3] = INV((int32_t )(((val2 & 0x7U) << 4) | (val3 >> 4)),
+				INV_MASK_7, invert);
+		pDst[i + 4] = INV((int32_t )(((val3 & 0xFU) << 3) | (val4 >> 5)),
+				INV_MASK_7, invert);
+		pDst[i + 5] = INV((int32_t )(((val4 & 0x1FU) << 2) | (val5 >> 6)),
+				INV_MASK_7, invert);
+		pDst[i + 6] = INV((int32_t )(((val5 & 0x3FU) << 1) | (val6 >> 7)),
+				INV_MASK_7, invert);
+		pDst[i + 7] = INV((int32_t )(((val6 & 0x7FU))), INV_MASK_7, invert);
 
 	}
 	if (length & 7U) {
@@ -760,30 +753,30 @@ static void tif_7uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		GETBITS(pDst[i + 0], 7, INV_MASK_7, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 7, INV_MASK_7, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 7, INV_MASK_7, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 7, INV_MASK_7, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 7, INV_MASK_7, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 7, INV_MASK_7, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 7, INV_MASK_7, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 7, INV_MASK_7, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 7, INV_MASK_7, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 7, INV_MASK_7, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 7, INV_MASK_7, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 7, INV_MASK_7, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 7, INV_MASK_7, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
-static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_9uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -794,14 +787,22 @@ static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 		uint32_t val7 = *pSrc++;
 		uint32_t val8 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 1) | (val1 >> 7)), INV_MASK_9, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x7FU) << 2) | (val2 >> 6)), INV_MASK_9, invert);
-		pDst[i + 2] = INV((int32_t)(((val2 & 0x3FU) << 3) | (val3 >> 5)), INV_MASK_9, invert);
-		pDst[i + 3] = INV((int32_t)(((val3 & 0x1FU) << 4) | (val4 >> 4)), INV_MASK_9, invert);
-		pDst[i + 4] = INV((int32_t)(((val4 & 0xFU) << 5) | (val5 >> 3)), INV_MASK_9, invert);
-		pDst[i + 5] = INV((int32_t)(((val5 & 0x7U) << 6) | (val6 >> 2)), INV_MASK_9, invert);
-		pDst[i + 6] = INV((int32_t)(((val6 & 0x3U) << 7) | (val7 >> 1)), INV_MASK_9, invert);
-		pDst[i + 7] = INV((int32_t)(((val7 & 0x1U) << 8) | (val8)), INV_MASK_9, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 1) | (val1 >> 7)), INV_MASK_9,
+				invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x7FU) << 2) | (val2 >> 6)),
+				INV_MASK_9, invert);
+		pDst[i + 2] = INV((int32_t )(((val2 & 0x3FU) << 3) | (val3 >> 5)),
+				INV_MASK_9, invert);
+		pDst[i + 3] = INV((int32_t )(((val3 & 0x1FU) << 4) | (val4 >> 4)),
+				INV_MASK_9, invert);
+		pDst[i + 4] = INV((int32_t )(((val4 & 0xFU) << 5) | (val5 >> 3)),
+				INV_MASK_9, invert);
+		pDst[i + 5] = INV((int32_t )(((val5 & 0x7U) << 6) | (val6 >> 2)),
+				INV_MASK_9, invert);
+		pDst[i + 6] = INV((int32_t )(((val6 & 0x3U) << 7) | (val7 >> 1)),
+				INV_MASK_9, invert);
+		pDst[i + 7] = INV((int32_t )(((val7 & 0x1U) << 8) | (val8)), INV_MASK_9,
+				invert);
 
 	}
 	if (length & 7U) {
@@ -812,66 +813,72 @@ static void tif_9uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool 
 
 		GETBITS(pDst[i + 0], 9, INV_MASK_9, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 9, INV_MASK_9, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 9, INV_MASK_9, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 9, INV_MASK_9, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 9, INV_MASK_9, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 9, INV_MASK_9, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 9, INV_MASK_9, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 9, INV_MASK_9, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 9, INV_MASK_9, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 9, INV_MASK_9, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 9, INV_MASK_9, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 9, INV_MASK_9, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 9, INV_MASK_9, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
 
-
-
-static void tif_10uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_10uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
 		uint32_t val3 = *pSrc++;
 		uint32_t val4 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
-		pDst[i + 2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
-		pDst[i + 3] = INV((int32_t)(((val3 & 0x3U) << 8) | val4), INV_MASK_10, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 2) | (val1 >> 6)), INV_MASK_10,
+				invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x3FU) << 4) | (val2 >> 4)),
+				INV_MASK_10, invert);
+		pDst[i + 2] = INV((int32_t )(((val2 & 0xFU) << 6) | (val3 >> 2)),
+				INV_MASK_10, invert);
+		pDst[i + 3] = INV((int32_t )(((val3 & 0x3U) << 8) | val4), INV_MASK_10,
+				invert);
 
 	}
 	if (length & 3U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		length = length & 3U;
-		pDst[i + 0] = INV((int32_t)((val0 << 2) | (val1 >> 6)), INV_MASK_10, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 2) | (val1 >> 6)), INV_MASK_10,
+				invert);
 
 		if (length > 1U) {
 			uint32_t val2 = *pSrc++;
-			pDst[i + 1] = INV((int32_t)(((val1 & 0x3FU) << 4) | (val2 >> 4)), INV_MASK_10, invert);
+			pDst[i + 1] = INV((int32_t )(((val1 & 0x3FU) << 4) | (val2 >> 4)),
+					INV_MASK_10, invert);
 			if (length > 2U) {
 				uint32_t val3 = *pSrc++;
-				pDst[i + 2] = INV((int32_t)(((val2 & 0xFU) << 6) | (val3 >> 2)), INV_MASK_10, invert);
+				pDst[i + 2] = INV(
+						(int32_t )(((val2 & 0xFU) << 6) | (val3 >> 2)),
+						INV_MASK_10, invert);
 			}
 		}
 	}
 }
 
-static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_11uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -884,14 +891,24 @@ static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 		uint32_t val9 = *pSrc++;
 		uint32_t val10 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 3) | (val1 >> 5)), INV_MASK_11, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x1FU) << 6) | (val2 >> 2)), INV_MASK_11, invert);
-		pDst[i + 2] = INV((int32_t)(((val2 & 0x3U) << 9) | (val3 << 1) | (val4 >> 7)), INV_MASK_11, invert);
-		pDst[i + 3] = INV((int32_t)(((val4 & 0x7FU) << 4) | (val5 >> 4)), INV_MASK_11, invert);
-		pDst[i + 4] = INV((int32_t)(((val5 & 0xFU) << 7) | (val6 >> 1)), INV_MASK_11, invert);
-		pDst[i + 5] = INV((int32_t)(((val6 & 0x1U) << 10) | (val7 << 2) | (val8 >> 6)), INV_MASK_11, invert);
-		pDst[i + 6] = INV((int32_t)(((val8 & 0x3FU) << 5) | (val9 >> 3)), INV_MASK_11, invert);
-		pDst[i + 7] = INV((int32_t)(((val9 & 0x7U) << 8) | (val10)), INV_MASK_11, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 3) | (val1 >> 5)), INV_MASK_11,
+				invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0x1FU) << 6) | (val2 >> 2)),
+				INV_MASK_11, invert);
+		pDst[i + 2] = INV(
+				(int32_t )(((val2 & 0x3U) << 9) | (val3 << 1) | (val4 >> 7)),
+				INV_MASK_11, invert);
+		pDst[i + 3] = INV((int32_t )(((val4 & 0x7FU) << 4) | (val5 >> 4)),
+				INV_MASK_11, invert);
+		pDst[i + 4] = INV((int32_t )(((val5 & 0xFU) << 7) | (val6 >> 1)),
+				INV_MASK_11, invert);
+		pDst[i + 5] = INV(
+				(int32_t )(((val6 & 0x1U) << 10) | (val7 << 2) | (val8 >> 6)),
+				INV_MASK_11, invert);
+		pDst[i + 6] = INV((int32_t )(((val8 & 0x3FU) << 5) | (val9 >> 3)),
+				INV_MASK_11, invert);
+		pDst[i + 7] = INV((int32_t )(((val9 & 0x7U) << 8) | (val10)),
+				INV_MASK_11, invert);
 
 	}
 	if (length & 7U) {
@@ -902,48 +919,51 @@ static void tif_11uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 
 		GETBITS(pDst[i + 0], 11, INV_MASK_11, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 11, INV_MASK_11, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 11, INV_MASK_11, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 11, INV_MASK_11, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 11, INV_MASK_11, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 11, INV_MASK_11, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 11, INV_MASK_11, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 11, INV_MASK_11, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 11, INV_MASK_11, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 11, INV_MASK_11, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 11, INV_MASK_11, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 11, INV_MASK_11, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 11, INV_MASK_11, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
-static void tif_12uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_12uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)1U); i += 2U) {
+	for (i = 0; i < (length & ~(size_t) 1U); i += 2U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0xFU) << 8) | val2), INV_MASK_12, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 4) | (val1 >> 4)), INV_MASK_12,
+				invert);
+		pDst[i + 1] = INV((int32_t )(((val1 & 0xFU) << 8) | val2), INV_MASK_12,
+				invert);
 	}
 	if (length & 1U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
-		pDst[i + 0] = INV((int32_t)((val0 << 4) | (val1 >> 4)), INV_MASK_12, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 4) | (val1 >> 4)), INV_MASK_12,
+				invert);
 	}
 }
 
-static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_13uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -958,14 +978,26 @@ static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 		uint32_t val11 = *pSrc++;
 		uint32_t val12 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 5) | (val1 >> 3)), INV_MASK_13, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x7U) << 10) | (val2 << 2) | (val3 >> 6)), INV_MASK_13, invert);
-		pDst[i + 2] = INV((int32_t)(((val3 & 0x3FU) << 7) | (val4 >> 1)), INV_MASK_13, invert);
-		pDst[i + 3] = INV((int32_t)(((val4 & 0x1U) << 12) | (val5 << 4) | (val6 >> 4)), INV_MASK_13, invert);
-		pDst[i + 4] = INV((int32_t)(((val6 & 0xFU) << 9) | (val7 << 1) | (val8 >> 7)), INV_MASK_13, invert);
-		pDst[i + 5] = INV((int32_t)(((val8 & 0x7FU) << 6) | (val9 >> 2)), INV_MASK_13, invert);
-		pDst[i + 6] = INV((int32_t)(((val9 & 0x3U) << 11) | (val10 << 3) | (val11 >> 5)), INV_MASK_13, invert);
-		pDst[i + 7] = INV((int32_t)(((val11 & 0x1FU) << 8) | (val12)), INV_MASK_13, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 5) | (val1 >> 3)), INV_MASK_13,
+				invert);
+		pDst[i + 1] = INV(
+				(int32_t )(((val1 & 0x7U) << 10) | (val2 << 2) | (val3 >> 6)),
+				INV_MASK_13, invert);
+		pDst[i + 2] = INV((int32_t )(((val3 & 0x3FU) << 7) | (val4 >> 1)),
+				INV_MASK_13, invert);
+		pDst[i + 3] = INV(
+				(int32_t )(((val4 & 0x1U) << 12) | (val5 << 4) | (val6 >> 4)),
+				INV_MASK_13, invert);
+		pDst[i + 4] = INV(
+				(int32_t )(((val6 & 0xFU) << 9) | (val7 << 1) | (val8 >> 7)),
+				INV_MASK_13, invert);
+		pDst[i + 5] = INV((int32_t )(((val8 & 0x7FU) << 6) | (val9 >> 2)),
+				INV_MASK_13, invert);
+		pDst[i + 6] = INV(
+				(int32_t )(((val9 & 0x3U) << 11) | (val10 << 3) | (val11 >> 5)),
+				INV_MASK_13, invert);
+		pDst[i + 7] = INV((int32_t )(((val11 & 0x1FU) << 8) | (val12)),
+				INV_MASK_13, invert);
 
 	}
 	if (length & 7U) {
@@ -976,31 +1008,31 @@ static void tif_13uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 
 		GETBITS(pDst[i + 0], 13, INV_MASK_13, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 13, INV_MASK_13, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 13, INV_MASK_13, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 13, INV_MASK_13, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 13, INV_MASK_13, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 13, INV_MASK_13, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 13, INV_MASK_13, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 13, INV_MASK_13, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 13, INV_MASK_13, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 13, INV_MASK_13, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 13, INV_MASK_13, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 13, INV_MASK_13, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 13, INV_MASK_13, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
 
-static void tif_14uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_14uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)3U); i += 4U) {
+	for (i = 0; i < (length & ~(size_t) 3U); i += 4U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1009,35 +1041,46 @@ static void tif_14uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 		uint32_t val5 = *pSrc++;
 		uint32_t val6 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 6) | (val1 >> 2)), INV_MASK_14, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
-		pDst[i + 2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
-		pDst[i + 3] = INV((int32_t)(((val5 & 0x3FU) << 8) | val6), INV_MASK_14, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 6) | (val1 >> 2)), INV_MASK_14,
+				invert);
+		pDst[i + 1] = INV(
+				(int32_t )(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)),
+				INV_MASK_14, invert);
+		pDst[i + 2] = INV(
+				(int32_t )(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)),
+				INV_MASK_14, invert);
+		pDst[i + 3] = INV((int32_t )(((val5 & 0x3FU) << 8) | val6), INV_MASK_14,
+				invert);
 
 	}
 	if (length & 3U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		length = length & 3U;
-		pDst[i + 0] = (int32_t)((val0 << 6) | (val1 >> 2));
+		pDst[i + 0] = (int32_t) ((val0 << 6) | (val1 >> 2));
 
 		if (length > 1U) {
 			uint32_t val2 = *pSrc++;
 			uint32_t val3 = *pSrc++;
-			pDst[i + 1] = INV((int32_t)(((val1 & 0x3U) << 12) | (val2 << 4) | (val3 >> 4)), INV_MASK_14, invert);
+			pDst[i + 1] =
+					INV(
+							(int32_t )(((val1 & 0x3U) << 12) | (val2 << 4)
+									| (val3 >> 4)), INV_MASK_14, invert);
 			if (length > 2U) {
 				uint32_t val4 = *pSrc++;
 				uint32_t val5 = *pSrc++;
-				pDst[i + 2] = INV((int32_t)(((val3 & 0xFU) << 10) | (val4 << 2) | (val5 >> 6)), INV_MASK_14, invert);
+				pDst[i + 2] = INV(
+						(int32_t )(((val3 & 0xFU) << 10) | (val4 << 2)
+								| (val5 >> 6)), INV_MASK_14, invert);
 			}
 		}
 	}
 }
 
-static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
-	for (i = 0; i < (length & ~(size_t)7U); i += 8U) {
+	for (i = 0; i < (length & ~(size_t) 7U); i += 8U) {
 		uint32_t val0 = *pSrc++;
 		uint32_t val1 = *pSrc++;
 		uint32_t val2 = *pSrc++;
@@ -1054,14 +1097,30 @@ static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 		uint32_t val13 = *pSrc++;
 		uint32_t val14 = *pSrc++;
 
-		pDst[i + 0] = INV((int32_t)((val0 << 7) | (val1 >> 1)), (1 << 15) - 1, invert);
-		pDst[i + 1] = INV((int32_t)(((val1 & 0x1U) << 14) | (val2 << 6) | (val3 >> 2)), INV_MASK_15, invert);
-		pDst[i + 2] = INV((int32_t)(((val3 & 0x3U) << 13) | (val4 << 5) | (val5 >> 3)), INV_MASK_15, invert);
-		pDst[i + 3] = INV((int32_t)(((val5 & 0x7U) << 12) | (val6 << 4) | (val7 >> 4)), INV_MASK_15, invert);
-		pDst[i + 4] = INV((int32_t)(((val7 & 0xFU) << 11) | (val8 << 3) | (val9 >> 5)), INV_MASK_15, invert);
-		pDst[i + 5] = INV((int32_t)(((val9 & 0x1FU) << 10) | (val10 << 2) | (val11 >> 6)), INV_MASK_15, invert);
-		pDst[i + 6] = INV((int32_t)(((val11 & 0x3FU) << 9) | (val12 << 1) | (val13 >> 7)), INV_MASK_15, invert);
-		pDst[i + 7] = INV((int32_t)(((val13 & 0x7FU) << 8) | (val14)), INV_MASK_15, invert);
+		pDst[i + 0] = INV((int32_t )((val0 << 7) | (val1 >> 1)), (1 << 15) - 1,
+				invert);
+		pDst[i + 1] = INV(
+				(int32_t )(((val1 & 0x1U) << 14) | (val2 << 6) | (val3 >> 2)),
+				INV_MASK_15, invert);
+		pDst[i + 2] = INV(
+				(int32_t )(((val3 & 0x3U) << 13) | (val4 << 5) | (val5 >> 3)),
+				INV_MASK_15, invert);
+		pDst[i + 3] = INV(
+				(int32_t )(((val5 & 0x7U) << 12) | (val6 << 4) | (val7 >> 4)),
+				INV_MASK_15, invert);
+		pDst[i + 4] = INV(
+				(int32_t )(((val7 & 0xFU) << 11) | (val8 << 3) | (val9 >> 5)),
+				INV_MASK_15, invert);
+		pDst[i + 5] =
+				INV(
+						(int32_t )(((val9 & 0x1FU) << 10) | (val10 << 2)
+								| (val11 >> 6)), INV_MASK_15, invert);
+		pDst[i + 6] =
+				INV(
+						(int32_t )(((val11 & 0x3FU) << 9) | (val12 << 1)
+								| (val13 >> 7)), INV_MASK_15, invert);
+		pDst[i + 7] = INV((int32_t )(((val13 & 0x7FU) << 8) | (val14)),
+				INV_MASK_15, invert);
 
 	}
 	if (length & 7U) {
@@ -1072,37 +1131,37 @@ static void tif_15uto32s(const uint8_t* pSrc, int32_t* pDst, size_t length, bool
 
 		GETBITS(pDst[i + 0], 15, INV_MASK_15, invert)
 
-			if (length > 1U) {
-				GETBITS(pDst[i + 1], 15, INV_MASK_15, invert)
-					if (length > 2U) {
-						GETBITS(pDst[i + 2], 15, INV_MASK_15, invert)
-							if (length > 3U) {
-								GETBITS(pDst[i + 3], 15, INV_MASK_15, invert)
-									if (length > 4U) {
-										GETBITS(pDst[i + 4], 15, INV_MASK_15, invert)
-											if (length > 5U) {
-												GETBITS(pDst[i + 5], 15, INV_MASK_15, invert)
-													if (length > 6U) {
-														GETBITS(pDst[i + 6], 15, INV_MASK_15, invert)
-													}
-											}
-									}
+		if (length > 1U) {
+			GETBITS(pDst[i + 1], 15, INV_MASK_15, invert)
+			if (length > 2U) {
+				GETBITS(pDst[i + 2], 15, INV_MASK_15, invert)
+				if (length > 3U) {
+					GETBITS(pDst[i + 3], 15, INV_MASK_15, invert)
+					if (length > 4U) {
+						GETBITS(pDst[i + 4], 15, INV_MASK_15, invert)
+						if (length > 5U) {
+							GETBITS(pDst[i + 5], 15, INV_MASK_15, invert)
+							if (length > 6U) {
+								GETBITS(pDst[i + 6], 15, INV_MASK_15, invert)
 							}
+						}
 					}
+				}
 			}
+		}
 	}
 }
 
 /* seems that libtiff decodes this to machine endianness */
-static void tif_16uto32s(const uint16_t* pSrc, int32_t* pDst, size_t length, bool invert)
-{
+static void tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
+		bool invert) {
 	size_t i;
 	for (i = 0; i < length; i++) {
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
 	}
 }
 
-static void set_resolution(double* res, float resx, float resy, short resUnit) {
+static void set_resolution(double *res, float resx, float resy, short resUnit) {
 	// resolution is in pels / metre
 	res[0] = resx;
 	res[1] = resy;
@@ -1124,18 +1183,19 @@ static void set_resolution(double* res, float resx, float resy, short resUnit) {
 }
 
 /*
-* libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
-* CINEMA                 : 12 bit precision
-*/
-static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *parameters)
-{
+ * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
+ * CINEMA                 : 12 bit precision
+ */
+static grk_image* tiftoimage(const char *filename,
+		grk_cparameters *parameters) {
 	TIFF *tif;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
 	uint32_t subsampling_dy = parameters->subsampling_dy;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	 grk_image_cmptparm  cmptparm[4];
+	grk_image_cmptparm cmptparm[4];
 	grk_image *image = nullptr;
-	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC = 0;
+	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC =
+			0;
 	bool hasTiSf = false;
 	short tiResUnit = 0;
 	float tiXRes = 0, tiYRes = 0;
@@ -1156,18 +1216,18 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
 	TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
 	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	hasTiSf =TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
+	hasTiSf = TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
 	uint32_t numcomps = 0;
 	uint32_t icclen = 0;
-	uint8_t* iccbuf = nullptr;
+	uint8_t *iccbuf = nullptr;
 	uint8_t *iptc_buf = nullptr;
 	uint32_t iptc_len = 0;
 	uint8_t *xmp_buf = nullptr;
 	uint32_t xmp_len = 0;
-	uint16* sampleinfo = nullptr;
+	uint16 *sampleinfo = nullptr;
 	uint16 extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
@@ -1175,59 +1235,57 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	// 1. sanity checks
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
 		spdlog::error("tiftoimage: Unsupported sample format {}\n"
-			"\tAborting.\n", tiSf);
+				"\tAborting.\n", tiSf);
 		success = false;
 		goto cleanup;
 	}
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
 		spdlog::error("tiftoimage: Bad value for samples per pixel == %hu.\n"
-			"\tAborting.\n", tiSpp);
+				"\tAborting.\n", tiSpp);
 		success = false;
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
 		spdlog::error("tiftoimage: Bad values for Bits == {}.\n"
-			"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
+				"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
 		success = false;
 		goto cleanup;
 	}
-	if (tiPhoto != PHOTOMETRIC_MINISBLACK &&
-			tiPhoto != PHOTOMETRIC_MINISWHITE &&
-			tiPhoto != PHOTOMETRIC_RGB &&
-			tiPhoto != PHOTOMETRIC_ICCLAB &&
-			tiPhoto != PHOTOMETRIC_CIELAB) {
+	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
+			&& tiPhoto != PHOTOMETRIC_RGB && tiPhoto != PHOTOMETRIC_ICCLAB
+			&& tiPhoto != PHOTOMETRIC_CIELAB) {
 		spdlog::error("tiftoimage: Bad color format {}.\n"
-			"\tOnly RGB(A) and GRAY(A) has been implemented\n", (int)tiPhoto);
+				"\tOnly RGB(A) and GRAY(A) has been implemented\n",
+				(int) tiPhoto);
 		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
 	}
 	if (tiWidth == 0 || tiHeight == 0) {
 		spdlog::error("tiftoimage: Bad values for width(%u) "
-			"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
+				"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
 		success = false;
 		goto cleanup;
 
 	}
-	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES,&extrasamples, &sampleinfo);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_EXTRASAMPLES, &extrasamples,
+			&sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, 4 * sizeof( grk_image_cmptparm) );
+	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
 			spdlog::warn("Input image bitdepth is {} bits\n"
-				"TIF conversion has automatically rescaled to 12-bits\n"
-				"to comply with cinema profiles.\n",
-				tiBps);
-	}
-	else {
+					"TIF conversion has automatically rescaled to 12-bits\n"
+					"to comply with cinema profiles.\n", tiBps);
+	} else {
 		is_cinema = 0U;
 	}
 	numcomps = extrasamples;
-	switch (tiPhoto){
+	switch (tiPhoto) {
 	case PHOTOMETRIC_RGB:
 		color_space = GRK_CLRSPC_SRGB;
-		numcomps+=3;
+		numcomps += 3;
 		break;
 	case PHOTOMETRIC_MINISBLACK:
 	case PHOTOMETRIC_MINISWHITE:
@@ -1238,38 +1296,42 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	case PHOTOMETRIC_ICCLAB:
 		isCIE = true;
 		color_space = GRK_CLRSPC_DEFAULT_CIE;
-		numcomps+=3;
-		if (tiSpp != 3){
+		numcomps += 3;
+		if (tiSpp != 3) {
 			if (parameters->verbose)
-				spdlog::warn("Input image is in CIE colour space but samples per pixel = {}\n",
-					tiSpp);
+				spdlog::warn(
+						"Input image is in CIE colour space but samples per pixel = {}\n",
+						tiSpp);
 		}
 		break;
 	default:
 		break;
 	}
-	if (numcomps == 0){
+	if (numcomps == 0) {
 		success = false;
 		goto cleanup;
 	}
 
-	if (tiPhoto == PHOTOMETRIC_CIELAB){
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)){
+	if (tiPhoto == PHOTOMETRIC_CIELAB) {
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
 			if (parameters->verbose)
-				spdlog::warn("Input image is in CIE colour space but sample format is unsigned int");
+				spdlog::warn(
+						"Input image is in CIE colour space but sample format is unsigned int");
 		}
 		isSigned = true;
-	} else if (tiPhoto == PHOTOMETRIC_ICCLAB){
-		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)){
+	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
+		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
 			if (parameters->verbose)
-				spdlog::warn("Input image is in ICC CIE colour space but sample format is signed int");
+				spdlog::warn(
+						"Input image is in ICC CIE colour space but sample format is signed int");
 		}
 		isSigned = false;
 	}
 
 	if (isSigned) {
-		if (PHOTOMETRIC_MINISWHITE || tiBps != 8){
-			spdlog::error("tiftoimage: only non-inverted 8-bit signed images are supported");
+		if (PHOTOMETRIC_MINISWHITE || tiBps != 8) {
+			spdlog::error(
+					"tiftoimage: only non-inverted 8-bit signed images are supported");
 			success = false;
 			goto cleanup;
 		}
@@ -1290,35 +1352,40 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	}
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
-	image->x1 = !image->x0 ? (w - 1) * subsampling_dx + 1 :
-		image->x0 + (w - 1) * subsampling_dx + 1;
+	image->x1 =
+			!image->x0 ?
+					(w - 1) * subsampling_dx + 1 :
+					image->x0 + (w - 1) * subsampling_dx + 1;
 	if (image->x1 <= image->x0) {
 		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
-			"image->x0({})\n\tAborting.\n", image->x1, image->x0);
+				"image->x0({})\n\tAborting.\n", image->x1, image->x0);
 		success = false;
 		goto cleanup;
 	}
 	image->y0 = parameters->image_offset_y0;
-	image->y1 = !image->y0 ? (h - 1) * subsampling_dy + 1 :
-		image->y0 + (h - 1) * subsampling_dy + 1;
+	image->y1 =
+			!image->y0 ?
+					(h - 1) * subsampling_dy + 1 :
+					image->y0 + (h - 1) * subsampling_dy + 1;
 	if (image->y1 <= image->y0) {
 		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
-			"image->y0({})\n\tAborting.\n", image->y1, image->y0);
+				"image->y0({})\n\tAborting.\n", image->y1, image->y0);
 		success = false;
 		goto cleanup;
 	}
 	for (uint32_t j = 0; j < numcomps; j++) {
 		// handle alpha channel
 		auto numColourChannels = numcomps - extrasamples;
-		if (extrasamples > 0 && j >=  numColourChannels) {
+		if (extrasamples > 0 && j >= numColourChannels) {
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
-				image->comps[j].alpha = GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-			else if (alphaType== EXTRASAMPLE_UNASSALPHA)
+				image->comps[j].alpha =
+						GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+			else if (alphaType == EXTRASAMPLE_UNASSALPHA)
 				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
 			else {
 				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
-				if (numcomps == 2 || numcomps == 4){
+				if (numcomps == 2 || numcomps == 4) {
 					image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
 				}
 			}
@@ -1331,7 +1398,8 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
 	hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
 	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
-		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes, tiResUnit);
+		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes,
+				tiResUnit);
 		parameters->write_capture_resolution_from_file = true;
 		image->capture_resolution[0] = tiXRes;
 		image->capture_resolution[1] = tiYRes;
@@ -1340,19 +1408,18 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
 	// CIE and ICC
 	if (!isCIE) {
-		if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1) &&
-							icclen > 0 &&
-							icclen < grk::maxICCProfileBufferLen) {
+		if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
+				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
 			image->icc_profile_buf = grk_buffer_new(icclen);
 			memcpy(image->icc_profile_buf, iccbuf, icclen);
 			image->icc_profile_len = icclen;
 			image->color_space = GRK_CLRSPC_ICC;
 		}
 	}
-    // 7. extract IPTC meta-data
+	// 7. extract IPTC meta-data
 	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32 *)iptc_buf, iptc_len);
+			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
 		// by 4 to get the length in bytes
 		image->iptc_len = iptc_len * 4;
@@ -1368,12 +1435,15 @@ static grk_image *  tiftoimage(const char *filename,  grk_cparameters  *paramete
 
 	// 9. read pixel data
 	if (isSigned)
-		success = success && readTiffPixelsSigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
+		success = success
+				&& readTiffPixelsSigned(tif, image->comps, numcomps, tiSpp,
+						tiPC, tiPhoto);
 	else
-		success = success && readTiffPixelsUnsigned(tif,image->comps,numcomps,tiSpp,tiPC,tiPhoto);
+		success = success
+				&& readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp,
+						tiPC, tiPhoto);
 
-cleanup:
-	if (tif)
+	cleanup: if (tif)
 		TIFFClose(tif);
 	if (success) {
 		if (is_cinema) {
@@ -1389,27 +1459,22 @@ cleanup:
 	return nullptr;
 }/* tiftoimage() */
 
-
-static bool readTiffPixelsUnsigned(TIFF *tif,
-							 grk_image_comp  *comps,
-							uint32_t numcomps,
-							uint16_t tiSpp,
-							uint16_t tiPC,
-							uint16_t tiPhoto){
+static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
 	if (!tif)
 		return false;
 
 	bool success = true;
 	convert_XXx32s_C1R cvtTifTo32s = nullptr;
 	convert_32s_CXPX cvtCxToPx = nullptr;
-	int32_t* planes[4];
+	int32_t *planes[4];
 	tsize_t rowStride;
 	bool invert;
 	tdata_t buf = nullptr;
 	tstrip_t strip;
 	tsize_t strip_size;
 	uint32_t currentPlane = 0;
-	int32_t  *buffer32s = nullptr;
+	int32_t *buffer32s = nullptr;
 
 	switch (comps[0].prec) {
 	case 1:
@@ -1451,7 +1516,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		cvtTifTo32s = tif_15uto32s;
 		break;
 	case 16:
-		cvtTifTo32s = (convert_XXx32s_C1R)tif_16uto32s;
+		cvtTifTo32s = (convert_XXx32s_C1R) tif_16uto32s;
 		break;
 	default:
 		/* never here */
@@ -1470,29 +1535,31 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		goto local_cleanup;
 	}
 	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
-	buffer32s = new int32_t[(size_t)comps[0].w * tiSpp];
+	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
 	strip = 0;
 	invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
 	for (uint32_t j = 0; j < numcomps; j++) {
 		planes[j] = comps[j].data;
 	}
 	do {
-		 grk_image_comp  *comp = comps + currentPlane;
+		grk_image_comp *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = (int)comp->h;
+		uint32_t height = (int) comp->h;
 		/* Read the Image components */
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
 				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
-					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
+						"vs. strip_size(%lld).\n\tAborting.\n",
+						(long long) ssize, (long long) strip_size);
 				success = false;
 				goto local_cleanup;
 			}
-			const uint8_t *datau8 = (const uint8_t*)buf;
+			const uint8_t *datau8 = (const uint8_t*) buf;
 			while (ssize >= rowStride) {
-				cvtTifTo32s(datau8, buffer32s, (size_t)comp->w * tiSpp, invert);
-				cvtCxToPx(buffer32s, planes, (size_t)comp->w);
+				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
+						invert);
+				cvtCxToPx(buffer32s, planes, (size_t) comp->w);
 				planes[0] += comp->w;
 				planes[1] += comp->w;
 				planes[2] += comp->w;
@@ -1504,32 +1571,27 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 		}
 		currentPlane++;
 	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-local_cleanup:
-	delete[] buffer32s;
+	local_cleanup: delete[] buffer32s;
 	if (buf)
 		_TIFFfree(buf);
 	return success;
 }
 
-static bool readTiffPixelsSigned(TIFF *tif,
-							 grk_image_comp  *comps,
-							uint32_t numcomps,
-							uint16_t tiSpp,
-							uint16_t tiPC,
-							uint16_t tiPhoto){
+static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
 	if (!tif)
 		return false;
 
-	(void)tiPhoto;
+	(void) tiPhoto;
 	bool success = true;
 	convert_32s_CXPX cvtCxToPx = nullptr;
-	int32_t* planes[4];
+	int32_t *planes[4];
 	tsize_t rowStride;
 	tdata_t buf = nullptr;
 	tstrip_t strip;
 	tsize_t strip_size;
 	uint32_t currentPlane = 0;
-	int32_t  *buffer32s = nullptr;
+	int32_t *buffer32s = nullptr;
 
 	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
 	if (tiPC == PLANARCONFIG_SEPARATE) {
@@ -1544,29 +1606,30 @@ static bool readTiffPixelsSigned(TIFF *tif,
 		goto local_cleanup;
 	}
 	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
-	buffer32s = new int32_t[(size_t)comps[0].w * tiSpp];
+	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
 	strip = 0;
 	for (uint32_t j = 0; j < numcomps; j++) {
 		planes[j] = comps[j].data;
 	}
 	do {
-		 grk_image_comp  *comp = comps + currentPlane;
+		grk_image_comp *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = (int)comp->h;
+		uint32_t height = (int) comp->h;
 		/* Read the Image components */
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
 				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
-					"vs. strip_size(%lld).\n\tAborting.\n", (long long)ssize, (long long)strip_size);
+						"vs. strip_size(%lld).\n\tAborting.\n",
+						(long long) ssize, (long long) strip_size);
 				success = false;
 				goto local_cleanup;
 			}
-			const int8_t *datau8 = (const int8_t*)buf;
+			const int8_t *datau8 = (const int8_t*) buf;
 			while (ssize >= rowStride) {
-				for (size_t i=0; i < (size_t)comp->w * tiSpp; ++i)
-					buffer32s[i] =datau8[i];
-				cvtCxToPx(buffer32s, planes, (size_t)comp->w);
+				for (size_t i = 0; i < (size_t) comp->w * tiSpp; ++i)
+					buffer32s[i] = datau8[i];
+				cvtCxToPx(buffer32s, planes, (size_t) comp->w);
 				planes[0] += comp->w;
 				planes[1] += comp->w;
 				planes[2] += comp->w;
@@ -1578,22 +1641,20 @@ static bool readTiffPixelsSigned(TIFF *tif,
 		}
 		currentPlane++;
 	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-local_cleanup:
-	delete[] buffer32s;
+	local_cleanup: delete[] buffer32s;
 	if (buf)
 		_TIFFfree(buf);
 	return success;
 }
 
-
-static int imagetotif(grk_image * image, const char *outfile, uint32_t compression, bool verbose)
-{
+static int imagetotif(grk_image *image, const char *outfile,
+		uint32_t compression, bool verbose) {
 	int tiPhoto;
 	TIFF *tif = nullptr;
 	tdata_t buf = nullptr;
 	tsize_t strip_size, rowStride;
-	int32_t const* planes[4];
-	int32_t* buffer32s = nullptr;
+	int32_t const *planes[4];
+	int32_t *buffer32s = nullptr;
 	convert_32s_PXCX cvtPxToCx = nullptr;
 	convert_32sXXx_C1R cvt32sToTif = nullptr;
 	bool success = true;
@@ -1602,11 +1663,14 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
-	int32_t adjust = (image->comps[0].sgnd && image->comps[0].prec < 8) ? 1 << (image->comps[0].prec - 1) : 0;
+	int32_t adjust =
+			(image->comps[0].sgnd && image->comps[0].prec < 8) ?
+					1 << (image->comps[0].prec - 1) : 0;
 
 	if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
-			spdlog::error("imagetotif: CMYK images shall be composed of at least 4 planes.");
+			spdlog::error(
+					"imagetotif: CMYK images shall be composed of at least 4 planes.");
 			spdlog::error("\tAborting");
 			return 1;
 		}
@@ -1614,23 +1678,22 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		if (numcomps > 4U) {
 			if (verbose)
 				spdlog::warn("imagetotif: number of components {} is "
-					"greater than 4. Truncating to 4", numcomps);
+						"greater than 4. Truncating to 4", numcomps);
 			numcomps = 4U;
 		}
-	}
-	else if (numcomps > 2U) {
+	} else if (numcomps > 2U) {
 		tiPhoto = PHOTOMETRIC_RGB;
 		if (numcomps > 4U) {
 			if (verbose)
 				spdlog::warn("imagetotif: number of components {} is "
-					"greater than 4. Truncating to 4", numcomps);
+						"greater than 4. Truncating to 4", numcomps);
 			numcomps = 4U;
 		}
-	}
-	else {
+	} else {
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
-	if (image->color_space == GRK_CLRSPC_DEFAULT_CIE || image->color_space == GRK_CLRSPC_CUSTOM_CIE)
+	if (image->color_space == GRK_CLRSPC_DEFAULT_CIE
+			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE)
 		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
 
 	uint32_t width = image->comps[0].w;
@@ -1649,7 +1712,7 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		auto comp = image->comps[i];
 		if (!comp.data) {
-			spdlog::error("imagetotif: component {} is null.",i);
+			spdlog::error("imagetotif: component {} is null.", i);
 			spdlog::error("\tAborting");
 			success = false;
 			goto cleanup;
@@ -1668,18 +1731,19 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		planes[i] = image->comps[i].data;
 	}
 	if (i != numcomps) {
-		spdlog::error("imagetotif: All components shall have the same subsampling, same bit depth.");
+		spdlog::error(
+				"imagetotif: All components shall have the same subsampling, same bit depth.");
 		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
 	}
 
-
 	// even bits per sample
 	if (bps > 16)
 		bps = 0;
-	if (bps == 0)	{
-		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented\n", bps);
+	if (bps == 0) {
+		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented\n",
+				bps);
 		spdlog::error("\tAborting");
 		success = false;
 		goto cleanup;
@@ -1724,7 +1788,7 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		cvt32sToTif = tif_32sto15u;
 		break;
 	case 16:
-		cvt32sToTif = (convert_32sXXx_C1R)tif_32sto16u;
+		cvt32sToTif = (convert_32sXXx_C1R) tif_32sto16u;
 		break;
 	default:
 		/* never here */
@@ -1741,10 +1805,11 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	// TIFF assumes that alpha channels occur as last channels in image.
 	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
 		if (verbose)
-			spdlog::warn("TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set");
+			spdlog::warn(
+					"TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set");
 		numAlphaChannels = 0;
 	}
-	buffer32s = (int32_t *)malloc((size_t)width * numcomps * sizeof(int32_t));
+	buffer32s = (int32_t*) malloc((size_t) width * numcomps * sizeof(int32_t));
 	if (buffer32s == nullptr) {
 		success = false;
 		goto cleanup;
@@ -1759,7 +1824,8 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
-    TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
+	TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT,
+			sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
 	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
 	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
@@ -1768,13 +1834,14 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
 	if (compression == COMPRESSION_ADOBE_DEFLATE) {
 #ifdef ZIP_SUPPORT
-		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE);  // zip compression
+		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE); // zip compression
 #endif
 	}
 
 	if (image->icc_profile_buf) {
 		if (image->color_space == GRK_CLRSPC_ICC)
-			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len, image->icc_profile_buf);
+			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len,
+					image->icc_profile_buf);
 	}
 
 	if (image->xmp_buf && image->xmp_len) {
@@ -1786,10 +1853,10 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		auto iptc_len = image->iptc_len;
 
 		// length must be multiple of 4
-		uint8_t* buf = nullptr;
+		uint8_t *buf = nullptr;
 		iptc_len += (4 - (iptc_len & 0x03));
 		if (iptc_len != image->iptc_len) {
-			buf = (uint8_t*)calloc(iptc_len, 1);
+			buf = (uint8_t*) calloc(iptc_len, 1);
 			if (!buf)
 				return false;
 			memcpy(buf, image->iptc_buf, image->iptc_len);
@@ -1798,8 +1865,9 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 
 		// Tag is of type TIFF_LONG, so byte length is divided by four
 		if (TIFFIsByteSwapped(tif))
-			TIFFSwabArrayOfLong((uint32_t *)iptc_buf, iptc_len / 4);
-		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t)iptc_len / 4, (void *)iptc_buf);
+			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, iptc_len / 4);
+		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) iptc_len / 4,
+				(void*) iptc_buf);
 
 		if (buf)
 			free(buf);
@@ -1808,8 +1876,10 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
 		TIFFSetField(tif, TIFFTAG_RESOLUTIONUNIT, RESUNIT_CENTIMETER); // cm
 		for (int i = 0; i < 2; ++i) {
-			TIFFSetField(tif, TIFFTAG_XRESOLUTION, image->capture_resolution[0] / 100);
-			TIFFSetField(tif, TIFFTAG_YRESOLUTION, image->capture_resolution[1] / 100);
+			TIFFSetField(tif, TIFFTAG_XRESOLUTION,
+					image->capture_resolution[0] / 100);
+			TIFFSetField(tif, TIFFTAG_YRESOLUTION,
+					image->capture_resolution[1] / 100);
 		}
 	}
 
@@ -1818,7 +1888,9 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 		auto alphaCount = 0;
 		for (i = 0U; i < numcomps; ++i) {
 			if (image->comps[i].alpha)
-				out[alphaCount++] = (image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ? EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+				out[alphaCount++] =
+						(image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ?
+								EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
 	}
@@ -1837,18 +1909,17 @@ static int imagetotif(grk_image * image, const char *outfile, uint32_t compressi
 	}
 
 	for (i = 0; i < image->comps[0].h; ++i) {
-		cvtPxToCx(planes, buffer32s, (size_t)width,adjust);
-		cvt32sToTif(buffer32s, (uint8_t *)buf, (size_t)width * numcomps);
-		(void)TIFFWriteEncodedStrip(tif, i, (void*)buf, strip_size);
+		cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
+		cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
+		(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
 		planes[0] += width;
 		planes[1] += width;
 		planes[2] += width;
 		planes[3] += width;
 	}
 
-cleanup:
-	if (buf)
-		_TIFFfree((void*)buf);
+	cleanup: if (buf)
+		_TIFFfree((void*) buf);
 	if (tif)
 		TIFFClose(tif);
 	if (buffer32s)
@@ -1857,11 +1928,12 @@ cleanup:
 	return success ? 0 : 1;
 }/* imagetotif() */
 
-
-bool TIFFFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
+bool TIFFFormat::encode(grk_image *image, const char *filename,
+		int compressionParam, bool verbose) {
 	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
 }
-grk_image *   TIFFFormat::decode(const char* filename,  grk_cparameters  *parameters) {
+grk_image* TIFFFormat::decode(const char *filename,
+		grk_cparameters *parameters) {
 	return tiftoimage(filename, parameters);
 }
 

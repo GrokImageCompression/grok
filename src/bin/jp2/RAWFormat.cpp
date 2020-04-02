@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -62,37 +62,36 @@
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(grk_image *  image, const char* filename, int compressionParam, bool verbose) {
-	(void)compressionParam;
-	return imagetoraw(image, filename, bigEndian,verbose) ? true : false;
+bool RAWFormat::encode(grk_image *image, const char *filename,
+		int compressionParam, bool verbose) {
+	(void) compressionParam;
+	return imagetoraw(image, filename, bigEndian, verbose) ? true : false;
 }
-grk_image *  RAWFormat::decode(const char* filename,  grk_cparameters  *parameters) {
+grk_image* RAWFormat::decode(const char *filename,
+		grk_cparameters *parameters) {
 	return rawtoimage(filename, parameters, bigEndian);
 }
 
 template<typename T> static bool read(FILE *rawFile, bool big_endian,
-										int32_t* ptr,
-										uint64_t nloop){
+		int32_t *ptr, uint64_t nloop) {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
 
-	for (uint64_t i = 0; i < nloop; i+=bufSize) {
+	for (uint64_t i = 0; i < nloop; i += bufSize) {
 		size_t target = (i + bufSize > nloop) ? (nloop - i) : bufSize;
 		size_t ct = fread(buf, sizeof(T), target, rawFile);
 		if (ct != target)
 			return false;
 		T *inPtr = buf;
 		for (size_t j = 0; j < ct; j++)
-		    *(ptr++) = grk::endian<T>(*inPtr++, big_endian);
+			*(ptr++) = grk::endian<T>(*inPtr++, big_endian);
 	}
 
 	return true;
 }
 
-grk_image *  RAWFormat::rawtoimage(const char *filename,
-										 grk_cparameters  *parameters,
-										bool big_endian)
-{
+grk_image* RAWFormat::rawtoimage(const char *filename,
+		grk_cparameters *parameters, bool big_endian) {
 	bool readFromStdin = grk::useStdio(filename);
 	grk_raw_cparameters *raw_cp = &parameters->raw_cp;
 	uint32_t subsampling_dx = parameters->subsampling_dx;
@@ -101,17 +100,20 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 	FILE *f = nullptr;
 	uint32_t i, compno, numcomps, w, h;
 	GRK_COLOR_SPACE color_space;
-	 grk_image_cmptparm  *cmptparm;
-	grk_image * image = nullptr;
+	grk_image_cmptparm *cmptparm;
+	grk_image *image = nullptr;
 	unsigned short ch;
 	bool success = true;
 
 	if (!(raw_cp->width && raw_cp->height && raw_cp->numcomps && raw_cp->prec)) {
 		spdlog::error("invalid raw image parameters");
 		spdlog::error("Please use the Format option -F:");
-		spdlog::error("-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>");
-		spdlog::error("If subsampling is omitted, 1x1 is assumed for all components");
-		spdlog::error("Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
+		spdlog::error(
+				"-F <width>,<height>,<ncomp>,<bitdepth>,{s,u}@<dx1>x<dy1>:...:<dxn>x<dyn>");
+		spdlog::error(
+				"If subsampling is omitted, 1x1 is assumed for all components");
+		spdlog::error(
+				"Example: -i image.raw -o image.j2k -F 512,512,3,8,u@1x1:2x2:2x2");
 		spdlog::error("         for raw 512x512 image with 4:2:0 subsampling");
 		return nullptr;
 	}
@@ -120,8 +122,7 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 		if (!grok_set_binary_mode(stdin))
 			return nullptr;
 		f = stdin;
-	}
-	else {
+	} else {
 		f = fopen(filename, "rb");
 		if (!f) {
 			spdlog::error("Failed to open {} for reading !!\n", filename);
@@ -132,19 +133,17 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 	numcomps = raw_cp->numcomps;
 	if (numcomps == 1) {
 		color_space = GRK_CLRSPC_GRAY;
-	}
-	else if ((numcomps >= 3) && (parameters->tcp_mct == 0)) {
+	} else if ((numcomps >= 3) && (parameters->tcp_mct == 0)) {
 		color_space = GRK_CLRSPC_SYCC;
-	}
-	else if ((numcomps >= 3) && (parameters->tcp_mct != 2)) {
+	} else if ((numcomps >= 3) && (parameters->tcp_mct != 2)) {
 		color_space = GRK_CLRSPC_SRGB;
-	}
-	else {
+	} else {
 		color_space = GRK_CLRSPC_UNKNOWN;
 	}
 	w = raw_cp->width;
 	h = raw_cp->height;
-	cmptparm = ( grk_image_cmptparm  * )calloc(numcomps, sizeof( grk_image_cmptparm) );
+	cmptparm = (grk_image_cmptparm*) calloc(numcomps,
+			sizeof(grk_image_cmptparm));
 	if (!cmptparm) {
 		spdlog::error("Failed to allocate image components parameters !!");
 		success = false;
@@ -169,43 +168,46 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->y0 = parameters->image_offset_y0;
-	image->x1 = parameters->image_offset_x0 + (w - 1) *	subsampling_dx + 1;
+	image->x1 = parameters->image_offset_x0 + (w - 1) * subsampling_dx + 1;
 	image->y1 = parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1;
 
 	if (raw_cp->prec <= 8) {
 		for (compno = 0; compno < numcomps; compno++) {
 			int32_t *ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
+			uint64_t nloop = ((uint64_t) w * h)
+					/ (raw_cp->comps[compno].dx * raw_cp->comps[compno].dy);
 			bool rc;
 			if (raw_cp->sgnd)
-				rc = read<int8_t>(f, big_endian, ptr,nloop);
+				rc = read<int8_t>(f, big_endian, ptr, nloop);
 			else
-				rc = read<uint8_t>(f, big_endian, ptr,nloop);
-			if (!rc){
-				spdlog::error("Error reading raw file. End of file probably reached.");
+				rc = read<uint8_t>(f, big_endian, ptr, nloop);
+			if (!rc) {
+				spdlog::error(
+						"Error reading raw file. End of file probably reached.");
 				success = false;
 				goto cleanup;
 			}
 		}
-	}
-	else if (raw_cp->prec <= 16) {
+	} else if (raw_cp->prec <= 16) {
 		for (compno = 0; compno < numcomps; compno++) {
 			auto ptr = image->comps[compno].data;
-			uint64_t nloop = ((uint64_t)w*h) / (raw_cp->comps[compno].dx*raw_cp->comps[compno].dy);
+			uint64_t nloop = ((uint64_t) w * h)
+					/ (raw_cp->comps[compno].dx * raw_cp->comps[compno].dy);
 			bool rc;
 			if (raw_cp->sgnd)
-				rc = read<int16_t>(f, big_endian, ptr,nloop);
+				rc = read<int16_t>(f, big_endian, ptr, nloop);
 			else
-				rc = read<uint16_t>(f, big_endian, ptr,nloop);
-			if (!rc){
-				spdlog::error("Error reading raw file. End of file probably reached.");
+				rc = read<uint16_t>(f, big_endian, ptr, nloop);
+			if (!rc) {
+				spdlog::error(
+						"Error reading raw file. End of file probably reached.");
 				success = false;
 				goto cleanup;
 			}
 		}
-	}
-	else {
-		spdlog::error("Grok cannot encode raw components with bit depth higher than 16 bits.");
+	} else {
+		spdlog::error(
+				"Grok cannot encode raw components with bit depth higher than 16 bits.");
 		success = false;
 		goto cleanup;
 	}
@@ -214,14 +216,13 @@ grk_image *  RAWFormat::rawtoimage(const char *filename,
 		if (parameters->verbose)
 			spdlog::warn("End of raw file not reached... processing anyway");
 	}
-cleanup:
-	if (f && !readFromStdin){
-		if (!grk::safe_fclose(f)){
+	cleanup: if (f && !readFromStdin) {
+		if (!grk::safe_fclose(f)) {
 			grk_image_destroy(image);
 			image = nullptr;
 		}
 	}
-	if (!success){
+	if (!success) {
 		grk_image_destroy(image);
 		image = nullptr;
 	}
@@ -229,27 +230,20 @@ cleanup:
 }
 
 template<typename T> static bool write(FILE *rawFile, bool big_endian,
-										int32_t* ptr,
-										uint32_t w, uint32_t h,
-										int32_t lower, int32_t upper){
+		int32_t *ptr, uint32_t w, uint32_t h, int32_t lower, int32_t upper) {
 	const size_t bufSize = 4096;
 	T buf[bufSize];
 	T *outPtr = buf;
 	size_t outCount = 0;
 
-	for (uint64_t i = 0; i < (uint64_t)w*h; ++i) {
+	for (uint64_t i = 0; i < (uint64_t) w * h; ++i) {
 		int32_t curr = *ptr++;
 		if (curr > upper)
 			curr = upper;
 		else if (curr < lower)
 			curr = lower;
-		if (!grk::writeBytes<T>((T)curr,
-							buf,
-							&outPtr,
-							&outCount,
-							bufSize,
-							big_endian,
-							rawFile))
+		if (!grk::writeBytes<T>((T) curr, buf, &outPtr, &outCount, bufSize,
+				big_endian, rawFile))
 			return false;
 	}
 	//flush
@@ -262,11 +256,8 @@ template<typename T> static bool write(FILE *rawFile, bool big_endian,
 	return true;
 }
 
-int RAWFormat::imagetoraw(grk_image * image, 
-							const char *outfile,
-							bool big_endian,
-							bool verbose)
-{
+int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
+		bool big_endian, bool verbose) {
 	bool writeToStdout = grk::useStdio(outfile);
 	FILE *rawFile = nullptr;
 	unsigned int compno, numcomps;
@@ -280,7 +271,7 @@ int RAWFormat::imagetoraw(grk_image * image,
 	if (numcomps > 4) {
 		if (verbose)
 			spdlog::warn("imagetoraw: number of components {} is "
-				"greater than 4. Truncating to 4", numcomps);
+					"greater than 4. Truncating to 4", numcomps);
 		numcomps = 4;
 	}
 
@@ -295,7 +286,8 @@ int RAWFormat::imagetoraw(grk_image * image,
 			break;
 	}
 	if (compno != numcomps) {
-		spdlog::error("imagetoraw: All components shall have the same subsampling, same bit depth, same sign.");
+		spdlog::error(
+				"imagetoraw: All components shall have the same subsampling, same bit depth, same sign.");
 		goto beach;
 	}
 
@@ -303,65 +295,73 @@ int RAWFormat::imagetoraw(grk_image * image,
 		if (!grok_set_binary_mode(stdout))
 			goto beach;
 		rawFile = stdout;
-	}
-	else {
+	} else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			spdlog::error("imagetoraw: Failed to open {} for writing !!\n", outfile);
+			spdlog::error("imagetoraw: Failed to open {} for writing !!\n",
+					outfile);
 			goto beach;
 		}
 	}
 	if (verbose)
-		spdlog::info("imagetoraw: raw image characteristics: {} components\n", image->numcomps);
+		spdlog::info("imagetoraw: raw image characteristics: {} components\n",
+				image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
 		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", compno, image->comps[compno].w,
-				image->comps[compno].h, image->comps[compno].prec, image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
+			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", compno,
+					image->comps[compno].w, image->comps[compno].h,
+					image->comps[compno].prec,
+					image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
 
 		if (!image->comps[compno].data) {
-			spdlog::error("imagetotif: component {} is null.",compno);
+			spdlog::error("imagetotif: component {} is null.", compno);
 			spdlog::error("\tAborting");
 			goto beach;
 		}
 		auto w = image->comps[compno].w;
 		auto h = image->comps[compno].h;
-		bool sgnd = image->comps[compno].sgnd ;
+		bool sgnd = image->comps[compno].sgnd;
 		auto prec = image->comps[compno].prec;
 
-		int32_t lower = sgnd ? -(1 << (prec-1)) : 0;
-		int32_t upper = sgnd? -lower -1 : (1 << image->comps[compno].prec) - 1;
+		int32_t lower = sgnd ? -(1 << (prec - 1)) : 0;
+		int32_t upper =
+				sgnd ? -lower - 1 : (1 << image->comps[compno].prec) - 1;
 		int32_t *ptr = image->comps[compno].data;
 
 		bool rc;
 		if (prec <= 8) {
 			if (sgnd)
-				rc = write<int8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+				rc = write<int8_t>(rawFile, big_endian, ptr, w, h, lower,
+						upper);
 			else
-				rc = write<uint8_t>(rawFile, big_endian, ptr, w,h,lower,upper);
+				rc = write<uint8_t>(rawFile, big_endian, ptr, w, h, lower,
+						upper);
 			if (!rc)
-				spdlog::error("imagetoraw: failed to write bytes for {}\n", outfile);
-		}
-		else if (prec <= 16) {
+				spdlog::error("imagetoraw: failed to write bytes for {}\n",
+						outfile);
+		} else if (prec <= 16) {
 			if (sgnd)
-				rc = write<int16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+				rc = write<int16_t>(rawFile, big_endian, ptr, w, h, lower,
+						upper);
 			else
-				rc = write<uint16_t>(rawFile, big_endian,ptr, w,h,lower,upper);
+				rc = write<uint16_t>(rawFile, big_endian, ptr, w, h, lower,
+						upper);
 			if (!rc)
-				spdlog::error("fimagetoraw: ailed to write bytes for {}\n", outfile);
-		}
-		else if (image->comps[compno].prec <= 32) {
-			spdlog::error("imagetoraw: more than 16 bits per component no handled yet");
+				spdlog::error("fimagetoraw: ailed to write bytes for {}\n",
+						outfile);
+		} else if (image->comps[compno].prec <= 32) {
+			spdlog::error(
+					"imagetoraw: more than 16 bits per component no handled yet");
 			goto beach;
-		}
-		else {
-			spdlog::error("imagetoraw: invalid precision: {}\n", image->comps[compno].prec);
+		} else {
+			spdlog::error("imagetoraw: invalid precision: {}\n",
+					image->comps[compno].prec);
 			goto beach;
 		}
 	}
 	fails = 0;
-beach:
-	if (!writeToStdout && rawFile){
+	beach: if (!writeToStdout && rawFile) {
 		if (!grk::safe_fclose(rawFile))
 			fails = 1;
 	}

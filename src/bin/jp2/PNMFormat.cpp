@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -145,8 +145,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	}
 	format = atoi(line + 1);
 	if (format < 1 || format > 7) {
-		spdlog::error("read_pnm_header:magic format {} invalid",
-				format);
+		spdlog::error("read_pnm_header:magic format {} invalid", format);
 		return;
 	}
 	ph->format = format;
@@ -160,7 +159,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		char *s = line;
 		if (format == 7) {
 			s = skip_idf(s, idf);
-			if (!s || *s == 0){
+			if (!s || *s == 0) {
 				spdlog::error("Skip idf returned null");
 				return;
 			}
@@ -171,7 +170,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "WIDTH") == 0) {
 				s = skip_int(s, &ph->width);
-				if (!s || *s == 0 || ph->width < 0){
+				if (!s || *s == 0 || ph->width < 0) {
 					spdlog::error("Invalid width");
 					return;
 				}
@@ -180,7 +179,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "HEIGHT") == 0) {
 				s = skip_int(s, &ph->height);
-				if (!s || *s == 0 || ph->height < 0){
+				if (!s || *s == 0 || ph->height < 0) {
 					spdlog::error("Invalid height");
 					return;
 				}
@@ -189,7 +188,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "DEPTH") == 0) {
 				s = skip_int(s, &ph->depth);
-				if (!s || *s == 0 || ph->depth < 0){
+				if (!s || *s == 0 || ph->depth < 0) {
 					spdlog::error("Invalid depth");
 					return;
 				}
@@ -198,7 +197,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
-				if (!s || *s == 0 || ph->maxval < 0){
+				if (!s || *s == 0 || ph->maxval < 0) {
 					spdlog::error("Invalid max val");
 					return;
 				}
@@ -206,7 +205,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "TUPLTYPE") == 0) {
 				s = skip_idf(s, type);
-				if (!s || *s == 0){
+				if (!s || *s == 0) {
 					spdlog::error("Skip idf returned null");
 					return;
 				}
@@ -247,8 +246,9 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		/* Here format is in range [1,6] */
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
-			if ((!s) || (*s == 0) || (ph->width < 1)){
-				spdlog::error("Invalid width {}", (s && *s != 0) ? ph->width : -1);
+			if ((!s) || (*s == 0) || (ph->width < 1)) {
+				spdlog::error("Invalid width {}",
+						(s && *s != 0) ? ph->width : -1);
 				return;
 			}
 			allow_null = 1;
@@ -257,8 +257,9 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			s = skip_int(s, &ph->height);
 			if ((s == nullptr) && allow_null)
 				continue;
-			if (!s || (*s == 0) || (ph->height < 1)){
-				spdlog::error("Invalid height {}", (s && *s != 0) ? ph->height : -1);
+			if (!s || (*s == 0) || (ph->height < 1)) {
+				spdlog::error("Invalid height {}",
+						(s && *s != 0) ? ph->height : -1);
 				return;
 			}
 			if (format == 1 || format == 4) {
@@ -275,12 +276,12 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		break;
 	}/* while(fgets( ) */
 	if (format == 2 || format == 3 || format > 4) {
-		if (ph->maxval < 1 || ph->maxval > 65535){
+		if (ph->maxval < 1 || ph->maxval > 65535) {
 			spdlog::error("Invalid max value {}", ph->maxval);
 			return;
 		}
 	}
-	if (ph->width < 1 || ph->height < 1){
+	if (ph->width < 1 || ph->height < 1) {
 		spdlog::error("Invalid width or height");
 		return;
 	}
@@ -290,7 +291,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			spdlog::error("read_pnm_header:P7 without ENDHDR");
 			return;
 		}
-		if (ph->depth < 1 || ph->depth > 4){
+		if (ph->depth < 1 || ph->depth > 4) {
 			spdlog::error("Invalid depth {}", ph->depth);
 			return;
 		}
@@ -339,22 +340,21 @@ static int has_prec(int val) {
 	return 16;
 }
 
-static grk_image *  pnmtoimage(const char *filename,
-		 grk_cparameters  *parameters) {
+static grk_image* pnmtoimage(const char *filename,
+		grk_cparameters *parameters) {
 	int subsampling_dx = parameters->subsampling_dx;
 	int subsampling_dy = parameters->subsampling_dy;
 
 	FILE *fp = nullptr;
 	uint32_t compno, numcomps, w, h, prec, format;
 	GRK_COLOR_SPACE color_space;
-	 grk_image_cmptparm  cmptparm[4]; /* RGBA: max. 4 components */
+	grk_image_cmptparm cmptparm[4]; /* RGBA: max. 4 components */
 	grk_image *image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		spdlog::error("pnmtoimage:Failed to open {} for reading!\n",
-				filename);
+		spdlog::error("pnmtoimage:Failed to open {} for reading!\n", filename);
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
@@ -403,7 +403,7 @@ static grk_image *  pnmtoimage(const char *filename,
 	subsampling_dx = parameters->subsampling_dx;
 	subsampling_dy = parameters->subsampling_dy;
 
-	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof( grk_image_cmptparm) );
+	memset(&cmptparm[0], 0, (size_t) numcomps * sizeof(grk_image_cmptparm));
 
 	for (uint32_t i = 0; i < numcomps; i++) {
 		cmptparm[i].prec = prec;
@@ -432,7 +432,8 @@ static grk_image *  pnmtoimage(const char *filename,
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1) {
 					if (parameters->verbose)
-						spdlog::warn("fscanf return a number of element different from the expected.");
+						spdlog::warn(
+								"fscanf return a number of element different from the expected.");
 				}
 
 				image->comps[compno].data[i] = (int32_t) (index * 255)
@@ -448,7 +449,8 @@ static grk_image *  pnmtoimage(const char *filename,
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				if (!fread(&c0, 1, 1, fp)) {
-					spdlog::error(" fread return a number of element different from the expected.");
+					spdlog::error(
+							" fread return a number of element different from the expected.");
 					grk_image_destroy(image);
 					image = nullptr;
 					goto cleanup;
@@ -457,7 +459,8 @@ static grk_image *  pnmtoimage(const char *filename,
 					image->comps[compno].data[i] = c0;
 				} else {
 					if (!fread(&c1, 1, 1, fp))
-						spdlog::error(" fread return a number of element different from the expected.");
+						spdlog::error(
+								" fread return a number of element different from the expected.");
 					/* netpbm: */
 					image->comps[compno].data[i] = ((c0 << 8) | c1);
 				}
@@ -468,7 +471,8 @@ static grk_image *  pnmtoimage(const char *filename,
 			unsigned int index;
 			if (fscanf(fp, "%u", &index) != 1) {
 				if (parameters->verbose)
-					spdlog::warn("fscanf return a number of element different from the expected.");
+					spdlog::warn(
+							"fscanf return a number of element different from the expected.");
 			}
 			image->comps[0].data[i] = (index ? 0 : 255);
 		}
@@ -501,7 +505,8 @@ static grk_image *  pnmtoimage(const char *filename,
 		uint8_t uc;
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
-				spdlog::error(" fread return a number of element different from the expected.");
+				spdlog::error(
+						" fread return a number of element different from the expected.");
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
@@ -533,7 +538,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 	if ((prec = (int) image->comps[0].prec) > 16) {
 		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
-						"\n\t: refused.\n", __FILE__, __LINE__, prec);
+				"\n\t: refused.\n", __FILE__, __LINE__, prec);
 		rc = 1;
 		goto cleanup;
 	}
@@ -618,7 +623,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < (uint64_t)wr * hr; i++) {
+			for (i = 0; i < (uint64_t) wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > INT16_MAX)
@@ -677,7 +682,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}
 				if (outCount) {
 					size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
-					if (res != outCount){
+					if (res != outCount) {
 						rc = 1;
 						goto cleanup;
 					}
@@ -740,7 +745,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
-				if (res != outCount){
+				if (res != outCount) {
 					rc = 1;
 					goto cleanup;
 				}
@@ -767,7 +772,8 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			/*sprintf(destname, "%d.%s", compno, outfile);*/
 			const size_t olen = strlen(outfile);
 			if (olen < 4) {
-				spdlog::error(" imagetopnm: output file name size less than 4.");
+				spdlog::error(
+						" imagetopnm: output file name size less than 4.");
 				goto cleanup;
 			}
 			const size_t dotpos = olen - 4;
@@ -780,8 +786,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		if (!fdest)
 			fdest = fopen(destname, "wb");
 		if (!fdest) {
-			spdlog::error("failed to open {} for writing\n",
-					destname);
+			spdlog::error("failed to open {} for writing\n", destname);
 			rc = 1;
 			goto cleanup;
 		}
@@ -807,7 +812,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			uint16_t *outPtr = buf;
 			size_t outCount = 0;
 
-			for (i = 0; i < (uint64_t)wr * hr; i++) {
+			for (i = 0; i < (uint64_t) wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > UINT16_MAX)
@@ -845,7 +850,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < (uint64_t)wr * hr; i++) {
+			for (i = 0; i < (uint64_t) wr * hr; i++) {
 				v = *red + adjustR;
 				++red;
 				if (v > UINT8_MAX)
@@ -884,8 +889,8 @@ bool PNMFormat::encode(grk_image *image, const char *filename,
 	(void) verbose;
 	return imagetopnm(image, filename, forceSplit, verbose) ? false : true;
 }
-grk_image *  PNMFormat::decode(const char *filename,
-		 grk_cparameters  *parameters) {
+grk_image* PNMFormat::decode(const char *filename,
+		grk_cparameters *parameters) {
 	return pnmtoimage(filename, parameters);
 }
 
