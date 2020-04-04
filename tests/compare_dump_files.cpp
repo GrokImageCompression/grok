@@ -165,6 +165,9 @@ int main(int argc, char **argv)
            inParam.base_filename, inParam.test_filename);
     printf("************************* \n");
 
+    // uncomment to copy test dump file to test file repo
+    //rename(inParam.test_filename, inParam.base_filename);
+
     /* open base file */
     printf("Try to open: %s for reading ... ", inParam.base_filename);
     if((fbase = fopen(inParam.base_filename, "rb"))==nullptr) {

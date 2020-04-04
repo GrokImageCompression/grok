@@ -99,13 +99,6 @@ public:
 								float fraction);
 
 
-	/**
-	 Explicit calculation of the quantization step sizes
-	 @param tccp Tile-component coding parameters
-	 @param prec Precinct
-	 */
-	static void calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec);
-
 	uint32_t get_SQcd_SQcc_size(grk_j2k *p_j2k, uint16_t tile_no,
 			uint32_t comp_no);
 	bool compare_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,

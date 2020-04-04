@@ -102,31 +102,6 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 	}
 }
 
-void Quantizer::calc_explicit_stepsizes(grk_tccp *tccp, uint32_t prec) {
-	uint32_t numbands, bandno;
-	numbands = 3 * tccp->numresolutions - 2;
-	for (bandno = 0; bandno < numbands; bandno++) {
-		uint32_t resno = (bandno == 0) ? 0 : ((bandno - 1) / 3 + 1);
-		uint8_t orient = (bandno == 0) ? 0 : (uint8_t)((bandno - 1) % 3 + 1);
-		uint32_t level = tccp->numresolutions - 1 - resno;
-		uint32_t gain =	(tccp->qmfbid == 0) ? 	0 :
-				((orient == 0) ? 	0 : (((orient == 1) || (orient == 2)) ? 1 : 2));
-		double stepsize = 1.0;
-		if (tccp->qntsty != J2K_CCP_QNTSTY_NOQNT) {
-			double norm = dwt_utils::getnorm_real(level,orient);
-			stepsize = (double) ((uint64_t) 1 << gain) / norm;
-		}
-		int32_t stepsize_fp = (int32_t) floor(stepsize * 8192.0);
-		int32_t numbps = (int32_t) (prec + gain);
-		int32_t p, n;
-		p = int_floorlog2(stepsize_fp) - 13;
-		n = 11 - int_floorlog2(stepsize_fp);
-		grk_stepsize *bandno_stepsize = tccp->stepsizes + bandno;
-		bandno_stepsize->mant = (uint16_t)((n < 0 ? stepsize_fp >> -n : stepsize_fp << n) & 0x7ff);
-		bandno_stepsize->expn = (uint8_t)(numbps - p);
-	}
-}
-
 void Quantizer::apply_quant(grk_tccp *src, grk_tccp *dest){
 	if (!src || !dest)
 		return;

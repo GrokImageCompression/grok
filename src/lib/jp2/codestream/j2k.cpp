@@ -1897,11 +1897,9 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
-		if (tcp->isHT) {
-			tcp->qcd.generate(numgbits, parameters->numresolution - 1,
-					!parameters->irreversible, image->comps[0].prec,
-					tcp->mct > 0, image->comps[0].sgnd);
-		}
+		tcp->qcd.generate(numgbits, parameters->numresolution - 1,
+				!parameters->irreversible, image->comps[0].prec,
+				tcp->mct > 0, image->comps[0].sgnd);
 		tcp->numlayers = parameters->tcp_numlayers;
 
 		for (j = 0; j < tcp->numlayers; j++) {
@@ -2110,10 +2108,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 					tccp->prch[j] = 15;
 				}
 			}
-			if (tcp->isHT)
-				tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
-			else
-				Quantizer::calc_explicit_stepsizes(tccp, image->comps[i].prec);
+			tcp->qcd.pull(tccp->stepsizes, !parameters->irreversible);
 		}
 	}
 	if (parameters->mct_data) {

@@ -921,9 +921,9 @@ static double t1_getwmsedec(int32_t nmsedec,
 		w1 = mct_norms[compno];
 
 	if (qmfbid == 1)
-		w2 = grk::dwt_utils::getnorm(level, orient);
+		w2 = grk::dwt_utils::getnorm_53(level, orient);
 	else /* if (qmfbid == 0) */
-		w2 = grk::dwt_utils::getnorm_real(level, orient);
+		w2 = grk::dwt_utils::getnorm_97(level, orient);
 
 	wmsedec = w1 * w2 * stepsize * (1 << bpno);
 	wmsedec *= wmsedec * nmsedec / 8192.0;

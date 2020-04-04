@@ -44,22 +44,11 @@ using namespace std;
 
 namespace grk {
 
-//////////////////////////////////////////////////////////////////////////
-//static
-class sqrt_energy_gains
-{
-public:
-  static float get_gain_l(int num_decomp, bool reversible)
-  { return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp]; }
-  static float get_gain_h(int num_decomp, bool reversible)
-  { return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp]; }
+float sqrt_energy_gains::get_gain_l(int num_decomp, bool reversible)
+{ return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp]; }
+float sqrt_energy_gains::get_gain_h(int num_decomp, bool reversible)
+{ return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp]; }
 
-private:
-  static const float gain_9x7_l[34];
-  static const float gain_9x7_h[34];
-  static const float gain_5x3_l[34];
-  static const float gain_5x3_h[34];
-};
 
 //////////////////////////////////////////////////////////////////////////
 const float sqrt_energy_gains::gain_9x7_l[34] = { 1.0000e+00f,

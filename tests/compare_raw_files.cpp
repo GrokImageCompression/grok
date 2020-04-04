@@ -46,14 +46,12 @@
  * This is equivalent to the UNIX `cmp` command
  */
 
-extern "C" {
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-
 #include "grok_getopt.h"
-}
+
 #include <string>
 
 typedef struct test_cmp_parameters {
@@ -158,6 +156,9 @@ int main(int argc, char **argv)
         compare_raw_files_help_display();
         goto cleanup;
     }
+
+    // uncomment to copy test raw file to test file repo
+    //rename(inParam.test_filename, inParam.base_filename);
 
     file_test = fopen(inParam.test_filename, "rb");
     if (!file_test) {

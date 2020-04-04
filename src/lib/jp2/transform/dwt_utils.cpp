@@ -58,6 +58,7 @@
 #include "T1Decoder.h"
 #include <atomic>
 #include "testing.h"
+#include "HTParams.h"
 
 namespace grk {
 
@@ -151,15 +152,36 @@ const double dwt_norms_real[4][10] = { { 1.000, 1.965, 4.177, 8.403,
 /* <summary>                */
 /* Get norm of 5-3 wavelet. */
 /* </summary>               */
-double dwt_utils::getnorm(uint32_t level, uint8_t orient) {
-	return dwt_norms[orient][level];
+double dwt_utils::getnorm_53(uint32_t level, uint8_t orient) {
+	return getnorm(level,orient,true);
 }
 
 /* <summary>                */
 /* Get norm of 9-7 wavelet. */
 /* </summary>               */
-double dwt_utils::getnorm_real(uint32_t level, uint8_t orient) {
-	return dwt_norms_real[orient][level];
+double dwt_utils::getnorm_97(uint32_t level, uint8_t orient) {
+	return getnorm(level,orient,false);
+}
+
+double dwt_utils::getnorm(uint32_t level, uint8_t orient, bool reversible) {
+	assert(orient <= 3);
+	switch(orient){
+	case 0:
+		return sqrt_energy_gains::get_gain_l(level,reversible) *
+				sqrt_energy_gains::get_gain_l(level,reversible);
+		break;
+	case 1:
+	case 2:
+		return sqrt_energy_gains::get_gain_l(level+1,reversible) *
+				sqrt_energy_gains::get_gain_h(level,reversible);
+		break;
+	case 3:
+		return sqrt_energy_gains::get_gain_h(level,reversible) *
+				sqrt_energy_gains::get_gain_h(level,reversible);
+		break;
+	default:
+		return 0;
+	}
 }
 
 
