@@ -1,13 +1,8 @@
-version: 3.1.0.{build}
+version: 5.1.0.{build}
 clone_depth: 50
 environment:
   VCVAR2019: 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat'
   matrix:
-  - GROK_CI_ARCH: x86
-    APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
-    GROK_CI_VCVARS: $(VCVAR2019)
-    GROK_NONCOMMERCIAL: 1
-    GROK_CI_INCLUDE_IF_DEPLOY: 1    
   - GROK_CI_ARCH: x64  
     APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
     GROK_CI_VCVARS: $(VCVAR2019)
