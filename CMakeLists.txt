@@ -133,18 +133,8 @@ set (LIBRARY_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output direct
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)
 
 #-----------------------------------------------------------------------------
-# configure name mangling to allow multiple libraries to coexist
-# peacefully
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/grok_mangle.h.in)
-set(MANGLE_PREFIX ${GROK_LIBRARY_NAME})
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/grok_mangle.h.in
-               ${CMAKE_CURRENT_BINARY_DIR}/grok_mangle.h
-               @ONLY)
-endif()
-
-#-----------------------------------------------------------------------------
 # Compiler specific flags:
-if(CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
   set(GROK_COMPILE_OPTIONS ${GROK_COMPILE_OPTIONS} -Wall -Wextra -Wconversion -Wunused-parameter)
 endif()
 
