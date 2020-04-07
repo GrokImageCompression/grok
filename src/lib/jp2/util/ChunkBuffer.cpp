@@ -29,13 +29,12 @@ ChunkBuffer::~ChunkBuffer() {
 }
 
 void ChunkBuffer::increment() {
-	if (cur_chunk_id == chunks.size() - 1) {
+	if (chunks.size() == 0 || cur_chunk_id == (size_t)(chunks.size() - 1))
 		return;
-	}
 
 	auto cur_chunk = chunks[cur_chunk_id];
-	if ((size_t) cur_chunk->offset == cur_chunk->len
-			&& cur_chunk_id < chunks.size() - 1) {
+	if (cur_chunk->offset == cur_chunk->len
+			&& cur_chunk_id < (size_t)(chunks.size() - 1)) {
 		cur_chunk_id++;
 	}
 }
@@ -77,6 +76,7 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 		total_bytes_read += bytes_to_read;
 		bytes_left_to_read -= bytes_to_read;
 	}
+
 	return total_bytes_read ? total_bytes_read : (size_t) -1;
 }
 
@@ -96,7 +96,7 @@ size_t ChunkBuffer::skip(size_t nb_bytes)
     if (nb_bytes == 0)
         return 0;
 
-    bytes_remaining = (size_t)nb_bytes;
+    bytes_remaining = nb_bytes;
     while (cur_chunk_id < chunks.size() && bytes_remaining > 0) {
 
 		grk_buf *cur_chunk = chunks[cur_chunk_id];
@@ -132,33 +132,29 @@ void ChunkBuffer::add_chunk(grk_buf *chunk) {
 }
 
 void ChunkBuffer::cleanup(void) {
-	size_t i;
-	for (i = 0; i < chunks.size(); ++i) {
+	for (size_t i = 0; i < chunks.size(); ++i) {
 		grk_buf *chunk = chunks[i];
-		if (chunk) {
+		if (chunk)
 			delete chunk;
-		}
 	}
 	chunks.clear();
 }
 
 void ChunkBuffer::rewind(void) {
-	size_t i;
-	for (i = 0; i < chunks.size(); ++i) {
+	for (size_t i = 0; i < chunks.size(); ++i) {
 		grk_buf *chunk = chunks[i];
-		if (chunk) {
+		if (chunk)
 			chunk->offset = 0;
-		}
 	}
 	cur_chunk_id = 0;
 }
 bool ChunkBuffer::push_back(uint8_t *buf, size_t len) {
-	if (!buf || !len) {
+	if (!buf || !len)
 		return false;
-	}
 	auto chunk = add_chunk(buf, len, false);
 	if (!chunk)
 		return false;
+
 	return true;
 }
 
@@ -171,16 +167,16 @@ bool ChunkBuffer::alloc_and_push_back(size_t len) {
 		delete[] buf;
 		return false;
 	}
+
 	return true;
 }
 
 void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
 	auto cur_chunk = chunks[cur_chunk_id];
-	cur_chunk->incr_offset(offset);
-	if (cur_chunk->offset == cur_chunk->len) {
-		increment();
-	}
 
+	cur_chunk->incr_offset(offset);
+	if (cur_chunk->offset == cur_chunk->len)
+		increment();
 }
 
 /**
@@ -189,6 +185,7 @@ void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
  */
 bool ChunkBuffer::zero_copy_read(uint8_t **ptr, size_t chunk_len) {
 	auto cur_chunk = chunks[cur_chunk_id];
+
 	if (!cur_chunk)
 		return false;
 
@@ -197,17 +194,17 @@ bool ChunkBuffer::zero_copy_read(uint8_t **ptr, size_t chunk_len) {
 		read(nullptr, chunk_len);
 		return true;
 	}
+
 	return false;
 }
 
 bool ChunkBuffer::copy_to_contiguous_buffer(uint8_t *buffer) {
-	size_t i = 0;
 	size_t offset = 0;
 
 	if (!buffer)
 		return false;
 
-	for (i = 0; i < chunks.size(); ++i) {
+	for (size_t i = 0; i < chunks.size(); ++i) {
 		auto chunk = chunks[i];
 		if (chunk->len)
 			memcpy(buffer + offset, chunk->buf, chunk->len);
@@ -219,25 +216,30 @@ bool ChunkBuffer::copy_to_contiguous_buffer(uint8_t *buffer) {
 
 uint8_t* ChunkBuffer::get_global_ptr(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
+
 	return (cur_chunk) ? (cur_chunk->buf + cur_chunk->offset) : nullptr;
 }
 
 size_t ChunkBuffer::get_cur_chunk_len(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
+
 	return (cur_chunk) ? (cur_chunk->len - (size_t) cur_chunk->offset) : 0;
 }
 
 size_t ChunkBuffer::get_cur_chunk_offset(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
+
 	return (cur_chunk) ? cur_chunk->offset : 0;
 }
 
 size_t ChunkBuffer::get_global_offset(void) {
 	size_t offset = 0;
+
 	for (size_t i = 0; i < cur_chunk_id; ++i) {
 		grk_buf *chunk = chunks[i];
 		offset += chunk->len;
 	}
+
 	return offset + get_cur_chunk_offset();
 }
 
