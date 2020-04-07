@@ -20,10 +20,7 @@ inline spdlog::string_view_t to_string_view(const memory_buf_t &buf) SPDLOG_NOEX
 inline void append_string_view(spdlog::string_view_t view, memory_buf_t &dest)
 {
     auto *buf_ptr = view.data();
-    if (buf_ptr != nullptr)
-    {
-        dest.append(buf_ptr, buf_ptr + view.size());
-    }
+    dest.append(buf_ptr, buf_ptr + view.size());
 }
 
 template<typename T>
@@ -66,11 +63,9 @@ template<typename T>
 inline void pad_uint(T n, unsigned int width, memory_buf_t &dest)
 {
     static_assert(std::is_unsigned<T>::value, "pad_uint must get unsigned T");
-    auto digits = count_digits(n);
-    if (width > digits)
+    for(auto digits = count_digits(n); digits < width; digits++)
     {
-        const char *zeroes = "0000000000000000000";
-        dest.append(zeroes, zeroes + width - digits);
+        dest.push_back('0');
     }
     append_int(n, dest);
 }

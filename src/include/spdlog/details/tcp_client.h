@@ -4,7 +4,7 @@
 #pragma once
 
 #ifdef _WIN32
-#error tcp_client not supported under windows yet
+#error include tcp_client-windows.h instead
 #endif
 
 // tcp client helper
@@ -68,18 +68,14 @@ public:
         if (rv != 0)
         {
             auto msg = fmt::format("::getaddrinfo failed: {}", gai_strerror(rv));
-            SPDLOG_THROW(spdlog::spdlog_ex(msg));
+            throw_spdlog_ex(msg);
         }
 
         // Try each address until we successfully connect(2).
         int last_errno = 0;
         for (auto *rp = addrinfo_result; rp != nullptr; rp = rp->ai_next)
         {
-#ifdef SPDLOG_PREVENT_CHILD_FD
             int const flags = SOCK_CLOEXEC;
-#else
-            int const flags = 0;
-#endif
             socket_ = ::socket(rp->ai_family, rp->ai_socktype | flags, rp->ai_protocol);
             if (socket_ == -1)
             {
@@ -101,7 +97,7 @@ public:
         ::freeaddrinfo(addrinfo_result);
         if (socket_ == -1)
         {
-            SPDLOG_THROW(spdlog::spdlog_ex("::connect failed", last_errno));
+            throw_spdlog_ex("::connect failed", last_errno);
         }
 
         // set TCP_NODELAY
@@ -134,7 +130,7 @@ public:
             if (write_result < 0)
             {
                 close();
-                SPDLOG_THROW(spdlog::spdlog_ex("write(2) failed", errno));
+                throw_spdlog_ex("write(2) failed", errno);
             }
 
             if (write_result == 0) // (probably should not happen but in any case..)

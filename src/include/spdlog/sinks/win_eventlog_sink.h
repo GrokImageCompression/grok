@@ -91,7 +91,7 @@ public:
     {
         if (!::IsValidSid(psid))
         {
-            SPDLOG_THROW(spdlog_ex("sid_t::sid_t(): invalid SID received"));
+            throw_spdlog_ex("sid_t::sid_t(): invalid SID received");
         }
 
         auto const sid_length{::GetLengthSid(psid)};
@@ -175,8 +175,7 @@ struct eventlog
             return EVENTLOG_ERROR_TYPE;
 
         default:
-            // should be unreachable
-            SPDLOG_THROW(std::logic_error(fmt::format("Unsupported log level {}", msg.level)));
+            return EVENTLOG_INFORMATION_TYPE;
         }
     }
 
