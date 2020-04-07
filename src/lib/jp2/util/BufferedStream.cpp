@@ -326,7 +326,7 @@ void BufferedStream::invalidate_buffer() {
 }
 
 bool BufferedStream::read_skip(int64_t p_size) {
-	int64_t offset = (int64_t)(m_stream_offset + p_size);
+	int64_t offset = (int64_t)(m_stream_offset) + p_size;
 	if (offset < 0)
 		return false;
 	return read_seek((uint64_t)offset);
@@ -366,7 +366,7 @@ bool BufferedStream::read_seek(uint64_t offset) {
 			offset < m_stream_offset + m_buffered_bytes) ||
 			 (offset < m_stream_offset &&
 				offset >= m_stream_offset - (m_read_bytes_seekable - m_buffered_bytes))) {
-			int64_t increment = offset - m_stream_offset;
+			int64_t increment = (int64_t)offset - (int64_t)m_stream_offset;
 			m_stream_offset = offset;
 			m_buf->incr_offset(increment);
 			assert(m_buf->curr_ptr() >= m_buf->buf);

@@ -148,9 +148,9 @@ int main(int argc, char** argv)
     bool display = false;
     bool check = false;
     bool lossy = false;
-    int32_t size = 16384 - 1;
-    uint32_t offset_x = ((uint32_t)size + 1) / 2 - 1;
-    uint32_t offset_y = ((uint32_t)size + 1) / 2 - 1;
+    uint32_t size = 16384 - 1;
+    uint32_t offset_x = (uint32_t)((size + 1) / 2 - 1);
+    uint32_t offset_y = (uint32_t)((size + 1) / 2 - 1);
     uint32_t num_resolutions = 6;
 
     for (i = 1; i < argc; i++) {

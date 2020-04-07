@@ -74,7 +74,7 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
       if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
         memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off,
             nb_read);
-      p_source_buffer->off += (int64_t) nb_read;
+      p_source_buffer->off += nb_read;
 	}
 
 	return nb_read;

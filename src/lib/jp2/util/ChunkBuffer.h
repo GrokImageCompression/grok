@@ -43,7 +43,7 @@ struct ChunkBuffer {
 	/*
 	 Increment offset of current chunk
 	 */
-	void incr_cur_chunk_offset(uint64_t offset);
+	void incr_cur_chunk_offset(size_t offset);
 
 	/*
 	 Get length of current chunk
@@ -53,7 +53,7 @@ struct ChunkBuffer {
 	/*
 	 Get offset of current chunk
 	 */
-	int64_t get_cur_chunk_offset(void);
+	size_t get_cur_chunk_offset(void);
 
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current pointer
@@ -63,14 +63,14 @@ struct ChunkBuffer {
 	/*
 	 Treat segmented buffer as single contiguous buffer, and get current offset
 	 */
-	int64_t get_global_offset(void);
+	size_t get_global_offset(void);
 
 	/*
 	 Reset all offsets to zero, and set current chunk to beginning of list
 	 */
 	void rewind(void);
 
-	int64_t skip(int64_t nb_bytes);
+	size_t skip(size_t nb_bytes);
 
 	void increment(void);
 

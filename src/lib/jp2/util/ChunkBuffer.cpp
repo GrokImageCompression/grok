@@ -73,7 +73,7 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 			memcpy((uint8_t*) p_buffer + total_bytes_read,
 					cur_chunk->buf + cur_chunk->offset, bytes_to_read);
 		}
-		incr_cur_chunk_offset((int64_t) bytes_to_read);
+		incr_cur_chunk_offset(bytes_to_read);
 		total_bytes_read += bytes_to_read;
 		bytes_left_to_read -= bytes_to_read;
 	}
@@ -81,12 +81,12 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 }
 
 
-int64_t ChunkBuffer::skip(int64_t nb_bytes)
+size_t ChunkBuffer::skip(size_t nb_bytes)
 {
     size_t bytes_in_current_segment;
     size_t bytes_remaining;
 
-    if (nb_bytes + get_global_offset()> (int64_t)data_len) {
+    if (nb_bytes + get_global_offset()> data_len) {
 #ifdef DEBUG_SEG_BUF
         GROK_WARN("attempt to skip past end of segmented buffer");
 #endif
@@ -127,7 +127,7 @@ void ChunkBuffer::add_chunk(grk_buf *chunk) {
 	if (!chunk)
 		return;
 	chunks.push_back(chunk);
-	cur_chunk_id = (int32_t) chunks.size() - 1;
+	cur_chunk_id = (size_t) (chunks.size() - 1);
 	data_len += chunk->len;
 }
 
@@ -174,10 +174,10 @@ bool ChunkBuffer::alloc_and_push_back(size_t len) {
 	return true;
 }
 
-void ChunkBuffer::incr_cur_chunk_offset(uint64_t offset) {
+void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
 	auto cur_chunk = chunks[cur_chunk_id];
 	cur_chunk->incr_offset(offset);
-	if ((size_t) cur_chunk->offset == cur_chunk->len) {
+	if (cur_chunk->offset == cur_chunk->len) {
 		increment();
 	}
 
@@ -227,16 +227,16 @@ size_t ChunkBuffer::get_cur_chunk_len(void) {
 	return (cur_chunk) ? (cur_chunk->len - (size_t) cur_chunk->offset) : 0;
 }
 
-int64_t ChunkBuffer::get_cur_chunk_offset(void) {
+size_t ChunkBuffer::get_cur_chunk_offset(void) {
 	auto cur_chunk = chunks[cur_chunk_id];
-	return (cur_chunk) ? (int64_t) (cur_chunk->offset) : 0;
+	return (cur_chunk) ? cur_chunk->offset : 0;
 }
 
-int64_t ChunkBuffer::get_global_offset(void) {
-	int64_t offset = 0;
+size_t ChunkBuffer::get_global_offset(void) {
+	size_t offset = 0;
 	for (size_t i = 0; i < cur_chunk_id; ++i) {
 		grk_buf *chunk = chunks[i];
-		offset += (int64_t) chunk->len;
+		offset += chunk->len;
 	}
 	return offset + get_cur_chunk_offset();
 }

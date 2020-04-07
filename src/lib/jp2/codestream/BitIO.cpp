@@ -119,8 +119,9 @@ bool BitIO::getbit(uint32_t *bits, uint8_t pos) {
 			return false;
 		}
 	}
-	ct--;
-	*bits |= ((buf >> ct) & 1) << pos;
+	assert(ct > 0);
+	ct = (uint8_t)(ct-1);
+	*bits |= (uint32_t)(((buf >> ct) & 1) << pos);
 	return true;
 }
 
@@ -131,7 +132,8 @@ size_t BitIO::numbytes() {
 bool BitIO::write(uint32_t v, uint32_t n) {
 	if (n > 32U)
 		return false;
-	for (int32_t i = n - 1; i >= 0; i--) {
+	assert(n != 0);
+	for (int32_t i = (int32_t)(n - 1); i >= 0; i--) {
 		if (!putbit((v >> i) & 1))
 			return false;
 	}
