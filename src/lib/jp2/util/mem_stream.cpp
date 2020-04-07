@@ -167,9 +167,10 @@ static int32_t get_file_open_mode(const char *mode) {
 
 static uint64_t  size_proc(grk_handle fd)
 {
-    ULARGE_INTEGER m;
-    m.LowPart = GetFileSize(fd, &m.HighPart);
-    return(m.QuadPart);
+	LARGE_INTEGER filesize = { 0 };
+	if (GetFileSizeEx(fd, &filesize))
+		return (uint64_t)filesize.QuadPart;
+	return 0;
 }
 
 
