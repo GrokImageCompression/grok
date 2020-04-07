@@ -65,7 +65,7 @@ struct imageToJpegInfo {
 	int32_t *buffer32s;
 	J_COLOR_SPACE color_space;
 	bool writeToStdout;
-	uint32_t adjust;
+	int32_t adjust;
 };
 
 static int imagetojpeg(grk_image *image, const char *filename,
@@ -213,7 +213,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		}
 	}
 	// We assume that alpha channels occur as last channels in image.
-	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
+	if (numAlphaChannels && ( (uint32_t)(firstAlpha + numAlphaChannels) >= numcomps)) {
 		if (verbose)
 			spdlog::warn(
 					"PNG requires that alpha channels occur as last channels in image.");
@@ -265,7 +265,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 */
 	cinfo.image_width = image_width; /* image width and height, in pixels */
 	cinfo.image_height = image_height;
-	cinfo.input_components = numcomps; /* # of color components per pixel */
+	cinfo.input_components = (int)numcomps; /* # of color components per pixel */
 	cinfo.in_color_space = info.color_space; /* colorspace of input image */
 	/* Now use the library's routine to set default compression parameters.
 	 * (You must set at least cinfo.in_color_space before calling this,
@@ -482,14 +482,14 @@ static grk_image* jpegtoimage(const char *filename,
 		color_space = GRK_CLRSPC_GRAY;
 
 	for (int j = 0; j < cinfo.output_components; j++) {
-		cmptparm[j].prec = bps;
+		cmptparm[j].prec = (uint32_t)bps;
 		cmptparm[j].dx = 1;
 		cmptparm[j].dy = 1;
 		cmptparm[j].w = w;
 		cmptparm[j].h = h;
 	}
 
-	imageInfo.image = grk_image_create(numcomps, &cmptparm[0], color_space);
+	imageInfo.image = grk_image_create((uint32_t)numcomps, &cmptparm[0], color_space);
 	if (!imageInfo.image) {
 		imageInfo.success = false;
 		goto cleanup;
@@ -533,7 +533,7 @@ static grk_image* jpegtoimage(const char *filename,
 		planes[j] = imageInfo.image->comps[j].data;
 	}
 
-	imageInfo.buffer32s = new int32_t[w * numcomps];
+	imageInfo.buffer32s = new int32_t[w * (size_t)numcomps];
 
 	/* We may need to do some setup of our own at this point before reading
 	 * the data.  After jpeg_start_decompress() we have the correct scaled
@@ -542,10 +542,10 @@ static grk_image* jpegtoimage(const char *filename,
 	 * In this example, we need to make an output work buffer of the right size.
 	 */
 	/* JSAMPLEs per row in output buffer */
-	row_stride = cinfo.output_width * cinfo.output_components;
+	row_stride = (int)cinfo.output_width * cinfo.output_components;
 	/* Make a one-row-high sample array that will go away when done with image */
 	buffer = (*cinfo.mem->alloc_sarray)((j_common_ptr) &cinfo, JPOOL_IMAGE,
-			row_stride, 1);
+			(JDIMENSION)row_stride, 1);
 	if (!buffer) {
 		imageInfo.success = false;
 		goto cleanup;
@@ -565,7 +565,7 @@ static grk_image* jpegtoimage(const char *filename,
 		(void) jpeg_read_scanlines(&cinfo, buffer, 1);
 
 		// convert 8 bit buffer to 32 bit buffer
-		cvtJpegTo32s(buffer[0], imageInfo.buffer32s, (size_t) w * numcomps,
+		cvtJpegTo32s(buffer[0], imageInfo.buffer32s, (size_t) w * (size_t) numcomps,
 				false);
 
 		// convert to planar

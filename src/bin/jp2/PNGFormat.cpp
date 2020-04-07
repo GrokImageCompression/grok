@@ -275,7 +275,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	/* Create image */
 	memset(cmptparm, 0, sizeof(cmptparm));
 	for (i = 0; i < nr_comp; ++i) {
-		cmptparm[i].prec = bit_depth;
+		cmptparm[i].prec = (uint32_t)bit_depth;
 		cmptparm[i].sgnd = 0;
 		cmptparm[i].dx = params->subsampling_dx;
 		cmptparm[i].dy = params->subsampling_dy;

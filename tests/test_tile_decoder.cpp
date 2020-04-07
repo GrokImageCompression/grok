@@ -180,17 +180,18 @@ static void info_callback(const char *msg, void *client_data)
 int main (int argc, char *argv[])
 {
      grk_dparameters  l_param;
-     grk_codec  * l_codec;
-    grk_image * l_image;
-     grk_stream  * l_stream;
+     grk_codec  * l_codec = nullptr;
+    grk_image * l_image = nullptr;
+     grk_stream  * l_stream = nullptr;
     uint64_t l_data_size=0;
     uint64_t l_max_data_size = 1000;
     uint16_t l_tile_index;
-    uint8_t * l_data = (uint8_t *) malloc(1000);
+    uint8_t * l_data  = nullptr;
     bool l_go_on = true;
     uint32_t l_nb_comps=0 ;
     uint32_t l_current_tile_x0,l_current_tile_y0,l_current_tile_x1,l_current_tile_y1;
-    uint32_t rc = EXIT_FAILURE;
+    int32_t rc = EXIT_FAILURE;
+    int temp;
 
     uint32_t da_x0=0;
 	uint32_t da_y0=0;
@@ -245,13 +246,14 @@ int main (int argc, char *argv[])
         input_file = "test.j2k";
     }
 
+    l_data = (uint8_t *) malloc(1000);
     if (! l_data)
         goto beach;
 
     grk_initialize(nullptr,0);
     l_stream = grk_stream_create_file_stream(input_file, 1024*1024,true);
     if (!l_stream) {
-        spdlog::error("failed to create the stream from the file\n");
+        spdlog::error("failed to create the stream from the file");
         goto beach;
     }
 
@@ -259,7 +261,12 @@ int main (int argc, char *argv[])
     grk_set_default_decoder_parameters(&l_param);
 
     /* */
-    l_param.decod_format = infile_format(input_file);
+    temp = infile_format(input_file);
+    if (temp == -1){
+        spdlog::error("failed to parse input file format");
+    	goto beach;
+    }
+    l_param.decod_format = (uint32_t)temp;
 
     /** you may here add custom decoding parameters */
     /* do not use layer decoding limitations */
