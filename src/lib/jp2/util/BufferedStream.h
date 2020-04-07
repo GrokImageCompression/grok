@@ -143,7 +143,7 @@ struct BufferedStream: public IBufferedStream {
 	 * @param		p_buffer	pointer to the data buffer holds the data to be written.
 	 * @param		p_size		number of bytes to write.
 	 
-	 * @return		the number of bytes written, or -1 if an error occurred.
+	 * @return		the number of bytes written
 	 */
 	size_t write_bytes(const uint8_t *p_buffer, size_t p_size);
 
@@ -158,7 +158,7 @@ struct BufferedStream: public IBufferedStream {
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
+	 * @return		true if success, or false if an error occurred.
 	 */
 	bool skip(int64_t p_size);
 
@@ -200,7 +200,7 @@ private:
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
+	 * @return		true if success, or false if an error occurred.
 	 */
 	bool write_skip(int64_t p_size);
 
@@ -208,21 +208,21 @@ private:
 	 * Skips a number of bytes from the stream.
 	 * @param		p_size		the number of bytes to skip.
 	 
-	 * @return		the number of bytes skipped, or -1 if an error occurred.
+	 * @return		true if success, or false if an error occurred.
 	 */
 	bool read_skip(int64_t p_size);
 
 	/**
-	 * Skips a number of bytes from the stream.
-	 * @param		p_size		the number of bytes to skip.
+	 * Absolute seek in stream.
+	 * @param		offset		absolute offset
 	 
 	 * @return		true if success, or false if an error occurred.
 	 */
 	bool read_seek(uint64_t offset);
 
 	/**
-	 * Skips a number of bytes from the stream.
-	 * @param		p_size		the number of bytes to skip.
+	 * Absolute seek in stream.
+	 * @param		offset		absolute offset
 	 
 	 * @return		true if success, or false if an error occurred.
 	 */
