@@ -173,6 +173,9 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/t1/t1_part1/T1Part1.h    
 )
 
+add_definitions(-DSPDLOG_COMPILED_LIB)
+add_definitions(-DSPDLOG_ENABLE_WARNINGS=OFF)
+
 option(GRK_DISABLE_TPSOT_FIX "Disable TPsot==TNsot fix. See https://github.com/uclouvain/openjpeg/issues/254." OFF)
 if(GRK_DISABLE_TPSOT_FIX)
   add_definitions(-DGRK_DISABLE_TPSOT_FIX)

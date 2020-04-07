@@ -78,6 +78,8 @@ if(WIN32)
 endif()
 
 add_definitions(-DSPDLOG_COMPILED_LIB)
+add_definitions(-DSPDLOG_ENABLE_WARNINGS=OFF)
+
 
 # Loop over all executables:
 foreach(exe grk_decompress grk_compress grk_dump)
