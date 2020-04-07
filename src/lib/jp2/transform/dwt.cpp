@@ -999,10 +999,10 @@ static void decode_partial_v_53(dwt_data<int32_t> *vert){
 	int32_t dn = vert->dn;
 	int32_t sn = vert->sn;
 	int32_t cas = vert->cas;
-	int32_t win_l_x0 = vert->win_l_x0;
-	int32_t win_l_x1 = vert->win_l_x1;
-	int32_t win_h_x0 = vert->win_h_x0;
-	int32_t win_h_x1 = vert->win_h_x1;
+	int32_t win_l_x0 = (int32_t)vert->win_l_x0;
+	int32_t win_l_x1 = (int32_t)vert->win_l_x1;
+	int32_t win_h_x0 = (int32_t)vert->win_h_x0;
+	int32_t win_h_x1 = (int32_t)vert->win_h_x1;
 
 
     if (!cas) {

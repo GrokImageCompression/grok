@@ -70,14 +70,14 @@ namespace grk {
 #define GROK_SS_(i) ((i)<0?GROK_S(0):((i)>=d_n?GROK_S(d_n-1):GROK_S(i)))
 #define GROK_DD_(i) ((i)<0?GROK_D(0):((i)>=s_n?GROK_D(s_n-1):GROK_D(i)))
 
-
+#if 0
 static const float dwt_alpha = 1.586134342f; /*  12994 */
 static const float dwt_beta = 0.052980118f; /*    434 */
 static const float dwt_gamma = -0.882911075f; /*  -7233 */
 static const float dwt_delta = -0.443506852f; /*  -3633 */
-
 static const float dwt_K = 1.230174105f; /*  10078 */
 static const float dwt_c13318 = 1.625732422f;
+#endif
 
 /***************************************************************************************
 

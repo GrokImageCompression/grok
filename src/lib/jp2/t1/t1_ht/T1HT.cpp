@@ -111,24 +111,24 @@ double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum
 	int32_t shift = 31 - (block->k_msbs + 1);
 	auto cblk = block->cblk;
 	cblk->numbps = 0;
+	// optimization below was causing errors in encoding
 	//if (maximum >= (uint32_t)1<<(31 - (block->k_msbs+1)))
 	{
-		uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
-		uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
+	uint16_t w =  (uint16_t)(cblk->x1 - cblk->x0);
+	uint16_t h =  (uint16_t)(cblk->y1 - cblk->y0);
 
-		 ojph_encode_codeblock(unencoded_data, block->k_msbs,1,
-								   w, h, w,
-								   pass_length,
-								   elastic_alloc,
-								   next_coded);
+	 ojph_encode_codeblock(unencoded_data, block->k_msbs,1,
+							   w, h, w,
+							   pass_length,
+							   elastic_alloc,
+							   next_coded);
 
-		 cblk->num_passes_encoded = 1;
-		 cblk->passes[0].len = (uint16_t)pass_length[0];
-		 cblk->passes[0].rate = (uint16_t)pass_length[0];
-		 uint32_t abs_max = (maximum & 0x7FFFFFFF) >> shift;
-		 cblk->numbps = 1;
-		 assert(cblk->data);
-		 memcpy(cblk->data, next_coded->buf, pass_length[0]);
+	 cblk->num_passes_encoded = 1;
+	 cblk->passes[0].len = (uint16_t)pass_length[0];
+	 cblk->passes[0].rate = (uint16_t)pass_length[0];
+	 cblk->numbps = 1;
+	 assert(cblk->data);
+	 memcpy(cblk->data, next_coded->buf, pass_length[0]);
 	}
 
   return 0;
@@ -143,7 +143,7 @@ bool T1HT::decode(decodeBlockInfo *block) {
 	if (coded_data_size < total_seg_len) {
 		delete[] coded_data;
 		coded_data = new uint8_t[total_seg_len];
-		coded_data_size = total_seg_len;
+		coded_data_size = (uint32_t)total_seg_len;
 	}
 	size_t offset = 0;
 	// note: min_buf_vec only contains segments of non-zero length

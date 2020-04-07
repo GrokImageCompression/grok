@@ -110,8 +110,9 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 			assert(m_buf->curr_ptr() - m_buf->buf + p_size <= m_buf->len);
 			memcpy(p_buffer, m_buf->curr_ptr(), p_size);
 		}
-		m_buf->incr_offset(p_size);
+		m_buf->incr_offset((ptrdiff_t)p_size);
 		m_buffered_bytes -= p_size;
+		assert(m_buffered_bytes <= m_read_bytes_seekable);
 		l_read_nb_bytes += p_size;
 		m_stream_offset += p_size;
 		return l_read_nb_bytes;
@@ -146,9 +147,12 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
 	invalidate_buffer();
     while(true) {
       m_buffered_bytes = m_read_fn(m_buf->curr_ptr(), m_buf->len, m_user_data);
+      //sanity check on external read function
       if (m_buffered_bytes > m_buf->len){
-    	  GROK_WARN("Buffered stream: read length greater than buffer length");
+    	  GROK_ERROR("Buffered stream: read length greater than buffer length");
+    	  return 0;
       }
+      m_read_bytes_seekable = m_buffered_bytes;
       // i) end of stream
       if (m_buffered_bytes == 0 || m_buffered_bytes > m_buf->len) {
         invalidate_buffer();
@@ -170,15 +174,15 @@ size_t BufferedStream::read(uint8_t *p_buffer, size_t p_size) {
       }
       // iii) or we have read the exact amount requested
       else {
-        m_read_bytes_seekable = m_buffered_bytes;
         l_read_nb_bytes += p_size;
         if (p_buffer && p_size) {
           assert(m_buf->curr_ptr() >= m_buf->buf);
       	  assert(m_buf->curr_ptr() - m_buf->buf + p_size <= m_buf->len);
           memcpy(p_buffer, m_buf->curr_ptr(), p_size);
         }
-        m_buf->incr_offset(p_size);
+        m_buf->incr_offset((ptrdiff_t)p_size);
         m_buffered_bytes -= p_size;
+		assert(m_buffered_bytes <= m_read_bytes_seekable);
         m_stream_offset += p_size;
         return l_read_nb_bytes;
       }
@@ -284,7 +288,7 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 	return l_write_nb_bytes;
 }
 void BufferedStream::write_increment(size_t p_size) {
-	m_buf->incr_offset(p_size);
+	m_buf->incr_offset((ptrdiff_t)p_size);
 	if (!isMemStream())
 		m_buffered_bytes += p_size;
 	else
@@ -310,9 +314,10 @@ bool BufferedStream::flush() {
 			GROK_ERROR( "Error on writing stream!");
 			return false;
 		}
-		m_buf->incr_offset(l_current_write_nb_bytes);
+		m_buf->incr_offset((ptrdiff_t)l_current_write_nb_bytes);
 		assert(m_buf->curr_ptr() >= m_buf->buf);
 		m_buffered_bytes -= l_current_write_nb_bytes;
+		assert(m_buffered_bytes <= m_read_bytes_seekable);
 	}
 	m_buf->offset = 0;
 	return true;
@@ -326,14 +331,14 @@ void BufferedStream::invalidate_buffer() {
 }
 
 bool BufferedStream::read_skip(int64_t p_size) {
-	int64_t offset = (int64_t)(m_stream_offset) + p_size;
+	int64_t offset = (int64_t)m_stream_offset + p_size;
 	if (offset < 0)
 		return false;
 	return read_seek((uint64_t)offset);
 }
 
 bool BufferedStream::write_skip(int64_t p_size) {
-	int64_t offset = (int64_t)(m_stream_offset + p_size);
+	int64_t offset = (int64_t)m_stream_offset + p_size;
 	if (offset < 0)
 		return false;
 	return write_seek((uint64_t)offset);
@@ -368,9 +373,10 @@ bool BufferedStream::read_seek(uint64_t offset) {
 				offset >= m_stream_offset - (m_read_bytes_seekable - m_buffered_bytes))) {
 			int64_t increment = (int64_t)offset - (int64_t)m_stream_offset;
 			m_stream_offset = offset;
-			m_buf->incr_offset(increment);
+			m_buf->incr_offset((ptrdiff_t)increment);
 			assert(m_buf->curr_ptr() >= m_buf->buf);
-			m_buffered_bytes -= increment;
+			m_buffered_bytes = (size_t)(m_buffered_bytes - increment);
+			assert(m_buffered_bytes <= m_read_bytes_seekable);
 			return true;
 		}
 	}

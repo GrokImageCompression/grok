@@ -527,7 +527,6 @@ static bool j2k_setup_decoding_validation(grk_j2k *p_j2k) {
 static bool j2k_need_nb_tile_parts_correction(BufferedStream *p_stream,
 		uint16_t tile_no, bool *p_correction_needed) {
 	uint8_t header_data[10];
-	int64_t stream_pos_backup;
 	uint32_t current_marker;
 	uint32_t marker_size;
 	uint16_t read_tile_no;
@@ -542,12 +541,7 @@ static bool j2k_need_nb_tile_parts_correction(BufferedStream *p_stream,
 		return true;
 	}
 
-	stream_pos_backup = p_stream->tell();
-	if (stream_pos_backup == -1) {
-		/* let's do nothing */
-		return true;
-	}
-
+	uint64_t stream_pos_backup = p_stream->tell();
 	for (;;) {
 		/* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer */
 		if (p_stream->read(header_data, 2) != 2) {
@@ -1039,7 +1033,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 		tcp->m_tile_data = nullptr;
 
 		p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data = 0;
-		p_j2k->m_specific_param.m_decoder.m_state &= (~(J2K_DEC_STATE_DATA));
+		p_j2k->m_specific_param.m_decoder.m_state &= (uint32_t)(~J2K_DEC_STATE_DATA);
 
 		// if there is no EOC marker and there is also no data left, then simply return true
 		if (p_stream->get_number_byte_left() == 0
@@ -1261,8 +1255,14 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 			return false;
 		}
 	}
+	if (p_j2k->m_tileProcessor->m_tile_ind_to_dec == -1){
+		GROK_ERROR("j2k_decode_one_tile: Unable to decode tile "
+				"since first tile SOT has not been detected");
+		return false;
+	}
+
 	/* Move into the codestream to the first SOT used to decode the desired tile */
-	tile_no_to_dec = p_j2k->m_tileProcessor->m_tile_ind_to_dec;
+	tile_no_to_dec = (uint32_t)(p_j2k->m_tileProcessor->m_tile_ind_to_dec);
 	if (p_j2k->cstr_index->tile_index)
 		if (p_j2k->cstr_index->tile_index->tp_index) {
 			if (!p_j2k->cstr_index->tile_index[tile_no_to_dec].nb_tps) {

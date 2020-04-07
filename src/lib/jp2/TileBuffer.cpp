@@ -38,7 +38,7 @@ int32_t* TileBuffer::get_ptr(uint32_t resno,
 	(void) bandno;
 	auto dims = reduced_image_dim;
 	return data + (uint64_t) offsetx
-			+ (uint64_t) offsety * (dims.x1 - dims.x0);
+			+ offsety * (uint64_t) (dims.x1 - dims.x0);
 }
 
 
@@ -71,7 +71,7 @@ bool TileBuffer::alloc_component_data_encode() {
 
 bool TileBuffer::alloc_component_data_decode() {
 	if (!data) {
-		int64_t area = reduced_image_dim.area();
+		uint64_t area = (uint64_t)reduced_image_dim.area();
 		if (area) {
 			data = (int32_t*) grk_aligned_malloc(area * sizeof(int32_t));
 			if (!data) {

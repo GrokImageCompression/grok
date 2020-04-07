@@ -142,6 +142,8 @@ bool BitIO::write(uint32_t v, uint32_t n) {
 
 bool BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n > 0 && n <= 32);
+	if (n == 0 || n > 32)
+		return false;
 #ifdef GRK_UBSAN_BUILD
 	/* This assert fails for some corrupted images which are gracefully rejected */
 	/* Add this assert only for ubsan build. */
@@ -149,7 +151,7 @@ bool BitIO::read(uint32_t *bits, uint32_t n) {
 	assert(n <= 32U);
 #endif
 	*bits = 0U;
-	for (int32_t i = n - 1; i >= 0; i--) {
+	for (int32_t i = (int32_t)(n - 1); i >= 0; i--) {
 		if (!getbit(bits, static_cast<uint8_t>(i))) {
 			return false;
 		}

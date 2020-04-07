@@ -428,12 +428,15 @@ static const uint16_t tabMaxSubLevelFromMainLevel[] = {
 bool j2k_is_imf_compliant(grk_cparameters *parameters,
         grk_image *image)
 {
+	assert(parameters->numresolution > 0);
+	if (parameters->numresolution == 0)
+		return false;
     uint32_t i;
     const uint16_t rsiz = parameters->rsiz;
     const uint16_t profile = GRK_GET_IMF_PROFILE(rsiz);
     const uint16_t mainlevel = GRK_GET_IMF_MAINLEVEL(rsiz);
     const uint16_t sublevel = GRK_GET_IMF_SUBLEVEL(rsiz);
-    const int NL = parameters->numresolution - 1;
+    const uint32_t NL = (uint32_t)(parameters->numresolution - 1);
     const uint32_t XTsiz = parameters->tile_size_on ? (uint32_t)
                              parameters->cp_tdx : image->x1;
     bool ret = true;

@@ -70,7 +70,7 @@ TileProcessor::TileProcessor(bool isDecoder) : m_tile_ind_to_dec(-1),
 									  m_current_tile_number(0),
 									  tp_pos(0),
 									  m_current_poc_tile_part_number(0),
-									  m_current_tile_part_number(-1),
+									  m_current_tile_part_number(0),
 									  m_nb_tile_parts_correction_checked(0),
 									  m_nb_tile_parts_correction(0),
 									  tile_part_data_length(0),
@@ -964,12 +964,12 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 			for (i = 0; i < tilec_idx->numresolutions; i++) {
 				auto res_idx = &tilec_idx->resolutions[i];
 
-				p_cstr_info->tile[tile_no].pw[i] = (int) res_idx->pw;
-				p_cstr_info->tile[tile_no].ph[i] = (int) res_idx->ph;
+				p_cstr_info->tile[tile_no].pw[i] = res_idx->pw;
+				p_cstr_info->tile[tile_no].ph[i] = res_idx->ph;
 
 				num_packs += res_idx->pw * res_idx->ph;
-				p_cstr_info->tile[tile_no].pdx[i] = (int) tccp->prcw[i];
-				p_cstr_info->tile[tile_no].pdy[i] = (int) tccp->prch[i];
+				p_cstr_info->tile[tile_no].pdx[i] = tccp->prcw[i];
+				p_cstr_info->tile[tile_no].pdy[i] = tccp->prch[i];
 			}
 			p_cstr_info->tile[tile_no].packet =
 					( grk_packet_info  * ) grk_calloc(
@@ -1308,7 +1308,7 @@ bool TileProcessor::mct_decode() {
 		return true;
 	}
 
-	uint64_t image_samples  = tile_comp->buf->reduced_image_dim.area();
+	uint64_t image_samples  = (uint64_t)tile_comp->buf->reduced_image_dim.area();
 	uint64_t samples = image_samples;
 
 	if (tile->numcomps >= 3) {
@@ -1440,7 +1440,7 @@ uint64_t TileProcessor::get_tile_size(bool reduced) {
 		uint32_t size_comp = (img_comp->prec + 7) >> 3; /*(/ 8)*/
 
 		data_size += size_comp *
-				(reduced ? tilec->buf->reduced_image_dim.area() : tilec->area());
+				(reduced ? (uint64_t)tilec->buf->reduced_image_dim.area() : tilec->area());
 	}
 
 	return data_size;

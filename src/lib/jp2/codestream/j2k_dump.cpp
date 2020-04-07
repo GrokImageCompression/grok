@@ -83,6 +83,8 @@ static void j2k_dump_tile_info(grk_tcp *default_tile, uint32_t numcomps,
 			uint32_t resno;
 			uint32_t bandno, numbands;
 
+			assert(tccp->numresolutions > 0);
+
 			/* coding style*/
 			fprintf(out_stream, "\t\t comp %d {\n", compno);
 			fprintf(out_stream, "\t\t\t csty=%#x\n", tccp->csty);
@@ -106,7 +108,7 @@ static void j2k_dump_tile_info(grk_tcp *default_tile, uint32_t numcomps,
 			fprintf(out_stream, "\t\t\t stepsizes (m,e)=");
 			numbands =
 					(tccp->qntsty == J2K_CCP_QNTSTY_SIQNT) ?
-							1 : (int32_t) tccp->numresolutions * 3 - 2;
+							1 : (uint32_t) (tccp->numresolutions * 3 - 2);
 			for (bandno = 0; bandno < numbands; bandno++) {
 				fprintf(out_stream, "(%d,%d) ", tccp->stepsizes[bandno].mant,
 					 tccp->stepsizes[bandno].expn);

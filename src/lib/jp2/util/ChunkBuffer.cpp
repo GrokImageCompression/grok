@@ -174,7 +174,7 @@ bool ChunkBuffer::alloc_and_push_back(size_t len) {
 void ChunkBuffer::incr_cur_chunk_offset(size_t offset) {
 	auto cur_chunk = chunks[cur_chunk_id];
 
-	cur_chunk->incr_offset(offset);
+	cur_chunk->incr_offset((ptrdiff_t)offset);
 	if (cur_chunk->offset == cur_chunk->len)
 		increment();
 }

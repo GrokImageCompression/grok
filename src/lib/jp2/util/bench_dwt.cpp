@@ -160,7 +160,7 @@ int main(int argc, char** argv)
         } else if (strcmp(argv[i], "-check") == 0) {
             check = true;
         } else if (strcmp(argv[i], "-size") == 0 && i + 1 < argc) {
-            size = atoi(argv[i + 1]);
+            size = (uint32_t)atoi(argv[i + 1]);
             i ++;
         } else if (strcmp(argv[i], "-lossy") == 0) {
             lossy = true;

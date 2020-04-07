@@ -142,7 +142,7 @@ grk_buf::~grk_buf() {
 
 void grk_buf::incr_offset(ptrdiff_t off) {
 	/*  we allow the offset to move to one location beyond end of buffer segment*/
-	if (off > 0 && offset > SIZE_MAX - off){
+	if (off > 0 && offset > (size_t)(SIZE_MAX - (size_t)off)){
 		GROK_WARN("grk_buf: overflow");
 		offset = len;
 	}

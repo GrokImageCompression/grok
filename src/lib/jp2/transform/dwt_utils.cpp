@@ -81,9 +81,9 @@ uint32_t dwt_utils::max_resolution(grk_tcd_resolution *GRK_RESTRICT r, uint32_t 
 /* <summary>                             */
 /* Forward lazy transform (vertical).    */
 /* </summary>                            */
-void dwt_utils::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+void dwt_utils::deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
 		int32_t x, int32_t cas) {
-	int32_t i = s_n;
+	uint32_t i = s_n;
 	int32_t *l_dest = b;
 	int32_t *l_src = a + cas;
 
@@ -91,7 +91,7 @@ void dwt_utils::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 		*l_dest = *l_src;
 		l_dest += x;
 		l_src += 2;
-	} /* b[i*x]=a[2*i+cas]; */
+	}
 
 	l_dest = b + s_n * x;
 	l_src = a + 1 - cas;
@@ -101,19 +101,18 @@ void dwt_utils::deinterleave_v(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 		*l_dest = *l_src;
 		l_dest += x;
 		l_src += 2;
-	} /*b[(s_n+i)*x]=a[(2*i+1-cas)];*/
+	}
 }
 
 /* <summary>			                 */
 /* Forward lazy transform (horizontal).  */
 /* </summary>                            */
-void dwt_utils::deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
+void dwt_utils::deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
 		int32_t cas) {
-	int32_t i;
 	int32_t *l_dest = b;
 	int32_t *l_src = a + cas;
 
-	for (i = 0; i < s_n; ++i) {
+	for (uint32_t i = 0; i < s_n; ++i) {
 		*l_dest++ = *l_src;
 		l_src += 2;
 	}
@@ -121,7 +120,7 @@ void dwt_utils::deinterleave_h(int32_t *a, int32_t *b, int32_t d_n, int32_t s_n,
 	l_dest = b + s_n;
 	l_src = a + 1 - cas;
 
-	for (i = 0; i < d_n; ++i) {
+	for (uint32_t i = 0; i < d_n; ++i) {
 		*l_dest++ = *l_src;
 		l_src += 2;
 	}

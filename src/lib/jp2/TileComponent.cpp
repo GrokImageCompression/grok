@@ -330,7 +330,7 @@ bool TileComponent::init(bool isEncoder,
 			tccp->quant.setBandStepSizeAndBps(tcp,
 												band,
 												resno,
-												bandno,
+												(uint8_t)bandno,
 												tccp,
 												image_comp->prec,
 												m_is_encoder ? 1.0f : 0.5f);
@@ -585,9 +585,9 @@ bool TileComponent::create_buffer(grk_image *output_image,
 	/* for encode, we don't need to allocate resolutions */
 	if (!m_is_encoder) {
 		/* fill resolutions vector */
-        int32_t max_num_res = numresolutions;
+        assert(numresolutions>0);
 		TileBufferResolution *prev_res = nullptr;
-		for (int32_t resno = (int32_t) (max_num_res - 1); resno >= 0; --resno) {
+		for (int32_t resno = (int32_t) (numresolutions - 1); resno >= 0; --resno) {
 			uint32_t bandno;
 			grk_tcd_resolution *tcd_res = resolutions + resno;
 			TileBufferResolution *res = (TileBufferResolution*) grk_calloc(1,
