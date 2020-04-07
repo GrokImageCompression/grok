@@ -140,15 +140,24 @@ grk_buf::~grk_buf() {
 		delete[] buf;
 }
 
-void grk_buf::incr_offset(uint64_t off) {
+void grk_buf::incr_offset(ptrdiff_t off) {
 	/*  we allow the offset to move to one location beyond end of buffer segment*/
-	if (offset + off > (uint64_t) len) {
-#ifdef DEBUG_SEG_BUF
-       GROK_WARN("attempt to increment buffer offset out of bounds");
-#endif
-		offset = (uint64_t) len;
+	if (off > 0 && offset > SIZE_MAX - off){
+		GROK_WARN("grk_buf: overflow");
+		offset = len;
 	}
-	offset += off;
+	else if (off < 0 && offset < (size_t)(-off)){
+		GROK_WARN("grk_buf: underflow");
+		offset = 0;
+	}
+	else if (offset + off > len) {
+#ifdef DEBUG_SEG_BUF
+       GROK_WARN("grk_buf: attempt to increment buffer offset out of bounds");
+#endif
+		offset = len;
+	} else {
+		offset += off;
+	}
 }
 
 uint8_t* grk_buf::curr_ptr(){
