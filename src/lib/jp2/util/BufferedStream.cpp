@@ -326,17 +326,17 @@ void BufferedStream::invalidate_buffer() {
 }
 
 bool BufferedStream::read_skip(int64_t p_size) {
-	int64_t offset = m_stream_offset + p_size;
+	int64_t offset = (int64_t)(m_stream_offset + p_size);
 	if (offset < 0)
 		return false;
-	return read_seek(offset);
+	return read_seek((uint64_t)offset);
 }
 
 bool BufferedStream::write_skip(int64_t p_size) {
-	int64_t offset = m_stream_offset + p_size;
+	int64_t offset = (int64_t)(m_stream_offset + p_size);
 	if (offset < 0)
 		return false;
-	return write_seek(offset);
+	return write_seek((uint64_t)offset);
 }
 uint64_t BufferedStream::tell() {
 	return m_stream_offset;
@@ -344,7 +344,7 @@ uint64_t BufferedStream::tell() {
 uint64_t BufferedStream::get_number_byte_left(void) {
 	assert(m_user_data_length >= m_stream_offset);
 	return m_user_data_length ?
-			(int64_t) (m_user_data_length) - m_stream_offset : 0;
+			(uint64_t) (m_user_data_length - m_stream_offset) : 0;
 }
 bool BufferedStream::skip(int64_t p_size) {
 	assert(p_size >= 0);

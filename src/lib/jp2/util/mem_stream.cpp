@@ -50,7 +50,7 @@ static size_t zero_copy_read_from_mem(void **p_buffer, size_t nb_bytes,
 
 	*p_buffer = p_source_buffer->buf + p_source_buffer->off;
 	assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
-	p_source_buffer->off += (int64_t) nb_read;
+	p_source_buffer->off += nb_read;
 
 	return nb_read;
 }
@@ -62,10 +62,10 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 	if (!p_buffer)
 		return 0;
 
-	if ((size_t) p_source_buffer->off + nb_bytes < p_source_buffer->len) {
+	if ( p_source_buffer->off + nb_bytes < p_source_buffer->len) {
 		nb_read = nb_bytes;
 	} else {
-		nb_read = (p_source_buffer->len - (size_t) p_source_buffer->off);
+		nb_read = (size_t)(p_source_buffer->len - p_source_buffer->off);
 	}
 
 	if (nb_read) {
@@ -88,13 +88,13 @@ static size_t write_to_mem(void *dest, size_t nb_bytes,
 	if (nb_bytes) {
 		memcpy(src->buf + (size_t) src->off, dest,
 				nb_bytes);
-		src->off += (int64_t) nb_bytes;
+		src->off += nb_bytes;
 	}
 	return nb_bytes;
 }
 
 static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
-	if ((size_t) nb_bytes < src->len) {
+	if (nb_bytes < src->len) {
 		src->off = nb_bytes;
 	} else {
 		src->off = src->len;

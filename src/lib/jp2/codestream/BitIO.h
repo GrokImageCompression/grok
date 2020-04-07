@@ -125,8 +125,6 @@ private:
 
 	bool sim_out;
 
-	bool is_encoder;
-
 	IBufferedStream *stream;
 
 	/*

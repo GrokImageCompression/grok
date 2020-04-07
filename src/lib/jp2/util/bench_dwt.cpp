@@ -69,10 +69,10 @@ int32_t getValue(uint32_t i)
 }
 
 void init_tilec(TileComponent * l_tilec,
-                int32_t x0,
-                int32_t y0,
-                int32_t x1,
-                int32_t y1,
+                uint32_t x0,
+                uint32_t y0,
+                uint32_t x1,
+                uint32_t y1,
                 uint32_t numresolutions)
 {
     grk_tcd_resolution* l_res;
@@ -107,10 +107,10 @@ void init_tilec(TileComponent * l_tilec,
         --l_level_no;
 
         /* border for each resolution level (global) */
-        l_res->x0 = int_ceildivpow2(l_tilec->x0, (int32_t)l_level_no);
-        l_res->y0 = int_ceildivpow2(l_tilec->y0, (int32_t)l_level_no);
-        l_res->x1 = int_ceildivpow2(l_tilec->x1, (int32_t)l_level_no);
-        l_res->y1 = int_ceildivpow2(l_tilec->y1, (int32_t)l_level_no);
+        l_res->x0 = uint_ceildivpow2(l_tilec->x0, l_level_no);
+        l_res->y0 = uint_ceildivpow2(l_tilec->y0, l_level_no);
+        l_res->x1 = uint_ceildivpow2(l_tilec->x1, l_level_no);
+        l_res->y1 = uint_ceildivpow2(l_tilec->y1, l_level_no);
 
         ++l_res;
     }
@@ -137,7 +137,7 @@ void usage(void)
 
 int main(int argc, char** argv)
 {
-    int num_threads = 0;
+    uint32_t num_threads = 0;
     TileProcessor tcd(true);
     grk_image tcd_image;
     grk_tcd_tile tcd_tile;
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
             lossy = true;
             i ++;
         } else if (strcmp(argv[i], "-num_threads") == 0 && i + 1 < argc) {
-            num_threads = atoi(argv[i + 1]);
+            num_threads = (uint32_t)atoi(argv[i + 1]);
             i ++;
         } else if (strcmp(argv[i], "-num_resolutions") == 0 && i + 1 < argc) {
             num_resolutions = (uint32_t)atoi(argv[i + 1]);
@@ -187,8 +187,8 @@ int main(int argc, char** argv)
 
    grk_initialize(nullptr,num_threads);
 
-   init_tilec(&tilec, (int32_t)offset_x, (int32_t)offset_y,
-               (int32_t)offset_x + size, (int32_t)offset_y + size,
+   init_tilec(&tilec, offset_x, offset_y,
+               offset_x + size, offset_y + size,
                num_resolutions);
 
     if (display) {

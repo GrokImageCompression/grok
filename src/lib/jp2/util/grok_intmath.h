@@ -174,7 +174,7 @@ static inline int32_t int_floordivpow2(int32_t a, int32_t b) {
  @return a divided by 2^b
  */
 static inline int32_t uint_floordivpow2(uint32_t a, uint32_t b) {
-	return a >> b;
+	return (int32_t)(a >> b);
 }
 /**
  Get logarithm of an integer and round downwards

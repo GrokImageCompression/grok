@@ -28,7 +28,7 @@ struct buf_info {
 	buf_info() :
 			buf_info(nullptr, 0, 0, false) {
 	}
-	buf_info(uint8_t *buffer, int64_t offset, size_t length, bool owns) :
+	buf_info(uint8_t *buffer, size_t offset, size_t length, bool owns) :
 			buf(buffer), off(offset), len(length), fd(0), ownsBuffer(owns) {
 	}
 	~buf_info() {
@@ -36,7 +36,7 @@ struct buf_info {
 			delete[] buf;
 	}
 	uint8_t *buf;
-	int64_t off;
+	size_t off;
 	size_t len;
 	grk_handle fd;		// for file mapping
 	bool ownsBuffer;
