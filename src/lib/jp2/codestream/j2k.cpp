@@ -1897,7 +1897,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
-		tcp->qcd.generate(numgbits, parameters->numresolution - 1,
+		tcp->qcd.generate(numgbits, (uint32_t)(parameters->numresolution - 1),
 				!parameters->irreversible, image->comps[0].prec,
 				tcp->mct > 0, image->comps[0].sgnd);
 		tcp->numlayers = parameters->tcp_numlayers;
@@ -2047,8 +2047,8 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 			/* 0 => one precinct || 1 => custom precinct  */
 			tccp->csty = parameters->csty & J2K_CP_CSTY_PRT;
 			tccp->numresolutions = parameters->numresolution;
-			tccp->cblkw = int_floorlog2(parameters->cblockw_init);
-			tccp->cblkh = int_floorlog2(parameters->cblockh_init);
+			tccp->cblkw = uint_floorlog2(parameters->cblockw_init);
+			tccp->cblkh = uint_floorlog2(parameters->cblockh_init);
 			tccp->cblk_sty = parameters->cblk_sty;
 			tccp->qmfbid = parameters->irreversible ? 0 : 1;
 			tccp->qntsty = parameters->irreversible ?
@@ -2612,7 +2612,7 @@ static bool j2k_write_all_tile_parts(grk_j2k *p_j2k, uint64_t *p_data_written,
 
 static bool j2k_write_updated_tlm(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	uint32_t tlm_size;
-	int64_t tlm_position, current_position;
+	uint64_t tlm_position, current_position;
 
 	assert(p_j2k != nullptr);
 	assert(p_stream != nullptr);
@@ -2984,7 +2984,6 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *p_stream) {
 static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
 		uint16_t tileno) {
 	const char *prog = nullptr;
-	int32_t i;
 	uint32_t tpnum = 1;
 
 	/*  preconditions */
@@ -3003,7 +3002,7 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
 	assert(strlen(prog) > 0);
 
 	if (cp->m_coding_param.m_enc.m_tp_on == 1) {
-		for (i = 0; i < 4; ++i) {
+		for (uint32_t i = 0; i < 4; ++i) {
 			switch (prog[i]) {
 			/* component wise */
 			case 'C':
@@ -5483,7 +5482,12 @@ static bool j2k_read_sod(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	/* Index */
 	grk_codestream_index *cstr_index = p_j2k->cstr_index;
 	if (cstr_index) {
-		int64_t current_pos = p_stream->tell() - 2;
+		uint64_t current_pos = p_stream->tell();
+		if (current_pos < 2){
+			GROK_ERROR("Stream too short");
+			return false;
+		}
+		current_pos = (uint64_t)(current_pos - 2);
 
 		uint32_t current_tile_part =
 				cstr_index->tile_index[p_j2k->m_tileProcessor->m_current_tile_number].current_tpsno;

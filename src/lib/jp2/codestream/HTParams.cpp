@@ -162,8 +162,8 @@ void param_qcd::push(grk_stepsize* stepptr, bool reversible){
 }
 
 void param_qcd::generate(uint8_t guard_bits,
-		  	  	  int decomps,bool is_reversible,
-		  	  	  int max_bit_depth, bool color_transform, bool is_signed )
+		uint32_t decomps,bool is_reversible,
+		uint32_t max_bit_depth, bool color_transform, bool is_signed )
 {
 	num_decomps =decomps;
     Sqcd = (uint8_t)(guard_bits << 5);

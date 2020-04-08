@@ -73,8 +73,8 @@ public:
   void set_irrev_quant();
 
   void generate(uint8_t guard_bits,
-		  	  	  int decomps,bool is_reversible,
-		  	  	  int max_bit_depth, bool color_transform, bool is_signed );
+		  uint32_t decomps,bool is_reversible,
+		  uint32_t max_bit_depth, bool color_transform, bool is_signed );
 
   int get_num_guard_bits() const;
   int get_MAGBp() const;
@@ -92,7 +92,7 @@ private:
 	uint8_t u8_SPqcd[97];
 	uint16_t u16_SPqcd[97];
   };
-  int num_decomps;
+  uint32_t num_decomps;
   float base_delta;
 };
 

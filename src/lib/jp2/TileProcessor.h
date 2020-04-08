@@ -435,7 +435,7 @@ struct TileProcessor {
 	 after encoding the tilepart, a jump (in j2k_write_sod) is done
 	 to the TLM marker to store the value of its length.
 	 */
-	int64_t m_tlm_start;
+	uint64_t m_tlm_start;
 	/**
 	 * Stores the sizes of the tlm.
 	 */

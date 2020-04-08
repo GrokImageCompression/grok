@@ -1810,9 +1810,9 @@ typedef struct _grk_plugin_decode_callback_info {
 	const char *input_file_name;
 	const char *output_file_name;
 	// input file format 0: J2K, 1: JP2
-	int decod_format;
+	uint32_t decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
-	int cod_format;
+	uint32_t cod_format;
 	 grk_stream  *l_stream;
 	 grk_codec  *l_codec;
 	 grk_header_info  header_info;

@@ -759,7 +759,7 @@ static bool jp2_read_uuid(grk_jp2 *jp2, uint8_t *p_header_data,
 	return false;
 }
 
-double calc_res(uint16_t num, uint16_t den, int8_t exponent) {
+double calc_res(uint16_t num, uint16_t den, uint8_t exponent) {
 	if (den == 0)
 		return 0;
 	return ((double) num / den) * pow(10, exponent);
