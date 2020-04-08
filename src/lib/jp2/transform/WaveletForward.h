@@ -97,7 +97,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 			for(uint32_t i = 0; i < ThreadPool::hardware_concurrency(); ++i) {
 				uint32_t index = i;
 				results.emplace_back(
-					ThreadPool::get()->enqueue([this, index, bj_array,a,
+					ThreadPool::get()->enqueue([index, bj_array,a,
 												 stride, rw,rh,
 												 d_n, s_n, cas_col,
 												 linesPerThreadV] {

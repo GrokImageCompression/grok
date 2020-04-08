@@ -1544,7 +1544,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 	do {
 		grk_image_comp *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = (int) comp->h;
+		uint32_t height = comp->h;
 		/* Read the Image components */
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
@@ -1614,7 +1614,7 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 	do {
 		grk_image_comp *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = (int) comp->h;
+		uint32_t height = comp->h;
 		/* Read the Image components */
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);

@@ -213,7 +213,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		}
 	}
 	// We assume that alpha channels occur as last channels in image.
-	if (numAlphaChannels && ( (uint32_t)(firstAlpha + numAlphaChannels) >= numcomps)) {
+	if (numAlphaChannels && ( (uint32_t)firstAlpha + numAlphaChannels >= numcomps)) {
 		if (verbose)
 			spdlog::warn(
 					"PNG requires that alpha channels occur as last channels in image.");

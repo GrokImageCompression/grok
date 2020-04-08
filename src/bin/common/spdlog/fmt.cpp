@@ -2,6 +2,9 @@
 #error Please define SPDLOG_COMPILED_LIB to compile this file.
 #endif
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+
 // Slightly modified version of fmt lib's format.cc source file.
 // Copyright (c) 2012 - 2016, Victor Zverovich
 // All rights reserved.
@@ -187,3 +190,5 @@ template FMT_API std::wstring internal::vformat<wchar_t>(wstring_view, basic_for
 FMT_END_NAMESPACE
 
 #endif
+
+#pragma GCC diagnostic pop

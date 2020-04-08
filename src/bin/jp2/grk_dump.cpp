@@ -102,7 +102,7 @@ typedef struct _img_folder {
 
 /* -------------------------------------------------------------------------- */
 /* Declarations                                                               */
-static int get_num_images(char *imgdirpath);
+static uint32_t get_num_images(char *imgdirpath);
 static int load_images(dircnt *dirptr, char *imgdirpath);
 static int get_file_format(const char *filename);
 static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
@@ -142,10 +142,10 @@ static void decode_help_display(void) {
 }
 
 /* -------------------------------------------------------------------------- */
-static int get_num_images(char *imgdirpath) {
+static uint32_t get_num_images(char *imgdirpath) {
 	DIR *dir;
 	struct dirent *content;
-	int num_images = 0;
+	uint32_t num_images = 0;
 
 	/*Reading the input images from given input directory*/
 

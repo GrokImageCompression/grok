@@ -136,10 +136,10 @@ int parse_DA_values(bool verbose,
 		return EXIT_FAILURE;
 	}
 	else {
-		*DA_x0 = values[0];
-		*DA_y0 = values[1];
-		*DA_x1 = values[2];
-		*DA_y1 = values[3];
+		*DA_x0 = (uint32_t)values[0];
+		*DA_y0 = (uint32_t)values[1];
+		*DA_x1 = (uint32_t)values[2];
+		*DA_y1 = (uint32_t)values[3];
 		return EXIT_SUCCESS;
 	}
 }
@@ -245,11 +245,11 @@ char * get_file_name(char *name)
 	return strtok(name,".");
 }
 
-int get_num_images(char *imgdirpath)
+uint32_t get_num_images(char *imgdirpath)
 {
     DIR *dir;
     struct dirent* content;
-    int num_images = 0;
+    uint32_t num_images = 0;
 
     /*Reading the input images from given input directory*/
 

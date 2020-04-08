@@ -342,8 +342,8 @@ static int has_prec(int val) {
 
 static grk_image* pnmtoimage(const char *filename,
 		grk_cparameters *parameters) {
-	int subsampling_dx = parameters->subsampling_dx;
-	int subsampling_dy = parameters->subsampling_dy;
+	uint32_t subsampling_dx = parameters->subsampling_dx;
+	uint32_t subsampling_dy = parameters->subsampling_dy;
 
 	FILE *fp = nullptr;
 	uint32_t compno, numcomps, w, h, prec, format;
@@ -579,8 +579,8 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		}
 		two = (prec > 8);
 		triple = (ncomp > 2);
-		wr = (int) image->comps[0].w;
-		hr = (int) image->comps[0].h;
+		wr = image->comps[0].w;
+		hr = image->comps[0].h;
 		max = (1 << prec) - 1;
 		has_alpha = (ncomp == 4 || ncomp == 2);
 
@@ -790,8 +790,8 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			rc = 1;
 			goto cleanup;
 		}
-		wr = (int) image->comps[compno].w;
-		hr = (int) image->comps[compno].h;
+		wr = image->comps[compno].w;
+		hr = image->comps[compno].h;
 		prec = (int) image->comps[compno].prec;
 		max = (1 << prec) - 1;
 

@@ -38,7 +38,7 @@ void RateControl::convexHull(grk_tcd_pass *pass, uint32_t numPasses) {
 		double dd = 0;
 		double dr = 0;
 
-		int p_intermed = p;
+		int p_intermed = (int)p;
 		auto intermed_pass = pass + p_intermed;
 
 		// loop through all intermediate points from p-1 down to 0,

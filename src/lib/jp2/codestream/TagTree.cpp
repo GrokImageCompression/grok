@@ -314,7 +314,7 @@ bool TagTree::decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
 		}
 		node = *--stkptr;
 	}
-	*value = node->value;
+	*value = (uint64_t)node->value;
 	return true;
 }
 

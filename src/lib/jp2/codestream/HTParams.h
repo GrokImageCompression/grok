@@ -60,8 +60,7 @@ private:
 struct param_qcd
 {
 public:
-  param_qcd() : Lqcd(0),
-  	  	  	  Sqcd(0),
+  param_qcd() :	  Sqcd(0),
 			  num_decomps(0),
 			  base_delta(-1.0f)
   {
@@ -87,7 +86,6 @@ public:
   void push(grk_stepsize* stepptr, bool reversible);
 
 private:
-  uint16_t Lqcd;
   uint8_t Sqcd;
   union
   {

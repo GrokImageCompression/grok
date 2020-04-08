@@ -457,8 +457,9 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
 	cmsHTRANSFORM transform = nullptr;
 	cmsHPROFILE in_prof = nullptr;
 	cmsHPROFILE out_prof=nullptr;
-    cmsUInt32Number in_type, out_type, nr_samples;
-    int prec, i, max, max_w, max_h;
+    cmsUInt32Number in_type, out_type;
+    size_t nr_samples, max;
+    uint32_t prec, i, max_w, max_h;
     GRK_COLOR_SPACE oldspace;
     grk_image *  new_image = nullptr;
 	(void)verbose;
@@ -479,13 +480,13 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose)
 	intent = cmsGetHeaderRenderingIntent(in_prof);
 
 
-    max_w = (int)image->comps[0].w;
-    max_h = (int)image->comps[0].h;
+    max_w = image->comps[0].w;
+    max_h = image->comps[0].h;
 
 	if (!max_w || !max_h)
 		goto cleanup;
 
-    prec = (int)image->comps[0].prec;
+    prec = image->comps[0].prec;
     oldspace = image->color_space;
 
     if(out_space == cmsSigRgbData) { /* enumCS 16 */
@@ -742,8 +743,8 @@ cleanup:
 // transform LAB colour space to sRGB @ 16 bit precision
 void color_cielab_to_rgb(grk_image *image,bool verbose){
     uint32_t *row;
-    int enumcs, numcomps;
-    numcomps = (int)image->numcomps;
+    uint32_t enumcs, numcomps;
+    numcomps = image->numcomps;
     // sanity checks
     if(numcomps != 3) {
 		if (verbose)
@@ -771,7 +772,7 @@ void color_cielab_to_rgb(grk_image *image,bool verbose){
 	// range, offset and precision for L,a and b coordinates
     double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
     double minL, maxL, mina, maxa, minb, maxb;
-    unsigned int i, max;
+    size_t i, max;
     cmsUInt16Number RGB[3];
     grk_image *  new_image = image_create(3, image->comps[0].w, image->comps[0].h, image->comps[0].prec);
 	if (!new_image)
