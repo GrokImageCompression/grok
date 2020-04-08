@@ -577,7 +577,8 @@ static bool pi_next_cprl(PacketIter *pi) {
 					uint32_t trx0, try0;
 					uint32_t trx1, try1;
 					uint32_t rpx, rpy;
-					int32_t prci, prcj;
+					uint32_t prci, prcj;
+					uint32_t temp1, temp2;
 					res = &comp->resolutions[pi->resno];
 					levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= GRK_J2K_MAXRLVLS)
@@ -611,14 +612,26 @@ static bool pi_next_cprl(PacketIter *pi) {
 					if ((trx0 == trx1) || (try0 == try1))
 						continue;
 
-					prci = uint_floordivpow2(
+					temp1 = uint_floordivpow2(
 							ceildiv<uint64_t>((uint64_t) pi->x,
-									((uint64_t) comp->dx << levelno)), res->pdx)
-							- uint_floordivpow2(trx0, res->pdx);
-					prcj = uint_floordivpow2(
+									((uint64_t) comp->dx << levelno)), res->pdx);
+
+					temp2 = uint_floordivpow2(trx0, res->pdx);
+					if (temp2 > temp1){
+						GROK_ERROR("Precinct index invalid");
+						return false;
+					}
+					prci = temp1 - temp2;
+
+					temp1 = uint_floordivpow2(
 							ceildiv<uint64_t>((uint64_t) pi->y,
-									((uint64_t) comp->dy << levelno)), res->pdy)
-							- uint_floordivpow2(try0, res->pdy);
+									((uint64_t) comp->dy << levelno)), res->pdy);
+					temp2 = uint_floordivpow2(try0, res->pdy);
+					if (temp2 > temp1){
+						GROK_ERROR("Precinct index invalid");
+						return false;
+					}
+					prcj = temp1 - temp2;
 					pi->precno = prci + prcj * res->pw;
 					//skip precinct numbers greater than total number of precincts
 					// for this resolution

@@ -1803,7 +1803,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		}
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
-	if (numAlphaChannels && (firstAlpha + numAlphaChannels >= numcomps)) {
+	if (numAlphaChannels && ((size_t)firstAlpha + numAlphaChannels >= numcomps)) {
 		if (verbose)
 			spdlog::warn(
 					"TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set");
@@ -1885,7 +1885,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 
 	if (numAlphaChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
-		auto alphaCount = 0;
+		size_t alphaCount = 0;
 		for (i = 0U; i < numcomps; ++i) {
 			if (image->comps[i].alpha)
 				out[alphaCount++] =
@@ -1929,7 +1929,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 }/* imagetotif() */
 
 bool TIFFFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+		uint32_t compressionParam, bool verbose) {
 	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
 }
 grk_image* TIFFFormat::decode(const char *filename,

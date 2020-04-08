@@ -914,10 +914,10 @@ static void decode_partial_h_53(dwt_data<int32_t> *horiz){
 	int32_t dn = horiz->dn;
 	int32_t sn = horiz->sn;
 	 int32_t cas = horiz->cas;
-	 int32_t win_l_x0 = horiz->win_l_x0;
-	 int32_t win_l_x1 = horiz->win_l_x1;
-	 int32_t win_h_x0 = horiz->win_h_x0;
-	 int32_t win_h_x1 = horiz->win_h_x1;
+	 int32_t win_l_x0 = (int32_t)horiz->win_l_x0;
+	 int32_t win_l_x1 = (int32_t)horiz->win_l_x1;
+	 int32_t win_h_x0 = (int32_t)horiz->win_h_x0;
+	 int32_t win_h_x1 = (int32_t)horiz->win_h_x1;
 
     if (!cas) {
         if ((dn > 0) || (sn > 1)) { /* NEW :  CASE ONE ELEMENT */
@@ -1664,7 +1664,7 @@ bool decode_tile_97(TileComponent* GRK_RESTRICT tilec,uint32_t numres){
 			for(auto && result: results)
 				result.get();
         }
-        vert.dn = (int32_t)(rh - vert.sn);
+        vert.dn = (int32_t)rh - vert.sn;
         vert.cas = res->y0 % 2;
         vert.win_l_x0 = 0;
         vert.win_l_x1 = (uint32_t)vert.sn;

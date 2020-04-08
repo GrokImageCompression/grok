@@ -25,8 +25,8 @@ class T1Factory {
 public:
 	static T1Interface* get_t1(bool isEncoder,
 								grk_tcp *tcp,
-								uint16_t maxCblkW,
-								uint16_t maxCblkH);
+								uint32_t maxCblkW,
+								uint32_t maxCblkH);
 
 };
 

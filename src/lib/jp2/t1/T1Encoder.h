@@ -23,8 +23,8 @@ namespace grk {
 
 class T1Encoder {
 public:
-	T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint16_t encodeMaxCblkW,
-			uint16_t encodeMaxCblkH, bool needsRateControl);
+	T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
+			uint32_t encodeMaxCblkH, bool needsRateControl);
 	~T1Encoder();
 	bool encode(std::vector<encodeBlockInfo*> *blocks);
 

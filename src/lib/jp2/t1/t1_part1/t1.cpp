@@ -1200,7 +1200,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 	mqc->lut_ctxno_zc_orient = lut_ctxno_zc + (orient << 9);
 	cblk->numbps = 0;
 	if (max) {
-		uint32_t temp = (uint32_t) int_floorlog2(max) + 1;
+		uint32_t temp = uint_floorlog2(max) + 1;
 		if (temp <= T1_NMSEDEC_FRACBITS)
 			cblk->numbps = 0;
 		else

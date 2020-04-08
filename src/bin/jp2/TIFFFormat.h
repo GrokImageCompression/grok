@@ -63,6 +63,6 @@ void tiffSetErrorAndWarningHandlers(bool verbose);
 class TIFFFormat {
 public:
 	virtual ~TIFFFormat() {}
-	bool encode(grk_image *  image, const char* filename, int compressionParam, bool verbose);
+	bool encode(grk_image *  image, const char* filename, uint32_t compressionParam, bool verbose);
 	grk_image *  decode(const char* filename,  grk_cparameters  *parameters);
 };

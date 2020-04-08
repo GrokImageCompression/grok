@@ -23,12 +23,12 @@ using namespace std;
 namespace grk {
 namespace t1_part1{
 
-T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint16_t maxCblkW,
-		uint16_t maxCblkH) : t1(nullptr){
+T1Part1::T1Part1(bool isEncoder, grk_tcp *tcp, uint32_t maxCblkW,
+		uint32_t maxCblkH) : t1(nullptr){
 	(void) tcp;
 	t1 = t1_create(isEncoder);
 	if (!isEncoder) {
-	   t1->cblkdatabuffersize = (uint32_t)maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
+	   t1->cblkdatabuffersize = maxCblkW * maxCblkH * (uint32_t)sizeof(int32_t);
 	   t1->cblkdatabuffer = (uint8_t*)grk_malloc(t1->cblkdatabuffersize);
    }
 }
@@ -220,12 +220,12 @@ void T1Part1::post_decode(t1_info *t1,
 	uint32_t qmfbid = block->qmfbid;
 	float stepsize = block->stepsize;
 	int32_t *tilec_data = block->tiledp;
-	int32_t tile_w = block->tilec->width();
+	uint32_t tile_w = block->tilec->width();
 	bool whole_tile_decoding = block->tilec->whole_tile_decoding;
 	auto src = t1->data;
-	int32_t dest_width = tile_w;
-	uint16_t cblk_w = (uint16_t) (cblk->x1 - cblk->x0);
-	uint16_t cblk_h = (uint16_t) (cblk->y1 - cblk->y0);
+	uint32_t dest_width = tile_w;
+	uint32_t cblk_w = (uint32_t) (cblk->x1 - cblk->x0);
+	uint32_t cblk_h = (uint32_t) (cblk->y1 - cblk->y0);
 
 	if (roishift) {
 		if (roishift >= 31) {
@@ -251,7 +251,7 @@ void T1Part1::post_decode(t1_info *t1,
 
 	if (!whole_tile_decoding) {
     	if (qmfbid == 1) {
-    		for (int j = 0; j < cblk_h; ++j) {
+    		for (uint32_t j = 0; j < cblk_h; ++j) {
     			uint32_t i = 0;
     			for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
     				src[(j * cblk_w) + i + 0U] /= 2;
@@ -290,7 +290,7 @@ void T1Part1::post_decode(t1_info *t1,
 		auto dest = tilec_data;
 		if (qmfbid == 1) {
 			int32_t *GRK_RESTRICT tiledp = dest;
-			for (int j = 0; j < cblk_h; ++j) {
+			for (uint32_t j = 0; j < cblk_h; ++j) {
 				uint32_t i = 0;
 				for (; i < (cblk_w & ~(uint32_t) 3U); i += 4U) {
 					int32_t tmp0 = src[(j * cblk_w) + i + 0U];
@@ -313,9 +313,9 @@ void T1Part1::post_decode(t1_info *t1,
 			}
 		} else {
 			float *GRK_RESTRICT tiledp = (float*) dest;
-			for (int j = 0; j < cblk_h; ++j) {
+			for (uint32_t j = 0; j < cblk_h; ++j) {
 				float *GRK_RESTRICT tiledp2 = tiledp;
-				for (int i = 0; i < cblk_w; ++i) {
+				for (uint32_t i = 0; i < cblk_w; ++i) {
 					float tmp = (float) (*src) * stepsize;
 					*tiledp2 = tmp;
 					src++;

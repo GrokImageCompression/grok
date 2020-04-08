@@ -142,22 +142,28 @@ grk_buf::~grk_buf() {
 
 void grk_buf::incr_offset(ptrdiff_t off) {
 	/*  we allow the offset to move to one location beyond end of buffer segment*/
-	if (off > 0 && offset > (size_t)(SIZE_MAX - (size_t)off)){
-		GROK_WARN("grk_buf: overflow");
-		offset = len;
+	if (off > 0 ){
+		if (offset > (size_t)(SIZE_MAX - (size_t)off)){
+			GROK_WARN("grk_buf: overflow");
+			offset = len;
+		} else if (offset + (size_t)off > len){
+	#ifdef DEBUG_SEG_BUF
+		   GROK_WARN("grk_buf: attempt to increment buffer offset out of bounds");
+	#endif
+			offset = len;
+		} else {
+			offset = offset + (size_t)off;
+		}
 	}
-	else if (off < 0 && offset < (size_t)(-off)){
-		GROK_WARN("grk_buf: underflow");
-		offset = 0;
+	else if (off < 0){
+		if (offset < (size_t)(-off)) {
+			GROK_WARN("grk_buf: underflow");
+			offset = 0;
+		} else {
+			offset = (size_t)((ptrdiff_t)offset + off);
+		}
 	}
-	else if (offset + off > len) {
-#ifdef DEBUG_SEG_BUF
-       GROK_WARN("grk_buf: attempt to increment buffer offset out of bounds");
-#endif
-		offset = len;
-	} else {
-		offset += off;
-	}
+
 }
 
 uint8_t* grk_buf::curr_ptr(){

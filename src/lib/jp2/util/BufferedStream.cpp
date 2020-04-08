@@ -375,7 +375,7 @@ bool BufferedStream::read_seek(uint64_t offset) {
 			m_stream_offset = offset;
 			m_buf->incr_offset((ptrdiff_t)increment);
 			assert(m_buf->curr_ptr() >= m_buf->buf);
-			m_buffered_bytes = (size_t)(m_buffered_bytes - increment);
+			m_buffered_bytes = (size_t)((int64_t)m_buffered_bytes - increment);
 			assert(m_buffered_bytes <= m_read_bytes_seekable);
 			return true;
 		}
