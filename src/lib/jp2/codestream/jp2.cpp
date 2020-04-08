@@ -911,7 +911,7 @@ static void jp2_write_res_box(double resx, double resy, uint32_t box_id,
 		*current_res_ptr += 2;
 	}
 	for (size_t i = 0; i < 2; ++i) {
-		grk_write_bytes(*current_res_ptr, exponent[i], 1);
+		grk_write_bytes(*current_res_ptr, (uint32_t)exponent[i], 1);
 		*current_res_ptr += 1;
 	}
 }
@@ -2867,12 +2867,12 @@ static bool jp2_read_jp2h(grk_jp2 *jp2, uint8_t *p_header_data,
 
 	jp2->jp2_img_state = JP2_IMG_STATE_NONE;
 
-	int64_t header_size = hdr_size;
+	int64_t header_size = (int64_t)hdr_size;
 
 	/* iterate while remaining data */
 	while (header_size) {
 
-		if (!jp2_read_box(&box, p_header_data, &box_size, header_size)) {
+		if (!jp2_read_box(&box, p_header_data, &box_size, (uint64_t)header_size)) {
 			GROK_ERROR("Stream error while reading JP2 Header box");
 			return false;
 		}

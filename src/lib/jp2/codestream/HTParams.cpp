@@ -44,9 +44,9 @@ using namespace std;
 
 namespace grk {
 
-float sqrt_energy_gains::get_gain_l(int num_decomp, bool reversible)
+float sqrt_energy_gains::get_gain_l(uint32_t num_decomp, bool reversible)
 { return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp]; }
-float sqrt_energy_gains::get_gain_h(int num_decomp, bool reversible)
+float sqrt_energy_gains::get_gain_h(uint32_t num_decomp, bool reversible)
 { return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp]; }
 
 
@@ -89,9 +89,9 @@ const float sqrt_energy_gains::gain_5x3_h[34] = { 1.0458e+00f,
 class bibo_gains
 {
 public:
-  static float get_bibo_gain_l(int num_decomp, bool reversible)
+  static float get_bibo_gain_l(uint32_t num_decomp, bool reversible)
   { return reversible ? gain_5x3_l[num_decomp] : gain_9x7_l[num_decomp]; }
-  static float get_bibo_gain_h(int num_decomp, bool reversible)
+  static float get_bibo_gain_h(uint32_t num_decomp, bool reversible)
   { return reversible ? gain_5x3_h[num_decomp] : gain_9x7_h[num_decomp]; }
 
 private:
@@ -183,19 +183,19 @@ void param_qcd::generate(uint8_t guard_bits,
 	 }
 }
 
-void param_qcd::set_rev_quant(int bit_depth,
+void param_qcd::set_rev_quant(uint32_t bit_depth,
 							  bool is_employing_color_transform)
 {
-  int B = bit_depth;
+  int B = (int)bit_depth;
   B += is_employing_color_transform ? 1 : 0; //1 bit for RCT
-  int s = 0;
+  uint32_t s = 0;
   float bibo_l = bibo_gains::get_bibo_gain_l(num_decomps, true);
   int X = (int) ceil(log(bibo_l*bibo_l)/M_LN2/0.9f);//David's code uses 0.9
   u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-  for (int d = num_decomps - 1; d >= 0; --d)
+  for (int d = (int32_t)num_decomps - 1; d >= 0; --d)
   {
-	float bibo_l = bibo_gains::get_bibo_gain_l(d + 1, true);
-	float bibo_h = bibo_gains::get_bibo_gain_h(d, true);
+	float bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
+	float bibo_h = bibo_gains::get_bibo_gain_h((uint32_t)d, true);
 	X = (int) ceil(log(bibo_h*bibo_l)/M_LN2/0.9f);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
@@ -207,10 +207,10 @@ void param_qcd::set_rev_quant(int bit_depth,
 //////////////////////////////////////////////////////////////////////////
 void param_qcd::set_irrev_quant()
 {
-  int s = 0;
+  uint32_t s = 0;
   float gain_l = sqrt_energy_gains::get_gain_l(num_decomps, false);
   float delta_b = base_delta / (gain_l * gain_l);
-  int exp = 0, mantissa;
+  uint32_t exp = 0, mantissa;
   while (delta_b < 1.0f)
   {
 	  exp++;
@@ -218,20 +218,20 @@ void param_qcd::set_irrev_quant()
   }
   //with rounding, there is a risk of becoming equal to 1<<12
   // but that should not happen in reality
-  mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+  mantissa = (uint32_t)round(delta_b * (float)(1<<11)) - (1<<11);
   mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
   u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
-  for (int d = num_decomps - 1; d >= 0; --d)
+  for (int d = (int32_t)num_decomps - 1; d >= 0; --d)
   {
-	float gain_l = sqrt_energy_gains::get_gain_l(d + 1, false);
-	float gain_h = sqrt_energy_gains::get_gain_h(d, false);
+	float gain_l = sqrt_energy_gains::get_gain_l((uint32_t)(d + 1), false);
+	float gain_h = sqrt_energy_gains::get_gain_h((uint32_t)d, false);
 
 	delta_b = base_delta / (gain_l * gain_h);
 
-	int exp = 0, mantissa;
+	uint32_t exp = 0, mantissa;
 	while (delta_b < 1.0f)
 	{ exp++; delta_b *= 2.0f; }
-	mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+	mantissa = (uint32_t)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
 	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
 	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
@@ -241,23 +241,23 @@ void param_qcd::set_irrev_quant()
 	exp = 0;
 	while (delta_b < 1)
 	{ exp++; delta_b *= 2.0f; }
-	mantissa = (int)round(delta_b * (float)(1<<11)) - (1<<11);
+	mantissa = (uint32_t)round(delta_b * (float)(1<<11)) - (1<<11);
 	mantissa = mantissa < (1<<11) ? mantissa : 0x7FF;
 	u16_SPqcd[s++] = (uint16_t)((exp << 11) | mantissa);
   }
 }
 
 //////////////////////////////////////////////////////////////////////////
-int param_qcd::get_MAGBp() const
+uint32_t param_qcd::get_MAGBp() const
 {
-  int B = 0;
-  int irrev = Sqcd & 0x1F;
+  uint32_t B = 0;
+  uint32_t irrev = Sqcd & 0x1F;
   if (irrev == 0) //reversible
-	for (int i = 0; i < 3 * num_decomps + 1; ++i)
-	  B = max(B, u8_SPqcd[i] >> 3);
+	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
+	  B = max(B, (uint32_t)(u8_SPqcd[i] >> 3));
   else if (irrev == 2) //scalar expounded
-	for (int i = 0; i < 3 * num_decomps + 1; ++i)
-	  B = max(B, u16_SPqcd[i] >> 11);
+	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
+	  B = max(B, (uint32_t)(u16_SPqcd[i] >> 11));
   else
 	assert(0);
 
@@ -265,43 +265,43 @@ int param_qcd::get_MAGBp() const
 }
 
 //////////////////////////////////////////////////////////////////////////
-int param_qcd::rev_get_num_bits(int resolution, int subband) const
+uint32_t param_qcd::rev_get_num_bits(uint32_t resolution, uint32_t subband) const
 {
   assert((resolution == 0 && subband == 0) ||
 		 (resolution <= num_decomps && subband > 0 && subband < 4));
   assert((Sqcd & 0x1F) == 0);
-  int idx = max(resolution - 1, 0) * 3 + subband;
+  uint32_t idx = max((resolution - 1), 0U) * 3 + subband;
   return u8_SPqcd[idx] >> 3;
 }
 
 //////////////////////////////////////////////////////////////////////////
-float param_qcd::irrev_get_delta(int resolution, int subband) const
+float param_qcd::irrev_get_delta(uint32_t resolution, uint32_t subband) const
 {
   assert((resolution == 0 && subband == 0) ||
 		 (resolution <= num_decomps && subband > 0 && subband<4));
   assert((Sqcd & 0x1F) == 2);
   float gain[] = { 1.0f, 2.0f, 2.0f, 4.0f };
-  int idx = max(resolution - 1, 0) * 3 + subband;
-  int exp = u16_SPqcd[idx] >> 11;
+  uint32_t idx = max((uint32_t)(resolution - 1), 0U) * 3 + subband;
+  uint32_t exp = u16_SPqcd[idx] >> 11;
 
   return (float) (((1.0 + (u16_SPqcd[idx] & 0x7FF)/ 2048.0)
 			* pow(2.0, (int32_t) (gain[subband] - exp))));
 }
 
 //////////////////////////////////////////////////////////////////////////
-int param_qcd::get_num_guard_bits() const
+uint32_t param_qcd::get_num_guard_bits() const
 {
   return (Sqcd >> 5);
 }
 
 //////////////////////////////////////////////////////////////////////////
-int param_qcd::get_Kmax(int resolution, int subband) const
+uint32_t param_qcd::get_Kmax(uint32_t resolution, uint32_t subband) const
 {
   assert((resolution == 0 && subband == 0) ||
 		 (resolution <= num_decomps && subband > 0 && subband<4));
-  int num_bits = get_num_guard_bits();
-  int idx = max(resolution - 1, 0) * 3 + subband;
-  int irrev = Sqcd & 0x1F;
+  uint32_t num_bits = get_num_guard_bits();
+  uint32_t idx = max((uint32_t)(resolution - 1), 0U) * 3 + subband;
+  uint32_t irrev = Sqcd & 0x1F;
   if (irrev == 0) //reversible
 	num_bits += (u8_SPqcd[idx] >> 3) - 1;
   else if (irrev == 2) //scalar expounded

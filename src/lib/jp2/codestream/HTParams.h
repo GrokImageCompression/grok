@@ -48,8 +48,8 @@ namespace grk {
 class sqrt_energy_gains
 {
 public:
-  static float get_gain_l(int num_decomp, bool reversible);
-  static float get_gain_h(int num_decomp, bool reversible);
+  static float get_gain_l(uint32_t num_decomp, bool reversible);
+  static float get_gain_h(uint32_t num_decomp, bool reversible);
 private:
   static const float gain_9x7_l[34];
   static const float gain_9x7_h[34];
@@ -69,18 +69,18 @@ public:
   }
 
   void set_delta(float delta) { base_delta = delta; }
-  void set_rev_quant(int bit_depth, bool is_employing_color_transform);
+  void set_rev_quant(uint32_t bit_depth, bool is_employing_color_transform);
   void set_irrev_quant();
 
   void generate(uint8_t guard_bits,
 		  uint32_t decomps,bool is_reversible,
 		  uint32_t max_bit_depth, bool color_transform, bool is_signed );
 
-  int get_num_guard_bits() const;
-  int get_MAGBp() const;
-  int get_Kmax(int resolution, int subband) const;
-  int rev_get_num_bits(int resolution, int subband) const;
-  float irrev_get_delta(int resolution, int subband) const;
+  uint32_t get_num_guard_bits() const;
+  uint32_t get_MAGBp() const;
+  uint32_t get_Kmax(uint32_t resolution, uint32_t subband) const;
+  uint32_t rev_get_num_bits(uint32_t resolution, uint32_t subband) const;
+  float irrev_get_delta(uint32_t resolution, uint32_t subband) const;
 
   void pull(grk_stepsize* stepptr, bool reversible);
   void push(grk_stepsize* stepptr, bool reversible);

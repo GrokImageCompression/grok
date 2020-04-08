@@ -3373,8 +3373,8 @@ static bool j2k_write_cap(grk_j2k *p_j2k, BufferedStream *p_stream) {
 		Ccap[0] |= 0x0020;
 	Ccap[0] &= 0xFFE0;
 
-	int Bp = 0;
-	int B = tcp->qcd.get_MAGBp();
+	uint32_t Bp = 0;
+	uint32_t B = tcp->qcd.get_MAGBp();
 	if (B <= 8)
 		Bp = 0;
 	else if (B < 28)
@@ -5857,8 +5857,8 @@ static bool j2k_write_mct_record(grk_mct_data *p_mct_record,
 	}
 
 	/* only one marker atm */
-	tmp = (p_mct_record->m_index & 0xff) | (p_mct_record->m_array_type << 8)
-			| (p_mct_record->m_element_type << 10);
+	tmp = (p_mct_record->m_index & 0xff) | (uint32_t)(p_mct_record->m_array_type << 8)
+			| (uint32_t)(p_mct_record->m_element_type << 10);
 
 	if (!p_stream->write_short((uint16_t) tmp)) {
 		return false;

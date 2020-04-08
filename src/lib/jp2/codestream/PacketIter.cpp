@@ -1100,7 +1100,7 @@ static void pi_update_decode_not_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 
 static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t tileno,
 		uint32_t pino, const char *prog) {
-	uint32_t i;
+	int32_t i;
 	auto tcps = &cp->tcps[tileno];
 	auto tcp = &tcps->pocs[pino];
 
@@ -1532,7 +1532,6 @@ PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters
 void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
 		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
 
-	int32_t i;
 	uint32_t incr_top = 1, resetX = 0;
 	auto tcps = &cp->tcps[tileno];
 	auto tcp = &tcps->pocs[pino];
@@ -1557,7 +1556,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 		pi[pino].poc.tx1 = tcp->txE;
 		pi[pino].poc.ty1 = tcp->tyE;
 	} else {
-		for (i = tppos + 1; i < 4; i++) {
+		for (uint32_t i = tppos + 1; i < 4; i++) {
 			switch (prog[i]) {
 			case 'R':
 				pi[pino].poc.resno0 = tcp->resS;
@@ -1590,7 +1589,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 		}
 
 		if (tpnum == 0) {
-			for (i = tppos; i >= 0; i--) {
+			for (int32_t i = (int32_t)tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
 					tcp->comp_t = tcp->compS;
@@ -1637,7 +1636,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 			}
 			incr_top = 1;
 		} else {
-			for (i = tppos; i >= 0; i--) {
+			for (int32_t i = (int32_t)tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
 					pi[pino].poc.compno0 = tcp->comp_t - 1;

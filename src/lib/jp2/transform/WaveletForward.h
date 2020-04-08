@@ -106,9 +106,8 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 								m < std::min<uint32_t>((index+1)*linesPerThreadV, rw); ++m) {
 							int32_t *bj = bj_array[index];
 							int32_t *aj = a + m;
-							for (uint32_t k = 0; k < rh; ++k) {
+							for (uint32_t k = 0; k < rh; ++k)
 								bj[k] = aj[k * stride];
-							}
 							wavelet.encode_line(bj, (int32_t)d_n, (int32_t)s_n, cas_col);
 							dwt_utils::deinterleave_v(bj, aj, d_n, s_n, stride, cas_col);
 						}

@@ -63,7 +63,7 @@
 #include "common.h"
 
 struct pnm_header {
-	int width, height, maxval, depth, format;
+	uint32_t width, height, maxval, depth, format;
 	char rgb, rgba, gray, graya, bw;
 	char ok;
 };
@@ -83,7 +83,7 @@ static char* skip_white(char *s) {
 	return nullptr;
 }
 
-static char* skip_int(char *start, int *out_n) {
+static char* skip_int(char *start, uint32_t *out_n) {
 	char *s;
 	char c;
 
@@ -101,7 +101,7 @@ static char* skip_int(char *start, int *out_n) {
 	}
 	c = *s;
 	*s = 0;
-	*out_n = atoi(start);
+	*out_n = (uint32_t)atoi(start);
 	*s = c;
 	return s;
 }
@@ -130,7 +130,7 @@ static char* skip_idf(char *start, char out_idf[256]) {
 }
 
 static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
-	int format, end, ttype;
+	uint32_t format, end, ttype;
 	char idf[256], type[256];
 	char line[256];
 
@@ -143,7 +143,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		spdlog::error("read_pnm_header:PNM:magic P missing");
 		return;
 	}
-	format = atoi(line + 1);
+	format = (uint32_t)atoi(line + 1);
 	if (format < 1 || format > 7) {
 		spdlog::error("read_pnm_header:magic format {} invalid", format);
 		return;
@@ -247,8 +247,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		if (ph->width == 0) {
 			s = skip_int(s, &ph->width);
 			if ((!s) || (*s == 0) || (ph->width < 1)) {
-				spdlog::error("Invalid width {}",
-						(s && *s != 0) ? ph->width : -1);
+				spdlog::error("Invalid width {}", (s && *s != 0) ? ph->width : 0U);
 				return;
 			}
 			allow_null = 1;
@@ -259,7 +258,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 				continue;
 			if (!s || (*s == 0) || (ph->height < 1)) {
 				spdlog::error("Invalid height {}",
-						(s && *s != 0) ? ph->height : -1);
+						(s && *s != 0) ? ph->height : 0U);
 				return;
 			}
 			if (format == 1 || format == 4) {
@@ -306,7 +305,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	}
 }
 
-static int has_prec(int val) {
+static uint32_t has_prec(uint32_t val) {
 	if (val < 2)
 		return 1;
 	if (val < 4)
@@ -425,7 +424,7 @@ static grk_image* pnmtoimage(const char *filename,
 	image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
 	if ((format == 2) || (format == 3)) { /* ascii pixmap */
-		unsigned int index;
+		uint32_t index;
 
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
@@ -436,8 +435,7 @@ static grk_image* pnmtoimage(const char *filename,
 								"fscanf return a number of element different from the expected.");
 				}
 
-				image->comps[compno].data[i] = (int32_t) (index * 255)
-						/ header_info.maxval;
+				image->comps[compno].data[i] = (int32_t)((index * 255) / header_info.maxval);
 			}
 		}
 	} else if ((format == 5) || (format == 6)

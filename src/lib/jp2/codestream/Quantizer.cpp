@@ -87,10 +87,13 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 			* fraction;
 
 	// see Taubman + Marcellin - Equation 10.22
+	assert(tccp->numgbits >= 1);
+	assert(step_size->expn + tccp->numgbits > 1);
 	band->numbps = tccp->roishift
-			+ std::max<int32_t>(0,
-					(int32_t) (step_size->expn + tccp->numgbits)
+			+ std::max<uint32_t>(0,
+					(uint32_t) (step_size->expn + tccp->numgbits)
 							- 1);
+	assert(band->numbps <= 30);
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
 	if (tcp->isHT){
