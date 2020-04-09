@@ -75,8 +75,9 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
             })
         );
     }
-    for(auto && result: results)
+    for(auto && result: results){
         result.get();
+    }
 	delete[] encodeBlocks;
 	return true;
 }

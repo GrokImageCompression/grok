@@ -97,15 +97,10 @@ typedef struct _img_folder {
 	int flag;
 } img_fol;
 
-/* -------------------------------------------------------------------------- */
-/* Declarations                                                               */
 static uint32_t get_num_images(char *imgdirpath);
 static int load_images(dircnt *dirptr, char *imgdirpath);
-static int get_file_format(const char *filename);
-static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
+static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		grk_dparameters *parameters);
-static int infile_format(const char *fname);
-
 static int parse_cmdline_decoder(int argc, char **argv,
 		grk_dparameters *parameters, img_fol *img_fol);
 
@@ -187,32 +182,8 @@ static int load_images(dircnt *dirptr, char *imgdirpath) {
 	closedir(dir);
 	return 0;
 }
-
 /* -------------------------------------------------------------------------- */
-static int get_file_format(const char *filename) {
-	unsigned int i;
-	static const char *extension[] = { "pgx", "pnm", "pgm", "ppm", "bmp", "tif",
-			"tiff", "raw", "tga", "png", "j2k", "jp2", "j2c", "jpc" };
-	static const int format[] = { GRK_PGX_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT,
-			GRK_BMP_FMT, GRK_TIF_FMT, GRK_TIF_FMT, GRK_RAW_FMT, GRK_TGA_FMT, GRK_PNG_FMT,
-			GRK_J2K_FMT, GRK_JP2_FMT, GRK_J2K_FMT, GRK_J2K_FMT };
-	const char *ext = strrchr(filename, '.');
-	if (ext == nullptr)
-		return -1;
-	ext++;
-	if (ext) {
-		for (i = 0; i < sizeof(format) / sizeof(*format); i++) {
-			if (_strnicmp(ext, extension[i], 3) == 0) {
-				return (int)format[i];
-			}
-		}
-	}
-
-	return GRK_UNK_FMT;
-}
-
-/* -------------------------------------------------------------------------- */
-static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
+static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 		grk_dparameters *parameters) {
 	char image_filename[GRK_PATH_LEN], infilename[3 * GRK_PATH_LEN],
 			outfilename[3 * GRK_PATH_LEN], temp_ofname[GRK_PATH_LEN];
@@ -245,50 +216,7 @@ static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
 	return 0;
 }
 
-/* -------------------------------------------------------------------------- */
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-/* position 45: "\xff\x52" */
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 
-static int infile_format(const char *fname) {
-	FILE *reader;
-	const char *s, *magic_s;
-	GRK_SUPPORTED_FILE_FMT ext_format, magic_format;
-	uint8_t buf[12];
-	size_t l_nb_read;
-
-	reader = fopen(fname, "rb");
-
-	if (reader == nullptr)
-		return -1;
-
-	memset(buf, 0, 12);
-	l_nb_read = fread(buf, 1, 12, reader);
-	fclose(reader);
-	if (l_nb_read != 12)
-		return -1;
-
-    int temp = get_file_format(fname);
-    if (temp > GRK_UNK_FMT)
-    	ext_format = (GRK_SUPPORTED_FILE_FMT)temp;
-
-	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
-		magic_format = GRK_JP2_FMT;
-		magic_s = ".jp2";
-	} else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-		magic_format = GRK_J2K_FMT;
-		magic_s = ".j2k or .jpc or .j2c";
-	} else
-		return -1;
-
-	if (magic_format == ext_format)
-		return (int)ext_format;
-
-	s = fname + strlen(fname) - 4;
-	spdlog::error("The extension of this file is incorrect.\n"
-			"Found {};  should be {}\n", s, magic_s);
-	return (int)magic_format;
-}
 /* -------------------------------------------------------------------------- */
 /**
  * Parse the command line
@@ -439,7 +367,7 @@ int main(int argc, char *argv[]) {
 	grk_codestream_info_v2 *cstr_info = nullptr;
 	grk_codestream_index *cstr_index = nullptr;
 
-	int32_t num_images, imageno;
+	size_t num_images, imageno;
 	img_fol img_fol;
 	dircnt *dirptr = nullptr;
 	int rc = EXIT_SUCCESS;
@@ -465,8 +393,7 @@ int main(int argc, char *argv[]) {
 
 	/* Initialize reading of directory */
 	if (img_fol.set_imgdir) {
-		int it_image;
-		num_images = get_num_images(img_fol.imgdirpath);
+		num_images = (size_t)get_num_images(img_fol.imgdirpath);
 		if (num_images == 0) {
 			spdlog::error("Folder is empty");
 			rc = EXIT_FAILURE;
@@ -476,20 +403,19 @@ int main(int argc, char *argv[]) {
 		dirptr = (dircnt*) malloc(sizeof(dircnt));
 		if (dirptr) {
 			dirptr->filename_buf = (char*) malloc(
-					(size_t) num_images * GRK_PATH_LEN * sizeof(char)); /* Stores at max 10 image file names*/
+					num_images * GRK_PATH_LEN * sizeof(char)); /* Stores at max 10 image file names*/
 			if (!dirptr->filename_buf) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
 			dirptr->filename = (char**) malloc(
-					(size_t) num_images * sizeof(char*));
+					num_images * sizeof(char*));
 			if (!dirptr->filename) {
 				rc = EXIT_FAILURE;
 				goto cleanup;
 			}
-			for (it_image = 0; it_image < num_images; it_image++) {
-				dirptr->filename[it_image] = dirptr->filename_buf
-						+ it_image * GRK_PATH_LEN;
+			for (size_t i = 0; i < num_images; i++) {
+				dirptr->filename[i] = dirptr->filename_buf + i * GRK_PATH_LEN;
 			}
 		}
 		if (load_images(dirptr, img_fol.imgdirpath) == 1) {

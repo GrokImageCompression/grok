@@ -170,7 +170,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "WIDTH") == 0) {
 				s = skip_int(s, &ph->width);
-				if (!s || *s == 0 || ph->width < 0) {
+				if (!s || *s == 0 ) {
 					spdlog::error("Invalid width");
 					return;
 				}
@@ -179,7 +179,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "HEIGHT") == 0) {
 				s = skip_int(s, &ph->height);
-				if (!s || *s == 0 || ph->height < 0) {
+				if (!s || *s == 0 ) {
 					spdlog::error("Invalid height");
 					return;
 				}
@@ -188,7 +188,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "DEPTH") == 0) {
 				s = skip_int(s, &ph->depth);
-				if (!s || *s == 0 || ph->depth < 0) {
+				if (!s || *s == 0 ) {
 					spdlog::error("Invalid depth");
 					return;
 				}
@@ -197,7 +197,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
-				if (!s || *s == 0 || ph->maxval < 0) {
+				if (!s || *s == 0 ) {
 					spdlog::error("Invalid max val");
 					return;
 				}

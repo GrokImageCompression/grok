@@ -301,7 +301,7 @@ int main (int argc, char *argv[])
     }
 
     for (i=0; i<nb_tiles; ++i) {
-        if (! grk_write_tile(codec,i,data,data_size)) {
+        if (! grk_write_tile(codec,(uint16_t)i,data,data_size)) {
             spdlog::error("test_tile_encoder: failed to write the tile %d!\n",i);
 			rc = 1;
 			goto cleanup;

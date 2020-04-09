@@ -914,8 +914,11 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 				auto cblk = prc->cblks.enc + cblkno;
 				cblk->num_passes_included_in_current_layer = 0;
 				assert (band->numbps >= cblk->numbps);
-				prc->imsbtree->setvalue(cblkno,
-						band->numbps - (int32_t) cblk->numbps);
+				if (band->numbps < cblk->numbps) {
+					GROK_WARN("Code block %d bps greater than band bps. Skipping.",cblkno);
+				} else {
+					prc->imsbtree->setvalue(cblkno, (int64_t)(band->numbps - cblk->numbps));
+				}
 			}
 			++band;
 		}
@@ -1332,10 +1335,13 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 		 nb_blocks = prc->cw * prc->ch;
 			for (cblkno = 0; cblkno < nb_blocks; ++cblkno) {
 				cblk = prc->cblks.enc + cblkno;
-
 				cblk->num_passes_included_in_current_layer = 0;
-				prc->imsbtree->setvalue(cblkno,
-						band->numbps - (int32_t) cblk->numbps);
+				if (band->numbps < cblk->numbps) {
+					GROK_WARN("Code block %d bps greater than band bps. Skipping.",cblkno);
+				} else {
+					prc->imsbtree->setvalue(cblkno,
+							(int64_t)(band->numbps - cblk->numbps));
+				}
 			}
 			++band;
 		}
