@@ -35,8 +35,8 @@ namespace t1_ht {
 
 T1HT::T1HT(bool isEncoder,
 			grk_tcp *tcp,
-			uint16_t maxCblkW,
-			uint16_t maxCblkH) :
+			uint32_t maxCblkW,
+			uint32_t maxCblkH) :
 				coded_data_size(isEncoder ? 0 : (uint32_t)(maxCblkW*maxCblkH* sizeof(int32_t))),
 				coded_data(isEncoder ? nullptr : new uint8_t[coded_data_size]),
 				unencoded_data_size(maxCblkW*maxCblkH),
@@ -74,7 +74,7 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 			for (auto i = 0U; i < w; ++i) {
 				int32_t temp = block->tiledp[tileIndex];
 		        int32_t val = temp >= 0 ? temp : -temp;
-		        int32_t sign = temp >= 0 ? 0 : 0x80000000;
+		        int32_t sign = (int32_t)((temp >= 0) ? 0U : 0x80000000);
 		        int32_t res = sign | (val << shift);
 		        unencoded_data[cblk_index] = res;
 				maximum = max(maximum, (uint32_t)res);
@@ -165,9 +165,9 @@ bool T1HT::decode(decodeBlockInfo *block) {
 									   (int)num_passes,
 									   (int)offset,
 									   0,
-									   cblk->x1 - cblk->x0,
-									   cblk->y1 - cblk->y0,
-									   cblk->x1 - cblk->x0);
+									   (int)(cblk->x1 - cblk->x0),
+									   (int)(cblk->y1 - cblk->y0),
+									   (int)(cblk->x1 - cblk->x0));
    else
 	   memset(unencoded_data, 0, (cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0) * sizeof(int32_t));
    return true;

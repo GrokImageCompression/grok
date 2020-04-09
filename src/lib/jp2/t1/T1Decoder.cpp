@@ -55,8 +55,9 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
         results.emplace_back(
             ThreadPool::get()->enqueue([this, maxBlocks, &blockCount] {
                 auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
+                assert(threadnum >= 0);
                 while (true) {
-                	uint64_t index = ++blockCount;
+                	uint64_t index = (uint64_t)++blockCount;
                 	if (index >= maxBlocks)
                 		break;
 					decodeBlockInfo *block = decodeBlocks[index];
@@ -64,7 +65,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 						delete block;
 						return 0;
 					}
-					auto impl = threadStructs[threadnum];
+					auto impl = threadStructs[(size_t)threadnum];
 					if (!impl->decode(block)) {
 						success = false;
 						delete block;

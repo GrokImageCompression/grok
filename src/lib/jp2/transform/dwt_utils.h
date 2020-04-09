@@ -87,7 +87,7 @@ public:
 
 	static uint32_t max_resolution(grk_tcd_resolution* GRK_RESTRICT r, uint32_t i);
 	static void deinterleave_v(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
-			int32_t x, int32_t cas);
+			uint32_t stride, int32_t cas);
 	static void deinterleave_h(int32_t *a, int32_t *b, uint32_t d_n, uint32_t s_n,
 			int32_t cas);
 

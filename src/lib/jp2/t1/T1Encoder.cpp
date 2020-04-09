@@ -34,13 +34,12 @@ T1Encoder::T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
 	}
 }
 T1Encoder::~T1Encoder() {
-	for (auto &t : threadStructs) {
+	for (auto &t : threadStructs)
 		delete t;
-	}
 }
 bool T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
-	uint64_t index = ++blockCount;
+	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
 		return false;
 	encodeBlockInfo *block = encodeBlocks[index];
@@ -61,25 +60,23 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
 
 	auto maxBlocks = blocks->size();
 	encodeBlocks = new encodeBlockInfo*[maxBlocks];
-	for (uint64_t i = 0; i < maxBlocks; ++i) {
+	for (uint64_t i = 0; i < maxBlocks; ++i)
 		encodeBlocks[i] = blocks->operator[](i);
-	}
 	blocks->clear();
     std::vector< std::future<int> > results;
     for(size_t i = 0; i < ThreadPool::get()->num_threads(); ++i) {
           results.emplace_back(
             ThreadPool::get()->enqueue([this, maxBlocks] {
                 auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
-                while(encode(threadnum, maxBlocks)){
+                while(encode((size_t)threadnum, maxBlocks)){
 
                 }
                 return 0;
             })
         );
     }
-    for(auto && result: results){
+    for(auto && result: results)
         result.get();
-    }
 	delete[] encodeBlocks;
 	return true;
 }
