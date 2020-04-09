@@ -530,8 +530,8 @@ void GRK_CALLCONV grk_set_default_encoder_parameters(
 		parameters->subsampling_dx = 1;
 		parameters->subsampling_dy = 1;
 		parameters->tp_on = 0;
-		parameters->decod_format = GRK_UNKNOWN_FORMAT;
-		parameters->cod_format = GRK_UNKNOWN_FORMAT;
+		parameters->decod_format = GRK_UNK_FMT;
+		parameters->cod_format = GRK_UNK_FMT;
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 0;
 		parameters->cp_disto_alloc = 0;

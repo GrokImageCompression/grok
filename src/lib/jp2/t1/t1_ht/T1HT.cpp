@@ -105,10 +105,10 @@ double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum
 		bool doRateControl) {
 	(void)doRateControl;
 	(void)tile;
+	(void)maximum;
 
 	 coded_lists *next_coded = nullptr;
-	 int pass_length[2] = {0,0};
-	int32_t shift = 31 - (block->k_msbs + 1);
+	int pass_length[2] = {0,0};
 	auto cblk = block->cblk;
 	cblk->numbps = 0;
 	// optimization below was causing errors in encoding
@@ -217,7 +217,7 @@ void T1HT::postDecode(decodeBlockInfo *block) {
 			for (auto i = 0U; i < cblk_w; ++i) {
 				int32_t temp = *src;
 				int32_t val = (temp & 0x7FFFFFFF) >> shift;
-				tile_row_data[i] = (temp & 0x80000000) ? -val : val;
+				tile_row_data[i] = (int32_t)((temp & 0x80000000) ? -val : val);
 				src++;
 			}
 			tile_data += dest_width;

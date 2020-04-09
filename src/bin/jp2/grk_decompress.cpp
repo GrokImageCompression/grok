@@ -406,8 +406,8 @@ char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(get_path_separator()) + image_filename;
 	if (!grk::jpeg2000_file_format(infilename.c_str(),
-			(GROK_SUPPORTED_FILE_FORMAT*) &parameters->decod_format)
-			|| parameters->decod_format == GRK_UNKNOWN_FORMAT)
+			(GRK_SUPPORTED_FILE_FMT*) &parameters->decod_format)
+			|| parameters->decod_format == GRK_UNK_FMT)
 		return 1;
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
 			infilename.c_str()) != 0) {
@@ -543,15 +543,15 @@ int parse_cmdline_decoder(int argc, char **argv,
 
 			if (checkFile) {
 				if (!jpeg2000_file_format(infile,
-						(GROK_SUPPORTED_FILE_FORMAT*) &parameters->decod_format)) {
+						(GRK_SUPPORTED_FILE_FMT*) &parameters->decod_format)) {
 					spdlog::error("Unable to open file {} for decoding.",
 							infile);
 					return 1;
 				}
 				switch (parameters->decod_format) {
-				case GRK_J2K_CFMT:
+				case GRK_J2K_FMT:
 					break;
-				case GRK_JP2_CFMT:
+				case GRK_JP2_FMT:
 					break;
 				default:
 					spdlog::error(
@@ -561,7 +561,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 					return 1;
 				}
 			} else {
-				parameters->decod_format = GRK_J2K_CFMT;
+				parameters->decod_format = GRK_J2K_FMT;
 			}
 			if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
 					infile) != 0) {
@@ -585,31 +585,31 @@ int parse_cmdline_decoder(int argc, char **argv,
 			img_fol->set_out_format = true;
 			parameters->cod_format = get_file_format(outformat);
 			switch (parameters->cod_format) {
-			case GRK_PGX_DFMT:
+			case GRK_PGX_FMT:
 				img_fol->out_format = "pgx";
 				break;
-			case GRK_PXM_DFMT:
+			case GRK_PXM_FMT:
 				img_fol->out_format = "ppm";
 				break;
-			case GRK_BMP_DFMT:
+			case GRK_BMP_FMT:
 				img_fol->out_format = "bmp";
 				break;
-			case GRK_JPG_DFMT:
+			case GRK_JPG_FMT:
 				img_fol->out_format = "jpg";
 				break;
-			case GRK_TIF_DFMT:
+			case GRK_TIF_FMT:
 				img_fol->out_format = "tif";
 				break;
-			case GRK_RAW_DFMT:
+			case GRK_RAW_FMT:
 				img_fol->out_format = "raw";
 				break;
-			case GRK_RAWL_DFMT:
+			case GRK_RAWL_FMT:
 				img_fol->out_format = "rawl";
 				break;
-			case GRK_TGA_DFMT:
+			case GRK_TGA_FMT:
 				img_fol->out_format = "raw";
 				break;
-			case GRK_PNG_DFMT:
+			case GRK_PNG_FMT:
 				img_fol->out_format = "png";
 				break;
 			default:
@@ -624,15 +624,15 @@ int parse_cmdline_decoder(int argc, char **argv,
 			const char *outfile = outputFileArg.getValue().c_str();
 			parameters->cod_format = get_file_format(outfile);
 			switch (parameters->cod_format) {
-			case GRK_PGX_DFMT:
-			case GRK_PXM_DFMT:
-			case GRK_BMP_DFMT:
-			case GRK_TIF_DFMT:
-			case GRK_RAW_DFMT:
-			case GRK_RAWL_DFMT:
-			case GRK_TGA_DFMT:
-			case GRK_PNG_DFMT:
-			case GRK_JPG_DFMT:
+			case GRK_PGX_FMT:
+			case GRK_PXM_FMT:
+			case GRK_BMP_FMT:
+			case GRK_TIF_FMT:
+			case GRK_RAW_FMT:
+			case GRK_RAWL_FMT:
+			case GRK_TGA_FMT:
+			case GRK_PNG_FMT:
+			case GRK_JPG_FMT:
 				break;
 			default:
 				spdlog::error(
@@ -651,7 +651,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				bool toStdout =
 						outForArg.isSet()
 								&& grk::supportedStdioFormat(
-										(GROK_SUPPORTED_FILE_FORMAT) parameters->cod_format);
+										(GRK_SUPPORTED_FILE_FMT) parameters->cod_format);
 				if (!toStdout) {
 					spdlog::error("Missing output file");
 					return 1;
@@ -762,7 +762,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 			return 1;
 		}
 	} else {
-		if (parameters->decod_format == GRK_UNKNOWN_FORMAT) {
+		if (parameters->decod_format == GRK_UNK_FMT) {
 			if ((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
 				spdlog::error("Required parameters are missing\n"
 						"Example: {} -i image.j2k -o image.pgm\n", argv[0]);
@@ -778,8 +778,8 @@ static void set_default_parameters(grk_decompress_parameters *parameters) {
 		memset(parameters, 0, sizeof(grk_decompress_parameters));
 
 		/* default decoding parameters (command line specific) */
-		parameters->decod_format = GRK_UNKNOWN_FORMAT;
-		parameters->cod_format = GRK_UNKNOWN_FORMAT;
+		parameters->decod_format = GRK_UNK_FMT;
+		parameters->cod_format = GRK_UNK_FMT;
 
 		/* default decoding parameters (core) */
 		grk_set_default_decoder_parameters(&(parameters->core));
@@ -1104,8 +1104,8 @@ int decode(const char *fileName, DecompressInitParams *initParams) {
 
 	grk_plugin_decode_callback_info info;
 	memset(&info, 0, sizeof(grk_plugin_decode_callback_info));
-	info.decod_format = GRK_UNKNOWN_FORMAT;
-	info.cod_format = GRK_UNKNOWN_FORMAT;
+	info.decod_format = GRK_UNK_FMT;
+	info.cod_format = GRK_UNK_FMT;
 	info.decode_flags = GROK_DECODE_ALL;
 	info.decoder_parameters = &initParams->parameters;
 
@@ -1276,7 +1276,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 					success = 1;
 					goto cleanup;
 				}
-				dirptr->filename = (char**) malloc(num_images * sizeof(char*));
+				dirptr->filename = (char**) malloc((size_t)num_images * sizeof(char*));
 				if (!dirptr->filename) {
 					success = 1;
 					goto cleanup;
@@ -1381,7 +1381,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	auto infile =
 			info->input_file_name ? info->input_file_name : parameters->infile;
 	int decod_format =
-			info->decod_format != GRK_UNKNOWN_FORMAT ?
+			info->decod_format != GRK_UNK_FMT ?
 					info->decod_format : parameters->decod_format;
 	//1. initialize
 	if (!info->l_stream) {
@@ -1390,7 +1390,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			auto in = fopen(infile, "r");
 			if (in) {
 				fseek(in, 0L, SEEK_END);
-				size_t sz = ftell(in);
+				long int sz = ftell(in);
 				rewind(in);
 				auto memoryBuffer = new uint8_t[sz];
 				size_t ret = fread(memoryBuffer, 1, sz, in);
@@ -1417,13 +1417,13 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 
 	if (!info->l_codec) {
 		switch (decod_format) {
-		case GRK_J2K_CFMT: { /* JPEG-2000 codestream */
+		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
 			/* Get a decoder handle */
 			info->l_codec = grk_create_decompress(GRK_CODEC_J2K,
 					info->l_stream);
 			break;
 		}
-		case GRK_JP2_CFMT: { /* JPEG 2000 compressed image data */
+		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
 			/* Get a decoder handle */
 			info->l_codec = grk_create_decompress(GRK_CODEC_JP2,
 					info->l_stream);
@@ -1561,7 +1561,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	bool canStoreICC = false;
 	grk_decompress_parameters *parameters = info->decoder_parameters;
 	grk_image *image = info->image;
-	bool canStoreCIE = (info->decoder_parameters->cod_format == GRK_TIF_DFMT)
+	bool canStoreCIE = (info->decoder_parameters->cod_format == GRK_TIF_FMT)
 			&& (image->color_space == GRK_CLRSPC_DEFAULT_CIE);
 	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE
 			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE;
@@ -1572,8 +1572,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			info->decoder_parameters->outfile[0] ?
 					info->decoder_parameters->outfile : info->output_file_name;
 
-	GROK_SUPPORTED_FILE_FORMAT cod_format = (GROK_SUPPORTED_FILE_FORMAT) (
-			info->cod_format != GRK_UNKNOWN_FORMAT ?
+	GRK_SUPPORTED_FILE_FMT cod_format = (GRK_SUPPORTED_FILE_FMT) (
+			info->cod_format != GRK_UNK_FMT ?
 					info->cod_format : parameters->cod_format);
 
 	if (image->color_space != GRK_CLRSPC_SYCC && image->numcomps == 3
@@ -1586,7 +1586,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	if (image->color_space == GRK_CLRSPC_SYCC) {
 		color_sycc_to_rgb(image);
 	} else if ((image->color_space == GRK_CLRSPC_CMYK)
-			&& (parameters->cod_format != GRK_TIF_DFMT)) {
+			&& (parameters->cod_format != GRK_TIF_FMT)) {
 		if (color_cmyk_to_rgb(image)) {
 			spdlog::error(
 					"grk_decompress: CMYK to RGB colour conversion failed !");
@@ -1603,8 +1603,8 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	if (image->xmp_buf) {
-		bool canStoreXMP = (info->decoder_parameters->cod_format == GRK_TIF_DFMT
-				|| info->decoder_parameters->cod_format == GRK_PNG_DFMT);
+		bool canStoreXMP = (info->decoder_parameters->cod_format == GRK_TIF_FMT
+				|| info->decoder_parameters->cod_format == GRK_PNG_FMT);
 		if (!canStoreXMP && parameters->verbose) {
 			spdlog::warn(
 					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.\n",
@@ -1614,7 +1614,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 
 	if (image->iptc_buf) {
 		bool canStoreIPTC_IIM = (info->decoder_parameters->cod_format
-				== GRK_TIF_DFMT);
+				== GRK_TIF_FMT);
 		if (!canStoreIPTC_IIM && parameters->verbose) {
 			spdlog::warn(
 					" Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.\n",
@@ -1641,9 +1641,9 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			// so no need to apply it in this case,
 			// (unless we are forcing to RGB).
 			// Otherwise, we apply the profile
-			canStoreICC = (info->decoder_parameters->cod_format == GRK_TIF_DFMT
-					|| info->decoder_parameters->cod_format == GRK_PNG_DFMT
-					|| info->decoder_parameters->cod_format == GRK_JPG_DFMT);
+			canStoreICC = (info->decoder_parameters->cod_format == GRK_TIF_FMT
+					|| info->decoder_parameters->cod_format == GRK_PNG_FMT
+					|| info->decoder_parameters->cod_format == GRK_JPG_FMT);
 			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
 				if (parameters->verbose && !info->decoder_parameters->force_rgb)
@@ -1735,7 +1735,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		/* create output image */
 		/* ------------------- */
 		switch (cod_format) {
-		case GRK_PXM_DFMT: /* PNM PGM PPM */
+		case GRK_PXM_FMT: /* PNM PGM PPM */
 		{
 			PNMFormat pnm(parameters->split_pnm);
 			if (!pnm.encode(image, outfile, 0, parameters->verbose)) {
@@ -1745,7 +1745,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 
-		case GRK_PGX_DFMT: /* PGX */
+		case GRK_PGX_FMT: /* PGX */
 		{
 			PGXFormat pgx;
 			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
@@ -1755,7 +1755,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 
-		case GRK_BMP_DFMT: /* BMP */
+		case GRK_BMP_FMT: /* BMP */
 		{
 			BMPFormat bmp;
 			if (!bmp.encode(image, outfile, 0, parameters->verbose)) {
@@ -1765,7 +1765,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 #ifdef GROK_HAVE_LIBTIFF
-		case GRK_TIF_DFMT: /* TIFF */
+		case GRK_TIF_FMT: /* TIFF */
 		{
 			TIFFFormat tif;
 			if (!tif.encode(image, outfile, parameters->compression,
@@ -1776,7 +1776,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 #endif /* GROK_HAVE_LIBTIFF */
-		case GRK_RAW_DFMT: /* RAW */
+		case GRK_RAW_FMT: /* RAW */
 		{
 			RAWFormat raw(true);
 			if (raw.encode(image, outfile, 0, parameters->verbose)) {
@@ -1788,7 +1788,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 
-		case GRK_RAWL_DFMT: /* RAWL */
+		case GRK_RAWL_FMT: /* RAWL */
 		{
 			RAWFormat raw(false);
 			if (raw.encode(image, outfile, 0, parameters->verbose)) {
@@ -1799,7 +1799,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 			break;
-		case GRK_TGA_DFMT: /* TGA */
+		case GRK_TGA_FMT: /* TGA */
 		{
 			TGAFormat tga;
 			if (!tga.encode(image, outfile, 0, parameters->verbose)) {
@@ -1811,7 +1811,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		}
 			break;
 #ifdef GROK_HAVE_LIBJPEG 
-		case GRK_JPG_DFMT: /* JPEG */
+		case GRK_JPG_FMT: /* JPEG */
 		{
 			JPEGFormat jpeg;
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel,
@@ -1827,7 +1827,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 #endif
 
 #ifdef GROK_HAVE_LIBPNG
-		case GRK_PNG_DFMT: /* PNG */
+		case GRK_PNG_FMT: /* PNG */
 		{
 			PNGFormat png;
 			if (!png.encode(image, outfile, parameters->compressionLevel,

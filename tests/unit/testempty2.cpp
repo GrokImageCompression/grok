@@ -51,7 +51,6 @@ extern "C" {
 #include "grok.h"
 }
 
-#define J2K_CFMT 0
 
 void error_callback(const char *msg, void *v);
 void warning_callback(const char *msg, void *v);
@@ -101,7 +100,7 @@ int main(int argc, char *argv[])
     (void)argv;
 
     grk_set_default_encoder_parameters(&parameters);
-    parameters.cod_format = J2K_CFMT;
+    parameters.cod_format = GRK_J2K_FMT;
     puts(v);
     subsampling_dx = (unsigned int)parameters.subsampling_dx;
     subsampling_dy = (unsigned int)parameters.subsampling_dy;

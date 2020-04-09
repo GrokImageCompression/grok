@@ -197,12 +197,12 @@ int main (int argc, char *argv[])
 
 
     switch(param.decod_format) {
-    case GRK_J2K_CFMT: {	/* JPEG-2000 codestream */
+    case GRK_J2K_FMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
         codec = grk_create_decompress(GRK_CODEC_J2K,stream);
         break;
     }
-    case GRK_JP2_CFMT: {	/* JPEG 2000 compressed image data */
+    case GRK_JP2_FMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
         codec = grk_create_decompress(GRK_CODEC_JP2, stream);
         break;

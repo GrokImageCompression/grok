@@ -85,13 +85,13 @@ typedef bool (*PLUGIN_IS_BATCH_COMPLETE)(void);
 
 struct PluginDecodeCallbackInfo {
 	PluginDecodeCallbackInfo() :
-			PluginDecodeCallbackInfo("", "", nullptr, GRK_UNKNOWN_FORMAT, 0) {
+			PluginDecodeCallbackInfo("", "", nullptr, GRK_UNK_FMT, 0) {
 	}
 	PluginDecodeCallbackInfo(std::string input, std::string output,
-			grk_decompress_parameters *decoderParameters, uint32_t format,
+			grk_decompress_parameters *decoderParameters, GRK_SUPPORTED_FILE_FMT format,
 			uint32_t flags) :
 			deviceId(0), init_decoders_func(nullptr), inputFile(input), outputFile(
-					output), decod_format(format), cod_format(GRK_UNKNOWN_FORMAT), l_stream(
+					output), decod_format(format), cod_format(GRK_UNK_FMT), l_stream(
 					nullptr), l_codec(nullptr), decoder_parameters(
 					decoderParameters), image(nullptr), plugin_owns_image(
 					false), tile(nullptr), error_code(0), decode_flags(flags) {
@@ -102,9 +102,9 @@ struct PluginDecodeCallbackInfo {
 	std::string inputFile;
 	std::string outputFile;
 	// input file format 0: J2K, 1: JP2
-	uint32_t decod_format;
+	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
-	uint32_t cod_format;
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	 grk_stream  *l_stream;
 	 grk_codec  *l_codec;
 	grk_decompress_parameters *decoder_parameters;

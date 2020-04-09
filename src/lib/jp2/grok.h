@@ -99,19 +99,19 @@ extern "C" {
 #endif
 
 
-enum GROK_SUPPORTED_FILE_FORMAT {
-	GRK_UNKNOWN_FORMAT,
-	GRK_J2K_CFMT,
-	GRK_JP2_CFMT,
-	GRK_PXM_DFMT,
-	GRK_PGX_DFMT,
-	GRK_BMP_DFMT,
-	GRK_TIF_DFMT,
-	GRK_RAW_DFMT, /* MSB / Big Endian */
-	GRK_TGA_DFMT,
-	GRK_PNG_DFMT,
-	GRK_RAWL_DFMT, /* LSB / Little Endian */
-	GRK_JPG_DFMT
+enum GRK_SUPPORTED_FILE_FMT {
+	GRK_UNK_FMT,
+	GRK_J2K_FMT,
+	GRK_JP2_FMT,
+	GRK_PXM_FMT,
+	GRK_PGX_FMT,
+	GRK_BMP_FMT,
+	GRK_TIF_FMT,
+	GRK_RAW_FMT, /* MSB / Big Endian */
+	GRK_TGA_FMT,
+	GRK_PNG_FMT,
+	GRK_RAWL_FMT, /* LSB / Little Endian */
+	GRK_JPG_FMT
 };
 
 
@@ -485,9 +485,9 @@ typedef struct _grk_cparameters {
 	/** subsampling value for dy */
 	uint32_t subsampling_dy;
 	/** input file format*/
-	uint32_t decod_format;
+	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
-	uint32_t cod_format;
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	grk_raw_cparameters raw_cp;
 	/**
 	 * Maximum size (in bytes) for each component.
@@ -680,9 +680,9 @@ typedef struct _grk_dparameters {
 	/** output file name */
 	char outfile[GRK_PATH_LEN];
 	/** input file format*/
-	GROK_SUPPORTED_FILE_FORMAT decod_format;
+	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format*/
-	GROK_SUPPORTED_FILE_FORMAT cod_format;
+	GRK_SUPPORTED_FILE_FMT cod_format;
 	/** Decoding area left boundary */
 	uint32_t DA_x0;
 	/** Decoding area right boundary */
@@ -719,7 +719,7 @@ typedef struct _grk_decompress_params {
 	/** output file name */
 	char outfile[GRK_PATH_LEN];
 	/** input file format 0: J2K, 1: JP2*/
-	uint32_t decod_format;
+	GRK_SUPPORTED_FILE_FMT decod_format;
 	/** output file format 0: PGX, 1: PxM, 2: BMP */
 	uint32_t cod_format;
 	/** index file name */
@@ -1826,7 +1826,7 @@ typedef struct _grk_plugin_decode_callback_info {
 	const char *input_file_name;
 	const char *output_file_name;
 	// input file format 0: J2K, 1: JP2
-	uint32_t decod_format;
+	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	uint32_t cod_format;
 	 grk_stream  *l_stream;

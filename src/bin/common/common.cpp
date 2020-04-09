@@ -155,8 +155,8 @@ bool useStdio( const char *filename){
 	return (filename == nullptr) || (filename[0] == 0);
 }
 
-bool supportedStdioFormat(GROK_SUPPORTED_FILE_FORMAT format){
-	for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GROK_SUPPORTED_FILE_FORMAT); ++i){
+bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format){
+	for (size_t i = 0; i < sizeof(supportedStdoutFileFormats)/sizeof(GRK_SUPPORTED_FILE_FMT); ++i){
 		if (supportedStdoutFileFormats[i] == format){
 			return true;
 		}
@@ -168,7 +168,7 @@ int get_file_format(const char *filename)
 {
     unsigned int i;
     static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const GROK_SUPPORTED_FILE_FORMAT format[] = { GRK_PGX_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT, GRK_BMP_DFMT, GRK_TIF_DFMT, GRK_TIF_DFMT, GRK_JPG_DFMT, GRK_JPG_DFMT, GRK_RAW_DFMT, GRK_RAWL_DFMT, GRK_TGA_DFMT, GRK_PNG_DFMT, GRK_J2K_CFMT, GRK_JP2_CFMT,GRK_J2K_CFMT, GRK_J2K_CFMT };
+    static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT, GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,GRK_J2K_FMT, GRK_J2K_FMT };
     const char * ext = strrchr(filename, '.');
     if (ext == nullptr)
         return -1;
@@ -181,17 +181,17 @@ int get_file_format(const char *filename)
         }
     }
 
-    return GRK_UNKNOWN_FORMAT;
+    return GRK_UNK_FMT;
 }
 
 #define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
 /* position 45: "\xff\x52" */
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
+bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT* fmt)
 {
     FILE *reader;
     const char *s, *magic_s;
-    GROK_SUPPORTED_FILE_FORMAT ext_format = GRK_UNKNOWN_FORMAT, magic_format = GRK_UNKNOWN_FORMAT;
+    GRK_SUPPORTED_FILE_FMT ext_format = GRK_UNK_FMT, magic_format = GRK_UNK_FMT;
     uint8_t buf[12];
     size_t l_nb_read;
 
@@ -208,17 +208,17 @@ bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt)
         return false;
 
     int temp = get_file_format(fname);
-    if (temp > GRK_UNKNOWN_FORMAT)
-    	ext_format = (GROK_SUPPORTED_FILE_FORMAT)temp;
+    if (temp > GRK_UNK_FMT)
+    	ext_format = (GRK_SUPPORTED_FILE_FMT)temp;
 
     if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
-        magic_format = GRK_JP2_CFMT;
+        magic_format = GRK_JP2_FMT;
         magic_s = ".jp2";
     } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-        magic_format = GRK_J2K_CFMT;
+        magic_format = GRK_J2K_FMT;
         magic_s = ".j2k or .jpc or .j2c";
     } else {
-    	*fmt = GRK_UNKNOWN_FORMAT;
+    	*fmt = GRK_UNK_FMT;
     	return true;
     }
 

@@ -193,9 +193,9 @@ static int get_file_format(const char *filename) {
 	unsigned int i;
 	static const char *extension[] = { "pgx", "pnm", "pgm", "ppm", "bmp", "tif",
 			"tiff", "raw", "tga", "png", "j2k", "jp2", "j2c", "jpc" };
-	static const int format[] = { GRK_PGX_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT,
-			GRK_BMP_DFMT, GRK_TIF_DFMT, GRK_TIF_DFMT, GRK_RAW_DFMT, GRK_TGA_DFMT, GRK_PNG_DFMT,
-			GRK_J2K_CFMT, GRK_JP2_CFMT, GRK_J2K_CFMT, GRK_J2K_CFMT };
+	static const int format[] = { GRK_PGX_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT,
+			GRK_BMP_FMT, GRK_TIF_FMT, GRK_TIF_FMT, GRK_RAW_FMT, GRK_TGA_FMT, GRK_PNG_FMT,
+			GRK_J2K_FMT, GRK_JP2_FMT, GRK_J2K_FMT, GRK_J2K_FMT };
 	const char *ext = strrchr(filename, '.');
 	if (ext == nullptr)
 		return -1;
@@ -208,7 +208,7 @@ static int get_file_format(const char *filename) {
 		}
 	}
 
-	return GRK_UNKNOWN_FORMAT;
+	return GRK_UNK_FMT;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -253,7 +253,7 @@ static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
 static int infile_format(const char *fname) {
 	FILE *reader;
 	const char *s, *magic_s;
-	GROK_SUPPORTED_FILE_FORMAT ext_format, magic_format;
+	GRK_SUPPORTED_FILE_FMT ext_format, magic_format;
 	uint8_t buf[12];
 	size_t l_nb_read;
 
@@ -269,14 +269,14 @@ static int infile_format(const char *fname) {
 		return -1;
 
     int temp = get_file_format(fname);
-    if (temp > GRK_UNKNOWN_FORMAT)
-    	ext_format = (GROK_SUPPORTED_FILE_FORMAT)temp;
+    if (temp > GRK_UNK_FMT)
+    	ext_format = (GRK_SUPPORTED_FILE_FMT)temp;
 
 	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
-		magic_format = GRK_JP2_CFMT;
+		magic_format = GRK_JP2_FMT;
 		magic_s = ".jp2";
 	} else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-		magic_format = GRK_J2K_CFMT;
+		magic_format = GRK_J2K_FMT;
 		magic_s = ".j2k or .jpc or .j2c";
 	} else
 		return -1;
@@ -537,12 +537,12 @@ int main(int argc, char *argv[]) {
 		/* ------------------------ */
 
 		switch (parameters.decod_format) {
-		case GRK_J2K_CFMT: { /* JPEG-2000 codestream */
+		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
 			/* Get a decoder handle */
 			l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
 			break;
 		}
-		case GRK_JP2_CFMT: { /* JPEG 2000 compressed image data */
+		case GRK_JP2_FMT: { /* JPEG 2000 compressed image data */
 			/* Get a decoder handle */
 			l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
 			break;

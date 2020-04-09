@@ -65,8 +65,8 @@
 
 namespace grk {
 
-const GROK_SUPPORTED_FILE_FORMAT supportedStdoutFileFormats[] =
-											{GRK_BMP_DFMT,GRK_PNG_DFMT,GRK_RAW_DFMT, GRK_RAWL_DFMT, GRK_JPG_DFMT};
+const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] =
+											{GRK_BMP_FMT,GRK_PNG_FMT,GRK_RAW_FMT, GRK_RAWL_FMT, GRK_JPG_FMT};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
@@ -99,8 +99,8 @@ int parse_DA_values(bool verbose,
 
 bool safe_fclose(FILE* fd);
 bool useStdio( const char *filename);
-bool supportedStdioFormat(GROK_SUPPORTED_FILE_FORMAT format);
-bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt);
+bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
+bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT* fmt);
 int get_file_format(const char *filename);
 const char* get_path_separator();
 char * get_file_name(char *name);
