@@ -99,6 +99,22 @@ extern "C" {
 #endif
 
 
+enum GROK_SUPPORTED_FILE_FORMAT {
+	GRK_UNKNOWN_FORMAT,
+	GRK_J2K_CFMT,
+	GRK_JP2_CFMT,
+	GRK_PXM_DFMT,
+	GRK_PGX_DFMT,
+	GRK_BMP_DFMT,
+	GRK_TIF_DFMT,
+	GRK_RAW_DFMT, /* MSB / Big Endian */
+	GRK_TGA_DFMT,
+	GRK_PNG_DFMT,
+	GRK_RAWL_DFMT, /* LSB / Little Endian */
+	GRK_JPG_DFMT
+};
+
+
 #define GRK_PATH_LEN 4096 /**< Maximum allowed size for filenames */
 // note: range for number of decomposition levels is 0-32
 // So, accordingly, range for number of resolutions is 1-33
@@ -664,9 +680,9 @@ typedef struct _grk_dparameters {
 	/** output file name */
 	char outfile[GRK_PATH_LEN];
 	/** input file format*/
-	uint32_t decod_format;
+	GROK_SUPPORTED_FILE_FORMAT decod_format;
 	/** output file format*/
-	uint32_t cod_format;
+	GROK_SUPPORTED_FILE_FORMAT cod_format;
 	/** Decoding area left boundary */
 	uint32_t DA_x0;
 	/** Decoding area right boundary */

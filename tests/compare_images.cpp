@@ -56,7 +56,6 @@
 #include "grok.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
-#include "format_defs.h"
 #include "convert.h"
 #include "common.h"
 #include "spdlog/spdlog.h"
@@ -133,13 +132,13 @@ static int get_decod_format_from_string(const char *filename)
     const int dot = '.';
     char * ext = (char*)strrchr(filename, dot);
     if( strcmp(ext,".pgx") == 0 )
-		return PGX_DFMT;
+		return GRK_PGX_DFMT;
     if( strcmp(ext,".tif") == 0 )
-		return TIF_DFMT;
+		return GRK_TIF_DFMT;
     if( strcmp(ext,".ppm") == 0 )
-		return PXM_DFMT;
+		return GRK_PXM_DFMT;
 	if (strcmp(ext, ".png") == 0)
-		return PNG_DFMT;
+		return GRK_PNG_DFMT;
     return -1;
 }
 
@@ -180,9 +179,9 @@ static char* createMultiComponentsFilename(const char* inFilename, const int ind
     strcat(outFilename, s);
 
     decod_format = get_decod_format_from_string(inFilename);
-    if( decod_format == PGX_DFMT ) {
+    if( decod_format == GRK_PGX_DFMT ) {
         strcat(outFilename, ".pgx");
-    } else if( decod_format == PXM_DFMT ) {
+    } else if( decod_format == GRK_PXM_DFMT ) {
         strcat(outFilename, ".pgm");
     }
 
@@ -211,7 +210,7 @@ static grk_image *  readImageFromFilePPM(const char* filename, int nbFilenamePGX
 
     /* set encoding parameters to default values */
     grk_set_default_encoder_parameters(&parameters);
-    parameters.decod_format = PXM_DFMT;
+    parameters.decod_format = GRK_PXM_DFMT;
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
@@ -308,7 +307,7 @@ static grk_image *  readImageFromFilePNG(const char* filename, int nbFilenamePGX
 
 	/* set encoding parameters to default values */
 	grk_set_default_encoder_parameters(&parameters);
-	parameters.decod_format = TIF_DFMT;
+	parameters.decod_format = GRK_TIF_DFMT;
 	strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBPNG
@@ -344,7 +343,7 @@ static grk_image *  readImageFromFileTIF(const char* filename, int nbFilenamePGX
 
     /* set encoding parameters to default values */
     grk_set_default_encoder_parameters(&parameters);
-    parameters.decod_format = TIF_DFMT;
+    parameters.decod_format = GRK_TIF_DFMT;
     strcpy(parameters.infile, filename);
 
 #ifdef GROK_HAVE_LIBTIFF
@@ -377,7 +376,7 @@ static grk_image *  readImageFromFilePGX(const char* filename, int nbFilenamePGX
 
     /* set encoding parameters to default values */
     grk_set_default_encoder_parameters(&parameters);
-    parameters.decod_format = PGX_DFMT;
+    parameters.decod_format = GRK_PGX_DFMT;
     strcpy(parameters.infile, filename);
 
     /* Allocate memory*/
@@ -830,16 +829,16 @@ int main(int argc, char **argv)
         fprintf( stderr, "Unhandled file format\n" );
         goto cleanup;
     }
-    assert( decod_format == PGX_DFMT || decod_format == TIF_DFMT || decod_format == PXM_DFMT || decod_format == PNG_DFMT );
+    assert( decod_format == GRK_PGX_DFMT || decod_format == GRK_TIF_DFMT || decod_format == GRK_PXM_DFMT || decod_format == GRK_PNG_DFMT );
 
-    if( decod_format == PGX_DFMT ) {
+    if( decod_format == GRK_PGX_DFMT ) {
         imageBase = readImageFromFilePGX( inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
-    } else if( decod_format == TIF_DFMT ) {
+    } else if( decod_format == GRK_TIF_DFMT ) {
         imageBase = readImageFromFileTIF( inParam.base_filename, nbFilenamePGXbase, "");
-    } else if( decod_format == PXM_DFMT ) {
+    } else if( decod_format == GRK_PXM_DFMT ) {
         imageBase = readImageFromFilePPM( inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
     }
-	else if (decod_format == PNG_DFMT) {
+	else if (decod_format == GRK_PNG_DFMT) {
 		imageBase = readImageFromFilePNG(inParam.base_filename, nbFilenamePGXbase, inParam.separator_base);
 	}
 
@@ -853,14 +852,14 @@ int main(int argc, char **argv)
 
     /*----------TEST IMAGE--------*/
 
-    if( decod_format == PGX_DFMT ) {
+    if( decod_format == GRK_PGX_DFMT ) {
         imageTest = readImageFromFilePGX(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
-    } else if( decod_format == TIF_DFMT ) {
+    } else if( decod_format == GRK_TIF_DFMT ) {
         imageTest = readImageFromFileTIF(inParam.test_filename, nbFilenamePGXtest, "");
-    } else if( decod_format == PXM_DFMT ) {
+    } else if( decod_format == GRK_PXM_DFMT ) {
         imageTest = readImageFromFilePPM(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
     }
-	else if (decod_format == PNG_DFMT) {
+	else if (decod_format == GRK_PNG_DFMT) {
 		imageTest = readImageFromFilePNG(inParam.test_filename, nbFilenamePGXtest, inParam.separator_test);
 	}
 

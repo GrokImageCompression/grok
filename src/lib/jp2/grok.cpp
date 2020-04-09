@@ -52,20 +52,15 @@
 #ifdef _WIN32
 #include <windows.h>
 #else /* _WIN32 */
-
 #include <errno.h>
-
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-# include <unistd.h>
-# include <sys/mman.h>
-
+#include <unistd.h>
+#include <sys/mman.h>
 #endif
-
 #include <fcntl.h>
 #include "grok_includes.h"
-#include "format_defs.h"
 using namespace grk;
 
 /**
@@ -535,8 +530,8 @@ void GRK_CALLCONV grk_set_default_encoder_parameters(
 		parameters->subsampling_dx = 1;
 		parameters->subsampling_dy = 1;
 		parameters->tp_on = 0;
-		parameters->decod_format = UNKNOWN_FORMAT;
-		parameters->cod_format = UNKNOWN_FORMAT;
+		parameters->decod_format = GRK_UNKNOWN_FORMAT;
+		parameters->cod_format = GRK_UNKNOWN_FORMAT;
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 0;
 		parameters->cp_disto_alloc = 0;

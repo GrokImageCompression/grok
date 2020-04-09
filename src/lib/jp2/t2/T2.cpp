@@ -576,7 +576,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 				        // block, if possible, or do further sanity check on packet
 		            seg->numPassesInPacket = max_passes_per_segment;
 				    } else {
-				        seg->numPassesInPacket = blockPassesInPacket;
+				        seg->numPassesInPacket = (uint32_t)blockPassesInPacket;
 				    }
 
 				} else {
@@ -884,7 +884,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			return false;
 		}
 		/* packno is uint32_t modulo 65536, in big endian format */
-		uint16_t packno = tile->packno % 0x10000;
+		uint16_t packno = (uint16_t)(tile->packno % 0x10000);
 		if (!p_stream->write_byte((uint8_t)(packno >> 8))) {
 			return false;
 		}

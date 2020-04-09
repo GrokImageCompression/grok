@@ -76,29 +76,25 @@
 #define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
 
 
+bool grok_set_binary_mode(FILE* file);
 
-extern "C" {
+/* Component precision clipping */
+void clip_component( grk_image_comp  *  component, uint32_t precision);
+/* Component precision scaling */
+void scale_component( grk_image_comp  *  component, uint32_t precision);
 
-	bool grok_set_binary_mode(FILE* file);
-
-	/* Component precision clipping */
-	void clip_component( grk_image_comp  *  component, uint32_t precision);
-	/* Component precision scaling */
-	void scale_component( grk_image_comp  *  component, uint32_t precision);
-
-	/* planar / interleaved conversions */
-	typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
-	extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
-	typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
-	extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
-	/* bit depth conversions */
-	typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
-	extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
-	typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
-	extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
-	bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps);
-	bool isSubsampled(grk_image *  image);
-}
+/* planar / interleaved conversions */
+typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
+extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
+typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
+extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
+/* bit depth conversions */
+typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
+extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
+typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
+extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
+bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps);
+bool isSubsampled(grk_image *  image);
 
 
 

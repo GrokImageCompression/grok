@@ -46,7 +46,7 @@
 /* set this macro to enable profiling for the given test */
 /* warning : in order to be effective, Grok must have been built with profiling enabled !! */
 /*#define _PROFILE*/
-
+#include "common.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -68,87 +68,6 @@
 #else
 #include <strings.h>
 #endif /* _WIN32 */
-
-#include "grok.h"
-#include "format_defs.h"
-#include "spdlog/spdlog.h"
-
-
-/* -------------------------------------------------------------------------- */
-/* Declarations                                                               */
-int get_file_format(const char *filename);
-static int infile_format(const char *fname);
-
-/* -------------------------------------------------------------------------- */
-int get_file_format(const char *filename)
-{
-    unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "raw", "rawl", "tga", "png", "j2k", "jp2", "j2c", "jpc" };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT, RAW_DFMT, RAWL_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
-    char * ext = (char*)strrchr(filename, '.');
-    if (ext == nullptr)
-        return -1;
-    ext++;
-    if(ext) {
-        for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
-            if(strcasecmp(ext, extension[i]) == 0) {
-                return format[i];
-            }
-        }
-    }
-
-    return -1;
-}
-
-/* -------------------------------------------------------------------------- */
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-/* position 45: "\xff\x52" */
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-
-static int infile_format(const char *fname)
-{
-    FILE *reader;
-    const char *s, *magic_s;
-    int ext_format, magic_format;
-    unsigned char buf[12];
-    unsigned int l_nb_read;
-
-    reader = fopen(fname, "rb");
-
-    if (reader == nullptr)
-        return -1;
-
-    memset(buf, 0, 12);
-    l_nb_read = (unsigned int)fread(buf, 1, 12, reader);
-    fclose(reader);
-    if (l_nb_read != 12)
-        return -1;
-
-    ext_format = get_file_format(fname);
-    if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
-        magic_format = JP2_CFMT;
-        magic_s = ".jp2";
-    } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-        magic_format = J2K_CFMT;
-        magic_s = ".j2k or .jpc or .j2c";
-    } else
-        return -1;
-
-    if (magic_format == ext_format)
-        return ext_format;
-
-    s = fname + strlen(fname) - 4;
-
-    fputs("\n===========================================\n", stderr);
-    fprintf(stderr, "The extension of this file is incorrect.\n"
-            "FOUND %s. SHOULD BE %s\n", s, magic_s);
-    fputs("===========================================\n", stderr);
-
-    return magic_format;
-}
-
-
-/* -------------------------------------------------------------------------- */
 
 /**
   sample error debug callback expecting no client object
@@ -179,17 +98,17 @@ static void info_callback(const char *msg, void *client_data)
 
 int main (int argc, char *argv[])
 {
-     grk_dparameters  l_param;
-     grk_codec  * l_codec = nullptr;
-    grk_image * l_image = nullptr;
-     grk_stream  * l_stream = nullptr;
-    uint64_t l_data_size=0;
-    uint64_t l_max_data_size = 1000;
-    uint16_t l_tile_index;
-    uint8_t * l_data  = nullptr;
-    bool l_go_on = true;
-    uint32_t l_nb_comps=0 ;
-    uint32_t l_current_tile_x0,l_current_tile_y0,l_current_tile_x1,l_current_tile_y1;
+     grk_dparameters  param;
+     grk_codec  * codec = nullptr;
+    grk_image * image = nullptr;
+     grk_stream  * stream = nullptr;
+    uint64_t data_size=0;
+    uint64_t max_data_size = 1000;
+    uint16_t tile_index;
+    uint8_t * data  = nullptr;
+    bool go_on = true;
+    uint32_t nb_comps=0 ;
+    uint32_t current_tile_x0,current_tile_y0,current_tile_x1,current_tile_y1;
     int32_t rc = EXIT_FAILURE;
     int temp;
 
@@ -246,48 +165,46 @@ int main (int argc, char *argv[])
         input_file = "test.j2k";
     }
 
-    l_data = (uint8_t *) malloc(1000);
-    if (! l_data)
+    data = (uint8_t *) malloc(1000);
+    if (! data)
         goto beach;
 
     grk_initialize(nullptr,0);
-    l_stream = grk_stream_create_file_stream(input_file, 1024*1024,true);
-    if (!l_stream) {
+    stream = grk_stream_create_file_stream(input_file, 1024*1024,true);
+    if (!stream) {
         spdlog::error("failed to create the stream from the file");
         goto beach;
     }
 
     /* Set the default decoding parameters */
-    grk_set_default_decoder_parameters(&l_param);
+    grk_set_default_decoder_parameters(&param);
 
     /* */
-    temp = infile_format(input_file);
-    if (temp == -1){
+	if (!grk::jpeg2000_file_format(input_file, &param.decod_format)){
         spdlog::error("failed to parse input file format");
     	goto beach;
     }
-    l_param.decod_format = (uint32_t)temp;
 
     /** you may here add custom decoding parameters */
     /* do not use layer decoding limitations */
-    l_param.cp_layer = 0;
+    param.cp_layer = 0;
 
     /* do not use resolutions reductions */
-    l_param.cp_reduce = 0;
+    param.cp_reduce = 0;
 
     /* to decode only a part of the image data */
-    /*grk_restrict_decoding(&l_param,0,0,1000,1000);*/
+    /*grk_restrict_decoding(&param,0,0,1000,1000);*/
 
 
-    switch(l_param.decod_format) {
-    case J2K_CFMT: {	/* JPEG-2000 codestream */
+    switch(param.decod_format) {
+    case GRK_J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_J2K,l_stream);
+        codec = grk_create_decompress(GRK_CODEC_J2K,stream);
         break;
     }
-    case JP2_CFMT: {	/* JPEG 2000 compressed image data */
+    case GRK_JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
-        l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
+        codec = grk_create_decompress(GRK_CODEC_JP2, stream);
         break;
     }
     default: {
@@ -303,64 +220,64 @@ int main (int argc, char *argv[])
     grk_set_error_handler(error_callback,nullptr);
 
     /* Setup the decoder decoding parameters using user parameters */
-    if (! grk_setup_decoder(l_codec, &l_param)) {
+    if (! grk_setup_decoder(codec, &param)) {
         spdlog::error("j2k_dump: failed to setup the decoder\n");
         goto beach;
     }
 
     /* Read the main header of the codestream and if necessary the JP2 boxes*/
-    if (! grk_read_header(l_codec,nullptr,&l_image)) {
+    if (! grk_read_header(codec,nullptr,&image)) {
         spdlog::error("j2k_to_image: failed to read the header\n");
         goto beach;
     }
 
-    if (!grk_set_decode_area(l_codec, l_image, da_x0, da_y0,da_x1, da_y1)) {
+    if (!grk_set_decode_area(codec, image, da_x0, da_y0,da_x1, da_y1)) {
         fprintf(stderr,	"[ERROR] j2k_to_image: failed to set the decoded area\n");
         goto beach;
     }
 
 
-    while (l_go_on) {
-        if (! grk_read_tile_header( l_codec,
-                                    &l_tile_index,
-                                    &l_data_size,
-                                    &l_current_tile_x0,
-                                    &l_current_tile_y0,
-                                    &l_current_tile_x1,
-                                    &l_current_tile_y1,
-                                    &l_nb_comps,
-                                    &l_go_on))
+    while (go_on) {
+        if (! grk_read_tile_header( codec,
+                                    &tile_index,
+                                    &data_size,
+                                    &current_tile_x0,
+                                    &current_tile_y0,
+                                    &current_tile_x1,
+                                    &current_tile_y1,
+                                    &nb_comps,
+                                    &go_on))
         	goto beach;
 
-        if (l_go_on) {
-            if (l_data_size > l_max_data_size) {
-                uint8_t *l_new_data = (uint8_t *) realloc(l_data, l_data_size);
-                if (! l_new_data)
+        if (go_on) {
+            if (data_size > max_data_size) {
+                uint8_t *new_data = (uint8_t *) realloc(data, data_size);
+                if (! new_data)
                 	goto beach;
-                l_data = l_new_data;
-                l_max_data_size = l_data_size;
+                data = new_data;
+                max_data_size = data_size;
             }
 
-            if (! grk_decode_tile_data(l_codec,l_tile_index,l_data,l_data_size))
+            if (! grk_decode_tile_data(codec,tile_index,data,data_size))
             	goto beach;
             /** now should inspect image to know the reduction factor and then how to behave with data */
         }
     }
 
-    if (! grk_end_decompress(l_codec))
+    if (! grk_end_decompress(codec))
         goto beach;
 
     rc = EXIT_SUCCESS;
     grk_deinitialize();
 
 beach:
-	free(l_data);
-	if (l_stream)
-		grk_stream_destroy(l_stream);
-	if (l_codec)
-		grk_destroy_codec(l_codec);
-	if (l_image)
-		grk_image_destroy(l_image);
+	free(data);
+	if (stream)
+		grk_stream_destroy(stream);
+	if (codec)
+		grk_destroy_codec(codec);
+	if (image)
+		grk_image_destroy(image);
 
     return rc;
 }

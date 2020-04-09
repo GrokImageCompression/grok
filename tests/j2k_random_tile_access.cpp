@@ -44,7 +44,7 @@
  */
 
 #include "grk_config.h"
-
+#include "common.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -58,32 +58,6 @@
 #define _strnicmp strncasecmp
 #endif /* _WIN32 */
 
-#include "grok.h"
-#include "format_defs.h"
-#include "spdlog/spdlog.h"
-
-/* -------------------------------------------------------------------------- */
-static int get_file_format(const char *filename)
-{
-    unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "raw", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT, BMP_DFMT, TIF_DFMT,TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT, J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
-    char * ext = (char*)strrchr(filename, '.');
-    if (ext == nullptr)
-        return -1;
-    ext++;
-    if(ext) {
-        for(i = 0; i < sizeof(format)/sizeof(*format); i++) {
-            if(_strnicmp(ext, extension[i], 3) == 0) {
-                return format[i];
-            }
-        }
-    }
-
-    return -1;
-}
-
-/* -------------------------------------------------------------------------- */
 
 /**
 sample error callback expecting a FILE* client object
@@ -110,60 +84,6 @@ static void info_callback(const char *msg, void *client_data)
     spdlog::info("%s", msg);
 }
 
-
-/* -------------------------------------------------------------------------- */
-#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-/* position 45: "\xff\x52" */
-#define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
-
-static int infile_format(const char *fname)
-{
-    FILE *reader;
-    const char *s, *magic_s;
-    int ext_format, magic_format;
-    unsigned char buf[12];
-    size_t l_nb_read;
-
-    reader = fopen(fname, "rb");
-
-    if (reader == nullptr)
-        return -1;
-
-    memset(buf, 0, 12);
-    l_nb_read = fread(buf, 1, 12, reader);
-    fclose(reader);
-    if (l_nb_read != 12)
-        return -1;
-
-    ext_format = get_file_format(fname);
-
-    if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0 ) {
-        magic_format = JP2_CFMT;
-        magic_s = ".jp2";
-    } else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-        magic_format = J2K_CFMT;
-        magic_s = ".j2k or .jpc or .j2c";
-    } else
-        return -1;
-
-    if (magic_format == ext_format)
-        return ext_format;
-
-    s = fname + strlen(fname) - 4;
-
-    fputs("\n===========================================\n", stderr);
-    fprintf(stderr, "The extension of this file is incorrect.\n"
-            "FOUND %s. SHOULD BE %s\n", s, magic_s);
-    fputs("===========================================\n", stderr);
-
-    return magic_format;
-}
-
-/* -------------------------------------------------------------------------- */
-/**
- * J2K_RANDOM_TILE_ACCESS MAIN
- */
-/* -------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
     uint32_t index;
@@ -192,7 +112,10 @@ int main(int argc, char **argv)
 
     /* decode the JPEG2000 stream */
     /* -------------------------- */
-    parameters.decod_format = infile_format(parameters.infile);
+	if (!grk::jpeg2000_file_format(parameters.infile, &parameters.decod_format)){
+        spdlog::error("Failed to detect JPEG 2000 file format for file %s\n", parameters.infile);
+        return EXIT_FAILURE;
+	}
 
     l_stream = grk_stream_create_file_stream(parameters.infile,1024*1024, 1);
     if (!l_stream) {
@@ -202,12 +125,12 @@ int main(int argc, char **argv)
 
 
     switch(parameters.decod_format) {
-    case J2K_CFMT: {	/* JPEG-2000 codestream */
+    case GRK_J2K_CFMT: {	/* JPEG-2000 codestream */
         /* Get a decoder handle */
         l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
         break;
     }
-    case JP2_CFMT: {	/* JPEG 2000 compressed image data */
+    case GRK_JP2_CFMT: {	/* JPEG 2000 compressed image data */
         /* Get a decoder handle */
         l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
         break;

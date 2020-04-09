@@ -60,13 +60,13 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
-#include "format_defs.h"
 #include <cassert>
+#include "grok.h"
 
 namespace grk {
 
 const GROK_SUPPORTED_FILE_FORMAT supportedStdoutFileFormats[] =
-											{BMP_DFMT,PNG_DFMT,RAW_DFMT, RAWL_DFMT, JPG_DFMT};
+											{GRK_BMP_DFMT,GRK_PNG_DFMT,GRK_RAW_DFMT, GRK_RAWL_DFMT, GRK_JPG_DFMT};
 
 const size_t maxICCProfileBufferLen = 10000000;
 
@@ -101,7 +101,7 @@ bool safe_fclose(FILE* fd);
 bool useStdio( const char *filename);
 bool supportedStdioFormat(GROK_SUPPORTED_FILE_FORMAT format);
 bool jpeg2000_file_format(const char *fname, GROK_SUPPORTED_FILE_FORMAT* fmt);
-GROK_SUPPORTED_FILE_FORMAT get_file_format(const char *filename);
+int get_file_format(const char *filename);
 const char* get_path_separator();
 char * get_file_name(char *name);
 uint32_t get_num_images(char *imgdirpath);

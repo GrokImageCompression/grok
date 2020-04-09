@@ -50,6 +50,7 @@
  */
 
 #include "grk_config.h"
+#include "common.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -70,15 +71,11 @@
 #define _strnicmp strncasecmp
 #endif /* _WIN32 */
 
-#include "grok.h"
 #include "grok_getopt.h"
 #include "convert.h"
-
-#include "format_defs.h"
 #include "grok_string.h"
-
 #include <string>
-#include "common.h"
+
 
 typedef struct _dircnt {
 	/** Buffer for holding images read from Directory*/
@@ -196,9 +193,9 @@ static int get_file_format(const char *filename) {
 	unsigned int i;
 	static const char *extension[] = { "pgx", "pnm", "pgm", "ppm", "bmp", "tif",
 			"tiff", "raw", "tga", "png", "j2k", "jp2", "j2c", "jpc" };
-	static const int format[] = { PGX_DFMT, PXM_DFMT, PXM_DFMT, PXM_DFMT,
-			BMP_DFMT, TIF_DFMT, TIF_DFMT, RAW_DFMT, TGA_DFMT, PNG_DFMT,
-			J2K_CFMT, JP2_CFMT, J2K_CFMT, J2K_CFMT };
+	static const int format[] = { GRK_PGX_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT, GRK_PXM_DFMT,
+			GRK_BMP_DFMT, GRK_TIF_DFMT, GRK_TIF_DFMT, GRK_RAW_DFMT, GRK_TGA_DFMT, GRK_PNG_DFMT,
+			GRK_J2K_CFMT, GRK_JP2_CFMT, GRK_J2K_CFMT, GRK_J2K_CFMT };
 	const char *ext = strrchr(filename, '.');
 	if (ext == nullptr)
 		return -1;
@@ -206,12 +203,12 @@ static int get_file_format(const char *filename) {
 	if (ext) {
 		for (i = 0; i < sizeof(format) / sizeof(*format); i++) {
 			if (_strnicmp(ext, extension[i], 3) == 0) {
-				return format[i];
+				return (int)format[i];
 			}
 		}
 	}
 
-	return -1;
+	return GRK_UNKNOWN_FORMAT;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -223,8 +220,7 @@ static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
 
 	strcpy(image_filename, dirptr->filename[imageno]);
 	spdlog::info("File Number {} \"{}\"", imageno, image_filename);
-	parameters->decod_format = get_file_format(image_filename);
-	if (parameters->decod_format == UNKNOWN_FORMAT)
+	if (!grk::jpeg2000_file_format(image_filename, &parameters->decod_format))
 		return 1;
 	sprintf(infilename, "%s/%s", img_fol->imgdirpath, image_filename);
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
@@ -257,7 +253,7 @@ static char get_next_file(int imageno, dircnt *dirptr, img_fol *img_fol,
 static int infile_format(const char *fname) {
 	FILE *reader;
 	const char *s, *magic_s;
-	int ext_format, magic_format;
+	GROK_SUPPORTED_FILE_FORMAT ext_format, magic_format;
 	uint8_t buf[12];
 	size_t l_nb_read;
 
@@ -271,24 +267,27 @@ static int infile_format(const char *fname) {
 	fclose(reader);
 	if (l_nb_read != 12)
 		return -1;
-	ext_format = get_file_format(fname);
+
+    int temp = get_file_format(fname);
+    if (temp > GRK_UNKNOWN_FORMAT)
+    	ext_format = (GROK_SUPPORTED_FILE_FORMAT)temp;
 
 	if (memcmp(buf, JP2_RFC3745_MAGIC, 12) == 0) {
-		magic_format = JP2_CFMT;
+		magic_format = GRK_JP2_CFMT;
 		magic_s = ".jp2";
 	} else if (memcmp(buf, J2K_CODESTREAM_MAGIC, 4) == 0) {
-		magic_format = J2K_CFMT;
+		magic_format = GRK_J2K_CFMT;
 		magic_s = ".j2k or .jpc or .j2c";
 	} else
 		return -1;
 
 	if (magic_format == ext_format)
-		return ext_format;
+		return (int)ext_format;
 
 	s = fname + strlen(fname) - 4;
 	spdlog::error("The extension of this file is incorrect.\n"
 			"Found {};  should be {}\n", s, magic_s);
-	return magic_format;
+	return (int)magic_format;
 }
 /* -------------------------------------------------------------------------- */
 /**
@@ -310,12 +309,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 		switch (c) {
 		case 'i': { /* input file */
 			char *infile = grok_optarg;
-			parameters->decod_format = infile_format(infile);
-			switch (parameters->decod_format) {
-			case J2K_CFMT:
-			case JP2_CFMT:
-				break;
-			default:
+			if (!grk::jpeg2000_file_format(infile,&parameters->decod_format )){
 				spdlog::error(
 						"Unknown input file format: {} \n"
 								"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
@@ -543,12 +537,12 @@ int main(int argc, char *argv[]) {
 		/* ------------------------ */
 
 		switch (parameters.decod_format) {
-		case J2K_CFMT: { /* JPEG-2000 codestream */
+		case GRK_J2K_CFMT: { /* JPEG-2000 codestream */
 			/* Get a decoder handle */
 			l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
 			break;
 		}
-		case JP2_CFMT: { /* JPEG 2000 compressed image data */
+		case GRK_JP2_CFMT: { /* JPEG 2000 compressed image data */
 			/* Get a decoder handle */
 			l_codec = grk_create_decompress(GRK_CODEC_JP2, l_stream);
 			break;

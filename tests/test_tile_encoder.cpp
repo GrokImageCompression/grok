@@ -41,17 +41,15 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
+#include "grk_config.h"
+#include "common.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
-
-#include "grk_config.h"
-#include "grok.h"
 #include "stdlib.h"
 #include <stdbool.h>
-#include "spdlog/spdlog.h"
+
 
 /* -------------------------------------------------------------------------- */
 
@@ -85,31 +83,31 @@ static void info_callback(const char *msg, void *client_data)
 #define NUM_COMPS_MAX 4
 int main (int argc, char *argv[])
 {
-     grk_cparameters  l_param;
-     grk_codec  * l_codec=nullptr;
-    grk_image * l_image = nullptr;
-     grk_image_cmptparm  l_params [NUM_COMPS_MAX];
-     grk_stream  * l_stream = nullptr;
-    uint32_t l_nb_tiles=0;
-    uint64_t l_data_size=0;
+     grk_cparameters  param;
+     grk_codec  * codec=nullptr;
+    grk_image * image = nullptr;
+     grk_image_cmptparm  params [NUM_COMPS_MAX];
+     grk_stream  * stream = nullptr;
+    uint32_t nb_tiles=0;
+    uint64_t data_size=0;
     size_t len=0;
 	int rc = 0;
 
 #ifdef USING_MCT
-    const float l_mct [] = {
+    const float mct [] = {
         1 , 0 , 0 ,
         0 , 1 , 0 ,
         0 , 0 , 1
     };
 
-    const int32_t l_offsets [] = {
+    const int32_t offsets [] = {
         128 , 128 , 128
     };
 #endif
 
-     grk_image_cmptparm  * l_current_param_ptr=nullptr;
+     grk_image_cmptparm  * current_param_ptr=nullptr;
     uint32_t i;
-    uint8_t *l_data=nullptr;
+    uint8_t *data=nullptr;
 
     uint32_t num_comps;
 	uint32_t image_width;
@@ -146,116 +144,116 @@ int main (int argc, char *argv[])
 		rc = 1;
 		goto cleanup;
     }
-    l_nb_tiles = (image_width/tile_width) * (image_height/tile_height);
-    l_data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
-	if (!l_data_size) {
+    nb_tiles = (image_width/tile_width) * (image_height/tile_height);
+    data_size = (uint64_t)tile_width * tile_height * num_comps * (comp_prec/8);
+	if (!data_size) {
 		rc = 1;
 		goto cleanup;
 	}
-    l_data = (uint8_t*) malloc(l_data_size * sizeof(uint8_t));
-	if (!l_data) {
+    data = (uint8_t*) malloc(data_size * sizeof(uint8_t));
+	if (!data) {
 		rc = 1;
 		goto cleanup;
 	}
 
     fprintf(stdout, "Encoding random values -> keep in mind that this is very hard to compress\n");
-    for (i=0; i<l_data_size; ++i)	{
-        l_data[i] = (uint8_t)i; /*rand();*/
+    for (i=0; i<data_size; ++i)	{
+        data[i] = (uint8_t)i; /*rand();*/
     }
 
-    grk_set_default_encoder_parameters(&l_param);
+    grk_set_default_encoder_parameters(&param);
     /** you may here add custom encoding parameters */
     /* rate specifications */
     /** number of quality layers in the stream */
-    l_param.tcp_numlayers = 1;
-    l_param.cp_fixed_quality = 1;
-    l_param.tcp_distoratio[0] = 20;
+    param.tcp_numlayers = 1;
+    param.cp_fixed_quality = 1;
+    param.tcp_distoratio[0] = 20;
     /* is using others way of calculation */
-    /* l_param.cp_disto_alloc = 1 or l_param.cp_fixed_alloc = 1 */
-    /* l_param.tcp_rates[0] = ... */
+    /* param.cp_disto_alloc = 1 or param.cp_fixed_alloc = 1 */
+    /* param.tcp_rates[0] = ... */
 
 
     /* tile definitions parameters */
     /* position of the tile grid aligned with the image */
-    l_param.cp_tx0 = 0;
-    l_param.cp_ty0 = 0;
+    param.cp_tx0 = 0;
+    param.cp_ty0 = 0;
     /* tile size, we are using tile based encoding */
-    l_param.tile_size_on = true;
-    l_param.cp_tdx = tile_width;
-    l_param.cp_tdy = tile_height;
+    param.tile_size_on = true;
+    param.cp_tdx = tile_width;
+    param.cp_tdy = tile_height;
 
     /* use irreversible encoding ?*/
-    l_param.irreversible = irreversible;
+    param.irreversible = irreversible;
 
     /* do not bother with mct, the rsiz is set when calling grk_set_MCT*/
-    /*l_param.cp_rsiz = GRK_STD_RSIZ;*/
+    /*param.cp_rsiz = GRK_STD_RSIZ;*/
 
     /* no cinema */
-    /*l_param.cp_cinema = 0;*/
+    /*param.cp_cinema = 0;*/
 
     /* do not bother using SOP or EPH markers, do not use custom size precinct */
     /* number of precincts to specify */
-    /* l_param.csty = 0;*/
-    /* l_param.res_spec = ... */
-    /* l_param.prch_init[i] = .. */
-    /* l_param.prcw_init[i] = .. */
+    /* param.csty = 0;*/
+    /* param.res_spec = ... */
+    /* param.prch_init[i] = .. */
+    /* param.prcw_init[i] = .. */
 
 
     /* do not use progression order changes */
-    /*l_param.numpocs = 0;*/
-    /* l_param.POC[i].... */
+    /*param.numpocs = 0;*/
+    /* param.POC[i].... */
 
     /* do not restrain the size for a component.*/
-    /* l_param.max_comp_size = 0; */
+    /* param.max_comp_size = 0; */
 
     /** block encoding style for each component, do not use at the moment */
     /** J2K_CCP_CBLKSTY_TERMALL, J2K_CCP_CBLKSTY_LAZY, J2K_CCP_CBLKSTY_VSC, J2K_CCP_CBLKSTY_SEGSYM, J2K_CCP_CBLKSTY_RESET */
-    /* l_param.mode = 0;*/
+    /* param.mode = 0;*/
 
     /** number of resolutions */
-    l_param.numresolution = 6;
+    param.numresolution = 6;
 
     /** progression order to use*/
     /** GRK_LRCP, GRK_RLCP, GRK_RPCL, PCRL, CPRL */
-    l_param.prog_order = GRK_LRCP;
+    param.prog_order = GRK_LRCP;
 
     /** no "region" of interest, more precisely component */
-    /* l_param.roi_compno = -1; */
-    /* l_param.roi_shift = 0; */
+    /* param.roi_compno = -1; */
+    /* param.roi_shift = 0; */
 
     /* we are not using multiple tile parts for a tile. */
-    /* l_param.tp_on = 0; */
-    /* l_param.tp_flag = 0; */
+    /* param.tp_on = 0; */
+    /* param.tp_flag = 0; */
 
     /* if we are using mct */
 #ifdef USING_MCT
-    grk_set_MCT(&l_param,l_mct,l_offsets,NUM_COMPS);
+    grk_set_MCT(&param,mct,offsets,NUM_COMPS);
 #endif
 
 
     /* image definition */
-    l_current_param_ptr = l_params;
+    current_param_ptr = params;
     for (i=0; i<num_comps; ++i) {
         /* do not bother bpp useless */
-        /*l_current_param_ptr->bpp = COMP_PREC;*/
-        l_current_param_ptr->dx = 1;
-        l_current_param_ptr->dy = 1;
+        /*current_param_ptr->bpp = COMP_PREC;*/
+        current_param_ptr->dx = 1;
+        current_param_ptr->dy = 1;
 
-        l_current_param_ptr->h = image_height;
-        l_current_param_ptr->w = image_width;
+        current_param_ptr->h = image_height;
+        current_param_ptr->w = image_width;
 
-        l_current_param_ptr->sgnd = 0;
-        l_current_param_ptr->prec = comp_prec;
+        current_param_ptr->sgnd = 0;
+        current_param_ptr->prec = comp_prec;
 
-        l_current_param_ptr->x0 = 0;
-        l_current_param_ptr->y0 = 0;
+        current_param_ptr->x0 = 0;
+        current_param_ptr->y0 = 0;
 
-        ++l_current_param_ptr;
+        ++current_param_ptr;
     }
 
 
-    l_stream = grk_stream_create_file_stream(output_file, 1024*1024,false);
-    if (! l_stream) {
+    stream = grk_stream_create_file_stream(output_file, 1024*1024,false);
+    if (! stream) {
         spdlog::error("test_tile_encoder: failed to create the stream from the output file %s !\n",output_file );
 		rc = 1;
 		goto cleanup;
@@ -265,11 +263,11 @@ int main (int argc, char *argv[])
     /* should we do j2k or jp2 ?*/
     len = strlen( output_file );
     if( strcmp( output_file + len - 4, ".jp2" ) == 0 ) {
-        l_codec = grk_create_compress(GRK_CODEC_JP2, l_stream);
+        codec = grk_create_compress(GRK_CODEC_JP2, stream);
     } else {
-        l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
+        codec = grk_create_compress(GRK_CODEC_J2K, stream);
     }
-    if (!l_codec) {
+    if (!codec) {
 		rc = 1;
 		goto cleanup;
     }
@@ -279,53 +277,52 @@ int main (int argc, char *argv[])
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    l_image = grk_image_create(num_comps,l_params,GRK_CLRSPC_SRGB);
-    if (! l_image) {
+    image = grk_image_create(num_comps,params,GRK_CLRSPC_SRGB);
+    if (! image) {
 		rc = 1;
 		goto cleanup;
     }
 
-    l_image->x0 = 0;
-    l_image->y0 = 0;
-    l_image->x1 = image_width;
-    l_image->y1 = image_height;
-    l_image->color_space = GRK_CLRSPC_SRGB;
+    image->x0 = 0;
+    image->y0 = 0;
+    image->x1 = image_width;
+    image->y1 = image_height;
+    image->color_space = GRK_CLRSPC_SRGB;
 
-    if (! grk_setup_encoder(l_codec,&l_param,l_image)) {
+    if (! grk_setup_encoder(codec,&param,image)) {
         spdlog::error("test_tile_encoder: failed to setup the codec!\n");
 		rc = 1;
 		goto cleanup;
     }
-    if (! grk_start_compress(l_codec,l_image)) {
+    if (! grk_start_compress(codec,image)) {
         spdlog::error("test_tile_encoder: failed to start compress!\n");
 		rc = 1;
 		goto cleanup;
     }
 
-    for (i=0; i<l_nb_tiles; ++i) {
-        if (! grk_write_tile(l_codec,i,l_data,l_data_size)) {
+    for (i=0; i<nb_tiles; ++i) {
+        if (! grk_write_tile(codec,i,data,data_size)) {
             spdlog::error("test_tile_encoder: failed to write the tile %d!\n",i);
 			rc = 1;
 			goto cleanup;
         }
     }
 
-    if (! grk_end_compress(l_codec)) {
+    if (! grk_end_compress(codec)) {
         spdlog::error("test_tile_encoder: failed to end compress!\n");
 		rc = 1;
 		goto cleanup;
     }
 
 cleanup:
-	if (l_stream)
-		grk_stream_destroy(l_stream);
-	if (l_codec)
-		grk_destroy_codec(l_codec);
-	if (l_image)
-		grk_image_destroy(l_image);
+	if (stream)
+		grk_stream_destroy(stream);
+	if (codec)
+		grk_destroy_codec(codec);
+	if (image)
+		grk_image_destroy(image);
 
-	if (l_data)
-		free(l_data);
+	free(data);
 
     /* Print profiling*/
     /*PROFPRINT();*/
