@@ -64,8 +64,8 @@
 
 struct pnm_header {
 	uint32_t width, height, maxval, depth, format;
-	char rgb, rgba, gray, graya, bw;
-	char ok;
+	uint8_t rgb, rgba, gray, graya, bw;
+	bool ok;
 };
 
 static char* skip_white(char *s) {
@@ -296,9 +296,9 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 		}
 
 		if (ttype)
-			ph->ok = 1;
+			ph->ok = true;
 	} else {
-		ph->ok = 1;
+		ph->ok = true;
 		if (format == 1 || format == 4) {
 			ph->maxval = 255;
 		}

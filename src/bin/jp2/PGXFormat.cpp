@@ -132,12 +132,14 @@ static unsigned int readuint(FILE *f, int bigendian) {
 static grk_image* pgxtoimage(const char *filename,
 		grk_cparameters *parameters) {
 	FILE *f = nullptr;
-	uint32_t w, h, prec, numcomps, max;
+	uint32_t w, h, prec, numcomps;
+	int32_t max;
 	uint64_t i, area;
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	grk_image *image = nullptr;
-	int adjustS, ushift, dshift, force8;
+	int adjustS, ushift, dshift;
+	bool force8 = false;;
 	int c;
 	char endian1, endian2, sign;
 	char signtmp[32];
@@ -163,6 +165,11 @@ static grk_image* pgxtoimage(const char *filename,
 			&endian1, &endian2, signtmp, &prec, temp, &w, temp, &h) != 9) {
 		spdlog::error(
 				" Failed to read the right number of element from the fscanf() function!");
+		goto cleanup;
+	}
+
+	if (prec == 0){
+		spdlog::error("Precision must be > 0");
 		goto cleanup;
 	}
 
@@ -209,7 +216,7 @@ static grk_image* pgxtoimage(const char *filename,
 		cmptparm.sgnd = 0;
 	}
 	if (prec < 8) {
-		force8 = 1;
+		force8 = true;
 		ushift = 8 - prec;
 		dshift = prec - ushift;
 		if (cmptparm.sgnd)
@@ -218,8 +225,10 @@ static grk_image* pgxtoimage(const char *filename,
 			adjustS = 0;
 		cmptparm.sgnd = 0;
 		prec = 8;
-	} else
-		ushift = dshift = force8 = adjustS = 0;
+	} else{
+		ushift = dshift =  adjustS = 0;
+		force8 = false;
+	}
 
 	cmptparm.prec = prec;
 	cmptparm.dx = parameters->subsampling_dx;
@@ -241,7 +250,7 @@ static grk_image* pgxtoimage(const char *filename,
 	comp = &image->comps[0];
 	area = (uint64_t) w * h;
 	for (i = 0; i < area; i++) {
-		uint32_t v;
+		int32_t v;
 		if (force8) {
 			v = readuchar(f) + adjustS;
 			v = (v << ushift) + (v >> dshift);
@@ -254,19 +263,19 @@ static grk_image* pgxtoimage(const char *filename,
 			if (!comp->sgnd) {
 				v = readuchar(f);
 			} else {
-				v = (char) readuchar(f);
+				v = (int8_t) readuchar(f);
 			}
 		} else if (comp->prec <= 16) {
 			if (!comp->sgnd) {
 				v = readushort(f, bigendian);
 			} else {
-				v = (short) readushort(f, bigendian);
+				v = (int16_t) readushort(f, bigendian);
 			}
 		} else {
 			if (!comp->sgnd) {
 				v = readuint(f, bigendian);
 			} else {
-				v = (int) readuint(f, bigendian);
+				v = (int32_t) readuint(f, bigendian);
 			}
 		}
 		if (v > max)
