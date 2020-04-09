@@ -60,7 +60,7 @@
  @param parameters *List ?*
  @return a greyscale image if successful, returns nullptr otherwise
  */
-
+#include "common.h"
 #include <cstdio>
 #include <cstdlib>
 #include "grk_apps_config.h"
@@ -68,7 +68,6 @@
 #include "PGXFormat.h"
 #include "convert.h"
 #include <cstring>
-#include "common.h"
 #include <cassert>
 
 static uint8_t readuchar(FILE *f) {
@@ -99,36 +98,6 @@ static unsigned short readushort(FILE *f, int bigendian) {
 		return (unsigned short) ((c2 << 8) + c1);
 }
 
-static unsigned int readuint(FILE *f, int bigendian) {
-	uint8_t c1, c2, c3, c4;
-	if (!fread(&c1, 1, 1, f)) {
-		spdlog::error(
-				" fread return a number of element different from the expected.");
-		return 0;
-	}
-	if (!fread(&c2, 1, 1, f)) {
-		spdlog::error(
-				" fread return a number of element different from the expected.");
-		return 0;
-	}
-	if (!fread(&c3, 1, 1, f)) {
-		spdlog::error(
-				"  fread return a number of element different from the expected.");
-		return 0;
-	}
-	if (!fread(&c4, 1, 1, f)) {
-		spdlog::error(
-				" fread return a number of element different from the expected.");
-		return 0;
-	}
-	if (bigendian)
-		return (unsigned int) (c1 << 24) + (unsigned int) (c2 << 16)
-				+ (unsigned int) (c3 << 8) + c4;
-	else
-		return (unsigned int) (c4 << 24) + (unsigned int) (c3 << 16)
-				+ (unsigned int) (c2 << 8) + c1;
-}
-
 static grk_image* pgxtoimage(const char *filename,
 		grk_cparameters *parameters) {
 	FILE *f = nullptr;
@@ -138,7 +107,7 @@ static grk_image* pgxtoimage(const char *filename,
 	GRK_COLOR_SPACE color_space;
 	grk_image_cmptparm cmptparm; /* maximum of 1 component  */
 	grk_image *image = nullptr;
-	int adjustS, ushift, dshift;
+	uint32_t adjustS, ushift, dshift;
 	bool force8 = false;;
 	int c;
 	char endian1, endian2, sign;
@@ -217,8 +186,8 @@ static grk_image* pgxtoimage(const char *filename,
 	}
 	if (prec < 8) {
 		force8 = true;
-		ushift = 8 - prec;
-		dshift = prec - ushift;
+		ushift = (uint32_t)(8 - prec);
+		dshift = (uint32_t)(prec - ushift);
 		if (cmptparm.sgnd)
 			adjustS = (1 << (prec - 1));
 		else
@@ -246,36 +215,26 @@ static grk_image* pgxtoimage(const char *filename,
 	image->y1 = cmptparm.h;
 
 	/* set image data */
-
 	comp = &image->comps[0];
 	area = (uint64_t) w * h;
 	for (i = 0; i < area; i++) {
-		int32_t v;
+		int32_t v = 0;
 		if (force8) {
 			v = readuchar(f) + adjustS;
 			v = (v << ushift) + (v >> dshift);
-			comp->data[i] = (uint8_t) v;
-			if (v > max)
-				max = v;
-			continue;
-		}
-		if (comp->prec == 8) {
-			if (!comp->sgnd) {
-				v = readuchar(f);
+		} else  {
+			if (comp->prec == 8) {
+				if (!comp->sgnd) {
+					v = readuchar(f);
+				} else {
+					v = readuchar(f);
+				}
 			} else {
-				v = (int8_t) readuchar(f);
-			}
-		} else if (comp->prec <= 16) {
-			if (!comp->sgnd) {
-				v = readushort(f, bigendian);
-			} else {
-				v = (int16_t) readushort(f, bigendian);
-			}
-		} else {
-			if (!comp->sgnd) {
-				v = readuint(f, bigendian);
-			} else {
-				v = (int32_t) readuint(f, bigendian);
+				if (!comp->sgnd) {
+					v = readushort(f, bigendian);
+				} else {
+					v = readushort(f, bigendian);
+				}
 			}
 		}
 		if (v > max)
@@ -290,16 +249,13 @@ static grk_image* pgxtoimage(const char *filename,
 }
 
 static int imagetopgx(grk_image *image, const char *outfile) {
-	uint32_t w, h;
-	int j, fails = 1;
-	unsigned int compno;
+	int fails = 1;
 	FILE *fdest = nullptr;
-	for (compno = 0; compno < image->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 		grk_image_comp *comp = &image->comps[compno];
 		char bname[4096]; /* buffer for name */
 		bname[4095] = '\0';
 		int nbytes = 0;
-		size_t res;
 		const size_t olen = strlen(outfile);
 		if (olen > 4096) {
 			spdlog::error(
@@ -327,8 +283,8 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 			goto beach;
 		}
 
-		w = image->comps[compno].w;
-		h = image->comps[compno].h;
+		uint32_t w = image->comps[compno].w;
+		uint32_t h = image->comps[compno].h;
 
 		fprintf(fdest, "PG ML %c %d %d %d\n", comp->sgnd ? '-' : '+',
 				comp->prec, w, h);
@@ -337,21 +293,44 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 			nbytes = 1;
 		else if (comp->prec <= 16)
 			nbytes = 2;
-		else
-			nbytes = 4;
 
-		for (uint64_t i = 0; i < (uint64_t) w * h; i++) {
-			/* FIXME: clamp func is being called within a loop */
-			const int val = grk::clamp(image->comps[compno].data[i], comp->prec,
-					comp->sgnd);
+		const size_t bufSize = 4096;
+		uint64_t area = (uint64_t) w * h;
+		size_t outCount = 0;
+		if (nbytes == 1){
+			uint8_t buf[bufSize];
+			uint8_t *outPtr = buf;
+			for (uint64_t i = 0; i < area; i++) {
+				const int val = image->comps[compno].data[i];
+				if (!grk::writeBytes<uint8_t>((uint8_t) val, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					spdlog::error("failed to write bytes for {}\n", bname);
+					goto beach;
+				}
+			}
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
+				if (res != outCount) {
+					spdlog::error("failed to write bytes for {}\n", bname);
+					goto beach;
+				}
+			}
 
-			for (j = nbytes - 1; j >= 0; j--) {
-				int v = (int) (val >> (j * 8));
-				uint8_t byte = (uint8_t) v;
-				res = fwrite(&byte, 1, 1, fdest);
-
-				if (res < 1) {
-					spdlog::error("failed to write 1 byte for {}\n", bname);
+		} else {
+			uint16_t buf[bufSize];
+			uint16_t *outPtr = buf;
+			for (uint64_t i = 0; i < area; i++) {
+				const int val = image->comps[compno].data[i];
+				if (!grk::writeBytes<uint16_t>((uint16_t) val, buf, &outPtr,
+						&outCount, bufSize, true, fdest)) {
+					spdlog::error("failed to write bytes for {}\n", bname);
+					goto beach;
+				}
+			}
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+				if (res != outCount) {
+					spdlog::error("failed to write bytes for {}\n", bname);
 					goto beach;
 				}
 			}

@@ -523,10 +523,10 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 	int *alpha = nullptr;
 	uint32_t wr, hr, max;
 	uint64_t i;
-	unsigned int compno, ncomp;
+	uint32_t compno, ncomp, prec;
 	int adjustR, adjustG, adjustB, adjustA;
 	int two, want_gray, has_alpha, triple;
-	int prec, v;
+	int v;
 	FILE *fdest = nullptr;
 	const char *tmp = outfile;
 	char *destname = nullptr;
@@ -534,7 +534,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 	alpha = nullptr;
 
-	if ((prec = (int) image->comps[0].prec) > 16) {
+	if ((prec = image->comps[0].prec) > 16) {
 		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
 				"\n\t: refused.\n", __FILE__, __LINE__, prec);
 		rc = 1;
@@ -622,41 +622,20 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			size_t outCount = 0;
 
 			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red + adjustR;
-				++red;
-				if (v > INT16_MAX)
-					v = INT16_MAX;
-				else if (v < 0)
-					v = 0;
-
-				/* netpbm: */
+				v = *red++ + adjustR;
 				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
 					rc = 1;
 					goto cleanup;
 				}
 				if (triple) {
-					v = *green + adjustG;
-					++green;
-					if (v > INT16_MAX)
-						v = INT16_MAX;
-					else if (v < 0)
-						v = 0;
-
-					/* netpbm: */
+					v = *green++ + adjustG;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
 						goto cleanup;
 					}
-					v = *blue + adjustB;
-					++blue;
-					if (v > INT16_MAX)
-						v = INT16_MAX;
-					else if (v < 0)
-						v = 0;
-
-					/* netpbm: */
+					v = *blue++ + adjustB;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
@@ -665,13 +644,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}/* if(triple) */
 
 				if (has_alpha) {
-					v = *alpha + adjustA;
-					++alpha;
-					if (v > INT16_MAX)
-						v = INT16_MAX;
-					else if (v < 0)
-						v = 0;
-					/* netpbm: */
+					v = *alpha++ + adjustA;
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
@@ -691,14 +664,8 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			uint8_t buf[bufSize];
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
-			for (i = 0; i < wr * hr; i++) {
-				/* prec <= 8: */
+			for (i = 0; i < (uint64_t)wr * hr; i++) {
 				v = *red++;
-				if (v > UINT8_MAX)
-					v = UINT8_MAX;
-				else if (v < 0)
-					v = 0;
-
 				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
 					rc = 1;
@@ -706,22 +673,12 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}
 				if (triple) {
 					v = *green++;
-					if (v > UINT8_MAX)
-						v = UINT8_MAX;
-					else if (v < 0)
-						v = 0;
-
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
 						goto cleanup;
 					}
 					v = *blue++;
-					if (v > UINT8_MAX)
-						v = UINT8_MAX;
-					else if (v < 0)
-						v = 0;
-
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
@@ -730,10 +687,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}
 				if (has_alpha) {
 					v = *alpha++;
-					if (v > UINT8_MAX)
-						v = UINT8_MAX;
-					else if (v < 0)
-						v = 0;
 					if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
@@ -767,7 +720,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 	for (compno = 0; compno < ncomp; compno++) {
 		if (ncomp > 1) {
-			/*sprintf(destname, "%d.%s", compno, outfile);*/
 			const size_t olen = strlen(outfile);
 			if (olen < 4) {
 				spdlog::error(
@@ -790,7 +742,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		}
 		wr = image->comps[compno].w;
 		hr = image->comps[compno].h;
-		prec = (int) image->comps[compno].prec;
+		prec = image->comps[compno].prec;
 		max = (1 << prec) - 1;
 
 		fprintf(fdest, "P5\n#Grok-%s\n%d %d\n%d\n", grk_version(), wr, hr, max);
@@ -811,13 +763,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			size_t outCount = 0;
 
 			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red + adjustR;
-				++red;
-				if (v > UINT16_MAX)
-					v = UINT16_MAX;
-				else if (v < 0)
-					v = 0;
-				/* netpbm: */
+				v = *red++ + adjustR;
 				if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
 					rc = 1;
@@ -825,11 +771,6 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 				}
 				if (has_alpha) {
 					v = *alpha++;
-					if (v > UINT16_MAX)
-						v = UINT16_MAX;
-					else if (v < 0)
-						v = 0;
-					/* netpbm: */
 					if (!grk::writeBytes<uint16_t>((uint16_t) v, buf, &outPtr,
 							&outCount, bufSize, true, fdest)) {
 						rc = 1;
@@ -849,12 +790,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 			uint8_t *outPtr = buf;
 			size_t outCount = 0;
 			for (i = 0; i < (uint64_t) wr * hr; i++) {
-				v = *red + adjustR;
-				++red;
-				if (v > UINT8_MAX)
-					v = UINT8_MAX;
-				else if (v < 0)
-					v = 0;
+				v = *red++ + adjustR;
 				if (!grk::writeBytes<uint8_t>((uint8_t) v, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
 					rc = 1;
