@@ -168,8 +168,8 @@ static grk_image* pgxtoimage(const char *filename,
 		goto cleanup;
 	}
 
-	if (prec == 0){
-		spdlog::error("Precision must be > 0");
+	if (prec < 4){
+		spdlog::error("Precision must be >= 4");
 		goto cleanup;
 	}
 
