@@ -77,7 +77,7 @@ typedef struct tcd_cblk_enc {
     uint8_t* data;               /* Data */
     tcd_layer_t* layers;      /* layer information */
     tcd_pass_t* passes;       /* information about the passes */
-    int32_t x0, y0, x1,
+    uint32_t x0, y0, x1,
               y1;     /* dimension of the code-blocks : left upper corner (x0, y0) right low corner (x1,y1) */
     uint32_t numbps;
     uint32_t numlenbits;

@@ -863,7 +863,7 @@ static void interleave_partial_h_53(dwt_data<int32_t> *dwt,
 
 	int32_t *dest = dwt->mem;
 	int32_t cas = dwt->cas;
-	uint32_t sn = dwt->sn;
+	uint32_t sn = (uint32_t)dwt->sn;
 	uint32_t win_l_x0 = dwt->win_l_x0;
 	uint32_t win_l_x1 = dwt->win_l_x1;
 	uint32_t win_h_x0 = dwt->win_h_x0;
@@ -889,7 +889,7 @@ static void interleave_partial_v_53(dwt_data<int32_t> *vert,
 									uint32_t nb_cols){
 	int32_t *dest = vert->mem;
 	int32_t cas = vert->cas;
-	uint32_t sn = vert->sn;
+	uint32_t sn = (uint32_t)vert->sn;
 	uint32_t win_l_y0 = vert->win_l_x0;
 	uint32_t win_l_y1 = vert->win_l_x1;
 	uint32_t win_h_y0 = vert->win_h_x0;

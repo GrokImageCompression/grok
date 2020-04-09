@@ -583,7 +583,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 			const char *of = outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
 			img_fol->set_out_format = true;
-			parameters->cod_format = get_file_format(outformat);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outformat);
 			switch (parameters->cod_format) {
 			case GRK_PGX_FMT:
 				img_fol->out_format = "pgx";
@@ -622,7 +622,8 @@ int parse_cmdline_decoder(int argc, char **argv,
 
 		if (outputFileArg.isSet()) {
 			const char *outfile = outputFileArg.getValue().c_str();
-			parameters->cod_format = get_file_format(outfile);
+			parameters->cod_format =
+					(GRK_SUPPORTED_FILE_FMT)get_file_format(outfile);
 			switch (parameters->cod_format) {
 			case GRK_PGX_FMT:
 			case GRK_PXM_FMT:
@@ -1183,7 +1184,7 @@ int main(int argc, char **argv) {
 }
 
 int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
-	int32_t num_images = 0, imageno = 0;
+	uint32_t num_images = 0, imageno = 0;
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_decompressed_images = 0;
@@ -1282,9 +1283,9 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 					goto cleanup;
 				}
 
-				for (int it_image = 0; it_image < num_images; it_image++) {
-					dirptr->filename[it_image] = dirptr->filename_buf
-							+ it_image * GRK_PATH_LEN;
+				for (uint32_t i = 0; i < num_images; i++) {
+					dirptr->filename[i] = dirptr->filename_buf
+							+ i * GRK_PATH_LEN;
 				}
 			}
 			if (load_images(dirptr, initParams->img_fol.imgdirpath) == 1) {
@@ -1391,13 +1392,17 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			if (in) {
 				fseek(in, 0L, SEEK_END);
 				long int sz = ftell(in);
+				if (sz == -1){
+					failed = 1;
+					goto cleanup;
+				}
 				rewind(in);
-				auto memoryBuffer = new uint8_t[sz];
-				size_t ret = fread(memoryBuffer, 1, sz, in);
+				auto memoryBuffer = new uint8_t[(size_t)sz];
+				size_t ret = fread(memoryBuffer, 1, (size_t)sz, in);
 				fclose(in);
-				if (ret == sz)
+				if (ret == (size_t)sz)
 					info->l_stream = grk_stream_create_mem_stream(memoryBuffer,
-							sz, true, true);
+							(size_t)sz, true, true);
 				else {
 					failed = 1;
 					goto cleanup;

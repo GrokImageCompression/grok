@@ -531,7 +531,7 @@ static bool checkCinema(ValueArg<uint32_t> *arg, uint16_t profile,
 		grk_cparameters *parameters) {
 	bool isValid = true;
 	if (arg->isSet()) {
-		int fps = arg->getValue();
+		uint32_t fps = arg->getValue();
 		if (fps == 24) {
 			parameters->rsiz = profile;
 			parameters->framerate = 24;
@@ -615,8 +615,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
 
-		ValueArg<char> tpArg("u", "TP", "Tile part generation", false, 0,
-				"char", cmd);
+		ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0,
+				"uint8_t", cmd);
 
 		ValueArg<string> tileOffsetArg("T", "TileOffset", "Tile offset", false,
 				"", "string", cmd);
@@ -908,10 +908,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				int compno;
 				int lastdx = 1;
 				int lastdy = 1;
-				raw_cp->width = width;
-				raw_cp->height = height;
+				raw_cp->width = (uint32_t)width;
+				raw_cp->height = (uint32_t)height;
 				raw_cp->numcomps = (uint16_t) ncomp;
-				raw_cp->prec = bitdepth;
+				raw_cp->prec = (uint32_t)bitdepth;
 				raw_cp->sgnd = raw_signed;
 				raw_cp->comps = (grk_raw_comp_cparameters*) malloc(
 						((uint32_t) (ncomp))
@@ -922,8 +922,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				}
 				for (compno = 0; compno < ncomp && !wrong; compno++) {
 					if (substr2 == nullptr) {
-						raw_cp->comps[compno].dx = lastdx;
-						raw_cp->comps[compno].dy = lastdy;
+						raw_cp->comps[compno].dx = (uint32_t)lastdx;
+						raw_cp->comps[compno].dy = (uint32_t)lastdy;
 					} else {
 						int dx, dy;
 						sep = strchr(substr2, ':');
@@ -931,8 +931,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
 								lastdx = dx;
 								lastdy = dy;
-								raw_cp->comps[compno].dx = dx;
-								raw_cp->comps[compno].dy = dy;
+								raw_cp->comps[compno].dx = (uint32_t)dx;
+								raw_cp->comps[compno].dy = (uint32_t)dy;
 								substr2 = nullptr;
 							} else {
 								wrong = true;
@@ -940,8 +940,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						} else {
 							if (sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2)
 									== 3) {
-								raw_cp->comps[compno].dx = dx;
-								raw_cp->comps[compno].dy = dy;
+								raw_cp->comps[compno].dx = (uint32_t)dx;
+								raw_cp->comps[compno].dy = (uint32_t)dy;
 							} else {
 								wrong = true;
 							}
@@ -977,8 +977,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				spdlog::error("Tile dimensions must be strictly positive");
 				return 1;
 			}
-			parameters->cp_tdx = cp_tdx;
-			parameters->cp_tdy = cp_tdy;
+			parameters->cp_tdx = (uint32_t)cp_tdx;
+			parameters->cp_tdy = (uint32_t)cp_tdy;
 			parameters->tile_size_on = true;
 
 		}
@@ -1008,7 +1008,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				res_spec++;
 				s = strpbrk(s, "]") + 2;
 			} while (sep == ',');
-			parameters->res_spec = res_spec;
+			parameters->res_spec = (uint32_t)res_spec;
 		}
 
 		if (codeBlockDimArg.isSet()) {
@@ -1027,8 +1027,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 								"    * width*height<=4096\n    * 4<=width,height<= 1024\n");
 				return 1;
 			}
-			parameters->cblockw_init = cblockw_init;
-			parameters->cblockh_init = cblockh_init;
+			parameters->cblockw_init = (uint32_t)cblockw_init;
+			parameters->cblockh_init = (uint32_t)cblockh_init;
 		}
 
 		if (progressionOrderArg.isSet()) {
@@ -1235,8 +1235,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					GRK_IMF_SUBLEVEL_7_MBITSSEC,
 					GRK_IMF_SUBLEVEL_8_MBITSSEC,
 					GRK_IMF_SUBLEVEL_9_MBITSSEC };
-					parameters->max_cs_size = limitMBitsSec[sublevel]
-							* (1000 * 1000 / 8) / framerate;
+					parameters->max_cs_size =
+							(uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
 					if (parameters->verbose) {
 						spdlog::info(
 								"Setting max codestream size to %d bytes.\n",
@@ -1284,7 +1284,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 
 		if (mctArg.isSet()) {
-			int mct_mode = mctArg.getValue();
+			uint32_t mct_mode = mctArg.getValue();
 			if (mct_mode < 0 || mct_mode > 2) {
 				spdlog::error(
 						"MCT incorrect value. Current accepted values are 0, 1 or 2.");
@@ -1373,7 +1373,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			free(lSpace);
 			free(lMatrix);
 			if (rc)
-				return rc;
+				return false;
 
 		}
 
@@ -1760,7 +1760,7 @@ static bool plugin_compress_callback(
 				goto cleanup;
 			}
 		}
-			break;
+		break;
 
 #ifdef GROK_HAVE_LIBTIFF
 		case GRK_TIF_FMT: {
@@ -1834,6 +1834,13 @@ static bool plugin_compress_callback(
 		}
 			break;
 #endif /* GROK_HAVE_LIBPNG */
+		default: {
+			spdlog::error("Unsupported input file format {}",
+					info->encoder_parameters->decod_format);
+			bSuccess = false;
+			goto cleanup;
+		}
+		break;
 		}
 
 		/* Can happen if input file is TIFF or PNG

@@ -94,10 +94,10 @@ int main(int argc, char **argv)
      grk_codestream_info_v2  *  cstr_info = nullptr;
 
     /* Index of corner tiles */
-    uint32_t tile_ul = 0;
-    uint32_t tile_ur = 0;
-    uint32_t tile_lr = 0;
-    uint32_t tile_ll = 0;
+    uint16_t tile_ul = 0;
+    uint16_t tile_ur = 0;
+    uint16_t tile_lr = 0;
+    uint16_t tile_ll = 0;
 
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <input_file>\n", argv[0]);
@@ -171,9 +171,9 @@ int main(int argc, char **argv)
     fprintf(stdout, "The file contains %dx%d tiles\n", cstr_info->tw, cstr_info->th);
 
     tile_ul = 0;
-    tile_ur = cstr_info->tw - 1;
-    tile_lr = cstr_info->tw * cstr_info->th - 1;
-    tile_ll = tile_lr - cstr_info->tw;
+    tile_ur = (uint16_t)(cstr_info->tw - 1);
+    tile_lr = (uint16_t)(cstr_info->tw * cstr_info->th - 1);
+    tile_ll = (uint16_t)(tile_lr - cstr_info->tw);
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \

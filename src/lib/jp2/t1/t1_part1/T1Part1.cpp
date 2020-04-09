@@ -236,8 +236,8 @@ void T1Part1::post_decode(t1_info *t1,
 			}
 		} else {
 			int32_t thresh = 1 << roishift;
-			for (int j = 0; j < cblk_h; ++j) {
-				for (int i = 0; i < cblk_w; ++i) {
+			for (uint32_t j = 0; j < cblk_h; ++j) {
+				for (uint32_t i = 0; i < cblk_w; ++i) {
 					int32_t val = src[(j * cblk_w) + i];
 					int32_t mag = abs(val);
 					if (mag >= thresh) {
@@ -264,9 +264,9 @@ void T1Part1::post_decode(t1_info *t1,
      		}
     	} else {
 			float *GRK_RESTRICT tiledp = (float*) src;
-			for (int j = 0; j < cblk_h; ++j) {
+			for (uint32_t j = 0; j < cblk_h; ++j) {
 				float *GRK_RESTRICT tiledp2 = tiledp;
-				for (int i = 0; i < cblk_w; ++i) {
+				for (uint32_t i = 0; i < cblk_w; ++i) {
 					float tmp = (float) (*src) * stepsize;
 					*tiledp2 = tmp;
 					src++;
