@@ -1687,6 +1687,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		case GRK_CLRSPC_SRGB:
 			tiPhoto = PHOTOMETRIC_RGB;
 			break;
+		case GRK_CLRSPC_EYCC:
 		case GRK_CLRSPC_SYCC:
 			tiPhoto = PHOTOMETRIC_YCBCR;
 			break;

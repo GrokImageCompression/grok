@@ -1600,11 +1600,13 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
-		if (color_esycc_to_rgb(image)) {
-			spdlog::error(
-					"grk_decompress: eSYCC to RGB colour conversion failed !");
-			failed = 1;
-			goto cleanup;
+		if (!isTiff || info->decoder_parameters->force_rgb) {
+			if (color_esycc_to_rgb(image)) {
+				spdlog::error(
+						"grk_decompress: eSYCC to RGB colour conversion failed !");
+				failed = 1;
+				goto cleanup;
+			}
 		}
 	}
 
