@@ -25,23 +25,23 @@
 #ifndef TCLAP_SSTREAM_H
 #define TCLAP_SSTREAM_H
 
-#if !defined(HAVE_STRSTREAM)
+#if !defined(TCLAP_HAVE_STRSTREAM)
 // Assume sstream is available if strstream is not specified
 // (https://sourceforge.net/p/tclap/bugs/23/)
-#define HAVE_SSTREAM
+#define TCLAP_HAVE_SSTREAM
 #endif
 
-#if defined(HAVE_SSTREAM)
+#if defined(TCLAP_HAVE_SSTREAM)
 #include <sstream>
 namespace TCLAP {
-    typedef std::istringstream istringstream;
-    typedef std::ostringstream ostringstream;
+typedef std::istringstream istringstream;
+typedef std::ostringstream ostringstream;
 }
-#elif defined(HAVE_STRSTREAM)
+#elif defined(TCLAP_HAVE_STRSTREAM)
 #include <strstream>
 namespace TCLAP {
-    typedef std::istrstream istringstream;
-    typedef std::ostrstream ostringstream;
+typedef std::istrstream istringstream;
+typedef std::ostrstream ostringstream;
 }
 #else
 #error "Need a stringstream (sstream or strstream) to compile!"

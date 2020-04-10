@@ -24,8 +24,8 @@
 // This is an internal tclap file, you should probably not have to
 // include this directly
 
-#ifndef TCLAP_ARGTRAITS_H
-#define TCLAP_ARGTRAITS_H
+#ifndef TCLAP_ARG_TRAITS_H
+#define TCLAP_ARG_TRAITS_H
 
 namespace TCLAP {
 
@@ -38,7 +38,7 @@ namespace TCLAP {
  */
 struct ValueLike {
     typedef ValueLike ValueCategory;
-	virtual ~ValueLike() {}
+    virtual ~ValueLike() {}
 };
 
 /**
@@ -47,7 +47,7 @@ struct ValueLike {
  * will be broken up into individual tokens by operator>>.
  */
 struct StringLike {
-	virtual ~StringLike() {}
+    virtual ~StringLike() {}
 };
 
 /**
@@ -57,7 +57,7 @@ struct StringLike {
  */
 struct StringLikeTrait {
     typedef StringLike ValueCategory;
-	virtual ~StringLikeTrait() {}
+    virtual ~StringLikeTrait() {}
 };
 
 /**
@@ -67,7 +67,7 @@ struct StringLikeTrait {
  */
 struct ValueLikeTrait {
     typedef ValueLike ValueCategory;
-	virtual ~ValueLikeTrait() {}
+    virtual ~ValueLikeTrait() {}
 };
 
 /**
@@ -78,45 +78,46 @@ struct ValueLikeTrait {
  * default and means that operator>> will be used to assign values to
  * the type.
  */
-template<typename T>
+template <typename T>
 class ArgTraits {
-	// This is a bit silly, but what we want to do is:
-	// 1) If there exists a specialization of ArgTraits for type X,
-	// use it.
-	//
-	// 2) If no specialization exists but X has the typename
-	// X::ValueCategory, use the specialization for X::ValueCategory.
-	//
-	// 3) If neither (1) nor (2) defines the trait, use the default
-	// which is ValueLike.
+    // This is a bit silly, but what we want to do is:
+    // 1) If there exists a specialization of ArgTraits for type X,
+    // use it.
+    //
+    // 2) If no specialization exists but X has the typename
+    // X::ValueCategory, use the specialization for X::ValueCategory.
+    //
+    // 3) If neither (1) nor (2) defines the trait, use the default
+    // which is ValueLike.
 
-	// This is the "how":
-	//
-	// test<T>(0) (where 0 is the NULL ptr) will match
-	// test(typename C::ValueCategory*) iff type T has the
-	// corresponding typedef. If it does not test(...) will be
-	// matched. This allows us to determine if T::ValueCategory
-	// exists by checking the sizeof for the test function (return
-	// value must have different sizeof).
-	template<typename C> static short test(typename C::ValueCategory*);
-	template<typename C> static long  test(...);
-	static const bool hasTrait = sizeof(test<T>(0)) == sizeof(short);
+    // This is the "how":
+    //
+    // test<T>(0) (where 0 is the NULL ptr) will match
+    // test(typename C::ValueCategory*) iff type T has the
+    // corresponding typedef. If it does not test(...) will be
+    // matched. This allows us to determine if T::ValueCategory
+    // exists by checking the sizeof for the test function (return
+    // value must have different sizeof).
+    template <typename C>
+    static short test(typename C::ValueCategory *);  // NOLINT
+    template <typename C>
+    static long test(...);  // NOLINT
+    static const bool hasTrait = sizeof(test<T>(0)) == sizeof(short);  // NOLINT
 
-	template <typename C, bool>
-	struct DefaultArgTrait {
-		typedef ValueLike ValueCategory;
-	};
+    template <typename C, bool>
+    struct DefaultArgTrait {
+        typedef ValueLike ValueCategory;
+    };
 
-	template <typename C>
-	struct DefaultArgTrait<C, true> {
-		typedef typename C::ValueCategory ValueCategory;
- 	};
+    template <typename C>
+    struct DefaultArgTrait<C, true> {
+        typedef typename C::ValueCategory ValueCategory;
+    };
 
 public:
-	typedef typename DefaultArgTrait<T, hasTrait>::ValueCategory ValueCategory;
+    typedef typename DefaultArgTrait<T, hasTrait>::ValueCategory ValueCategory;
 };
 
-} // namespace
+}  // namespace TCLAP
 
-#endif
-
+#endif  // TCLAP_ARG_TRAITS_H
