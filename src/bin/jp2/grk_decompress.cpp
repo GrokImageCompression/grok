@@ -1587,16 +1587,17 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		image->color_space = GRK_CLRSPC_SYCC;
 	else if (image->numcomps <= 2)
 		image->color_space = GRK_CLRSPC_GRAY;
-
 	if (image->color_space == GRK_CLRSPC_SYCC) {
 		if (!isTiff || info->decoder_parameters->force_rgb)
 		  color_sycc_to_rgb(image);
-	} else if ((image->color_space == GRK_CLRSPC_CMYK) && !isTiff) {
-		if (color_cmyk_to_rgb(image)) {
-			spdlog::error(
-					"grk_decompress: CMYK to RGB colour conversion failed !");
-			failed = 1;
-			goto cleanup;
+	} else if (image->color_space == GRK_CLRSPC_CMYK) {
+		if (!isTiff || info->decoder_parameters->force_rgb) {
+			if (color_cmyk_to_rgb(image)) {
+				spdlog::error(
+						"grk_decompress: CMYK to RGB colour conversion failed !");
+				failed = 1;
+				goto cleanup;
+			}
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
 		if (color_esycc_to_rgb(image)) {
