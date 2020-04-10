@@ -75,7 +75,7 @@ static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
 	if (!numcmpts)
 		return nullptr;
 
-	grk_image_cmptparm *cmptparms = (grk_image_cmptparm*) calloc(numcmpts,
+	auto cmptparms = (grk_image_cmptparm*) calloc(numcmpts,
 			sizeof(grk_image_cmptparm));
 	if (!cmptparms)
 		return nullptr;
@@ -194,15 +194,9 @@ static void sycc444_to_rgb(grk_image *img) {
 	grk_image_destroy(new_image);
 	new_image = nullptr;
 
-	for (i = 0U; i < max; ++i) {
-		sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-		++y;
-		++cb;
-		++cr;
-		++r;
-		++g;
-		++b;
-	}
+	for (i = 0U; i < max; ++i)
+		sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
+
 	grk_image_all_components_data_free(img);
 	img->comps[0].data = d0;
 	img->comps[0].owns_data = true;
@@ -255,37 +249,15 @@ static void sycc422_to_rgb(grk_image *img) {
 	for (i = 0U; i < maxh; ++i) {
 		size_t j;
 
-		if (offx > 0U) {
-			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-		}
+		if (offx > 0U)
+			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
 
 		for (j = 0U; j < (loopmaxw & ~(size_t) 1U); j += 2U) {
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-			++cb;
-			++cr;
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
 		}
-		if (j < loopmaxw) {
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-			++cb;
-			++cr;
-		}
+		if (j < loopmaxw)
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
 	}
 	grk_image_all_components_data_free(img);
 
@@ -346,15 +318,8 @@ static void sycc420_to_rgb(grk_image *img) {
 	loopmaxh = maxh - offy;
 
 	if (offy > 0U) {
-		size_t j;
-
-		for (j = 0U; j < maxw; ++j) {
-			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-		}
+		for (size_t j = 0U; j < maxw; ++j)
+			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
 	}
 
 	for (i = 0U; i < (loopmaxh & ~(size_t) 1U); i += 2U) {
@@ -366,57 +331,19 @@ static void sycc420_to_rgb(grk_image *img) {
 		nb = b + maxw;
 
 		if (offx > 0U) {
-			sycc_to_rgb(offset, upb, *y, 0, 0, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-			++ny;
-			++nr;
-			++ng;
-			++nb;
+			sycc_to_rgb(offset, upb, *y++, 0, 0, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *ny++, *cb, *cr, nr++, ng++, nb++);
 		}
 
 		for (j = 0U; j < (loopmaxw & ~(size_t) 1U); j += 2U) {
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-
-			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-			++ny;
-			++nr;
-			++ng;
-			++nb;
-			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-			++ny;
-			++nr;
-			++ng;
-			++nb;
-			++cb;
-			++cr;
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *ny++, *cb, *cr, nr++, ng++, nb++);
+			sycc_to_rgb(offset, upb, *ny++, *cb++, *cr++, nr++, ng++, nb++);
 		}
 		if (j < loopmaxw) {
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-			++y;
-			++r;
-			++g;
-			++b;
-
-			sycc_to_rgb(offset, upb, *ny, *cb, *cr, nr, ng, nb);
-			++ny;
-			++nr;
-			++ng;
-			++nb;
-			++cb;
-			++cr;
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *ny++, *cb++, *cr++, nr++, ng++, nb++);
 		}
 		y += maxw;
 		r += maxw;
@@ -427,25 +354,11 @@ static void sycc420_to_rgb(grk_image *img) {
 		size_t j;
 
 		for (j = 0U; j < (maxw & ~(size_t) 1U); j += 2U) {
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-
-			++y;
-			++r;
-			++g;
-			++b;
-
-			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-
-			++y;
-			++r;
-			++g;
-			++b;
-			++cb;
-			++cr;
+			sycc_to_rgb(offset, upb, *y++, *cb, *cr, r++, g++, b++);
+			sycc_to_rgb(offset, upb, *y++, *cb++, *cr++, r++, g++, b++);
 		}
-		if (j < maxw) {
+		if (j < maxw)
 			sycc_to_rgb(offset, upb, *y, *cb, *cr, r, g, b);
-		}
 	}
 
 	grk_image_all_components_data_free(img);
@@ -540,7 +453,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 	oldspace = image->color_space;
 
 	if (out_space == cmsSigRgbData) { /* enumCS 16 */
-		unsigned int i, nr_comp = image->numcomps;
+		uint32_t i, nr_comp = image->numcomps;
 
 		if (nr_comp > 4) {
 			nr_comp = 4;
@@ -636,7 +549,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 			int *r = nullptr, *g = nullptr, *b = nullptr;
 			uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf =
 					nullptr;
-			max = max_w * max_h;
+			max = (size_t) max_w * max_h;
 			nr_samples = max * 3 * (cmsUInt32Number) sizeof(uint8_t);
 			in = inbuf = (uint8_t*) malloc(nr_samples);
 			if (!in) {
@@ -673,14 +586,14 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 			free(outbuf);
 		} else {
 			int *r = nullptr, *g = nullptr, *b = nullptr;
-			unsigned short *in = nullptr, *inbuf = nullptr, *out = nullptr,
+			uint16_t *in = nullptr, *inbuf = nullptr, *out = nullptr,
 					*outbuf = nullptr;
 			max = max_w * max_h;
-			nr_samples = max * 3 * (cmsUInt32Number) sizeof(unsigned short);
-			in = inbuf = (unsigned short*) malloc(nr_samples);
+			nr_samples = max * 3 * (cmsUInt32Number) sizeof(uint16_t);
+			in = inbuf = (uint16_t*) malloc(nr_samples);
 			if (!in)
 				goto cleanup;
-			out = outbuf = (unsigned short*) malloc(nr_samples);
+			out = outbuf = (uint16_t*) malloc(nr_samples);
 			if (!out) {
 				free(inbuf);
 				goto cleanup;
@@ -691,9 +604,9 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 			b = image->comps[2].data;
 
 			for (i = 0; i < max; ++i) {
-				*in++ = (unsigned short) *r++;
-				*in++ = (unsigned short) *g++;
-				*in++ = (unsigned short) *b++;
+				*in++ = (uint16_t) *r++;
+				*in++ = (uint16_t) *g++;
+				*in++ = (uint16_t) *b++;
 			}
 
 			cmsDoTransform(transform, inbuf, outbuf, (cmsUInt32Number) max);
@@ -1012,6 +925,7 @@ int color_cmyk_to_rgb(grk_image *image) {
 
 }/* color_cmyk_to_rgb() */
 
+// assuming unsigned data !
 int color_esycc_to_rgb(grk_image *image) {
 	int y, cb, cr, sign1, sign2, val;
 	uint32_t w, h;
