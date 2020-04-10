@@ -1,23 +1,23 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
+ *
  * Copyright (c) 2014, Mathieu Malaterre <mathieu.malaterre@voxxl.com>
  * All rights reserved.
  *
@@ -53,7 +53,7 @@
  * to extract a given JP2 file from within a PDF
  * However it happens sometimes that the PDF is itself corrupted, this tools is
  * a lame PDF parser which only extract stream contained in JPXDecode box
-*
+ *
  * Todo: Add support for other signatures:
  *
  * obj<</Subtype/Image/Length 110494/Filter/JPXDecode/BitsPerComponent 8/ColorSpace/DeviceRGB/Width 712/Height 1052>>stream
@@ -111,78 +111,78 @@ const void *memmem(
 
 #endif
 
-
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 #define NUMJP2 32
-    int i, c = 0;
-    long offsets[NUMJP2];
-    char buffer[512];
+	int i, c = 0;
+	long offsets[NUMJP2];
+	char buffer[512];
 #define BUFLEN 4096
-    int cont = 1;
-    FILE *f;
-    size_t nread;
-    char haystack[BUFLEN];
-    const char needle[] = "JPXDecode";
-	#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
+	int cont = 1;
+	FILE *f;
+	size_t nread;
+	char haystack[BUFLEN];
+	const char needle[] = "JPXDecode";
+#define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
 
-    const size_t nlen = strlen( needle );
-    const size_t flen = BUFLEN - nlen;
-    char *fpos = haystack + nlen;
-    const char *filename;
-    if( argc < 2 ) return 1;
+	const size_t nlen = strlen(needle);
+	const size_t flen = BUFLEN - nlen;
+	char *fpos = haystack + nlen;
+	const char *filename;
+	if (argc < 2)
+		return 1;
 
-    filename = argv[1];
+	filename = argv[1];
 
 	// zero out length of needle at beginning of haystack
-    memset( haystack, 0, nlen );
+	memset(haystack, 0, nlen);
 
-    f = fopen( filename, "rb" );
-    while( cont ) {
+	f = fopen(filename, "rb");
+	while (cont) {
 		// read in "BUFLEN - nlen" bytes at "nlen" offset in haystack buffer
-        nread = fread(fpos, 1, flen, f);
+		nread = fread(fpos, 1, flen, f);
 		size_t hlen = nlen + nread;
-		const char * ret = (const char*)memmem(haystack, hlen, needle, nlen);
-        if( ret ) {
-            const long cpos = ftell(f);
-            const ptrdiff_t diff = ret - haystack;
-            assert( diff >= 0 );
-            /*fprintf( stdout, "Found it: %lx\n", (ptrdiff_t)cpos - (ptrdiff_t)hlen + diff);*/
-            offsets[c++] = (ptrdiff_t)cpos - (ptrdiff_t)hlen + diff;
-        }
-        cont = (nread == flen);
-        memcpy( haystack, haystack + nread, nlen );
-    }
+		const char *ret = (const char*) memmem(haystack, hlen, needle, nlen);
+		if (ret) {
+			const long cpos = ftell(f);
+			const ptrdiff_t diff = ret - haystack;
+			assert(diff >= 0);
+			/*fprintf( stdout, "Found it: %lx\n", (ptrdiff_t)cpos - (ptrdiff_t)hlen + diff);*/
+			offsets[c++] = (ptrdiff_t) cpos - (ptrdiff_t) hlen + diff;
+		}
+		cont = (nread == flen);
+		memcpy(haystack, haystack + nread, nlen);
+	}
 
-    assert( feof( f ) );
-    for( i = 0; i < c; ++i ) {
-        int s, len = 0;
-        char *r;
-        const int ret = fseek(f, offsets[i], SEEK_SET);
-        assert( ret == 0 );
-        r = fgets(buffer, sizeof(buffer), f);
-        assert( r );
-        /*fprintf( stderr, "DEBUG: %s", r );*/
-        s = sscanf(r, "JPXDecode/Length  %d/", &len);
-        if( s == 0 ) {
-            // try again harder
-            const int ret = fseek(f, offsets[i] - 40, SEEK_SET); // 40 is magic number
-            assert( ret == 0 );
-            r = fgets(buffer, sizeof(buffer), f);
-            assert( r );
-            const char needle2[] = "/Length";
-            char * s2 = strstr(buffer, needle2);
+	assert(feof(f));
+	for (i = 0; i < c; ++i) {
+		int s, len = 0;
+		char *r;
+		const int ret = fseek(f, offsets[i], SEEK_SET);
+		assert(ret == 0);
+		r = fgets(buffer, sizeof(buffer), f);
+		assert(r);
+		/*fprintf( stderr, "DEBUG: %s", r );*/
+		s = sscanf(r, "JPXDecode/Length  %d/", &len);
+		if (s == 0) {
+			// try again harder
+			const int ret = fseek(f, offsets[i] - 40, SEEK_SET); // 40 is magic number
+			assert(ret == 0);
+			r = fgets(buffer, sizeof(buffer), f);
+			assert(r);
+			const char needle2[] = "/Length";
+			char *s2 = strstr(buffer, needle2);
 			if (s2)
 				s = sscanf(s2, "/Length  %d/", &len);
-        }
-        if( s == 1 ) {
+		}
+		if (s == 1) {
 			const int ret = fseek(f, offsets[i], SEEK_SET);
 			// now look for signature box
 			fread(buffer, 1, 512, f);
-			const char * sigRet = (const char*)memmem(buffer, 512, JP2_RFC3745_MAGIC, 12);
+			const char *sigRet = (const char*) memmem(buffer, 512,
+					JP2_RFC3745_MAGIC, 12);
 			if (sigRet) {
 				// seek to beginning of magic
-				long diff = (long)((ptrdiff_t)sigRet - (ptrdiff_t)buffer);
+				long diff = (long) ((ptrdiff_t) sigRet - (ptrdiff_t) buffer);
 				fseek(f, offsets[i] + diff, SEEK_SET);
 
 				// now read len bytes into file - this is the jp2 image
@@ -204,8 +204,8 @@ int main(int argc, char *argv[])
             r = fgets(buffer, sizeof(buffer), f);
             fprintf( stderr, "DEBUG: [%s]", r );
 #endif
-        }
-    }
-    fclose(f);
-    return 0;
+		}
+	}
+	fclose(f);
+	return 0;
 }

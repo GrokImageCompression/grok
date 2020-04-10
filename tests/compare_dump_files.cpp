@@ -1,23 +1,23 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
+ *
  * Copyright (c) 2011-2012, Centre National d'Etudes Spatiales (CNES), France
  * All rights reserved.
  *
@@ -50,90 +50,95 @@
 #include "spdlog/spdlog.h"
 #include "grok_getopt.h"
 
-
 #include <string>
 
 typedef struct test_cmp_parameters {
-    /**  */
-    char* base_filename;
-    /**  */
-    char* test_filename;
+	/**  */
+	char *base_filename;
+	/**  */
+	char *test_filename;
 } test_cmp_parameters;
 
 /*******************************************************************************
  * Command line help function
  *******************************************************************************/
-static void compare_dump_files_help_display(void)
-{
-    fprintf(stdout,"\nList of parameters for the compare_dump_files function  \n");
-    fprintf(stdout,"\n");
-    fprintf(stdout,"  -b \t REQUIRED \t filename to the reference/baseline dump file \n");
-    fprintf(stdout,"  -t \t REQUIRED \t filename to the test dump file image\n");
-    fprintf(stdout,"\n");
+static void compare_dump_files_help_display(void) {
+	fprintf(stdout,
+			"\nList of parameters for the compare_dump_files function  \n");
+	fprintf(stdout, "\n");
+	fprintf(stdout,
+			"  -b \t REQUIRED \t filename to the reference/baseline dump file \n");
+	fprintf(stdout,
+			"  -t \t REQUIRED \t filename to the test dump file image\n");
+	fprintf(stdout, "\n");
 }
 /*******************************************************************************
  * Parse command line
  *******************************************************************************/
-static int parse_cmdline_cmp(int argc, char **argv, test_cmp_parameters* param)
-{
-    size_t sizemembasefile, sizememtestfile;
-    int index;
-    const char optlist[] = "b:t:";
-    int c;
+static int parse_cmdline_cmp(int argc, char **argv,
+		test_cmp_parameters *param) {
+	size_t sizemembasefile, sizememtestfile;
+	int index;
+	const char optlist[] = "b:t:";
+	int c;
 
-    /* Init parameters */
-    param->base_filename = nullptr;
-    param->test_filename = nullptr;
+	/* Init parameters */
+	param->base_filename = nullptr;
+	param->test_filename = nullptr;
 
-    grok_opterr = 0;
+	grok_opterr = 0;
 
-    while ((c = grok_getopt(argc, argv, optlist)) != -1)
-        switch (c) {
-        case 'b':
-            sizemembasefile = strlen(grok_optarg) + 1;
-            param->base_filename = (char*) malloc(sizemembasefile);
+	while ((c = grok_getopt(argc, argv, optlist)) != -1)
+		switch (c) {
+		case 'b':
+			sizemembasefile = strlen(grok_optarg) + 1;
+			param->base_filename = (char*) malloc(sizemembasefile);
 			if (!param->base_filename) {
 				spdlog::error("Out of memory");
 				return 1;
 			}
-            strcpy(param->base_filename, grok_optarg);
-            /*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
-            break;
-        case 't':
-            sizememtestfile = strlen(grok_optarg) + 1;
-            param->test_filename = (char*) malloc(sizememtestfile);
+			strcpy(param->base_filename, grok_optarg);
+			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+			break;
+		case 't':
+			sizememtestfile = strlen(grok_optarg) + 1;
+			param->test_filename = (char*) malloc(sizememtestfile);
 			if (!param->test_filename) {
 				spdlog::error("Out of memory");
 				return 1;
 			}
-            strcpy(param->test_filename, grok_optarg);
-            /*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
-            break;
-        case '?':
-            if ( (grok_optopt == 'b') || (grok_optopt == 't') )
-                spdlog::error("Option -%c requires an argument.\n", grok_optopt);
-            else if (isprint(grok_optopt)) spdlog::error("Unknown option `-%c'.\n", grok_optopt);
-            else spdlog::error("Unknown option character `\\x%x'.\n", grok_optopt);
-            return 1;
-        default:
-            spdlog::warn("this option is not valid \"-{} {}\" ", c, grok_optarg);
-            break;
-        }
+			strcpy(param->test_filename, grok_optarg);
+			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+			break;
+		case '?':
+			if ((grok_optopt == 'b') || (grok_optopt == 't'))
+				spdlog::error("Option -%c requires an argument.\n",
+						grok_optopt);
+			else if (isprint(grok_optopt))
+				spdlog::error("Unknown option `-%c'.\n", grok_optopt);
+			else
+				spdlog::error("Unknown option character `\\x%x'.\n",
+						grok_optopt);
+			return 1;
+		default:
+			spdlog::warn("this option is not valid \"-{} {}\" ", c,
+					grok_optarg);
+			break;
+		}
 
-    if (grok_optind != argc) {
-        for (index = grok_optind; index < argc; index++)
-            spdlog::error("Non-option argument {}", argv[index]);
-        return 1;
-    }
+	if (grok_optind != argc) {
+		for (index = grok_optind; index < argc; index++)
+			spdlog::error("Non-option argument {}", argv[index]);
+		return 1;
+	}
 
-    return 0;
+	return 0;
 }
 
 /*******************************************************************************
  * MAIN
  *******************************************************************************/
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
 
 #ifndef NDEBUG
 	std::string out;
@@ -141,73 +146,73 @@ int main(int argc, char **argv)
 		out += std::string(" ") + argv[i];
 	}
 	out += "\n";
-	printf("%s",out.c_str());
+	printf("%s", out.c_str());
 #endif
 
+	test_cmp_parameters inParam;
+	FILE *fbase = nullptr, *ftest = nullptr;
+	int same = 0;
+	char lbase[512];
+	char strbase[512];
+	char ltest[512];
+	char strtest[512];
 
-    test_cmp_parameters inParam;
-    FILE *fbase=nullptr, *ftest=nullptr;
-    int same = 0;
-  char lbase[512];
-  char strbase[512];
-  char ltest[512];
-  char strtest[512];
+	if (parse_cmdline_cmp(argc, argv, &inParam) == 1) {
+		compare_dump_files_help_display();
+		goto cleanup;
+	}
 
-    if( parse_cmdline_cmp(argc, argv, &inParam) == 1 ) {
-        compare_dump_files_help_display();
-        goto cleanup;
-    }
+	/* Display Parameters*/
+	printf("******Parameters********* \n");
+	printf(" base_filename = %s\n"
+			" test_filename = %s\n", inParam.base_filename,
+			inParam.test_filename);
+	printf("************************* \n");
 
-    /* Display Parameters*/
-    printf("******Parameters********* \n");
-    printf(" base_filename = %s\n"
-           " test_filename = %s\n",
-           inParam.base_filename, inParam.test_filename);
-    printf("************************* \n");
+	// uncomment to copy test dump file to test file repo
+	//rename(inParam.test_filename, inParam.base_filename);
 
-    // uncomment to copy test dump file to test file repo
-    //rename(inParam.test_filename, inParam.base_filename);
+	/* open base file */
+	printf("Try to open: %s for reading ... ", inParam.base_filename);
+	if ((fbase = fopen(inParam.base_filename, "rb")) == nullptr) {
+		goto cleanup;
+	}
+	printf("Ok.\n");
 
-    /* open base file */
-    printf("Try to open: %s for reading ... ", inParam.base_filename);
-    if((fbase = fopen(inParam.base_filename, "rb"))==nullptr) {
-        goto cleanup;
-    }
-    printf("Ok.\n");
+	/* open test file */
+	printf("Try to open: %s for reading ... ", inParam.test_filename);
+	if ((ftest = fopen(inParam.test_filename, "rb")) == nullptr) {
+		goto cleanup;
+	}
+	printf("Ok.\n");
 
-    /* open test file */
-    printf("Try to open: %s for reading ... ", inParam.test_filename);
-    if((ftest = fopen(inParam.test_filename, "rb"))==nullptr) {
-        goto cleanup;
-    }
-    printf("Ok.\n");
+	while (fgets(lbase, sizeof(lbase), fbase)
+			&& fgets(ltest, sizeof(ltest), ftest)) {
+		int nbase = sscanf(lbase, "%511[^\r\n]", strbase);
+		int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
+		assert(nbase != 511 && ntest != 511);
+		if (nbase != 1 || ntest != 1) {
+			spdlog::error("could not parse line from files\n");
+			goto cleanup;
+		}
+		if (strcmp(strbase, strtest) != 0) {
+			spdlog::error("<{}> vs. <{}>\n", strbase, strtest);
+			goto cleanup;
+		}
+	}
 
-    while (fgets(lbase, sizeof(lbase), fbase) && fgets(ltest,sizeof(ltest),ftest)) {
-    int nbase = sscanf(lbase, "%511[^\r\n]", strbase);
-    int ntest = sscanf(ltest, "%511[^\r\n]", strtest);
-    assert( nbase != 511 && ntest != 511 );
-        if( nbase != 1 || ntest != 1 ) {
-            spdlog::error("could not parse line from files\n" );
-            goto cleanup;
-        }
-        if( strcmp( strbase, strtest ) != 0 ) {
-            spdlog::error("<{}> vs. <{}>\n", strbase, strtest);
-            goto cleanup;
-        }
-    }
-
-    same = 1;
-    printf("\n***** TEST SUCCEED: Files are the same. *****\n");
-cleanup:
-    /*Close File*/
-    if(fbase) 
+	same = 1;
+	printf("\n***** TEST SUCCEED: Files are the same. *****\n");
+	cleanup:
+	/*Close File*/
+	if (fbase)
 		fclose(fbase);
-    if(ftest) 
+	if (ftest)
 		fclose(ftest);
 
-    /* Free memory*/
-    free(inParam.base_filename);
-    free(inParam.test_filename);
+	/* Free memory*/
+	free(inParam.base_filename);
+	free(inParam.test_filename);
 
-    return same ? EXIT_SUCCESS : EXIT_FAILURE;
+	return same ? EXIT_SUCCESS : EXIT_FAILURE;
 }

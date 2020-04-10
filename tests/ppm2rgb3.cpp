@@ -1,23 +1,23 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
+ *
  * Copyright (c) 2014, Mathieu Malaterre <mathieu.malaterre@voxxl.com>
  * All rights reserved.
  *
@@ -54,107 +54,111 @@
 
 static const char magic[] = "P6";
 
-static int readheader( FILE *ppm, int *X, int *Y, int *bpp )
-{
-    char buffer[256];
-    char strbuffer[256];
+static int readheader(FILE *ppm, int *X, int *Y, int *bpp) {
+	char buffer[256];
+	char strbuffer[256];
 	strbuffer[255] = '\0';
-    char *line;
-    int n;
+	char *line;
+	int n;
 
-    *X = *Y = *bpp = 0;
+	*X = *Y = *bpp = 0;
 
-    line = fgets(buffer, sizeof(buffer), ppm);
-    if( !line ) return 0;
-    n = sscanf(buffer, "%255[^\r\n]", strbuffer);
-    if( n != 1 ) return 0;
-    if( strcmp(strbuffer, magic ) != 0 ) return 0;
+	line = fgets(buffer, sizeof(buffer), ppm);
+	if (!line)
+		return 0;
+	n = sscanf(buffer, "%255[^\r\n]", strbuffer);
+	if (n != 1)
+		return 0;
+	if (strcmp(strbuffer, magic) != 0)
+		return 0;
 
-    /* skip comments */
-    while( fgets(buffer, sizeof(buffer), ppm) && *buffer == '#' ) {
-    }
-    n = sscanf(buffer, "%d %d", X,Y);
-    if( n != 2 ) return 0;
-    line = fgets(buffer, sizeof(buffer), ppm);
-    if( !line ) return 0;
-    n = sscanf(buffer, "%d", bpp);
-    if( n != 1 ) return 0;
-    if( *bpp != 255 ) return 0;
+	/* skip comments */
+	while (fgets(buffer, sizeof(buffer), ppm) && *buffer == '#') {
+	}
+	n = sscanf(buffer, "%d %d", X, Y);
+	if (n != 2)
+		return 0;
+	line = fgets(buffer, sizeof(buffer), ppm);
+	if (!line)
+		return 0;
+	n = sscanf(buffer, "%d", bpp);
+	if (n != 1)
+		return 0;
+	if (*bpp != 255)
+		return 0;
 
-    return 1;
+	return 1;
 }
 
-static int writeoutput( const char *fn, FILE *ppm, int X, int Y, int bpp )
-{
-    FILE *outf[] = {nullptr, nullptr, nullptr};
-    int i, x, y = 0;
-    char outfn[4096];
+static int writeoutput(const char *fn, FILE *ppm, int X, int Y, int bpp) {
+	FILE *outf[] = { nullptr, nullptr, nullptr };
+	int i, x, y = 0;
+	char outfn[4096];
 	outfn[4095] = '\0';
-    static const char *exts[3] = {
-        "red",
-        "grn",
-        "blu"
-    };
-    char *image_line = nullptr;
-    int ok = 0;
+	static const char *exts[3] = { "red", "grn", "blu" };
+	char *image_line = nullptr;
+	int ok = 0;
 	if (!X || !fn || !ppm)
 		goto cleanup;
 
-    /* write single comp as PGM: P5 */
-    for( i = 0; i < 3; ++i ) {
+	/* write single comp as PGM: P5 */
+	for (i = 0; i < 3; ++i) {
 		if (strlen(fn) + strlen(exts[i]) + 5 >= 4096)
 			goto cleanup;
-        snprintf( outfn, sizeof(outfn), "%s.%s.pgm", fn, exts[i] );
-        outf[i] = fopen( outfn, "wb" );
-        if( !outf[i] ) goto cleanup;
-        /* write header */
-        fprintf( outf[i], "P5\n" );
-        fprintf( outf[i], "%d %d\n", X, Y );
-        fprintf( outf[i], "%d\n", bpp );
-    }
+		snprintf(outfn, sizeof(outfn), "%s.%s.pgm", fn, exts[i]);
+		outf[i] = fopen(outfn, "wb");
+		if (!outf[i])
+			goto cleanup;
+		/* write header */
+		fprintf(outf[i], "P5\n");
+		fprintf(outf[i], "%d %d\n", X, Y);
+		fprintf(outf[i], "%d\n", bpp);
+	}
 
-    /* write pixel data */
-    image_line = (char*)malloc( (size_t)X * 3 * sizeof(char) );
-    if( !image_line ) 
+	/* write pixel data */
+	image_line = (char*) malloc((size_t) X * 3 * sizeof(char));
+	if (!image_line)
 		goto cleanup;
-    while( fread(image_line, sizeof(char), (size_t)X * 3, ppm) == (size_t)X * 3 ) {
-        for( x = 0; x < X; ++x )
-            for( i = 0; i < 3; ++i )
-                if( fputc( image_line[3*x+i], outf[i] ) == EOF ) goto cleanup;
-        ++y;
-    }
-    if( y == Y )
-        ok = 1;
-cleanup:
-	if (image_line)
+	while (fread(image_line, sizeof(char), (size_t) X * 3, ppm)
+			== (size_t) X * 3) {
+		for (x = 0; x < X; ++x)
+			for (i = 0; i < 3; ++i)
+				if (fputc(image_line[3 * x + i], outf[i]) == EOF)
+					goto cleanup;
+		++y;
+	}
+	if (y == Y)
+		ok = 1;
+	cleanup: if (image_line)
 		free(image_line);
-    for( i = 0; i < 3; ++i )
-        if( outf[i] )
-			fclose( outf[i] );
+	for (i = 0; i < 3; ++i)
+		if (outf[i])
+			fclose(outf[i]);
 
-    return ok;
+	return ok;
 }
 
-int main(int argc, char *argv[])
-{
-    const char *fn;
-    FILE *ppm = nullptr;
-    int X, Y, bpp;
-    int ok = 0;
+int main(int argc, char *argv[]) {
+	const char *fn;
+	FILE *ppm = nullptr;
+	int X, Y, bpp;
+	int ok = 0;
 
-    if( argc < 2 ) {
-        fprintf( stderr, "%s input.ppm\n", argv[0] );
-        goto cleanup;
-    }
-    fn = argv[1];
-    ppm = fopen( fn, "rb" );
+	if (argc < 2) {
+		fprintf( stderr, "%s input.ppm\n", argv[0]);
+		goto cleanup;
+	}
+	fn = argv[1];
+	ppm = fopen(fn, "rb");
 
-    if( !readheader( ppm, &X, &Y, &bpp ) ) goto cleanup;
+	if (!readheader(ppm, &X, &Y, &bpp))
+		goto cleanup;
 
-    if( !writeoutput(fn, ppm, X, Y, bpp ) ) goto cleanup;
+	if (!writeoutput(fn, ppm, X, Y, bpp))
+		goto cleanup;
 
-    ok = 1;
-cleanup:
-    if(ppm) fclose(ppm);
-    return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+	ok = 1;
+	cleanup: if (ppm)
+		fclose(ppm);
+	return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
