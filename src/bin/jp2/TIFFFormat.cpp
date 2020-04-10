@@ -1666,7 +1666,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 	int32_t adjust =
 			(image->comps[0].sgnd && image->comps[0].prec < 8) ?
 					1 << (image->comps[0].prec - 1) : 0;
-
 	if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (numcomps < 4U) {
 			spdlog::error(
@@ -1682,7 +1681,23 @@ static int imagetotif(grk_image *image, const char *outfile,
 			numcomps = 4U;
 		}
 	} else if (numcomps > 2U) {
-		tiPhoto = PHOTOMETRIC_RGB;
+		switch (image->color_space){
+		case GRK_CLRSPC_UNKNOWN:
+		case GRK_CLRSPC_UNSPECIFIED:
+		case GRK_CLRSPC_SRGB:
+			tiPhoto = PHOTOMETRIC_RGB;
+			break;
+		case GRK_CLRSPC_SYCC:
+			tiPhoto = PHOTOMETRIC_YCBCR;
+			break;
+		case GRK_CLRSPC_DEFAULT_CIE:
+		case GRK_CLRSPC_CUSTOM_CIE:
+			tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
+			break;
+		default:
+			tiPhoto = PHOTOMETRIC_RGB;
+			break;
+		}
 		if (numcomps > 4U) {
 			if (verbose)
 				spdlog::warn("imagetotif: number of components {} is "
@@ -1692,9 +1707,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	} else {
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
-	if (image->color_space == GRK_CLRSPC_DEFAULT_CIE
-			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE)
-		tiPhoto = sgnd ? PHOTOMETRIC_CIELAB : PHOTOMETRIC_ICCLAB;
+
 
 	uint32_t width = image->comps[0].w;
 	uint32_t height = image->comps[0].h;
@@ -1832,6 +1845,11 @@ static int imagetotif(grk_image *image, const char *outfile,
 	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
 	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+    if( tiPhoto == PHOTOMETRIC_YCBCR )	{
+		TIFFSetField( tif, TIFFTAG_YCBCRSUBSAMPLING, image->comps[1].dx, image->comps[1].dy);
+		/* TODO: also write YCbCrPositioning and YCbCrCoefficients tag identical to source IFD */
+	}
+
 	if (compression == COMPRESSION_ADOBE_DEFLATE) {
 #ifdef ZIP_SUPPORT
 		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE); // zip compression

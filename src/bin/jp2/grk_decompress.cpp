@@ -1564,10 +1564,10 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		return -1;
 	int failed = 0;
 	bool canStoreICC = false;
+	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
 	grk_decompress_parameters *parameters = info->decoder_parameters;
 	grk_image *image = info->image;
-	bool canStoreCIE = (info->decoder_parameters->cod_format == GRK_TIF_FMT)
-			&& (image->color_space == GRK_CLRSPC_DEFAULT_CIE);
+	bool canStoreCIE = isTiff && image->color_space == GRK_CLRSPC_DEFAULT_CIE;
 	bool isCIE = image->color_space == GRK_CLRSPC_DEFAULT_CIE
 			|| image->color_space == GRK_CLRSPC_CUSTOM_CIE;
 	const char *infile =
@@ -1589,9 +1589,9 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		image->color_space = GRK_CLRSPC_GRAY;
 
 	if (image->color_space == GRK_CLRSPC_SYCC) {
-		color_sycc_to_rgb(image);
-	} else if ((image->color_space == GRK_CLRSPC_CMYK)
-			&& (parameters->cod_format != GRK_TIF_FMT)) {
+		if (!isTiff || info->decoder_parameters->force_rgb)
+		  color_sycc_to_rgb(image);
+	} else if ((image->color_space == GRK_CLRSPC_CMYK) && !isTiff) {
 		if (color_cmyk_to_rgb(image)) {
 			spdlog::error(
 					"grk_decompress: CMYK to RGB colour conversion failed !");
