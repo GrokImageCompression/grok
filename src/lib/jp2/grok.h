@@ -79,15 +79,11 @@ extern "C" {
 #endif
 
 #if defined(GRK_STATIC) || !defined(_WIN32)
-#	if __GNUC__ >= 4
 #		if defined(GRK_STATIC) /* static library uses "hidden" */
 #			define GRK_API    __attribute__ ((visibility ("hidden")))
 #		else
 #			define GRK_API    __attribute__ ((visibility ("default")))
 #		endif
-#	else
-#		define GRK_API
-#	endif
 #	define GRK_CALLCONV
 #else
 #	define GRK_CALLCONV __stdcall
@@ -137,8 +133,8 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
 #define GRK_CBLKSTY_PTERM   0x10  /**< Predictable termination */
 #define GRK_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
-#define GRK_CBLKSTY_HT      	0x40  /**< high throughput block coding */
-#define GRK_JPH_RSIZ_FLAG       0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
+#define GRK_CBLKSTY_HT     	0x40  /**< high throughput block coding */
+#define GRK_JPH_RSIZ_FLAG   0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
 
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
@@ -245,11 +241,9 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IS_BROADCAST(v)  (((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= ((GRK_PROFILE_BC_MULTI_R) | (0x000b))) && (((v) & (~GRK_PROFILE_BC_MASK)) == 0))
 #define GRK_IS_IMF(v)        (((v) >= GRK_PROFILE_IMF_2K) && ((v) <= ((GRK_PROFILE_IMF_8K_R) | (0x009b))))
 #define GRK_GET_IMF_PROFILE(v)   ((v) & 0xff00)      /** Extract IMF profile without mainlevel/sublevel */
-#define GRK_GET_IMF_MAINLEVEL(v) ((v) & 0xf)         /** Extract IMF main level */
-#define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
 
 #define GRK_MAINLEVEL_MAX    11   /** Maximum main level */
-
+#define GRK_GET_MAINLEVEL(v) ((v) & 0xf)         /** Extract main level */
 /** Max. Components Sampling Rate (MSamples/sec) per main level */
 #define GRK_MAINLEVEL_1_MSAMPLESEC   65      /** MSamples/sec for main level 1 */
 #define GRK_MAINLEVEL_2_MSAMPLESEC   130     /** MSamples/sec for main level 2 */
@@ -263,6 +257,8 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_MAINLEVEL_10_MSAMPLESEC  19200   /** MSamples/sec for main level 10 */
 #define GRK_MAINLEVEL_11_MSAMPLESEC  38400   /** MSamples/sec for main level 11 */
 
+#define GRK_IMF_SUBLEVEL_MAX    	9   /** Maximum IMF sublevel */
+#define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
 /** Max. compressed Bit Rate (Mbits/s) per IMF sub level */
 #define GRK_IMF_SUBLEVEL_1_MBITSSEC      200     /** Mbits/s for IMF sub level 1 */
 #define GRK_IMF_SUBLEVEL_2_MBITSSEC      400     /** Mbits/s for IMF sub level 2 */

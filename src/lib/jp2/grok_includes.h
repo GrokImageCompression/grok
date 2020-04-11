@@ -194,7 +194,7 @@ static inline long grok_lrintf(float f) {
 #include "image.h"
 #include "invert.h"
 #include "Quantizer.h"
-#include "j2k_profile.h"
+#include "j2kprofile.h"
 #include "j2k.h"
 #include "j2k_dump.h"
 #include "jp2.h"

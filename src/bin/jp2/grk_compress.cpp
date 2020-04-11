@@ -1928,7 +1928,7 @@ static bool plugin_compress_callback(
 	}
 
 	if (GRK_IS_IMF(parameters->rsiz) && parameters->framerate > 0) {
-		const int mainlevel = GRK_GET_IMF_MAINLEVEL(parameters->rsiz);
+		const int mainlevel = GRK_GET_MAINLEVEL(parameters->rsiz);
 		if (mainlevel > 0 && mainlevel <= GRK_MAINLEVEL_MAX) {
 			const int limitMSamplesSec[] = { 0,
 			GRK_MAINLEVEL_1_MSAMPLESEC,

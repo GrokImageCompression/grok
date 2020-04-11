@@ -85,8 +85,8 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/BitIO.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/IBitIO.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_profile.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_profile.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2kprofile.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2kprofile.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_dump.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k_dump.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/j2k.cpp

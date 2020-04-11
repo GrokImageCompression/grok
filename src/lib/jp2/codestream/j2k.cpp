@@ -1700,8 +1700,8 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 					"JPEG 2000 Scalable Digital Cinema profiles not supported");
 			parameters->rsiz = GRK_PROFILE_NONE;
 		} else {
-			if (j2k_is_cinema_compliant(image, parameters->rsiz)) {
-				j2k_set_cinema_parameters(parameters, image);
+			if (J2KProfile::is_cinema_compliant(image, parameters->rsiz)) {
+				J2KProfile::set_cinema_parameters(parameters, image);
 			} else {
 				parameters->rsiz = GRK_PROFILE_NONE;
 			}
@@ -1732,7 +1732,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 		}
 		// sanity check on levels
 		auto level = parameters->rsiz & 0xF;
-		if (level > maxMainLevel) {
+		if (level > GRK_MAINLEVEL_MAX) {
 			GROK_WARN("JPEG 2000 Broadcast profile: invalid level %d", level);
 			parameters->rsiz = GRK_PROFILE_NONE;
 		}
@@ -1756,13 +1756,13 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 		}
 		//sanity check on main and sub levels
 		auto main_level = parameters->rsiz & 0xF;
-		if (main_level > maxMainLevel) {
+		if (main_level > GRK_MAINLEVEL_MAX) {
 			GROK_WARN("JPEG 2000 IMF profile: invalid main-level %d\n",
 					main_level);
 			parameters->rsiz = GRK_PROFILE_NONE;
 		}
 		auto sub_level = (parameters->rsiz >> 4) & 0xF;
-		bool invalidSubLevel = sub_level > maxSubLevel;
+		bool invalidSubLevel = sub_level > GRK_IMF_SUBLEVEL_MAX;
 		if (main_level > 3) {
 			invalidSubLevel = invalidSubLevel || (sub_level > main_level - 2);
 		} else {
@@ -1773,8 +1773,8 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 			parameters->rsiz = GRK_PROFILE_NONE;
 		}
 
-		j2k_set_imf_parameters(parameters, image);
-		if (!j2k_is_imf_compliant(parameters, image)) {
+		J2KProfile::set_imf_parameters(parameters, image);
+		if (!J2KProfile::is_imf_compliant(parameters, image)) {
 			parameters->rsiz = GRK_PROFILE_NONE;
 		}
 

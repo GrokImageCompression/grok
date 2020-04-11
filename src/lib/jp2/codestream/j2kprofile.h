@@ -1,22 +1,22 @@
 /*
-*    Copyright (C) 2016-2020 Grok Image Compression Inc.
-*
-*    This source code is free software: you can redistribute it and/or  modify
-*    it under the terms of the GNU Affero General Public License, version 3,
-*    as published by the Free Software Foundation.
-*
-*    This source code is distributed in the hope that it will be useful,
-*    but WITHOUT ANY WARRANTY; without even the implied warranty of
-*    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-*    GNU Affero General Public License for more details.
-*
-*    You should have received a copy of the GNU Affero General Public License
-*    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*
-*
-*    This source code incorporates work covered by the following copyright and
-*    permission notice:
-*
+ *    Copyright (C) 2016-2020 Grok Image Compression Inc.
+ *
+ *    This source code is free software: you can redistribute it and/or  modify
+ *    it under the terms of the GNU Affero General Public License, version 3,
+ *    as published by the Free Software Foundation.
+ *
+ *    This source code is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU Affero General Public License for more details.
+ *
+ *    You should have received a copy of the GNU Affero General Public License
+ *    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ *
+ *    This source code incorporates work covered by the following copyright and
+ *    permission notice:
+ *
  * The copyright in this software is being made available under the 2-clauses
  * BSD License, included below. This software may be subject to other third
  * party and contributor rights, including patent rights, and no such rights
@@ -62,23 +62,15 @@
 
 namespace grk {
 
-// Broadcast and IMF profile constants
-const uint16_t maxMainLevel = 11;
-const uint16_t maxSubLevel = 9;
-
-
-uint32_t j2k_initialise_4K_poc( grk_poc  *POC, uint32_t numres);
-
-void j2k_set_cinema_parameters( grk_cparameters  *parameters,
-		grk_image *image);
-
-bool j2k_is_cinema_compliant(grk_image *image, uint16_t rsiz);
-
-void j2k_set_imf_parameters(grk_cparameters *parameters,
-		grk_image *image);
-
-bool j2k_is_imf_compliant(grk_cparameters *parameters,
-		grk_image *image);
-
+class J2KProfile {
+public:
+	static uint32_t initialise_4K_poc(grk_poc *POC, uint32_t numres);
+	static void set_cinema_parameters(grk_cparameters *parameters, grk_image *image);
+	static bool is_cinema_compliant(grk_image *image, uint16_t rsiz);
+	static void set_imf_parameters(grk_cparameters *parameters, grk_image *image);
+	static bool is_imf_compliant(grk_cparameters *parameters, grk_image *image);
+private:
+static int get_imf_max_NL(grk_cparameters *parameters, grk_image *image);
+};
 
 }
