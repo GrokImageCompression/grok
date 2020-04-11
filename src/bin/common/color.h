@@ -60,6 +60,6 @@ extern void color_sycc_to_rgb(grk_image *img);
 extern void color_cielab_to_rgb(grk_image *image, bool verbose);
 extern void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose);
 #endif
-extern int color_cmyk_to_rgb(grk_image *image);
-extern int color_esycc_to_rgb(grk_image *image);
+extern int32_t color_cmyk_to_rgb(grk_image *image);
+extern int32_t color_esycc_to_rgb(grk_image *image);
 

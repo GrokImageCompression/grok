@@ -133,27 +133,27 @@ static bool all_components_equal_subsampling(grk_image *image) {
  B   |0.999823  1.77204       -8.04142e-06 |    Cr - 2^(prec - 1)
 
  -----------------------------------------------------------*/
-static void sycc_to_rgb(int offset, int upb, int y, int cb, int cr, int *out_r,
-		int *out_g, int *out_b) {
-	int r, g, b;
+static void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int32_t cr, int32_t *out_r,
+		int32_t *out_g, int32_t *out_b) {
+	int32_t r, g, b;
 
 	cb -= offset;
 	cr -= offset;
-	r = y + (int) (1.402 * cr);
+	r = y + (int32_t) (1.402 * cr);
 	if (r < 0)
 		r = 0;
 	else if (r > upb)
 		r = upb;
 	*out_r = r;
 
-	g = y - (int) (0.344 * cb + 0.714 *  cr);
+	g = y - (int32_t) (0.344 * cb + 0.714 *  cr);
 	if (g < 0)
 		g = 0;
 	else if (g > upb)
 		g = upb;
 	*out_g = g;
 
-	b = y + (int) (1.772 * cb);
+	b = y + (int32_t) (1.772 * cb);
 	if (b < 0)
 		b = 0;
 	else if (b > upb)
@@ -162,16 +162,16 @@ static void sycc_to_rgb(int offset, int upb, int y, int cb, int cr, int *out_r,
 }
 
 static void sycc444_to_rgb(grk_image *img) {
-	int *d0, *d1, *d2, *r, *g, *b;
-	const int *y, *cb, *cr;
+	int32_t *d0, *d1, *d2, *r, *g, *b;
+	const int32_t *y, *cb, *cr;
 	size_t maxw, maxh, max, i;
-	int offset, upb;
+	int32_t offset, upb;
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
 		return;
 
-	upb = (int) img->comps[0].prec;
+	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
@@ -209,10 +209,10 @@ static void sycc444_to_rgb(grk_image *img) {
 }/* sycc444_to_rgb() */
 
 static void sycc422_to_rgb(grk_image *img) {
-	int *d0, *d1, *d2, *r, *g, *b;
-	const int *y, *cb, *cr;
+	int32_t *d0, *d1, *d2, *r, *g, *b;
+	const int32_t *y, *cb, *cr;
 	size_t maxw, maxh, offx, loopmaxw;
-	int offset, upb;
+	int32_t offset, upb;
 	size_t i;
 
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
@@ -220,7 +220,7 @@ static void sycc422_to_rgb(grk_image *img) {
 	if (!new_image)
 		return;
 
-	upb = (int) img->comps[0].prec;
+	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
@@ -278,17 +278,17 @@ static void sycc422_to_rgb(grk_image *img) {
 }/* sycc422_to_rgb() */
 
 static void sycc420_to_rgb(grk_image *img) {
-	int *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
-	const int *y, *cb, *cr, *ny;
+	int32_t *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
+	const int32_t *y, *cb, *cr, *ny;
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
-	int offset, upb;
+	int32_t offset, upb;
 	size_t i;
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
 		return;
 
-	upb = (int) img->comps[0].prec;
+	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
 	upb = (1 << upb) - 1;
 
@@ -546,7 +546,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 	}
 	if (image->numcomps > 2) { /* RGB, RGBA */
 		if (prec <= 8) {
-			int *r = nullptr, *g = nullptr, *b = nullptr;
+			int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 			uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf =
 					nullptr;
 			max = (size_t) max_w * max_h;
@@ -578,14 +578,14 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 			b = image->comps[2].data;
 
 			for (i = 0; i < max; ++i) {
-				*r++ = (int) *out++;
-				*g++ = (int) *out++;
-				*b++ = (int) *out++;
+				*r++ = (int32_t) *out++;
+				*g++ = (int32_t) *out++;
+				*b++ = (int32_t) *out++;
 			}
 			free(inbuf);
 			free(outbuf);
 		} else {
-			int *r = nullptr, *g = nullptr, *b = nullptr;
+			int32_t *r = nullptr, *g = nullptr, *b = nullptr;
 			uint16_t *in = nullptr, *inbuf = nullptr, *out = nullptr,
 					*outbuf = nullptr;
 			max = max_w * max_h;
@@ -616,17 +616,17 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 			b = image->comps[2].data;
 
 			for (i = 0; i < max; ++i) {
-				*r++ = (int) *out++;
-				*g++ = (int) *out++;
-				*b++ = (int) *out++;
+				*r++ = (int32_t) *out++;
+				*g++ = (int32_t) *out++;
+				*b++ = (int32_t) *out++;
 			}
 			free(inbuf);
 			free(outbuf);
 		}
 	} else { /* GRAY, GRAYA */
-		int *r = nullptr;
-		int *g = nullptr;
-		int *b = nullptr;
+		int32_t *r = nullptr;
+		int32_t *g = nullptr;
+		int32_t *b = nullptr;
 		uint8_t *in = nullptr, *inbuf = nullptr, *out = nullptr, *outbuf =
 				nullptr;
 
@@ -686,10 +686,10 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 		b = image->comps[2].data;
 
 		for (i = 0; i < max; ++i) {
-			*r++ = (int) *out++;
+			*r++ = (int32_t) *out++;
 			if (forceRGB) {
-				*g++ = (int) *out++;
-				*b++ = (int) *out++;
+				*g++ = (int32_t) *out++;
+				*b++ = (int32_t) *out++;
 			} else { //just skip green and blue channels
 				out += 2;
 			}
@@ -733,8 +733,8 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 	uint32_t illuminant = GRK_CIE_D50;
 	cmsCIExyY WhitePoint;
 	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
-	int *L, *a, *b, *red, *green, *blue;
-	int *src0, *src1, *src2, *dst0, *dst1, *dst2;
+	int32_t *L, *a, *b, *red, *green, *blue;
+	int32_t *src0, *src1, *src2, *dst0, *dst1, *dst2;
 	// range, offset and precision for L,a and b coordinates
 	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
 	double minL, maxL, mina, maxa, minb, maxb;
@@ -871,7 +871,7 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 
 #endif /* GROK_HAVE_LIBLCMS */
 
-int color_cmyk_to_rgb(grk_image *image) {
+int32_t color_cmyk_to_rgb(grk_image *image) {
 	float C, M, Y, K;
 	float sC, sM, sY, sK;
 	uint32_t w, h;
@@ -904,9 +904,9 @@ int color_cmyk_to_rgb(grk_image *image) {
 		K = 1.0F - K;
 
 		/* CMYK -> RGB : RGB results from 0 to 255 */
-		image->comps[0].data[i] = (int) (255.0F * C * K); /* R */
-		image->comps[1].data[i] = (int) (255.0F * M * K); /* G */
-		image->comps[2].data[i] = (int) (255.0F * Y * K); /* B */
+		image->comps[0].data[i] = (int32_t) (255.0F * C * K); /* R */
+		image->comps[1].data[i] = (int32_t) (255.0F * M * K); /* G */
+		image->comps[2].data[i] = (int32_t) (255.0F * Y * K); /* B */
 	}
 
 	grk_image_single_component_data_free(image->comps + 3);
@@ -926,12 +926,12 @@ int color_cmyk_to_rgb(grk_image *image) {
 }/* color_cmyk_to_rgb() */
 
 // assuming unsigned data !
-int color_esycc_to_rgb(grk_image *image) {
-	int y, cb, cr, sign1, sign2, val;
+int32_t color_esycc_to_rgb(grk_image *image) {
+	int32_t y, cb, cr, sign1, sign2, val;
 	uint32_t w, h;
 	uint64_t area, i;
-	int flip_value = (1 << (image->comps[0].prec - 1));
-	int max_value = (1 << image->comps[0].prec) - 1;
+	int32_t flip_value = (1 << (image->comps[0].prec - 1));
+	int32_t max_value = (1 << image->comps[0].prec) - 1;
 
 	if ((image->numcomps < 3) || !all_components_equal_subsampling(image))
 		return 1;
@@ -939,8 +939,8 @@ int color_esycc_to_rgb(grk_image *image) {
 	w = image->comps[0].w;
 	h = image->comps[0].h;
 
-	sign1 = (int) image->comps[1].sgnd;
-	sign2 = (int) image->comps[2].sgnd;
+	sign1 = (int32_t) image->comps[1].sgnd;
+	sign2 = (int32_t) image->comps[2].sgnd;
 
 	area = (uint64_t) w * h;
 
@@ -955,8 +955,8 @@ int color_esycc_to_rgb(grk_image *image) {
 		if (!sign2)
 			cr -= flip_value;
 
-		val = (int) ((float) y - (float) 0.0000368 * (float) cb
-				+ (float) 1.40199 * (float) cr + (float) 0.5);
+		val = (int32_t) (y - 0.0000368 * cb
+				+ 1.40199 * cr +  0.5);
 
 		if (val > max_value)
 			val = max_value;
@@ -964,8 +964,8 @@ int color_esycc_to_rgb(grk_image *image) {
 			val = 0;
 		image->comps[0].data[i] = val;
 
-		val = (int) ((float) 1.0003 * (float) y - (float) 0.344125 * (float) cb
-				- (float) 0.7141128 * (float) cr + (float) 0.5);
+		val = (int32_t) (1.0003 * y - 0.344125 * cb
+				- 0.7141128 * cr + 0.5);
 
 		if (val > max_value)
 			val = max_value;
@@ -973,8 +973,8 @@ int color_esycc_to_rgb(grk_image *image) {
 			val = 0;
 		image->comps[1].data[i] = val;
 
-		val = (int) ((float) 0.999823 * (float) y + (float) 1.77204 * (float) cb
-				- (float) 0.000008 * (float) cr + (float) 0.5);
+		val = (int32_t) (0.999823 * y + 1.77204 * cb
+				- 0.000008 * cr + 0.5);
 
 		if (val > max_value)
 			val = max_value;
