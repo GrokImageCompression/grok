@@ -1562,8 +1562,9 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 int post_decode(grk_plugin_decode_callback_info *info) {
 	if (!info)
 		return -1;
-	int failed = 0;
+	int failed = 1;
 	bool canStoreICC = false;
+	bool convert_ycc_to_rgb = true;
 	bool isTiff = info->decoder_parameters->cod_format == GRK_TIF_FMT;
 	grk_decompress_parameters *parameters = info->decoder_parameters;
 	grk_image *image = info->image;
@@ -1587,25 +1588,35 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		image->color_space = GRK_CLRSPC_SYCC;
 	else if (image->numcomps <= 2)
 		image->color_space = GRK_CLRSPC_GRAY;
+	if (image->color_space == GRK_CLRSPC_SYCC ||
+			image->color_space == GRK_CLRSPC_EYCC){
+		if (image->numcomps != 3){
+			spdlog::error("grk_decompress: YCC: number of components {} not equal to 3 ", image->numcomps);
+			goto cleanup;
+		}
+		convert_ycc_to_rgb =  (image->comps[1].dx > 1 ||
+								image->comps[1].dy > 1 ||
+								image->comps[2].dx > 1 ||
+								image->comps[2].dx > 1) ||
+										!isTiff ||
+										info->decoder_parameters->force_rgb;
+	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
-		if (!isTiff || info->decoder_parameters->force_rgb)
-		  color_sycc_to_rgb(image);
-	} else if (image->color_space == GRK_CLRSPC_CMYK) {
-		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (color_cmyk_to_rgb(image)) {
-				spdlog::error(
-						"grk_decompress: CMYK to RGB colour conversion failed !");
-				failed = 1;
-				goto cleanup;
+		if (convert_ycc_to_rgb) {
+			if (!color_sycc_to_rgb(image)) {
+				spdlog::warn("grk_decompress: sYCC to RGB colour conversion failed");
 			}
 		}
 	} else if (image->color_space == GRK_CLRSPC_EYCC) {
+		if (convert_ycc_to_rgb) {
+			if (!color_esycc_to_rgb(image)) {
+				spdlog::warn("grk_decompress: eYCC to RGB colour conversion failed");
+			}
+		}
+	} else if (image->color_space == GRK_CLRSPC_CMYK) {
 		if (!isTiff || info->decoder_parameters->force_rgb) {
-			if (color_esycc_to_rgb(image)) {
-				spdlog::error(
-						"grk_decompress: eSYCC to RGB colour conversion failed !");
-				failed = 1;
-				goto cleanup;
+			if (!color_cmyk_to_rgb(image)) {
+				spdlog::warn("grk_decompress: CMYK to RGB colour conversion failed");
 			}
 		}
 	}
@@ -1711,7 +1722,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		if (image == nullptr) {
 			spdlog::error(
 					"grk_decompress: failed to upsample image components!");
-			failed = 1;
 			goto cleanup;
 		}
 	}
@@ -1730,7 +1740,6 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 					"grk_decompress: don't know how to convert image to RGB colorspace!");
 			grk_image_destroy(image);
 			image = nullptr;
-			failed = 1;
 			goto cleanup;
 		}
 		if (image == nullptr) {
@@ -1758,7 +1767,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			PGXFormat pgx;
 			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
 				spdlog::error("Outfile {} not generated\n", outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1768,7 +1777,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			BMPFormat bmp;
 			if (!bmp.encode(image, outfile, 0, parameters->verbose)) {
 				spdlog::error("Outfile {} not generated\n", outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1779,7 +1788,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			if (!tif.encode(image, outfile, parameters->compression,
 					parameters->verbose)) {
 				spdlog::error("Outfile {} not generated\n", outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1791,7 +1800,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"Error generating raw file. Outfile {} not generated\n",
 						outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1803,7 +1812,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"Error generating rawl file. Outfile {} not generated\n",
 						outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1814,7 +1823,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"Error generating tga file. Outfile {} not generated\n",
 						outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1827,7 +1836,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"Error generating jpeg file. Outfile {} not generated\n",
 						outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1843,7 +1852,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				spdlog::error(
 						"Error generating png file. Outfile {} not generated\n",
 						outfile);
-				failed = 1;
+				goto cleanup;
 			}
 		}
 			break;
@@ -1853,10 +1862,11 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			 */
 		default:
 			spdlog::error("Outfile {} not generated\n", outfile);
-			failed = 1;
+			goto cleanup;
 			break;
 		}
 	}
+	failed = 0;
 	cleanup: if (info->l_stream)
 		grk_stream_destroy(info->l_stream);
 	info->l_stream = nullptr;

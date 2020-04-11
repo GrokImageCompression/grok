@@ -161,7 +161,7 @@ static void sycc_to_rgb(int32_t offset, int32_t upb, int32_t y, int32_t cb, int3
 	*out_b = b;
 }
 
-static void sycc444_to_rgb(grk_image *img) {
+static bool sycc444_to_rgb(grk_image *img) {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 	const int32_t *y, *cb, *cr;
 	size_t maxw, maxh, max, i;
@@ -169,7 +169,7 @@ static void sycc444_to_rgb(grk_image *img) {
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
-		return;
+		return false;
 
 	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
@@ -205,10 +205,11 @@ static void sycc444_to_rgb(grk_image *img) {
 	img->comps[2].data = d2;
 	img->comps[2].owns_data = true;
 	img->color_space = GRK_CLRSPC_SRGB;
-	return;
+
+	return true;
 }/* sycc444_to_rgb() */
 
-static void sycc422_to_rgb(grk_image *img) {
+static bool sycc422_to_rgb(grk_image *img) {
 	int32_t *d0, *d1, *d2, *r, *g, *b;
 	const int32_t *y, *cb, *cr;
 	size_t maxw, maxh, offx, loopmaxw;
@@ -218,7 +219,7 @@ static void sycc422_to_rgb(grk_image *img) {
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
-		return;
+		return false;
 
 	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
@@ -273,11 +274,12 @@ static void sycc422_to_rgb(grk_image *img) {
 	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
 	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
 	img->color_space = GRK_CLRSPC_SRGB;
-	return;
+
+	return true;
 
 }/* sycc422_to_rgb() */
 
-static void sycc420_to_rgb(grk_image *img) {
+static bool sycc420_to_rgb(grk_image *img) {
 	int32_t *d0, *d1, *d2, *r, *g, *b, *nr, *ng, *nb;
 	const int32_t *y, *cb, *cr, *ny;
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
@@ -286,7 +288,7 @@ static void sycc420_to_rgb(grk_image *img) {
 	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
-		return;
+		return false;
 
 	upb = (int32_t) img->comps[0].prec;
 	offset = 1 << (upb - 1);
@@ -374,39 +376,44 @@ static void sycc420_to_rgb(grk_image *img) {
 	img->comps[1].dx = img->comps[2].dx = img->comps[0].dx;
 	img->comps[1].dy = img->comps[2].dy = img->comps[0].dy;
 	img->color_space = GRK_CLRSPC_SRGB;
-	return;
+
+	return true;
 
 }/* sycc420_to_rgb() */
 
-void color_sycc_to_rgb(grk_image *img) {
+bool color_sycc_to_rgb(grk_image *img) {
 	if (img->numcomps < 3) {
 		spdlog::warn(
 				"color_sycc_to_rgb: number of components {} is less than 3."
 						" Unable to convert", img->numcomps);
-		return;
+		return false;
 	}
+	bool rc;
 
 	if ((img->comps[0].dx == 1) && (img->comps[1].dx == 2)
 			&& (img->comps[2].dx == 2) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 2) && (img->comps[2].dy == 2)) { /* horizontal and vertical sub-sample */
-		sycc420_to_rgb(img);
+		rc = sycc420_to_rgb(img);
 	} else if ((img->comps[0].dx == 1) && (img->comps[1].dx == 2)
 			&& (img->comps[2].dx == 2) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 1) && (img->comps[2].dy == 1)) { /* horizontal sub-sample only */
-		sycc422_to_rgb(img);
+		rc = sycc422_to_rgb(img);
 	} else if ((img->comps[0].dx == 1) && (img->comps[1].dx == 1)
 			&& (img->comps[2].dx == 1) && (img->comps[0].dy == 1)
 			&& (img->comps[1].dy == 1) && (img->comps[2].dy == 1)) { /* no sub-sample */
-		sycc444_to_rgb(img);
+		rc = sycc444_to_rgb(img);
 	} else {
 		spdlog::warn(
 				"color_sycc_to_rgb:  Invalid sub-sampling: ({},{}), ({},{}), ({},{})."
 						" Unable to convert.", img->comps[0].dx,
 				img->comps[0].dy, img->comps[1].dx, img->comps[1].dy,
 				img->comps[2].dx, img->comps[2].dy);
-		return;
+		rc = false;
 	}
-	img->color_space = GRK_CLRSPC_SRGB;
+	if (rc)
+		img->color_space = GRK_CLRSPC_SRGB;
+
+	return rc;
 
 }/* color_sycc_to_rgb() */
 
@@ -871,7 +878,7 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 
 #endif /* GROK_HAVE_LIBLCMS */
 
-int32_t color_cmyk_to_rgb(grk_image *image) {
+bool color_cmyk_to_rgb(grk_image *image) {
 	float C, M, Y, K;
 	float sC, sM, sY, sK;
 	uint32_t w, h;
@@ -881,7 +888,7 @@ int32_t color_cmyk_to_rgb(grk_image *image) {
 	h = image->comps[0].h;
 
 	if ((image->numcomps < 4) || !all_components_equal_subsampling(image))
-		return 1;
+		return false;
 
 	area = (uint64_t) w * h;
 
@@ -921,12 +928,12 @@ int32_t color_cmyk_to_rgb(grk_image *image) {
 				sizeof(image->comps[i]));
 	}
 
-	return 0;
+	return true;
 
 }/* color_cmyk_to_rgb() */
 
 // assuming unsigned data !
-int32_t color_esycc_to_rgb(grk_image *image) {
+bool color_esycc_to_rgb(grk_image *image) {
 	int32_t y, cb, cr, sign1, sign2, val;
 	uint32_t w, h;
 	uint64_t area, i;
@@ -934,7 +941,7 @@ int32_t color_esycc_to_rgb(grk_image *image) {
 	int32_t max_value = (1 << image->comps[0].prec) - 1;
 
 	if ((image->numcomps < 3) || !all_components_equal_subsampling(image))
-		return 1;
+		return false;
 
 	w = image->comps[0].w;
 	h = image->comps[0].h;
@@ -983,6 +990,6 @@ int32_t color_esycc_to_rgb(grk_image *image) {
 		image->comps[2].data[i] = val;
 	}
 	image->color_space = GRK_CLRSPC_SRGB;
-	return 0;
+	return true;
 
 }/* color_esycc_to_rgb() */
