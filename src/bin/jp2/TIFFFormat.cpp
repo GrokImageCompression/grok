@@ -1253,9 +1253,11 @@ static grk_image* tiftoimage(const char *filename,
 	}
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
 			&& tiPhoto != PHOTOMETRIC_RGB && tiPhoto != PHOTOMETRIC_ICCLAB
-			&& tiPhoto != PHOTOMETRIC_CIELAB) {
-		spdlog::error("tiftoimage: Bad color format {}.\n"
-				"\tOnly RGB(A) and GRAY(A) has been implemented\n",
+			&& tiPhoto != PHOTOMETRIC_CIELAB
+			&& tiPhoto != PHOTOMETRIC_YCBCR
+			&& tiPhoto != PHOTOMETRIC_SEPARATED) {
+		spdlog::error("tiftoimage: Unsupported color format {}.\n"
+				"\tOnly RGB(A), GRAY(A), CIELAB, YCC and CMKYK have been implemented",
 				(int) tiPhoto);
 		spdlog::error("\tAborting");
 		success = false;
@@ -1303,6 +1305,14 @@ static grk_image* tiftoimage(const char *filename,
 						"Input image is in CIE colour space but samples per pixel = {}\n",
 						tiSpp);
 		}
+		break;
+	case PHOTOMETRIC_YCBCR:
+		color_space = GRK_CLRSPC_SYCC;
+		numcomps += 3;
+		break;
+	case PHOTOMETRIC_SEPARATED:
+		color_space = GRK_CLRSPC_CMYK;
+		numcomps += 4;
 		break;
 	default:
 		break;
