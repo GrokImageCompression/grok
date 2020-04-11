@@ -84,10 +84,14 @@ static bool pngWarningHandlerVerbose = true;
 static void png_warning_fn(png_structp png_ptr,
 		png_const_charp warning_message) {
 	(void) png_ptr;
-	if (pngWarningHandlerVerbose) {
-		spdlog::error("libpng warning: {}", warning_message);
-		spdlog::error("");
-	}
+	if (pngWarningHandlerVerbose)
+		spdlog::warn("libpng: {}", warning_message);
+}
+
+static void png_error_fn(png_structp png_ptr,
+		png_const_charp error_message) {
+	(void) png_ptr;
+	spdlog::error("libpng: {}", error_message);
 }
 
 void pngSetVerboseFlag(bool verbose) {
@@ -158,7 +162,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	}
 
 	if ((local_info.png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr,
-			nullptr, png_warning_fn)) == nullptr)
+			png_error_fn, png_warning_fn)) == nullptr)
 		goto beach;
 
 	// allow Microsoft/HP 3144-byte sRGB profile, normally skipped by library 

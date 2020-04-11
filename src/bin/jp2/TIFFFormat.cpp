@@ -74,18 +74,6 @@
 #include <memory>
 #include <string>
 
-template <typename ... Args>
-void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
-{
-    const int message_size = 512;
-	if ((format != nullptr)) {
-		char message[message_size];
-		memset(message, 0, message_size);
-		vsnprintf(message, message_size, format, args...);
-		msg_handler(message, l_data);
-	}
-}
-
 static void tiff_error(const char *msg, void *client_data){
 	(void)client_data;
 	if (msg){
@@ -104,13 +92,13 @@ static void tiff_warn(const char *msg, void *client_data){
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
 	(void) module;
-    log(tiff_error, nullptr,fmt,ap);
+    grk::log(tiff_error, nullptr,fmt,ap);
 }
 
 void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
 	(void) module;
 	if (tiffWarningHandlerVerbose)
-		log(tiff_warn, nullptr,fmt,ap);
+		grk::log(tiff_warn, nullptr,fmt,ap);
 }
 
 void tiffSetErrorAndWarningHandlers(bool verbose) {
@@ -1278,7 +1266,7 @@ static grk_image* tiftoimage(const char *filename,
 			&& tiPhoto != PHOTOMETRIC_YCBCR
 			&& tiPhoto != PHOTOMETRIC_SEPARATED) {
 		spdlog::error("tiftoimage: Unsupported color format {}.\n"
-				"Only RGB(A), GRAY(A), CIELAB, YCC and CMKYK have been implemented.",
+				"Only RGB(A), GRAY(A), CIELAB, YCC and CMYK have been implemented.",
 				(int) tiPhoto);
 		goto cleanup;
 	}

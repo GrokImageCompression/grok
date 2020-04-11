@@ -65,6 +65,19 @@
 
 namespace grk {
 
+template <typename ... Args>
+void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+{
+    const int message_size = 512;
+	if ((format != nullptr)) {
+		char message[message_size];
+		memset(message, 0, message_size);
+		vsnprintf(message, message_size, format, args...);
+		msg_handler(message, l_data);
+	}
+}
+
+
 const GRK_SUPPORTED_FILE_FMT supportedStdoutFileFormats[] = { GRK_BMP_FMT,
 		GRK_PNG_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_JPG_FMT };
 
