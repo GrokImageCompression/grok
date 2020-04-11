@@ -1853,7 +1853,7 @@ bool jp2_decode(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *p_stream,
 			else
 				p_image->color_space = GRK_CLRSPC_CUSTOM_CIE;
 		} else {
-			GROK_ERROR("n");
+			GROK_ERROR("CIE Lab image requires ICC profile buffer set");
 			return false;
 		}
 		break;
@@ -2233,7 +2233,9 @@ bool jp2_setup_encoder(grk_jp2 *jp2, grk_cparameters *parameters,
 		}
 	} else {
 		jp2->meth = 1;
-		if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
+		if (image->color_space == GRK_CLRSPC_CMYK)
+			jp2->enumcs = 12;
+		else if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
 			jp2->enumcs = 14;
 		else if (image->color_space == GRK_CLRSPC_SRGB)
 			jp2->enumcs = 16; /* sRGB as defined by IEC 61966-2-1 */
@@ -3165,6 +3167,8 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image,
 		return false;
 
 	/* Set Image Color Space */
+	if (p_jp2->enumcs == 12)
+		p_image->color_space = GRK_CLRSPC_CMYK;
 	if (p_jp2->enumcs == 16)
 		p_image->color_space = GRK_CLRSPC_SRGB;
 	else if (p_jp2->enumcs == 17)
@@ -3173,8 +3177,6 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *p_stream, grk_image *p_image,
 		p_image->color_space = GRK_CLRSPC_SYCC;
 	else if (p_jp2->enumcs == 24)
 		p_image->color_space = GRK_CLRSPC_EYCC;
-	else if (p_jp2->enumcs == 12)
-		p_image->color_space = GRK_CLRSPC_CMYK;
 	else
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
 
