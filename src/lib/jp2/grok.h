@@ -131,12 +131,12 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_JP2_INFO		128	/**< JP2 file information */
 #define GRK_JP2_IND			256	/**< JP2 file index */
 
-#define J2K_CCP_CBLKSTY_LAZY    0x01  /**< Selective arithmetic coding bypass */
-#define J2K_CCP_CBLKSTY_RESET   0x02  /**< Reset context probabilities on coding pass boundaries */
-#define J2K_CCP_CBLKSTY_TERMALL 0x04  /**< Termination on each coding pass */
-#define J2K_CCP_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
-#define J2K_CCP_CBLKSTY_PTERM   0x10  /**< Predictable termination */
-#define J2K_CCP_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
+#define GRK_CBLKSTY_LAZY    0x01  /**< Selective arithmetic coding bypass */
+#define GRK_CBLKSTY_RESET   0x02  /**< Reset context probabilities on coding pass boundaries */
+#define GRK_CBLKSTY_TERMALL 0x04  /**< Termination on each coding pass */
+#define GRK_CBLKSTY_VSC     0x08  /**< Vertically stripe causal context */
+#define GRK_CBLKSTY_PTERM   0x10  /**< Predictable termination */
+#define GRK_CBLKSTY_SEGSYM  0x20  /**< Segmentation symbols are used */
 #define GRK_CBLKSTY_HT      	0x40  /**< high throughput block coding */
 #define GRK_JPH_RSIZ_FLAG       0x4000 /**<for JPH, bit 14 of RSIZ must be set to 1 */
 
@@ -156,55 +156,6 @@ enum GRK_SUPPORTED_FILE_FMT {
  * For IMF profiles, the GRK_PROFILE value has to be combined with the target main-level
  * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
  *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level equals 4
- *
- * *********************************************
- * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
- * *********************************************
- *
- * indicates maximum bit rate and sample rate for a code stream
- *
- * Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
- *
- * 0:		no maximum rate
- * 1:		200 Mbits/s, 65  Msamples/s
- * 2:		200 Mbits/s, 130 Msamples/s
- * 3:		200 Mbits/s, 195 Msamples/s
- * 4:		400 Mbits/s, 260 Msamples/s
- * 5:		800Mbits/s,  520 Msamples/s
- * >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
- * 
- * Note: level cannot be greater than 11
- *
- * ****************
- * Broadcast tiling
- * ****************
- *
- * Either single-tile or multi-tile. Multi-tile only permits
- * 1 or 4 tiles per frame, where multiple tiles have identical 
- * sizes, and are configured in either 2x2 or 1x4 layout.
- * 
- *************************************************************
- *
- * ***************************************
- * IMF main-level (3-0) LSB (15444-1 AMD8)
- * ***************************************
- *
- * main-level indicates maximum number of samples per second,
- * as listed above.
- *
- *
- * **************************************
- * IMF sub-level (7-4) LSB (15444-1 AMD8)
- * **************************************
- *
- * sub-level indicates maximum bit rate for a code stream:
- *
- * 0:	no maximum rate
- * >0:	2^sub-level * 100 Mbits/second
- *
- * Note: sub-level cannot be greater than 9, and cannot be larger 
- * then maximum of (main-level -2) and 1.
- *
  * 
  * */
 #define GRK_PROFILE_NONE        0x0000 /** no profile, conform to 15444-1 */
@@ -226,44 +177,91 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_PROFILE_IMF_4K_R    0x0800 /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_8K_R    0x0900  /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_MASK		0xBFFF  /** Mask for profile bits */
-
 #define GRK_PROFILE_PART2						0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
 #define GRK_PROFILE_PART2_EXTENSIONS_MASK       0x3FFF // Mask for Part-2 extension bits
 
 /**
  * JPEG 2000 Part-2 extensions
  * */
-
 #define GRK_EXTENSION_NONE      0x0000 /** No Part-2 extension */
 #define GRK_EXTENSION_MCT       0x0100  /** Custom MCT support */
-
-/**
- * JPEG 2000 profile macros
- * */
-#define GRK_IS_CINEMA(v)     (((v) >= GRK_PROFILE_CINEMA_2K) && ((v) <= GRK_PROFILE_CINEMA_S4K))
-#define GRK_IS_STORAGE(v)    ((v) == GRK_PROFILE_CINEMA_LTS)
-#define GRK_IS_BROADCAST(v)  (((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= ((GRK_PROFILE_BC_MULTI_R) | (0x000b))) && (((v) & (~GRK_PROFILE_BC_MASK)) == 0))
-#define GRK_IS_IMF(v)        (((v) >= GRK_PROFILE_IMF_2K) && ((v) <= ((GRK_PROFILE_IMF_8K_R) | (0x009b))))
 #define GRK_IS_PART2(v)      ((v) & GRK_PROFILE_PART2)
 
+#define GRK_IS_CINEMA(v)     (((v) >= GRK_PROFILE_CINEMA_2K) && ((v) <= GRK_PROFILE_CINEMA_S4K))
+#define GRK_IS_STORAGE(v)    ((v) == GRK_PROFILE_CINEMA_LTS)
+
+/*
+*
+* *********************************************
+* Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
+* *********************************************
+*
+* indicates maximum bit rate and sample rate for a code stream
+*
+* Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
+*
+* 0:		no maximum rate
+* 1:		200 Mbits/s, 65  Msamples/s
+* 2:		200 Mbits/s, 130 Msamples/s
+* 3:		200 Mbits/s, 195 Msamples/s
+* 4:		400 Mbits/s, 260 Msamples/s
+* 5:		800Mbits/s,  520 Msamples/s
+* >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
+*
+* Note: level cannot be greater than 11
+*
+* ****************
+* Broadcast tiling
+* ****************
+*
+* Either single-tile or multi-tile. Multi-tile only permits
+* 1 or 4 tiles per frame, where multiple tiles have identical
+* sizes, and are configured in either 2x2 or 1x4 layout.
+*
+*************************************************************
+*
+* ***************************************
+* IMF main-level (3-0) LSB (15444-1 AMD8)
+* ***************************************
+*
+* main-level indicates maximum number of samples per second,
+* as listed above.
+*
+*
+* **************************************
+* IMF sub-level (7-4) LSB (15444-1 AMD8)
+* **************************************
+*
+* sub-level indicates maximum bit rate for a code stream:
+*
+* 0:	no maximum rate
+* >0:	2^sub-level * 100 Mbits/second
+*
+* Note: sub-level cannot be greater than 9, and cannot be larger
+* then maximum of (main-level -2) and 1.
+*
+*/
+
+#define GRK_IS_BROADCAST(v)  (((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= ((GRK_PROFILE_BC_MULTI_R) | (0x000b))) && (((v) & (~GRK_PROFILE_BC_MASK)) == 0))
+#define GRK_IS_IMF(v)        (((v) >= GRK_PROFILE_IMF_2K) && ((v) <= ((GRK_PROFILE_IMF_8K_R) | (0x009b))))
 #define GRK_GET_IMF_PROFILE(v)   ((v) & 0xff00)      /** Extract IMF profile without mainlevel/sublevel */
 #define GRK_GET_IMF_MAINLEVEL(v) ((v) & 0xf)         /** Extract IMF main level */
 #define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
 
-#define GRK_IMF_MAINLEVEL_MAX    11   /** Maximum main level */
+#define GRK_MAINLEVEL_MAX    11   /** Maximum main level */
 
-/** Max. Components Sampling Rate (MSamples/sec) per IMF main level */
-#define GRK_IMF_MAINLEVEL_1_MSAMPLESEC   65      /** MSamples/sec for IMF main level 1 */
-#define GRK_IMF_MAINLEVEL_2_MSAMPLESEC   130     /** MSamples/sec for IMF main level 2 */
-#define GRK_IMF_MAINLEVEL_3_MSAMPLESEC   195     /** MSamples/sec for IMF main level 3 */
-#define GRK_IMF_MAINLEVEL_4_MSAMPLESEC   260     /** MSamples/sec for IMF main level 4 */
-#define GRK_IMF_MAINLEVEL_5_MSAMPLESEC   520     /** MSamples/sec for IMF main level 5 */
-#define GRK_IMF_MAINLEVEL_6_MSAMPLESEC   1200    /** MSamples/sec for IMF main level 6 */
-#define GRK_IMF_MAINLEVEL_7_MSAMPLESEC   2400    /** MSamples/sec for IMF main level 7 */
-#define GRK_IMF_MAINLEVEL_8_MSAMPLESEC   4800    /** MSamples/sec for IMF main level 8 */
-#define GRK_IMF_MAINLEVEL_9_MSAMPLESEC   9600    /** MSamples/sec for IMF main level 9 */
-#define GRK_IMF_MAINLEVEL_10_MSAMPLESEC  19200   /** MSamples/sec for IMF main level 10 */
-#define GRK_IMF_MAINLEVEL_11_MSAMPLESEC  38400   /** MSamples/sec for IMF main level 11 */
+/** Max. Components Sampling Rate (MSamples/sec) per main level */
+#define GRK_MAINLEVEL_1_MSAMPLESEC   65      /** MSamples/sec for main level 1 */
+#define GRK_MAINLEVEL_2_MSAMPLESEC   130     /** MSamples/sec for main level 2 */
+#define GRK_MAINLEVEL_3_MSAMPLESEC   195     /** MSamples/sec for main level 3 */
+#define GRK_MAINLEVEL_4_MSAMPLESEC   260     /** MSamples/sec for main level 4 */
+#define GRK_MAINLEVEL_5_MSAMPLESEC   520     /** MSamples/sec for main level 5 */
+#define GRK_MAINLEVEL_6_MSAMPLESEC   1200    /** MSamples/sec for main level 6 */
+#define GRK_MAINLEVEL_7_MSAMPLESEC   2400    /** MSamples/sec for main level 7 */
+#define GRK_MAINLEVEL_8_MSAMPLESEC   4800    /** MSamples/sec for main level 8 */
+#define GRK_MAINLEVEL_9_MSAMPLESEC   9600    /** MSamples/sec for main level 9 */
+#define GRK_MAINLEVEL_10_MSAMPLESEC  19200   /** MSamples/sec for main level 10 */
+#define GRK_MAINLEVEL_11_MSAMPLESEC  38400   /** MSamples/sec for main level 11 */
 
 /** Max. compressed Bit Rate (Mbits/s) per IMF sub level */
 #define GRK_IMF_SUBLEVEL_1_MBITSSEC      200     /** Mbits/s for IMF sub level 1 */
@@ -709,7 +707,7 @@ typedef struct _grk_prec {
 	grk_precision_mode mode;
 } grk_precision;
 
-#define DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-65535)
+#define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-65535)
 
 typedef struct _grk_decompress_params {
 	/** core library parameters */
@@ -807,9 +805,9 @@ typedef void * grk_stream;
  ==========================================================
  */
 
-#define GROK_COMPONENT_TYPE_NON_OPACITY	 			0
-#define GROK_COMPONENT_TYPE_OPACITY 				1
-#define GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	2
+#define GRK_COMPONENT_TYPE_NON_OPACITY	 			0
+#define GRK_COMPONENT_TYPE_OPACITY 				1
+#define GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	2
 
 /**
  * Defines a single image component
@@ -838,14 +836,14 @@ typedef struct _grk_image_comp {
 	// if true, then image will manage data, otherwise up to caller
 	bool owns_data;
 	/** alpha channel: can be one of three values:
-	 * {GROK_COMPONENT_TYPE_NON_OPACITY,
-	 * GROK_COMPONENT_TYPE_OPACITY,
-	 * GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY}
+	 * {GRK_COMPONENT_TYPE_NON_OPACITY,
+	 * GRK_COMPONENT_TYPE_OPACITY,
+	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY}
 	 *
-	 * GROK_COMPONENT_TYPE_NON_OPACITY				: this component is not an alpha channel
-	 * GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel,
+	 * GRK_COMPONENT_TYPE_NON_OPACITY				: this component is not an alpha channel
+	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel,
 	 *  and the colour channels have been pre-multiplied by alpha
-	 * GROK_COMPONENT_TYPE_OPACITY					: this component is an alpha channel,
+	 * GRK_COMPONENT_TYPE_OPACITY					: this component is an alpha channel,
 	 *  and the colour channels have not been pre-multiplied by alpha
 	 * */
 	uint16_t alpha;
@@ -1230,12 +1228,12 @@ typedef struct grk_plugin_tile_component {
 	grk_plugin_resolution **resolutions;
 } grk_plugin_tile_component;
 
-#define GROK_DECODE_HEADER	(1 << 0)
-#define GROK_DECODE_T2		(1 << 1)
-#define GROK_DECODE_T1		(1 << 2)
-#define GROK_DECODE_POST_T1	(1 << 3)
-#define GROK_PLUGIN_DECODE_CLEAN  (1 << 4)
-#define GROK_DECODE_ALL		(GROK_PLUGIN_DECODE_CLEAN | GROK_DECODE_HEADER | GROK_DECODE_T2 | GROK_DECODE_T1 | GROK_DECODE_POST_T1)
+#define GRK_DECODE_HEADER	(1 << 0)
+#define GRK_DECODE_T2		(1 << 1)
+#define GRK_DECODE_T1		(1 << 2)
+#define GRK_DECODE_POST_T1	(1 << 3)
+#define GRK_PLUGIN_DECODE_CLEAN  (1 << 4)
+#define GRK_DECODE_ALL		(GRK_PLUGIN_DECODE_CLEAN | GRK_DECODE_HEADER | GRK_DECODE_T2 | GRK_DECODE_T1 | GRK_DECODE_POST_T1)
 
 typedef struct _grk_plugin_tile {
 	uint32_t decode_flags;
@@ -1745,16 +1743,16 @@ GRK_API bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
  Plugin management
  */
 
-typedef struct _grok_plugin_load_info {
+typedef struct _grk_plugin_load_info {
 	const char *plugin_path;
-} grok_plugin_load_info;
+} grk_plugin_load_info;
 
-GRK_API bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info info);
+GRK_API bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info);
 
-GRK_API void GRK_CALLCONV grok_plugin_cleanup(void);
+GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 
 // No debug is done on plugin. Production setting.
-#define GROK_PLUGIN_STATE_NO_DEBUG			0x0
+#define GRK_PLUGIN_STATE_NO_DEBUG			0x0
 
 //For encode debugging, the plugin first performs a T1 encode.
 // Then:
@@ -1768,25 +1766,25 @@ GRK_API void GRK_CALLCONV grok_plugin_cleanup(void);
 //4. during host encode, each context that is formed is compared against context stream from plugin
 //5. rate control - synch with plugin code stream, and compare
 //6. T2 and store to disk
-#define GROK_PLUGIN_STATE_DEBUG				0x1
-#define GROK_PLUGIN_STATE_PRE_TR1			0x2
-#define GROK_PLUGIN_STATE_DWT_QUANTIZATION	0x4
-#define GROK_PLUGIN_STATE_MCT_ONLY			0x8
+#define GRK_PLUGIN_STATE_DEBUG				0x1
+#define GRK_PLUGIN_STATE_PRE_TR1			0x2
+#define GRK_PLUGIN_STATE_DWT_QUANTIZATION	0x4
+#define GRK_PLUGIN_STATE_MCT_ONLY			0x8
 
-GRK_API uint32_t GRK_CALLCONV grok_plugin_get_debug_state();
+GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
 /*
  Plugin encoding
  */
 
-typedef struct _grok_plugin_init_info {
+typedef struct _grk_plugin_init_info {
 	int32_t deviceId;
 	bool verbose;
-} grok_plugin_init_info;
+} grk_plugin_init_info;
 
-GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info initInfo);
+GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo);
 
-typedef struct grok_plugin_encode_user_callback_info {
+typedef struct grk_plugin_encode_user_callback_info {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
@@ -1798,20 +1796,20 @@ typedef struct grok_plugin_encode_user_callback_info {
 	unsigned int error_code;
 } grk_plugin_encode_user_callback_info;
 
-typedef bool (*GROK_PLUGIN_ENCODE_USER_CALLBACK)(
+typedef bool (*GRK_PLUGIN_ENCODE_USER_CALLBACK)(
 		grk_plugin_encode_user_callback_info *info);
 
-GRK_API int32_t GRK_CALLCONV grok_plugin_encode(
+GRK_API int32_t GRK_CALLCONV grk_plugin_encode(
 		 grk_cparameters  *encode_parameters,
-		GROK_PLUGIN_ENCODE_USER_CALLBACK callback);
+		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-GRK_API int32_t GRK_CALLCONV grok_plugin_batch_encode(const char *input_dir,
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_encode(const char *input_dir,
 		const char *output_dir,  grk_cparameters  *encode_parameters,
-		GROK_PLUGIN_ENCODE_USER_CALLBACK callback);
+		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-GRK_API bool GRK_CALLCONV grok_plugin_is_batch_complete(void);
+GRK_API bool GRK_CALLCONV grk_plugin_is_batch_complete(void);
 
-GRK_API void GRK_CALLCONV grok_plugin_stop_batch_encode(void);
+GRK_API void GRK_CALLCONV grk_plugin_stop_batch_encode(void);
 
 /*
  Plugin decoding
@@ -1840,21 +1838,21 @@ typedef struct _grk_plugin_decode_callback_info {
 	uint32_t decode_flags;
 } grk_plugin_decode_callback_info;
 
-typedef int32_t (*grok_plugin_decode_callback)(
+typedef int32_t (*grk_plugin_decode_callback)(
 		grk_plugin_decode_callback_info *info);
 
-GRK_API int32_t GRK_CALLCONV grok_plugin_decode(
+GRK_API int32_t GRK_CALLCONV grk_plugin_decode(
 		grk_decompress_parameters *decode_parameters,
-		grok_plugin_decode_callback callback);
+		grk_plugin_decode_callback callback);
 
-GRK_API int32_t GRK_CALLCONV grok_plugin_init_batch_decode(
+GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decode(
 		const char *input_dir, const char *output_dir,
 		grk_decompress_parameters *decode_parameters,
-		grok_plugin_decode_callback callback);
+		grk_plugin_decode_callback callback);
 
-GRK_API int32_t GRK_CALLCONV grok_plugin_batch_decode(void);
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decode(void);
 
-GRK_API void GRK_CALLCONV grok_plugin_stop_batch_decode(void);
+GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decode(void);
 
 #ifdef __cplusplus
 }

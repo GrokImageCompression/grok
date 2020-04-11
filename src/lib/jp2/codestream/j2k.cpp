@@ -1001,7 +1001,7 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 
 	if (!p_j2k->m_tileProcessor->current_plugin_tile
 			|| (p_j2k->m_tileProcessor->current_plugin_tile->decode_flags
-					& GROK_DECODE_POST_T1)) {
+					& GRK_DECODE_POST_T1)) {
 
 		/* if p_data is not null, then copy decoded resolutions from tile data into p_data.
 		 Otherwise, simply copy tile data pointer to output image

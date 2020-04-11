@@ -567,7 +567,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	 *
 	 */
 	png_set_compression_level(local_info.png,
-			(compressionLevel == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
+			(compressionLevel == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
 					3 : compressionLevel);
 
 	if (nr_comp >= 3) { /* RGB(A) */

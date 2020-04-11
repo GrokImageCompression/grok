@@ -87,8 +87,8 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 }
 
 bool tile_equals(grk_plugin_tile *plugin_tile, grk_tcd_tile *p_tile) {
-	uint32_t state = grok_plugin_get_debug_state();
-	if (!(state & GROK_PLUGIN_STATE_DEBUG))
+	uint32_t state = grk_plugin_get_debug_state();
+	if (!(state & GRK_PLUGIN_STATE_DEBUG))
 		return true;
 	if ((!plugin_tile && p_tile) || (plugin_tile && !p_tile))
 		return false;
@@ -150,9 +150,9 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 				tcd->current_plugin_tile->tileComponents[compno]->resolutions[resno]->bands[bandno];
 		grk_plugin_precinct *precinct = plugin_band->precincts[precno];
 		grk_plugin_code_block *plugin_cblk = precinct->blocks[cblkno];
-		uint32_t state = grok_plugin_get_debug_state();
+		uint32_t state = grk_plugin_get_debug_state();
 
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (band->stepsize != plugin_band->stepsize) {
 				GROK_WARN("ojp band step size {} differs from plugin step size {}",
 						band->stepsize, plugin_band->stepsize);
@@ -168,7 +168,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		cblk->num_passes_encoded = (uint32_t) plugin_cblk->numPasses;
 		*numPix = (uint32_t) plugin_cblk->numPix;
 
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			uint32_t grkNumPix = ((cblk->x1 - cblk->x0) * (cblk->y1 - cblk->y0));
 			if (plugin_cblk->numPix != grkNumPix)
 				printf(
@@ -180,7 +180,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		uint16_t totalRatePlugin = (uint16_t) plugin_cblk->compressedDataLength;
 
 		//check data
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			uint32_t totalRate = 0;
 			if (cblk->num_passes_encoded > 0) {
 				totalRate = (cblk->passes + cblk->num_passes_encoded - 1)->rate;
@@ -206,7 +206,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 		cblk->data_size = (uint32_t) (plugin_cblk->compressedDataLength);
 		cblk->owns_data = false;
 		cblk->numbps = (uint32_t) plugin_cblk->numBitPlanes;
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (cblk->x0 != plugin_cblk->x0 || cblk->y0 != plugin_cblk->y0
 					|| cblk->x1 != plugin_cblk->x1
 					|| cblk->y1 != plugin_cblk->y1) {
@@ -221,7 +221,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 
 			// synch distortion, if applicable
 			if (tcd->needs_rate_control()) {
-				if (state & GROK_PLUGIN_STATE_DEBUG) {
+				if (state & GRK_PLUGIN_STATE_DEBUG) {
 					if (fabs(
 							pass->distortiondec
 									- pluginPass->distortionDecrease)
@@ -243,7 +243,7 @@ void encode_synch_with_plugin(TileProcessor *tcd, uint32_t compno, uint32_t resn
 				pluginRate--;
 			}
 
-			if (state & GROK_PLUGIN_STATE_DEBUG) {
+			if (state & GRK_PLUGIN_STATE_DEBUG) {
 				if (pluginRate != pass->rate) {
 					GROK_WARN("plugin rate {} differs from OPJ rate {}\n",
 							pluginRate, pass->rate);

@@ -442,7 +442,7 @@ bool j2k_is_imf_compliant(grk_cparameters *parameters,
     bool ret = true;
 
     /* Validate mainlevel */
-    if (mainlevel > GRK_IMF_MAINLEVEL_MAX) {
+    if (mainlevel > GRK_MAINLEVEL_MAX) {
         GROK_WARN(   "IMF profile require mainlevel <= 11.\n"
                       "-> %d is thus not compliant\n"
                       "-> Non-IMF codestream will be generated\n",
@@ -452,7 +452,7 @@ bool j2k_is_imf_compliant(grk_cparameters *parameters,
 
     /* Validate sublevel */
     assert(sizeof(tabMaxSubLevelFromMainLevel) ==
-           (GRK_IMF_MAINLEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
+           (GRK_MAINLEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
     if (sublevel > tabMaxSubLevelFromMainLevel[mainlevel]) {
     	GROK_WARN(   "IMF profile require sublevel <= %d for mainlevel = %d.\n"
                       "-> %d is thus not compliant\n"

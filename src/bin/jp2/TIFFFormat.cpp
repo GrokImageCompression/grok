@@ -1402,13 +1402,13 @@ static grk_image* tiftoimage(const char *filename,
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
 				image->comps[j].alpha =
-						GROK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+						GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
 			else if (alphaType == EXTRASAMPLE_UNASSALPHA)
-				image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+				image->comps[j].alpha = GRK_COMPONENT_TYPE_OPACITY;
 			else {
 				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
 				if (numcomps == 2 || numcomps == 4) {
-					image->comps[j].alpha = GROK_COMPONENT_TYPE_OPACITY;
+					image->comps[j].alpha = GRK_COMPONENT_TYPE_OPACITY;
 				}
 			}
 		}
@@ -1931,7 +1931,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		for (i = 0U; i < numcomps; ++i) {
 			if (image->comps[i].alpha)
 				out[alphaCount++] =
-						(image->comps[i].alpha == GROK_COMPONENT_TYPE_OPACITY) ?
+						(image->comps[i].alpha == GRK_COMPONENT_TYPE_OPACITY) ?
 								EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());

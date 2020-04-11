@@ -276,7 +276,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 * Here we just illustrate the use of quality (quantization table) scaling:
 	 */
 	jpeg_set_quality(&cinfo,
-			(compressionParam == DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
+			(compressionParam == GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT) ?
 					90 : compressionParam,
 			(boolean) TRUE /* limit to baseline-JPEG values */);
 

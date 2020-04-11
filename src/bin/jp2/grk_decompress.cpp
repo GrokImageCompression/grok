@@ -114,7 +114,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 static grk_image* convert_gray_to_rgb(grk_image *original);
 
 void exit_func() {
-	grok_plugin_stop_batch_decode();
+	grk_plugin_stop_batch_decode();
 }
 
 #ifdef  _WIN32
@@ -786,7 +786,7 @@ static void set_default_parameters(grk_decompress_parameters *parameters) {
 		grk_set_default_decoder_parameters(&(parameters->core));
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
-		parameters->compressionLevel = DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
+		parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
 	}
 
 }
@@ -1107,7 +1107,7 @@ int decode(const char *fileName, DecompressInitParams *initParams) {
 	memset(&info, 0, sizeof(grk_plugin_decode_callback_info));
 	info.decod_format = GRK_UNK_FMT;
 	info.cod_format = GRK_UNK_FMT;
-	info.decode_flags = GROK_DECODE_ALL;
+	info.decode_flags = GRK_DECODE_ALL;
 	info.decoder_parameters = &initParams->parameters;
 
 	if (pre_decode(&info)) {
@@ -1224,27 +1224,27 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		goto cleanup;
 	}
 	// create codec
-	grok_plugin_init_info initInfo;
+	grk_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
-	if (!grok_plugin_init(initInfo)) {
+	if (!grk_plugin_init(initInfo)) {
 		success = 1;
 		goto cleanup;
 	}
 
 	isBatch = initParams->img_fol.imgdirpath && initParams->out_fol.imgdirpath;
-	if ((grok_plugin_get_debug_state() & GROK_PLUGIN_STATE_DEBUG)) {
+	if ((grk_plugin_get_debug_state() & GRK_PLUGIN_STATE_DEBUG)) {
 		isBatch = false;
 	}
 	if (isBatch) {
 		//initialize batch
 		setup_signal_handler();
-		success = grok_plugin_init_batch_decode(initParams->img_fol.imgdirpath,
+		success = grk_plugin_init_batch_decode(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
 				decode_callback);
 		//start batch
 		if (success)
-			success = grok_plugin_batch_decode();
+			success = grk_plugin_batch_decode();
 		// if plugin successfully begins batch encode, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
@@ -1254,11 +1254,11 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds * slicesPerSecond; ++i) {
 				batch_sleep(1);
-				if (grok_plugin_is_batch_complete()) {
+				if (grk_plugin_is_batch_complete()) {
 					break;
 				}
 			}
-			grok_plugin_stop_batch_decode();
+			grk_plugin_stop_batch_decode();
 		}
 	} else {
 		/* Initialize reading of directory */
@@ -1311,7 +1311,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		}
 
 		//1. try to decode using plugin
-		success = grok_plugin_decode(&initParams->parameters, decode_callback);
+		success = grk_plugin_decode(&initParams->parameters, decode_callback);
 		if (success != 0)
 			goto cleanup;
 		num_decompressed_images++;
@@ -1335,12 +1335,12 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 
 int decode_callback(grk_plugin_decode_callback_info *info) {
 	int rc = -1;
-	// GROK_DECODE_T1 flag specifies full decode on CPU, so
+	// GRK_DECODE_T1 flag specifies full decode on CPU, so
 	// we don't need to initialize the decoder in this case
-	if (info->decode_flags & GROK_DECODE_T1) {
+	if (info->decode_flags & GRK_DECODE_T1) {
 		info->init_decoders_func = nullptr;
 	}
-	if (info->decode_flags & GROK_PLUGIN_DECODE_CLEAN) {
+	if (info->decode_flags & GRK_PLUGIN_DECODE_CLEAN) {
 		if (info->l_stream)
 			grk_stream_destroy(info->l_stream);
 		info->l_stream = nullptr;
@@ -1353,14 +1353,14 @@ int decode_callback(grk_plugin_decode_callback_info *info) {
 		}
 		rc = 0;
 	}
-	if (info->decode_flags & (GROK_DECODE_HEADER |
-	GROK_DECODE_T1 |
-	GROK_DECODE_T2)) {
+	if (info->decode_flags & (GRK_DECODE_HEADER |
+	GRK_DECODE_T1 |
+	GRK_DECODE_T2)) {
 		rc = pre_decode(info);
 		if (rc)
 			return rc;
 	}
-	if (info->decode_flags & GROK_DECODE_POST_T1) {
+	if (info->decode_flags & GRK_DECODE_POST_T1) {
 		rc = post_decode(info);
 	}
 	return rc;
@@ -1453,7 +1453,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	// 2. read header
-	if (info->decode_flags & GROK_DECODE_HEADER) {
+	if (info->decode_flags & GRK_DECODE_HEADER) {
 		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
 		if (!grk_read_header(info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error("grk_decompress: failed to read the header");
@@ -1496,7 +1496,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 
 	// header-only decode
-	if (info->decode_flags == GROK_DECODE_HEADER)
+	if (info->decode_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 
 	//3. decode

@@ -302,7 +302,7 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 			}
 			t1_enc_sigpass_step(t1, f,
 					&t1->data[((k + 0) * t1->data_stride) + i], bpno, one,
-					nmsedec, type, 0, cblksty & J2K_CCP_CBLKSTY_VSC);
+					nmsedec, type, 0, cblksty & GRK_CBLKSTY_VSC);
 			t1_enc_sigpass_step(t1, f,
 					&t1->data[((k + 1) * t1->data_stride) + i], bpno, one,
 					nmsedec, type, 3, 0);
@@ -329,7 +329,7 @@ static void t1_enc_sigpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,
 			for (j = k;	j < t1->h; 	++j) {
 				t1_enc_sigpass_step(t1, f, pdata,
 						bpno, one, nmsedec, type, 3*(j - k),
-						(j == k && (cblksty & J2K_CCP_CBLKSTY_VSC) != 0));
+						(j == k && (cblksty & GRK_CBLKSTY_VSC) != 0));
 				pdata += t1->data_stride;
 			}
 			++f;
@@ -353,7 +353,7 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 			grk_flag flags = *flagsp;
 			if (flags != 0) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data, oneplushalf,
-						cblksty & J2K_CCP_CBLKSTY_VSC, /* vsc */
+						cblksty & GRK_CBLKSTY_VSC, /* vsc */
 						0U);
 				t1_dec_sigpass_step_raw(t1, flagsp, data + l_w, oneplushalf,
 						false, /* vsc */
@@ -371,7 +371,7 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 		for (i = 0; i < l_w; ++i, ++flagsp, ++data) {
 			for (j = 0; j < t1->h - k; ++j) {
 				t1_dec_sigpass_step_raw(t1, flagsp, data + j * l_w, oneplushalf,
-						cblksty & J2K_CCP_CBLKSTY_VSC, /* vsc */
+						cblksty & GRK_CBLKSTY_VSC, /* vsc */
 						3*j);
 			}
 		}
@@ -425,14 +425,14 @@ static void t1_dec_sigpass_raw(t1_info *t1, int32_t bpno, int32_t cblksty) {
 
 static void t1_dec_sigpass_mqc(t1_info *t1, int32_t bpno, int32_t cblksty) {
 	if (t1->w == 64 && t1->h == 64) {
-		if (cblksty & J2K_CCP_CBLKSTY_VSC){
+		if (cblksty & GRK_CBLKSTY_VSC){
 			t1_dec_sigpass_mqc_internal(t1, bpno, true, 64, 64, 66);
 		}
 		else {
 			t1_dec_sigpass_mqc_internal(t1, bpno, false, 64, 64, 66);
 		}
 	} else {
-		if (cblksty & J2K_CCP_CBLKSTY_VSC) {
+		if (cblksty & GRK_CBLKSTY_VSC) {
 			t1_dec_sigpass_mqc_internal(t1, bpno, true, t1->w, t1->h, t1->w + 2U);
 		} else {
 			t1_dec_sigpass_mqc_internal(t1, bpno, false, t1->w, t1->h, t1->w + 2U);
@@ -689,7 +689,7 @@ static void t1_enc_clnpass_step(t1_info *t1, grk_flag *flagsp, int32_t *datap,
 				v = *datap < 0 ? 1U : 0U;
 				spb = t1_getspb(lu);
 				mqc_encode(mqc, v ^ spb);
-				vsc = ((cblksty & J2K_CCP_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
+				vsc = ((cblksty & GRK_CBLKSTY_VSC) && (ci == 0)) ? 1 : 0;
 				t1_update_flags(flagsp, ci, v, t1->w + 2U, vsc);
 			}
 		}
@@ -870,7 +870,7 @@ static void t1_enc_clnpass(t1_info *t1, int32_t bpno, int32_t *nmsedec,	uint32_t
 }
 
 static void t1_dec_clnpass_check_segsym(t1_info *t1, int32_t cblksty) {
-	if (cblksty & J2K_CCP_CBLKSTY_SEGSYM) {
+	if (cblksty & GRK_CBLKSTY_SEGSYM) {
 		auto mqc = &(t1->mqc);
 		uint32_t v, v2;
 
@@ -894,12 +894,12 @@ template <uint32_t w, uint32_t h, bool vsc> void t1_dec_clnpass(t1_info *t1, int
 
 static void t1_dec_clnpass(t1_info *t1, int32_t bpno, int32_t cblksty) {
 	if (t1->w == 64 && t1->h == 64) {
-		if (cblksty & J2K_CCP_CBLKSTY_VSC)
+		if (cblksty & GRK_CBLKSTY_VSC)
 			t1_dec_clnpass<64,64,true>(t1, bpno);
 		else
 			t1_dec_clnpass<64,64,false>(t1, bpno);
 	} else {
-		if (cblksty & J2K_CCP_CBLKSTY_VSC){
+		if (cblksty & GRK_CBLKSTY_VSC){
 			t1_dec_clnpass_internal(t1, bpno, true,t1->w,t1->h,t1->w+2);
 		}
 		else {
@@ -1068,7 +1068,7 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 
 		/* BYPASS mode */
 		type = ((bpno_plus_one <= ((int32_t) (cblk->numbps)) - 4)
-				&& (passtype < 2) && (cblksty & J2K_CCP_CBLKSTY_LAZY)) ?
+				&& (passtype < 2) && (cblksty & GRK_CBLKSTY_LAZY)) ?
 				T1_TYPE_RAW : T1_TYPE_MQ;
 
 		if (type == T1_TYPE_RAW) {
@@ -1101,7 +1101,7 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 				break;
 			}
 
-			if ((cblksty & J2K_CCP_CBLKSTY_RESET) && type == T1_TYPE_MQ)
+			if ((cblksty & GRK_CBLKSTY_RESET) && type == T1_TYPE_MQ)
 				mqc_resetstates(mqc);
 			if (++passtype == 3) {
 				passtype = 0;
@@ -1134,10 +1134,10 @@ static int t1_enc_is_term_pass(tcd_cblk_enc_t *cblk, uint32_t cblksty,
 	if (passtype == 2 && bpno == 0)
 		return true;
 
-	if (cblksty & J2K_CCP_CBLKSTY_TERMALL)
+	if (cblksty & GRK_CBLKSTY_TERMALL)
 		return true;
 
-	if ((cblksty & J2K_CCP_CBLKSTY_LAZY)) {
+	if ((cblksty & GRK_CBLKSTY_LAZY)) {
 		/* For bypass arithmetic bypass, terminate the 4th cleanup pass */
 		if ((bpno == ((int32_t) cblk->numbps - 4)) && (passtype == 2))
 			return true;
@@ -1222,7 +1222,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 		tcd_pass_t *pass = &cblk->passes[passno];
 		type = ((bpno < ((int32_t) (cblk->numbps) - 4)) &&
 				(passtype < 2)	&&
-				(cblksty & J2K_CCP_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
+				(cblksty & GRK_CBLKSTY_LAZY)) ? T1_TYPE_RAW : T1_TYPE_MQ;
 
 		/* If the previous pass was terminating, we need to reset the encoder */
 		if (passno > 0 && cblk->passes[passno - 1].term) {
@@ -1241,7 +1241,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 			break;
 		case 2:
 			t1_enc_clnpass(t1, bpno,p_nmsdedec, cblksty);
-			if (cblksty & J2K_CCP_CBLKSTY_SEGSYM)
+			if (cblksty & GRK_CBLKSTY_SEGSYM)
 				mqc_segmark_enc(mqc);
 			break;
 		}
@@ -1256,9 +1256,9 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 		if (t1_enc_is_term_pass(cblk, cblksty, bpno, passtype)) {
 			/* If it is a terminated pass, terminate it */
 			if (type == T1_TYPE_RAW) {
-				mqc_bypass_flush_enc(mqc, cblksty & J2K_CCP_CBLKSTY_PTERM);
+				mqc_bypass_flush_enc(mqc, cblksty & GRK_CBLKSTY_PTERM);
 			} else {
-				if (cblksty & J2K_CCP_CBLKSTY_PTERM)
+				if (cblksty & GRK_CBLKSTY_PTERM)
 					mqc_erterm_enc(mqc);
 				else
 					mqc_flush_enc(mqc);
@@ -1278,7 +1278,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 			uint32_t rate_extra_bytes;
 			if (type == T1_TYPE_RAW) {
 				rate_extra_bytes = mqc_bypass_get_extra_bytes_enc(mqc,
-						(cblksty & J2K_CCP_CBLKSTY_PTERM));
+						(cblksty & GRK_CBLKSTY_PTERM));
 			} else {
 				rate_extra_bytes = 4 + 1;
 				if (mqc->ct < 5)
@@ -1294,7 +1294,7 @@ double t1_encode_cblk(t1_info *t1, tcd_cblk_enc_t *cblk, uint32_t max,
 		}
 
 		/* Code-switch "RESET" */
-		if (cblksty & J2K_CCP_CBLKSTY_RESET)
+		if (cblksty & GRK_CBLKSTY_RESET)
 			mqc_resetstates(mqc);
 	}
 

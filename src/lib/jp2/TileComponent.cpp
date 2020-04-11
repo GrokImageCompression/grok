@@ -171,7 +171,7 @@ bool TileComponent::init(bool isEncoder,
 						grk_image_comp* image_comp,
 						grk_tccp* tccp,
 						grk_plugin_tile *current_plugin_tile){
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 	m_is_encoder = isEncoder;
 	whole_tile_decoding = whole_tile;
 
@@ -462,7 +462,7 @@ bool TileComponent::init(bool isEncoder,
 								current_precinct->y1);
 
 						if (!current_plugin_tile
-								|| (state & GROK_PLUGIN_STATE_DEBUG)) {
+								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
 							if (!code_block->alloc_data(
 									nominalBlockSize)) {
 								return false;
@@ -472,7 +472,7 @@ bool TileComponent::init(bool isEncoder,
 						grk_tcd_cblk_dec *code_block =
 								current_precinct->cblks.dec + cblkno;
 						if (!current_plugin_tile
-								|| (state & GROK_PLUGIN_STATE_DEBUG)) {
+								|| (state & GRK_PLUGIN_STATE_DEBUG)) {
 							if (!code_block->alloc()) {
 								return false;
 							}

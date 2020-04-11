@@ -152,15 +152,15 @@ static bool is_plugin_initialized = false;
 bool GRK_CALLCONV grk_initialize(const char *plugin_path, uint32_t numthreads) {
 	ThreadPool::instance(numthreads);
 	if (!is_plugin_initialized) {
-		grok_plugin_load_info info;
+		grk_plugin_load_info info;
 		info.plugin_path = plugin_path;
-		is_plugin_initialized = grok_plugin_load(info);
+		is_plugin_initialized = grk_plugin_load(info);
 	}
 	return is_plugin_initialized;
 }
 
 GRK_API void GRK_CALLCONV grk_deinitialize() {
-	grok_plugin_cleanup();
+	grk_plugin_cleanup();
 	ThreadPool::release();
 }
 
@@ -831,7 +831,7 @@ static const char* get_path_separator() {
 }
 
 bool pluginLoaded = false;
-bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info info) {
+bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info) {
 	if (!info.plugin_path)
 		return false;
 
@@ -859,10 +859,10 @@ bool GRK_CALLCONV grok_plugin_load(grok_plugin_load_info info) {
 		minpf_cleanup_plugin_manager();
 	return pluginLoaded;
 }
-uint32_t GRK_CALLCONV grok_plugin_get_debug_state() {
+uint32_t GRK_CALLCONV grk_plugin_get_debug_state() {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_GET_DEBUG_STATE func = nullptr;
-	uint32_t rc = GROK_PLUGIN_STATE_NO_DEBUG;
+	uint32_t rc = GRK_PLUGIN_STATE_NO_DEBUG;
 	if (!pluginLoaded)
 		return rc;
 	mgr = minpf_get_plugin_manager();
@@ -875,11 +875,11 @@ uint32_t GRK_CALLCONV grok_plugin_get_debug_state() {
 	}
 	return rc;
 }
-void GRK_CALLCONV grok_plugin_cleanup(void) {
+void GRK_CALLCONV grk_plugin_cleanup(void) {
 	minpf_cleanup_plugin_manager();
 	pluginLoaded = false;
 }
-GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info initInfo) {
+GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_INIT func = nullptr;
 	if (!pluginLoaded)
@@ -899,10 +899,10 @@ GRK_API bool GRK_CALLCONV grok_plugin_init(grok_plugin_init_info initInfo) {
  Encode Implementation
  ********************/
 
-GROK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
+GRK_PLUGIN_ENCODE_USER_CALLBACK userEncodeCallback = 0;
 
 /* wrapper for user's encode callback */
-void grok_plugin_internal_encode_callback(
+void grk_plugin_internal_encode_callback(
 		plugin_encode_user_callback_info *info) {
 	/* set code block data etc on code object */
 	grk_plugin_encode_user_callback_info grk_info;
@@ -916,8 +916,8 @@ void grok_plugin_internal_encode_callback(
 	if (userEncodeCallback)
 		userEncodeCallback(&grk_info);
 }
-int32_t GRK_CALLCONV grok_plugin_encode( grk_cparameters  *encode_parameters,
-		GROK_PLUGIN_ENCODE_USER_CALLBACK callback) {
+int32_t GRK_CALLCONV grk_plugin_encode( grk_cparameters  *encode_parameters,
+		GRK_PLUGIN_ENCODE_USER_CALLBACK callback) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_ENCODE func = nullptr;
 	if (!pluginLoaded)
@@ -930,14 +930,14 @@ int32_t GRK_CALLCONV grok_plugin_encode( grk_cparameters  *encode_parameters,
 				plugin_encode_method_name);
 		if (func) {
 			return func(( grk_cparameters  * ) encode_parameters,
-					grok_plugin_internal_encode_callback);
+					grk_plugin_internal_encode_callback);
 		}
 	}
 	return -1;
 }
-int32_t GRK_CALLCONV grok_plugin_batch_encode(const char *input_dir,
+int32_t GRK_CALLCONV grk_plugin_batch_encode(const char *input_dir,
 		const char *output_dir,  grk_cparameters  *encode_parameters,
-		GROK_PLUGIN_ENCODE_USER_CALLBACK callback) {
+		GRK_PLUGIN_ENCODE_USER_CALLBACK callback) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_BATCH_ENCODE func = nullptr;
 	if (!pluginLoaded)
@@ -951,14 +951,14 @@ int32_t GRK_CALLCONV grok_plugin_batch_encode(const char *input_dir,
 		if (func) {
 			return func(input_dir, output_dir,
 					( grk_cparameters  * ) encode_parameters,
-					grok_plugin_internal_encode_callback);
+					grk_plugin_internal_encode_callback);
 		}
 	}
 	return -1;
 }
 
 PLUGIN_IS_BATCH_COMPLETE funcPluginIsBatchComplete = nullptr;
-GRK_API bool GRK_CALLCONV grok_plugin_is_batch_complete(void) {
+GRK_API bool GRK_CALLCONV grk_plugin_is_batch_complete(void) {
 	minpf_plugin_manager *mgr = nullptr;
 	if (!pluginLoaded)
 		return true;
@@ -975,7 +975,7 @@ GRK_API bool GRK_CALLCONV grok_plugin_is_batch_complete(void) {
 	}
 	return true;
 }
-void GRK_CALLCONV grok_plugin_stop_batch_encode(void) {
+void GRK_CALLCONV grk_plugin_stop_batch_encode(void) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_STOP_BATCH_ENCODE func = nullptr;
 	if (!pluginLoaded)
@@ -995,10 +995,10 @@ void GRK_CALLCONV grok_plugin_stop_batch_encode(void) {
  Decode Implementation
  ********************/
 
-grok_plugin_decode_callback decodeCallback = 0;
+grk_plugin_decode_callback decodeCallback = 0;
 
 /* wrapper for user's decode callback */
-int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
+int32_t grk_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 	int32_t rc = -1;
 	/* set code block data etc on code object */
 	grk_plugin_decode_callback_info grokInfo;
@@ -1028,9 +1028,9 @@ int32_t grok_plugin_internal_decode_callback(PluginDecodeCallbackInfo *info) {
 	return rc;
 }
 
-int32_t GRK_CALLCONV grok_plugin_decode(
+int32_t GRK_CALLCONV grk_plugin_decode(
 		grk_decompress_parameters *decode_parameters,
-		grok_plugin_decode_callback callback) {
+		grk_plugin_decode_callback callback) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_DECODE func = nullptr;
 	if (!pluginLoaded)
@@ -1044,14 +1044,14 @@ int32_t GRK_CALLCONV grok_plugin_decode(
 				plugin_decode_method_name);
 		if (func) {
 			return func((grk_decompress_parameters*) decode_parameters,
-					grok_plugin_internal_decode_callback);
+					grk_plugin_internal_decode_callback);
 		}
 	}
 	return -1;
 }
-int32_t GRK_CALLCONV grok_plugin_init_batch_decode(const char *input_dir,
+int32_t GRK_CALLCONV grk_plugin_init_batch_decode(const char *input_dir,
 		const char *output_dir, grk_decompress_parameters *decode_parameters,
-		grok_plugin_decode_callback callback) {
+		grk_plugin_decode_callback callback) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_INIT_BATCH_DECODE func = nullptr;
 	if (!pluginLoaded)
@@ -1066,12 +1066,12 @@ int32_t GRK_CALLCONV grok_plugin_init_batch_decode(const char *input_dir,
 		if (func) {
 			return func(input_dir, output_dir,
 					(grk_decompress_parameters*) decode_parameters,
-					grok_plugin_internal_decode_callback);
+					grk_plugin_internal_decode_callback);
 		}
 	}
 	return -1;
 }
-int32_t GRK_CALLCONV grok_plugin_batch_decode(void) {
+int32_t GRK_CALLCONV grk_plugin_batch_decode(void) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_BATCH_DECODE func = nullptr;
 	if (!pluginLoaded)
@@ -1086,7 +1086,7 @@ int32_t GRK_CALLCONV grok_plugin_batch_decode(void) {
 	}
 	return -1;
 }
-void GRK_CALLCONV grok_plugin_stop_batch_decode(void) {
+void GRK_CALLCONV grk_plugin_stop_batch_decode(void) {
 	minpf_plugin_manager *mgr = nullptr;
 	PLUGIN_STOP_BATCH_DECODE func = nullptr;
 	if (!pluginLoaded)

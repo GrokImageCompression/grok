@@ -109,7 +109,7 @@ static bool plugin_compress_callback(
 		grk_plugin_encode_user_callback_info *info);
 
 void exit_func() {
-	grok_plugin_stop_batch_encode();
+	grk_plugin_stop_batch_encode();
 }
 
 #ifdef  _WIN32
@@ -1929,19 +1929,19 @@ static bool plugin_compress_callback(
 
 	if (GRK_IS_IMF(parameters->rsiz) && parameters->framerate > 0) {
 		const int mainlevel = GRK_GET_IMF_MAINLEVEL(parameters->rsiz);
-		if (mainlevel > 0 && mainlevel <= GRK_IMF_MAINLEVEL_MAX) {
+		if (mainlevel > 0 && mainlevel <= GRK_MAINLEVEL_MAX) {
 			const int limitMSamplesSec[] = { 0,
-			GRK_IMF_MAINLEVEL_1_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_2_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_3_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_4_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_5_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_6_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_7_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_8_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_9_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_10_MSAMPLESEC,
-			GRK_IMF_MAINLEVEL_11_MSAMPLESEC };
+			GRK_MAINLEVEL_1_MSAMPLESEC,
+			GRK_MAINLEVEL_2_MSAMPLESEC,
+			GRK_MAINLEVEL_3_MSAMPLESEC,
+			GRK_MAINLEVEL_4_MSAMPLESEC,
+			GRK_MAINLEVEL_5_MSAMPLESEC,
+			GRK_MAINLEVEL_6_MSAMPLESEC,
+			GRK_MAINLEVEL_7_MSAMPLESEC,
+			GRK_MAINLEVEL_8_MSAMPLESEC,
+			GRK_MAINLEVEL_9_MSAMPLESEC,
+			GRK_MAINLEVEL_10_MSAMPLESEC,
+			GRK_MAINLEVEL_11_MSAMPLESEC };
 			uint32_t avgcomponents = image->numcomps;
 			double msamplespersec;
 			if (image->numcomps == 3 && image->comps[1].dx == 2
@@ -2069,7 +2069,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 
 	bool isBatch = initParams->img_fol.imgdirpath
 			&& initParams->out_fol.imgdirpath;
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 
 	/* parse input and get user encoding parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
@@ -2101,21 +2101,21 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	out_fol_plugin = initParams->out_fol;
 
 	// create codec
-	grok_plugin_init_info initInfo;
+	grk_plugin_init_info initInfo;
 	initInfo.deviceId = initParams->parameters.deviceId;
 	initInfo.verbose = initParams->parameters.verbose;
-	if (!grok_plugin_init(initInfo)) {
+	if (!grk_plugin_init(initInfo)) {
 		success = 1;
 		goto cleanup;
 
 	}
-	if ((state & GROK_PLUGIN_STATE_DEBUG)
-			|| (state & GROK_PLUGIN_STATE_PRE_TR1)) {
+	if ((state & GRK_PLUGIN_STATE_DEBUG)
+			|| (state & GRK_PLUGIN_STATE_PRE_TR1)) {
 		isBatch = 0;
 	}
 	if (isBatch) {
 		setup_signal_handler();
-		success = grok_plugin_batch_encode(initParams->img_fol.imgdirpath,
+		success = grk_plugin_batch_encode(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
 				plugin_compress_callback);
 		// if plugin successfully begins batch encode, then wait for batch to complete
@@ -2127,11 +2127,11 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 				seconds = UINT_MAX;
 			for (uint32_t i = 0U; i < seconds * slicesPerSecond; ++i) {
 				batch_sleep(1);
-				if (grok_plugin_is_batch_complete()) {
+				if (grk_plugin_is_batch_complete()) {
 					break;
 				}
 			}
-			grok_plugin_stop_batch_encode();
+			grk_plugin_stop_batch_encode();
 		}
 	} else {
 		// loop through all files
@@ -2189,7 +2189,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 			//restore cached settings
 			initParams->parameters.tcp_mct = tcp_mct;
 			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-			success = grok_plugin_encode(&initParams->parameters,
+			success = grk_plugin_encode(&initParams->parameters,
 					plugin_compress_callback);
 			if (success != 0)
 				break;

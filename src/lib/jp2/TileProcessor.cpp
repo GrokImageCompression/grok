@@ -380,7 +380,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 	auto tcd_tcp = m_tcp;
 
 	tcd_tile->numpix = 0;
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 
 	RateInfo rateInfo;
 	for (uint32_t compno = 0; compno < tcd_tile->numcomps; compno++) {
@@ -400,7 +400,7 @@ bool TileProcessor::pcrd_bisect_feasible(uint64_t *p_data_written,
 						auto cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
-						if (!(state & GROK_PLUGIN_STATE_PRE_TR1)) {
+						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this,compno, resno, bandno,
 									precno, cblkno, band, cblk, &numPix);
 						}
@@ -516,7 +516,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 	double max_slope = -1;
 
 	tile->numpix = 0;
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 
 	bool single_lossless = make_single_lossless_layer();
 
@@ -533,7 +533,7 @@ bool TileProcessor::pcrd_bisect_simple(uint64_t *p_data_written, uint64_t len) {
 						auto cblk = &prc->cblks.enc[cblkno];
 						uint32_t numPix = ((cblk->x1 - cblk->x0)
 								* (cblk->y1 - cblk->y0));
-						if (!(state & GROK_PLUGIN_STATE_PRE_TR1)) {
+						if (!(state & GRK_PLUGIN_STATE_PRE_TR1)) {
 							encode_synch_with_plugin(this,compno, resno, bandno,
 									precno, cblkno, band, cblk, &numPix);
 						}
@@ -869,7 +869,7 @@ bool TileProcessor::init(grk_image *p_image, grk_coding_parameters *p_cp) {
 
 inline bool TileProcessor::init_tile(uint16_t tile_no,
 		grk_image *output_image, bool isEncoder) {
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 
 	auto tcp = &(m_cp->tcps[tile_no]);
 	if (tcp->m_tile_data)
@@ -927,7 +927,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 
 	// decoder plugin debug sanity check on tile struct
 	if (!isEncoder) {
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			if (!tile_equals(current_plugin_tile, tile)) {
 				GROK_WARN("plugin tile differs from grok tile",
 						nullptr);
@@ -951,7 +951,7 @@ bool TileProcessor::init_decode_tile(grk_image *output_image,
 bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
-	uint32_t state = grok_plugin_get_debug_state();
+	uint32_t state = grk_plugin_get_debug_state();
 	if (m_current_tile_part_number == 0) {
 		m_tileno = tile_no;
 		m_tcp = &m_cp->tcps[tile_no];
@@ -982,14 +982,14 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 				return false;
 			}
 		}
-		if (state & GROK_PLUGIN_STATE_DEBUG) {
+		if (state & GRK_PLUGIN_STATE_DEBUG) {
 			set_context_stream(this);
 		}
 
 		// When debugging the encoder, we do all of T1 up to and including DWT in the plugin, and pass this in as image data.
 		// This way, both Grok and plugin start with same inputs for context formation and MQ coding.
-		bool debugEncode = state & GROK_PLUGIN_STATE_DEBUG;
-		bool debugMCT = (state & GROK_PLUGIN_STATE_MCT_ONLY) ? true : false;
+		bool debugEncode = state & GRK_PLUGIN_STATE_DEBUG;
+		bool debugMCT = (state & GRK_PLUGIN_STATE_MCT_ONLY) ? true : false;
 
 		if (!current_plugin_tile || debugEncode) {
 
@@ -1123,11 +1123,11 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
     }
 
 	bool doT2 = !current_plugin_tile
-			|| (current_plugin_tile->decode_flags & GROK_DECODE_T2);
+			|| (current_plugin_tile->decode_flags & GRK_DECODE_T2);
 	bool doT1 = !current_plugin_tile
-			|| (current_plugin_tile->decode_flags & GROK_DECODE_T1);
+			|| (current_plugin_tile->decode_flags & GRK_DECODE_T1);
 	bool doPostT1 = !current_plugin_tile
-			|| (current_plugin_tile->decode_flags & GROK_DECODE_POST_T1);
+			|| (current_plugin_tile->decode_flags & GRK_DECODE_POST_T1);
 
 	if (doT2) {
 		uint64_t l_data_read = 0;

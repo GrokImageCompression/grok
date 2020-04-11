@@ -53,7 +53,7 @@ extern "C" PLUGIN_API grk::minpf_exit_func minpf_post_load_plugin(const char* pl
 // Initialization
 //////////////////////////////////
 
-extern "C"  PLUGIN_API bool plugin_init(grok_plugin_init_info initInfo) {
+extern "C"  PLUGIN_API bool plugin_init(grk_plugin_init_info initInfo) {
 	return false;
 }
 
@@ -115,7 +115,7 @@ extern "C"  PLUGIN_API void plugin_stop_batch_decode(void) {
 /////////////////////////////////
 
 extern "C"  PLUGIN_API uint32_t plugin_get_debug_state(void) {
-	return GROK_PLUGIN_STATE_NO_DEBUG;
+	return GRK_PLUGIN_STATE_NO_DEBUG;
 }
 
 extern "C"  PLUGIN_API void plugin_debug_next_cxd(grk::grk_plugin_debug_mqc *mqc, uint32_t d) {

@@ -501,7 +501,7 @@ static int imageToPNG(const grk_image *image, const char *filename,
 	memcpy(image_write->comps->data, image->comps[num_comp_select].data,
 			param_image_write.h * param_image_write.w * sizeof(int));
 	PNGFormat png;
-	png.encode(image_write, filename, DECOMPRESS_COMPRESSION_LEVEL_DEFAULT,
+	png.encode(image_write, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT,
 			true);
 
 	grk_image_destroy(image_write);

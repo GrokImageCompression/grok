@@ -836,9 +836,9 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 	auto seg = &cblk->segs[index];
 	seg->clear();
 
-	if (cblk_sty & J2K_CCP_CBLKSTY_TERMALL) {
+	if (cblk_sty & GRK_CBLKSTY_TERMALL) {
 		seg->maxpasses = 1;
-	} else if (cblk_sty & J2K_CCP_CBLKSTY_LAZY) {
+	} else if (cblk_sty & GRK_CBLKSTY_LAZY) {
 		if (first) {
 			seg->maxpasses = 10;
 		} else {
