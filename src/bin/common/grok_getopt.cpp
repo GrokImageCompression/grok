@@ -99,7 +99,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
         if (!*place)
             ++grok_optind;
         if (grok_opterr && *ostr != ':') {
-            spdlog::error("{}: illegal option -- %c\n", __progname, grok_optopt);
+            spdlog::error("{}: illegal option -- %c", __progname, grok_optopt);
             return (BADCH);
         }
     }
@@ -118,7 +118,7 @@ int grok_getopt(int nargc, char *const *nargv, const char *ostr)
             if (*ostr == ':')
                 return (BADARG);
             if (grok_opterr) {
-                spdlog::error(" {}: option requires an argument -- {}\n",
+                spdlog::error(" {}: option requires an argument -- {}",
                         __progname, grok_optopt);
                 return (BADCH);
             }
@@ -177,7 +177,7 @@ again:
                 if (!strcmp(o->name,arg)) {	/* match */
                     if (o->has_arg == 0) {
                         if ((argv[grok_optind+1])&&(!(argv[grok_optind+1][0]=='-'))) {
-                            spdlog::error("{}: option does not require an argument. Ignoring {}\n",arg,argv[grok_optind+1]);
+                            spdlog::error("{}: option does not require an argument. Ignoring {}",arg,argv[grok_optind+1]);
                             ++grok_optind;
                         }
                     } else {
@@ -185,14 +185,14 @@ again:
                         if(grok_optarg) {
                             if (grok_optarg[0] == '-') { /* Has read next input parameter: No arg for current parameter */
                                 if (grok_opterr) {
-                                    spdlog::error("{}: option requires an argument\n",arg);
+                                    spdlog::error("{}: option requires an argument",arg);
                                     return (BADCH);
                                 }
                             }
                         }
                         if (!grok_optarg && o->has_arg==1) {	/* no argument there */
                             if (grok_opterr) {
-                                spdlog::error("{}: option requires an argument \n",arg);
+                                spdlog::error("{}: option requires an argument ",arg);
                                 return (BADCH);
                             }
                         }
@@ -206,7 +206,7 @@ again:
                     return 0;
                 }
             }/*(end for)String not found in the list*/
-            spdlog::error("Invalid option {}\n",arg);
+            spdlog::error("Invalid option {}",arg);
             ++grok_optind;
             return (BADCH);
         } else { /*Single character input parameter*/
@@ -230,14 +230,14 @@ again:
                     if(grok_optarg) {
                         if (grok_optarg[0] == '-') { /* Has read next input parameter: No arg for current parameter */
                             if (grok_opterr) {
-                                spdlog::error("{}: option requires an argument\n",arg);
+                                spdlog::error("{}: option requires an argument",arg);
                                 return (BADCH);
                             }
                         }
                     }
                     if (!grok_optarg) {	/* missing argument */
                         if (grok_opterr) {
-                            spdlog::error("{}: option requires an argument\n",arg);
+                            spdlog::error("{}: option requires an argument",arg);
                             return (BADCH);
                         }
                     }
@@ -250,7 +250,7 @@ found:
                 ++grok_optind;
                 return grok_optopt;
             }	else {	/* not found */
-                spdlog::error("Invalid option {}\n",arg);
+                spdlog::error("Invalid option {}",arg);
                 ++grok_optind;
                 return (BADCH);
             }/*end of not found*/

@@ -141,13 +141,13 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	/* Left */
 	if (start_x > image->x1) {
 		GROK_ERROR("Left position of the decoded area (region_x0=%d)"
-				" is outside the image area (Xsiz=%d).\n",
+				" is outside the image area (Xsiz=%d).",
 				start_x, image->x1);
 		return false;
 	} else if (start_x < image->x0) {
 		GROK_WARN(
 				"Left position of the decoded area (region_x0=%d)"
-				" is outside the image area (XOsiz=%d).\n",
+				" is outside the image area (XOsiz=%d).",
 				start_x, image->x0);
 		decoder->m_start_tile_x_index = 0;
 		output_image->x0 = image->x0;
@@ -161,13 +161,13 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	if (start_y > image->y1) {
 		GROK_ERROR(
 				"Up position of the decoded area (region_y0=%d)"
-				" is outside the image area (Ysiz=%d).\n",
+				" is outside the image area (Ysiz=%d).",
 				start_y, image->y1);
 		return false;
 	} else if (start_y < image->y0) {
 		GROK_WARN(
 				"Up position of the decoded area (region_y0=%d)"
-				" is outside the image area (YOsiz=%d).\n",
+				" is outside the image area (YOsiz=%d).",
 				start_y, image->y0);
 		decoder->m_start_tile_y_index = 0;
 		output_image->y0 = image->y0;
@@ -183,13 +183,13 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	if (end_x < image->x0) {
 		GROK_ERROR(
 				"Right position of the decoded area (region_x1=%d)"
-				" is outside the image area (XOsiz=%d).\n",
+				" is outside the image area (XOsiz=%d).",
 				end_x, image->x0);
 		return false;
 	} else if (end_x > image->x1) {
 		GROK_WARN(
 				"Right position of the decoded area (region_x1=%d)"
-				" is outside the image area (Xsiz=%d).\n",
+				" is outside the image area (Xsiz=%d).",
 				end_x, image->x1);
 		decoder->m_end_tile_x_index = cp->tw;
 		output_image->x1 = image->x1;
@@ -207,14 +207,14 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	if (end_y < image->y0) {
 		GROK_ERROR(
 				"Bottom position of the decoded area (region_y1=%d)"
-				" is outside the image area (YOsiz=%d).\n",
+				" is outside the image area (YOsiz=%d).",
 				end_y, image->y0);
 		return false;
 	}
 	if (end_y > image->y1) {
 		GROK_WARN(
 				"Bottom position of the decoded area (region_y1=%d)"
-				" is outside the image area (Ysiz=%d).\n",
+				" is outside the image area (Ysiz=%d).",
 				end_y, image->y1);
 		decoder->m_end_tile_y_index = cp->th;
 		output_image->y1 = image->y1;
@@ -234,7 +234,7 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	if (!update_image_dimensions(output_image, cp->m_coding_param.m_dec.m_reduce))
 		return false;
 
-	GROK_INFO("Setting decoding area to %d,%d,%d,%d\n",
+	GROK_INFO("Setting decoding area to %d,%d,%d,%d",
 	               output_image->x0, output_image->y0, output_image->x1, output_image->y1);
 	return true;
 }
@@ -1367,7 +1367,7 @@ bool TileProcessor::mct_decode() {
 		}
 	} else {
 		GROK_ERROR(
-				"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.\n",
+				"Number of components (%d) is inconsistent with a MCT. Skip the MCT step.",
 				tile->numcomps);
 	}
 
@@ -1700,7 +1700,7 @@ bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
 
 		if (img_comp_dest->w * img_comp_dest->h == 0) {
 			GROK_ERROR(
-					"Output image has invalid dimensions %d x %d\n",
+					"Output image has invalid dimensions %d x %d",
 					img_comp_dest->w, img_comp_dest->h);
 			return false;
 		}

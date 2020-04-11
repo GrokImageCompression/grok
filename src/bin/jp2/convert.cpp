@@ -534,7 +534,7 @@ bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
 	//check for null image components
 	for (uint32_t i = 0; i < numcomps; ++i) {
 		if (!image->comps[i].data) {
-			spdlog::error("null data for component {}\n", i);
+			spdlog::error("null data for component {}", i);
 			return false;
 		}
 	}
@@ -544,7 +544,7 @@ bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
 		if (image->comps[i].w != image->comps[0].w
 				|| image->comps[i].h != image->comps[0].h) {
 			spdlog::error(
-					"Dimensions of component {} differ from dimensions of component 0\n",
+					"Dimensions of component {} differ from dimensions of component 0",
 					i);
 			return false;
 		}
@@ -554,7 +554,7 @@ bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].prec != image->comps[0].prec) {
 			spdlog::error(
-					"precision of component {} differs from precision of component 0\n",
+					"precision of component {} differs from precision of component 0",
 					i);
 			return false;
 		}
@@ -564,7 +564,7 @@ bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
 	for (uint32_t i = 1; i < numcomps; ++i) {
 		if (image->comps[i].sgnd != image->comps[0].sgnd) {
 			spdlog::error(
-					"signedness of component {} differs from signedness of component 0\n",
+					"signedness of component {} differs from signedness of component 0",
 					i);
 			return false;
 		}

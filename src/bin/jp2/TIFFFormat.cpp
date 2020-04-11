@@ -1257,7 +1257,7 @@ static grk_image* tiftoimage(const char *filename,
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
-		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.\n", tiBps);
+		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.", tiBps);
 		goto cleanup;
 	}
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
@@ -1308,7 +1308,7 @@ static grk_image* tiftoimage(const char *filename,
 		if (tiSpp != 3) {
 			if (parameters->verbose)
 				spdlog::warn(
-						"Input image is in CIE colour space but samples per pixel = {}\n",
+						"Input image is in CIE colour space but samples per pixel = {}",
 						tiSpp);
 		}
 		break;
@@ -1631,7 +1631,7 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
 				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
-						"vs. strip_size(%lld).\n\tAborting.\n",
+						"vs. strip_size(%lld).\n\tAborting.",
 						(long long) ssize, (long long) strip_size);
 				success = false;
 				goto local_cleanup;
@@ -1767,7 +1767,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (bps > 16)
 		bps = 0;
 	if (bps == 0) {
-		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented\n",
+		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented",
 				bps);
 		spdlog::error("\tAborting");
 		success = false;
@@ -1842,7 +1842,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 
 	tif = TIFFOpen(outfile, "wb");
 	if (!tif) {
-		spdlog::error("imagetotif:failed to open {} for writing\n", outfile);
+		spdlog::error("imagetotif:failed to open {} for writing", outfile);
 		success = false;
 		goto cleanup;
 	}

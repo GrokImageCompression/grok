@@ -350,7 +350,7 @@ static bool bmp_read_info_header(FILE *INPUT, GRK_BITMAPINFOHEADER *header) {
 	case 124U: /* BITMAPV5HEADER */
 		break;
 	default:
-		spdlog::error("unknown BMP header size {}\n", header->biSize);
+		spdlog::error("unknown BMP header size {}", header->biSize);
 		return false;
 	}
 	if (!get_int(INPUT, &header->biWidth))
@@ -600,7 +600,7 @@ static grk_image* bmptoimage(const char *filename,
 	} else {
 		INPUT = fopen(filename, "rb");
 		if (!INPUT) {
-			spdlog::error("Failed to open {} for reading !!\n", filename);
+			spdlog::error("Failed to open {} for reading !!", filename);
 			return nullptr;
 		}
 	}
@@ -788,7 +788,7 @@ static grk_image* bmptoimage(const char *filename,
 		grk_image_destroy(image);
 		image = nullptr;
 		spdlog::error(
-				"Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [{}]\n",
+				"Other system than 24 bits/pixels or 8 bits (no RLE coding) is not yet implemented [{}]",
 				Info_h.biBitCount);
 	}
 	cleanup: if (pData)
@@ -822,7 +822,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	if (!sanityCheckOnImage(image, image->numcomps))
 		goto cleanup;
 	if (image->numcomps != 1 && image->numcomps != 3) {
-		spdlog::error("Unsupported number of components: {}\n",
+		spdlog::error("Unsupported number of components: {}",
 				image->numcomps);
 		goto cleanup;
 	}
@@ -833,7 +833,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
-			spdlog::error("Unsupported precision: {} for component {}\n",
+			spdlog::error("Unsupported precision: {} for component {}",
 					image->comps[i].prec, i);
 			goto cleanup;
 		}
@@ -850,7 +850,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	} else {
 		fdest = fopen(outfile, "wb");
 		if (!fdest) {
-			spdlog::error("failed to open {} for writing\n", outfile);
+			spdlog::error("failed to open {} for writing", outfile);
 			goto cleanup;
 		}
 	}

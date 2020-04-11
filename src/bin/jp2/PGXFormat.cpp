@@ -124,7 +124,7 @@ static grk_image* pgxtoimage(const char *filename,
 	max = 0;
 	f = fopen(filename, "rb");
 	if (!f) {
-		spdlog::error("Failed to open {} for reading !\n", filename);
+		spdlog::error("Failed to open {} for reading !", filename);
 		return nullptr;
 	}
 
@@ -279,7 +279,7 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 		fdest = fopen(bname, "wb");
 		if (!fdest) {
 
-			spdlog::error("failed to open {} for writing\n", bname);
+			spdlog::error("failed to open {} for writing", bname);
 			goto beach;
 		}
 
@@ -304,14 +304,14 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 				const int val = image->comps[compno].data[i];
 				if (!grk::writeBytes<uint8_t>((uint8_t) val, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
-					spdlog::error("failed to write bytes for {}\n", bname);
+					spdlog::error("failed to write bytes for {}", bname);
 					goto beach;
 				}
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint8_t), outCount, fdest);
 				if (res != outCount) {
-					spdlog::error("failed to write bytes for {}\n", bname);
+					spdlog::error("failed to write bytes for {}", bname);
 					goto beach;
 				}
 			}
@@ -323,14 +323,14 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 				const int val = image->comps[compno].data[i];
 				if (!grk::writeBytes<uint16_t>((uint16_t) val, buf, &outPtr,
 						&outCount, bufSize, true, fdest)) {
-					spdlog::error("failed to write bytes for {}\n", bname);
+					spdlog::error("failed to write bytes for {}", bname);
 					goto beach;
 				}
 			}
 			if (outCount) {
 				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
 				if (res != outCount) {
-					spdlog::error("failed to write bytes for {}\n", bname);
+					spdlog::error("failed to write bytes for {}", bname);
 					goto beach;
 				}
 			}

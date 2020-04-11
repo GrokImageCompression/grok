@@ -1054,7 +1054,7 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 
 	bpno_plus_one = (int32_t) (roishift + cblk->numbps);
 	if (bpno_plus_one >= 31) {
-		grk::GROK_ERROR("unsupported bpno_plus_one = %d >= 31\n",
+		grk::GROK_ERROR("unsupported bpno_plus_one = %d >= 31",
 				bpno_plus_one);
 		return false;
 	}
@@ -1115,13 +1115,13 @@ bool t1_decode_cblk(t1_info *t1, tcd_cblk_dec_t *cblk, uint32_t orient,
 	if (check_pterm) {
 		if (mqc->bp + 2 < mqc->end) {
 			grk::GROK_WARN(
-					"PTERM check failure: %d remaining bytes in code block (%d used / %d)\n",
+					"PTERM check failure: %d remaining bytes in code block (%d used / %d)",
 					(int) (mqc->end - mqc->bp) - 2,
 					(int) (mqc->bp - mqc->start),
 					(int) (mqc->end - mqc->start));
 		} else if (mqc->end_of_byte_stream_counter > 2) {
 			grk::GROK_WARN(
-					"PTERM check failure: %d synthetized 0xFF markers read\n",
+					"PTERM check failure: %d synthetized 0xFF markers read",
 					mqc->end_of_byte_stream_counter);
 		}
 	}

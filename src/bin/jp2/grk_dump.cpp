@@ -143,7 +143,7 @@ static uint32_t get_num_images(char *imgdirpath) {
 
 	dir = opendir(imgdirpath);
 	if (!dir) {
-		spdlog::error("Could not open Folder {}\n", imgdirpath);
+		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 0;
 	}
 
@@ -167,7 +167,7 @@ static int load_images(dircnt *dirptr, char *imgdirpath) {
 
 	dir = opendir(imgdirpath);
 	if (!dir) {
-		spdlog::error("Could not open Folder {}\n", imgdirpath);
+		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 1;
 	}
 
@@ -240,7 +240,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 			if (!grk::jpeg2000_file_format(infile,&parameters->decod_format )){
 				spdlog::error(
 						"Unknown input file format: {} \n"
-								"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
+								"        Known file formats are *.j2k, *.jp2 or *.jpc",
 						infile);
 				return 1;
 			}
@@ -319,8 +319,8 @@ static int parse_cmdline_decoder(int argc, char **argv,
 	} else {
 		if (parameters->infile[0] == 0) {
 			spdlog::error("Required parameter is missing");
-			spdlog::error("Example: {} -i image.j2k\n", argv[0]);
-			spdlog::error("Help: {} -h\n", argv[0]);
+			spdlog::error("Example: {} -i image.j2k", argv[0]);
+			spdlog::error("Help: {} -h", argv[0]);
 			return 1;
 		}
 	}
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
 	if (parameters.outfile[0] != 0) {
 		fout = fopen(parameters.outfile, "w");
 		if (!fout) {
-			spdlog::error("failed to open {} for writing\n",
+			spdlog::error("failed to open {} for writing",
 					parameters.outfile);
 			rc = EXIT_FAILURE;
 			goto cleanup;
@@ -453,7 +453,7 @@ int main(int argc, char *argv[]) {
 		l_stream = grk_stream_create_file_stream(parameters.infile, 1024 * 1024,
 				1);
 		if (!l_stream) {
-			spdlog::error("failed to create the stream from the file {}\n",
+			spdlog::error("failed to create the stream from the file {}",
 					parameters.infile);
 			rc = EXIT_FAILURE;
 			goto cleanup;

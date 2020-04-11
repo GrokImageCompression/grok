@@ -512,7 +512,7 @@ static bool jp2_read_box_hdr(grk_jp2_box *box, uint32_t *p_number_bytes_read,
 		*p_number_bytes_read += nb_bytes_read;
 	}
 	if (box->length < *p_number_bytes_read) {
-		GROK_ERROR("invalid box size %" PRIu64 " (%x)\n", box->length,
+		GROK_ERROR("invalid box size %" PRIu64 " (%x)", box->length,
 				box->type);
 		throw CorruptJP2BoxException();
 	}
@@ -569,7 +569,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 
 	if ((jp2->numcomps == 0) || (jp2->numcomps > max_num_components)) {
 		GROK_ERROR(
-				"JP2 IHDR box: num components=%d does not conform to standard\n",
+				"JP2 IHDR box: num components=%d does not conform to standard",
 				jp2->numcomps);
 		return false;
 	}
@@ -595,7 +595,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 	// unset indicates unsigned data
 	if (((jp2->bpc != 0xFF)
 			&& ((jp2->bpc & 0x7F) > (max_supported_precision - 1)))) {
-		GROK_ERROR("JP2 IHDR box: bpc=%d not supported.\n", jp2->bpc);
+		GROK_ERROR("JP2 IHDR box: bpc=%d not supported.", jp2->bpc);
 		return false;
 	}
 
@@ -605,7 +605,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 	/* Should be equal to 7 cf. chapter about image header box of the norm */
 	if (jp2->C != 7) {
 		GROK_WARN(
-				"JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) \n",
+				"JP2 IHDR box: compression type indicate that the file is not a conforming JP2 file (%d) ",
 				jp2->C);
 	}
 
@@ -614,7 +614,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 
 	// UnkC must be binary : {0,1}
 	if ((jp2->UnkC > 1)) {
-		GROK_ERROR("JP2 IHDR box: UnkC=%d does not conform to standard\n",
+		GROK_ERROR("JP2 IHDR box: UnkC=%d does not conform to standard",
 				jp2->UnkC);
 		return false;
 	}
@@ -624,7 +624,7 @@ static bool jp2_read_ihdr(grk_jp2 *jp2, uint8_t *p_image_header_data,
 
 	// IPR must be binary : {0,1}
 	if ((jp2->IPR > 1)) {
-		GROK_ERROR("JP2 IHDR box: IPR=%d does not conform to standard\n",
+		GROK_ERROR("JP2 IHDR box: IPR=%d does not conform to standard",
 				jp2->IPR);
 		return false;
 	}
@@ -743,7 +743,7 @@ static bool jp2_read_uuid(grk_jp2 *jp2, uint8_t *p_header_data,
 
 	if (jp2->numUuids == JP2_MAX_NUM_UUIDS) {
 		GROK_WARN(
-				"Reached maximum (%d) number of UUID boxes read - ignoring UUID box\n",
+				"Reached maximum (%d) number of UUID boxes read - ignoring UUID box",
 				JP2_MAX_NUM_UUIDS);
 		return false;
 	}
@@ -1005,7 +1005,7 @@ static bool jp2_read_bpcc(grk_jp2 *jp2, uint8_t *p_bpc_header_data,
 
 	if (jp2->bpc != 255) {
 		GROK_WARN(
-				"A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant\n",
+				"A BPCC header box is available although BPC given by the IHDR box (%d) indicate components bit depth is constant",
 				jp2->bpc);
 	}
 
@@ -1180,7 +1180,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 
 		for (i = 0; i < n; i++) {
 			if (info[i].cn >= nr_channels) {
-				GROK_ERROR("Invalid component index %d (>= %d).\n", info[i].cn,
+				GROK_ERROR("Invalid component index %d (>= %d).", info[i].cn,
 						nr_channels);
 				return false;
 			}
@@ -1189,7 +1189,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 
 			if (info[i].asoc > 0
 					&& (uint32_t) (info[i].asoc - 1) >= nr_channels) {
-				GROK_ERROR("Invalid component index %d (>= %d).\n",
+				GROK_ERROR("Invalid component index %d (>= %d).",
 						info[i].asoc - 1, nr_channels);
 				return false;
 			}
@@ -1222,7 +1222,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 		/* verify that all original components match an existing one */
 		for (i = 0; i < nr_channels; i++) {
 			if (cmap[i].cmp >= image->numcomps) {
-				GROK_ERROR("Invalid component index %d (>= %d).\n", cmap[i].cmp,
+				GROK_ERROR("Invalid component index %d (>= %d).", cmap[i].cmp,
 						image->numcomps);
 				is_sane = false;
 				goto cleanup;
@@ -1244,7 +1244,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 			}
 			if (pcol >= nr_channels) {
 				GROK_ERROR(
-						"Invalid component/palette index for direct mapping %d.\n",
+						"Invalid component/palette index for direct mapping %d.",
 						pcol);
 				is_sane = false;
 				goto cleanup;
@@ -1275,7 +1275,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 				if (!pcol_usage[i]) {
 					is_sane = 0U;
 					GROK_WARN(
-							"Component mapping seems wrong. Trying to correct.\n",
+							"Component mapping seems wrong. Trying to correct.",
 							i);
 					break;
 				}
@@ -1319,7 +1319,7 @@ static bool jp2_apply_pclr(grk_image *image, grk_jp2_color *color) {
 		cmp = cmap[i].cmp;
 		if (image->comps[cmp].data == nullptr) {
 			GROK_ERROR(
-					"image->comps[%d].data == nullptr in grk_jp2_apply_pclr().\n",
+					"image->comps[%d].data == nullptr in grk_jp2_apply_pclr().",
 					i);
 			return false;
 		}
@@ -1574,7 +1574,7 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 		cn = info[i].cn;
 
 		if (cn >= image->numcomps) {
-			GROK_WARN("jp2_apply_cdef: cn=%d, numcomps=%d\n", cn,
+			GROK_WARN("jp2_apply_cdef: cn=%d, numcomps=%d", cn,
 					image->numcomps);
 			continue;
 		}
@@ -1585,7 +1585,7 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 
 		acn = (uint16_t) (asoc - 1);
 		if (acn >= image->numcomps) {
-			GROK_WARN("jp2_apply_cdef: acn=%d, numcomps=%d\n", acn,
+			GROK_WARN("jp2_apply_cdef: acn=%d, numcomps=%d", acn,
 					image->numcomps);
 			continue;
 		}
@@ -1691,7 +1691,7 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 			auto infoj = cdef_info[j];
 			if (i != j && infoi.cn == infoj.cn && infoi.typ != infoj.typ) {
 				GROK_ERROR(
-						"CDEF box : multiple descriptions of component, %d, with differing types : %d and %d.\n",
+						"CDEF box : multiple descriptions of component, %d, with differing types : %d and %d.",
 						infoi.cn, infoi.typ, infoj.typ);
 				return false;
 			}
@@ -1706,7 +1706,7 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 			if (i != j && infoi.cn != infoj.cn && infoi.typ == infoj.typ
 					&& infoi.asoc == infoj.asoc) {
 				GROK_ERROR(
-						"CDEF box : components %d and %d share same type/association pair (%d,%d).\n",
+						"CDEF box : components %d and %d share same type/association pair (%d,%d).",
 						infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
 				return false;
 			}
@@ -1797,7 +1797,7 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 				cielab[7] = ob;
 				cielab[8] = il;
 			} else if (colr_header_size != 7) {
-				GROK_WARN("Bad COLR header box (CIELab, bad size: %d)\n",
+				GROK_WARN("Bad COLR header box (CIELab, bad size: %d)",
 						colr_header_size);
 			}
 			jp2->color.icc_profile_buf = (uint8_t*) cielab;
@@ -1819,7 +1819,7 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 		/*	ISO/IEC 15444-1:2004 (E), Table I.9 Legal METH values:
 		 conforming JP2 reader shall ignore the entire Colour Specification box.*/
 		GROK_WARN("COLR BOX meth value is not a regular value (%d), "
-				"so we will ignore the entire Colour Specification box. \n",
+				"so we will ignore the entire Colour Specification box. ",
 				jp2->meth);
 	}
 	return true;
@@ -2532,7 +2532,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 					|| (current_handler_misplaced != nullptr)) {
 				if (current_handler == nullptr) {
 					GROK_WARN(
-							"Found a misplaced '%c%c%c%c' box outside jp2h box\n",
+							"Found a misplaced '%c%c%c%c' box outside jp2h box",
 							(uint8_t) (box.type >> 24),
 							(uint8_t) (box.type >> 16),
 							(uint8_t) (box.type >> 8),
@@ -2542,7 +2542,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 						current_handler = current_handler_misplaced;
 					} else {
 						GROK_WARN(
-								"JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored\n",
+								"JPEG2000 Header box not read yet, '%c%c%c%c' box will be ignored",
 								(uint8_t) (box.type >> 24),
 								(uint8_t) (box.type >> 16),
 								(uint8_t) (box.type >> 8),
@@ -2563,7 +2563,7 @@ static bool jp2_read_header_procedure(grk_jp2 *jp2, BufferedStream *stream) {
 				if (current_data_size > stream->get_number_byte_left()) {
 					/* do not even try to malloc if we can't read */
 					GROK_ERROR(
-							"Invalid box size %" PRIu64 " for box '%c%c%c%c'. Need %d bytes, %" PRIu64 " bytes remaining \n",
+							"Invalid box size %" PRIu64 " for box '%c%c%c%c'. Need %d bytes, %" PRIu64 " bytes remaining ",
 							box.length, (uint8_t) (box.type >> 24),
 							(uint8_t) (box.type >> 16),
 							(uint8_t) (box.type >> 8),

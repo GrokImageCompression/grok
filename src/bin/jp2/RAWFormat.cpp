@@ -125,7 +125,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	} else {
 		f = fopen(filename, "rb");
 		if (!f) {
-			spdlog::error("Failed to open {} for reading !!\n", filename);
+			spdlog::error("Failed to open {} for reading !!", filename);
 			success = false;
 			goto cleanup;
 		}
@@ -298,18 +298,18 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 	} else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			spdlog::error("imagetoraw: Failed to open {} for writing !!\n",
+			spdlog::error("imagetoraw: Failed to open {} for writing !!",
 					outfile);
 			goto beach;
 		}
 	}
 	if (verbose)
-		spdlog::info("imagetoraw: raw image characteristics: {} components\n",
+		spdlog::info("imagetoraw: raw image characteristics: {} components",
 				image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
 		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", compno,
+			spdlog::info("Component %u characteristics: {}x{}x{} {}", compno,
 					image->comps[compno].w, image->comps[compno].h,
 					image->comps[compno].prec,
 					image->comps[compno].sgnd == 1 ? "signed" : "unsigned");
@@ -338,7 +338,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 				rc = write<uint8_t>(rawFile, big_endian, ptr, w, h, lower,
 						upper);
 			if (!rc)
-				spdlog::error("imagetoraw: failed to write bytes for {}\n",
+				spdlog::error("imagetoraw: failed to write bytes for {}",
 						outfile);
 		} else if (prec <= 16) {
 			if (sgnd)
@@ -348,14 +348,14 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 				rc = write<uint16_t>(rawFile, big_endian, ptr, w, h, lower,
 						upper);
 			if (!rc)
-				spdlog::error("fimagetoraw: ailed to write bytes for {}\n",
+				spdlog::error("fimagetoraw: ailed to write bytes for {}",
 						outfile);
 		} else if (image->comps[compno].prec <= 32) {
 			spdlog::error(
 					"imagetoraw: more than 16 bits per component no handled yet");
 			goto beach;
 		} else {
-			spdlog::error("imagetoraw: invalid precision: {}\n",
+			spdlog::error("imagetoraw: invalid precision: {}",
 					image->comps[compno].prec);
 			goto beach;
 		}

@@ -150,14 +150,14 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		local_info.reader = stdin;
 	} else {
 		if ((local_info.reader = fopen(read_idf, "rb")) == nullptr) {
-			spdlog::error("pngtoimage: can not open {}\n", read_idf);
+			spdlog::error("pngtoimage: can not open {}", read_idf);
 			return nullptr;
 		}
 	}
 
 	if (fread(sigbuf, 1, MAGIC_SIZE, local_info.reader) != MAGIC_SIZE
 			|| memcmp(sigbuf, PNG_MAGIC, MAGIC_SIZE) != 0) {
-		spdlog::error("pngtoimage: {} is no valid PNG file\n", read_idf);
+		spdlog::error("pngtoimage: {} is no valid PNG file", read_idf);
 		goto beach;
 	}
 
@@ -233,7 +233,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		nr_comp = 4;
 		break;
 	default:
-		spdlog::error("pngtoimage: colortype {} is not supported\n",
+		spdlog::error("pngtoimage: colortype {} is not supported",
 				color_type);
 		goto beach;
 	}
@@ -256,7 +256,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		cvtXXTo32s = convert_16u32s_C1R;
 		break;
 	default:
-		spdlog::error("pngtoimage: bit depth {} is not supported\n", bit_depth);
+		spdlog::error("pngtoimage: bit depth {} is not supported", bit_depth);
 		goto beach;
 	}
 
@@ -334,7 +334,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	/*
 	 double fileGamma = 0.0;
 	 if (png_get_gAMA(png, info, &fileGamma)) {
-	 spdlog::warn("input PNG contains gamma value of %f; this will not be stored in compressed image.\n", fileGamma);
+	 spdlog::warn("input PNG contains gamma value of %f; this will not be stored in compressed image.", fileGamma);
 	 }
 	 double wpx, wpy, rx, ry, gx, gy, bx, by; // white point and primaries
 	 if (png_get_cHRM(png, info, &wpx, &wpy, &rx, &ry, &gx, &gy, &bx, &by)) 	{
@@ -503,7 +503,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	}
 
 	if (prec != 1 && prec != 2 && prec != 4 && prec != 8 && prec != 16) {
-		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}\n",
+		spdlog::error("imagetopng: can not create {}\n\twrong bit_depth {}",
 				write_idf, prec);
 		return local_info.fails;
 	}

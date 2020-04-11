@@ -229,7 +229,7 @@ bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT* fmt)
     }
 
     s = fname + (strlen(fname) > 4 ? strlen(fname) - 4 : 0);
-    spdlog::warn("The extension of this file is incorrect.\n Found {}. Should be {}\n", s, magic_s);
+    spdlog::warn("The extension of this file is incorrect.\n Found {}. Should be {}", s, magic_s);
     *fmt = magic_format;
     return true;
 }
@@ -257,7 +257,7 @@ uint32_t get_num_images(char *imgdirpath)
 
     dir= opendir(imgdirpath);
     if(!dir) {
-        spdlog::error("Could not open Folder {}\n",imgdirpath);
+        spdlog::error("Could not open Folder {}",imgdirpath);
         return 0;
     }
 

@@ -273,7 +273,7 @@ bool Quantizer::read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 								"number of step sizes (%d) is greater"
 								" than GRK_J2K_MAXBANDS (%d). "
 								"So, we limit the number of elements stored to "
-								"GRK_J2K_MAXBANDS (%d) and skip the rest.\n",
+								"GRK_J2K_MAXBANDS (%d) and skip the rest.",
 						tccp->numStepSizes, GRK_J2K_MAXBANDS,
 						GRK_J2K_MAXBANDS);
 			}

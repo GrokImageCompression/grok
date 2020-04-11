@@ -445,7 +445,7 @@ static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 
 	DIR *dir = opendir(imgdirpath);
 	if (!dir) {
-		spdlog::error("Could not open Folder {}\n", imgdirpath);
+		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 1;
 	}
 
@@ -546,7 +546,7 @@ static bool checkCinema(ValueArg<uint32_t> *arg, uint16_t profile,
 			isValid = false;
 			if (parameters->verbose)
 				spdlog::error(
-						"Incorrect digital cinema frame rate {} : must be either 24 or 48\n",
+						"Incorrect digital cinema frame rate {} : must be either 24 or 48",
 						fps);
 		}
 	}
@@ -723,7 +723,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					&& !isDecodedFormatSupported(parameters->decod_format)) {
 				spdlog::warn(
 						" Ignoring unknown input file format: %s \n"
-								"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
+								"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga",
 						infile);
 			}
 		}
@@ -735,7 +735,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				if (!isDecodedFormatSupported(parameters->decod_format)) {
 					spdlog::error(
 							"Unknown input file format: {} \n"
-									"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga\n",
+									"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga",
 							infile);
 					return 1;
 				}
@@ -787,7 +787,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.j2k, *.j2c or *.jp2]!! \n",
+						"Unknown output format image {} [only *.j2k, *.j2c or *.jp2]!! ",
 						outfile);
 				return 1;
 			}
@@ -998,7 +998,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						&parameters->prch_init[res_spec], &sep);
 				if (!(ret == 2 && sep == 0) && !(ret == 3 && sep == ',')) {
 					spdlog::error(
-							"\n could not parse precinct dimension: '{}' {0:x}\n",
+							"\n could not parse precinct dimension: '{}' {0:x}",
 							s, sep);
 					spdlog::error(
 							"Example: -i lena.raw -o lena.j2k -c [128,128],[128,128]");
@@ -1024,7 +1024,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					|| cblockh_init < 4) {
 				spdlog::error(
 						"Size of code block error (option -b)\n\nRestriction :\n"
-								"    * width*height<=4096\n    * 4<=width,height<= 1024\n");
+								"    * width*height<=4096\n    * 4<=width,height<= 1024");
 				return 1;
 			}
 			parameters->cblockw_init = (uint32_t)cblockw_init;
@@ -1159,7 +1159,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				const char *msg =
 						"Wrong value for -IMF. Should be "
 								"<PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS] where <PROFILE> is one "
-								"of 2K/4K/8K/2K_R/4K_R/8K_R.\n";
+								"of 2K/4K/8K/2K_R/4K_R/8K_R.";
 				char *arg = (char*) IMFArg.getValue().c_str();
 				char *comma;
 
@@ -1220,7 +1220,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 				if (parameters->verbose) {
 					spdlog::info("IMF profile activated\n"
-							"Other options specified could be overridden\n");
+							"Other options specified could be overridden");
 				}
 
 				parameters->framerate = framerate;
@@ -1239,7 +1239,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							(uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
 					if (parameters->verbose) {
 						spdlog::info(
-								"Setting max codestream size to %d bytes.\n",
+								"Setting max codestream size to %d bytes.",
 								parameters->max_cs_size);
 					}
 				}
@@ -1248,11 +1248,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			if (rsizArg.isSet()) {
 				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
 					warning_callback(
-							"  Cinema profile set - RSIZ parameter ignored.\n",
+							"  Cinema profile set - RSIZ parameter ignored.",
 							nullptr);
 				} else if (IMFArg.isSet()) {
 					warning_callback(
-							"  IMF profile set - RSIZ parameter ignored.\n",
+							"  IMF profile set - RSIZ parameter ignored.",
 							nullptr);
 				} else {
 					parameters->rsiz = rsizArg.getValue();
@@ -1285,9 +1285,9 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		if (mctArg.isSet()) {
 			uint32_t mct_mode = mctArg.getValue();
-			if (mct_mode < 0 || mct_mode > 2) {
+			if (mct_mode > 2) {
 				spdlog::error(
-						"MCT incorrect value. Current accepted values are 0, 1 or 2.");
+						"Incorrect MCT value {}. Must be equal to 0, 1 or 2.", mct_mode);
 				return 1;
 			}
 			parameters->tcp_mct = (uint8_t) mct_mode;
@@ -1401,14 +1401,14 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					continue;
 				if (s.length() > GRK_MAX_COMMENT_LENGTH) {
 					spdlog::warn(
-							" Comment length {} is greater than maximum comment length {}. Ignoring\n",
+							" Comment length {} is greater than maximum comment length {}. Ignoring",
 							(uint32_t) s.length(), GRK_MAX_COMMENT_LENGTH);
 					continue;
 				}
 				size_t count = parameters->cp_num_comments;
 				if (count == GRK_NUM_COMMENTS_SUPPORTED) {
 					spdlog::warn(
-							" Grok encoder is limited to {} comments. Ignoring subsequent comments.\n",
+							" Grok encoder is limited to {} comments. Ignoring subsequent comments.",
 							GRK_NUM_COMMENTS_SUPPORTED);
 					break;
 				}
@@ -1453,16 +1453,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		if (parameters->cod_format == GRK_UNK_FMT) {
 			if (parameters->infile[0] == 0) {
 				spdlog::error("Missing input file parameter\n"
-						"Example: {} -i image.pgm -o image.j2k\n", argv[0]);
-				spdlog::error("   Help: {} -h\n", argv[0]);
+						"Example: {} -i image.pgm -o image.j2k", argv[0]);
+				spdlog::error("   Help: {} -h", argv[0]);
 				return 1;
 			}
 		}
 
 		if (parameters->outfile[0] == 0) {
 			spdlog::error("Missing output file parameter\n"
-					"Example: {} -i image.pgm -o image.j2k\n", argv[0]);
-			spdlog::error("   Help: {} -h\n", argv[0]);
+					"Example: {} -i image.pgm -o image.j2k", argv[0]);
+			spdlog::error("   Help: {} -h", argv[0]);
 			return 1;
 		}
 	}
@@ -1475,7 +1475,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		spdlog::error(
 				"-F rawWidth,rawHeight,rawComp,rawBitDepth,s/u (Signed/Unsigned)");
 		spdlog::error("Example: -i lena.raw -o lena.j2k -F 512,512,3,8,u");
-		spdlog::error("Aborting");
 		return 1;
 	}
 
@@ -1497,7 +1496,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			|| (parameters->cp_ty0 > 0
 					&& parameters->cp_ty0 > parameters->image_offset_y0)) {
 		spdlog::error(
-				"Tile offset cannot be greater than image offset : TX0({})<=IMG_X0({}) TYO({})<=IMG_Y0({}) \n",
+				"Tile offset cannot be greater than image offset : TX0({})<=IMG_X0({}) TYO({})<=IMG_Y0({}) ",
 				parameters->cp_tx0, parameters->image_offset_x0,
 				parameters->cp_ty0, parameters->image_offset_y0);
 		return 1;
@@ -1506,7 +1505,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 	for (uint32_t i = 0; i < parameters->numpocs; i++) {
 		if (parameters->POC[i].prg == -1) {
 			spdlog::error(
-					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] !!\n",
+					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] !!",
 					i + 1);
 		}
 	}
@@ -1641,7 +1640,7 @@ int main(int argc, char **argv) {
 		} else {
 			auto dir = opendir(initParams.img_fol.imgdirpath);
 			if (!dir) {
-				spdlog::error("Could not open Folder {}\n",
+				spdlog::error("Could not open Folder {}",
 						initParams.img_fol.imgdirpath);
 				success = 1;
 				goto cleanup;
@@ -1662,7 +1661,7 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (num_compressed_files) {
-			spdlog::info("encode time: {} ms\n",
+			spdlog::info("encode time: {} ms",
 					(elapsed.count() * 1000) / (double) num_compressed_files);
 		}
 	} catch (std::bad_alloc &ba) {
@@ -1897,7 +1896,7 @@ static bool plugin_compress_callback(
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec > 16) {
-			spdlog::error("Precision = {} not supported:\n",
+			spdlog::error("Precision = {} not supported:",
 					image->comps[i].prec);
 			bSuccess = false;
 			goto cleanup;
@@ -1916,7 +1915,7 @@ static bool plugin_compress_callback(
 		}
 		if ((parameters->tcp_mct == 2) && (!parameters->mct_data)) {
 			spdlog::error("Custom MCT has been set but no array-based MCT");
-			spdlog::error("has been provided. Aborting.");
+			spdlog::error("has been provided.");
 			bSuccess = false;
 			goto cleanup;
 		}
@@ -1952,7 +1951,7 @@ static bool plugin_compress_callback(
 					* parameters->framerate / 1e6;
 			if (msamplespersec > limitMSamplesSec[mainlevel]) {
 				fprintf(stderr,
-						"Warning: MSamples/sec is %f, whereas limit is %d.\n",
+						"Warning: MSamples/sec is %f, whereas limit is %d.",
 						msamplespersec, limitMSamplesSec[mainlevel]);
 			}
 		}
@@ -2028,14 +2027,14 @@ static bool plugin_compress_callback(
 		auto fp = fopen(outfile, "wb");
 		if (!fp) {
 			spdlog::error(
-					"Buffer compress: failed to open file {} for writing\n",
+					"Buffer compress: failed to open file {} for writing",
 					outfile);
 		} else {
 			auto len = grk_stream_get_write_mem_stream_length(stream);
 			size_t written = fwrite(info->compressBuffer, 1, len, fp);
 			if (written != len) {
 				spdlog::error(
-						"Buffer compress: only {} bytes written out of {} total\n",
+						"Buffer compress: only {} bytes written out of {} total",
 						len, written);
 			}
 			if (fp)

@@ -58,7 +58,7 @@ void decode_synch_plugin_with_host(TileProcessor *tcd) {
 											+ BIBO_EXTRA_BITS) - 2;
 							if (cblk->segs[0].numpasses > maxPasses) {
 								GROK_INFO(
-										"Number of passes %d in segment exceeds BIBO maximum %d. Image will be decoded on CPU.\n",
+										"Number of passes %d in segment exceeds BIBO maximum %d. Image will be decoded on CPU.",
 										cblk->segs[0].numpasses, maxPasses);
 								throw PluginDecodeUnsupportedException();
 							}

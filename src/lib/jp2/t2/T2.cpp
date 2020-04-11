@@ -225,7 +225,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 			auto img_comp = image->comps + current_pi->compno;
 /*
 			GROK_INFO(
-					"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n\n",
+					"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
 				 current_pi->poc.prg1, current_pi->compno,
 				 current_pi->resno, current_pi->precno,
 				 current_pi->layno);
@@ -399,7 +399,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 			return false;
 		}
 	}
-	//GROK_INFO("present=%d \n", present);
+	//GROK_INFO("present=%d ", present);
 	if (!present) {
 		if (!bio->inalign())
 			return false;
@@ -488,7 +488,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 			/* if cblk not included */
 			if (!included) {
 			 cblk->numPassesInPacket = 0;
-				//GROK_INFO("included=%d \n", included);
+				//GROK_INFO("included=%d ", included);
 				continue;
 			}
 
@@ -515,7 +515,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 
 				if (K_msbs > band->numbps) {
 					GROK_WARN(
-							"More missing bit planes (%d) than band bit planes (%d).\n",
+							"More missing bit planes (%d) than band bit planes (%d).",
 							K_msbs, band->numbps);
 				 cblk->numbps = band->numbps;
 				} else {
@@ -525,7 +525,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 				if (cblk->numbps
 						> max_precision_jpeg_2000 + GRK_J2K_MAXRLVLS * 5) {
 					GROK_WARN(
-							"Number of bit planes %u is impossibly large.\n",
+							"Number of bit planes %u is impossibly large.",
 						 cblk->numbps);
 					return false;
 				}
@@ -602,7 +602,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 #endif
 				/*
 				GROK_INFO(
-						"included=%d numPassesInPacket=%d increment=%d len=%d \n",
+						"included=%d numPassesInPacket=%d increment=%d len=%d ",
 					 included, seg->numPassesInPacket, increment,
 					 seg->newlen);
 						*/
@@ -639,7 +639,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	}
 
 	auto header_length = (size_t) (header_data - *header_data_start);
-	//GROK_INFO("hdrlen=%d \n", header_length);
+	//GROK_INFO("hdrlen=%d ", header_length);
 	//GROK_INFO("packet body\n");
 	*modified_length_ptr -= header_length;
 	*header_data_start += header_length;
@@ -691,7 +691,7 @@ bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 							"read packet data: segment offset (%u) plus segment length %u is greater than "
 							"total length \nof all segments (%u) for codeblock "
 							"%d (layer=%d, prec=%d, band=%d, res=%d, comp=%d)."
-							"Truncating packet data.\n",
+							"Truncating packet data.",
 							offset, seg->numBytesInPacket, len, cblkno, p_pi->layno,
 							p_pi->precno, bandno, p_pi->resno, p_pi->compno);
 					seg->numBytesInPacket = (uint32_t)(len - offset);
@@ -795,13 +795,13 @@ bool T2::skip_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 				if (((*p_data_read + seg->numBytesInPacket) < (*p_data_read))
 						|| ((*p_data_read + seg->numBytesInPacket) > max_length)) {
 					GROK_ERROR(
-							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)\n",
+							"skip: segment too long (%d) with max (%d) for codeblock %d (p=%d, b=%d, r=%d, c=%d)",
 							seg->numBytesInPacket, max_length, cblkno, p_pi->precno,
 							bandno, p_pi->resno, p_pi->compno);
 					return false;
 				}
 
-				//GROK_INFO( "skip packet: p_data_read = %d, bytes in packet =  %d \n",
+				//GROK_INFO( "skip packet: p_data_read = %d, bytes in packet =  %d ",
 				//		*p_data_read, seg->numBytesInPacket);
 				*(p_data_read) += seg->numBytesInPacket;
 				seg->numpasses += seg->numPassesInPacket;
@@ -1091,7 +1091,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 
 			if (cblk_layer->len > num_bytes_available) {
 				GROK_ERROR(
-						"Code block layer size %d exceeds number of available bytes %d in tile buffer\n",
+						"Code block layer size %d exceeds number of available bytes %d in tile buffer",
 						cblk_layer->len, num_bytes_available);
 				return false;
 			}

@@ -251,7 +251,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		info.outfile = stdout;
 	} else {
 		if ((info.outfile = fopen(filename, "wb")) == nullptr) {
-			spdlog::error("can't open {}\n", filename);
+			spdlog::error("can't open {}", filename);
 			info.success = false;
 			goto cleanup;
 		}
@@ -413,7 +413,7 @@ static grk_image* jpegtoimage(const char *filename,
 		imageInfo.infile = stdin;
 	} else {
 		if ((imageInfo.infile = fopen(filename, "rb")) == nullptr) {
-			spdlog::error("can't open {}\n", filename);
+			spdlog::error("can't open {}", filename);
 			return 0;
 		}
 	}
@@ -464,7 +464,7 @@ static grk_image* jpegtoimage(const char *filename,
 
 	bps = cinfo.data_precision;
 	if (bps != 8) {
-		spdlog::error("jpegtoimage: Unsupported image precision {}\n", bps);
+		spdlog::error("jpegtoimage: Unsupported image precision {}", bps);
 		imageInfo.success = false;
 		goto cleanup;
 	}
@@ -510,7 +510,7 @@ static grk_image* jpegtoimage(const char *filename,
 					(w - 1) * 1 + 1 : imageInfo.image->x0 + (w - 1) * 1 + 1;
 	if (imageInfo.image->x1 <= imageInfo.image->x0) {
 		spdlog::error("jpegtoimage: Bad value for image->x1({}) vs. "
-				"image->x0({})\n\tAborting.\n", imageInfo.image->x1,
+				"image->x0({})\n\tAborting.", imageInfo.image->x1,
 				imageInfo.image->x0);
 		imageInfo.success = false;
 		goto cleanup;
@@ -523,7 +523,7 @@ static grk_image* jpegtoimage(const char *filename,
 
 	if (imageInfo.image->y1 <= imageInfo.image->y0) {
 		spdlog::error("jpegtoimage: Bad value for image->y1({}) vs. "
-				"image->y0({})\n\tAborting.\n", imageInfo.image->y1,
+				"image->y0({})\n\tAborting.", imageInfo.image->y1,
 				imageInfo.image->y0);
 		imageInfo.success = false;
 		goto cleanup;

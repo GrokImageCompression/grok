@@ -235,11 +235,11 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 					ttype = 1;
 					continue;
 				}
-				spdlog::error(" read_pnm_header:unknown P7 TUPLTYPE %s\n",
+				spdlog::error(" read_pnm_header:unknown P7 TUPLTYPE %s",
 						type);
 				return;
 			}
-			spdlog::error("read_pnm_header:unknown P7 idf {}\n", idf);
+			spdlog::error("read_pnm_header:unknown P7 idf {}", idf);
 			return;
 		} /* if(format == 7) */
 
@@ -353,7 +353,7 @@ static grk_image* pnmtoimage(const char *filename,
 	uint64_t area = 0;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
-		spdlog::error("pnmtoimage:Failed to open {} for reading!\n", filename);
+		spdlog::error("pnmtoimage:Failed to open {} for reading!", filename);
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
@@ -530,7 +530,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 	if ((prec = image->comps[0].prec) > 16) {
 		spdlog::error("{}:{}:imagetopnm\n\tprecision {} is larger than 16"
-				"\n\t: refused.\n", __FILE__, __LINE__, prec);
+				"\n\t: refused.", __FILE__, __LINE__, prec);
 		rc = 1;
 		goto cleanup;
 	}
@@ -565,7 +565,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 					))) {
 		fdest = fopen(outfile, "wb");
 		if (!fdest) {
-			spdlog::error("failed to open {} for writing\n", outfile);
+			spdlog::error("failed to open {} for writing", outfile);
 			rc = 1;
 			goto cleanup;
 		}
@@ -730,7 +730,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 		if (!fdest)
 			fdest = fopen(destname, "wb");
 		if (!fdest) {
-			spdlog::error("failed to open {} for writing\n", destname);
+			spdlog::error("failed to open {} for writing", destname);
 			rc = 1;
 			goto cleanup;
 		}

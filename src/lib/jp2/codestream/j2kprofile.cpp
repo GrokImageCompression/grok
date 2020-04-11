@@ -142,7 +142,7 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters, grk_image *i
 			GROK_WARN(
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Number of decomposition levels <= 5\n"
-							"-> Number of decomposition levels forced to 5 (rather than %d)\n",
+							"-> Number of decomposition levels forced to 5 (rather than %d)",
 					parameters->numresolution + 1);
 			parameters->numresolution = 6;
 		}
@@ -152,14 +152,14 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters, grk_image *i
 			GROK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
-							"-> Number of decomposition levels forced to 1 (rather than %d)\n",
+							"-> Number of decomposition levels forced to 1 (rather than %d)",
 					parameters->numresolution + 1);
 			parameters->numresolution = 1;
 		} else if (parameters->numresolution > 7) {
 			GROK_WARN(
 					"JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 							"Number of decomposition levels >= 1 && <= 6\n"
-							"-> Number of decomposition levels forced to 6 (rather than %d)\n",
+							"-> Number of decomposition levels forced to 6 (rather than %d)",
 					parameters->numresolution + 1);
 			parameters->numresolution = 7;
 		}
@@ -234,7 +234,7 @@ bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 		GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 				"3 components"
 				"-> Number of components of input image (%d) is not compliant\n"
-				"-> Non-profile-3 codestream will be generated\n",
+				"-> Non-profile-3 codestream will be generated",
 				image->numcomps);
 		return false;
 	}
@@ -249,7 +249,7 @@ bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 					"JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 							"Precision of each component shall be 12 bits unsigned"
 							"-> At least component %d of input image (%d bits, %s) is not compliant\n"
-							"-> Non-profile-3 codestream will be generated\n",
+							"-> Non-profile-3 codestream will be generated",
 					i, image->comps[i].prec, tmp_str);
 			return false;
 		}
@@ -262,7 +262,7 @@ bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 			GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
 					"width <= 2048 and height <= 1080\n"
 					"-> Input image size %d x %d is not compliant\n"
-					"-> Non-profile-3 codestream will be generated\n",
+					"-> Non-profile-3 codestream will be generated",
 					image->comps[0].w, image->comps[0].h);
 			return false;
 		}
@@ -272,7 +272,7 @@ bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 			GROK_WARN("JPEG 2000 profile 4 (4k digital cinema) requires:\n"
 					"width <= 4096 and height <= 2160\n"
 					"-> Image size %d x %d is not compliant\n"
-					"-> Non-profile-4 codestream will be generated\n",
+					"-> Non-profile-4 codestream will be generated",
 					image->comps[0].w, image->comps[0].h);
 			return false;
 		}
@@ -425,7 +425,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (mainlevel > GRK_MAINLEVEL_MAX) {
 		GROK_WARN("IMF profile require mainlevel <= 11.\n"
 				"-> %d is thus not compliant\n"
-				"-> Non-IMF codestream will be generated\n", mainlevel);
+				"-> Non-IMF codestream will be generated", mainlevel);
 		ret = false;
 	}
 
@@ -435,7 +435,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (sublevel > tabMaxSubLevelFromMainLevel[mainlevel]) {
 		GROK_WARN("IMF profile require sublevel <= %d for mainlevel = %d.\n"
 				"-> %d is thus not compliant\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				tabMaxSubLevelFromMainLevel[mainlevel], mainlevel, sublevel);
 		ret = false;
 	}
@@ -444,14 +444,14 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (image->numcomps > 3) {
 		GROK_WARN("IMF profiles require at most 3 components.\n"
 				"-> Number of components of input image (%d) is not compliant\n"
-				"-> Non-IMF codestream will be generated\n", image->numcomps);
+				"-> Non-IMF codestream will be generated", image->numcomps);
 		ret = false;
 	}
 
 	if (image->x0 != 0 || image->y0 != 0) {
 		GROK_WARN("IMF profiles require image origin to be at 0,0.\n"
 				"-> %d,%d is not compliant\n"
-				"-> Non-IMF codestream will be generated\n", image->x0,
+				"-> Non-IMF codestream will be generated", image->x0,
 				image->y0 != 0);
 		ret = false;
 	}
@@ -459,7 +459,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->cp_tx0 != 0 || parameters->cp_ty0 != 0) {
 		GROK_WARN("IMF profiles require tile origin to be at 0,0.\n"
 				"-> %d,%d is not compliant\n"
-				"-> Non-IMF codestream will be generated\n", parameters->cp_tx0,
+				"-> Non-IMF codestream will be generated", parameters->cp_tx0,
 				parameters->cp_ty0);
 		ret = false;
 	}
@@ -472,7 +472,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n"
 								"-> %d,%d is lesser than %d,%d\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						parameters->cp_tdx, parameters->cp_tdy, image->x1,
 						image->y1);
 				ret = false;
@@ -498,7 +498,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 						"or to be (1024,1024), or (2048,2048) for 4K_R/8K_R "
 						"or (4096,4096) for 8K_R.\n"
 						"-> %d,%d is non conformant\n"
-						"-> Non-IMF codestream will be generated\n",
+						"-> Non-IMF codestream will be generated",
 						parameters->cp_tdx, parameters->cp_tdy);
 				ret = false;
 			}
@@ -515,7 +515,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN(
 					"IMF profiles require precision of each component to b in [8-16] bits unsigned"
 							"-> At least component %d of input image (%d bits, %s) is not compliant\n"
-							"-> Non-IMF codestream will be generated\n", i,
+							"-> Non-IMF codestream will be generated", i,
 					image->comps[i].prec, tmp_str);
 			ret = false;
 		}
@@ -526,28 +526,28 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 		if (i == 0 && image->comps[i].dx != 1) {
 			GROK_WARN(
 					"IMF profiles require XRSiz1 == 1. Here it is set to %d.\n"
-							"-> Non-IMF codestream will be generated\n",
+							"-> Non-IMF codestream will be generated",
 					image->comps[i].dx);
 			ret = false;
 		}
 		if (i == 1 && image->comps[i].dx != 1 && image->comps[i].dx != 2) {
 			GROK_WARN(
 					"IMF profiles require XRSiz2 == 1 or 2. Here it is set to %d.\n"
-							"-> Non-IMF codestream will be generated\n",
+							"-> Non-IMF codestream will be generated",
 					image->comps[i].dx);
 			ret = false;
 		}
 		if (i > 1 && image->comps[i].dx != image->comps[i - 1].dx) {
 			GROK_WARN("IMF profiles require XRSiz%d to be the same as XRSiz2. "
 					"Here it is set to %d instead of %d.\n"
-					"-> Non-IMF codestream will be generated\n", i + 1,
+					"-> Non-IMF codestream will be generated", i + 1,
 					image->comps[i].dx, image->comps[i - 1].dx);
 			ret = false;
 		}
 		if (image->comps[i].dy != 1) {
 			GROK_WARN("IMF profiles require YRsiz == 1. "
 					"Here it is set to %d for component i.\n"
-					"-> Non-IMF codestream will be generated\n",
+					"-> Non-IMF codestream will be generated",
 					image->comps[i].dy, i);
 			ret = false;
 		}
@@ -561,7 +561,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN("IMF 2K/2K_R profile require:\n"
 					"width <= 2048 and height <= 1556\n"
 					"-> Input image size %d x %d is not compliant\n"
-					"-> Non-IMF codestream will be generated\n",
+					"-> Non-IMF codestream will be generated",
 					image->comps[0].w, image->comps[0].h);
 			ret = false;
 		}
@@ -572,7 +572,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN("IMF 4K/4K_R profile require:\n"
 					"width <= 4096 and height <= 3112\n"
 					"-> Input image size %d x %d is not compliant\n"
-					"-> Non-IMF codestream will be generated\n",
+					"-> Non-IMF codestream will be generated",
 					image->comps[0].w, image->comps[0].h);
 			ret = false;
 		}
@@ -583,7 +583,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN("IMF 8K/8K_R profile require:\n"
 					"width <= 8192 and height <= 6224\n"
 					"-> Input image size %d x %d is not compliant\n"
-					"-> Non-IMF codestream will be generated\n",
+					"-> Non-IMF codestream will be generated",
 					image->comps[0].w, image->comps[0].h);
 			ret = false;
 		}
@@ -596,14 +596,14 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->roi_compno != -1) {
 		GROK_WARN("IMF profile forbid RGN / region of interest marker.\n"
 				"-> Compression parameters specify a ROI\n"
-				"-> Non-IMF codestream will be generated\n");
+				"-> Non-IMF codestream will be generated");
 		ret = false;
 	}
 
 	if (parameters->cblockw_init != 32 || parameters->cblockh_init != 32) {
 		GROK_WARN("IMF profile require code block size to be 32x32.\n"
 				"-> Compression parameters set it to %dx%d.\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				parameters->cblockw_init, parameters->cblockh_init);
 		ret = false;
 	}
@@ -611,7 +611,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->prog_order != GRK_CPRL) {
 		GROK_WARN("IMF profile require progression order to be CPRL.\n"
 				"-> Compression parameters set it to %d.\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				parameters->prog_order);
 		ret = false;
 	}
@@ -619,7 +619,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->numpocs != 0) {
 		GROK_WARN("IMF profile forbid POC markers.\n"
 				"-> Compression parameters set %d POC.\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				parameters->numpocs);
 		ret = false;
 	}
@@ -628,7 +628,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->cblk_sty != 0) {
 		GROK_WARN("IMF profile forbid mode switch in code block style.\n"
 				"-> Compression parameters set code block style to %d.\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				parameters->cblk_sty);
 		ret = false;
 	}
@@ -640,7 +640,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN(
 					"IMF 2K/4K/8K profiles require 9-7 Irreversible Transform.\n"
 							"-> Compression parameters set it to reversible.\n"
-							"-> Non-IMF codestream will be generated\n");
+							"-> Non-IMF codestream will be generated");
 			ret = false;
 		}
 	} else {
@@ -649,7 +649,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN(
 					"IMF 2K/4K/8K profiles require 5-3 reversible Transform.\n"
 							"-> Compression parameters set it to irreversible.\n"
-							"-> Non-IMF codestream will be generated\n");
+							"-> Non-IMF codestream will be generated");
 			ret = false;
 		}
 	}
@@ -658,7 +658,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 	if (parameters->tcp_numlayers != 1) {
 		GROK_WARN("IMF 2K/4K/8K profiles require 1 single quality layer.\n"
 				"-> Number of layers is %d.\n"
-				"-> Non-IMF codestream will be generated\n",
+				"-> Non-IMF codestream will be generated",
 				parameters->tcp_numlayers);
 		ret = false;
 	}
@@ -669,7 +669,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 		if (!(NL >= 1 && NL <= 5)) {
 			GROK_WARN("IMF 2K profile requires 1 <= NL <= 5:\n"
 					"-> Number of decomposition levels is %d.\n"
-					"-> Non-IMF codestream will be generated\n", NL);
+					"-> Non-IMF codestream will be generated", NL);
 			ret = false;
 		}
 		break;
@@ -677,7 +677,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 		if (!(NL >= 1 && NL <= 6)) {
 			GROK_WARN("IMF 4K profile requires 1 <= NL <= 6:\n"
 					"-> Number of decomposition levels is %d.\n"
-					"-> Non-IMF codestream will be generated\n", NL);
+					"-> Non-IMF codestream will be generated", NL);
 			ret = false;
 		}
 		break;
@@ -685,7 +685,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 		if (!(NL >= 1 && NL <= 7)) {
 			GROK_WARN("IMF 8K profile requires 1 <= NL <= 7:\n"
 					"-> Number of decomposition levels is %d.\n"
-					"-> Non-IMF codestream will be generated\n", NL);
+					"-> Non-IMF codestream will be generated", NL);
 			ret = false;
 		}
 		break;
@@ -695,7 +695,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 2K_R profile requires 1 <= NL <= 5 for XTsiz >= 2048:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -704,7 +704,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 2K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -717,7 +717,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz >= 4096:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -726,7 +726,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -735,7 +735,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -748,7 +748,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 7 for XTsiz >= 8192:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -757,7 +757,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 6 for XTsiz in [4096,8192[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -766,7 +766,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 5 for XTsiz in [2048,4096[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -775,7 +775,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF 4K_R profile requires 1 <= NL <= 4 for XTsiz in [1024,2048[:\n"
 								"-> Number of decomposition levels is %d.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}
@@ -792,7 +792,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 			GROK_WARN(
 					"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n"
 							"-> Supplied values are different from that.\n"
-							"-> Non-IMF codestream will be generated\n", NL);
+							"-> Non-IMF codestream will be generated", NL);
 			ret = false;
 		}
 	} else {
@@ -802,7 +802,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters, grk_image *image)
 				GROK_WARN(
 						"IMF profiles require PPx = PPy = 7 for NLLL band, else 8.\n"
 								"-> Supplied values are different from that.\n"
-								"-> Non-IMF codestream will be generated\n",
+								"-> Non-IMF codestream will be generated",
 						NL);
 				ret = false;
 			}

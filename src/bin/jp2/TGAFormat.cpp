@@ -274,7 +274,7 @@ static grk_image* tgatoimage(const char *filename,
 
 	f = fopen(filename, "rb");
 	if (!f) {
-		spdlog::error("Failed to open {} for reading !!\n", filename);
+		spdlog::error("Failed to open {} for reading !!", filename);
 		return 0;
 	}
 
@@ -418,7 +418,7 @@ static grk_image* tgatoimage(const char *filename,
 				index++;
 			}
 		} else {
-			spdlog::error("Currently unsupported bit depth : {}\n", filename);
+			spdlog::error("Currently unsupported bit depth : {}", filename);
 		}
 	}
 	cleanup: if (!grk::safe_fclose(f)) {
@@ -442,7 +442,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
-		spdlog::error("failed to open {} for writing\n", outfile);
+		spdlog::error("failed to open {} for writing", outfile);
 		goto beach;
 	}
 
@@ -451,7 +451,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	}
 	for (i = 0; i < image->numcomps; i++) {
 		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}\n", i,
+			spdlog::info("Component %u characteristics: {}x{}x{} {}", i,
 					image->comps[i].w, image->comps[i].h, image->comps[i].prec,
 					image->comps[i].sgnd == 1 ? "signed" : "unsigned");
 
@@ -520,7 +520,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("imagetotga: failed to write 1 byte for {}\n",
+				spdlog::error("imagetotga: failed to write 1 byte for {}",
 						outfile);
 				goto beach;
 			}
@@ -532,7 +532,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("failed to write 1 byte for {}\n", outfile);
+				spdlog::error("failed to write 1 byte for {}", outfile);
 				goto beach;
 			}
 			if (r > 255.)
@@ -543,7 +543,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 			res = fwrite(&value, 1, 1, fdest);
 
 			if (res < 1) {
-				spdlog::error("imagetotga: failed to write 1 byte for {}\n",
+				spdlog::error("imagetotga: failed to write 1 byte for {}",
 						outfile);
 				goto beach;
 			}
@@ -558,7 +558,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 				res = fwrite(&value, 1, 1, fdest);
 
 				if (res < 1) {
-					spdlog::error("imagetotga: failed to write 1 byte for {}\n",
+					spdlog::error("imagetotga: failed to write 1 byte for {}",
 							outfile);
 					goto beach;
 				}

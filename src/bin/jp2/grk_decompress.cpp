@@ -290,20 +290,20 @@ static bool parse_precision(const char *option,
 		}
 		if (count == 3) {
 			if ((prec < 1) || (prec > 32)) {
-				spdlog::error("Invalid precision {} in precision option {}\n",
+				spdlog::error("Invalid precision {} in precision option {}",
 						prec, option);
 				result = false;
 				break;
 			}
 			if ((mode != 'C') && (mode != 'S')) {
 				spdlog::error(
-						"Invalid precision mode %c in precision option {}\n",
+						"Invalid precision mode %c in precision option {}",
 						mode, option);
 				result = false;
 				break;
 			}
 			if (comma != ',') {
-				spdlog::error("Invalid character %c in precision option {}\n",
+				spdlog::error("Invalid character %c in precision option {}",
 						comma, option);
 				result = false;
 				break;
@@ -363,7 +363,7 @@ static bool parse_precision(const char *option,
 			}
 			remaining += 1;
 		} else {
-			spdlog::error("Could not parse precision option {}\n", option);
+			spdlog::error("Could not parse precision option {}", option);
 			result = false;
 			break;
 		}
@@ -382,7 +382,7 @@ int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 
 	dir = opendir(imgdirpath);
 	if (!dir) {
-		spdlog::error("Could not open Folder {}\n", imgdirpath);
+		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 1;
 	}
 
@@ -402,7 +402,7 @@ int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_decompress_parameters *parameters) {
 	if (parameters->verbose)
-		spdlog::info("File Number \"{}\"\n", image_filename.c_str());
+		spdlog::info("File Number \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(get_path_separator()) + image_filename;
 	if (!grk::jpeg2000_file_format(infilename.c_str(),
@@ -556,7 +556,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				default:
 					spdlog::error(
 							"Unknown input file format: {} \n"
-									"        Known file formats are *.j2k, *.jp2 or *.jpc\n",
+									"        Known file formats are *.j2k, *.jp2 or *.jpc",
 							infile);
 					return 1;
 				}
@@ -614,7 +614,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!\n",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!",
 						outformat);
 				return 1;
 			}
@@ -637,7 +637,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!\n",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!",
 						outfile);
 				return 1;
 			}
@@ -766,8 +766,8 @@ int parse_cmdline_decoder(int argc, char **argv,
 		if (parameters->decod_format == GRK_UNK_FMT) {
 			if ((parameters->infile[0] == 0) || (parameters->outfile[0] == 0)) {
 				spdlog::error("Required parameters are missing\n"
-						"Example: {} -i image.j2k -o image.pgm\n", argv[0]);
-				spdlog::error("   Help: {} -h\n", argv[0]);
+						"Example: {} -i image.j2k -o image.pgm", argv[0]);
+				spdlog::error("   Help: {} -h", argv[0]);
 				return 1;
 			}
 		}
@@ -1059,7 +1059,7 @@ void MycmsLogErrorHandlerFunction(cmsContext ContextID,
 		cmsUInt32Number ErrorCode, const char *Text) {
 	(void) ContextID;
 	(void) ErrorCode;
-	spdlog::warn(" LCMS error: {}\n", Text);
+	spdlog::warn(" LCMS error: {}", Text);
 }
 #endif
 
@@ -1150,7 +1150,7 @@ int main(int argc, char **argv) {
 			} else {
 				auto dir = opendir(initParams.img_fol.imgdirpath);
 				if (!dir) {
-					spdlog::error("Could not open Folder {}\n",
+					spdlog::error("Could not open Folder {}",
 							initParams.img_fol.imgdirpath);
 					rc = EXIT_FAILURE;
 					goto cleanup;
@@ -1169,7 +1169,7 @@ int main(int argc, char **argv) {
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 		if (num_decompressed_images) {
-			spdlog::info("decode time: {} ms\n",
+			spdlog::info("decode time: {} ms",
 					(elapsed.count() * 1000)
 							/ (double) num_decompressed_images);
 		}
@@ -1320,7 +1320,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
 	if (num_decompressed_images && success == 0) {
-		spdlog::info("decode time: {} ms\n",
+		spdlog::info("decode time: {} ms",
 				(elapsed.count() * 1000) / (double) num_decompressed_images);
 	}
 	cleanup: if (dirptr) {
@@ -1506,7 +1506,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	// limit to 16 bit precision
 	for (uint32_t i = 0; i < info->image->numcomps; ++i) {
 		if (info->image->comps[i].prec > 16) {
-			spdlog::error("grk_decompress: Precision = {} not supported:\n",
+			spdlog::error("grk_decompress: Precision = {} not supported:",
 					info->image->comps[i].prec);
 			failed = 1;
 			goto cleanup;
@@ -1538,7 +1538,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			goto cleanup;
 		}
 		if (parameters->verbose)
-			spdlog::info("Tile {} was decoded.\n\n", parameters->tile_index);
+			spdlog::info("Tile {} was decoded.\n", parameters->tile_index);
 	}
 
 	cleanup: if (info->l_stream)
@@ -1626,7 +1626,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				|| info->decoder_parameters->cod_format == GRK_PNG_FMT);
 		if (!canStoreXMP && parameters->verbose) {
 			spdlog::warn(
-					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.\n",
+					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.",
 					infile, outfile);
 		}
 	}
@@ -1636,7 +1636,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 				== GRK_TIF_FMT);
 		if (!canStoreIPTC_IIM && parameters->verbose) {
 			spdlog::warn(
-					" Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.\n",
+					" Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.",
 					infile, outfile);
 		}
 	}
@@ -1648,7 +1648,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 					spdlog::warn(
 							" Input file {} is in CIE colour space,\n"
 									"but the codec is unable to store this information in the output file {}.\n"
-									"The output image will therefore be converted to sRGB before saving.\n",
+									"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
 				color_cielab_to_rgb(image, info->decoder_parameters->verbose);
 #else
@@ -1669,7 +1669,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 					spdlog::warn(
 							" Input file {} contains a color profile,\n"
 									"but the codec is unable to store this profile in the output file {}.\n"
-									"The profile will therefore be applied to the output image before saving.\n",
+									"The profile will therefore be applied to the output image before saving.",
 							infile, outfile);
 				color_apply_icc_profile(image,
 						info->decoder_parameters->force_rgb,
@@ -1756,7 +1756,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		{
 			PNMFormat pnm(parameters->split_pnm);
 			if (!pnm.encode(image, outfile, 0, parameters->verbose)) {
-				spdlog::error("Outfile {} not generated\n", outfile);
+				spdlog::error("Outfile {} not generated", outfile);
 				failed = 1;
 			}
 		}
@@ -1766,7 +1766,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		{
 			PGXFormat pgx;
 			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
-				spdlog::error("Outfile {} not generated\n", outfile);
+				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
 		}
@@ -1776,7 +1776,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		{
 			BMPFormat bmp;
 			if (!bmp.encode(image, outfile, 0, parameters->verbose)) {
-				spdlog::error("Outfile {} not generated\n", outfile);
+				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
 		}
@@ -1787,7 +1787,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			TIFFFormat tif;
 			if (!tif.encode(image, outfile, parameters->compression,
 					parameters->verbose)) {
-				spdlog::error("Outfile {} not generated\n", outfile);
+				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
 		}
@@ -1798,7 +1798,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			RAWFormat raw(true);
 			if (raw.encode(image, outfile, 0, parameters->verbose)) {
 				spdlog::error(
-						"Error generating raw file. Outfile {} not generated\n",
+						"Error generating raw file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}
@@ -1810,7 +1810,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			RAWFormat raw(false);
 			if (raw.encode(image, outfile, 0, parameters->verbose)) {
 				spdlog::error(
-						"Error generating rawl file. Outfile {} not generated\n",
+						"Error generating rawl file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}
@@ -1821,7 +1821,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			TGAFormat tga;
 			if (!tga.encode(image, outfile, 0, parameters->verbose)) {
 				spdlog::error(
-						"Error generating tga file. Outfile {} not generated\n",
+						"Error generating tga file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}
@@ -1834,7 +1834,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			if (!jpeg.encode(image, outfile, parameters->compressionLevel,
 					parameters->verbose)) {
 				spdlog::error(
-						"Error generating jpeg file. Outfile {} not generated\n",
+						"Error generating jpeg file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}
@@ -1850,7 +1850,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			if (!png.encode(image, outfile, parameters->compressionLevel,
 					parameters->verbose)) {
 				spdlog::error(
-						"Error generating png file. Outfile {} not generated\n",
+						"Error generating png file. Outfile {} not generated",
 						outfile);
 				goto cleanup;
 			}
@@ -1861,7 +1861,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			 * and GROK_HAVE_LIBTIF or GROK_HAVE_LIBPNG is undefined
 			 */
 		default:
-			spdlog::error("Outfile {} not generated\n", outfile);
+			spdlog::error("Outfile {} not generated", outfile);
 			goto cleanup;
 			break;
 		}
