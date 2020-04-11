@@ -467,7 +467,7 @@ static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_cparameters *parameters) {
 
 	if (parameters->verbose)
-		spdlog::info("File \"{}\"\n", image_filename.c_str());
+		spdlog::info("File \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(grk::get_path_separator()) + image_filename;
 	if (parameters->decod_format == GRK_UNK_FMT) {

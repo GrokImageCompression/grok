@@ -72,20 +72,45 @@
 #include "color.h"
 #include <cassert>
 #include <memory>
+#include <string>
+
+template <typename ... Args>
+void log(grk_msg_callback msg_handler, void *l_data, char const * const format, Args & ... args) noexcept
+{
+    const int message_size = 512;
+	if ((format != nullptr)) {
+		char message[message_size];
+		memset(message, 0, message_size);
+		vsnprintf(message, message_size, format, args...);
+		msg_handler(message, l_data);
+	}
+}
+
+static void tiff_error(const char *msg, void *client_data){
+	(void)client_data;
+	if (msg){
+		std::string out = std::string("libtiff: ") + msg;
+		spdlog::error(out);
+	}
+}
+static void tiff_warn(const char *msg, void *client_data){
+	(void)client_data;
+	if (msg){
+		std::string out = std::string("libtiff: ") + msg;
+		spdlog::warn(out);
+	}
+}
 
 static bool tiffWarningHandlerVerbose = true;
 void MyTiffErrorHandler(const char *module, const char *fmt, va_list ap) {
 	(void) module;
-	vfprintf(stderr, fmt, ap);
-	fprintf(stderr, "\n");
+    log(tiff_error, nullptr,fmt,ap);
 }
 
 void MyTiffWarningHandler(const char *module, const char *fmt, va_list ap) {
 	(void) module;
-	if (tiffWarningHandlerVerbose) {
-		vfprintf(stdout, fmt, ap);
-		fprintf(stdout, "\n");
-	}
+	if (tiffWarningHandlerVerbose)
+		log(tiff_warn, nullptr,fmt,ap);
 }
 
 void tiffSetErrorAndWarningHandlers(bool verbose) {
@@ -1189,8 +1214,8 @@ static void set_resolution(double *res, float resx, float resy, short resUnit) {
 static grk_image* tiftoimage(const char *filename,
 		grk_cparameters *parameters) {
 	TIFF *tif;
-	uint32_t subsampling_dx = parameters->subsampling_dx;
-	uint32_t subsampling_dy = parameters->subsampling_dy;
+	uint16_t chroma_subsample_x;
+	uint16_t chroma_subsample_y;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_cmptparm cmptparm[4];
 	grk_image *image = nullptr;
@@ -1201,12 +1226,12 @@ static grk_image* tiftoimage(const char *filename,
 	float tiXRes = 0, tiYRes = 0;
 	uint32_t tiWidth = 0, tiHeight = 0;
 	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
-	bool success = true;
+	bool success = false;
 	bool isCIE = false;
 
 	tif = TIFFOpen(filename, "r");
 	if (!tif) {
-		spdlog::error("tiftoimage:Failed to open {} for reading\n", filename);
+		spdlog::error("tiftoimage:Failed to open {} for reading", filename);
 		return 0;
 	}
 
@@ -1231,24 +1256,20 @@ static grk_image* tiftoimage(const char *filename,
 	uint16 extrasamples = 0;
 	bool hasXRes = false, hasYRes = false, hasResUnit = false;
 	bool isSigned = (tiSf == SAMPLEFORMAT_INT);
+	chroma_subsample_x = 1;
+	chroma_subsample_y = 1;
 
 	// 1. sanity checks
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
-		spdlog::error("tiftoimage: Unsupported sample format {}\n"
-				"\tAborting.\n", tiSf);
-		success = false;
+		spdlog::error("tiftoimage: Unsupported sample format: {}.", tiSf);
 		goto cleanup;
 	}
 	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
-		spdlog::error("tiftoimage: Bad value for samples per pixel == %hu.\n"
-				"\tAborting.\n", tiSpp);
-		success = false;
+		spdlog::error("tiftoimage: Unsupported samples per pixel: {}.", tiSpp);
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
-		spdlog::error("tiftoimage: Bad values for Bits == {}.\n"
-				"\tMax. 16 Bits are allowed here.\n\tAborting.\n", tiBps);
-		success = false;
+		spdlog::error("tiftoimage: Unsupported precision {}. Maximum 16 Bits supported.\n", tiBps);
 		goto cleanup;
 	}
 	if (tiPhoto != PHOTOMETRIC_MINISBLACK && tiPhoto != PHOTOMETRIC_MINISWHITE
@@ -1257,16 +1278,13 @@ static grk_image* tiftoimage(const char *filename,
 			&& tiPhoto != PHOTOMETRIC_YCBCR
 			&& tiPhoto != PHOTOMETRIC_SEPARATED) {
 		spdlog::error("tiftoimage: Unsupported color format {}.\n"
-				"\tOnly RGB(A), GRAY(A), CIELAB, YCC and CMKYK have been implemented",
+				"Only RGB(A), GRAY(A), CIELAB, YCC and CMKYK have been implemented.",
 				(int) tiPhoto);
-		spdlog::error("\tAborting");
-		success = false;
 		goto cleanup;
 	}
 	if (tiWidth == 0 || tiHeight == 0) {
-		spdlog::error("tiftoimage: Bad values for width(%u) "
-				"and/or height(%u)\n\tAborting.\n", tiWidth, tiHeight);
-		success = false;
+		spdlog::error("tiftoimage: Width({}) and height({}) must both "
+				"be non-zero", tiWidth, tiHeight);
 		goto cleanup;
 
 	}
@@ -1279,7 +1297,7 @@ static grk_image* tiftoimage(const char *filename,
 		if (parameters->verbose)
 			spdlog::warn("Input image bitdepth is {} bits\n"
 					"TIF conversion has automatically rescaled to 12-bits\n"
-					"to comply with cinema profiles.\n", tiBps);
+					"to comply with cinema profiles.", tiBps);
 	} else {
 		is_cinema = 0U;
 	}
@@ -1308,6 +1326,12 @@ static grk_image* tiftoimage(const char *filename,
 		break;
 	case PHOTOMETRIC_YCBCR:
 		color_space = GRK_CLRSPC_SYCC;
+		TIFFGetField( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
+		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
+           spdlog::error("Unsupported chroma subsampling {},{}",
+        		   chroma_subsample_x,chroma_subsample_y );
+           goto cleanup;
+		}
 		numcomps += 3;
 		break;
 	case PHOTOMETRIC_SEPARATED:
@@ -1315,13 +1339,10 @@ static grk_image* tiftoimage(const char *filename,
 		numcomps += 4;
 		break;
 	default:
+		spdlog::error("Unsupported colour space {}.",tiPhoto );
+		goto cleanup;
 		break;
 	}
-	if (numcomps == 0) {
-		success = false;
-		goto cleanup;
-	}
-
 	if (tiPhoto == PHOTOMETRIC_CIELAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
 			if (parameters->verbose)
@@ -1342,7 +1363,6 @@ static grk_image* tiftoimage(const char *filename,
 		if (PHOTOMETRIC_MINISWHITE || tiBps != 8) {
 			spdlog::error(
 					"tiftoimage: only non-inverted 8-bit signed images are supported");
-			success = false;
 			goto cleanup;
 		}
 	}
@@ -1350,37 +1370,29 @@ static grk_image* tiftoimage(const char *filename,
 	// 4. create image
 	for (uint32_t j = 0; j < numcomps; j++) {
 		cmptparm[j].prec = tiBps;
-		cmptparm[j].dx = subsampling_dx;
-		cmptparm[j].dy = subsampling_dy;
+		bool chroma = (j==1 || j==2);
+		cmptparm[j].dx = chroma ? chroma_subsample_x : 1;
+		cmptparm[j].dy = chroma ? chroma_subsample_y : 1;
 		cmptparm[j].w = w;
 		cmptparm[j].h = h;
 	}
 	image = grk_image_create(numcomps, &cmptparm[0], color_space);
 	if (!image) {
-		success = false;
 		goto cleanup;
 	}
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
-	image->x1 =
-			!image->x0 ?
-					(w - 1) * subsampling_dx + 1 :
-					image->x0 + (w - 1) * subsampling_dx + 1;
+	image->x1 =	image->x0 + (w - 1) * 1 + 1;
 	if (image->x1 <= image->x0) {
 		spdlog::error("tiftoimage: Bad value for image->x1({}) vs. "
-				"image->x0({})\n\tAborting.\n", image->x1, image->x0);
-		success = false;
+				"image->x0({}).", image->x1, image->x0);
 		goto cleanup;
 	}
 	image->y0 = parameters->image_offset_y0;
-	image->y1 =
-			!image->y0 ?
-					(h - 1) * subsampling_dy + 1 :
-					image->y0 + (h - 1) * subsampling_dy + 1;
+	image->y1 =	image->y0 + (h - 1) * 1 + 1;
 	if (image->y1 <= image->y0) {
 		spdlog::error("tiftoimage: Bad value for image->y1({}) vs. "
-				"image->y0({})\n\tAborting.\n", image->y1, image->y0);
-		success = false;
+				"image->y0({}).", image->y1, image->y0);
 		goto cleanup;
 	}
 	for (uint32_t j = 0; j < numcomps; j++) {
@@ -1442,6 +1454,7 @@ static grk_image* tiftoimage(const char *filename,
 		image->xmp_buf = grk_buffer_new(xmp_len);
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
+	success = true;
 
 	// 9. read pixel data
 	if (isSigned)
@@ -1559,8 +1572,8 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
-				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
-						"vs. strip_size(%lld).\n\tAborting.\n",
+				spdlog::error("tiftoimage: Bad value for ssize({}) "
+						"vs. strip_size({}).",
 						(long long) ssize, (long long) strip_size);
 				success = false;
 				goto local_cleanup;
