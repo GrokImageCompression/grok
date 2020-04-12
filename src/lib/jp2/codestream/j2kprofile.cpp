@@ -646,8 +646,18 @@ void J2KProfile::set_broadcast_parameters(grk_cparameters *parameters,
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
-	if (parameters->prog_order == GRK_COMP_PARAM_DEFAULT_PROG_ORDER)
-		parameters->prog_order = GRK_CPRL;
+	parameters->prog_order = GRK_CPRL;
+
+	/* One tile part for each component */
+	parameters->tp_flag = 'C';
+	parameters->tp_on = 1;
+
+	/* No ROI */
+	parameters->roi_compno = -1;
+
+	/* No subsampling */
+	parameters->subsampling_dx = 1;
+	parameters->subsampling_dy = 1;
 
 	if (profile != GRK_PROFILE_BC_MULTI_R)
 		parameters->irreversible = true;
