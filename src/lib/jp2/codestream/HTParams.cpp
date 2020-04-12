@@ -190,16 +190,17 @@ void param_qcd::set_rev_quant(uint32_t bit_depth,
   B += is_employing_color_transform ? 1 : 0; //1 bit for RCT
   uint32_t s = 0;
   float bibo_l = bibo_gains::get_bibo_gain_l(num_decomps, true);
-  int X = (int) ceil(log(bibo_l*bibo_l)/M_LN2/0.9f);//David's code uses 0.9
+  //we leave some leeway for numerical error by multiplying by 1.1f
+  int X = (int) ceil(log(bibo_l * bibo_l * 1.1f) / M_LN2);
   u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
   for (int d = (int32_t)num_decomps - 1; d >= 0; --d)
   {
 	float bibo_l = bibo_gains::get_bibo_gain_l((uint32_t)(d + 1), true);
 	float bibo_h = bibo_gains::get_bibo_gain_h((uint32_t)d, true);
-	X = (int) ceil(log(bibo_h*bibo_l)/M_LN2/0.9f);
+	X = (int) ceil(log(bibo_h*bibo_l * 1.1f) / M_LN2);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
-	X = (int) ceil(log(bibo_h*bibo_h)/M_LN2/0.9f);
+	X = (int) ceil(log(bibo_h*bibo_h  * 1.1f) / M_LN2);
 	u8_SPqcd[s++] = (uint8_t)((B + X) << 3);
   }
 }
@@ -254,10 +255,13 @@ uint32_t param_qcd::get_MAGBp() const
   uint32_t irrev = Sqcd & 0x1F;
   if (irrev == 0) //reversible
 	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-	  B = max(B, (uint32_t)(u8_SPqcd[i] >> 3));
+        B = max(B, (u8_SPqcd[i] >> 3) + get_num_guard_bits() - 1);
   else if (irrev == 2) //scalar expounded
 	for (uint32_t i = 0; i < 3 * num_decomps + 1; ++i)
-	  B = max(B, (uint32_t)(u16_SPqcd[i] >> 11));
+    {
+      int nb = num_decomps - (i ? (i - 1) / 3 : 0); //decomposition level
+      B = max(B, (u16_SPqcd[i] >> 11) + get_num_guard_bits() - nb);
+    }
   else
 	assert(0);
 
@@ -292,24 +296,6 @@ float param_qcd::irrev_get_delta(uint32_t resolution, uint32_t subband) const
 uint32_t param_qcd::get_num_guard_bits() const
 {
   return (Sqcd >> 5);
-}
-
-//////////////////////////////////////////////////////////////////////////
-uint32_t param_qcd::get_Kmax(uint32_t resolution, uint32_t subband) const
-{
-  assert((resolution == 0 && subband == 0) ||
-		 (resolution <= num_decomps && subband > 0 && subband<4));
-  uint32_t num_bits = get_num_guard_bits();
-  uint32_t idx = max((uint32_t)(resolution - 1), 0U) * 3 + subband;
-  uint32_t irrev = Sqcd & 0x1F;
-  if (irrev == 0) //reversible
-	num_bits += (u8_SPqcd[idx] >> 3) - 1;
-  else if (irrev == 2) //scalar expounded
-	num_bits += (u16_SPqcd[idx] >> 11) - 1;
-  else
-	assert(0);
-
-  return num_bits;
 }
 
 

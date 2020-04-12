@@ -78,7 +78,6 @@ public:
 
   uint32_t get_num_guard_bits() const;
   uint32_t get_MAGBp() const;
-  uint32_t get_Kmax(uint32_t resolution, uint32_t subband) const;
   uint32_t rev_get_num_bits(uint32_t resolution, uint32_t subband) const;
   float irrev_get_delta(uint32_t resolution, uint32_t subband) const;
 
