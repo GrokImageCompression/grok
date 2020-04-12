@@ -1700,11 +1700,10 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 					"JPEG 2000 Scalable Digital Cinema profiles not supported");
 			parameters->rsiz = GRK_PROFILE_NONE;
 		} else {
-			if (J2KProfile::is_cinema_compliant(image, parameters->rsiz)) {
+			if (J2KProfile::is_cinema_compliant(image, parameters->rsiz))
 				J2KProfile::set_cinema_parameters(parameters, image);
-			} else {
+			else
 				parameters->rsiz = GRK_PROFILE_NONE;
-			}
 		}
 	} else if (GRK_IS_STORAGE(parameters->rsiz)) {
 		GROK_WARN("JPEG 2000 Long Term Storage profile not supported");
@@ -1737,47 +1736,9 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 			parameters->rsiz = GRK_PROFILE_NONE;
 		}
 	} else if (GRK_IS_IMF(parameters->rsiz)) {
-		//sanity check on reversible vs. irreversible
-		uint16_t profile = parameters->rsiz & 0xFF00;
-		if ((profile == GRK_PROFILE_IMF_2K_R)
-				|| (profile == GRK_PROFILE_IMF_4K_R)
-				|| (profile == GRK_PROFILE_IMF_8K_R)) {
-			if (parameters->irreversible) {
-				GROK_WARN(
-						"JPEG 2000 IMF profile; forcing irreversible flag to false");
-				parameters->irreversible = false;
-			}
-		} else {
-			if (!parameters->irreversible) {
-				GROK_WARN(
-						"JPEG 2000 IMF profile: forcing irreversible flag to true");
-				parameters->irreversible = true;
-			}
-		}
-		//sanity check on main and sub levels
-		auto main_level = parameters->rsiz & 0xF;
-		if (main_level > GRK_MAINLEVEL_MAX) {
-			GROK_WARN("JPEG 2000 IMF profile: invalid main-level %d",
-					main_level);
-			parameters->rsiz = GRK_PROFILE_NONE;
-		}
-		auto sub_level = (parameters->rsiz >> 4) & 0xF;
-		bool invalidSubLevel = sub_level > GRK_IMF_SUBLEVEL_MAX;
-		if (main_level > 3) {
-			invalidSubLevel = invalidSubLevel || (sub_level > main_level - 2);
-		} else {
-			invalidSubLevel = invalidSubLevel || (sub_level > 1);
-		}
-		if (invalidSubLevel) {
-			GROK_WARN("JPEG 2000 IMF profile: invalid sub-level %d", sub_level);
-			parameters->rsiz = GRK_PROFILE_NONE;
-		}
-
 		J2KProfile::set_imf_parameters(parameters, image);
-		if (!J2KProfile::is_imf_compliant(parameters, image)) {
+		if (!J2KProfile::is_imf_compliant(parameters, image))
 			parameters->rsiz = GRK_PROFILE_NONE;
-		}
-
 	} else if (GRK_IS_PART2(parameters->rsiz)) {
 		if (parameters->rsiz == ((GRK_PROFILE_PART2) | (GRK_EXTENSION_NONE))) {
 			GROK_WARN("JPEG 2000 Part-2 profile defined\n"
