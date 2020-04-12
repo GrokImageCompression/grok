@@ -1709,32 +1709,9 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 		GROK_WARN("JPEG 2000 Long Term Storage profile not supported");
 		parameters->rsiz = GRK_PROFILE_NONE;
 	} else if (GRK_IS_BROADCAST(parameters->rsiz)) {
-		// Todo: sanity check on tiling (must be done for each frame)
-		// Standard requires either single-tile or multi-tile. Multi-tile only permits
-		// 1 or 4 tiles per frame, where multiple tiles have identical
-		// sizes, and are configured in either 2x2 or 1x4 layout.
-
-		//sanity check on reversible vs. irreversible
-		uint16_t profile = parameters->rsiz & 0xFF00;
-		if (profile == GRK_PROFILE_BC_MULTI_R) {
-			if (parameters->irreversible) {
-				GROK_WARN(
-						"JPEG 2000 Broadcast profile; multi-tile reversible: forcing irreversible flag to false");
-				parameters->irreversible = false;
-			}
-		} else {
-			if (!parameters->irreversible) {
-				GROK_WARN(
-						"JPEG 2000 Broadcast profile: forcing irreversible flag to true");
-				parameters->irreversible = true;
-			}
-		}
-		// sanity check on levels
-		auto level = parameters->rsiz & 0xF;
-		if (level > GRK_MAINLEVEL_MAX) {
-			GROK_WARN("JPEG 2000 Broadcast profile: invalid level %d", level);
+		J2KProfile::set_broadcast_parameters(parameters, image);
+		if (!J2KProfile::is_broadcast_compliant(parameters, image))
 			parameters->rsiz = GRK_PROFILE_NONE;
-		}
 	} else if (GRK_IS_IMF(parameters->rsiz)) {
 		J2KProfile::set_imf_parameters(parameters, image);
 		if (!J2KProfile::is_imf_compliant(parameters, image))

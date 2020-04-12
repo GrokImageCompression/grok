@@ -165,14 +165,14 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_PROFILE_BC_SINGLE   0x0100 /** Single Tile Broadcast profile defined in 15444-1 AMD3 */
 #define GRK_PROFILE_BC_MULTI    0x0200 /** Multi Tile Broadcast profile defined in 15444-1 AMD3 */
 #define GRK_PROFILE_BC_MULTI_R  0x0300 /** Multi Tile Reversible Broadcast profile defined in 15444-1 AMD3 */
-#define GRK_PROFILE_BC_MASK		0x0F0F /** Mask for broadcast profile including main level */
+#define GRK_PROFILE_BC_MASK		0x030F /** Mask for broadcast profile including main level */
 #define GRK_PROFILE_IMF_2K      0x0400 /** 2K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_4K      0x0500 /** 4K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_8K      0x0600 /** 8K Single Tile Lossy IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_2K_R    0x0700 /** 2K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_4K_R    0x0800 /** 4K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
 #define GRK_PROFILE_IMF_8K_R    0x0900  /** 8K Single/Multi Tile Reversible IMF profile defined in 15444-1 AMD8 */
-#define GRK_PROFILE_MASK		0xBFFF  /** Mask for profile bits */
+#define GRK_PROFILE_MASK		0x0FFF  /** Mask for profile bits */
 #define GRK_PROFILE_PART2						0x8000 /** At least 1 extension defined in 15444-2 (Part-2) */
 #define GRK_PROFILE_PART2_EXTENSIONS_MASK       0x3FFF // Mask for Part-2 extension bits
 
@@ -237,14 +237,41 @@ enum GRK_SUPPORTED_FILE_FMT {
 * then maximum of (main-level -2) and 1.
 *
 */
+/** Extract profile without mainlevel/sublevel */
+#define GRK_GET_IMF_OR_BROADCAST_PROFILE(v)   ((v) & 0x0f00)
 
-#define GRK_IS_BROADCAST(v)  (((v) >= GRK_PROFILE_BC_SINGLE) && ((v) <= ((GRK_PROFILE_BC_MULTI_R) | (0x000b))) && (((v) & (~GRK_PROFILE_BC_MASK)) == 0))
-#define GRK_IS_IMF(v)        (((v) >= GRK_PROFILE_IMF_2K) && ((v) <= ((GRK_PROFILE_IMF_8K_R) | (0x009b))))
-#define GRK_GET_IMF_PROFILE(v)   ((v) & 0xff00)      /** Extract IMF profile without mainlevel/sublevel */
+#define GRK_MAINLEVEL_MAX    11   			/** Maximum main level */
+#define GRK_GET_MAINLEVEL(v) ((v) & 0xf)    /** Extract main level */
 
-#define GRK_MAINLEVEL_MAX    11   /** Maximum main level */
-#define GRK_GET_MAINLEVEL(v) ((v) & 0xf)         /** Extract main level */
-/** Max. Components Sampling Rate (MSamples/sec) per main level */
+
+/******* BROADCAST **********/
+
+#define GRK_IS_BROADCAST(v)  (  ((v) >= GRK_PROFILE_BC_SINGLE) && \
+								((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b) )  && \
+							  ( ((v) & 0xf) <= 0xb )    )
+
+/* Maximum Components Sampling Rate (Mbits/sec) per main level */
+#define GRK_BROADCAST_LEVEL_1_MBITSSEC   200      /** Mbits/sec for main level 1 */
+#define GRK_BROADCAST_LEVEL_2_MBITSSEC   200     /** Mbits/sec for main level 2 */
+#define GRK_BROADCAST_LEVEL_3_MBITSSEC   200     /** Mbits/sec for main level 3 */
+#define GRK_BROADCAST_LEVEL_4_MBITSSEC   400     /** Mbits/sec for main level 4 */
+#define GRK_BROADCAST_LEVEL_5_MBITSSEC   800     /** Mbits/sec for main level 5 */
+#define GRK_BROADCAST_LEVEL_6_MBITSSEC   1600    /** Mbits/sec for main level 6 */
+#define GRK_BROADCAST_LEVEL_7_MBITSSEC   3200    /** Mbits/sec for main level 7 */
+#define GRK_BROADCAST_LEVEL_8_MBITSSEC   6400    /** Mbits/sec for main level 8 */
+#define GRK_BROADCAST_LEVEL_9_MBITSSEC   12800   /** Mbits/sec for main level 9 */
+#define GRK_BROADCAST_LEVEL_10_MBITSSEC  25600   /** Mbits/sec for main level 10 */
+#define GRK_BROADCAST_LEVEL_11_MBITSSEC  51200   /** Mbits/sec for main level 11 */
+
+
+/********IMF ***************/
+
+#define GRK_IS_IMF(v)        (  ((v) >= GRK_PROFILE_IMF_2K) && \
+		                        ((v) <= (GRK_PROFILE_IMF_8K_R | 0x009b) )  && \
+							  ( ((v) & 0xf) <= 0xb ) && \
+							  ( ((v) & 0xf0) <= 0x90 )    )
+
+/* Maximum Components Sampling Rate (MSamples/sec) per main level */
 #define GRK_MAINLEVEL_1_MSAMPLESEC   65      /** MSamples/sec for main level 1 */
 #define GRK_MAINLEVEL_2_MSAMPLESEC   130     /** MSamples/sec for main level 2 */
 #define GRK_MAINLEVEL_3_MSAMPLESEC   195     /** MSamples/sec for main level 3 */
@@ -269,6 +296,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IMF_SUBLEVEL_7_MBITSSEC    12800     /** Mbits/s for IMF sub level 7 */
 #define GRK_IMF_SUBLEVEL_8_MBITSSEC    25600     /** Mbits/s for IMF sub level 8 */
 #define GRK_IMF_SUBLEVEL_9_MBITSSEC    51200     /** Mbits/s for IMF sub level 9 */
+/*********************************************************************************/
 
 /**
  * JPEG 2000 cinema profile codestream and component size limits

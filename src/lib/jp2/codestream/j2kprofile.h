@@ -69,8 +69,11 @@ public:
 	static bool is_cinema_compliant(grk_image *image, uint16_t rsiz);
 	static void set_imf_parameters(grk_cparameters *parameters, grk_image *image);
 	static bool is_imf_compliant(grk_cparameters *parameters, grk_image *image);
+	static void set_broadcast_parameters(grk_cparameters *parameters, grk_image *image);
+	static bool is_broadcast_compliant(grk_cparameters *parameters, grk_image *image);
 private:
 static int get_imf_max_NL(grk_cparameters *parameters, grk_image *image);
+static int get_broadcast_max_NL(grk_cparameters *parameters, grk_image *image);
 };
 
 }

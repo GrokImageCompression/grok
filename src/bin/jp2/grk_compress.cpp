@@ -384,7 +384,14 @@ static void encode_help_display(void) {
 	fprintf(stdout, "	Need to specify the frames per second.\n");
 	fprintf(stdout, "    Only 24 or 48 fps are currently allowed.\n");
 	fprintf(stdout,
-			"-IMF <PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS]\n");
+			"-U|-BROADCAST <PROFILE>[,mainlevel=X][,framerate=FPS]\n");
+	fprintf(stdout, "    Broadcast compliant codestream.\n");
+	fprintf(stdout, "    <PROFILE>=SINGLE,MULTI and MULTI_R.\n");
+	fprintf(stdout, "    X >= 0 and X <= 11.\n");
+	fprintf(stdout,
+			"    framerate > 0 may be specified to enhance checks and set maximum bit rate when Y > 0.\n");
+	fprintf(stdout,
+			"-z|-IMF <PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS]\n");
 	fprintf(stdout, "    Interoperable Master Format compliant codestream.\n");
 	fprintf(stdout, "    <PROFILE>=2K, 4K, 8K, 2K_R, 4K_R or 8K_R.\n");
 	fprintf(stdout, "    X >= 0 and X <= 11.\n");
@@ -474,7 +481,7 @@ static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		int fmt = get_file_format((char*) infilename.c_str());
 		if (fmt <= GRK_UNK_FMT)
 			return 1;
-		parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
+		parameters->decod_format = (GRK_SUPPORTED_FILE_FMT) fmt;
 	}
 	if (grk::strcpy_s(parameters->infile, sizeof(parameters->infile),
 			infilename.c_str()) != 0) {
@@ -586,6 +593,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				"Digital cinema 2K profile", false, 24, "unsigned integer",
 				cmd);
 		ValueArg<string> IMFArg("z", "IMF", "IMF profile", false, "", "string",
+				cmd);
+		ValueArg<string> BroadcastArg("U", "BROADCAST", "Broadcast profile", false, "", "string",
 				cmd);
 		ValueArg<string> imgDirArg("y", "ImgDir", "Image directory", false, "",
 				"string", cmd);
@@ -717,8 +726,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		if (inForArg.isSet()) {
 			auto dummy = "dummy." + inForArg.getValue();
 			char *infile = (char*) (dummy).c_str();
-			parameters->decod_format =
-					(GRK_SUPPORTED_FILE_FMT)get_file_format((char*) infile);
+			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
+					(char*) infile);
 			if (parameters->verbose
 					&& !isDecodedFormatSupported(parameters->decod_format)) {
 				spdlog::warn(
@@ -731,7 +740,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		if (inputFileArg.isSet()) {
 			char *infile = (char*) inputFileArg.getValue().c_str();
 			if (parameters->decod_format == GRK_UNK_FMT) {
-				parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(infile);
+				parameters->decod_format =
+						(GRK_SUPPORTED_FILE_FMT) get_file_format(infile);
 				if (!isDecodedFormatSupported(parameters->decod_format)) {
 					spdlog::error(
 							"Unknown input file format: {} \n"
@@ -763,7 +773,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			char *of = (char*) outForArg.getValue().c_str();
 			sprintf(outformat, ".%s", of);
 			img_fol->set_out_format = true;
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outformat);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
+					outformat);
 			switch (parameters->cod_format) {
 			case GRK_J2K_FMT:
 				img_fol->out_format = "j2k";
@@ -780,7 +791,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		if (outputFileArg.isSet()) {
 			char *outfile = (char*) outputFileArg.getValue().c_str();
-			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT)get_file_format(outfile);
+			parameters->cod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
+					outfile);
 			switch (parameters->cod_format) {
 			case GRK_J2K_FMT:
 			case GRK_JP2_FMT:
@@ -908,10 +920,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				int compno;
 				int lastdx = 1;
 				int lastdy = 1;
-				raw_cp->width = (uint32_t)width;
-				raw_cp->height = (uint32_t)height;
+				raw_cp->width = (uint32_t) width;
+				raw_cp->height = (uint32_t) height;
 				raw_cp->numcomps = (uint16_t) ncomp;
-				raw_cp->prec = (uint32_t)bitdepth;
+				raw_cp->prec = (uint32_t) bitdepth;
 				raw_cp->sgnd = raw_signed;
 				raw_cp->comps = (grk_raw_comp_cparameters*) malloc(
 						((uint32_t) (ncomp))
@@ -922,8 +934,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				}
 				for (compno = 0; compno < ncomp && !wrong; compno++) {
 					if (substr2 == nullptr) {
-						raw_cp->comps[compno].dx = (uint32_t)lastdx;
-						raw_cp->comps[compno].dy = (uint32_t)lastdy;
+						raw_cp->comps[compno].dx = (uint32_t) lastdx;
+						raw_cp->comps[compno].dy = (uint32_t) lastdy;
 					} else {
 						int dx, dy;
 						sep = strchr(substr2, ':');
@@ -931,8 +943,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							if (sscanf(substr2, "%dx%d", &dx, &dy) == 2) {
 								lastdx = dx;
 								lastdy = dy;
-								raw_cp->comps[compno].dx = (uint32_t)dx;
-								raw_cp->comps[compno].dy = (uint32_t)dy;
+								raw_cp->comps[compno].dx = (uint32_t) dx;
+								raw_cp->comps[compno].dy = (uint32_t) dy;
 								substr2 = nullptr;
 							} else {
 								wrong = true;
@@ -940,8 +952,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						} else {
 							if (sscanf(substr2, "%dx%d:%s", &dx, &dy, substr2)
 									== 3) {
-								raw_cp->comps[compno].dx = (uint32_t)dx;
-								raw_cp->comps[compno].dy = (uint32_t)dy;
+								raw_cp->comps[compno].dx = (uint32_t) dx;
+								raw_cp->comps[compno].dy = (uint32_t) dy;
 							} else {
 								wrong = true;
 							}
@@ -977,8 +989,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				spdlog::error("Tile dimensions must be strictly positive");
 				return 1;
 			}
-			parameters->cp_tdx = (uint32_t)cp_tdx;
-			parameters->cp_tdy = (uint32_t)cp_tdy;
+			parameters->cp_tdx = (uint32_t) cp_tdx;
+			parameters->cp_tdy = (uint32_t) cp_tdy;
 			parameters->tile_size_on = true;
 
 		}
@@ -1008,7 +1020,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				res_spec++;
 				s = strpbrk(s, "]") + 2;
 			} while (sep == ',');
-			parameters->res_spec = (uint32_t)res_spec;
+			parameters->res_spec = (uint32_t) res_spec;
 		}
 
 		if (codeBlockDimArg.isSet()) {
@@ -1027,8 +1039,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 								"    * width*height<=4096\n    * 4<=width,height<= 1024");
 				return 1;
 			}
-			parameters->cblockw_init = (uint32_t)cblockw_init;
-			parameters->cblockh_init = (uint32_t)cblockh_init;
+			parameters->cblockw_init = (uint32_t) cblockw_init;
+			parameters->cblockh_init = (uint32_t) cblockh_init;
 		}
 
 		if (progressionOrderArg.isSet()) {
@@ -1151,6 +1163,82 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							"Other options specified may be overridden");
 				}
 			}
+			if (BroadcastArg.isSet()) {
+				int mainlevel = 0;
+				int profile = 0;
+				int framerate = 0;
+				const char *msg =
+						"Wrong value for -BROADCAST. Should be "
+								"<PROFILE>[,mainlevel=X][,framerate=FPS] where <PROFILE> is one "
+								"of SINGLE/MULTI/MULTI_R.";
+				char *arg = (char*) BroadcastArg.getValue().c_str();
+				char *comma;
+
+				comma = strstr(arg, ",mainlevel=");
+				if (comma
+						&& sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1) {
+					spdlog::error("{}", msg);
+					return 1;
+				}
+				comma = strstr(arg, ",framerate=");
+				if (comma
+						&& sscanf(comma + 1, "framerate=%d", &framerate) != 1) {
+					spdlog::error("{}", msg);
+					return 1;
+				}
+
+				comma = strchr(arg, ',');
+				if (comma != NULL) {
+					*comma = 0;
+				}
+
+				if (strcmp(arg, "SINGLE") == 0) {
+					profile = GRK_PROFILE_BC_SINGLE;
+				} else if (strcmp(arg, "MULTI") == 0) {
+					profile = GRK_PROFILE_BC_MULTI;
+				} else if (strcmp(arg, "MULTI_R") == 0) {
+					profile = GRK_PROFILE_BC_MULTI_R;
+				} else {
+					spdlog::error("{}", msg);
+					return 1;
+				}
+
+				if (!(mainlevel >= 0 && mainlevel <= 11)) {
+					/* Voluntarily rough validation. More fine grained done in library */
+					spdlog::error("Invalid mainlevel value {}.\n", mainlevel);
+					return 1;
+				}
+				parameters->rsiz = (uint16_t) (profile | mainlevel);
+
+				if (parameters->verbose) {
+					spdlog::info("Broadcast profile activated\n"
+							"Other options specified could be overridden");
+				}
+
+				parameters->framerate = framerate;
+				if (framerate > 0) {
+					const int limitMBitsSec[] = { 0,
+							GRK_BROADCAST_LEVEL_1_MBITSSEC,
+							GRK_BROADCAST_LEVEL_2_MBITSSEC,
+							GRK_BROADCAST_LEVEL_3_MBITSSEC,
+							GRK_BROADCAST_LEVEL_4_MBITSSEC,
+							GRK_BROADCAST_LEVEL_5_MBITSSEC,
+							GRK_BROADCAST_LEVEL_6_MBITSSEC,
+							GRK_BROADCAST_LEVEL_7_MBITSSEC,
+							GRK_BROADCAST_LEVEL_8_MBITSSEC,
+							GRK_BROADCAST_LEVEL_9_MBITSSEC,
+							GRK_BROADCAST_LEVEL_10_MBITSSEC,
+							GRK_BROADCAST_LEVEL_11_MBITSSEC
+					};
+					parameters->max_cs_size =
+							(uint64_t) (limitMBitsSec[mainlevel]
+									* (1000.0 * 1000 / 8) / framerate);
+					if (parameters->verbose) {
+						spdlog::info("Setting max codestream size to {} bytes.",
+								parameters->max_cs_size);
+					}
+				}
+			}
 			if (IMFArg.isSet()) {
 				int mainlevel = 0;
 				int sublevel = 0;
@@ -1166,20 +1254,20 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				comma = strstr(arg, ",mainlevel=");
 				if (comma
 						&& sscanf(comma + 1, "mainlevel=%d", &mainlevel) != 1) {
-					spdlog::error("%s", msg);
+					spdlog::error("{}", msg);
 					return 1;
 				}
 
 				comma = strstr(arg, ",sublevel=");
 				if (comma && sscanf(comma + 1, "sublevel=%d", &sublevel) != 1) {
-					spdlog::error("%s", msg);
+					spdlog::error("{}", msg);
 					return 1;
 				}
 
 				comma = strstr(arg, ",framerate=");
 				if (comma
 						&& sscanf(comma + 1, "framerate=%d", &framerate) != 1) {
-					spdlog::error("%s", msg);
+					spdlog::error("{}", msg);
 					return 1;
 				}
 
@@ -1201,18 +1289,18 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				} else if (strcmp(arg, "8K_R") == 0) {
 					profile = GRK_PROFILE_IMF_8K_R;
 				} else {
-					spdlog::error("%s", msg);
+					spdlog::error("{}", msg);
 					return 1;
 				}
 
-				if (!(mainlevel >= 0 && mainlevel <= 15)) {
+				if (!(mainlevel >= 0 && mainlevel <= 11)) {
 					/* Voluntarily rough validation. More fine grained done in library */
-					spdlog::error("Invalid mainlevel value.\n");
+					spdlog::error("Invalid main level {}.\n",mainlevel);
 					return 1;
 				}
-				if (!(sublevel >= 0 && sublevel <= 15)) {
+				if (!(sublevel >= 0 && sublevel <= 9)) {
 					/* Voluntarily rough validation. More fine grained done in library */
-					spdlog::error("Invalid sublevel value.\n");
+					spdlog::error("Invalid sub-level {}.\n",sublevel);
 					return 1;
 				}
 				parameters->rsiz = (uint16_t) (profile | (sublevel << 4)
@@ -1236,15 +1324,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					GRK_IMF_SUBLEVEL_8_MBITSSEC,
 					GRK_IMF_SUBLEVEL_9_MBITSSEC };
 					parameters->max_cs_size =
-							(uint64_t)(limitMBitsSec[sublevel] * (1000.0 * 1000 / 8) / framerate);
+							(uint64_t) (limitMBitsSec[sublevel]
+									* (1000.0 * 1000 / 8) / framerate);
 					if (parameters->verbose) {
-						spdlog::info(
-								"Setting max codestream size to %d bytes.",
+						spdlog::info("Setting max codestream size to {} bytes.",
 								parameters->max_cs_size);
 					}
 				}
-
 			}
+
+
 			if (rsizArg.isSet()) {
 				if (cinema2KArg.isSet() || cinema4KArg.isSet()) {
 					warning_callback(
@@ -1287,7 +1376,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			uint32_t mct_mode = mctArg.getValue();
 			if (mct_mode > 2) {
 				spdlog::error(
-						"Incorrect MCT value {}. Must be equal to 0, 1 or 2.", mct_mode);
+						"Incorrect MCT value {}. Must be equal to 0, 1 or 2.",
+						mct_mode);
 				return 1;
 			}
 			parameters->tcp_mct = (uint8_t) mct_mode;
@@ -1467,7 +1557,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 	}
 
-	if ((parameters->decod_format == GRK_RAW_FMT && parameters->raw_cp.width == 0)
+	if ((parameters->decod_format == GRK_RAW_FMT
+			&& parameters->raw_cp.width == 0)
 			|| (parameters->decod_format == GRK_RAWL_FMT
 					&& parameters->raw_cp.width == 0)) {
 		spdlog::error("invalid raw image parameters");
@@ -1711,13 +1802,12 @@ static bool plugin_compress_callback(
 
 	if (!image) {
 		if (parameters->decod_format == GRK_UNK_FMT) {
-			int fmt = get_file_format(
-					(char*) info->input_file_name);
-			if (fmt <= GRK_UNK_FMT){
+			int fmt = get_file_format((char*) info->input_file_name);
+			if (fmt <= GRK_UNK_FMT) {
 				bSuccess = false;
 				goto cleanup;
 			}
-			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT)fmt;
+			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT) fmt;
 			if (!isDecodedFormatSupported(parameters->decod_format)) {
 				bSuccess = false;
 				goto cleanup;
@@ -1759,7 +1849,7 @@ static bool plugin_compress_callback(
 				goto cleanup;
 			}
 		}
-		break;
+			break;
 
 #ifdef GROK_HAVE_LIBTIFF
 		case GRK_TIF_FMT: {
@@ -1839,7 +1929,7 @@ static bool plugin_compress_callback(
 			bSuccess = false;
 			goto cleanup;
 		}
-		break;
+			break;
 		}
 
 		/* Can happen if input file is TIFF or PNG
@@ -1942,16 +2032,14 @@ static bool plugin_compress_callback(
 			GRK_MAINLEVEL_10_MSAMPLESEC,
 			GRK_MAINLEVEL_11_MSAMPLESEC };
 			uint32_t avgcomponents = image->numcomps;
-			double msamplespersec;
 			if (image->numcomps == 3 && image->comps[1].dx == 2
 					&& image->comps[1].dy == 2) {
 				avgcomponents = 2;
 			}
-			msamplespersec = (double) image->x1 * image->y1 * avgcomponents
-					* parameters->framerate / 1e6;
+			double msamplespersec = (double) image->x1 * image->y1
+					* avgcomponents * parameters->framerate / 1e6;
 			if (msamplespersec > limitMSamplesSec[mainlevel]) {
-				fprintf(stderr,
-						"Warning: MSamples/sec is %f, whereas limit is %d.",
+				spdlog::warn("MSamples/sec is {}, whereas limit is {}.",
 						msamplespersec, limitMSamplesSec[mainlevel]);
 			}
 		}
@@ -2026,8 +2114,7 @@ static bool plugin_compress_callback(
 	if (info->compressBuffer) {
 		auto fp = fopen(outfile, "wb");
 		if (!fp) {
-			spdlog::error(
-					"Buffer compress: failed to open file {} for writing",
+			spdlog::error("Buffer compress: failed to open file {} for writing",
 					outfile);
 		} else {
 			auto len = grk_stream_get_write_mem_stream_length(stream);
