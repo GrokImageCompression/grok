@@ -1710,7 +1710,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 		GROK_WARN("JPEG 2000 Long Term Storage profile not supported");
 		parameters->rsiz = GRK_PROFILE_NONE;
 	} else if (GRK_IS_BROADCAST(parameters->rsiz)) {
-		J2KProfile::set_broadcast_parameters(parameters, image);
+		J2KProfile::set_broadcast_parameters(parameters);
 		if (!J2KProfile::is_broadcast_compliant(parameters, image))
 			parameters->rsiz = GRK_PROFILE_NONE;
 	} else if (GRK_IS_IMF(parameters->rsiz)) {
@@ -1827,7 +1827,7 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	}
 
 	if (parameters->tp_on) {
-		cp->m_coding_param.m_enc.m_tp_flag = (uint8_t) parameters->tp_flag;
+		cp->m_coding_param.m_enc.m_tp_flag = parameters->tp_flag;
 		cp->m_coding_param.m_enc.m_tp_on = 1;
 	}
 

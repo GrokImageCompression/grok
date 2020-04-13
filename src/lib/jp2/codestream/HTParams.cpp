@@ -156,7 +156,7 @@ void param_qcd::push(grk_stepsize* stepptr, bool reversible){
 		if (reversible){
 			u8_SPqcd[bn] = (uint8_t)(step->expn << 3);
 		} else {
-			u16_SPqcd[bn] = (uint16_t)((uint32_t)step->expn << 11) + step->mant;
+			u16_SPqcd[bn] = (uint16_t)((step->expn << 11) + step->mant);
 		}
 	}
 }
@@ -289,7 +289,7 @@ float param_qcd::irrev_get_delta(uint32_t resolution, uint32_t subband) const
   uint32_t exp = u16_SPqcd[idx] >> 11;
 
   return (float) (((1.0 + (u16_SPqcd[idx] & 0x7FF)/ 2048.0)
-			* pow(2.0, (int32_t) (gain[subband] - exp))));
+			* pow(2.0, (int32_t) (gain[subband] - (float)exp))));
 }
 
 //////////////////////////////////////////////////////////////////////////

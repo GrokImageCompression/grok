@@ -641,8 +641,7 @@ int J2KProfile::get_broadcast_max_NL(grk_cparameters *parameters,
 	return -1;
 }
 
-void J2KProfile::set_broadcast_parameters(grk_cparameters *parameters,
-		grk_image *image) {
+void J2KProfile::set_broadcast_parameters(grk_cparameters *parameters) {
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 
