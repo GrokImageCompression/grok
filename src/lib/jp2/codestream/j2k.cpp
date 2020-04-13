@@ -3410,23 +3410,23 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	cp->rsiz = (uint16_t) tmp;
-	grk_read_bytes(p_header_data, (uint32_t*) &image->x1, 4); /* Xsiz */
+	grk_read_bytes(p_header_data, &image->x1, 4); /* Xsiz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &image->y1, 4); /* Ysiz */
+	grk_read_bytes(p_header_data, &image->y1, 4); /* Ysiz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &image->x0, 4); /* X0siz */
+	grk_read_bytes(p_header_data, &image->x0, 4); /* X0siz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &image->y0, 4); /* Y0siz */
+	grk_read_bytes(p_header_data, &image->y0, 4); /* Y0siz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &cp->tdx, 4); /* XTsiz */
+	grk_read_bytes(p_header_data, &cp->tdx, 4); /* XTsiz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &cp->tdy, 4); /* YTsiz */
+	grk_read_bytes(p_header_data, &cp->tdy, 4); /* YTsiz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &cp->tx0, 4); /* XT0siz */
+	grk_read_bytes(p_header_data, &cp->tx0, 4); /* XT0siz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &cp->ty0, 4); /* YT0siz */
+	grk_read_bytes(p_header_data, &cp->ty0, 4); /* YT0siz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, (uint32_t*) &tmp, 2); /* Csiz */
+	grk_read_bytes(p_header_data, &tmp, 2); /* Csiz */
 	p_header_data += 2;
 	if (tmp <= max_num_components)
 		image->numcomps = (uint16_t) tmp;
@@ -3983,8 +3983,8 @@ static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k) {
 
 /**
  * Reads a COC marker (Coding Style Component)
- * @param       p_header_data   the data contained in the COC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the COC box.
  * @param       header_size   the size of the data contained in the COC marker.
 
  */
@@ -4448,8 +4448,8 @@ static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 /**
  * Reads a CRG marker (Component registration)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
@@ -4481,8 +4481,8 @@ static bool j2k_read_crg(grk_j2k *p_j2k, uint8_t *p_header_data,
 /**
  * Reads a TLM marker (Tile Length Marker)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
@@ -4553,8 +4553,8 @@ static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 /**
  * Reads a PLM marker (Packet length, main header marker)
  *
- * @param       p_header_data   the data contained in the TLM box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the TLM box.
  * @param       header_size   the size of the data contained in the TLM marker.
 
  */
@@ -4624,8 +4624,8 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 /**
  * Reads a PLT marker (Packet length, tile-part header)
  *
- * @param       p_header_data   the data contained in the PLT box.
  * @param       p_j2k           the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the PLT box.
  * @param       header_size   the size of the data contained in the PLT marker.
 
  */
@@ -4684,8 +4684,8 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 /**
  * Reads a PPM marker (Packed packet headers, main header)
  *
- * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the POC box.
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
@@ -4893,8 +4893,8 @@ static bool j2k_merge_ppm(grk_coding_parameters *p_cp) {
 /**
  * Reads a PPT marker (Packed packet headers, tile-part header)
  *
- * @param       p_header_data   the data contained in the PPT box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the PPT box.
  * @param       header_size   the size of the data contained in the PPT marker.
 
  */
@@ -5547,8 +5547,8 @@ static bool j2k_write_eoc(grk_j2k *p_j2k, BufferedStream *p_stream) {
 /**
  * Reads a RGN marker (Region Of Interest)
  *
- * @param       p_header_data   the data contained in the POC box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the POC box.
  * @param       header_size   the size of the data contained in the POC marker.
 
  */
@@ -5824,8 +5824,8 @@ static bool j2k_write_mct_record(grk_mct_data *p_mct_record,
 /**
  * Reads a MCT marker (Multiple Component Transform)
  *
- * @param       p_header_data   the data contained in the MCT box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the MCT box.
  * @param       header_size   the size of the data contained in the MCT marker.
 
  */
@@ -6335,8 +6335,8 @@ static bool j2k_write_mco(grk_j2k *p_j2k, BufferedStream *p_stream) {
 /**
  * Reads a MCO marker (Multiple Component Transform Ordering)
  *
- * @param       p_header_data   the data contained in the MCO box.
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the MCO box.
  * @param       header_size   the size of the data contained in the MCO marker.
 
  */
@@ -6511,8 +6511,9 @@ static bool j2k_write_cbd(grk_j2k *p_j2k, BufferedStream *p_stream) {
 
 /**
  * Reads a CBD marker (Component bit depth definition)
- * @param       p_header_data   the data contained in the CBD box.
+ *
  * @param       p_j2k                   the jpeg2000 codec.
+ * @param       p_header_data   the data contained in the CBD box.
  * @param       header_size   the size of the data contained in the CBD marker.
 
  */
