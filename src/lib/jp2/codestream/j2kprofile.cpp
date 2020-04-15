@@ -236,16 +236,16 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	if (image->x0 != 0 || image->y0 != 0) {
-		GROK_WARN("IMF profiles require image origin to be at 0,0.\n"
-				"-> %d,%d is not compliant\n"
+		GROK_WARN("IMF profiles require image origin to be at (0,0).\n"
+				"-> (%d,%d) is not compliant\n"
 				"-> Non-IMF codestream will be generated", image->x0,
-				image->y0 != 0);
+				image->y0);
 		ret = false;
 	}
 
 	if (parameters->cp_tx0 != 0 || parameters->cp_ty0 != 0) {
-		GROK_WARN("IMF profiles require tile origin to be at 0,0.\n"
-				"-> %d,%d is not compliant\n"
+		GROK_WARN("IMF profiles require tile origin to be at (0,0).\n"
+				"-> (%d,%d) is not compliant\n"
 				"-> Non-IMF codestream will be generated", parameters->cp_tx0,
 				parameters->cp_ty0);
 		ret = false;
@@ -712,16 +712,16 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (image->x0 != 0 || image->y0 != 0) {
-		GROK_WARN("Broadcast profiles require image origin to be at 0,0.\n"
-				"-> %d,%d is not compliant\n"
+		GROK_WARN("Broadcast profiles require image origin to be at (0,0).\n"
+				"-> (%d,%d) is not compliant\n"
 				"-> Non-broadcast codestream will be generated", image->x0,
-				image->y0 != 0);
+				image->y0);
 		ret = false;
 	}
 
 	if (parameters->cp_tx0 != 0 || parameters->cp_ty0 != 0) {
-		GROK_WARN("Broadcast profiles require tile origin to be at 0,0.\n"
-				"-> %d,%d is not compliant\n"
+		GROK_WARN("Broadcast profiles require tile origin to be at (0,0).\n"
+				"-> (%d,%d) is not compliant\n"
 				"-> Non-broadcast codestream will be generated",
 				parameters->cp_tx0, parameters->cp_ty0);
 		ret = false;
@@ -739,7 +739,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 		}
 		if (profile == GRK_PROFILE_BC_SINGLE
 				&& !(parameters->cp_tdx == 1 && parameters->cp_tdy == 1)) {
-			GROK_WARN("Broadcast SINGLE profile require 1x1 tile layout.\n"
+			GROK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
 					"-> (%d,%d) layout is not compliant\n"
 					"-> Non-broadcast codestream will be generated",
 					parameters->cp_tdx, parameters->cp_tdy);
@@ -864,7 +864,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 		/* Expect 5-3 transform */
 		if (parameters->irreversible) {
 			GROK_WARN(
-					"Broadcast 2K/4K/8K profiles require 5-3 reversible Transform.\n"
+					"Broadcast multi_r profile require 5-3 reversible Transform.\n"
 							"-> Compression parameters set it to irreversible.\n"
 							"-> Non-broadcast codestream will be generated");
 			ret = false;
