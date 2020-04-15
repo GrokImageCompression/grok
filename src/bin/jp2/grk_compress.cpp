@@ -2149,13 +2149,13 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	grk_dircnt *dirptr = nullptr;
 	int32_t success = 0;
 	uint32_t num_images, imageno;
+	bool isBatch = false;
+	uint32_t state= 0;
 
 	/* set encoding parameters to default values */
 	grk_set_default_encoder_parameters(&initParams->parameters);
 
-	bool isBatch = initParams->img_fol.imgdirpath
-			&& initParams->out_fol.imgdirpath;
-	uint32_t state = grk_plugin_get_debug_state();
+
 
 	/* parse input and get user encoding parameters */
 	initParams->parameters.tcp_mct = 255; /* This will be set later according to the input image or the provided option */
@@ -2167,6 +2167,10 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		success = 1;
 		goto cleanup;
 	}
+	isBatch = initParams->img_fol.imgdirpath &&  initParams->out_fol.imgdirpath;
+	state = grk_plugin_get_debug_state();
+
+
 	if (!initParams->parameters.verbose)
 		spdlog::set_level(spdlog::level::level_enum::err);
 
