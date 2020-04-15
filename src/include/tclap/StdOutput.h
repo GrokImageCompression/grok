@@ -94,8 +94,8 @@ protected:
      * \param secondLineOffset - The number of spaces to indent the second
      * and all subsequent lines in addition to indentSpaces.
      */
-    void spacePrint(std::ostream &os, const std::string &s, int maxWidth,
-                    int indentSpaces, int secondLineOffset) const;
+    void spacePrint(std::ostream &os, const std::string &s, size_t maxWidth,
+    		size_t indentSpaces, size_t secondLineOffset) const;
 };
 
 inline void StdOutput::version(CmdLineInterface &_cmd) {
@@ -370,8 +370,8 @@ inline void StdOutput::_shortUsage(CmdLineInterface &_cmd,
     }
 
     // if the program name is too long, then adjust the second line offset
-    int secondLineOffset = static_cast<int>(_cmd.getProgramName().length()) + 2;
-    if (secondLineOffset > 75 / 2) secondLineOffset = static_cast<int>(75 / 2);
+    size_t secondLineOffset = _cmd.getProgramName().length() + 2;
+    if (secondLineOffset > 75 / 2) secondLineOffset = static_cast<size_t>(75 / 2);
 
     spacePrint(os, outp.str(), 75, 3, secondLineOffset);
 }
@@ -434,14 +434,16 @@ inline void StdOutput::_longUsage(CmdLineInterface &_cmd,
 
 namespace {
 inline void fmtPrintLine(std::ostream &os, const std::string &s,
-                         int maxWidth, int indentSpaces,
-                         int secondLineOffset) {
+                         size_t maxWidth, size_t indentSpaces,
+                         size_t secondLineOffset) {
     const std::string splitChars(" ,|");
-    int maxChars = maxWidth - indentSpaces;
+    if (maxWidth < indentSpaces)
+    	return;
+    size_t maxChars = (size_t)(maxWidth - indentSpaces);
     std::string indentString(indentSpaces, ' ');
-    int from = 0;
-    int to = 0;
-    int end = s.length();
+    size_t from = 0;
+    size_t to = 0;
+    size_t end = s.length();
     for (;;) {
         if (end - from <= maxChars) {
             // Rest of string fits on line, just print the remainder
@@ -452,9 +454,9 @@ inline void fmtPrintLine(std::ostream &os, const std::string &s,
         // Find the next place where it is good to break the string
         // (to) by finding the place where it is too late (tooFar) and
         // taking the previous one.
-        int tooFar = to;
+        size_t tooFar = to;
         while (tooFar - from <= maxChars &&
-               static_cast<std::size_t>(tooFar) != std::string::npos) {
+               tooFar != std::string::npos) {
             to = tooFar;
             tooFar = s.find_first_of(splitChars, to + 1);
         }
@@ -487,8 +489,8 @@ inline void fmtPrintLine(std::ostream &os, const std::string &s,
 }
 
 inline void StdOutput::spacePrint(std::ostream &os, const std::string &s,
-                                  int maxWidth, int indentSpaces,
-                                  int secondLineOffset) const {
+                                  size_t maxWidth, size_t indentSpaces,
+								  size_t secondLineOffset) const {
     std::stringstream ss(s);
     std::string line;
     std::getline(ss, line);

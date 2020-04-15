@@ -167,7 +167,7 @@ public:
      * \param i - Pointer the the current argument in the list.
      * \param args - Mutable list of strings.
      */
-    virtual bool processArg(int *i, std::vector<std::string> &args);
+    virtual bool processArg(size_t *i, std::vector<std::string> &args);
 
     /**
      * Overrides shortID for specific behavior.
@@ -252,7 +252,7 @@ UnlabeledValueArg<T>::UnlabeledValueArg(const std::string &name,
  * Implementation of processArg().
  */
 template <class T>
-bool UnlabeledValueArg<T>::processArg(int *i, std::vector<std::string> &args) {
+bool UnlabeledValueArg<T>::processArg(size_t *i, std::vector<std::string> &args) {
     if (_alreadySet) return false;
 
     if (_hasBlanks(args[*i])) return false;

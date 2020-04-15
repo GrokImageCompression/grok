@@ -237,7 +237,7 @@ public:
      * \param args - Mutable list of strings. What is
      * passed in from main.
      */
-    virtual bool processArg(int *i, std::vector<std::string> &args) = 0;
+    virtual bool processArg(size_t *i, std::vector<std::string> &args) = 0;
 
     /**
      * Operator ==.
@@ -558,8 +558,8 @@ inline void Arg::_checkWithVisitor() const {
  * Implementation of trimFlag.
  */
 inline void Arg::trimFlag(std::string &flag, std::string &value) const {
-    int stop = 0;
-    for (int i = 0; static_cast<unsigned int>(i) < flag.length(); i++)
+    size_t stop = 0;
+    for (size_t i = 0; static_cast<unsigned int>(i) < flag.length(); i++)
         if (flag[i] == Arg::delimiter()) {
             stop = i;
             break;
@@ -575,7 +575,7 @@ inline void Arg::trimFlag(std::string &flag, std::string &value) const {
  * Implementation of _hasBlanks.
  */
 inline bool Arg::_hasBlanks(const std::string &s) const {
-    for (int i = 1; static_cast<unsigned int>(i) < s.length(); i++)
+    for (size_t i = 1; static_cast<unsigned int>(i) < s.length(); i++)
         if (s[i] == Arg::blankChar()) return true;
 
     return false;

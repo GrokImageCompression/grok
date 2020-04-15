@@ -461,7 +461,7 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
         }
         */
 
-        for (int i = 0; static_cast<unsigned int>(i) < args.size(); i++) {
+        for (size_t i = 0; i < args.size(); i++) {
             bool matched = false;
             for (ArgListIterator it = _argList.begin(); it != _argList.end();
                  it++) {
@@ -539,7 +539,7 @@ inline void CmdLine::parse(std::vector<std::string> &args) {
 inline bool CmdLine::_emptyCombined(const std::string &s) {
     if (s.length() > 0 && s[0] != Arg::flagStartChar()) return false;
 
-    for (int i = 1; static_cast<unsigned int>(i) < s.length(); i++)
+    for (size_t i = 1; i < s.length(); i++)
         if (s[i] != Arg::blankChar()) return false;
 
     return true;

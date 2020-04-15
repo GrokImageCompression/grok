@@ -197,7 +197,7 @@ public:
      * \param args - Mutable list of strings. Passed
      * in from main().
      */
-    virtual bool processArg(int *i, std::vector<std::string> &args);
+    virtual bool processArg(size_t *i, std::vector<std::string> &args);
 
     /**
      * Returns the value of the argument.
@@ -285,7 +285,7 @@ ValueArg<T>::ValueArg(const std::string &flag, const std::string &name,
  * Implementation of processArg().
  */
 template <class T>
-bool ValueArg<T>::processArg(int *i, std::vector<std::string> &args) {
+bool ValueArg<T>::processArg(size_t *i, std::vector<std::string> &args) {
     if (_hasBlanks(args[*i])) return false;
 
     std::string flag = args[*i];

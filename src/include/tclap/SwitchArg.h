@@ -91,7 +91,7 @@ public:
      * \param args - Mutable list of strings. Passed
      * in from main().
      */
-    virtual bool processArg(int *i, std::vector<std::string> &args);
+    virtual bool processArg(size_t *i, std::vector<std::string> &args);
 
     /**
      * Checks a string to see if any of the chars in the string
@@ -169,7 +169,7 @@ inline bool SwitchArg::combinedSwitchesMatch(std::string &combinedSwitches) {
 
     // ok, we're not specifying a ValueArg, so we know that we have
     // a combined switch list.
-    for (unsigned int i = 1; i < combinedSwitches.length(); i++) {
+    for (size_t i = 1; i < combinedSwitches.length(); i++) {
         if (_flag.length() > 0 && combinedSwitches[i] == _flag[0] &&
             _flag[0] != Arg::flagStartString()[0]) {
             // update the combined switches so this one is no longer
@@ -200,7 +200,7 @@ inline void SwitchArg::commonProcessing() {
     _checkWithVisitor();
 }
 
-inline bool SwitchArg::processArg(int *i, std::vector<std::string> &args) {
+inline bool SwitchArg::processArg(size_t *i, std::vector<std::string> &args) {
     if (argMatches(args[*i])) {
         // The whole string matches the flag or name string
         _setBy = args[*i];

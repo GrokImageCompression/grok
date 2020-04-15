@@ -93,7 +93,7 @@ public:
      * \param args - Mutable list of strings. Passed
      * in from main().
      */
-    virtual bool processArg(int *i, std::vector<std::string> &args);
+    virtual bool processArg(size_t *i, std::vector<std::string> &args);
 
     /**
      * Returns int, the number of times the switch has been set.
@@ -128,7 +128,7 @@ inline MultiSwitchArg::MultiSwitchArg(const std::string &flag,
     parser.add(this);
 }
 
-inline bool MultiSwitchArg::processArg(int *i, std::vector<std::string> &args) {
+inline bool MultiSwitchArg::processArg(size_t *i, std::vector<std::string> &args) {
     if (argMatches(args[*i])) {
         // so the isSet() method will work
         _alreadySet = true;
