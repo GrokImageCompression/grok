@@ -2016,33 +2016,51 @@ static bool plugin_compress_callback(
 		parameters->rateControlAlgorithm = 0;
 	}
 
-	if (GRK_IS_IMF(parameters->rsiz) && parameters->framerate > 0) {
-		const int mainlevel = GRK_GET_MAINLEVEL(parameters->rsiz);
-		if (mainlevel > 0 && mainlevel <= GRK_MAINLEVEL_MAX) {
-			const int limitMSamplesSec[] = { 0,
-			GRK_MAINLEVEL_1_MSAMPLESEC,
-			GRK_MAINLEVEL_2_MSAMPLESEC,
-			GRK_MAINLEVEL_3_MSAMPLESEC,
-			GRK_MAINLEVEL_4_MSAMPLESEC,
-			GRK_MAINLEVEL_5_MSAMPLESEC,
-			GRK_MAINLEVEL_6_MSAMPLESEC,
-			GRK_MAINLEVEL_7_MSAMPLESEC,
-			GRK_MAINLEVEL_8_MSAMPLESEC,
-			GRK_MAINLEVEL_9_MSAMPLESEC,
-			GRK_MAINLEVEL_10_MSAMPLESEC,
-			GRK_MAINLEVEL_11_MSAMPLESEC };
-			uint32_t avgcomponents = image->numcomps;
-			if (image->numcomps == 3 && image->comps[1].dx == 2
-					&& image->comps[1].dy == 2) {
-				avgcomponents = 2;
+	if (parameters->verbose && parameters->framerate > 0) {
+		uint32_t avgcomponents = image->numcomps;
+		if (image->numcomps == 3 && image->comps[1].dx == 2
+				&& image->comps[1].dy == 2) {
+			avgcomponents = 2;
+		}
+		double msamplespersec = (double) image->x1 * image->y1
+				* avgcomponents * parameters->framerate / 1e6;
+		uint32_t limit = 0;
+		const uint32_t level = GRK_GET_LEVEL(parameters->rsiz);
+		if (level > 0U && level <= GRK_LEVEL_MAX) {
+			if (GRK_IS_BROADCAST(parameters->rsiz)) {
+				const uint32_t limitMSamplesSec[] = { 0,
+					GRK_BROADCAST_LEVEL_1_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_2_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_3_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_4_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_5_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_6_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_7_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_8_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_9_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_10_MSAMPLESSEC,
+					GRK_BROADCAST_LEVEL_11_MSAMPLESSEC };
+				limit = limitMSamplesSec[level];
 			}
-			double msamplespersec = (double) image->x1 * image->y1
-					* avgcomponents * parameters->framerate / 1e6;
-			if (msamplespersec > limitMSamplesSec[mainlevel]) {
-				spdlog::warn("MSamples/sec is {}, whereas limit is {}.",
-						msamplespersec, limitMSamplesSec[mainlevel]);
+			else if (GRK_IS_IMF(parameters->rsiz)) {
+				const uint32_t limitMSamplesSec[] = { 0,
+					GRK_IMF_MAINLEVEL_1_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_2_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_3_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_4_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_5_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_6_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_7_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_8_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_9_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_10_MSAMPLESSEC,
+					GRK_IMF_MAINLEVEL_11_MSAMPLESSEC };
+				limit = limitMSamplesSec[level];
 			}
 		}
+		if (msamplespersec > limit)
+			spdlog::warn("MSamples/sec is {}, whereas limit is {}.",
+					msamplespersec, limit);
 	}
 
 	if (info->compressBuffer) {

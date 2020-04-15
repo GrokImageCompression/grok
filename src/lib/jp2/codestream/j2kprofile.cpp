@@ -195,7 +195,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	uint32_t i;
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
-	const uint16_t mainlevel = GRK_GET_MAINLEVEL(rsiz);
+	const uint16_t mainlevel = GRK_GET_LEVEL(rsiz);
 	const uint16_t sublevel = GRK_GET_IMF_SUBLEVEL(rsiz);
 	const uint32_t NL = (uint32_t) (parameters->numresolution - 1);
 	const uint32_t XTsiz =
@@ -204,7 +204,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	bool ret = true;
 
 	/* Validate mainlevel */
-	if (mainlevel > GRK_MAINLEVEL_MAX) {
+	if (mainlevel > GRK_LEVEL_MAX) {
 		GROK_WARN("IMF profile require mainlevel <= 11.\n"
 				"-> %d is thus not compliant\n"
 				"-> Non-IMF codestream will be generated", mainlevel);
@@ -213,7 +213,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 
 	/* Validate sublevel */
 	assert(
-			sizeof(tabMaxSubLevelFromMainLevel) == (GRK_MAINLEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
+			sizeof(tabMaxSubLevelFromMainLevel) == (GRK_LEVEL_MAX + 1) * sizeof(tabMaxSubLevelFromMainLevel[0]));
 	if (sublevel > tabMaxSubLevelFromMainLevel[mainlevel]) {
 		GROK_WARN("IMF profile require sublevel <= %d for mainlevel = %d.\n"
 				"-> %d is thus not compliant\n"
@@ -690,12 +690,12 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 	uint32_t i;
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
-	const uint16_t mainlevel = GRK_GET_MAINLEVEL(rsiz);
+	const uint16_t mainlevel = GRK_GET_LEVEL(rsiz);
 	const uint32_t NL = (uint32_t) (parameters->numresolution - 1);
 	bool ret = true;
 
 	/* Validate mainlevel */
-	if (mainlevel > GRK_MAINLEVEL_MAX) {
+	if (mainlevel > GRK_LEVEL_MAX) {
 		GROK_WARN("Broadcast profile require mainlevel <= 11.\n"
 				"-> %d is thus not compliant\n"
 				"-> Non-broadcast codestream will be generated", mainlevel);

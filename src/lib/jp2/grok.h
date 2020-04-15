@@ -240,8 +240,8 @@ enum GRK_SUPPORTED_FILE_FMT {
 /** Extract profile without mainlevel/sublevel */
 #define GRK_GET_IMF_OR_BROADCAST_PROFILE(v)   ((v) & 0x0f00)
 
-#define GRK_MAINLEVEL_MAX    11   			/** Maximum main level */
-#define GRK_GET_MAINLEVEL(v) ((v) & 0xf)    /** Extract main level */
+#define GRK_LEVEL_MAX    11U   			/** Maximum (main) level */
+#define GRK_GET_LEVEL(v) ((v) & 0xf)    /** Extract (main) level */
 
 
 /******* BROADCAST **********/
@@ -250,18 +250,30 @@ enum GRK_SUPPORTED_FILE_FMT {
 								((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b) )  && \
 							  ( ((v) & 0xf) <= 0xb )    )
 
-/* Maximum Components Sampling Rate (Mbits/sec) per main level */
-#define GRK_BROADCAST_LEVEL_1_MBITSSEC   200      /** Mbits/sec for main level 1 */
-#define GRK_BROADCAST_LEVEL_2_MBITSSEC   200     /** Mbits/sec for main level 2 */
-#define GRK_BROADCAST_LEVEL_3_MBITSSEC   200     /** Mbits/sec for main level 3 */
-#define GRK_BROADCAST_LEVEL_4_MBITSSEC   400     /** Mbits/sec for main level 4 */
-#define GRK_BROADCAST_LEVEL_5_MBITSSEC   800     /** Mbits/sec for main level 5 */
-#define GRK_BROADCAST_LEVEL_6_MBITSSEC   1600    /** Mbits/sec for main level 6 */
-#define GRK_BROADCAST_LEVEL_7_MBITSSEC   3200    /** Mbits/sec for main level 7 */
-#define GRK_BROADCAST_LEVEL_8_MBITSSEC   6400    /** Mbits/sec for main level 8 */
-#define GRK_BROADCAST_LEVEL_9_MBITSSEC   12800   /** Mbits/sec for main level 9 */
-#define GRK_BROADCAST_LEVEL_10_MBITSSEC  25600   /** Mbits/sec for main level 10 */
-#define GRK_BROADCAST_LEVEL_11_MBITSSEC  51200   /** Mbits/sec for main level 11 */
+/* Maximum Components Sampling Rate (Mbits/sec) per level */
+#define GRK_BROADCAST_LEVEL_1_MBITSSEC   200U      /** Mbits/sec for level 1 */
+#define GRK_BROADCAST_LEVEL_2_MBITSSEC   200U     /** Mbits/sec for level 2 */
+#define GRK_BROADCAST_LEVEL_3_MBITSSEC   200U     /** Mbits/sec for level 3 */
+#define GRK_BROADCAST_LEVEL_4_MBITSSEC   400U     /** Mbits/sec for level 4 */
+#define GRK_BROADCAST_LEVEL_5_MBITSSEC   800U     /** Mbits/sec for level 5 */
+#define GRK_BROADCAST_LEVEL_6_MBITSSEC   1600U    /** Mbits/sec for level 6 */
+#define GRK_BROADCAST_LEVEL_7_MBITSSEC   3200U    /** Mbits/sec for level 7 */
+#define GRK_BROADCAST_LEVEL_8_MBITSSEC   6400U    /** Mbits/sec for level 8 */
+#define GRK_BROADCAST_LEVEL_9_MBITSSEC   12800U   /** Mbits/sec for level 9 */
+#define GRK_BROADCAST_LEVEL_10_MBITSSEC  25600U   /** Mbits/sec for level 10 */
+#define GRK_BROADCAST_LEVEL_11_MBITSSEC  51200U   /** Mbits/sec for level 11 */
+
+#define GRK_BROADCAST_LEVEL_1_MSAMPLESSEC   64U      /** MSamples/sec for level 1 */
+#define GRK_BROADCAST_LEVEL_2_MSAMPLESSEC   130U     /** MSamples/sec for level 2 */
+#define GRK_BROADCAST_LEVEL_3_MSAMPLESSEC   195U     /** MSamples/sec for level 3 */
+#define GRK_BROADCAST_LEVEL_4_MSAMPLESSEC   260U     /** MSamples/sec for level 4 */
+#define GRK_BROADCAST_LEVEL_5_MSAMPLESSEC   520U     /** MSamples/sec for level 5 */
+#define GRK_BROADCAST_LEVEL_6_MSAMPLESSEC   1200U    /** MSamples/sec for level 6 */
+#define GRK_BROADCAST_LEVEL_7_MSAMPLESSEC   2400U    /** MSamples/sec for level 7 */
+#define GRK_BROADCAST_LEVEL_8_MSAMPLESSEC   4800U    /** MSamples/sec for level 8 */
+#define GRK_BROADCAST_LEVEL_9_MSAMPLESSEC   9600U    /** MSamples/sec for level 9 */
+#define GRK_BROADCAST_LEVEL_10_MSAMPLESSEC  19200U   /** MSamples/sec for level 10 */
+#define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC  38400U   /** MSamples/sec for level 11 */
 
 
 /********IMF ***************/
@@ -272,39 +284,39 @@ enum GRK_SUPPORTED_FILE_FMT {
 							  ( ((v) & 0xf0) <= 0x90 )    )
 
 /* Maximum Components Sampling Rate (MSamples/sec) per main level */
-#define GRK_MAINLEVEL_1_MSAMPLESEC   65      /** MSamples/sec for main level 1 */
-#define GRK_MAINLEVEL_2_MSAMPLESEC   130     /** MSamples/sec for main level 2 */
-#define GRK_MAINLEVEL_3_MSAMPLESEC   195     /** MSamples/sec for main level 3 */
-#define GRK_MAINLEVEL_4_MSAMPLESEC   260     /** MSamples/sec for main level 4 */
-#define GRK_MAINLEVEL_5_MSAMPLESEC   520     /** MSamples/sec for main level 5 */
-#define GRK_MAINLEVEL_6_MSAMPLESEC   1200    /** MSamples/sec for main level 6 */
-#define GRK_MAINLEVEL_7_MSAMPLESEC   2400    /** MSamples/sec for main level 7 */
-#define GRK_MAINLEVEL_8_MSAMPLESEC   4800    /** MSamples/sec for main level 8 */
-#define GRK_MAINLEVEL_9_MSAMPLESEC   9600    /** MSamples/sec for main level 9 */
-#define GRK_MAINLEVEL_10_MSAMPLESEC  19200   /** MSamples/sec for main level 10 */
-#define GRK_MAINLEVEL_11_MSAMPLESEC  38400   /** MSamples/sec for main level 11 */
+#define GRK_IMF_MAINLEVEL_1_MSAMPLESSEC   65U      /** MSamples/sec for main level 1 */
+#define GRK_IMF_MAINLEVEL_2_MSAMPLESSEC   130U     /** MSamples/sec for main level 2 */
+#define GRK_IMF_MAINLEVEL_3_MSAMPLESSEC   195U     /** MSamples/sec for main level 3 */
+#define GRK_IMF_MAINLEVEL_4_MSAMPLESSEC   260U     /** MSamples/sec for main level 4 */
+#define GRK_IMF_MAINLEVEL_5_MSAMPLESSEC   520U     /** MSamples/sec for main level 5 */
+#define GRK_IMF_MAINLEVEL_6_MSAMPLESSEC   1200U    /** MSamples/sec for main level 6 */
+#define GRK_IMF_MAINLEVEL_7_MSAMPLESSEC   2400U    /** MSamples/sec for main level 7 */
+#define GRK_IMF_MAINLEVEL_8_MSAMPLESSEC   4800U    /** MSamples/sec for main level 8 */
+#define GRK_IMF_MAINLEVEL_9_MSAMPLESSEC   9600U    /** MSamples/sec for main level 9 */
+#define GRK_IMF_MAINLEVEL_10_MSAMPLESSEC  19200U   /** MSamples/sec for main level 10 */
+#define GRK_IMF_MAINLEVEL_11_MSAMPLESSEC  38400U   /** MSamples/sec for main level 11 */
 
-#define GRK_IMF_SUBLEVEL_MAX    	9   /** Maximum IMF sublevel */
+#define GRK_IMF_SUBLEVEL_MAX    	9U   /** Maximum IMF sublevel */
 #define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
 /** Max. compressed Bit Rate (Mbits/s) per IMF sub level */
-#define GRK_IMF_SUBLEVEL_1_MBITSSEC      200     /** Mbits/s for IMF sub level 1 */
-#define GRK_IMF_SUBLEVEL_2_MBITSSEC      400     /** Mbits/s for IMF sub level 2 */
-#define GRK_IMF_SUBLEVEL_3_MBITSSEC      800     /** Mbits/s for IMF sub level 3 */
-#define GRK_IMF_SUBLEVEL_4_MBITSSEC     1600     /** Mbits/s for IMF sub level 4 */
-#define GRK_IMF_SUBLEVEL_5_MBITSSEC     3200     /** Mbits/s for IMF sub level 5 */
-#define GRK_IMF_SUBLEVEL_6_MBITSSEC     6400     /** Mbits/s for IMF sub level 6 */
-#define GRK_IMF_SUBLEVEL_7_MBITSSEC    12800     /** Mbits/s for IMF sub level 7 */
-#define GRK_IMF_SUBLEVEL_8_MBITSSEC    25600     /** Mbits/s for IMF sub level 8 */
-#define GRK_IMF_SUBLEVEL_9_MBITSSEC    51200     /** Mbits/s for IMF sub level 9 */
+#define GRK_IMF_SUBLEVEL_1_MBITSSEC      200U     /** Mbits/s for IMF sub level 1 */
+#define GRK_IMF_SUBLEVEL_2_MBITSSEC      400U     /** Mbits/s for IMF sub level 2 */
+#define GRK_IMF_SUBLEVEL_3_MBITSSEC      800U     /** Mbits/s for IMF sub level 3 */
+#define GRK_IMF_SUBLEVEL_4_MBITSSEC     1600U     /** Mbits/s for IMF sub level 4 */
+#define GRK_IMF_SUBLEVEL_5_MBITSSEC     3200U     /** Mbits/s for IMF sub level 5 */
+#define GRK_IMF_SUBLEVEL_6_MBITSSEC     6400U     /** Mbits/s for IMF sub level 6 */
+#define GRK_IMF_SUBLEVEL_7_MBITSSEC    12800U     /** Mbits/s for IMF sub level 7 */
+#define GRK_IMF_SUBLEVEL_8_MBITSSEC    25600U     /** Mbits/s for IMF sub level 8 */
+#define GRK_IMF_SUBLEVEL_9_MBITSSEC    51200U     /** Mbits/s for IMF sub level 9 */
 /*********************************************************************************/
 
 /**
  * JPEG 2000 cinema profile codestream and component size limits
  * */
-#define GRK_CINEMA_24_CS     1302083   	/** Maximum codestream length @ 24fps */
-#define GRK_CINEMA_48_CS     651041     /** Maximum codestream length @ 48fps */
-#define GRK_CINEMA_24_COMP   1041666    /** Maximum size per color component @ 24fps */
-#define GRK_CINEMA_48_COMP   520833		/** Maximum size per color component @ 48fps */
+#define GRK_CINEMA_24_CS     1302083U   	/** Maximum codestream length @ 24fps */
+#define GRK_CINEMA_48_CS     651041U     /** Maximum codestream length @ 48fps */
+#define GRK_CINEMA_24_COMP   1041666U    /** Maximum size per color component @ 24fps */
+#define GRK_CINEMA_48_COMP   520833U		/** Maximum size per color component @ 48fps */
 
 /**
  * Progression order
