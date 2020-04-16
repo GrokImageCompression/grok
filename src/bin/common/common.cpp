@@ -283,4 +283,9 @@ char* actual_path(const char* outfile){
 }
 
 
+uint32_t uint_adds(uint32_t a, uint32_t b) {
+	uint64_t sum = (uint64_t) a + (uint64_t) b;
+	return (uint32_t)(-(int32_t)(sum >> 32)) | (uint32_t) sum;
+}
+
 }

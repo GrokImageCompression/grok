@@ -624,11 +624,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 		SwitchArg ephArg("E", "EPH", "Add EPH markers", cmd);
 
-		ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0,
-				"uint8_t", cmd);
-
-		ValueArg<string> tileOffsetArg("T", "TileOffset", "Tile offset", false,
-				"", "string", cmd);
 
 		ValueArg<string> pocArg("P", "POC", "Progression order changes", false,
 				"", "string", cmd);
@@ -655,9 +650,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		ValueArg<string> rawFormatArg("F", "Raw", "Raw image format parameters",
 				false, "", "string", cmd);
 
-		ValueArg<string> tilesArg("t", "TileDim", "Tile parameters", false, "",
-				"string", cmd);
-
 		ValueArg<uint32_t> resolutionArg("n", "Resolutions", "Resolution",
 				false, 0, "unsigned integer", cmd);
 
@@ -673,6 +665,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		// this flag is currently disabled 
 		ValueArg<string> subsamplingFactorArg("s", "SubsamplingFactor",
 				"Subsampling factor", false, "", "string"/*, cmd*/);
+
+
+		ValueArg<uint8_t> tpArg("u", "TP", "Tile part generation", false, 0,
+				"uint8_t", cmd);
+
+		ValueArg<string> tileOffsetArg("T", "TileOffset", "Tile offset", false,
+				"", "string", cmd);
+
+		ValueArg<string> tilesArg("t", "TileDim", "Tile parameters", false, "",
+				"string", cmd);
 
 		ValueArg<string> imageOffsetArg("d", "ImageOffset",
 				"Image offset in reference grid coordinates", false, "",
@@ -977,24 +979,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			}
 		}
 
-		if (tilesArg.isSet()) {
-			int32_t t_width = 0, t_height = 0;
-			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width,
-					&t_height) == EOF) {
-				spdlog::error("sscanf failed for tiles argument");
-				return 1;
-			}
-			// sanity check on tile dimensions
-			if (t_width <= 0 || t_height <= 0) {
-				spdlog::error("Tile dimensions must be strictly positive");
-				return 1;
-			}
-			parameters->t_width = (uint32_t) t_width;
-			parameters->t_height = (uint32_t) t_height;
-			parameters->tile_size_on = true;
-
-		}
-
 		if (resolutionArg.isSet())
 			parameters->numresolution = resolutionArg.getValue();
 
@@ -1064,21 +1048,6 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			}
 		}
 
-		if (imageOffsetArg.isSet()) {
-			int32_t off1,off2;
-			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d",
-					&off1, &off2)
-					!= 2) {
-				spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
-				return 1;
-			}
-			if (off1 < 0 || off2 < 0){
-				spdlog::error("-T 'image offset' values ({},{}) can't be negative", off1,off2);
-				return 1;
-			}
-			parameters->image_offset_x0 = (uint32_t)off1;
-			parameters->image_offset_y0 = (uint32_t)off2;
-		}
 
 		if (pocArg.isSet()) {
 			uint32_t numpocs = 0; /* number of progression order change (POC) default 0 */
@@ -1481,6 +1450,27 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			}
 		}
 
+		// Canvas coordinates
+
+		if (tilesArg.isSet()) {
+			int32_t t_width = 0, t_height = 0;
+			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width,
+					&t_height) == EOF) {
+				spdlog::error("sscanf failed for tiles argument");
+				return 1;
+			}
+			// sanity check on tile dimensions
+			if (t_width <= 0 || t_height <= 0) {
+				spdlog::error("Tile dimensions ({}, {}) must be "
+						"strictly positive", t_width,t_height);
+				return 1;
+			}
+			parameters->t_width = (uint32_t) t_width;
+			parameters->t_height = (uint32_t) t_height;
+			parameters->tile_size_on = true;
+
+		}
+
 		if (tileOffsetArg.isSet()) {
 			int32_t off1,off2;
 			if (sscanf(tileOffsetArg.getValue().c_str(), "%d,%d",
@@ -1495,6 +1485,55 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			parameters->tx0 = (uint32_t)off1;
 			parameters->ty0 = (uint32_t)off2;
 		}
+
+
+		if (imageOffsetArg.isSet()) {
+			int32_t off1,off2;
+			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d",
+					&off1, &off2)
+					!= 2) {
+				spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
+				return 1;
+			}
+			if (off1 < 0 || off2 < 0){
+				spdlog::error("-T 'image offset' values ({},{}) can't be negative", off1,off2);
+				return 1;
+			}
+			parameters->image_offset_x0 = (uint32_t)off1;
+			parameters->image_offset_y0 = (uint32_t)off2;
+		}
+
+		if (!imageOffsetArg.isSet() && tileOffsetArg.isSet()){
+			parameters->image_offset_x0 = parameters->tx0;
+			parameters->image_offset_y0 = parameters->ty0;
+		} else {
+            if (parameters->tx0 > parameters->image_offset_x0 ||
+            		parameters->ty0 > parameters->image_offset_y0	)
+            {
+            	spdlog::error("Tile offset ({},{}) must be top left of "
+            			"image offset ({},{})",
+						parameters->tx0,
+						parameters->ty0,
+	            		parameters->image_offset_x0,
+						parameters->image_offset_y0);
+            					return 1;
+            }
+    		if (tilesArg.isSet()) {
+				auto tx1 = uint_adds(parameters->tx0, parameters->t_width); /* manage overflow */
+				auto ty1 = uint_adds(parameters->ty0, parameters->t_height); /* manage overflow */
+				if (tx1 <= parameters->image_offset_x0 || ty1 <= parameters->image_offset_y0) {
+					spdlog::error("Tile grid: first tile bottom, right hand corner\n"
+							"({},{}) must lie to the right and bottom of"
+							" image offset ({},{})\n so that the tile overlaps with the image region.",
+								tx1,
+								ty1,
+								parameters->image_offset_x0,
+								parameters->image_offset_y0);
+						return 1;
+				}
+    		}
+		}
+		/////////////////////////////////////////////////////////////////////
 
 		if (commentArg.isSet()) {
 			std::istringstream f(commentArg.getValue());

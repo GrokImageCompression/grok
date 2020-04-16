@@ -155,4 +155,6 @@ template<typename T> inline bool writeBytes(T val, T *buf, T **outPtr,
 	return true;
 }
 
+uint32_t uint_adds(uint32_t a, uint32_t b);
+
 }
