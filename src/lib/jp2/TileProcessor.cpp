@@ -884,14 +884,16 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 	tile->x0 = std::max<uint32_t>(tx0, image->x0);
 	tile->x1 = std::min<uint32_t>(uint_adds(tx0, m_cp->t_width), image->x1);
 	if (tile->x1 <= tile->x0) {
-		GROK_ERROR( "Tile x coordinates are not valid");
+		GROK_ERROR( "Tile x0 coordinate %d must be "
+				"<= tile x1 coordinate %d",tile->x0,tile->x1 );
 		return false;
 	}
 	uint32_t ty0 = m_cp->ty0 + q * m_cp->t_height; /* can't be greater than image->y1 so won't overflow */
 	tile->y0 = std::max<uint32_t>(ty0, image->y0);
 	tile->y1 = std::min<uint32_t>(uint_adds(ty0, m_cp->t_height), image->y1);
 	if (tile->y1 <= tile->y0) {
-		GROK_ERROR( "Tile y coordinates are not valid");
+		GROK_ERROR("Tile y0 coordinate %d must be "
+				"<= tile y1 coordinate %d",tile->y0,tile->y1 );
 		return false;
 	}
 	/*fprintf(stderr, "Tile border = %d,%d,%d,%d\n", tile->x0, tile->y0,tile->x1,tile->y1);*/

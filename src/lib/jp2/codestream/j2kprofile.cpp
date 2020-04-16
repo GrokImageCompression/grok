@@ -728,21 +728,28 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	if (parameters->tile_size_on) {
-		if (!((parameters->t_width == 1 && parameters->t_height == 1)
-				|| (parameters->t_width == 2 && parameters->t_height == 2)
-				|| (parameters->t_width == 1 && parameters->t_height == 4))) {
-			GROK_WARN("Broadcast profiles require 1x1,2x2 or 1x4 tile layout.\n"
-					"-> (%d,%d) layout is not compliant\n"
-					"-> Non-broadcast codestream will be generated",
-					parameters->t_width, parameters->t_height);
+		if (profile == GRK_PROFILE_BC_SINGLE) {
+			GROK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
+					"-> Non-broadcast codestream will be generated");
 			ret = false;
 		}
-		if (profile == GRK_PROFILE_BC_SINGLE
-				&& !(parameters->t_width == 1 && parameters->t_height == 1)) {
-			GROK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
+
+		// avoid divide by zero
+		if (parameters->t_width == 0 || parameters->t_height == 0) {
+			return false;
+		}
+		auto t_grid_width =
+				ceildiv<uint32_t>((image->x1 - parameters->tx0), parameters->t_width);
+		auto t_grid_height =
+				ceildiv<uint32_t>((image->y1 - parameters->ty0), parameters->t_height);
+
+		if (!((t_grid_width == 1 && t_grid_height == 1)
+				|| (t_grid_width == 2 && t_grid_height == 2)
+				|| (t_grid_width == 1 && t_grid_height == 4))) {
+			GROK_WARN("Tiled broadcast profiles require 2x2 or 1x4 tile layout.\n"
 					"-> (%d,%d) layout is not compliant\n"
 					"-> Non-broadcast codestream will be generated",
-					parameters->t_width, parameters->t_height);
+					t_grid_width, t_grid_height);
 			ret = false;
 		}
 	}
