@@ -1073,7 +1073,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				return 1;
 			}
 			if (off1 < 0 || off2 < 0){
-				spdlog::error("-T 'image offset' values (%d,%d) can't be negative", off1,off2);
+				spdlog::error("-T 'image offset' values ({},{}) can't be negative", off1,off2);
 				return 1;
 			}
 			parameters->image_offset_x0 = (uint32_t)off1;
@@ -1476,7 +1476,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		if (roiArg.isSet()) {
 			if (sscanf(roiArg.getValue().c_str(), "c=%d,U=%d",
 					&parameters->roi_compno, &parameters->roi_shift) != 2) {
-				spdlog::error("ROI error !! [-ROI c='compno',U='shift']");
+				spdlog::error("ROI argument must be of the form: [-ROI c='compno',U='shift']");
 				return 1;
 			}
 		}
@@ -1489,7 +1489,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				return 1;
 			}
 			if (off1 < 0 || off2 < 0){
-				spdlog::error("-T 'tile offset' values (%d,%d) can't be negative", off1,off2);
+				spdlog::error("-T 'tile offset' values ({},{}) can't be negative", off1,off2);
 				return 1;
 			}
 			parameters->cp_tx0 = (uint32_t)off1;
@@ -1986,7 +1986,7 @@ static bool plugin_compress_callback(
 
 		if (fileLength) {
 			//  option to write to buffer, assuming one knows how large compressed stream will be 
-			uint64_t imageSize = (((image->x1 - image->x0)
+			uint64_t imageSize = (((uint64_t)(image->x1 - image->x0)
 					* (image->y1 - image->y0) * image->numcomps
 					* ((image->comps[0].prec + 7) / 8)) * 3) / 2;
 			info->compressBufferLen =

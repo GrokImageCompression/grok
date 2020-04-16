@@ -3239,7 +3239,6 @@ static bool j2k_write_siz(grk_j2k *p_j2k, BufferedStream *p_stream) {
 
 	for (i = 0; i < image->numcomps; ++i) {
 		/* TODO here with MCT ? */
-		/* Ssiz_i */
 		if (!p_stream->write_byte(
 				(uint8_t) (img_comp->prec - 1 + (img_comp->sgnd << 7)))) {
 			return false;
@@ -3488,10 +3487,9 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 			return false;
 	}
 
-	uint64_t tileArea = (uint64_t) (tx1 - cp->tx0) * (ty1 - cp->ty0);
+	uint64_t tileArea = (uint64_t) cp->tdx * cp->tdy;
 	if (tileArea > max_tile_area) {
-		GROK_ERROR(
-				"Error with SIZ marker: tile area = %llu greater than max tile area = %llu",
+		GROK_ERROR("Error in SIZ marker: tile area = %llu greater than max tile area = %llu",
 				tileArea, max_tile_area);
 		return false;
 
