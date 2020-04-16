@@ -1065,13 +1065,19 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 
 		if (imageOffsetArg.isSet()) {
+			int32_t off1,off2;
 			if (sscanf(imageOffsetArg.getValue().c_str(), "%d,%d",
-					&parameters->image_offset_x0, &parameters->image_offset_y0)
+					&off1, &off2)
 					!= 2) {
-				spdlog::error("-d 'image offset' argument "
-						"error !! [-d x0,y0]");
+				spdlog::error("-d 'image offset' argument must be specified as:  -d x0,y0");
 				return 1;
 			}
+			if (off1 < 0 || off2 < 0){
+				spdlog::error("-T 'image offset' values (%d,%d) can't be negative", off1,off2);
+				return 1;
+			}
+			parameters->image_offset_x0 = (uint32_t)off1;
+			parameters->image_offset_y0 = (uint32_t)off2;
 		}
 
 		if (pocArg.isSet()) {
@@ -1476,11 +1482,18 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 
 		if (tileOffsetArg.isSet()) {
+			int32_t off1,off2;
 			if (sscanf(tileOffsetArg.getValue().c_str(), "%d,%d",
-					&parameters->cp_tx0, &parameters->cp_ty0) != 2) {
-				spdlog::error("-T 'tile offset' argument error !! [-T X0,Y0]");
+					&off1, &off2) != 2) {
+				spdlog::error("-T 'tile offset' argument must be in the form: -T X0,Y0");
 				return 1;
 			}
+			if (off1 < 0 || off2 < 0){
+				spdlog::error("-T 'tile offset' values (%d,%d) can't be negative", off1,off2);
+				return 1;
+			}
+			parameters->cp_tx0 = (uint32_t)off1;
+			parameters->cp_ty0 = (uint32_t)off2;
 		}
 
 		if (commentArg.isSet()) {
