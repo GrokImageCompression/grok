@@ -978,19 +978,19 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		}
 
 		if (tilesArg.isSet()) {
-			int32_t cp_tdx = 0, cp_tdy = 0;
-			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &cp_tdx,
-					&cp_tdy) == EOF) {
+			int32_t t_width = 0, t_height = 0;
+			if (sscanf(tilesArg.getValue().c_str(), "%d,%d", &t_width,
+					&t_height) == EOF) {
 				spdlog::error("sscanf failed for tiles argument");
 				return 1;
 			}
 			// sanity check on tile dimensions
-			if (cp_tdx <= 0 || cp_tdy <= 0) {
+			if (t_width <= 0 || t_height <= 0) {
 				spdlog::error("Tile dimensions must be strictly positive");
 				return 1;
 			}
-			parameters->cp_tdx = (uint32_t) cp_tdx;
-			parameters->cp_tdy = (uint32_t) cp_tdy;
+			parameters->t_width = (uint32_t) t_width;
+			parameters->t_height = (uint32_t) t_height;
 			parameters->tile_size_on = true;
 
 		}
@@ -1492,8 +1492,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				spdlog::error("-T 'tile offset' values ({},{}) can't be negative", off1,off2);
 				return 1;
 			}
-			parameters->cp_tx0 = (uint32_t)off1;
-			parameters->cp_ty0 = (uint32_t)off2;
+			parameters->tx0 = (uint32_t)off1;
+			parameters->ty0 = (uint32_t)off2;
 		}
 
 		if (commentArg.isSet()) {
@@ -1595,14 +1595,14 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 		parameters->cp_disto_alloc = 1;
 	}
 
-	if ((parameters->cp_tx0 > 0
-			&& parameters->cp_tx0 > parameters->image_offset_x0)
-			|| (parameters->cp_ty0 > 0
-					&& parameters->cp_ty0 > parameters->image_offset_y0)) {
+	if ((parameters->tx0 > 0
+			&& parameters->tx0 > parameters->image_offset_x0)
+			|| (parameters->ty0 > 0
+					&& parameters->ty0 > parameters->image_offset_y0)) {
 		spdlog::error(
 				"Tile offset cannot be greater than image offset : TX0({})<=IMG_X0({}) TYO({})<=IMG_Y0({}) ",
-				parameters->cp_tx0, parameters->image_offset_x0,
-				parameters->cp_ty0, parameters->image_offset_y0);
+				parameters->tx0, parameters->image_offset_x0,
+				parameters->ty0, parameters->image_offset_y0);
 		return 1;
 	}
 

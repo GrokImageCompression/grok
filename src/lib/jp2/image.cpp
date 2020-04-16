@@ -129,12 +129,12 @@ void grk_image_comp_header_update(grk_image *image_header,
 	uint32_t y0 = std::max<uint32_t>(p_cp->ty0, image_header->y0);
 
 	/* validity of p_cp members used here checked in j2k_read_siz. Can't overflow. */
-	uint32_t x1 = p_cp->tx0 + (p_cp->tw - 1U) * p_cp->tdx;
-	uint32_t y1 = p_cp->ty0 + (p_cp->th - 1U) * p_cp->tdy;
+	uint32_t x1 = p_cp->tx0 + (p_cp->t_grid_width - 1U) * p_cp->t_width;
+	uint32_t y1 = p_cp->ty0 + (p_cp->t_grid_height - 1U) * p_cp->t_height;
 
 	 /* use add saturated to prevent overflow */
-	x1 = std::min<uint32_t>(uint_adds(x1, p_cp->tdx), image_header->x1);
-	y1 = std::min<uint32_t>(uint_adds(y1, p_cp->tdy), image_header->y1);
+	x1 = std::min<uint32_t>(uint_adds(x1, p_cp->t_width), image_header->x1);
+	y1 = std::min<uint32_t>(uint_adds(y1, p_cp->t_height), image_header->y1);
 
 	// 2. convert from canvas to tile coordinates, taking into account
 	// resolution reduction

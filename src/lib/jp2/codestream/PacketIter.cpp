@@ -667,21 +667,21 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
 
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
-	assert(tileno < p_cp->tw * p_cp->th);
+	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	auto l_tcp = &p_cp->tcps[tileno];
 	auto l_img_comp = p_image->comps;
 	auto l_tccp = l_tcp->tccps;
 
 	/* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
-	p = tileno % p_cp->tw;
-	q = tileno / p_cp->tw;
+	p = tileno % p_cp->t_grid_width;
+	q = tileno / p_cp->t_grid_width;
 
 	/* find extent of tile */
-	*tx0 = std::max<uint32_t>(p_cp->tx0 + p * p_cp->tdx, p_image->x0);
-	*tx1 = std::min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->tdx, p_image->x1);
-	*ty0 = std::max<uint32_t>(p_cp->ty0 + q * p_cp->tdy, p_image->y0);
-	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->tdy, p_image->y1);
+	*tx0 = std::max<uint32_t>(p_cp->tx0 + p * p_cp->t_width, p_image->x0);
+	*tx1 = std::min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->t_width, p_image->x1);
+	*ty0 = std::max<uint32_t>(p_cp->ty0 + q * p_cp->t_height, p_image->y0);
+	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->t_height, p_image->y1);
 
 	/* max precision is 0 (can only grow) */
 	*max_prec = 0;
@@ -776,7 +776,7 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	/* preconditions in debug*/
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
-	assert(tileno < p_cp->tw * p_cp->th);
+	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	/* initializations*/
 	auto tcp = &p_cp->tcps[tileno];
@@ -784,16 +784,16 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
 	auto l_img_comp = p_image->comps;
 
 	/* position in x and y of tile*/
-	p = tileno % p_cp->tw;
-	q = tileno / p_cp->tw;
+	p = tileno % p_cp->t_grid_width;
+	q = tileno / p_cp->t_grid_width;
 
 	/* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
-	l_tx0 = p_cp->tx0 + p * p_cp->tdx; /* can't be greater than p_image->x1 so won't overflow */
+	l_tx0 = p_cp->tx0 + p * p_cp->t_width; /* can't be greater than p_image->x1 so won't overflow */
 	*tx0 = std::max<uint32_t>(l_tx0, p_image->x0);
-	*tx1 = std::min<uint32_t>(uint_adds(l_tx0, p_cp->tdx), p_image->x1);
-	l_ty0 = p_cp->ty0 + q * p_cp->tdy; /* can't be greater than p_image->y1 so won't overflow */
+	*tx1 = std::min<uint32_t>(uint_adds(l_tx0, p_cp->t_width), p_image->x1);
+	l_ty0 = p_cp->ty0 + q * p_cp->t_height; /* can't be greater than p_image->y1 so won't overflow */
 	*ty0 = std::max<uint32_t>(l_ty0, p_image->y0);
-	*ty1 = std::min<uint32_t>(uint_adds(l_ty0, p_cp->tdy), p_image->y1);
+	*ty1 = std::min<uint32_t>(uint_adds(l_ty0, p_cp->t_height), p_image->y1);
 
 	/* max precision and resolution is 0 (can only grow)*/
 	*max_prec = 0;
@@ -879,7 +879,7 @@ static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters
 	/* preconditions in debug*/
 	assert(cp != nullptr);
 	assert(image != nullptr);
-	assert(tileno < cp->tw * cp->th);
+	assert(tileno < cp->t_grid_width * cp->t_grid_height);
 
 	/* initializations*/
 	auto tcp = &cp->tcps[tileno];
@@ -936,7 +936,7 @@ static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp, uint16_t
 
 	/* preconditions in debug*/
 	assert(p_cp != nullptr);
-	assert(tileno < p_cp->tw * p_cp->th);
+	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	auto l_tcp = &p_cp->tcps[tileno];
 	/* number of iterations in the loop */
@@ -1001,7 +1001,7 @@ static void pi_update_encode_not_poc(grk_coding_parameters *p_cp, uint32_t num_c
 
 	/* preconditions in debug*/
 	assert(p_cp != nullptr);
-	assert(tileno < p_cp->tw * p_cp->th);
+	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	auto l_tcp = &p_cp->tcps[tileno];
 
@@ -1206,7 +1206,7 @@ PacketIter* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
 	/* preconditions in debug */
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
-	assert(tile_no < p_cp->tw * p_cp->th);
+	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	/* initializations */
 	auto l_tcp = &p_cp->tcps[tile_no];
@@ -1375,7 +1375,7 @@ PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters
 	/* preconditions in debug*/
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
-	assert(tile_no < p_cp->tw * p_cp->th);
+	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	/* initializations*/
 	auto l_tcp = &p_cp->tcps[tile_no];
@@ -1836,7 +1836,7 @@ void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_paramete
 
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
-	assert(tile_no < p_cp->tw * p_cp->th);
+	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
 	auto l_tcp = &(p_cp->tcps[tile_no]);
 

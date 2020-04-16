@@ -171,12 +171,12 @@ int main(int argc, char *argv[]) {
 
 	/* tile definitions parameters */
 	/* position of the tile grid aligned with the image */
-	param.cp_tx0 = 0;
-	param.cp_ty0 = 0;
+	param.tx0 = 0;
+	param.ty0 = 0;
 	/* tile size, we are using tile based encoding */
 	param.tile_size_on = true;
-	param.cp_tdx = tile_width;
-	param.cp_tdy = tile_height;
+	param.t_width = tile_width;
+	param.t_height = tile_height;
 
 	/* use irreversible encoding ?*/
 	param.irreversible = irreversible;

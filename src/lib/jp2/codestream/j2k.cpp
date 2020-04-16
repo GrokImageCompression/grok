@@ -465,14 +465,14 @@ bool j2k_read_header(BufferedStream *p_stream, grk_j2k *p_j2k,
 			header_info->prcw_init[i] = 1 << tccp->prcw[i];
 			header_info->prch_init[i] = 1 << tccp->prch[i];
 		}
-		header_info->cp_tx0 = p_j2k->m_cp.tx0;
-		header_info->cp_ty0 = p_j2k->m_cp.ty0;
+		header_info->tx0 = p_j2k->m_cp.tx0;
+		header_info->ty0 = p_j2k->m_cp.ty0;
 
-		header_info->cp_tdx = p_j2k->m_cp.tdx;
-		header_info->cp_tdy = p_j2k->m_cp.tdy;
+		header_info->t_width = p_j2k->m_cp.t_width;
+		header_info->t_height = p_j2k->m_cp.t_height;
 
-		header_info->cp_tw = p_j2k->m_cp.tw;
-		header_info->cp_th = p_j2k->m_cp.th;
+		header_info->cp_tw = p_j2k->m_cp.t_grid_width;
+		header_info->cp_th = p_j2k->m_cp.t_grid_height;
 
 		header_info->tcp_numlayers = tcp->numlayers;
 
@@ -819,7 +819,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 					return false;
 				}
 				if (correction_needed) {
-					uint32_t nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+					uint32_t nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
 					uint32_t tile_no;
 					p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data =
 							0;
@@ -940,7 +940,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 	//if we are not ready to decode tile part data, then skip tiles with no tile data
 	// !! Why ???
 	if (!p_j2k->m_specific_param.m_decoder.ready_to_decode_tile_part_data) {
-		uint32_t nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 		tcp = p_j2k->m_cp.tcps + p_j2k->m_tileProcessor->m_current_tile_number;
 		while ((p_j2k->m_tileProcessor->m_current_tile_number < nb_tiles)
 				&& (!tcp->m_tile_data)) {
@@ -1140,7 +1140,7 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	uint32_t nb_comps = 0;
 	uint8_t *current_data = nullptr;
 	uint32_t nr_tiles = 0;
-	uint32_t num_tiles_to_decode = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	uint32_t num_tiles_to_decode = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 	bool clearOutputOnInit = false;
 	// if number of tiles is greater than 1, then we need to copy tile data
 	if (num_tiles_to_decode > 1) {
@@ -1312,7 +1312,7 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 				grok_free(current_data);
 				current_data = nullptr;
 				GROK_ERROR("Not enough memory to decode tile %d/%d",
-						current_tile_no + 1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+						current_tile_no + 1, p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width);
 				return false;
 			}
 			current_data = new_current_data;
@@ -1329,7 +1329,7 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 		} catch (DecodeUnknownMarkerAtEndOfTileException &e) {
 			// suppress exception
 		}
-		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.", current_tile_no+1, p_j2k->m_cp.th * p_j2k->m_cp.tw);
+		//event_msg( EVT_INFO, "Tile %d/%d has been decoded.", current_tile_no+1, p_j2k->m_cp.t_grid_height * p_j2k->m_cp.tw);
 
 		if (current_data) {
 			if (!p_j2k->m_tileProcessor->copy_decoded_tile_to_output_image(
@@ -1413,31 +1413,31 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image,
 		return false;
 	}
 
-	if ( /*(tile_index < 0) &&*/(tile_index >= p_j2k->m_cp.tw * p_j2k->m_cp.th)) {
+	if ( /*(tile_index < 0) &&*/(tile_index >= p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height)) {
 		GROK_ERROR(
 				"Tile index provided by the user is incorrect %d (max = %d) ",
-				tile_index, (p_j2k->m_cp.tw * p_j2k->m_cp.th) - 1);
+				tile_index, (p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height) - 1);
 		return false;
 	}
 
 	/* Compute the dimension of the desired tile*/
-	tile_x = tile_index % p_j2k->m_cp.tw;
-	tile_y = tile_index / p_j2k->m_cp.tw;
+	tile_x = tile_index % p_j2k->m_cp.t_grid_width;
+	tile_y = tile_index / p_j2k->m_cp.t_grid_width;
 
 	originaimage_rect = grk_rect(p_image->x0, p_image->y0, p_image->x1,
 			p_image->y1);
 
-	p_image->x0 = tile_x * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
+	p_image->x0 = tile_x * p_j2k->m_cp.t_width + p_j2k->m_cp.tx0;
 	if (p_image->x0 < p_j2k->m_private_image->x0)
 		p_image->x0 = p_j2k->m_private_image->x0;
-	p_image->x1 = (tile_x + 1) * p_j2k->m_cp.tdx + p_j2k->m_cp.tx0;
+	p_image->x1 = (tile_x + 1) * p_j2k->m_cp.t_width + p_j2k->m_cp.tx0;
 	if (p_image->x1 > p_j2k->m_private_image->x1)
 		p_image->x1 = p_j2k->m_private_image->x1;
 
-	p_image->y0 = tile_y * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
+	p_image->y0 = tile_y * p_j2k->m_cp.t_height + p_j2k->m_cp.ty0;
 	if (p_image->y0 < p_j2k->m_private_image->y0)
 		p_image->y0 = p_j2k->m_private_image->y0;
-	p_image->y1 = (tile_y + 1) * p_j2k->m_cp.tdy + p_j2k->m_cp.ty0;
+	p_image->y1 = (tile_y + 1) * p_j2k->m_cp.t_height + p_j2k->m_cp.ty0;
 	if (p_image->y1 > p_j2k->m_private_image->y1)
 		p_image->y1 = p_j2k->m_private_image->y1;
 
@@ -1492,7 +1492,7 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image,
 	p_j2k->m_tileProcessor->m_tile_ind_to_dec = (int32_t) tile_index;
 
 	// reset tile part numbers, in case we are re-using the same codec object from previous decode
-	uint32_t nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	uint32_t nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
 	for (uint32_t i = 0; i < nb_tiles; ++i) {
 		p_j2k->m_cp.tcps[i].m_current_tile_part_number = -1;
 	}
@@ -1749,8 +1749,8 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	cp = &(p_j2k->m_cp);
 
 	/* set default values for cp */
-	cp->tw = 1;
-	cp->th = 1;
+	cp->t_grid_width = 1;
+	cp->t_grid_height = 1;
 
 	cp->m_coding_param.m_enc.m_max_comp_size = parameters->max_comp_size;
 	cp->rsiz = parameters->rsiz;
@@ -1761,12 +1761,12 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 			parameters->rateControlAlgorithm;
 
 	/* tiles */
-	cp->tdx = parameters->cp_tdx;
-	cp->tdy = parameters->cp_tdy;
+	cp->t_width = parameters->t_width;
+	cp->t_height = parameters->t_height;
 
 	/* tile offset */
-	cp->tx0 = parameters->cp_tx0;
-	cp->ty0 = parameters->cp_ty0;
+	cp->tx0 = parameters->tx0;
+	cp->ty0 = parameters->ty0;
 
 	/* comment string */
 	if (parameters->cp_num_comments) {
@@ -1816,14 +1816,14 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 
 	if (parameters->tile_size_on) {
 		// avoid divide by zero
-		if (cp->tdx == 0 || cp->tdy == 0) {
+		if (cp->t_width == 0 || cp->t_height == 0) {
 			return false;
 		}
-		cp->tw = ceildiv<uint32_t>((image->x1 - cp->tx0), cp->tdx);
-		cp->th = ceildiv<uint32_t>((image->y1 - cp->ty0), cp->tdy);
+		cp->t_grid_width = ceildiv<uint32_t>((image->x1 - cp->tx0), cp->t_width);
+		cp->t_grid_height = ceildiv<uint32_t>((image->y1 - cp->ty0), cp->t_height);
 	} else {
-		cp->tdx = image->x1 - cp->tx0;
-		cp->tdy = image->y1 - cp->ty0;
+		cp->t_width = image->x1 - cp->tx0;
+		cp->t_height = image->y1 - cp->ty0;
 	}
 
 	if (parameters->tp_on) {
@@ -1832,8 +1832,8 @@ bool j2k_setup_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	}
 
 	uint8_t numgbits = parameters->isHT ? 1 : 2;
-	cp->tcps = new grk_tcp[cp->tw * cp->th];
-	for (tileno = 0; tileno < cp->tw * cp->th; tileno++) {
+	cp->tcps = new grk_tcp[cp->t_grid_width * cp->t_grid_height];
+	for (tileno = 0; tileno < cp->t_grid_width * cp->t_grid_height; tileno++) {
 		grk_tcp *tcp = cp->tcps + tileno;
 		tcp->isHT = parameters->isHT;
 		tcp->qcd.generate(numgbits, (uint32_t) (parameters->numresolution - 1),
@@ -2068,7 +2068,7 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile,
 	auto p_tcd = p_j2k->m_tileProcessor;
 	p_tcd->current_plugin_tile = tile;
 
-	uint32_t nb_tiles = (uint32_t) p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	uint32_t nb_tiles = (uint32_t) p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 	if (nb_tiles > max_num_tiles) {
 		GROK_ERROR("Number of tiles %d is greater the %d max tiles "
 				"allowed by the standard.", nb_tiles, max_num_tiles);
@@ -2178,7 +2178,7 @@ static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index) {
 		GROK_ERROR("The given tile index does not match.");
 		return false;
 	}
-	//event_msg( EVT_INFO, "tile number %d / %d", p_j2k->m_tileProcessor->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.th);
+	//event_msg( EVT_INFO, "tile number %d / %d", p_j2k->m_tileProcessor->m_current_tile_number + 1, p_j2k->m_cp.tw * p_j2k->m_cp.t_grid_height);
 	p_j2k->m_tileProcessor->m_current_tile_part_number = 0;
 	p_j2k->m_tileProcessor->cur_totnum_tp =
 			p_j2k->m_cp.tcps[tile_index].m_nb_tile_parts;
@@ -2200,8 +2200,8 @@ static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	uint64_t tile_size = 0;
 
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		tile_size += (uint64_t) ceildiv<uint32_t>(cp->tdx, img_comp->dx)
-				* ceildiv<uint32_t>(cp->tdy, img_comp->dy) * img_comp->prec;
+		tile_size += (uint64_t) ceildiv<uint32_t>(cp->t_width, img_comp->dx)
+				* ceildiv<uint32_t>(cp->t_height, img_comp->dy) * img_comp->prec;
 		++img_comp;
 	}
 
@@ -2256,7 +2256,7 @@ static bool j2k_mct_validation(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	assert(p_stream != nullptr);
 
 	if ((p_j2k->m_cp.rsiz & 0x8200) == 0x8200) {
-		uint32_t nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 		grk_tcp *tcp = p_j2k->m_cp.tcps;
 
 		for (i = 0; i < nb_tiles; ++i) {
@@ -2302,12 +2302,12 @@ static bool j2k_encoding_validation(grk_j2k *p_j2k, BufferedStream *p_stream) {
 		return false;
 	}
 
-	if (p_j2k->m_cp.tdx == 0) {
+	if (p_j2k->m_cp.t_width == 0) {
 		GROK_ERROR("Tile x dimension must be greater than zero ");
 		return false;
 	}
 
-	if (p_j2k->m_cp.tdy == 0) {
+	if (p_j2k->m_cp.t_height == 0) {
 		GROK_ERROR("Tile y dimension must be greater than zero ");
 		return false;
 	}
@@ -2833,18 +2833,18 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *p_stream) {
 		tp_stride_func = j2k_get_default_stride;
 	}
 
-	for (i = 0; i < cp->th; ++i) {
-		for (j = 0; j < cp->tw; ++j) {
+	for (i = 0; i < cp->t_grid_height; ++i) {
+		for (j = 0; j < cp->t_grid_width; ++j) {
 			double offset = (double) (*tp_stride_func)(tcp) / tcp->numlayers;
 
 			/* 4 borders of the tile rescale on the image if necessary */
-			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->tdx),
+			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
 					image->x0);
-			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->tdy),
+			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->t_height),
 					image->y0);
-			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->tdx),
+			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->t_width),
 					image->x1);
-			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->tdy),
+			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->t_height),
 					image->y1);
 			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
 
@@ -2861,17 +2861,17 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	}
 	tcp = cp->tcps;
 
-	for (i = 0; i < cp->th; ++i) {
-		for (j = 0; j < cp->tw; ++j) {
+	for (i = 0; i < cp->t_grid_height; ++i) {
+		for (j = 0; j < cp->t_grid_width; ++j) {
 			rates = tcp->rates;
 			/* 4 borders of the tile rescale on the image if necessary */
-			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->tdx),
+			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
 					image->x0);
-			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->tdy),
+			uint32_t y0 = std::max<uint32_t>((cp->ty0 + i * cp->t_height),
 					image->y0);
-			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->tdx),
+			uint32_t x1 = std::min<uint32_t>((cp->tx0 + (j + 1) * cp->t_width),
 					image->x1);
-			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->tdy),
+			uint32_t y1 = std::min<uint32_t>((cp->ty0 + (i + 1) * cp->t_height),
 					image->y1);
 			uint64_t numTilePixels = (uint64_t) (x1 - x0) * (y1 - y0);
 			double sot_adjust = ((double) numTilePixels * (double) header_size)
@@ -2931,7 +2931,7 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino,
 	uint32_t tpnum = 1;
 
 	/*  preconditions */
-	assert(tileno < (cp->tw * cp->th));
+	assert(tileno < (cp->t_grid_width * cp->t_grid_height));
 	assert(pino < (cp->tcps[tileno].numpocs + 1));
 
 	/* get the given tile coding parameter */
@@ -2998,7 +2998,7 @@ static bool j2k_calculate_tp(grk_coding_parameters *cp,
 	assert(cp != nullptr);
 	assert(image != nullptr);
 
-	nb_tiles = cp->tw * cp->th;
+	nb_tiles = cp->t_grid_width * cp->t_grid_height;
 	*p_nb_tile_parts = 0;
 	tcp = cp->tcps;
 
@@ -3213,12 +3213,12 @@ static bool j2k_write_siz(grk_j2k *p_j2k, BufferedStream *p_stream) {
 	}
 
 	/* XTsiz */
-	if (!p_stream->write_int(cp->tdx)) {
+	if (!p_stream->write_int(cp->t_width)) {
 		return false;
 	}
 
 	/* YTsiz */
-	if (!p_stream->write_int(cp->tdy)) {
+	if (!p_stream->write_int(cp->t_height)) {
 		return false;
 	}
 
@@ -3417,9 +3417,9 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	p_header_data += 4;
 	grk_read_bytes(p_header_data, &image->y0, 4); /* Y0siz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, &cp->tdx, 4); /* XTsiz */
+	grk_read_bytes(p_header_data, &cp->t_width, 4); /* XTsiz */
 	p_header_data += 4;
-	grk_read_bytes(p_header_data, &cp->tdy, 4); /* YTsiz */
+	grk_read_bytes(p_header_data, &cp->t_height, 4); /* YTsiz */
 	p_header_data += 4;
 	grk_read_bytes(p_header_data, &cp->tx0, 4); /* XT0siz */
 	p_header_data += 4;
@@ -3454,10 +3454,10 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		return false;
 	}
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
-	if ((cp->tdx == 0U) || (cp->tdy == 0U)) {
+	if ((cp->t_width == 0U) || (cp->t_height == 0U)) {
 		GROK_ERROR(
 				"Error in SIZ marker: invalid tile size (%d, %d)",
-				cp->tdx, cp->tdy);
+				cp->t_width, cp->t_height);
 		return false;
 	}
 
@@ -3471,8 +3471,8 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 				image->y0);
 		return false;
 	}
-	tx1 = uint_adds(cp->tx0, cp->tdx); /* manage overflow */
-	ty1 = uint_adds(cp->ty0, cp->tdy); /* manage overflow */
+	tx1 = uint_adds(cp->tx0, cp->t_width); /* manage overflow */
+	ty1 = uint_adds(cp->ty0, cp->t_height); /* manage overflow */
 	if (tx1 <= image->x0 || ty1 <= image->y0) {
 		GROK_ERROR("Error in SIZ marker: first tile (%d,%d,%d,%d) must overlap"
 					" image (%d,%d,%d,%d)",
@@ -3487,7 +3487,7 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 			return false;
 	}
 
-	uint64_t tileArea = (uint64_t) cp->tdx * cp->tdy;
+	uint64_t tileArea = (uint64_t) cp->t_width * cp->t_height;
 	if (tileArea > max_tile_area) {
 		GROK_ERROR("Error in SIZ marker: tile area = %llu greater than max tile area = %llu",
 				tileArea, max_tile_area);
@@ -3538,45 +3538,45 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* Compute the number of tiles */
-	cp->tw = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->tdx);
-	cp->th = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->tdy);
+	cp->t_grid_width = ceildiv<uint32_t>(image->x1 - cp->tx0, cp->t_width);
+	cp->t_grid_height = ceildiv<uint32_t>(image->y1 - cp->ty0, cp->t_height);
 
 	/* Check that the number of tiles is valid */
-	if (cp->tw == 0 || cp->th == 0) {
+	if (cp->t_grid_width == 0 || cp->t_grid_height == 0) {
 		GROK_ERROR(
 				"Invalid grid of tiles: %u x %u. JPEG 2000 standard requires at least one tile in grid. ",
-				cp->tw, cp->th);
+				cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
-	if (cp->tw * cp->th > max_num_tiles) {
+	if (cp->t_grid_width * cp->t_grid_height > max_num_tiles) {
 		GROK_ERROR(
 				"Invalid grid of tiles : %u x %u.  JPEG 2000 standard specifies maximum of %d tiles",
-				max_num_tiles, cp->tw, cp->th);
+				max_num_tiles, cp->t_grid_width, cp->t_grid_height);
 		return false;
 	}
-	nb_tiles = cp->tw * cp->th;
+	nb_tiles = cp->t_grid_width * cp->t_grid_height;
 
 	/* Define the tiles which will be decoded */
 	if (p_j2k->m_specific_param.m_decoder.m_discard_tiles) {
 		p_j2k->m_specific_param.m_decoder.m_start_tile_x_index =
 				(p_j2k->m_specific_param.m_decoder.m_start_tile_x_index
-						- cp->tx0) / cp->tdx;
+						- cp->tx0) / cp->t_width;
 		p_j2k->m_specific_param.m_decoder.m_start_tile_y_index =
 				(p_j2k->m_specific_param.m_decoder.m_start_tile_y_index
-						- cp->ty0) / cp->tdy;
+						- cp->ty0) / cp->t_height;
 		p_j2k->m_specific_param.m_decoder.m_end_tile_x_index =
 				ceildiv<uint32_t>(
 						(p_j2k->m_specific_param.m_decoder.m_end_tile_x_index
-								- cp->tx0), cp->tdx);
+								- cp->tx0), cp->t_width);
 		p_j2k->m_specific_param.m_decoder.m_end_tile_y_index =
 				ceildiv<uint32_t>(
 						(p_j2k->m_specific_param.m_decoder.m_end_tile_y_index
-								- cp->ty0), cp->tdy);
+								- cp->ty0), cp->t_height);
 	} else {
 		p_j2k->m_specific_param.m_decoder.m_start_tile_x_index = 0;
 		p_j2k->m_specific_param.m_decoder.m_start_tile_y_index = 0;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_x_index = cp->tw;
-		p_j2k->m_specific_param.m_decoder.m_end_tile_y_index = cp->th;
+		p_j2k->m_specific_param.m_decoder.m_end_tile_x_index = cp->t_grid_width;
+		p_j2k->m_specific_param.m_decoder.m_end_tile_y_index = cp->t_grid_height;
 	}
 
 	/* memory allocations */
@@ -3984,7 +3984,7 @@ static uint32_t j2k_get_max_coc_size(grk_j2k *p_j2k) {
 	uint32_t nb_tiles;
 	uint32_t max = 0;
 
-	nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
 	nb_comp = p_j2k->m_private_image->numcomps;
 
 	for (i = 0; i < nb_tiles; ++i) {
@@ -4329,7 +4329,7 @@ static uint32_t j2k_get_max_poc_size(grk_j2k *p_j2k) {
 	uint32_t i;
 
 	auto tcp = p_j2k->m_cp.tcps;
-	nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 
 	for (i = 0; i < nb_tiles; ++i) {
 		max_poc = std::max<uint32_t>(max_poc, tcp->numpocs);
@@ -4347,7 +4347,7 @@ static uint32_t j2k_get_max_toc_size(grk_j2k *p_j2k) {
 	uint32_t max = 0;
 
 	auto tcp = p_j2k->m_cp.tcps;
-	nb_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	nb_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
 
 	for (i = 0; i < nb_tiles; ++i) {
 		max = std::max<uint32_t>(max, tcp->m_nb_tile_parts);
@@ -5170,14 +5170,14 @@ static bool j2k_read_sot(grk_j2k *p_j2k, uint8_t *p_header_data,
 	auto cp = &(p_j2k->m_cp);
 
 	/* testcase 2.pdf.SIGFPE.706.1112 */
-	if (tile_number >= cp->tw * cp->th) {
+	if (tile_number >= cp->t_grid_width * cp->t_grid_height) {
 		GROK_ERROR("Invalid tile number %d", tile_number);
 		return false;
 	}
 
 	auto tcp = &cp->tcps[tile_number];
-	tile_x = tile_number % cp->tw;
-	tile_y = tile_number / cp->tw;
+	tile_x = tile_number % cp->t_grid_width;
+	tile_y = tile_number / cp->t_grid_width;
 
 	/* Fixes issue with id_000020,sig_06,src_001958,op_flip4,pos_149 */
 	/* of https://github.com/uclouvain/openjpeg/issues/939 */
@@ -6739,7 +6739,7 @@ static bool j2k_copy_default_tcp_and_create_tcd(grk_j2k *p_j2k,
 	assert(p_stream != nullptr);
 
 	image = p_j2k->m_private_image;
-	nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+	nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 	auto tcp = p_j2k->m_cp.tcps;
 	tccp_size = image->numcomps * (uint32_t) sizeof(grk_tccp);
 	auto default_tcp = p_j2k->m_specific_param.m_decoder.m_default_tcp;
@@ -6868,7 +6868,7 @@ static uint32_t j2k_get_SPCod_SPCoc_size(grk_j2k *p_j2k, uint16_t tile_no,
 	auto tccp = &tcp->tccps[comp_no];
 
 	/* preconditions again */
-	assert(tile_no < (cp->tw * cp->th));
+	assert(tile_no < (cp->t_grid_width * cp->t_grid_height));
 	assert(comp_no < p_j2k->m_private_image->numcomps);
 
 	if (tccp->csty & J2K_CCP_CSTY_PRT) {
@@ -6926,7 +6926,7 @@ static bool j2k_write_SPCod_SPCoc(grk_j2k *p_j2k, uint16_t tile_no,
 	auto tccp = &tcp->tccps[comp_no];
 
 	/* preconditions again */
-	assert(tile_no < (cp->tw * cp->th));
+	assert(tile_no < (cp->t_grid_width * cp->t_grid_height));
 	assert(comp_no < (p_j2k->m_private_image->numcomps));
 
 	/* SPcoc (D) */
@@ -7131,7 +7131,7 @@ void grk_coding_parameters::destroy() {
 	if (tcps != nullptr) {
 		uint32_t i;
 		current_tile = tcps;
-		nb_tiles = th * tw;
+		nb_tiles = t_grid_height * t_grid_width;
 
 		for (i = 0U; i < nb_tiles; ++i) {
 			j2k_tcp_destroy(current_tile);

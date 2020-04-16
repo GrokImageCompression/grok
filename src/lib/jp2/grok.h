@@ -448,13 +448,13 @@ typedef struct _grk_cparameters {
 	/** size of tile: tile_size_on = false (not in argument) or = true (in argument) */
 	bool tile_size_on;
 	/** XTOsiz */
-	uint32_t cp_tx0;
+	uint32_t tx0;
 	/** YTOsiz */
-	uint32_t cp_ty0;
+	uint32_t ty0;
 	/** XTsiz */
-	uint32_t cp_tdx;
+	uint32_t t_width;
 	/** YTsiz */
-	uint32_t cp_tdy;
+	uint32_t t_height;
 	/** allocation by rate/distortion */
 	uint32_t cp_disto_alloc;
 	/** allocation by fixed_quality */
@@ -644,13 +644,13 @@ typedef struct _grk_header_info {
 	/** initial precinct height */
 	uint32_t prch_init[GRK_J2K_MAXRLVLS];
 	/** XTOsiz */
-	uint32_t cp_tx0;
+	uint32_t tx0;
 	/** YTOsiz */
-	uint32_t cp_ty0;
+	uint32_t ty0;
 	/** XTsiz */
-	uint32_t cp_tdx;
+	uint32_t t_width;
 	/** YTsiz */
-	uint32_t cp_tdy;
+	uint32_t t_height;
 	/** number of tiles in width */
 	uint32_t cp_tw;
 	/** number of tiles in height */
@@ -921,10 +921,10 @@ typedef struct _grk_image {
  * Component parameters structure used by the grk_image_create function
  * */
 typedef struct _grk_image_comptparm {
-	/** XRsiz: horizontal separation of a sample of with component
+	/** XRsiz: horizontal separation of a sample of component
 	 *  with respect to the reference grid */
 	uint32_t dx;
-	/** YRsiz: vertical separation of a sample of with component
+	/** YRsiz: vertical separation of a sample of component
 	 *  with respect to the reference grid */
 	uint32_t dy;
 	/** data width */
@@ -1037,24 +1037,6 @@ typedef struct _grk_codestream_info {
 	uint32_t packno;
 	/** writing the packet in the index with t2_encode_packets */
 	uint32_t index_write;
-	/** image width */
-	uint32_t image_w;
-	/** image height */
-	uint32_t image_h;
-	/** progression order */
-	GRK_PROG_ORDER prog;
-	/** tile size in x */
-	uint32_t tile_x;
-	/** tile size in y */
-	uint32_t tile_y;
-	/** */
-	uint32_t tile_Ox;
-	/** */
-	uint32_t tile_Oy;
-	/** number of tiles in X */
-	uint32_t tw;
-	/** number of tiles in Y */
-	uint32_t th;
 	/** component numbers */
 	uint32_t numcomps;
 	/** number of layer */
@@ -1140,13 +1122,13 @@ typedef struct _grk_codestream_info_v2 {
 	/** tile origin in y = YTOsiz */
 	uint32_t ty0;
 	/** tile size in x = XTsiz */
-	uint32_t tdx;
+	uint32_t t_width;
 	/** tile size in y = YTsiz */
-	uint32_t tdy;
+	uint32_t t_height;
 	/** number of tiles in X */
-	uint32_t tw;
+	uint32_t t_grid_width;
 	/** number of tiles in Y */
-	uint32_t th;
+	uint32_t t_grid_height;
 	/** number of components*/
 	uint32_t nbcomps;
 	/** Default information regarding tiles inside image */

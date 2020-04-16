@@ -129,8 +129,8 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 
 		decoder->m_start_tile_x_index = 0;
 		decoder->m_start_tile_y_index = 0;
-		decoder->m_end_tile_x_index = cp->tw;
-		decoder->m_end_tile_y_index = cp->th;
+		decoder->m_end_tile_x_index = cp->t_grid_width;
+		decoder->m_end_tile_y_index = cp->t_grid_height;
 
 		return true;
 	}
@@ -153,7 +153,7 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 		output_image->x0 = image->x0;
 	} else {
 		decoder->m_start_tile_x_index = (start_x
-				- cp->tx0) / cp->tdx;
+				- cp->tx0) / cp->t_width;
 		output_image->x0 = start_x;
 	}
 
@@ -173,7 +173,7 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 		output_image->y0 = image->y0;
 	} else {
 		decoder->m_start_tile_y_index = (start_y
-				- cp->ty0) / cp->tdy;
+				- cp->ty0) / cp->t_height;
 		output_image->y0 = start_y;
 	}
 
@@ -191,15 +191,15 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 				"Right position of the decoded area (region_x1=%d)"
 				" is outside the image area (Xsiz=%d).",
 				end_x, image->x1);
-		decoder->m_end_tile_x_index = cp->tw;
+		decoder->m_end_tile_x_index = cp->t_grid_width;
 		output_image->x1 = image->x1;
 	} else {
 		// avoid divide by zero
-		if (cp->tdx == 0) {
+		if (cp->t_width == 0) {
 			return false;
 		}
 		decoder->m_end_tile_x_index = ceildiv<uint32_t>(
-				end_x - cp->tx0, cp->tdx);
+				end_x - cp->tx0, cp->t_width);
 		output_image->x1 = end_x;
 	}
 
@@ -216,15 +216,15 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 				"Bottom position of the decoded area (region_y1=%d)"
 				" is outside the image area (Ysiz=%d).",
 				end_y, image->y1);
-		decoder->m_end_tile_y_index = cp->th;
+		decoder->m_end_tile_y_index = cp->t_grid_height;
 		output_image->y1 = image->y1;
 	} else {
 		// avoid divide by zero
-		if (cp->tdy == 0) {
+		if (cp->t_height == 0) {
 			return false;
 		}
 		decoder->m_end_tile_y_index = ceildiv<uint32_t>(
-				end_y - cp->ty0, cp->tdy);
+				end_y - cp->ty0, cp->t_height);
 		output_image->y1 = end_y;
 	}
 	/* ----- */
@@ -875,21 +875,21 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 	if (tcp->m_tile_data)
 		tcp->m_tile_data->rewind();
 
-	uint32_t p = tile_no % m_cp->tw; /* tile coordinates */
-	uint32_t q = tile_no / m_cp->tw;
+	uint32_t p = tile_no % m_cp->t_grid_width; /* tile coordinates */
+	uint32_t q = tile_no / m_cp->t_grid_width;
 	/*fprintf(stderr, "Tile coordinate = %d,%d\n", p, q);*/
 
 	/* 4 borders of the tile rescale on the image if necessary */
-	uint32_t tx0 = m_cp->tx0 + p * m_cp->tdx; /* can't be greater than image->x1 so won't overflow */
+	uint32_t tx0 = m_cp->tx0 + p * m_cp->t_width; /* can't be greater than image->x1 so won't overflow */
 	tile->x0 = std::max<uint32_t>(tx0, image->x0);
-	tile->x1 = std::min<uint32_t>(uint_adds(tx0, m_cp->tdx), image->x1);
+	tile->x1 = std::min<uint32_t>(uint_adds(tx0, m_cp->t_width), image->x1);
 	if (tile->x1 <= tile->x0) {
 		GROK_ERROR( "Tile x coordinates are not valid");
 		return false;
 	}
-	uint32_t ty0 = m_cp->ty0 + q * m_cp->tdy; /* can't be greater than image->y1 so won't overflow */
+	uint32_t ty0 = m_cp->ty0 + q * m_cp->t_height; /* can't be greater than image->y1 so won't overflow */
 	tile->y0 = std::max<uint32_t>(ty0, image->y0);
-	tile->y1 = std::min<uint32_t>(uint_adds(ty0, m_cp->tdy), image->y1);
+	tile->y1 = std::min<uint32_t>(uint_adds(ty0, m_cp->t_height), image->y1);
 	if (tile->y1 <= tile->y0) {
 		GROK_ERROR( "Tile y coordinates are not valid");
 		return false;

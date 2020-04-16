@@ -74,7 +74,7 @@ int J2KProfile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 	const uint32_t XTsiz =
 			parameters->tile_size_on ?
-					(uint32_t) parameters->cp_tdx : image->x1;
+					(uint32_t) parameters->t_width : image->x1;
 	switch (profile) {
 	case GRK_PROFILE_IMF_2K:
 		return 5;
@@ -200,7 +200,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	const uint32_t NL = (uint32_t) (parameters->numresolution - 1);
 	const uint32_t XTsiz =
 			parameters->tile_size_on ?
-					(uint32_t) parameters->cp_tdx : image->x1;
+					(uint32_t) parameters->t_width : image->x1;
 	bool ret = true;
 
 	/* Validate mainlevel */
@@ -243,40 +243,40 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 		ret = false;
 	}
 
-	if (parameters->cp_tx0 != 0 || parameters->cp_ty0 != 0) {
+	if (parameters->tx0 != 0 || parameters->ty0 != 0) {
 		GROK_WARN("IMF profiles require tile origin to be at (0,0).\n"
 				"-> (%d,%d) is not compliant\n"
-				"-> Non-IMF codestream will be generated", parameters->cp_tx0,
-				parameters->cp_ty0);
+				"-> Non-IMF codestream will be generated", parameters->tx0,
+				parameters->ty0);
 		ret = false;
 	}
 
 	if (parameters->tile_size_on) {
 		if (profile == GRK_PROFILE_IMF_2K || profile == GRK_PROFILE_IMF_4K
 				|| profile == GRK_PROFILE_IMF_8K) {
-			if ((uint32_t) parameters->cp_tdx < image->x1
-					|| (uint32_t) parameters->cp_tdy < image->y1) {
+			if ((uint32_t) parameters->t_width < image->x1
+					|| (uint32_t) parameters->t_height < image->y1) {
 				GROK_WARN(
 						"IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n"
 								"-> %d,%d is lesser than %d,%d\n"
 								"-> Non-IMF codestream will be generated",
-						parameters->cp_tdx, parameters->cp_tdy, image->x1,
+						parameters->t_width, parameters->t_height, image->x1,
 						image->y1);
 				ret = false;
 			}
 		} else {
-			if ((uint32_t) parameters->cp_tdx >= image->x1
-					&& (uint32_t) parameters->cp_tdy >= image->y1) {
+			if ((uint32_t) parameters->t_width >= image->x1
+					&& (uint32_t) parameters->t_height >= image->y1) {
 				/* ok */
-			} else if (parameters->cp_tdx == 1024
-					&& parameters->cp_tdy == 1024) {
+			} else if (parameters->t_width == 1024
+					&& parameters->t_height == 1024) {
 				/* ok */
-			} else if (parameters->cp_tdx == 2048 && parameters->cp_tdy == 2048
+			} else if (parameters->t_width == 2048 && parameters->t_height == 2048
 					&& (profile == GRK_PROFILE_IMF_4K
 							|| profile == GRK_PROFILE_IMF_8K)) {
 				/* ok */
-			} else if (parameters->cp_tdx == 4096&&
-			parameters->cp_tdy == 4096 &&
+			} else if (parameters->t_width == 4096&&
+			parameters->t_height == 4096 &&
 			profile == GRK_PROFILE_IMF_8K) {
 				/* ok */
 			} else {
@@ -286,7 +286,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 						"or (4096,4096) for 8K_R.\n"
 						"-> %d,%d is non conformant\n"
 						"-> Non-IMF codestream will be generated",
-						parameters->cp_tdx, parameters->cp_tdy);
+						parameters->t_width, parameters->t_height);
 				ret = false;
 			}
 		}
@@ -597,7 +597,7 @@ int J2KProfile::get_broadcast_max_NL(grk_cparameters *parameters,
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 	const uint32_t XTsiz =
 			parameters->tile_size_on ?
-					(uint32_t) parameters->cp_tdx : image->x1;
+					(uint32_t) parameters->t_width : image->x1;
 	switch (profile) {
 	case GRK_PROFILE_IMF_2K:
 		return 5;
@@ -719,30 +719,30 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 		ret = false;
 	}
 
-	if (parameters->cp_tx0 != 0 || parameters->cp_ty0 != 0) {
+	if (parameters->tx0 != 0 || parameters->ty0 != 0) {
 		GROK_WARN("Broadcast profiles require tile origin to be at (0,0).\n"
 				"-> (%d,%d) is not compliant\n"
 				"-> Non-broadcast codestream will be generated",
-				parameters->cp_tx0, parameters->cp_ty0);
+				parameters->tx0, parameters->ty0);
 		ret = false;
 	}
 
 	if (parameters->tile_size_on) {
-		if (!((parameters->cp_tdx == 1 && parameters->cp_tdy == 1)
-				|| (parameters->cp_tdx == 2 && parameters->cp_tdy == 2)
-				|| (parameters->cp_tdx == 1 && parameters->cp_tdy == 4))) {
+		if (!((parameters->t_width == 1 && parameters->t_height == 1)
+				|| (parameters->t_width == 2 && parameters->t_height == 2)
+				|| (parameters->t_width == 1 && parameters->t_height == 4))) {
 			GROK_WARN("Broadcast profiles require 1x1,2x2 or 1x4 tile layout.\n"
 					"-> (%d,%d) layout is not compliant\n"
 					"-> Non-broadcast codestream will be generated",
-					parameters->cp_tdx, parameters->cp_tdy);
+					parameters->t_width, parameters->t_height);
 			ret = false;
 		}
 		if (profile == GRK_PROFILE_BC_SINGLE
-				&& !(parameters->cp_tdx == 1 && parameters->cp_tdy == 1)) {
+				&& !(parameters->t_width == 1 && parameters->t_height == 1)) {
 			GROK_WARN("Broadcast SINGLE profile requires 1x1 tile layout.\n"
 					"-> (%d,%d) layout is not compliant\n"
 					"-> Non-broadcast codestream will be generated",
-					parameters->cp_tdx, parameters->cp_tdy);
+					parameters->t_width, parameters->t_height);
 			ret = false;
 		}
 	}
@@ -945,16 +945,16 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* No tiling */
 	parameters->tile_size_on = false;
-	parameters->cp_tdx = 1;
-	parameters->cp_tdy = 1;
+	parameters->t_width = 1;
+	parameters->t_height = 1;
 
 	/* One tile part for each component */
 	parameters->tp_flag = 'C';
 	parameters->tp_on = 1;
 
 	/* Tile and Image shall be at (0,0) */
-	parameters->cp_tx0 = 0;
-	parameters->cp_ty0 = 0;
+	parameters->tx0 = 0;
+	parameters->ty0 = 0;
 	parameters->image_offset_x0 = 0;
 	parameters->image_offset_y0 = 0;
 

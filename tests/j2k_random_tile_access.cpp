@@ -164,13 +164,13 @@ int main(int argc, char **argv) {
 	/* Extract some info from the code stream */
 	cstr_info = grk_get_cstr_info(l_codec);
 
-	fprintf(stdout, "The file contains %dx%d tiles\n", cstr_info->tw,
-			cstr_info->th);
+	fprintf(stdout, "The file contains %dx%d tiles\n", cstr_info->t_grid_width,
+			cstr_info->t_grid_height);
 
 	tile_ul = 0;
-	tile_ur = (uint16_t) (cstr_info->tw - 1);
-	tile_lr = (uint16_t) (cstr_info->tw * cstr_info->th - 1);
-	tile_ll = (uint16_t) (tile_lr - cstr_info->tw);
+	tile_ur = (uint16_t) (cstr_info->t_grid_width - 1);
+	tile_lr = (uint16_t) (cstr_info->t_grid_width * cstr_info->t_grid_height - 1);
+	tile_ll = (uint16_t) (tile_lr - cstr_info->t_grid_width);
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \

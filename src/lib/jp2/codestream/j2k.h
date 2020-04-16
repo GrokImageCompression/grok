@@ -396,18 +396,18 @@ struct grk_coding_parameters {
 	/** YTOsiz */
 	uint32_t ty0;
 	/** XTsiz */
-	uint32_t tdx;
+	uint32_t t_width;
 	/** YTsiz */
-	uint32_t tdy;
+	uint32_t t_height;
 	/** comments */
 	size_t num_comments;
 	char *comment[GRK_NUM_COMMENTS_SUPPORTED];
 	uint16_t comment_len[GRK_NUM_COMMENTS_SUPPORTED];
 	bool isBinaryComment[GRK_NUM_COMMENTS_SUPPORTED];
 	/** number of tiles in width */
-	uint32_t tw;
+	uint32_t t_grid_width;
 	/** number of tiles in height */
-	uint32_t th;
+	uint32_t t_grid_height;
 
 	/** number of ppm markers (reserved size) */
 	uint32_t ppm_markers_count;

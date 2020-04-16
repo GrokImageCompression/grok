@@ -144,7 +144,7 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 	}
 	/* Dump all tile/codestream info */
 	if (flag & GRK_J2K_TCH_INFO) {
-		uint32_t nb_tiles = p_j2k->m_cp.th * p_j2k->m_cp.tw;
+		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 		uint32_t i;
 		grk_tcp *tcp = p_j2k->m_cp.tcps;
 		if (p_j2k->m_private_image) {
@@ -261,9 +261,9 @@ static void j2k_dump_MH_info(grk_j2k *p_j2k, FILE *out_stream) {
 
 	fprintf(out_stream, "\t tx0=%d, ty0=%d\n", p_j2k->m_cp.tx0,
 			p_j2k->m_cp.ty0);
-	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", p_j2k->m_cp.tdx,
-			p_j2k->m_cp.tdy);
-	fprintf(out_stream, "\t tw=%d, th=%d\n", p_j2k->m_cp.tw, p_j2k->m_cp.th);
+	fprintf(out_stream, "\t tdx=%d, tdy=%d\n", p_j2k->m_cp.t_width,
+			p_j2k->m_cp.t_height);
+	fprintf(out_stream, "\t tw=%d, th=%d\n", p_j2k->m_cp.t_grid_width, p_j2k->m_cp.t_grid_height);
 	j2k_dump_tile_info(p_j2k->m_specific_param.m_decoder.m_default_tcp,
 			p_j2k->m_private_image->numcomps, out_stream);
 	fprintf(out_stream, "}\n");
@@ -337,10 +337,10 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 
 	cstr_info->tx0 = p_j2k->m_cp.tx0;
 	cstr_info->ty0 = p_j2k->m_cp.ty0;
-	cstr_info->tdx = p_j2k->m_cp.tdx;
-	cstr_info->tdy = p_j2k->m_cp.tdy;
-	cstr_info->tw = p_j2k->m_cp.tw;
-	cstr_info->th = p_j2k->m_cp.th;
+	cstr_info->t_width = p_j2k->m_cp.t_width;
+	cstr_info->t_height = p_j2k->m_cp.t_height;
+	cstr_info->t_grid_width = p_j2k->m_cp.t_grid_width;
+	cstr_info->t_grid_height = p_j2k->m_cp.t_grid_height;
 
 	cstr_info->tile_info = nullptr; /* Not fill from the main header*/
 
@@ -519,7 +519,7 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp_header,
 bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 	uint32_t it_tile = 0;
 
-	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.tw * p_j2k->m_cp.th;
+	p_j2k->cstr_index->nb_of_tiles = p_j2k->m_cp.t_grid_width * p_j2k->m_cp.t_grid_height;
 	p_j2k->cstr_index->tile_index = ( grk_tile_index  * ) grk_calloc(
 			p_j2k->cstr_index->nb_of_tiles, sizeof( grk_tile_index) );
 	if (!p_j2k->cstr_index->tile_index)
@@ -529,8 +529,7 @@ bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k) {
 		p_j2k->cstr_index->tile_index[it_tile].maxmarknum = 100;
 		p_j2k->cstr_index->tile_index[it_tile].marknum = 0;
 		p_j2k->cstr_index->tile_index[it_tile].marker =
-				( grk_marker_info  * ) grk_calloc(
-						p_j2k->cstr_index->tile_index[it_tile].maxmarknum,
+				( grk_marker_info  * ) grk_calloc(p_j2k->cstr_index->tile_index[it_tile].maxmarknum,
 						sizeof( grk_marker_info) );
 		if (!p_j2k->cstr_index->tile_index[it_tile].marker)
 			return false;

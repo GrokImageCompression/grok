@@ -133,7 +133,7 @@ bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < cp->tw * cp->th);
+	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
 	assert(comp_no < p_j2k->m_private_image->numcomps);
 
 	uint32_t num_bands =
@@ -171,7 +171,7 @@ uint32_t Quantizer::get_SQcd_SQcc_size(grk_j2k *p_j2k, uint16_t tile_no,
 	auto tcp = &cp->tcps[tile_no];
 	auto tccp = &tcp->tccps[comp_no];
 
-	assert(tile_no < cp->tw * cp->th);
+	assert(tile_no < cp->t_grid_width * cp->t_grid_height);
 	assert(comp_no < p_j2k->m_private_image->numcomps);
 
 	uint32_t num_bands =
