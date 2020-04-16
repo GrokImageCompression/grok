@@ -422,7 +422,7 @@ bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_decode_tile_to_buffer( grk_codec  *p_codec,
 		uint16_t tile_index, uint8_t *p_data, uint64_t data_size) {
 	if (p_codec && p_data) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
@@ -437,7 +437,7 @@ bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
+bool GRK_CALLCONV grk_decode_tile( grk_codec  *p_codec,
 		 grk_image *p_image, uint16_t tile_index) {
 	if (p_codec) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
@@ -628,7 +628,7 @@ bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
 			l_dc_shift_size);
 	return true;
 }
-bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec, uint16_t tile_index,
+bool GRK_CALLCONV grk_encode_tile( grk_codec  *p_codec, uint16_t tile_index,
 		uint8_t *p_data, uint64_t data_size) {
 	if (p_codec && p_data) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;

@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \
-	if(!grk_get_decoded_tile(l_codec, image, tile_index )){ \
+	if(!grk_decode_tile(l_codec, image, tile_index )){ \
 		spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
 		grk_stream_destroy(l_stream); \
 		grk_destroy_cstr_info(&cstr_info); \

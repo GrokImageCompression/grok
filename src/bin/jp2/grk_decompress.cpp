@@ -1531,7 +1531,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 	// or, decode one particular tile
 	else {
-		if (!grk_get_decoded_tile(info->l_codec, info->image,
+		if (!grk_decode_tile(info->l_codec, info->image,
 				parameters->tile_index)) {
 			spdlog::error("grk_decompress: failed to decode tile!");
 			failed = 1;

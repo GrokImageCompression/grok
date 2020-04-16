@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 				max_data_size = data_size;
 			}
 
-			if (!grk_decode_tile_data(codec, tile_index, data, data_size))
+			if (!grk_decode_tile_to_buffer(codec, tile_index, data, data_size))
 				goto beach;
 			/** now should inspect image to know the reduction factor and then how to behave with data */
 		}

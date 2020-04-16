@@ -276,7 +276,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC  38400U   /** MSamples/sec for level 11 */
 
 
-/********IMF ***************/
+/********IMF ***********************************************************************/
 
 #define GRK_IS_IMF(v)        (  ((v) >= GRK_PROFILE_IMF_2K) && \
 		                        ((v) <= (GRK_PROFILE_IMF_8K_R | 0x009b) )  && \
@@ -296,8 +296,9 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IMF_MAINLEVEL_10_MSAMPLESSEC  19200U   /** MSamples/sec for main level 10 */
 #define GRK_IMF_MAINLEVEL_11_MSAMPLESSEC  38400U   /** MSamples/sec for main level 11 */
 
-#define GRK_IMF_SUBLEVEL_MAX    	9U   /** Maximum IMF sublevel */
+#define GRK_IMF_SUBLEVEL_MAX    	9U   			 /** Maximum IMF sublevel */
 #define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
+
 /** Max. compressed Bit Rate (Mbits/s) per IMF sub level */
 #define GRK_IMF_SUBLEVEL_1_MBITSSEC      200U     /** Mbits/s for IMF sub level 1 */
 #define GRK_IMF_SUBLEVEL_2_MBITSSEC      400U     /** Mbits/s for IMF sub level 2 */
@@ -308,7 +309,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IMF_SUBLEVEL_7_MBITSSEC    12800U     /** Mbits/s for IMF sub level 7 */
 #define GRK_IMF_SUBLEVEL_8_MBITSSEC    25600U     /** Mbits/s for IMF sub level 8 */
 #define GRK_IMF_SUBLEVEL_9_MBITSSEC    51200U     /** Mbits/s for IMF sub level 9 */
-/*********************************************************************************/
+/**********************************************************************************/
 
 /**
  * JPEG 2000 cinema profile codestream and component size limits
@@ -1534,31 +1535,8 @@ GRK_API bool GRK_CALLCONV grk_decode( grk_codec  *p_decompressor,
  *
  * @return					true if success, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_get_decoded_tile( grk_codec  *p_codec,
+GRK_API bool GRK_CALLCONV grk_decode_tile( grk_codec  *p_codec,
 		 grk_image *p_image, uint16_t tile_index);
-
-/**
- * Writes uncompressed data to a tile from a buffer.
- * This method should be called right after grk_start_compress,
- * and before grk_end_compress.
- *
- * @param	p_codec		    the jpeg2000 codec.
- * @param	tile_index		the index of the tile to write. At the moment,
- * 							the tiles must be written from 0 to n-1 in sequence.
- * @param	p_data			pointer to the data to write. Data is arranged in planar
- *  						sequence, data_comp0, data_comp1 etc,
- *  						The data should NOT BE INTERLEAVED.
- * @param	data_size		this value is used to ensure the data
- * 							being written is correct. The size must be
- * 							equal to the sum for each component of
- *                          tile_width * tile_height * component_size.
- *                          component_size can be 1 or 2 bytes, depending on
- *                          the precision of the given component.
- *
- * @return	true if the data could be written.
- */
-GRK_API bool GRK_CALLCONV grk_write_tile( grk_codec  *p_codec,
-		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
 
 /**
  * Reads a tile header. This function is compulsory and allows one
@@ -1607,8 +1585,9 @@ GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
  *
  * @return	true			if the data could be decoded.
  */
-GRK_API bool GRK_CALLCONV grk_decode_tile_data( grk_codec  *p_codec,
+GRK_API bool GRK_CALLCONV grk_decode_tile_to_buffer( grk_codec  *p_codec,
 		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
+
 
 /* COMPRESSION FUNCTIONS*/
 
@@ -1685,6 +1664,30 @@ GRK_API bool GRK_CALLCONV grk_encode( grk_codec  *p_codec);
  */
 GRK_API bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_codec,
 		grk_plugin_tile *tile);
+
+
+/**
+ * Writes uncompressed data to a tile from a buffer.
+ * This method should be called right after grk_start_compress,
+ * and before grk_end_compress.
+ *
+ * @param	p_codec		    the jpeg2000 codec.
+ * @param	tile_index		the index of the tile to write. At the moment,
+ * 							the tiles must be written from 0 to n-1 in sequence.
+ * @param	p_data			pointer to the data to write. Data is arranged in planar
+ *  						sequence, data_comp0, data_comp1 etc,
+ *  						The data should NOT BE INTERLEAVED.
+ * @param	data_size		this value is used to ensure the data
+ * 							being written is correct. The size must be
+ * 							equal to the sum for each component of
+ *                          tile_width * tile_height * component_size.
+ *                          component_size can be 1 or 2 bytes, depending on
+ *                          the precision of the given component.
+ *
+ * @return	true if the data could be written.
+ */
+GRK_API bool GRK_CALLCONV grk_encode_tile( grk_codec  *p_codec,
+		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
 
 /*
  ==========================================================
