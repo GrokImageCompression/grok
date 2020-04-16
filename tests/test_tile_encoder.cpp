@@ -117,22 +117,22 @@ int main(int argc, char *argv[]) {
 
 	/* should be test_tile_encoder 3 2000 2000 1000 1000 8 tte1.j2k */
 	if (argc == 9) {
-		num_comps = atoi(argv[1]);
-		image_width = atoi(argv[2]);
-		image_height = atoi(argv[3]);
-		tile_width = atoi(argv[4]);
-		tile_height = atoi(argv[5]);
-		comp_prec = atoi(argv[6]);
-		irreversible = atoi(argv[7]);
+		num_comps = (uint32_t)atoi(argv[1]);
+		image_width = (uint32_t)atoi(argv[2]);
+		image_height = (uint32_t)atoi(argv[3]);
+		tile_width = (uint32_t)atoi(argv[4]);
+		tile_height = (uint32_t)atoi(argv[5]);
+		comp_prec = (uint32_t)atoi(argv[6]);
+		irreversible = atoi(argv[7]) ? true : false;
 		output_file = argv[8];
 	} else {
-		num_comps = 3;
-		image_width = 2000;
-		image_height = 2000;
-		tile_width = 1000;
-		tile_height = 1000;
-		comp_prec = 8;
-		irreversible = 1;
+		num_comps = 3U;
+		image_width = 2000U;
+		image_height = 2000U;
+		tile_width = 1000U;
+		tile_height = 1000U;
+		comp_prec = 8U;
+		irreversible = true;
 		output_file = "test.j2k";
 	}
 	if (num_comps > NUM_COMPS_MAX) {
