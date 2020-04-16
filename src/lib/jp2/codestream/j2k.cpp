@@ -3432,14 +3432,14 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 		image->numcomps = (uint16_t) tmp;
 	else {
 		GROK_ERROR(
-				"Error with SIZ marker: number of component is illegal -> %d",
+				"Error in SIZ marker: number of component is illegal -> %d",
 				tmp);
 		return false;
 	}
 
 	if (image->numcomps != nb_comp) {
 		GROK_ERROR(
-				"Error with SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)",
+				"Error in SIZ marker: number of component is not compatible with the remaining number of parameters ( %d vs %d)",
 				image->numcomps, nb_comp);
 		return false;
 	}
@@ -3448,7 +3448,7 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	/* testcase issue427-null-image-size.jp2 */
 	if ((image->x0 >= image->x1) || (image->y0 >= image->y1)) {
 		std::stringstream ss;
-		ss << "Error with SIZ marker: negative or zero image size ("
+		ss << "Error in SIZ marker: negative or zero image dimensions ("
 				<< (int64_t) image->x1 - image->x0 << " x "
 				<< (int64_t) image->y1 - image->y0 << ")" << std::endl;
 		GROK_ERROR("%s", ss.str().c_str());
@@ -3457,18 +3457,35 @@ static bool j2k_read_siz(grk_j2k *p_j2k, uint8_t *p_header_data,
 	/* testcase 2539.pdf.SIGFPE.706.1712 (also 3622.pdf.SIGFPE.706.2916 and 4008.pdf.SIGFPE.706.3345 and maybe more) */
 	if ((cp->tdx == 0U) || (cp->tdy == 0U)) {
 		GROK_ERROR(
-				"Error with SIZ marker: invalid tile size (tdx: %d, tdy: %d)",
+				"Error in SIZ marker: invalid tile size (%d, %d)",
 				cp->tdx, cp->tdy);
 		return false;
 	}
 
 	/* testcase issue427-illegal-tile-offset.jp2 */
+	if (cp->tx0 > image->x0 || cp->ty0 > image->y0 ) {
+		GROK_ERROR("Error in SIZ marker: tile origin (%d,%d) cannot lie in the region"
+				" to the right and bottom of image origin (%d,%d)",
+				cp->tx0,
+				cp->ty0,
+				image->x0,
+				image->y0);
+		return false;
+	}
 	tx1 = uint_adds(cp->tx0, cp->tdx); /* manage overflow */
 	ty1 = uint_adds(cp->ty0, cp->tdy); /* manage overflow */
-	if ((cp->tx0 > image->x0) || (cp->ty0 > image->y0) || (tx1 <= image->x0)
-			|| (ty1 <= image->y0)) {
-		GROK_ERROR("Error with SIZ marker: illegal tile offset");
-		return false;
+	if (tx1 <= image->x0 || ty1 <= image->y0) {
+		GROK_ERROR("Error in SIZ marker: first tile (%d,%d,%d,%d) must overlap"
+					" image (%d,%d,%d,%d)",
+					cp->tx0,
+					cp->ty0,
+					tx1,
+					ty1,
+					image->x0,
+					image->y0,
+					image->x1,
+					image->y1);
+			return false;
 	}
 
 	uint64_t tileArea = (uint64_t) (tx1 - cp->tx0) * (ty1 - cp->ty0);
