@@ -128,7 +128,6 @@ void usage(void)
         "bench_dwt [-size value] [-check] [-display] [-num_resolutions val] [-lossy]\n");
     printf(
         "          [-offset x y] [-num_threads val]\n");
-    exit(1);
 }
 
 }
@@ -182,6 +181,7 @@ int main(int argc, char** argv)
             i += 2;
         } else {
             usage();
+            return 1;
         }
     }
 
@@ -266,15 +266,14 @@ int main(int argc, char** argv)
             for (idx = 0; idx < nValues; idx++) {
                 if (tilec.buf->data[idx] != getValue((uint32_t)idx)) {
                     printf("Difference found at idx = %u\n", (uint32_t)idx);
-                    exit(1);
+                    return 1;
                 }
             }
         }
     }
-
     free_tilec(&tilec);
-
     grk_deinitialize();
+
     return 0;
 }
 

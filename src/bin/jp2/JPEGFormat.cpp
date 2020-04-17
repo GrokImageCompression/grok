@@ -110,7 +110,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 * because applications often want to supply a specialized error handler
 	 * (see the second half of this file for an example).  But here we just
 	 * take the easy way out and use the standard error handler, which will
-	 * print a message on stderr and call exit() if compression fails.
+	 * print a message on stderr and return 1 if compression fails.
 	 * Note that this struct must live as long as the main JPEG parameter
 	 * struct, to avoid dangling-pointer problems.
 	 */
