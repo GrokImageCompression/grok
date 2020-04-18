@@ -1,0 +1,6 @@
+grok-jpeg2000 (6.0.0-1) unstable; urgency=medium
+
+  * Initial release. Closes: #954265 
+
+ -- Aaron Boxer <boxerab@gmail.com>  Fri, 17 Apr 2020 21:10:00 +0200
+ 
