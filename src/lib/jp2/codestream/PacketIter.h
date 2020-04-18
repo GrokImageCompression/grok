@@ -57,7 +57,7 @@
 namespace grk {
 
 /**
- @file pi.h
+ @file PacketIter.h
  @brief Implementation of a packet iterator (PI)
 
  The functions in PI.C have for goal to realize a packet iterator that permits to get the next

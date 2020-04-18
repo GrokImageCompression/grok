@@ -101,9 +101,9 @@ struct mqcoder {
 
 const uint32_t A_MIN = 0x8000;
 
-#include <mqc_inl.h>
-#include <mqc_dec_inl.h>
-#include <mqc_enc_inl.h>
+#include "mqc_inl.h"
+#include "mqc_dec_inl.h"
+#include "mqc_enc_inl.h"
 
 uint32_t mqc_numbytes_enc(mqcoder *mqc);
 void mqc_resetstates(mqcoder *mqc);
