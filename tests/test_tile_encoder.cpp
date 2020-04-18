@@ -288,7 +288,7 @@ int main(int argc, char *argv[]) {
 		rc = 1;
 		goto cleanup;
 	}
-	if (!grk_start_compress(codec, image)) {
+	if (!grk_start_compress(codec)) {
 		spdlog::error("test_tile_encoder: failed to start compress!\n");
 		rc = 1;
 		goto cleanup;

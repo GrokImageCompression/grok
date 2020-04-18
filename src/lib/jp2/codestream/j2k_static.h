@@ -109,7 +109,7 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k, BufferedStream *stream);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_encoding_validation(grk_j2k *p_j2k, BufferedStream *stream);
+static bool j2k_compress_validation(grk_j2k *p_j2k, BufferedStream *stream);
 
 /**
  * The default decoding validation procedure without any extension.
@@ -120,19 +120,19 @@ static bool j2k_encoding_validation(grk_j2k *p_j2k, BufferedStream *stream);
  *
  * @return true if the parameters are correct.
  */
-static bool j2k_decoding_validation(grk_j2k *p_j2k, BufferedStream *stream);
+static bool j2k_decompress_validation(grk_j2k *p_j2k, BufferedStream *stream);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_init_encoding_validation(grk_j2k *p_j2k);
+static bool j2k_init_compress_validation(grk_j2k *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to launch to make sure the codec parameters
  * are valid. Developers wanting to extend the library can add their own validation procedures.
  */
-static bool j2k_init_decoding_validation(grk_j2k *p_j2k);
+static bool j2k_init_decompress_validation(grk_j2k *p_j2k);
 
 /**
  * Sets up the validation ,i.e. adds the procedures to make sure the codec parameters
@@ -315,16 +315,16 @@ static bool j2k_read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t compno,
 static void j2k_copy_tile_component_parameters(grk_j2k *p_j2k);
 
 /**
- * Reads the tiles.
+ * Read the tiles.
  */
-static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *stream);
+static bool j2k_decompress_tiles(grk_j2k *p_j2k, BufferedStream *stream);
 
 static bool j2k_pre_write_tile(grk_j2k *p_j2k, uint16_t tile_index);
 
 static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream);
 
 /**
- * Sets up the procedures to do on writing header.
+ * Set up the procedures to do on writing header.
  * Developers wanting to extend the library can add their own writing procedures.
  */
 static bool j2k_init_header_writing(grk_j2k *p_j2k);

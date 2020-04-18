@@ -117,8 +117,7 @@ struct grk_codec_private {
 		 * Compression handler. FIXME DOC
 		 */
 		struct compression {
-			bool (*start_compress)(void *p_codec, BufferedStream *stream,
-					grk_image *p_image);
+			bool (*start_compress)(void *p_codec, BufferedStream *stream);
 
 			bool (*compress)(void *p_codec, grk_plugin_tile*,
 					BufferedStream *p_cio);
@@ -130,7 +129,7 @@ struct grk_codec_private {
 
 			void (*destroy)(void *p_codec);
 
-			bool (*setup_encoder)(void *p_codec,  grk_cparameters  *p_param,
+			bool (*init_compress)(void *p_codec,  grk_cparameters  *p_param,
 					grk_image *p_image);
 		} m_compression;
 	} m_codec_data;
@@ -262,7 +261,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				( grk_codestream_index  *  (*)(void*)) j2k_get_cstr_index;
 
 		l_codec->m_codec_data.m_decompression.decompress =
-				(bool (*)(void*, grk_plugin_tile*, BufferedStream*, grk_image * )) j2k_decode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*, grk_image * )) j2k_decompress;
 
 		l_codec->m_codec_data.m_decompression.end_decompress = (bool (*)(void*,
 				BufferedStream*)) j2k_end_decompress;
@@ -275,7 +274,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				(void (*)(void*)) j2k_destroy;
 
 		l_codec->m_codec_data.m_decompression.setup_decoder = (void (*)(void*,
-				 grk_dparameters  * )) j2k_init_decoder;
+				 grk_dparameters  * )) j2k_init_decompressor;
 
 		l_codec->m_codec_data.m_decompression.read_tile_header =
 				(bool (*)(void*, uint16_t*, uint64_t*, uint32_t*, uint32_t*,
@@ -285,7 +284,7 @@ const char* GRK_CALLCONV grk_version(void) {
 				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_decompress_tile;
 
 		l_codec->m_codec_data.m_decompression.set_decompress_area = (bool (*)(void*,
-				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) j2k_set_decode_area;
+				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) j2k_set_decompress_area;
 
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
 				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) j2k_get_tile;
@@ -470,17 +469,17 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 	switch (p_format) {
 	case GRK_CODEC_J2K:
 		l_codec->m_codec_data.m_compression.compress =
-				(bool (*)(void*, grk_plugin_tile*, BufferedStream*)) j2k_encode;
+				(bool (*)(void*, grk_plugin_tile*, BufferedStream*)) j2k_compress;
 		l_codec->m_codec_data.m_compression.end_compress = (bool (*)(void*,
 				BufferedStream*)) j2k_end_compress;
 		l_codec->m_codec_data.m_compression.start_compress =
-				(bool (*)(void*, BufferedStream*, grk_image * )) j2k_start_compress;
+				(bool (*)(void*, BufferedStream*)) j2k_start_compress;
 		l_codec->m_codec_data.m_compression.write_tile =
 				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) j2k_compress_tile;
 		l_codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) j2k_destroy;
-		l_codec->m_codec_data.m_compression.setup_encoder =
-				(bool (*)(void*,  grk_cparameters  * , grk_image * )) j2k_init_encoder;
+		l_codec->m_codec_data.m_compression.init_compress =
+				(bool (*)(void*,  grk_cparameters  * , grk_image * )) j2k_init_compress;
 		l_codec->m_codec = j2k_create_compress();
 		if (!l_codec->m_codec) {
 			grok_free(l_codec);
@@ -494,12 +493,12 @@ bool GRK_CALLCONV grk_decompress_tile( grk_codec  *p_codec,
 		l_codec->m_codec_data.m_compression.end_compress = (bool (*)(void*,
 				BufferedStream*)) jp2_end_compress;
 		l_codec->m_codec_data.m_compression.start_compress = (bool (*)(void*,
-				BufferedStream*, grk_image * )) jp2_start_compress;
+				BufferedStream*)) jp2_start_compress;
 		l_codec->m_codec_data.m_compression.write_tile =
 				(bool (*)(void*, uint16_t, uint8_t*, uint64_t, BufferedStream*)) jp2_compress_tile;
 		l_codec->m_codec_data.m_compression.destroy =
 				(void (*)(void*)) jp2_destroy;
-		l_codec->m_codec_data.m_compression.setup_encoder =
+		l_codec->m_codec_data.m_compression.init_compress =
 				(bool (*)(void*,  grk_cparameters  * , grk_image * )) jp2_init_compress;
 
 		l_codec->m_codec = jp2_create(false);
@@ -547,19 +546,19 @@ bool GRK_CALLCONV grk_init_compress( grk_codec  *p_codec,
 	if (p_codec && parameters && p_image) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
 		if (!l_codec->is_decompressor) {
-			return l_codec->m_codec_data.m_compression.setup_encoder(
+			return l_codec->m_codec_data.m_compression.init_compress(
 					l_codec->m_codec, parameters, p_image);
 		}
 	}
 	return false;
 }
-bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec, grk_image *p_image) {
+bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec) {
 	if (p_codec) {
 		grk_codec_private *l_codec = (grk_codec_private*) p_codec;
 		BufferedStream *l_stream = (BufferedStream*) l_codec->m_stream;
 		if (!l_codec->is_decompressor) {
 			return l_codec->m_codec_data.m_compression.start_compress(
-					l_codec->m_codec, l_stream, p_image	);
+					l_codec->m_codec, l_stream	);
 		}
 	}
 	return false;

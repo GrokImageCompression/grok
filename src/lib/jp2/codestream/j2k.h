@@ -519,7 +519,7 @@ struct grk_j2k {
 	/** pointer to the internal/private encoded / decoded image */
 	grk_image *m_private_image;
 
-	/* pointer to the output image (decoded)*/
+	/* pointer to the output image (for decompress) */
 	grk_image *m_output_image;
 
 	/** Coding parameters */
@@ -549,7 +549,7 @@ struct grk_j2k {
  @param j2k J2K decompressor handle
  @param parameters decompression parameters
  */
-void j2k_init_decoder(void *j2k,  grk_dparameters  *parameters);
+void j2k_init_decompressor(void *j2k,  grk_dparameters  *parameters);
 
 /**
  * Creates a J2K compression structure
@@ -558,7 +558,7 @@ void j2k_init_decoder(void *j2k,  grk_dparameters  *parameters);
  */
 grk_j2k* j2k_create_compress(void);
 
-bool j2k_init_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
+bool j2k_init_compress(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		grk_image *image);
 
 /**
@@ -641,7 +641,7 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
  *
  * @return	true			if the area could be set.
  */
-bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *image, uint32_t start_x,
+bool j2k_set_decompress_area(grk_j2k *p_j2k, grk_image *image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
@@ -659,7 +659,7 @@ grk_j2k* j2k_create_decompress(void);
  * @param image   image
  * @return FIXME DOC
  */
-bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *stream,
+bool j2k_decompress(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *image);
 
 bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
@@ -680,20 +680,15 @@ bool j2k_compress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 /**
  * Encodes an image into a JPEG 2000 code stream
  */
-bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream);
+bool j2k_compress(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
- *
  * @param	p_j2k		JPEG 2000 codec
  * @param	stream			the stream object.
- * @param	p_image FIXME DOC
- 
- *
  * @return true if the codec is valid.
  */
-bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *stream,
-		grk_image *p_image);
+bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *stream);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the

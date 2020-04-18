@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
 
     assert(l_stream);
-    bSuccess = grk_start_compress(l_codec,image);
+    bSuccess = grk_start_compress(l_codec);
     if( !bSuccess ) {
         grk_stream_destroy(l_stream);
         grk_destroy_codec(l_codec);

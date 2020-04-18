@@ -2161,7 +2161,7 @@ static bool plugin_compress_callback(
 	}
 
 	/* compress the image */
-	bSuccess = grk_start_compress(codec, image);
+	bSuccess = grk_start_compress(codec);
 	if (!bSuccess) {
 		spdlog::error("failed to compress image: grk_start_compress");
 		bSuccess = false;

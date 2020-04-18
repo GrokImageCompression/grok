@@ -656,10 +656,10 @@ typedef struct _grk_header_info {
 	uint32_t t_width;
 	/** YTsiz */
 	uint32_t t_height;
-	/** number of tiles in width */
-	uint32_t cp_tw;
-	/** number of tiles in height */
-	uint32_t cp_th;
+	/** tile grid width */
+	uint32_t t_grid_width;
+	/** tile grid height  */
+	uint32_t t_grid_height;
 	/** number of layers */
 	uint32_t tcp_numlayers;
 	/*
@@ -1723,11 +1723,9 @@ GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec *codec,
  * Start compressing current image.
  *
  * @param codec 		Compressor handle
- * @param image 	    Input filled image
  *
  */
-GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec *codec,
-		grk_image *image);
+GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec *codec);
 
 /**
  * Encode an image into a JPEG 2000 code stream

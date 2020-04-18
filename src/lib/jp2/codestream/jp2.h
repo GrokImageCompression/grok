@@ -286,15 +286,11 @@ bool jp2_compress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
- *
  * @param  jp2    	 JPEG 2000 file codec.
  * @param  stream    the stream object.
- * @param  p_image   image
-
- *
  * @return true if the codec is valid.
  */
-bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream, grk_image *p_image);
+bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream);
 
 /**
  * Ends the compression procedures and possibly add data to be read after the

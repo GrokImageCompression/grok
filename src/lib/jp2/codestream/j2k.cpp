@@ -349,7 +349,7 @@ static bool j2k_read_header_procedure(grk_j2k *p_j2k,
 	return true;
 }
 
-static bool j2k_decoding_validation(grk_j2k *p_j2k, BufferedStream *stream) {
+static bool j2k_decompress_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 
 	(void) stream;
 	bool is_valid = true;
@@ -374,7 +374,7 @@ static bool j2k_decoding_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 	return is_valid;
 }
 
-void j2k_init_decoder(void *j2k_void, grk_dparameters *parameters) {
+void j2k_init_decompressor(void *j2k_void, grk_dparameters *parameters) {
 	grk_j2k *j2k = (grk_j2k*) j2k_void;
 	if (j2k && parameters) {
 		j2k->m_cp.m_coding_param.m_dec.m_layer = parameters->cp_layer;
@@ -386,11 +386,11 @@ void j2k_init_decoder(void *j2k_void, grk_dparameters *parameters) {
  * Sets up the procedures to do on decoding data.
  * Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_init_decoding(grk_j2k *p_j2k) {
+static bool j2k_init_decompress(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 
-	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decode_tiles);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tiles);
 	// custom procedures here
 
 	return true;
@@ -415,7 +415,7 @@ bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 	}
 
 	/* customization of the validation */
-	if (!j2k_init_decoding_validation(p_j2k)) {
+	if (!j2k_init_decompress_validation(p_j2k)) {
 		grk_image_destroy(p_j2k->m_private_image);
 		p_j2k->m_private_image = nullptr;
 		return false;
@@ -471,8 +471,8 @@ bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 		header_info->t_width = p_j2k->m_cp.t_width;
 		header_info->t_height = p_j2k->m_cp.t_height;
 
-		header_info->cp_tw = p_j2k->m_cp.t_grid_width;
-		header_info->cp_th = p_j2k->m_cp.t_grid_height;
+		header_info->t_grid_width = p_j2k->m_cp.t_grid_width;
+		header_info->t_grid_height = p_j2k->m_cp.t_grid_height;
 
 		header_info->tcp_numlayers = tcp->numlayers;
 
@@ -514,12 +514,12 @@ static bool j2k_init_header_reading(grk_j2k *p_j2k) {
 	return true;
 }
 
-static bool j2k_init_decoding_validation(grk_j2k *p_j2k) {
+static bool j2k_init_decompress_validation(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
 
 	p_j2k->m_validation_list->push_back(
-			(j2k_procedure) j2k_decoding_validation);
+			(j2k_procedure) j2k_decompress_validation);
 
 	return true;
 }
@@ -1090,7 +1090,7 @@ bool j2k_decompress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 	return true;
 }
 
-bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *output_image,
+bool j2k_set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,
 		uint32_t start_x, uint32_t start_y, uint32_t end_x, uint32_t end_y) {
 	return p_j2k->m_tileProcessor->set_decompress_area(p_j2k, output_image, start_x,
 			start_y, end_x, end_y);
@@ -1133,7 +1133,7 @@ grk_j2k* j2k_create_decompress(void) {
 	return j2k;
 }
 
-static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *stream) {
+static bool j2k_decompress_tiles(grk_j2k *p_j2k, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_no = 0;
 	uint64_t data_size = 0, max_data_size = 0;
@@ -1239,7 +1239,7 @@ static bool j2k_decode_tiles(grk_j2k *p_j2k, BufferedStream *stream) {
 /*
  * Read and decompress one tile.
  */
-static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *stream) {
+static bool j2k_decompress_tile(grk_j2k *p_j2k, BufferedStream *stream) {
 	bool go_on = true;
 	uint16_t current_tile_no;
 	uint32_t tile_no_to_dec;
@@ -1257,7 +1257,7 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *stream) {
 		}
 	}
 	if (p_j2k->m_tileProcessor->m_tile_ind_to_dec == -1) {
-		GROK_ERROR("j2k_decode_one_tile: Unable to decompress tile "
+		GROK_ERROR("j2k_decompress_tile: Unable to decompress tile "
 				"since first tile SOT has not been detected");
 		return false;
 	}
@@ -1364,16 +1364,16 @@ static bool j2k_decode_one_tile(grk_j2k *p_j2k, BufferedStream *stream) {
  * Sets up the procedures to do on decoding one tile.
  *  Developers wanting to extend the library can add their own reading procedures.
  */
-static bool j2k_init_decoding_tile(grk_j2k *p_j2k) {
+static bool j2k_init_decompress_tile(grk_j2k *p_j2k) {
 	/* preconditions*/
 	assert(p_j2k != nullptr);
-	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decode_one_tile);
+	p_j2k->m_procedure_list->push_back((j2k_procedure) j2k_decompress_tile);
 	//custom procedures here
 
 	return true;
 }
 
-bool j2k_decode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream,
+bool j2k_decompress(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *p_image) {
 	if (!p_image)
 		return false;
@@ -1385,7 +1385,7 @@ bool j2k_decode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream,
 	grk_copy_image_header(p_image, p_j2k->m_output_image);
 
 	/* customization of the decoding */
-	if (!j2k_init_decoding(p_j2k))
+	if (!j2k_init_decompress(p_j2k))
 		return false;
 	p_j2k->m_tileProcessor->current_plugin_tile = tile;
 
@@ -1498,7 +1498,7 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image,
 	}
 
 	/* customization of the decoding */
-	if (!j2k_init_decoding_tile(p_j2k))
+	if (!j2k_init_decompress_tile(p_j2k))
 		return false;
 
 	/* Decode the code stream */
@@ -1606,7 +1606,7 @@ grk_j2k* j2k_create_compress(void) {
 	return j2k;
 }
 
-bool j2k_init_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
+bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 		grk_image *image) {
 	uint32_t i, j, tileno, numpocs_tile;
 	grk_coding_parameters *cp = nullptr;
@@ -1636,6 +1636,24 @@ bool j2k_init_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 			GROK_ERROR(
 					"Invalid component precision of 0 found while setting up JP2 encoder");
 			return false;
+		}
+	}
+
+	// create private sanitized copy of imagte
+	p_j2k->m_private_image = grk_image_create0();
+	if (!p_j2k->m_private_image) {
+		GROK_ERROR("Failed to allocate image header.");
+		return false;
+	}
+	grk_copy_image_header(image, p_j2k->m_private_image);
+	if (image->comps) {
+		for (uint32_t compno = 0; compno < image->numcomps; compno++) {
+			if (image->comps[compno].data) {
+				p_j2k->m_private_image->comps[compno].data =
+						image->comps[compno].data;
+				image->comps[compno].data = nullptr;
+
+			}
 		}
 	}
 
@@ -2056,7 +2074,7 @@ bool j2k_init_encoder(grk_j2k *p_j2k, grk_cparameters *parameters,
 	return true;
 }
 
-bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile,
+bool j2k_compress(grk_j2k *p_j2k, grk_plugin_tile *tile,
 		BufferedStream *stream) {
 	uint16_t i;
 	uint32_t j;
@@ -2124,34 +2142,13 @@ bool j2k_end_compress(grk_j2k *p_j2k, BufferedStream *stream) {
 	return true;
 }
 
-bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *stream,
-		grk_image *p_image) {
+bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *stream) {
 
 	assert(p_j2k != nullptr);
 	assert(stream != nullptr);
 
-	p_j2k->m_private_image = grk_image_create0();
-	if (!p_j2k->m_private_image) {
-		GROK_ERROR("Failed to allocate image header.");
-		return false;
-	}
-	grk_copy_image_header(p_image, p_j2k->m_private_image);
-
-	/* TODO_MSD: Find a better way */
-	if (p_image->comps) {
-		uint32_t it_comp;
-		for (it_comp = 0; it_comp < p_image->numcomps; it_comp++) {
-			if (p_image->comps[it_comp].data) {
-				p_j2k->m_private_image->comps[it_comp].data =
-						p_image->comps[it_comp].data;
-				p_image->comps[it_comp].data = nullptr;
-
-			}
-		}
-	}
-
 	/* customization of the validation */
-	if (!j2k_init_encoding_validation(p_j2k)) {
+	if (!j2k_init_compress_validation(p_j2k)) {
 		return false;
 	}
 
@@ -2276,7 +2273,7 @@ static bool j2k_mct_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 	return is_valid;
 }
 
-static bool j2k_encoding_validation(grk_j2k *p_j2k, BufferedStream *stream) {
+static bool j2k_compress_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 	(void) stream;
 	bool is_valid = true;
 
@@ -2316,11 +2313,11 @@ static bool j2k_encoding_validation(grk_j2k *p_j2k, BufferedStream *stream) {
 	return is_valid;
 }
 
-static bool j2k_init_encoding_validation(grk_j2k *p_j2k) {
+static bool j2k_init_compress_validation(grk_j2k *p_j2k) {
 	assert(p_j2k != nullptr);
 
 	p_j2k->m_validation_list->push_back(
-			(j2k_procedure) j2k_encoding_validation);
+			(j2k_procedure) j2k_compress_validation);
 	//custom validation here
 	p_j2k->m_validation_list->push_back((j2k_procedure) j2k_mct_validation);
 

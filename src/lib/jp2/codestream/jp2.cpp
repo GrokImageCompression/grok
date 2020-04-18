@@ -1831,7 +1831,7 @@ bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
 		return false;
 
 	/* J2K decoding */
-	if (!j2k_decode(jp2->j2k, tile, stream, p_image)) {
+	if (!j2k_decompress(jp2->j2k, tile, stream, p_image)) {
 		GROK_ERROR("Failed to decompress the code stream in the JP2 file");
 		return false;
 	}
@@ -2139,7 +2139,7 @@ static bool jp2_write_jp(grk_jp2 *jp2, BufferedStream *stream) {
 void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
 	grk_jp2 *jp2 = (grk_jp2*) jp2_void;
 	/* setup the J2K codec */
-	j2k_init_decoder(jp2->j2k, parameters);
+	j2k_init_decompressor(jp2->j2k, parameters);
 
 	/* further JP2 initializations go here */
 	jp2->color.jp2_has_colour_specification_box = 0;
@@ -2164,7 +2164,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 
 	/* setup the J2K codec */
 	/* ------------------- */
-	if (j2k_init_encoder(jp2->j2k, parameters, image) == false) {
+	if (j2k_init_compress(jp2->j2k, parameters, image) == false) {
 		return false;
 	}
 
@@ -2387,7 +2387,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 }
 
 bool jp2_compress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream) {
-	return j2k_encode(jp2->j2k, tile, stream);
+	return j2k_compress(jp2->j2k, tile, stream);
 }
 
 bool jp2_end_decompress(grk_jp2 *jp2, BufferedStream *stream) {
@@ -2656,10 +2656,7 @@ static bool jp2_exec(grk_jp2 *jp2, std::vector<jp2_procedure> *procs,
 	return result;
 }
 
-bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream,
-		grk_image *p_image) {
-	if (!p_image)
-		return false;
+bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream) {
 	assert(jp2 != nullptr);
 	assert(stream != nullptr);
 
@@ -2679,6 +2676,7 @@ bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream,
 	}
 
 	// estimate if codec stream may be larger than 2^32 bytes
+	auto p_image = jp2->j2k->m_private_image;
 	uint64_t image_size = 0;
 	for (auto i = 0U; i < p_image->numcomps; ++i) {
 		auto comp = p_image->comps + i;
@@ -2691,7 +2689,7 @@ bool jp2_start_compress(grk_jp2 *jp2, BufferedStream *stream,
 	if (!jp2_exec(jp2, jp2->m_procedure_list, stream)) {
 		return false;
 	}
-	return j2k_start_compress(jp2->j2k, stream, p_image);
+	return j2k_start_compress(jp2->j2k, stream);
 }
 
 static const grk_jp2_header_handler* jp2_find_handler(uint32_t id) {
@@ -3149,7 +3147,7 @@ void jp2_destroy(grk_jp2 *jp2) {
 
 bool jp2_set_decompress_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y) {
-	return j2k_set_decode_area(p_jp2->j2k, p_image, start_x, start_y, end_x,
+	return j2k_set_decompress_area(p_jp2->j2k, p_image, start_x, start_y, end_x,
 			end_y);
 }
 
