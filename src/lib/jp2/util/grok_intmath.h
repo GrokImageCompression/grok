@@ -78,9 +78,11 @@ static inline uint32_t uint_adds(uint32_t a, uint32_t b) {
 }
 /**
  Clamp an integer inside an interval
+
  @param  a integer
- @param  b integer
+ @param  min clamp min
  @param  max clamp max
+
  @return a if (min < a < max), max if (a > max) or  min if (a < min)
  */
 static inline int32_t int_clamp(int32_t a, int32_t min, int32_t max) {

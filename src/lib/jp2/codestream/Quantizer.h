@@ -106,7 +106,7 @@ public:
 	bool read_SQcd_SQcc(bool fromQCC, grk_j2k *p_j2k, uint32_t comp_no,
 			uint8_t *p_header_data, uint16_t *header_size);
 	bool write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
-			uint32_t comp_no, BufferedStream *p_stream);
+			uint32_t comp_no, BufferedStream *stream);
 	void apply_quant(grk_tccp *src, grk_tccp *dest);
 };
 

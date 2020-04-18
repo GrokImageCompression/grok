@@ -89,11 +89,11 @@ typedef struct tcd_cblk_enc {
 } tcd_cblk_enc_t;
 
 
-/** Chunk of codestream data that is part of a code block */
+/** Chunk of code stream data that is part of a code block */
 typedef struct tcd_seg_data_chunk {
     /* Point to tilepart buffer. We don't make a copy !
        So the tilepart buffer must be kept alive
-       as long as we need to decode the codeblocks */
+       as long as we need to decompress the codeblocks */
     uint8_t * data;
     uint32_t len;                 /* Usable length of data */
 } tcd_seg_data_chunk_t;

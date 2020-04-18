@@ -106,7 +106,7 @@ TileProcessor::~TileProcessor(){
 	delete plt_marker;
 }
 
-bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
+bool TileProcessor::set_decompress_area(grk_j2k *p_j2k,
 									grk_image *output_image,
 									uint32_t start_x,
 									uint32_t start_y,
@@ -120,7 +120,7 @@ bool TileProcessor::set_decode_area(grk_j2k *p_j2k,
 	/* Check if we have read the main header */
 	if (decoder->m_state != J2K_DEC_STATE_TPHSOT) {
 		GROK_ERROR(
-				"Need to decode the main header before setting decode area");
+				"Need to decompress the main header before setting decompress area");
 		return false;
 	}
 
@@ -940,17 +940,17 @@ inline bool TileProcessor::init_tile(uint16_t tile_no,
 	return true;
 }
 
-bool TileProcessor::init_encode_tile(uint16_t tile_no) {
+bool TileProcessor::init_compress_tile(uint16_t tile_no) {
 	return init_tile(tile_no, nullptr, true);
 }
 
-bool TileProcessor::init_decode_tile(grk_image *output_image,
+bool TileProcessor::init_decompress_tile(grk_image *output_image,
 		uint16_t tile_no) {
 	return init_tile(tile_no, output_image, false);
 
 }
 
-bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
+bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
 		uint64_t *p_data_written, uint64_t max_length,
 		 grk_codestream_info  *p_cstr_info) {
 	uint32_t state = grk_plugin_get_debug_state();
@@ -1019,7 +1019,7 @@ bool TileProcessor::encode_tile(uint16_t tile_no, BufferedStream *p_stream,
 	if (p_cstr_info) {
 		p_cstr_info->index_write = 1;
 	}
-	if (!t2_encode(p_stream, p_data_written, max_length,
+	if (!t2_encode(stream, p_data_written, max_length,
 			p_cstr_info)) {
 		return false;
 	}
@@ -1068,7 +1068,7 @@ bool TileProcessor::is_whole_tilecomp_decoding( uint32_t compno)
 }
 #endif
 
-bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
+bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	m_tcp = m_cp->tcps + tile_no;
 
 	// optimization for regions that are close to largest decoded resolution
@@ -1105,7 +1105,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 		  if (win_x1 < win_x0 ||  win_y1 < win_y0) {
 			  /* We should not normally go there. The circumstance is when */
 			  /* the tile coordinates do not intersect the area of interest */
-			  /* Upper level logic should not even try to decode that tile */
+			  /* Upper level logic should not even try to decompress that tile */
 			  GROK_ERROR("Invalid tilec->win_xxx values\n");
 			  return false;
 		  }
@@ -1164,7 +1164,7 @@ bool TileProcessor::decode_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 				return false;
 
 		  if (doPostT1)
-			  if (!Wavelet::decode(this, tilec, img_comp->resno_decoded + 1,tccp->qmfbid))
+			  if (!Wavelet::decompress(this, tilec, img_comp->resno_decoded + 1,tccp->qmfbid))
 				  return false;
 
 		  tilec->release_mem();
@@ -1525,7 +1525,7 @@ bool TileProcessor::dwt_encode() {
 	for (compno = 0; compno < (int64_t) tile->numcomps; ++compno) {
 		auto tile_comp = tile->comps + compno;
 		auto tccp = m_tcp->tccps + compno;
-		if (!Wavelet::encode(tile_comp, tccp->qmfbid)) {
+		if (!Wavelet::compress(tile_comp, tccp->qmfbid)) {
 			rc = false;
 			continue;
 
@@ -1558,7 +1558,7 @@ bool TileProcessor::t1_encode() {
 			l_mct_numcomps, needs_rate_control());
 }
 
-bool TileProcessor::t2_encode(BufferedStream *p_stream,
+bool TileProcessor::t2_encode(BufferedStream *stream,
 		uint64_t *p_data_written, uint64_t max_dest_size,
 		 grk_codestream_info  *p_cstr_info) {
 
@@ -1616,7 +1616,7 @@ bool TileProcessor::t2_encode(BufferedStream *p_stream,
 #endif
 
 	if (!l_t2->encode_packets(m_tileno, tile,
-			m_tcp->numlayers, p_stream, p_data_written, max_dest_size,
+			m_tcp->numlayers, stream, p_data_written, max_dest_size,
 			p_cstr_info, m_current_poc_tile_part_number, tp_pos, cur_pino)) {
 		delete l_t2;
 		return false;
@@ -1690,7 +1690,7 @@ bool  TileProcessor::rate_allocate_encode(uint64_t max_dest_size,
  This method copies a sub-region of this region into p_output_image (which stores data in 32 bit precision)
 
  */
-bool TileProcessor::copy_decoded_tile_to_output_image(uint8_t *p_data,
+bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *p_data,
 		grk_image *p_output_image, bool clearOutputOnInit) {
 	uint32_t i = 0, j = 0, k = 0;
 	auto image_src = image;

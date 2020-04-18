@@ -69,7 +69,7 @@ namespace grk {
 /**
  * Dump some elements from the J2K decompression structure .
  *
- *@param p_j2k				the jpeg2000 codec.
+ *@param p_j2k				the JPEG 2000 codec.
  *@param flag				flag to describe what elements are dumped.
  *@param out_stream			output stream where dump the elements.
  *
@@ -97,20 +97,20 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
 		FILE *out_stream);
 
 /**
- * Get the codestream info from a JPEG2000 codec.
+ * Get the code stream info from a JPEG2000 codec.
  *
  *@param	p_j2k				the component image header to dump.
  *
- *@return	the codestream information extract from the jpg2000 codec
+ *@return	the code stream information extract from the jpg2000 codec
  */
  grk_codestream_info_v2  *  j2k_get_cstr_info(grk_j2k *p_j2k);
 
 /**
- * Get the codestream index from a JPEG2000 codec.
+ * Get the code stream index from a JPEG2000 codec.
  *
  *@param	p_j2k				the component image header to dump.
  *
- *@return	the codestream index extract from the jpg2000 codec
+ *@return	the code stream index extract from the jpg2000 codec
  */
  grk_codestream_index  *  j2k_get_cstr_index(grk_j2k *p_j2k);
 
@@ -119,9 +119,9 @@ void j2k_dump_image_comp_header( grk_image_comp  *comp, bool dev_dump_flag,
  bool j2k_allocate_tile_element_cstr_index(grk_j2k *p_j2k);
 
  /**
-  * Destroys a codestream index structure.
+  * Destroys a code stream index structure.
   *
-  * @param	p_cstr_ind	the codestream index parameter to destroy.
+  * @param	p_cstr_ind	the code stream index parameter to destroy.
   */
  void j2k_destroy_cstr_index( grk_codestream_index  *p_cstr_ind);
 

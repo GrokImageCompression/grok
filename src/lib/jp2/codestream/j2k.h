@@ -142,7 +142,7 @@ enum J2K_STATUS {
 	J2K_DEC_STATE_TPHSOT = 0x0008, /**< the decoding process is in a tile part header and expects a SOT marker */
 	J2K_DEC_STATE_TPH = 0x0010, /**< the decoding process is in a tile part header */
 	J2K_DEC_STATE_MT = 0x0020, /**< the EOC marker has just been read */
-	J2K_DEC_STATE_NEOC = 0x0040, /**< the decoding process must not expect a EOC marker because the codestream is truncated */
+	J2K_DEC_STATE_NEOC = 0x0040, /**< the decoding process must not expect a EOC marker because the code stream is truncated */
 	J2K_DEC_STATE_DATA = 0x0080, /**< the decoding process is expecting to read tile data from the code stream */
 	J2K_DEC_STATE_EOC = 0x0100, /**< the decoding process has encountered the EOC marker */
 	J2K_DEC_STATE_ERR = 0x8000 /**< the decoding process has encountered an error (FIXME warning V1 = 0x0080)*/
@@ -456,7 +456,7 @@ struct grk_coding_parameters {
 };
 
 struct grk_j2k_dec {
-	/** Decoder state: used to indicate in which part of the codestream
+	/** Decoder state: used to indicate in which part of the code stream
 	 *  the decoder is (main header, tile header, end) */
 	uint32_t m_state;
 
@@ -473,7 +473,7 @@ struct grk_j2k_dec {
 	uint64_t m_last_sot_read_pos;
 
 	/**
-	 * Indicate that the current tile-part is assumed to be the last tile part of the codestream.
+	 * Indicate that the current tile-part is assumed to be the last tile part of the code stream.
 	 * This is useful in the case when PSot is equal to zero. The sot length will be computed in the
 	 * SOD reader function.
 	 */
@@ -498,7 +498,7 @@ typedef bool (*j2k_procedure)(grk_j2k *j2k, BufferedStream*);
 
 struct TileProcessor;
 /**
- JPEG-2000 codestream reader/writer
+ JPEG 2000 code stream reader/writer
  */
 struct grk_j2k {
 
@@ -507,7 +507,7 @@ struct grk_j2k {
 	grk_tcp* get_current_decode_tcp();
 
 
-	/* J2K codestream is decoded*/
+	/* J2K code stream is decoded*/
 	bool m_is_decoder;
 
 	/* FIXME DOC*/
@@ -549,7 +549,7 @@ struct grk_j2k {
  @param j2k J2K decompressor handle
  @param parameters decompression parameters
  */
-void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters);
+void j2k_init_decoder(void *j2k_void,  grk_dparameters  *parameters);
 
 /**
  * Creates a J2K compression structure
@@ -558,7 +558,7 @@ void j2k_setup_decoder(void *j2k_void,  grk_dparameters  *parameters);
  */
 grk_j2k* j2k_create_compress(void);
 
-bool j2k_setup_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
+bool j2k_init_encoder(grk_j2k *p_j2k,  grk_cparameters  *parameters,
 		grk_image *image);
 
 /**
@@ -573,25 +573,25 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 
 /**
  * Ends the decompression procedures and possibiliy add data to be read after the
- * codestream.
+ * code stream.
  */
-bool j2k_end_decompress(grk_j2k *j2k, BufferedStream *p_stream);
+bool j2k_end_decompress(grk_j2k *j2k, BufferedStream *stream);
 
 /**
- * Reads a jpeg2000 codestream header structure.
+ * Reads a jpeg2000 code stream header structure.
  *
- * @param p_stream the stream to read data from.
- * @param p_j2k the jpeg2000 codec.
+ * @param stream the stream to read data from.
+ * @param p_j2k the JPEG 2000 codec.
  * @param p_image FIXME DOC
  
  *
  * @return true if the box is valid.
  */
-bool j2k_read_header(BufferedStream *p_stream, grk_j2k *p_j2k,
+bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
 		 grk_header_info  *header_info, grk_image **p_image);
 
 /**
- * Destroys a jpeg2000 codec.
+ * Destroys a JPEG 2000 codec.
  *
  * @param	p_j2k	the jpeg20000 structure to destroy.
  */
@@ -599,19 +599,19 @@ void j2k_destroy(grk_j2k *p_j2k);
 
 /**
  * Decode tile data.
- * @param	p_j2k		the jpeg2000 codec.
+ * @param	p_j2k		the JPEG 2000 codec.
  * @param	tile_index
  * @param p_data       FIXME DOC
  * @param data_size  FIXME DOC
- * @param	p_stream			the stream to write data to.
+ * @param	stream			the stream to write data to.
  
  */
-bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *p_stream);
+bool j2k_decompress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
+		uint64_t data_size, BufferedStream *stream);
 
 /**
  * Reads a tile header.
- * @param	p_j2k		the jpeg2000 codec.
+ * @param	p_j2k		the JPEG 2000 codec.
  * @param	tile_index FIXME DOC
  * @param	data_size FIXME DOC
  * @param	p_tile_x0 FIXME DOC
@@ -620,23 +620,23 @@ bool j2k_decode_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
  * @param	p_tile_y1 FIXME DOC
  * @param	p_nb_comps FIXME DOC
  * @param	p_go_on FIXME DOC
- * @param	p_stream			the stream to write data to.
+ * @param	stream			the stream to write data to.
  
  */
 bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		uint64_t *data_size, uint32_t *p_tile_x0, uint32_t *p_tile_y0,
 		uint32_t *p_tile_x1, uint32_t *p_tile_y1, uint32_t *p_nb_comps,
-		bool *p_go_on, BufferedStream *p_stream);
+		bool *p_go_on, BufferedStream *stream);
 
 /**
  * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
  *
- * @param	p_j2k			the jpeg2000 codec.
- * @param	p_image     FIXME DOC
- * @param	start_x		the left position of the rectangle to decode (in image coordinates).
- * @param	start_y		the up position of the rectangle to decode (in image coordinates).
- * @param	end_x			the right position of the rectangle to decode (in image coordinates).
- * @param	end_y			the bottom position of the rectangle to decode (in image coordinates).
+ * @param	p_j2k			the JPEG 2000 codec.
+ * @param	image     FIXME DOC
+ * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
+ * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
+ * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
+ * @param	end_y			the bottom position of the rectangle to decompress (in image coordinates).
  
  *
  * @return	true			if the area could be set.
@@ -652,55 +652,55 @@ bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
 grk_j2k* j2k_create_decompress(void);
 
 /**
- * Decode an image from a JPEG-2000 codestream
+ * Decode an image from a JPEG 2000 code stream
  * @param j2k J2K decompressor handle
- * @param p_stream  FIXME DOC
+ * @param stream  FIXME DOC
  * @param p_image   FIXME DOC
 
  * @return FIXME DOC
  */
-bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *p_stream,
+bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *stream,
 		grk_image *p_image);
 
-bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *p_stream, grk_image *p_image, uint16_t tile_index);
+bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
 
 
 /**
  * Writes a tile.
- * @param	p_j2k		the jpeg2000 codec.
+ * @param	p_j2k		the JPEG 2000 codec.
  * @param tile_index FIXME DOC
  * @param p_data FIXME DOC
  * @param data_size FIXME DOC
- * @param	p_stream			the stream to write data to.
+ * @param	stream			the stream to write data to.
  
  */
-bool j2k_write_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
-		uint64_t data_size, BufferedStream *p_stream);
+bool j2k_compress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
+		uint64_t data_size, BufferedStream *stream);
 
 /**
- * Encodes an image into a JPEG-2000 codestream
+ * Encodes an image into a JPEG 2000 code stream
  */
-bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *cio);
+bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream);
 
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
  *
- * @param	p_j2k		the jpeg2000 codec.
- * @param	p_stream			the stream object.
+ * @param	p_j2k		the JPEG 2000 codec.
+ * @param	stream			the stream object.
  * @param	p_image FIXME DOC
  
  *
  * @return true if the codec is valid.
  */
-bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *p_stream,
+bool j2k_start_compress(grk_j2k *p_j2k, BufferedStream *stream,
 		grk_image *p_image);
 
 /**
  * Ends the compression procedures and possibility add data to be read after the
- * codestream.
+ * code stream.
  */
-bool j2k_end_compress(grk_j2k *p_j2k, BufferedStream *cio);
+bool j2k_end_compress(grk_j2k *p_j2k, BufferedStream *stream);
 
-bool j2k_setup_mct_encoding(grk_tcp *p_tcp, grk_image *p_image);
+bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image);
 
 }

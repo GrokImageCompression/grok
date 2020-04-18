@@ -104,10 +104,10 @@ public:
 
 	virtual void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 			uint32_t &max) = 0;
-	virtual double encode(encodeBlockInfo *block, grk_tcd_tile *tile,
+	virtual double compress(encodeBlockInfo *block, grk_tcd_tile *tile,
 			uint32_t max, bool doRateControl)=0;
 
-	virtual bool decode(decodeBlockInfo *block)=0;
+	virtual bool decompress(decodeBlockInfo *block)=0;
 	virtual void postDecode(decodeBlockInfo *block)=0;
 };
 

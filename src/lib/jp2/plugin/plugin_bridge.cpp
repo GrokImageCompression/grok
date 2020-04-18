@@ -19,7 +19,7 @@
 
 namespace grk {
 
-// Performed after T2, just before plugin decode is triggered
+// Performed after T2, just before plugin decompress is triggered
 // note: only support single segment at the moment
 void decode_synch_plugin_with_host(TileProcessor *tcd) {
 	if (tcd->current_plugin_tile && tcd->current_plugin_tile->tileComponents) {

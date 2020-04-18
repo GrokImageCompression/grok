@@ -70,10 +70,12 @@ class sparse_array {
 public:
 
 	/** Creates a new sparse array.
+	 *
 	 * @param width total width of the array.
 	 * @param height total height of the array
 	 * @param block_width width of a block.
 	 * @param block_height height of a block.
+	 *
 	 * @return a new sparse array instance, or NULL in case of failure.
 	 */
 	sparse_array(uint32_t width,
@@ -82,7 +84,7 @@ public:
 					uint32_t block_height);
 
 	/** Frees a sparse array.
-	 * @param sa sparse array instance.
+	 *
 	 */
 	~sparse_array();
 

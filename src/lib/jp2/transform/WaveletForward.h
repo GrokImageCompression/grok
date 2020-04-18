@@ -45,7 +45,7 @@ template <typename DWT> bool WaveletForward<DWT>::run(TileComponent *tilec){
 			tilec->numresolutions) * sizeof(int32_t);
 	/* overflow check */
 	if (l_data_size > SIZE_MAX) {
-		GROK_ERROR("Wavelet encode: overflow");
+		GROK_ERROR("Wavelet compress: overflow");
 		return false;
 	}
 	if (!l_data_size)

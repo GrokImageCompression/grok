@@ -227,7 +227,7 @@ void TagTree::setvalue(uint64_t leafno, int64_t value) {
 	}
 }
 
-void TagTree::encode(BitIO *bio, uint64_t leafno, int64_t threshold) {
+void TagTree::compress(BitIO *bio, uint64_t leafno, int64_t threshold) {
 	TagTreeNode *stk[31];
 	TagTreeNode **stkptr;
 	TagTreeNode *node;
@@ -267,7 +267,7 @@ void TagTree::encode(BitIO *bio, uint64_t leafno, int64_t threshold) {
 	}
 }
 
-bool TagTree::decode(BitIO *bio, uint64_t leafno, int64_t threshold,
+bool TagTree::decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
 		uint8_t *decoded) {
 	uint64_t value;
 

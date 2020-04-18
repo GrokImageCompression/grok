@@ -40,7 +40,7 @@ T1Decoder::~T1Decoder() {
 	}
 }
 
-bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
+bool T1Decoder::decompress(std::vector<decodeBlockInfo*> *blocks) {
 	if (!blocks || !blocks->size())
 		return true;;
 	auto maxBlocks = blocks->size();
@@ -66,7 +66,7 @@ bool T1Decoder::decode(std::vector<decodeBlockInfo*> *blocks) {
 						return 0;
 					}
 					auto impl = threadStructs[(size_t)threadnum];
-					if (!impl->decode(block)) {
+					if (!impl->decompress(block)) {
 						success = false;
 						delete block;
 						return 0;

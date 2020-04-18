@@ -94,7 +94,7 @@ struct TileComponent {
 
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;
-	uint32_t minimum_num_resolutions; /* number of resolutions level to decode (at max)*/
+	uint32_t minimum_num_resolutions; /* number of resolutions level to decompress (at max)*/
 	grk_tcd_resolution *resolutions; /* resolutions information */
 #ifdef DEBUG_LOSSLESS_T2
 	grk_tcd_resolution* round_trip_resolutions;  /* round trip resolution information */

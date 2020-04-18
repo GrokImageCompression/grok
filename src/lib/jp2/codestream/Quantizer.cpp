@@ -96,7 +96,7 @@ void Quantizer::setBandStepSizeAndBps(grk_tcp *tcp,
 	band->inv_step = (uint32_t)((8192.0/band->stepsize) + 0.5f);
 
 	if (tcp->isHT){
-		 // decode
+		 // decompress
 		 if (fraction == 0.5 && tccp->qmfbid == 0) {
 			 // 31 - K_max == 30 - band->numbps
 			 band->stepsize /=(float)(1u << (30 - band->numbps));
@@ -126,7 +126,7 @@ void Quantizer::apply_quant(grk_tccp *src, grk_tccp *dest){
 
 
 bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
-		uint32_t comp_no, BufferedStream *p_stream) {
+		uint32_t comp_no, BufferedStream *stream) {
 	assert(p_j2k != nullptr);
 
 	auto cp = &(p_j2k->m_cp);
@@ -141,7 +141,7 @@ bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 					1 : (tccp->numresolutions * 3 - 2);
 
 	/* Sqcx */
-	if (!p_stream->write_byte(
+	if (!stream->write_byte(
 			(uint8_t) (tccp->qntsty + (tccp->numgbits << 5)))) {
 		return false;
 	}
@@ -150,11 +150,11 @@ bool Quantizer::write_SQcd_SQcc(grk_j2k *p_j2k, uint16_t tile_no,
 		uint32_t expn = tccp->stepsizes[band_no].expn;
 		uint32_t mant = tccp->stepsizes[band_no].mant;
 		if (tccp->qntsty == J2K_CCP_QNTSTY_NOQNT) {
-			if (!p_stream->write_byte((uint8_t) (expn << 3))) {
+			if (!stream->write_byte((uint8_t) (expn << 3))) {
 				return false;
 			}
 		} else {
-			if (!p_stream->write_short((uint16_t) ((expn << 11) + mant))) {
+			if (!stream->write_short((uint16_t) ((expn << 11) + mant))) {
 				return false;
 			}
 		}

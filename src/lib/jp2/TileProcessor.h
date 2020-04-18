@@ -313,8 +313,9 @@ struct TileProcessor {
 	~TileProcessor();
 
 	/**
-	 * Initialize the tile coder and may reuse some memory.
-	 * @param	p_image		raw image.
+	 * Initialize the tile coder
+	 * @param	p_image		image
+	 * @param	p_cp		coding parameters
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
@@ -323,30 +324,30 @@ struct TileProcessor {
 	/**
 	 * Allocates memory for decoding a specific tile.
 	 *
-	 * @param	output_image output image - stores the decode region of interest
+	 * @param	output_image output image - stores the decompress region of interest
 	 * @param	tile_no	the index of the tile received in sequence. This not necessarily lead to the
 	 * tile at index tile_no.
 	 *
 	 * @return	true if the remaining data is sufficient.
 	 */
-	bool init_decode_tile(grk_image *output_image,
+	bool init_decompress_tile(grk_image *output_image,
 			uint16_t tile_no);
 
 	/**
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
-	 * @param	p_j2k		the jpeg2000 codec.
+	 * @param	p_j2k		the JPEG 2000 codec.
 	 * @param	p_image     FIXME DOC
-	 * @param	start_x		the left position of the rectangle to decode (in image coordinates).
-	 * @param	start_y		the up position of the rectangle to decode (in image coordinates).
-	 * @param	end_x		the right position of the rectangle to decode (in image coordinates).
-	 * @param	end_y		the bottom position of the rectangle to decode (in image coordinates).
+	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
+	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
+	 * @param	end_x		the right position of the rectangle to decompress (in image coordinates).
+	 * @param	end_y		the bottom position of the rectangle to decompress (in image coordinates).
 
 	 *
 	 * @return	true			if the area could be set.
 	 */
-	bool set_decode_area(grk_j2k *p_j2k,
+	bool set_decompress_area(grk_j2k *p_j2k,
 						grk_image *p_image,
 						uint32_t start_x,
 						uint32_t start_y,
@@ -355,25 +356,24 @@ struct TileProcessor {
 
 	/**
 	 * Encodes a tile from the raw image into the given buffer.
-	 * @param	tile_no		Index of the tile to encode.
+	 * @param	tile_no		Index of the tile to compress.
 	 * @param	p_dest			Destination buffer
 	 * @param	p_data_written	pointer to an int that is incremented by the number of bytes really written on p_dest
 	 * @param	p_len			Maximum length of the destination buffer
 	 * @param	p_cstr_info		Codestream information structure
 	 * @return  true if the coding is successful.
 	 */
-	bool encode_tile(uint16_t tile_no, BufferedStream *p_stream,
+	bool compress_tile(uint16_t tile_no, BufferedStream *stream,
 			uint64_t *p_data_written, uint64_t len,
 			 grk_codestream_info  *p_cstr_info);
 
 	/**
-	 Decode a tile from a buffer into a raw image
-	 @param src Source buffer
-	 @param len Length of source buffer
+	 Decode a tile from a buffer
+	 @param src_buf Source buffer
 	 @param tileno Number that identifies one of the tiles to be decoded
-	 @param cstr_info  FIXME DOC
+	 @return true if successful
 	 */
-	bool decode_tile(ChunkBuffer *src_buf, uint16_t tileno);
+	bool decompress_tile(ChunkBuffer *src_buf, uint16_t tileno);
 
 	/**
 	 * Copies tile data from the system onto the given memory block.
@@ -387,11 +387,11 @@ struct TileProcessor {
 	/**
 	 * Initialize the tile coder and may reuse some meory.
 	 *
-	 * @param	tile_no	current tile index to encode.
+	 * @param	tile_no	current tile index to compress.
 	 *
 	 * @return true if the encoding values could be set (false otherwise).
 	 */
-	bool init_encode_tile(uint16_t tile_no);
+	bool init_compress_tile(uint16_t tile_no);
 
 	/**
 	 * Copies tile data from the given memory block onto the system.
@@ -401,12 +401,12 @@ struct TileProcessor {
 
 	bool needs_rate_control();
 
-	bool copy_decoded_tile_to_output_image(uint8_t *p_data,
+	bool copy_decompressed_tile_to_output_image(uint8_t *p_data,
 			grk_image *p_output_image, bool clearOutputOnInit);
 
 	void copy_image_to_tile();
 
-	/** Index of the tile to decode (used in get_tile); initialized to -1 */
+	/** Index of the tile to decompress (used in get_tile); initialized to -1 */
 	int32_t m_tile_ind_to_dec;
 
 	/** tile number being currently coded/decoded */
@@ -468,7 +468,7 @@ private:
 	grk_coding_parameters *m_cp;
 	/** coding/decoding parameters common to all tiles */
 	grk_tcp *m_tcp;
-	/** current encoded tile (not used for decode) */
+	/** current encoded tile (not used for decompress) */
 	uint16_t m_tileno;
 	/** indicate if the tcd is a decoder. */
 	bool m_is_decoder;
@@ -501,7 +501,7 @@ private:
 
 	 bool t1_encode();
 
-	 bool t2_encode(BufferedStream *p_stream,
+	 bool t2_encode(BufferedStream *stream,
 			uint64_t *p_data_written, uint64_t max_dest_size,
 			 grk_codestream_info  *p_cstr_info);
 

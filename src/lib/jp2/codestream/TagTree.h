@@ -115,26 +115,28 @@ public:
 	/**
 	 Encode the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle
-	 @param leafno Number that identifies the leaf to encode
+	 @param leafno Number that identifies the leaf to compress
 	 @param threshold Threshold to use when encoding value of the leaf
 	 */
-	void encode(BitIO *bio, uint64_t leafno, int64_t threshold);
+	void compress(BitIO *bio, uint64_t leafno, int64_t threshold);
 	/**
 	 Decode the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle
-	 @param leafno Number that identifies the leaf to decode
+	 @param leafno Number that identifies the leaf to decompress
 	 @param threshold Threshold to use when decoding value of the leaf
-	 @return 1 if the node's value < threshold, returns 0 otherwise
+	 @param decoded 1 if the node's value < threshold, 0 otherwise
+	 @return true if successful, otherwise false
 	 */
-	bool decode(BitIO *bio, uint64_t leafno, int64_t threshold,
+	bool decompress(BitIO *bio, uint64_t leafno, int64_t threshold,
 			uint8_t *decoded);
 
 	/**
 	 Decode the value of a leaf of the tag tree up to a given threshold
 	 @param bio Pointer to a BIO handle
-	 @param leafno Number that identifies the leaf to decode
+	 @param leafno Number that identifies the leaf to decompress
 	 @param threshold Threshold to use when decoding value of the leaf
-	 @return the node's value
+	 @param value the node's value
+	 @return true if succsssful
 	 */
 	bool decodeValue(BitIO *bio, uint64_t leafno, int64_t threshold,
 			uint64_t *value);

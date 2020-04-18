@@ -62,7 +62,7 @@ namespace grk {
 
 
 bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
-		uint32_t max_layers, BufferedStream *p_stream, uint64_t *p_data_written,
+		uint32_t max_layers, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t max_len,  grk_codestream_info  *cstr_info, uint32_t tp_num,
 		uint32_t tp_pos, uint32_t pino) {
 
@@ -89,7 +89,7 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 		 nb_bytes = 0;
 
 			if (!encode_packet(tile_no, p_tile, tcp, current_pi,
-					p_stream, &nb_bytes, max_len, cstr_info)) {
+					stream, &nb_bytes, max_len, cstr_info)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
 			}
@@ -204,7 +204,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
 
 		/* if the resolution needed is too low, one dim of the tilec could be equal to zero
-		 * and no packets are used to decode this resolution and
+		 * and no packets are used to decompress this resolution and
 		 * current_pi->resno is always >= p_tile->comps[current_pi->compno].minimum_num_resolutions
 		 * and no img_comp->resno_decoded are computed
 		 */
@@ -366,7 +366,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	 When the marker PPT/PPM is used the packet header are store in PPT/PPM marker
 	 This part deal with this characteristic
 	 step 1: Read packet header in the saved structure
-	 step 2: Return to codestream for decoding
+	 step 2: Return to code stream for decoding
 	 */
 	uint8_t *header_data = nullptr;
 	uint8_t **header_data_start = nullptr;
@@ -500,7 +500,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 
 				// see Taubman + Marcellin page 388
 				// loop below stops at (# of missing bit planes  + 1)
-				while ((rc = prc->imsbtree->decode(bio.get(), cblkno,
+				while ((rc = prc->imsbtree->decompress(bio.get(), cblkno,
 						K_msbs, &value)) && !value) {
 					++K_msbs;
 				}
@@ -509,7 +509,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 
 				if (!rc) {
 					GROK_ERROR(
-							"Failed to decode zero-bitplane tag tree ");
+							"Failed to decompress zero-bitplane tag tree ");
 					return false;
 				}
 
@@ -857,7 +857,7 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 //--------------------------------------------------------------------------------------------------
 
 bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
-		PacketIter *pi, BufferedStream *p_stream, uint64_t *p_data_written,
+		PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
@@ -867,28 +867,28 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	auto res = &tilec->resolutions[resno];
 	uint64_t numHeaderBytes = 0;
 	size_t streamBytes = 0;
-	if (p_stream)
-		streamBytes = p_stream->tell();
+	if (stream)
+		streamBytes = stream->tell();
 	// SOP marker
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
-		if (!p_stream->write_byte(255)) {
+		if (!stream->write_byte(255)) {
 			return false;
 		}
-		if (!p_stream->write_byte(145)) {
+		if (!stream->write_byte(145)) {
 			return false;
 		}
-		if (!p_stream->write_byte(0)) {
+		if (!stream->write_byte(0)) {
 			return false;
 		}
-		if (!p_stream->write_byte(4)) {
+		if (!stream->write_byte(4)) {
 			return false;
 		}
 		/* packno is uint32_t modulo 65536, in big endian format */
 		uint16_t packno = (uint16_t)(tile->packno % 0x10000);
-		if (!p_stream->write_byte((uint8_t)(packno >> 8))) {
+		if (!stream->write_byte((uint8_t)(packno >> 8))) {
 			return false;
 		}
-		if (!p_stream->write_byte((uint8_t)(packno & 0xff))) {
+		if (!stream->write_byte((uint8_t)(packno & 0xff))) {
 			return false;
 		}
 		num_bytes_available -= 6;
@@ -924,7 +924,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		}
 	}
 
-	std::unique_ptr<BitIO> bio(new BitIO(p_stream, true));
+	std::unique_ptr<BitIO> bio(new BitIO(stream, true));
 	// Empty header bit. Grok always sets this to 1,
 	// even though there is also an option to set it to zero.
 	if (!bio->write(1, 1))
@@ -960,7 +960,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 
 			/* cblk inclusion bits */
 			if (!cblk->num_passes_included_in_current_layer) {
-				prc->incltree->encode(bio.get(), cblkno, (int32_t) (layno + 1));
+				prc->incltree->compress(bio.get(), cblkno, (int32_t) (layno + 1));
 #ifdef DEBUG_LOSSLESS_T2
 					cblk->included = layno;
 #endif
@@ -981,7 +981,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->num_passes_included_in_current_layer) {
 				cblk->numlenbits = 3;
-				prc->imsbtree->encode(bio.get(), cblkno,
+				prc->imsbtree->compress(bio.get(), cblkno,
 						tag_tree_uninitialized_node_value);
 			}
 			/* number of coding passes included */
@@ -1050,10 +1050,10 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 
 	// EPH marker
 	if (tcp->csty & J2K_CP_CSTY_EPH) {
-		if (!p_stream->write_byte(255)) {
+		if (!stream->write_byte(255)) {
 			return false;
 		}
-		if (!p_stream->write_byte(146)) {
+		if (!stream->write_byte(146)) {
 			return false;
 		}
 		num_bytes_available -= 2;
@@ -1097,7 +1097,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			}
 
 			if (cblk_layer->len) {
-				if (!p_stream->write_bytes(cblk_layer->data, cblk_layer->len)) {
+				if (!stream->write_bytes(cblk_layer->data, cblk_layer->len)) {
 					return false;
 				}
 				num_bytes_available -= cblk_layer->len;
@@ -1115,7 +1115,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 		}
 		++band;
 	}
-	*p_data_written += p_stream->tell() - streamBytes;
+	*p_data_written += stream->tell() - streamBytes;
 
 #ifdef DEBUG_LOSSLESS_T2
 		auto originalDataBytes = *p_data_written - numHeaderBytes;
@@ -1291,7 +1291,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 			}
 		}
 		else {
-			GROK_ERROR("encode_packet: decode packet failed");
+			GROK_ERROR("encode_packet: decompress packet failed");
 		}
 #endif
 	return true;
@@ -1382,7 +1382,7 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 
 			/* cblk inclusion bits */
 			if (!cblk->num_passes_included_in_current_layer) {
-				prc->incltree->encode(bio.get(), cblkno, (int32_t) (layno + 1));
+				prc->incltree->compress(bio.get(), cblkno, (int32_t) (layno + 1));
 			} else {
 				if (!bio->write(layer->numpasses != 0, 1))
 					return false;
@@ -1397,7 +1397,7 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 			/* if first instance of cblk --> zero bit-planes information */
 			if (!cblk->num_passes_included_in_current_layer) {
 				cblk->numlenbits = 3;
-				prc->imsbtree->encode(bio.get(), cblkno,
+				prc->imsbtree->compress(bio.get(), cblkno,
 						tag_tree_uninitialized_node_value);
 			}
 

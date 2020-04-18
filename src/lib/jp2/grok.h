@@ -1762,7 +1762,7 @@ GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec *codec,
 
 
 /**
- * Encode an image into a JPEG-2000 code stream using plugin
+ * Encode an image into a JPEG 2000 code stream using plugin
  * @param codec 		compressor handle
  * @param tile			plugin tile
  *
@@ -1867,7 +1867,7 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 #define GRK_PLUGIN_STATE_NO_DEBUG			0x0
 
 /*
- For compress debugging, the plugin first performs a T1 encode.
+ For compress debugging, the plugin first performs a T1 compress.
  Then:
  1. perform host DWT on plugin MCT data, and write to host image
  This way, both plugin and host start from same point
@@ -1875,8 +1875,8 @@ GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
  2. map plugin DWT data, compare with host DWT, and then write to plugin image
  At this point in the code, the plugin image holds plugin DWT data. And if no warnings are triggered,
  then we can safely say that host and plugin DWT data are identical.
- 3. Perform host encode, skipping MCT and DWT (they have already been performed)
- 4. during host encode, each context that is formed is compared against context stream from plugin
+ 3. Perform host compress, skipping MCT and DWT (they have already been performed)
+ 4. during host compress, each context that is formed is compared against context stream from plugin
  5. rate control - synch with plugin code stream, and compare
  6. T2 and store to disk
  */
@@ -1933,8 +1933,11 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_compress(
  * Batch compress with plugin
  *
  * @param input_dir				directory holding input images
+ * @param output_dir			directory holding compressed output images
  * @param encode_parameters 	compress parameters
  * @param callback				callback
+ *
+ * @return 0 if successful
  *
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_batch_compress(const char *input_dir,
@@ -1995,8 +1998,11 @@ GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(
  * Initialize batch decompress
  *
  * @param input_dir input directory holding compressed images
+ * @param output_dir output directory holding decompressed images
  * @param decompress_parameters  decompress parameters
  * @param callback  			 callback
+ *
+ * @return 0 if successful
  */
 GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 		const char *input_dir, const char *output_dir,

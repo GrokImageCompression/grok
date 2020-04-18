@@ -87,7 +87,7 @@ struct T2 {
 	 @param pino             FIXME DOC
 	 */
 	bool encode_packets(uint16_t tileno, grk_tcd_tile *tile,
-			uint32_t maxlayers, BufferedStream *p_stream, uint64_t *p_data_written,
+			uint32_t maxlayers, BufferedStream *stream, uint64_t *p_data_written,
 			uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
 			uint32_t tppos, uint32_t pino);
 
@@ -106,8 +106,8 @@ struct T2 {
 
 	/**
 	 Decode the packets of a tile from a source buffer
-	 @param tileno number that identifies the tile for which to decode the packets
-	 @param tile tile for which to decode the packets
+	 @param tileno number that identifies the tile for which to decompress the packets
+	 @param tile tile for which to decompress the packets
 	 @param src         FIXME DOC
 	 @param p_data_read the source buffer
 	 @param len length of the source buffer
@@ -139,7 +139,7 @@ private:
 	 @return
 	 */
 	bool encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
-			PacketIter *pi, BufferedStream *p_stream, uint64_t *p_data_written,
+			PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 			uint64_t len,  grk_codestream_info  *cstr_info);
 
 	/**

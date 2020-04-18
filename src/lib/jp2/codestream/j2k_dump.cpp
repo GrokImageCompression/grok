@@ -137,12 +137,12 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 			j2k_dump_image_header(p_j2k->m_private_image, 0, out_stream);
 	}
 
-	/* Dump the codestream info from main header */
+	/* Dump the code stream info from main header */
 	if (flag & GRK_J2K_MH_INFO) {
 		if (p_j2k->m_private_image)
 			j2k_dump_MH_info(p_j2k, out_stream);
 	}
-	/* Dump all tile/codestream info */
+	/* Dump all tile/code stream info */
 	if (flag & GRK_J2K_TCH_INFO) {
 		uint32_t nb_tiles = p_j2k->m_cp.t_grid_height * p_j2k->m_cp.t_grid_width;
 		uint32_t i;
@@ -156,17 +156,17 @@ void j2k_dump(grk_j2k *p_j2k, int32_t flag, FILE *out_stream) {
 		}
 	}
 
-	/* Dump the codestream info of the current tile */
+	/* Dump the code stream info of the current tile */
 	if (flag & GRK_J2K_TH_INFO) {
 
 	}
 
-	/* Dump the codestream index from main header */
+	/* Dump the code stream index from main header */
 	if (flag & GRK_J2K_MH_IND) {
 		j2k_dump_MH_index(p_j2k, out_stream);
 	}
 
-	/* Dump the codestream index of the current tile */
+	/* Dump the code stream index of the current tile */
 	if (flag & GRK_J2K_TH_IND) {
 
 	}

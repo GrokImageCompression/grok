@@ -37,7 +37,7 @@ T1Encoder::~T1Encoder() {
 	for (auto &t : threadStructs)
 		delete t;
 }
-bool T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
+bool T1Encoder::compress(size_t threadId, uint64_t maxBlocks) {
 	auto impl = threadStructs[threadId];
 	uint64_t index = (uint64_t)++blockCount;
 	if (index >= maxBlocks)
@@ -45,7 +45,7 @@ bool T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 	encodeBlockInfo *block = encodeBlocks[index];
 	uint32_t max = 0;
 	impl->preEncode(block, tile, max);
-	auto dist = impl->encode(block, tile, max, needsRateControl);
+	auto dist = impl->compress(block, tile, max, needsRateControl);
 	if (needsRateControl) {
 		std::unique_lock<std::mutex> lk(distortion_mutex);
 		tile->distotile += dist;
@@ -54,7 +54,7 @@ bool T1Encoder::encode(size_t threadId, uint64_t maxBlocks) {
 	return true;
 
 }
-bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
+bool T1Encoder::compress(std::vector<encodeBlockInfo*> *blocks) {
 	if (!blocks || blocks->size() == 0)
 		return true;
 
@@ -68,7 +68,7 @@ bool T1Encoder::encode(std::vector<encodeBlockInfo*> *blocks) {
           results.emplace_back(
             ThreadPool::get()->enqueue([this, maxBlocks] {
                 auto threadnum =  ThreadPool::get()->thread_number(std::this_thread::get_id());
-                while(encode((size_t)threadnum, maxBlocks)){
+                while(compress((size_t)threadnum, maxBlocks)){
 
                 }
                 return 0;

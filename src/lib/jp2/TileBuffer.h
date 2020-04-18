@@ -21,7 +21,7 @@ namespace grk {
 /*
  Note: various coordinate systems are used to describe regions in the tile buffer.
 
- 1) Canvas coordinate system:  jpeg 2000 global image coordinates, independent of sub-sampling
+ 1) Canvas coordinate system:  JPEG 2000 global image coordinates, independent of sub-sampling
 
  2) Tile coordinate system:  coordinates relative to a tile's top left hand corner, with
  sub-sampling accounted for

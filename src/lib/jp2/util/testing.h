@@ -19,7 +19,7 @@
 
 namespace grk {
 
-// uncomment to enable testing of different stages of round-trip lossless encode
+// uncomment to enable testing of different stages of round-trip lossless compress
 //#define DEBUG_LOSSLESS_DWT
 //#define DEBUG_LOSSLESS_T1
 //#define DEBUG_LOSSLESS_T2

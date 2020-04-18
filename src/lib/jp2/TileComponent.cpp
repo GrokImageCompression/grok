@@ -582,7 +582,7 @@ bool TileComponent::create_buffer(grk_image *output_image,
 		new_buffer->unreduced_tile_dim.clip(new_buffer->unreduced_image_dim, &new_buffer->unreduced_image_dim);
 	}
 
-	/* for encode, we don't need to allocate resolutions */
+	/* for compress, we don't need to allocate resolutions */
 	if (!m_is_encoder) {
 		/* fill resolutions vector */
         assert(numresolutions>0);

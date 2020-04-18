@@ -29,7 +29,7 @@ class T1Decoder {
 public:
 	T1Decoder(grk_tcp *tcp, uint16_t blockw, uint16_t blockh);
 	~T1Decoder();
-	bool decode(std::vector<decodeBlockInfo*> *blocks);
+	bool decompress(std::vector<decodeBlockInfo*> *blocks);
 
 private:
 	uint16_t codeblock_width, codeblock_height;  //nominal dimensions of block

@@ -26,10 +26,10 @@ public:
 	T1Encoder(grk_tcp *tcp, grk_tcd_tile *tile, uint32_t encodeMaxCblkW,
 			uint32_t encodeMaxCblkH, bool needsRateControl);
 	~T1Encoder();
-	bool encode(std::vector<encodeBlockInfo*> *blocks);
+	bool compress(std::vector<encodeBlockInfo*> *blocks);
 
 private:
-	bool encode(size_t threadId, uint64_t maxBlocks);
+	bool compress(size_t threadId, uint64_t maxBlocks);
 
 	grk_tcd_tile *tile;
 	std::vector<T1Interface*> threadStructs;

@@ -503,55 +503,54 @@ grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
 	return (grk_stream*) (new grk::BufferedStream(nullptr, buffer_size,
 			l_is_input));
 }
-void GRK_CALLCONV grk_stream_destroy(grk_stream *p_stream) {
-	auto stream = (grk::BufferedStream*) (p_stream);
-	delete stream;
+void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
+	delete (grk::BufferedStream*) (stream);
 }
-void GRK_CALLCONV grk_stream_set_read_function(grk_stream *p_stream,
+void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT))) {
 		return;
 	}
-	l_stream->m_read_fn = p_function;
+	streamImpl->m_read_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream *p_stream,
+void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream *stream,
 		grk_stream_zero_copy_read_fn p_function) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_INPUT))) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT))) {
 		return;
 	}
-	l_stream->m_zero_copy_read_fn = p_function;
+	streamImpl->m_zero_copy_read_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *p_stream,
+void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 		grk_stream_seek_fn p_function) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if (!l_stream) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (!streamImpl) {
 		return;
 	}
-	l_stream->m_seek_fn = p_function;
+	streamImpl->m_seek_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_write_function(grk_stream *p_stream,
+void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if ((!l_stream) || (!(l_stream->m_status & GROK_STREAM_STATUS_OUTPUT))) {
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT))) {
 		return;
 	}
-	l_stream->m_write_fn = p_function;
+	streamImpl->m_write_fn = p_function;
 }
 
-void GRK_CALLCONV grk_stream_set_user_data(grk_stream *p_stream, void *p_data,
+void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
 		grk_stream_free_user_data_fn p_function) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if (!l_stream)
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (!streamImpl)
 		return;
-	l_stream->m_user_data = p_data;
-	l_stream->m_free_user_data_fn = p_function;
+	streamImpl->m_user_data = p_data;
+	streamImpl->m_free_user_data_fn = p_function;
 }
-void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *p_stream,
+void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
 		uint64_t data_length) {
-	auto l_stream = (grk::BufferedStream*) p_stream;
-	if (!l_stream)
+	auto streamImpl = (grk::BufferedStream*) stream;
+	if (!streamImpl)
 		return;
-	l_stream->m_user_data_length = data_length;
+	streamImpl->m_user_data_length = data_length;
 }

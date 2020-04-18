@@ -67,7 +67,7 @@ namespace grk {
 
 #define T1_TYPE_MQ 0    /**< Normal coding using entropy coder */
 #define T1_TYPE_RAW 1   /**< No encoding the information is store under raw format
-							in codestream (mode switch RAW)*/
+							in code stream (mode switch RAW)*/
 
 #include "t1_luts.h"
 #define T1_FLAGS(x, y) (t1->flags[x + 1 + ((y>>2) + 1) * (t1->w+2)])

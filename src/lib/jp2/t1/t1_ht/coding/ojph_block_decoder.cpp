@@ -740,7 +740,7 @@ namespace ojph {
       si32* sp = decoded_data;
       for (int x = 0; x < width; x += 4)
       {
-        // decode vlc
+        // decompress vlc
         /////////////
 
         //first quad
@@ -799,7 +799,7 @@ namespace ojph {
         int consumed_bits = decode_init_uvlc(vlc_val, uvlc_mode, U_p);
         vlc_val = rev_advance(&vlc, consumed_bits);
 
-        //decode magsgn and update line_state
+        //decompress magsgn and update line_state
         /////////////////////////////////////
         int m_n, v_n;
         ui32 ms_val;
@@ -967,7 +967,7 @@ namespace ojph {
         c_p = 0;
         for (int x = 0; x < width; x += 4)
         {
-          // decode vlc
+          // decompress vlc
           /////////////
 
           //first quad
@@ -1043,7 +1043,7 @@ namespace ojph {
           ls0 = lsp[2]; //for next double quad
           lsp[1] = lsp[2] = 0;
 
-          //decode magsgn and update line_state
+          //decompress magsgn and update line_state
           /////////////////////////////////////
           int m_n, v_n;
           ui32 ms_val;

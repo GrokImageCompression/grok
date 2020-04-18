@@ -128,7 +128,7 @@ namespace grk {
 #ifdef DEBUG_LOSSLESS_DWT
 	memcpy(after, a, rw_full * rh_full * sizeof(int32_t));
 	dwt53 dwt_utils;
-	dwt_utils.decode(tilec, tilec->numresolutions, 8);
+	dwt_utils.decompress(tilec, tilec->numresolutions, 8);
 	for (int m = 0; m < rw_full; ++m) {
 		for (int p = 0; p < rh_full; ++p) {
 			auto expected = a[m + p * rw_full];

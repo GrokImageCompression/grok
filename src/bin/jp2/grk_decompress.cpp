@@ -207,7 +207,7 @@ static void decode_help_display(void) {
 	fprintf(stdout, "  [-g | -PluginPath] <plugin path>\n"
 			"    Path to T1 plugin.\n");
 	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
-			"    Number of threads used by T1 decode.\n");
+			"    Number of threads used by T1 decompress.\n");
 	fprintf(stdout,
 			"  [-c|-Compression] <compression>\n"
 					"    Compress output image data.Currently, this flag is only applicable when output format is set to `TIF`,\n"
@@ -227,8 +227,8 @@ static void decode_help_display(void) {
 					"    image resolution is effectively divided by 2 to the power of the\n"
 					"    number of discarded levels. The reduce factor is limited by the\n"
 					"    smallest total number of decomposition levels among tiles.\n"
-					"  [-l | -Layer] <number of quality layers to decode>\n"
-					"    Set the maximum number of quality layers to decode. If there are\n"
+					"  [-l | -Layer] <number of quality layers to decompress>\n"
+					"    Set the maximum number of quality layers to decompress. If there are\n"
 					"    fewer quality layers than the specified number, all the quality layers\n"
 					"    are decoded.\n");
 	fprintf(stdout,
@@ -503,7 +503,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				"Kernel build options", false, 0, "unsigned integer", cmd);
 
 		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
-				"Number of encode repetitions, for either a folder or a single file",
+				"Number of compress repetitions, for either a folder or a single file",
 				false, 0, "unsigned integer", cmd);
 
 		SwitchArg verboseArg("v", "verbose", "Verbose", cmd);
@@ -1093,7 +1093,7 @@ static int post_decode(grk_plugin_decode_callback_info *info);
 static int plugin_main(int argc, char **argv, DecompressInitParams *initParams);
 
 // returns 0 for failure, 1 for success, and 2 if file is not suitable for decoding
-int decode(const char *fileName, DecompressInitParams *initParams) {
+int decompress(const char *fileName, DecompressInitParams *initParams) {
 	if (initParams->img_fol.set_imgdir) {
 		if (get_next_file(fileName, &initParams->img_fol,
 				initParams->out_fol.set_imgdir ?
@@ -1142,7 +1142,7 @@ int main(int argc, char **argv) {
 		auto start = std::chrono::high_resolution_clock::now();
 		for (uint32_t i = 0; i < initParams.parameters.repeats; ++i) {
 			if (!initParams.img_fol.set_imgdir) {
-				if (!decode("", &initParams)) {
+				if (!decompress("", &initParams)) {
 					rc = EXIT_FAILURE;
 					goto cleanup;
 				}
@@ -1160,7 +1160,7 @@ int main(int argc, char **argv) {
 					if (strcmp(".", content->d_name) == 0
 							|| strcmp("..", content->d_name) == 0)
 						continue;
-					if (decode(content->d_name, &initParams) == 1)
+					if (decompress(content->d_name, &initParams) == 1)
 						num_decompressed_images++;
 				}
 				closedir(dir);
@@ -1169,7 +1169,7 @@ int main(int argc, char **argv) {
 		auto finish = std::chrono::high_resolution_clock::now();
 		std::chrono::duration<double> elapsed = finish - start;
 		if (num_decompressed_images) {
-			spdlog::info("decode time: {} ms",
+			spdlog::info("decompress time: {} ms",
 					(elapsed.count() * 1000)
 							/ (double) num_decompressed_images);
 		}
@@ -1245,7 +1245,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		//start batch
 		if (success)
 			success = grk_plugin_batch_decompress();
-		// if plugin successfully begins batch encode, then wait for batch to complete
+		// if plugin successfully begins batch compress, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
 			uint32_t slicesPerSecond = 1000 / slice;
@@ -1310,7 +1310,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 			}
 		}
 
-		//1. try to decode using plugin
+		//1. try to decompress using plugin
 		success = grk_plugin_decompress(&initParams->parameters, decode_callback);
 		if (success != 0)
 			goto cleanup;
@@ -1320,7 +1320,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	finish = std::chrono::high_resolution_clock::now();
 	elapsed = finish - start;
 	if (num_decompressed_images && success == 0) {
-		spdlog::info("decode time: {} ms",
+		spdlog::info("decompress time: {} ms",
 				(elapsed.count() * 1000) / (double) num_decompressed_images);
 	}
 	cleanup: if (dirptr) {
@@ -1335,7 +1335,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 
 int decode_callback(grk_plugin_decode_callback_info *info) {
 	int rc = -1;
-	// GRK_DECODE_T1 flag specifies full decode on CPU, so
+	// GRK_DECODE_T1 flag specifies full decompress on CPU, so
 	// we don't need to initialize the decoder in this case
 	if (info->decode_flags & GRK_DECODE_T1) {
 		info->init_decoders_func = nullptr;
@@ -1422,7 +1422,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 
 	if (!info->l_codec) {
 		switch (decod_format) {
-		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
+		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
 			/* Get a decoder handle */
 			info->l_codec = grk_create_decompress(GRK_CODEC_J2K,
 					info->l_stream);
@@ -1454,7 +1454,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 
 	// 2. read header
 	if (info->decode_flags & GRK_DECODE_HEADER) {
-		// Read the main header of the codestream (j2k) and also JP2 boxes (jp2)
+		// Read the main header of the code stream (j2k) and also JP2 boxes (jp2)
 		if (!grk_read_header(info->l_codec, &info->header_info, &info->image)) {
 			spdlog::error("grk_decompress: failed to read the header");
 			failed = 1;
@@ -1495,11 +1495,11 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 
-	// header-only decode
+	// header-only decompress
 	if (info->decode_flags == GRK_DECODE_HEADER)
 		goto cleanup;
 
-	//3. decode
+	//3. decompress
 	if (info->tile)
 		info->tile->decode_flags = info->decode_flags;
 
@@ -1520,20 +1520,20 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		goto cleanup;
 	}
 
-	// decode all tiles
+	// decompress all tiles
 	if (!parameters->nb_tile_to_decode) {
 		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
-			spdlog::error("grk_decompress: failed to decode image!");
+			spdlog::error("grk_decompress: failed to decompress image!");
 			failed = 1;
 			goto cleanup;
 		}
 	}
-	// or, decode one particular tile
+	// or, decompress one particular tile
 	else {
 		if (!grk_decompress_tile(info->l_codec, info->image,
 				parameters->tile_index)) {
-			spdlog::error("grk_decompress: failed to decode tile!");
+			spdlog::error("grk_decompress: failed to decompress tile!");
 			failed = 1;
 			goto cleanup;
 		}

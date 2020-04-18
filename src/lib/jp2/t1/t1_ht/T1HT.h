@@ -37,10 +37,10 @@ public:
 	virtual ~T1HT();
 
 	void preEncode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t &max);
-	double encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
+	double compress(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t max,
 			bool doRateControl);
 
-	bool decode(decodeBlockInfo *block);
+	bool decompress(decodeBlockInfo *block);
 	void postDecode(decodeBlockInfo *block);
 
 private:

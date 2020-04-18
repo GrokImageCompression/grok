@@ -246,7 +246,7 @@ int main(int argc, char** argv)
             }
         }
 
-        Wavelet::encode(&tilec, 1);
+        Wavelet::compress(&tilec, 1);
         if (display) {
             printf("After FDWT\n");
             k = 0;

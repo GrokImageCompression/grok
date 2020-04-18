@@ -54,7 +54,7 @@
 
 namespace grk {
 /**
- @file grk_malloc.h
+ @file grok_malloc.h
  @brief Internal functions
 
  The functions in grk_malloc.h are internal utilities used for memory management.

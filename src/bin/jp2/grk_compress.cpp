@@ -184,8 +184,8 @@ static void encode_help_display(void) {
 	fprintf(stdout, " * Size of precinct : 2^15 x 2^15 (i.e. 1 precinct)\n");
 	fprintf(stdout, " * Size of code-block : 64 x 64\n");
 	fprintf(stdout, " * Number of resolutions: 6\n");
-	fprintf(stdout, " * No SOP marker in the codestream\n");
-	fprintf(stdout, " * No EPH marker in the codestream\n");
+	fprintf(stdout, " * No SOP marker in the code stream\n");
+	fprintf(stdout, " * No EPH marker in the code stream\n");
 	fprintf(stdout, " * No sub-sampling in x or y direction\n");
 	fprintf(stdout, " * No mode switch activated\n");
 	fprintf(stdout, " * Progression order: LRCP\n");
@@ -277,7 +277,7 @@ static void encode_help_display(void) {
 	fprintf(stdout,
 			"    Code-block dimensions. The dimensions must respect the constraint \n");
 	fprintf(stdout,
-			"    defined in the JPEG-2000 standard (no dimension smaller than 4 \n");
+			"    defined in the JPEG 2000 standard (no dimension smaller than 4 \n");
 	fprintf(stdout,
 			"    or greater than 1024, no code-block with more than 4096 coefficients).\n");
 	fprintf(stdout, "    The maximum value permitted is 64x64. \n");
@@ -376,23 +376,23 @@ static void encode_help_display(void) {
 	fprintf(stdout,
 			"	Note: this flag will be ignored if cinema profile flags are used.\n");
 	fprintf(stdout, "[-w|-cinema2K] <24|48>\n");
-	fprintf(stdout, "    Digital Cinema 2K profile compliant codestream.\n");
+	fprintf(stdout, "    Digital Cinema 2K profile compliant code stream.\n");
 	fprintf(stdout, "	Need to specify the frames per second.\n");
 	fprintf(stdout, "    Only 24 or 48 fps are currently allowed.\n");
 	fprintf(stdout, "[-x|-cinema4K] <24|48>\n");
-	fprintf(stdout, "    Digital Cinema 4K profile compliant codestream.\n");
+	fprintf(stdout, "    Digital Cinema 4K profile compliant code stream.\n");
 	fprintf(stdout, "	Need to specify the frames per second.\n");
 	fprintf(stdout, "    Only 24 or 48 fps are currently allowed.\n");
 	fprintf(stdout,
 			"-U|-BROADCAST <PROFILE>[,mainlevel=X][,framerate=FPS]\n");
-	fprintf(stdout, "    Broadcast compliant codestream.\n");
+	fprintf(stdout, "    Broadcast compliant code stream.\n");
 	fprintf(stdout, "    <PROFILE>=SINGLE,MULTI and MULTI_R.\n");
 	fprintf(stdout, "    X >= 0 and X <= 11.\n");
 	fprintf(stdout,
 			"    framerate > 0 may be specified to enhance checks and set maximum bit rate when Y > 0.\n");
 	fprintf(stdout,
 			"-z|-IMF <PROFILE>[,mainlevel=X][,sublevel=Y][,framerate=FPS]\n");
-	fprintf(stdout, "    Interoperable Master Format compliant codestream.\n");
+	fprintf(stdout, "    Interoperable Master Format compliant code stream.\n");
 	fprintf(stdout, "    <PROFILE>=2K, 4K, 8K, 2K_R, 4K_R or 8K_R.\n");
 	fprintf(stdout, "    X >= 0 and X <= 11.\n");
 	fprintf(stdout, "    Y >= 0 and Y <= 9.\n");
@@ -580,7 +580,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				"Kernel build options", false, 0, "unsigned integer", cmd);
 
 		ValueArg<uint32_t> repetitionsArg("e", "Repetitions",
-				"Number of encode repetitions, for either a folder or a single file",
+				"Number of compress repetitions, for either a folder or a single file",
 				false, 0, "unsigned integer", cmd);
 
 		ValueArg<uint16_t> rsizArg("Z", "RSIZ", "RSIZ", false, 0,
@@ -1209,7 +1209,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							(uint64_t) (limitMBitsSec[mainlevel]
 									* (1000.0 * 1000 / 8) / framerate);
 					if (parameters->verbose) {
-						spdlog::info("Setting max codestream size to {} bytes.",
+						spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
 					}
 				}
@@ -1302,7 +1302,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 							(uint64_t) (limitMBitsSec[sublevel]
 									* (1000.0 * 1000 / 8) / framerate);
 					if (parameters->verbose) {
-						spdlog::info("Setting max codestream size to {} bytes.",
+						spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
 					}
 				}
@@ -1718,7 +1718,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams);
 // and 2 if file is not suitable for compression
 static int compress(std::string image_filename, CompressInitParams *initParams,
 		uint8_t tcp_mct, uint32_t rateControlAlgorithm) {
-	//clear for next file encode
+	//clear for next file compress
 	initParams->parameters.write_capture_resolution_from_file = false;
 	// don't reset format if reading from STDIN
 	if (initParams->parameters.infile[0])
@@ -1755,7 +1755,7 @@ int main(int argc, char **argv) {
 	CompressInitParams initParams;
 	int success = 0;
 	try {
-		// try to encode with plugin
+		// try to compress with plugin
 		int rc = plugin_main(argc, argv, &initParams);
 
 		// return immediately if either 
@@ -1804,7 +1804,7 @@ int main(int argc, char **argv) {
 		std::chrono::duration<double> elapsed = finish - start;
 
 		if (num_compressed_files) {
-			spdlog::info("encode time: {} ms",
+			spdlog::info("compress time: {} ms",
 					(elapsed.count() * 1000) / (double) num_compressed_files);
 		}
 	} catch (std::bad_alloc &ba) {
@@ -2130,7 +2130,7 @@ static bool plugin_compress_callback(
 	}
 
 	switch (parameters->cod_format) {
-	case GRK_J2K_FMT: /* JPEG-2000 codestream */
+	case GRK_J2K_FMT: /* JPEG 2000 code stream */
 	{
 		/* Get a decoder handle */
 		codec = grk_create_compress(GRK_CODEC_J2K, stream);
@@ -2155,29 +2155,29 @@ static bool plugin_compress_callback(
 	grk_set_error_handler(error_callback, nullptr);
 
 	if (!grk_init_compress(codec, parameters, image)) {
-		spdlog::error("failed to encode image: grk_init_compress");
+		spdlog::error("failed to compress image: grk_init_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
 
-	/* encode the image */
+	/* compress the image */
 	bSuccess = grk_start_compress(codec, image);
 	if (!bSuccess) {
-		spdlog::error("failed to encode image: grk_start_compress");
+		spdlog::error("failed to compress image: grk_start_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
 
 	bSuccess = grk_compress_with_plugin(codec, info->tile);
 	if (!bSuccess) {
-		spdlog::error("failed to encode image: grk_compress");
+		spdlog::error("failed to compress image: grk_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
 
 	bSuccess = bSuccess && grk_end_compress(codec);
 	if (!bSuccess) {
-		spdlog::error("failed to encode image: grk_end_compress");
+		spdlog::error("failed to compress image: grk_end_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2205,7 +2205,7 @@ static bool plugin_compress_callback(
 	if (createdImage)
 		grk_image_destroy(image);
 	if (!bSuccess) {
-		spdlog::error("failed to encode image");
+		spdlog::error("failed to compress image");
 		if (parameters->outfile[0])
 			remove(actual_path(parameters->outfile));
 	}
@@ -2278,7 +2278,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 		success = grk_plugin_batch_compress(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
 				plugin_compress_callback);
-		// if plugin successfully begins batch encode, then wait for batch to complete
+		// if plugin successfully begins batch compress, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
 			uint32_t slicesPerSecond = 1000 / slice;

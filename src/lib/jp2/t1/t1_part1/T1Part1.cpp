@@ -93,7 +93,7 @@ void T1Part1::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		}
 	}
 }
-double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
+double T1Part1::compress(encodeBlockInfo *block, grk_tcd_tile *tile,
 		uint32_t max, bool doRateControl) {
 	auto cblk = block->cblk;
 	tcd_cblk_enc_t cblkopj;
@@ -132,7 +132,7 @@ double T1Part1::encode(encodeBlockInfo *block, grk_tcd_tile *tile,
  	return disto;
 }
 
-bool T1Part1::decode(decodeBlockInfo *block) {
+bool T1Part1::decompress(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	bool ret;
 

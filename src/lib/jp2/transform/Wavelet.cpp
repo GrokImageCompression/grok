@@ -32,7 +32,7 @@ Wavelet::Wavelet() {
 Wavelet::~Wavelet() {
 }
 
-bool Wavelet::encode(TileComponent *tile_comp, uint8_t qmfbid){
+bool Wavelet::compress(TileComponent *tile_comp, uint8_t qmfbid){
 	if (qmfbid == 1) {
 		WaveletForward<dwt53> dwt;
 		return dwt.run(tile_comp);
@@ -43,7 +43,7 @@ bool Wavelet::encode(TileComponent *tile_comp, uint8_t qmfbid){
 	return false;
 }
 
-bool Wavelet::decode(TileProcessor *p_tcd,  TileComponent* tilec,
+bool Wavelet::decompress(TileProcessor *p_tcd,  TileComponent* tilec,
                              uint32_t numres, uint8_t qmfbid){
 
 	if (qmfbid == 1) {

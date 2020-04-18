@@ -107,7 +107,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 /* -------------------------------------------------------------------------- */
 static void decode_help_display(void) {
 	fprintf(stdout, "\nThis is the grk_dump utility from the Grok project.\n"
-			"It dumps JPEG 2000 codestream info to stdout or a given file.\n"
+			"It dumps JPEG 2000 code stream info to stdout or a given file.\n"
 			"It has been compiled against Grok library v%s.\n\n",
 			grk_version());
 
@@ -463,7 +463,7 @@ int main(int argc, char *argv[]) {
 		/* ------------------------ */
 
 		switch (parameters.decod_format) {
-		case GRK_J2K_FMT: { /* JPEG-2000 codestream */
+		case GRK_J2K_FMT: { /* JPEG 2000 code stream */
 			/* Get a decoder handle */
 			l_codec = grk_create_decompress(GRK_CODEC_J2K, l_stream);
 			break;
@@ -486,7 +486,7 @@ int main(int argc, char *argv[]) {
 			goto cleanup;
 		}
 
-		/* Read the main header of the codestream and if necessary the JP2 boxes*/
+		/* Read the main header of the code stream and if necessary the JP2 boxes*/
 		if (!grk_read_header(l_codec, nullptr, &image)) {
 			spdlog::error("grk_dump: failed to read the header");
 			rc = EXIT_FAILURE;
@@ -517,10 +517,10 @@ int main(int argc, char *argv[]) {
 			image = nullptr;
 		}
 
-		/* destroy the codestream index */
+		/* destroy the code stream index */
 		grk_destroy_cstr_index(&cstr_index);
 
-		/* destroy the codestream info */
+		/* destroy the code stream info */
 		grk_destroy_cstr_info(&cstr_info);
 
 	}

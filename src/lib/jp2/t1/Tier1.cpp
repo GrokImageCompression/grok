@@ -92,7 +92,7 @@ bool Tier1::encodeCodeblocks(grk_tcp *tcp,
 		}
 	}
 	T1Encoder encoder(tcp, tile, maxCblkW, maxCblkH, doRateControl);
-	return encoder.encode(&blocks);
+	return encoder.compress(&blocks);
 }
 
 bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
@@ -124,7 +124,7 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 					int32_t w = (int32_t)(cblk->x1 - cblk->x0);
 					int32_t h = (int32_t)(cblk->y1 - cblk->y0);
 
-					/* check if block overlaps with decode region */
+					/* check if block overlaps with decompress region */
 					cblk_rect = grk_rect(x, y, x + w,y + h);
 					grk_rect dummy;
 					auto tile_res =
@@ -178,7 +178,7 @@ bool Tier1::decodeCodeblocks(grk_tcp *tcp,
 		                    uint16_t blockw, uint16_t blockh,
 		                    std::vector<decodeBlockInfo*> *blocks) {
 	T1Decoder decoder(tcp, blockw, blockh);
-	return decoder.decode(blocks);
+	return decoder.decompress(blocks);
 }
 
 }

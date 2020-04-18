@@ -101,7 +101,7 @@ void T1HT::preEncode(encodeBlockInfo *block, grk_tcd_tile *tile,
 		}
 	}
 }
-double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum,
+double T1HT::compress(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum,
 		bool doRateControl) {
 	(void)doRateControl;
 	(void)tile;
@@ -133,7 +133,7 @@ double T1HT::encode(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maximum
 
   return 0;
 }
-bool T1HT::decode(decodeBlockInfo *block) {
+bool T1HT::decompress(decodeBlockInfo *block) {
 	auto cblk = block->cblk;
 	if (!cblk->seg_buffers.get_len())
 		return true;

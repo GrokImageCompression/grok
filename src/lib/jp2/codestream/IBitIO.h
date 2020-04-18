@@ -43,6 +43,7 @@ public:
 	virtual bool write(uint32_t v, uint32_t n)= 0;
 	/**
 	 Read bits
+	 @param bits pointer to bits buffer
 	 @param n Number of bits to read
 	 @return the corresponding read number
 	 */
