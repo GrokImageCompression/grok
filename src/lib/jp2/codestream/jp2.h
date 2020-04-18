@@ -311,13 +311,11 @@ bool jp2_end_compress(grk_jp2 *jp2, BufferedStream *stream);
 bool jp2_end_decompress(grk_jp2 *jp2, BufferedStream *stream);
 
 /**
- * Reads a jpeg2000 file header structure.
- *
- * @param stream the stream to read data from.
- * @param jp2 the jpeg2000 file header structure.
+ * Read a JPEG 2000 file header.
+ * @param stream 	stream to read data from.
+ * @param jp2    	JPEG 2000 file header structure.
+ * @param header_info    	header structure to store header info
  * @param p_image   FIXME DOC
- 
- *
  * @return true if the box is valid.
  */
 bool jp2_read_header(BufferedStream *stream, grk_jp2 *jp2,
@@ -325,7 +323,7 @@ bool jp2_read_header(BufferedStream *stream, grk_jp2 *jp2,
 
 /**
  * Reads a tile header.
- * @param  p_jp2         the JPEG 2000 codec.
+ * @param  p_jp2         JPEG 2000 codec
  * @param  tile_index  FIXME DOC
  * @param  data_size   FIXME DOC
  * @param  p_tile_x0     FIXME DOC
@@ -345,7 +343,7 @@ bool jp2_read_tile_header(grk_jp2 *p_jp2, uint16_t *tile_index,
 /**
  * Decompress tile
  *
- * @param  p_jp2    the JPEG 2000 codec.
+ * @param  p_jp2    JPEG 2000 codec
  * @param tile_index  FIXME DOC
  * @param p_data        FIXME DOC
  * @param data_size   FIXME DOC
@@ -370,7 +368,7 @@ bool jp2_decompress_tile(grk_jp2 *p_jp2, uint16_t tile_index, uint8_t *p_data,
 		uint64_t data_size, BufferedStream *stream);
 
 /**
- * Creates a jpeg2000 file decompressor.
+ * Creates a JPEG 2000 file decompressor.
  *
  * @return  an empty JPEG 2000 file codec.
  */
@@ -383,18 +381,19 @@ grk_jp2* jp2_create(bool p_is_decoder);
 void jp2_destroy(grk_jp2 *jp2);
 
 /**
- * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
+ * Sets the given area to be decompressed. This function should be called
+ * right after grk_read_header and before any tile header reading.
  *
- * @param  p_jp2      the JPEG 2000 codec.
+ * @param  p_jp2     JPEG 2000 codec
  * @param  image     FIXME DOC
  * @param  start_x   the left position of the rectangle to decompress (in image coordinates).
- * @param  start_y    the up position of the rectangle to decompress (in image coordinates).
- * @param  end_x      the right position of the rectangle to decompress (in image coordinates).
- * @param  end_y      the bottom position of the rectangle to decompress (in image coordinates).
+ * @param  start_y   the up position of the rectangle to decompress (in image coordinates).
+ * @param  end_x     the right position of the rectangle to decompress (in image coordinates).
+ * @param  end_y     the bottom position of the rectangle to decompress (in image coordinates).
  *
  * @return  true      if the area could be set.
  */
-bool jp2_set_decode_area(grk_jp2 *p_jp2, grk_image *p_image, uint32_t start_x,
+bool jp2_set_decompress_area(grk_jp2 *p_jp2, grk_image *image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**

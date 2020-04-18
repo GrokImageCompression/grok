@@ -322,7 +322,7 @@ const char* GRK_CALLCONV grk_version(void) {
 		l_codec->m_codec_data.m_decompression.setup_decoder = (void (*)(void*,
 				 grk_dparameters  * )) jp2_init_decompress;
 		l_codec->m_codec_data.m_decompression.set_decompress_area = (bool (*)(void*,
-				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) jp2_set_decode_area;
+				grk_image * , uint32_t, uint32_t, uint32_t, uint32_t)) jp2_set_decompress_area;
 
 		l_codec->m_codec_data.m_decompression.get_decoded_tile = (bool (*)(
 				void *p_codec, BufferedStream *p_cio, grk_image *p_image, uint16_t tile_index)) jp2_get_tile;

@@ -578,11 +578,12 @@ char* j2k_convert_progression_order(GRK_PROG_ORDER prg_order);
 bool j2k_end_decompress(grk_j2k *j2k, BufferedStream *stream);
 
 /**
- * Reads a jpeg2000 code stream header structure.
+ * Read a JPEG 2000 code stream header.
  *
- * @param stream the stream to read data from.
- * @param p_j2k the JPEG 2000 codec.
- * @param p_image FIXME DOC
+ * @param stream stream to read data from.
+ * @param p_j2k  JPEG 2000 codec.
+ * @param header_info  header info struct to store header info
+ * @param image  image
  
  *
  * @return true if the box is valid.
@@ -599,7 +600,7 @@ void j2k_destroy(grk_j2k *p_j2k);
 
 /**
  * Decode tile data.
- * @param	p_j2k		the JPEG 2000 codec.
+ * @param	p_j2k		JPEG 2000 codec
  * @param	tile_index
  * @param p_data       FIXME DOC
  * @param data_size  FIXME DOC
@@ -611,14 +612,14 @@ bool j2k_decompress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 
 /**
  * Reads a tile header.
- * @param	p_j2k		the JPEG 2000 codec.
- * @param	tile_index FIXME DOC
+ * @param	p_j2k		JPEG 2000 codec
+ * @param	tile_index 	index of tile
  * @param	data_size FIXME DOC
- * @param	p_tile_x0 FIXME DOC
- * @param	p_tile_y0 FIXME DOC
- * @param	p_tile_x1 FIXME DOC
- * @param	p_tile_y1 FIXME DOC
- * @param	p_nb_comps FIXME DOC
+ * @param	p_tile_x0 tile x0 coordinate
+ * @param	p_tile_y0 tile y0 coordinate
+ * @param	p_tile_x1 tile x1 coordinate
+ * @param	p_tile_y1 tile y1 coordinate
+ * @param	p_nb_comps number of componets
  * @param	p_go_on FIXME DOC
  * @param	stream			the stream to write data to.
  
@@ -629,19 +630,20 @@ bool j2k_read_tile_header(grk_j2k *p_j2k, uint16_t *tile_index,
 		bool *p_go_on, BufferedStream *stream);
 
 /**
- * Sets the given area to be decoded. This function should be called right after grk_read_header and before any tile header reading.
+ * Set the given area to be decoded. This function should be called
+ * right after grk_read_header and before any tile header reading.
  *
- * @param	p_j2k			the JPEG 2000 codec.
- * @param	image     FIXME DOC
- * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
- * @param	start_y		the up position of the rectangle to decompress (in image coordinates).
- * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
- * @param	end_y			the bottom position of the rectangle to decompress (in image coordinates).
+ * @param	p_j2k		JPEG 2000 codec
+ * @param	image     	image
+ * @param	start_x		left position of the rectangle to decompress (in image coordinates).
+ * @param	start_y		top position of the rectangle to decompress (in image coordinates).
+ * @param	end_x		right position of the rectangle to decompress (in image coordinates).
+ * @param	end_y		bottom position of the rectangle to decompress (in image coordinates).
  
  *
  * @return	true			if the area could be set.
  */
-bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *p_image, uint32_t start_x,
+bool j2k_set_decode_area(grk_j2k *p_j2k, grk_image *image, uint32_t start_x,
 		uint32_t start_y, uint32_t end_x, uint32_t end_y);
 
 /**
@@ -667,7 +669,7 @@ bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image, ui
 
 /**
  * Writes a tile.
- * @param	p_j2k		the JPEG 2000 codec.
+ * @param	p_j2k		JPEG 2000 codec
  * @param tile_index FIXME DOC
  * @param p_data FIXME DOC
  * @param data_size FIXME DOC
@@ -685,7 +687,7 @@ bool j2k_encode(grk_j2k *p_j2k, grk_plugin_tile *tile, BufferedStream *stream);
 /**
  * Starts a compression scheme, i.e. validates the codec parameters, writes the header.
  *
- * @param	p_j2k		the JPEG 2000 codec.
+ * @param	p_j2k		JPEG 2000 codec
  * @param	stream			the stream object.
  * @param	p_image FIXME DOC
  

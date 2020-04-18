@@ -175,12 +175,11 @@ struct BufferedStream: public IBufferedStream {
 	uint64_t get_number_byte_left(void);
 
 	/**
-	 * Seeks a number of bytes from the stream.
-	 * @param		p_size		the number of bytes to skip.
-	 
+	 * Seeks a number of bytes from the stream (absolute)
+	 * @param		offset		the number of bytes to skip.
 	 * @return		true if the stream is seekable.
 	 */
-	bool seek(uint64_t size);
+	bool seek(uint64_t offset);
 
 	/**
 	 * Tells if the given stream is seekable.
@@ -223,10 +222,9 @@ private:
 	/**
 	 * Absolute seek in stream.
 	 * @param		offset		absolute offset
-	 
 	 * @return		true if success, or false if an error occurred.
 	 */
-	bool write_seek(uint64_t size);
+	bool write_seek(uint64_t offset);
 
 	void write_increment(size_t p_size);
 	template<typename TYPE> bool write(TYPE value, uint8_t numBytes);

@@ -337,7 +337,7 @@ struct TileProcessor {
 	 * Sets the given area to be decoded. This function should be called right after grk_read_header
 	 * and before any tile header reading.
 	 *
-	 * @param	p_j2k		the JPEG 2000 codec.
+	 * @param	p_j2k		JPEG 2000 codec
 	 * @param	p_image     FIXME DOC
 	 * @param	start_x		the left position of the rectangle to decompress (in image coordinates).
 	 * @param	start_y		the up position of the rectangle to decompress (in image coordinates).

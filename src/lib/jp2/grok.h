@@ -1615,7 +1615,7 @@ GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
 /**
  * Decompress a specific tile
  *
- * @param	codec			the JPEG 2000 codec.
+ * @param	codec			JPEG 2000 codec
  * @param	image			output image
  * @param	tile_index		index of the tile to be decompressed
  *
@@ -1742,7 +1742,7 @@ GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
  * This method should be called right after grk_start_compress,
  * and before grk_end_compress.
  *
- * @param	codec		    the JPEG 2000 codec.
+ * @param	codec		    JPEG 2000 codec
  * @param	tile_index		the index of the tile to write. At the moment,
  * 							the tiles must be written from 0 to n-1 in sequence.
  * @param	data			pointer to the data to write. Data is arranged in planar
@@ -1800,7 +1800,7 @@ GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, int32_t info_flag,
 /**
  * Get code stream information from codec
  *
- * @param	codec			the JPEG 2000 codec.
+ * @param	codec			JPEG 2000 codec
  *
  * @return					pointer to a code stream information structure.
  *

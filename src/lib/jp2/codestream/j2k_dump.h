@@ -69,7 +69,7 @@ namespace grk {
 /**
  * Dump some elements from the J2K decompression structure .
  *
- *@param p_j2k				the JPEG 2000 codec.
+ *@param p_j2k				JPEG 2000 codec
  *@param flag				flag to describe what elements are dumped.
  *@param out_stream			output stream where dump the elements.
  *
