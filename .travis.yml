@@ -1,0 +1,14 @@
+language: c++
+
+matrix:
+  include:
+    - os: osx
+      compiler: clang
+      env: OPJ_CI_ARCH=x86_64 OPJ_CI_BUILD_CONFIGURATION=Release
+
+install:
+  - ./tools/travis-ci/install.sh
+
+script:
+  - ./tools/travis-ci/run.sh
+  - ./tools/travis-ci/abi-check.sh
