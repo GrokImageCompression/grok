@@ -70,12 +70,12 @@ struct grk_coding_parameters;
 grk_image *  grk_image_create0(void);
 
 /**
- * Updates the components characteristics of the image from the coding parameters.
+ * Update image components with coding parameters.
  *
- * @param p_image_header		the image header to update.
- * @param p_cp					the coding parameters from which to update the image.
+ * @param image		image to update.
+ * @param p_cp		coding parameters from which to update the image.
  */
-void grk_image_comp_header_update(grk_image *p_image, const grk_coding_parameters *p_cp);
+void grk_image_comp_header_update(grk_image *image, const grk_coding_parameters *p_cp);
 
 void grk_copy_image_header(const grk_image *p_image_src,
 		grk_image *p_image_dest);

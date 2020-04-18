@@ -355,12 +355,12 @@ struct TileProcessor {
 						uint32_t end_y);
 
 	/**
-	 * Encodes a tile from the raw image into the given buffer.
+	 * Compress a tile from a raw image into the given buffer.
 	 * @param	tile_no		Index of the tile to compress.
-	 * @param	p_dest			Destination buffer
+	 * @param	stream			stream
 	 * @param	p_data_written	pointer to an int that is incremented by the number of bytes really written on p_dest
-	 * @param	p_len			Maximum length of the destination buffer
-	 * @param	p_cstr_info		Codestream information structure
+	 * @param	len			Maximum length of the destination buffer
+	 * @param	p_cstr_info		Code stream information structure
 	 * @return  true if the coding is successful.
 	 */
 	bool compress_tile(uint16_t tile_no, BufferedStream *stream,

@@ -65,8 +65,10 @@ namespace grk {
 /* ----------------------------------------------------------------------- */
 
 /**
- * Calculates a n x n double matrix inversion with a LUP method. Data is aligned, rows after rows (or columns after columns).
- * The function does not take ownership of any memory block, data must be fred by the user.
+ * Calculate a n x n double matrix inversion with a LUP method.
+ * Data is aligned, rows after rows (or columns after columns).
+ * The function does not take ownership of any memory block,
+ * data must be freed by the user.
  *
  * @param pSrcMatrix	the matrix to invert.
  * @param pDestMatrix	data to store the inverted matrix.
@@ -74,7 +76,7 @@ namespace grk {
  * @return true if the inversion is successful, false if the matrix is singular.
  */
 bool matrix_inversion_f(float *pSrcMatrix, float *pDestMatrix,
-		uint32_t nb_compo);
+		uint32_t n);
 /* ----------------------------------------------------------------------- */
 /*@}*/
 

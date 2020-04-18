@@ -76,8 +76,8 @@ void* grk_malloc(size_t size);
 
 /**
  Allocate a memory block with elements initialized to 0
- @param num Blocks to allocate
- @param size Bytes per block to allocate
+ @param numOfElements  Blocks to allocate
+ @param sizeOfElements Bytes per block to allocate
  @return a void pointer to the allocated space, or nullptr if there is insufficient memory available
  */
 void* grk_calloc(size_t numOfElements, size_t sizeOfElements);

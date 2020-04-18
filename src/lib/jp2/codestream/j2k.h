@@ -549,7 +549,7 @@ struct grk_j2k {
  @param j2k J2K decompressor handle
  @param parameters decompression parameters
  */
-void j2k_init_decoder(void *j2k_void,  grk_dparameters  *parameters);
+void j2k_init_decoder(void *j2k,  grk_dparameters  *parameters);
 
 /**
  * Creates a J2K compression structure
@@ -583,13 +583,11 @@ bool j2k_end_decompress(grk_j2k *j2k, BufferedStream *stream);
  * @param stream stream to read data from.
  * @param p_j2k  JPEG 2000 codec.
  * @param header_info  header info struct to store header info
- * @param image  image
- 
- *
+ * @param image  pointer to image
  * @return true if the box is valid.
  */
 bool j2k_read_header(BufferedStream *stream, grk_j2k *p_j2k,
-		 grk_header_info  *header_info, grk_image **p_image);
+		 grk_header_info  *header_info, grk_image **image);
 
 /**
  * Destroys a JPEG 2000 codec.
@@ -656,13 +654,13 @@ grk_j2k* j2k_create_decompress(void);
 /**
  * Decode an image from a JPEG 2000 code stream
  * @param j2k J2K decompressor handle
- * @param stream  FIXME DOC
- * @param p_image   FIXME DOC
-
+ * @param tile    plugin tile
+ * @param stream  stream
+ * @param image   image
  * @return FIXME DOC
  */
 bool j2k_decode(grk_j2k *j2k, grk_plugin_tile *tile, BufferedStream *stream,
-		grk_image *p_image);
+		grk_image *image);
 
 bool j2k_get_tile(grk_j2k *p_j2k, BufferedStream *stream, grk_image *p_image, uint16_t tile_index);
 

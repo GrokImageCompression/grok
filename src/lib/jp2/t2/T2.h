@@ -97,7 +97,7 @@ struct T2 {
 	 @param tile             the tile for which to write the packets
 	 @param maxlayers        maximum number of layers
 	 @param p_data_written   FIXME DOC
-	 @param len              the length of the destination buffer
+	 @param max_             the max length of the destination buffer
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
 	bool encode_packets_simulate(uint16_t tileno, grk_tcd_tile *tile,
@@ -106,17 +106,14 @@ struct T2 {
 
 	/**
 	 Decode the packets of a tile from a source buffer
-	 @param tileno number that identifies the tile for which to decompress the packets
-	 @param tile tile for which to decompress the packets
-	 @param src         FIXME DOC
-	 @param p_data_read the source buffer
-	 @param len length of the source buffer
-	 @param cstr_info   FIXME DOC
-
-	 @return FIXME DOC
+	 @param tileno 		number that identifies the tile for which to decompress the packets
+	 @param tile 		tile for which to decompress the packets
+	 @param src_buf     FIXME DOC
+	 @param data_read  the source buffer
+	 @return true if successful
 	 */
 	bool decode_packets(uint16_t tileno, grk_tcd_tile *tile,
-			ChunkBuffer *src_buf, uint64_t *p_data_read);
+			ChunkBuffer *src_buf, uint64_t *data_read);
 
 
 private:
@@ -132,7 +129,7 @@ private:
 	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
-	 @param dest Destination buffer
+	 @param stream stream
 	 @param p_data_written   FIXME DOC
 	 @param len Length of the destination buffer
 	 @param cstr_info Codestream information structure
@@ -144,14 +141,11 @@ private:
 
 	/**
 	 Encode a packet of a tile to a destination buffer
-	 @param tileno Number of the tile encoded
 	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
-	 @param dest Destination buffer
 	 @param p_data_written   FIXME DOC
 	 @param len Length of the destination buffer
-	 @param cstr_info Codestream information structure
 	 @return
 	 */
 	bool encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
@@ -162,14 +156,11 @@ private:
 	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
-	 @param src Source buffer
+	 @param src_buf source buffer
 	 @param data_read   FIXME DOC
-	 @param max_length  FIXME DOC
-	 @param pack_info Packet information
-
-	 @return  FIXME DOC
+	 @return  true if packet was successfully decoded
 	 */
-	bool decode_packet(grk_tcd_tile *p_tile, grk_tcp *tcp,
+	bool decode_packet(grk_tcd_tile *tile, grk_tcp *tcp,
 			PacketIter *pi, ChunkBuffer *src_buf, uint64_t *data_read);
 
 	bool skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,

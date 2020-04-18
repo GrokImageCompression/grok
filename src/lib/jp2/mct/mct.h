@@ -122,12 +122,12 @@ public:
 	static const double* get_norms_irrev(void);
 
 	/**
-	 FIXME DOC
+	 Custom MCT transform
 	 @param p_coding_data    MCT data
 	 @param n                size of components
 	 @param p_data           components
-	 @param p_nb_comp        nb of components (i.e. size of p_data)
-	 @param is_signed        tells if the data is signed
+	 @param nb_comp          nb of components (i.e. size of p_data)
+	 @param is_signed        indicates if the data is signed
 	 @return false if function encounter a problem, true otherwise
 	 */
 	static bool encode_custom(uint8_t *p_coding_data, uint64_t n, uint8_t **p_data,
@@ -144,11 +144,10 @@ public:
 	static bool decode_custom(uint8_t *pDecodingData, uint64_t n, uint8_t **pData,
 			uint32_t pNbComp, uint32_t isSigned);
 	/**
-	 FIXME DOC
-	 @param pNorms           MCT data
-	 @param p_nb_comps       size of components
-	 @param pMatrix          components
-	 @return
+	 Calculate norm of MCT transform
+	 @param pNorms         MCT data
+	 @param nb_comps       number of components
+	 @param pMatrix        components
 	 */
 	static void calculate_norms(double *pNorms, uint32_t nb_comps, float *pMatrix);
 
