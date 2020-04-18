@@ -484,7 +484,7 @@ static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
  *
  *******************************************************************************/
 static int imageToPNG(const grk_image *image, const char *filename,
-		int num_comp_select) {
+		uint32_t num_comp_select) {
 	grk_image_cmptparm param_image_write;
 	grk_image *image_write = nullptr;
 
@@ -516,7 +516,7 @@ struct test_cmp_parameters {
 	/**  */
 	char *test_filename;
 	/** Number of components */
-	int nbcomp;
+	uint32_t nbcomp;
 	/**  */
 	double *tabMSEvalues;
 	/**  */

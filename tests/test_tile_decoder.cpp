@@ -106,7 +106,6 @@ int main(int argc, char *argv[]) {
 	uint32_t nb_comps = 0;
 	uint32_t current_tile_x0, current_tile_y0, current_tile_x1, current_tile_y1;
 	int32_t rc = EXIT_FAILURE;
-	int temp;
 
 	uint32_t da_x0 = 0;
 	uint32_t da_y0 = 0;
@@ -183,9 +182,6 @@ int main(int argc, char *argv[]) {
 
 	/* do not use resolutions reductions */
 	param.cp_reduce = 0;
-
-	/* to decode only a part of the image data */
-	/*grk_restrict_decoding(&param,0,0,1000,1000);*/
 
 	switch (param.decod_format) {
 	case GRK_J2K_FMT: { /* JPEG-2000 codestream */
