@@ -1,0 +1,56 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE=1
+
+DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+# as per upstream request:
+export DEB_CXXFLAGS_MAINT_APPEND = -fvisibility=hidden
+
+%:
+	dh $@
+
+CMAKE_EXTRA_FLAGS += -DCMAKE_SKIP_RPATH=ON \
+  -DCMAKE_BUILD_TYPE:STRING=None \
+  -DGROK_INSTALL_LIB_DIR:STRING=lib/$(DEB_HOST_MULTIARCH) \
+  -DBUILD_CODEC:BOOL=ON \
+  -DBUILD_SHARED_LIBS:BOOL=ON \
+  -DBUILD_TESTING:BOOL=OFF \
+  -DBUILD_DOC:BOOL=ON \
+  -DBUILD_THIRDPARTY:BOOL=OFF
+
+override_dh_auto_configure:
+	dh_auto_configure -- $(CMAKE_EXTRA_FLAGS)
+
+SOVERSION=12
+pkg_lib = grok-jpeg2000-$(SOVERSION)
+pkg_dev = grok-jpeg2000-$(SOVERSION)-dev
+pkg_bin = grok-jpeg2000-tools
+
+override_dh_install:
+	# annoying cmake-fatal-error export stuff:
+	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-6.0/GrokTargets*.cmake
+	# install grk_dump/compress/decompress:
+	dh_install -p$(pkg_bin) --autodest usr/bin/grk_compress
+	dh_install -p$(pkg_bin) --autodest usr/bin/grk_decompress
+	dh_install -p$(pkg_bin) --autodest usr/bin/grk_dump
+	dh_install -p$(pkg_bin) --autodest usr/share/man/man1/*.1
+	# lib
+	dh_install -p$(pkg_lib) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrok.so.*
+	# dev:
+	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrok.so
+	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-6.0/*.cmake
+	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/*.pc
+	dh_install -p$(pkg_dev) --autodest usr/include/grok-6.0
+	dh_missing --list-missing
+
+# create man pages:
+export LD_LIBRARY_PATH := $(CURDIR)/debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/:$(LD_LIBRARY_PATH)
+export PATH := $(CURDIR)/debian/tmp/usr/bin:$(PATH)
+
+VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
+
+debian/%.1: debian/grk_common.1.in
+	help2man --include=$< --output=$@ --name="Works with JPEG2000 files" \
+		--no-info --no-discard-stderr `basename $@ .1` --help-option=-h --version-string=$(VER_FULL)
+
+	echo "all missing man pages done"
