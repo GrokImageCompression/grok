@@ -64,7 +64,7 @@ template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 		uint32_t nb_bytes);
 
 // buffered stream
-BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input) :
+BufferedStream::BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input) :
 				m_user_data(nullptr),
 				m_free_user_data_fn(nullptr),
 				m_user_data_length(	0),
@@ -79,8 +79,8 @@ BufferedStream::BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_
 				m_stream_offset(0){
 
 		m_buf =
-			new grk_buf((!buffer && p_buffer_size) ? new uint8_t[p_buffer_size] : buffer,
-						p_buffer_size,
+			new grk_buf((!buffer && buffer_size) ? new uint8_t[buffer_size] : buffer,
+						buffer_size,
 						buffer == nullptr);
 }
 
@@ -484,9 +484,9 @@ void grk_read_double(const uint8_t *p_buffer, double *value) {
 	grk_read<double>(p_buffer, value, sizeof(double));
 }
 }
- grk_stream  *  GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
+ grk_stream  *  GRK_CALLCONV grk_stream_create(size_t buffer_size,
 		bool l_is_input) {
-	return ( grk_stream  * ) (new grk::BufferedStream(nullptr,p_buffer_size, l_is_input));
+	return ( grk_stream  * ) (new grk::BufferedStream(nullptr,buffer_size, l_is_input));
 }
 void GRK_CALLCONV grk_stream_destroy( grk_stream  *p_stream) {
 	auto stream = (grk::BufferedStream*) (p_stream);

@@ -169,7 +169,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	/* Set the default decoding parameters */
-	grk_set_default_decoder_parameters(&param);
+	grk_set_default_decompress_params(&param);
 
 	/* */
 	if (!grk::jpeg2000_file_format(input_file, &param.decod_format)) {
@@ -211,7 +211,7 @@ int main(int argc, char *argv[]) {
 	grk_set_error_handler(error_callback, nullptr);
 
 	/* Setup the decoder decoding parameters using user parameters */
-	if (!grk_setup_decoder(codec, &param)) {
+	if (!grk_init_decompress(codec, &param)) {
 		spdlog::error("j2k_dump: failed to setup the decoder\n");
 		goto beach;
 	}
@@ -222,7 +222,7 @@ int main(int argc, char *argv[]) {
 		goto beach;
 	}
 
-	if (!grk_set_decode_area(codec, image, da_x0, da_y0, da_x1, da_y1)) {
+	if (!grk_set_decompress_area(codec, image, da_x0, da_y0, da_x1, da_y1)) {
 		fprintf(stderr,
 				"[ERROR] j2k_to_image: failed to set the decoded area\n");
 		goto beach;
@@ -243,7 +243,7 @@ int main(int argc, char *argv[]) {
 				max_data_size = data_size;
 			}
 
-			if (!grk_decode_tile_to_buffer(codec, tile_index, data, data_size))
+			if (!grk_decompress_tile_to_buffer(codec, tile_index, data, data_size))
 				goto beach;
 			/** now should inspect image to know the reduction factor and then how to behave with data */
 		}

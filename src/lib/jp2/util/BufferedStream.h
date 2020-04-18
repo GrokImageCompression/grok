@@ -72,7 +72,7 @@ namespace grk {
  */
 struct BufferedStream: public IBufferedStream {
 
-	BufferedStream(uint8_t *buffer, size_t p_buffer_size, bool l_is_input);
+	BufferedStream(uint8_t *buffer, size_t buffer_size, bool l_is_input);
 	~BufferedStream();
 
 	/**

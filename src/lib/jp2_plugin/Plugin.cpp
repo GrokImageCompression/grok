@@ -94,7 +94,7 @@ extern "C"  PLUGIN_API int32_t plugin_decode(grk_decompress_parameters* decode_p
 	return -1;
 }
 
-extern "C"  PLUGIN_API int32_t plugin_init_batch_decode(const char* input_dir,
+extern "C"  PLUGIN_API int32_t plugin_init_batch_decompress(const char* input_dir,
 													const char* output_dir,
 													grk_decompress_parameters* decode_parameters,
 													grk::PLUGIN_DECODE_USER_CALLBACK userCallback) {
@@ -102,10 +102,10 @@ extern "C"  PLUGIN_API int32_t plugin_init_batch_decode(const char* input_dir,
 	return -1;
 }
 
-extern "C"  PLUGIN_API int32_t plugin_batch_decode(void) {
+extern "C"  PLUGIN_API int32_t plugin_batch_decompress(void) {
 	return -1;
 }
-extern "C"  PLUGIN_API void plugin_stop_batch_decode(void) {
+extern "C"  PLUGIN_API void plugin_stop_batch_decompress(void) {
 }
 
 

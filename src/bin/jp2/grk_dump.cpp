@@ -379,7 +379,7 @@ int main(int argc, char *argv[]) {
 	grk_set_error_handler(error_callback, nullptr);
 
 	/* Set decoding parameters to default values */
-	grk_set_default_decoder_parameters(&parameters);
+	grk_set_default_decompress_params(&parameters);
 
 	/* Initialize img_fol */
 	memset(&img_fol, 0, sizeof(img_fol));
@@ -480,7 +480,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		/* Setup the decoder decoding parameters using user parameters */
-		if (!grk_setup_decoder(l_codec, &parameters)) {
+		if (!grk_init_decompress(l_codec, &parameters)) {
 			spdlog::error("grk_dump: failed to setup the decoder");
 			rc = EXIT_FAILURE;
 			goto cleanup;

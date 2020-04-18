@@ -129,9 +129,9 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     grk_set_error_handler(ErrorCallback, NULL);
 
     grk_dparameters parameters;
-    grk_set_default_decoder_parameters(&parameters);
+    grk_set_default_decompress_params(&parameters);
 
-    grk_setup_decoder(pCodec, &parameters);
+    grk_init_decompress(pCodec, &parameters);
     grk_image * psImage = NULL;
     grk_header_info  header_info;
     uint32_t width, height,width_to_read, height_to_read;
@@ -146,13 +146,13 @@ int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len)
     if (height_to_read > 1024)
         height_to_read = 1024;
 
-    if (grk_set_decode_area(pCodec,
+    if (grk_set_decompress_area(pCodec,
     						psImage,
                             psImage->x0,
 							psImage->y0,
                             psImage->x0 + width_to_read,
                             psImage->y0 + height_to_read)) {
-        if (!grk_decode(pCodec, nullptr, psImage))
+        if (!grk_decompress(pCodec, nullptr, psImage))
         	goto cleanup;
     }
 

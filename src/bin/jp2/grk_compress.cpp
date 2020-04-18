@@ -109,7 +109,7 @@ static bool plugin_compress_callback(
 		grk_plugin_encode_user_callback_info *info);
 
 void exit_func() {
-	grk_plugin_stop_batch_encode();
+	grk_plugin_stop_batch_compress();
 }
 
 #ifdef  _WIN32
@@ -2154,8 +2154,8 @@ static bool plugin_compress_callback(
 	}
 	grk_set_error_handler(error_callback, nullptr);
 
-	if (!grk_setup_encoder(codec, parameters, image)) {
-		spdlog::error("failed to encode image: grk_setup_encoder");
+	if (!grk_init_compress(codec, parameters, image)) {
+		spdlog::error("failed to encode image: grk_init_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2168,9 +2168,9 @@ static bool plugin_compress_callback(
 		goto cleanup;
 	}
 
-	bSuccess = grk_encode_with_plugin(codec, info->tile);
+	bSuccess = grk_compress_with_plugin(codec, info->tile);
 	if (!bSuccess) {
-		spdlog::error("failed to encode image: grk_encode");
+		spdlog::error("failed to encode image: grk_compress");
 		bSuccess = false;
 		goto cleanup;
 	}
@@ -2223,7 +2223,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	uint32_t state= 0;
 
 	/* set encoding parameters to default values */
-	grk_set_default_encoder_parameters(&initParams->parameters);
+	grk_set_default_compress_params(&initParams->parameters);
 
 
 
@@ -2275,7 +2275,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 	}
 	if (isBatch) {
 		setup_signal_handler();
-		success = grk_plugin_batch_encode(initParams->img_fol.imgdirpath,
+		success = grk_plugin_batch_compress(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
 				plugin_compress_callback);
 		// if plugin successfully begins batch encode, then wait for batch to complete
@@ -2291,7 +2291,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 					break;
 				}
 			}
-			grk_plugin_stop_batch_encode();
+			grk_plugin_stop_batch_compress();
 		}
 	} else {
 		// loop through all files
@@ -2349,7 +2349,7 @@ static int plugin_main(int argc, char **argv, CompressInitParams *initParams) {
 			//restore cached settings
 			initParams->parameters.tcp_mct = tcp_mct;
 			initParams->parameters.rateControlAlgorithm = rateControlAlgorithm;
-			success = grk_plugin_encode(&initParams->parameters,
+			success = grk_plugin_compress(&initParams->parameters,
 					plugin_compress_callback);
 			if (success != 0)
 				break;

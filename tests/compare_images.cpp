@@ -212,7 +212,7 @@ static grk_image* readImageFromFilePPM(const char *filename, int nbFilenamePGX,
 		return nullptr;
 
 	/* set encoding parameters to default values */
-	grk_set_default_encoder_parameters(&parameters);
+	grk_set_default_compress_params(&parameters);
 	parameters.decod_format = GRK_PXM_FMT;
 	strcpy(parameters.infile, filename);
 
@@ -319,7 +319,7 @@ static grk_image* readImageFromFilePNG(const char *filename, int nbFilenamePGX,
 		return nullptr;
 
 	/* set encoding parameters to default values */
-	grk_set_default_encoder_parameters(&parameters);
+	grk_set_default_compress_params(&parameters);
 	parameters.decod_format = GRK_TIF_FMT;
 	strcpy(parameters.infile, filename);
 
@@ -356,7 +356,7 @@ static grk_image* readImageFromFileTIF(const char *filename, int nbFilenamePGX,
 		return nullptr;
 
 	/* set encoding parameters to default values */
-	grk_set_default_encoder_parameters(&parameters);
+	grk_set_default_compress_params(&parameters);
 	parameters.decod_format = GRK_TIF_FMT;
 	strcpy(parameters.infile, filename);
 
@@ -389,7 +389,7 @@ static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
 		return nullptr;
 
 	/* set encoding parameters to default values */
-	grk_set_default_encoder_parameters(&parameters);
+	grk_set_default_compress_params(&parameters);
 	parameters.decod_format = GRK_PGX_FMT;
 	strcpy(parameters.infile, filename);
 

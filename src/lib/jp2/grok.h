@@ -68,7 +68,6 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-
 #ifdef __GNUC__
 #define GRK_DEPRECATED(func) func __attribute__ ((deprecated))
 #elif defined(_MSC_VER)
@@ -94,7 +93,6 @@ extern "C" {
 #	endif
 #endif
 
-
 enum GRK_SUPPORTED_FILE_FMT {
 	GRK_UNK_FMT,
 	GRK_J2K_FMT,
@@ -110,11 +108,14 @@ enum GRK_SUPPORTED_FILE_FMT {
 	GRK_JPG_FMT
 };
 
-
 #define GRK_PATH_LEN 4096 /**< Maximum allowed size for filenames */
-// note: range for number of decomposition levels is 0-32
-// So, accordingly, range for number of resolutions is 1-33
-#define GRK_J2K_MAXRLVLS 33					/**< Maximum number of resolution levels authorized */
+
+/*
+ * note: range for number of decomposition levels is 0-32
+ * So, accordingly, range for number of resolutions is 1-33
+ * */
+
+#define GRK_J2K_MAXRLVLS 33						/**< Maximum number of resolution levels authorized */
 #define GRK_J2K_MAXBANDS (3*GRK_J2K_MAXRLVLS-2)	/**< Maximum number of sub-bands */
 
 // used by dump
@@ -139,17 +140,18 @@ enum GRK_SUPPORTED_FILE_FMT {
 /**
  * JPEG 2000 Profiles, see Table A.10 from 15444-1 (updated in various AMDs)
  *
- * These values help choose the RSIZ value for the J2K codestream.
+ * These values help choose the RSIZ value for the JPEG 2000 code stream.
  * The RSIZ value forces various encoding options, as detailed in Table A.10.
- * If GRK_PROFILE_PART2 is chosen, it has to be combined with one or more extensions
+ * If GRK_PROFILE_PART2 is chosen, it must be combined with one or more extensions
  * described below.
+ *
  *   Example: rsiz = GRK_PROFILE_PART2 | GRK_EXTENSION_MCT;
  *
- * For broadcast profiles, the GRK_PROFILE value has to be combined with the target
+ * For broadcast profiles, the GRK_PROFILE_X value has to be combined with the target
  * level (3-0 LSB, value between 0 and 11):
  *   Example: rsiz = GRK_PROFILE_BC_MULTI | 0x0005; //level equals 5
  *
- * For IMF profiles, the GRK_PROFILE value has to be combined with the target main-level
+ * For IMF profiles, the GRK_PROFILE_X value has to be combined with the target main-level
  * (3-0 LSB, value between 0 and 11) and sub-level (7-4 LSB, value between 0 and 9):
  *   Example: rsiz = GRK_PROFILE_IMF_2K | 0x0040 | 0x0005; // main-level equals 5 and sub-level equals 4
  * 
@@ -187,62 +189,61 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IS_STORAGE(v)    ((v) == GRK_PROFILE_CINEMA_LTS)
 
 /*
-*
-* *********************************************
-* Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
-* *********************************************
-*
-* indicates maximum bit rate and sample rate for a code stream
-*
-* Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
-*
-* 0:		no maximum rate
-* 1:		200 Mbits/s, 65  Msamples/s
-* 2:		200 Mbits/s, 130 Msamples/s
-* 3:		200 Mbits/s, 195 Msamples/s
-* 4:		400 Mbits/s, 260 Msamples/s
-* 5:		800Mbits/s,  520 Msamples/s
-* >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
-*
-* Note: level cannot be greater than 11
-*
-* ****************
-* Broadcast tiling
-* ****************
-*
-* Either single-tile or multi-tile. Multi-tile only permits
-* 1 or 4 tiles per frame, where multiple tiles have identical
-* sizes, and are configured in either 2x2 or 1x4 layout.
-*
-*************************************************************
-*
-* ***************************************
-* IMF main-level (3-0) LSB (15444-1 AMD8)
-* ***************************************
-*
-* main-level indicates maximum number of samples per second,
-* as listed above.
-*
-*
-* **************************************
-* IMF sub-level (7-4) LSB (15444-1 AMD8)
-* **************************************
-*
-* sub-level indicates maximum bit rate for a code stream:
-*
-* 0:	no maximum rate
-* >0:	2^sub-level * 100 Mbits/second
-*
-* Note: sub-level cannot be greater than 9, and cannot be larger
-* then maximum of (main-level -2) and 1.
-*
-*/
+ *
+ * *********************************************
+ * Broadcast level (3-0 LSB) (15444-1 AMD4,AMD8)
+ * *********************************************
+ *
+ * indicates maximum bit rate and sample rate for a code stream
+ *
+ * Note: Mbit/s == 10^6 bits/s;  Msamples/s == 10^6 samples/s
+ *
+ * 0:		no maximum rate
+ * 1:		200 Mbits/s, 65  Msamples/s
+ * 2:		200 Mbits/s, 130 Msamples/s
+ * 3:		200 Mbits/s, 195 Msamples/s
+ * 4:		400 Mbits/s, 260 Msamples/s
+ * 5:		800Mbits/s,  520 Msamples/s
+ * >= 6:	2^(level-6) * 1600 Mbits/s, 2^(level-6) * 1200 Msamples/s
+ *
+ * Note: level cannot be greater than 11
+ *
+ * ****************
+ * Broadcast tiling
+ * ****************
+ *
+ * Either single-tile or multi-tile. Multi-tile only permits
+ * 1 or 4 tiles per frame, where multiple tiles have identical
+ * sizes, and are configured in either 2x2 or 1x4 layout.
+ *
+ *************************************************************
+ *
+ * ***************************************
+ * IMF main-level (3-0) LSB (15444-1 AMD8)
+ * ***************************************
+ *
+ * main-level indicates maximum number of samples per second,
+ * as listed above.
+ *
+ *
+ * **************************************
+ * IMF sub-level (7-4) LSB (15444-1 AMD8)
+ * **************************************
+ *
+ * sub-level indicates maximum bit rate for a code stream:
+ *
+ * 0:	no maximum rate
+ * >0:	2^sub-level * 100 Mbits/second
+ *
+ * Note: sub-level cannot be greater than 9, and cannot be larger
+ * then maximum of (main-level -2) and 1.
+ *
+ */
 /** Extract profile without mainlevel/sublevel */
 #define GRK_GET_IMF_OR_BROADCAST_PROFILE(v)   ((v) & 0x0f00)
 
 #define GRK_LEVEL_MAX    11U   			/** Maximum (main) level */
 #define GRK_GET_LEVEL(v) ((v) & 0xf)    /** Extract (main) level */
-
 
 /******* BROADCAST **********/
 
@@ -250,8 +251,8 @@ enum GRK_SUPPORTED_FILE_FMT {
 								((v) <= (GRK_PROFILE_BC_MULTI_R | 0x000b) )  && \
 							  ( ((v) & 0xf) <= 0xb )    )
 
-/* Maximum Components Sampling Rate (Mbits/sec) per level */
-#define GRK_BROADCAST_LEVEL_1_MBITSSEC   200U      /** Mbits/sec for level 1 */
+/* Maximum component sampling Rate (Mbits/sec) per level */
+#define GRK_BROADCAST_LEVEL_1_MBITSSEC   200U     /** Mbits/sec for level 1 */
 #define GRK_BROADCAST_LEVEL_2_MBITSSEC   200U     /** Mbits/sec for level 2 */
 #define GRK_BROADCAST_LEVEL_3_MBITSSEC   200U     /** Mbits/sec for level 3 */
 #define GRK_BROADCAST_LEVEL_4_MBITSSEC   400U     /** Mbits/sec for level 4 */
@@ -263,18 +264,17 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_BROADCAST_LEVEL_10_MBITSSEC  25600U   /** Mbits/sec for level 10 */
 #define GRK_BROADCAST_LEVEL_11_MBITSSEC  51200U   /** Mbits/sec for level 11 */
 
-#define GRK_BROADCAST_LEVEL_1_MSAMPLESSEC   64U      /** MSamples/sec for level 1 */
-#define GRK_BROADCAST_LEVEL_2_MSAMPLESSEC   130U     /** MSamples/sec for level 2 */
-#define GRK_BROADCAST_LEVEL_3_MSAMPLESSEC   195U     /** MSamples/sec for level 3 */
-#define GRK_BROADCAST_LEVEL_4_MSAMPLESSEC   260U     /** MSamples/sec for level 4 */
-#define GRK_BROADCAST_LEVEL_5_MSAMPLESSEC   520U     /** MSamples/sec for level 5 */
-#define GRK_BROADCAST_LEVEL_6_MSAMPLESSEC   1200U    /** MSamples/sec for level 6 */
-#define GRK_BROADCAST_LEVEL_7_MSAMPLESSEC   2400U    /** MSamples/sec for level 7 */
-#define GRK_BROADCAST_LEVEL_8_MSAMPLESSEC   4800U    /** MSamples/sec for level 8 */
-#define GRK_BROADCAST_LEVEL_9_MSAMPLESSEC   9600U    /** MSamples/sec for level 9 */
-#define GRK_BROADCAST_LEVEL_10_MSAMPLESSEC  19200U   /** MSamples/sec for level 10 */
-#define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC  38400U   /** MSamples/sec for level 11 */
-
+#define GRK_BROADCAST_LEVEL_1_MSAMPLESSEC   64U    /** MSamples/sec for level 1 */
+#define GRK_BROADCAST_LEVEL_2_MSAMPLESSEC   130U   /** MSamples/sec for level 2 */
+#define GRK_BROADCAST_LEVEL_3_MSAMPLESSEC   195U   /** MSamples/sec for level 3 */
+#define GRK_BROADCAST_LEVEL_4_MSAMPLESSEC   260U   /** MSamples/sec for level 4 */
+#define GRK_BROADCAST_LEVEL_5_MSAMPLESSEC   520U   /** MSamples/sec for level 5 */
+#define GRK_BROADCAST_LEVEL_6_MSAMPLESSEC   1200U  /** MSamples/sec for level 6 */
+#define GRK_BROADCAST_LEVEL_7_MSAMPLESSEC   2400U  /** MSamples/sec for level 7 */
+#define GRK_BROADCAST_LEVEL_8_MSAMPLESSEC   4800U  /** MSamples/sec for level 8 */
+#define GRK_BROADCAST_LEVEL_9_MSAMPLESSEC   9600U  /** MSamples/sec for level 9 */
+#define GRK_BROADCAST_LEVEL_10_MSAMPLESSEC  19200U /** MSamples/sec for level 10 */
+#define GRK_BROADCAST_LEVEL_11_MSAMPLESSEC  38400U /** MSamples/sec for level 11 */
 
 /********IMF ***********************************************************************/
 
@@ -283,7 +283,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 							  ( ((v) & 0xf) <= 0xb ) && \
 							  ( ((v) & 0xf0) <= 0x90 )    )
 
-/* Maximum Components Sampling Rate (MSamples/sec) per main level */
+/* Maximum component sampling rate (MSamples/sec) per main level */
 #define GRK_IMF_MAINLEVEL_1_MSAMPLESSEC   65U      /** MSamples/sec for main level 1 */
 #define GRK_IMF_MAINLEVEL_2_MSAMPLESSEC   130U     /** MSamples/sec for main level 2 */
 #define GRK_IMF_MAINLEVEL_3_MSAMPLESSEC   195U     /** MSamples/sec for main level 3 */
@@ -299,7 +299,7 @@ enum GRK_SUPPORTED_FILE_FMT {
 #define GRK_IMF_SUBLEVEL_MAX    	9U   			 /** Maximum IMF sublevel */
 #define GRK_GET_IMF_SUBLEVEL(v)  (((v) >> 4) & 0xf)  /** Extract IMF sub level */
 
-/** Max. compressed Bit Rate (Mbits/s) per IMF sub level */
+/** Maximum compressed bit rate (Mbits/s) per IMF sub level */
 #define GRK_IMF_SUBLEVEL_1_MBITSSEC      200U     /** Mbits/s for IMF sub level 1 */
 #define GRK_IMF_SUBLEVEL_2_MBITSSEC      400U     /** Mbits/s for IMF sub level 2 */
 #define GRK_IMF_SUBLEVEL_3_MBITSSEC      800U     /** Mbits/s for IMF sub level 3 */
@@ -312,28 +312,29 @@ enum GRK_SUPPORTED_FILE_FMT {
 /**********************************************************************************/
 
 /**
- * JPEG 2000 cinema profile codestream and component size limits
+ * JPEG 2000 cinema profile code stream and component size limits
  * */
-#define GRK_CINEMA_24_CS     1302083U   	/** Maximum codestream length @ 24fps */
-#define GRK_CINEMA_48_CS     651041U     /** Maximum codestream length @ 48fps */
+#define GRK_CINEMA_24_CS     1302083U    /** Maximum code stream length @ 24fps */
+#define GRK_CINEMA_48_CS     651041U     /** Maximum code stream length @ 48fps */
 #define GRK_CINEMA_24_COMP   1041666U    /** Maximum size per color component @ 24fps */
-#define GRK_CINEMA_48_COMP   520833U		/** Maximum size per color component @ 48fps */
+#define GRK_CINEMA_48_COMP   520833U	 /** Maximum size per color component @ 48fps */
 
 /**
  * Progression order
  * */
 typedef enum _GRK_PROG_ORDER {
-	GRK_PROG_UNKNOWN = -1, 	/**< place-holder */
-	GRK_LRCP = 0, 			/**< layer-resolution-component-precinct order */
-	GRK_RLCP = 1, 			/**< resolution-layer-component-precinct order */
-	GRK_RPCL = 2, 			/**< resolution-precinct-component-layer order */
-	GRK_PCRL = 3, 			/**< precinct-component-resolution-layer order */
-	GRK_CPRL = 4 			/**< component-precinct-resolution-layer order */
+	GRK_PROG_UNKNOWN = -1, /**< place-holder */
+	GRK_LRCP = 0, /**< layer-resolution-component-precinct order */
+	GRK_RLCP = 1, /**< resolution-layer-component-precinct order */
+	GRK_RPCL = 2, /**< resolution-precinct-component-layer order */
+	GRK_PCRL = 3, /**< precinct-component-resolution-layer order */
+	GRK_CPRL = 4 /**< component-precinct-resolution-layer order */
 } GRK_PROG_ORDER;
 
-/**
- * Supported image color spaces
- * */
+/*
+ *
+ * CIE Lab #defines
+ */
 #define GRK_CUSTOM_CIELAB_SPACE 0x0
 #define GRK_DEFAULT_CIELAB_SPACE 0x44454600  //'DEF'
 #define GRK_CIE_DAY   ((((uint32_t) 'C')<<24) + (((uint32_t) 'T')<<16))
@@ -346,34 +347,37 @@ typedef enum _GRK_PROG_ORDER {
 #define GRK_CIE_F7   ((uint32_t) 0x00004637)
 #define GRK_CIE_F11   ((uint32_t) 0x00463131)
 
+/**
+ * Supported image color spaces
+ * */
 typedef enum _GRK_COLOR_SPACE {
-	GRK_CLRSPC_UNKNOWN = 0, 	/**< not supported by the library */
-	GRK_CLRSPC_UNSPECIFIED = 1, /**< not specified in the codestream */
-	GRK_CLRSPC_SRGB = 2, 		/**< sRGB */
-	GRK_CLRSPC_GRAY = 3, 		/**< grayscale */
-	GRK_CLRSPC_SYCC = 4, 		/**< YUV */
-	GRK_CLRSPC_EYCC = 5, 		/**< e-YCC */
-	GRK_CLRSPC_CMYK = 6, 		/**< CMYK */
+	GRK_CLRSPC_UNKNOWN = 0, /**< not supported by the library */
+	GRK_CLRSPC_UNSPECIFIED = 1, /**< not specified in the code stream */
+	GRK_CLRSPC_SRGB = 2, /**< sRGB */
+	GRK_CLRSPC_GRAY = 3, /**< grayscale */
+	GRK_CLRSPC_SYCC = 4, /**< YUV */
+	GRK_CLRSPC_EYCC = 5, /**< e-YCC */
+	GRK_CLRSPC_CMYK = 6, /**< CMYK */
 	GRK_CLRSPC_DEFAULT_CIE = 7, /**< default CIE LAB */
-	GRK_CLRSPC_CUSTOM_CIE = 8, 	/**< custom CIE LAB */
-	GRK_CLRSPC_ICC = 9 			/**< ICC profile */
+	GRK_CLRSPC_CUSTOM_CIE = 8, /**< custom CIE LAB */
+	GRK_CLRSPC_ICC = 9 /**< ICC profile */
 } GRK_COLOR_SPACE;
 
 /**
- * Supported codec
+ * Supported codecs
  */
 typedef enum _GRK_CODEC_FORMAT {
-	GRK_CODEC_UNKNOWN = -1, 	/**< place-holder */
-	GRK_CODEC_J2K = 0, 			/**< JPEG-2000 codestream : read/write */
-	GRK_CODEC_JP2 = 2 			/**< JP2 file format : read/write */
+	GRK_CODEC_UNKNOWN = -1, /**< place-holder */
+	GRK_CODEC_J2K = 0, /**< JPEG 2000 code stream : read/write */
+	GRK_CODEC_JP2 = 2 /**< JP2 file format : read/write */
 } GRK_CODEC_FORMAT;
 
 #define  GRK_NUM_COMMENTS_SUPPORTED 256
 #define GRK_MAX_COMMENT_LENGTH (UINT16_MAX-2)
 
-
 /**
- * Callback function prototype for events
+ * Callback function prototype for logging
+ *
  * @param msg               Event message
  * @param client_data       Client object where will be return the event message
  * */
@@ -381,7 +385,7 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
 
 /*
  ==========================================================
- codec typedef definitions
+ codec structures
  ==========================================================
  */
 
@@ -390,11 +394,11 @@ typedef void (*grk_msg_callback)(const char *msg, void *client_data);
  *
  */
 typedef struct _grk_poc {
-	/** Resolution num start, Component num start, given by POC */
+	/** Resolution num start, component num start, given by POC */
 	uint32_t resno0, compno0;
-	/** Layer num end,Resolution num end, Component num end, given by POC */
+	/** Layer num end, resolution num end, component num end, given by POC */
 	uint32_t layno1, resno1, compno1;
-	/** Layer num start,Precinct num start, Precinct num end */
+	/** Layer num start,precinct num start, precinct num end */
 	uint32_t layno0, precno0, precno1;
 	/** Progression order enum*/
 	GRK_PROG_ORDER prg1, prg;
@@ -402,19 +406,19 @@ typedef struct _grk_poc {
 	char progorder[5];
 	/** Tile number */
 	uint32_t tile;
-	/** Start and end values for Tile width and height*/
+	/** Start and end values for tile width and height*/
 	uint32_t tx0, tx1, ty0, ty1;
 	/** Start value, initialized in pi_initialise_encode*/
 	uint32_t layS, resS, compS, prcS;
 	/** End value, initialized in pi_initialise_encode */
 	uint32_t layE, resE, compE, prcE;
-	/** Start and end values of Tile width and height, initialized in pi_initialise_encode*/
+	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
 	uint32_t txS, txE, tyS, tyE, dx, dy;
 	/** Temporary values for Tile parts, initialized in pi_create_encode */
 	uint32_t lay_t, res_t, comp_t, prc_t, tx0_t, ty0_t;
-}  grk_poc; 
+} grk_poc;
 
-/**@name RAW component encoding parameters */
+/**@name RAW component compress parameters */
 /*@{*/
 typedef struct _grk_raw_comp_cparameters {
 	/** subsampling in X direction */
@@ -424,7 +428,7 @@ typedef struct _grk_raw_comp_cparameters {
 	/*@}*/
 } grk_raw_comp_cparameters;
 
-/**@name RAW image encoding parameters */
+/**@name RAW image compress parameters */
 /*@{*/
 typedef struct _grk_raw_cparameters {
 	/** width of the raw image */
@@ -443,7 +447,7 @@ typedef struct _grk_raw_cparameters {
 } grk_raw_cparameters;
 
 /**
- * Compression parameters
+ * Compress parameters
  * */
 typedef struct _grk_cparameters {
 	/** size of tile: tile_size_on = false (not in argument) or = true (in argument) */
@@ -470,8 +474,8 @@ typedef struct _grk_cparameters {
 	/** progression order (default GRK_LRCP) */
 	GRK_PROG_ORDER prog_order;
 	/** progression order changes */
-	 grk_poc  POC[32];
-	/** number of progression order changes (POC), default to 0 */
+	grk_poc POC[32];
+	/** number of progression order changes (POCs), default to 0 */
 	uint32_t numpocs;
 	/** number of layers */
 	uint32_t tcp_numlayers;
@@ -482,9 +486,9 @@ typedef struct _grk_cparameters {
 	double tcp_distoratio[100];
 	/** number of resolutions */
 	uint32_t numresolution;
-	/** initial code block width, default to 64 */
+	/** initial code block width  (default to 64) */
 	uint32_t cblockw_init;
-	/** initial code block height, default to 64 */
+	/** initial code block height (default to 64) */
 	uint32_t cblockh_init;
 	/** code block style */
 	uint8_t cblk_sty;
@@ -504,9 +508,6 @@ typedef struct _grk_cparameters {
 	uint32_t prcw_init[GRK_J2K_MAXRLVLS];
 	/** initial precinct height */
 	uint32_t prch_init[GRK_J2K_MAXRLVLS];
-	/**@name command line encoder parameters
-	 * (not used inside the library) */
-	/*@{*/
 	/** input file name */
 	char infile[GRK_PATH_LEN];
 	/** output file name */
@@ -531,7 +532,7 @@ typedef struct _grk_cparameters {
 	uint32_t max_comp_size;
 	/** Tile part generation*/
 	uint8_t tp_on;
-	/** Flag for Tile part generation*/
+	/** Flag for tile part generation*/
 	uint8_t tp_flag;
 	/** MCT (multiple component transform) */
 	uint8_t tcp_mct;
@@ -539,8 +540,8 @@ typedef struct _grk_cparameters {
 	 encoding without offset concerning all the components. */
 	void *mct_data;
 	/**
-	 * Maximum size (in bytes) for the whole codestream.
-	 * If == 0, codestream size limitation is not considered
+	 * Maximum size (in bytes) for the whole code stream.
+	 * If equal to zero, code stream size limitation is not considered
 	 * If it does not comply with tcp_rates, max_cs_size prevails
 	 * and a warning is issued.
 	 * */
@@ -568,7 +569,7 @@ typedef struct _grk_cparameters {
 	uint32_t kernelBuildOptions;
 	uint32_t repeats;
 	bool verbose;
-}  grk_cparameters; 
+} grk_cparameters;
 
 /**
  Channel description: channel index, type, association
@@ -608,7 +609,7 @@ typedef struct _grk_jp2_pclr {
 } grk_jp2_pclr;
 
 /**
- Struct for ICC profile, palette, component mapping, channel description
+ ICC profile, palette, component mapping, channel description
  */
 typedef struct _grk_jp2_color {
 	uint8_t *icc_profile_buf;
@@ -618,6 +619,9 @@ typedef struct _grk_jp2_color {
 	uint8_t jp2_has_colour_specification_box;
 } grk_jp2_color;
 
+/**
+ * Header info
+ */
 typedef struct _grk_header_info {
 	/** initial code block width, default to 64 */
 	uint32_t cblockw_init;
@@ -668,7 +672,7 @@ typedef struct _grk_header_info {
 	 19	EYCC
 	 */
 	uint32_t enumcs;
-	// icc profile information etc.
+	// ICC profile information
 	// note: the contents of this struct will remain valid
 	// until the codec is destroyed
 	grk_jp2_color color;
@@ -687,29 +691,27 @@ typedef struct _grk_header_info {
 	bool has_display_resolution;
 	double display_resolution[2];
 
-}  grk_header_info; 
+} grk_header_info;
 
 /**
- * Decompression parameters
+ * Core decompress parameters
  * */
 typedef struct _grk_dparameters {
 	/**
 	 Set the number of highest resolution levels to be discarded.
 	 The image resolution is effectively divided by 2 to the power of the number of discarded levels.
 	 The reduce factor is limited by the smallest total number of decomposition levels among tiles.
-	 if != 0, then original dimension divided by 2^(reduce);
-	 if == 0 or not used, image is decoded to the full resolution
+	 if greater than zero, then image is deocded to original dimension divided by 2^(cp_reduce);
+	 if equal to zero or not used, image is decoded to full resolution
 	 */
 	uint32_t cp_reduce;
 	/**
-	 Set the maximum number of quality layers to decode.
-	 If there are less quality layers than the specified number, all the quality layers are decoded.
+	 Set the maximum number of quality layers to decompress.
+	 If there are fewer quality layers than the specified number, all quality layers will be decoded.
 	 if != 0, then only the first "layer" layers are decoded;
 	 if == 0 or not used, all the quality layers are decoded
 	 */
 	uint32_t cp_layer;
-	/**@name command line decoder parameters (not used inside the library) */
-	/*@{*/
 	/** input file name */
 	char infile[GRK_PATH_LEN];
 	/** output file name */
@@ -728,17 +730,23 @@ typedef struct _grk_dparameters {
 	uint32_t DA_y1;
 	/** Verbose mode */
 	bool m_verbose;
-	/** tile number of the decoded tile*/
+	/** tile number of the decompressed tile*/
 	uint16_t tile_index;
-	/** Nb of tile to decode */
+	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decode;
 	uint32_t flags;
-}  grk_dparameters; 
+} grk_dparameters;
 
+/**
+ * Precision mode
+ */
 typedef enum grk_prec_mode {
 	GRK_PREC_MODE_CLIP, GRK_PREC_MODE_SCALE
 } grk_precision_mode;
 
+/**
+ * Precision
+ */
 typedef struct _grk_prec {
 	uint32_t prec;
 	grk_precision_mode mode;
@@ -746,9 +754,12 @@ typedef struct _grk_prec {
 
 #define GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT (-65535)
 
+/**
+ * Decompress parameters
+ */
 typedef struct _grk_decompress_params {
 	/** core library parameters */
-	 grk_dparameters  core;
+	grk_dparameters core;
 	/** input file name */
 	char infile[GRK_PATH_LEN];
 	/** output file name */
@@ -771,7 +782,7 @@ typedef struct _grk_decompress_params {
 	bool m_verbose;
 	/** tile number of the decoded tile*/
 	uint16_t tile_index;
-	/** Nb of tile to decode */
+	/** Number of tiles to decompress */
 	uint32_t nb_tile_to_decode;
 	grk_precision *precision;
 	uint32_t nb_precision;
@@ -781,7 +792,7 @@ typedef struct _grk_decompress_params {
 	bool upsample;
 	/* split output components to different files */
 	bool split_pnm;
-	/* serialize xml metadata to disk */
+	/* serialize XML metadata to disk */
 	bool serialize_xml;
 	uint32_t compression;
 	// compression "quality". Meaning of "quality" depends
@@ -795,7 +806,7 @@ typedef struct _grk_decompress_params {
 	uint32_t numThreads;
 } grk_decompress_parameters;
 
-typedef void * grk_codec; 
+typedef void *grk_codec;
 
 /*
  ==========================================================
@@ -805,36 +816,37 @@ typedef void * grk_codec;
 
 /*
  * Callback function prototype for read function
+ *
  */
 typedef size_t (*grk_stream_read_fn)(void *p_buffer, size_t nb_bytes,
-		void *p_user_data);
+		void *user_data);
 
 /*
  * Callback function prototype for zero copy read function
  */
-typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer,
-		size_t nb_bytes, void *p_user_data);
+typedef size_t (*grk_stream_zero_copy_read_fn)(void **p_buffer, size_t nb_bytes,
+		void *user_data);
 
 /*
  * Callback function prototype for write function
  */
 typedef size_t (*grk_stream_write_fn)(void *p_buffer, size_t nb_bytes,
-		void *p_user_data);
+		void *user_data);
 
 /*
  * Callback function prototype for (absolute) seek function.
  */
-typedef bool (*grk_stream_seek_fn)(uint64_t nb_bytes, void *p_user_data);
+typedef bool (*grk_stream_seek_fn)(uint64_t nb_bytes, void *user_data);
 
 /*
  * Callback function prototype for free user data function
  */
-typedef void (*grk_stream_free_user_data_fn)(void *p_user_data);
+typedef void (*grk_stream_free_user_data_fn)(void *user_data);
 
 /*
- * JPEG2000 Stream.
+ * JPEG 2000 stream.
  */
-typedef void * grk_stream; 
+typedef void *grk_stream;
 
 /*
  ==========================================================
@@ -843,11 +855,11 @@ typedef void * grk_stream;
  */
 
 #define GRK_COMPONENT_TYPE_NON_OPACITY	 			0
-#define GRK_COMPONENT_TYPE_OPACITY 				1
+#define GRK_COMPONENT_TYPE_OPACITY 					1
 #define GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	2
 
 /**
- * Defines a single image component
+ * Image component
  * */
 typedef struct _grk_image_comp {
 	/** XRsiz: horizontal separation of a sample of with component with respect to the reference grid */
@@ -884,10 +896,10 @@ typedef struct _grk_image_comp {
 	 *  and the colour channels have not been pre-multiplied by alpha
 	 * */
 	uint16_t alpha;
-}  grk_image_comp; 
+} grk_image_comp;
 
 /**
- * Defines image data and characteristics
+ * Image
  * */
 typedef struct _grk_image {
 	/** XOsiz: horizontal offset from the origin of the reference grid
@@ -905,7 +917,7 @@ typedef struct _grk_image {
 	/** color space: sRGB, Greyscale or YUV */
 	GRK_COLOR_SPACE color_space;
 	/** image components */
-	 grk_image_comp  *comps;
+	grk_image_comp *comps;
 	/** 'restricted' ICC profile */
 	uint8_t *icc_profile_buf;
 	/** size of ICC profile */
@@ -919,7 +931,7 @@ typedef struct _grk_image {
 } grk_image;
 
 /**
- * Component parameters structure used by the grk_image_create function
+ * Image component parameters
  * */
 typedef struct _grk_image_comptparm {
 	/** XRsiz: horizontal separation of a sample of component
@@ -940,16 +952,16 @@ typedef struct _grk_image_comptparm {
 	uint32_t prec;
 	/** signed (1) / unsigned (0) */
 	uint32_t sgnd;
-}  grk_image_cmptparm; 
+} grk_image_cmptparm;
 
 /*
  ==========================================================
- Information about the JPEG 2000 codestream
+ Information about the JPEG 2000 code stream
  ==========================================================
  */
 
 /**
- * Index structure : Information concerning a packet inside tile
+ * Packet info
  * */
 typedef struct _grk_packet_info {
 	/** packet start position (including SOP marker if it exists) */
@@ -960,22 +972,22 @@ typedef struct _grk_packet_info {
 	uint64_t end_pos;
 	/** packet distortion */
 	double disto;
-}  grk_packet_info; 
+} grk_packet_info;
 
 /**
- * Marker structure
+ * Marker info
  * */
 typedef struct _grk_marker_info {
 	/** marker type */
 	uint16_t type;
-	/** position in codestream */
+	/** position in code stream */
 	uint64_t pos;
-	/** length, marker val included */
+	/** length, marker value included */
 	uint32_t len;
-}  grk_marker_info; 
+} grk_marker_info;
 
 /**
- * Index structure : Information concerning tile-parts
+ * Tile part info
  */
 typedef struct _grk_tp_info {
 	/** start position of tile part */
@@ -988,10 +1000,10 @@ typedef struct _grk_tp_info {
 	uint32_t tp_start_pack;
 	/** number of packets of tile part */
 	uint32_t tp_numpacks;
-}  grk_tp_info; 
+} grk_tp_info;
 
 /**
- * Index structure : information regarding tiles
+ * Tile info
  */
 typedef struct _grk_tile_info {
 	/** value of thresh for each layer by tile cfr. Marcela   */
@@ -1013,23 +1025,23 @@ typedef struct _grk_tile_info {
 	/** precinct size (in power of 2), in Y for each resolution level */
 	uint32_t pdy[GRK_J2K_MAXRLVLS];
 	/** information concerning packets inside tile */
-	 grk_packet_info  *packet;
+	grk_packet_info *packet;
 	int64_t numpix;
 	double distotile;
 	/** number of markers */
 	uint32_t marknum;
 	/** list of markers */
-	 grk_marker_info  *marker;
+	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
 	/** number of tile parts */
 	uint32_t num_tps;
 	/** information concerning tile parts */
-	 grk_tp_info  *tp;
-}  grk_tile_info; 
+	grk_tp_info *tp;
+} grk_tile_info;
 
 /**
- * Index structure of the codestream
+ * Code stream info
  */
 typedef struct _grk_codestream_info {
 	/** maximum distortion reduction on the whole image (add for Marcela) */
@@ -1047,21 +1059,21 @@ typedef struct _grk_codestream_info {
 	/** number of markers */
 	uint32_t marknum;
 	/** list of markers */
-	 grk_marker_info  *marker;
+	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
 	/** main header position */
 	uint64_t main_head_start;
 	/** main header position */
 	uint64_t main_head_end;
-	/** codestream's size */
+	/** code stream's size */
 	uint64_t codestream_size;
 	/** information regarding tiles inside image */
-	 grk_tile_info  *tile;
-}  grk_codestream_info; 
+	grk_tile_info *tile;
+} grk_codestream_info;
 
 /**
- * Tile-component coding parameters information
+ * Component coding parameters info
  */
 typedef struct _grk_tccp_info {
 	/** component index */
@@ -1092,10 +1104,10 @@ typedef struct _grk_tccp_info {
 	uint32_t prcw[GRK_J2K_MAXRLVLS];
 	/** precinct height */
 	uint32_t prch[GRK_J2K_MAXRLVLS];
-}  grk_tccp_info; 
+} grk_tccp_info;
 
 /**
- * Tile coding parameters information
+ * Tile coding parameter info
  */
 typedef struct _grk_tile_v2_info {
 	/** number (index) of tile */
@@ -1109,12 +1121,12 @@ typedef struct _grk_tile_v2_info {
 	/** multi-component transform identifier */
 	uint32_t mct;
 	/** information concerning tile component parameters*/
-	 grk_tccp_info  *tccp_info;
+	grk_tccp_info *tccp_info;
 
-}  grk_tile_info_v2; 
+} grk_tile_info_v2;
 
 /**
- * Information structure about the codestream
+ * Code stream info v2
  */
 typedef struct _grk_codestream_info_v2 {
 	/* Tile info */
@@ -1133,13 +1145,13 @@ typedef struct _grk_codestream_info_v2 {
 	/** number of components*/
 	uint32_t nbcomps;
 	/** Default information regarding tiles inside image */
-	 grk_tile_info_v2  m_default_tile_info;
+	grk_tile_info_v2 m_default_tile_info;
 	/** information regarding tiles inside image */
-	 grk_tile_info_v2  *tile_info; /* FIXME not used for the moment */
-}  grk_codestream_info_v2; 
+	grk_tile_info_v2 *tile_info; /* FIXME not used for the moment */
+} grk_codestream_info_v2;
 
 /**
- * Index structure about a tile part
+ * Tile part index info
  */
 typedef struct _grk_tp_index {
 	/** start position */
@@ -1148,10 +1160,10 @@ typedef struct _grk_tp_index {
 	uint64_t end_header;
 	/** end position */
 	uint64_t end_pos;
-}  grk_tp_index; 
+} grk_tp_index;
 
 /**
- * Index structure about a tile
+ * Tile index info
  */
 typedef struct _grk_tile_index {
 	/** tile index */
@@ -1163,52 +1175,55 @@ typedef struct _grk_tile_index {
 	/** current tile-part index */
 	uint32_t current_tpsno;
 	/** information concerning tile parts */
-	 grk_tp_index  *tp_index;
+	grk_tp_index *tp_index;
 	/** number of markers */
 	uint32_t marknum;
 	/** list of markers */
-	 grk_marker_info  *marker;
+	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
 	/** packet number */
 	uint32_t nb_packet;
 	/** information concerning packets inside tile */
-	 grk_packet_info  *packet_index;
-}  grk_tile_index; 
+	grk_packet_info *packet_index;
+} grk_tile_index;
 
 /**
- * Index structure of the codestream
+ * Code stream index info
  */
 typedef struct _grk_codestream_index {
 	/** main header start position (SOC position) */
 	uint64_t main_head_start;
 	/** main header end position (first SOT position) */
 	uint64_t main_head_end;
-	/** codestream's size */
+	/** code stream's size */
 	uint64_t codestream_size;
 	/** number of markers */
 	uint32_t marknum;
 	/** list of markers */
-	 grk_marker_info  *marker;
+	grk_marker_info *marker;
 	/** actual size of markers array */
 	uint32_t maxmarknum;
 	uint32_t nb_of_tiles;
-	 grk_tile_index  *tile_index;
-}  grk_codestream_index; 
-/* -----------------------------------------------------------> */
-
-
+	grk_tile_index *tile_index;
+} grk_codestream_index;
 
 ////////////////////////////////////////////////
 // Structs to pass data between grok and plugin
 /////////////////////////////////////////////////
 
+/**
+ * Plugin pass
+ */
 typedef struct _grk_plugin_pass {
 	double distortionDecrease; //distortion decrease up to and including this pass
 	size_t rate;    // rate up to and including this pass
 	size_t length;	//stream length for this pass
 } grk_plugin_pass;
 
+/**
+ * Plugin code block
+ */
 typedef struct _grk_plugin_code_block {
 	/////////////////////////
 	// debug info
@@ -1224,11 +1239,17 @@ typedef struct _grk_plugin_code_block {
 	unsigned int sortedIndex;
 } grk_plugin_code_block;
 
+/**
+ * Plugin precinct
+ */
 typedef struct _grk_plugin_precinct {
 	size_t numBlocks;
 	grk_plugin_code_block **blocks;
 } grk_plugin_precinct;
 
+/**
+ * Plugin band
+ */
 typedef struct _grk_plugin_band {
 	size_t orient;
 	size_t numPrecincts;
@@ -1236,12 +1257,18 @@ typedef struct _grk_plugin_band {
 	float stepsize;
 } grk_plugin_band;
 
+/**
+ * Plugin resolution
+ */
 typedef struct _grk_plugin_resolution {
 	size_t level;
 	size_t numBands;
 	grk_plugin_band **bands;
 } grk_plugin_resolution;
 
+/**
+ * Plugin tile component
+ */
 typedef struct grk_plugin_tile_component {
 	size_t numResolutions;
 	grk_plugin_resolution **resolutions;
@@ -1254,55 +1281,94 @@ typedef struct grk_plugin_tile_component {
 #define GRK_PLUGIN_DECODE_CLEAN  (1 << 4)
 #define GRK_DECODE_ALL		(GRK_PLUGIN_DECODE_CLEAN | GRK_DECODE_HEADER | GRK_DECODE_T2 | GRK_DECODE_T1 | GRK_DECODE_POST_T1)
 
+/**
+ * Plugin tile
+ */
 typedef struct _grk_plugin_tile {
 	uint32_t decode_flags;
 	size_t numComponents;
 	grk_plugin_tile_component **tileComponents;
 } grk_plugin_tile;
 
-// version
+/**
+ * Grok version
+ */
 GRK_API const char* GRK_CALLCONV grk_version(void);
-//initialize library
+
+/**
+ * Initialize Grok library
+ *
+ * @param plugin_path 	path to plugin
+ * @param numthreads 	number of threads to use for compress/decompress
+ */
 GRK_API bool GRK_CALLCONV grk_initialize(const char *plugin_path,
 		uint32_t numthreads);
-//deinitialize library
+
+/**
+ * Deinitialize Grok library
+ */
 GRK_API void GRK_CALLCONV grk_deinitialize();
 
 /*
- =================================
+ ============================
  image functions definitions
- =================================
+ ============================
  */
 
 /**
- * Create an image
+ * Create image
  *
  * @param numcmpts      number of components
- * @param cmptparms     components parameters
+ * @param cmptparms     component parameters
  * @param clrspc        image color space
- * @return returns      a new image structure if successful, returns nullptr otherwise
+ *
+ * @return returns      a new image if successful, otherwise nullptr
  * */
-GRK_API grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
-		 grk_image_cmptparm  *cmptparms, GRK_COLOR_SPACE clrspc);
+GRK_API grk_image* GRK_CALLCONV grk_image_create(uint32_t numcmpts,
+		grk_image_cmptparm *cmptparms, GRK_COLOR_SPACE clrspc);
 
 /**
- * Deallocate any resources associated with an image
+ * Deallocate all resources associated with an image
  *
- * @param image         image to be destroyed
+ * @param image         image
  */
 GRK_API void GRK_CALLCONV grk_image_destroy(grk_image *image);
 
-GRK_API void GRK_CALLCONV grk_image_all_components_data_free(
-		grk_image *image);
-
-GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
-		 grk_image_comp  *image);
-
+/**
+ * Allocate data for single image component
+ *
+ * @param image         image
+ */
 GRK_API bool GRK_CALLCONV grk_image_single_component_data_alloc(
-		 grk_image_comp  *image);
+		grk_image_comp *image);
 
+/**
+ * Deallocate all component data for an image
+ *
+ * @param image         image
+ */
+GRK_API void GRK_CALLCONV grk_image_all_components_data_free(grk_image *image);
+
+/**
+ * Deallocate data for single image component
+ *
+ * @param image         image
+ */
+GRK_API void GRK_CALLCONV grk_image_single_component_data_free(
+		grk_image_comp *image);
+
+/**
+ * Allocate memory for meta data
+ *
+ * @param len         number of bytes to allocate
+ */
 GRK_API uint8_t* GRK_CALLCONV grk_buffer_new(size_t len);
 
+/**
+ * Release memory for meta data
+ *
+ * @param buffer         buffer to be released
+ */
 GRK_API void GRK_CALLCONV grk_buffer_delete(uint8_t *buffer);
 /*
  =================================
@@ -1311,101 +1377,118 @@ GRK_API void GRK_CALLCONV grk_buffer_delete(uint8_t *buffer);
  */
 
 /**
- * Creates an abstract stream. This function does nothing except
- *  allocating memory and initializing the abstract stream.
+ * Create an abstract stream. This function does nothing except
+ * allocate memory and initialize abstract stream.
  *
- * @param	p_buffer_size   size of stream's double-buffer
- * @param	p_is_input		if set to true then the stream will be
+ * @param	buffer_size   size of stream's double-buffer
+ * @param	is_input	  if set to true then the stream will be
  *  an input stream, an output stream else.
  *
- * @return	a stream object.
+ * @return	stream object.
  */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create(size_t p_buffer_size,
-		bool p_is_input);
+GRK_API grk_stream* GRK_CALLCONV grk_stream_create(size_t buffer_size,
+		bool is_input);
 
 /**
- * Destroys a stream created by grk_create_stream. This function does NOT
- *  close the abstract stream. If needed the user must
- * close its own implementation of the stream.
+ * Destroy a stream created by grk_create_stream. This function does NOT
+ * close the abstract stream. If needed the user must
+ * close their own implementation of the stream.
  *
- * @param	p_stream	the stream to destroy.
+ * @param	stream	the stream to destroy.
  */
-GRK_API void GRK_CALLCONV grk_stream_destroy( grk_stream  *p_stream);
+GRK_API void GRK_CALLCONV grk_stream_destroy(grk_stream *stream);
 
 /**
- * Sets the given function to be used as a read function.
- * @param		p_stream	the stream to modify
+ * Set the given function to be used as a read function.
+ *
+ * @param		stream	the stream to modify
  * @param		p_function	the function to use a read function.
  */
-GRK_API void GRK_CALLCONV grk_stream_set_read_function( grk_stream  *p_stream,
+GRK_API void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function);
 
 /**
- * Sets the given function to be used as a zero copy read function.
+ * Set the given function to be used as a zero copy read function.
  * NOTE: this feature is only available for memory mapped and buffer backed streams,
  * not file streams
- * @param		p_stream	the stream to modify
- * @param		p_function	the function to use a read function.
+ *
+ * @param		stream	stream to modify
+ * @param		p_function	function to use as read function.
  */
 GRK_API void GRK_CALLCONV grk_stream_set_zero_copy_read_function(
-		 grk_stream  *p_stream, grk_stream_zero_copy_read_fn p_function);
+		grk_stream *stream, grk_stream_zero_copy_read_fn p_function);
 
 /**
- * Sets the given function to be used as a write function.
- * @param		p_stream	the stream to modify
+ * Set the given function to be used as a write function.
+ *
+ * @param		stream	the stream to modify
  * @param		p_function	the function to use a write function.
  */
-GRK_API void GRK_CALLCONV grk_stream_set_write_function( grk_stream  *p_stream,
+GRK_API void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function);
 
 /**
- * Sets the given function to be used as a seek function, the stream is then seekable.
- * @param		p_stream	the stream to modify
+ * Set the given function to be used as a seek function, the stream is then seekable.
+ *
+ * @param		stream	the stream to modify
  * @param		p_function	the function to use a skip function.
  */
-GRK_API void GRK_CALLCONV grk_stream_set_seek_function( grk_stream  *p_stream,
+GRK_API void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 		grk_stream_seek_fn p_function);
 
 /**
- * Sets the given data to be used as a user data for the stream.
- * @param		p_stream	the stream to modify
- * @param		p_data		the data to set.
- * @param		p_function	the function to free p_data when grk_stream_destroy() is called.
+ * Set the given data to be used as a user data for the stream.
+ *
+ * @param		stream	the stream to modify
+ * @param		data		the data to set.
+ * @param		p_function	the function to free data when grk_stream_destroy() is called.
  */
-GRK_API void GRK_CALLCONV grk_stream_set_user_data( grk_stream  *p_stream,
-		void *p_data, grk_stream_free_user_data_fn p_function);
+GRK_API void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream,
+		void *data, grk_stream_free_user_data_fn p_function);
 
 /**
- * Sets the length of the user data for the stream.
+ * Set the length of the user data for the stream.
  *
- * @param p_stream    the stream to modify
+ * @param stream    the stream to modify
  * @param data_length length of the user_data.
  */
-GRK_API void GRK_CALLCONV grk_stream_set_user_data_length(
-		 grk_stream  *p_stream, uint64_t data_length);
+GRK_API void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
+		uint64_t data_length);
 
-/** Create a stream from a file identified with its filename with a specific buffer size
+/** Create stream from a file identified with its filename with a specific buffer size
+ *
  * @param fname             the filename of the file to stream
- * @param p_buffer_size     size of the chunk used to stream
- * @param p_is_read_stream  whether the stream is a read stream (true) or not (false)
+ * @param buffer_size     size of the chunk used to stream
+ * @param is_read_stream  whether the stream is a read stream (true) or not (false)
  */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_file_stream(
-		const char *fname, size_t p_buffer_size, bool p_is_read_stream);
+GRK_API grk_stream* GRK_CALLCONV grk_stream_create_file_stream(
+		const char *fname, size_t buffer_size, bool is_read_stream);
 
-/** Create a stream from a buffer
+/** Create stream from buffer
+ *
  * @param buf			buffer
  * @param buffer_len    length of buffer
  * @param ownsBuffer	if true, library will delete[] buffer. Otherwise, it is the caller's
  *						responsibility to delete the buffer
- * @param p_is_read_stream  whether the stream is a read stream (true) or not (false)
+ * @param is_read_stream  whether the stream is a read stream (true) or not (false)
  */
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mem_stream(uint8_t *buf,
-		size_t buffer_len, bool ownsBuffer, bool p_is_read_stream);
+GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mem_stream(uint8_t *buf,
+		size_t buffer_len, bool ownsBuffer, bool is_read_stream);
 
+/**
+ * Get length of memory stream
+ *
+ * @param stream memory stream
+ */
 GRK_API size_t GRK_CALLCONV grk_stream_get_write_mem_stream_length(
-		 grk_stream  * );
+		grk_stream *stream);
 
-GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
+/**
+ * Create mapped file stream
+ *
+ * @param fname	file name
+ */
+GRK_API grk_stream* GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
 		const char *fname);
 
 /*
@@ -1414,26 +1497,29 @@ GRK_API  grk_stream  *  GRK_CALLCONV grk_stream_create_mapped_file_read_stream(
  ========================================
  */
 /**
- * Set the info handler used by Grok.
+ * Set info handler
+ *
  * @param p_callback    the callback function which will be used
- * @param p_user_data   client object where will be returned the message
+ * @param user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_info_handler( grk_msg_callback p_callback,
-		void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_info_handler(grk_msg_callback p_callback,
+		void *user_data);
 /**
- * Set the warning handler used by Grok.
+ * Set warning handler
+ *
  * @param p_callback    the callback function which will be used
- * @param p_user_data   client object where will be returned the message
+ * @param user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_warning_handler( 	grk_msg_callback p_callback,
-		void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_warning_handler(grk_msg_callback p_callback,
+		void *user_data);
 /**
- * Set the error handler used by Grok.
+ * Set error handler
+ *
  * @param p_callback    the callback function which will be used
- * @param p_user_data   client object where will be returned the message
+ * @param user_data   client object where will be returned the message
  */
-GRK_API bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
-		void *p_user_data);
+GRK_API bool GRK_CALLCONV grk_set_error_handler(grk_msg_callback p_callback,
+		void *user_data);
 
 /*
  ===============================
@@ -1442,111 +1528,111 @@ GRK_API bool GRK_CALLCONV grk_set_error_handler( grk_msg_callback p_callback,
  */
 
 /**
- * Creates a J2K/JP2 decompression structure
- * @param format 		Decoder to select
- * @param	p_stream	the jpeg2000 stream.
+ * Destroy codec
  *
- * @return a handle to a decompressor if successful, returns nullptr otherwise
+ * @param	codec			JPEG 2000 codec
+ */
+GRK_API void GRK_CALLCONV grk_destroy_codec(grk_codec *codec);
+
+/**
+ * Create J2K/JP2 decompression structure
+ *
+ * @param format 		JPEG 2000 format
+ * @param	stream	JPEG 2000 stream.
+ *
+ * @return a handle to a decompressor if successful, otherwise nullptr
  * */
-GRK_API  grk_codec  *  GRK_CALLCONV grk_create_decompress(
-		GRK_CODEC_FORMAT format, grk_stream  *p_stream);
+GRK_API grk_codec* GRK_CALLCONV grk_create_decompress(GRK_CODEC_FORMAT format,
+		grk_stream *stream);
 
 /**
- * Destroy a decompressor handle
+ * End decompression
  *
- * @param	p_codec			decompressor handle to destroy
+ * @param	codec			JPEG 2000 codec
  */
-GRK_API void GRK_CALLCONV grk_destroy_codec( grk_codec  *p_codec);
+GRK_API bool GRK_CALLCONV grk_end_decompress(grk_codec *codec);
 
 /**
- * End compression
- * @param	p_codec			the JPEG2000 codec
- */
-GRK_API bool GRK_CALLCONV grk_end_decompress( grk_codec  *p_codec);
-
-/**
- * Set decoding parameters to default values
- * @param parameters Decompression parameters
- */
-GRK_API void GRK_CALLCONV grk_set_default_decoder_parameters(
-		grk_dparameters  *parameters);
-
-/**
- * Setup the decoder with decompression parameters provided by the user and with the message handler
- * provided by the user.
+ * Initialize decompress parameters with default values
  *
- * @param p_codec 		decompressor handler
+ * @param parameters decompression parameters
+ */
+GRK_API void GRK_CALLCONV grk_set_default_decompress_params(
+		grk_dparameters *parameters);
+
+/**
+ * Set up the decompressor with decompress parameters
+ *
+ * @param codec 		decompressor handler
  * @param parameters 	decompression parameters
  *
  * @return true			if the decoder is correctly set
  */
-GRK_API bool GRK_CALLCONV grk_setup_decoder( grk_codec  *p_codec,
-		 grk_dparameters  *parameters);
+GRK_API bool GRK_CALLCONV grk_init_decompress(grk_codec *codec,
+		grk_dparameters *parameters);
 
 /**
- * Decodes an image header
+ * Decode JPEG 2000 header
  *
- * @param	p_codec				the jpeg2000 codec to read.
- * @param	header_info			information read from jpeg 2000 header.
- * @param	p_image				the image structure initialized with the characteristics
+ * @param	codec				JPEG 2000 codec to read.
+ * @param	header_info			information read from JPEG 2000 header.
+ * @param	image				the image structure initialized with the characteristics
  *								of encoded image.
- * @return true				if the main header of the codestream and the JP2 header
+ * @return true				if the main header of the code stream and the JP2 header
  * 							 is correctly read.
  */
-GRK_API bool GRK_CALLCONV grk_read_header( grk_codec  *p_codec,
-		grk_header_info  *header_info,
-		grk_image **p_image);
+GRK_API bool GRK_CALLCONV grk_read_header(grk_codec *codec,
+		grk_header_info *header_info, grk_image **image);
 
 /**
- * Sets the given area to be decoded. This function should be called
+ * Set the given area to be decompressed. This function should be called
  *  right after grk_read_header and before any tile header reading.
  *
- * @param	p_codec			the jpeg2000 codec.
- * @param	p_image         the decoded image previously set by grk_read_header
- * @param	start_x		the left position of the rectangle to decode (in image coordinates).
- * @param	end_x			the right position of the rectangle to decode (in image coordinates).
- * @param	start_y		the up position of the rectangle to decode (in image coordinates).
- * @param	end_y			the bottom position of the rectangle to decode (in image coordinates).
+ * @param	codec			JPEG 2000 codec.
+ * @param	image         decoded image previously set by grk_read_header
+ * @param	start_x		    left position of the rectangle to decompress (in image coordinates).
+ * @param	end_x			the right position of the rectangle to decompress (in image coordinates).
+ * @param	start_y		    up position of the rectangle to decompress (in image coordinates).
+ * @param	end_y			bottom position of the rectangle to decompress (in image coordinates).
  *
  * @return	true			if the area could be set.
  */
-GRK_API bool GRK_CALLCONV grk_set_decode_area( grk_codec  *p_codec,
-		grk_image *p_image, uint32_t start_x, uint32_t start_y,
-		uint32_t end_x, uint32_t end_y);
-
+GRK_API bool GRK_CALLCONV grk_set_decompress_area(grk_codec *codec,
+		grk_image *image, uint32_t start_x, uint32_t start_y, uint32_t end_x,
+		uint32_t end_y);
 
 /**
- * Decode an image from a JPEG-2000 codestream
+ * Decompress image from a JPEG 2000 code stream
  *
  * @param p_decompressor 	decompressor handle
  * @param tile			 	tile struct from plugin
- * @param p_image 			the decoded image
+ * @param image 			the decoded image
  * @return 					true if success, otherwise false
  * */
-GRK_API bool GRK_CALLCONV grk_decode( grk_codec  *p_decompressor,
-		grk_plugin_tile *tile, grk_image *p_image);
+GRK_API bool GRK_CALLCONV grk_decompress(grk_codec *p_decompressor,
+		grk_plugin_tile *tile, grk_image *image);
 
 /**
- * Get the decoded tile from the codec
+ * Decompress a specific tile
  *
- * @param	p_codec			the jpeg2000 codec.
- * @param	p_image			output image
- * @param	tile_index		index of the tile which will be decode
+ * @param	codec			the JPEG 2000 codec.
+ * @param	image			output image
+ * @param	tile_index		index of the tile to be decompressed
  *
  * @return					true if success, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decode_tile( grk_codec  *p_codec,
-		 grk_image *p_image, uint16_t tile_index);
+GRK_API bool GRK_CALLCONV grk_decompress_tile(grk_codec *codec,
+		grk_image *image, uint16_t tile_index);
 
 /**
- * Reads a tile header. This function is compulsory and allows one
- *  to know the size of the tile that will be decoded.
- * The user may need to refer to the image got by grk_read_header
- *  to understand the size being taken by the tile.
+ * Read tile header. This function allows one
+ * to know the size of the tile that will be decoded.
+ * The user may need to refer to the image returned by grk_read_header
+ * to understand the size being taken by the tile.
  *
- * @param	p_codec			the jpeg2000 codec.
- * @param	tile_index	pointer to a value that will hold the index
- *  of the tile being decoded, in case of success.
+ * @param	codec			JPEG 2000 codec.
+ * @param	tile_index		pointer to a value that will hold the index
+ *  						of the tile being decoded, in case of success.
  * @param	data_size		pointer to a value that will hold
  * 							the maximum size of the decoded data, in case of success. In case
  *							of truncated codestreams, the actual number of bytes decoded
@@ -1558,123 +1644,108 @@ GRK_API bool GRK_CALLCONV grk_decode_tile( grk_codec  *p_codec,
  * @param	p_tile_y1		pointer to a value that will hold the y1 pos of the tile (in the image).
  * @param	p_nb_comps		pointer to a value that will hold the number of components in the tile.
  * @param	p_should_go_on	pointer to a boolean that specifies whether the decoding should go on.
- * 							In case the codestream is over at the time of the call, the value
+ * 							In case the code stream is over at the time of the call, the value
  * 							will be set to false. The user should then stop decoding.
  * @return	true			if the tile header could be decoded. In case the decoding
  * 							should end, the returned value is still true.
  *							returning false may be the result of a shortage of memory
  *							or an internal error.
  */
-GRK_API bool GRK_CALLCONV grk_read_tile_header( grk_codec  *p_codec,
-		uint16_t *tile_index, uint64_t *data_size,
-		uint32_t *p_tile_x0, uint32_t *p_tile_y0, uint32_t *p_tile_x1,
-		uint32_t *p_tile_y1, uint32_t *p_nb_comps, bool *p_should_go_on);
+GRK_API bool GRK_CALLCONV grk_read_tile_header(grk_codec *codec,
+		uint16_t *tile_index, uint64_t *data_size, uint32_t *p_tile_x0,
+		uint32_t *p_tile_y0, uint32_t *p_tile_x1, uint32_t *p_tile_y1,
+		uint32_t *p_nb_comps, bool *p_should_go_on);
 
 /**
- * Reads a tile data. This function is compulsory and allows one to
- * decode tile data. grk_read_tile_header should be called before.
- * The user may need to refer to the image returned by grk_read_header
- * to understand the size being taken by the tile.
+ * Decompress tile data into buffer. grk_read_tile_header should be called before
+ * this method is called. The user may need to refer to the image returned
+ * by grk_read_header to calculate the size of the decompressed tile.
  *
- * @param	p_codec			the jpeg2000 codec.
- * @param	tile_index		the index of the tile being decoded, this should be the value
+ * @param	codec			JPEG 2000 codec.
+ * @param	tile_index		index of the tile being decoded. This should be the value
  * 						 	set by grk_read_tile_header.
- * @param	p_data			pointer to a memory block that will hold the decoded data.
- * @param	data_size		size of p_data. data_size should be bigger or equal to
+ * @param	data			pointer to a memory block that will hold the decoded data.
+ * @param	data_size		size of data. data_size should be greater than or equal to
  * 							the value set by grk_read_tile_header.
  *
- * @return	true			if the data could be decoded.
+ * @return	true			if the data could be decoompressed, otherwise false
  */
-GRK_API bool GRK_CALLCONV grk_decode_tile_to_buffer( grk_codec  *p_codec,
-		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
-
+GRK_API bool GRK_CALLCONV grk_decompress_tile_to_buffer(grk_codec *codec,
+		uint16_t tile_index, uint8_t *data, uint64_t data_size);
 
 /* COMPRESSION FUNCTIONS*/
 
 /**
  * Creates a J2K/JP2 compression structure
  * @param 	format 		Coder to select
- * @param	p_stream	the jpeg2000 stream.
+ * @param	stream	the JPEG 2000 stream.
  * @return 				Returns a handle to a compressor if successful,
  * 						returns nullptr otherwise
  */
-GRK_API  grk_codec  *  GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
-		grk_stream  *p_stream);
+GRK_API grk_codec* GRK_CALLCONV grk_create_compress(GRK_CODEC_FORMAT format,
+		grk_stream *stream);
 
 /**
  Set encoding parameters to default values, that means :
 
  Lossless
- 1 tile
- Size of precinct : 2^15 x 2^15 (means 1 precinct)
- Size of code-block : 64 x 64
+ Single tile
+ Size of precinct : 2^15 x 2^15 (i.e. single precinct)
+ Size of code block : 64 x 64
  Number of resolutions: 6
- No SOP marker in the codestream
- No EPH marker in the codestream
+ No SOP marker in the code stream
+ No EPH marker in the code stream
  No sub-sampling in x or y direction
  No mode switch activated
  Progression order: LRCP
  No index file
  No ROI upshifted
- No offset of the origin of the image
- No offset of the origin of the tiles
- Reversible DWT 5-3
+ Image origin lies at (0,0)
+ Tile origin lies at (0,0)
+ Reversible DWT 5-3 transform
+
  @param parameters Compression parameters
  */
-GRK_API void GRK_CALLCONV grk_set_default_encoder_parameters(
-		 grk_cparameters  *parameters);
+GRK_API void GRK_CALLCONV grk_set_default_compress_params(
+		grk_cparameters *parameters);
 
 /**
- * Setup the encoder parameters using the current image and using user parameters.
- * @param p_codec 		Compressor handle
- * @param parameters 	Compression parameters
- * @param image 		Input filled image
+ * Setup the encoder parameters using the current image and user parameters.
+ *
+ * @param codec 		JPEG 2000 codec
+ * @param parameters 	compression parameters
+ * @param image 		input image
  */
-GRK_API bool GRK_CALLCONV grk_setup_encoder( grk_codec  *p_codec,
-		 grk_cparameters  *parameters, grk_image *image);
+GRK_API bool GRK_CALLCONV grk_init_compress(grk_codec *codec,
+		grk_cparameters *parameters, grk_image *image);
 
 /**
- * Start to compress the current image.
- * @param p_codec 		Compressor handle
+ * Start compressing current image.
+ *
+ * @param codec 		Compressor handle
  * @param image 	    Input filled image
+ *
  */
-GRK_API bool GRK_CALLCONV grk_start_compress( grk_codec  *p_codec,
-		grk_image *p_image);
+GRK_API bool GRK_CALLCONV grk_start_compress(grk_codec *codec,
+		grk_image *image);
 
 /**
- * End to compress the current image.
- * @param p_codec 		Compressor handle
- */
-GRK_API bool GRK_CALLCONV grk_end_compress( grk_codec  *p_codec);
-
-/**
- * Encode an image into a JPEG-2000 codestream
- * @param p_codec 		compressor handle
+ * Encode an image into a JPEG 2000 code stream
+ * @param codec 		compressor handle
  *
  * @return 				Returns true if successful, returns false otherwise
  */
-GRK_API bool GRK_CALLCONV grk_encode( grk_codec  *p_codec);
+GRK_API bool GRK_CALLCONV grk_compress(grk_codec *codec);
 
 /**
- * Encode an image into a JPEG-2000 codestream using plugin
- * @param p_codec 		compressor handle
- * @param tile			plugin tile
- *
- * @return 				Returns true if successful, returns false otherwise
- */
-GRK_API bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_codec,
-		grk_plugin_tile *tile);
-
-
-/**
- * Writes uncompressed data to a tile from a buffer.
+ * Compress uncompressed data stored in a buffer.
  * This method should be called right after grk_start_compress,
  * and before grk_end_compress.
  *
- * @param	p_codec		    the jpeg2000 codec.
+ * @param	codec		    the JPEG 2000 codec.
  * @param	tile_index		the index of the tile to write. At the moment,
  * 							the tiles must be written from 0 to n-1 in sequence.
- * @param	p_data			pointer to the data to write. Data is arranged in planar
+ * @param	data			pointer to the data to write. Data is arranged in planar
  *  						sequence, data_comp0, data_comp1 etc,
  *  						The data should NOT BE INTERLEAVED.
  * @param	data_size		this value is used to ensure the data
@@ -1686,65 +1757,77 @@ GRK_API bool GRK_CALLCONV grk_encode_with_plugin( grk_codec  *p_codec,
  *
  * @return	true if the data could be written.
  */
-GRK_API bool GRK_CALLCONV grk_encode_tile( grk_codec  *p_codec,
-		uint16_t tile_index, uint8_t *p_data, uint64_t data_size);
+GRK_API bool GRK_CALLCONV grk_compress_tile(grk_codec *codec,
+		uint16_t tile_index, uint8_t *data, uint64_t data_size);
 
-/*
- ==========================================================
- codec output functions definitions
- ==========================================================
+
+/**
+ * Encode an image into a JPEG-2000 code stream using plugin
+ * @param codec 		compressor handle
+ * @param tile			plugin tile
+ *
+ * @return 				Returns true if successful, returns false otherwise
  */
+GRK_API bool GRK_CALLCONV grk_compress_with_plugin(grk_codec *codec,
+		grk_plugin_tile *tile);
+
+
+/**
+ * End to compress the current image.
+ * @param codec 		Compressor handle
+ */
+GRK_API bool GRK_CALLCONV grk_end_compress(grk_codec *codec);
+
+
 /**
  Destroy Codestream information after compression or decompression
  @param cstr_info Codestream information structure
  */
 GRK_API void GRK_CALLCONV grk_destroy_cstr_info(
-		 grk_codestream_info_v2  **cstr_info);
+		grk_codestream_info_v2 **cstr_info);
 
 /**
- * Dump the codec information into the output stream
+ * Dump codec information to file
  *
- * @param	p_codec			the jpeg2000 codec.
+ * @param	codec			JPEG 2000 codec.
  * @param	info_flag		type of information dump.
  * @param	output_stream	output stream where dump the information get from the codec.
  *
  */
-GRK_API void GRK_CALLCONV grk_dump_codec( grk_codec  *p_codec,
-		int32_t info_flag, FILE *output_stream);
+GRK_API void GRK_CALLCONV grk_dump_codec(grk_codec *codec, int32_t info_flag,
+		FILE *output_stream);
 
 /**
- * Get the codestream information from the codec
+ * Get code stream information from codec
  *
- * @param	p_codec			the jpeg2000 codec.
+ * @param	codec			the JPEG 2000 codec.
  *
- * @return					a pointer to a codestream information structure.
+ * @return					pointer to a code stream information structure.
  *
  */
-GRK_API  grk_codestream_info_v2  *  GRK_CALLCONV grk_get_cstr_info(
-		 grk_codec  *p_codec);
+GRK_API grk_codestream_info_v2* GRK_CALLCONV grk_get_cstr_info(
+		grk_codec *codec);
 
 /**
- * Get the codestream index from the codec
+ * Get the code stream index from the codec
  *
- * @param	p_codec			the jpeg2000 codec.
+ * @param	codec			JPEG 2000 codec.
  *
- * @return					a pointer to a codestream index structure.
+ * @return					pointer to a code stream index structure.
  *
  */
-GRK_API  grk_codestream_index  *  GRK_CALLCONV grk_get_cstr_index(
-		 grk_codec  *p_codec);
+GRK_API grk_codestream_index* GRK_CALLCONV grk_get_cstr_index(grk_codec *codec);
 
+/**
+ * Destroy code stream index
+ *
+ * @param p_cstr_index		code stream index
+ */
 GRK_API void GRK_CALLCONV grk_destroy_cstr_index(
-		 grk_codestream_index  **p_cstr_index);
-
-/*
- ==========================================================
- MCT functions
- ==========================================================
- */
+		grk_codestream_index **p_cstr_index);
 
 /**
- * Sets the MCT matrix to use.
+ * Set the MCT matrix to use.
  *
  * @param	parameters		the parameters to change.
  * @param	pEncodingMatrix	the encoding matrix.
@@ -1753,7 +1836,7 @@ GRK_API void GRK_CALLCONV grk_destroy_cstr_index(
  *
  * @return	true if the parameters could be set.
  */
-GRK_API bool GRK_CALLCONV grk_set_MCT( grk_cparameters  *parameters,
+GRK_API bool GRK_CALLCONV grk_set_MCT(grk_cparameters *parameters,
 		float *pEncodingMatrix, int32_t *p_dc_shift, uint32_t pNbComp);
 
 /*****************
@@ -1768,48 +1851,64 @@ typedef struct _grk_plugin_load_info {
 	const char *plugin_path;
 } grk_plugin_load_info;
 
+/**
+ * Load plugin
+ *
+ * @param info		plugin loading info
+ */
 GRK_API bool GRK_CALLCONV grk_plugin_load(grk_plugin_load_info info);
 
+/**
+ * Release plugin resources
+ */
 GRK_API void GRK_CALLCONV grk_plugin_cleanup(void);
 
 // No debug is done on plugin. Production setting.
 #define GRK_PLUGIN_STATE_NO_DEBUG			0x0
 
-//For encode debugging, the plugin first performs a T1 encode.
-// Then:
-// 1. perform host DWT on plugin MCT data, and write to host image
-// This way, both plugin and host start from same point
-// (assume MCT is equivalent for both host and plugin)
-//2. map plugin DWT data, compare with host DWT, and then write to plugin image
-// At this point in the code, the plugin image holds plugin DWT data. And if no warnings are triggered,
-// then we can safely say that host and plugin DWT data are identical.
-//3. Perform host encode, skipping MCT and DWT (they have already been performed)
-//4. during host encode, each context that is formed is compared against context stream from plugin
-//5. rate control - synch with plugin code stream, and compare
-//6. T2 and store to disk
+/*
+ For compress debugging, the plugin first performs a T1 encode.
+ Then:
+ 1. perform host DWT on plugin MCT data, and write to host image
+ This way, both plugin and host start from same point
+ (assume MCT is equivalent for both host and plugin)
+ 2. map plugin DWT data, compare with host DWT, and then write to plugin image
+ At this point in the code, the plugin image holds plugin DWT data. And if no warnings are triggered,
+ then we can safely say that host and plugin DWT data are identical.
+ 3. Perform host encode, skipping MCT and DWT (they have already been performed)
+ 4. during host encode, each context that is formed is compared against context stream from plugin
+ 5. rate control - synch with plugin code stream, and compare
+ 6. T2 and store to disk
+ */
+
 #define GRK_PLUGIN_STATE_DEBUG				0x1
 #define GRK_PLUGIN_STATE_PRE_TR1			0x2
 #define GRK_PLUGIN_STATE_DWT_QUANTIZATION	0x4
 #define GRK_PLUGIN_STATE_MCT_ONLY			0x8
 
+/**
+ * Get debug state of plugin
+ */
 GRK_API uint32_t GRK_CALLCONV grk_plugin_get_debug_state();
 
 /*
  Plugin encoding
  */
-
 typedef struct _grk_plugin_init_info {
 	int32_t deviceId;
 	bool verbose;
 } grk_plugin_init_info;
 
+/**
+ * Initialize plugin
+ */
 GRK_API bool GRK_CALLCONV grk_plugin_init(grk_plugin_init_info initInfo);
 
 typedef struct grk_plugin_encode_user_callback_info {
 	const char *input_file_name;
 	bool outputFileNameIsRelative;
 	const char *output_file_name;
-	 grk_cparameters  *encoder_parameters;
+	grk_cparameters *encoder_parameters;
 	grk_image *image;
 	grk_plugin_tile *tile;
 	uint8_t *compressBuffer;
@@ -1820,23 +1919,43 @@ typedef struct grk_plugin_encode_user_callback_info {
 typedef bool (*GRK_PLUGIN_ENCODE_USER_CALLBACK)(
 		grk_plugin_encode_user_callback_info *info);
 
-GRK_API int32_t GRK_CALLCONV grk_plugin_encode(
-		 grk_cparameters  *encode_parameters,
+/**
+ * Compress with plugin
+ *
+ * @param encode_parameters 	compress parameters
+ * @param callback				callback
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_compress(
+		grk_cparameters *encode_parameters,
 		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
-GRK_API int32_t GRK_CALLCONV grk_plugin_batch_encode(const char *input_dir,
-		const char *output_dir,  grk_cparameters  *encode_parameters,
+/**
+ * Batch compress with plugin
+ *
+ * @param input_dir				directory holding input images
+ * @param encode_parameters 	compress parameters
+ * @param callback				callback
+ *
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_compress(const char *input_dir,
+		const char *output_dir, grk_cparameters *encode_parameters,
 		GRK_PLUGIN_ENCODE_USER_CALLBACK callback);
 
+/**
+ * Check if batch job is complete
+ */
 GRK_API bool GRK_CALLCONV grk_plugin_is_batch_complete(void);
 
-GRK_API void GRK_CALLCONV grk_plugin_stop_batch_encode(void);
+/**
+ * Stop batch compress
+ */
+GRK_API void GRK_CALLCONV grk_plugin_stop_batch_compress(void);
 
 /*
- Plugin decoding
+ Plugin decompression
  */
 
-typedef int (*GROK_INIT_DECODERS)( grk_header_info  *header_info,
+typedef int (*GROK_INIT_DECODERS)(grk_header_info *header_info,
 		grk_image *image);
 
 typedef struct _grk_plugin_decode_callback_info {
@@ -1848,9 +1967,9 @@ typedef struct _grk_plugin_decode_callback_info {
 	GRK_SUPPORTED_FILE_FMT decod_format;
 	// output file format 0: PGX, 1: PxM, 2: BMP etc 
 	uint32_t cod_format;
-	 grk_stream  *l_stream;
-	 grk_codec  *l_codec;
-	 grk_header_info  header_info;
+	grk_stream *l_stream;
+	grk_codec *l_codec;
+	grk_header_info header_info;
 	grk_decompress_parameters *decoder_parameters;
 	grk_image *image;
 	bool plugin_owns_image;
@@ -1862,18 +1981,37 @@ typedef struct _grk_plugin_decode_callback_info {
 typedef int32_t (*grk_plugin_decode_callback)(
 		grk_plugin_decode_callback_info *info);
 
-GRK_API int32_t GRK_CALLCONV grk_plugin_decode(
-		grk_decompress_parameters *decode_parameters,
+/**
+ * Decompress with plugin
+ *
+ * @param decompress_parameters  decompress parameters
+ * @param callback  			 callback
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_decompress(
+		grk_decompress_parameters *decompress_parameters,
 		grk_plugin_decode_callback callback);
 
-GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decode(
+/**
+ * Initialize batch decompress
+ *
+ * @param input_dir input directory holding compressed images
+ * @param decompress_parameters  decompress parameters
+ * @param callback  			 callback
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_init_batch_decompress(
 		const char *input_dir, const char *output_dir,
-		grk_decompress_parameters *decode_parameters,
+		grk_decompress_parameters *decompress_parameters,
 		grk_plugin_decode_callback callback);
 
-GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decode(void);
+/**
+ * Batch decompress
+ */
+GRK_API int32_t GRK_CALLCONV grk_plugin_batch_decompress(void);
 
-GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decode(void);
+/**
+ * Stop batch decompress
+ */
+GRK_API void GRK_CALLCONV grk_plugin_stop_batch_decompress(void);
 
 #ifdef __cplusplus
 }

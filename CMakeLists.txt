@@ -32,8 +32,8 @@ include_regular_expression("^.*$")
 
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
-set(GROK_VERSION_MAJOR 5)
-set(GROK_VERSION_MINOR 1)
+set(GROK_VERSION_MAJOR 6)
+set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}")
@@ -49,11 +49,12 @@ set(PACKAGE_VERSION
 #   4.1.0 |  10
 #   4.2.0 |  10
 #   5.0.0 |  11
+#   6.0.0 |  12
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 11)
+  set(GROK_SOVERSION 12)
 endif(NOT GROK_SOVERSION)
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
@@ -127,7 +128,7 @@ configure_file(
 #-----------------------------------------------------------------------------
 # Grok build configuration options.
 option(BUILD_SHARED_LIBS "Build Grok shared library and link executables against it." ON)
-option(BUILD_STATIC_LIBS "Build Grok static library." ON)
+option(BUILD_STATIC_LIBS "Build Grok static library." OFF)
 set (EXECUTABLE_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all executables.")
 set (LIBRARY_OUTPUT_PATH ${GROK_BINARY_DIR}/bin CACHE PATH "Single output directory for building all libraries.")
 mark_as_advanced(LIBRARY_OUTPUT_PATH EXECUTABLE_OUTPUT_PATH)

@@ -114,7 +114,7 @@ static int parse_cmdline_decoder(int argc, char **argv,
 static grk_image* convert_gray_to_rgb(grk_image *original);
 
 void exit_func() {
-	grk_plugin_stop_batch_decode();
+	grk_plugin_stop_batch_decompress();
 }
 
 #ifdef  _WIN32
@@ -783,7 +783,7 @@ static void set_default_parameters(grk_decompress_parameters *parameters) {
 		parameters->cod_format = GRK_UNK_FMT;
 
 		/* default decoding parameters (core) */
-		grk_set_default_decoder_parameters(&(parameters->core));
+		grk_set_default_decompress_params(&(parameters->core));
 		parameters->deviceId = 0;
 		parameters->repeats = 1;
 		parameters->compressionLevel = GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT;
@@ -1239,12 +1239,12 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 	if (isBatch) {
 		//initialize batch
 		setup_signal_handler();
-		success = grk_plugin_init_batch_decode(initParams->img_fol.imgdirpath,
+		success = grk_plugin_init_batch_decompress(initParams->img_fol.imgdirpath,
 				initParams->out_fol.imgdirpath, &initParams->parameters,
 				decode_callback);
 		//start batch
 		if (success)
-			success = grk_plugin_batch_decode();
+			success = grk_plugin_batch_decompress();
 		// if plugin successfully begins batch encode, then wait for batch to complete
 		if (success == 0) {
 			uint32_t slice = 100;	//ms
@@ -1258,7 +1258,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 					break;
 				}
 			}
-			grk_plugin_stop_batch_decode();
+			grk_plugin_stop_batch_decompress();
 		}
 	} else {
 		/* Initialize reading of directory */
@@ -1311,7 +1311,7 @@ int plugin_main(int argc, char **argv, DecompressInitParams *initParams) {
 		}
 
 		//1. try to decode using plugin
-		success = grk_plugin_decode(&initParams->parameters, decode_callback);
+		success = grk_plugin_decompress(&initParams->parameters, decode_callback);
 		if (success != 0)
 			goto cleanup;
 		num_decompressed_images++;
@@ -1445,7 +1445,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 		grk_set_error_handler(error_callback, nullptr);
 
-		if (!grk_setup_decoder(info->l_codec, &(parameters->core))) {
+		if (!grk_init_decompress(info->l_codec, &(parameters->core))) {
 			spdlog::error("grk_decompress: failed to setup the decoder");
 			failed = 1;
 			goto cleanup;
@@ -1513,7 +1513,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		}
 	}
 
-	if (!grk_set_decode_area(info->l_codec, info->image, parameters->DA_x0,
+	if (!grk_set_decompress_area(info->l_codec, info->image, parameters->DA_x0,
 			parameters->DA_y0, parameters->DA_x1, parameters->DA_y1)) {
 		spdlog::error("grk_decompress: failed to set the decoded area");
 		failed = 1;
@@ -1522,7 +1522,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 
 	// decode all tiles
 	if (!parameters->nb_tile_to_decode) {
-		if (!(grk_decode(info->l_codec, info->tile, info->image)
+		if (!(grk_decompress(info->l_codec, info->tile, info->image)
 				&& grk_end_decompress(info->l_codec))) {
 			spdlog::error("grk_decompress: failed to decode image!");
 			failed = 1;
@@ -1531,7 +1531,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 	}
 	// or, decode one particular tile
 	else {
-		if (!grk_decode_tile(info->l_codec, info->image,
+		if (!grk_decompress_tile(info->l_codec, info->image,
 				parameters->tile_index)) {
 			spdlog::error("grk_decompress: failed to decode tile!");
 			failed = 1;

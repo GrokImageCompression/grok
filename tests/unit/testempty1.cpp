@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    grk_set_default_encoder_parameters(&parameters);
+    grk_set_default_compress_params(&parameters);
     parameters.cod_format = GRK_J2K_FMT;
     puts(v);
     cmptparm.prec = 8;
@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
     grk_set_warning_handler(warning_callback,nullptr);
     grk_set_error_handler(error_callback,nullptr);
 
-    grk_setup_encoder(l_codec, &parameters, image);
+    grk_init_compress(l_codec, &parameters, image);
 
     bSuccess = grk_start_compress(l_codec,image);
     if( !bSuccess ) {
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
     }
 
     assert( bSuccess );
-    bSuccess = grk_encode(l_codec);
+    bSuccess = grk_compress(l_codec);
     assert( bSuccess );
     bSuccess = grk_end_compress(l_codec);
     assert( bSuccess );

@@ -57,17 +57,17 @@ a library for reading and writing JPEG2000 image files.
 .B YUV: imagetoyuv() \fR/\fB yuvtoimage() \fR(MJ2) 
 .P
 .SS READ
-.B grk_set_default_decoder_parameters( grk_dparameters  *\fIparams\fB);
+.B grk_set_default_decompress_params( grk_dparameters  *\fIparams\fB);
 .P
 .B  grk_dinfo  *grk_create_decompress(GRK_CODEC_FORMAT \fIformat\fB);
 .P
 .B  grk_event_mgr  *grk_set_event_mgr(grk_common_ptr \fIinfo\fB,  grk_event_mgr  *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void grk_setup_decoder( grk_dinfo  *\fIdinfo\fB,  grk_dparameters  * \fIparams\fB);
+.B void grk_init_decompress( grk_dinfo  *\fIdinfo\fB,  grk_dparameters  * \fIparams\fB);
 .P
 .B  grk_cio  *grk_cio_open(grk_common_ptr \fIinfo\fB, unsigned char *\fIbuf\fB, int \fIbuf_len\fB);
 .P
-.B grk_image *grk_decode( grk_dinfo  *\fIdinfo\fB,  grk_cio  *\fIcio\fB);
+.B grk_image *grk_decompress( grk_dinfo  *\fIdinfo\fB,  grk_cio  *\fIcio\fB);
 .P
 .B void grk_cio_close( grk_cio  *\fIcio\fB);
 .P
@@ -76,7 +76,7 @@ a library for reading and writing JPEG2000 image files.
 .B void grk_image_destroy(grk_image *\fIimage\fB);
 .P
 .SS WRITE
-.B void grk_set_default_encoder_parameters( grk_cparameters  *\fIparams\fB);
+.B void grk_set_default_compress_params( grk_cparameters  *\fIparams\fB);
 .P
 /*
 .B grk_image *FORMATtoimage(const char *\fIfname\fB,  grk_cparameters  *\fIparams\fB);
@@ -87,11 +87,11 @@ a library for reading and writing JPEG2000 image files.
 .P
 .B  grk_event_mgr  *grk_set_event_mgr(grk_common_ptr \fIinfo\fB,  grk_event_mgr  *\fIevent_mgr\fB, void *\fIcontext\fB);
 .P
-.B void grk_setup_encoder( grk_cinfo  *\fIcinfo\fB,  grk_cparameters  *\fIparams\fB, grk_image *\fIimage\fB);
+.B void grk_init_compress( grk_cinfo  *\fIcinfo\fB,  grk_cparameters  *\fIparams\fB, grk_image *\fIimage\fB);
 .P
 .B  grk_cio  *grk_cio_open(grk_common_ptr \fIcinfo\fB, \fINULL\fB, \fI0\fB);
 .P
-.B  bool grk_encode( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB, char *\fIindex\fB);
+.B  bool grk_compress( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB, char *\fIindex\fB);
 .P
 .B void grk_cio_close( grk_cio  *\fIcio\fB);
 .P
@@ -109,7 +109,7 @@ a library for reading and writing JPEG2000 image files.
 .P
 .B grk_image *grk_decode_with_info( grk_dinfo  *\fIdinfo\fB,  grk_cio  *\fIcio\fB,  grk_codestream_info  *\fIcstr_info\fB);
 .P
-.B bool grk_encode_with_info( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB,  grk_codestream_info  *\fIcstr_info\fB);
+.B bool grk_compress_with_info( grk_cinfo  *\fIcinfo\fB,  grk_cio  *\fIcio\fB, grk_image *\fIimage\fB,  grk_codestream_info  *\fIcstr_info\fB);
 .P
 .B void grk_destroy_cstr_info( grk_codestream_info  *\fIcstr_info\fB);
 .P
@@ -246,10 +246,10 @@ typedef struct grk_cparameters
     /* output file name */
     \fBchar\fR outfile[GRK_PATH_LEN];
     /* DEPRECATED. Index generation is now handeld with the 
-        grk_encode_with_info() function. Set to NULL */
+        grk_compress_with_info() function. Set to NULL */
     \fBint\fR index_on;
     /* DEPRECATED. Index generation is now handeld with the 
-        grk_encode_with_info() function. Set to NULL */
+        grk_compress_with_info() function. Set to NULL */
     \fBchar\fR index[GRK_PATH_LEN];
     /* subimage encoding: origin image offset in x direction */
     \fBint\fR image_offset_x0;

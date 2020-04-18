@@ -158,7 +158,7 @@ int main(int argc, char *argv[]) {
 		data[i] = (uint8_t) i; /*rand();*/
 	}
 
-	grk_set_default_encoder_parameters(&param);
+	grk_set_default_compress_params(&param);
 	/** you may here add custom encoding parameters */
 	/* rate specifications */
 	/** number of quality layers in the stream */
@@ -283,7 +283,7 @@ int main(int argc, char *argv[]) {
 	image->y1 = image_height;
 	image->color_space = GRK_CLRSPC_SRGB;
 
-	if (!grk_setup_encoder(codec, &param, image)) {
+	if (!grk_init_compress(codec, &param, image)) {
 		spdlog::error("test_tile_encoder: failed to setup the codec!\n");
 		rc = 1;
 		goto cleanup;
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	for (i = 0; i < nb_tiles; ++i) {
-		if (!grk_encode_tile(codec, (uint16_t) i, data, data_size)) {
+		if (!grk_compress_tile(codec, (uint16_t) i, data, data_size)) {
 			spdlog::error("test_tile_encoder: failed to write the tile %d!\n",
 					i);
 			rc = 1;

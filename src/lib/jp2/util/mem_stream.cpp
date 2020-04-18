@@ -103,10 +103,10 @@ static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
 }
 
 static void set_up_mem_stream( grk_stream  *l_stream, size_t len,
-		bool p_is_read_stream) {
+		bool is_read_stream) {
 	grk_stream_set_user_data_length(l_stream, len);
 
-	if (p_is_read_stream) {
+	if (is_read_stream) {
 		grk_stream_set_read_function(l_stream,
 				(grk_stream_read_fn) read_from_mem);
 		grk_stream_set_zero_copy_read_function(l_stream,
@@ -129,16 +129,16 @@ size_t get_mem_stream_offset( grk_stream  *stream) {
 }
 
  grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
-		bool p_is_read_stream) {
+		bool is_read_stream) {
 	if (!buf || !len) {
 		return nullptr;
 	}
-	auto l_stream = new BufferedStream(buf, len, p_is_read_stream);
+	auto l_stream = new BufferedStream(buf, len, is_read_stream);
 	auto p_source_buffer = new buf_info(buf, 0, len, ownsBuffer);
 	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
 			free_mem);
 	set_up_mem_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
-			p_is_read_stream);
+			is_read_stream);
 
 	return ( grk_stream  * ) l_stream;
 }
@@ -328,9 +328,9 @@ static void mem_map_free(void *user_data) {
  Currently, only read streams are supported for memory mapped files.
  */
  grk_stream  *  create_mapped_file_read_stream(const char *fname) {
-	bool p_is_read_stream = true;
+	bool is_read_stream = true;
 
-	grk_handle fd = open_fd(fname, p_is_read_stream ? "r" : "w");
+	grk_handle fd = open_fd(fname, is_read_stream ? "r" : "w");
 	if (fd == (grk_handle) -1)
 		return nullptr;
 
@@ -346,10 +346,10 @@ static void mem_map_free(void *user_data) {
 	buffer_info->off = 0;
 
 	// now treat mapped file like any other memory stream
-	auto l_stream = (grk_stream*)(new BufferedStream(buffer_info->buf, buffer_info->len, p_is_read_stream));
+	auto l_stream = (grk_stream*)(new BufferedStream(buffer_info->buf, buffer_info->len, is_read_stream));
 	grk_stream_set_user_data(l_stream, buffer_info,
 			(grk_stream_free_user_data_fn) mem_map_free);
-	set_up_mem_stream(l_stream, buffer_info->len, p_is_read_stream);
+	set_up_mem_stream(l_stream, buffer_info->len, is_read_stream);
 
 	return l_stream;
 }

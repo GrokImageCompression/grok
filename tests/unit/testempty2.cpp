@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    grk_set_default_encoder_parameters(&parameters);
+    grk_set_default_compress_params(&parameters);
     parameters.cod_format = GRK_J2K_FMT;
     puts(v);
     subsampling_dx = (unsigned int)parameters.subsampling_dx;
@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
     }
 
     l_codec = grk_create_compress(GRK_CODEC_J2K, l_stream);
-    grk_setup_encoder(l_codec, &parameters, image);
+    grk_init_compress(l_codec, &parameters, image);
 
 
     assert(l_stream);
@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
     }
 
     assert( bSuccess );
-    bSuccess = grk_encode(l_codec);
+    bSuccess = grk_compress(l_codec);
     assert( bSuccess );
     bSuccess = grk_end_compress(l_codec);
     assert( bSuccess );
@@ -166,7 +166,7 @@ int main(int argc, char *argv[])
          grk_codec  *  d_codec = nullptr;
          grk_dparameters  dparameters;
 
-         bSuccess = grk_setup_decoder(d_codec, &dparameters);
+         bSuccess = grk_init_decompress(d_codec, &dparameters);
         assert( bSuccess );
 
         l_stream = grk_stream_create_file_stream(outputfile,1024*1024, 1);
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
         bSuccess = grk_read_header(d_codec,nullptr, &image);
         assert( bSuccess );
 
-        bSuccess = grk_decode(l_codec, nullptr, image);
+        bSuccess = grk_decompress(l_codec, nullptr, image);
         assert( bSuccess );
 
         bSuccess = grk_end_decompress(l_codec);

@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
 	}
 
 	/* Set decoding parameters to default values */
-	grk_set_default_decoder_parameters(&parameters);
+	grk_set_default_decompress_params(&parameters);
 
 	strncpy(parameters.infile, argv[1], GRK_PATH_LEN - 1);
 
@@ -145,7 +145,7 @@ int main(int argc, char **argv) {
 	grk_set_error_handler(error_callback, nullptr);
 
 	/* Setup the decoder decoding parameters using user parameters */
-	if (!grk_setup_decoder(l_codec, &parameters)) {
+	if (!grk_init_decompress(l_codec, &parameters)) {
 		spdlog::error("j2k_dump: failed to setup the decoder");
 		grk_stream_destroy(l_stream);
 		grk_destroy_codec(l_codec);
@@ -174,7 +174,7 @@ int main(int argc, char **argv) {
 
 #define TEST_TILE( tile_index ) \
 	fprintf(stdout, "Decoding tile %d ...\n", tile_index); \
-	if(!grk_decode_tile(l_codec, image, tile_index )){ \
+	if(!grk_decompress_tile(l_codec, image, tile_index )){ \
 		spdlog::error("j2k_to_image: failed to decode tile %d\n", tile_index); \
 		grk_stream_destroy(l_stream); \
 		grk_destroy_cstr_info(&cstr_info); \
