@@ -611,3 +611,11 @@ grk_decompress -i @INPUT_NR_PATH@/issue818.jp2 -o @TEMP_PATH@/issue818.png -L 9
 !grk_decompress -i @INPUT_NR_PATH@/issue820.jp2 -o @TEMP_PATH@/issue820.png
 # OpenJPEG issue 1125
 !grk_decompress -i  @INPUT_NR_PATH@/openjpeg_1125.jp2 -o @TEMP_PATH@/openjpeg_1125.png
+
+# Test High Throughput encoding
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht.j2k -M 64
+grk_compress -i @INPUT_NR_PATH@/Bretagne2.ppm -o @TEMP_PATH@/Bretagne2_ht_lossy.j2k -M 64 -I
+
+grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht.j2k -o @TEMP_PATH@/Bretagne2_ht.png
+grk_decompress -i @INPUT_NR_PATH@/Bretagne2_ht_lossy.j2k -o @TEMP_PATH@/Bretagne2_ht_lossy.png
+

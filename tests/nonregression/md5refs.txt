@@ -304,3 +304,6 @@ babec29050d537c62db295e7657fd07a  p0_14_tif-2.tif
 9fd338f380774a5875aa6e72e7fcb3a2  p0_14_tif-8.tif
 7b03d98fc308ab64590c01489aca6a1d  p0_14_tif-9.tif
 d88e0f2f77554ebc55bdf51c5b4cc4a5  random-issue-0005.tif.j2k.lossless.tif
+eeb340cb37a868745b4b149b8fbeccc3  Bretagne2_ht_lossy.png
+dec17b0d2af36884580c1bc0455e7852  Bretagne2_ht.png
+
