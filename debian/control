@@ -1,0 +1,59 @@
+Source: grok-jpeg2000
+Priority: optional
+Maintainer: Aaron Boxer <boxerab@gmail.com>
+Homepage: https://github.com/GrokImageCompression/grok
+Build-Depends: cmake (>= 2.8.2),
+               debhelper (>= 9),
+               debhelper-compat (= 12),
+               help2man,
+               liblcms2-dev,
+               libpng-dev,
+               libtiff-dev,
+               zlib1g-dev
+Standards-Version: 4.5.0
+Section: libs
+Vcs-Browser: https://github.com/GrokImageCompression/grok
+Vcs-Git: https://github.com/GrokImageCompression/grok.git
+Rules-Requires-Root: no
+
+Package: grok-jpeg2000-12-dev
+Section: libdevel
+Architecture: any
+Depends: grok-jpeg2000-12 (= ${binary:Version}), ${misc:Depends}
+Description: development files for Grok, a JPEG 2000 image library
+ Grok is a library for handling the JPEG 2000 image compression format.
+ JPEG 2000 is a wavelet-based image compression standard and permits progressive
+ transmission by pixel and resolution accuracy for progressive downloads of an
+ encoded image. It supports lossless and lossy compression, supports higher
+ compression than JPEG 1991, and has resilience to errors in the image.
+ .
+ This package contains the development files for Grok
+
+Package: grok-jpeg2000-12
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: JPEG 2000 image compression/decompression library
+ Grok is a library for handling the JPEG 2000 image compression format.
+ JPEG 2000 is a wavelet-based image compression standard and permits progressive
+ transmission by pixel and resolution accuracy for progressive downloads of an
+ encoded image. It supports lossless and lossy compression, supports higher
+ compression than JPEG 1991, and has resilience to errors in the image.
+ .
+ This package contains the runtime files for Grok
+
+Package: grok-jpeg2000-tools
+Section: graphics
+Architecture: any
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: command-line tools using the JPEG 2000 library
+ This package provides with command-line tools allowing for conversions between
+ several formats:
+ .
+  - grk_decompress: decodes j2k, jp2, and files to pgm, ppm, pnm,
+                  pgx, and bmp.
+  - grk_compress: encodes pnm, pgm, pgx, bmp, and ppm files to j2k,
+                  and jp2.
+  - grk_dump: dump information contained in j2k and jp2.
