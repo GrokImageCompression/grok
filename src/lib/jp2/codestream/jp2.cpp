@@ -2921,7 +2921,7 @@ static bool jp2_read_box(grk_jp2_box *box, uint8_t *p_data,
 	assert(p_number_bytes_read != nullptr);
 
 	if (p_box_max_size < 8) {
-		GROK_ERROR("Cannot handle box of less than 8 bytes");
+		GROK_ERROR("box must be at least 8 bytes in size");
 		return false;
 	}
 
