@@ -310,10 +310,10 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 			spdlog::error("Invalid width or height");
 			return;
 		}
-
-		ph->ok = true;
+		// bitmap (ascii or binary)
 		if (format == 1 || format == 4)
-			ph->maxval = 255;
+			ph->maxval = 1;
+		ph->ok = true;
 	}
 }
 
@@ -378,8 +378,6 @@ static grk_image* pnmtoimage(const char *filename,
 		spdlog::error("Precision {} is greater than max supported precision (16)", prec);
 		goto cleanup;
 	}
-	if (prec < 8)
-		prec = 8;
 	w = header_info.width;
 	h = header_info.height;
 	area = (uint64_t) w * h;
@@ -406,15 +404,24 @@ static grk_image* pnmtoimage(const char *filename,
 	image->y1 = (parameters->image_offset_y0 + (h - 1) * subsampling_dy + 1);
 
 	if (format == 1) { /* ascii bitmap */
-		for (uint64_t i = 0; i < area; i++) {
-			uint32_t index;
-			if (fscanf(fp, "%u", &index) != 1) {
-				if (parameters->verbose)
-					spdlog::warn(
-							"fscanf return a number of element different from the expected.");
-			}
-			image->comps[0].data[i] = (index ? 0 : 255);
+		const size_t chunkSize = 4096;
+		uint8_t chunk[chunkSize];
+		uint64_t i = 0;
+		while (i < area){
+			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
+		    if (!bytesRead)
+		    	break;
+		   uint8_t* chunkPtr = (uint8_t*)chunk;
+           for (size_t ct = 0; ct < bytesRead; ++ct){
+        	   uint8_t c = *chunkPtr++;
+        	   if (c != '\n')
+        		  image->comps[0].data[i++] = (c & 1) ? 0 : 1;
+           }
 		}
+        if (i != area){
+        	spdlog::error("{} bytes read < image area {}", i, area);
+        	goto cleanup;
+        }
 	} else if (format == 2 || format == 3) { /* ascii pixmap */
 		uint32_t index;
 
