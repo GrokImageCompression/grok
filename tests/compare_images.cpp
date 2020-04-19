@@ -80,13 +80,13 @@ using namespace std;
  * Parse MSE and PEAK input values (
  * separator = ":"
  *******************************************************************************/
-static double* parseToleranceValues(char *inArg, const uint32_t nbcomp) {
+static double* parseToleranceValues(char *inArg, const size_t nbcomp) {
 	if (!nbcomp || !inArg)
 		return nullptr;
 	double *outArgs = (double*) malloc((size_t) nbcomp * sizeof(double));
 	if (!outArgs)
 		return nullptr;
-	uint32_t it_comp = 0;
+	size_t it_comp = 0;
 	const char delims[] = ":";
 	char *result = strtok(inArg, delims);
 
@@ -151,7 +151,7 @@ static int get_decod_format_from_string(const char *filename) {
  * (begin from 0)
  *******************************************************************************/
 static char* createMultiComponentsFilename(const char *inFilename,
-		const int indexF, const char *separator) {
+		const size_t indexF, const char *separator) {
 	char s[255];
 	char *outFilename, *ptr;
 	const char token = '.';
@@ -178,7 +178,7 @@ static char* createMultiComponentsFilename(const char *inFilename,
 	strncpy(outFilename, inFilename, posToken);
 	outFilename[posToken] = '\0';
 	strcat(outFilename, separator);
-	sprintf(s, "%i", indexF);
+	sprintf(s, "%d", (uint32_t)indexF);
 	strcat(outFilename, s);
 
 	decod_format = get_decod_format_from_string(inFilename);
@@ -195,9 +195,9 @@ static char* createMultiComponentsFilename(const char *inFilename,
 /*******************************************************************************
  *
  *******************************************************************************/
-static grk_image* readImageFromFilePPM(const char *filename, uint32_t nbFilenamePGX,
+static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
-	uint32_t it_file = 0;
+	size_t it_file = 0;
 	grk_image *image_read = nullptr;
 	grk_image *image = nullptr;
 	grk_cparameters parameters;
@@ -298,7 +298,7 @@ static grk_image* readImageFromFilePPM(const char *filename, uint32_t nbFilename
 	cleanup: if (param_image_read)
 		free(param_image_read);
 	if (data) {
-		for (int it_free_data = 0; it_free_data < it_file; it_free_data++) {
+		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++) {
 			if (data[it_free_data])
 				free(data[it_free_data]);
 		}
@@ -308,7 +308,7 @@ static grk_image* readImageFromFilePPM(const char *filename, uint32_t nbFilename
 	return image;
 }
 
-static grk_image* readImageFromFilePNG(const char *filename, int nbFilenamePGX,
+static grk_image* readImageFromFilePNG(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
 	grk_image *image_read = nullptr;
 	grk_cparameters parameters;
@@ -335,7 +335,7 @@ static grk_image* readImageFromFilePNG(const char *filename, int nbFilenamePGX,
 	return image_read;
 }
 
-static grk_image* readImageFromFileTIF(const char *filename, int nbFilenamePGX,
+static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
 	grk_image *image_read = nullptr;
 	grk_cparameters parameters;
@@ -372,9 +372,9 @@ static grk_image* readImageFromFileTIF(const char *filename, int nbFilenamePGX,
 	return image_read;
 }
 
-static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
+static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePGX,
 		const char *separator) {
-	int it_file;
+	size_t it_file;
 	grk_image *image_read = nullptr;
 	grk_image *image = nullptr;
 	grk_cparameters parameters;
@@ -395,10 +395,10 @@ static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
 
 	/* Allocate memory*/
 	param_image_read = (grk_image_cmptparm*) malloc(
-			(size_t) nbFilenamePGX * sizeof(grk_image_cmptparm));
+			nbFilenamePGX * sizeof(grk_image_cmptparm));
 	if (!param_image_read)
 		goto cleanup;
-	data = (int**) calloc((size_t) nbFilenamePGX, sizeof(*data));
+	data = (int**) calloc(nbFilenamePGX, sizeof(*data));
 	if (!data)
 		goto cleanup;
 
@@ -470,7 +470,7 @@ static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
 	cleanup: if (param_image_read)
 		free(param_image_read);
 	if (data) {
-		for (int it_free_data = 0; it_free_data < it_file; it_free_data++) {
+		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++) {
 			if (data[it_free_data])
 				free(data[it_free_data]);
 		}
@@ -484,7 +484,7 @@ static grk_image* readImageFromFilePGX(const char *filename, int nbFilenamePGX,
  *
  *******************************************************************************/
 static int imageToPNG(const grk_image *image, const char *filename,
-		uint32_t num_comp_select) {
+		size_t num_comp_select) {
 	grk_image_cmptparm param_image_write;
 	grk_image *image_write = nullptr;
 
@@ -773,7 +773,7 @@ int main(int argc, char **argv) {
 #endif
 
 	test_cmp_parameters inParam;
-	uint32_t it_comp;
+	size_t it_comp;
 	int failed = 1;
 	uint32_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
 	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
@@ -912,7 +912,7 @@ int main(int argc, char **argv) {
 		auto testComp = imageTest->comps + it_comp;
 		if (baseComp->sgnd != testComp->sgnd) {
 			fprintf(stderr, "[ERROR]  sign mismatch [comp %d] (%d><%d)\n",
-					it_comp, baseComp->sgnd, testComp->sgnd);
+					(uint32_t)it_comp, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
@@ -933,20 +933,20 @@ int main(int argc, char **argv) {
 
 			if (baseComp->h != testComp->h) {
 				fprintf(stderr, "[ERROR]  height mismatch [comp %d] (%d><%d)\n",
-						it_comp, baseComp->h, testComp->h);
+						(uint32_t)it_comp, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
 				fprintf(stderr, "[ERROR]  width mismatch [comp %d] (%d><%d)\n",
-						it_comp, baseComp->w, testComp->w);
+						(uint32_t)it_comp, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
 			fprintf(stderr, "[ERROR]  precision mismatch [comp %d] (%d><%d)\n",
-					it_comp, baseComp->prec, testComp->prec);
+					(uint32_t)it_comp, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
 
@@ -1018,10 +1018,10 @@ int main(int argc, char **argv) {
 			/* Conformance test*/
 			printf(
 					"<DartMeasurement name=\"PEAK_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
-					it_comp, PEAK);
+					(uint32_t)it_comp, PEAK);
 			printf(
 					"<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
-					it_comp, MSE);
+					(uint32_t)it_comp, MSE);
 
 			if ((MSE > inParam.tabMSEvalues[it_comp])
 					|| (PEAK > inParam.tabPEAKvalues[it_comp])) {
@@ -1039,16 +1039,16 @@ int main(int argc, char **argv) {
 
 				printf(
 						"<DartMeasurement name=\"NumberOfPixelsWithDifferences_%d\" type=\"numeric/int\"> %d </DartMeasurement> \n",
-						it_comp, nbPixelDiff);
+						(uint32_t)it_comp, nbPixelDiff);
 				printf(
 						"<DartMeasurement name=\"ComponentError_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
-						it_comp, sumDiff);
+						(uint32_t)it_comp, sumDiff);
 				printf(
 						"<DartMeasurement name=\"PEAK_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
-						it_comp, PEAK);
+						(uint32_t)it_comp, PEAK);
 				printf(
 						"<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
-						it_comp, MSE);
+						(uint32_t)it_comp, MSE);
 
 #ifdef GROK_HAVE_LIBPNG
 				{
@@ -1083,7 +1083,7 @@ int main(int argc, char **argv) {
 					}
 					strcpy(filenamePNGdiff_it_comp, filenamePNGdiff);
 
-					sprintf(it_compc, "_%i", it_comp);
+					sprintf(it_compc, "_%i", (uint32_t)it_comp);
 					strcat(it_compc, ".png");
 					strcat(filenamePNGbase_it_comp, it_compc);
 					/*printf("filenamePNGbase_it = %s [%d / %d octets]\n",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
@@ -1096,21 +1096,21 @@ int main(int argc, char **argv) {
 							it_comp) == EXIT_SUCCESS) {
 						printf(
 								"<DartMeasurementFile name=\"BaselineImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
-								it_comp, filenamePNGbase_it_comp);
+								(uint32_t)it_comp, filenamePNGbase_it_comp);
 					}
 
 					if (imageToPNG(imageTest, filenamePNGtest_it_comp,
 							it_comp) == EXIT_SUCCESS) {
 						printf(
 								"<DartMeasurementFile name=\"TestImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
-								it_comp, filenamePNGtest_it_comp);
+								(uint32_t)it_comp, filenamePNGtest_it_comp);
 					}
 
 					if (imageToPNG(imageDiff, filenamePNGdiff_it_comp,
 							it_comp) == EXIT_SUCCESS) {
 						printf(
 								"<DartMeasurementFile name=\"DiffferenceImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
-								it_comp, filenamePNGdiff_it_comp);
+								(uint32_t)it_comp, filenamePNGdiff_it_comp);
 					}
 
 					if (filenamePNGbase_it_comp)
