@@ -80,13 +80,13 @@ using namespace std;
  * Parse MSE and PEAK input values (
  * separator = ":"
  *******************************************************************************/
-static double* parseToleranceValues(char *inArg, const int nbcomp) {
+static double* parseToleranceValues(char *inArg, const uint32_t nbcomp) {
 	if (!nbcomp || !inArg)
 		return nullptr;
 	double *outArgs = (double*) malloc((size_t) nbcomp * sizeof(double));
 	if (!outArgs)
 		return nullptr;
-	int it_comp = 0;
+	uint32_t it_comp = 0;
 	const char delims[] = ":";
 	char *result = strtok(inArg, delims);
 
@@ -195,9 +195,9 @@ static char* createMultiComponentsFilename(const char *inFilename,
 /*******************************************************************************
  *
  *******************************************************************************/
-static grk_image* readImageFromFilePPM(const char *filename, int nbFilenamePGX,
+static grk_image* readImageFromFilePPM(const char *filename, uint32_t nbFilenamePGX,
 		const char *separator) {
-	int it_file = 0;
+	uint32_t it_file = 0;
 	grk_image *image_read = nullptr;
 	grk_image *image = nullptr;
 	grk_cparameters parameters;
@@ -775,12 +775,12 @@ int main(int argc, char **argv) {
 	test_cmp_parameters inParam;
 	uint32_t it_comp;
 	int failed = 1;
-	int nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
+	uint32_t nbFilenamePGXbase = 0, nbFilenamePGXtest = 0;
 	char *filenamePNGtest = nullptr, *filenamePNGbase = nullptr,
 			*filenamePNGdiff = nullptr;
 	size_t memsizebasefilename, memsizetestfilename;
 	size_t memsizedifffilename;
-	int32_t nbPixelDiff = 0;
+	uint32_t nbPixelDiff = 0;
 	double sumDiff = 0.0;
 	/* Structures to store image parameters and data*/
 	grk_image *imageBase = nullptr, *imageTest = nullptr, *imageDiff = nullptr;
@@ -1033,7 +1033,7 @@ int main(int argc, char **argv) {
 				goto cleanup;
 			}
 		} else { /* Non regression-test */
-			if (nbPixelDiff > 0) {
+			if (nbPixelDiff != 0) {
 				char it_compc[255];
 				it_compc[0] = 0;
 
