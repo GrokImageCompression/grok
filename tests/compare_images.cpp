@@ -806,7 +806,7 @@ int main(int argc, char **argv) {
 
 	if ((inParam.tabMSEvalues != nullptr)
 			&& (inParam.tabPEAKvalues != nullptr)) {
-		int it_comp2;
+		uint32_t it_comp2;
 		printf(" MSE values = [");
 		for (it_comp2 = 0; it_comp2 < inParam.nbcomp; it_comp2++)
 			printf(" %f ", inParam.tabMSEvalues[it_comp2]);
@@ -1001,11 +1001,11 @@ int main(int argc, char **argv) {
 				auto absDiff = llabs(diff);
 				if (absDiff > 0) {
 					diffComp->data[testIndex] = (int32_t) absDiff;
-					sumDiff += diff;
+					sumDiff += (double)diff;
 					nbPixelDiff++;
 
-					SE += (double) diff * diff;
-					PEAK = (PEAK > absDiff) ? PEAK : absDiff;
+					SE += (double) diff * (double) diff;
+					PEAK = (PEAK > (double)absDiff) ? PEAK : (double) absDiff;
 				} else
 					diffComp->data[testIndex] = 0;
 
