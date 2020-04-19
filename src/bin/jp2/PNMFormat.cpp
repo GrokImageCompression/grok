@@ -61,6 +61,11 @@
 #include "convert.h"
 #include <cstring>
 #include "common.h"
+#include <iostream>
+#include <string>
+#include <sstream>
+#include <algorithm>
+#include <iterator>
 
 struct pnm_header {
 	uint32_t width, height, maxval, depth, format;
@@ -192,13 +197,38 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph) {
 					spdlog::error("Invalid depth");
 					return;
 				}
-
+				if (ph->depth == 0 || ph->depth > 4) {
+					spdlog::error("Invalid depth {}", ph->depth);
+					return;
+				}
+				switch(ph->depth){
+				case 1:
+					ph->gray = 1;
+					ttype = 1;
+					break;
+				case 2:
+					ph->graya = 1;
+					ttype = 1;
+					break;
+				case 3:
+					ph->rgb = 1;
+					ttype = 1;
+					break;
+				case 4:
+					ph->rgba = 1;
+					ttype = 1;
+					break;
+				}
 				continue;
 			}
 			if (strcmp(idf, "MAXVAL") == 0) {
 				s = skip_int(s, &ph->maxval);
 				if (!s || *s == 0) {
 					spdlog::error("Invalid max val");
+					return;
+				}
+				if (ph->maxval < 1 || ph->maxval > 65535) {
+					spdlog::error("Invalid max value {}", ph->maxval);
 					return;
 				}
 				continue;

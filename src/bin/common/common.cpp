@@ -167,8 +167,8 @@ bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format){
 int get_file_format(const char *filename)
 {
     unsigned int i;
-    static const char *extension[] = {"pgx", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
-    static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT, GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,GRK_J2K_FMT, GRK_J2K_FMT };
+    static const char *extension[] = {"pgx", "pam", "pnm", "pgm", "ppm", "bmp","tif", "tiff", "jpg", "jpeg", "raw", "rawl", "tga", "png", "j2k", "jp2","j2c", "jpc" };
+    static const GRK_SUPPORTED_FILE_FMT format[] = { GRK_PGX_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_PXM_FMT, GRK_BMP_FMT, GRK_TIF_FMT, GRK_TIF_FMT, GRK_JPG_FMT, GRK_JPG_FMT, GRK_RAW_FMT, GRK_RAWL_FMT, GRK_TGA_FMT, GRK_PNG_FMT, GRK_J2K_FMT, GRK_JP2_FMT,GRK_J2K_FMT, GRK_J2K_FMT };
     const char * ext = strrchr(filename, '.');
     if (ext == nullptr)
         return -1;
