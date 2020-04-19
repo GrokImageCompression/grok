@@ -331,10 +331,11 @@ static grk_image* pnmtoimage(const char *filename,
 	grk_image *image = nullptr;
 	struct pnm_header header_info;
 	uint64_t area = 0;
+	bool success = false;
 
 	if ((fp = fopen(filename, "rb")) == nullptr) {
 		spdlog::error("pnmtoimage:Failed to open {} for reading!", filename);
-		return nullptr;
+		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
 	read_pnm_header(fp, &header_info, parameters->verbose);
@@ -391,8 +392,10 @@ static grk_image* pnmtoimage(const char *filename,
 		cmptparm[i].h = h;
 	}
 	image = grk_image_create(numcomps, &cmptparm[0], color_space);
-	if (!image)
+	if (!image) {
+		spdlog::error("pnmtoimage: Failed to create image");
 		goto cleanup;
+	}
 
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
@@ -466,28 +469,14 @@ static grk_image* pnmtoimage(const char *filename,
 							|| header_info.colour_space == PNM_GRAYA
 							|| header_info.colour_space == PNM_RGB
 							|| header_info.colour_space == PNM_RGBA))) {
-		uint8_t c0, c1, one;
-		one = (prec <= 8);
-		for (uint64_t i = 0; i < area; i++) {
-			for (compno = 0; compno < numcomps; compno++) {
-				if (!fread(&c0, 1, 1, fp)) {
-					spdlog::error(
-							" fread return a number of element different from the expected.");
-					grk_image_destroy(image);
-					image = nullptr;
-					goto cleanup;
-				}
-				if (one) {
-					image->comps[compno].data[i] = c0;
-				} else {
-					if (!fread(&c1, 1, 1, fp))
-						spdlog::error(
-								" fread return a number of element different from the expected.");
-					/* netpbm: */
-					image->comps[compno].data[i] = ((c0 << 8) | c1);
-				}
-			}
-		}
+
+		bool rc = false;
+		if (prec <= 8)
+			rc = grk::readBytes<uint8_t>(fp, image, area);
+		else
+			rc = grk::readBytes<uint16_t>(fp, image, area);
+		if (!rc)
+			goto cleanup;
 	} else if (format == 7 && header_info.colour_space == PNM_BW) { /*MONO*/
 		uint8_t uc;
 		for (uint64_t i = 0; i < area; ++i) {
@@ -497,7 +486,8 @@ static grk_image* pnmtoimage(const char *filename,
 			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
 		}
 	}
-	cleanup: if (!grk::safe_fclose(fp)) {
+	success = true;
+	cleanup: if (!grk::safe_fclose(fp) || !success) {
 		grk_image_destroy(image);
 		image = nullptr;
 	}

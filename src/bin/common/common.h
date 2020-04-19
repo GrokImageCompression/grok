@@ -62,6 +62,9 @@
 #include <cstdio>
 #include <cassert>
 #include "grok.h"
+#include <algorithm>
+
+using namespace std;
 
 namespace grk {
 
@@ -152,6 +155,44 @@ template<typename T> inline bool writeBytes(T val, T *buf, T **outPtr,
 		*outCount = 0;
 		*outPtr = buf;
 	}
+	return true;
+}
+
+template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
+		size_t area) {
+
+	if (!fp || !image)
+		return false;
+
+	assert(image->numcomps <= 4);
+
+	uint64_t i = 0;
+	uint64_t index = 0;
+	uint32_t compno = 0;
+	uint64_t totalSize = area * image->numcomps;
+	const uint64_t chunkSize = 4096 * 4;
+	T chunk[chunkSize];
+	while (i < totalSize) {
+		uint64_t toRead = min(chunkSize, (uint64_t) (totalSize - i));
+		size_t bytesRead = fread(chunk, sizeof(T), toRead, fp);
+		if (!bytesRead)
+			break;
+		T *chunkPtr = chunk;
+		for (size_t ct = 0; ct < bytesRead; ++ct) {
+			image->comps[compno++].data[index] = grk::endian<T>(*chunkPtr++,
+					true);
+			if (compno == image->numcomps) {
+				compno = 0;
+				index++;
+			}
+		}
+		i += bytesRead;
+	}
+	if (i != totalSize) {
+		spdlog::error("{} bytes read < image area {}", i, totalSize);
+		return false;
+	}
+
 	return true;
 }
 
