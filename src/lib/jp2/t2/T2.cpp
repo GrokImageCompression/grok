@@ -1000,7 +1000,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 				if (pass->term || passno == nb_passes - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
-							int_floorlog2((int32_t) len) + 1
+							int_floorlog2(len) + 1
 									- ((int32_t) cblk->numlenbits
 											+ int_floorlog2((int32_t) nump)));
 					len = 0;
@@ -1026,7 +1026,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 #endif
 					if (!bio->write(len,
 							cblk->numlenbits
-									+ (uint32_t) int_floorlog2((int32_t) nump)))
+									+ (uint32_t) int_floorlog2(nump)))
 						return false;
 					len = 0;
 					nump = 0;
@@ -1419,9 +1419,9 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 										+ layer->numpasses) - 1) {
 					increment = (uint32_t) std::max<int32_t>(
 							(int32_t) increment,
-							int_floorlog2((int32_t) len) + 1
+							int_floorlog2(len) + 1
 									- ((int32_t) cblk->numlenbits
-											+ int_floorlog2((int32_t) nump)));
+											+ int_floorlog2(nump)));
 					len = 0;
 					nump = 0;
 				}
@@ -1446,7 +1446,7 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 										+ layer->numpasses) - 1) {
 					if (!bio->write(len,
 							cblk->numlenbits
-									+ (uint32_t) int_floorlog2((int32_t) nump)))
+									+ (uint32_t) int_floorlog2(nump)))
 						return false;
 					len = 0;
 					nump = 0;

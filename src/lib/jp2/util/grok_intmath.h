@@ -183,7 +183,7 @@ static inline uint32_t uint_floordivpow2(uint32_t a, uint32_t b) {
  @param  a 32 bit integer
  @return log2(a)
  */
-static inline int32_t int_floorlog2(int32_t a) {
+static inline int32_t int_floorlog2(uint32_t a) {
 	int32_t l;
 	for (l = 0; a > 1; l++) {
 		a >>= 1;
