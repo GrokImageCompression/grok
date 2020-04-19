@@ -70,8 +70,8 @@
 #include <iostream>
 using namespace std;
 
-enum PNM_COLOUR_SPACE{
-	PNM_UNKNOWN,PNM_BW, PNM_GRAY, PNM_GRAYA, PNM_RGB, PNM_RGBA
+enum PNM_COLOUR_SPACE {
+	PNM_UNKNOWN, PNM_BW, PNM_GRAY, PNM_GRAYA, PNM_RGB, PNM_RGBA
 };
 
 struct pnm_header {
@@ -119,13 +119,11 @@ static char* skip_int(char *start, uint32_t *out_n) {
 }
 
 int convert(std::string s) {
-	try	{
+	try {
 		return stoi(s);
-	}
-	catch (std::invalid_argument const &e)	{
+	} catch (std::invalid_argument const &e) {
 		std::cout << "Bad input: std::invalid_argument thrown" << '\n';
-	}
-	catch (std::out_of_range const &e)	{
+	} catch (std::out_of_range const &e) {
 		std::cout << "Integer overflow: std::out_of_range thrown" << '\n';
 	}
 	return -1;
@@ -156,93 +154,89 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 			if (*line == '#' || *line == '\n')
 				continue;
 
-		    istringstream iss(line);
-		    vector<string> tokens{istream_iterator<string>{iss},
-		                          istream_iterator<string>{}};
-		    if (tokens.size() == 0)
-		    	continue;
-	    	string idf = tokens[0];
-	    	if (idf == "ENDHDR"){
+			istringstream iss(line);
+			vector<string> tokens { istream_iterator<string> { iss },
+					istream_iterator<string> { } };
+			if (tokens.size() == 0)
+				continue;
+			string idf = tokens[0];
+			if (idf == "ENDHDR") {
 				end = 1;
 				break;
-	    	}
-		    if (tokens.size() == 2){
-		       int temp;
-               if (idf == "WIDTH"){
-            	  temp = convert(tokens[1]);
-            	  if (temp < 1){
-            		  spdlog::error("Invalid width");
-            		  return;
-            	  }
-            	  ph->width = (uint32_t)temp;
+			}
+			if (tokens.size() == 2) {
+				int temp;
+				if (idf == "WIDTH") {
+					temp = convert(tokens[1]);
+					if (temp < 1) {
+						spdlog::error("Invalid width");
+						return;
+					}
+					ph->width = (uint32_t) temp;
 
-               } else if (idf == "HEIGHT"){
-             	  temp = convert(tokens[1]);
-             	  if (temp < 1){
-             		  spdlog::error("Invalid height");
-             		  return;
-             	  }
-            	  ph->height = (uint32_t)temp;
-               } else if (idf == "DEPTH"){
-              	  temp = convert(tokens[1]);
-              	  if (temp < 1 || temp > 4){
-              		  spdlog::error("Invalid depth {}", temp);
-              		  return;
-              	  }
-            	  ph->depth = (uint32_t)temp;
+				} else if (idf == "HEIGHT") {
+					temp = convert(tokens[1]);
+					if (temp < 1) {
+						spdlog::error("Invalid height");
+						return;
+					}
+					ph->height = (uint32_t) temp;
+				} else if (idf == "DEPTH") {
+					temp = convert(tokens[1]);
+					if (temp < 1 || temp > 4) {
+						spdlog::error("Invalid depth {}", temp);
+						return;
+					}
+					ph->depth = (uint32_t) temp;
 
-               } else if (idf == "MAXVAL"){
-              	  temp = convert(tokens[1]);
-              	  if (temp < 1 || temp > 65535){
-              		  spdlog::error("Invalid maximum value {}",temp);
-              		  return;
-              	  }
-            	  ph->maxval = (uint32_t)temp;
+				} else if (idf == "MAXVAL") {
+					temp = convert(tokens[1]);
+					if (temp < 1 || temp > 65535) {
+						spdlog::error("Invalid maximum value {}", temp);
+						return;
+					}
+					ph->maxval = (uint32_t) temp;
 
-               } else if (idf == "TUPLTYPE"){
-            	   string type = tokens[1];
+				} else if (idf == "TUPLTYPE") {
+					string type = tokens[1];
 					if (type == "BLACKANDWHITE") {
 						ph->colour_space = PNM_BW;
-					}
-					else if (type == "GRAYSCALE") {
+					} else if (type == "GRAYSCALE") {
 						ph->colour_space = PNM_GRAY;
-					}
-					else if (type == "GRAYSCALE_ALPHA") {
+					} else if (type == "GRAYSCALE_ALPHA") {
 						ph->colour_space = PNM_GRAYA;
-					}
-					else if (type == "RGB") {
+					} else if (type == "RGB") {
 						ph->colour_space = PNM_RGB;
-					}
-					else if (type == "RGB_ALPHA") {
+					} else if (type == "RGB_ALPHA") {
 						ph->colour_space = PNM_RGBA;
 					} else {
 						spdlog::error(" read_pnm_header:unknown P7 TUPLTYPE {}",
 								type);
 					}
-				   }
-		    } else {
-		    	continue;
-		    }
+				}
+			} else {
+				continue;
+			}
 		}/* while(fgets( ) */
 		if (!end) {
 			spdlog::error("read_pnm_header:P7 without ENDHDR");
 			return;
 		}
-		if (ph->depth == 0){
+		if (ph->depth == 0) {
 			spdlog::error("Depth is missing");
 			return;
 		}
-		if (ph->maxval == 0){
+		if (ph->maxval == 0) {
 			spdlog::error("Maximum value is missing");
 			return;
 		}
 		PNM_COLOUR_SPACE depth_colour_space = PNM_UNKNOWN;
-		switch(ph->depth){
+		switch (ph->depth) {
 		case 1:
 			depth_colour_space = (ph->maxval == 1) ? PNM_BW : PNM_GRAY;
 			break;
 		case 2:
-			depth_colour_space = PNM_GRAYA ;
+			depth_colour_space = PNM_GRAYA;
 			break;
 		case 3:
 			depth_colour_space = PNM_RGB;
@@ -251,11 +245,12 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 			depth_colour_space = PNM_RGBA;
 			break;
 		}
-		if (ph->colour_space != PNM_UNKNOWN &&
-				ph->colour_space != depth_colour_space){
+		if (ph->colour_space != PNM_UNKNOWN
+				&& ph->colour_space != depth_colour_space) {
 			if (verbose)
 				spdlog::warn("Tuple colour space {} does not match depth {}. "
-					"Will use depth colour space",ph->colour_space,  depth_colour_space);
+						"Will use depth colour space", ph->colour_space,
+						depth_colour_space);
 		}
 		ph->colour_space = depth_colour_space;
 		ph->ok = true;
@@ -342,7 +337,7 @@ static grk_image* pnmtoimage(const char *filename,
 		return nullptr;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
-	read_pnm_header(fp, &header_info,parameters->verbose);
+	read_pnm_header(fp, &header_info, parameters->verbose);
 	if (!header_info.ok) {
 		spdlog::error("Invalid PNM header");
 		goto cleanup;
@@ -373,9 +368,11 @@ static grk_image* pnmtoimage(const char *filename,
 	else
 		color_space = GRK_CLRSPC_SRGB;/* RGB, RGBA */
 
-	prec = uint_floorlog2(header_info.maxval)+1;
-	if (prec > 16){
-		spdlog::error("Precision {} is greater than max supported precision (16)", prec);
+	prec = uint_floorlog2(header_info.maxval) + 1;
+	if (prec > 16) {
+		spdlog::error(
+				"Precision {} is greater than max supported precision (16)",
+				prec);
 		goto cleanup;
 	}
 	w = header_info.width;
@@ -407,21 +404,21 @@ static grk_image* pnmtoimage(const char *filename,
 		const size_t chunkSize = 4096;
 		uint8_t chunk[chunkSize];
 		uint64_t i = 0;
-		while (i < area){
+		while (i < area) {
 			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
-		    if (!bytesRead)
-		    	break;
-		   uint8_t* chunkPtr = (uint8_t*)chunk;
-           for (size_t ct = 0; ct < bytesRead; ++ct){
-        	   uint8_t c = *chunkPtr++;
-        	   if (c != '\n')
-        		  image->comps[0].data[i++] = (c & 1) ? 0 : 1;
-           }
+			if (!bytesRead)
+				break;
+			uint8_t *chunkPtr = (uint8_t*) chunk;
+			for (size_t ct = 0; ct < bytesRead; ++ct) {
+				uint8_t c = *chunkPtr++;
+				if (c != '\n')
+					image->comps[0].data[i++] = (c & 1) ? 0 : 1;
+			}
 		}
-        if (i != area){
-        	spdlog::error("{} bytes read < image area {}", i, area);
-        	goto cleanup;
-        }
+		if (i != area) {
+			spdlog::error("{} bytes read < image area {}", i, area);
+			goto cleanup;
+		}
 	} else if (format == 2 || format == 3) { /* ascii pixmap */
 		uint32_t index;
 
@@ -438,7 +435,7 @@ static grk_image* pnmtoimage(const char *filename,
 						/ header_info.maxval);
 			}
 		}
-	}else if (format == 4) { /* binary bitmap */
+	} else if (format == 4) { /* binary bitmap */
 		uint32_t x, y;
 		int8_t bit;
 		uint8_t uc;
@@ -465,10 +462,10 @@ static grk_image* pnmtoimage(const char *filename,
 		}
 	} else if (format == 5 || format == 6
 			|| ((format == 7)
-					&& (header_info.colour_space == PNM_GRAY ||
-							header_info.colour_space== PNM_GRAYA ||
-							 header_info.colour_space == PNM_RGB  ||
-							  header_info.colour_space == PNM_RGBA))) {
+					&& (header_info.colour_space == PNM_GRAY
+							|| header_info.colour_space == PNM_GRAYA
+							|| header_info.colour_space == PNM_RGB
+							|| header_info.colour_space == PNM_RGBA))) {
 		uint8_t c0, c1, one;
 		one = (prec <= 8);
 		for (uint64_t i = 0; i < area; i++) {
@@ -491,7 +488,7 @@ static grk_image* pnmtoimage(const char *filename,
 				}
 			}
 		}
-	}  else if (format == 7 && header_info.colour_space == PNM_BW) { /*MONO*/
+	} else if (format == 7 && header_info.colour_space == PNM_BW) { /*MONO*/
 		uint8_t uc;
 		for (uint64_t i = 0; i < area; ++i) {
 			if (!fread(&uc, 1, 1, fp))
