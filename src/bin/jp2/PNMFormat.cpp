@@ -84,7 +84,7 @@ static char* skip_white(char *s) {
 	if (!s)
 		return nullptr;
 	while (*s) {
-		if (*s == '\n' || *s == '\r')
+		if (*s == '\n' || *s == '\r' || *s == '\t')
 			return nullptr;
 		if (isspace(*s)) {
 			++s;
