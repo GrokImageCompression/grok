@@ -419,7 +419,7 @@ static grk_image* pnmtoimage(const char *filename,
 			}
 		}
 		if (i != area) {
-			spdlog::error("{} bytes read < image area {}", i, area);
+			spdlog::error("pixels read ({}) less than image area ({})", i, area);
 			goto cleanup;
 		}
 	} else if (format == 2 || format == 3) { /* ascii pixmap */

@@ -189,7 +189,7 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 		i += bytesRead;
 	}
 	if (i != totalSize) {
-		spdlog::error("{} bytes read < image area {}", i, totalSize);
+		spdlog::error("bytes read ({}) are less than expected number of bytes ({})", i, totalSize);
 		return false;
 	}
 
