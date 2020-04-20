@@ -415,7 +415,7 @@ static grk_image* pnmtoimage(const char *filename,
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
 				uint8_t c = *chunkPtr++;
 				if (c != '\n')
-					image->comps[0].data[i++] = (c & 1) ? 0 : 1;
+					image->comps[0].data[i++] = (c & 1) ^ 1;
 			}
 		}
 		if (i != area) {
@@ -424,7 +424,6 @@ static grk_image* pnmtoimage(const char *filename,
 		}
 	} else if (format == 2 || format == 3) { /* ascii pixmap */
 		uint32_t index;
-
 		for (uint64_t i = 0; i < area; i++) {
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
@@ -436,31 +435,6 @@ static grk_image* pnmtoimage(const char *filename,
 
 				image->comps[compno].data[i] = (int32_t) ((index * 255)
 						/ header_info.maxval);
-			}
-		}
-	} else if (format == 4) { /* binary bitmap */
-		uint32_t x, y;
-		int8_t bit;
-		uint8_t uc;
-		uint64_t i = 0;
-		for (y = 0; y < h; ++y) {
-			bit = -1;
-			uc = 0;
-			for (x = 0; x < w; ++x) {
-				if (bit == -1) {
-					bit = 7;
-					int c = getc(fp);
-					if (c == EOF) {
-						spdlog::error("pnmtoimage reached EOF.");
-						grk_image_destroy(image);
-						image = nullptr;
-						goto cleanup;
-					}
-					uc = (uint8_t) c;
-				}
-				image->comps[0].data[i] = (((uc >> bit) & 1) ? 0 : 255);
-				--bit;
-				++i;
 			}
 		}
 	} else if (format == 5 || format == 6
@@ -477,13 +451,48 @@ static grk_image* pnmtoimage(const char *filename,
 			rc = grk::readBytes<uint16_t>(fp, image, area);
 		if (!rc)
 			goto cleanup;
-	} else if (format == 7 && header_info.colour_space == PNM_BW) { /*MONO*/
-		uint8_t uc;
-		for (uint64_t i = 0; i < area; ++i) {
-			if (!fread(&uc, 1, 1, fp))
-				spdlog::error(
-						" fread return a number of element different from the expected.");
-			image->comps[0].data[i] = (uc & 1) ? 0 : 255;
+	} else if (format == 4 || (format == 7 && header_info.colour_space == PNM_BW) ) { /* binary bitmap */
+		/* let's see if bits are packed into bytes or not */
+		int64_t currentPos = ftell(fp);
+		if (currentPos == -1)
+			goto cleanup;
+		if (fseek(fp, 0L, SEEK_END))
+			goto cleanup;
+		int64_t endPos = ftell(fp);
+		if (endPos == -1)
+			goto cleanup;
+		if (fseek(fp, currentPos, SEEK_SET))
+			goto cleanup;
+		uint64_t pixels = (uint64_t)(endPos - currentPos);
+		bool packed = false;
+		if (pixels == (w*h)/8){
+			packed = true;
+			area /= 8;
+		}
+
+		uint64_t index = 0;
+		const size_t chunkSize = 4096;
+		uint8_t chunk[chunkSize];
+		uint64_t i = 0;
+		while (i < area) {
+			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
+			if (!bytesRead)
+				break;
+			auto chunkPtr = (uint8_t*) chunk;
+			for (size_t ct = 0; ct < bytesRead; ++ct) {
+				uint8_t c = *chunkPtr++;
+				if (packed) {
+					for (int32_t j = 7; j >= 0; --j)
+						image->comps[0].data[index++] = ((c >> j) & 1) ^ 1;
+				} else {
+					image->comps[0].data[index++] = c & 1;
+				}
+				i++;
+			}
+		}
+		if (i != area) {
+			spdlog::error("pixels read ({}) less than image area ({})", i, area);
+			goto cleanup;
 		}
 	}
 	success = true;
