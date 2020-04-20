@@ -432,9 +432,7 @@ static grk_image* pnmtoimage(const char *filename,
 						spdlog::warn(
 								"fscanf return a number of element different from the expected.");
 				}
-
-				image->comps[compno].data[i] = (int32_t) ((index * 255)
-						/ header_info.maxval);
+				image->comps[compno].data[i] = (int32_t)index;
 			}
 		}
 	} else if (format == 5 || format == 6
