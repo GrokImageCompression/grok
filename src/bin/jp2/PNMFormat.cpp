@@ -414,7 +414,7 @@ static grk_image* pnmtoimage(const char *filename,
 			uint8_t *chunkPtr = (uint8_t*) chunk;
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
 				uint8_t c = *chunkPtr++;
-				if (c != '\n')
+				if (c != '\n' && c != ' ')
 					image->comps[0].data[i++] = (c & 1) ^ 1;
 			}
 		}
