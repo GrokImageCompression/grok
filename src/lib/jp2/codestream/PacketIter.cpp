@@ -105,14 +105,12 @@ static bool pi_next_cprl(PacketIter *pi);
  * @param	ty0		Y0 parameter for the tile
  * @param	ty1		Y1 parameter for the tile
  * @param	max_prec	the maximum precision for all the bands of the tile
- * @param	max_res	the maximum number of resolutions for all the poc inside the tile.
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
-static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp, uint16_t tileno,
-		uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
-		uint32_t max_prec, uint32_t max_res, uint32_t dx_min,
-		uint32_t dy_min);
+static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp,
+		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
+		uint32_t max_prec, uint32_t dx_min, uint32_t dy_min);
 
 /**
  * Updates the coding parameters if the encoding is not used with Progression order changes and final (and cinema parameters are used).
@@ -129,9 +127,9 @@ static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp, uint16_t
  * @param	dx_min		the minimum dx of all the components of all the resolutions for the tile.
  * @param	dy_min		the minimum dy of all the components of all the resolutions for the tile.
  */
-static void pi_update_encode_not_poc(grk_coding_parameters *p_cp, uint32_t num_comps,
-		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0,
-		uint32_t ty1, uint32_t max_prec, uint32_t max_res,
+static void pi_update_encode_no_poc(grk_coding_parameters *p_cp,
+		uint32_t num_comps, uint16_t tileno, uint32_t tx0, uint32_t tx1,
+		uint32_t ty0, uint32_t ty1, uint32_t max_prec, uint32_t max_res,
 		uint32_t dx_min, uint32_t dy_min);
 /**
  * Gets the encoding parameters needed to update the coding parameters and all the pocs.
@@ -149,8 +147,8 @@ static void pi_update_encode_not_poc(grk_coding_parameters *p_cp, uint32_t num_c
  * @param	dy_min			pointer that will hold the minimum dy of all the components of all the resolutions for the tile.
  */
 static void grk_get_encoding_parameters(const grk_image *p_image,
-		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0, uint32_t *tx1,
-		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
+		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0,
+		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res);
 
 /**
@@ -174,8 +172,8 @@ static void grk_get_encoding_parameters(const grk_image *p_image,
  * @param	p_resolutions	pointer to an area corresponding to the one described above.
  */
 static void grk_get_all_encoding_parameters(const grk_image *p_image,
-		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0, uint32_t *tx1,
-		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
+		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0,
+		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
 		uint32_t **p_resolutions);
 /**
@@ -186,24 +184,24 @@ static void grk_get_all_encoding_parameters(const grk_image *p_image,
  * @param	p_cp		the coding parameters.
  * @param	tileno	the index of the tile from which creating the packet iterator.
  */
-static PacketIter* pi_create(const grk_image *p_image, const grk_coding_parameters *p_cp,
-		uint16_t tileno);
+static PacketIter* pi_create(const grk_image *p_image,
+		const grk_coding_parameters *p_cp, uint16_t tileno);
 /**
  * FIXME DOC
  */
-static void pi_update_decode_not_poc(PacketIter *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_no_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res);
 /**
  * FIXME DOC
  */
 static void pi_update_decode_poc(PacketIter *p_pi, grk_tcp *p_tcp,
-		uint32_t max_precision, uint32_t max_res);
+		uint32_t max_precision);
 
 /**
  * FIXME DOC
  */
-static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t tileno,
-		uint32_t pino, const char *prog);
+static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp,
+		uint16_t tileno, uint32_t pino, const char *prog);
 
 static void update_pi_dxy(PacketIter *pi);
 static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp);
@@ -219,7 +217,7 @@ static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp);
  */
 static void update_pi_dxy_for_comp(PacketIter *pi, grk_pi_comp *comp) {
 	for (uint32_t resno = 0; resno < comp->numresolutions; resno++) {
-		auto res = &comp->resolutions[resno];
+		auto res = comp->resolutions + resno;
 		uint64_t dx = comp->dx
 				* ((uint64_t) 1u
 						<< (res->pdx + comp->numresolutions - 1 - resno));
@@ -244,9 +242,8 @@ static void update_pi_dxy(PacketIter *pi) {
 	pi->first = 0;
 	pi->dx = 0;
 	pi->dy = 0;
-	for (uint32_t compno = 0; compno < pi->numcomps; compno++) {
+	for (uint32_t compno = 0; compno < pi->numcomps; compno++)
 		update_pi_dxy_for_comp(pi, pi->comps + compno);
-	}
 }
 
 static bool pi_next_lrcp(PacketIter *pi) {
@@ -271,13 +268,12 @@ static bool pi_next_lrcp(PacketIter *pi) {
 
 				comp = &pi->comps[pi->compno];
 				//skip resolutions greater than current component resolution
-				if (pi->resno >= comp->numresolutions) {
+				if (pi->resno >= comp->numresolutions)
 					continue;
-				}
 				res = &comp->resolutions[pi->resno];
-				if (!pi->tp_on) {
+				if (!pi->tp_on)
 					pi->poc.precno1 = res->pw * res->ph;
-				}
+
 				for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1;
 						pi->precno++) {
 
@@ -319,13 +315,11 @@ static bool pi_next_rlcp(PacketIter *pi) {
 			for (pi->compno = pi->poc.compno0; pi->compno < pi->poc.compno1;
 					pi->compno++) {
 				comp = &pi->comps[pi->compno];
-				if (pi->resno >= comp->numresolutions) {
+				if (pi->resno >= comp->numresolutions)
 					continue;
-				}
 				res = &comp->resolutions[pi->resno];
-				if (!pi->tp_on) {
+				if (!pi->tp_on)
 					pi->poc.precno1 = res->pw * res->ph;
-				}
 				for (pi->precno = pi->poc.precno0; pi->precno < pi->poc.precno1;
 						pi->precno++) {
 					//skip precinct numbers greater than total number of precincts
@@ -376,9 +370,9 @@ static bool pi_next_rpcl(PacketIter *pi) {
 					uint32_t rpx, rpy;
 					uint32_t prci, prcj;
 					comp = &pi->comps[pi->compno];
-					if (pi->resno >= comp->numresolutions) {
+					if (pi->resno >= comp->numresolutions)
 						continue;
-					}
+
 					res = &comp->resolutions[pi->resno];
 					levelno = comp->numresolutions - 1 - pi->resno;
 					if (levelno >= GRK_J2K_MAXRLVLS)
@@ -614,10 +608,11 @@ static bool pi_next_cprl(PacketIter *pi) {
 
 					temp1 = uint_floordivpow2(
 							ceildiv<uint64_t>((uint64_t) pi->x,
-									((uint64_t) comp->dx << levelno)), res->pdx);
+									((uint64_t) comp->dx << levelno)),
+							res->pdx);
 
 					temp2 = uint_floordivpow2(trx0, res->pdx);
-					if (temp2 > temp1){
+					if (temp2 > temp1) {
 						GROK_ERROR("Precinct index invalid");
 						return false;
 					}
@@ -625,9 +620,10 @@ static bool pi_next_cprl(PacketIter *pi) {
 
 					temp1 = uint_floordivpow2(
 							ceildiv<uint64_t>((uint64_t) pi->y,
-									((uint64_t) comp->dy << levelno)), res->pdy);
+									((uint64_t) comp->dy << levelno)),
+							res->pdy);
 					temp2 = uint_floordivpow2(try0, res->pdy);
-					if (temp2 > temp1){
+					if (temp2 > temp1) {
 						GROK_ERROR("Precinct index invalid");
 						return false;
 					}
@@ -657,455 +653,366 @@ static bool pi_next_cprl(PacketIter *pi) {
 }
 
 static void grk_get_encoding_parameters(const grk_image *p_image,
-		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0, uint32_t *tx1,
-		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
+		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0,
+		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res) {
-	/* loop */
-	uint32_t compno, resno;
-	/* position in x and y of tile */
-	uint32_t p, q;
-
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	auto l_tcp = &p_cp->tcps[tileno];
-	auto l_img_comp = p_image->comps;
-	auto l_tccp = l_tcp->tccps;
-
-	/* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
-	p = tileno % p_cp->t_grid_width;
-	q = tileno / p_cp->t_grid_width;
+	/* position in x and y of tile */
+	uint32_t p = tileno % p_cp->t_grid_width;
+	uint32_t q = tileno / p_cp->t_grid_width;
 
 	/* find extent of tile */
 	*tx0 = std::max<uint32_t>(p_cp->tx0 + p * p_cp->t_width, p_image->x0);
 	*tx1 = std::min<uint32_t>(p_cp->tx0 + (p + 1) * p_cp->t_width, p_image->x1);
 	*ty0 = std::max<uint32_t>(p_cp->ty0 + q * p_cp->t_height, p_image->y0);
-	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->t_height, p_image->y1);
+	*ty1 = std::min<uint32_t>(p_cp->ty0 + (q + 1) * p_cp->t_height,
+			p_image->y1);
 
 	/* max precision is 0 (can only grow) */
 	*max_prec = 0;
 	*max_res = 0;
 
 	/* take the largest value for dx_min and dy_min */
-	*dx_min = 0x7fffffff;
-	*dy_min = 0x7fffffff;
+	*dx_min = UINT_MAX;
+	*dy_min = UINT_MAX;
 
-	for (compno = 0; compno < p_image->numcomps; ++compno) {
-		/* arithmetic variables to calculate */
-		uint32_t l_level_no;
-		uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
-		uint32_t l_px0, l_py0, l_px1, py1;
-		uint32_t l_pdx, l_pdy;
-		uint32_t l_pw, l_ph;
-		uint32_t l_product;
-		uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
+	auto tcp = &p_cp->tcps[tileno];
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+		auto img_comp = p_image->comps + compno;
+		auto tccp = tcp->tccps + compno;
 
-		l_tcx0 = ceildiv<uint32_t>(*tx0, l_img_comp->dx);
-		l_tcy0 = ceildiv<uint32_t>(*ty0, l_img_comp->dy);
-		l_tcx1 = ceildiv<uint32_t>(*tx1, l_img_comp->dx);
-		l_tcy1 = ceildiv<uint32_t>(*ty1, l_img_comp->dy);
+		uint32_t tcx0 = ceildiv<uint32_t>(*tx0, img_comp->dx);
+		uint32_t tcy0 = ceildiv<uint32_t>(*ty0, img_comp->dy);
+		uint32_t tcx1 = ceildiv<uint32_t>(*tx1, img_comp->dx);
+		uint32_t tcy1 = ceildiv<uint32_t>(*ty1, img_comp->dy);
 
-		if (l_tccp->numresolutions > *max_res) {
-			*max_res = l_tccp->numresolutions;
-		}
+		if (tccp->numresolutions > *max_res)
+			*max_res = tccp->numresolutions;
 
 		/* use custom size for precincts */
-		for (resno = 0; resno < l_tccp->numresolutions; ++resno) {
+		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
 
 			/* precinct width and height */
-			l_pdx = l_tccp->prcw[resno];
-			l_pdy = l_tccp->prch[resno];
+			uint32_t pdx = tccp->prcw[resno];
+			uint32_t pdy = tccp->prch[resno];
 
-			uint64_t l_dx = l_img_comp->dx
-					* ((uint64_t) 1u
-							<< (l_pdx + l_tccp->numresolutions - 1 - resno));
-			uint64_t l_dy = l_img_comp->dy
-					* ((uint64_t) 1u
-							<< (l_pdy + l_tccp->numresolutions - 1 - resno));
+			uint64_t dx =
+					img_comp->dx
+							* ((uint64_t) 1u
+									<< (pdx + tccp->numresolutions - 1 - resno));
+			uint64_t dy =
+					img_comp->dy
+							* ((uint64_t) 1u
+									<< (pdy + tccp->numresolutions - 1 - resno));
 
 			/* take the minimum size for dx for each comp and resolution */
-			if (l_dx < UINT_MAX)
-				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) l_dx);
-			if (l_dy < UINT_MAX)
-				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) l_dy);
+			if (dx < UINT_MAX)
+				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) dx);
+			if (dy < UINT_MAX)
+				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 
 			/* various calculations of extents */
-			l_level_no = l_tccp->numresolutions - 1 - resno;
+			uint32_t level_no = tccp->numresolutions - 1 - resno;
 
-			l_rx0 = uint_ceildivpow2(l_tcx0, l_level_no);
-			l_ry0 = uint_ceildivpow2(l_tcy0, l_level_no);
-			l_rx1 = uint_ceildivpow2(l_tcx1, l_level_no);
-			l_ry1 = uint_ceildivpow2(l_tcy1, l_level_no);
+			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
+			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
+			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
+			uint32_t ry1 = uint_ceildivpow2(tcy1, level_no);
 
-			l_px0 = uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-			l_py0 = uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-			l_px1 = uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
+			uint32_t px0 = uint_floordivpow2(rx0, pdx) << pdx;
+			uint32_t py0 = uint_floordivpow2(ry0, pdy) << pdy;
+			uint32_t px1 = uint_ceildivpow2(rx1, pdx) << pdx;
 
-			py1 = uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
+			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
 
-			l_pw = (l_rx0 == l_rx1) ? 0 : ((l_px1 - l_px0) >> l_pdx);
-			l_ph = (l_ry0 == l_ry1) ? 0 : ((py1 - l_py0) >> l_pdy);
+			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
+			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
 
-			l_product = l_pw * l_ph;
+			uint32_t product = pw * ph;
 
 			/* update precision */
-			if (l_product > *max_prec) {
-				*max_prec = l_product;
-			}
+			if (product > *max_prec)
+				*max_prec = product;
 		}
-		++l_img_comp;
-		++l_tccp;
 	}
 }
 
 static void grk_get_all_encoding_parameters(const grk_image *p_image,
-		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0, uint32_t *tx1,
-		uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
+		const grk_coding_parameters *p_cp, uint16_t tileno, uint32_t *tx0,
+		uint32_t *tx1, uint32_t *ty0, uint32_t *ty1, uint32_t *dx_min,
 		uint32_t *dy_min, uint32_t *max_prec, uint32_t *max_res,
 		uint32_t **p_resolutions) {
-	/* loop*/
-	uint32_t compno, resno;
-
-	/* position in x and y of tile*/
-	uint32_t p, q;
-
-	/* non-corrected (in regard to image offset) tile offset */
-	uint32_t l_tx0, l_ty0;
-
-	/* preconditions in debug*/
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	/* initializations*/
-	auto tcp = &p_cp->tcps[tileno];
-	auto l_tccp = tcp->tccps;
-	auto l_img_comp = p_image->comps;
-
 	/* position in x and y of tile*/
-	p = tileno % p_cp->t_grid_width;
-	q = tileno / p_cp->t_grid_width;
+	uint32_t p = tileno % p_cp->t_grid_width;
+	uint32_t q = tileno / p_cp->t_grid_width;
 
-	/* here calculation of tx0, tx1, ty0, ty1, maxprec, l_dx and l_dy */
-	l_tx0 = p_cp->tx0 + p * p_cp->t_width; /* can't be greater than p_image->x1 so won't overflow */
-	*tx0 = std::max<uint32_t>(l_tx0, p_image->x0);
-	*tx1 = std::min<uint32_t>(uint_adds(l_tx0, p_cp->t_width), p_image->x1);
-	l_ty0 = p_cp->ty0 + q * p_cp->t_height; /* can't be greater than p_image->y1 so won't overflow */
-	*ty0 = std::max<uint32_t>(l_ty0, p_image->y0);
-	*ty1 = std::min<uint32_t>(uint_adds(l_ty0, p_cp->t_height), p_image->y1);
+	/* here calculation of tx0, tx1, ty0, ty1, maxprec, dx and dy */
+
+	/* non-corrected (in regard to image offset) tile offset */
+	uint32_t uncorrected_tx0 = p_cp->tx0 + p * p_cp->t_width; /* can't be greater than p_image->x1 so won't overflow */
+	*tx0 = std::max<uint32_t>(uncorrected_tx0, p_image->x0);
+	*tx1 = std::min<uint32_t>(uint_adds(uncorrected_tx0, p_cp->t_width),
+			p_image->x1);
+	uint32_t uncorrected_ty0 = p_cp->ty0 + q * p_cp->t_height; /* can't be greater than p_image->y1 so won't overflow */
+	*ty0 = std::max<uint32_t>(uncorrected_ty0, p_image->y0);
+	*ty1 = std::min<uint32_t>(uint_adds(uncorrected_ty0, p_cp->t_height),
+			p_image->y1);
 
 	/* max precision and resolution is 0 (can only grow)*/
 	*max_prec = 0;
 	*max_res = 0;
 
 	/* take the largest value for dx_min and dy_min*/
-	*dx_min = 0x7fffffff;
-	*dy_min = 0x7fffffff;
+	*dx_min = UINT_MAX;
+	*dy_min = UINT_MAX;
 
-	for (compno = 0; compno < p_image->numcomps; ++compno) {
-		/* arithmetic variables to calculate*/
-		uint32_t l_level_no;
-		uint32_t l_rx0, l_ry0, l_rx1, l_ry1;
-		uint32_t l_px0, l_py0, l_px1, py1;
-		uint32_t l_product;
-		uint32_t l_tcx0, l_tcy0, l_tcx1, l_tcy1;
-		uint32_t l_pdx, l_pdy, l_pw, l_ph;
+	auto tcp = &p_cp->tcps[tileno];
+
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+		uint32_t level_no;
 
 		auto lResolutionPtr = p_resolutions[compno];
+		auto tccp = tcp->tccps + compno;
+		auto img_comp = p_image->comps + compno;
 
-		l_tcx0 = ceildiv<uint32_t>(*tx0, l_img_comp->dx);
-		l_tcy0 = ceildiv<uint32_t>(*ty0, l_img_comp->dy);
-		l_tcx1 = ceildiv<uint32_t>(*tx1, l_img_comp->dx);
-		l_tcy1 = ceildiv<uint32_t>(*ty1, l_img_comp->dy);
+		uint32_t tcx0 = ceildiv<uint32_t>(*tx0, img_comp->dx);
+		uint32_t tcy0 = ceildiv<uint32_t>(*ty0, img_comp->dy);
+		uint32_t tcx1 = ceildiv<uint32_t>(*tx1, img_comp->dx);
+		uint32_t tcy1 = ceildiv<uint32_t>(*ty1, img_comp->dy);
 
-		if (l_tccp->numresolutions > *max_res) {
-			*max_res = l_tccp->numresolutions;
-		}
+		if (tccp->numresolutions > *max_res)
+			*max_res = tccp->numresolutions;
 
 		/* use custom size for precincts*/
-		l_level_no = l_tccp->numresolutions - 1;
-		for (resno = 0; resno < l_tccp->numresolutions; ++resno) {
+		level_no = tccp->numresolutions - 1;
+		for (uint32_t resno = 0; resno < tccp->numresolutions; ++resno) {
+			uint32_t pdx = tccp->prcw[resno];
+			uint32_t pdy = tccp->prch[resno];
 
-			/* precinct width and height*/
-			l_pdx = l_tccp->prcw[resno];
-			l_pdy = l_tccp->prch[resno];
-			*lResolutionPtr++ = l_pdx;
-			*lResolutionPtr++ = l_pdy;
-			uint64_t l_dx = l_img_comp->dx
-					* ((uint64_t) 1u << (l_pdx + l_level_no));
-			uint64_t l_dy = l_img_comp->dy
-					* ((uint64_t) 1u << (l_pdy + l_level_no));
-			/* take the minimum size for l_dx for each comp and resolution*/
-			if (l_dx < UINT_MAX)
-				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) l_dx);
-			if (l_dy < UINT_MAX)
-				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) l_dy);
+			*lResolutionPtr++ = pdx;
+			*lResolutionPtr++ = pdy;
+			uint64_t dx = img_comp->dx * ((uint64_t) 1u << (pdx + level_no));
+			uint64_t dy = img_comp->dy * ((uint64_t) 1u << (pdy + level_no));
+			/* take the minimum size for dx for each comp and resolution*/
+			if (dx < UINT_MAX)
+				*dx_min = std::min<uint32_t>(*dx_min, (uint32_t) dx);
+			if (dy < UINT_MAX)
+				*dy_min = std::min<uint32_t>(*dy_min, (uint32_t) dy);
 
 			/* various calculations of extents*/
-			l_rx0 = uint_ceildivpow2(l_tcx0, l_level_no);
-			l_ry0 = uint_ceildivpow2(l_tcy0, l_level_no);
-			l_rx1 = uint_ceildivpow2(l_tcx1, l_level_no);
-			l_ry1 = uint_ceildivpow2(l_tcy1, l_level_no);
-			l_px0 = uint_floordivpow2(l_rx0, l_pdx) << l_pdx;
-			l_py0 = uint_floordivpow2(l_ry0, l_pdy) << l_pdy;
-			l_px1 = uint_ceildivpow2(l_rx1, l_pdx) << l_pdx;
-			py1 = uint_ceildivpow2(l_ry1, l_pdy) << l_pdy;
-			l_pw = (l_rx0 == l_rx1) ? 0 : ((l_px1 - l_px0) >> l_pdx);
-			l_ph = (l_ry0 == l_ry1) ? 0 : ((py1 - l_py0) >> l_pdy);
-			*lResolutionPtr++ = l_pw;
-			*lResolutionPtr++ = l_ph;
-			l_product = l_pw * l_ph;
+			uint32_t rx0 = uint_ceildivpow2(tcx0, level_no);
+			uint32_t ry0 = uint_ceildivpow2(tcy0, level_no);
+			uint32_t rx1 = uint_ceildivpow2(tcx1, level_no);
+			uint32_t ry1 = uint_ceildivpow2(tcy1, level_no);
+			uint32_t px0 = uint_floordivpow2(rx0, pdx) << pdx;
+			uint32_t py0 = uint_floordivpow2(ry0, pdy) << pdy;
+			uint32_t px1 = uint_ceildivpow2(rx1, pdx) << pdx;
+			uint32_t py1 = uint_ceildivpow2(ry1, pdy) << pdy;
+			uint32_t pw = (rx0 == rx1) ? 0 : ((px1 - px0) >> pdx);
+			uint32_t ph = (ry0 == ry1) ? 0 : ((py1 - py0) >> pdy);
+			*lResolutionPtr++ = pw;
+			*lResolutionPtr++ = ph;
+			uint32_t product = pw * ph;
 
 			/* update precision*/
-			if (l_product > *max_prec) {
-				*max_prec = l_product;
-			}
-
-			--l_level_no;
+			if (product > *max_prec)
+				*max_prec = product;
+			--level_no;
 		}
-		++l_tccp;
-		++l_img_comp;
 	}
 }
 
-static PacketIter* pi_create(const grk_image *image, const grk_coding_parameters *cp,
-		uint16_t tileno) {
-	/* loop*/
-	uint32_t pino, compno;
-	/* number of poc in the p_pi*/
-	uint32_t l_poc_bound;
-
-	/* preconditions in debug*/
+static PacketIter* pi_create(const grk_image *image,
+		const grk_coding_parameters *cp, uint16_t tileno) {
 	assert(cp != nullptr);
 	assert(image != nullptr);
 	assert(tileno < cp->t_grid_width * cp->t_grid_height);
-
-	/* initializations*/
 	auto tcp = &cp->tcps[tileno];
-	l_poc_bound = tcp->numpocs + 1;
+	uint32_t poc_bound = tcp->numpocs + 1;
 
-	/* memory allocations*/
-	auto l_pi = (PacketIter*) grk_calloc((l_poc_bound), sizeof(PacketIter));
-	if (!l_pi) {
+	auto pi = (PacketIter*) grk_calloc((poc_bound), sizeof(PacketIter));
+	if (!pi)
 		return nullptr;
-	}
 
-	auto l_current_pi = l_pi;
-	for (pino = 0; pino < l_poc_bound; ++pino) {
+	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
+		auto current_pi = pi + pino;
 
-		l_current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
+		current_pi->comps = (grk_pi_comp*) grk_calloc(image->numcomps,
 				sizeof(grk_pi_comp));
-		if (!l_current_pi->comps) {
-			pi_destroy(l_pi, l_poc_bound);
+		if (!current_pi->comps) {
+			pi_destroy(pi, poc_bound);
 			return nullptr;
 		}
-
-		l_current_pi->numcomps = image->numcomps;
-
-		for (compno = 0; compno < image->numcomps; ++compno) {
-			grk_pi_comp *comp = &l_current_pi->comps[compno];
-
+		current_pi->numcomps = image->numcomps;
+		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
+			grk_pi_comp *comp = current_pi->comps + compno;
 			auto tccp = &tcp->tccps[compno];
-
 			comp->resolutions = (grk_pi_resolution*) grk_calloc(
 					tccp->numresolutions, sizeof(grk_pi_resolution));
+
 			if (!comp->resolutions) {
-				pi_destroy(l_pi, l_poc_bound);
+				pi_destroy(pi, poc_bound);
 				return nullptr;
 			}
-
 			comp->numresolutions = tccp->numresolutions;
 		}
-		++l_current_pi;
 	}
-	return l_pi;
+	return pi;
 }
 
-static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp, uint16_t tileno,
-		uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
-		uint32_t max_prec, uint32_t max_res, uint32_t dx_min,
-		uint32_t dy_min) {
-	/* loop*/
-	uint32_t pino;
-
-	/* number of pocs*/
-	uint32_t l_poc_bound;
-
-	ARG_NOT_USED(max_res);
-
-	/* preconditions in debug*/
+static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp,
+		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0, uint32_t ty1,
+		uint32_t max_prec, uint32_t dx_min, uint32_t dy_min) {
 	assert(p_cp != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	auto l_tcp = &p_cp->tcps[tileno];
+	auto tcp = &p_cp->tcps[tileno];
 	/* number of iterations in the loop */
-	l_poc_bound = l_tcp->numpocs + 1;
+	uint32_t poc_bound = tcp->numpocs + 1;
 
 	/* start at first element, and to make sure the compiler will not make a calculation each time in the loop
-	 store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
-	auto l_current_poc = l_tcp->pocs;
+	 store a pointer to the current element to modify rather than tcp->pocs[i]*/
+	auto current_poc = tcp->pocs;
 
-	l_current_poc->compS = l_current_poc->compno0;
-	l_current_poc->compE = l_current_poc->compno1;
-	l_current_poc->resS = l_current_poc->resno0;
-	l_current_poc->resE = l_current_poc->resno1;
-	l_current_poc->layE = l_current_poc->layno1;
+	current_poc->compS = current_poc->compno0;
+	current_poc->compE = current_poc->compno1;
+	current_poc->resS = current_poc->resno0;
+	current_poc->resE = current_poc->resno1;
+	current_poc->layE = current_poc->layno1;
 
 	/* special treatment for the first element*/
-	l_current_poc->layS = 0;
-	l_current_poc->prg = l_current_poc->prg1;
-	l_current_poc->prcS = 0;
+	current_poc->layS = 0;
+	current_poc->prg = current_poc->prg1;
+	current_poc->prcS = 0;
 
-	l_current_poc->prcE = max_prec;
-	l_current_poc->txS = tx0;
-	l_current_poc->txE = tx1;
-	l_current_poc->tyS = ty0;
-	l_current_poc->tyE = ty1;
-	l_current_poc->dx = dx_min;
-	l_current_poc->dy = dy_min;
+	current_poc->prcE = max_prec;
+	current_poc->txS = tx0;
+	current_poc->txE = tx1;
+	current_poc->tyS = ty0;
+	current_poc->tyE = ty1;
+	current_poc->dx = dx_min;
+	current_poc->dy = dy_min;
 
-	++l_current_poc;
-	for (pino = 1; pino < l_poc_bound; ++pino) {
-		l_current_poc->compS = l_current_poc->compno0;
-		l_current_poc->compE = l_current_poc->compno1;
-		l_current_poc->resS = l_current_poc->resno0;
-		l_current_poc->resE = l_current_poc->resno1;
-		l_current_poc->layE = l_current_poc->layno1;
-		l_current_poc->prg = l_current_poc->prg1;
-		l_current_poc->prcS = 0;
+	for (uint32_t pino = 1; pino < poc_bound; ++pino) {
+		current_poc = tcp->pocs + pino;
+
+		current_poc->compS = current_poc->compno0;
+		current_poc->compE = current_poc->compno1;
+		current_poc->resS = current_poc->resno0;
+		current_poc->resE = current_poc->resno1;
+		current_poc->layE = current_poc->layno1;
+		current_poc->prg = current_poc->prg1;
+		current_poc->prcS = 0;
 		/* special treatment here different from the first element*/
-		l_current_poc->layS =
-				(l_current_poc->layE > (l_current_poc - 1)->layE) ?
-						l_current_poc->layE : 0;
+		current_poc->layS =
+				(current_poc->layE > (current_poc - 1)->layE) ?
+						current_poc->layE : 0;
 
-		l_current_poc->prcE = max_prec;
-		l_current_poc->txS = tx0;
-		l_current_poc->txE = tx1;
-		l_current_poc->tyS = ty0;
-		l_current_poc->tyE = ty1;
-		l_current_poc->dx = dx_min;
-		l_current_poc->dy = dy_min;
-		++l_current_poc;
+		current_poc->prcE = max_prec;
+		current_poc->txS = tx0;
+		current_poc->txE = tx1;
+		current_poc->tyS = ty0;
+		current_poc->tyE = ty1;
+		current_poc->dx = dx_min;
+		current_poc->dy = dy_min;
 	}
 }
 
-static void pi_update_encode_not_poc(grk_coding_parameters *p_cp, uint32_t num_comps,
-		uint16_t tileno, uint32_t tx0, uint32_t tx1, uint32_t ty0,
-		uint32_t ty1, uint32_t max_prec, uint32_t max_res,
+static void pi_update_encode_no_poc(grk_coding_parameters *p_cp,
+		uint32_t num_comps, uint16_t tileno, uint32_t tx0, uint32_t tx1,
+		uint32_t ty0, uint32_t ty1, uint32_t max_prec, uint32_t max_res,
 		uint32_t dx_min, uint32_t dy_min) {
-	/* loop*/
-	uint32_t pino;
-	/* number of pocs*/
-	uint32_t l_poc_bound;
-
-	/* preconditions in debug*/
 	assert(p_cp != nullptr);
 	assert(tileno < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	auto l_tcp = &p_cp->tcps[tileno];
+	auto tcp = &p_cp->tcps[tileno];
 
 	/* number of iterations in the loop */
-	l_poc_bound = l_tcp->numpocs + 1;
+	uint32_t poc_bound = tcp->numpocs + 1;
 
-	/* start at first element, and to make sure the compiler will not make a calculation each time in the loop
-	 store a pointer to the current element to modify rather than l_tcp->pocs[i]*/
-	auto l_current_poc = l_tcp->pocs;
+	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
+		auto current_poc = tcp->pocs + pino;
 
-	for (pino = 0; pino < l_poc_bound; ++pino) {
-		l_current_poc->compS = 0;
-		l_current_poc->compE = num_comps;
-		l_current_poc->resS = 0;
-		l_current_poc->resE = max_res;
-		l_current_poc->layS = 0;
-		l_current_poc->layE = l_tcp->numlayers;
-		l_current_poc->prg = l_tcp->prg;
-		l_current_poc->prcS = 0;
-		l_current_poc->prcE = max_prec;
-		l_current_poc->txS = tx0;
-		l_current_poc->txE = tx1;
-		l_current_poc->tyS = ty0;
-		l_current_poc->tyE = ty1;
-		l_current_poc->dx = dx_min;
-		l_current_poc->dy = dy_min;
-		++l_current_poc;
+		current_poc->compS = 0;
+		current_poc->compE = num_comps;
+		current_poc->resS = 0;
+		current_poc->resE = max_res;
+		current_poc->layS = 0;
+		current_poc->layE = tcp->numlayers;
+		current_poc->prg = tcp->prg;
+		current_poc->prcS = 0;
+		current_poc->prcE = max_prec;
+		current_poc->txS = tx0;
+		current_poc->txE = tx1;
+		current_poc->tyS = ty0;
+		current_poc->tyE = ty1;
+		current_poc->dx = dx_min;
+		current_poc->dy = dy_min;
 	}
 }
 
 static void pi_update_decode_poc(PacketIter *p_pi, grk_tcp *p_tcp,
-		uint32_t max_precision, uint32_t max_res) {
-	/* loop*/
-	uint32_t pino;
-
-	/* encoding parameters to set*/
-	uint32_t l_bound;
-	ARG_NOT_USED(max_res);
-
-	/* preconditions in debug*/
+		uint32_t max_precision) {
 	assert(p_pi != nullptr);
 	assert(p_tcp != nullptr);
 
-	/* initializations*/
-	l_bound = p_tcp->numpocs + 1;
-	auto l_current_pi = p_pi;
-	auto l_current_poc = p_tcp->pocs;
+	uint32_t bound = p_tcp->numpocs + 1;
 
-	for (pino = 0; pino < l_bound; ++pino) {
-		l_current_pi->poc.prg = l_current_poc->prg; /* Progression Order #0 */
-		l_current_pi->first = 1;
+	for (uint32_t pino = 0; pino < bound; ++pino) {
+		auto current_pi = p_pi + pino;
+		auto current_poc = p_tcp->pocs + pino;
 
-		l_current_pi->poc.resno0 = l_current_poc->resno0; /* Resolution Level Index #0 (Start) */
-		l_current_pi->poc.compno0 = l_current_poc->compno0; /* Component Index #0 (Start) */
-		l_current_pi->poc.layno0 = 0;
-		l_current_pi->poc.precno0 = 0;
-		l_current_pi->poc.resno1 = l_current_poc->resno1; /* Resolution Level Index #0 (End) */
-		l_current_pi->poc.compno1 = l_current_poc->compno1; /* Component Index #0 (End) */
-		l_current_pi->poc.layno1 = std::min<uint32_t>(l_current_poc->layno1,
+		current_pi->poc.prg = current_poc->prg; /* Progression Order #0 */
+		current_pi->first = 1;
+		current_pi->poc.resno0 = current_poc->resno0; /* Resolution Level Index #0 (Start) */
+		current_pi->poc.compno0 = current_poc->compno0; /* Component Index #0 (Start) */
+		current_pi->poc.layno0 = 0;
+		current_pi->poc.precno0 = 0;
+		current_pi->poc.resno1 = current_poc->resno1; /* Resolution Level Index #0 (End) */
+		current_pi->poc.compno1 = current_poc->compno1; /* Component Index #0 (End) */
+		current_pi->poc.layno1 = std::min<uint32_t>(current_poc->layno1,
 				p_tcp->numlayers); /* Layer Index #0 (End) */
-		l_current_pi->poc.precno1 = max_precision;
-		++l_current_pi;
-		++l_current_poc;
+		current_pi->poc.precno1 = max_precision;
 	}
 }
 
-static void pi_update_decode_not_poc(PacketIter *p_pi, grk_tcp *p_tcp,
+static void pi_update_decode_no_poc(PacketIter *p_pi, grk_tcp *p_tcp,
 		uint32_t max_precision, uint32_t max_res) {
-	/* loop*/
-	uint32_t pino;
-	/* encoding parameters to set*/
-	uint32_t l_bound;
-
-	/* preconditions in debug*/
 	assert(p_tcp != nullptr);
 	assert(p_pi != nullptr);
 
-	/* initializations*/
-	l_bound = p_tcp->numpocs + 1;
-	auto l_current_pi = p_pi;
+	uint32_t bound = p_tcp->numpocs + 1;
 
-	for (pino = 0; pino < l_bound; ++pino) {
-		l_current_pi->poc.prg = p_tcp->prg;
-		l_current_pi->first = 1;
-		l_current_pi->poc.resno0 = 0;
-		l_current_pi->poc.compno0 = 0;
-		l_current_pi->poc.layno0 = 0;
-		l_current_pi->poc.precno0 = 0;
-		l_current_pi->poc.resno1 = max_res;
-		l_current_pi->poc.compno1 = l_current_pi->numcomps;
-		l_current_pi->poc.layno1 = p_tcp->numlayers;
-		l_current_pi->poc.precno1 = max_precision;
-		++l_current_pi;
+	for (uint32_t pino = 0; pino < bound; ++pino) {
+		auto current_pi = p_pi + pino;
+
+		current_pi->poc.prg = p_tcp->prg;
+		current_pi->first = 1;
+		current_pi->poc.resno0 = 0;
+		current_pi->poc.compno0 = 0;
+		current_pi->poc.layno0 = 0;
+		current_pi->poc.precno0 = 0;
+		current_pi->poc.resno1 = max_res;
+		current_pi->poc.compno1 = current_pi->numcomps;
+		current_pi->poc.layno1 = p_tcp->numlayers;
+		current_pi->poc.precno1 = max_precision;
 	}
 }
 
-static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t tileno,
-		uint32_t pino, const char *prog) {
-	int32_t i;
-	auto tcps = &cp->tcps[tileno];
-	auto tcp = &tcps->pocs[pino];
+static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp,
+		uint16_t tileno, uint32_t pino, const char *prog) {
+	auto tcps = cp->tcps + tileno;
+	auto tcp = tcps->pocs + pino;
 
 	if (pos >= 0) {
-		for (i = pos; pos >= 0; i--) {
+		for (int32_t i = pos; pos >= 0; i--) {
 			switch (prog[i]) {
 			case 'R':
 				if (tcp->res_t == tcp->resE) {
@@ -1186,351 +1093,294 @@ static bool pi_check_next_level(int32_t pos, grk_coding_parameters *cp, uint16_t
  */
 PacketIter* pi_create_decode(grk_image *p_image, grk_coding_parameters *p_cp,
 		uint16_t tile_no) {
-	/* loop */
-	uint32_t pino;
-	uint32_t compno, resno;
-
-	/* to store w, h, dx and dy for all components and resolutions */
-	uint32_t *l_tmp_data;
-	uint32_t **l_tmp_ptr;
-
-	/* encoding parameters to set */
-	uint32_t l_max_res;
-	uint32_t l_max_prec;
-	uint32_t l_tx0, l_tx1, l_ty0, l_ty1;
-	uint32_t l_dx_min, l_dy_min;
-	uint32_t l_bound;
-	uint32_t l_step_p, l_step_c, l_step_r, l_step_l;
-	uint32_t l_data_stride;
-
-	/* preconditions in debug */
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	/* initializations */
-	auto l_tcp = &p_cp->tcps[tile_no];
-	l_bound = l_tcp->numpocs + 1;
+	auto tcp = &p_cp->tcps[tile_no];
+	uint32_t bound = tcp->numpocs + 1;
 
-	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
-	l_tmp_data = (uint32_t*) grk_malloc(
-			l_data_stride * p_image->numcomps * sizeof(uint32_t));
-	if (!l_tmp_data) {
+	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
+	auto tmp_data = (uint32_t*) grk_malloc(
+			data_stride * p_image->numcomps * sizeof(uint32_t));
+	if (!tmp_data)
 		return nullptr;
-	}
-	l_tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
-	if (!l_tmp_ptr) {
-		grok_free(l_tmp_data);
+	auto tmp_ptr = (uint32_t**) grk_malloc(
+			p_image->numcomps * sizeof(uint32_t*));
+	if (!tmp_ptr) {
+		grok_free(tmp_data);
 		return nullptr;
 	}
 
 	/* memory allocation for pi */
-	auto l_pi = pi_create(p_image, p_cp, tile_no);
-	if (!l_pi) {
-		grok_free(l_tmp_data);
-		grok_free(l_tmp_ptr);
+	auto pi = pi_create(p_image, p_cp, tile_no);
+	if (!pi) {
+		grok_free(tmp_data);
+		grok_free(tmp_ptr);
 		return nullptr;
 	}
 
-	auto l_encoding_value_ptr = l_tmp_data;
+	auto encoding_value_ptr = tmp_data;
 	/* update pointer array */
-	for (compno = 0; compno < p_image->numcomps; ++compno) {
-		l_tmp_ptr[compno] = l_encoding_value_ptr;
-		l_encoding_value_ptr += l_data_stride;
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+		tmp_ptr[compno] = encoding_value_ptr;
+		encoding_value_ptr += data_stride;
 	}
-	/* get encoding parameters */
-	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
-			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res,
-			l_tmp_ptr);
+
+	uint32_t max_res;
+	uint32_t max_prec;
+	uint32_t tx0, tx1, ty0, ty1;
+	uint32_t dx_min, dy_min;
+	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0,
+			&ty1, &dx_min, &dy_min, &max_prec, &max_res, tmp_ptr);
 
 	/* step calculations */
-	l_step_p = 1;
-	l_step_c = l_max_prec * l_step_p;
-	l_step_r = p_image->numcomps * l_step_c;
-	l_step_l = l_max_res * l_step_r;
+	uint32_t step_p = 1;
+	uint32_t step_c = max_prec * step_p;
+	uint32_t step_r = p_image->numcomps * step_c;
+	uint32_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator */
-	auto l_current_pi = l_pi;
+	auto current_pi = pi;
 
 	/* memory allocation for include */
-	l_current_pi->include = nullptr;
-	if (l_step_l && (l_tcp->numlayers < (SIZE_MAX / l_step_l) - 1)) {
-		l_current_pi->include = (int16_t*) grk_calloc(
-				((size_t) l_tcp->numlayers + 1) * l_step_l, sizeof(int16_t));
+	current_pi->include = nullptr;
+	if (step_l && (tcp->numlayers < (SIZE_MAX / step_l) - 1)) {
+		current_pi->include = (int16_t*) grk_calloc(
+				((size_t) tcp->numlayers + 1) * step_l, sizeof(int16_t));
 	}
 
-	if (!l_current_pi->include) {
-		grok_free(l_tmp_data);
-		grok_free(l_tmp_ptr);
-		pi_destroy(l_pi, l_bound);
+	if (!current_pi->include) {
+		grok_free(tmp_data);
+		grok_free(tmp_ptr);
+		pi_destroy(pi, bound);
 		return nullptr;
 	}
 
 	/* special treatment for the first packet iterator */
-	auto l_current_comp = l_current_pi->comps;
-	auto l_img_comp = p_image->comps;
-	auto l_tccp = l_tcp->tccps;
+	current_pi->tx0 = tx0;
+	current_pi->ty0 = ty0;
+	current_pi->tx1 = tx1;
+	current_pi->ty1 = ty1;
 
-	l_current_pi->tx0 = l_tx0;
-	l_current_pi->ty0 = l_ty0;
-	l_current_pi->tx1 = l_tx1;
-	l_current_pi->ty1 = l_ty1;
-
-	/*l_current_pi->dx = l_img_comp->dx;*/
-	/*l_current_pi->dy = l_img_comp->dy;*/
-
-	l_current_pi->step_p = l_step_p;
-	l_current_pi->step_c = l_step_c;
-	l_current_pi->step_r = l_step_r;
-	l_current_pi->step_l = l_step_l;
+	current_pi->step_p = step_p;
+	current_pi->step_c = step_c;
+	current_pi->step_r = step_r;
+	current_pi->step_l = step_l;
 
 	/* allocation for components and number of components has already been calculated by pi_create */
-	for (compno = 0; compno < l_current_pi->numcomps; ++compno) {
-		grk_pi_resolution *l_res = l_current_comp->resolutions;
-		l_encoding_value_ptr = l_tmp_ptr[compno];
+	for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
+		auto current_comp = current_pi->comps + compno;
+		auto img_comp = p_image->comps + compno;
+		encoding_value_ptr = tmp_ptr[compno];
 
-		l_current_comp->dx = l_img_comp->dx;
-		l_current_comp->dy = l_img_comp->dy;
+		current_comp->dx = img_comp->dx;
+		current_comp->dy = img_comp->dy;
 		/* resolutions have already been initialized */
-		for (resno = 0; resno < l_current_comp->numresolutions; resno++) {
-			l_res->pdx = *(l_encoding_value_ptr++);
-			l_res->pdy = *(l_encoding_value_ptr++);
-			l_res->pw = *(l_encoding_value_ptr++);
-			l_res->ph = *(l_encoding_value_ptr++);
-			++l_res;
+		for (uint32_t resno = 0; resno < current_comp->numresolutions;
+				resno++) {
+			grk_pi_resolution *res = current_comp->resolutions + resno;
+
+			res->pdx = *(encoding_value_ptr++);
+			res->pdy = *(encoding_value_ptr++);
+			res->pw = *(encoding_value_ptr++);
+			res->ph = *(encoding_value_ptr++);
 		}
-		++l_current_comp;
-		++l_img_comp;
-		++l_tccp;
 	}
-	++l_current_pi;
-
-	for (pino = 1; pino < l_bound; ++pino) {
-		l_current_comp = l_current_pi->comps;
-		l_img_comp = p_image->comps;
-		l_tccp = l_tcp->tccps;
-
-		l_current_pi->tx0 = l_tx0;
-		l_current_pi->ty0 = l_ty0;
-		l_current_pi->tx1 = l_tx1;
-		l_current_pi->ty1 = l_ty1;
-		/*l_current_pi->dx = l_dx_min;*/
-		/*l_current_pi->dy = l_dy_min;*/
-		l_current_pi->step_p = l_step_p;
-		l_current_pi->step_c = l_step_c;
-		l_current_pi->step_r = l_step_r;
-		l_current_pi->step_l = l_step_l;
+	for (uint32_t pino = 1; pino < bound; ++pino) {
+		current_pi = pi + pino;
+		current_pi->tx0 = tx0;
+		current_pi->ty0 = ty0;
+		current_pi->tx1 = tx1;
+		current_pi->ty1 = ty1;
+		/*current_pi->dx = dx_min;*/
+		/*current_pi->dy = dy_min;*/
+		current_pi->step_p = step_p;
+		current_pi->step_c = step_c;
+		current_pi->step_r = step_r;
+		current_pi->step_l = step_l;
 
 		/* allocation for components and number of components has already been calculated by pi_create */
-		for (compno = 0; compno < l_current_pi->numcomps; ++compno) {
-			grk_pi_resolution *l_res = l_current_comp->resolutions;
-			l_encoding_value_ptr = l_tmp_ptr[compno];
+		for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
+			auto current_comp = current_pi->comps + compno;
+			auto img_comp = p_image->comps + compno;
 
-			l_current_comp->dx = l_img_comp->dx;
-			l_current_comp->dy = l_img_comp->dy;
+			encoding_value_ptr = tmp_ptr[compno];
+
+			current_comp->dx = img_comp->dx;
+			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
-			for (resno = 0; resno < l_current_comp->numresolutions; resno++) {
-				l_res->pdx = *(l_encoding_value_ptr++);
-				l_res->pdy = *(l_encoding_value_ptr++);
-				l_res->pw = *(l_encoding_value_ptr++);
-				l_res->ph = *(l_encoding_value_ptr++);
-				++l_res;
+			for (uint32_t resno = 0; resno < current_comp->numresolutions;
+					resno++) {
+				grk_pi_resolution *res = current_comp->resolutions + resno;
+
+				res->pdx = *(encoding_value_ptr++);
+				res->pdy = *(encoding_value_ptr++);
+				res->pw = *(encoding_value_ptr++);
+				res->ph = *(encoding_value_ptr++);
 			}
-			++l_current_comp;
-			++l_img_comp;
-			++l_tccp;
 		}
 		/* special treatment*/
-		l_current_pi->include = (l_current_pi - 1)->include;
-		++l_current_pi;
+		current_pi->include = (current_pi - 1)->include;
 	}
-	grok_free(l_tmp_data);
-	grok_free(l_tmp_ptr);
-	if (l_tcp->POC) {
-		pi_update_decode_poc(l_pi, l_tcp, l_max_prec, l_max_res);
-	} else {
-		pi_update_decode_not_poc(l_pi, l_tcp, l_max_prec, l_max_res);
-	}
-	return l_pi;
+	grok_free(tmp_data);
+	grok_free(tmp_ptr);
+	if (tcp->POC)
+		pi_update_decode_poc(pi, tcp, max_prec);
+	else
+		pi_update_decode_no_poc(pi, tcp, max_prec, max_res);
+
+	return pi;
 }
 
-PacketIter* pi_initialise_encode(const grk_image *p_image, grk_coding_parameters *p_cp,
-		uint16_t tile_no, J2K_T2_MODE p_t2_mode) {
-	/* loop*/
-	uint32_t pino;
-	uint32_t compno, resno;
-
-	/* to store w, h, dx and dy for all components and resolutions*/
-	uint32_t *l_tmp_data;
-	uint32_t **l_tmp_ptr;
-
-	/* encoding parameters to set*/
-	uint32_t l_max_res;
-	uint32_t l_max_prec;
-	uint32_t l_tx0, l_tx1, l_ty0, l_ty1;
-	uint32_t l_dx_min, l_dy_min;
-	uint32_t l_step_p, l_step_c, l_step_r, l_step_l;
-	uint32_t l_data_stride;
-
-	/* preconditions in debug*/
+PacketIter* pi_initialise_encode(const grk_image *p_image,
+		grk_coding_parameters *p_cp, uint16_t tile_no, J2K_T2_MODE p_t2_mode) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	/* initializations*/
-	auto l_tcp = &p_cp->tcps[tile_no];
-	uint32_t l_bound = l_tcp->numpocs + 1;
-
-	l_data_stride = 4 * GRK_J2K_MAXRLVLS;
-	l_tmp_data = (uint32_t*) grk_malloc(
-			l_data_stride * p_image->numcomps * sizeof(uint32_t));
-	if (!l_tmp_data) {
+	auto tcp = &p_cp->tcps[tile_no];
+	uint32_t bound = tcp->numpocs + 1;
+	uint32_t data_stride = 4 * GRK_J2K_MAXRLVLS;
+	auto tmp_data = (uint32_t*) grk_malloc(
+			data_stride * p_image->numcomps * sizeof(uint32_t));
+	if (!tmp_data) {
 		return nullptr;
 	}
 
-	l_tmp_ptr = (uint32_t**) grk_malloc(p_image->numcomps * sizeof(uint32_t*));
-	if (!l_tmp_ptr) {
-		grok_free(l_tmp_data);
+	auto tmp_ptr = (uint32_t**) grk_malloc(
+			p_image->numcomps * sizeof(uint32_t*));
+	if (!tmp_ptr) {
+		grok_free(tmp_data);
 		return nullptr;
 	}
 
-	/* memory allocation for pi*/
-	auto l_pi = pi_create(p_image, p_cp, tile_no);
-	if (!l_pi) {
-		grok_free(l_tmp_data);
-		grok_free(l_tmp_ptr);
+	auto pi = pi_create(p_image, p_cp, tile_no);
+	if (!pi) {
+		grok_free(tmp_data);
+		grok_free(tmp_ptr);
 		return nullptr;
 	}
 
-	auto l_encoding_value_ptr = l_tmp_data;
-	/* update pointer array*/
-	for (compno = 0; compno < p_image->numcomps; ++compno) {
-		l_tmp_ptr[compno] = l_encoding_value_ptr;
-		l_encoding_value_ptr += l_data_stride;
+	auto encoding_value_ptr = tmp_data;
+	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+		tmp_ptr[compno] = encoding_value_ptr;
+		encoding_value_ptr += data_stride;
 	}
 
-	/* get encoding parameters*/
-	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
-			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res,
-			l_tmp_ptr);
+	uint32_t max_res;
+	uint32_t max_prec;
+	uint32_t tx0, tx1, ty0, ty1;
+	uint32_t dx_min, dy_min;
+	grk_get_all_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0,
+			&ty1, &dx_min, &dy_min, &max_prec, &max_res, tmp_ptr);
 
-	/* step calculations*/
-	l_step_p = 1;
-	l_step_c = l_max_prec * l_step_p;
-	l_step_r = p_image->numcomps * l_step_c;
-	l_step_l = l_max_res * l_step_r;
+	uint32_t step_p = 1;
+	uint32_t step_c = max_prec * step_p;
+	uint32_t step_r = p_image->numcomps * step_c;
+	uint32_t step_l = max_res * step_r;
 
 	/* set values for first packet iterator*/
-	l_pi->tp_on = (uint8_t) p_cp->m_coding_param.m_enc.m_tp_on;
-	auto l_current_pi = l_pi;
-
-	/* memory allocation for include*/
-	l_current_pi->include = (int16_t*) grk_calloc(
-			(size_t) l_tcp->numlayers * l_step_l, sizeof(int16_t));
-	if (!l_current_pi->include) {
-		grok_free(l_tmp_data);
-		grok_free(l_tmp_ptr);
-		pi_destroy(l_pi, l_bound);
+	pi->tp_on = (uint8_t) p_cp->m_coding_param.m_enc.m_tp_on;
+	auto current_pi = pi;
+	current_pi->include = (int16_t*) grk_calloc(
+			(size_t) tcp->numlayers * step_l, sizeof(int16_t));
+	if (!current_pi->include) {
+		grok_free(tmp_data);
+		grok_free(tmp_ptr);
+		pi_destroy(pi, bound);
 		return nullptr;
 	}
 
 	/* special treatment for the first packet iterator*/
-	auto l_current_comp = l_current_pi->comps;
-	auto l_img_comp = p_image->comps;
-	auto l_tccp = l_tcp->tccps;
-	l_current_pi->tx0 = l_tx0;
-	l_current_pi->ty0 = l_ty0;
-	l_current_pi->tx1 = l_tx1;
-	l_current_pi->ty1 = l_ty1;
-	l_current_pi->dx = l_dx_min;
-	l_current_pi->dy = l_dy_min;
-	l_current_pi->step_p = l_step_p;
-	l_current_pi->step_c = l_step_c;
-	l_current_pi->step_r = l_step_r;
-	l_current_pi->step_l = l_step_l;
+	current_pi->tx0 = tx0;
+	current_pi->ty0 = ty0;
+	current_pi->tx1 = tx1;
+	current_pi->ty1 = ty1;
+	current_pi->dx = dx_min;
+	current_pi->dy = dy_min;
+	current_pi->step_p = step_p;
+	current_pi->step_c = step_c;
+	current_pi->step_r = step_r;
+	current_pi->step_l = step_l;
 
 	/* allocation for components and number of components has already been calculated by pi_create */
-	for (compno = 0; compno < l_current_pi->numcomps; ++compno) {
-		grk_pi_resolution *l_res = l_current_comp->resolutions;
-		l_encoding_value_ptr = l_tmp_ptr[compno];
+	for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
+		encoding_value_ptr = tmp_ptr[compno];
 
-		l_current_comp->dx = l_img_comp->dx;
-		l_current_comp->dy = l_img_comp->dy;
+		auto current_comp = current_pi->comps + compno;
+		auto img_comp = p_image->comps + compno;
+
+		current_comp->dx = img_comp->dx;
+		current_comp->dy = img_comp->dy;
 
 		/* resolutions have already been initialized */
-		for (resno = 0; resno < l_current_comp->numresolutions; resno++) {
-			l_res->pdx = *(l_encoding_value_ptr++);
-			l_res->pdy = *(l_encoding_value_ptr++);
-			l_res->pw = *(l_encoding_value_ptr++);
-			l_res->ph = *(l_encoding_value_ptr++);
-			++l_res;
+		for (uint32_t resno = 0; resno < current_comp->numresolutions;
+				resno++) {
+			auto res = current_comp->resolutions + resno;
+
+			res->pdx = *(encoding_value_ptr++);
+			res->pdy = *(encoding_value_ptr++);
+			res->pw = *(encoding_value_ptr++);
+			res->ph = *(encoding_value_ptr++);
 		}
-
-		++l_current_comp;
-		++l_img_comp;
-		++l_tccp;
 	}
-	++l_current_pi;
+	for (uint32_t pino = 1; pino < bound; ++pino) {
+		current_pi = pi + pino;
 
-	for (pino = 1; pino < l_bound; ++pino) {
-		l_current_comp = l_current_pi->comps;
-		l_img_comp = p_image->comps;
-		l_tccp = l_tcp->tccps;
+		current_pi->tx0 = tx0;
+		current_pi->ty0 = ty0;
+		current_pi->tx1 = tx1;
+		current_pi->ty1 = ty1;
+		current_pi->dx = dx_min;
+		current_pi->dy = dy_min;
+		current_pi->step_p = step_p;
+		current_pi->step_c = step_c;
+		current_pi->step_r = step_r;
+		current_pi->step_l = step_l;
 
-		l_current_pi->tx0 = l_tx0;
-		l_current_pi->ty0 = l_ty0;
-		l_current_pi->tx1 = l_tx1;
-		l_current_pi->ty1 = l_ty1;
-		l_current_pi->dx = l_dx_min;
-		l_current_pi->dy = l_dy_min;
-		l_current_pi->step_p = l_step_p;
-		l_current_pi->step_c = l_step_c;
-		l_current_pi->step_r = l_step_r;
-		l_current_pi->step_l = l_step_l;
+		/* allocation for components and number of components
+		 *  has already been calculated by pi_create */
+		for (uint32_t compno = 0; compno < current_pi->numcomps; ++compno) {
+			auto current_comp = current_pi->comps + compno;
+			auto img_comp = p_image->comps + compno;
 
-		/* allocation for components and number of components has already been calculated by pi_create */
-		for (compno = 0; compno < l_current_pi->numcomps; ++compno) {
-			grk_pi_resolution *l_res = l_current_comp->resolutions;
-			l_encoding_value_ptr = l_tmp_ptr[compno];
+			encoding_value_ptr = tmp_ptr[compno];
 
-			l_current_comp->dx = l_img_comp->dx;
-			l_current_comp->dy = l_img_comp->dy;
+			current_comp->dx = img_comp->dx;
+			current_comp->dy = img_comp->dy;
 			/* resolutions have already been initialized */
-			for (resno = 0; resno < l_current_comp->numresolutions; resno++) {
-				l_res->pdx = *(l_encoding_value_ptr++);
-				l_res->pdy = *(l_encoding_value_ptr++);
-				l_res->pw = *(l_encoding_value_ptr++);
-				l_res->ph = *(l_encoding_value_ptr++);
-				++l_res;
+			for (uint32_t resno = 0; resno < current_comp->numresolutions;
+					resno++) {
+				auto res = current_comp->resolutions + resno;
+
+				res->pdx = *(encoding_value_ptr++);
+				res->pdy = *(encoding_value_ptr++);
+				res->pw = *(encoding_value_ptr++);
+				res->ph = *(encoding_value_ptr++);
 			}
-			++l_current_comp;
-			++l_img_comp;
-			++l_tccp;
 		}
-
 		/* special treatment*/
-		l_current_pi->include = (l_current_pi - 1)->include;
-		++l_current_pi;
+		current_pi->include = (current_pi - 1)->include;
 	}
 
-	grok_free(l_tmp_data);
-	l_tmp_data = nullptr;
-	grok_free(l_tmp_ptr);
-	l_tmp_ptr = nullptr;
+	grok_free(tmp_data);
+	tmp_data = nullptr;
+	grok_free(tmp_ptr);
+	tmp_ptr = nullptr;
 
-	if (l_tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS)) {
-		pi_update_encode_poc_and_final(p_cp, tile_no, l_tx0, l_tx1, l_ty0,
-				l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min);
-	} else {
-		pi_update_encode_not_poc(p_cp, p_image->numcomps, tile_no, l_tx0,
-				l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min);
-	}
+	if (tcp->POC && (GRK_IS_CINEMA(p_cp->rsiz) || p_t2_mode == FINAL_PASS))
+		pi_update_encode_poc_and_final(p_cp, tile_no, tx0, tx1, ty0, ty1,
+				max_prec, dx_min, dy_min);
+	else
+		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tx0, tx1,
+				ty0, ty1, max_prec, max_res, dx_min, dy_min);
 
-	return l_pi;
+	return pi;
 }
 
-void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, uint32_t pino,
-		uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
+void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
+		uint32_t pino, uint32_t tpnum, uint32_t tppos, J2K_T2_MODE t2_mode) {
 
 	uint32_t incr_top = 1, resetX = 0;
 	auto tcps = &cp->tcps[tileno];
@@ -1541,8 +1391,9 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 	pi[pino].poc.prg = tcp->prg;
 
 	if (!(cp->m_coding_param.m_enc.m_tp_on
-			&& ( (!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz) && (t2_mode == FINAL_PASS))
-					|| GRK_IS_CINEMA(cp->rsiz) ||  GRK_IS_IMF(cp->rsiz)))) {
+			&& ((!GRK_IS_CINEMA(cp->rsiz) && !GRK_IS_IMF(cp->rsiz)
+					&& (t2_mode == FINAL_PASS)) || GRK_IS_CINEMA(cp->rsiz)
+					|| GRK_IS_IMF(cp->rsiz)))) {
 		pi[pino].poc.resno0 = tcp->resS;
 		pi[pino].poc.resno1 = tcp->resE;
 		pi[pino].poc.compno0 = tcp->compS;
@@ -1589,7 +1440,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 		}
 
 		if (tpnum == 0) {
-			for (int32_t i = (int32_t)tppos; i >= 0; i--) {
+			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
 					tcp->comp_t = tcp->compS;
@@ -1636,7 +1487,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 			}
 			incr_top = 1;
 		} else {
-			for (int32_t i = (int32_t)tppos; i >= 0; i--) {
+			for (int32_t i = (int32_t) tppos; i >= 0; i--) {
 				switch (prog[i]) {
 				case 'C':
 					pi[pino].poc.compno0 = tcp->comp_t - 1;
@@ -1799,57 +1650,52 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno, 
 }
 
 void pi_destroy(PacketIter *p_pi, uint32_t nb_elements) {
-	uint32_t compno, pino;
-	auto l_current_pi = p_pi;
 	if (p_pi) {
 		if (p_pi->include) {
 			grok_free(p_pi->include);
 			p_pi->include = nullptr;
 		}
-		for (pino = 0; pino < nb_elements; ++pino) {
-			if (l_current_pi->comps) {
-				auto l_current_component = l_current_pi->comps;
-				for (compno = 0; compno < l_current_pi->numcomps; compno++) {
-					if (l_current_component->resolutions) {
-						grok_free(l_current_component->resolutions);
-						l_current_component->resolutions = nullptr;
-					}
+		for (uint32_t pino = 0; pino < nb_elements; ++pino) {
+			auto current_pi = p_pi + pino;
 
-					++l_current_component;
+			if (current_pi->comps) {
+				for (uint32_t compno = 0; compno < current_pi->numcomps;
+						compno++) {
+					auto current_component = current_pi->comps + compno;
+
+					if (current_component->resolutions) {
+						grok_free(current_component->resolutions);
+						current_component->resolutions = nullptr;
+					}
 				}
-				grok_free(l_current_pi->comps);
-				l_current_pi->comps = 0;
+				grok_free(current_pi->comps);
+				current_pi->comps = 0;
 			}
-			++l_current_pi;
 		}
 		grok_free(p_pi);
 	}
 }
 
-void pi_update_encoding_parameters(const grk_image *p_image, grk_coding_parameters *p_cp,
-		uint16_t tile_no) {
-	/* encoding parameters to set */
-	uint32_t l_max_res;
-	uint32_t l_max_prec;
-	uint32_t l_tx0, l_tx1, l_ty0, l_ty1;
-	uint32_t l_dx_min, l_dy_min;
-
+void pi_update_encoding_parameters(const grk_image *p_image,
+		grk_coding_parameters *p_cp, uint16_t tile_no) {
 	assert(p_cp != nullptr);
 	assert(p_image != nullptr);
 	assert(tile_no < p_cp->t_grid_width * p_cp->t_grid_height);
 
-	auto l_tcp = &(p_cp->tcps[tile_no]);
+	auto tcp = &(p_cp->tcps[tile_no]);
+	uint32_t max_res;
+	uint32_t max_prec;
+	uint32_t tx0, tx1, ty0, ty1;
+	uint32_t dx_min, dy_min;
+	grk_get_encoding_parameters(p_image, p_cp, tile_no, &tx0, &tx1, &ty0, &ty1,
+			&dx_min, &dy_min, &max_prec, &max_res);
 
-	/* get encoding parameters */
-	grk_get_encoding_parameters(p_image, p_cp, tile_no, &l_tx0, &l_tx1,
-			&l_ty0, &l_ty1, &l_dx_min, &l_dy_min, &l_max_prec, &l_max_res);
-
-	if (l_tcp->POC) {
-		pi_update_encode_poc_and_final(p_cp, tile_no, l_tx0, l_tx1, l_ty0,
-				l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min);
+	if (tcp->POC) {
+		pi_update_encode_poc_and_final(p_cp, tile_no, tx0, tx1, ty0, ty1,
+				max_prec, dx_min, dy_min);
 	} else {
-		pi_update_encode_not_poc(p_cp, p_image->numcomps, tile_no, l_tx0,
-				l_tx1, l_ty0, l_ty1, l_max_prec, l_max_res, l_dx_min, l_dy_min);
+		pi_update_encode_no_poc(p_cp, p_image->numcomps, tile_no, tx0, tx1,
+				ty0, ty1, max_prec, max_res, dx_min, dy_min);
 	}
 }
 
