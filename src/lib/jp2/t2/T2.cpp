@@ -287,12 +287,17 @@ T2::T2(grk_image *p_image, grk_coding_parameters *p_cp) : image(p_image), cp(p_c
 
 bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
-    auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
+	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
+	if (max_length == 0){
+		GROK_WARN("No data for packet header or body.");
+		return true;
+	}
+
+	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
 	uint64_t nb_total_bytes_read = 0;
 	*p_data_read = 0;
-
 	if (!read_packet_header(p_tile, p_tcp, p_pi, &read_data, src_buf,
 			&nb_bytes_read)) {
 		return false;
@@ -1002,7 +1007,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 							(int32_t) increment,
 							int_floorlog2(len) + 1
 									- ((int32_t) cblk->numlenbits
-											+ int_floorlog2((int32_t) nump)));
+											+ int_floorlog2(nump)));
 					len = 0;
 					nump = 0;
 				}
