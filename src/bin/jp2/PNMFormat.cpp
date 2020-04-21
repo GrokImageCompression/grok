@@ -77,7 +77,6 @@ enum PNM_COLOUR_SPACE {
 struct pnm_header {
 	uint32_t width, height, maxval, depth, format;
 	PNM_COLOUR_SPACE colour_space;
-	bool ok;
 };
 
 static char* skip_white(char *s) {
@@ -129,23 +128,27 @@ int convert(std::string s) {
 	return -1;
 }
 
-static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
+static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 	uint32_t format;
 	char line[256];
+	char c;
 
-	if (fgets(line, 250, reader) == nullptr) {
-		spdlog::error(" fgets returned nullptr");
-		return;
+	if (fread(&c, 1, 1, reader) != 1){
+		spdlog::error(" fread error");
+		return false;
 	}
-
-	if (line[0] != 'P') {
+	if (c != 'P') {
 		spdlog::error("read_pnm_header:PNM:magic P missing");
-		return;
+		return false;
 	}
-	format = (uint32_t) atoi(line + 1);
+	if (fread(&c, 1, 1, reader) != 1){
+		spdlog::error(" fread error");
+		return false;
+	}
+	format = (uint32_t) (c- 48);
 	if (format < 1 || format > 7) {
 		spdlog::error("read_pnm_header:magic format {} invalid", format);
-		return;
+		return false;
 	}
 	ph->format = format;
 	if (format == 7) {
@@ -170,7 +173,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 					temp = convert(tokens[1]);
 					if (temp < 1) {
 						spdlog::error("Invalid width");
-						return;
+						return false;
 					}
 					ph->width = (uint32_t) temp;
 
@@ -178,14 +181,14 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 					temp = convert(tokens[1]);
 					if (temp < 1) {
 						spdlog::error("Invalid height");
-						return;
+						return false;
 					}
 					ph->height = (uint32_t) temp;
 				} else if (idf == "DEPTH") {
 					temp = convert(tokens[1]);
 					if (temp < 1 || temp > 4) {
 						spdlog::error("Invalid depth {}", temp);
-						return;
+						return false;
 					}
 					ph->depth = (uint32_t) temp;
 
@@ -193,7 +196,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 					temp = convert(tokens[1]);
 					if (temp < 1 || temp > 65535) {
 						spdlog::error("Invalid maximum value {}", temp);
-						return;
+						return false;
 					}
 					ph->maxval = (uint32_t) temp;
 
@@ -220,15 +223,15 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 		}/* while(fgets( ) */
 		if (!end) {
 			spdlog::error("read_pnm_header:P7 without ENDHDR");
-			return;
+			return false;
 		}
 		if (ph->depth == 0) {
 			spdlog::error("Depth is missing");
-			return;
+			return false;
 		}
 		if (ph->maxval == 0) {
 			spdlog::error("Maximum value is missing");
-			return;
+			return false;
 		}
 		PNM_COLOUR_SPACE depth_colour_space = PNM_UNKNOWN;
 		switch (ph->depth) {
@@ -253,12 +256,11 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 						depth_colour_space);
 		}
 		ph->colour_space = depth_colour_space;
-		ph->ok = true;
 
 	} else {
 		while (fgets(line, 250, reader)) {
 			int allow_null = 0;
-			if (*line == '#' || *line == '\n')
+			if (*line == '#' || *line == '\n' || *line == '\r')
 				continue;
 
 			char *s = line;
@@ -268,7 +270,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 				if ((!s) || (*s == 0) || (ph->width < 1)) {
 					spdlog::error("Invalid width {}",
 							(s && *s != 0) ? ph->width : 0U);
-					return;
+					return false;
 				}
 				allow_null = 1;
 			}
@@ -279,7 +281,7 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 				if (!s || (*s == 0) || (ph->height < 1)) {
 					spdlog::error("Invalid height {}",
 							(s && *s != 0) ? ph->height : 0U);
-					return;
+					return false;
 				}
 				if (format == 1 || format == 4) {
 					break;
@@ -291,25 +293,26 @@ static void read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 			if (!s && allow_null)
 				continue;
 			if (!s || (*s == 0))
-				return;
+				return false;
 			break;
 		}/* while(fgets( ) */
 
 		if (format == 2 || format == 3 || format > 4) {
 			if (ph->maxval < 1 || ph->maxval > 65535) {
 				spdlog::error("Invalid max value {}", ph->maxval);
-				return;
+				return false;
 			}
 		}
 		if (ph->width < 1 || ph->height < 1) {
 			spdlog::error("Invalid width or height");
-			return;
+			return false;
 		}
 		// bitmap (ascii or binary)
 		if (format == 1 || format == 4)
 			ph->maxval = 1;
-		ph->ok = true;
 	}
+	return true;
+
 }
 
 static inline uint32_t uint_floorlog2(uint32_t a) {
@@ -338,8 +341,7 @@ static grk_image* pnmtoimage(const char *filename,
 		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
-	read_pnm_header(fp, &header_info, parameters->verbose);
-	if (!header_info.ok) {
+	if (!read_pnm_header(fp, &header_info, parameters->verbose)) {
 		spdlog::error("Invalid PNM header");
 		goto cleanup;
 	}
