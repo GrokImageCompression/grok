@@ -128,9 +128,22 @@ int convert(std::string s) {
 	return -1;
 }
 
+bool header_rewind(char *s, char *line, size_t lineLen,  FILE *reader){
+    // if s points to ' ', then rewind file
+	// to two past current position of s
+	if (*s == ' ') {
+		ptrdiff_t len = (ptrdiff_t)s - (ptrdiff_t)line;
+		if (fseek(reader, (ptrdiff_t)(-lineLen) +len + 2, SEEK_CUR))
+			return false;
+	}
+	return true;
+}
+
 static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 	uint32_t format;
-	char line[256];
+	const size_t lineSize = 256;
+	const size_t lineSearch = 250;
+	char line[lineSize];
 	char c;
 
 	if (fread(&c, 1, 1, reader) != 1){
@@ -153,7 +166,7 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 	ph->format = format;
 	if (format == 7) {
 		uint32_t end = 0;
-		while (fgets(line, 250, reader)) {
+		while (fgets(line, lineSearch, reader)) {
 			if (*line == '#' || *line == '\n')
 				continue;
 
@@ -258,7 +271,7 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 		ph->colour_space = depth_colour_space;
 
 	} else {
-		while (fgets(line, 250, reader)) {
+		while (fgets(line, lineSearch, reader)) {
 			int allow_null = 0;
 			if (*line == '#' || *line == '\n' || *line == '\r')
 				continue;
@@ -283,7 +296,9 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 							(s && *s != 0) ? ph->height : 0U);
 					return false;
 				}
-				if (format == 1 || format == 4) {
+				if (format == 1 || format == 4){
+					if (!header_rewind(s,line,lineSearch,reader))
+						return false;
 					break;
 				}
 				allow_null = 1;
@@ -294,7 +309,11 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 				continue;
 			if (!s || (*s == 0))
 				return false;
-			break;
+
+			if (!header_rewind(s,line,lineSearch,reader))
+				return false;
+
+		 	break;
 		}/* while(fgets( ) */
 
 		if (format == 2 || format == 3 || format > 4) {
