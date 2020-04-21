@@ -471,38 +471,46 @@ static grk_image* pnmtoimage(const char *filename,
 		if (!rc)
 			goto cleanup;
 	} else if (format == 4 || (format == 7 && header_info.colour_space == PNM_BW) ) { /* binary bitmap */
-		/* let's see if bits are packed into bytes or not */
-		int64_t currentPos = ftell(fp);
-		if (currentPos == -1)
-			goto cleanup;
-		if (fseek(fp, 0L, SEEK_END))
-			goto cleanup;
-		int64_t endPos = ftell(fp);
-		if (endPos == -1)
-			goto cleanup;
-		if (fseek(fp, currentPos, SEEK_SET))
-			goto cleanup;
-		uint64_t pixels = (uint64_t)(endPos - currentPos);
 		bool packed = false;
-		if (pixels == (w*h)/8){
+		uint64_t packed_area = (uint64_t)((w + 7)/8) * h;
+		if (format == 4) {
 			packed = true;
-			area /= 8;
+		} else {
+			/* let's see if bits are packed into bytes or not */
+			int64_t currentPos = ftell(fp);
+			if (currentPos == -1)
+				goto cleanup;
+			if (fseek(fp, 0L, SEEK_END))
+				goto cleanup;
+			int64_t endPos = ftell(fp);
+			if (endPos == -1)
+				goto cleanup;
+			if (fseek(fp, currentPos, SEEK_SET))
+				goto cleanup;
+			uint64_t pixels = (uint64_t)(endPos - currentPos);
+			if (pixels == packed_area)
+				packed = true;
 		}
+		if (packed)
+			area = packed_area;
 
 		uint64_t index = 0;
 		const size_t chunkSize = 4096;
 		uint8_t chunk[chunkSize];
 		uint64_t i = 0;
 		while (i < area) {
-			size_t bytesRead = fread(chunk, 1, chunkSize, fp);
+			size_t bytesRead = fread(chunk, 1, min((uint64_t)chunkSize, (uint64_t)(area - i)), fp);
 			if (!bytesRead)
 				break;
 			auto chunkPtr = (uint8_t*) chunk;
 			for (size_t ct = 0; ct < bytesRead; ++ct) {
 				uint8_t c = *chunkPtr++;
 				if (packed) {
-					for (int32_t j = 7; j >= 0; --j)
+					for (int32_t j = 7; j >= 0; --j){
 						image->comps[0].data[index++] = ((c >> j) & 1) ^ 1;
+						if ((index % w) == 0)
+							break;
+					}
 				} else {
 					image->comps[0].data[index++] = c & 1;
 				}
@@ -510,7 +518,7 @@ static grk_image* pnmtoimage(const char *filename,
 			}
 		}
 		if (i != area) {
-			spdlog::error("pixels read ({}) less than image area ({})", i, area);
+			spdlog::error("pixels read ({}) differs from image area ({})", i, area);
 			goto cleanup;
 		}
 	}
