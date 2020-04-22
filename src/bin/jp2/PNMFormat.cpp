@@ -666,12 +666,12 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 						goto cleanup;
 					}
 				}
-				if (outCount) {
-					size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
-					if (res != outCount) {
-						rc = 1;
-						goto cleanup;
-					}
+			}
+			if (outCount) {
+				size_t res = fwrite(buf, sizeof(uint16_t), outCount, fdest);
+				if (res != outCount) {
+					rc = 1;
+					goto cleanup;
 				}
 			}
 		} else {
