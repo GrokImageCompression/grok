@@ -216,9 +216,8 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 			return false;
 		}
 		while (pi_next(current_pi)) {
-			auto skip_precinct = false;
 			auto tilec = p_tile->comps + current_pi->compno;
-			auto skip_layer_or_res = current_pi->layno
+			auto skip_the_packet = current_pi->layno
 					>= tcp->num_layers_to_decode
 					|| current_pi->resno >= tilec->minimum_num_resolutions;
 
@@ -230,14 +229,14 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 				 current_pi->resno, current_pi->precno,
 				 current_pi->layno);
 */
-			if (!skip_layer_or_res) {
+			if (!skip_the_packet) {
+				skip_the_packet = true;
 				auto res = tilec->resolutions + current_pi->resno;
-				skip_precinct = true;
-				for (uint32_t bandno = 0; bandno < res->numbands && skip_precinct;
+				for (uint32_t bandno = 0; bandno < res->numbands && skip_the_packet;
 						++bandno) {
 					auto band = res->bands + bandno;
 					auto num_precincts = band->numPrecincts;
-					for (uint32_t precno = 0; precno < num_precincts && skip_precinct;
+					for (uint32_t precno = 0; precno < num_precincts && skip_the_packet;
 							++precno) {
 						auto prec = band->precincts + precno;
 						auto prec_rect = grk_rect(prec->x0, prec->y0, prec->x1,
@@ -248,14 +247,20 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						bool clip =
 								(tile_res->band_region + bandno)->clip(prec_rect, &dummy);
 						if (clip) {
-							skip_precinct = false;
+							skip_the_packet = false;
 							break;
 						}
 					}
 				}
 			}
+/*
+            printf("packet cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d -> %s\n",
+                current_pi->compno, current_pi->resno,
+                current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
+*/
 			uint64_t nb_bytes_read = 0;
-			if (!skip_layer_or_res && !skip_precinct) {
+			if (!skip_the_packet) {
+
 				if (!decode_packet(	p_tile, tcp, current_pi, src_buf, &nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
 					return false;
@@ -268,7 +273,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 				}
 			}
 
-			if (!skip_layer_or_res)
+			if (!skip_the_packet)
 			 img_comp->resno_decoded = std::max<uint32_t>(
 					 current_pi->resno, img_comp->resno_decoded);
 			*p_data_read += nb_bytes_read;
