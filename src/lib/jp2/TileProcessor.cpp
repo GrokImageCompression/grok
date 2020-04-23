@@ -989,15 +989,10 @@ bool TileProcessor::is_whole_tilecomp_decoding(uint32_t compno) {
 	/* with the tile coordinates */
 
 	auto dims = tilec->buf->reduced_region_dim;
-	uint32_t win_x0 = max<uint32_t>(tilec->x0, (uint32_t) dims.x0);
-	uint32_t win_y0 = max<uint32_t>(tilec->y0, (uint32_t) dims.y0);
-	uint32_t win_x1 = min<uint32_t>(tilec->x1, (uint32_t) dims.x1);
-	uint32_t win_y1 = min<uint32_t>(tilec->y1, (uint32_t) dims.y1);
-
-	uint32_t tcx0 = max<uint32_t>((uint32_t) tilec->x0, win_x0);
-	uint32_t tcy0 = max<uint32_t>((uint32_t) tilec->y0, win_y0);
-	uint32_t tcx1 = min<uint32_t>((uint32_t) tilec->x1, win_x1);
-	uint32_t tcy1 = min<uint32_t>((uint32_t) tilec->y1, win_y1);
+	uint32_t tcx0 = (uint32_t)dims.x0;
+	uint32_t tcy0 = (uint32_t)dims.y0;
+	uint32_t tcx1 = (uint32_t)dims.x1;
+	uint32_t tcy1 = (uint32_t)dims.y1;
 
 	uint32_t shift = tilec->numresolutions - tilec->minimum_num_resolutions;
 	/* Tolerate small margin within the reduced resolution factor to consider if */
