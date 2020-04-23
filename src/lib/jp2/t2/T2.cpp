@@ -200,15 +200,19 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 	if (!pi)
 		return false;
 
-	auto current_pi = pi;
+
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
+        /* if the resolution needed is too low, one dim of the tilec could be equal to zero
+         * and no packets are used to decode this resolution and
+         * l_current_pi->resno is always >= p_tile->comps[l_current_pi->compno].minimum_num_resolutions
+         * and no l_img_comp->resno_decoded are computed
+         */
+        bool* first_pass_failed = new bool[image->numcomps];
+        for (size_t k = 0; k < image->numcomps; ++k) {
+        	first_pass_failed[k] = true;
+        }
 
-		/* if the resolution needed is too low, one dim of the tilec could be equal to zero
-		 * and no packets are used to decompress this resolution and
-		 * current_pi->resno is always >= p_tile->comps[current_pi->compno].minimum_num_resolutions
-		 * and no img_comp->resno_decoded are computed
-		 */
-
+		auto current_pi = pi + pino;
 		if (current_pi->poc.prg == GRK_PROG_UNKNOWN) {
 			pi_destroy(pi, nb_pocs);
 			GROK_ERROR(
@@ -261,24 +265,37 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 			uint64_t nb_bytes_read = 0;
 			if (!skip_the_packet) {
 
+				first_pass_failed[current_pi->compno] = false;
+
 				if (!decode_packet(	p_tile, tcp, current_pi, src_buf, &nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
+					delete[] first_pass_failed;
 					return false;
 				}
+
+				 img_comp->resno_decoded = std::max<uint32_t>(
+						 current_pi->resno, img_comp->resno_decoded);
+
 			} else {
 				if (!skip_packet(p_tile, tcp, current_pi, src_buf,
 						&nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
+					delete[] first_pass_failed;
 					return false;
 				}
 			}
 
-			if (!skip_the_packet)
-			 img_comp->resno_decoded = std::max<uint32_t>(
-					 current_pi->resno, img_comp->resno_decoded);
+            if (first_pass_failed[current_pi->compno]) {
+                img_comp = image->comps + current_pi->compno;
+                if (img_comp->resno_decoded == 0) {
+                    img_comp->resno_decoded =
+                        p_tile->comps[current_pi->compno].minimum_num_resolutions - 1;
+                }
+            }
+
 			*p_data_read += nb_bytes_read;
 		}
-		++current_pi;
+		delete[] first_pass_failed;
 	}
 	pi_destroy(pi, nb_pocs);
 	return true;
