@@ -74,7 +74,8 @@ TileComponent::TileComponent() :numresolutions(0),
 							   x1(0),
 							   y1(0),
 							   m_is_encoder(false),
-							   m_sa(nullptr)
+							   m_sa(nullptr),
+							   m_tccp(nullptr)
 {}
 
 TileComponent::~TileComponent(){
@@ -174,9 +175,9 @@ bool TileComponent::init(bool isEncoder,
 	uint32_t state = grk_plugin_get_debug_state();
 	m_is_encoder = isEncoder;
 	whole_tile_decoding = whole_tile;
+	m_tccp = tccp;
 
 	size_t sizeof_block = m_is_encoder ? sizeof(grk_tcd_cblk_enc) : sizeof(grk_tcd_cblk_dec);
-	uint32_t bandno, resno, precno;
 	/* extent of precincts , top left, bottom right**/
 	uint32_t tprc_x_start, tprc_y_start, br_prc_x_end, br_prc_y_end;
 	/* number of precinct for a resolution */
@@ -196,7 +197,7 @@ bool TileComponent::init(bool isEncoder,
 	auto y1 = ceildiv<uint32_t>(tile->y1, image_comp->dy);
 	/*fprintf(stderr, "\tTile compo border = %d,%d,%d,%d\n", X0(), Y0(),x1,y1);*/
 
-	numresolutions = tccp->numresolutions;
+	numresolutions = m_tccp->numresolutions;
 	if (numresolutions < cp->m_coding_param.m_dec.m_reduce) {
 		minimum_num_resolutions = 1;
 	} else {
@@ -217,10 +218,10 @@ bool TileComponent::init(bool isEncoder,
 		numAllocatedResolutions = numresolutions;
 	}
 	leveno = numresolutions;
-	auto res = resolutions;
 	/*fprintf(stderr, "\tleveno=%d\n",leveno);*/
 
-	for (resno = 0; resno < numresolutions; ++resno) {
+	for (uint32_t resno = 0; resno < numresolutions; ++resno) {
+		auto res = resolutions + resno;
 		/*fprintf(stderr, "\t\tresno = %d/%d\n", resno, numresolutions);*/
 		uint32_t tlcbgxstart, tlcbgystart;
 		uint32_t cbgwidthexpn, cbgheightexpn;
@@ -235,8 +236,8 @@ bool TileComponent::init(bool isEncoder,
 		res->y1 = uint_ceildivpow2(y1, leveno);
 		/*fprintf(stderr, "\t\t\tres_x0= %d, res_y0 =%d, res_x1=%d, res_y1=%d\n", res->x0, res->y0, res->x1, res->y1);*/
 		/* p. 35, table A-23, ISO/IEC FDIS154444-1 : 2000 (18 august 2000) */
-		pdx = tccp->prcw[resno];
-		pdy = tccp->prch[resno];
+		pdx = m_tccp->prcw[resno];
+		pdy = m_tccp->prch[resno];
 		/*fprintf(stderr, "\t\t\tpdx=%d, pdy=%d\n", pdx, pdy);*/
 		/* p. 64, B.6, ISO/IEC FDIS15444-1 : 2000 (18 august 2000)  */
 		tprc_x_start = uint_floordivpow2(res->x0, pdx) << pdx;
@@ -295,9 +296,10 @@ bool TileComponent::init(bool isEncoder,
 		cblkheightexpn = std::min<uint32_t>(tccp->cblkh, cbgheightexpn);
 		size_t nominalBlockSize = (1 << cblkwidthexpn)
 				* (1 << cblkheightexpn);
-		auto band = res->bands;
 
-		for (bandno = 0; bandno < res->numbands; ++bandno) {
+		for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+			auto band = res->bands + bandno;
+
 			/*fprintf(stderr, "\t\t\tband_no=%d/%d\n", bandno, res->numbands );*/
 
 			if (resno == 0) {
@@ -350,8 +352,8 @@ bool TileComponent::init(bool isEncoder,
 				band->numAllocatedPrecincts = nb_precincts;
 			}
 			band->numPrecincts = nb_precincts;
-			auto current_precinct = band->precincts;
-			for (precno = 0; precno < nb_precincts; ++precno) {
+			for (uint32_t precno = 0; precno < nb_precincts; ++precno) {
+				auto current_precinct = band->precincts + precno;
 				uint32_t tlcblkxstart, tlcblkystart, brcblkxend, brcblkyend;
 				uint32_t cbgxstart = tlcbgxstart
 						+ (precno % res->pw) * (1 << cbgwidthexpn);
@@ -489,9 +491,7 @@ bool TileComponent::init(bool isEncoder,
 								current_precinct->y1);
 					}
 				}
-				++current_precinct;
 			} /* precno */
-			++band;
 		} /* bandno */
 		++res;
 	} /* resno */

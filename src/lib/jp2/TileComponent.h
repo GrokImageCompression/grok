@@ -108,6 +108,7 @@ struct TileComponent {
 	grk_rect unreduced_tile_dim;
 	bool m_is_encoder;
 	sparse_array *m_sa;
+	grk_tccp *m_tccp;
 
 private:
 	void finalizeCoordinates();
