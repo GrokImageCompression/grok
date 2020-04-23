@@ -1780,7 +1780,7 @@ template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_W
 
     /* Compute the intersection of the area of interest, expressed in tile coordinates */
     /* with the tile coordinates */
-    auto dim = tilec->buf->unreduced_image_dim;
+    auto dim = tilec->buf->unreduced_region_dim;
 
     uint32_t win_tcx0 = (uint32_t)dim.x0;
     uint32_t win_tcy0 = (uint32_t)dim.y0;

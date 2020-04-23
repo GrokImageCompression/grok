@@ -55,10 +55,10 @@ struct TileBuffer {
 	bool owns_data; /* true if tile buffer manages its data array, false otherwise */
 
 	// unreduced coordinates of region
-	grk_rect unreduced_image_dim;
+	grk_rect unreduced_region_dim;
 
 	 /* reduced tile coordinates of region  */
-	grk_rect reduced_image_dim;
+	grk_rect reduced_region_dim;
 
 	 /* reduced tile coordinates of tile */
 	grk_rect reduced_tile_dim;

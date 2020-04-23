@@ -1089,7 +1089,7 @@ bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 
 		  /* Compute the intersection of the area of interest, expressed in tile coordinates */
 		  /* with the tile coordinates */
-		  auto dims = tilec->buf->reduced_image_dim;
+		  auto dims = tilec->buf->reduced_region_dim;
 		  uint32_t win_x0 = max<uint32_t>(
 							  tilec->x0,
 							  (uint32_t)dims.x0);
@@ -1211,8 +1211,8 @@ bool TileProcessor::update_tile_data(uint8_t *p_dest,
 		auto img_comp = image->comps + i;
 		uint32_t size_comp = (img_comp->prec + 7) >> 3;
 		uint32_t stride = 0;
-		uint32_t width = (uint32_t)tilec->buf->reduced_image_dim.width();
-		uint32_t height = (uint32_t)tilec->buf->reduced_image_dim.height();
+		uint32_t width = (uint32_t)tilec->buf->reduced_region_dim.width();
+		uint32_t height = (uint32_t)tilec->buf->reduced_region_dim.height();
 		const int32_t *src_ptr = tilec->buf->get_ptr( 0, 0, 0,0);
 
 		switch (size_comp) {
@@ -1310,15 +1310,15 @@ bool TileProcessor::mct_decode() {
 		return true;
 	}
 
-	uint64_t image_samples  = (uint64_t)tile_comp->buf->reduced_image_dim.area();
+	uint64_t image_samples  = (uint64_t)tile_comp->buf->reduced_region_dim.area();
 	uint64_t samples = image_samples;
 
 	if (tile->numcomps >= 3) {
 		/* testcase 1336.pdf.asan.47.376 */
-		if ((uint64_t)tile->comps[0].buf->reduced_image_dim.area() < image_samples
-				|| (uint64_t)tile->comps[1].buf->reduced_image_dim.area()
+		if ((uint64_t)tile->comps[0].buf->reduced_region_dim.area() < image_samples
+				|| (uint64_t)tile->comps[1].buf->reduced_region_dim.area()
 						< image_samples
-				|| (uint64_t)tile->comps[2].buf->reduced_image_dim.area()< image_samples) {
+				|| (uint64_t)tile->comps[2].buf->reduced_region_dim.area()< image_samples) {
 			GROK_ERROR(
 					"Tiles don't all have the same dimension. Skip the MCT step.");
 			return false;
@@ -1392,8 +1392,8 @@ bool TileProcessor::dc_level_shift_decode() {
 
 		x0 = 0;
 		y0 = 0;
-		x1 = (uint32_t)(tile_comp->buf->reduced_image_dim.width());
-		y1 = (uint32_t)(tile_comp->buf->reduced_image_dim.height());
+		x1 = (uint32_t)(tile_comp->buf->reduced_region_dim.width());
+		y1 = (uint32_t)(tile_comp->buf->reduced_region_dim.height());
 
 		assert(x1 >= x0);
 		assert(tile_comp->width() >= (x1 - x0));
@@ -1442,7 +1442,7 @@ uint64_t TileProcessor::get_tile_size(bool reduced) {
 		uint32_t size_comp = (img_comp->prec + 7) >> 3; /*(/ 8)*/
 
 		data_size += size_comp *
-				(reduced ? (uint64_t)tilec->buf->reduced_image_dim.area() : tilec->area());
+				(reduced ? (uint64_t)tilec->buf->reduced_region_dim.area() : tilec->area());
 	}
 
 	return data_size;
@@ -1743,7 +1743,7 @@ bool TileProcessor::copy_decompressed_tile_to_output_image(uint8_t *p_data,
 		 res->x0, res->x1, res->y0, res->y1);
 		 }*/
 
-		grk_rect src_dim = tilec->buf->reduced_image_dim;
+		grk_rect src_dim = tilec->buf->reduced_region_dim;
 
 		uint32_t width_src = (uint32_t)src_dim.width();
 		uint32_t height_src = (uint32_t)src_dim.height();

@@ -560,26 +560,26 @@ bool TileComponent::create_buffer(grk_image *output_image,
 	auto new_buffer = new TileBuffer();
 	new_buffer->data = nullptr;
 	new_buffer->reduced_tile_dim = grk_rect(x0, y0, x1, y1);
-	new_buffer->reduced_image_dim = new_buffer->reduced_tile_dim;
+	new_buffer->reduced_region_dim = new_buffer->reduced_tile_dim;
 	new_buffer->unreduced_tile_dim = unreduced_tile_dim;
 	grk_rect max_image_dim = unreduced_tile_dim ;
 
 	if (output_image) {
 		// tile coordinates
-		new_buffer->unreduced_image_dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
+		new_buffer->unreduced_region_dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
 									ceildiv<uint32_t>(output_image->y0, dy),
 									ceildiv<uint32_t>(output_image->x1, dx),
 									ceildiv<uint32_t>(output_image->y1, dy));
 
-		new_buffer->reduced_image_dim = new_buffer->unreduced_image_dim;
+		new_buffer->reduced_region_dim = new_buffer->unreduced_region_dim;
 
-		max_image_dim = new_buffer->reduced_image_dim;
+		max_image_dim = new_buffer->reduced_region_dim;
 
-		new_buffer->reduced_image_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
+		new_buffer->reduced_region_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 		/* clip output image to tile */
-		new_buffer->reduced_tile_dim.clip(new_buffer->reduced_image_dim, &new_buffer->reduced_image_dim);
-		new_buffer->unreduced_tile_dim.clip(new_buffer->unreduced_image_dim, &new_buffer->unreduced_image_dim);
+		new_buffer->reduced_tile_dim.clip(new_buffer->reduced_region_dim, &new_buffer->reduced_region_dim);
+		new_buffer->unreduced_tile_dim.clip(new_buffer->unreduced_region_dim, &new_buffer->unreduced_region_dim);
 	}
 
 	/* for compress, we don't need to allocate resolutions */
