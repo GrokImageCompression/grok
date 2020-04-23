@@ -111,60 +111,71 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 
 			for (precno = 0; precno < res->pw * res->ph; ++precno) {
 				grk_tcd_precinct *precinct = &band->precincts[precno];
+
+				if (!tilec->is_subband_area_of_interest(resno,
+												bandno,
+												precinct->x0,
+												precinct->y0,
+												precinct->x1,
+												precinct->y1)){
+
+					continue;
+				}
+
 				int32_t cblkno;
 				for (cblkno = 0;
 						cblkno < (int32_t) (precinct->cw * precinct->ch);
 						++cblkno) {
 					grk_rect cblk_rect;
 					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];
-					int32_t x, y; /* relative code block offset */
-					/* get code block offset relative to band*/
-					x = (int32_t)cblk->x0;
-					y = (int32_t)cblk->y0;
+					int32_t x = (int32_t)cblk->x0;
+					int32_t y = (int32_t)cblk->y0;
 					int32_t w = (int32_t)(cblk->x1 - cblk->x0);
 					int32_t h = (int32_t)(cblk->y1 - cblk->y0);
 
-					/* check if block overlaps with decompress region */
-					cblk_rect = grk_rect(x, y, x + w,y + h);
-					grk_rect dummy;
-					auto tile_res =
-							tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - resno];
-					bool clip =
-							(tile_res->band_region + bandno)->clip(cblk_rect, &dummy);
-					if (!clip)
-						continue;
+					if (tilec->is_subband_area_of_interest(resno,
+													bandno,
+													x,
+													y,
+													x+w,
+													y+h)){
 
-					x -= band->x0;
-					y -= band->y0;
 
-					/* add band offset relative to previous resolution */
-					if (band->bandno & 1) {
-						grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
-						x += pres->x1 - pres->x0;
+						/* get code block offset relative to band*/
+
+						x -= band->x0;
+						y -= band->y0;
+
+						/* add band offset relative to previous resolution */
+						if (band->bandno & 1) {
+							grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
+							x += pres->x1 - pres->x0;
+						}
+						if (band->bandno & 2) {
+							grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
+							y += pres->y1 - pres->y0;
+						}
+
+						assert(x >= 0);
+						assert(y >= 0);
+
+
+						auto block = new decodeBlockInfo();
+						block->bandno = band->bandno;
+						block->cblk = cblk;
+						block->cblk_sty = tccp->cblk_sty;
+						block->qmfbid = tccp->qmfbid;
+						block->resno = resno;
+						block->roishift = tccp->roishift;
+						block->stepsize = band->stepsize;
+						block->tilec = tilec;
+						block->x = (uint32_t)x;
+						block->y = (uint32_t)y;
+						block->tiledp = tilec->buf->get_ptr( resno, bandno,
+								(uint32_t) x, (uint32_t) y);
+						block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
+						blocks->push_back(block);
 					}
-					if (band->bandno & 2) {
-						grk_tcd_resolution *pres = &tilec->resolutions[resno - 1];
-						y += pres->y1 - pres->y0;
-					}
-
-					assert(x >= 0);
-					assert(y >= 0);
-
-					auto block = new decodeBlockInfo();
-					block->bandno = band->bandno;
-					block->cblk = cblk;
-					block->cblk_sty = tccp->cblk_sty;
-					block->qmfbid = tccp->qmfbid;
-					block->resno = resno;
-					block->roishift = tccp->roishift;
-					block->stepsize = band->stepsize;
-					block->tilec = tilec;
-					block->x = (uint32_t)x;
-					block->y = (uint32_t)y;
-					block->tiledp = tilec->buf->get_ptr( resno, bandno,
-							(uint32_t) x, (uint32_t) y);
-					block->k_msbs = (uint8_t)(band->numbps - cblk->numbps);
-					blocks->push_back(block);
 
 				}
 			}

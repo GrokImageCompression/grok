@@ -507,6 +507,82 @@ bool TileComponent::init(bool isEncoder,
 }
 
 
+bool TileComponent::is_subband_area_of_interest(uint32_t resno,
+								uint32_t bandno,
+								uint32_t aoi_x0,
+								uint32_t aoi_y0,
+								uint32_t aoi_x1,
+								uint32_t aoi_y1)
+{
+	if (whole_tile_decoding)
+		return true;
+
+    /* Note: those values for filter_margin are in part the result of */
+    /* experimentation. The value 2 for QMFBID=1 (5x3 filter) can be linked */
+    /* to the maximum left/right extension given in tables F.2 and F.3 of the */
+    /* standard. The value 3 for QMFBID=0 (9x7 filter) is more suspicious, */
+    /* since F.2 and F.3 would lead to 4 instead, so the current 3 might be */
+    /* needed to be bumped to 4, in case inconsistencies are found while */
+    /* decoding parts of irreversible coded images. */
+    /* See dwt_decode_partial_53 and dwt_decode_partial_97 as well */
+    uint32_t filter_margin = (m_tccp->qmfbid == 1) ? 2 : 3;
+
+    /* Compute the intersection of the area of interest, expressed in tile component coordinates */
+    /* with the tile coordinates */
+	auto dims = buf->unreduced_region_dim;
+	uint32_t tcx0 = (uint32_t)dims.x0;
+	uint32_t tcy0 = (uint32_t)dims.y0;
+	uint32_t tcx1 = (uint32_t)dims.x1;
+	uint32_t tcy1 = (uint32_t)dims.y1;
+
+    /* Compute number of decomposition for this band. See table F-1 */
+    uint32_t nb = (resno == 0) ?
+                    numresolutions - 1 :
+                    numresolutions - resno;
+    /* Map above tile-based coordinates to sub-band-based coordinates per */
+    /* equation B-15 of the standard */
+    uint32_t x0b = bandno & 1;
+    uint32_t y0b = bandno >> 1;
+    uint32_t tbx0 = (nb == 0) ? tcx0 :
+                      (tcx0 <= (1U << (nb - 1)) * x0b) ? 0 :
+                      uint_ceildivpow2(tcx0 - (1U << (nb - 1)) * x0b, nb);
+    uint32_t tby0 = (nb == 0) ? tcy0 :
+                      (tcy0 <= (1U << (nb - 1)) * y0b) ? 0 :
+                      uint_ceildivpow2(tcy0 - (1U << (nb - 1)) * y0b, nb);
+    uint32_t tbx1 = (nb == 0) ? tcx1 :
+                      (tcx1 <= (1U << (nb - 1)) * x0b) ? 0 :
+                      uint_ceildivpow2(tcx1 - (1U << (nb - 1)) * x0b, nb);
+    uint32_t tby1 = (nb == 0) ? tcy1 :
+                      (tcy1 <= (1U << (nb - 1)) * y0b) ? 0 :
+                      uint_ceildivpow2(tcy1 - (1U << (nb - 1)) * y0b, nb);
+    bool intersects;
+
+    if (tbx0 < filter_margin) {
+        tbx0 = 0;
+    } else {
+        tbx0 -= filter_margin;
+    }
+    if (tby0 < filter_margin) {
+        tby0 = 0;
+    } else {
+        tby0 -= filter_margin;
+    }
+    tbx1 = uint_adds(tbx1, filter_margin);
+    tby1 = uint_adds(tby1, filter_margin);
+
+    intersects = aoi_x0 < tbx1 && aoi_y0 < tby1 && aoi_x1 > tbx0 &&
+                 aoi_y1 > tby0;
+
+#ifdef DEBUG_VERBOSE
+    printf("compno=%u resno=%u nb=%u bandno=%u x0b=%u y0b=%u band=%u,%u,%u,%u tb=%u,%u,%u,%u -> %u\n",
+           compno, resno, nb, bandno, x0b, y0b,
+           aoi_x0, aoi_y0, aoi_x1, aoi_y1,
+           tbx0, tby0, tbx1, tby1, intersects);
+#endif
+    return intersects;
+}
+
+
 void TileComponent::alloc_sparse_array(uint32_t numres){
     auto tr_max = &(resolutions[numres - 1]);
 	uint32_t w = (uint32_t)(tr_max->x1 - tr_max->x0);
@@ -523,26 +599,40 @@ void TileComponent::alloc_sparse_array(uint32_t numres){
 
                 for (uint32_t cblkno = 0; cblkno < precinct->cw * precinct->ch; ++cblkno) {
                     auto cblk = &precinct->cblks.dec[cblkno];
-					uint32_t x = (uint32_t)(cblk->x0 - band->x0);
-					uint32_t y = (uint32_t)(cblk->y0 - band->y0);
+					uint32_t x = cblk->x0;
+					uint32_t y = cblk->y0;
 					uint32_t cblk_w = (uint32_t)(cblk->x1 - cblk->x0);
 					uint32_t cblk_h = (uint32_t)(cblk->y1 - cblk->y0);
 
-					if (band->bandno & 1) {
-						grk_tcd_resolution* pres = &resolutions[resno - 1];
-						x += (uint32_t)(pres->x1 - pres->x0);
-					}
-					if (band->bandno & 2) {
-						grk_tcd_resolution* pres = &resolutions[resno - 1];
-						y += (uint32_t)(pres->y1 - pres->y0);
-					}
+					// check overlap in absolute coordinates
+					if (is_subband_area_of_interest(resno,
+							bandno,
+							x,
+							y,
+							x+cblk_w,
+							y+cblk_h)){
 
-					if (!sa->alloc(x,
-								  y,
-								  x + cblk_w,
-								  y + cblk_h)) {
-						delete sa;
-						throw runtime_error("unable to allocate sparse array");
+						x -= band->x0;
+						y -= band->y0;
+
+						/* add band offset relative to previous resolution */
+						if (band->bandno & 1) {
+							grk_tcd_resolution *pres = &resolutions[resno - 1];
+							x += pres->x1 - pres->x0;
+						}
+						if (band->bandno & 2) {
+							grk_tcd_resolution *pres = &resolutions[resno - 1];
+							y += pres->y1 - pres->y0;
+						}
+
+						// allocate in relative coordinates
+						if (!sa->alloc(x,
+									  y,
+									  x + cblk_w,
+									  y + cblk_h)) {
+							delete sa;
+							throw runtime_error("unable to allocate sparse array");
+						}
 					}
                 }
             }

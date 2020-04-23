@@ -229,7 +229,7 @@ static void decode_step2_97(v4_data* l, v4_data* w,
 
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
-/* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
+/* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
    bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa);
@@ -1761,7 +1761,7 @@ public:
 
 
 /* FILTER_WIDTH value matches the maximum left/right extension given in tables */
-/* F.2 and F.3 of the standard. Note: in tcd_is_subband_area_of_interest() */
+/* F.2 and F.3 of the standard. Note: in TileComponent::is_subband_area_of_interest() */
 /* we currently use 3. */
 template <typename T, uint32_t HORIZ_STEP, uint32_t VERT_STEP, uint32_t FILTER_WIDTH, typename D>
    bool decode_partial_tile(TileComponent* GRK_RESTRICT tilec, uint32_t numres, sparse_array *sa)

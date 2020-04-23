@@ -91,6 +91,12 @@ struct TileComponent {
 	 void alloc_sparse_array(uint32_t numres);
 	 void release_mem();
 
+	 bool is_subband_area_of_interest(uint32_t resno,
+	 								uint32_t bandno,
+	 								uint32_t aoi_x0,
+	 								uint32_t aoi_y0,
+	 								uint32_t aoi_x1,
+	 								uint32_t aoi_y1);
 
 	uint32_t numresolutions; /* number of resolutions level */
 	uint32_t numAllocatedResolutions;

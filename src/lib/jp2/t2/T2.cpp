@@ -233,38 +233,33 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 				 current_pi->resno, current_pi->precno,
 				 current_pi->layno);
 */
-			if (!skip_the_packet) {
+			if (!skip_the_packet &&
+					!tilec->whole_tile_decoding) {
 				skip_the_packet = true;
 				auto res = tilec->resolutions + current_pi->resno;
 				for (uint32_t bandno = 0; bandno < res->numbands && skip_the_packet;
 						++bandno) {
 					auto band = res->bands + bandno;
-					auto num_precincts = band->numPrecincts;
-					for (uint32_t precno = 0; precno < num_precincts && skip_the_packet;
-							++precno) {
-						auto prec = band->precincts + precno;
-						auto prec_rect = grk_rect(prec->x0, prec->y0, prec->x1,
-								prec->y1);
-						grk_rect dummy;
-						auto tile_res =
-								tilec->buf->resolutions[tilec->buf->resolutions.size() - 1 - current_pi->resno];
-						bool clip =
-								(tile_res->band_region + bandno)->clip(prec_rect, &dummy);
-						if (clip) {
-							skip_the_packet = false;
-							break;
-						}
+					auto prec = band->precincts + current_pi->precno;
+					if (tilec->is_subband_area_of_interest(current_pi->resno,
+													band->bandno,
+													prec->x0,
+													prec->y0,
+													prec->x1,
+													prec->y1)) {
+						skip_the_packet = false;
+						break;
 					}
 				}
 			}
-/*
-            printf("packet cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d -> %s\n",
-                current_pi->compno, current_pi->resno,
-                current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
-*/
+
 			uint64_t nb_bytes_read = 0;
 			if (!skip_the_packet) {
-
+/*
+				printf("packet cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d -> %s\n",
+					current_pi->compno, current_pi->resno,
+					current_pi->precno, current_pi->layno, skip_the_packet ? "skipped" : "kept");
+*/
 				first_pass_failed[current_pi->compno] = false;
 
 				if (!decode_packet(	p_tile, tcp, current_pi, src_buf, &nb_bytes_read)) {
