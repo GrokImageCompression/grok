@@ -103,7 +103,7 @@ struct TileComponent {
 	TileBuffer *buf;
     bool   whole_tile_decoding;
 
-    /* reduced tile coordinates */
+    /* reduced tile component coordinates */
 	uint32_t x0, y0, x1, y1;
 	grk_rect unreduced_tile_dim;
 	bool m_is_encoder;

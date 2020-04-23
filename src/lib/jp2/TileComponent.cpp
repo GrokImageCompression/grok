@@ -189,7 +189,7 @@ bool TileComponent::init(bool isEncoder,
 	uint32_t pdx, pdy;
 	uint32_t x0b, y0b;
 
-	/* border of each tile component in tile coordinates */
+	/* border of each tile component in tile component coordinates */
 	auto x0 = ceildiv<uint32_t>(tile->x0, image_comp->dx);
 	auto y0 = ceildiv<uint32_t>(tile->y0, image_comp->dy);
 	auto x1 = ceildiv<uint32_t>(tile->x1, image_comp->dx);
@@ -565,16 +565,14 @@ bool TileComponent::create_buffer(grk_image *output_image,
 	grk_rect max_image_dim = unreduced_tile_dim ;
 
 	if (output_image) {
-		// tile coordinates
+		// tile component coordinates
 		new_buffer->unreduced_region_dim = grk_rect(ceildiv<uint32_t>(output_image->x0, dx),
 									ceildiv<uint32_t>(output_image->y0, dy),
 									ceildiv<uint32_t>(output_image->x1, dx),
 									ceildiv<uint32_t>(output_image->y1, dy));
 
-		new_buffer->reduced_region_dim = new_buffer->unreduced_region_dim;
-
-		max_image_dim = new_buffer->reduced_region_dim;
-
+		new_buffer->reduced_region_dim 	= new_buffer->unreduced_region_dim;
+		max_image_dim 					= new_buffer->reduced_region_dim;
 		new_buffer->reduced_region_dim.ceildivpow2(numresolutions - minimum_num_resolutions);
 
 		/* clip output image to tile */

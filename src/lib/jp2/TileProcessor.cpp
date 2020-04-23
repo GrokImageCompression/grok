@@ -1026,7 +1026,7 @@ bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
 	return true;
 }
 
-#if 0
+
 /** Returns whether a tile component should be fully decoded,
  * taking into account win_* members.
  *
@@ -1036,21 +1036,31 @@ bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
 bool TileProcessor::is_whole_tilecomp_decoding( uint32_t compno)
 {
     auto tilec = tile->comps + compno;
-    auto image_comp = image->comps + compno;
-    /* Compute the intersection of the area of interest, expressed in tile coordinates */
+    /* Compute the intersection of the area of interest, expressed in tile component coordinates */
     /* with the tile coordinates */
-    uint32_t tcx0 = max<uint32_t>(
-                          (uint32_t)tilec->x0,
-                          ceildiv<uint32_t>(win_x0, image_comp->dx));
+
+	  auto dims = tilec->buf->reduced_region_dim;
+	  uint32_t win_x0 = max<uint32_t>(
+						  tilec->x0,
+						  (uint32_t)dims.x0);
+	  uint32_t win_y0 = max<uint32_t>(
+						  tilec->y0,
+						  (uint32_t)dims.y0);
+	  uint32_t win_x1 = min<uint32_t>(
+						  tilec->x1,
+						  (uint32_t)dims.x1);
+	  uint32_t win_y1 = min<uint32_t>(
+						  tilec->y1,
+						  (uint32_t)dims.y1);
+
+     uint32_t tcx0 = max<uint32_t>(
+                          (uint32_t)tilec->x0,win_x0);
     uint32_t tcy0 = max<uint32_t>(
-                          (uint32_t)tilec->y0,
-						  ceildiv<uint32_t>(win_y0, image_comp->dy));
+                          (uint32_t)tilec->y0,win_y0);
     uint32_t tcx1 = min<uint32_t>(
-                          (uint32_t)tilec->x1,
-						  ceildiv<uint32_t>(win_x1, image_comp->dx));
+                          (uint32_t)tilec->x1, win_x1);
     uint32_t tcy1 = min<uint32_t>(
-                          (uint32_t)tilec->y1,
-						  ceildiv<uint32_t>(win_y1, image_comp->dy));
+                          (uint32_t)tilec->y1, win_y1);
 
     uint32_t shift = tilec->numresolutions - tilec->minimum_num_resolutions;
     /* Tolerate small margin within the reduced resolution factor to consider if */
@@ -1066,21 +1076,20 @@ bool TileProcessor::is_whole_tilecomp_decoding( uint32_t compno)
               (((uint32_t)tilec->y1 - tcy1) >> shift) == 0)));
 
 }
-#endif
+
 
 bool TileProcessor::decompress_tile(ChunkBuffer *src_buf, uint16_t tile_no) {
 	m_tcp = m_cp->tcps + tile_no;
 
 	// optimization for regions that are close to largest decoded resolution
 	// (currently breaks tests, so disabled)
-	/*
     for (uint32_t compno = 0; compno < image->numcomps; compno++) {
 		if (!is_whole_tilecomp_decoding(compno)) {
 			whole_tile_decoding = false;
 			break;
 		}
 	}
-	*/
+
     if (!whole_tile_decoding) {
 	  /* Compute restricted tile-component and tile-resolution coordinates */
 	  /* of the window of interest */
