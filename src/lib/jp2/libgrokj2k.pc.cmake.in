@@ -9,6 +9,6 @@ Name: grok
 Description: JPEG2000 library (Part 1 and 2)
 URL: https://github.com/GrokImageCompression/grok
 Version: @GROK_VERSION@
-Libs: -L${libdir} -lgrok
+Libs: -L${libdir} -lgrokj2k
 Libs.private: -lm
 Cflags: -I${includedir}
