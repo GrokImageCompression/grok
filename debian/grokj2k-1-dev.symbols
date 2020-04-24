@@ -1,4 +1,4 @@
-libgrok.so.12 libgrok-12 #MINVER#
+libgrokj2k.so.1 libgrokj2k1 #MINVER#
  grk_buffer_delete@Base 6.0.0-1
  grk_buffer_new@Base 6.0.0-1
  grk_create_compress@Base 6.0.0

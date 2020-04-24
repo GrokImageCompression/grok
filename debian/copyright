@@ -1,84 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: grok-jpeg2000
+Upstream-Name: libgrokj2k
 Upstream-Contact: boxerab@gmail.com
 Source: https://github.com/GrokImageCompression/grok
-Files-Excluded: thirdparty/astyle scripts
-
-Files: src/bin/common/spdlog/async.cpp
- src/bin/common/spdlog/color_sinks.cpp
- src/bin/common/spdlog/file_sinks.cpp
- src/bin/common/spdlog/spdlog.cpp
- src/bin/common/spdlog/stdout_sinks.cpp
- src/include/spdlog/async.h
- src/include/spdlog/async_logger-inl.h
- src/include/spdlog/async_logger.h
- src/include/spdlog/cfg/argv.h
- src/include/spdlog/cfg/env.h
- src/include/spdlog/cfg/helpers-inl.h
- src/include/spdlog/cfg/helpers.h
- src/include/spdlog/cfg/log_levels.h
- src/include/spdlog/common-inl.h
- src/include/spdlog/common.h
- src/include/spdlog/details/backtracer-inl.h
- src/include/spdlog/details/backtracer.h
- src/include/spdlog/details/circular_q.h
- src/include/spdlog/details/console_globals.h
- src/include/spdlog/details/file_helper-inl.h
- src/include/spdlog/details/file_helper.h
- src/include/spdlog/details/fmt_helper.h
- src/include/spdlog/details/log_msg-inl.h
- src/include/spdlog/details/log_msg.h
- src/include/spdlog/details/log_msg_buffer-inl.h
- src/include/spdlog/details/log_msg_buffer.h
- src/include/spdlog/details/mpmc_blocking_q.h
- src/include/spdlog/details/null_mutex.h
- src/include/spdlog/details/os-inl.h
- src/include/spdlog/details/os.h
- src/include/spdlog/details/pattern_formatter-inl.h
- src/include/spdlog/details/pattern_formatter.h
- src/include/spdlog/details/periodic_worker-inl.h
- src/include/spdlog/details/periodic_worker.h
- src/include/spdlog/details/registry-inl.h
- src/include/spdlog/details/registry.h
- src/include/spdlog/details/synchronous_factory.h
- src/include/spdlog/details/tcp_client.h
- src/include/spdlog/details/thread_pool-inl.h
- src/include/spdlog/details/thread_pool.h
- src/include/spdlog/formatter.h
- src/include/spdlog/logger-inl.h
- src/include/spdlog/logger.h
- src/include/spdlog/sinks/android_sink.h
- src/include/spdlog/sinks/ansicolor_sink-inl.h
- src/include/spdlog/sinks/ansicolor_sink.h
- src/include/spdlog/sinks/base_sink-inl.h
- src/include/spdlog/sinks/base_sink.h
- src/include/spdlog/sinks/basic_file_sink-inl.h
- src/include/spdlog/sinks/basic_file_sink.h
- src/include/spdlog/sinks/daily_file_sink.h
- src/include/spdlog/sinks/dist_sink.h
- src/include/spdlog/sinks/dup_filter_sink.h
- src/include/spdlog/sinks/null_sink.h
- src/include/spdlog/sinks/ostream_sink.h
- src/include/spdlog/sinks/ringbuffer_sink.h
- src/include/spdlog/sinks/rotating_file_sink-inl.h
- src/include/spdlog/sinks/rotating_file_sink.h
- src/include/spdlog/sinks/sink-inl.h
- src/include/spdlog/sinks/sink.h
- src/include/spdlog/sinks/stdout_color_sinks-inl.h
- src/include/spdlog/sinks/stdout_color_sinks.h
- src/include/spdlog/sinks/stdout_sinks-inl.h
- src/include/spdlog/sinks/stdout_sinks.h
- src/include/spdlog/sinks/syslog_sink.h
- src/include/spdlog/sinks/tcp_sink.h
- src/include/spdlog/sinks/win_eventlog_sink.h
- src/include/spdlog/sinks/wincolor_sink-inl.h
- src/include/spdlog/sinks/wincolor_sink.h
- src/include/spdlog/spdlog-inl.h
- src/include/spdlog/spdlog.h
- src/include/spdlog/tweakme.h
- src/include/spdlog/version.h
-Copyright: (c) 2015-present, Gabi Melman & spdlog contributors.
-License: UNKNOWN
 
 Files: src/bin/RateInfo.cpp
  src/bin/common/grok_getopt.h
@@ -148,107 +71,6 @@ Copyright: 2016, Grok Image Compression Inc.
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3
 
-Files: thirdparty/libtiff/t4.h
- thirdparty/libtiff/tif_aux.c
- thirdparty/libtiff/tif_close.c
- thirdparty/libtiff/tif_codec.c
- thirdparty/libtiff/tif_color.c
- thirdparty/libtiff/tif_dir.c
- thirdparty/libtiff/tif_dir.h
- thirdparty/libtiff/tif_dirread.c
- thirdparty/libtiff/tif_dirwrite.c
- thirdparty/libtiff/tif_dumpmode.c
- thirdparty/libtiff/tif_error.c
- thirdparty/libtiff/tif_extension.c
- thirdparty/libtiff/tif_flush.c
- thirdparty/libtiff/tif_getimage.c
- thirdparty/libtiff/tif_jbig.c
- thirdparty/libtiff/tif_jpeg.c
- thirdparty/libtiff/tif_next.c
- thirdparty/libtiff/tif_open.c
- thirdparty/libtiff/tif_packbits.c
- thirdparty/libtiff/tif_predict.c
- thirdparty/libtiff/tif_predict.h
- thirdparty/libtiff/tif_read.c
- thirdparty/libtiff/tif_stream.cxx
- thirdparty/libtiff/tif_strip.c
- thirdparty/libtiff/tif_swab.c
- thirdparty/libtiff/tif_thunder.c
- thirdparty/libtiff/tif_tile.c
- thirdparty/libtiff/tif_unix.c
- thirdparty/libtiff/tif_version.c
- thirdparty/libtiff/tif_warning.c
- thirdparty/libtiff/tif_win32.c
- thirdparty/libtiff/tif_write.c
- thirdparty/libtiff/tif_zip.c
- thirdparty/libtiff/tiffio.h
- thirdparty/libtiff/tiffio.hxx
- thirdparty/libtiff/tiffiop.h
-Copyright: 1988-1996, Sam Leffler
-  1988-1997, Sam Leffler
-  1991-1996, Silicon Graphics, Inc.
-  1991-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-  1992-1997, Sam Leffler
-  1992-1997, Silicon Graphics, Inc.
-  1994-1997, Sam Leffler
-  1994-1997, Silicon Graphics, Inc.
-  1995-1997, Sam Leffler
-  1995-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/liblcms2/COPYING
- thirdparty/liblcms2/include/lcms2_plugin.h
- thirdparty/liblcms2/src/cmsalpha.c
- thirdparty/liblcms2/src/cmscam02.c
- thirdparty/liblcms2/src/cmscgats.c
- thirdparty/liblcms2/src/cmscnvrt.c
- thirdparty/liblcms2/src/cmserr.c
- thirdparty/liblcms2/src/cmsgamma.c
- thirdparty/liblcms2/src/cmsgmt.c
- thirdparty/liblcms2/src/cmshalf.c
- thirdparty/liblcms2/src/cmsintrp.c
- thirdparty/liblcms2/src/cmsio0.c
- thirdparty/liblcms2/src/cmslut.c
- thirdparty/liblcms2/src/cmsmd5.c
- thirdparty/liblcms2/src/cmsmtrx.c
- thirdparty/liblcms2/src/cmsnamed.c
- thirdparty/liblcms2/src/cmsopt.c
- thirdparty/liblcms2/src/cmspack.c
- thirdparty/liblcms2/src/cmspcs.c
- thirdparty/liblcms2/src/cmsplugin.c
- thirdparty/liblcms2/src/cmssamp.c
- thirdparty/liblcms2/src/cmswtpnt.c
- thirdparty/liblcms2/src/cmsxform.c
- thirdparty/liblcms2/src/lcms2_internal.h
-Copyright: 1998-2018, Marti Maria Saguer
-License: Expat
-
-Files: thirdparty/libpng/pngconf.h
- thirdparty/libpng/pngdebug.h
- thirdparty/libpng/pngerror.c
- thirdparty/libpng/pngget.c
- thirdparty/libpng/pnginfo.h
- thirdparty/libpng/pngmem.c
- thirdparty/libpng/pngpread.c
- thirdparty/libpng/pngpriv.h
- thirdparty/libpng/pngread.c
- thirdparty/libpng/pngrio.c
- thirdparty/libpng/pngrtran.c
- thirdparty/libpng/pngrutil.c
- thirdparty/libpng/pngset.c
- thirdparty/libpng/pngstruct.h
- thirdparty/libpng/pngtrans.c
- thirdparty/libpng/pngwio.c
- thirdparty/libpng/pngwrite.c
- thirdparty/libpng/pngwtran.c
- thirdparty/libpng/pngwutil.c
-Copyright: 1995-1996, Guy Eric Schalnat, Group 42, Inc.
-  1996-1997, Andreas Dilger
-  1998-2002, 2004, 2006-2018, Glenn Randers-Pehrson
-  1998-2018, Glenn Randers-Pehrson
-  2018-2019, Cosmin Truta
-License: UNKNOWN
 
 Files: src/bin/common/color.cpp
  src/bin/common/color.h
@@ -278,49 +100,14 @@ Copyright: 2001-2003, David Janssens
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
 
-Files: src/lib/jp2/codestream/HTParams.cpp
- src/lib/jp2/codestream/HTParams.h
- src/lib/jp2/t1/t1_ht/coding/ojph_block_decoder.cpp
- src/lib/jp2/t1/t1_ht/coding/ojph_block_decoder.h
- src/lib/jp2/t1/t1_ht/coding/ojph_block_encoder.cpp
- src/lib/jp2/t1/t1_ht/coding/ojph_block_encoder.h
- src/lib/jp2/t1/t1_ht/common/ojph_arch.h
- src/lib/jp2/t1/t1_ht/common/ojph_arg.h
- src/lib/jp2/t1/t1_ht/common/ojph_base.h
- src/lib/jp2/t1/t1_ht/common/ojph_defs.h
- src/lib/jp2/t1/t1_ht/common/ojph_mem.h
- src/lib/jp2/t1/t1_ht/common/ojph_message.h
- src/lib/jp2/t1/t1_ht/others/ojph_arch.cpp
- src/lib/jp2/t1/t1_ht/others/ojph_mem.cpp
- src/lib/jp2/t1/t1_ht/others/ojph_message.cpp
+Files: src/lib/jp2/codestream/HTParams.*
+ src/lib/jp2/t1/t1_ht/coding/*
+ src/lib/jp2/t1/t1_ht/common/*
+ src/lib/jp2/t1/t1_ht/others/*
 Copyright: 2019, Aous Naman
   2019, Kakadu Software Pty Ltd, Australia
   2019, The University of New South Wales, Australia
 License: BSD-2-clause
-
-Files: thirdparty/libz/adler32.c
- thirdparty/libz/crc32.c
- thirdparty/libz/gzclose.c
- thirdparty/libz/gzguts.h
- thirdparty/libz/gzlib.c
- thirdparty/libz/gzread.c
- thirdparty/libz/gzwrite.c
- thirdparty/libz/infback.c
- thirdparty/libz/inffast.c
- thirdparty/libz/inffast.h
- thirdparty/libz/inflate.c
- thirdparty/libz/inflate.h
- thirdparty/libz/inftrees.h
-Copyright: 1995-2003, 2010, Mark Adler
-  1995-2005, 2010, Mark Adler
-  1995-2006, 2010-2012, 2016, 2018, Mark Adler
-  1995-2011, 2016, Mark Adler
-  1995-2016, Mark Adler
-  1995-2017, Mark Adler
-  2004, 2010, Mark Adler
-  2004-2005, 2010-2013, 2016, Mark Adler
-  2004-2017, Mark Adler
-License: UNKNOWN
 
 Files: src/lib/jp2/TileProcessor.h
  src/lib/jp2/codestream/TagTree.cpp
@@ -342,7 +129,6 @@ Copyright: 2001-2003, David Janssens
   2012, CS Systemes d'Information, France
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
-
 
 Files: src/lib/jp2/codestream/Quantizer.cpp
  src/lib/jp2/codestream/Quantizer.h
@@ -367,7 +153,6 @@ Copyright: 2001-2003, David Janssens
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
 
-
 Files: src/bin/jp2/BMPFormat.cpp
  src/bin/jp2/ImageFormat.cpp
  src/bin/jp2/PGXFormat.cpp
@@ -387,37 +172,6 @@ Copyright: 2001-2003, David Janssens
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
 
-Files: thirdparty/libpng/arm/arm_init.c
- thirdparty/libpng/arm/filter_neon.S
- thirdparty/libpng/arm/filter_neon_intrinsics.c
- thirdparty/libpng/intel/filter_sse2_intrinsics.c
- thirdparty/libpng/intel/intel_init.c
-Copyright: 2014, 2016, Glenn Randers-Pehrson
-  2014, 2017, Glenn Randers-Pehrson
-  2016-2017, Glenn Randers-Pehrson
-  2018, Cosmin Truta
-License: UNKNOWN
-
-Files: src/include/tclap/CmdLineOutput.h
- src/include/tclap/Constraint.h
- src/include/tclap/DocBookOutput.h
- src/include/tclap/StdOutput.h
- src/include/tclap/ValuesConstraint.h
-Copyright: 2004, Michael E. Smoot
-  2005, Michael E. Smoot
-  2017, Google LLC
-License: UNKNOWN
-
-Files: src/include/tclap/CmdLineInterface.h
- src/include/tclap/MultiArg.h
- src/include/tclap/SwitchArg.h
- src/include/tclap/UnlabeledValueArg.h
- src/include/tclap/ValueArg.h
-Copyright: 2003, Michael E. Smoot .
-  2004, Michael E. Smoot, Daniel Aarno.
-  2017, Google LLC
-License: UNKNOWN
-
 Files: src/lib/jp2/transform/sparse_array.cpp
  src/lib/jp2/transform/sparse_array.h
  src/lib/jp2/util/bench_dwt.cpp
@@ -433,22 +187,6 @@ Files: src/lib/jp2/mct/invert.cpp
 Copyright: 2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
-
-Files: src/include/tclap/HelpVisitor.h
- src/include/tclap/IgnoreRestVisitor.h
- src/include/tclap/OptionalUnlabeledTracker.h
- src/include/tclap/VersionVisitor.h
-Copyright: 2003, Michael E. Smoot .
-  2005, Michael E. Smoot .
-License: UNKNOWN
-
-Files: src/bin/common/spdlog/fmt.cpp
- src/include/spdlog/fmt/bundled/format-inl.h
- src/include/spdlog/fmt/bundled/posix.h
- src/include/spdlog/fmt/bundled/printf.h
-Copyright: 2012-2016, Victor Zverovich
-License: UNKNOWN
-
 
 Files: src/bin/jp2/grk_compress.cpp
  src/lib/jp2/codestream/j2k.h
@@ -496,40 +234,6 @@ Copyright: 2001-2003, David Janssens
   2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
-
-Files: tests/compare_dump_files.cpp
- tests/compare_images.cpp
- tests/compare_raw_files.cpp
-Copyright: 2011-2012, Centre National d'Etudes Spatiales (CNES), France
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
-
-Files: tests/performance/compare_perfs.py
- tests/performance/perf_test.py
- tests/profiling/filter_massif_output.py
-Copyright: 2017, IntoPIX SA
-License: BSD-2-clause
-
-Files: thirdparty/libz/deflate.h
- thirdparty/libz/trees.c
- thirdparty/libz/zutil.c
-Copyright: 1995-2016, Jean-loup Gailly
-  1995-2017, Jean-loup Gailly
-License: UNKNOWN
-
-Files: thirdparty/libz/compress.c
- thirdparty/libz/uncompr.c
- thirdparty/libz/zutil.h
-Copyright: 1995-2003, 2010, 2014, 2016, Jean-loup Gailly, Mark Adler
-  1995-2005, 2014, 2016, Jean-loup Gailly, Mark Adler
-  1995-2016, Jean-loup Gailly, Mark Adler
-License: UNKNOWN
-
-Files: thirdparty/include/zlib.h
- thirdparty/libz/README
- thirdparty/libz/zlib.h
-Copyright: 1995-2017, Jean-loup Gailly and Mark Adler
-License: Zlib
 
 Files: src/bin/jp2/grk_decompress.cpp
  src/lib/jp2/TileProcessor.cpp
@@ -589,52 +293,6 @@ Copyright: 2005, Herve Drolon, FreeImage Team
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
 
-Files: tests/unit/testempty1.cpp
- tests/unit/testempty2.cpp
-Copyright: 2012, Mathieu Malaterre
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
-
-Files: tests/pdf2jp2.cpp
- tests/ppm2rgb3.cpp
-Copyright: 2014, Mathieu Malaterre <mathieu.malaterre@voxxl.com>
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
-
-Files: tests/fuzzers/fuzzingengine.c
- tests/fuzzers/grk_decompress_fuzzer.cpp
-Copyright: 2017, IntoPix SA <contact@intopix.com>
-License: BSD-2-clause
-
-Files: src/include/spdlog/fmt/bundled/LICENSE.rst
- src/include/spdlog/fmt/bundled/format.h
-Copyright: 2012, - present, Victor Zverovich
-License: Expat
-
-Files: scripts/astyle.sh
- scripts/prepare-commit.sh
-Copyright: 2008, Juergen E. Fischer
-License: GPL-2+
- The full text of the GPL is distributed as in
- /usr/share/common-licenses/GPL-2 on Debian systems.
-
-Files: src/include/spdlog/fmt/bundled/locale.h
- src/include/spdlog/fmt/bundled/ostream.h
-Copyright: 2012, - present, Victor Zverovich
-License: UNKNOWN
-
-Files: src/include/spdlog/fmt/bundled/color.h
- src/include/spdlog/fmt/bundled/compile.h
-Copyright: 2012, - present, Victor Zverovich and fmt contributors
-  2018, - present, Victor Zverovich and fmt contributors
-License: UNKNOWN
-
-Files: src/include/tclap/ArgTraits.h
- src/include/tclap/StandardTraits.h
-Copyright: 2007, Daniel Aarno, Michael E. Smoot .
-  2017, Google LLC
-License: UNKNOWN
-
 Files: doc/man/man1/grk_compress.1
  doc/man/man1/grk_decompress.1
 Copyright: 2001-2003, David Janssens
@@ -645,57 +303,13 @@ Copyright: 2001-2003, David Janssens
   2005, Herve Drolon, FreeImage Team
   2006-2007, Parvatha Elangovan
   2016-2020, Grok Image Compression Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_fax3.c
- thirdparty/libtiff/tif_fax3.h
-Copyright: 1990, 1995, Frank D. Cringle.
-  1990-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: src/include/tclap/Arg.h
- src/include/tclap/sstream.h
-Copyright: 2003, Michael E. Smoot .
-  2004, Michael E. Smoot, Daniel Aarno .
-  2017, Google Inc.
-License: UNKNOWN
-
-Files: src/include/tclap/ArgException.h
- src/include/tclap/Visitor.h
-Copyright: 2003, Michael E. Smoot .
-  2017, Google LLC
-License: UNKNOWN
-
-Files: thirdparty/include/zconf.h
- thirdparty/libz/zconf.h.cmakein
-Copyright: 1995-2016, Jean-loup Gailly, Mark Adler
-  z_deflate_copyright
-  z_inflate_copyright
-License: UNKNOWN
+License: AGPL-3 and BSD-2-clause
 
 Files: cmake/FindCPPCHECK.cmake
  cmake/FindKAKADU.cmake
 Copyright: 2006-2014, Mathieu Malaterre <mathieu.malaterre@gmail.com>
   2011, Mathieu Malaterre <mathieu.malaterre@gmail.com>
-License: UNKNOWN
-
-Files: src/include/tclap/CmdLine.h
- src/include/tclap/XorHandler.h
-Copyright: 2003, Michael E. Smoot .
-  2004, Michael E. Smoot, Daniel Aarno.
-License: UNKNOWN
-
-Files: tests/nonregression/checkmd5refs.cmake
-Copyright: 2014, Mathieu Malaterre <mathieu.malaterre@voxxl.com>
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3
-
-Files: thirdparty/libtiff/CMakeLists.txt
-Copyright: 2016-2020, Grok Image Compression Inc.
-  University of Dundee
-  ï¿½ 2015 Open Microscopy Environment
-License: AGPL-3
+License: BSD
 
 Files: src/lib/jp2/codestream/jp2.cpp
 Copyright: 2001-2003, David Janssens
@@ -720,19 +334,6 @@ Copyright: 2001-2003, David Janssens
   2003-2014, Antonin Descampe
   2005, Herve Drolon, FreeImage Team
   2008, Jerome Fimes, Communications & Systemes <jerome.fimes@c-s.fr>
-  2011-2012, Centre National d'Etudes Spatiales (CNES), France
-  2012, CS Systemes d'Information, France
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
-
-Files: LICENSE
-Copyright: 2001-2003, David Janssens
-  2002-2003, Yannick Verschueren
-  2002-2014, Professor Benoit Macq
-  2002-2014, Universite catholique de Louvain (UCL), Belgium
-  2003-2009, Francois-Olivier Devaux
-  2003-2014, Antonin Descampe
-  2005, Herve Drolon, FreeImage Team
   2011-2012, Centre National d'Etudes Spatiales (CNES), France
   2012, CS Systemes d'Information, France
   2016-2020, Grok Image Compression Inc.
@@ -788,12 +389,6 @@ Copyright: 2002-2003, Yannick Verschueren
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-2-clause
 
-Files: tests/j2k_random_tile_access.cpp
-Copyright: 2011-2012, Centre National d'Etudes Spatiales (CNES), France
-  2012, CS Systemes d'Information, France
-  2016-2020, Grok Image Compression Inc.
-License: AGPL-3 and BSD-2-clause
-
 Files: src/bin/jp2/grk_dump.cpp
 Copyright: 2010, Mathieu Malaterre, GDCM
   2011-2012, Centre National d'Etudes Spatiales (CNES), France
@@ -828,252 +423,22 @@ Copyright: 1987, 1993-1994, The Regents of the University of California.
   2016-2020, Grok Image Compression Inc.
 License: AGPL-3 and BSD-3-clause
 
-Files: debian/copyright
-Copyright: -format/1.0/
-  1988-1996, Sam Leffler
-  1988-1997, Sam Leffler
-  1990-1997, Sam Leffler
-  1991-1996, Silicon Graphics, Inc.
-  1991-1997, Sam Leffler
-  1992-1997, Sam Leffler
-  1995-1996, Guy Eric Schalnat, Group 42, Inc.
-  1995-1997, Sam Leffler
-  1995-2003, 2010, Jean-loup Gailly.
-  1995-2003, 2010, Mark Adler
-  1995-2005, 2010, Jean-loup Gailly.
-  1995-2005, 2010, Mark Adler
-  1995-2005, Jean-loup Gailly.
-  1995-2006, 2010, Mark Adler
-  1995-2007, Mark Adler
-  1995-2008, 2010, Mark Adler
-  1995-2009, Mark Adler
-  1995-2010, Jean-loup Gailly and Mark Adler
-  1995-2010, Jean-loup Gailly.
-  1995-2010, Mark Adler
-  1996-1997, Andreas Dilger
-  1996-1997, Sam Leffler
-  1997, Greg Ward Larson
-  1998-2010, Glenn Randers-Pehrson
-  1998-2010, Marti Maria Saguer
-  2002-2011, Communications and Remote Sensing Laboratory, Universite catholique de Louvain (UCL), Belgium
-  2004, 2010, Mark Adler
-  2004-2005, 2010, Mark Adler
-  2006-2011, Mathieu Malaterre <mathieu.malaterre@gmail.com>
-  2006-2014, Mathieu Malaterre <mathieu.malaterre@voxxl.com>
-  2010, Andrey Kiselev <dron@ak4719.spb.edu>
-  2011, Mathieu Malaterre <mathieu.malaterre@gmail.com>
-  Copyright (c) 2017, IntoPIX SA
-  Joris Van Damme <info@awaresystems.be>
-  © 2020, Aaron Boxer <boxerab@gmail.com>
-License: BSD-2-clause and Libpng and Zlib
+Files: src/bin/common/windirent.h
+Copyright: 2006-2012, Toni Ronkko
+License: MIT
 
-Files: src/include/spdlog/fmt/bundled/core.h
-Copyright: 2012, - present, Victor Zverovich
-License: CC0
+Files: cmake/ucm.cmake
+Copyright: 2016, Viktor Kirilov
+License: MIT
 
-Files: thirdparty/liblcms2/src/cmssm.c
-Copyright: 1998-2017, Marti Maria Saguer
-  2001, softSurfer (www.softsurfer.com)
-License: Expat
-
-Files: thirdparty/liblcms2/src/cmsvirt.c
-Copyright: 1998-2017, Marti Maria Saguer
-License: Expat
-
-Files: thirdparty/liblcms2/include/lcms2.h
-Copyright: 1998-2017, Marti Maria Saguer
-License: Expat
-
-Files: thirdparty/liblcms2/src/cmsio1.c
-Copyright: 1998-2017, Marti Maria Saguer
-License: Expat
-
-Files: thirdparty/libz/FAQ
-Copyright: NONE
-License: GPL
- The full text of the GPL is distributed as in
- /usr/share/common-licenses/GPL on Debian systems.
-
-Files: scripts/remove_temporary_files.sh
-Copyright: 2012, Tim Sutton
-License: GPL-2+
- The full text of the GPL is distributed as in
- /usr/share/common-licenses/GPL-2 on Debian systems.
-
-Files: thirdparty/libpng/png.h
-Copyright: 1995-1996, Guy Eric Schalnat, Group 42, Inc.
-  1995-2019, The PNG Reference Library Authors.
-  1996-1997, Andreas Dilger
-  1998-2000, Glenn Randers-Pehrson, are derived from
-  1998-2002, 2004, 2006-2018, Glenn Randers-Pehrson
-  2018-2019, Cosmin Truta
-  2018-2019, Cosmin Truta.
-License: Libpng
-
-Files: thirdparty/libpng/LICENSE
-Copyright: 1995-1996, Guy Eric Schalnat, Group 42, Inc.
-  1995-2019, The PNG Reference Library Authors.
-  1996-1997, Andreas Dilger.
-  1998-2000, Glenn Randers-Pehrson
-  2000-2002, 2004, 2006-2018, Glenn Randers-Pehrson, 
-  2018-2019, Cosmin Truta.
-License: Libpng
-
-Files: src/include/spdlog/fmt/bin_to_hex.h
-Copyright: (c) 2015 Gabi Melman.
-License: UNKNOWN
-
-Files: src/include/spdlog/sinks/msvc_sink.h
-Copyright: (c) 2016 Alexander Dalshov.
-License: UNKNOWN
-
-Files: src/include/spdlog/fmt/ostr.h
-Copyright: (c) 2016 Gabi Melman.
-License: UNKNOWN
-
-Files: src/include/spdlog/fmt/fmt.h
-Copyright: (c) 2016-2018 Gabi Melman.
-License: UNKNOWN
-
-Files: src/include/spdlog/sinks/systemd_sink.h
-Copyright: (c) 2019 ZVYAGIN.Alexander@gmail.com
-License: UNKNOWN
-
-Files: thirdparty/libpng/png.c
-Copyright: 1995-1996, Guy Eric Schalnat, Group 42, Inc.
-  1996-1997, Andreas Dilger
-  1998-2002, 2004, 2006-2018, Glenn Randers-Pehrson
-  2018-2019, Cosmin Truta
-License: UNKNOWN
-
-
-Files: src/include/spdlog/fmt/bundled/ranges.h
-Copyright: 2012, - present, Victor Zverovich
-  2018, - present, Remotion (Igor Schulz)
-License: UNKNOWN
-
-Files: src/include/spdlog/fmt/bundled/chrono.h
-Copyright: 2012, - present, Victor Zverovich
-  Paul Dreik 2019
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_lzma.c
-Copyright: 2010, Andrey Kiselev <dron@ak4719.spb.edu>
-License: UNKNOWN
-
-Files: thirdparty/libpng/arm/palette_neon_intrinsics.c
-Copyright: 2017-2018, Arm Holdings.
-  2018-2019, Cosmin Truta
-License: UNKNOWN
-
-Files: doc/man/man3/libgrok.3
-Copyright: 2001-2003, David Janssens
-  2002-2003, Yannick Verschueren
-  2002-2014, Professor Benoit Macq
-  2002-2014, Universite catholique de Louvain (UCL), Belgium
-  2003-2007, Francois-Olivier Devaux and Antonin Descampe
-  2005, Herve Drolon, FreeImage Team
-  2006-2007, Parvatha Elangovan
-License: UNKNOWN
-
-
-Files: thirdparty/libtiff/libport.h
-Copyright: 2009, Frank Warmerdam
-License: UNKNOWN
-
-Files: thirdparty/libpng/pnglibconf.h
-Copyright: 1998-2015, Glenn Randers-Pehrson
-License: UNKNOWN
-
-Files: src/include/tclap/ZshCompletionOutput.h
-Copyright: 2006, Oliver Kiddle
-  2017, Google Inc.
-License: UNKNOWN
-
-Files: src/include/tclap/MultiSwitchArg.h
+Files: src/include/tclap/*
 Copyright: 2003, Michael E. Smoot .
   2004, Michael E. Smoot, Daniel Aarno.
   2005, Michael E. Smoot, Daniel Aarno, Erik Zeek.
   2017, Google LLC
-License: UNKNOWN
+License: tclap
 
-Files: src/include/tclap/UnlabeledMultiArg.h
-Copyright: 2003, Michael E. Smoot.
-  2017, Google LLC
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_luv.c
-Copyright: 1997, Greg Ward Larson
-  1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: doc/man/man1/grk_dump.1
-Copyright: 2010, Mathieu Malaterre
-  2016-2020, Grok Image Compression Inc.
-License: UNKNOWN
-
-Files: thirdparty/libz/deflate.c
-Copyright: 1995-2017, Jean-loup Gailly and Mark Adler
-License: UNKNOWN
-
-Files: thirdparty/libz/zconf.h.included
-Copyright: 1995-2013, Jean-loup Gailly.
-License: UNKNOWN
-
-Files: thirdparty/libz/inftrees.c
-Copyright: 1995-2017, Mark Adler
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_pixarlog.c
-Copyright: 1996, Pixar
-  1996-1997, Sam Leffler
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_zstd.c
-Copyright: 2017, Planet Labs
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_lzw.c
-Copyright: 1985-1986, The Regents of the University of California.
-  1988-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_dirinfo.c
-Copyright: 1988-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tiff.h
-Copyright: 1988-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_compress.c
-Copyright: 1988-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_print.c
-Copyright: 1988-1997, Sam Leffler
-  1991-1997, Silicon Graphics, Inc.
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tiffvers.h
-Copyright: 1988-1996, Sam Lefflern
-Copyright: 1991-1996 Silicon Graphics, Inc."
-License: UNKNOWN
-
-
-Files: src/bin/common/windirent.h
-Copyright: 2006-2012, Toni Ronkko
-License: UNKNOWN
-
-Files: cmake/ucm.cmake
-Copyright: 2016, Viktor Kirilov
-License: UNKNOWN
-
-Files: thirdparty/libtiff/tif_ojpeg.c
-Copyright: AWare Systems <http:www.awaresystems.be/>
-  Joris Van Damme <info@awaresystems.be>
-License: UNKNOWN
+Files: src/bin/common/spdlog/*
+ src/include/spdlog/*
+Copyright: 2015-present, Gabi Melman & spdlog contributors.
+License: spdlog
