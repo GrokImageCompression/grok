@@ -22,8 +22,8 @@ if(NOT GROK_NAMESPACE)
 endif()
 # In all cases:
 #string(TOLOWER ${GROK_NAMESPACE} GROK_LIBRARY_NAME)
-set(GROK_LIBRARY_NAME grok)
-set(GROK_PLUGIN_NAME grok_plugin)
+set(GROK_LIBRARY_NAME grokj2k)
+set(GROK_PLUGIN_NAME grokj2k_plugin)
 
 project(${GROK_NAMESPACE} )
 
@@ -32,7 +32,7 @@ include_regular_expression("^.*$")
 
 #-----------------------------------------------------------------------------
 # GROK version number, useful for packaging and doxygen doc:
-set(GROK_VERSION_MAJOR 6)
+set(GROK_VERSION_MAJOR 7)
 set(GROK_VERSION_MINOR 0)
 set(GROK_VERSION_BUILD 0)
 set(GROK_VERSION
@@ -43,18 +43,12 @@ set(PACKAGE_VERSION
 # Because autotools does not support X.Y notation for SOVERSION, we have to use
 # two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
-#   3.0.0 |  9
-#   3.1.0 |  9
-#   4.0.0 |  10
-#   4.1.0 |  10
-#   4.2.0 |  10
-#   5.0.0 |  11
-#   6.0.0 |  12
+#   7.0.0 |  1
 # above is the recommendation by the Grok team. If you really need to override this default,
 # you can specify your own GROK_SOVERSION at cmake configuration time:
 # cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
-  set(GROK_SOVERSION 12)
+  set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
 set(GROK_LIBRARY_PROPERTIES
   VERSION   "${GROK_VERSION_MAJOR}.${GROK_VERSION_MINOR}.${GROK_VERSION_BUILD}"
@@ -285,9 +279,9 @@ else()
   option(BUILD_PKGCONFIG_FILES "Build and install pkg-config files" OFF)
 endif()
 if(BUILD_PKGCONFIG_FILES)
-   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrok.pc.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc @ONLY)
-  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrok.pc DESTINATION
+   configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/lib/jp2/libgrokj2k.pc.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc @ONLY)
+  install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
 #
 

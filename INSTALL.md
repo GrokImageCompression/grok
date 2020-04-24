@@ -17,7 +17,7 @@ If you are running Windows, OSX or X-Windows, then the `cmake` gui may be used.
 ### SHARED/STATIC
 
 The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are
-linked to dynamic or static builds of the codec library `libgrok`. If both `BUILD_SHARED_LIBS`
+linked to dynamic or static builds of the codec library `libgrokj2k`. If both `BUILD_SHARED_LIBS`
 and `BUILD_STATIC_LIBS` `cmake` flags are set for a non-windows build, then both dynamic and static builds are generated,
 and the static version is installed.
 
@@ -119,8 +119,8 @@ The xcode project files can be generated using:
 ### SHARED/STATIC
 
 The `BUILD_SHARED_LIBS` `cmake` flag determines if the `grk_compress` and `grk_decompress` binaries are
-linked to dynamic or static builds of the codec library `libgrok`, and also if a static or dynamic version
-of `libgrok` is built on the system.
+linked to dynamic or static builds of the codec library `libgrokj2k`, and also if a static or dynamic version
+of `libgrokj2k` is built on the system.
 
 
 ### Compile
