@@ -2,14 +2,14 @@
 Building a Package
 ------------------
 
-(In steps below, we are packaging version 5.1.0, using GPG key id
+(In steps below, we are packaging version 7.0.0, using GPG key id
 52635FF060C9659C720E3A2F59A8A51BC41CB925)
 
 0. cd $SOURCE_DIR
 
-1. $ git archive --format=tar master | gzip > grok-jpeg2000_5.1.0.orig.tar.gz
+1. $ git archive --format=tar master | gzip > libgrokj2k_7.0.0.orig.tar.gz
 
-2. $ cp grok-jpeg2000_5.1.0.orig.tar.gz ..
+2. $ cp libgrokj2k_7.0.0.orig.tar.gz ..
 
 3. $ dpkg-buildpackage -us -uc
 
