@@ -1,4 +1,4 @@
-Source: grok-jpeg2000
+Source: libgrokj2k
 Priority: optional
 Maintainer: Aaron Boxer <boxerab@gmail.com>
 Homepage: https://github.com/GrokImageCompression/grok
@@ -16,44 +16,43 @@ Vcs-Browser: https://github.com/GrokImageCompression/grok
 Vcs-Git: https://github.com/GrokImageCompression/grok.git
 Rules-Requires-Root: no
 
-Package: grok-jpeg2000-12-dev
-Section: libdevel
-Architecture: any
-Depends: grok-jpeg2000-12 (= ${binary:Version}), ${misc:Depends}
-Description: development files for Grok, a JPEG 2000 image library
- Grok is a library for handling the JPEG 2000 image compression format.
- JPEG 2000 is a wavelet-based image compression standard and permits progressive
- transmission by pixel and resolution accuracy for progressive downloads of an
- encoded image. It supports lossless and lossy compression, supports higher
- compression than JPEG 1991, and has resilience to errors in the image.
- .
- This package contains the development files for Grok
-
-Package: grok-jpeg2000-12
+Package: libgrokj2k1
 Architecture: any
 Multi-Arch: same
 Pre-Depends: ${misc:Pre-Depends}
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: JPEG 2000 image compression/decompression library
  Grok is a library for handling the JPEG 2000 image compression format.
- JPEG 2000 is a wavelet-based image compression standard and permits progressive
- transmission by pixel and resolution accuracy for progressive downloads of an
- encoded image. It supports lossless and lossy compression, supports higher
- compression than JPEG 1991, and has resilience to errors in the image.
+ JPEG 2000 is a wavelet-based image compression standard that permits
+ progressive decoding by pixel and resolution accuracy.
+ It supports lossless and lossy compression and is resilient to image errors.
  .
  This package contains the runtime files for Grok
 
-Package: grok-jpeg2000-tools
+Package: libgrokj2k1-dev
+Section: libdevel
+Architecture: any
+Depends: libgrokj2k1 (= ${binary:Version}), ${misc:Depends}
+Description: development files for Grok, a JPEG 2000 image library
+ Grok is a library for handling the JPEG 2000 image compression format.
+ JPEG 2000 is a wavelet-based image compression standard that permits
+ progressive decoding by pixel and resolution accuracy.
+ It supports lossless and lossy compression and is resilient to image errors.
+ .
+ This package contains the development files for Grok
+
+
+Package: grokj2k-tools
 Section: graphics
 Architecture: any
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: command-line tools using the JPEG 2000 library
- This package provides with command-line tools allowing for conversions between
- several formats:
+Description: command-line tools for the Grok JPEG 2000 library
+ This package provides command-line tools for conversions between
+ several image formats:
  .
-  - grk_decompress: decodes j2k, jp2, and files to pgm, ppm, pnm,
-                  pgx, and bmp.
-  - grk_compress: encodes pnm, pgm, pgx, bmp, and ppm files to j2k,
-                  and jp2.
-  - grk_dump: dump information contained in j2k and jp2.
+  - grk_decompress: decode j2k or jp2 file to pgm, ppm, pnm, pam,
+                  pgx, tif, bmp and png.
+  - grk_compress: encode pnm, pgm, pgx, bmp, or ppm file to j2k
+                  or jp2 file.
+  - grk_dump: dump information contained in a j2k or jp2 file.

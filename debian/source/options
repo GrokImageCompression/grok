@@ -1,1 +1,1 @@
---extend-diff-ignore=tools,thirdparty
+--extend-diff-ignore=scripts|tests|tools|\.travis.yml|thirdparty
