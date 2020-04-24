@@ -4658,26 +4658,25 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 	++p_header_data;
 	--header_size;
 
-	uint8_t tmp;
-	uint32_t packet_len = 0;
-
 	if (!p_j2k->m_tileProcessor->plt_marker)
 		p_j2k->m_tileProcessor->plt_marker = new PL_MAP();
 	auto plt_marker = p_j2k->m_tileProcessor->plt_marker;
 
+	uint8_t tmp;
+	uint32_t packet_len = 0;
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */
 		grk_read_8(p_header_data, &tmp);
 		++p_header_data;
 		/* take only the lower seven bits */
-		packet_len |= (tmp & 0x7f);
-		if (tmp & 0x80) {
-			packet_len <<= 7;
-		} else {
-			/* store packet length and proceed to next one */
+		packet_len = (packet_len << 7) | (tmp & 0x7f);
+
+		/* store packet length and proceed to next one */
+		if ((tmp & 0x80) == 0) {
 			auto pair = plt_marker->find(Zplt);
 			if (pair != plt_marker->end()) {
 				pair->second.push_back(packet_len);
+				//GROK_INFO("Packet length from PLT: (%d, %d)", Zplt, packet_len);
 			} else {
 				auto vec = PL_INFO_VEC();
 				vec.push_back(packet_len);
