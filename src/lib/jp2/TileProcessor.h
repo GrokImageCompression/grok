@@ -461,7 +461,7 @@ struct TileProcessor {
 	uint8_t *m_marker_scratch;
 	uint32_t m_marker_scratch_size;
 
-	PL_MAP *plt_marker;
+	PacketLengthMarkers *plt_markers;
 
 private:
 	/** coding parameters */

@@ -373,12 +373,36 @@ struct grk_tl_info {
 
 typedef std::vector<grk_tl_info> TL_INFO_VEC;
 // map of (TLM marker id) => (tile part length vector)
-typedef std::map<uint8_t, TL_INFO_VEC> TL_MAP;
+typedef std::map<uint8_t, TL_INFO_VEC*> TL_MAP;
+
+struct TileLengthMarkers{
+	TileLengthMarkers();
+	~TileLengthMarkers();
+	void push(uint8_t i_TLM, grk_tl_info curr_vec);
+	TL_MAP *markers;
+};
 
 
 typedef std::vector<uint32_t> PL_INFO_VEC;
 // map of (PLT/PLM marker id) => (packet length vector)
-typedef std::map<uint8_t, PL_INFO_VEC> PL_MAP;
+typedef std::map<uint8_t, PL_INFO_VEC*> PL_MAP;
+
+struct PacketLengthMarkers{
+	PacketLengthMarkers();
+	~PacketLengthMarkers();
+	void initPush(uint8_t Zplt);
+	void push(uint8_t Iplm);
+	void initPull(void);
+	uint32_t pull(void);
+	PL_MAP *markers;
+	uint8_t Zpl;
+	PL_INFO_VEC *curr_vec;
+
+	//push
+	uint32_t packet_len;
+
+	size_t pull_index;
+};
 
 
 /**
@@ -448,8 +472,8 @@ struct grk_coding_parameters {
 	/** tells if the parameter is a coding or decoding one */
 	uint32_t m_is_decoder :1;
 
-	PL_MAP *plm_marker;
-	TL_MAP *tlm_marker;
+	TileLengthMarkers *tlm_markers;
+	PacketLengthMarkers *plm_markers;
 
 	void destroy();
 

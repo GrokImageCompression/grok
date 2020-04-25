@@ -72,7 +72,7 @@ TileProcessor::TileProcessor(bool isDecoder) :
 				0), m_tlm_sot_offsets_buffer(nullptr), m_tlm_sot_offsets_current(
 				nullptr), cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
-				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_marker(
+				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_markers(
 				nullptr), m_cp(nullptr), m_tcp(nullptr), m_tileno(0), m_is_decoder(
 				isDecoder) {
 	if (isDecoder) {
@@ -87,7 +87,7 @@ TileProcessor::~TileProcessor() {
 	free_tile();
 	grok_free(m_tlm_sot_offsets_buffer);
 	grok_free(m_marker_scratch);
-	delete plt_marker;
+	delete plt_markers;
 }
 
 bool TileProcessor::set_decompress_area(grk_j2k *p_j2k, grk_image *output_image,

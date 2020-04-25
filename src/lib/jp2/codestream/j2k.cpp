@@ -4534,9 +4534,9 @@ static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		GROK_ERROR("Error reading TLM marker");
 		return false;
 	}
-	if (!p_j2k->m_cp.tlm_marker)
-		p_j2k->m_cp.tlm_marker = new TL_MAP();
-	auto tlm_marker = p_j2k->m_cp.tlm_marker;
+	if (!p_j2k->m_cp.tlm_markers)
+		p_j2k->m_cp.tlm_markers = new TileLengthMarkers();
+	auto tlm_markers = p_j2k->m_cp.tlm_markers;
 
 	uint8_t num_tp = (uint8_t) (header_size / quotient);
 	uint32_t Ttlm_i = 0, Ptlm_i = 0;
@@ -4549,14 +4549,7 @@ static bool j2k_read_tlm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		auto info =
 				L_iT ? grk_tl_info((uint16_t) Ttlm_i, Ptlm_i) : grk_tl_info(
 								Ptlm_i);
-		auto pair = tlm_marker->find(i_TLM);
-		if (pair != tlm_marker->end()) {
-			pair->second.push_back(info);
-		} else {
-			auto vec = TL_INFO_VEC();
-			vec.push_back(info);
-			tlm_marker->operator[](i_TLM) = vec;
-		}
+		tlm_markers->push(i_TLM, info);
 		p_header_data += bytes_per_tile_part_length;
 	}
 	return true;
@@ -4577,7 +4570,7 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 	assert(p_header_data != nullptr);
 	assert(p_j2k != nullptr);
 
-	uint8_t Zplm, Nplm, tmp;
+	uint8_t Zplm, Nplm;
 	uint32_t packet_len = 0, i;
 	if (hdr_size < 1) {
 		GROK_ERROR("PLM marker segment too short");
@@ -4591,10 +4584,11 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 	++p_header_data;
 	--header_size;
 
-	if (!p_j2k->m_cp.plm_marker)
-		p_j2k->m_cp.plm_marker = new PL_MAP();
-	auto plm_marker = p_j2k->m_cp.plm_marker;
+	if (!p_j2k->m_cp.plm_markers)
+		p_j2k->m_cp.plm_markers = new PacketLengthMarkers();
+	auto markers = p_j2k->m_cp.plm_markers;
 
+	markers->initPush(Zplm);
 	while (header_size > 0) {
 		// Nplm
 		grk_read_8(p_header_data, &Nplm);
@@ -4605,25 +4599,10 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 			return false;
 		}
 		for (i = 0; i < Nplm; ++i) {
-			// Iplm_ij
+			uint8_t tmp;
 			grk_read_8(p_header_data, &tmp);
 			++p_header_data;
-			/* take only the lower seven bits */
-			packet_len |= (tmp & 0x7f);
-			if (tmp & 0x80) {
-				packet_len <<= 7;
-			} else {
-				/* store packet length and proceed to next one */
-				auto pair = plm_marker->find(Zplm);
-				if (pair != plm_marker->end()) {
-					pair->second.push_back(packet_len);
-				} else {
-					auto vec = PL_INFO_VEC();
-					vec.push_back(packet_len);
-					plm_marker->operator[](Zplm) = vec;
-				}
-				packet_len = 0;
-			}
+			markers->push(tmp);
 		}
 		if (packet_len != 0) {
 			GROK_ERROR("Malformed PLM marker segment");
@@ -4653,39 +4632,24 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 	}
 
 	/* Zplt */
-	uint8_t Zplt;
-	grk_read_8(p_header_data, &Zplt);
+	uint8_t Zpl;
+	grk_read_8(p_header_data, &Zpl);
 	++p_header_data;
 	--header_size;
 
-	if (!p_j2k->m_tileProcessor->plt_marker)
-		p_j2k->m_tileProcessor->plt_marker = new PL_MAP();
-	auto plt_marker = p_j2k->m_tileProcessor->plt_marker;
+	if (!p_j2k->m_tileProcessor->plt_markers)
+		p_j2k->m_tileProcessor->plt_markers = new PacketLengthMarkers();
+	auto markers = p_j2k->m_tileProcessor->plt_markers;
 
 	uint8_t tmp;
-	uint32_t packet_len = 0;
+	markers->initPush(Zpl);
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */
 		grk_read_8(p_header_data, &tmp);
 		++p_header_data;
-		/* take only the lower seven bits */
-		packet_len = (packet_len << 7) | (tmp & 0x7f);
-
-		/* store packet length and proceed to next one */
-		if ((tmp & 0x80) == 0) {
-			auto pair = plt_marker->find(Zplt);
-			if (pair != plt_marker->end()) {
-				pair->second.push_back(packet_len);
-				//GROK_INFO("Packet length from PLT: (%d, %d)", Zplt, packet_len);
-			} else {
-				auto vec = PL_INFO_VEC();
-				vec.push_back(packet_len);
-				plt_marker->operator[](Zplt) = vec;
-			}
-			packet_len = 0;
-		}
+		markers->push(tmp);
 	}
-	if (packet_len != 0) {
+	if (markers->packet_len != 0) {
 		GROK_ERROR("Malformed PLT marker segment");
 		return false;
 	}
@@ -7155,8 +7119,8 @@ void grk_coding_parameters::destroy() {
 		comment[i] = nullptr;
 	}
 	num_comments = 0;
-	delete plm_marker;
-	delete tlm_marker;
+	delete plm_markers;
+	delete tlm_markers;
 }
 
 grk_tcp::grk_tcp() :
@@ -7199,5 +7163,102 @@ grk_tcp::grk_tcp() :
 	for (auto i = 0; i < 32; ++i)
 		memset(pocs + i, 0, sizeof(grk_poc));
 }
+
+
+TileLengthMarkers::TileLengthMarkers() : markers(new TL_MAP())
+{}
+
+TileLengthMarkers::~TileLengthMarkers(){
+	if (markers) {
+		for (auto it = markers->begin(); it != markers->end(); it++){
+			delete it->second;
+		}
+		delete markers;
+	}
+}
+void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info){
+	auto pair = markers->find(i_TLM);
+	if (pair != markers->end()) {
+		pair->second->push_back(info);
+	} else {
+		auto vec = new TL_INFO_VEC();
+		vec->push_back(info);
+		markers->operator[](i_TLM) = vec;
+	}
+}
+
+PacketLengthMarkers::PacketLengthMarkers() : markers(new PL_MAP()),
+											Zpl(0),
+											curr_vec(nullptr),
+											packet_len(0),
+											pull_index(0U)
+{}
+
+PacketLengthMarkers::~PacketLengthMarkers(){
+	if (markers) {
+		for (auto it = markers->begin(); it != markers->end(); it++)
+			delete it->second;
+		delete markers;
+	}
+}
+
+void PacketLengthMarkers::initPush(uint8_t index){
+	Zpl = index;
+	packet_len = 0;
+	auto pair = markers->find(Zpl);
+	if (pair != markers->end()) {
+		curr_vec = pair->second;
+	} else {
+		curr_vec = new PL_INFO_VEC();
+		curr_vec->push_back(packet_len);
+		markers->operator[](Zpl) = curr_vec;
+	}
+}
+
+void PacketLengthMarkers::push(uint8_t Iplm){
+	/* take only the lower seven bits */
+	packet_len |= (Iplm & 0x7f);
+	if (Iplm & 0x80) {
+		packet_len <<= 7;
+	} else {
+		assert(curr_vec);
+		curr_vec->push_back(packet_len);
+		//GROK_INFO("Packet length: (%d, %d)", Zpl, packet_len);
+		packet_len = 0;
+	}
+}
+
+void PacketLengthMarkers::initPull(void){
+	pull_index = 0;
+	Zpl = 0;
+	curr_vec = nullptr;
+	if (markers){
+		auto pair = markers->find(Zpl);
+		if (pair != markers->end()) {
+			curr_vec = pair->second;
+		}
+	}
+}
+
+// note: packet length must be at least 1, so 0 indicates
+// no packet length available
+uint32_t PacketLengthMarkers::pull(void){
+   if (!markers)
+	   return 0;
+   if (curr_vec){
+	 if (pull_index == curr_vec->size()){
+		 Zpl++;
+		 if (Zpl < markers->size()){
+			 curr_vec = markers->operator[](Zpl);
+		 } else {
+			 curr_vec = nullptr;
+		 }
+	 }
+	 if (curr_vec)
+		 return curr_vec->operator[](pull_index++);
+   }
+   return 0;
+}
+
 
 }
