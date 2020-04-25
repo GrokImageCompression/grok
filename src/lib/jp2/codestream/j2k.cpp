@@ -7210,7 +7210,6 @@ void PacketLengthMarkers::initPush(uint8_t index){
 		curr_vec = pair->second;
 	} else {
 		curr_vec = new PL_INFO_VEC();
-		curr_vec->push_back(packet_len);
 		markers->operator[](Zpl) = curr_vec;
 	}
 }

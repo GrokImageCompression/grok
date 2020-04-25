@@ -210,6 +210,9 @@ bool T2::decode_packets(uint16_t tile_no,
 		return false;
 
 
+	auto packetLengths = tileProcessor->plt_markers;
+	if (packetLengths)
+		packetLengths->initPull();
 	for (uint32_t pino = 0; pino <= tcp->numpocs; ++pino) {
         /* if the resolution needed is too low, one dim of the tilec could be equal to zero
          * and no packets are used to decode this resolution and
@@ -235,6 +238,12 @@ bool T2::decode_packets(uint16_t tile_no,
 					|| current_pi->resno >= tilec->minimum_num_resolutions;
 
 			auto img_comp = image->comps + current_pi->compno;
+			uint32_t pltMarkerLen = 0;
+			if (packetLengths){
+				pltMarkerLen = packetLengths->pull();
+				//if (pltMarkerLen)
+				//	GROK_INFO("T2 PLT len: %d", pltMarkerLen);
+			}
 /*
 			GROK_INFO(
 					"packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
@@ -281,7 +290,10 @@ bool T2::decode_packets(uint16_t tile_no,
 						 current_pi->resno, img_comp->resno_decoded);
 
 			} else {
-				if (!skip_packet(tcp, current_pi, src_buf,
+				if (pltMarkerLen){
+					nb_bytes_read = pltMarkerLen;
+					src_buf->incr_cur_chunk_offset(nb_bytes_read);
+				} else if (!skip_packet(tcp, current_pi, src_buf,
 						&nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
 					delete[] first_pass_failed;
@@ -297,6 +309,7 @@ bool T2::decode_packets(uint16_t tile_no,
                 }
             }
 
+            //GROK_INFO("T2 Packet length: %d", nb_bytes_read);
 			*p_data_read += nb_bytes_read;
 		}
 		delete[] first_pass_failed;
