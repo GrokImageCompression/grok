@@ -533,7 +533,8 @@ void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT))) {
+	if ((!streamImpl)
+			|| (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT))) {
 		return;
 	}
 	streamImpl->m_write_fn = p_function;

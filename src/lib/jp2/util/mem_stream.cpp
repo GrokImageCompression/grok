@@ -62,32 +62,30 @@ static size_t read_from_mem(void *p_buffer, size_t nb_bytes,
 	if (!p_buffer)
 		return 0;
 
-	if ( p_source_buffer->off + nb_bytes < p_source_buffer->len) {
+	if (p_source_buffer->off + nb_bytes < p_source_buffer->len) {
 		nb_read = nb_bytes;
 	} else {
-		nb_read = (size_t)(p_source_buffer->len - p_source_buffer->off);
+		nb_read = (size_t) (p_source_buffer->len - p_source_buffer->off);
 	}
 
 	if (nb_read) {
-	  assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
-      // (don't copy buffer into itself)
-      if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
-        memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off,
-            nb_read);
-      p_source_buffer->off += nb_read;
+		assert(p_source_buffer->off + nb_read <= p_source_buffer->len);
+		// (don't copy buffer into itself)
+		if (p_buffer != p_source_buffer->buf + p_source_buffer->off)
+			memcpy(p_buffer, p_source_buffer->buf + p_source_buffer->off,
+					nb_read);
+		p_source_buffer->off += nb_read;
 	}
 
 	return nb_read;
 }
 
-static size_t write_to_mem(void *dest, size_t nb_bytes,
-		buf_info *src) {
+static size_t write_to_mem(void *dest, size_t nb_bytes, buf_info *src) {
 	if (src->off + nb_bytes >= src->len) {
 		return 0;
 	}
 	if (nb_bytes) {
-		memcpy(src->buf + (size_t) src->off, dest,
-				nb_bytes);
+		memcpy(src->buf + (size_t) src->off, dest, nb_bytes);
 		src->off += nb_bytes;
 	}
 	return nb_bytes;
@@ -102,7 +100,7 @@ static bool seek_from_mem(uint64_t nb_bytes, buf_info *src) {
 	return true;
 }
 
-static void set_up_mem_stream( grk_stream  *l_stream, size_t len,
+static void set_up_mem_stream(grk_stream *l_stream, size_t len,
 		bool is_read_stream) {
 	grk_stream_set_user_data_length(l_stream, len);
 
@@ -114,11 +112,10 @@ static void set_up_mem_stream( grk_stream  *l_stream, size_t len,
 	} else
 		grk_stream_set_write_function(l_stream,
 				(grk_stream_write_fn) write_to_mem);
-	grk_stream_set_seek_function(l_stream,
-			(grk_stream_seek_fn) seek_from_mem);
+	grk_stream_set_seek_function(l_stream, (grk_stream_seek_fn) seek_from_mem);
 }
 
-size_t get_mem_stream_offset( grk_stream  *stream) {
+size_t get_mem_stream_offset(grk_stream *stream) {
 	if (!stream)
 		return 0;
 	auto private_stream = (BufferedStream*) stream;
@@ -128,19 +125,18 @@ size_t get_mem_stream_offset( grk_stream  *stream) {
 	return buf->off;
 }
 
- grk_stream  *  create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
+grk_stream* create_mem_stream(uint8_t *buf, size_t len, bool ownsBuffer,
 		bool is_read_stream) {
 	if (!buf || !len) {
 		return nullptr;
 	}
 	auto l_stream = new BufferedStream(buf, len, is_read_stream);
 	auto p_source_buffer = new buf_info(buf, 0, len, ownsBuffer);
-	grk_stream_set_user_data(( grk_stream  * ) l_stream, p_source_buffer,
-			free_mem);
-	set_up_mem_stream(( grk_stream  * ) l_stream, p_source_buffer->len,
+	grk_stream_set_user_data((grk_stream*) l_stream, p_source_buffer, free_mem);
+	set_up_mem_stream((grk_stream*) l_stream, p_source_buffer->len,
 			is_read_stream);
 
-	return ( grk_stream  * ) l_stream;
+	return (grk_stream*) l_stream;
 }
 
 static int32_t get_file_open_mode(const char *mode) {
@@ -327,7 +323,7 @@ static void mem_map_free(void *user_data) {
 /*
  Currently, only read streams are supported for memory mapped files.
  */
- grk_stream  *  create_mapped_file_read_stream(const char *fname) {
+grk_stream* create_mapped_file_read_stream(const char *fname) {
 	bool is_read_stream = true;
 
 	grk_handle fd = open_fd(fname, is_read_stream ? "r" : "w");
@@ -346,7 +342,8 @@ static void mem_map_free(void *user_data) {
 	buffer_info->off = 0;
 
 	// now treat mapped file like any other memory stream
-	auto l_stream = (grk_stream*)(new BufferedStream(buffer_info->buf, buffer_info->len, is_read_stream));
+	auto l_stream = (grk_stream*) (new BufferedStream(buffer_info->buf,
+			buffer_info->len, is_read_stream));
 	grk_stream_set_user_data(l_stream, buffer_info,
 			(grk_stream_free_user_data_fn) mem_map_free);
 	set_up_mem_stream(l_stream, buffer_info->len, is_read_stream);

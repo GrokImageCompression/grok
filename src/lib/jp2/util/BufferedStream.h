@@ -243,7 +243,6 @@ private:
 	// We always have m_buffered_bytes <= m_read_bytes_seekable
 	size_t m_read_bytes_seekable;
 
-
 	// number of bytes read/written from the beginning of the stream
 	uint64_t m_stream_offset;
 
@@ -280,7 +279,6 @@ void grk_write_8(uint8_t *p_buffer, uint8_t value);
  */
 void grk_read_8(const uint8_t *p_buffer, uint8_t *value);
 
-
 /**
  * Write some bytes to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
@@ -295,8 +293,7 @@ void grk_write_64(uint8_t *p_buffer, uint64_t value, uint32_t nb_bytes);
  * @param value		pointer to the value that will store the data.
  * @param nb_bytes	the nb bytes to read.
  */
-void grk_read_64(const uint8_t *p_buffer, uint64_t *value,
-		uint32_t nb_bytes);
+void grk_read_64(const uint8_t *p_buffer, uint64_t *value, uint32_t nb_bytes);
 /**
  * Write some bytes to the given data buffer
  * @param p_buffer		pointer the data buffer to write data to.
@@ -335,7 +332,8 @@ template<typename TYPE> void grk_write(uint8_t *p_buffer, TYPE value,
 	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 	memcpy(p_buffer, l_data_ptr, nb_bytes);
 #else
-	const uint8_t *l_data_ptr = ((const uint8_t*) &value) + (size_t)(nb_bytes - 1);
+	const uint8_t *l_data_ptr = ((const uint8_t*) &value)
+			+ (size_t)(nb_bytes - 1);
 	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 	for (uint32_t i = 0; i < nb_bytes; ++i) {
 		*(p_buffer++) = *(l_data_ptr--);

@@ -31,12 +31,12 @@ struct ChunkBuffer {
 	~ChunkBuffer();
 
 	/*
-	 Wrap existing array and add to the back of the segmented buffer.
+	 Wrap existing array and add to the back of the chunk buffer.
 	 */
 	bool push_back(uint8_t *buf, size_t len);
 
 	/*
-	 Allocate array and add to the back of the segmented buffer
+	 Allocate array and add to the back of the chunk buffer
 	 */
 	bool alloc_and_push_back(size_t len);
 
@@ -80,17 +80,17 @@ struct ChunkBuffer {
 	void add_chunk(grk_buf *seg);
 
 	/*
-	 Copy all segments, in sequence, into contiguous array
+	 Copy all chunks, in sequence, into contiguous array
 	 */
 	bool copy_to_contiguous_buffer(uint8_t *buffer);
 
 	/*
-	 Cleans up internal resources
+	 Clean up internal resources
 	 */
 	void cleanup(void);
 
 	/*
-	 Return current pointer, stored in ptr variable, and advance segmented buffer
+	 Return current pointer, stored in ptr variable, and advance chunk buffer
 	 offset by chunk_len
 	 */
 	bool zero_copy_read(uint8_t **ptr, size_t chunk_len);
