@@ -29,18 +29,18 @@
 .SP
 .fi
 ..
-.TH grk_decompress 1 "Version 2.1.1" "grk_decompress" "converts jpeg2000 files"
+.TH grk_decompress 1 "Version 2.1.1" "grk_decompress" "converts from JPEG 2000 files"
 .P
 .SH NAME
 grk_decompress \- 
-This program reads in a jpeg2000 image and converts it to another 
+This program reads in a JPEG 2000 image and converts it to another 
 image type. It is part of the Grok library.
 .SP
 Valid input image extensions are
 .B .j2k, .jp2, .j2c
 .SP
 Valid output image extensions are
-.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif, .tiff \fR. For PNG resp. TIF it needs libpng resp. libtiff .
+.B .bmp, .pgm, .pgx, .png, .pnm, .ppm, .raw, .tga, .tif, .tiff \fR.
 .SH SYNOPSIS
 .P
 .B grk_decompress \-i \fRinfile.j2k \fB-o \fRoutfile.png
@@ -49,7 +49,6 @@ Valid output image extensions are
 .P
 .B grk_decompress \-h  \fRPrint help message and exit
 .P
-.R See JPWL OPTIONS for special options
 .SH OPTIONS
 .TP
 .B \-\^i "name"
@@ -72,16 +71,9 @@ n is the maximum number of quality layers to decode. See LAYERS below)
 .TP
 .B \-\^OutFor "ext"
 (extension for output files)
-.P
-.SH JPIP OPTIONS
-Options usable only if the library has been compiled with
-.B BUILD_JPIP
-.TP
-.B -jpip
-Embed index table box into the output JP2 file (compulsory for JPIP)
 .TP
 .B -TP R
-Partition a tile into tile parts of different resolution levels (compulsory for JPT-stream)
+Partition a tile into tile parts of different resolution levels
 .P
 .SH REDUCTION
 Set the number of highest resolution levels to be discarded.
