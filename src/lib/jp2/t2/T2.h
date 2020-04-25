@@ -58,6 +58,8 @@
 
 namespace grk {
 
+class TileProcessor;
+
 /**
  @file T2.h
  @brief Implementation of a tier-2 coding (packetization of code-block data) (T2)
@@ -71,12 +73,11 @@ namespace grk {
  Tier-2 coding
  */
 struct T2 {
-	T2(grk_image *p_image, grk_coding_parameters *p_cp);
+	T2(TileProcessor *tileProc);
 
 	/*
 	 Encode the packets of a tile to a destination buffer
 	 @param tileno           number of the tile encoded
-	 @param tile             the tile for which to write the packets
 	 @param maxlayers        maximum number of layers
 	 @param dest             the destination buffer
 	 @param p_data_written   FIXME DOC
@@ -86,7 +87,7 @@ struct T2 {
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             FIXME DOC
 	 */
-	bool encode_packets(uint16_t tileno, grk_tcd_tile *tile,
+	bool encode_packets(uint16_t tileno,
 			uint32_t maxlayers, BufferedStream *stream, uint64_t *p_data_written,
 			uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
 			uint32_t tppos, uint32_t pino);
@@ -94,39 +95,32 @@ struct T2 {
 	/**
 	 Encode the packets of a tile to a destination buffer
 	 @param tileno           number of the tile encoded
-	 @param tile             the tile for which to write the packets
 	 @param maxlayers        maximum number of layers
 	 @param p_data_written   FIXME DOC
 	 @param max_             the max length of the destination buffer
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
-	bool encode_packets_simulate(uint16_t tileno, grk_tcd_tile *tile,
+	bool encode_packets_simulate(uint16_t tileno,
 			uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
 			uint32_t tppos);
 
 	/**
 	 Decode the packets of a tile from a source buffer
 	 @param tileno 		number that identifies the tile for which to decompress the packets
-	 @param tile 		tile for which to decompress the packets
 	 @param src_buf     FIXME DOC
 	 @param data_read  the source buffer
 	 @return true if successful
 	 */
-	bool decode_packets(uint16_t tileno, grk_tcd_tile *tile,
+	bool decode_packets(uint16_t tileno,
 			ChunkBuffer *src_buf, uint64_t *data_read);
 
 
 private:
-
-	/** Encoding: pointer to the src image. Decoding: pointer to the dst image. */
-	grk_image *image;
-	/** pointer to the image coding parameters */
-	grk_coding_parameters *cp;
+	TileProcessor *tileProcessor;
 
 	/**
 	 Encode a packet of a tile to a destination buffer
 	 @param tileno Number of the tile encoded
-	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
 	 @param stream stream
@@ -135,39 +129,36 @@ private:
 	 @param cstr_info Codestream information structure
 	 @return
 	 */
-	bool encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
+	bool encode_packet(uint16_t tileno,grk_tcp *tcp,
 			PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 			uint64_t len,  grk_codestream_info  *cstr_info);
 
 	/**
 	 Encode a packet of a tile to a destination buffer
-	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
 	 @param p_data_written   FIXME DOC
 	 @param len Length of the destination buffer
 	 @return
 	 */
-	bool encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
+	bool encode_packet_simulate(grk_tcp *tcp,
 			PacketIter *pi, uint64_t *p_data_written, uint64_t len);
 
 	/**
 	 Decode a packet of a tile from a source buffer
-	 @param tile Tile for which to write the packets
 	 @param tcp Tile coding parameters
 	 @param pi Packet identity
 	 @param src_buf source buffer
 	 @param data_read   FIXME DOC
 	 @return  true if packet was successfully decoded
 	 */
-	bool decode_packet(grk_tcd_tile *tile, grk_tcp *tcp,
+	bool decode_packet(grk_tcp *tcp,
 			PacketIter *pi, ChunkBuffer *src_buf, uint64_t *data_read);
 
-	bool skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
+	bool skip_packet(grk_tcp *p_tcp,
 			PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read);
 
-	bool read_packet_header(grk_tcd_tile *p_tile,
-			grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
+	bool read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
 			ChunkBuffer *src_buf, uint64_t *p_data_read);
 
 	bool read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,

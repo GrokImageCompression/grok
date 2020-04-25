@@ -463,9 +463,10 @@ struct TileProcessor {
 
 	PacketLengthMarkers *plt_markers;
 
-private:
 	/** coding parameters */
 	grk_coding_parameters *m_cp;
+private:
+
 	/** coding/decoding parameters common to all tiles */
 	grk_tcp *m_tcp;
 	/** current encoded tile (not used for decompress) */

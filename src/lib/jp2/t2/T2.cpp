@@ -61,12 +61,15 @@
 namespace grk {
 
 
-bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
+bool T2::encode_packets(uint16_t tile_no,
 		uint32_t max_layers, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t max_len,  grk_codestream_info  *cstr_info, uint32_t tp_num,
 		uint32_t tp_pos, uint32_t pino) {
 
 	uint64_t nb_bytes = 0;
+	auto cp = tileProcessor->m_cp;
+	auto image = tileProcessor->image;
+	auto p_tile = tileProcessor->tile;
 	auto tcp = &cp->tcps[tile_no];
 	uint32_t nb_pocs = tcp->numpocs + 1;
 
@@ -88,7 +91,7 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 		if (current_pi->layno < max_layers) {
 		 nb_bytes = 0;
 
-			if (!encode_packet(tile_no, p_tile, tcp, current_pi,
+			if (!encode_packet(tile_no, tcp, current_pi,
 					stream, &nb_bytes, max_len, cstr_info)) {
 				pi_destroy(pi, nb_pocs);
 				return false;
@@ -129,8 +132,11 @@ bool T2::encode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 }
 
 bool T2::encode_packets_simulate(uint16_t tile_no,
-		grk_tcd_tile *p_tile, uint32_t max_layers, uint64_t *p_data_written,
+		uint32_t max_layers, uint64_t *p_data_written,
 		uint64_t max_len, uint32_t tp_pos) {
+
+	auto cp = tileProcessor->m_cp;
+	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
 	uint32_t pocno = (cp->rsiz == GRK_PROFILE_CINEMA_4K) ? 2 : 1;
 	uint32_t max_comp =
@@ -166,7 +172,7 @@ bool T2::encode_packets_simulate(uint16_t tile_no,
 			while (pi_next(current_pi)) {
 				if (current_pi->layno < max_layers) {
 					uint64_t bytesInPacket = 0;
-					if (!encode_packet_simulate(p_tile, tcp, current_pi,
+					if (!encode_packet_simulate(tcp, current_pi,
 							&bytesInPacket, max_len)) {
 						pi_destroy(pi, nb_pocs);
 						return false;
@@ -191,10 +197,13 @@ bool T2::encode_packets_simulate(uint16_t tile_no,
 	pi_destroy(pi, nb_pocs);
 	return true;
 }
-bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
+bool T2::decode_packets(uint16_t tile_no,
 		ChunkBuffer *src_buf, uint64_t *p_data_read) {
 
+	auto cp = tileProcessor->m_cp;
+	auto image = tileProcessor->image;
 	auto tcp = cp->tcps + tile_no;
+	auto p_tile = tileProcessor->tile;
 	uint32_t nb_pocs = tcp->numpocs + 1;
 	auto pi = pi_create_decode(image, cp, tile_no);
 	if (!pi)
@@ -262,7 +271,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 */
 				first_pass_failed[current_pi->compno] = false;
 
-				if (!decode_packet(	p_tile, tcp, current_pi, src_buf, &nb_bytes_read)) {
+				if (!decode_packet(	tcp, current_pi, src_buf, &nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
 					delete[] first_pass_failed;
 					return false;
@@ -272,7 +281,7 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 						 current_pi->resno, img_comp->resno_decoded);
 
 			} else {
-				if (!skip_packet(p_tile, tcp, current_pi, src_buf,
+				if (!skip_packet(tcp, current_pi, src_buf,
 						&nb_bytes_read)) {
 					pi_destroy(pi, nb_pocs);
 					delete[] first_pass_failed;
@@ -297,25 +306,23 @@ bool T2::decode_packets(uint16_t tile_no, grk_tcd_tile *p_tile,
 }
 
 
-T2::T2(grk_image *p_image, grk_coding_parameters *p_cp) : image(p_image), cp(p_cp)
-{
+T2::T2(TileProcessor *tileProc) : tileProcessor(tileProc)
+{}
 
-}
-
-bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
+bool T2::decode_packet(grk_tcp *p_tcp,
 		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0){
 		GROK_WARN("No data for packet header or body.");
 		return true;
 	}
-
+	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
 	uint64_t nb_total_bytes_read = 0;
 	*p_data_read = 0;
-	if (!read_packet_header(p_tile, p_tcp, p_pi, &read_data, src_buf,
+	if (!read_packet_header(p_tcp, p_pi, &read_data, src_buf,
 			&nb_bytes_read)) {
 		return false;
 	}
@@ -333,10 +340,9 @@ bool T2::decode_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
 	return true;
 }
 
-bool T2::read_packet_header(grk_tcd_tile *p_tile,
-		grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
+bool T2::read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
 		ChunkBuffer *src_buf, uint64_t *p_data_read)		{
-
+	auto p_tile = tileProcessor->tile;
 	auto res = &p_tile->comps[p_pi->compno].resolutions[p_pi->resno];
 	auto p_src_data = src_buf->get_global_ptr();
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
@@ -394,6 +400,7 @@ bool T2::read_packet_header(grk_tcd_tile *p_tile,
 	uint8_t **header_data_start = nullptr;
 	size_t *modified_length_ptr = nullptr;
 	size_t remaining_length = 0;
+	auto cp = tileProcessor->m_cp;
 	if (cp->ppm == 1) { /* PPM */
 	 header_data_start = &cp->ppm_data;
 	 header_data = *header_data_start;
@@ -745,15 +752,16 @@ bool T2::read_packet_data(grk_tcd_resolution *res, PacketIter *p_pi,
 	}
 	return true;
 }
-bool T2::skip_packet(grk_tcd_tile *p_tile, grk_tcp *p_tcp,
+bool T2::skip_packet(grk_tcp *p_tcp,
 		PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read) {
 	bool read_data;
 	uint64_t nb_bytes_read = 0;
 	uint64_t nb_totabytes_read = 0;
 	uint64_t max_length = (uint64_t) src_buf->get_cur_chunk_len();
+	auto p_tile = tileProcessor->tile;
 
 	*p_data_read = 0;
-	if (!read_packet_header(p_tile, p_tcp, p_pi,
+	if (!read_packet_header(p_tcp, p_pi,
 			&read_data, src_buf, &nb_bytes_read)) {
 		return false;
 	}
@@ -878,13 +886,14 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 
 //--------------------------------------------------------------------------------------------------
 
-bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
+bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 		PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
 	uint32_t compno = pi->compno;
 	uint32_t resno = pi->resno;
 	uint32_t precno = pi->precno;
 	uint32_t layno = pi->layno;
+	auto tile = tileProcessor->tile;
 	auto tilec = &tile->comps[compno];
 	auto res = &tilec->resolutions[resno];
 	uint64_t numHeaderBytes = 0;
@@ -1319,7 +1328,7 @@ bool T2::encode_packet(uint16_t tileno, grk_tcd_tile *tile, grk_tcp *tcp,
 	return true;
 }
 
-bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
+bool T2::encode_packet_simulate(grk_tcp *tcp,
 		PacketIter *pi, uint64_t *p_data_written, uint64_t length) {
 	uint32_t bandno, cblkno;
 	uint64_t nb_bytes;
@@ -1332,6 +1341,7 @@ bool T2::encode_packet_simulate(grk_tcd_tile *tile, grk_tcp *tcp,
 	grk_tcd_cblk_enc *cblk = nullptr;
 	grk_tcd_pass *pass = nullptr;
 
+	auto tile = tileProcessor->tile;
 	TileComponent *tilec = tile->comps + compno;
 	grk_tcd_resolution *res = tilec->resolutions + resno;
 	uint64_t packet_bytes_written = 0;
