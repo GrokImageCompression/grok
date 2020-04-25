@@ -7250,6 +7250,7 @@ uint32_t PacketLengthMarkers::pull(void){
 		 Zpl++;
 		 if (Zpl < markers->size()){
 			 curr_vec = markers->operator[](Zpl);
+			 pull_index = 0;
 		 } else {
 			 curr_vec = nullptr;
 		 }
