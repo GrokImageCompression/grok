@@ -1432,14 +1432,13 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					(uint32_t) lNbComp);
 
 			rc = 0;
-			cleanup: if (!lFile) {
-				fclose(lFile);
-			}
+			cleanup:
+				if (lFile)
+					fclose(lFile);
 			free(lSpace);
 			free(lMatrix);
 			if (rc)
 				return false;
-
 		}
 
 		if (roiArg.isSet()) {

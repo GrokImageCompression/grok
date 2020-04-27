@@ -132,7 +132,7 @@ static inline void* grk_aligned_alloc_n(size_t alignment, size_t size) {
 }
 static inline void* grk_aligned_realloc_n(void *ptr, size_t alignment,
 		size_t new_size) {
-	void *r_ptr;
+	void *r_ptr = nullptr;
 
 	/* alignment shall be power of 2 */
 	assert((alignment != 0U) && ((alignment & (alignment - 1U)) == 0U));
