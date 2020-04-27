@@ -99,7 +99,6 @@ using namespace grk;
 #include <string>
 #define TCLAP_NAMESTARTSTRING "-"
 #include "tclap/CmdLine.h"
-#include "common.h"
 #include <chrono>  // for high_resolution_clock
 
 using namespace TCLAP;

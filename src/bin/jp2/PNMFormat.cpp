@@ -67,7 +67,6 @@
 #include <algorithm>
 #include <iterator>
 #include <vector>
-#include <iostream>
 using namespace std;
 
 enum PNM_COLOUR_SPACE {
