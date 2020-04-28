@@ -2,8 +2,6 @@
 # Add the check about the mandatory status to the check_include_file macro
 # provided by cmake
 
-include (${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
-
 macro(ensure_file_include INCLUDE_FILENAME VARIABLE_NAME MANDATORY_STATUS)
 
 #message(WARNING "INCLUDE_FILENAME=${INCLUDE_FILENAME} \n"

@@ -1,27 +1,11 @@
-# Main CMakeLists.txt to build the Grok project using CMake (www.cmake.org)
-# Written by Mathieu Malaterre
-
-# This CMake project will by default create a library called Grok.
-# But if you want to use this project within your own (CMake) project
-# you will eventually like to prefix the library to avoid linking confusion
-# For this purpose you can define a CMake var: GROK_NAMESPACE to whatever you like
-# e.g.:
-# set(GROK_NAMESPACE "FOO")
+# option to set custom grok name space
+#set(GROK_NAMESPACE "FOO")
 cmake_minimum_required(VERSION 3.12)
-
-if(COMMAND CMAKE_POLICY)
-  cmake_policy(SET CMP0003 NEW)
-  if (NOT (${CMAKE_VERSION} VERSION_LESS 3.0))
-    cmake_policy(SET CMP0042 NEW)
-  endif()
-endif()
 
 if(NOT GROK_NAMESPACE)
   set(GROK_NAMESPACE "GROK")
   set(GROK_STANDALONE 1)
 endif()
-# In all cases:
-#string(TOLOWER ${GROK_NAMESPACE} GROK_LIBRARY_NAME)
 set(GROK_LIBRARY_NAME grokj2k)
 set(GROK_PLUGIN_NAME grokj2k_plugin)
 
@@ -44,9 +28,6 @@ set(PACKAGE_VERSION
 # two numbering, one for the Grok version and one for Grok soversion
 # version | soversion
 #   7.0.0 |  1
-# above is the recommendation by the Grok team. If you really need to override this default,
-# you can specify your own GROK_SOVERSION at cmake configuration time:
-# cmake -DGROK_SOVERSION:STRING=42 /path/to/grok
 if(NOT GROK_SOVERSION)
   set(GROK_SOVERSION 1)
 endif(NOT GROK_SOVERSION)
@@ -61,9 +42,6 @@ set(CMAKE_MODULE_PATH
     ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake
     ${CMAKE_MODULE_PATH})
 
-# --------------------------------------------------------------------------
-# On Visual Studio 8 MS deprecated C. This removes all 1.276E1265 security
-# warnings
 if(WIN32)
   if(NOT BORLAND)
     if(NOT CYGWIN)
@@ -160,8 +138,6 @@ ensure_file_include("stdarg.h"   HAVE_STDARG_H YES)
 ensure_file_include("ctype.h"    HAVE_CTYPE_H  YES)
 ensure_file_include("assert.h"   HAVE_ASSERT_H YES)
 
-# why check this one ? for openjpip ?
-include (${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
 CHECK_INCLUDE_FILE("strings.h"      HAVE_STRINGS_H)
 CHECK_INCLUDE_FILE("sys/stat.h"     HAVE_SYS_STAT_H)
 CHECK_INCLUDE_FILE("sys/types.h"    HAVE_SYS_TYPES_H)
@@ -248,7 +224,7 @@ if(BUILD_TESTING)
 endif()
 
 #-----------------------------------------------------------------------------
-# install all targets referenced as GROKTargets
+# install all targets referenced as GrokTargets
 install(EXPORT GrokTargets DESTINATION ${GROK_INSTALL_PACKAGE_DIR})
 configure_file( ${${GROK_NAMESPACE}_SOURCE_DIR}/cmake/GrokConfig.cmake.in
   ${${GROK_NAMESPACE}_BINARY_DIR}/GrokConfig.cmake
@@ -283,8 +259,6 @@ if(BUILD_PKGCONFIG_FILES)
     ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc @ONLY)
   install( FILES  ${CMAKE_CURRENT_BINARY_DIR}/libgrokj2k.pc DESTINATION
     ${CMAKE_INSTALL_LIBDIR}/pkgconfig )
-#
-
 endif()
 
 
@@ -296,5 +270,3 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release"
     "MinSizeRel" "RelWithDebInfo")
 endif()
-
-#-----------------------------------------------------------------------------
