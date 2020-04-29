@@ -877,31 +877,8 @@ static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp,
 	/* number of iterations in the loop */
 	uint32_t poc_bound = tcp->numpocs + 1;
 
-	/* start at first element, and to make sure the compiler will not make a calculation each time in the loop
-	 store a pointer to the current element to modify rather than tcp->pocs[i]*/
-	auto current_poc = tcp->pocs;
-
-	current_poc->compS = current_poc->compno0;
-	current_poc->compE = current_poc->compno1;
-	current_poc->resS = current_poc->resno0;
-	current_poc->resE = current_poc->resno1;
-	current_poc->layE = current_poc->layno1;
-
-	/* special treatment for the first element*/
-	current_poc->layS = 0;
-	current_poc->prg = current_poc->prg1;
-	current_poc->prcS = 0;
-
-	current_poc->prcE = max_prec;
-	current_poc->txS = tx0;
-	current_poc->txE = tx1;
-	current_poc->tyS = ty0;
-	current_poc->tyE = ty1;
-	current_poc->dx = dx_min;
-	current_poc->dy = dy_min;
-
-	for (uint32_t pino = 1; pino < poc_bound; ++pino) {
-		current_poc = tcp->pocs + pino;
+	for (uint32_t pino = 0; pino < poc_bound; ++pino) {
+		auto current_poc = tcp->pocs + pino;
 
 		current_poc->compS = current_poc->compno0;
 		current_poc->compE = current_poc->compno1;
@@ -910,11 +887,7 @@ static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp,
 		current_poc->layE = current_poc->layno1;
 		current_poc->prg = current_poc->prg1;
 		current_poc->prcS = 0;
-		/* special treatment here different from the first element*/
-		current_poc->layS =
-				(current_poc->layE > (current_poc - 1)->layE) ?
-						current_poc->layE : 0;
-
+		current_poc->layS = 0;
 		current_poc->prcE = max_prec;
 		current_poc->txS = tx0;
 		current_poc->txE = tx1;
