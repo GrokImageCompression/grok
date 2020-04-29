@@ -898,7 +898,7 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 }
 
 //--------------------------------------------------------------------------------------------------
-
+//#define DEBUG_ENCODE_PACKETS
 bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 		PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
@@ -913,6 +913,12 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 	size_t streamBytes = 0;
 	if (stream)
 		streamBytes = stream->tell();
+
+#ifdef DEBUG_ENCODE_PACKETS
+    GROK_INFO("encode packet compono=%d, resno=%d, precno=%d, layno=%d\n",
+             compno, resno, precno, layno);
+#endif
+
 	// SOP marker
 	if (tcp->csty & J2K_CP_CSTY_SOP) {
 		if (!stream->write_byte(255)) {

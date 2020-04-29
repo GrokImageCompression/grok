@@ -2196,21 +2196,24 @@ static bool j2k_post_write_tile(grk_j2k *p_j2k, BufferedStream *stream) {
 	auto img_comp = image->comps;
 	uint64_t tile_size = 0;
 
+	// calculate tile size in bits
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		tile_size += (uint64_t) ceildiv<uint32_t>(cp->t_width, img_comp->dx)
 				* ceildiv<uint32_t>(cp->t_height, img_comp->dy) * img_comp->prec;
 		++img_comp;
 	}
 
-	tile_size = (uint64_t) ((double) (tile_size) * 0.1625); /* 1.3/8 = 0.1625 */
+	// convert to bytes (assume worst case of 2x size of uncompressed image)
+	tile_size = (uint64_t) ((double) (tile_size) * 0.25); /* 2/8 = 0.25 */
 	tile_size += j2k_get_specific_header_sizes(p_j2k);
 
 	// ToDo: use better estimate of signaling overhead for packets,
 	// to avoid hard-coding this lower bound on tile buffer size
+	// i.e. estimate size of tile header
 
-	// allocate at least 256 bytes per component
-	if (tile_size < 256 * image->numcomps)
-		tile_size = 256 * image->numcomps;
+	// allocate at least 1K bytes per component
+	if (tile_size < 1024 * image->numcomps)
+		tile_size = 1024 * image->numcomps;
 
 	uint64_t available_data = tile_size;
 	uint64_t nb_bytes_written = 0;
