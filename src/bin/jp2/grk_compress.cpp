@@ -784,7 +784,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image [only j2k, j2c, jp2]!! ");
+						"Unknown output format image [only j2k, j2c, jp2] ");
 				return 1;
 			}
 		}
@@ -799,7 +799,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.j2k, *.j2c or *.jp2]!! ",
+						"Unknown output format image {} [only *.j2k, *.j2c or *.jp2] ",
 						outfile);
 				return 1;
 			}
@@ -1032,7 +1032,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			parameters->prog_order = give_progression(progression);
 			if (parameters->prog_order == -1) {
 				spdlog::error("Unrecognized progression order "
-						"[LRCP, RLCP, RPCL, PCRL, CPRL] !!");
+						"[LRCP, RLCP, RPCL, PCRL, CPRL] ");
 				return 1;
 			}
 		}
@@ -1329,7 +1329,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					parameters->capture_resolution,
 					parameters->capture_resolution + 1) != 2) {
 				spdlog::error(
-						"-Q 'capture resolution' argument error !! [-Q X0,Y0]");
+						"-Q 'capture resolution' argument error  [-Q X0,Y0]");
 				return 1;
 			}
 			parameters->write_capture_resolution = true;
@@ -1339,7 +1339,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					parameters->display_resolution,
 					parameters->display_resolution + 1) != 2) {
 				spdlog::error(
-						"-D 'display resolution' argument error !! [-D X0,Y0]");
+						"-D 'display resolution' argument error  [-D X0,Y0]");
 				return 1;
 			}
 			parameters->write_display_resolution = true;
@@ -1574,19 +1574,19 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 	if (img_fol->set_imgdir) {
 		if (!(parameters->infile[0] == 0)) {
-			spdlog::error("options -ImgDir and -i cannot be used together !!");
+			spdlog::error("options -ImgDir and -i cannot be used together ");
 			return 1;
 		}
 		if (!img_fol->set_out_format) {
 			spdlog::error(
-					"When -ImgDir is used, -OutFor <FORMAT> must be used !!");
+					"When -ImgDir is used, -OutFor <FORMAT> must be used ");
 			spdlog::error(
-					"Only one format allowed! Valid formats are j2k and jp2!!");
+					"Only one format allowed! Valid formats are j2k and jp2");
 			return 1;
 		}
 		if (!((parameters->outfile[0] == 0))) {
-			spdlog::error("options -ImgDir and -o cannot be used together !!");
-			spdlog::error("Specify OutputFormat using -OutFor<FORMAT> !!");
+			spdlog::error("options -ImgDir and -o cannot be used together ");
+			spdlog::error("Specify OutputFormat using -OutFor<FORMAT> ");
 			return 1;
 		}
 	} else {
@@ -1621,11 +1621,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 
 	if ((parameters->cp_disto_alloc || parameters->cp_fixed_quality)
 			&& (!(parameters->cp_disto_alloc ^ parameters->cp_fixed_quality))) {
-		spdlog::error("options -r and -q cannot be used together !!");
+		spdlog::error("options -r and -q cannot be used together");
 		return 1;
 	}
 
-	/* if no rate entered, lossless by default */
+	/* if no rate was entered, then lossless by default */
 	if (parameters->tcp_numlayers == 0) {
 		parameters->tcp_rates[0] = 0;
 		parameters->tcp_numlayers = 1;
@@ -1646,7 +1646,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 	for (uint32_t i = 0; i < parameters->numpocs; i++) {
 		if (parameters->POC[i].prg == -1) {
 			spdlog::error(
-					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] !!",
+					"Unrecognized progression order in option -P (POC n {}) [LRCP, RLCP, RPCL, PCRL, CPRL] ",
 					i + 1);
 		}
 	}

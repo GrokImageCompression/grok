@@ -611,7 +611,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]!!",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.jpg, *.jpeg, *.raw, *.rawl or *.tga]",
 						outformat);
 				return 1;
 			}
@@ -634,7 +634,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 				break;
 			default:
 				spdlog::error(
-						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]!!",
+						"Unknown output format image {} [only *.png, *.pnm, *.pgm, *.ppm, *.pgx, *.bmp, *.tif, *.tiff, *jpg, *jpeg, *.raw, *rawl or *.tga]",
 						outfile);
 				return 1;
 			}
