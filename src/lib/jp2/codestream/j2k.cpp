@@ -6525,9 +6525,9 @@ static bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 	uint32_t step_c = 1;
 	uint32_t step_r = num_comps * step_c;
 	uint32_t step_l = nb_resolutions * step_r;
-	if (nb_pocs == 0) {
+	if (nb_pocs == 0)
 		return true;
-	}
+
 	packet_array = new uint32_t[step_l * num_layers];
 	memset(packet_array, 0, step_l * num_layers * sizeof(uint32_t));
 
@@ -6544,11 +6544,10 @@ static bool j2k_check_poc_val(const grk_poc *p_pocs, uint32_t nb_pocs,
 			for (compno = p_pocs->compno0;
 					compno < std::min<uint32_t>(p_pocs->compno1, num_comps);
 					++compno) {
-				const uint32_t layno0 = 0;
-				uint32_t comp_index = res_index + layno0 * step_l;
+				uint32_t comp_index = res_index + 0 * step_l;
 
 				/* and finally take each layer of each res of ... */
-				for (layno = layno0;
+				for (layno = 0;
 						layno < std::min<uint32_t>(p_pocs->layno1, num_layers);
 						++layno) {
 					/*index = step_r * resno + step_c * compno + step_l * layno;*/

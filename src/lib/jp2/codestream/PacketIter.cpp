@@ -886,8 +886,6 @@ static void pi_update_encode_poc_and_final(grk_coding_parameters *p_cp,
 		current_poc->resE = current_poc->resno1;
 		current_poc->layE = current_poc->layno1;
 		current_poc->prg = current_poc->prg1;
-		current_poc->prcS = 0;
-		current_poc->layS = 0;
 		current_poc->prcE = max_prec;
 		current_poc->txS = tx0;
 		current_poc->txE = tx1;
@@ -917,10 +915,8 @@ static void pi_update_encode_no_poc(grk_coding_parameters *p_cp,
 		current_poc->compE = num_comps;
 		current_poc->resS = 0;
 		current_poc->resE = max_res;
-		current_poc->layS = 0;
 		current_poc->layE = tcp->numlayers;
 		current_poc->prg = tcp->prg;
-		current_poc->prcS = 0;
 		current_poc->prcE = max_prec;
 		current_poc->txS = tx0;
 		current_poc->txE = tx1;
@@ -1371,9 +1367,9 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 		pi[pino].poc.resno1 = tcp->resE;
 		pi[pino].poc.compno0 = tcp->compS;
 		pi[pino].poc.compno1 = tcp->compE;
-		pi[pino].poc.layno0 = tcp->layS;
+		pi[pino].poc.layno0 = 0;
 		pi[pino].poc.layno1 = tcp->layE;
-		pi[pino].poc.precno0 = tcp->prcS;
+		pi[pino].poc.precno0 = 0;
 		pi[pino].poc.precno1 = tcp->prcE;
 		pi[pino].poc.tx0 = tcp->txS;
 		pi[pino].poc.ty0 = tcp->tyS;
@@ -1391,14 +1387,14 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 				pi[pino].poc.compno1 = tcp->compE;
 				break;
 			case 'L':
-				pi[pino].poc.layno0 = tcp->layS;
+				pi[pino].poc.layno0 = 0;
 				pi[pino].poc.layno1 = tcp->layE;
 				break;
 			case 'P':
 				switch (tcp->prg) {
 				case GRK_LRCP:
 				case GRK_RLCP:
-					pi[pino].poc.precno0 = tcp->prcS;
+					pi[pino].poc.precno0 = 0;
 					pi[pino].poc.precno1 = tcp->prcE;
 					break;
 				default:
@@ -1428,7 +1424,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 					tcp->res_t += 1;
 					break;
 				case 'L':
-					tcp->lay_t = tcp->layS;
+					tcp->lay_t = 0;
 					pi[pino].poc.layno0 = tcp->lay_t;
 					pi[pino].poc.layno1 = tcp->lay_t + 1;
 					tcp->lay_t += 1;
@@ -1437,7 +1433,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 					switch (tcp->prg) {
 					case GRK_LRCP:
 					case GRK_RLCP:
-						tcp->prc_t = tcp->prcS;
+						tcp->prc_t = 0;
 						pi[pino].poc.precno0 = tcp->prc_t;
 						pi[pino].poc.precno1 = tcp->prc_t + 1;
 						tcp->prc_t += 1;
@@ -1536,7 +1532,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 						if (tcp->lay_t == tcp->layE) {
 							if (pi_check_next_level(i - 1, cp, tileno, pino,
 									prog)) {
-								tcp->lay_t = tcp->layS;
+								tcp->lay_t = 0;
 								pi[pino].poc.layno0 = tcp->lay_t;
 								pi[pino].poc.layno1 = tcp->lay_t + 1;
 								tcp->lay_t += 1;
@@ -1558,7 +1554,7 @@ void pi_init_encode(PacketIter *pi, grk_coding_parameters *cp, uint16_t tileno,
 							if (tcp->prc_t == tcp->prcE) {
 								if (pi_check_next_level(i - 1, cp, tileno, pino,
 										prog)) {
-									tcp->prc_t = tcp->prcS;
+									tcp->prc_t = 0;
 									pi[pino].poc.precno0 = tcp->prc_t;
 									pi[pino].poc.precno1 = tcp->prc_t + 1;
 									tcp->prc_t += 1;

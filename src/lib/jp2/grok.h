@@ -410,7 +410,7 @@ typedef struct _grk_poc {
 	/** Start and end values for tile width and height*/
 	uint32_t tx0, tx1, ty0, ty1;
 	/** Start value, initialized in pi_initialise_encode*/
-	uint32_t layS, resS, compS, prcS;
+	uint32_t resS, compS;
 	/** End value, initialized in pi_initialise_encode */
 	uint32_t layE, resE, compE, prcE;
 	/** Start and end values of tile width and height, initialized in pi_initialise_encode*/
