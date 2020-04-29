@@ -447,9 +447,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 		grk_decompress_parameters *parameters, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, char *plugin_path) {
 	try {
-
-		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', grk_version());
+		CmdLine cmd("grk_decompress command line", ' ', grk_version());
 
 		// set the output
 		GrokOutput output;
@@ -736,6 +734,7 @@ int parse_cmdline_decoder(int argc, char **argv,
 	} catch (ArgException &e)  // catch any exceptions
 	{
 		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		return 1;
 	}
 #if 0
     case 'h': 			/* display an help description */

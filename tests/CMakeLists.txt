@@ -45,7 +45,6 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.cpp
   ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.h
   ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp
   )
 
  if(GROK_HAVE_LIBTIFF)
@@ -58,11 +57,9 @@ if(GROK_HAVE_LIBPNG)
 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h)
 endif()
 
-set(compare_dump_files_SRCS compare_dump_files.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp)
+set(compare_dump_files_SRCS compare_dump_files.cpp)
 
-set(compare_raw_files_SRCS compare_raw_files.cpp
-  ${GROK_SOURCE_DIR}/src/bin/common/grok_getopt.cpp)
+set(compare_raw_files_SRCS compare_raw_files.cpp)
 
 add_executable(compare_images ${compare_images_SRCS})
 target_link_libraries(compare_images

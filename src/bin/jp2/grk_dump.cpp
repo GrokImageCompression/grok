@@ -71,7 +71,12 @@
 #define _strnicmp strncasecmp
 #endif /* _WIN32 */
 
-#include "grok_getopt.h"
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
+
+using namespace TCLAP;
+using namespace std;
+
 #include "convert.h"
 #include "grok_string.h"
 #include <string>
@@ -96,6 +101,7 @@ typedef struct _img_folder {
 
 	int flag;
 } img_fol;
+
 
 static uint32_t get_num_images(char *imgdirpath);
 static int load_images(dircnt *dirptr, char *imgdirpath);
@@ -132,6 +138,15 @@ static void decode_help_display(void) {
 	fprintf(stdout, "    By default verbose mode is off.\n");
 	fprintf(stdout, "\n");
 }
+
+class GrokOutput: public StdOutput {
+public:
+	virtual void usage(CmdLineInterface &c) {
+		(void) c;
+		decode_help_display();
+	}
+};
+
 
 /* -------------------------------------------------------------------------- */
 static uint32_t get_num_images(char *imgdirpath) {
@@ -224,19 +239,31 @@ static char get_next_file(size_t imageno, dircnt *dirptr, img_fol *img_fol,
 /* -------------------------------------------------------------------------- */
 static int parse_cmdline_decoder(int argc, char **argv,
 		grk_dparameters *parameters, img_fol *img_fol) {
-	int totlen, c;
-	grk_option long_option[] = { { "ImgDir", REQ_ARG, nullptr, 'y' } };
-	const char optlist[] = "i:o:f:hv";
 
-	totlen = sizeof(long_option);
-	img_fol->set_out_format = false;
-	do {
-		c = grok_getopt_long(argc, argv, optlist, long_option, totlen);
-		if (c == -1)
-			break;
-		switch (c) {
-		case 'i': { /* input file */
-			char *infile = grok_optarg;
+
+	try {
+		CmdLine cmd("grk_dump command line", ' ', grk_version());
+
+		// set the output
+		GrokOutput output;
+		cmd.setOutput(&output);
+
+		ValueArg<string> inputArg("i", "input", "input file", false, "", "string",
+				cmd);
+
+		ValueArg<string> outputArg("o", "output", "output file", false, "", "string",
+				cmd);
+
+		ValueArg<string> imgDirArg("y", "ImgDir", "image directory", false, "", "string",
+				cmd);
+
+		SwitchArg verboseArg("v", "verbose", "verbose", cmd);
+		ValueArg<uint32_t> flagArg("f", "flag",	"flag", false, 0, "unsigned integer", cmd);
+
+		cmd.parse(argc, argv);
+
+		if (inputArg.isSet()){
+			const char *infile = inputArg.getValue().c_str();
 			if (!grk::jpeg2000_file_format(infile,&parameters->decod_format )){
 				spdlog::error(
 						"Unknown input file format: {} \n"
@@ -250,53 +277,37 @@ static int parse_cmdline_decoder(int argc, char **argv,
 				return 1;
 			}
 		}
-			break;
 
-			/* ------------------------------------------------------ */
-
-		case 'o': { /* output file */
+		if (outputArg.isSet()){
 			if (grk::strcpy_s(parameters->outfile, sizeof(parameters->outfile),
-					grok_optarg) != 0) {
+					outputArg.getValue().c_str()) != 0) {
 				spdlog::error("Path is too long");
 				return 1;
 			}
 		}
-			break;
 
-			/* ----------------------------------------------------- */
-		case 'f': /* flag */
-			img_fol->flag = atoi(grok_optarg);
-			break;
-			/* ----------------------------------------------------- */
-
-		case 'h': /* display an help description */
-			decode_help_display();
-			return 1;
-
-			/* ------------------------------------------------------ */
-
-		case 'y': { /* Image Directory path */
-			img_fol->imgdirpath = (char*) malloc(strlen(grok_optarg) + 1);
+		if (imgDirArg.isSet()){
+			img_fol->imgdirpath = (char*) malloc(imgDirArg.getValue().length() + 1);
 			if (!img_fol->imgdirpath)
 				return 1;
-			strcpy(img_fol->imgdirpath, grok_optarg);
+			strcpy(img_fol->imgdirpath, imgDirArg.getValue().c_str());
 			img_fol->set_imgdir = true;
 		}
-			break;
 
-			/* ----------------------------------------------------- */
-
-		case 'v': { /* Verbose mode */
+		if (verboseArg.isSet()){
 			parameters->m_verbose = 1;
 		}
-			break;
 
-			/* ----------------------------------------------------- */
-		default:
-			spdlog::warn("An invalid option has been ignored.");
-			break;
+		if (flagArg.isSet()){
+			img_fol->flag = flagArg.getValue();
 		}
-	} while (c != -1);
+
+	} catch (ArgException &e)  // catch any exceptions
+	{
+		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		return 1;
+	}
+
 
 	/* check for possible errors */
 	if (img_fol->set_imgdir) {

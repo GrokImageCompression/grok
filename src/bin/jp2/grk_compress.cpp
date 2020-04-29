@@ -565,9 +565,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 	(void) indexfilename;
 	(void) indexfilename_size;
 	try {
-
-		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', grk_version());
+		CmdLine cmd("grk_compress command line", ' ', grk_version());
 
 		// set the output
 		GrokOutput output;
@@ -1571,6 +1569,7 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 	} catch (ArgException &e)  // catch any exceptions
 	{
 		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		return 1;
 	}
 
 	if (img_fol->set_imgdir) {

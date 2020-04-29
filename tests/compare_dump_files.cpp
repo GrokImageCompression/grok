@@ -48,9 +48,14 @@
 #include <ctype.h>
 #include <assert.h>
 #include "spdlog/spdlog.h"
-#include "grok_getopt.h"
-
+#define TCLAP_NAMESTARTSTRING "-"
+#include "tclap/CmdLine.h"
+#include <sstream>
 #include <string>
+#include "grok.h"
+
+using namespace TCLAP;
+using namespace std;
 
 typedef struct test_cmp_parameters {
 	/**  */
@@ -78,61 +83,53 @@ static void compare_dump_files_help_display(void) {
 static int parse_cmdline_cmp(int argc, char **argv,
 		test_cmp_parameters *param) {
 	size_t sizemembasefile, sizememtestfile;
-	int index;
-	const char optlist[] = "b:t:";
-	int c;
+	int index=0;
 
 	/* Init parameters */
 	param->base_filename = nullptr;
 	param->test_filename = nullptr;
+	try {
+		CmdLine cmd("compare_dump_files command line", ' ', "");
 
-	grok_opterr = 0;
+		ValueArg<string> baseArg("b", "base", "base file", false, "", "string",
+				cmd);
 
-	while ((c = grok_getopt(argc, argv, optlist)) != -1)
-		switch (c) {
-		case 'b':
-			sizemembasefile = strlen(grok_optarg) + 1;
+		ValueArg<string> testArg("t", "test", "test file", false, "", "string",
+				cmd);
+
+		cmd.parse(argc, argv);
+
+		if (baseArg.isSet()) {
+			sizemembasefile = baseArg.getValue().length() + 1;
 			param->base_filename = (char*) malloc(sizemembasefile);
 			if (!param->base_filename) {
 				spdlog::error("Out of memory");
 				return 1;
 			}
-			strcpy(param->base_filename, grok_optarg);
+			strcpy(param->base_filename, baseArg.getValue().c_str());
 			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
-			break;
-		case 't':
-			sizememtestfile = strlen(grok_optarg) + 1;
+			index++;
+		}
+
+		if (testArg.isSet()) {
+			sizememtestfile = testArg.getValue().length() + 1;
 			param->test_filename = (char*) malloc(sizememtestfile);
 			if (!param->test_filename) {
 				spdlog::error("Out of memory");
 				return 1;
 			}
-			strcpy(param->test_filename, grok_optarg);
+			strcpy(param->test_filename, testArg.getValue().c_str());
 			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
-			break;
-		case '?':
-			if ((grok_optopt == 'b') || (grok_optopt == 't'))
-				spdlog::error("Option -%c requires an argument.\n",
-						grok_optopt);
-			else if (isprint(grok_optopt))
-				spdlog::error("Unknown option `-%c'.\n", grok_optopt);
-			else
-				spdlog::error("Unknown option character `\\x%x'.\n",
-						grok_optopt);
-			return 1;
-		default:
-			spdlog::warn("this option is not valid \"-{} {}\" ", c,
-					grok_optarg);
-			break;
+			index++;
 		}
 
-	if (grok_optind != argc) {
-		for (index = grok_optind; index < argc; index++)
-			spdlog::error("Non-option argument {}", argv[index]);
-		return 1;
-	}
 
-	return 0;
+	} catch (ArgException &e)  // catch any exceptions
+	{
+		cerr << "error: " << e.error() << " for arg " << e.argId() << endl;
+		return 0;
+	}
+	return index;
 }
 
 /*******************************************************************************

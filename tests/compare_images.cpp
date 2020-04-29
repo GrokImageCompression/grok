@@ -51,8 +51,6 @@
 #include <assert.h>
 
 #include "grk_apps_config.h"
-#include "grok_getopt.h"
-
 #include "grok.h"
 #include "PNMFormat.h"
 #include "PGXFormat.h"
@@ -576,7 +574,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 	try {
 
 		// Define the command line object.
-		CmdLine cmd("Command description message", ' ', "0.9");
+		CmdLine cmd("compare_images command line", ' ', "0.9");
 
 		// set the output
 		GrokOutput output;
