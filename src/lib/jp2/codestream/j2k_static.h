@@ -1055,11 +1055,6 @@ static uint32_t j2k_get_num_tp(grk_coding_parameters *cp, uint32_t pino, uint16_
  */
 static bool j2k_calculate_tp(grk_coding_parameters *cp, uint32_t *p_nb_tile_parts, grk_image *image);
 
-static float j2k_get_tp_stride(grk_tcp *p_tcp);
-
-static float j2k_get_default_stride(grk_tcp *p_tcp);
-
-
 /**
  * Checks for invalid number of tile-parts in SOT marker (TPsot==TNsot). See issue 254.
  *

@@ -2794,24 +2794,12 @@ bool j2k_compress_tile(grk_j2k *p_j2k, uint16_t tile_index, uint8_t *p_data,
 	return true;
 }
 
-static float j2k_get_tp_stride(grk_tcp *p_tcp) {
-	return (float) ((p_tcp->m_nb_tile_parts - 1) * 14);
-}
-
-static float j2k_get_default_stride(grk_tcp *p_tcp) {
-	(void) p_tcp;
-	return 0;
-}
-
 static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 	uint32_t i, j, k;
 	double *rates = 0;
 	uint32_t bits_empty, size_pixel;
 	uint32_t last_res;
-	float (*tp_stride_func)(grk_tcp*) = nullptr;
-
 	assert(p_j2k != nullptr);
-
 	assert(stream != nullptr);
 
 	auto cp = &(p_j2k->m_cp);
@@ -2827,15 +2815,13 @@ static bool j2k_update_rates(grk_j2k *p_j2k, BufferedStream *stream) {
 	size_pixel = image->numcomps * image->comps->prec;
 	auto header_size = (double) stream->tell();
 
-	if (cp->m_coding_param.m_enc.m_tp_on) {
-		tp_stride_func = j2k_get_tp_stride;
-	} else {
-		tp_stride_func = j2k_get_default_stride;
-	}
-
 	for (i = 0; i < cp->t_grid_height; ++i) {
 		for (j = 0; j < cp->t_grid_width; ++j) {
-			double offset = (double) (*tp_stride_func)(tcp) / tcp->numlayers;
+			double stride = 0;
+			if (cp->m_coding_param.m_enc.m_tp_on)
+				stride = (tcp->m_nb_tile_parts - 1) * 14;
+
+			double offset = stride/ tcp->numlayers;
 
 			/* 4 borders of the tile rescale on the image if necessary */
 			uint32_t x0 = std::max<uint32_t>((cp->tx0 + j * cp->t_width),
