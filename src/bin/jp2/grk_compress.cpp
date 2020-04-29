@@ -1059,6 +1059,35 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					&POC[numpocs].layno1, &POC[numpocs].resno1,
 					&POC[numpocs].compno1, POC[numpocs].progorder) == 7) {
 				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
+				// sanity check on layer
+				if (POC[numpocs].layno1 > parameters->tcp_numlayers){
+					if (parameters->verbose) {
+						spdlog::warn("End layer {} in POC {} is greater than"
+									" total number of layers {}. Truncating.",
+									POC[numpocs].layno1,
+									numpocs,
+									parameters->tcp_numlayers );
+					}
+					POC[numpocs].layno1 = parameters->tcp_numlayers;
+				}
+				if (POC[numpocs].resno1 > parameters->numresolution){
+					if (parameters->verbose) {
+						spdlog::warn("POC end resolution {} cannot be greater than"
+								"the number of resolutions {}",
+								POC[numpocs].resno1,
+								parameters->numresolution );
+						POC[numpocs].resno1 = parameters->numresolution-1;
+					}
+				}
+				if (POC[numpocs].resno0 >= POC[numpocs].resno1){
+					spdlog::error("POC beginning resolution must be strictly less than end resolution");
+					return 1;
+				}
+				if (POC[numpocs].compno0 >= POC[numpocs].compno1){
+					spdlog::error("POC beginning component must be strictly less than end component");
+					return 1;
+				}
+
 				numpocs++;
 				while (*s && *s != '/') {
 					s++;
@@ -1067,6 +1096,10 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					break;
 				}
 				s++;
+			}
+			if (numpocs == 0){
+				spdlog::error("POC argument must have at least one progression order change");
+				return 1;
 			}
 			parameters->numpocs = numpocs;
 		}
