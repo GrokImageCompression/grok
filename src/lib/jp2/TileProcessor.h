@@ -304,6 +304,23 @@ struct grk_tcd_tile {
 	uint64_t packno; /* packet number */
 };
 
+struct PacketTracker{
+	PacketTracker();
+	~PacketTracker();
+	void init(uint32_t numcomps, uint32_t numres, size_t numprec, uint32_t numlayers);
+	void packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
+	bool is_packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
+private:
+	uint8_t *bits;
+
+	uint32_t m_numcomps;
+	uint32_t m_numres;
+	size_t   m_numprec;
+	uint32_t m_numlayers;
+
+	size_t index(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
+};
+
 /**
  Tile coder/decoder
  */
@@ -465,6 +482,8 @@ struct TileProcessor {
 
 	/** coding parameters */
 	grk_coding_parameters *m_cp;
+
+	PacketTracker m_tracker;
 private:
 
 	/** coding/decoding parameters common to all tiles */

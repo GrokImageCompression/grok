@@ -914,8 +914,12 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 	if (stream)
 		streamBytes = stream->tell();
 
+	if (tileProcessor->m_tracker.is_packet_encoded(compno,resno,precno,layno))
+		return true;
+	tileProcessor->m_tracker.packet_encoded(compno,resno,precno,layno);
+
 #ifdef DEBUG_ENCODE_PACKETS
-    GROK_INFO("encode packet compono=%d, resno=%d, precno=%d, layno=%d\n",
+    GROK_INFO("encode packet compono=%d, resno=%d, precno=%d, layno=%d",
              compno, resno, precno, layno);
 #endif
 

@@ -888,6 +888,25 @@ inline bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 		}
 	}
 	tile->packno = 0;
+
+	if (isEncoder) {
+        size_t max_precincts=0;
+		for (uint32_t compno = 0; compno < image->numcomps; ++compno) {
+			TileComponent *tilec = &tile->comps[compno];
+			for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
+				auto res = tilec->resolutions + resno;
+				for (uint32_t bandno = 0; bandno < res->numbands; ++bandno) {
+					auto band = res->bands + bandno;
+					max_precincts = max<size_t>(max_precincts, band->numPrecincts);
+				}
+			}
+		}
+
+		m_tracker.init(tile->numcomps,
+						tile->comps->numresolutions,
+						max_precincts,
+						tcp->numlayers);
+	}
 	return true;
 }
 
@@ -1487,7 +1506,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *p_data_written,
 
 	auto l_t2 = new T2(this);
 #ifdef DEBUG_LOSSLESS_T2
-	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
 		tilec->round_trip_resolutions = new grk_tcd_resolution[tilec->numresolutions];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
@@ -1548,7 +1567,7 @@ bool TileProcessor::t2_encode(BufferedStream *stream, uint64_t *p_data_written,
 	delete l_t2;
 
 #ifdef DEBUG_LOSSLESS_T2
-	for (uint32_t compno = 0; compno < p_image->numcomps; ++compno) {
+	for (uint32_t compno = 0; compno < p_image->m_numcomps; ++compno) {
 		TileComponent *tilec = &p_tile->comps[compno];
 		for (uint32_t resno = 0; resno < tilec->numresolutions; ++resno) {
 			auto roundRes = tilec->round_trip_resolutions + resno;
@@ -1893,6 +1912,95 @@ bool TileProcessor::copy_image_data_to_tile(uint8_t *p_src,
 		}
 	}
 	return true;
+}
+
+uint8_t *bits;
+
+
+PacketTracker::PacketTracker() : bits(nullptr),
+		m_numcomps(0),
+		m_numres(0),
+		m_numprec(0),
+		m_numlayers(0)
+
+{
+
+}
+PacketTracker::~PacketTracker(){
+	delete[] bits;
+}
+
+void PacketTracker::init(uint32_t numcomps,
+		uint32_t numres,
+		size_t numprec,
+		uint32_t numlayers){
+
+	size_t len = numcomps*numres*numprec*numlayers;
+	len = ((len + 7)>>3) << 3;
+	if (!bits)
+  	   bits = new uint8_t[len];
+	else {
+		size_t currentLen =m_numcomps*m_numres*m_numprec*m_numlayers;
+		currentLen = ((currentLen + 7)>>3) << 3;
+        if (len > currentLen) {
+     	   delete[] bits;
+     	   bits = new uint8_t[len];
+        }
+    }
+
+   memset(bits, 0, len);
+   m_numcomps = numcomps;
+   m_numres = numres;
+   m_numprec = numprec;
+   m_numlayers = numlayers;
+}
+void PacketTracker::packet_encoded(uint32_t comps,
+		uint32_t res,
+		size_t prec,
+		uint32_t layer){
+
+	if (comps >= m_numcomps ||
+		prec >= m_numprec ||
+		res >= m_numres ||
+		layer >= m_numlayers){
+			return;
+	}
+
+	size_t ind = index(comps,res,prec,layer);
+	size_t ind_maj = ind >> 3;
+	size_t ind_min = ind & 7;
+
+	bits[ind_maj] = (uint8_t)(bits[ind_maj] | (1 << ind_min));
+
+}
+bool PacketTracker::is_packet_encoded(uint32_t comps,
+		uint32_t res,
+		size_t prec,
+		uint32_t layer){
+
+	if (comps >= m_numcomps ||
+		prec >= m_numprec ||
+		res >= m_numres ||
+		layer >= m_numlayers){
+			return true;
+	}
+
+	size_t ind = index(comps,res,prec,layer);
+	size_t ind_maj = ind >> 3;
+	size_t ind_min = ind & 7;
+
+	return  ((bits[ind_maj] >> ind_min) & 1);
+}
+
+size_t PacketTracker::index(uint32_t comps,
+		uint32_t res,
+		size_t prec,
+		uint32_t layer){
+
+	return layer +
+			prec * m_numlayers +
+			res * m_numlayers * m_numprec +
+			comps * m_numres * m_numprec * m_numlayers;
 }
 
 grk_tcd_cblk_enc::~grk_tcd_cblk_enc() {
