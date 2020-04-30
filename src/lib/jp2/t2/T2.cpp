@@ -58,6 +58,8 @@
 #include "testing.h"
 #include <memory>
 
+//#define DEBUG_ENCODE_PACKETS
+
 namespace grk {
 
 
@@ -74,9 +76,9 @@ bool T2::encode_packets(uint16_t tile_no,
 	uint32_t nb_pocs = tcp->numpocs + 1;
 
 	auto pi = pi_initialise_encode(image, cp, tile_no, FINAL_PASS);
-	if (!pi) {
+	if (!pi)
 		return false;
-	}
+
 	pi_init_encode(pi, cp, tile_no, pino, tp_num, tp_pos,
 			FINAL_PASS);
 
@@ -148,12 +150,16 @@ bool T2::encode_packets_simulate(uint16_t tile_no,
 		return false;
 
 	auto pi = pi_initialise_encode(image, cp, tile_no,THRESH_CALC);
-	if (!pi) {
+	if (!pi)
 		return false;
-	}
+
 	*p_data_written = 0;
 	auto current_pi = pi;
 
+	tileProcessor->m_packetTracker.clear();
+#ifdef DEBUG_ENCODE_PACKETS
+    GROK_INFO("simulate encode packets for layers below layno %d", max_layers);
+#endif
 	for (uint32_t compno = 0; compno < max_comp; ++compno) {
 		uint64_t comp_len = 0;
 	 current_pi = pi;
@@ -898,7 +904,6 @@ bool T2::init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
 }
 
 //--------------------------------------------------------------------------------------------------
-//#define DEBUG_ENCODE_PACKETS
 bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 		PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
 		uint64_t num_bytes_available,  grk_codestream_info  *cstr_info) {
@@ -914,9 +919,9 @@ bool T2::encode_packet(uint16_t tileno, grk_tcp *tcp,
 	if (stream)
 		streamBytes = stream->tell();
 
-	if (tileProcessor->m_tracker.is_packet_encoded(compno,resno,precno,layno))
+	if (tileProcessor->m_packetTracker.is_packet_encoded(compno,resno,precno,layno))
 		return true;
-	tileProcessor->m_tracker.packet_encoded(compno,resno,precno,layno);
+	tileProcessor->m_packetTracker.packet_encoded(compno,resno,precno,layno);
 
 #ifdef DEBUG_ENCODE_PACKETS
     GROK_INFO("encode packet compono=%d, resno=%d, precno=%d, layno=%d",
@@ -1368,6 +1373,15 @@ bool T2::encode_packet_simulate(grk_tcp *tcp,
 	TileComponent *tilec = tile->comps + compno;
 	grk_tcd_resolution *res = tilec->resolutions + resno;
 	uint64_t packet_bytes_written = 0;
+
+	if (tileProcessor->m_packetTracker.is_packet_encoded(compno,resno,precno,layno))
+		return true;
+	tileProcessor->m_packetTracker.packet_encoded(compno,resno,precno,layno);
+
+#ifdef DEBUG_ENCODE_PACKETS
+    GROK_INFO("simulate encode packet compono=%d, resno=%d, precno=%d, layno=%d",
+             compno, resno, precno, layno);
+#endif
 
 	/* <SOP 0xff91> */
 	if (tcp->csty & J2K_CP_CSTY_SOP) {

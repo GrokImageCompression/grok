@@ -902,7 +902,7 @@ inline bool TileProcessor::init_tile(uint16_t tile_no, grk_image *output_image,
 			}
 		}
 
-		m_tracker.init(tile->numcomps,
+		m_packetTracker.init(tile->numcomps,
 						tile->comps->numresolutions,
 						max_precincts,
 						tcp->numlayers);
@@ -984,6 +984,7 @@ bool TileProcessor::compress_tile(uint16_t tile_no, BufferedStream *stream,
 		if (!rate_allocate_encode(max_length, p_cstr_info)) {
 			return false;
 		}
+		m_packetTracker.clear();
 	}
 	if (p_cstr_info) {
 		p_cstr_info->index_write = 1;
@@ -1935,24 +1936,38 @@ void PacketTracker::init(uint32_t numcomps,
 		size_t numprec,
 		uint32_t numlayers){
 
-	size_t len = numcomps*numres*numprec*numlayers;
-	len = ((len + 7)>>3) << 3;
+	size_t len = get_buffer_len(numcomps,numres,numprec,numlayers);
 	if (!bits)
   	   bits = new uint8_t[len];
 	else {
-		size_t currentLen =m_numcomps*m_numres*m_numprec*m_numlayers;
-		currentLen = ((currentLen + 7)>>3) << 3;
+		size_t currentLen =
+				get_buffer_len(m_numcomps,m_numres,m_numprec,m_numlayers);
         if (len > currentLen) {
      	   delete[] bits;
      	   bits = new uint8_t[len];
         }
     }
 
-   memset(bits, 0, len);
+   clear();
    m_numcomps = numcomps;
    m_numres = numres;
    m_numprec = numprec;
    m_numlayers = numlayers;
+}
+
+void PacketTracker::clear(void){
+	size_t currentLen =
+			get_buffer_len(m_numcomps,m_numres,m_numprec,m_numlayers);
+	memset(bits, 0, currentLen);
+}
+
+size_t PacketTracker::get_buffer_len(uint32_t numcomps,
+		uint32_t numres,
+		size_t numprec,
+		uint32_t numlayers){
+	size_t len = numcomps*numres*numprec*numlayers;
+
+	return ((len + 7)>>3) << 3;
 }
 void PacketTracker::packet_encoded(uint32_t comps,
 		uint32_t res,

@@ -308,6 +308,7 @@ struct PacketTracker{
 	PacketTracker();
 	~PacketTracker();
 	void init(uint32_t numcomps, uint32_t numres, size_t numprec, uint32_t numlayers);
+	void clear(void);
 	void packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
 	bool is_packet_encoded(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
 private:
@@ -318,6 +319,7 @@ private:
 	size_t   m_numprec;
 	uint32_t m_numlayers;
 
+	size_t get_buffer_len(uint32_t numcomps, uint32_t numres, size_t numprec, uint32_t numlayers);
 	size_t index(uint32_t comps, uint32_t res, size_t prec, uint32_t layer);
 };
 
@@ -483,7 +485,7 @@ struct TileProcessor {
 	/** coding parameters */
 	grk_coding_parameters *m_cp;
 
-	PacketTracker m_tracker;
+	PacketTracker m_packetTracker;
 private:
 
 	/** coding/decoding parameters common to all tiles */
