@@ -87,10 +87,10 @@ struct T2 {
 	 @param tppos            The position of the tile part flag in the progression order
 	 @param pino             FIXME DOC
 	 */
-	bool encode_packets(uint16_t tileno,
-			uint32_t maxlayers, BufferedStream *stream, uint64_t *p_data_written,
-			uint64_t len,  grk_codestream_info  *cstr_info, uint32_t tpnum,
-			uint32_t tppos, uint32_t pino);
+	bool encode_packets(uint16_t tileno, uint32_t maxlayers,
+			BufferedStream *stream, uint64_t *p_data_written, uint64_t len,
+			grk_codestream_info *cstr_info, uint32_t tpnum, uint32_t tppos,
+			uint32_t pino);
 
 	/**
 	 Encode the packets of a tile to a destination buffer
@@ -100,9 +100,8 @@ struct T2 {
 	 @param max_             the max length of the destination buffer
 	 @param tppos            The position of the tile part flag in the progression order
 	 */
-	bool encode_packets_simulate(uint16_t tileno,
-			uint32_t maxlayers, uint64_t *p_data_written, uint64_t max_len,
-			uint32_t tppos);
+	bool encode_packets_simulate(uint16_t tileno, uint32_t maxlayers,
+			uint64_t *p_data_written, uint64_t max_len, uint32_t tppos);
 
 	/**
 	 Decode the packets of a tile from a source buffer
@@ -111,9 +110,8 @@ struct T2 {
 	 @param data_read  the source buffer
 	 @return true if successful
 	 */
-	bool decode_packets(uint16_t tileno,
-			ChunkBuffer *src_buf, uint64_t *data_read);
-
+	bool decode_packets(uint16_t tileno, ChunkBuffer *src_buf,
+			uint64_t *data_read);
 
 private:
 	TileProcessor *tileProcessor;
@@ -129,9 +127,9 @@ private:
 	 @param cstr_info Codestream information structure
 	 @return
 	 */
-	bool encode_packet(uint16_t tileno,grk_tcp *tcp,
-			PacketIter *pi, BufferedStream *stream, uint64_t *p_data_written,
-			uint64_t len,  grk_codestream_info  *cstr_info);
+	bool encode_packet(uint16_t tileno, grk_tcp *tcp, PacketIter *pi,
+			BufferedStream *stream, uint64_t *p_data_written, uint64_t len,
+			grk_codestream_info *cstr_info);
 
 	/**
 	 Encode a packet of a tile to a destination buffer
@@ -141,8 +139,8 @@ private:
 	 @param len Length of the destination buffer
 	 @return
 	 */
-	bool encode_packet_simulate(grk_tcp *tcp,
-			PacketIter *pi, uint64_t *p_data_written, uint64_t len);
+	bool encode_packet_simulate(grk_tcp *tcp, PacketIter *pi,
+			uint64_t *p_data_written, uint64_t len);
 
 	/**
 	 Decode a packet of a tile from a source buffer
@@ -152,14 +150,15 @@ private:
 	 @param data_read   FIXME DOC
 	 @return  true if packet was successfully decoded
 	 */
-	bool decode_packet(grk_tcp *tcp,
-			PacketIter *pi, ChunkBuffer *src_buf, uint64_t *data_read);
+	bool decode_packet(grk_tcp *tcp, PacketIter *pi, ChunkBuffer *src_buf,
+			uint64_t *data_read);
 
-	bool skip_packet(grk_tcp *p_tcp,
-			PacketIter *p_pi, ChunkBuffer *src_buf, uint64_t *p_data_read);
+	bool skip_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
+			uint64_t *p_data_read);
 
-	bool read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi, bool *p_is_data_present,
-			ChunkBuffer *src_buf, uint64_t *p_data_read);
+	bool read_packet_header(grk_tcp *p_tcp, PacketIter *p_pi,
+			bool *p_is_data_present, ChunkBuffer *src_buf,
+			uint64_t *p_data_read);
 
 	bool read_packet_data(grk_tcd_resolution *l_res, PacketIter *p_pi,
 			ChunkBuffer *src_buf, uint64_t *p_data_read);
@@ -173,10 +172,9 @@ private:
 	 @param cblk_sty
 	 @param first
 	 */
-	bool init_seg(grk_tcd_cblk_dec *cblk, uint32_t index,
-			uint8_t cblk_sty, bool first);
+	bool init_seg(grk_tcd_cblk_dec *cblk, uint32_t index, uint8_t cblk_sty,
+			bool first);
 
 };
-
 
 }
