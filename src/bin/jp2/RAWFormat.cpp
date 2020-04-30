@@ -125,7 +125,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	} else {
 		f = fopen(filename, "rb");
 		if (!f) {
-			spdlog::error("Failed to open {} for reading !!", filename);
+			spdlog::error("Failed to open {} for reading", filename);
 			success = false;
 			goto cleanup;
 		}
@@ -145,7 +145,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	cmptparm = (grk_image_cmptparm*) calloc(numcomps,
 			sizeof(grk_image_cmptparm));
 	if (!cmptparm) {
-		spdlog::error("Failed to allocate image components parameters !!");
+		spdlog::error("Failed to allocate image components parameters");
 		success = false;
 		goto cleanup;
 	}
@@ -298,7 +298,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 	} else {
 		rawFile = fopen(outfile, "wb");
 		if (!rawFile) {
-			spdlog::error("imagetoraw: Failed to open {} for writing !!",
+			spdlog::error("imagetoraw: Failed to open {} for writing",
 					outfile);
 			goto beach;
 		}

@@ -274,7 +274,7 @@ static grk_image* tgatoimage(const char *filename,
 
 	f = fopen(filename, "rb");
 	if (!f) {
-		spdlog::error("Failed to open {} for reading !!", filename);
+		spdlog::error("Failed to open {} for reading", filename);
 		return 0;
 	}
 

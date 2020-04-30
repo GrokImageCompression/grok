@@ -600,7 +600,7 @@ static grk_image* bmptoimage(const char *filename,
 	} else {
 		INPUT = fopen(filename, "rb");
 		if (!INPUT) {
-			spdlog::error("Failed to open {} for reading !!", filename);
+			spdlog::error("Failed to open {} for reading", filename);
 			return nullptr;
 		}
 	}
@@ -1061,7 +1061,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 		}
 
 	}
-	// success !!
+	// success
 	rc = 0;
 	cleanup: delete[] destBuff;
 	if (!writeToStdout && fdest) {
