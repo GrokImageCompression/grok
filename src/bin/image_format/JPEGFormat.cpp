@@ -69,7 +69,7 @@ struct imageToJpegInfo {
 };
 
 static int imagetojpeg(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+		int32_t compressionParam, bool verbose) {
 	if (!image)
 		return 1;
 	imageToJpegInfo info;
@@ -615,13 +615,13 @@ static grk_image* jpegtoimage(const char *filename,
 	return imageInfo.image;
 }/* jpegtoimage() */
 
-bool JPEGFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
-	return imagetojpeg(image, filename, compressionParam, verbose) ?
+bool JPEGFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
+	return imagetojpeg(image, filename.c_str(), compressionParam, verbose) ?
 			false : true;
 }
-grk_image* JPEGFormat::decode(const char *filename,
+grk_image* JPEGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return jpegtoimage(filename, parameters);
+	return jpegtoimage(filename.c_str(), parameters);
 }
 

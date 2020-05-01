@@ -736,12 +736,12 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	return local_info.fails;
 }/* imagetopng() */
 
-bool PNGFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+bool PNGFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
 	(void) verbose;
-	return imagetopng(image, filename, compressionParam, verbose) ? false : true;
+	return imagetopng(image, filename.c_str(), compressionParam, verbose) ? false : true;
 }
-grk_image* PNGFormat::decode(const char *filename,
+grk_image* PNGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return pngtoimage(filename, parameters);
+	return pngtoimage(filename.c_str(), parameters);
 }

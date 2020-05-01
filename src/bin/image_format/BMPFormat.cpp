@@ -1073,7 +1073,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 }
 
 bool BMPFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+		int32_t compressionParam, bool verbose) {
 	(void) compressionParam;
 	return imagetobmp(image, filename, verbose) ? false : true;
 }

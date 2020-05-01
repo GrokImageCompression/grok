@@ -830,14 +830,14 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 	return rc;
 }/* imagetopnm() */
 
-bool PNMFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+bool PNMFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
-	return imagetopnm(image, filename, forceSplit, verbose) ? false : true;
+	return imagetopnm(image, filename.c_str(), forceSplit, verbose) ? false : true;
 }
-grk_image* PNMFormat::decode(const char *filename,
+grk_image* PNMFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return pnmtoimage(filename, parameters);
+	return pnmtoimage(filename.c_str(), parameters);
 }
 

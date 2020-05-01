@@ -571,13 +571,13 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	return fails;
 }
 
-bool TGAFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+bool TGAFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
-	return imagetotga(image, filename, verbose) ? false : true;
+	return imagetotga(image, filename.c_str(), verbose) ? false : true;
 }
-grk_image* TGAFormat::decode(const char *filename,
+grk_image* TGAFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return tgatoimage(filename, parameters);
+	return tgatoimage(filename.c_str(), parameters);
 }

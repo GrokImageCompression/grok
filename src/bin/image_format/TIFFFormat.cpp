@@ -1958,12 +1958,12 @@ static int imagetotif(grk_image *image, const char *outfile,
 	return success ? 0 : 1;
 }/* imagetotif() */
 
-bool TIFFFormat::encode(grk_image *image, const char *filename,
-		uint32_t compressionParam, bool verbose) {
-	return imagetotif(image, filename, compressionParam, verbose) ? false : true;
+bool TIFFFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
+	return imagetotif(image, filename.c_str(), compressionParam, verbose) ? false : true;
 }
-grk_image* TIFFFormat::decode(const char *filename,
+grk_image* TIFFFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return tiftoimage(filename, parameters);
+	return tiftoimage(filename.c_str(), parameters);
 }
 

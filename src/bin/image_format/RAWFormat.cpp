@@ -62,14 +62,14 @@
 #include "convert.h"
 #include "common.h"
 
-bool RAWFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+bool RAWFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
 	(void) compressionParam;
-	return imagetoraw(image, filename, bigEndian, verbose) ? true : false;
+	return imagetoraw(image, filename.c_str(), bigEndian, verbose) ? true : false;
 }
-grk_image* RAWFormat::decode(const char *filename,
+grk_image* RAWFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return rawtoimage(filename, parameters, bigEndian);
+	return rawtoimage(filename.c_str(), parameters, bigEndian);
 }
 
 template<typename T> static bool read(FILE *rawFile, bool big_endian,

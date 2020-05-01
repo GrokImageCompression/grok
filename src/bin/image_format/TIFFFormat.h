@@ -54,15 +54,15 @@
  */
 
 #pragma once
-#include "ImageFormat.h"
+#include "IImageFormat.h"
 
 
  /* TIFF conversion*/
 void tiffSetErrorAndWarningHandlers(bool verbose);
 
-class TIFFFormat {
+class TIFFFormat: public IImageFormat {
 public:
 	virtual ~TIFFFormat() {}
-	bool encode(grk_image *  image, const char* filename, uint32_t compressionParam, bool verbose);
-	grk_image *  decode(const char* filename,  grk_cparameters  *parameters);
+	bool encode(grk_image *  image, const std::string &filename, int32_t compressionParam, bool verbose);
+	grk_image *  decode(const std::string &filename,  grk_cparameters  *parameters);
 };

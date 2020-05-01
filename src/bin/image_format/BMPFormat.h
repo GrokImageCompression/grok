@@ -22,7 +22,7 @@
 class BMPFormat {
 public:
 	virtual ~BMPFormat() {}
-	bool encode(grk_image *  image, const char* filename, int compressionParam, bool verbose);
+	bool encode(grk_image *  image, const char* filename, int32_t compressionParam, bool verbose);
 	grk_image *  decode(const char* filename,  grk_cparameters  *parameters);
 };
 

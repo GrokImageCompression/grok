@@ -348,13 +348,13 @@ static int imagetopgx(grk_image *image, const char *outfile) {
 	return fails;
 }
 
-bool PGXFormat::encode(grk_image *image, const char *filename,
-		int compressionParam, bool verbose) {
+bool PGXFormat::encode(grk_image *image, const std::string &filename,
+		int32_t compressionParam, bool verbose) {
 	(void) compressionParam;
 	(void) verbose;
-	return imagetopgx(image, filename) ? false : true;
+	return imagetopgx(image, filename.c_str()) ? false : true;
 }
-grk_image* PGXFormat::decode(const char *filename,
+grk_image* PGXFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
-	return pgxtoimage(filename, parameters);
+	return pgxtoimage(filename.c_str(), parameters);
 }
