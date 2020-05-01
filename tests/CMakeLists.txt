@@ -15,6 +15,7 @@ include_directories(
   ${GROK_SOURCE_DIR}/src/bin/jp2
   ${GROK_SOURCE_DIR}/src/bin/common
   ${GROK_SOURCE_DIR}/src/include
+  ${GROK_SOURCE_DIR}/src/bin/image_format
   ${LCMS_INCLUDE_DIRNAME}
   ${Z_INCLUDE_DIRNAME}
   ${PNG_INCLUDE_DIRNAME}
@@ -37,24 +38,24 @@ set(compare_images_SRCS compare_images.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/color.h
   ${GROK_SOURCE_DIR}/src/bin/common/common.cpp
   ${GROK_SOURCE_DIR}/src/bin/common/common.h
-  ${GROK_SOURCE_DIR}/src/bin/jp2/convert.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/ImageFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/PNMFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.cpp
-  ${GROK_SOURCE_DIR}/src/bin/jp2/PGXFormat.h
-  ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/common/convert.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/ImageFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/PNMFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.cpp
+  ${GROK_SOURCE_DIR}/src/bin/image_format/PGXFormat.h
+  ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h
   )
 
  if(GROK_HAVE_LIBTIFF)
- 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/TIFFFormat.h)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/TIFFFormat.cpp)
+ 	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.h)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/TIFFFormat.cpp)
 endif()
 
 if(GROK_HAVE_LIBPNG)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.cpp)
-	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/jp2/PNGFormat.h)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.cpp)
+	list(APPEND compare_images_SRCS ${GROK_SOURCE_DIR}/src/bin/image_format/PNGFormat.h)
 endif()
 
 set(compare_dump_files_SRCS compare_dump_files.cpp)
