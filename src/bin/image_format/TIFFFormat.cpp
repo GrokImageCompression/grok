@@ -1191,6 +1191,8 @@ static void set_resolution(double *res, float resx, float resy, short resUnit) {
 	}
 }
 
+const size_t maxNumComponents = 10;
+
 /*
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
  * CINEMA                 : 12 bit precision
@@ -1201,7 +1203,7 @@ static grk_image* tiftoimage(const char *filename,
 	uint16_t chroma_subsample_x;
 	uint16_t chroma_subsample_y;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
-	grk_image_cmptparm cmptparm[4];
+	grk_image_cmptparm cmptparm[maxNumComponents];
 	grk_image *image = nullptr;
 	uint16_t tiBps = 0, tiPhoto = 0, tiSf = SAMPLEFORMAT_UINT, tiSpp = 0, tiPC =
 			0;
@@ -1345,9 +1347,14 @@ static grk_image* tiftoimage(const char *filename,
 		}
 		if (tiBps != 8 && tiBps != 16){
 			spdlog::error(
-					"tiftoimage: signed image with bith deth {} is not supported", tiBps);
+					"tiftoimage: signed image with bit depth {} is not supported", tiBps);
 			goto cleanup;
 		}
+	}
+	if (numcomps > maxNumComponents){
+		spdlog::error(
+				"tiftoimage: number of components {} must be <= %d", numcomps,maxNumComponents);
+		goto cleanup;
 	}
 
 	// 4. create image
@@ -1473,7 +1480,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 	bool success = true;
 	cvtTo32 cvtTifTo32s = nullptr;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t *planes[4];
+	int32_t *planes[maxNumComponents];
 	tsize_t rowStride;
 	bool invert;
 	tdata_t buf = nullptr;
@@ -1591,7 +1598,7 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 	(void) tiPhoto;
 	bool success = true;
 	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t *planes[4];
+	int32_t *planes[maxNumComponents];
 	tsize_t rowStride;
 	tdata_t buf = nullptr;
 	tstrip_t strip;
