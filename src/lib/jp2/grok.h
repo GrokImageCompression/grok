@@ -886,15 +886,11 @@ typedef struct _grk_image_comp {
 	// if true, then image will manage data, otherwise up to caller
 	bool owns_data;
 	/** alpha channel: can be one of three values:
-	 * {GRK_COMPONENT_TYPE_NON_OPACITY,
-	 * GRK_COMPONENT_TYPE_OPACITY,
-	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY}
-	 *
 	 * GRK_COMPONENT_TYPE_NON_OPACITY				: this component is not an alpha channel
-	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel,
-	 *  and the colour channels have been pre-multiplied by alpha
 	 * GRK_COMPONENT_TYPE_OPACITY					: this component is an alpha channel,
 	 *  and the colour channels have not been pre-multiplied by alpha
+	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel,
+	 *  and the colour channels have been pre-multiplied by alpha
 	 * */
 	uint16_t alpha;
 } grk_image_comp;

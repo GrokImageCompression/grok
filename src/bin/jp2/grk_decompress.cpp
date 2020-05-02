@@ -1444,7 +1444,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 		grk_set_error_handler(error_callback, nullptr);
 
 		if (!grk_init_decompress(info->l_codec, &(parameters->core))) {
-			spdlog::error("grk_decompress: failed to setup the decoder");
+			spdlog::error("grk_decompress: failed to set up the decoder");
 			failed = 1;
 			goto cleanup;
 		}

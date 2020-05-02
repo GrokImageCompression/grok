@@ -492,7 +492,7 @@ int main(int argc, char *argv[]) {
 
 		/* Setup the decoder decoding parameters using user parameters */
 		if (!grk_init_decompress(l_codec, &parameters)) {
-			spdlog::error("grk_dump: failed to setup the decoder");
+			spdlog::error("grk_dump: failed to set up the decoder");
 			rc = EXIT_FAILURE;
 			goto cleanup;
 		}

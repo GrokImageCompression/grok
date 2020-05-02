@@ -639,7 +639,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 
 	png_write_info(local_info.png, info);
 
-	/* setup conversion */
+	/* set up conversion */
 	{
 		size_t rowStride;
 		png_size_t png_row_size;

@@ -1974,7 +1974,7 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 
 			if (j2k_init_mct_encoding(tcp, image) == false) {
 				/* free will be handled by j2k_destroy */
-				GROK_ERROR("Failed to setup j2k mct encoding");
+				GROK_ERROR("Failed to set up j2k mct encoding");
 				return false;
 			}
 		} else {
@@ -2604,7 +2604,7 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 				p_tcp->m_mct_records = nullptr;
 				p_tcp->m_nb_max_mct_records = 0;
 				p_tcp->m_nb_mct_records = 0;
-				/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
+				/* GROK_ERROR( "Not enough memory to set up mct encoding"); */
 				return false;
 			}
 			p_tcp->m_mct_records = new_mct_records;
@@ -2649,7 +2649,7 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 			p_tcp->m_mct_records = nullptr;
 			p_tcp->m_nb_max_mct_records = 0;
 			p_tcp->m_nb_mct_records = 0;
-			/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
+			/* GROK_ERROR( "Not enough memory to set up mct encoding"); */
 			return false;
 		}
 		p_tcp->m_mct_records = new_mct_records;
@@ -2718,7 +2718,7 @@ bool j2k_init_mct_encoding(grk_tcp *p_tcp, grk_image *p_image) {
 			p_tcp->m_mcc_records = nullptr;
 			p_tcp->m_nb_max_mcc_records = 0;
 			p_tcp->m_nb_mcc_records = 0;
-			/* GROK_ERROR( "Not enough memory to setup mct encoding"); */
+			/* GROK_ERROR( "Not enough memory to set up mct encoding"); */
 			return false;
 		}
 		p_tcp->m_mcc_records = new_mcc_records;

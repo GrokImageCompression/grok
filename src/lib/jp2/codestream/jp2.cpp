@@ -2178,7 +2178,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	jp2->numcl = 1;
 	jp2->cl = (uint32_t*) grk_malloc(jp2->numcl * sizeof(uint32_t));
 	if (!jp2->cl) {
-		GROK_ERROR("Not enough memory when setup the JP2 encoder");
+		GROK_ERROR("Not enough memory when set up the JP2 encoder");
 		return false;
 	}
 	jp2->cl[0] = JP2_JP2; /* CL0 : JP2 */
@@ -2188,7 +2188,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	jp2->comps = (grk_jp2_comps*) grk_malloc(
 			jp2->numcomps * sizeof(grk_jp2_comps));
 	if (!jp2->comps) {
-		GROK_ERROR("Not enough memory when setup the JP2 encoder");
+		GROK_ERROR("Not enough memory when set up the JP2 encoder");
 		/* Memory of jp2->cl will be freed by jp2_destroy */
 		return false;
 	}
