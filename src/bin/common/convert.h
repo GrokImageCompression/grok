@@ -55,7 +55,6 @@
 
 #pragma once
 
-
 #define INV_MASK_16 0xFFFF
 #define INV_MASK_15 ((1<<15)-1)
 #define INV_MASK_14 ((1<<14)-1)
@@ -71,12 +70,7 @@
 #define INV_MASK_4 ((1<<4)-1)
 #define INV_MASK_3 ((1<<3)-1)
 #define INV_MASK_2 ((1<<2)-1)
-
-
 #define INV(val, mask,invert)  ((invert) ? ((val)^(mask)) : (val))
-
-
-bool grok_set_binary_mode(FILE* file);
 
 /* Component precision clipping */
 void clip_component( grk_image_comp  *  component, uint32_t precision);
@@ -84,19 +78,16 @@ void clip_component( grk_image_comp  *  component, uint32_t precision);
 void scale_component( grk_image_comp  *  component, uint32_t precision);
 
 /* planar / interleaved conversions */
-typedef void(*convert_32s_CXPX)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
-extern const convert_32s_CXPX convert_32s_CXPX_LUT[5];
-typedef void(*convert_32s_PXCX)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
-extern const convert_32s_PXCX convert_32s_PXCX_LUT[5];
+typedef void(*cvtInterleavedToPlanar)(const int32_t* pSrc, int32_t* const* pDst, size_t length);
+extern const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10];
+typedef void(*cvtPlanarToInterleaved)(int32_t const* const* pSrc, int32_t* pDst, size_t length, int32_t adjust);
+extern const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10];
+
 /* bit depth conversions */
-typedef void(*convert_XXx32s_C1R)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
-extern const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9]; /* up to 8bpp */
-typedef void(*convert_32sXXx_C1R)(const int32_t* pSrc, uint8_t* pDst, size_t length);
-extern const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9]; /* up to 8bpp */
-bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps);
-bool isSubsampled(grk_image *  image);
+typedef void(*cvtTo32)(const uint8_t* pSrc, int32_t* pDst, size_t length,bool invert);
+extern const cvtTo32 cvtTo32_LUT[9]; /* up to 8bpp */
+typedef void(*cvtFrom32)(const int32_t* pSrc, uint8_t* pDst, size_t length);
+extern const cvtFrom32 cvtFrom32_LUT[9]; /* up to 8bpp */
 
-
-
-
-
+void convert_16u32s_C1R(const uint8_t *pSrc, int32_t *pDst,
+		size_t length, bool invert);

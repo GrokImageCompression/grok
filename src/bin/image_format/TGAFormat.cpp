@@ -321,7 +321,7 @@ static grk_image* tgatoimage(const char *filename,
 		grk::safe_fclose(f);
 		return nullptr;
 	}
-	if (!sanityCheckOnImage(image, numcomps)) {
+	if (!grk::sanityCheckOnImage(image, numcomps)) {
 		grk_image_destroy(image);
 		image = nullptr;
 		goto cleanup;
@@ -446,7 +446,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 		goto beach;
 	}
 
-	if (!sanityCheckOnImage(image, image->numcomps)) {
+	if (!grk::sanityCheckOnImage(image, image->numcomps)) {
 		goto beach;
 	}
 	for (i = 0; i < image->numcomps; i++) {

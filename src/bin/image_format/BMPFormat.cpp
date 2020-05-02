@@ -594,7 +594,7 @@ static grk_image* bmptoimage(const char *filename,
 	pLUT[2] = lut_B;
 
 	if (readFromStdin) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;
 		INPUT = stdin;
 	} else {
@@ -819,14 +819,14 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	int rc = -1;
 	uint8_t *destBuff = nullptr;
 
-	if (!sanityCheckOnImage(image, image->numcomps))
+	if (!grk::sanityCheckOnImage(image, image->numcomps))
 		goto cleanup;
 	if (image->numcomps != 1 && image->numcomps != 3) {
 		spdlog::error("Unsupported number of components: {}",
 				image->numcomps);
 		goto cleanup;
 	}
-	if (isSubsampled(image)) {
+	if (grk::isSubsampled(image)) {
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
@@ -844,7 +844,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 		}
 	}
 	if (writeToStdout) {
-		if (!grok_set_binary_mode(stdout))
+		if (!grk::grok_set_binary_mode(stdout))
 			goto cleanup;
 		fdest = stdout;
 	} else {

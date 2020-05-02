@@ -619,10 +619,8 @@ static void tif_32sto15u(const int32_t *pSrc, uint8_t *pDst, size_t length) {
 }
 
 static void tif_32sto16u(const int32_t *pSrc, uint16_t *pDst, size_t length) {
-	size_t i;
-	for (i = 0; i < length; ++i) {
+	for (size_t i = 0; i < length; ++i)
 		pDst[i] = (uint16_t) pSrc[i];
-	}
 }
 
 static void tif_3uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
@@ -1168,10 +1166,8 @@ static void tif_15uto32s(const uint8_t *pSrc, int32_t *pDst, size_t length,
 /* seems that libtiff decodes this to machine endianness */
 static void tif_16uto32s(const uint16_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
-	size_t i;
-	for (i = 0; i < length; i++) {
+	for (size_t i = 0; i < length; i++)
 		pDst[i] = INV(pSrc[i], 0xFFFF, invert);
-	}
 }
 
 static void set_resolution(double *res, float resx, float resy, short resUnit) {
@@ -1252,8 +1248,8 @@ static grk_image* tiftoimage(const char *filename,
 		spdlog::error("tiftoimage: Unsupported sample format: {}.", tiSf);
 		goto cleanup;
 	}
-	if (tiSpp == 0 || tiSpp > 4) { /* should be 1 ... 4 */
-		spdlog::error("tiftoimage: Unsupported samples per pixel: {}.", tiSpp);
+	if (tiSpp == 0 ) {
+		spdlog::error("tiftoimage: Samples per pixel must be positive");
 		goto cleanup;
 	}
 	if (tiBps > 16U || tiBps == 0) {
@@ -1305,12 +1301,6 @@ static grk_image* tiftoimage(const char *filename,
 		isCIE = true;
 		color_space = GRK_CLRSPC_DEFAULT_CIE;
 		numcomps += 3;
-		if (tiSpp != 3) {
-			if (parameters->verbose)
-				spdlog::warn(
-						"Input image is in CIE colour space but samples per pixel = {}",
-						tiSpp);
-		}
 		break;
 	case PHOTOMETRIC_YCBCR:
 		color_space = GRK_CLRSPC_SYCC;
@@ -1348,9 +1338,14 @@ static grk_image* tiftoimage(const char *filename,
 	}
 
 	if (isSigned) {
-		if (PHOTOMETRIC_MINISWHITE || tiBps != 8) {
+		if (tiPhoto == PHOTOMETRIC_MINISWHITE) {
 			spdlog::error(
-					"tiftoimage: only non-inverted 8-bit signed images are supported");
+					"tiftoimage: signed image with MINISWHITE format is not supported");
+			goto cleanup;
+		}
+		if (tiBps != 8 && tiBps != 16){
+			spdlog::error(
+					"tiftoimage: signed image with bith deth {} is not supported", tiBps);
 			goto cleanup;
 		}
 	}
@@ -1476,8 +1471,8 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 		return false;
 
 	bool success = true;
-	convert_XXx32s_C1R cvtTifTo32s = nullptr;
-	convert_32s_CXPX cvtCxToPx = nullptr;
+	cvtTo32 cvtTifTo32s = nullptr;
+	cvtInterleavedToPlanar cvtToPlanar = nullptr;
 	int32_t *planes[4];
 	tsize_t rowStride;
 	bool invert;
@@ -1493,7 +1488,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 	case 4:
 	case 6:
 	case 8:
-		cvtTifTo32s = convert_XXu32s_C1R_LUT[comps[0].prec];
+		cvtTifTo32s = cvtTo32_LUT[comps[0].prec];
 		break;
 		/* others are specific to TIFF */
 	case 3:
@@ -1527,15 +1522,15 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 		cvtTifTo32s = tif_15uto32s;
 		break;
 	case 16:
-		cvtTifTo32s = (convert_XXx32s_C1R) tif_16uto32s;
+		cvtTifTo32s = (cvtTo32) tif_16uto32s;
 		break;
 	default:
 		/* never here */
 		break;
 	}
-	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
 	if (tiPC == PLANARCONFIG_SEPARATE) {
-		cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
+		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
 		tiSpp = 1U; /* consider only one sample per plane */
 	}
 
@@ -1570,7 +1565,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 			while (ssize >= rowStride) {
 				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
 						invert);
-				cvtCxToPx(buffer32s, planes, (size_t) comp->w);
+				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
 				planes[0] += comp->w;
 				planes[1] += comp->w;
 				planes[2] += comp->w;
@@ -1595,7 +1590,7 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 
 	(void) tiPhoto;
 	bool success = true;
-	convert_32s_CXPX cvtCxToPx = nullptr;
+	cvtInterleavedToPlanar cvtToPlanar = nullptr;
 	int32_t *planes[4];
 	tsize_t rowStride;
 	tdata_t buf = nullptr;
@@ -1604,9 +1599,9 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 	uint32_t currentPlane = 0;
 	int32_t *buffer32s = nullptr;
 
-	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
 	if (tiPC == PLANARCONFIG_SEPARATE) {
-		cvtCxToPx = convert_32s_CXPX_LUT[1]; /* override */
+		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
 		tiSpp = 1U; /* consider only one sample per plane */
 	}
 
@@ -1640,7 +1635,7 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 			while (ssize >= rowStride) {
 				for (size_t i = 0; i < (size_t) comp->w * tiSpp; ++i)
 					buffer32s[i] = datau8[i];
-				cvtCxToPx(buffer32s, planes, (size_t) comp->w);
+				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
 				planes[0] += comp->w;
 				planes[1] += comp->w;
 				planes[2] += comp->w;
@@ -1652,7 +1647,8 @@ static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 		}
 		currentPlane++;
 	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-	local_cleanup: delete[] buffer32s;
+	local_cleanup:
+		delete[] buffer32s;
 	if (buf)
 		_TIFFfree(buf);
 	return success;
@@ -1666,8 +1662,8 @@ static int imagetotif(grk_image *image, const char *outfile,
 	tsize_t strip_size, rowStride;
 	int32_t const *planes[4];
 	int32_t *buffer32s = nullptr;
-	convert_32s_PXCX cvtPxToCx = nullptr;
-	convert_32sXXx_C1R cvt32sToTif = nullptr;
+	cvtPlanarToInterleaved cvtPxToCx = nullptr;
+	cvtFrom32 cvt32sToTif = nullptr;
 	bool success = true;
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
@@ -1773,14 +1769,14 @@ static int imagetotif(grk_image *image, const char *outfile,
 		success = false;
 		goto cleanup;
 	}
-	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
+	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	switch (tif_bps) {
 	case 1:
 	case 2:
 	case 4:
 	case 6:
 	case 8:
-		cvt32sToTif = convert_32sXXu_C1R_LUT[tif_bps];
+		cvt32sToTif = cvtFrom32_LUT[tif_bps];
 		break;
 	case 3:
 		cvt32sToTif = tif_32sto3u;
@@ -1813,7 +1809,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		cvt32sToTif = tif_32sto15u;
 		break;
 	case 16:
-		cvt32sToTif = (convert_32sXXx_C1R) tif_32sto16u;
+		cvt32sToTif = (cvtFrom32) tif_32sto16u;
 		break;
 	default:
 		/* never here */

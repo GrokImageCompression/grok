@@ -106,6 +106,7 @@ int parse_DA_values(bool verbose, char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 bool safe_fclose(FILE *fd);
 bool useStdio(const char *filename);
 bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format);
+bool grok_set_binary_mode(FILE* file);
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt);
 int get_file_format(const char *filename);
 const char* get_path_separator();
@@ -197,5 +198,8 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 }
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
+
+bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps);
+bool isSubsampled(grk_image *  image);
 
 }

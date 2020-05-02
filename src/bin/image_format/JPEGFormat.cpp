@@ -74,8 +74,8 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		return 1;
 	imageToJpegInfo info;
 	info.writeToStdout = grk::useStdio(filename);
-	convert_32s_PXCX cvtPxToCx = nullptr;
-	convert_32sXXx_C1R cvt32sToTif = nullptr;
+	cvtPlanarToInterleaved cvtPxToCx = nullptr;
+	cvtFrom32 cvt32sToTif = nullptr;
 	int32_t const *planes[3];
 	int32_t firstAlpha = -1;
 	size_t numAlphaChannels = 0;
@@ -188,14 +188,14 @@ static int imagetojpeg(grk_image *image, const char *filename,
 		info.success = false;
 		goto cleanup;
 	}
-	cvtPxToCx = convert_32s_PXCX_LUT[numcomps];
+	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	switch (bps) {
 	case 1:
 	case 2:
 	case 4:
 	case 6:
 	case 8:
-		cvt32sToTif = convert_32sXXu_C1R_LUT[bps];
+		cvt32sToTif = cvtFrom32_LUT[bps];
 		break;
 	default:
 		spdlog::error("imagetojpeg: Unsupported precision {}.", bps);
@@ -246,7 +246,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	 * requires it in order to write binary files.
 	 */
 	if (info.writeToStdout) {
-		if (!grok_set_binary_mode(stdout))
+		if (!grk::grok_set_binary_mode(stdout))
 			return 1;
 		info.outfile = stdout;
 	} else {
@@ -381,10 +381,10 @@ static grk_image* jpegtoimage(const char *filename,
 	int32_t *planes[3];
 	JDIMENSION w = 0, h = 0;
 	int bps = 0, numcomps = 0;
-	convert_XXx32s_C1R cvtJpegTo32s;
+	cvtTo32 cvtJpegTo32s;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_cmptparm cmptparm[3]; /* mono or RGB */
-	convert_32s_CXPX cvtCxToPx;
+	cvtInterleavedToPlanar cvtToPlanar;
 	JOCTET *icc_data_ptr = nullptr;
 	unsigned int icc_data_len = 0;
 
@@ -408,7 +408,7 @@ static grk_image* jpegtoimage(const char *filename,
 	 */
 
 	if (imageInfo.readFromStdin) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;
 		imageInfo.infile = stdin;
 	} else {
@@ -472,9 +472,9 @@ static grk_image* jpegtoimage(const char *filename,
 	numcomps = cinfo.output_components;
 	w = cinfo.image_width;
 	h = cinfo.image_height;
-	cvtJpegTo32s = convert_XXu32s_C1R_LUT[bps];
+	cvtJpegTo32s = cvtTo32_LUT[bps];
 	memset(&cmptparm[0], 0, 3 * sizeof(grk_image_cmptparm));
-	cvtCxToPx = convert_32s_CXPX_LUT[numcomps];
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
 
 	if (cinfo.output_components == 3)
 		color_space = GRK_CLRSPC_SRGB;
@@ -569,7 +569,7 @@ static grk_image* jpegtoimage(const char *filename,
 				false);
 
 		// convert to planar
-		cvtCxToPx(imageInfo.buffer32s, planes, (size_t) w);
+		cvtToPlanar(imageInfo.buffer32s, planes, (size_t) w);
 
 		planes[0] += w;
 		planes[1] += w;

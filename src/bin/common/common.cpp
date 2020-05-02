@@ -56,12 +56,13 @@
 #include "common.h"
 #include <cstdio>
 #include <cstdlib>
-
 #ifdef _WIN32
 #include <Windows.h>
 #include "windirent.h"
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
+#include <io.h>
+#include <fcntl.h>
 #else
 #include <strings.h>
 #include <sys/time.h>
@@ -165,6 +166,15 @@ bool supportedStdioFormat(GRK_SUPPORTED_FILE_FMT format) {
 		}
 	}
 	return false;
+}
+
+bool grok_set_binary_mode(FILE *file) {
+#ifdef _WIN32
+	return (_setmode(_fileno(file), _O_BINARY) != -1);
+#else
+	(void) file;
+	return true;
+#endif
 }
 
 int get_file_format(const char *filename) {
@@ -292,5 +302,65 @@ uint32_t uint_adds(uint32_t a, uint32_t b) {
 	uint64_t sum = (uint64_t) a + (uint64_t) b;
 	return (uint32_t) (-(int32_t) (sum >> 32)) | (uint32_t) sum;
 }
+
+
+bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
+	if (numcomps == 0)
+		return false;
+
+	//check for null image components
+	for (uint32_t i = 0; i < numcomps; ++i) {
+		if (!image->comps[i].data) {
+			spdlog::error("null data for component {}", i);
+			return false;
+		}
+	}
+
+	// check that all components have same dimensions
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].w != image->comps[0].w
+				|| image->comps[i].h != image->comps[0].h) {
+			spdlog::error(
+					"Dimensions of component {} differ from dimensions of component 0",
+					i);
+			return false;
+		}
+	}
+
+	// check that all components have same precision
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].prec != image->comps[0].prec) {
+			spdlog::error(
+					"precision of component {} differs from precision of component 0",
+					i);
+			return false;
+		}
+	}
+
+	// check that all components have same sign
+	for (uint32_t i = 1; i < numcomps; ++i) {
+		if (image->comps[i].sgnd != image->comps[0].sgnd) {
+			spdlog::error(
+					"signedness of component {} differs from signedness of component 0",
+					i);
+			return false;
+		}
+	}
+
+	return true;
+
+}
+
+bool isSubsampled(grk_image *image) {
+	if (!image)
+		return false;
+	for (uint32_t i = 0; i < image->numcomps; ++i) {
+		if (image->comps[i].dx != 1 || image->comps[i].dy != 1) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 }

@@ -119,7 +119,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	}
 
 	if (readFromStdin) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;
 		f = stdin;
 	} else {
@@ -292,7 +292,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 	}
 
 	if (writeToStdout) {
-		if (!grok_set_binary_mode(stdout))
+		if (!grk::grok_set_binary_mode(stdout))
 			goto beach;
 		rawFile = stdout;
 	} else {

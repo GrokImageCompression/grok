@@ -98,16 +98,6 @@ void pngSetVerboseFlag(bool verbose) {
 	pngWarningHandlerVerbose = verbose;
 }
 
-static void convert_16u32s_C1R(const uint8_t *pSrc, int32_t *pDst,
-		size_t length, bool invert) {
-	size_t i;
-	for (i = 0; i < length; i++) {
-		int32_t val0 = *pSrc++;
-		int32_t val1 = *pSrc++;
-		pDst[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
-	}
-}
-
 struct pngToImageInfo {
 	pngToImageInfo() :
 			png(nullptr), reader(nullptr), rows(nullptr), row32s(nullptr), image(
@@ -135,8 +125,8 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	grk_image_cmptparm cmptparm[4];
 	uint32_t nr_comp;
 	uint8_t sigbuf[8];
-	convert_XXx32s_C1R cvtXXTo32s = nullptr;
-	convert_32s_CXPX cvtCxToPx = nullptr;
+	cvtTo32 cvtXXTo32s = nullptr;
+	cvtInterleavedToPlanar cvtToPlanar = nullptr;
 	int32_t *planes[4];
 	int srgbIntent = -1;
 	png_textp text_ptr;
@@ -145,7 +135,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	png_uint_32 resx, resy;
 
 	if (local_info.readFromStdin) {
-		if (!grok_set_binary_mode(stdin))
+		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;
 		local_info.reader = stdin;
 	} else {
@@ -242,7 +232,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		local_info.colorSpace =
 				(nr_comp > 2U) ? GRK_CLRSPC_SRGB : GRK_CLRSPC_GRAY;
 
-	cvtCxToPx = convert_32s_CXPX_LUT[nr_comp];
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[nr_comp];
 	bit_depth = png_get_bit_depth(local_info.png, info);
 
 	switch (bit_depth) {
@@ -250,7 +240,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	case 2:
 	case 4:
 	case 8:
-		cvtXXTo32s = convert_XXu32s_C1R_LUT[bit_depth];
+		cvtXXTo32s = cvtTo32_LUT[bit_depth];
 		break;
 	case 16: /* 16 bpp is specific to PNG */
 		cvtXXTo32s = convert_16u32s_C1R;
@@ -388,7 +378,7 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	for (i = 0; i < height; ++i) {
 		cvtXXTo32s(local_info.rows[i], local_info.row32s,
 				(size_t) width * nr_comp, false);
-		cvtCxToPx(local_info.row32s, planes, width);
+		cvtToPlanar(local_info.row32s, planes, width);
 		planes[0] += width;
 		planes[1] += width;
 		planes[2] += width;
@@ -508,7 +498,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		return local_info.fails;
 	}
 	if (local_info.writeToStdout) {
-		if (!grok_set_binary_mode(stdout))
+		if (!grk::grok_set_binary_mode(stdout))
 			return 1;
 		local_info.writer = stdout;
 	} else {
@@ -679,8 +669,8 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	{
 		size_t width = image->comps[0].w;
 		uint32_t y;
-		convert_32s_PXCX cvtPxToCx = convert_32s_PXCX_LUT[nr_comp];
-		convert_32sXXx_C1R cvt32sToPack = nullptr;
+		cvtPlanarToInterleaved cvtPxToCx = cvtPlanarToInterleaved_LUT[nr_comp];
+		cvtFrom32 cvt32sToPack = nullptr;
 		int32_t adjust = image->comps[0].sgnd ? 1 << (prec - 1) : 0;
 		png_bytep row_buf_cpy = local_info.row_buf;
 		int32_t *buffer32s_cpy = local_info.buffer32s;
@@ -690,7 +680,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		case 2:
 		case 4:
 		case 8:
-			cvt32sToPack = convert_32sXXu_C1R_LUT[prec];
+			cvt32sToPack = cvtFrom32_LUT[prec];
 			break;
 		case 16:
 			cvt32sToPack = convert_32s16u_C1R;

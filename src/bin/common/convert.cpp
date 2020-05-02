@@ -54,58 +54,36 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "grk_apps_config.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 #include <limits.h>
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
-
 #include "grok.h"
 #include "convert.h"
 #include "common.h"
 
-bool grok_set_binary_mode(FILE *file) {
-#ifdef _WIN32
-	return (_setmode(_fileno(file), _O_BINARY) != -1);
-#else
-	(void) file;
-	return true;
-#endif
-}
-
 /* Component precision scaling */
 void clip_component(grk_image_comp *component, uint32_t precision) {
-	size_t i;
-	size_t len;
-	uint32_t umax = UINT_MAX;
-
-	len = (size_t) component->w * (size_t) component->h;
-	if (precision < 32) {
-		umax = (1U << precision) - 1U;
-	}
+	size_t len = (size_t) component->w * component->h;
+	uint32_t umax = (1U << precision) - 1U;
+	assert(precision <= 16);
 
 	if (component->sgnd) {
-		int32_t *l_data = component->data;
+		auto data = component->data;
 		int32_t max = (int32_t) (umax / 2U);
 		int32_t min = -max - 1;
-		for (i = 0; i < len; ++i) {
-			if (l_data[i] > max) {
-				l_data[i] = max;
-			} else if (l_data[i] < min) {
-				l_data[i] = min;
-			}
+		for (size_t i = 0; i < len; ++i) {
+			if (data[i] > max)
+				data[i] = max;
+			else if (data[i] < min)
+				data[i] = min;
 		}
 	} else {
-		uint32_t *l_data = (uint32_t*) component->data;
-		for (i = 0; i < len; ++i) {
-			if (l_data[i] > umax) {
-				l_data[i] = umax;
-			}
+		auto data = (uint32_t*) component->data;
+		for (size_t i = 0; i < len; ++i) {
+			if (data[i] > umax)
+				data[i] = umax;
 		}
 	}
 	component->prec = precision;
@@ -113,157 +91,112 @@ void clip_component(grk_image_comp *component, uint32_t precision) {
 
 /* Component precision scaling */
 static void scale_component_up(grk_image_comp *component, uint32_t precision) {
-	size_t i, len;
+	size_t len = (size_t) component->w * component->h;
 
-	len = (size_t) component->w * (size_t) component->h;
 	if (component->sgnd) {
 		int64_t newMax = (int64_t) 1U << (precision - 1);
 		int64_t oldMax = (int64_t) 1U << (component->prec - 1);
-		int32_t *l_data = component->data;
-		for (i = 0; i < len; ++i) {
-			l_data[i] = (int32_t) (((int64_t) l_data[i] * newMax) / oldMax);
-		}
+		auto data = component->data;
+		for (size_t i = 0; i < len; ++i)
+			data[i] = (int32_t) (((int64_t) data[i] * newMax) / oldMax);
 	} else {
 		uint64_t newMax = ((uint64_t) 1U << precision) - 1U;
 		uint64_t oldMax = ((uint64_t) 1U << component->prec) - 1U;
-		uint32_t *l_data = (uint32_t*) component->data;
-		for (i = 0; i < len; ++i) {
-			l_data[i] = (uint32_t) (((uint64_t) l_data[i] * newMax) / oldMax);
-		}
+		auto data = (uint32_t*) component->data;
+		for (size_t i = 0; i < len; ++i)
+			data[i] = (uint32_t) (((uint64_t) data[i] * newMax) / oldMax);
 	}
 	component->prec = precision;
 }
 void scale_component(grk_image_comp *component, uint32_t precision) {
-	int shift;
-	size_t i, len;
-
-	if (component->prec == precision) {
+	if (component->prec == precision)
 		return;
-	}
 	if (component->prec < precision) {
 		scale_component_up(component, precision);
 		return;
 	}
-	shift = (int) (component->prec - precision);
-	len = (size_t) component->w * (size_t) component->h;
+	uint32_t shift = (uint32_t) (component->prec - precision);
+	size_t len = (size_t) component->w * component->h;
 	if (component->sgnd) {
-		int32_t *l_data = component->data;
-		for (i = 0; i < len; ++i) {
-			l_data[i] >>= shift;
-		}
+		auto data = component->data;
+		for (size_t i = 0; i < len; ++i)
+			data[i] >>= shift;
 	} else {
-		uint32_t *l_data = (uint32_t*) component->data;
-		for (i = 0; i < len; ++i) {
-			l_data[i] >>= shift;
-		}
+		auto data = (uint32_t*) component->data;
+		for (size_t i = 0; i < len; ++i)
+			data[i] >>= shift;
 	}
 	component->prec = precision;
 }
 
-/* planar / interleaved conversions */
-/* used by PNG/TIFF */
-static void convert_32s_C1P1(const int32_t *pSrc, int32_t *const*pDst,
-		size_t length) {
+/*
+planar <==> interleaved conversions
+used by PNG/TIFF/JPEG
+Source and destination are always signed, 32 bit
+*/
+
+////////////////////////
+//interleaved ==> planar
+template<size_t N> void interleavedToPlanar(const int32_t *pSrc, int32_t *const*pDst,
+		size_t length){
+	size_t src_index = 0;
+
+	for (size_t i = 0; i < length; i++) {
+		for (size_t j = 0; j < N; ++j)
+			pDst[j][i] = pSrc[src_index++];
+	}
+}
+template<> void interleavedToPlanar<1>(const int32_t *pSrc, int32_t *const*pDst,
+		size_t length){
 	memcpy(pDst[0], pSrc, length * sizeof(int32_t));
 }
-static void convert_32s_C2P2(const int32_t *pSrc, int32_t *const*pDst,
-		size_t length) {
-	size_t i;
-	int32_t *pDst0 = pDst[0];
-	int32_t *pDst1 = pDst[1];
-	size_t src_index = 0;
-
-	for (i = 0; i < length; i++) {
-		pDst0[i] = pSrc[src_index++];
-		pDst1[i] = pSrc[src_index++];
+const cvtInterleavedToPlanar cvtInterleavedToPlanar_LUT[10] = {
+		nullptr,
+		interleavedToPlanar<1>,
+		interleavedToPlanar<2>,
+		interleavedToPlanar<3>,
+		interleavedToPlanar<4>,
+		interleavedToPlanar<5>,
+		interleavedToPlanar<6>,
+		interleavedToPlanar<7>,
+		interleavedToPlanar<8>,
+		interleavedToPlanar<9>
+};
+////////////////////////
+//planar ==> interleaved
+template<size_t N> void planarToInterleaved(int32_t const *const*pSrc, int32_t *pDst,
+		size_t length, int32_t adjust){
+	for (size_t i = 0; i < length; i++) {
+		for (size_t j = 0; j < N; ++j)
+			pDst[N * i + j] = pSrc[j][i] + adjust;
 	}
 }
-static void convert_32s_C3P3(const int32_t *pSrc, int32_t *const*pDst,
-		size_t length) {
-	int32_t *pDst0 = pDst[0];
-	int32_t *pDst1 = pDst[1];
-	int32_t *pDst2 = pDst[2];
-	size_t i;
-	size_t src_index = 0;
+const cvtPlanarToInterleaved cvtPlanarToInterleaved_LUT[10] = {
+		nullptr,
+		planarToInterleaved<1>,
+		planarToInterleaved<2>,
+		planarToInterleaved<3>,
+		planarToInterleaved<4>,
+		planarToInterleaved<5>,
+		planarToInterleaved<6>,
+		planarToInterleaved<7>,
+		planarToInterleaved<8>,
+		planarToInterleaved<9>
+};
 
-	for (i = 0; i < length; i++) {
-		pDst0[i] = pSrc[src_index++];
-		pDst1[i] = pSrc[src_index++];
-		pDst2[i] = pSrc[src_index++];
-	}
-}
-static void convert_32s_C4P4(const int32_t *pSrc, int32_t *const*pDst,
-		size_t length) {
-	size_t i;
-	int32_t *pDst0 = pDst[0];
-	int32_t *pDst1 = pDst[1];
-	int32_t *pDst2 = pDst[2];
-	int32_t *pDst3 = pDst[3];
-	size_t src_index = 0;
 
-	for (i = 0; i < length; i++) {
-		pDst0[i] = pSrc[src_index++];
-		pDst1[i] = pSrc[src_index++];
-		pDst2[i] = pSrc[src_index++];
-		pDst3[i] = pSrc[src_index++];
-	}
-}
-const convert_32s_CXPX convert_32s_CXPX_LUT[5] = { nullptr, convert_32s_C1P1,
-		convert_32s_C2P2, convert_32s_C3P3, convert_32s_C4P4 };
+/*
+* bit depth conversions for bit depth <= 8 and 16
+* used by PNG/TIFF
+*
+* Note: if source bit depth is < 8, then only unsigned is valid,
+* as we don't know how to manage the sign bit for signed data
+ *
+ */
 
-static void convert_32s_P1C1(int32_t const *const*pSrc, int32_t *pDst,
-		size_t length, int32_t adjust) {
-	size_t i;
-	const int32_t *pSrc0 = pSrc[0];
-
-	for (i = 0; i < length; i++) {
-		pDst[i] = pSrc0[i] + adjust;
-	}
-}
-static void convert_32s_P2C2(int32_t const *const*pSrc, int32_t *pDst,
-		size_t length, int32_t adjust) {
-	size_t i;
-	const int32_t *pSrc0 = pSrc[0];
-	const int32_t *pSrc1 = pSrc[1];
-
-	for (i = 0; i < length; i++) {
-		pDst[2 * i + 0] = pSrc0[i] + adjust;
-		pDst[2 * i + 1] = pSrc1[i] + adjust;
-	}
-}
-static void convert_32s_P3C3(int32_t const *const*pSrc, int32_t *pDst,
-		size_t length, int32_t adjust) {
-	size_t i;
-	const int32_t *pSrc0 = pSrc[0];
-	const int32_t *pSrc1 = pSrc[1];
-	const int32_t *pSrc2 = pSrc[2];
-
-	for (i = 0; i < length; i++) {
-		pDst[3 * i + 0] = pSrc0[i] + adjust;
-		pDst[3 * i + 1] = pSrc1[i] + adjust;
-		pDst[3 * i + 2] = pSrc2[i] + adjust;
-	}
-}
-static void convert_32s_P4C4(int32_t const *const*pSrc, int32_t *pDst,
-		size_t length, int32_t adjust) {
-	size_t i;
-	const int32_t *pSrc0 = pSrc[0];
-	const int32_t *pSrc1 = pSrc[1];
-	const int32_t *pSrc2 = pSrc[2];
-	const int32_t *pSrc3 = pSrc[3];
-
-	for (i = 0; i < length; i++) {
-		pDst[4 * i + 0] = pSrc0[i] + adjust;
-		pDst[4 * i + 1] = pSrc1[i] + adjust;
-		pDst[4 * i + 2] = pSrc2[i] + adjust;
-		pDst[4 * i + 3] = pSrc3[i] + adjust;
-	}
-}
-const convert_32s_PXCX convert_32s_PXCX_LUT[5] = { nullptr, convert_32s_P1C1,
-		convert_32s_P2C2, convert_32s_P3C3, convert_32s_P4C4 };
-
-/* bit depth conversions */
-/* used by PNG/TIFF up to 8bpp */
+/**
+ * 1 bit unsigned to 32 bit
+ */
 static void convert_1u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
 	size_t i;
@@ -306,6 +239,9 @@ static void convert_1u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		}
 	}
 }
+/**
+ * 2 bit unsigned to 32 bit
+ */
 static void convert_2u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
 	size_t i;
@@ -330,6 +266,9 @@ static void convert_2u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		}
 	}
 }
+/**
+ * 4 bit unsigned to 32 bit
+ */
 static void convert_4u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
 	size_t i;
@@ -343,6 +282,9 @@ static void convert_4u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		pDst[i + 0] = INV((int32_t )(val >> 4), 15, invert);
 	}
 }
+/**
+ * 6 bit unsigned to 32 bit
+ */
 static void convert_6u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
 	size_t i;
@@ -376,17 +318,42 @@ static void convert_6u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		}
 	}
 }
+/**
+ * 8 bit signed/unsigned to 32 bit
+ */
 static void convert_8u32s_C1R(const uint8_t *pSrc, int32_t *pDst, size_t length,
 		bool invert) {
+	for (size_t i = 0; i < length; i++)
+		pDst[i] = INV(pSrc[i], 0xFF, invert);
+}
+
+/**
+ * 16 bit signed/unsigned to 32 bit
+ */
+void convert_16u32s_C1R(const uint8_t *pSrc, int32_t *pDst,
+		size_t length, bool invert) {
 	size_t i;
 	for (i = 0; i < length; i++) {
-		pDst[i] = INV(pSrc[i], 0xFF, invert);
+		int32_t val0 = *pSrc++;
+		int32_t val1 = *pSrc++;
+		pDst[i] = INV(val0 << 8 | val1, 0xFFFF, invert);
 	}
 }
-const convert_XXx32s_C1R convert_XXu32s_C1R_LUT[9] = { nullptr,
-		convert_1u32s_C1R, convert_2u32s_C1R, nullptr, convert_4u32s_C1R,
-		nullptr, convert_6u32s_C1R, nullptr, convert_8u32s_C1R };
+const cvtTo32 cvtTo32_LUT[9] = {
+		nullptr,
+		convert_1u32s_C1R,
+		convert_2u32s_C1R,
+		nullptr,
+		convert_4u32s_C1R,
+		nullptr,
+		convert_6u32s_C1R,
+		nullptr,
+		convert_8u32s_C1R
+};
 
+/**
+ * 32 bit to 1 bit
+ */
 static void convert_32s1u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
 	size_t i;
@@ -437,6 +404,9 @@ static void convert_32s1u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 
+/**
+ * 32 bit to 2 bit
+ */
 static void convert_32s2u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
 	size_t i;
@@ -465,6 +435,9 @@ static void convert_32s2u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 
+/**
+ * 32 bit to 4 bit
+ */
 static void convert_32s4u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
 	size_t i;
@@ -481,6 +454,9 @@ static void convert_32s4u_C1R(const int32_t *pSrc, uint8_t *pDst,
 	}
 }
 
+/**
+ * 32 bit to 6 bit
+ */
 static void convert_32s6u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
 	size_t i;
@@ -516,71 +492,22 @@ static void convert_32s6u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		}
 	}
 }
+/**
+ * 32 bit to 8 bit
+ */
 static void convert_32s8u_C1R(const int32_t *pSrc, uint8_t *pDst,
 		size_t length) {
-	size_t i;
-	for (i = 0; i < length; ++i) {
+	for (size_t i = 0; i < length; ++i)
 		pDst[i] = (uint8_t) pSrc[i];
-	}
 }
-const convert_32sXXx_C1R convert_32sXXu_C1R_LUT[9] = { nullptr,
-		convert_32s1u_C1R, convert_32s2u_C1R, nullptr, convert_32s4u_C1R,
-		nullptr, convert_32s6u_C1R, nullptr, convert_32s8u_C1R };
-
-bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
-	if (numcomps == 0)
-		return false;
-
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		if (!image->comps[i].data) {
-			spdlog::error("null data for component {}", i);
-			return false;
-		}
-	}
-
-	// check that all components have same dimensions
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].w != image->comps[0].w
-				|| image->comps[i].h != image->comps[0].h) {
-			spdlog::error(
-					"Dimensions of component {} differ from dimensions of component 0",
-					i);
-			return false;
-		}
-	}
-
-	// check that all components have same precision
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].prec != image->comps[0].prec) {
-			spdlog::error(
-					"precision of component {} differs from precision of component 0",
-					i);
-			return false;
-		}
-	}
-
-	// check that all components have same sign
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].sgnd != image->comps[0].sgnd) {
-			spdlog::error(
-					"signedness of component {} differs from signedness of component 0",
-					i);
-			return false;
-		}
-	}
-
-	return true;
-
-}
-
-bool isSubsampled(grk_image *image) {
-	if (!image)
-		return false;
-	for (uint32_t i = 0; i < image->numcomps; ++i) {
-		if (image->comps[i].dx != 1 || image->comps[i].dy != 1) {
-			return true;
-		}
-	}
-	return false;
-}
+const cvtFrom32 cvtFrom32_LUT[9] = {
+		nullptr,
+		convert_32s1u_C1R,
+		convert_32s2u_C1R,
+		nullptr,
+		convert_32s4u_C1R,
+		nullptr,
+		convert_32s6u_C1R,
+		nullptr,
+		convert_32s8u_C1R
+};
