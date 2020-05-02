@@ -1184,7 +1184,7 @@ static bool jp2_check_color(grk_image *image, grk_jp2_color *color) {
 						nr_channels);
 				return false;
 			}
-			if (info[i].asoc == 65535U)
+			if (info[i].asoc == GRK_COMPONENT_ASSOC_UNASSOCIATED)
 				continue;
 
 			if (info[i].asoc > 0
@@ -1563,55 +1563,56 @@ static bool jp2_read_cmap(grk_jp2 *jp2, uint8_t *p_cmap_header_data,
 
 static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 	grk_jp2_cdef_info *info;
-	uint16_t i, n, cn, asoc, acn;
-
 	info = color->jp2_cdef->info;
-	n = color->jp2_cdef->n;
+	uint16_t n = color->jp2_cdef->n;
 
-	for (i = 0; i < n; ++i) {
+	for (uint16_t i = 0; i < n; ++i) {
 		/* WATCH: acn = asoc - 1 ! */
-		asoc = info[i].asoc;
-		cn = info[i].cn;
+		uint16_t asoc = info[i].asoc;
+		uint16_t cn = info[i].cn;
 
 		if (cn >= image->numcomps) {
 			GROK_WARN("jp2_apply_cdef: cn=%d, numcomps=%d", cn,
 					image->numcomps);
 			continue;
 		}
-		if (asoc == 0 || asoc == 65535) {
-			image->comps[cn].alpha = info[i].typ;
+		if ( (asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE ||
+				asoc == GRK_COMPONENT_ASSOC_UNASSOCIATED) &&
+					(info[i].typ == GRK_COMPONENT_TYPE_OPACITY ||
+							info[i].typ != GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)){
+			image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
 			continue;
 		}
 
-		acn = (uint16_t) (asoc - 1);
-		if (acn >= image->numcomps) {
-			GROK_WARN("jp2_apply_cdef: acn=%d, numcomps=%d", acn,
+		uint16_t asoc_index = (uint16_t) (asoc - 1);
+		if (asoc_index >= image->numcomps) {
+			GROK_WARN("jp2_apply_cdef: association=%d > numcomps=%d", asoc,
 					image->numcomps);
 			continue;
 		}
 
 		/* Swap only if color channel */
-		if ((cn != acn) && (info[i].typ == 0)) {
+		if ((cn != asoc_index) && (info[i].typ == GRK_COMPONENT_TYPE_COLOUR)) {
 			grk_image_comp saved;
 			uint16_t j;
 
 			memcpy(&saved, &image->comps[cn], sizeof(grk_image_comp));
-			memcpy(&image->comps[cn], &image->comps[acn],
+			memcpy(&image->comps[cn], &image->comps[asoc_index],
 					sizeof(grk_image_comp));
-			memcpy(&image->comps[acn], &saved, sizeof(grk_image_comp));
+			memcpy(&image->comps[asoc_index], &saved, sizeof(grk_image_comp));
 
 			/* Swap channels in following channel definitions, don't bother with j <= i that are already processed */
 			for (j = (uint16_t) (i + 1U); j < n; ++j) {
 				if (info[j].cn == cn) {
-					info[j].cn = acn;
-				} else if (info[j].cn == acn) {
+					info[j].cn = asoc_index;
+				} else if (info[j].cn == asoc_index) {
 					info[j].cn = cn;
 				}
 				/* asoc is related to color index. Do not update. */
 			}
 		}
 
-		image->comps[cn].alpha = info[i].typ;
+		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
 	}
 
 	if (color->jp2_cdef->info)
@@ -1676,9 +1677,19 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 
 		grk_read_bytes(p_cdef_header_data, &value, 2); /* Typ^i */
 		p_cdef_header_data += 2;
+		if (value > 2 && value != GRK_COMPONENT_TYPE_UNSPECIFIED){
+			GROK_ERROR(
+					"CDEF box : Illegal channel type %d",value);
+			return false;
+		}
 		cdef_info[i].typ = (uint16_t) value;
 
 		grk_read_bytes(p_cdef_header_data, &value, 2); /* Asoc^i */
+		if (value > 3 && value != GRK_COMPONENT_ASSOC_UNASSOCIATED){
+			GROK_ERROR(
+					"CDEF box : Illegal channel association %d",value);
+			return false;
+		}
 		p_cdef_header_data += 2;
 		cdef_info[i].asoc = (uint16_t) value;
 	}
@@ -2138,7 +2149,7 @@ static bool jp2_write_jp(grk_jp2 *jp2, BufferedStream *stream) {
 
 void jp2_init_decompress(void *jp2_void, grk_dparameters *parameters) {
 	grk_jp2 *jp2 = (grk_jp2*) jp2_void;
-	/* setup the J2K codec */
+	/* set up the J2K codec */
 	j2k_init_decompressor(jp2->j2k, parameters);
 
 	/* further JP2 initializations go here */
@@ -2154,21 +2165,20 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 		grk_image *image) {
 	uint32_t i;
 	uint32_t depth_0;
-	uint32_t sign;
-	uint32_t alpha_count;
+	uint32_t sign = 0;
+	uint32_t alpha_count = 0;
 	uint32_t color_channels = 0U;
-	uint32_t alpha_channel = 0U;
 
 	if (!jp2 || !parameters || !image)
 		return false;
 
-	/* setup the J2K codec */
+	/* set up the J2K codec */
 	/* ------------------- */
 	if (j2k_init_compress(jp2->j2k, parameters, image) == false) {
 		return false;
 	}
 
-	/* setup the JP2 codec */
+	/* set up the JP2 codec */
 	/* ------------------- */
 
 	/* Profile box */
@@ -2262,85 +2272,69 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	}
 
 	/* Component Definition box */
-	/* FIXME not provided by parameters */
-	/* We try to do what we can... */
-	alpha_count = 0U;
 	for (i = 0; i < image->numcomps; i++) {
-		if (image->comps[i].alpha != 0) {
+		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
 			alpha_count++;
-			alpha_channel = i;
+			// technically, this is an error, but we will let it pass
+			if (image->comps[i].sgnd)
+				GROK_WARN("signed alpha channel %d",i);
 		}
 	}
-	// We can handle a single alpha channel - in this case we assume that alpha applies to the entire image
-	// If there are multiple alpha channels, then we don't know how to apply them, so no cdef box
-	// gets created in this case
-	if (alpha_count == 1U) {
-		switch (jp2->enumcs) {
-		case 16:
-		case 18:
-			color_channels = 3;
-			break;
-		case 17:
-			color_channels = 1;
-			break;
-		default:
-			// assume that last channel is alpha
-			if (image->numcomps > 1)
+
+	switch (jp2->enumcs) {
+	case 12:
+		color_channels = 4;
+		break;
+	case 14:
+	case 16:
+	case 18:
+		color_channels = 3;
+		break;
+	case 17:
+		color_channels = 1;
+		break;
+	default:
+		// assume that last channel is alpha
+		if (alpha_count) {
+			if (image->numcomps > 1){
 				color_channels = image->numcomps - 1;
-			else
+				alpha_count = 1U;
+			}
+			else {
 				alpha_count = 0U;
-			break;
+			}
 		}
-		if (alpha_count == 0U) {
-			GROK_WARN(
-					"Alpha channel specified but unknown enumcs. No cdef box will be created.");
-		} else if (image->numcomps < (color_channels + 1)) {
-			GROK_WARN(
-					"Alpha channel specified but not enough image components for an automatic cdef box creation.");
-			alpha_count = 0U;
-		} else if ((uint32_t) alpha_channel < color_channels) {
-			GROK_WARN(
-					"Alpha channel position conflicts with color channel. No cdef box will be created.");
-			alpha_count = 0U;
-		}
-	} else if (alpha_count > 1) {
-		GROK_WARN(
-				"Multiple alpha channels specified. No cdef box will be created.");
+		break;
 	}
-	if (alpha_count == 1U) { /* if here, we know what we can do */
+	if (alpha_count) {
 		jp2->color.jp2_cdef = (grk_jp2_cdef*) grk_malloc(sizeof(grk_jp2_cdef));
 		if (!jp2->color.jp2_cdef) {
-			GROK_ERROR("Not enough memory to setup the JP2 encoder");
+			GROK_ERROR("Not enough memory to set up the JP2 encoder");
 			return false;
 		}
-		/* no memset needed, all values will be overwritten except if jp2->color.jp2_cdef->info allocation fails, */
+		/* no memset needed, all values will be overwritten except if
+		 * jp2->color.jp2_cdef->info allocation fails, */
 		/* in which case jp2->color.jp2_cdef->info will be nullptr => valid for destruction */
 		jp2->color.jp2_cdef->info = (grk_jp2_cdef_info*) grk_malloc(
 				image->numcomps * sizeof(grk_jp2_cdef_info));
 		if (!jp2->color.jp2_cdef->info) {
 			/* memory will be freed by jp2_destroy */
-			GROK_ERROR("Not enough memory to setup the JP2 encoder");
+			GROK_ERROR("Not enough memory to set up the JP2 encoder");
 			return false;
 		}
 		jp2->color.jp2_cdef->n = (uint16_t) image->numcomps; /* cast is valid : image->numcomps [1,16384] */
 		for (i = 0U; i < color_channels; i++) {
 			jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-			jp2->color.jp2_cdef->info[i].typ = 0U;
+			jp2->color.jp2_cdef->info[i].typ = GRK_COMPONENT_TYPE_COLOUR;
 			jp2->color.jp2_cdef->info[i].asoc = (uint16_t) (i + 1U); /* No overflow + cast is valid : image->numcomps [1,16384] */
 		}
 		for (; i < image->numcomps; i++) {
-			if (image->comps[i].alpha) {
-				jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-				jp2->color.jp2_cdef->info[i].typ = image->comps[i].alpha; /* Opacity channel */
-				jp2->color.jp2_cdef->info[i].asoc = 0U; /* Apply alpha channel to the whole image */
-			} else {
-				/* Unknown channel */
-				jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
-				jp2->color.jp2_cdef->info[i].typ = 65535U;
-				jp2->color.jp2_cdef->info[i].asoc = 65535U;
-			}
+			jp2->color.jp2_cdef->info[i].cn = (uint16_t) i; /* cast is valid : image->numcomps [1,16384] */
+			jp2->color.jp2_cdef->info[i].typ = image->comps[i].type;
+			jp2->color.jp2_cdef->info[i].asoc = image->comps[i].association;
 		}
 	}
+    /*********************************************/
 
 	jp2->precedence = 0; /* PRECEDENCE */
 	jp2->approx = 0; /* APPROX */

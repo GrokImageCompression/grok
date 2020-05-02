@@ -746,7 +746,8 @@ static grk_image* bmptoimage(const char *filename,
 		image->color_space = GRK_CLRSPC_ICC;
 	}
 	if (numcmpts == 4U) {
-		image->comps[3].alpha = 1;
+		image->comps[3].type = GRK_COMPONENT_TYPE_OPACITY;
+	    image->comps[3].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 	}
 
 	/* set image offset and reference grid */

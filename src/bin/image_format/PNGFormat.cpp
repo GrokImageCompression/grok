@@ -289,12 +289,13 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 			+ (height - 1) * params->subsampling_dy + 1 + local_info.image->y0);
 
 	/* Set alpha channel. Only non-premultiplied alpha is supported */
-	local_info.image->comps[nr_comp - 1U].alpha = (uint16_t) (1U
-			- (nr_comp & 1U));
-
-	for (i = 0; i < nr_comp; i++) {
-		planes[i] = local_info.image->comps[i].data;
+	if ((nr_comp & 1U) == 0){
+		local_info.image->comps[nr_comp - 1U].type = GRK_COMPONENT_TYPE_OPACITY;
+		local_info.image->comps[nr_comp - 1U].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 	}
+	for (i = 0; i < nr_comp; i++)
+		planes[i] = local_info.image->comps[i].data;
+
 
 	// See if iCCP chunk is present
 	if (png_get_valid(local_info.png, info, PNG_INFO_iCCP)) {

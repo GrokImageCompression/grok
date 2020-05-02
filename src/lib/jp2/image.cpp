@@ -81,6 +81,21 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 				grk_image_destroy(image);
 				return nullptr;
 			}
+			comp->type = GRK_COMPONENT_TYPE_COLOUR;
+			switch(compno){
+			case 0:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_1;
+				break;
+			case 1:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_2;
+				break;
+			case 2:
+				comp->association = GRK_COMPONENT_ASSOC_COLOUR_3;
+				break;
+			default:
+				comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+				break;
+			}
 		}
 	}
 

@@ -22,7 +22,7 @@ find_package(JPYLYZER)
 # GENERATION OF THE TEST SUITE (DUMP)
 # Dump all files with the selected extension inside the input directory
 
-# technically grk_dump should simply parse these one, since syntax is ok.
+# technically grk_dump should simply parse these ones, since syntax is ok.
 set(BLACKLIST_JPEG2000_TMP
     2539.pdf.SIGFPE.706.1712.jp2
     0290cb77c5df21828fa74cf2ab2c84d8.SIGFPE.d25.31.jp2
@@ -88,6 +88,7 @@ set(BLACKLIST_JPEG2000
     issue476.jp2 #kdu_jp2info ok
     issue475.jp2 #kdu_jp2info ok
     issue413.jp2 #kdu_jp2info ok
+    issue725.jp2
    )
 
 file(GLOB_RECURSE DATA_NR_LIST

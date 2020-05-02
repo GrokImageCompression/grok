@@ -206,7 +206,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 
 	// Alpha channels
 	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].alpha) {
+		if (image->comps[i].type) {
 			if (firstAlpha == -1)
 				firstAlpha = 0;
 			numAlphaChannels++;

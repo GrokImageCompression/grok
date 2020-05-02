@@ -859,8 +859,8 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 	new_image->y0 = original->y0;
 	new_image->y1 = original->y1;
 
-	new_image->comps[0].alpha = new_image->comps[1].alpha =
-			new_image->comps[2].alpha = original->comps[0].alpha;
+	new_image->comps[0].type = new_image->comps[1].type =
+			new_image->comps[2].type = original->comps[0].type;
 	new_image->comps[0].resno_decoded = new_image->comps[1].resno_decoded =
 			new_image->comps[2].resno_decoded =
 					original->comps[0].resno_decoded;
@@ -873,7 +873,7 @@ static grk_image* convert_gray_to_rgb(grk_image *original) {
 			original->comps[0].w * original->comps[0].h * sizeof(int32_t));
 
 	for (compno = 1U; compno < original->numcomps; ++compno) {
-		new_image->comps[compno + 2U].alpha = original->comps[compno].alpha;
+		new_image->comps[compno + 2U].type = original->comps[compno].type;
 		new_image->comps[compno + 2U].resno_decoded =
 				original->comps[compno].resno_decoded;
 		memcpy(new_image->comps[compno + 2U].data, original->comps[compno].data,
@@ -958,7 +958,7 @@ static grk_image* upsample_image_components(grk_image *original) {
 		grk_image_comp *new_cmp = &(new_image->comps[compno]);
 		grk_image_comp *org_cmp = &(original->comps[compno]);
 
-		new_cmp->alpha = org_cmp->alpha;
+		new_cmp->type = org_cmp->type;
 		new_cmp->resno_decoded = org_cmp->resno_decoded;
 
 		if ((org_cmp->dx > 1U) || (org_cmp->dy > 1U)) {

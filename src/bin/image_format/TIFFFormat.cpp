@@ -1201,6 +1201,7 @@ static grk_image* tiftoimage(const char *filename,
 		grk_cparameters *parameters) {
 	TIFF *tif = nullptr;
 	bool found_assocalpha = false;
+	bool found_alpha = false;
 	uint16_t chroma_subsample_x;
 	uint16_t chroma_subsample_y;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
@@ -1390,6 +1391,7 @@ static grk_image* tiftoimage(const char *filename,
 		// handle alpha channel
 		auto numColourChannels = numcomps - extrasamples;
 		if (extrasamples > 0 && j >= numColourChannels) {
+			image->comps[j].association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
 				if (found_assocalpha){
@@ -1397,17 +1399,26 @@ static grk_image* tiftoimage(const char *filename,
 						spdlog::warn(
 								"Found more than one associated alpha channel");
 				}
-				image->comps[j].alpha =
+				image->comps[j].type =
 						GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
+				if (!found_alpha)
+					image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
 				found_assocalpha = true;
+				found_alpha = true;
 			}
 			else if (alphaType == EXTRASAMPLE_UNASSALPHA) {
-				image->comps[j].alpha = GRK_COMPONENT_TYPE_OPACITY;
+				image->comps[j].type = GRK_COMPONENT_TYPE_OPACITY;
+				if (!found_alpha)
+					image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+				found_alpha= true;
 			}
 			else {
 				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
 				if (numcomps == 2 || numcomps == 4) {
-					image->comps[j].alpha = GRK_COMPONENT_TYPE_OPACITY;
+					image->comps[j].type = GRK_COMPONENT_TYPE_OPACITY;
+					if (!found_alpha)
+						image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+					found_alpha = true;
 				}
 			}
 		}
@@ -1833,7 +1844,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	}
 	// Alpha channels
 	for (i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].alpha) {
+		if (image->comps[i].type) {
 			if (firstAlpha == -1)
 				firstAlpha = 0;
 			numAlphaChannels++;
@@ -1929,9 +1940,9 @@ static int imagetotif(grk_image *image, const char *outfile,
 		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
 		size_t alphaCount = 0;
 		for (i = 0U; i < numcomps; ++i) {
-			if (image->comps[i].alpha)
+			if (image->comps[i].type)
 				out[alphaCount++] =
-						(image->comps[i].alpha == GRK_COMPONENT_TYPE_OPACITY) ?
+						(image->comps[i].type == GRK_COMPONENT_TYPE_OPACITY) ?
 								EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
 		}
 		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());

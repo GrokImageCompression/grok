@@ -855,9 +855,26 @@ typedef void *grk_stream;
  ==========================================================
  */
 
-#define GRK_COMPONENT_TYPE_NON_OPACITY	 			0
-#define GRK_COMPONENT_TYPE_OPACITY 					1
-#define GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	2
+// component type
+enum GRK_COMPONENT_TYPE{
+
+	GRK_COMPONENT_TYPE_COLOUR =	0,
+	GRK_COMPONENT_TYPE_OPACITY = 	1,
+	GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY =  2,
+	GRK_COMPONENT_TYPE_UNSPECIFIED = 65535U
+
+};
+
+// component association
+enum GRK_COMPONENT_ASSOC{
+
+	GRK_COMPONENT_ASSOC_WHOLE_IMAGE =	0,
+	GRK_COMPONENT_ASSOC_COLOUR_1 = 	1,
+	GRK_COMPONENT_ASSOC_COLOUR_2 =  2,
+	GRK_COMPONENT_ASSOC_COLOUR_3 =  3,
+	GRK_COMPONENT_ASSOC_UNASSOCIATED = 65535U
+
+};
 
 /**
  * Image component
@@ -885,14 +902,8 @@ typedef struct _grk_image_comp {
 	int32_t *data;
 	// if true, then image will manage data, otherwise up to caller
 	bool owns_data;
-	/** alpha channel: can be one of three values:
-	 * GRK_COMPONENT_TYPE_NON_OPACITY				: this component is not an alpha channel
-	 * GRK_COMPONENT_TYPE_OPACITY					: this component is an alpha channel,
-	 *  and the colour channels have not been pre-multiplied by alpha
-	 * GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY 	: this component is an alpha channel,
-	 *  and the colour channels have been pre-multiplied by alpha
-	 * */
-	uint16_t alpha;
+	GRK_COMPONENT_TYPE type;
+	GRK_COMPONENT_ASSOC association;
 } grk_image_comp;
 
 /**
