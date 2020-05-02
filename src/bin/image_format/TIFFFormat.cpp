@@ -109,8 +109,7 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 
 static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto);
-static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto);
+
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -1193,6 +1192,195 @@ static void set_resolution(double *res, float resx, float resy, short resUnit) {
 
 const size_t maxNumComponents = 10;
 
+static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
+	if (!tif)
+		return false;
+
+	bool success = true;
+	cvtTo32 cvtTifTo32s = nullptr;
+	cvtInterleavedToPlanar cvtToPlanar = nullptr;
+	int32_t *planes[maxNumComponents];
+	tsize_t rowStride;
+	bool invert;
+	tdata_t buf = nullptr;
+	tstrip_t strip;
+	tsize_t strip_size;
+	uint32_t currentPlane = 0;
+	int32_t *buffer32s = nullptr;
+
+	switch (comps[0].prec) {
+	case 1:
+	case 2:
+	case 4:
+	case 6:
+	case 8:
+		cvtTifTo32s = cvtTo32_LUT[comps[0].prec];
+		break;
+		/* others are specific to TIFF */
+	case 3:
+		cvtTifTo32s = tif_3uto32s;
+		break;
+	case 5:
+		cvtTifTo32s = tif_5uto32s;
+		break;
+	case 7:
+		cvtTifTo32s = tif_7uto32s;
+		break;
+	case 9:
+		cvtTifTo32s = tif_9uto32s;
+		break;
+	case 10:
+		cvtTifTo32s = tif_10uto32s;
+		break;
+	case 11:
+		cvtTifTo32s = tif_11uto32s;
+		break;
+	case 12:
+		cvtTifTo32s = tif_12uto32s;
+		break;
+	case 13:
+		cvtTifTo32s = tif_13uto32s;
+		break;
+	case 14:
+		cvtTifTo32s = tif_14uto32s;
+		break;
+	case 15:
+		cvtTifTo32s = tif_15uto32s;
+		break;
+	case 16:
+		cvtTifTo32s = (cvtTo32) tif_16uto32s;
+		break;
+	default:
+		/* never here */
+		break;
+	}
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
+	if (tiPC == PLANARCONFIG_SEPARATE) {
+		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
+		tiSpp = 1U; /* consider only one sample per plane */
+	}
+
+	strip_size = TIFFStripSize(tif);
+	buf = _TIFFmalloc(strip_size);
+	if (buf == nullptr) {
+		success = false;
+		goto local_cleanup;
+	}
+	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
+	strip = 0;
+	invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
+	for (uint32_t j = 0; j < numcomps; j++) {
+		planes[j] = comps[j].data;
+	}
+	do {
+		grk_image_comp *comp = comps + currentPlane;
+		planes[0] = comp->data; /* to manage planar data */
+		uint32_t height = comp->h;
+		/* Read the Image components */
+		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize < 1 || ssize > strip_size) {
+				spdlog::error("tiftoimage: Bad value for ssize({}) "
+						"vs. strip_size({}).",
+						(long long) ssize, (long long) strip_size);
+				success = false;
+				goto local_cleanup;
+			}
+			const uint8_t *datau8 = (const uint8_t*) buf;
+			while (ssize >= rowStride) {
+				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
+						invert);
+				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
+				planes[0] += comp->w;
+				planes[1] += comp->w;
+				planes[2] += comp->w;
+				planes[3] += comp->w;
+				datau8 += rowStride;
+				ssize -= rowStride;
+				height--;
+			}
+		}
+		currentPlane++;
+	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
+	local_cleanup: delete[] buffer32s;
+	if (buf)
+		_TIFFfree(buf);
+	return success;
+}
+
+template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
+	if (!tif)
+		return false;
+
+	bool success = true;
+	cvtInterleavedToPlanar cvtToPlanar = nullptr;
+	int32_t *planes[maxNumComponents];
+	tsize_t rowStride;
+	tdata_t buf = nullptr;
+	tstrip_t strip;
+	tsize_t strip_size;
+	uint32_t currentPlane = 0;
+	int32_t *buffer32s = nullptr;
+
+	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
+	if (tiPC == PLANARCONFIG_SEPARATE) {
+		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
+		tiSpp = 1U; /* consider only one sample per plane */
+	}
+
+	strip_size = TIFFStripSize(tif);
+	buf = _TIFFmalloc(strip_size);
+	if (buf == nullptr) {
+		success = false;
+		goto local_cleanup;
+	}
+	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
+	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
+	strip = 0;
+	for (uint32_t j = 0; j < numcomps; j++) {
+		planes[j] = comps[j].data;
+	}
+	do {
+		grk_image_comp *comp = comps + currentPlane;
+		planes[0] = comp->data; /* to manage planar data */
+		uint32_t height = comp->h;
+		/* Read the Image components */
+		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
+			if (ssize < 1 || ssize > strip_size) {
+				spdlog::error("tiftoimage: Bad value for ssize({}) "
+						"vs. strip_size({}).",
+						(long long) ssize, (long long) strip_size);
+				success = false;
+				goto local_cleanup;
+			}
+			const T *data = (const T*) buf;
+			while (ssize >= rowStride) {
+				for (size_t i = 0; i < (size_t) comp->w * tiSpp; ++i)
+					buffer32s[i] = data[i];
+				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
+				planes[0] += comp->w;
+				planes[1] += comp->w;
+				planes[2] += comp->w;
+				planes[3] += comp->w;
+				data += rowStride/sizeof(T);
+				ssize -= rowStride;
+				height--;
+			}
+		}
+		currentPlane++;
+	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
+	local_cleanup: delete[] buffer32s;
+	if (buf)
+		_TIFFfree(buf);
+	return success;
+
+}
+
+
 /*
  * libtiff/tif_getimage.c : 1,2,4,8,16 bitspersample accepted
  * CINEMA                 : 12 bit precision
@@ -1467,15 +1655,22 @@ static grk_image* tiftoimage(const char *filename,
 	success = true;
 
 	// 9. read pixel data
-	if (isSigned)
-		success = success
-				&& readTiffPixelsSigned(tif, image->comps, numcomps, tiSpp,
+	if (isSigned) {
+		bool rc = false;
+		if (tiBps == 8)
+			rc =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
 						tiPC, tiPhoto);
-	else
+		else
+			rc =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
+						tiPC, tiPhoto);
+
+		success = success && rc;
+	}
+	else {
 		success = success
 				&& readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp,
 						tiPC, tiPhoto);
-
+	}
 	cleanup: if (tif)
 		TIFFClose(tif);
 	if (success) {
@@ -1492,194 +1687,6 @@ static grk_image* tiftoimage(const char *filename,
 	return nullptr;
 }/* tiftoimage() */
 
-static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
-	if (!tif)
-		return false;
-
-	bool success = true;
-	cvtTo32 cvtTifTo32s = nullptr;
-	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t *planes[maxNumComponents];
-	tsize_t rowStride;
-	bool invert;
-	tdata_t buf = nullptr;
-	tstrip_t strip;
-	tsize_t strip_size;
-	uint32_t currentPlane = 0;
-	int32_t *buffer32s = nullptr;
-
-	switch (comps[0].prec) {
-	case 1:
-	case 2:
-	case 4:
-	case 6:
-	case 8:
-		cvtTifTo32s = cvtTo32_LUT[comps[0].prec];
-		break;
-		/* others are specific to TIFF */
-	case 3:
-		cvtTifTo32s = tif_3uto32s;
-		break;
-	case 5:
-		cvtTifTo32s = tif_5uto32s;
-		break;
-	case 7:
-		cvtTifTo32s = tif_7uto32s;
-		break;
-	case 9:
-		cvtTifTo32s = tif_9uto32s;
-		break;
-	case 10:
-		cvtTifTo32s = tif_10uto32s;
-		break;
-	case 11:
-		cvtTifTo32s = tif_11uto32s;
-		break;
-	case 12:
-		cvtTifTo32s = tif_12uto32s;
-		break;
-	case 13:
-		cvtTifTo32s = tif_13uto32s;
-		break;
-	case 14:
-		cvtTifTo32s = tif_14uto32s;
-		break;
-	case 15:
-		cvtTifTo32s = tif_15uto32s;
-		break;
-	case 16:
-		cvtTifTo32s = (cvtTo32) tif_16uto32s;
-		break;
-	default:
-		/* never here */
-		break;
-	}
-	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
-	if (tiPC == PLANARCONFIG_SEPARATE) {
-		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
-		tiSpp = 1U; /* consider only one sample per plane */
-	}
-
-	strip_size = TIFFStripSize(tif);
-	buf = _TIFFmalloc(strip_size);
-	if (buf == nullptr) {
-		success = false;
-		goto local_cleanup;
-	}
-	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
-	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
-	strip = 0;
-	invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
-	for (uint32_t j = 0; j < numcomps; j++) {
-		planes[j] = comps[j].data;
-	}
-	do {
-		grk_image_comp *comp = comps + currentPlane;
-		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = comp->h;
-		/* Read the Image components */
-		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
-			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
-			if (ssize < 1 || ssize > strip_size) {
-				spdlog::error("tiftoimage: Bad value for ssize({}) "
-						"vs. strip_size({}).",
-						(long long) ssize, (long long) strip_size);
-				success = false;
-				goto local_cleanup;
-			}
-			const uint8_t *datau8 = (const uint8_t*) buf;
-			while (ssize >= rowStride) {
-				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
-						invert);
-				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
-				planes[0] += comp->w;
-				planes[1] += comp->w;
-				planes[2] += comp->w;
-				planes[3] += comp->w;
-				datau8 += rowStride;
-				ssize -= rowStride;
-				height--;
-			}
-		}
-		currentPlane++;
-	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-	local_cleanup: delete[] buffer32s;
-	if (buf)
-		_TIFFfree(buf);
-	return success;
-}
-
-static bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
-	if (!tif)
-		return false;
-
-	(void) tiPhoto;
-	bool success = true;
-	cvtInterleavedToPlanar cvtToPlanar = nullptr;
-	int32_t *planes[maxNumComponents];
-	tsize_t rowStride;
-	tdata_t buf = nullptr;
-	tstrip_t strip;
-	tsize_t strip_size;
-	uint32_t currentPlane = 0;
-	int32_t *buffer32s = nullptr;
-
-	cvtToPlanar = cvtInterleavedToPlanar_LUT[numcomps];
-	if (tiPC == PLANARCONFIG_SEPARATE) {
-		cvtToPlanar = cvtInterleavedToPlanar_LUT[1]; /* override */
-		tiSpp = 1U; /* consider only one sample per plane */
-	}
-
-	strip_size = TIFFStripSize(tif);
-	buf = _TIFFmalloc(strip_size);
-	if (buf == nullptr) {
-		success = false;
-		goto local_cleanup;
-	}
-	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
-	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
-	strip = 0;
-	for (uint32_t j = 0; j < numcomps; j++) {
-		planes[j] = comps[j].data;
-	}
-	do {
-		grk_image_comp *comp = comps + currentPlane;
-		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = comp->h;
-		/* Read the Image components */
-		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
-			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
-			if (ssize < 1 || ssize > strip_size) {
-				spdlog::error("tiftoimage: Bad value for ssize(%lld) "
-						"vs. strip_size(%lld).\n\tAborting.",
-						(long long) ssize, (long long) strip_size);
-				success = false;
-				goto local_cleanup;
-			}
-			const int8_t *datau8 = (const int8_t*) buf;
-			while (ssize >= rowStride) {
-				for (size_t i = 0; i < (size_t) comp->w * tiSpp; ++i)
-					buffer32s[i] = datau8[i];
-				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
-				planes[0] += comp->w;
-				planes[1] += comp->w;
-				planes[2] += comp->w;
-				planes[3] += comp->w;
-				datau8 += rowStride;
-				ssize -= rowStride;
-				height--;
-			}
-		}
-		currentPlane++;
-	} while ((tiPC == PLANARCONFIG_SEPARATE) && (currentPlane < numcomps));
-	local_cleanup:
-		delete[] buffer32s;
-	if (buf)
-		_TIFFfree(buf);
-	return success;
-}
 
 static int imagetotif(grk_image *image, const char *outfile,
 		uint32_t compression, bool verbose) {
