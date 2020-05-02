@@ -176,12 +176,10 @@ if(BUILD_CODEC)
   # OFF: It will only build 3rd party libs if they are not found on the system
   # ON: 3rd party libs will ALWAYS be build, and used
   option(BUILD_THIRDPARTY "Build the thirdparty executables if it is needed" OFF)
+  add_subdirectory(thirdparty)
   add_subdirectory(src/bin)
 endif ()
 
-if (BUILD_THIRDPARTY)
-  add_subdirectory(thirdparty)
-endif()
 #-----------------------------------------------------------------------------
 # grk_config.h generation (2/2)
 configure_file(
