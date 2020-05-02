@@ -58,7 +58,7 @@
 
 namespace grk {
 
-class TileProcessor;
+struct TileProcessor;
 
 /**
  @file T2.h
