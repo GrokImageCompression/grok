@@ -1199,7 +1199,8 @@ const size_t maxNumComponents = 10;
  */
 static grk_image* tiftoimage(const char *filename,
 		grk_cparameters *parameters) {
-	TIFF *tif;
+	TIFF *tif = nullptr;
+	bool found_assocalpha = false;
 	uint16_t chroma_subsample_x;
 	uint16_t chroma_subsample_y;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
@@ -1390,11 +1391,19 @@ static grk_image* tiftoimage(const char *filename,
 		auto numColourChannels = numcomps - extrasamples;
 		if (extrasamples > 0 && j >= numColourChannels) {
 			auto alphaType = sampleinfo[j - numColourChannels];
-			if (alphaType == EXTRASAMPLE_ASSOCALPHA)
+			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
+				if (found_assocalpha){
+					if (parameters->verbose)
+						spdlog::warn(
+								"Found more than one associated alpha channel");
+				}
 				image->comps[j].alpha =
 						GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-			else if (alphaType == EXTRASAMPLE_UNASSALPHA)
+				found_assocalpha = true;
+			}
+			else if (alphaType == EXTRASAMPLE_UNASSALPHA) {
 				image->comps[j].alpha = GRK_COMPONENT_TYPE_OPACITY;
+			}
 			else {
 				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
 				if (numcomps == 2 || numcomps == 4) {
