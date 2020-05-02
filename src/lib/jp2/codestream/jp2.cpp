@@ -1769,7 +1769,7 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 			GROK_WARN("Bad COLR header box (bad size: %d)", colr_header_size);
 		}
 
-		if (jp2->enumcs == 14) { /* CIELab */
+		if (jp2->enumcs == GRK_ENUM_CLRSPC_CIE) { /* CIELab */
 			uint32_t *cielab;
 			bool nonDefaultLab = colr_header_size == 35;
 			// only two ints are needed for default CIELab space
@@ -1779,7 +1779,7 @@ static bool jp2_read_colr(grk_jp2 *jp2, uint8_t *p_colr_header_data,
 				GROK_ERROR("Not enough memory for cielab");
 				return false;
 			}
-			cielab[0] = 14; /* enumcs */
+			cielab[0] = GRK_ENUM_CLRSPC_CIE; /* enumcs */
 			cielab[1] = GRK_DEFAULT_CIELAB_SPACE;
 
 			if (colr_header_size == 35) {
@@ -1853,10 +1853,10 @@ bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
 
 	/* Set Image Color Space */
 	switch (jp2->enumcs) {
-	case 12:
+	case GRK_ENUM_CLRSPC_CMYK:
 		p_image->color_space = GRK_CLRSPC_CMYK;
 		break;
-	case 14:
+	case GRK_ENUM_CLRSPC_CIE:
 		if (jp2->color.icc_profile_buf) {
 			if (((uint32_t*) jp2->color.icc_profile_buf)[1]
 					== GRK_DEFAULT_CIELAB_SPACE)
@@ -1868,16 +1868,16 @@ bool jp2_decompress(grk_jp2 *jp2, grk_plugin_tile *tile, BufferedStream *stream,
 			return false;
 		}
 		break;
-	case 16:
+	case GRK_ENUM_CLRSPC_SRGB:
 		p_image->color_space = GRK_CLRSPC_SRGB;
 		break;
-	case 17:
+	case GRK_ENUM_CLRSPC_GRAY:
 		p_image->color_space = GRK_CLRSPC_GRAY;
 		break;
-	case 18:
+	case GRK_ENUM_CLRSPC_SYCC:
 		p_image->color_space = GRK_CLRSPC_SYCC;
 		break;
-	case 24:
+	case GRK_ENUM_CLRSPC_EYCC:
 		p_image->color_space = GRK_CLRSPC_EYCC;
 		break;
 	default:
@@ -2227,7 +2227,7 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	/* Colour Specification box */
 	if (image->color_space == GRK_CLRSPC_ICC) {
 		jp2->meth = 2;
-		jp2->enumcs = 0;
+		jp2->enumcs = GRK_ENUM_CLRSPC_UNKNOWN;
 		if (image->icc_profile_buf) {
 			// clean up existing icc profile in jp2 struct
 			if (jp2->color.icc_profile_buf) {
@@ -2244,15 +2244,17 @@ bool jp2_init_compress(grk_jp2 *jp2, grk_cparameters *parameters,
 	} else {
 		jp2->meth = 1;
 		if (image->color_space == GRK_CLRSPC_CMYK)
-			jp2->enumcs = 12;
+			jp2->enumcs = GRK_ENUM_CLRSPC_CMYK;
 		else if (image->color_space == GRK_CLRSPC_DEFAULT_CIE)
-			jp2->enumcs = 14;
+			jp2->enumcs = GRK_ENUM_CLRSPC_CIE;
 		else if (image->color_space == GRK_CLRSPC_SRGB)
-			jp2->enumcs = 16; /* sRGB as defined by IEC 61966-2-1 */
+			jp2->enumcs = GRK_ENUM_CLRSPC_SRGB; /* sRGB as defined by IEC 61966-2-1 */
 		else if (image->color_space == GRK_CLRSPC_GRAY)
-			jp2->enumcs = 17; /* greyscale */
+			jp2->enumcs = GRK_ENUM_CLRSPC_GRAY; /* greyscale */
 		else if (image->color_space == GRK_CLRSPC_SYCC)
-			jp2->enumcs = 18; /* YUV */
+			jp2->enumcs = GRK_ENUM_CLRSPC_SYCC; /* YUV */
+		else if (image->color_space == GRK_CLRSPC_EYCC)
+			jp2->enumcs = GRK_ENUM_CLRSPC_EYCC; /* YUV */
 	}
 
 	//transfer buffer to uuid
@@ -3159,15 +3161,15 @@ bool jp2_get_tile(grk_jp2 *p_jp2, BufferedStream *stream, grk_image *p_image,
 		return false;
 
 	/* Set Image Color Space */
-	if (p_jp2->enumcs == 12)
+	if (p_jp2->enumcs == GRK_ENUM_CLRSPC_CMYK)
 		p_image->color_space = GRK_CLRSPC_CMYK;
-	if (p_jp2->enumcs == 16)
+	if (p_jp2->enumcs == GRK_ENUM_CLRSPC_SRGB)
 		p_image->color_space = GRK_CLRSPC_SRGB;
-	else if (p_jp2->enumcs == 17)
+	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_GRAY)
 		p_image->color_space = GRK_CLRSPC_GRAY;
-	else if (p_jp2->enumcs == 18)
+	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_SYCC)
 		p_image->color_space = GRK_CLRSPC_SYCC;
-	else if (p_jp2->enumcs == 24)
+	else if (p_jp2->enumcs == GRK_ENUM_CLRSPC_EYCC)
 		p_image->color_space = GRK_CLRSPC_EYCC;
 	else
 		p_image->color_space = GRK_CLRSPC_UNKNOWN;
