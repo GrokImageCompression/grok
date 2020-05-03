@@ -1401,6 +1401,8 @@ bool TileProcessor::dc_level_shift_encode() {
 		uint64_t nb_elem = tile_comp->area();
 
 		if (tccp->qmfbid == 1) {
+			if (tccp->m_dc_level_shift == 0)
+				continue;
 			for (uint64_t i = 0; i < nb_elem; ++i) {
 				*current_ptr -= tccp->m_dc_level_shift;
 				++current_ptr;
