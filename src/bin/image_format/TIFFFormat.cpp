@@ -1293,10 +1293,8 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
 						invert);
 				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
-				planes[0] += comp->w;
-				planes[1] += comp->w;
-				planes[2] += comp->w;
-				planes[3] += comp->w;
+				for (uint32_t k = 0; k < numcomps; ++k)
+					planes[k] += comp->w;
 				datau8 += rowStride;
 				ssize -= rowStride;
 				height--;
@@ -1340,9 +1338,8 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 	rowStride = (comps[0].w * tiSpp * comps[0].prec + 7U) / 8U;
 	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
 	strip = 0;
-	for (uint32_t j = 0; j < numcomps; j++) {
+	for (uint32_t j = 0; j < numcomps; j++)
 		planes[j] = comps[j].data;
-	}
 	do {
 		grk_image_comp *comp = comps + currentPlane;
 		planes[0] = comp->data; /* to manage planar data */
@@ -1362,10 +1359,8 @@ template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
 				for (size_t i = 0; i < (size_t) comp->w * tiSpp; ++i)
 					buffer32s[i] = data[i];
 				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
-				planes[0] += comp->w;
-				planes[1] += comp->w;
-				planes[2] += comp->w;
-				planes[3] += comp->w;
+				for (uint32_t k = 0; k < numcomps; ++k)
+					planes[k] += comp->w;
 				data += rowStride/sizeof(T);
 				ssize -= rowStride;
 				height--;
@@ -1687,9 +1682,8 @@ static grk_image* tiftoimage(const char *filename,
 		TIFFClose(tif);
 	if (success) {
 		if (is_cinema) {
-			for (uint32_t j = 0; j < numcomps; ++j) {
+			for (uint32_t j = 0; j < numcomps; ++j)
 				scale_component(&(image->comps[j]), 12);
-			}
 		}
 		return image;
 	}
@@ -1996,10 +1990,8 @@ static int imagetotif(grk_image *image, const char *outfile,
 		cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
 		cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
 		(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
-		planes[0] += width;
-		planes[1] += width;
-		planes[2] += width;
-		planes[3] += width;
+		for (uint32_t k = 0; k < numcomps; ++k)
+			planes[k] += width;
 	}
 
 	cleanup: if (buf)
