@@ -1389,7 +1389,7 @@ static grk_image* tiftoimage(const char *filename,
 		grk_cparameters *parameters) {
 	TIFF *tif = nullptr;
 	bool found_assocalpha = false;
-	bool found_alpha = false;
+	size_t alpha_count = 0;
 	uint16_t chroma_subsample_x;
 	uint16_t chroma_subsample_y;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
@@ -1576,10 +1576,13 @@ static grk_image* tiftoimage(const char *filename,
 		goto cleanup;
 	}
 	for (uint32_t j = 0; j < numcomps; j++) {
-		// handle alpha channel
+		// handle non-colour channel
 		auto numColourChannels = numcomps - extrasamples;
+		auto comp = image->comps + j;
+
 		if (extrasamples > 0 && j >= numColourChannels) {
-			image->comps[j].association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+			comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+			comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
 				if (found_assocalpha){
@@ -1587,30 +1590,39 @@ static grk_image* tiftoimage(const char *filename,
 						spdlog::warn(
 								"Found more than one associated alpha channel");
 				}
-				image->comps[j].type =
-						GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
-				if (!found_alpha)
-					image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+				alpha_count++;
+				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
 				found_assocalpha = true;
-				found_alpha = true;
 			}
 			else if (alphaType == EXTRASAMPLE_UNASSALPHA) {
-				image->comps[j].type = GRK_COMPONENT_TYPE_OPACITY;
-				if (!found_alpha)
-					image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
-				found_alpha= true;
+				alpha_count++;
+				comp->type = GRK_COMPONENT_TYPE_OPACITY;
 			}
 			else {
 				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
 				if (numcomps == 2 || numcomps == 4) {
-					image->comps[j].type = GRK_COMPONENT_TYPE_OPACITY;
-					if (!found_alpha)
-						image->comps[j].association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
-					found_alpha = true;
+					alpha_count++;
+					comp->type = GRK_COMPONENT_TYPE_OPACITY;
 				}
 			}
 		}
-		image->comps[j].sgnd = isSigned ? 1 : 0;
+		if (comp->type == GRK_COMPONENT_TYPE_OPACITY ||
+			comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY){
+				switch(alpha_count){
+				case 1:
+					comp->association = GRK_COMPONENT_ASSOC_WHOLE_IMAGE;
+					break;
+				case 2:
+					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					break;
+				default:
+					comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
+					comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+					break;
+				}
+
+		}
+		comp->sgnd = isSigned ? 1 : 0;
 	}
 
 	// 5. extract capture resolution
