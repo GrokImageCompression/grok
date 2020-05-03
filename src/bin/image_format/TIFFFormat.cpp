@@ -1468,7 +1468,7 @@ static grk_image* tiftoimage(const char *filename,
 			&sampleinfo);
 
 	// 2. initialize image components and signed/unsigned
-	memset(&cmptparm[0], 0, 4 * sizeof(grk_image_cmptparm));
+	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
 		if (parameters->verbose)
 			spdlog::warn("Input image bitdepth is {} bits\n"
@@ -1694,7 +1694,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	TIFF *tif = nullptr;
 	tdata_t buf = nullptr;
 	tsize_t strip_size, rowStride;
-	int32_t const *planes[4];
+	int32_t const *planes[maxNumComponents];
 	int32_t *buffer32s = nullptr;
 	cvtPlanarToInterleaved cvtPxToCx = nullptr;
 	cvtFrom32 cvt32sToTif = nullptr;
@@ -1704,6 +1704,10 @@ static int imagetotif(grk_image *image, const char *outfile,
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
+
+	assert(image);
+	assert(outfile);
+
 	int32_t adjust =
 			(image->comps[0].sgnd && image->comps[0].prec < 8) ?
 					1 << (image->comps[0].prec - 1) : 0;
@@ -1754,6 +1758,12 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (bps == 0) {
 		spdlog::error("imagetotif: image precision is zero.");
 		success = false;
+		goto cleanup;
+	}
+
+	if (numcomps > maxNumComponents){
+		spdlog::error(
+				"imagetotif: number of components {} must be <= %d", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 
@@ -1840,7 +1850,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 		cvt32sToTif = (cvtFrom32) tif_32sto16u;
 		break;
 	default:
-		/* never here */
 		break;
 	}
 	// Alpha channels
