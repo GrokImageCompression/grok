@@ -94,6 +94,7 @@ grk_image *  GRK_CALLCONV grk_image_create(uint32_t numcmpts,
 				break;
 			default:
 				comp->association = GRK_COMPONENT_ASSOC_UNASSOCIATED;
+				comp->type = GRK_COMPONENT_TYPE_UNSPECIFIED;
 				break;
 			}
 		}
