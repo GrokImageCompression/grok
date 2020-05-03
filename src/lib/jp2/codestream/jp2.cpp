@@ -1714,8 +1714,12 @@ static bool jp2_read_cdef(grk_jp2 *jp2, uint8_t *p_cdef_header_data,
 		auto infoi = cdef_info[i];
 		for (uint16_t j = 0; j < jp2->color.jp2_cdef->n; ++j) {
 			auto infoj = cdef_info[j];
-			if (i != j && infoi.cn != infoj.cn && infoi.typ == infoj.typ
-					&& infoi.asoc == infoj.asoc) {
+			if (i != j &&
+				infoi.cn != infoj.cn &&
+				infoi.typ == infoj.typ	&&
+				infoi.asoc == infoj.asoc &&
+				(infoi.typ != GRK_COMPONENT_TYPE_UNSPECIFIED ||
+						infoi.asoc != GRK_COMPONENT_ASSOC_UNASSOCIATED )   ) {
 				GROK_ERROR(
 						"CDEF box : components %d and %d share same type/association pair (%d,%d).",
 						infoi.cn, infoj.cn, infoj.typ, infoj.asoc);
