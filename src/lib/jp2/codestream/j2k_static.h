@@ -612,7 +612,7 @@ static uint32_t j2k_get_max_sot_size(grk_j2k *p_j2k);
  *
  * @param       p_j2k   the JPEG 2000 codec to use.
  */
-static uint64_t j2k_get_specific_header_sizes(grk_j2k *p_j2k);
+static uint64_t j2k_get_max_tile_sot_header_size(grk_j2k *p_j2k);
 
 /**
  * Reads a CRG marker (Component registration)
