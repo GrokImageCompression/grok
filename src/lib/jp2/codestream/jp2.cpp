@@ -1567,7 +1567,7 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 	uint16_t n = color->jp2_cdef->n;
 
 	for (uint16_t i = 0; i < n; ++i) {
-		/* WATCH: acn = asoc - 1 ! */
+		/* WATCH: asoc_index = asoc - 1 ! */
 		uint16_t asoc = info[i].asoc;
 		uint16_t cn = info[i].cn;
 
@@ -1576,20 +1576,21 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 					image->numcomps);
 			continue;
 		}
-		if ( (asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE ||
-				asoc == GRK_COMPONENT_ASSOC_UNASSOCIATED) &&
-					(info[i].typ == GRK_COMPONENT_TYPE_OPACITY ||
-							info[i].typ != GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY)){
-			image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
-			continue;
-		}
+		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
 
-		uint16_t asoc_index = (uint16_t) (asoc - 1);
-		if (asoc_index >= image->numcomps) {
+		// no need to do anything further if this is not a colour channel,
+		// or if this channel is associated with the whole image
+		if ( info[i].typ != GRK_COMPONENT_TYPE_COLOUR ||
+				info[i].asoc == GRK_COMPONENT_ASSOC_WHOLE_IMAGE)
+			continue;
+
+		if (info[i].typ == GRK_COMPONENT_TYPE_COLOUR &&
+				asoc > image->numcomps) {
 			GROK_WARN("jp2_apply_cdef: association=%d > numcomps=%d", asoc,
 					image->numcomps);
 			continue;
 		}
+		uint16_t asoc_index = (uint16_t) (asoc - 1);
 
 		/* Swap only if color channel */
 		if ((cn != asoc_index) && (info[i].typ == GRK_COMPONENT_TYPE_COLOUR)) {
@@ -1611,8 +1612,6 @@ static void jp2_apply_cdef(grk_image *image, grk_jp2_color *color) {
 				/* asoc is related to color index. Do not update. */
 			}
 		}
-
-		image->comps[cn].type = (GRK_COMPONENT_TYPE)info[i].typ;
 	}
 
 	if (color->jp2_cdef->info)
