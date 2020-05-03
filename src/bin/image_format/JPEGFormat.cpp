@@ -184,7 +184,7 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	if (i != numcomps) {
 		spdlog::error(
 				"imagetojpeg: All components shall have the same subsampling, same bit depth.");
-		spdlog::error("\tAborting");
+		
 		info.success = false;
 		goto cleanup;
 	}
@@ -510,7 +510,7 @@ static grk_image* jpegtoimage(const char *filename,
 					(w - 1) * 1 + 1 : imageInfo.image->x0 + (w - 1) * 1 + 1;
 	if (imageInfo.image->x1 <= imageInfo.image->x0) {
 		spdlog::error("jpegtoimage: Bad value for image->x1({}) vs. "
-				"image->x0({})\n\tAborting.", imageInfo.image->x1,
+				"image->x0({}).", imageInfo.image->x1,
 				imageInfo.image->x0);
 		imageInfo.success = false;
 		goto cleanup;
@@ -523,7 +523,7 @@ static grk_image* jpegtoimage(const char *filename,
 
 	if (imageInfo.image->y1 <= imageInfo.image->y0) {
 		spdlog::error("jpegtoimage: Bad value for image->y1({}) vs. "
-				"image->y0({})\n\tAborting.", imageInfo.image->y1,
+				"image->y0({}).", imageInfo.image->y1,
 				imageInfo.image->y0);
 		imageInfo.success = false;
 		goto cleanup;

@@ -303,52 +303,53 @@ uint32_t uint_adds(uint32_t a, uint32_t b) {
 	return (uint32_t) (-(int32_t) (sum >> 32)) | (uint32_t) sum;
 }
 
-
-bool sanityCheckOnImage(grk_image *image, uint32_t numcomps) {
-	if (numcomps == 0)
+bool all_components_sanity_check(grk_image *image) {
+	if (!image || image->numcomps == 0)
 		return false;
+	auto comp0 = image->comps;
 
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		if (!image->comps[i].data) {
-			spdlog::error("null data for component {}", i);
-			return false;
-		}
+	if (!comp0->data) {
+		spdlog::error("component {} data is null.", 0);
+		return false;
+	}
+	if (comp0->prec == 0 || comp0->prec > 16) {
+		spdlog::error("component {} precision {} is not supported.", 0, comp0->prec);
+		return false;
 	}
 
-	// check that all components have same dimensions
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].w != image->comps[0].w
-				|| image->comps[i].h != image->comps[0].h) {
+	for (uint16_t i = 1U; i < image->numcomps; ++i) {
+		auto compi = image->comps + i;
+
+		if (!compi->data) {
+			spdlog::error("component {} data is null.", 0);
+			return false;
+		}
+		if (comp0->dx != compi->dx){
 			spdlog::error(
-					"Dimensions of component {} differ from dimensions of component 0",
-					i);
+					"Color conversion: x subsampling {} of component {}"
+					" differs from x subsampling {} of component 0.",compi->dx, i, comp0->dx);
 			return false;
 		}
-	}
-
-	// check that all components have same precision
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].prec != image->comps[0].prec) {
+		if (comp0->dy != compi->dy){
 			spdlog::error(
-					"precision of component {} differs from precision of component 0",
-					i);
+					"Color conversion: y subsampling {} of component {}"
+					" differs from y subsampling {} of component 0.",compi->dy, i, comp0->dy);
 			return false;
 		}
-	}
-
-	// check that all components have same sign
-	for (uint32_t i = 1; i < numcomps; ++i) {
-		if (image->comps[i].sgnd != image->comps[0].sgnd) {
+		if (comp0->prec != compi->prec){
 			spdlog::error(
-					"signedness of component {} differs from signedness of component 0",
-					i);
+					"Color conversion: precision {} of component {}"
+					" differs from precision {} of component 0.",compi->prec, i, comp0->prec);
+			return false;
+		}
+		if (comp0->sgnd != compi->sgnd){
+			spdlog::error(
+					"Color conversion: signedness {} of component {}"
+					" differs from signedness {} of component 0.",compi->sgnd, i, comp0->sgnd);
 			return false;
 		}
 	}
-
 	return true;
-
 }
 
 bool isSubsampled(grk_image *image) {

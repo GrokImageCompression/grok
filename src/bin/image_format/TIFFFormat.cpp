@@ -1721,7 +1721,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		if (numcomps < 4U) {
 			spdlog::error(
 					"imagetotif: CMYK images shall be composed of at least 4 planes.");
-			spdlog::error("\tAborting");
+			
 			return 1;
 		}
 		tiPhoto = PHOTOMETRIC_SEPARATED;
@@ -1763,7 +1763,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 	uint32_t tif_bps = bps;
 	if (bps == 0) {
 		spdlog::error("imagetotif: image precision is zero.");
-		success = false;
 		goto cleanup;
 	}
 
@@ -1773,46 +1772,9 @@ static int imagetotif(grk_image *image, const char *outfile,
 		goto cleanup;
 	}
 
-	//check for null image components
-	for (uint32_t i = 0; i < numcomps; ++i) {
-		auto comp = image->comps[i];
-		if (!comp.data) {
-			spdlog::error("imagetotif: component {} is null.", i);
-			spdlog::error("\tAborting");
-			success = false;
-			goto cleanup;
-		}
-	}
-	uint32_t i;
-	for (i = 1U; i < numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx)
-			break;
-		if (image->comps[0].dy != image->comps[i].dy)
-			break;
-		if (image->comps[0].prec != image->comps[i].prec)
-			break;
-		if (image->comps[0].sgnd != image->comps[i].sgnd)
-			break;
-		planes[i] = image->comps[i].data;
-	}
-	if (i != numcomps) {
-		spdlog::error(
-				"imagetotif: All components shall have the same subsampling, same bit depth.");
-		spdlog::error("\tAborting");
-		success = false;
+	if (!grk::all_components_sanity_check(image))
 		goto cleanup;
-	}
 
-	// even bits per sample
-	if (bps > 16)
-		bps = 0;
-	if (bps == 0) {
-		spdlog::error("imagetotif: Bits={}, Only 1 to 16 bits implemented",
-				bps);
-		spdlog::error("\tAborting");
-		success = false;
-		goto cleanup;
-	}
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
 	switch (tif_bps) {
 	case 1:
@@ -1859,12 +1821,13 @@ static int imagetotif(grk_image *image, const char *outfile,
 		break;
 	}
 	// extra channels
-	for (i = 0U; i < numcomps; ++i) {
+	for (uint32_t i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].type) {
 			if (firstExtraChannel == -1)
 				firstExtraChannel = 0;
 			numExtraChannels++;
 		}
+		planes[i] = image->comps[i].data;
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
 	if (numExtraChannels && ((size_t)firstExtraChannel + numExtraChannels >= numcomps)) {
@@ -1876,15 +1839,12 @@ static int imagetotif(grk_image *image, const char *outfile,
 		numExtraChannels = 0;
 	}
 	buffer32s = (int32_t*) malloc((size_t) width * numcomps * sizeof(int32_t));
-	if (buffer32s == nullptr) {
-		success = false;
+	if (buffer32s == nullptr)
 		goto cleanup;
-	}
 
 	tif = TIFFOpen(outfile, "wb");
 	if (!tif) {
 		spdlog::error("imagetotif:failed to open {} for writing", outfile);
-		success = false;
 		goto cleanup;
 	}
 
@@ -1929,7 +1889,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		if (iptc_len != image->iptc_len) {
 			buf = (uint8_t*) calloc(iptc_len, 1);
 			if (!buf)
-				return false;
+				goto cleanup;
 			memcpy(buf, image->iptc_buf, image->iptc_len);
 			iptc_buf = buf;
 		}
@@ -1957,7 +1917,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (numExtraChannels) {
 		std::unique_ptr<uint16[]> out(new uint16[numExtraChannels]);
 		numExtraChannels = 0;
-		for (i = 0U; i < numcomps; ++i) {
+		for (uint32_t i = 0U; i < numcomps; ++i) {
 			auto comp = image->comps + i;
 			if (comp->type != GRK_COMPONENT_TYPE_COLOUR) {
 				if (comp->type == GRK_COMPONENT_TYPE_OPACITY ||
@@ -1977,16 +1937,13 @@ static int imagetotif(grk_image *image, const char *outfile,
 	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
 	if (rowStride != strip_size) {
 		spdlog::error("Invalid TIFF strip size");
-		success = false;
 		goto cleanup;
 	}
 	buf = _TIFFmalloc(strip_size);
-	if (buf == nullptr) {
-		success = false;
+	if (buf == nullptr)
 		goto cleanup;
-	}
 
-	for (i = 0; i < image->comps[0].h; ++i) {
+	for (uint32_t i = 0; i < image->comps[0].h; ++i) {
 		cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
 		cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
 		(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
@@ -1994,6 +1951,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 			planes[k] += width;
 	}
 
+	success = true;
 	cleanup: if (buf)
 		_TIFFfree((void*) buf);
 	if (tif)

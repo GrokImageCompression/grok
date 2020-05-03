@@ -316,7 +316,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 
 		if (!image->comps[compno].data) {
 			spdlog::error("imagetotif: component {} is null.", compno);
-			spdlog::error("\tAborting");
+			
 			goto beach;
 		}
 		auto w = image->comps[compno].w;

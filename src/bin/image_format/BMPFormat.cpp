@@ -820,7 +820,7 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 	int rc = -1;
 	uint8_t *destBuff = nullptr;
 
-	if (!grk::sanityCheckOnImage(image, image->numcomps))
+	if (!grk::all_components_sanity_check(image))
 		goto cleanup;
 	if (image->numcomps != 1 && image->numcomps != 3) {
 		spdlog::error("Unsupported number of components: {}",
@@ -831,16 +831,10 @@ static int imagetobmp(grk_image *image, const char *outfile, bool verbose) {
 		spdlog::error("Sub-sampled images not supported");
 		goto cleanup;
 	}
-
 	for (uint32_t i = 0; i < image->numcomps; ++i) {
 		if (image->comps[i].prec < 8) {
 			spdlog::error("Unsupported precision: {} for component {}",
 					image->comps[i].prec, i);
-			goto cleanup;
-		}
-		if (!image->comps[i].data) {
-			spdlog::error("imagetopng: component {} is null.", i);
-			spdlog::error("\tAborting");
 			goto cleanup;
 		}
 	}

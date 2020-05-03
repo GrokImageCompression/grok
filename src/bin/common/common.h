@@ -198,8 +198,7 @@ template<typename T> inline bool readBytes(FILE *fp, grk_image *image,
 }
 
 uint32_t uint_adds(uint32_t a, uint32_t b);
-
-bool sanityCheckOnImage(grk_image *  image, uint32_t numcomps);
+bool all_components_sanity_check(grk_image *image);
 bool isSubsampled(grk_image *  image);
 
 }

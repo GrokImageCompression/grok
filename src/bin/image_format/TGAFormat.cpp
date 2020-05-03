@@ -321,7 +321,7 @@ static grk_image* tgatoimage(const char *filename,
 		grk::safe_fclose(f);
 		return nullptr;
 	}
-	if (!grk::sanityCheckOnImage(image, numcomps)) {
+	if (!grk::all_components_sanity_check(image)) {
 		grk_image_destroy(image);
 		image = nullptr;
 		goto cleanup;
@@ -429,16 +429,16 @@ static grk_image* tgatoimage(const char *filename,
 }
 
 static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
-	int width = 0, height = 0, bpp = 0, x = 0, y = 0;
+	uint32_t width = 0, height = 0, bpp = 0, x = 0, y = 0;
 	bool write_alpha = false;
-	unsigned int i;
 	int adjustR = 0, adjustG = 0, adjustB = 0, fails = 1;
-	unsigned int alpha_channel;
+	uint32_t alpha_channel;
 	float r, g, b, a;
 	uint8_t value;
 	float scale = 0;
 	FILE *fdest = nullptr;
 	size_t res = 0;
+	(void)verbose;
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
@@ -446,36 +446,12 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 		goto beach;
 	}
 
-	if (!grk::sanityCheckOnImage(image, image->numcomps)) {
+	if (!grk::all_components_sanity_check(image)) {
 		goto beach;
 	}
-	for (i = 0; i < image->numcomps; i++) {
-		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}", i,
-					image->comps[i].w, image->comps[i].h, image->comps[i].prec,
-					image->comps[i].sgnd == 1 ? "signed" : "unsigned");
 
-		if (!image->comps[i].data) {
-			spdlog::error("imagetotga: component {} is null.", i);
-			spdlog::error("\tAborting");
-			goto beach;
-		}
-	}
-
-	for (i = 0; i < image->numcomps - 1; i++) {
-		if ((image->comps[0].dx != image->comps[i + 1].dx)
-				|| (image->comps[0].dy != image->comps[i + 1].dy)
-				|| (image->comps[0].prec != image->comps[i + 1].prec)
-				|| (image->comps[0].sgnd != image->comps[i + 1].sgnd)) {
-
-			spdlog::error(
-					"imagetotga: unable to create a tga file with such J2K image charateristics.");
-			goto beach;
-		}
-	}
-
-	width = (int) image->comps[0].w;
-	height = (int) image->comps[0].h;
+	width = image->comps[0].w;
+	height =  image->comps[0].h;
 
 	/* Mono with alpha, or RGB with alpha. */
 	write_alpha = (image->numcomps == 2) || (image->numcomps == 4);
@@ -486,7 +462,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	if (!tga_writeheader(fdest, bpp, width, height, true))
 		goto beach;
 
-	alpha_channel = image->numcomps - 1;
+	alpha_channel = (uint32_t)(image->numcomps - 1);
 
 	scale = 255.0f / (float) ((1 << image->comps[0].prec) - 1);
 
@@ -497,7 +473,7 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	}
 
 	for (y = 0; y < height; y++) {
-		unsigned int index = (unsigned int) (y * width);
+		uint64_t index = (uint64_t)y * width;
 
 		for (x = 0; x < width; x++, index++) {
 			r = (float) (image->comps[0].data[index] + adjustR);

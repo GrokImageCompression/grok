@@ -99,26 +99,6 @@ static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
 
 }
 
-static bool all_components_equal_subsampling(grk_image *image) {
-	if (image->numcomps == 0)
-		return true;
-
-	uint16_t i;
-	for (i = 1U; i < image->numcomps; ++i) {
-		if (image->comps[0].dx != image->comps[i].dx) {
-			break;
-		}
-		if (image->comps[0].dy != image->comps[i].dy) {
-			break;
-		}
-	}
-	if (i != image->numcomps) {
-		spdlog::error(
-				"Color conversion: all components must have the same subsampling.");
-		return false;
-	}
-	return true;
-}
 /*--------------------------------------------------------
  Matrix for sYCC, Amendment 1 to IEC 61966-2-1
 
@@ -433,7 +413,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 	GRK_COLOR_SPACE oldspace;
 	grk_image *new_image = nullptr;
 	(void) verbose;
-	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
+	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
 		return;
 	in_prof = cmsOpenProfileFromMem(image->icc_profile_buf,
 			image->icc_profile_len);
@@ -714,20 +694,27 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 
 // transform LAB colour space to sRGB @ 16 bit precision
 void color_cielab_to_rgb(grk_image *image, bool verbose) {
-	uint32_t *row;
-	uint32_t enumcs, numcomps;
-	numcomps = image->numcomps;
 	// sanity checks
-	if (numcomps != 3) {
+	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
+		return;
+	size_t i;
+	for (i = 1U; i < image->numcomps; ++i) {
+		auto comp0 = image->comps;
+		auto compi = image->comps + i;
+
+		if (comp0->prec != compi->prec)
+			break;
+		if (comp0->sgnd != compi->sgnd)
+			break;
+	}
+	if(i != image->numcomps){
 		if (verbose)
-			spdlog::warn("{}:{}:\n\tnumcomps {} not handled. Quitting.",
-			__FILE__, __LINE__, numcomps);
+			spdlog::warn("All components must have same precision and sign");
 		return;
 	}
-	if (image->numcomps == 0 || !all_components_equal_subsampling(image))
-		return;
-	row = (uint32_t*) image->icc_profile_buf;
-	enumcs = row[0];
+
+	auto row = (uint32_t*) image->icc_profile_buf;
+	uint32_t enumcs = row[0];
 	if (enumcs != 14) { /* CIELab */
 		if (verbose)
 			spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
@@ -741,11 +728,11 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 	cmsCIExyY WhitePoint;
 	defaultType = row[1] == GRK_DEFAULT_CIELAB_SPACE;
 	int32_t *L, *a, *b, *red, *green, *blue;
-	int32_t *src0, *src1, *src2, *dst0, *dst1, *dst2;
+	int32_t *src[3], *dst[3];
 	// range, offset and precision for L,a and b coordinates
 	double r_L, o_L, r_a, o_a, r_b, o_b, prec_L, prec_a, prec_b;
 	double minL, maxL, mina, maxa, minb, maxb;
-	size_t i, max;
+	size_t max;
 	cmsUInt16Number RGB[3];
 	grk_image *new_image = image_create(3, image->comps[0].w, image->comps[0].h,
 			image->comps[0].prec);
@@ -819,15 +806,15 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 		return;
 	}
 
-	L = src0 = image->comps[0].data;
-	a = src1 = image->comps[1].data;
-	b = src2 = image->comps[2].data;
+	L = src[0] = image->comps[0].data;
+	a = src[1] = image->comps[1].data;
+	b = src[2] = image->comps[2].data;
 
 	max = image->comps[0].w * image->comps[0].h;
 
-	red = dst0 = new_image->comps[0].data;
-	green = dst1 = new_image->comps[1].data;
-	blue = dst2 = new_image->comps[2].data;
+	red = dst[0] = new_image->comps[0].data;
+	green = dst[1] = new_image->comps[1].data;
+	blue = dst[2] = new_image->comps[2].data;
 
 	new_image->comps[0].data = nullptr;
 	new_image->comps[1].data = nullptr;
@@ -861,18 +848,15 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 		*blue++ = RGB[2];
 	}
 	cmsDeleteTransform(transform);
-	grk_image_all_components_data_free(image);
-	image->comps[0].data = dst0;
-	image->comps[0].owns_data = true;
-	image->comps[1].data = dst1;
-	image->comps[1].owns_data = true;
-	image->comps[2].data = dst2;
-	image->comps[2].owns_data = true;
-
+	for (size_t i = 0; i < 3; ++i){
+		auto comp = image->comps + i;
+		grk_image_single_component_data_alloc(comp);
+		comp->data = dst[i];
+		comp->owns_data = true;
+		comp->prec = 16;
+	}
 	image->color_space = GRK_CLRSPC_SRGB;
-	image->comps[0].prec = 16;
-	image->comps[1].prec = 16;
-	image->comps[2].prec = 16;
+
 
 }/* color_cielab_to_rgb() */
 
@@ -887,7 +871,7 @@ bool color_cmyk_to_rgb(grk_image *image) {
 	w = image->comps[0].w;
 	h = image->comps[0].h;
 
-	if ((image->numcomps < 4) || !all_components_equal_subsampling(image))
+	if ((image->numcomps < 4) || !grk::all_components_sanity_check(image))
 		return false;
 
 	area = (uint64_t) w * h;
@@ -940,7 +924,7 @@ bool color_esycc_to_rgb(grk_image *image) {
 	int32_t flip_value = (1 << (image->comps[0].prec - 1));
 	int32_t max_value = (1 << image->comps[0].prec) - 1;
 
-	if ((image->numcomps < 3) || !all_components_equal_subsampling(image))
+	if ((image->numcomps < 3) || !grk::all_components_sanity_check(image))
 		return false;
 
 	w = image->comps[0].w;

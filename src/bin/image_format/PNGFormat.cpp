@@ -465,7 +465,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		planes[i] = image->comps[i].data;
 		if (!planes[i]) {
 			spdlog::error("imagetopng: component {} is null.", i);
-			spdlog::error("\tAborting");
+			
 			return 1;
 		}
 	}
@@ -473,7 +473,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 		spdlog::error(
 				"imagetopng: All components shall have the same sub-sampling,"
 						" same bit depth and same sign.");
-		spdlog::error("\tAborting");
+		
 		return 1;
 	}
 	if (prec > 8 && prec < 16) {
