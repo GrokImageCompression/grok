@@ -1711,8 +1711,8 @@ static int imagetotif(grk_image *image, const char *outfile,
 	cvtPlanarToInterleaved cvtPxToCx = nullptr;
 	cvtFrom32 cvt32sToTif = nullptr;
 	bool success = true;
-	int32_t firstAlpha = -1;
-	size_t numAlphaChannels = 0;
+	int32_t firstExtraChannel = -1;
+	size_t numExtraChannels = 0;
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
@@ -1864,20 +1864,22 @@ static int imagetotif(grk_image *image, const char *outfile,
 	default:
 		break;
 	}
-	// Alpha channels
+	// extra channels
 	for (i = 0U; i < numcomps; ++i) {
 		if (image->comps[i].type) {
-			if (firstAlpha == -1)
-				firstAlpha = 0;
-			numAlphaChannels++;
+			if (firstExtraChannel == -1)
+				firstExtraChannel = 0;
+			numExtraChannels++;
 		}
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
-	if (numAlphaChannels && ((size_t)firstAlpha + numAlphaChannels >= numcomps)) {
+	if (numExtraChannels && ((size_t)firstExtraChannel + numExtraChannels >= numcomps)) {
 		if (verbose)
 			spdlog::warn(
-					"TIFF requires that alpha channels occur as last channels in image. TIFFTAG_EXTRASAMPLES tag for alpha will not be set");
-		numAlphaChannels = 0;
+					"TIFF requires that non-colour channels occur as "
+					"last channels in image. "
+					"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
+		numExtraChannels = 0;
 	}
 	buffer32s = (int32_t*) malloc((size_t) width * numcomps * sizeof(int32_t));
 	if (buffer32s == nullptr) {
@@ -1919,9 +1921,9 @@ static int imagetotif(grk_image *image, const char *outfile,
 					image->icc_profile_buf);
 	}
 
-	if (image->xmp_buf && image->xmp_len) {
+	if (image->xmp_buf && image->xmp_len)
 		TIFFSetField(tif, TIFFTAG_XMLPACKET, image->xmp_len, image->xmp_buf);
-	}
+
 
 	if (image->iptc_buf && image->iptc_len) {
 		auto iptc_buf = image->iptc_buf;
@@ -1958,16 +1960,23 @@ static int imagetotif(grk_image *image, const char *outfile,
 		}
 	}
 
-	if (numAlphaChannels) {
-		std::unique_ptr<uint16[]> out(new uint16[numAlphaChannels]);
-		size_t alphaCount = 0;
+	if (numExtraChannels) {
+		std::unique_ptr<uint16[]> out(new uint16[numExtraChannels]);
+		numExtraChannels = 0;
 		for (i = 0U; i < numcomps; ++i) {
-			if (image->comps[i].type)
-				out[alphaCount++] =
-						(image->comps[i].type == GRK_COMPONENT_TYPE_OPACITY) ?
-								EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+			auto comp = image->comps + i;
+			if (comp->type != GRK_COMPONENT_TYPE_COLOUR) {
+				if (comp->type == GRK_COMPONENT_TYPE_OPACITY ||
+					comp->type == GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY){
+					out[numExtraChannels++] =
+							(image->comps[i].type == GRK_COMPONENT_TYPE_OPACITY) ?
+									EXTRASAMPLE_UNASSALPHA : EXTRASAMPLE_ASSOCALPHA;
+				} else {
+					out[numExtraChannels++] = EXTRASAMPLE_UNSPECIFIED;
+				}
+			}
 		}
-		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numAlphaChannels, out.get());
+		TIFFSetField(tif, TIFFTAG_EXTRASAMPLES, numExtraChannels, out.get());
 	}
 
 	strip_size = TIFFStripSize(tif);
