@@ -203,7 +203,6 @@ int get_file_format(const char *filename) {
 }
 
 #define JP2_RFC3745_MAGIC "\x00\x00\x00\x0c\x6a\x50\x20\x20\x0d\x0a\x87\x0a"
-/* position 45: "\xff\x52" */
 #define J2K_CODESTREAM_MAGIC "\xff\x4f\xff\x51"
 bool jpeg2000_file_format(const char *fname, GRK_SUPPORTED_FILE_FMT *fmt) {
 	FILE *reader;
@@ -265,18 +264,15 @@ char* get_file_name(char *name) {
 }
 
 uint32_t get_num_images(char *imgdirpath) {
-	DIR *dir;
-	struct dirent *content;
-	uint32_t num_images = 0;
-
 	/*Reading the input images from given input directory*/
-
-	dir = opendir(imgdirpath);
+	auto dir = opendir(imgdirpath);
 	if (!dir) {
 		spdlog::error("Could not open Folder {}", imgdirpath);
 		return 0;
 	}
 
+	uint32_t num_images = 0;
+	struct dirent *content = nullptr;
 	while ((content = readdir(dir)) != nullptr) {
 		if (strcmp(".", content->d_name) == 0
 				|| strcmp("..", content->d_name) == 0)
@@ -309,11 +305,11 @@ bool all_components_sanity_check(grk_image *image) {
 	auto comp0 = image->comps;
 
 	if (!comp0->data) {
-		spdlog::error("component {} data is null.", 0);
+		spdlog::error("component 0 data is null.");
 		return false;
 	}
 	if (comp0->prec == 0 || comp0->prec > 16) {
-		spdlog::error("component {} precision {} is not supported.", 0, comp0->prec);
+		spdlog::error("component 0 precision {} is not supported.", 0, comp0->prec);
 		return false;
 	}
 
@@ -321,7 +317,7 @@ bool all_components_sanity_check(grk_image *image) {
 		auto compi = image->comps + i;
 
 		if (!compi->data) {
-			spdlog::error("component {} data is null.", 0);
+			spdlog::error("component {} data is null.", i);
 			return false;
 		}
 		if (comp0->dx != compi->dx){
@@ -362,6 +358,5 @@ bool isSubsampled(grk_image *image) {
 	}
 	return false;
 }
-
 
 }

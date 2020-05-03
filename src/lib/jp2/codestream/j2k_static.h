@@ -603,9 +603,9 @@ static bool j2k_read_poc(grk_j2k *p_j2k, uint8_t *p_header_data,
 		uint16_t header_size);
 
 /**
- * Gets the maximum size taken by the toc headers of all the tile parts of any given tile.
+ * Gets the maximum size taken by the sot headers of all the tile parts of any given tile.
  */
-static uint32_t j2k_get_max_toc_size(grk_j2k *p_j2k);
+static uint32_t j2k_get_max_sot_size(grk_j2k *p_j2k);
 
 /**
  * Gets the maximum size taken by the headers of the SOT.
