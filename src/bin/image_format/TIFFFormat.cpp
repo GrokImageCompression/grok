@@ -1311,7 +1311,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 }
 
 template<typename T> bool readTiffPixelsSigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC) {
 	if (!tif)
 		return false;
 
@@ -1659,10 +1659,10 @@ static grk_image* tiftoimage(const char *filename,
 		bool rc = false;
 		if (tiBps == 8)
 			rc =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
-						tiPC, tiPhoto);
+						tiPC);
 		else
 			rc =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
-						tiPC, tiPhoto);
+						tiPC);
 
 		success = success && rc;
 	}
@@ -1739,12 +1739,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 		default:
 			tiPhoto = PHOTOMETRIC_RGB;
 			break;
-		}
-		if (numcomps > 4U) {
-			if (verbose)
-				spdlog::warn("imagetotif: number of components {} is "
-						"greater than 4. Truncating to 4", numcomps);
-			numcomps = 4U;
 		}
 	} else {
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
