@@ -138,7 +138,7 @@ bool header_rewind(char *s, char *line, size_t lineLen,  FILE *reader){
 	return true;
 }
 
-static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
+static bool read_pnm_header(FILE *reader, struct pnm_header *ph) {
 	uint32_t format;
 	const size_t lineSize = 256;
 	const size_t lineSearch = 250;
@@ -262,8 +262,7 @@ static bool read_pnm_header(FILE *reader, struct pnm_header *ph, bool verbose) {
 		}
 		if (ph->colour_space != PNM_UNKNOWN
 				&& ph->colour_space != depth_colour_space) {
-			if (verbose)
-				spdlog::warn("Tuple colour space {} does not match depth {}. "
+			spdlog::warn("Tuple colour space {} does not match depth {}. "
 						"Will use depth colour space", ph->colour_space,
 						depth_colour_space);
 		}
@@ -359,7 +358,7 @@ static grk_image* pnmtoimage(const char *filename,
 		goto cleanup;
 	}
 	memset(&header_info, 0, sizeof(struct pnm_header));
-	if (!read_pnm_header(fp, &header_info, parameters->verbose)) {
+	if (!read_pnm_header(fp, &header_info)) {
 		spdlog::error("Invalid PNM header");
 		goto cleanup;
 	}
@@ -448,9 +447,8 @@ static grk_image* pnmtoimage(const char *filename,
 			for (compno = 0; compno < numcomps; compno++) {
 				index = 0;
 				if (fscanf(fp, "%u", &index) != 1) {
-					if (parameters->verbose)
-						spdlog::warn(
-								"fscanf return a number of element different from the expected.");
+					spdlog::warn("fscanf returned a number of elements"
+							" different from expected.");
 				}
 				image->comps[compno].data[i] = (int32_t)index;
 			}
@@ -529,8 +527,7 @@ static grk_image* pnmtoimage(const char *filename,
 	return image;
 }/* pnmtoimage() */
 
-static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
-		bool verbose) {
+static int imagetopnm(grk_image *image, const char *outfile, bool force_split) {
 	int *red = nullptr;
 	int *green = nullptr;
 	int *blue = nullptr;
@@ -720,8 +717,7 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 
 	/* YUV or MONO: */
 	if (image->numcomps > ncomp) {
-		if (verbose)
-			spdlog::warn("-> [PGM file] Only the first component"
+		spdlog::warn("-> [PGM file] Only the first component"
 					" is written to the file");
 	}
 	destname = (char*) malloc(strlen(outfile) + 8);
@@ -831,10 +827,9 @@ static int imagetopnm(grk_image *image, const char *outfile, bool force_split,
 }/* imagetopnm() */
 
 bool PNMFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
+		int32_t compressionParam) {
 	(void) compressionParam;
-	(void) verbose;
-	return imagetopnm(image, filename.c_str(), forceSplit, verbose) ? false : true;
+	return imagetopnm(image, filename.c_str(), forceSplit) ? false : true;
 }
 grk_image* PNMFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {

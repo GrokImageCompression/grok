@@ -63,9 +63,9 @@
 #include "common.h"
 
 bool RAWFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
+		int32_t compressionParam) {
 	(void) compressionParam;
-	return imagetoraw(image, filename.c_str(), bigEndian, verbose) ? true : false;
+	return imagetoraw(image, filename.c_str(), bigEndian) ? true : false;
 }
 grk_image* RAWFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
@@ -213,8 +213,7 @@ grk_image* RAWFormat::rawtoimage(const char *filename,
 	}
 
 	if (fread(&ch, 1, 1, f)) {
-		if (parameters->verbose)
-			spdlog::warn("End of raw file not reached... processing anyway");
+		spdlog::warn("End of raw file not reached... processing anyway");
 	}
 	cleanup: if (f && !readFromStdin) {
 		if (!grk::safe_fclose(f)) {
@@ -257,7 +256,7 @@ template<typename T> static bool write(FILE *rawFile, bool big_endian,
 }
 
 int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
-		bool big_endian, bool verbose) {
+		bool big_endian) {
 	bool writeToStdout = grk::useStdio(outfile);
 	FILE *rawFile = nullptr;
 	unsigned int compno, numcomps;
@@ -269,8 +268,7 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 
 	numcomps = image->numcomps;
 	if (numcomps > 4) {
-		if (verbose)
-			spdlog::warn("imagetoraw: number of components {} is "
+		spdlog::warn("imagetoraw: number of components {} is "
 					"greater than 4. Truncating to 4", numcomps);
 		numcomps = 4;
 	}
@@ -303,13 +301,11 @@ int RAWFormat::imagetoraw(grk_image *image, const char *outfile,
 			goto beach;
 		}
 	}
-	if (verbose)
-		spdlog::info("imagetoraw: raw image characteristics: {} components",
+	spdlog::info("imagetoraw: raw image characteristics: {} components",
 				image->numcomps);
 
 	for (compno = 0; compno < image->numcomps; compno++) {
-		if (verbose)
-			spdlog::info("Component %u characteristics: {}x{}x{} {}", compno,
+		spdlog::info("Component %u characteristics: {}x{}x{} {}", compno,
 					image->comps[compno].w, image->comps[compno].h,
 					image->comps[compno].prec,
 					image->comps[compno].sgnd == 1 ? "signed" : "unsigned");

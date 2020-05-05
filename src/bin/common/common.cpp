@@ -98,7 +98,7 @@ int batch_sleep(int val) {
  * separator = ","
  */
 /* -------------------------------------------------------------------------- */
-int parse_DA_values(bool verbose, char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
+int parse_DA_values(char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 		uint32_t *DA_x1, uint32_t *DA_y1) {
 	int it = 0;
 	int values[4];
@@ -114,25 +114,22 @@ int parse_DA_values(bool verbose, char *inArg, uint32_t *DA_x0, uint32_t *DA_y0,
 
 	// region must be specified by 4 values exactly
 	if (it != 4) {
-		if (verbose)
-			spdlog::warn(
-					"Decode region must be specified by exactly four coordinates. Ignoring specified region.");
+		spdlog::warn("Decode region must be specified by exactly "
+				"four coordinates. Ignoring specified region.");
 		return EXIT_FAILURE;
 
 	}
 
 	// don't allow negative values
 	if ((values[0] < 0 || values[1] < 0 || values[2] < 0 || values[3] < 0)) {
-		if (verbose)
-			spdlog::warn(
-					"Decode region cannot contain negative values.\n Ignoring specified region ({},{},{},{}).",
+		spdlog::warn("Decode region cannot contain negative "
+				"values.\n Ignoring specified region ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}
 	if (values[2] <= values[0] || values[3] <= values[1]) {
-		if (verbose)
-			spdlog::warn(
-					"Decode region must have strictly positive area.\n Ignoring specified region ({},{},{},{}).",
+		spdlog::warn("Decode region must have strictly "
+				"positive area.\n Ignoring specified region ({},{},{},{}).",
 					values[0], values[1], values[2], values[3]);
 		return EXIT_FAILURE;
 	}

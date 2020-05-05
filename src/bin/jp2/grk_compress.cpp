@@ -473,8 +473,7 @@ static int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 static char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_cparameters *parameters) {
 
-	if (parameters->verbose)
-		spdlog::info("File \"{}\"", image_filename.c_str());
+	spdlog::info("File \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(grk::get_path_separator()) + image_filename;
 	if (parameters->decod_format == GRK_UNK_FMT) {
@@ -551,10 +550,8 @@ static bool checkCinema(ValueArg<uint32_t> *arg, uint16_t profile,
 			parameters->max_cs_size = GRK_CINEMA_48_CS;
 		} else {
 			isValid = false;
-			if (parameters->verbose)
-				spdlog::error(
-						"Incorrect digital cinema frame rate {} : must be either 24 or 48",
-						fps);
+			spdlog::warn("Incorrect digital cinema frame rate {} : "
+						"		must be either 24 or 48. Ignoring",	fps);
 		}
 	}
 	return isValid;
@@ -728,12 +725,11 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 			char *infile = (char*) (dummy).c_str();
 			parameters->decod_format = (GRK_SUPPORTED_FILE_FMT) get_file_format(
 					(char*) infile);
-			if (parameters->verbose
-					&& !isDecodedFormatSupported(parameters->decod_format)) {
-				spdlog::warn(
-						" Ignoring unknown input file format: %s \n"
-								"        Known file formats are *.pnm, *.pgm, *.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg, *.raw or *.tga",
-						infile);
+			if (!isDecodedFormatSupported(parameters->decod_format)) {
+				spdlog::warn(" Ignoring unknown input file format: %s \n"
+								"Known file formats are *.pnm, *.pgm, "
+								"*.ppm, *.pgx, *png, *.bmp, *.tif, *.jpg,"
+								" *.raw or *.tga",	infile);
 			}
 		}
 
@@ -1061,23 +1057,19 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				POC[numpocs].prg1 = give_progression(POC[numpocs].progorder);
 				// sanity check on layer
 				if (POC[numpocs].layno1 > parameters->tcp_numlayers){
-					if (parameters->verbose) {
-						spdlog::warn("End layer {} in POC {} is greater than"
-									" total number of layers {}. Truncating.",
-									POC[numpocs].layno1,
-									numpocs,
-									parameters->tcp_numlayers );
-					}
+					spdlog::warn("End layer {} in POC {} is greater than"
+								" total number of layers {}. Truncating.",
+								POC[numpocs].layno1,
+								numpocs,
+								parameters->tcp_numlayers );
 					POC[numpocs].layno1 = parameters->tcp_numlayers;
 				}
 				if (POC[numpocs].resno1 > parameters->numresolution){
-					if (parameters->verbose) {
-						spdlog::warn("POC end resolution {} cannot be greater than"
+					spdlog::warn("POC end resolution {} cannot be greater than"
 								"the number of resolutions {}",
 								POC[numpocs].resno1,
 								parameters->numresolution );
 						POC[numpocs].resno1 = parameters->numresolution-1;
-					}
 				}
 				if (POC[numpocs].resno0 >= POC[numpocs].resno1){
 					spdlog::error("POC beginning resolution must be strictly less than end resolution");
@@ -1154,20 +1146,16 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 						parameters)) {
 					return 1;
 				}
-				if (parameters->verbose) {
-					spdlog::warn("CINEMA 2K profile activated\n"
+				spdlog::warn("CINEMA 2K profile activated\n"
 							"Other options specified may be overridden");
-				}
 			}
 			if (cinema4KArg.isSet()) {
 				if (!checkCinema(&cinema4KArg, GRK_PROFILE_CINEMA_4K,
 						parameters)) {
 					return 1;
 				}
-				if (parameters->verbose) {
-					spdlog::warn(" CINEMA 4K profile activated\n"
+				spdlog::warn(" CINEMA 4K profile activated\n"
 							"Other options specified may be overridden");
-				}
 			}
 			if (BroadcastArg.isSet()) {
 				int mainlevel = 0;
@@ -1215,12 +1203,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					return 1;
 				}
 				parameters->rsiz = (uint16_t) (profile | mainlevel);
-
-				if (parameters->verbose) {
-					spdlog::info("Broadcast profile activated\n"
+				spdlog::info("Broadcast profile activated\n"
 							"Other options specified could be overridden");
-				}
-
 				parameters->framerate = framerate;
 				if (framerate > 0) {
 					const int limitMBitsSec[] = { 0,
@@ -1239,10 +1223,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					parameters->max_cs_size =
 							(uint64_t) (limitMBitsSec[mainlevel]
 									* (1000.0 * 1000 / 8) / framerate);
-					if (parameters->verbose) {
-						spdlog::info("Setting max code stream size to {} bytes.",
+					spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
-					}
 				}
 			}
 			if (IMFArg.isSet()) {
@@ -1311,11 +1293,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 				}
 				parameters->rsiz = (uint16_t) (profile | (sublevel << 4)
 						| mainlevel);
-
-				if (parameters->verbose) {
-					spdlog::info("IMF profile activated\n"
-							"Other options specified could be overridden");
-				}
+				spdlog::info("IMF profile activated\n"
+						"Other options specified could be overridden");
 
 				parameters->framerate = framerate;
 				if (framerate > 0 && sublevel > 0 && sublevel <= 9) {
@@ -1332,10 +1311,8 @@ static int parse_cmdline_encoder_ex(int argc, char **argv,
 					parameters->max_cs_size =
 							(uint64_t) (limitMBitsSec[sublevel]
 									* (1000.0 * 1000 / 8) / framerate);
-					if (parameters->verbose) {
-						spdlog::info("Setting max code stream size to {} bytes.",
+					spdlog::info("Setting max code stream size to {} bytes.",
 								parameters->max_cs_size);
-					}
 				}
 			}
 
@@ -2099,7 +2076,7 @@ static bool plugin_compress_callback(
 		parameters->rateControlAlgorithm = 0;
 	}
 
-	if (parameters->verbose && parameters->framerate > 0) {
+	if (parameters->framerate > 0) {
 		uint32_t avgcomponents = image->numcomps;
 		if (image->numcomps == 3 && image->comps[1].dx == 2
 				&& image->comps[1].dy == 2) {

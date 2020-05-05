@@ -69,7 +69,7 @@ struct imageToJpegInfo {
 };
 
 static int imagetojpeg(grk_image *image, const char *filename,
-		int32_t compressionParam, bool verbose) {
+		int32_t compressionParam) {
 	if (!image)
 		return 1;
 	imageToJpegInfo info;
@@ -214,9 +214,8 @@ static int imagetojpeg(grk_image *image, const char *filename,
 	}
 	// We assume that alpha channels occur as last channels in image.
 	if (numAlphaChannels && ( (uint32_t)firstAlpha + numAlphaChannels >= numcomps)) {
-		if (verbose)
-			spdlog::warn(
-					"PNG requires that alpha channels occur as last channels in image.");
+		spdlog::warn("PNG requires that alpha channels occur"
+				" as last channels in image.");
 		numAlphaChannels = 0;
 	}
 	info.buffer = new uint8_t[width * numcomps];
@@ -592,8 +591,7 @@ static grk_image* jpegtoimage(const char *filename,
 	 * warnings occurred (test whether jerr.pub.num_warnings is nonzero).
 	 */
 	if (jerr.pub.num_warnings != 0) {
-		if (parameters->verbose)
-			spdlog::warn("JPEG library reported {} of corrupt data warnings",
+		spdlog::warn("JPEG library reported {} of corrupt data warnings",
 					(int) jerr.pub.num_warnings);
 	}
 
@@ -616,8 +614,8 @@ static grk_image* jpegtoimage(const char *filename,
 }/* jpegtoimage() */
 
 bool JPEGFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
-	return imagetojpeg(image, filename.c_str(), compressionParam, verbose) ?
+		int32_t compressionParam) {
+	return imagetojpeg(image, filename.c_str(), compressionParam) ?
 			false : true;
 }
 grk_image* JPEGFormat::decode(const std::string &filename,

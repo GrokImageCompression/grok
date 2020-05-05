@@ -400,7 +400,7 @@ bool color_sycc_to_rgb(grk_image *img) {
 #if defined(GROK_HAVE_LIBLCMS)
 
 /*#define DEBUG_PROFILE*/
-void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
+void color_apply_icc_profile(grk_image *image, bool forceRGB) {
 	cmsColorSpaceSignature in_space;
 	cmsColorSpaceSignature out_space;
 	cmsUInt32Number intent = 0;
@@ -412,7 +412,6 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 	uint32_t prec, i, max_w, max_h;
 	GRK_COLOR_SPACE oldspace;
 	grk_image *new_image = nullptr;
-	(void) verbose;
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
 		return;
 	in_prof = cmsOpenProfileFromMem(image->icc_profile_buf,
@@ -693,7 +692,7 @@ void color_apply_icc_profile(grk_image *image, bool forceRGB, bool verbose) {
 }/* color_apply_icc_profile() */
 
 // transform LAB colour space to sRGB @ 16 bit precision
-void color_cielab_to_rgb(grk_image *image, bool verbose) {
+void color_cielab_to_rgb(grk_image *image) {
 	// sanity checks
 	if (image->numcomps == 0 || !grk::all_components_sanity_check(image))
 		return;
@@ -708,16 +707,14 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 			break;
 	}
 	if(i != image->numcomps){
-		if (verbose)
-			spdlog::warn("All components must have same precision and sign");
+		spdlog::warn("All components must have same precision and sign");
 		return;
 	}
 
 	auto row = (uint32_t*) image->icc_profile_buf;
 	uint32_t enumcs = row[0];
 	if (enumcs != 14) { /* CIELab */
-		if (verbose)
-			spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
+		spdlog::warn("{}:{}:\n\tenumCS {} not handled. Ignoring.", __FILE__,
 					__LINE__, enumcs);
 		return;
 	}
@@ -783,9 +780,8 @@ void color_cielab_to_rgb(grk_image *image, bool verbose) {
 		cmsWhitePointFromTemp(&WhitePoint, 4000);
 		break;
 	default:
-		if (verbose)
-			spdlog::warn(
-					"Unrecognized illuminant {} in CIELab colour space. Setting to default Daylight50",
+		spdlog::warn("Unrecognized illuminant {} in CIELab colour space. "
+				"Setting to default Daylight50",
 					illuminant);
 		illuminant = GRK_CIE_D50;
 		break;

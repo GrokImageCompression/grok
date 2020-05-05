@@ -499,8 +499,7 @@ static int imageToPNG(const grk_image *image, const char *filename,
 	memcpy(image_write->comps->data, image->comps[num_comp_select].data,
 			param_image_write.h * param_image_write.w * sizeof(int));
 	PNGFormat png;
-	png.encode(image_write, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT,
-			true);
+	png.encode(image_write, filename, GRK_DECOMPRESS_COMPRESSION_LEVEL_DEFAULT);
 
 	grk_image_destroy(image_write);
 
@@ -636,7 +635,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 		}
 		if (regionArg.isSet()) {
 			uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
-			if (grk::parse_DA_values(true, (char*) regionArg.getValue().c_str(),
+			if (grk::parse_DA_values((char*) regionArg.getValue().c_str(),
 					&x0, &y0, &x1, &y1) == EXIT_SUCCESS) {
 				param->region[0] = x0;
 				param->region[1] = y0;

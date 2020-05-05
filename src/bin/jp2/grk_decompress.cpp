@@ -400,8 +400,7 @@ int load_images(grk_dircnt *dirptr, char *imgdirpath) {
 /* -------------------------------------------------------------------------- */
 char get_next_file(std::string image_filename, grk_img_fol *img_fol,
 		grk_img_fol *out_fol, grk_decompress_parameters *parameters) {
-	if (parameters->verbose)
-		spdlog::info("File Number \"{}\"", image_filename.c_str());
+	spdlog::info("File Number \"{}\"", image_filename.c_str());
 	std::string infilename = img_fol->imgdirpath
 			+ std::string(get_path_separator()) + image_filename;
 	if (!grk::jpeg2000_file_format(infilename.c_str(),
@@ -702,9 +701,11 @@ int parse_cmdline_decoder(int argc, char **argv,
 			ROI_values[0] = '\0';
 			memcpy(ROI_values, decodeRegionArg.getValue().c_str(), size_optarg);
 			/*printf("ROI_values = %s [%d / %d]\n", ROI_values, strlen(ROI_values), size_optarg ); */
-			int rc = parse_DA_values(parameters->verbose, ROI_values,
-					&parameters->DA_x0, &parameters->DA_y0, &parameters->DA_x1,
-					&parameters->DA_y1);
+			int rc = parse_DA_values(ROI_values,
+									&parameters->DA_x0,
+									&parameters->DA_y0,
+									&parameters->DA_x1,
+									&parameters->DA_y1);
 			free(ROI_values);
 			if (rc)
 				return 1;
@@ -1549,8 +1550,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			failed = 1;
 			goto cleanup;
 		}
-		if (parameters->verbose)
-			spdlog::info("Tile {} was decoded.\n", parameters->tile_index);
+		spdlog::info("Tile {} was decoded.\n", parameters->tile_index);
 	}
 
 	cleanup: if (info->l_stream)
@@ -1636,7 +1636,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	if (image->xmp_buf) {
 		bool canStoreXMP = (info->decoder_parameters->cod_format == GRK_TIF_FMT
 				|| info->decoder_parameters->cod_format == GRK_PNG_FMT);
-		if (!canStoreXMP && parameters->verbose) {
+		if (!canStoreXMP) {
 			spdlog::warn(
 					" Input file {} contains XMP meta-data,\nbut the file format for output file {} does not support storage of this data.",
 					infile, outfile);
@@ -1646,7 +1646,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 	if (image->iptc_buf) {
 		bool canStoreIPTC_IIM = (info->decoder_parameters->cod_format
 				== GRK_TIF_FMT);
-		if (!canStoreIPTC_IIM && parameters->verbose) {
+		if (!canStoreIPTC_IIM) {
 			spdlog::warn(
 					" Input file {} contains legacy IPTC-IIM meta-data,\nbut the file format for output file {} does not support storage of this data.",
 					infile, outfile);
@@ -1656,13 +1656,13 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		if (isCIE) {
 			if (!canStoreCIE || info->decoder_parameters->force_rgb) {
 #if defined(GROK_HAVE_LIBLCMS)
-				if (parameters->verbose && !info->decoder_parameters->force_rgb)
+				if (!info->decoder_parameters->force_rgb)
 					spdlog::warn(
 							" Input file {} is in CIE colour space,\n"
 									"but the codec is unable to store this information in the output file {}.\n"
 									"The output image will therefore be converted to sRGB before saving.",
 							infile, outfile);
-				color_cielab_to_rgb(image, info->decoder_parameters->verbose);
+				color_cielab_to_rgb(image);
 #else
 			spdlog::warn(" Input file is stored in CIELab colour space, but lcms library is not linked, so codec can't convert Lab to RGB");
 #endif
@@ -1677,15 +1677,16 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 					|| info->decoder_parameters->cod_format == GRK_JPG_FMT);
 			if (info->decoder_parameters->force_rgb || !canStoreICC) {
 #if defined(GROK_HAVE_LIBLCMS)
-				if (parameters->verbose && !info->decoder_parameters->force_rgb)
+				if (!info->decoder_parameters->force_rgb)
 					spdlog::warn(
 							" Input file {} contains a color profile,\n"
-									"but the codec is unable to store this profile in the output file {}.\n"
-									"The profile will therefore be applied to the output image before saving.",
+							"but the codec is unable to store this profile"
+							" in the output file {}.\n"
+							"The profile will therefore be applied to the output"
+							" image before saving.",
 							infile, outfile);
 				color_apply_icc_profile(image,
-						info->decoder_parameters->force_rgb,
-						info->decoder_parameters->verbose);
+						info->decoder_parameters->force_rgb);
 #endif
 			}
 		}
@@ -1767,7 +1768,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PXM_FMT: /* PNM PGM PPM */
 		{
 			PNMFormat pnm(parameters->split_pnm);
-			if (!pnm.encode(image, outfile, 0, parameters->verbose)) {
+			if (!pnm.encode(image, outfile, 0)) {
 				spdlog::error("Outfile {} not generated", outfile);
 				failed = 1;
 			}
@@ -1777,7 +1778,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PGX_FMT: /* PGX */
 		{
 			PGXFormat pgx;
-			if (!pgx.encode(image, outfile, 0, parameters->verbose)) {
+			if (!pgx.encode(image, outfile, 0)) {
 				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
@@ -1797,8 +1798,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_TIF_FMT: /* TIFF */
 		{
 			TIFFFormat tif;
-			if (!tif.encode(image, outfile, parameters->compression,
-					parameters->verbose)) {
+			if (!tif.encode(image, outfile, parameters->compression)) {
 				spdlog::error("Outfile {} not generated", outfile);
 				goto cleanup;
 			}
@@ -1808,7 +1808,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_RAW_FMT: /* RAW */
 		{
 			RAWFormat raw(true);
-			if (raw.encode(image, outfile, 0, parameters->verbose)) {
+			if (raw.encode(image, outfile, 0)) {
 				spdlog::error(
 						"Error generating raw file. Outfile {} not generated",
 						outfile);
@@ -1820,7 +1820,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_RAWL_FMT: /* RAWL */
 		{
 			RAWFormat raw(false);
-			if (raw.encode(image, outfile, 0, parameters->verbose)) {
+			if (raw.encode(image, outfile, 0)) {
 				spdlog::error(
 						"Error generating rawl file. Outfile {} not generated",
 						outfile);
@@ -1831,7 +1831,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_TGA_FMT: /* TGA */
 		{
 			TGAFormat tga;
-			if (!tga.encode(image, outfile, 0, parameters->verbose)) {
+			if (!tga.encode(image, outfile, 0)) {
 				spdlog::error(
 						"Error generating tga file. Outfile {} not generated",
 						outfile);
@@ -1843,8 +1843,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_JPG_FMT: /* JPEG */
 		{
 			JPEGFormat jpeg;
-			if (!jpeg.encode(image, outfile, parameters->compressionLevel,
-					parameters->verbose)) {
+			if (!jpeg.encode(image, outfile, parameters->compressionLevel)) {
 				spdlog::error(
 						"Error generating jpeg file. Outfile {} not generated",
 						outfile);
@@ -1859,8 +1858,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 		case GRK_PNG_FMT: /* PNG */
 		{
 			PNGFormat png;
-			if (!png.encode(image, outfile, parameters->compressionLevel,
-					parameters->verbose)) {
+			if (!png.encode(image, outfile, parameters->compressionLevel)) {
 				spdlog::error(
 						"Error generating png file. Outfile {} not generated",
 						outfile);

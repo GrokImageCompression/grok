@@ -312,12 +312,12 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 		}
 	}
 
-	if (params->verbose && png_get_valid(local_info.png, info, PNG_INFO_gAMA)) {
+	if (png_get_valid(local_info.png, info, PNG_INFO_gAMA)) {
 		spdlog::warn(
 				"input PNG contains gamma value; this will not be stored in compressed image.");
 	}
 
-	if (params->verbose && png_get_valid(local_info.png, info, PNG_INFO_cHRM)) {
+	if (png_get_valid(local_info.png, info, PNG_INFO_cHRM)) {
 		spdlog::warn(
 				"input PNG contains chroma information which will not be stored in compressed image.");
 	}
@@ -364,10 +364,8 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 			local_info.image->capture_resolution[0] = resx;
 			local_info.image->capture_resolution[1] = resy;
 		} else {
-			if (params->verbose) {
-				spdlog::warn(
-						"input PNG contains resolution information in unknown units. Ignoring");
-			}
+			spdlog::warn("input PNG contains resolution information"
+					" in unknown units. Ignoring");
 		}
 	}
 
@@ -431,8 +429,7 @@ struct imageToPngInfo {
 };
 
 static int imagetopng(grk_image *image, const char *write_idf,
-		int32_t compressionLevel, bool verbose) {
-	(void) verbose;
+		int32_t compressionLevel) {
 	imageToPngInfo local_info;
 	local_info.writeToStdout = grk::useStdio(write_idf);
 	png_infop info = nullptr;
@@ -448,8 +445,7 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	nr_comp = (int) image->numcomps;
 
 	if (nr_comp > 4) {
-		if (verbose)
-			spdlog::warn("imagetopng: number of components {} is "
+		spdlog::warn("imagetopng: number of components {} is "
 					"greater than 4. Truncating to 4", nr_comp);
 		nr_comp = 4;
 	}
@@ -728,9 +724,8 @@ static int imagetopng(grk_image *image, const char *write_idf,
 }/* imagetopng() */
 
 bool PNGFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
-	(void) verbose;
-	return imagetopng(image, filename.c_str(), compressionParam, verbose) ? false : true;
+		int32_t compressionParam) {
+	return imagetopng(image, filename.c_str(), compressionParam) ? false : true;
 }
 grk_image* PNGFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {

@@ -428,7 +428,7 @@ static grk_image* tgatoimage(const char *filename,
 	return image;
 }
 
-static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
+static int imagetotga(grk_image *image, const char *outfile) {
 	uint32_t width = 0, height = 0, bpp = 0, x = 0, y = 0;
 	bool write_alpha = false;
 	int adjustR = 0, adjustG = 0, adjustB = 0, fails = 1;
@@ -438,7 +438,6 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 	float scale = 0;
 	FILE *fdest = nullptr;
 	size_t res = 0;
-	(void)verbose;
 
 	fdest = fopen(outfile, "wb");
 	if (!fdest) {
@@ -548,10 +547,9 @@ static int imagetotga(grk_image *image, const char *outfile, bool verbose) {
 }
 
 bool TGAFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
+		int32_t compressionParam) {
 	(void) compressionParam;
-	(void) verbose;
-	return imagetotga(image, filename.c_str(), verbose) ? false : true;
+	return imagetotga(image, filename.c_str()) ? false : true;
 }
 grk_image* TGAFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {

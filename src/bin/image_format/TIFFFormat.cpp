@@ -1465,8 +1465,7 @@ static grk_image* tiftoimage(const char *filename,
 	// 2. initialize image components and signed/unsigned
 	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
-		if (parameters->verbose)
-			spdlog::warn("Input image bitdepth is {} bits\n"
+		spdlog::warn("Input image bitdepth is {} bits\n"
 					"TIF conversion has automatically rescaled to 12-bits\n"
 					"to comply with cinema profiles.", tiBps);
 	} else {
@@ -1510,35 +1509,33 @@ static grk_image* tiftoimage(const char *filename,
 	}
 	if (tiPhoto == PHOTOMETRIC_CIELAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
-			if (parameters->verbose)
-				spdlog::warn(
-						"Input image is in CIE colour space but sample format is unsigned int");
+			spdlog::warn("Input image is in CIE colour space"
+					" but sample format is unsigned int");
 		}
 		isSigned = true;
 	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
-			if (parameters->verbose)
-				spdlog::warn(
-						"Input image is in ICC CIE colour space but sample format is signed int");
+			spdlog::warn("Input image is in ICC CIE colour"
+					" space but sample format is signed int");
 		}
 		isSigned = false;
 	}
 
 	if (isSigned) {
 		if (tiPhoto == PHOTOMETRIC_MINISWHITE) {
-			spdlog::error(
-					"tiftoimage: signed image with MINISWHITE format is not supported");
+			spdlog::error("tiftoimage: signed image with "
+					"MINISWHITE format is not supported");
 			goto cleanup;
 		}
 		if (tiBps != 8 && tiBps != 16){
-			spdlog::error(
-					"tiftoimage: signed image with bit depth {} is not supported", tiBps);
+			spdlog::error("tiftoimage: signed image with bit"
+					" depth {} is not supported", tiBps);
 			goto cleanup;
 		}
 	}
 	if (numcomps > maxNumComponents){
-		spdlog::error(
-				"tiftoimage: number of components {} must be <= %d", numcomps,maxNumComponents);
+		spdlog::error("tiftoimage: number of components "
+				"{} must be <= %d", numcomps,maxNumComponents);
 		goto cleanup;
 	}
 
@@ -1581,9 +1578,7 @@ static grk_image* tiftoimage(const char *filename,
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
 				if (found_assocalpha){
-					if (parameters->verbose)
-						spdlog::warn(
-								"Found more than one associated alpha channel");
+					spdlog::warn("Found more than one associated alpha channel");
 				}
 				alpha_count++;
 				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
@@ -1695,7 +1690,7 @@ static grk_image* tiftoimage(const char *filename,
 
 
 static int imagetotif(grk_image *image, const char *outfile,
-		uint32_t compression, bool verbose) {
+		uint32_t compression) {
 	int tiPhoto;
 	TIFF *tif = nullptr;
 	tdata_t buf = nullptr;
@@ -1726,8 +1721,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 		}
 		tiPhoto = PHOTOMETRIC_SEPARATED;
 		if (numcomps > 4U) {
-			if (verbose)
-				spdlog::warn("imagetotif: number of components {} is "
+			spdlog::warn("imagetotif: number of components {} is "
 						"greater than 4. Truncating to 4", numcomps);
 			numcomps = 4U;
 		}
@@ -1831,9 +1825,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
 	if (numExtraChannels && ((size_t)firstExtraChannel + numExtraChannels >= numcomps)) {
-		if (verbose)
-			spdlog::warn(
-					"TIFF requires that non-colour channels occur as "
+		spdlog::warn("TIFF requires that non-colour channels occur as "
 					"last channels in image. "
 					"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
 		numExtraChannels = 0;
@@ -1963,8 +1955,8 @@ static int imagetotif(grk_image *image, const char *outfile,
 }/* imagetotif() */
 
 bool TIFFFormat::encode(grk_image *image, const std::string &filename,
-		int32_t compressionParam, bool verbose) {
-	return imagetotif(image, filename.c_str(), compressionParam, verbose) ? false : true;
+		int32_t compressionParam) {
+	return imagetotif(image, filename.c_str(), compressionParam) ? false : true;
 }
 grk_image* TIFFFormat::decode(const std::string &filename,
 		grk_cparameters *parameters) {
