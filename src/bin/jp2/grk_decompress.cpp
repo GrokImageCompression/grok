@@ -1391,17 +1391,29 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				fseek(in, 0L, SEEK_END);
 				long int sz = ftell(in);
 				if (sz == -1){
+					spdlog::error("grk_decompress: ftell error from file {}", sz, infile);
 					failed = 1;
 					goto cleanup;
 				}
 				rewind(in);
 				auto memoryBuffer = new uint8_t[(size_t)sz];
 				size_t ret = fread(memoryBuffer, 1, (size_t)sz, in);
-				fclose(in);
+				if (ret != (size_t)sz){
+					spdlog::error("grk_decompress: error reading {} bytes from file {}", sz, infile);
+					failed = 1;
+					goto cleanup;
+				}
+				int rc = fclose(in);
+				if (rc){
+					spdlog::error("grk_decompress: error closing file {}", infile);
+					failed = 1;
+					goto cleanup;
+				}
 				if (ret == (size_t)sz)
 					info->l_stream = grk_stream_create_mem_stream(memoryBuffer,
 							(size_t)sz, true, true);
 				else {
+					spdlog::error("grk_decompress: failed to create memory stream for file {}", infile);
 					failed = 1;
 					goto cleanup;
 				}
@@ -1409,11 +1421,12 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				failed = 1;
 				goto cleanup;
 			}
+		} else {
+			info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
 		}
-		info->l_stream = grk_stream_create_mapped_file_read_stream(infile);
 	}
 	if (!info->l_stream) {
-		spdlog::error("failed to create the stream from the file {}", infile);
+		spdlog::error("grk_decompress: failed to create the stream from the file {}", infile);
 		failed = 1;
 		goto cleanup;
 	}
@@ -1433,6 +1446,7 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 			break;
 		}
 		default:
+			spdlog::error("grk_decompress: unknown decode format {}", decod_format);
 			failed = 1;
 			goto cleanup;
 		}
@@ -1483,14 +1497,14 @@ int pre_decode(grk_plugin_decode_callback_info *info) {
 				goto cleanup;
 			}
 			if (!grk::safe_fclose(fp)) {
+				spdlog::error("grk_decompress: error closing file {}",infile);
 				failed = 1;
 				goto cleanup;
 			}
 		}
 
-		if (info->init_decoders_func) {
+		if (info->init_decoders_func)
 			return info->init_decoders_func(&info->header_info, info->image);
-		}
 	}
 
 	// header-only decompress
