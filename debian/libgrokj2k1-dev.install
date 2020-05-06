@@ -1,0 +1,5 @@
+usr/lib/*/libgrokj2k.so
+usr/lib/*/cmake/grok-7.1/*.cmake
+usr/lib/*/pkgconfig/*.pc
+usr/include/grok-7.1
+ 

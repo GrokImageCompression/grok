@@ -3,12 +3,12 @@ Priority: optional
 Maintainer: Aaron Boxer <boxerab@gmail.com>
 Homepage: https://github.com/GrokImageCompression/grok
 Build-Depends: cmake (>= 3.16.0),
-               debhelper (>= 9),
-               debhelper-compat (= 12),
+               debhelper-compat (= 13),
                doxygen,
                help2man,
                liblcms2-dev,
                libpng-dev,
+               libzstd-dev,
                libtiff-dev,
                libturbojpeg0-dev,
                zlib1g-dev
