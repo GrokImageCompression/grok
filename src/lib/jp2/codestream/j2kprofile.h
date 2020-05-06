@@ -64,7 +64,7 @@ namespace grk {
 
 class J2KProfile {
 public:
-	static uint32_t initialise_4K_poc(grk_poc *POC, uint32_t numres);
+	static void initialise_4K_poc(grk_poc *POC, uint32_t numres);
 	static void set_cinema_parameters(grk_cparameters *parameters, grk_image *image);
 	static bool is_cinema_compliant(grk_image *image, uint16_t rsiz);
 	static void set_imf_parameters(grk_cparameters *parameters, grk_image *image);

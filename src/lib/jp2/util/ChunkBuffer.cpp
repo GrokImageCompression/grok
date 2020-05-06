@@ -40,17 +40,11 @@ void ChunkBuffer::increment() {
 }
 
 size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
-	size_t bytes_in_current_chunk;
-	size_t bytes_to_read;
-	size_t total_bytes_read;
-	size_t bytes_left_to_read;
-	size_t bytes_remaining_in_file;
-
 	if (p_buffer == nullptr || nb_bytes == 0)
 		return 0;
 
 	/*don't try to read more bytes than are available */
-	bytes_remaining_in_file = data_len - (size_t) get_global_offset();
+	size_t bytes_remaining_in_file = data_len - (size_t) get_global_offset();
 	if (nb_bytes > bytes_remaining_in_file) {
 #ifdef DEBUG_CHUNK_BUF
         GROK_WARN("attempt to read past end of chunk buffer");
@@ -58,13 +52,13 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 		nb_bytes = bytes_remaining_in_file;
 	}
 
-	total_bytes_read = 0;
-	bytes_left_to_read = nb_bytes;
+	size_t total_bytes_read = 0;
+	size_t bytes_left_to_read = nb_bytes;
 	while (bytes_left_to_read > 0 && cur_chunk_id < chunks.size()) {
 		auto cur_chunk = chunks[cur_chunk_id];
-		bytes_in_current_chunk = (cur_chunk->len - (size_t) cur_chunk->offset);
+		size_t bytes_in_current_chunk = (cur_chunk->len - (size_t) cur_chunk->offset);
 
-		bytes_to_read =
+		size_t bytes_to_read =
 				(bytes_left_to_read < bytes_in_current_chunk) ?
 						bytes_left_to_read : bytes_in_current_chunk;
 
@@ -77,7 +71,7 @@ size_t ChunkBuffer::read(void *p_buffer, size_t nb_bytes) {
 		bytes_left_to_read -= bytes_to_read;
 	}
 
-	return total_bytes_read ? total_bytes_read : (size_t) -1;
+	return total_bytes_read;
 }
 
 size_t ChunkBuffer::skip(size_t nb_bytes) {
@@ -112,12 +106,14 @@ size_t ChunkBuffer::skip(size_t nb_bytes) {
 			return nb_bytes;
 		}
 	}
+
 	return nb_bytes;
 }
 
 grk_buf* ChunkBuffer::add_chunk(uint8_t *buf, size_t len, bool ownsData) {
 	auto new_chunk = new grk_buf(buf, len, ownsData);
 	add_chunk(new_chunk);
+
 	return new_chunk;
 }
 
@@ -130,11 +126,8 @@ void ChunkBuffer::add_chunk(grk_buf *chunk) {
 }
 
 void ChunkBuffer::cleanup(void) {
-	for (size_t i = 0; i < chunks.size(); ++i) {
-		grk_buf *chunk = chunks[i];
-		if (chunk)
-			delete chunk;
-	}
+	for (size_t i = 0; i < chunks.size(); ++i)
+		delete chunks[i];
 	chunks.clear();
 }
 
@@ -150,10 +143,8 @@ bool ChunkBuffer::push_back(uint8_t *buf, size_t len) {
 	if (!buf || !len)
 		return false;
 	auto chunk = add_chunk(buf, len, false);
-	if (!chunk)
-		return false;
 
-	return true;
+	return (chunk != nullptr);
 }
 
 bool ChunkBuffer::alloc_and_push_back(size_t len) {
@@ -189,8 +180,7 @@ bool ChunkBuffer::zero_copy_read(uint8_t **ptr, size_t chunk_len) {
 
 	if ((size_t) cur_chunk->offset + chunk_len <= cur_chunk->len) {
 		*ptr = cur_chunk->buf + cur_chunk->offset;
-		read(nullptr, chunk_len);
-		return true;
+		return (read(nullptr, chunk_len) == chunk_len);
 	}
 
 	return false;

@@ -83,33 +83,30 @@ int J2KProfile::get_imf_max_NL(grk_cparameters *parameters, grk_image *image) {
 	case GRK_PROFILE_IMF_8K:
 		return 7;
 	case GRK_PROFILE_IMF_2K_R: {
-		if (XTsiz >= 2048) {
+		if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	case GRK_PROFILE_IMF_4K_R: {
-		if (XTsiz >= 4096) {
+		if (XTsiz >= 4096)
 			return 6;
-		} else if (XTsiz >= 2048) {
+		else if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	case GRK_PROFILE_IMF_8K_R: {
-		if (XTsiz >= 8192) {
+		if (XTsiz >= 8192)
 			return 7;
-		} else if (XTsiz >= 4096) {
+		else if (XTsiz >= 4096)
 			return 6;
-		} else if (XTsiz >= 2048) {
+		else if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	default:
@@ -148,9 +145,8 @@ void J2KProfile::set_imf_parameters(grk_cparameters *parameters,
 	if (parameters->numresolution == GRK_COMP_PARAM_DEFAULT_NUMRESOLUTION
 			&& image->x0 == 0 && image->y0 == 0) {
 		const int max_NL = J2KProfile::get_imf_max_NL(parameters, image);
-		if (max_NL >= 0 && parameters->numresolution > (uint32_t) max_NL) {
+		if (max_NL >= 0 && parameters->numresolution > (uint32_t) max_NL)
 			parameters->numresolution = (uint32_t) (max_NL + 1);
-		}
 
 		/* Note: below is generic logic */
 		if (!parameters->tile_size_on) {
@@ -192,7 +188,6 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0)
 		return false;
-	uint32_t i;
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 	const uint16_t mainlevel = GRK_GET_LEVEL(rsiz);
@@ -200,7 +195,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	const uint32_t NL = (uint32_t) (parameters->numresolution - 1);
 	const uint32_t XTsiz =
 			parameters->tile_size_on ?
-					(uint32_t) parameters->t_width : image->x1;
+					parameters->t_width : image->x1;
 	bool ret = true;
 
 	/* Validate mainlevel */
@@ -254,7 +249,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	if (parameters->tile_size_on) {
 		if (profile == GRK_PROFILE_IMF_2K || profile == GRK_PROFILE_IMF_4K
 				|| profile == GRK_PROFILE_IMF_8K) {
-			if ((uint32_t) parameters->t_width < image->x1
+			if (parameters->t_width < image->x1
 					|| (uint32_t) parameters->t_height < image->y1) {
 				GROK_WARN(
 						"IMF 2K/4K/8K single tile profiles require tile to be greater or equal to image size.\n"
@@ -293,7 +288,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	/* Bitdepth */
-	for (i = 0; i < image->numcomps; i++) {
+	for (uint32_t i = 0; i < image->numcomps; i++) {
 		if (!(image->comps[i].prec >= 8 && image->comps[i].prec <= 16)
 				|| (image->comps[i].sgnd)) {
 			char signed_str[] = "signed";
@@ -309,7 +304,7 @@ bool J2KProfile::is_imf_compliant(grk_cparameters *parameters,
 	}
 
 	/* Sub-sampling */
-	for (i = 0; i < image->numcomps; i++) {
+	for (uint32_t i = 0; i < image->numcomps; i++) {
 		if (i == 0 && image->comps[i].dx != 1) {
 			GROK_WARN(
 					"IMF profiles require XRSiz1 == 1. Here it is set to %d.\n"
@@ -606,33 +601,30 @@ int J2KProfile::get_broadcast_max_NL(grk_cparameters *parameters,
 	case GRK_PROFILE_IMF_8K:
 		return 7;
 	case GRK_PROFILE_IMF_2K_R: {
-		if (XTsiz >= 2048) {
+		if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	case GRK_PROFILE_IMF_4K_R: {
-		if (XTsiz >= 4096) {
+		if (XTsiz >= 4096)
 			return 6;
-		} else if (XTsiz >= 2048) {
+		else if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	case GRK_PROFILE_IMF_8K_R: {
-		if (XTsiz >= 8192) {
+		if (XTsiz >= 8192)
 			return 7;
-		} else if (XTsiz >= 4096) {
+		else if (XTsiz >= 4096)
 			return 6;
-		} else if (XTsiz >= 2048) {
+		else if (XTsiz >= 2048)
 			return 5;
-		} else if (XTsiz >= 1024) {
+		else if (XTsiz >= 1024)
 			return 4;
-		}
 		break;
 	}
 	default:
@@ -687,7 +679,6 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 	assert(parameters->numresolution > 0);
 	if (parameters->numresolution == 0 || image->numcomps == 0)
 		return false;
-	uint32_t i;
 	const uint16_t rsiz = parameters->rsiz;
 	const uint16_t profile = GRK_GET_IMF_OR_BROADCAST_PROFILE(rsiz);
 	const uint16_t mainlevel = GRK_GET_LEVEL(rsiz);
@@ -755,7 +746,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 	}
 
 	/* Bitdepth */
-	for (i = 0; i < image->numcomps; i++) {
+	for (uint32_t i = 0; i < image->numcomps; i++) {
 		if (!(image->comps[i].prec >= 8 && image->comps[i].prec <= 12)
 				|| (image->comps[i].sgnd)) {
 			char signed_str[] = "signed";
@@ -787,7 +778,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
 			ret = false;
 		}
 	}
-	for (i = 0; i < min(image->numcomps, 4U); i++) {
+	for (uint32_t i = 0; i < min(image->numcomps, 4U); i++) {
 		if (i == 0 || i == 3) {
 			if (image->comps[i].dx != 1) {
 				GROK_WARN(
@@ -926,7 +917,7 @@ bool J2KProfile::is_broadcast_compliant(grk_cparameters *parameters,
  * Cinema Profile
  *****************/
 
-uint32_t J2KProfile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
+void J2KProfile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
 	assert(numres > 0);
 	POC[0].tile = 1;
 	POC[0].resno0 = 0;
@@ -942,14 +933,10 @@ uint32_t J2KProfile::initialise_4K_poc(grk_poc *POC, uint32_t numres) {
 	POC[1].resno1 = numres;
 	POC[1].compno1 = 3;
 	POC[1].prg1 = GRK_CPRL;
-	return 2;
 }
 
 void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 		grk_image *image) {
-	/* Configure cinema parameters */
-	uint32_t i;
-
 	/* No tiling */
 	parameters->tile_size_on = false;
 	parameters->t_width = 1;
@@ -1032,7 +1019,7 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 	/* Precincts */
 	parameters->csty |= J2K_CP_CSTY_PRT;
 	parameters->res_spec = parameters->numresolution - 1;
-	for (i = 0; i < parameters->res_spec; i++) {
+	for (uint32_t i = 0; i < parameters->res_spec; i++) {
 		parameters->prcw_init[i] = 256;
 		parameters->prch_init[i] = 256;
 	}
@@ -1042,8 +1029,9 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 
 	/* Progression order changes for 4K, disallowed for 2K */
 	if (parameters->rsiz == GRK_PROFILE_CINEMA_4K) {
-		parameters->numpocs = J2KProfile::initialise_4K_poc(parameters->POC,
+		 J2KProfile::initialise_4K_poc(parameters->POC,
 				parameters->numresolution);
+		 parameters->numpocs = 2;
 	} else {
 		parameters->numpocs = 0;
 	}
@@ -1088,8 +1076,6 @@ void J2KProfile::set_cinema_parameters(grk_cparameters *parameters,
 }
 
 bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
-	uint32_t i;
-
 	/* Number of components */
 	if (image->numcomps != 3) {
 		GROK_WARN("JPEG 2000 profile 3 (2k digital cinema) requires:\n"
@@ -1101,7 +1087,7 @@ bool J2KProfile::is_cinema_compliant(grk_image *image, uint16_t rsiz) {
 	}
 
 	/* Bitdepth */
-	for (i = 0; i < image->numcomps; i++) {
+	for (uint32_t i = 0; i < image->numcomps; i++) {
 		if ((image->comps[i].prec != 12) | (image->comps[i].sgnd)) {
 			char signed_str[] = "signed";
 			char unsigned_str[] = "unsigned";

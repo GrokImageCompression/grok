@@ -229,9 +229,8 @@ bool BufferedStream::write_64(uint64_t value) {
 }
 template<typename TYPE> bool BufferedStream::write(TYPE value,
 		uint8_t numBytes) {
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
+	if (m_status & GROK_STREAM_STATUS_ERROR)
 		return false;
-	}
 	if (numBytes > sizeof(TYPE))
 		return false;
 
@@ -259,15 +258,16 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 	if (!p_size || !p_buffer)
 		return 0;
 
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
+	if (m_status & GROK_STREAM_STATUS_ERROR)
 		return 0;
-	}
+
 	// handle case where there is no internal buffer (buffer stream)
 	if (isMemStream()) {
 		/* we should do an actual write on the media */
 		auto l_current_write_nb_bytes = m_write_fn((uint8_t*) p_buffer, p_size,
 				m_user_data);
 		write_increment(l_current_write_nb_bytes);
+
 		return l_current_write_nb_bytes;
 	}
 	size_t l_write_nb_bytes = 0;
@@ -287,16 +287,15 @@ size_t BufferedStream::write_bytes(const uint8_t *p_buffer, size_t p_size) {
 			l_write_nb_bytes += l_remaining_bytes;
 			memcpy(m_buf->curr_ptr(), p_buffer, l_remaining_bytes);
 			m_buf->offset = 0;
-			;
 			m_buffered_bytes += l_remaining_bytes;
 			m_stream_offset += l_remaining_bytes;
 			p_buffer += l_remaining_bytes;
 			p_size -= l_remaining_bytes;
 		}
-		if (!flush()) {
+		if (!flush())
 			return 0;
-		}
 	}
+
 	return l_write_nb_bytes;
 }
 void BufferedStream::write_increment(size_t p_size) {
@@ -367,16 +366,15 @@ bool BufferedStream::skip(int64_t p_size) {
 	assert(p_size >= 0);
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		return read_skip(p_size);
-	else {
+	else
 		return write_skip(p_size);
-	}
 }
 // absolute seek
 bool BufferedStream::read_seek(uint64_t offset) {
 
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
+	if (m_status & GROK_STREAM_STATUS_ERROR)
 		return false;
-	}
+
 	// 1. try to seek in buffer
 	if (!(m_status & GROK_STREAM_STATUS_END)) {
 		if ((offset >= m_stream_offset
@@ -393,6 +391,7 @@ bool BufferedStream::read_seek(uint64_t offset) {
 			m_buffered_bytes =
 					(size_t) ((int64_t) m_buffered_bytes - increment);
 			assert(m_buffered_bytes <= m_read_bytes_seekable);
+
 			return true;
 		}
 	}
@@ -412,9 +411,9 @@ bool BufferedStream::read_seek(uint64_t offset) {
 
 //absolute seek in stream
 bool BufferedStream::write_seek(uint64_t offset) {
-	if (m_status & GROK_STREAM_STATUS_ERROR) {
+	if (m_status & GROK_STREAM_STATUS_ERROR)
 		return false;
-	}
+
 	if (!flush()) {
 		m_status |= GROK_STREAM_STATUS_ERROR;
 		return false;
@@ -433,9 +432,8 @@ bool BufferedStream::write_seek(uint64_t offset) {
 bool BufferedStream::seek(uint64_t offset) {
 	if (m_status & GROK_STREAM_STATUS_INPUT)
 		return read_seek(offset);
-	else {
+	else
 		return write_seek(offset);
-	}
 }
 bool BufferedStream::has_seek(void) {
 	return m_seek_fn != nullptr;
@@ -475,9 +473,8 @@ template<typename TYPE> void grk_read(const uint8_t *p_buffer, TYPE *value,
 	uint8_t *l_data_ptr = ((uint8_t*) value) + nb_bytes - 1;
 	assert(nb_bytes > 0 && nb_bytes <= sizeof(TYPE));
 	*value = 0;
-	for (uint32_t i = 0; i < nb_bytes; ++i) {
+	for (uint32_t i = 0; i < nb_bytes; ++i)
 		*(l_data_ptr--) = *(p_buffer++);
-	}
 #endif
 }
 
@@ -509,34 +506,30 @@ void GRK_CALLCONV grk_stream_destroy(grk_stream *stream) {
 void GRK_CALLCONV grk_stream_set_read_function(grk_stream *stream,
 		grk_stream_read_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT))) {
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
-	}
 	streamImpl->m_read_fn = p_function;
 }
 void GRK_CALLCONV grk_stream_set_zero_copy_read_function(grk_stream *stream,
 		grk_stream_zero_copy_read_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT))) {
+	if ((!streamImpl) || (!(streamImpl->m_status & GROK_STREAM_STATUS_INPUT)))
 		return;
-	}
 	streamImpl->m_zero_copy_read_fn = p_function;
 }
 void GRK_CALLCONV grk_stream_set_seek_function(grk_stream *stream,
 		grk_stream_seek_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if (!streamImpl) {
-		return;
-	}
-	streamImpl->m_seek_fn = p_function;
+	if (streamImpl)
+		streamImpl->m_seek_fn = p_function;
 }
 void GRK_CALLCONV grk_stream_set_write_function(grk_stream *stream,
 		grk_stream_write_fn p_function) {
 	auto streamImpl = (grk::BufferedStream*) stream;
 	if ((!streamImpl)
-			|| (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT))) {
+			|| (!(streamImpl->m_status & GROK_STREAM_STATUS_OUTPUT)))
 		return;
-	}
+
 	streamImpl->m_write_fn = p_function;
 }
 
@@ -551,7 +544,6 @@ void GRK_CALLCONV grk_stream_set_user_data(grk_stream *stream, void *p_data,
 void GRK_CALLCONV grk_stream_set_user_data_length(grk_stream *stream,
 		uint64_t data_length) {
 	auto streamImpl = (grk::BufferedStream*) stream;
-	if (!streamImpl)
-		return;
-	streamImpl->m_user_data_length = data_length;
+	if (streamImpl)
+		streamImpl->m_user_data_length = data_length;
 }
