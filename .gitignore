@@ -2,14 +2,14 @@
 build
 obj-x86_64-linux-gnu
 debian/tmp
-
-obj-x86_64-linux-gnu
-debian/tmp
 debian/.debhelper
 debian/debhelper-build-stamp
-debian/grokj2k*
-debian/libgrokj2k*
 debian/files
+debian/libgrokj2k*/
+debian/libgrokj2k*-dev/
+debian/grokj2k-tools/
+*grokj2k*.substvars
+
 
 #Ignore thumbnails created by Windows
 Thumbs.db
