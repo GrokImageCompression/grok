@@ -26,19 +26,9 @@ pkg_lib = libgrokj2k$(SOVERSION)
 pkg_dev = libgrokj2k$(SOVERSION)-dev
 pkg_bin = grokj2k-tools
 
-override_dh_install:
+override_dh_missing:
 	# annoying cmake-fatal-error export stuff:
 	sed -i -e "s/FATAL_ERROR/STATUS/g" debian/tmp/usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-7.1/GrokTargets*.cmake
-	# install grk_dump/compress/decompress:
-	dh_install -p$(pkg_bin) --autodest usr/bin/*
-	dh_install -p$(pkg_bin) --autodest usr/share/man/man1/*.1
-	# lib
-	dh_install -p$(pkg_lib) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrokj2k.so.*
-	# dev:
-	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/libgrokj2k.so
-	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/cmake/grok-7.1/*.cmake
-	dh_install -p$(pkg_dev) --autodest usr/lib/$(DEB_HOST_MULTIARCH)/pkgconfig/*.pc
-	dh_install -p$(pkg_dev) --autodest usr/include/grok-7.1
 	dh_missing --list-missing
 
 VER_FULL = $(shell dpkg-parsechangelog -Sversion | cut -d - -f 1)
