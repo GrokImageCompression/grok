@@ -1697,6 +1697,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	cvtFrom32 cvt32sToTif = nullptr;
 	bool success = true;
 	int32_t firstExtraChannel = -1;
+	uint32_t num_colour_channels = 0;
 	size_t numExtraChannels = 0;
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
@@ -1723,11 +1724,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 		}
 	} else if (numcomps > 2U) {
 		switch (image->color_space){
-		case GRK_CLRSPC_UNKNOWN:
-		case GRK_CLRSPC_UNSPECIFIED:
-		case GRK_CLRSPC_SRGB:
-			tiPhoto = PHOTOMETRIC_RGB;
-			break;
 		case GRK_CLRSPC_EYCC:
 		case GRK_CLRSPC_SYCC:
 			tiPhoto = PHOTOMETRIC_YCBCR;
@@ -1812,19 +1808,22 @@ static int imagetotif(grk_image *image, const char *outfile,
 	}
 	// extra channels
 	for (uint32_t i = 0U; i < numcomps; ++i) {
-		if (image->comps[i].type) {
+		if (image->comps[i].type != GRK_COMPONENT_TYPE_COLOUR) {
 			if (firstExtraChannel == -1)
-				firstExtraChannel = 0;
+				firstExtraChannel = i;
 			numExtraChannels++;
 		}
 		planes[i] = image->comps[i].data;
 	}
 	// TIFF assumes that alpha channels occur as last channels in image.
-	if (numExtraChannels && ((size_t)firstExtraChannel + numExtraChannels >= numcomps)) {
-		spdlog::warn("TIFF requires that non-colour channels occur as "
-					"last channels in image. "
-					"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
-		numExtraChannels = 0;
+	if (numExtraChannels > 0) {
+		num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
+		if ((uint32_t)firstExtraChannel < num_colour_channels) {
+			spdlog::warn("TIFF requires that non-colour channels occur as "
+						"last channels in image. "
+						"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
+			numExtraChannels = 0;
+		}
 	}
 	buffer32s = (int32_t*) malloc((size_t) width * numcomps * sizeof(int32_t));
 	if (buffer32s == nullptr)
