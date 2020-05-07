@@ -1589,8 +1589,10 @@ static grk_image* tiftoimage(const char *filename,
 				comp->type = GRK_COMPONENT_TYPE_OPACITY;
 			}
 			else {
-				// some older mono or RGB images may have alpha channel stored as EXTRASAMPLE_UNSPECIFIED
-				if (numcomps == 2 || numcomps == 4) {
+				// some older mono or RGB images may have alpha channel
+				// stored as EXTRASAMPLE_UNSPECIFIED
+				if ((color_space == GRK_CLRSPC_GRAY && numcomps == 2) ||
+						(color_space == GRK_CLRSPC_SRGB && numcomps == 4) ) {
 					alpha_count++;
 					comp->type = GRK_COMPONENT_TYPE_OPACITY;
 				}
