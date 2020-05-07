@@ -1549,9 +1549,9 @@ static grk_image* tiftoimage(const char *filename,
 		cmptparm[j].h = h;
 	}
 	image = grk_image_create(numcomps, &cmptparm[0], color_space);
-	if (!image) {
+	if (!image)
 		goto cleanup;
-	}
+
 	/* set image offset and reference grid */
 	image->x0 = parameters->image_offset_x0;
 	image->x1 =	image->x0 + (w - 1) * 1 + 1;
@@ -1656,23 +1656,17 @@ static grk_image* tiftoimage(const char *filename,
 		image->xmp_buf = grk_buffer_new(xmp_len);
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
 	}
-	success = true;
-
 	// 9. read pixel data
 	if (isSigned) {
-		bool rc = false;
 		if (tiBps == 8)
-			rc =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
+			success =  readTiffPixelsSigned<int8_t>(tif, image->comps, numcomps, tiSpp,
 						tiPC);
 		else
-			rc =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
+			success =  readTiffPixelsSigned<int16_t>(tif, image->comps, numcomps, tiSpp,
 						tiPC);
-
-		success = success && rc;
 	}
 	else {
-		success = success
-				&& readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp,
+		success = readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp,
 						tiPC, tiPhoto);
 	}
 	cleanup: if (tif)
