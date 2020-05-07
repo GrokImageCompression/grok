@@ -51,6 +51,8 @@
 #define GROK_SKIP_POISON
 #include "grok_includes.h"
 
+const size_t default_align = 64;
+
 // OSX is missing C++11 aligned_alloc (stdlib.h version)
 #if defined(__APPLE__)
 #undef GROK_HAVE_ALIGNED_ALLOC
@@ -230,10 +232,10 @@ void* grk_calloc(size_t num, size_t size) {
 }
 
 void* grk_aligned_malloc(size_t size) {
-	return grk_aligned_alloc_n(32U, size);
+	return grk_aligned_alloc_n(default_align, size);
 }
 void* grk_aligned_realloc(void *ptr, size_t size) {
-	return grk_aligned_realloc_n(ptr, 32U, size);
+	return grk_aligned_realloc_n(ptr, default_align, size);
 }
 
 
