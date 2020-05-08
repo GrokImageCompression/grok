@@ -108,7 +108,8 @@ void tiffSetErrorAndWarningHandlers(bool verbose) {
 }
 
 static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto);
+		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
+		uint32_t chroma_subsample_x, uint32_t chroma_subsample_y);
 
 /* -->> -->> -->> -->>
 
@@ -1192,8 +1193,14 @@ static void set_resolution(double *res, float resx, float resy, short resUnit) {
 
 const size_t maxNumComponents = 10;
 
-static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
-		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto) {
+static bool readTiffPixelsUnsigned(TIFF *tif,
+									grk_image_comp *comps,
+									uint32_t numcomps,
+									uint16_t tiSpp,
+									uint16_t tiPC,
+									uint16_t tiPhoto,
+									uint32_t chroma_subsample_x,
+									uint32_t chroma_subsample_y) {
 	if (!tif)
 		return false;
 
@@ -1208,6 +1215,9 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 	tsize_t strip_size;
 	uint32_t currentPlane = 0;
 	int32_t *buffer32s = nullptr;
+	bool subsampled = chroma_subsample_x != 1 || chroma_subsample_y != 1;
+	size_t luma_block = chroma_subsample_x * chroma_subsample_y;
+    size_t unitSize = luma_block + 2;
 
 	switch (comps[0].prec) {
 	case 1:
@@ -1271,15 +1281,20 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 	buffer32s = new int32_t[(size_t) comps[0].w * tiSpp];
 	strip = 0;
 	invert = tiPhoto == PHOTOMETRIC_MINISWHITE;
-	for (uint32_t j = 0; j < numcomps; j++) {
+	for (uint32_t j = 0; j < numcomps; j++)
 		planes[j] = comps[j].data;
-	}
 	do {
-		grk_image_comp *comp = comps + currentPlane;
-		planes[0] = comp->data; /* to manage planar data */
-		uint32_t height = comp->h;
-		/* Read the Image components */
-		for (; (height > 0) && (strip < TIFFNumberOfStrips(tif)); strip++) {
+		auto comp = comps + currentPlane;
+		planes[0] = comp->data;
+		uint32_t height = 0;
+        // if width % chroma_subsample_x != 0...
+        size_t units = (comp->w + chroma_subsample_x - 1) / chroma_subsample_x;
+        // each coded row will be padded to fill unit
+        size_t padding = (units * chroma_subsample_x - comp->w);
+        if (subsampled){
+        	rowStride = units * unitSize;
+        }
+		for (; (height <comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
 				spdlog::error("tiftoimage: Bad value for ssize({}) "
@@ -1290,14 +1305,31 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 			}
 			const uint8_t *datau8 = (const uint8_t*) buf;
 			while (ssize >= rowStride) {
-				cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
-						invert);
-				cvtToPlanar(buffer32s, planes, (size_t) comp->w);
-				for (uint32_t k = 0; k < numcomps; ++k)
-					planes[k] += comp->w;
-				datau8 += rowStride;
-				ssize -= rowStride;
-				height--;
+				if (chroma_subsample_x == 1 && chroma_subsample_y == 1) {
+					cvtTifTo32s(datau8, buffer32s, (size_t) comp->w * tiSpp,
+							invert);
+					cvtToPlanar(buffer32s, planes, (size_t) comp->w);
+					for (uint32_t k = 0; k < numcomps; ++k)
+						planes[k] += comp->w ;
+					datau8 += rowStride;
+					ssize -= rowStride;
+					height++;
+				}
+				else {
+					for (size_t i = 0; i < units * unitSize; i+=unitSize) {
+						for (size_t k = 0; k < chroma_subsample_y && height+k<comp->h; ++k)
+							for (size_t j =0; j < chroma_subsample_x; ++j)
+                        		planes[0][j + k * comp->w] = *datau8++;
+                        planes[0] += chroma_subsample_x;
+                    	*planes[1]++ = *datau8++;
+                    	*planes[2]++ = *datau8++;
+
+					}
+					planes[0] += comp->w * (chroma_subsample_y-1);
+					datau8 += padding;
+					ssize -= units * unitSize;
+					height+= chroma_subsample_y;
+				}
 			}
 		}
 		currentPlane++;
@@ -1490,13 +1522,20 @@ static grk_image* tiftoimage(const char *filename,
 		break;
 	case PHOTOMETRIC_YCBCR:
 		color_space = GRK_CLRSPC_SYCC;
+		numcomps += 3;
 		TIFFGetField( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
 		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
-           spdlog::error("Unsupported chroma subsampling {},{}",
-        		   chroma_subsample_x,chroma_subsample_y );
-           goto cleanup;
+		   if (isSigned) {
+			   spdlog::error("chroma subsampling {},{} with signed data is not supported",
+					   chroma_subsample_x,chroma_subsample_y );
+			   goto cleanup;
+		   }
+		   if (numcomps != 3) {
+			   spdlog::error("chroma subsampling {},{} with alpha channel(s) not supported",
+					   chroma_subsample_x,chroma_subsample_y );
+			   goto cleanup;
+		   }
 		}
-		numcomps += 3;
 		break;
 	case PHOTOMETRIC_SEPARATED:
 		color_space = GRK_CLRSPC_CMYK;
@@ -1666,8 +1705,14 @@ static grk_image* tiftoimage(const char *filename,
 						tiPC);
 	}
 	else {
-		success = readTiffPixelsUnsigned(tif, image->comps, numcomps, tiSpp,
-						tiPC, tiPhoto);
+		success = readTiffPixelsUnsigned(tif,
+										image->comps,
+										numcomps,
+										tiSpp,
+										tiPC,
+										tiPhoto,
+										chroma_subsample_x,
+										chroma_subsample_y);
 	}
 	cleanup: if (tif)
 		TIFFClose(tif);

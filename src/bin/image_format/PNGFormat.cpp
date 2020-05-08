@@ -134,6 +134,14 @@ static grk_image* pngtoimage(const char *read_idf, grk_cparameters *params) {
 	int unit;
 	png_uint_32 resx, resy;
 
+	if (params->subsampling_dx != 1 ||
+			params->subsampling_dy != 1){
+		spdlog::error("pngtoimage: unsupported sub-sampling ({},{})",
+				params->subsampling_dx,
+				params->subsampling_dy);
+		return nullptr;
+	}
+
 	if (local_info.readFromStdin) {
 		if (!grk::grok_set_binary_mode(stdin))
 			return nullptr;

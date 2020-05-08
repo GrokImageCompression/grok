@@ -1976,14 +1976,21 @@ bool j2k_init_compress(grk_j2k *p_j2k, grk_cparameters *parameters,
 				return false;
 			}
 		} else {
-			if (tcp->mct == 1 && image->numcomps >= 3) { /* RGB->YCC MCT is enabled */
-				if ((image->comps[0].dx != image->comps[1].dx)
-						|| (image->comps[0].dx != image->comps[2].dx)
-						|| (image->comps[0].dy != image->comps[1].dy)
-						|| (image->comps[0].dy != image->comps[2].dy)) {
-					GROK_WARN(
-							"Cannot perform MCT on components with different sizes. Disabling MCT.");
+			if (tcp->mct == 1){
+				if (image->color_space == GRK_CLRSPC_EYCC ||
+						image->color_space ==	GRK_CLRSPC_SYCC){
+					GROK_WARN("Disabling MCT for sYCC/eYCC colour space");
 					tcp->mct = 0;
+				}
+				else if (image->numcomps >= 3) {
+					if ((image->comps[0].dx != image->comps[1].dx)
+							|| (image->comps[0].dx != image->comps[2].dx)
+							|| (image->comps[0].dy != image->comps[1].dy)
+							|| (image->comps[0].dy != image->comps[2].dy)) {
+						GROK_WARN(
+								"Cannot perform MCT on components with different dimensions. Disabling MCT.");
+						tcp->mct = 0;
+					}
 				}
 			}
 			for (i = 0; i < image->numcomps; i++) {
