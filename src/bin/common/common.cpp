@@ -317,18 +317,6 @@ bool all_components_sanity_check(grk_image *image) {
 			spdlog::error("component {} data is null.", i);
 			return false;
 		}
-		if (comp0->dx != compi->dx){
-			spdlog::error(
-					"Color conversion: x subsampling {} of component {}"
-					" differs from x subsampling {} of component 0.",compi->dx, i, comp0->dx);
-			return false;
-		}
-		if (comp0->dy != compi->dy){
-			spdlog::error(
-					"Color conversion: y subsampling {} of component {}"
-					" differs from y subsampling {} of component 0.",compi->dy, i, comp0->dy);
-			return false;
-		}
 		if (comp0->prec != compi->prec){
 			spdlog::error(
 					"Color conversion: precision {} of component {}"

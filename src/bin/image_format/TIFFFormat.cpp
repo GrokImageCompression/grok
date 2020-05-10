@@ -111,6 +111,77 @@ static bool readTiffPixelsUnsigned(TIFF *tif, grk_image_comp *comps,
 		uint32_t numcomps, uint16_t tiSpp, uint16_t tiPC, uint16_t tiPhoto,
 		uint32_t chroma_subsample_x, uint32_t chroma_subsample_y);
 
+static std::string getSampleFormatString(uint16_t tiSampleFormat){
+	switch(tiSampleFormat){
+		case SAMPLEFORMAT_UINT:
+			return "UINT";
+			break;
+		case SAMPLEFORMAT_INT:
+			return "INT";
+			break;
+		case SAMPLEFORMAT_IEEEFP:
+			return "IEEEFP";
+			break;
+		case SAMPLEFORMAT_VOID:
+			return "VOID";
+			break;
+		case SAMPLEFORMAT_COMPLEXINT:
+			return "COMPLEXINT";
+			break;
+		case SAMPLEFORMAT_COMPLEXIEEEFP:
+			return "COMPLEXIEEEFP";
+			break;
+		default:
+			return "unknown";
+	}
+}
+
+static std::string getColourFormatString(uint16_t tiPhoto){
+	switch(tiPhoto){
+		case PHOTOMETRIC_MINISWHITE:
+			return "MINISWHITE";
+			break;
+		case PHOTOMETRIC_MINISBLACK:
+			return "MINISBLACK";
+			break;
+		case PHOTOMETRIC_RGB:
+			return "RGB";
+			break;
+		case PHOTOMETRIC_PALETTE:
+			return "PALETTE";
+			break;
+		case PHOTOMETRIC_MASK:
+			return "MASK";
+			break;
+		case PHOTOMETRIC_SEPARATED:
+			return "SEPARATED";
+			break;
+		case PHOTOMETRIC_YCBCR:
+			return "YCBCR";
+			break;
+		case PHOTOMETRIC_CIELAB:
+			return "CIELAB";
+			break;
+		case PHOTOMETRIC_ICCLAB:
+			return "ICCLAB";
+			break;
+		case PHOTOMETRIC_ITULAB:
+			return "ITULAB";
+			break;
+		case PHOTOMETRIC_CFA:
+			return "CFA";
+			break;
+		case PHOTOMETRIC_LOGL:
+			return "LOGL";
+			break;
+		case PHOTOMETRIC_LOGLUV:
+			return "LOGLUV";
+			break;
+		default:
+			return "unknown";
+	}
+}
+
 /* -->> -->> -->> -->>
 
  TIFF IMAGE FORMAT
@@ -1294,6 +1365,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
         if (subsampled){
         	rowStride = units * unitSize;
         }
+		size_t xpos = 0;
 		for (; (height <comp->h) && (strip < TIFFNumberOfStrips(tif)); strip++) {
 			tsize_t ssize = TIFFReadEncodedStrip(tif, strip, buf, strip_size);
 			if (ssize < 1 || ssize > strip_size) {
@@ -1303,6 +1375,7 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 				success = false;
 				goto local_cleanup;
 			}
+			assert(ssize >= rowStride);
 			const uint8_t *datau8 = (const uint8_t*) buf;
 			while (ssize >= rowStride) {
 				if (chroma_subsample_x == 1 && chroma_subsample_y == 1) {
@@ -1316,19 +1389,26 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 					height++;
 				}
 				else {
-					for (size_t i = 0; i < units * unitSize; i+=unitSize) {
+					for (size_t i = 0; i < (size_t)rowStride; i+=unitSize) {
+						//process a unit
+						//1. luma
 						for (size_t k = 0; k < chroma_subsample_y && height+k<comp->h; ++k)
-							for (size_t j =0; j < chroma_subsample_x; ++j)
-                        		planes[0][j + k * comp->w] = *datau8++;
-                        planes[0] += chroma_subsample_x;
-                    	*planes[1]++ = *datau8++;
+							for (size_t j =0; j < chroma_subsample_x && xpos+j < comp->w; ++j)
+                        		planes[0][xpos + j + k * comp->w] = *datau8++;
+						//2. chroma
+                     	*planes[1]++ = *datau8++;
                     	*planes[2]++ = *datau8++;
 
+                    	//3. increment raster x
+                    	xpos+=chroma_subsample_x;
+                    	if (xpos >= comp->w){
+                    		datau8 += padding;
+                    		xpos = 0;
+                    		planes[0] += comp->w * chroma_subsample_y;
+                    		height+= chroma_subsample_y;
+                    	}
 					}
-					planes[0] += comp->w * (chroma_subsample_y-1);
-					datau8 += padding;
-					ssize -= units * unitSize;
-					height+= chroma_subsample_y;
+					ssize -= rowStride;
 				}
 			}
 		}
@@ -1417,8 +1497,8 @@ static grk_image* tiftoimage(const char *filename,
 	TIFF *tif = nullptr;
 	bool found_assocalpha = false;
 	size_t alpha_count = 0;
-	uint16_t chroma_subsample_x;
-	uint16_t chroma_subsample_y;
+	uint16_t chroma_subsample_x = 1;
+	uint16_t chroma_subsample_y = 1;
 	GRK_COLOR_SPACE color_space = GRK_CLRSPC_UNKNOWN;
 	grk_image_cmptparm cmptparm[maxNumComponents];
 	grk_image *image = nullptr;
@@ -1431,6 +1511,8 @@ static grk_image* tiftoimage(const char *filename,
 	bool is_cinema = GRK_IS_CINEMA(parameters->rsiz);
 	bool success = false;
 	bool isCIE = false;
+    uint16 compress;
+	float *luma = nullptr, *refBlackWhite= nullptr;
 
 	tif = TIFFOpen(filename, "r");
 	if (!tif) {
@@ -1438,13 +1520,18 @@ static grk_image* tiftoimage(const char *filename,
 		return 0;
 	}
 
-	TIFFGetField(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
-	TIFFGetField(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
-	TIFFGetField(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
-	TIFFGetField(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
-	TIFFGetField(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
-	TIFFGetField(tif, TIFFTAG_PLANARCONFIG, &tiPC);
-	hasTiSf = TIFFGetField(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
+    TIFFGetField(tif, TIFFTAG_COMPRESSION, &compress);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGEWIDTH, &tiWidth);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_IMAGELENGTH, &tiHeight);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_BITSPERSAMPLE, &tiBps);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLESPERPIXEL, &tiSpp);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_PHOTOMETRIC, &tiPhoto);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_PLANARCONFIG, &tiPC);
+	hasTiSf = TIFFGetFieldDefaulted(tif, TIFFTAG_SAMPLEFORMAT, &tiSf) == 1;
+
+	TIFFGetFieldDefaulted(tif, TIFFTAG_YCBCRCOEFFICIENTS, &luma);
+	TIFFGetFieldDefaulted(tif, TIFFTAG_REFERENCEBLACKWHITE,
+	    &refBlackWhite);
 
 	uint32_t w = tiWidth;
 	uint32_t h = tiHeight;
@@ -1464,7 +1551,7 @@ static grk_image* tiftoimage(const char *filename,
 
 	// 1. sanity checks
 	if (hasTiSf && tiSf != SAMPLEFORMAT_UINT && tiSf != SAMPLEFORMAT_INT) {
-		spdlog::error("tiftoimage: Unsupported sample format: {}.", tiSf);
+		spdlog::error("tiftoimage: Unsupported sample format: {}.", getSampleFormatString(tiSf));
 		goto cleanup;
 	}
 	if (tiSpp == 0 ) {
@@ -1482,7 +1569,7 @@ static grk_image* tiftoimage(const char *filename,
 			&& tiPhoto != PHOTOMETRIC_SEPARATED) {
 		spdlog::error("tiftoimage: Unsupported color format {}.\n"
 				"Only RGB(A), GRAY(A), CIELAB, YCC and CMYK have been implemented.",
-				(int) tiPhoto);
+				getColourFormatString(tiPhoto));
 		goto cleanup;
 	}
 	if (tiWidth == 0 || tiHeight == 0) {
@@ -1497,7 +1584,7 @@ static grk_image* tiftoimage(const char *filename,
 	// 2. initialize image components and signed/unsigned
 	memset(&cmptparm[0], 0, maxNumComponents * sizeof(grk_image_cmptparm));
 	if ((tiPhoto == PHOTOMETRIC_RGB) && (is_cinema) && (tiBps != 12U)) {
-		spdlog::warn("Input image bitdepth is {} bits\n"
+		spdlog::warn("tiftoimage: Input image bitdepth is {} bits\n"
 					"TIF conversion has automatically rescaled to 12-bits\n"
 					"to comply with cinema profiles.", tiBps);
 	} else {
@@ -1521,40 +1608,53 @@ static grk_image* tiftoimage(const char *filename,
 		numcomps += 3;
 		break;
 	case PHOTOMETRIC_YCBCR:
+		// jpeg library is needed to convert from YCbCr to RGB
+		if (compress == COMPRESSION_OJPEG ||
+				compress == COMPRESSION_JPEG){
+			   spdlog::error("tiftoimage: YCbCr image with JPEG compression"
+					   " is not supported");
+			   goto cleanup;
+		}
+		else if (compress == COMPRESSION_PACKBITS) {
+			   spdlog::error("tiftoimage: YCbCr image with PACKBITS compression"
+					   " is not supported");
+			   goto cleanup;
+		}
 		color_space = GRK_CLRSPC_SYCC;
 		numcomps += 3;
-		TIFFGetField( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
+		TIFFGetFieldDefaulted( tif, TIFFTAG_YCBCRSUBSAMPLING, &chroma_subsample_x, &chroma_subsample_y);
 		if (chroma_subsample_x != 1 || chroma_subsample_y != 1){
 		   if (isSigned) {
-			   spdlog::error("chroma subsampling {},{} with signed data is not supported",
+			   spdlog::error("tiftoimage: chroma subsampling {},{} with signed data is not supported",
 					   chroma_subsample_x,chroma_subsample_y );
 			   goto cleanup;
 		   }
 		   if (numcomps != 3) {
-			   spdlog::error("chroma subsampling {},{} with alpha channel(s) not supported",
+			   spdlog::error("tiftoimage: chroma subsampling {},{} with alpha channel(s) not supported",
 					   chroma_subsample_x,chroma_subsample_y );
 			   goto cleanup;
 		   }
 		}
+
 		break;
 	case PHOTOMETRIC_SEPARATED:
 		color_space = GRK_CLRSPC_CMYK;
 		numcomps += 4;
 		break;
 	default:
-		spdlog::error("Unsupported colour space {}.",tiPhoto );
+		spdlog::error("tiftoimage: Unsupported colour space {}.",tiPhoto );
 		goto cleanup;
 		break;
 	}
 	if (tiPhoto == PHOTOMETRIC_CIELAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_INT)) {
-			spdlog::warn("Input image is in CIE colour space"
+			spdlog::warn("tiftoimage: Input image is in CIE colour space"
 					" but sample format is unsigned int");
 		}
 		isSigned = true;
 	} else if (tiPhoto == PHOTOMETRIC_ICCLAB) {
 		if (hasTiSf && (tiSf != SAMPLEFORMAT_UINT)) {
-			spdlog::warn("Input image is in ICC CIE colour"
+			spdlog::warn("tiftoimage: Input image is in ICC CIE colour"
 					" space but sample format is signed int");
 		}
 		isSigned = false;
@@ -1617,7 +1717,7 @@ static grk_image* tiftoimage(const char *filename,
 			auto alphaType = sampleinfo[j - numColourChannels];
 			if (alphaType == EXTRASAMPLE_ASSOCALPHA) {
 				if (found_assocalpha){
-					spdlog::warn("Found more than one associated alpha channel");
+					spdlog::warn("tiftoimage: Found more than one associated alpha channel");
 				}
 				alpha_count++;
 				comp->type = GRK_COMPONENT_TYPE_PREMULTIPLIED_OPACITY;
@@ -1657,9 +1757,9 @@ static grk_image* tiftoimage(const char *filename,
 	}
 
 	// 5. extract capture resolution
-	hasXRes = TIFFGetField(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
-	hasYRes = TIFFGetField(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
-	hasResUnit = TIFFGetField(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
+	hasXRes = TIFFGetFieldDefaulted(tif, TIFFTAG_XRESOLUTION, &tiXRes) == 1;
+	hasYRes = TIFFGetFieldDefaulted(tif, TIFFTAG_YRESOLUTION, &tiYRes) == 1;
+	hasResUnit = TIFFGetFieldDefaulted(tif, TIFFTAG_RESOLUTIONUNIT, &tiResUnit) == 1;
 	if (hasXRes && hasYRes && hasResUnit && tiResUnit != RESUNIT_NONE) {
 		set_resolution(parameters->capture_resolution_from_file, tiXRes, tiYRes,
 				tiResUnit);
@@ -1671,7 +1771,7 @@ static grk_image* tiftoimage(const char *filename,
 	// note: we ignore ICC profile for CIE images as JPEG 2000 can't signal both
 	// CIE and ICC
 	if (!isCIE) {
-		if ((TIFFGetField(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
+		if ((TIFFGetFieldDefaulted(tif, TIFFTAG_ICCPROFILE, &icclen, &iccbuf) == 1)
 				&& icclen > 0 && icclen < grk::maxICCProfileBufferLen) {
 			image->icc_profile_buf = grk_buffer_new(icclen);
 			memcpy(image->icc_profile_buf, iccbuf, icclen);
@@ -1680,7 +1780,7 @@ static grk_image* tiftoimage(const char *filename,
 		}
 	}
 	// 7. extract IPTC meta-data
-	if (TIFFGetField(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
+	if (TIFFGetFieldDefaulted(tif, TIFFTAG_RICHTIFFIPTC, &iptc_len, &iptc_buf) == 1) {
 		if (TIFFIsByteSwapped(tif))
 			TIFFSwabArrayOfLong((uint32*) iptc_buf, iptc_len);
 		// since TIFFTAG_RICHTIFFIPTC is of type TIFF_LONG, we must multiply
@@ -1690,7 +1790,7 @@ static grk_image* tiftoimage(const char *filename,
 		memcpy(image->iptc_buf, iptc_buf, iptc_len);
 	}
 	// 8. extract XML meta-data
-	if (TIFFGetField(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
+	if (TIFFGetFieldDefaulted(tif, TIFFTAG_XMLPACKET, &xmp_len, &xmp_buf) == 1) {
 		image->xmp_len = xmp_len;
 		image->xmp_buf = grk_buffer_new(xmp_len);
 		memcpy(image->xmp_buf, xmp_buf, xmp_len);
@@ -1747,6 +1847,13 @@ static int imagetotif(grk_image *image, const char *outfile,
 	planes[0] = image->comps[0].data;
 	uint32_t numcomps = image->numcomps;
 	uint32_t sgnd = image->comps[0].sgnd;
+	uint32_t width = image->comps[0].w;
+	uint32_t height = image->comps[0].h;
+	uint32_t bps =  image->comps[0].prec;
+	uint32_t chroma_subsample_x = 1;
+	uint32_t chroma_subsample_y = 1;
+    size_t units = image->comps->w;
+   	bool subsampled = grk::isSubsampled(image);
 
 	assert(image);
 	assert(outfile);
@@ -1771,6 +1878,12 @@ static int imagetotif(grk_image *image, const char *outfile,
 		switch (image->color_space){
 		case GRK_CLRSPC_EYCC:
 		case GRK_CLRSPC_SYCC:
+			if (subsampled && numcomps != 3){
+				spdlog::error("imagetotif: subsampled YCbCr image with alpha not supported.");
+				goto cleanup;
+			}
+			chroma_subsample_x = image->comps[1].dx;
+			chroma_subsample_y = image->comps[1].dy;
 			tiPhoto = PHOTOMETRIC_YCBCR;
 			break;
 		case GRK_CLRSPC_DEFAULT_CIE:
@@ -1785,13 +1898,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 		tiPhoto = PHOTOMETRIC_MINISBLACK;
 	}
 
-
-	uint32_t width = image->comps[0].w;
-	uint32_t height = image->comps[0].h;
-
-	// actual bits per sample
-	uint32_t bps = image->comps[0].prec;
-	uint32_t tif_bps = bps;
 	if (bps == 0) {
 		spdlog::error("imagetotif: image precision is zero.");
 		goto cleanup;
@@ -1807,13 +1913,13 @@ static int imagetotif(grk_image *image, const char *outfile,
 		goto cleanup;
 
 	cvtPxToCx = cvtPlanarToInterleaved_LUT[numcomps];
-	switch (tif_bps) {
+	switch (bps) {
 	case 1:
 	case 2:
 	case 4:
 	case 6:
 	case 8:
-		cvt32sToTif = cvtFrom32_LUT[tif_bps];
+		cvt32sToTif = cvtFrom32_LUT[bps];
 		break;
 	case 3:
 		cvt32sToTif = tif_32sto3u;
@@ -1864,7 +1970,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (numExtraChannels > 0) {
 		num_colour_channels = (uint32_t)(numcomps - (uint32_t)numExtraChannels);
 		if ((uint32_t)firstExtraChannel < num_colour_channels) {
-			spdlog::warn("TIFF requires that non-colour channels occur as "
+			spdlog::warn("imagetotif: TIFF requires that non-colour channels occur as "
 						"last channels in image. "
 						"TIFFTAG_EXTRASAMPLES tag for extra channels will not be set");
 			numExtraChannels = 0;
@@ -1885,16 +1991,20 @@ static int imagetotif(grk_image *image, const char *outfile,
 	TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT,
 			sgnd ? SAMPLEFORMAT_INT : SAMPLEFORMAT_UINT);
 	TIFFSetField(tif, TIFFTAG_SAMPLESPERPIXEL, numcomps);
-	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, tif_bps);
+	TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bps);
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, 1);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, chroma_subsample_y);
     if( tiPhoto == PHOTOMETRIC_YCBCR )	{
-		TIFFSetField( tif, TIFFTAG_YCBCRSUBSAMPLING, image->comps[1].dx, image->comps[1].dy);
-		/* TODO: also write YCbCrPositioning and YCbCrCoefficients tag identical to source IFD */
-	}
+       	float refBlackWhite[6] = {0.0,255.0,128.0,255.0,128.0,255.0};
+       	float YCbCrCoefficients[3] = {0.299f,0.587f,0.114f};
 
+		TIFFSetField( tif, TIFFTAG_YCBCRSUBSAMPLING, chroma_subsample_x, chroma_subsample_y);
+		TIFFSetField(tif, TIFFTAG_REFERENCEBLACKWHITE, refBlackWhite);
+		TIFFSetField(tif, TIFFTAG_YCBCRCOEFFICIENTS, YCbCrCoefficients);
+		TIFFSetField(tif, TIFFTAG_YCBCRPOSITIONING, YCBCRPOSITION_CENTERED);
+	}
 	if (compression == COMPRESSION_ADOBE_DEFLATE) {
 #ifdef ZIP_SUPPORT
 		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE); // zip compression
@@ -1966,7 +2076,11 @@ static int imagetotif(grk_image *image, const char *outfile,
 	}
 
 	strip_size = TIFFStripSize(tif);
-	rowStride = (width * numcomps * tif_bps + 7U) / 8U;
+    units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
+	rowStride = (width * numcomps * bps + 7U) / 8U;
+	if (subsampled)
+		rowStride = ((width * chroma_subsample_y + units * 2) * bps + 7)/8;
+
 	if (rowStride != strip_size) {
 		spdlog::error("Invalid TIFF strip size");
 		goto cleanup;
@@ -1975,13 +2089,30 @@ static int imagetotif(grk_image *image, const char *outfile,
 	if (buf == nullptr)
 		goto cleanup;
 
-	for (uint32_t i = 0; i < image->comps[0].h; ++i) {
-		cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
-		cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
-		(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
-		for (uint32_t k = 0; k < numcomps; ++k)
-			planes[k] += width;
-	}
+    if (subsampled){
+    	for (uint32_t h = 0; h < image->comps[0].h; h+=chroma_subsample_y) {
+    		auto bufptr = (int8_t*)buf;
+    		size_t xpos = 0;
+    		for (uint32_t j = 0; j < units; ++j){
+				for (size_t k = 0; k < chroma_subsample_y && h+k<height; ++k)
+					for (size_t j =0; j < chroma_subsample_x && xpos+j < width; ++j)
+                		*bufptr++ = (int8_t)planes[0][xpos + j + k * width];
+				//2. chroma
+				*bufptr++ = (int8_t)*planes[1]++;
+				*bufptr++ = (int8_t)*planes[2]++;
+            	xpos+=chroma_subsample_x;
+    		}
+    		(void) TIFFWriteEncodedStrip(tif, h/chroma_subsample_y, (void*) buf, strip_size);
+    	}
+    } else {
+		for (uint32_t i = 0; i < image->comps[0].h; ++i) {
+			cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
+			cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
+			(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
+			for (uint32_t k = 0; k < numcomps; ++k)
+				planes[k] += width;
+		}
+    }
 
 	success = true;
 	cleanup: if (buf)

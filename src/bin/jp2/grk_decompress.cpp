@@ -1606,12 +1606,7 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			spdlog::error("grk_decompress: YCC: number of components {} not equal to 3 ", image->numcomps);
 			goto cleanup;
 		}
-		convert_ycc_to_rgb =  (image->comps[1].dx > 1 ||
-								image->comps[1].dy > 1 ||
-								image->comps[2].dx > 1 ||
-								image->comps[2].dx > 1) ||
-										!isTiff ||
-										info->decoder_parameters->force_rgb;
+		convert_ycc_to_rgb =  !isTiff || info->decoder_parameters->force_rgb;
 	}
 	if (image->color_space == GRK_CLRSPC_SYCC) {
 		if (convert_ycc_to_rgb) {
@@ -1632,7 +1627,19 @@ int post_decode(grk_plugin_decode_callback_info *info) {
 			}
 		}
 	}
-
+	//let's try to guess
+	else if (image->color_space == GRK_CLRSPC_UNKNOWN ){
+		if (image->numcomps >= 3 && isSubsampled(image)){
+			auto Y = image->comps;
+			auto U = image->comps+1;
+			auto V = image->comps+2;
+			if (Y->dx == 1 && Y->dy == 1 &&
+				U->dx == V->dx &&
+				U->dy == V->dy){
+				image->color_space = GRK_CLRSPC_SYCC;
+			}
+		}
+	}
 	if (image->xmp_buf) {
 		bool canStoreXMP = (info->decoder_parameters->cod_format == GRK_TIF_FMT
 				|| info->decoder_parameters->cod_format == GRK_PNG_FMT);

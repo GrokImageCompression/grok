@@ -79,7 +79,6 @@ static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
 			sizeof(grk_image_cmptparm));
 	if (!cmptparms)
 		return nullptr;
-	grk_image *img = nullptr;
 	uint32_t compno = 0U;
 	for (compno = 0U; compno < numcmpts; ++compno) {
 		memset(cmptparms + compno, 0, sizeof(grk_image_cmptparm));
@@ -92,7 +91,7 @@ static grk_image* image_create(uint32_t numcmpts, uint32_t w, uint32_t h,
 		cmptparms[compno].prec = prec;
 		cmptparms[compno].sgnd = 0U;
 	}
-	img = grk_image_create(numcmpts, (grk_image_cmptparm*) cmptparms,
+	auto img = grk_image_create(numcmpts, (grk_image_cmptparm*) cmptparms,
 			GRK_CLRSPC_SRGB);
 	free(cmptparms);
 	return img;
@@ -146,7 +145,7 @@ static bool sycc444_to_rgb(grk_image *img) {
 	const int32_t *y, *cb, *cr;
 	size_t maxw, maxh, max, i;
 	int32_t offset, upb;
-	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
+	auto new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
 		return false;
@@ -196,7 +195,7 @@ static bool sycc422_to_rgb(grk_image *img) {
 	int32_t offset, upb;
 	size_t i;
 
-	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
+	auto new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
 		return false;
@@ -265,7 +264,7 @@ static bool sycc420_to_rgb(grk_image *img) {
 	size_t maxw, maxh, offx, loopmaxw, offy, loopmaxh;
 	int32_t offset, upb;
 	size_t i;
-	grk_image *new_image = image_create(3, img->comps[0].w, img->comps[0].h,
+	auto new_image = image_create(3, img->comps[0].w, img->comps[0].h,
 			img->comps[0].prec);
 	if (!new_image)
 		return false;
@@ -731,7 +730,7 @@ void color_cielab_to_rgb(grk_image *image) {
 	double minL, maxL, mina, maxa, minb, maxb;
 	size_t max;
 	cmsUInt16Number RGB[3];
-	grk_image *new_image = image_create(3, image->comps[0].w, image->comps[0].h,
+	auto new_image = image_create(3, image->comps[0].w, image->comps[0].h,
 			image->comps[0].prec);
 	if (!new_image)
 		return;

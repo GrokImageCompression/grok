@@ -1916,7 +1916,6 @@ static bool plugin_compress_callback(
 			TIFFFormat tif;
 			image = tif.decode(info->input_file_name, info->encoder_parameters);
 			if (!image) {
-				spdlog::error("Unable to load tiff file");
 				bSuccess = false;
 				goto cleanup;
 			}
