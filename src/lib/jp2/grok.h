@@ -352,16 +352,15 @@ typedef enum _GRK_PROG_ORDER {
  * Supported image color spaces
  * */
 typedef enum _GRK_COLOR_SPACE {
-	GRK_CLRSPC_UNKNOWN = 0, /**< not supported by the library */
-	GRK_CLRSPC_UNSPECIFIED = 1, /**< not specified in the code stream */
-	GRK_CLRSPC_SRGB = 2, /**< sRGB */
-	GRK_CLRSPC_GRAY = 3, /**< grayscale */
-	GRK_CLRSPC_SYCC = 4, /**< YUV */
-	GRK_CLRSPC_EYCC = 5, /**< e-YCC */
-	GRK_CLRSPC_CMYK = 6, /**< CMYK */
-	GRK_CLRSPC_DEFAULT_CIE = 7, /**< default CIE LAB */
-	GRK_CLRSPC_CUSTOM_CIE = 8, /**< custom CIE LAB */
-	GRK_CLRSPC_ICC = 9 /**< ICC profile */
+	GRK_CLRSPC_UNKNOWN = 0, 		/**< unknown */
+	GRK_CLRSPC_SRGB = 2, 			/**< sRGB */
+	GRK_CLRSPC_GRAY = 3, 			/**< grayscale */
+	GRK_CLRSPC_SYCC = 4, 			/**< standard YCC (YUV) */
+	GRK_CLRSPC_EYCC = 5, 			/**< extended YCC */
+	GRK_CLRSPC_CMYK = 6, 			/**< CMYK */
+	GRK_CLRSPC_DEFAULT_CIE = 7, 	/**< default CIE LAB */
+	GRK_CLRSPC_CUSTOM_CIE = 8, 		/**< custom CIE LAB */
+	GRK_CLRSPC_ICC = 9 				/**< ICC profile */
 } GRK_COLOR_SPACE;
 
 
