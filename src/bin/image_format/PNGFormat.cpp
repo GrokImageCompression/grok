@@ -428,12 +428,12 @@ struct imageToPngInfo {
 					nullptr), writeToStdout(false), fails(1) {
 	}
 	png_structp png;
-	FILE *volatile writer;
-	png_bytep volatile row_buf;
-	int32_t *volatile buffer32s;
+	FILE *writer;
+	png_bytep row_buf;
+	int32_t *buffer32s;
 	grk_image *image;
 	bool writeToStdout;
-	volatile int fails;
+	int fails;
 };
 
 static int imagetopng(grk_image *image, const char *write_idf,
@@ -441,16 +441,16 @@ static int imagetopng(grk_image *image, const char *write_idf,
 	imageToPngInfo local_info;
 	local_info.writeToStdout = grk::useStdio(write_idf);
 	png_infop info = nullptr;
-	int nr_comp, color_type;
-	volatile int prec;
+	uint32_t nr_comp, color_type;
+	uint32_t prec;
 	png_color_8 sig_bit;
 	int32_t const *planes[4];
-	int i;
+	uint32_t i;
 
 	memset(&sig_bit, 0, sizeof(sig_bit));
-	prec = (int) image->comps[0].prec;
+	prec =  image->comps[0].prec;
 	planes[0] = image->comps[0].data;
-	nr_comp = (int) image->numcomps;
+	nr_comp = image->numcomps;
 
 	if (nr_comp > 4) {
 		spdlog::warn("imagetopng: number of components {} is "
