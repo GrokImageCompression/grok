@@ -1,1 +1,1 @@
---extend-diff-ignore=scripts|tests|tools|\.travis.yml|thirdparty/include|libpng|libtiff|liblcms2|libz
+extend-diff-ignore=scripts|tests|tools|\.travis.yml|thirdparty/include|libpng|libtiff|liblcms2|libz
