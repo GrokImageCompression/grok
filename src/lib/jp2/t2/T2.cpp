@@ -239,12 +239,10 @@ bool T2::decode_packets(uint16_t tile_no, ChunkBuffer *src_buf,
 			uint32_t pltMarkerLen = 0;
 			if (packetLengths) {
 				pltMarkerLen = packetLengths->pull();
-				//if (pltMarkerLen)
-				//	GROK_INFO("T2 PLT len: %d", pltMarkerLen);
 			}
 			/*
 			 GROK_INFO(
-			 "packet offset=00000166 prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
+			 "packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
 			 current_pi->poc.prg1, current_pi->compno,
 			 current_pi->resno, current_pi->precno,
 			 current_pi->layno);
@@ -321,7 +319,11 @@ bool T2::decode_packet(grk_tcp *p_tcp, PacketIter *p_pi, ChunkBuffer *src_buf,
 		uint64_t *p_data_read) {
 	uint64_t max_length = src_buf->data_len - src_buf->get_global_offset();
 	if (max_length == 0) {
-		GROK_WARN("No data for packet header or body.");
+		GROK_WARN("decode_packet: No data for either packet header\n"
+				"or packet body for packet prg=%d cmptno=%02d rlvlno=%02d prcno=%03d lyrno=%02d\n",
+		 p_pi->poc.prg1, p_pi->compno,
+		 p_pi->resno, p_pi->precno,
+		 p_pi->layno);
 		return true;
 	}
 	auto p_tile = tileProcessor->tile;
