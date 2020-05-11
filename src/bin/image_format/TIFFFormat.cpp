@@ -1392,9 +1392,17 @@ static bool readTiffPixelsUnsigned(TIFF *tif,
 					for (size_t i = 0; i < (size_t)rowStride; i+=unitSize) {
 						//process a unit
 						//1. luma
-						for (size_t k = 0; k < chroma_subsample_y && height+k<comp->h; ++k)
+						size_t sub_x = 0;
+						size_t pad = chroma_subsample_x * chroma_subsample_y;
+						for (size_t k = 0; k < chroma_subsample_y && height+k<comp->h; ++k) {
 							for (size_t j =0; j < chroma_subsample_x && xpos+j < comp->w; ++j)
-                        		planes[0][xpos + j + k * comp->w] = *datau8++;
+                        		planes[0][xpos + j + k * comp->w] = datau8[sub_x++];
+							datau8 += chroma_subsample_x;
+							sub_x = 0;
+							pad -= chroma_subsample_x;
+						}
+						datau8 += pad;
+
 						//2. chroma
                      	*planes[1]++ = *datau8++;
                     	*planes[2]++ = *datau8++;
@@ -2111,11 +2119,18 @@ static int imagetotif(grk_image *image, const char *outfile,
     		}
     		size_t xpos = 0;
     		for (uint32_t u = 0; u < units; ++u){
-				for (size_t sub_h = 0; sub_h < chroma_subsample_y && h+sub_h<height; ++sub_h)
-					for (size_t sub_x =0; sub_x < chroma_subsample_x && xpos+sub_x < width; ++sub_x){
+    			size_t pad = chroma_subsample_x * chroma_subsample_y;
+				for (size_t sub_h = 0; sub_h < chroma_subsample_y && h+sub_h<height; ++sub_h) {
+					size_t sub_x;
+					for (sub_x =0; sub_x < chroma_subsample_x && xpos+sub_x < width; ++sub_x){
                 		*bufptr++ = (int8_t)planes[0][xpos + sub_x + sub_h * width];
                 		bytesToWrite++;
 					}
+					bufptr += (chroma_subsample_x - sub_x);
+					pad -= chroma_subsample_x;
+				}
+				bufptr += pad;
+				bytesToWrite += pad;
 				//2. chroma
 				*bufptr++ = (int8_t)*planes[1]++;
 				*bufptr++ = (int8_t)*planes[2]++;
