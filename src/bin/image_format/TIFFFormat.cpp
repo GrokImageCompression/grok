@@ -2005,11 +2005,17 @@ static int imagetotif(grk_image *image, const char *outfile,
 		TIFFSetField(tif, TIFFTAG_YCBCRCOEFFICIENTS, YCbCrCoefficients);
 		TIFFSetField(tif, TIFFTAG_YCBCRPOSITIONING, YCBCRPOSITION_CENTERED);
 	}
-	if (compression == COMPRESSION_ADOBE_DEFLATE) {
+    switch(compression){
+    case COMPRESSION_ADOBE_DEFLATE:
 #ifdef ZIP_SUPPORT
-		TIFFSetField(tif, TIFFTAG_COMPRESSION, COMPRESSION_ADOBE_DEFLATE); // zip compression
+		TIFFSetField(tif, TIFFTAG_COMPRESSION, compression); // zip compression
 #endif
-	}
+    	break;
+    default:
+    	if (compression != 0)
+    		TIFFSetField(tif, TIFFTAG_COMPRESSION, compression);
+     }
+
 
 	if (image->icc_profile_buf) {
 		if (image->color_space == GRK_CLRSPC_ICC)
