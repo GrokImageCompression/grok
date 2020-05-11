@@ -1835,7 +1835,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	int tiPhoto;
 	TIFF *tif = nullptr;
 	tdata_t buf = nullptr;
-	tsize_t strip_size, rowStride;
+	tsize_t strip_size;
 	int32_t const *planes[maxNumComponents];
 	int32_t *buffer32s = nullptr;
 	cvtPlanarToInterleaved cvtPxToCx = nullptr;
@@ -1854,6 +1854,9 @@ static int imagetotif(grk_image *image, const char *outfile,
 	uint32_t chroma_subsample_y = 1;
     size_t units = image->comps->w;
    	bool subsampled = grk::isSubsampled(image);
+   	tsize_t stride, rowsPerStrip;
+	tmsize_t bytesToWrite = 0;
+	uint32_t strip = 0;
 
 	assert(image);
 	assert(outfile);
@@ -1985,6 +1988,20 @@ static int imagetotif(grk_image *image, const char *outfile,
 		spdlog::error("imagetotif:failed to open {} for writing", outfile);
 		goto cleanup;
 	}
+	// calculate rows per strip, base on target 8K strip size
+	if (subsampled){
+	    units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
+		stride = ((width * chroma_subsample_y + units * 2) * bps + 7)/8;
+		rowsPerStrip = (chroma_subsample_y * 8 * 1024 * 1024) / stride;
+	} else {
+	   	stride = (width * numcomps * bps + 7U) / 8U;
+	   	rowsPerStrip = (8 * 1024 * 1024) / stride;
+	}
+   	if (rowsPerStrip > height)
+   		rowsPerStrip = height;
+   	if (rowsPerStrip & 1)
+   		rowsPerStrip++;
+
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
 	TIFFSetField(tif, TIFFTAG_IMAGELENGTH, height);
@@ -1995,7 +2012,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 	TIFFSetField(tif, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, tiPhoto);
-	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, chroma_subsample_y);
+	TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP, rowsPerStrip);
     if( tiPhoto == PHOTOMETRIC_YCBCR )	{
        	float refBlackWhite[6] = {0.0,255.0,128.0,255.0,128.0,255.0};
        	float YCbCrCoefficients[3] = {0.299f,0.587f,0.114f};
@@ -2016,7 +2033,6 @@ static int imagetotif(grk_image *image, const char *outfile,
     		TIFFSetField(tif, TIFFTAG_COMPRESSION, compression);
      }
 
-
 	if (image->icc_profile_buf) {
 		if (image->color_space == GRK_CLRSPC_ICC)
 			TIFFSetField(tif, TIFFTAG_ICCPROFILE, image->icc_profile_len,
@@ -2025,7 +2041,6 @@ static int imagetotif(grk_image *image, const char *outfile,
 
 	if (image->xmp_buf && image->xmp_len)
 		TIFFSetField(tif, TIFFTAG_XMLPACKET, image->xmp_len, image->xmp_buf);
-
 
 	if (image->iptc_buf && image->iptc_len) {
 		auto iptc_buf = image->iptc_buf;
@@ -2047,9 +2062,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 			TIFFSwabArrayOfLong((uint32_t*) iptc_buf, iptc_len / 4);
 		TIFFSetField(tif, TIFFTAG_RICHTIFFIPTC, (uint32_t) iptc_len / 4,
 				(void*) iptc_buf);
-
-		if (buf)
-			free(buf);
+		free(buf);
 	}
 
 	if (image->capture_resolution[0] > 0 && image->capture_resolution[1] > 0) {
@@ -2082,43 +2095,57 @@ static int imagetotif(grk_image *image, const char *outfile,
 	}
 
 	strip_size = TIFFStripSize(tif);
-    units = (width + chroma_subsample_x - 1) / chroma_subsample_x;
-	rowStride = (width * numcomps * bps + 7U) / 8U;
-	if (subsampled)
-		rowStride = ((width * chroma_subsample_y + units * 2) * bps + 7)/8;
-
-	if (rowStride != strip_size) {
-		spdlog::error("Invalid TIFF strip size");
-		goto cleanup;
-	}
 	buf = _TIFFmalloc(strip_size);
 	if (buf == nullptr)
 		goto cleanup;
 
     if (subsampled){
-    	for (uint32_t h = 0; h < image->comps[0].h; h+=chroma_subsample_y) {
-    		auto bufptr = (int8_t*)buf;
+    	auto bufptr = (int8_t*)buf;
+    	for (uint32_t h = 0; h < height; h+=chroma_subsample_y) {
+    		if (h > 0 &&  (h % rowsPerStrip == 0)){
+    			tmsize_t written =
+    					TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
+    			assert(written == bytesToWrite);
+    			bufptr = (int8_t*)buf;
+    			bytesToWrite = 0;
+    		}
     		size_t xpos = 0;
-    		for (uint32_t j = 0; j < units; ++j){
-				for (size_t k = 0; k < chroma_subsample_y && h+k<height; ++k)
-					for (size_t j =0; j < chroma_subsample_x && xpos+j < width; ++j)
-                		*bufptr++ = (int8_t)planes[0][xpos + j + k * width];
+    		for (uint32_t u = 0; u < units; ++u){
+				for (size_t sub_h = 0; sub_h < chroma_subsample_y && h+sub_h<height; ++sub_h)
+					for (size_t sub_x =0; sub_x < chroma_subsample_x && xpos+sub_x < width; ++sub_x){
+                		*bufptr++ = (int8_t)planes[0][xpos + sub_x + sub_h * width];
+                		bytesToWrite++;
+					}
 				//2. chroma
 				*bufptr++ = (int8_t)*planes[1]++;
 				*bufptr++ = (int8_t)*planes[2]++;
+				bytesToWrite += 2;
             	xpos+=chroma_subsample_x;
     		}
-    		(void) TIFFWriteEncodedStrip(tif, h/chroma_subsample_y, (void*) buf, strip_size);
     	}
     } else {
-		for (uint32_t i = 0; i < image->comps[0].h; ++i) {
-			cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
-			cvt32sToTif(buffer32s, (uint8_t*) buf, (size_t) width * numcomps);
-			(void) TIFFWriteEncodedStrip(tif, i, (void*) buf, strip_size);
-			for (uint32_t k = 0; k < numcomps; ++k)
-				planes[k] += width;
-		}
+    	tmsize_t h = 0;
+    	tmsize_t h_start = 0;
+    	uint32_t strip = 0;
+    	while (h < height){
+    		tmsize_t byesToWrite = 0;
+			for (h = h_start; h < h_start + rowsPerStrip && (h < height); h++) {
+				cvtPxToCx(planes, buffer32s, (size_t) width, adjust);
+				cvt32sToTif(buffer32s, (uint8_t*) buf + byesToWrite, (size_t) width * numcomps);
+				for (uint32_t k = 0; k < numcomps; ++k)
+					planes[k] += width;
+				byesToWrite +=  stride;
+			}
+			tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++,(void*) buf, byesToWrite);
+			assert(written == byesToWrite);
+			h_start += (h - h_start);
+    	}
     }
+	//cleanup
+	if (bytesToWrite) {
+	  tmsize_t written =  TIFFWriteEncodedStrip(tif, strip++, (void*) buf, bytesToWrite);
+	  assert(written == bytesToWrite);
+	}
 
 	success = true;
 	cleanup: if (buf)
