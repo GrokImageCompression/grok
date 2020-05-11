@@ -1997,10 +1997,10 @@ static int imagetotif(grk_image *image, const char *outfile,
 	   	stride = (width * numcomps * bps + 7U) / 8U;
 	   	rowsPerStrip = (8 * 1024 * 1024) / stride;
 	}
-   	if (rowsPerStrip > height)
-   		rowsPerStrip = height;
    	if (rowsPerStrip & 1)
    		rowsPerStrip++;
+	if (rowsPerStrip > height)
+   		rowsPerStrip = height;
 
 
 	TIFFSetField(tif, TIFFTAG_IMAGEWIDTH, width);
@@ -2122,6 +2122,7 @@ static int imagetotif(grk_image *image, const char *outfile,
 				bytesToWrite += 2;
             	xpos+=chroma_subsample_x;
     		}
+    		planes[0] += width * chroma_subsample_y;
     	}
     } else {
     	tmsize_t h = 0;
