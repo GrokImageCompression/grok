@@ -43,7 +43,6 @@ Description: development files for Grok, a JPEG 2000 image library
  .
  This package contains the development files for Grok
 
-
 Package: grokj2k-tools
 Section: graphics
 Architecture: any
