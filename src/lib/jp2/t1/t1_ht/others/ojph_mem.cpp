@@ -94,7 +94,7 @@ namespace ojph {
   ////////////////////////////////////////////////////////////////////////////
   void mem_elastic_allocator::get_buffer(int needed_bytes, coded_lists* &p)
   {
-    int extended_bytes = needed_bytes + sizeof(coded_lists);
+    int extended_bytes = needed_bytes + (int)sizeof(coded_lists);
 
     if (store == NULL)
     {

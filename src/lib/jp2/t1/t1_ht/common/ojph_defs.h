@@ -57,8 +57,8 @@ typedef int64_t si64;
 
 /////////////////////////////////////////////////////////////////////////////
 #define OJPH_CORE_VER_MAJOR    0
-#define OJPH_CORE_VER_MINOR    6
-#define OJPH_CORE_VER_SUBMINOR 0
+#define OJPH_CORE_VER_MINOR    7
+#define OJPH_CORE_VER_SUBMINOR 1
 
 /////////////////////////////////////////////////////////////////////////////
 #define OJPH_INT_STRINGIFY(I) #I
@@ -78,6 +78,9 @@ const int NUM_FRAC_BITS = 13;
 
 /////////////////////////////////////////////////////////////////////////////
 #define ojph_min(a, b) (((a) < (b)) ? (a) : (b))
+
+#define ojph_unused(x) (void)(x)
+
 
 }
 

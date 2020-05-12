@@ -74,11 +74,11 @@ namespace ojph {
       assert(avail == avail_store);
       if (argc > 128)
         avail = new ui8[(argc + 7) >> 3];
-      memset(avail, 0, ojph_max(sizeof(avail_store), (argc + 7) >> 3));
+      memset(avail, 0, ojph_max((int)sizeof(avail_store), (argc + 7) >> 3));
       this->argv = argv;
       this->argc = argc;
       for (int i = 0; i < argc; ++i)
-        avail[i >> 3] |= 1 << (i & 7);
+        avail[i >> 3] |= (ui8)(1 << (i & 7));
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -109,7 +109,7 @@ namespace ojph {
     void release_argument(const argument& arg) {
       if (arg.index != 0) {
         assert(arg.index < argc);
-        avail[arg.index >> 3] &= ~(1 << (arg.index & 0x7));
+        avail[arg.index >> 3] &= (ui8)(~(1 << (arg.index & 0x7)));
       }
     }
 
