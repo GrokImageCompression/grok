@@ -437,6 +437,30 @@ public:
 	}
 };
 
+/**
+ * Convert compression string to compression code. (use TIFF codes)
+ */
+static int32_t getCompressionCode(std::string compressionString){
+	if (compressionString == "NONE")
+		return 0;
+	else if (compressionString == "LZW")
+		return 5;
+	else if (compressionString == "JPEG")
+		return 7;
+	else if (compressionString == "PACKBITS")
+		return 32773;
+	else if (compressionString == "ZIP")
+		return 8;
+	else if (compressionString == "LZMA")
+		return 34925;
+	else if (compressionString == "ZSTD")
+		return 50000;
+	else if (compressionString == "WEBP")
+		return 50001;
+	else
+		return -1;
+}
+
 /* -------------------------------------------------------------------------- */
 /**
  * Parse the command line
@@ -480,8 +504,8 @@ int parse_cmdline_decoder(int argc, char **argv,
 				false, "", "string", cmd);
 		ValueArg<string> decodeRegionArg("d", "DecodeRegion", "Decode Region",
 				false, "", "string", cmd);
-		ValueArg<uint32_t> compressionArg("c", "Compression",
-				"Compression Type", false, 0, "unsigned int", cmd);
+		ValueArg<string> compressionArg("c", "Compression",
+				"Compression Type", false, "", "string", cmd);
 		ValueArg<int32_t> compressionLevelArg("L", "CompressionLevel",
 				"Compression Level", false, -65535, "int", cmd);
 		ValueArg<uint32_t> durationArg("z", "Duration", "Duration in seconds",
@@ -526,7 +550,11 @@ int parse_cmdline_decoder(int argc, char **argv,
 			parameters->split_pnm = true;
 		}
 		if (compressionArg.isSet()) {
-			parameters->compression = compressionArg.getValue();
+			int32_t comp = getCompressionCode(compressionArg.getValue());
+			if (comp == -1)
+				spdlog::warn("Unrecognized compression {}. Ignoring", compressionArg.getValue());
+			else
+				parameters->compression = (uint32_t)comp;
 		}
 		if (compressionLevelArg.isSet()) {
 			parameters->compressionLevel = compressionLevelArg.getValue();
