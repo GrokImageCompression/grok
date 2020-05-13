@@ -207,11 +207,10 @@ static void decode_help_display(void) {
 			"    Path to T1 plugin.\n");
 	fprintf(stdout, "  [-H | -num_threads] <number of threads>\n"
 			"    Number of threads used by T1 decompress.\n");
-	fprintf(stdout,
-			"  [-c|-Compression] <compression>\n"
-					"    Compress output image data.Currently, this flag is only applicable when output format is set to `TIF`,\n"
-					"    and the only currently supported value is 8, corresponding to COMPRESSION_ADOBE_DEFLATE i.e.zip compression.\n"
-					"    The `zlib` library must be available for this compression setting.Default: 0 - no compression.\n");
+	fprintf(stdout,	"  [-c|-Compression] <compression method>\n"
+					"    Compress output image data. Currently, this option is only applicable when output "
+					"    format is set to TIF. Possible values are \n"
+					"    {NONE, LZW,JPEG, PACKBITS. ZIP,LZMA,ZSTD,WEBP}. Default value is NONE.\n");
 	fprintf(stdout,
 			"   [L|-CompressionLevel] <compression level>\n"
 					"    \"Quality\" of compression. Currently only implemented for PNG format. Default - Z_BEST_COMPRESSION\n");
