@@ -156,12 +156,12 @@ static char* createMultiComponentsFilename(const char *inFilename,
 	size_t posToken = 0;
 	int decod_format;
 
-	/*printf("inFilename = %s\n", inFilename);*/
+	/*spdlog::info("inFilename = {}", inFilename);*/
 	if ((ptr = (char*) strrchr(inFilename, token)) != nullptr) {
 		posToken = strlen(inFilename) - strlen(ptr);
-		/*printf("Position of %c character inside inFilename = %d\n", token, posToken);*/
+		/*spdlog::info("Position of {} character inside inFilename = {}\n", token, posToken);*/
 	} else {
-		/*printf("Token %c not found\n", token);*/
+		/*spdlog::info("Token {} not found", token);*/
 		outFilename = (char*) malloc(1);
 		if (!outFilename)
 			return nullptr;
@@ -186,7 +186,7 @@ static char* createMultiComponentsFilename(const char *inFilename,
 		strcat(outFilename, ".pgm");
 	}
 
-	/*printf("outfilename: %s\n", outFilename);*/
+	/*spdlog::info("outfilename: {}", outFilename);*/
 	return outFilename;
 }
 
@@ -241,10 +241,9 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 		image_read = pnm.decode(filenameComponentPGX, &parameters);
 		if (!image_read || !image_read->comps || !image_read->comps->h
 				|| !image_read->comps->w) {
-			spdlog::error("Unable to load ppm file: %s\n",
+			spdlog::error("Unable to load ppm file: {}",
 					filenameComponentPGX);
-			if (filenameComponentPGX)
-				free(filenameComponentPGX);
+			free(filenameComponentPGX);
 			goto cleanup;
 		}
 
@@ -273,10 +272,8 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 				image_read->comps->h * image_read->comps->w * sizeof(int));
 
 		/* Free memory*/
-		if (image_read)
-			grk_image_destroy(image_read);
-		if (filenameComponentPGX)
-			free(filenameComponentPGX);
+		grk_image_destroy(image_read);
+		free(filenameComponentPGX);
 	}
 
 	image = grk_image_create((uint32_t) nbFilenamePGX, param_image_read,
@@ -287,19 +284,17 @@ static grk_image* readImageFromFilePPM(const char *filename, size_t nbFilenamePG
 		if ((image->comps + it_file) && data[it_file]) {
 			memcpy(image->comps[it_file].data, data[it_file],
 					image->comps[it_file].h * image->comps[it_file].w
-							* sizeof(int));
+							* sizeof(int32_t));
 			free(data[it_file]);
 			data[it_file] = nullptr;
 		}
 	}
 
-	cleanup: if (param_image_read)
-		free(param_image_read);
+	cleanup:
+	free(param_image_read);
 	if (data) {
-		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++) {
-			if (data[it_free_data])
-				free(data[it_free_data]);
-		}
+		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++)
+			free(data[it_free_data]);
 		free(data);
 	}
 
@@ -340,11 +335,6 @@ static grk_image* readImageFromFileTIF(const char *filename, size_t nbFilenamePG
 	(void) nbFilenamePGX;
 	(void) separator;
 
-	/* conformance test suite produce annoying warning/error:
-	 * TIFFReadDirectory: Warning, /.../data/baseline/conformance/jp2_1.tif: unknown field with tag 37724 (0x935c) encountered.
-	 * TIFFOpen: /.../data/baseline/nonregression/jp2_1.tif: Cannot open.
-	 * On Win32 this open a message box by default, so remove it from the test suite:
-	 */
 #ifdef GROK_HAVE_LIBTIFF
 	TIFFSetWarningHandler(nullptr);
 	TIFFSetErrorHandler(nullptr);
@@ -465,13 +455,11 @@ static grk_image* readImageFromFilePGX(const char *filename, size_t nbFilenamePG
 		}
 	}
 
-	cleanup: if (param_image_read)
-		free(param_image_read);
+	cleanup:
+	free(param_image_read);
 	if (data) {
-		for (size_t it_free_data = 0; it_free_data < it_file; it_free_data++) {
-			if (data[it_free_data])
-				free(data[it_free_data]);
-		}
+		for (size_t i = 0; i < it_file; i++)
+			free(data[i]);
 		free(data);
 	}
 	return image;
@@ -606,7 +594,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			if (!param->base_filename)
 				return 1;
 			strcpy(param->base_filename, baseImageArg.getValue().c_str());
-			/*printf("param->base_filename = %s [%d / %d]\n", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
+			/*spdlog::info("param->base_filename = %s [%d / %d]", param->base_filename, strlen(param->base_filename), sizemembasefile );*/
 		}
 		if (testImageArg.isSet()) {
 			param->test_filename = (char*) malloc(
@@ -614,7 +602,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			if (!param->test_filename)
 				return 1;
 			strcpy(param->test_filename, testImageArg.getValue().c_str());
-			/*printf("param->test_filename = %s [%d / %d]\n", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
+			/*spdlog::info("param->test_filename = %s [%d / %d]", param->test_filename, strlen(param->test_filename), sizememtestfile);*/
 		}
 		if (numComponentsArg.isSet()) {
 			param->nbcomp = numComponentsArg.getValue();
@@ -659,7 +647,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 			if ((param->tabMSEvalues == nullptr)
 					|| (param->tabPEAKvalues == nullptr)) {
 				spdlog::error(
-						"MSE and PEAK values are not correct (respectively need %d values)\n",
+						"MSE and PEAK values are not correct (respectively need {} values)",
 						param->nbcomp);
 				return 1;
 			}
@@ -672,7 +660,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				size_t sizeseplist = strlen(separatorList) + 1;
 				char *separatorList2 = (char*) malloc(sizeseplist);
 				strcpy(separatorList2, separatorList);
-				/*printf("separatorList2 = %s [%d / %d]\n", separatorList2, strlen(separatorList2), sizeseplist);*/
+				/*spdlog::info("separatorList2 = %s [%d / %d]", separatorList2, strlen(separatorList2), sizeseplist);*/
 
 				if (strlen(separatorList) == 2) { /* one separator behind b or t*/
 					char *resultT = nullptr;
@@ -693,7 +681,7 @@ static int parse_cmdline_cmp(int argc, char **argv,
 						param->separator_test[0] = separatorList[1];
 						param->separator_test[1] = 0;
 					}
-					/*printf("sep b = %s [%d] and sep t = %s [%d]\n",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
+					/*spdlog::info("sep b = %s [%d] and sep t = %s [%d]",param->separator_base, strlen(param->separator_base), param->separator_test, strlen(param->separator_test) );*/
 				} else { /* == 4 characters we must found t and b*/
 					char *resultT = nullptr;
 					resultT = strtok(separatorList2, "t");
@@ -732,19 +720,17 @@ static int parse_cmdline_cmp(int argc, char **argv,
 				assert(param->separator_base[0] == 0);
 				assert(param->separator_test[0] == 0);
 			} else {
-				spdlog::error(
-						"If number of components is > 1, we need separator");
+				spdlog::error("If number of components is > 1, we need separator");
 				return 1;
 			}
 		}
 		if ((param->nr_flag) && (flagP || flagM)) {
-			spdlog::error(
-					"Non-regression flag cannot be used if PEAK or MSE tolerance is specified.");
+			spdlog::error("Non-regression flag cannot be used if PEAK or MSE tolerance is specified.");
 			return 1;
 		}
 		if ((!param->nr_flag) && (!flagP || !flagM)) {
-			fprintf(stdout,
-					"Non-regression flag must be set if PEAK or MSE tolerance are not specified. Flag has now been set.");
+			spdlog::info("Non-regression flag must be set if"
+					" PEAK or MSE tolerance are not specified. Flag has now been set.");
 			param->nr_flag = 1;
 		}
 	} catch (ArgException &e)  // catch any exceptions
@@ -762,11 +748,9 @@ int main(int argc, char **argv) {
 
 #ifndef NDEBUG
 	std::string out;
-	for (int i = 0; i < argc; ++i) {
+	for (int i = 0; i < argc; ++i)
 		out += std::string(" ") + argv[i];
-	}
-	out += "\n";
-	printf("%s", out.c_str());
+	spdlog::info("{}", out.c_str());
 #endif
 
 	test_cmp_parameters inParam;
@@ -791,28 +775,24 @@ int main(int argc, char **argv) {
 	}
 
 	/* Display Parameters*/
-	printf("******Parameters********* \n");
-	printf("Base_filename = %s\n"
-			"Test_filename = %s\n"
-			"Number of components = %d\n"
-			"Non-regression test = %d\n"
-			"Separator Base = %s\n"
-			"Separator Test = %s\n", inParam.base_filename,
-			inParam.test_filename, inParam.nbcomp, inParam.nr_flag,
-			inParam.separator_base, inParam.separator_test);
+	spdlog::info("******Parameters*********");
+	spdlog::info("Base_filename = {}",       inParam.base_filename);
+	spdlog::info("Test_filename = {}",       inParam.test_filename);
+	spdlog::info("Number of components = {}",inParam.nbcomp);
+	spdlog::info("Non-regression test = {}", inParam.nr_flag);
+	spdlog::info("Separator Base = {}",      inParam.separator_base);
+	spdlog::info("Separator Test = {}",      inParam.separator_test);
 
 	if ((inParam.tabMSEvalues != nullptr)
 			&& (inParam.tabPEAKvalues != nullptr)) {
 		uint32_t it_comp2;
-		printf(" MSE values = [");
+		spdlog::info(" MSE values = [");
 		for (it_comp2 = 0; it_comp2 < inParam.nbcomp; it_comp2++)
-			printf(" %f ", inParam.tabMSEvalues[it_comp2]);
-		printf("]\n");
-		printf(" PEAK values = [");
+			spdlog::info(" {} ", inParam.tabMSEvalues[it_comp2]);
+		spdlog::info(" PEAK values = [");
 		for (it_comp2 = 0; it_comp2 < inParam.nbcomp; it_comp2++)
-			printf(" %f ", inParam.tabPEAKvalues[it_comp2]);
-		printf("]\n");
-		printf(" Non-regression test = %d\n", inParam.nr_flag);
+			spdlog::info(" {} ", inParam.tabPEAKvalues[it_comp2]);
+		spdlog::info(" Non-regression test = {}", inParam.nr_flag);
 	}
 
 	if (strlen(inParam.separator_base) != 0)
@@ -821,11 +801,11 @@ int main(int argc, char **argv) {
 	if (strlen(inParam.separator_test) != 0)
 		nbFilenamePGXtest = inParam.nbcomp;
 
-	printf("NbFilename to generate from base filename = %d\n",
+	spdlog::info("NbFilename to generate from base filename = {}",
 			nbFilenamePGXbase);
-	printf("NbFilename to generate from test filename = %d\n",
+	spdlog::info("NbFilename to generate from test filename = {}",
 			nbFilenamePGXtest);
-	printf("************************* \n");
+	spdlog::info("*************************");
 
 	/*----------BASELINE IMAGE--------*/
 	memsizebasefilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
@@ -833,7 +813,7 @@ int main(int argc, char **argv) {
 
 	decod_format = get_decod_format(&inParam);
 	if (decod_format == -1) {
-		fprintf( stderr, "Unhandled file format\n");
+		spdlog::error("Unhandled file format");
 		goto cleanup;
 	}
 	assert(
@@ -861,7 +841,7 @@ int main(int argc, char **argv) {
 	filenamePNGbase = (char*) malloc(memsizebasefilename);
 	strcpy(filenamePNGbase, inParam.test_filename);
 	strcat(filenamePNGbase, ".base");
-	/*printf("filenamePNGbase = %s [%d / %d octets]\n",filenamePNGbase, strlen(filenamePNGbase),memsizebasefilename );*/
+	/*spdlog::info("filenamePNGbase = %s [%d / %d octets]",filenamePNGbase, strlen(filenamePNGbase),memsizebasefilename );*/
 
 	/*----------TEST IMAGE--------*/
 
@@ -885,7 +865,7 @@ int main(int argc, char **argv) {
 	filenamePNGtest = (char*) malloc(memsizetestfilename);
 	strcpy(filenamePNGtest, inParam.test_filename);
 	strcat(filenamePNGtest, ".test");
-	/*printf("filenamePNGtest = %s [%d / %d octets]\n",filenamePNGtest, strlen(filenamePNGtest),memsizetestfilename );*/
+	/*spdlog::info("filenamePNGtest = %s [%d / %d octets]",filenamePNGtest, strlen(filenamePNGtest),memsizetestfilename );*/
 
 	/*----------DIFF IMAGE--------*/
 
@@ -894,11 +874,11 @@ int main(int argc, char **argv) {
 			imageBase->numcomps * sizeof(grk_image_cmptparm));
 
 	/* Comparison of header parameters*/
-	printf("Step 1 -> Header comparison\n");
+	spdlog::info("Step 1 -> Header comparison");
 
 	/* check dimensions (issue 286)*/
 	if (imageBase->numcomps != imageTest->numcomps) {
-		fprintf(stderr, "[ERROR] dimension mismatch (%d><%d)\n",
+		spdlog::error("dimension mismatch ({}><{})",
 				imageBase->numcomps, imageTest->numcomps);
 		goto cleanup;
 	}
@@ -908,41 +888,39 @@ int main(int argc, char **argv) {
 		auto baseComp = imageBase->comps + it_comp;
 		auto testComp = imageTest->comps + it_comp;
 		if (baseComp->sgnd != testComp->sgnd) {
-			fprintf(stderr, "[ERROR]  sign mismatch [comp %d] (%d><%d)\n",
+			spdlog::error("sign mismatch [comp {}] ({}><{})",
 					(uint32_t)it_comp, baseComp->sgnd, testComp->sgnd);
 			goto cleanup;
 		}
 
 		if (inParam.regionSet) {
 			if (testComp->w != inParam.region[2] - inParam.region[0]) {
-				fprintf(stderr,
-						"[ERROR] test image component %d width doesn't match region width %d\n",
+				spdlog::error("test image component {} width doesn't match region width {}",
 						testComp->w, inParam.region[2] - inParam.region[0]);
 				goto cleanup;
 			}
 			if (testComp->h != inParam.region[3] - inParam.region[1]) {
-				fprintf(stderr,
-						"[ERROR] test image component %d height doesn't match region height %d\n",
+				spdlog::error("test image component {} height doesn't match region height {}",
 						testComp->h, inParam.region[3] - inParam.region[1]);
 				goto cleanup;
 			}
 		} else {
 
 			if (baseComp->h != testComp->h) {
-				fprintf(stderr, "[ERROR]  height mismatch [comp %d] (%d><%d)\n",
+				spdlog::error("height mismatch [comp {}] ({}><{})",
 						(uint32_t)it_comp, baseComp->h, testComp->h);
 				goto cleanup;
 			}
 
 			if (baseComp->w != testComp->w) {
-				fprintf(stderr, "[ERROR]  width mismatch [comp %d] (%d><%d)\n",
+				spdlog::error("width mismatch [comp {}] ({}><{})",
 						(uint32_t)it_comp, baseComp->w, testComp->w);
 				goto cleanup;
 			}
 		}
 
 		if (baseComp->prec != testComp->prec) {
-			fprintf(stderr, "[ERROR]  precision mismatch [comp %d] (%d><%d)\n",
+			spdlog::error("precision mismatch [comp {}] ({}><{})",
 					(uint32_t)it_comp, baseComp->prec, testComp->prec);
 			goto cleanup;
 		}
@@ -965,13 +943,13 @@ int main(int argc, char **argv) {
 	param_image_diff = nullptr;
 
 	/* Measurement computation*/
-	printf("Step 2 -> measurement comparison\n");
+	spdlog::info("Step 2 -> measurement comparison");
 
 	memsizedifffilename = strlen(inParam.test_filename) + 1 + 5 + 2 + 4;
 	filenamePNGdiff = (char*) malloc(memsizedifffilename);
 	strcpy(filenamePNGdiff, inParam.test_filename);
 	strcat(filenamePNGdiff, ".diff");
-	/*printf("filenamePNGdiff = %s [%d / %d octets]\n",filenamePNGdiff, strlen(filenamePNGdiff),memsizedifffilename );*/
+	/*spdlog::info("filenamePNGdiff = %s [%d / %d octets]",filenamePNGdiff, strlen(filenamePNGdiff),memsizedifffilename );*/
 
 	/* Compute pixel diff*/
 	for (it_comp = 0; it_comp < imageDiff->numcomps; it_comp++) {
@@ -1013,18 +991,17 @@ int main(int argc, char **argv) {
 		if (!inParam.nr_flag && (inParam.tabMSEvalues != nullptr)
 				&& (inParam.tabPEAKvalues != nullptr)) {
 			/* Conformance test*/
-			printf(
-					"<DartMeasurement name=\"PEAK_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
+			spdlog::info(
+					"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
 					(uint32_t)it_comp, PEAK);
-			printf(
-					"<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
+			spdlog::info(
+					"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
 					(uint32_t)it_comp, MSE);
 
 			if ((MSE > inParam.tabMSEvalues[it_comp])
 					|| (PEAK > inParam.tabPEAKvalues[it_comp])) {
-				fprintf(stderr,
-						"[ERROR] MSE (%f) or PEAK (%f) values produced by the decoded file are greater "
-								"than the allowable error (respectively %f and %f) \n",
+				spdlog::error("MSE ({}) or PEAK ({}) values produced by the decoded file are greater "
+								"than the allowable error (respectively {} and {})",
 						MSE, PEAK, inParam.tabMSEvalues[it_comp],
 						inParam.tabPEAKvalues[it_comp]);
 				goto cleanup;
@@ -1034,17 +1011,17 @@ int main(int argc, char **argv) {
 				char it_compc[255];
 				it_compc[0] = 0;
 
-				printf(
-						"<DartMeasurement name=\"NumberOfPixelsWithDifferences_%d\" type=\"numeric/int\"> %d </DartMeasurement> \n",
+				spdlog::info(
+						"<DartMeasurement name=\"NumberOfPixelsWithDifferences_{}\" type=\"numeric/int\"> {} </DartMeasurement>",
 						(uint32_t)it_comp, nbPixelDiff);
-				printf(
-						"<DartMeasurement name=\"ComponentError_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
+				spdlog::info(
+						"<DartMeasurement name=\"ComponentError_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
 						(uint32_t)it_comp, sumDiff);
-				printf(
-						"<DartMeasurement name=\"PEAK_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
+				spdlog::info(
+						"<DartMeasurement name=\"PEAK_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
 						(uint32_t)it_comp, PEAK);
-				printf(
-						"<DartMeasurement name=\"MSE_%d\" type=\"numeric/double\"> %f </DartMeasurement> \n",
+				spdlog::info(
+						"<DartMeasurement name=\"MSE_{}\" type=\"numeric/double\"> {} </DartMeasurement>",
 						(uint32_t)it_comp, MSE);
 
 #ifdef GROK_HAVE_LIBPNG
@@ -1063,8 +1040,7 @@ int main(int argc, char **argv) {
 					filenamePNGtest_it_comp = (char*) malloc(
 							memsizetestfilename);
 					if (!filenamePNGtest_it_comp) {
-						if (filenamePNGbase_it_comp)
-							free(filenamePNGbase_it_comp);
+						free(filenamePNGbase_it_comp);
 						goto cleanup;
 					}
 					strcpy(filenamePNGtest_it_comp, filenamePNGtest);
@@ -1072,10 +1048,8 @@ int main(int argc, char **argv) {
 					filenamePNGdiff_it_comp = (char*) malloc(
 							memsizedifffilename);
 					if (!filenamePNGdiff_it_comp) {
-						if (filenamePNGbase_it_comp)
-							free(filenamePNGbase_it_comp);
-						if (filenamePNGtest_it_comp)
-							free(filenamePNGtest_it_comp);
+						free(filenamePNGbase_it_comp);
+						free(filenamePNGtest_it_comp);
 						goto cleanup;
 					}
 					strcpy(filenamePNGdiff_it_comp, filenamePNGdiff);
@@ -1083,39 +1057,36 @@ int main(int argc, char **argv) {
 					sprintf(it_compc, "_%i", (uint32_t)it_comp);
 					strcat(it_compc, ".png");
 					strcat(filenamePNGbase_it_comp, it_compc);
-					/*printf("filenamePNGbase_it = %s [%d / %d octets]\n",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
+					/*spdlog::info("filenamePNGbase_it = %s [%d / %d octets]",filenamePNGbase_it_comp, strlen(filenamePNGbase_it_comp),memsizebasefilename );*/
 					strcat(filenamePNGtest_it_comp, it_compc);
-					/*printf("filenamePNGtest_it = %s [%d / %d octets]\n",filenamePNGtest_it_comp, strlen(filenamePNGtest_it_comp),memsizetestfilename );*/
+					/*spdlog::info("filenamePNGtest_it = %s [%d / %d octets]",filenamePNGtest_it_comp, strlen(filenamePNGtest_it_comp),memsizetestfilename );*/
 					strcat(filenamePNGdiff_it_comp, it_compc);
-					/*printf("filenamePNGdiff_it = %s [%d / %d octets]\n",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
+					/*spdlog::info("filenamePNGdiff_it = %s [%d / %d octets]",filenamePNGdiff_it_comp, strlen(filenamePNGdiff_it_comp),memsizedifffilename );*/
 
 					if (imageToPNG(imageBase, filenamePNGbase_it_comp,
 							it_comp) == EXIT_SUCCESS) {
-						printf(
-								"<DartMeasurementFile name=\"BaselineImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
+						spdlog::info(
+								"<DartMeasurementFile name=\"BaselineImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
 								(uint32_t)it_comp, filenamePNGbase_it_comp);
 					}
 
 					if (imageToPNG(imageTest, filenamePNGtest_it_comp,
 							it_comp) == EXIT_SUCCESS) {
-						printf(
-								"<DartMeasurementFile name=\"TestImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
+						spdlog::info(
+								"<DartMeasurementFile name=\"TestImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
 								(uint32_t)it_comp, filenamePNGtest_it_comp);
 					}
 
 					if (imageToPNG(imageDiff, filenamePNGdiff_it_comp,
 							it_comp) == EXIT_SUCCESS) {
-						printf(
-								"<DartMeasurementFile name=\"DiffferenceImage_%d\" type=\"image/png\"> %s </DartMeasurementFile> \n",
+						spdlog::info(
+								"<DartMeasurementFile name=\"DiffferenceImage_{}\" type=\"image/png\"> {} </DartMeasurementFile>",
 								(uint32_t)it_comp, filenamePNGdiff_it_comp);
 					}
 
-					if (filenamePNGbase_it_comp)
-						free(filenamePNGbase_it_comp);
-					if (filenamePNGtest_it_comp)
-						free(filenamePNGtest_it_comp);
-					if (filenamePNGdiff_it_comp)
-						free(filenamePNGdiff_it_comp);
+					free(filenamePNGbase_it_comp);
+					free(filenamePNGtest_it_comp);
+					free(filenamePNGdiff_it_comp);
 				}
 #endif
 				goto cleanup;
@@ -1123,32 +1094,21 @@ int main(int argc, char **argv) {
 		}
 	} /* it_comp loop */
 
-	printf("---- TEST SUCCEEDED ----\n");
+	spdlog::info("---- TEST SUCCEEDED ----");
 	failed = 0;
-	cleanup: if (param_image_diff)
-		free(param_image_diff);
-	if (imageBase)
-		grk_image_destroy(imageBase);
-	if (imageTest)
-		grk_image_destroy(imageTest);
-	if (imageDiff)
-		grk_image_destroy(imageDiff);
+	cleanup:
+	free(param_image_diff);
+	grk_image_destroy(imageBase);
+	grk_image_destroy(imageTest);
+	grk_image_destroy(imageDiff);
 
-	if (filenamePNGbase)
-		free(filenamePNGbase);
-	if (filenamePNGtest)
-		free(filenamePNGtest);
-	if (filenamePNGdiff)
-		free(filenamePNGdiff);
-
-	if (inParam.tabMSEvalues)
-		free(inParam.tabMSEvalues);
-	if (inParam.tabPEAKvalues)
-		free(inParam.tabPEAKvalues);
-	if (inParam.base_filename)
-		free(inParam.base_filename);
-	if (inParam.test_filename)
-		free(inParam.test_filename);
+	free(filenamePNGbase);
+	free(filenamePNGtest);
+	free(filenamePNGdiff);
+	free(inParam.tabMSEvalues);
+	free(inParam.tabPEAKvalues);
+	free(inParam.base_filename);
+	free(inParam.test_filename);
 
 	return failed ? EXIT_FAILURE : EXIT_SUCCESS;
 }
