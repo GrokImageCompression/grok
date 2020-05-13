@@ -492,9 +492,6 @@ private:
 	grk_tcp *m_tcp;
 	/** current encoded tile (not used for decompress) */
 	uint16_t m_tileno;
-	/** indicate if the tcd is a decoder. */
-	bool m_is_decoder;
-
 	/**
 	 * Initializes tile coding/decoding
 	 */

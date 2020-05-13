@@ -124,11 +124,12 @@ double T1HT::compress(encodeBlockInfo *block, grk_tcd_tile *tile, uint32_t maxim
 							   next_coded);
 
 	 cblk->num_passes_encoded = 1;
+	 assert(pass_length[0] >= 0);
 	 cblk->passes[0].len = (uint16_t)pass_length[0];
 	 cblk->passes[0].rate = (uint16_t)pass_length[0];
 	 cblk->numbps = 1;
 	 assert(cblk->data);
-	 memcpy(cblk->data, next_coded->buf, pass_length[0]);
+	 memcpy(cblk->data, next_coded->buf, (size_t)pass_length[0]);
 	}
 
   return 0;

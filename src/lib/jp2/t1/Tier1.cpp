@@ -128,23 +128,17 @@ bool Tier1::prepareDecodeCodeblocks(TileComponent *tilec, grk_tccp *tccp,
 						++cblkno) {
 					grk_rect cblk_rect;
 					grk_tcd_cblk_dec *cblk = &precinct->cblks.dec[cblkno];
-					int32_t x = (int32_t)cblk->x0;
-					int32_t y = (int32_t)cblk->y0;
-					int32_t w = (int32_t)(cblk->x1 - cblk->x0);
-					int32_t h = (int32_t)(cblk->y1 - cblk->y0);
-
 					if (tilec->is_subband_area_of_interest(resno,
 													bandno,
-													x,
-													y,
-													x+w,
-													y+h)){
+													cblk->x0,
+													cblk->y0,
+													cblk->x1,
+													cblk->y1)){
 
 
 						/* get code block offset relative to band*/
-
-						x -= band->x0;
-						y -= band->y0;
+						int32_t x = (int32_t)cblk->x0 - (int32_t)band->x0;
+						int32_t y = (int32_t)cblk->y0 - (int32_t)band->y0;
 
 						/* add band offset relative to previous resolution */
 						if (band->bandno & 1) {

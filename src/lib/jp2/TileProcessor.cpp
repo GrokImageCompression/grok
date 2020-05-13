@@ -73,8 +73,7 @@ TileProcessor::TileProcessor(bool isDecoder) :
 				nullptr), cur_totnum_tp(0), cur_pino(0), tile(nullptr), image(
 				nullptr), current_plugin_tile(nullptr), whole_tile_decoding(
 				true), m_marker_scratch(nullptr), m_marker_scratch_size(0), plt_markers(
-				nullptr), m_cp(nullptr), m_tcp(nullptr), m_tileno(0), m_is_decoder(
-				isDecoder) {
+				nullptr), m_cp(nullptr), m_tcp(nullptr), m_tileno(0) {
 	if (isDecoder) {
 		m_marker_scratch = (uint8_t*) grk_calloc(1, default_header_size);
 		if (!m_marker_scratch)
