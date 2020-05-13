@@ -1,4 +1,6 @@
-libgrokj2k.so.1 libgrokj2k1 #MINVER#
+libgrokj2k.so.1 libgrokj2k1
+| libgrokj2k1 #MINVER#
+* Build-Depends-Package: libgrokj2k1-dev
  _ZNKSt13__future_base13_State_baseV221_M_is_deferred_futureEv@Base 7.2.0
  _ZNKSt5ctypeIcE8do_widenEc@Base 7.2.0
  _ZNSt13__future_base11_Task_stateISt5_BindIFZN3grk14WaveletForwardINS2_5dwt53EE3runEPNS2_13TileComponentEEUlvE0_vEESaIiEFivEE14_M_run_delayedESt8weak_ptrINS_13_State_baseV2EE@Base 7.2.0
