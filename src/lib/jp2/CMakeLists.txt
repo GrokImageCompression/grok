@@ -101,7 +101,9 @@ set(GROK_SRCS
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/Quantizer.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.h
   ${CMAKE_CURRENT_SOURCE_DIR}/codestream/HTParams.cpp
-
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/LengthMarkers.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/codestream/LengthMarkers.cpp
+  
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/invert.h
   ${CMAKE_CURRENT_SOURCE_DIR}/mct/mct.cpp

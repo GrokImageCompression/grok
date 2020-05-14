@@ -4550,7 +4550,7 @@ static bool j2k_read_plm(grk_j2k *p_j2k, uint8_t *p_header_data,
 		p_j2k->m_cp.plm_markers = new PacketLengthMarkers();
 	auto markers = p_j2k->m_cp.plm_markers;
 
-	markers->init(Zplm);
+	markers->decodeInitIndex(Zplm);
 	while (header_size > 0) {
 		// Nplm
 		grk_read_8(p_header_data, &Nplm);
@@ -4604,14 +4604,14 @@ static bool j2k_read_plt(grk_j2k *p_j2k, uint8_t *p_header_data,
 	auto markers = p_j2k->m_tileProcessor->plt_markers;
 
 	uint8_t tmp;
-	markers->init(Zpl);
+	markers->decodeInitIndex(Zpl);
 	for (uint32_t i = 0; i < header_size; ++i) {
 		/* Iplt_ij */
 		grk_read_8(p_header_data, &tmp);
 		++p_header_data;
 		markers->decodeNext(tmp);
 	}
-	if (markers->decodeIsPendingPacketLength()) {
+	if (markers->decodeHasPendingPacketLength()) {
 		GROK_ERROR("Malformed PLT marker segment");
 		return false;
 	}
@@ -7052,188 +7052,5 @@ grk_tcp::grk_tcp() :
 	for (auto i = 0; i < 32; ++i)
 		memset(pocs + i, 0, sizeof(grk_poc));
 }
-
-
-TileLengthMarkers::TileLengthMarkers() : markers(new TL_MAP())
-{}
-
-TileLengthMarkers::~TileLengthMarkers(){
-	if (markers) {
-		for (auto it = markers->begin(); it != markers->end(); it++){
-			delete it->second;
-		}
-		delete markers;
-	}
-}
-void TileLengthMarkers::push(uint8_t i_TLM, grk_tl_info info){
-	auto pair = markers->find(i_TLM);
-	if (pair != markers->end()) {
-		pair->second->push_back(info);
-	} else {
-		auto vec = new TL_INFO_VEC();
-		vec->push_back(info);
-		markers->operator[](i_TLM) = vec;
-	}
-}
-
-PacketLengthMarkers::PacketLengthMarkers() : markers(new PL_MAP()),
-											Zpl(0),
-											curr_vec(nullptr),
-											packet_len(0),
-											pull_index(0U),
-											marker_bytes_written(0),
-											total_bytes_written(0),
-											m_marker_len_cache(nullptr),
-											m_write_ptr(nullptr),
-											m_available_bytes(0)
-
-{}
-
-PacketLengthMarkers::~PacketLengthMarkers(){
-	if (markers) {
-		for (auto it = markers->begin(); it != markers->end(); it++)
-			delete it->second;
-		delete markers;
-	}
-}
-
-void PacketLengthMarkers::encodeNext(uint32_t len){
-	assert(len);
-	curr_vec->push_back(len);
-}
-void PacketLengthMarkers::write_increment_bytes_written(size_t bytes){
-	   marker_bytes_written += bytes;
-	   total_bytes_written  += bytes;
-	   m_write_ptr += bytes;
-	   assert(total_bytes_written <= m_available_bytes);
-}
-// check if we need to start a new marker
-void PacketLengthMarkers::write_marker_header(){
-   // we 4 bytes for marker + marker length,
-   // 1 byte for index,
-    // and 5 bytes worst-case to write a packet length
-   if (total_bytes_written ==0 ||
-		   (marker_bytes_written >= USHRT_MAX - 1 - 4 - 5)){
-
-	   // write marker bytes (not including 2 bytes for marker itself)
-	   if (marker_bytes_written && m_marker_len_cache)
-		   grk_write<uint16_t>(m_marker_len_cache, (uint16_t)(marker_bytes_written-2));
-	   m_marker_len_cache = nullptr;
-	   marker_bytes_written = 0;
-
-	   // write marker
-	   grk_write<uint16_t>(m_write_ptr, J2K_MS_PLT);
-	   write_increment_bytes_written(2);
-
-	   // cache location of marker length and skip over
-	   m_marker_len_cache = m_write_ptr;
-	   write_increment_bytes_written(2);
-   }
-}
-void PacketLengthMarkers::write(grk_buf buf){
-	assert(buf.buf && buf.len);
-	m_write_ptr = buf.buf;
-	m_available_bytes = buf.len;
-
-	total_bytes_written = 0;
-	marker_bytes_written = 0;
-	m_marker_len_cache = nullptr;
-
-	write_marker_header();
-	for (auto map_iter = markers->begin();
-			map_iter != markers->end(); ++map_iter){
-		// write index
-		grk_write_8(m_write_ptr, map_iter->first);
-		write_increment_bytes_written(1);
-
-		// write marker lengths
-		for (auto val_iter = map_iter->second->begin();
-				val_iter != map_iter->second->end(); ++val_iter){
-			//check if we need to start a new PLT marker segment
-			write_marker_header();
-
-			// write from MSB down to LSB
-			uint32_t val = *val_iter;
-			uint32_t numbits = uint_floorlog2(val)+1;
-			uint32_t numbytes = (numbits + 6)/7;
-			size_t counter = numbytes - 1;
-
-			// write period
-			*m_write_ptr = val & 0x7F;
-			val = (uint32_t)(val >> 7);
-
-			//write commas
-			while (val){
-				m_write_ptr[counter--] = (uint8_t)((val & 0x7F) | 0x80);
-				val = (uint32_t)(val >> 7);
-			}
-			assert(counter == 0);
-			write_increment_bytes_written(numbytes);
-		}
-	}
-}
-
-void PacketLengthMarkers::init(uint8_t index){
-	Zpl = index;
-	packet_len = 0;
-	auto pair = markers->find(Zpl);
-	if (pair != markers->end()) {
-		curr_vec = pair->second;
-	} else {
-		curr_vec = new PL_INFO_VEC();
-		markers->operator[](Zpl) = curr_vec;
-	}
-}
-
-void PacketLengthMarkers::decodeNext(uint8_t Iplm){
-	/* take only the lower seven bits */
-	packet_len |= (Iplm & 0x7f);
-	if (Iplm & 0x80) {
-		packet_len <<= 7;
-	} else {
-		assert(curr_vec);
-		curr_vec->push_back(packet_len);
-		//GROK_INFO("Packet length: (%d, %d)", Zpl, packet_len);
-		packet_len = 0;
-	}
-}
-
-bool PacketLengthMarkers::decodeIsPendingPacketLength(){
-	return packet_len != 0;
-}
-
-void PacketLengthMarkers::readInit(void){
-	pull_index = 0;
-	Zpl = 0;
-	curr_vec = nullptr;
-	if (markers){
-		auto pair = markers->find(Zpl);
-		if (pair != markers->end()) {
-			curr_vec = pair->second;
-		}
-	}
-}
-
-// note: packet length must be at least 1, so 0 indicates
-// no packet length available
-uint32_t PacketLengthMarkers::readNext(void){
-   if (!markers)
-	   return 0;
-   if (curr_vec){
-	 if (pull_index == curr_vec->size()){
-		 Zpl++;
-		 if (Zpl < markers->size()){
-			 curr_vec = markers->operator[](Zpl);
-			 pull_index = 0;
-		 } else {
-			 curr_vec = nullptr;
-		 }
-	 }
-	 if (curr_vec)
-		 return curr_vec->operator[](pull_index++);
-   }
-   return 0;
-}
-
 
 }
